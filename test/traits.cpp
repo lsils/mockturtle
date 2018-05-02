@@ -27,14 +27,14 @@ public:
   iterates_over_t<Iterator, bool>
   compute( node const&, Iterator begin, Iterator end ) const
   {
-    return std::accumulate( begin, end, true, std::logical_and() );
+    return std::accumulate( begin, end, true, std::logical_and<bool>() );
   }
 
   template<typename Iterator>
   iterates_over_t<Iterator, uint32_t>
   compute( node const&, Iterator begin, Iterator end ) const
   {
-    return std::accumulate( begin, end, UINT32_C( 0 ), std::plus() );
+    return std::accumulate( begin, end, UINT32_C( 0 ), std::plus<uint32_t>() );
   }
 };
 
