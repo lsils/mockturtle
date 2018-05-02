@@ -1,0 +1,6 @@
+build
+
+**/*~
+
+docs/_build
+docs/doxyxml
