@@ -35,8 +35,8 @@ TEST_CASE( "create and use constants in an AIG", "[aig]" )
 
   CHECK( c0 != c1 );
   CHECK( c0 == !c1 );
-  CHECK( !c0 == c1 );
-  CHECK( !c0 != !c1 );
+  CHECK( (!c0) == c1 );
+  CHECK( (!c0) != !c1 );
   CHECK( -c0 == c1 );
   CHECK( -c1 == c1 );
   CHECK( c0 == +c1 );
@@ -179,7 +179,7 @@ TEST_CASE( "create binary operations in an AIG", "[aig]" )
   CHECK( aig.size() == 5 );
   CHECK( f3 == !f4 );
 
-  const auto f5 = aig.create_xor( x1, x2 );
+  aig.create_xor( x1, x2 );
   CHECK( aig.size() == 8 );
 }
 
