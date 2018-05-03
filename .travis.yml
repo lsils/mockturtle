@@ -1,0 +1,18 @@
+sudo: required
+dist: trusty
+
+language: cpp
+
+addons:
+  apt:
+    sources:
+      - sourceline: 'ubuntu-toolchain-r-test'
+    packages:
+      - g++-7.0
+
+script:
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_CXX_COMPILER=g++-7 -DMOCKTURTLE_TEST=ON ..
+  - make run_tests
+  - ./test/run_tests
