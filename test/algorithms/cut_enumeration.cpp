@@ -30,7 +30,7 @@ TEST_CASE( "enumerate cuts for an AIG", "[cut_enumeration]" )
     if ( aig.is_constant( n ) )
       return;
 
-    auto const& set = cuts.cut_set( aig.node_to_index( n ) );
+    auto const& set = cuts.cuts( aig.node_to_index( n ) );
     CHECK( to_vector( set[set.size() - 1] ) == std::vector<uint32_t>{aig.node_to_index( n )} );
   } );
 
@@ -39,23 +39,23 @@ TEST_CASE( "enumerate cuts for an AIG", "[cut_enumeration]" )
   const auto i3 = aig.node_to_index( aig.get_node( f3 ) );
   const auto i4 = aig.node_to_index( aig.get_node( f4 ) );
 
-  CHECK( cuts.cut_set( i1 ).size() == 2 );
-  CHECK( cuts.cut_set( i2 ).size() == 3 );
-  CHECK( cuts.cut_set( i3 ).size() == 3 );
-  CHECK( cuts.cut_set( i4 ).size() == 5 );
+  CHECK( cuts.cuts( i1 ).size() == 2 );
+  CHECK( cuts.cuts( i2 ).size() == 3 );
+  CHECK( cuts.cuts( i3 ).size() == 3 );
+  CHECK( cuts.cuts( i4 ).size() == 5 );
 
-  CHECK( to_vector( cuts.cut_set( i1 )[0] ) == std::vector<uint32_t>{1, 2} );
+  CHECK( to_vector( cuts.cuts( i1 )[0] ) == std::vector<uint32_t>{1, 2} );
 
-  CHECK( to_vector( cuts.cut_set( i2 )[0] ) == std::vector<uint32_t>{1, 3} );
-  CHECK( to_vector( cuts.cut_set( i2 )[1] ) == std::vector<uint32_t>{1, 2} );
+  CHECK( to_vector( cuts.cuts( i2 )[0] ) == std::vector<uint32_t>{1, 3} );
+  CHECK( to_vector( cuts.cuts( i2 )[1] ) == std::vector<uint32_t>{1, 2} );
 
-  CHECK( to_vector( cuts.cut_set( i3 )[0] ) == std::vector<uint32_t>{2, 3} );
-  CHECK( to_vector( cuts.cut_set( i3 )[1] ) == std::vector<uint32_t>{1, 2} );
+  CHECK( to_vector( cuts.cuts( i3 )[0] ) == std::vector<uint32_t>{2, 3} );
+  CHECK( to_vector( cuts.cuts( i3 )[1] ) == std::vector<uint32_t>{1, 2} );
 
-  CHECK( to_vector( cuts.cut_set( i4 )[0] ) == std::vector<uint32_t>{4, 5} );
-  CHECK( to_vector( cuts.cut_set( i4 )[1] ) == std::vector<uint32_t>{1, 2} );
-  CHECK( to_vector( cuts.cut_set( i4 )[2] ) == std::vector<uint32_t>{2, 3, 4} );
-  CHECK( to_vector( cuts.cut_set( i4 )[3] ) == std::vector<uint32_t>{1, 3, 5} );
+  CHECK( to_vector( cuts.cuts( i4 )[0] ) == std::vector<uint32_t>{4, 5} );
+  CHECK( to_vector( cuts.cuts( i4 )[1] ) == std::vector<uint32_t>{1, 2} );
+  CHECK( to_vector( cuts.cuts( i4 )[2] ) == std::vector<uint32_t>{2, 3, 4} );
+  CHECK( to_vector( cuts.cuts( i4 )[3] ) == std::vector<uint32_t>{1, 3, 5} );
 }
 
 TEST_CASE( "enumerate smaller cuts for an AIG", "[cut_enumeration]" )
@@ -83,21 +83,21 @@ TEST_CASE( "enumerate smaller cuts for an AIG", "[cut_enumeration]" )
   const auto i3 = aig.node_to_index( aig.get_node( f3 ) );
   const auto i4 = aig.node_to_index( aig.get_node( f4 ) );
 
-  CHECK( cuts.cut_set( i1 ).size() == 2 );
-  CHECK( cuts.cut_set( i2 ).size() == 3 );
-  CHECK( cuts.cut_set( i3 ).size() == 3 );
-  CHECK( cuts.cut_set( i4 ).size() == 3 );
+  CHECK( cuts.cuts( i1 ).size() == 2 );
+  CHECK( cuts.cuts( i2 ).size() == 3 );
+  CHECK( cuts.cuts( i3 ).size() == 3 );
+  CHECK( cuts.cuts( i4 ).size() == 3 );
 
-  CHECK( to_vector( cuts.cut_set( i1 )[0] ) == std::vector<uint32_t>{1, 2} );
+  CHECK( to_vector( cuts.cuts( i1 )[0] ) == std::vector<uint32_t>{1, 2} );
 
-  CHECK( to_vector( cuts.cut_set( i2 )[0] ) == std::vector<uint32_t>{1, 3} );
-  CHECK( to_vector( cuts.cut_set( i2 )[1] ) == std::vector<uint32_t>{1, 2} );
+  CHECK( to_vector( cuts.cuts( i2 )[0] ) == std::vector<uint32_t>{1, 3} );
+  CHECK( to_vector( cuts.cuts( i2 )[1] ) == std::vector<uint32_t>{1, 2} );
 
-  CHECK( to_vector( cuts.cut_set( i3 )[0] ) == std::vector<uint32_t>{2, 3} );
-  CHECK( to_vector( cuts.cut_set( i3 )[1] ) == std::vector<uint32_t>{1, 2} );
+  CHECK( to_vector( cuts.cuts( i3 )[0] ) == std::vector<uint32_t>{2, 3} );
+  CHECK( to_vector( cuts.cuts( i3 )[1] ) == std::vector<uint32_t>{1, 2} );
 
-  CHECK( to_vector( cuts.cut_set( i4 )[0] ) == std::vector<uint32_t>{4, 5} );
-  CHECK( to_vector( cuts.cut_set( i4 )[1] ) == std::vector<uint32_t>{1, 2} );
+  CHECK( to_vector( cuts.cuts( i4 )[0] ) == std::vector<uint32_t>{4, 5} );
+  CHECK( to_vector( cuts.cuts( i4 )[1] ) == std::vector<uint32_t>{1, 2} );
 }
 
 TEST_CASE( "compute truth tables of AIG cuts", "[cut_enumeration]" )
@@ -119,18 +119,18 @@ TEST_CASE( "compute truth tables of AIG cuts", "[cut_enumeration]" )
   const auto i3 = aig.node_to_index( aig.get_node( f3 ) );
   const auto i4 = aig.node_to_index( aig.get_node( f4 ) );
 
-  CHECK( cuts.cut_set( i1 ).size() == 2 );
-  CHECK( cuts.cut_set( i2 ).size() == 3 );
-  CHECK( cuts.cut_set( i3 ).size() == 3 );
-  CHECK( cuts.cut_set( i4 ).size() == 5 );
+  CHECK( cuts.cuts( i1 ).size() == 2 );
+  CHECK( cuts.cuts( i2 ).size() == 3 );
+  CHECK( cuts.cuts( i3 ).size() == 3 );
+  CHECK( cuts.cuts( i4 ).size() == 5 );
 
-  CHECK( cuts.truth_table( cuts.cut_set( i1 )[0] )._bits[0] == 0x8 );
-  CHECK( cuts.truth_table( cuts.cut_set( i2 )[0] )._bits[0] == 0x2 );
-  CHECK( cuts.truth_table( cuts.cut_set( i2 )[1] )._bits[0] == 0x2 );
-  CHECK( cuts.truth_table( cuts.cut_set( i3 )[0] )._bits[0] == 0x2 );
-  CHECK( cuts.truth_table( cuts.cut_set( i3 )[1] )._bits[0] == 0x4 );
-  CHECK( cuts.truth_table( cuts.cut_set( i4 )[0] )._bits[0] == 0x1 );
-  CHECK( cuts.truth_table( cuts.cut_set( i4 )[1] )._bits[0] == 0x9 );
-  CHECK( cuts.truth_table( cuts.cut_set( i4 )[2] )._bits[0] == 0x0d );
-  CHECK( cuts.truth_table( cuts.cut_set( i4 )[3] )._bits[0] == 0x0d );
+  CHECK( cuts.truth_table( cuts.cuts( i1 )[0] )._bits[0] == 0x8 );
+  CHECK( cuts.truth_table( cuts.cuts( i2 )[0] )._bits[0] == 0x2 );
+  CHECK( cuts.truth_table( cuts.cuts( i2 )[1] )._bits[0] == 0x2 );
+  CHECK( cuts.truth_table( cuts.cuts( i3 )[0] )._bits[0] == 0x2 );
+  CHECK( cuts.truth_table( cuts.cuts( i3 )[1] )._bits[0] == 0x4 );
+  CHECK( cuts.truth_table( cuts.cuts( i4 )[0] )._bits[0] == 0x1 );
+  CHECK( cuts.truth_table( cuts.cuts( i4 )[1] )._bits[0] == 0x9 );
+  CHECK( cuts.truth_table( cuts.cuts( i4 )[2] )._bits[0] == 0x0d );
+  CHECK( cuts.truth_table( cuts.cuts( i4 )[3] )._bits[0] == 0x0d );
 }

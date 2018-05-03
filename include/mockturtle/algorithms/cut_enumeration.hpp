@@ -91,7 +91,7 @@ using cut_type = cut<max_cut_size, cut_data<ComputeTruth, T>>;
 template<typename Ntk, bool ComputeTruth, typename CutData>
 struct network_cuts;
 
-template<typename Ntk, bool ComputeTruth, typename CutData>
+template<typename Ntk, bool ComputeTruth = false, typename CutData = empty_cut_data>
 network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_enumeration_params const& ps = {} );
 
 /* function to update a cut */
@@ -130,27 +130,27 @@ public:
   static constexpr bool compute_truth = ComputeTruth;
 
 private:
-  explicit network_cuts( std::size_t size ) : cuts( size )
+  explicit network_cuts( std::size_t size ) : _cuts( size )
   {
     kitty::dynamic_truth_table zero( 0u ), proj( 1u );
     kitty::create_nth_var( proj, 0u );
 
-    truth_tables.insert( zero );
-    truth_tables.insert( proj );
+    _truth_tables.insert( zero );
+    _truth_tables.insert( proj );
   }
 
 public:
   /*! \brief Returns the cut set of a node */
-  cut_set_t& cut_set( std::size_t node_index ) { return cuts[node_index]; }
+  cut_set_t& cuts( std::size_t node_index ) { return _cuts[node_index]; }
 
   /*! \brief Returns the cut set of a node */
-  cut_set_t const& cut_set( std::size_t node_index ) const { return cuts[node_index]; }
+  cut_set_t const& cuts( std::size_t node_index ) const { return _cuts[node_index]; }
 
   /*! \brief Returns the truth table of a cut */
   template<bool enabled = ComputeTruth, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
   auto truth_table( cut_t const& cut ) const
   {
-    return truth_tables[cut->func_id];
+    return _truth_tables[cut->func_id];
   }
 
   /*! \brief Returns the total number of tuples that were tried to be merged */
@@ -168,7 +168,7 @@ public:
   /*! \brief Returns the number of nodes for which cuts are computed */
   auto nodes_size() const
   {
-    return cuts.size();
+    return _cuts.size();
   }
 
   /* compute positions of leave indices in cut `sub` (subset) with respect to
@@ -202,7 +202,7 @@ private:
 private:
   void add_zero_cut( std::size_t index )
   {
-    auto& cut = cuts[index].add_cut( &index, &index ); /* fake iterator for emptyness */
+    auto& cut = _cuts[index].add_cut( &index, &index ); /* fake iterator for emptyness */
 
     if constexpr ( ComputeTruth )
     {
@@ -212,7 +212,7 @@ private:
 
   void add_unit_cut( std::size_t index )
   {
-    auto& cut = cuts[index].add_cut( &index, &index + 1 );
+    auto& cut = _cuts[index].add_cut( &index, &index + 1 );
 
     if constexpr ( ComputeTruth )
     {
@@ -222,10 +222,10 @@ private:
 
 private:
   /* compressed representation of cuts */
-  std::vector<cut_set_t> cuts;
+  std::vector<cut_set_t> _cuts;
 
   /* cut truth tables */
-  truth_table_cache<kitty::dynamic_truth_table> truth_tables;
+  truth_table_cache<kitty::dynamic_truth_table> _truth_tables;
 
   /* statistics */
   uint32_t _total_tuples{};
@@ -284,7 +284,7 @@ private:
     auto i = 0;
     for ( auto const& cut : vcuts )
     {
-      tt[i] = kitty::extend_to( cuts.truth_tables[( *cut )->func_id], res.size() );
+      tt[i] = kitty::extend_to( cuts._truth_tables[( *cut )->func_id], res.size() );
       const auto supp = cuts.compute_truth_table_support( *cut, res );
       kitty::expand_inplace( tt[i], supp );
       ++i;
@@ -308,11 +308,11 @@ private:
           *it_leaves++ = leaves_before[*it_support++];
         }
         res.set_leaves( leaves_after.begin(), leaves_after.end() );
-        return cuts.truth_tables.insert( tt_res_shrink );
+        return cuts._truth_tables.insert( tt_res_shrink );
       }
     }
 
-    return cuts.truth_tables.insert( tt_res );
+    return cuts._truth_tables.insert( tt_res );
   }
 
   void merge_cuts2( std::size_t index )
@@ -321,10 +321,10 @@ private:
 
     uint32_t pairs{1};
     ntk.foreach_fanin( index, [this, &pairs]( auto child, auto i ) {
-      lcuts[i] = &cuts.cut_set( ntk.node_to_index( ntk.get_node( child ) ) );
+      lcuts[i] = &cuts.cuts( ntk.node_to_index( ntk.get_node( child ) ) );
       pairs *= lcuts[i]->size();
     } );
-    lcuts[2] = &cuts.cut_set( index );
+    lcuts[2] = &cuts.cuts( index );
     auto& rcuts = *lcuts[fanin];
     rcuts.clear();
 
@@ -376,13 +376,13 @@ private:
     uint32_t pairs{1};
     std::vector<uint32_t> cut_sizes;
     ntk.foreach_fanin( index, [this, &pairs, &cut_sizes]( auto child, auto i ) {
-      lcuts[i] = &cuts.cut_set( ntk.node_to_index( ntk.get_node( child ) ) );
+      lcuts[i] = &cuts.cuts( ntk.node_to_index( ntk.get_node( child ) ) );
       cut_sizes.push_back( lcuts[i]->size() );
       pairs *= cut_sizes.back();
     } );
 
     const auto fanin = cut_sizes.size();
-    lcuts[fanin] = &cuts.cut_set( index );
+    lcuts[fanin] = &cuts.cuts( index );
 
     auto& rcuts = *lcuts[fanin == 1 ? 0 : fanin];
 
@@ -500,7 +500,7 @@ private:
       enumeration implementations in ABC.
    \endverbatim
  */
-template<typename Ntk, bool ComputeTruth = false, typename CutData = empty_cut_data>
+template<typename Ntk, bool ComputeTruth, typename CutData>
 network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_enumeration_params const& ps )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
