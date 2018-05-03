@@ -13,3 +13,46 @@ Truth table cache
 
 .. doxygenclass:: mockturtle::truth_table_cache
    :members:
+
+Cuts
+~~~~
+
+.. doc_overview_table:: classmockturtle_1_1cut
+   :column: Method
+
+   operator=
+   set_leaves
+   signature
+   size
+   begin
+   end
+   operator->
+   data
+   subsumes
+   merge
+
+.. doxygenclass:: mockturtle::cut
+   :members:
+
+Cut sets
+~~~~~~~~
+
+.. doc_overview_table:: classmockturtle_1_1cut__set
+   :column: Method
+
+   cut_set
+   clear
+   add_cut
+   is_subsumed
+   insert
+   begin
+   end
+   size
+   operator[]
+   best
+   update_best
+   limit
+   operator<<
+
+.. doxygenclass:: mockturtle::cut_set
+   :members:
