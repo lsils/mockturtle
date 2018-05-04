@@ -57,7 +57,7 @@ public:
    *
    * Constructs immutable view on another network.
    */
-  immutable_view( Ntk& ntk ) : Ntk( ntk )
+  immutable_view( Ntk const& ntk ) : Ntk( ntk )
   {
   }
 

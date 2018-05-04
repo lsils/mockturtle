@@ -92,7 +92,7 @@ public:
    *
    * Constructs topological view on another network.
    */
-  topo_view( Ntk& ntk ) : immutable_view<Ntk>( ntk )
+  topo_view( Ntk const& ntk ) : immutable_view<Ntk>( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
