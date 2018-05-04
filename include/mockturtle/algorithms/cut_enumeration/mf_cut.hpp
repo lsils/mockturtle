@@ -60,7 +60,7 @@ bool operator<( cut_type<ComputeTruth, cut_enumeration_mf_cut> const& c1, cut_ty
 }
 
 template<bool ComputeTruth, typename Ntk>
-void cut_enumeration_update_cut( cut_type<ComputeTruth, cut_enumeration_mf_cut>& cut, network_cuts<Ntk, cut_enumeration_mf_cut, ComputeTruth> const& cuts, Ntk const& ntk, node<Ntk> const& n )
+void cut_enumeration_update_cut( cut_type<ComputeTruth, cut_enumeration_mf_cut>& cut, network_cuts<Ntk, ComputeTruth, cut_enumeration_mf_cut> const& cuts, Ntk const& ntk, node<Ntk> const& n )
 {
   // TODO assume that fanin size is > 1
   uint32_t delay{0};

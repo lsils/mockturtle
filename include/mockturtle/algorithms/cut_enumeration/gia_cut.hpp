@@ -60,7 +60,7 @@ bool operator<( cut_type<ComputeTruth, cut_enumeration_gia_cut> const& c1, cut_t
 }
 
 template<bool ComputeTruth, typename Ntk>
-void cut_enumeration_update_cut( cut_type<ComputeTruth, cut_enumeration_gia_cut>& cut, network_cuts<Ntk, cut_enumeration_gia_cut, ComputeTruth> const& cuts, Ntk const& ntk, node<Ntk> const& n )
+void cut_enumeration_update_cut( cut_type<ComputeTruth, cut_enumeration_gia_cut>& cut, network_cuts<Ntk, ComputeTruth, cut_enumeration_gia_cut> const& cuts, Ntk const& ntk, node<Ntk> const& n )
 {
   (void)n;
   cut->data.num_tree_leaves = std::count_if( cut.begin(), cut.end(),
