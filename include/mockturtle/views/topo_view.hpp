@@ -95,6 +95,7 @@ public:
   topo_view( Ntk const& ntk ) : immutable_view<Ntk>( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
