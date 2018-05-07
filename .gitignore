@@ -1,0 +1,8 @@
+build/
+build-*/
+.vscode/
+
+**/*~
+
+docs/_build
+docs/doxyxml
