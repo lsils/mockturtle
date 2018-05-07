@@ -13,6 +13,9 @@ v0.1 (not yet released)
 * Algorithms: `cut_enumeration`
   `#2 <https://github.com/lsils/mockturtle/pull/2>`_
 
+* Views: `topo_view`, `immutable_view`
+  `#3 <https://github.com/lsils/mockturtle/pull/3>`_
+
 * Utility data structures: `truth_table_cache`, `cut`, `cut_set`
   `#1 <https://github.com/lsils/mockturtle/pull/1>`_
   `#2 <https://github.com/lsils/mockturtle/pull/2>`_
