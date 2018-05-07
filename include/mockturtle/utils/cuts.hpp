@@ -523,7 +523,7 @@ template<typename CutType, int MaxCuts>
 void cut_set<CutType, MaxCuts>::update_best( uint32_t index )
 {
   auto* best = _pcuts[0];
-  for ( auto i = 0; i < index; ++i )
+  for ( auto i = 0u; i < index; ++i )
   {
     _pcuts[i] = _pcuts[i + 1];
   }
