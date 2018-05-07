@@ -134,11 +134,18 @@ Node and signal iterators
    :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_fanin
    :no-link:
 
-Value simulation
-~~~~~~~~~~~~~~~~
+Simulate values
+~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
    :members: compute
+   :no-link:
+
+Mapping
+~~~~~~~
+
+.. doxygenclass:: mockturtle::network
+   :members: has_mapping, is_mapped, clear_mapping, add_to_mapping, remove_from_mapping, foreach_lut_fanin
    :no-link:
 
 Custom node values

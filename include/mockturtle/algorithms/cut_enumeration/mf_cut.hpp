@@ -46,6 +46,7 @@ struct cut_enumeration_mf_cut
 {
   uint32_t delay{0};
   float flow{0};
+  float cost{0};
 };
 
 template<bool ComputeTruth>
@@ -64,11 +65,11 @@ void cut_enumeration_update_cut( cut_type<ComputeTruth, cut_enumeration_mf_cut>&
 {
   // TODO assume that fanin size is > 1
   uint32_t delay{0};
-  float flow{1.0};
+  float flow = cut->data.cost = cut.size() < 2 ? 0.0f : 1.0f;
 
   for ( auto leaf : cut )
   {
-    const auto& best_leaf_cut = cuts.cut_set( leaf )[0];
+    const auto& best_leaf_cut = cuts.cuts( leaf )[0];
     delay = std::max( delay, best_leaf_cut->data.delay );
     flow += best_leaf_cut->data.flow;
   }

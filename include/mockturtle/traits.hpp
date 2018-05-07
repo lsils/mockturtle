@@ -617,6 +617,96 @@ template<class Ntk, typename T>
 inline constexpr bool has_compute_v = has_compute<Ntk, T>::value;
 #pragma endregion
 
+#pragma region has_has_mapping
+template<class Ntk, class = void>
+struct has_has_mapping : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_mapping<Ntk, std::void_t<decltype( std::declval<Ntk>().has_mapping() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_mapping_v = has_has_mapping<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_mapped
+template<class Ntk, class = void>
+struct has_is_mapped : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_mapped<Ntk, std::void_t<decltype( std::declval<Ntk>().is_mapped( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_mapped_v = has_is_mapped<Ntk>::value;
+#pragma endregion
+
+#pragma region has_clear_mapping
+template<class Ntk, class = void>
+struct has_clear_mapping : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_clear_mapping<Ntk, std::void_t<decltype( std::declval<Ntk>().clear_mapping() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_clear_mapping_v = has_clear_mapping<Ntk>::value;
+#pragma endregion
+
+#pragma region has_add_to_mapping
+template<class Ntk, class = void>
+struct has_add_to_mapping : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_add_to_mapping<Ntk, std::void_t<decltype( std::declval<Ntk>().add_to_mapping( std::declval<node<Ntk>>(), std::begin( std::vector<node<Ntk>>() ), std::end( std::vector<node<Ntk>>() ) ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_add_to_mapping_v = has_add_to_mapping<Ntk>::value;
+#pragma endregion
+
+#pragma region has_remove_from_mapping
+template<class Ntk, class = void>
+struct has_remove_from_mapping : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_remove_from_mapping<Ntk, std::void_t<decltype( std::declval<Ntk>().remove_from_mapping( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_remove_from_mapping_v = has_remove_from_mapping<Ntk>::value;
+#pragma endregion
+
+#pragma region has_foreach_lut_fanin
+template<class Ntk, class = void>
+struct has_foreach_lut_fanin : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_lut_fanin<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_lut_fanin( std::declval<node<Ntk>>(), std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_lut_fanin_v = has_foreach_lut_fanin<Ntk>::value;
+#pragma endregion
+
 #pragma region has_clear_values
 template<class Ntk, class = void>
 struct has_clear_values : std::false_type
