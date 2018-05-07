@@ -21,6 +21,12 @@ Welcome to mockturtle's documentation!
 
 .. toctree::
    :maxdepth: 2
+   :caption: Algorithms
+
+   cut_enumeration
+
+.. toctree::
+   :maxdepth: 2
    :caption: Utilities
 
    util_data_structures
