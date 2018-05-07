@@ -492,7 +492,8 @@ private:
    .. warning::
 
       This algorithm expects the nodes in the network to be in topological
-      order.
+      order.  If the network does not guarantee a topological order of nodes
+      one can wrap the network parameter in a ``topo_view`` view.
 
    .. note::
 
