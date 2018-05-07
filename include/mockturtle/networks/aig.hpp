@@ -449,6 +449,23 @@ public:
 
     return ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
   }
+
+  template<int NumVars, typename Iterator>
+  iterates_over_t<Iterator, kitty::static_truth_table<NumVars>>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    (void)end;
+
+    assert( n != 0 && !is_pi( n ) );
+
+    auto const& c1 = _storage->nodes[n].children[0];
+    auto const& c2 = _storage->nodes[n].children[1];
+
+    auto tt1 = *begin++;
+    auto tt2 = *begin++;
+
+    return ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
+  }
 #pragma endregion
 
 #pragma region Custom node values
