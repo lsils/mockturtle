@@ -1,11 +1,11 @@
 #include <catch.hpp>
 
-#include <mockturtle/networks/mig.hpp>
-#include <mockturtle/traits.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
+#include <mockturtle/networks/mig.hpp>
+#include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
 
@@ -35,14 +35,13 @@ TEST_CASE( "create and use constants in an MIG", "[mig]" )
 
   CHECK( c0 != c1 );
   CHECK( c0 == !c1 );
-  CHECK( (!c0) == c1 );
-  CHECK( (!c0) != !c1 );
+  CHECK( ( !c0 ) == c1 );
+  CHECK( ( !c0 ) != !c1 );
   CHECK( -c0 == c1 );
   CHECK( -c1 == c1 );
   CHECK( c0 == +c1 );
   CHECK( c0 == +c0 );
 }
-
 
 TEST_CASE( "create and use primary inputs in an MIG", "[mig]" )
 {
@@ -185,22 +184,22 @@ TEST_CASE( "create binary and ternary operations in an MIG", "[mig]" )
 
   mig.create_xor( x1, x2 );
   CHECK( mig.size() == 8 );
-  
-  mig.create_maj( x1, x2, f1);
+
+  mig.create_maj( x1, x2, f1 );
   CHECK( mig.size() == 9 );
-  
-  const auto f6 = mig.create_maj( x1, x2, mig.get_constant( false )); 
+
+  const auto f6 = mig.create_maj( x1, x2, mig.get_constant( false ) );
   CHECK( mig.size() == 9 );
   CHECK( f1 == f6 );
-  
-  const auto f7 = mig.create_maj( x1, x2, mig.get_constant( true )); 
+
+  const auto f7 = mig.create_maj( x1, x2, mig.get_constant( true ) );
   CHECK( mig.size() == 9 );
   CHECK( f3 == f7 );
-  
+
   const auto x3 = mig.create_pi();
-  
-  const auto f8 = mig.create_maj( x1, x2, x3); 
-  const auto f9 = mig.create_maj( !x1, !x2, !x3); 
+
+  const auto f8 = mig.create_maj( x1, x2, x3 );
+  const auto f9 = mig.create_maj( !x1, !x2, !x3 );
   CHECK( f8 == !f9 );
 }
 
@@ -219,7 +218,7 @@ TEST_CASE( "hash nodes in MIG network", "[mig]" )
   CHECK( mig.num_gates() == 1u );
 
   CHECK( mig.get_node( f ) == mig.get_node( g ) );
-  
+
   auto f1 = mig.create_maj( a, !b, c );
   auto g1 = mig.create_maj( a, !b, c );
 
@@ -238,7 +237,7 @@ TEST_CASE( "clone a node in MIG network", "[mig]" )
   auto a1 = mig1.create_pi();
   auto b1 = mig1.create_pi();
   auto c1 = mig1.create_pi();
-  auto f1 = mig1.create_maj( a1, b1, c1);
+  auto f1 = mig1.create_maj( a1, b1, c1 );
   CHECK( mig1.size() == 5 );
 
   auto a2 = mig2.create_pi();
@@ -303,7 +302,7 @@ TEST_CASE( "node and signal iteration in an MIG", "[mig]" )
   const auto x1 = mig.create_pi();
   const auto x2 = mig.create_pi();
   const auto x3 = mig.create_pi();
-  const auto f1 = mig.create_maj( x1, x2, x3);
+  const auto f1 = mig.create_maj( x1, x2, x3 );
   const auto f2 = mig.create_maj( x1, x2, !x3 );
   mig.create_po( f1 );
   mig.create_po( f2 );
@@ -431,8 +430,8 @@ TEST_CASE( "compute values in MIGs", "[mig]" )
   kitty::create_nth_var( xs[1], 1 );
   kitty::create_nth_var( xs[2], 2 );
 
-  CHECK( mig.compute( mig.get_node( f1 ), xs.begin(), xs.end() ) == (( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ));
-  CHECK( mig.compute( mig.get_node( f2 ), xs.begin(), xs.end() ) == (( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ));
+  CHECK( mig.compute( mig.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+  CHECK( mig.compute( mig.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 }
 
 TEST_CASE( "custom node values in MIGs", "[mig]" )
