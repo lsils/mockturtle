@@ -662,6 +662,21 @@ template<class Ntk>
 inline constexpr bool has_clear_mapping_v = has_clear_mapping<Ntk>::value;
 #pragma endregion
 
+#pragma region has_num_luts
+template<class Ntk, class = void>
+struct has_num_luts : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_num_luts<Ntk, std::void_t<decltype( std::declval<Ntk>().num_luts() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_num_luts_v = has_num_luts<Ntk>::value;
+#pragma endregion
+
 #pragma region has_add_to_mapping
 template<class Ntk, class = void>
 struct has_add_to_mapping : std::false_type

@@ -417,6 +417,9 @@ public:
   /*! \brief Clears a mapping. */
   void clear_mapping();
 
+  /*! \brief Number of mapped nodes. */
+  uint32_t num_luts() const;
+
   /*! \brief Adds a node to the mapping. */
   template<typename LeavesIterator>
   void add_to_mapping( node const& n, LeavesIterator begin, LeavesIterator end );

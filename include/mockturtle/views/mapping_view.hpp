@@ -64,7 +64,7 @@ public:
 
   bool has_mapping()
   {
-    return true;
+    return _mapping_size > 0;
   }
 
   bool is_mapped( node const& n ) const
@@ -76,13 +76,27 @@ public:
   {
     mappings.clear();
     mappings.resize( this->size(), 0 );
+    _mapping_size = 0;
+  }
+
+  uint32_t num_luts() const
+  {
+    return _mapping_size;
   }
 
   template<typename LeavesIterator>
   void add_to_mapping( node const& n, LeavesIterator begin, LeavesIterator end )
   {
+    auto& mindex = mappings[this->node_to_index( n )];
+
+    /* increase mapping size? */
+    if ( mindex == 0 )
+    {
+      _mapping_size++;
+    }
+
     /* set starting index of leafs */
-    mappings[this->node_to_index( n )] = mappings.size();
+    mindex = mappings.size();
 
     /* insert number of leafs */
     mappings.push_back( std::distance( begin, end ) );
@@ -96,6 +110,13 @@ public:
 
   void remove_from_mapping( node const& n )
   {
+    auto& mindex = mappings[this->node_to_index( n )];
+
+    if ( mindex != 0 )
+    {
+      _mapping_size--;
+    }
+
     mappings[this->node_to_index( n )] = 0;
   }
 
@@ -110,6 +131,7 @@ public:
 
 private:
   std::vector<uint32_t> mappings;
+  uint32_t _mapping_size{0};
 };
 
 } // namespace mockturtle
