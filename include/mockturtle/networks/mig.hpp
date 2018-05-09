@@ -58,8 +58,8 @@ namespace mockturtle
   `data[0].h2`: Application-specific value
   `data[1].h1`: Visited flag
 */
-	
-using mig_node = regular_node<3, 2, 1>; 
+
+using mig_node = regular_node<3, 2, 1>;
 using mig_storage = storage<mig_node,
                             empty_storage_data>;
 
@@ -100,7 +100,7 @@ public:
       };
       std::size_t data;
     };
-	
+
     signal operator!() const
     {
       return data ^ 1;
@@ -144,9 +144,9 @@ public:
   mig_network( std::shared_ptr<mig_storage> storage ) : _storage( storage )
   {
   }
-  
+
 #pragma endregion
-  
+
 #pragma region MIG Primary I / O and constants
   signal get_constant( bool value ) const
   {
@@ -197,86 +197,87 @@ public:
   }
 #pragma endregion
 
-#pragma region MIG Create binary/ternary functions
-  signal create_maj( signal a, signal b , signal  c)
+#pragma region MIG Create binary / ternary functions
+  signal create_maj( signal a, signal b, signal c )
   {
-      /* order inputs */
+    /* order inputs */
+    if ( a.index > b.index )
+    {
+      std::swap( a, b );
+      if ( b.index > c.index )
+        std::swap( b, c );
       if ( a.index > b.index )
-      {
-		  std::swap( a, b );
-		  if ( b.index > c.index)
-              std::swap( b, c );
-		  if ( a.index > b.index )
-			  std::swap( a, b );
-      }
-	  else {
-	  if ( b.index > c.index)
-          std::swap( b, c );
-	  if ( a.index > b.index )
-		  std::swap( a, b );
-      }
+        std::swap( a, b );
+    }
+    else
+    {
+      if ( b.index > c.index )
+        std::swap( b, c );
+      if ( a.index > b.index )
+        std::swap( a, b );
+    }
 
-      /* trivial cases */
-      if ( a.index == b.index )
-      {
-        return ( a.complement == b.complement ) ? a : c;
-      }
-	  else if ( b.index == c.index )
-      {
-        return ( b.complement == c.complement ) ? b : a;
-      }
-	  else if ( a.index == b.index == c.index )
-      {
-        return ( a.complement == b.complement ) ? a : c;
-      }
-	  
-	  /*  complemented edges minimization */ 
-	  auto node_complement = false;
-	  if (static_cast<unsigned>( a.complement ) + static_cast<unsigned>( b.complement ) + 
-		  static_cast<unsigned>( c.complement ) >= 2u )
-	  {
-		  node_complement = true; 
-		  a.complement = !a.complement;  
-		  b.complement = !b.complement;
-		  c.complement = !c.complement;
-	  }
+    /* trivial cases */
+    if ( a.index == b.index )
+    {
+      return ( a.complement == b.complement ) ? a : c;
+    }
+    else if ( b.index == c.index )
+    {
+      return ( b.complement == c.complement ) ? b : a;
+    }
+    else if ( a.index == b.index == c.index )
+    {
+      return ( a.complement == b.complement ) ? a : c;
+    }
 
-      storage::element_type::node_type node;
-  	  node.children[0] = a;
-      node.children[1] = b;
-      node.children[2] = c;
-	
+    /*  complemented edges minimization */
+    auto node_complement = false;
+    if ( static_cast<unsigned>( a.complement ) + static_cast<unsigned>( b.complement ) +
+             static_cast<unsigned>( c.complement ) >=
+         2u )
+    {
+      node_complement = true;
+      a.complement = !a.complement;
+      b.complement = !b.complement;
+      c.complement = !c.complement;
+    }
 
-      /* structural hashing */
-      const auto it = _storage->hash.find( node );
-      if ( it != _storage->hash.end() )
-      {
-        return {it->second, node_complement };
-      }
+    storage::element_type::node_type node;
+    node.children[0] = a;
+    node.children[1] = b;
+    node.children[2] = c;
 
-      const auto index = _storage->nodes.size();
+    /* structural hashing */
+    const auto it = _storage->hash.find( node );
+    if ( it != _storage->hash.end() )
+    {
+      return {it->second, node_complement};
+    }
 
-      if ( index >= .9 * _storage->nodes.capacity() )
-      {
-        _storage->nodes.reserve( static_cast<size_t>( 3.1415 * index ) );
-        _storage->hash.reserve( static_cast<size_t>( 3.1415 * index ) );
-      }
+    const auto index = _storage->nodes.size();
 
-      _storage->nodes.push_back( node );
+    if ( index >= .9 * _storage->nodes.capacity() )
+    {
+      _storage->nodes.reserve( static_cast<size_t>( 3.1415 * index ) );
+      _storage->hash.reserve( static_cast<size_t>( 3.1415 * index ) );
+    }
 
-      _storage->hash[node] = index;
+    _storage->nodes.push_back( node );
 
-      /* increase ref-count to children */
-      _storage->nodes[a.index].data[0].h1++;
-      _storage->nodes[b.index].data[0].h1++;
-	  _storage->nodes[c.index].data[0].h1++;
+    _storage->hash[node] = index;
 
-      return {index, node_complement};
+    /* increase ref-count to children */
+    _storage->nodes[a.index].data[0].h1++;
+    _storage->nodes[b.index].data[0].h1++;
+    _storage->nodes[c.index].data[0].h1++;
+
+    return {index, node_complement};
   }
-  
+
   signal create_and( signal a, signal b )
   {
-	  return create_maj( get_constant(false), a, b );
+    return create_maj( get_constant( false ), a, b );
   }
 
   signal create_nand( signal const& a, signal const& b )
@@ -286,7 +287,7 @@ public:
 
   signal create_or( signal const& a, signal const& b )
   {
-    return create_maj( get_constant(true), a, b );
+    return create_maj( get_constant( true ), a, b );
   }
 
   signal create_nor( signal const& a, signal const& b )
@@ -309,7 +310,7 @@ public:
     (void)other;
     (void)source;
     assert( children.size() == 3u );
-    return create_maj( children[0u], children[1u] , children[2u]);
+    return create_maj( children[0u], children[1u], children[2u] );
   }
 #pragma endregion
 
@@ -393,7 +394,7 @@ public:
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
-    detail::foreach_element_if( ez::make_direct_iterator<std::size_t>( 1 ), // start from 1 to avoid constant 
+    detail::foreach_element_if( ez::make_direct_iterator<std::size_t>( 1 ), // start from 1 to avoid constant
                                 ez::make_direct_iterator<std::size_t>( _storage->nodes.size() ),
                                 [this]( auto n ) { return !is_pi( n ); },
                                 fn );
@@ -410,32 +411,32 @@ public:
                    detail::is_callable_without_index_v<Fn, signal, void> ||
                    detail::is_callable_with_index_v<Fn, signal, void> );
 
-    // we don't use foreach_element here to have better performance 
+    // we don't use foreach_element here to have better performance
     if constexpr ( detail::is_callable_without_index_v<Fn, signal, bool> )
     {
       if ( !fn( signal{_storage->nodes[n].children[0]} ) )
         return;
       fn( signal{_storage->nodes[n].children[1]} );
-	  fn( signal{_storage->nodes[n].children[2]} );
+      fn( signal{_storage->nodes[n].children[2]} );
     }
     else if constexpr ( detail::is_callable_with_index_v<Fn, signal, bool> )
     {
       if ( !fn( signal{_storage->nodes[n].children[0]}, 0 ) )
         return;
       fn( signal{_storage->nodes[n].children[1]}, 1 );
-	  fn( signal{_storage->nodes[n].children[2]}, 2 );
+      fn( signal{_storage->nodes[n].children[2]}, 2 );
     }
     else if constexpr ( detail::is_callable_without_index_v<Fn, signal, void> )
     {
       fn( signal{_storage->nodes[n].children[0]} );
       fn( signal{_storage->nodes[n].children[1]} );
-	  fn( signal{_storage->nodes[n].children[2]} );
+      fn( signal{_storage->nodes[n].children[2]} );
     }
     else if constexpr ( detail::is_callable_with_index_v<Fn, signal, void> )
     {
       fn( signal{_storage->nodes[n].children[0]}, 0 );
       fn( signal{_storage->nodes[n].children[1]}, 1 );
-	  fn( signal{_storage->nodes[n].children[2]}, 2 );
+      fn( signal{_storage->nodes[n].children[2]}, 2 );
     }
   }
 #pragma endregion
@@ -451,13 +452,13 @@ public:
 
     auto const& c1 = _storage->nodes[n].children[0];
     auto const& c2 = _storage->nodes[n].children[1];
-	auto const& c3 = _storage->nodes[n].children[2];
+    auto const& c3 = _storage->nodes[n].children[2];
 
     auto v1 = *begin++;
     auto v2 = *begin++;
-	auto v3 = *begin++;
+    auto v3 = *begin++;
 
-    return (( v1 ^ c1.weight ) && ( v2 ^ c2.weight )) || (( v3 ^ c3.weight ) && ( v1 ^ c1.weight )) ||  (( v3 ^ c3.weight ) && ( v2 ^ c2.weight ));
+    return ( ( v1 ^ c1.weight ) && ( v2 ^ c2.weight ) ) || ( ( v3 ^ c3.weight ) && ( v1 ^ c1.weight ) ) || ( ( v3 ^ c3.weight ) && ( v2 ^ c2.weight ) );
   }
 
   template<typename Iterator>
@@ -470,13 +471,13 @@ public:
 
     auto const& c1 = _storage->nodes[n].children[0];
     auto const& c2 = _storage->nodes[n].children[1];
-	auto const& c3 = _storage->nodes[n].children[2];
+    auto const& c3 = _storage->nodes[n].children[2];
 
     auto tt1 = *begin++;
     auto tt2 = *begin++;
-	auto tt3 = *begin++;
+    auto tt3 = *begin++;
 
-    return (( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 )) | (( c1.weight ? ~tt1 : tt1 ) & ( c3.weight ? ~tt3 : tt3 )) | (( c3.weight ? ~tt3 : tt3 ) & ( c2.weight ? ~tt2 : tt2 ));
+    return ( ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 ) ) | ( ( c1.weight ? ~tt1 : tt1 ) & ( c3.weight ? ~tt3 : tt3 ) ) | ( ( c3.weight ? ~tt3 : tt3 ) & ( c2.weight ? ~tt2 : tt2 ) );
   }
 #pragma endregion
 
@@ -523,7 +524,7 @@ public:
     _storage->nodes[n].data[1].h1 = v;
   }
 #pragma endregion
-  
+
 public:
   std::shared_ptr<mig_storage> _storage;
 };
