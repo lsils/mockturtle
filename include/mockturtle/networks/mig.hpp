@@ -27,8 +27,6 @@
   \file mig.hpp
   \brief MIG logic network implementation
 
-  \author Mathias Soeken
-  \author Heinz Riener
   \author Eleonora Testa 
 */
 
@@ -66,7 +64,7 @@ using mig_storage = storage<mig_node,
 class mig_network
 {
 public:
-#pragma region MIG Types and constructors
+#pragma region Types and constructors
   static constexpr auto min_fanin_size = 3u;
   static constexpr auto max_fanin_size = 3u;
 
@@ -147,7 +145,7 @@ public:
 
 #pragma endregion
 
-#pragma region MIG Primary I / O and constants
+#pragma region Primary I / O and constants
   signal get_constant( bool value ) const
   {
     return {0, static_cast<size_t>( value ? 1 : 0 )};
@@ -185,7 +183,7 @@ public:
   }
 #pragma endregion
 
-#pragma region MIG Create unary functions
+#pragma region Create unary functions
   signal create_buf( signal const& a )
   {
     return a;
@@ -197,7 +195,7 @@ public:
   }
 #pragma endregion
 
-#pragma region MIG Create binary / ternary functions
+#pragma region Create binary / ternary functions
   signal create_maj( signal a, signal b, signal c )
   {
     /* order inputs */
@@ -275,7 +273,7 @@ public:
     return {index, node_complement};
   }
 
-  signal create_and( signal a, signal b )
+  signal create_and( signal const& a, signal const& b )
   {
     return create_maj( get_constant( false ), a, b );
   }
@@ -370,7 +368,7 @@ public:
   }
 #pragma endregion
 
-#pragma region MIG Node and signal iterators
+#pragma region Node and signal iterators
   template<typename Fn>
   void foreach_node( Fn&& fn ) const
   {
@@ -416,14 +414,16 @@ public:
     {
       if ( !fn( signal{_storage->nodes[n].children[0]} ) )
         return;
-      fn( signal{_storage->nodes[n].children[1]} );
+      if ( !fn( signal{_storage->nodes[n].children[1]} ) )
+        return;
       fn( signal{_storage->nodes[n].children[2]} );
     }
     else if constexpr ( detail::is_callable_with_index_v<Fn, signal, bool> )
     {
       if ( !fn( signal{_storage->nodes[n].children[0]}, 0 ) )
         return;
-      fn( signal{_storage->nodes[n].children[1]}, 1 );
+      if ( !fn( signal{_storage->nodes[n].children[1]}, 1 ) )
+        return;
       fn( signal{_storage->nodes[n].children[2]}, 2 );
     }
     else if constexpr ( detail::is_callable_without_index_v<Fn, signal, void> )
@@ -441,7 +441,7 @@ public:
   }
 #pragma endregion
 
-#pragma region MIG Value simulation
+#pragma region Value simulation
   template<typename Iterator>
   iterates_over_t<Iterator, bool>
   compute( node const& n, Iterator begin, Iterator end ) const
@@ -477,11 +477,11 @@ public:
     auto tt2 = *begin++;
     auto tt3 = *begin++;
 
-    return ( ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 ) ) | ( ( c1.weight ? ~tt1 : tt1 ) & ( c3.weight ? ~tt3 : tt3 ) ) | ( ( c3.weight ? ~tt3 : tt3 ) & ( c2.weight ? ~tt2 : tt2 ) );
+    return kitty::ternary_majority( c1.weight ? ~tt1 : tt1, c2.weight ? ~tt2 : tt2, c3.weight ? ~tt3 : tt3 );
   }
 #pragma endregion
 
-#pragma region MiG Custom node values
+#pragma region Custom node values
   void clear_values() const
   {
     std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[0].h2 = 0; } );
@@ -508,7 +508,7 @@ public:
   }
 #pragma endregion
 
-#pragma region MIG Visited flags
+#pragma region Visited flags
   void clear_visited() const
   {
     std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[1].h1 = 0; } );
