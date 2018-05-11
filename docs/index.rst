@@ -18,6 +18,7 @@ Welcome to mockturtle's documentation!
    philosophy
    network
    implementations
+   views
 
 .. toctree::
    :maxdepth: 2
