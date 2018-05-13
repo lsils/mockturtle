@@ -39,6 +39,28 @@
 namespace mockturtle
 {
 
+/*! \brief Lorina reader callback for Aiger files.
+ *
+ * **Required network functions:**
+ * - `create_pi`
+ * - `create_po`
+ * - `get_constant`
+ * - `create_not`
+ * - `create_and`
+ *
+   \verbatim embed:rst
+  
+   Example
+   
+   .. code-block:: c++
+   
+      aig_network aig;
+      lorina::read_aiger( "file.aig", aiger_reader( aig ) );
+
+      mig_network mig;
+      lorina::read_aiger( "file.aig", aiger_reader( mig ) );
+   \endverbatim
+ */
 template<typename Ntk>
 class aiger_reader : public lorina::aiger_reader
 {
@@ -50,7 +72,7 @@ public:
     static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po function" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant function" );
     static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not function" );
-    static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_and function" );
+    static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and function" );
   }
 
   ~aiger_reader()

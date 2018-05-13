@@ -46,6 +46,24 @@
 namespace mockturtle
 {
 
+/*! \brief Lorina reader callback for BENCH files.
+ *
+ * **Required network functions:**
+ * - `create_pi`
+ * - `create_po`
+ * - `get_constant`
+ * - `create_node`
+ *
+   \verbatim embed:rst
+  
+   Example
+   
+   .. code-block:: c++
+   
+      klut_network klut;
+      lorina::read_bench( "file.bench", bench_reader( klut ) );
+   \endverbatim
+ */
 template<typename Ntk>
 class bench_reader : public lorina::bench_reader
 {
@@ -55,6 +73,7 @@ public:
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
     static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po function" );
+    static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant function" );
     static_assert( has_create_node_v<Ntk>, "Ntk does not implement the create_node function" );
 
     signals["gnd"] = _ntk.get_constant( false );
