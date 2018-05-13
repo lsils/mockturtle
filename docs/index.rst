@@ -28,6 +28,12 @@ Welcome to mockturtle's documentation!
 
 .. toctree::
    :maxdepth: 2
+   :caption: Generators
+
+   arithmetic
+
+.. toctree::
+   :maxdepth: 2
    :caption: Utilities
 
    util_data_structures
