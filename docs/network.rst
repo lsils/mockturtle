@@ -145,7 +145,7 @@ Mapping
 ~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: has_mapping, is_mapped, clear_mapping, num_luts, add_to_mapping, remove_from_mapping, foreach_lut_fanin
+   :members: has_mapping, is_mapped, clear_mapping, num_luts, add_to_mapping, remove_from_mapping, lut_function, set_lut_function, foreach_lut_fanin
    :no-link:
 
 Custom node values

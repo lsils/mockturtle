@@ -707,6 +707,36 @@ template<class Ntk>
 inline constexpr bool has_remove_from_mapping_v = has_remove_from_mapping<Ntk>::value;
 #pragma endregion
 
+#pragma region has_lut_function
+template<class Ntk, class = void>
+struct has_lut_function : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_lut_function<Ntk, std::void_t<decltype( std::declval<Ntk>().lut_function( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_lut_function_v = has_lut_function<Ntk>::value;
+#pragma endregion
+
+#pragma region has_set_lut_function
+template<class Ntk, class = void>
+struct has_set_lut_function : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_set_lut_function<Ntk, std::void_t<decltype( std::declval<Ntk>().set_lut_function( std::declval<node<Ntk>>(), std::declval<kitty::dynamic_truth_table>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_set_lut_function_v = has_set_lut_function<Ntk>::value;
+#pragma endregion
+
 #pragma region has_foreach_lut_fanin
 template<class Ntk, class = void>
 struct has_foreach_lut_fanin : std::false_type

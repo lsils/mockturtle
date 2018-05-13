@@ -41,6 +41,8 @@
 namespace mockturtle
 {
 
+static_assert( false, "file interface.hpp cannot be included, it's only used for documentation" );
+
 class network final
 {
 public:
@@ -426,6 +428,12 @@ public:
 
   /*! \brief Remove from mapping. */
   void remove_from_mapping( node const& n );
+
+  /*! \brief Gets LUT function */
+  kitty::dynamic_truth_table lut_function( node const& n );
+
+  /*! \brief Sets LUT function. */
+  void set_lut_function( node const& n, kitty::dynamic_truth_table const& function );
 
   /*! \brief Iterators over node's mapping fan-ins. */
   template<typename Fn>
