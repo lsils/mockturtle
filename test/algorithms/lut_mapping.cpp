@@ -115,3 +115,28 @@ TEST_CASE( "LUT mapping of 64-LUT network", "[lut_mapping]" )
 
   CHECK( mapped_aig.num_luts() == 96 );
 }
+
+TEST_CASE( "LUT mapping with functions of full adder", "[lut_mapping]" )
+{
+  aig_network aig;
+
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto [sum, carry] = full_adder( aig, a, b, c );
+  aig.create_po( sum );
+  aig.create_po( carry );
+
+  mapping_view<aig_network, true> mapped_aig{ aig };
+  lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
+
+  CHECK( has_lut_function_v<mapping_view<aig_network, true>> );
+  CHECK( has_set_lut_function_v<mapping_view<aig_network, true>> );
+
+  CHECK( mapped_aig.num_luts() == 2 );
+  CHECK( mapped_aig.is_mapped( aig.get_node( sum ) ) );
+  CHECK( mapped_aig.is_mapped( aig.get_node( carry ) ) );
+  CHECK( mapped_aig.lut_function( aig.get_node( sum ) )._bits[0] == 0x96 );
+  CHECK( mapped_aig.lut_function( aig.get_node( carry ) )._bits[0] == 0x17 );
+}

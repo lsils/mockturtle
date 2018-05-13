@@ -43,6 +43,11 @@
 namespace mockturtle
 {
 
+/*! \brief Parameters for lut_mapping.
+ *
+ * The data structure `lut_mapping_params` holds configurable parameters
+ * with default arguments for `lut_mapping`.
+ */
 struct lut_mapping_params
 {
   lut_mapping_params()
@@ -51,20 +56,30 @@ struct lut_mapping_params
     cut_enumeration_ps.cut_limit = 8;
   }
 
+  /*! \brief Parameters for cut enumeration
+   *
+   * The default cut size is 6, the default cut limit is 8.
+   */
   cut_enumeration_params cut_enumeration_ps{};
 
+  /*! \brief Number of rounds for area flow optimization.
+   *
+   * The first round is used for delay optimization.
+   */
   uint32_t rounds{2u};
+
+  /*! \brief Number of rounds for exact area optimization. */
   uint32_t rounds_ela{1u};
 };
 
 namespace detail
 {
 
-template<class Ntk>
+template<class Ntk, bool StoreFunction>
 class lut_mapping_impl
 {
 public:
-  using network_cuts_t = network_cuts<Ntk, false, cut_enumeration_mf_cut>;
+  using network_cuts_t = network_cuts<Ntk, StoreFunction, cut_enumeration_mf_cut>;
   using cut_t = typename network_cuts_t::cut_t;
 
 public:
@@ -75,7 +90,7 @@ public:
         map_refs( ntk.size(), 0 ),
         flows( ntk.size() ),
         delays( ntk.size() ),
-        cuts( cut_enumeration<Ntk, false, cut_enumeration_mf_cut>( ntk, ps.cut_enumeration_ps ) )
+        cuts( cut_enumeration<Ntk, StoreFunction, cut_enumeration_mf_cut>( ntk, ps.cut_enumeration_ps ) )
   {
   }
 
@@ -110,7 +125,7 @@ public:
 private:
   uint32_t cut_area( cut_t const& cut ) const
   {
-    return cut.size() < 2u ? 0u : 1u;
+    return cut->data.cost;
   }
 
   void init_nodes()
@@ -239,11 +254,13 @@ private:
   uint32_t cut_ref2( cut_t const& cut, uint32_t limit )
   {
     uint32_t count = cut_area( cut );
-    if ( limit == 0 ) return count;
+    if ( limit == 0 )
+      return count;
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_constant( ntk.index_to_node( leaf ) ) || ntk.is_pi( ntk.index_to_node( leaf ) ) ) continue;
+      if ( ntk.is_constant( ntk.index_to_node( leaf ) ) || ntk.is_pi( ntk.index_to_node( leaf ) ) )
+        continue;
 
       tmp_area.push_back( leaf );
       if ( map_refs[leaf]++ == 0 )
@@ -320,7 +337,7 @@ private:
     }
     delays[index] = best_time;
     flows[index] = best_flow / flow_refs[index];
-    
+
     if ( best_cut != 0 )
     {
       cuts.cuts( index ).update_best( best_cut );
@@ -346,6 +363,11 @@ private:
         nodes.push_back( ntk.index_to_node( l ) );
       }
       ntk.add_to_mapping( n, nodes.begin(), nodes.end() );
+
+      if constexpr ( StoreFunction )
+      {
+        ntk.set_lut_function( n, cuts.truth_table( cuts.cuts( index ).best() ) );
+      }
     }
   }
 
@@ -380,7 +402,32 @@ private:
 
 }; /* namespace detail */
 
-template<class Ntk>
+/*! \brief LUT mapping.
+ *
+ * This function implements a LUT mapping algorithm. ...
+ *
+ * **Required network functions:**
+ * - `size`
+ * - `is_pi`
+ * - `is_constant`
+ * - `node_to_index`
+ * - `index_to_node`
+ * - `get_node`
+ * - `foreach_po`
+ * - `foreach_node`
+ * - `fanout_size`
+ * - `clear_mapping`
+ * - `add_to_mapping`
+ *
+   \verbatim embed:rst
+
+   .. note::
+
+      The implementation of this algorithm was heavily inspired but the LUT
+      mapping command ``&mf`` in ABC.
+   \endverbatim
+ */
+template<class Ntk, bool StoreFunction = false>
 void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -395,10 +442,10 @@ void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {} )
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_clear_mapping_v<Ntk>, "Ntk does not implement the clear_mapping method" );
   static_assert( has_add_to_mapping_v<Ntk>, "Ntk does not implement the add_to_mapping method" );
+  static_assert( !StoreFunction || has_set_lut_function_v<Ntk>, "Ntk does not implement the set_lut_function method" );
 
-  detail::lut_mapping_impl p( ntk, ps );
+  detail::lut_mapping_impl<Ntk, StoreFunction> p( ntk, ps );
   p.run();
 }
 
 } /* namespace mockturtle */
-

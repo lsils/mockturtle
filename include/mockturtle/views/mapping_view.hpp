@@ -36,12 +36,39 @@
 
 #include "../networks/detail/foreach.hpp"
 #include "../traits.hpp"
+#include "../utils/truth_table_cache.hpp"
 #include "../views/immutable_view.hpp"
+
+#include <kitty/dynamic_truth_table.hpp>
 
 namespace mockturtle
 {
 
-template<typename Ntk>
+namespace detail
+{
+
+template<bool StoreFunction>
+struct mapping_view_storage;
+
+template<>
+struct mapping_view_storage<true>
+{
+  std::vector<uint32_t> mappings;
+  uint32_t mapping_size{0};
+  std::vector<uint32_t> functions;
+  truth_table_cache<kitty::dynamic_truth_table> cache;
+};
+
+template<>
+struct mapping_view_storage<false>
+{
+  std::vector<uint32_t> mappings;
+  uint32_t mapping_size{0};
+};
+
+} // namespace detail
+
+template<typename Ntk, bool StoreFunction = false>
 class mapping_view : public immutable_view<Ntk>
 {
 public:
@@ -59,79 +86,99 @@ public:
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
 
-    mappings.resize( ntk.size(), 0 );
+    _mapping_storage.mappings.resize( ntk.size(), 0 );
+
+    if constexpr ( StoreFunction )
+    {
+      /* insert 0 truth table */
+      _mapping_storage.cache.insert( kitty::dynamic_truth_table( 0 ) );
+
+      /* default each truth table to 0 */
+      _mapping_storage.functions.resize( ntk.size(), 0 );
+    }
   }
 
   bool has_mapping()
   {
-    return _mapping_size > 0;
+    return _mapping_storage.mapping_size > 0;
   }
 
   bool is_mapped( node const& n ) const
   {
-    return mappings[this->node_to_index( n )] != 0;
+    return _mapping_storage.mappings[this->node_to_index( n )] != 0;
   }
 
   void clear_mapping()
   {
-    mappings.clear();
-    mappings.resize( this->size(), 0 );
-    _mapping_size = 0;
+    _mapping_storage.mappings.clear();
+    _mapping_storage.mappings.resize( this->size(), 0 );
+    _mapping_storage.mapping_size = 0;
   }
 
   uint32_t num_luts() const
   {
-    return _mapping_size;
+    return _mapping_storage.mapping_size;
   }
 
   template<typename LeavesIterator>
   void add_to_mapping( node const& n, LeavesIterator begin, LeavesIterator end )
   {
-    auto& mindex = mappings[this->node_to_index( n )];
+    auto& mindex = _mapping_storage.mappings[this->node_to_index( n )];
 
     /* increase mapping size? */
     if ( mindex == 0 )
     {
-      _mapping_size++;
+      _mapping_storage.mapping_size++;
     }
 
     /* set starting index of leafs */
-    mindex = mappings.size();
+    mindex = _mapping_storage.mappings.size();
 
     /* insert number of leafs */
-    mappings.push_back( std::distance( begin, end ) );
+    _mapping_storage.mappings.push_back( std::distance( begin, end ) );
 
     /* insert leaf indexes */
     while ( begin != end )
     {
-      mappings.push_back( this->node_to_index( *begin++ ) );
+      _mapping_storage.mappings.push_back( this->node_to_index( *begin++ ) );
     }
   }
 
   void remove_from_mapping( node const& n )
   {
-    auto& mindex = mappings[this->node_to_index( n )];
+    auto& mindex = _mapping_storage.mappings[this->node_to_index( n )];
 
     if ( mindex != 0 )
     {
-      _mapping_size--;
+      _mapping_storage.mapping_size--;
     }
 
-    mappings[this->node_to_index( n )] = 0;
+    _mapping_storage.mappings[this->node_to_index( n )] = 0;
+  }
+
+  template<bool enabled = StoreFunction, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
+  kitty::dynamic_truth_table lut_function( node const& n )
+  {
+    return _mapping_storage.cache[_mapping_storage.functions[this->node_to_index( n )]];
+  }
+
+  template<bool enabled = StoreFunction, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
+  void set_lut_function( node const& n, kitty::dynamic_truth_table const& function )
+  {
+    _mapping_storage.functions[this->node_to_index( n )] = _mapping_storage.cache.insert( function );
   }
 
   template<typename Fn>
   void foreach_lut_fanin( node const& n, Fn&& fn ) const
   {
-    const auto it = mappings.begin() + mappings[this->node_to_index( n )];
+    const auto it = _mapping_storage.mappings.begin() + _mapping_storage.mappings[this->node_to_index( n )];
     const auto size = *it++;
     foreach_element_transform( it, it + size,
                                [&]( auto i ) { return this->index_to_node( i ); }, fn );
   }
 
 private:
-  std::vector<uint32_t> mappings;
-  uint32_t _mapping_size{0};
+  detail::mapping_view_storage<StoreFunction> _mapping_storage;
 };
 
 } // namespace mockturtle
