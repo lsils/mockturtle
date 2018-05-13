@@ -423,7 +423,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   }
 
   /* outputs */
-  for ( auto i = 0ul; i < _i; ++i )
+  for ( auto i = 0ul; i < _o; ++i )
   {
     std::getline( in, line );
     const auto lit = std::atol( line.c_str() );
