@@ -162,8 +162,9 @@ TEST_CASE( "Check Akers for random - 5 inputs", "[maj_random5_akers]" )
 
 TEST_CASE( "Check Akers for random - 6 inputs", "[maj_random6_akers]" )
 {
- for ( auto y = 0; y < 5; y++ )
+ for ( auto y = 0; y < 100; y++ )
   {
+    std::cout << y << std::endl; 
     mig_network mig;
 
     std::vector<kitty::dynamic_truth_table> xs{8, kitty::dynamic_truth_table( 6 )};

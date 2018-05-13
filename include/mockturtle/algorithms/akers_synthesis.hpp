@@ -5,17 +5,13 @@
 #include <iterator>
 #include <string>
 #include <vector>
+#include <set>
+#include <map>
 
 #include <kitty/bit_operations.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 
 #include "../traits.hpp"
-
-#include <boost/container/flat_map.hpp>
-#include <boost/container/flat_set.hpp>
-
-using boost::container::flat_map;
-using boost::container::flat_set;
 
 namespace mockturtle
 {
@@ -138,7 +134,7 @@ public:
     return columns.size();
   }
 
-  int add_gate( const flat_set<unsigned>& gate )
+  int add_gate( const std::set<unsigned>& gate )
   {
     assert( gate.size() == 3u );
 
@@ -441,7 +437,7 @@ private:
     return table;
   }
 
-  flat_set<flat_set<unsigned>> find_gates_for_column( const unitized_table& table, unsigned column )
+  std::set<std::set<unsigned>> find_gates_for_column( const unitized_table& table, unsigned column )
   {
     std::vector<unitized_table::row_t> one_rows;
     std::vector<bool> matrix;
@@ -477,21 +473,22 @@ private:
     return clauses_to_products_enumerative( table, column, matrix );
   }
 
-  flat_set<unsigned> find_gate_for_table( unitized_table& table )
+  std::set<unsigned> find_gate_for_table( unitized_table& table )
   {
-    flat_map<flat_set<unsigned>, unsigned> gates;
-    flat_map<unsigned, flat_set<unsigned>> random_gates;
-    auto g_count = 0;
+
+    std::map<std::set<unsigned>, unsigned> gates;
+    std::vector<std::set<unsigned>> random_gates;
+    auto g_count = 0u;
 
     for ( auto c = 0u; c < table.num_columns(); ++c )
     {
       for ( const auto& g : find_gates_for_column( table, c ) )
       {
         gates[g]++;
-        random_gates[g_count] = g;
         g_count++;
       }
     }
+
     if ( gates.empty() )
     {
       reduce++;
@@ -508,15 +505,17 @@ private:
     previous_size = gates.size();
     using pair_t = decltype( gates )::value_type;
 
-    for ( auto f = 0u; f < random_gates.size(); f++ )
+    for ( auto f = 0u; f < g_count; f++ )
     {
       auto pr = std::max_element( std::begin( gates ), std::end( gates ), []( const pair_t& p1, const pair_t& p2 ) { return p1.second < p2.second; } );
-      random_gates[f] = pr->first;
+      random_gates.push_back(pr->first);
       gates.erase( pr->first );
+      if (gates.size() == 0)
+      break; 
     }
-
+    
     auto this_table = table;
-    for ( auto f = 0; f < g_count; f++ )
+    for ( auto f = 0u; f < random_gates.size(); f++ )
     {
       auto last_gate_id = table.add_gate( random_gates[f] );
       table.reduce();
@@ -529,16 +528,13 @@ private:
     }
 
     reduce++;
-    return random_gates[0];
+    return random_gates[0u];
   }
 
-  flat_set<unsigned> find_gate_for_table_brute_force( const unitized_table& table )
+  std::set<unsigned> find_gate_for_table_brute_force( const unitized_table& table )
   {
-    auto best_count = std::numeric_limits<unsigned>::max();
-    flat_set<unsigned> best_gate;
-
     auto best_count_iter = std::numeric_limits<unsigned>::max();
-    flat_set<unsigned> best_gate_iter;
+    std::set<unsigned> best_gate_iter;
 
     std::vector<unsigned> numbers( table.num_columns() );
     std::iota( numbers.begin(), numbers.end(), 0u );
@@ -549,7 +545,7 @@ private:
       {
         for ( auto k = j + 1u; k < table.num_columns(); k++ )
         {
-            flat_set<unsigned> gate;
+            std::set<unsigned> gate;
             gate.insert( numbers[i] );
             gate.insert( numbers[j] );
             gate.insert( numbers[k] );
@@ -689,10 +685,10 @@ private:
     return gates;
   }
 
-  flat_set<flat_set<unsigned>> clauses_to_products_enumerative( const unitized_table& table, unsigned column,
+std::set<std::set<unsigned>> clauses_to_products_enumerative( const unitized_table& table, unsigned column,
                                                                 const std::vector<bool>& matrix )
   {
-    flat_set<flat_set<unsigned>> products;
+    std::set<std::set<unsigned>> products;
 
     const auto num_columns = table.num_columns();
     const auto num_rows = matrix.size() / num_columns;
@@ -724,7 +720,7 @@ private:
 
         if ( found )
         {
-          flat_set<unsigned> product;
+          std::set<unsigned> product;
           product.insert( i );
           product.insert( j );
           product.insert( column );
