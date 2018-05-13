@@ -43,8 +43,23 @@
 namespace mockturtle
 {
 
+/*! \brief Inserts a full adder into a network.
+ *
+ * Inserts a full adder for three inputs (two 1-bit operands and one carry)
+ * into the network and returns a pair of sum and carry bit.
+ *
+ * By default creates a seven 2-input gate network composed of AND, NOR, and OR
+ * gates.  If network has `create_node` function, creates two 3-input gate
+ * network.
+ *
+ * \param ntk Network
+ * \param a First input operand
+ * \param b Second input operand
+ * \param c Carry
+ * \return Pair of sum (`first`) and carry (`second`)
+ */
 template<typename Ntk>
-inline std::pair<signal<Ntk>, signal<Ntk>> full_adder( Ntk& network, const signal<Ntk>& a, const signal<Ntk>& b, const signal<Ntk>& c )
+inline std::pair<signal<Ntk>, signal<Ntk>> full_adder( Ntk& ntk, const signal<Ntk>& a, const signal<Ntk>& b, const signal<Ntk>& c )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
 
@@ -55,8 +70,8 @@ inline std::pair<signal<Ntk>, signal<Ntk>> full_adder( Ntk& network, const signa
     kitty::create_from_hex_string( tt_maj, "e8" );
     kitty::create_from_hex_string( tt_xor, "96" );
 
-    const auto sum = network.create_node( {a, b, c}, tt_xor );
-    const auto carry = network.create_node( {a, b, c}, tt_maj );
+    const auto sum = ntk.create_node( {a, b, c}, tt_xor );
+    const auto carry = ntk.create_node( {a, b, c}, tt_maj );
 
     return {sum, carry};
   }
@@ -66,27 +81,40 @@ inline std::pair<signal<Ntk>, signal<Ntk>> full_adder( Ntk& network, const signa
     static_assert( has_create_nor_v<Ntk>, "Ntk does not implement the create_nor method" );
     static_assert( has_create_or_v<Ntk>, "Ntk does not implement the create_or method" );
 
-    const auto w1 = network.create_and( a, b );
-    const auto w2 = network.create_nor( a, b );
-    const auto w3 = network.create_nor( w1, w2 );
-    const auto w4 = network.create_and( c, w3 );
-    const auto w5 = network.create_nor( c, w3 );
-    const auto sum = network.create_nor( w4, w5 );
-    const auto carry = network.create_or( w1, w4 );
+    const auto w1 = ntk.create_and( a, b );
+    const auto w2 = ntk.create_nor( a, b );
+    const auto w3 = ntk.create_nor( w1, w2 );
+    const auto w4 = ntk.create_and( c, w3 );
+    const auto w5 = ntk.create_nor( c, w3 );
+    const auto sum = ntk.create_nor( w4, w5 );
+    const auto carry = ntk.create_or( w1, w4 );
 
     return {sum, carry};
   }
 }
 
+/*! \brief Creates carry ripple adder structure.
+ *
+ * Creates a carry ripple structure composed of full adders.  The vectors `a`
+ * and `b` must have the same size.  The resulting sum bits are eventually
+ * stored in `a` and the carry bit will be overriden to store the output carry
+ * bit.
+ *
+ * \param a First input operand, will also have the output after the call
+ * \param b Second input operand
+ * \param carry Carry bit, will also have the output carry after the call
+ */
 template<typename Ntk>
-inline void carry_ripple_adder_inplace( Ntk& network, std::vector<signal<Ntk>>& a, const std::vector<signal<Ntk>>& b, signal<Ntk>& carry )
+inline void carry_ripple_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, const std::vector<signal<Ntk>>& b, signal<Ntk>& carry )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+
+  assert( a.size() == b.size() );
 
   auto pa = a.begin();
   for ( auto pb = b.begin(); pa != a.end(); ++pa, ++pb )
   {
-    std::tie( *pa, carry ) = full_adder( network, *pa, *pb, carry );
+    std::tie( *pa, carry ) = full_adder( ntk, *pa, *pb, carry );
   }
 }
 
