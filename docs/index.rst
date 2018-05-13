@@ -25,6 +25,7 @@ Welcome to mockturtle's documentation!
    :caption: Algorithms
 
    cut_enumeration
+   lut_mapping
 
 .. toctree::
    :maxdepth: 2
