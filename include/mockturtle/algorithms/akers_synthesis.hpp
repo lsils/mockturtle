@@ -3,10 +3,10 @@
 #include <cassert>
 #include <iostream>
 #include <iterator>
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
-#include <set>
-#include <map>
 
 #include <kitty/bit_operations.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -28,7 +28,7 @@ kitty::cube operator&( kitty::cube a, kitty::cube b )
   kitty::cube c;
   for ( auto h = 0; h < a.num_literals(); h++ )
   {
-      c.add_literal( h, a.get_bit( h ) & b.get_bit( h ) );
+    c.add_literal( h, a.get_bit( h ) & b.get_bit( h ) );
   }
   return c;
 }
@@ -190,7 +190,7 @@ public:
           {
             continue;
           }
-          if ( all_zeros( one_rows[i] & one_rows[j]  ) )
+          if ( all_zeros( one_rows[i] & one_rows[j] ) )
           {
             ++count; /* entry i is essential in column */
             break;
@@ -257,7 +257,7 @@ private:
       {
         for ( auto j = i + 1u; j < rows.size(); ++j )
         {
-          const auto result = ( rows[i] & rows[j] ) & mask ;
+          const auto result = ( rows[i] & rows[j] ) & mask;
           if ( all_zeros( result ) )
           {
             can_be_removed = false;
@@ -299,7 +299,7 @@ private:
 
   void erase_bit( row_t& row, unsigned pos )
   {
-    for ( auto i = pos + 1; i < unsigned(row.num_literals()); ++i )
+    for ( auto i = pos + 1; i < unsigned( row.num_literals() ); ++i )
     {
       if ( row.get_bit( i ) == 1 )
         row.set_bit( i - 1u );
@@ -462,7 +462,7 @@ private:
         {
           continue;
         }
-        if ( all_zeros(one_rows[i] & one_rows[j] ) )
+        if ( all_zeros( one_rows[i] & one_rows[j] ) )
         {
           for ( auto k = 0; k < one_rows[i].num_literals(); ++k )
             matrix.push_back( one_rows[i].get_bit( k ) );
@@ -484,6 +484,7 @@ private:
     {
       for ( const auto& g : find_gates_for_column( table, c ) )
       {
+        assert( g.size() == 3u );
         gates[g]++;
         g_count++;
       }
@@ -508,12 +509,12 @@ private:
     for ( auto f = 0u; f < g_count; f++ )
     {
       auto pr = std::max_element( std::begin( gates ), std::end( gates ), []( const pair_t& p1, const pair_t& p2 ) { return p1.second < p2.second; } );
-      random_gates.push_back(pr->first);
+      random_gates.push_back( pr->first );
       gates.erase( pr->first );
-      if (gates.size() == 0)
-      break; 
+      if ( gates.size() == 0 )
+        break;
     }
-    
+
     auto this_table = table;
     for ( auto f = 0u; f < random_gates.size(); f++ )
     {
@@ -539,16 +540,16 @@ private:
     std::vector<unsigned> numbers( table.num_columns() );
     std::iota( numbers.begin(), numbers.end(), 0u );
 
-   for ( auto i = 0u; i < table.num_columns(); i++ )
+    for ( auto i = 0u; i < table.num_columns(); i++ )
     {
       for ( auto j = i + 1u; j < table.num_columns(); j++ )
       {
         for ( auto k = j + 1u; k < table.num_columns(); k++ )
         {
-            std::set<unsigned> gate;
-            gate.insert( numbers[i] );
-            gate.insert( numbers[j] );
-            gate.insert( numbers[k] );
+          std::set<unsigned> gate;
+          gate.insert( numbers[i] );
+          gate.insert( numbers[j] );
+          gate.insert( numbers[k] );
 
           auto table_copy = table;
           table_copy.add_gate( gate );
@@ -561,7 +562,7 @@ private:
           }
         }
       }
-    }  
+    }
     return best_gate_iter;
   }
 
@@ -595,7 +596,7 @@ private:
 
       c_to_f[last_gate_id] = ntk.create_maj( c_to_f[table[f1]], c_to_f[table[f2]], c_to_f[table[f3]] );
 
-     // std::cout << "[i] create gate " << last_gate_id << " " << table[f1] << " " << table[f2] << " " << table[f3] << std::endl;
+      //std::cout << "[i] create gate " << last_gate_id << " " << table[f1] << " " << table[f2] << " " << table[f3] << std::endl;
       if ( reduce == 0 )
         table.reduce();
     }
@@ -685,7 +686,7 @@ private:
     return gates;
   }
 
-std::set<std::set<unsigned>> clauses_to_products_enumerative( const unitized_table& table, unsigned column,
+  std::set<std::set<unsigned>> clauses_to_products_enumerative( const unitized_table& table, unsigned column,
                                                                 const std::vector<bool>& matrix )
   {
     std::set<std::set<unsigned>> products;
@@ -699,14 +700,16 @@ std::set<std::set<unsigned>> clauses_to_products_enumerative( const unitized_tab
       {
         continue;
       }
-
+      if ( column == i )
+        continue;
       for ( auto j = i + 1u; j < num_columns; ++j )
       {
         if ( table.is_opposite( i, j ) || table.is_opposite( column, j ) )
         {
           continue;
         }
-
+        if ( column == j )
+          continue;
         auto found = true;
         auto offset = 0u;
         for ( auto r = 0u; r < num_rows; ++r, offset += num_columns )
@@ -724,6 +727,7 @@ std::set<std::set<unsigned>> clauses_to_products_enumerative( const unitized_tab
           product.insert( i );
           product.insert( j );
           product.insert( column );
+          assert( product.size() == 3 );
           products.insert( product );
         }
       }

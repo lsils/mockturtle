@@ -77,7 +77,7 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[maj_random4_akers]" )
     kitty::create_nth_var( xs[5], 3 );
 
     create_random( xs[0] );
-    //kitty::print_binary(xs[0], std::cout); std::cout << std::endl; 
+    //kitty::print_binary(xs[0], std::cout); std::cout << std::endl;
 
     for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
     {
@@ -162,9 +162,8 @@ TEST_CASE( "Check Akers for random - 5 inputs", "[maj_random5_akers]" )
 
 TEST_CASE( "Check Akers for random - 6 inputs", "[maj_random6_akers]" )
 {
- for ( auto y = 0; y < 100; y++ )
+  for ( auto y = 0; y < 10; y++ )
   {
-    std::cout << y << std::endl; 
     mig_network mig;
 
     std::vector<kitty::dynamic_truth_table> xs{8, kitty::dynamic_truth_table( 6 )};
@@ -175,8 +174,10 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[maj_random6_akers]" )
     kitty::create_nth_var( xs[6], 4 );
     kitty::create_nth_var( xs[7], 5 );
 
-    //create_from_binary_string(xs[0], "1011011101100001100111111110000111110111000010111010011010011110");
+    //create_from_binary_string(xs[0], "1100110010001100011010011010100001111010101010110010011010000010");
     create_random( xs[0] );
+    //kitty::print_binary( xs[0], std::cout );
+   //std::cout << std::endl;
 
     for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
     {
@@ -200,7 +201,6 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[maj_random6_akers]" )
         } );
         xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) );
       } );
-     // CHECK( mig.size() == 35 );
       mig.foreach_po( [&]( auto n ) {
         if ( mig.is_complemented( n ) )
           CHECK( ~xs[xs.size() - 1] == xs[0] );
