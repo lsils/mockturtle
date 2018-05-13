@@ -1,37 +1,71 @@
+#include <algorithm>
+#include <bitset>
 #include <cassert>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 
+#include <kitty/bit_operations.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 
 #include "../traits.hpp"
-#include "../utils/akers_synthesis_combinations.hpp"
 
-
-#include <boost/assign/std/vector.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
-#include <boost/dynamic_bitset.hpp>
-#include <boost/format.hpp>
-#include <boost/range/adaptor/reversed.hpp>
-#include <boost/range/algorithm.hpp>
-#include <boost/range/algorithm_ext/iota.hpp>
 
-using namespace boost::assign;
-using boost::format;
-using boost::str;
-using boost::adaptors::reversed;
 using boost::container::flat_map;
 using boost::container::flat_set;
 
 namespace mockturtle
 {
 
+/* cube operators needed from Kitty :  
+- & (bitwise and )
+- is_subset_of 
+- is_const0
+*/
+
+kitty::cube operator&( kitty::cube a, kitty::cube b )
+{
+  assert( a.num_literals() == b.num_literals() );
+  kitty::cube c;
+  for ( auto h = 0; h < a.num_literals(); h++ )
+  {
+      c.add_literal( h, a.get_bit( h ) & b.get_bit( h ) );
+  }
+  return c;
+}
+
+bool is_subset_of( kitty::cube a, kitty::cube b )
+{
+  assert( a.num_literals() == b.num_literals() );
+  for ( auto h = 0; h < a.num_literals(); h++ )
+  {
+    if ( ( a.get_bit( h ) == 1 ) && ( b.get_bit( h ) == 1 ) )
+      continue;
+    else if ( ( a.get_bit( h ) == 1 ) && ( b.get_bit( h ) == 0 ) )
+      return false;
+  }
+  return true;
+}
+
+bool all_zeros( kitty::cube a )
+{
+  for ( auto g = 0; g < a.num_literals(); g++ )
+  {
+    if ( a.get_bit( g ) == 0 )
+      continue;
+    else
+      return false;
+  }
+  return true;
+}
+
 class unitized_table
 {
 public:
-  using row_t = boost::dynamic_bitset<>;
+  using row_t = kitty::cube;
 
   unitized_table( const std::string& columns )
       : columns( columns )
@@ -40,12 +74,23 @@ public:
 
   row_t create_row() const
   {
-    return row_t( columns.size() );
+    row_t r( 0, ( 1 << columns.size() ) - 1 );
+    //for ( auto i = 0u; i < columns.size(); i++ )
+    //r.add_literal( i, 1 );
+    return r;
+  }
+
+  row_t create_mask() const
+  {
+    row_t r( ( 1 << columns.size() ) - 1, ( 1 << columns.size() ) - 1 );
+    //for ( auto i = 0u; i < columns.size(); i++ )
+    //r.add_literal( i, 0 );
+    return r;
   }
 
   void add_row( const row_t& row )
   {
-    rows += row;
+    rows.push_back( row );
   }
 
   void reduce()
@@ -104,11 +149,11 @@ public:
 
     for ( auto& r : rows )
     {
-      const auto bi1 = r[c1];
-      const auto bi2 = r[c2];
-      const auto bi3 = r[c3];
+      const auto bi1 = r.get_bit( c1 );
+      const auto bi2 = r.get_bit( c2 );
+      const auto bi3 = r.get_bit( c3 );
 
-      r.push_back( ( bi1 && bi2 ) || ( bi1 && bi3 ) || ( bi2 && bi3 ) );
+      r.add_literal( r.num_literals(), ( bi1 && bi2 ) || ( bi1 && bi3 ) || ( bi2 && bi3 ) );
     }
 
     auto ret = (int)next_gate_id;
@@ -132,10 +177,10 @@ public:
       /* find rows with a 1 at column */
       for ( const auto& row : rows )
       {
-        if ( row.test( column ) )
+        if ( row.get_bit( column ) )
         {
           auto rt = row;
-          rt.flip( column );
+          rt.clear_bit( column );
           one_rows.push_back( rt );
         }
       }
@@ -149,8 +194,7 @@ public:
           {
             continue;
           }
-
-          if ( ( one_rows[i] & one_rows[j] ).none() )
+          if ( all_zeros( one_rows[i] & one_rows[j]  ) )
           {
             ++count; /* entry i is essential in column */
             break;
@@ -173,26 +217,26 @@ private:
       {
         if ( rows[i] == rows[j] )
         {
-          to_be_removed += i;
+          to_be_removed.push_back( i );
         }
         else
         {
-          if ( rows[i].is_subset_of( rows[j] ) )
+          if ( is_subset_of( rows[i], rows[j] ) )
           {
-            to_be_removed += j;
+            to_be_removed.push_back( j );
           }
-          if ( rows[j].is_subset_of( rows[i] ) )
+          if ( is_subset_of( rows[j], rows[i] ) )
           {
-            to_be_removed += i;
+            to_be_removed.push_back( i );
           }
         }
       }
     }
 
-    boost::sort( to_be_removed );
+    std::sort( to_be_removed.begin(), to_be_removed.end() );
     to_be_removed.erase( std::unique( to_be_removed.begin(), to_be_removed.end() ), to_be_removed.end() );
 
-    boost::reverse( to_be_removed );
+    std::reverse( std::begin( to_be_removed ), std::end( to_be_removed ) );
 
     for ( auto index : to_be_removed )
     {
@@ -205,11 +249,11 @@ private:
   {
     std::vector<unsigned> to_be_removed;
 
-    auto mask = ~create_row();
+    auto mask = create_mask();
 
     for ( auto c = 0u; c < columns.size(); ++c )
     {
-      mask.reset( c );
+      mask.clear_bit( c );
       auto can_be_removed = true;
 
       /* pretend column c is removed */
@@ -217,9 +261,8 @@ private:
       {
         for ( auto j = i + 1u; j < rows.size(); ++j )
         {
-          const auto result = rows[i] & rows[j] & mask;
-
-          if ( result.none() )
+          const auto result = ( rows[i] & rows[j] ) & mask ;
+          if ( all_zeros( result ) )
           {
             can_be_removed = false;
             break;
@@ -234,16 +277,16 @@ private:
 
       if ( can_be_removed )
       {
-        to_be_removed += c;
+        to_be_removed.push_back( c );
       }
       else
       {
-        mask.set( c );
+        mask.set_bit( c );
       }
     }
 
     /* remove columns */
-    boost::reverse( to_be_removed );
+    std::reverse( to_be_removed.begin(), to_be_removed.end() );
 
     for ( auto index : to_be_removed )
     {
@@ -260,11 +303,14 @@ private:
 
   void erase_bit( row_t& row, unsigned pos )
   {
-    for ( auto i = pos + 1u; i < row.size(); ++i )
+    for ( auto i = pos + 1; i < unsigned(row.num_literals()); ++i )
     {
-      row[i - 1u] = row[i];
+      if ( row.get_bit( i ) == 1 )
+        row.set_bit( i - 1u );
+      else
+        row.clear_bit( i - 1u );
     }
-    row.resize( row.size() - 1u );
+    row.remove_literal( row.num_literals() - 1u );
   }
 
 public:
@@ -281,24 +327,30 @@ std::ostream& operator<<( std::ostream& os, const unitized_table& table )
 
   for ( const auto& row : table.rows )
   {
-    std::string buffer; 
-    to_string( row , buffer);
-    os << ( buffer | reversed ) << std::endl;
+    std::string buffer;
+    std::bitset<32> to_print;
+    for ( auto i = 0; i < row.num_literals(); i++ )
+      to_print[i] = row.get_bit( i );
+    buffer = to_print.to_string();
+    std::string reversed = buffer;
+    std::reverse( reversed.begin(), reversed.end() );
+    os << reversed << std::endl;
   }
 
   return os;
 }
 
-bool operator==( unitized_table& table,  unitized_table& original_table)
+bool operator==( unitized_table& table, unitized_table& original_table )
 {
-	if (table.rows.size() != original_table.rows.size())
-		return false;
-	for (auto x = 0u; x < table.rows.size(); x++)
-	{
-		if (table.rows[x] == original_table.rows[x])
-			continue; 
-		else return false; 
-	}
+  if ( table.rows.size() != original_table.rows.size() )
+    return false;
+  for ( auto x = 0u; x < table.rows.size(); x++ )
+  {
+    if ( table.rows[x] == original_table.rows[x] )
+      continue;
+    else
+      return false;
+  }
 
   return true;
 }
@@ -349,61 +401,58 @@ private:
     /* add rows */
     for ( auto pos = 0u; pos < care.num_bits(); pos++ )
     {
-      boost::dynamic_bitset<> half( num_vars, pos );
+      auto half = std::bitset<16>( pos );
       auto row = table.create_row();
-
       /* copy the values */
       for ( auto i = 0u; i < num_vars; ++i )
       {
-        row[i] = half[i];
-        row[i + num_vars] = !half[i];
+        if ( half[i] == 0 )
+        {
+          row.clear_bit( i );
+          row.set_bit( i + num_vars );
+        }
+        else
+        {
+          row.set_bit( i );
+          row.clear_bit( i + num_vars );
+        }
       }
-      row[num_vars << 1] = false;
-      row[( num_vars << 1 ) + 1] = true;
+      row.clear_bit( num_vars << 1 );
+      row.set_bit( ( num_vars << 1 ) + 1 );
 
       if ( !kitty::get_bit( func, pos ) )
       {
-        row.flip();
+        for ( auto i = 0; i < row.num_literals(); ++i )
+        {
+          if ( row.get_bit( i ) == 0 )
+          {
+            row.set_bit( i );
+          }
+          else
+          {
+            row.clear_bit( i );
+          }
+        }
       }
       table.add_row( row );
     }
-    /*foreach_bit( care, [&num_vars, this, &table]( unsigned pos ) {
-    kitty::
-      boost::dynamic_bitset<> half( num_vars, pos );
-      auto row = table.create_row();
-
-      //copy the values 
-      for ( auto i = 0u; i < num_vars; ++i )
-      {
-        row[i] = half[i];
-        row[i + num_vars] = !half[i];
-      }
-      row[num_vars << 1] = false;
-      row[( num_vars << 1 ) + 1] = true;
-
-      if ( !kitty::get_bit(func,pos) )
-      {
-        row.flip();
-      }
-      table.add_row( row );
-    } );*/
-    
     table.reduce();
+
     return table;
   }
 
   flat_set<flat_set<unsigned>> find_gates_for_column( const unitized_table& table, unsigned column )
   {
     std::vector<unitized_table::row_t> one_rows;
-    boost::dynamic_bitset<> matrix;
-
+    std::vector<bool> matrix;
     /* find rows with a 1 at column */
+
     for ( const auto& row : table )
     {
-      if ( row.test( column ) )
+      if ( row.get_bit( column ) )
       {
         auto rt = row;
-        rt.flip( column );
+        rt.clear_bit( column );
         one_rows.push_back( rt );
       }
     }
@@ -417,18 +466,14 @@ private:
         {
           continue;
         }
-
-        if ( ( one_rows[i] & one_rows[j] ).none() )
+        if ( all_zeros(one_rows[i] & one_rows[j] ) )
         {
-          for ( auto k = 0u; k < one_rows[i].size(); ++k )
-          {
-            matrix.push_back( one_rows[i][k] );
-          }
+          for ( auto k = 0; k < one_rows[i].num_literals(); ++k )
+            matrix.push_back( one_rows[i].get_bit( k ) );
           break;
         }
       }
     }
-
     return clauses_to_products_enumerative( table, column, matrix );
   }
 
@@ -447,7 +492,6 @@ private:
         g_count++;
       }
     }
-
     if ( gates.empty() )
     {
       reduce++;
@@ -493,32 +537,36 @@ private:
     auto best_count = std::numeric_limits<unsigned>::max();
     flat_set<unsigned> best_gate;
 
+    auto best_count_iter = std::numeric_limits<unsigned>::max();
+    flat_set<unsigned> best_gate_iter;
+
     std::vector<unsigned> numbers( table.num_columns() );
-    boost::iota( numbers, 0u );
+    std::iota( numbers.begin(), numbers.end(), 0u );
 
-    boost::unofficial::for_each_combination( numbers.begin(), numbers.begin() + 3, numbers.end(),
-                                             [&best_count, &best_gate, &table]( decltype( numbers )::const_iterator first,
-                                                                                decltype( numbers )::const_iterator last ) {
-                                               flat_set<unsigned> gate;
-                                               while ( first != last )
-                                               {
-                                                 gate.insert( *first++ );
-                                               }
+   for ( auto i = 0u; i < table.num_columns(); i++ )
+    {
+      for ( auto j = i + 1u; j < table.num_columns(); j++ )
+      {
+        for ( auto k = j + 1u; k < table.num_columns(); k++ )
+        {
+            flat_set<unsigned> gate;
+            gate.insert( numbers[i] );
+            gate.insert( numbers[j] );
+            gate.insert( numbers[k] );
 
-                                               auto table_copy = table;
-                                               table_copy.add_gate( gate );
+          auto table_copy = table;
+          table_copy.add_gate( gate );
 
-                                               const auto new_count = table_copy.count_essential_ones();
-                                               if ( new_count < best_count )
-                                               {
-                                                 best_count = new_count;
-                                                 best_gate = gate;
-                                               }
-
-                                               return false;
-                                             } );
-
-    return best_gate;
+          const auto new_count = table_copy.count_essential_ones();
+          if ( new_count < best_count_iter )
+          {
+            best_count_iter = new_count;
+            best_gate_iter = gate;
+          }
+        }
+      }
+    }  
+    return best_gate_iter;
   }
 
   signal<Ntk> synthesize( unitized_table& table )
@@ -551,10 +599,9 @@ private:
 
       c_to_f[last_gate_id] = ntk.create_maj( c_to_f[table[f1]], c_to_f[table[f2]], c_to_f[table[f3]] );
 
-      //std::cout << "[i] create gate " << last_gate_id << " " << table[f1] << " " << table[f2] << " " << table[f3] << std::endl;
+     // std::cout << "[i] create gate " << last_gate_id << " " << table[f1] << " " << table[f2] << " " << table[f3] << std::endl;
       if ( reduce == 0 )
-      table.reduce();
-      //std::cout << table << std::endl; 
+        table.reduce();
     }
 
     return c_to_f[last_gate_id];
@@ -573,7 +620,7 @@ private:
       for ( const auto& row : table )
       {
         best_count++;
-        if ( !row.test( c ) )
+        if ( row.get_bit( c ) == 0 )
         {
           count[c]++;
         }
@@ -610,14 +657,14 @@ private:
     for ( const auto& row : table )
     {
 
-      if ( !row.test( best_column ) )
+      if ( row.get_bit( best_column ) == 0 )
       {
         std::vector<int> gate1;
         for ( auto c = 0u; c < table.num_columns(); ++c )
         {
           if ( c == best_column )
             continue;
-          if ( row.test( c ) )
+          if ( row.get_bit( c ) == 1 )
           {
             unsigned icx;
             auto name = table.columns[c];
@@ -643,7 +690,7 @@ private:
   }
 
   flat_set<flat_set<unsigned>> clauses_to_products_enumerative( const unitized_table& table, unsigned column,
-                                                                const boost::dynamic_bitset<>& matrix )
+                                                                const std::vector<bool>& matrix )
   {
     flat_set<flat_set<unsigned>> products;
 
