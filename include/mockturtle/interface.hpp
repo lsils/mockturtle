@@ -262,6 +262,11 @@ public:
   uint32_t fanout_size( node const& n ) const;
 #pragma endregion
 
+#pragma region Functional properties
+  /*! \brief Returns the function of a node. */
+  kitty::dynamic_truth_table node_function( node const& n ) const;
+#pragma endregion
+
 #pragma region Nodes and signals
   /*! \brief Get the node a signal is pointing to. */
   node get_node( signal const& f ) const;
