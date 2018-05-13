@@ -109,6 +109,8 @@ inline void carry_ripple_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, c
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
 
+  assert( a.size() == b.size() );
+
   auto pa = a.begin();
   for ( auto pb = b.begin(); pa != a.end(); ++pa, ++pb )
   {
