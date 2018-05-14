@@ -88,8 +88,10 @@ public:
     }
   }
 
-  void on_header( std::size_t, std::size_t num_inputs, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t, std::size_t ) const override
+  void on_header( std::size_t, std::size_t num_inputs, std::size_t num_latches, std::size_t, std::size_t ) const override
   {
+    assert( num_latches == 0 && "AIG has latches, not supported yet." );
+
     /* constant */
     signals.push_back( _ntk.get_constant( false ) );
 
