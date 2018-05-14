@@ -28,6 +28,12 @@ Welcome to mockturtle's documentation!
 
 .. toctree::
    :maxdepth: 2
+   :caption: Input/Output
+
+   lorina_readers
+
+.. toctree::
+   :maxdepth: 2
    :caption: Generators
 
    arithmetic

@@ -96,6 +96,9 @@ private:
     _storage->nodes.emplace_back();
 
     /* reserve some truth tables for nodes */
+    kitty::dynamic_truth_table tt_zero( 0 );
+    _storage->data.insert( tt_zero );
+
     static uint64_t _not = 0x1;
     kitty::dynamic_truth_table tt_not( 1 );
     kitty::create_from_words( tt_not, &_not, &_not + 1 );
@@ -105,6 +108,10 @@ private:
     kitty::dynamic_truth_table tt_and( 2 );
     kitty::create_from_words( tt_and, &_and, &_and + 1 );
     _storage->data.insert( tt_and );
+
+    /* truth tables for constants */
+    _storage->nodes[0].data[1].h1 = 0;
+    _storage->nodes[1].data[1].h1 = 1;
   }
 #pragma endregion
 
@@ -122,6 +129,7 @@ public:
     const auto index = _storage->nodes.size();
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
+    _storage->nodes[index].data[1].h1 = 2;
     return index;
   }
 
@@ -154,14 +162,14 @@ public:
 
   signal create_not( signal const& a )
   {
-    return _create_node( {a}, 1 );
+    return _create_node( {a}, 3 );
   }
 #pragma endregion
 
 #pragma region Create binary functions
   signal create_and( signal a, signal b )
   {
-    return _create_node( {a, b}, 2 );
+    return _create_node( {a, b}, 4 );
   }
 #pragma endregion
 
@@ -270,6 +278,13 @@ public:
   uint32_t fanout_size( node const& n ) const
   {
     return _storage->nodes[n].data[0].h1;
+  }
+#pragma endregion
+
+#pragma region Functional properties
+  kitty::dynamic_truth_table node_function( const node& n ) const
+  {
+    return _storage->data[_storage->nodes[n].data[1].h1];
   }
 #pragma endregion
 
