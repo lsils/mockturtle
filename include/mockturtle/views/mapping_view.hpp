@@ -171,10 +171,11 @@ public:
   template<typename Fn>
   void foreach_lut_fanin( node const& n, Fn&& fn ) const
   {
-    const auto it = _mapping_storage.mappings.begin() + _mapping_storage.mappings[this->node_to_index( n )];
+    auto it = _mapping_storage.mappings.begin() + _mapping_storage.mappings[this->node_to_index( n )];
     const auto size = *it++;
-    foreach_element_transform( it, it + size,
-                               [&]( auto i ) { return this->index_to_node( i ); }, fn );
+    using IteratorType = decltype( it );
+    detail::foreach_element_transform<IteratorType, typename Ntk::node>( it, it + size,
+                                                                         [&]( auto i ) { return this->index_to_node( i ); }, fn );
   }
 
 private:
