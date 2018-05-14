@@ -65,7 +65,7 @@ struct cut_enumeration_params
   bool minimize_truth_table{false};
 };
 
-static constexpr uint32_t max_cut_size = 8;
+static constexpr uint32_t max_cut_size = 16;
 
 template<bool ComputeTruth, typename T = empty_cut_data>
 struct cut_data;
