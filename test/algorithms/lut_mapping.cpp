@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include <mockturtle/traits.hpp>
 #include <mockturtle/algorithms/lut_mapping.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/networks/aig.hpp>
@@ -60,7 +61,7 @@ TEST_CASE( "LUT mapping of 2-LUT network", "[lut_mapping]" )
 {
   aig_network aig;
 
-  std::vector<signal<aig_network>> a( 2 ), b( 2 );
+  std::vector<aig_network::signal> a( 2 ), b( 2 );
   std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
   std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
   auto carry = aig.create_pi();
@@ -80,7 +81,7 @@ TEST_CASE( "LUT mapping of 8-LUT network", "[lut_mapping]" )
 {
   aig_network aig;
 
-  std::vector<signal<aig_network>> a( 8 ), b( 8 );
+  std::vector<aig_network::signal> a( 8 ), b( 8 );
   std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
   std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
   auto carry = aig.get_constant( false );
@@ -100,7 +101,7 @@ TEST_CASE( "LUT mapping of 64-LUT network", "[lut_mapping]" )
 {
   aig_network aig;
 
-  std::vector<signal<aig_network>> a( 64 ), b( 64 );
+  std::vector<aig_network::signal> a( 64 ), b( 64 );
   std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
   std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
   auto carry = aig.get_constant( false );

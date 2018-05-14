@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include <mockturtle/traits.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/networks/aig.hpp>
 
@@ -66,7 +67,7 @@ TEST_CASE( "build a 2-bit adder with an AIG", "[arithmetic]" )
 {
   aig_network aig;
 
-  std::vector<signal<aig_network>> a( 2 ), b( 2 );
+  std::vector<aig_network::signal> a( 2 ), b( 2 );
   std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
   std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
   auto carry = aig.create_pi();
