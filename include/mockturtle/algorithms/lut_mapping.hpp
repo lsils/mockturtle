@@ -75,11 +75,11 @@ struct lut_mapping_params
 namespace detail
 {
 
-template<class Ntk, bool StoreFunction>
+template<class Ntk, bool StoreFunction, typename CutData>
 class lut_mapping_impl
 {
 public:
-  using network_cuts_t = network_cuts<Ntk, StoreFunction, cut_enumeration_mf_cut>;
+  using network_cuts_t = network_cuts<Ntk, StoreFunction, CutData>;
   using cut_t = typename network_cuts_t::cut_t;
 
 public:
@@ -90,7 +90,7 @@ public:
         map_refs( ntk.size(), 0 ),
         flows( ntk.size() ),
         delays( ntk.size() ),
-        cuts( cut_enumeration<Ntk, StoreFunction, cut_enumeration_mf_cut>( ntk, ps.cut_enumeration_ps ) )
+        cuts( cut_enumeration<Ntk, StoreFunction, CutData>( ntk, ps.cut_enumeration_ps ) )
   {
   }
 
@@ -427,7 +427,7 @@ private:
       mapping command ``&mf`` in ABC.
    \endverbatim
  */
-template<class Ntk, bool StoreFunction = false>
+template<class Ntk, bool StoreFunction = false, typename CutData = cut_enumeration_mf_cut>
 void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -444,7 +444,7 @@ void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {} )
   static_assert( has_add_to_mapping_v<Ntk>, "Ntk does not implement the add_to_mapping method" );
   static_assert( !StoreFunction || has_set_lut_function_v<Ntk>, "Ntk does not implement the set_lut_function method" );
 
-  detail::lut_mapping_impl<Ntk, StoreFunction> p( ntk, ps );
+  detail::lut_mapping_impl<Ntk, StoreFunction, CutData> p( ntk, ps );
   p.run();
 }
 
