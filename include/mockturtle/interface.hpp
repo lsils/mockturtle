@@ -263,6 +263,12 @@ public:
 
   /*! \brief Returns the fanout size of a node. */
   uint32_t fanout_size( node const& n ) const;
+
+  /*! \brief Returns the length of the critical path. */
+  uint32_t depth() const;
+
+  /*! \brief Returns the level of a node. */
+  uint32_t level( node const& n ) const;
 #pragma endregion
 
 #pragma region Functional properties
