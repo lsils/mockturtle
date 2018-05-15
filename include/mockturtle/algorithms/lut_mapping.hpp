@@ -404,7 +404,23 @@ private:
 
 /*! \brief LUT mapping.
  *
- * This function implements a LUT mapping algorithm. ...
+ * This function implements a LUT mapping algorithm.  It is controlled by two
+ * template arguments `StoreFunction` (defaulted to `true`) and `CutData`
+ * (defaulted to `cut_enumeration_mf_cut`).  The first argument `StoreFunction`
+ * controls whether the LUT function is stored in the mapping.  In that case
+ * truth tables are computed during cut enumeration, which requires more
+ * runtime.  The second argument is simuilar to the `CutData` argument in
+ * `cut_enumeration`, which can specialize the cost function to select priority
+ * cuts and store additional data.  For LUT mapping using this function the
+ * type passed as `CutData` must implement the following three fields:
+ *
+ * - `uint32_t delay`
+ * - `float flow`
+ * - `float costs`
+ * 
+ * See `include/mockturtle/algorithms/cut_enumeration/mf_cut.hpp` for one
+ * example of a CutData type that implements the cost function that is used in
+ * the LUT mapper `&mf` in ABC.
  *
  * **Required network functions:**
  * - `size`
@@ -418,6 +434,7 @@ private:
  * - `fanout_size`
  * - `clear_mapping`
  * - `add_to_mapping`
+ * - `set_lut_funtion` (if `StoreFunction` is true)
  *
    \verbatim embed:rst
 
