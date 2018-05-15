@@ -312,6 +312,41 @@ public:
   }
 #pragma endregion
 
+#pragma region Restructuring
+  void substitute_node( node const& old_node, node const& new_node )
+  {
+    /* find all parents from old_node */
+    for ( auto& n : _storage->nodes )
+    {
+      for ( auto& child : n.children )
+      {
+        if ( child.index == old_node )
+        {
+          child.index = new_node;
+
+          // increment fan-in of new node
+          _storage->nodes[new_node].data[0].h1++;
+        }
+      }
+    }
+
+    /* check outputs */
+    for ( auto& output : _storage->outputs )
+    {
+      if ( output.index == old_node )
+      {
+        output.index = new_node;
+
+        // increment fan-in of new node
+        _storage->nodes[new_node].data[0].h1++;
+      }
+    }
+
+    // reset fan-in of old node
+    _storage->nodes[old_node].data[0].h1 = 0;
+  }
+#pragma endregion
+
 #pragma region Structural properties
   uint32_t size() const
   {
