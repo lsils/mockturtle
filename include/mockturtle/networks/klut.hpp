@@ -244,7 +244,7 @@ public:
       }
     }
 
-    // increment fan-in of old node
+    // reset fan-in of old node
     _storage->nodes[old_node].data[0].h1 = 0;
   }
 #pragma endregion
