@@ -211,7 +211,7 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[maj_random6_akers]" )
     }
   }
 }
-
+/*
 TEST_CASE( "Check SIZE and DEPTH for Akers for random - 6 inputs", "[maj_random6_sizedepthakers]" )
 {
 
@@ -268,7 +268,7 @@ TEST_CASE( "Check SIZE and DEPTH for Akers for random - 6 inputs", "[maj_random6
 
     CHECK( mig.num_gates() == size );
   }
-}
+}*/
 
 TEST_CASE( "Check leaves iterator -- easy case ", "[akers_leavesiterator]" )
 {
