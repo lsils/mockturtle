@@ -596,7 +596,6 @@ private:
 
       c_to_f[last_gate_id] = ntk.create_maj( c_to_f[table[f1]], c_to_f[table[f2]], c_to_f[table[f3]] );
 
-      //std::cout << "[i] create gate " << last_gate_id << " " << table[f1] << " " << table[f2] << " " << table[f3] << std::endl;
       if ( reduce == 0 )
         table.reduce();
     }
