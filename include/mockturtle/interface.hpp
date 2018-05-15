@@ -479,6 +479,17 @@ public:
   uint32_t set_visited( node const& n, uint32_t v ) const;
 #pragma endregion
 
+#pragma region General methods
+  /*! \brief Restores a consistent state.
+   *
+   * It is advised to implement this method for every network implementation
+   * and keep it empty.  Network interfaces are typically always in a
+   * consistent state.  The method is used in views, for which the state may
+   * become inconsistent if the underlying network changed.
+   */
+  void update();
+#pragma endregion
+
 };
 
 } /* namespace mockturtle */

@@ -194,3 +194,10 @@ change the structure of the network or any other *visible* property.
 .. doxygenclass:: mockturtle::network
    :members: clear_visited, visited, set_visited
    :no-link:
+
+General methods
+~~~~~~~~~~~~~~~
+
+.. doxygenclass:: mockturtle::network
+   :members: update
+   :no-link:

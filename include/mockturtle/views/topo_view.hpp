@@ -104,35 +104,7 @@ public:
     static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
 
-    ntk.clear_values();
-    topo_order.reserve( ntk.size() );
-
-    /* constants and PIs */
-    const auto c0 = ntk.get_node( ntk.get_constant( false ) );
-    topo_order.push_back( c0 );
-    ntk.set_value( c0, 2 );
-
-    if ( const auto c1 = ntk.get_node( ntk.get_constant( true ) ); ntk.value( c1 ) != 2 )
-    {
-      topo_order.push_back( c1 );
-      ntk.set_value( c1, 2 );
-    }
-
-    ntk.foreach_pi( [this, &ntk]( auto n ) {
-      if ( ntk.value( n ) != 2 )
-      {
-        topo_order.push_back( n );
-        ntk.set_value( n, 2 );
-      }
-    } );
-
-    ntk.foreach_po( [this, &ntk]( auto f, auto ) {
-      /* node was already visited */
-      if ( ntk.value( ntk.get_node( f ) ) == 2 )
-        return;
-
-      create_topo_rec( ntk.get_node( f ) );
-    } );
+    update();
   }
 
   /*! \brief Reimplementation of `foreach_node`. */
@@ -142,6 +114,39 @@ public:
     detail::foreach_element( topo_order.begin(),
                              topo_order.end(),
                              fn );
+  }
+
+  void update()
+  {
+    this->clear_values();
+    topo_order.reserve( this->size() );
+
+    /* constants and PIs */
+    const auto c0 = this->get_node( this->get_constant( false ) );
+    topo_order.push_back( c0 );
+    this->set_value( c0, 2 );
+
+    if ( const auto c1 = this->get_node( this->get_constant( true ) ); this->value( c1 ) != 2 )
+    {
+      topo_order.push_back( c1 );
+      this->set_value( c1, 2 );
+    }
+
+    this->foreach_pi( [this]( auto n ) {
+      if ( this->value( n ) != 2 )
+      {
+        topo_order.push_back( n );
+        this->set_value( n, 2 );
+      }
+    } );
+
+    this->foreach_po( [this]( auto f, auto ) {
+      /* node was already visited */
+      if ( this->value( this->get_node( f ) ) == 2 )
+        return;
+
+      create_topo_rec( this->get_node( f ) );
+    } );
   }
 
 private:

@@ -420,6 +420,12 @@ public:
   }
 #pragma endregion
 
+#pragma region General methods
+  void update()
+  {
+  }
+#pragma endregion
+
 public:
   std::shared_ptr<klut_storage> _storage;
 };

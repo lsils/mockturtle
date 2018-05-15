@@ -75,8 +75,7 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    _levels.resize( ntk.size() );
-    compute_levels();
+    update();
   }
 
   uint32_t depth() const
@@ -87,6 +86,13 @@ public:
   uint32_t level( node const& n ) const
   {
     return _levels[this->node_to_index( n )];
+  }
+
+  void update()
+  {
+    _levels.clear();
+    _levels.resize( this->size(), 0 );
+    compute_levels();
   }
 
 private:
