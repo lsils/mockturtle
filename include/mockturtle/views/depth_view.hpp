@@ -56,14 +56,14 @@ public:
 };
 
 template<typename Ntk>
-struct depth_view<Ntk, false> : public immutable_view<Ntk>
+struct depth_view<Ntk, false> : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  depth_view( Ntk const& ntk ) : immutable_view<Ntk>( ntk )
+  depth_view( Ntk const& ntk ) : Ntk( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
