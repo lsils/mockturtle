@@ -16,6 +16,12 @@ algorithm.  Several views are implemented in mockturtle.
 .. doxygenclass:: mockturtle::topo_view
    :members:
 
+`mapping_view`: Add mapping interface methods
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. doxygenclass:: mockturtle::mapping_view
+   :members:
+
 `immutable_view`: Prevent network changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

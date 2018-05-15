@@ -151,6 +151,12 @@ Simulate values
 Mapping
 ~~~~~~~
 
+.. note::
+
+   If a network implements `has_mapping` it also needs to implement all other
+   mapping methods, except `lut_function` and `set_lut_function`, which are
+   optional but must be implemented both if one is present.
+
 .. doxygenclass:: mockturtle::network
    :members: has_mapping, is_mapped, clear_mapping, num_luts, add_to_mapping, remove_from_mapping, lut_function, set_lut_function, foreach_lut_fanin
    :no-link:

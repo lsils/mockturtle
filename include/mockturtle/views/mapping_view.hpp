@@ -68,8 +68,59 @@ struct mapping_view_storage<false>
 
 } // namespace detail
 
-template<typename Ntk, bool StoreFunction = false>
-class mapping_view : public immutable_view<Ntk>
+template<typename Ntk, bool StoreFunction>
+inline constexpr bool implements_mapping_interface_v = has_has_mapping_v<Ntk> && (!StoreFunction || has_lut_function_v<Ntk>);
+
+/*! \brief Adds mapping API methods to network.
+ *
+ * This view adds methods of the mapping API methods to a network.  It always
+ * adds the functions `has_mapping`, `is_mapped`, `clear_mapping`, `num_luts`, 
+ * `add_to_mapping`, `remove_from_mapping`, and `foreach_lut_fanin`.  If the
+ * template argument `StoreFunction` is set to `true`, it also adds functions
+ * for `lut_function` and `set_lut_function`.  For the latter case, this view
+ * requires more memory to also store the LUTs' truth tables.
+ * 
+ * **Required network functions:**
+ * - `size`
+ * - `node_to_index`
+ * 
+ * Example
+ *
+   \verbatim embed:rst
+
+   .. code-block:: c++
+
+      // create network somehow
+      aig_network aig = ...;
+
+      // in order to apply mapping, wrap network in mapping view
+      mapping_view mapped_aig{aig};
+
+      // call LUT mapping algorithm
+      lut_mapping( mapped_aig );
+
+      // nodes of aig and mapped_aig are the same
+      aig.foreach_node( [&]( auto n ) {
+        std::cout << n << " has mapping? " << mapped_aig.is_mapped( n ) << "\n";
+      } );
+   \endverbatim
+ */
+template<typename Ntk, bool StoreFunction = false, bool has_mapping_interface = implements_mapping_interface_v<Ntk, StoreFunction>>
+class mapping_view
+{
+};
+
+template<typename Ntk, bool StoreFunction>
+class mapping_view<Ntk, StoreFunction, true> : public Ntk
+{
+public:
+  mapping_view( Ntk const& ntk ) : Ntk( ntk )
+  {
+  }
+};
+
+template<typename Ntk, bool StoreFunction>
+class mapping_view<Ntk, StoreFunction, false> : public immutable_view<Ntk>
 {
 public:
   using storage = typename Ntk::storage;
@@ -181,5 +232,8 @@ public:
 private:
   detail::mapping_view_storage<StoreFunction> _mapping_storage;
 };
+
+template<class T>
+mapping_view(T const&) -> mapping_view<T>;
 
 } // namespace mockturtle
