@@ -902,6 +902,21 @@ template<class Ntk>
 inline constexpr bool has_set_visited_v = has_set_visited<Ntk>::value;
 #pragma endregion
 
+#pragma region has_update
+template<class Ntk, class = void>
+struct has_update : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update<Ntk, std::void_t<decltype( std::declval<Ntk>().update() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_v = has_update<Ntk>::value;
+#pragma endregion
+
 /*! \brief SFINAE based on iterator type (for compute functions).
  */
 template<typename Iterator, typename T>
