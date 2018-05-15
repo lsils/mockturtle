@@ -467,6 +467,36 @@ template<class Ntk>
 inline constexpr bool has_fanout_size_v = has_fanout_size<Ntk>::value;
 #pragma endregion
 
+#pragma region has_depth
+template<class Ntk, class = void>
+struct has_depth : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_depth<Ntk, std::void_t<decltype( std::declval<Ntk>().depth() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_depth_v = has_depth<Ntk>::value;
+#pragma endregion
+
+#pragma region has_level
+template<class Ntk, class = void>
+struct has_level : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_level<Ntk, std::void_t<decltype( std::declval<Ntk>().level( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_level_v = has_level<Ntk>::value;
+#pragma endregion
+
 #pragma region has_get_node
 template<class Ntk, class = void>
 struct has_get_node : std::false_type
