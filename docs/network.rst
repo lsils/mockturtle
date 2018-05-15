@@ -120,6 +120,13 @@ Structural properties
    :members: size, num_pis, num_pos, num_gates, fanin_size, fanout_size
    :no-link:
 
+Functional properties
+~~~~~~~~~~~~~~~~~~~~~
+
+.. doxygenclass:: mockturtle::network
+   :members: node_function
+   :no-link:
+
 Nodes and signals
 ~~~~~~~~~~~~~~~~~
 

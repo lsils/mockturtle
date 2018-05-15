@@ -17,6 +17,9 @@ v0.1 (not yet released)
 * Views: `topo_view`, `immutable_view`
   `#3 <https://github.com/lsils/mockturtle/pull/3>`_
 
+* I/O: `aiger_reader`, `bench_reader`
+  `#6 <https://github.com/lsils/mockturtle/pull/6>`_
+
 * Generators for arithmetic circuits
   `#5 <https://github.com/lsils/mockturtle/pull/5>`_
 
