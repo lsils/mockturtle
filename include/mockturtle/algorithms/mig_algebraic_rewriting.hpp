@@ -63,8 +63,8 @@ public:
     topo.foreach_node( [this]( auto n ) {
       if ( auto cand = associativity_candidate( n ); cand )
       {
-        const auto& [x, y, z, u] = *cand;
-        auto opt = ntk.create_maj( z, u, ntk.create_maj( x, y, u ) );
+        const auto& [x, y, z, u, assoc] = *cand;
+        auto opt = ntk.create_maj( z, assoc ? u : x, ntk.create_maj( x, y, u ) );
         ntk.substitute_node( n, opt );
         ntk.update();
       }
@@ -72,7 +72,8 @@ public:
   }
 
 private:
-  std::optional<std::array<signal<Ntk>, 4>> associativity_candidate( node<Ntk> const& n ) const
+  using candidate_t = std::tuple<signal<Ntk>, signal<Ntk>, signal<Ntk>, signal<Ntk>, bool>;
+  std::optional<candidate_t> associativity_candidate( node<Ntk> const& n ) const
   {
     if ( ntk.level( n ) == 0 )
       return std::nullopt;
@@ -99,47 +100,19 @@ private:
 
     if ( ocs[0].index == ocs2[0].index )
     {
-      if ( ocs[0].complement == ocs2[0].complement )
-      {
-        return std::array<signal<Ntk>, 4>{ocs[1], ocs2[1], ocs2[2], ocs[0]};
-      }
-      else
-      {
-        std::cout << "NOT GOOD\n";
-      }
+      return candidate_t{ocs[1], ocs2[1], ocs2[2], ocs[0], ocs[0].complement == ocs2[0].complement};
     }
     if ( ocs[0].index == ocs2[1].index )
     {
-      if ( ocs[0].complement == ocs2[1].complement )
-      {
-        return std::array<signal<Ntk>, 4>{ocs[1], ocs2[0], ocs2[2], ocs[0]};
-      }
-      else
-      {
-        std::cout << "NOT GOOD\n";
-      }
+      return candidate_t{ocs[1], ocs2[0], ocs2[2], ocs[0], ocs[0].complement == ocs2[1].complement};
     }
     if ( ocs[1].index == ocs2[0].index )
     {
-      if ( ocs[1].complement == ocs2[0].complement )
-      {
-        return std::array<signal<Ntk>, 4>{ocs[0], ocs2[1], ocs2[2], ocs[1]};
-      }
-      else
-      {
-        std::cout << "NOT GOOD\n";
-      }
+      return candidate_t{ocs[0], ocs2[1], ocs2[2], ocs[1], ocs[1].complement == ocs2[0].complement};
     }
     if ( ocs[1].index == ocs2[1].index )
     {
-      if ( ocs[1].complement == ocs2[1].complement )
-      {
-        return std::array<signal<Ntk>, 4>{ocs[0], ocs2[0], ocs2[2], ocs[1]};
-      }
-      else
-      {
-        std::cout << "NOT GOOD\n";
-      }
+      return candidate_t{ocs[0], ocs2[0], ocs2[2], ocs[1], ocs[1].complement == ocs2[1].complement};
     }
 
     return std::nullopt;
