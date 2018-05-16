@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <bitset>
 #include <cassert>
 #include <iterator>
 #include <map>
