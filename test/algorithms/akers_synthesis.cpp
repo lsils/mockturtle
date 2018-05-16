@@ -1,8 +1,5 @@
 #include <catch.hpp>
 
-#include <fstream>
-#include <iostream>
-
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
@@ -72,7 +69,6 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[akers_synthesis]" )
     kitty::create_nth_var( xs[5], 3 );
 
     create_random( xs[0] );
-    //kitty::print_binary(xs[0], std::cout); std::cout << std::endl;
 
     for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
     {
@@ -165,10 +161,7 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[akers_synthesis]" )
     kitty::create_nth_var( xs[6], 4 );
     kitty::create_nth_var( xs[7], 5 );
 
-    //create_from_binary_string(xs[0], "1100110010001100011010011010100001111010101010110010011010000010");
     create_random( xs[0] );
-    //kitty::print_binary( xs[0], std::cout );
-    //std::cout << std::endl;
 
     for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
     {
@@ -201,64 +194,6 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[akers_synthesis]" )
     }
   }
 }
-/*
-TEST_CASE( "Check SIZE and DEPTH for Akers for random - 6 inputs", "[maj_random6_sizedepthakers]" )
-{
-
-  std::ifstream infile( "mock_akers.txt" );
-  int size;
-  std::string tt;
-
-  while ( infile >> tt >> size )
-  {
-
-    std::cout << tt << std::endl;
-    std::cout << size << std::endl;
-    mig_network mig;
-
-    std::vector<kitty::dynamic_truth_table> xs{8, kitty::dynamic_truth_table( 6 )};
-    kitty::create_nth_var( xs[2], 0 );
-    kitty::create_nth_var( xs[3], 1 );
-    kitty::create_nth_var( xs[4], 2 );
-    kitty::create_nth_var( xs[5], 3 );
-    kitty::create_nth_var( xs[6], 4 );
-    kitty::create_nth_var( xs[7], 5 );
-
-    create_from_binary_string( xs[0], tt );
-
-    for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
-    {
-      set_bit( xs[1], i );
-    }
-
-    mig = akers_synthesis( mig, xs[0], xs[1] );
-    if ( mig.size() > 6 )
-    {
-      mig.foreach_gate( [&]( auto n ) {
-        std::vector<kitty::dynamic_truth_table> fanin{3, kitty::dynamic_truth_table( 6 )};
-        mig.foreach_fanin( n, [&]( auto s, auto j ) {
-          if ( mig.node_to_index( mig.get_node( s ) ) == 0 )
-          {
-            fanin[j] = ~xs[1];
-          }
-          else
-          {
-            fanin[j] = xs[mig.node_to_index( mig.get_node( s ) ) + 1];
-          }
-        } );
-        xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) );
-      } );
-      mig.foreach_po( [&]( auto n ) {
-        if ( mig.is_complemented( n ) )
-          CHECK( ~xs[xs.size() - 1] == xs[0] );
-        else
-          CHECK( xs[xs.size() - 1] == xs[0] );
-      } );
-    }
-
-    CHECK( mig.num_gates() == size );
-  }
-}*/
 
 TEST_CASE( "Check leaves iterator -- easy case ", "[akers_synthesis]" )
 {
@@ -317,6 +252,4 @@ TEST_CASE( "Check leaves iterator -- easy case ", "[akers_synthesis]" )
         CHECK( xs[xs.size() - 1] == binary_xor( binary_and( xs[1], xs[2] ), binary_and( xs[4], xs[3] ) ) );
     } );
   }
-
-  //CHECK( mig.num_gates() == 5 );
 }
