@@ -280,21 +280,20 @@ TEST_CASE( "Check leaves iterator -- easy case ", "[akers_synthesis]" )
     set_bit( xs_in[1], i );
   }
   auto t = akers_synthesis( mig, xs_in[0], xs_in[1], operations.begin(), operations.end() );
-  mig.create_po(t); 
+  mig.create_po( t );
 
   kitty::create_nth_var( xs[1], 0 );
   kitty::create_nth_var( xs[2], 1 );
   kitty::create_nth_var( xs[3], 2 );
   kitty::create_nth_var( xs[4], 3 );
 
-for ( auto i = 0u; i < unsigned( xs[1].num_bits() ); i++ )
+  for ( auto i = 0u; i < unsigned( xs[1].num_bits() ); i++ )
   {
     set_bit( xs[0], i );
   }
 
   CHECK( mig.num_gates() == 5 );
 
-  
   if ( mig.size() > 6 )
   {
     mig.foreach_gate( [&]( auto n ) {
@@ -306,16 +305,16 @@ for ( auto i = 0u; i < unsigned( xs[1].num_bits() ); i++ )
         }
         else
         {
-          fanin[j] = xs[mig.get_node( s ) ];
+          fanin[j] = xs[mig.get_node( s )];
         }
       } );
       xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) );
     } );
     mig.foreach_po( [&]( auto n ) {
       if ( mig.is_complemented( n ) )
-        CHECK( ~xs[xs.size() - 1] == binary_xor(binary_and(xs[1], xs[2]), binary_and(xs[4],xs[3])));
-        else
-        CHECK( xs[xs.size() - 1] == binary_xor(binary_and(xs[1], xs[2]), binary_and(xs[4],xs[3])));
+        CHECK( ~xs[xs.size() - 1] == binary_xor( binary_and( xs[1], xs[2] ), binary_and( xs[4], xs[3] ) ) );
+      else
+        CHECK( xs[xs.size() - 1] == binary_xor( binary_and( xs[1], xs[2] ), binary_and( xs[4], xs[3] ) ) );
     } );
   }
 
