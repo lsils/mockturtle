@@ -65,11 +65,7 @@ public:
       {
         const auto& [x, y, z, u] = *cand;
         auto opt = ntk.create_maj( z, u, ntk.create_maj( x, y, u ) );
-        if ( ntk.is_complemented( opt ) )
-        {
-          std::cout << "BIG PROBLEMS!\n";
-        }
-        ntk.substitute_node( n, ntk.get_node( opt ) );
+        ntk.substitute_node( n, opt );
         ntk.update();
       }
     } );
@@ -81,33 +77,69 @@ private:
     if ( ntk.level( n ) == 0 )
       return std::nullopt;
 
+    /* get children of top node, ordered by node level (ascending) */
     const auto ocs = ordered_children( n );
-    if ( ntk.is_complemented( ocs[2] ) )
-      return std::nullopt;
 
+    /* depth of last child must be (significantly) higher than depth of second child */
     if ( ntk.level( ntk.get_node( ocs[2] ) ) <= ntk.level( ntk.get_node( ocs[1] ) ) + 1 )
       return std::nullopt;
 
-    const auto ocs2 = ordered_children( ntk.get_node( ocs[2] ) );
+    /* get children of last child and propagate inverter if necessary */
+    auto ocs2 = ordered_children( ntk.get_node( ocs[2] ) );
+    if ( ntk.is_complemented( ocs[2] ) )
+    {
+      ocs2[0] = !ocs2[0];
+      ocs2[1] = !ocs2[1];
+      ocs2[2] = !ocs2[2];
+    }
 
+    /* depth of last grand-child must be higher than depth of second grand-child */
     if ( ntk.level( ntk.get_node( ocs2[2] ) ) == ntk.level( ntk.get_node( ocs2[1] ) ) )
       return std::nullopt;
 
-    if ( ocs[0] == ocs2[0] )
+    if ( ocs[0].index == ocs2[0].index )
     {
-      return std::array<signal<Ntk>, 4>{ocs[1], ocs2[1], ocs2[2], ocs[0]};
+      if ( ocs[0].complement == ocs2[0].complement )
+      {
+        return std::array<signal<Ntk>, 4>{ocs[1], ocs2[1], ocs2[2], ocs[0]};
+      }
+      else
+      {
+        std::cout << "NOT GOOD\n";
+      }
     }
-    if ( ocs[0] == ocs2[1] )
+    if ( ocs[0].index == ocs2[1].index )
     {
-      return std::array<signal<Ntk>, 4>{ocs[1], ocs2[0], ocs2[2], ocs[0]};
+      if ( ocs[0].complement == ocs2[1].complement )
+      {
+        return std::array<signal<Ntk>, 4>{ocs[1], ocs2[0], ocs2[2], ocs[0]};
+      }
+      else
+      {
+        std::cout << "NOT GOOD\n";
+      }
     }
-    if ( ocs[1] == ocs2[0] )
+    if ( ocs[1].index == ocs2[0].index )
     {
-      return std::array<signal<Ntk>, 4>{ocs[0], ocs2[1], ocs2[2], ocs[1]};
+      if ( ocs[1].complement == ocs2[0].complement )
+      {
+        return std::array<signal<Ntk>, 4>{ocs[0], ocs2[1], ocs2[2], ocs[1]};
+      }
+      else
+      {
+        std::cout << "NOT GOOD\n";
+      }
     }
-    if ( ocs[1] == ocs2[1] )
+    if ( ocs[1].index == ocs2[1].index )
     {
-      return std::array<signal<Ntk>, 4>{ocs[0], ocs2[0], ocs2[2], ocs[1]};
+      if ( ocs[1].complement == ocs2[1].complement )
+      {
+        return std::array<signal<Ntk>, 4>{ocs[0], ocs2[0], ocs2[2], ocs[1]};
+      }
+      else
+      {
+        std::cout << "NOT GOOD\n";
+      }
     }
 
     return std::nullopt;
