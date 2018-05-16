@@ -227,18 +227,19 @@ public:
 #pragma endregion
 
 #pragma region Restructuring
-  /*! \brief Replaces one node in a network by another one.
+  /*! \brief Replaces one node in a network by another signal.
    *
    * This method causes all nodes that have ``old_node`` as fanin to have
-   * `new_node` as fanin instead.  Afterwards, the fan-out count of
+   * `new_signal` as fanin instead.  In doing so, a possible polarity of
+   * `new_signal` is taken into account.  Afterwards, the fan-out count of
    * ``old_node`` is guaranteed to be 0.
    *
    * It does not update custom values or visited flags of a node.
    *
    * \brief old_node Node to replace
-   * \brief new_node Node to replace ``old_node`` with
+   * \brief new_signal Signal to replace ``old_node`` with
    */
-  void substitute_node( node const& old_node, node const& new_node );
+  void substitute_node( node const& old_node, signal const& new_signal );
 #pragma endregion
 
 #pragma region Structural properties

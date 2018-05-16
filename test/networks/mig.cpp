@@ -499,3 +499,33 @@ TEST_CASE( "visited values in MIGs", "[mig]" )
     CHECK( mig.visited( n ) == 0 );
   } );
 }
+
+TEST_CASE( "node substitution in MIGs", "[mig]" )
+{
+  mig_network mig;
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto f = mig.create_and( a, b );
+
+  CHECK( mig.size() == 4 );
+
+  mig.foreach_fanin( mig.get_node( f ), [&]( auto const& s ) {
+    CHECK( !mig.is_complemented( s ) );
+  } );
+
+  mig.substitute_node( mig.get_node( mig.get_constant( false ) ), mig.get_constant( true ) );
+
+  CHECK( mig.size() == 4 );
+
+  mig.foreach_fanin( mig.get_node( f ), [&]( auto const& s, auto i ) {
+    switch ( i )
+    {
+    case 0:
+      CHECK( mig.is_complemented( s ) );
+      break;
+    default:
+      CHECK( !mig.is_complemented( s ) );
+      break;
+    }
+  } );
+}

@@ -215,7 +215,7 @@ public:
 #pragma endregion
 
 #pragma region Restructuring
-  void substitute_node( node const& old_node, node const& new_node )
+  void substitute_node( node const& old_node, signal const& new_signal )
   {
     /* find all parents from old_node */
     for ( auto& n : _storage->nodes )
@@ -224,10 +224,10 @@ public:
       {
         if ( child == old_node )
         {
-          child = new_node;
+          child = new_signal;
 
           // increment fan-in of new node
-          _storage->nodes[new_node].data[0].h1++;
+          _storage->nodes[new_signal].data[0].h1++;
         }
       }
     }
@@ -237,10 +237,10 @@ public:
     {
       if ( output == old_node )
       {
-        output = new_node;
+        output = new_signal;
 
         // increment fan-in of new node
-        _storage->nodes[new_node].data[0].h1++;
+        _storage->nodes[new_signal].data[0].h1++;
       }
     }
 
