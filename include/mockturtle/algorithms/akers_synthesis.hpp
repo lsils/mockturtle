@@ -92,13 +92,12 @@ public:
 
   void reduce()
   {
-    auto progress = true;
+    auto progress{true};
 
     while ( progress )
     {
-      progress = false;
-
-      progress = progress || reduce_columns() || reduce_rows();
+      progress = reduce_columns();
+      progress = progress || reduce_rows();
     }
   }
 
@@ -298,7 +297,7 @@ private:
     return !to_be_removed.empty();
   }
 
-  void erase_bit( row_t& row, unsigned pos )
+  void erase_bit( row_t& row, unsigned pos ) const
   {
     for ( auto i = pos + 1; i < unsigned( row.num_literals() ); ++i )
     {
@@ -337,7 +336,7 @@ std::ostream& operator<<( std::ostream& os, const unitized_table& table )
   return os;
 }
 
-bool operator==( unitized_table& table, unitized_table& original_table )
+bool operator==( unitized_table const& table, unitized_table const& original_table )
 {
   if ( table.rows.size() != original_table.rows.size() )
     return false;
@@ -438,7 +437,7 @@ private:
     return table;
   }
 
-  std::set<std::set<unsigned>> find_gates_for_column( const unitized_table& table, unsigned column )
+  std::set<std::set<unsigned>> find_gates_for_column( const unitized_table& table, unsigned column ) const
   {
     std::vector<unitized_table::row_t> one_rows;
     std::vector<bool> matrix;
@@ -533,7 +532,7 @@ private:
     return random_gates[0u];
   }
 
-  std::set<unsigned> find_gate_for_table_brute_force( const unitized_table& table )
+  std::set<unsigned> find_gate_for_table_brute_force( const unitized_table& table ) const
   {
     auto best_count_iter = std::numeric_limits<unsigned>::max();
     std::set<unsigned> best_gate_iter;
@@ -687,7 +686,7 @@ private:
   }
 
   std::set<std::set<unsigned>> clauses_to_products_enumerative( const unitized_table& table, unsigned column,
-                                                                const std::vector<bool>& matrix )
+                                                                const std::vector<bool>& matrix ) const
   {
     std::set<std::set<unsigned>> products;
 
@@ -743,8 +742,8 @@ private:
   LeavesIterator begin;
   LeavesIterator end;
 
-  unsigned reduce = 0;
-  unsigned previous_size = 0;
+  unsigned reduce{0};
+  unsigned previous_size{0};
 };
 
 } // namespace detail
