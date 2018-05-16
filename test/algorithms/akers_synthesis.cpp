@@ -13,7 +13,7 @@
 
 using namespace mockturtle;
 
-TEST_CASE( "Check Akers for MAJ-3", "[maj_3_akers]" )
+TEST_CASE( "Check Akers for MAJ-3", "[akers_synthesis]" )
 {
   std::vector<kitty::dynamic_truth_table> xs{5, kitty::dynamic_truth_table( 3 )};
 
@@ -33,7 +33,7 @@ TEST_CASE( "Check Akers for MAJ-3", "[maj_3_akers]" )
   CHECK( mig.size() == 5 );
 }
 
-TEST_CASE( "Check Akers for MAJ-5", "[maj_5_akers]" )
+TEST_CASE( "Check Akers for MAJ-5", "[akers_synthesis]" )
 {
   std::vector<kitty::dynamic_truth_table> xs{7, kitty::dynamic_truth_table( 5 )};
 
@@ -61,7 +61,7 @@ TEST_CASE( "Check Akers for MAJ-5", "[maj_5_akers]" )
   CHECK( xs[xs.size() - 1] == xs[0] );
 }
 
-TEST_CASE( "Check Akers for random - 4 inputs", "[maj_random4_akers]" )
+TEST_CASE( "Check Akers for random - 4 inputs", "[akers_synthesis]" )
 {
   for ( auto y = 0; y < 5; y++ )
   {
@@ -107,7 +107,7 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[maj_random4_akers]" )
   }
 }
 
-TEST_CASE( "Check Akers for random - 5 inputs", "[maj_random5_akers]" )
+TEST_CASE( "Check Akers for random - 5 inputs", "[akers_synthesis]" )
 {
   for ( auto y = 0; y < 5; y++ )
   {
@@ -153,7 +153,7 @@ TEST_CASE( "Check Akers for random - 5 inputs", "[maj_random5_akers]" )
   }
 }
 
-TEST_CASE( "Check Akers for random - 6 inputs", "[maj_random6_akers]" )
+TEST_CASE( "Check Akers for random - 6 inputs", "[akers_synthesis]" )
 {
   for ( auto y = 0; y < 1; y++ )
   {
@@ -260,7 +260,7 @@ TEST_CASE( "Check SIZE and DEPTH for Akers for random - 6 inputs", "[maj_random6
   }
 }*/
 
-TEST_CASE( "Check leaves iterator -- easy case ", "[akers_leavesiterator]" )
+TEST_CASE( "Check leaves iterator -- easy case ", "[akers_synthesis]" )
 {
   mig_network mig;
   auto a = mig.create_pi();
