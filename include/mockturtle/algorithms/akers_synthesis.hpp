@@ -769,7 +769,7 @@ template<typename Ntk, typename LeavesIterator>
 signal<Ntk> akers_synthesis( Ntk& ntk, kitty::dynamic_truth_table const& func, kitty::dynamic_truth_table const& care, LeavesIterator begin, LeavesIterator end )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-  static_assert( has_create_maj_v<Ntk>, "Ntk does not implement the create_po method" );
+  static_assert( has_create_maj_v<Ntk>, "Ntk does not implement the create_maj method" );
 
   assert( func.num_vars() == care.num_vars() );
   assert( std::distance( begin, end ) == func.num_vars() );
