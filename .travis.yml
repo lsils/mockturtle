@@ -36,4 +36,5 @@ matrix:
           - llvm-toolchain-trusty-6.0
         packages:
           - clang-6.0
+          - g++-7
     env: COMPILER=clang++-6.0
