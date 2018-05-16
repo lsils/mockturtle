@@ -15,8 +15,6 @@ using namespace mockturtle;
 
 TEST_CASE( "Check Akers for MAJ-3", "[maj_3_akers]" )
 {
-  mig_network mig;
-
   std::vector<kitty::dynamic_truth_table> xs{5, kitty::dynamic_truth_table( 3 )};
 
   create_majority( xs[0] );
@@ -25,7 +23,7 @@ TEST_CASE( "Check Akers for MAJ-3", "[maj_3_akers]" )
     set_bit( xs[1], i );
   }
 
-  mig = akers_synthesis( mig, xs[0], xs[1] );
+  auto mig = akers_synthesis<mig_network>( xs[0], xs[1] );
 
   kitty::create_nth_var( xs[2], 0 );
   kitty::create_nth_var( xs[3], 1 );
@@ -37,8 +35,6 @@ TEST_CASE( "Check Akers for MAJ-3", "[maj_3_akers]" )
 
 TEST_CASE( "Check Akers for MAJ-5", "[maj_5_akers]" )
 {
-  mig_network mig;
-
   std::vector<kitty::dynamic_truth_table> xs{7, kitty::dynamic_truth_table( 5 )};
 
   create_majority( xs[0] );
@@ -47,7 +43,7 @@ TEST_CASE( "Check Akers for MAJ-5", "[maj_5_akers]" )
     set_bit( xs[1], i );
   }
 
-  mig = akers_synthesis( mig, xs[0], xs[1] );
+  auto mig = akers_synthesis<mig_network>( xs[0], xs[1] );
 
   kitty::create_nth_var( xs[2], 0 );
   kitty::create_nth_var( xs[3], 1 );
@@ -69,8 +65,6 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[maj_random4_akers]" )
 {
   for ( auto y = 0; y < 5; y++ )
   {
-    mig_network mig;
-
     std::vector<kitty::dynamic_truth_table> xs{6, kitty::dynamic_truth_table( 4 )};
     kitty::create_nth_var( xs[2], 0 );
     kitty::create_nth_var( xs[3], 1 );
@@ -85,7 +79,7 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[maj_random4_akers]" )
       set_bit( xs[1], i );
     }
 
-    mig = akers_synthesis( mig, xs[0], xs[1] );
+    auto mig = akers_synthesis<mig_network>( xs[0], xs[1] );
     if ( mig.size() > 4 )
     {
       mig.foreach_gate( [&]( auto n ) {
@@ -117,8 +111,6 @@ TEST_CASE( "Check Akers for random - 5 inputs", "[maj_random5_akers]" )
 {
   for ( auto y = 0; y < 5; y++ )
   {
-    mig_network mig;
-
     std::vector<kitty::dynamic_truth_table> xs{7, kitty::dynamic_truth_table( 5 )};
     kitty::create_nth_var( xs[2], 0 );
     kitty::create_nth_var( xs[3], 1 );
@@ -133,7 +125,7 @@ TEST_CASE( "Check Akers for random - 5 inputs", "[maj_random5_akers]" )
       set_bit( xs[1], i );
     }
 
-    mig = akers_synthesis( mig, xs[0], xs[1] );
+    auto mig = akers_synthesis<mig_network>( xs[0], xs[1] );
     if ( mig.size() > 6 )
     {
       mig.foreach_gate( [&]( auto n ) {
@@ -165,8 +157,6 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[maj_random6_akers]" )
 {
   for ( auto y = 0; y < 1; y++ )
   {
-    mig_network mig;
-
     std::vector<kitty::dynamic_truth_table> xs{8, kitty::dynamic_truth_table( 6 )};
     kitty::create_nth_var( xs[2], 0 );
     kitty::create_nth_var( xs[3], 1 );
@@ -185,7 +175,7 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[maj_random6_akers]" )
       set_bit( xs[1], i );
     }
 
-    mig = akers_synthesis( mig, xs[0], xs[1] );
+    auto mig = akers_synthesis<mig_network>( xs[0], xs[1] );
     if ( mig.size() > 6 )
     {
       mig.foreach_gate( [&]( auto n ) {

@@ -6,6 +6,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <kitty/bit_operations.hpp>
@@ -748,25 +749,58 @@ private:
 
 } // namespace detail
 
+/*! \brief Performs Akers majority-3 synthesis inside network.
+ *
+ * Note that the number of variables in `func` and `care` must be the same.
+ * Also the distance between `begin` and `end` must equal the number of
+ * variables in `func`.
+ *
+ * **Required network functions:**
+ * - `create_maj`
+ *
+ * \param ntk Network
+ * \param func Function as truth table
+ * \param care Care set of the function (as truth table)
+ * \param begin Begin iterator to child signals
+ * \param end End iterator to child signals
+ * \return Signal that realizes function in terms of child signals
+ */
 template<typename Ntk, typename LeavesIterator>
 signal<Ntk> akers_synthesis( Ntk& ntk, kitty::dynamic_truth_table const& func, kitty::dynamic_truth_table const& care, LeavesIterator begin, LeavesIterator end )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-  static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi method" );
-  static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po method" );
   static_assert( has_create_maj_v<Ntk>, "Ntk does not implement the create_po method" );
+
+  assert( func.num_vars() == care.num_vars() );
+  assert( std::distance( begin, end ) == func.num_vars() );
 
   detail::akers_synthesis<Ntk, LeavesIterator> tt( ntk, func, care, begin, end );
   return tt.run();
 }
 
+/*! \brief Performs Akers majority-3 synthesis to create network.
+ *
+ * Note that the number of variables in `func` and `care` must be the same.
+ * The function will create a network with as many primary inputs as number of
+ * variables in `func` and a single output.
+ *
+ * **Required network functions:**
+ * - `create_pi`
+ * - `create_po`
+ * - `create_maj`
+ *
+ * \param func Function as truth table
+ * \param care Care set of the function (as truth table)
+ * \return A network that realizes the function
+ */
 template<typename Ntk>
-Ntk akers_synthesis( Ntk& ntk, kitty::dynamic_truth_table const& func, kitty::dynamic_truth_table const& care )
+Ntk akers_synthesis( kitty::dynamic_truth_table const& func, kitty::dynamic_truth_table const& care )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi method" );
   static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po method" );
 
+  Ntk ntk;
   std::vector<signal<Ntk>> pis;
 
   for ( auto i = 0; i < func.num_vars(); ++i )
