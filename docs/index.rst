@@ -31,6 +31,7 @@ Welcome to mockturtle's documentation!
    :caption: Input/Output
 
    lorina_readers
+   writers
 
 .. toctree::
    :maxdepth: 2
