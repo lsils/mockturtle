@@ -9,6 +9,7 @@
 #include <kitty/constructors.hpp>
 #include <kitty/static_truth_table.hpp>
 
+
 using namespace mockturtle;
 
 /* simple truth table simulator */

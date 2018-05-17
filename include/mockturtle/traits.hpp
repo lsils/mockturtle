@@ -497,6 +497,21 @@ template<class Ntk>
 inline constexpr bool has_level_v = has_level<Ntk>::value;
 #pragma endregion
 
+#pragma region has_node_function
+template<class Ntk, class = void>
+struct has_node_function : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_node_function<Ntk, std::void_t<decltype( std::declval<Ntk>().node_function( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_node_function_v = has_node_function<Ntk>::value;
+#pragma endregion
+
 #pragma region has_get_node
 template<class Ntk, class = void>
 struct has_get_node : std::false_type
