@@ -392,6 +392,21 @@ template<class Ntk>
 inline constexpr bool has_size_v = has_size<Ntk>::value;
 #pragma endregion
 
+#pragma region has_substitute_node
+template<class Ntk, class = void>
+struct has_substitute_node : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_substitute_node<Ntk, std::void_t<decltype( std::declval<Ntk>().substitute_node( std::declval<node<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_substitute_node_v = has_substitute_node<Ntk>::value;
+#pragma endregion
+
 #pragma region has_num_pis
 template<class Ntk, class = void>
 struct has_num_pis : std::false_type

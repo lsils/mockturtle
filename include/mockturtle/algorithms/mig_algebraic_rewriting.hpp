@@ -40,20 +40,15 @@
 namespace mockturtle
 {
 
-struct mig_algebraric_rewriting_params
-{
-};
-
 namespace detail
 {
 
 template<class Ntk>
-class mig_algebraic_rewriting_impl
+class mig_algebraic_dfs_depth_rewriting_impl
 {
 public:
-  mig_algebraic_rewriting_impl( Ntk& ntk, mig_algebraric_rewriting_params const& ps )
-      : ntk( ntk ),
-        ps( ps )
+  mig_algebraic_dfs_depth_rewriting_impl( Ntk& ntk )
+      : ntk( ntk )
   {
   }
 
@@ -142,17 +137,23 @@ private:
 
 private:
   Ntk& ntk;
-  mig_algebraric_rewriting_params const& ps;
 };
 
 } // namespace detail
 
 template<class Ntk>
-void mig_algebraic_rewriting( Ntk& ntk, mig_algebraric_rewriting_params const& ps = {} )
+void mig_algebraic_dfs_depth_rewriting( Ntk& ntk )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_level_v<Ntk>, "Ntk does not implement the level method" );
+  static_assert( has_create_maj_v<Ntk>, "Ntk does not implement the create_maj method" );
+  static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
+  static_assert( has_update_v<Ntk>, "Ntk does not implement the update method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-  detail::mig_algebraic_rewriting_impl<Ntk> p( ntk, ps );
+  detail::mig_algebraic_dfs_depth_rewriting_impl<Ntk> p( ntk );
   p.run();
 }
 

@@ -26,7 +26,7 @@ TEST_CASE( "MIG depth optimization", "[mig_algebraic_rewriting]" )
 
   CHECK( depth_mig.depth() == 3 );
 
-  mig_algebraic_rewriting( depth_mig );
+  mig_algebraic_dfs_depth_rewriting( depth_mig );
 
   CHECK( depth_mig.depth() == 2 );
 }
