@@ -61,58 +61,70 @@ public:
   {
     topo_view topo{ntk};
     topo.foreach_node( [this]( auto n ) {
-      if ( auto cand = associativity_candidate( n ); cand )
+      if ( ntk.level( n ) == 0 )
+        return true;
+
+      /* get children of top node, ordered by node level (ascending) */
+      const auto ocs = ordered_children( n );
+
+      /* depth of last child must be (significantly) higher than depth of second child */
+      if ( ntk.level( ntk.get_node( ocs[2] ) ) <= ntk.level( ntk.get_node( ocs[1] ) ) + 1 )
+        return true;
+
+      /* get children of last child */
+      auto ocs2 = ordered_children( ntk.get_node( ocs[2] ) );
+
+      /* depth of last grand-child must be higher than depth of second grand-child */
+      if ( ntk.level( ntk.get_node( ocs2[2] ) ) == ntk.level( ntk.get_node( ocs2[1] ) ) )
+        return true;
+
+      /* propagate inverter if necessary */
+      if ( ntk.is_complemented( ocs[2] ) )
+      {
+        ocs2[0] = !ocs2[0];
+        ocs2[1] = !ocs2[1];
+        ocs2[2] = !ocs2[2];
+      }
+
+      if ( auto cand = associativity_candidate( ocs[0], ocs[1], ocs2[0], ocs2[1], ocs2[2] ); cand )
       {
         const auto& [x, y, z, u, assoc] = *cand;
         auto opt = ntk.create_maj( z, assoc ? u : x, ntk.create_maj( x, y, u ) );
         ntk.substitute_node( n, opt );
         ntk.update();
+
+        return true;
       }
+
+      /* distributivity */
+      auto opt = ntk.create_maj( ocs2[2],
+                                 ntk.create_maj( ocs[0], ocs[1], ocs2[0] ),
+                                 ntk.create_maj( ocs[0], ocs[1], ocs2[1] ) );
+      ntk.substitute_node( n, opt );
+      ntk.update();
+      return true;
     } );
   }
 
 private:
   using candidate_t = std::tuple<signal<Ntk>, signal<Ntk>, signal<Ntk>, signal<Ntk>, bool>;
-  std::optional<candidate_t> associativity_candidate( node<Ntk> const& n ) const
+  std::optional<candidate_t> associativity_candidate( signal<Ntk> const& v, signal<Ntk> const& w, signal<Ntk> const& x, signal<Ntk> const& y, signal<Ntk> const& z ) const
   {
-    if ( ntk.level( n ) == 0 )
-      return std::nullopt;
-
-    /* get children of top node, ordered by node level (ascending) */
-    const auto ocs = ordered_children( n );
-
-    /* depth of last child must be (significantly) higher than depth of second child */
-    if ( ntk.level( ntk.get_node( ocs[2] ) ) <= ntk.level( ntk.get_node( ocs[1] ) ) + 1 )
-      return std::nullopt;
-
-    /* get children of last child and propagate inverter if necessary */
-    auto ocs2 = ordered_children( ntk.get_node( ocs[2] ) );
-    if ( ntk.is_complemented( ocs[2] ) )
+    if ( v.index == x.index )
     {
-      ocs2[0] = !ocs2[0];
-      ocs2[1] = !ocs2[1];
-      ocs2[2] = !ocs2[2];
+      return candidate_t{w, y, z, v, v.complement == x.complement};
     }
-
-    /* depth of last grand-child must be higher than depth of second grand-child */
-    if ( ntk.level( ntk.get_node( ocs2[2] ) ) == ntk.level( ntk.get_node( ocs2[1] ) ) )
-      return std::nullopt;
-
-    if ( ocs[0].index == ocs2[0].index )
+    if ( v.index == y.index )
     {
-      return candidate_t{ocs[1], ocs2[1], ocs2[2], ocs[0], ocs[0].complement == ocs2[0].complement};
+      return candidate_t{w, x, z, v, v.complement == y.complement};
     }
-    if ( ocs[0].index == ocs2[1].index )
+    if ( w.index == x.index )
     {
-      return candidate_t{ocs[1], ocs2[0], ocs2[2], ocs[0], ocs[0].complement == ocs2[1].complement};
+      return candidate_t{v, y, z, w, w.complement == x.complement};
     }
-    if ( ocs[1].index == ocs2[0].index )
+    if ( w.index == y.index )
     {
-      return candidate_t{ocs[0], ocs2[1], ocs2[2], ocs[1], ocs[1].complement == ocs2[0].complement};
-    }
-    if ( ocs[1].index == ocs2[1].index )
-    {
-      return candidate_t{ocs[0], ocs2[0], ocs2[2], ocs[1], ocs[1].complement == ocs2[1].complement};
+      return candidate_t{v, x, z, w, w.complement == y.complement};
     }
 
     return std::nullopt;
