@@ -54,6 +54,7 @@ namespace mockturtle
  * - `is_pi`
  * - `is_complemented`
  * - `get_node`
+ * - `num_pos`
  * - `node_to_index`
  * - `node_function`
  *
@@ -68,6 +69,7 @@ void write_bench( Ntk const& ntk, std::ostream& os )
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
 
@@ -75,11 +77,10 @@ void write_bench( Ntk const& ntk, std::ostream& os )
     os << fmt::format( "INPUT(n{})\n", ntk.node_to_index( n ) );
   } );
 
-  ntk.foreach_po( [&]( auto const& s ) {
-    os << fmt::format( "OUTPUT(n{}{})\n",
-                       ntk.node_to_index( ntk.get_node( s ) ),
-                       ntk.is_complemented( s ) ? "_inv" : "" );
-  } );
+  for ( auto i = 0u; i < ntk.num_pos(); ++i )
+  {
+    os << fmt::format( "OUTPUT(po{})\n", i );
+  }
 
   ntk.foreach_node( [&]( auto const& n ) {
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
@@ -110,26 +111,25 @@ void write_bench( Ntk const& ntk, std::ostream& os )
                        kitty::to_hex( func ), children );
   } );
 
-  /* inverted outputs */
-  ntk.foreach_po( [&]( auto const& s ) {
-    if ( ntk.is_complemented( s ) )
-    {
-      os << fmt::format( "n{0}_inv = LUT 0x1 (n{0})\n", ntk.node_to_index( ntk.get_node( s ) ) );
-    }
-  } );
-
-  /* constant outputs */
-  ntk.foreach_po( [&]( auto const& s ) {
+  /* outputs */
+  ntk.foreach_po( [&]( auto const& s, auto i ) {
     if ( ntk.is_constant( ntk.get_node( s ) ) )
     {
       os << fmt::format( "n{} = {}\n",
                          ntk.node_to_index( ntk.get_node( s ) ),
                          ntk.is_complemented( s ) ? "vdd" : "gnd" );
     }
+    else
+    {
+      os << fmt::format( "po{} = LUT 0x{} (n{})\n",
+                         i,
+                         ntk.is_complemented( s ) ? 1 : 2,
+                         ntk.node_to_index( ntk.get_node( s ) ) );
+    }
   } );
 
   os << std::flush;
-}
+} // namespace mockturtle
 
 /*! \brief Writes network in BENCH format into a file
  *
@@ -138,6 +138,7 @@ void write_bench( Ntk const& ntk, std::ostream& os )
  * - `is_pi`
  * - `is_complemented`
  * - `get_node`
+ * - `num_pos`
  * - `node_to_index`
  * - `node_function`
  *

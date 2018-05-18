@@ -24,10 +24,12 @@ TEST_CASE( "write k-LUT network to BENCH file", "[write_bench]" )
   CHECK( out.str() == "INPUT(n2)\n"
                       "INPUT(n3)\n"
                       "INPUT(n4)\n"
-                      "OUTPUT(n5)\n"
-                      "OUTPUT(n6)\n"
+                      "OUTPUT(po0)\n"
+                      "OUTPUT(po1)\n"
                       "n5 = LUT 0x96 (n2, n3, n4)\n"
-                      "n6 = LUT 0xe8 (n2, n3, n4)\n" );
+                      "n6 = LUT 0xe8 (n2, n3, n4)\n"
+                      "po0 = LUT 0x2 (n5)\n"
+                      "po1 = LUT 0x2 (n6)\n" );
 }
 
 TEST_CASE( "write single-gate AIG into BENCH file", "[write_bench]" )
@@ -45,9 +47,9 @@ TEST_CASE( "write single-gate AIG into BENCH file", "[write_bench]" )
 
   CHECK( out.str() == "INPUT(n1)\n"
                       "INPUT(n2)\n"
-                      "OUTPUT(n3_inv)\n"
+                      "OUTPUT(po0)\n"
                       "n3 = LUT 0x1 (n1, n2)\n"
-                      "n3_inv = LUT 0x1 (n3)\n" );
+                      "po0 = LUT 0x1 (n3)\n" );
 }
 
 TEST_CASE( "write AIG for XOR into BENCH file", "[write_bench]" )
@@ -68,10 +70,10 @@ TEST_CASE( "write AIG for XOR into BENCH file", "[write_bench]" )
 
   CHECK( out.str() == "INPUT(n1)\n"
                       "INPUT(n2)\n"
-                      "OUTPUT(n6_inv)\n"
+                      "OUTPUT(po0)\n"
                       "n3 = LUT 0x8 (n1, n2)\n"
                       "n4 = LUT 0x2 (n1, n3)\n"
                       "n5 = LUT 0x2 (n2, n3)\n"
                       "n6 = LUT 0x1 (n4, n5)\n"
-                      "n6_inv = LUT 0x1 (n6)\n" );
+                      "po0 = LUT 0x1 (n6)\n" );
 }
