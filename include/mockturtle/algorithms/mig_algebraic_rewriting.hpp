@@ -54,50 +54,61 @@ public:
 
   void run()
   {
-    topo_view topo{ntk};
-    topo.foreach_node( [this]( auto n ) {
-      if ( ntk.level( n ) == 0 )
-        return true;
+    ntk.foreach_po( [this]( auto po ) {
+      const auto driver = ntk.get_node( po );
+      if ( ntk.level( driver ) < ntk.depth() )
+        return;
+      topo_view topo{ntk, driver};
+      topo.foreach_node( [this]( auto n ) {
+        if ( !ntk.is_maj( n ) )
+          return true;
 
-      /* get children of top node, ordered by node level (ascending) */
-      const auto ocs = ordered_children( n );
+        if ( ntk.level( n ) == 0 )
+          return true;
 
-      /* depth of last child must be (significantly) higher than depth of second child */
-      if ( ntk.level( ntk.get_node( ocs[2] ) ) <= ntk.level( ntk.get_node( ocs[1] ) ) + 1 )
-        return true;
+        /* get children of top node, ordered by node level (ascending) */
+        const auto ocs = ordered_children( n );
 
-      /* get children of last child */
-      auto ocs2 = ordered_children( ntk.get_node( ocs[2] ) );
+        if ( !ntk.is_maj( ntk.get_node( ocs[2] ) ) )
+          return true;
 
-      /* depth of last grand-child must be higher than depth of second grand-child */
-      if ( ntk.level( ntk.get_node( ocs2[2] ) ) == ntk.level( ntk.get_node( ocs2[1] ) ) )
-        return true;
+        /* depth of last child must be (significantly) higher than depth of second child */
+        if ( ntk.level( ntk.get_node( ocs[2] ) ) <= ntk.level( ntk.get_node( ocs[1] ) ) + 1 )
+          return true;
 
-      /* propagate inverter if necessary */
-      if ( ntk.is_complemented( ocs[2] ) )
-      {
-        ocs2[0] = !ocs2[0];
-        ocs2[1] = !ocs2[1];
-        ocs2[2] = !ocs2[2];
-      }
+        /* get children of last child */
+        auto ocs2 = ordered_children( ntk.get_node( ocs[2] ) );
 
-      if ( auto cand = associativity_candidate( ocs[0], ocs[1], ocs2[0], ocs2[1], ocs2[2] ); cand )
-      {
-        const auto& [x, y, z, u, assoc] = *cand;
-        auto opt = ntk.create_maj( z, assoc ? u : x, ntk.create_maj( x, y, u ) );
+        /* depth of last grand-child must be higher than depth of second grand-child */
+        if ( ntk.level( ntk.get_node( ocs2[2] ) ) == ntk.level( ntk.get_node( ocs2[1] ) ) )
+          return true;
+
+        /* propagate inverter if necessary */
+        if ( ntk.is_complemented( ocs[2] ) )
+        {
+          ocs2[0] = !ocs2[0];
+          ocs2[1] = !ocs2[1];
+          ocs2[2] = !ocs2[2];
+        }
+
+        if ( auto cand = associativity_candidate( ocs[0], ocs[1], ocs2[0], ocs2[1], ocs2[2] ); cand )
+        {
+          const auto& [x, y, z, u, assoc] = *cand;
+          auto opt = ntk.create_maj( z, assoc ? u : x, ntk.create_maj( x, y, u ) );
+          ntk.substitute_node( n, opt );
+          ntk.update();
+
+          return true;
+        }
+
+        /* distributivity */
+        auto opt = ntk.create_maj( ocs2[2],
+                                   ntk.create_maj( ocs[0], ocs[1], ocs2[0] ),
+                                   ntk.create_maj( ocs[0], ocs[1], ocs2[1] ) );
         ntk.substitute_node( n, opt );
         ntk.update();
-
         return true;
-      }
-
-      /* distributivity */
-      auto opt = ntk.create_maj( ocs2[2],
-                                 ntk.create_maj( ocs[0], ocs[1], ocs2[0] ),
-                                 ntk.create_maj( ocs[0], ocs[1], ocs2[1] ) );
-      ntk.substitute_node( n, opt );
-      ntk.update();
-      return true;
+      } );
     } );
   }
 
@@ -141,6 +152,32 @@ private:
 
 } // namespace detail
 
+/*! \brief Majority algebraic rewriting (DFS depth optimization).
+ *
+ * This algorithm tries to rewrite a network with majority gates for depth
+ * optimization using the associativity and distributivity rule in
+ * majority-of-3 logic.  It can be applied to networks other than MIGs, but
+ * only considers pairs of nodes which both implement the majority-of-3
+ * function.
+ *
+ * **Required network functions:**
+ * - `get_node`
+ * - `level`
+ * - `create_maj`
+ * - `substitute_node`
+ * - `update`
+ * - `foreach_node`
+ * - `foreach_fanin`
+ * - `is_maj`
+ *
+   \verbatim embed:rst
+
+  .. note::
+
+      The implementation of this algorithm was heavily inspired by an
+      implementation from Luca Amarù.
+   \endverbatim
+ */
 template<class Ntk>
 void mig_algebraic_dfs_depth_rewriting( Ntk& ntk )
 {
@@ -152,6 +189,7 @@ void mig_algebraic_dfs_depth_rewriting( Ntk& ntk )
   static_assert( has_update_v<Ntk>, "Ntk does not implement the update method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_is_maj_v<Ntk>, "Ntk does not implement the is_maj method" );
 
   detail::mig_algebraic_dfs_depth_rewriting_impl<Ntk> p( ntk );
   p.run();
