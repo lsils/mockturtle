@@ -1,4 +1,4 @@
-Akers Synthesis 
+Akers synthesis 
 ---------------
 
 The algorithm implements the method for 3-input majority-based logic synthesis proposed in 
