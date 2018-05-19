@@ -512,6 +512,38 @@ template<class Ntk>
 inline constexpr bool has_level_v = has_level<Ntk>::value;
 #pragma endregion
 
+#pragma region has_is_maj
+template<class Ntk, class = void>
+struct has_is_maj : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_maj<Ntk, std::void_t<decltype( std::declval<Ntk>().is_maj( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_maj_v = has_is_maj<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_ite
+template<class Ntk, class = void>
+struct has_is_ite : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_ite<Ntk, std::void_t<decltype( std::declval<Ntk>().is_ite( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_ite_v = has_is_ite<Ntk>::value;
+#pragma endregion
+
+
+
 #pragma region has_node_function
 template<class Ntk, class = void>
 struct has_node_function : std::false_type

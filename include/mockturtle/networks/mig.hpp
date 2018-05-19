@@ -381,6 +381,11 @@ public:
   {
     return _storage->nodes[n].data[0].h1;
   }
+
+  bool is_maj( node const& n ) const
+  {
+    return n > 0 && !is_pi( n );
+  }
 #pragma endregion
 
 #pragma region Functional properties

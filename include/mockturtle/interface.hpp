@@ -270,6 +270,12 @@ public:
 
   /*! \brief Returns the level of a node. */
   uint32_t level( node const& n ) const;
+
+  /*! \brief Retuns whether node is a majority-of-3 gate. */
+  bool is_maj( node const& n ) const;
+
+  /*! \brief Retuns whether node is a if-then-else gate. */
+  bool is_ite( node const& n ) const;
 #pragma endregion
 
 #pragma region Functional properties
