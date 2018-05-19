@@ -33,10 +33,11 @@
 #pragma once
 
 #include <cassert>
+#include <optional>
 #include <vector>
 
-#include "../traits.hpp"
 #include "../networks/detail/foreach.hpp"
+#include "../traits.hpp"
 #include "immutable_view.hpp"
 
 namespace mockturtle
@@ -108,6 +109,28 @@ public:
     update();
   }
 
+  /*! \brief Default constructor.
+   *
+   * Constructs topological view, but only for the transitive fan-in starting
+   * from a given start node.
+   */
+  topo_view( Ntk const& ntk, typename Ntk::node const& start_node )
+      : immutable_view<Ntk>( ntk ),
+        start_node( start_node )
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+    static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+    static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
+    static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
+    static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+
+    update();
+  }
+
   /*! \brief Reimplementation of `foreach_node`. */
   template<typename Fn>
   void foreach_node( Fn&& fn ) const
@@ -141,13 +164,22 @@ public:
       }
     } );
 
-    this->foreach_po( [this]( auto f, auto ) {
-      /* node was already visited */
-      if ( this->value( this->get_node( f ) ) == 2 )
+    if ( start_node )
+    {
+      if ( this->value( *start_node ) == 2 )
         return;
+      create_topo_rec( *start_node );
+    }
+    else
+    {
+      this->foreach_po( [this]( auto f, auto ) {
+        /* node was already visited */
+        if ( this->value( this->get_node( f ) ) == 2 )
+          return;
 
-      create_topo_rec( this->get_node( f ) );
-    } );
+        create_topo_rec( this->get_node( f ) );
+      } );
+    }
   }
 
 private:
@@ -177,6 +209,7 @@ private:
 
 private:
   std::vector<node> topo_order;
+  std::optional<node> start_node;
 };
 
 } // namespace mockturtle
