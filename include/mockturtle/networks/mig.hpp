@@ -346,6 +346,16 @@ public:
   }
 #pragma endregion
 
+#pragma region Functional properties
+  kitty::dynamic_truth_table node_function( const node& n ) const
+  {
+    (void)n;
+    kitty::dynamic_truth_table _maj( 3 );
+    _maj._bits[0] = 0xe8;
+    return _maj;
+  }
+#pragma endregion
+
 #pragma region Nodes and signals
   node get_node( signal const& f ) const
   {
