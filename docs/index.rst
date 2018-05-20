@@ -28,6 +28,7 @@ Welcome to mockturtle's documentation!
    lut_mapping
    mig_algebraic_rewriting
    akers_synthesis
+   cleanup
 
 .. toctree::
    :maxdepth: 2
