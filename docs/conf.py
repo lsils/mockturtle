@@ -47,8 +47,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'mockturtle'
-copyright = '2017, Mathias Soeken'
-author = 'Mathias Soeken'
+copyright = '2018, EPFL LSI'
+author = 'EPFL LSI'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -143,7 +143,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'mockturtle.tex', 'mockturtle Documentation',
-     'Mathias Soeken', 'manual'),
+     'EPFL LIS', 'manual'),
 ]
 
 
