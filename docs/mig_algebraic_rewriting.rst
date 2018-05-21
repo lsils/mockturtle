@@ -1,4 +1,13 @@
 MIG algebraic rewriting
 -----------------------
 
-.. doxygenfunction:: mockturtle::mig_algebraic_dfs_depth_rewriting
+Parameters
+~~~~~~~~~~
+
+.. doxygenstruct:: mockturtle::mig_algebraic_depth_rewriting_params
+   :members:
+
+Algorithm
+~~~~~~~~~
+
+.. doxygenfunction:: mockturtle::mig_algebraic_depth_rewriting
