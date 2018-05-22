@@ -10,7 +10,7 @@ script:
 matrix:
   include:
   - os: linux
-    dist: tusty
+    dist: trusty
     sudo: required
     compiler: gcc
     addons:
@@ -21,7 +21,7 @@ matrix:
           - g++-7
     env: COMPILER=g++-7
   - os: linux
-    dist: tusty
+    dist: trusty
     sudo: required
     compiler: gcc
     addons:
@@ -32,7 +32,7 @@ matrix:
           - g++-8
     env: COMPILER=g++-8
   - os: linux
-    dist: tusty
+    dist: trusty
     sudo: required
     compiler: clang
     addons:
@@ -49,6 +49,7 @@ matrix:
     compiler: gcc
     before_install:
       - brew update
+      - brew cask uninstall oclint
       - brew install gcc
     env: COMPILER=/usr/local/Cellar/gcc/8.1.0/bin/g++-8
 
