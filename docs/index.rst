@@ -25,12 +25,14 @@ Welcome to mockturtle's documentation!
    :caption: Algorithms
 
    cut_enumeration
+   akers_synthesis
 
 .. toctree::
    :maxdepth: 2
    :caption: Input/Output
 
    lorina_readers
+   writers
 
 .. toctree::
    :maxdepth: 2
