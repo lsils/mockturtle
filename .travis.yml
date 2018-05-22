@@ -47,7 +47,10 @@ matrix:
   - os: osx
     osx_image: xcode9.3
     compiler: clang
-    env: COMPILER=clang++
+    before_install:
+      - brew update
+      - brew install llvm
+    env: COMPILER=/usr/local/Cellar/llvm/6.0.0/bin/clang++
   - os: osx
     osx_image: xcode9.3
     compiler: gcc
@@ -63,4 +66,4 @@ matrix:
       - brew update
       - brew cask uninstall oclint
       - brew install gcc@7
-    env: COMPILER=/usr/local/Cellar/gcc/7.3.0/bin/g++-7
+    env: COMPILER=/usr/local/Cellar/gcc@7/7.3.0/bin/g++-7
