@@ -1,18 +1,69 @@
-sudo: required
-dist: trusty
-
 language: cpp
-
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - g++-7
 
 script:
   - mkdir build
   - cd build
-  - cmake -DCMAKE_CXX_COMPILER=g++-7 -DMOCKTURTLE_TEST=ON ..
+  - cmake -DCMAKE_CXX_COMPILER=$COMPILER -DMOCKTURTLE_TEST=ON ..
   - make run_tests
   - ./test/run_tests
+
+matrix:
+  include:
+  - os: linux
+    dist: trusty
+    sudo: required
+    compiler: gcc
+    addons:
+      apt:
+        sources: 
+          - ubuntu-toolchain-r-test
+        packages:
+          - g++-7
+    env: COMPILER=g++-7
+  - os: linux
+    dist: trusty
+    sudo: required
+    compiler: gcc
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - g++-8
+    env: COMPILER=g++-8
+  - os: linux
+    dist: trusty
+    sudo: required
+    compiler: clang
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+          - llvm-toolchain-trusty-6.0
+        packages:
+          - clang-6.0
+          - g++-7
+    env: COMPILER=clang++-6.0
+  - os: osx
+    osx_image: xcode9.3
+    compiler: clang
+    before_install:
+      - brew update
+      - brew install llvm
+    env: COMPILER=/usr/local/Cellar/llvm/6.0.0/bin/clang++
+  - os: osx
+    osx_image: xcode8.3
+    compiler: gcc
+    before_install:
+      - brew update
+      - brew cask uninstall oclint
+      - brew install gcc
+    env: COMPILER=/usr/local/Cellar/gcc/8.1.0/bin/g++-8
+  - os: osx
+    osx_image: xcode8.3
+    compiler: gcc
+    before_install:
+      - brew update
+      - brew cask uninstall oclint
+      - brew install gcc@7
+    env: COMPILER=/usr/local/Cellar/gcc@7/7.3.0/bin/g++-7
