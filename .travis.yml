@@ -1,6 +1,3 @@
-sudo: required
-dist: trusty
-
 language: cpp
 
 script:
@@ -12,7 +9,10 @@ script:
 
 matrix:
   include:
-  - compiler: gcc
+  - os: linux
+    dist: tusty
+    sudo: required
+    compiler: gcc
     addons:
       apt:
         sources: 
@@ -20,7 +20,10 @@ matrix:
         packages:
           - g++-7
     env: COMPILER=g++-7
-  - compiler: gcc
+  - os: linux
+    dist: tusty
+    sudo: required
+    compiler: gcc
     addons:
       apt:
         sources:
@@ -28,7 +31,10 @@ matrix:
         packages:
           - g++-8
     env: COMPILER=g++-8
-  - compiler: clang
+  - os: linux
+    dist: tusty
+    sudo: required
+    compiler: clang
     addons:
       apt:
         sources:
@@ -38,3 +44,11 @@ matrix:
           - clang-6.0
           - g++-7
     env: COMPILER=clang++-6.0
+  - os: osx
+    osx_image: xcode9.3
+    compiler: gcc
+    before_install:
+      - brew update
+      - brew install gcc
+    env: COMPILER=/usr/local/Cellar/gcc/8.1.0/bin/g++-8
+
