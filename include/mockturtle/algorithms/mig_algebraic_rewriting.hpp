@@ -214,7 +214,7 @@ private:
       ntk.substitute_node( n, opt );
       ntk.update();
 
-      return false;
+      return true;
     }
 
     /* distributivity */
