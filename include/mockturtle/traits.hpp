@@ -62,6 +62,21 @@ struct is_network_type<Ntk, std::void_t<signal<Ntk>,
 template<class Ntk>
 inline constexpr bool is_network_type_v = is_network_type<Ntk>::value;
 
+#pragma region is_topologically_sorted
+template<class Ntk, class = void>
+struct is_topologically_sorted : std::false_type
+{
+};
+
+template<class Ntk>
+struct is_topologically_sorted<Ntk, std::enable_if_t<Ntk::is_topologically_sorted, std::void_t<decltype( Ntk::is_topologically_sorted )>>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool is_topologically_sorted_v = is_topologically_sorted<Ntk>::value;
+#pragma endregion
+
 #pragma region has_get_constant
 template<class Ntk, class = void>
 struct has_get_constant : std::false_type
@@ -541,8 +556,6 @@ struct has_is_ite<Ntk, std::void_t<decltype( std::declval<Ntk>().is_ite( std::de
 template<class Ntk>
 inline constexpr bool has_is_ite_v = has_is_ite<Ntk>::value;
 #pragma endregion
-
-
 
 #pragma region has_node_function
 template<class Ntk, class = void>
