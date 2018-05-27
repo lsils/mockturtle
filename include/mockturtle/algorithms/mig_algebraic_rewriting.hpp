@@ -115,7 +115,7 @@ private:
       const auto driver = ntk.get_node( po );
       if ( ntk.level( driver ) < ntk.depth() )
         return;
-      topo_view topo{ntk, driver};
+      topo_view topo{ntk, po};
       topo.foreach_node( [this]( auto n ) {
         reduce_depth( n );
         return true;
@@ -214,7 +214,7 @@ private:
       ntk.substitute_node( n, opt );
       ntk.update();
 
-      return false;
+      return true;
     }
 
     /* distributivity */
