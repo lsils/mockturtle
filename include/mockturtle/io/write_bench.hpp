@@ -83,10 +83,10 @@ void write_bench( Ntk const& ntk, std::ostream& os )
     os << fmt::format( "OUTPUT(po{})\n", i );
   }
 
-  os << fmt::format( "n{} = gnd;\n", ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) ) );
+  os << fmt::format( "n{} = gnd\n", ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) ) );
   if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
   {
-    os << fmt::format( "n{} = vdd;\n", ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ) );
+    os << fmt::format( "n{} = vdd\n", ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ) );
   }
 
   ntk.foreach_node( [&]( auto const& n ) {
