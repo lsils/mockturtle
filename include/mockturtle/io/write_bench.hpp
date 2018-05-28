@@ -65,6 +65,7 @@ template<class Ntk>
 void write_bench( Ntk const& ntk, std::ostream& os )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
@@ -80,6 +81,12 @@ void write_bench( Ntk const& ntk, std::ostream& os )
   for ( auto i = 0u; i < ntk.num_pos(); ++i )
   {
     os << fmt::format( "OUTPUT(po{})\n", i );
+  }
+
+  os << fmt::format( "n{} = gnd\n", ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) ) );
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  {
+    os << fmt::format( "n{} = vdd\n", ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ) );
   }
 
   ntk.foreach_node( [&]( auto const& n ) {
@@ -115,8 +122,8 @@ void write_bench( Ntk const& ntk, std::ostream& os )
   ntk.foreach_po( [&]( auto const& s, auto i ) {
     if ( ntk.is_constant( ntk.get_node( s ) ) )
     {
-      os << fmt::format( "n{} = {}\n",
-                         ntk.node_to_index( ntk.get_node( s ) ),
+      os << fmt::format( "po{} = {}\n",
+                         i,
                          ntk.is_complemented( s ) ? "vdd" : "gnd" );
     }
     else
