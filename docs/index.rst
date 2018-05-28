@@ -26,6 +26,7 @@ Welcome to mockturtle's documentation!
 
    cut_enumeration
    lut_mapping
+   collapse_mapped
    akers_synthesis
 
 .. toctree::
