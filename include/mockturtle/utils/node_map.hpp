@@ -53,6 +53,16 @@ public:
     static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   }
 
+  node_map( Ntk const& ntk, T const& init_value )
+      : ntk( ntk ),
+        data( ntk.size(), init_value )
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  }
+
   auto& operator[]( node<Ntk> const& n )
   {
     return data[ntk.node_to_index( n )];
