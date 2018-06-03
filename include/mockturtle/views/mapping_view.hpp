@@ -149,7 +149,7 @@ public:
     }
   }
 
-  bool has_mapping()
+  bool has_mapping() const
   {
     return _mapping_storage.mapping_size > 0;
   }
@@ -208,7 +208,7 @@ public:
   }
 
   template<bool enabled = StoreFunction, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
-  kitty::dynamic_truth_table lut_function( node const& n )
+  kitty::dynamic_truth_table lut_function( node const& n ) const
   {
     return _mapping_storage.cache[_mapping_storage.functions[this->node_to_index( n )]];
   }
