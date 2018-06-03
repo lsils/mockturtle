@@ -26,6 +26,7 @@ Welcome to mockturtle's documentation!
 
    cut_enumeration
    lut_mapping
+   collapse_mapped
    mig_algebraic_rewriting
    akers_synthesis
    cleanup

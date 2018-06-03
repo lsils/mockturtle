@@ -23,6 +23,7 @@ endif()
 
 add_subdirectory(include)
 add_subdirectory(lib)
+add_subdirectory(examples)
 
 if(MOCKTURTLE_TEST)
   add_subdirectory(test)
