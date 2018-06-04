@@ -23,38 +23,38 @@ TEST_CASE( "LUT mapping of AIG", "[lut_mapping]" )
   mapping_view mapped_aig{ aig };
 
   CHECK( has_has_mapping_v<mapping_view<aig_network>> );
-  CHECK( has_is_mapped_v<mapping_view<aig_network>> );
+  CHECK( has_is_cell_root_v<mapping_view<aig_network>> );
   CHECK( has_clear_mapping_v<mapping_view<aig_network>> );
-  CHECK( has_num_luts_v<mapping_view<aig_network>> );
+  CHECK( has_num_cells_v<mapping_view<aig_network>> );
   CHECK( has_add_to_mapping_v<mapping_view<aig_network>> );
   CHECK( has_remove_from_mapping_v<mapping_view<aig_network>> );
-  CHECK( has_foreach_lut_fanin_v<mapping_view<aig_network>> );
+  CHECK( has_foreach_cell_fanin_v<mapping_view<aig_network>> );
 
   CHECK( !mapped_aig.has_mapping() );
 
   lut_mapping( mapped_aig );
 
   CHECK( mapped_aig.has_mapping() );
-  CHECK( mapped_aig.num_luts() == 1 );
+  CHECK( mapped_aig.num_cells() == 1 );
 
-  CHECK( !mapped_aig.is_mapped( aig.get_node( a ) ) );
-  CHECK( !mapped_aig.is_mapped( aig.get_node( b ) ) );
-  CHECK( !mapped_aig.is_mapped( aig.get_node( f1 ) ) );
-  CHECK( !mapped_aig.is_mapped( aig.get_node( f2 ) ) );
-  CHECK( !mapped_aig.is_mapped( aig.get_node( f3 ) ) );
-  CHECK( mapped_aig.is_mapped( aig.get_node( f4 ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( a ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( b ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( f1 ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( f2 ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( f3 ) ) );
+  CHECK( mapped_aig.is_cell_root( aig.get_node( f4 ) ) );
 
   mapped_aig.clear_mapping();
 
   CHECK( !mapped_aig.has_mapping() );
-  CHECK( mapped_aig.num_luts() == 0 );
+  CHECK( mapped_aig.num_cells() == 0 );
 
-  CHECK( !mapped_aig.is_mapped( aig.get_node( a ) ) );
-  CHECK( !mapped_aig.is_mapped( aig.get_node( b ) ) );
-  CHECK( !mapped_aig.is_mapped( aig.get_node( f1 ) ) );
-  CHECK( !mapped_aig.is_mapped( aig.get_node( f2 ) ) );
-  CHECK( !mapped_aig.is_mapped( aig.get_node( f3 ) ) );
-  CHECK( !mapped_aig.is_mapped( aig.get_node( f4 ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( a ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( b ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( f1 ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( f2 ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( f3 ) ) );
+  CHECK( !mapped_aig.is_cell_root( aig.get_node( f4 ) ) );
 }
 
 TEST_CASE( "LUT mapping of 2-LUT network", "[lut_mapping]" )
@@ -74,7 +74,7 @@ TEST_CASE( "LUT mapping of 2-LUT network", "[lut_mapping]" )
   mapping_view mapped_aig{ aig };
   lut_mapping( mapped_aig );
 
-  CHECK( mapped_aig.num_luts() == 3 );
+  CHECK( mapped_aig.num_cells() == 3 );
 }
 
 TEST_CASE( "LUT mapping of 8-LUT network", "[lut_mapping]" )
@@ -94,7 +94,7 @@ TEST_CASE( "LUT mapping of 8-LUT network", "[lut_mapping]" )
   mapping_view mapped_aig{ aig };
   lut_mapping( mapped_aig );
 
-  CHECK( mapped_aig.num_luts() == 12 );
+  CHECK( mapped_aig.num_cells() == 12 );
 }
 
 TEST_CASE( "LUT mapping of 64-LUT network", "[lut_mapping]" )
@@ -114,7 +114,7 @@ TEST_CASE( "LUT mapping of 64-LUT network", "[lut_mapping]" )
   mapping_view mapped_aig{ aig };
   lut_mapping( mapped_aig );
 
-  CHECK( mapped_aig.num_luts() == 96 );
+  CHECK( mapped_aig.num_cells() == 96 );
 }
 
 TEST_CASE( "LUT mapping with functions of full adder", "[lut_mapping]" )
@@ -132,12 +132,12 @@ TEST_CASE( "LUT mapping with functions of full adder", "[lut_mapping]" )
   mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
-  CHECK( has_lut_function_v<mapping_view<aig_network, true>> );
-  CHECK( has_set_lut_function_v<mapping_view<aig_network, true>> );
+  CHECK( has_cell_function_v<mapping_view<aig_network, true>> );
+  CHECK( has_set_cell_function_v<mapping_view<aig_network, true>> );
 
-  CHECK( mapped_aig.num_luts() == 2 );
-  CHECK( mapped_aig.is_mapped( aig.get_node( sum ) ) );
-  CHECK( mapped_aig.is_mapped( aig.get_node( carry ) ) );
-  CHECK( mapped_aig.lut_function( aig.get_node( sum ) )._bits[0] == 0x96 );
-  CHECK( mapped_aig.lut_function( aig.get_node( carry ) )._bits[0] == 0x17 );
+  CHECK( mapped_aig.num_cells() == 2 );
+  CHECK( mapped_aig.is_cell_root( aig.get_node( sum ) ) );
+  CHECK( mapped_aig.is_cell_root( aig.get_node( carry ) ) );
+  CHECK( mapped_aig.cell_function( aig.get_node( sum ) )._bits[0] == 0x96 );
+  CHECK( mapped_aig.cell_function( aig.get_node( carry ) )._bits[0] == 0x17 );
 }

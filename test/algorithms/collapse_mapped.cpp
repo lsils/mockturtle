@@ -33,7 +33,7 @@ TEST_CASE( "Mapped AIG into k-LUT network", "[collapse_mapped]" )
   auto const& klut = *klut_opt;
   CHECK( klut.size() == 5 );
   CHECK( klut.num_gates() == 1 );
-  CHECK( mapped_aig.num_luts() == 1 );
+  CHECK( mapped_aig.num_cells() == 1 );
 
   kitty::dynamic_truth_table tt_xor( 2 );
   kitty::create_from_hex_string( tt_xor, "6" );
