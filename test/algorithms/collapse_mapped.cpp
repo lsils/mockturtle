@@ -148,3 +148,64 @@ TEST_CASE( "Mapped AIG with internal output", "[collapse_mapped]" )
   CHECK( klut.node_function( 5 )._bits[0] == 0x7u );
   CHECK( klut.node_function( 6 )._bits[0] == 0x80u );
 }
+
+TEST_CASE( "Mapped AIG with PI outputs", "[collapse_mapped]" )
+{
+  aig_network aig;
+
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  aig.create_po( a );
+  aig.create_po( !b );
+  aig.create_po( c );
+  aig.create_po( !c );
+
+  mapping_view<aig_network, true> mapped_aig{aig};
+  lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
+
+  const auto klut = collapse_mapped_network<klut_network>( mapped_aig );
+
+  CHECK( klut );
+  CHECK( klut->size() == 7 );
+  CHECK( klut->num_gates() == 2 );
+}
+
+TEST_CASE( "Mapped AIG with constant-0 output", "[collapse_mapped]" )
+{
+  aig_network aig;
+
+  aig.create_po( aig.get_constant( false ) );
+
+  mapping_view<aig_network, true> mapped_aig{aig};
+  lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
+
+  const auto klut = collapse_mapped_network<klut_network>( mapped_aig );
+
+  CHECK( klut );
+  CHECK( klut->size() == 2 );
+  CHECK( klut->num_gates() == 0 );
+  klut->foreach_po( [&]( auto const& f ) {
+    CHECK( klut->get_node( f ) == 0 );
+  } );
+}
+
+TEST_CASE( "Mapped AIG with constant-1 output", "[collapse_mapped]" )
+{
+  aig_network aig;
+
+  aig.create_po( aig.get_constant( true ) );
+
+  mapping_view<aig_network, true> mapped_aig{aig};
+  lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
+
+  const auto klut = collapse_mapped_network<klut_network>( mapped_aig );
+
+  CHECK( klut );
+  CHECK( klut->size() == 2 );
+  CHECK( klut->num_gates() == 0 );
+  klut->foreach_po( [&]( auto const& f ) {
+    CHECK( klut->get_node( f ) == 1 );
+  } );
+}
