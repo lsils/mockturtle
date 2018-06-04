@@ -42,8 +42,8 @@ int main( int argc, char** argv )
     ps.cut_enumeration_ps.cut_size++;
     lut_mapping<mapped_network, true>( mapped_aig, ps );
 
-    std::cout << fmt::format( "[i] mapping with cut size {} needs {} LUTs\n", ps.cut_enumeration_ps.cut_size, mapped_aig.num_luts() );
-  } while ( mapped_aig.num_luts() > free_ancillae + 1 );
+    std::cout << fmt::format( "[i] mapping with cut size {} needs {} LUTs\n", ps.cut_enumeration_ps.cut_size, mapped_aig.num_cells() );
+  } while ( mapped_aig.num_cells() > free_ancillae + 1 );
 
   std::vector<uint32_t> node_to_line( aig.size(), 0 );
   aig.foreach_pi( [&]( auto n, auto i ) {
@@ -54,14 +54,14 @@ int main( int argc, char** argv )
 
   topo_view topo{aig};
   topo.foreach_node( [&]( auto n ) {
-    if ( mapped_aig.is_mapped( n ) )
+    if ( mapped_aig.is_cell_root( n ) )
     {
       std::string controls;
-      mapped_aig.foreach_lut_fanin( n, [&]( auto fanin ) {
+      mapped_aig.foreach_cell_fanin( n, [&]( auto fanin ) {
         controls += fmt::format( " v{}", fanin );
       } );
 
-      gates.push_back( fmt::format( "stg[{}]{} v{}\n", kitty::to_hex( mapped_aig.lut_function( n ) ), controls, next_line ) );
+      gates.push_back( fmt::format( "stg[{}]{} v{}\n", kitty::to_hex( mapped_aig.cell_function( n ) ), controls, next_line ) );
       node_to_line[aig.node_to_index( n )] = next_line++;
     }
   } );
