@@ -69,16 +69,17 @@ struct mapping_view_storage<false>
 } // namespace detail
 
 template<typename Ntk, bool StoreFunction>
-inline constexpr bool implements_mapping_interface_v = has_has_mapping_v<Ntk> && (!StoreFunction || has_lut_function_v<Ntk>);
+inline constexpr bool implements_mapping_interface_v = has_has_mapping_v<Ntk> && (!StoreFunction || has_cell_function_v<Ntk>);
 
 /*! \brief Adds mapping API methods to network.
  *
  * This view adds methods of the mapping API methods to a network.  It always
- * adds the functions `has_mapping`, `is_mapped`, `clear_mapping`, `num_luts`, 
- * `add_to_mapping`, `remove_from_mapping`, and `foreach_lut_fanin`.  If the
- * template argument `StoreFunction` is set to `true`, it also adds functions
- * for `lut_function` and `set_lut_function`.  For the latter case, this view
- * requires more memory to also store the LUTs' truth tables.
+ * adds the functions `has_mapping`, `is_cell_root`, `clear_mapping`,
+ * `num_cells`, `add_to_mapping`, `remove_from_mapping`, and
+ * `foreach_cell_fanin`.  If the template argument `StoreFunction` is set to
+ * `true`, it also adds functions for `cell_function` and `set_cell_function`.
+ * For the latter case, this view requires more memory to also store the cells'
+ * truth tables.
  * 
  * **Required network functions:**
  * - `size`
@@ -101,7 +102,7 @@ inline constexpr bool implements_mapping_interface_v = has_has_mapping_v<Ntk> &&
 
       // nodes of aig and mapped_aig are the same
       aig.foreach_node( [&]( auto n ) {
-        std::cout << n << " has mapping? " << mapped_aig.is_mapped( n ) << "\n";
+        std::cout << n << " has mapping? " << mapped_aig.is_cell_root( n ) << "\n";
       } );
    \endverbatim
  */
@@ -154,7 +155,7 @@ public:
     return _mapping_storage.mapping_size > 0;
   }
 
-  bool is_mapped( node const& n ) const
+  bool is_cell_root( node const& n ) const
   {
     return _mapping_storage.mappings[this->node_to_index( n )] != 0;
   }
@@ -166,7 +167,7 @@ public:
     _mapping_storage.mapping_size = 0;
   }
 
-  uint32_t num_luts() const
+  uint32_t num_cells() const
   {
     return _mapping_storage.mapping_size;
   }
@@ -208,19 +209,19 @@ public:
   }
 
   template<bool enabled = StoreFunction, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
-  kitty::dynamic_truth_table lut_function( node const& n ) const
+  kitty::dynamic_truth_table cell_function( node const& n ) const
   {
     return _mapping_storage.cache[_mapping_storage.functions[this->node_to_index( n )]];
   }
 
   template<bool enabled = StoreFunction, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
-  void set_lut_function( node const& n, kitty::dynamic_truth_table const& function )
+  void set_cell_function( node const& n, kitty::dynamic_truth_table const& function )
   {
     _mapping_storage.functions[this->node_to_index( n )] = _mapping_storage.cache.insert( function );
   }
 
   template<typename Fn>
-  void foreach_lut_fanin( node const& n, Fn&& fn ) const
+  void foreach_cell_fanin( node const& n, Fn&& fn ) const
   {
     auto it = _mapping_storage.mappings.begin() + _mapping_storage.mappings[this->node_to_index( n )];
     const auto size = *it++;

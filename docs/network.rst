@@ -151,14 +151,21 @@ Simulate values
 Mapping
 ~~~~~~~
 
+The following methods are used to represent a mapping that is annotated to a
+subject graph.  The interface can, e.g., be used for LUT mapping or standard
+cell mapping.  For a common terminology, we call a collection of nodes that
+belong to the same unit a cell, which has a single root.  The *mapped node* is
+the cell root.  A cell root, and therefore the cell it represents, may be
+assigned a function by means of a truth table.
+
 .. note::
 
    If a network implements `has_mapping` it also needs to implement all other
-   mapping methods, except `lut_function` and `set_lut_function`, which are
+   mapping methods, except `cell_function` and `set_cell_function`, which are
    optional but must be implemented both if one is present.
 
 .. doxygenclass:: mockturtle::network
-   :members: has_mapping, is_mapped, clear_mapping, num_luts, add_to_mapping, remove_from_mapping, lut_function, set_lut_function, foreach_lut_fanin
+   :members: has_mapping, is_cell_root, clear_mapping, num_cells, add_to_mapping, remove_from_mapping, cell_function, set_cell_function, foreach_cell_fanin
    :no-link:
 
 Custom node values

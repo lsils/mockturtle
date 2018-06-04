@@ -431,14 +431,14 @@ public:
   /*! \brief Returns true, if network has a mapping. */
   bool has_mapping() const;
 
-  /*! \brief Returns true, if node is mapped. */
-  bool is_mapped( node const& n ) const;
+  /*! \brief Returns true, if node is the root of a mapped cell. */
+  bool is_cell_root( node const& n ) const;
 
   /*! \brief Clears a mapping. */
   void clear_mapping();
 
-  /*! \brief Number of mapped nodes. */
-  uint32_t num_luts() const;
+  /*! \brief Number of cells, i.e, mapped nodes. */
+  uint32_t num_cells() const;
 
   /*! \brief Adds a node to the mapping. */
   template<typename LeavesIterator>
@@ -447,15 +447,29 @@ public:
   /*! \brief Remove from mapping. */
   void remove_from_mapping( node const& n );
 
-  /*! \brief Gets LUT function */
-  kitty::dynamic_truth_table lut_function( node const& n );
+  /*! \brief Gets function of the cell.
+   *
+   * The parameter `n` is a node that must be a cell root.
+   */
+  kitty::dynamic_truth_table cell_function( node const& n );
 
-  /*! \brief Sets LUT function. */
-  void set_lut_function( node const& n, kitty::dynamic_truth_table const& function );
+  /*! \brief Sets cell function.
+   *
+   * The parameter `n` is a node that must be a cell root.
+   */
+  void set_cell_function( node const& n, kitty::dynamic_truth_table const& function );
 
-  /*! \brief Iterators over node's mapping fan-ins. */
+  /*! \brief Iterators over cell's fan-ins.
+   * The parameter `n` is a node that must be a cell root.
+   * The paramater ``fn`` is any callable that must have one of the
+   * following four signatures.
+   * - ``void(node const&)``
+   * - ``void(node const&, uint32_t)``
+   * - ``bool(node const&)``
+   * - ``bool(node const&, uint32_t)``
+   */
   template<typename Fn>
-  void foreach_lut_fanin( node const& n, Fn&& fn ) const;
+  void foreach_cell_fanin( node const& n, Fn&& fn ) const;
 #pragma endregion
 
 #pragma region Custom node values

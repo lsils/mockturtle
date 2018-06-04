@@ -367,7 +367,7 @@ private:
 
       if constexpr ( StoreFunction )
       {
-        ntk.set_lut_function( n, cuts.truth_table( cuts.cuts( index ).best() ) );
+        ntk.set_cell_function( n, cuts.truth_table( cuts.cuts( index ).best() ) );
       }
     }
   }
@@ -460,7 +460,7 @@ void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {} )
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_clear_mapping_v<Ntk>, "Ntk does not implement the clear_mapping method" );
   static_assert( has_add_to_mapping_v<Ntk>, "Ntk does not implement the add_to_mapping method" );
-  static_assert( !StoreFunction || has_set_lut_function_v<Ntk>, "Ntk does not implement the set_lut_function method" );
+  static_assert( !StoreFunction || has_set_cell_function_v<Ntk>, "Ntk does not implement the set_cell_function method" );
 
   detail::lut_mapping_impl<Ntk, StoreFunction, CutData> p( ntk, ps );
   p.run();
