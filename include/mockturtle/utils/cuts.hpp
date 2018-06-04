@@ -522,12 +522,12 @@ void cut_set<CutType, MaxCuts>::insert( CutType const& cut )
 template<typename CutType, int MaxCuts>
 void cut_set<CutType, MaxCuts>::update_best( uint32_t index )
 {
-  auto* best = _pcuts[0];
-  for ( auto i = 0u; i < index; ++i )
+  auto* best = _pcuts[index];
+  for ( auto i = index; i > 0; --i )
   {
-    _pcuts[i] = _pcuts[i + 1];
+    _pcuts[i] = _pcuts[i - 1];
   }
-  _pcuts[index] = best;
+  _pcuts[0] = best;
 }
 
 template<typename CutType, int MaxCuts>
