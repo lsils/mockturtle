@@ -34,6 +34,7 @@
 
 #include "traits.hpp"
 #include "algorithms/akers_synthesis.hpp"
+#include "algorithms/cleanup.hpp"
 #include "algorithms/collapse_mapped.hpp"
 #include "algorithms/cut_enumeration.hpp"
 #include "algorithms/cut_rewriting.hpp"
