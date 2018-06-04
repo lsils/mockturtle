@@ -34,6 +34,7 @@
 
 #include "traits.hpp"
 #include "algorithms/akers_synthesis.hpp"
+#include "algorithms/collapse_mapped.hpp"
 #include "algorithms/cut_enumeration.hpp"
 #include "algorithms/lut_mapping.hpp"
 #include "generators/arithmetic.hpp"
@@ -45,6 +46,7 @@
 #include "networks/mig.hpp"
 #include "utils/cuts.hpp"
 #include "utils/mixed_radix.hpp"
+#include "utils/node_map.hpp"
 #include "utils/truth_table_cache.hpp"
 #include "views/immutable_view.hpp"
 #include "views/mapping_view.hpp"
