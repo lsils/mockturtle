@@ -286,6 +286,7 @@ private:
   {
     constexpr auto mf_eps{0.005f};
 
+    bool mapped{map_refs[index] > 0};
     float flow;
     uint32_t time{0};
     int32_t best_cut{-1};
@@ -293,7 +294,7 @@ private:
     uint32_t best_time{std::numeric_limits<uint32_t>::max()};
     int32_t cut_index{-1};
 
-    if ( ela && map_refs[index] )
+    if ( ela && mapped )
     {
       cut_deref( cuts.cuts( index )[0] );
     }
@@ -323,7 +324,7 @@ private:
 
     //std::cout << "Best cut for " << index << " = " << best_cut << std::endl;
 
-    if ( ela && map_refs[index] )
+    if ( ela && mapped )
     {
       cut_ref( cuts.cuts( index )[best_cut] );
     }
@@ -373,7 +374,7 @@ private:
 
   void print_state()
   {
-    for ( auto i = 0; i < ntk.size(); ++i )
+    for ( auto i = 0u; i < ntk.size(); ++i )
     {
       std::cout << fmt::format( "*** Obj = {:>3} (node = {:>3})  FlowRefs = {:5.2f}  MapRefs = {:>2}  Flow = {:5.2f}  Delay = {:>3}\n", i, ntk.index_to_node( i ), flow_refs[i], map_refs[i], flows[i], delays[i] );
       //std::cout << cuts.cuts( i );

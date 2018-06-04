@@ -107,15 +107,52 @@ public:
     } );
 
     /* constants */
-    node_to_signal[ntk.get_constant( false )] = dest.get_constant( false );
+    auto add_constant_to_map = [&]( bool value ) {
+      const auto n = ntk.get_node( ntk.get_constant( value ) );
+      switch ( node_driver_type[n] )
+      {
+      default:
+      case driver_type::none:
+      case driver_type::pos:
+        node_to_signal[n] = dest.get_constant( value );
+        break;
+
+      case driver_type::neg:
+        node_to_signal[n] = dest.get_constant( !value );
+        break;
+
+      case driver_type::mixed:
+        node_to_signal[n] = dest.get_constant( value );
+        opposites[n] = dest.get_constant( !value );
+        break;
+      }
+    };
+
+    add_constant_to_map( false );
     if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
     {
-      node_to_signal[ntk.get_constant( true )] = dest.get_constant( true );
+      add_constant_to_map( true );
     }
 
     /* primary inputs */
     ntk.foreach_pi( [&]( auto n ) {
-      node_to_signal[n] = dest.create_pi();
+      switch ( node_driver_type[n] )
+      {
+      default:
+      case driver_type::none:
+      case driver_type::pos:
+        node_to_signal[n] = dest.create_pi();
+        break;
+
+      case driver_type::neg:
+        node_to_signal[n] = dest.create_not( dest.create_pi() );
+        break;
+
+      case driver_type::mixed:
+        node_to_signal[n] = dest.create_pi();
+        opposites[n] = dest.create_not( node_to_signal[n] );
+        break;
+      }
     } );
 
     /* nodes */
@@ -150,17 +187,9 @@ public:
 
     /* outputs */
     ntk.foreach_po( [&]( auto const& f ) {
-      if ( ntk.is_complemented( f ) )
+      if ( ntk.is_complemented( f ) && node_driver_type[f] == driver_type::mixed )
       {
-        if ( node_driver_type[f] == driver_type::neg )
-        {
-          dest.create_po( node_to_signal[f] );
-        }
-        else
-        {
-          assert( node_driver_type[f] == driver_type::mixed );
-          dest.create_po( opposites[ntk.get_node( f )] );
-        }
+        dest.create_po( opposites[ntk.get_node( f )] );
       }
       else
       {
@@ -220,6 +249,7 @@ std::optional<NtkDest> collapse_mapped_network( NtkSource const& ntk )
   static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
 
   static_assert( has_has_mapping_v<NtkSource>, "NtkSource does not implement the has_mapping method" );
+  static_assert( has_num_gates_v<NtkSource>, "NtkSource does not implement the num_gates method" );
   static_assert( has_get_constant_v<NtkSource>, "NtkSource does not implement the get_constant method" );
   static_assert( has_get_node_v<NtkSource>, "NtkSource does not implement the get_node method" );
   static_assert( has_foreach_pi_v<NtkSource>, "NtkSource does not implement the foreach_pi method" );
@@ -237,7 +267,7 @@ std::optional<NtkDest> collapse_mapped_network( NtkSource const& ntk )
   static_assert( has_create_node_v<NtkDest>, "NtkDest does not implement the create_node method" );
   static_assert( has_create_not_v<NtkDest>, "NtkDest does not implement the create_not method" );
 
-  if ( !ntk.has_mapping() )
+  if ( !ntk.has_mapping() && ntk.num_gates() > 0 )
   {
     return std::nullopt;
   }
