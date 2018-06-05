@@ -35,6 +35,7 @@
 #include "traits.hpp"
 #include "algorithms/akers_synthesis.hpp"
 #include "algorithms/cut_enumeration.hpp"
+#include "algorithms/lut_mapping.hpp"
 #include "generators/arithmetic.hpp"
 #include "io/aiger_reader.hpp"
 #include "io/bench_reader.hpp"
@@ -46,4 +47,5 @@
 #include "utils/mixed_radix.hpp"
 #include "utils/truth_table_cache.hpp"
 #include "views/immutable_view.hpp"
+#include "views/mapping_view.hpp"
 #include "views/topo_view.hpp"

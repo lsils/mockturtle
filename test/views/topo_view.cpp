@@ -34,7 +34,7 @@ TEST_CASE( "create a topo_view on an AIG without output", "[topo_view]" )
 
   const auto x1 = aig.create_pi();
   const auto x2 = aig.create_pi();
-  const auto f = aig.create_xor( x1, x2 );
+  aig.create_xor( x1, x2 );
 
   std::set<node<aig_network>> nodes;
   aig.foreach_node( [&nodes]( auto node ) { nodes.insert( node ); } );
