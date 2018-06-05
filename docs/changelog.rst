@@ -15,7 +15,7 @@ v0.1 (not yet released)
   `#2 <https://github.com/lsils/mockturtle/pull/2>`_
   `#7 <https://github.com/lsils/mockturtle/pull/7>`_
   `#9 <https://github.com/lsils/mockturtle/pull/9>`_
-  `#13 <https://github.com/lsils/mockturtle/pull/12>`_
+  `#13 <https://github.com/lsils/mockturtle/pull/13>`_
 
 * Views: `topo_view`, `immutable_view`
   `#3 <https://github.com/lsils/mockturtle/pull/3>`_
@@ -30,4 +30,4 @@ v0.1 (not yet released)
 * Utility data structures: `truth_table_cache`, `cut`, `cut_set`, `node_map`
   `#1 <https://github.com/lsils/mockturtle/pull/1>`_
   `#2 <https://github.com/lsils/mockturtle/pull/2>`_
-  `#13 <https://github.com/lsils/mockturtle/pull/12>`_
+  `#13 <https://github.com/lsils/mockturtle/pull/13>`_
