@@ -1,6 +1,8 @@
 Collapse mapped network
 -----------------------
 
+**Header:** ``mockturtle/algorithms/collapse_mapped.hpp``
+
 The following example shows how to collapse a mapped network into a
 :math:`k`-LUT network:
 

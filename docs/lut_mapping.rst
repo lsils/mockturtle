@@ -1,6 +1,8 @@
 LUT mapping
 -----------
 
+**Header:** ``mockturtle/algorithms/lut_mapping.hpp``
+
 LUT mapping with cut size :math:`k` partitions a logic network into mapped
 nodes and unmapped nodes, where a mapped node :math:`n` is assigned some cut
 :math:`(n, L)` such that the following conditions hold: i) each node that

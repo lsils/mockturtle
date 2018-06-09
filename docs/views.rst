@@ -13,17 +13,23 @@ algorithm.  Several views are implemented in mockturtle.
 `topo_view`: Ensure topological order
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+**Header:** ``mockturtle/views/topo_view.hpp``
+
 .. doxygenclass:: mockturtle::topo_view
    :members:
 
 `mapping_view`: Add mapping interface methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+**Header:** ``mockturtle/views/mapping_view.hpp``
+
 .. doxygenclass:: mockturtle::mapping_view
    :members:
 
 `immutable_view`: Prevent network changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/immutable_view.hpp``
 
 .. doxygenclass:: mockturtle::immutable_view
    :members:
