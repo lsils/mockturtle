@@ -11,7 +11,8 @@ add_library(mockturtle_fmt INTERFACE)
 target_include_directories(mockturtle_fmt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/fmt)
 target_compile_definitions(mockturtle_fmt INTERFACE FMT_HEADER_ONLY)
 
-add_subdirectory(kitty EXCLUDE_FROM_ALL)
+add_library(kitty INTERFACE) # v0.4
+target_include_directories(kitty INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/kitty)
 
 add_library(rang INTERFACE)
 target_include_directories(rang INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/rang)
