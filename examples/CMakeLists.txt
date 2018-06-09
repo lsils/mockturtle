@@ -4,6 +4,3 @@ target_link_libraries(stg_mapping PUBLIC mockturtle)
 
 add_executable(mighty mighty.cpp)
 target_link_libraries(mighty PUBLIC mockturtle)
-
-add_executable(lut_resynthesis lut_resynthesis.cpp)
-target_link_libraries(lut_resynthesis PUBLIC mockturtle)

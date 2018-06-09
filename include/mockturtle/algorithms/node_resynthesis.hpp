@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file lut_resynthesis.hpp
-  \brief LUT resynthesis
+  \file node_resynthesis.hpp
+  \brief Node resynthesis
 
   \author Mathias Soeken
 */
@@ -43,10 +43,10 @@ namespace detail
 {
 
 template<class NtkDest, class NtkSrc, class ResynthesisFn>
-class lut_resynthesis_impl
+class node_resynthesis_impl
 {
 public:
-  lut_resynthesis_impl( NtkSrc const& ntk, ResynthesisFn&& resynthesis_fn )
+  node_resynthesis_impl( NtkSrc const& ntk, ResynthesisFn&& resynthesis_fn )
       : ntk( ntk ),
         resynthesis_fn( resynthesis_fn )
   {
@@ -98,10 +98,19 @@ private:
 
 } /* namespace detail */
 
+/*! \brief Node resynthesis
+ *
+ * This algorithm takes as input a network (of type `NtkSrc`) and creates a new
+ * network (of type `NtkDest`), by translating each node of the input network
+ * into a subnetwork for the output network.  To find a new subnetwork, the
+ * algorithm uses a resynthesis function that takes as input the input node's
+ * truth table.  This algorithm can for example be used to translate k-LUT
+ * networks into AIGs or MIGs.
+ */
 template<class NtkDest, class NtkSrc, class ResynthesisFn>
-NtkDest lut_resynthesis( NtkSrc const& ntk, ResynthesisFn&& resynthesis_fn )
+NtkDest node_resynthesis( NtkSrc const& ntk, ResynthesisFn&& resynthesis_fn )
 {
-  detail::lut_resynthesis_impl<NtkDest, NtkSrc, ResynthesisFn> p( ntk, resynthesis_fn );
+  detail::node_resynthesis_impl<NtkDest, NtkSrc, ResynthesisFn> p( ntk, resynthesis_fn );
   return p.run();
 }
 
