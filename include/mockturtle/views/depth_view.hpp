@@ -75,12 +75,12 @@ namespace mockturtle
    \endverbatim
  */
 template<typename Ntk, bool has_depth_interface = has_depth_v<Ntk>&& has_level_v<Ntk>>
-struct depth_view
+class depth_view
 {
 };
 
 template<typename Ntk>
-struct depth_view<Ntk, true> : public Ntk
+class depth_view<Ntk, true> : public Ntk
 {
 public:
   depth_view( Ntk const& ntk ) : Ntk( ntk )
@@ -89,7 +89,7 @@ public:
 };
 
 template<typename Ntk>
-struct depth_view<Ntk, false> : public Ntk
+class depth_view<Ntk, false> : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
