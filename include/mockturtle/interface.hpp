@@ -227,18 +227,19 @@ public:
 #pragma endregion
 
 #pragma region Restructuring
-  /*! \brief Replaces one node in a network by another one.
+  /*! \brief Replaces one node in a network by another signal.
    *
    * This method causes all nodes that have ``old_node`` as fanin to have
-   * `new_node` as fanin instead.  Afterwards, the fan-out count of
+   * `new_signal` as fanin instead.  In doing so, a possible polarity of
+   * `new_signal` is taken into account.  Afterwards, the fan-out count of
    * ``old_node`` is guaranteed to be 0.
    *
    * It does not update custom values or visited flags of a node.
    *
    * \brief old_node Node to replace
-   * \brief new_node Node to replace ``old_node`` with
+   * \brief new_signal Signal to replace ``old_node`` with
    */
-  void substitute_node( node const& old_node, node const& new_node );
+  void substitute_node( node const& old_node, signal const& new_signal );
 #pragma endregion
 
 #pragma region Structural properties
@@ -263,6 +264,18 @@ public:
 
   /*! \brief Returns the fanout size of a node. */
   uint32_t fanout_size( node const& n ) const;
+
+  /*! \brief Returns the length of the critical path. */
+  uint32_t depth() const;
+
+  /*! \brief Returns the level of a node. */
+  uint32_t level( node const& n ) const;
+
+  /*! \brief Retuns whether node is a majority-of-3 gate. */
+  bool is_maj( node const& n ) const;
+
+  /*! \brief Retuns whether node is a if-then-else gate. */
+  bool is_ite( node const& n ) const;
 #pragma endregion
 
 #pragma region Functional properties
@@ -485,6 +498,17 @@ public:
 
   /*! \brief Sets the visited value of a node. */
   uint32_t set_visited( node const& n, uint32_t v ) const;
+#pragma endregion
+
+#pragma region General methods
+  /*! \brief Restores a consistent state.
+   *
+   * It is advised to implement this method for every network implementation
+   * and keep it empty.  Network interfaces are typically always in a
+   * consistent state.  The method is used in views, for which the state may
+   * become inconsistent if the underlying network changed.
+   */
+  void update();
 #pragma endregion
 
 };

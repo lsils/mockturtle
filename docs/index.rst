@@ -26,8 +26,10 @@ Welcome to mockturtle's documentation!
 
    cut_enumeration
    lut_mapping
+   mig_algebraic_rewriting
    collapse_mapped
    akers_synthesis
+   cleanup
 
 .. toctree::
    :maxdepth: 2

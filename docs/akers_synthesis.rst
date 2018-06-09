@@ -1,4 +1,4 @@
-Akers Synthesis 
+Akers synthesis 
 ---------------
 
 **Header:** ``mockturtle/algorithms/akers_synthesis.hpp``

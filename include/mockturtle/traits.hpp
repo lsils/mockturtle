@@ -64,6 +64,21 @@ struct is_network_type<Ntk, std::enable_if_t<
 template<class Ntk>
 inline constexpr bool is_network_type_v = is_network_type<Ntk>::value;
 
+#pragma region is_topologically_sorted
+template<class Ntk, class = void>
+struct is_topologically_sorted : std::false_type
+{
+};
+
+template<class Ntk>
+struct is_topologically_sorted<Ntk, std::enable_if_t<Ntk::is_topologically_sorted, std::void_t<decltype( Ntk::is_topologically_sorted )>>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool is_topologically_sorted_v = is_topologically_sorted<Ntk>::value;
+#pragma endregion
+
 #pragma region has_get_constant
 template<class Ntk, class = void>
 struct has_get_constant : std::false_type
@@ -394,6 +409,21 @@ template<class Ntk>
 inline constexpr bool has_size_v = has_size<Ntk>::value;
 #pragma endregion
 
+#pragma region has_substitute_node
+template<class Ntk, class = void>
+struct has_substitute_node : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_substitute_node<Ntk, std::void_t<decltype( std::declval<Ntk>().substitute_node( std::declval<node<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_substitute_node_v = has_substitute_node<Ntk>::value;
+#pragma endregion
+
 #pragma region has_num_pis
 template<class Ntk, class = void>
 struct has_num_pis : std::false_type
@@ -467,6 +497,66 @@ struct has_fanout_size<Ntk, std::void_t<decltype( std::declval<Ntk>().fanout_siz
 
 template<class Ntk>
 inline constexpr bool has_fanout_size_v = has_fanout_size<Ntk>::value;
+#pragma endregion
+
+#pragma region has_depth
+template<class Ntk, class = void>
+struct has_depth : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_depth<Ntk, std::void_t<decltype( std::declval<Ntk>().depth() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_depth_v = has_depth<Ntk>::value;
+#pragma endregion
+
+#pragma region has_level
+template<class Ntk, class = void>
+struct has_level : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_level<Ntk, std::void_t<decltype( std::declval<Ntk>().level( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_level_v = has_level<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_maj
+template<class Ntk, class = void>
+struct has_is_maj : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_maj<Ntk, std::void_t<decltype( std::declval<Ntk>().is_maj( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_maj_v = has_is_maj<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_ite
+template<class Ntk, class = void>
+struct has_is_ite : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_ite<Ntk, std::void_t<decltype( std::declval<Ntk>().is_ite( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_ite_v = has_is_ite<Ntk>::value;
 #pragma endregion
 
 #pragma region has_node_function
@@ -887,6 +977,21 @@ struct has_set_visited<Ntk, std::void_t<decltype( std::declval<Ntk>().set_visite
 
 template<class Ntk>
 inline constexpr bool has_set_visited_v = has_set_visited<Ntk>::value;
+#pragma endregion
+
+#pragma region has_update
+template<class Ntk, class = void>
+struct has_update : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update<Ntk, std::void_t<decltype( std::declval<Ntk>().update() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_v = has_update<Ntk>::value;
 #pragma endregion
 
 /*! \brief SFINAE based on iterator type (for compute functions).

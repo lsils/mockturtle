@@ -312,6 +312,43 @@ public:
   }
 #pragma endregion
 
+#pragma region Restructuring
+  void substitute_node( node const& old_node, signal const& new_signal )
+  {
+    /* find all parents from old_node */
+    for ( auto& n : _storage->nodes )
+    {
+      for ( auto& child : n.children )
+      {
+        if ( child.index == old_node )
+        {
+          child.index = new_signal.index;
+          child.weight ^= new_signal.complement;
+
+          // increment fan-in of new node
+          _storage->nodes[new_signal.index].data[0].h1++;
+        }
+      }
+    }
+
+    /* check outputs */
+    for ( auto& output : _storage->outputs )
+    {
+      if ( output.index == old_node )
+      {
+        output.index = new_signal.index;
+        output.weight ^= new_signal.complement;
+
+        // increment fan-in of new node
+        _storage->nodes[new_signal.index].data[0].h1++;
+      }
+    }
+
+    // reset fan-in of old node
+    _storage->nodes[old_node].data[0].h1 = 0;
+  }
+#pragma endregion
+
 #pragma region Structural properties
   uint32_t size() const
   {
@@ -343,6 +380,11 @@ public:
   uint32_t fanout_size( node const& n ) const
   {
     return _storage->nodes[n].data[0].h1;
+  }
+
+  bool is_maj( node const& n ) const
+  {
+    return n > 0 && !is_pi( n );
   }
 #pragma endregion
 
@@ -532,6 +574,12 @@ public:
   void set_visited( node const& n, uint32_t v ) const
   {
     _storage->nodes[n].data[1].h1 = v;
+  }
+#pragma endregion
+
+#pragma region General methods
+  void update()
+  {
   }
 #pragma endregion
 

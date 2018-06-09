@@ -117,7 +117,7 @@ Structural properties
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: size, num_pis, num_pos, num_gates, fanin_size, fanout_size
+   :members: size, num_pis, num_pos, num_gates, fanin_size, fanout_size, depth, level, is_maj, is_ite
    :no-link:
 
 Functional properties
@@ -200,4 +200,11 @@ change the structure of the network or any other *visible* property.
 
 .. doxygenclass:: mockturtle::network
    :members: clear_visited, visited, set_visited
+   :no-link:
+
+General methods
+~~~~~~~~~~~~~~~
+
+.. doxygenclass:: mockturtle::network
+   :members: update
    :no-link:

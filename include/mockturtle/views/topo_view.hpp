@@ -33,14 +33,20 @@
 #pragma once
 
 #include <cassert>
+#include <optional>
 #include <vector>
 
-#include "../traits.hpp"
 #include "../networks/detail/foreach.hpp"
+#include "../traits.hpp"
 #include "immutable_view.hpp"
 
 namespace mockturtle
 {
+
+template<class Ntk, bool sorted = is_topologically_sorted_v<Ntk>>
+class topo_view
+{
+};
 
 /*! \brief Ensures topological order for the `foreach_node` interface method.
  *
@@ -82,7 +88,7 @@ namespace mockturtle
    \endverbatim
  */
 template<typename Ntk>
-class topo_view : public immutable_view<Ntk>
+class topo_view<Ntk, false> : public immutable_view<Ntk>
 {
 public:
   using storage = typename Ntk::storage;
@@ -105,35 +111,29 @@ public:
     static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
 
-    ntk.clear_values();
-    topo_order.reserve( ntk.size() );
+    update();
+  }
 
-    /* constants and PIs */
-    const auto c0 = ntk.get_node( ntk.get_constant( false ) );
-    topo_order.push_back( c0 );
-    ntk.set_value( c0, 2 );
+  /*! \brief Default constructor.
+   *
+   * Constructs topological view, but only for the transitive fan-in starting
+   * from a given start signal.
+   */
+  topo_view( Ntk const& ntk, typename Ntk::signal const& start_signal )
+      : immutable_view<Ntk>( ntk ),
+        start_signal( start_signal )
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+    static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+    static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
+    static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
+    static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
 
-    if ( const auto c1 = ntk.get_node( ntk.get_constant( true ) ); ntk.value( c1 ) != 2 )
-    {
-      topo_order.push_back( c1 );
-      ntk.set_value( c1, 2 );
-    }
-
-    ntk.foreach_pi( [this, &ntk]( auto n ) {
-      if ( ntk.value( n ) != 2 )
-      {
-        topo_order.push_back( n );
-        ntk.set_value( n, 2 );
-      }
-    } );
-
-    ntk.foreach_po( [this, &ntk]( auto f, auto ) {
-      /* node was already visited */
-      if ( ntk.value( ntk.get_node( f ) ) == 2 )
-        return;
-
-      create_topo_rec( ntk.get_node( f ) );
-    } );
+    update();
   }
 
   /*! \brief Reimplementation of `foreach_node`. */
@@ -143,6 +143,72 @@ public:
     detail::foreach_element( topo_order.begin(),
                              topo_order.end(),
                              fn );
+  }
+
+  /*! \brief Reimplementation of `foreach_po`.
+   *
+   * If `start_signal` is provided in constructor, only this is returned as
+   * primary output, otherwise reverts to original `foreach_po` implementation.
+   */
+  template<typename Fn>
+  void foreach_po( Fn&& fn ) const
+  {
+    if ( start_signal )
+    {
+      std::vector<signal> signals( 1, *start_signal );
+      detail::foreach_element( signals.begin(), signals.end(), fn );
+    }
+    else
+    {
+      Ntk::foreach_po( fn );
+    }
+  }
+
+  uint32_t num_pos() const
+  {
+    return start_signal ? 1 : Ntk::num_pos();
+  }
+
+  void update()
+  {
+    this->clear_values();
+    topo_order.reserve( this->size() );
+
+    /* constants and PIs */
+    const auto c0 = this->get_node( this->get_constant( false ) );
+    topo_order.push_back( c0 );
+    this->set_value( c0, 2 );
+
+    if ( const auto c1 = this->get_node( this->get_constant( true ) ); this->value( c1 ) != 2 )
+    {
+      topo_order.push_back( c1 );
+      this->set_value( c1, 2 );
+    }
+
+    this->foreach_pi( [this]( auto n ) {
+      if ( this->value( n ) != 2 )
+      {
+        topo_order.push_back( n );
+        this->set_value( n, 2 );
+      }
+    } );
+
+    if ( start_signal )
+    {
+      if ( this->value( this->get_node( *start_signal ) ) == 2 )
+        return;
+      create_topo_rec( this->get_node( *start_signal ) );
+    }
+    else
+    {
+      Ntk::foreach_po( [this]( auto f ) {
+        /* node was already visited */
+        if ( this->value( this->get_node( f ) ) == 2 )
+          return;
+
+        create_topo_rec( this->get_node( f ) );
+      } );
+    }
   }
 
 private:
@@ -172,6 +238,22 @@ private:
 
 private:
   std::vector<node> topo_order;
+  std::optional<signal> start_signal;
 };
+
+template<typename Ntk>
+class topo_view<Ntk, true> : public Ntk
+{
+public:
+  topo_view( Ntk const& ntk ) : Ntk( ntk )
+  {
+  }
+};
+
+template<class T>
+topo_view(T const&) -> topo_view<T>;
+
+template<class T>
+topo_view(T const&, typename T::signal const&) -> topo_view<T>;
 
 } // namespace mockturtle

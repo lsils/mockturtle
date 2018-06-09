@@ -27,6 +27,7 @@ Node map
 
    node_map
    operator[]
+   reset
 
 .. doxygenclass:: mockturtle::node_map
    :members:
