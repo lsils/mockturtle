@@ -42,11 +42,11 @@ namespace mockturtle
 namespace detail
 {
 
-template<class NtkDest, class NtkSrc, class ResynthesisFn>
+template<class NtkDest, class NtkSource, class ResynthesisFn>
 class node_resynthesis_impl
 {
 public:
-  node_resynthesis_impl( NtkSrc const& ntk, ResynthesisFn&& resynthesis_fn )
+  node_resynthesis_impl( NtkSource const& ntk, ResynthesisFn&& resynthesis_fn )
       : ntk( ntk ),
         resynthesis_fn( resynthesis_fn )
   {
@@ -55,7 +55,7 @@ public:
   NtkDest run()
   {
     NtkDest ntk_dest;
-    node_map<signal<NtkDest>, NtkSrc> node2new( ntk );
+    node_map<signal<NtkDest>, NtkSource> node2new( ntk );
 
     /* map constants */
     node2new[ntk.get_node( ntk.get_constant( false ) )] = ntk_dest.get_constant( false );
@@ -92,25 +92,72 @@ public:
   }
 
 private:
-  NtkSrc const& ntk;
+  NtkSource const& ntk;
   ResynthesisFn&& resynthesis_fn;
 };
 
 } /* namespace detail */
 
-/*! \brief Node resynthesis
+/*! \brief Node resynthesis algorithm.
  *
- * This algorithm takes as input a network (of type `NtkSrc`) and creates a new
- * network (of type `NtkDest`), by translating each node of the input network
- * into a subnetwork for the output network.  To find a new subnetwork, the
- * algorithm uses a resynthesis function that takes as input the input node's
- * truth table.  This algorithm can for example be used to translate k-LUT
- * networks into AIGs or MIGs.
+ * This algorithm takes as input a network (of type `NtkSource`) and creates a
+ * new network (of type `NtkDest`), by translating each node of the input
+ * network into a subnetwork for the output network.  To find a new subnetwork,
+ * the algorithm uses a resynthesis function that takes as input the input
+ * node's truth table.  This algorithm can for example be used to translate
+ * k-LUT networks into AIGs or MIGs.
+ *
+ * The resynthesis function must be of type `NtkDest::signal(NtkDest&,
+ * kitty::dynamic_truth_table const&, LeavesIterator, LeavesIterator)` where
+ * `LeavesIterator` can be dereferenced to a `NtkDest::signal`.  The last two
+ * parameters compose an iterator pair where the distance matches the number of
+ * variables of the truth table that is passed as second parameter.
+ *
+ * **Required network functions for parameter ntk (type NtkSource):**
+ * - `get_node`
+ * - `get_constant`
+ * - `foreach_pi`
+ * - `foreach_node`
+ * - `is_constant`
+ * - `is_pi`
+ * - `is_complemented`
+ * - `foreach_fanin`
+ * - `node_function`
+ * - `foreach_po`
+ * 
+ * **Required network functions for return value (type NtkDest):**
+ * - `get_constant`
+ * - `create_pi`
+ * - `create_not`
+ * - `create_po`
+ *
+ * \param ntk Input network of type `NtkSource`
+ * \param resynthesis_fn Resynthesis function
+ * \return An equivalent network of type `NtkDest`
  */
-template<class NtkDest, class NtkSrc, class ResynthesisFn>
-NtkDest node_resynthesis( NtkSrc const& ntk, ResynthesisFn&& resynthesis_fn )
+template<class NtkDest, class NtkSource, class ResynthesisFn>
+NtkDest node_resynthesis( NtkSource const& ntk, ResynthesisFn&& resynthesis_fn )
 {
-  detail::node_resynthesis_impl<NtkDest, NtkSrc, ResynthesisFn> p( ntk, resynthesis_fn );
+  static_assert( is_network_type_v<NtkSource>, "NtkSource is not a network type" );
+  static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
+
+  static_assert( has_get_node_v<NtkSource>, "NtkSource does not implement the get_node method" );
+  static_assert( has_get_constant_v<NtkSource>, "NtkSource does not implement the get_constant method" );
+  static_assert( has_foreach_pi_v<NtkSource>, "NtkSource does not implement the foreach_pi method" );
+  static_assert( has_foreach_node_v<NtkSource>, "NtkSource does not implement the foreach_node method" );
+  static_assert( has_is_constant_v<NtkSource>, "NtkSource does not implement the is_constant method" );
+  static_assert( has_is_pi_v<NtkSource>, "NtkSource does not implement the is_pi method" );
+  static_assert( has_is_complemented_v<NtkSource>, "NtkSource does not implement the is_complemented method" );
+  static_assert( has_foreach_fanin_v<NtkSource>, "NtkSource does not implement the foreach_fanin method" );
+  static_assert( has_node_function_v<NtkSource>, "NtkSource does not implement the node_function method" );
+  static_assert( has_foreach_po_v<NtkSource>, "NtkSource does not implement the foreach_po method" );
+
+  static_assert( has_get_constant_v<NtkDest>, "NtkDest does not implement the get_constant method" );
+  static_assert( has_create_pi_v<NtkDest>, "NtkDest does not implement the create_pi method" );
+  static_assert( has_create_not_v<NtkDest>, "NtkDest does not implement the create_not method" );
+  static_assert( has_create_po_v<NtkDest>, "NtkDest does not implement the create_po method" );
+
+  detail::node_resynthesis_impl<NtkDest, NtkSource, ResynthesisFn> p( ntk, resynthesis_fn );
   return p.run();
 }
 
