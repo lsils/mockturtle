@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "../traits.hpp"
+#include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
 
 namespace mockturtle
@@ -50,7 +51,6 @@ namespace mockturtle
  *
  * **Required network functions:**
  * - `size`
- * - `node_to_index`
  * - `get_node`
  * - `clear_visited`
  * - `visited`
@@ -96,11 +96,10 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  depth_view( Ntk const& ntk ) : Ntk( ntk )
+  depth_view( Ntk const& ntk ) : Ntk( ntk ), _levels( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
-    static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
     static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
@@ -118,13 +117,12 @@ public:
 
   uint32_t level( node const& n ) const
   {
-    return _levels[this->node_to_index( n )];
+    return _levels[n];
   }
 
   void update()
   {
-    _levels.clear();
-    _levels.resize( this->size(), 0 );
+    _levels.reset( 0 );
     compute_levels();
   }
 
@@ -137,7 +135,7 @@ private:
     if ( this->is_constant( n ) || this->is_pi( n ) )
     {
       this->set_visited( n, 1 );
-      return _levels[this->node_to_index( n )] = 0;
+      return _levels[n] = 0;
     }
 
     uint32_t level{0};
@@ -146,7 +144,7 @@ private:
     } );
 
     this->set_visited( n, 1 );
-    return _levels[this->node_to_index( n )] = level + 1;
+    return _levels[n] = level + 1;
   }
 
   void compute_levels()
@@ -158,7 +156,7 @@ private:
     } );
   }
 
-  std::vector<uint32_t> _levels;
+  node_map<uint32_t, Ntk> _levels;
   uint32_t _depth;
 };
 
