@@ -150,7 +150,7 @@ public:
     }
   }
 
-  bool has_mapping()
+  bool has_mapping() const
   {
     return _mapping_storage.mapping_size > 0;
   }
