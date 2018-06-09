@@ -4,6 +4,8 @@ Utility data structures
 Truth table cache
 ~~~~~~~~~~~~~~~~~
 
+**Header:** ``mockturtle/utils/truth_table_cache.hpp``
+
 .. doc_overview_table:: classmockturtle_1_1truth__table__cache
    :column: Method
 
@@ -18,6 +20,8 @@ Truth table cache
 Node map
 ~~~~~~~~
 
+**Header:** ``mockturtle/utils/node_map.hpp``
+
 .. doc_overview_table:: classmockturtle_1_1node__map
    :column: Method
 
@@ -29,6 +33,8 @@ Node map
 
 Cuts
 ~~~~
+
+**Header:** ``mockturtle/utils/cuts.hpp``
 
 .. doc_overview_table:: classmockturtle_1_1cut
    :column: Method
@@ -49,6 +55,8 @@ Cuts
 
 Cut sets
 ~~~~~~~~
+
+**Header:** ``mockturtle/utils/cuts.hpp``
 
 .. doc_overview_table:: classmockturtle_1_1cut__set
    :column: Method
