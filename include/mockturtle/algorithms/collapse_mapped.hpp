@@ -222,7 +222,7 @@ private:
  * - If an output driver is used in both forms, two nodes will be created for
  *   the mapped node.
  *
- * **Required network functions for parameter ntk (type NtkSoure):**
+ * **Required network functions for parameter ntk (type NtkSource):**
  * - `has_mapping`
  * - `get_constant`
  * - `get_node`
