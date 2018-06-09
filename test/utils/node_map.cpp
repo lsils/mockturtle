@@ -34,4 +34,12 @@ TEST_CASE( "create node map for full adder", "[node_map]" )
   } );
 
   CHECK( total == ( aig.size() * ( aig.size() - 1 ) ) / 2 );
+
+  map.reset( 1 );
+  total = 0;
+  aig.foreach_node( [&]( auto n ) {
+    total += map[n];
+  } );
+
+  CHECK( total == aig.size() );
 }
