@@ -1,4 +1,4 @@
 Cleanup networks
 ----------------
 
-.. doxygenfunction:: mockturtle::cleanup_dangling
+.. doxygenfunction:: mockturtle::cleanup_dangling(Ntk const&)
