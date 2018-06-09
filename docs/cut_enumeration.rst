@@ -1,6 +1,8 @@
 Cut enumeration
 ---------------
 
+**Header:** ``mockturtle/algorithms/cut_enumeration.hpp``
+
 A *cut* of a Boolean network is a pair :math:`(n,L)`, where :math:`n` is a
 node, called *root*, and :math:`L` is a set of nodes, called *leaves*, such
 that (i) each path from any primary input to :math:`n` passes through at least

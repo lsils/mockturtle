@@ -1,6 +1,8 @@
 Akers synthesis 
 ---------------
 
+**Header:** ``mockturtle/algorithms/akers_synthesis.hpp``
+
 The algorithm implements the method for 3-input majority-based logic synthesis proposed in 
 “*Synthesis of combinational logic using three-input majority 
 gates*” by Sheldon B. Akers, Jr. (1962). 

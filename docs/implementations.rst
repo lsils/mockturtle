@@ -1,6 +1,14 @@
 Network implementations
 =======================
 
+All network implementations are located in `mockturtle/networks/`:
+
+**Headers**
+
+* AIG network: ``mockturtle/networks/aig.hpp``
+* MIG network: ``mockturtle/networks/mig.hpp``
+* *k*-LUT network: ``mockturtle/networks/klut.hpp``
+
 +-------------------------+-------------+-------------+-----------------+
 | Interface method        | AIG network | MIG network | *k*-LUT network |
 +=========================+=============+=============+=================+

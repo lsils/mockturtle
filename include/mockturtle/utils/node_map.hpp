@@ -130,6 +130,20 @@ public:
     return data[ntk.node_to_index( ntk.get_node( f ) )];
   }
 
+  /*! \brief Resets the size of the map.
+   *
+   * This function should be called, if the network changed in size.  Then, the
+   * map is cleared, and resized to the current network's size.  All values are
+   * initialized with `init_value`.
+   * 
+   * \param init_value Initialization value after resize
+   */
+  void reset( T const& init_value = {} )
+  {
+    data.clear();
+    data.resize( ntk.size(), init_value );
+  }
+
 private:
   Ntk const& ntk;
   std::vector<T> data;

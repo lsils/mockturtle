@@ -1,6 +1,8 @@
 MIG algebraic rewriting
 -----------------------
 
+**Header:** ``mockturtle/algorithms/mig_algebraic_rewriting.hpp``
+
 Parameters
 ~~~~~~~~~~
 
