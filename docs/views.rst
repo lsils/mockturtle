@@ -18,6 +18,14 @@ algorithm.  Several views are implemented in mockturtle.
 .. doxygenclass:: mockturtle::topo_view
    :members:
 
+`depth_view`: Compute levels and depth
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/depth_view.hpp``
+
+.. doxygenclass:: mockturtle::depth_view
+   :members:
+
 `mapping_view`: Add mapping interface methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -41,6 +41,39 @@
 namespace mockturtle
 {
 
+/*! \brief Implements `depth` and `get_level` methods for networks.
+ *
+ * This method computes the level of each node and thefore also the depth of the
+ * network.  It implements the network interface methods `get_level` and
+ * `depth`.  The levels are computed at construction and can be recomputed by
+ * calling the `update` method.
+ *
+ * **Required network functions:**
+ * - `size`
+ * - `node_to_index`
+ * - `get_node`
+ * - `clear_visited`
+ * - `visited`
+ * - `set_visited`
+ * - `foreach_fanin`
+ * - `foreach_po`
+ *
+ * Example
+ *
+   \verbatim embed:rst
+
+   .. code-block:: c++
+
+      // create network somehow
+      aig_network aig = ...;
+
+      // create a depth view on the network
+      depth_view aig_depth{aig};
+
+      // print depth
+      std::cout << "Depth: " << aig_depth.depth() << "\n";
+   \endverbatim
+ */
 template<typename Ntk, bool has_depth_interface = has_depth_v<Ntk>&& has_level_v<Ntk>>
 struct depth_view
 {
