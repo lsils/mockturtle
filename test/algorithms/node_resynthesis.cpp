@@ -99,7 +99,7 @@ TEST_CASE( "Node resynthesis from projection", "[node_resynthesis]" )
 TEST_CASE( "Node resynthesis from negated projection", "[node_resynthesis]" )
 {
   klut_network klut;
-  klut.create_po( !klut.create_pi() );
+  klut.create_po( klut.create_not( klut.create_pi() ) );
 
   mig_npn_resynthesis resyn;
   const auto mig = node_resynthesis<mig_network>( klut, resyn );
