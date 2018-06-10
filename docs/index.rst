@@ -26,9 +26,14 @@ Welcome to mockturtle's documentation!
 
    cut_enumeration
    lut_mapping
+<<<<<<< HEAD
    collapse_mapped
    node_resynthesis
    mig_algebraic_rewriting
+=======
+   mig_algebraic_rewriting
+   collapse_mapped
+>>>>>>> master
    akers_synthesis
    cleanup
 
