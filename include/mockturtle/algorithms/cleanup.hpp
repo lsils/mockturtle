@@ -35,16 +35,12 @@
 #include <vector>
 
 #include "../traits.hpp"
-<<<<<<< HEAD
 #include "../utils/node_map.hpp"
-=======
->>>>>>> master
 #include "../views/topo_view.hpp"
 
 namespace mockturtle
 {
 
-<<<<<<< HEAD
 template<typename NtkSource, typename NtkDest, typename LeavesIterator>
 std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& dest, LeavesIterator begin, LeavesIterator end )
 {
@@ -119,8 +115,6 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
   return fs;
 }
 
-=======
->>>>>>> master
 /*! \brief Cleans up dangling nodes.
  *
  * This method reconstructs a network and omits all dangling nodes.  The
@@ -160,7 +154,6 @@ Ntk cleanup_dangling( Ntk const& ntk )
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
 
   Ntk dest;
-<<<<<<< HEAD
   std::vector<signal<Ntk>> pis;
   ntk.foreach_pi( [&]( auto ) {
     pis.push_back( dest.create_pi() );
@@ -171,57 +164,6 @@ Ntk cleanup_dangling( Ntk const& ntk )
     dest.create_po( f );
   }
 
-=======
-
-  std::vector<signal<Ntk>> old_to_new( ntk.size() );
-  old_to_new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )] = dest.get_constant( false );
-
-  if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
-  {
-    old_to_new[ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) )] = dest.get_constant( true );
-  }
-
-  /* create inputs in same order */
-  ntk.foreach_pi( [&]( auto node ) {
-    old_to_new[ntk.node_to_index( node )] = dest.create_pi();
-  } );
-
-  /* foreach node in topological order */
-  topo_view topo{ntk};
-  topo.foreach_node( [&]( auto node ) {
-    if ( ntk.is_constant( node ) || ntk.is_pi( node ) )
-      return;
-
-    /* collect children */
-    std::vector<signal<Ntk>> children;
-    ntk.foreach_fanin( node, [&]( auto child, auto ) {
-      const auto f = old_to_new[ntk.node_to_index( ntk.get_node( child ) )];
-      if ( ntk.is_complemented( child ) )
-      {
-        children.push_back( dest.create_not( f ) );
-      }
-      else
-      {
-        children.push_back( f );
-      }
-    } );
-    old_to_new[ntk.node_to_index( node )] = dest.clone_node( ntk, node, children );
-  } );
-
-  /* create outputs in same order */
-  ntk.foreach_po( [&]( auto po, auto ) {
-    const auto f = old_to_new[ntk.node_to_index( ntk.get_node( po ) )];
-    if ( ntk.is_complemented( po ) )
-    {
-      dest.create_po( dest.create_not( f ) );
-    }
-    else
-    {
-      dest.create_po( f );
-    }
-  } );
-
->>>>>>> master
   return dest;
 }
 

@@ -40,10 +40,7 @@
 #include "algorithms/cut_rewriting.hpp"
 #include "algorithms/lut_mapping.hpp"
 #include "algorithms/mig_algebraic_rewriting.hpp"
-<<<<<<< HEAD
 #include "algorithms/node_resynthesis.hpp"
-=======
->>>>>>> master
 #include "generators/arithmetic.hpp"
 #include "io/aiger_reader.hpp"
 #include "io/bench_reader.hpp"
