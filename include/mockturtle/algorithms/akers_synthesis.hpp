@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <kitty/bit_operations.hpp>
+#include <kitty/cube.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 
 #include "../traits.hpp"
@@ -22,7 +23,7 @@ namespace mockturtle
 - is_const0
 */
 
-kitty::cube operator&( kitty::cube a, kitty::cube b )
+inline kitty::cube operator&( kitty::cube a, kitty::cube b )
 {
   assert( a.num_literals() == b.num_literals() );
   kitty::cube c;
@@ -33,7 +34,7 @@ kitty::cube operator&( kitty::cube a, kitty::cube b )
   return c;
 }
 
-bool is_subset_of( kitty::cube a, kitty::cube b )
+inline bool is_subset_of( kitty::cube a, kitty::cube b )
 {
   assert( a.num_literals() == b.num_literals() );
   for ( auto h = 0; h < a.num_literals(); h++ )
@@ -46,7 +47,7 @@ bool is_subset_of( kitty::cube a, kitty::cube b )
   return true;
 }
 
-bool all_zeros( kitty::cube a )
+inline bool all_zeros( kitty::cube a )
 {
   for ( auto g = 0; g < a.num_literals(); g++ )
   {
@@ -316,7 +317,7 @@ public:
   unsigned char next_gate_id = 'z' + 0x21;
 };
 
-std::ostream& operator<<( std::ostream& os, const unitized_table& table )
+inline std::ostream& operator<<( std::ostream& os, const unitized_table& table )
 {
   os << table.columns << std::endl;
 
@@ -335,7 +336,7 @@ std::ostream& operator<<( std::ostream& os, const unitized_table& table )
   return os;
 }
 
-bool operator==( unitized_table const& table, unitized_table const& original_table )
+inline bool operator==( unitized_table const& table, unitized_table const& original_table )
 {
   if ( table.rows.size() != original_table.rows.size() )
     return false;
