@@ -50,7 +50,25 @@
 namespace mockturtle
 {
 
-struct mig_npn_resynthesis
+/*! \brief Resynthesis function based on pre-computed size-optimum MIGs.
+ *
+ * This resynthesis function can be passed to ``node_resynthesis``.  It will
+ * produce an MIG based on pre-computed size-optimum MIGs with up to at most 4
+ * variables.  Consequently, the nodes' fan-in sizes in the input network
+ * must not exceed 4.
+ *
+   \verbatim embed:rst
+  
+   Example
+   
+   .. code-block:: c++
+   
+      const klut_network klut = ...;
+      mig_npn_resynthesis resyn;
+      const auto mig = node_resynthesis<mig_network>( klut, resyn );
+   \endverbatim
+ */
+class mig_npn_resynthesis
 {
 public:
   mig_npn_resynthesis()
