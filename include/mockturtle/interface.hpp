@@ -287,6 +287,9 @@ public:
   /*! \brief Get the node a signal is pointing to. */
   node get_node( signal const& f ) const;
 
+  /*! \brief Create a signal from a node (without edge attributes). */
+  signal make_signal( node const& n ) const;
+
   /*! \brief Check whether a signal is complemented.
    *
    * This method may also be provided by network implementations that do not
