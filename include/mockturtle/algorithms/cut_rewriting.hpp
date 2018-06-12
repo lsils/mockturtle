@@ -1,0 +1,631 @@
+/* mockturtle: C++ logic network library
+ * Copyright (C) 2018  EPFL
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/*!
+  \file cut_rewriting.hpp
+  \brief Cut rewriting
+
+  \author Mathias Soeken
+*/
+
+#pragma once
+
+#include <cstdint>
+#include <set>
+#include <unordered_map>
+#include <vector>
+
+#include "../networks/mig.hpp"
+#include "../traits.hpp"
+#include "../utils/node_map.hpp"
+#include "cut_enumeration.hpp"
+
+namespace mockturtle
+{
+
+struct cut_rewriting_params
+{
+  cut_rewriting_params()
+  {
+    cut_enumeration_ps.cut_size = 6;
+    cut_enumeration_ps.cut_limit = 12;
+    cut_enumeration_ps.minimize_truth_table = true;
+  }
+
+  /*! \brief Cut enumeration parameters. */
+  cut_enumeration_params cut_enumeration_ps{};
+
+  /*! \brief Maximum number of replacements for each cut. */
+  uint32_t max_candidates{1};
+
+  /*! \brief Conflict limit for SAT solving in exact synthesis. */
+  int32_t conflict_limit{1000};
+
+  /*! \brief Show progress. */
+  bool progress{false};
+
+  /*! \brief Be verbose. */
+  bool verbose{false};
+};
+
+namespace detail
+{
+
+template<typename Ntk, typename TermCond>
+uint32_t recursive_deref( Ntk const& ntk, node<Ntk> const& n, TermCond&& terminate )
+{
+  /* terminate? */
+  if ( terminate( n ) )
+    return 0;
+
+  /* recursively collect nodes */
+  uint32_t value{1};
+  ntk.foreach_fanin( n, [&]( auto const& s ) {
+    if ( ntk.decr_value( ntk.get_node( s ) ) == 0 )
+    {
+      value += recursive_deref( ntk, ntk.get_node( s ), terminate );
+    }
+  } );
+  return value;
+}
+
+template<typename Ntk, typename TermCond>
+uint32_t recursive_ref( Ntk const& ntk, node<Ntk> const& n, TermCond&& terminate )
+{
+  /* terminate? */
+  if ( terminate( n ) )
+    return 0;
+
+  /* recursively collect nodes */
+  uint32_t value{1};
+  ntk.foreach_fanin( n, [&]( auto const& s ) {
+    if ( ntk.incr_value( ntk.get_node( s ) ) == 0 )
+    {
+      value += recursive_ref( ntk, ntk.get_node( s ), terminate );
+    }
+  } );
+  return value;
+}
+
+template<typename Ntk, typename LeavesIterator>
+uint32_t recursive_deref( Ntk const& ntk, node<Ntk> const& n, LeavesIterator begin, LeavesIterator end )
+{
+  return recursive_deref( ntk, n, [&]( auto const& n ) { return std::find( begin, end, n ) != end; } );
+}
+
+template<typename Ntk, typename LeavesIterator>
+uint32_t recursive_ref( Ntk const& ntk, node<Ntk> const& n, LeavesIterator begin, LeavesIterator end )
+{
+  return recursive_ref( ntk, n, [&]( auto const& n ) { return std::find( begin, end, n ) != end; } );
+}
+
+template<typename Ntk>
+uint32_t recursive_deref( Ntk const& ntk, node<Ntk> const& n )
+{
+  return recursive_deref( ntk, n, [&]( auto const& n ) { return ntk.is_constant( n ) || ntk.is_pi( n ); } );
+}
+
+template<typename Ntk>
+uint32_t recursive_ref( Ntk const& ntk, node<Ntk> const& n )
+{
+  return recursive_ref( ntk, n, [&]( auto const& n ) { return ntk.is_constant( n ) || ntk.is_pi( n ); } );
+}
+
+template<typename Ntk>
+uint32_t mffc_size( Ntk const& ntk, node<Ntk> const& n )
+{
+  auto v1 = recursive_deref( ntk, n );
+  auto v2 = recursive_ref( ntk, n );
+  assert( v1 == v2 );
+  return v1;
+}
+
+class graph
+{
+public:
+  auto add_vertex( uint32_t weight )
+  {
+    auto index = _weights.size();
+    _weights.emplace_back( weight );
+    _adjacent.emplace_back();
+    ++_num_vertices;
+    return index;
+  }
+
+  void add_edge( uint32_t v1, uint32_t v2 )
+  {
+    if ( v1 == v2 )
+      return;
+    if ( _adjacent[v1].count( v2 ) )
+      return;
+
+    _adjacent[v1].insert( v2 );
+    _adjacent[v2].insert( v1 );
+    ++_num_edges;
+  }
+
+  void remove_vertex( uint32_t vertex )
+  {
+    assert( _weights[vertex] != -1 );
+    _weights[vertex] = -1;
+
+    _num_edges -= _adjacent[vertex].size();
+
+    for ( auto w : _adjacent[vertex] )
+    {
+      _adjacent[w].erase( vertex );
+    }
+    _adjacent[vertex].clear();
+
+    --_num_vertices;
+  }
+
+  bool has_vertex( uint32_t vertex ) const
+  {
+    return _weights[vertex] >= 0;
+  }
+
+  template<typename Fn>
+  void foreach_adjacent( uint32_t vertex, Fn&& fn ) const
+  {
+    std::for_each( _adjacent[vertex].begin(), _adjacent[vertex].end(), fn );
+  }
+
+  template<typename Fn>
+  void foreach_vertex( Fn&& fn ) const
+  {
+    for ( auto i = 0u; i < _weights.size(); ++i )
+    {
+      if ( has_vertex( i ) )
+      {
+        fn( i );
+      }
+    }
+  }
+
+  auto degree( uint32_t vertex ) const { return _adjacent[vertex].size(); }
+  auto weight( uint32_t vertex ) const { return _weights[vertex]; }
+  auto gwmin_value( uint32_t vertex ) const { return (double)weight( vertex ) / ( degree( vertex ) + 1 ); }
+  auto gwmax_value( uint32_t vertex ) const { return (double)weight( vertex ) / ( degree( vertex ) * ( degree( vertex ) + 1 ) ); }
+
+  auto num_vertices() const { return _num_vertices; }
+  auto num_edges() const { return _num_edges; }
+
+private:
+  uint32_t _num_vertices{0u};
+  uint32_t _num_edges{0u};
+
+  std::vector<std::set<uint32_t>> _adjacent;
+
+  std::vector<int32_t> _weights; /* degree = -1 means vertex is removed */
+};
+
+std::vector<uint32_t> maximum_weighted_independent_set_gwmin( graph& g )
+{
+  std::vector<uint32_t> mwis;
+
+  std::vector<uint32_t> vertices( g.num_vertices() );
+  std::iota( vertices.begin(), vertices.end(), 0 );
+
+  std::sort( vertices.begin(), vertices.end(), [&g]( auto v, auto w ) {
+    const auto value_v = g.gwmin_value( v );
+    const auto value_w = g.gwmin_value( w );
+    return value_v > value_w || ( value_v == value_w && g.degree( v ) > g.degree( w ) );
+  } );
+
+  for ( auto i : vertices )
+  {
+    if ( !g.has_vertex( i ) )
+      continue;
+
+    /* add vertex to independent set, then remove it and all its neighbors */
+    mwis.emplace_back( i );
+    std::vector<uint32_t> neighbors;
+    g.foreach_adjacent( i, [&]( auto v ) { neighbors.emplace_back( v ); } );
+    g.remove_vertex( i );
+
+    for ( auto v : neighbors )
+    {
+      g.remove_vertex( v );
+    }
+  }
+
+  return mwis;
+}
+
+std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
+{
+  std::vector<uint32_t> mwis;
+
+  auto num_vertices = g.num_vertices();
+  for ( auto i = 0u; i < num_vertices; ++i )
+  {
+    if ( !g.has_vertex( i ) )
+      continue;
+
+    /* add vertex to independent set, then remove it and all its neighbors */
+    mwis.emplace_back( i );
+    std::vector<uint32_t> neighbors;
+    g.foreach_adjacent( i, [&]( auto v ) { neighbors.emplace_back( v ); } );
+    g.remove_vertex( i );
+
+    for ( auto v : neighbors )
+    {
+      g.remove_vertex( v );
+    }
+  }
+
+  return mwis;
+}
+
+template<typename Ntk>
+class dynamic_cut : public Ntk
+{
+public:
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+public:
+  explicit dynamic_cut( Ntk const& view, const std::vector<node>& leaves, const node& root )
+      : Ntk( view._storage ), _leaves( leaves ), _root( root )
+  {
+  }
+
+  /* deleted methods */
+  signal create_pi( std::string const& name = std::string() ) = delete;
+
+  /* getter */
+  inline std::size_t num_leaves() const { return _leaves.size(); }
+  inline std::vector<node> get_leaves() const { return _leaves; }
+  inline node get_root() const { return _root; }
+  std::vector<node> get_nodes() const;
+  bool is_pi( node const& pi ) const;
+
+  /* visitors */
+  template<typename Fn>
+  void foreach_leave( Fn&& fn ) const;
+
+  template<typename Fn>
+  void foreach_node( Fn&& fn ) const;
+
+  template<typename Fn>
+  void foreach_finalized_node( Fn&& fn ) const;
+
+  /* misc */
+  void print( std::ostream& os = std::cout ) const;
+
+  void clear_visited() const
+  {
+    if ( this->visited( _root ) == 1 )
+    {
+      foreach_node( [&]( auto, auto ) {} );
+    }
+  }
+
+private:
+  template<typename Fn>
+  void foreach_node_recur( node const& n, uint32_t seen_flag, Fn&& fn, uint32_t counter ) const;
+
+  template<typename Fn>
+  void foreach_finalized_node_recur( node const& n, uint32_t seen_flag, Fn&& fn, uint32_t counter ) const;
+
+public:
+  std::vector<node> _leaves;
+  node _root;
+}; // dynamic_cut
+
+template<class Ntk>
+bool dynamic_cut<Ntk>::is_pi( dynamic_cut<Ntk>::node const& pi ) const
+{
+  return std::find( _leaves.begin(), _leaves.end(), pi ) != _leaves.end();
+}
+
+template<class Ntk>
+std::vector<typename dynamic_cut<Ntk>::node> dynamic_cut<Ntk>::get_nodes() const
+{
+  std::vector<node> nodes;
+  foreach_finalized_node( [&]( const auto& node, auto ) {
+    nodes.push_back( node );
+  } );
+  return nodes;
+}
+
+template<class Ntk>
+template<typename Fn>
+void dynamic_cut<Ntk>::foreach_leave( Fn&& fn ) const
+{
+  auto counter = 0;
+  for ( const auto& l : _leaves )
+  {
+    fn( l, counter++ );
+  }
+}
+
+template<class Ntk>
+template<typename Fn>
+void dynamic_cut<Ntk>::foreach_node( Fn&& fn ) const
+{
+  auto counter = 0u;
+  foreach_node_recur( _root, this->visited( _root ) == 1 ? 0 : 1, fn, counter );
+}
+
+template<class Ntk>
+template<typename Fn>
+void dynamic_cut<Ntk>::foreach_node_recur( node const& n, uint32_t seen_flag, Fn&& fn, uint32_t counter ) const
+{
+  if ( this->visited( n ) == seen_flag )
+    return;
+  this->set_visited( n, seen_flag );
+
+  /* apply functor to current node */
+  fn( n, counter++ );
+
+  if ( std::find( _leaves.begin(), _leaves.end(), n ) != _leaves.end() )
+    return;
+
+  this->foreach_fanin( n, [&]( const auto& f, auto ) {
+    foreach_node_recur( this->get_node( f ), seen_flag, fn, counter );
+  } );
+}
+
+template<class Ntk>
+template<typename Fn>
+void dynamic_cut<Ntk>::foreach_finalized_node( Fn&& fn ) const
+{
+  auto counter = 0u;
+  foreach_finalized_node_recur( _root, this->visited( _root ) == 1 ? 0 : 1, fn, counter );
+}
+
+template<class Ntk>
+template<typename Fn>
+void dynamic_cut<Ntk>::foreach_finalized_node_recur( node const& n, uint32_t seen_flag, Fn&& fn, uint32_t counter ) const
+{
+  if ( this->visited( n ) == seen_flag )
+    return;
+  this->set_visited( n, seen_flag );
+
+  if ( std::find( _leaves.begin(), _leaves.end(), n ) != _leaves.end() )
+  {
+    /* apply functor to current node */
+    fn( n, counter++ );
+    return;
+  }
+
+  this->foreach_fanin( n, [&]( const auto& f, auto ) {
+    foreach_finalized_node_recur( this->get_node( f ), seen_flag, fn, counter );
+  } );
+
+  /* apply functor to current node */
+  fn( n, counter++ );
+}
+
+struct cut_enumeration_cut_rewriting_cut
+{
+  uint32_t gain;
+};
+
+template<typename Ntk, bool ComputeTruth>
+std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_graph( Ntk const& ntk, network_cuts<Ntk, ComputeTruth, cut_enumeration_cut_rewriting_cut> const& cuts )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+
+  graph g;
+
+  using cut_addr = std::pair<node<Ntk>, uint32_t>;
+  std::vector<std::vector<cut_addr>> conflicts( cuts.nodes_size() );
+  std::vector<cut_addr> vertex_to_cut_addr;
+  std::vector<std::vector<uint32_t>> cut_addr_to_vertex( cuts.nodes_size() );
+
+  ntk.foreach_node( [&]( auto const& n, auto ) {
+    if ( n >= cuts.nodes_size() || ntk.is_constant( n ) || ntk.is_pi( n ) )
+      return;
+
+    if ( mffc_size( ntk, n ) == 1 )
+      return;
+
+    const auto& set = cuts.cuts( n );
+
+    auto cctr{0u};
+    for ( auto const& cut : set )
+    {
+      if ( cut->size() <= 2 )
+        continue;
+
+      if ( ( *cut )->data.gain == 0 )
+        continue;
+
+      ntk.clear_visited();
+      dynamic_cut<Ntk> dcut( ntk, std::vector<node<Ntk>>( cut->begin(), cut->end() ), n );
+      dcut.foreach_node( [&]( auto const& n2, auto ) {
+        conflicts[n2].emplace_back( n, cctr );
+      } );
+      dcut.clear_visited();
+
+      auto v = g.add_vertex( ( *cut )->data.gain );
+      assert( v == vertex_to_cut_addr.size() );
+      vertex_to_cut_addr.emplace_back( n, cctr );
+      cut_addr_to_vertex[n].emplace_back( v );
+
+      ++cctr;
+    }
+  } );
+
+  for ( auto n = 0u; n < conflicts.size(); ++n )
+  {
+    for ( auto j = 1u; j < conflicts[n].size(); ++j )
+    {
+      for ( auto i = 0u; i < j; ++i )
+      {
+        const auto [n1, c1] = conflicts[n][i];
+        const auto [n2, c2] = conflicts[n][j];
+
+        if ( cut_addr_to_vertex[n1][c1] != cut_addr_to_vertex[n2][c2] )
+        {
+          g.add_edge( cut_addr_to_vertex[n1][c1], cut_addr_to_vertex[n2][c2] );
+        }
+      }
+    }
+  }
+
+  return {g, vertex_to_cut_addr};
+}
+
+template<class Ntk, class RewritingFn>
+class cut_rewriting_impl
+{
+public:
+  cut_rewriting_impl( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps )
+      : ntk( ntk ),
+        rewriting_fn( rewriting_fn ),
+        ps( ps ) {}
+
+  void run()
+  {
+    /* enumerate cuts */
+    const auto cuts = cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk, ps.cut_enumeration_ps );
+
+    /* for cost estimation we use reference counters initialized by the fanout size */
+    ntk.clear_values();
+    ntk.foreach_node( [&]( auto const& n ) {
+      ntk.set_value( n, ntk.fanout_size( n ) );
+    } );
+
+    /* store best replacement for each cut */
+    node_map<std::vector<signal<Ntk>>, Ntk> best_replacements( ntk );
+
+    /* iterate over all original nodes in the network */
+    const auto size = ntk.size();
+    ntk.foreach_node( [&]( auto const& n ) {
+      /* stop once all original nodes were visited */
+      if ( n >= size )
+        return false;
+
+      /* do not iterate over constants or PIs */
+      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+        return true;
+
+      /* skip cuts with small MFFC */
+      if ( mffc_size( ntk, n ) == 1 )
+        return true;
+
+      /* foreach cut */
+      for ( auto& cut : cuts.cuts( n ) )
+      {
+        /* skip trivial cuts */
+        // TODO application specific filter
+        if ( cut->size() < 2 )
+          continue;
+
+        const auto tt = cuts.truth_table( *cut );
+        assert( cut->size() == static_cast<unsigned>( tt.num_vars() ) );
+
+        std::vector<signal<Ntk>> children;
+        for ( auto l : *cut )
+        {
+          // TODO require interface for this
+          children.push_back( signal<Ntk>( ntk.index_to_node( l ), 0 ) );
+        }
+
+        int32_t gain = detail::recursive_deref( ntk, n );
+        const auto f_new = rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end() );
+        gain -= detail::recursive_ref( ntk, ntk.get_node( f_new ) );
+
+        detail::recursive_deref( ntk, ntk.get_node( f_new ) );
+        detail::recursive_ref( ntk, n );
+
+        ( *cut )->data.gain = gain < 0 ? 0 : gain;
+        if ( gain > 0 )
+        {
+          best_replacements[n].push_back( f_new );
+        }
+      }
+
+      return true;
+    } );
+
+    auto [g, map] = network_cuts_graph( ntk, cuts );
+    const auto is = maximum_weighted_independent_set_gwmin( g );
+
+    if ( ps.verbose )
+    {
+      std::cout << "[i] replacement dependency graph has " << g.num_vertices() << " vertices and " << g.num_edges() << " edges\n";
+      std::cout << "[i] size of independent set is " << is.size() << "\n";
+    }
+
+    for ( const auto v : is )
+    {
+      const auto v_node = map[v].first;
+      const auto v_cut = map[v].second;
+
+      if ( ps.verbose )
+      {
+        std::cout << "[i] try to rewrite cut #" << v_cut << " in node #" << v_node << "\n";
+      }
+
+      if ( best_replacements[v_node].empty() )
+        continue;
+
+      const auto replacement = best_replacements[v_node][v_cut];
+
+      if ( ntk.node_to_index( ntk.get_node( replacement ) ) == 0 || v_node == ntk.get_node( replacement ) )
+        continue;
+
+      if ( ps.verbose )
+      {
+        std::cout << "[i] optimize cut #" << v_cut << " in node #" << v_node << " and replace with node " << ntk.get_node( replacement ) << "\n";
+      }
+
+      ntk.substitute_node( v_node, replacement );
+    }
+  }
+
+private:
+  Ntk& ntk;
+  RewritingFn&& rewriting_fn;
+  cut_rewriting_params const& ps;
+};
+
+} /* namespace detail */
+
+template<class Ntk, class RewritingFn>
+void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {} )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
+  static_assert( has_incr_value_v<Ntk>, "Ntk does not implement the incr_value method" );
+  static_assert( has_decr_value_v<Ntk>, "Ntk does not implement the decr_value method" );
+  static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
+
+  detail::cut_rewriting_impl<Ntk, RewritingFn> p( ntk, rewriting_fn, ps );
+  p.run();
+}
+
+} /* namespace mockturtle */
