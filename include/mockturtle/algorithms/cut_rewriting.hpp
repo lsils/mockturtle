@@ -37,10 +37,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../networks/detail/foreach.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
+#include "../views/cut_view.hpp"
 #include "cut_enumeration.hpp"
 
 namespace mockturtle
@@ -281,72 +281,6 @@ std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
   return mwis;
 }
 
-template<typename Ntk>
-class dynamic_cut : public Ntk
-{
-public:
-  using node = typename Ntk::node;
-  using signal = typename Ntk::signal;
-
-public:
-  explicit dynamic_cut( Ntk const& view, const std::vector<node>& leaves, const node& root )
-      : Ntk( view._storage ), _leaves( leaves ), _root( root )
-  {
-  }
-
-  /* getter */
-  inline auto num_pis() const { return _leaves.size(); }
-  inline auto num_pos() const { return 1; }
-
-  template<typename Fn>
-  void foreach_po( Fn&& fn ) const
-  {
-    std::vector<signal> signals( 1, this->make_signal( _root ) );
-    detail::foreach_element( signals.begin(), signals.end(), fn );
-  }
-
-  inline bool is_pi( node const& pi ) const
-  {
-    return std::find( _leaves.begin(), _leaves.end(), pi ) != _leaves.end();
-  }
-
-  template<typename Fn>
-  void foreach_pi( Fn&& fn ) const
-  {
-    detail::foreach_element( _leaves.begin(), _leaves.end(), fn );
-  }
-
-  template<typename Fn>
-  void foreach_node( Fn&& fn ) const
-  {
-    this->clear_visited();
-    foreach_node_recur( _root, fn );
-  }
-
-private:
-  template<typename Fn>
-  void foreach_node_recur( node const& n, Fn&& fn ) const
-  {
-    if ( this->visited( n ) == 1 )
-      return;
-    this->set_visited( n, 1 );
-
-    /* apply functor to current node */
-    fn( n );
-
-    if ( std::find( _leaves.begin(), _leaves.end(), n ) != _leaves.end() )
-      return;
-
-    this->foreach_fanin( n, [&]( const auto& f, auto ) {
-      foreach_node_recur( this->get_node( f ), fn );
-    } );
-  }
-
-public:
-  std::vector<node> _leaves;
-  node _root;
-};
-
 struct cut_enumeration_cut_rewriting_cut
 {
   uint32_t gain;
@@ -384,9 +318,10 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
       if ( ( *cut )->data.gain == 0 )
         continue;
 
-      dynamic_cut<Ntk> dcut( ntk, std::vector<node<Ntk>>( cut->begin(), cut->end() ), n );
-      dcut.foreach_node( [&]( auto const& n2 ) {
-        if ( dcut.is_constant( n2 ) || dcut.is_pi( n2 ) ) return;
+      cut_view<Ntk> dcut( ntk, std::vector<node<Ntk>>( cut->begin(), cut->end() ), n );
+      dcut.foreach_gate( [&]( auto const& n2 ) {
+        //if ( dcut.is_constant( n2 ) || dcut.is_pi( n2 ) )
+        //  return;
         conflicts[n2].emplace_back( n, cctr );
       } );
 
