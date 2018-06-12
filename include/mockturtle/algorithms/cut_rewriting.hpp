@@ -37,9 +37,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../traits.hpp"
-#include "../networks/mig.hpp"
 #include "../networks/detail/foreach.hpp"
+#include "../networks/mig.hpp"
+#include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "cut_enumeration.hpp"
 
@@ -317,43 +317,35 @@ public:
   }
 
   template<typename Fn>
-  void foreach_node( Fn&& fn ) const;
+  void foreach_node( Fn&& fn ) const
+  {
+    this->clear_visited();
+    foreach_node_recur( _root, fn );
+  }
 
 private:
   template<typename Fn>
-  void foreach_node_recur( node const& n, Fn&& fn ) const;
+  void foreach_node_recur( node const& n, Fn&& fn ) const
+  {
+    if ( this->visited( n ) == 1 )
+      return;
+    this->set_visited( n, 1 );
+
+    /* apply functor to current node */
+    fn( n );
+
+    if ( std::find( _leaves.begin(), _leaves.end(), n ) != _leaves.end() )
+      return;
+
+    this->foreach_fanin( n, [&]( const auto& f, auto ) {
+      foreach_node_recur( this->get_node( f ), fn );
+    } );
+  }
 
 public:
   std::vector<node> _leaves;
   node _root;
 };
-
-template<class Ntk>
-template<typename Fn>
-void dynamic_cut<Ntk>::foreach_node( Fn&& fn ) const
-{
-  this->clear_visited();
-  foreach_node_recur( _root, fn );
-}
-
-template<class Ntk>
-template<typename Fn>
-void dynamic_cut<Ntk>::foreach_node_recur( node const& n, Fn&& fn ) const
-{
-  if ( this->visited( n ) == 1 )
-    return;
-  this->set_visited( n, 1 );
-
-  /* apply functor to current node */
-  fn( n );
-
-  if ( std::find( _leaves.begin(), _leaves.end(), n ) != _leaves.end() )
-    return;
-
-  this->foreach_fanin( n, [&]( const auto& f, auto ) {
-    foreach_node_recur( this->get_node( f ), fn );
-  } );
-}
 
 struct cut_enumeration_cut_rewriting_cut
 {
@@ -392,12 +384,11 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
       if ( ( *cut )->data.gain == 0 )
         continue;
 
-      ntk.clear_visited();
       dynamic_cut<Ntk> dcut( ntk, std::vector<node<Ntk>>( cut->begin(), cut->end() ), n );
       dcut.foreach_node( [&]( auto const& n2 ) {
+        if ( dcut.is_constant( n2 ) || dcut.is_pi( n2 ) ) return;
         conflicts[n2].emplace_back( n, cctr );
       } );
-      dcut.clear_visited();
 
       auto v = g.add_vertex( ( *cut )->data.gain );
       assert( v == vertex_to_cut_addr.size() );
