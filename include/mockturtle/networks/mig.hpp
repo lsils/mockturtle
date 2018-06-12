@@ -101,7 +101,7 @@ public:
 
     signal operator!() const
     {
-      return data ^ 1;
+      return signal( data ^ 1 );
     }
 
     signal operator+() const
@@ -116,7 +116,7 @@ public:
 
     signal operator^( bool complement ) const
     {
-      return data ^ ( complement ? 1 : 0 );
+      return signal( data ^ ( complement ? 1 : 0 ) );
     }
 
     bool operator==( signal const& other ) const
