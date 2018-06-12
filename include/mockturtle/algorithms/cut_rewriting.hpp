@@ -536,7 +536,6 @@ public:
       for ( auto& cut : cuts.cuts( n ) )
       {
         /* skip trivial cuts */
-        // TODO application specific filter
         if ( cut->size() < 2 )
           continue;
 
@@ -546,8 +545,7 @@ public:
         std::vector<signal<Ntk>> children;
         for ( auto l : *cut )
         {
-          // TODO require interface for this
-          children.push_back( signal<Ntk>( ntk.index_to_node( l ), 0 ) );
+          children.push_back( ntk.make_signal( ntk.index_to_node( l ) ) );
         }
 
         int32_t gain = detail::recursive_deref( ntk, n );
@@ -591,7 +589,7 @@ public:
 
       const auto replacement = best_replacements[v_node][v_cut];
 
-      if ( ntk.node_to_index( ntk.get_node( replacement ) ) == 0 || v_node == ntk.get_node( replacement ) )
+      if ( ntk.node_to_index( ntk.is_constant( ntk.get_node( replacement ) ) ) || ntk.index_to_node( v_node ) == ntk.get_node( replacement ) )
         continue;
 
       if ( ps.verbose )
@@ -617,12 +615,17 @@ void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params c
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
   static_assert( has_incr_value_v<Ntk>, "Ntk does not implement the incr_value method" );
   static_assert( has_decr_value_v<Ntk>, "Ntk does not implement the decr_value method" );
   static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
+  static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
+  static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
 
   detail::cut_rewriting_impl<Ntk, RewritingFn> p( ntk, rewriting_fn, ps );
   p.run();
