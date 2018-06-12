@@ -294,6 +294,11 @@ public:
     return f;
   }
 
+  signal make_signal( node const& n ) const
+  {
+    return n;
+  }
+
   bool is_complemented( signal const& f ) const
   {
     (void)f;

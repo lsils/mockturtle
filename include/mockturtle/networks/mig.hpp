@@ -404,6 +404,11 @@ public:
     return f.index;
   }
 
+  signal make_signal( node const& n ) const
+  {
+    return signal( n, 0 );
+  }
+
   bool is_complemented( signal const& f ) const
   {
     return f.complement;
