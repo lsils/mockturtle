@@ -589,6 +589,21 @@ template<class Ntk>
 inline constexpr bool has_get_node_v = has_get_node<Ntk>::value;
 #pragma endregion
 
+#pragma region has_make_signal
+template<class Ntk, class = void>
+struct has_make_signal : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_make_signal<Ntk, std::void_t<decltype( std::declval<Ntk>().make_signal( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_make_signal_v = has_make_signal<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_complemented
 template<class Ntk, class = void>
 struct has_is_complemented : std::false_type

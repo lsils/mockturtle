@@ -101,7 +101,7 @@ public:
 
     signal operator!() const
     {
-      return data ^ 1;
+      return signal( data ^ 1 );
     }
 
     signal operator+() const
@@ -116,7 +116,7 @@ public:
 
     signal operator^( bool complement ) const
     {
-      return data ^ ( complement ? 1 : 0 );
+      return signal( data ^ ( complement ? 1 : 0 ) );
     }
 
     bool operator==( signal const& other ) const
@@ -402,6 +402,11 @@ public:
   node get_node( signal const& f ) const
   {
     return f.index;
+  }
+
+  signal make_signal( node const& n ) const
+  {
+    return signal( n, 0 );
   }
 
   bool is_complemented( signal const& f ) const
