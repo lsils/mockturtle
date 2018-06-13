@@ -33,6 +33,8 @@
 #pragma once
 
 #include <cstdint>
+#include <iomanip>
+#include <iostream>
 #include <set>
 #include <unordered_map>
 #include <vector>
@@ -42,6 +44,8 @@
 #include "../utils/node_map.hpp"
 #include "../views/cut_view.hpp"
 #include "cut_enumeration.hpp"
+
+#include <rang/rang.hpp>
 
 namespace mockturtle
 {
@@ -61,7 +65,7 @@ struct cut_rewriting_params
   /*! \brief Maximum number of replacements for each cut. */
   uint32_t max_candidates{1};
 
-  /*! \brief Conflict limit for SAT solving in exact synthesis. */
+  /*! \brief TODO Conflict limit for SAT solving in exact synthesis. */
   int32_t conflict_limit{1000};
 
   /*! \brief Show progress. */
@@ -377,6 +381,10 @@ public:
     /* store best replacement for each cut */
     node_map<std::vector<signal<Ntk>>, Ntk> best_replacements( ntk );
 
+    /* progress */
+    static char* spinner[] = {"|     |", "|.    |", "|..   |", "|...  |", "|.... |", "|.....|"};
+    uint8_t sp_cnt{0};
+
     /* iterate over all original nodes in the network */
     const auto size = ntk.size();
     ntk.foreach_node( [&]( auto const& n ) {
@@ -402,6 +410,13 @@ public:
         const auto tt = cuts.truth_table( *cut );
         assert( cut->size() == static_cast<unsigned>( tt.num_vars() ) );
 
+        if ( ps.progress )
+        {
+          std::cout << "\u001B[G"
+                    << spinner[(int)( ( 6.0 * n ) / size )]
+                    << " node = " << rang::fg::yellow << std::setw( 4 ) << n << rang::fg::reset << "@" << rang::fg::green << std::setw( 2 ) << best_replacements[n].size() << rang::fg::reset << " / " << size << std::flush;
+        }
+
         std::vector<signal<Ntk>> children;
         for ( auto l : *cut )
         {
@@ -424,6 +439,11 @@ public:
 
       return true;
     } );
+
+    if ( ps.progress )
+    {
+      std::cout << "\u001B[G" << std::string( 79, ' ' ) << "\u001B[G\u001B[?25h" << std::flush;
+    }
 
     auto [g, map] = network_cuts_graph( ntk, cuts );
     const auto is = maximum_weighted_independent_set_gwmin( g );
