@@ -34,6 +34,14 @@ algorithm.  Several views are implemented in mockturtle.
 .. doxygenclass:: mockturtle::mapping_view
    :members:
 
+`cut_view`: Network view on a single rooted cut
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/cut_view.hpp``
+
+.. doxygenclass:: mockturtle::cut_view
+   :members:
+
 `immutable_view`: Prevent network changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
