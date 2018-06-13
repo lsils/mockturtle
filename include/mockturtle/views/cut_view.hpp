@@ -97,7 +97,7 @@ public:
     /* primary inputs */
     for ( auto const& leaf : leaves )
     {
-      if ( this->is_constant( leaf ) )
+      if ( this->visited( leaf ) == 1 )
         continue;
 
       add_node( leaf );
