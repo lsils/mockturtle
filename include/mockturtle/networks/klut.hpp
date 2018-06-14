@@ -152,6 +152,11 @@ public:
   {
     return n > 1 && _storage->nodes[n].children.empty();
   }
+
+  bool constant_value( node const& n ) const
+  {
+    return n == 1;
+  }
 #pragma endregion
 
 #pragma region Create unary functions
