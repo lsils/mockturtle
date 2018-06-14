@@ -35,6 +35,7 @@
 #include <type_traits>
 
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/traits.hpp>
 
 namespace mockturtle
 {
@@ -1013,5 +1014,10 @@ inline constexpr bool has_update_v = has_update<Ntk>::value;
  */
 template<typename Iterator, typename T>
 using iterates_over_t = std::enable_if_t<std::is_same_v<typename Iterator::value_type, T>, T>;
+
+/*! \brief SFINAE based on iterator type for truth tables (for compute functions).
+ */
+template<typename Iterator>
+using iterates_over_truth_table_t = std::enable_if_t<kitty::is_truth_table<typename Iterator::value_type>::value, typename Iterator::value_type>;
 
 } /* namespace mockturtle */
