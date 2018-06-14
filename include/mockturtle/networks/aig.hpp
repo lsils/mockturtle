@@ -195,6 +195,12 @@ public:
   {
     return _storage->nodes[n].children[0].data == ~static_cast<std::size_t>( 0 ) && _storage->nodes[n].children[1].data == ~static_cast<std::size_t>( 0 );
   }
+
+  bool constant_value( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
 #pragma endregion
 
 #pragma region Create unary functions
