@@ -351,17 +351,17 @@ public:
 
 #pragma region Simulate values
   template<typename Iterator>
-  iterates_over_t<Iterator, kitty::dynamic_truth_table>
+  iterates_over_truth_table_t<Iterator>
   compute( node const& n, Iterator begin, Iterator end ) const
   {
     const auto nfanin = _storage->nodes[n].children.size();
-    std::vector<kitty::dynamic_truth_table> tts( begin, end );
+    std::vector<typename Iterator::value_type> tts( begin, end );
 
     assert( nfanin != 0 );
     assert( tts.size() == nfanin );
 
     /* resulting truth table has the same size as any of the children */
-    kitty::dynamic_truth_table result = tts.front().construct();
+    auto result = tts.front().construct();
     const auto gate_tt = _storage->data[_storage->nodes[n].data[1].h1];
 
     for ( auto i = 0u; i < result.num_bits(); ++i )

@@ -24,42 +24,29 @@
  */
 
 /*!
-  \file kitty.hpp
-  \brief Main header for kitty
+  \file traits.hpp
+  \brief Type traits for truth tables
 
   \author Mathias Soeken
 */
 
 #pragma once
 
-#include "static_truth_table.hpp"
+#include <type_traits>
+
 #include "dynamic_truth_table.hpp"
+#include "static_truth_table.hpp"
 
-#include "affine.hpp"
-#include "algorithm.hpp"
-#include "bit_operations.hpp"
-#include "cnf.hpp"
-#include "constructors.hpp"
-#include "cube.hpp"
-#include "esop.hpp"
-#include "hash.hpp"
-#include "implicant.hpp"
-#include "isop.hpp"
-#include "npn.hpp"
-#include "operations.hpp"
-#include "operators.hpp"
-#include "permutation.hpp"
-#include "print.hpp"
-#include "properties.hpp"
-#include "spectral.hpp"
-#include "traits.hpp"
+namespace kitty
+{
 
-/*
-         /\___/\
-        (  o o  )
-        /   *   \
-        \__\_/__/
-          /   \
-         / ___ \
-         \/___\/
-*/
+template<class TT>
+struct is_truth_table : std::false_type {};
+
+template<>
+struct is_truth_table<kitty::dynamic_truth_table> : std::true_type {};
+
+template<int NumVars>
+struct is_truth_table<kitty::static_truth_table<NumVars>> : std::true_type {};
+
+}
