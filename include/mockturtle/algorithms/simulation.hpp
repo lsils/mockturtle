@@ -45,6 +45,7 @@
 namespace mockturtle
 {
 
+/*! \brief Abstract template class for simulation. */
 template<class SimulationType>
 class default_simulator
 {
@@ -52,6 +53,11 @@ public:
   default_simulator() = delete;
 };
 
+/*! \brief Simulate Boolean assignments.
+ *
+ * This simulator simulates Boolean values.  A vector with assignments for each 
+ * primary input must be passed to the constructor.
+ */
 template<>
 class default_simulator<bool>
 {
@@ -67,6 +73,12 @@ private:
   std::vector<bool> assignments;
 };
 
+/*! \brief Simulates truth tables.
+ *
+ * This simulator simulates truth tables.  Each primary input is assigned the
+ * projection function according to the index.  The number of variables be
+ * passed to the constructor of the simulator.
+ */
 template<>
 class default_simulator<kitty::dynamic_truth_table>
 {
@@ -96,6 +108,12 @@ private:
   unsigned num_vars;
 };
 
+/*! \brief Simulates truth tables.
+ *
+ * This simulator simulates truth tables.  Each primary input is assigned the
+ * projection function according to the index.  The number of variables must be
+ * known at compile time.
+ */
 template<int NumVars>
 class default_simulator<kitty::static_truth_table<NumVars>>
 {

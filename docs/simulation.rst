@@ -1,6 +1,8 @@
 Network simulation
 ------------------
 
+**Header:** ``mockturtle/algorithms/simulation.hpp``
+
 **Examples**
 
 Simulate a Boolean input assignment.
@@ -36,3 +38,20 @@ Complete simulation with truth tables.
    } );
 
 .. doxygenfunction:: mockturtle::simulate
+
+Simulators
+~~~~~~~~~~
+
+The following simulators are implemented:
+
+* ``mockturtle::default_simulator<bool>``: This simulator simulates Boolean
+  values.  A vector with assignments for each primary input must be passed to
+  the constructor.
+* ``mockturtle::default_simulator<kitty::static_truth_table<NumVars>>``: This
+  simulator simulates truth tables.  Each primary input is assigned the
+  projection function according to the index.  The number of variables must be
+  known at compile time.
+* ``mockturtle::default_simulator<kitty::dynamic_truth_table>``: This simulator
+  simulates truth tables.  Each primary input is assigned the projection
+  function according to the index.  The number of variables be passed to the
+  constructor of the simulator.
