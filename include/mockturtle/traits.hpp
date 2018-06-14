@@ -35,6 +35,7 @@
 #include <type_traits>
 
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/traits.hpp>
 
 namespace mockturtle
 {
@@ -152,6 +153,21 @@ struct has_is_pi<Ntk, std::void_t<decltype( std::declval<Ntk>().is_pi( std::decl
 
 template<class Ntk>
 inline constexpr bool has_is_pi_v = has_is_pi<Ntk>::value;
+#pragma endregion
+
+#pragma region has_constant_value
+template<class Ntk, class = void>
+struct has_constant_value : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_constant_value<Ntk, std::void_t<decltype( std::declval<Ntk>().constant_value( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_constant_value_v = has_constant_value<Ntk>::value;
 #pragma endregion
 
 #pragma region has_create_buf
@@ -724,6 +740,21 @@ template<class Ntk>
 inline constexpr bool has_foreach_fanin_v = has_foreach_fanin<Ntk>::value;
 #pragma endregion
 
+#pragma region has_foreach_parent
+template<class Ntk, class = void>
+struct has_foreach_parent : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_parent<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_parent( std::declval<node<Ntk>>(), std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_parent_v = has_foreach_parent<Ntk>::value;
+#pragma endregion
+
 #pragma region has_compute
 template<class Ntk, typename T, class = void>
 struct has_compute : std::false_type
@@ -1013,5 +1044,10 @@ inline constexpr bool has_update_v = has_update<Ntk>::value;
  */
 template<typename Iterator, typename T>
 using iterates_over_t = std::enable_if_t<std::is_same_v<typename Iterator::value_type, T>, T>;
+
+/*! \brief SFINAE based on iterator type for truth tables (for compute functions).
+ */
+template<typename Iterator>
+using iterates_over_truth_table_t = std::enable_if_t<kitty::is_truth_table<typename Iterator::value_type>::value, typename Iterator::value_type>;
 
 } /* namespace mockturtle */

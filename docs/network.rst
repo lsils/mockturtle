@@ -75,7 +75,7 @@ Primary I/O and constants
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_constant, create_pi, create_po, is_constant, is_pi
+   :members: get_constant, create_pi, create_po, is_constant, is_pi, constant_value
    :no-link:
 
 Create unary functions
@@ -138,7 +138,7 @@ Node and signal iterators
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_fanin
+   :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_fanin, foreach_parent
    :no-link:
 
 Simulate values
