@@ -30,6 +30,7 @@ Welcome to mockturtle's documentation!
    node_resynthesis
    mig_algebraic_rewriting
    akers_synthesis
+   simulation
    cleanup
 
 .. toctree::
