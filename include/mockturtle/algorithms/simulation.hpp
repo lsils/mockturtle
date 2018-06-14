@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file node_resynthesis.hpp
-  \brief Node resynthesis
+  \file simulation.hpp
+  \brief Simulate networks
 
   \author Mathias Soeken
 */
@@ -119,14 +119,46 @@ public:
   }
 };
 
+/*! \brief Simulates a network with a generic simulator.
+ *
+ * This is a generic simulation algorithm that can simulate arbitrary values.
+ * In order to that, the network needs to implement the `compute` method for
+ * `SimulationType` and one must pass an instance of a `Simulator` that
+ * implements the three methods:
+ * - `SimulationType compute_constant(bool)`
+ * - `SimulationType compute_pi(index)`
+ * - `SimulationType compute_not(SimulationType const&)`
+ *
+ * The method `compute_constant` returns a simulation value for a constant
+ * value.  The method `compute_pi` returns a simulation value for a primary
+ * input based on its index, and `compute_not` to invert a simulation value.
+ *
+ * \param ntk Network
+ * \param sim Simulator, which implements the simulator interface
+ */
 template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
 std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Simulator() )
 {
-  // TODO traits
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_constant_value_v<Ntk>, "Ntk does not implement the constant_value method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
+  static_assert( has_compute_v<Ntk, SimulationType>, "Ntk does not implement the compute method for SimulationType" );
+
   node_map<SimulationType, Ntk> node_to_value( ntk );
 
-  // TODO get constant value, assume false
-  node_to_value[ntk.get_constant( false )] = sim.compute_constant( false );
+  node_to_value[ntk.get_node( ntk.get_constant( false ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  {
+    node_to_value[ntk.get_node( ntk.get_constant( true ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( true ) ) ) );
+  }
   ntk.foreach_pi( [&]( auto const& n, auto i ) {
     node_to_value[n] = sim.compute_pi( i );
   } );
