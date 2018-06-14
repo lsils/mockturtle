@@ -409,6 +409,22 @@ public:
    */
   template<typename Fn>
   void foreach_fanin( node const& n, Fn&& fn ) const;
+
+  /*! \brief Calls ``fn`` on every parent of a node.
+   *
+   * The method gives no guarantee on the order of the parents.  The parameter
+   * ``fn`` is any callable that must have one of the following signatures.
+   * - ``void(node const&)``
+   * - ``void(node const&, uint32_t)``
+   * - ``bool(node const&)``
+   * - ``bool(node const&, uint32_t)``
+   *
+   * If ``fn`` has two parameters, the second parameter is an index starting
+   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
+   * then it can interrupt the iteration by returning ``false``.
+   */
+  template<typename Fn>
+  void foreach_parent( node const& n, Fn&& fn ) const;
 #pragma endregion
 
 #pragma region Simulate values
