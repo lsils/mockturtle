@@ -155,6 +155,21 @@ template<class Ntk>
 inline constexpr bool has_is_pi_v = has_is_pi<Ntk>::value;
 #pragma endregion
 
+#pragma region has_constant_value
+template<class Ntk, class = void>
+struct has_constant_value : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_constant_value<Ntk, std::void_t<decltype( std::declval<Ntk>().constant_value( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_constant_value_v = has_constant_value<Ntk>::value;
+#pragma endregion
+
 #pragma region has_create_buf
 template<class Ntk, class = void>
 struct has_create_buf : std::false_type

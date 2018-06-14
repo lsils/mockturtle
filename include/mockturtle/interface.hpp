@@ -118,6 +118,12 @@ public:
 
   /*! \brief Checks whether a node is a primary input. */
   bool is_pi( node const& n ) const;
+
+  /*! \brief Gets the Boolean value of the constant node.
+   *
+   * The method expects that `n` is a constant node.
+   */
+  bool constant_value( node const& n ) const;
 #pragma endregion
 
 #pragma region Create unary functions
