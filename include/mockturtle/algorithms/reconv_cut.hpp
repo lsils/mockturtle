@@ -100,7 +100,7 @@ protected:
     /* otherwise expand the cut with the children of *it and mark *it visited */
     const auto n = *it;
     cut.erase( it );
-    _ntk.foreach_fanin( n, [&]( signal<Ntk> const& s, unsigned ){
+    _ntk.foreach_fanin( n, [&]( signal<Ntk> const& s ){
         auto const& child = _ntk.get_node( s );
         if ( !_ntk.is_constant( n ) && std::find( cut.begin(), cut.end(), child ) == cut.end() && !_ntk.value( child ) )
         {
@@ -115,10 +115,12 @@ protected:
   inline int32_t cost( node<Ntk> const& n ) const
   {
     int32_t current_cost = -1;
-    _ntk.foreach_fanin( n, [&]( signal<Ntk> const& s, unsigned ){
+    _ntk.foreach_fanin( n, [&]( signal<Ntk> const& s ){
         auto const& child = _ntk.get_node( s );
         if ( !_ntk.is_constant( child ) && !_ntk.value( child ) )
+        {
           ++current_cost;
+        }
       } );
     return current_cost;
   }
