@@ -519,7 +519,7 @@ public:
   }
 
   template<typename Iterator>
-  iterates_over_t<Iterator, kitty::dynamic_truth_table>
+  iterates_over_truth_table_t<Iterator>
   compute( node const& n, Iterator begin, Iterator end ) const
   {
     (void)end;
