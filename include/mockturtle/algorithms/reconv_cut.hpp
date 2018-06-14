@@ -24,14 +24,15 @@
  */
 
 /*!
-  \file cut_generation.hpp
-  \brief Cut generation
+  \file reconv_cut.hpp
+  \brief Reconvergence-driven cut
 
   \author Heinz Riener
 */
 
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 
 #include "../traits.hpp"
@@ -39,10 +40,10 @@
 namespace mockturtle
 {
 
-/*! \brief Parameters for cut_generation.
+/*! \brief Parameters for reconvergence_driven_cut.
  *
- * The data structure `cut_generation_params` holds configurable parameters
- * with default arguments for `cut_generation`.
+ * The data structure `reconv_cut_params` holds configurable parameters
+ * with default arguments for `reconv_cut`.
  */
 struct reconv_cut_params
 {
