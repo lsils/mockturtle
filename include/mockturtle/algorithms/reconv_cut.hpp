@@ -32,6 +32,8 @@
 
 #pragma once
 
+#include <cassert>
+
 #include "../traits.hpp"
 
 namespace mockturtle
