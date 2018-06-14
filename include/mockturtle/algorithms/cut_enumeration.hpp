@@ -486,6 +486,7 @@ private:
  * - `node_to_index`
  * - `foreach_node`
  * - `foreach_fanin`
+ * - `compute` for `kitty::dynamic_truth_table` (if `ComputeTruth` is true)
  *
    \verbatim embed:rst
 
@@ -512,6 +513,7 @@ network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_en
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( !ComputeTruth || has_compute_v<Ntk, kitty::dynamic_truth_table>, "Ntk does not implement the compute method for kitty::dynamic_truth_table" );
 
   network_cuts<Ntk, ComputeTruth, CutData> res( ntk.size() );
   detail::cut_enumeration_impl<Ntk, ComputeTruth, CutData> p( ntk, ps, res );
