@@ -14,7 +14,7 @@ The easiest way to run Akers' synthesis is by doing:
 
 .. code-block:: c++
 
-   auto mig = akers_synthesis<mig_network>( func, care);
+   auto mig = akers_synthesis<mig_network>( func, care );
 
 Here, the function returns an MIG, with as many inputs as the number of 
 variables of func and one primary output. 
