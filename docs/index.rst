@@ -10,6 +10,7 @@ Welcome to mockturtle's documentation!
    :maxdepth: 2
 
    changelog
+   acknowledgments
 
 .. toctree::
    :maxdepth: 2
