@@ -44,7 +44,7 @@ namespace mockturtle
 
 /*! \brief Implements `foreach_parent` methods for networks.
  *
- * This method computes the parents of each node and of the network.
+ * This view computes the parents of each node of the network.
  * It implements the network interface method `foreach_parent`.  The
  * parents are computed at construction and can be recomputed by
  * calling the `update` method.
