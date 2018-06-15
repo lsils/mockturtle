@@ -58,7 +58,7 @@ public:
   /*! \brief Type representing a signal.
    *
    * A ``signal`` can be seen as a pointer to a node, or an outgoing edge of
-   * a node towards its parants.  Depending on the kind of logic network, it
+   * a node towards its parents.  Depending on the kind of logic network, it
    * may carry additional information such as a complement attribute.
    */
   struct signal

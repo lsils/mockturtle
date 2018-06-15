@@ -21,11 +21,12 @@ v0.1 (not yet released)
   `#24 <https://github.com/lsils/mockturtle/pull/24>`_
   `#25 <https://github.com/lsils/mockturtle/pull/25>`_
 
-* Views: `topo_view`, `immutable_view`, `mapping_view`, `depth_view`, `cut_view`
+* Views: `topo_view`, `immutable_view`, `mapping_view`, `depth_view`, `cut_view`, `parents_view`
   `#3 <https://github.com/lsils/mockturtle/pull/3>`_
   `#7 <https://github.com/lsils/mockturtle/pull/7>`_
   `#16 <https://github.com/lsils/mockturtle/pull/16>`_
   `#20 <https://github.com/lsils/mockturtle/pull/20>`_
+  `#27 <https://github.com/lsils/mockturtle/pull/27>`_
 
 * I/O: `aiger_reader`, `bench_reader`, `write_bench`
   `#6 <https://github.com/lsils/mockturtle/pull/6>`_
