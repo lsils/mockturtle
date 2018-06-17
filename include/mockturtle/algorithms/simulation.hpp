@@ -150,12 +150,15 @@ public:
  * The method `compute_constant` returns a simulation value for a constant
  * value.  The method `compute_pi` returns a simulation value for a primary
  * input based on its index, and `compute_not` to invert a simulation value.
+ * 
+ * This method returns a map that maps each node to its computed simulation
+ * value.
  *
  * \param ntk Network
  * \param sim Simulator, which implements the simulator interface
  */
 template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
-std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Simulator() )
+node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& sim = Simulator() )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
@@ -164,9 +167,7 @@ std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Sim
   static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
-  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
-  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
   static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
   static_assert( has_compute_v<Ntk, SimulationType>, "Ntk does not implement the compute method for SimulationType" );
 
@@ -188,6 +189,35 @@ std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Sim
     } );
     node_to_value[n] = ntk.template compute( n, fanin_values.begin(), fanin_values.end() );
   } );
+
+  return node_to_value;
+}
+
+/*! \brief Simulates a network with a generic simulator.
+ *
+ * This is a generic simulation algorithm that can simulate arbitrary values.
+ * In order to that, the network needs to implement the `compute` method for
+ * `SimulationType` and one must pass an instance of a `Simulator` that
+ * implements the three methods:
+ * - `SimulationType compute_constant(bool)`
+ * - `SimulationType compute_pi(index)`
+ * - `SimulationType compute_not(SimulationType const&)`
+ *
+ * The method `compute_constant` returns a simulation value for a constant
+ * value.  The method `compute_pi` returns a simulation value for a primary
+ * input based on its index, and `compute_not` to invert a simulation value.
+ *
+ * This method returns a vector that maps each primary output (ordered by
+ * position) to it's simulation value (taking possible complemented attributes
+ * into account).
+ *
+ * \param ntk Network
+ * \param sim Simulator, which implements the simulator interface
+ */
+template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
+std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Simulator() )
+{
+  const auto node_to_value = simulate_nodes<SimulationType, Ntk, Simulator>( ntk, sim );
 
   std::vector<SimulationType> po_values( ntk.num_pos() );
   ntk.foreach_po( [&]( auto const& f, auto i ) {
