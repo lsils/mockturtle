@@ -108,6 +108,7 @@ public:
   /*! \brief Constant access to value by node. */
   const_reference operator[]( node<Ntk> const& n ) const
   {
+    assert( ntk.node_to_index( n ) < data.size() && "index out of bounds" );
     return data[ntk.node_to_index( n )];
   }
 
@@ -119,6 +120,7 @@ public:
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<signal<_Ntk>, node<_Ntk>>>>
   reference operator[]( signal<Ntk> const& f )
   {
+    assert( ntk.node_to_index( ntk.get_node( f ) ) < data.size() && "index out of bounds" );
     return data[ntk.node_to_index( ntk.get_node( f ) )];
   }
 
@@ -130,6 +132,7 @@ public:
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<signal<_Ntk>, node<_Ntk>>>>
   const_reference operator[]( signal<Ntk> const& f ) const
   {
+    assert( ntk.node_to_index( ntk.get_node( f ) ) < data.size() && "index out of bounds" );
     return data[ntk.node_to_index( ntk.get_node( f ) )];
   }
 
