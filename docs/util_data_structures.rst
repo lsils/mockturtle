@@ -78,3 +78,18 @@ Cut sets
 
 .. doxygenclass:: mockturtle::cut_set
    :members:
+
+Progress bar
+~~~~~~~~~~~~
+
+**Header:** ``mockturtle/utils/progress_bar.hpp``
+
+.. doc_overview_table:: classmockturtle_1_1progress__bar
+   :column: Method
+
+   progress_bar
+   ~progress_bar
+   operator()
+
+.. doxygenclass:: mockturtle::progress_bar
+   :members:
