@@ -36,7 +36,8 @@ v0.1 (not yet released)
 * Generators for arithmetic circuits
   `#5 <https://github.com/lsils/mockturtle/pull/5>`_
 
-* Utility data structures: `truth_table_cache`, `cut`, `cut_set`, `node_map`
+* Utility data structures: `truth_table_cache`, `cut`, `cut_set`, `node_map`, `progress_bar`
   `#1 <https://github.com/lsils/mockturtle/pull/1>`_
   `#2 <https://github.com/lsils/mockturtle/pull/2>`_
   `#13 <https://github.com/lsils/mockturtle/pull/13>`_
+  `#30 <https://github.com/lsils/mockturtle/pull/30>`_
