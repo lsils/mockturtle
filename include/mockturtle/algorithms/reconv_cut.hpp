@@ -58,19 +58,23 @@ template<typename Ntk>
 class compute_reconvergence_driven_cut_impl
 {
 public:
-  explicit compute_reconvergence_driven_cut_impl( Ntk const &ntk, node<Ntk> const& pivot, reconv_cut_params const& ps )
+  explicit compute_reconvergence_driven_cut_impl( Ntk const &ntk, std::vector<node<Ntk>> const& pivots, reconv_cut_params const& ps )
     : _ntk( ntk )
-    , _pivot( pivot )
+    , _pivots( pivots )
     , _ps( ps )
-  {}
+  {
+    assert( _pivots.size() > 0 );
+  }
 
 public:
   std::vector<node<Ntk>> run()
   {
     _ntk.clear_values();
-
-    std::vector<node<Ntk>> cut = { _pivot };
-    _ntk.set_value( _pivot, 1 );
+    std::vector<node<Ntk>> cut( _pivots );
+    for ( const auto& p : _pivots )
+    {
+      _ntk.set_value( p, 1 );
+    }
     compute_cut_recur( cut );
     return cut;
   }
@@ -127,7 +131,7 @@ protected:
 
 private:
   Ntk const& _ntk;
-  node<Ntk> const& _pivot;
+  std::vector<node<Ntk>> _pivots;
   reconv_cut_params const& _ps;
 };
 } /* namespace detail */
@@ -168,7 +172,26 @@ public:
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the is_pi method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the is_pi method" );
 
-    detail::compute_reconvergence_driven_cut_impl cut_generator( ntk, pivot, _ps );
+    detail::compute_reconvergence_driven_cut_impl cut_generator( ntk, { pivot }, _ps );
+
+    return cut_generator.run();
+  }
+
+  template<typename Ntk>
+  std::vector<node<Ntk>> operator()( Ntk const& ntk, std::vector<node<Ntk>> const& pivots )
+  {
+    assert( pivots.size() > 0u && "pivots must not be empty");
+
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+    static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+    static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the is_pi method" );
+    static_assert( has_set_value_v<Ntk>, "Ntk does not implement the is_pi method" );
+    static_assert( has_value_v<Ntk>, "Ntk does not implement the is_pi method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the is_pi method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the is_pi method" );
+
+    detail::compute_reconvergence_driven_cut_impl cut_generator( ntk, pivots, _ps );
 
     return cut_generator.run();
   }

@@ -101,7 +101,7 @@ private:
   {
     _parents.reset();
 
-    this->foreach_node( [&]( auto const& n ){
+    this->foreach_gate( [&]( auto const& n ){
         this->foreach_fanin( n, [&]( auto const& c ){
             auto& parents = _parents[ c ];
             if ( std::find( parents.begin(), parents.end(), n ) == parents.end() )
