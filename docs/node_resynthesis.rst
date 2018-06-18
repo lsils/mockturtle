@@ -30,6 +30,8 @@ Algorithm
 
 .. doxygenfunction:: mockturtle::node_resynthesis
 
+.. _node_resynthesis_functions:
+
 Resynthesis functions
 ~~~~~~~~~~~~~~~~~~~~~
 
