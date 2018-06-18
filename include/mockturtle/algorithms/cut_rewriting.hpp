@@ -42,14 +42,20 @@
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
+#include "../utils/progress_bar.hpp"
 #include "../views/cut_view.hpp"
 #include "cut_enumeration.hpp"
 
-#include <rang/rang.hpp>
+#include <fmt/format.h>
 
 namespace mockturtle
 {
 
+/*! \brief Parameters for cut_rewriting.
+ *
+ * The data structure `cut_rewriting_params` holds configurable parameters with
+ * default arguments for `cut_rewriting`.
+ */
 struct cut_rewriting_params
 {
   cut_rewriting_params()
@@ -61,12 +67,6 @@ struct cut_rewriting_params
 
   /*! \brief Cut enumeration parameters. */
   cut_enumeration_params cut_enumeration_ps{};
-
-  /*! \brief Maximum number of replacements for each cut. */
-  uint32_t max_candidates{1};
-
-  /*! \brief TODO Conflict limit for SAT solving in exact synthesis. */
-  int32_t conflict_limit{1000};
 
   /*! \brief Show progress. */
   bool progress{false};
@@ -381,12 +381,9 @@ public:
     /* store best replacement for each cut */
     node_map<std::vector<signal<Ntk>>, Ntk> best_replacements( ntk );
 
-    /* progress */
-    static char* spinner[] = {"|     |", "|.    |", "|..   |", "|...  |", "|.... |", "|.....|"};
-    uint8_t sp_cnt{0};
-
     /* iterate over all original nodes in the network */
     const auto size = ntk.size();
+    progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ), ps.progress};
     ntk.foreach_node( [&]( auto const& n ) {
       /* stop once all original nodes were visited */
       if ( n >= size )
@@ -410,12 +407,7 @@ public:
         const auto tt = cuts.truth_table( *cut );
         assert( cut->size() == static_cast<unsigned>( tt.num_vars() ) );
 
-        if ( ps.progress )
-        {
-          std::cout << "\u001B[G"
-                    << spinner[(int)( ( 6.0 * n ) / size )]
-                    << " node = " << rang::fg::yellow << std::setw( 4 ) << n << rang::fg::reset << "@" << rang::fg::green << std::setw( 2 ) << best_replacements[n].size() << rang::fg::reset << " / " << size << std::flush;
-        }
+        pbar( n, n, best_replacements[n].size() );
 
         std::vector<signal<Ntk>> children;
         for ( auto l : *cut )
@@ -439,11 +431,6 @@ public:
 
       return true;
     } );
-
-    if ( ps.progress )
-    {
-      std::cout << "\u001B[G" << std::string( 79, ' ' ) << "\u001B[G\u001B[?25h" << std::flush;
-    }
 
     auto [g, map] = network_cuts_graph( ntk, cuts );
     const auto is = maximum_weighted_independent_set_gwmin( g );
@@ -489,6 +476,47 @@ private:
 
 } /* namespace detail */
 
+/*! \brief Cut rewriting algorithm.
+ *
+ * This algorithm enumerates cut of a network and then tries to rewrite the cut
+ * in terms of gates of the same network.  The rewritten structures are added
+ * to the network, and if they lead to area improvement, will be used as new
+ * parts of the logic.  The resulting network therefore has a lot of dangling
+ * nodes from unsuccessful candidates, which can be removed by calling
+ * `cleanup_dangling` after the rewriting algorithm.
+ *
+ * The rewriting function must be of type `NtkDest::signal(NtkDest&,
+ * kitty::dynamic_truth_table const&, LeavesIterator, LeavesIterator)` where
+ * `LeavesIterator` can be dereferenced to a `NtkDest::signal`.  The last two
+ * parameters compose an iterator pair where the distance matches the number of
+ * variables of the truth table that is passed as second parameter.  There are
+ * some rewriting algorithms in the folder
+ * `mockturtle/algorithms/node_resyntesis`, since the resynthesis functions
+ * have the same signature.
+ * 
+ * In contrast to node resynthesis, cut rewriting uses the same type for the
+ * input and output network.  Consequently, the algorithm does not return a
+ * new network but applies changes in-place to the input network.
+ *
+ * **Required network functions:**
+ * - `fanout_size`
+ * - `foreach_node`
+ * - `foreach_fanin
+ * - `is_constant`
+ * - `is_pi`
+ * - `clear_values`
+ * - `incr_value`
+ * - `decr_value`
+ * - `set_value`
+ * - `node_to_index`
+ * - `index_to_node`
+ * - `substitute_node`
+ * - `make_signal`
+ *
+ * \param ntk Network (will be modified)
+ * \param rewriting_fn Rewriting function
+ * \param ps Rewriting params
+ */
 template<class Ntk, class RewritingFn>
 void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {} )
 {

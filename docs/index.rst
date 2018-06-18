@@ -29,6 +29,7 @@ Welcome to mockturtle's documentation!
    lut_mapping
    collapse_mapped
    node_resynthesis
+   cut_rewriting
    mig_algebraic_rewriting
    akers_synthesis
    simulation
