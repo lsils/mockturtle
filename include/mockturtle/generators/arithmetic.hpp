@@ -118,4 +118,31 @@ inline void carry_ripple_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, c
   }
 }
 
+/*! \brief Creates carry ripple subtractor structure.
+ *
+ * Creates a carry ripple structure composed of full adders.  The vectors `a`
+ * and `b` must have the same size.  The resulting sum bits are eventually
+ * stored in `a` and the carry bit will be overriden to store the output carry
+ * bit.  The inputs in `b` are inverted to realize substraction with full
+ * adders.  The carry bit must be passed in inverted state to the subtractor.
+ *
+ * \param a First input operand, will also have the output after the call
+ * \param b Second input operand
+ * \param carry Carry bit, will also have the output carry after the call
+ */
+template<typename Ntk>
+inline void carry_ripple_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, const std::vector<signal<Ntk>>& b, signal<Ntk>& carry )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
+
+  assert( a.size() == b.size() );
+
+  auto pa = a.begin();
+  for ( auto pb = b.begin(); pa != a.end(); ++pa, ++pb )
+  {
+    std::tie( *pa, carry ) = full_adder( ntk, *pa, ntk.create_not( *pb ), carry );
+  }
+}
+
 }
