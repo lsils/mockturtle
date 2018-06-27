@@ -61,7 +61,7 @@ void simulate_carry_ripple_adder( uint32_t op1, uint32_t op2 )
 {
   Ntk ntk;
 
-  std::vector<signal<Ntk>> a( 8 ), b( 8 );
+  std::vector<typename Ntk::signal> a( 8 ), b( 8 );
   std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
   std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
   auto carry = ntk.get_constant( false );
@@ -107,7 +107,7 @@ void simulate_carry_ripple_subtractor( uint32_t op1, uint32_t op2 )
 {
   Ntk ntk;
 
-  std::vector<signal<Ntk>> a( 8 ), b( 8 );
+  std::vector<typename Ntk::signal> a( 8 ), b( 8 );
   std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
   std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
   auto carry = ntk.get_constant( true );
