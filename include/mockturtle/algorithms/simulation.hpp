@@ -41,6 +41,7 @@
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/static_truth_table.hpp>
+#include <kitty/operators.hpp>
 
 namespace mockturtle
 {
@@ -53,7 +54,7 @@ public:
   default_simulator() = delete;
 };
 
-/*! \brief Simulate Boolean assignments.
+/*! \brief Simulates Boolean assignments.
  *
  * This simulator simulates Boolean values.  A vector with assignments for each 
  * primary input must be passed to the constructor.
@@ -71,6 +72,26 @@ public:
 
 private:
   std::vector<bool> assignments;
+};
+
+/*! \brief Simulates Boolean assignments with input word.
+ *
+ * This simulator simulates Boolean values.  A bitstring with assignments for
+ * each primary input must be passed to the constructor.  Because this
+ * bitstring can have at most 64 bits, this simulator is not suitable for 
+ * logic networks with more than 64 primary inputs.
+ */
+class input_word_simulator
+{
+public:
+  input_word_simulator( uint64_t word ) : word( word ) {}
+
+  bool compute_constant( bool value ) const { return value; }
+  bool compute_pi( uint32_t index ) const { return ( word >> index ) & 1; }
+  bool compute_not( bool value ) const { return !value; }
+
+private:
+  uint64_t word;
 };
 
 /*! \brief Simulates truth tables.

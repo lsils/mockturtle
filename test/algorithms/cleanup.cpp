@@ -17,8 +17,8 @@ void test_cleanup_network()
   const auto f1 = ntk.create_nand( a, b );
   const auto f2 = ntk.create_nand( a, f1 );
   const auto f3 = ntk.create_nand( b, f1 );
-  const auto f4 = ntk.create_nand( f2, f3 );
-
+  ntk.create_nand( f2, f3 );
+  
   CHECK( ntk.size() == 7 );
 
   const auto ntk2 = cleanup_dangling( ntk );

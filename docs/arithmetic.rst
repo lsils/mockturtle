@@ -9,3 +9,4 @@ Adders
 
 .. doxygenfunction:: mockturtle::full_adder
 .. doxygenfunction:: mockturtle::carry_ripple_adder_inplace
+.. doxygenfunction:: mockturtle::carry_ripple_subtractor_inplace

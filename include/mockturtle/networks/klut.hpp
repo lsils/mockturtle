@@ -344,6 +344,15 @@ public:
   }
 
   template<typename Fn>
+  void foreach_gate( Fn&& fn ) const
+  {
+    detail::foreach_element_if( ez::make_direct_iterator<std::size_t>( 2 ), /* start from 2 to avoid constants */
+                                ez::make_direct_iterator<std::size_t>( _storage->nodes.size() ),
+                                [this]( auto n ) { return !is_pi( n ); },
+                                fn );
+  }
+
+  template<typename Fn>
   void foreach_fanin( node const& n, Fn&& fn ) const
   {
     if ( n == 0 || is_pi( n ) )
@@ -355,6 +364,19 @@ public:
 #pragma endregion
 
 #pragma region Simulate values
+  template<typename Iterator>
+  iterates_over_t<Iterator, bool>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    uint32_t index{0};
+    while ( begin != end )
+    {
+      index <<= 1;
+      index ^= *begin++ ? 1 : 0; 
+    }
+    return kitty::get_bit( _storage->data[_storage->nodes[n].data[1].h1], index );
+  }
+
   template<typename Iterator>
   iterates_over_truth_table_t<Iterator>
   compute( node const& n, Iterator begin, Iterator end ) const
