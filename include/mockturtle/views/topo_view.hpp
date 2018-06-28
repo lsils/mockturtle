@@ -43,11 +43,6 @@
 namespace mockturtle
 {
 
-template<class Ntk, bool sorted = is_topologically_sorted_v<Ntk>>
-class topo_view
-{
-};
-
 /*! \brief Ensures topological order for the `foreach_node` interface method.
  *
  * This class computes *on construction* a topological order of the nodes which
@@ -87,6 +82,11 @@ class topo_view
       cut_enumeration( aig_topo );
    \endverbatim
  */
+template<class Ntk, bool sorted = is_topologically_sorted_v<Ntk>>
+class topo_view
+{
+};
+
 template<typename Ntk>
 class topo_view<Ntk, false> : public immutable_view<Ntk>
 {
