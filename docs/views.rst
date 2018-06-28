@@ -42,6 +42,14 @@ algorithm.  Several views are implemented in mockturtle.
 .. doxygenclass:: mockturtle::cut_view
    :members:
 
+`mffc_view`: Network view on a (M)FFC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/mffc_view.hpp``
+
+.. doxygenclass:: mockturtle::mffc_view
+   :members:
+
 `immutable_view`: Prevent network changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
