@@ -167,7 +167,7 @@ public:
 private:
   void collect( node const& n )
   {
-    if ( this->is_constant( n ) || Ntk::is_pi( n ) )
+    if ( Ntk::is_constant( n ) || Ntk::is_pi( n ) )
     {
       return;
     }
@@ -192,9 +192,9 @@ private:
 
     for ( auto const& n : orig )
     {
-      if ( this->is_constant( n ) )
+      if ( Ntk::is_constant( n ) )
       {
-        return;
+        continue;
       }
 
       if ( this->value( n ) > 0 || Ntk::is_pi( n ) ) /* PI candidate */
