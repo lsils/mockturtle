@@ -119,6 +119,12 @@ public:
 
     timer t( time_total );
 
+    ntk.clear_visited();
+    ntk.clear_values();
+    ntk.foreach_node( [&]( auto const& n ) {
+      ntk.set_value( n, ntk.fanout_size( n ) );
+    } );
+
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
       if ( i >= size )
       {
@@ -222,6 +228,11 @@ void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params c
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
   static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
+  static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
+  static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
 
   detail::refactoring_impl<Ntk, RefactoringFn> p( ntk, refactoring_fn, ps );
   p.run();

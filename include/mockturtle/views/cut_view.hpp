@@ -34,12 +34,13 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <unordered_map>
 #include <vector>
 
 #include "../networks/detail/foreach.hpp"
 #include "../traits.hpp"
 #include "immutable_view.hpp"
+
+#include <sparsepp/spp.h>
 
 namespace mockturtle
 {
@@ -52,8 +53,11 @@ namespace mockturtle
  * `foreach_node`, `foreach_gate`, `is_pi`, `node_to_index`, and
  * `index_to_node`.
  *
+ * This view assumes that all nodes' visited flags are set 0 before creating
+ * the view.  The view guarantees that all the nodes in the view will have a 0
+ * visited flag after the construction.
+ *
  * **Required network functions:**
- * - `clear_visited`
  * - `set_visited`
  * - `visited`
  * - `get_node`
@@ -74,15 +78,12 @@ public:
       : immutable_view<Ntk>( ntk ), _root( root )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-    static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
     static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
     static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
-
-    this->clear_visited();
 
     /* constants */
     add_constants();
@@ -94,21 +95,24 @@ public:
     }
 
     traverse( root );
+
+    /* restore visited */
+    for ( auto const& n : _nodes )
+    {
+      this->set_visited( n, 0 );
+    }
   }
 
   explicit cut_view( Ntk const& ntk, std::vector<signal> const& leaves, node const& root )
       : immutable_view<Ntk>( ntk ), _root( root )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-    static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
     static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
     static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
-
-    this->clear_visited();
 
     /* constants */
     add_constants();
@@ -121,6 +125,12 @@ public:
     }
 
     traverse( root );
+
+    /* restore visited */
+    for ( auto const& n : _nodes )
+    {
+      this->set_visited( n, 0 );
+    }
   }
 
   inline auto size() const { return _nodes.size(); }
@@ -208,7 +218,7 @@ public:
   unsigned _num_constants{1};
   unsigned _num_leaves{0};
   std::vector<node> _nodes;
-  std::unordered_map<node, uint32_t> _node_to_index;
+  spp::sparse_hash_map<node, uint32_t> _node_to_index;
   node _root;
 };
 

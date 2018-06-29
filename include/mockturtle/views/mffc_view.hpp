@@ -57,14 +57,14 @@ namespace mockturtle
  * `foreach_po`, `foreach_node`, `foreach_gate`, `is_pi`, `node_to_index`, and
  * `index_to_node`.
  *
+ * The view requires that the nodes' values contain their reference counts,
+ * i.e., they are assigned their fanout size.  The values are restored by the
+ * view.
+ *
  * **Required network functions:**
  * - `get_node`
- * - `clear_values`
- * - `set_value`
  * - `decr_value`
  * - `value`
- * - `fanout_size`
- * - `foreach_node`
  * - `foreach_fanin`
  * - `is_constant`
  * - `node_to_index`
@@ -83,27 +83,25 @@ public:
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-    static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
-    static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
     static_assert( has_decr_value_v<Ntk>, "Ntk does not implement the decr_value method" );
+    static_assert( has_incr_value_v<Ntk>, "Ntk does not implement the incr_value method" );
     static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
-    static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
-    static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
     static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
     static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
     static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
 
-    this->clear_values();
-    Ntk::foreach_node( [&]( auto const& n ) {
-      if ( this->is_constant( n ) )
-      {
-        _constants.push_back( n );
-        _node_to_index.emplace( n, _node_to_index.size() );
-      }
-      this->set_value( n, Ntk::fanout_size( n ) );
-    } );
-    _num_constants = _constants.size();
+    const auto c0 = this->get_node( this->get_constant( false ));
+    _constants.push_back( c0);
+    _node_to_index.emplace( c0, _node_to_index.size());
+
+    const auto c1 = this->get_node( this->get_constant( true));
+    if ( c1 != c0 )
+    {
+      _constants.push_back( c1);
+      _node_to_index.emplace( c1, _node_to_index.size());
+      ++_num_constants;
+    }
 
     _leaves.reserve( 16 );
     _nodes.reserve( _limit );
@@ -178,6 +176,12 @@ public:
       _empty = true;
     }
     _num_leaves = _leaves.size();
+
+    /* restore ref counts */
+    for ( auto const& n : _nodes )
+    {
+      this->incr_value( n );
+    }
   }
 
 private:
@@ -248,11 +252,11 @@ private:
 
 public:
   std::vector<node> _nodes, _constants, _leaves, _inner;
-  unsigned _num_constants{0}, _num_leaves{0};
+  unsigned _num_constants{1}, _num_leaves{0};
   spp::sparse_hash_map<node, uint32_t> _node_to_index;
   node _root;
   bool _empty{true};
-  uint32_t _limit{30};
+  uint32_t _limit{100};
 };
 
 template<class T>
