@@ -227,7 +227,7 @@ private:
   std::vector<int32_t> _weights; /* degree = -1 means vertex is removed */
 };
 
-std::vector<uint32_t> maximum_weighted_independent_set_gwmin( graph& g )
+inline std::vector<uint32_t> maximum_weighted_independent_set_gwmin( graph& g )
 {
   std::vector<uint32_t> mwis;
 
@@ -260,7 +260,7 @@ std::vector<uint32_t> maximum_weighted_independent_set_gwmin( graph& g )
   return mwis;
 }
 
-std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
+inline std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
 {
   std::vector<uint32_t> mwis;
 
