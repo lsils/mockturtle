@@ -1,3 +1,5 @@
+#pragma once
+
 #include <algorithm>
 #include <bitset>
 #include <cassert>
@@ -354,10 +356,10 @@ inline bool operator==( unitized_table const& table, unitized_table const& origi
 namespace detail
 {
 template<typename Ntk, typename LeavesIterator>
-class akers_synthesis
+class akers_synthesis_impl
 {
 public:
-  akers_synthesis( Ntk ntk, kitty::dynamic_truth_table const& func, kitty::dynamic_truth_table const& care, LeavesIterator begin, LeavesIterator end )
+  akers_synthesis_impl( Ntk ntk, kitty::dynamic_truth_table const& func, kitty::dynamic_truth_table const& care, LeavesIterator begin, LeavesIterator end )
       : ntk( ntk ),
         func( func ),
         care( care ),
@@ -773,7 +775,7 @@ signal<Ntk> akers_synthesis( Ntk& ntk, kitty::dynamic_truth_table const& func, k
   assert( func.num_vars() == care.num_vars() );
   assert( std::distance( begin, end ) == func.num_vars() );
 
-  detail::akers_synthesis<Ntk, LeavesIterator> tt( ntk, func, care, begin, end );
+  detail::akers_synthesis_impl<Ntk, LeavesIterator> tt( ntk, func, care, begin, end );
   return tt.run();
 }
 
