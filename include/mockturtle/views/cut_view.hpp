@@ -70,7 +70,7 @@ public:
   using signal = typename Ntk::signal;
 
 public:
-  explicit cut_view( Ntk const& ntk, const std::vector<node>& leaves, const node& root )
+  explicit cut_view( Ntk const& ntk, std::vector<node> const& leaves, node const& root )
       : immutable_view<Ntk>( ntk ), _root( root )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -96,7 +96,7 @@ public:
     traverse( root );
   }
 
-  explicit cut_view( Ntk const& ntk, const std::vector<signal>& leaves, const node& root )
+  explicit cut_view( Ntk const& ntk, std::vector<signal> const& leaves, node const& root )
       : immutable_view<Ntk>( ntk ), _root( root )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
