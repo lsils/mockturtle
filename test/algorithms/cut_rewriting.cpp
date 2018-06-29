@@ -3,11 +3,8 @@
 #include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
-#include <mockturtle/io/aiger_reader.hpp>
-#include <mockturtle/io/write_bench.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/traits.hpp>
-#include <lorina/aiger.hpp>
 
 using namespace mockturtle;
 
