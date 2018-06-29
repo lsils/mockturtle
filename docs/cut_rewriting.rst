@@ -17,6 +17,7 @@ networks.  In this case the maximum number of variables for a node function is
    cut_rewriting_params ps;
    ps.cut_enumeration_ps.cut_size = 4;
    cut_rewriting( mig, resyn, ps );
+   mig = cleanup_dangling( mig );
 
 Parameters
 ~~~~~~~~~~
