@@ -286,6 +286,11 @@ public:
     const auto c2 = create_and( +b, -a );
     return create_and( !c1, !c2 ) ^ !fcompl;
   }
+
+  signal create_xnor( signal const& a, signal const& b )
+  {
+    return !create_xor( a, b );
+  }
 #pragma endregion
 
 #pragma region Create arbitrary functions

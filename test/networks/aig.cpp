@@ -159,6 +159,7 @@ TEST_CASE( "create binary operations in an AIG", "[aig]" )
   CHECK( has_create_or_v<aig_network> );
   CHECK( has_create_nor_v<aig_network> );
   CHECK( has_create_xor_v<aig_network> );
+  CHECK( has_create_xnor_v<aig_network> );
 
   const auto x1 = aig.create_pi();
   const auto x2 = aig.create_pi();
@@ -179,8 +180,12 @@ TEST_CASE( "create binary operations in an AIG", "[aig]" )
   CHECK( aig.size() == 5 );
   CHECK( f3 == !f4 );
 
-  aig.create_xor( x1, x2 );
+  const auto f5 = aig.create_xor( x1, x2 );
   CHECK( aig.size() == 8 );
+
+  const auto f6 = aig.create_xnor( x1, x2 );
+  CHECK( aig.size() == 8 );
+  CHECK( f5 == !f6 );
 }
 
 TEST_CASE( "hash nodes in AIG network", "[aig]" )
