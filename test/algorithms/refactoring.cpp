@@ -1,6 +1,6 @@
 #include <catch.hpp>
 
-#include <mockturtle/algorithms/cut_rewriting.hpp>
+#include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -8,7 +8,7 @@
 
 using namespace mockturtle;
 
-TEST_CASE( "Cut rewriting of bad MAJ", "[cut_rewriting]" )
+TEST_CASE( "Refactoring of bad MAJ", "[refactoring]" )
 {
   mig_network mig;
   const auto a = mig.create_pi();
@@ -19,7 +19,7 @@ TEST_CASE( "Cut rewriting of bad MAJ", "[cut_rewriting]" )
   mig.create_po( f );
 
   mig_npn_resynthesis resyn;
-  cut_rewriting( mig, resyn );
+  refactoring( mig, resyn );
 
   mig = cleanup_dangling( mig );
 
@@ -29,7 +29,7 @@ TEST_CASE( "Cut rewriting of bad MAJ", "[cut_rewriting]" )
   CHECK( mig.num_gates() == 1 );
 }
 
-TEST_CASE( "Cut rewriting with Akers synthesis", "[cut_rewriting]" )
+TEST_CASE( "Refactoring with Akers synthesis", "[refactoring]" )
 {
   mig_network mig;
   const auto a = mig.create_pi();
@@ -40,7 +40,7 @@ TEST_CASE( "Cut rewriting with Akers synthesis", "[cut_rewriting]" )
   mig.create_po( f );
 
   akers_resynthesis resyn;
-  cut_rewriting( mig, resyn );
+  refactoring( mig, resyn );
 
   mig = cleanup_dangling( mig );
 
@@ -50,13 +50,13 @@ TEST_CASE( "Cut rewriting with Akers synthesis", "[cut_rewriting]" )
   CHECK( mig.num_gates() == 1 );
 }
 
-TEST_CASE( "Cut rewriting from constant", "[cut_rewriting]" )
+TEST_CASE( "Refactoring from constant", "[refactoring]" )
 {
   mig_network mig;
   mig.create_po( mig.get_constant( false ) );
 
   mig_npn_resynthesis resyn;
-  cut_rewriting( mig, resyn );
+  refactoring( mig, resyn );
 
   mig = cleanup_dangling( mig );
 
@@ -70,13 +70,13 @@ TEST_CASE( "Cut rewriting from constant", "[cut_rewriting]" )
   } );
 }
 
-TEST_CASE( "Cut rewriting from inverted constant", "[cut_rewriting]" )
+TEST_CASE( "Refactoring from inverted constant", "[refactoring]" )
 {
   mig_network mig;
   mig.create_po( mig.get_constant( true ) );
 
   mig_npn_resynthesis resyn;
-  cut_rewriting( mig, resyn );
+  refactoring( mig, resyn );
 
   mig = cleanup_dangling( mig );
 
@@ -90,13 +90,13 @@ TEST_CASE( "Cut rewriting from inverted constant", "[cut_rewriting]" )
   } );
 }
 
-TEST_CASE( "Cut rewriting from projection", "[cut_rewriting]" )
+TEST_CASE( "Refactoring from projection", "[refactoring]" )
 {
   mig_network mig;
   mig.create_po( mig.create_pi() );
 
   mig_npn_resynthesis resyn;
-  cut_rewriting( mig, resyn );
+  refactoring( mig, resyn );
 
   mig = cleanup_dangling( mig );
 
@@ -111,13 +111,13 @@ TEST_CASE( "Cut rewriting from projection", "[cut_rewriting]" )
   } );
 }
 
-TEST_CASE( "Cut rewriting from inverted projection", "[cut_rewriting]" )
+TEST_CASE( "Refactoring from inverted projection", "[refactoring]" )
 {
   mig_network mig;
   mig.create_po( !mig.create_pi() );
 
   mig_npn_resynthesis resyn;
-  cut_rewriting( mig, resyn );
+  refactoring( mig, resyn );
 
   mig = cleanup_dangling( mig );
 

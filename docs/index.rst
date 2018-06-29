@@ -30,6 +30,7 @@ Welcome to mockturtle's documentation!
    collapse_mapped
    node_resynthesis
    cut_rewriting
+   refactoring
    mig_algebraic_rewriting
    akers_synthesis
    simulation

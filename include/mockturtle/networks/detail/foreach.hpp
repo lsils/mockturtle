@@ -45,7 +45,7 @@ template<class Fn, class ElementType, class ReturnType>
 inline constexpr bool is_callable_without_index_v = std::is_invocable_r_v<ReturnType, Fn, ElementType>;
 
 template<class Iterator, class ElementType = typename Iterator::value_type, class Fn>
-Iterator foreach_element( Iterator begin, Iterator end, Fn&& fn )
+Iterator foreach_element( Iterator begin, Iterator end, Fn&& fn, uint32_t counter_offset = 0 )
 {
   static_assert( is_callable_with_index_v<Fn, ElementType, void> ||
                  is_callable_without_index_v<Fn, ElementType, void> ||
@@ -54,6 +54,7 @@ Iterator foreach_element( Iterator begin, Iterator end, Fn&& fn )
 
   if constexpr ( is_callable_without_index_v<Fn, ElementType, bool> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       if ( !fn( *begin++ ) )
@@ -65,7 +66,7 @@ Iterator foreach_element( Iterator begin, Iterator end, Fn&& fn )
   }
   else if constexpr ( is_callable_with_index_v<Fn, ElementType, bool> )
   {
-    uint32_t index{0};
+    uint32_t index{counter_offset};
     while ( begin != end )
     {
       if ( !fn( *begin++, index++ ) )
@@ -77,6 +78,7 @@ Iterator foreach_element( Iterator begin, Iterator end, Fn&& fn )
   }
   else if constexpr ( is_callable_without_index_v<Fn, ElementType, void> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       fn( *begin++ );
@@ -85,7 +87,7 @@ Iterator foreach_element( Iterator begin, Iterator end, Fn&& fn )
   }
   else if constexpr ( is_callable_with_index_v<Fn, ElementType, void> )
   {
-    uint32_t index{0};
+    uint32_t index{counter_offset};
     while ( begin != end )
     {
       fn( *begin++, index++ );
@@ -95,7 +97,7 @@ Iterator foreach_element( Iterator begin, Iterator end, Fn&& fn )
 }
 
 template<class Iterator, class ElementType = typename Iterator::value_type, class Pred, class Fn>
-Iterator foreach_element_if( Iterator begin, Iterator end, Pred&& pred, Fn&& fn )
+Iterator foreach_element_if( Iterator begin, Iterator end, Pred&& pred, Fn&& fn, uint32_t counter_offset = 0 )
 {
   static_assert( is_callable_with_index_v<Fn, ElementType, void> ||
                  is_callable_without_index_v<Fn, ElementType, void> ||
@@ -104,6 +106,7 @@ Iterator foreach_element_if( Iterator begin, Iterator end, Pred&& pred, Fn&& fn 
 
   if constexpr ( is_callable_without_index_v<Fn, ElementType, bool> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       if ( !pred( *begin ) )
@@ -120,7 +123,7 @@ Iterator foreach_element_if( Iterator begin, Iterator end, Pred&& pred, Fn&& fn 
   }
   else if constexpr ( is_callable_with_index_v<Fn, ElementType, bool> )
   {
-    uint32_t index{0};
+    uint32_t index{counter_offset};
     while ( begin != end )
     {
       if ( !pred( *begin ) )
@@ -137,6 +140,7 @@ Iterator foreach_element_if( Iterator begin, Iterator end, Pred&& pred, Fn&& fn 
   }
   else if constexpr ( is_callable_without_index_v<Fn, ElementType, void> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       if ( !pred( *begin ) )
@@ -150,7 +154,7 @@ Iterator foreach_element_if( Iterator begin, Iterator end, Pred&& pred, Fn&& fn 
   }
   else if constexpr ( is_callable_with_index_v<Fn, ElementType, void> )
   {
-    uint32_t index{0};
+    uint32_t index{counter_offset};
     while ( begin != end )
     {
       if ( !pred( *begin ) )
@@ -165,7 +169,7 @@ Iterator foreach_element_if( Iterator begin, Iterator end, Pred&& pred, Fn&& fn 
 }
 
 template<class Iterator, class ElementType, class Transform, class Fn>
-Iterator foreach_element_transform( Iterator begin, Iterator end, Transform&& transform, Fn&& fn )
+Iterator foreach_element_transform( Iterator begin, Iterator end, Transform&& transform, Fn&& fn, uint32_t counter_offset = 0 )
 {
   static_assert( is_callable_with_index_v<Fn, ElementType, void> ||
                  is_callable_without_index_v<Fn, ElementType, void> ||
@@ -174,6 +178,7 @@ Iterator foreach_element_transform( Iterator begin, Iterator end, Transform&& tr
 
   if constexpr ( is_callable_without_index_v<Fn, ElementType, bool> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       if ( !fn( transform( *begin++ ) ) )
@@ -185,7 +190,7 @@ Iterator foreach_element_transform( Iterator begin, Iterator end, Transform&& tr
   }
   else if constexpr ( is_callable_with_index_v<Fn, ElementType, bool> )
   {
-    uint32_t index{0};
+    uint32_t index{counter_offset};
     while ( begin != end )
     {
       if ( !fn( transform( *begin++ ), index++ ) )
@@ -197,6 +202,7 @@ Iterator foreach_element_transform( Iterator begin, Iterator end, Transform&& tr
   }
   else if constexpr ( is_callable_without_index_v<Fn, ElementType, void> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       fn( transform( *begin++ ) );
@@ -205,7 +211,7 @@ Iterator foreach_element_transform( Iterator begin, Iterator end, Transform&& tr
   }
   else if constexpr ( is_callable_with_index_v<Fn, ElementType, void> )
   {
-    uint32_t index{0};
+    uint32_t index{counter_offset};
     while ( begin != end )
     {
       fn( transform( *begin++ ), index++ );

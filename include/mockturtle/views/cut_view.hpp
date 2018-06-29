@@ -37,8 +37,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../traits.hpp"
 #include "../networks/detail/foreach.hpp"
+#include "../traits.hpp"
 #include "immutable_view.hpp"
 
 namespace mockturtle
@@ -85,24 +85,39 @@ public:
     this->clear_visited();
 
     /* constants */
-    add_node( this->get_node( this->get_constant( false ) ) );
-    this->set_visited( this->get_node( this->get_constant( false ) ), 1 );
-    if ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) )
-    {
-      add_node( this->get_node( this->get_constant( true ) ) );
-      this->set_visited( this->get_node( this->get_constant( true ) ), 1 );
-      ++_num_constants;
-    }
+    add_constants();
 
     /* primary inputs */
     for ( auto const& leaf : leaves )
     {
-      if ( this->visited( leaf ) == 1 )
-        continue;
+      add_leaf( leaf );
+    }
 
-      add_node( leaf );
-      this->set_visited( leaf, 1 );
-      ++_num_leaves;
+    traverse( root );
+  }
+
+  explicit cut_view( Ntk const& ntk, const std::vector<signal>& leaves, const node& root )
+      : immutable_view<Ntk>( ntk ), _root( root )
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
+    static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+    static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+    static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+    static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+
+    this->clear_visited();
+
+    /* constants */
+    add_constants();
+
+    /* primary inputs */
+    for ( auto const& f : leaves )
+    {
+      const auto leaf = this->get_node( f );
+      add_leaf( leaf );
     }
 
     traverse( root );
@@ -148,7 +163,29 @@ public:
   }
 
 private:
-  void add_node( node const& n )
+  inline void add_constants()
+  {
+    add_node( this->get_node( this->get_constant( false ) ) );
+    this->set_visited( this->get_node( this->get_constant( false ) ), 1 );
+    if ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) )
+    {
+      add_node( this->get_node( this->get_constant( true ) ) );
+      this->set_visited( this->get_node( this->get_constant( true ) ), 1 );
+      ++_num_constants;
+    }
+  }
+
+  inline void add_leaf( node const& leaf )
+  {
+    if ( this->visited( leaf ) == 1 )
+      return;
+
+    add_node( leaf );
+    this->set_visited( leaf, 1 );
+    ++_num_leaves;
+  }
+
+  inline void add_node( node const& n )
   {
     _node_to_index[n] = _nodes.size();
     _nodes.push_back( n );
