@@ -623,9 +623,9 @@ private:
       }
     }
 
-    auto best_column = 0;
+    auto best_column = 0u;
 
-    for ( auto c = 0; c < count.size(); ++c )
+    for ( auto c = 0u; c < count.size(); ++c )
     {
       if ( count[c] < best_count )
       {

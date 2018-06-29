@@ -188,7 +188,7 @@ private:
 
     auto orig = _nodes;
     std::sort( orig.begin(), orig.end(),
-               [&]( auto const& n1, auto const& n2 ) { return Ntk::node_to_index( n1 ) < Ntk::node_to_index( n2 ); } );
+               [&]( auto const& n1, auto const& n2 ) { return static_cast<Ntk*>( this )->node_to_index( n1 ) < static_cast<Ntk*>( this )->node_to_index( n2 ); } );
 
     for ( auto const& n : orig )
     {

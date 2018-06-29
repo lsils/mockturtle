@@ -54,6 +54,7 @@ Iterator foreach_element( Iterator begin, Iterator end, Fn&& fn, uint32_t counte
 
   if constexpr ( is_callable_without_index_v<Fn, ElementType, bool> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       if ( !fn( *begin++ ) )
@@ -77,6 +78,7 @@ Iterator foreach_element( Iterator begin, Iterator end, Fn&& fn, uint32_t counte
   }
   else if constexpr ( is_callable_without_index_v<Fn, ElementType, void> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       fn( *begin++ );
@@ -104,6 +106,7 @@ Iterator foreach_element_if( Iterator begin, Iterator end, Pred&& pred, Fn&& fn,
 
   if constexpr ( is_callable_without_index_v<Fn, ElementType, bool> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       if ( !pred( *begin ) )
@@ -137,6 +140,7 @@ Iterator foreach_element_if( Iterator begin, Iterator end, Pred&& pred, Fn&& fn,
   }
   else if constexpr ( is_callable_without_index_v<Fn, ElementType, void> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       if ( !pred( *begin ) )
@@ -174,6 +178,7 @@ Iterator foreach_element_transform( Iterator begin, Iterator end, Transform&& tr
 
   if constexpr ( is_callable_without_index_v<Fn, ElementType, bool> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       if ( !fn( transform( *begin++ ) ) )
@@ -197,6 +202,7 @@ Iterator foreach_element_transform( Iterator begin, Iterator end, Transform&& tr
   }
   else if constexpr ( is_callable_without_index_v<Fn, ElementType, void> )
   {
+    (void)counter_offset;
     while ( begin != end )
     {
       fn( transform( *begin++ ) );
