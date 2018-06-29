@@ -68,7 +68,7 @@ public:
   template<typename LeavesIterator>
   mig_network::signal operator()( mig_network& mig, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end )
   {
-    return akers_synthesis( mig, function, function, begin, end );
+    return akers_synthesis( mig, function, ~function.construct(), begin, end );
   }
 };
 
