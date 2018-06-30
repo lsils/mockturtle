@@ -296,6 +296,7 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
 
   graph g;
 
@@ -303,6 +304,8 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
   std::vector<std::vector<cut_addr>> conflicts( cuts.nodes_size() );
   std::vector<cut_addr> vertex_to_cut_addr;
   std::vector<std::vector<uint32_t>> cut_addr_to_vertex( cuts.nodes_size() );
+
+  ntk.clear_visited();
 
   ntk.foreach_node( [&]( auto const& n, auto ) {
     if ( n >= cuts.nodes_size() || ntk.is_constant( n ) || ntk.is_pi( n ) )
@@ -501,7 +504,7 @@ private:
  * **Required network functions:**
  * - `fanout_size`
  * - `foreach_node`
- * - `foreach_fanin
+ * - `foreach_fanin`
  * - `is_constant`
  * - `is_pi`
  * - `clear_values`
