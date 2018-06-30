@@ -115,6 +115,7 @@ public:
   void run()
   {
     const auto size = ntk.size();
+    auto last_size = size;
     progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
 
     timer t( time_total );
@@ -133,7 +134,7 @@ public:
 
       const auto mffc = timed_create<mffc_view<Ntk>>( time_mffc, ntk, n );
 
-      pbar( i, i, _candidates, _estimated_reduction );
+      pbar( i, i, _candidates, _estimated_gain );
 
       if ( mffc.num_pos() == 0 || mffc.num_pis() > ps.max_pis || mffc.size() < 4 )
       {
@@ -150,11 +151,12 @@ public:
                                   [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
       const auto new_f = timed_call( time_refactoring,
                                      [&]() { return refactoring_fn( ntk, tt, leaves.begin(), leaves.end() ); } );
-      const auto cut = timed_create<cut_view<Ntk>>( time_cut, ntk, leaves, ntk.get_node( new_f ) );
-      if ( cut.size() < mffc.size() )
+      const auto gain = mffc.num_gates() - ( ntk.size() - last_size );
+      last_size = ntk.size();
+      if ( gain > 0 )
       {
         ++_candidates;
-        _estimated_reduction += ( mffc.size() - cut.size() );
+        _estimated_gain += gain;
         ntk.substitute_node( n, new_f );
       }
 
@@ -169,7 +171,6 @@ public:
 
     std::cout << fmt::format( "[i] total time       = {:>5.2f}\n", std::chrono::duration_cast<std::chrono::duration<double>>( time_total ).count() );
     std::cout << fmt::format( "[i] MFFC time        = {:>5.2f}\n", std::chrono::duration_cast<std::chrono::duration<double>>( time_mffc ).count() );
-    std::cout << fmt::format( "[i] cut time         = {:>5.2f}\n", std::chrono::duration_cast<std::chrono::duration<double>>( time_cut ).count() );
     std::cout << fmt::format( "[i] refactoring time = {:>5.2f}\n", std::chrono::duration_cast<std::chrono::duration<double>>( time_refactoring ).count() );
     std::cout << fmt::format( "[i] simulation time  = {:>5.2f}\n", std::chrono::duration_cast<std::chrono::duration<double>>( time_simulation ).count() );
   }
@@ -180,11 +181,10 @@ private:
   refactoring_params const& ps;
 
   uint32_t _candidates{0};
-  uint32_t _estimated_reduction{0};
+  uint32_t _estimated_gain{0};
 
   std::chrono::steady_clock::duration time_total{0};
   std::chrono::steady_clock::duration time_mffc{0};
-  std::chrono::steady_clock::duration time_cut{0};
   std::chrono::steady_clock::duration time_refactoring{0};
   std::chrono::steady_clock::duration time_simulation{0};
 };
