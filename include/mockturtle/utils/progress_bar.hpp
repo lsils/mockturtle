@@ -25,7 +25,7 @@
 
 /*!
   \file progress_bar.hpp
-  \brief Progress br
+  \brief Progress bar
 
   \author Mathias Soeken
 */
