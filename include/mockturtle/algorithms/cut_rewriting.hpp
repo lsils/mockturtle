@@ -43,6 +43,7 @@
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
+#include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
 #include "cut_enumeration.hpp"
 
@@ -73,6 +74,25 @@ struct cut_rewriting_params
 
   /*! \brief Be verbose. */
   bool verbose{false};
+
+  /*! \brief Be very verbose. */
+  bool very_verbose{false};
+};
+
+struct cut_rewriting_stats
+{
+  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_cuts{0};
+  stopwatch<>::duration time_rewriting{0};
+  stopwatch<>::duration time_mis{0};
+
+  void report() const
+  {
+    std::cout << fmt::format( "[i] total time     = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i] cut enum. time = {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    std::cout << fmt::format( "[i] rewriting time = {:>5.2f} secs\n", to_seconds( time_rewriting ) );
+    std::cout << fmt::format( "[i] ind. set time  = {:>5.2f} secs\n", to_seconds( time_mis ) );
+  }
 };
 
 namespace detail
@@ -365,15 +385,18 @@ template<class Ntk, class RewritingFn>
 class cut_rewriting_impl
 {
 public:
-  cut_rewriting_impl( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps )
+  cut_rewriting_impl( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps, cut_rewriting_stats& st )
       : ntk( ntk ),
         rewriting_fn( rewriting_fn ),
-        ps( ps ) {}
+        ps( ps ),
+        st( st ) {}
 
   void run()
   {
+    stopwatch t( st.time_total );
+
     /* enumerate cuts */
-    const auto cuts = cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk, ps.cut_enumeration_ps );
+    const auto cuts = call_with_stopwatch( st.time_cuts, [&]() { return cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk, ps.cut_enumeration_ps ); } );
 
     /* for cost estimation we use reference counters initialized by the fanout size */
     ntk.clear_values();
@@ -419,7 +442,7 @@ public:
         }
 
         int32_t gain = detail::recursive_deref( ntk, n );
-        const auto f_new = rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end() );
+        const auto f_new = call_with_stopwatch( st.time_rewriting, [&]() { return rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end() ); } );
         gain -= detail::recursive_ref( ntk, ntk.get_node( f_new ) );
 
         detail::recursive_deref( ntk, ntk.get_node( f_new ) );
@@ -435,10 +458,11 @@ public:
       return true;
     } );
 
+    stopwatch t2( st.time_mis );
     auto [g, map] = network_cuts_graph( ntk, cuts );
     const auto is = maximum_weighted_independent_set_gwmin( g );
 
-    if ( ps.verbose )
+    if ( ps.very_verbose )
     {
       std::cout << "[i] replacement dependency graph has " << g.num_vertices() << " vertices and " << g.num_edges() << " edges\n";
       std::cout << "[i] size of independent set is " << is.size() << "\n";
@@ -449,7 +473,7 @@ public:
       const auto v_node = map[v].first;
       const auto v_cut = map[v].second;
 
-      if ( ps.verbose )
+      if ( ps.very_verbose )
       {
         std::cout << "[i] try to rewrite cut #" << v_cut << " in node #" << v_node << "\n";
       }
@@ -462,7 +486,7 @@ public:
       if ( ntk.node_to_index( ntk.is_constant( ntk.get_node( replacement ) ) ) || ntk.index_to_node( v_node ) == ntk.get_node( replacement ) )
         continue;
 
-      if ( ps.verbose )
+      if ( ps.very_verbose )
       {
         std::cout << "[i] optimize cut #" << v_cut << " in node #" << v_node << " and replace with node " << ntk.get_node( replacement ) << "\n";
       }
@@ -475,6 +499,7 @@ private:
   Ntk& ntk;
   RewritingFn&& rewriting_fn;
   cut_rewriting_params const& ps;
+  cut_rewriting_stats& st;
 };
 
 } /* namespace detail */
@@ -538,8 +563,14 @@ void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params c
   static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
 
-  detail::cut_rewriting_impl<Ntk, RewritingFn> p( ntk, rewriting_fn, ps );
+  cut_rewriting_stats st;
+  detail::cut_rewriting_impl<Ntk, RewritingFn> p( ntk, rewriting_fn, ps, st );
   p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
 }
 
 } /* namespace mockturtle */

@@ -66,6 +66,22 @@ struct refactoring_params
   bool verbose{false};
 };
 
+struct refactoring_stats
+{
+  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_mffc{0};
+  stopwatch<>::duration time_refactoring{0};
+  stopwatch<>::duration time_simulation{0};
+
+  void report() const
+  {
+    std::cout << fmt::format( "[i] total time       = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i] MFFC time        = {:>5.2f} secs\n", to_seconds( time_mffc ) );
+    std::cout << fmt::format( "[i] refactoring time = {:>5.2f} secs\n", to_seconds( time_refactoring ) );
+    std::cout << fmt::format( "[i] simulation time  = {:>5.2f} secs\n", to_seconds( time_simulation ) );
+  }
+};
+
 namespace detail
 {
 
@@ -73,8 +89,8 @@ template<class Ntk, class RefactoringFn>
 class refactoring_impl
 {
 public:
-  refactoring_impl( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps )
-      : ntk( ntk ), refactoring_fn( refactoring_fn ), ps( ps )
+  refactoring_impl( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps, refactoring_stats& st )
+      : ntk( ntk ), refactoring_fn( refactoring_fn ), ps( ps ), st( st )
   {
   }
 
@@ -84,7 +100,7 @@ public:
     auto last_size = size;
     progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
 
-    stopwatch t( time_total );
+    stopwatch t( st.time_total );
 
     ntk.clear_visited();
     ntk.clear_values();
@@ -98,7 +114,7 @@ public:
         return false;
       }
 
-      const auto mffc = make_with_stopwatch<mffc_view<Ntk>>( time_mffc, ntk, n );
+      const auto mffc = make_with_stopwatch<mffc_view<Ntk>>( st.time_mffc, ntk, n );
 
       pbar( i, i, _candidates, _estimated_gain );
 
@@ -113,9 +129,9 @@ public:
       } );
 
       default_simulator<kitty::dynamic_truth_table> sim( mffc.num_pis() );
-      const auto tt = call_with_stopwatch( time_simulation,
+      const auto tt = call_with_stopwatch( st.time_simulation,
                                            [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
-      const auto new_f = call_with_stopwatch( time_refactoring,
+      const auto new_f = call_with_stopwatch( st.time_refactoring,
                                               [&]() { return refactoring_fn( ntk, tt, leaves.begin(), leaves.end() ); } );
       const auto gain = mffc.num_gates() - ( ntk.size() - last_size );
       last_size = ntk.size();
@@ -130,29 +146,14 @@ public:
     } );
   }
 
-  void report()
-  {
-    if ( !ps.verbose )
-      return;
-
-    std::cout << fmt::format( "[i] total time       = {:>5.2f} secs\n", to_seconds( time_total ) );
-    std::cout << fmt::format( "[i] MFFC time        = {:>5.2f} secs\n", to_seconds( time_mffc ) );
-    std::cout << fmt::format( "[i] refactoring time = {:>5.2f} secs\n", to_seconds( time_refactoring ) );
-    std::cout << fmt::format( "[i] simulation time  = {:>5.2f} secs\n", to_seconds( time_simulation ) );
-  }
-
 private:
   Ntk& ntk;
   RefactoringFn&& refactoring_fn;
   refactoring_params const& ps;
+  refactoring_stats& st;
 
   uint32_t _candidates{0};
   uint32_t _estimated_gain{0};
-
-  stopwatch<>::duration time_total{0};
-  stopwatch<>::duration time_mffc{0};
-  stopwatch<>::duration time_refactoring{0};
-  stopwatch<>::duration time_simulation{0};
 };
 
 } /* namespace detail */
@@ -200,9 +201,13 @@ void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params c
   static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
 
-  detail::refactoring_impl<Ntk, RefactoringFn> p( ntk, refactoring_fn, ps );
+  refactoring_stats st;
+  detail::refactoring_impl<Ntk, RefactoringFn> p( ntk, refactoring_fn, ps, st );
   p.run();
-  p.report();
+  if ( ps.verbose )
+  {
+    st.report();
+  }
 }
 
 } /* namespace mockturtle */
