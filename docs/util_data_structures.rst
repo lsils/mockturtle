@@ -79,6 +79,26 @@ Cut sets
 .. doxygenclass:: mockturtle::cut_set
    :members:
 
+Stopwatch
+~~~~~~~~~
+
+**Header:** ``mockturtle/utils/stopwatch.hpp``
+
+.. doc_overview_table:: classmockturtle_1_1stopwatch
+   :column: Method
+
+   stopwatch
+   ~stopwatch
+
+.. doxygenclass:: mockturtle::stopwatch
+   :members:
+
+.. doxygenfunction:: mockturtle::call_with_stopwatch
+
+.. doxygenfunction:: mockturtle::make_with_stopwatch
+
+.. doxygenfunction:: mockturtle::to_seconds
+
 Progress bar
 ~~~~~~~~~~~~
 
