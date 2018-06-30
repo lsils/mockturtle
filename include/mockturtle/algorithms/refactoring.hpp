@@ -32,15 +32,14 @@
 
 #pragma once
 
-#include <chrono>
 #include <iostream>
-#include <type_traits>
 
 #include "../algorithms/akers_synthesis.hpp"
 #include "../algorithms/simulation.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
+#include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
 #include "../views/mffc_view.hpp"
 
@@ -67,39 +66,6 @@ struct refactoring_params
   bool verbose{false};
 };
 
-class timer
-{
-public:
-  explicit timer( std::chrono::steady_clock::duration& dur )
-      : dur( dur ),
-        beg( std::chrono::steady_clock::now() )
-  {
-  }
-
-  ~timer()
-  {
-    dur += ( std::chrono::steady_clock::now() - beg );
-  }
-
-private:
-  std::chrono::steady_clock::duration& dur;
-  std::chrono::steady_clock::time_point beg;
-};
-
-template<class Fn>
-std::invoke_result_t<Fn> timed_call( std::chrono::steady_clock::duration& dur, Fn&& fn )
-{
-  timer t( dur );
-  return fn();
-}
-
-template<class T, class... Args>
-T timed_create( std::chrono::steady_clock::duration& dur, Args... args )
-{
-  timer t( dur );
-  return T( args... );
-}
-
 namespace detail
 {
 
@@ -118,7 +84,7 @@ public:
     auto last_size = size;
     progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
 
-    timer t( time_total );
+    stopwatch t( time_total );
 
     ntk.clear_visited();
     ntk.clear_values();
@@ -132,7 +98,7 @@ public:
         return false;
       }
 
-      const auto mffc = timed_create<mffc_view<Ntk>>( time_mffc, ntk, n );
+      const auto mffc = make_with_stopwatch<mffc_view<Ntk>>( time_mffc, ntk, n );
 
       pbar( i, i, _candidates, _estimated_gain );
 
@@ -147,10 +113,10 @@ public:
       } );
 
       default_simulator<kitty::dynamic_truth_table> sim( mffc.num_pis() );
-      const auto tt = timed_call( time_simulation,
-                                  [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
-      const auto new_f = timed_call( time_refactoring,
-                                     [&]() { return refactoring_fn( ntk, tt, leaves.begin(), leaves.end() ); } );
+      const auto tt = call_with_stopwatch( time_simulation,
+                                           [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
+      const auto new_f = call_with_stopwatch( time_refactoring,
+                                              [&]() { return refactoring_fn( ntk, tt, leaves.begin(), leaves.end() ); } );
       const auto gain = mffc.num_gates() - ( ntk.size() - last_size );
       last_size = ntk.size();
       if ( gain > 0 )
@@ -169,10 +135,10 @@ public:
     if ( !ps.verbose )
       return;
 
-    std::cout << fmt::format( "[i] total time       = {:>5.2f}\n", std::chrono::duration_cast<std::chrono::duration<double>>( time_total ).count() );
-    std::cout << fmt::format( "[i] MFFC time        = {:>5.2f}\n", std::chrono::duration_cast<std::chrono::duration<double>>( time_mffc ).count() );
-    std::cout << fmt::format( "[i] refactoring time = {:>5.2f}\n", std::chrono::duration_cast<std::chrono::duration<double>>( time_refactoring ).count() );
-    std::cout << fmt::format( "[i] simulation time  = {:>5.2f}\n", std::chrono::duration_cast<std::chrono::duration<double>>( time_simulation ).count() );
+    std::cout << fmt::format( "[i] total time       = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i] MFFC time        = {:>5.2f} secs\n", to_seconds( time_mffc ) );
+    std::cout << fmt::format( "[i] refactoring time = {:>5.2f} secs\n", to_seconds( time_refactoring ) );
+    std::cout << fmt::format( "[i] simulation time  = {:>5.2f} secs\n", to_seconds( time_simulation ) );
   }
 
 private:
@@ -183,10 +149,10 @@ private:
   uint32_t _candidates{0};
   uint32_t _estimated_gain{0};
 
-  std::chrono::steady_clock::duration time_total{0};
-  std::chrono::steady_clock::duration time_mffc{0};
-  std::chrono::steady_clock::duration time_refactoring{0};
-  std::chrono::steady_clock::duration time_simulation{0};
+  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_mffc{0};
+  stopwatch<>::duration time_refactoring{0};
+  stopwatch<>::duration time_simulation{0};
 };
 
 } /* namespace detail */
