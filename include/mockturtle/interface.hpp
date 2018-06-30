@@ -202,6 +202,9 @@ public:
    * \param f_else Else-case for ITE operator
    */
   signal create_ite( signal const& cond, signal const& f_then, signal const& f_else );
+
+  /*! \brief Creates a signal that computes the ternary XOR operation. */
+  signal create_xor3( signal const& a, signal const& b, signal const& c );
 #pragma endregion
 
 #pragma region Create arbitrary functions
@@ -277,11 +280,14 @@ public:
   /*! \brief Returns the level of a node. */
   uint32_t level( node const& n ) const;
 
-  /*! \brief Retuns whether node is a majority-of-3 gate. */
+  /*! \brief Retuns true if node is a majority-of-3 gate. */
   bool is_maj( node const& n ) const;
 
-  /*! \brief Retuns whether node is a if-then-else gate. */
+  /*! \brief Retuns true if node is a if-then-else gate. */
   bool is_ite( node const& n ) const;
+
+  /*! \brief Returns true if node is a 3-input XOR gate. */
+  bool is_xor3( node const& n ) const;
 #pragma endregion
 
 #pragma region Functional properties

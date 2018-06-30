@@ -96,7 +96,7 @@ Create ternary functions
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: create_maj, create_ite
+   :members: create_maj, create_ite, create_xor3
    :no-link:
 
 Create arbitrary functions
@@ -117,7 +117,7 @@ Structural properties
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: size, num_pis, num_pos, num_gates, fanin_size, fanout_size, depth, level, is_maj, is_ite
+   :members: size, num_pis, num_pos, num_gates, fanin_size, fanout_size, depth, level, is_maj, is_ite, is_xor3
    :no-link:
 
 Functional properties
