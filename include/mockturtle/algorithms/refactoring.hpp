@@ -34,14 +34,16 @@
 
 #include <iostream>
 
-#include "../traits.hpp"
 #include "../algorithms/akers_synthesis.hpp"
 #include "../algorithms/simulation.hpp"
 #include "../networks/mig.hpp"
+#include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
+#include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
 #include "../views/mffc_view.hpp"
 
+#include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
 
 namespace mockturtle
@@ -64,6 +66,22 @@ struct refactoring_params
   bool verbose{false};
 };
 
+struct refactoring_stats
+{
+  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_mffc{0};
+  stopwatch<>::duration time_refactoring{0};
+  stopwatch<>::duration time_simulation{0};
+
+  void report() const
+  {
+    std::cout << fmt::format( "[i] total time       = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i] MFFC time        = {:>5.2f} secs\n", to_seconds( time_mffc ) );
+    std::cout << fmt::format( "[i] refactoring time = {:>5.2f} secs\n", to_seconds( time_refactoring ) );
+    std::cout << fmt::format( "[i] simulation time  = {:>5.2f} secs\n", to_seconds( time_simulation ) );
+  }
+};
+
 namespace detail
 {
 
@@ -71,26 +89,36 @@ template<class Ntk, class RefactoringFn>
 class refactoring_impl
 {
 public:
-  refactoring_impl( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps )
-      : ntk( ntk ), refactoring_fn( refactoring_fn ), ps( ps )
+  refactoring_impl( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps, refactoring_stats& st )
+      : ntk( ntk ), refactoring_fn( refactoring_fn ), ps( ps ), st( st )
   {
   }
 
   void run()
   {
     const auto size = ntk.size();
+    auto last_size = size;
     progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
+
+    stopwatch t( st.time_total );
+
+    ntk.clear_visited();
+    ntk.clear_values();
+    ntk.foreach_node( [&]( auto const& n ) {
+      ntk.set_value( n, ntk.fanout_size( n ) );
+    } );
+
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
       if ( i >= size )
       {
         return false;
       }
 
-      mffc_view mffc{ntk, n};
+      const auto mffc = make_with_stopwatch<mffc_view<Ntk>>( st.time_mffc, ntk, n );
 
-      pbar( i, i, _candidates, _estimated_reduction );
+      pbar( i, i, _candidates, _estimated_gain );
 
-      if ( mffc.num_pis() > ps.max_pis )
+      if ( mffc.num_pos() == 0 || mffc.num_pis() > ps.max_pis || mffc.size() < 4 )
       {
         return true;
       }
@@ -101,13 +129,16 @@ public:
       } );
 
       default_simulator<kitty::dynamic_truth_table> sim( mffc.num_pis() );
-      const auto tt = simulate<kitty::dynamic_truth_table>( mffc, sim )[0];
-      const auto new_f = refactoring_fn( ntk, tt, leaves.begin(), leaves.end() );
-      cut_view cut{ntk, leaves, ntk.get_node( new_f )};
-      if ( cut.size() < mffc.size() )
+      const auto tt = call_with_stopwatch( st.time_simulation,
+                                           [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
+      const auto new_f = call_with_stopwatch( st.time_refactoring,
+                                              [&]() { return refactoring_fn( ntk, tt, leaves.begin(), leaves.end() ); } );
+      const auto gain = mffc.num_gates() - ( ntk.size() - last_size );
+      last_size = ntk.size();
+      if ( gain > 0 )
       {
         ++_candidates;
-        _estimated_reduction += ( mffc.size() - cut.size() );
+        _estimated_gain += gain;
         ntk.substitute_node( n, new_f );
       }
 
@@ -119,9 +150,10 @@ private:
   Ntk& ntk;
   RefactoringFn&& refactoring_fn;
   refactoring_params const& ps;
+  refactoring_stats& st;
 
   uint32_t _candidates{0};
-  uint32_t _estimated_reduction{0};
+  uint32_t _estimated_gain{0};
 };
 
 } /* namespace detail */
@@ -163,9 +195,19 @@ void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params c
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
   static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
+  static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
+  static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
 
-  detail::refactoring_impl<Ntk, RefactoringFn> p( ntk, refactoring_fn, ps );
+  refactoring_stats st;
+  detail::refactoring_impl<Ntk, RefactoringFn> p( ntk, refactoring_fn, ps, st );
   p.run();
+  if ( ps.verbose )
+  {
+    st.report();
+  }
 }
 
 } /* namespace mockturtle */
