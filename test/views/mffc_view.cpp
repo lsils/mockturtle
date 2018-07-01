@@ -6,6 +6,15 @@
 
 using namespace mockturtle;
 
+template<typename Ntk>
+void initialize_refs( Ntk& ntk )
+{
+  ntk.clear_values();
+  ntk.foreach_node( [&]( auto const& n ) {
+    ntk.set_value( n, ntk.fanout_size( n ) );
+  } );
+}
+
 TEST_CASE( "create a MFFC view", "[mffc_view]" )
 {
   aig_network aig;
@@ -25,6 +34,7 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
   const auto f8 = aig.create_and( f4, f7 );
 
   aig.create_po( f8 );
+  initialize_refs( aig );
 
   CHECK( aig.size() == 14 );
   CHECK( aig.num_pis() == 5 );

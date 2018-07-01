@@ -110,6 +110,7 @@ Progress bar
    progress_bar
    ~progress_bar
    operator()
+   done
 
 .. doxygenclass:: mockturtle::progress_bar
    :members:
