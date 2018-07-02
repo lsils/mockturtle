@@ -25,7 +25,7 @@
 
 /*!
   \file progress_bar.hpp
-  \brief Progress br
+  \brief Progress bar
 
   \author Mathias Soeken
 */
@@ -83,10 +83,7 @@ public:
    */
   ~progress_bar()
   {
-    if ( _enable )
-    {
-      _os << "\u001B[G" << std::string( 79, ' ' ) << "\u001B[G\u001B[?25h" << std::flush;
-    }
+    done();
   }
 
   /*! \brief Prints and updates the progress bar status.
@@ -102,10 +99,24 @@ public:
   template<typename... Args>
   void operator()( uint32_t pos, Args... args )
   {
-    if ( !_enable ) return;
+    if ( !_enable )
+      return;
 
     int spidx = ( 6.0 * pos ) / _size;
     _os << "\u001B[G" << fmt::format( _fmt, spinner.substr( spidx * 5, 5 ), args... ) << std::flush;
+  }
+
+  /*! \brief Removes the progress bar.
+   *
+   * This method is automatically invoked when the progress bar is deleted.  In
+   * some cases, one may wish to invoke this method manually.
+   */
+  void done()
+  {
+    if ( _enable )
+    {
+      _os << "\u001B[G" << std::string( 79, ' ' ) << "\u001B[G\u001B[?25h" << std::flush;
+    }
   }
 
 private:
