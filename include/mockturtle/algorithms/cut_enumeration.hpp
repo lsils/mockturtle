@@ -130,7 +130,7 @@ public:
   static constexpr bool compute_truth = ComputeTruth;
 
 private:
-  explicit network_cuts( std::size_t size ) : _cuts( size )
+  explicit network_cuts( uint32_t size ) : _cuts( size )
   {
     kitty::dynamic_truth_table zero( 0u ), proj( 1u );
     kitty::create_nth_var( proj, 0u );
@@ -141,10 +141,10 @@ private:
 
 public:
   /*! \brief Returns the cut set of a node */
-  cut_set_t& cuts( std::size_t node_index ) { return _cuts[node_index]; }
+  cut_set_t& cuts( uint32_t node_index ) { return _cuts[node_index]; }
 
   /*! \brief Returns the cut set of a node */
-  cut_set_t const& cuts( std::size_t node_index ) const { return _cuts[node_index]; }
+  cut_set_t const& cuts( uint32_t node_index ) const { return _cuts[node_index]; }
 
   /*! \brief Returns the truth table of a cut */
   template<bool enabled = ComputeTruth, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
@@ -200,7 +200,7 @@ private:
   friend network_cuts<_Ntk, _ComputeTruth, _CutData> cut_enumeration( _Ntk const& ntk, cut_enumeration_params const& ps );
 
 private:
-  void add_zero_cut( std::size_t index )
+  void add_zero_cut( uint32_t index )
   {
     auto& cut = _cuts[index].add_cut( &index, &index ); /* fake iterator for emptyness */
 
@@ -210,7 +210,7 @@ private:
     }
   }
 
-  void add_unit_cut( std::size_t index )
+  void add_unit_cut( uint32_t index )
   {
     auto& cut = _cuts[index].add_cut( &index, &index + 1 );
 
@@ -278,7 +278,7 @@ public:
   }
 
 private:
-  uint32_t compute_truth_table( std::size_t index, std::vector<cut_t const*> const& vcuts, cut_t& res )
+  uint32_t compute_truth_table( uint32_t index, std::vector<cut_t const*> const& vcuts, cut_t& res )
   {
     std::vector<kitty::dynamic_truth_table> tt( vcuts.size() );
     auto i = 0;
@@ -315,7 +315,7 @@ private:
     return cuts._truth_tables.insert( tt_res );
   }
 
-  void merge_cuts2( std::size_t index )
+  void merge_cuts2( uint32_t index )
   {
     const auto fanin = 2;
 
@@ -371,7 +371,7 @@ private:
     }
   }
 
-  void merge_cuts( std::size_t index )
+  void merge_cuts( uint32_t index )
   {
     uint32_t pairs{1};
     std::vector<uint32_t> cut_sizes;

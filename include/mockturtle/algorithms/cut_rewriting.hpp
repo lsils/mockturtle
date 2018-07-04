@@ -164,6 +164,7 @@ uint32_t mffc_size( Ntk const& ntk, node<Ntk> const& n )
   auto v1 = recursive_deref( ntk, n );
   auto v2 = recursive_ref( ntk, n );
   assert( v1 == v2 );
+  (void)v2;
   return v1;
 }
 
