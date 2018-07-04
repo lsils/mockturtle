@@ -79,7 +79,7 @@ class truth_table_cache
 {
 public:
   /*! \brief Creates a truth table cache and reserves memory. */
-  truth_table_cache( std::size_t capacity = 1000u );
+  truth_table_cache( uint32_t capacity = 1000u );
 
   /*! \brief Inserts a truth table and returns a literal.
    *
@@ -111,7 +111,7 @@ private:
 };
 
 template<typename TT>
-truth_table_cache<TT>::truth_table_cache( std::size_t capacity )
+truth_table_cache<TT>::truth_table_cache( uint32_t capacity )
 {
   _data.reserve( capacity );
 }

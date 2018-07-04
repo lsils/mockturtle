@@ -47,19 +47,19 @@ template<int PointerFieldSize = 0>
 struct node_pointer
 {
 private:
-  static constexpr auto _len = sizeof( std::size_t ) * 8;
+  static constexpr auto _len = sizeof( uint64_t ) * 8;
 
 public:
   node_pointer() = default;
-  node_pointer( std::size_t index, std::size_t weight ) : weight( weight ), index( index ) {}
+  node_pointer( uint64_t index, uint64_t weight ) : weight( weight ), index( index ) {}
 
   union {
     struct
     {
-      std::size_t weight : PointerFieldSize;
-      std::size_t index : _len - PointerFieldSize;
+      uint64_t weight : PointerFieldSize;
+      uint64_t index : _len - PointerFieldSize;
     };
-    std::size_t data;
+    uint64_t data;
   };
 
   bool operator==( node_pointer<PointerFieldSize> const& other ) const
@@ -73,11 +73,11 @@ struct node_pointer<0>
 {
 public:
   node_pointer<0>() = default;
-  node_pointer<0>( std::size_t index ) : index( index ) {}
+  node_pointer<0>( uint64_t index ) : index( index ) {}
 
   union {
-    std::size_t index;
-    std::size_t data;
+    uint64_t index;
+    uint64_t data;
   };
 
   bool operator==( node_pointer<0> const& other ) const
@@ -131,14 +131,14 @@ struct mixed_fanin_node
 };
 
 /*! \brief Hash function for 64-bit word */
-inline std::size_t hash_block( uint64_t word )
+inline uint64_t hash_block( uint64_t word )
 {
   /* from boost::hash_detail::hash_value_unsigned */
   return word ^ ( word + ( word << 6 ) + ( word >> 2 ) );
 }
 
 /*! \brief Combines two hash values */
-inline void hash_combine( std::size_t& seed, std::size_t other )
+inline void hash_combine( uint64_t& seed, uint64_t other )
 {
   /* from boost::hash_detail::hash_combine_impl */
   const uint64_t m = UINT64_C( 0xc6a4a7935bd1e995 );
@@ -157,7 +157,7 @@ inline void hash_combine( std::size_t& seed, std::size_t other )
 template<typename Node>
 struct node_hash
 {
-  std::size_t operator()( const Node& n ) const
+  uint64_t operator()( const Node& n ) const
   {
     auto it = std::begin( n.children );
     auto seed = hash_block( it->data );
@@ -193,10 +193,10 @@ struct storage
   using node_type = Node;
 
   std::vector<node_type> nodes;
-  std::vector<std::size_t> inputs;
+  std::vector<uint64_t> inputs;
   std::vector<typename node_type::pointer_type> outputs;
 
-  spp::sparse_hash_map<node_type, std::size_t, NodeHasher> hash;
+  spp::sparse_hash_map<node_type, uint64_t, NodeHasher> hash;
 
   T data;
 };
