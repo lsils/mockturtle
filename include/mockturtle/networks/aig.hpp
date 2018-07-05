@@ -51,9 +51,9 @@ namespace mockturtle
 template<class Node>
 struct aig_hash
 {
-  std::size_t operator()( Node const& n ) const
+  uint64_t operator()( Node const& n ) const
   {
-    std::size_t seed = -2011;
+    uint64_t seed = -2011;
     seed += n.children[0].index * 7937;
     seed += n.children[1].index * 2971;
     seed += n.children[0].weight * 911;
@@ -84,18 +84,18 @@ public:
   static constexpr auto max_fanin_size = 2u;
 
   using storage = std::shared_ptr<aig_storage>;
-  using node = std::size_t;
+  using node = uint64_t;
 
   struct signal
   {
     signal() = default;
 
-    signal( std::size_t index, std::size_t complement )
+    signal( uint64_t index, uint64_t complement )
         : complement( complement ), index( index )
     {
     }
 
-    explicit signal( std::size_t data )
+    explicit signal( uint64_t data )
         : data( data )
     {
     }
@@ -108,10 +108,10 @@ public:
     union {
       struct
       {
-        std::size_t complement : 1;
-        std::size_t index : 63;
+        uint64_t complement : 1;
+        uint64_t index : 63;
       };
-      std::size_t data;
+      uint64_t data;
     };
 
     signal operator!() const
@@ -162,7 +162,7 @@ public:
 #pragma region Primary I / O and constants
   signal get_constant( bool value ) const
   {
-    return {0, static_cast<size_t>( value ? 1 : 0 )};
+    return {0, static_cast<uint64_t>( value ? 1 : 0 )};
   }
 
   signal create_pi( std::string const& name = {} )
@@ -171,7 +171,7 @@ public:
 
     const auto index = _storage->nodes.size();
     auto& node = _storage->nodes.emplace_back();
-    node.children[0].data = node.children[1].data = ~static_cast<std::size_t>( 0 );
+    node.children[0].data = node.children[1].data = ~static_cast<uint64_t>( 0 );
     _storage->inputs.emplace_back( index );
     return {index, 0};
   }
@@ -193,7 +193,7 @@ public:
 
   bool is_pi( node const& n ) const
   {
-    return _storage->nodes[n].children[0].data == ~static_cast<std::size_t>( 0 ) && _storage->nodes[n].children[1].data == ~static_cast<std::size_t>( 0 );
+    return _storage->nodes[n].children[0].data == ~static_cast<uint64_t>( 0 ) && _storage->nodes[n].children[1].data == ~static_cast<uint64_t>( 0 );
   }
 
   bool constant_value( node const& n ) const
@@ -249,8 +249,8 @@ public:
 
     if ( index >= .9 * _storage->nodes.capacity() )
     {
-      _storage->nodes.reserve( static_cast<size_t>( 3.1415 * index ) );
-      _storage->hash.reserve( static_cast<size_t>( 3.1415 * index ) );
+      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415 * index ) );
+      _storage->hash.reserve( static_cast<uint64_t>( 3.1415 * index ) );
     }
 
     _storage->nodes.push_back( node );
@@ -378,8 +378,8 @@ public:
   template<typename Fn>
   void foreach_node( Fn&& fn ) const
   {
-    detail::foreach_element( ez::make_direct_iterator<std::size_t>( 0 ),
-                             ez::make_direct_iterator<std::size_t>( _storage->nodes.size() ),
+    detail::foreach_element( ez::make_direct_iterator<uint64_t>( 0 ),
+                             ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
                              fn );
   }
 
@@ -398,8 +398,8 @@ public:
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
-    detail::foreach_element_if( ez::make_direct_iterator<std::size_t>( 1 ), /* start from 1 to avoid constant */
-                                ez::make_direct_iterator<std::size_t>( _storage->nodes.size() ),
+    detail::foreach_element_if( ez::make_direct_iterator<uint64_t>( 1 ), /* start from 1 to avoid constant */
+                                ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
                                 [this]( auto n ) { return !is_pi( n ); },
                                 fn );
   }

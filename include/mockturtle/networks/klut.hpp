@@ -76,8 +76,8 @@ public:
   static constexpr auto max_fanin_size = 32;
 
   using storage = std::shared_ptr<klut_storage>;
-  using node = std::size_t;
-  using signal = std::size_t;
+  using node = uint64_t;
+  using signal = uint64_t;
 
   klut_network() : _storage( std::make_shared<klut_storage>() )
   {
@@ -255,22 +255,22 @@ public:
 #pragma endregion
 
 #pragma region Structural properties
-  std::size_t size() const
+  uint64_t size() const
   {
     return _storage->nodes.size();
   }
 
-  std::size_t num_pis() const
+  uint64_t num_pis() const
   {
     return _storage->inputs.size();
   }
 
-  std::size_t num_pos() const
+  uint64_t num_pos() const
   {
     return _storage->outputs.size();
   }
 
-  std::size_t num_gates() const
+  uint64_t num_gates() const
   {
     return _storage->nodes.size() - _storage->inputs.size() - 2;
   }
@@ -325,8 +325,8 @@ public:
   template<typename Fn>
   void foreach_node( Fn&& fn ) const
   {
-    detail::foreach_element( ez::make_direct_iterator<std::size_t>( 0 ),
-                             ez::make_direct_iterator<std::size_t>( _storage->nodes.size() ),
+    detail::foreach_element( ez::make_direct_iterator<uint64_t>( 0 ),
+                             ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
                              fn );
   }
 
@@ -346,8 +346,8 @@ public:
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
-    detail::foreach_element_if( ez::make_direct_iterator<std::size_t>( 2 ), /* start from 2 to avoid constants */
-                                ez::make_direct_iterator<std::size_t>( _storage->nodes.size() ),
+    detail::foreach_element_if( ez::make_direct_iterator<uint64_t>( 2 ), /* start from 2 to avoid constants */
+                                ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
                                 [this]( auto n ) { return !is_pi( n ); },
                                 fn );
   }

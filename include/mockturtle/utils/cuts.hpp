@@ -399,7 +399,7 @@ public:
    *
    * \param index Index
    */
-  auto const& operator[]( std::size_t index ) const { return *_pcuts[index]; }
+  auto const& operator[]( uint32_t index ) const { return *_pcuts[index]; }
 
   /*! \brief Returns the best cut, i.e., the first cut.
    */
@@ -419,7 +419,7 @@ public:
    * This method will resize the cut set to `size` only if the cut set has more
    * than `size` elements.  Otherwise, the size will remain the same.
    */
-  void limit( std::size_t size );
+  void limit( uint32_t size );
 
   /*! \brief Prints a cut set. */
   friend std::ostream& operator<<( std::ostream& os, cut_set const& set )
@@ -531,7 +531,7 @@ void cut_set<CutType, MaxCuts>::update_best( uint32_t index )
 }
 
 template<typename CutType, int MaxCuts>
-void cut_set<CutType, MaxCuts>::limit( std::size_t size )
+void cut_set<CutType, MaxCuts>::limit( uint32_t size )
 {
   if ( std::distance( _pcuts.begin(), _pend ) > static_cast<long>( size ) )
   {
