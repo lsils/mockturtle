@@ -39,7 +39,9 @@
 #pragma once
 
 #include "bit_operations.hpp"
+#include "detail/mscfix.hpp"
 
+#include <cmath>
 #include <iomanip>
 #include <unordered_map>
 
@@ -276,6 +278,11 @@ public:
     }
   }
 
+  inline const auto& coefficients() const
+  {
+    return _s;
+  }
+
 private:
   std::vector<int32_t> _s;
 };
@@ -315,16 +322,21 @@ public:
   }
 
   template<typename Callback>
-  TT run( Callback&& fn )
+  std::pair<TT, bool> run( Callback&& fn )
   {
     order = get_rw_coeffecient_order( num_vars );
-    normalize();
+    const auto exact = normalize();
 
     fn( best_transforms );
 
     TT tt = func.construct();
     spec.to_truth_table<TT>( tt );
-    return tt;
+    return {tt, exact};
+  }
+
+  void set_limit( unsigned limit )
+  {
+    step_limit = limit;
   }
 
 private:
@@ -367,8 +379,11 @@ private:
     }
   }
 
-  void normalize_rec( spectrum& lspec, unsigned v )
+  bool normalize_rec( spectrum& lspec, unsigned v )
   {
+    if ( ++step_counter == step_limit )
+      return false;
+
     if ( v == num_vars_exp ) /* leaf case */
     {
       /* invert function if necessary */
@@ -386,7 +401,7 @@ private:
       }
 
       closer( lspec );
-      return;
+      return true;
     }
 
     auto min = 0, max = 0;
@@ -402,7 +417,8 @@ private:
     {
       auto& spec2 = specs.at( num_vars_exp );
       spec2 = lspec;
-      normalize_rec( spec2, num_vars_exp );
+      if ( !normalize_rec( spec2, num_vars_exp ) )
+        return false;
     }
     else
     {
@@ -441,18 +457,21 @@ private:
           insert( spec2.permutation( k, v ) );
         }
 
-        normalize_rec( spec2, v << 1 );
+        if ( !normalize_rec( spec2, v << 1 ) )
+          return false;
 
         if ( v == 1 && min == max )
         {
-          return;
+          return true;
         }
         transform_index = save;
       }
     }
+
+    return true;
   }
 
-  void normalize()
+  bool normalize()
   {
     /* find maximum absolute element index in spectrum (by order) */
     auto j = *std::max_element( order.cbegin(), order.cend(), [this]( auto p1, auto p2 ) { return abs( spec[p1] ) < abs( spec[p2] ); } );
@@ -478,8 +497,9 @@ private:
     }
 
     update_best( spec );
-    normalize_rec( spec, 1 );
+    const auto result = normalize_rec( spec, 1 );
     spec = best_spec;
+    return result;
   }
 
   void insert( const spectral_operation& trans )
@@ -528,6 +548,9 @@ private:
   std::vector<spectral_operation> transforms;
   std::vector<spectral_operation> best_transforms;
   unsigned transform_index{0u};
+
+  unsigned step_counter{0u};
+  unsigned step_limit{0u};
 };
 
 inline void exact_spectral_canonization_null_callback( const std::vector<spectral_operation>& operations )
@@ -549,6 +572,30 @@ template<typename TT, typename Callback = decltype( detail::exact_spectral_canon
 inline TT exact_spectral_canonization( const TT& tt, Callback&& fn = detail::exact_spectral_canonization_null_callback )
 {
   detail::miller_spectral_canonization_impl<TT> impl( tt );
+  return impl.run( fn ).first;
+}
+
+/*! \brief Exact spectral canonization (with recursion limit)
+
+  This function gets as additional argument a recursion limit.  The canonization
+  is stopped once this limit is reached and the current representative at this
+  point is being returned.  The return value is a pair, where the first
+  entry is the representative, and the second entry indicates whether the
+  solution is known to be exact or not.
+
+  The function can be passed as second argument a callback that is called with a
+  vector of spectral operations necessary to transform the input function into
+  the representative.
+
+  \param tt Truth table
+  \param limit Recursion limit
+  \param fn Callback to retrieve list of transformations (optional)
+ */
+template<typename TT, typename Callback = decltype( detail::exact_spectral_canonization_null_callback )>
+inline std::pair<TT, bool> exact_spectral_canonization_limit( const TT& tt, unsigned step_limit, Callback&& fn = detail::exact_spectral_canonization_null_callback )
+{
+  detail::miller_spectral_canonization_impl<TT> impl( tt );
+  impl.set_limit( step_limit );
   return impl.run( fn );
 }
 
@@ -562,6 +609,293 @@ inline void print_spectrum( const TT& tt, std::ostream& os = std::cout )
 {
   const auto spectrum = detail::spectrum::from_truth_table( tt );
   spectrum.print( os, detail::get_rw_coeffecient_order( tt.num_vars() ) );
+}
+
+/*! \brief Returns the Rademacher-Walsh spectrum of a truth table
+
+  The order of coefficients is in the same order as input assignments
+  to the truth table.
+
+  \param tt Truth table
+ */
+template<typename TT>
+inline std::vector<int32_t> rademacher_walsh_spectrum( const TT& tt )
+{
+  const auto spectrum = detail::spectrum::from_truth_table( tt );
+  return spectrum.coefficients();
+}
+
+/*! \brief Returns the autocorrelation spectrum of a truth table
+
+  The autocorrelation spectrum gives an indication of the imbalance of all first
+  order derivates of a Boolean function.
+
+  The spectral coefficient \f$r(x)\f$ for input \f$x \in \{0,1\}^n\f$ is
+  computed by \f$r(x) = \sum_{y\in\{0,1\}^n}\hat f(y)\hat f(x \oplus y)\f$,
+  where \f$\hat f\f$ is the \f$\{-1,1\}\f$ encoding of the input function
+  \f$f\f$.
+
+  \param tt Truth table for input function \f$f\f$
+ */
+template<typename TT>
+inline std::vector<int32_t> autocorrelation_spectrum( const TT& tt )
+{
+  std::vector<int32_t> spectrum( 1, tt.num_bits() );
+  spectrum.reserve( tt.num_bits() );
+
+  for ( uint64_t i = 1; i < tt.num_bits(); ++i )
+  {
+    int32_t sum{0};
+    for ( uint64_t j = 0; j < tt.num_bits(); ++j )
+    {
+      sum += ( get_bit( tt, j ) ? -1 : 1 ) * ( get_bit( tt, i ^ j ) ? -1 : 1 );
+    }
+
+    spectrum.push_back( sum );
+  }
+
+  return spectrum;
+}
+
+/*! \brief Returns distribution of absolute spectrum coefficients
+
+  This functions returns a vector with \f$2^{n-1} + 1\f$ nonnegative entries,
+  in which the entry at position \f$i\f$ indicates how many coeffecients in
+  the spectum have absolute value \f$2i\f$.  The compression is possible, since
+  all spectra in this package have positive coefficients.
+
+  \param spectrum Spectrum
+*/
+inline std::vector<uint32_t> spectrum_distribution( const std::vector<int32_t>& spectrum )
+{
+  std::vector<uint32_t> dist( spectrum.size() / 2 + 1 );
+
+  for ( auto c : spectrum )
+  {
+    dist[abs( c ) >> 1]++;
+  }
+
+  return dist;
+}
+
+/*! \brief Returns unique index for a spectral equivalence class
+
+  This functions works for functions with up to 5 inputs.  It uses the
+  distribution of coefficients in the Rademacher Walsh spectrum, and in case
+  of ambiguity also the coeffcienents in the auto-correlation spectrum.  It
+  does not compute the transformation sequences in order to get to the
+  class representative and is therefore faster than canoninization.
+
+  \param tt Truth table
+*/
+template<typename TT>
+inline uint32_t get_spectral_class( const TT& tt )
+{
+  assert( tt.num_vars() <= 5 );
+
+  const auto rwd = spectrum_distribution( rademacher_walsh_spectrum( tt ) );
+
+  switch ( tt.num_vars() )
+  {
+  case 0u:
+  case 1u:
+    return 0;
+  case 2u:
+    return rwd[2] ? 0 : 1;
+    break;
+  case 3u:
+  {
+    if ( rwd[4] )
+      return 0;
+    else if ( rwd[3] )
+      return 1;
+    else if ( rwd[2] )
+      return 2;
+  }
+  case 4u:
+  {
+    if ( rwd[8] )
+      return 0;
+    else if ( rwd[7] )
+      return 1;
+    else if ( rwd[6] )
+      return 2;
+    else if ( rwd[5] )
+      return 3;
+    else if ( rwd[4] )
+      return rwd[4] == 4 ? 4 : 5;
+    else if ( rwd[3] )
+      return 6;
+    else if ( rwd[2] )
+      return 7;
+  }
+  break;
+
+  case 5u:
+  {
+    if ( rwd[16] )
+      return 0;
+    else if ( rwd[15] )
+      return 1;
+    else if ( rwd[14] )
+      return 2;
+    else if ( rwd[13] )
+      return 3;
+    else if ( rwd[12] )
+      return rwd[4] == 7 ? 4 : 5;
+    else if ( rwd[11] )
+      return rwd[5] == 1 ? 6 : 7;
+    else if ( rwd[10] )
+    {
+      switch ( rwd[2] )
+      {
+      case 30:
+        return 8;
+      case 15:
+        return 9;
+      case 14:
+        return 10;
+      default:
+        return 11;
+      }
+    }
+    else if ( rwd[9] )
+    {
+      switch ( rwd[3] )
+      {
+      case 15:
+        return 12;
+      case 12:
+        return 13;
+      case 9:
+        return 14;
+      case 6:
+        return 15;
+      default:
+        return 16;
+      }
+    }
+    else if ( rwd[8] )
+    {
+      switch ( rwd[0] )
+      {
+      case 28:
+        return 17;
+      case 19:
+        return 18;
+      case 22:
+        return 19;
+      case 7:
+        return 20;
+      case 9:
+        return 21;
+      case 10:
+        return 22;
+      case 11:
+        return 23;
+      default:
+        return 24;
+      }
+    }
+    else if ( rwd[7] )
+    {
+      switch ( rwd[1] )
+      {
+      case 15:
+      {
+        const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+        return acd[2] == 22 ? 25 : 26;
+      }
+      break;
+      case 18:
+        return 27;
+      case 19:
+        return 28;
+      case 21:
+        return 29;
+      default:
+        return 30;
+      }
+    }
+    else if ( rwd[6] )
+    {
+      switch ( rwd[2] )
+      {
+      case 28:
+      {
+        const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+        return acd[0] == 12 ? 31 : 32;
+      }
+      break;
+      case 15:
+        return 33;
+      case 14:
+      {
+        const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+        return acd[0] == 15 ? 34 : 35;
+      }
+      break;
+      case 13:
+        return 36;
+      case 12:
+      {
+        const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+        return acd[0] == 18 ? 37 : 38;
+      }
+      break;
+      default:
+        return 39;
+      }
+    }
+    else if ( rwd[5] )
+    {
+      switch ( rwd[3] )
+      {
+      case 16:
+        return 40;
+      default:
+      {
+        const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+        switch ( acd[2] )
+        {
+        case 25:
+          return 41;
+        case 27:
+          return 42;
+        default:
+          return 43;
+        }
+      }
+      break;
+      }
+    }
+    else if ( rwd[4] )
+    {
+      switch ( rwd[0] )
+      {
+      case 16:
+      {
+        const auto acd = spectrum_distribution( autocorrelation_spectrum( tt ) );
+        switch ( acd[0] )
+        {
+        case 30:
+          return 44;
+        case 15:
+          return 45;
+        default:
+          return 46;
+        }
+      }
+      break;
+      default:
+        return 47;
+      }
+    }
+  }
+  break;
+  }
+
+  return 48;
 }
 
 } /* namespace kitty */

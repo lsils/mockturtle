@@ -1,5 +1,5 @@
-/* lorina: C++ parsing library
- * Copyright (C) 2018  EPFL
+/* kitty: C++ truth table library
+ * Copyright (C) 2017-2018  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,15 +24,16 @@
  */
 
 /*!
-  \file lorina.hpp
-  \brief Main header for lorina
+  \file mscfix.hpp
+  \brief Fixes some compatibility issues with MS VC compilers
 
-  \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once
 
-#include <lorina/aiger.hpp>
-#include <lorina/bench.hpp>
-#include <lorina/blif.hpp>
-#include <lorina/pla.hpp>
+// Use Windows popcount version where appropriate
+#ifdef _MSC_VER
+#include <intrin.h>
+#define __builtin_popcount __popcnt
+#endif
