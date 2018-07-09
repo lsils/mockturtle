@@ -81,13 +81,22 @@ void foreach_mixed_radix_tuple( Iterator begin, Iterator end, Fn&& fn )
 
     auto itm = end - 1;
     auto itp = positions.end() - 1;
-    while ( itm >= begin && *itp == ( *itm - 1 ) )
+    auto ret = false;
+    while ( !ret && *itp == ( *itm - 1 ) )
     {
       *itp-- = 0;
-      --itm;
+      
+      if ( itm == begin )
+      {
+        ret = true;
+      }
+      else
+      {
+        --itm;
+      }
     }
 
-    if ( itm < begin )
+    if ( ret )
     {
       break;
     }
