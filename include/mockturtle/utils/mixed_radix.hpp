@@ -84,7 +84,11 @@ void foreach_mixed_radix_tuple( Iterator begin, Iterator end, Fn&& fn )
     auto ret = false;
     while ( !ret && *itp == ( *itm - 1 ) )
     {
-      *itp-- = 0;
+      *itp = 0;
+      if ( itp != positions.begin() )
+      {
+        --itp;
+      }
       
       if ( itm == begin )
       {
