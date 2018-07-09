@@ -26,7 +26,7 @@ TEST_CASE( "Check Akers for MAJ-3", "[akers_synthesis]" )
   kitty::create_nth_var( xs[3], 1 );
   kitty::create_nth_var( xs[4], 2 );
 
-  CHECK( mig.compute( mig.index_to_node( mig.size() ), xs.begin() + 2, xs.end() ) == xs[0] );
+  CHECK( mig.compute( mig.index_to_node( mig.size() - 1 ), xs.begin() + 2, xs.end() ) == xs[0] );
   CHECK( mig.size() == 5 );
 }
 
