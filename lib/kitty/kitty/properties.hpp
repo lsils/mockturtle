@@ -37,6 +37,8 @@
 #include <vector>
 
 #include "bit_operations.hpp"
+#include "operations.hpp"
+#include "operators.hpp"
 
 namespace kitty
 {
@@ -59,7 +61,7 @@ std::pair<uint32_t, std::vector<uint32_t>> chow_parameters( const TT& tt )
   const auto nf = count_ones( tt );
 
   std::vector<uint32_t> sf( n, 0u );
-  for_each_one_bit( tt, [n, &sf]( auto minterm ) {
+  for_each_one_bit( tt, [&sf]( auto minterm ) {
     for ( auto i = 0u; minterm; ++i )
     {
       if ( minterm & 1 )
@@ -156,6 +158,20 @@ bool is_krom( const TT& tt )
   }
 
   return true;
+}
+
+/*! \brief Checks whether a function is symmetric in a pair of variables
+
+  A function is symmetric in two variables, if it is invariant to swapping them.
+
+  \param tt Truth table
+  \param var_index1 Index of first variable
+  \param var_index2 Index of second variable
+*/
+template<typename TT>
+bool is_symmetric_in( const TT& tt, uint8_t var_index1, uint8_t var_index2 )
+{
+  return tt == swap( tt, var_index1, var_index2 );
 }
 
 } // namespace kitty

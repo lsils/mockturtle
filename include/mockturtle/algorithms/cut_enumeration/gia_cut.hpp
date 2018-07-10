@@ -59,14 +59,18 @@ bool operator<( cut_type<ComputeTruth, cut_enumeration_gia_cut> const& c1, cut_t
   return c1.size() < c2.size();
 }
 
-template<bool ComputeTruth, typename Ntk>
-void cut_enumeration_update_cut( cut_type<ComputeTruth, cut_enumeration_gia_cut>& cut, network_cuts<Ntk, ComputeTruth, cut_enumeration_gia_cut> const& cuts, Ntk const& ntk, node<Ntk> const& n )
+template<>
+struct cut_enumeration_update_cut<cut_enumeration_gia_cut>
 {
-  (void)n;
-  cut->data.num_tree_leaves = std::count_if( cut.begin(), cut.end(),
-                                             [&ntk]( auto index ) {
-                                               return ntk.fanout_size( index ) == 1;
-                                             } );
-}
+  template<typename Cut, typename NetworkCuts, typename Ntk>
+  static void apply( Cut& cut, NetworkCuts const& cuts, Ntk const& ntk, node<Ntk> const& n )
+  {
+    (void)n;
+    cut->data.num_tree_leaves = std::count_if( cut.begin(), cut.end(),
+                                               [&ntk]( auto index ) {
+                                                 return ntk.fanout_size( index ) == 1;
+                                               } );
+  }
+};
 
-}
+} // namespace mockturtle

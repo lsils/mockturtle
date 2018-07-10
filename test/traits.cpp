@@ -1,6 +1,7 @@
 #include <catch.hpp>
 
 #include <cstdint>
+#include <functional>
 #include <numeric>
 #include <vector>
 

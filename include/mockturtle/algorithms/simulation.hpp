@@ -208,7 +208,7 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
     ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
       fanin_values[i] = node_to_value[f];
     } );
-    node_to_value[n] = ntk.template compute( n, fanin_values.begin(), fanin_values.end() );
+    node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
   } );
 
   return node_to_value;

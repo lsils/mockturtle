@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file aig.hpp
-  \brief Implements aiger parser
+  \file aiger.hpp
+  \brief Implements Aiger parser
 
   \author Heinz Riener
 */
@@ -145,6 +145,61 @@ public:
     (void)right_lit;
   }
 
+  /*! \brief Callback method for parsed bad state property.
+   *
+   * \param index Index of the bad state property
+   * \param lit Assigned literal
+   */
+  virtual void on_bad_state( unsigned index, unsigned lit ) const
+  {
+    (void)index;
+    (void)lit;
+  }
+
+  /*! \brief Callback method for parsed constraint.
+   *
+   * \param index Index of the constraint
+   * \param lit Assigned literal
+   */
+  virtual void on_constraint( unsigned index, unsigned lit ) const
+  {
+    (void)index;
+    (void)lit;
+  }
+
+  /*! \brief Callback method for parsed fairness constraints.
+   *
+   * \param index Index of the fairness constraint
+   * \param lit Assigned literal
+   */
+  virtual void on_fairness( unsigned index, unsigned lit ) const
+  {
+    (void)index;
+    (void)lit;
+  }
+
+  /*! \brief Callback method for parsed header of justice property.
+   *
+   * \param index Index of the justice property
+   * \param lit Number of assigned literals
+   */
+  virtual void on_justice_header( unsigned index, std::size_t size ) const
+  {
+    (void)index;
+    (void)size;
+  }
+
+  /*! \brief Callback method for parsed justice property.
+   *
+   * \param index Index of the justice property
+   * \param lit Assigned literal
+   */
+  virtual void on_justice( unsigned index, const std::vector<unsigned>& lits ) const
+  {
+    (void)index;
+    (void)lits;
+  }
+
   /*! \brief Callback method for parsed input name.
    *
    * \param index Index of the input
@@ -200,6 +255,17 @@ public:
     (void)name;
   }
 
+  /*! \brief Callback method for a parsed name of a justice property.
+   *
+   * \param index Index of the justice property
+   * \param name Name of the fairness constraint
+   */
+  virtual void on_justice_name( unsigned index, const std::string& name ) const
+  {
+    (void)index;
+    (void)name;
+  }
+
   /*! \brief Callback method for a parsed name of a fairness constraint.
    *
    * \param index Index of the fairness constraint
@@ -241,7 +307,7 @@ public:
   void on_header( std::size_t m, std::size_t i, std::size_t l, std::size_t o, std::size_t a,
                   std::size_t b, std::size_t c, std::size_t j, std::size_t f ) const override
   {
-    _os << fmt::format( "aag {0} {1} {2} {3} {4} {5} {6} {7} {8} ",
+    _os << fmt::format( "aag {0} {1} {2} {3} {4} {5} {6} {7} {8}",
                         m, i, l, o, a, b, c, j, f )
         << std::endl;
   }
@@ -280,6 +346,39 @@ public:
     _os << ( 2u * index ) << ' ' << left_lit << ' ' << right_lit << std::endl;
   }
 
+  void on_bad_state( unsigned index, unsigned lit ) const override
+  {
+    (void)index;
+    _os << lit << std::endl;
+  }
+
+  void on_constraint( unsigned index, unsigned lit ) const override
+  {
+    (void)index;
+    _os << lit << std::endl;
+  }
+
+  void on_justice_header( unsigned index, std::size_t size ) const override
+  {
+    (void)index;
+    _os << size << std::endl;
+  }
+
+  void on_justice( unsigned index, const std::vector<unsigned>& lits ) const override
+  {
+    (void)index;
+    for ( const auto& l : lits )
+    {
+      _os << l << std::endl;
+    }
+  }
+
+  void on_fairness( unsigned index, unsigned lit ) const override
+  {
+    (void)index;
+    _os << lit << std::endl;
+  }
+
   void on_input_name( unsigned index, const std::string& name ) const override
   {
     _os << "i" << index << ' ' << name << std::endl;
@@ -305,6 +404,11 @@ public:
     _os << "c" << index << ' ' << name << std::endl;
   }
 
+  void on_justice_name( unsigned index, const std::string& name ) const override
+  {
+    _os << "j" << index << ' ' << name << std::endl;
+  }
+
   void on_fairness_name( unsigned index, const std::string& name ) const override
   {
     _os << "f" << index << ' ' << name << std::endl;
@@ -328,6 +432,7 @@ static std::regex latch( R"(^l(\d+) (.*)$)" );
 static std::regex output( R"(^o(\d+) (.*)$)" );
 static std::regex bad_state( R"(^b(\d+) (.*)$)" );
 static std::regex constraint( R"(^c(\d+) (.*)$)" );
+static std::regex justice( R"(^j(\d+) (.*)$)" );
 static std::regex fairness( R"(^f(\d+) (.*)$)" );
 } // namespace aig_regex
 
@@ -392,7 +497,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   for ( auto i = 0ul; i < _i; ++i )
   {
     std::getline( in, line );
-    const auto index = std::atol( line.c_str() )/2u;
+    const auto index = std::atol( line.c_str() );
     reader.on_input( i, index );
   }
 
@@ -401,7 +506,16 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   {
     std::getline( in, line );
     const auto tokens = detail::split( line,  " " );
-    assert( tokens.size() <= 3u );
+
+    if ( !(tokens.size() <= 3u) )
+    {
+      if ( diag )
+      {
+        diag->report( diagnostic_level::fatal,
+                      fmt::format( "could not parse declaration of LATCH `{0}`", line ) );
+      }
+      return return_code::parse_error;
+    }
 
     const auto index = std::atol( std::string(tokens[0u]).c_str() ) / 2u;
     const auto next_lit = std::atol( std::string(tokens[1u]).c_str() );
@@ -430,12 +544,68 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
     reader.on_output( i, lit );
   }
 
+  /* bad state properties */
+  for ( auto i = 0ul; i < _b; ++i )
+  {
+    std::getline( in, line );
+    const auto lit = std::atol( line.c_str() );
+    reader.on_bad_state( i, lit );
+  }
+
+  /* constraints */
+  for ( auto i = 0ul; i < _c; ++i )
+  {
+    std::getline( in, line );
+    const auto lit = std::atol( line.c_str() );
+    reader.on_constraint( i, lit );
+  }
+
+  /* justice properties */
+  std::vector<std::size_t> justice_sizes;
+  for ( auto i = 0ul; i < _j; ++i )
+  {
+    std::getline( in, line );
+    const auto justice_size = std::atol( line.c_str() );
+    justice_sizes.emplace_back( justice_size );
+    reader.on_justice_header( i, justice_size );
+  }
+
+  for ( auto i = 0ul; i < _j; ++i )
+  {
+    std::vector<unsigned> lits;
+    for ( auto j = 0ul; j < justice_sizes[i]; ++j )
+    {
+      std::getline( in, line );
+      const auto lit = std::atol( line.c_str() );
+      lits.emplace_back( lit );
+    }
+    reader.on_justice( i, lits );
+  }
+
+  /* fairness */
+  for ( auto i = 0ul; i < _f; ++i )
+  {
+    std::getline( in, line );
+    const auto lit = std::atol( line.c_str() );
+    reader.on_fairness( i, lit );
+  }
+
   /* ands */
   for ( auto i = 0ul; i < _a; ++i )
   {
     std::getline( in, line );
     const auto tokens = detail::split( line, " " );
-    assert( tokens.size() == 3u );
+
+    if ( !(tokens.size() == 3u) )
+    {
+      if ( diag )
+      {
+        diag->report( diagnostic_level::fatal,
+                      fmt::format( "could not parse declaration of AND gate `{0}`", line ) );
+      }
+      return return_code::parse_error;
+    }
+
     const auto index = std::atol( std::string(tokens[0u]).c_str() )/2u;
     const auto left_lit = std::atol( std::string(tokens[1u]).c_str() );
     const auto right_lit = std::atol( std::string(tokens[2u]).c_str() );
@@ -464,6 +634,10 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
     else if ( std::regex_search( line, m, aig_regex::constraint ) )
     {
       reader.on_constraint_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+    }
+    else if ( std::regex_search( line, m, aig_regex::justice ) )
+    {
+      reader.on_justice_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::fairness ) )
     {
@@ -591,28 +765,47 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
     reader.on_output( i, std::atol( line.c_str() ) );
   }
 
-  /* ignore b */
+  /* bad state properties */
   for ( auto i = 0ul; i < _b; ++i )
   {
     std::getline( in, line );
+    reader.on_bad_state( i, std::atol( line.c_str() ) );
   }
 
-  /* ignore c */
+  /* constraints */
   for ( auto i = 0ul; i < _c; ++i )
   {
     std::getline( in, line );
+    reader.on_constraint( i, std::atol( line.c_str() ) );
   }
 
-  /* ignore j */
+  /* justice properties */
+  std::vector<std::size_t> justice_sizes;
   for ( auto i = 0ul; i < _j; ++i )
   {
     std::getline( in, line );
+    const auto justice_size = std::atol( line.c_str() );
+    justice_sizes.emplace_back( justice_size );
+    reader.on_justice_header( i, justice_size );
   }
 
-  /* ignore f */
+  for ( auto i = 0ul; i < _j; ++i )
+  {
+    std::vector<unsigned> lits;
+    for ( auto j = 0ul; j < justice_sizes[i]; ++j )
+    {
+      std::getline( in, line );
+      const auto lit = std::atol( line.c_str() );
+      lits.emplace_back( lit );
+    }
+    reader.on_justice( i, lits );
+  }
+
+  /* fairness */
   for ( auto i = 0ul; i < _f; ++i )
   {
     std::getline( in, line );
+    reader.on_fairness( i, std::atol( line.c_str() ) );
   }
 
   const auto decode = [&]() {
@@ -662,6 +855,10 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
     else if ( std::regex_search( line, m, aig_regex::constraint ) )
     {
       reader.on_constraint_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+    }
+    else if ( std::regex_search( line, m, aig_regex::justice ) )
+    {
+      reader.on_justice_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::fairness ) )
     {

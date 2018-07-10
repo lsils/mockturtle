@@ -4,7 +4,7 @@
 
 using namespace mockturtle;
 
-TEST_CASE( "mixed radix loop", "[mixed_radixs]" )
+TEST_CASE( "mixed radix loop", "[mixed_radix]" )
 {
   uint32_t m[] = {3, 2, 4};
   uint32_t count = 0u;

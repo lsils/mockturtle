@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/lsils/mockturtle.svg?branch=master)](https://travis-ci.org/lsils/mockturtle)
+[![Build status](https://ci.appveyor.com/api/projects/status/2jo09dyjl8t8psrj?svg=true)](https://ci.appveyor.com/project/msoeken/mockturtle)
 [![Documentation Status](https://readthedocs.org/projects/mockturtle/badge/?version=latest)](http://mockturtle.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 

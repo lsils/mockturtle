@@ -37,6 +37,7 @@
 #include <string>
 
 #include "hash.hpp"
+#include "detail/mscfix.hpp"
 
 namespace kitty
 {
@@ -104,10 +105,16 @@ public:
     return __builtin_popcount( _mask );
   }
 
+  /*! \brief Returns the difference to another cube */
+  inline int difference( const cube& that ) const
+  {
+    return ( _bits ^ that._bits ) | ( _mask ^ that._mask );
+  }
+
   /*! \brief Returns the distance to another cube */
   inline int distance( const cube& that ) const
   {
-    return __builtin_popcount( ( _bits ^ that._bits ) | ( _mask ^ that._mask ) );
+    return __builtin_popcount( difference( that ) );
   }
 
   /*! \brief Checks whether two cubes are equivalent */
@@ -131,7 +138,7 @@ public:
   /*! \brief Merges two cubes of distance-1 */
   inline cube merge( const cube& that ) const
   {
-    const auto d = ( _bits ^ that._bits ) | ( _mask ^ that._mask );
+    const auto d = difference( that );
     return {_bits ^ ( ~that._bits & d ), _mask ^ ( that._mask & d )};
   }
 
