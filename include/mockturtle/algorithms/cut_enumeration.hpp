@@ -95,14 +95,18 @@ template<typename Ntk, bool ComputeTruth = false, typename CutData = empty_cut_d
 network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_enumeration_params const& ps = {} );
 
 /* function to update a cut */
-template<bool ComputeTruth, typename CutData, typename Ntk>
-void cut_enumeration_update_cut( cut_type<ComputeTruth, CutData>& cut, network_cuts<Ntk, ComputeTruth, CutData> const& cuts, Ntk const& ntk, node<Ntk> const& n )
+template<typename CutData>
+struct cut_enumeration_update_cut
 {
-  (void)cut;
-  (void)cuts;
-  (void)ntk;
-  (void)n;
-}
+  template<typename Cut, typename NetworkCuts, typename Ntk>
+  static void apply( Cut& cut, NetworkCuts const& cuts, Ntk const& ntk, node<Ntk> const& n )
+  {
+    (void)cut;
+    (void)cuts;
+    (void)ntk;
+    (void)n;
+  }
+};
 
 namespace detail
 {
@@ -347,7 +351,7 @@ private:
           continue;
         }
 
-        cut_enumeration_update_cut( new_cut, cuts, ntk, index );
+        cut_enumeration_update_cut<CutData>::apply( new_cut, cuts, ntk, index );
 
         if constexpr ( ComputeTruth )
         {
@@ -422,7 +426,7 @@ private:
           return true; /* continue */
         }
 
-        cut_enumeration_update_cut( new_cut, cuts, ntk, index );
+        cut_enumeration_update_cut<CutData>::apply( new_cut, cuts, ntk, index );
 
         if constexpr ( ComputeTruth )
         {
