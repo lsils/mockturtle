@@ -10,3 +10,5 @@ implements the reader callback ``<format>_reader``.
 .. doxygenclass:: mockturtle::aiger_reader
 
 .. doxygenclass:: mockturtle::bench_reader
+
+.. doxygenclass:: mockturtle::verilog_reader
