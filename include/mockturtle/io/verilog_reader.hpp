@@ -37,8 +37,6 @@
 #include <string>
 #include <vector>
 
-#include <kitty/constructors.hpp>
-#include <kitty/dynamic_truth_table.hpp>
 #include <lorina/verilog.hpp>
 
 #include "../traits.hpp"
@@ -63,8 +61,8 @@ namespace mockturtle
 
    .. code-block:: c++
 
-      klut_network klut;
-      lorina::read_verilog( "file.verilog", verilog_reader( klut ) );
+      mig_network mig;
+      lorina::read_verilog( "file.v", verilog_reader( mig ) );
    \endverbatim
  */
 template<typename Ntk>
