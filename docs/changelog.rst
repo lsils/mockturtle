@@ -31,9 +31,10 @@ v0.1 (not yet released)
   `#20 <https://github.com/lsils/mockturtle/pull/20>`_
   `#27 <https://github.com/lsils/mockturtle/pull/27>`_
 
-* I/O: `aiger_reader`, `bench_reader`, `write_bench`
+* I/O: `aiger_reader`, `bench_reader`, `write_bench`, `verilog_reader`
   `#6 <https://github.com/lsils/mockturtle/pull/6>`_
   `#10 <https://github.com/lsils/mockturtle/pull/10>`_
+  `#40 <https://github.com/lsils/mockturtle/pull/40>`_
 
 * Generators for arithmetic circuits: `carry_ripple_adder`, `carry_ripple_subtractor`
   `#5 <https://github.com/lsils/mockturtle/pull/5>`_
