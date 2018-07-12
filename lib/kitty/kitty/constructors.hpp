@@ -39,6 +39,7 @@
 
 #include "cube.hpp"
 #include "detail/constants.hpp"
+#include "detail/mscfix.hpp"
 #include "detail/utils.hpp"
 #include "dynamic_truth_table.hpp"
 #include "operations.hpp"

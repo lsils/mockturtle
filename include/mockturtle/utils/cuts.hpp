@@ -37,6 +37,8 @@
 #include <iostream>
 #include <iterator>
 
+#include <kitty/detail/mscfix.hpp>
+
 namespace mockturtle
 {
 

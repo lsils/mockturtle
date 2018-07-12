@@ -33,9 +33,11 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 
 #include "detail/constants.hpp"
+#include "traits.hpp"
 
 namespace kitty
 {
@@ -128,6 +130,28 @@ struct dynamic_truth_table
    */
   inline auto crend() const noexcept { return _bits.crend(); }
 
+  /*! \brief Assign other truth table.
+
+    This replaces the current truth table with another truth table.  The truth
+    table type is arbitrary.  The vector of bits is resized accordingly.
+
+    \param other Other truth table
+  */
+  template<class TT, typename = std::enable_if_t<is_truth_table<TT>::value>>
+  dynamic_truth_table& operator=( const TT& other )
+  {
+    _bits.resize( other.num_blocks() );
+    std::copy( other.begin(), other.end(), begin() );
+    _num_vars = other.num_vars();
+
+    if ( _num_vars < 6 )
+    {
+      mask_bits();
+    }
+
+    return *this;
+  }
+
   /*! Masks the number of valid truth table bits.
 
     If the truth table has less than 6 variables, it may not use all
@@ -148,4 +172,7 @@ public: /* fields */
   int _num_vars;
   /*! \endcond */
 };
+
+template<>
+struct is_truth_table<kitty::dynamic_truth_table> : std::true_type {};
 } // namespace kitty

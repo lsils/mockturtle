@@ -50,7 +50,7 @@ matrix:
     before_install:
       - brew update
       - brew install llvm
-    env: COMPILER=/usr/local/Cellar/llvm/6.0.0/bin/clang++
+    env: COMPILER=/usr/local/Cellar/llvm/6.0.1/bin/clang++
   - os: osx
     osx_image: xcode8.3
     compiler: gcc

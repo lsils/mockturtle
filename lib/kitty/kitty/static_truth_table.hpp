@@ -36,6 +36,7 @@
 #include <cstdint>
 
 #include "detail/constants.hpp"
+#include "traits.hpp"
 
 namespace kitty
 {
@@ -119,6 +120,25 @@ struct static_truth_table<NumVars, true>
   /*! \brief Constant everse end iterator to bits.
    */
   inline auto crend() const noexcept { return ( &_bits ) + 1; }
+
+  /*! \brief Assign other truth table if number of variables match.
+
+    This replaces the current truth table with another truth table, if `other`
+    has the same number of variables.  Otherwise, the truth table is not
+    changed.
+
+    \param other Other truth table
+  */
+  template<class TT, typename = std::enable_if_t<is_truth_table<TT>::value>>
+  static_truth_table<NumVars>& operator=( const TT& other )
+  {
+    if ( other.num_vars() == num_vars() )
+    {
+      std::copy( other.begin(), other.end(), begin() );
+    }
+
+    return *this;
+  }
 
   /*! Masks the number of valid truth table bits.
 
@@ -220,6 +240,25 @@ struct static_truth_table<NumVars, false>
    */
   inline auto crend() const noexcept { return _bits.crend(); }
 
+  /*! \brief Assign other truth table if number of variables match.
+
+    This replaces the current truth table with another truth table, if `other`
+    has the same number of variables.  Otherwise, the truth table is not
+    changed.
+
+    \param other Other truth table
+  */
+  template<class TT, typename = std::enable_if_t<is_truth_table<TT>::value>>
+  static_truth_table<NumVars>& operator=( const TT& other )
+  {
+    if ( other.num_vars() == num_vars() )
+    {
+      std::copy( other.begin(), other.end(), begin() );
+    }
+
+    return *this;
+  }
+
   /*! Masks the number of valid truth table bits.
 
     We know that we will have at least 7 variables in this data
@@ -232,4 +271,8 @@ public: /* fields */
   std::array<uint64_t, NumBlocks> _bits;
   /*! \endcond */
 };
+
+template<int NumVars>
+struct is_truth_table<kitty::static_truth_table<NumVars>> : std::true_type {};
+
 } // namespace kitty

@@ -1,4 +1,4 @@
-add_library(sparsepp INTERFACE) # v1.1
+add_library(sparsepp INTERFACE) # v1.21
 target_include_directories(sparsepp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/sparsepp)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "8.1.0")
   target_compile_options(sparsepp INTERFACE -Wno-class-memaccess)

@@ -36,7 +36,6 @@
 #include <fstream>
 #include <functional>
 #include <functional>
-#include <libgen.h>
 #include <locale>
 #include <memory>
 #include <numeric>
@@ -44,7 +43,11 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+
+#ifndef _WIN32
+#include <libgen.h>
 #include <wordexp.h>
+#endif
 
 namespace lorina
 {
@@ -344,28 +347,6 @@ inline std::vector<std::string> split( const std::string& str, const std::string
   return result;
 }
 
-// from http://stackoverflow.com/questions/478898/how-to-execute-a-command-and-get-output-of-command-within-c-using-posix
-inline std::pair<int, std::string> execute_program( const std::string& cmd )
-{
-  char buffer[128];
-  std::string result;
-  int exit_status;
-
-  std::shared_ptr<FILE> pipe( popen( cmd.c_str(), "r" ), [&exit_status]( FILE* fp ) { auto status = pclose( fp ); exit_status = WEXITSTATUS( status ); } );
-  if ( !pipe )
-  {
-    throw std::runtime_error( "[e] popen() failed" );
-  }
-  while ( !feof( pipe.get() ) )
-  {
-    if ( fgets( buffer, 128, pipe.get() ) != NULL )
-    {
-      result += buffer;
-    }
-  }
-  return {exit_status, result};
-}
-
 // based on https://stackoverflow.com/questions/5612182/convert-string-with-explicit-escape-sequence-into-relative-character
 inline std::string unescape_quotes( const std::string& s )
 {
@@ -386,6 +367,7 @@ inline std::string unescape_quotes( const std::string& s )
   return res;
 }
 
+#ifndef _WIN32
 inline std::string word_exp_filename( const std::string& filename )
 {
   std::string result;
@@ -406,11 +388,19 @@ inline std::string word_exp_filename( const std::string& filename )
 
   return result;
 }
+#else
+inline const std::string& word_exp_filename( const std::string& filename )
+{
+  return filename;
+}
+#endif
 
+#ifndef _WIN32
 inline std::string basename( const std::string& filepath )
 {
   return std::string( ::basename( const_cast<char*>( filepath.c_str() ) ) );
 }
+#endif
 
 } // namespace detail
 } // namespace lorina

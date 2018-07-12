@@ -20,7 +20,7 @@ Simulate a Boolean input assignment.
    default_simulator<bool> sim( assignment );
    const auto values = simulate<bool>( aig, sim );
 
-   ntk.foreach_po( [&]( auto const&, auto i ) {
+   aig.foreach_po( [&]( auto const&, auto i ) {
      std::cout << fmt::format( "output {} has simulation value {}\n", i, values[i] );
    } );
 
@@ -33,7 +33,7 @@ Complete simulation with truth tables.
    default_simulator<kitty::dynamic_truth_table> sim( aig.num_pis() );
    const auto tts = simulate<kitty::dynamic_truth_table>( aig, sim );
 
-   ntk.foreach_po( [&]( auto const&, auto i ) {
+   aig.foreach_po( [&]( auto const&, auto i ) {
      std::cout << fmt::format( "truth table of output {} is {}\n", i, kitty::to_hex( tts[i] ) );
    } );
 
@@ -46,7 +46,7 @@ Simulate values for all nodes.
    default_simulator<kitty::dynamic_truth_table> sim( aig.num_pis() );
    const auto tts = simulate_nodes<kitty::dynamic_truth_table>( aig, sim );
 
-   ntk.foreach_node( [&]( auto const& n, auto i ) {
+   aig.foreach_node( [&]( auto const& n, auto i ) {
      std::cout << fmt::format( "truth table of node {} is {}\n", i, tts[n] );
    } );
 
