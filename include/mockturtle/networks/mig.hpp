@@ -80,7 +80,7 @@ public:
     {
     }
 
-    signal( uint64_t data )
+    explicit signal( uint64_t data )
         : data( data )
     {
     }
