@@ -270,9 +270,9 @@ public:
 
 namespace verilog_regex
 {
-static std::regex immediate_assign( R"(^(~\s+)?([[:digit:][:alpha:]]+)$)" );
-static std::regex binary_expression( R"(^(~\s+)?([[:digit:][:alpha:]]+)\s+([&|^])\s+(~\s+)?([[:digit:][:alpha:]]+)$)" );
-static std::regex maj3_expression( R"(^\(\s+(~\s+)?([[:digit:][:alpha:]]+)\s+&\s+(~\s+)?([[:digit:][:alpha:]]+)\s+\)\s+\|\s+\(\s+(~\s+)?([[:digit:][:alpha:]]+)\s+&\s+(~\s+)?([[:digit:][:alpha:]]+)\s+\)\s+\|\s+\(\s+(~\s+)?([[:digit:][:alpha:]]+)\s+&\s+(~\s+)?([[:digit:][:alpha:]]+)\s+\)$)" );
+static std::regex immediate_assign( R"(^(~)?([[:digit:][:alpha:]]+)$)" );
+static std::regex binary_expression( R"(^(~)?([[:digit:][:alpha:]]+)([&|^])(~)?([[:digit:][:alpha:]]+)$)" );
+static std::regex maj3_expression( R"(^\((~)?([[:digit:][:alpha:]]+)&(~)?([[:digit:][:alpha:]]+)\)\|\((~)?([[:digit:][:alpha:]]+)&(~)?([[:digit:][:alpha:]]+)\)\|\((~)?([[:digit:][:alpha:]]+)&(~)?([[:digit:][:alpha:]]+)\)$)" );
 } // namespace verilog_regex
 
 class verilog_parser
@@ -290,7 +290,14 @@ public:
     if ( !valid ) return false;
 
     bool success = parse_module_header();
-    if ( !success ) return false;
+    if ( !success )
+    {
+      if ( diag )
+      {
+        diag->report( diagnostic_level::error, "cannot parse module header" );
+      }
+      return false;
+    }
 
     do
     {
@@ -300,17 +307,38 @@ public:
       if ( token == "input" )
       {
         success = parse_inputs();
-        if ( !success ) return false;
+        if ( !success )
+        {
+          if ( diag )
+          {
+            diag->report( diagnostic_level::error, "cannot parse input declaration" );
+          }
+          return false;
+        }
       }
       else if ( token == "output" )
       {
         success = parse_outputs();
-        if ( !success ) return false;
+        if ( !success )
+        {
+          if ( diag )
+          {
+            diag->report( diagnostic_level::error, "cannot parse output declaration" );
+          }
+          return false;
+        }
       }
       else if ( token == "wire" )
       {
         success = parse_wires();
-        if ( !success ) return false;
+        if ( !success )
+        {
+          if ( diag )
+          {
+            diag->report( diagnostic_level::error, "cannot parse wire declaration" );
+          }
+          return false;
+        }
       }
       else if ( token != "assign" &&
                 token != "endmodule" )
@@ -322,7 +350,14 @@ public:
     while ( token == "assign" )
     {
       success = parse_assign();
-      if ( !success ) return false;
+      if ( !success )
+      {
+        if ( diag )
+        {
+          diag->report( diagnostic_level::error, "cannot parse assign statement" );
+        }
+        return false;
+      }
 
       valid = tok.get_token( token );
       if ( !valid ) return false;
@@ -450,7 +485,15 @@ public:
 
     /* expression */
     bool success = parse_rhs_expression( lhs );
-    if ( !success ) return false;
+    if ( !success )
+    {
+      if ( diag )
+      {
+        diag->report( diagnostic_level::error,
+                      fmt::format( "cannot parse expression on right-hand side of assign `{0}`", lhs ) );
+      }
+      return false;
+    }
 
     if ( token != ";" ) return false;
 
@@ -467,21 +510,19 @@ public:
 
       if ( token == ";" || token == "assign" || token == "endmodule" ) break;
       s.append( token );
-      s.append( " " );
     } while ( token != ";" && token != "assign" && token != "endmodule" );
-    detail::trim( s );
 
     std::smatch sm;
     if ( std::regex_match( s, sm, verilog_regex::immediate_assign ) )
     {
       assert( sm.size() == 3u );
-      reader.on_assign( lhs, {sm[2], detail::trim_copy(sm[1]) == "~"} );
+      reader.on_assign( lhs, {sm[2], sm[1] == "~"} );
     }
     else if ( std::regex_match( s, sm, verilog_regex::binary_expression ) )
     {
       assert( sm.size() == 6u );
-      std::pair<std::string,bool> arg0 = {sm[2], detail::trim_copy(sm[1]) == "~"};
-      std::pair<std::string,bool> arg1 = {sm[5], detail::trim_copy(sm[4]) == "~"};
+      std::pair<std::string,bool> arg0 = {sm[2], sm[1] == "~"};
+      std::pair<std::string,bool> arg1 = {sm[5], sm[4] == "~"};
       auto op = sm[3];
 
       if ( op == "&" )
@@ -504,12 +545,12 @@ public:
     else if ( std::regex_match( s, sm, verilog_regex::maj3_expression ) )
     {
       assert( sm.size() == 13u );
-      std::pair<std::string,bool> a0 = {sm[2],  detail::trim_copy(sm[1]) == "~"};
-      std::pair<std::string,bool> b0 = {sm[4],  detail::trim_copy(sm[3]) == "~"};
-      std::pair<std::string,bool> a1 = {sm[6],  detail::trim_copy(sm[5]) == "~"};
-      std::pair<std::string,bool> c0 = {sm[8],  detail::trim_copy(sm[7]) == "~"};
-      std::pair<std::string,bool> b1 = {sm[10], detail::trim_copy(sm[9]) == "~"};
-      std::pair<std::string,bool> c1 = {sm[12], detail::trim_copy(sm[11]) == "~"};
+      std::pair<std::string,bool> a0 = {sm[2],  sm[1]  == "~"};
+      std::pair<std::string,bool> b0 = {sm[4],  sm[3]  == "~"};
+      std::pair<std::string,bool> a1 = {sm[6],  sm[5]  == "~"};
+      std::pair<std::string,bool> c0 = {sm[8],  sm[7]  == "~"};
+      std::pair<std::string,bool> b1 = {sm[10], sm[9]  == "~"};
+      std::pair<std::string,bool> c1 = {sm[12], sm[11] == "~"};
 
       if ( a0 != a1 || b0 != b1 || c0 != c1 ) return false;
 
