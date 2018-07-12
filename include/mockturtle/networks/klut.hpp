@@ -255,24 +255,24 @@ public:
 #pragma endregion
 
 #pragma region Structural properties
-  uint64_t size() const
+  auto size() const
   {
-    return _storage->nodes.size();
+    return static_cast<uint32_t>( _storage->nodes.size() );
   }
 
-  uint64_t num_pis() const
+  auto num_pis() const
   {
-    return _storage->inputs.size();
+    return static_cast<uint32_t>(_storage->inputs.size() );
   }
 
-  uint64_t num_pos() const
+  auto num_pos() const
   {
-    return _storage->outputs.size();
+    return static_cast<uint32_t>(_storage->outputs.size() );
   }
 
-  uint64_t num_gates() const
+  auto num_gates() const
   {
-    return _storage->nodes.size() - _storage->inputs.size() - 2;
+    return static_cast<uint32_t>(_storage->nodes.size() - _storage->inputs.size() - 2 );
   }
 
   uint32_t fanin_size( node const& n ) const

@@ -259,8 +259,8 @@ public:
 
     if ( index >= .9 * _storage->nodes.capacity() )
     {
-      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415 * index ) );
-      _storage->hash.reserve( static_cast<uint64_t>( 3.1415 * index ) );
+      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415f * index ) );
+      _storage->hash.reserve( static_cast<uint64_t>( 3.1415f * index ) );
     }
 
     _storage->nodes.push_back( node );
@@ -418,7 +418,7 @@ public:
 
   uint32_t node_to_index( node const& n ) const
   {
-    return n;
+    return static_cast<uint32_t>( n );
   }
 
   node index_to_node( uint32_t index ) const

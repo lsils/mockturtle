@@ -163,7 +163,7 @@ public:
     return ( n1 == 0x30 && n2 == 0x31 ) || ( ( n1 + 0x20 ) == n2 );
   }
 
-  inline unsigned num_columns() const
+  inline auto num_columns() const
   {
     return columns.size();
   }
@@ -777,7 +777,7 @@ private:
   LeavesIterator end;
 
   unsigned reduce{0};
-  unsigned previous_size{0};
+  std::size_t previous_size{0};
 };
 
 } // namespace detail
