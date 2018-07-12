@@ -125,11 +125,6 @@ public:
     return std::find( beg, beg + _num_leaves, pi ) != beg + _num_leaves;
   }
 
-  inline bool is_po( node const& po ) const
-  {
-    return std::find( _roots.begin(), _roots.end(), po ) != _roots.end();
-  }
-
   template<typename Fn>
   void foreach_pi( Fn&& fn ) const
   {
@@ -242,16 +237,21 @@ private:
 
       if ( std::find( pos.begin(), pos.end(), n ) != pos.end() )
       {
-        _roots.push_back( n );
+        auto s = this->make_signal( n );
+        if ( std::find( _roots.begin(), _roots.end(), s ) == _roots.end() )
+        {
+          _roots.push_back( s );
+        }
         continue;
       }
 
       ntk.foreach_parent( n, [&]( auto const& p ){
           if ( std::find( _nodes.begin(), _nodes.end(), p ) == _nodes.end() )
           {
-            if ( std::find( _roots.begin(), _roots.end(), n ) == _roots.end() )
+            auto s = this->make_signal( n );
+            if ( std::find( _roots.begin(), _roots.end(), s ) == _roots.end() )
             {
-              _roots.push_back( n );
+              _roots.push_back( s );
               return false;
             }
           }
@@ -265,7 +265,7 @@ public:
   unsigned _num_leaves{0};
   std::vector<node> _nodes;
   std::unordered_map<node, uint32_t> _node_to_index;
-  std::vector<node> _roots;
+  std::vector<signal> _roots;
   std::vector<unsigned> _fanout_size;
 };
 
