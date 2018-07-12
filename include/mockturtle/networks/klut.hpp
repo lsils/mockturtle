@@ -426,12 +426,12 @@ public:
 
   uint32_t incr_value( node const& n ) const
   {
-    return _storage->nodes[n].data[0].h2++;
+    return static_cast<uint32_t>( _storage->nodes[n].data[0].h2++ );
   }
 
   uint32_t decr_value( node const& n ) const
   {
-    return --_storage->nodes[n].data[0].h2;
+    return static_cast<uint32_t>( --_storage->nodes[n].data[0].h2 );
   }
 #pragma endregion
 

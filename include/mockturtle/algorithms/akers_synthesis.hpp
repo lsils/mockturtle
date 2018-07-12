@@ -552,7 +552,7 @@ private:
     auto this_table = table;
     for ( auto f = 0u; f < random_gates.size(); f++ )
     {
-      auto last_gate_id = table.add_gate( random_gates[f] );
+      table.add_gate( random_gates[f] );
       table.reduce();
       if ( ( table.rows.size() != this_table.rows.size() ) || ( table.columns.size() != this_table.columns.size() - 1 ) )
       {
@@ -744,7 +744,7 @@ private:
         if ( column == j )
           continue;
         auto found = true;
-        auto offset = 0u;
+        std::size_t offset = 0u;
         for ( auto r = 0u; r < num_rows; ++r, offset += num_columns )
         {
           if ( !matrix[offset + i] && !matrix[offset + j] )
