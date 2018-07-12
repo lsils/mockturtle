@@ -140,7 +140,7 @@ private:
       }
       else
       {
-        flow_refs[index] = ntk.fanout_size( n );
+        flow_refs[index] = static_cast<float>( ntk.fanout_size( n ) );
       }
 
       flows[index] = cuts.cuts( index )[0]->data.flow;

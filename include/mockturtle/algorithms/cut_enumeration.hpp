@@ -190,7 +190,7 @@ public:
     for ( auto i : sub )
     {
       itp = std::find( itp, sup.end(), i );
-      support.push_back( std::distance( sup.begin(), itp ) );
+      support.push_back( static_cast<uint8_t>( std::distance( sup.begin(), itp ) ) );
     }
 
     return support;
@@ -326,7 +326,7 @@ private:
     uint32_t pairs{1};
     ntk.foreach_fanin( index, [this, &pairs]( auto child, auto i ) {
       lcuts[i] = &cuts.cuts( ntk.node_to_index( ntk.get_node( child ) ) );
-      pairs *= lcuts[i]->size();
+      pairs *= static_cast<uint32_t>( lcuts[i]->size() );
     } );
     lcuts[2] = &cuts.cuts( index );
     auto& rcuts = *lcuts[fanin];
@@ -442,7 +442,7 @@ private:
       rcuts.limit( ps.cut_limit - 1 );
     }
 
-    cuts._total_cuts += rcuts.size();
+    cuts._total_cuts += static_cast<uint32_t>( rcuts.size() );
 
     if ( rcuts.size() > 1 || ( *rcuts.begin() )->size() > 1 )
     {

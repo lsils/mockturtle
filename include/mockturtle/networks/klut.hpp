@@ -277,7 +277,7 @@ public:
 
   uint32_t fanin_size( node const& n ) const
   {
-    return _storage->nodes[n].children.size();
+    return static_cast<uint32_t>( _storage->nodes[n].children.size() );
   }
 
   uint32_t fanout_size( node const& n ) const
@@ -312,7 +312,7 @@ public:
 
   uint32_t node_to_index( node const& n ) const
   {
-    return n;
+    return static_cast<uint32_t>( n );
   }
 
   node index_to_node( uint32_t index ) const
