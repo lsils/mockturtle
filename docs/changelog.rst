@@ -31,6 +31,7 @@ v0.1 (not yet released)
     - Cut view (`cut_view`) `#20 <https://github.com/lsils/mockturtle/pull/20>`_
     - Access parents from a node (`parents_view`) `#27 <https://github.com/lsils/mockturtle/pull/27>`_
     - Compute MFFC of a node (`mffc_view`) `#34 <https://github.com/lsils/mockturtle/pull/34>`_
+    - Compute window around a node (`window_view`) `#41 <https://github.com/lsils/mockturtle/pull/41>`_
 * I/O:
     - Read AIGER files using *lorina* (`aiger_reader`) `#6 <https://github.com/lsils/mockturtle/pull/6>`_
     - Read BENCH files using *lorina* (`bench_reader`) `#6 <https://github.com/lsils/mockturtle/pull/6>`_
