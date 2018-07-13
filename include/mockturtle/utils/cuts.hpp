@@ -280,7 +280,7 @@ bool cut<MaxLeaves, T>::merge( cut const& that, cut& res, uint32_t cut_size ) co
   if ( auto length = std::distance( res.begin(), it ); length <= cut_size )
   {
     res._cend = res._end = it;
-    res._length = length;
+    res._length = static_cast<uint32_t>( length );
     res._signature = _signature | that._signature;
     return true;
   }

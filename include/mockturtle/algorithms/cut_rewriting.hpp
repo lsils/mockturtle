@@ -241,7 +241,7 @@ public:
 
 private:
   uint32_t _num_vertices{0u};
-  uint32_t _num_edges{0u};
+  std::size_t _num_edges{0u};
 
   std::vector<std::set<uint32_t>> _adjacent;
 

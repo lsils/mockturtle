@@ -184,7 +184,7 @@ public:
     }
 
     /* set starting index of leafs */
-    mindex = _mapping_storage.mappings.size();
+    mindex = static_cast<uint32_t>( _mapping_storage.mappings.size() );
 
     /* insert number of leafs */
     _mapping_storage.mappings.push_back( static_cast<uint32_t>( std::distance( begin, end ) ) );

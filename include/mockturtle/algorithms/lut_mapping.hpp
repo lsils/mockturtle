@@ -125,7 +125,7 @@ public:
 private:
   uint32_t cut_area( cut_t const& cut ) const
   {
-    return cut->data.cost;
+    return static_cast<uint32_t>( cut->data.cost );
   }
 
   void init_nodes()
