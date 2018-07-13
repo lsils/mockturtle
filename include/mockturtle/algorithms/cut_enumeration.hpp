@@ -233,7 +233,7 @@ private:
 
   /* statistics */
   uint32_t _total_tuples{};
-  uint32_t _total_cuts{};
+  std::size_t _total_cuts{};
 };
 
 /*! \cond PRIVATE */

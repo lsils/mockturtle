@@ -175,7 +175,7 @@ public:
     {
       _empty = true;
     }
-    _num_leaves = _leaves.size();
+    _num_leaves = static_cast<uint32_t>( _leaves.size() );
 
     /* restore ref counts */
     for ( auto const& n : _nodes )

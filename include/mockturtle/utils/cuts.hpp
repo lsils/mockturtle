@@ -214,7 +214,7 @@ template<typename Iterator>
 void cut<MaxLeaves, T>::set_leaves( Iterator begin, Iterator end )
 {
   _cend = _end = std::copy( begin, end, _leaves.begin() );
-  _length = std::distance( begin, end );
+  _length = static_cast<uint32_t>( std::distance( begin, end ) );
   _signature = 0;
 
   while ( begin != end )

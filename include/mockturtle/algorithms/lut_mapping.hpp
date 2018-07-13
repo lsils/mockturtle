@@ -203,7 +203,7 @@ private:
     /* blend flow referenes */
     for ( auto i = 0u; i < ntk.size(); ++i )
     {
-      flow_refs[i] = coef * flow_refs[i] + ( 1.0f - coef ) * std::max<float>( 1.0, map_refs[i] );
+      flow_refs[i] = coef * flow_refs[i] + ( 1.0f - coef ) * std::max<float>( 1.0f, map_refs[i] );
     }
 
     ++iteration;
