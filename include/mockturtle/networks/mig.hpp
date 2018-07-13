@@ -80,7 +80,7 @@ public:
     {
     }
 
-    signal( uint64_t data )
+    explicit signal( uint64_t data )
         : data( data )
     {
     }
@@ -259,8 +259,8 @@ public:
 
     if ( index >= .9 * _storage->nodes.capacity() )
     {
-      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415 * index ) );
-      _storage->hash.reserve( static_cast<uint64_t>( 3.1415 * index ) );
+      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415f * index ) );
+      _storage->hash.reserve( static_cast<uint64_t>( 3.1415f * index ) );
     }
 
     _storage->nodes.push_back( node );
@@ -352,24 +352,24 @@ public:
 #pragma endregion
 
 #pragma region Structural properties
-  uint32_t size() const
+  auto size() const
   {
-    return _storage->nodes.size();
+    return static_cast<uint32_t>( _storage->nodes.size() );
   }
 
-  uint32_t num_pis() const
+  auto num_pis() const
   {
-    return _storage->inputs.size();
+    return static_cast<uint32_t>( _storage->inputs.size() );
   }
 
-  uint32_t num_pos() const
+  auto num_pos() const
   {
-    return _storage->outputs.size();
+    return static_cast<uint32_t>( _storage->outputs.size() );
   }
 
-  uint32_t num_gates() const
+  auto num_gates() const
   {
-    return _storage->nodes.size() - _storage->inputs.size() - 1;
+    return static_cast<uint32_t>( _storage->nodes.size() - _storage->inputs.size() - 1 );
   }
 
   uint32_t fanin_size( node const& n ) const
@@ -418,7 +418,7 @@ public:
 
   uint32_t node_to_index( node const& n ) const
   {
-    return n;
+    return static_cast<uint32_t>( n );
   }
 
   node index_to_node( uint32_t index ) const

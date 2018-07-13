@@ -197,7 +197,7 @@ private:
 
   inline void add_node( node const& n )
   {
-    _node_to_index[n] = _nodes.size();
+    _node_to_index[n] = static_cast<uint32_t>( _nodes.size() );
     _nodes.push_back( n );
   }
 

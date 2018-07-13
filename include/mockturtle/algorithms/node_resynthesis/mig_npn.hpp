@@ -83,7 +83,7 @@ public:
     const auto fe = kitty::extend_to( function, 4 );
     const auto config = kitty::exact_npn_canonization( fe );
 
-    const auto it = class2signal.find( std::get<0>( config )._bits[0] );
+    const auto it = class2signal.find( static_cast<uint16_t>( std::get<0>( config )._bits[0] ) );
 
     std::vector<mig_network::signal> pis( 4, mig.get_constant( false ) );
     std::copy( begin, end, pis.begin() );

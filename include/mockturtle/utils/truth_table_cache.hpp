@@ -131,11 +131,11 @@ uint32_t truth_table_cache<TT>::insert( TT tt )
   const auto it = std::find( _data.begin(), _data.end(), tt );
   if ( it != _data.end() )
   {
-    return 2 * std::distance( _data.begin(), it ) + is_compl;
+    return static_cast<uint32_t>( 2 * std::distance( _data.begin(), it ) + is_compl );
   }
 
   /* add truth table to end of cache */
-  const auto index = 2 * _data.size() + is_compl;
+  const auto index = static_cast<uint32_t>( 2 * _data.size() + is_compl );
   _data.push_back( tt );
   return index;
 }

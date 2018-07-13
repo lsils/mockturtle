@@ -125,7 +125,7 @@ public:
 private:
   uint32_t cut_area( cut_t const& cut ) const
   {
-    return cut->data.cost;
+    return static_cast<uint32_t>( cut->data.cost );
   }
 
   void init_nodes()
@@ -140,7 +140,7 @@ private:
       }
       else
       {
-        flow_refs[index] = ntk.fanout_size( n );
+        flow_refs[index] = static_cast<float>( ntk.fanout_size( n ) );
       }
 
       flows[index] = cuts.cuts( index )[0]->data.flow;
@@ -203,7 +203,7 @@ private:
     /* blend flow referenes */
     for ( auto i = 0u; i < ntk.size(); ++i )
     {
-      flow_refs[i] = coef * flow_refs[i] + ( 1.0f - coef ) * std::max<float>( 1.0, map_refs[i] );
+      flow_refs[i] = coef * flow_refs[i] + ( 1.0f - coef ) * std::max<float>( 1.0f, map_refs[i] );
     }
 
     ++iteration;
@@ -307,7 +307,7 @@ private:
 
       if ( ela )
       {
-        flow = cut_area_derefed2( *cut );
+        flow = static_cast<float>( cut_area_derefed2( *cut ) );
       }
       else
       {

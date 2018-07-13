@@ -255,29 +255,29 @@ public:
 #pragma endregion
 
 #pragma region Structural properties
-  uint64_t size() const
+  auto size() const
   {
-    return _storage->nodes.size();
+    return static_cast<uint32_t>( _storage->nodes.size() );
   }
 
-  uint64_t num_pis() const
+  auto num_pis() const
   {
-    return _storage->inputs.size();
+    return static_cast<uint32_t>(_storage->inputs.size() );
   }
 
-  uint64_t num_pos() const
+  auto num_pos() const
   {
-    return _storage->outputs.size();
+    return static_cast<uint32_t>(_storage->outputs.size() );
   }
 
-  uint64_t num_gates() const
+  auto num_gates() const
   {
-    return _storage->nodes.size() - _storage->inputs.size() - 2;
+    return static_cast<uint32_t>(_storage->nodes.size() - _storage->inputs.size() - 2 );
   }
 
   uint32_t fanin_size( node const& n ) const
   {
-    return _storage->nodes[n].children.size();
+    return static_cast<uint32_t>( _storage->nodes[n].children.size() );
   }
 
   uint32_t fanout_size( node const& n ) const
@@ -312,7 +312,7 @@ public:
 
   uint32_t node_to_index( node const& n ) const
   {
-    return n;
+    return static_cast<uint32_t>( n );
   }
 
   node index_to_node( uint32_t index ) const
@@ -426,12 +426,12 @@ public:
 
   uint32_t incr_value( node const& n ) const
   {
-    return _storage->nodes[n].data[0].h2++;
+    return static_cast<uint32_t>( _storage->nodes[n].data[0].h2++ );
   }
 
   uint32_t decr_value( node const& n ) const
   {
-    return --_storage->nodes[n].data[0].h2;
+    return static_cast<uint32_t>( --_storage->nodes[n].data[0].h2 );
   }
 #pragma endregion
 

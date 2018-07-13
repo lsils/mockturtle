@@ -6,44 +6,43 @@ v0.1 (not yet released)
 
 * Initial network interface
   `#1 <https://github.com/lsils/mockturtle/pull/1>`_
-
-* Network implementations: `aig_network`, `mig_network`, `klut_network`
-  `#1 <https://github.com/lsils/mockturtle/pull/1>`_
-  `#4 <https://github.com/lsils/mockturtle/pull/4>`_
-
-* Algorithms: `cut_enumeration`, `lut_mapping`, `akers_synthesis`, `collapse_mapped_network`, `mig_algebraic_depth_rewriting`, `cleanup_dangling`, `node_resynthesis`, `reconv_cut`, `simulate`, `simulate_nodes`, `cut_rewriting`, `refactoring`
-  `#2 <https://github.com/lsils/mockturtle/pull/2>`_
-  `#7 <https://github.com/lsils/mockturtle/pull/7>`_
-  `#9 <https://github.com/lsils/mockturtle/pull/9>`_
-  `#13 <https://github.com/lsils/mockturtle/pull/13>`_
-  `#16 <https://github.com/lsils/mockturtle/pull/16>`_
-  `#17 <https://github.com/lsils/mockturtle/pull/17>`_
-  `#24 <https://github.com/lsils/mockturtle/pull/24>`_
-  `#25 <https://github.com/lsils/mockturtle/pull/25>`_
-  `#28 <https://github.com/lsils/mockturtle/pull/28>`_
-  `#31 <https://github.com/lsils/mockturtle/pull/31>`_
-  `#34 <https://github.com/lsils/mockturtle/pull/34>`_
-
-* Views: `topo_view`, `immutable_view`, `mapping_view`, `depth_view`, `cut_view`, `parents_view`, `window_view`
-  `#3 <https://github.com/lsils/mockturtle/pull/3>`_
-  `#7 <https://github.com/lsils/mockturtle/pull/7>`_
-  `#16 <https://github.com/lsils/mockturtle/pull/16>`_
-  `#20 <https://github.com/lsils/mockturtle/pull/20>`_
-  `#27 <https://github.com/lsils/mockturtle/pull/27>`_
-  `#41 <https://github.com/lsils/mockturtle/pull/41>`_
-
-* I/O: `aiger_reader`, `bench_reader`, `write_bench`, `verilog_reader`
-  `#6 <https://github.com/lsils/mockturtle/pull/6>`_
-  `#10 <https://github.com/lsils/mockturtle/pull/10>`_
-  `#40 <https://github.com/lsils/mockturtle/pull/40>`_
-
+* Network implementations:
+    - AIG network (`aig_network`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_
+    - MIG network (`mig_network`) `#4 <https://github.com/lsils/mockturtle/pull/4>`_
+    - k-LUT network (`klut_network`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_
+* Algorithms:
+    - Cut enumeration (`cut_enumeration`) `#2 <https://github.com/lsils/mockturtle/pull/2>`_
+    - LUT mapping (`lut_mapping`) `#7 <https://github.com/lsils/mockturtle/pull/7>`_
+    - Akers synthesis (`akers_synthesis`) `#9 <https://github.com/lsils/mockturtle/pull/9>`_
+    - Create LUT network from mapped network (`collapse_mapped_network`) `#13 <https://github.com/lsils/mockturtle/pull/13>`_
+    - MIG algebraic depth rewriting (`mig_algebraic_depth_rewriting`) `#16 <https://github.com/lsils/mockturtle/pull/16>`_
+    - Cleanup dangling nodes (`cleanup_dangling`) `#16 <https://github.com/lsils/mockturtle/pull/16>`_
+    - Node resynthesis (`node_resynthesis`) `#17 <https://github.com/lsils/mockturtle/pull/17>`_
+    - Reconvergency-driven cut computation (`reconv_cut`) `#24 <https://github.com/lsils/mockturtle/pull/24>`_
+    - Simulate networks (`simulate`) `#25 <https://github.com/lsils/mockturtle/pull/25>`_
+    - Simulate node values (`simulate_nodes`) `#28 <https://github.com/lsils/mockturtle/pull/28>`_
+    - Cut rewriting (`cut_rewriting`) `#31 <https://github.com/lsils/mockturtle/pull/31>`_
+    - Refactoring (`refactoring`) `#34 <https://github.com/lsils/mockturtle/pull/34>`_
+* Views:
+    - Visit nodes in topological order (`topo_view`) `#3 <https://github.com/lsils/mockturtle/pull/3>`_
+    - Disable structural modifications to network (`immutable_view`) `#3 <https://github.com/lsils/mockturtle/pull/3>`_
+    - View for mapped networks (`mapping_view`) `#7 <https://github.com/lsils/mockturtle/pull/7>`_
+    - View compute depth and node levels (`depth_view`) `#16 <https://github.com/lsils/mockturtle/pull/16>`_
+    - Cut view (`cut_view`) `#20 <https://github.com/lsils/mockturtle/pull/20>`_
+    - Access parents from a node (`parents_view`) `#27 <https://github.com/lsils/mockturtle/pull/27>`_
+    - Compute MFFC of a node (`mffc_view`) `#34 <https://github.com/lsils/mockturtle/pull/34>`_
+    - Compute window around a node (`window_view`) `#41 <https://github.com/lsils/mockturtle/pull/41>`_
+* I/O:
+    - Read AIGER files using *lorina* (`aiger_reader`) `#6 <https://github.com/lsils/mockturtle/pull/6>`_
+    - Read BENCH files using *lorina* (`bench_reader`) `#6 <https://github.com/lsils/mockturtle/pull/6>`_
+    - Write networks to BENCH files (`write_bench`) `#10 <https://github.com/lsils/mockturtle/pull/10>`_
+    - Read Verilog files using *lorina* (`verilog_reader`) `#40 <https://github.com/lsils/mockturtle/pull/40>`_
 * Generators for arithmetic circuits: `carry_ripple_adder`, `carry_ripple_subtractor`
-  `#5 <https://github.com/lsils/mockturtle/pull/5>`_
-  `#32 <https://github.com/lsils/mockturtle/pull/32>`_
-
+    - Carry ripple adder (`carry_ripple_adder`) `#5 <https://github.com/lsils/mockturtle/pull/5>`_
+    - Carry ripple subtractor (`carry_ripple_subtractor`) `#32 <https://github.com/lsils/mockturtle/pull/32>`_
 * Utility data structures: `truth_table_cache`, `cut`, `cut_set`, `node_map`, `progress_bar`, `stopwatch`
-  `#1 <https://github.com/lsils/mockturtle/pull/1>`_
-  `#2 <https://github.com/lsils/mockturtle/pull/2>`_
-  `#13 <https://github.com/lsils/mockturtle/pull/13>`_
-  `#30 <https://github.com/lsils/mockturtle/pull/30>`_
-  `#35 <https://github.com/lsils/mockturtle/pull/35>`_
+    - Truth table cache (`truth_table_cache`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_
+    - Cuts (`cut` and `cut_set`) `#2 <https://github.com/lsils/mockturtle/pull/2>`_
+    - Container to associate values to nodes (`node_map`) `#13 <https://github.com/lsils/mockturtle/pull/13>`_
+    - Progress bar (`progress_bar`) `#30 <https://github.com/lsils/mockturtle/pull/30>`_
+    - Tracking time of computations (`stopwatch`, `call_with_stopwatch`, `make_with_stopwatch`) `#35 <https://github.com/lsils/mockturtle/pull/35>`_

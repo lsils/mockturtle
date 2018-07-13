@@ -190,7 +190,7 @@ public:
     for ( auto i : sub )
     {
       itp = std::find( itp, sup.end(), i );
-      support.push_back( std::distance( sup.begin(), itp ) );
+      support.push_back( static_cast<uint8_t>( std::distance( sup.begin(), itp ) ) );
     }
 
     return support;
@@ -233,7 +233,7 @@ private:
 
   /* statistics */
   uint32_t _total_tuples{};
-  uint32_t _total_cuts{};
+  std::size_t _total_cuts{};
 };
 
 /*! \cond PRIVATE */
@@ -301,7 +301,7 @@ private:
       const auto support = kitty::min_base_inplace( tt_res );
       if ( support.size() != res.size() )
       {
-        auto tt_res_shrink = shrink_to( tt_res, support.size() );
+        auto tt_res_shrink = shrink_to( tt_res, static_cast<unsigned>( support.size() ) );
         std::vector<uint32_t> leaves_before( res.begin(), res.end() );
         std::vector<uint32_t> leaves_after( support.size() );
 
@@ -326,7 +326,7 @@ private:
     uint32_t pairs{1};
     ntk.foreach_fanin( index, [this, &pairs]( auto child, auto i ) {
       lcuts[i] = &cuts.cuts( ntk.node_to_index( ntk.get_node( child ) ) );
-      pairs *= lcuts[i]->size();
+      pairs *= static_cast<uint32_t>( lcuts[i]->size() );
     } );
     lcuts[2] = &cuts.cuts( index );
     auto& rcuts = *lcuts[fanin];
@@ -442,7 +442,7 @@ private:
       rcuts.limit( ps.cut_limit - 1 );
     }
 
-    cuts._total_cuts += rcuts.size();
+    cuts._total_cuts += static_cast<uint32_t>( rcuts.size() );
 
     if ( rcuts.size() > 1 || ( *rcuts.begin() )->size() > 1 )
     {

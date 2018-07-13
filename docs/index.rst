@@ -9,6 +9,7 @@ Welcome to mockturtle's documentation!
 .. toctree::
    :maxdepth: 2
 
+   installation
    changelog
    acknowledgments
 
