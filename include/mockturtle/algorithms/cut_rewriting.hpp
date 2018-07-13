@@ -335,7 +335,7 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
     if ( mffc_size( ntk, n ) == 1 )
       return;
 
-    const auto& set = cuts.cuts( n );
+    const auto& set = cuts.cuts( static_cast<uint32_t>( n ) );
 
     auto cctr{0u};
     for ( auto const& cut : set )

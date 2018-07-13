@@ -187,7 +187,7 @@ public:
     mindex = _mapping_storage.mappings.size();
 
     /* insert number of leafs */
-    _mapping_storage.mappings.push_back( std::distance( begin, end ) );
+    _mapping_storage.mappings.push_back( static_cast<uint32_t>( std::distance( begin, end ) ) );
 
     /* insert leaf indexes */
     while ( begin != end )

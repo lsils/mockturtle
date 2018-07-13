@@ -301,7 +301,7 @@ private:
       const auto support = kitty::min_base_inplace( tt_res );
       if ( support.size() != res.size() )
       {
-        auto tt_res_shrink = shrink_to( tt_res, support.size() );
+        auto tt_res_shrink = shrink_to( tt_res, static_cast<unsigned>( support.size() ) );
         std::vector<uint32_t> leaves_before( res.begin(), res.end() );
         std::vector<uint32_t> leaves_after( support.size() );
 

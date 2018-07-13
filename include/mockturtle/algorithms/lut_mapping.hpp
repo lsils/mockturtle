@@ -307,7 +307,7 @@ private:
 
       if ( ela )
       {
-        flow = cut_area_derefed2( *cut );
+        flow = static_cast<float>( cut_area_derefed2( *cut ) );
       }
       else
       {
