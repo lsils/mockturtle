@@ -302,6 +302,24 @@ public:
     const auto c2 = create_and( +b, -a );
     return create_and( !c1, !c2 ) ^ !fcompl;
   }
+
+  signal create_ite( signal cond, signal f_then, signal f_else )
+  {
+    bool f_compl{false};
+    if ( f_then.index < f_else.index )
+    {
+      std::swap( f_then, f_else );
+      cond.complement ^= 1;
+    }
+    if ( f_then.complement )
+    {
+      f_then.complement = 0;
+      f_else.complement ^= 1;
+      f_compl = true;
+    }
+
+    return create_and( !create_and( !cond, f_else ), !create_and( cond, f_then ) ) ^ !f_compl;
+  }
 #pragma endregion
 
 #pragma region Create arbitrary functions

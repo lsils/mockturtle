@@ -127,7 +127,7 @@ void simulate_carry_ripple_subtractor( uint32_t op1, uint32_t op2 )
   }
 }
 
-TEST_CASE( "build an 8-bit subtractor with an AIG", "[arithmetic]" )
+TEST_CASE( "build an 8-bit subtractor with different networks", "[arithmetic]" )
 {
   simulate_carry_ripple_subtractor<aig_network>( 73, 37 );
   simulate_carry_ripple_subtractor<aig_network>( 0, 255 );
