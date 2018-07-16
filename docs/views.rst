@@ -58,8 +58,8 @@ algorithm.  Several views are implemented in mockturtle.
 .. doxygenclass:: mockturtle::immutable_view
    :members:
 
- `window_view`: Network view on a window
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+`window_view`: Network view on a window
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/views/window_view.hpp``
 

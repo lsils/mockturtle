@@ -49,6 +49,8 @@ Welcome to mockturtle's documentation!
    :caption: Generators
 
    arithmetic
+   control
+   modular_arithmetic
 
 .. toctree::
    :maxdepth: 2

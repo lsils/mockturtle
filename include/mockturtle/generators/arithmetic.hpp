@@ -105,7 +105,7 @@ inline std::pair<signal<Ntk>, signal<Ntk>> full_adder( Ntk& ntk, const signal<Nt
  * \param carry Carry bit, will also have the output carry after the call
  */
 template<typename Ntk>
-inline void carry_ripple_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, const std::vector<signal<Ntk>>& b, signal<Ntk>& carry )
+inline void carry_ripple_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, signal<Ntk>& carry )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
 
@@ -145,4 +145,4 @@ inline void carry_ripple_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>&
   }
 }
 
-}
+} // namespace mockturtle
