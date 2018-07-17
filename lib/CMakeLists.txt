@@ -26,6 +26,7 @@ target_include_directories(percy INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/percy)
 target_compile_definitions(percy INTERFACE DISABLE_NAUTY)
 
 set(ABC_USE_NAMESPACE "pabc")
+set(STATIC_LIBABC true)
 add_subdirectory(abcsat)
 if (UNIX)
   target_compile_definitions(libabcsat PUBLIC "LIN64" ABC_NAMESPACE=pabc ABC_NO_USE_READLINE)

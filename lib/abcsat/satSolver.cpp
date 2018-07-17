@@ -161,14 +161,14 @@ int * Abc_MergeSortCost( int * pCosts, int nSize )
 #define L_lit(p) lit_sign(p)?"~":"", (lit_var(p))
 
 // Just like 'assert()' but expression will be evaluated in the release version as well.
-static inline void check(int expr) { assert(expr); }
+//static inline void check(int expr) { assert(expr); }
 
-static void printlits(lit* begin, lit* end)
+/*static void printlits(lit* begin, lit* end)
 {
     int i;
     for (i = 0; i < end - begin; i++)
         printf(L_LIT" ",L_lit(begin[i]));
-}
+}*/
 
 //=================================================================================================
 // Random numbers:
@@ -219,12 +219,12 @@ static inline void    var_set_tag   (sat_solver* s, int v, int tag)   {
         veci_push( &s->tagged, v );
     s->tags[v] = tag;                           
 }
-static inline void    var_add_tag   (sat_solver* s, int v, int tag)   { 
+/*static inline void    var_add_tag   (sat_solver* s, int v, int tag)   { 
     assert( tag > 0 && tag < 16 );
     if ( s->tags[v] == 0 )
         veci_push( &s->tagged, v );
     s->tags[v] |= tag;                           
-}
+}*/
 static inline void    solver2_clear_tags(sat_solver* s, int start)    { 
     int i, * tagged = veci_begin(&s->tagged);
     for (i = start; i < veci_size(&s->tagged); i++)
@@ -276,6 +276,8 @@ static inline void order_update(sat_solver* s, int v) // updateorder
 
 static inline void order_assigned(sat_solver* s, int v) 
 {
+    (void)s;
+    (void)v;
 }
 
 static inline void order_unassigned(sat_solver* s, int v) // undoorder
@@ -567,7 +569,7 @@ static inline void act_clause_decay(sat_solver* s)
 //=================================================================================================
 // Sorting functions (sigh):
 
-static inline void selectionsort(void** array, int size, int(*comp)(const void *, const void *))
+/*static inline void selectionsort(void** array, int size, int(*comp)(const void *, const void *))
 {
     int     i, j, best_i;
     void*   tmp;
@@ -580,9 +582,9 @@ static inline void selectionsort(void** array, int size, int(*comp)(const void *
         }
         tmp = array[i]; array[i] = array[best_i]; array[best_i] = tmp;
     }
-}
+}*/
 
-static void sortrnd(void** array, int size, int(*comp)(const void *, const void *), double* seed)
+/*static void sortrnd(void** array, int size, int(*comp)(const void *, const void *), double* seed)
 {
     if (size <= 15)
         selectionsort(array, size, comp);
@@ -605,7 +607,7 @@ static void sortrnd(void** array, int size, int(*comp)(const void *, const void 
         sortrnd(array    , i     , comp, seed);
         sortrnd(&array[i], size-i, comp, seed);
     }
-}
+}*/
 
 //=================================================================================================
 // Clause functions:
