@@ -314,13 +314,5 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     CHECK( mffc5.node_to_index( n ) == i + 1 );
     CHECK( n == i + 1 );
   } );
-  mffc5.foreach_gate( [&]( auto const& n, auto i ) {
-    CHECK( mffc5.node_to_index( n ) == i + 1 + mffc5.num_pis() );
-    CHECK( n == i + 6 );
-  } );
-  mffc5.foreach_node( [&]( auto const& n, auto i ) {
-    CHECK( mffc5.node_to_index( n ) == i );
-    CHECK( n == i );
-  } );
   mffc5.foreach_po( [&]( auto const& f ) { CHECK( mffc5.get_node( f ) == aig.get_node( f8 ) ); } );
 }
