@@ -187,8 +187,12 @@ public:
 private:
   bool collect( node const& n )
   {
-    if ( Ntk::is_constant( n ) || Ntk::is_pi( n ) )
+    if ( Ntk::is_constant( n ) )
+      return true;
+    
+    if ( Ntk::is_pi( n ) )
     {
+      _nodes.push_back( n );
       return true;
     }
 
@@ -248,10 +252,45 @@ private:
 
     _inner.push_back( _root );
     _node_to_index.emplace( _root, _node_to_index.size() );
+
+    /* sort topologically */
+    _topo.clear();
+    _colors.clear();
+    const auto _size = _num_constants + _inner.size() + _leaves.size();
+    _colors.resize( _size, 0 );
+    std::for_each( _leaves.begin(), _leaves.end(), [&]( auto& l ) { _colors[_node_to_index[l]] = 2u; } );
+    for ( auto i = 0u; i < _num_constants; ++i ) { _colors[i] = 2u; }
+    topo_sort_rec( _root );
+
+    assert( _inner.size() == _topo.size() );
+    _inner = _topo;
+  }
+
+  void topo_sort_rec( node const& n )
+  {
+    const auto idx = _node_to_index[n];
+
+    /* is permanently marked? */
+    if ( _colors[idx] == 2u )
+      return;
+    
+    /* mark node temporarily */
+    _colors[idx] = 1u;
+
+    /* mark children */
+    Ntk::foreach_fanin( n, [&]( auto const& f ) {
+      topo_sort_rec( Ntk::get_node( f ) );
+    } );
+
+    /* mark node n permanently */
+    _colors[idx] = 2u;
+
+    _topo.push_back( n );
   }
 
 public:
-  std::vector<node> _nodes, _constants, _leaves, _inner;
+  std::vector<node> _nodes, _constants, _leaves, _inner, _topo;
+  std::vector<uint8_t> _colors;
   unsigned _num_constants{1}, _num_leaves{0};
   spp::sparse_hash_map<node, uint32_t> _node_to_index;
   node _root;

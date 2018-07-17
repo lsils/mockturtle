@@ -35,6 +35,7 @@
 #include <iostream>
 
 #include "../algorithms/akers_synthesis.hpp"
+#include "../algorithms/cut_rewriting.hpp"
 #include "../algorithms/simulation.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
@@ -42,6 +43,7 @@
 #include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
 #include "../views/mffc_view.hpp"
+#include "../views/topo_view.hpp"
 
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
@@ -97,7 +99,6 @@ public:
   void run()
   {
     const auto size = ntk.size();
-    auto last_size = size;
     progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
 
     stopwatch t( st.time_total );
@@ -133,13 +134,28 @@ public:
                                            [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
       const auto new_f = call_with_stopwatch( st.time_refactoring,
                                               [&]() { return refactoring_fn( ntk, tt, leaves.begin(), leaves.end() ); } );
-      const auto gain = mffc.num_gates() - ( ntk.size() - last_size );
-      last_size = ntk.size();
+
+      if ( n == ntk.get_node( new_f ) )
+      {
+        return true;
+      }
+
+      int32_t gain = detail::recursive_deref( ntk, n );
+      gain -= detail::recursive_ref( ntk, ntk.get_node( new_f ) );
+
       if ( gain > 0 )
       {
         ++_candidates;
         _estimated_gain += gain;
         ntk.substitute_node( n, new_f );
+
+        ntk.set_value( n, 0 );
+        ntk.set_value( ntk.get_node( new_f ), ntk.fanout_size( ntk.get_node( new_f ) ) );
+      }
+      else
+      {
+        detail::recursive_deref( ntk, ntk.get_node( new_f ) );
+        detail::recursive_ref( ntk, n );
       }
 
       return true;
