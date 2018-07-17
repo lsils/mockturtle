@@ -33,9 +33,12 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/hash.hpp>
 #include <kitty/print.hpp>
 #include <percy/percy.hpp>
 
@@ -47,29 +50,50 @@ namespace mockturtle
 class exact_resynthesis
 {
 public:
+  using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
+  using cache_t = std::shared_ptr<cache_map_t>;
+
+  explicit exact_resynthesis( uint32_t fanin_size = 3u, cache_t cache = {} )
+    : _fanin_size( fanin_size ),
+      _cache( cache )
+  {
+  }
+
   template<typename LeavesIterator>
   klut_network::signal operator()( klut_network& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end )
   {
-    if ( function.num_vars() <= 3 )
+    if ( function.num_vars() <= _fanin_size )
     {
       return ntk.create_node( std::vector<klut_network::signal>( begin, end ), function );
     }
 
     percy::spec spec;
-    spec.fanin = 3;
+    spec.fanin = _fanin_size;
     spec.verbosity = 0;
     spec[0] = function;
 
-    percy::chain c;
+    percy::chain c = [&]() {
+      if ( _cache )
+      {
+        const auto it = _cache->find( function );
+        if ( it != _cache->end() )
+        {
+          return it->second;
+        }
+      }
 
-    const auto result = percy::synthesize( spec, c );
-    assert( result == percy::success );
-
-    c.denormalize();
+      percy::chain c;
+      const auto result = percy::synthesize( spec, c );
+      assert( result == percy::success );
+      c.denormalize();
+      if ( _cache )
+      {
+        (*_cache)[function] = c;
+      }
+      return c;
+    }();
 
     std::vector<klut_network::signal> signals( begin, end );
-    const auto num_vars = function.num_vars();
-    assert( signals.size() == num_vars );
 
     for ( auto i = 0; i < c.get_nr_steps(); ++i )
     {
@@ -85,6 +109,10 @@ public:
 
     return signals.back();
   }
+
+private:
+  uint32_t _fanin_size{3u};
+  cache_t _cache;
 };
 
 } /* namespace mockturtle */
