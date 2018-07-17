@@ -50,6 +50,7 @@ namespace mockturtle
  * - `create_pi`
  * - `create_po`
  * - `get_constant`
+ * - `create_not`
  * - `create_and`
  * - `create_or`
  * - `create_xor`
@@ -75,6 +76,7 @@ public:
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
     static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po function" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant function" );
+    static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not function" );
     static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and function" );
     static_assert( has_create_or_v<Ntk>, "Ntk does not implement the create_or function" );
     static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor function" );
