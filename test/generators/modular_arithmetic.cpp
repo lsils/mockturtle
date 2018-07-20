@@ -13,6 +13,12 @@
 
 using namespace mockturtle;
 
+template<class IntType = uint64_t>
+inline IntType to_int( std::vector<bool> const& sim )
+{
+  return std::accumulate( sim.rbegin(), sim.rend(), IntType( 0 ), []( auto x, auto y ) { return ( x << 1 ) + y; } );
+}
+
 template<typename Ntk>
 void simulate_modular_adder( uint32_t op1, uint32_t op2 )
 {
@@ -57,12 +63,6 @@ TEST_CASE( "build an 8-bit modular adder with different networks", "[modular_ari
   simulate_modular_adder<klut_network>( 0, 255 );
   simulate_modular_adder<klut_network>( 200, 200 );
   simulate_modular_adder<klut_network>( 120, 250 );
-}
-
-template<class IntType = uint64_t>
-inline IntType to_int( std::vector<bool> const& sim )
-{
-  return std::accumulate( sim.rbegin(), sim.rend(), IntType( 0 ), []( auto x, auto y ) { return ( x << 1 ) + y; } );
 }
 
 template<typename Ntk>
