@@ -152,3 +152,57 @@ TEST_CASE( "build an 8-bit subtractor with different networks", "[arithmetic]" )
   validate_network( klut, ( 100 << 8 ) + 200, 200 - 100 );
   validate_network( klut, ( 10 << 8 ) + 12, 12 - 10 );
 }
+
+template<typename Ntk>
+Ntk create_multiplier()
+{
+  Ntk ntk;
+
+  std::vector<typename Ntk::signal> a( 8 ), b( 8 );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
+  auto carry = ntk.get_constant( true );
+
+  for ( auto const& o : carry_ripple_multiplier( ntk, a, b ) )
+  {
+    ntk.create_po( o );
+  }
+
+  CHECK( ntk.num_pis() == 16 );
+  CHECK( ntk.num_pos() == 16 );
+
+  return ntk;
+}
+
+TEST_CASE( "build an 8-bit multiplier with different networks", "[arithmetic]" )
+{
+  const auto aig = create_multiplier<aig_network>();
+  validate_network( aig, ( 37 << 8 ) + 73, 37 * 73 );
+  validate_network( aig, ( 0 << 8 ) + 255, 0 * 255 );
+  validate_network( aig, ( 100 << 8 ) + 200, 100 * 200 );
+  validate_network( aig, ( 10 << 8 ) + 12, 10 * 12 );
+  validate_network( aig, ( 73 << 8 ) + 37, 37 * 73 );
+  validate_network( aig, ( 255 << 8 ) + 0, 0 * 255 );
+  validate_network( aig, ( 200 << 8 ) + 100, 100 * 200 );
+  validate_network( aig, ( 12 << 8 ) + 10, 10 * 12 );
+
+  const auto mig = create_multiplier<mig_network>();
+  validate_network( mig, ( 37 << 8 ) + 73, 37 * 73 );
+  validate_network( mig, ( 0 << 8 ) + 255, 0 * 255 );
+  validate_network( mig, ( 100 << 8 ) + 200, 100 * 200 );
+  validate_network( mig, ( 10 << 8 ) + 12, 10 * 12 );
+  validate_network( mig, ( 73 << 8 ) + 37, 37 * 73 );
+  validate_network( mig, ( 255 << 8 ) + 0, 0 * 255 );
+  validate_network( mig, ( 200 << 8 ) + 100, 100 * 200 );
+  validate_network( mig, ( 12 << 8 ) + 10, 10 * 12 );
+
+  const auto klut = create_multiplier<klut_network>();
+  validate_network( klut, ( 37 << 8 ) + 73, 37 * 73 );
+  validate_network( klut, ( 0 << 8 ) + 255, 0 * 255 );
+  validate_network( klut, ( 100 << 8 ) + 200, 100 * 200 );
+  validate_network( klut, ( 10 << 8 ) + 12, 10 * 12 );
+  validate_network( klut, ( 73 << 8 ) + 37, 37 * 73 );
+  validate_network( klut, ( 255 << 8 ) + 0, 0 * 255 );
+  validate_network( klut, ( 200 << 8 ) + 100, 100 * 200 );
+  validate_network( klut, ( 12 << 8 ) + 10, 10 * 12 );
+}
