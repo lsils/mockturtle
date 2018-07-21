@@ -42,6 +42,33 @@
 namespace mockturtle
 {
 
+namespace detail
+{
+
+template<class IntType = int64_t>
+inline std::pair<IntType, IntType> compute_montgomery_parameters( IntType c )
+{
+  const IntType k = 1 << ( static_cast<IntType>( std::ceil( std::log2( c ) ) ) + 1 );
+
+  // egcd
+  IntType y = k % c;
+  IntType x = c;
+  IntType a{0}, b{1};
+
+  while ( y )
+  {
+    std::tie( a, b ) = std::pair<IntType, IntType>{b, a - ( x / y ) * b};
+    std::tie( x, y ) = std::pair<IntType, IntType>{y, x % y};
+  }
+
+  const IntType ki = ( a > 0 ) ? ( a % c ) : ( c + (a % c) % c );
+  const IntType factor = ( k * ki - 1 ) / c;
+
+  return {k, factor};
+}
+
+} /* namespace detail */
+
 /*! \brief Creates modular adder
  *
  * Given two input words of the same size *k*, this function creates a circuit

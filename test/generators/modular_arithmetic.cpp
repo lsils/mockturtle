@@ -177,10 +177,10 @@ void simulate_modular_subtractor2( uint32_t op1, uint32_t op2, uint32_t k, uint6
   const auto simm = simulate<bool>( ntk, input_word_simulator( ( op1 << k ) + op2 ) );
   CHECK( simm.size() == k );
 
-  // C++ behaves different in computing mod with negative numbers (a % b) => (a + (a % b)) % b
+  // C++ behaves different in computing mod with negative numbers (a % b) => (b + (b % a)) % b
   const int32_t ma = static_cast<int32_t>( op2 ) - static_cast<int32_t>( op1 );
   const int32_t mb = ( 1 << k ) - c;
-  const auto result = ( mb + ( ma % mb ) ) % mb;
+  const unsigned long long result = ( mb + ( ma % mb ) ) % mb;
   CHECK( to_int( simm ) == result );
 }
 
@@ -207,4 +207,12 @@ TEST_CASE( "build an k-bit modular subtractor with constants", "[modular_arithme
     simulate_modular_subtractor2<aig_network>( a, b, k, c );
     simulate_modular_subtractor2<mig_network>( a, b, k, c );
   }
+}
+
+TEST_CASE( "check Montgomery numbers", "[modular_arithmetic]" )
+{
+  CHECK( detail::compute_montgomery_parameters<int64_t>( 5 ) == std::pair<int64_t, int64_t>{16, 3} );
+  CHECK( detail::compute_montgomery_parameters<int64_t>( 21 ) == std::pair<int64_t, int64_t>{64, 3} );
+  CHECK( detail::compute_montgomery_parameters<int64_t>( 43 ) == std::pair<int64_t, int64_t>{128, 125} );
+  CHECK( detail::compute_montgomery_parameters<int64_t>( 59 ) == std::pair<int64_t, int64_t>{128, 13} );
 }
