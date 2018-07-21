@@ -39,6 +39,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 
 #include "../traits.hpp"
+#include "control.hpp"
 
 namespace mockturtle
 {
@@ -143,6 +144,43 @@ inline void carry_ripple_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>&
   {
     std::tie( *pa, carry ) = full_adder( ntk, *pa, ntk.create_not( *pb ), carry );
   }
+}
+
+/*! \brief Creates a classical multiplier using full adders.
+ *
+ * The vectors `a` and `b` must not have the same size.  The function creates
+ * the multiplier in `ntk` and returns output signals, whose size is the summed
+ * sizes of `a` and `b`.
+ *
+ * \param ntk Network
+ * \param a First input operand
+ * \param b Second input operand
+ */
+template<typename Ntk>
+inline std::vector<signal<Ntk>> carry_ripple_multiplier( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+
+  auto res = constant_word( ntk, 0, a.size() + b.size() );
+  auto tmp = constant_word( ntk, 0, a.size() * 2 );
+
+  for ( auto j = 0u; j < b.size(); ++j )
+  {
+    for ( auto i = 0u; i < a.size(); ++i )
+    {
+      std::tie( i ? tmp[a.size() + i - 1] : res[j], tmp[i] ) = full_adder( ntk, ntk.create_and( a[i], b[j] ), tmp[a.size() + i], tmp[i] );
+    }
+  }
+
+  auto carry = tmp.back() = ntk.get_constant( false );
+  for ( auto i = 0u; i < a.size(); ++i )
+  {
+    std::tie( res[b.size() + i], carry ) = full_adder( ntk, tmp[i], tmp[a.size() + i], carry );
+  }
+
+  return res;
 }
 
 } // namespace mockturtle
