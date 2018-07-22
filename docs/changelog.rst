@@ -40,6 +40,7 @@ v0.1 (not yet released)
 * Generators for arithmetic circuits: `carry_ripple_adder`, `carry_ripple_subtractor`
     - Carry ripple adder (`carry_ripple_adder`) `#5 <https://github.com/lsils/mockturtle/pull/5>`_
     - Carry ripple subtractor (`carry_ripple_subtractor`) `#32 <https://github.com/lsils/mockturtle/pull/32>`_
+    - Carry ripple multiplier (`carry_ripple_multiplier`) `#45 <https://github.com/lsils/mockturtle/pull/45>`_
     - Modular adder (`modular_adder_inplace`) `#43 <https://github.com/lsils/mockturtle/pull/43>`_
     - Modular subtractor (`modular_subtractor_inplace`) `#43 <https://github.com/lsils/mockturtle/pull/43>`_
     - 2k-to-k multiplexer (`mux_inplace`) `#43 <https://github.com/lsils/mockturtle/pull/43>`_
