@@ -47,6 +47,51 @@
 namespace mockturtle
 {
 
+/*! \brief Resynthesis function based on Akers synthesis.
+ *
+ * This resynthesis function can be passed to ``node_resynthesis``,
+ * ``cut_rewriting``, and ``refactoring``.  The given truth table will be
+ * resynthized in terms of an optimum size `k`-LUT network, where `k` is
+ * specified as input to the constructor.  In order to guarantee a reasonable
+ * runtime, `k` should be 3 or 4.
+ *
+   \verbatim embed:rst
+  
+   Example
+   
+   .. code-block:: c++
+   
+      const klut_network klut = ...;
+
+      exact_resynthesis resyn( 3 );
+      cut_rewriting( klut, resyn );
+      klut = cleanup_dangling( klut );
+   \endverbatim
+ *
+ * A cache can be passed as second parameter to the constructor, which will
+ * store optimum networks for all functions for which resynthesis is invoked
+ * for.  The cache can be used to retrieve the computed network, which reduces
+ * runtime.
+ *
+   \verbatim embed:rst
+  
+   Example
+   
+   .. code-block:: c++
+   
+      const klut_network klut = ...;
+
+      auto cache = std::make_shared<exact_resynthesis::cache_map_t>();
+      exact_resynthesis resyn( 3, cache );
+      cut_rewriting( klut, resyn );
+      klut = cleanup_dangling( klut );
+
+   The underlying engine for this resynthesis function is percy_.
+
+   .. _percy: https://github.com/whaaswijk/percy
+   \endverbatim
+ *
+ */
 class exact_resynthesis
 {
 public:
