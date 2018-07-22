@@ -25,6 +25,10 @@ add_library(percy INTERFACE) # >v0.1.2
 target_include_directories(percy INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/percy)
 target_compile_definitions(percy INTERFACE DISABLE_NAUTY)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(percy INTERFACE Threads::Threads)
+
 set(ABC_USE_NAMESPACE "pabc")
 set(STATIC_LIBABC true)
 add_subdirectory(abcsat)
