@@ -481,7 +481,7 @@ namespace percy
                 // Compare the canonical graphs to see if the two graphs are
                 // isomorphic
                 bool isomorphic = true;
-                for (int k = 0; k < m*(size_t)total_vertices; k++) {
+                for (auto k = 0u; k < m*(size_t)total_vertices; k++) {
                     if (cg1[k] != cg2[k]) {
                         isomorphic = false;
                         break;;
@@ -507,7 +507,7 @@ namespace percy
                 isomorphic if we only allow for permutation of the inputs?
             *******************************************************************/
             bool
-            is_perm_isomorphic(const dag& g, int verbosity=0) const
+            is_perm_isomorphic(const dag& g) const
             {
                 assert(nr_vertices == g.nr_vertices && 
                         nr_inputs == g.nr_inputs);
@@ -517,7 +517,7 @@ namespace percy
 
                 dag cpy(g);
                 const auto& swaps = kitty::detail::swaps[nr_inputs - 2u];
-                int swap_counter = 0;
+                auto swap_counter = 0u;
                 do {
                     g1_vertices.clear();
                     g2_vertices.clear();

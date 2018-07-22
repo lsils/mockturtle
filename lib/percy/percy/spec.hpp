@@ -3,7 +3,11 @@
 #include <chrono>
 #include <vector>
 #include "tt_utils.hpp"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-pedantic"
 #include <kitty/kitty.hpp>
+#include <kitty/print.hpp>
+#pragma GCC diagnostic pop
 
 namespace percy
 {

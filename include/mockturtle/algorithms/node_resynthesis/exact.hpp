@@ -62,7 +62,7 @@ public:
   template<typename LeavesIterator>
   klut_network::signal operator()( klut_network& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end )
   {
-    if ( function.num_vars() <= _fanin_size )
+    if ( static_cast<uint32_t>( function.num_vars() ) <= _fanin_size )
     {
       return ntk.create_node( std::vector<klut_network::signal>( begin, end ), function );
     }

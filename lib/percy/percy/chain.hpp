@@ -5,8 +5,6 @@
 #include <iostream>
 #include <memory>
 
-#include <kitty/kitty.hpp>
-#include <kitty/print.hpp>
 #include "dag.hpp"
 #include "spec.hpp"
 #include "misc.hpp"
@@ -83,7 +81,6 @@ namespace percy
             bool
             is_output_inverted(int out_idx)
             {
-                assert(out_idx < outputs.size());
                 return outputs[out_idx] & 1;
             }
 
@@ -93,6 +90,14 @@ namespace percy
                 for (int j = 0; j < fanin; j++) {
                     steps[i][j] = in[j];
                 }
+                operators[i] = op;
+            }
+
+            void
+            set_step(int i, int fanin1, int fanin2, const dynamic_truth_table& op)
+            {
+                steps[i][0] = fanin1;
+                steps[i][1] = fanin2;
                 operators[i] = op;
             }
 
@@ -142,23 +147,17 @@ namespace percy
             void 
             invert() 
             {
-                for (int i = 0; i < outputs.size(); i++) {
+                for (auto i = 0u; i < outputs.size(); i++) {
                     outputs[i] = (outputs[i] ^ 1);
                 }
             }
             
-            /*******************************************************************
-                De-normalizes a chain, meaning that all outputs will be
-                converted to non-complemented edges. This may mean that some
-                shared steps have to be duplicated or replaced by NOT gates.
-                NOTE: some outputs may point to constants or PIs. These will
-                not be changed.
-
-                The use_nots flag may be used to insert NOT gates instead of
-                duplicating inverted steps.
-            *******************************************************************/
-            void
-            denormalize(const bool use_nots = false)
+            /// De-normalizes a chain, meaning that all outputs will be
+            /// converted to non-complemented edges. This may mean that some
+            /// shared steps have to be duplicated or replaced by NOT gates.
+            /// NOTE: some outputs may point to constants or PIs. These will
+            /// not be changed.
+            void denormalize()
             {
                 if (outputs.size() == 1) {
                     if (outputs[0] & 1) {
@@ -172,7 +171,7 @@ namespace percy
                 std::vector<dynamic_truth_table> ins;
                 std::vector<dynamic_truth_table> fs(outputs.size());
 
-                for (int i = 1; i < steps.size(); i++) {
+                for (auto i = 1u; i < steps.size(); i++) {
                     const auto& v = steps[i];
                     for (const auto fid : v) {
                         if (fid > nr_in) {
@@ -181,7 +180,7 @@ namespace percy
                     }
                 }
 
-                for (int i = 0; i < outputs.size(); i++) {
+                for (auto i = 0u; i < outputs.size(); i++) {
                     const auto step_idx = outputs[i] >> 1;
                     if (step_idx > nr_in) {
                         refcount[step_idx - nr_in - 1]++;
@@ -200,7 +199,7 @@ namespace percy
                 auto tt_step = kitty::create<dynamic_truth_table>(nr_in);
                 auto tt_compute = kitty::create<dynamic_truth_table>(nr_in);
                 
-                for (int i = 0; i < steps.size(); i++) {
+                for (auto i = 0u; i < steps.size(); i++) {
                     const auto& step = steps[i];
 
                     for (int j = 0; j < fanin; j++) {
@@ -229,17 +228,17 @@ namespace percy
                     }
                     tmps[i] = tt_step;
 
-                    for (int h = 0; h < outputs.size(); h++) {
-                        const auto out = outputs[h];
-                        const auto var = out >> 1;
-                        const auto inv = out & 1;
-                        if (var - nr_in - 1 == i) {
+                    for (auto h = 0u; h < outputs.size(); h++) {
+                        const auto out = static_cast<unsigned>(outputs[h]);
+                        const auto var = out >> 1u;
+                        const auto inv = out & 1u;
+                        if (var - nr_in - 1u == i) {
                             fs[h] = inv ? ~tt_step : tt_step;
                         }
                     }
                 }
                 
-                for (int i = 0; i < outputs.size(); i++) {
+                for (auto i = 0u; i < outputs.size(); i++) {
                     auto step_idx = outputs[i] >> 1;
                     const auto invert = outputs[i] & 1;
 
@@ -257,7 +256,7 @@ namespace percy
                         // exists somewhere in the chain, we need to add a new
                         // step.
                         bool inv_step_found = false;
-                        for (int j = 0; j < steps.size(); j++) {
+                        for (auto j = 0u; j < steps.size(); j++) {
                             if (tmps[j] == fs[i]) {
                                 set_output(i, j + nr_in + 1, false);
                                 inv_step_found = true;
@@ -284,8 +283,7 @@ namespace percy
             /*******************************************************************
                 Derive truth tables from the chain, one for each output.
             *******************************************************************/
-            std::vector<dynamic_truth_table>
-            simulate(const spec& spec) const
+            std::vector<dynamic_truth_table> simulate() const
             {
                 std::vector<dynamic_truth_table> fs(outputs.size());
                 std::vector<dynamic_truth_table> tmps(steps.size());
@@ -299,7 +297,7 @@ namespace percy
                 auto tt_compute = kitty::create<dynamic_truth_table>(nr_in);
 
                 // Some outputs may be simple constants or projections.
-                for (int h = 0; h < outputs.size(); h++) {
+                for (auto h = 0u; h < outputs.size(); h++) {
                     const auto out = outputs[h];
                     const auto var = out >> 1;
                     const auto inv = out & 1;
@@ -312,7 +310,7 @@ namespace percy
                     }
                 }
 
-                for (int i = 0; i < steps.size(); i++) {
+                for (auto i = 0u; i < steps.size(); i++) {
                     const auto& step = steps[i];
 
                     for (int j = 0; j < fanin; j++) {
@@ -341,11 +339,11 @@ namespace percy
                     }
                     tmps[i] = tt_step;
 
-                    for (int h = 0; h < outputs.size(); h++) {
+                    for (auto h = 0u; h < outputs.size(); h++) {
                         const auto out = outputs[h];
                         const auto var = out >> 1;
                         const auto inv = out & 1;
-                        if (var - nr_in - 1 == i) {
+                        if (var - nr_in - 1 == static_cast<int>(i)) {
                             fs[h] = inv ? ~tt_step : tt_step;
                         }
                     }
@@ -367,16 +365,16 @@ namespace percy
                 if (spec.nr_triv == spec.get_nr_out()) {
                     return true;
                 }
-                auto tts = simulate(spec);
+                auto tts = simulate();
                 dynamic_truth_table op_tt(fanin);
 
-                if (spec.nr_steps != steps.size()) {
+                if (static_cast<unsigned>(spec.nr_steps) != steps.size()) {
                     assert(false);
                     return false;
                 }
 
                 for (auto& step : steps) {
-                    if (step.size() != spec.fanin) {
+                    if (step.size() != static_cast<unsigned>(spec.fanin)) {
                         assert(false);
                         return false;
                     }
@@ -415,7 +413,7 @@ namespace percy
                     // Ensure that each step is used at least once.
                     std::vector<int> nr_uses(steps.size());
 
-                    for (int i = 1; i < steps.size(); i++) {
+                    for (auto i = 1u; i < steps.size(); i++) {
                         const auto& step = steps[i];
                         for (const auto fid : step) {
                             if (fid >= nr_in) {
@@ -440,15 +438,15 @@ namespace percy
 
                 if (spec.add_noreapply_clauses) {
                     // Ensure there is no re-application of operands.
-                    for (int i = 0; i < steps.size() - 1; i++) {
+                    for (auto i = 0u; i < steps.size() - 1; i++) {
                         const auto & fanins1 = steps[i];
-                        for (int ip = i + 1; ip < steps.size(); ip++) {
+                        for (auto ip = i + 1; ip < steps.size(); ip++) {
                             const auto& fanins2 = steps[ip];
 
                             auto is_subsumed = true;
                             auto has_fanin_i = false;
                             for (auto j : fanins2) {
-                                if (j == i + nr_in) {
+                                if (static_cast<unsigned>(j) == i + nr_in) {
                                     has_fanin_i = true;
                                     continue;
                                 }

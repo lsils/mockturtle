@@ -7,8 +7,12 @@
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
 #include "solvers.hpp"
-#include <abc/vecInt.h>
 #include <vector>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <abc/vecInt.h>
+#pragma GCC diagnostic pop
 
 namespace percy
 {
@@ -767,7 +771,7 @@ namespace percy
 
     };
 
-#if !defined(_WIN32) && !defined(_WIN64)
+#if !defined(DISABLE_NAUTY)
     class nonisomorphic_dag_generator
     {
         private:
@@ -806,13 +810,11 @@ namespace percy
                             _dags.push_back(g);
                             return true;
                         }
-#ifndef DISABLE_NAUTY
                         if (g.is_isomorphic(g2)) {
                             // We've found an isomorphism, generate next DAG.
                             found_isomorphism = true;
                             break;
                         }
-#endif
                     }
                     if (!found_isomorphism) {
                         _dags.push_back(g);

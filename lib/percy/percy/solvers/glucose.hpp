@@ -2,6 +2,13 @@
 
 #if !defined(_WIN32) && !defined(_WIN64)
 
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Wall"
+#pragma GCC diagnostic ignored "-Wparentheses"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 #ifndef USE_GLUCOSE
 #include <syrup/parallel/MultiSolvers.h>
 #define GWType Glucose::MultiSolvers
@@ -9,6 +16,8 @@
 #include <glucose/core/Solver.h>
 #define GWType Glucose::Solver
 #endif
+
+#pragma GCC diagnostic pop
 
 namespace percy
 {
@@ -87,7 +96,7 @@ namespace percy
 #endif
         }
 
-        synth_result solve(int cl)
+        synth_result solve(int)
         {
 #ifdef USE_GLUCOSE
             Glucose::vec<Glucose::Lit> litvec;
@@ -127,9 +136,9 @@ namespace percy
         }
 
 
+#ifdef USE_GLUCOSE
         synth_result solve(pabc::lit* begin, pabc::lit* end, int cl)
         {
-#ifdef USE_GLUCOSE
             Glucose::vec<Glucose::Lit> litvec;
             for (auto i = begin; i != end; i++) {
                 litvec.push(Glucose::mkLit((*i >> 1), (*i & 1)));
@@ -145,10 +154,13 @@ namespace percy
             } else {
                 return timeout;
             }
-#else
-            return solve(cl);
-#endif
         }
+#else
+        synth_result solve(pabc::lit*, pabc::lit*, int cl)
+        {
+            return solve(cl);
+        }
+#endif
     };
 }
 

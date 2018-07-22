@@ -4,14 +4,13 @@
 #include <memory>
 #include <thread>
 #include <mutex>
-#include <kitty/kitty.hpp>
+#include "spec.hpp"
 #include "fence.hpp"
 #include "chain.hpp"
 #include "dag_generation.hpp"
 #include "tt_utils.hpp"
 #include "concurrentqueue.h"
-#include "spec.hpp"
-#include "floating_dag.hpp"
+#include "partial_dag.hpp"
 #include "solvers.hpp"
 #include "encoders.hpp"
 #include "cnf.hpp"
@@ -34,28 +33,7 @@ namespace percy
 	using std::chrono::duration;
 	using std::chrono::time_point;
 
-    /***************************************************************************
-        We consider a truth table to be trivial if it is equal to (or the
-        complement of) a primary input or constant zero.
-    ***************************************************************************/
-    template<typename TT>
-    static inline bool is_trivial(const TT& tt)
-    {
-        TT tt_check;
-
-        if (tt == tt_check || tt == ~tt_check) {
-            return true;
-        }
-
-        for (int i = 0; i < tt.num_vars(); i++) {
-            kitty::create_nth_var(tt_check, i);
-            if (tt == tt_check || tt == ~tt_check) {
-                return true;
-            }
-        }
-
-        return false;
-    }
+    
 
     static inline bool is_trivial(const kitty::dynamic_truth_table& tt)
     {
@@ -65,7 +43,7 @@ namespace percy
             return true;
         }
 
-        for (int i = 0; i < tt.num_vars(); i++) {
+        for (auto i = 0; i < tt.num_vars(); i++) {
             kitty::create_nth_var(tt_check, i);
             if (tt == tt_check || tt == ~tt_check) {
                 return true;
@@ -104,7 +82,7 @@ namespace percy
                     synth->print_solver_state(spec);
                 }
                 synth->chain_extract(spec, chain);
-                auto sim_tts = chain.simulate(spec);
+                auto sim_tts = chain.simulate();
                 auto xor_tt = (*sim_tts[0]) ^ (*spec.functions[0]);
                 auto first_one = kitty::find_first_one_bit(xor_tt);
                 if (first_one == -1) {
@@ -843,7 +821,7 @@ namespace percy
         // array.
         auto solv = new uint64_t[starting_points.size()];
         
-        for (int i = 0; i < starting_points.size(); i++) {
+        for (auto i = 0u; i < starting_points.size(); i++) {
             const auto& sp = starting_points[i];
             threads.push_back(
                 std::thread([i, solv, &sp, nr_vars, nr_vertices] {
@@ -863,7 +841,7 @@ namespace percy
         }
 
         uint64_t total_nsols =0 ;
-        for (int i = 0; i < starting_points.size(); i++) {
+        for (auto i = 0u; i < starting_points.size(); i++) {
             printf("solv[%d] = %lu\n", i, solv[i]);
             total_nsols += solv[i];
         }
@@ -903,7 +881,7 @@ namespace percy
 
         std::mutex vmutex;
         
-        for (int i = 0; i < starting_points.size(); i++) {
+        for (auto i = 0u; i < starting_points.size(); i++) {
             const auto& sp = starting_points[i];
             threads.push_back(
                 std::thread([i, &dags, &vmutex, &sp, nr_vars, nr_vertices] {
@@ -1052,7 +1030,7 @@ namespace percy
                 }
                 if (stat == success) {
                     encoder.extract_chain(spec, chain);
-                    auto sim_tts = chain.simulate(spec);
+                    auto sim_tts = chain.simulate();
                     auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
@@ -1068,7 +1046,7 @@ namespace percy
                     }
                     if (!encoder.create_tt_clauses(spec, first_one - 1)) {
                         if (stats) {
-                            stats->sat_time += elapsed_time;
+                            stats->unsat_time += elapsed_time;
                         }
                         spec.nr_steps++;
                         break;
@@ -1101,11 +1079,11 @@ namespace percy
             solver = new cmsat_wrapper;
             break;
 #endif
-#if !defined(_WIN32) && !defined(_WIN64)
+//#if !defined(_WIN32) && !defined(_WIN64)
 //        case SLV_GLUCOSE:
 //            solver = new glucose_wrapper;
 //            break;
-#endif
+//#endif
         default:
             fprintf(stderr, "Error: solver type %d not found", type);
             exit(1);
@@ -1193,12 +1171,12 @@ namespace percy
         // As the topological synthesizer decomposes the synthesis
         // problem, to fairly count the total number of conflicts we
         // should keep track of all conflicts in existence checks.
-        int total_conflicts = 0;
         fence f;
         po_filter<unbounded_generator> g(
             unbounded_generator(spec.initial_steps),
             spec.get_nr_out(), spec.fanin);
         int old_nnodes = 1;
+        auto total_conflicts = 0;
         while (true) {
             g.next_fence(f);
             spec.nr_steps = f.nr_nodes();
@@ -1279,7 +1257,7 @@ namespace percy
             auto status = solver.solve(spec.conflict_limit);
             if (status == success) {
                 encoder.extract_chain(spec, chain);
-                auto sim_tts = chain.simulate(spec);
+                auto sim_tts = chain.simulate();
                 auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                 auto first_one = kitty::find_first_one_bit(xor_tt);
                 if (first_one == -1) {
@@ -1324,7 +1302,6 @@ namespace percy
         po_filter<unbounded_generator> g(
             unbounded_generator(spec.initial_steps),
             spec.get_nr_out(), spec.fanin);
-        int total_conflicts = 0;
         int old_nnodes = 1;
         while (true) {
             g.next_fence(f);
@@ -1333,7 +1310,6 @@ namespace percy
             if (spec.nr_steps > old_nnodes) {
                 // Reset conflict count, since this is where other
                 // synthesizers reset it.
-                total_conflicts = 0;
                 old_nnodes = spec.nr_steps;
             }
 
@@ -1356,7 +1332,7 @@ namespace percy
                 auto status = solver.solve(spec.conflict_limit);
                 if (status == success) {
                     encoder.extract_chain(spec, chain);
-                    auto sim_tts = chain.simulate(spec);
+                    auto sim_tts = chain.simulate();
                     auto xor_tt = (sim_tts[0]) ^ (spec[0]);
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
@@ -1414,6 +1390,405 @@ namespace percy
             exit(1);
         }
     }
+
+    synth_result
+    pd_synthesize(
+        spec& spec, 
+        chain& chain, 
+        const partial_dag& dag,
+        solver_wrapper& solver, 
+        partial_dag_encoder& encoder, 
+        synth_stats * stats = NULL)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        if (stats) {
+            stats->synth_time = 0;
+            stats->sat_time = 0;
+            stats->unsat_time = 0;
+        }
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_steps = dag.nr_vertices();
+        solver.restart();
+        if (!encoder.encode(spec, dag)) {
+            return failure;
+        }
+
+        auto begin = std::chrono::steady_clock::now();
+        const auto status = solver.solve(0);
+        auto end = std::chrono::steady_clock::now();
+        auto elapsed_time =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                end - begin
+                ).count();
+
+        if (stats) {
+            stats->synth_time += elapsed_time;
+        }
+
+        if (status == success) {
+            encoder.extract_chain(spec, dag, chain);
+            if (spec.verbosity > 2) {
+                //    encoder.print_solver_state(spec);
+            }
+            if (stats) {
+                stats->sat_time = elapsed_time;
+            }
+            return success;
+        } else if (status == failure) {
+            return failure;
+            if (stats) {
+                stats->unsat_time += elapsed_time;
+            }
+        } else {
+            return timeout;
+        }
+    }
+
+    synth_result pd_cegar_synthesize(
+        spec& spec, 
+        chain& chain, 
+        const partial_dag& dag,
+        solver_wrapper& solver, 
+        partial_dag_encoder& encoder,
+        synth_stats* stats = NULL)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        if (stats) {
+            stats->synth_time = 0;
+            stats->sat_time = 0;
+            stats->unsat_time = 0;
+        }
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+        spec.nr_steps = dag.nr_vertices();
+        solver.restart();
+        if (!encoder.cegar_encode(spec, dag)) {
+            return failure;
+        }
+        while (true) {
+            auto begin = std::chrono::steady_clock::now();
+            auto stat = solver.solve(0);
+            auto end = std::chrono::steady_clock::now();
+            auto elapsed_time =
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    end - begin
+                    ).count();
+
+            if (stats) {
+                stats->synth_time += elapsed_time;
+            }
+            if (stat == success) {
+                encoder.extract_chain(spec, dag, chain);
+                auto sim_tts = chain.simulate();
+                auto xor_tt = (sim_tts[0]) ^ (spec[0]);
+                auto first_one = kitty::find_first_one_bit(xor_tt);
+                if (first_one == -1) {
+                    if (stats) {
+                        stats->sat_time += elapsed_time;
+                    }
+                    return success;
+                }
+                // Add additional constraint.
+                if (spec.verbosity) {
+                    printf("  CEGAR difference at tt index %ld\n",
+                        first_one);
+                }
+                if (!encoder.create_tt_clauses(spec, dag, first_one - 1)) {
+                    return failure;
+                }
+            } else {
+                return failure;
+            }
+        }
+    }
+
+    synth_result
+    pd_synthesize_enum(
+        spec& spec, 
+        chain& chain, 
+        const partial_dag& dag,
+        synth_stats * stats = NULL)
+    {
+        partial_dag_generator gen;
+        chain.reset(spec.get_nr_in(), 1, dag.nr_vertices(), 2);
+        chain.set_output(0, (spec.get_nr_in() + dag.nr_vertices()) << 1);
+
+        const auto found_sol = gen.search_sol(spec, chain, dag, 0);
+        if (found_sol) {
+            return success;
+        } else {
+            return failure;
+        }
+    }
+
+    synth_result
+    pd_synthesize_enum(
+        spec& spec, 
+        chain& chain, 
+        const std::vector<partial_dag>& dags,
+        synth_stats * stats = NULL)
+    {
+        partial_dag_generator gen;
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        for (const auto& dag : dags) {
+            const auto result = 
+                pd_synthesize_enum(spec, chain, dag, stats);
+            if (result == success) {
+                return success;
+            }
+        }
+
+        return failure;
+    }
+
+    synth_result pd_synthesize(
+        spec& spec,
+        chain& chain,
+        const std::vector<partial_dag>& dags,
+        solver_wrapper& solver,
+        partial_dag_encoder& encoder,
+        SynthMethod synth_method = SYNTH_STD,
+        synth_stats * stats = NULL)
+    {
+        for (auto& dag : dags) {
+            synth_result status;
+            switch (synth_method) {
+            case SYNTH_STD_CEGAR:
+                status = pd_cegar_synthesize(spec, chain, dag, solver, encoder, stats);
+                break;
+            default:
+                status = pd_synthesize(spec, chain, dag, solver, encoder, stats);
+                break;
+            }
+            if (status == success) {
+                return success;
+            }
+        }
+        return failure;
+    }
+
+    /// Synthesizes a chain using a set of serialized partial DAGs.
+    synth_result pd_ser_synthesize(
+        spec& spec,
+        chain& chain,
+        solver_wrapper& solver,
+        partial_dag_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        partial_dag g;
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            g.reset(2, spec.nr_steps);
+            const auto filename = "pd" + std::to_string(spec.nr_steps) + ".bin";
+            auto fhandle = fopen(filename.c_str(), "rb");
+            if (fhandle == NULL) {
+                break;
+            }
+
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin1 = buf;
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin2 = buf;
+                    g.set_vertex(i, fanin1, fanin2);
+                }
+                solver.restart();
+                if (!encoder.encode(spec, g)) {
+                    continue;
+                }
+                const auto status = solver.solve(0);
+                if (status == success) {
+                    encoder.extract_chain(spec, g, chain);
+                    return success;
+                }
+            }
+            fclose(fhandle);
+            spec.nr_steps++;
+        }
+
+        return failure;
+    }
+
+    synth_result pd_cegar_ser_synthesize(
+        spec& spec,
+        chain& chain,
+        solver_wrapper& solver,
+        partial_dag_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        partial_dag g;
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            g.reset(2, spec.nr_steps);
+            const auto filename = "pd" + std::to_string(spec.nr_steps) + ".bin";
+            auto fhandle = fopen(filename.c_str(), "rb");
+            if (fhandle == NULL) {
+                break;
+            }
+
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin1 = buf;
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin2 = buf;
+                    g.set_vertex(i, fanin1, fanin2);
+                }
+                solver.restart();
+                if (!encoder.cegar_encode(spec, g)) {
+                    continue;
+                }
+                while (true) {
+                    const auto status = solver.solve(0);
+                    if (status == success) {
+                        encoder.extract_chain(spec, g, chain);
+                        auto sim_tts = chain.simulate();
+                        auto xor_tt = (sim_tts[0]) ^ (spec[0]);
+                        auto first_one = kitty::find_first_one_bit(xor_tt);
+                        if (first_one == -1) {
+                            return success;
+                        }
+                        // Add additional constraint.
+                        if (!encoder.create_tt_clauses(spec, g, first_one - 1)) {
+                            break;
+                        } else if (!encoder.fix_output_sim_vars(spec, first_one - 1)) {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+            fclose(fhandle);
+            spec.nr_steps++;
+        }
+
+        return failure;
+    }
+
+    /// Same as pd_ser_synthesize, but parallel.  
+    synth_result pd_pser_synthesize(
+        spec& spec,
+        chain& chain,
+        solver_wrapper& solver,
+        partial_dag_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            chain.reset(spec.get_nr_in(), spec.get_nr_out(), 0, spec.fanin);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                chain.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        partial_dag g;
+        spec.nr_steps = spec.initial_steps;
+        while (true) {
+            g.reset(2, spec.nr_steps);
+            const auto filename = "pd" + std::to_string(spec.nr_steps) + ".bin";
+            auto fhandle = fopen(filename.c_str(), "rb");
+            if (fhandle == NULL) {
+                break;
+            }
+
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin1 = buf;
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin2 = buf;
+                    g.set_vertex(i, fanin1, fanin2);
+                }
+                solver.restart();
+                if (!encoder.encode(spec, g)) {
+                    continue;
+                }
+                const auto status = solver.solve(0);
+                if (status == success) {
+                    encoder.extract_chain(spec, g, chain);
+                    return success;
+                }
+            }
+            fclose(fhandle);
+            spec.nr_steps++;
+        }
+
+        return failure;
+    }
             
     synth_result
     pf_fence_synthesize(
@@ -1432,7 +1807,6 @@ namespace percy
         std::mutex found_mutex;
 
         spec.nr_steps = spec.initial_steps;
-        auto status = failure;
         while (true) {
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &c, &q] {

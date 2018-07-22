@@ -503,7 +503,6 @@ namespace percy
                 std::vector<int> fanins(spec.fanin);
                 std::vector<int> fanin_svars(spec.fanin);
                 std::vector<int> pfanin_svars(spec.fanin);
-                int pLits[2];
 
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
                     // Generate the appropriate constraints for all fanin combinations.

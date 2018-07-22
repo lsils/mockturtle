@@ -4,7 +4,14 @@
 
 #ifdef USE_CMS
 
+#pragma GCC diagnostic push
+
+#pragma GCC diagnostic ignored "-Wall"
+
 #include <cryptominisat5/cryptominisat.h>
+
+#pragma GCC diagnostic pop
+
 // A hack to undefine the CryptoMiniSat lbool definitions, 
 // as they conflict with those defined by ABC.
 #undef l_True

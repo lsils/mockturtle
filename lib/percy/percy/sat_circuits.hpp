@@ -32,7 +32,7 @@ namespace percy
             status &= solver->add_clause(lits, lits + 1);
         }
 
-        for (int i = 0; i < sum_vars.size(); i++) {
+        for (auto i = 0u; i < sum_vars.size(); i++) {
             const auto x_k = sum_vars[i];
             for (int j = 0; j < C + 2; j++) {
                 const auto res_j = res_vars[i * (C + 2) + j];

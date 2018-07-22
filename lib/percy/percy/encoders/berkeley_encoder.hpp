@@ -658,7 +658,6 @@ namespace percy
                 std::vector<int> fvar_asgns(spec.fanin);
                 int lits[3];
 
-                auto svar_offset = 0;
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
                     clear_assignment(fanins);
                     const auto max_fanin = spec.get_nr_in() + i - 1;
@@ -748,7 +747,6 @@ namespace percy
                                     p+1, q+1);
                         }
 
-                        auto svar_offset = 0;
                         for (int i = 0; i < spec.nr_steps; i++) {
                             // If (has_input(i, q) and !has_input(i, p)) --> (has_input(i-1, p) \/ ... \/ has_input(0, p))
                             for (int k = 0; k < spec.fanin; k++) {

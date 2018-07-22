@@ -4,7 +4,11 @@
 #include "../spec.hpp"
 #include "../misc.hpp"
 #include "../sat_circuits.hpp"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wall"
 #include <abc/vecInt.h>
+#pragma GCC diagnostic pop
 
 namespace percy
 {
@@ -75,7 +79,7 @@ namespace percy
     static inline void
     next_assignment(std::vector<int>& asgn)
     {
-        for (int i = 0; i < asgn.size(); i++) {
+        for (auto i = 0u; i < asgn.size(); i++) {
             if (asgn[i]) {
                 asgn[i] = 0;
             } else {
@@ -88,7 +92,7 @@ namespace percy
     static inline void
     inc_assignment(std::vector<int>& asgn, int max_val, int i)
     {
-        if (i >= asgn.size()) return;
+        if (static_cast<unsigned>(i) >= asgn.size()) return;
 
         if (asgn[i] == max_val) {
             asgn[i] = 0;
@@ -139,9 +143,7 @@ namespace percy
     bool
     fanin_inc(std::vector<int>& fanins, const int max_fanin_id)
     {
-        int inc_idx = 0;
-
-        for (int i = 0; i < fanins.size(); i++) {
+        for (auto i = 0u; i < fanins.size(); i++) {
             if (i < fanins.size() - 1) {
                 if (fanins[i] < fanins[i + 1] - 1) {
                     fanins[i]++;
@@ -165,7 +167,7 @@ namespace percy
     void
     print_fanin(const std::vector<int>& fanins)
     {
-        for (int i = 0; i < fanins.size(); i++) {
+        for (auto i = 0u; i < fanins.size(); i++) {
             printf("%d ", fanins[i] + 1);
         }
     }
@@ -173,7 +175,7 @@ namespace percy
     void
     print_fanin(const int* const fanins, int nr_fanins)
     {
-        for (int i = 0; i < nr_fanins; i++) {
+        for (auto i = 0; i < nr_fanins; i++) {
             printf("%d ", fanins[i] + 1);
         }
     }

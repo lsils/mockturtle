@@ -250,7 +250,6 @@ namespace percy
                     auto level = get_level(spec, i + spec.get_nr_in());
                     assert(level > 0);
                     
-                    auto ctr = 0;
                     const auto nr_svars_for_i = nr_svar_map[i];
 
                     for (int j = 0; j < nr_svars_for_i; j++) {

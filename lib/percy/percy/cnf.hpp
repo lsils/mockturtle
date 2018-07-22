@@ -22,9 +22,9 @@ namespace percy
         void set_nr_vars(int nr_vars) { _nr_vars = nr_vars; }
         void add_var() { _nr_vars++; };
         
-        int var_value(int var) { return false; }
-        synth_result solve(int conflict_limit = 0) { return failure; }
-        synth_result solve(pabc::lit* begin, pabc::lit* end, int conflict_limit = 0) { return failure; }
+        int var_value(int) { return false; }
+        synth_result solve(int) { return failure; }
+        synth_result solve(pabc::lit*, pabc::lit*, int) { return failure; }
 
         int add_clause(pabc::lit* begin, pabc::lit* end) 
         {

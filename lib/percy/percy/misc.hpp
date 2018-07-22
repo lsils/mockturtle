@@ -129,7 +129,7 @@ namespace percy
     {
         assert(fanins1.size() == fanins2.size());
 
-        for (int i = 0; i < fanins1.size(); i++) {
+        for (auto i = 0u; i < fanins1.size(); i++) {
             if (fanins1[i] < fanins2[i]) {
                 return -1;
             } else if (fanins1[i] > fanins2[i]) {
