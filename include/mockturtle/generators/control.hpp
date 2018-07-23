@@ -60,6 +60,28 @@ inline std::vector<signal<Ntk>> constant_word( Ntk& ntk, uint64_t value, uint32_
   return word;
 }
 
+/*! \brief Extends a word by leading zeros
+ *
+ * Adds leading zeros as most-significant bits to word `a`.  The size of `a`
+ * must be smaller or equal to `bitwidth`, which is the width of the resulting
+ * word.
+ */
+template<class Ntk>
+inline std::vector<signal<Ntk>> zero_extend( Ntk& ntk, std::vector<signal<Ntk>> const& a, uint32_t bitwidth )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+
+  assert( bitwidth >= a.size() );
+
+  auto ret{a};
+  for ( auto i = a.size(); i < bitwidth; ++i )
+  {
+    ret.emplace_back( ntk.get_constant( false ) );
+  }
+  return ret;
+}
+
 /*! \brief Creates a 2k-k MUX (array of k 2-1 MUXes).
  *
  * This creates *k* MUXes using `cond` as condition signal and `t` for the then
