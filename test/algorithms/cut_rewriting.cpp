@@ -2,7 +2,9 @@
 
 #include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
+#include <mockturtle/algorithms/node_resynthesis/exact.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
+#include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/traits.hpp>
 
@@ -130,4 +132,28 @@ TEST_CASE( "Cut rewriting from inverted projection", "[cut_rewriting]" )
     CHECK( mig.get_node( f ) == 1 );
     CHECK( mig.is_complemented( f ) );
   } );
+}
+
+TEST_CASE( "Cut rewriting with exact LUT synthesis", "cut_rewriting]" )
+{
+  klut_network klut;
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto c = klut.create_pi();
+  const auto d = klut.create_pi();
+
+  klut.create_po( klut.create_and( a, klut.create_and( b, klut.create_and( c, d) ) ) );
+
+  CHECK( klut.num_pis() == 4u );
+  CHECK( klut.num_pos() == 1u );
+  CHECK( klut.num_gates() == 3u );
+
+  exact_resynthesis resyn( 3u );
+  cut_rewriting( klut, resyn );
+
+  klut = cleanup_dangling( klut );
+
+  CHECK( klut.num_pis() == 4u );
+  CHECK( klut.num_pos() == 1u );
+  CHECK( klut.num_gates() == 2u );
 }
