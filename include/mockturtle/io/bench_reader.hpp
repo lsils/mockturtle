@@ -107,7 +107,7 @@ public:
   {
     if ( type.size() > 2 && std::string_view( type ).substr( 0, 2 ) == "0x" && inputs.size() <= 6u )
     {
-      kitty::dynamic_truth_table tt( inputs.size() );
+      kitty::dynamic_truth_table tt( static_cast<int>( inputs.size() ) );
       kitty::create_from_hex_string( tt, type.substr( 2 ) );
 
       std::vector<signal<Ntk>> input_signals;

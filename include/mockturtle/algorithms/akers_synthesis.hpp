@@ -163,7 +163,7 @@ public:
     return ( n1 == 0x30 && n2 == 0x31 ) || ( ( n1 + 0x20 ) == n2 );
   }
 
-  inline unsigned num_columns() const
+  inline auto num_columns() const
   {
     return columns.size();
   }
@@ -552,7 +552,7 @@ private:
     auto this_table = table;
     for ( auto f = 0u; f < random_gates.size(); f++ )
     {
-      auto last_gate_id = table.add_gate( random_gates[f] );
+      table.add_gate( random_gates[f] );
       table.reduce();
       if ( ( table.rows.size() != this_table.rows.size() ) || ( table.columns.size() != this_table.columns.size() - 1 ) )
       {
@@ -744,7 +744,7 @@ private:
         if ( column == j )
           continue;
         auto found = true;
-        auto offset = 0u;
+        std::size_t offset = 0u;
         for ( auto r = 0u; r < num_rows; ++r, offset += num_columns )
         {
           if ( !matrix[offset + i] && !matrix[offset + j] )
@@ -777,7 +777,7 @@ private:
   LeavesIterator end;
 
   unsigned reduce{0};
-  unsigned previous_size{0};
+  std::size_t previous_size{0};
 };
 
 } // namespace detail

@@ -458,8 +458,8 @@ TEST_CASE( "visited values in AIGs", "[aig]" )
   aig.clear_visited();
   aig.foreach_node( [&]( auto n ) {
     CHECK( aig.visited( n ) == 0 );
-    aig.set_visited( n, n );
-    CHECK( aig.visited( n ) == n );
+    aig.set_visited( n, static_cast<uint32_t>( n ) );
+    CHECK( aig.visited( n ) == static_cast<uint32_t>( n ) );
   } );
   aig.clear_visited();
   aig.foreach_node( [&]( auto n ) {

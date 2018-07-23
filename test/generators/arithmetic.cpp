@@ -13,6 +13,12 @@
 
 using namespace mockturtle;
 
+template<class IntType = uint64_t>
+inline IntType to_int( std::vector<bool> const& sim )
+{
+  return std::accumulate( sim.rbegin(), sim.rend(), IntType( 0 ), []( auto x, auto y ) { return ( x << 1 ) + y; } );
+}
+
 TEST_CASE( "build a full adder with an AIG", "[arithmetic]" )
 {
   aig_network aig;
@@ -57,7 +63,14 @@ TEST_CASE( "build a 2-bit adder with an AIG", "[arithmetic]" )
 }
 
 template<typename Ntk>
-void simulate_carry_ripple_adder( uint32_t op1, uint32_t op2 )
+void validate_network( Ntk const& ntk, uint32_t input, uint32_t output )
+{
+  const auto simm = simulate<bool>( ntk, input_word_simulator( input ) );
+  CHECK( to_int( simm ) == output );
+}
+
+template<typename Ntk>
+Ntk create_adder()
 {
   Ntk ntk;
 
@@ -69,41 +82,37 @@ void simulate_carry_ripple_adder( uint32_t op1, uint32_t op2 )
   carry_ripple_adder_inplace( ntk, a, b, carry );
 
   std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
+  ntk.create_po( carry );
 
   CHECK( ntk.num_pis() == 16 );
-  CHECK( ntk.num_pos() == 8 );
+  CHECK( ntk.num_pos() == 9 );
 
-  const auto simm = simulate<bool>( ntk, input_word_simulator( ( op1 << 8 ) + op2 ) );
-  CHECK( simm.size() == 8 );
-  for ( auto i = 0; i < 8; ++i )
-  {
-    CHECK( ( ( ( op1 + op2 ) >> i ) & 1 ) == simm[i] );
-  }
+  return ntk;
 }
 
 TEST_CASE( "build an 8-bit adder with an AIG", "[arithmetic]" )
 {
-  simulate_carry_ripple_adder<aig_network>( 37, 73 );
-  simulate_carry_ripple_adder<aig_network>( 0, 255 );
-  simulate_carry_ripple_adder<aig_network>( 0, 255 );
-  simulate_carry_ripple_adder<aig_network>( 200, 200 );
-  simulate_carry_ripple_adder<aig_network>( 12, 10 );
+  const auto aig = create_adder<aig_network>();
+  validate_network( aig, ( 37 << 8 ) + 73, 37 + 73 );
+  validate_network( aig, ( 0 << 8 ) + 255, 0 + 255 );
+  validate_network( aig, ( 200 << 8 ) + 100, 200 + 100 );
+  validate_network( aig, ( 12 << 8 ) + 10, 12 + 10 );
 
-  simulate_carry_ripple_adder<mig_network>( 37, 73 );
-  simulate_carry_ripple_adder<mig_network>( 0, 255 );
-  simulate_carry_ripple_adder<mig_network>( 0, 255 );
-  simulate_carry_ripple_adder<mig_network>( 200, 200 );
-  simulate_carry_ripple_adder<mig_network>( 12, 10 );
+  const auto mig = create_adder<mig_network>();
+  validate_network( mig, ( 37 << 8 ) + 73, 37 + 73 );
+  validate_network( mig, ( 0 << 8 ) + 255, 0 + 255 );
+  validate_network( mig, ( 200 << 8 ) + 100, 200 + 100 );
+  validate_network( mig, ( 12 << 8 ) + 10, 12 + 10 );
 
-  simulate_carry_ripple_adder<klut_network>( 37, 73 );
-  simulate_carry_ripple_adder<klut_network>( 0, 255 );
-  simulate_carry_ripple_adder<klut_network>( 0, 255 );
-  simulate_carry_ripple_adder<klut_network>( 200, 200 );
-  simulate_carry_ripple_adder<klut_network>( 12, 10 );
+  const auto klut = create_adder<klut_network>();
+  validate_network( klut, ( 37 << 8 ) + 73, 37 + 73 );
+  validate_network( klut, ( 0 << 8 ) + 255, 0 + 255 );
+  validate_network( klut, ( 200 << 8 ) + 100, 200 + 100 );
+  validate_network( klut, ( 12 << 8 ) + 10, 12 + 10 );
 }
 
 template<typename Ntk>
-void simulate_carry_ripple_subtractor( uint32_t op1, uint32_t op2 )
+Ntk create_subtractor()
 {
   Ntk ntk;
 
@@ -115,35 +124,85 @@ void simulate_carry_ripple_subtractor( uint32_t op1, uint32_t op2 )
   carry_ripple_subtractor_inplace( ntk, a, b, carry );
 
   std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
+  ntk.create_po( ntk.create_not( carry ) );
 
   CHECK( ntk.num_pis() == 16 );
-  CHECK( ntk.num_pos() == 8 );
+  CHECK( ntk.num_pos() == 9 );
 
-  const auto simm = simulate<bool>( ntk, input_word_simulator( ( op2 << 8 ) + op1 ) );
-  CHECK( simm.size() == 8 );
-  for ( auto i = 0; i < 8; ++i )
-  {
-    CHECK( ( ( ( op1 - op2 ) >> i ) & 1 ) == simm[i] );
-  }
+  return ntk;
 }
 
-TEST_CASE( "build an 8-bit subtractor with an AIG", "[arithmetic]" )
+TEST_CASE( "build an 8-bit subtractor with different networks", "[arithmetic]" )
 {
-  simulate_carry_ripple_subtractor<aig_network>( 73, 37 );
-  simulate_carry_ripple_subtractor<aig_network>( 0, 255 );
-  simulate_carry_ripple_subtractor<aig_network>( 0, 255 );
-  simulate_carry_ripple_subtractor<aig_network>( 200, 200 );
-  simulate_carry_ripple_subtractor<aig_network>( 12, 10 );
+  const auto aig = create_subtractor<aig_network>();
+  validate_network( aig, ( 37 << 8 ) + 73, 73 - 37 );
+  validate_network( aig, ( 0 << 8 ) + 255, 255 );
+  validate_network( aig, ( 100 << 8 ) + 200, 200 - 100 );
+  validate_network( aig, ( 10 << 8 ) + 12, 12 - 10 );
 
-  simulate_carry_ripple_subtractor<mig_network>( 37, 73 );
-  simulate_carry_ripple_subtractor<mig_network>( 0, 255 );
-  simulate_carry_ripple_subtractor<mig_network>( 0, 255 );
-  simulate_carry_ripple_subtractor<mig_network>( 200, 200 );
-  simulate_carry_ripple_subtractor<mig_network>( 12, 10 );
+  const auto mig = create_subtractor<mig_network>();
+  validate_network( mig, ( 37 << 8 ) + 73, 73 - 37 );
+  validate_network( mig, ( 0 << 8 ) + 255, 255 );
+  validate_network( mig, ( 100 << 8 ) + 200, 200 - 100 );
+  validate_network( mig, ( 10 << 8 ) + 12, 12 - 10 );
 
-  simulate_carry_ripple_subtractor<klut_network>( 37, 73 );
-  simulate_carry_ripple_subtractor<klut_network>( 0, 255 );
-  simulate_carry_ripple_subtractor<klut_network>( 0, 255 );
-  simulate_carry_ripple_subtractor<klut_network>( 200, 200 );
-  simulate_carry_ripple_subtractor<klut_network>( 12, 10 );
+  const auto klut = create_subtractor<klut_network>();
+  validate_network( klut, ( 37 << 8 ) + 73, 73 - 37 );
+  validate_network( klut, ( 0 << 8 ) + 255, 255 );
+  validate_network( klut, ( 100 << 8 ) + 200, 200 - 100 );
+  validate_network( klut, ( 10 << 8 ) + 12, 12 - 10 );
+}
+
+template<typename Ntk>
+Ntk create_multiplier()
+{
+  Ntk ntk;
+
+  std::vector<typename Ntk::signal> a( 8 ), b( 8 );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
+  auto carry = ntk.get_constant( true );
+
+  for ( auto const& o : carry_ripple_multiplier( ntk, a, b ) )
+  {
+    ntk.create_po( o );
+  }
+
+  CHECK( ntk.num_pis() == 16 );
+  CHECK( ntk.num_pos() == 16 );
+
+  return ntk;
+}
+
+TEST_CASE( "build an 8-bit multiplier with different networks", "[arithmetic]" )
+{
+  const auto aig = create_multiplier<aig_network>();
+  validate_network( aig, ( 37 << 8 ) + 73, 37 * 73 );
+  validate_network( aig, ( 0 << 8 ) + 255, 0 * 255 );
+  validate_network( aig, ( 100 << 8 ) + 200, 100 * 200 );
+  validate_network( aig, ( 10 << 8 ) + 12, 10 * 12 );
+  validate_network( aig, ( 73 << 8 ) + 37, 37 * 73 );
+  validate_network( aig, ( 255 << 8 ) + 0, 0 * 255 );
+  validate_network( aig, ( 200 << 8 ) + 100, 100 * 200 );
+  validate_network( aig, ( 12 << 8 ) + 10, 10 * 12 );
+
+  const auto mig = create_multiplier<mig_network>();
+  validate_network( mig, ( 37 << 8 ) + 73, 37 * 73 );
+  validate_network( mig, ( 0 << 8 ) + 255, 0 * 255 );
+  validate_network( mig, ( 100 << 8 ) + 200, 100 * 200 );
+  validate_network( mig, ( 10 << 8 ) + 12, 10 * 12 );
+  validate_network( mig, ( 73 << 8 ) + 37, 37 * 73 );
+  validate_network( mig, ( 255 << 8 ) + 0, 0 * 255 );
+  validate_network( mig, ( 200 << 8 ) + 100, 100 * 200 );
+  validate_network( mig, ( 12 << 8 ) + 10, 10 * 12 );
+
+  const auto klut = create_multiplier<klut_network>();
+  validate_network( klut, ( 37 << 8 ) + 73, 37 * 73 );
+  validate_network( klut, ( 0 << 8 ) + 255, 0 * 255 );
+  validate_network( klut, ( 100 << 8 ) + 200, 100 * 200 );
+  validate_network( klut, ( 10 << 8 ) + 12, 10 * 12 );
+  validate_network( klut, ( 73 << 8 ) + 37, 37 * 73 );
+  validate_network( klut, ( 255 << 8 ) + 0, 0 * 255 );
+  validate_network( klut, ( 200 << 8 ) + 100, 100 * 200 );
+  validate_network( klut, ( 12 << 8 ) + 10, 10 * 12 );
 }

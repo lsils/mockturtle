@@ -175,6 +175,17 @@ public:
  * This method returns a map that maps each node to its computed simulation
  * value.
  *
+ * **Required network functions:**
+ * - `foreach_po`
+ * - `get_constant`
+ * - `constant_value`
+ * - `get_node`
+ * - `foreach_pi`
+ * - `foreach_gate`
+ * - `fanin_size`
+ * - `num_pos`
+ * - `compute<SimulationType>`
+ *
  * \param ntk Network
  * \param sim Simulator, which implements the simulator interface
  */
@@ -232,12 +243,22 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
  * position) to it's simulation value (taking possible complemented attributes
  * into account).
  *
+ * **Required network functions:**
+ * - `foreach_po`
+ * - `is_complemented`
+ * - `compute<SimulationType>`
+ *
  * \param ntk Network
  * \param sim Simulator, which implements the simulator interface
  */
 template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
 std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Simulator() )
 {
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po function" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented function" );
+  static_assert( has_compute_v<Ntk, SimulationType>, "Ntk does not implement the compute function for SimulationType" );
+
   const auto node_to_value = simulate_nodes<SimulationType, Ntk, Simulator>( ntk, sim );
 
   std::vector<SimulationType> po_values( ntk.num_pos() );

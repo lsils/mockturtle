@@ -214,7 +214,7 @@ template<typename Iterator>
 void cut<MaxLeaves, T>::set_leaves( Iterator begin, Iterator end )
 {
   _cend = _end = std::copy( begin, end, _leaves.begin() );
-  _length = std::distance( begin, end );
+  _length = static_cast<uint32_t>( std::distance( begin, end ) );
   _signature = 0;
 
   while ( begin != end )
@@ -280,7 +280,7 @@ bool cut<MaxLeaves, T>::merge( cut const& that, cut& res, uint32_t cut_size ) co
   if ( auto length = std::distance( res.begin(), it ); length <= cut_size )
   {
     res._cend = res._end = it;
-    res._length = length;
+    res._length = static_cast<uint32_t>( length );
     res._signature = _signature | that._signature;
     return true;
   }

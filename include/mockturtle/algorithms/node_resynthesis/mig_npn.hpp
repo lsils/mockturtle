@@ -52,10 +52,11 @@ namespace mockturtle
 
 /*! \brief Resynthesis function based on pre-computed size-optimum MIGs.
  *
- * This resynthesis function can be passed to ``node_resynthesis``.  It will
- * produce an MIG based on pre-computed size-optimum MIGs with up to at most 4
- * variables.  Consequently, the nodes' fan-in sizes in the input network
- * must not exceed 4.
+ * This resynthesis function can be passed to ``node_resynthesis``,
+ * ``cut_rewriting``, and ``refactoring``.  It will produce an MIG based on
+ * pre-computed size-optimum MIGs with up to at most 4 variables.
+ * Consequently, the nodes' fan-in sizes in the input network must not exceed
+ * 4.
  *
    \verbatim embed:rst
   
@@ -83,7 +84,7 @@ public:
     const auto fe = kitty::extend_to( function, 4 );
     const auto config = kitty::exact_npn_canonization( fe );
 
-    const auto it = class2signal.find( std::get<0>( config )._bits[0] );
+    const auto it = class2signal.find( static_cast<uint16_t>( std::get<0>( config )._bits[0] ) );
 
     std::vector<mig_network::signal> pis( 4, mig.get_constant( false ) );
     std::copy( begin, end, pis.begin() );

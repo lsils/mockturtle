@@ -117,7 +117,7 @@ void create_nth_var( TT& tt, uint64_t var_index, bool complement = false )
       }
     }
   }
-};
+}
 
 /*! \cond PRIVATE */
 template<int NumVars>

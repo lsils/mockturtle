@@ -102,7 +102,7 @@ public:
     if ( !_enable )
       return;
 
-    int spidx = ( 6.0 * pos ) / _size;
+    int spidx = static_cast<int>( ( 6.0 * pos ) / _size );
     _os << "\u001B[G" << fmt::format( _fmt, spinner.substr( spidx * 5, 5 ), args... ) << std::flush;
   }
 

@@ -411,7 +411,7 @@ TEST_CASE( "custom node values in k-LUT networks", "[klut]" )
   klut.clear_values();
   klut.foreach_node( [&]( auto n ) {
     CHECK( klut.value( n ) == 0 );
-    klut.set_value( n, n );
+    klut.set_value( n, static_cast<uint32_t>( n ) );
     CHECK( klut.value( n ) == n );
     CHECK( klut.incr_value( n ) == n );
     CHECK( klut.value( n ) == n + 1 );

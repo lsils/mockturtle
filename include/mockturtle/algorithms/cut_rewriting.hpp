@@ -241,7 +241,7 @@ public:
 
 private:
   uint32_t _num_vertices{0u};
-  uint32_t _num_edges{0u};
+  std::size_t _num_edges{0u};
 
   std::vector<std::set<uint32_t>> _adjacent;
 
@@ -328,14 +328,14 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
 
   ntk.clear_visited();
 
-  ntk.foreach_node( [&]( auto const& n, auto ) {
+  ntk.foreach_node( [&]( auto const& n ) {
     if ( n >= cuts.nodes_size() || ntk.is_constant( n ) || ntk.is_pi( n ) )
       return;
 
     if ( mffc_size( ntk, n ) == 1 )
       return;
 
-    const auto& set = cuts.cuts( n );
+    const auto& set = cuts.cuts( static_cast<uint32_t>( n ) );
 
     auto cctr{0u};
     for ( auto const& cut : set )
@@ -484,7 +484,7 @@ public:
 
       const auto replacement = best_replacements[v_node][v_cut];
 
-      if ( ntk.node_to_index( ntk.is_constant( ntk.get_node( replacement ) ) ) || ntk.index_to_node( v_node ) == ntk.get_node( replacement ) )
+      if ( ntk.node_to_index( ntk.is_constant( ntk.get_node( replacement ) ) ) || v_node == ntk.get_node( replacement ) )
         continue;
 
       if ( ps.very_verbose )

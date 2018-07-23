@@ -34,6 +34,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 
 #include "../networks/detail/foreach.hpp"
@@ -103,6 +104,7 @@ public:
     }
   }
 
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<_Ntk::signal, _Ntk::node>>>
   explicit cut_view( Ntk const& ntk, std::vector<signal> const& leaves, node const& root )
       : immutable_view<Ntk>( ntk ), _root( root )
   {
@@ -197,7 +199,7 @@ private:
 
   inline void add_node( node const& n )
   {
-    _node_to_index[n] = _nodes.size();
+    _node_to_index[n] = static_cast<uint32_t>( _nodes.size() );
     _nodes.push_back( n );
   }
 

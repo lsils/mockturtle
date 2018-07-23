@@ -37,4 +37,6 @@ Resynthesis functions
 
 .. doxygenclass:: mockturtle::akers_resynthesis
 
+.. doxygenclass:: mockturtle::exact_resynthesis
+
 .. doxygenclass:: mockturtle::mig_npn_resynthesis
