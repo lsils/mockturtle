@@ -230,7 +230,7 @@ TEST_CASE( "check Montgomery encoding", "[modular_arithmetic]" )
   CHECK( np == 29 );
 
   aig_network ntk;
-  std::vector<signal<aig_network>> pis;
+  std::vector<aig_network::signal> pis;
   for ( auto i = 0; i < nbits; ++i )
   {
     pis.push_back( ntk.create_pi() );
