@@ -48,8 +48,8 @@ namespace mockturtle
 
 /*! \brief Resynthesis function based on Akers synthesis.
  *
- * This resynthesis function can be passed to ``node_resynthesis``.  It will
- * call Akers synthesis on each node.
+ * This resynthesis function can be passed to ``node_resynthesis``,
+ * ``cut_rewriting``, and ``refactoring``.
  *
    \verbatim embed:rst
   
