@@ -46,9 +46,12 @@ namespace detail
 {
 
 template<class IntType = int64_t>
-inline std::pair<IntType, IntType> compute_montgomery_parameters( IntType c )
+inline std::pair<IntType, IntType> compute_montgomery_parameters( IntType c, IntType k = 0 )
 {
-  const IntType k = 1 << ( static_cast<IntType>( std::ceil( std::log2( c ) ) ) + 1 );
+  if ( k == 0 )
+  {
+    k = 1 << ( static_cast<IntType>( std::ceil( std::log2( c ) ) ) + 1 );
+  }
 
   // egcd
   IntType y = k % c;
@@ -65,6 +68,35 @@ inline std::pair<IntType, IntType> compute_montgomery_parameters( IntType c )
   const IntType factor = ( k * ki - 1 ) / c;
 
   return {k, factor};
+}
+
+template<class Ntk>
+std::vector<signal<Ntk>> to_montgomery_form( Ntk& ntk, std::vector<signal<Ntk>> const& t, int32_t mod, uint32_t rbits, int64_t np )
+{
+  /* bit-width of original mod */
+  uint32_t nbits = t.size() - rbits;
+
+  std::vector<signal<Ntk>> t_rpart( t.begin(), t.begin() + rbits );
+  auto m = carry_ripple_multiplier( ntk, t_rpart, constant_word( ntk, np, rbits) );
+  assert( m.size() == 2 * rbits );
+  m.resize( rbits );
+  assert( m.size() == rbits );
+
+  m = carry_ripple_multiplier( ntk, m, constant_word( ntk, mod, nbits ) );
+  assert( m.size() == t.size() );
+
+  auto carry = ntk.get_constant( false );
+  carry_ripple_adder_inplace( ntk, m, t, carry );
+
+  m.erase( m.begin(), m.begin() + rbits );
+  assert( m.size() == nbits );
+
+  std::vector<signal<Ntk>> sum( m.begin(), m.end() );
+  auto carry_inv = ntk.get_constant( true );
+  carry_ripple_subtractor_inplace( ntk, sum, constant_word( ntk, mod, nbits ), carry_inv );
+
+  mux_inplace( ntk, !carry, m, sum );
+  return m;
 }
 
 } /* namespace detail */
@@ -156,6 +188,39 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
   carry_ripple_subtractor_inplace( ntk, sum, word, carry_inv );
 
   mux_inplace( ntk, carry, a, sum );
+}
+
+/*! \brief Creates modular multiplication based on Montgomery multiplication
+ *
+ * Given two inputs words of the same size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(ab) \bmod (2^k - c)\f$.
+ * The first input word `a` is overriden and stores the output signals.
+ * 
+ * The implementation is based on Montgomery multiplication and includes the
+ * encoding into the Montgomery number representation.  Correct functionality
+ * is only ensured if both `a` and `b` are smaller than \f$2^k - c\f$.
+ */
+template<class Ntk>
+inline void montgomery_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+
+  const auto n = ( 1 << a.size() ) - c;
+  const auto nbits = static_cast<int64_t>( std::ceil( std::log2( n ) ) );
+
+  auto [r, np] = detail::compute_montgomery_parameters<int64_t>( n );
+  const auto rbits = static_cast<int64_t>( std::log2( r ) );
+
+  const auto f2 = constant_word( ntk, ( r * r ) % n, rbits );
+
+  const auto ma = detail::to_montgomery_form( ntk, carry_ripple_multiplier( ntk, a, f2 ), n, rbits, np );
+  const auto mb = detail::to_montgomery_form( ntk, carry_ripple_multiplier( ntk, b, f2 ), n, rbits, np );
+
+  assert( ma.size() == nbits );
+  assert( mb.size() == nbits );
+
+  a = detail::to_montgomery_form( ntk, zero_extend( ntk, carry_ripple_multiplier( ntk, ma, mb ), nbits + rbits ), n, rbits, np );
+  a = detail::to_montgomery_form( ntk, zero_extend( ntk, a, nbits + rbits ), n, rbits, np );
 }
 
 } // namespace mockturtle
