@@ -197,10 +197,15 @@ TEST_CASE( "create binary and ternary operations in an xmg", "[xmg]" )
   CHECK( f3 == f7 );
 
   const auto x3 = xmg.create_pi();
+  CHECK( xmg.size() == 8 );
 
   const auto f8 = xmg.create_maj( x1, x2, x3 );
   const auto f9 = xmg.create_maj( !x1, !x2, !x3 );
+  CHECK( xmg.size() == 9 );
   CHECK( f8 == !f9 );
+
+  const auto f10 = xmg.create_xor3( x1, x2, x3 );
+  CHECK( xmg.size() == 10 );
 }
 
 TEST_CASE( "hash nodes in xmg network", "[xmg]" )
