@@ -96,6 +96,21 @@ public:
     compute_parents();
   }
 
+  void parents( node const& n ) const
+  {
+    return _parents[ n ];
+  }
+
+  void set_parents( node const& n, std::vector<node> const& parents )
+  {
+    _parents[ n ] = parents;
+  }
+
+  void add_parent( node const& n, node const& p )
+  {
+    _parents[ n ].push_back( p );
+  }
+
 private:
   void compute_parents()
   {
