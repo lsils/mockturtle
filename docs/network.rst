@@ -110,7 +110,7 @@ Restructuring
 ~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: substitute_node
+   :members: substitute_node, substitute_node_of_parents
    :no-link:
 
 Structural properties

@@ -372,7 +372,7 @@ public:
   {
     for ( auto& p : parents )
     {
-      auto& n = _storage->nodes[ p ];
+      auto& n = _storage->nodes[p];
       for ( auto& child : n.children )
       {
         if ( child.index == old_node )
@@ -382,6 +382,9 @@ public:
 
           // increment fan-in of new node
           _storage->nodes[new_signal.index].data[0].h1++;
+
+          // decrement fan-in of old node
+          _storage->nodes[old_node].data[0].h1--;
         }
       }
     }
@@ -396,11 +399,11 @@ public:
 
         // increment fan-in of new node
         _storage->nodes[new_signal.index].data[0].h1++;
+
+        // decrement fan-in of old node
+        _storage->nodes[old_node].data[0].h1--;
       }
     }
-
-    // reset fan-in of old node
-    _storage->nodes[old_node].data[0].h1 = 0;
   }
 #pragma endregion
 
