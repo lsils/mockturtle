@@ -368,7 +368,7 @@ public:
     _storage->nodes[old_node].data[0].h1 = 0;
   }
 
-  void substitute_node( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
+  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
   {
     for ( auto& p : parents )
     {
