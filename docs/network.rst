@@ -138,7 +138,7 @@ Node and signal iterators
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_fanin, foreach_parent
+   :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_fanin, foreach_fanout
    :no-link:
 
 Simulate values
