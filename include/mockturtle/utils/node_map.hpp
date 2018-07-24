@@ -151,6 +151,21 @@ public:
     data.resize( ntk.size(), init_value );
   }
 
+  /*! \brief Resizes the map.
+   *
+   * This function should be called, if the node_map's size needs to
+   * be changed without clearing its data.
+   *
+   * \param init_value Initialization value after resize
+   */
+  void resize(  T const& init_value = {} )
+  {
+    if ( ntk.size() > data.size() )
+    {
+      data.resize( ntk.size(), init_value );
+    }
+  }
+
 private:
   Ntk const& ntk;
   std::vector<T> data;
