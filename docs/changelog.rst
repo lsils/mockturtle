@@ -31,7 +31,7 @@ v0.1 (not yet released)
     - View for mapped networks (`mapping_view`) `#7 <https://github.com/lsils/mockturtle/pull/7>`_
     - View compute depth and node levels (`depth_view`) `#16 <https://github.com/lsils/mockturtle/pull/16>`_
     - Cut view (`cut_view`) `#20 <https://github.com/lsils/mockturtle/pull/20>`_
-    - Access parents from a node (`parents_view`) `#27 <https://github.com/lsils/mockturtle/pull/27>`_
+    - Access fanout of a node (`fanout_view`) `#27 <https://github.com/lsils/mockturtle/pull/27>`_ `#49 <https://github.com/lsils/mockturtle/pull/49>`_
     - Compute MFFC of a node (`mffc_view`) `#34 <https://github.com/lsils/mockturtle/pull/34>`_
     - Compute window around a node (`window_view`) `#41 <https://github.com/lsils/mockturtle/pull/41>`_
 * I/O:
