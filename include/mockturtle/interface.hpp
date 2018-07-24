@@ -416,9 +416,9 @@ public:
   template<typename Fn>
   void foreach_fanin( node const& n, Fn&& fn ) const;
 
-  /*! \brief Calls ``fn`` on every parent of a node.
+  /*! \brief Calls ``fn`` on every fanout of a node.
    *
-   * The method gives no guarantee on the order of the parents.  The parameter
+   * The method gives no guarantee on the order of the fanout.  The parameter
    * ``fn`` is any callable that must have one of the following signatures.
    * - ``void(node const&)``
    * - ``void(node const&, uint32_t)``
@@ -430,7 +430,7 @@ public:
    * then it can interrupt the iteration by returning ``false``.
    */
   template<typename Fn>
-  void foreach_parent( node const& n, Fn&& fn ) const;
+  void foreach_fanout( node const& n, Fn&& fn ) const;
 #pragma endregion
 
 #pragma region Simulate values

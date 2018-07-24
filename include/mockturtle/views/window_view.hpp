@@ -41,7 +41,7 @@
 
 #include "../traits.hpp"
 #include "../networks/detail/foreach.hpp"
-#include "../views/parents_view.hpp"
+#include "../views/fanout_view.hpp"
 #include "immutable_view.hpp"
 
 namespace mockturtle
@@ -69,7 +69,7 @@ public:
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
     static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
     static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
-    static_assert( has_foreach_parent_v<Ntk>, "Ntk does not implement the foreach_parent method" );
+    static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
 
     /* constants */
     add_node( this->get_node( this->get_constant( false ) ) );
@@ -191,7 +191,7 @@ private:
       new_nodes.clear();
       for ( const auto& n : _nodes )
       {
-        ntk.foreach_parent( n, [&]( auto const& p ){
+        ntk.foreach_fanout( n, [&]( auto const& p ){
             /* skip node if it is already in _nodes */
             if ( std::find( _nodes.begin(), _nodes.end(), p ) != _nodes.end() ) return;
 
@@ -245,7 +245,7 @@ private:
         continue;
       }
 
-      ntk.foreach_parent( n, [&]( auto const& p ){
+      ntk.foreach_fanout( n, [&]( auto const& p ){
           if ( std::find( _nodes.begin(), _nodes.end(), p ) == _nodes.end() )
           {
             auto s = this->make_signal( n );

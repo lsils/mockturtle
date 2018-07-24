@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file parents_view.hpp
-  \brief Implements parents for a network
+  \file fanout_view.hpp
+  \brief Implements fanout for a network
 
   \author Heinz Riener
 */
@@ -42,11 +42,11 @@
 namespace mockturtle
 {
 
-/*! \brief Implements `foreach_parent` methods for networks.
+/*! \brief Implements `foreach_fanout` methods for networks.
  *
- * This view computes the parents of each node of the network.
- * It implements the network interface method `foreach_parent`.  The
- * parents are computed at construction and can be recomputed by
+ * This view computes the fanout of each node of the network.
+ * It implements the network interface method `foreach_fanout`.  The
+ * fanout are computed at construction and can be recomputed by
  * calling the `update` method.
  *
  * **Required network functions:**
@@ -54,29 +54,29 @@ namespace mockturtle
  * - `foreach_fanin`
  *
  */
-template<typename Ntk, bool has_parents_interface = has_foreach_parent_v<Ntk>>
-class parents_view
+template<typename Ntk, bool has_fanout_interface = has_foreach_fanout_v<Ntk>>
+class fanout_view
 {
 };
 
 template<typename Ntk>
-class parents_view<Ntk, true> : public Ntk
+class fanout_view<Ntk, true> : public Ntk
 {
 public:
-  parents_view( Ntk const& ntk ) : Ntk( ntk )
+  fanout_view( Ntk const& ntk ) : Ntk( ntk )
   {
   }
 };
 
 template<typename Ntk>
-class parents_view<Ntk, false> : public Ntk
+class fanout_view<Ntk, false> : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
   using node    = typename Ntk::node;
   using signal  = typename Ntk::signal;
 
-  parents_view( Ntk const& ntk ) : Ntk( ntk ), _parents( ntk )
+  fanout_view( Ntk const& ntk ) : Ntk( ntk ), _fanout( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -86,51 +86,51 @@ public:
   }
 
   template<typename Fn>
-  void foreach_parent( node const& n, Fn&& fn ) const
+  void foreach_fanout( node const& n, Fn&& fn ) const
   {
-    detail::foreach_element( _parents[n].begin(), _parents[n].end(), fn );
+    detail::foreach_element( _fanout[n].begin(), _fanout[n].end(), fn );
   }
 
   void update()
   {
-    compute_parents();
+    compute_fanout();
   }
 
-  void parents( node const& n ) const
+  void fanout( node const& n ) const
   {
-    return _parents[ n ];
+    return _fanout[ n ];
   }
 
-  void set_parents( node const& n, std::vector<node> const& parents )
+  void set_fanout( node const& n, std::vector<node> const& fanout )
   {
-    _parents[ n ] = parents;
+    _fanout[ n ] = fanout;
   }
 
-  void add_parent( node const& n, node const& p )
+  void add_node( node const& n, node const& p )
   {
-    _parents[ n ].push_back( p );
+    _fanout[ n ].push_back( p );
   }
 
 private:
-  void compute_parents()
+  void compute_fanout()
   {
-    _parents.reset();
+    _fanout.reset();
 
     this->foreach_gate( [&]( auto const& n ){
         this->foreach_fanin( n, [&]( auto const& c ){
-            auto& parents = _parents[ c ];
-            if ( std::find( parents.begin(), parents.end(), n ) == parents.end() )
+            auto& fanout = _fanout[ c ];
+            if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
             {
-              parents.push_back( n );
+              fanout.push_back( n );
             }
           });
       });
   }
 
-  node_map<std::vector<node>, Ntk> _parents;
+  node_map<std::vector<node>, Ntk> _fanout;
 };
 
 template<class T>
-parents_view(T const&) -> parents_view<T>;
+fanout_view(T const&) -> fanout_view<T>;
 
 } // namespace mockturtle
