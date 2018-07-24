@@ -455,6 +455,21 @@ template<class Ntk>
 inline constexpr bool has_substitute_node_v = has_substitute_node<Ntk>::value;
 #pragma endregion
 
+#pragma region has_substitute_node_of_parents
+template<class Ntk, class = void>
+struct has_substitute_node_of_parents : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_substitute_node_of_parents<Ntk, std::void_t<decltype( std::declval<Ntk>().substitute_node_of_parents( std::declval<std::vector<node<Ntk>>>(), std::declval<node<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_substitute_node_of_parents_v = has_substitute_node_of_parents<Ntk>::value;
+#pragma endregion
+
 #pragma region has_num_pis
 template<class Ntk, class = void>
 struct has_num_pis : std::false_type
@@ -770,19 +785,19 @@ template<class Ntk>
 inline constexpr bool has_foreach_fanin_v = has_foreach_fanin<Ntk>::value;
 #pragma endregion
 
-#pragma region has_foreach_parent
+#pragma region has_foreach_fanout
 template<class Ntk, class = void>
-struct has_foreach_parent : std::false_type
+struct has_foreach_fanout : std::false_type
 {
 };
 
 template<class Ntk>
-struct has_foreach_parent<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_parent( std::declval<node<Ntk>>(), std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+struct has_foreach_fanout<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_fanout( std::declval<node<Ntk>>(), std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
 {
 };
 
 template<class Ntk>
-inline constexpr bool has_foreach_parent_v = has_foreach_parent<Ntk>::value;
+inline constexpr bool has_foreach_fanout_v = has_foreach_fanout<Ntk>::value;
 #pragma endregion
 
 #pragma region has_compute

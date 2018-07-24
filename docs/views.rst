@@ -58,6 +58,14 @@ algorithm.  Several views are implemented in mockturtle.
 .. doxygenclass:: mockturtle::immutable_view
    :members:
 
+`fanout_view`: Compute fanout
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/fanout_view.hpp``
+
+.. doxygenclass:: mockturtle::fanout_view
+   :members:
+
 `window_view`: Network view on a window
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

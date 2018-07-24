@@ -249,6 +249,21 @@ public:
    * \brief new_signal Signal to replace ``old_node`` with
    */
   void substitute_node( node const& old_node, signal const& new_signal );
+
+  /*! \brief Replaces one node in a network by another signal.
+   *
+   * This method causes all nodes in ``parents`` that have ``old_node`` as
+   * fanin to have `new_signal` as fanin instead.  In doing so, a possible
+   * polarity of `new_signal` is taken into account.  It also replaces
+   * ``old_node`` with ``new_signal``, if it drives primary outputs.
+   *
+   * It does not update custom values or visited flags of a node.
+   *
+   * \brief parents Vector of parents
+   * \brief old_node Node to replace
+   * \brief new_signal Signal to replace ``old_node`` with
+   */
+  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal );
 #pragma endregion
 
 #pragma region Structural properties
@@ -416,9 +431,9 @@ public:
   template<typename Fn>
   void foreach_fanin( node const& n, Fn&& fn ) const;
 
-  /*! \brief Calls ``fn`` on every parent of a node.
+  /*! \brief Calls ``fn`` on every fanout of a node.
    *
-   * The method gives no guarantee on the order of the parents.  The parameter
+   * The method gives no guarantee on the order of the fanout.  The parameter
    * ``fn`` is any callable that must have one of the following signatures.
    * - ``void(node const&)``
    * - ``void(node const&, uint32_t)``
@@ -430,7 +445,7 @@ public:
    * then it can interrupt the iteration by returning ``false``.
    */
   template<typename Fn>
-  void foreach_parent( node const& n, Fn&& fn ) const;
+  void foreach_fanout( node const& n, Fn&& fn ) const;
 #pragma endregion
 
 #pragma region Simulate values

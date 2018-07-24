@@ -367,6 +367,44 @@ public:
     // reset fan-in of old node
     _storage->nodes[old_node].data[0].h1 = 0;
   }
+
+  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
+  {
+    for ( auto& p : parents )
+    {
+      auto& n = _storage->nodes[p];
+      for ( auto& child : n.children )
+      {
+        if ( child.index == old_node )
+        {
+          child.index = new_signal.index;
+          child.weight ^= new_signal.complement;
+
+          // increment fan-in of new node
+          _storage->nodes[new_signal.index].data[0].h1++;
+
+          // decrement fan-in of old node
+          _storage->nodes[old_node].data[0].h1--;
+        }
+      }
+    }
+
+    /* check outputs */
+    for ( auto& output : _storage->outputs )
+    {
+      if ( output.index == old_node )
+      {
+        output.index = new_signal.index;
+        output.weight ^= new_signal.complement;
+
+        // increment fan-in of new node
+        _storage->nodes[new_signal.index].data[0].h1++;
+
+        // decrement fan-in of old node
+        _storage->nodes[old_node].data[0].h1--;
+      }
+    }
+  }
 #pragma endregion
 
 #pragma region Structural properties

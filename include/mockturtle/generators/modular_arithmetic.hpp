@@ -206,10 +206,10 @@ inline void montgomery_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
 
   const auto n = ( 1 << a.size() ) - c;
-  const auto nbits = static_cast<int64_t>( std::ceil( std::log2( n ) ) );
+  const auto nbits = static_cast<uint64_t>( std::ceil( std::log2( n ) ) );
 
   auto [r, np] = detail::compute_montgomery_parameters<int64_t>( n );
-  const auto rbits = static_cast<int64_t>( std::log2( r ) );
+  const auto rbits = static_cast<uint64_t>( std::log2( r ) );
 
   const auto f2 = constant_word( ntk, ( r * r ) % n, rbits );
 
