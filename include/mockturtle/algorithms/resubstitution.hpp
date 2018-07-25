@@ -102,8 +102,8 @@ template<class Ntk>
 class resubstitution_impl
 {
 public:
-  using node = node<Ntk>;
-  using signal = signal<Ntk>;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
   using window = depth_view<window_view<fanout_view<Ntk>>>;
   
   explicit resubstitution_impl( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats& st )
