@@ -132,12 +132,7 @@ public:
 
   void zero_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table,window> const& tts )
   {
-    std::vector<node> gates;
-    win.foreach_gate( [&]( auto const& n ){
-        gates.push_back( n );
-      });
-
-    ntk.foreach_gate( [&]( auto const& x ){
+    win.foreach_gate( [&]( auto const& x ){
         if ( x == n || win.level( x ) >= win.level( n ) )
         {
           return true; /* next */
