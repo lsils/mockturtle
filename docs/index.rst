@@ -34,6 +34,7 @@ Welcome to mockturtle's documentation!
    refactoring
    mig_algebraic_rewriting
    akers_synthesis
+   resubstitution
    simulation
    cleanup
 

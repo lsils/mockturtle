@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <cassert>
 
+#include "../utils/node_map.hpp"
 #include "../traits.hpp"
 
 namespace mockturtle
@@ -62,6 +63,7 @@ public:
     : _ntk( ntk )
     , _pivots( pivots )
     , _ps( ps )
+    , _values( ntk )
   {
     assert( _pivots.size() > 0 );
   }
@@ -69,11 +71,11 @@ public:
 public:
   std::vector<node<Ntk>> run()
   {
-    _ntk.clear_values();
+    _values.reset();
     std::vector<node<Ntk>> cut( _pivots );
     for ( const auto& p : _pivots )
     {
-      _ntk.set_value( p, 1 );
+      _values[ p ] = 1;
     }
     compute_cut_recur( cut );
     return cut;
@@ -106,10 +108,10 @@ protected:
     cut.erase( it );
     _ntk.foreach_fanin( n, [&]( signal<Ntk> const& s ){
         auto const& child = _ntk.get_node( s );
-        if ( !_ntk.is_constant( n ) && std::find( cut.begin(), cut.end(), child ) == cut.end() && !_ntk.value( child ) )
+        if ( !_ntk.is_constant( n ) && std::find( cut.begin(), cut.end(), child ) == cut.end() && !_values[ child ] )
         {
           cut.push_back( child );
-          _ntk.set_value( child, 1 );
+          _values[ child ] = 1;
         }
       } );
 
@@ -121,7 +123,7 @@ protected:
     int32_t current_cost = -1;
     _ntk.foreach_fanin( n, [&]( signal<Ntk> const& s ){
         auto const& child = _ntk.get_node( s );
-        if ( !_ntk.is_constant( child ) && !_ntk.value( child ) )
+        if ( !_ntk.is_constant( child ) && !_values[ child ] )
         {
           ++current_cost;
         }
@@ -133,6 +135,7 @@ private:
   Ntk const& _ntk;
   std::vector<node<Ntk>> _pivots;
   reconv_cut_params const& _ps;
+  node_map<uint32_t,Ntk> _values;
 };
 } /* namespace detail */
 /*! \endcond */
@@ -146,9 +149,6 @@ private:
  * **Required network functions:**
  * - `is_constant`
  * - `is_pi`
- * - `clear_values`
- * - `set_value`
- * - `value`
  * - `get_node`
  * - `foreach_fanin`
  *
@@ -166,9 +166,6 @@ public:
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
     static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
-    static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the is_pi method" );
-    static_assert( has_set_value_v<Ntk>, "Ntk does not implement the is_pi method" );
-    static_assert( has_value_v<Ntk>, "Ntk does not implement the is_pi method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the is_pi method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the is_pi method" );
 
@@ -185,9 +182,6 @@ public:
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
     static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
-    static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the is_pi method" );
-    static_assert( has_set_value_v<Ntk>, "Ntk does not implement the is_pi method" );
-    static_assert( has_value_v<Ntk>, "Ntk does not implement the is_pi method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the is_pi method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the is_pi method" );
 

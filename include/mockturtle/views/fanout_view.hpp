@@ -96,7 +96,7 @@ public:
     compute_fanout();
   }
 
-  void fanout( node const& n ) const
+  std::vector<node> fanout( node const& n ) const
   {
     return _fanout[ n ];
   }
