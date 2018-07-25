@@ -35,7 +35,7 @@
 #include <iostream>
 
 #include "../algorithms/akers_synthesis.hpp"
-#include "../algorithms/cut_rewriting.hpp"
+#include "../algorithms/mffc_utils.hpp"
 #include "../algorithms/simulation.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
