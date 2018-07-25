@@ -49,12 +49,6 @@
 
 #include <iostream>
 
-// #include "../algorithms/akers_synthesis.hpp"
-// #include "../algorithms/cut_rewriting.hpp"
-// #include "../views/cut_view.hpp"
-// #include "../views/mffc_view.hpp"
-// #include "../views/topo_view.hpp"
-
 namespace mockturtle
 {
 
@@ -192,7 +186,7 @@ public:
         auto const& leaves = reconv_cut( params )( ntk, { n } );
         window_view<fanout_view<Ntk>> extended_cut( fanout_ntk, leaves, { n } );
         if ( extended_cut.size() > ps.max_nodes ) return true;
-        depth_view win( extended_cut );
+        window win( extended_cut );
 
         default_simulator<kitty::dynamic_truth_table> sim( win.num_pis() );
         const auto tts = call_with_stopwatch( st.time_simulation,
