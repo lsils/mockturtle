@@ -124,6 +124,7 @@ public:
   {
     _levels.reset( 0 );
     compute_levels();
+    this->clear_visited();
   }
 
 private:
