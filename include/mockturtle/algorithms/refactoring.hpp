@@ -197,6 +197,11 @@ private:
  * - `make_signal`
  * - `foreach_gate`
  * - `substitute_node`
+ * - `clear_visited`
+ * - `clear_values`
+ * - `fanout_size`
+ * - `set_value`
+ * - `foreach_node`
  *
  * \param ntk Input network (will be changed in-place)
  * \param refactoring_fn Refactoring function
