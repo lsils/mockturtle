@@ -103,18 +103,19 @@ protected:
       return;
     }
 
-    /* otherwise expand the cut with the children of *it and mark *it visited */
+    /* otherwise expand the cut with the children of *it and mark *it visited (by setting a value) */
     const auto n = *it;
     cut.erase( it );
     _ntk.foreach_fanin( n, [&]( signal<Ntk> const& s ){
         auto const& child = _ntk.get_node( s );
-        if ( !_ntk.is_constant( n ) && std::find( cut.begin(), cut.end(), child ) == cut.end() && !_values[ child ] )
+        if ( !_ntk.is_constant( child ) && std::find( cut.begin(), cut.end(), child ) == cut.end() && !_values[ child ] )
         {
           cut.push_back( child );
           _values[ child ] = 1;
         }
       } );
 
+    assert( cut.size() <= _ps.cut_size );
     compute_cut_recur( cut );
   }
 
