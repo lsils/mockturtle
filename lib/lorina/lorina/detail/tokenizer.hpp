@@ -34,6 +34,13 @@ namespace lorina
 namespace detail
 {
 
+enum class tokenizer_return_code
+{
+  invalid = 0
+, valid   = 1
+, comment = 2
+};
+
 class tokenizer
 {
 public:
@@ -55,62 +62,83 @@ public:
     }
   }
 
-  bool get_token_internal( std::string& token )
+  tokenizer_return_code get_token_internal( std::string& token )
   {
     if ( _done )
     {
-      return false;
+      return tokenizer_return_code::invalid;
     }
     token = "";
 
     char c;
+
     while ( get_char( c ) )
     {
-      if ( (c == ' ' || c == '\\' || c == '\n') && !_quote_mode )
+      if ( c == '\n' && _comment_mode )
       {
-        return true;
+        _comment_mode = false;
+        return tokenizer_return_code::comment;
       }
-
-      if ( ( c == '(' || c == ')' || c == '{' || c == '}' || c == ';' || c == ':' || c == ',' || c == '~' || c == '&' || c == '|' || c == '^' ) && !_quote_mode )
+      else if ( !_comment_mode )
       {
-        if ( token.empty() )
+        if ( ( c == ' ' || c == '\\' || c == '\n' ) && !_quote_mode )
         {
-          token = std::string() + c;
+          return tokenizer_return_code::valid;
         }
-        else
+        if ( ( c == '(' || c == ')' || c == '{' || c == '}' || c == ';' || c == ':' || c == ',' || c == '~' || c == '&' || c == '|' || c == '^' ) && !_quote_mode )
         {
-          lookahead += c;
+          if ( token.empty() )
+          {
+            token = std::string() + c;
+          }
+          else
+          {
+            lookahead += c;
+          }
+          return tokenizer_return_code::valid;
         }
 
-        return true;
-      }
-
-      if ( c == '\"' )
-      {
-        _quote_mode = !_quote_mode;
+        if ( c == '\"' )
+        {
+          _quote_mode = !_quote_mode;
+        }
       }
 
       token += c;
     }
 
     _done = true;
-    return true;
+    return tokenizer_return_code::valid;
   }
 
   bool get_token( std::string& token )
   {
-    bool result;
+    tokenizer_return_code result;
     do
     {
       result = get_token_internal( token );
       detail::trim( token );
-    } while ( token == "" && result );
-    return result;
+
+      /* keep parsing if token is empty */
+    } while ( token == "" && result == tokenizer_return_code::valid );
+
+    return ( result == tokenizer_return_code::valid );
+  }
+
+  void set_comment_mode( bool value = true )
+  {
+    _comment_mode = value;
+  }
+
+  bool get_comment_mode() const
+  {
+    return _comment_mode;
   }
 
 protected:
   bool _done = false;
   bool _quote_mode = false;
+  bool _comment_mode = false;
   std::istream& _is;
   std::string lookahead;
 }; /* tokenizer */

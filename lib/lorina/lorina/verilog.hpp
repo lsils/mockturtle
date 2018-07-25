@@ -151,6 +151,15 @@ public:
     (void)op3;
   }
 
+  /*! \brief Callback method for parsed comments `// comment string`.
+   *
+   * \param comment Comment string
+   */
+  virtual void on_comment( std::string const& comment ) const
+  {
+    (void)comment;
+  }
+
   /*! \brief Callback method for parsed endmodule.
    *
    */
@@ -265,14 +274,19 @@ public:
     _os << "endmodule\n" << std::endl;
   }
 
+  void on_comment( const std::string& comment ) const override
+  {
+    _os << "// " << comment << std::endl;
+  }
+
   std::ostream& _os; /*!< Output stream */
 }; /* verilog_pretty_printer */
 
 namespace verilog_regex
 {
-static std::regex immediate_assign( R"(^(~)?([[:digit:][:alpha:]]+)$)" );
-static std::regex binary_expression( R"(^(~)?([[:digit:][:alpha:]]+)([&|^])(~)?([[:digit:][:alpha:]]+)$)" );
-static std::regex maj3_expression( R"(^\((~)?([[:digit:][:alpha:]]+)&(~)?([[:digit:][:alpha:]]+)\)\|\((~)?([[:digit:][:alpha:]]+)&(~)?([[:digit:][:alpha:]]+)\)\|\((~)?([[:digit:][:alpha:]]+)&(~)?([[:digit:][:alpha:]]+)\)$)" );
+static std::regex immediate_assign( R"(^(~)?([[:digit:][:alpha:]\[\]_]+)$)" );
+static std::regex binary_expression( R"(^(~)?([[:digit:][:alpha:]\[\]_]+)([&|^])(~)?([[:digit:][:alpha:]\[\]_]+)$)" );
+static std::regex maj3_expression( R"(^\((~)?([[:alnum:]\[\]_]+)&(~)?([[:alnum:]\[\]_]+)\)\|\((~)?([[:alnum:]\[\]_]+)&(~)?([[:alnum:]\[\]_]+)\)\|\((~)?([[:alnum:]\[\]_]+)&(~)?([[:alnum:]\[\]_]+)\)$)" );
 } // namespace verilog_regex
 
 class verilog_parser
@@ -284,9 +298,35 @@ public:
     , diag( diag )
   {}
 
+  bool get_token( std::string& token )
+  {
+    detail::tokenizer_return_code result;
+    do
+    {
+      result = tok.get_token_internal( token );
+      detail::trim( token );
+
+      /* switch to comment mode */
+      if ( token == "//" && result == detail::tokenizer_return_code::valid )
+      {
+        tok.set_comment_mode();
+      }
+      else if ( result == detail::tokenizer_return_code::comment )
+      {
+        reader.on_comment( token );
+      }
+      /* keep parsing if token is empty or if in the middle or at the end of a comment */
+    } while ( (token == "" && result == detail::tokenizer_return_code::valid) ||
+              tok.get_comment_mode() ||
+              result == detail::tokenizer_return_code::comment );
+
+    return ( result == detail::tokenizer_return_code::valid );
+  }
+
+
   bool parse_module()
   {
-    valid = tok.get_token( token );
+    valid = get_token( token );
     if ( !valid ) return false;
 
     bool success = parse_module_header();
@@ -301,7 +341,7 @@ public:
 
     do
     {
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid ) return false;
 
       if ( token == "input" )
@@ -359,7 +399,7 @@ public:
         return false;
       }
 
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid ) return false;
     }
 
@@ -380,26 +420,26 @@ public:
   {
     if ( token != "module" ) return false;
 
-    valid = tok.get_token( token );
+    valid = get_token( token );
     if ( !valid ) return false;
 
     std::string module_name = token;
 
-    valid = tok.get_token( token );
+    valid = get_token( token );
     if ( !valid || token != "(" ) return false;
 
     std::vector<std::string> inouts;
     do
     {
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid ) return false;
       inouts.push_back( token );
 
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid || (token != "," && token != ")") ) return false;
     } while ( valid && token != ")" );
 
-    valid = tok.get_token( token );
+    valid = get_token( token );
     if ( !valid || token != ";" ) return false;
 
     /* callback */
@@ -415,11 +455,11 @@ public:
     std::vector<std::string> inputs;
     do
     {
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid ) return false;
       inputs.push_back( token );
 
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid || (token != "," && token != ";") ) return false;
     } while ( valid && token != ";" );
 
@@ -436,11 +476,11 @@ public:
     std::vector<std::string> outputs;
     do
     {
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid ) return false;
       outputs.push_back( token );
 
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid || (token != "," && token != ";") ) return false;
     } while ( valid && token != ";" );
 
@@ -457,11 +497,11 @@ public:
     std::vector<std::string> wires;
     do
     {
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid ) return false;
       wires.push_back( token );
 
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid || (token != "," && token != ";") ) return false;
     } while ( valid && token != ";" );
 
@@ -475,12 +515,12 @@ public:
   {
     if ( token != "assign" ) return false;
 
-    valid = tok.get_token( token );
+    valid = get_token( token );
     if ( !valid ) return false;
 
     const std::string lhs = token;
 
-    valid = tok.get_token( token );
+    valid = get_token( token );
     if ( !valid || token != "=" ) return false;
 
     /* expression */
@@ -505,7 +545,7 @@ public:
     std::string s;
     do
     {
-      valid = tok.get_token( token );
+      valid = get_token( token );
       if ( !valid ) return false;
 
       if ( token == ";" || token == "assign" || token == "endmodule" ) break;

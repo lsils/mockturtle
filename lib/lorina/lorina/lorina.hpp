@@ -36,3 +36,4 @@
 #include <lorina/bench.hpp>
 #include <lorina/blif.hpp>
 #include <lorina/pla.hpp>
+#include <lorina/verilog.hpp>
