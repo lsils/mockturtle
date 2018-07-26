@@ -70,6 +70,9 @@ struct cut_rewriting_params
   /*! \brief Cut enumeration parameters. */
   cut_enumeration_params cut_enumeration_ps{};
 
+  /*! \brief Allow zero-gain substitutions */
+  bool allow_zero_gain{false};
+
   /*! \brief Show progress. */
   bool progress{false};
 
@@ -251,11 +254,11 @@ inline std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
 
 struct cut_enumeration_cut_rewriting_cut
 {
-  uint32_t gain;
+  int32_t gain;
 };
 
 template<typename Ntk, bool ComputeTruth>
-std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_graph( Ntk const& ntk, network_cuts<Ntk, ComputeTruth, cut_enumeration_cut_rewriting_cut> const& cuts )
+std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_graph( Ntk const& ntk, network_cuts<Ntk, ComputeTruth, cut_enumeration_cut_rewriting_cut> const& cuts, bool allow_zero_gain )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -286,7 +289,7 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
       if ( cut->size() <= 2 )
         continue;
 
-      if ( ( *cut )->data.gain == 0 )
+      if ( ( *cut )->data.gain < ( allow_zero_gain ? 0 : 1 ) )
         continue;
 
       cut_view<Ntk> dcut( ntk, std::vector<node<Ntk>>( cut->begin(), cut->end() ), n );
@@ -392,8 +395,8 @@ public:
         detail::recursive_deref( ntk, ntk.get_node( f_new ) );
         detail::recursive_ref( ntk, n );
 
-        ( *cut )->data.gain = gain < 0 ? 0 : gain;
-        if ( gain > 0 )
+        ( *cut )->data.gain = gain;
+        if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
         {
           best_replacements[n].push_back( f_new );
         }
@@ -403,7 +406,7 @@ public:
     } );
 
     stopwatch t2( st.time_mis );
-    auto [g, map] = network_cuts_graph( ntk, cuts );
+    auto [g, map] = network_cuts_graph( ntk, cuts, ps.allow_zero_gain );
     const auto is = maximum_weighted_independent_set_gwmin( g );
 
     if ( ps.very_verbose )
