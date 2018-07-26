@@ -341,7 +341,7 @@ public:
 
     /* iterate over all original nodes in the network */
     const auto size = ntk.size();
-    progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ), ps.progress};
+    progress_bar pbar{ntk.size(), "cut_rewriting |{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ), ps.progress};
     ntk.foreach_node( [&]( auto const& n ) {
       /* stop once all original nodes were visited */
       if ( n >= size )

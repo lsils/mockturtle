@@ -98,7 +98,7 @@ public:
   void run()
   {
     const auto size = ntk.size();
-    progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
+    progress_bar pbar{ntk.size(), "refactoring |{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
 
     stopwatch t( st.time_total );
 
