@@ -116,5 +116,5 @@ TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
     return ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{6, 206, 398, 325, 502, 338, 703, 1015, 1738, 2335, 1467}} );
+  CHECK( v == std::vector<uint32_t>{{6, 198, 393, 317, 497, 330, 693, 998, 1738, 1902, 1444}} );
 }
