@@ -111,6 +111,21 @@ public:
     _fanout[ n ].push_back( p );
   }
 
+  void substitute_node_of_parents( std::vector<node> parents, node const& old_node, signal const& new_signal )
+  {
+    this->substitute_node_of_parents( parents, old_node, new_signal );
+
+    auto old_node_fanout = _fanout[ old_node ];
+    std::sort( parents.begin(), parents.end() );
+    std::sort( old_node_fanout.begin(), old_node_fanout.end() );
+
+    _fanout[ old_node ] = {};
+
+    std::vector<node> intersection;
+    std::set_intersection( parents.begin(), parents.end(), old_node_fanout.begin(), old_node_fanout.end(), intersection );
+    _fanout[ get_node( new_signal ) ] = intersection;
+  }
+
 private:
   void compute_fanout()
   {
