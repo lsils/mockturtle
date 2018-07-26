@@ -18,4 +18,4 @@ build:
   project: $(APPVEYOR_BUILD_FOLDER)\$(APPVEYOR_PROJECT_NAME).sln
 
 test_script:
-  - '%APPVEYOR_BUILD_FOLDER%\test\%CONFIGURATION%\run_tests.exe'
+  - '%APPVEYOR_BUILD_FOLDER%\test\%CONFIGURATION%\run_tests.exe' "~[quality]"
