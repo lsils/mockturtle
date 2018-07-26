@@ -25,6 +25,15 @@ this case the maximum number of variables for a node function is 4.
    mig_npn_resynthesis resyn;
    const auto mig = node_resynthesis<mig_network>( klut, resyn );
 
+Parameters and statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. doxygenstruct:: mockturtle::node_resynthesis_params
+   :members:
+
+.. doxygenstruct:: mockturtle::node_resynthesis_stats
+   :members:
+
 Algorithm
 ~~~~~~~~~
 

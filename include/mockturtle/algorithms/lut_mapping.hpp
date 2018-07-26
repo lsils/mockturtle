@@ -36,6 +36,7 @@
 
 #include <fmt/format.h>
 
+#include "../utils/stopwatch.hpp"
 #include "../views/topo_view.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/mf_cut.hpp"
@@ -70,6 +71,25 @@ struct lut_mapping_params
 
   /*! \brief Number of rounds for exact area optimization. */
   uint32_t rounds_ela{1u};
+
+  /*! \brief Be verbose. */
+  bool verbose{false};
+};
+
+/*! \brief Statistics for lut_mapping.
+ *
+ * The data structure `lut_mapping_stats` provides data collected by running
+ * `lut_mapping`.
+ */
+struct lut_mapping_stats
+{
+  /*! \brief Total runtime. */
+  stopwatch<>::duration time_total{0};
+
+  void report() const
+  {
+    std::cout << fmt::format( "[i] total time = {:>5.2f} secs\n", to_seconds( time_total ) );
+  }
 };
 
 namespace detail
@@ -83,9 +103,10 @@ public:
   using cut_t = typename network_cuts_t::cut_t;
 
 public:
-  lut_mapping_impl( Ntk& ntk, lut_mapping_params const& ps )
+  lut_mapping_impl( Ntk& ntk, lut_mapping_params const& ps, lut_mapping_stats& st )
       : ntk( ntk ),
         ps( ps ),
+        st( st ),
         flow_refs( ntk.size() ),
         map_refs( ntk.size(), 0 ),
         flows( ntk.size() ),
@@ -96,6 +117,8 @@ public:
 
   void run()
   {
+    stopwatch t( st.time_total );
+
     /* compute and save topological order */
     top_order.reserve( ntk.size() );
     topo_view<Ntk>( ntk ).foreach_node( [this]( auto n ) {
@@ -385,6 +408,7 @@ private:
 private:
   Ntk& ntk;
   lut_mapping_params const& ps;
+  lut_mapping_stats& st;
 
   uint32_t iteration{0}; /* current mapping iteration */
   uint32_t delay{0};     /* current delay of the mapping */
@@ -446,7 +470,7 @@ private:
    \endverbatim
  */
 template<class Ntk, bool StoreFunction = false, typename CutData = cut_enumeration_mf_cut>
-void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {} )
+void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {}, lut_mapping_stats *pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -462,8 +486,18 @@ void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {} )
   static_assert( has_add_to_mapping_v<Ntk>, "Ntk does not implement the add_to_mapping method" );
   static_assert( !StoreFunction || has_set_cell_function_v<Ntk>, "Ntk does not implement the set_cell_function method" );
 
-  detail::lut_mapping_impl<Ntk, StoreFunction, CutData> p( ntk, ps );
+  lut_mapping_stats st;
+  detail::lut_mapping_impl<Ntk, StoreFunction, CutData> p( ntk, ps, st );
   p.run();
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
 }
 
 } /* namespace mockturtle */

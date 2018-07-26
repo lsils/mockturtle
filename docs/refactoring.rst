@@ -16,10 +16,13 @@ method.
    refactoring( mig, resyn );
    mig = cleanup_dangling( mig );
 
-Parameters
-~~~~~~~~~~
+Parameters and statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenstruct:: mockturtle::refactoring_params
+   :members:
+
+.. doxygenstruct:: mockturtle::refactoring_stats
    :members:
 
 Algorithm

@@ -80,11 +80,23 @@ struct cut_rewriting_params
   bool very_verbose{false};
 };
 
+/*! \brief Statistics for cut_rewriting.
+ *
+ * The data structure `cut_rewriting_stats` provides data collected by running
+ * `cut_rewriting`.
+ */
 struct cut_rewriting_stats
 {
+  /*! \brief Total runtime. */
   stopwatch<>::duration time_total{0};
+
+  /*! \brief Runtime for cut enumeration. */
   stopwatch<>::duration time_cuts{0};
+
+  /*! \brief Accumulated runtime for rewriting. */
   stopwatch<>::duration time_rewriting{0};
+
+  /*! \brief Runtime to find minimal independent set. */
   stopwatch<>::duration time_mis{0};
 
   void report() const
@@ -476,9 +488,10 @@ private:
  * \param ntk Network (will be modified)
  * \param rewriting_fn Rewriting function
  * \param ps Rewriting params
+ * \param pst Rewriting statistics
  */
 template<class Ntk, class RewritingFn>
-void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {} )
+void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats *pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
@@ -502,6 +515,11 @@ void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params c
   if ( ps.verbose )
   {
     st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
   }
 }
 
