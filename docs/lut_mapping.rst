@@ -38,10 +38,14 @@ for the cut of each mapped node:
    ps.cut_enumeration_ps.cut_size = 8;
    lut_mapping<mapped_view<mig_network, true>, true>( mapped_mig );
 
-Parameters
-~~~~~~~~~~
+Parameters and statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenstruct:: mockturtle::lut_mapping_params
+   :members:
+
+.. doxygenstruct:: mockturtle::lut_mapping_stats
+   :members:
 
 Algorithm
 ~~~~~~~~~

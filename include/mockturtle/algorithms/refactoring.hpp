@@ -34,9 +34,8 @@
 
 #include <iostream>
 
-#include "../algorithms/akers_synthesis.hpp"
-#include "../algorithms/mffc_utils.hpp"
-#include "../algorithms/simulation.hpp"
+#include "detail/mffc_utils.hpp"
+#include "simulation.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
@@ -68,11 +67,23 @@ struct refactoring_params
   bool verbose{false};
 };
 
+/*! \brief Statistics for refactoring.
+ *
+ * The data structure `refactoring_stats` provides data collected by running
+ * `refactoring`.
+ */
 struct refactoring_stats
 {
+  /*! \brief Total runtime. */
   stopwatch<>::duration time_total{0};
+
+  /*! \brief Accumulated runtime for computing MFFCs. */
   stopwatch<>::duration time_mffc{0};
+
+  /*! \brief Accumulated runtime for rewriting. */
   stopwatch<>::duration time_refactoring{0};
+
+  /*! \brief Accumulated runtime for simulating MFFCs. */
   stopwatch<>::duration time_simulation{0};
 
   void report() const
@@ -99,7 +110,7 @@ public:
   void run()
   {
     const auto size = ntk.size();
-    progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
+    progress_bar pbar{ntk.size(), "refactoring |{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
 
     stopwatch t( st.time_total );
 
@@ -206,9 +217,10 @@ private:
  * \param ntk Input network (will be changed in-place)
  * \param refactoring_fn Refactoring function
  * \param ps Refactoring params
+ * \param pst Refactoring statistics
  */
 template<class Ntk, class RefactoringFn>
-void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps = {} )
+void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps = {}, refactoring_stats *pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
@@ -228,6 +240,11 @@ void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params c
   if ( ps.verbose )
   {
     st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
   }
 }
 

@@ -204,7 +204,7 @@ TEST_CASE( "create binary and ternary operations in an xmg", "[xmg]" )
   CHECK( xmg.size() == 9 );
   CHECK( f8 == !f9 );
 
-  const auto f10 = xmg.create_xor3( x1, x2, x3 );
+  xmg.create_xor3( x1, x2, x3 );
   CHECK( xmg.size() == 10 );
 }
 
