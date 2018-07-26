@@ -75,10 +75,20 @@ struct resubstitution_params
   bool verbose{false};
 };
 
+/*! \brief Statistics for resubstitution.
+ *
+ * The data structure `resubstitution_stats` provides data collected by running
+ * `resubstitution`.
+ */
 struct resubstitution_stats
 {
+  /*! \brief Total runtime. */
   stopwatch<>::duration time_total{0};
+
+  /*! \brief Accumulated runtime for simulation. */
   stopwatch<>::duration time_simulation{0};
+
+  /*! \brief Accumulated runtime for resubstitution. */
   stopwatch<>::duration time_resubstitution{0};
 
   void report() const
@@ -224,9 +234,10 @@ private:
  *
  * \param ntk Input network (will be changed in-place)
  * \param ps Resubstitution params
+ * \param pst Resubstitution statistics
  */
 template<class Ntk>
-void resubstitution( Ntk& ntk, resubstitution_params const& ps = {} )
+void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats *pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
@@ -246,6 +257,10 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {} )
   if ( ps.verbose )
   {
     st.report();
+  }
+  if ( pst )
+  {
+    *pst = st;
   }
 }
 
