@@ -90,6 +90,7 @@ public:
 
   void on_header( std::size_t, std::size_t num_inputs, std::size_t num_latches, std::size_t, std::size_t ) const override
   {
+    (void)num_latches;
     assert( num_latches == 0 && "AIG has latches, not supported yet." );
 
     /* constant */
@@ -124,6 +125,7 @@ public:
 
   void on_output( unsigned index, unsigned lit ) const override
   {
+    (void)index;
     assert( index == outputs.size() );
     outputs.push_back( lit );
   }
