@@ -67,7 +67,16 @@ struct resubstitution_params
 
   /*! \brief Maximum number of nodes added by resubstitution. */
   uint32_t max_inserts{0};
-  
+
+  /*! \brief Maximum number of nodes compared during resubstitution. */
+  uint32_t max_compare{100};
+
+  /*! \brief Extend window with nodes. */
+  bool extend{false};
+
+  /*! \brief Enable zero-gain substitution. */
+  bool zero_gain{false};
+
   /*! \brief Show progress. */
   bool progress{false};
 
@@ -105,12 +114,12 @@ public:
   {
   }
 
-  bool resubstitute_node( window& win, node const& n, signal const& s )
+  bool resubstitute_node( window& win, node const& n, signal const& s, bool zero_gain = false )
   {
     const auto& r = ntk.get_node( s );
     int32_t gain = detail::recursive_deref( win, /* original node */n );
     gain -= detail::recursive_ref( win, /* replace with */r );
-    if ( gain > 0 )
+    if ( gain > 0 || zero_gain )
     {
       ++_candidates;
       _estimated_gain += gain;
@@ -132,7 +141,10 @@ public:
 
   void zero_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table,window> const& tts )
   {
+    auto counter = 0u;
     win.foreach_gate( [&]( auto const& x ){
+        if ( ++counter > ps.max_compare ) return false;
+
         if ( x == n || win.level( x ) >= win.level( n ) )
         {
           return true; /* next */
@@ -140,12 +152,12 @@ public:
         
         if ( tts[ n ] == tts[ x ] )
         {
-          const auto result = resubstitute_node( win, n, ntk.make_signal( x ) );
+          const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
           if ( result ) return false; /* accept */
         }
         else if ( tts[ n ] == ~tts[ x ] )
         {
-          const auto result = resubstitute_node( win, n, !ntk.make_signal( x ) );
+          const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
           if ( result ) return false; /* accept */
         }
 
@@ -167,10 +179,7 @@ public:
     } );
 
     ntk.foreach_gate( [&]( auto const& n, auto i ){
-      if ( i >= size )
-      {
-        return false;
-      }
+      if ( i >= size ) return false;
 
       pbar( i, i, _candidates, _estimated_gain );
 
@@ -179,17 +188,16 @@ public:
       {
         reconv_cut_params params{ ps.max_pis };
         auto const& leaves = reconv_cut( params )( ntk, { n } );
-        window_view<fanout_view<Ntk>> extended_cut( fanout_ntk, leaves, { n } );
+        window_view<fanout_view<Ntk>> extended_cut( fanout_ntk, leaves, { n }, /* extend = */ps.extend );
         if ( extended_cut.size() > ps.max_nodes ) return true;
         window win( extended_cut );
 
         default_simulator<kitty::dynamic_truth_table> sim( win.num_pis() );
         const auto tts = call_with_stopwatch( st.time_simulation,
                                              [&]() { return simulate_nodes<kitty::dynamic_truth_table>( win, sim ); } );
-        
+
         call_with_stopwatch( st.time_resubstitution,
                              [&]() { zero_resubstitution( win, n, tts ); } );
-
       }
 
       return true;
