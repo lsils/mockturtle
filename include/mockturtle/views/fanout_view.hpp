@@ -96,6 +96,11 @@ public:
     compute_fanout();
   }
 
+  void resize()
+  {
+    _fanout.resize();
+  }
+
   std::vector<node> fanout( node const& n ) const
   {
     return _fanout[ n ];
