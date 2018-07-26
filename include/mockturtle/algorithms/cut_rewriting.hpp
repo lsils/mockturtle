@@ -46,7 +46,7 @@
 #include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
 #include "cut_enumeration.hpp"
-#include "mffc_utils.hpp"
+#include "detail/mffc_utils.hpp"
 
 #include <fmt/format.h>
 

@@ -34,9 +34,9 @@
 
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
-#include "../algorithms/simulation.hpp"
-#include "../algorithms/reconv_cut.hpp"
-#include "../algorithms/mffc_utils.hpp"
+#include "simulation.hpp"
+#include "reconv_cut.hpp"
+#include "detail/mffc_utils.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/fanout_view.hpp"

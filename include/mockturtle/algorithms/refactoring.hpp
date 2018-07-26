@@ -34,9 +34,8 @@
 
 #include <iostream>
 
-#include "../algorithms/akers_synthesis.hpp"
-#include "../algorithms/mffc_utils.hpp"
-#include "../algorithms/simulation.hpp"
+#include "detail/mffc_utils.hpp"
+#include "simulation.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
