@@ -108,7 +108,7 @@ TEST_CASE( "Test quality of MIG refactoring with Akers resynthesis", "[quality]"
   CHECK( v == std::vector<uint32_t>{{6, 190, 364, 303, 388, 286, 575, 909, 1353, 1888, 1402}} );
 }
 
-TEST_CASE( "Test quality of MIG resubstitution with Akers resynthesis", "[quality]" )
+TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
 {
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
     resubstitution( ntk );
