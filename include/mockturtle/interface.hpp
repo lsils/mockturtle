@@ -306,7 +306,17 @@ public:
 #pragma endregion
 
 #pragma region Functional properties
-  /*! \brief Returns the function of a node. */
+  /*! \brief Returns the gate function of a node.
+   *
+   * Note that this function returns the gate function represented by a node
+   * in terms of the *intended* gate.  For example, in an AIG, all gate
+   * functions are AND, complemented edges are not taken into account.  Also,
+   * in an MIG, all gate functions are MAJ, independently of complemented edges
+   * and possible constant inputs.
+   * 
+   * In order to retreive a function with respect to complemented edges one can
+   * use the `compute` function with a truth table as simulation value.
+   */
   kitty::dynamic_truth_table node_function( node const& n ) const;
 #pragma endregion
 

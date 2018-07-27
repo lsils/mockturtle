@@ -14,10 +14,13 @@ The following example shows how to resubstitute nodes in an MIG.
    resubstitution( mig );
    mig = cleanup_dangling( mig );
 
-Parameters
-~~~~~~~~~~
+Parameters and statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenstruct:: mockturtle::resubstitution_params
+   :members:
+
+.. doxygenstruct:: mockturtle::resubstitution_stats
    :members:
 
 Algorithm

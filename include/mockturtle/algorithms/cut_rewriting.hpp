@@ -46,7 +46,7 @@
 #include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
 #include "cut_enumeration.hpp"
-#include "mffc_utils.hpp"
+#include "detail/mffc_utils.hpp"
 
 #include <fmt/format.h>
 
@@ -70,6 +70,9 @@ struct cut_rewriting_params
   /*! \brief Cut enumeration parameters. */
   cut_enumeration_params cut_enumeration_ps{};
 
+  /*! \brief Allow zero-gain substitutions */
+  bool allow_zero_gain{false};
+
   /*! \brief Show progress. */
   bool progress{false};
 
@@ -80,11 +83,23 @@ struct cut_rewriting_params
   bool very_verbose{false};
 };
 
+/*! \brief Statistics for cut_rewriting.
+ *
+ * The data structure `cut_rewriting_stats` provides data collected by running
+ * `cut_rewriting`.
+ */
 struct cut_rewriting_stats
 {
+  /*! \brief Total runtime. */
   stopwatch<>::duration time_total{0};
+
+  /*! \brief Runtime for cut enumeration. */
   stopwatch<>::duration time_cuts{0};
+
+  /*! \brief Accumulated runtime for rewriting. */
   stopwatch<>::duration time_rewriting{0};
+
+  /*! \brief Runtime to find minimal independent set. */
   stopwatch<>::duration time_mis{0};
 
   void report() const
@@ -239,11 +254,11 @@ inline std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
 
 struct cut_enumeration_cut_rewriting_cut
 {
-  uint32_t gain;
+  int32_t gain;
 };
 
 template<typename Ntk, bool ComputeTruth>
-std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_graph( Ntk const& ntk, network_cuts<Ntk, ComputeTruth, cut_enumeration_cut_rewriting_cut> const& cuts )
+std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_graph( Ntk const& ntk, network_cuts<Ntk, ComputeTruth, cut_enumeration_cut_rewriting_cut> const& cuts, bool allow_zero_gain )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -274,7 +289,7 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
       if ( cut->size() <= 2 )
         continue;
 
-      if ( ( *cut )->data.gain == 0 )
+      if ( ( *cut )->data.gain < ( allow_zero_gain ? 0 : 1 ) )
         continue;
 
       cut_view<Ntk> dcut( ntk, std::vector<node<Ntk>>( cut->begin(), cut->end() ), n );
@@ -341,7 +356,7 @@ public:
 
     /* iterate over all original nodes in the network */
     const auto size = ntk.size();
-    progress_bar pbar{ntk.size(), "|{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ), ps.progress};
+    progress_bar pbar{ntk.size(), "cut_rewriting |{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ), ps.progress};
     ntk.foreach_node( [&]( auto const& n ) {
       /* stop once all original nodes were visited */
       if ( n >= size )
@@ -380,8 +395,8 @@ public:
         detail::recursive_deref( ntk, ntk.get_node( f_new ) );
         detail::recursive_ref( ntk, n );
 
-        ( *cut )->data.gain = gain < 0 ? 0 : gain;
-        if ( gain > 0 )
+        ( *cut )->data.gain = gain;
+        if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
         {
           best_replacements[n].push_back( f_new );
         }
@@ -391,7 +406,7 @@ public:
     } );
 
     stopwatch t2( st.time_mis );
-    auto [g, map] = network_cuts_graph( ntk, cuts );
+    auto [g, map] = network_cuts_graph( ntk, cuts, ps.allow_zero_gain );
     const auto is = maximum_weighted_independent_set_gwmin( g );
 
     if ( ps.very_verbose )
@@ -476,9 +491,10 @@ private:
  * \param ntk Network (will be modified)
  * \param rewriting_fn Rewriting function
  * \param ps Rewriting params
+ * \param pst Rewriting statistics
  */
 template<class Ntk, class RewritingFn>
-void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {} )
+void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats *pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
@@ -502,6 +518,11 @@ void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params c
   if ( ps.verbose )
   {
     st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
   }
 }
 

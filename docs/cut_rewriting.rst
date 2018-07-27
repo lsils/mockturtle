@@ -19,10 +19,13 @@ networks.  In this case the maximum number of variables for a node function is
    cut_rewriting( mig, resyn, ps );
    mig = cleanup_dangling( mig );
 
-Parameters
-~~~~~~~~~~
+Parameters and statistics
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenstruct:: mockturtle::cut_rewriting_params
+   :members:
+
+.. doxygenstruct:: mockturtle::cut_rewriting_stats
    :members:
 
 Algorithm

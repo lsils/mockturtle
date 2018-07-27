@@ -32,12 +32,44 @@
 
 #pragma once
 
+#include <iostream>
+
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
+#include "../utils/stopwatch.hpp"
 #include "../views/topo_view.hpp"
+
+#include <fmt/format.h>
 
 namespace mockturtle
 {
+
+/*! \brief Parameters for node_resynthesis.
+ *
+ * The data structure `node_resynthesis_params` holds configurable parameters
+ * with default arguments for `node_resynthesis`.
+ */
+struct node_resynthesis_params
+{
+  /*! \brief Be verbose. */
+  bool verbose{false};
+};
+
+/*! \brief Statistics for node_resynthesis.
+ *
+ * The data structure `node_resynthesis_stats` provides data collected by
+ * running `node_resynthesis`.
+ */
+struct node_resynthesis_stats
+{
+  /*! \brief Total runtime. */
+  stopwatch<>::duration time_total{0};
+
+  void report() const
+  {
+    std::cout << fmt::format( "[i] total time = {:>5.2f} secs\n", to_seconds( time_total ) );
+  }
+};
 
 namespace detail
 {
@@ -46,14 +78,18 @@ template<class NtkDest, class NtkSource, class ResynthesisFn>
 class node_resynthesis_impl
 {
 public:
-  node_resynthesis_impl( NtkSource const& ntk, ResynthesisFn&& resynthesis_fn )
+  node_resynthesis_impl( NtkSource const& ntk, ResynthesisFn&& resynthesis_fn, node_resynthesis_params const& ps, node_resynthesis_stats& st )
       : ntk( ntk ),
-        resynthesis_fn( resynthesis_fn )
+        resynthesis_fn( resynthesis_fn ),
+        ps( ps ),
+        st( st )
   {
   }
 
   NtkDest run()
   {
+    stopwatch t( st.time_total );
+
     NtkDest ntk_dest;
     node_map<signal<NtkDest>, NtkSource> node2new( ntk );
 
@@ -94,6 +130,8 @@ public:
 private:
   NtkSource const& ntk;
   ResynthesisFn&& resynthesis_fn;
+  node_resynthesis_params const& ps;
+  node_resynthesis_stats& st;
 };
 
 } /* namespace detail */
@@ -136,7 +174,7 @@ private:
  * \return An equivalent network of type `NtkDest`
  */
 template<class NtkDest, class NtkSource, class ResynthesisFn>
-NtkDest node_resynthesis( NtkSource const& ntk, ResynthesisFn&& resynthesis_fn )
+NtkDest node_resynthesis( NtkSource const& ntk, ResynthesisFn&& resynthesis_fn, node_resynthesis_params const& ps = {}, node_resynthesis_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<NtkSource>, "NtkSource is not a network type" );
   static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
@@ -157,8 +195,19 @@ NtkDest node_resynthesis( NtkSource const& ntk, ResynthesisFn&& resynthesis_fn )
   static_assert( has_create_not_v<NtkDest>, "NtkDest does not implement the create_not method" );
   static_assert( has_create_po_v<NtkDest>, "NtkDest does not implement the create_po method" );
 
-  detail::node_resynthesis_impl<NtkDest, NtkSource, ResynthesisFn> p( ntk, resynthesis_fn );
-  return p.run();
+  node_resynthesis_stats st;
+  detail::node_resynthesis_impl<NtkDest, NtkSource, ResynthesisFn> p( ntk, resynthesis_fn, ps, st );
+  const auto ret = p.run();
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+  return ret;
 }
 
 } // namespace mockturtle
