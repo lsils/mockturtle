@@ -34,7 +34,7 @@ aig.foreach_node( [&]( auto node ) {
 ## Installation requirements
 
 A modern compiler is required to build *mockturtle*.  We are continously
-testing with Clang 6.0.1, GCC 7.3.0, and GCC 8.1.0.  More information can be
+testing with Clang 6.0.1, GCC 7.3.0, and GCC 8.2.0.  More information can be
 found in the [documentation](http://mockturtle.readthedocs.io/en/latest/installation.html).
 
 ## EPFL logic sythesis libraries

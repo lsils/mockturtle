@@ -60,6 +60,9 @@ struct refactoring_params
   /*! \brief Maximum number of PIs in MFFCs. */
   uint32_t max_pis{6};
 
+  /*! \brief Allow zero-gain substitutions */
+  bool allow_zero_gain{false};
+
   /*! \brief Show progress. */
   bool progress{false};
 
@@ -154,7 +157,7 @@ public:
       int32_t gain = detail::recursive_deref( ntk, n );
       gain -= detail::recursive_ref( ntk, ntk.get_node( new_f ) );
 
-      if ( gain > 0 )
+      if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
       {
         ++_candidates;
         _estimated_gain += gain;

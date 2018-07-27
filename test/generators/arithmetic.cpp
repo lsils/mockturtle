@@ -161,7 +161,6 @@ Ntk create_multiplier()
   std::vector<typename Ntk::signal> a( 8 ), b( 8 );
   std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
   std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
-  auto carry = ntk.get_constant( true );
 
   for ( auto const& o : carry_ripple_multiplier( ntk, a, b ) )
   {

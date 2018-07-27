@@ -1,3 +1,5 @@
+#ifndef _MSC_VER
+
 #include <catch.hpp>
 
 #include <vector>
@@ -60,10 +62,21 @@ TEST_CASE( "Test quality of lut_mapping", "[quality]" )
 TEST_CASE( "Test quality of MIG networks", "[quality]" )
 {
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
-    return ntk.num_gates();
+    depth_view depth_ntk{ntk};
+    return std::pair{ntk.num_gates(), depth_ntk.depth()};
   } );
 
-  CHECK( v == std::vector<uint32_t>{{6, 208, 398, 325, 502, 341, 716, 1024, 1776, 2337, 1469}} );
+  CHECK( v == std::vector<std::pair<uint32_t, uint32_t>>{{{6, 3},         // 17
+                                                          {208, 26},      // 432
+                                                          {398, 19},      // 499
+                                                          {325, 25},      // 880
+                                                          {502, 25},      // 1355
+                                                          {341, 27},      // 1908
+                                                          {716, 20},      // 2670
+                                                          {1024, 41},     // 3540
+                                                          {1776, 37},     // 5315
+                                                          {2337, 120},    // 6288
+                                                          {1469, 26}}} ); // 7552
 }
 
 TEST_CASE( "Test quality of node resynthesis with NPN4 resynthesis", "[quality]" )
@@ -82,30 +95,61 @@ TEST_CASE( "Test quality of node resynthesis with NPN4 resynthesis", "[quality]"
   CHECK( v == std::vector<uint32_t>{{7, 176, 316, 300, 316, 299, 502, 929, 1319, 1061, 1418}} );
 }
 
-TEST_CASE( "Test quality of cut rewriting with NPN4 resynthesis", "[quality]" )
+TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[quality]" )
 {
+  // without zero gain
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
     mig_npn_resynthesis resyn;
     cut_rewriting_params ps;
     ps.cut_enumeration_ps.cut_size = 4;
     cut_rewriting( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
-    return ntk.num_gates();
+    return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{6, 189, 318, 276, 400, 263, 515, 893, 1266, 2335, 1211}} );
+  CHECK( v == std::vector<uint32_t>{{0, 19, 80, 49, 102, 78, 201, 131, 510, 2, 258}} );
+
+  // with zero gain
+  const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    mig_npn_resynthesis resyn;
+    cut_rewriting_params ps;
+    ps.allow_zero_gain = true;
+    ps.cut_enumeration_ps.cut_size = 4;
+    cut_rewriting( ntk, resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v2 == std::vector<uint32_t>{{0, 3, 36, 12, 72, 13, 84, 47, 102, 2, 258}} );
 }
 
-TEST_CASE( "Test quality of MIG refactoring with Akers resynthesis", "[quality]" )
+TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis", "[quality]" )
 {
+  // without zero gain
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
     akers_resynthesis resyn;
     refactoring( ntk, resyn );
     ntk = cleanup_dangling( ntk );
-    return ntk.num_gates();
+    return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{6, 190, 364, 303, 388, 286, 575, 909, 1353, 1888, 1402}} );
+  CHECK( v == std::vector<uint32_t>{{0, 18, 34, 22, 114, 55, 141, 115, 423, 449, 67}} );
+
+  // with zero gain
+  const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    akers_resynthesis resyn;
+    refactoring_params ps;
+    ps.allow_zero_gain = true;
+    refactoring( ntk, resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 114, 54, 143, 122, 417, 449, 66}} );
 }
 
 TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
@@ -116,5 +160,7 @@ TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
     return ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{6, 198, 393, 317, 497, 330, 693, 998, 1738, 1902, 1444}} );
+  CHECK( v == std::vector<uint32_t>{{6, 206, 398, 325, 502, 338, 703, 1015, 1738, 2335, 1467}} );
 }
+
+#endif
