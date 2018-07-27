@@ -63,13 +63,13 @@ struct resubstitution_params
   uint32_t max_pis{6};
 
   /*! \brief Maximum number of nodes per reconvergence-driven window. */
-  uint32_t max_nodes{200};
+  uint32_t max_nodes{100};
 
   /*! \brief Maximum number of nodes added by resubstitution. */
-  uint32_t max_inserts{0};
+  uint32_t max_inserts{1};
 
   /*! \brief Maximum number of nodes compared during resubstitution. */
-  uint32_t max_compare{100};
+  uint32_t max_compare{20};
 
   /*! \brief Extend window with nodes. */
   bool extend{false};
