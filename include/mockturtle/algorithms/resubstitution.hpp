@@ -149,6 +149,23 @@ public:
     }
   }
 
+  void resubstitute( window& win, node const& n, node_map<kitty::dynamic_truth_table,window> const& tts )
+  {
+    assert( ps.max_inserts >= 0u );
+    switch ( ps.max_inserts )
+    {
+    case 0u:
+      zero_resubstitution( win, n , tts );
+      break;
+    case 1u:
+      one_resubstitution( win, n, tts );
+      break;
+    default: /* >= 2u */
+      two_resubstitution( win, n, tts );
+      break;
+    }
+  }
+
   void zero_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table,window> const& tts )
   {
     auto counter = 0u;
@@ -469,8 +486,7 @@ public:
         const auto tts = call_with_stopwatch( st.time_simulation,
                                              [&]() { return simulate_nodes<kitty::dynamic_truth_table>( win, sim ); } );
 
-        call_with_stopwatch( st.time_resubstitution,
-                             [&]() { one_resubstitution( win, n, tts ); } );
+        call_with_stopwatch( st.time_resubstitution, [&]() { resubstitute( win, n, tts ); } );
       }
 
       return true;
