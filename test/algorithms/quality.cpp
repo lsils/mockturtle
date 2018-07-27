@@ -1,3 +1,5 @@
+#ifndef _MSC_VER
+
 #include <catch.hpp>
 
 #include <vector>
@@ -160,3 +162,5 @@ TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
 
   CHECK( v == std::vector<uint32_t>{{6, 206, 398, 325, 502, 338, 703, 1015, 1738, 2335, 1467}} );
 }
+
+#endif
