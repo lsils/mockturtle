@@ -58,7 +58,7 @@ matrix:
       - brew update
       - brew cask uninstall oclint
       - brew install gcc
-    env: COMPILER=/usr/local/Cellar/gcc/8.1.0/bin/g++-8
+    env: COMPILER=/usr/local/Cellar/gcc/8.2.0/bin/g++-8
   - os: osx
     osx_image: xcode8.3
     compiler: gcc
