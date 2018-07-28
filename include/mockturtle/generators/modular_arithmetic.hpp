@@ -197,11 +197,12 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
  * The first input word `a` is overriden and stores the output signals.
  * 
  * The implementation is based on Montgomery multiplication and includes the
- * encoding into the Montgomery number representation.  Correct functionality
- * is only ensured if both `a` and `b` are smaller than \f$2^k - c\f$.
+ * encoding and decoding in and from the Montgomery number representation.
+ * Correct functionality is only ensured if both `a` and `b` are smaller than
+ * \f$2^k - c\f$.
  */
 template<class Ntk>
-inline void montgomery_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
+inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
 

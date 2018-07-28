@@ -15,4 +15,4 @@ Addition and Subtraction
 Multiplication
 ~~~~~~~~~~~~~~
 
-.. doxygenfunction:: montgomery_multiplication_inplace(Ntk& ntk, std::vector<signal<Ntk>>&, std::vector<signal<Ntk>> const&, uint64_t)
+.. doxygenfunction:: modular_multiplication_inplace(Ntk& ntk, std::vector<signal<Ntk>>&, std::vector<signal<Ntk>> const&, uint64_t)
