@@ -134,7 +134,8 @@ public:
       ++_candidates;
       _estimated_gain += gain;
 
-      ntk.substitute_node_of_parents( fanout_ntk.fanout( n ), n, s );
+      win.substitute_node_of_parents( fanout_ntk.fanout( n ), n, s );
+
       ntk.set_value( n, 0 );
       ntk.set_value( r, ntk.fanout_size( r ) );
 
@@ -377,16 +378,16 @@ public:
                   return true; /* next */
                 }
 
-                if ( tts[ n ] != ternary_majority( tts[ u ], binary_and( tts[ x ], tts[ y ] ), tts[ n ] ) )
+                if ( tts[ n ] != ternary_majority( tts[ u ], tts[ x ] & tts[ y ], tts[ n ] ) )
                 {
-                  // tts[ n ] != ternary_majority( tts[ u ], binary_and( tts[ x ], tts[ z ] ), tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ u ], binary_and( tts[ y ], tts[ z ] ), tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ x ], binary_and( tts[ u ], tts[ y ] ), tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ x ], binary_and( tts[ u ], tts[ z ] ), tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ y ], binary_and( tts[ u ], tts[ x ] ), tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ y ], binary_and( tts[ u ], tts[ z ] ), tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ z ], binary_and( tts[ u ], tts[ x ] ), tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ z ], binary_and( tts[ u ], tts[ y ] ), tts[ n ] )
+                  // tts[ n ] != ternary_majority( tts[ u ], tts[ x ] & tts[ z ], tts[ n ] )
+                  // tts[ n ] != ternary_majority( tts[ u ], tts[ y ] & tts[ z ], tts[ n ] )
+                  // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ y ], tts[ n ] )
+                  // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ z ], tts[ n ] )
+                  // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ x ], tts[ n ] )
+                  // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ z ], tts[ n ] )
+                  // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ x ], tts[ n ] )
+                  // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ y ], tts[ n ] )
                   return true;
                 }
 
