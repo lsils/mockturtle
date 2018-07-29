@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -59,7 +60,7 @@ public: /* callbacks */
     return std::to_string( ntk.node_to_index( n ) );
   }
 
-  virtual std::string node_style( Ntk const& ntk, node<Ntk> const& n ) const
+  virtual std::string node_shape( Ntk const& ntk, node<Ntk> const& n ) const
   {
     if ( ntk.is_constant( n ) )
     {
@@ -75,19 +76,117 @@ public: /* callbacks */
     }
   }
 
-  virtual std::string signal_style( Ntk const& ntk, signal<Ntk> const& f ) const
+  virtual std::string po_shape( Ntk const& ntk, uint32_t i ) const
   {
-    if ( ntk.is_complemented ( f ) )
-    {
-      return "dashed";
-    }
-    else
-    {
-      return "solid";
-    }
+    (void)ntk;
+    (void)i;
+    return "invtriangle";
   }
 
-public: /* parameters */
+  virtual std::string node_fillcolor( Ntk const& ntk, node<Ntk> const& n ) const
+  {
+    return ( ntk.is_constant( n ) || ntk.is_pi( n ) ) ? "snow2" : "white";
+  }
+
+  virtual std::string po_fillcolor( Ntk const& ntk, uint32_t i ) const
+  {
+    (void)ntk;
+    (void)i;
+    return "snow2";
+  }
+
+  virtual bool draw_signal( Ntk const& ntk, node<Ntk> const& n, signal<Ntk> const& f ) const
+  {
+    (void)ntk;
+    (void)n;
+    (void)f;
+    return true;
+  }
+
+  virtual std::string signal_style( Ntk const& ntk, signal<Ntk> const& f ) const
+  {
+    return ntk.is_complemented( f ) ? "dashed" : "solid";
+  }
+};
+
+template<class Ntk>
+class gate_dot_drawer : public default_dot_drawer<Ntk>
+{
+public:
+  virtual std::string node_label( Ntk const& ntk, node<Ntk> const& n ) const override
+  {
+    if constexpr ( has_is_maj_v<Ntk> )
+    {
+      if ( ntk.is_maj( n ) )
+      {
+        std::string label{"MAJ"};
+        ntk.foreach_fanin( n, [&]( auto const& f ) {
+          if ( ntk.is_constant( ntk.get_node( f ) ) )
+          {
+            const auto v = ntk.constant_value( ntk.get_node( f ) ) != ntk.is_complemented( f );
+            label = v ? "OR" : "AND";
+            return false;
+          }
+          return true;
+        } );
+        return label;
+      }
+    }
+
+    if constexpr ( has_is_xor3_v<Ntk> )
+    {
+      if ( ntk.is_xor3( n ) )
+      {
+        return "XOR";
+      }
+    }
+
+    return default_dot_drawer<Ntk>::node_label( ntk, n );
+  }
+
+  virtual std::string node_fillcolor( Ntk const& ntk, node<Ntk> const& n ) const
+  {
+    if constexpr ( has_is_maj_v<Ntk> )
+    {
+      if ( ntk.is_maj( n ) )
+      {
+        std::string color{"lightsalmon"};
+        ntk.foreach_fanin( n, [&]( auto const& f ) {
+          if ( ntk.is_constant( ntk.get_node( f ) ) )
+          {
+            const auto v = ntk.constant_value( ntk.get_node( f ) ) != ntk.is_complemented( f );
+            color = v ? "palegreen2" : "lightcoral";
+            return false;
+          }
+          return true;
+        } );
+        return color;
+      }
+    }
+
+    if constexpr ( has_is_xor3_v<Ntk> )
+    {
+      if ( ntk.is_xor3( n ) )
+      {
+        return "lightskyblue";
+      }
+    }
+
+    return default_dot_drawer<Ntk>::node_fillcolor( ntk, n );
+  }
+
+  virtual bool draw_signal( Ntk const& ntk, node<Ntk> const& n, signal<Ntk> const& f ) const override
+  {
+    if constexpr ( has_is_maj_v<Ntk> )
+    {
+      if ( ntk.is_maj( n ) )
+      {
+        return !ntk.is_constant( ntk.get_node( f ) );
+      }
+    }
+
+    return default_dot_drawer<Ntk>::draw_signal( ntk, n, f );
+  }
 };
 
 /*! \brief Writes network in DOT format into output stream
@@ -120,14 +219,21 @@ void write_dot( Ntk const& ntk, std::ostream& os, Drawer const& drawer = {} )
   std::vector<std::vector<uint32_t>> level_to_node_indexes( depth_ntk.depth() + 1 );
 
   ntk.foreach_node( [&]( auto const& n ) {
-    nodes << fmt::format( "{} [label=\"{}\",shape={}]", ntk.node_to_index( n ), drawer.node_label( ntk, n ), drawer.node_style( ntk, n ) );
+    nodes << fmt::format( "{} [label=\"{}\",shape={},style=filled,fillcolor={}]\n",
+                          ntk.node_to_index( n ),
+                          drawer.node_label( ntk, n ),
+                          drawer.node_shape( ntk, n ),
+                          drawer.node_fillcolor( ntk, n ) );
     if ( !ntk.is_constant( n ) && !ntk.is_pi( n ) )
     {
       ntk.foreach_fanin( n, [&]( auto const& f ) {
+        if ( !drawer.draw_signal( ntk, n, f ) )
+          return true;
         edges << fmt::format( "{} -> {} [style={}]\n",
                               ntk.node_to_index( ntk.get_node( f ) ),
                               ntk.node_to_index( n ),
                               drawer.signal_style( ntk, f ) );
+        return true;
       } );
     }
 
@@ -143,7 +249,7 @@ void write_dot( Ntk const& ntk, std::ostream& os, Drawer const& drawer = {} )
 
   levels << "{rank = same; ";
   ntk.foreach_po( [&]( auto const& f, auto i ) {
-    nodes << fmt::format( "po{} [shape=invtriangle]\n", i );
+    nodes << fmt::format( "po{} [shape={},style=filled,fillcolor={}]\n", i, drawer.po_shape( ntk, i ), drawer.po_fillcolor( ntk, i ) );
     edges << fmt::format( "{} -> po{} [style={}]\n",
                           ntk.node_to_index( ntk.get_node( f ) ),
                           i,
