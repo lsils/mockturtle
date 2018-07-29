@@ -88,12 +88,18 @@ public:
   template<typename Fn>
   void foreach_fanout( node const& n, Fn&& fn ) const
   {
+    assert( n < this->size() );
     detail::foreach_element( _fanout[n].begin(), _fanout[n].end(), fn );
   }
 
   void update()
   {
     compute_fanout();
+  }
+
+  void resize()
+  {
+    _fanout.resize();
   }
 
   std::vector<node> fanout( node const& n ) const
@@ -109,6 +115,26 @@ public:
   void add_node( node const& n, node const& p )
   {
     _fanout[ n ].push_back( p );
+  }
+
+  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
+  {
+    Ntk::substitute_node_of_parents( parents, old_node, new_signal );
+
+    std::vector<node> old_node_fanout = _fanout[ old_node ];
+    std::sort( old_node_fanout.begin(), old_node_fanout.end() );
+
+    std::vector<node> parents_copy( parents );
+    std::sort( parents_copy.begin(), parents_copy.end() );
+
+    _fanout[ old_node ] = {};
+
+    std::vector<node> intersection;
+    std::set_intersection( parents_copy.begin(), parents_copy.end(), old_node_fanout.begin(), old_node_fanout.end(),
+                           std::back_inserter( intersection ) );
+
+    resize();
+    set_fanout( this->get_node( new_signal ), intersection );
   }
 
 private:

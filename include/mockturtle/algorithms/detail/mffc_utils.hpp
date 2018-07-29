@@ -39,10 +39,7 @@
 
 #include "../../traits.hpp"
 
-namespace mockturtle
-{
-
-namespace detail
+namespace mockturtle::detail
 {
 
 template<typename Ntk, typename TermCond>
@@ -115,7 +112,5 @@ uint32_t mffc_size( Ntk const& ntk, node<Ntk> const& n )
   return v1;
 }
 
-} /* detail */
-
-} /* namespace mockturtle */
+} /* namespace mockturtle::detail */
 

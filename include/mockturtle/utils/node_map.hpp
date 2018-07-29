@@ -158,7 +158,7 @@ public:
    *
    * \param init_value Initialization value after resize
    */
-  void resize(  T const& init_value = {} )
+  void resize( T const& init_value = {} )
   {
     if ( ntk.size() > data.size() )
     {
