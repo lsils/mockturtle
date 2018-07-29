@@ -355,6 +355,41 @@ public:
   {
     return _storage->nodes[n].data[0].h1;
   }
+
+  bool is_and( node const& n ) const
+  {
+    return n > 0 && !is_pi( n );
+  }
+
+  bool is_or( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_xor( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_maj( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_ite( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_xor3( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
 #pragma endregion
 
 #pragma region Functional properties
