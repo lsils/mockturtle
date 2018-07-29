@@ -84,6 +84,8 @@ public:
 
     signals["0"] = _ntk.get_constant( false );
     signals["1"] = _ntk.get_constant( true );
+    signals["1'b0"] = _ntk.get_constant( false );
+    signals["1'b1"] = _ntk.get_constant( true );
   }
 
   ~verilog_reader()
