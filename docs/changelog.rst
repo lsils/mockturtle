@@ -46,7 +46,7 @@ v0.1 (not yet released)
     - Carry ripple multiplier (`carry_ripple_multiplier`) `#45 <https://github.com/lsils/mockturtle/pull/45>`_
     - Modular adder (`modular_adder_inplace`) `#43 <https://github.com/lsils/mockturtle/pull/43>`_
     - Modular subtractor (`modular_subtractor_inplace`) `#43 <https://github.com/lsils/mockturtle/pull/43>`_
-    - Modular multiplication (`montgomery_multiplication_inplace`) `#48 <https://github.com/lsils/mockturtle/pull/48>`_
+    - Modular multiplication (`modular_multiplication_inplace`) `#48 <https://github.com/lsils/mockturtle/pull/48>`_
     - 2k-to-k multiplexer (`mux_inplace`) `#43 <https://github.com/lsils/mockturtle/pull/43>`_
     - Zero padding (`zero_extend`) `#48 <https://github.com/lsils/mockturtle/pull/48>`_
 * Utility data structures: `truth_table_cache`, `cut`, `cut_set`, `node_map`, `progress_bar`, `stopwatch`

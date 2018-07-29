@@ -262,7 +262,7 @@ TEST_CASE( "check Montgomery encoding", "[modular_arithmetic]" )
   CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 10u ) ) ) == 1 );
 }
 
-TEST_CASE( "check Montgomery multiplication", "[modular_arithmetic]" )
+TEST_CASE( "check modular multiplication", "[modular_arithmetic]" )
 {
   aig_network ntk;
 
@@ -270,7 +270,7 @@ TEST_CASE( "check Montgomery multiplication", "[modular_arithmetic]" )
   std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
   std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
 
-  montgomery_multiplication_inplace( ntk, a, b, 37 );
+  modular_multiplication_inplace( ntk, a, b, 37 );
 
   std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
 
