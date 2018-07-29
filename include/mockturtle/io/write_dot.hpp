@@ -115,6 +115,30 @@ class gate_dot_drawer : public default_dot_drawer<Ntk>
 public:
   virtual std::string node_label( Ntk const& ntk, node<Ntk> const& n ) const override
   {
+    if constexpr ( has_is_and_v<Ntk> )
+    {
+      if ( ntk.is_and( n ) )
+      {
+        return "AND";
+      }
+    }
+
+    if constexpr ( has_is_or_v<Ntk> )
+    {
+      if ( ntk.is_or( n ) )
+      {
+        return "OR";
+      }
+    }
+
+    if constexpr ( has_is_xor_v<Ntk> )
+    {
+      if ( ntk.is_xor( n ) )
+      {
+        return "XOR";
+      }
+    }
+
     if constexpr ( has_is_maj_v<Ntk> )
     {
       if ( ntk.is_maj( n ) )
@@ -146,6 +170,30 @@ public:
 
   virtual std::string node_fillcolor( Ntk const& ntk, node<Ntk> const& n ) const
   {
+    if constexpr ( has_is_and_v<Ntk> )
+    {
+      if ( ntk.is_and( n ) )
+      {
+        return "lightcoral";
+      }
+    }
+
+    if constexpr ( has_is_or_v<Ntk> )
+    {
+      if ( ntk.is_or( n ) )
+      {
+        return "palegreen2";
+      }
+    }
+
+    if constexpr ( has_is_xor_v<Ntk> )
+    {
+      if ( ntk.is_xor( n ) )
+      {
+        return "lightskyblue";
+      }
+    }
+
     if constexpr ( has_is_maj_v<Ntk> )
     {
       if ( ntk.is_maj( n ) )
