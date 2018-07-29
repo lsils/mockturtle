@@ -117,7 +117,7 @@ Structural properties
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: size, num_pis, num_pos, num_gates, fanin_size, fanout_size, depth, level, is_maj, is_ite, is_xor3
+   :members: size, num_pis, num_pos, num_gates, fanin_size, fanout_size, depth, level, is_and, is_or, is_xor, is_maj, is_ite, is_xor3
    :no-link:
 
 Functional properties

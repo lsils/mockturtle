@@ -295,10 +295,19 @@ public:
   /*! \brief Returns the level of a node. */
   uint32_t level( node const& n ) const;
 
-  /*! \brief Retuns true if node is a majority-of-3 gate. */
+  /*! \brief Returns true if node is an AND gate. */
+  bool is_and( node const& n ) const;
+
+  /*! \brief Returns true if node is an OR gate. */
+  bool is_or( node const& n ) const;
+
+  /*! \brief Returns true if node is an XOR gate. */
+  bool is_xor( node const& n ) const;
+
+  /*! \brief Returns true if node is a majority-of-3 gate. */
   bool is_maj( node const& n ) const;
 
-  /*! \brief Retuns true if node is a if-then-else gate. */
+  /*! \brief Returns true if node is a if-then-else gate. */
   bool is_ite( node const& n ) const;
 
   /*! \brief Returns true if node is a 3-input XOR gate. */
