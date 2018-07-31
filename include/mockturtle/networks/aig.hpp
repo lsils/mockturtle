@@ -173,10 +173,33 @@ public:
     auto& node = _storage->nodes.emplace_back();
     node.children[0].data = node.children[1].data = ~static_cast<uint64_t>( 0 );
     _storage->inputs.emplace_back( index );
+    ++_num_pis;
+    return {index, 0};
+  }
+
+  signal create_lo( std::string const& name = {} )
+  {
+    (void)name;
+
+    const auto index = _storage->nodes.size();
+    auto& node = _storage->nodes.emplace_back();
+    node.children[0].data = node.children[1].data = ~static_cast<uint64_t>( 0 );
+    _storage->inputs.emplace_back( index );
     return {index, 0};
   }
 
   void create_po( signal const& f, std::string const& name = {} )
+  {
+    (void)name;
+
+    /* increase ref-count to children */
+    _storage->nodes[f.index].data[0].h1++;
+
+    _storage->outputs.emplace_back( f.index, f.complement );
+    ++_num_pos;
+  }
+
+  void create_li( signal const& f, std::string const& name = {} )
   {
     (void)name;
 
@@ -189,6 +212,11 @@ public:
   bool is_constant( node const& n ) const
   {
     return n == 0;
+  }
+
+  bool is_combinational() const
+  {
+    return ( static_cast<uint32_t>( _storage->inputs.size() ) -  _num_pis ) == 0;
   }
 
   bool is_pi( node const& n ) const
@@ -329,14 +357,34 @@ public:
     return static_cast<uint32_t>( _storage->nodes.size() );
   }
 
-  auto num_pis() const
+  auto num_cis() const
   {
     return static_cast<uint32_t>( _storage->inputs.size() );
   }
 
-  auto num_pos() const
+  auto num_cos() const
   {
     return static_cast<uint32_t>( _storage->outputs.size() );
+  }
+
+  auto num_pis() const
+  {
+    return _num_pis;
+  }
+
+  auto num_pos() const
+  {
+    return _num_pos;
+  }
+
+  auto num_lis() const
+  {
+    return static_cast<uint32_t>( _storage->inputs.size() - _num_pis );
+  }
+
+  auto num_los() const
+  {
+    return static_cast<uint32_t>( _storage->outputs.size() - _num_pos );
   }
 
   auto num_gates() const
@@ -404,15 +452,39 @@ public:
   }
 
   template<typename Fn>
-  void foreach_pi( Fn&& fn ) const
+  void foreach_ci( Fn&& fn ) const
   {
     detail::foreach_element( _storage->inputs.begin(), _storage->inputs.end(), fn );
   }
 
   template<typename Fn>
-  void foreach_po( Fn&& fn ) const
+  void foreach_co( Fn&& fn ) const
   {
     detail::foreach_element( _storage->outputs.begin(), _storage->outputs.end(), fn );
+  }
+
+  template<typename Fn>
+  void foreach_pi( Fn&& fn ) const
+  {
+    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.begin() + _num_pis, fn );
+  }
+
+  template<typename Fn>
+  void foreach_po( Fn&& fn ) const
+  {
+    detail::foreach_element( _storage->outputs.begin(), _storage->outputs.begin() + _num_pos, fn );
+  }
+
+  template<typename Fn>
+  void foreach_li( Fn&& fn ) const
+  {
+    detail::foreach_element( _storage->outputs.begin() + _num_pos, _storage->outputs.end(), fn );
+  }
+
+  template<typename Fn>
+  void foreach_lo( Fn&& fn ) const
+  {
+    detail::foreach_element( _storage->inputs.begin() + _num_pis, _storage->inputs.end(), fn );
   }
 
   template<typename Fn>
@@ -549,6 +621,10 @@ public:
 
 public:
   std::shared_ptr<aig_storage> _storage;
+
+protected:
+  uint32_t _num_pis = 0u;
+  uint32_t _num_pos = 0u;
 };
 
 } // namespace mockturtle

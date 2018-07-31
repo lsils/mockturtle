@@ -33,7 +33,7 @@
 #pragma once
 
 #include <lorina/aiger.hpp>
-
+#include "../networks/aig.hpp"
 #include "../traits.hpp"
 
 namespace mockturtle
@@ -135,6 +135,103 @@ private:
 
   mutable std::vector<unsigned> outputs;
   mutable std::vector<signal<Ntk>> signals;
+};
+
+template<>
+class aiger_reader<aig_network> : public lorina::aiger_reader
+{
+public:
+  explicit aiger_reader( aig_network& ntk ) : _ntk( ntk )
+  {
+    static_assert( is_network_type_v<aig_network>, "Ntk is not a network type" );
+    static_assert( has_create_pi_v<aig_network>, "Ntk does not implement the create_pi function" );
+    static_assert( has_create_po_v<aig_network>, "Ntk does not implement the create_po function" );
+    static_assert( has_get_constant_v<aig_network>, "Ntk does not implement the get_constant function" );
+    static_assert( has_create_not_v<aig_network>, "Ntk does not implement the create_not function" );
+    static_assert( has_create_and_v<aig_network>, "Ntk does not implement the create_and function" );
+  }
+
+  ~aiger_reader()
+  {
+    for ( auto latch : latches )
+    {
+      const auto lit = latch.first;
+      auto signal = signals[lit >> 1];
+      if ( lit & 1 )
+      {
+        signal = _ntk.create_not( signal );
+      }
+      _ntk.create_li( signal );
+    }
+
+    for ( auto lit : outputs )
+    {
+      auto signal = signals[lit >> 1];
+      if ( lit & 1 )
+      {
+        signal = _ntk.create_not( signal );
+      }
+      _ntk.create_po( signal );
+    }
+  }
+
+  void on_header( std::size_t, std::size_t num_inputs, std::size_t num_latches, std::size_t, std::size_t ) const override
+  {
+    /* constant */
+    signals.push_back( _ntk.get_constant( false ) );
+
+    /* create primary inputs (pi) */
+    for ( auto i = 0u; i < num_inputs; ++i )
+    {
+      signals.push_back( _ntk.create_pi() );
+    }
+
+    /* create latch outputs (lo) */
+    for ( auto i = 0u; i < num_latches; ++i )
+    {
+      signals.push_back( _ntk.create_lo() );
+    }
+  }
+
+  void on_and( unsigned index, unsigned left_lit, unsigned right_lit ) const override
+  {
+    (void)index;
+    assert( signals.size() == index );
+
+    auto left = signals[left_lit >> 1];
+    if ( left_lit & 1 )
+    {
+      left = _ntk.create_not( left );
+    }
+
+    auto right = signals[right_lit >> 1];
+    if ( right_lit & 1 )
+    {
+      right = _ntk.create_not( right );
+    }
+
+    signals.push_back( _ntk.create_and( left, right ) );
+  }
+
+  void on_latch( unsigned index, unsigned next, latch_init_value reset ) const override
+  {
+    (void)index;
+    latches.push_back( {next,reset} );
+  }
+
+  void on_output( unsigned index, unsigned lit ) const override
+  {
+    (void)index;
+    assert( index == outputs.size() );
+    outputs.push_back( lit );
+  }
+
+private:
+  aig_network& _ntk;
+
+  mutable std::vector<unsigned> outputs;
+  mutable std::vector<signal<aig_network>> signals;
+  mutable std::vector<std::pair<unsigned,latch_init_value>> latches;
 };
 
 } /* namespace mockturtle */

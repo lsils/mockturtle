@@ -24,8 +24,9 @@ TEST_CASE( "read an ASCII Aiger file into an AIG network", "[aiger_reader]" )
   "12 9 11\n"};
 
   std::istringstream in( file );
-  lorina::read_ascii_aiger( in, aiger_reader( aig ) );
+  const auto result = lorina::read_ascii_aiger( in, aiger_reader( aig ) );
 
+  CHECK( result == lorina::return_code::success );
   CHECK( aig.size() == 7 );
   CHECK( aig.num_pis() == 2 );
   CHECK( aig.num_pos() == 1 );
@@ -35,4 +36,33 @@ TEST_CASE( "read an ASCII Aiger file into an AIG network", "[aiger_reader]" )
     CHECK( aig.is_complemented( f ) );
     return false;
   } );
+}
+
+TEST_CASE( "read a sequential ASCII Aiger file into an AIG network", "[aiger_reader]" )
+{
+  aig_network aig;
+
+  std::string file{"aag 7 2 1 2 4\n"
+  "2\n"
+  "4\n"
+  "6 8\n"
+  "6\n"
+  "7\n"
+  "8 2 6\n"
+  "10 3 7\n"
+  "12 9 11\n"
+  "14 4 12\n"};
+
+  lorina::diagnostic_engine diag;
+  std::istringstream in( file );
+  const auto result = lorina::read_ascii_aiger( in, aiger_reader( aig ), &diag );
+  CHECK( result == lorina::return_code::success );
+  CHECK( aig.size() == 8 );
+  CHECK( aig.num_cis() == 3 );
+  CHECK( aig.num_cos() == 3 );
+  CHECK( aig.num_pis() == 2 );
+  CHECK( aig.num_pos() == 2 );
+  CHECK( aig.num_lis() == 1 );
+  CHECK( aig.num_los() == 1 );
+  CHECK( aig.num_gates() == 4 );
 }
