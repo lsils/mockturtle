@@ -128,18 +128,17 @@ public:
     init_nodes();
     //print_state();
 
-    set_mapping_refs();
+    set_mapping_refs<false>();
     //print_state();
 
     while ( iteration < ps.rounds )
     {
-      compute_mapping();
+      compute_mapping<false>();
     }
 
-    ela = true;
     while ( iteration < ps.rounds + ps.rounds_ela )
     {
-      compute_mapping();
+      compute_mapping<true>();
     }
 
     derive_mapping();
@@ -171,22 +170,22 @@ private:
     } );
   }
 
+  template<bool ELA>
   void compute_mapping()
   {
     for ( auto const& n : top_order )
     {
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
         continue;
-      compute_best_cut( ntk.node_to_index( n ) );
+      compute_best_cut<ELA>( ntk.node_to_index( n ) );
     }
-    set_mapping_refs();
+    set_mapping_refs<ELA>();
     //print_state();
   }
 
+  template<bool ELA>
   void set_mapping_refs()
   {
-    //std::cout << "iteration " << iteration << "\n";
-
     const auto coef = 1.0f / ( 1.0f + ( iteration + 1 ) * ( iteration + 1 ) );
 
     /* compute current delay and update mapping refs */
@@ -195,7 +194,7 @@ private:
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       delay = std::max( delay, delays[index] );
 
-      if ( !ela )
+      if constexpr ( !ELA )
       {
         map_refs[index]++;
       }
@@ -213,7 +212,7 @@ private:
       if ( map_refs[index] == 0 )
         continue;
 
-      if ( !ela )
+      if constexpr ( !ELA )
       {
         for ( auto leaf : cuts.cuts( index )[0] )
         {
@@ -329,11 +328,11 @@ private:
     return count;
   }
 
+  template<bool ELA>
   void compute_best_cut( uint32_t index )
   {
     constexpr auto mf_eps{0.005f};
 
-    bool mapped{map_refs[index] > 0};
     float flow;
     uint32_t time{0};
     int32_t best_cut{-1};
@@ -341,9 +340,12 @@ private:
     uint32_t best_time{std::numeric_limits<uint32_t>::max()};
     int32_t cut_index{-1};
 
-    if ( ela && mapped )
+    if constexpr ( ELA )
     {
-      cut_deref( cuts.cuts( index )[0] );
+      if ( map_refs[index] > 0 )
+      {
+        cut_deref( cuts.cuts( index )[0] );
+      }
     }
 
     for ( auto* cut : cuts.cuts( index ) )
@@ -352,7 +354,7 @@ private:
       if ( cut->size() == 1 )
         continue;
 
-      if ( ela )
+      if constexpr ( ELA )
       {
         flow = static_cast<float>( cut_area_estimation( *cut ) );
       }
@@ -369,15 +371,18 @@ private:
       }
     }
 
-    if ( ela && mapped )
+    if constexpr ( ELA )
     {
-      cut_ref( cuts.cuts( index )[best_cut] );
+      if ( map_refs[index] > 0 )
+      {
+        cut_ref( cuts.cuts( index )[best_cut] );
+      }
     }
     else
     {
       map_refs[index] = 0;
     }
-    if ( ela )
+    if constexpr ( ELA )
     {
       best_time = cut_flow( cuts.cuts( index )[best_cut] ).second;
     }
@@ -435,7 +440,7 @@ private:
   uint32_t iteration{0}; /* current mapping iteration */
   uint32_t delay{0};     /* current delay of the mapping */
   uint32_t area{0};      /* current area of the mapping */
-  bool ela{false};       /* compute exact area */
+  //bool ela{false};       /* compute exact area */
 
   std::vector<node<Ntk>> top_order;
   std::vector<float> flow_refs;
