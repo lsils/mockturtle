@@ -246,13 +246,19 @@ private:
     return {flow + cut_area( cut ), time + 1u};
   }
 
+  /* reference cut:
+   *   adds cut to current mapping and recursively adds best cuts of leaf
+   *   nodes, if they are not part of the current mapping.
+   */
   uint32_t cut_ref( cut_t const& cut )
   {
     uint32_t count = cut_area( cut );
     for ( auto leaf : cut )
     {
-      // TODO better performance
-      if ( map_refs[leaf]++ == 0 && !ntk.is_constant( ntk.index_to_node( leaf ) ) && !ntk.is_pi( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_constant( ntk.index_to_node( leaf ) ) || ntk.is_pi( ntk.index_to_node( leaf ) ) )
+        continue;
+
+      if ( map_refs[leaf]++ == 0 )
       {
         count += cut_ref( cuts.cuts( leaf )[0] );
       }
@@ -260,21 +266,34 @@ private:
     return count;
   }
 
+  /* dereference cut:
+   *   removes cut from current mapping and recursively removes best cuts of
+   *   leaf nodes, if they are part of the current mapping.
+   *   (this is the inverse operation to cut_ref)
+   */
   uint32_t cut_deref( cut_t const& cut )
   {
     uint32_t count = cut_area( cut );
     for ( auto leaf : cut )
     {
-      // TODO better performance
-      if ( --map_refs[leaf] == 0 && !ntk.is_constant( ntk.index_to_node( leaf ) ) && !ntk.is_pi( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_constant( ntk.index_to_node( leaf ) ) || ntk.is_pi( ntk.index_to_node( leaf ) ) )
+        continue;
+
+      if ( --map_refs[leaf] == 0 )
       {
-        count += cut_deref( cuts.cuts( leaf )[0] );
+        count += cut_deref( cuts.cuts( leaf ).best() );
       }
     }
     return count;
   }
 
-  uint32_t cut_ref2( cut_t const& cut, uint32_t limit )
+  /* reference cut (special version):
+   *   this special version of cut_ref does two additional things:
+   *   1. it stops recursing if it has found `limit` cuts
+   *   2. it remembers all cuts for which the reference count increases in the
+   *      vector `tmp_area`.
+   */
+  uint32_t cut_ref_limit_save( cut_t const& cut, uint32_t limit )
   {
     uint32_t count = cut_area( cut );
     if ( limit == 0 )
@@ -288,16 +307,21 @@ private:
       tmp_area.push_back( leaf );
       if ( map_refs[leaf]++ == 0 )
       {
-        count += cut_ref2( cuts.cuts( leaf )[0], limit - 1 );
+        count += cut_ref_limit_save( cuts.cuts( leaf ).best(), limit - 1 );
       }
     }
     return count;
   }
 
-  uint32_t cut_area_derefed2( cut_t const& cut )
+  /* estimates the cost of adding this cut to the mapping:
+   *   This algorithm references cuts recursively to estimate how many cuts
+   *   would be needed to add to the mapping if `cut` were to be added.  It
+   *   temporarily modifies the reference counters but reverts them eventually.
+   */
+  uint32_t cut_area_estimation( cut_t const& cut )
   {
     tmp_area.clear();
-    const auto count = cut_ref2( cut, 8 );
+    const auto count = cut_ref_limit_save( cut, 8 );
     for ( auto const& n : tmp_area )
     {
       map_refs[n]--;
@@ -330,7 +354,7 @@ private:
 
       if ( ela )
       {
-        flow = static_cast<float>( cut_area_derefed2( *cut ) );
+        flow = static_cast<float>( cut_area_estimation( *cut ) );
       }
       else
       {
@@ -344,8 +368,6 @@ private:
         best_time = time;
       }
     }
-
-    //std::cout << "Best cut for " << index << " = " << best_cut << std::endl;
 
     if ( ela && mapped )
     {
@@ -470,7 +492,7 @@ private:
    \endverbatim
  */
 template<class Ntk, bool StoreFunction = false, typename CutData = cut_enumeration_mf_cut>
-void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {}, lut_mapping_stats *pst = nullptr )
+void lut_mapping( Ntk& ntk, lut_mapping_params const& ps = {}, lut_mapping_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
