@@ -25,6 +25,8 @@ namespace percy
             std::vector<std::vector<int>> svar_map;
             std::vector<int> nr_svar_map;
 
+            const int NR_SIM_TTS = 32;
+            std::vector<kitty::dynamic_truth_table> sim_tts{ NR_SIM_TTS };
 
         public:
             knuth_fence_encoder(solver_wrapper& solver)
@@ -832,6 +834,13 @@ namespace percy
                 }
 
                 return solver->add_clause(pabc::Vec_IntArray(vLits), pabc::Vec_IntArray(vLits) + ctr);
+            }
+
+            kitty::dynamic_truth_table& simulate(const spec&)
+            {
+                // TODO: implement
+                assert(false);
+                return sim_tts[0];
             }
     };
 }
