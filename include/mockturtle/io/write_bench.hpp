@@ -136,7 +136,7 @@ void write_bench( Ntk const& ntk, std::ostream& os )
   } );
 
   os << std::flush;
-} // namespace mockturtle
+}
 
 /*! \brief Writes network in BENCH format into a file
  *

@@ -34,14 +34,14 @@
 
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
-#include "simulation.hpp"
-#include "reconv_cut.hpp"
-#include "detail/mffc_utils.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
+#include "../views/depth_view.hpp"
 #include "../views/fanout_view.hpp"
 #include "../views/window_view.hpp"
-#include "../views/depth_view.hpp"
+#include "detail/mffc_utils.hpp"
+#include "reconv_cut.hpp"
+#include "simulation.hpp"
 
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
@@ -127,8 +127,8 @@ public:
   bool resubstitute_node( window& win, node const& n, signal const& s, bool zero_gain = false )
   {
     const auto& r = ntk.get_node( s );
-    int32_t gain = detail::recursive_deref( win, /* original node */n );
-    gain -= detail::recursive_ref( win, /* replace with */r );
+    int32_t gain = detail::recursive_deref( win, /* original node */ n );
+    gain -= detail::recursive_ref( win, /* replace with */ r );
     if ( gain > 0 || zero_gain )
     {
       ++_candidates;
@@ -143,20 +143,20 @@ public:
     }
     else
     {
-      detail::recursive_deref( win, /* replaced with */r );
-      detail::recursive_ref( win, /* original node */n );
+      detail::recursive_deref( win, /* replaced with */ r );
+      detail::recursive_ref( win, /* original node */ n );
 
       return false;
     }
   }
 
-  void resubstitute( window& win, node const& n, node_map<kitty::dynamic_truth_table,window> const& tts )
+  void resubstitute( window& win, node const& n, node_map<kitty::dynamic_truth_table, window> const& tts )
   {
     assert( ps.max_inserts >= 0u );
     switch ( ps.max_inserts )
     {
     case 0u:
-      zero_resubstitution( win, n , tts );
+      zero_resubstitution( win, n, tts );
       break;
     case 1u:
       one_resubstitution( win, n, tts );
@@ -167,293 +167,342 @@ public:
     }
   }
 
-  void zero_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table,window> const& tts )
+  void zero_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table, window> const& tts )
   {
     auto counter = 0u;
-    win.foreach_gate( [&]( auto const& x ){
-        if ( ++counter > ps.max_compare ) return false;
+    win.foreach_gate( [&]( auto const& x ) {
+      if ( ++counter > ps.max_compare )
+        return false;
 
-        if ( x == n || win.level( x ) >= win.level( n ) )
-        {
-          return true; /* next */
-        }
-
-        if ( tts[ n ] == tts[ x ] )
-        {
-          const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
-          if ( result ) return false; /* accept */
-        }
-        else if ( tts[ n ] == ~tts[ x ] )
-        {
-          const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
-          if ( result ) return false; /* accept */
-        }
-
+      if ( x == n || win.level( x ) >= win.level( n ) )
+      {
         return true; /* next */
-      });
+      }
+
+      if ( tts[n] == tts[x] )
+      {
+        const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
+        if ( result )
+          return false; /* accept */
+      }
+      else if ( tts[n] == ~tts[x] )
+      {
+        const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
+        if ( result )
+          return false; /* accept */
+      }
+
+      return true; /* next */
+    } );
   }
 
-  void one_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table,window> const& tts )
+  void one_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table, window> const& tts )
   {
     bool done = false;
     auto counter_x = 0u;
-    win.foreach_gate( [&]( auto const& x, auto i ){
-        if ( done ) return false;
-        if ( ++counter_x > ps.max_compare ) return false;
+    win.foreach_gate( [&]( auto const& x, auto i ) {
+      if ( done )
+        return false;
+      if ( ++counter_x > ps.max_compare )
+        return false;
 
-        if ( x == n || win.level( x ) >= win.level( n ) )
+      if ( x == n || win.level( x ) >= win.level( n ) )
+      {
+        return true; /* next */
+      }
+
+      if ( tts[n] == tts[x] )
+      {
+        const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
+        if ( result )
+          return false; /* accept */
+      }
+      else if ( tts[n] == ~tts[x] )
+      {
+        const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
+        if ( result )
+          return false; /* accept */
+      }
+
+      auto counter_y = 0u;
+      win.foreach_gate( [&]( auto const& y, auto j ) {
+        if ( done )
+          return false;
+        if ( ++counter_y > ps.max_compare )
+          return false;
+
+        if ( i >= j )
+          return true;
+        assert( j > i );
+
+        if ( y == n || win.level( y ) >= win.level( n ) )
         {
           return true; /* next */
         }
 
-        if ( tts[ n ] == tts[ x ] )
+        if ( tts[n] != ternary_majority( tts[x], tts[y], tts[n] ) ||
+             tts[x] != ternary_majority( tts[x], ~tts[y], tts[n] ) ||
+             tts[y] != ternary_majority( ~tts[x], tts[y], tts[n] ) )
         {
-          const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
-          if ( result ) return false; /* accept */
-        }
-        else if ( tts[ n ] == ~tts[ x ] )
-        {
-          const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
-          if ( result ) return false; /* accept */
+          return true;
         }
 
-        auto counter_y = 0u;
-        win.foreach_gate( [&]( auto const& y, auto j ){
-          if ( done ) return false;
-          if ( ++counter_y > ps.max_compare ) return false;
+        auto counter_z = 0u;
+        win.foreach_gate( [&]( auto const& z, auto k ) {
+          if ( done )
+            return false;
+          if ( ++counter_z > ps.max_compare )
+            return false;
 
-          if ( i >= j ) return true;
-          assert( j > i );
+          if ( j >= k )
+            return true;
+          assert( k > j );
+          assert( k > i );
 
-          if ( y == n || win.level( y ) >= win.level( n ) )
+          if ( z == n || win.level( z ) >= win.level( n ) )
           {
             return true; /* next */
           }
 
-          if ( tts[ n ] != ternary_majority(  tts[ x ],  tts[ y ], tts[ n ] ) ||
-               tts[ x ] != ternary_majority(  tts[ x ], ~tts[ y ], tts[ n ] ) ||
-               tts[ y ] != ternary_majority( ~tts[ x ],  tts[ y ], tts[ n ] ) )
+          std::set<node> fanin_nodes;
+          win.foreach_fanin( n, [&]( auto const& s ) { fanin_nodes.insert( win.get_node( s ) ); } );
+          if ( fanin_nodes == std::set<node>{x, y, z} )
           {
             return true;
           }
 
-          auto counter_z = 0u;
-          win.foreach_gate( [&]( auto const& z, auto k ){
-            if ( done ) return false;
-            if ( ++counter_z > ps.max_compare ) return false;
-
-            if ( j >= k ) return true;
-            assert( k > j );
-            assert( k > i );
-
-            if ( z == n || win.level( z ) >= win.level( n ) )
-            {
-              return true; /* next */
-            }
-
-            std::set<node> fanin_nodes;
-            win.foreach_fanin( n, [&]( auto const& s ) { fanin_nodes.insert( win.get_node( s ) ); });
-            if ( fanin_nodes == std::set<node>{x,y,z} )
-            {
-              return true;
-            }
-
-            if ( tts[ n ] == ternary_majority( tts[ x ], tts[ y ], tts[ z ] ) )
-            {
-              const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-              fanout_ntk.resize();
-              const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-              if ( result ) done = true; /* accept */
-            }
-            else if ( tts[ n ] == ternary_majority( ~tts[ x ], tts[ y ], tts[ z ] ) )
-            {
-              const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-              fanout_ntk.resize();
-              const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-              if ( result ) done = true; /* accept */
-            }
-
-            return true; /* next */
-          });
+          if ( tts[n] == ternary_majority( tts[x], tts[y], tts[z] ) )
+          {
+            const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
+            fanout_ntk.resize();
+            const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+            if ( result )
+              done = true; /* accept */
+          }
+          else if ( tts[n] == ternary_majority( ~tts[x], tts[y], tts[z] ) )
+          {
+            const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
+            fanout_ntk.resize();
+            const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+            if ( result )
+              done = true; /* accept */
+          }
 
           return true; /* next */
-        });
+        } );
 
         return true; /* next */
-      });
+      } );
+
+      return true; /* next */
+    } );
   }
 
-  void two_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table,window> const& tts )
+  void two_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table, window> const& tts )
   {
     bool done = false;
     auto counter_x = 0u;
-    win.foreach_gate( [&]( auto const& x, auto i ){
-        if ( done ) return false;
-        if ( ++counter_x > ps.max_compare ) return false;
+    win.foreach_gate( [&]( auto const& x, auto i ) {
+      if ( done )
+        return false;
+      if ( ++counter_x > ps.max_compare )
+        return false;
 
-        if ( x == n || win.level( x ) >= win.level( n ) )
+      if ( x == n || win.level( x ) >= win.level( n ) )
+      {
+        return true; /* next */
+      }
+
+      if ( tts[n] == tts[x] )
+      {
+        const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
+        if ( result )
+        {
+          done = true;
+          return false;
+        } /* accept */
+      }
+      else if ( tts[n] == ~tts[x] )
+      {
+        const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
+        if ( result )
+        {
+          done = true;
+          return false;
+        } /* accept */
+      }
+
+      auto counter_y = 0u;
+      win.foreach_gate( [&]( auto const& y, auto j ) {
+        if ( done )
+          return false;
+        if ( ++counter_y > ps.max_compare )
+          return false;
+
+        if ( i >= j )
+          return true;
+        assert( j > i );
+
+        if ( y == n || win.level( y ) >= win.level( n ) )
         {
           return true; /* next */
         }
 
-        if ( tts[ n ] == tts[ x ] )
+        if ( tts[n] != ternary_majority( tts[x], tts[y], tts[n] ) ||
+             tts[x] != ternary_majority( tts[x], ~tts[y], tts[n] ) ||
+             tts[y] != ternary_majority( ~tts[x], tts[y], tts[n] ) )
         {
-          const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
-          if ( result ) { done = true; return false; } /* accept */
-        }
-        else if ( tts[ n ] == ~tts[ x ] )
-        {
-          const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
-          if ( result ) { done = true; return false; } /* accept */
+          return true;
         }
 
-        auto counter_y = 0u;
-        win.foreach_gate( [&]( auto const& y, auto j ){
-          if ( done ) return false;
-          if ( ++counter_y > ps.max_compare ) return false;
+        auto counter_z = 0u;
+        win.foreach_gate( [&]( auto const& z, auto k ) {
+          if ( done )
+            return false;
+          if ( ++counter_z > ps.max_compare )
+            return false;
 
-          if ( i >= j ) return true;
-          assert( j > i );
+          if ( j >= k )
+            return true;
+          assert( k > j );
+          assert( k > i );
 
-          if ( y == n || win.level( y ) >= win.level( n ) )
+          if ( z == n || win.level( z ) >= win.level( n ) )
           {
             return true; /* next */
           }
 
-          if ( tts[ n ] != ternary_majority(  tts[ x ],  tts[ y ], tts[ n ] ) ||
-               tts[ x ] != ternary_majority(  tts[ x ], ~tts[ y ], tts[ n ] ) ||
-               tts[ y ] != ternary_majority( ~tts[ x ],  tts[ y ], tts[ n ] ) )
+          std::set<node> fanin_nodes;
+          win.foreach_fanin( n, [&]( auto const& s ) { fanin_nodes.insert( win.get_node( s ) ); } );
+          if ( fanin_nodes == std::set<node>{x, y, z} )
           {
             return true;
           }
 
-          auto counter_z = 0u;
-          win.foreach_gate( [&]( auto const& z, auto k ){
-            if ( done ) return false;
-            if ( ++counter_z > ps.max_compare ) return false;
+          if ( tts[n] == ternary_majority( tts[x], tts[y], tts[z] ) )
+          {
+            const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
+            fanout_ntk.resize();
+            const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+            if ( result )
+            {
+              done = true;
+              return true;
+            } /* accept */
+          }
+          else if ( tts[n] == ternary_majority( ~tts[x], tts[y], tts[z] ) )
+          {
+            const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
+            fanout_ntk.resize();
+            const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+            if ( result )
+            {
+              done = true;
+              return true;
+            } /* accept */
+          }
 
-            if ( j >= k ) return true;
-            assert( k > j );
-            assert( k > i );
+          auto counter_u = 0u;
+          win.foreach_gate( [&]( auto const& u, auto l ) {
+            if ( done )
+              return false;
+            if ( ++counter_u > ps.max_compare )
+              return false;
 
-            if ( z == n || win.level( z ) >= win.level( n ) )
+            if ( k >= l )
+              return true;
+            assert( l > k );
+            assert( l > j );
+            assert( l > i );
+
+            if ( u == n || win.level( u ) >= win.level( n ) )
             {
               return true; /* next */
             }
 
-            std::set<node> fanin_nodes;
-            win.foreach_fanin( n, [&]( auto const& s ) { fanin_nodes.insert( win.get_node( s ) ); });
-            if ( fanin_nodes == std::set<node>{x,y,z} )
+            if ( tts[n] != ternary_majority( tts[u], tts[x] & tts[y], tts[n] ) )
             {
+              // tts[ n ] != ternary_majority( tts[ u ], tts[ x ] & tts[ z ], tts[ n ] )
+              // tts[ n ] != ternary_majority( tts[ u ], tts[ y ] & tts[ z ], tts[ n ] )
+              // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ y ], tts[ n ] )
+              // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ z ], tts[ n ] )
+              // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ x ], tts[ n ] )
+              // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ z ], tts[ n ] )
+              // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ x ], tts[ n ] )
+              // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ y ], tts[ n ] )
               return true;
             }
 
-            if ( tts[ n ] == ternary_majority( tts[ x ], tts[ y ], tts[ z ] ) )
-            {
-              const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-              fanout_ntk.resize();
-              const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-              if ( result ) { done = true; return true; } /* accept */
-            }
-            else if ( tts[ n ] == ternary_majority( ~tts[ x ], tts[ y ], tts[ z ] ) )
-            {
-              const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-              fanout_ntk.resize();
-              const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-              if ( result ) { done = true; return true; } /* accept */
-            }
+            auto counter_v = 0u;
+            win.foreach_gate( [&]( auto const& v, auto m ) {
+              if ( done )
+                return false;
+              if ( ++counter_v > ps.max_compare )
+                return false;
 
-            auto counter_u = 0u;
-            win.foreach_gate( [&]( auto const& u, auto l ){
-                if ( done ) return false;
-                if ( ++counter_u > ps.max_compare ) return false;
+              if ( l >= m )
+                return true;
+              assert( m > l );
+              assert( m > k );
+              assert( m > j );
+              assert( m > i );
 
-                if ( k >= l ) return true;
-                assert( l > k );
-                assert( l > j );
-                assert( l > i );
-
-                if ( u == n || win.level( u ) >= win.level( n ) )
-                {
-                  return true; /* next */
-                }
-
-                if ( tts[ n ] != ternary_majority( tts[ u ], tts[ x ] & tts[ y ], tts[ n ] ) )
-                {
-                  // tts[ n ] != ternary_majority( tts[ u ], tts[ x ] & tts[ z ], tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ u ], tts[ y ] & tts[ z ], tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ y ], tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ z ], tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ x ], tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ z ], tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ x ], tts[ n ] )
-                  // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ y ], tts[ n ] )
-                  return true;
-                }
-
-                auto counter_v = 0u;
-                win.foreach_gate( [&]( auto const& v, auto m ){
-                    if ( done ) return false;
-                    if ( ++counter_v > ps.max_compare ) return false;
-
-                    if ( l >= m ) return true;
-                    assert( m > l );
-                    assert( m > k );
-                    assert( m > j );
-                    assert( m > i );
-
-                    if ( v == n || win.level( v ) >= win.level( n ) )
-                    {
-                      return true; /* next */
-                    }
-
-                    if ( tts[ n ] == ternary_majority( tts[ u ], tts[ v ], ternary_majority( tts[ x ], tts[ y ], tts[ z ] ) ) )
-                    {
-                      const auto new_signal = ntk.create_maj( win.make_signal( u ), win.make_signal( v ),
-                                                              ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                      fanout_ntk.resize();
-                      const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-                      if ( result ) done = true; /* accept */
-                    }
-                    else if ( tts[ n ] == ternary_majority( ~tts[ u ], tts[ v ], ternary_majority( tts[ x ], tts[ y ], tts[ z ] ) ) )
-                    {
-                      const auto new_signal = ntk.create_maj( !win.make_signal( u ), win.make_signal( v ),
-                                                              ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                      fanout_ntk.resize();
-                      const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-                      if ( result ) done = true; /* accept */
-                    }
-                    else if ( tts[ n ] == ternary_majority( tts[ u ], tts[ v ], ternary_majority( ~tts[ x ], tts[ y ], tts[ z ] ) ) )
-                    {
-                      const auto new_signal = ntk.create_maj( win.make_signal( u ), win.make_signal( v ),
-                                                              ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                      fanout_ntk.resize();
-                      const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-                      if ( result ) done = true; /* accept */
-                    }
-                    else if ( tts[ n ] == ternary_majority( ~tts[ u ], tts[ v ], ternary_majority( ~tts[ x ], tts[ y ], tts[ z ] ) ) )
-                    {
-                      const auto new_signal = ntk.create_maj( !win.make_signal( u ), win.make_signal( v ),
-                                                              ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                      fanout_ntk.resize();
-                      const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-                      if ( result ) done = true; /* accept */
-                    }
-
-                    return true; /* next */
-                  });
-
+              if ( v == n || win.level( v ) >= win.level( n ) )
+              {
                 return true; /* next */
-              });
+              }
+
+              if ( tts[n] == ternary_majority( tts[u], tts[v], ternary_majority( tts[x], tts[y], tts[z] ) ) )
+              {
+                const auto new_signal = ntk.create_maj( win.make_signal( u ), win.make_signal( v ),
+                                                        ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
+                fanout_ntk.resize();
+                const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+                if ( result )
+                  done = true; /* accept */
+              }
+              else if ( tts[n] == ternary_majority( ~tts[u], tts[v], ternary_majority( tts[x], tts[y], tts[z] ) ) )
+              {
+                const auto new_signal = ntk.create_maj( !win.make_signal( u ), win.make_signal( v ),
+                                                        ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
+                fanout_ntk.resize();
+                const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+                if ( result )
+                  done = true; /* accept */
+              }
+              else if ( tts[n] == ternary_majority( tts[u], tts[v], ternary_majority( ~tts[x], tts[y], tts[z] ) ) )
+              {
+                const auto new_signal = ntk.create_maj( win.make_signal( u ), win.make_signal( v ),
+                                                        ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
+                fanout_ntk.resize();
+                const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+                if ( result )
+                  done = true; /* accept */
+              }
+              else if ( tts[n] == ternary_majority( ~tts[u], tts[v], ternary_majority( ~tts[x], tts[y], tts[z] ) ) )
+              {
+                const auto new_signal = ntk.create_maj( !win.make_signal( u ), win.make_signal( v ),
+                                                        ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
+                fanout_ntk.resize();
+                const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+                if ( result )
+                  done = true; /* accept */
+              }
+
+              return true; /* next */
+            } );
 
             return true; /* next */
-          });
+          } );
 
           return true; /* next */
-        });
+        } );
 
         return true; /* next */
-      });
+      } );
+
+      return true; /* next */
+    } );
   }
 
   void run()
@@ -469,29 +518,31 @@ public:
       ntk.set_value( n, ntk.fanout_size( n ) );
     } );
 
-    ntk.foreach_gate( [&]( auto const& n, auto i ){
-      if ( i >= size ) return false;
+    ntk.foreach_gate( [&]( auto const& n, auto i ) {
+      if ( i >= size )
+        return false;
 
       pbar( i, i, _candidates, _estimated_gain );
 
       auto const mffc_size = detail::mffc_size( ntk, n );
       if ( mffc_size > 1 )
       {
-        reconv_cut_params params{ ps.max_pis };
-        auto const& leaves = reconv_cut( params )( ntk, { n } );
-        window_view<fanout_view<Ntk>> extended_cut( fanout_ntk, leaves, { n }, /* extend = */ps.extend );
-        if ( extended_cut.size() > ps.max_nodes ) return true;
+        reconv_cut_params params{ps.max_pis};
+        auto const& leaves = reconv_cut( params )( ntk, {n} );
+        window_view<fanout_view<Ntk>> extended_cut( fanout_ntk, leaves, {n}, /* extend = */ ps.extend );
+        if ( extended_cut.size() > ps.max_nodes )
+          return true;
         window win( extended_cut );
 
         default_simulator<kitty::dynamic_truth_table> sim( win.num_pis() );
         const auto tts = call_with_stopwatch( st.time_simulation,
-                                             [&]() { return simulate_nodes<kitty::dynamic_truth_table>( win, sim ); } );
+                                              [&]() { return simulate_nodes<kitty::dynamic_truth_table>( win, sim ); } );
 
         call_with_stopwatch( st.time_resubstitution, [&]() { resubstitute( win, n, tts ); } );
       }
 
       return true;
-    });
+    } );
   }
 
 private:
@@ -525,7 +576,7 @@ private:
  * \param pst Resubstitution statistics
  */
 template<class Ntk>
-void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats *pst = nullptr )
+void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );

@@ -262,7 +262,31 @@ TEST_CASE( "check Montgomery encoding", "[modular_arithmetic]" )
   CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 10u ) ) ) == 1 );
 }
 
-TEST_CASE( "check modular multiplication", "[modular_arithmetic]" )
+TEST_CASE( "check 8-bit modular multiplication", "[modular_arithmetic]" )
+{
+  aig_network ntk;
+
+  std::vector<aig_network::signal> a( 8 ), b( 8 );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
+
+  modular_multiplication_inplace( ntk, a, b, 13 );
+
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
+
+  std::default_random_engine gen( 655321 );
+  for ( auto i = 0; i < 1000; ++i )
+  {
+    auto a = std::uniform_int_distribution<uint32_t>( 0, 243 - 1 )( gen );
+    auto b = std::uniform_int_distribution<uint64_t>( 0, 243 - 1 )( gen );
+
+    CHECK( to_int( simulate<bool>( ntk, input_word_simulator( ( a << 8 ) + b ) ) ) % 243 == ( a * b ) % 243 );
+  }
+
+  write_bench( ntk, "/tmp/montgomery8_243.bench" );
+}
+
+TEST_CASE( "check 16-bit modular multiplication", "[modular_arithmetic]" )
 {
   aig_network ntk;
 
