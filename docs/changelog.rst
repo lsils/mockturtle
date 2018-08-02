@@ -16,7 +16,7 @@ v0.1 (not yet released)
     - LUT mapping (`lut_mapping`) `#7 <https://github.com/lsils/mockturtle/pull/7>`_
     - Akers synthesis (`akers_synthesis`) `#9 <https://github.com/lsils/mockturtle/pull/9>`_
     - Create LUT network from mapped network (`collapse_mapped_network`) `#13 <https://github.com/lsils/mockturtle/pull/13>`_
-    - MIG algebraic depth rewriting (`mig_algebraic_depth_rewriting`) `#16 <https://github.com/lsils/mockturtle/pull/16>`_
+    - MIG algebraic depth rewriting (`mig_algebraic_depth_rewriting`) `#16 <https://github.com/lsils/mockturtle/pull/16>`_ `#58 <https://github.com/lsils/mockturtle/pull/58>`_
     - Cleanup dangling nodes (`cleanup_dangling`) `#16 <https://github.com/lsils/mockturtle/pull/16>`_
     - Node resynthesis (`node_resynthesis`) `#17 <https://github.com/lsils/mockturtle/pull/17>`_
     - Reconvergency-driven cut computation (`reconv_cut`) `#24 <https://github.com/lsils/mockturtle/pull/24>`_
