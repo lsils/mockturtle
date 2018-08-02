@@ -59,7 +59,7 @@ public:
   using signal = typename Ntk::signal;
 
 public:
-  explicit window_view( Ntk const& ntk, const std::vector<node>& leaves, const std::vector<node>& pivots, bool auto_extend = true )
+  explicit window_view( Ntk const& ntk, std::vector<node> const& leaves, std::vector<node> const& pivots, bool auto_extend = true )
     : immutable_view<Ntk>( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
