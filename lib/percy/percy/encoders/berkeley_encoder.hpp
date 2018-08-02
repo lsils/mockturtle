@@ -52,7 +52,7 @@ namespace percy
             get_sel_var(const spec& spec, int i, int j, int k) 
             const
             {
-                assert(i < nr_sel_vars);
+                assert(i < spec.nr_steps);
                 assert(j < spec.get_nr_in() + i);
                 assert(k < spec.fanin);
 
@@ -108,12 +108,12 @@ namespace percy
                 return lex_offset + step_idx * (nr_op_vars_per_step - 1) + op_idx;
             }
 
-            /*******************************************************************
-                Ensures that each gate has spec.fanin operands.
-            *******************************************************************/
+            /// Ensures that each gate has spec.fanin operands AND that
+            /// fanins are ordered tuples.
             bool 
             create_op_clauses(const spec& spec)
             {
+                int pLits[2];
                 auto status = true;
 
                 if (spec.verbosity > 2) {
@@ -124,7 +124,8 @@ namespace percy
                 for (int i = 0; i < spec.nr_steps; i++) {
                     for (int k = 0; k < spec.fanin; k++) {
                         int ctr = 0;
-                        for (int j = 0; j < spec.get_nr_in() + i; j++) {
+                        const auto max_fanin_idx = spec.get_nr_in() + i - spec.fanin + k;
+                        for (int j = k; j <= max_fanin_idx; j++) {
                             const auto s_ij_k = get_sel_var(spec, i, j, k);
                             pabc::Vec_IntSetEntry(vLits, ctr++,
                                 pabc::Abc_Var2Lit(s_ij_k, 0));
@@ -133,6 +134,23 @@ namespace percy
                             pabc::Vec_IntArray(vLits),
                             pabc::Vec_IntArray(vLits) + ctr
                         );
+                    }
+                }
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    for (int k = 0; k < spec.fanin - 1; k++) {
+                        const auto max_fanin_idx = spec.get_nr_in() + i - spec.fanin + k;
+                        for (int j = k; j <= max_fanin_idx; j++) {
+                            const auto s_ij_k = get_sel_var(spec, i, j, k);
+                            pLits[0] = pabc::Abc_Var2Lit(s_ij_k, 1);
+                            for (int kp = k + 1; kp < spec.fanin; kp++) {
+                                for (int jp = 0; jp <= j; jp++) {
+                                    const auto s_ijp_kp = get_sel_var(spec, i, jp, kp);
+                                    pLits[1] = pabc::Abc_Var2Lit(s_ijp_kp, 1);
+                                    status &= solver->add_clause(pLits, pLits + 2);
+                                    assert(status);
+                                }
+                            }
+                        }
                     }
                 }
                 if (spec.verbosity > 2) {
@@ -210,7 +228,6 @@ namespace percy
                 for (int i = 0; i < spec.nr_steps; i++) {
                     const auto nr_svars_for_i = spec.fanin * (spec.get_nr_in() + i);
                     nr_sel_vars += nr_svars_for_i;
-                    //assert(nr_svars_for_i == binomial_coeff(i, spec.fanin));
                 }
                 sel_offset = 0;
                 ops_offset = nr_sel_vars;
@@ -781,47 +798,6 @@ namespace percy
 
                 return true;
             }
-
-            /*******************************************************************
-                Ensure that every step has exactly 2 inputs. This may not
-                happen e.g. when we synthesize with more than the minimum
-                number of steps. (Example: synthesizing n-input OR function,
-                with more than the minimum number of steps.)
-            void
-            create_cardinality_constraints(const spec& spec)
-            {
-                int pLits[2];
-
-                auto svar_offset = 0;
-                for (int i = 0; i < spec.nr_steps; i++) {
-                    const auto nr_svars_for_i = nr_svar_map[i];
-                    for (int j = 0; j < nr_svars_for_i - 1; j++) {
-                        for (int jp = j + 1; jp < nr_svars_for_i; jp++) {
-                            const auto svar1 = get_sel_var(svar_offset + j);
-                            const auto svar2 = get_sel_var(svar_offset + jp);
-
-                            pLits[0] = pabc::Abc_Var2Lit(svar1, 1);
-                            pLits[1] = pabc::Abc_Var2Lit(svar2, 1);
-
-                            auto status = solver->add_clause(pLits, pLits + 2);
-                            assert(status);
-                        }
-                    }
-                    svar_offset += nr_svars_for_i;
-                }
-                
-                for (int h = 0; h < spec.nr_nontriv; h++) {
-                    for (int i = 0; i < spec.nr_steps - 1; i++) {
-                        for (int ip = i + 1; ip < spec.nr_steps; ip++) {
-                            pLits[0] = pabc::Abc_Var2Lit(get_out_var(spec, h, i), 1);
-                            pLits[1] = pabc::Abc_Var2Lit(get_out_var(spec, h, ip), 1);
-                            auto status = solver->add_clause(pLits, pLits + 2);
-                            assert(status);
-                        }
-                    }
-                }
-            }
-            *******************************************************************/
 
             /// Extracts chain from encoded CNF solution.
             void 

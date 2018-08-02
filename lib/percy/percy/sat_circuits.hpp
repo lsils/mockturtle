@@ -9,15 +9,13 @@ namespace percy
     /// can be used to check if the binary sum of the variables is less than, equal to, or greater
     /// than C.
     /// This encoding is due to Andrey Mokhov.
-    bool
-    create_cardinality_circuit(
+    void create_cardinality_circuit(
         solver_wrapper * solver,
-        std::vector<int> const& sum_vars,
-        std::vector<int> const& res_vars,
+        const std::vector<int>& sum_vars,
+        const std::vector<int>& res_vars,
         const int C)
     {
         int lits[3];
-        bool status = true;
 
         // We have C + 2 result variables per addition step: (res[0], res[1], ..., res[C], res[C+1]).
         assert(res_vars.size() == ((C + 2) * (sum_vars.size() + 1)));
@@ -29,7 +27,7 @@ namespace percy
             } else {
                 lits[0] = pabc::Abc_Var2Lit(res_vars[i], 1);
             }
-            status &= solver->add_clause(lits, lits + 1);
+            (void)solver->add_clause(lits, lits + 1);
         }
 
         for (auto i = 0u; i < sum_vars.size(); i++) {
@@ -44,13 +42,13 @@ namespace percy
                     lits[0] = pabc::Abc_Var2Lit(x_k, 0);
                     lits[1] = pabc::Abc_Var2Lit(res_j, 1);
                     lits[2] = pabc::Abc_Var2Lit(res_jp, 0);
-                    status &= solver->add_clause(lits, lits + 3);
+                    (void)solver->add_clause(lits, lits + 3);
                     lits[0] = pabc::Abc_Var2Lit(x_k, 1);
                     lits[1] = pabc::Abc_Var2Lit(res_jp, 1);
-                    status &= solver->add_clause(lits, lits + 2);
+                    (void)solver->add_clause(lits, lits + 2);
                     lits[0] = pabc::Abc_Var2Lit(res_j, 0);
                     lits[1] = pabc::Abc_Var2Lit(res_jp, 1);
-                    status &= solver->add_clause(lits, lits + 2);
+                    (void)solver->add_clause(lits, lits + 2);
                 } else if (j == C + 1) {
                     // res'[C+2] = MUX(x[k], res[C+2], res[C+1] \/ res[C+1]) = 
                     // (~x[k] /\ res[C+2]) \/ (x[k] /\ res[C+1]) \/ (x[k] /\ res[C+2]) =
@@ -60,18 +58,18 @@ namespace percy
                     lits[0] = pabc::Abc_Var2Lit(res_jp, 1);
                     lits[1] = pabc::Abc_Var2Lit(res_j - 1, 0);
                     lits[2] = pabc::Abc_Var2Lit(res_j, 0);
-                    status &= solver->add_clause(lits, lits + 3);
+                    (void)solver->add_clause(lits, lits + 3);
                     lits[0] = pabc::Abc_Var2Lit(res_jp, 1);
                     lits[1] = pabc::Abc_Var2Lit(x_k, 0);
                     lits[2] = pabc::Abc_Var2Lit(res_j, 0);
-                    status &= solver->add_clause(lits, lits + 3);
+                    (void)solver->add_clause(lits, lits + 3);
                     lits[0] = pabc::Abc_Var2Lit(res_jp, 0);
                     lits[1] = pabc::Abc_Var2Lit(x_k, 1);
                     lits[2] = pabc::Abc_Var2Lit(res_j - 1, 1);
-                    status &= solver->add_clause(lits, lits + 3);
+                    (void)solver->add_clause(lits, lits + 3);
                     lits[0] = pabc::Abc_Var2Lit(res_jp, 0);
                     lits[1] = pabc::Abc_Var2Lit(res_j, 1);
-                    status &= solver->add_clause(lits, lits + 2);
+                    (void)solver->add_clause(lits, lits + 2);
                 } else {
                     // res'[i] = MUX(x[k], res[i], res[i-1]).
                     // Tseytin encoding:
@@ -79,23 +77,21 @@ namespace percy
                     lits[0] = pabc::Abc_Var2Lit(res_jp, 1);
                     lits[1] = pabc::Abc_Var2Lit(res_j, 0);
                     lits[2] = pabc::Abc_Var2Lit(x_k, 0);
-                    status &= solver->add_clause(lits, lits + 3);
+                    (void)solver->add_clause(lits, lits + 3);
                     lits[0] = pabc::Abc_Var2Lit(res_jp, 1);
                     lits[1] = pabc::Abc_Var2Lit(res_j - 1, 0);
                     lits[2] = pabc::Abc_Var2Lit(x_k, 1);
-                    status &= solver->add_clause(lits, lits + 3);
+                    (void)solver->add_clause(lits, lits + 3);
                     lits[0] = pabc::Abc_Var2Lit(res_jp, 0);
                     lits[1] = pabc::Abc_Var2Lit(res_j, 1);
                     lits[2] = pabc::Abc_Var2Lit(x_k, 0);
-                    status &= solver->add_clause(lits, lits + 3);
+                    (void)solver->add_clause(lits, lits + 3);
                     lits[0] = pabc::Abc_Var2Lit(res_jp, 0);
                     lits[1] = pabc::Abc_Var2Lit(res_j - 1, 1);
                     lits[2] = pabc::Abc_Var2Lit(x_k, 1);
-                    status &= solver->add_clause(lits, lits + 3);
+                    (void)solver->add_clause(lits, lits + 3);
                 }
             }
         }
-
-        return status;
     }
 }

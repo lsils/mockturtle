@@ -60,6 +60,7 @@ namespace percy
         SLV_BSAT2,
         SLV_CMSAT,
         SLV_GLUCOSE,
+        SLV_SATOKO,
         SLV_TOTAL,
     };
 
@@ -68,6 +69,7 @@ namespace percy
         "SLV_BSAT2",
         "SLV_CMSAT",
         "SLV_GLUCOSE",
+        "SLV_SATOKO",
     };
 
     enum Primitive
@@ -94,7 +96,6 @@ namespace percy
     {
         protected:
             int capacity; ///< Maximum number of output functions this specification can support
-            int tt_size; ///< Size of the truth tables to synthesize (in nr. of bits)
             std::vector<kitty::dynamic_truth_table> functions; ///< Functions to synthesize
             std::vector<int> triv_functions; ///< Trivial outputs
             std::vector<int> synth_functions; ///< Nontrivial outputs
@@ -103,6 +104,8 @@ namespace percy
 
         public:
             int fanin = 2; ///< The fanin of the Boolean chain steps
+            int nr_in; ///< The inputs of the chain we want to synthesize
+            int tt_size; ///< Size of the truth tables to synthesize (in nr. of bits)
             int nr_steps; ///< The number of Boolean operators to use
             int initial_steps = 1; ///< The number of steps from which to start synthesis
             int verbosity = 0; ///< Verbosity level for debugging purposes
@@ -170,6 +173,7 @@ namespace percy
                     }
                 }
 
+                nr_in = functions[0].num_vars();
                 tt_size = (1 << functions[0].num_vars()) - 1;
 
                 if (verbosity) {

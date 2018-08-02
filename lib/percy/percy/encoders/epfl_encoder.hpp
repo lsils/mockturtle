@@ -106,16 +106,8 @@ namespace percy
             /*******************************************************************
                 Ensures that each gate has FI operands.
             *******************************************************************/
-            bool 
-            create_op_clauses(const spec& spec)
+            void create_op_clauses(const spec& spec)
             {
-                auto status = true;
-
-                if (spec.verbosity > 2) {
-                    printf("Creating op clauses (EPFL-%d)\n", spec.fanin);
-                    printf("Nr. clauses = %d (PRE)\n",
-                            solver->nr_clauses());
-                }
                 std::vector<int> svars;
                 std::vector<int> res_vars;
 
@@ -133,21 +125,15 @@ namespace percy
                         res_vars.push_back(get_res_var(spec, i, j));
                     }
 
-                    status &= create_cardinality_circuit(solver, svars, res_vars, spec.fanin);
+                    create_cardinality_circuit(solver, svars, res_vars, spec.fanin);
 
                     // Ensure that the fanin cardinality for each step i is
                     // exactly FI.
                     const auto fi_var = 
                         get_res_var(spec, i, (spec.get_nr_in() + i) * (spec.fanin + 2) + spec.fanin);
                     auto fi_lit = pabc::Abc_Var2Lit(fi_var, 0);
-                    status &= solver->add_clause(&fi_lit, &fi_lit + 1);
+                    (void)solver->add_clause(&fi_lit, &fi_lit + 1);
                 }
-                if (spec.verbosity > 2) {
-                    printf("Nr. clauses = %d (POST)\n",
-                            solver->nr_clauses());
-                }
-
-                return status;
             }
 
             bool 
@@ -984,9 +970,7 @@ namespace percy
                     return false;
                 }
 
-                if (!create_op_clauses(spec)) {
-                    return false;
-                }
+                create_op_clauses(spec);
                 
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
@@ -1036,9 +1020,7 @@ namespace percy
                     return false;
                 }
                 
-                if (!create_op_clauses(spec)) {
-                    return false;
-                }
+                create_op_clauses(spec);
                 
                 if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
