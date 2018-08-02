@@ -27,7 +27,7 @@ namespace percy
         // so this is a constant.
         const int PD_OP_VARS_PER_STEP = 3;
 
-        const int NR_SIM_TTS = 32;
+        static constexpr int NR_SIM_TTS = 32;
         std::vector<kitty::dynamic_truth_table> sim_tts { NR_SIM_TTS };
 
         inline int nr_svars_for_step(

@@ -22,7 +22,7 @@ namespace percy
         pabc::lit pLits[2048];
         solver_wrapper* solver;
 
-        const int NR_SIM_TTS = 32;
+        static constexpr int NR_SIM_TTS = 32;
         std::vector<kitty::dynamic_truth_table> sim_tts { NR_SIM_TTS };
 
         int get_sim_var(const spec& spec, int step_idx, int t) const

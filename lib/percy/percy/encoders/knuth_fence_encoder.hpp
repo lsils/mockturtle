@@ -25,7 +25,7 @@ namespace percy
             std::vector<std::vector<int>> svar_map;
             std::vector<int> nr_svar_map;
 
-            const int NR_SIM_TTS = 32;
+            static constexpr int NR_SIM_TTS = 32;
             std::vector<kitty::dynamic_truth_table> sim_tts{ NR_SIM_TTS };
 
         public:
