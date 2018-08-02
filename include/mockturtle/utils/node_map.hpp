@@ -32,8 +32,9 @@
 
 #pragma once
 
-#include <vector>
 #include <cassert>
+#include <memory>
+#include <vector>
 
 #include "../traits.hpp"
 
@@ -78,7 +79,7 @@ public:
   /*! \brief Default constructor. */
   explicit node_map( Ntk const& ntk )
       : ntk( ntk ),
-        data( ntk.size() )
+        data( std::make_shared<std::vector<T>>( ntk.size() ) )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -92,7 +93,7 @@ public:
    */
   node_map( Ntk const& ntk, T const& init_value )
       : ntk( ntk ),
-        data( ntk.size(), init_value )
+        data( std::make_shared<std::vector<T>>( ntk.size(), init_value ) )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -103,14 +104,14 @@ public:
   /*! \brief Mutable access to value by node. */
   reference operator[]( node<Ntk> const& n )
   {
-    return data[ntk.node_to_index( n )];
+    return (*data)[ntk.node_to_index( n )];
   }
 
   /*! \brief Constant access to value by node. */
   const_reference operator[]( node<Ntk> const& n ) const
   {
-    assert( ntk.node_to_index( n ) < data.size() && "index out of bounds" );
-    return data[ntk.node_to_index( n )];
+    assert( ntk.node_to_index( n ) < data->size() && "index out of bounds" );
+    return (*data)[ntk.node_to_index( n )];
   }
 
   /*! \brief Mutable access to value by signal.
@@ -121,8 +122,8 @@ public:
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<signal<_Ntk>, node<_Ntk>>>>
   reference operator[]( signal<Ntk> const& f )
   {
-    assert( ntk.node_to_index( ntk.get_node( f ) ) < data.size() && "index out of bounds" );
-    return data[ntk.node_to_index( ntk.get_node( f ) )];
+    assert( ntk.node_to_index( ntk.get_node( f ) ) < data->size() && "index out of bounds" );
+    return (*data)[ntk.node_to_index( ntk.get_node( f ) )];
   }
 
   /*! \brief Constant access to value by signal.
@@ -133,8 +134,8 @@ public:
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<signal<_Ntk>, node<_Ntk>>>>
   const_reference operator[]( signal<Ntk> const& f ) const
   {
-    assert( ntk.node_to_index( ntk.get_node( f ) ) < data.size() && "index out of bounds" );
-    return data[ntk.node_to_index( ntk.get_node( f ) )];
+    assert( ntk.node_to_index( ntk.get_node( f ) ) < data->size() && "index out of bounds" );
+    return (*data)[ntk.node_to_index( ntk.get_node( f ) )];
   }
 
   /*! \brief Resets the size of the map.
@@ -147,8 +148,8 @@ public:
    */
   void reset( T const& init_value = {} )
   {
-    data.clear();
-    data.resize( ntk.size(), init_value );
+    data->clear();
+    data->resize( ntk.size(), init_value );
   }
 
   /*! \brief Resizes the map.
@@ -160,15 +161,15 @@ public:
    */
   void resize( T const& init_value = {} )
   {
-    if ( ntk.size() > data.size() )
+    if ( ntk.size() > data->size() )
     {
-      data.resize( ntk.size(), init_value );
+      data->resize( ntk.size(), init_value );
     }
   }
 
 private:
   Ntk const& ntk;
-  std::vector<T> data;
+  std::shared_ptr<std::vector<T>> data;
 };
 
 } /* namespace mockturtle */
