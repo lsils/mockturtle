@@ -78,6 +78,9 @@ struct mig_algebraic_depth_rewriting_params
    * number of dangling nodes are taken into account.
    */
   float overhead{2.0f};
+
+  /*! \brief Allow area increase while optimizing depth. */
+  bool allow_area_increase{true};
 };
 
 namespace detail
@@ -192,6 +195,10 @@ private:
     if ( ntk.level( ntk.get_node( ocs[2] ) ) <= ntk.level( ntk.get_node( ocs[1] ) ) + 1 )
       return false;
 
+    /* child must have single fanout, if no area overhead is allowed */
+    if ( !ps.allow_area_increase && ntk.fanout_size( ntk.get_node( ocs[2] ) ) != 1 )
+      return false;
+
     /* get children of last child */
     auto ocs2 = ordered_children( ntk.get_node( ocs[2] ) );
 
@@ -218,11 +225,14 @@ private:
     }
 
     /* distributivity */
-    auto opt = ntk.create_maj( ocs2[2],
-                               ntk.create_maj( ocs[0], ocs[1], ocs2[0] ),
-                               ntk.create_maj( ocs[0], ocs[1], ocs2[1] ) );
-    ntk.substitute_node( n, opt );
-    ntk.update();
+    if ( ps.allow_area_increase )
+    {
+      auto opt = ntk.create_maj( ocs2[2],
+                                 ntk.create_maj( ocs[0], ocs[1], ocs2[0] ),
+                                 ntk.create_maj( ocs[0], ocs[1], ocs2[1] ) );
+      ntk.substitute_node( n, opt );
+      ntk.update();
+    }
     return true;
   }
 

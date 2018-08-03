@@ -140,5 +140,49 @@ namespace percy
         // All fanins are equal
         return 0;
     }
+
+    int
+    lex_compare(const std::array<int, 3>& fanins1, const std::array<int, 3>& fanins2)
+    {
+        if (fanins1[0] < fanins2[0]) {
+            return -1;
+        } else if (fanins1[0] > fanins2[0]) {
+            return 1;
+        }
+        if (fanins1[1] < fanins2[1]) {
+            return -1;
+        } else if (fanins1[1] > fanins2[1]) {
+            return 1;
+        }
+        if (fanins1[2] < fanins2[2]) {
+            return -1;
+        } else if (fanins1[2] > fanins2[2]) {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    int
+    colex_compare(const std::array<int, 3>& fanins1, const std::array<int, 3>& fanins2)
+    {
+        if (fanins1[2] < fanins2[2]) {
+            return -1;
+        } else if (fanins1[2] > fanins2[2]) {
+            return 1;
+        }
+        if (fanins1[1] < fanins2[1]) {
+            return -1;
+        } else if (fanins1[1] > fanins2[1]) {
+            return 1;
+        }
+        if (fanins1[0] < fanins2[0]) {
+            return -1;
+        } else if (fanins1[0] > fanins2[0]) {
+            return 1;
+        }
+
+        return 0;
+    }
 }
 

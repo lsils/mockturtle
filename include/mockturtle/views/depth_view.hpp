@@ -96,7 +96,7 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  depth_view( Ntk const& ntk ) : Ntk( ntk ), _levels( ntk )
+  explicit depth_view( Ntk const& ntk ) : Ntk( ntk ), _levels( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -150,7 +150,7 @@ private:
 
   void compute_levels()
   {
-    this->clear_visited();
+    //this->clear_visited();
     _depth = 0;
     this->foreach_po( [&]( auto const& f ) {
       _depth = std::max( _depth, compute_levels( this->get_node( f ) ) );

@@ -94,6 +94,15 @@ struct resubstitution_stats
   /*! \brief Total runtime. */
   stopwatch<>::duration time_total{0};
 
+  /*! \brief Accumulated runtime for cut computation. */
+  stopwatch<>::duration time_cuts{0};
+
+  /*! \brief Accumulated runtime for window computation. */
+  stopwatch<>::duration time_windows{0};
+
+  /*! \brief Accumulated runtime for depth computation. */
+  stopwatch<>::duration time_depth{0};
+
   /*! \brief Accumulated runtime for simulation. */
   stopwatch<>::duration time_simulation{0};
 
@@ -103,6 +112,9 @@ struct resubstitution_stats
   void report() const
   {
     std::cout << fmt::format( "[i] total time         = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i] cut time           = {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    std::cout << fmt::format( "[i] windows time       = {:>5.2f} secs\n", to_seconds( time_windows ) );
+    std::cout << fmt::format( "[i] depth time         = {:>5.2f} secs\n", to_seconds( time_depth ) );
     std::cout << fmt::format( "[i] simulation time    = {:>5.2f} secs\n", to_seconds( time_simulation ) );
     std::cout << fmt::format( "[i] resubstituion time = {:>5.2f} secs\n", to_seconds( time_resubstitution ) );
   }
@@ -524,15 +536,25 @@ public:
 
       pbar( i, i, _candidates, _estimated_gain );
 
-      auto const mffc_size = detail::mffc_size( ntk, n );
-      if ( mffc_size > 1 )
+      bool has_mffc{false};
+      ntk.foreach_fanin( n, [&]( auto const& f ) {
+        if ( ntk.value( ntk.get_node( f ) ) == 1 )
+        {
+          has_mffc = true;
+          return false;
+        }
+        return true;
+      } );
+      if ( has_mffc )
       {
         reconv_cut_params params{ps.max_pis};
-        auto const& leaves = reconv_cut( params )( ntk, {n} );
-        window_view<fanout_view<Ntk>> extended_cut( fanout_ntk, leaves, {n}, /* extend = */ ps.extend );
+        auto const leaves = call_with_stopwatch( st.time_cuts,
+                                                [&]() { return reconv_cut( params )( ntk, {n} ); } );
+        using fanout_view_t = decltype( fanout_ntk );
+        const auto extended_cut = make_with_stopwatch<window_view<fanout_view_t>>( st.time_windows, fanout_ntk, leaves, std::vector<typename fanout_view_t::node>{{n}}, /* extend = */ ps.extend );
         if ( extended_cut.size() > ps.max_nodes )
           return true;
-        window win( extended_cut );
+        auto win = call_with_stopwatch( st.time_depth, [&]() { return window( extended_cut ); } );
 
         default_simulator<kitty::dynamic_truth_table> sim( win.num_pis() );
         const auto tts = call_with_stopwatch( st.time_simulation,
