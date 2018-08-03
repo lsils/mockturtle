@@ -389,7 +389,11 @@ public:
         }
 
         int32_t gain = detail::recursive_deref( ntk, n );
-        const auto f_new = call_with_stopwatch( st.time_rewriting, [&]() { return rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end() ); } );
+        signal<Ntk> f_new;
+        {
+          stopwatch t( st.time_rewriting );
+          rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end(), [&]( auto const& f ) { f_new = f; return false; } );
+        }
         gain -= detail::recursive_ref( ntk, ntk.get_node( f_new ) );
 
         detail::recursive_deref( ntk, ntk.get_node( f_new ) );

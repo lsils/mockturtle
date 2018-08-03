@@ -104,12 +104,13 @@ public:
   {
   }
 
-  template<typename LeavesIterator>
-  klut_network::signal operator()( klut_network& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end )
+  template<typename LeavesIterator, typename Fn>
+  void operator()( klut_network& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
     if ( static_cast<uint32_t>( function.num_vars() ) <= _fanin_size )
     {
-      return ntk.create_node( std::vector<klut_network::signal>( begin, end ), function );
+      fn( ntk.create_node( std::vector<klut_network::signal>( begin, end ), function ) );
+      return;
     }
 
     percy::spec spec;
@@ -152,7 +153,7 @@ public:
       signals.emplace_back( ntk.create_node( fanin, c.get_operator( i ) ) );
     }
 
-    return signals.back();
+    fn( signals.back() );
   }
 
 private:

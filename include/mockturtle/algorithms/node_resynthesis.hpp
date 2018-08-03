@@ -116,7 +116,10 @@ public:
         children.push_back( ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f] );
       } );
 
-      node2new[n] = resynthesis_fn( ntk_dest, ntk.node_function( n ), children.begin(), children.end() );
+      resynthesis_fn( ntk_dest, ntk.node_function( n ), children.begin(), children.end(), [&]( auto const& f ) {
+        node2new[n] = f;
+        return false;
+      } );
     } );
 
     /* map primary outputs */

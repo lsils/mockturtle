@@ -146,8 +146,11 @@ public:
       default_simulator<kitty::dynamic_truth_table> sim( mffc.num_pis() );
       const auto tt = call_with_stopwatch( st.time_simulation,
                                            [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
-      const auto new_f = call_with_stopwatch( st.time_refactoring,
-                                              [&]() { return refactoring_fn( ntk, tt, leaves.begin(), leaves.end() ); } );
+      signal<Ntk> new_f;
+      {
+        stopwatch t( st.time_refactoring );
+        refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+      }
 
       if ( n == ntk.get_node( new_f ) )
       {
