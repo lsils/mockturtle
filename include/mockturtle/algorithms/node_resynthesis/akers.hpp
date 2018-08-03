@@ -65,10 +65,10 @@ namespace mockturtle
 class akers_resynthesis
 {
 public:
-  template<typename LeavesIterator>
-  mig_network::signal operator()( mig_network& mig, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end )
+  template<typename LeavesIterator, typename Fn>
+  void operator()( mig_network& mig, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
-    return akers_synthesis( mig, function, ~function.construct(), begin, end );
+    fn( akers_synthesis( mig, function, ~function.construct(), begin, end ) );
   }
 };
 

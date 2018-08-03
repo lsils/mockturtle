@@ -388,18 +388,24 @@ public:
           children.push_back( ntk.make_signal( ntk.index_to_node( l ) ) );
         }
 
-        int32_t gain = detail::recursive_deref( ntk, n );
-        const auto f_new = call_with_stopwatch( st.time_rewriting, [&]() { return rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end() ); } );
-        gain -= detail::recursive_ref( ntk, ntk.get_node( f_new ) );
-
-        detail::recursive_deref( ntk, ntk.get_node( f_new ) );
-        detail::recursive_ref( ntk, n );
-
-        ( *cut )->data.gain = gain;
-        if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
+        int32_t value = detail::recursive_deref( ntk, n );
         {
-          best_replacements[n].push_back( f_new );
+          stopwatch t( st.time_rewriting );
+          rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end(), [&]( auto const& f_new ) {
+            int32_t gain = value - detail::recursive_ref( ntk, ntk.get_node( f_new ) );
+            detail::recursive_deref( ntk, ntk.get_node( f_new ) );
+
+            ( *cut )->data.gain = gain;
+            if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
+            {
+              best_replacements[n].push_back( f_new );
+            }
+
+            return true;
+          } );
         }
+
+        detail::recursive_ref( ntk, n );
       }
 
       return true;
