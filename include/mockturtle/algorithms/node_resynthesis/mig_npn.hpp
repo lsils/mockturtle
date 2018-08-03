@@ -72,9 +72,21 @@ namespace mockturtle
 class mig_npn_resynthesis
 {
 public:
-  mig_npn_resynthesis()
+  /*! \brief Default constructor.
+   *
+   * \param use_multiple If true, up to 10 structures are tried for each
+   *                     function.
+   */
+  mig_npn_resynthesis( bool use_multiple = false )
   {
-    build_db();
+    if ( use_multiple )
+    {
+      build_db10();
+    }
+    else
+    {
+      build_db();
+    }
   }
 
   template<typename LeavesIterator, typename Fn>
@@ -105,10 +117,16 @@ public:
       }
     }
 
-    topo_view topo{db, it->second[0]};
-    auto f = cleanup_dangling( topo, mig, pis_perm.begin(), pis_perm.end() ).front();
+    for ( auto const& po : it->second )
+    {
+      topo_view topo{db, po};
+      auto f = cleanup_dangling( topo, mig, pis_perm.begin(), pis_perm.end() ).front();
 
-    fn( ( ( phase >> 4 ) & 1 ) ? !f : f );
+      if ( !fn( ( ( phase >> 4 ) & 1 ) ? !f : f ) )
+      {
+        return; /* quit */
+      }
+    }
   }
 
 private:
@@ -163,7 +181,7 @@ private:
     }
 
     p++;         /* point to number of outputs */
-    const auto num_functions = *p;
+    const auto num_functions = *p++;
     auto num_pos = 0u;
 
     for ( auto i = 0u; i < num_functions; ++i )
@@ -172,7 +190,7 @@ private:
     }
 
     /* create nodes */
-    while ( p != nodes.end() )
+    while ( p != nodes10.end() )
     {
       const auto c1 = signals[*p >> 1] ^ ( *p & 1 );
       ++p;
@@ -185,8 +203,8 @@ private:
     }
 
     /* create PIs */
-    p = nodes.begin() + 2;
-    for ( auto i = 0u; i < nodes[1]; ++i )
+    p = nodes10.begin() + 2;
+    for ( auto i = 0u; i < nodes10[1]; ++i )
     {
       const auto functions = *p++;
       for ( auto j = 0u; j < functions; ++j )
