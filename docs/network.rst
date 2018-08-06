@@ -75,7 +75,7 @@ Primary I/O and constants
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_constant, create_pi, create_po, is_constant, is_pi, constant_value
+   :members: get_constant, create_pi, create_po, create_ro, create_ri, is_combinational, is_constant, is_ci, is_pi, is_ro, constant_value
    :no-link:
 
 Create unary functions
@@ -117,7 +117,7 @@ Structural properties
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: size, num_pis, num_pos, num_gates, fanin_size, fanout_size, depth, level, is_and, is_or, is_xor, is_maj, is_ite, is_xor3
+   :members: size, num_cis, num_cos, num_pis, num_pos, num_gates, num_registers, fanin_size, fanout_size, depth, level, is_and, is_or, is_xor, is_maj, is_ite, is_xor3
    :no-link:
 
 Functional properties
@@ -131,7 +131,7 @@ Nodes and signals
 ~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node
+   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node, index_to_ci, index_to_co, index_to_pi, index_to_po, index_to_ro, index_to_ri, ro_to_ri, ri_to_ro, ro_index_to_ri, ri_index_to_ro
    :no-link:
 
 Node and signal iterators
