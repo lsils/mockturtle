@@ -680,4 +680,22 @@ public:
   std::shared_ptr<mig_storage> _storage;
 };
 
+template<class T>
+struct hash;
+
+template<>
+struct hash<mig_network::signal>
+{
+  std::size_t operator()( mig_network::signal const &s ) const noexcept
+  {
+    std::size_t k = s.data;
+    k ^= k >> 33;
+    k *= 0xff51afd7ed558ccd;
+    k ^= k >> 33;
+    k *= 0xc4ceb9fe1a85ec53;
+    k ^= k >> 33;
+    return k;
+  }
+}; /* hash */
+
 } // namespace mockturtle

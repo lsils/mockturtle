@@ -65,7 +65,7 @@ template<typename Ntk>
 class aiger_reader : public lorina::aiger_reader
 {
 public:
-  explicit aiger_reader( Ntk& ntk, std::unordered_map<signal<Ntk>, std::string> *names = nullptr ) : _ntk( ntk ), _names( names )
+  explicit aiger_reader( Ntk& ntk, std::unordered_map<signal<Ntk>, std::string, hash<typename Ntk::signal>> *names = nullptr ) : _ntk( ntk ), _names( names )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
@@ -151,7 +151,7 @@ private:
 
   mutable std::vector<unsigned> outputs;
   mutable std::vector<signal<Ntk>> signals;
-  mutable std::unordered_map<signal<Ntk>, std::string>* _names;
+  mutable std::unordered_map<signal<Ntk>, std::string, hash<typename Ntk::signal>>* _names;
 };
 
 } /* namespace mockturtle */

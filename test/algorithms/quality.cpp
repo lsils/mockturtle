@@ -15,11 +15,11 @@
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
-#include <mockturtle/io/aiger_reader.hpp>
-#include <mockturtle/io/write_bench.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/io/write_bench.hpp>
 #include <mockturtle/views/mapping_view.hpp>
 
 #include <fmt/format.h>
