@@ -62,7 +62,6 @@ TEST_CASE( "read a sequential ASCII Aiger file into an AIG network", "[aiger_rea
   CHECK( aig.num_cos() == 3 );
   CHECK( aig.num_pis() == 2 );
   CHECK( aig.num_pos() == 2 );
-  CHECK( aig.num_lis() == 1 );
-  CHECK( aig.num_los() == 1 );
+  CHECK( aig.num_registers() == 1 );
   CHECK( aig.num_gates() == 4 );
 }
