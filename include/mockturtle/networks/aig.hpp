@@ -144,6 +144,11 @@ public:
       return data != other.data;
     }
 
+    bool operator<( signal const& other ) const
+    {
+      return data < other.data;
+    }
+
     operator aig_storage::node_type::pointer_type() const
     {
       return {index, complement};
