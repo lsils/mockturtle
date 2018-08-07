@@ -599,9 +599,9 @@ namespace std
 template<>
 struct hash<mockturtle::aig_network::signal>
 {
-  std::size_t operator()( mockturtle::aig_network::signal const &s ) const noexcept
+  uint64_t operator()( mockturtle::aig_network::signal const &s ) const noexcept
   {
-    std::size_t k = s.data;
+    uint64_t k = s.data;
     k ^= k >> 33;
     k *= 0xff51afd7ed558ccd;
     k ^= k >> 33;
