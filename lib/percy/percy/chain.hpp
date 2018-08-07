@@ -368,11 +368,6 @@ namespace percy
                 auto tts = simulate();
                 dynamic_truth_table op_tt(fanin);
 
-                if (static_cast<unsigned>(spec.nr_steps) != steps.size()) {
-                    assert(false);
-                    return false;
-                }
-
                 for (auto& step : steps) {
                     if (step.size() != static_cast<unsigned>(spec.fanin)) {
                         assert(false);
@@ -569,6 +564,8 @@ namespace percy
 
                 return true;
             }
+
+            
 
             void
             copy(const chain& c)

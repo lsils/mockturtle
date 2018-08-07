@@ -136,6 +136,11 @@ public:
       return data != other.data;
     }
 
+    bool operator<( signal const& other ) const
+    {
+      return data < other.data;
+    }
+
     operator xmg_storage::node_type::pointer_type() const
     {
       return {index, complement};
@@ -467,9 +472,33 @@ public:
     return _storage->nodes[n].data[0].h1 & UINT32_C( 0x7FFFFFFF );
   }
 
+  bool is_and( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_or( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_xor( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
   bool is_maj( node const& n ) const
   {
     return n > 0 && !is_pi( n ) && !( ( _storage->nodes[n].data[0].h1 >> 31 ) & 1 );
+  }
+
+  bool is_ite( node const& n ) const
+  {
+    (void)n;
+    return false;
   }
 
   bool is_xor3( node const& n ) const
@@ -697,3 +726,23 @@ public:
 };
 
 } // namespace mockturtle
+
+namespace std
+{
+
+template<>
+struct hash<mockturtle::xmg_network::signal>
+{
+  uint64_t operator()( mockturtle::xmg_network::signal const &s ) const noexcept
+  {
+    uint64_t k = s.data;
+    k ^= k >> 33;
+    k *= 0xff51afd7ed558ccd;
+    k ^= k >> 33;
+    k *= 0xc4ceb9fe1a85ec53;
+    k ^= k >> 33;
+    return k;
+  }
+}; /* hash */
+
+} // namespace std

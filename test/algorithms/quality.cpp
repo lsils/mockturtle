@@ -9,6 +9,7 @@
 #include <mockturtle/algorithms/cut_enumeration.hpp>
 #include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/lut_mapping.hpp>
+#include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
@@ -161,6 +162,38 @@ TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
   } );
 
   CHECK( v == std::vector<uint32_t>{{6, 208, 398, 317, 502, 333, 704, 1007, 1741, 2322, 1460}} );
+}
+
+TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting( depth_ntk );
+    ntk = cleanup_dangling( ntk );
+    depth_ntk.update();
+    return before - depth_ntk.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 4, 1, 8, 2, 4, 3, 11, 6, 35, 7}} );
+}
+
+TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto size_before = ntk.num_gates();
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting_params ps;
+    ps.allow_area_increase = false;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
+    ntk = cleanup_dangling( ntk );
+    depth_ntk.update();
+    CHECK( ntk.num_gates() <= size_before );
+    return before - depth_ntk.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 1, 0, 5, 0, 0, 2, 6, 3, 0, 6}} );
 }
 
 #endif

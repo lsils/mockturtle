@@ -525,7 +525,7 @@ namespace percy
             void 
             create_noreapply_clauses(const spec& spec)
             {
-                int pLits[2];
+                int pLits[3];
                 auto svar_offset = 0;
 
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
@@ -569,6 +569,33 @@ namespace percy
                                     pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
                                     auto status = solver->add_clause(pLits, pLits + 2);
                                     assert(status);
+                                }
+
+                                // Disallow:
+                                // x_i  : (j, k)
+                                // x_ip : (j, k)
+                                // x_ipp: (i,ip)
+                                // TODO: implement general case!
+                                if (spec.fanin == 2 && fanins == faninsp) {
+                                    auto svar_offsetpp = svar_offsetp + nr_svar_map[ip];
+                                    for (int ipp = ip + 1; ipp < spec.nr_steps; ipp++) {
+                                        const auto nr_svars_for_ipp = nr_svar_map[ipp];
+                                        for (int jpp = 0; jpp < nr_svars_for_ipp; jpp++) {
+                                            const auto sel_varpp =
+                                                get_sel_var(svar_offsetpp + jpp);
+                                            const auto& faninspp =
+                                                svar_map[svar_offsetpp + jpp];
+                                            if ((faninspp[0] == spec.nr_in + i) && (faninspp[1] == spec.nr_in + ip)) {
+                                                pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
+                                                pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
+                                                pLits[2] = pabc::Abc_Var2Lit(sel_varpp, 1);
+                                                auto status = solver->add_clause(pLits, pLits + 3);
+                                                assert(status);
+                                                break;
+                                            }
+                                        }
+                                        svar_offsetpp += nr_svars_for_ipp;
+                                    }
                                 }
                             }
 
