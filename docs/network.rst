@@ -131,7 +131,7 @@ Nodes and signals
 ~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node, ci_at, co_at, pi_at, po_at, ro_at, ri_at, ri_to_ro, ro_to_ri
+   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node, ci_at, co_at, pi_at, po_at, ro_at, ri_at, ci_index, co_index, pi_index, po_index, ri_index, ro_index, ri_to_ro, ro_to_ri
    :no-link:
 
 Node and signal iterators

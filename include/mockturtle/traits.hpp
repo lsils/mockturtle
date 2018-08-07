@@ -965,6 +965,96 @@ template<class Ntk>
 inline constexpr bool has_ri_at_v = has_ri_at<Ntk>::value;
 #pragma endregion
 
+#pragma region ci_index
+template<class Ntk, class = void>
+struct ci_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct ci_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool ci_index_v = ci_index<Ntk>::value;
+#pragma endregion
+
+#pragma region co_index
+template<class Ntk, class = void>
+struct co_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct co_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool co_index_v = co_index<Ntk>::value;
+#pragma endregion
+
+#pragma region pi_index
+template<class Ntk, class = void>
+struct pi_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct pi_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool pi_index_v = pi_index<Ntk>::value;
+#pragma endregion
+
+#pragma region po_index
+template<class Ntk, class = void>
+struct po_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct po_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool po_index_v = po_index<Ntk>::value;
+#pragma endregion
+
+#pragma region ro_index
+template<class Ntk, class = void>
+struct ro_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct ro_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool ro_index_v = ro_index<Ntk>::value;
+#pragma endregion
+
+#pragma region ri_index
+template<class Ntk, class = void>
+struct ri_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct ri_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool ri_index_v = ri_index<Ntk>::value;
+#pragma endregion
+
 #pragma region has_ro_to_ri
 template<class Ntk, class = void>
 struct has_ro_to_ri : std::false_type

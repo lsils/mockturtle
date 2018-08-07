@@ -471,6 +471,48 @@ public:
    */
   signal ri_at( uint32_t index ) const;
 
+  /*! \brief Returns the index of a combinational input node.
+   *
+   * \param n A combinational input node.
+   * \return A value between 0 and num_cis()-1.
+   */
+  uint32_t index_ci( node const& n ) const;
+
+  /*! \brief Returns the index of a combinational output signal.
+   *
+   * \param n A combinational output signal.
+   * \return A value between 0 and num_cos()-1.
+   */
+  uint32_t index_co( signal const& n ) const;
+
+  /*! \brief Returns the index of a primary input node.
+   *
+   * \param n A primary input node.
+   * \return A value between 0 and num_pis()-1.
+   */
+  uint32_t index_pi( node const& n ) const;
+
+  /*! \brief Returns the index of a primary output signal.
+   *
+   * \param n A primary output signal.
+   * \return A value between 0 and num_pos()-1.
+   */
+  uint32_t index_po( signal const& n ) const;
+
+  /*! \brief Returns the index of a register output node.
+   *
+   * \param n A register output node.
+   * \return A value between 0 and num_cis()-num_pis()-1.
+   */
+  uint32_t index_ro( node const& n ) const;
+
+  /*! \brief Returns the index of a register input signal.
+   *
+   * \param n A register input signal.
+   * \return A value between 0 and num_cos()-num_pos()-1.
+   */
+  uint32_t index_ri( signal const& n ) const;
+
   /*! \brief Returns the register input signal to a register output node.
    *
    * \param signal A signal of a register output.
