@@ -487,37 +487,37 @@ public:
     return index;
   }
 
-  node index_to_ci( uint32_t index ) const
+  node ci_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() );
     return *(_storage->inputs.begin() + index);
   }
 
-  signal index_to_co( uint32_t index ) const
+  signal co_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() );
     return *(_storage->outputs.begin() + index);
   }
 
-  node index_to_pi( uint32_t index ) const
+  node pi_at( uint32_t index ) const
   {
     assert( index < _num_pis );
     return *(_storage->inputs.begin() + index);
   }
 
-  signal index_to_po( uint32_t index ) const
+  signal po_at( uint32_t index ) const
   {
     assert( index < _num_pos );
     return *(_storage->outputs.begin() + index);
   }
 
-  node index_to_ro( uint32_t index ) const
+  node ro_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() - _num_pis );
     return *(_storage->inputs.begin() + _num_pis + index);
   }
 
-  signal index_to_ri( uint32_t index ) const
+  signal ri_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() - _num_pos );
     return *(_storage->outputs.begin() + _num_pos + index);
