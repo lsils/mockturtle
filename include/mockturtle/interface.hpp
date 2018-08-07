@@ -434,42 +434,42 @@ public:
    * \param index A value between 0 (inclusive) and the number of
    *              combinational inputs (exclusive).
    */
-  node index_to_ci( uint32_t index ) const;
+  node ci_at( uint32_t index ) const;
 
   /*! \brief Returns the combinational output signal for an index.
    *
    * \param index A value between 0 (inclusive) and the number of
    *              combinational outputs (exclusive).
    */
-  signal index_to_co( uint32_t index ) const;
+  signal co_at( uint32_t index ) const;
 
   /*! \brief Returns the primary input node for an index.
    *
    * \param index A value between 0 (inclusive) and the number of
    *              primary inputs (exclusive).
    */
-  node index_to_pi( uint32_t index ) const;
+  node pi_at( uint32_t index ) const;
   
   /*! \brief Returns the primary output signal for an index.
    *
    * \param index A value between 0 (inclusive) and the number of
    *              primary outputs (exclusive).
    */
-  signal index_to_po( uint32_t index ) const;
+  signal po_at( uint32_t index ) const;
 
   /*! \brief Returns the register output node for an index.
    *
    * \param index A value between 0 (inclusive) and the number of
    *              register outputs (exclusive).
    */  
-  node index_to_ro( uint32_t index ) const;
+  node ro_at( uint32_t index ) const;
 
   /*! \brief Returns the register input signal for an index.
    *
    * \param index A value between 0 (inclusive) and the number of
    *              register inputs (exclusive).
    */
-  signal index_to_ri( uint32_t index ) const;
+  signal ri_at( uint32_t index ) const;
 
   /*! \brief Returns the register input signal to a register output node.
    *
@@ -482,18 +482,6 @@ public:
    * \param signal A node of a register input.
    */
   node ri_to_ro( node const& n ) const;
-
-  /*! \brief Returns the register input signal to the index of a register output node.
-   *
-   * \param index An index of a register output node.
-   */
-  signal ro_index_to_ri( uint32_t index ) const;
-
-  /*! \brief Returns the register output node to a register input signal.
-   *
-   * \param index An index of a register input signal.
-   */
-  node ri_index_to_ro( uint32_t index ) const;
 #pragma endregion
 
 #pragma region Node and signal iterators

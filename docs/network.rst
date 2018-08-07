@@ -131,14 +131,14 @@ Nodes and signals
 ~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node, index_to_ci, index_to_co, index_to_pi, index_to_po, index_to_ro, index_to_ri, ro_to_ri, ri_to_ro, ro_index_to_ri, ri_index_to_ro
+   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node, ci_at, co_at, pi_at, po_at, ro_at, ri_at, ri_to_ro, ro_to_ri
    :no-link:
 
 Node and signal iterators
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_fanin, foreach_fanout
+   :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_register, foreach_fanin, foreach_fanout
    :no-link:
 
 Simulate values
