@@ -49,11 +49,11 @@ namespace mockturtle
  * - `create_and`
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       aig_network aig;
       lorina::read_aiger( "file.aig", aiger_reader( aig ) );
 
@@ -61,11 +61,11 @@ namespace mockturtle
       lorina::read_aiger( "file.aig", aiger_reader( mig ) );
    \endverbatim
  */
-template<typename Ntk>
+template<typename Ntk, typename Map = std::unordered_map<signal<Ntk>, std::string>>
 class aiger_reader : public lorina::aiger_reader
 {
 public:
-  explicit aiger_reader( Ntk& ntk ) : _ntk( ntk )
+  explicit aiger_reader( Ntk& ntk, Map *names = nullptr ) : _ntk( ntk ), _names( names )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
@@ -103,6 +103,22 @@ public:
     }
   }
 
+  void on_input_name( unsigned index, const std::string& name ) const override
+  {
+    if ( _names )
+    {
+      _names->insert( std::make_pair(signals[1 + index], name) );
+    }
+  }
+
+  void on_output_name( unsigned index, const std::string& name ) const override
+  {
+    if ( _names )
+    {
+      _names->insert( std::make_pair( outputs[index], name ) );
+    }
+  }
+
   void on_and( unsigned index, unsigned left_lit, unsigned right_lit ) const override
   {
     (void)index;
@@ -135,6 +151,7 @@ private:
 
   mutable std::vector<unsigned> outputs;
   mutable std::vector<signal<Ntk>> signals;
+  mutable Map* _names;
 };
 
 } /* namespace mockturtle */
