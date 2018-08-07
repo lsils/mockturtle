@@ -3,8 +3,8 @@
 #include <sstream>
 #include <string>
 
-#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/networks/aig.hpp>
 
 #include <lorina/aiger.hpp>
 

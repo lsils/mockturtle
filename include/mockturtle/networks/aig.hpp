@@ -586,13 +586,15 @@ public:
   std::shared_ptr<aig_storage> _storage;
 };
 
-template<class T>
-struct hash;
+} // namespace mockturtle
+
+namespace std
+{
 
 template<>
-struct hash<aig_network::signal>
+struct hash<mockturtle::aig_network::signal>
 {
-  std::size_t operator()( aig_network::signal const &s ) const noexcept
+  std::size_t operator()( mockturtle::aig_network::signal const &s ) const noexcept
   {
     std::size_t k = s.data;
     k ^= k >> 33;
@@ -604,4 +606,5 @@ struct hash<aig_network::signal>
   }
 }; /* hash */
 
-} // namespace mockturtle
+} // namespace std
+

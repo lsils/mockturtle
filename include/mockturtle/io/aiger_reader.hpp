@@ -61,11 +61,11 @@ namespace mockturtle
       lorina::read_aiger( "file.aig", aiger_reader( mig ) );
    \endverbatim
  */
-template<typename Ntk>
+template<typename Ntk, typename Map = std::unordered_map<signal<Ntk>, std::string>>
 class aiger_reader : public lorina::aiger_reader
 {
 public:
-  explicit aiger_reader( Ntk& ntk, std::unordered_map<signal<Ntk>, std::string, hash<typename Ntk::signal>> *names = nullptr ) : _ntk( ntk ), _names( names )
+  explicit aiger_reader( Ntk& ntk, Map *names = nullptr ) : _ntk( ntk ), _names( names )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
@@ -151,7 +151,7 @@ private:
 
   mutable std::vector<unsigned> outputs;
   mutable std::vector<signal<Ntk>> signals;
-  mutable std::unordered_map<signal<Ntk>, std::string, hash<typename Ntk::signal>>* _names;
+  mutable Map* _names;
 };
 
 } /* namespace mockturtle */

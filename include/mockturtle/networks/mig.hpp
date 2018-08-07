@@ -129,6 +129,11 @@ public:
       return data != other.data;
     }
 
+    bool operator<( signal const& other ) const
+    {
+      return data < other.data;
+    }
+
     operator mig_storage::node_type::pointer_type() const
     {
       return {index, complement};
@@ -680,13 +685,15 @@ public:
   std::shared_ptr<mig_storage> _storage;
 };
 
-template<class T>
-struct hash;
+} // namespace mockturtle
+
+namespace std
+{
 
 template<>
-struct hash<mig_network::signal>
+struct hash<mockturtle::mig_network::signal>
 {
-  std::size_t operator()( mig_network::signal const &s ) const noexcept
+  std::size_t operator()( mockturtle::mig_network::signal const &s ) const noexcept
   {
     std::size_t k = s.data;
     k ^= k >> 33;
@@ -698,4 +705,4 @@ struct hash<mig_network::signal>
   }
 }; /* hash */
 
-} // namespace mockturtle
+} // namespace std
