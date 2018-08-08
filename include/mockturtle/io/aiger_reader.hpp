@@ -137,7 +137,8 @@ public:
         signal = _ntk.create_not( signal );
       }
       _ntk.create_po( signal );
-      _names->insert( signal, std::get<1>( out ) );
+      if ( _names )
+        _names->insert( signal, std::get<1>( out ) );
     }
   }
 
@@ -158,7 +159,8 @@ public:
 
   void on_input_name( unsigned index, const std::string& name ) const override
   {
-    _names->insert( signals[1 + index], name );
+    if ( _names )
+      _names->insert( signals[1 + index], name );
   }
 
   void on_output_name( unsigned index, const std::string& name ) const override
@@ -305,9 +307,7 @@ public:
   void on_latch_name( unsigned index, const std::string& name ) const override
   {
     if ( _names )
-    {
       _names->insert( signals[1 + _num_inputs + index], name );
-    }
     std::get<2>( latches[index] ) = name;
   }
 
