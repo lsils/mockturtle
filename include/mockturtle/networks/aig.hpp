@@ -523,37 +523,37 @@ public:
     return *(_storage->outputs.begin() + _num_pos + index);
   }
 
-  uint32_t index_ci( node const& n ) const
+  uint32_t ci_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
     return ( _storage->nodes[n].children[0].data );
   }
 
-  uint32_t index_co( signal const& s ) const
+  uint32_t co_index( signal const& s ) const
   {
     assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
     return ( _storage->nodes[s.index].children[0].data );
   }
 
-  uint32_t index_pi( node const& n ) const
+  uint32_t pi_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
     return ( _storage->nodes[n].children[0].data );
   }
 
-  uint32_t index_po( signal const& s ) const
+  uint32_t po_index( signal const& s ) const
   {
     assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
     return ( _storage->nodes[s.index].children[0].data );
   }
 
-  uint32_t index_ro( node const& n ) const
+  uint32_t ro_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
     return ( _storage->nodes[n].children[0].data - _num_pis );
   }
 
-  uint32_t index_ri( signal const& s ) const
+  uint32_t ri_index( signal const& s ) const
   {
     assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
     return ( _storage->nodes[s.index].children[0].data - _num_pos );
@@ -628,11 +628,12 @@ public:
     assert( _storage->inputs.size() - _num_pis == _storage->outputs.size() - _num_pos );
     auto ro = _storage->inputs.begin() + _num_pis;
     auto ri = _storage->outputs.begin() + _num_pos;
-    if constexpr( detail::is_callable_without_index_v<Fn, std::pair<signal,node>, void> )
+    if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal,node>, bool> )
     {
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
-        fn( std::make_pair(ri++, ro++) );
+        if ( !fn( std::make_pair(ri++, ro++) ) )
+          return;
       }
     }
     else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal,node>, bool> )
@@ -640,11 +641,12 @@ public:
       uint32_t index{0};
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
-        fn( std::make_pair(ri++, ro++), index++ );
-      }
+        if ( !fn( std::make_pair(ri++, ro++), index++ ) )
+          return;
+      }      
     }
-    else if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal,node>, void> )
-    {
+    else if constexpr( detail::is_callable_without_index_v<Fn, std::pair<signal,node>, void> )
+    {      
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
         fn( std::make_pair(*ri++, *ro++) );
