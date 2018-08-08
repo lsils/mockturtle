@@ -523,6 +523,42 @@ public:
     return *(_storage->outputs.begin() + _num_pos + index);
   }
 
+  uint32_t index_ci( node const& n ) const
+  {
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    return ( _storage->nodes[n].children[0].data );
+  }
+
+  uint32_t index_co( signal const& s ) const
+  {
+    assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
+    return ( _storage->nodes[s.index].children[0].data );
+  }
+
+  uint32_t index_pi( node const& n ) const
+  {
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    return ( _storage->nodes[n].children[0].data );
+  }
+
+  uint32_t index_po( signal const& s ) const
+  {
+    assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
+    return ( _storage->nodes[s.index].children[0].data );
+  }
+
+  uint32_t index_ro( node const& n ) const
+  {
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    return ( _storage->nodes[n].children[0].data - _num_pis );
+  }
+
+  uint32_t index_ri( signal const& s ) const
+  {
+    assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
+    return ( _storage->nodes[s.index].children[0].data - _num_pos );
+  }
+
   signal ro_to_ri( signal const& s ) const
   {
     assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
@@ -533,18 +569,6 @@ public:
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
     return *(_storage->inputs.begin() + _storage->nodes[n].children[0].data);
-  }
-
-  signal ro_index_to_ri( uint32_t index ) const
-  {
-    assert( index < _storage->outputs.size() - _num_pos );
-    return *(_storage->outputs.begin() + _num_pos + index);
-  }
-
-  node ri_index_to_ro( uint32_t index ) const
-  {
-    assert( index < _storage->inputs.size() - _num_pis );
-    return *(_storage->inputs.begin() + _num_pis + index);
   }
 #pragma endregion
 
