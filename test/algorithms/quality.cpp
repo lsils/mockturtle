@@ -12,6 +12,7 @@
 #include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
+#include <mockturtle/algorithms/node_resynthesis/exact.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
@@ -194,6 +195,81 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase"
   } );
 
   CHECK( v == std::vector<uint32_t>{{0, 1, 0, 5, 0, 0, 2, 6, 3, 0, 6}} );
+}
+
+TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[quality]" )
+{
+  auto cache = std::make_shared<exact_resynthesis::cache_map_t>();
+ 
+  const auto v = foreach_benchmark<aig_network>( [&cache]( auto& ntk, auto ) {
+    mapping_view<aig_network, true> mapped{ntk};
+    lut_mapping_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    lut_mapping<mapping_view<aig_network, true>, true>( mapped, ps );
+    auto lut = *collapse_mapped_network<klut_network>( mapped );
+
+    exact_resynthesis_settings erps;
+    erps.cache = cache;
+    exact_resynthesis resyn( 2, erps );
+    auto lut2 = node_resynthesis<klut_network>( lut, resyn );
+    lut2 = cleanup_dangling( lut2 );
+    return lut2.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{6, 172, 181, 287, 182, 175, 488, 837, 1362, 1850, 1255}} );
+}
+
+TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (best-case setting)", "[quality]" )
+{
+  auto cache = std::make_shared<exact_resynthesis::cache_map_t>();
+ 
+  const auto v = foreach_benchmark<aig_network>( [&cache]( auto& ntk, auto ) {
+    mapping_view<aig_network, true> mapped{ntk};
+    lut_mapping_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    lut_mapping<mapping_view<aig_network, true>, true>( mapped, ps );
+    auto lut = *collapse_mapped_network<klut_network>( mapped );
+
+    exact_resynthesis_settings erps;
+    erps.cache = cache;
+    erps.add_lex_func_clauses = false;
+    exact_resynthesis resyn( 2, erps );
+    auto lut2 = node_resynthesis<klut_network>( lut, resyn );
+    lut2 = cleanup_dangling( lut2 );
+    return lut2.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{6, 172, 181, 287, 182, 178, 486, 830, 1329, 1850, 1236}} );
+}
+
+TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-case setting)", "[quality]" )
+{
+  return; /* disable, because slow */
+
+  auto cache = std::make_shared<exact_resynthesis::cache_map_t>();
+ 
+  const auto v = foreach_benchmark<aig_network>( [&cache]( auto& ntk, auto ) {
+    mapping_view<aig_network, true> mapped{ntk};
+    lut_mapping_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    lut_mapping<mapping_view<aig_network, true>, true>( mapped, ps );
+    auto lut = *collapse_mapped_network<klut_network>( mapped );
+
+    exact_resynthesis_settings erps;
+    erps.cache = cache;
+    erps.add_alonce_clauses = false;
+    erps.add_colex_clauses = false;
+    erps.add_lex_func_clauses = false;
+    erps.add_nontriv_clauses = false;
+    erps.add_noreapply_clauses = false;
+    erps.add_symvar_clauses = false;
+    exact_resynthesis resyn( 2, erps );
+    auto lut2 = node_resynthesis<klut_network>( lut, resyn );
+    lut2 = cleanup_dangling( lut2 );
+    return lut2.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{6, 172, 182, 296, 182, 189, 484, 841, 1385, 1851, 1292}} );
 }
 
 #endif
