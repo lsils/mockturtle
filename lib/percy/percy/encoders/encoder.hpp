@@ -124,7 +124,7 @@ namespace percy
         return status;
     }
 
-    void
+    inline void
     fanin_init(std::vector<int>& fanins, int max_fanin_id)
     {
         fanins[fanins.size()-1] = max_fanin_id--;
@@ -133,7 +133,7 @@ namespace percy
         }
     }
 
-    void
+    inline void
     fanin_init(std::vector<int>& fanins, int max_fanin_id, int start_idx)
     {
         fanins[start_idx] = max_fanin_id--;
@@ -142,7 +142,7 @@ namespace percy
         }
     }
 
-    bool
+    inline bool
     fanin_inc(std::vector<int>& fanins, const int max_fanin_id)
     {
         for (auto i = 0u; i < fanins.size(); i++) {
@@ -166,7 +166,7 @@ namespace percy
         return false;
     }
 
-    void
+    inline void
     print_fanin(const std::vector<int>& fanins)
     {
         for (auto i = 0u; i < fanins.size(); i++) {
@@ -174,7 +174,7 @@ namespace percy
         }
     }
 
-    void
+    inline void
     print_fanin(const int* const fanins, int nr_fanins)
     {
         for (auto i = 0; i < nr_fanins; i++) {

@@ -918,7 +918,7 @@ namespace percy
         /// is extracted in the CEGAR loop, this leads to trouble.
         /// For an example, try synthesizing the 4-input function with
         /// decimal truth table 127.
-        void create_cardinality_constraints(
+        inline void create_cardinality_constraints(
             const spec& spec, 
             const partial_dag& dag)
         {
