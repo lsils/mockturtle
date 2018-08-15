@@ -531,7 +531,6 @@ public:
 
   uint32_t co_index( signal const& s ) const
   {
-    assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
     return ( _storage->nodes[s.index].children[0].data );
   }
 
@@ -543,7 +542,6 @@ public:
 
   uint32_t po_index( signal const& s ) const
   {
-    assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
     return ( _storage->nodes[s.index].children[0].data );
   }
 
@@ -555,7 +553,6 @@ public:
 
   uint32_t ri_index( signal const& s ) const
   {
-    assert( _storage->nodes[s.index].children[0].data == _storage->nodes[s.index].children[1].data );
     return ( _storage->nodes[s.index].children[0].data - _num_pos );
   }
 
@@ -567,7 +564,6 @@ public:
 
   node ri_to_ro( node const& n ) const
   {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
     return *(_storage->inputs.begin() + _storage->nodes[n].children[0].data);
   }
 #pragma endregion
