@@ -39,7 +39,11 @@
 namespace mockturtle
 {
 
-template<typename Ntk, typename StorageContainer = std::unordered_map<signal<Ntk>,std::vector<std::string>>>
+template<
+  typename Ntk
+, typename StorageContainerMap = std::unordered_map<signal<Ntk>,std::vector<std::string>>
+, typename StorageContainerReverseMap = std::unordered_map<std::string, signal<Ntk>>
+>
 class NameMap
 {
 public:
@@ -50,15 +54,24 @@ public:
 
   void insert( signal const& s, std::string const& name )
   {
+    /* update direct map */
     auto const it = _names.find( s );
     if ( it == _names.end() )
     {
-      _names[ s ] = { name };
+      _names[s] = { name };
     }
     else
     {
       it->second.push_back( name );
     }
+
+    /* update reverse map */
+    auto const rev_it = _rev_names.find( name );
+    if ( rev_it != _rev_names.end() )
+    {
+      std::cout << "[w] signal name `" << name << "` is used twice" << std::endl;
+    }
+    _rev_names.insert( std::make_pair( name, s ) );
   }
 
   std::vector<std::string> operator[]( signal const& s )
@@ -68,7 +81,7 @@ public:
 
   std::vector<std::string> operator[]( signal const& s ) const
   {
-    return _names[s];
+    return _names.at( s );
   }
 
   std::vector<std::string> get_name( signal const& s ) const
@@ -86,8 +99,14 @@ public:
     return ( std::find( it->second.begin(), it->second.end(), name ) != it->second.end() );
   }
 
+  StorageContainerReverseMap get_name_to_signal_mapping() const
+  {
+    return _rev_names;
+  }
+
 protected:
-  StorageContainer _names;
+  StorageContainerMap _names;
+  StorageContainerReverseMap _rev_names;
 }; // NameMap
 
 /*! \brief Lorina reader callback for Aiger files.
@@ -192,7 +211,7 @@ public:
   {
     (void)index;
     assert( index == outputs.size() );
-    outputs.push_back( std::make_tuple( lit, "" ) );
+    outputs.emplace_back( lit, "" );
   }
 
 private:
@@ -341,7 +360,7 @@ public:
   {
     (void)index;
     assert( index == outputs.size() );
-    outputs.push_back( std::make_tuple( lit,"" ) );
+    outputs.emplace_back( lit, "" );
   }
 
 private:
