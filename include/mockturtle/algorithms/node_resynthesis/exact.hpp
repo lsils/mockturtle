@@ -62,11 +62,11 @@ struct exact_resynthesis_settings
   bool add_noreapply_clauses{true};
   bool add_symvar_clauses{true};
 
-  percy::SolverType solver_type{percy::SLV_BSAT2};
+  percy::SolverType solver_type = percy::SLV_BSAT2;
 
-  percy::EncoderType encoder_type{percy::ENC_KNUTH};
+  percy::EncoderType encoder_type = percy::ENC_KNUTH;
 
-  percy::SynthMethod synthesis_method{percy::SYNTH_STD};
+  percy::SynthMethod synthesis_method = percy::SYNTH_STD;
 };
 
 /*! \brief Resynthesis function based on Akers synthesis.
@@ -158,7 +158,7 @@ public:
       }
 
       percy::chain c;
-      const auto result = percy::synthesize( spec, c, _ps.solver_type, _ps.encoder_type, _ps.synthesis_method );
+      const auto result = percy::synthesize( spec, c, _ps.solver_type, _ps.encoder_type/*, _ps.synthesis_method*/ );
       assert( result == percy::success );
       c.denormalize();
       if ( _ps.cache )
