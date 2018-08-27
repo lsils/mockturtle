@@ -280,15 +280,18 @@ public:
     auto count = 0;
     for ( auto latch : latches )
     {
-      const auto lit = std::get<0>( latch );
+      auto const lit = std::get<0>( latch );
+      auto const reset = std::get<1>( latch );
+
       auto signal = signals[lit >> 1];
       if ( lit & 1 )
       {
         signal = _ntk.create_not( signal );
       }
+
       if ( _names )
         _names->insert( signal, std::get<2>( latch ) + "_next" );
-      _ntk.create_ri( signal );
+      _ntk.create_ri( signal, reset );
     }
   }
 
@@ -353,7 +356,8 @@ public:
   void on_latch( unsigned index, unsigned next, latch_init_value reset ) const override
   {
     (void)index;
-    latches.push_back( std::make_tuple( next, reset, "" ) );
+    int8_t r = reset == latch_init_value::NONDETERMINISTIC ? -1 : (reset == latch_init_value::ONE ? 1 : 0);
+    latches.push_back( std::make_tuple( next, r, "" ) );
   }
 
   void on_output( unsigned index, unsigned lit ) const override
@@ -369,7 +373,7 @@ private:
   mutable uint32_t _num_inputs = 0;
   mutable std::vector<std::tuple<unsigned,std::string>> outputs;
   mutable std::vector<aig_network::signal> signals;
-  mutable std::vector<std::tuple<unsigned,latch_init_value,std::string>> latches;
+  mutable std::vector<std::tuple<unsigned,int8_t,std::string>> latches;
   mutable NameMap<aig_network>* _names;
 };
 
