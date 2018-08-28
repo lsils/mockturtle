@@ -75,7 +75,7 @@ Primary I/O and constants
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_constant, create_pi, create_po, create_ro, create_ri, is_combinational, is_constant, is_ci, is_pi, is_ro, constant_value
+   :members: get_constant, create_pi, create_po, create_ro, create_ri, is_combinational, is_constant, is_ci, is_pi, is_ro, constant_value, latch_reset
    :no-link:
 
 Create unary functions
