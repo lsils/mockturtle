@@ -224,4 +224,10 @@ public:
   node _root;
 };
 
+template<class T>
+cut_view(T const&, std::vector<node<T>> const&, node<T> const&) -> cut_view<T>;
+
+template<class T, typename = std::enable_if_t<!std::is_same_v<T::signal, T::node>>>
+cut_view(T const&, std::vector<signal<T>> const&, node<T> const&) -> cut_view<T>;
+
 } /* namespace mockturtle */
