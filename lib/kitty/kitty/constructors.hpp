@@ -36,6 +36,8 @@
 #include <chrono>
 #include <istream>
 #include <random>
+#include <stack>
+#include <string>
 
 #include "cube.hpp"
 #include "detail/constants.hpp"
@@ -839,6 +841,180 @@ inline void create_characteristic( TT& tt, const TTFrom& from )
   extend_to_inplace( ext, from );
 
   tt = ~var ^ ext;
+}
+
+/*! \brief Creates truth table from textual expression
+
+  An expression `E` is a constant `0` or `1`, or a variable `a`, `b`, ..., `p`,
+  the negation of an expression `!E`, the conjunction of multiple expressions
+  `(E...E)`, the disjunction of multiple expressions `{E...E}`, the exclusive
+  OR of multiple expressions `[E...E]`, or the majority of three expressions
+  `<EEE>`.  Examples are `[(ab)(!ac)]` to describe if-then-else, or `!{!a!b}`
+  to describe the application of De Morgan's law to `(ab)`.  The size of the
+  truth table must fit the largest variable in the expression, e.g., if `c` is
+  the largest variable, then the truth table have at least three variables.
+
+  \param tt Truth table
+  \param from Expression as string
+*/
+template<typename TT>
+bool create_from_expression( TT& tt, const std::string& expression )
+{
+  enum stack_symbols
+  {
+    FUNC,
+    AND,
+    OR,
+    XOR,
+    MAJ,
+    NEG
+  };
+  std::stack<stack_symbols> symbols;
+  std::stack<TT> truth_tables;
+
+  const auto push_tt = [&]( TT& func ) {
+    while ( !symbols.empty() && symbols.top() == NEG )
+    {
+      func = ~func;
+      symbols.pop();
+    }
+    symbols.push( FUNC );
+    truth_tables.push( func );
+  };
+
+  for ( auto const& c : expression )
+  {
+    switch ( c )
+    {
+    default:
+      if ( c >= 'a' && c <= 'p' )
+      {
+        auto var = tt.construct();
+        create_nth_var( var, c - 'a' );
+        push_tt( var );
+      }
+      else
+      {
+        std::cerr << "[e] unexpected symbol in expression: " << c << "\n";
+        return false;
+      }
+      break;
+    case '0':
+    {
+      auto func = tt.construct();
+      push_tt( func );
+    }
+    break;
+    case '1':
+    {
+      auto func = ~tt.construct();
+      push_tt( func );
+    }
+    break;
+    case '!':
+      symbols.push( NEG );
+      break;
+    case '(':
+      symbols.push( AND );
+      break;
+    case '{':
+      symbols.push( OR );
+      break;
+    case '[':
+      symbols.push( XOR );
+      break;
+    case '<':
+      symbols.push( MAJ );
+      break;
+    case ')':
+    {
+      auto func = ~tt.construct();
+      while ( !symbols.empty() && symbols.top() == FUNC )
+      {
+        func &= truth_tables.top();
+        symbols.pop();
+        truth_tables.pop();
+      }
+      if ( symbols.empty() || symbols.top() != AND )
+      {
+        std::cerr << "[e] could not parse AND expression\n";
+        return false;
+      }
+      symbols.pop();
+      push_tt( func );
+    }
+    break;
+    case '}':
+    {
+      auto func = tt.construct();
+      while ( !symbols.empty() && symbols.top() == FUNC )
+      {
+        func |= truth_tables.top();
+        symbols.pop();
+        truth_tables.pop();
+      }
+      if ( symbols.empty() || symbols.top() != OR )
+      {
+        std::cerr << "[e] could not parse OR expression\n";
+        return false;
+      }
+      symbols.pop();
+      push_tt( func );
+    }
+    break;
+    case ']':
+    {
+      auto func = tt.construct();
+      while ( !symbols.empty() && symbols.top() == FUNC )
+      {
+        func ^= truth_tables.top();
+        symbols.pop();
+        truth_tables.pop();
+      }
+      if ( symbols.empty() || symbols.top() != XOR )
+      {
+        std::cerr << "[e] could not parse XOR expression\n";
+        return false;
+      }
+      symbols.pop();
+      push_tt( func );
+    }
+    break;
+    case '>':
+    {
+      std::vector<TT> children;
+      while ( !symbols.empty() && symbols.top() == FUNC )
+      {
+        children.push_back( truth_tables.top() );
+        symbols.pop();
+        truth_tables.pop();
+      }
+      if ( symbols.empty() || symbols.top() != MAJ )
+      {
+        std::cerr << "[e] could not parse MAJ expression\n";
+        return false;
+      }
+      if ( children.size() != 3u )
+      {
+        std::cerr << "[e] MAJ expression must have three children\n";
+        return false;
+      }
+      symbols.pop();
+      auto func = ternary_majority( children[0], children[1], children[2] );
+      push_tt( func );
+    }
+    break;
+    }
+  }
+
+  if ( symbols.size() != 1 || truth_tables.size() != 1 )
+  {
+    std::cerr << "[e] expression parsing incomplete\n";
+    return false;
+  }
+
+  tt = truth_tables.top();
+  return true;
 }
 
 } // namespace kitty

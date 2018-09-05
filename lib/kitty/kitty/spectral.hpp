@@ -43,6 +43,7 @@
 
 #include <cmath>
 #include <iomanip>
+#include <iostream>
 #include <unordered_map>
 
 namespace kitty
@@ -311,13 +312,16 @@ template<typename TT>
 class miller_spectral_canonization_impl
 {
 public:
-  explicit miller_spectral_canonization_impl( const TT& func )
+  explicit miller_spectral_canonization_impl( const TT& func, bool hasInputNegation = true, bool hasOutputNegation = true, bool hasDisjointTranslation = true )
       : func( func ),
         num_vars( func.num_vars() ),
         num_vars_exp( 1 << num_vars ),
         spec( spectrum::from_truth_table( func ) ),
         best_spec( spec ),
-        transforms( 100u )
+        transforms( 100u ),
+        hasInputNegation( hasInputNegation ),
+        hasOutputNegation( hasOutputNegation ),
+        hasDisjointTranslation( hasDisjointTranslation )
   {
   }
 
@@ -387,16 +391,19 @@ private:
     if ( v == num_vars_exp ) /* leaf case */
     {
       /* invert function if necessary */
-      if ( lspec[0u] < 0 )
+      if ( hasOutputNegation && lspec[0u] < 0 )
       {
         insert( lspec.output_negation() );
       }
       /* invert any variable as necessary */
-      for ( auto i = 1u; i < num_vars_exp; i <<= 1 )
+      if ( hasInputNegation )
       {
-        if ( lspec[i] < 0 )
+        for ( auto i = 1u; i < num_vars_exp; i <<= 1 )
         {
-          insert( lspec.input_negation( i ) );
+          if ( lspec[i] < 0 )
+          {
+            insert( lspec.input_negation( i ) );
+          }
         }
       }
 
@@ -488,7 +495,10 @@ private:
         j ^= p;                         /* delete bit in j */
         insert( spec.spectral_translation( k, p ) );
       }
-      insert( spec.disjoint_translation( k ) );
+      if ( hasDisjointTranslation )
+      {
+        insert( spec.disjoint_translation( k ) );
+      }
     }
 
     for ( auto v = 1u; v <= num_vars_exp; v <<= 1 )
@@ -551,6 +561,10 @@ private:
 
   unsigned step_counter{0u};
   unsigned step_limit{0u};
+
+  bool hasInputNegation{true};
+  bool hasOutputNegation{true};
+  bool hasDisjointTranslation{true};
 };
 
 inline void exact_spectral_canonization_null_callback( const std::vector<spectral_operation>& operations )
