@@ -47,7 +47,7 @@
 namespace mockturtle
 {
 
-struct exact_resynthesis_settings
+struct exact_resynthesis_params
 {
   using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
   using cache_t = std::shared_ptr<cache_map_t>;
@@ -121,7 +121,7 @@ public:
   using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
   using cache_t = std::shared_ptr<cache_map_t>;
 
-  explicit exact_resynthesis( uint32_t fanin_size = 3u, exact_resynthesis_settings const& ps = {} )
+  explicit exact_resynthesis( uint32_t fanin_size = 3u, exact_resynthesis_params const& ps = {} )
     : _fanin_size( fanin_size ),
       _ps( ps )
   {
@@ -189,7 +189,7 @@ public:
 
 private:
   uint32_t _fanin_size{3u};
-  exact_resynthesis_settings _ps;
+  exact_resynthesis_params _ps;
 };
 
 } /* namespace mockturtle */

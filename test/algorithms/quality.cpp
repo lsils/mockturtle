@@ -208,7 +208,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[qual
     lut_mapping<mapping_view<aig_network, true>, true>( mapped, ps );
     auto lut = *collapse_mapped_network<klut_network>( mapped );
 
-    exact_resynthesis_settings erps;
+    exact_resynthesis_params erps;
     erps.cache = cache;
     exact_resynthesis resyn( 2, erps );
     auto lut2 = node_resynthesis<klut_network>( lut, resyn );
@@ -230,7 +230,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (best-ca
     lut_mapping<mapping_view<aig_network, true>, true>( mapped, ps );
     auto lut = *collapse_mapped_network<klut_network>( mapped );
 
-    exact_resynthesis_settings erps;
+    exact_resynthesis_params erps;
     erps.cache = cache;
     erps.add_lex_func_clauses = false;
     exact_resynthesis resyn( 2, erps );
@@ -255,7 +255,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-c
     lut_mapping<mapping_view<aig_network, true>, true>( mapped, ps );
     auto lut = *collapse_mapped_network<klut_network>( mapped );
 
-    exact_resynthesis_settings erps;
+    exact_resynthesis_params erps;
     erps.cache = cache;
     erps.add_alonce_clauses = false;
     erps.add_colex_clauses = false;
