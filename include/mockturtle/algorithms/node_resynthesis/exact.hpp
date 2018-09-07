@@ -189,7 +189,7 @@ public:
 
 private:
   uint32_t _fanin_size{3u};
-  exact_resynthesis_settings const& _ps;
+  exact_resynthesis_settings _ps;
 };
 
 } /* namespace mockturtle */
