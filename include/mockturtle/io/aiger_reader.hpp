@@ -32,18 +32,14 @@
 
 #pragma once
 
-#include <lorina/aiger.hpp>
 #include "../networks/aig.hpp"
 #include "../traits.hpp"
+#include <lorina/aiger.hpp>
 
 namespace mockturtle
 {
 
-template<
-  typename Ntk
-, typename StorageContainerMap = std::unordered_map<signal<Ntk>,std::vector<std::string>>
-, typename StorageContainerReverseMap = std::unordered_map<std::string, signal<Ntk>>
->
+template<typename Ntk, typename StorageContainerMap = std::unordered_map<signal<Ntk>, std::vector<std::string>>, typename StorageContainerReverseMap = std::unordered_map<std::string, signal<Ntk>>>
 class NameMap
 {
 public:
@@ -58,7 +54,7 @@ public:
     auto const it = _names.find( s );
     if ( it == _names.end() )
     {
-      _names[s] = { name };
+      _names[s] = {name};
     }
     else
     {
@@ -135,7 +131,7 @@ template<typename Ntk>
 class aiger_reader : public lorina::aiger_reader
 {
 public:
-  explicit aiger_reader( Ntk& ntk, NameMap<Ntk> *names = nullptr ) : _ntk( ntk ), _names( names )
+  explicit aiger_reader( Ntk& ntk, NameMap<Ntk>* names = nullptr ) : _ntk( ntk ), _names( names )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
@@ -179,7 +175,9 @@ public:
   void on_input_name( unsigned index, const std::string& name ) const override
   {
     if ( _names )
+    {
       _names->insert( signals[1 + index], name );
+    }
   }
 
   void on_output_name( unsigned index, const std::string& name ) const override
@@ -217,7 +215,7 @@ public:
 private:
   Ntk& _ntk;
 
-  mutable std::vector<std::tuple<unsigned,std::string>> outputs;
+  mutable std::vector<std::tuple<unsigned, std::string>> outputs;
   mutable std::vector<signal<Ntk>> signals;
   mutable NameMap<Ntk>* _names;
 };
@@ -277,7 +275,6 @@ public:
       _ntk.create_po( signal );
     }
 
-    auto count = 0;
     for ( auto latch : latches )
     {
       auto const lit = std::get<0>( latch );
@@ -318,7 +315,9 @@ public:
   void on_input_name( unsigned index, const std::string& name ) const override
   {
     if ( _names )
+    {
       _names->insert( signals[1 + index], name );
+    }
   }
 
   void on_output_name( unsigned index, const std::string& name ) const override
@@ -329,7 +328,9 @@ public:
   void on_latch_name( unsigned index, const std::string& name ) const override
   {
     if ( _names )
+    {
       _names->insert( signals[1 + _num_inputs + index], name );
+    }
     std::get<2>( latches[index] ) = name;
   }
 
@@ -356,7 +357,7 @@ public:
   void on_latch( unsigned index, unsigned next, latch_init_value reset ) const override
   {
     (void)index;
-    int8_t r = reset == latch_init_value::NONDETERMINISTIC ? -1 : (reset == latch_init_value::ONE ? 1 : 0);
+    int8_t r = reset == latch_init_value::NONDETERMINISTIC ? -1 : ( reset == latch_init_value::ONE ? 1 : 0 );
     latches.push_back( std::make_tuple( next, r, "" ) );
   }
 
@@ -371,9 +372,9 @@ private:
   aig_network& _ntk;
 
   mutable uint32_t _num_inputs = 0;
-  mutable std::vector<std::tuple<unsigned,std::string>> outputs;
+  mutable std::vector<std::tuple<unsigned, std::string>> outputs;
   mutable std::vector<aig_network::signal> signals;
-  mutable std::vector<std::tuple<unsigned,int8_t,std::string>> latches;
+  mutable std::vector<std::tuple<unsigned, int8_t, std::string>> latches;
   mutable NameMap<aig_network>* _names;
 };
 
