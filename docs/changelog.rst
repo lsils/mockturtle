@@ -7,7 +7,7 @@ v0.1 (not yet released)
 * Initial network interface
   `#1 <https://github.com/lsils/mockturtle/pull/1>`_ `#61 <https://github.com/lsils/mockturtle/pull/61>`_
 * Network implementations:
-    - AIG network (`aig_network`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_
+    - AIG network (`aig_network`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_ `#62 <https://github.com/lsils/mockturtle/pull/62>`_
     - MIG network (`mig_network`) `#4 <https://github.com/lsils/mockturtle/pull/4>`_
     - k-LUT network (`klut_network`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_
     - XOR-majority graph (`xmg_network`) `#47 <https://github.com/lsils/mockturtle/pull/47>`_
@@ -40,6 +40,7 @@ v0.1 (not yet released)
     - Read BENCH files using *lorina* (`bench_reader`) `#6 <https://github.com/lsils/mockturtle/pull/6>`_
     - Write networks to BENCH files (`write_bench`) `#10 <https://github.com/lsils/mockturtle/pull/10>`_
     - Read Verilog files using *lorina* (`verilog_reader`) `#40 <https://github.com/lsils/mockturtle/pull/40>`_
+    - Write networks to Verilog files (`write_verilog`) `#65 <https://github.com/lsils/mockturtle/pull/65>`_
 * Generators for arithmetic circuits:
     - Carry ripple adder (`carry_ripple_adder`) `#5 <https://github.com/lsils/mockturtle/pull/5>`_
     - Carry ripple subtractor (`carry_ripple_subtractor`) `#32 <https://github.com/lsils/mockturtle/pull/32>`_
