@@ -61,6 +61,7 @@ struct exact_resynthesis_settings
   bool add_nontriv_clauses{true};
   bool add_noreapply_clauses{true};
   bool add_symvar_clauses{true};
+  int conflict_limit{0};
 
   percy::SolverType solver_type = percy::SLV_BSAT2;
 
@@ -145,6 +146,7 @@ public:
     spec.add_nontriv_clauses = _ps.add_nontriv_clauses;
     spec.add_noreapply_clauses = _ps.add_noreapply_clauses;
     spec.add_symvar_clauses = _ps.add_symvar_clauses;
+    spec.conflict_limit = _ps.conflict_limit;
     spec[0] = function;
 
     percy::chain c = [&]() {
