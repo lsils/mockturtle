@@ -134,7 +134,7 @@ TEST_CASE( "Cut rewriting from inverted projection", "[cut_rewriting]" )
   } );
 }
 
-TEST_CASE( "Cut rewriting with exact LUT synthesis", "cut_rewriting]" )
+TEST_CASE( "Cut rewriting with exact LUT synthesis", "[cut_rewriting]" )
 {
   klut_network klut;
   const auto a = klut.create_pi();

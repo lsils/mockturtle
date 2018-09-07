@@ -47,6 +47,29 @@
 namespace mockturtle
 {
 
+struct exact_resynthesis_params
+{
+  using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
+  using cache_t = std::shared_ptr<cache_map_t>;
+
+  cache_t cache;
+
+  bool add_alonce_clauses{true};
+  bool add_colex_clauses{true};
+  bool add_lex_clauses{false};
+  bool add_lex_func_clauses{true};
+  bool add_nontriv_clauses{true};
+  bool add_noreapply_clauses{true};
+  bool add_symvar_clauses{true};
+  int conflict_limit{0};
+
+  percy::SolverType solver_type = percy::SLV_BSAT2;
+
+  percy::EncoderType encoder_type = percy::ENC_KNUTH;
+
+  percy::SynthMethod synthesis_method = percy::SYNTH_STD;
+};
+
 /*! \brief Resynthesis function based on Akers synthesis.
  *
  * This resynthesis function can be passed to ``node_resynthesis``,
@@ -98,9 +121,9 @@ public:
   using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
   using cache_t = std::shared_ptr<cache_map_t>;
 
-  explicit exact_resynthesis( uint32_t fanin_size = 3u, cache_t cache = {} )
+  explicit exact_resynthesis( uint32_t fanin_size = 3u, exact_resynthesis_params const& ps = {} )
     : _fanin_size( fanin_size ),
-      _cache( cache )
+      _ps( ps )
   {
   }
 
@@ -116,25 +139,33 @@ public:
     percy::spec spec;
     spec.fanin = _fanin_size;
     spec.verbosity = 0;
+    spec.add_alonce_clauses = _ps.add_alonce_clauses;
+    spec.add_colex_clauses = _ps.add_colex_clauses;
+    spec.add_lex_clauses = _ps.add_lex_clauses;
+    spec.add_lex_func_clauses = _ps.add_lex_func_clauses;
+    spec.add_nontriv_clauses = _ps.add_nontriv_clauses;
+    spec.add_noreapply_clauses = _ps.add_noreapply_clauses;
+    spec.add_symvar_clauses = _ps.add_symvar_clauses;
+    spec.conflict_limit = _ps.conflict_limit;
     spec[0] = function;
 
     percy::chain c = [&]() {
-      if ( _cache )
+      if ( _ps.cache )
       {
-        const auto it = _cache->find( function );
-        if ( it != _cache->end() )
+        const auto it = _ps.cache->find( function );
+        if ( it != _ps.cache->end() )
         {
           return it->second;
         }
       }
 
       percy::chain c;
-      const auto result = percy::synthesize( spec, c );
+      const auto result = percy::synthesize( spec, c, _ps.solver_type, _ps.encoder_type, _ps.synthesis_method );
       assert( result == percy::success );
       c.denormalize();
-      if ( _cache )
+      if ( _ps.cache )
       {
-        (*_cache)[function] = c;
+        (*_ps.cache)[function] = c;
       }
       return c;
     }();
@@ -158,7 +189,7 @@ public:
 
 private:
   uint32_t _fanin_size{3u};
-  cache_t _cache;
+  exact_resynthesis_params _ps;
 };
 
 } /* namespace mockturtle */

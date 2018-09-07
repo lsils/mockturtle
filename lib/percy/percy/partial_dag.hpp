@@ -868,7 +868,7 @@ namespace percy
     /// Writes a collection of partial DAGs to the specified filename
     /// NOTE: currently only serialization of DAGs with 2 fanins is supported.
     /// The format which is written: <nr-vertices><fanin1-vertex1><fanin2-vertex1>...<fanin1-vertexn><fanin2-vertexn>.
-    void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
+    inline void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
     {
         auto fhandle = fopen(filename, "wb");
         if (fhandle == NULL) {
@@ -893,7 +893,7 @@ namespace percy
         fclose(fhandle);
     }
 
-    void write_partial_dag(const partial_dag& dag, FILE* fhandle)
+    inline void write_partial_dag(const partial_dag& dag, FILE* fhandle)
     {
         int buf = dag.nr_vertices();
         fwrite(&buf, sizeof(int), 1, fhandle);
@@ -909,7 +909,7 @@ namespace percy
     }
 
     /// Reads serialized partial DAGs from file
-    std::vector<partial_dag> read_partial_dags(const char* const filename)
+    inline std::vector<partial_dag> read_partial_dags(const char* const filename)
     {
         std::vector<partial_dag> dags;
 
@@ -941,7 +941,7 @@ namespace percy
         return dags;
     }
 
-    size_t count_partial_dags(FILE* fhandle)
+    inline size_t count_partial_dags(FILE* fhandle)
     {
         size_t nr_dags = 0;
         int buf;
@@ -962,7 +962,7 @@ namespace percy
 
     /// Generate all partial DAGs of the specified number
     /// of vertices.
-    std::vector<partial_dag> pd_generate(int nr_vertices)
+    inline std::vector<partial_dag> pd_generate(int nr_vertices)
     {
         partial_dag g;
         partial_dag_generator gen;
@@ -984,7 +984,7 @@ namespace percy
     }
 
 #ifndef DISABLE_NAUTY
-    std::vector<partial_dag> pd_generate_nonisomorphic(int nr_vertices)
+    inline std::vector<partial_dag> pd_generate_nonisomorphic(int nr_vertices)
     {
         partial_dag g;
         partial_dag_generator gen;
@@ -1010,7 +1010,7 @@ namespace percy
         return dags;
     }
 
-    void pd_write_nonisomorphic(int nr_vertices, const char* const filename)
+    inline void pd_write_nonisomorphic(int nr_vertices, const char* const filename)
     {
         partial_dag g;
         partial_dag_generator gen;
@@ -1040,7 +1040,7 @@ namespace percy
 
     /// Generate all partial DAGs up to the specified number
     /// of vertices.
-    std::vector<partial_dag> pd_generate_max(int max_vertices)
+    inline std::vector<partial_dag> pd_generate_max(int max_vertices)
     {
         partial_dag g;
         partial_dag_generator gen;
@@ -1063,7 +1063,7 @@ namespace percy
         return dags;
     }
 
-    std::vector<partial_dag> pd_generate_filtered(int max_vertices, int nr_in)
+    inline std::vector<partial_dag> pd_generate_filtered(int max_vertices, int nr_in)
     {
         partial_dag g;
         partial_dag_generator gen;
@@ -1089,7 +1089,7 @@ namespace percy
     }
 
 #ifndef DISABLE_NAUTY
-    std::vector<partial_dag> pd_filter_isomorphic(
+    inline std::vector<partial_dag> pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
         std::vector<partial_dag>& ni_dags,
         bool show_progress = false)
@@ -1117,7 +1117,7 @@ namespace percy
         return ni_dags;
     }
 
-    std::vector<partial_dag> pd_filter_isomorphic(
+    inline std::vector<partial_dag> pd_filter_isomorphic(
         const std::vector<partial_dag>& dags,
         bool show_progress = false)
     {
@@ -1128,7 +1128,7 @@ namespace percy
 
     /// Filters out isomorphic DAGs. NOTE: assumes that
     /// all gven DAGs have the same number of vertices.
-    void pd_filter_isomorphic_fast(
+    inline void pd_filter_isomorphic_fast(
         const std::vector<partial_dag>& dags, 
         std::vector<partial_dag>& ni_dags,
         bool show_progress = false)
@@ -1181,7 +1181,7 @@ namespace percy
     }
 
     /// Isomorphism check using set containinment (hashing)
-    void pd_filter_isomorphic_sfast(
+    inline void pd_filter_isomorphic_sfast(
         const std::vector<partial_dag>& dags, 
         std::vector<partial_dag>& ni_dags,
         bool show_progress = false)
@@ -1235,7 +1235,7 @@ namespace percy
     }
 
 
-    void pd_filter_isomorphic(
+    inline void pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
         int max_size, 
         std::vector<partial_dag>& ni_dags,
@@ -1264,7 +1264,7 @@ namespace percy
         ni_dags = dags;
     }
 
-    std::vector<partial_dag> pd_filter_isomorphic(
+    inline std::vector<partial_dag> pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
         int max_size,
         bool show_progress = false)

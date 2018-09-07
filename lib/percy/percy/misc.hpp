@@ -55,7 +55,7 @@ namespace percy
         return 0;
     }
 
-    int
+    inline int
     colex_compare(const int* const fanins1, const int* const fanins2, int fanin)
     {
         for (int i = fanin-1; i >= 0; i--) {
@@ -70,7 +70,7 @@ namespace percy
         return 0;
     }
 
-    int
+    inline int
     colex_compare(const std::vector<int>& fanins1, const std::vector<int>& fanins2)
     {
         assert(fanins1.size() == fanins2.size());
@@ -124,7 +124,7 @@ namespace percy
         return 0;
     }
 
-    int
+    inline int
     lex_compare(const std::vector<int>& fanins1, const std::vector<int>& fanins2)
     {
         assert(fanins1.size() == fanins2.size());
@@ -141,7 +141,7 @@ namespace percy
         return 0;
     }
 
-    int
+    inline int
     lex_compare(const std::array<int, 3>& fanins1, const std::array<int, 3>& fanins2)
     {
         if (fanins1[0] < fanins2[0]) {
@@ -163,7 +163,7 @@ namespace percy
         return 0;
     }
 
-    int
+    inline int
     colex_compare(const std::array<int, 3>& fanins1, const std::array<int, 3>& fanins2)
     {
         if (fanins1[2] < fanins2[2]) {
