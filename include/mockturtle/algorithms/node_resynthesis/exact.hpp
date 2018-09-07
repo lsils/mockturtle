@@ -160,7 +160,7 @@ public:
       }
 
       percy::chain c;
-      const auto result = percy::synthesize( spec, c, _ps.solver_type, _ps.encoder_type/*, _ps.synthesis_method*/ );
+      const auto result = percy::synthesize( spec, c, _ps.solver_type, _ps.encoder_type, _ps.synthesis_method );
       assert( result == percy::success );
       c.denormalize();
       if ( _ps.cache )
