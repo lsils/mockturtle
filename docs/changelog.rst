@@ -50,6 +50,7 @@ v0.1 (not yet released)
     - Modular multiplication (`modular_multiplication_inplace`) `#48 <https://github.com/lsils/mockturtle/pull/48>`_
     - 2k-to-k multiplexer (`mux_inplace`) `#43 <https://github.com/lsils/mockturtle/pull/43>`_
     - Zero padding (`zero_extend`) `#48 <https://github.com/lsils/mockturtle/pull/48>`_
+    - Random logic networks for AIGs and MIGs (`random_logic_generator`) `#68 <https://github.com/lsils/mockturtle/pull/68>`_
 * Utility data structures: `truth_table_cache`, `cut`, `cut_set`, `node_map`, `progress_bar`, `stopwatch`
     - Truth table cache (`truth_table_cache`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_
     - Cuts (`cut` and `cut_set`) `#2 <https://github.com/lsils/mockturtle/pull/2>`_
