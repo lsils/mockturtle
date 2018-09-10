@@ -43,10 +43,11 @@ namespace mockturtle
  *
  * Generate a random logic network with a fixed number of primary
  * inputs, a fixed number of gates, and an unrestricted number of
- * primary outputs.  All nodes with no parents are primary outputs.
+ * primary outputs.  After generating primary inputs and gates, all
+ * nodes with no fanout become primary outputs.
  *
- * The constructor takes a vector of construction rules from the
- * algorithm builds the logic network.
+ * The constructor takes a vector of construction rules, which are
+ * used in the algorithm to build the logic network.
  *
  */
 template<typename Ntk>
@@ -73,12 +74,15 @@ public:
 
   Ntk generate( uint32_t num_inputs, uint32_t num_gates, uint64_t seed = 0xcafeaffe ) const
   {
+    assert( num_inputs > 0 );
+    assert( num_gates > 0 );
+
     std::vector<signal> fs;
     Ntk ntk;
 
     /* generate constant */
     fs.emplace_back( ntk.get_constant( 0 ) );
-    
+
     /* generate pis */
     for ( auto i = 0u; i < num_inputs; ++i )
     {
@@ -126,11 +130,12 @@ public:
     assert( ntk.num_gates() == num_gates );
 
     return ntk;
-  } 
+  }
 
   rules_t const _gens;
 };
 
+/*! \brief Generates a random AIG network */
 inline random_logic_generator<aig_network> default_random_aig_generator()
 {
   using gen_t = random_logic_generator<aig_network>;
@@ -145,6 +150,7 @@ inline random_logic_generator<aig_network> default_random_aig_generator()
   return gen_t( rules );
 }
 
+/*! \brief Generates a random MIG network */
 inline random_logic_generator<mig_network> default_random_mig_generator()
 {
   using gen_t = random_logic_generator<mig_network>;
@@ -159,7 +165,8 @@ inline random_logic_generator<mig_network> default_random_mig_generator()
   return random_logic_generator<mig_network>( rules );
 }
 
-inline random_logic_generator<mig_network> default_random_mixed_mig_generator()
+/*! \brief Generates a random MIG network MAJ-, AND-, and OR-gates */
+inline random_logic_generator<mig_network> mixed_random_mig_generator()
 {
   using gen_t = random_logic_generator<mig_network>;
 

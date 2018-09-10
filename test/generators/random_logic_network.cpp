@@ -24,7 +24,7 @@ TEST_CASE( "create random mig_network", "[random_logic_generator]" )
 
 TEST_CASE( "create random mig_network with un-real majority nodes", "[random_logic_generator]" )
 {
-  auto const gen = default_random_mixed_mig_generator();
+  auto const gen = mixed_random_mig_generator();
   auto const mig = gen.generate( 4u, 100u );
 
   CHECK( mig.num_pis() == 4u );
