@@ -25,12 +25,16 @@
 
 /*!
   \file random_logic_generator.hpp
-  \brief Generate a random logic network
+  \brief Generate random logic networks
 
   \author Heinz Riener
 */
 
 #pragma once
+
+#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/mig.hpp>
+#include <random>
 
 namespace mockturtle
 {
@@ -41,7 +45,7 @@ namespace mockturtle
  *
  */
 template<typename Ntk>
-class random_logic_generator;
+class random_logic_generator
 {
 public:
   explicit random_logic_generator() = default;
@@ -69,8 +73,11 @@ public:
     std::vector<signal> fs;
     aig_network aig;
 
+    /* generate constant */
+    fs.emplace_back( aig.get_constant( 0 ) );
+    
     /* generate pis */
-    for ( auto i = 0; i < num_inputs; ++i )
+    for ( auto i = 0u; i < num_inputs; ++i )
     {
       fs.emplace_back( aig.create_pi() );
     }
@@ -81,8 +88,8 @@ public:
     while ( gate_counter < num_gates )
     {
       std::uniform_int_distribution<int> dist( 0, fs.size()-1 );
-      auto const le = dist( rng );
-      auto const ri = dist( rng );
+      auto const le = fs.at( dist( rng ) );
+      auto const ri = fs.at( dist( rng ) );
       auto const le_compl = dist( rng ) & 1;
       auto const ri_compl = dist( rng ) & 1;
 
@@ -110,6 +117,80 @@ public:
     assert( aig.num_gates() == num_gates );
 
     return aig;
+  } 
+};
+
+/*! \brief Generates a random mig_network
+ *
+ * Generate a random logic network with a fixed number of primary
+ * inputs, a fixed number of gates, and an unrestricted number of
+ * primary outputs.  All nodes with no parents are primary outputs.
+ *
+ */
+template<>
+class random_logic_generator<mig_network>
+{
+public:
+  using node = mig_network::node;
+  using signal = mig_network::signal;
+
+public:
+  explicit random_logic_generator() = default;
+
+  mig_network generate( uint32_t num_inputs, uint32_t num_gates, uint64_t seed = 0xcafeaffe )
+  {
+    std::vector<signal> fs;
+    mig_network mig;
+
+    /* generate constant */
+    fs.emplace_back( mig.get_constant( 0 ) );
+    
+    /* generate pis */
+    for ( auto i = 0u; i < num_inputs; ++i )
+    {
+      fs.emplace_back( mig.create_pi() );
+    }
+
+    /* generate gates */
+    std::mt19937 rng( seed );
+    auto gate_counter = mig.num_gates();
+    while ( gate_counter < num_gates )
+    {
+      std::uniform_int_distribution<int> dist( 0, fs.size()-1 );
+      auto const u = fs.at( dist( rng ) );
+      auto const v = fs.at( dist( rng ) );
+      auto const w = fs.at( dist( rng ) );
+
+      auto const u_compl = dist( rng ) & 1;
+      auto const v_compl = dist( rng ) & 1;
+      auto const w_compl = dist( rng ) & 1;
+
+      auto const g = mig.create_maj( u_compl ? !u : u,
+                                     v_compl ? !v : v,
+                                     w_compl ? !w : w);
+      
+      if ( mig.num_gates() > gate_counter )
+      {
+        fs.emplace_back( g );
+        ++gate_counter;
+      }
+
+      assert( mig.num_gates() == gate_counter );
+    }
+
+    /* generate pos */
+    mig.foreach_node( [&]( auto const& n ){
+        auto const size = mig.fanout_size( n );
+        if ( size == 0u )
+        {
+          mig.create_po( mig.make_signal( n ) );
+        }
+      });
+
+    assert( mig.num_pis() == num_inputs );
+    assert( mig.num_gates() == num_gates );
+
+    return mig;
   } 
 };
 
