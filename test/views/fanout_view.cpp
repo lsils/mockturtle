@@ -27,7 +27,7 @@ void test_fanout_view()
   CHECK( has_foreach_fanout_v<fanout_fanout_ntk> );
 };
 
-TEST_CASE( "create different fanoutw views", "[fanout_view]" )
+TEST_CASE( "create different fanout views", "[fanout_view]" )
 {
   test_fanout_view<aig_network>();
   test_fanout_view<mig_network>();
