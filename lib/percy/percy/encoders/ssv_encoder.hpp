@@ -5,7 +5,7 @@
 
 namespace percy
 {
-    class knuth_encoder : public std_encoder
+    class ssv_encoder : public std_encoder
     {
         private:
 			int nr_op_vars_per_step;
@@ -26,13 +26,13 @@ namespace percy
             std::vector<int> nr_svar_map;
 
         public:
-            knuth_encoder(solver_wrapper& solver)
+            ssv_encoder(solver_wrapper& solver)
             {
                 vLits = pabc::Vec_IntAlloc(128);
                 set_solver(solver);
             }
 
-            ~knuth_encoder()
+            ~ssv_encoder()
             {
                 pabc::Vec_IntFree(vLits);
             }
@@ -92,7 +92,7 @@ namespace percy
                 auto status = true;
 
                 if (spec.verbosity > 2) {
-                    printf("Creating op clauses (KNUTH-%d)\n", spec.fanin);
+                    printf("Creating op clauses (SSV-%d)\n", spec.fanin);
                     printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
                 }
 
@@ -137,7 +137,7 @@ namespace percy
                 auto status = true;
 
                 if (spec.verbosity > 2) {
-                    printf("Creating output clauses (KNUTH-%d)\n", spec.fanin);
+                    printf("Creating output clauses (SSV-%d)\n", spec.fanin);
                     printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
                 }
                 // Every output points to an operand.
@@ -235,7 +235,7 @@ namespace percy
                                 nr_sel_vars + nr_lex_vars;
 
                 if (spec.verbosity > 1) {
-                    printf("Creating variables (KNUTH-%d)\n", spec.fanin);
+                    printf("Creating variables (SSV-%d)\n", spec.fanin);
                     printf("nr steps = %d\n", spec.nr_steps);
                     printf("nr_sel_vars=%d\n", nr_sel_vars);
                     printf("nr_op_vars = %d\n", nr_op_vars);
@@ -297,8 +297,11 @@ namespace percy
                     // need to ensure that this operand's truth table satisfies
                     // the specified output function.
                     for (int h = 0; h < spec.nr_nontriv; h++) {
+                        if (spec.is_dont_care(h, t + 1)) {
+                            continue;
+                        }
                         auto outbit = kitty::get_bit(
-                                spec[spec.synth_func(h)], t+1);
+                                spec[spec.synth_func(h)], t + 1);
                         if ((spec.out_inv >> spec.synth_func(h)) & 1) {
                             outbit = 1 - outbit;
                         }
@@ -326,7 +329,7 @@ namespace percy
             create_main_clauses(const spec& spec)
             {
                 if (spec.verbosity > 2) {
-                    printf("Creating main clauses (KNUTH-%d)\n", spec.fanin);
+                    printf("Creating main clauses (SSV-%d)\n", spec.fanin);
                     printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
                 }
                 auto success = true;

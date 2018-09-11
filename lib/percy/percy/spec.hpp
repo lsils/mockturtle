@@ -97,6 +97,8 @@ namespace percy
         protected:
             int capacity; ///< Maximum number of output functions this specification can support
             std::vector<kitty::dynamic_truth_table> functions; ///< Functions to synthesize
+            std::vector<kitty::dynamic_truth_table> dc_masks; ///< Indicates which input combinations we don't care about
+            std::vector<char> dc_functions; ///< Determines for which functions we look at the DC mask
             std::vector<int> triv_functions; ///< Trivial outputs
             std::vector<int> synth_functions; ///< Nontrivial outputs
             std::vector<Primitive> primitives; ///< The primitives used in synthesis
@@ -143,6 +145,8 @@ namespace percy
             {
                 capacity = n;
                 functions.resize(n);
+                dc_masks.resize(n);
+                dc_functions.resize(n);
                 triv_functions.resize(n);
                 synth_functions.resize(n);
             }
@@ -153,7 +157,7 @@ namespace percy
 
             /// Normalizes outputs by converting them to normal functions. Also
             /// checks for trivial outputs, such as constant functions or
-            /// projections. This determines which of the specifeid functions
+            /// projections. This determines which of the specified functions
             /// need to be synthesized.  This function expects the following
             /// invariants to hold:
             /// 1. The number of input variables has been set.
@@ -179,7 +183,7 @@ namespace percy
                 if (verbosity) {
                     printf("\n");
                     printf("========================================"
-                            "========================================\n");
+                           "========================================\n");
                     printf("  Pre-processing for %s:\n", capacity > 1 ? 
                             "functions" : "function");
                     for (int h = 0; h < capacity; h++) {
@@ -277,6 +281,21 @@ namespace percy
                 functions[i] = tt;
             }
 
+            void set_dont_care(std::size_t f_idx, kitty::dynamic_truth_table dc_mask)
+            {
+                dc_functions[f_idx] = 1;
+                dc_masks[f_idx] = dc_mask;
+            }
+
+            void clear_dont_care(std::size_t f_idx)
+            {
+                dc_functions[f_idx] = 0;
+            }
+
+            bool is_dont_care(std::size_t f_idx, int dc_idx) const
+            {
+                return dc_functions[f_idx] && kitty::get_bit(dc_masks[f_idx], dc_idx);
+            }
 
             int
             triv_func(int i) const

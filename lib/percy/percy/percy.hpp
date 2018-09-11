@@ -15,6 +15,7 @@
 #include "solvers.hpp"
 #include "encoders.hpp"
 #include "cnf.hpp"
+#include <limits>
 
 /*******************************************************************************
     This module defines the interface to synthesize Boolean chains from
@@ -247,7 +248,7 @@ namespace percy
 
         switch (enc_type) {
         case ENC_KNUTH:
-            enc = new knuth_encoder(solver);
+            enc = new ssv_encoder(solver);
             break;
         case ENC_EPFL:
             enc = new epfl_encoder(solver);
@@ -278,7 +279,7 @@ namespace percy
 
         switch (enc_type) {
         case ENC_KNUTH:
-            enc = new knuth_encoder(solver);
+            enc = new ssv_encoder(solver);
             break;
         case ENC_EPFL:
             enc = new epfl_encoder(solver);
@@ -573,13 +574,7 @@ namespace percy
             return failure;
         }
         while (true) {
-            auto begin = std::chrono::steady_clock::now();
             auto stat = solver.solve(0);
-            auto end = std::chrono::steady_clock::now();
-            auto elapsed_time =
-                std::chrono::duration_cast<std::chrono::microseconds>(
-                    end - begin
-                    ).count();
 
             if (stat == success) {
                 auto sim_tt = encoder.simulate(spec, dag);
@@ -801,7 +796,8 @@ namespace percy
         chain& chain,
         solver_wrapper& solver,
         partial_dag_encoder& encoder,
-        std::string file_prefix = "")
+        std::string file_prefix = "",
+        int max_time = std::numeric_limits<int>::max()) // Timeout in seconds
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
@@ -819,6 +815,7 @@ namespace percy
 
         partial_dag g;
         spec.nr_steps = spec.initial_steps;
+        auto begin = std::chrono::steady_clock::now();
         while (true) {
             g.reset(2, spec.nr_steps);
             const auto filename = file_prefix + "pd" + std::to_string(spec.nr_steps) + ".bin";
@@ -842,6 +839,14 @@ namespace percy
                     continue;
                 }
                 const auto status = solver.solve(0);
+                auto end = std::chrono::steady_clock::now();
+                auto elapsed_time =
+                    std::chrono::duration_cast<std::chrono::seconds>(
+                        end - begin
+                        ).count();
+                if (elapsed_time > max_time) {
+                    return timeout;
+                }
                 if (status == success) {
                     encoder.extract_chain(spec, g, chain);
                     fclose(fhandle);
@@ -1404,10 +1409,10 @@ namespace percy
         }
     }
 
-    inline synth_result
+    inline synth_result 
     parallel_maj_synthesize(
-        spec& spec, 
-        mig& mig, 
+        spec& spec,
+        mig& mig,
         int num_threads = std::thread::hardware_concurrency())
     {
         spec.preprocess();
@@ -1432,14 +1437,14 @@ namespace percy
         bool* pfound = &found;
         std::mutex found_mutex;
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+        spec.nr_rand_tt_assigns = 0;// 2 * spec.get_nr_in();
         spec.fanin = 3;
         spec.nr_steps = spec.initial_steps;
         while (true) {
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &mig, &q] {
                     percy::mig local_mig;
-                    bsat_wrapper solver;
+                    bmcg_wrapper solver;
                     maj_encoder encoder(solver);
                     fence local_fence;
 
@@ -1552,7 +1557,7 @@ namespace percy
         while (true) {
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &mig, &q] {
-                    bsat_wrapper solver;
+                    bmcg_wrapper solver;
                     maj_encoder encoder(solver);
                     fence local_fence;
 
@@ -1616,7 +1621,6 @@ namespace percy
         return success;
     }
 
-
     inline synth_result
     next_solution(
         spec& spec,
@@ -1647,6 +1651,236 @@ namespace percy
         }
 
         return failure;
+    }
+
+    inline synth_result maj_pd_synthesize(
+        spec& spec,
+        mig& mig,
+        const std::vector<partial_dag>& dags,
+        solver_wrapper& solver,
+        maj_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= 3);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        for (auto& dag : dags) {
+            spec.nr_steps = dag.nr_vertices();
+            solver.restart();
+            if (!encoder.encode(spec, dag)) {
+                continue;
+            }
+
+            const auto begin = std::chrono::steady_clock::now();
+            const auto status = solver.solve(0);
+
+            if (status == success) {
+                encoder.extract_mig(spec, dag, mig);
+                //encoder.print_solver_state(spec, dag);
+                return success;
+            }
+        }
+        return failure;
+    }
+
+    inline synth_result maj_ser_synthesize(
+        spec& spec,
+        mig& mig,
+        solver_wrapper& solver,
+        maj_encoder& encoder,
+        std::string file_prefix = "",
+        int max_time = std::numeric_limits<int>::max()) // Timeout in seconds
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        partial_dag g;
+        spec.nr_steps = spec.initial_steps;
+        auto begin = std::chrono::steady_clock::now();
+        while (true) {
+            g.reset(3, spec.nr_steps);
+            const auto filename = file_prefix + "pd" + std::to_string(spec.nr_steps) + ".bin";
+            auto fhandle = fopen(filename.c_str(), "rb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open file %s\n", filename.c_str());
+                break;
+            }
+
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin1 = buf;
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin2 = buf;
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin3 = buf;
+                    g.set_vertex(i, fanin1, fanin2, fanin3);
+                }
+                solver.restart();
+                if (!encoder.encode(spec, g)) {
+                    continue;
+                }
+                const auto status = solver.solve(0);
+                auto end = std::chrono::steady_clock::now();
+                auto elapsed_time =
+                    std::chrono::duration_cast<std::chrono::seconds>(
+                        end - begin
+                        ).count();
+                if (elapsed_time > max_time) {
+                    return timeout;
+                }
+                if (status == success) {
+                    encoder.extract_mig(spec, g, mig);
+                    fclose(fhandle);
+                    return success;
+                }
+            }
+            fclose(fhandle);
+            spec.nr_steps++;
+        }
+
+        return failure;
+    }
+
+    inline synth_result maj_ser_synthesize_parallel(
+        spec& spec,
+        mig& m,
+        int num_threads = std::thread::hardware_concurrency(),
+        std::string file_prefix ="")
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            m.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                m.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        std::vector<std::thread> threads(num_threads);
+        moodycamel::ConcurrentQueue<partial_dag> q(num_threads * 3);
+        bool finished_generating = false;
+        bool* pfinished = &finished_generating;
+        int size_found = PD_SIZE_CONST;
+        int* psize_found = &size_found;
+        std::mutex found_mutex;
+
+        for (int i = 0; i < num_threads; i++) {
+            threads[i] = std::thread([&spec, psize_found, pfinished, &found_mutex, &m, &q] {
+                percy::spec local_spec = spec;
+                bsat_wrapper solver;
+                maj_encoder encoder(solver);
+                partial_dag dag;
+
+                while (*psize_found > local_spec.nr_steps) {
+                    if (!q.try_dequeue(dag)) {
+                        if (*pfinished) {
+                            std::this_thread::yield();
+                            if (!q.try_dequeue(dag)) {
+                                break;
+                            }
+                        } else {
+                            std::this_thread::yield();
+                            continue;
+                        }
+                    }
+                    local_spec.nr_steps = dag.nr_vertices();
+                    synth_result status;
+                    solver.restart();
+                    if (!encoder.encode(local_spec, dag)) {
+                        continue;
+                    }
+                    while (true) {
+                        status = solver.solve(10);
+                        if (status == failure) {
+                            break;
+                        } else if (status == success) {
+                            std::lock_guard<std::mutex> vlock(found_mutex);
+                            if (*psize_found > local_spec.nr_steps) {
+                                encoder.extract_mig(local_spec, dag, m);
+                                *psize_found = local_spec.nr_steps;
+                            }
+                            break;
+                        } else if (*psize_found <= local_spec.nr_steps) {
+                            // Another thread found a solution that's
+                            // better or equal to this one.
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+
+        partial_dag g;
+        spec.nr_steps = spec.initial_steps;
+        while (size_found == PD_SIZE_CONST) {
+            g.reset(3, spec.nr_steps);
+            const auto filename = file_prefix + "pd" + std::to_string(spec.nr_steps) + ".bin";
+            auto fhandle = fopen(filename.c_str(), "rb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open PD file\n");
+                break;
+            }
+
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin1 = buf;
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin2 = buf;
+                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto fanin3 = buf;
+                    g.set_vertex(i, fanin1, fanin2, fanin3);
+                }
+                while (!q.try_enqueue(g)) {
+                    if (size_found == PD_SIZE_CONST) {
+                        std::this_thread::yield();
+                    } else {
+                        break;
+                    }
+                }
+                if (size_found != PD_SIZE_CONST) {
+                    break;
+                }
+            }
+            fclose(fhandle);
+            spec.nr_steps++;
+        }
+        finished_generating = true;
+        for (auto& thread : threads) {
+            thread.join();
+        }
+        spec.nr_steps = size_found;
+
+        return size_found == PD_SIZE_CONST ? failure : success;
     }
 }
 

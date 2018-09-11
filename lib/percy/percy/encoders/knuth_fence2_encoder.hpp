@@ -22,7 +22,7 @@ namespace percy
 
         pabc::Vec_Int_t* vLits; // Dynamic vector of literals
 
-        static constexpr int NR_SIM_TTS = 32;
+        static const int NR_SIM_TTS = 32;
         std::vector<kitty::dynamic_truth_table> sim_tts { NR_SIM_TTS };
 
         bool fix_output_sim_vars(const spec& spec, int  t)

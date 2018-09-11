@@ -27,10 +27,10 @@ namespace percy
         // so this is a constant.
         const int PD_OP_VARS_PER_STEP = 3;
 
-        static constexpr int NR_SIM_TTS = 32;
+        static const int NR_SIM_TTS = 32;
         std::vector<kitty::dynamic_truth_table> sim_tts { NR_SIM_TTS };
 
-        inline int nr_svars_for_step(
+        int nr_svars_for_step(
             const spec& spec, 
             const partial_dag& dag, 
             int i) const
@@ -52,6 +52,19 @@ namespace percy
             default: // No fanin flexibility
                 return 0;
             }
+        }
+
+        int nr_pi_fanins_for_step(const partial_dag& dag, int i) const
+        {
+            const auto& vertex = dag.get_vertex(i);
+            auto nr_pi_fanins = 0;
+            if (vertex[1] == FANIN_PI) {
+                nr_pi_fanins = 2;
+            } else if (vertex[0] == FANIN_PI) {
+                nr_pi_fanins = 1;
+            }
+
+            return nr_pi_fanins;
         }
 
         int get_sel_var(
@@ -511,7 +524,6 @@ namespace percy
             }
         }
 
-
         bool reapply_helper(
             const spec& spec,
             const partial_dag& dag,
@@ -667,6 +679,7 @@ namespace percy
             return reapply_helper(spec, dag, svars, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
 
+        /*
         void colex_helper(
             const spec& spec,
             const partial_dag& dag, 
@@ -689,35 +702,35 @@ namespace percy
                 for (int jp = 0; jp < spec.nr_in; jp++) {
                     if ((kp == k && jp < j) || (kp < k)) {
                         const auto sel_varp = get_sel_var(spec, dag, i + 1, jp);
-                        int ctr = 0;
-                        if (sel_var != -1) {
-                            pLits[ctr++] = pabc::Abc_Var2Lit(sel_var, 1);
-                        }
-                        pLits[ctr++] = pabc::Abc_Var2Lit(sel_varp, 1);
-                        (void)solver->add_clause(pLits, pLits + ctr);
+                        pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
+                        pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
+                        (void)solver->add_clause(pLits, pLits + 2);
                     }
                 }
             } else if (nr_pi_fanins == 2) {
+                printf("i=%d,j=%d,k=%d\n", i, j, k);
                 auto svar_ctr = 0;
                 for (int kp = 1; kp < spec.nr_in; kp++) {
                     for (int jp = 0; jp < kp; jp++) {
                         if ((kp == k && jp < j) || (kp < k)) {
+                            printf("dissallow %d fanins %d and %d\n", i = 1, jp, kp);
                             const auto sel_varp = get_sel_var(spec, dag, i + 1, svar_ctr);
-                            int ctr = 0;
-                            if (sel_var != -1) {
-                                pLits[ctr++] = pabc::Abc_Var2Lit(sel_var, 1);
-                            }
-                            pLits[ctr++] = pabc::Abc_Var2Lit(sel_varp, 1);
-                            (void)solver->add_clause(pLits, pLits + ctr);
+                            pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
+                            pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
+                            const auto res = solver->add_clause(pLits, pLits + 2);
+                            assert(res);
                         }
                         svar_ctr++;
                     }
                 }
             }
         }
+        */
         
         void create_colex_clauses(const spec& spec, const partial_dag& dag)
         {
+            int pLits[2];
+
             for (int i = 0; i < spec.nr_steps - 1; i++) {
                 const auto& vertex = dag.get_vertex(i);
                 auto nr_pi_fanins = 0;
@@ -727,22 +740,55 @@ namespace percy
                     nr_pi_fanins = 1;
                 }
                 if (nr_pi_fanins == 0) {
-                    const auto j = spec.nr_in + vertex[0] - 1;
-                    const auto k = spec.nr_in + vertex[1] - 1;
-                    colex_helper(spec, dag, i, j, k, -1);
+                    continue;
                 } else if (nr_pi_fanins == 1) {
+                    const auto pif = nr_pi_fanins_for_step(dag, i + 1);
+                    if (pif == 0) {
+                        continue;
+                    }
+                    const auto& vertexp = dag.get_vertex(i + 1);
+                    assert(pif == 1);
                     const auto k = spec.nr_in + vertex[1] - 1;
+                    const auto kp = spec.nr_in + vertexp[1] - 1;
+                    if (kp > k) {
+                        continue;
+                    }
+                    assert(kp == k);
                     for (int j = 0; j < spec.nr_in; j++) {
-                        const auto sel_var = get_sel_var(spec, dag, i, j);
-                        colex_helper(spec, dag, i, j, k, sel_var);
+                        for (int jp = 0; jp < spec.nr_in; jp++) {
+                            if (jp < j) {
+                                const auto sel_var = get_sel_var(spec, dag, i, j);
+                                const auto sel_varp = get_sel_var(spec, dag, i + 1, jp);
+                                pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
+                                pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
+                                const auto res = solver->add_clause(pLits, pLits + 2);
+                                assert(res);
+                            }
+                        }
                     }
                 } else {
+                    const auto pif = nr_pi_fanins_for_step(dag, i + 1);
+                    if (pif == 0 || pif == 1) {
+                        continue;
+                    }
                     auto svar_ctr = 0;
                     for (int k = 1; k < spec.nr_in; k++) {
                         for (int j = 0; j < k; j++) {
-                            const auto sel_var = get_sel_var(spec, dag, i, svar_ctr++);
-                            if (k == 1) continue;
-                            colex_helper(spec, dag, i, j, k, sel_var);
+                            auto svar_ctrp = 0;
+                            for (int kp = 1; kp < spec.nr_in; kp++) {
+                                for (int jp = 0; jp < kp; jp++) {
+                                    if ((kp == k && jp < j) || (kp < k)) {
+                                        const auto sel_var = get_sel_var(spec, dag, i, svar_ctr);
+                                        const auto sel_varp = get_sel_var(spec, dag, i + 1, svar_ctrp);
+                                        pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
+                                        pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
+                                        const auto res = solver->add_clause(pLits, pLits + 2);
+                                        assert(res);
+                                    }
+                                    svar_ctrp++;
+                                }
+                            }
+                            svar_ctr++;
                         }
                     }
                 }
@@ -899,10 +945,6 @@ namespace percy
                 return false;
             }
 
-            if (spec.add_colex_clauses) {
-                create_colex_clauses(spec, dag);
-            }
-
             if (spec.add_symvar_clauses && !create_symvar_clauses(spec, dag)) {
                 return false;
             }
@@ -918,7 +960,7 @@ namespace percy
         /// is extracted in the CEGAR loop, this leads to trouble.
         /// For an example, try synthesizing the 4-input function with
         /// decimal truth table 127.
-        inline void create_cardinality_constraints(
+        void create_cardinality_constraints(
             const spec& spec, 
             const partial_dag& dag)
         {

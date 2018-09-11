@@ -1,6 +1,6 @@
 #pragma once
 
-#include "encoders/knuth_encoder.hpp"
+#include "encoders/ssv_encoder.hpp"
 #include "encoders/knuth_fence_encoder.hpp"
 #include "encoders/knuth_fence2_encoder.hpp"
 #include "encoders/knuth_dag_encoder.hpp"
