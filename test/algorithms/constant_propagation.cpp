@@ -22,7 +22,7 @@ TEST_CASE( "simplify network", "[constant_propagation]" )
   std::unordered_map<aig_network::node, bool> values;
   values.emplace( aig.pi_at( 0u ), true );
   const auto aig2 = constant_propagation( aig, values );
-  CHECK( aig2.num_pis() == 1u );
+  CHECK( aig2.num_pis() == 2u );
   CHECK( aig2.num_gates() == 0u );
   CHECK( aig2.po_at( 0u ) == aig2.make_signal( aig2.pi_at( 0u ) ) );
 
@@ -30,7 +30,7 @@ TEST_CASE( "simplify network", "[constant_propagation]" )
   values.clear();
   values.emplace( aig.pi_at( 1u ), true );
   const auto aig3 = constant_propagation( aig, values );
-  CHECK( aig3.num_pis() == 1u );
+  CHECK( aig3.num_pis() == 2u );
   CHECK( aig3.num_gates() == 0u );
   CHECK( aig3.po_at( 0u ) == aig2.make_signal( aig3.pi_at( 0u ) ) );
 
@@ -38,7 +38,7 @@ TEST_CASE( "simplify network", "[constant_propagation]" )
   values.clear();
   values.emplace( aig.pi_at( 0u ), false );
   const auto aig4 = constant_propagation( aig, values );
-  CHECK( aig4.num_pis() == 1u );
+  CHECK( aig4.num_pis() == 2u );
   CHECK( aig4.num_gates() == 0u );
   CHECK( aig4.po_at( 0u ) == aig4.get_constant( false ) );
 
@@ -46,7 +46,7 @@ TEST_CASE( "simplify network", "[constant_propagation]" )
   values.clear();
   values.emplace( aig.pi_at( 1u ), false );
   const auto aig5 = constant_propagation( aig, values );
-  CHECK( aig5.num_pis() == 1u );
+  CHECK( aig5.num_pis() == 2u );
   CHECK( aig5.num_gates() == 0u );
   CHECK( aig5.po_at( 0u ) == aig5.get_constant( false ) );
 }

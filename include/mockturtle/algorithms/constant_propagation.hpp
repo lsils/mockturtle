@@ -42,9 +42,11 @@
 namespace mockturtle
 {
 
-template<typename NtkSource, typename NtkDest>
-std::vector<signal<NtkDest>> constant_propagation( NtkSource const& ntk, NtkDest& dest, std::unordered_map<typename NtkSource::node, bool> const& values )
+template<typename NtkSource, typename NtkDest, typename LeavesIterator>
+std::vector<signal<NtkDest>> constant_propagation( NtkSource const& ntk, NtkDest& dest, std::unordered_map<typename NtkSource::node, bool> const& values, LeavesIterator begin, LeavesIterator end )
 {
+  (void)end;
+
   static_assert( is_network_type_v<NtkSource>, "NtkSource is not a network type" );
   static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
 
@@ -69,16 +71,17 @@ std::vector<signal<NtkDest>> constant_propagation( NtkSource const& ntk, NtkDest
   }
 
   /* create inputs in same order */
+  auto it = begin;
   ntk.foreach_pi( [&]( auto const &node ) {
-      auto values_it = values.find( node );
-      if ( values_it != values.end() )
-      {
-        old_to_new[node] = values_it->second ? ntk.get_constant( true ) : ntk.get_constant( false );
-      }
-      else
-      {
-        old_to_new[node] = dest.create_pi();
-      }
+    auto values_it = values.find( node );
+    if ( values_it != values.end() )
+    {
+      old_to_new[node] = values_it->second ? ntk.get_constant( true ) : ntk.get_constant( false );
+    }
+    else
+    {
+      old_to_new[node] = *it++;
+    }
   } );
 
   /* foreach node in topological order */
@@ -100,11 +103,11 @@ std::vector<signal<NtkDest>> constant_propagation( NtkSource const& ntk, NtkDest
       const auto f = old_to_new[child];
       if ( ntk.is_complemented( child ) )
       {
-        children.push_back( dest.create_not( f ) );
+        children.emplace_back( dest.create_not( f ) );
       }
       else
       {
-        children.push_back( f );
+        children.emplace_back( f );
       }
     } );
     old_to_new[node] = dest.clone_node( ntk, node, children );
@@ -116,17 +119,38 @@ std::vector<signal<NtkDest>> constant_propagation( NtkSource const& ntk, NtkDest
     const auto f = old_to_new[po];
     if ( ntk.is_complemented( po ) )
     {
-      fs.push_back( dest.create_not( f ) );
+      fs.emplace_back( dest.create_not( f ) );
     }
     else
     {
-      fs.push_back( f );
+      fs.emplace_back( f );
     }
   } );
 
   return fs;
 }
 
+/*! \brief Replaces nodes with constants and simplifies the network.
+ *
+ * This methods recreates a network while replacing certain specified
+ * nodes with specified constants.  The network types of the source
+ * and destination network are the same.
+ *
+ * **Required network functions:**
+ * - `get_node`
+ * - `node_to_index`
+ * - `get_constant`
+ * - `create_pi`
+ * - `create_po`
+ * - `create_not`
+ * - `is_complemented`
+ * - `foreach_node`
+ * - `foreach_pi`
+ * - `foreach_po`
+ * - `clone_node`
+ * - `is_pi`
+ * - `is_constant`
+ */
 template<typename Ntk>
 Ntk constant_propagation( Ntk const& ntk, std::unordered_map<typename Ntk::node, bool> const& values )
 {
@@ -146,7 +170,12 @@ Ntk constant_propagation( Ntk const& ntk, std::unordered_map<typename Ntk::node,
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
 
   Ntk dest;
-  for ( auto f : constant_propagation( ntk, dest, values ) )
+  std::vector<signal<Ntk>> pis;
+  ntk.foreach_pi( [&]( auto ) {
+    pis.emplace_back( dest.create_pi() );
+  } );
+
+  for ( auto f : constant_propagation( ntk, dest, values, pis.begin(), pis.end() ) )
   {
     dest.create_po( f );
   }
