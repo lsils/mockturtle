@@ -41,157 +41,153 @@ namespace mockturtle
 
 /*! \brief Generates a random logic network
  *
- * Abstract interface for generating a random logic network.
+ * Generate a random logic network with a fixed number of primary
+ * inputs, a fixed number of gates, and an unrestricted number of
+ * primary outputs.  After generating primary inputs and gates, all
+ * nodes with no fanout become primary outputs.
+ *
+ * The constructor takes a vector of construction rules, which are
+ * used in the algorithm to build the logic network.
  *
  */
 template<typename Ntk>
 class random_logic_generator
 {
 public:
-  explicit random_logic_generator() = default;
-};
-
-/*! \brief Generates a random aig_network
- *
- * Generate a random logic network with a fixed number of primary
- * inputs, a fixed number of gates, and an unrestricted number of
- * primary outputs.  All nodes with no parents are primary outputs.
- *
- */
-template<>
-class random_logic_generator<aig_network>
-{
-public:
-  using node = aig_network::node;
-  using signal = aig_network::signal;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
 public:
-  explicit random_logic_generator() = default;
-
-  aig_network generate( uint32_t num_inputs, uint32_t num_gates, uint64_t seed = 0xcafeaffe )
+  struct rule
   {
+    std::function<signal(Ntk&, std::vector<signal> const&)> func;
+    uint32_t num_args;
+  };
+
+  using rules_t = std::vector<rule>;
+
+public:
+  explicit random_logic_generator( rules_t const &gens )
+    : _gens( gens )
+  {
+  }
+
+  Ntk generate( uint32_t num_inputs, uint32_t num_gates, uint64_t seed = 0xcafeaffe ) const
+  {
+    assert( num_inputs > 0 );
+    assert( num_gates > 0 );
+
     std::vector<signal> fs;
-    aig_network aig;
+    Ntk ntk;
 
     /* generate constant */
-    fs.emplace_back( aig.get_constant( 0 ) );
-    
+    fs.emplace_back( ntk.get_constant( 0 ) );
+
     /* generate pis */
     for ( auto i = 0u; i < num_inputs; ++i )
     {
-      fs.emplace_back( aig.create_pi() );
+      fs.emplace_back( ntk.create_pi() );
     }
 
     /* generate gates */
     std::mt19937 rng( seed );
-    auto gate_counter = aig.num_gates();
+    std::uniform_int_distribution<int> rule_dist( 0, _gens.size()-1u );
+
+    auto gate_counter = ntk.num_gates();
     while ( gate_counter < num_gates )
     {
-      std::uniform_int_distribution<int> dist( 0, fs.size()-1 );
-      auto const le = fs.at( dist( rng ) );
-      auto const ri = fs.at( dist( rng ) );
-      auto const le_compl = dist( rng ) & 1;
-      auto const ri_compl = dist( rng ) & 1;
+      auto const r = _gens.at( rule_dist( rng ) );
 
-      auto const g = aig.create_and( le_compl ? !le : le, ri_compl ? !ri : ri );
-      
-      if ( aig.num_gates() > gate_counter )
+      std::uniform_int_distribution<int> dist( 0, fs.size()-1 );
+      std::vector<signal> args;
+      for ( auto i = 0u; i < r.num_args; ++i )
       {
-        fs.emplace_back( g  );
-        ++gate_counter;
+        auto const a_compl = dist( rng ) & 1;
+        auto const a = fs.at( dist( rng ) );
+        args.emplace_back( a_compl ? !a : a );
       }
 
-      assert( aig.num_gates() == gate_counter );
-    }
-
-    /* generate pos */
-    aig.foreach_node( [&]( auto const& n ){
-        auto const size = aig.fanout_size( n );
-        if ( size == 0u )
-        {
-          aig.create_po( aig.make_signal( n ) );
-        }
-      });
-
-    assert( aig.num_pis() == num_inputs );
-    assert( aig.num_gates() == num_gates );
-
-    return aig;
-  } 
-};
-
-/*! \brief Generates a random mig_network
- *
- * Generate a random logic network with a fixed number of primary
- * inputs, a fixed number of gates, and an unrestricted number of
- * primary outputs.  All nodes with no parents are primary outputs.
- *
- */
-template<>
-class random_logic_generator<mig_network>
-{
-public:
-  using node = mig_network::node;
-  using signal = mig_network::signal;
-
-public:
-  explicit random_logic_generator() = default;
-
-  mig_network generate( uint32_t num_inputs, uint32_t num_gates, uint64_t seed = 0xcafeaffe )
-  {
-    std::vector<signal> fs;
-    mig_network mig;
-
-    /* generate constant */
-    fs.emplace_back( mig.get_constant( 0 ) );
-    
-    /* generate pis */
-    for ( auto i = 0u; i < num_inputs; ++i )
-    {
-      fs.emplace_back( mig.create_pi() );
-    }
-
-    /* generate gates */
-    std::mt19937 rng( seed );
-    auto gate_counter = mig.num_gates();
-    while ( gate_counter < num_gates )
-    {
-      std::uniform_int_distribution<int> dist( 0, fs.size()-1 );
-      auto const u = fs.at( dist( rng ) );
-      auto const v = fs.at( dist( rng ) );
-      auto const w = fs.at( dist( rng ) );
-
-      auto const u_compl = dist( rng ) & 1;
-      auto const v_compl = dist( rng ) & 1;
-      auto const w_compl = dist( rng ) & 1;
-
-      auto const g = mig.create_maj( u_compl ? !u : u,
-                                     v_compl ? !v : v,
-                                     w_compl ? !w : w);
-      
-      if ( mig.num_gates() > gate_counter )
+      auto const g = r.func( ntk, args );
+      if ( ntk.num_gates() > gate_counter )
       {
         fs.emplace_back( g );
         ++gate_counter;
       }
 
-      assert( mig.num_gates() == gate_counter );
+      assert( ntk.num_gates() == gate_counter );
     }
 
     /* generate pos */
-    mig.foreach_node( [&]( auto const& n ){
-        auto const size = mig.fanout_size( n );
+    ntk.foreach_node( [&]( auto const& n ){
+        auto const size = ntk.fanout_size( n );
         if ( size == 0u )
         {
-          mig.create_po( mig.make_signal( n ) );
+          ntk.create_po( ntk.make_signal( n ) );
         }
       });
 
-    assert( mig.num_pis() == num_inputs );
-    assert( mig.num_gates() == num_gates );
+    assert( ntk.num_pis() == num_inputs );
+    assert( ntk.num_gates() == num_gates );
 
-    return mig;
-  } 
+    return ntk;
+  }
+
+  rules_t const _gens;
 };
+
+/*! \brief Generates a random AIG network */
+inline random_logic_generator<aig_network> default_random_aig_generator()
+{
+  using gen_t = random_logic_generator<aig_network>;
+
+  gen_t::rules_t rules;
+  rules.emplace_back( gen_t::rule{[]( aig_network& aig, std::vector<aig_network::signal> const& vs ) -> aig_network::signal
+    {
+      assert( vs.size() == 2u );
+      return aig.create_and( vs[0], vs[1] );
+    }, 2u} );
+
+  return gen_t( rules );
+}
+
+/*! \brief Generates a random MIG network */
+inline random_logic_generator<mig_network> default_random_mig_generator()
+{
+  using gen_t = random_logic_generator<mig_network>;
+
+  gen_t::rules_t rules;
+  rules.emplace_back( gen_t::rule{[]( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal
+    {
+      assert( vs.size() == 3u );
+      return mig.create_maj( vs[0], vs[1], vs[2] );
+    }, 3u} );
+
+  return random_logic_generator<mig_network>( rules );
+}
+
+/*! \brief Generates a random MIG network MAJ-, AND-, and OR-gates */
+inline random_logic_generator<mig_network> mixed_random_mig_generator()
+{
+  using gen_t = random_logic_generator<mig_network>;
+
+  gen_t::rules_t rules;
+  rules.emplace_back( gen_t::rule{[]( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal
+    {
+      assert( vs.size() == 3u );
+      return mig.create_maj( vs[0], vs[1], vs[2] );
+    }, 3u} );
+  rules.emplace_back( gen_t::rule{[]( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal
+    {
+      assert( vs.size() == 2u );
+      return mig.create_and( vs[0], vs[1] );
+    }, 2u} );
+  rules.emplace_back( gen_t::rule{[]( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal
+    {
+      assert( vs.size() == 2u );
+      return mig.create_or( vs[0], vs[1] );
+    }, 2u} );
+
+  return random_logic_generator<mig_network>( rules );
+}
 
 } // namespace mockturtle
