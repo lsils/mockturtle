@@ -6,7 +6,7 @@
 namespace percy
 {
     template<int FI>
-    class knuth_dag_encoder : public dag_encoder<FI>
+    class ssv_dag_encoder : public dag_encoder<FI>
     {
         protected:
             int nr_op_vars;
@@ -16,12 +16,12 @@ namespace percy
             pabc::Vec_Int_t* vLits; // Dynamic vector of literals
 
         public:
-            knuth_dag_encoder()
+            ssv_dag_encoder()
             {
                 vLits = pabc::Vec_IntAlloc(128);
             }
 
-            ~knuth_dag_encoder()
+            ~ssv_dag_encoder()
             {
                 pabc::Vec_IntFree(vLits);
             }

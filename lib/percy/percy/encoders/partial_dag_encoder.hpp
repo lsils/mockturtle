@@ -679,122 +679,6 @@ namespace percy
             return reapply_helper(spec, dag, svars, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
 
-        /*
-        void colex_helper(
-            const spec& spec,
-            const partial_dag& dag, 
-            int i, 
-            int j, 
-            int k, 
-            int sel_var) 
-        {
-            int pLits[2];
-
-            const auto& vertex = dag.get_vertex(i + 1);
-            auto nr_pi_fanins = 0;
-            if (vertex[1] == FANIN_PI) {
-                nr_pi_fanins = 2;
-            } else if (vertex[0] == FANIN_PI) {
-                nr_pi_fanins = 1;
-            }
-            if (nr_pi_fanins == 1) {
-                const auto kp = spec.nr_in + vertex[1] - 1;
-                for (int jp = 0; jp < spec.nr_in; jp++) {
-                    if ((kp == k && jp < j) || (kp < k)) {
-                        const auto sel_varp = get_sel_var(spec, dag, i + 1, jp);
-                        pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
-                        pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
-                        (void)solver->add_clause(pLits, pLits + 2);
-                    }
-                }
-            } else if (nr_pi_fanins == 2) {
-                printf("i=%d,j=%d,k=%d\n", i, j, k);
-                auto svar_ctr = 0;
-                for (int kp = 1; kp < spec.nr_in; kp++) {
-                    for (int jp = 0; jp < kp; jp++) {
-                        if ((kp == k && jp < j) || (kp < k)) {
-                            printf("dissallow %d fanins %d and %d\n", i = 1, jp, kp);
-                            const auto sel_varp = get_sel_var(spec, dag, i + 1, svar_ctr);
-                            pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
-                            pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
-                            const auto res = solver->add_clause(pLits, pLits + 2);
-                            assert(res);
-                        }
-                        svar_ctr++;
-                    }
-                }
-            }
-        }
-        */
-        
-        void create_colex_clauses(const spec& spec, const partial_dag& dag)
-        {
-            int pLits[2];
-
-            for (int i = 0; i < spec.nr_steps - 1; i++) {
-                const auto& vertex = dag.get_vertex(i);
-                auto nr_pi_fanins = 0;
-                if (vertex[1] == FANIN_PI) {
-                    nr_pi_fanins = 2;
-                } else if (vertex[0] == FANIN_PI) {
-                    nr_pi_fanins = 1;
-                }
-                if (nr_pi_fanins == 0) {
-                    continue;
-                } else if (nr_pi_fanins == 1) {
-                    const auto pif = nr_pi_fanins_for_step(dag, i + 1);
-                    if (pif == 0) {
-                        continue;
-                    }
-                    const auto& vertexp = dag.get_vertex(i + 1);
-                    assert(pif == 1);
-                    const auto k = spec.nr_in + vertex[1] - 1;
-                    const auto kp = spec.nr_in + vertexp[1] - 1;
-                    if (kp > k) {
-                        continue;
-                    }
-                    assert(kp == k);
-                    for (int j = 0; j < spec.nr_in; j++) {
-                        for (int jp = 0; jp < spec.nr_in; jp++) {
-                            if (jp < j) {
-                                const auto sel_var = get_sel_var(spec, dag, i, j);
-                                const auto sel_varp = get_sel_var(spec, dag, i + 1, jp);
-                                pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
-                                pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
-                                const auto res = solver->add_clause(pLits, pLits + 2);
-                                assert(res);
-                            }
-                        }
-                    }
-                } else {
-                    const auto pif = nr_pi_fanins_for_step(dag, i + 1);
-                    if (pif == 0 || pif == 1) {
-                        continue;
-                    }
-                    auto svar_ctr = 0;
-                    for (int k = 1; k < spec.nr_in; k++) {
-                        for (int j = 0; j < k; j++) {
-                            auto svar_ctrp = 0;
-                            for (int kp = 1; kp < spec.nr_in; kp++) {
-                                for (int jp = 0; jp < kp; jp++) {
-                                    if ((kp == k && jp < j) || (kp < k)) {
-                                        const auto sel_var = get_sel_var(spec, dag, i, svar_ctr);
-                                        const auto sel_varp = get_sel_var(spec, dag, i + 1, svar_ctrp);
-                                        pLits[0] = pabc::Abc_Var2Lit(sel_var, 1);
-                                        pLits[1] = pabc::Abc_Var2Lit(sel_varp, 1);
-                                        const auto res = solver->add_clause(pLits, pLits + 2);
-                                        assert(res);
-                                    }
-                                    svar_ctrp++;
-                                }
-                            }
-                            svar_ctr++;
-                        }
-                    }
-                }
-            }
-        }
-
         bool create_symvar_clauses(const spec& spec, const partial_dag& dag)
         {
             for (int q = 1; q < spec.nr_in; q++) {
@@ -1037,10 +921,6 @@ namespace percy
                 return false;
             }
             
-            if (spec.add_colex_clauses) {
-                create_colex_clauses(spec, dag);
-            }
-
             if (spec.add_symvar_clauses && !create_symvar_clauses(spec, dag)) {
                 return false;
             }

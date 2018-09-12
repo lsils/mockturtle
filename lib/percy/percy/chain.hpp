@@ -159,9 +159,15 @@ namespace percy
             /// not be changed.
             void denormalize()
             {
+                // Does nothing if there are no steps to push inverters into.
+                if (steps.size() == 0) {
+                    return;
+                }
+                
                 if (outputs.size() == 1) {
                     if (outputs[0] & 1) {
-                        invert();
+                        operators[steps.size() - 1] = ~operators[steps.size() - 1];
+                        outputs[0] = (outputs[0] ^ 1);
                     }
                     return;
                 }
@@ -565,7 +571,25 @@ namespace percy
                 return true;
             }
 
-            
+            bool is_aig()
+            {
+                if (fanin != 2) {
+                    return false;
+                }
+                kitty::dynamic_truth_table in1(2), in2(2);
+                kitty::create_nth_var(in1, 0);
+                kitty::create_nth_var(in2, 1);
+                const auto tt1 = in1 & in2;
+                const auto tt2 = ~in1 & in2;
+                const auto tt3 = in1 & ~in2;
+                const auto tt4 = in1 | in2;
+                for (const auto& op : operators) {
+                    if (op != tt1 && op != tt2 && op != tt3 && op != tt4) {
+                        return false;
+                    }
+                }
+                return true;
+            }
 
             void
             copy(const chain& c)

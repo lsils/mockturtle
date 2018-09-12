@@ -5,7 +5,7 @@
 namespace percy
 {
 
-    class epfl_encoder : public std_encoder
+    class msv_encoder : public std_encoder
     {
         private:
 			int nr_op_vars_per_step;
@@ -26,13 +26,13 @@ namespace percy
             pabc::Vec_Int_t* vLits; // Dynamic vector of literals
 
         public:
-            epfl_encoder(solver_wrapper& solver)
+            msv_encoder(solver_wrapper& solver)
             {
                 vLits = pabc::Vec_IntAlloc(128);
                 set_solver(solver);
             }
 
-            ~epfl_encoder()
+            ~msv_encoder()
             {
                 pabc::Vec_IntFree(vLits);
             }
@@ -142,7 +142,7 @@ namespace percy
                 auto status = true;
 
                 if (spec.verbosity > 2) {
-                    printf("Creating output clauses (EPFL-%d)\n", spec.fanin);
+                    printf("Creating output clauses (MSV-%d)\n", spec.fanin);
                     printf("Nr. clauses = %d (PRE)\n",
                             solver->nr_clauses());
                 }
@@ -218,7 +218,7 @@ namespace percy
                                 nr_sel_vars + nr_res_vars + nr_lex_vars;
 
                 if (spec.verbosity > 2) {
-                    printf("Creating variables (EPFL-%d)\n", spec.fanin);
+                    printf("Creating variables (MSV-%d)\n", spec.fanin);
                     printf("nr steps = %d\n", spec.nr_steps);
                     printf("nr_sel_vars=%d\n", nr_sel_vars);
                     printf("nr_res_vars=%d\n", nr_res_vars);
@@ -290,6 +290,9 @@ namespace percy
                     // need to ensure that this operand's truth table satisfies
                     // the specified output function.
                     for (int h = 0; h < spec.nr_nontriv; h++) {
+                        if (spec.is_dont_care(h, t + 1)) {
+                            continue;
+                        }
                         auto outbit = kitty::get_bit(
                                 spec[spec.synth_func(h)], t+1);
                         if ((spec.out_inv >> spec.synth_func(h)) & 1) {
@@ -319,7 +322,7 @@ namespace percy
             create_main_clauses(const spec& spec)
             {
                 if (spec.verbosity > 2) {
-                    printf("Creating main clauses (EPFL-%d)\n", spec.fanin);
+                    printf("Creating main clauses (MSV-%d)\n", spec.fanin);
                     printf("Nr. clauses = %d (PRE)\n",
                             solver->nr_clauses());
                 }

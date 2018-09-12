@@ -66,7 +66,7 @@ struct exact_resynthesis_params
 
   percy::SolverType solver_type = percy::SLV_BSAT2;
 
-  percy::EncoderType encoder_type = percy::ENC_KNUTH;
+  percy::EncoderType encoder_type = percy::ENC_SSV;
 
   percy::SynthMethod synthesis_method = percy::SYNTH_STD;
 };
@@ -180,6 +180,7 @@ public:
       {
         return std::nullopt;
       }
+      c.denormalize();
       if ( !with_dont_cares && _ps.cache )
       {
         ( *_ps.cache )[function] = c;
@@ -201,14 +202,7 @@ public:
       {
         fanin.emplace_back( signals[child] );
       }
-      if ( i == c->get_nr_steps() - 1 && kitty::get_bit( function, 0 ) )
-      {
-        signals.emplace_back( ntk.create_node( fanin, ~( c->get_operator( i ) ) ) );
-      }
-      else
-      {
-        signals.emplace_back( ntk.create_node( fanin, c->get_operator( i ) ) );
-      }
+      signals.emplace_back( ntk.create_node( fanin, c->get_operator( i ) ) );
     }
 
     fn( signals.back() );

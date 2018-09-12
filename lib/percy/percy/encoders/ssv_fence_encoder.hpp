@@ -5,7 +5,7 @@
 
 namespace percy
 {
-    class knuth_fence_encoder : public fence_encoder
+    class ssv_fence_encoder : public fence_encoder
     {
         private:
             int level_dist[65]; // How many steps are below a certain level
@@ -29,14 +29,14 @@ namespace percy
             std::vector<kitty::dynamic_truth_table> sim_tts{ NR_SIM_TTS };
 
         public:
-            knuth_fence_encoder(solver_wrapper& solver)
+            ssv_fence_encoder(solver_wrapper& solver)
             {
                 // TODO: compute better upper bound on number of literals
                 vLits = pabc::Vec_IntAlloc(128);
                 set_solver(solver);
             }
 
-            ~knuth_fence_encoder()
+            ~ssv_fence_encoder()
             {
                 pabc::Vec_IntFree(vLits);
             }
@@ -291,6 +291,9 @@ namespace percy
                     // need to ensure that this operand's truth table satisfies
                     // the specified output function.
                     for (int h = 0; h < spec.nr_nontriv; h++) {
+                        if (spec.is_dont_care(h, t + 1)) {
+                            continue;
+                        }
                         auto outbit = kitty::get_bit(
                                 spec[spec.synth_func(h)], t+1);
                         if ((spec.out_inv >> spec.synth_func(h)) & 1) {

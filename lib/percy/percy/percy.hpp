@@ -177,6 +177,9 @@ namespace percy
                     encoder.extract_chain(spec, chain);
                     auto sim_tts = chain.simulate();
                     auto xor_tt = (sim_tts[0]) ^ (spec[0]);
+                    if (spec.has_dc_mask(0)) {
+                        xor_tt &= ~spec.get_dc_mask(0);
+                    }
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
                         if (stats) {
@@ -241,26 +244,26 @@ namespace percy
     }
 
     inline std::unique_ptr<encoder>
-    get_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_KNUTH)
+    get_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_SSV)
     {
         encoder * enc = nullptr;
         std::unique_ptr<encoder> res;
 
         switch (enc_type) {
-        case ENC_KNUTH:
+        case ENC_SSV:
             enc = new ssv_encoder(solver);
             break;
-        case ENC_EPFL:
-            enc = new epfl_encoder(solver);
+        case ENC_MSV:
+            enc = new msv_encoder(solver);
             break;
-        case ENC_BERKELEY:
-            enc = new berkeley_encoder(solver);
+        case ENC_DITT:
+            enc = new ditt_encoder(solver);
             break;
         case ENC_FENCE:
-            enc = new knuth_fence_encoder(solver);
+            enc = new ssv_fence_encoder(solver);
             break;
         case ENC_DAG:
-            enc = new knuth_dag_encoder<2>();
+            enc = new ssv_dag_encoder<2>();
             break;
         default:
             fprintf(stderr, "Error: encoder type %d not found\n", enc_type);
@@ -272,20 +275,20 @@ namespace percy
     }
 
     inline std::unique_ptr<enumerating_encoder>
-    get_enum_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_KNUTH)
+    get_enum_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_SSV)
     {
         enumerating_encoder * enc = nullptr;
         std::unique_ptr<enumerating_encoder> res;
 
         switch (enc_type) {
-        case ENC_KNUTH:
+        case ENC_SSV:
             enc = new ssv_encoder(solver);
             break;
-        case ENC_EPFL:
-            enc = new epfl_encoder(solver);
+        case ENC_MSV:
+            enc = new msv_encoder(solver);
             break;
         case ENC_FENCE:
-            enc = new knuth_fence_encoder(solver);
+            enc = new ssv_fence_encoder(solver);
             break;
         default:
             fprintf(stderr, "Error: enumerating encoder of ctype %d not found\n", enc_type);
@@ -446,6 +449,7 @@ namespace percy
             return success;
         }
 
+        encoder.reset_sim_tts(spec.nr_in);
         spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
 
         fence f;
@@ -479,6 +483,9 @@ namespace percy
                         sim_tt = ~sim_tt;
                     }
                     auto xor_tt = sim_tt ^ (spec[0]);
+                    if (spec.has_dc_mask(0)) {
+                        xor_tt &= ~spec.get_dc_mask(0);
+                    }
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
                         encoder.extract_chain(spec, chain);
@@ -1012,7 +1019,7 @@ namespace percy
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &c, &q] {
                     bsat_wrapper solver;
-                    knuth_fence2_encoder encoder(solver);
+                    ssv_fence2_encoder encoder(solver);
                     fence local_fence;
 
                     while (!(*pfound)) {
@@ -1089,7 +1096,7 @@ namespace percy
         spec& spec, 
         chain& chain, 
         SolverType slv_type = SLV_BSAT2, 
-        EncoderType enc_type = ENC_KNUTH, 
+        EncoderType enc_type = ENC_SSV, 
         SynthMethod method = SYNTH_STD)
     {
         auto solver = get_solver(slv_type);

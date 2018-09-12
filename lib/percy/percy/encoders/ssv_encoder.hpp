@@ -456,8 +456,7 @@ namespace percy
                 }
             }
 
-            void
-            create_primitive_clauses(const spec& spec)
+            bool create_primitive_clauses(const spec& spec)
             {
                 const auto primitives = spec.get_compiled_primitives();
 
@@ -467,11 +466,46 @@ namespace percy
                         for (int j = 1; j <= nr_op_vars_per_step; j++) {
                             const auto op_var = get_op_var(spec, i, j);
                             auto op_lit = pabc::Abc_Var2Lit(op_var, 1 - kitty::get_bit(op, j));
-                            auto status = solver->add_clause(&op_lit, &op_lit + 1);
-                            assert(status);
+                            const auto status = solver->add_clause(&op_lit, &op_lit + 1);
+                            if (!status) {
+                                return false;
+                            }
                         }
                     }
+                } else {
+                    kitty::dynamic_truth_table tt(spec.fanin);
+                    kitty::clear(tt);
+                    do {
+                        if (!is_normal(tt)) {
+                            kitty::next_inplace(tt);
+                            continue;
+                        }
+                        bool is_primitive_operator = false;
+                        for (const auto& primitive : primitives) {
+                            if (primitive == tt) {
+                                is_primitive_operator = true;
+                            }
+                        }
+                        if (!is_primitive_operator) {
+                            for (int i = 0; i < spec.nr_steps; i++) {
+                                for (int j = 1; j <= nr_op_vars_per_step; j++) {
+                                    pabc::Vec_IntSetEntry(vLits, j - 1,
+                                        pabc::Abc_Var2Lit(get_op_var(spec, i, j),
+                                            kitty::get_bit(tt, j)));
+                                }
+                                const auto status = solver->add_clause(
+                                    pabc::Vec_IntArray(vLits),
+                                    pabc::Vec_IntArray(vLits) + nr_op_vars_per_step);
+                                if (!status) {
+                                    return false;
+                                }
+                            }
+                        }
+                        kitty::next_inplace(tt);
+                    } while (!kitty::is_const0(tt));
                 }
+
+                return true;
             }
 
             /*******************************************************************
@@ -1081,8 +1115,7 @@ namespace percy
             }
 
 			/// Encodes specifciation for use in standard synthesis flow.
-            bool 
-            encode(const spec& spec)
+            bool encode(const spec& spec)
             {
                 assert(spec.nr_steps <= MAX_STEPS);
 
@@ -1101,8 +1134,9 @@ namespace percy
                 
                 create_cardinality_constraints(spec);
 
-                if (spec.get_nr_primitives() > 0) {
-                    create_primitive_clauses(spec);
+                if (spec.is_primitive_set()) {
+                    if (!create_primitive_clauses(spec))
+                        return false;
                 } else if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
@@ -1111,7 +1145,8 @@ namespace percy
                     create_alonce_clauses(spec);
                 }
 
-                if (spec.add_noreapply_clauses) {
+                if (!spec.is_primitive_set() &&
+                    spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
 
@@ -1157,7 +1192,10 @@ namespace percy
                 
                 create_cardinality_constraints(spec);
 
-                if (spec.add_nontriv_clauses) {
+                if (spec.is_primitive_set()) {
+                    if (!create_primitive_clauses(spec))
+                        return false;
+                } else if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
 
@@ -1165,7 +1203,7 @@ namespace percy
                     create_alonce_clauses(spec);
                 }
                 
-                if (spec.add_noreapply_clauses) {
+                if (!spec.is_primitive_set() && spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
                 
