@@ -104,7 +104,7 @@ public:
     }
   }
 
-  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<_Ntk::signal, _Ntk::node>>>
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   explicit cut_view( Ntk const& ntk, std::vector<signal> const& leaves, node const& root )
       : immutable_view<Ntk>( ntk ), _root( root )
   {
