@@ -135,6 +135,22 @@ void write_verilog( Ntk const& ntk, std::ostream& os )
   } );
 
   topo_view ntk_topo{ntk};
+
+  /* declare wires */
+  if ( ntk.num_gates() > 0 )
+  {
+    os << "  wire ";
+    auto first = true;
+    ntk.foreach_gate( [&]( auto const& n ) {
+        if ( first )
+          first = false;
+        else
+          os << ", ";
+        os << fmt::format( "n{}", ntk.node_to_index( n ) );
+      } );
+    os << ";\n";
+  }
+
   ntk_topo.foreach_node( [&]( auto const& n ) {
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
       return true;
