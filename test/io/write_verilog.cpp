@@ -26,6 +26,7 @@ TEST_CASE( "write single-gate AIG into Verilog file", "[write_verilog]" )
   CHECK( out.str() == "module top(x0, x1, y0);\n"
                       "  input x0, x1;\n"
                       "  output y0;\n"
+                      "  wire n3;\n"
                       "  assign n3 = ~x0 & ~x1;\n"
                       "  assign y0 = ~n3;\n"
                       "endmodule\n" );
@@ -50,6 +51,7 @@ TEST_CASE( "write AIG for XOR into Verilog file", "[write_verilog]" )
   CHECK( out.str() == "module top(x0, x1, y0);\n"
                       "  input x0, x1;\n"
                       "  output y0;\n"
+                      "  wire n3, n4, n5, n6;\n"
                       "  assign n3 = x0 & x1;\n"
                       "  assign n4 = x0 & ~n3;\n"
                       "  assign n5 = x1 & ~n3;\n"
@@ -77,6 +79,7 @@ TEST_CASE( "write MIG into Verilog file", "[write_verilog]" )
   CHECK( out.str() == "module top(x0, x1, x2, y0);\n"
                       "  input x0, x1, x2;\n"
                       "  output y0;\n"
+                      "  wire n4, n5, n6;\n"
                       "  assign n4 = x0 & x1;\n"
                       "  assign n5 = x0 | x1;\n"
                       "  assign n6 = (x2 & n4) | (x2 & n5) | (n4 & n5);\n"
