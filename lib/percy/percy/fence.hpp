@@ -555,7 +555,7 @@ namespace percy
                 return _nr_solutions;
             }
 
-            inline void generate_fences(std::vector<fence>& fences)
+            void generate_fences(std::vector<fence>& fences)
             {
                 assert(_initialized);
                 _callback = [&fences](rec_fence_generator* gen) {
@@ -571,7 +571,7 @@ namespace percy
                 _initialized = false;
             }
 
-            inline void 
+            void 
             generate_fences(moodycamel::ConcurrentQueue<fence>& q)
             {
                 assert(_initialized);

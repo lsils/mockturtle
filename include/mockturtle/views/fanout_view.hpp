@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "../traits.hpp"
+#include "../networks/detail/foreach.hpp"
 #include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
 

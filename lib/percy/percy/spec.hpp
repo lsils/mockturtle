@@ -38,9 +38,9 @@ namespace percy
 
     enum EncoderType
     {
-        ENC_KNUTH,
-        ENC_EPFL,
-        ENC_BERKELEY,
+        ENC_SSV,
+        ENC_MSV,
+        ENC_DITT,
         ENC_FENCE,
         ENC_DAG,
         ENC_TOTAL
@@ -48,9 +48,9 @@ namespace percy
 
     const char* const EncoderTypeToString[ENC_TOTAL] = 
     {
-        "ENC_KNUTH",
-        "ENC_EPFL",
-        "ENC_BERKELEY",
+        "ENC_SSV",
+        "ENC_MSV",
+        "ENC_DITT",
         "ENC_FENCE",
         "ENC_DAG",
     };
@@ -74,9 +74,8 @@ namespace percy
 
     enum Primitive
     {
-        AND,
-        OR,
-        MAJ
+        MAJ,
+        AIG
     };
 
     /// Used to gather data on synthesis experiments.
@@ -97,9 +96,10 @@ namespace percy
         protected:
             int capacity; ///< Maximum number of output functions this specification can support
             std::vector<kitty::dynamic_truth_table> functions; ///< Functions to synthesize
+            std::vector<kitty::dynamic_truth_table> dc_masks; ///< Indicates which input combinations we don't care about
+            std::vector<char> dc_functions; ///< Determines for which functions we look at the DC mask
             std::vector<int> triv_functions; ///< Trivial outputs
             std::vector<int> synth_functions; ///< Nontrivial outputs
-            std::vector<Primitive> primitives; ///< The primitives used in synthesis
             std::vector<kitty::dynamic_truth_table> compiled_primitives; ///< Collection of concrete truth tables induced by primitives
 
         public:
@@ -143,6 +143,8 @@ namespace percy
             {
                 capacity = n;
                 functions.resize(n);
+                dc_masks.resize(n);
+                dc_functions.resize(n);
                 triv_functions.resize(n);
                 synth_functions.resize(n);
             }
@@ -153,7 +155,7 @@ namespace percy
 
             /// Normalizes outputs by converting them to normal functions. Also
             /// checks for trivial outputs, such as constant functions or
-            /// projections. This determines which of the specifeid functions
+            /// projections. This determines which of the specified functions
             /// need to be synthesized.  This function expects the following
             /// invariants to hold:
             /// 1. The number of input variables has been set.
@@ -179,7 +181,7 @@ namespace percy
                 if (verbosity) {
                     printf("\n");
                     printf("========================================"
-                            "========================================\n");
+                           "========================================\n");
                     printf("  Pre-processing for %s:\n", capacity > 1 ? 
                             "functions" : "function");
                     for (int h = 0; h < capacity; h++) {
@@ -277,6 +279,32 @@ namespace percy
                 functions[i] = tt;
             }
 
+            void set_dont_care(std::size_t f_idx, kitty::dynamic_truth_table dc_mask)
+            {
+                dc_functions[f_idx] = 1;
+                dc_masks[f_idx] = dc_mask;
+            }
+
+            void clear_dont_care(std::size_t f_idx)
+            {
+                dc_functions[f_idx] = 0;
+            }
+
+            bool is_dont_care(std::size_t f_idx, int dc_idx) const
+            {
+                return dc_functions[f_idx] && kitty::get_bit(dc_masks[f_idx], dc_idx);
+            }
+
+            bool has_dc_mask(std::size_t f_idx) const
+            {
+                return dc_functions[f_idx];
+            }
+
+            const kitty::dynamic_truth_table& get_dc_mask(std::size_t f_idx) const
+            {
+                assert(f_idx < capacity);
+                return dc_masks[f_idx];
+            }
 
             int
             triv_func(int i) const
@@ -292,38 +320,7 @@ namespace percy
                 return synth_functions[i];
             }
 
-            void
-            add_primitive(Primitive p)
-            {
-                primitives.push_back(p);
-            }
-
-            void 
-            set_primitives(std::vector<Primitive>& ps) 
-            {
-                primitives = ps;
-            }
-
-            int
-            get_nr_primitives() const
-            {
-                return primitives.size();
-            }
-
-            const std::vector<kitty::dynamic_truth_table>&
-            get_compiled_primitives() const
-            {
-                return compiled_primitives;
-            }
-
-            void
-            clear_primitives()
-            {
-                primitives.clear();
-            }
-
-            void
-            compile_primitives()
+            void set_primitive(Primitive primitive)
             {
                 compiled_primitives.clear();
                 kitty::dynamic_truth_table tt(fanin);
@@ -332,29 +329,38 @@ namespace percy
                     inputs.push_back(kitty::create<kitty::dynamic_truth_table>(fanin));
                     kitty::create_nth_var(inputs[i], i);
                 }
-                for (auto primitive : primitives) {
-                    kitty::clear(tt);
-                    switch (primitive) {
-                    case AND:
-                        tt = inputs[0];
-                        for (int i = 1; i < fanin; i++) {
-                            tt ^= inputs[i];
-                        }
-                        compiled_primitives.push_back(tt);
-                        break;
-                    case OR:
-                        tt = inputs[0];
-                        for (int i = 1; i < fanin; i++) {
-                            tt |= inputs[i];
-                        }
-                        compiled_primitives.push_back(tt);
-                        break;
-                    case MAJ:
-                        kitty::create_majority(tt);
-                        compiled_primitives.push_back(tt);
-                        break;
-                    }
+                switch (primitive) {
+                case AIG:
+                    tt = inputs[0] & inputs[1];
+                    compiled_primitives.push_back(tt);
+                    tt = ~inputs[0] & inputs[1];
+                    compiled_primitives.push_back(tt);
+                    tt = inputs[0] & ~inputs[1];
+                    compiled_primitives.push_back(tt);
+                    tt = inputs[0] | inputs[1];
+                    compiled_primitives.push_back(tt);
+                    break;
+                case MAJ:
+                    kitty::create_majority(tt);
+                    compiled_primitives.push_back(tt);
+                    break;
                 }
+            }
+
+            bool is_primitive_set() const
+            {
+                return compiled_primitives.size() > 0;
+            }
+
+            const std::vector<kitty::dynamic_truth_table>&
+            get_compiled_primitives() const
+            {
+                return compiled_primitives;
+            }
+
+            void clear_primitive()
+            {
+                compiled_primitives.clear();
             }
 
     };

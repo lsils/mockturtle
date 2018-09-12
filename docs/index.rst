@@ -37,6 +37,7 @@ Welcome to mockturtle's documentation!
    resubstitution
    simulation
    cleanup
+   dont_cares
 
 .. toctree::
    :maxdepth: 2

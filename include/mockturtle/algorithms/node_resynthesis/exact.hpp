@@ -34,6 +34,7 @@
 
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -65,7 +66,7 @@ struct exact_resynthesis_params
 
   percy::SolverType solver_type = percy::SLV_BSAT2;
 
-  percy::EncoderType encoder_type = percy::ENC_KNUTH;
+  percy::EncoderType encoder_type = percy::ENC_SSV;
 
   percy::SynthMethod synthesis_method = percy::SYNTH_STD;
 };
@@ -122,13 +123,19 @@ public:
   using cache_t = std::shared_ptr<cache_map_t>;
 
   explicit exact_resynthesis( uint32_t fanin_size = 3u, exact_resynthesis_params const& ps = {} )
-    : _fanin_size( fanin_size ),
-      _ps( ps )
+      : _fanin_size( fanin_size ),
+        _ps( ps )
   {
   }
 
   template<typename LeavesIterator, typename Fn>
   void operator()( klut_network& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  {
+    operator()( ntk, function, function.construct(), begin, end, fn );
+  }
+
+  template<typename LeavesIterator, typename Fn>
+  void operator()( klut_network& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
     if ( static_cast<uint32_t>( function.num_vars() ) <= _fanin_size )
     {
@@ -148,9 +155,15 @@ public:
     spec.add_symvar_clauses = _ps.add_symvar_clauses;
     spec.conflict_limit = _ps.conflict_limit;
     spec[0] = function;
+    bool with_dont_cares{false};
+    if ( !kitty::is_const0( dont_cares ) )
+    {
+      spec.set_dont_care( 0, dont_cares );
+      with_dont_cares = true;
+    }
 
-    percy::chain c = [&]() {
-      if ( _ps.cache )
+    auto c = [&]() -> std::optional<percy::chain> {
+      if ( !with_dont_cares && _ps.cache )
       {
         const auto it = _ps.cache->find( function );
         if ( it != _ps.cache->end() )
@@ -160,28 +173,36 @@ public:
       }
 
       percy::chain c;
-      const auto result = percy::synthesize( spec, c, _ps.solver_type, _ps.encoder_type, _ps.synthesis_method );
-      assert( result == percy::success );
-      c.denormalize();
-      if ( _ps.cache )
+      if ( const auto result = percy::synthesize( spec, c, _ps.solver_type,
+                                                  _ps.encoder_type,
+                                                  _ps.synthesis_method );
+           result != percy::success )
       {
-        (*_ps.cache)[function] = c;
+        return std::nullopt;
+      }
+      c.denormalize();
+      if ( !with_dont_cares && _ps.cache )
+      {
+        ( *_ps.cache )[function] = c;
       }
       return c;
     }();
 
+    if ( !c )
+    {
+      return;
+    }
+
     std::vector<klut_network::signal> signals( begin, end );
 
-    for ( auto i = 0; i < c.get_nr_steps(); ++i )
+    for ( auto i = 0; i < c->get_nr_steps(); ++i )
     {
-      const auto& children = c.get_step( i );
-
       std::vector<klut_network::signal> fanin;
-      for ( const auto& child : c.get_step( i ) )
+      for ( const auto& child : c->get_step( i ) )
       {
         fanin.emplace_back( signals[child] );
       }
-      signals.emplace_back( ntk.create_node( fanin, c.get_operator( i ) ) );
+      signals.emplace_back( ntk.create_node( fanin, c->get_operator( i ) ) );
     }
 
     fn( signals.back() );

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "solvers/bsat2.hpp"
+#include "solvers/bmcg_sat.hpp"
 #ifdef USE_CMS
 #include "solvers/cmsat.hpp"
 #endif

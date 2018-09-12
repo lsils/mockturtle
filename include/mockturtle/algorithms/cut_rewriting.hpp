@@ -47,8 +47,10 @@
 #include "../views/cut_view.hpp"
 #include "cut_enumeration.hpp"
 #include "detail/mffc_utils.hpp"
+#include "dont_cares.hpp"
 
 #include <fmt/format.h>
+#include <kitty/print.hpp>
 
 namespace mockturtle
 {
@@ -70,8 +72,11 @@ struct cut_rewriting_params
   /*! \brief Cut enumeration parameters. */
   cut_enumeration_params cut_enumeration_ps{};
 
-  /*! \brief Allow zero-gain substitutions */
+  /*! \brief Allow zero-gain substitutions. */
   bool allow_zero_gain{false};
+
+  /*! \brief Use don't cares for optimization. */
+  bool use_dont_cares{false};
 
   /*! \brief Show progress. */
   bool progress{false};
@@ -254,7 +259,7 @@ inline std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
 
 struct cut_enumeration_cut_rewriting_cut
 {
-  int32_t gain;
+  int32_t gain{-1};
 };
 
 template<typename Ntk, bool ComputeTruth>
@@ -328,6 +333,26 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
   return {g, vertex_to_cut_addr};
 }
 
+template<class Ntk, class RewritingFn, class Iterator, class = void>
+struct has_rewrite_with_dont_cares : std::false_type
+{
+};
+
+template<class Ntk, class RewritingFn, class Iterator>
+struct has_rewrite_with_dont_cares<Ntk,
+                                   RewritingFn, Iterator,
+                                   std::void_t<decltype( std::declval<RewritingFn>()( std::declval<Ntk&>(),
+                                                                                      std::declval<kitty::dynamic_truth_table>(),
+                                                                                      std::declval<kitty::dynamic_truth_table>(),
+                                                                                      std::declval<Iterator const&>(),
+                                                                                      std::declval<Iterator const&>(),
+                                                                                      std::declval<void( signal<Ntk> )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk, class RewritingFn, class Iterator>
+inline constexpr bool has_rewrite_with_dont_cares_v = has_rewrite_with_dont_cares<Ntk, RewritingFn, Iterator>::value;
+
 template<class Ntk, class RewritingFn>
 class cut_rewriting_impl
 {
@@ -391,7 +416,8 @@ public:
         int32_t value = detail::recursive_deref( ntk, n );
         {
           stopwatch t( st.time_rewriting );
-          rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end(), [&]( auto const& f_new ) {
+
+          const auto on_signal = [&]( auto const& f_new ) {
             int32_t gain = value - detail::recursive_ref( ntk, ntk.get_node( f_new ) );
             detail::recursive_deref( ntk, ntk.get_node( f_new ) );
 
@@ -402,7 +428,28 @@ public:
             }
 
             return true;
-          } );
+          };
+
+          if ( ps.use_dont_cares )
+          {
+            if constexpr ( has_rewrite_with_dont_cares_v<Ntk, RewritingFn, decltype( children.begin() )> )
+            {
+              std::vector<node<Ntk>> pivots;
+              for ( auto const& c : children )
+              {
+                pivots.push_back( ntk.get_node( c ) );
+              }
+              rewriting_fn( ntk, cuts.truth_table( *cut ), satisfiability_dont_cares( ntk, pivots ), children.begin(), children.end(), on_signal );
+            }
+            else
+            {
+              rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end(), on_signal );
+            }
+          }
+          else
+          {
+            rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end(), on_signal );
+          }
         }
 
         detail::recursive_ref( ntk, n );
@@ -500,7 +547,7 @@ private:
  * \param pst Rewriting statistics
  */
 template<class Ntk, class RewritingFn>
-void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats *pst = nullptr )
+void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );

@@ -26,6 +26,7 @@ v0.1 (not yet released)
     - Refactoring (`refactoring`) `#34 <https://github.com/lsils/mockturtle/pull/34>`_
     - Exact resynthesis for node resynthesis, cut_rewriting, and refactoring `#46 <https://github.com/lsils/mockturtle/pull/46>`_
     - Resubstitution (`resubstitution`) `#50 <https://github.com/lsils/mockturtle/pull/50>`_ `#54 <https://github.com/lsils/mockturtle/pull/54>`_
+    - Compute satisfiability don't cares (`satisfiability_dont_cares`) `#70 <https://github.com/lsils/mockturtle/pull/70>`_
 * Views:
     - Visit nodes in topological order (`topo_view`) `#3 <https://github.com/lsils/mockturtle/pull/3>`_
     - Disable structural modifications to network (`immutable_view`) `#3 <https://github.com/lsils/mockturtle/pull/3>`_
