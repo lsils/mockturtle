@@ -11,8 +11,7 @@ using namespace mockturtle;
 
 TEST_CASE( "Minimize logic network with respect to an erroneous optimization", "[debug]" )
 {
-  auto status = system( "abc --help &> /dev/null" );
-  if ( WEXITSTATUS( status ) == 127 )
+  if ( system( "abc --help &> /dev/null" ) != 0 )
   {
     /* do not run the test if cec is not in the path */
     return;
