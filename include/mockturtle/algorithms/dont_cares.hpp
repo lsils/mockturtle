@@ -47,10 +47,20 @@
 namespace mockturtle
 {
 
+/*! \brief Computes satisfiability don't cares of a set of nodes.
+ *
+ * This function returns on under approximation of input assignments that
+ * cannot occur on a given set of nodes in a network.  They may therefore be
+ * used as don't care conditions.
+ *
+ * \param ntk Network
+ * \param leaves Set of nodes
+ * \param max_tfi_inputs Maximum number of inputs in the transitive fanin.
+ */
 template<class Ntk>
-kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vector<node<Ntk>> const& leaves )
+kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vector<node<Ntk>> const& leaves, uint32_t max_tfi_inputs = 10u )
 {
-  auto extended_leaves = reconv_cut( reconv_cut_params{10} )( ntk, leaves );
+  auto extended_leaves = reconv_cut( reconv_cut_params{max_tfi_inputs} )( ntk, leaves );
 
   fanout_view<Ntk> fanout_ntk{ntk};
   fanout_ntk.clear_visited();
