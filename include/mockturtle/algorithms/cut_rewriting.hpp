@@ -259,7 +259,7 @@ inline std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
 
 struct cut_enumeration_cut_rewriting_cut
 {
-  int32_t gain;
+  int32_t gain{-1};
 };
 
 template<typename Ntk, bool ComputeTruth>
