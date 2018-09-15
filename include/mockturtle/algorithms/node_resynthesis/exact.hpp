@@ -43,6 +43,7 @@
 #include <kitty/print.hpp>
 #include <percy/percy.hpp>
 
+#include "../../networks/aig.hpp"
 #include "../../networks/klut.hpp"
 
 namespace mockturtle
@@ -71,7 +72,7 @@ struct exact_resynthesis_params
   percy::SynthMethod synthesis_method = percy::SYNTH_STD;
 };
 
-/*! \brief Resynthesis function based on Akers synthesis.
+/*! \brief Resynthesis function based on exact synthesis.
  *
  * This resynthesis function can be passed to ``node_resynthesis``,
  * ``cut_rewriting``, and ``refactoring``.  The given truth table will be
@@ -105,8 +106,9 @@ struct exact_resynthesis_params
    
       const klut_network klut = ...;
 
-      auto cache = std::make_shared<exact_resynthesis::cache_map_t>();
-      exact_resynthesis resyn( 3, cache );
+      exact_resynthesis_params ps;
+      ps.cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
+      exact_resynthesis resyn( 3, ps );
       cut_rewriting( klut, resyn );
       klut = cleanup_dangling( klut );
 
@@ -119,9 +121,6 @@ struct exact_resynthesis_params
 class exact_resynthesis
 {
 public:
-  using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
-  using cache_t = std::shared_ptr<cache_map_t>;
-
   explicit exact_resynthesis( uint32_t fanin_size = 3u, exact_resynthesis_params const& ps = {} )
       : _fanin_size( fanin_size ),
         _ps( ps )
@@ -210,6 +209,152 @@ public:
 
 private:
   uint32_t _fanin_size{3u};
+  exact_resynthesis_params _ps;
+};
+
+/*! \brief Resynthesis function based on exact synthesis for AIGs.
+ *
+ * This resynthesis function can be passed to ``node_resynthesis``,
+ * ``cut_rewriting``, and ``refactoring``.  The given truth table will be
+ * resynthized in terms of an optimum size AIG network.
+ *
+   \verbatim embed:rst
+  
+   Example
+   
+   .. code-block:: c++
+   
+      const aig_network aig = ...;
+
+      exact_aig_resynthesis resyn;
+      cut_rewriting( aig, resyn );
+      aig = cleanup_dangling( aig );
+   \endverbatim
+ *
+ * A cache can be passed as second parameter to the constructor, which will
+ * store optimum networks for all functions for which resynthesis is invoked
+ * for.  The cache can be used to retrieve the computed network, which reduces
+ * runtime.
+ *
+   \verbatim embed:rst
+  
+   Example
+   
+   .. code-block:: c++
+   
+      const klut_network klut = ...;
+
+      exact_aig_resynthesis_params ps;
+      ps.cache = std::make_shared<exact_aig_resynthesis_params::cache_map_t>();
+      exact_aig_resynthesis resyn( ps );
+      cut_rewriting( klut, resyn );
+      klut = cleanup_dangling( klut );
+
+   The underlying engine for this resynthesis function is percy_.
+
+   .. _percy: https://github.com/whaaswijk/percy
+   \endverbatim
+ *
+ */
+class exact_aig_resynthesis
+{
+public:
+  explicit exact_aig_resynthesis( exact_resynthesis_params const& ps = {} )
+      : _ps( ps )
+  {
+  }
+
+  template<typename LeavesIterator, typename Fn>
+  void operator()( aig_network& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  {
+    operator()( ntk, function, function.construct(), begin, end, fn );
+  }
+
+  template<typename LeavesIterator, typename Fn>
+  void operator()( aig_network& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  {
+    // TODO: special case for small functions (up to 2 variables)?
+
+    percy::spec spec;
+    spec.set_primitive( percy::AIG );
+    spec.fanin = 2;
+    spec.verbosity = 0;
+    spec.add_alonce_clauses = _ps.add_alonce_clauses;
+    spec.add_colex_clauses = _ps.add_colex_clauses;
+    spec.add_lex_clauses = _ps.add_lex_clauses;
+    spec.add_lex_func_clauses = _ps.add_lex_func_clauses;
+    spec.add_nontriv_clauses = _ps.add_nontriv_clauses;
+    spec.add_noreapply_clauses = _ps.add_noreapply_clauses;
+    spec.add_symvar_clauses = _ps.add_symvar_clauses;
+    spec.conflict_limit = _ps.conflict_limit;
+    spec[0] = function;
+    bool with_dont_cares{false};
+    if ( !kitty::is_const0( dont_cares ) )
+    {
+      spec.set_dont_care( 0, dont_cares );
+      with_dont_cares = true;
+    }
+
+    auto c = [&]() -> std::optional<percy::chain> {
+      if ( !with_dont_cares && _ps.cache )
+      {
+        const auto it = _ps.cache->find( function );
+        if ( it != _ps.cache->end() )
+        {
+          return it->second;
+        }
+      }
+
+      percy::chain c;
+      if ( const auto result = percy::synthesize( spec, c, _ps.solver_type,
+                                                  _ps.encoder_type,
+                                                  _ps.synthesis_method );
+           result != percy::success )
+      {
+        return std::nullopt;
+      }
+      if ( !with_dont_cares && _ps.cache )
+      {
+        ( *_ps.cache )[function] = c;
+      }
+      return c;
+    }();
+
+    if ( !c )
+    {
+      return;
+    }
+
+    std::vector<aig_network::signal> signals( begin, end );
+
+    for ( auto i = 0; i < c->get_nr_steps(); ++i )
+    {
+      auto c1 = signals[c->get_step( i )[0]];
+      auto c2 = signals[c->get_step( i )[1]];
+      switch ( c->get_operator( i )._bits[0] )
+      {
+      default:
+        std::cerr << "[e] unsupported operation " << kitty::to_hex( c->get_operator( i ) ) << "\n";
+        break;
+      case 0x8:
+        signals.emplace_back( ntk.create_and( c1, c2 ) );
+        break;
+      case 0x4:
+        signals.emplace_back( ntk.create_and( !c1, c2 ) );
+        break;
+      case 0x2:
+        signals.emplace_back( ntk.create_and( c1, !c2 ) );
+        break;
+      case 0xe:
+        signals.emplace_back( !ntk.create_and( !c1, !c2 ) );
+        break;
+      }
+    }
+
+    fn( c->is_output_inverted( 0 ) ? !signals.back() : signals.back() );
+  }
+
+private:
   exact_resynthesis_params _ps;
 };
 
