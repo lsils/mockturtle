@@ -52,7 +52,9 @@ Simulate values for all nodes.
 
 .. doxygenfunction:: mockturtle::simulate
   
-.. doxygenfunction:: mockturtle::simulate_nodes
+.. doxygenfunction:: mockturtle::simulate_nodes(Ntk const&, Simulator const&)
+
+.. doxygenfunction:: mockturtle::simulate_nodes(Ntk const&, unordered_node_map<SimulationType, Ntk>&, Simulator const&)
 
 Simulators
 ~~~~~~~~~~

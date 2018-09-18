@@ -37,6 +37,7 @@ Welcome to mockturtle's documentation!
    resubstitution
    simulation
    cleanup
+   reconv_cut
    dont_cares
 
 .. toctree::
