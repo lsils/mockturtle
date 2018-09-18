@@ -41,8 +41,8 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/static_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <kitty/static_truth_table.hpp>
 
 namespace mockturtle
 {
@@ -230,14 +230,14 @@ template<class T, class Ntk>
 class unordered_node_map
 {
 public:
-  using node            = typename Ntk::node;
-  using signal          = typename Ntk::signal;
-  using reference       = T&;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+  using reference = T&;
   using const_reference = const T&;
 
 public:
   explicit unordered_node_map( Ntk const& ntk )
-    : ntk( ntk )
+      : ntk( ntk )
   {
   }
 
@@ -362,23 +362,23 @@ void simulate_nodes( Ntk const& ntk, unordered_node_map<SimulationType, Ntk>& no
 
   /* pis */
   ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      if ( !node_to_value.has( n ) )
-      {
-        node_to_value[n] = sim.compute_pi( i );
-      }
-    } );
+    if ( !node_to_value.has( n ) )
+    {
+      node_to_value[n] = sim.compute_pi( i );
+    }
+  } );
 
   /* gates */
   ntk.foreach_gate( [&]( auto const& n ) {
-      if ( !node_to_value.has( n ) )
-      {
-        std::vector<SimulationType> fanin_values( ntk.fanin_size( n ) );
-        ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
-            fanin_values[i] = node_to_value[ntk.get_node( f )];
-          } );
+    if ( !node_to_value.has( n ) )
+    {
+      std::vector<SimulationType> fanin_values( ntk.fanin_size( n ) );
+      ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+        fanin_values[i] = node_to_value[ntk.get_node( f )];
+      } );
 
-        node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
-      }
+      node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
+    }
   } );
 }
 
