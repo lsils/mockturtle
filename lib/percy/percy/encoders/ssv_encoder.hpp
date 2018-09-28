@@ -5,7 +5,7 @@
 
 namespace percy
 {
-    class knuth_encoder : public std_encoder
+    class ssv_encoder : public std_encoder
     {
         private:
 			int nr_op_vars_per_step;
@@ -26,13 +26,13 @@ namespace percy
             std::vector<int> nr_svar_map;
 
         public:
-            knuth_encoder(solver_wrapper& solver)
+            ssv_encoder(solver_wrapper& solver)
             {
                 vLits = pabc::Vec_IntAlloc(128);
                 set_solver(solver);
             }
 
-            ~knuth_encoder()
+            ~ssv_encoder()
             {
                 pabc::Vec_IntFree(vLits);
             }
@@ -92,7 +92,7 @@ namespace percy
                 auto status = true;
 
                 if (spec.verbosity > 2) {
-                    printf("Creating op clauses (KNUTH-%d)\n", spec.fanin);
+                    printf("Creating op clauses (SSV-%d)\n", spec.fanin);
                     printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
                 }
 
@@ -137,7 +137,7 @@ namespace percy
                 auto status = true;
 
                 if (spec.verbosity > 2) {
-                    printf("Creating output clauses (KNUTH-%d)\n", spec.fanin);
+                    printf("Creating output clauses (SSV-%d)\n", spec.fanin);
                     printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
                 }
                 // Every output points to an operand.
@@ -235,7 +235,7 @@ namespace percy
                                 nr_sel_vars + nr_lex_vars;
 
                 if (spec.verbosity > 1) {
-                    printf("Creating variables (KNUTH-%d)\n", spec.fanin);
+                    printf("Creating variables (SSV-%d)\n", spec.fanin);
                     printf("nr steps = %d\n", spec.nr_steps);
                     printf("nr_sel_vars=%d\n", nr_sel_vars);
                     printf("nr_op_vars = %d\n", nr_op_vars);
@@ -297,8 +297,11 @@ namespace percy
                     // need to ensure that this operand's truth table satisfies
                     // the specified output function.
                     for (int h = 0; h < spec.nr_nontriv; h++) {
+                        if (spec.is_dont_care(h, t + 1)) {
+                            continue;
+                        }
                         auto outbit = kitty::get_bit(
-                                spec[spec.synth_func(h)], t+1);
+                                spec[spec.synth_func(h)], t + 1);
                         if ((spec.out_inv >> spec.synth_func(h)) & 1) {
                             outbit = 1 - outbit;
                         }
@@ -326,7 +329,7 @@ namespace percy
             create_main_clauses(const spec& spec)
             {
                 if (spec.verbosity > 2) {
-                    printf("Creating main clauses (KNUTH-%d)\n", spec.fanin);
+                    printf("Creating main clauses (SSV-%d)\n", spec.fanin);
                     printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
                 }
                 auto success = true;
@@ -453,8 +456,7 @@ namespace percy
                 }
             }
 
-            void
-            create_primitive_clauses(const spec& spec)
+            bool create_primitive_clauses(const spec& spec)
             {
                 const auto primitives = spec.get_compiled_primitives();
 
@@ -464,11 +466,46 @@ namespace percy
                         for (int j = 1; j <= nr_op_vars_per_step; j++) {
                             const auto op_var = get_op_var(spec, i, j);
                             auto op_lit = pabc::Abc_Var2Lit(op_var, 1 - kitty::get_bit(op, j));
-                            auto status = solver->add_clause(&op_lit, &op_lit + 1);
-                            assert(status);
+                            const auto status = solver->add_clause(&op_lit, &op_lit + 1);
+                            if (!status) {
+                                return false;
+                            }
                         }
                     }
+                } else {
+                    kitty::dynamic_truth_table tt(spec.fanin);
+                    kitty::clear(tt);
+                    do {
+                        if (!is_normal(tt)) {
+                            kitty::next_inplace(tt);
+                            continue;
+                        }
+                        bool is_primitive_operator = false;
+                        for (const auto& primitive : primitives) {
+                            if (primitive == tt) {
+                                is_primitive_operator = true;
+                            }
+                        }
+                        if (!is_primitive_operator) {
+                            for (int i = 0; i < spec.nr_steps; i++) {
+                                for (int j = 1; j <= nr_op_vars_per_step; j++) {
+                                    pabc::Vec_IntSetEntry(vLits, j - 1,
+                                        pabc::Abc_Var2Lit(get_op_var(spec, i, j),
+                                            kitty::get_bit(tt, j)));
+                                }
+                                const auto status = solver->add_clause(
+                                    pabc::Vec_IntArray(vLits),
+                                    pabc::Vec_IntArray(vLits) + nr_op_vars_per_step);
+                                if (!status) {
+                                    return false;
+                                }
+                            }
+                        }
+                        kitty::next_inplace(tt);
+                    } while (!kitty::is_const0(tt));
                 }
+
+                return true;
             }
 
             /*******************************************************************
@@ -1078,8 +1115,7 @@ namespace percy
             }
 
 			/// Encodes specifciation for use in standard synthesis flow.
-            bool 
-            encode(const spec& spec)
+            bool encode(const spec& spec)
             {
                 assert(spec.nr_steps <= MAX_STEPS);
 
@@ -1098,8 +1134,9 @@ namespace percy
                 
                 create_cardinality_constraints(spec);
 
-                if (spec.get_nr_primitives() > 0) {
-                    create_primitive_clauses(spec);
+                if (spec.is_primitive_set()) {
+                    if (!create_primitive_clauses(spec))
+                        return false;
                 } else if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
@@ -1108,7 +1145,8 @@ namespace percy
                     create_alonce_clauses(spec);
                 }
 
-                if (spec.add_noreapply_clauses) {
+                if (!spec.is_primitive_set() &&
+                    spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
 
@@ -1154,7 +1192,10 @@ namespace percy
                 
                 create_cardinality_constraints(spec);
 
-                if (spec.add_nontriv_clauses) {
+                if (spec.is_primitive_set()) {
+                    if (!create_primitive_clauses(spec))
+                        return false;
+                } else if (spec.add_nontriv_clauses) {
                     create_nontriv_clauses(spec);
                 }
 
@@ -1162,7 +1203,7 @@ namespace percy
                     create_alonce_clauses(spec);
                 }
                 
-                if (spec.add_noreapply_clauses) {
+                if (!spec.is_primitive_set() && spec.add_noreapply_clauses) {
                     create_noreapply_clauses(spec);
                 }
                 

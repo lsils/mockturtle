@@ -33,6 +33,7 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 #include "../traits.hpp"
@@ -40,8 +41,8 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/static_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <kitty/static_truth_table.hpp>
 
 namespace mockturtle
 {
@@ -56,7 +57,7 @@ public:
 
 /*! \brief Simulates Boolean assignments.
  *
- * This simulator simulates Boolean values.  A vector with assignments for each 
+ * This simulator simulates Boolean values.  A vector with assignments for each
  * primary input must be passed to the constructor.
  */
 template<>
@@ -78,7 +79,7 @@ private:
  *
  * This simulator simulates Boolean values.  A bitstring with assignments for
  * each primary input must be passed to the constructor.  Because this
- * bitstring can have at most 64 bits, this simulator is not suitable for 
+ * bitstring can have at most 64 bits, this simulator is not suitable for
  * logic networks with more than 64 primary inputs.
  */
 class input_word_simulator
@@ -171,7 +172,7 @@ public:
  * The method `compute_constant` returns a simulation value for a constant
  * value.  The method `compute_pi` returns a simulation value for a primary
  * input based on its index, and `compute_not` to invert a simulation value.
- * 
+ *
  * This method returns a map that maps each node to its computed simulation
  * value.
  *
@@ -223,6 +224,162 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
   } );
 
   return node_to_value;
+}
+
+template<class T, class Ntk>
+class unordered_node_map
+{
+public:
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+  using reference = T&;
+  using const_reference = const T&;
+
+public:
+  explicit unordered_node_map( Ntk const& ntk )
+      : ntk( ntk )
+  {
+  }
+
+  /*! \brief Check if a key is already defined. */
+  bool has( node const& n ) const
+  {
+    return data.find( n ) != data.end();
+  }
+
+  /*! \brief Mutable access to value by node. */
+  reference operator[]( node const& n )
+  {
+    return data[ntk.node_to_index( n )];
+  }
+
+  /*! \brief Constant access to value by node. */
+  const_reference operator[]( node const& n ) const
+  {
+    assert( !has( n ) && "index out of bounds" );
+    return data[ntk.node_to_index( n )];
+  }
+
+  /*! \brief Mutable access to value by signal.
+   *
+   * This method derives the node from the signal.  If the node and signal type
+   * are the same in the network implementation, this method is disabled.
+   */
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
+  reference operator[]( signal const& f )
+  {
+    return data[ntk.node_to_index( ntk.get_node( f ) )];
+  }
+
+  /*! \brief Constant access to value by signal.
+   *
+   * This method derives the node from the signal.  If the node and signal type
+   * are the same in the network implementation, this method is disabled.
+   */
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
+  const_reference operator[]( signal const& f ) const
+  {
+    assert( !has( ntk.get_node( f ) ) && "index out of bounds" );
+    return data[ntk.node_to_index( ntk.get_node( f ) )];
+  }
+
+  /*! \brief Resets the size of the map.
+   *
+   * This function should be called, if the network changed in size.  Then, the
+   * map is cleared, and resized to the current network's size.  All values are
+   * initialized with `init_value`.
+   *
+   * \param init_value Initialization value after resize
+   */
+  void reset()
+  {
+    data.clear();
+  }
+
+protected:
+  Ntk const& ntk;
+  std::unordered_map<node, T> data;
+};
+
+/*! \brief Simulates a network with a generic simulator.
+ *
+ * This is a generic simulation algorithm that can simulate arbitrary values.
+ * In order to that, the network needs to implement the `compute` method for
+ * `SimulationType` and one must pass an instance of a `Simulator` that
+ * implements the three methods:
+ * - `SimulationType compute_constant(bool)`
+ * - `SimulationType compute_pi(index)`
+ * - `SimulationType compute_not(SimulationType const&)`
+ *
+ * The method `compute_constant` returns a simulation value for a constant
+ * value.  The method `compute_pi` returns a simulation value for a primary
+ * input based on its index, and `compute_not` to invert a simulation value.
+ *
+ * This method returns a map that maps each node to its computed simulation
+ * value.
+ *
+ * **Required network functions:**
+ * - `foreach_po`
+ * - `get_constant`
+ * - `constant_value`
+ * - `get_node`
+ * - `foreach_pi`
+ * - `foreach_gate`
+ * - `fanin_size`
+ * - `num_pos`
+ * - `compute<SimulationType>`
+ *
+ * \param ntk Network
+ * \param node_to_value A map from nodes to values
+ * \param sim Simulator, which implements the simulator interface
+ */
+template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
+void simulate_nodes( Ntk const& ntk, unordered_node_map<SimulationType, Ntk>& node_to_value, Simulator const& sim = Simulator() )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_constant_value_v<Ntk>, "Ntk does not implement the constant_value method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
+  static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
+  static_assert( has_compute_v<Ntk, SimulationType>, "Ntk does not implement the compute method for SimulationType" );
+
+  /* constants */
+  if ( !node_to_value.has( ntk.get_node( ntk.get_constant( false ) ) ) )
+  {
+    node_to_value[ntk.get_node( ntk.get_constant( false ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
+  }
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  {
+    if ( !node_to_value.has( ntk.get_node( ntk.get_constant( true ) ) ) )
+    {
+      node_to_value[ntk.get_node( ntk.get_constant( true ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( true ) ) ) );
+    }
+  }
+
+  /* pis */
+  ntk.foreach_pi( [&]( auto const& n, auto i ) {
+    if ( !node_to_value.has( n ) )
+    {
+      node_to_value[n] = sim.compute_pi( i );
+    }
+  } );
+
+  /* gates */
+  ntk.foreach_gate( [&]( auto const& n ) {
+    if ( !node_to_value.has( n ) )
+    {
+      std::vector<SimulationType> fanin_values( ntk.fanin_size( n ) );
+      ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+        fanin_values[i] = node_to_value[ntk.get_node( f )];
+      } );
+
+      node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
+    }
+  } );
 }
 
 /*! \brief Simulates a network with a generic simulator.

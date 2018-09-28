@@ -26,6 +26,7 @@ namespace percy
     {
     private:
         GWType* solver;
+        int nr_threads = 0;
         
     public:
         glucose_wrapper()
@@ -42,7 +43,15 @@ namespace percy
         void restart()
         {
             delete solver;
+#ifdef USE_SYRUP
+            if (nr_threads > 0) {
+                solver = new GWType(nr_threads);
+            } else {
+                solver = new GWType;
+            }
+#else
             solver = new GWType;
+#endif
         }
 
 
@@ -159,6 +168,15 @@ namespace percy
         synth_result solve(pabc::lit*, pabc::lit*, int cl)
         {
             return solve(cl);
+        }
+#endif
+
+#ifdef USE_SYRUP
+        void set_nr_threads(int nr_threads)
+        {
+            delete solver;
+            this->nr_threads = nr_threads;
+            solver = new Glucose::MultiSolvers(nr_threads);
         }
 #endif
     };

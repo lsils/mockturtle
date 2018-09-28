@@ -11,6 +11,20 @@ namespace percy
         std::vector<int> outputs;
         using step = std::array<int, 3>;
 
+        void rec_to_expression(std::ostream& o, const int i)
+        {
+            if (i < nr_in) {
+                o << static_cast<char>('a' + i);
+            } else {
+                const auto& step = steps[i - nr_in];
+                o << "<";
+                rec_to_expression(o, step[0]);
+                rec_to_expression(o, step[1]);
+                rec_to_expression(o, step[2]);
+                o << ">";
+            }
+        }
+
     public:
         std::vector<std::array<int, 3>> steps;
         std::vector<int> operators;
@@ -204,7 +218,7 @@ namespace percy
             }
 
             if (spec.add_colex_clauses) {
-                // Ensure that steps are in co-lexicographical order.
+                // Ensure that steps are in STRICT co-lexicographical order.
                 for (int i = 0; i < spec.nr_steps - 1; i++) {
                     const auto& v1 = steps[i];
                     const auto& v2 = steps[i + 1];
@@ -305,23 +319,13 @@ namespace percy
             return true;
         }
 
-        void to_expression(std::ostream& o, const int i)
-        {
-            if (i < nr_in) {
-                o << static_cast<char>('a' + i);
-            } else {
-                const auto& step = steps[i - nr_in];
-                o << "<";
-                to_expression(o, step[0]);
-                to_expression(o, step[1]);
-                to_expression(o, step[2]);
-                o << ">";
-            }
-        }
 
-        void to_expression(std::ostream& o)
+        void to_expression(std::ostream& o, bool write_newline = false)
         {
-            to_expression(o, nr_in + steps.size() - 1);
+            rec_to_expression(o, nr_in + steps.size() - 1);
+            if (write_newline) {
+                o << std::endl;
+            }
         }
     };
 }
