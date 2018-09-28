@@ -296,7 +296,43 @@ public:
     : tok( in )
     , reader( reader )
     , diag( diag )
-  {}
+    , on_action([&]( std::vector<std::pair<std::string,bool>> inputs, std::string output, std::string type ){
+                  if ( type == "assign" )
+                  {
+                    assert( inputs.size() == 1u );
+                    reader.on_assign( output, inputs[0] );
+                  }
+                  else if ( type == "and2" )
+                  {
+                    assert( inputs.size() == 2u );
+                    reader.on_and( output, inputs[0], inputs[1] );
+                  }
+                  else if ( type == "or2" )
+                  {
+                    assert( inputs.size() == 2u );
+                    reader.on_or( output, inputs[0], inputs[1] );
+                  }
+                  else if ( type == "xor2" )
+                  {
+                    assert( inputs.size() == 2u );
+                    reader.on_xor( output, inputs[0], inputs[1] );
+                  }
+                  else if ( type == "maj3" )
+                  {
+                    assert( inputs.size() == 3u );
+                    reader.on_maj3( output, inputs[0], inputs[1], inputs[2] );
+                  }
+                  else
+                  {
+                    assert( false );
+                  }
+                })
+  {
+    on_action.declare_known( "0" );
+    on_action.declare_known( "1" );
+    on_action.declare_known( "1'b0" );
+    on_action.declare_known( "1'b1" );
+  }
 
   bool get_token( std::string& token )
   {
@@ -322,7 +358,6 @@ public:
 
     return ( result == detail::tokenizer_return_code::valid );
   }
-
 
   bool parse_module()
   {
@@ -403,6 +438,17 @@ public:
       if ( !valid ) return false;
     }
 
+    /* check dangling objects */
+    const auto& deps = on_action.unresolved_dependencies();
+    for ( const auto& r : on_action.unresolved_dependencies() )
+    {
+      if ( diag )
+      {
+        diag->report( diagnostic_level::warning,
+                      fmt::format( "unresolved dependencies: `{0}` requires `{1}`",  r.first, r.second ) );
+      }
+    }
+
     if ( token == "endmodule" )
     {
       /* callback */
@@ -465,6 +511,9 @@ public:
 
     /* callback */
     reader.on_inputs( inputs );
+
+    for ( const auto& i : inputs )
+      on_action.declare_known( i );
 
     return true;
   }
@@ -556,7 +605,7 @@ public:
     if ( std::regex_match( s, sm, verilog_regex::immediate_assign ) )
     {
       assert( sm.size() == 3u );
-      reader.on_assign( lhs, {sm[2], sm[1] == "~"} );
+      on_action.call_deferred( { sm[2] }, lhs, {{sm[2], sm[1] == "~"}}, lhs, "assign" );
     }
     else if ( std::regex_match( s, sm, verilog_regex::binary_expression ) )
     {
@@ -567,15 +616,15 @@ public:
 
       if ( op == "&" )
       {
-        reader.on_and( lhs, arg0, arg1 );
+        on_action.call_deferred( { arg0.first, arg1.first }, lhs, {arg0, arg1}, lhs, "and2" );
       }
       else if ( op == "|" )
       {
-        reader.on_or( lhs, arg0, arg1 );
+        on_action.call_deferred( { arg0.first, arg1.first }, lhs, {arg0, arg1}, lhs, "or2" );
       }
       else if ( op == "^" )
       {
-        reader.on_xor( lhs, arg0, arg1 );
+        on_action.call_deferred( { arg0.first, arg1.first }, lhs, {arg0, arg1}, lhs, "xor2" );
       }
       else
       {
@@ -599,7 +648,7 @@ public:
       args.push_back( b0 );
       args.push_back( c0 );
 
-      reader.on_maj3( lhs, a0, b0, c0 );
+      on_action.call_deferred( { a0.first, b0.first, c0.first }, lhs, args, lhs, "maj3" );
     }
     else
     {
@@ -616,6 +665,8 @@ private:
 
   std::string token;
   bool valid = false;
+
+  detail::call_in_topological_order<std::vector<std::pair<std::string,bool>>, std::string, std::string> on_action;
 }; /* verilog_parser */
 
 /*! \brief Reader function for VERILOG format.

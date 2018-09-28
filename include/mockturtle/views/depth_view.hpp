@@ -42,11 +42,11 @@
 namespace mockturtle
 {
 
-/*! \brief Implements `depth` and `get_level` methods for networks.
+/*! \brief Implements `depth` and `level` methods for networks.
  *
  * This view computes the level of each node and also the depth of
  * the network.  It implements the network interface methods
- * `get_level` and `depth`.  The levels are computed at construction
+ * `level` and `depth`.  The levels are computed at construction
  * and can be recomputed by calling the `update` method.
  *
  * **Required network functions:**
