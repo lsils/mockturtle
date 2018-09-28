@@ -310,12 +310,12 @@ public:
                   else if ( type == "or2" )
                   {
                     assert( inputs.size() == 2u );
-                    reader.on_and( output, inputs[0], inputs[1] );
+                    reader.on_or( output, inputs[0], inputs[1] );
                   }
                   else if ( type == "xor2" )
                   {
                     assert( inputs.size() == 2u );
-                    reader.on_and( output, inputs[0], inputs[1] );
+                    reader.on_xor( output, inputs[0], inputs[1] );
                   }
                   else if ( type == "maj3" )
                   {
@@ -328,6 +328,10 @@ public:
                   }
                 })
   {
+    on_action.declare_known( "0" );
+    on_action.declare_known( "1" );
+    on_action.declare_known( "1'b0" );
+    on_action.declare_known( "1'b1" );
   }
 
   bool get_token( std::string& token )
@@ -354,7 +358,6 @@ public:
 
     return ( result == detail::tokenizer_return_code::valid );
   }
-
 
   bool parse_module()
   {
@@ -433,6 +436,17 @@ public:
 
       valid = get_token( token );
       if ( !valid ) return false;
+    }
+
+    /* check dangling objects */
+    const auto& deps = on_action.unresolved_dependencies();
+    for ( const auto& r : on_action.unresolved_dependencies() )
+    {
+      if ( diag )
+      {
+        diag->report( diagnostic_level::warning,
+                      fmt::format( "unresolved dependencies: `{0}` requires `{1}`",  r.first, r.second ) );
+      }
     }
 
     if ( token == "endmodule" )
@@ -591,7 +605,7 @@ public:
     if ( std::regex_match( s, sm, verilog_regex::immediate_assign ) )
     {
       assert( sm.size() == 3u );
-      reader.on_assign( lhs, {sm[2], sm[1] == "~"} );
+      on_action.call_deferred( { sm[2] }, lhs, {{sm[2], sm[1] == "~"}}, lhs, "assign" );
     }
     else if ( std::regex_match( s, sm, verilog_regex::binary_expression ) )
     {
