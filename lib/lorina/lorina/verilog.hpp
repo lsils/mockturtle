@@ -296,7 +296,39 @@ public:
     : tok( in )
     , reader( reader )
     , diag( diag )
-  {}
+    , on_action([&]( std::vector<std::pair<std::string,bool>> inputs, std::string output, std::string type ){
+                  if ( type == "assign" )
+                  {
+                    assert( inputs.size() == 1u );
+                    reader.on_assign( output, inputs[0] );
+                  }
+                  else if ( type == "and2" )
+                  {
+                    assert( inputs.size() == 2u );
+                    reader.on_and( output, inputs[0], inputs[1] );
+                  }
+                  else if ( type == "or2" )
+                  {
+                    assert( inputs.size() == 2u );
+                    reader.on_and( output, inputs[0], inputs[1] );
+                  }
+                  else if ( type == "xor2" )
+                  {
+                    assert( inputs.size() == 2u );
+                    reader.on_and( output, inputs[0], inputs[1] );
+                  }
+                  else if ( type == "maj3" )
+                  {
+                    assert( inputs.size() == 3u );
+                    reader.on_maj3( output, inputs[0], inputs[1], inputs[2] );
+                  }
+                  else
+                  {
+                    assert( false );
+                  }
+                })
+  {
+  }
 
   bool get_token( std::string& token )
   {
@@ -466,6 +498,9 @@ public:
     /* callback */
     reader.on_inputs( inputs );
 
+    for ( const auto& i : inputs )
+      on_action.declare_known( i );
+
     return true;
   }
 
@@ -567,15 +602,15 @@ public:
 
       if ( op == "&" )
       {
-        reader.on_and( lhs, arg0, arg1 );
+        on_action.call_deferred( { arg0.first, arg1.first }, lhs, {arg0, arg1}, lhs, "and2" );
       }
       else if ( op == "|" )
       {
-        reader.on_or( lhs, arg0, arg1 );
+        on_action.call_deferred( { arg0.first, arg1.first }, lhs, {arg0, arg1}, lhs, "or2" );
       }
       else if ( op == "^" )
       {
-        reader.on_xor( lhs, arg0, arg1 );
+        on_action.call_deferred( { arg0.first, arg1.first }, lhs, {arg0, arg1}, lhs, "xor2" );
       }
       else
       {
@@ -599,7 +634,7 @@ public:
       args.push_back( b0 );
       args.push_back( c0 );
 
-      reader.on_maj3( lhs, a0, b0, c0 );
+      on_action.call_deferred( { a0.first, b0.first, c0.first }, lhs, args, lhs, "maj3" );
     }
     else
     {
@@ -616,6 +651,8 @@ private:
 
   std::string token;
   bool valid = false;
+
+  detail::call_in_topological_order<std::vector<std::pair<std::string,bool>>, std::string, std::string> on_action;
 }; /* verilog_parser */
 
 /*! \brief Reader function for VERILOG format.
