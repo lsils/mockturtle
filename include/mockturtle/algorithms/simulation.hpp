@@ -33,7 +33,6 @@
 #pragma once
 
 #include <cstdint>
-#include <unordered_map>
 #include <vector>
 
 #include "../traits.hpp"
@@ -225,81 +224,6 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
 
   return node_to_value;
 }
-
-template<class T, class Ntk>
-class unordered_node_map
-{
-public:
-  using node = typename Ntk::node;
-  using signal = typename Ntk::signal;
-  using reference = T&;
-  using const_reference = const T&;
-
-public:
-  explicit unordered_node_map( Ntk const& ntk )
-      : ntk( ntk )
-  {
-  }
-
-  /*! \brief Check if a key is already defined. */
-  bool has( node const& n ) const
-  {
-    return data.find( n ) != data.end();
-  }
-
-  /*! \brief Mutable access to value by node. */
-  reference operator[]( node const& n )
-  {
-    return data[ntk.node_to_index( n )];
-  }
-
-  /*! \brief Constant access to value by node. */
-  const_reference operator[]( node const& n ) const
-  {
-    assert( !has( n ) && "index out of bounds" );
-    return data[ntk.node_to_index( n )];
-  }
-
-  /*! \brief Mutable access to value by signal.
-   *
-   * This method derives the node from the signal.  If the node and signal type
-   * are the same in the network implementation, this method is disabled.
-   */
-  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
-  reference operator[]( signal const& f )
-  {
-    return data[ntk.node_to_index( ntk.get_node( f ) )];
-  }
-
-  /*! \brief Constant access to value by signal.
-   *
-   * This method derives the node from the signal.  If the node and signal type
-   * are the same in the network implementation, this method is disabled.
-   */
-  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
-  const_reference operator[]( signal const& f ) const
-  {
-    assert( !has( ntk.get_node( f ) ) && "index out of bounds" );
-    return data[ntk.node_to_index( ntk.get_node( f ) )];
-  }
-
-  /*! \brief Resets the size of the map.
-   *
-   * This function should be called, if the network changed in size.  Then, the
-   * map is cleared, and resized to the current network's size.  All values are
-   * initialized with `init_value`.
-   *
-   * \param init_value Initialization value after resize
-   */
-  void reset()
-  {
-    data.clear();
-  }
-
-protected:
-  Ntk const& ntk;
-  std::unordered_map<node, T> data;
-};
 
 /*! \brief Simulates a network with a generic simulator.
  *
