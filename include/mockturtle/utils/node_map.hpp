@@ -25,9 +25,10 @@
 
 /*!
   \file node_map.hpp
-  \brief A map interface indexed by network nodes
+  \brief Map indexed by network nodes
 
   \author Mathias Soeken
+  \author Heinz Riener
 */
 
 #pragma once
@@ -90,8 +91,8 @@ template<class T, class Ntk>
 class node_map<T, Ntk, std::vector<T>>
 {
 public:
-  using node = node<Ntk>;
-  using signal = signal<Ntk>;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
   using reference = typename std::vector<T>::reference;
   using const_reference = typename std::vector<T>::const_reference;
@@ -139,7 +140,7 @@ public:
    * This method derives the node from the signal.  If the node and signal type
    * are the same in the network implementation, this method is disabled.
    */
-  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<signal<_Ntk>, node<_Ntk>>>>
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   reference operator[]( signal const& f )
   {
     assert( ntk.node_to_index( ntk.get_node( f ) ) < data->size() && "index out of bounds" );
@@ -151,7 +152,7 @@ public:
    * This method derives the node from the signal.  If the node and signal type
    * are the same in the network implementation, this method is disabled.
    */
-  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<signal<_Ntk>, node<_Ntk>>>>
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   const_reference operator[]( signal const& f ) const
   {
     assert( ntk.node_to_index( ntk.get_node( f ) ) < data->size() && "index out of bounds" );
