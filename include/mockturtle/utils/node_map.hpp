@@ -53,27 +53,9 @@ namespace mockturtle
  * access the data.  The later implementation offers a way to
  * associate values to a subset of nodes and to check whether a value
  * is available.
- */
-template<class T, class Ntk, class Impl = std::vector<T>>
-class node_map;
-
-/*! \brief Specialization using std::vector
  *
- * This container is initialized with a network to derive the size
- * according to the number of nodes.  The container can be accessed
- * via nodes, or indirectly via signals, from which the corresponding
- * node is derived.
- *
- * The implementation uses a vector as underlying data structure which
- * is indexed by the node's index.
- * 
- * **Required network functions:**
- * - `size`
- * - `get_node`
- * - `node_to_index`
- * 
  * Example
- * 
+ *
    \verbatim embed:rst
 
    .. code-block:: c++
@@ -84,6 +66,25 @@ class node_map;
         node_names[n] = "some string";
       } );
    \endverbatim
+ */
+template<class T, class Ntk, class Impl = std::vector<T>>
+class node_map;
+
+/*! \brief Vector node map
+ *
+ * This container is initialized with a network to derive the size
+ * according to the number of nodes.  The container can be accessed
+ * via nodes, or indirectly via signals, from which the corresponding
+ * node is derived.
+ *
+ * The implementation uses a vector as underlying data structure which
+ * is indexed by the node's index.
+ *
+ * **Required network functions:**
+ * - `size`
+ * - `get_node`
+ * - `node_to_index`
+ *
  */
 template<class T, class Ntk>
 class node_map<T, Ntk, std::vector<T>>
@@ -159,7 +160,7 @@ public:
    * This function should be called, if the network changed in size.  Then, the
    * map is cleared, and resized to the current network's size.  All values are
    * initialized with `init_value`.
-   * 
+   *
    * \param init_value Initialization value after resize
    */
   void reset( T const& init_value = {} )
@@ -188,7 +189,19 @@ private:
   std::shared_ptr<std::vector<T>> data;
 };
 
-/*! \brief Specialization using std::unordered_map
+/*! \brief Unordered node map
+ *
+ * This implementation of the container is initialized with a network.
+ * The map entries are constructed on-the-fly.  The container
+ * can be accessed via ndoes, or indirectly via signals, from which
+ * the corresponding node is derived.
+ *
+ * The implementation uses an std::unordered_map as underlying data
+ * structure which is indexed by the node's index.
+ *
+ * **Required network functions:**
+ * - `get_node`
+ * - `node_to_index`
  *
  */
 template<class T, class Ntk>
@@ -203,27 +216,28 @@ public:
 
 public:
   explicit node_map( Ntk const& ntk )
-      : ntk( ntk )
+    : ntk( ntk ),
+      data( std::make_shared<std::unordered_map<typename Ntk::node, T>>() )
   {
   }
 
   /*! \brief Check if a key is already defined. */
   bool has( node const& n ) const
   {
-    return data.find( n ) != data.end();
+    return data->find( n ) != data->end();
   }
 
   /*! \brief Mutable access to value by node. */
   reference operator[]( node const& n )
   {
-    return data[ntk.node_to_index( n )];
+    return (*data)[ntk.node_to_index( n )];
   }
 
   /*! \brief Constant access to value by node. */
   const_reference operator[]( node const& n ) const
   {
     assert( !has( n ) && "index out of bounds" );
-    return data[ntk.node_to_index( n )];
+    return (*data)[ntk.node_to_index( n )];
   }
 
   /*! \brief Mutable access to value by signal.
@@ -234,7 +248,7 @@ public:
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   reference operator[]( signal const& f )
   {
-    return data[ntk.node_to_index( ntk.get_node( f ) )];
+    return (*data)[ntk.node_to_index( ntk.get_node( f ) )];
   }
 
   /*! \brief Constant access to value by signal.
@@ -246,7 +260,7 @@ public:
   const_reference operator[]( signal const& f ) const
   {
     assert( !has( ntk.get_node( f ) ) && "index out of bounds" );
-    return data[ntk.node_to_index( ntk.get_node( f ) )];
+    return (*data)[ntk.node_to_index( ntk.get_node( f ) )];
   }
 
   /*! \brief Resets the size of the map.
@@ -256,14 +270,15 @@ public:
    */
   void reset()
   {
-    data.clear();
+    data->clear();
   }
 
 protected:
   Ntk const& ntk;
-  std::unordered_map<node, T> data;
+  std::shared_ptr<std::unordered_map<node, T>> data;
 };
 
+/*! \brief Template alias `unordered_node_map` */
 template<class T, class Ntk>
 using unordered_node_map = node_map<T, Ntk, std::unordered_map<typename Ntk::node, T>>;
 
