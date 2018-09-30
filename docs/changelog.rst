@@ -55,6 +55,6 @@ v0.1 (not yet released)
 * Utility data structures: `truth_table_cache`, `cut`, `cut_set`, `node_map`, `progress_bar`, `stopwatch`
     - Truth table cache (`truth_table_cache`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_
     - Cuts (`cut` and `cut_set`) `#2 <https://github.com/lsils/mockturtle/pull/2>`_
-    - Container to associate values to nodes (`node_map`) `#13 <https://github.com/lsils/mockturtle/pull/13>`_
+    - Container to associate values to nodes (`node_map`) `#13 <https://github.com/lsils/mockturtle/pull/13>`_ `#76 <https://github.com/lsils/mockturtle/pull/76>`_
     - Progress bar (`progress_bar`) `#30 <https://github.com/lsils/mockturtle/pull/30>`_
     - Tracking time of computations (`stopwatch`, `call_with_stopwatch`, `make_with_stopwatch`) `#35 <https://github.com/lsils/mockturtle/pull/35>`_
