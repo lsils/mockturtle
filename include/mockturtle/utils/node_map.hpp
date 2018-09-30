@@ -90,6 +90,9 @@ template<class T, class Ntk>
 class node_map<T, Ntk, std::vector<T>>
 {
 public:
+  using node = node<Ntk>;
+  using signal = signal<Ntk>;
+
   using reference = typename std::vector<T>::reference;
   using const_reference = typename std::vector<T>::const_reference;
 public:
@@ -119,13 +122,13 @@ public:
   }
 
   /*! \brief Mutable access to value by node. */
-  reference operator[]( node<Ntk> const& n )
+  reference operator[]( node const& n )
   {
     return (*data)[ntk.node_to_index( n )];
   }
 
   /*! \brief Constant access to value by node. */
-  const_reference operator[]( node<Ntk> const& n ) const
+  const_reference operator[]( node const& n ) const
   {
     assert( ntk.node_to_index( n ) < data->size() && "index out of bounds" );
     return (*data)[ntk.node_to_index( n )];
@@ -137,7 +140,7 @@ public:
    * are the same in the network implementation, this method is disabled.
    */
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<signal<_Ntk>, node<_Ntk>>>>
-  reference operator[]( signal<Ntk> const& f )
+  reference operator[]( signal const& f )
   {
     assert( ntk.node_to_index( ntk.get_node( f ) ) < data->size() && "index out of bounds" );
     return (*data)[ntk.node_to_index( ntk.get_node( f ) )];
@@ -149,7 +152,7 @@ public:
    * are the same in the network implementation, this method is disabled.
    */
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<signal<_Ntk>, node<_Ntk>>>>
-  const_reference operator[]( signal<Ntk> const& f ) const
+  const_reference operator[]( signal const& f ) const
   {
     assert( ntk.node_to_index( ntk.get_node( f ) ) < data->size() && "index out of bounds" );
     return (*data)[ntk.node_to_index( ntk.get_node( f ) )];
@@ -192,7 +195,7 @@ private:
 /*! \brief Unordered node map
  *
  * This implementation of the container is initialized with a network.
- * The map entries are constructed on-the-fly.  The container
+ * The map entries are constructed on the fly.  The container
  * can be accessed via ndoes, or indirectly via signals, from which
  * the corresponding node is derived.
  *
