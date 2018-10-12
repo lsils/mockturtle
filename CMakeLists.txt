@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Options
+option(MOCKTURTLE_EXAMPLES "Build examples" ON)
 option(MOCKTURTLE_TEST "Build tests" OFF)
 
 if(UNIX)
@@ -21,6 +22,10 @@ endif()
 
 add_subdirectory(include)
 add_subdirectory(lib)
+
+if(MOCKTURTLE_EXAMPLES)
+  add_subdirectory(examples)
+endif()
 
 if(MOCKTURTLE_TEST)
   add_subdirectory(test)
