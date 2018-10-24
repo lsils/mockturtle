@@ -351,14 +351,14 @@ private:
           continue;
         }
 
-        cut_enumeration_update_cut<CutData>::apply( new_cut, cuts, ntk, index );
-
         if constexpr ( ComputeTruth )
         {
           vcuts[0] = c1;
           vcuts[1] = c2;
           new_cut->func_id = compute_truth_table( index, vcuts, new_cut );
         }
+
+        cut_enumeration_update_cut<CutData>::apply( new_cut, cuts, ntk, index );
 
         rcuts.insert( new_cut );
       }
@@ -426,12 +426,12 @@ private:
           return true; /* continue */
         }
 
-        cut_enumeration_update_cut<CutData>::apply( new_cut, cuts, ntk, index );
-
         if constexpr ( ComputeTruth )
         {
           new_cut->func_id = compute_truth_table( index, vcuts, new_cut );
         }
+
+        cut_enumeration_update_cut<CutData>::apply( new_cut, cuts, ntk, index );
 
         rcuts.insert( new_cut );
 
