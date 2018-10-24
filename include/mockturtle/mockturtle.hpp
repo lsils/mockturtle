@@ -57,6 +57,7 @@
 #include "networks/aig.hpp"
 #include "networks/klut.hpp"
 #include "networks/mig.hpp"
+#include "networks/xag.hpp"
 #include "networks/xmg.hpp"
 #include "utils/cuts.hpp"
 #include "utils/mixed_radix.hpp"
