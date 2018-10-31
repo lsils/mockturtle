@@ -372,6 +372,11 @@ public:
 
     return create_and( !create_and( !cond, f_else ), !create_and( cond, f_then ) ) ^ !f_compl;
   }
+
+  signal create_maj( signal const& a, signal const& b, signal const& c )
+  {
+    return create_or( create_and( a, b ), create_and( c, !create_and( !a, !b ) ) );
+  }
 #pragma endregion
 
 #pragma region Create arbitrary functions
