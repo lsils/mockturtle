@@ -11,6 +11,7 @@ v0.1 (not yet released)
     - MIG network (`mig_network`) `#4 <https://github.com/lsils/mockturtle/pull/4>`_
     - k-LUT network (`klut_network`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_
     - XOR-majority graph (`xmg_network`) `#47 <https://github.com/lsils/mockturtle/pull/47>`_
+    - XOR-and graph (`xag_network`) `#79 <https://github.com/lsils/mockturtle/pull/79>`_
 * Algorithms:
     - Cut enumeration (`cut_enumeration`) `#2 <https://github.com/lsils/mockturtle/pull/2>`_
     - LUT mapping (`lut_mapping`) `#7 <https://github.com/lsils/mockturtle/pull/7>`_
