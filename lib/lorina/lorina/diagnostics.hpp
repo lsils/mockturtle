@@ -53,24 +53,51 @@ enum class diagnostic_level
   fatal,
 };
 
+/*! \brief A builder for diagnostics.
+ *
+ * An object that encapsulates a diagnostic.  The diagnostic may take
+ * additional parameters and is finally issued at the end of its
+ * life time.
+ */
 class diagnostic_builder
 {
 public:
+  /*! \brief Constructs a diagnostic builder.
+   *
+   * \param diag Diagnostic engine
+   * \param level Severity level
+   * \param message Diagnostic message
+   */
   inline explicit diagnostic_builder( diagnostic_engine& diag, diagnostic_level level, const std::string& message );
+
+  /*! \brief Destructs the diagnostic builder and issues the diagnostic. */
   inline ~diagnostic_builder();
 
-  diagnostic_engine& _diag;
-  diagnostic_level _level;
-  std::string _message;
+  diagnostic_engine& _diag; /*!< diagnostic engine */
+  diagnostic_level _level; /*!< diagnostic level */
+  std::string _message; /*!< diagnostic message */
 }; /* diagnostic_builder */
 
+/*! \brief A diagnostic engine. */
 class diagnostic_engine
 {
 public:
+  /*! \brief Creates a diagnostic builder.
+   *
+   * \param level Severity level
+   * \param message Diagnostic message
+   */
   virtual inline diagnostic_builder report( diagnostic_level level, const std::string& message );
+
+  /*! \brief Emits a diagnostic message.
+   *
+   * \param level Severity level
+   * \param message Diagnostic message
+   */
   virtual inline void emit( diagnostic_level level, const std::string& message ) const;
 
-  mutable unsigned number_of_diagnostics = 0;
+public:
+  mutable unsigned number_of_diagnostics = 0; /*!< Number of diagnostics constructed via report */
 }; /* diagnostic_engine */
 
 diagnostic_builder::diagnostic_builder( diagnostic_engine& diag, diagnostic_level level, const std::string& message )
