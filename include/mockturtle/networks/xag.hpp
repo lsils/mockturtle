@@ -389,10 +389,10 @@ public:
       f_compl = true;
     }
 
-    return create_and( !create_and( !cond, f_else ), !create_and( cond, f_then ) ) ^ !f_compl;
+    return create_xor( create_and( !cond, create_xor( f_then, f_else ) ), f_then ) ^ f_compl;
   }
 
-  signal create_maj( signal a, signal b, signal c )
+  signal create_maj( signal const& a, signal const& b, signal const& c )
   {
     auto c1 = create_xor( a, b );
     auto c2 = create_xor( a, c );
@@ -539,7 +539,6 @@ public:
 #pragma region Functional properties
   kitty::dynamic_truth_table node_function( const node& n ) const
   {
-    (void)n;
     kitty::dynamic_truth_table _func( 2 );
     if ( _storage->nodes[n].children[0u].index < _storage->nodes[n].children[1u].index )
     {
@@ -838,7 +837,14 @@ public:
     auto v1 = *begin++;
     auto v2 = *begin++;
 
-    return ( v1 ^ c1.weight ) && ( v2 ^ c2.weight );
+    if ( c1.index < c2.index )
+    {
+      return ( v1 ^ c1.weight ) && ( v2 ^ c2.weight );
+    }
+    else
+    {
+      return ( v1 ^ c1.weight ) ^ ( v2 ^ c2.weight );
+    }
   }
 
   template<typename Iterator>
@@ -855,7 +861,14 @@ public:
     auto tt1 = *begin++;
     auto tt2 = *begin++;
 
-    return ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
+    if ( c1.index < c2.index )
+    {
+      return ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
+    }
+    else
+    {
+      return ( c1.weight ? ~tt1 : tt1 ) ^ ( c2.weight ? ~tt2 : tt2 );
+    }
   }
 #pragma endregion
 
