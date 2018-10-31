@@ -230,6 +230,18 @@ public:
     _mask &= ~( 1 << index );
   }
 
+  /*! \brief Flips bit at index */
+  inline void flip_bit( uint8_t index )
+  {
+    _bits ^= ( 1 << index );
+  }
+
+  /*! \brief Flips mask at index */
+  inline void flip_mask( uint8_t index )
+  {
+    _mask ^= ( 1 << index );
+  }
+
   /* cube data */
   union {
     struct

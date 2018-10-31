@@ -174,4 +174,54 @@ bool is_symmetric_in( const TT& tt, uint8_t var_index1, uint8_t var_index2 )
   return tt == swap( tt, var_index1, var_index2 );
 }
 
+/*! \brief Generate runlength encoding of a function
+
+  This function iterates through the bits of a function and calls a function
+  for each runlength and value.  For example, if this function is called for
+  the AND function 1000, it will call `fn` first with arguments `false` and `3`,
+  and then a second time with arguments `true`, and `1`.
+
+  \param tt Truth table
+  \param fn Function of signature `void(bool, uint32_t)`
+*/
+template<typename TT, typename Fn>
+void foreach_runlength( const TT& tt, Fn&& fn )
+{
+  bool current = get_bit( tt, 0 );
+  uint32_t length{1u};
+
+  for ( auto i = 1ull; i < tt.num_bits(); ++i )
+  {
+    if ( get_bit( tt, i ) != current )
+    {
+      fn( current, length );
+      current = !current;
+      length = 1u;
+    }
+    else
+    {
+      ++length;
+    }
+  }
+
+  fn( current, length );
+}
+
+/*! \brief Returns the runlength encoding pattern of a function
+
+  This function does only count the lengths, e.g., for 1000 it will return
+  `{3, 1}`, and so it does for the NAND function 0111.
+
+  \param tt Truth table
+*/ 
+template<typename TT>
+std::vector<uint32_t> runlength_pattern( const TT& tt )
+{
+  std::vector<uint32_t> pattern;
+  foreach_runlength( tt, [&]( bool, uint32_t length ) {
+    pattern.push_back( length );
+  } );
+  return pattern;
+}
+
 } // namespace kitty
