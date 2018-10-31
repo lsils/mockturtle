@@ -1505,7 +1505,7 @@ namespace percy
                 const auto nr_vertices = _nr_vertices;
 
                 g.reset(nr_vars, nr_vertices);
-                set_callback([&dags, &g, nr_vars, nr_vertices]
+                set_callback([&dags, &g, nr_vertices]
                         (rec_dag_generator* gen) {
                             for (int i = 1; i <= nr_vertices; i++) {
                                 g.set_vertex(i-1, gen->_js[i], gen->_ks[i]);

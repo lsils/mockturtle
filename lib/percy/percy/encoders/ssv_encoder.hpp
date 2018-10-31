@@ -5,7 +5,7 @@
 
 namespace percy
 {
-    class ssv_encoder : public std_encoder
+    class ssv_encoder : public std_cegar_encoder, public enumerating_encoder
     {
         private:
 			int nr_op_vars_per_step;
@@ -37,9 +37,7 @@ namespace percy
                 pabc::Vec_IntFree(vLits);
             }
 
-            int
-            get_op_var(const spec& spec, int step_idx, int var_idx)
-            const 
+            int get_op_var(const spec& spec, int step_idx, int var_idx) const 
             {
                 assert(step_idx < spec.nr_steps);
                 assert(var_idx > 0);
@@ -48,16 +46,14 @@ namespace percy
                 return ops_offset + step_idx * nr_op_vars_per_step + var_idx-1;
             }
 
-            int
-            get_sel_var(int var_idx) const
+            int get_sel_var(int var_idx) const
             {
                 assert(var_idx < nr_sel_vars);
 
                 return sel_offset + var_idx;
             }
 
-            int 
-            get_out_var(const spec& spec, int h, int i) const
+            int get_out_var(const spec& spec, int h, int i) const
             {
                 assert(h < spec.nr_nontriv);
                 assert(i < spec.nr_steps);
@@ -65,8 +61,7 @@ namespace percy
                 return out_offset + spec.nr_steps * h + i;
             }
 
-            int
-            get_sim_var(const spec& spec, int step_idx, int t) const
+            int get_sim_var(const spec& spec, int step_idx, int t) const
             {
                 assert(step_idx < spec.nr_steps);
                 assert(t < spec.get_tt_size());
@@ -74,8 +69,7 @@ namespace percy
                 return sim_offset + spec.get_tt_size() * step_idx + t;
             }
 
-            int
-            get_lex_var(const spec& spec, int step_idx, int op_idx) const
+            int get_lex_var(const spec& spec, int step_idx, int op_idx) const
             {
                 assert(step_idx < spec.nr_steps);
                 assert(op_idx < nr_op_vars_per_step);
@@ -86,8 +80,7 @@ namespace percy
             /*******************************************************************
                 Ensures that each gate has FI operands.
             *******************************************************************/
-            bool 
-            create_op_clauses(const spec& spec)
+            bool create_op_clauses(const spec& spec)
             {
                 auto status = true;
 
@@ -100,7 +93,7 @@ namespace percy
                 for (int i = 0; i < spec.nr_steps; i++) {
                     const auto nr_svars_for_i = nr_svar_map[i];
                     
-                    for (int j = 0; j < nr_svars_for_i; j++) {
+                    for (int j = 0u; j < nr_svars_for_i; j++) {
                         pabc::Vec_IntSetEntry(vLits, j, 
                                 pabc::Abc_Var2Lit(get_sel_var(j + svar_offset), 0));
                     }
@@ -111,12 +104,12 @@ namespace percy
 
                     if (spec.verbosity > 2) {
                         printf("creating op clause: ( ");
-                        for (int j = 0; j < nr_svars_for_i; j++) {
+                        for (int j = 0u; j < nr_svars_for_i; j++) {
                             printf("%ss_%d_%d ", j > 0 ? "\\/ " : "",
                                     spec.get_nr_in() + i + 1, j + 1);
                         }
                         printf(") (status=%d)\n", status);
-                        for (int j = 0; j < nr_svars_for_i; j++) {
+                        for (int j = 0u; j < nr_svars_for_i; j++) {
                             printf("svar(%d) = %d\n", j + svar_offset,
                                     get_sel_var(j + svar_offset));
                         }
@@ -131,8 +124,7 @@ namespace percy
                 return status;
             }
 
-            bool 
-            create_output_clauses(const spec& spec)
+            bool create_output_clauses(const spec& spec)
             {
                 auto status = true;
 
@@ -186,8 +178,7 @@ namespace percy
                 return status;
             }
 
-            void
-            create_variables(const spec& spec)
+            void create_variables(const spec& spec)
             {
                 std::vector<int> fanins(spec.fanin);
 
@@ -207,7 +198,7 @@ namespace percy
                     }
                     //spec.nr_sel_vars += binomial_coeff(i, FI); 
 					//( i * ( i - 1 ) ) / 2;
-                    auto nr_svars_for_i = 0;
+                    auto nr_svars_for_i = 0u;
                     fanin_init(fanins, spec.fanin - 1);
                     do  {
                         if (spec.verbosity > 4) {
@@ -218,7 +209,7 @@ namespace percy
                     } while (fanin_inc(fanins, i-1));
                     
                     if (spec.verbosity > 2) {
-                        printf("added %d sel vars\n", nr_svars_for_i);
+                        printf("added %u sel vars\n", nr_svars_for_i);
                     }
 
                     nr_sel_vars += nr_svars_for_i;
@@ -248,8 +239,7 @@ namespace percy
                 solver->set_nr_vars(total_nr_vars);
             }
 
-            bool 
-            create_tt_clauses(const spec& spec, const int t)
+            bool create_tt_clauses(const spec& spec, const int t)
             {
                 auto ret = true;
                 std::vector<int> fanin_asgn(spec.fanin);
@@ -325,8 +315,7 @@ namespace percy
                 return ret;
             }
 
-            bool 
-            create_main_clauses(const spec& spec)
+            bool create_main_clauses(const spec& spec)
             {
                 if (spec.verbosity > 2) {
                     printf("Creating main clauses (SSV-%d)\n", spec.fanin);
@@ -345,8 +334,7 @@ namespace percy
                 return success;
             }
 
-            bool 
-            add_simulation_clause(
+            bool add_simulation_clause(
                     const spec& spec, 
                     const int t, 
                     const int i, 
@@ -422,8 +410,7 @@ namespace percy
                 Add clauses that prevent trivial variable projection and
                 constant operators from being synthesized.
             *******************************************************************/
-            void 
-            create_nontriv_clauses(const spec& spec)
+            void create_nontriv_clauses(const spec& spec)
             {
                 dynamic_truth_table triv_op(spec.fanin);
 
@@ -928,8 +915,7 @@ namespace percy
             }
 
             /// Extracts chain from encoded CNF solution.
-            void 
-            extract_chain(const spec& spec, chain& chain)
+            void extract_chain(const spec& spec, chain& chain)
             {
                 chain.reset(spec.get_nr_in(), spec.get_nr_out(), spec.nr_steps, spec.fanin);
 
@@ -989,6 +975,103 @@ namespace percy
                         }
                     }
                 }
+            }
+
+            void cegar_extract_chain(const spec& spec, chain& chain)
+            {
+                chain.reset(spec.get_nr_in(), spec.get_nr_out(), spec.nr_steps, spec.fanin);
+
+                auto svar_offset = 0;
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    dynamic_truth_table op(spec.fanin);
+                    for (int j = 1; j <= nr_op_vars_per_step; j++) {
+                        if (solver->var_value(get_op_var(spec, i, j))) {
+                            kitty::set_bit(op, j); 
+                        }
+                    }
+
+                    if (spec.verbosity) {
+                        printf("  step x_%d performs operation\n  ", 
+                                i+spec.get_nr_in()+1);
+                        kitty::print_binary(op, std::cout);
+                        printf("\n");
+                    }
+
+                    const auto nr_svars_for_i = nr_svar_map[i];
+                    for (int j = 0; j < nr_svars_for_i; j++) {
+                        const auto sel_var = get_sel_var(svar_offset + j);
+                        if (solver->var_value(sel_var)) {
+                            const auto& fanins = svar_map[svar_offset + j];
+                            if (spec.verbosity) {
+                                printf("  with operands ");
+                                for (int k = 0; k < spec.fanin; k++) {
+                                    printf("x_%d ", fanins[k] + 1);
+                                }
+                            }
+                            chain.set_step(i, fanins, op);
+                        }
+                    }
+
+                    svar_offset += nr_svars_for_i;
+
+                    if (spec.verbosity) {
+                        printf("\n");
+                    }
+                }
+
+                chain.set_output(0,
+                    ((spec.nr_steps + spec.get_nr_in()) << 1) +
+                    (spec.out_inv & 1));
+            }
+
+            void find_fanin(int i, std::vector<int>& fanins, const spec& spec) const
+            {
+                auto svar_offset = 0;
+                for (int j = 0; j < i; j++) {
+                    svar_offset += nr_svar_map[j];
+                }
+                const auto nr_svars_for_i = nr_svar_map[i];
+                for (int j = 0; j < nr_svars_for_i; j++) {
+                    const auto sel_var = get_sel_var(svar_offset + j);
+                    if (solver->var_value(sel_var)) {
+                        const auto& sim_fanins = svar_map[svar_offset + j];
+                        for (int k = 0; k < spec.fanin; k++) {
+                            fanins[k] = sim_fanins[k];
+                        }
+                        return;
+                    }
+                }
+                assert(false);
+            }
+
+            int simulate(const spec& spec)
+            {
+                std::vector<int> fanins(spec.fanin);
+                auto tt_comp = kitty::create<dynamic_truth_table>(spec.nr_in);
+
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    find_fanin(i, fanins, spec);
+
+                    kitty::clear(sim_tts[spec.nr_in + i]);
+                    for (int j = 1; j <= nr_op_vars_per_step; j++) {
+                        kitty::clear(tt_comp);
+                        tt_comp = ~tt_comp;
+                        if (solver->var_value(get_op_var(spec, i, j))) {
+                            for (int k = 0; k < spec.fanin; k++) {
+                                if ((j >> k) & 1) {
+                                    tt_comp &= sim_tts[fanins[k]];
+                                } else {
+                                    tt_comp &= ~sim_tts[fanins[k]];
+                                }
+                            }
+                            sim_tts[spec.nr_in + i] |= tt_comp;
+                        }
+                    }
+                }
+
+                const auto iMint = kitty::find_first_bit_difference(sim_tts[spec.nr_in + spec.nr_steps - 1], spec.out_inv ? ~spec[0] : spec[0]);
+                assert(iMint > 0 || iMint == -1);
+                return iMint;
             }
 
             /*******************************************************************
@@ -1170,17 +1253,11 @@ namespace percy
             }
 
 			/// Encodes specifciation for use in CEGAR based synthesis flow.
-            bool 
-            cegar_encode(const spec& spec)
+            bool cegar_encode(const spec& spec)
             {
                 assert(spec.nr_steps <= MAX_STEPS);
 
                 create_variables(spec);
-                for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
-                    if (!create_tt_clauses(spec, rand() % spec.get_tt_size())) {
-                        return false;
-                    }
-                }
                 
                 if (!create_output_clauses(spec)) {
                     return false;

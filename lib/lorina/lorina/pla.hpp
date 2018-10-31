@@ -115,13 +115,17 @@ public:
 class pla_writer
 {
 public:
+  /*! \brief Constructs a PLA writer.
+   *
+   * \param os Output stream
+   */
   pla_writer( std::ostream& os )
     : _os( os )
   {}
 
   /*! \brief Callback method for writing number of inputs.
    *
-   * \param number_of_outputs Number of outputs
+   * \param number_of_inputs Number of inputs
    */
   virtual void on_number_of_inputs( std::size_t number_of_inputs ) const
   {
@@ -175,7 +179,7 @@ public:
   }
 
 protected:
-  std::ostream& _os;
+  std::ostream& _os; /*!< Output stream */
 }; /* pla_writer */
 
 /*! \brief A PLA reader for prettyprinting PLA.

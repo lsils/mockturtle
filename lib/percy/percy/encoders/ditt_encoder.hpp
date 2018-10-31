@@ -5,7 +5,7 @@
 
 namespace percy
 {
-    class ditt_encoder : public std_encoder
+    class ditt_encoder : public std_cegar_encoder, public enumerating_encoder
     {
         private:
 			int nr_op_vars_per_step;
@@ -803,8 +803,7 @@ namespace percy
             }
 
             /// Extracts chain from encoded CNF solution.
-            void 
-            extract_chain(const spec& spec, chain& chain)
+            void extract_chain(const spec& spec, chain& chain)
             {
                 std::vector<int> fanins(spec.fanin);
 
@@ -862,6 +861,66 @@ namespace percy
                                     ((spec.out_inv >> h) & 1));
                             nontriv_count++;
                             break;
+                        }
+                    }
+                }
+            }
+
+            void cegar_extract_chain(const spec& spec, chain& chain)
+            {
+                std::vector<int> fanins(spec.fanin);
+
+                chain.reset(spec.get_nr_in(), spec.get_nr_out(), spec.nr_steps, spec.fanin);
+
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    dynamic_truth_table op(spec.fanin);
+                    for (int j = 1; j <= nr_op_vars_per_step; j++) {
+                        if (solver->var_value(get_op_var(spec, i, j))) {
+                            kitty::set_bit(op, j); 
+                        }
+                    }
+
+                    if (spec.verbosity) {
+                        printf("  step x_%d performs operation\n  ", 
+                                i+spec.get_nr_in()+1);
+                        kitty::print_binary(op, std::cout);
+                        printf("\n");
+                    }
+
+                    for (int k = 0; k < spec.fanin; k++) {
+                        for (int j = 0; j < spec.get_nr_in() + i; j++) {
+                            const auto s_ij_k = get_sel_var(spec, i, j, k);
+                            if (solver->var_value(s_ij_k)) {
+                                fanins[k] = j;
+                            }
+                        }
+                    }
+                    if (spec.verbosity) {
+                        printf("  with operands ");
+                        for (int k = 0; k < spec.fanin; k++) {
+                            printf("x_%d ", fanins[k] + 1);
+                        }
+                    }
+                        
+                    chain.set_step(i, fanins, op);
+
+                    if (spec.verbosity) {
+                        printf("\n");
+                    }
+                }
+
+                chain.set_output(0,
+                    ((spec.nr_steps + spec.get_nr_in()) << 1) +
+                    (spec.out_inv & 1));
+            }
+
+            void find_fanin(int i, std::vector<int>& fanins, const spec& spec) const
+            {
+                for (int k = 0; k < spec.fanin; k++) {
+                    for (int j = 0; j < spec.get_nr_in() + i; j++) {
+                        const auto s_ij_k = get_sel_var(spec, i, j, k);
+                        if (solver->var_value(s_ij_k)) {
+                            fanins[k] = j;
                         }
                     }
                 }
@@ -994,15 +1053,6 @@ namespace percy
                 assert(spec.nr_steps <= MAX_STEPS);
 
                 create_variables(spec);
-                for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
-                    if (!create_tt_clauses(spec, rand() % spec.get_tt_size())) {
-                        return false;
-                    }
-                }
-                
-                if (!create_output_clauses(spec)) {
-                    return false;
-                }
                 
                 if (!create_op_clauses(spec)) {
                     return false;
@@ -1101,6 +1151,54 @@ namespace percy
                 return solver->add_clause(
                             pabc::Vec_IntArray(vLits), 
                             pabc::Vec_IntArray(vLits) + ctr);
+            }
+
+            int simulate(const spec& spec)
+            {
+                std::vector<int> fanins(spec.fanin);
+                auto tt_comp = kitty::create<dynamic_truth_table>(spec.nr_in);
+
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    find_fanin(i, fanins, spec);
+
+                    kitty::clear(sim_tts[spec.nr_in + i]);
+                    for (int j = 1; j <= nr_op_vars_per_step; j++) {
+                        kitty::clear(tt_comp);
+                        tt_comp = ~tt_comp;
+                        if (solver->var_value(get_op_var(spec, i, j))) {
+                            //printf("op[%d][%d]=1\n", i, j);
+                            for (int k = 0; k < spec.fanin; k++) {
+                                if ((j >> k) & 1) {
+                                    tt_comp &= sim_tts[fanins[k]];
+                                } else {
+                                    tt_comp &= ~sim_tts[fanins[k]];
+                                }
+                            }
+                            sim_tts[spec.nr_in + i] |= tt_comp;
+                        /*} else {
+                            printf("op[%d][%d]=0\n", i, j);*/
+                        }
+                    }
+
+                    /*
+                    printf("tt[%d]: ", i);
+                    kitty::print_binary(sim_tts[spec.nr_in + i]);
+                    std::cout << std::endl;
+    */
+                }
+
+                /*
+                std::cout << "sim tt: ";
+                kitty::print_binary(sim_tts[spec.nr_in + spec.nr_steps - 1]);
+                std::cout << std::endl;
+                std::cout << "spc tt: ";
+                kitty::print_binary(spec[0]);
+                std::cout << std::endl;
+                */
+
+                const auto iMint = kitty::find_first_bit_difference(sim_tts[spec.nr_in + spec.nr_steps - 1], spec.out_inv ? ~spec[0] : spec[0]);
+                assert(iMint > 0 || iMint == -1);
+                return iMint;
             }
     };
 }
