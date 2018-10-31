@@ -228,12 +228,13 @@ private:
   /* compressed representation of cuts */
   std::vector<cut_set_t> _cuts;
 
-  /* cut truth tables */
-  truth_table_cache<kitty::dynamic_truth_table> _truth_tables;
-
   /* statistics */
   uint32_t _total_tuples{};
   std::size_t _total_cuts{};
+  
+public:
+  /* cut truth tables */
+  truth_table_cache<kitty::dynamic_truth_table> _truth_tables;
 };
 
 /*! \cond PRIVATE */

@@ -41,8 +41,20 @@
 #include "../cut_enumeration.hpp"
 #include "../lut_mapping.hpp"
 #include <kitty/spectral.hpp>
+#include <kitty/static_truth_table.hpp>
+#include <kitty/constructors.hpp>
 #include <mockturtle/utils/cuts.hpp>
 
+namespace mockturtle::detail
+{
+  inline uint64_t odd_bits() 
+  {
+    uint64_t count = 2;
+    while( ( (count >> 63) & 1 ) != 1 )
+      count |= count << 2;  
+    return count;
+  }
+}
 
 namespace mockturtle
 {
@@ -94,11 +106,12 @@ std::vector<uint32_t> grow_xor_cut(Ntk const& ntk, node<Ntk> const& n)
   return leaves;
 }
 
+
 template<>
 struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
 {
   template<typename NetworkCuts, typename Ntk>
-  static void apply( NetworkCuts const& cuts, Ntk const& ntk )
+  static void apply( NetworkCuts& cuts, Ntk const& ntk )
   {
     std::vector<node<Ntk>> reverse_topo;
     topo_view<Ntk>( ntk ).foreach_node( [&]( auto n ) {
@@ -122,6 +135,11 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
 
         /* set to zero cost */        
         my_cut->data.cost = 0u;
+
+        /* crate cut truth table */
+        kitty::dynamic_truth_table tt (leaves.size());
+        kitty::create_symmetric( tt, detail::odd_bits());   
+        my_cut -> func_id = cuts._truth_tables.insert(tt);
 
       }
     }
