@@ -139,7 +139,7 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
         /* crate cut truth table */
         kitty::dynamic_truth_table tt (leaves.size());
         kitty::create_symmetric( tt, detail::odd_bits());   
-        my_cut -> func_id = cuts._truth_tables.insert(tt);
+        my_cut -> func_id = cuts.insert_truth_table(tt);
 
       }
     }

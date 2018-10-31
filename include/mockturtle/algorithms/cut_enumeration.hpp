@@ -196,6 +196,11 @@ public:
     return support;
   }
 
+  uint32_t insert_truth_table( kitty::dynamic_truth_table tt)
+  {
+    return _truth_tables.insert(tt);
+  }
+
 private:
   template<typename _Ntk, bool _ComputeTruth, typename _CutData>
   friend class detail::cut_enumeration_impl;
@@ -224,6 +229,7 @@ private:
     }
   }
 
+
 private:
   /* compressed representation of cuts */
   std::vector<cut_set_t> _cuts;
@@ -231,8 +237,7 @@ private:
   /* statistics */
   uint32_t _total_tuples{};
   std::size_t _total_cuts{};
-  
-public:
+
   /* cut truth tables */
   truth_table_cache<kitty::dynamic_truth_table> _truth_tables;
 };
