@@ -7,6 +7,7 @@
 #pragma GCC diagnostic push
 
 #pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <satoko/satoko.h>
 #include <satoko/solver.h>
 #pragma GCC diagnostic pop

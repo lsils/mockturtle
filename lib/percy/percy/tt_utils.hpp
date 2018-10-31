@@ -1,7 +1,7 @@
 #pragma once
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-pedantic"
+#pragma GCC diagnostic ignored "-Wpedantic"
 #include <kitty/kitty.hpp>
 #pragma GCC diagnostic pop
 

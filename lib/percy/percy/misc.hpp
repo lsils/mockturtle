@@ -5,11 +5,11 @@
 namespace percy
 {
 
-	inline int binomial_coeff(int n, int k)
+	inline unsigned binomial_coeff(int n, int k)
 	{
-		auto C = new int*[n + 1];
+		auto C = new unsigned*[n + 1];
 		for (int i = 0; i < n + 1; i++) {
-			C[i] = new int[k + 1];
+			C[i] = new unsigned[k + 1];
 		}
 
 		for (int i = 0; i <= n; i++) {
