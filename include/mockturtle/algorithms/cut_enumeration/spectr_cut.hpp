@@ -81,45 +81,36 @@ bool operator<( cut_type<ComputeTruth, cut_enumeration_spectr_cut> const& c1, cu
   return c1.size() < c2.size();
 }
 
-template<typename Ntk>
-void rec_core(Ntk const& ntk, node<Ntk> const& n, std::vector<uint32_t>& l)
-{
-  ntk.foreach_fanin(n, [&] (auto ch)
-  {
-    auto node_ch = ntk.get_node(ch);
-    if(ntk.is_xor(node_ch))
-      rec_core(ntk, node_ch,l);
-
-    if(!ntk.is_xor(node_ch))
-      l.push_back(node_ch);
-  });
-}
-
-template <typename Ntk>
-std::vector<uint32_t> grow_xor_cut(Ntk const& ntk, node<Ntk> const& n)
-{
-  std::vector<uint32_t> leaves;
-  rec_core(ntk, n, leaves);
-
-  std::sort( leaves.begin(), leaves.end() );
-  leaves.erase( unique( leaves.begin(), leaves.end() ), leaves.end() );
-  return leaves;
-}
-
-
 template<>
 struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
 {
+
+  template <typename Ntk>
+  static void grow_xor_cut(Ntk const& ntk, node<Ntk> const& n, std::map<uint32_t, std::vector<uint32_t>>& node_to_cut)
+  {
+    ntk.foreach_fanin(n, [&] (auto ch)
+    {
+      auto ch_node = ntk.get_node(ch);
+      if(ntk.is_xor(ch_node))
+      {
+        auto leaves_ch = node_to_cut[ch_node];
+        node_to_cut[n].insert(node_to_cut[n].end(), leaves_ch.begin(), leaves_ch.end());
+      }
+      else
+        node_to_cut[n].push_back(ch_node);
+    });
+
+    std::sort( node_to_cut[n].begin(), node_to_cut[n].end() );
+    node_to_cut[n].erase( unique( node_to_cut[n].begin(), node_to_cut[n].end() ), node_to_cut[n].end() );
+  }
+
   template<typename NetworkCuts, typename Ntk>
   static void apply( NetworkCuts& cuts, Ntk const& ntk )
   {
-    std::vector<node<Ntk>> reverse_topo;
-    topo_view<Ntk>( ntk ).foreach_node( [&]( auto n ) {
-      reverse_topo.insert(reverse_topo.begin(), n);
-    } );
 
-    for(auto n : reverse_topo) 
-    {
+    std::map<uint32_t, std::vector<uint32_t>> node_to_cut;
+
+    topo_view<Ntk>( ntk ).foreach_node( [&]( auto n ) {
       if(ntk.is_xor(n))
       {
         //std::cout << "selected xor node: " << n; 
@@ -130,20 +121,22 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
         cut_set.clear();
         
         /* add an empty cut and modify its leaves */
-        auto leaves = grow_xor_cut(ntk, n);
-        auto my_cut = cut_set.add_cut(leaves.begin(), leaves.end());
+        grow_xor_cut(ntk, n, node_to_cut);
+        auto my_cut = cut_set.add_cut(node_to_cut[n].begin(), node_to_cut[n].end());
 
         /* set to zero cost */        
         my_cut->data.cost = 0u;
 
         /* crate cut truth table */
-        kitty::dynamic_truth_table tt (leaves.size());
+        kitty::dynamic_truth_table tt (node_to_cut[n].size());
         kitty::create_symmetric( tt, detail::odd_bits());   
         my_cut -> func_id = cuts.insert_truth_table(tt);
 
       }
-    }
+    });
   }
+
+
 }; 
 
 
