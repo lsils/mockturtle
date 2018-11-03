@@ -43,7 +43,6 @@
 
 #include <kitty/bit_operations.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/print.hpp>
 
 namespace mockturtle
 {

@@ -4,7 +4,6 @@
 
 #include <mockturtle/algorithms/dont_cares.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <kitty/print.hpp>
 
 using namespace mockturtle;
 
