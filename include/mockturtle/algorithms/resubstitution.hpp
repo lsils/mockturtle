@@ -75,10 +75,10 @@ struct resubstitution_params
   bool extend{false};
 
   /*! \brief Disable majority 1-resubsitution filter rules. */
-  bool disable_maj_one_resub_filter{true};
+  bool disable_maj_one_resub_filter{false};
 
   /*! \brief Disable majority 2-resubsitution filter rules. */
-  bool disable_maj_two_resub_filter{true};
+  bool disable_maj_two_resub_filter{false};
 
   /*! \brief Enable zero-gain substitution. */
   bool zero_gain{false};
@@ -132,19 +132,19 @@ struct resubstitution_stats
 
   void report() const
   {
-    std::cout << fmt::format( "[i] total time         = {:>5.2f} secs\n", to_seconds( time_total ) );
-    std::cout << fmt::format( "[i] cut time           = {:>5.2f} secs\n", to_seconds( time_cuts ) );
-    std::cout << fmt::format( "[i] windows time       = {:>5.2f} secs\n", to_seconds( time_windows ) );
-    std::cout << fmt::format( "[i] depth time         = {:>5.2f} secs\n", to_seconds( time_depth ) );
-    std::cout << fmt::format( "[i] simulation time    = {:>5.2f} secs\n", to_seconds( time_simulation ) );
-    std::cout << fmt::format( "[i] resubstituion time = {:>5.2f} secs\n", to_seconds( time_resubstitution ) );
-    std::cout << fmt::format( "[i] accepted resubs    = {:8d}\n",          ( num_zero_accepts + num_one_accepts + num_two_accepts ) );
-    std::cout << fmt::format( "[i]   0-resubs         = {:8d}\n",          ( num_zero_accepts ) );
-    std::cout << fmt::format( "[i]   1-resubs         = {:8d}\n",          ( num_one_accepts ) );
-    std::cout << fmt::format( "[i]   2-resubs         = {:8d}\n",          ( num_two_accepts ) );
-    std::cout << fmt::format( "[i] filtered cand.     = {:8d}\n",          ( num_one_filter + num_two_filter ) );
-    std::cout << fmt::format( "[i]   1-resubs         = {:8d}\n",          ( num_one_filter ) );
-    std::cout << fmt::format( "[i]   2-resubs         = {:8d}\n",          ( num_two_filter ) );
+    std::cout << fmt::format( "[i] total time           = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i]   cut time           = {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    std::cout << fmt::format( "[i]   windows time       = {:>5.2f} secs\n", to_seconds( time_windows ) );
+    std::cout << fmt::format( "[i]   depth time         = {:>5.2f} secs\n", to_seconds( time_depth ) );
+    std::cout << fmt::format( "[i]   simulation time    = {:>5.2f} secs\n", to_seconds( time_simulation ) );
+    std::cout << fmt::format( "[i]   resubstituion time = {:>5.2f} secs\n", to_seconds( time_resubstitution ) );
+    std::cout << fmt::format( "[i] accepted resubs      = {:8d}\n",         ( num_zero_accepts + num_one_accepts + num_two_accepts ) );
+    std::cout << fmt::format( "[i]   0-resubs           = {:8d}\n",         ( num_zero_accepts ) );
+    std::cout << fmt::format( "[i]   1-resubs           = {:8d}\n",         ( num_one_accepts ) );
+    std::cout << fmt::format( "[i]   2-resubs           = {:8d}\n",         ( num_two_accepts ) );
+    std::cout << fmt::format( "[i] filtered cand.       = {:8d}\n",         ( num_one_filter + num_two_filter ) );
+    std::cout << fmt::format( "[i]   1-resubs           = {:8d}\n",         ( num_one_filter ) );
+    std::cout << fmt::format( "[i]   2-resubs           = {:8d}\n",         ( num_two_filter ) );
   }
 };
 
@@ -293,12 +293,11 @@ public:
         }
 
         if ( !ps.disable_maj_one_resub_filter &&
-             ( tts[n] != ternary_majority(  tts[x],  tts[y], tts[n] ) ||
-               tts[x] != ternary_majority(  tts[x], ~tts[y], tts[n] ) ||
-               tts[y] != ternary_majority( ~tts[x],  tts[y], tts[n] ) ) )
-        {
+             ( tts[n] != ternary_majority(  tts[x], tts[y], tts[n] ) &&
+               tts[n] != ternary_majority( ~tts[x], tts[y], tts[n] ) ) )
+          {
           ++st.num_one_filter;
-          return true;
+          return true; /* next */
         }
 
         auto counter_z = 0u;
@@ -411,13 +410,14 @@ public:
         }
 
         bool skip_maj_one_resubstitution = false;
-        if ( ( !ps.disable_maj_one_resub_filter || true ) &&
+        if ( !ps.disable_maj_one_resub_filter &&
              ( tts[n] != ternary_majority(  tts[x], tts[y], tts[n] ) &&
                tts[n] != ternary_majority( ~tts[x], tts[y], tts[n] ) ) )
-          {
+        {
+          /* skip 1-resub, but keep going and try to find a 2-resub
+             with the current pair of nodes */
           ++st.num_one_filter;
           skip_maj_one_resubstitution = true;
-          // return true;
         }
 
         auto counter_z = 0u;
@@ -492,18 +492,13 @@ public:
             }
 
             if ( !ps.disable_maj_two_resub_filter &&
-                 ( tts[n] != ternary_majority( tts[u], tts[x] & tts[y], tts[n] ) ) )
-            {
-              // tts[ n ] != ternary_majority( tts[ u ], tts[ x ] & tts[ z ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ u ], tts[ y ] & tts[ z ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ y ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ z ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ x ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ z ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ x ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ y ], tts[ n ] )
+                 ( tts[n] != ternary_majority( tts[x], tts[n], ternary_majority(  tts[y], tts[n],  tts[u] ) ) ) &&
+                 ( tts[n] != ternary_majority( tts[y], tts[n], ternary_majority(  tts[z], tts[n],  tts[u] ) ) ) &&
+                 ( tts[n] != ternary_majority( tts[x], tts[n], ternary_majority(  tts[y], tts[n], ~tts[u] ) ) ) &&
+                 ( tts[n] != ternary_majority( tts[y], tts[n], ternary_majority(  tts[z], tts[n], ~tts[u] ) ) ) )
+              {
               ++st.num_two_filter;
-              return true;
+              return true; /* next */
             }
 
             auto counter_v = 0u;
