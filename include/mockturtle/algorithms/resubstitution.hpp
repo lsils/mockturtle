@@ -25,7 +25,7 @@
 
 /*!
   \file resubstitution.hpp
-  \brief Resubstitution
+  \brief Boolean resubstitution
 
   \author Heinz Riener
 */
@@ -599,8 +599,13 @@ public:
     } );
 
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
+      /* skip if all nodes have been tried */
       if ( i >= size )
         return false;
+
+      /* skip nodes with many fanouts */
+      if ( ntk.fanout_size( n ) > 1000 )
+        return true; /* next */
 
       pbar( i, i, _candidates, _estimated_gain );
 
