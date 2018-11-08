@@ -128,7 +128,6 @@ namespace detail
   {
     int best_cost = 100;
 
-    /* select the first node randomly  */
     std::optional<typename Ntk::node> best_fanin;
     int best_pos;
 
@@ -214,6 +213,8 @@ namespace detail
     node_unmark( ntk, mgr.visited );
     return mgr.node_leaves;
   }
+
+}
 
 /*! \brief Parameters for resubstitution.
  *
