@@ -99,16 +99,16 @@ namespace detail
   int node_get_leaf_cost_one( Ntk const& ntk, typename Ntk::node const &node, int fanin_limit )
   {
     /* make sure the node is in the construction zone */
-    assert( ntk.value( node ) == 1 );
+    assert( ntk.visited( node ) == 1 );
 
     /* cannot expand over the PI node */
     if ( ntk.is_constant( node ) || ntk.is_pi( node ) ) // TODO: is_ci
       return 999;
 
     /* get the cost of the cone */
-    int cost = 0;
+    uint32_t cost = 0;
     ntk.foreach_fanin( node, [&]( const auto& f ){
-        cost += ntk.value( ntk.get_node( f ) ) ? 0 : 1;
+        cost += ntk.visited( ntk.get_node( f ) ) ? 0 : 1;
       } );
 
     /* always accept if the number of leaves does not increase */
@@ -124,9 +124,9 @@ namespace detail
   }
 
   template<typename Ntk>
-  bool node_build_cut_level_one_int( Ntk const& ntk, std::vector<typename Ntk::node>& visited, std::vector<typename Ntk::node>& leaves, int size_limit, int fanin_limit )
+  bool node_build_cut_level_one_int( Ntk const& ntk, std::vector<typename Ntk::node>& visited, std::vector<typename Ntk::node>& leaves, uint64_t size_limit, int fanin_limit )
   {
-    int best_cost = 100;
+    uint32_t best_cost = 100;
 
     std::optional<typename Ntk::node> best_fanin;
     int best_pos;
@@ -135,7 +135,7 @@ namespace detail
     auto pos = 0;
     for ( const auto& l : leaves )
     {
-      int cost_curr = node_get_leaf_cost_one( ntk, l, fanin_limit );
+      uint32_t cost_curr = node_get_leaf_cost_one( ntk, l, fanin_limit );
       if ( best_cost > cost_curr ||
            ( best_cost == cost_curr && best_fanin && ntk.level( l ) > ntk.level( *best_fanin ) ) )
       {
@@ -163,9 +163,9 @@ namespace detail
     /* add the fanins of best to leaves and visited */
     ntk.foreach_fanin( *best_fanin, [&]( const auto& f ){
         auto const& n = ntk.get_node( f );
-        if ( !ntk.value( n ) )
+        if ( !ntk.visited( n ) )
         {
-          ntk.set_value( n, 1u );
+          ntk.set_visited( n, 1u );
           visited.push_back( n );
           leaves.push_back( n );
         }
@@ -181,7 +181,7 @@ namespace detail
   {
     for ( const auto& v : visited )
     {
-      ntk.set_value( v, 0u );
+      ntk.set_visited( v, 0u );
     }
   }
 
@@ -191,11 +191,11 @@ namespace detail
     /* start the visited nodes and mark them */
     mgr.visited.clear();
     mgr.visited.push_back( root );
-    ntk.set_value( root, 1 );
+    ntk.set_visited( root, 1 );
     ntk.foreach_fanin( root, [&]( const auto& f ){
         auto const& n = ntk.get_node( f );
         mgr.visited.push_back( n );
-        ntk.set_value( n, 1 );
+        ntk.set_visited( n, 1 );
       } );
 
     /* start the cut */
