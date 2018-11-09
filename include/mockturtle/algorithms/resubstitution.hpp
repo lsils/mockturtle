@@ -443,25 +443,6 @@ namespace detail
     }
 
     void simulate_window_rec( node const& n, node const& pivot,
-                              std::unordered_map<node,kitty::dynamic_truth_table>& tts )
-    {
-      /* skip visited nodes */
-      if ( ntk.value( n ) == trav_id )
-        return;
-      ntk.set_value( n, trav_id );
-
-      std::vector<kitty::dynamic_truth_table> fanin_tts;
-      ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const& p = ntk.get_node( f );
-          simulate_window_rec( p, pivot, tts );
-          fanin_tts.emplace_back( ntk.is_complemented( f ) ? ~tts[p] : tts[p] );
-        });
-
-      tts.emplace( n, ntk.compute( n, fanin_tts.begin(), fanin_tts.end() ) );
-    }
-
-
-    void simulate_window_rec( node const& n, node const& pivot,
                                   std::unordered_map<node,kitty::dynamic_truth_table>& tts0,
                                   std::unordered_map<node,kitty::dynamic_truth_table>& tts1 )
     {
@@ -535,13 +516,13 @@ namespace detail
         ++counter;
       }
 
-      kitty::dynamic_truth_table tt( ps.vars_max );
+      kitty::dynamic_truth_table care( ps.vars_max );
       for ( const auto& r : roots )
       {
         simulate_window_rec( r, pivot, tts0, tts1 );
-        tt |= ( tts0[r] ^ tts1[r] );
+        care |= ( tts0[r] ^ tts1[r] );
       }
-      return kitty::count_ones( ~tt );
+      return kitty::count_ones( ~care );
     }
 
     Ntk const& ntk;
