@@ -218,7 +218,7 @@ namespace detail
   struct odc_parameters
   {
     int vars_max{5};
-    int levels{5};
+    int levels{8};
     int perc_cutoff{10};
   };
 
@@ -414,7 +414,125 @@ namespace detail
                                   pivot, leaves.size(), roots.size(), branches.size() );
       }
 
+      /* simulate to estimate the amount of don't-cares */
+      auto num_mints = simulate_window( pivot, leaves, roots, branches );
+
+      auto const num_bits = 1 << ps.vars_max;
+      if ( verbose )
+      {
+        std::cout << fmt::format( "window: root = {0:>6} don't-cares = {1:>3}%\n",
+                                  pivot, ( 100.0 * ( num_bits - num_mints ) / num_bits ) );
+      }
+
+      /* skip if there is less then the given percentage of don't cares */
+      if ( 100.0 * ( num_bits - num_mints ) / num_bits < 1.0 * ps.perc_cutoff )
+      {
+        return false;
+      }
+
       return true;
+    }
+
+    void simulate_window_rec( node const& n, node const& pivot,
+                              std::unordered_map<node,kitty::dynamic_truth_table>& tts )
+    {
+      /* skip visited nodes */
+      if ( ntk.value( n ) == trav_id )
+        return;
+      ntk.set_value( n, trav_id );
+
+      std::vector<kitty::dynamic_truth_table> fanin_tts;
+      ntk.foreach_fanin( n, [&]( const auto& f ){
+          auto const& p = ntk.get_node( f );
+          simulate_window_rec( p, pivot, tts );
+          fanin_tts.emplace_back( ntk.is_complemented( f ) ? ~tts[p] : tts[p] );
+        });
+
+      tts.emplace( n, ntk.compute( n, fanin_tts.begin(), fanin_tts.end() ) );
+    }
+
+
+    void simulate_window_rec( node const& n, node const& pivot,
+                                  std::unordered_map<node,kitty::dynamic_truth_table>& tts0,
+                                  std::unordered_map<node,kitty::dynamic_truth_table>& tts1 )
+    {
+      /* skip visited nodes */
+      if ( ntk.value( n ) == trav_id )
+        return;
+      ntk.set_value( n, trav_id );
+
+      /* consider the case when the node is the pivot */
+      if ( n == pivot )
+      {
+        kitty::dynamic_truth_table tt( ps.vars_max );
+        tts0.emplace( n,  tt );
+        tts1.emplace( n, ~tt );
+        return;
+      }
+
+      std::vector<kitty::dynamic_truth_table> fanin_tts0, fanin_tts1;
+      ntk.foreach_fanin( n, [&]( const auto& f ){
+          auto const& p = ntk.get_node( f );
+          simulate_window_rec( p, pivot, tts0, tts1 );
+          fanin_tts0.emplace_back( ntk.is_complemented( f ) ? ~tts0[p] : tts0[p] );
+          fanin_tts1.emplace_back( ntk.is_complemented( f ) ? ~tts1[p] : tts1[p] );
+        });
+
+      tts0.emplace( n, ntk.compute( n, fanin_tts0.begin(), fanin_tts0.end() ) );
+      tts1.emplace( n, ntk.compute( n, fanin_tts1.begin(), fanin_tts1.end() ) );
+    }
+
+    uint32_t simulate_window( node const& pivot,
+                              std::vector<node> const& leaves,
+                              std::vector<node> const& roots,
+                              std::vector<node> const& branches )
+    {
+      std::unordered_map<node,kitty::dynamic_truth_table> tts0, tts1;
+
+      ++trav_id;
+      auto counter = 0;
+
+      for ( const auto& l : leaves )
+      {
+        kitty::dynamic_truth_table tt( ps.vars_max );
+        if ( counter < ps.vars_max )
+        {
+          kitty::create_nth_var( tt, counter );
+        }
+        else
+        {
+          kitty::create_random( tt );
+        }
+        tts0.emplace( l, tt );
+        tts1.emplace( l, tt );
+        ntk.set_value( l, trav_id );
+        ++counter;
+      }
+
+      for ( const auto& b : branches )
+      {
+        kitty::dynamic_truth_table tt( ps.vars_max );
+        if ( counter < ps.vars_max )
+        {
+          kitty::create_nth_var( tt, counter );
+        }
+        else
+        {
+          kitty::create_random( tt );
+        }
+        tts0.emplace( b, tt );
+        tts1.emplace( b, tt );
+        ntk.set_value( b, trav_id );
+        ++counter;
+      }
+
+      kitty::dynamic_truth_table tt( ps.vars_max );
+      for ( const auto& r : roots )
+      {
+        simulate_window_rec( r, pivot, tts0, tts1 );
+        tt |= ( tts0[r] ^ tts1[r] );
+      }
+      return kitty::count_ones( ~tt );
     }
 
     Ntk const& ntk;
