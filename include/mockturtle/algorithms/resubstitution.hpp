@@ -319,7 +319,7 @@ namespace detail
         return true;
 
       /* if this is not an internal node, make it a new branch */
-      if ( ntk.value( n ) == prev_trav_id || ntk.is_pi( n ) ) // TODO: ntk.is_ci
+      if ( ntk.value( n ) != prev_trav_id || ntk.is_pi( n ) ) // TODO: ntk.is_ci
       {
         ntk.set_value( n, trav_id );
         branches.push_back( n );
@@ -410,7 +410,7 @@ namespace detail
 
       if ( verbose )
       {
-        std::cout << fmt::format( "window: root = {0:>6} l/r/b = {1:>4}/{2:>4}/{3:>4}\n",
+        std::cout << fmt::format( "window: root = {0:>6} l/r/b = {1:>3}/{2:>3}/{3:>3}\n",
                                   pivot, leaves.size(), roots.size(), branches.size() );
       }
 
