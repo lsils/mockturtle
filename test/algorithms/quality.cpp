@@ -162,7 +162,7 @@ TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
     return ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{6, 208, 398, 317, 502, 333, 704, 1007, 1741, 2322, 1460}} );
+  CHECK( v == std::vector<uint32_t>{{6, 198, 393, 317, 497, 330, 693, 996, 1735, 1902, 1444}} );
 }
 
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
@@ -216,7 +216,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[qual
     return lut2.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{6, 172, 181, 287, 182, 175, 488, 837, 1362, 1850, 1255}} );
+  CHECK( v == std::vector<uint32_t>{{6, 175, 181, 289, 182, 177, 493, 847, 1368, 1850, 1278}} );
 }
 
 TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (best-case setting)", "[quality]" )
@@ -239,7 +239,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (best-ca
     return lut2.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{6, 172, 181, 287, 182, 178, 486, 830, 1329, 1850, 1236}} );
+  CHECK( v == std::vector<uint32_t>{{6, 175, 181, 289, 182, 179, 491, 843, 1337, 1850, 1260}} );
 }
 
 TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-case setting)", "[quality]" )
