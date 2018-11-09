@@ -214,6 +214,221 @@ namespace detail
     return mgr.node_leaves;
   }
 
+  /*** observability don't cares based on abcOdc.c ***/
+  struct odc_parameters
+  {
+    int vars_max{5};
+    int levels{5};
+    int perc_cutoff{10};
+  };
+
+  template<typename Ntk>
+  class odc_manager
+  {
+  public:
+    using node = typename Ntk::node;
+
+  public:
+    odc_manager( Ntk const& ntk, odc_parameters const& ps )
+      : ntk( ntk )
+      , ps( ps )
+    {
+      assert( ps.vars_max > 4 && ps.vars_max < 16 );
+      assert( ps.levels > 0 && ps.levels < 10 );
+    }
+
+    void sweep_leaf_tfo_rec( node const& l, uint32_t level_limit, node const& n )
+    {
+      /* TODO: also skip COs by returning if `l` is a computational output */
+      if ( ntk.level( l ) > level_limit || l == n )
+        return;
+
+      if ( ntk.value( l ) == trav_id )
+        return;
+      ntk.set_value( l, trav_id );
+
+      /* skip nodes with large fanouts to reduce runtime */
+      if ( ntk.fanout_size( l ) > 100 )
+        return;
+
+      ntk.foreach_fanout( l, [&]( const auto& o ){
+          sweep_leaf_tfo_rec( o, level_limit, n );
+        });
+    }
+
+    /* \brief Marks the TFO of the collected nodes up to a given level. */
+    void sweep_leaf_tfo( node const& n, std::vector<node> const& leaves, uint32_t level_limit )
+    {
+      ++trav_id;
+      for ( const auto& l : leaves )
+      {
+        sweep_leaf_tfo_rec( l, ntk.level( l ) + level_limit, n );
+      }
+    }
+
+    void collect_roots_rec( std::vector<node>& roots, node const& n )
+    {
+      assert( ntk.value( n ) == trav_id );
+
+      /* check if the node has all fanouts marked */
+      bool all_fanouts_marked = true;
+      ntk.foreach_fanout( n, [&]( const auto& o ){
+          if ( ntk.value( o ) != trav_id )
+          {
+            all_fanouts_marked = false;
+            return false;
+          }
+          return true;
+        });
+
+      /* if some of the fanouts are unmarked, add the node to the root */
+      if ( !all_fanouts_marked )
+      {
+        roots.push_back( n );
+        return;
+      }
+
+      /* otherwise, call recursively */
+      ntk.foreach_fanout( n, [&]( auto const& p ){
+          collect_roots_rec( roots, p );
+        });
+    }
+
+    /* \brief Collect the roots of the window
+     *
+     * Roots of the window are the nodes that have at least one fanout
+     * that is not in the TFO of the leaves.
+     */
+    std::vector<node> collect_roots( node const& n )
+    {
+      assert( ntk.value( n ) != trav_id );
+
+      /* mark the node with old traversal ID */
+      ntk.set_value( n, trav_id );
+
+      /* collect the roots */
+      std::vector<node> roots;
+      collect_roots_rec( roots, n );
+      return roots;
+    }
+
+    bool add_missing_rec( node const& n )
+    {
+      /* skip the already collected leaves and branches */
+      if ( ntk.value( n ) == trav_id )
+        return true;
+
+      /* if this is not an internal node, make it a new branch */
+      if ( ntk.value( n ) == prev_trav_id || ntk.is_pi( n ) ) // TODO: ntk.is_ci
+      {
+        ntk.set_value( n, trav_id );
+        branches.push_back( n );
+        return ( branches.size() <= 32 );
+      }
+
+      /* visit the fanins of the node */
+      auto result = true;
+      ntk.foreach_fanin( n, [&]( const auto& i ){
+          if ( !add_missing_rec( ntk.get_node( i ) ) )
+          {
+            result = false;
+            return false;
+          }
+
+          return true;
+        });
+
+      return result;
+    }
+
+    /* \brief Adds to the window nodes and leaves in the TFI of the roots. */
+    bool add_missing( std::vector<node> const& leaves, std::vector<node> const& roots )
+    {
+      /* set the leaves */
+      prev_trav_id = trav_id;
+      ++trav_id;
+
+      for ( const auto& l : leaves )
+        ntk.set_value( l, trav_id );
+
+      /* explore from the roots */
+      branches.clear();
+      for ( const auto& r : roots )
+      {
+        if ( !add_missing_rec( r ) )
+          return false;
+      }
+
+      return true;
+    }
+
+    bool dont_care_window( node const& n, std::vector<node> const& leaves, std::vector<node>& roots )
+    {
+      /* makr the TFO of the collected nodes up to the given level */
+      sweep_leaf_tfo( n, leaves, ps.levels );
+
+      /* find the roots of the window */
+      roots = collect_roots( n );
+
+      /* TODO: computation failed */
+      if ( roots.size() == 0 )
+      {
+        return false;
+      }
+
+      if ( roots.size() == 1 && roots[0u] == n )
+      {
+        /* empty window */
+        return false;
+      }
+
+      /* add the nodes in the TFI of the roots that are not yet in the window */
+      if ( !add_missing( leaves, roots ) )
+      {
+        /* too many branches */
+        return false;
+      }
+
+      return true;
+    }
+
+    void reset()
+    {
+    }
+
+    bool compute( node const& pivot, std::vector<node> const& leaves )
+    {
+      ++num_wins;
+
+      std::vector<node> roots;
+      auto result = dont_care_window( pivot, leaves, roots );
+      if ( !result )
+      {
+        ++num_empty_wins;
+        return false;
+      }
+
+      if ( verbose )
+      {
+        std::cout << fmt::format( "window: root = {0:>6} l/r/b = {1:>4}/{2:>4}/{3:>4}\n",
+                                  pivot, leaves.size(), roots.size(), branches.size() );
+      }
+
+      return true;
+    }
+
+    Ntk const& ntk;
+    bool verbose = true;
+    uint64_t trav_id{0};
+    uint64_t prev_trav_id{0};
+
+    odc_parameters const& ps;
+
+    std::vector<node> branches;
+
+    int num_wins{0};
+    int num_empty_wins{0};
+  }; /* odc_manager */
 }
 
 /*! \brief Parameters for resubstitution.
