@@ -222,6 +222,13 @@ namespace detail
     int perc_cutoff{10};
   };
 
+  struct odc_statistics
+  {
+    int num_wins{0};
+    int num_empty_wins{0};
+    int num_sim_cutoffs{0};
+  };
+
   template<typename Ntk>
   class odc_manager
   {
@@ -229,8 +236,9 @@ namespace detail
     using node = typename Ntk::node;
 
   public:
-    odc_manager( Ntk const& ntk, odc_parameters const& ps )
+    odc_manager( Ntk const& ntk, odc_statistics& st, odc_parameters const& ps )
       : ntk( ntk )
+      , st( st )
       , ps( ps )
     {
       assert( ps.vars_max > 4 && ps.vars_max < 16 );
@@ -398,13 +406,13 @@ namespace detail
 
     bool compute( node const& pivot, std::vector<node> const& leaves )
     {
-      ++num_wins;
+      ++st.num_wins;
 
       std::vector<node> roots;
       auto result = dont_care_window( pivot, leaves, roots );
       if ( !result )
       {
-        ++num_empty_wins;
+        ++st.num_empty_wins;
         return false;
       }
 
@@ -427,6 +435,7 @@ namespace detail
       /* skip if there is less then the given percentage of don't cares */
       if ( 100.0 * ( num_bits - num_mints ) / num_bits < 1.0 * ps.perc_cutoff )
       {
+        ++st.num_sim_cutoffs;
         return false;
       }
 
@@ -540,12 +549,10 @@ namespace detail
     uint64_t trav_id{0};
     uint64_t prev_trav_id{0};
 
+    odc_statistics& st;
     odc_parameters const& ps;
 
     std::vector<node> branches;
-
-    int num_wins{0};
-    int num_empty_wins{0};
   }; /* odc_manager */
 }
 
