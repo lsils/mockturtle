@@ -228,7 +228,7 @@ public:
   /*! \brief Check if a key is already defined. */
   bool has( node const& n ) const
   {
-    return data->find( n ) != data->end();
+    return data->find( ntk.node_to_index( n ) ) != data->end();
   }
 
   /*! \brief Mutable access to value by node. */

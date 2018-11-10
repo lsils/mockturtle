@@ -49,7 +49,7 @@ namespace mockturtle
 
 /*! \brief Computes satisfiability don't cares of a set of nodes.
  *
- * This function returns on under approximation of input assignments that
+ * This function returns an under approximation of input assignments that
  * cannot occur on a given set of nodes in a network.  They may therefore be
  * used as don't care conditions.
  *
@@ -80,6 +80,43 @@ kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vecto
       entry |= kitty::get_bit( tts[leaves[j]], i ) << j;
     }
     kitty::set_bit( care, entry );
+  }
+  return ~care;
+}
+
+/*! \brief Computes observability don't cares of a node.
+ *
+ * This function returns input assignemnts for which a change of the
+ * node's value cannot be observed at any of the roots.  They may
+ * therefore be used as don't care conditions.
+ *
+ * \param ntk Network
+ * \param node A node in the ntk
+ * \param leaves Set of leave nodes
+ * \param roots Set of root nodes
+ */
+template<class Ntk>
+kitty::dynamic_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, std::vector<node<Ntk>> const& leaves, std::vector<node<Ntk>> const& roots )
+{
+  fanout_view<Ntk> fanout_ntk{ntk};
+  fanout_ntk.clear_visited();
+
+  window_view<fanout_view<Ntk>> window_ntk{fanout_ntk, leaves, roots, false};
+
+  default_simulator<kitty::dynamic_truth_table> sim( window_ntk.num_pis() );
+  unordered_node_map<kitty::dynamic_truth_table, Ntk> node_to_value0( ntk );
+  unordered_node_map<kitty::dynamic_truth_table, Ntk> node_to_value1( ntk );
+
+  node_to_value0[n] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
+  simulate_nodes( ntk, node_to_value0, sim );
+
+  node_to_value1[n] = ~sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
+  simulate_nodes( ntk, node_to_value1, sim );
+
+  kitty::dynamic_truth_table care( leaves.size() );
+  for ( const auto& r : roots )
+  {
+    care |= node_to_value0[r] ^ node_to_value1[r];
   }
   return ~care;
 }

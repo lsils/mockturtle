@@ -74,6 +74,12 @@ struct resubstitution_params
   /*! \brief Extend window with nodes. */
   bool extend{false};
 
+  /*! \brief Disable majority 1-resubsitution filter rules. */
+  bool disable_maj_one_resub_filter{false};
+
+  /*! \brief Disable majority 2-resubsitution filter rules. */
+  bool disable_maj_two_resub_filter{false};
+
   /*! \brief Enable zero-gain substitution. */
   bool zero_gain{false};
 
@@ -109,14 +115,36 @@ struct resubstitution_stats
   /*! \brief Accumulated runtime for resubstitution. */
   stopwatch<>::duration time_resubstitution{0};
 
+  /*! \brief Number of accepted zero resubsitutions */
+  uint64_t num_zero_accepts{0};
+
+  /*! \brief Number of accepted one resubsitutions */
+  uint64_t num_one_accepts{0};
+
+  /*! \brief Number of accepted two resubsitutions */
+  uint64_t num_two_accepts{0};
+
+  /*! \brief Number of filtered one resubsitutions */
+  uint64_t num_one_filter{0};
+
+  /*! \brief Number of filtered two resubsitutions */
+  uint64_t num_two_filter{0};
+
   void report() const
   {
-    std::cout << fmt::format( "[i] total time         = {:>5.2f} secs\n", to_seconds( time_total ) );
-    std::cout << fmt::format( "[i] cut time           = {:>5.2f} secs\n", to_seconds( time_cuts ) );
-    std::cout << fmt::format( "[i] windows time       = {:>5.2f} secs\n", to_seconds( time_windows ) );
-    std::cout << fmt::format( "[i] depth time         = {:>5.2f} secs\n", to_seconds( time_depth ) );
-    std::cout << fmt::format( "[i] simulation time    = {:>5.2f} secs\n", to_seconds( time_simulation ) );
-    std::cout << fmt::format( "[i] resubstituion time = {:>5.2f} secs\n", to_seconds( time_resubstitution ) );
+    std::cout << fmt::format( "[i] total time           = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i]   cut time           = {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    std::cout << fmt::format( "[i]   windows time       = {:>5.2f} secs\n", to_seconds( time_windows ) );
+    std::cout << fmt::format( "[i]   depth time         = {:>5.2f} secs\n", to_seconds( time_depth ) );
+    std::cout << fmt::format( "[i]   simulation time    = {:>5.2f} secs\n", to_seconds( time_simulation ) );
+    std::cout << fmt::format( "[i]   resubstituion time = {:>5.2f} secs\n", to_seconds( time_resubstitution ) );
+    std::cout << fmt::format( "[i] accepted resubs      = {:8d}\n",         ( num_zero_accepts + num_one_accepts + num_two_accepts ) );
+    std::cout << fmt::format( "[i]   0-resubs           = {:8d}\n",         ( num_zero_accepts ) );
+    std::cout << fmt::format( "[i]   1-resubs           = {:8d}\n",         ( num_one_accepts ) );
+    std::cout << fmt::format( "[i]   2-resubs           = {:8d}\n",         ( num_two_accepts ) );
+    std::cout << fmt::format( "[i] filtered cand.       = {:8d}\n",         ( num_one_filter + num_two_filter ) );
+    std::cout << fmt::format( "[i]   1-resubs           = {:8d}\n",         ( num_one_filter ) );
+    std::cout << fmt::format( "[i]   2-resubs           = {:8d}\n",         ( num_two_filter ) );
   }
 };
 
@@ -195,13 +223,19 @@ public:
       {
         const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
         if ( result )
+        {
+          ++st.num_zero_accepts;
           return false; /* accept */
+        }
       }
       else if ( tts[n] == ~tts[x] )
       {
         const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
         if ( result )
+        {
+          ++st.num_zero_accepts;
           return false; /* accept */
+        }
       }
 
       return true; /* next */
@@ -227,13 +261,19 @@ public:
       {
         const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
         if ( result )
+        {
+          ++st.num_zero_accepts;
           return false; /* accept */
+        }
       }
       else if ( tts[n] == ~tts[x] )
       {
         const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
         if ( result )
+        {
+          ++st.num_zero_accepts;
           return false; /* accept */
+        }
       }
 
       auto counter_y = 0u;
@@ -252,11 +292,12 @@ public:
           return true; /* next */
         }
 
-        if ( tts[n] != ternary_majority( tts[x], tts[y], tts[n] ) ||
-             tts[x] != ternary_majority( tts[x], ~tts[y], tts[n] ) ||
-             tts[y] != ternary_majority( ~tts[x], tts[y], tts[n] ) )
-        {
-          return true;
+        if ( !ps.disable_maj_one_resub_filter &&
+             ( tts[n] != ternary_majority(  tts[x], tts[y], tts[n] ) &&
+               tts[n] != ternary_majority( ~tts[x], tts[y], tts[n] ) ) )
+          {
+          ++st.num_one_filter;
+          return true; /* next */
         }
 
         auto counter_z = 0u;
@@ -289,7 +330,10 @@ public:
             fanout_ntk.resize();
             const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
             if ( result )
+            {
+              ++st.num_one_accepts;
               done = true; /* accept */
+            }
           }
           else if ( tts[n] == ternary_majority( ~tts[x], tts[y], tts[z] ) )
           {
@@ -297,7 +341,10 @@ public:
             fanout_ntk.resize();
             const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
             if ( result )
+            {
+              ++st.num_one_accepts;
               done = true; /* accept */
+            }
           }
 
           return true; /* next */
@@ -331,6 +378,7 @@ public:
         if ( result )
         {
           done = true;
+          ++st.num_zero_accepts;
           return false;
         } /* accept */
       }
@@ -340,6 +388,7 @@ public:
         if ( result )
         {
           done = true;
+          ++st.num_zero_accepts;
           return false;
         } /* accept */
       }
@@ -360,11 +409,15 @@ public:
           return true; /* next */
         }
 
-        if ( tts[n] != ternary_majority( tts[x], tts[y], tts[n] ) ||
-             tts[x] != ternary_majority( tts[x], ~tts[y], tts[n] ) ||
-             tts[y] != ternary_majority( ~tts[x], tts[y], tts[n] ) )
+        bool skip_maj_one_resubstitution = false;
+        if ( !ps.disable_maj_one_resub_filter &&
+             ( tts[n] != ternary_majority(  tts[x], tts[y], tts[n] ) &&
+               tts[n] != ternary_majority( ~tts[x], tts[y], tts[n] ) ) )
         {
-          return true;
+          /* skip 1-resub, but keep going and try to find a 2-resub
+             with the current pair of nodes */
+          ++st.num_one_filter;
+          skip_maj_one_resubstitution = true;
         }
 
         auto counter_z = 0u;
@@ -384,40 +437,46 @@ public:
             return true; /* next */
           }
 
-          std::set<node> fanin_nodes;
-          win.foreach_fanin( n, [&]( auto const& s ) { fanin_nodes.insert( win.get_node( s ) ); } );
-          if ( fanin_nodes == std::set<node>{x, y, z} )
+          if ( !skip_maj_one_resubstitution )
           {
-            return true;
-          }
+            std::set<node> fanin_nodes;
+            win.foreach_fanin( n, [&]( auto const& s ) { fanin_nodes.insert( win.get_node( s ) ); } );
+            if ( fanin_nodes == std::set<node>{x, y, z} )
+            {
+              return true;
+            }
 
-          if ( tts[n] == ternary_majority( tts[x], tts[y], tts[z] ) )
-          {
-            const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-            fanout_ntk.resize();
-            const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-            if ( result )
+            if ( tts[n] == ternary_majority( tts[x], tts[y], tts[z] ) )
             {
-              done = true;
-              return true;
-            } /* accept */
-          }
-          else if ( tts[n] == ternary_majority( ~tts[x], tts[y], tts[z] ) )
-          {
-            const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-            fanout_ntk.resize();
-            const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-            if ( result )
+              const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
+              fanout_ntk.resize();
+              const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+              if ( result )
+              {
+                done = true;
+                ++st.num_one_accepts;
+                return true;
+              } /* accept */
+            }
+            else if ( tts[n] == ternary_majority( ~tts[x], tts[y], tts[z] ) )
             {
-              done = true;
-              return true;
-            } /* accept */
+              const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
+              fanout_ntk.resize();
+              const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
+              if ( result )
+              {
+                done = true;
+                ++st.num_one_accepts;
+                return true;
+              } /* accept */
+            }
           }
 
           auto counter_u = 0u;
           win.foreach_gate( [&]( auto const& u, auto l ) {
             if ( done )
               return false;
+
             if ( ++counter_u > ps.max_compare )
               return false;
 
@@ -432,17 +491,14 @@ public:
               return true; /* next */
             }
 
-            if ( tts[n] != ternary_majority( tts[u], tts[x] & tts[y], tts[n] ) )
-            {
-              // tts[ n ] != ternary_majority( tts[ u ], tts[ x ] & tts[ z ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ u ], tts[ y ] & tts[ z ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ y ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ x ], tts[ u ] & tts[ z ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ x ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ y ], tts[ u ] & tts[ z ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ x ], tts[ n ] )
-              // tts[ n ] != ternary_majority( tts[ z ], tts[ u ] & tts[ y ], tts[ n ] )
-              return true;
+            if ( !ps.disable_maj_two_resub_filter &&
+                 ( tts[n] != ternary_majority( tts[x], tts[n], ternary_majority(  tts[y], tts[n],  tts[u] ) ) ) &&
+                 ( tts[n] != ternary_majority( tts[y], tts[n], ternary_majority(  tts[z], tts[n],  tts[u] ) ) ) &&
+                 ( tts[n] != ternary_majority( tts[x], tts[n], ternary_majority(  tts[y], tts[n], ~tts[u] ) ) ) &&
+                 ( tts[n] != ternary_majority( tts[y], tts[n], ternary_majority(  tts[z], tts[n], ~tts[u] ) ) ) )
+              {
+              ++st.num_two_filter;
+              return true; /* next */
             }
 
             auto counter_v = 0u;
@@ -471,7 +527,10 @@ public:
                 fanout_ntk.resize();
                 const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
                 if ( result )
+                {
+                  ++st.num_two_accepts;
                   done = true; /* accept */
+                }
               }
               else if ( tts[n] == ternary_majority( ~tts[u], tts[v], ternary_majority( tts[x], tts[y], tts[z] ) ) )
               {
@@ -480,7 +539,10 @@ public:
                 fanout_ntk.resize();
                 const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
                 if ( result )
+                {
+                  ++st.num_two_accepts;
                   done = true; /* accept */
+                }
               }
               else if ( tts[n] == ternary_majority( tts[u], tts[v], ternary_majority( ~tts[x], tts[y], tts[z] ) ) )
               {
@@ -489,7 +551,10 @@ public:
                 fanout_ntk.resize();
                 const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
                 if ( result )
+                {
+                  ++st.num_two_accepts;
                   done = true; /* accept */
+                }
               }
               else if ( tts[n] == ternary_majority( ~tts[u], tts[v], ternary_majority( ~tts[x], tts[y], tts[z] ) ) )
               {
@@ -498,7 +563,10 @@ public:
                 fanout_ntk.resize();
                 const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
                 if ( result )
+                {
+                  ++st.num_two_accepts;
                   done = true; /* accept */
+                }
               }
 
               return true; /* next */

@@ -56,7 +56,6 @@ matrix:
     compiler: gcc
     before_install:
       - brew update
-      - brew cask uninstall oclint
       - brew install gcc
     env: COMPILER=/usr/local/Cellar/gcc/8.2.0/bin/g++-8
   - os: osx
@@ -64,6 +63,5 @@ matrix:
     compiler: gcc
     before_install:
       - brew update
-      - brew cask uninstall oclint
       - brew install gcc@7
     env: COMPILER=/usr/local/Cellar/gcc@7/7.3.0/bin/g++-7
