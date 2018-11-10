@@ -47,6 +47,10 @@ TEST_CASE( "Node resyntehsis with optimum xmg networks with 4-input parity funct
       CHECK( !xmg.is_complemented( f ) );
     } );
   } );
+
+  xmg.foreach_gate( [&]( auto n ) {
+      CHECK( xmg.is_xor3( n ) );
+      } );
 }
 
 TEST_CASE( "Node resynthesis with optimum xmg networks", "[node_resynthesis]" )
