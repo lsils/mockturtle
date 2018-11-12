@@ -224,11 +224,12 @@ namespace detail
     int num_sim_cutoffs{0};
   };
 
-  template<typename Ntk>
+  template<typename Ntk, typename WindowNtk>
   class odc_manager
   {
   public:
     using node = typename Ntk::node;
+    using signal = typename Ntk::signal;
 
   public:
     odc_manager( Ntk const& ntk, odc_statistics& st, odc_parameters const& ps )
@@ -236,7 +237,7 @@ namespace detail
       , st( st )
       , ps( ps )
     {
-      assert( ps.vars_max > 4 && ps.vars_max < 16 );
+      assert( ps.vars_max > 4 && ps.vars_max <= 16 );
       assert( ps.levels > 0 && ps.levels < 10 );
     }
 
@@ -246,9 +247,9 @@ namespace detail
       if ( ntk.level( l ) > level_limit || l == n )
         return;
 
-      if ( ntk.value( l ) == trav_id )
+      if ( ntk.visited( l ) == trav_id )
         return;
-      ntk.set_value( l, trav_id );
+      ntk.set_visited( l, trav_id );
 
       /* skip nodes with large fanouts to reduce runtime */
       if ( ntk.fanout_size( l ) > 100 )
@@ -271,12 +272,12 @@ namespace detail
 
     void collect_roots_rec( std::vector<node>& roots, node const& n )
     {
-      assert( ntk.value( n ) == trav_id );
+      assert( ntk.visited( n ) == trav_id );
 
       /* check if the node has all fanouts marked */
       bool all_fanouts_marked = true;
       ntk.foreach_fanout( n, [&]( const auto& o ){
-          if ( ntk.value( o ) != trav_id )
+          if ( ntk.visited( o ) != trav_id )
           {
             all_fanouts_marked = false;
             return false;
@@ -304,10 +305,10 @@ namespace detail
      */
     std::vector<node> collect_roots( node const& n )
     {
-      assert( ntk.value( n ) != trav_id );
+      assert( ntk.visited( n ) != trav_id );
 
       /* mark the node with old traversal ID */
-      ntk.set_value( n, trav_id );
+      ntk.set_visited( n, trav_id );
 
       /* collect the roots */
       std::vector<node> roots;
@@ -318,13 +319,13 @@ namespace detail
     bool add_missing_rec( node const& n )
     {
       /* skip the already collected leaves and branches */
-      if ( ntk.value( n ) == trav_id )
+      if ( ntk.visited( n ) == trav_id )
         return true;
 
       /* if this is not an internal node, make it a new branch */
-      if ( ntk.value( n ) != prev_trav_id || ntk.is_pi( n ) ) // TODO: ntk.is_ci
+      if ( ntk.visited( n ) != prev_trav_id || ntk.is_pi( n ) ) // TODO: ntk.is_ci
       {
-        ntk.set_value( n, trav_id );
+        ntk.set_visited( n, trav_id );
         branches.push_back( n );
         return ( branches.size() <= 32 );
       }
@@ -352,7 +353,7 @@ namespace detail
       ++trav_id;
 
       for ( const auto& l : leaves )
-        ntk.set_value( l, trav_id );
+        ntk.set_visited( l, trav_id );
 
       /* explore from the roots */
       branches.clear();
