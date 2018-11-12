@@ -400,6 +400,124 @@ namespace detail
     {
     }
 
+    struct window
+    {
+      /* allocate a new network (with a new storage) */
+      WindowNtk ntk;
+
+      std::unordered_map<node, signal> lo;
+      std::unordered_map<node, signal> hi;
+
+      signal root{ntk.get_constant( false )};
+
+      /* ODC simulation */
+      std::map<node, kitty::dynamic_truth_table> tt0;
+      std::map<node, kitty::dynamic_truth_table> tt1;
+    }; /* window */
+
+    uint32_t estimate_odcs( window& win )
+    {
+      return 0;
+    }
+
+    std::pair<signal,signal>
+    construct_window_rec( window& win, node const& n, node const& pivot )
+    {
+      /* skip visisted nodes */
+      if ( ntk.visited( n ) == trav_id )
+      {
+        return {win.lo.at( n ), win.hi.at( n )};
+      }
+      ntk.set_visited( n, trav_id );
+
+      /* consider the case when the node is the pivot */
+      if ( n == pivot )
+      {
+        auto const s0 = win.ntk.get_constant( false );
+        auto const s1 = win.ntk.get_constant( true );
+        win.lo.emplace( n, s0 );
+        win.hi.emplace( n, s1 );
+        win.ntk.set_value( win.ntk.get_node( s0 ), 0 ); // mask
+        win.ntk.set_value( win.ntk.get_node( s1 ), 0 ); // mask
+        return {s0, s1};
+      }
+
+      std::vector<signal> fs0;
+      std::vector<signal> fs1;
+      uint32_t mask0 = 0;
+      uint32_t mask1 = 0;
+      ntk.foreach_fanin( n, [&]( const auto& f ){
+          auto const& p = ntk.get_node( f );
+          auto const ss = construct_window_rec( win, p, pivot );
+          mask0 |= win.ntk.get_node( ss.first );
+          mask1 |= win.ntk.get_node( ss.second );
+          fs0.emplace_back( ss.first );
+          fs1.emplace_back( ss.second );
+        });
+
+      auto const s0 = win.ntk.clone_node( ntk, n, fs0 );
+      auto const s1 = win.ntk.clone_node( ntk, n, fs1 );
+      win.lo.emplace( n, s0 );
+      win.hi.emplace( n, s1 );
+      win.ntk.set_value( win.ntk.get_node( s0 ), mask0 ); // mask
+      win.ntk.set_value( win.ntk.get_node( s1 ), mask1 ); // mask
+      return { s0, s1 };
+    }
+
+    uint32_t construct_window( window& win, node const& pivot, std::vector<node> const& leaves, std::vector<node> const& roots )
+    {
+      ++trav_id;
+
+      /* constant */
+      auto const f = ntk.get_node( ntk.get_constant( false ) );
+      ntk.set_visited( f, trav_id );
+
+      win.lo.emplace( f, win.ntk.get_constant( false ) );
+      win.hi.emplace( f, win.ntk.get_constant( false ) );
+      win.ntk.set_value( f, 0 ); // mask
+
+      /* primary inputs */
+      std::vector<signal> win_input_signals( 32 );
+      for ( auto i = 0; i < 32; ++i )
+        win_input_signals[i] = win.ntk.create_pi();
+
+      assert( win.ntk.num_pis() == 32 );
+      assert( win_input_signals.size() == 32 );
+      assert( leaves.size() <= uint64_t( ps.vars_max ) );
+
+      auto counter = 0;
+      for ( const auto& l : leaves )
+      {
+        auto const s = win_input_signals.at( counter );
+        ntk.set_visited( l, trav_id );
+        win.lo.emplace( l, s );
+        win.hi.emplace( l, s );
+        ++counter;
+        win.ntk.set_value( win.ntk.get_node( s ), 1 << counter ); // mask
+      }
+
+      for ( const auto& b : branches )
+      {
+        auto const s = win_input_signals.at( counter );
+
+        ntk.set_visited( b, trav_id );
+        win.lo.emplace( b, s );
+        win.hi.emplace( b, s );
+        ++counter;
+        win.ntk.set_value( win.ntk.get_node( s ), 1 << counter ); // mask
+      }
+
+      /* construct roots recursively */
+      signal& out = win.root;
+      for ( const auto& r : roots )
+      {
+        auto const ss = construct_window_rec( win, r, pivot );
+        out = win.ntk.create_or( out, win.ntk.create_xor( ss.first, ss.second ) );
+      }
+
+      return true;
+    }
+
     bool compute( node const& pivot, std::vector<node> const& leaves )
     {
       ++st.num_wins;
@@ -519,6 +637,11 @@ namespace detail
         care |= ( tts0[r] ^ tts1[r] );
       }
       return kitty::count_ones( ~care );
+    }
+
+    uint32_t estimate_dont_cares( window const& win )
+    {
+      return 0;
     }
 
     Ntk const& ntk;
