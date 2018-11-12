@@ -59,25 +59,20 @@ namespace detail
   template<typename Ntk>
   struct cut_manager
   {
-    cut_manager( int node_size_max, int cone_size_max = 100000, int node_fan_stop = 100000, int cone_fan_stop = 100000 )
+    cut_manager( int node_size_max, int node_fan_stop = 100000 )
       : node_size_max( node_size_max )
-      , cone_size_max( cone_size_max )
       , node_fan_stop( node_fan_stop )
-      , cone_fan_stop( cone_fan_stop )
     {
     }
 
-    /*\brief limit on the size of the supernode */
+    /* \brief limit on the size of the supernode */
     int node_size_max;
 
-    /*\brief limit on the size of the containing cone */
+    /* \brief limit on the size of the containing cone */
     int cone_size_max;
 
-    /*\brief limit on the size of the supernode */
+    /* \brief limit on the size of the supernode */
     int node_fan_stop;
-
-    /*\brief limit on the size of the containing cone */
-    int cone_fan_stop;
 
     /* \brief fanins of the collapsed node (the cut) */
     std::vector<node<Ntk>> node_leaves;
