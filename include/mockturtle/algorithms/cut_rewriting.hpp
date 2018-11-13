@@ -353,11 +353,20 @@ struct has_rewrite_with_dont_cares<Ntk,
 template<class Ntk, class RewritingFn, class Iterator>
 inline constexpr bool has_rewrite_with_dont_cares_v = has_rewrite_with_dont_cares<Ntk, RewritingFn, Iterator>::value;
 
-template<class Ntk, class RewritingFn>
+template<class Ntk>
+struct unit_cost
+{
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& node ) const
+  {
+    return 1u;
+  }
+};
+
+template<class Ntk, class RewritingFn, class NodeCostFn = unit_cost<Ntk>>
 class cut_rewriting_impl
 {
 public:
-  cut_rewriting_impl( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps, cut_rewriting_stats& st )
+  cut_rewriting_impl( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps, cut_rewriting_stats& st, NodeCostFn const& cost_fn )
       : ntk( ntk ),
         rewriting_fn( rewriting_fn ),
         ps( ps ),
@@ -413,13 +422,13 @@ public:
           children.push_back( ntk.make_signal( ntk.index_to_node( l ) ) );
         }
 
-        int32_t value = detail::recursive_deref( ntk, n );
+        int32_t value = recursive_deref( n );
         {
           stopwatch t( st.time_rewriting );
 
           const auto on_signal = [&]( auto const& f_new ) {
-            int32_t gain = value - detail::recursive_ref( ntk, ntk.get_node( f_new ) );
-            detail::recursive_deref( ntk, ntk.get_node( f_new ) );
+            int32_t gain = value - recursive_ref( ntk.get_node( f_new ) );
+            recursive_deref( ntk.get_node( f_new ) );
 
             ( *cut )->data.gain = gain;
             if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
@@ -452,7 +461,7 @@ public:
           }
         }
 
-        detail::recursive_ref( ntk, n );
+        recursive_ref( n );
       }
 
       return true;
@@ -496,10 +505,46 @@ public:
   }
 
 private:
+  uint32_t recursive_deref( node<Ntk> const& n )
+  {
+    /* terminate? */
+    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      return 0;
+
+    /* recursively collect nodes */
+    uint32_t value{cost_fn(ntk, n)};
+    ntk.foreach_fanin( n, [&]( auto const& s ) {
+      if ( ntk.decr_value( ntk.get_node( s ) ) == 0 )
+      {
+        value += recursive_deref( ntk.get_node( s ) );
+      }
+    } );
+    return value;
+  }
+
+  uint32_t recursive_ref( node<Ntk> const& n )
+  {
+    /* terminate? */
+    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      return 0;
+
+    /* recursively collect nodes */
+    uint32_t value{cost_fn(ntk, n)};
+    ntk.foreach_fanin( n, [&]( auto const& s ) {
+      if ( ntk.incr_value( ntk.get_node( s ) ) == 0 )
+      {
+        value += recursive_ref( ntk.get_node( s ) );
+      }
+    } );
+    return value;
+  }
+
+private:
   Ntk& ntk;
   RewritingFn&& rewriting_fn;
   cut_rewriting_params const& ps;
   cut_rewriting_stats& st;
+  NodeCostFn cost_fn;
 };
 
 } /* namespace detail */
@@ -545,9 +590,10 @@ private:
  * \param rewriting_fn Rewriting function
  * \param ps Rewriting params
  * \param pst Rewriting statistics
+ * \param cost_fn Node cost function (a functor with signature `uint32_t(Ntk const&, node<Ntk> const&)`)
  */
-template<class Ntk, class RewritingFn>
-void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats* pst = nullptr )
+template<class Ntk, class RewritingFn, class NodeCostFn = detail::unit_cost<Ntk>>
+void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats* pst = nullptr, NodeCostFn const& cost_fn = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
@@ -565,7 +611,7 @@ void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params c
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
 
   cut_rewriting_stats st;
-  detail::cut_rewriting_impl<Ntk, RewritingFn> p( ntk, rewriting_fn, ps, st );
+  detail::cut_rewriting_impl<Ntk, RewritingFn> p( ntk, rewriting_fn, ps, st, cost_fn );
   p.run();
 
   if ( ps.verbose )
