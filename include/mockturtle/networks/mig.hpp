@@ -27,7 +27,7 @@
   \file mig.hpp
   \brief MIG logic network implementation
 
-  \author Eleonora Testa 
+  \author Eleonora Testa
 */
 
 #pragma once
@@ -180,6 +180,11 @@ public:
   bool is_constant( node const& n ) const
   {
     return n == 0;
+  }
+
+  bool is_ci( node const& n ) const
+  {
+    return is_pi( n );
   }
 
   bool is_pi( node const& n ) const
@@ -683,6 +688,8 @@ public:
 
 public:
   std::shared_ptr<mig_storage> _storage;
+
+  mutable uint64_t trav_id{0};
 };
 
 } // namespace mockturtle
