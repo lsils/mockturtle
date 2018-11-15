@@ -69,6 +69,7 @@ namespace detail
     int num_wins{0};
     int num_empty_wins{0};
     int num_sim_cutoffs{0};
+    int num_overflows{0};
   };
 
   template<typename Ntk, typename WindowNtk>
@@ -83,6 +84,7 @@ namespace detail
       : ntk( ntk )
       , st( st )
       , ps( ps )
+      , trav_id( ntk.trav_id )
     {
       assert( ps.vars_max > 4 && ps.vars_max <= 16 );
       assert( ps.levels > 0 && ps.levels < 10 );
@@ -90,7 +92,7 @@ namespace detail
 
     void sweep_leaf_tfo_rec( node const& l, uint32_t level_limit, node const& n )
     {
-      /* TODO: also skip COs by returning if `l` is a computational output */
+      /* TODO: also skip COs by returning if `l` is a combinational output */
       if ( ntk.level( l ) > level_limit || l == n )
         return;
 
@@ -135,7 +137,8 @@ namespace detail
       /* if some of the fanouts are unmarked, add the node to the root */
       if ( !all_fanouts_marked )
       {
-        roots.push_back( n );
+        if ( std::find( roots.begin(), roots.end(), n ) == roots.end() )
+          roots.push_back( n );
         return;
       }
 
@@ -170,7 +173,7 @@ namespace detail
         return true;
 
       /* if this is not an internal node, make it a new branch */
-      if ( ntk.visited( n ) != prev_trav_id || ntk.is_pi( n ) ) // TODO: ntk.is_ci
+      if ( ntk.visited( n ) != prev_trav_id || ntk.is_ci( n ) )
       {
         ntk.set_visited( n, trav_id );
         branches.push_back( n );
@@ -180,7 +183,10 @@ namespace detail
       /* visit the fanins of the node */
       auto result = true;
       ntk.foreach_fanin( n, [&]( const auto& i ){
-          if ( !add_missing_rec( ntk.get_node( i ) ) )
+          auto const& n = ntk.get_node( i );
+          if ( n == 0 ) return true;
+
+          if ( !add_missing_rec( n ) )
           {
             result = false;
             return false;
@@ -215,7 +221,7 @@ namespace detail
 
     bool dont_care_window( node const& n, std::vector<node> const& leaves, std::vector<node>& roots )
     {
-      /* makr the TFO of the collected nodes up to the given level */
+      /* mark the TFO of the collected nodes up to the given level */
       sweep_leaf_tfo( n, leaves, ps.levels );
 
       /* find the roots of the window */
@@ -249,31 +255,72 @@ namespace detail
 
     struct window
     {
-      /* allocate a new network (with a new storage) */
+      window( uint32_t num_vars )
+      {
+        /* alloc 32 pis for the window */
+        std::vector<signal> pis( 32 );
+        for ( auto i = 0; i < 32; ++i )
+          pis[i] = ntk.create_pi();
+
+        /* set up variable masks */
+        const auto num_extra_vars = 32 - num_vars;
+        for ( auto i = 0u; i < num_extra_vars; ++i )
+          set_mask( pis[num_vars + i], 1 << i );
+
+      }
+
+      void set_mask( node const& n, uint32_t mask )
+      {
+        ntk.set_value( n, mask );
+      }
+
+      uint32_t mask( node const& n ) const
+      {
+        return ntk.value( n );
+      }
+
+      void set_mask( signal const& s, uint32_t mask )
+      {
+        ntk.set_value( ntk.get_node( s ), mask );
+      }
+
+      uint32_t mask( signal const& s ) const
+      {
+        return ntk.value( ntk.get_node( s ) );
+      }
+
+      /* each window has its own network with its own storage */
       WindowNtk ntk;
 
-      std::unordered_map<node, signal> lo;
-      std::unordered_map<node, signal> hi;
+      /*
+       * (mappings used for cofactoring)
+       * in `construct_window`:  maps from network nodes to window signals
+       * in `quantify_branches`: maps from window nodes to window signals
+       */
+      std::unordered_map<node, signal> copy_hi;
+      std::unordered_map<node, signal> copy_lo;
 
       signal root{ntk.get_constant( false )};
-
-      /* ODC simulation */
-      std::map<node, kitty::dynamic_truth_table> tt0;
-      std::map<node, kitty::dynamic_truth_table> tt1;
     }; /* window */
-
-    uint32_t estimate_odcs( window& win )
-    {
-      return 0;
-    }
 
     std::pair<signal,signal>
     construct_window_rec( window& win, node const& n, node const& pivot )
     {
+      /* skip constant 0 */
+      if ( n == 0 )
+      {
+        return {win.ntk.get_constant( false ), win.ntk.get_constant( false )};
+      }
+
       /* skip visisted nodes */
       if ( ntk.visited( n ) == trav_id )
       {
-        return {win.lo.at( n ), win.hi.at( n )};
+        // std::cout << "[i] "
+        //           << n << ' '
+        //           << win.mask( win.ntk.get_node( win.copy_lo.at( n ) ) ) << ' '
+        //           << win.mask( win.ntk.get_node( win.copy_hi.at( n ) ) )
+        //           << std::endl;
+        return {win.copy_lo.at( n ), win.copy_hi.at( n )};
       }
       ntk.set_visited( n, trav_id );
 
@@ -282,84 +329,189 @@ namespace detail
       {
         auto const s0 = win.ntk.get_constant( false );
         auto const s1 = win.ntk.get_constant( true );
-        win.lo.emplace( n, s0 );
-        win.hi.emplace( n, s1 );
-        win.ntk.set_value( win.ntk.get_node( s0 ), 0 ); // mask
-        win.ntk.set_value( win.ntk.get_node( s1 ), 0 ); // mask
+        win.copy_lo.emplace( n, s0 );
+        win.copy_hi.emplace( n, s1 );
         return {s0, s1};
       }
 
-      std::vector<signal> fs0;
-      std::vector<signal> fs1;
-      uint32_t mask0 = 0;
-      uint32_t mask1 = 0;
+      /* construct recursively */
+      std::vector<signal> fs0, fs1;
+      uint32_t mask0 = 0, mask1 = 0;
       ntk.foreach_fanin( n, [&]( const auto& f ){
           auto const& p = ntk.get_node( f );
           auto const ss = construct_window_rec( win, p, pivot );
-          mask0 |= win.ntk.get_node( ss.first );
-          mask1 |= win.ntk.get_node( ss.second );
+          mask0 |= win.mask( win.ntk.get_node( ss.first ) );
+          mask1 |= win.mask( win.ntk.get_node( ss.second ) );
           fs0.emplace_back( ss.first );
           fs1.emplace_back( ss.second );
         });
 
+      assert( fs0.size() > 0 );
+      assert( fs1.size() > 0 );
+
+      auto size = win.ntk.size();
       auto const s0 = win.ntk.clone_node( ntk, n, fs0 );
+      if ( win.ntk.size() - size > 0 )
+      {
+        win.set_mask( win.ntk.get_node( s0 ), mask0 );
+      }
+
+      size = win.ntk.size();
       auto const s1 = win.ntk.clone_node( ntk, n, fs1 );
-      win.lo.emplace( n, s0 );
-      win.hi.emplace( n, s1 );
-      win.ntk.set_value( win.ntk.get_node( s0 ), mask0 ); // mask
-      win.ntk.set_value( win.ntk.get_node( s1 ), mask1 ); // mask
+      if ( win.ntk.size() - size > 0 )
+      {
+        win.set_mask( win.ntk.get_node( s1 ), mask1 );
+      }
+
+      win.copy_lo.emplace( n, s0 );
+      win.copy_hi.emplace( n, s1 );
       return { s0, s1 };
     }
 
-    uint32_t construct_window( window& win, node const& pivot, std::vector<node> const& leaves, std::vector<node> const& roots )
+    bool construct_window( window& win, node const& pivot, std::vector<node> const& leaves, std::vector<node> const& roots, std::vector<node> const& branches )
     {
+      auto lit = [&]( signal const& s ){
+        return fmt::format( "{}-{}",
+                            ( win.ntk.get_node( s )  << 1 ) + win.ntk.is_complemented( s ),
+                            ( win.mask( s) ) );
+      };
+
+      if ( verbose && false )
+      {
+        /* (debugging): print collected nodes */
+        std::cout << "[d] leaves: ";
+          for ( const auto& l : leaves ) { std::cout << l << ' '; } std::cout << std::endl;
+        std::cout << "[d] roots: ";
+          for ( const auto& r : roots ) { std::cout << r << ' '; } std::cout << std::endl;
+        std::cout << "[d] branches: ";
+          for ( const auto& b : branches ) { std::cout << b << ' '; } std::cout << std::endl;
+      }
+
+      /* (debugging): check invariants */
+      assert( leaves.size() + branches.size() <= 32 );
+
       ++trav_id;
 
-      /* constant */
-      auto const f = ntk.get_node( ntk.get_constant( false ) );
-      ntk.set_visited( f, trav_id );
+      /* extract the PIs of window */
+      std::vector<signal> pis;
+      win.ntk.foreach_pi( [&]( const auto& s ){
+          pis.emplace_back( s );
+        });
 
-      win.lo.emplace( f, win.ntk.get_constant( false ) );
-      win.hi.emplace( f, win.ntk.get_constant( false ) );
-      win.ntk.set_value( f, 0 ); // mask
-
-      /* primary inputs */
-      std::vector<signal> win_input_signals( 32 );
-      for ( auto i = 0; i < 32; ++i )
-        win_input_signals[i] = win.ntk.create_pi();
-
-      assert( win.ntk.num_pis() == 32 );
-      assert( win_input_signals.size() == 32 );
-      assert( leaves.size() <= uint64_t( ps.vars_max ) );
-
-      auto counter = 0;
-      for ( const auto& l : leaves )
+      /* set elementary variables at the leaves */
+      for ( auto i = 0u; i < leaves.size(); ++i )
       {
-        auto const s = win_input_signals.at( counter );
-        ntk.set_visited( l, trav_id );
-        win.lo.emplace( l, s );
-        win.hi.emplace( l, s );
-        ++counter;
-        win.ntk.set_value( win.ntk.get_node( s ), 1 << counter ); // mask
+        win.copy_lo.emplace( leaves[i], pis[i] );
+        win.copy_hi.emplace( leaves[i], pis[i] );
+        ntk.set_visited( leaves[i], trav_id );
       }
 
-      for ( const auto& b : branches )
+      /* set elementary variables at the branches */
+      for ( auto i = 0u; i < branches.size(); ++i )
       {
-        auto const s = win_input_signals.at( counter );
-
-        ntk.set_visited( b, trav_id );
-        win.lo.emplace( b, s );
-        win.hi.emplace( b, s );
-        ++counter;
-        win.ntk.set_value( win.ntk.get_node( s ), 1 << counter ); // mask
+        win.copy_lo.emplace( branches[i], pis[leaves.size() + i] );
+        win.copy_hi.emplace( branches[i], pis[leaves.size() + i] );
+        ntk.set_visited( branches[i], trav_id );
       }
 
-      /* construct roots recursively */
+      /* construct the network for the window recursively */
       signal& out = win.root;
       for ( const auto& r : roots )
       {
         auto const ss = construct_window_rec( win, r, pivot );
-        out = win.ntk.create_or( out, win.ntk.create_xor( ss.first, ss.second ) );
+        auto const o = win.ntk.create_xor( ss.first, ss.second );
+        win.set_mask( o, win.mask( ss.first ) | win.mask( ss.second ) );
+
+        out = win.ntk.create_or( out, o );
+        win.set_mask( o, win.mask( out ) | win.mask( o ) );
+      }
+
+      return true;
+    }
+
+    std::pair<signal,signal>
+    quantify_branches_rec( window& win, signal const& s, uint32_t mask )
+    {
+      const auto& n = win.ntk.get_node( s );
+
+      /* skip constant 0 */
+      if ( n == 0 )
+        return {win.ntk.get_constant( false ), win.ntk.get_constant( false )};
+
+      /* skip visited nodes */
+      if ( win.ntk.visited( n ) == trav_id )
+        return { win.copy_lo.at( n ), win.copy_hi.at( n ) };
+      win.ntk.set_visited( n, trav_id );
+
+      /* skip objects out of the cone */
+      auto const m = win.mask( n );
+      if ( ( m & mask ) == 0 )
+      {
+        win.copy_lo.emplace( n, s );
+        win.copy_hi.emplace( n, s );
+        return { s, s };
+      }
+
+      /* consider the case when the node is the variable */
+      if ( m == mask && win.ntk.get_node( s ) < 32 )
+      {
+        auto const s0 = win.ntk.get_constant( false );
+        auto const s1 = win.ntk.get_constant( true );
+        win.copy_lo.emplace( n, s0 );
+        win.copy_hi.emplace( n, s1 );
+        return { s0, s1 };
+      }
+
+      /* construct recursively */
+      std::vector<signal> fs0, fs1;
+      uint32_t mask0 = 0, mask1 = 0;
+      win.ntk.foreach_fanin( n, [&]( const auto& f ){
+          auto const ss = quantify_branches_rec( win, f, mask );
+          mask0 |= win.mask( win.ntk.get_node( ss.first ) );
+          mask1 |= win.mask( win.ntk.get_node( ss.second ) );
+          fs0.emplace_back( ss.first );
+          fs1.emplace_back( ss.second );
+        });
+
+      assert( fs0.size() > 0 );
+      assert( fs1.size() > 0 );
+
+      auto size = win.ntk.size();
+      auto const s0 = win.ntk.clone_node( ntk, n, fs0 );
+      /* set mask if node is new */
+      if ( win.ntk.size() - size > 0 )
+        win.set_mask( win.ntk.get_node( s0 ), mask0 );
+
+      size = win.ntk.size();
+      auto const s1 = win.ntk.clone_node( ntk, n, fs1 );
+      /* set mask if node is new */
+      if ( win.ntk.size() - size > 0 )
+        win.set_mask( win.ntk.get_node( s1 ), mask1 );
+
+      win.copy_lo.emplace( n, s0 );
+      win.copy_hi.emplace( n, s1 );
+      return { s0, s1 };
+    }
+
+    bool quantify_branches( window& win )
+    {
+      constexpr auto DC_MAX_NODES = 1 << 15;
+      assert( branches.size() <= 32 );
+
+      signal& out = win.root;
+      for ( auto i = 0u; i < branches.size(); ++i )
+      {
+        /* compute the cofactors wrt. this variabels */
+        ++trav_id;
+        win.copy_lo.clear();
+        win.copy_hi.clear();
+
+        auto const ss = quantify_branches_rec( win, win.root, 1 << i );
+
+        /* quantify this variable existentially */
+        out = win.ntk.create_or( ss.first, ss.second );
+        if ( win.ntk.size() > DC_MAX_NODES/2 )
+          return false;
       }
 
       return true;
@@ -370,8 +522,7 @@ namespace detail
       ++st.num_wins;
 
       std::vector<node> roots;
-      auto result = dont_care_window( pivot, leaves, roots );
-      if ( !result )
+      if ( !dont_care_window( pivot, leaves, roots ) )
       {
         ++st.num_empty_wins;
         return false;
@@ -383,117 +534,23 @@ namespace detail
                                   pivot, leaves.size(), roots.size(), branches.size() );
       }
 
-      /* simulate to estimate the amount of don't-cares */
-      auto num_mints = simulate_window( pivot, leaves, roots, branches );
+      /* construct the window */
+      window win( ps.vars_max );
+      construct_window( win, pivot, leaves, roots, branches );
 
-      auto const num_bits = 1 << ps.vars_max;
-      if ( verbose )
+      /* quantify external variables */
+      if ( !quantify_branches( win ) )
       {
-        std::cout << fmt::format( "window: root = {0:>6} don't-cares = {1:>3}%\n",
-                                  pivot, ( 100.0 * ( num_bits - num_mints ) / num_bits ) );
-      }
-
-      /* skip if there is less then the given percentage of don't cares */
-      if ( 100.0 * ( num_bits - num_mints ) / num_bits < 1.0 * ps.perc_cutoff )
-      {
-        ++st.num_sim_cutoffs;
+        ++st.num_overflows;
         return false;
       }
 
       return true;
     }
 
-    void simulate_window_rec( node const& n, node const& pivot,
-                                  std::unordered_map<node,kitty::dynamic_truth_table>& tts0,
-                                  std::unordered_map<node,kitty::dynamic_truth_table>& tts1 )
-    {
-      /* skip visited nodes */
-      if ( ntk.value( n ) == trav_id )
-        return;
-      ntk.set_value( n, trav_id );
-
-      /* consider the case when the node is the pivot */
-      if ( n == pivot )
-      {
-        kitty::dynamic_truth_table tt( ps.vars_max );
-        tts0.emplace( n,  tt );
-        tts1.emplace( n, ~tt );
-        return;
-      }
-
-      std::vector<kitty::dynamic_truth_table> fanin_tts0, fanin_tts1;
-      ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const& p = ntk.get_node( f );
-          simulate_window_rec( p, pivot, tts0, tts1 );
-          fanin_tts0.emplace_back( ntk.is_complemented( f ) ? ~tts0[p] : tts0[p] );
-          fanin_tts1.emplace_back( ntk.is_complemented( f ) ? ~tts1[p] : tts1[p] );
-        });
-
-      tts0.emplace( n, ntk.compute( n, fanin_tts0.begin(), fanin_tts0.end() ) );
-      tts1.emplace( n, ntk.compute( n, fanin_tts1.begin(), fanin_tts1.end() ) );
-    }
-
-    uint32_t simulate_window( node const& pivot,
-                              std::vector<node> const& leaves,
-                              std::vector<node> const& roots,
-                              std::vector<node> const& branches )
-    {
-      std::unordered_map<node,kitty::dynamic_truth_table> tts0, tts1;
-
-      ++trav_id;
-      auto counter = 0;
-
-      for ( const auto& l : leaves )
-      {
-        kitty::dynamic_truth_table tt( ps.vars_max );
-        if ( counter < ps.vars_max )
-        {
-          kitty::create_nth_var( tt, counter );
-        }
-        else
-        {
-          kitty::create_random( tt );
-        }
-        tts0.emplace( l, tt );
-        tts1.emplace( l, tt );
-        ntk.set_value( l, trav_id );
-        ++counter;
-      }
-
-      for ( const auto& b : branches )
-      {
-        kitty::dynamic_truth_table tt( ps.vars_max );
-        if ( counter < ps.vars_max )
-        {
-          kitty::create_nth_var( tt, counter );
-        }
-        else
-        {
-          kitty::create_random( tt );
-        }
-        tts0.emplace( b, tt );
-        tts1.emplace( b, tt );
-        ntk.set_value( b, trav_id );
-        ++counter;
-      }
-
-      kitty::dynamic_truth_table care( ps.vars_max );
-      for ( const auto& r : roots )
-      {
-        simulate_window_rec( r, pivot, tts0, tts1 );
-        care |= ( tts0[r] ^ tts1[r] );
-      }
-      return kitty::count_ones( ~care );
-    }
-
-    uint32_t estimate_dont_cares( window const& win )
-    {
-      return 0;
-    }
-
     Ntk const& ntk;
     bool verbose = true;
-    uint64_t trav_id{0};
+    uint64_t& trav_id;
     uint64_t prev_trav_id{0};
 
     odc_statistics& st;
