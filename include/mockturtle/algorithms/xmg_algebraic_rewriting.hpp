@@ -123,6 +123,7 @@ private:
       topo.foreach_node( [this]( auto n ) {
         reduce_depth( n );
         reduce_depth_xor_associativity( n );
+        reduce_depth_xor_complementary_associativity( n );
         return true;
       } );
     } );
@@ -319,6 +320,101 @@ private:
 
     return true;
   }
+  
+  /* XOR complementary associativity <xy[!yz]> = <xy[xz]> */
+  bool reduce_depth_xor_complementary_associativity( node<Ntk> const& n )
+  {
+    if ( !ntk.is_maj( n ) )
+      return false;
+
+    if ( ntk.level( n ) == 0 )
+      return false;
+
+    /* get children of top node, ordered by node level (ascending) */
+    const auto ocs = ordered_children( n );
+
+    if ( !ntk.is_xor3( ntk.get_node( ocs[2] ) ) )
+      return false;
+
+    /* depth of last child must be (significantly) higher than depth of second child */
+    /* depth of last child must be higher than depth of second child */
+    if ( ntk.level( ntk.get_node( ocs[2] ) ) < ntk.level( ntk.get_node( ocs[1] ) ) + 1 )
+      return false;
+
+    /* multiple child fanout is allowable */
+    //if ( !ps.allow_area_increase && ntk.fanout_size( ntk.get_node( ocs[2] ) ) != 1 )
+    //  return false;
+
+    /* get children of last child */
+    auto ocs2 = ordered_children( ntk.get_node( ocs[2] ) );
+
+    /* depth of last grand-child must be higher than depth of second grand-child */
+    if ( ntk.level( ntk.get_node( ocs2[2] ) ) == ntk.level( ntk.get_node( ocs2[1] ) ) )
+      return false;
+    
+    /* propagate inverter if necessary */
+    if ( ntk.is_complemented( ocs[2] ) )
+    {
+      if( ntk.is_complemented( ocs2[0] ) )
+      {
+        ocs2[0] = !ocs2[0];
+      }
+      else if( ntk.is_complemented( ocs2[1] ) )
+      {
+        ocs2[1] = !ocs2[1];
+      }
+      else if( ntk.is_complemented( ocs2[2] ) )
+      {
+        ocs2[2] = !ocs2[2];
+      }
+      else
+      {
+        ocs2[0] = !ocs2[0];
+      }
+    }
+
+    if ( auto cand = xor_compl_associativity_candidate( ocs[0], ocs[1], ocs2[0], ocs2[1], ocs2[2] ); cand )
+    {
+      const auto& [x, y, z, u, assoc] = *cand;
+      auto opt = ntk.create_maj( x, u, ntk.create_xor3( assoc ? !x : x, y, z ) );
+      ntk.substitute_node( n, opt );
+      ntk.update();
+
+      return true;
+    }
+
+    return true;
+  }
+
+  std::optional<candidate_t> xor_compl_associativity_candidate( signal<Ntk> const& v, signal<Ntk> const& w, signal<Ntk> const& x, signal<Ntk> const& y, signal<Ntk> const& z ) const
+  {
+    if ( v.index == x.index )
+    {
+      return candidate_t{w, y, z, v, v.complement == x.complement};
+    }
+    if ( v.index == y.index )
+    {
+      return candidate_t{w, x, z, v, v.complement == y.complement};
+    }
+    if ( v.index == z.index )
+    {
+      return candidate_t{w, x, y, v, v.complement == z.complement};
+    }
+    if ( w.index == x.index )
+    {
+      return candidate_t{v, y, z, w, w.complement == x.complement};
+    }
+    if ( w.index == y.index )
+    {
+      return candidate_t{v, x, z, w, w.complement == y.complement};
+    }
+    if ( w.index == z.index )
+    {
+      return candidate_t{v, x, y, w, w.complement == z.complement};
+    }
+
+    return std::nullopt;
+  }
 
   std::array<signal<Ntk>, 3> ordered_children( node<Ntk> const& n ) const
   {
@@ -344,6 +440,7 @@ private:
       }
     } );
   }
+
 
   void mark_critical_paths()
   {
