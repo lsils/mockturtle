@@ -59,7 +59,7 @@ namespace detail
   /*** observability don't cares based on abcOdc.c ***/
   struct odc_parameters
   {
-    int vars_max{5};
+    int vars_max{8};
     int levels{8};
     int perc_cutoff{10};
   };
@@ -257,16 +257,14 @@ namespace detail
     {
       window( uint32_t num_vars )
       {
-        /* alloc 32 pis for the window */
-        std::vector<signal> pis( 32 );
-        for ( auto i = 0; i < 32; ++i )
+        /* alloc num_vars + 32 pis for the window */
+        std::vector<signal> pis( num_vars + 32 );
+        for ( auto i = 0; i < num_vars + 32; ++i )
           pis[i] = ntk.create_pi();
 
         /* set up variable masks */
-        const auto num_extra_vars = 32 - num_vars;
-        for ( auto i = 0u; i < num_extra_vars; ++i )
+        for ( auto i = 0u; i < 32 - num_vars; ++i )
           set_mask( pis[num_vars + i], 1 << i );
-
       }
 
       void set_mask( node const& n, uint32_t mask )
@@ -340,8 +338,8 @@ namespace detail
       ntk.foreach_fanin( n, [&]( const auto& f ){
           auto const& p = ntk.get_node( f );
           auto const ss = construct_window_rec( win, p, pivot );
-          mask0 |= win.mask( win.ntk.get_node( ss.first ) );
-          mask1 |= win.mask( win.ntk.get_node( ss.second ) );
+          mask0 |= win.mask( ss.first );
+          mask1 |= win.mask( ss.second );
           fs0.emplace_back( ss.first );
           fs1.emplace_back( ss.second );
         });
@@ -370,13 +368,7 @@ namespace detail
 
     bool construct_window( window& win, node const& pivot, std::vector<node> const& leaves, std::vector<node> const& roots, std::vector<node> const& branches )
     {
-      auto lit = [&]( signal const& s ){
-        return fmt::format( "{}-{}",
-                            ( win.ntk.get_node( s )  << 1 ) + win.ntk.is_complemented( s ),
-                            ( win.mask( s) ) );
-      };
-
-      if ( verbose && false )
+      if ( verbose )
       {
         /* (debugging): print collected nodes */
         std::cout << "[d] leaves: ";
@@ -388,7 +380,12 @@ namespace detail
       }
 
       /* (debugging): check invariants */
-      assert( leaves.size() + branches.size() <= 32 );
+      assert( branches.size() <= 32 );
+      if ( leaves.size() + branches.size() > win.ntk.num_pis() )
+      {
+        return false;
+      }
+      assert( leaves.size() + branches.size() <= win.ntk.num_pis() );
 
       ++trav_id;
 
@@ -401,16 +398,16 @@ namespace detail
       /* set elementary variables at the leaves */
       for ( auto i = 0u; i < leaves.size(); ++i )
       {
-        win.copy_lo.emplace( leaves[i], pis[i] );
-        win.copy_hi.emplace( leaves[i], pis[i] );
+        win.copy_lo.emplace( leaves[i], pis.at( i ) );
+        win.copy_hi.emplace( leaves[i], pis.at( i ) );
         ntk.set_visited( leaves[i], trav_id );
       }
 
       /* set elementary variables at the branches */
       for ( auto i = 0u; i < branches.size(); ++i )
       {
-        win.copy_lo.emplace( branches[i], pis[leaves.size() + i] );
-        win.copy_hi.emplace( branches[i], pis[leaves.size() + i] );
+        win.copy_lo.emplace( branches[i], pis.at( leaves.size() + i ) );
+        win.copy_hi.emplace( branches[i], pis.at( leaves.size() + i ) );
         ntk.set_visited( branches[i], trav_id );
       }
 
@@ -453,7 +450,7 @@ namespace detail
       }
 
       /* consider the case when the node is the variable */
-      if ( m == mask && win.ntk.get_node( s ) < 32 )
+      if ( m == mask && win.ntk.get_node( s ) < win.ntk.num_pis() )
       {
         auto const s0 = win.ntk.get_constant( false );
         auto const s1 = win.ntk.get_constant( true );
@@ -501,7 +498,7 @@ namespace detail
       signal& out = win.root;
       for ( auto i = 0u; i < branches.size(); ++i )
       {
-        /* compute the cofactors wrt. this variabels */
+        /* compute the cofactors wrt. this variable */
         ++trav_id;
         win.copy_lo.clear();
         win.copy_hi.clear();
@@ -568,7 +565,7 @@ namespace detail
 struct resubstitution_params
 {
   /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
-  uint32_t max_pis{6};
+  uint32_t max_pis{8};
 
   /*! \brief Maximum number of nodes per reconvergence-driven window. */
   uint32_t max_nodes{100};

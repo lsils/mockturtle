@@ -147,15 +147,6 @@ bool node_build_cut_level_one_int( Ntk const& ntk, std::vector<typename Ntk::nod
   return true;
 }
 
-template<typename Ntk>
-void node_unmark( Ntk const& ntk, std::vector<typename Ntk::node>& visited )
-{
-  // for ( const auto& v : visited )
-  // {
-  //   ntk.set_visited( v, 0u );
-  // }
-}
-
 template<class Ntk>
 std::vector<typename Ntk::node> node_find_cut( cut_manager<Ntk>& mgr, Ntk const& ntk, typename Ntk::node const& root )
 {
@@ -186,8 +177,6 @@ std::vector<typename Ntk::node> node_find_cut( cut_manager<Ntk>& mgr, Ntk const&
   while ( node_build_cut_level_one_int( ntk, mgr.visited, mgr.node_leaves, mgr.node_size_max, mgr.node_fan_stop ) );
   assert( int( mgr.node_leaves.size() ) <= mgr.node_size_max );
 
-  /* unmark fMarkB in tbe TFI */
-  node_unmark( ntk, mgr.visited );
   return mgr.node_leaves;
 }
 
