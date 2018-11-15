@@ -362,7 +362,7 @@ struct unit_cost
   }
 };
 
-template<class Ntk, class RewritingFn, class NodeCostFn = unit_cost<Ntk>>
+template<class Ntk, class RewritingFn, class NodeCostFn>
 class cut_rewriting_impl
 {
 public:
@@ -370,7 +370,8 @@ public:
       : ntk( ntk ),
         rewriting_fn( rewriting_fn ),
         ps( ps ),
-        st( st ) {}
+        st( st ),
+        cost_fn( cost_fn ) {}
 
   void run()
   {
@@ -611,7 +612,7 @@ void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params c
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
 
   cut_rewriting_stats st;
-  detail::cut_rewriting_impl<Ntk, RewritingFn> p( ntk, rewriting_fn, ps, st, cost_fn );
+  detail::cut_rewriting_impl<Ntk, RewritingFn, NodeCostFn> p( ntk, rewriting_fn, ps, st, cost_fn );
   p.run();
 
   if ( ps.verbose )

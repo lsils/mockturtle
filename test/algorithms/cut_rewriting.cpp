@@ -142,7 +142,7 @@ TEST_CASE( "Cut rewriting with exact LUT synthesis", "[cut_rewriting]" )
   const auto c = klut.create_pi();
   const auto d = klut.create_pi();
 
-  klut.create_po( klut.create_and( a, klut.create_and( b, klut.create_and( c, d) ) ) );
+  klut.create_po( klut.create_and( a, klut.create_and( b, klut.create_and( c, d ) ) ) );
 
   CHECK( klut.num_pis() == 4u );
   CHECK( klut.num_pos() == 1u );
@@ -156,4 +156,37 @@ TEST_CASE( "Cut rewriting with exact LUT synthesis", "[cut_rewriting]" )
   CHECK( klut.num_pis() == 4u );
   CHECK( klut.num_pos() == 1u );
   CHECK( klut.num_gates() == 2u );
+}
+
+namespace detail
+{
+template<class Ntk>
+struct free_xor_cost
+{
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n ) const
+  {
+    return ntk.is_xor( n ) ? 0 : 1;
+  }
+};
+} // namespace detail
+
+TEST_CASE( "Cut rewriting with alternative costs", "[cut_rewriting]" )
+{
+  mig_network mig;
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto c = mig.create_pi();
+
+  const auto f = mig.create_maj( a, mig.create_maj( a, b, c ), c );
+  mig.create_po( f );
+
+  mig_npn_resynthesis resyn;
+  cut_rewriting( mig, resyn, {}, nullptr, ::detail::free_xor_cost<mig_network>() );
+
+  mig = cleanup_dangling( mig );
+
+  CHECK( mig.size() == 5 );
+  CHECK( mig.num_pis() == 3 );
+  CHECK( mig.num_pos() == 1 );
+  CHECK( mig.num_gates() == 1 );
 }

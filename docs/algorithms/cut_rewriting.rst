@@ -28,7 +28,7 @@ which corresponds to the multiplicative complexity of a function.
    template<class Ntk>
    struct mc_cost
    {
-     uint32_t operator( Ntk const& ntk, node<Ntk> const& n ) const
+     uint32_t operator()( Ntk const& ntk, node<Ntk> const& n ) const
      {
        return ntk.is_and( n ) ? 1 : 0;
      }
