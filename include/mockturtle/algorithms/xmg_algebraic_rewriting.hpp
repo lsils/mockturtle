@@ -122,6 +122,7 @@ private:
       topo_view topo{ntk, po};
       topo.foreach_node( [this]( auto n ) {
         reduce_depth( n );
+        reduce_depth_xor_associativity( n );
         return true;
       } );
     } );
@@ -258,6 +259,65 @@ private:
     }
 
     return std::nullopt;
+  }
+
+  /* XOR associativity */
+  bool reduce_depth_xor_associativity( node<Ntk> const& n )
+  {
+    if ( !ntk.is_xor3( n ) )
+      return false;
+
+    if ( ntk.level( n ) == 0 )
+      return false;
+
+    /* get children of top node, ordered by node level (ascending) */
+    const auto ocs = ordered_children( n );
+
+    if ( !ntk.is_xor3( ntk.get_node( ocs[2] ) ) )
+      return false;
+
+    /* depth of last child must be (significantly) higher than depth of second child */
+    if ( ntk.level( ntk.get_node( ocs[2] ) ) <= ntk.level( ntk.get_node( ocs[1] ) ) + 1 )
+      return false;
+
+    /* child must have single fanout, if no area overhead is allowed */
+    if ( !ps.allow_area_increase && ntk.fanout_size( ntk.get_node( ocs[2] ) ) != 1 )
+      return false;
+
+    /* get children of last child */
+    auto ocs2 = ordered_children( ntk.get_node( ocs[2] ) );
+
+    /* depth of last grand-child must be higher than depth of second grand-child */
+    if ( ntk.level( ntk.get_node( ocs2[2] ) ) == ntk.level( ntk.get_node( ocs2[1] ) ) )
+      return false;
+    
+    /* propagate inverter if necessary */
+    if ( ntk.is_complemented( ocs[2] ) )
+    {
+      if( ntk.is_complemented( ocs2[0] ) )
+      {
+        ocs2[0] = !ocs2[0];
+      }
+      else if( ntk.is_complemented( ocs2[1] ) )
+      {
+        ocs2[1] = !ocs2[1];
+      }
+      else if( ntk.is_complemented( ocs2[2] ) )
+      {
+        ocs2[2] = !ocs2[2];
+      }
+      else
+      {
+        ocs2[0] = !ocs2[0];
+      }
+    }
+
+    auto opt = ntk.create_xor3( ocs[0], ocs2[2], 
+                                ntk.create_xor3( ocs2[0], ocs2[1], ocs[1] ) );
+    ntk.substitute_node( n, opt );
+    ntk.update();
+
+    return true;
   }
 
   std::array<signal<Ntk>, 3> ordered_children( node<Ntk> const& n ) const
