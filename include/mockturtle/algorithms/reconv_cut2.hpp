@@ -44,7 +44,7 @@ namespace mockturtle
 template<typename Ntk>
 struct cut_manager
 {
-  cut_manager( int node_size_max, int node_fan_stop = 100000 )
+  explicit cut_manager( int node_size_max, int node_fan_stop = 100000 )
     : node_size_max( node_size_max )
     , node_fan_stop( node_fan_stop )
   {
@@ -172,6 +172,15 @@ std::vector<typename Ntk::node> node_find_cut( cut_manager<Ntk>& mgr, Ntk const&
       mgr.node_leaves.push_back( n );
       return true;
     } );
+
+  if ( mgr.node_leaves.size() > mgr.node_size_max )
+  {
+    /* special case: cut already overflows at the current node
+       bc. the cut size limit is very low
+     */
+    mgr.node_leaves.clear();
+    return {};
+  }
 
   /* compute the cut */
   while ( node_build_cut_level_one_int( ntk, mgr.visited, mgr.node_leaves, mgr.node_size_max, mgr.node_fan_stop ) );

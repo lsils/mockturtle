@@ -37,8 +37,6 @@ TEST_CASE( "generate fanin-cuts for an AIG", "[cut_generation]" )
   CHECK( leaves( f4, 1u ) == set_t{ aig.get_node( f4 ) } );
   CHECK( leaves( f4, 2u ) == set_t{ aig.get_node( f2 ), aig.get_node( f3 ) } );
   CHECK( leaves( f4, 3u ) == set_t{ aig.get_node( a ), aig.get_node( b ) } );
-  CHECK( leaves( f4, 2u ) == set_t{ aig.get_node( f2 ), aig.get_node( f3 ) } );
-  CHECK( leaves( f4, 3u ) == set_t{ aig.get_node( a ), aig.get_node( b ) } );
 }
 
 TEST_CASE( "generate fanout-cuts for an AIG", "[cut_generation]" )
