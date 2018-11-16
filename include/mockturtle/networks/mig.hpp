@@ -689,7 +689,7 @@ public:
 public:
   std::shared_ptr<mig_storage> _storage;
 
-  mutable uint64_t trav_id{0};
+  mutable uint32_t trav_id{0};
 };
 
 } // namespace mockturtle
