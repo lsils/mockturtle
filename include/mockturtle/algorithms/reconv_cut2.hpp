@@ -37,6 +37,7 @@
 #include "../traits.hpp"
 
 #include <optional>
+#include <cassert>
 
 namespace mockturtle
 {
