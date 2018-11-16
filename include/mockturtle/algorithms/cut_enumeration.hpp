@@ -108,6 +108,20 @@ struct cut_enumeration_update_cut
   }
 };
 
+
+/* function to update all cuts after cut enumeration */
+template<typename CutData>
+struct lut_mapping_update_cuts
+{
+  template<typename NetworkCuts, typename Ntk>
+  static void apply( NetworkCuts const& cuts, Ntk const& ntk )
+  {
+    (void)cuts;
+    (void)ntk;
+  }
+};
+
+
 namespace detail
 {
 template<typename Ntk, bool ComputeTruth, typename CutData>

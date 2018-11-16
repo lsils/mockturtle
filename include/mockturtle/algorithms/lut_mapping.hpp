@@ -40,6 +40,7 @@
 #include "../views/topo_view.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/mf_cut.hpp"
+#include "cut_enumeration/spectr_cut.hpp"
 
 namespace mockturtle
 {
@@ -89,18 +90,6 @@ struct lut_mapping_stats
   void report() const
   {
     std::cout << fmt::format( "[i] total time = {:>5.2f} secs\n", to_seconds( time_total ) );
-  }
-};
-
-/* function to update all cuts after cut enumeration */
-template<typename CutData>
-struct lut_mapping_update_cuts
-{
-  template<typename NetworkCuts, typename Ntk>
-  static void apply( NetworkCuts const& cuts, Ntk const& ntk )
-  {
-    (void)cuts;
-    (void)ntk;
   }
 };
 
