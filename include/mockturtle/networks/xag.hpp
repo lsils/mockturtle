@@ -408,7 +408,8 @@ public:
     (void)other;
     (void)source;
     assert( children.size() == 2u );
-    if ( children[0u].index < children[1u].index )
+    if (other.is_and(source))
+    //if ( children[0u].index < children[1u].index )
       return create_and( children[0u], children[1u] );
     else
       return create_xor( children[0u], children[1u] );
