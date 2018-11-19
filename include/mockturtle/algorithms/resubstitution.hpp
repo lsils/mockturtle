@@ -39,7 +39,6 @@
 #include "../views/depth_view.hpp"
 #include "../views/fanout_view.hpp"
 #include "../views/window_view.hpp"
-#include "detail/mffc_utils.hpp"
 #include "reconv_cut.hpp"
 #include "simulation.hpp"
 #include "reconv_cut2.hpp"
@@ -54,508 +53,113 @@
 namespace mockturtle
 {
 
-namespace detail
+/* based on abcRefs.c */
+template<typename Ntk>
+class node_mffc_inside
 {
-  /*** observability don't cares based on abcOdc.c ***/
-  struct odc_parameters
+public:
+  using node = typename Ntk::node;
+
+public:
+  explicit node_mffc_inside( Ntk const& ntk )
+    : ntk( ntk )
   {
-    int vars_max{8};
-    int levels{8};
-    int perc_cutoff{10};
-  };
+  }
 
-  struct odc_statistics
+  int32_t run( node const& n, std::vector<node> const& leaves, std::vector<node>& inside )
   {
-    int num_wins{0};
-    int num_empty_wins{0};
-    int num_sim_cutoffs{0};
-    int num_overflows{0};
-  };
+    /* increment the fanout counters for the leaves */
+    for ( const auto& l : leaves )
+    {
+      ntk.incr_h1( l );
+    }
 
-  template<typename Ntk, typename WindowNtk>
-  class odc_manager
+    /* dereference the node */
+    auto count1 = node_deref_rec( n );
+
+    /* collect the nodes inside the MFFC */
+    node_mffc_cone( n, inside );
+
+    /* reference it back */
+    auto count2 = node_ref_rec( n );
+    assert( count1 == count2 );
+
+    for ( const auto& l : leaves )
+    {
+      ntk.decr_h1( l );
+    }
+
+    return count1;
+  }
+
+private:
+  /* ! \brief Dereference the node's MFFC */
+  int32_t node_deref_rec( node const& n )
   {
-  public:
-    using node = typename Ntk::node;
-    using signal = typename Ntk::signal;
-
-  public:
-    odc_manager( Ntk const& ntk, odc_statistics& st, odc_parameters const& ps )
-      : ntk( ntk )
-      , st( st )
-      , ps( ps )
-      , trav_id( ntk.trav_id )
-    {
-      assert( ps.vars_max > 4 && ps.vars_max <= 16 );
-      assert( ps.levels > 0 && ps.levels < 10 );
-    }
-
-    void sweep_leaf_tfo_rec( node const& l, uint32_t level_limit, node const& n )
-    {
-      /* TODO: also skip COs by returning if `l` is a combinational output */
-      if ( ntk.level( l ) > level_limit || l == n )
-        return;
-
-      if ( ntk.visited( l ) == trav_id )
-        return;
-      ntk.set_visited( l, trav_id );
-
-      /* skip nodes with large fanouts to reduce runtime */
-      if ( ntk.fanout_size( l ) > 100 )
-        return;
-
-      ntk.foreach_fanout( l, [&]( const auto& o ){
-          sweep_leaf_tfo_rec( o, level_limit, n );
-        });
-    }
-
-    /* \brief Marks the TFO of the collected nodes up to a given level. */
-    void sweep_leaf_tfo( node const& n, std::vector<node> const& leaves, uint32_t level_limit )
-    {
-      ++trav_id;
-      for ( const auto& l : leaves )
-      {
-        sweep_leaf_tfo_rec( l, ntk.level( l ) + level_limit, n );
-      }
-    }
-
-    void collect_roots_rec( std::vector<node>& roots, node const& n )
-    {
-      assert( ntk.visited( n ) == trav_id );
-
-      /* check if the node has all fanouts marked */
-      bool all_fanouts_marked = true;
-      ntk.foreach_fanout( n, [&]( const auto& o ){
-          if ( ntk.visited( o ) != trav_id )
-          {
-            all_fanouts_marked = false;
-            return false;
-          }
-          return true;
-        });
-
-      /* if some of the fanouts are unmarked, add the node to the root */
-      if ( !all_fanouts_marked )
-      {
-        if ( std::find( roots.begin(), roots.end(), n ) == roots.end() )
-          roots.push_back( n );
-        return;
-      }
-
-      /* otherwise, call recursively */
-      ntk.foreach_fanout( n, [&]( auto const& p ){
-          collect_roots_rec( roots, p );
-        });
-    }
-
-    /* \brief Collect the roots of the window
-     *
-     * Roots of the window are the nodes that have at least one fanout
-     * that is not in the TFO of the leaves.
-     */
-    std::vector<node> collect_roots( node const& n )
-    {
-      assert( ntk.visited( n ) != trav_id );
-
-      /* mark the node with old traversal ID */
-      ntk.set_visited( n, trav_id );
-
-      /* collect the roots */
-      std::vector<node> roots;
-      collect_roots_rec( roots, n );
-      return roots;
-    }
-
-    bool add_missing_rec( node const& n )
-    {
-      /* skip the already collected leaves and branches */
-      if ( ntk.visited( n ) == trav_id )
-        return true;
-
-      /* if this is not an internal node, make it a new branch */
-      if ( ntk.visited( n ) != prev_trav_id || ntk.is_ci( n ) )
-      {
-        ntk.set_visited( n, trav_id );
-        branches.push_back( n );
-        return ( branches.size() <= 32 );
-      }
-
-      /* visit the fanins of the node */
-      auto result = true;
-      ntk.foreach_fanin( n, [&]( const auto& i ){
-          auto const& n = ntk.get_node( i );
-          if ( n == 0 ) return true;
-
-          if ( !add_missing_rec( n ) )
-          {
-            result = false;
-            return false;
-          }
-
-          return true;
-        });
-
-      return result;
-    }
-
-    /* \brief Adds to the window nodes and leaves in the TFI of the roots. */
-    bool add_missing( std::vector<node> const& leaves, std::vector<node> const& roots )
-    {
-      /* set the leaves */
-      prev_trav_id = trav_id;
-      ++trav_id;
-
-      for ( const auto& l : leaves )
-        ntk.set_visited( l, trav_id );
-
-      /* explore from the roots */
-      branches.clear();
-      for ( const auto& r : roots )
-      {
-        if ( !add_missing_rec( r ) )
-          return false;
-      }
-
-      return true;
-    }
-
-    bool dont_care_window( node const& n, std::vector<node> const& leaves, std::vector<node>& roots )
-    {
-      /* mark the TFO of the collected nodes up to the given level */
-      sweep_leaf_tfo( n, leaves, ps.levels );
-
-      /* find the roots of the window */
-      roots = collect_roots( n );
-
-      /* TODO: computation failed */
-      if ( roots.size() == 0 )
-      {
-        return false;
-      }
-
-      if ( roots.size() == 1 && roots[0u] == n )
-      {
-        /* empty window */
-        return false;
-      }
-
-      /* add the nodes in the TFI of the roots that are not yet in the window */
-      if ( !add_missing( leaves, roots ) )
-      {
-        /* too many branches */
-        return false;
-      }
-
-      return true;
-    }
-
-    void reset()
-    {
-    }
-
-    struct window
-    {
-      window( uint32_t num_vars )
-      {
-        /* alloc num_vars + 32 pis for the window */
-        std::vector<signal> pis( num_vars + 32 );
-        for ( auto i = 0; i < num_vars + 32; ++i )
-          pis[i] = ntk.create_pi();
-
-        /* set up variable masks */
-        for ( auto i = 0u; i < 32 - num_vars; ++i )
-          set_mask( pis[num_vars + i], 1 << i );
-      }
-
-      void set_mask( node const& n, uint32_t mask )
-      {
-        ntk.set_value( n, mask );
-      }
-
-      uint32_t mask( node const& n ) const
-      {
-        return ntk.value( n );
-      }
-
-      void set_mask( signal const& s, uint32_t mask )
-      {
-        ntk.set_value( ntk.get_node( s ), mask );
-      }
-
-      uint32_t mask( signal const& s ) const
-      {
-        return ntk.value( ntk.get_node( s ) );
-      }
-
-      /* each window has its own network with its own storage */
-      WindowNtk ntk;
-
-      /*
-       * (mappings used for cofactoring)
-       * in `construct_window`:  maps from network nodes to window signals
-       * in `quantify_branches`: maps from window nodes to window signals
-       */
-      std::unordered_map<node, signal> copy_hi;
-      std::unordered_map<node, signal> copy_lo;
-
-      signal root{ntk.get_constant( false )};
-    }; /* window */
-
-    std::pair<signal,signal>
-    construct_window_rec( window& win, node const& n, node const& pivot )
-    {
-      /* skip constant 0 */
-      if ( n == 0 )
-      {
-        return {win.ntk.get_constant( false ), win.ntk.get_constant( false )};
-      }
-
-      /* skip visisted nodes */
-      if ( ntk.visited( n ) == trav_id )
-      {
-        // std::cout << "[i] "
-        //           << n << ' '
-        //           << win.mask( win.ntk.get_node( win.copy_lo.at( n ) ) ) << ' '
-        //           << win.mask( win.ntk.get_node( win.copy_hi.at( n ) ) )
-        //           << std::endl;
-        return {win.copy_lo.at( n ), win.copy_hi.at( n )};
-      }
-      ntk.set_visited( n, trav_id );
-
-      /* consider the case when the node is the pivot */
-      if ( n == pivot )
-      {
-        auto const s0 = win.ntk.get_constant( false );
-        auto const s1 = win.ntk.get_constant( true );
-        win.copy_lo.emplace( n, s0 );
-        win.copy_hi.emplace( n, s1 );
-        return {s0, s1};
-      }
-
-      /* construct recursively */
-      std::vector<signal> fs0, fs1;
-      uint32_t mask0 = 0, mask1 = 0;
-      ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const& p = ntk.get_node( f );
-          auto const ss = construct_window_rec( win, p, pivot );
-          mask0 |= win.mask( ss.first );
-          mask1 |= win.mask( ss.second );
-          fs0.emplace_back( ss.first );
-          fs1.emplace_back( ss.second );
-        });
-
-      assert( fs0.size() > 0 );
-      assert( fs1.size() > 0 );
-
-      auto size = win.ntk.size();
-      auto const s0 = win.ntk.clone_node( ntk, n, fs0 );
-      if ( win.ntk.size() - size > 0 )
-      {
-        win.set_mask( win.ntk.get_node( s0 ), mask0 );
-      }
-
-      size = win.ntk.size();
-      auto const s1 = win.ntk.clone_node( ntk, n, fs1 );
-      if ( win.ntk.size() - size > 0 )
-      {
-        win.set_mask( win.ntk.get_node( s1 ), mask1 );
-      }
-
-      win.copy_lo.emplace( n, s0 );
-      win.copy_hi.emplace( n, s1 );
-      return { s0, s1 };
-    }
-
-    bool construct_window( window& win, node const& pivot, std::vector<node> const& leaves, std::vector<node> const& roots, std::vector<node> const& branches )
-    {
-      if ( verbose )
-      {
-        /* (debugging): print collected nodes */
-        std::cout << "[d] leaves: ";
-          for ( const auto& l : leaves ) { std::cout << l << ' '; } std::cout << std::endl;
-        std::cout << "[d] roots: ";
-          for ( const auto& r : roots ) { std::cout << r << ' '; } std::cout << std::endl;
-        std::cout << "[d] branches: ";
-          for ( const auto& b : branches ) { std::cout << b << ' '; } std::cout << std::endl;
-      }
-
-      /* (debugging): check invariants */
-      assert( branches.size() <= 32 );
-      if ( leaves.size() + branches.size() > win.ntk.num_pis() )
-      {
-        return false;
-      }
-      assert( leaves.size() + branches.size() <= win.ntk.num_pis() );
-
-      ++trav_id;
-
-      /* extract the PIs of window */
-      std::vector<signal> pis;
-      win.ntk.foreach_pi( [&]( const auto& s ){
-          pis.emplace_back( s );
-        });
-
-      /* set elementary variables at the leaves */
-      for ( auto i = 0u; i < leaves.size(); ++i )
-      {
-        win.copy_lo.emplace( leaves[i], pis.at( i ) );
-        win.copy_hi.emplace( leaves[i], pis.at( i ) );
-        ntk.set_visited( leaves[i], trav_id );
-      }
-
-      /* set elementary variables at the branches */
-      for ( auto i = 0u; i < branches.size(); ++i )
-      {
-        win.copy_lo.emplace( branches[i], pis.at( leaves.size() + i ) );
-        win.copy_hi.emplace( branches[i], pis.at( leaves.size() + i ) );
-        ntk.set_visited( branches[i], trav_id );
-      }
-
-      /* construct the network for the window recursively */
-      signal& out = win.root;
-      for ( const auto& r : roots )
-      {
-        auto const ss = construct_window_rec( win, r, pivot );
-        auto const o = win.ntk.create_xor( ss.first, ss.second );
-        win.set_mask( o, win.mask( ss.first ) | win.mask( ss.second ) );
-
-        out = win.ntk.create_or( out, o );
-        win.set_mask( o, win.mask( out ) | win.mask( o ) );
-      }
-
-      return true;
-    }
-
-    std::pair<signal,signal>
-    quantify_branches_rec( window& win, signal const& s, uint32_t mask )
-    {
-      const auto& n = win.ntk.get_node( s );
-
-      /* skip constant 0 */
-      if ( n == 0 )
-        return {win.ntk.get_constant( false ), win.ntk.get_constant( false )};
-
-      /* skip visited nodes */
-      if ( win.ntk.visited( n ) == trav_id )
-        return { win.copy_lo.at( n ), win.copy_hi.at( n ) };
-      win.ntk.set_visited( n, trav_id );
-
-      /* skip objects out of the cone */
-      auto const m = win.mask( n );
-      if ( ( m & mask ) == 0 )
-      {
-        win.copy_lo.emplace( n, s );
-        win.copy_hi.emplace( n, s );
-        return { s, s };
-      }
-
-      /* consider the case when the node is the variable */
-      if ( m == mask && win.ntk.get_node( s ) < win.ntk.num_pis() )
-      {
-        auto const s0 = win.ntk.get_constant( false );
-        auto const s1 = win.ntk.get_constant( true );
-        win.copy_lo.emplace( n, s0 );
-        win.copy_hi.emplace( n, s1 );
-        return { s0, s1 };
-      }
-
-      /* construct recursively */
-      std::vector<signal> fs0, fs1;
-      uint32_t mask0 = 0, mask1 = 0;
-      win.ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const ss = quantify_branches_rec( win, f, mask );
-          mask0 |= win.mask( win.ntk.get_node( ss.first ) );
-          mask1 |= win.mask( win.ntk.get_node( ss.second ) );
-          fs0.emplace_back( ss.first );
-          fs1.emplace_back( ss.second );
-        });
-
-      assert( fs0.size() > 0 );
-      assert( fs1.size() > 0 );
-
-      auto size = win.ntk.size();
-      auto const s0 = win.ntk.clone_node( ntk, n, fs0 );
-      /* set mask if node is new */
-      if ( win.ntk.size() - size > 0 )
-        win.set_mask( win.ntk.get_node( s0 ), mask0 );
-
-      size = win.ntk.size();
-      auto const s1 = win.ntk.clone_node( ntk, n, fs1 );
-      /* set mask if node is new */
-      if ( win.ntk.size() - size > 0 )
-        win.set_mask( win.ntk.get_node( s1 ), mask1 );
-
-      win.copy_lo.emplace( n, s0 );
-      win.copy_hi.emplace( n, s1 );
-      return { s0, s1 };
-    }
-
-    bool quantify_branches( window& win )
-    {
-      constexpr auto DC_MAX_NODES = 1 << 15;
-      assert( branches.size() <= 32 );
-
-      signal& out = win.root;
-      for ( auto i = 0u; i < branches.size(); ++i )
-      {
-        /* compute the cofactors wrt. this variable */
-        ++trav_id;
-        win.copy_lo.clear();
-        win.copy_hi.clear();
-
-        auto const ss = quantify_branches_rec( win, win.root, 1 << i );
-
-        /* quantify this variable existentially */
-        out = win.ntk.create_or( ss.first, ss.second );
-        if ( win.ntk.size() > DC_MAX_NODES/2 )
-          return false;
-      }
-
-      return true;
-    }
-
-    bool compute( node const& pivot, std::vector<node> const& leaves )
-    {
-      ++st.num_wins;
-
-      std::vector<node> roots;
-      if ( !dont_care_window( pivot, leaves, roots ) )
-      {
-        ++st.num_empty_wins;
-        return false;
-      }
-
-      if ( verbose )
-      {
-        std::cout << fmt::format( "window: root = {0:>6} l/r/b = {1:>3}/{2:>3}/{3:>3}\n",
-                                  pivot, leaves.size(), roots.size(), branches.size() );
-      }
-
-      /* construct the window */
-      window win( ps.vars_max );
-      construct_window( win, pivot, leaves, roots, branches );
-
-      /* quantify external variables */
-      if ( !quantify_branches( win ) )
-      {
-        ++st.num_overflows;
-        return false;
-      }
-
-      return true;
-    }
-
-    Ntk const& ntk;
-    bool verbose = true;
-    uint64_t& trav_id;
-    uint64_t prev_trav_id{0};
-
-    odc_statistics& st;
-    odc_parameters const& ps;
-
-    std::vector<node> branches;
-  }; /* odc_manager */
-}
+    if ( ntk.is_ci( n ) )
+      return 0;
+
+    int32_t counter = 1;
+    ntk.foreach_fanin( n, [&]( const auto& f ){
+        auto const& p = ntk.get_node( f );
+        assert( ntk.fanout_size( p ) > 0 );
+
+        ntk.decr_h1( p );
+        if ( ntk.fanout_size( p ) == 0 )
+          counter += node_deref_rec( p );
+      });
+
+    return counter;
+  }
+
+  /* ! \brief Reference the node's MFFC */
+  int32_t node_ref_rec( node const& n )
+  {
+    if ( ntk.is_ci( n ) )
+      return 0;
+
+    int32_t counter = 1;
+    ntk.foreach_fanin( n, [&]( const auto& f ){
+        auto const& p = ntk.get_node( f );
+
+        auto v = ntk.fanout_size( p );
+        ntk.incr_h1( p );
+        if ( v == 0 )
+          counter += node_ref_rec( p );
+      });
+
+    return counter;
+  }
+
+  void node_mffc_cone_rec( node const& n, std::vector<node>& cone, bool top_most )
+  {
+    /* skip visited nodes */
+    if ( ntk.visited( n ) == ntk.trav_id )
+      return;
+    ntk.set_visited( n, ntk.trav_id );
+
+    if ( !top_most && ( ntk.is_ci( n ) || ntk.fanout_size( n ) > 0 ) )
+      return;
+
+    /* recurse on children */
+    ntk.foreach_fanin( n, [&]( const auto& f ){
+        node_mffc_cone_rec( ntk.get_node( f ), cone, false );
+      });
+
+    /* collect the internal nodes */
+    cone.emplace_back( n );
+  }
+
+  void node_mffc_cone( node const& n, std::vector<node>& cone )
+  {
+    cone.clear();
+    ntk.trav_id++;
+    node_mffc_cone_rec( n, cone, true );
+  }
+
+private:
+  Ntk const& ntk;
+};
 
 /*! \brief Parameters for resubstitution.
  *
@@ -565,7 +169,13 @@ namespace detail
 struct resubstitution_params
 {
   /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
-  uint32_t max_pis{8};
+  uint32_t max_pis{8}; // In ABC: nCutMax == nLeavesMax
+
+  /*! \brief Maximum number of divisors to consider. */
+  uint32_t max_divisors{150};
+
+  /*! \brief Maximum number of pair-wise divisors to consider. */
+  uint32_t max_divisors2{500};
 
   /*! \brief Maximum number of nodes per reconvergence-driven window. */
   uint32_t max_nodes{100};
@@ -575,6 +185,12 @@ struct resubstitution_params
 
   /*! \brief Maximum number of nodes compared during resubstitution. */
   uint32_t max_compare{20};
+
+  /*! \brief Number of fanout levels for ODC computation. */
+  uint32_t odc_levels{0};
+
+  /*! \brief Maximum fanout of a node to be considered. */
+  uint32_t skip_fanout_limit{1000};
 
   /*! \brief Extend window with nodes. */
   bool extend{false};
@@ -593,7 +209,7 @@ struct resubstitution_params
 
   /*! \brief Be verbose. */
   bool verbose{false};
-};
+}; /* resubstitution_params */
 
 /*! \brief Statistics for resubstitution.
  *
@@ -608,6 +224,12 @@ struct resubstitution_stats
   /*! \brief Accumulated runtime for cut computation. */
   stopwatch<>::duration time_cuts{0};
 
+  /*! \brief Accumulated runtime for mffc computation. */
+  stopwatch<>::duration time_mffc{0};
+
+  /*! \brief Accumulated runtime for divisor computation. */
+  stopwatch<>::duration time_divs{0};
+
   /*! \brief Accumulated runtime for window computation. */
   stopwatch<>::duration time_windows{0};
 
@@ -619,6 +241,36 @@ struct resubstitution_stats
 
   /*! \brief Accumulated runtime for resubstitution. */
   stopwatch<>::duration time_resubstitution{0};
+
+  /*! \brief Accumulated runtime for zero-resub. */
+  stopwatch<>::duration time_resub0{0};
+
+  /*! \brief Accumulated runtime for S-resub. */
+  stopwatch<>::duration time_resubS{0};
+
+  /*! \brief Accumulated runtime for one-resub. */
+  stopwatch<>::duration time_resub1{0};
+
+  /*! \brief Accumulated runtime for 12-resub. */
+  stopwatch<>::duration time_resub12{0};
+
+  /*! \brief Accumulated runtime for D-resub. */
+  stopwatch<>::duration time_resubD{0};
+
+  /*! \brief Accumulated runtime for two-resub. */
+  stopwatch<>::duration time_resub2{0};
+
+  /*! \brief Accumulated runtime for three-resub. */
+  stopwatch<>::duration time_resub3{0};
+
+  /*! \brief Total number of divisors  */
+  uint64_t num_total_divisors{0};
+
+  /*! \brief Total number of leaves  */
+  uint64_t num_total_leaves{0};
+
+  /*! \brief Total number of gain  */
+  uint64_t num_total_gain{0};
 
   /*! \brief Number of accepted zero resubsitutions */
   uint64_t num_zero_accepts{0};
@@ -639,10 +291,22 @@ struct resubstitution_stats
   {
     std::cout << fmt::format( "[i] total time           = {:>5.2f} secs\n", to_seconds( time_total ) );
     std::cout << fmt::format( "[i]   cut time           = {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    std::cout << fmt::format( "[i]   mffc time          = {:>5.2f} secs\n", to_seconds( time_mffc ) );
+    std::cout << fmt::format( "[i]   divs time          = {:>5.2f} secs\n", to_seconds( time_divs ) );
     std::cout << fmt::format( "[i]   windows time       = {:>5.2f} secs\n", to_seconds( time_windows ) );
     std::cout << fmt::format( "[i]   depth time         = {:>5.2f} secs\n", to_seconds( time_depth ) );
     std::cout << fmt::format( "[i]   simulation time    = {:>5.2f} secs\n", to_seconds( time_simulation ) );
     std::cout << fmt::format( "[i]   resubstituion time = {:>5.2f} secs\n", to_seconds( time_resubstitution ) );
+    std::cout << fmt::format( "[i]      0-resub time    = {:>5.2f} secs\n", to_seconds( time_resub0 ) );
+    std::cout << fmt::format( "[i]      S-resub time    = {:>5.2f} secs\n", to_seconds( time_resubS ) );
+    std::cout << fmt::format( "[i]      1-resub time    = {:>5.2f} secs\n", to_seconds( time_resub1 ) );
+    std::cout << fmt::format( "[i]     12-resub time    = {:>5.2f} secs\n", to_seconds( time_resub12 ) );
+    std::cout << fmt::format( "[i]      D-resub time    = {:>5.2f} secs\n", to_seconds( time_resubD ) );
+    std::cout << fmt::format( "[i]      2-resub time    = {:>5.2f} secs\n", to_seconds( time_resub2 ) );
+    std::cout << fmt::format( "[i]      3-resub time    = {:>5.2f} secs\n", to_seconds( time_resub3 ) );
+    std::cout << fmt::format( "[i] total divisors       = {:8d}\n",         ( num_total_divisors ) );
+    std::cout << fmt::format( "[i] total leaves         = {:8d}\n",         ( num_total_leaves ) );
+    std::cout << fmt::format( "[i] total gain           = {:8d}\n",         ( num_total_gain ) );
     std::cout << fmt::format( "[i] accepted resubs      = {:8d}\n",         ( num_zero_accepts + num_one_accepts + num_two_accepts ) );
     std::cout << fmt::format( "[i]   0-resubs           = {:8d}\n",         ( num_zero_accepts ) );
     std::cout << fmt::format( "[i]   1-resubs           = {:8d}\n",         ( num_one_accepts ) );
@@ -651,10 +315,331 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]   1-resubs           = {:8d}\n",         ( num_one_filter ) );
     std::cout << fmt::format( "[i]   2-resubs           = {:8d}\n",         ( num_two_filter ) );
   }
-};
+}; /* resubstitution_stats */
 
 namespace detail
 {
+
+struct abc_vec
+{
+public:
+  abc_vec( uint32_t caps )
+    : _caps( ( caps > 0 && caps < 8 ) ? 8 : caps )
+    , _size( 0 )
+    , _array( _caps ? (void**)malloc( sizeof(void*) * _caps ) : nullptr )
+  {
+  }
+
+  ~abc_vec()
+  {
+    free( _array );
+  }
+
+  void grow( uint32_t min_caps )
+  {
+    if ( _caps >= min_caps )
+      return;
+    _array = (void**)realloc( (char*)_array, sizeof(void*) * min_caps );
+    _caps = min_caps;
+  }
+
+  void push( void *entry )
+  {
+    if ( _size == _caps )
+    {
+      if ( _caps < 16 )
+        grow( 16 );
+      else
+        grow( 2 * _caps );
+    }
+    _array[_size++] = entry;
+  }
+
+  void* entry( uint32_t i )
+  {
+    return this->operator[]( i );
+  }
+
+  void* operator[]( uint32_t i )
+  {
+    assert( i >= 0 && i < _size );
+    return _array[i];
+  }
+
+public:
+  /*! \brief reserved number of entries */
+  uint32_t _caps;
+
+  /*! \brief used number of entries */
+  uint32_t _size;
+
+  /*! \brief actual data */
+  void **_array;
+}; /* abc_vec */
+
+template<typename Ntk>
+struct simulation_table
+{
+public:
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+public:
+  simulation_table( Ntk const& ntk, uint32_t max_leaves, uint32_t max_divisors )
+    : ntk( ntk )
+    , max_leaves( max_leaves )
+    , max_divisors( max_divisors )
+    , num_bits( 1 << max_leaves )
+    , num_words( num_bits <= 32 ? 1 : num_bits / 32 )
+    , sims( max_divisors )
+    , data( ntk.size(), nullptr )
+  {
+    /* for each divisor we reserve num_words */
+    uint32_t *info = new uint32_t[ num_words * ( max_divisors + 1 ) ];
+
+    /* set the first few entries to zero */
+    memset( info, 0, sizeof(uint32_t) * num_words * max_leaves );
+
+    /* push the pointers into info to a vector */
+    for ( auto i = 0u; i < max_divisors; ++i )
+      sims.push( info + i * num_words );
+
+    /* set elementary truth tables */
+    for ( auto k = 0u; k < max_leaves; k++ )
+    {
+      uint32_t *simulation_entry = (uint32_t*)sims._array[k];
+      for ( auto i = 0u; i < num_bits; ++i )
+      {
+        if ( i & ( 1 << k ) )
+          simulation_entry[i>>5] |= ( 1 << (i & 31 ) );
+      }
+    }
+  }
+
+  void set_ith_var( node const& n, uint32_t i )
+  {
+    data[n] = sims[i];
+  }
+
+  void compute_and( node const& n, signal const& s0, signal const& s1 )
+  {
+    auto const n0 = ntk.get_node( s0 );
+    auto const n1 = ntk.get_node( s1 );
+
+    uint32_t *data_n = (uint32_t*)data[n];
+    uint32_t *data_0 = (uint32_t*)data[n0];
+    uint32_t *data_1 = (uint32_t*)data[n1];
+
+    if ( ntk.is_complemented( s0 ) && ntk.is_complemented( s1 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ~data_0[k] & ~data_1[k];
+    }
+    else if ( ntk.is_complemented( s0 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ~data_0[k] & data_1[k];
+    }
+    else if ( ntk.is_complemented( s1 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = data_0[k] & ~data_1[k];
+    }
+    else
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = data_0[k] & data_1[k];
+    }
+  }
+
+  bool implies( node const& a, node const& b ) const
+  {
+    auto data_a = (uint32_t*)data[a];
+    auto data_b = (uint32_t*)data[b];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      if ( data_a[k] & ~data_b[k] )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool and_implies( signal const& a, signal const& b, node const& r ) const
+  {
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_r = (uint32_t*)data[r];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_r = data_r[k];
+      if ( tt_a & tt_b & ~tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool and_equal( signal const& a, signal const& b, signal const& r ) const
+  {
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( tt_a & tt_b ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool and3_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
+  {
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( tt_a & tt_b & tt_c ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool and_or2_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
+  {
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( tt_a & ( tt_b | tt_c ) ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool and_or22_equal( signal const& a, signal const& b, signal const& c, signal const& d, signal const& r ) const
+  {
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    auto data_d = (uint32_t*)data[ntk.get_node( d )];
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
+      auto const& tt_d = ntk.is_complemented( b ) ? ~data_d[k] : data_d[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( ( tt_a | tt_b ) & ( tt_c | tt_d ) ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool or_equal( signal const& a, signal const& b, signal const& r ) const
+  {
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( tt_a | tt_b ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool or3_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
+  {
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( tt_a | tt_b | tt_c ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool and_implies_reverse( node const& r, signal const& a, signal const& b ) const
+  {
+    auto data_r = (uint32_t*)data[r];
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_r = data_r[k];
+      if ( ~(tt_a & tt_b) & tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool nequal( node const& a, node const& b ) const
+  {
+    auto data_a = (uint32_t*)data[a];
+    auto data_b = (uint32_t*)data[b];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      if ( data_a[k] != data_b[k] )
+        return true; /* early termination */
+    }
+    return false;
+  }
+
+  bool equal( node const& a, node const& b ) const
+  {
+    auto data_a = (uint32_t*)data[a];
+    auto data_b = (uint32_t*)data[b];
+    for ( auto k = 0u; k < num_words; ++k )
+      if ( data_a[k] != data_b[k] )
+        return false; /* early termination */
+    return true;
+  }
+
+public:
+  uint32_t size() const
+  {
+    return max_divisors;
+  }
+
+protected:
+  Ntk const& ntk;
+  uint32_t max_leaves;
+  uint32_t max_divisors;
+  uint32_t num_bits;
+  uint32_t num_words;
+
+  abc_vec sims;
+  std::vector<void*> data;
+}; /* simulation_table */
 
 template<class Ntk>
 class resubstitution_impl
@@ -662,498 +647,855 @@ class resubstitution_impl
 public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-  using window = depth_view<window_view<fanout_view<Ntk>>>;
 
   explicit resubstitution_impl( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats& st )
-      : ntk( ntk ), fanout_ntk( ntk ), ps( ps ), st( st )
+    : ntk( ntk ), ps( ps ), st( st ), sims( ntk, ps.max_pis, ps.max_divisors )
   {
-  }
-
-  bool resubstitute_node( window& win, node const& n, signal const& s, bool zero_gain = false )
-  {
-    const auto& r = ntk.get_node( s );
-    int32_t gain = detail::recursive_deref( win, /* original node */ n );
-    gain -= detail::recursive_ref( win, /* replace with */ r );
-    if ( gain > 0 || zero_gain )
-    {
-      ++_candidates;
-      _estimated_gain += gain;
-
-      win.substitute_node_of_parents( fanout_ntk.fanout( n ), n, s );
-
-      ntk.set_value( n, 0 );
-      ntk.set_value( r, ntk.fanout_size( r ) );
-
-      return true;
-    }
-    else
-    {
-      detail::recursive_deref( win, /* replaced with */ r );
-      detail::recursive_ref( win, /* original node */ n );
-
-      return false;
-    }
-  }
-
-  void resubstitute( window& win, node const& n, node_map<kitty::dynamic_truth_table, window> const& tts )
-  {
-    assert( ps.max_inserts >= 0u );
-    switch ( ps.max_inserts )
-    {
-    case 0u:
-      zero_resubstitution( win, n, tts );
-      break;
-    case 1u:
-      one_resubstitution( win, n, tts );
-      break;
-    default: /* >= 2u */
-      two_resubstitution( win, n, tts );
-      break;
-    }
-  }
-
-  void zero_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table, window> const& tts )
-  {
-    auto counter = 0u;
-    win.foreach_gate( [&]( auto const& x ) {
-      if ( ++counter > ps.max_compare )
-        return false;
-
-      if ( x == n || win.level( x ) >= win.level( n ) )
-      {
-        return true; /* next */
-      }
-
-      if ( tts[n] == tts[x] )
-      {
-        const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
-        if ( result )
-        {
-          ++st.num_zero_accepts;
-          return false; /* accept */
-        }
-      }
-      else if ( tts[n] == ~tts[x] )
-      {
-        const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
-        if ( result )
-        {
-          ++st.num_zero_accepts;
-          return false; /* accept */
-        }
-      }
-
-      return true; /* next */
-    } );
-  }
-
-  void one_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table, window> const& tts )
-  {
-    bool done = false;
-    auto counter_x = 0u;
-    win.foreach_gate( [&]( auto const& x, auto i ) {
-      if ( done )
-        return false;
-      if ( ++counter_x > ps.max_compare )
-        return false;
-
-      if ( x == n || win.level( x ) >= win.level( n ) )
-      {
-        return true; /* next */
-      }
-
-      if ( tts[n] == tts[x] )
-      {
-        const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
-        if ( result )
-        {
-          ++st.num_zero_accepts;
-          return false; /* accept */
-        }
-      }
-      else if ( tts[n] == ~tts[x] )
-      {
-        const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
-        if ( result )
-        {
-          ++st.num_zero_accepts;
-          return false; /* accept */
-        }
-      }
-
-      auto counter_y = 0u;
-      win.foreach_gate( [&]( auto const& y, auto j ) {
-        if ( done )
-          return false;
-        if ( ++counter_y > ps.max_compare )
-          return false;
-
-        if ( i >= j )
-          return true;
-        assert( j > i );
-
-        if ( y == n || win.level( y ) >= win.level( n ) )
-        {
-          return true; /* next */
-        }
-
-        if ( !ps.disable_maj_one_resub_filter &&
-             ( tts[n] != ternary_majority(  tts[x], tts[y], tts[n] ) &&
-               tts[n] != ternary_majority( ~tts[x], tts[y], tts[n] ) ) )
-          {
-          ++st.num_one_filter;
-          return true; /* next */
-        }
-
-        auto counter_z = 0u;
-        win.foreach_gate( [&]( auto const& z, auto k ) {
-          if ( done )
-            return false;
-          if ( ++counter_z > ps.max_compare )
-            return false;
-
-          if ( j >= k )
-            return true;
-          assert( k > j );
-          assert( k > i );
-
-          if ( z == n || win.level( z ) >= win.level( n ) )
-          {
-            return true; /* next */
-          }
-
-          std::set<node> fanin_nodes;
-          win.foreach_fanin( n, [&]( auto const& s ) { fanin_nodes.insert( win.get_node( s ) ); } );
-          if ( fanin_nodes == std::set<node>{x, y, z} )
-          {
-            return true;
-          }
-
-          if ( tts[n] == ternary_majority( tts[x], tts[y], tts[z] ) )
-          {
-            const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-            fanout_ntk.resize();
-            const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-            if ( result )
-            {
-              ++st.num_one_accepts;
-              done = true; /* accept */
-            }
-          }
-          else if ( tts[n] == ternary_majority( ~tts[x], tts[y], tts[z] ) )
-          {
-            const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-            fanout_ntk.resize();
-            const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-            if ( result )
-            {
-              ++st.num_one_accepts;
-              done = true; /* accept */
-            }
-          }
-
-          return true; /* next */
-        } );
-
-        return true; /* next */
-      } );
-
-      return true; /* next */
-    } );
-  }
-
-  void two_resubstitution( window& win, node const& n, node_map<kitty::dynamic_truth_table, window> const& tts )
-  {
-    bool done = false;
-    auto counter_x = 0u;
-    win.foreach_gate( [&]( auto const& x, auto i ) {
-      if ( done )
-        return false;
-      if ( ++counter_x > ps.max_compare )
-        return false;
-
-      if ( x == n || win.level( x ) >= win.level( n ) )
-      {
-        return true; /* next */
-      }
-
-      if ( tts[n] == tts[x] )
-      {
-        const auto result = resubstitute_node( win, n, ntk.make_signal( x ), ps.zero_gain );
-        if ( result )
-        {
-          done = true;
-          ++st.num_zero_accepts;
-          return false;
-        } /* accept */
-      }
-      else if ( tts[n] == ~tts[x] )
-      {
-        const auto result = resubstitute_node( win, n, !ntk.make_signal( x ), ps.zero_gain );
-        if ( result )
-        {
-          done = true;
-          ++st.num_zero_accepts;
-          return false;
-        } /* accept */
-      }
-
-      auto counter_y = 0u;
-      win.foreach_gate( [&]( auto const& y, auto j ) {
-        if ( done )
-          return false;
-        if ( ++counter_y > ps.max_compare )
-          return false;
-
-        if ( i >= j )
-          return true;
-        assert( j > i );
-
-        if ( y == n || win.level( y ) >= win.level( n ) )
-        {
-          return true; /* next */
-        }
-
-        bool skip_maj_one_resubstitution = false;
-        if ( !ps.disable_maj_one_resub_filter &&
-             ( tts[n] != ternary_majority(  tts[x], tts[y], tts[n] ) &&
-               tts[n] != ternary_majority( ~tts[x], tts[y], tts[n] ) ) )
-        {
-          /* skip 1-resub, but keep going and try to find a 2-resub
-             with the current pair of nodes */
-          ++st.num_one_filter;
-          skip_maj_one_resubstitution = true;
-        }
-
-        auto counter_z = 0u;
-        win.foreach_gate( [&]( auto const& z, auto k ) {
-          if ( done )
-            return false;
-          if ( ++counter_z > ps.max_compare )
-            return false;
-
-          if ( j >= k )
-            return true;
-          assert( k > j );
-          assert( k > i );
-
-          if ( z == n || win.level( z ) >= win.level( n ) )
-          {
-            return true; /* next */
-          }
-
-          if ( !skip_maj_one_resubstitution )
-          {
-            std::set<node> fanin_nodes;
-            win.foreach_fanin( n, [&]( auto const& s ) { fanin_nodes.insert( win.get_node( s ) ); } );
-            if ( fanin_nodes == std::set<node>{x, y, z} )
-            {
-              return true;
-            }
-
-            if ( tts[n] == ternary_majority( tts[x], tts[y], tts[z] ) )
-            {
-              const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-              fanout_ntk.resize();
-              const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-              if ( result )
-              {
-                done = true;
-                ++st.num_one_accepts;
-                return true;
-              } /* accept */
-            }
-            else if ( tts[n] == ternary_majority( ~tts[x], tts[y], tts[z] ) )
-            {
-              const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-              fanout_ntk.resize();
-              const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-              if ( result )
-              {
-                done = true;
-                ++st.num_one_accepts;
-                return true;
-              } /* accept */
-            }
-          }
-
-          auto counter_u = 0u;
-          win.foreach_gate( [&]( auto const& u, auto l ) {
-            if ( done )
-              return false;
-
-            if ( ++counter_u > ps.max_compare )
-              return false;
-
-            if ( k >= l )
-              return true;
-            assert( l > k );
-            assert( l > j );
-            assert( l > i );
-
-            if ( u == n || win.level( u ) >= win.level( n ) )
-            {
-              return true; /* next */
-            }
-
-            if ( !ps.disable_maj_two_resub_filter &&
-                 ( tts[n] != ternary_majority( tts[x], tts[n], ternary_majority(  tts[y], tts[n],  tts[u] ) ) ) &&
-                 ( tts[n] != ternary_majority( tts[y], tts[n], ternary_majority(  tts[z], tts[n],  tts[u] ) ) ) &&
-                 ( tts[n] != ternary_majority( tts[x], tts[n], ternary_majority(  tts[y], tts[n], ~tts[u] ) ) ) &&
-                 ( tts[n] != ternary_majority( tts[y], tts[n], ternary_majority(  tts[z], tts[n], ~tts[u] ) ) ) )
-              {
-              ++st.num_two_filter;
-              return true; /* next */
-            }
-
-            auto counter_v = 0u;
-            win.foreach_gate( [&]( auto const& v, auto m ) {
-              if ( done )
-                return false;
-              if ( ++counter_v > ps.max_compare )
-                return false;
-
-              if ( l >= m )
-                return true;
-              assert( m > l );
-              assert( m > k );
-              assert( m > j );
-              assert( m > i );
-
-              if ( v == n || win.level( v ) >= win.level( n ) )
-              {
-                return true; /* next */
-              }
-
-              if ( tts[n] == ternary_majority( tts[u], tts[v], ternary_majority( tts[x], tts[y], tts[z] ) ) )
-              {
-                const auto new_signal = ntk.create_maj( win.make_signal( u ), win.make_signal( v ),
-                                                        ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                fanout_ntk.resize();
-                const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-                if ( result )
-                {
-                  ++st.num_two_accepts;
-                  done = true; /* accept */
-                }
-              }
-              else if ( tts[n] == ternary_majority( ~tts[u], tts[v], ternary_majority( tts[x], tts[y], tts[z] ) ) )
-              {
-                const auto new_signal = ntk.create_maj( !win.make_signal( u ), win.make_signal( v ),
-                                                        ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                fanout_ntk.resize();
-                const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-                if ( result )
-                {
-                  ++st.num_two_accepts;
-                  done = true; /* accept */
-                }
-              }
-              else if ( tts[n] == ternary_majority( tts[u], tts[v], ternary_majority( ~tts[x], tts[y], tts[z] ) ) )
-              {
-                const auto new_signal = ntk.create_maj( win.make_signal( u ), win.make_signal( v ),
-                                                        ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                fanout_ntk.resize();
-                const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-                if ( result )
-                {
-                  ++st.num_two_accepts;
-                  done = true; /* accept */
-                }
-              }
-              else if ( tts[n] == ternary_majority( ~tts[u], tts[v], ternary_majority( ~tts[x], tts[y], tts[z] ) ) )
-              {
-                const auto new_signal = ntk.create_maj( !win.make_signal( u ), win.make_signal( v ),
-                                                        ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                fanout_ntk.resize();
-                const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
-                if ( result )
-                {
-                  ++st.num_two_accepts;
-                  done = true; /* accept */
-                }
-              }
-
-              return true; /* next */
-            } );
-
-            return true; /* next */
-          } );
-
-          return true; /* next */
-        } );
-
-        return true; /* next */
-      } );
-
-      return true; /* next */
-    } );
+    ntk.foreach_po( [&]( const auto& f ){
+        pos.emplace_back( ntk.get_node( f ) );
+      });
   }
 
   void run()
   {
+    /* start the managers */
+    cut_manager<Ntk> mgr( ps.max_pis );
+
+    /* resynthesize each node once */
     const auto size = ntk.size();
-    progress_bar pbar{ntk.size(), "resubstitution |{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
-
-    stopwatch t( st.time_total );
-
-    ntk.clear_visited();
-    ntk.clear_values();
-    ntk.foreach_node( [&]( auto const& n ) {
-      ntk.set_value( n, ntk.fanout_size( n ) );
-    } );
 
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
-      /* skip if all nodes have been tried */
-      if ( i >= size )
-        return false;
+        /* skip if all nodes have been tried */
+        if ( i >= size )
+          return false; /* terminate */
 
-      /* skip nodes with many fanouts */
-      if ( ntk.fanout_size( n ) > 1000 )
+        /* skip nodes with many fanouts */
+        if ( ntk.fanout_size( n ) > 1000 )
+          return true; /* next */
+
+        /* compute a reconvergence-driven cut */
+        auto const leaves = call_with_stopwatch( st.time_cuts, [&]() {
+            return reconv_driven_cut( mgr, ntk, n );
+          });
+
+        /* evaluate this cut */
+        eval( n, leaves, steps_max, update_level, verbose );
+
         return true; /* next */
+      });
+  }
 
-      pbar( i, i, _candidates, _estimated_gain );
+private:
+  void collect_divisors_rec( node const& n, std::vector<node>& internal )
+  {
+    /* skip visited nodes */
+    if ( ntk.visited( n ) == ntk.trav_id )
+      return;
+    ntk.set_visited( n, ntk.trav_id );
 
-      bool has_mffc{false};
-      ntk.foreach_fanin( n, [&]( auto const& f ) {
-        if ( ntk.value( ntk.get_node( f ) ) == 1 )
-        {
-          has_mffc = true;
-          return false;
-        }
-        return true;
-      } );
-      if ( has_mffc )
+    ntk.foreach_fanin( n, [&]( const auto& f ){
+        collect_divisors_rec( ntk.get_node( f ), internal );
+      });
+
+    /* collect the internal nodes */
+    if ( ntk.value( n ) == 0 )
+      internal.emplace_back( n );
+  }
+
+  bool collect_divisors( node const& root, std::vector<node> const& leaves, uint32_t required )
+  {
+    /* clear candidate divisors */
+    divs_1up.clear();
+    divs_1un.clear();
+    divs_1b.clear();
+
+    /* add the leaves of the cuts to the divisors */
+    divs.clear();
+    ++ntk.trav_id;
+    for ( const auto& l : leaves )
+    {
+      divs.emplace_back( l );
+      ntk.set_visited( l, ntk.trav_id );
+    }
+
+    /* mark nodes in the MFFC */
+    for ( const auto& t : temp )
+    {
+      ntk.set_value( t, 1 );
+    }
+
+    /* collect the cone (without MFFC) */
+    collect_divisors_rec( root, divs );
+
+    /* unmark the current MFFC */
+    for ( const auto& t : temp )
+    {
+      ntk.set_value( t, 0 );
+    }
+
+    /* check if the number of divisors is not exceeded */
+    if ( divs.size() - leaves.size() + temp.size() >= sims.size() - ps.max_pis )
+      return false;
+
+    /* get the number of divisors to collect */
+    int32_t limit = sims.size() - ps.max_pis - ( divs.size() - leaves.size() + temp.size() );
+
+    /* explore the fanouts, which are not in the MFFC */
+    int32_t counter = 0;
+    bool quit = false;
+
+    /* NOTE: this is tricky and cannot be converted to a range-based loop */
+    auto size = divs.size();
+    for ( auto i = 0u; i < size; ++i )
+    {
+      auto const d = divs[i];
+      if ( ntk.fanout_size( d ) > 100 )
       {
-        reconv_cut_params params{ps.max_pis};
-        auto const leaves = call_with_stopwatch( st.time_cuts,
-                                                [&]() { return reconv_cut( params )( ntk, {n} ); } );
-        using fanout_view_t = decltype( fanout_ntk );
-        const auto extended_cut = make_with_stopwatch<window_view<fanout_view_t>>( st.time_windows, fanout_ntk, leaves, std::vector<typename fanout_view_t::node>{{n}}, /* extend = */ ps.extend );
-        if ( extended_cut.size() > ps.max_nodes )
-          return true;
-        auto win = call_with_stopwatch( st.time_depth, [&]() { return window( extended_cut ); } );
-
-        default_simulator<kitty::dynamic_truth_table> sim( win.num_pis() );
-        const auto tts = call_with_stopwatch( st.time_simulation,
-                                              [&]() { return simulate_nodes<kitty::dynamic_truth_table>( win, sim ); } );
-
-        call_with_stopwatch( st.time_resubstitution, [&]() { resubstitute( win, n, tts ); } );
+        continue;
       }
 
-      return true;
-    } );
+      /* if the fanout has all fanins in the set, add it */
+      ntk.foreach_fanout( d, [&]( node const& p ){
+          if ( ntk.visited( p ) == ntk.trav_id || ntk.level( p ) > required )
+          {
+            return true; /* next fanout */
+          }
+
+          bool all_fanins_visited = true;
+          ntk.foreach_fanin( p, [&]( const auto& g ){
+              if ( ntk.visited( ntk.get_node( g ) ) != ntk.trav_id )
+              {
+                all_fanins_visited = false;
+                return false; /* terminate fanin-loop */
+              }
+              return true; /* next fanin */
+            });
+
+          if ( !all_fanins_visited )
+            return true; /* next fanout */
+
+          bool has_root_as_child = false;
+          ntk.foreach_fanin( p, [&]( const auto& g ){
+              if ( ntk.get_node( g ) == root )
+              {
+                has_root_as_child = true;
+                return false; /* terminate fanin-loop */
+              }
+              return true; /* next fanin */
+            });
+
+          if ( has_root_as_child )
+            return true; /* next fanout */
+
+          divs.emplace_back( p );
+          ++size;
+          ntk.set_visited( p, ntk.trav_id );
+
+          /* quit computing divisors if there are too many of them */
+          if ( ++counter == limit )
+          {
+            quit = true;
+            return false; /* terminate fanout-loop */
+          }
+
+          return true; /* next fanout */
+        });
+
+      if ( quit )
+        break;
+    }
+
+    /* get the number of divisors */
+    num_divs = divs.size();
+
+    /* add the nodes in the MFFC */
+    for ( const auto& t : temp )
+    {
+      divs.emplace_back( t );
+    }
+
+    assert( root == divs.at( divs.size()-1u ) );
+    assert( divs.size() - leaves.size() <= sims.size() - ps.max_pis );
+    return true;
+  }
+
+  void simulate( std::vector<node> const &leaves )
+  {
+    assert( divs.size() - leaves.size() <= sims.size() - ps.max_pis );
+
+    auto i = 0u;
+    for ( const auto& d : divs )
+    {
+      if ( i < leaves.size() )
+      {
+        /* initialize the leaf */
+        sims.set_ith_var( d, i );
+        i++;
+        continue;
+      }
+
+      /* set storage for the node's simulation info */
+      sims.set_ith_var( d, i - leaves.size() + ps.max_pis );
+
+      /* NOTE: the next lines are implemented for AIGs only and
+         need to be changed for other graph data-structures */
+      std::array<signal, 2u> fanins;
+      ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
+          fanins[i] = s;
+        });
+
+      /* simulate the AND-node */
+      sims.compute_and( d, fanins[0u], fanins[1u] );
+      i++;
+    }
+  }
+
+  void resub_div0( node const& root, uint32_t required )
+  {
+    for ( const auto& d : divs )
+    {
+      if ( root == d ) continue; /* FIXME: next */
+
+      if ( sims.nequal( root, d ) )
+        continue; /* next */
+
+      std::cout << "candidate for zero-resub: " << root << ' ' << d << std::endl;
+      return;
+    }
+  }
+
+  void resub_divS( node const& root, uint32_t required )
+  {
+    /* clear candidate divisors */
+    divs_1up.clear();
+    divs_1un.clear();
+    divs_1b.clear();
+
+    for ( const auto& d : divs )
+    {
+      if ( root == d ) continue; /* FIXME: next */
+
+      if ( ntk.level( d ) > required - 1 )
+        continue;
+
+      /* check positive containment */
+      if ( sims.implies( d, root ) )
+      {
+        divs_1up.emplace_back( d );
+        continue;
+      }
+
+      /* check negative containment */
+      if ( sims.implies( root, d ) )
+      {
+        divs_1un.emplace_back( d );
+        continue;
+      }
+
+      divs_1b.emplace_back( d );
+    }
+  }
+
+  void resub_div1( node const& root, uint32_t required )
+  {
+    (void)required;
+
+    auto const s = ntk.make_signal( root );
+
+    /* check for positive unate divisors */
+    for ( const auto& d0 : divs_1up )
+    {
+      if ( root == d0 ) continue; /* FIXME: next */
+
+      for ( const auto& d1 : divs_1up )
+      {
+      if ( root == d1 ) continue; /* FIXME: next */
+
+        auto const s0 = ntk.make_signal( d0 );
+        auto const s1 = ntk.make_signal( d1 );
+
+        /* ( ~l & ~r ) <-> ~root */
+        if ( sims.and_equal( !s0, !s1, !s ) )
+        {
+          std::cout << "candidate for one-resub: " << root << ' ' << d0 << ' ' << d1 << std::endl;
+          return;
+        }
+      }
+    }
+
+    /* check for negative unate divisors */
+    for ( const auto& d0 : divs_1up )
+    {
+      if ( root == d0 ) continue; /* FIXME: next */
+
+      for ( const auto& d1 : divs_1up )
+      {
+        if ( root == d1 ) continue; /* FIXME: next */
+
+        auto const s0 = ntk.make_signal( d0 );
+        auto const s1 = ntk.make_signal( d1 );
+
+        /* ( ~l | ~r ) <-> ~root */
+        if ( sims.or_equal( !s0, !s1, !s ) )
+        {
+          std::cout << "candidate for one-resub: " << root << ' ' << d0 << ' ' << d1 << std::endl;
+          return;
+        }
+      }
+    }
+  }
+
+  void resub_div12( node const& root, uint32_t required )
+  {
+    auto const s = ntk.make_signal( root );
+
+    /* check positive unate divisors */
+    for ( auto const& d0 : divs_1up )
+    {
+      for ( auto const& d1 : divs_1up )
+      {
+        for ( auto const& d2 : divs_1up )
+        {
+          auto const s0 = ntk.make_signal( d0 );
+          auto const s1 = ntk.make_signal( d1 );
+          auto const s2 = ntk.make_signal( d2 );
+
+          if ( sims.and3_equal( !s0, !s1, !s2, !s ) )
+          {
+            auto const max_level = std::max({ntk.level( d0 ), ntk.level( d1 ), ntk.level( d2 )});
+            assert( max_level <= required - 1 );
+
+            std::cout << "candidate for one-two-resub: " << root << ' ' << d0 << ' ' << d1 << ' ' << d2 << std::endl;
+            return;
+          }
+        }
+      }
+    }
+
+    /* check negative unate divisors */
+    for ( auto const& d0 : divs_1un )
+    {
+      for ( auto const& d1 : divs_1un )
+      {
+        for ( auto const& d2 : divs_1un )
+        {
+          auto const s0 = ntk.make_signal( d0 );
+          auto const s1 = ntk.make_signal( d1 );
+          auto const s2 = ntk.make_signal( d2 );
+
+          if ( sims.or3_equal( !s0, !s1, !s2, !s ) )
+          {
+            auto const max_level = std::max({ntk.level( d0 ), ntk.level( d1 ), ntk.level( d2 )});
+            assert( max_level <= required - 1 );
+
+            std::cout << "candidate for one-two-resub: " << root << ' ' << d0 << ' ' << d1 << ' ' << d2 << std::endl;
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  void resub_divD( node const& root, uint32_t required )
+  {
+    /* clear candidate divisors */
+    divs_2up0.clear();
+    divs_2up1.clear();
+    divs_2un0.clear();
+    divs_2un1.clear();
+
+    for ( const auto& d0 : divs_1b )
+    {
+      if ( root == d0 ) continue; /* FIXME: next */
+
+      if ( ntk.level( d0 ) > required - 2 )
+        continue;
+
+      for ( const auto& d1 : divs_1b )
+      {
+        if ( root == d1 ) continue; /* FIXME: next */
+
+        if ( ntk.level( d1 ) > required - 2 )
+          continue;
+
+        auto const s0 = ntk.make_signal( d0 );
+        auto const s1 = ntk.make_signal( d1 );
+
+        if ( divs_2up0.size() < ps.max_divisors2 )
+        {
+          /* ( l & r ) --> root */
+          if ( sims.and_implies( s0, s1, root ) )
+          {
+            divs_2up0.emplace_back( s0 );
+            divs_2up1.emplace_back( s1 );
+          }
+
+          /* ( ~l & r ) --> root */
+          if ( sims.and_implies( !s0, s1, root ) )
+          {
+            divs_2up0.emplace_back( !s0 );
+            divs_2up1.emplace_back(  s1 );
+          }
+
+          /* ( l & ~r ) --> root */
+          if ( sims.and_implies( s0, !s1, root ) )
+          {
+            divs_2up0.emplace_back(  s0 );
+            divs_2up1.emplace_back( !s1 );
+          }
+
+          /* ( ~l & ~r ) --> root */
+          if ( sims.and_implies( !s0, !s1, root ) )
+          {
+            divs_2up0.emplace_back( !s0 );
+            divs_2up1.emplace_back( !s1 );
+          }
+        }
+
+        if ( divs_2un0.size() < ps.max_divisors2 )
+        {
+          /* root --> ( l & r ) */
+          if ( sims.and_implies_reverse( root, s0, s1 ) )
+          {
+            divs_2un0.emplace_back(  s0 );
+            divs_2un1.emplace_back(  s1 );
+          }
+
+          /* root --> ( ~l & r ) */
+          if ( sims.and_implies_reverse( root, s0, s1 ) )
+          {
+            divs_2un0.emplace_back( !s0 );
+            divs_2un1.emplace_back(  s1 );
+          }
+
+          /* root --> ( l & ~r ) */
+          if ( sims.and_implies_reverse( root, s0, s1 ) )
+          {
+            divs_2un0.emplace_back(  s0 );
+            divs_2un1.emplace_back( !s1 );
+          }
+
+          /* root --> ( ~l & ~r ) */
+          if ( sims.and_implies_reverse( root, s0, s1 ) )
+          {
+            divs_2un0.emplace_back( !s0 );
+            divs_2un1.emplace_back( !s1 );
+          }
+        }
+      }
+    }
+  }
+
+  void resub_div2( node const& root, uint32_t required )
+  {
+    (void)required;
+
+    auto const s = ntk.make_signal( root );
+
+    /* check positive unate divisors */
+    for ( const auto& d0 : divs_1up )
+    {
+      auto const s0 = ntk.make_signal( d0 );
+
+      for ( auto j = 0u; j < divs_2up0.size(); ++j )
+      {
+        auto const s1 = divs_2up0.at( j );
+        auto const s2 = divs_2up1.at( j );
+
+        if ( ntk.is_complemented( s1 ) && ntk.is_complemented( s2 ) )
+        {
+          if ( sims.and3_equal( !s0, !s1, !s2, !s ) )
+          {
+            std::cout << "candidate for two-resub: " << root << ' '
+                      << d0 << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << std::endl;
+            return;
+          }
+        }
+        else if ( ntk.is_complemented( s1 ) )
+        {
+          if ( sims.and_or2_equal( !s0, s1, !s2, !s ) )
+          {
+            std::cout << "candidate for two-resub: " << root << ' '
+                      << d0 << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << std::endl;
+            return;
+          }
+        }
+        else if ( ntk.is_complemented( s2 ) )
+        {
+          if ( sims.and_or2_equal( !s0, !s1, s2, !s ) )
+          {
+            std::cout << "candidate for two-resub: " << root << ' '
+                      << d0 << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << std::endl;
+            return;
+          }
+        }
+        else
+        {
+          if ( sims.and_or2_equal( !s0, !s1, !s2, !s ) )
+          {
+            std::cout << "candidate for two-resub: " << root << ' '
+                      << d0 << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << std::endl;
+            return;
+          }
+        }
+      }
+    }
+
+    /* check negative unate divisors */
+    for ( const auto& d0 : divs_1un )
+    {
+      auto const s0 = ntk.make_signal( d0 );
+
+      for ( auto j = 0u; j < divs_2un0.size(); ++j )
+      {
+        auto const s1 = divs_2un0.at( j );
+        auto const s2 = divs_2un1.at( j );
+
+        if ( ntk.is_complemented( s1 ) && ntk.is_complemented( s2 ) )
+        {
+          if ( sims.and_or2_equal( !s0, !s1, !s2, !s ) )
+          {
+            std::cout << "candidate for two-resub: " << root << ' '
+                      << d0 << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << std::endl;
+            return;
+          }
+        }
+        else if ( ntk.is_complemented( s1 ) )
+        {
+          if ( sims.and3_equal( !s0, s1, !s2, !s ) )
+          {
+            std::cout << "candidate for two-resub: " << root << ' '
+                      << d0 << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << std::endl;
+            return;
+          }
+        }
+        else if ( ntk.is_complemented( s2 ) )
+        {
+          if ( sims.and3_equal( !s0, !s1, s2, !s ) )
+          {
+            std::cout << "candidate for two-resub: " << root << ' '
+                      << d0 << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << std::endl;
+            return;
+          }
+        }
+        else
+        {
+          if ( sims.and3_equal( !s0, !s1, !s2, !s ) )
+          {
+            std::cout << "candidate for two-resub: " << root << ' '
+                      << d0 << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << std::endl;
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  void resub_div3( node const& root, uint32_t required )
+  {
+    (void)required;
+
+    auto const s = ntk.make_signal( root );
+
+    for ( auto i = 0u; i < divs_2up0.size(); ++i )
+    {
+      auto const s0 = divs_2up0.at( i );
+      auto const s1 = divs_2up1.at( i );
+
+      uint32_t flag = (ntk.is_complemented( s0 ) << 3) | (ntk.is_complemented( s1 ) << 2);
+
+      for ( auto j = i + 1; j < divs_2up0.size(); ++j )
+      {
+        auto const s2 = divs_2up0.at( j );
+        auto const s3 = divs_2up1.at( j );
+
+        flag = ( flag & 12 ) | ( ntk.is_complemented( s2 ) << 1 ) | ( ntk.is_complemented( s3 ) );
+        assert( flag < 16 );
+
+        switch ( flag )
+        {
+        case  0: /* 0000 */
+          if ( sims.and_or22_equal( !s0, !s1, !s2, !s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case  1: /* 0001 */
+          if ( sims.and_or22_equal( !s0, !s1, !s2,  s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case  2: /* 0010 */
+          if ( sims.and_or22_equal( !s0, !s1,  s2, !s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case  3: /* 0011 */
+          if ( sims.and_or22_equal( !s0, !s1,  s2,  s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case  4: /* 0100 */
+          if ( sims.and_or22_equal( !s0,  s1, !s2, !s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case  5: /* 0101 */
+          if ( sims.and_or22_equal( !s0,  s1, !s2,  s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case  6: /* 0110 */
+          if ( sims.and_or22_equal( !s0,  s1,  s2, !s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case  7: /* 0111 */
+          if ( sims.and_or22_equal( !s0,  s1,  s2,  s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case  8: /* 1000 */
+          if ( sims.and_or22_equal(  s0, !s1, !s2, !s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case  9: /* 1001 */
+          if ( sims.and_or22_equal(  s0, !s1, !s2,  s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case 10: /* 1010 */
+          if ( sims.and_or22_equal(  s0, !s1,  s2, !s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case 11: /* 1011 */
+          if ( sims.and_or22_equal(  s0, !s1,  s2,  s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case 12: /* 1100 */
+          if ( sims.and_or22_equal(  s0,  s1, !s2, !s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case 13: /* 1101 */
+          if ( sims.and_or22_equal(  s0,  s1, !s2,  s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case 14: /* 1110 */
+          if ( sims.and_or22_equal(  s0,  s1,  s2, !s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+
+        case 15: /* 1111 */
+          if ( sims.and_or22_equal(  s0,  s1,  s2,  s3, !s ) )
+          {
+            std::cout << "candidate for three-resub: " << root << ' '
+                      << ntk.get_node( s0 ) << ' '
+                      << ntk.get_node( s1 ) << ' '
+                      << ntk.get_node( s2 ) << ' '
+                      << ntk.get_node( s3 ) << std::endl;
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  void eval( node const& root, std::vector<node> const &leaves, uint32_t num_steps, bool update_level, bool verbose )
+  {
+    uint32_t const required = update_level ? 0 : std::numeric_limits<uint32_t>::max();
+
+    assert( num_steps >= 0 && num_steps <= 3 );
+
+    /* collect the MFFC */
+    int32_t num_mffc = call_with_stopwatch( st.time_mffc, [&]() {
+        node_mffc_inside collector( ntk );
+        auto num_mffc = collector.run( root, leaves, temp );
+        assert( num_mffc > 0 );
+        return num_mffc;
+      });
+
+    /* collect the divisor nodes */
+    bool div_comp_success = call_with_stopwatch( st.time_divs, [&]() {
+        return collect_divisors( root, leaves, required );
+      });
+
+    if ( !div_comp_success )
+      return;
+
+    /* update statistics */
+    st.num_total_divisors += num_divs;
+    st.num_total_leaves += leaves.size();
+
+    // std::cout << "root = " << root << ' ';
+    // std::cout << "divs = ";
+    // for ( const auto& d : divs )
+    // {
+    //   std::cout << d << ' ';
+    // }
+    // std::cout << std::endl;
+
+    /* simulate the nodes */
+    call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); });
+
+    /* consider constants */
+
+    /* consider equal nodes */
+    call_with_stopwatch( st.time_resub0, [&]() { resub_div0( root, required ); });
+
+    /* get the one level divisors */
+    call_with_stopwatch( st.time_resubS, [&]() { resub_divS( root, required ); });
+
+    /* consider one node */
+    call_with_stopwatch( st.time_resub1, [&]() { resub_div1( root, required ); });
+
+    /* consider triples */
+    call_with_stopwatch( st.time_resub12, [&]() { resub_div12( root, required ); });
+
+    /* get the two level divisors */
+    call_with_stopwatch( st.time_resubD, [&]() { resub_divD( root, required ); });
+
+    /* consider two nodes */
+    call_with_stopwatch( st.time_resub2, [&]() { resub_div2( root, required ); });
+
+    /* consider three nodes */
+    call_with_stopwatch( st.time_resub3, [&]() { resub_div3( root, required ); });
   }
 
 private:
   Ntk& ntk;
-  fanout_view<Ntk> fanout_ntk;
   resubstitution_params const& ps;
   resubstitution_stats& st;
 
-  uint32_t _candidates{0};
-  uint32_t _estimated_gain{0};
-};
+  uint32_t steps_max = 0;
+  bool update_level = false;
+  bool verbose = false;
+
+  std::vector<node> pos;
+  std::vector<node> temp;
+  std::vector<node> divs;
+  uint32_t num_divs{0};
+
+  simulation_table<Ntk> sims;
+
+  std::vector<node> divs_1up; // unate positive candidates
+  std::vector<node> divs_1un; // unate negative candidates
+  std::vector<node> divs_1b; // binate candidates
+
+  std::vector<signal> divs_2up0;
+  std::vector<signal> divs_2up1;
+  std::vector<signal> divs_2un0;
+  std::vector<signal> divs_2un1;
+}; /* resubstitution_impl */
 
 } /* namespace detail */
 
@@ -1183,15 +1525,21 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
-  static_assert( has_substitute_node_of_parents_v<Ntk>, "Ntk does not implement the substitute_node_of_parents method" );
   static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
   static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
 
+  // static_assert( has_substitute_node_of_parents_v<Ntk>, "Ntk does not implement the substitute_node_of_parents method" );
+
+  /* FIXME */
+  using view_t = depth_view<fanout_view<Ntk>>;
+  ::mockturtle::fanout_view<Ntk> fanout_view( ntk );
+  ::mockturtle::depth_view<::mockturtle::fanout_view<Ntk>> resub_view( fanout_view );
+
   resubstitution_stats st;
-  detail::resubstitution_impl<Ntk> p( ntk, ps, st );
+  detail::resubstitution_impl<view_t> p( resub_view, ps, st );
   p.run();
   if ( ps.verbose )
   {
