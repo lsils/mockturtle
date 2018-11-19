@@ -408,8 +408,8 @@ public:
     (void)other;
     (void)source;
     assert( children.size() == 2u );
-    if (other.is_and(source))
-    //if ( children[0u].index < children[1u].index )
+    if ( other.is_and( source ) )
+      //if ( children[0u].index < children[1u].index )
       return create_and( children[0u], children[1u] );
     else
       return create_xor( children[0u], children[1u] );
@@ -422,16 +422,60 @@ public:
     /* find all parents from old_node */
     for ( auto& n : _storage->nodes )
     {
-      for ( auto& child : n.children )
-      {
-        if ( child.index == old_node )
-        {
-          child.index = new_signal.index;
-          child.weight ^= new_signal.complement;
+      auto child1 = n.children[0];
+      auto child2 = n.children[1];
+      auto is_and = 0;
 
-          // increment fan-in of new node
-          _storage->nodes[new_signal.index].data[0].h1++;
+      if ( child1.index < child2.index ) // is AND
+      {
+        is_and = 1;
+      }
+      // child2
+      if ( child2.index == old_node )
+      {
+        if ( ( new_signal.index < child1.index ) && ( is_and ) )
+        {
+          child1.index = new_signal.index;
+          child1.weight ^= new_signal.complement;
+          child2.index = child1.index;
+          child2.weight ^= child1.weight;
         }
+        else if ( ( new_signal.index > child1.index ) && ( !is_and ) )
+        {
+          child1.index = new_signal.index;
+          child1.weight ^= new_signal.complement;
+          child2.index = child1.index;
+          child2.weight ^= child1.weight;
+        }
+        else
+        {
+          child2.index = new_signal.index;
+          child2.weight ^= new_signal.complement;
+        }
+        _storage->nodes[new_signal.index].data[0].h1++;
+      }
+      if ( child1.index == old_node )
+      {
+        if ( ( new_signal.index > child2.index ) && ( is_and ) )
+        {
+          child1.index = child2.index;
+          child1.weight ^= child2.weight;
+          child2.index = new_signal.index;
+          child2.weight ^= new_signal.complement;
+        }
+        else if ( ( new_signal.index < child2.index ) && ( !is_and ) )
+        {
+          child1.index = child2.index;
+          child1.weight ^= child2.weight;
+          child2.index = new_signal.index;
+          child2.weight ^= new_signal.complement;
+        }
+        else
+        {
+          child1.index = new_signal.index;
+          child1.weight ^= new_signal.complement;
+        }
+        _storage->nodes[new_signal.index].data[0].h1++;
       }
     }
 
@@ -450,11 +494,12 @@ public:
 
     // reset fan-in of old node
     _storage->nodes[old_node].data[0].h1 = 0;
-  }
+  } // namespace mockturtle
 #pragma endregion
 
 #pragma region Structural properties
-  auto size() const
+  auto
+  size() const
   {
     return static_cast<uint32_t>( _storage->nodes.size() );
   }
@@ -925,7 +970,7 @@ public:
 
 public:
   std::shared_ptr<xag_storage> _storage;
-};
+}; // namespace mockturtle
 
 } // namespace mockturtle
 
