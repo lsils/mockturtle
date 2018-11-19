@@ -174,7 +174,7 @@ std::vector<typename Ntk::node> node_find_cut( cut_manager<Ntk>& mgr, Ntk const&
       return true;
     } );
 
-  if ( mgr.node_leaves.size() > mgr.node_size_max )
+  if ( mgr.node_leaves.size() > uint32_t( mgr.node_size_max ) )
   {
     /* special case: cut already overflows at the current node
        bc. the cut size limit is very low
