@@ -27,7 +27,6 @@
   \file xmg_algebraic_rewriting.hpp
   \brief xmg algebraric rewriting
 
-  \author Mathias Soeken
   \author Zhufei Chu
 */
 
@@ -291,19 +290,19 @@ private:
     /* depth of last grand-child must be higher than depth of second grand-child */
     if ( ntk.level( ntk.get_node( ocs2[2] ) ) == ntk.level( ntk.get_node( ocs2[1] ) ) )
       return false;
-    
+
     /* propagate inverter if necessary */
     if ( ntk.is_complemented( ocs[2] ) )
     {
-      if( ntk.is_complemented( ocs2[0] ) )
+      if ( ntk.is_complemented( ocs2[0] ) )
       {
         ocs2[0] = !ocs2[0];
       }
-      else if( ntk.is_complemented( ocs2[1] ) )
+      else if ( ntk.is_complemented( ocs2[1] ) )
       {
         ocs2[1] = !ocs2[1];
       }
-      else if( ntk.is_complemented( ocs2[2] ) )
+      else if ( ntk.is_complemented( ocs2[2] ) )
       {
         ocs2[2] = !ocs2[2];
       }
@@ -313,14 +312,14 @@ private:
       }
     }
 
-    auto opt = ntk.create_xor3( ocs[0], ocs2[2], 
+    auto opt = ntk.create_xor3( ocs[0], ocs2[2],
                                 ntk.create_xor3( ocs2[0], ocs2[1], ocs[1] ) );
     ntk.substitute_node( n, opt );
     ntk.update();
 
     return true;
   }
-  
+
   /* XOR complementary associativity <xy[!yz]> = <xy[xz]> */
   bool reduce_depth_xor_complementary_associativity( node<Ntk> const& n )
   {
@@ -351,19 +350,19 @@ private:
     /* depth of last grand-child must be higher than depth of second grand-child */
     if ( ntk.level( ntk.get_node( ocs2[2] ) ) == ntk.level( ntk.get_node( ocs2[1] ) ) )
       return false;
-    
+
     /* propagate inverter if necessary */
     if ( ntk.is_complemented( ocs[2] ) )
     {
-      if( ntk.is_complemented( ocs2[0] ) )
+      if ( ntk.is_complemented( ocs2[0] ) )
       {
         ocs2[0] = !ocs2[0];
       }
-      else if( ntk.is_complemented( ocs2[1] ) )
+      else if ( ntk.is_complemented( ocs2[1] ) )
       {
         ocs2[1] = !ocs2[1];
       }
-      else if( ntk.is_complemented( ocs2[2] ) )
+      else if ( ntk.is_complemented( ocs2[2] ) )
       {
         ocs2[2] = !ocs2[2];
       }
@@ -441,7 +440,6 @@ private:
     } );
   }
 
-
   void mark_critical_paths()
   {
     ntk.clear_values();
@@ -460,13 +458,13 @@ private:
 
 } // namespace detail
 
-/*! \brief Majority algebraic depth rewriting.
+/*! \brief XMG algebraic depth rewriting.
  *
  * This algorithm tries to rewrite a network with majority gates for depth
  * optimization using the associativity and distributivity rule in
- * majority-of-3 logic.  It can be applied to networks other than xmgs, but
+ * majority-of-3 logic.  It can be applied to networks other than XMGs, but
  * only considers pairs of nodes which both implement the majority-of-3
- * function.
+ * function and the XOR function.
  *
  * **Required network functions:**
  * - `get_node`

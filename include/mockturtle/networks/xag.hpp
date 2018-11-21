@@ -421,16 +421,56 @@ public:
     /* find all parents from old_node */
     for ( auto& n : _storage->nodes )
     {
-      for ( auto& child : n.children )
-      {
-        if ( child.index == old_node )
-        {
-          child.index = new_signal.index;
-          child.weight ^= new_signal.complement;
+      auto child1 = n.children[0];
+      auto child2 = n.children[1];
+      const auto is_and = child1.index < child2.index;
 
-          // increment fan-in of new node
-          _storage->nodes[new_signal.index].data[0].h1++;
+      // child2
+      if ( child2.index == old_node )
+      {
+        if ( ( new_signal.index < child1.index ) && is_and )
+        {
+          child1.index = new_signal.index;
+          child1.weight ^= new_signal.complement;
+          child2.index = child1.index;
+          child2.weight ^= child1.weight;
         }
+        else if ( ( new_signal.index > child1.index ) && !is_and )
+        {
+          child1.index = new_signal.index;
+          child1.weight ^= new_signal.complement;
+          child2.index = child1.index;
+          child2.weight ^= child1.weight;
+        }
+        else
+        {
+          child2.index = new_signal.index;
+          child2.weight ^= new_signal.complement;
+        }
+        _storage->nodes[new_signal.index].data[0].h1++;
+      }
+      if ( child1.index == old_node )
+      {
+        if ( ( new_signal.index > child2.index ) && is_and )
+        {
+          child1.index = child2.index;
+          child1.weight ^= child2.weight;
+          child2.index = new_signal.index;
+          child2.weight ^= new_signal.complement;
+        }
+        else if ( ( new_signal.index < child2.index ) && !is_and )
+        {
+          child1.index = child2.index;
+          child1.weight ^= child2.weight;
+          child2.index = new_signal.index;
+          child2.weight ^= new_signal.complement;
+        }
+        else
+        {
+          child1.index = new_signal.index;
+          child1.weight ^= new_signal.complement;
+        }
+        _storage->nodes[new_signal.index].data[0].h1++;
       }
     }
 

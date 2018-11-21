@@ -1,8 +1,8 @@
 #include <catch.hpp>
 
-#include <mockturtle/traits.hpp>
 #include <mockturtle/algorithms/xmg_algebraic_rewriting.hpp>
 #include <mockturtle/networks/xmg.hpp>
+#include <mockturtle/traits.hpp>
 #include <mockturtle/views/depth_view.hpp>
 
 using namespace mockturtle;
@@ -20,7 +20,7 @@ TEST_CASE( "xmg depth optimization with xor complementary associativity", "[xmg_
   const auto f1 = xmg.create_maj( a, b, c );
   const auto f2 = xmg.create_xor( !f1, d );
   const auto f3 = xmg.create_maj( f1, f2, e );
-  
+
   xmg.create_po( f3 );
 
   depth_view depth_xmg{xmg};
@@ -41,11 +41,11 @@ TEST_CASE( "xmg depth optimization with xor associativity", "[xmg_algebraic_rewr
   const auto c = xmg.create_pi();
   const auto d = xmg.create_pi();
   const auto e = xmg.create_pi();
-  
+
   const auto f1 = xmg.create_maj( a, b, c );
   const auto f2 = xmg.create_xor( f1, d );
   const auto f3 = xmg.create_xor( f2, e );
-  
+
   xmg.create_po( f3 );
 
   depth_view depth_xmg{xmg};
