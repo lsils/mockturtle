@@ -39,6 +39,7 @@ Welcome to mockturtle's documentation!
    algorithms/cleanup
    algorithms/reconv_cut
    algorithms/dont_cares
+   algorithms/gates_to_nodes
 
 .. toctree::
    :maxdepth: 2
