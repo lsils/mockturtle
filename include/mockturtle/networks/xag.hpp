@@ -452,6 +452,14 @@ public:
     // reset fan-in of old node
     _storage->nodes[old_node].data[0].h1 = 0;
   }
+
+  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
+  {
+    (void)parents;
+    (void)old_node;
+    (void)new_signal;
+    assert( false && "yet not implemented" );
+  }
 #pragma endregion
 
 #pragma region Structural properties
