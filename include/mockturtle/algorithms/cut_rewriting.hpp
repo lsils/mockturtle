@@ -358,6 +358,8 @@ struct unit_cost
 {
   uint32_t operator()( Ntk const& ntk, node<Ntk> const& node ) const
   {
+    (void)ntk;
+    (void)node;
     return 1u;
   }
 };
@@ -409,7 +411,7 @@ public:
       for ( auto& cut : cuts.cuts( n ) )
       {
         /* skip trivial cuts */
-        if ( cut->size() < 2 )
+        if ( cut->size() <= 2 )
           continue;
 
         const auto tt = cuts.truth_table( *cut );
@@ -434,6 +436,7 @@ public:
             ( *cut )->data.gain = gain;
             if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
             {
+              std::cout << " gain = " << gain << " for " << n << " with " << ntk.get_node( f_new ) << "\n";
               best_replacements[n].push_back( f_new );
             }
 
@@ -470,11 +473,16 @@ public:
 
     stopwatch t2( st.time_mis );
     auto [g, map] = network_cuts_graph( ntk, cuts, ps.allow_zero_gain );
-    const auto is = maximum_weighted_independent_set_gwmin( g );
 
     if ( ps.very_verbose )
     {
       std::cout << "[i] replacement dependency graph has " << g.num_vertices() << " vertices and " << g.num_edges() << " edges\n";
+    }
+
+    const auto is = maximum_weighted_independent_set_gwmin( g );
+
+    if ( ps.very_verbose )
+    {
       std::cout << "[i] size of independent set is " << is.size() << "\n";
     }
 
