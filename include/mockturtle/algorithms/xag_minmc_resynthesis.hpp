@@ -106,6 +106,25 @@ public:
   }
 
   template<typename LeavesIterator, typename Fn>
+  void operator()( xag_network& xag, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  {
+    operator()( xag, function, begin, end, fn );
+
+    if ( !kitty::is_const0( dont_cares ) )
+    {
+      for ( auto b = 0u; b < dont_cares.num_bits(); ++b )
+      {
+        if ( kitty::get_bit( dont_cares, b ) )
+        {
+          auto copy = function;
+          kitty::flip_bit( copy, b );
+          operator()( xag, function, begin, end, fn );
+        }
+      }
+    }
+  }
+
+  template<typename LeavesIterator, typename Fn>
   void operator()( xag_network& xag, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
     stopwatch t1( st.time_total );
