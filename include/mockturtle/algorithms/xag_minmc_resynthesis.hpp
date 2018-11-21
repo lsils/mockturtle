@@ -279,7 +279,8 @@ public:
 private:
   void build_db( std::string const& filename )
   {
-    stopwatch t( st.time_parse_db );
+    stopwatch t1( st.time_total );
+    stopwatch t2( st.time_parse_db );
 
     std::ifstream file1;
     file1.open( filename );
