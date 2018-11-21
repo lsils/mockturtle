@@ -64,6 +64,8 @@ using mig_storage = storage<mig_node,
 class mig_network
 {
 public:
+  using base_type = mig_network;
+
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 3u;
   static constexpr auto max_fanin_size = 3u;

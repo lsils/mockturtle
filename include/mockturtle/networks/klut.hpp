@@ -71,6 +71,8 @@ using klut_storage = storage<klut_storage_node, truth_table_cache<kitty::dynamic
 class klut_network
 {
 public:
+  using base_type = klut_network;
+
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 1;
   static constexpr auto max_fanin_size = 32;

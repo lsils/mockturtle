@@ -71,6 +71,8 @@ using xmg_storage = storage<xmg_storage_node,
 class xmg_network
 {
 public:
+  using base_type = xmg_network;
+
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 3u;
   static constexpr auto max_fanin_size = 3u;

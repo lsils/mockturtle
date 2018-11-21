@@ -86,6 +86,8 @@ using aig_storage = storage<regular_node<2, 2, 1>,
 class aig_network
 {
 public:
+  using base_type = aig_network;
+
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 2u;
   static constexpr auto max_fanin_size = 2u;

@@ -85,6 +85,8 @@ using xag_storage = storage<regular_node<2, 2, 1>,
 class xag_network
 {
 public:
+  using base_type = xag_network;
+
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 2u;
   static constexpr auto max_fanin_size = 2u;
