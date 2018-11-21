@@ -424,52 +424,29 @@ public:
     {
       auto& child1 = n.children[0];
       auto& child2 = n.children[1];
+      if ( child1.index == child2.index )
+        continue;
       const auto is_and = child1.index < child2.index;
 
       // child2
       if ( child2.index == old_node )
       {
-        if ( ( new_signal.index < child1.index ) && is_and )
+        child2.index = new_signal.index;
+        child2.weight ^= new_signal.complement;
+
+        if ( ( ( child2.index < child1.index ) && is_and ) || ( ( child2.index > child1.index ) && !is_and ) )
         {
-          child1.index = new_signal.index;
-          child1.weight ^= new_signal.complement;
-          child2.index = child1.index;
-          child2.weight = child1.weight;
-        }
-        else if ( ( new_signal.index > child1.index ) && !is_and )
-        {
-          child1.index = new_signal.index;
-          child1.weight ^= new_signal.complement;
-          child2.index = child1.index;
-          child2.weight = child1.weight;
-        }
-        else
-        {
-          child2.index = new_signal.index;
-          child2.weight ^= new_signal.complement;
+          std::swap( child1, child2 );
         }
         _storage->nodes[new_signal.index].data[0].h1++;
       }
       else if ( child1.index == old_node )
       {
-        if ( ( new_signal.index > child2.index ) && is_and )
+        child1.index = new_signal.index;
+        child1.weight ^= new_signal.complement;
+        if ( ( ( child1.index > child2.index ) && is_and ) || ( ( child1.index < child2.index ) && !is_and ) )
         {
-          child1.index = child2.index;
-          child1.weight ^= child2.weight;
-          child2.index = new_signal.index;
-          child2.weight = new_signal.complement;
-        }
-        else if ( ( new_signal.index < child2.index ) && !is_and )
-        {
-          child1.index = child2.index;
-          child1.weight ^= child2.weight;
-          child2.index = new_signal.index;
-          child2.weight = new_signal.complement;
-        }
-        else
-        {
-          child1.index = new_signal.index;
-          child1.weight ^= new_signal.complement;
+          std::swap( child1, child2 );
         }
         _storage->nodes[new_signal.index].data[0].h1++;
       }
