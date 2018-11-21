@@ -299,7 +299,7 @@ TEST_CASE( "Node resynthesis from negated projection", "[node_resynthesis]" )
   } );
 }
 
-TEST_CASE( "Node resynthesis with direct synthesis", "[selected]" )
+TEST_CASE( "Node resynthesis with direct synthesis", "[node_resynthesis]" )
 {
   direct_resynthesis<aig_network> aig_resyn;
   direct_resynthesis<xag_network> xag_resyn;
