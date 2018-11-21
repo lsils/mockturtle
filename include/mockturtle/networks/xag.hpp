@@ -424,23 +424,19 @@ public:
     {
       auto child1 = n.children[0];
       auto child2 = n.children[1];
-      auto is_and = 0;
+      const auto is_and = child1.index < child2.index;
 
-      if ( child1.index < child2.index ) // is AND
-      {
-        is_and = 1;
-      }
       // child2
       if ( child2.index == old_node )
       {
-        if ( ( new_signal.index < child1.index ) && ( is_and ) )
+        if ( ( new_signal.index < child1.index ) && is_and )
         {
           child1.index = new_signal.index;
           child1.weight ^= new_signal.complement;
           child2.index = child1.index;
           child2.weight ^= child1.weight;
         }
-        else if ( ( new_signal.index > child1.index ) && ( !is_and ) )
+        else if ( ( new_signal.index > child1.index ) && !is_and )
         {
           child1.index = new_signal.index;
           child1.weight ^= new_signal.complement;
@@ -456,14 +452,14 @@ public:
       }
       if ( child1.index == old_node )
       {
-        if ( ( new_signal.index > child2.index ) && ( is_and ) )
+        if ( ( new_signal.index > child2.index ) && is_and )
         {
           child1.index = child2.index;
           child1.weight ^= child2.weight;
           child2.index = new_signal.index;
           child2.weight ^= new_signal.complement;
         }
-        else if ( ( new_signal.index < child2.index ) && ( !is_and ) )
+        else if ( ( new_signal.index < child2.index ) && !is_and )
         {
           child1.index = child2.index;
           child1.weight ^= child2.weight;
@@ -494,7 +490,7 @@ public:
 
     // reset fan-in of old node
     _storage->nodes[old_node].data[0].h1 = 0;
-  } // namespace mockturtle
+  }
 #pragma endregion
 
 #pragma region Structural properties
