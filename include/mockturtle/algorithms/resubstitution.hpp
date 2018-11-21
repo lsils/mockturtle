@@ -42,7 +42,6 @@
 #include "reconv_cut.hpp"
 #include "simulation.hpp"
 #include "reconv_cut2.hpp"
-
 #include "../networks/aig.hpp"
 
 #include <fmt/format.h>
@@ -245,6 +244,9 @@ struct resubstitution_stats
   stopwatch<>::duration time_resubstitution{0};
 
   /*! \brief Accumulated runtime for zero-resub. */
+  stopwatch<>::duration time_resubC{0};
+
+  /*! \brief Accumulated runtime for zero-resub. */
   stopwatch<>::duration time_resub0{0};
 
   /*! \brief Accumulated runtime for S-resub. */
@@ -274,14 +276,20 @@ struct resubstitution_stats
   /*! \brief Total number of gain  */
   uint64_t num_total_gain{0};
 
+  /*! \brief Number of accepted constant resubsitutions */
+  uint64_t num_const_accepts{0};
+
   /*! \brief Number of accepted zero resubsitutions */
-  uint64_t num_zero_accepts{0};
+  uint64_t num_div0_accepts{0};
 
   /*! \brief Number of accepted one resubsitutions */
-  uint64_t num_one_accepts{0};
+  uint64_t num_div1_accepts{0};
 
   /*! \brief Number of accepted two resubsitutions */
-  uint64_t num_two_accepts{0};
+  uint64_t num_div2_accepts{0};
+
+  /*! \brief Number of accepted three resubsitutions */
+  uint64_t num_div3_accepts{0};
 
   /*! \brief Number of filtered one resubsitutions */
   uint64_t num_one_filter{0};
@@ -291,31 +299,32 @@ struct resubstitution_stats
 
   void report() const
   {
-    std::cout << fmt::format( "[i] total time           = {:>5.2f} secs\n", to_seconds( time_total ) );
-    std::cout << fmt::format( "[i]   cut time           = {:>5.2f} secs\n", to_seconds( time_cuts ) );
-    std::cout << fmt::format( "[i]   mffc time          = {:>5.2f} secs\n", to_seconds( time_mffc ) );
-    std::cout << fmt::format( "[i]   divs time          = {:>5.2f} secs\n", to_seconds( time_divs ) );
-    std::cout << fmt::format( "[i]   windows time       = {:>5.2f} secs\n", to_seconds( time_windows ) );
-    std::cout << fmt::format( "[i]   depth time         = {:>5.2f} secs\n", to_seconds( time_depth ) );
-    std::cout << fmt::format( "[i]   simulation time    = {:>5.2f} secs\n", to_seconds( time_simulation ) );
-    std::cout << fmt::format( "[i]   resubstituion time = {:>5.2f} secs\n", to_seconds( time_resubstitution ) );
-    std::cout << fmt::format( "[i]      0-resub time    = {:>5.2f} secs\n", to_seconds( time_resub0 ) );
-    std::cout << fmt::format( "[i]      S-resub time    = {:>5.2f} secs\n", to_seconds( time_resubS ) );
-    std::cout << fmt::format( "[i]      1-resub time    = {:>5.2f} secs\n", to_seconds( time_resub1 ) );
-    std::cout << fmt::format( "[i]     12-resub time    = {:>5.2f} secs\n", to_seconds( time_resub12 ) );
-    std::cout << fmt::format( "[i]      D-resub time    = {:>5.2f} secs\n", to_seconds( time_resubD ) );
-    std::cout << fmt::format( "[i]      2-resub time    = {:>5.2f} secs\n", to_seconds( time_resub2 ) );
-    std::cout << fmt::format( "[i]      3-resub time    = {:>5.2f} secs\n", to_seconds( time_resub3 ) );
-    std::cout << fmt::format( "[i] total divisors       = {:8d}\n",         ( num_total_divisors ) );
-    std::cout << fmt::format( "[i] total leaves         = {:8d}\n",         ( num_total_leaves ) );
-    std::cout << fmt::format( "[i] total gain           = {:8d}\n",         ( num_total_gain ) );
-    std::cout << fmt::format( "[i] accepted resubs      = {:8d}\n",         ( num_zero_accepts + num_one_accepts + num_two_accepts ) );
-    std::cout << fmt::format( "[i]   0-resubs           = {:8d}\n",         ( num_zero_accepts ) );
-    std::cout << fmt::format( "[i]   1-resubs           = {:8d}\n",         ( num_one_accepts ) );
-    std::cout << fmt::format( "[i]   2-resubs           = {:8d}\n",         ( num_two_accepts ) );
-    std::cout << fmt::format( "[i] filtered cand.       = {:8d}\n",         ( num_one_filter + num_two_filter ) );
-    std::cout << fmt::format( "[i]   1-resubs           = {:8d}\n",         ( num_one_filter ) );
-    std::cout << fmt::format( "[i]   2-resubs           = {:8d}\n",         ( num_two_filter ) );
+    std::cout << fmt::format( "[i] total time                = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i]   cut time                = {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    std::cout << fmt::format( "[i]   mffc time               = {:>5.2f} secs\n", to_seconds( time_mffc ) );
+    std::cout << fmt::format( "[i]   divs time               = {:>5.2f} secs\n", to_seconds( time_divs ) );
+    std::cout << fmt::format( "[i]   windows time            = {:>5.2f} secs\n", to_seconds( time_windows ) );
+    std::cout << fmt::format( "[i]   depth time              = {:>5.2f} secs\n", to_seconds( time_depth ) );
+    std::cout << fmt::format( "[i]   simulation time         = {:>5.2f} secs\n", to_seconds( time_simulation ) );
+    std::cout << fmt::format( "[i]   resubstituion time      = {:>5.2f} secs\n", to_seconds( time_resubstitution ) );
+    std::cout << fmt::format( "[i]     constant-resub {:6d} = {:>5.2f} secs\n", num_const_accepts, to_seconds( time_resubC ) );
+    std::cout << fmt::format( "[i]            0-resub {:6d} = {:>5.2f} secs\n", num_div0_accepts, to_seconds( time_resub0 ) );
+    std::cout << fmt::format( "[i]            S-resub        = {:>5.2f} secs\n",     to_seconds( time_resubS ) );
+    std::cout << fmt::format( "[i]            1-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub1 ) );
+    std::cout << fmt::format( "[i]           12-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub12 ) );
+    std::cout << fmt::format( "[i]            D-resub        = {:>5.2f} secs\n",     to_seconds( time_resubD ) );
+    std::cout << fmt::format( "[i]            2-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub2 ) );
+    std::cout << fmt::format( "[i]            3-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub3 ) );
+    std::cout << fmt::format( "[i] total divisors            = {:8d}\n",         ( num_total_divisors ) );
+    std::cout << fmt::format( "[i] total leaves              = {:8d}\n",         ( num_total_leaves ) );
+    std::cout << fmt::format( "[i] total gain                = {:8d}\n",         ( num_total_gain ) );
+    // std::cout << fmt::format( "[i] accepted resubs       = {:8d}\n",         ( num_zero_accepts + num_one_accepts + num_two_accepts ) );
+    // std::cout << fmt::format( "[i]   0-resubs            = {:8d}\n",         ( num_zero_accepts ) );
+    // std::cout << fmt::format( "[i]   1-resubs            = {:8d}\n",         ( num_one_accepts ) );
+    // std::cout << fmt::format( "[i]   2-resubs            = {:8d}\n",         ( num_two_accepts ) );
+    std::cout << fmt::format( "[i] filtered cand.            = {:8d}\n",         ( num_one_filter + num_two_filter ) );
+    std::cout << fmt::format( "[i]   1-resubs                = {:8d}\n",         ( num_one_filter ) );
+    std::cout << fmt::format( "[i]   2-resubs                = {:8d}\n",         ( num_two_filter ) );
   }
 }; /* resubstitution_stats */
 
@@ -395,6 +404,7 @@ public:
     , num_words( num_bits <= 32 ? 1 : num_bits / 32 )
     , sims( max_divisors )
     , data( ntk.size(), nullptr )
+    , phase( ntk.size(), false )
   {
     /* for each divisor we reserve num_words */
     uint32_t *info = new uint32_t[ num_words * ( max_divisors + 1 ) ];
@@ -416,6 +426,23 @@ public:
           simulation_entry[i>>5] |= ( 1 << (i & 31 ) );
       }
     }
+  }
+
+  bool get_phase( node const& n ) const
+  {
+    return phase.at( n );
+  }
+
+  void set_phase( node const& n )
+  {
+    uint32_t *data_n = (uint32_t*)data[n];
+    auto const p = data_n[0] & 1;
+    if ( p )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ~data_n[k];
+    }
+    phase[n] = p;
   }
 
   void set_ith_var( node const& n, uint32_t i )
@@ -626,6 +653,24 @@ public:
     return true;
   }
 
+  bool is_false( node const& a ) const
+  {
+    auto data_a = (uint32_t*)data[a];
+    for ( auto k = 0u; k < num_words; ++k )
+      if ( data_a[k] != 0 )
+        return false; /* early termination */
+    return true;
+  }
+
+  bool is_true( node const& a ) const
+  {
+    auto data_a = (uint32_t*)data[a];
+    for ( auto k = 0u; k < num_words; ++k )
+      if ( data_a[k] != 0xffffffff )
+        return false; /* early termination */
+    return true;
+  }
+
 public:
   uint32_t size() const
   {
@@ -641,6 +686,7 @@ protected:
 
   abc_vec sims;
   std::vector<void*> data;
+  std::vector<bool> phase;
 }; /* simulation_table */
 
 template<class Ntk>
@@ -681,7 +727,15 @@ public:
           });
 
         /* evaluate this cut */
-        eval( n, leaves, steps_max, update_level, verbose );
+        auto const g = eval( n, leaves, steps_max, update_level, verbose );
+        if ( !g )
+          return true; /* next */
+
+        /* update gain */
+        st.num_total_gain += last_gain;
+
+        /* update network */
+        ntk.substitute_node( n, *g );
 
         return true; /* next */
       });
@@ -848,22 +902,42 @@ private:
 
       /* simulate the AND-node */
       sims.compute_and( d, fanins[0u], fanins[1u] );
+
       i++;
+    }
+
+    /* normalize */
+    for ( const auto& d : divs )
+    {
+      sims.set_phase( d );
     }
   }
 
-  void resub_div0( node const& root, uint32_t required )
+  std::optional<signal> resub_const( node const& root, uint32_t required )
   {
-    for ( const auto& d : divs )
-    {
-      if ( root == d ) continue; /* FIXME: next */
+    (void)required;
 
+    if ( sims.is_false( root ) )
+    {
+      return sims.get_phase( root ) ? ntk.get_constant( true ) : ntk.get_constant( false );
+    }
+    return std::optional<signal>();
+  }
+
+  std::optional<signal> resub_div0( node const& root, uint32_t required )
+  {
+    (void)required;
+
+    for ( auto i = 0u; i < num_divs; ++i )
+    {
+      auto const& d = divs.at( i );
       if ( sims.nequal( root, d ) )
         continue; /* next */
 
-      std::cout << "candidate for zero-resub: " << root << ' ' << d << std::endl;
-      return;
+      return ( sims.get_phase( d ) ^ sims.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
     }
+
+    return std::optional<signal>();
   }
 
   void resub_divS( node const& root, uint32_t required )
@@ -1412,7 +1486,7 @@ private:
     }
   }
 
-  void eval( node const& root, std::vector<node> const &leaves, uint32_t num_steps, bool update_level, bool verbose )
+  std::optional<signal> eval( node const& root, std::vector<node> const &leaves, uint32_t num_steps, bool update_level, bool verbose )
   {
     uint32_t const required = update_level ? 0 : std::numeric_limits<uint32_t>::max();
 
@@ -1432,7 +1506,7 @@ private:
       });
 
     if ( !div_comp_success )
-      return;
+      return std::optional<signal>();
 
     /* update statistics */
     st.num_total_divisors += num_divs;
@@ -1450,10 +1524,29 @@ private:
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); });
 
     /* consider constants */
+    auto g = call_with_stopwatch( st.time_resubC, [&]() {
+        return resub_const( root, required ); } );
+    if ( g )
+    {
+      ++st.num_const_accepts;
+      last_gain = num_mffc;
+      return g; /* accepted resub */
+    }
 
     /* consider equal nodes */
-    call_with_stopwatch( st.time_resub0, [&]() { resub_div0( root, required ); });
+    g = call_with_stopwatch( st.time_resub0, [&]() {
+        return resub_div0( root, required ); });
+    if ( g )
+    {
+      ++st.num_div0_accepts;
+      last_gain = num_mffc;
+      return g; /* accepted resub */
+    }
 
+    if ( steps_max == 0 || num_mffc == 1 )
+      return std::optional<signal>();
+
+#if 0
     /* get the one level divisors */
     call_with_stopwatch( st.time_resubS, [&]() { resub_divS( root, required ); });
 
@@ -1471,6 +1564,9 @@ private:
 
     /* consider three nodes */
     call_with_stopwatch( st.time_resub3, [&]() { resub_div3( root, required ); });
+#endif
+
+    return std::optional<signal>();
   }
 
 private:
@@ -1486,6 +1582,7 @@ private:
   std::vector<node> temp;
   std::vector<node> divs;
   uint32_t num_divs{0};
+  int32_t last_gain{-1};
 
   simulation_table<Ntk> sims;
 
@@ -1497,6 +1594,7 @@ private:
   std::vector<signal> divs_2up1;
   std::vector<signal> divs_2un0;
   std::vector<signal> divs_2un1;
+
 }; /* resubstitution_impl */
 
 } /* namespace detail */
@@ -1504,16 +1602,16 @@ private:
 /*! \brief Boolean resubstitution.
  *
  * **Required network functions:**
- * - `get_node`
- * - `size`
- * - `make_signal`
- * - `foreach_gate`
- * - `substitute_node_of_parents`
- * - `clear_visited`
  * - `clear_values`
+ * - `clear_visited`
  * - `fanout_size`
- * - `set_value`
+ * - `foreach_gate`
  * - `foreach_node`
+ * - `get_node`
+ * - `make_signal`
+ * - `set_value`
+ * - `size`
+ * - `substitute_node_of_parents`
  *
  * \param ntk Input network (will be changed in-place)
  * \param ps Resubstitution params
