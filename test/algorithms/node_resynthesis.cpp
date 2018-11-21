@@ -13,7 +13,7 @@
 
 using namespace mockturtle;
 
-TEST_CASE( "Node resyntehsis with optimum xmg networks with 4-input parity function", "[node_resynthesis]")
+TEST_CASE( "Node resynthesis with optimum xmg networks with 4-input parity function", "[node_resynthesis]")
 {
   kitty::dynamic_truth_table x1( 4 ), x2( 4 ), x3( 4 ), x4( 4 ); 
   kitty::create_nth_var( x1, 0 );
