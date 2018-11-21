@@ -51,3 +51,5 @@ Resynthesis functions
 .. doxygenclass:: mockturtle::mig_npn_resynthesis
 
 .. doxygenclass:: mockturtle::xmg_npn_resynthesis
+
+.. doxygenclass:: mockturtle::direct_resynthesis

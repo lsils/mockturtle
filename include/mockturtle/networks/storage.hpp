@@ -159,6 +159,9 @@ struct node_hash
 {
   uint64_t operator()( const Node& n ) const
   {
+    if ( n.children.size() == 0 )
+      return 0;
+
     auto it = std::begin( n.children );
     auto seed = hash_block( it->data );
     ++it;

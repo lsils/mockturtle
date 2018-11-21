@@ -31,6 +31,8 @@ v0.1 (not yet released)
     - Compute observability don't cares (`observability_dont_cares`) `#82 <https://github.com/lsils/mockturtle/pull/82>`_
     - Optimum XMG resynthesis for node resynthesis, cut rewriting, and refactoring `#86 <https://github.com/lsils/mockturtle/pull/86>`_
     - XMG algebraic depth rewriting (`xmg_algebraic_depth_rewriting`) `#86 <https://github.com/lsils/mockturtle/pull/86>`_
+    - Convert gate-based networks to node-based networks (`gates_to_nodes`) `#90 <https://github.com/lsils/mockturtle/pull/90>`_
+    - Direct resynthesis of functions into primitives (`direct_resynthesis`) `#90 <https://github.com/lsils/mockturtle/pull/90>`_
 * Views:
     - Visit nodes in topological order (`topo_view`) `#3 <https://github.com/lsils/mockturtle/pull/3>`_
     - Disable structural modifications to network (`immutable_view`) `#3 <https://github.com/lsils/mockturtle/pull/3>`_
