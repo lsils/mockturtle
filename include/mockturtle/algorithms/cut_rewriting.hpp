@@ -393,7 +393,8 @@ public:
 
     /* iterate over all original nodes in the network */
     const auto size = ntk.size();
-    progress_bar pbar{ntk.size(), "cut_rewriting |{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ), ps.progress};
+    auto max_total_gain = 0u;
+    progress_bar pbar{ntk.size(), "cut_rewriting |{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ) + "   comm. gain = {3}", ps.progress};
     ntk.foreach_node( [&]( auto const& n ) {
       /* stop once all original nodes were visited */
       if ( n >= size )
@@ -417,7 +418,7 @@ public:
         const auto tt = cuts.truth_table( *cut );
         assert( cut->size() == static_cast<unsigned>( tt.num_vars() ) );
 
-        pbar( n, n, best_replacements[n].size() );
+        pbar( n, n, best_replacements[n].size(), max_total_gain );
 
         std::vector<signal<Ntk>> children;
         for ( auto l : *cut )
@@ -436,7 +437,7 @@ public:
             ( *cut )->data.gain = gain;
             if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
             {
-              std::cout << " gain = " << gain << " for " << n << " with " << ntk.get_node( f_new ) << "\n";
+              max_total_gain += gain;
               best_replacements[n].push_back( f_new );
             }
 
