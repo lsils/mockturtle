@@ -65,7 +65,7 @@ struct xag_minmc_resynthesis_stats
   stopwatch<>::duration time_total{0};
   stopwatch<>::duration time_parse_db{0};
   stopwatch<>::duration time_classify{0};
-  stopwatch<>::duration time_cleanup{0};
+  stopwatch<>::duration time_construct{0};
 
   uint32_t cache_hits{0};
   uint32_t cache_misses{0};
@@ -74,14 +74,14 @@ struct xag_minmc_resynthesis_stats
 
   void report() const
   {
-    std::cout << fmt::format( "[i] total time    = {:>5.2f} secs\n", to_seconds( time_total ) );
-    std::cout << fmt::format( "[i] parse db time = {:>5.2f} secs\n", to_seconds( time_parse_db ) );
-    std::cout << fmt::format( "[i] classify time = {:>5.2f} secs\n", to_seconds( time_classify ) );
-    std::cout << fmt::format( "[i] - aborts      = {:>5}\n", classify_aborts );
-    std::cout << fmt::format( "[i] cleanup time  = {:>5.2f} secs\n", to_seconds( time_cleanup ) );
-    std::cout << fmt::format( "[i] cache hits    = {:>5}\n", cache_hits );
-    std::cout << fmt::format( "[i] cache misses  = {:>5}\n", cache_misses );
-    std::cout << fmt::format( "[i] unknown func. = {:>5}\n", unknown_function_aborts );
+    std::cout << fmt::format( "[i] total time     = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i] parse db time  = {:>5.2f} secs\n", to_seconds( time_parse_db ) );
+    std::cout << fmt::format( "[i] classify time  = {:>5.2f} secs\n", to_seconds( time_classify ) );
+    std::cout << fmt::format( "[i] - aborts       = {:>5}\n", classify_aborts );
+    std::cout << fmt::format( "[i] construct time = {:>5.2f} secs\n", to_seconds( time_construct ) );
+    std::cout << fmt::format( "[i] cache hits     = {:>5}\n", cache_hits );
+    std::cout << fmt::format( "[i] cache misses   = {:>5}\n", cache_misses );
+    std::cout << fmt::format( "[i] unknown func.  = {:>5}\n", unknown_function_aborts );
   }
 };
 
@@ -108,10 +108,10 @@ public:
   template<typename LeavesIterator, typename Fn>
   void operator()( xag_network& xag, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
-    stopwatch t( st.time_total );
+    stopwatch t1( st.time_total );
 
     const auto func_ext = kitty::extend_to<6>( function );
-    std::vector<kitty::detail::spectral_operation> trans_2;
+    std::vector<kitty::detail::spectral_operation> trans;
     kitty::static_truth_table<6> tt_ext;
 
     const auto cache_it = classify_cache->find( func_ext );
@@ -124,16 +124,18 @@ public:
         return; /* quit */
       }
       tt_ext = std::get<1>( cache_it->second );
-      trans_2 = std::get<2>( cache_it->second );
+      trans = std::get<2>( cache_it->second );
     }
     else
     {
       st.cache_misses++;
-      const auto spectral = call_with_stopwatch( st.time_classify, [&]() { return kitty::exact_spectral_canonization_limit( func_ext, 100000, [&trans_2]( auto const& ops ) {
-                                                                             std::copy( ops.begin(), ops.end(),
-                                                                                        std::back_inserter( trans_2 ) );
-                                                                           } ); } );
-      ( *classify_cache )[func_ext] = {spectral.second, spectral.first, trans_2};
+      const auto spectral = call_with_stopwatch( st.time_classify,
+                                                 [&]() { return kitty::exact_spectral_canonization_limit( func_ext, 100000,
+                                                                                                          [&trans]( auto const& ops ) {
+                                                                                                            std::copy( ops.begin(), ops.end(),
+                                                                                                                       std::back_inserter( trans ) );
+                                                                                                          } ); } );
+      classify_cache->insert( {func_ext, {spectral.second, spectral.first, trans}} );
       if ( !spectral.second )
       {
         st.classify_aborts++;
@@ -142,17 +144,14 @@ public:
       tt_ext = spectral.first;
     }
 
-    unsigned int mc = 0u;
+    unsigned int mc{0u};
     std::string original_f;
     xag_network::signal circuit;
 
     auto search = func_mc->find( kitty::to_hex( tt_ext ) );
-
     if ( search != func_mc->end() )
     {
-      original_f = std::get<0>( search->second );
-      mc = std::get<1>( search->second );
-      circuit = std::get<2>( search->second );
+      std::tie( original_f, mc, circuit ) = search->second;
     }
     else
     {
@@ -161,60 +160,19 @@ public:
     }
 
     kitty::static_truth_table<6> db_repr;
-    bool out_neg = 0;
+    bool out_neg{false};
     std::vector<xag_network::signal> final_xor;
     kitty::create_from_hex_string( db_repr, original_f );
     std::vector<xag_network::signal> pis( 6, xag.get_constant( false ) );
     std::copy( begin, end, pis.begin() );
 
-    std::vector<kitty::detail::spectral_operation> trans;
     call_with_stopwatch( st.time_classify, [&]() { return kitty::exact_spectral_canonization(
                                                        db_repr, [&trans]( auto const& ops ) {
                                                          std::copy( ops.rbegin(), ops.rend(),
                                                                     std::back_inserter( trans ) );
                                                        } ); } );
 
-    for ( auto const& t : trans_2 )
-    {
-      switch ( t._kind )
-      {
-      default:
-        assert( false );
-      case kitty::detail::spectral_operation::kind::permutation:
-      {
-        const auto v1 = log2( t._var1 );
-        const auto v2 = log2( t._var2 );
-        std::swap( pis[v1], pis[v2] );
-      }
-      break;
-      case kitty::detail::spectral_operation::kind::input_negation:
-      {
-        const auto v1 = log2( t._var1 );
-        pis[v1] = pis[v1] ^ 1;
-      }
-      break;
-      case kitty::detail::spectral_operation::kind::output_negation:
-      {
-        out_neg = out_neg ^ 1;
-      }
-      break;
-      case kitty::detail::spectral_operation::kind::spectral_translation:
-      {
-        const auto v1 = log2( t._var1 );
-        const auto v2 = log2( t._var2 );
-        auto f = xag.create_xor( pis[v1], pis[v2] );
-        pis[v1] = f;
-      }
-      break;
-      case kitty::detail::spectral_operation::kind::disjoint_translation:
-      {
-        const auto v1 = log2( t._var1 );
-        final_xor.push_back( pis[v1] );
-      }
-      break;
-      }
-    }
-
+    stopwatch t2( st.time_construct );
     for ( auto const& t : trans )
     {
       switch ( t._kind )
@@ -235,17 +193,13 @@ public:
       }
       break;
       case kitty::detail::spectral_operation::kind::output_negation:
-      {
-        out_neg = out_neg ^ 1;
-      }
-      break;
+        out_neg = !out_neg;
+        break;
       case kitty::detail::spectral_operation::kind::spectral_translation:
       {
         const auto v1 = log2( t._var1 );
         const auto v2 = log2( t._var2 );
-        //auto f = db->create_xor( pis[v1], pis[v2] );
-        auto f = xag.create_xor( pis[v1], pis[v2] );
-        pis[v1] = f;
+        pis[v1] = xag.create_xor( pis[v1], pis[v2] );
       }
       break;
       case kitty::detail::spectral_operation::kind::disjoint_translation:
@@ -257,15 +211,11 @@ public:
       }
     }
 
-    xag_network::signal output;
+    cut_view topo{*db, *db_pis, db->get_node( circuit )};
+    auto output = cleanup_dangling( topo, xag, pis.begin(), pis.end() ).front();
+    if ( db->is_complemented( circuit ) )
     {
-      stopwatch t( st.time_cleanup );
-      cut_view topo{*db, *db_pis, db->get_node( circuit )};
-      output = cleanup_dangling( topo, xag, pis.begin(), pis.end() ).front();
-      if ( db->is_complemented( circuit ) )
-      {
-        output = !output;
-      }
+      output = !output;
     }
 
     for ( auto const& g : final_xor )
