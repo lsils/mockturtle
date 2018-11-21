@@ -429,16 +429,24 @@ public:
         int32_t value = recursive_deref( n );
         {
           stopwatch t( st.time_rewriting );
+          int32_t best_gain{-1};
 
           const auto on_signal = [&]( auto const& f_new ) {
             int32_t gain = value - recursive_ref( ntk.get_node( f_new ) );
             recursive_deref( ntk.get_node( f_new ) );
 
-            ( *cut )->data.gain = gain;
             if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
             {
-              max_total_gain += gain;
-              best_replacements[n].push_back( f_new );
+              if ( best_gain == -1 )
+              {
+                ( *cut )->data.gain = gain;
+                best_replacements[n].push_back( f_new );
+              }
+              else if ( gain > best_gain )
+              {
+                ( *cut )->data.gain = best_gain = gain;
+                best_replacements[n].back() = f_new;
+              }
             }
 
             return true;
@@ -463,6 +471,11 @@ public:
           else
           {
             rewriting_fn( ntk, cuts.truth_table( *cut ), children.begin(), children.end(), on_signal );
+          }
+
+          if ( best_gain > 0 )
+          {
+            max_total_gain += best_gain;
           }
         }
 
@@ -522,7 +535,7 @@ private:
       return 0;
 
     /* recursively collect nodes */
-    uint32_t value{cost_fn(ntk, n)};
+    uint32_t value{cost_fn( ntk, n )};
     ntk.foreach_fanin( n, [&]( auto const& s ) {
       if ( ntk.decr_value( ntk.get_node( s ) ) == 0 )
       {
@@ -539,7 +552,7 @@ private:
       return 0;
 
     /* recursively collect nodes */
-    uint32_t value{cost_fn(ntk, n)};
+    uint32_t value{cost_fn( ntk, n )};
     ntk.foreach_fanin( n, [&]( auto const& s ) {
       if ( ntk.incr_value( ntk.get_node( s ) ) == 0 )
       {
