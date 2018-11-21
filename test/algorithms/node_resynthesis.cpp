@@ -13,16 +13,16 @@
 
 using namespace mockturtle;
 
-TEST_CASE( "Node resynthesis with optimum xmg networks with 4-input parity function", "[node_resynthesis]")
+TEST_CASE( "Node resynthesis with optimum xmg networks with 4-input parity function", "[node_resynthesis]" )
 {
-  kitty::dynamic_truth_table x1( 4 ), x2( 4 ), x3( 4 ), x4( 4 ); 
+  kitty::dynamic_truth_table x1( 4 ), x2( 4 ), x3( 4 ), x4( 4 );
   kitty::create_nth_var( x1, 0 );
   kitty::create_nth_var( x2, 1 );
   kitty::create_nth_var( x3, 2 );
   kitty::create_nth_var( x4, 3 );
 
   const auto parity = x1 ^ x2 ^ x3 ^ x4;
-  
+
   klut_network klut;
   const auto a = klut.create_pi();
   const auto b = klut.create_pi();
@@ -30,7 +30,7 @@ TEST_CASE( "Node resynthesis with optimum xmg networks with 4-input parity funct
   const auto d = klut.create_pi();
   const auto f = klut.create_node( {a, b, c, d}, parity );
   klut.create_po( f );
-  
+
   xmg_npn_resynthesis resyn;
   const auto xmg = node_resynthesis<xmg_network>( klut, resyn );
 
@@ -49,8 +49,8 @@ TEST_CASE( "Node resynthesis with optimum xmg networks with 4-input parity funct
   } );
 
   xmg.foreach_gate( [&]( auto n ) {
-      CHECK( xmg.is_xor3( n ) );
-      } );
+    CHECK( xmg.is_xor3( n ) );
+  } );
 }
 
 TEST_CASE( "Node resynthesis with optimum xmg networks", "[node_resynthesis]" )
@@ -187,7 +187,6 @@ TEST_CASE( "Node resynthesis with optimum networks", "[node_resynthesis]" )
     } );
   } );
 }
-
 
 TEST_CASE( "Node resynthesis with Akers resynthesis", "[node_resynthesis]" )
 {
