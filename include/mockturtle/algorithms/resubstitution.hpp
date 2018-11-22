@@ -138,6 +138,14 @@ private:
     if ( ntk.visited( n ) == ntk.trav_id )
       return;
     ntk.set_visited( n, ntk.trav_id );
+    // std::cout << "mffc computation visists " << n
+    //           << "( " << ntk.fanout_size( n ) << " )" << std::endl;
+
+    // std::cout << "children: ";
+    // ntk.foreach_fanin( n, [&]( const auto& f ){
+    //     std::cout << ntk.get_node( f ) << ' ';
+    //   });
+    // std::cout << std::endl;
 
     if ( !top_most && ( ntk.is_ci( n ) || ntk.fanout_size( n ) > 0 ) )
       return;
@@ -267,6 +275,15 @@ struct resubstitution_stats
   /*! \brief Accumulated runtime for three-resub. */
   stopwatch<>::duration time_resub3{0};
 
+  /*! \brief Accumulated runtime for cut evaluation/computing a resubsitution. */
+  stopwatch<>::duration time_eval{0};
+
+  /*! \brief Accumulated runtime for updating the network. */
+  stopwatch<>::duration time_replace{0};
+
+  /*! \brief Initial network size (before resubstitution) */
+  uint64_t initial_size{0};
+
   /*! \brief Total number of divisors  */
   uint64_t num_total_divisors{0};
 
@@ -274,7 +291,7 @@ struct resubstitution_stats
   uint64_t num_total_leaves{0};
 
   /*! \brief Total number of gain  */
-  uint64_t num_total_gain{0};
+  uint64_t total_gain{0};
 
   /*! \brief Number of accepted constant resubsitutions */
   uint64_t num_const_accepts{0};
@@ -306,7 +323,7 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]   windows time            = {:>5.2f} secs\n", to_seconds( time_windows ) );
     std::cout << fmt::format( "[i]   depth time              = {:>5.2f} secs\n", to_seconds( time_depth ) );
     std::cout << fmt::format( "[i]   simulation time         = {:>5.2f} secs\n", to_seconds( time_simulation ) );
-    std::cout << fmt::format( "[i]   resubstituion time      = {:>5.2f} secs\n", to_seconds( time_resubstitution ) );
+    std::cout << fmt::format( "[i]   evaluation time         = {:>5.2f} secs\n", to_seconds( time_eval ) );
     std::cout << fmt::format( "[i]     constant-resub {:6d} = {:>5.2f} secs\n", num_const_accepts, to_seconds( time_resubC ) );
     std::cout << fmt::format( "[i]            0-resub {:6d} = {:>5.2f} secs\n", num_div0_accepts, to_seconds( time_resub0 ) );
     std::cout << fmt::format( "[i]            S-resub        = {:>5.2f} secs\n",     to_seconds( time_resubS ) );
@@ -315,9 +332,11 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]            D-resub        = {:>5.2f} secs\n",     to_seconds( time_resubD ) );
     std::cout << fmt::format( "[i]            2-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub2 ) );
     std::cout << fmt::format( "[i]            3-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub3 ) );
+    std::cout << fmt::format( "[i]   replace time            = {:>5.2f} secs\n", to_seconds( time_replace ) );
     std::cout << fmt::format( "[i] total divisors            = {:8d}\n",         ( num_total_divisors ) );
     std::cout << fmt::format( "[i] total leaves              = {:8d}\n",         ( num_total_leaves ) );
-    std::cout << fmt::format( "[i] total gain                = {:8d}\n",         ( num_total_gain ) );
+    std::cout << fmt::format( "[i] total gain                = {:8d} ({:>5.2f}\%)\n",
+                              total_gain, ( (100.0 * total_gain) / initial_size ) );
     // std::cout << fmt::format( "[i] accepted resubs       = {:8d}\n",         ( num_zero_accepts + num_one_accepts + num_two_accepts ) );
     // std::cout << fmt::format( "[i]   0-resubs            = {:8d}\n",         ( num_zero_accepts ) );
     // std::cout << fmt::format( "[i]   1-resubs            = {:8d}\n",         ( num_one_accepts ) );
@@ -699,9 +718,7 @@ public:
   explicit resubstitution_impl( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats& st )
     : ntk( ntk ), ps( ps ), st( st ), sims( ntk, ps.max_pis, ps.max_divisors )
   {
-    ntk.foreach_po( [&]( const auto& f ){
-        pos.emplace_back( ntk.get_node( f ) );
-      });
+    st.initial_size = ntk.num_gates();
   }
 
   void run()
@@ -727,21 +744,36 @@ public:
           });
 
         /* evaluate this cut */
-        auto const g = eval( n, leaves, steps_max, update_level, verbose );
+        auto const g = call_with_stopwatch( st.time_eval, [&]() {
+            return eval( n, leaves, ps.max_inserts, update_level, verbose );
+          });
         if ( !g )
           return true; /* next */
 
         /* update gain */
-        st.num_total_gain += last_gain;
+        st.total_gain += last_gain;
 
         /* update network */
-        ntk.substitute_node( n, *g );
+        call_with_stopwatch( st.time_replace, [&]() {
+            replace_node( n, *g );
+          });
 
         return true; /* next */
       });
   }
 
 private:
+  void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
+  {
+    // std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
+
+    // ntk.substitute_node( old_node, new_signal );
+    auto const parents = ntk.fanout( old_node );
+    ntk.substitute_node_of_parents( parents, old_node, new_signal );
+
+    ntk.update();
+  }
+
   void collect_divisors_rec( node const& n, std::vector<node>& internal )
   {
     /* skip visited nodes */
@@ -947,9 +979,9 @@ private:
     divs_1un.clear();
     divs_1b.clear();
 
-    for ( const auto& d : divs )
+    for ( auto i = 0u; i < num_divs; ++i )
     {
-      if ( root == d ) continue; /* FIXME: next */
+      auto const& d = divs.at( i );
 
       if ( ntk.level( d ) > required - 1 )
         continue;
@@ -968,24 +1000,25 @@ private:
         continue;
       }
 
+      /* add the node to binates */
       divs_1b.emplace_back( d );
     }
   }
 
-  void resub_div1( node const& root, uint32_t required )
+  std::optional<signal> resub_div1( node const& root, uint32_t required )
   {
     (void)required;
 
     auto const s = ntk.make_signal( root );
 
     /* check for positive unate divisors */
-    for ( const auto& d0 : divs_1up )
+    for ( auto i = 0u; i < divs_1up.size(); ++i )
     {
-      if ( root == d0 ) continue; /* FIXME: next */
+      auto const& d0 = divs_1up.at( i );
 
-      for ( const auto& d1 : divs_1up )
+      for ( auto j = i + 1; j < divs_1up.size(); ++j )
       {
-      if ( root == d1 ) continue; /* FIXME: next */
+        auto const& d1 = divs_1up.at( j );
 
         auto const s0 = ntk.make_signal( d0 );
         auto const s1 = ntk.make_signal( d1 );
@@ -993,20 +1026,20 @@ private:
         /* ( ~l & ~r ) <-> ~root */
         if ( sims.and_equal( !s0, !s1, !s ) )
         {
-          std::cout << "candidate for one-resub: " << root << ' ' << d0 << ' ' << d1 << std::endl;
-          return;
+          return sims.get_phase( root ) ? !ntk.create_or( s0, s1 ) : ntk.create_or( s0, s1 );
         }
       }
     }
 
+#if 0
     /* check for negative unate divisors */
-    for ( const auto& d0 : divs_1up )
+    for ( auto i = 0u; i < divs_1un.size(); ++i )
     {
-      if ( root == d0 ) continue; /* FIXME: next */
+      auto const& d0 = divs_1un.at( i );
 
-      for ( const auto& d1 : divs_1up )
+      for ( auto j = i + 1; j < divs_1un.size(); ++j )
       {
-        if ( root == d1 ) continue; /* FIXME: next */
+        auto const& d1 = divs_1un.at( j );
 
         auto const s0 = ntk.make_signal( d0 );
         auto const s1 = ntk.make_signal( d1 );
@@ -1014,11 +1047,13 @@ private:
         /* ( ~l | ~r ) <-> ~root */
         if ( sims.or_equal( !s0, !s1, !s ) )
         {
-          std::cout << "candidate for one-resub: " << root << ' ' << d0 << ' ' << d1 << std::endl;
-          return;
+          return sims.get_phase( root ) ? !ntk.create_and( s0, s1 ) : ntk.create_and( s0, s1 );
         }
       }
     }
+#endif
+
+    return std::optional<signal>();
   }
 
   void resub_div12( node const& root, uint32_t required )
@@ -1492,8 +1527,17 @@ private:
 
     assert( num_steps >= 0 && num_steps <= 3 );
 
+    // std::cout << "current root = " << root << " with leaves ";
+    // for ( const auto& l : leaves )
+    // {
+    //   std::cout << l << ' ';
+    // }
+    // std::cout << std::endl;
+
     /* collect the MFFC */
     int32_t num_mffc = call_with_stopwatch( st.time_mffc, [&]() {
+        // std::cout << "compute MFFC of " << root << std::endl;
+
         node_mffc_inside collector( ntk );
         auto num_mffc = collector.run( root, leaves, temp );
         assert( num_mffc > 0 );
@@ -1543,16 +1587,23 @@ private:
       return g; /* accepted resub */
     }
 
-    if ( steps_max == 0 || num_mffc == 1 )
+    if ( ps.max_inserts == 0 || num_mffc == 1 )
       return std::optional<signal>();
 
-#if 0
     /* get the one level divisors */
     call_with_stopwatch( st.time_resubS, [&]() { resub_divS( root, required ); });
 
     /* consider one node */
-    call_with_stopwatch( st.time_resub1, [&]() { resub_div1( root, required ); });
+    g = call_with_stopwatch( st.time_resub1, [&]() {
+        return resub_div1( root, required ); });
+    if ( g )
+    {
+      ++st.num_div1_accepts;
+      last_gain = num_mffc;
+      return g; /* accepted resub */
+    }
 
+#if 0
     /* consider triples */
     call_with_stopwatch( st.time_resub12, [&]() { resub_div12( root, required ); });
 
@@ -1574,11 +1625,9 @@ private:
   resubstitution_params const& ps;
   resubstitution_stats& st;
 
-  uint32_t steps_max = 0;
   bool update_level = false;
   bool verbose = false;
 
-  std::vector<node> pos;
   std::vector<node> temp;
   std::vector<node> divs;
   uint32_t num_divs{0};
@@ -1594,7 +1643,6 @@ private:
   std::vector<signal> divs_2up1;
   std::vector<signal> divs_2un0;
   std::vector<signal> divs_2un1;
-
 }; /* resubstitution_impl */
 
 } /* namespace detail */
@@ -1620,17 +1668,19 @@ private:
 template<class Ntk>
 void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
-  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
-  static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
-  static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
-  static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
-  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
   static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
-  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
-  static_assert( has_substitute_node_of_parents_v<Ntk>, "Ntk does not implement the substitute_node_of_parents method" );
+  static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the has_size method" );
+  static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
+  static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
+  // static_assert( make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+  // static_assert( substitude_node_of_parents_v<Ntk>, "Ntk does not implement the substitute_node_of_parents method" );
 
   if constexpr ( !std::is_same<Ntk, aig_network>::value )
     return;
@@ -1639,6 +1689,21 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   using view_t = depth_view<fanout_view<Ntk>>;
   ::mockturtle::fanout_view<Ntk> fanout_view( ntk );
   ::mockturtle::depth_view<::mockturtle::fanout_view<Ntk>> resub_view( fanout_view );
+
+  /* fanout_view */
+  // static_assert( fanout_v<Ntk>, "Ntk does not implement the fanout method" );
+  // static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  // static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
+
+  /* depth_view */
+  // static_assert( has_level_v<Ntk>, "Ntk does not implement the level method" );
+
+#if 0
+  static_assert( has_trav_id_v<Ntk>, "Ntk does not implement the trav_id method" );
+  static_assert( has_incr_h1_v<Ntk>, "Ntk does not implement the incr_h1 method" );
+  static_assert( has_decr_h1_v<Ntk>, "Ntk does not implement the decr_h1 method" );
+  static_assert( update_v<Ntk>, "Ntk does not implement the update method" );
+#endif
 
   resubstitution_stats st;
   detail::resubstitution_impl<view_t> p( resub_view, ps, st );
