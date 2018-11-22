@@ -41,8 +41,11 @@
 
 #include "../algorithms/cleanup.hpp"
 #include "../utils/stopwatch.hpp"
+#include <kitty/algorithm.hpp>
+#include <kitty/bit_operations.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/hash.hpp>
+#include <kitty/operations.hpp>
 #include <kitty/print.hpp>
 #include <kitty/spectral.hpp>
 #include <mockturtle/io/write_bench.hpp>
@@ -58,6 +61,7 @@ namespace mockturtle
 struct xag_minmc_resynthesis_params
 {
   bool print_stats{true};
+  uint32_t exhaustive_dc_limit{10u};
 };
 
 struct xag_minmc_resynthesis_stats
@@ -71,6 +75,7 @@ struct xag_minmc_resynthesis_stats
   uint32_t cache_misses{0};
   uint32_t classify_aborts{0};
   uint32_t unknown_function_aborts{0};
+  uint32_t dont_cares{0};
 
   void report() const
   {
@@ -82,6 +87,7 @@ struct xag_minmc_resynthesis_stats
     std::cout << fmt::format( "[i] cache hits     = {:>5}\n", cache_hits );
     std::cout << fmt::format( "[i] cache misses   = {:>5}\n", cache_misses );
     std::cout << fmt::format( "[i] unknown func.  = {:>5}\n", unknown_function_aborts );
+    std::cout << fmt::format( "[i] don't cares    = {:>5}\n", dont_cares );
   }
 };
 
@@ -106,21 +112,50 @@ public:
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( xag_network& xag, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( xag_network& xag, kitty::dynamic_truth_table function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
-    operator()( xag, function, begin, end, fn );
-
     if ( !kitty::is_const0( dont_cares ) )
     {
-      for ( auto b = 0u; b < dont_cares.num_bits(); ++b )
+      const auto cnt = kitty::count_ones( dont_cares );
+      st.dont_cares += cnt;
+
+      if ( cnt <= ps.exhaustive_dc_limit )
       {
-        if ( kitty::get_bit( dont_cares, b ) )
+        std::vector<uint8_t> ones;
+        kitty::for_each_one_bit( dont_cares, [&]( auto bit ) {
+          ones.push_back( bit );
+          kitty::clear_bit( function, bit );
+        } );
+
+        for ( auto i = 0u; i < ( 1u << ones.size() ); ++i )
         {
-          auto copy = function;
-          kitty::flip_bit( copy, b );
+          for ( auto j = 0u; j < ones.size(); ++j )
+          {
+            if ( ( i >> j ) & 1 )
+            {
+              kitty::set_bit( function, ones[j] );
+            }
+            else
+            {
+              kitty::clear_bit( function, ones[j] );
+            }
+          }
           operator()( xag, function, begin, end, fn );
         }
       }
+      else
+      {
+        operator()( xag, function, begin, end, fn );
+        kitty::for_each_one_bit( dont_cares, [&]( auto bit ) {
+          kitty::flip_bit( function, bit );
+          operator()( xag, function, begin, end, fn );
+          kitty::flip_bit( function, bit );
+        } );
+      }
+    }
+    else
+    {
+      operator()( xag, function, begin, end, fn );
     }
   }
 
@@ -163,33 +198,40 @@ public:
       tt_ext = spectral.first;
     }
 
-    unsigned int mc{0u};
-    std::string original_f;
     xag_network::signal circuit;
 
     auto search = func_mc->find( kitty::to_hex( tt_ext ) );
     if ( search != func_mc->end() )
     {
+      unsigned int mc{0u};
+      std::string original_f;
+
       std::tie( original_f, mc, circuit ) = search->second;
+
+      kitty::static_truth_table<6> db_repr;
+      kitty::create_from_hex_string( db_repr, original_f );
+
+      call_with_stopwatch( st.time_classify, [&]() { return kitty::exact_spectral_canonization(
+                                                         db_repr, [&trans]( auto const& ops ) {
+                                                           std::copy( ops.rbegin(), ops.rend(),
+                                                                      std::back_inserter( trans ) );
+                                                         } ); } );
+    }
+    else if ( kitty::is_const0( tt_ext ) )
+    {
+      circuit = db->get_constant( false );
     }
     else
     {
+      std::cout << "[w] unknown " << kitty::to_hex( tt_ext ) << " from " << kitty::to_hex( func_ext ) << "\n";
       st.unknown_function_aborts++;
       return; /* quit */
     }
 
-    kitty::static_truth_table<6> db_repr;
     bool out_neg{false};
     std::vector<xag_network::signal> final_xor;
-    kitty::create_from_hex_string( db_repr, original_f );
     std::vector<xag_network::signal> pis( 6, xag.get_constant( false ) );
     std::copy( begin, end, pis.begin() );
-
-    call_with_stopwatch( st.time_classify, [&]() { return kitty::exact_spectral_canonization(
-                                                       db_repr, [&trans]( auto const& ops ) {
-                                                         std::copy( ops.rbegin(), ops.rend(),
-                                                                    std::back_inserter( trans ) );
-                                                       } ); } );
 
     stopwatch t2( st.time_construct );
     for ( auto const& t : trans )
@@ -230,8 +272,17 @@ public:
       }
     }
 
-    cut_view topo{*db, *db_pis, db->get_node( circuit )};
-    auto output = cleanup_dangling( topo, xag, pis.begin(), pis.end() ).front();
+    xag_network::signal output;
+
+    if ( db->is_constant( db->get_node( circuit ) ) )
+    {
+      output = xag.get_constant( false );
+    }
+    else
+    {
+      cut_view topo{*db, *db_pis, db->get_node( circuit )};
+      output = cleanup_dangling( topo, xag, pis.begin(), pis.end() ).front();
+    }
     if ( db->is_complemented( circuit ) )
     {
       output = !output;
