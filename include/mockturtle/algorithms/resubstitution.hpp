@@ -634,6 +634,24 @@ public:
     return true;
   }
 
+  bool maj3_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
+  {
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( ( tt_a & tt_b ) | ( tt_a & tt_c ) | ( tt_b & tt_c ) ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
   bool and_implies_reverse( node const& r, signal const& a, signal const& b ) const
   {
     auto data_r = (uint32_t*)data[r];
@@ -723,6 +741,8 @@ public:
 
   void run()
   {
+    stopwatch t( st.time_total );
+
     /* start the managers */
     cut_manager<Ntk> mgr( ps.max_pis );
 
@@ -745,7 +765,7 @@ public:
 
         /* evaluate this cut */
         auto const g = call_with_stopwatch( st.time_eval, [&]() {
-            return eval( n, leaves, ps.max_inserts, update_level, verbose );
+            return eval( n, leaves, ps.max_inserts, update_level );
           });
         if ( !g )
           return true; /* next */
@@ -1521,7 +1541,7 @@ private:
     }
   }
 
-  std::optional<signal> eval( node const& root, std::vector<node> const &leaves, uint32_t num_steps, bool update_level, bool verbose )
+  std::optional<signal> eval( node const& root, std::vector<node> const &leaves, uint32_t num_steps, bool update_level )
   {
     uint32_t const required = update_level ? 0 : std::numeric_limits<uint32_t>::max();
 
