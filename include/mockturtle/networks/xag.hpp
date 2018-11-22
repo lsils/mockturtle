@@ -934,6 +934,8 @@ public:
 
 public:
   std::shared_ptr<xag_storage> _storage;
+
+  mutable uint32_t trav_id{0};
 };
 
 } // namespace mockturtle
