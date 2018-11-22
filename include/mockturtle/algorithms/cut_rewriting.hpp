@@ -439,7 +439,7 @@ public:
             {
               if ( best_gain == -1 )
               {
-                ( *cut )->data.gain = gain;
+                ( *cut )->data.gain = best_gain = gain;
                 best_replacements[n].push_back( f_new );
               }
               else if ( gain > best_gain )
