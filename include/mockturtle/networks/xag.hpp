@@ -277,16 +277,6 @@ public:
 #pragma region Create binary functions
   signal _create_node( signal a, signal b )
   {
-    /* trivial cases */
-    if ( a.index == b.index )
-    {
-      return ( a.complement == b.complement ) ? a : get_constant( false );
-    }
-    else if ( a.index == 0 )
-    {
-      return a.complement ? b : get_constant( false );
-    }
-
     storage::element_type::node_type node;
     node.children[0] = a;
     node.children[1] = b;
@@ -324,6 +314,14 @@ public:
     {
       std::swap( a, b );
     }
+    if ( a.index == b.index )
+    {
+      return a.complement == b.complement ? a : get_constant( false );
+    }
+    else if ( a.index == 0 )
+    {
+      return a.complement == false ? get_constant( false ) : b;
+    }
     return _create_node( a, b );
   }
 
@@ -349,22 +347,20 @@ public:
     {
       std::swap( a, b );
     }
-    if ( ( a.complement ) && ( b.complement ) )
+
+    bool f_compl = a.complement != b.complement;
+    a.complement = b.complement = false;
+
+    if ( a.index == b.index )
     {
-      return _create_node( a, b );
+      return get_constant( f_compl );
     }
-    else if ( a.complement )
+    else if ( b.index == 0 )
     {
-      return !_create_node( !a, b );
+      return a ^ f_compl;
     }
-    else if ( b.complement )
-    {
-      return !_create_node( a, !b );
-    }
-    else
-    {
-      return _create_node( a, b );
-    }
+
+    return _create_node( a, b ) ^ f_compl;
   }
 
   signal create_xnor( signal const& a, signal const& b )
