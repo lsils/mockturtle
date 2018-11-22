@@ -70,9 +70,10 @@ template<bool ComputeTruth>
 bool operator<( cut_type<ComputeTruth, cut_enumeration_spectr_cut> const& c1, cut_type<ComputeTruth, cut_enumeration_spectr_cut> const& c2 )
 {
   constexpr auto eps{0.005f};
+  
   if ( c1->data.cost < c2->data.cost )
     return true;
-  if ( c1->data.cost > c2->data.cost + eps )
+  if ( c1->data.cost > c2->data.cost )
     return false;
   if ( c1->data.flow < c2->data.flow - eps )
     return true;
@@ -117,16 +118,15 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
     topo_view<Ntk>( ntk ).foreach_node( [&]( auto n ) {
       if(ntk.is_xor(n))
       {
-        //std::cout << "selected xor node: " << n; 
         const auto index = ntk.node_to_index( n );
-        auto cut_set = cuts.cuts(index);
+        auto& cut_set = cuts.cuts(index);
 
         /* clear the cut set of the node */
         cut_set.clear();
         
         /* add an empty cut and modify its leaves */
         grow_xor_cut(ntk, n, node_to_cut);
-        auto my_cut = cut_set.add_cut(node_to_cut[n].begin(), node_to_cut[n].end());
+        auto& my_cut = cut_set.add_cut(node_to_cut[n].begin(), node_to_cut[n].end());
 
         /* set to zero cost */        
         my_cut->data.cost = 0u;
@@ -135,6 +135,7 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
         kitty::dynamic_truth_table tt (node_to_cut[n].size());
         kitty::create_symmetric( tt, detail::odd_bits());   
         my_cut -> func_id = cuts.insert_truth_table(tt);
+        //print_binary(tt);
 
       }
     });
