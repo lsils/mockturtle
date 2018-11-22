@@ -95,11 +95,11 @@ class xag_minmc_resynthesis
 {
 public:
   xag_minmc_resynthesis( std::string const& filename )
+      : db( std::make_shared<xag_network>() ),
+        db_pis( std::make_shared<decltype( db_pis )::element_type>( 6u ) ),
+        func_mc( std::make_shared<decltype( func_mc )::element_type>() ),
+        classify_cache( std::make_shared<decltype( classify_cache )::element_type>() )
   {
-    db = std::make_shared<xag_network>();
-    db_pis = std::make_shared<decltype( db_pis )::element_type>();
-    func_mc = std::make_shared<decltype( func_mc )::element_type>();
-    classify_cache = std::make_shared<decltype( classify_cache )::element_type>();
     build_db( filename );
   }
 
@@ -302,59 +302,63 @@ private:
     stopwatch t1( st.time_total );
     stopwatch t2( st.time_parse_db );
 
-    std::ifstream file1;
-    file1.open( filename );
+    std::generate( db_pis->begin(), db_pis->end(), [&]() { return db->create_pi(); } );
+
+    std::ifstream file1( filename.c_str(), std::ifstream::in );
     std::string line;
-    for ( auto h = 0; h < 6; h++ )
-    {
-      db_pis->push_back( db->create_pi() );
-    }
+    unsigned pos{0u};
 
     while ( std::getline( file1, line ) )
     {
       std::vector<xag_network::signal> hashing_circ;
       std::string delimiter = "\t";
+
+      //pos = line.find('\t') + 1u;
+      //std::string original = line.substr( pos, 16u );
       line.erase( 0, line.find( delimiter ) + delimiter.length() ); // remove the name of the function
       std::string original = line.substr( 0, line.find( delimiter ) );
-      line.erase( 0, line.find( delimiter ) + delimiter.length() ); // remove the tt in Rene format
+
+      //std::cout << "'" << original << "'\n";
+      //pos += 17u;
+      //exit( 0 );
+      line.erase( 0, line.find( delimiter ) + delimiter.length() ); // remove the tt from original format
       std::string token_f = line.substr( 0, line.find( delimiter ) );
       line.erase( 0, line.find( delimiter ) + delimiter.length() );
 
-      auto mc = std::stoul( line.substr( 0, line.find( delimiter ) ), nullptr, 10 );
+      auto mc = std::stoul( line.substr( 0, line.find( delimiter ) ) );
       line.erase( 0, line.find( delimiter ) + delimiter.length() );
       auto circuit = line;
 
       delimiter = " ";
       std::string token = circuit.substr( 0, circuit.find( delimiter ) );
       circuit.erase( 0, circuit.find( delimiter ) + delimiter.length() );
-      const auto inputs = std::stoul( token, nullptr, 10 );
+      const auto inputs = std::stoul( token );
 
       for ( auto h = 0u; h < inputs; h++ )
       {
         hashing_circ.push_back( db->make_signal( db->index_to_node( h + 1 ) ) );
       }
 
-      while ( circuit.size() > 4 ) //circuit.size() > 4 )
+      while ( circuit.size() > 4 )
       {
         std::vector<unsigned> signals( 2, 0 );
         std::vector<xag_network::signal> ff( 2 );
-        for ( auto j = 0; j < 2; j++ )
+        for ( auto j = 0u; j < 2u; j++ )
         {
           token = circuit.substr( 0, circuit.find( delimiter ) );
           circuit.erase( 0, circuit.find( delimiter ) + delimiter.length() );
-          signals[j] = std::stoul( token, nullptr, 10 );
+          signals[j] = std::stoul( token );
           if ( signals[j] == 0 )
+          {
             ff[j] = db->get_constant( true );
+          }
           else if ( signals[j] == 1 )
+          {
             ff[j] = db->get_constant( false );
+          }
           else
           {
-            if ( signals[j] % 2 != 0 )
-            {
-              ff[j] = hashing_circ[signals[j] / 2 - 1] ^ 1;
-            }
-            else
-              ff[j] = hashing_circ[signals[j] / 2 - 1];
+            ff[j] = hashing_circ[signals[j] / 2 - 1] ^ ( signals[j] % 2 != 0 );
           }
         }
         circuit.erase( 0, circuit.find( delimiter ) + delimiter.length() );
@@ -369,22 +373,12 @@ private:
         }
       }
 
-      auto output = std::stoul( circuit, nullptr, 10 );
-      xag_network::signal f;
-      if ( output % 2 != 0 ) // complemented output
-      {
-        f = !hashing_circ[output / 2 - 1];
-      }
-      else
-      {
-        f = hashing_circ[output / 2 - 1];
-      }
+      const auto output = std::stoul( circuit );
+      const auto f = hashing_circ[output / 2 - 1] ^ ( output % 2 != 0 );
       db->create_po( f );
 
-      func_mc->insert( std::make_pair( token_f, std::make_tuple( original, mc, f ) ) );
+      func_mc->insert( {token_f, {original, mc, f}} );
     }
-    // std::cout << db->num_pos() << std::endl;
-    file1.close();
   }
 
 private:
