@@ -73,6 +73,7 @@ public:
   using storage = typename Ntk::storage;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
+  static constexpr bool is_topologically_sorted = true;
 
 public:
   explicit cut_view( Ntk const& ntk, std::vector<node> const& leaves, node const& root )
