@@ -49,6 +49,7 @@
 #include <kitty/print.hpp>
 #include <kitty/spectral.hpp>
 #include <mockturtle/io/write_bench.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/views/cut_view.hpp>
 #include <mockturtle/views/topo_view.hpp>
@@ -62,6 +63,7 @@ struct xag_minmc_resynthesis_params
 {
   bool print_stats{true};
   uint32_t exhaustive_dc_limit{10u};
+  bool verify_database{false};
 };
 
 struct xag_minmc_resynthesis_stats
@@ -140,22 +142,22 @@ public:
               kitty::clear_bit( function, ones[j] );
             }
           }
-          (*this)( xag, function, begin, end, fn );
+          ( *this )( xag, function, begin, end, fn );
         }
       }
       else
       {
-        (*this)( xag, function, begin, end, fn );
+        ( *this )( xag, function, begin, end, fn );
         kitty::for_each_one_bit( dont_cares, [&]( auto bit ) {
           kitty::flip_bit( function, bit );
-          (*this)( xag, function, begin, end, fn );
+          ( *this )( xag, function, begin, end, fn );
           kitty::flip_bit( function, bit );
         } );
       }
     }
     else
     {
-      (*this)( xag, function, begin, end, fn );
+      ( *this )( xag, function, begin, end, fn );
     }
   }
 
@@ -223,7 +225,7 @@ public:
     }
     else
     {
-      std::cout << "[w] unknown " << kitty::to_hex( tt_ext ) << " from " << kitty::to_hex( func_ext ) << "\n";
+      //std::cout << "[w] unknown " << kitty::to_hex( tt_ext ) << " from " << kitty::to_hex( func_ext ) << "\n";
       st.unknown_function_aborts++;
       return; /* quit */
     }
@@ -308,36 +310,29 @@ private:
     std::string line;
     unsigned pos{0u};
 
+    //std::ofstream db_file( "/tmp/db", std::ofstream::out );
+
     while ( std::getline( file1, line ) )
     {
-      std::vector<xag_network::signal> hashing_circ;
-      std::string delimiter = "\t";
+      pos = line.find( '\t' );
+      const auto name = line.substr( 0, pos++ );
+      auto original = line.substr( pos, 16u );
+      pos += 17u;
+      const auto token_f = line.substr( pos, 16u );
+      pos += 17u;
+      auto mc = std::stoul( line.substr( pos, 1u ) );
+      pos += 2u;
+      line.erase( 0, pos );
 
-      //pos = line.find('\t') + 1u;
-      //std::string original = line.substr( pos, 16u );
-      line.erase( 0, line.find( delimiter ) + delimiter.length() ); // remove the name of the function
-      std::string original = line.substr( 0, line.find( delimiter ) );
-
-      //std::cout << "'" << original << "'\n";
-      //pos += 17u;
-      //exit( 0 );
-      line.erase( 0, line.find( delimiter ) + delimiter.length() ); // remove the tt from original format
-      std::string token_f = line.substr( 0, line.find( delimiter ) );
-      line.erase( 0, line.find( delimiter ) + delimiter.length() );
-
-      auto mc = std::stoul( line.substr( 0, line.find( delimiter ) ) );
-      line.erase( 0, line.find( delimiter ) + delimiter.length() );
       auto circuit = line;
+      auto orig_circuit = circuit;
 
-      delimiter = " ";
+      const std::string delimiter = " ";
       std::string token = circuit.substr( 0, circuit.find( delimiter ) );
       circuit.erase( 0, circuit.find( delimiter ) + delimiter.length() );
       const auto inputs = std::stoul( token );
 
-      for ( auto h = 0u; h < inputs; h++ )
-      {
-        hashing_circ.push_back( db->make_signal( db->index_to_node( h + 1 ) ) );
-      }
+      std::vector<xag_network::signal> hashing_circ( db_pis->begin(), db_pis->begin() + inputs );
 
       while ( circuit.size() > 4 )
       {
@@ -376,6 +371,33 @@ private:
       const auto output = std::stoul( circuit );
       const auto f = hashing_circ[output / 2 - 1] ^ ( output % 2 != 0 );
       db->create_po( f );
+
+      /* verify */
+      if (ps.verify_database)
+      {
+        cut_view view{*db, *db_pis, db->get_node( f )};
+        kitty::static_truth_table<6> tt, tt_repr;
+        kitty::create_from_hex_string( tt, original );
+        kitty::create_from_hex_string( tt_repr, token_f );
+        auto result = simulate<kitty::static_truth_table<6>>( view )[0];
+        if ( db->is_complemented( f ) )
+        {
+          result = ~result;
+        }
+        if ( tt != result )
+        {
+          std::cerr << "[w] invalid circuit for " << original << ", got " << kitty::to_hex( result ) << "\n";
+          original = kitty::to_hex( result );
+
+          const auto repr = exact_spectral_canonization(tt);
+          if ( repr != tt_repr )
+          {
+            std::cerr << "[e] representatives do not match\n";
+          }
+        }
+
+        //db_file << name << "\t" << token_f << "\t" << original << "\t" << mc << "\t" << orig_circuit << "\n";
+      }
 
       func_mc->insert( {token_f, {original, mc, f}} );
     }
