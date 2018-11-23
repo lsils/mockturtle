@@ -99,10 +99,19 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
       if(ntk.is_xor(ch_node))
       {
         auto leaves_ch = node_to_cut[ch_node];
-        node_to_cut[n].insert(node_to_cut[n].end(), leaves_ch.begin(), leaves_ch.end());
+
+        if( leaves_ch.size() + node_to_cut[n].size() < 16)
+        {
+          node_to_cut[n].insert(node_to_cut[n].end(), leaves_ch.begin(), leaves_ch.end());
+        }
+        else 
+          node_to_cut[n].push_back(ch_node);
       }
       else
+      {
         node_to_cut[n].push_back(ch_node);
+      }
+
     });
 
     std::sort( node_to_cut[n].begin(), node_to_cut[n].end() );
@@ -126,8 +135,10 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
         
         /* add an empty cut and modify its leaves */
         grow_xor_cut(ntk, n, node_to_cut);
-        auto& my_cut = cut_set.add_cut(node_to_cut[n].begin(), node_to_cut[n].end());
 
+        auto& my_cut = cut_set.add_cut(node_to_cut[n].begin(), node_to_cut[n].end());
+        
+        assert(node_to_cut[n].size() <=16);
         /* set to zero cost */        
         my_cut->data.cost = 0u;
 
