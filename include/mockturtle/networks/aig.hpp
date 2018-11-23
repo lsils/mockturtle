@@ -34,6 +34,8 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <stack>
 #include <string>
 
 #include <ez/direct_iterator.hpp>
@@ -390,25 +392,68 @@ public:
 #pragma endregion
 
 #pragma region Restructuring
-  void substitute_node( node const& old_node, signal const& new_signal )
+  std::optional<std::pair<node, signal>> _replace_in_node( node const& n, node const& old_node, signal new_signal )
   {
-    /* find all parents from old_node */
-    for ( auto& n : _storage->nodes )
-    {
-      for ( auto& child : n.children )
-      {
-        if ( child.index == old_node )
-        {
-          child.index = new_signal.index;
-          child.weight ^= new_signal.complement;
+    auto& node = _storage->nodes[n];
 
-          // increment fan-in of new node
-          _storage->nodes[new_signal.index].data[0].h1++;
-        }
-      }
+    uint32_t fanin;
+    if ( node.children[0].index == old_node )
+    {
+      fanin = 0u;
+      new_signal.complement ^= node.children[0].weight;
+    }
+    else if ( node.children[1].index == old_node )
+    {
+      fanin = 1u;
+      new_signal.complement ^= node.children[1].weight;
+    }
+    else
+    {
+      return std::nullopt;
     }
 
-    /* check outputs */
+    // erase old node in hash table
+    _storage->hash.erase( node );
+
+    // update fanin with new_signal and reorder if necessary
+    node.children[fanin] = new_signal;
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+    if ( node.children[1].index < node.children[0].index )
+    {
+      std::swap( node.children[0], node.children[1] );
+    }
+
+    // check for trivial cases?
+    if ( node.children[0].index == node.children[1].index )
+    {
+      const auto diff_pol = node.children[0].weight != node.children[1].weight;
+      if ( !diff_pol )
+      {
+        // make node invalid such that it is not recognized as CI
+        node.children[0].weight ^= 1;
+      }
+      return std::make_pair( n, diff_pol ? get_constant( false ) : signal{node.children[0]} );
+    }
+    else if ( node.children[0].index == 0 ) /* constant child */
+    {
+      return std::make_pair( n, node.children[0].weight ? signal{node.children[0]} : get_constant( false ) );
+    }
+
+    // node already in hash table
+    if ( const auto it = _storage->hash.find( node ); it != _storage->hash.end() )
+    {
+      return std::make_pair( n, signal( it->second, 0 ) );
+    }
+
+    // insert updated node into hash table
+    _storage->hash[node] = n;
+
+    return std::nullopt;
+  }
+
+  void _replace_in_outputs( node const& old_node, signal const& new_signal )
+  {
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -420,9 +465,52 @@ public:
         _storage->nodes[new_signal.index].data[0].h1++;
       }
     }
+  }
 
-    // reset fan-in of old node
-    _storage->nodes[old_node].data[0].h1 = 0;
+  void _take_out_node( node const& n )
+  {
+    auto& nobj = _storage->nodes[n];
+    nobj.data[0].h1 = 0;
+
+    if ( n != 0 && !is_pi( n ) )
+    {
+      for ( auto i = 0u; i < 2u; ++i )
+      {
+        if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
+        {
+          _take_out_node( nobj.children[i].index );
+        }
+      }
+    }
+  }
+
+  void substitute_node( node const& old_node, signal const& new_signal )
+  {
+    std::stack<std::pair<node, signal>> to_substitute;
+    to_substitute.push( {old_node, new_signal} );
+
+    while ( !to_substitute.empty() )
+    {
+      const auto [_old, _new] = to_substitute.top();
+      to_substitute.pop();
+
+      for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
+      {
+        if ( is_pi( idx ) )
+          continue; /* ignore PIs */
+
+        if ( const auto repl = _replace_in_node( idx, _old, _new ); repl )
+        {
+          to_substitute.push( *repl );
+        }
+      }
+
+      /* check outputs */
+      _replace_in_outputs( _old, _new );
+
+      // reset fan-in of old node
+      _take_out_node( _old );
+    }
   }
 #pragma endregion
 
