@@ -140,22 +140,22 @@ public:
               kitty::clear_bit( function, ones[j] );
             }
           }
-          operator()( xag, function, begin, end, fn );
+          (*this)( xag, function, begin, end, fn );
         }
       }
       else
       {
-        operator()( xag, function, begin, end, fn );
+        (*this)( xag, function, begin, end, fn );
         kitty::for_each_one_bit( dont_cares, [&]( auto bit ) {
           kitty::flip_bit( function, bit );
-          operator()( xag, function, begin, end, fn );
+          (*this)( xag, function, begin, end, fn );
           kitty::flip_bit( function, bit );
         } );
       }
     }
     else
     {
-      operator()( xag, function, begin, end, fn );
+      (*this)( xag, function, begin, end, fn );
     }
   }
 
