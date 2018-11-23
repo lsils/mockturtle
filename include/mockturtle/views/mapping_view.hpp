@@ -175,7 +175,6 @@ public:
   template<typename LeavesIterator>
   void add_to_mapping( node const& n, LeavesIterator begin, LeavesIterator end )
   {
-    std::cout<< "add to mapping node " << n << std::endl;
     auto& mindex = _mapping_storage.mappings[this->node_to_index( n )];
 
     /* increase mapping size? */
