@@ -785,12 +785,8 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
-    std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
-
-    // ntk.substitute_node( old_node, new_signal );
-    auto const parents = ntk.fanout( old_node );
-    ntk.substitute_node_of_parents( parents, old_node, new_signal );
-
+    // std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
+    ntk.substitute_node( old_node, new_signal );
     ntk.update();
   }
 
