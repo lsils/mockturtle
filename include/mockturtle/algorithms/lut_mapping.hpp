@@ -115,6 +115,7 @@ public:
         cuts( cut_enumeration<Ntk, StoreFunction, CutData>( ntk, ps.cut_enumeration_ps ) )
   {
     lut_mapping_update_cuts<CutData>().apply( cuts, ntk );
+    //print_state();
   }
 
   void run()
@@ -429,7 +430,7 @@ private:
     for ( auto i = 0u; i < ntk.size(); ++i )
     {
       std::cout << fmt::format( "*** Obj = {:>3} (node = {:>3})  FlowRefs = {:5.2f}  MapRefs = {:>2}  Flow = {:5.2f}  Delay = {:>3}\n", i, ntk.index_to_node( i ), flow_refs[i], map_refs[i], flows[i], delays[i] );
-      //std::cout << cuts.cuts( i );
+      std::cout << cuts.cuts( i );
     }
     std::cout << fmt::format( "Level = {}  Area = {}\n", delay, area );
   }
