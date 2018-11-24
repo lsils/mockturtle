@@ -437,7 +437,7 @@ public:
     }
     else if ( node.children[0].index == 0 ) /* constant child */
     {
-      return std::make_pair( n, node.children[0].weight ? signal{node.children[0]} : get_constant( false ) );
+      return std::make_pair( n, node.children[0].weight ? signal{node.children[1]} : get_constant( false ) );
     }
 
     // node already in hash table
