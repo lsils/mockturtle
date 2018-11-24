@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <string>
 #include <type_traits>
 
 #include <kitty/dynamic_truth_table.hpp>
