@@ -473,17 +473,18 @@ public:
   {
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = 0;
+    return;
 
-    if ( n != 0 && !is_pi( n ) )
-    {
-      for ( auto i = 0u; i < 2u; ++i )
-      {
-        if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
-        {
-          _take_out_node( nobj.children[i].index );
-        }
-      }
-    }
+    // if ( n != 0 && !is_pi( n ) )
+    // {
+    //   for ( auto i = 0u; i < 2u; ++i )
+    //   {
+    //     if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
+    //     {
+    //       _take_out_node( nobj.children[i].index );
+    //     }
+    //   }
+    // }
   }
 
   void substitute_node( node const& old_node, signal const& new_signal )

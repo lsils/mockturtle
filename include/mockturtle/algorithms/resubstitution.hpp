@@ -138,14 +138,8 @@ private:
     if ( ntk.visited( n ) == ntk.trav_id )
       return;
     ntk.set_visited( n, ntk.trav_id );
-    std::cout << "mffc computation visists " << n
-              << "( " << ntk.fanout_size( n ) << " )" << std::endl;
-
-    std::cout << "children: ";
-    ntk.foreach_fanin( n, [&]( const auto& f ){
-        std::cout << ntk.get_node( f ) << ' ';
-      });
-    std::cout << std::endl;
+    // std::cout << "mffc computation visists " << n
+    //           << "( " << ntk.fanout_size( n ) << " )" << std::endl;
 
     if ( !top_most && ( ntk.is_ci( n ) || ntk.fanout_size( n ) > 0 ) )
       return;
@@ -327,7 +321,7 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]     constant-resub {:6d} = {:>5.2f} secs\n", num_const_accepts, to_seconds( time_resubC ) );
     std::cout << fmt::format( "[i]            0-resub {:6d} = {:>5.2f} secs\n", num_div0_accepts, to_seconds( time_resub0 ) );
     std::cout << fmt::format( "[i]            S-resub        = {:>5.2f} secs\n",     to_seconds( time_resubS ) );
-    std::cout << fmt::format( "[i]            1-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub1 ) );
+    std::cout << fmt::format( "[i]            1-resub {:6d} = {:>5.2f} secs\n", num_div1_accepts, to_seconds( time_resub1 ) );
     std::cout << fmt::format( "[i]           12-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub12 ) );
     std::cout << fmt::format( "[i]            D-resub        = {:>5.2f} secs\n",     to_seconds( time_resubD ) );
     std::cout << fmt::format( "[i]            2-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub2 ) );
@@ -447,13 +441,25 @@ public:
     }
   }
 
+  void resize()
+  {
+    if ( data.size() < ntk.size() )
+      data.resize( ntk.size() );
+    if ( phase.size() < ntk.size() )
+      phase.resize( ntk.size() );
+  }
+  
   bool get_phase( node const& n ) const
   {
+    assert( n < data.size() );
+    assert( n < phase.size() );
     return phase.at( n );
   }
 
   void set_phase( node const& n )
   {
+    assert( n < data.size() );
+    assert( n < phase.size() );    
     uint32_t *data_n = (uint32_t*)data[n];
     auto const p = data_n[0] & 1;
     if ( p )
@@ -466,6 +472,8 @@ public:
 
   void set_ith_var( node const& n, uint32_t i )
   {
+    assert( n < data.size() );
+    assert( n < phase.size() );    
     data[n] = sims[i];
   }
 
@@ -785,7 +793,7 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
-    // std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
+    std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
     ntk.substitute_node( old_node, new_signal );
     ntk.update();
   }
@@ -920,16 +928,20 @@ private:
 
     assert( root == divs.at( divs.size()-1u ) );
     assert( divs.size() - leaves.size() <= sims.size() - ps.max_pis );
+
     return true;
   }
 
   void simulate( std::vector<node> const &leaves )
   {
+    sims.resize();
     assert( divs.size() - leaves.size() <= sims.size() - ps.max_pis );
 
     auto i = 0u;
     for ( const auto& d : divs )
     {
+      assert( d != 0 );
+      
       if ( i < leaves.size() )
       {
         /* initialize the leaf */
@@ -1040,9 +1052,12 @@ private:
         auto const s1 = ntk.make_signal( d1 );
 
         /* ( ~l & ~r ) <-> ~root */
-        if ( sims.and_equal( !s0, !s1, !s ) )
+        if ( sims.or_equal( s0, s1, s ) )
         {
-          return sims.get_phase( root ) ? !ntk.create_or( s0, s1 ) : ntk.create_or( s0, s1 );
+          auto const l = sims.get_phase( d0 ) ? !s0 : s0;
+          auto const r = sims.get_phase( d1 ) ? !s1 : s1;
+          return sims.get_phase( root ) ? !ntk.create_or( l, r ) : ntk.create_or( l, r );
+          // return ( sims.get_phase( d ) ^ sims.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
         }
       }
     }
@@ -1543,17 +1558,15 @@ private:
 
     assert( num_steps >= 0 && num_steps <= 3 );
 
-    std::cout << "current root = " << root << " with leaves ";
-    for ( const auto& l : leaves )
-    {
-      std::cout << l << ' ';
-    }
-    std::cout << std::endl;
+    // std::cout << "current root = " << root << " with leaves ";
+    // for ( const auto& l : leaves )
+    // {
+    //   std::cout << l << ' ';
+    // }
+    // std::cout << std::endl;
 
     /* collect the MFFC */
     int32_t num_mffc = call_with_stopwatch( st.time_mffc, [&]() {
-        std::cout << "compute MFFC of " << root << std::endl;
-
         node_mffc_inside collector( ntk );
         auto num_mffc = collector.run( root, leaves, temp );
         assert( num_mffc > 0 );
