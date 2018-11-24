@@ -40,21 +40,21 @@
 
 #include "../cut_enumeration.hpp"
 #include "../lut_mapping.hpp"
+#include <kitty/constructors.hpp>
 #include <kitty/spectral.hpp>
 #include <kitty/static_truth_table.hpp>
-#include <kitty/constructors.hpp>
 #include <mockturtle/utils/cuts.hpp>
 
 namespace mockturtle::detail
 {
-  inline uint64_t odd_bits() 
-  {
-    uint64_t count = 2;
-    while( ( (count >> 63) & 1 ) != 1 )
-      count |= count << 2;  
-    return count;
-  }
+inline uint64_t odd_bits()
+{
+  uint64_t count = 2;
+  while ( ( ( count >> 63 ) & 1 ) != 1 )
+    count |= count << 2;
+  return count;
 }
+} // namespace mockturtle::detail
 
 namespace mockturtle
 {
@@ -70,7 +70,7 @@ template<bool ComputeTruth>
 bool operator<( cut_type<ComputeTruth, cut_enumeration_spectr_cut> const& c1, cut_type<ComputeTruth, cut_enumeration_spectr_cut> const& c2 )
 {
   constexpr auto eps{0.005f};
-  
+
   if ( c1->data.cost < c2->data.cost )
     return true;
   if ( c1->data.cost > c2->data.cost )
@@ -90,29 +90,27 @@ template<>
 struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
 {
 
-  template <typename Ntk>
-  static void grow_xor_cut(Ntk const& ntk, node<Ntk> const& n, std::map<uint32_t, std::vector<uint32_t>>& node_to_cut)
+  template<typename Ntk>
+  static void grow_xor_cut( Ntk const& ntk, node<Ntk> const& n, std::map<uint32_t, std::vector<uint32_t>>& node_to_cut )
   {
-    ntk.foreach_fanin(n, [&] (auto ch)
-    {
-      auto ch_node = ntk.get_node(ch);
-      if(ntk.is_xor(ch_node))
+    ntk.foreach_fanin( n, [&]( auto ch ) {
+      auto ch_node = ntk.get_node( ch );
+      if ( ntk.is_xor( ch_node ) )
       {
         auto leaves_ch = node_to_cut[ch_node];
 
-        if( leaves_ch.size() + node_to_cut[n].size() < 16)
+        if ( leaves_ch.size() + node_to_cut[n].size() < 16 )
         {
-          node_to_cut[n].insert(node_to_cut[n].end(), leaves_ch.begin(), leaves_ch.end());
+          node_to_cut[n].insert( node_to_cut[n].end(), leaves_ch.begin(), leaves_ch.end() );
         }
-        else 
-          node_to_cut[n].push_back(ch_node);
+        else
+          node_to_cut[n].push_back( ch_node );
       }
       else
       {
-        node_to_cut[n].push_back(ch_node);
+        node_to_cut[n].push_back( ch_node );
       }
-
-    });
+    } );
 
     std::sort( node_to_cut[n].begin(), node_to_cut[n].end() );
     node_to_cut[n].erase( unique( node_to_cut[n].begin(), node_to_cut[n].end() ), node_to_cut[n].end() );
@@ -125,36 +123,32 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
     std::map<uint32_t, std::vector<uint32_t>> node_to_cut;
 
     topo_view<Ntk>( ntk ).foreach_node( [&]( auto n ) {
-      if(ntk.is_xor(n))
+      if ( ntk.is_xor( n ) )
       {
         const auto index = ntk.node_to_index( n );
-        auto& cut_set = cuts.cuts(index);
+        auto& cut_set = cuts.cuts( index );
 
         /* clear the cut set of the node */
         cut_set.clear();
-        
-        /* add an empty cut and modify its leaves */
-        grow_xor_cut(ntk, n, node_to_cut);
 
-        auto& my_cut = cut_set.add_cut(node_to_cut[n].begin(), node_to_cut[n].end());
-        
-        assert(node_to_cut[n].size() <=16);
-        /* set to zero cost */        
+        /* add an empty cut and modify its leaves */
+        grow_xor_cut( ntk, n, node_to_cut );
+
+        auto& my_cut = cut_set.add_cut( node_to_cut[n].begin(), node_to_cut[n].end() );
+
+        assert( node_to_cut[n].size() <= 16 );
+        /* set to zero cost */
         my_cut->data.cost = 0u;
 
         /* crate cut truth table */
-        kitty::dynamic_truth_table tt (node_to_cut[n].size());
-        kitty::create_symmetric( tt, detail::odd_bits());   
-        my_cut -> func_id = cuts.insert_truth_table(tt);
+        kitty::dynamic_truth_table tt( node_to_cut[n].size() );
+        kitty::create_symmetric( tt, detail::odd_bits() );
+        my_cut->func_id = cuts.insert_truth_table( tt );
         //print_binary(tt);
-
       }
-    });
+    } );
   }
-
-
-}; 
-
+};
 
 template<>
 struct cut_enumeration_update_cut<cut_enumeration_spectr_cut>

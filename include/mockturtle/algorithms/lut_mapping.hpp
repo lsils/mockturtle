@@ -40,7 +40,6 @@
 #include "../views/topo_view.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/mf_cut.hpp"
-#include "cut_enumeration/spectr_cut.hpp"
 
 namespace mockturtle
 {
@@ -93,6 +92,18 @@ struct lut_mapping_stats
   }
 };
 
+/* function to update all cuts after cut enumeration */
+template<typename CutData>
+struct lut_mapping_update_cuts
+{
+  template<typename NetworkCuts, typename Ntk>
+  static void apply( NetworkCuts const& cuts, Ntk const& ntk )
+  {
+    (void)cuts;
+    (void)ntk;
+  }
+};
+
 namespace detail
 {
 
@@ -115,7 +126,6 @@ public:
         cuts( cut_enumeration<Ntk, StoreFunction, CutData>( ntk, ps.cut_enumeration_ps ) )
   {
     lut_mapping_update_cuts<CutData>().apply( cuts, ntk );
-    //print_state();
   }
 
   void run()
@@ -430,7 +440,7 @@ private:
     for ( auto i = 0u; i < ntk.size(); ++i )
     {
       std::cout << fmt::format( "*** Obj = {:>3} (node = {:>3})  FlowRefs = {:5.2f}  MapRefs = {:>2}  Flow = {:5.2f}  Delay = {:>3}\n", i, ntk.index_to_node( i ), flow_refs[i], map_refs[i], flows[i], delays[i] );
-      std::cout << cuts.cuts( i );
+      //std::cout << cuts.cuts( i );
     }
     std::cout << fmt::format( "Level = {}  Area = {}\n", delay, area );
   }
