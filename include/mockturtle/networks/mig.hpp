@@ -32,9 +32,6 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
-
 #include <ez/direct_iterator.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
@@ -42,6 +39,10 @@
 #include "../traits.hpp"
 #include "detail/foreach.hpp"
 #include "storage.hpp"
+
+#include <memory>
+#include <string>
+#include <optional>
 
 namespace mockturtle
 {
@@ -286,7 +287,7 @@ public:
 
     return {index, node_complement};
   }
-
+  
   signal create_and( signal const& a, signal const& b )
   {
     return create_maj( get_constant( false ), a, b );

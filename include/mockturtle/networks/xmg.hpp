@@ -397,10 +397,16 @@ public:
 #pragma region Create arbitrary functions
   signal clone_node( xmg_network const& other, node const& source, std::vector<signal> const& children )
   {
-    (void)other;
-    (void)source;
     assert( children.size() == 3u );
-    return create_maj( children[0u], children[1u], children[2u] );
+
+    if ( other.is_maj( source ) )
+    {
+      return create_maj( children[0u], children[1u], children[2u] );
+    }
+    else
+    {
+      return create_xor3( children[0u], children[1u], children[2u] );
+    }
   }
 #pragma endregion
 

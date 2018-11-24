@@ -1,12 +1,13 @@
 #include <catch.hpp>
 
-#include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/networks/aig.hpp>
-#include <mockturtle/traits.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
+#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
 
@@ -36,8 +37,8 @@ TEST_CASE( "create and use constants in an AIG", "[aig]" )
 
   CHECK( c0 != c1 );
   CHECK( c0 == !c1 );
-  CHECK( (!c0) == c1 );
-  CHECK( (!c0) != !c1 );
+  CHECK( ( !c0 ) == c1 );
+  CHECK( ( !c0 ) != !c1 );
   CHECK( -c0 == c1 );
   CHECK( -c1 == c1 );
   CHECK( c0 == +c1 );
@@ -487,4 +488,100 @@ TEST_CASE( "simulate some special functions in AIGs", "[aig]" )
 
   CHECK( result[0]._bits[0] == 0xe8u );
   CHECK( result[1]._bits[0] == 0xd8u );
+}
+
+TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[selected]" )
+{
+  aig_network aig;
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+  const auto x3 = aig.create_pi();
+  const auto x4 = aig.create_pi();
+
+  const auto f1 = aig.create_and( x1, x2 );
+  const auto f2 = aig.create_and( x3, x4 );
+  const auto f3 = aig.create_and( x1, x3 );
+  const auto f4 = aig.create_and( f1, f2 );
+  const auto f5 = aig.create_and( f3, f4 );
+
+  aig.create_po( f5 );
+
+  CHECK( aig.num_gates() == 5u );
+  CHECK( aig._storage->hash.size() == 5u );
+  CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
+  CHECK( aig._storage->nodes[f1.index].children[1u].index == x2.index );
+
+  CHECK( aig._storage->nodes[f5.index].children[0u].index == f3.index );
+  CHECK( aig._storage->nodes[f5.index].children[1u].index == f4.index );
+
+  CHECK( aig.fanout_size( aig.get_node( f1 )) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 1u );
+
+  aig.substitute_node( aig.get_node( x2 ), x3 );
+
+  // Node of signal f1 is now relabelled
+  CHECK( aig.num_gates() == 5u );
+  CHECK( aig._storage->hash.size() == 4u );
+  CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
+  CHECK( aig._storage->nodes[f1.index].children[1u].index == x3.index );
+
+  CHECK( aig._storage->nodes[f5.index].children[0u].index == f3.index );
+  CHECK( aig._storage->nodes[f5.index].children[1u].index == f4.index );
+
+  CHECK( aig.fanout_size( aig.get_node( f1 )) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f3 )) == 2u );
+
+  aig = cleanup_dangling( aig );
+
+  CHECK( aig.num_gates() == 4u );
+}
+
+TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[selected]" )
+{
+  aig_network aig;
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+  const auto x3 = aig.create_pi();
+
+  const auto f1 = aig.create_and( x1, x2 );
+  const auto f2 = aig.create_and( x1, x3 );
+  const auto f3 = aig.create_and( f1, f2 );
+
+  aig.create_po( f3 );
+
+  CHECK( aig.num_gates() == 3u );
+  CHECK( aig._storage->hash.size() == 3u );
+  CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
+  CHECK( aig._storage->nodes[f1.index].children[1u].index == x2.index );
+  CHECK( aig._storage->nodes[f2.index].children[0u].index == x1.index );
+  CHECK( aig._storage->nodes[f2.index].children[1u].index == x3.index );
+  CHECK( aig._storage->nodes[f3.index].children[0u].index == f1.index );
+  CHECK( aig._storage->nodes[f3.index].children[1u].index == f2.index );
+  CHECK( aig._storage->outputs[0].index == f3.index );
+
+  CHECK( aig.fanout_size( aig.get_node( f1 )) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 1u );
+
+  aig.substitute_node( aig.get_node( x2 ), x3 );
+
+  // Node of signal f1 is now relabelled
+  CHECK( aig.num_gates() == 3u );
+  CHECK( aig._storage->hash.size() == 1u );
+  CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
+  CHECK( aig._storage->nodes[f1.index].children[1u].index == x3.index );
+  CHECK( aig._storage->nodes[f2.index].children[0u].index == x1.index );
+  CHECK( aig._storage->nodes[f2.index].children[1u].index == x3.index );
+  CHECK( aig._storage->nodes[f3.index].children[0u].index == f2.index );
+  CHECK( aig._storage->nodes[f3.index].children[1u].index == f2.index );
+  CHECK( aig._storage->nodes[f3.index].children[0u].weight != aig._storage->nodes[f3.index].children[1u].weight );
+  CHECK( aig._storage->outputs[0].index == f2.index );
+
+  CHECK( aig.fanout_size( aig.get_node( f1 )) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f2 )) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( f3 )) == 0u );
+
+  aig = cleanup_dangling( aig );
+
+  CHECK( aig.num_gates() == 1u );
 }

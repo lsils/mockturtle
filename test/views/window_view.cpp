@@ -5,6 +5,7 @@
 #include <mockturtle/views/fanout_view.hpp>
 #include <mockturtle/views/window_view.hpp>
 #include <mockturtle/algorithms/reconv_cut.hpp>
+#include <kitty/kitty.hpp>
 
 using namespace mockturtle;
 
@@ -49,4 +50,53 @@ TEST_CASE( "create window view on AIG", "[window_view]" )
   CHECK( win3.size() == 7 );
   CHECK( win3.num_pis() == 2 );
   CHECK( win3.num_pos() == 1 ); // f4
+}
+
+TEST_CASE( "One resub", "[filter]" )
+{
+  kitty::dynamic_truth_table x( 4 ), y( 4 ), z( 4 ), n( 4 );
+  kitty::create_nth_var( x, 0 );
+  kitty::create_nth_var( y, 1 );
+  kitty::create_nth_var( z, 2 );
+  kitty::create_nth_var( n, 3 );
+
+  kitty::dynamic_truth_table zero( 4 );
+  kitty::dynamic_truth_table one( 4 );
+  one = ~zero;
+  
+  // n != <xyn> ==> FORALL Z : n != <xyZ>
+  auto a = n ^ ternary_majority( x, y, n );
+  auto b = ( n ^ ternary_majority( x, y, zero ) ) & ( n ^ ternary_majority( x, y, one ) );
+  auto tt = (~a) | b;
+  CHECK( tt == one );
+  CHECK( a != zero );
+  
+  std::cout << ( a != one ) << std::endl;
+  std::cout << "[i] #count = " << kitty::count_ones( ~a ) << std::endl;
+}
+
+TEST_CASE( "Two resub", "[filter]" )
+{
+  kitty::dynamic_truth_table x( 6 ), y( 6 ), z( 6 ), u( 6 ), v( 6 ), n( 6 );
+  kitty::create_nth_var( x, 0 );
+  kitty::create_nth_var( y, 1 );
+  kitty::create_nth_var( z, 2 );
+  kitty::create_nth_var( u, 3 );
+  kitty::create_nth_var( v, 4 );
+  kitty::create_nth_var( n, 5 );
+
+  kitty::dynamic_truth_table zero( 6 );
+  kitty::dynamic_truth_table one( 6 );
+  one = ~zero;
+  
+  // ( ~n u <xyz> + n ~u <xyz> ) ==> FORALL V : n != <uV<xyz>>
+  auto a = ( ~n & u & ternary_majority( x, y, z ) ) | ( n & ~u & ~ternary_majority( x, y, z ) );
+  auto b = ( n ^ ternary_majority( u, zero, ternary_majority( x, y, z ) ) ) & ( n ^ ternary_majority( u, one, ternary_majority( x, y, z ) ) );
+  auto tt = ~(a) | b;
+
+  CHECK( tt == one );
+  CHECK( a != zero );
+
+  std::cout << ( a != one ) << std::endl;
+  std::cout << "[i] #count = " << kitty::count_ones( ~a ) << std::endl;
 }

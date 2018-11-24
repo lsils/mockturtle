@@ -95,6 +95,7 @@ public:
 
   void update()
   {
+    std::cout << "update fanouts" << std::endl;
     compute_fanout();
   }
 

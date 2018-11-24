@@ -1565,6 +1565,8 @@ namespace percy
 
         inline void pd3_write_nonisomorphic(int nr_vertices, const char* const filename, int nr_in = -1)
         {
+            (void)nr_in;
+         
             partial_dag g;
             partial_dag3_generator gen;
             auto fhandle = fopen(filename, "wb");

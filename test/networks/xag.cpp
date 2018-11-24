@@ -44,6 +44,42 @@ TEST_CASE( "create and use constants in an xag", "[xag]" )
   CHECK( c0 == +c0 );
 }
 
+TEST_CASE( "special cases in XAGs", "[xag]" )
+{
+  xag_network xag;
+  auto x = xag.create_pi();
+
+  CHECK( xag.create_xor( xag.get_constant( false ), xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_xor( xag.get_constant( false ), xag.get_constant( true ) ) == xag.get_constant( true ) );
+  CHECK( xag.create_xor( xag.get_constant( true ), xag.get_constant( false ) ) == xag.get_constant( true ) );
+  CHECK( xag.create_xor( xag.get_constant( true ), xag.get_constant( true ) ) == xag.get_constant( false ) );
+
+  CHECK( xag.create_and( xag.get_constant( false ), xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( xag.get_constant( false ), xag.get_constant( true ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( xag.get_constant( true ), xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( xag.get_constant( true ), xag.get_constant( true ) ) == xag.get_constant( true ) );
+
+  CHECK( xag.create_xor( !x, xag.get_constant( false ) ) == !x );
+  CHECK( xag.create_xor( !x, xag.get_constant( true ) ) == x );
+  CHECK( xag.create_xor( x, xag.get_constant( false ) ) == x );
+  CHECK( xag.create_xor( x, xag.get_constant( true ) ) == !x );
+
+  CHECK( xag.create_and( !x, xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( !x, xag.get_constant( true ) ) == !x );
+  CHECK( xag.create_and( x, xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( x, xag.get_constant( true ) ) == x );
+
+  CHECK( xag.create_xor( x, x ) == xag.get_constant( false ) );
+  CHECK( xag.create_xor( !x, x ) == xag.get_constant( true ) );
+  CHECK( xag.create_xor( x, !x ) == xag.get_constant( true ) );
+  CHECK( xag.create_xor( !x, !x ) == xag.get_constant( false ) );
+
+  CHECK( xag.create_and( x, x ) == x );
+  CHECK( xag.create_and( !x, x ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( x, !x ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( !x, !x ) == !x );
+}
+
 TEST_CASE( "create and use primary inputs in an xag", "[xag]" )
 {
   xag_network xag;

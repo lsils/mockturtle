@@ -138,14 +138,14 @@ private:
     if ( ntk.visited( n ) == ntk.trav_id )
       return;
     ntk.set_visited( n, ntk.trav_id );
-    // std::cout << "mffc computation visists " << n
-    //           << "( " << ntk.fanout_size( n ) << " )" << std::endl;
+    std::cout << "mffc computation visists " << n
+              << "( " << ntk.fanout_size( n ) << " )" << std::endl;
 
-    // std::cout << "children: ";
-    // ntk.foreach_fanin( n, [&]( const auto& f ){
-    //     std::cout << ntk.get_node( f ) << ' ';
-    //   });
-    // std::cout << std::endl;
+    std::cout << "children: ";
+    ntk.foreach_fanin( n, [&]( const auto& f ){
+        std::cout << ntk.get_node( f ) << ' ';
+      });
+    std::cout << std::endl;
 
     if ( !top_most && ( ntk.is_ci( n ) || ntk.fanout_size( n ) > 0 ) )
       return;
@@ -785,7 +785,7 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
-    // std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
+    std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
 
     // ntk.substitute_node( old_node, new_signal );
     auto const parents = ntk.fanout( old_node );
@@ -1547,16 +1547,16 @@ private:
 
     assert( num_steps >= 0 && num_steps <= 3 );
 
-    // std::cout << "current root = " << root << " with leaves ";
-    // for ( const auto& l : leaves )
-    // {
-    //   std::cout << l << ' ';
-    // }
-    // std::cout << std::endl;
+    std::cout << "current root = " << root << " with leaves ";
+    for ( const auto& l : leaves )
+    {
+      std::cout << l << ' ';
+    }
+    std::cout << std::endl;
 
     /* collect the MFFC */
     int32_t num_mffc = call_with_stopwatch( st.time_mffc, [&]() {
-        // std::cout << "compute MFFC of " << root << std::endl;
+        std::cout << "compute MFFC of " << root << std::endl;
 
         node_mffc_inside collector( ntk );
         auto num_mffc = collector.run( root, leaves, temp );

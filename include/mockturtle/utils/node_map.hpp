@@ -37,6 +37,7 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
 
 #include "../traits.hpp"
 
@@ -131,6 +132,11 @@ public:
   /*! \brief Constant access to value by node. */
   const_reference operator[]( node const& n ) const
   {
+    if ( ntk.node_to_index( n ) >= data->size() )
+    {
+      std::cout << "FIX ERROR HERE!!! " << ntk.node_to_index( n ) << ' ' << data->size() << std::endl;
+      const_cast<node_map<T, Ntk, std::vector<T>>*>( this )->resize();
+    }
     assert( ntk.node_to_index( n ) < data->size() && "index out of bounds" );
     return (*data)[ntk.node_to_index( n )];
   }
