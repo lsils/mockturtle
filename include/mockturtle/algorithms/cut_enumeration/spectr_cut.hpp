@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file mf_cut.hpp
-  \brief Cut enumeration for MF mapping (see giaMf.c)
+  \file spectr_cut.hpp
+  \brief Cut enumeration based on spectral properties of a function
 
   \author Giulia Meuli
 */
@@ -36,6 +36,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <vector>
 
 #include "../cut_enumeration.hpp"
@@ -45,25 +46,14 @@
 #include <kitty/static_truth_table.hpp>
 #include <mockturtle/utils/cuts.hpp>
 
-namespace mockturtle::detail
-{
-inline uint64_t odd_bits()
-{
-  uint64_t count = 2;
-  while ( ( ( count >> 63 ) & 1 ) != 1 )
-    count |= count << 2;
-  return count;
-}
-} // namespace mockturtle::detail
-
 namespace mockturtle
 {
 
 struct cut_enumeration_spectr_cut
 {
-  uint32_t delay{0};
-  float flow{0};
-  float cost{0};
+  uint32_t delay{0u};
+  float flow{0.0f};
+  float cost{0.0f};
 };
 
 template<bool ComputeTruth>
@@ -99,12 +89,14 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
       {
         auto leaves_ch = node_to_cut[ch_node];
 
-        if ( leaves_ch.size() + node_to_cut[n].size() < 16 )
+        if ( leaves_ch.size() + node_to_cut[n].size() < max_cut_size )
         {
           node_to_cut[n].insert( node_to_cut[n].end(), leaves_ch.begin(), leaves_ch.end() );
         }
         else
+        {
           node_to_cut[n].push_back( ch_node );
+        }
       }
       else
       {
@@ -142,9 +134,8 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
 
         /* crate cut truth table */
         kitty::dynamic_truth_table tt( node_to_cut[n].size() );
-        kitty::create_symmetric( tt, detail::odd_bits() );
+        kitty::create_parity( tt );
         my_cut->func_id = cuts.insert_truth_table( tt );
-        //print_binary(tt);
       }
     } );
   }
