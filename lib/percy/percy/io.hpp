@@ -40,7 +40,7 @@ namespace percy
         Parses a DAG string into a DAG object.
     ***************************************************************************/
     template<class Dag=dag<2>>
-    void dag_read_string(Dag& g, char* buf)
+    void dag_read_string(Dag&, char*)
     {
     }
 

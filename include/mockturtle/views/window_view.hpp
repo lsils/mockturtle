@@ -151,7 +151,7 @@ public:
 
   uint32_t fanout_size( node const& n ) const
   {
-    return _fanout_size.at( node_to_index(n) );
+    return _fanout_size.at( node_to_index( n ) );
   }
 
 private:

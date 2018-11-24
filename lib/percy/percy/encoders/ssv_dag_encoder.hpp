@@ -221,12 +221,6 @@ namespace percy
             cegar_encode(const spec& spec, const dag<FI>& dag)
             {
                 create_variables(spec, dag);
-                for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
-                    const auto t = rand() % spec.get_tt_size();
-                    if (!create_tt_clauses(spec, dag, t)) {
-                        return false;
-                    }
-                }
                 return true;
             }
 

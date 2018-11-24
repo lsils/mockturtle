@@ -65,7 +65,7 @@ namespace percy
             void 
             foreach_vertex(Fn&& fn) const
             {
-                for (std::size_t i = 0; i < nr_vertices(); i++) {
+                for (int i = 0; i < nr_vertices(); i++) {
                     fn(vertices[i], i);
                 }
             }

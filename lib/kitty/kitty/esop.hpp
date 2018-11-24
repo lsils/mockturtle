@@ -33,6 +33,8 @@
 
 #pragma once
 
+#warning "DEPRECATED: the functions in this file are marked as deprecated.  Most recent implementation can be found in https://github.com/hriener/easy/ in the file src/esop/constructors.hpp"
+
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>

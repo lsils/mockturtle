@@ -1,5 +1,5 @@
-/* kitty: C++ truth table library
- * Copyright (C) 2017-2018  EPFL
+/* lorina: C++ parsing library
+ * Copyright (C) 2018  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,42 +24,25 @@
  */
 
 /*!
-  \file kitty.hpp
-  \brief Main header for kitty
+  \file verilog_regex.hpp
+  \brief Regular expressions used by the Verilog parser.
 
-  \author Mathias Soeken
+  \author Heinz Riener
 */
 
 #pragma once
 
-#include "static_truth_table.hpp"
-#include "dynamic_truth_table.hpp"
+#include <regex>
 
-#include "affine.hpp"
-#include "algorithm.hpp"
-#include "bit_operations.hpp"
-#include "cnf.hpp"
-#include "constructors.hpp"
-#include "cube.hpp"
-#include "enumeration.hpp"
-#include "hash.hpp"
-#include "implicant.hpp"
-#include "isop.hpp"
-#include "npn.hpp"
-#include "operations.hpp"
-#include "operators.hpp"
-#include "permutation.hpp"
-#include "print.hpp"
-#include "properties.hpp"
-#include "spectral.hpp"
-#include "traits.hpp"
+namespace lorina
+{
 
-/*
-         /\___/\
-        (  o o  )
-        /   *   \
-        \__\_/__/
-          /   \
-         / ___ \
-         \/___\/
-*/
+namespace verilog_regex
+{
+static std::regex immediate_assign( R"(^(~)?([[:alnum:]\[\]_']+)$)" );
+static std::regex binary_expression( R"(^(~)?([[:alnum:]\[\]_']+)([&|^])(~)?([[:alnum:]\[\]_']+)$)" );
+static std::regex ternary_expression( R"(^(~)?([[:alnum:]\[\]_']+)([&|^])(~)?([[:alnum:]\[\]_']+)([&|^])(~)?([[:alnum:]\[\]_']+)$)" );
+static std::regex maj3_expression( R"(^\((~)?([[:alnum:]\[\]_']+)&(~)?([[:alnum:]\[\]_']+)\)\|\((~)?([[:alnum:]\[\]_']+)&(~)?([[:alnum:]\[\]_']+)\)\|\((~)?([[:alnum:]\[\]_']+)&(~)?([[:alnum:]\[\]_']+)\)$)" );
+} // namespace verilog_regex
+
+} // namespace lorina

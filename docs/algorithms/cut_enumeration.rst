@@ -53,14 +53,11 @@ the example, `Ntk` is the type of `ntk`.
    auto cuts = cut_enumeration<Ntk, true>( ntk ); /* true enables truth table computation */
    ntk.foreach_node( [&]( auto n ) {
      const auto index = ntk.node_to_index( n );
-     for ( auto const& set : cuts.cuts( index ) )
+     for ( auto const& cut : cuts.cuts( index ) )
      {
-       for ( auto const& cut : set )
-       {
-         std::cout << "Cut " << *cut
-                   << " with truth table " << kitty::to_hex( cuts.truth_table( *cut ) )
-                   << "\n";
-       }
+       std::cout << "Cut " << *cut
+                 << " with truth table " << kitty::to_hex( cuts.truth_table( *cut ) )
+                 << "\n";
      }
    } );
 

@@ -140,12 +140,6 @@ bool SimpSolver::addClause_(vec<Lit>& ps)
     if (!Solver::addClause_(ps))
         return false;
 
-    if(!parsing && certifiedUNSAT) {
-      for (int i = 0; i < ps.size(); i++)
-        fprintf(certifiedOutput, "%i " , (var(ps[i]) + 1) * (-2 * sign(ps[i]) + 1) );
-      fprintf(certifiedOutput, "0\n");
-    }
-
     if (use_simplification && clauses.size() == nclauses + 1){
         CRef          cr = clauses.last();
         const Clause& c  = ca[cr];

@@ -243,7 +243,8 @@ TEST_CASE( "clone a node in xmg network", "[xmg]" )
   auto b1 = xmg1.create_pi();
   auto c1 = xmg1.create_pi();
   auto f1 = xmg1.create_maj( a1, b1, c1 );
-  CHECK( xmg1.size() == 5 );
+  auto g1 = xmg1.create_xor3( a1, b1, c1 );
+  CHECK( xmg1.size() == 6 );
 
   auto a2 = xmg2.create_pi();
   auto b2 = xmg2.create_pi();
@@ -251,10 +252,20 @@ TEST_CASE( "clone a node in xmg network", "[xmg]" )
   CHECK( xmg2.size() == 4 );
 
   auto f2 = xmg2.clone_node( xmg1, xmg1.get_node( f1 ), {a2, b2, c2} );
-  CHECK( xmg2.size() == 5 );
+  auto g2 = xmg2.clone_node( xmg1, xmg1.get_node( g1 ), {a2, b2, c2} );
+  CHECK( xmg2.size() == 6 );
 
-  xmg2.foreach_fanin( xmg2.get_node( f2 ), [&]( auto const& s, auto ) {
+  xmg2.foreach_fanin( xmg2.get_node( f2 ), [&]( auto const& s ) {
     CHECK( !xmg2.is_complemented( s ) );
+  } );
+
+  xmg2.foreach_gate( [&]( auto const& n, auto i ) {
+    switch ( i )
+    {
+      default: break;
+      case 0: CHECK( xmg2.is_maj( n ) ); break;
+      case 1: CHECK( xmg2.is_xor3( n ) ); break;
+    }
   } );
 }
 

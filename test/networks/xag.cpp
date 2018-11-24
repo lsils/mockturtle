@@ -1,11 +1,12 @@
 #include <catch.hpp>
 
-#include <mockturtle/networks/xag.hpp>
-#include <mockturtle/traits.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
+#include <mockturtle/networks/xag.hpp>
+#include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
 
@@ -35,12 +36,48 @@ TEST_CASE( "create and use constants in an xag", "[xag]" )
 
   CHECK( c0 != c1 );
   CHECK( c0 == !c1 );
-  CHECK( (!c0) == c1 );
-  CHECK( (!c0) != !c1 );
+  CHECK( ( !c0 ) == c1 );
+  CHECK( ( !c0 ) != !c1 );
   CHECK( -c0 == c1 );
   CHECK( -c1 == c1 );
   CHECK( c0 == +c1 );
   CHECK( c0 == +c0 );
+}
+
+TEST_CASE( "special cases in XAGs", "[xag]" )
+{
+  xag_network xag;
+  auto x = xag.create_pi();
+
+  CHECK( xag.create_xor( xag.get_constant( false ), xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_xor( xag.get_constant( false ), xag.get_constant( true ) ) == xag.get_constant( true ) );
+  CHECK( xag.create_xor( xag.get_constant( true ), xag.get_constant( false ) ) == xag.get_constant( true ) );
+  CHECK( xag.create_xor( xag.get_constant( true ), xag.get_constant( true ) ) == xag.get_constant( false ) );
+
+  CHECK( xag.create_and( xag.get_constant( false ), xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( xag.get_constant( false ), xag.get_constant( true ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( xag.get_constant( true ), xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( xag.get_constant( true ), xag.get_constant( true ) ) == xag.get_constant( true ) );
+
+  CHECK( xag.create_xor( !x, xag.get_constant( false ) ) == !x );
+  CHECK( xag.create_xor( !x, xag.get_constant( true ) ) == x );
+  CHECK( xag.create_xor( x, xag.get_constant( false ) ) == x );
+  CHECK( xag.create_xor( x, xag.get_constant( true ) ) == !x );
+
+  CHECK( xag.create_and( !x, xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( !x, xag.get_constant( true ) ) == !x );
+  CHECK( xag.create_and( x, xag.get_constant( false ) ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( x, xag.get_constant( true ) ) == x );
+
+  CHECK( xag.create_xor( x, x ) == xag.get_constant( false ) );
+  CHECK( xag.create_xor( !x, x ) == xag.get_constant( true ) );
+  CHECK( xag.create_xor( x, !x ) == xag.get_constant( true ) );
+  CHECK( xag.create_xor( !x, !x ) == xag.get_constant( false ) );
+
+  CHECK( xag.create_and( x, x ) == x );
+  CHECK( xag.create_and( !x, x ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( x, !x ) == xag.get_constant( false ) );
+  CHECK( xag.create_and( !x, !x ) == !x );
 }
 
 TEST_CASE( "create and use primary inputs in an xag", "[xag]" )
@@ -248,8 +285,8 @@ TEST_CASE( "structural properties of an xag", "[xag]" )
   xag.create_po( f2 );
 
   CHECK( xag.size() == 5 );
-  CHECK( xag.is_and(xag.get_node( f1 ) ) == true );
-  CHECK( xag.is_xor(xag.get_node( f1 ) ) == false );
+  CHECK( xag.is_and( xag.get_node( f1 ) ) == true );
+  CHECK( xag.is_xor( xag.get_node( f1 ) ) == false );
   CHECK( xag.num_pis() == 2 );
   CHECK( xag.num_pos() == 2 );
   CHECK( xag.num_gates() == 2 );
@@ -467,4 +504,25 @@ TEST_CASE( "visited values in xags", "[xag]" )
   xag.foreach_node( [&]( auto n ) {
     CHECK( xag.visited( n ) == 0 );
   } );
+}
+
+TEST_CASE( "simulate some special functions in XAGs", "[xag]" )
+{
+  xag_network xag;
+  const auto x1 = xag.create_pi();
+  const auto x2 = xag.create_pi();
+  const auto x3 = xag.create_pi();
+
+  const auto f1 = xag.create_maj( x1, x2, x3 );
+  const auto f2 = xag.create_ite( x1, x2, x3 );
+
+  xag.create_po( f1 );
+  xag.create_po( f2 );
+
+  CHECK( xag.num_gates() == 7u );
+
+  auto result = simulate<kitty::dynamic_truth_table>( xag, default_simulator<kitty::dynamic_truth_table>( 3 ) );
+
+  CHECK( result[0]._bits[0] == 0xe8u );
+  CHECK( result[1]._bits[0] == 0xd8u );
 }

@@ -6,7 +6,7 @@
 
 namespace percy
 {
-    class maj_encoder
+    class aig_encoder
     {
     private:
         int level_dist[32]; // How many steps are below a certain level
@@ -97,12 +97,12 @@ namespace percy
         }
 
     public:
-        maj_encoder(solver_wrapper& solver)
+        aig_encoder(solver_wrapper& solver)
         {
             this->solver = &solver;
         }
 
-        ~maj_encoder()
+        ~aig_encoder()
         {
         }
 
@@ -113,7 +113,7 @@ namespace percy
             nr_sel_vars = 0;
             for (int i = 0; i < spec.nr_steps; i++) {
                 const auto n = spec.nr_in + i;
-                nr_sel_vars += (n * (n - 1) * (n - 2)) / 6;
+                nr_sel_vars += (n * (n - 1)) / 2;
             }
 
             sel_offset = 0;
@@ -121,7 +121,7 @@ namespace percy
             total_nr_vars = nr_sel_vars + nr_sim_vars;
 
             if (spec.verbosity) {
-                printf("Creating variables (MIG)\n");
+                printf("Creating variables (AIG)\n");
                 printf("nr steps = %d\n", spec.nr_steps);
                 printf("nr_sel_vars=%d\n", nr_sel_vars);
                 printf("nr_sim_vars = %d\n", nr_sim_vars);
@@ -193,8 +193,12 @@ namespace percy
             return nr_pi_fanins;
         }
 
-        int nr_svars_for_step(const spec& spec, const partial_dag& dag, int i) const
+        int nr_svars_for_step(
+            const spec& spec, 
+            const partial_dag& dag, 
+            int i) const
         {
+            const auto& vertex = dag.get_vertex(i);
             const auto nr_pi_fanins = nr_pi_fanins_for_step(dag, i);
             switch (nr_pi_fanins) {
             case 1:
@@ -235,7 +239,7 @@ namespace percy
             total_nr_vars = nr_sel_vars + nr_sim_vars;
 
             if (spec.verbosity) {
-                printf("Creating variables (MIG)\n");
+                printf("Creating variables (AIG)\n");
                 printf("nr steps = %d\n", spec.nr_steps);
                 printf("nr_sel_vars=%d\n", nr_sel_vars);
                 printf("nr_sim_vars = %d\n", nr_sim_vars);
@@ -263,7 +267,7 @@ namespace percy
             total_nr_vars = nr_sel_vars + nr_res_vars + nr_sim_vars;
 
             if (spec.verbosity) {
-                printf("Creating variables (MIG)\n");
+                printf("Creating variables (AIG)\n");
                 printf("nr steps = %d\n", spec.nr_steps);
                 printf("nr_sel_vars=%d\n", nr_sel_vars);
                 printf("nr_sel_vars=%d\n", nr_res_vars);
@@ -280,7 +284,7 @@ namespace percy
             auto status = true;
 
             if (spec.verbosity > 2) {
-                printf("Creating fanin clauses (MIG)\n");
+                printf("Creating fanin clauses (AIG)\n");
                 printf("Nr. clauses = %d (PRE)\n", solver->nr_clauses());
             }
 
@@ -324,75 +328,7 @@ namespace percy
             return status;
         }
 
-        ///< We synthesize MIGs with 4 possible operators since all
-        ///< the others are symmetries of these. The operators are:
-        ///< (1) <abc>
-        ///< (2) <!abc>
-        ///< (3) <a!bc>
-        ///< (4) <ab!c>
-        /*
-        bool create_op_clauses(const spec& spec)
-        {
-            auto status = true;
-
-            kitty::static_truth_table<3> in1, in2, in3, arb_tt,
-                maj1, maj2, maj3, maj4;
-            kitty::create_nth_var(in1, 0);
-            kitty::create_nth_var(in2, 1);
-            kitty::create_nth_var(in3, 2);
-
-            maj1 = (in1 & in2) | (in1 & in3) | (in2 & in3);
-            maj2 = (~in1 & in2) | (~in1 & in3) | (in2 & in3);
-            maj3 = (in1 & ~in2) | (in1 & in3) | (~in2 & in3);
-            maj4 = (in1 & in2) | (in1 & ~in3) | (in2 & ~in3);
-
-            for (int i = 0; i < spec.nr_steps; i++) {
-                kitty::clear(arb_tt);
-                int nr_block_clauses = 0;
-                do {
-                    if (arb_tt == maj1 || arb_tt == maj2 || 
-                        arb_tt == maj3 || arb_tt == maj4) {
-                        kitty::next_inplace(arb_tt);
-                        continue;
-                    }
-                    if (!is_normal(arb_tt)) {
-                        kitty::next_inplace(arb_tt);
-                        continue;
-                    }
-
-                    pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 
-                        kitty::get_bit(arb_tt, 1));
-                    pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 
-                        kitty::get_bit(arb_tt, 2));
-                    pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 
-                        kitty::get_bit(arb_tt, 3));
-                    pLits[3] = pabc::Abc_Var2Lit(get_op_var(spec, i, 3), 
-                        kitty::get_bit(arb_tt, 4));
-                    pLits[4] = pabc::Abc_Var2Lit(get_op_var(spec, i, 4), 
-                        kitty::get_bit(arb_tt, 5));
-                    pLits[5] = pabc::Abc_Var2Lit(get_op_var(spec, i, 5), 
-                        kitty::get_bit(arb_tt, 6));
-                    pLits[6] = pabc::Abc_Var2Lit(get_op_var(spec, i, 6), 
-                        kitty::get_bit(arb_tt, 7));
-                    status &= solver->add_clause(pLits, pLits + 7);
-                    assert(status);
-
-                    if (nr_block_clauses++ > 256) {
-                        break;
-                    }
-                    kitty::next_inplace(arb_tt);
-                } while (!kitty::is_const0(arb_tt));
-            }
-
-            return status;
-        }
-        */
-
-        int maj3(int a, int b, int c) const
-        {
-            return (a & b) | (a & c) | (b & c);
-        }
-
+        
         bool add_simulation_clause(
             const spec& spec,
             const int t,
@@ -458,7 +394,7 @@ namespace percy
                 for (int l = 2; l < spec.nr_in + i; l++) {
                     for (int k = 1; k < l; k++) {
                         for (int j = 0; j < k; j++) {
-                            const auto sel_var = get_sel_var(spec, i, j, k, l);
+                            const auto sel_var = get_sel_var(spec, i, j, k);
                             ret &= add_simulation_clause(spec, t, i, j, k, l, 0, 0, 0, sel_var);
                             ret &= add_simulation_clause(spec, t, i, j, k, l, 0, 0, 1, sel_var);
                             ret &= add_simulation_clause(spec, t, i, j, k, l, 0, 1, 0, sel_var);
@@ -1330,7 +1266,8 @@ namespace percy
                         }
                     }
                 }
-                const int nr_res_vars = (1 + 2) * (svars.size() + 1);
+                assert(svars.size() == nr_svars_for_step(spec, i));
+                const auto nr_res_vars = (1 + 2) * (svars.size() + 1);
                 for (int j = 0; j < nr_res_vars; j++) {
                     rvars.push_back(get_res_var(spec, i, j));
                 }
@@ -1487,10 +1424,15 @@ namespace percy
             return true;
         }
 
-        bool cegar_encode(const spec& spec, const fence& f)
+        bool
+        cegar_encode(const spec& spec, const fence& f)
         {
             update_level_map(spec, f);
             cegar_fence_create_variables(spec);
+            for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
+                const auto t = rand() % spec.get_tt_size();
+                (void)fence_create_tt_clauses(spec, t);
+            }
 
             if (!fence_create_fanin_clauses(spec)) {
                 return false;
@@ -1514,11 +1456,14 @@ namespace percy
             }
 
             return true;
+
+            assert(false);
+            return false;
         }
 
-        void extract_mig(const spec& spec, mig& chain)
+        void extract_chain(const spec& spec, chain& chain)
         {
-            int op_inputs[3] = { 0, 0, 0 };
+            int op_inputs[3] = { 0, 0 };
 
             chain.reset(spec.nr_in, 1, spec.nr_steps);
 
@@ -1547,69 +1492,7 @@ namespace percy
                 ((spec.out_inv) & 1));
         }
 
-        void extract_mig(const spec& spec, const partial_dag& dag, mig& mig)
-        {
-            const int op = 0;
-            int op_inputs[3] = { 0, 0, 0 };
-
-            mig.reset(spec.nr_in, 1, spec.nr_steps);
-
-            for (int i = 0; i < spec.nr_steps; i++) {
-                const auto& vertex = dag.get_vertex(i);
-                const auto nr_pi_fanins = nr_pi_fanins_for_step(dag, i);
-
-                if (nr_pi_fanins == 0) {
-                    op_inputs[0] = vertex[0] + spec.nr_in - 1;
-                    op_inputs[1] = vertex[1] + spec.nr_in - 1;
-                    op_inputs[2] = vertex[2] + spec.nr_in - 1;
-                } else if (nr_pi_fanins == 1) {
-                    for (int j = 0; j < spec.nr_in; j++) {
-                        const auto sel_var = get_sel_var(spec, dag, i, j);
-                        if (solver->var_value(sel_var)) {
-                            op_inputs[0] = j;
-                            break;
-                        }
-                    }
-                    op_inputs[1] = vertex[1] + spec.nr_in - 1;
-                    op_inputs[2] = vertex[2] + spec.nr_in - 1;
-                } else if (nr_pi_fanins == 2) {
-                    int ctr = 0;
-                    for (int k = 1; k < spec.nr_in; k++) {
-                        for (int j = 0; j < k; j++) {
-                            const auto sel_var = get_sel_var(spec, dag, i, ctr++);
-                            if (solver->var_value(sel_var)) {
-                                op_inputs[0] = j;
-                                op_inputs[1] = k;
-                                break;
-                            }
-                        }
-                    }
-                    op_inputs[2] = vertex[2] + spec.nr_in - 1;
-                } else {
-                    for (int l = 2; l < spec.nr_in; l++) {
-                        for (int k = 1; k < l; k++) {
-                            for (int j = 0; j < k; j++) {
-                                const auto sel_var = get_sel_var(spec, i, j, k, l);
-                                if (solver->var_value(sel_var)) {
-                                    op_inputs[0] = j;
-                                    op_inputs[1] = k;
-                                    op_inputs[2] = l;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                mig.set_step(i, op_inputs[0], op_inputs[1], op_inputs[2], op);
-            }
-
-            // TODO: support multiple outputs
-            mig.set_output(0,
-                ((spec.nr_steps + spec.nr_in) << 1) +
-                ((spec.out_inv) & 1));
-        }
-
-        void fence_extract_mig(const spec& spec, mig& chain)
+        void fence_extract_chain(const spec& spec, chain& chain)
         {
             int op_inputs[3] = { 0, 0, 0 };
 
@@ -1768,29 +1651,9 @@ namespace percy
         
         bool cegar_encode(const spec& spec)
         {
-            create_variables(spec);
-
-            if (!create_fanin_clauses(spec)) {
-                return false;
-            }
-
-            if (spec.add_alonce_clauses) {
-                create_alonce_clauses(spec);
-            }
-
-            if (spec.add_colex_clauses) {
-                create_colex_clauses(spec);
-            }
-            
-            if (spec.add_noreapply_clauses) {
-                create_noreapply_clauses(spec);
-            }
-            
-            if (spec.add_symvar_clauses && !create_symvar_clauses(spec)) {
-                return false;
-            }
-
-            return true;
+            // TODO: implement
+            assert(false);
+            return false;
         }
         
         bool block_solution(const spec& spec)
@@ -1827,114 +1690,6 @@ namespace percy
         void set_dirty(bool _dirty)
         {
             dirty = _dirty;
-        }
-
-        bool find_fanin(const spec& spec, int i, int* fanins)
-        {
-            for (int l = 2; l < spec.nr_in + i; l++) {
-                for (int k = 1; k < l; k++) {
-                    for (int j = 0; j < k; j++) {
-                        const auto sel_var = get_sel_var(spec, i, j, k, l);
-                        if (solver->var_value(sel_var)) {
-                            fanins[0] = j;
-                            fanins[1] = k;
-                            fanins[2] = l;
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-        bool fence_find_fanin(const spec& spec, int i, int* fanins)
-        {
-            int ctr = 0;
-            const auto level = get_level(spec, spec.nr_in + i);
-            for (int l = first_step_on_level(level - 1); 
-                    l < first_step_on_level(level); l++) {
-                for (int k = 1; k < l; k++) {
-                    for (int j = 0; j < k; j++) {
-                        const auto sel_var = get_sel_var(spec, i, ctr++);
-                        if (solver->var_value(sel_var)) {
-                            fanins[0] = j;
-                            fanins[1] = k;
-                            fanins[2] = l;
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-        /// Simulates the current state of the encoder and returns an index
-        /// of a minterm which is different from the specified function.
-        /// Returns -1 if no such index exists.
-        int simulate(const spec& spec)
-        {
-            int fanins[3];
-            kitty::dynamic_truth_table* pFanins[3];
-
-            for (int i = spec.nr_in; i < spec.nr_in + spec.nr_steps; i++) {
-                const auto found = find_fanin(spec, i - spec.nr_in, fanins);
-                assert(found);
-                for (int k = 0; k < 3; k++)
-                    pFanins[k] = &sim_tts[fanins[k]];
-                sim_tts[i] = kitty::ternary_majority(*pFanins[0], *pFanins[1], *pFanins[2]);
-            }
-
-            int iMint = -1;
-            kitty::static_truth_table<6> tt;
-            for (int i = 1; i < (1 << spec.nr_in); i++) {
-                kitty::create_from_words(tt, &i, &i + 1);
-                const int nOnes = kitty::count_ones(tt);
-                if (nOnes < spec.nr_in / 2 || nOnes > ((spec.nr_in/2) + 1)) {
-                    continue;
-                }
-                if (kitty::get_bit(sim_tts[spec.nr_in + spec.nr_steps - 1], i)
-                    == kitty::get_bit(spec[0], i)) {
-                    continue;
-                }
-                iMint = i;
-                break;
-            }
-
-            assert(iMint < (1 << spec.nr_in));
-            return iMint;
-        }
-
-        int fence_simulate(const spec& spec)
-        {
-            int fanins[3];
-            kitty::dynamic_truth_table* pFanins[3];
-
-            for (int i = spec.nr_in; i < spec.nr_in + spec.nr_steps; i++) {
-                const auto found = fence_find_fanin(spec, i - spec.nr_in, fanins);
-                assert(found);
-                for (int k = 0; k < 3; k++)
-                    pFanins[k] = &sim_tts[fanins[k]];
-                sim_tts[i] = kitty::ternary_majority(*pFanins[0], *pFanins[1], *pFanins[2]);
-            }
-
-            int iMint = -1;
-            kitty::static_truth_table<6> tt;
-            for (int i = 1; i < (1 << spec.nr_in); i++) {
-                kitty::create_from_words(tt, &i, &i + 1);
-                const int nOnes = kitty::count_ones(tt);
-                if (nOnes < spec.nr_in / 2 || nOnes > ((spec.nr_in/2) + 1)) {
-                    continue;
-                }
-                if (kitty::get_bit(sim_tts[spec.nr_in + spec.nr_steps - 1], i)
-                    == kitty::get_bit(spec[0], i)) {
-                    continue;
-                }
-                iMint = i;
-                break;
-            }
-
-            assert(iMint < (1 << spec.nr_in));
-            return iMint;
         }
         
     };

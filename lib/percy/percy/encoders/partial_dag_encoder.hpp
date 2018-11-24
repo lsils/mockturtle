@@ -99,7 +99,7 @@ namespace percy
             return sim_offset + spec.get_tt_size() * step_idx + t;
         }
 
-        int get_op_var(const spec& spec, int step_idx, int var_idx) const
+        int get_op_var(int step_idx, int var_idx) const
         {
             return ops_offset + step_idx * PD_OP_VARS_PER_STEP + var_idx;
         }
@@ -284,20 +284,20 @@ namespace percy
             bool status = true;
             for (int i = 0; i < spec.nr_steps; i++) {
                 // Dissallow the constant zero operator.
-                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 0);
-                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 0);
-                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 0);
+                pLits[0] = pabc::Abc_Var2Lit(get_op_var(i, 0), 0);
+                pLits[1] = pabc::Abc_Var2Lit(get_op_var(i, 1), 0);
+                pLits[2] = pabc::Abc_Var2Lit(get_op_var(i, 2), 0);
                 status &= solver->add_clause(pLits, pLits + 3);
 
                 // Dissallow variable projections.
-                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 0);
-                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 1);
-                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 1);
+                pLits[0] = pabc::Abc_Var2Lit(get_op_var(i, 0), 0);
+                pLits[1] = pabc::Abc_Var2Lit(get_op_var(i, 1), 1);
+                pLits[2] = pabc::Abc_Var2Lit(get_op_var(i, 2), 1);
                 status &= solver->add_clause(pLits, pLits + 3);
 
-                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 1);
-                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 0);
-                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 1);
+                pLits[0] = pabc::Abc_Var2Lit(get_op_var(i, 0), 1);
+                pLits[1] = pabc::Abc_Var2Lit(get_op_var(i, 1), 0);
+                pLits[2] = pabc::Abc_Var2Lit(get_op_var(i, 2), 1);
                 status &= solver->add_clause(pLits, pLits + 3);
             }
 
@@ -339,7 +339,7 @@ namespace percy
 
             if (b | c) {
                 pLits[ctr++] = pabc::Abc_Var2Lit(
-                    get_op_var(spec, i, ((c << 1) | b) - 1), 1 - a);
+                    get_op_var(i, ((c << 1) | b) - 1), 1 - a);
             }
 
             auto status = solver->add_clause(pLits, pLits + ctr);
@@ -384,7 +384,7 @@ namespace percy
 
             if (b | c) {
                 pLits[ctr++] = pabc::Abc_Var2Lit(
-                    get_op_var(spec, i, ((c << 1) | b) - 1), 1 - a);
+                    get_op_var(i, ((c << 1) | b) - 1), 1 - a);
             }
 
             return solver->add_clause(pLits, pLits + ctr);
@@ -900,12 +900,14 @@ namespace percy
         cegar_encode(const spec& spec, const partial_dag& dag)
         {
             cegar_create_variables(spec, dag);
+            /*
             for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
                 const auto t = rand() % spec.get_tt_size();
                 //printf("creating tt/IO clause at idx %d\n", t+1);
                 vcreate_tt_clauses(spec, dag, t);
                 vfix_output_sim_vars(spec, t);
             }
+            */
 
             create_cardinality_constraints(spec, dag);
 
@@ -940,7 +942,7 @@ namespace percy
             for (int i = 0; i < spec.nr_steps; i++) {
                 kitty::dynamic_truth_table op(2);
                 for (int j = 0; j < PD_OP_VARS_PER_STEP; j++) {
-                    if (solver->var_value(get_op_var(spec, i, j))) {
+                    if (solver->var_value(get_op_var(i, j))) {
                         kitty::set_bit(op, j + 1);
                     }
                 }
@@ -1067,12 +1069,12 @@ namespace percy
 
         kitty::dynamic_truth_table& simulate(const spec& spec, const partial_dag& dag)
         {
-            int op_inputs[2];
+            int op_inputs[2] = { 0, 0 };
 
             for (int i = 0; i < spec.nr_steps; i++) {
                 char op = 0;
                 for (int j = 0; j < PD_OP_VARS_PER_STEP; j++) {
-                    if (solver->var_value(get_op_var(spec, i, j))) {
+                    if (solver->var_value(get_op_var(i, j))) {
                         op |= (1 << (j + 1));
                     }
                 }

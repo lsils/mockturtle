@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/traits.hpp>
 #include <kitty/constructors.hpp>
@@ -465,4 +466,25 @@ TEST_CASE( "visited values in AIGs", "[aig]" )
   aig.foreach_node( [&]( auto n ) {
     CHECK( aig.visited( n ) == 0 );
   } );
+}
+
+TEST_CASE( "simulate some special functions in AIGs", "[aig]" )
+{
+  aig_network aig;
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+  const auto x3 = aig.create_pi();
+
+  const auto f1 = aig.create_maj( x1, x2, x3 );
+  const auto f2 = aig.create_ite( x1, x2, x3 );
+
+  aig.create_po( f1 );
+  aig.create_po( f2 );
+
+  CHECK( aig.num_gates() == 6u );
+
+  auto result = simulate<kitty::dynamic_truth_table>( aig, default_simulator<kitty::dynamic_truth_table>( 3 ) );
+
+  CHECK( result[0]._bits[0] == 0xe8u );
+  CHECK( result[1]._bits[0] == 0xd8u );
 }

@@ -271,7 +271,7 @@ namespace percy
             return status;
         }
 
-        bool create_tt_clauses(const spec& spec, int t)
+        bool create_tt_clauses(const spec& spec, int t) override
         {
             auto ret = true;
 
@@ -339,8 +339,7 @@ namespace percy
                         svars.push_back(sel_var);
                     }
                 }
-                assert(svars.size() == nr_svars_for_step(spec, i));
-                const auto nr_res_vars = (1 + 2) * (svars.size() + 1);
+                const int nr_res_vars = (1 + 2) * (svars.size() + 1);
                 for (int j = 0; j < nr_res_vars; j++) {
                     rvars.push_back(get_res_var(spec, i, j));
                 }
@@ -544,8 +543,7 @@ namespace percy
         }
 
         /// Extracts chain from encoded CNF solution.
-        void 
-        extract_chain(const spec& spec, chain& chain)
+        void extract_chain(const spec& spec, chain& chain) override
         {
             chain.reset(spec.nr_in, 1, spec.nr_steps, 2);
 
@@ -724,8 +722,7 @@ namespace percy
         }
 
         /// Encodes specifciation for use in fence-based synthesis flow.
-        bool 
-        encode(const spec& spec, const fence& f)
+        bool encode(const spec& spec, const fence& f) override
         {
             assert(spec.nr_steps == f.nr_nodes());
 
@@ -768,17 +765,12 @@ namespace percy
         }
 
         /// Encodes specifciation for use in CEGAR based synthesis flow.
-        bool 
-        cegar_encode(const spec& spec, const fence& f)
+        bool cegar_encode(const spec& spec, const fence& f) override
         {
             assert(spec.nr_steps == f.nr_nodes());
 
             update_level_map(spec, f);
             cegar_create_variables(spec);
-            for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
-                const auto t = rand() % spec.get_tt_size();
-                vcreate_tt_clauses(spec, t);
-            }
             
             if (!create_fanin_clauses(spec)) {
                 return false;
@@ -812,6 +804,7 @@ namespace percy
         /// Assumes that a solution has been found by the current encoding.
         /// Blocks the current solution such that the solver is forced to
         /// find different ones (if they exist).
+        /*
         bool block_solution(const spec& spec)
         {
             // TODO: implement!
@@ -827,10 +820,11 @@ namespace percy
             // TODO: implement!
             return false;
         }
+        */
 
-        kitty::dynamic_truth_table& simulate(const spec& spec)
+        kitty::dynamic_truth_table& simulate(const spec& spec) override
         {
-            int op_inputs[2];
+            int op_inputs[2] = { 0, 0 };
 
             for (int i = 0; i < spec.nr_steps; i++) {
                 char op = 0;

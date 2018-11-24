@@ -26,7 +26,7 @@ namespace percy
 
         protected:
             int nr_inputs;
-            std::size_t nr_vertices;
+            int nr_vertices;
 
             std::vector<std::array<fanin, FI>> vertices;
 
@@ -36,7 +36,7 @@ namespace percy
                 reset(dag.nr_inputs, dag.nr_vertices);
                 vertices.resize(dag.get_nr_vertices());
 
-                for (std::size_t i = 0; i < nr_vertices; i++) {
+                for (int i = 0; i < nr_vertices; i++) {
                     for (int j = 0; j < FI; j++) {
                         vertices[i][j] = dag.vertices[i][j];
                     }
@@ -115,7 +115,7 @@ namespace percy
             void 
             foreach_vertex(Fn&& fn) const
             {
-                for (std::size_t i = 0; i < nr_vertices; i++) {
+                for (int i = 0; i < nr_vertices; i++) {
                     fn(vertices[i], i);
                 }
             }
@@ -387,7 +387,7 @@ namespace percy
             void 
             foreach_vertex(Fn&& fn) const
             {
-                for (std::size_t i = 0; i < nr_vertices; i++) {
+                for (int i = 0; i < nr_vertices; i++) {
                     fn(std::make_pair(_js[i], _ks[i]), i);
                 }
             }
@@ -481,7 +481,7 @@ namespace percy
                 // Compare the canonical graphs to see if the two graphs are
                 // isomorphic
                 bool isomorphic = true;
-                for (auto k = 0u; k < m*(size_t)total_vertices; k++) {
+                for (int k = 0; k < m * total_vertices; k++) {
                     if (cg1[k] != cg2[k]) {
                         isomorphic = false;
                         break;;
@@ -583,7 +583,7 @@ namespace percy
             o << "x" << dot_idx << " [label=<x<sub>" << dot_idx 
                 << "</sub>>];\n";
 
-            dag.foreach_fanin(v, [&o, dot_idx] (auto f_id, int idx) {
+            dag.foreach_fanin(v, [&o, dot_idx] (auto f_id, int) {
                 o << "x" << f_id+1 << " -- x" << dot_idx << ";\n";
             });
 

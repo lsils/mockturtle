@@ -591,6 +591,22 @@ namespace percy
                 return true;
             }
 
+            bool is_mag()
+            {
+                if (fanin != 3) {
+                    return false;
+                }
+                kitty::dynamic_truth_table maj_tt(3);
+                kitty::create_majority(maj_tt);
+
+                for (const auto& op : operators) {
+                    if (op != maj_tt) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
             void
             copy(const chain& c)
             {
@@ -756,6 +772,41 @@ namespace percy
             print_expression()
             {
                 to_expression(std::cout);
+            }
+
+            void step_to_mag_expression(std::ostream& s, int step_idx)
+            {
+                assert(fanin == 3);
+
+                if (step_idx < nr_in) {
+                    s << char(('a' + step_idx));
+                    return;
+                }
+                const auto& step = get_step(step_idx - nr_in);
+                s << "<";
+                step_to_mag_expression(s, step[0]);
+                step_to_mag_expression(s, step[1]);
+                step_to_mag_expression(s, step[2]);
+                s << ">";
+            }
+
+            void to_mag_expression(std::ostream& s)
+            {
+                assert(outputs.size() == 1 && fanin == 3);
+                const auto outlit = outputs[0];
+                const auto outvar = outlit >> 1;
+                if (outvar == 0) { // Special case of constant 0
+                    s << "0";
+                } else {
+                    step_to_mag_expression(s, outvar-1);
+                }
+            }
+
+            void print_mag()
+            {
+                std::cout << steps.size() << "-step MAJ chain\n";
+                to_mag_expression(std::cout);
+                std::cout << "\n";
             }
 
             template<int FI>

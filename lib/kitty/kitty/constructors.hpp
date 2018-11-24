@@ -466,6 +466,32 @@ void create_symmetric( TT& tt, uint64_t counts )
   }
 }
 
+/*! \brief Constructs parity function over n variables
+
+  The number of variables is determined from the truth table.
+
+  \param tt Truth table
+*/
+template<typename TT>
+void create_parity( TT& tt )
+{
+  clear( tt );
+
+  *tt.begin() = UINT64_C( 0x6996966996696996 );
+
+  if ( tt.num_vars() < 6 )
+  {
+    tt.mask_bits();
+  }
+  else if ( tt.num_vars() > 6 )
+  {
+    for ( auto i = 1u; i < tt.num_blocks(); i <<= 1 )
+    {
+      std::transform( tt.begin(), tt.begin() + i, tt.begin() + i, []( auto const& block ) { return ~block; } );
+    }
+  }
+}
+
 /*! \cond PRIVATE */
 template<typename TT, typename Fn>
 bool create_from_chain( TT& tt, Fn&& next_line, std::vector<TT>& steps, std::string* error )

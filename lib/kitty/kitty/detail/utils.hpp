@@ -33,6 +33,7 @@
 /*! \cond PRIVATE */
 #pragma once
 
+#include <algorithm>
 #include <string>
 
 namespace kitty
