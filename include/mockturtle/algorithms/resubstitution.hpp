@@ -96,7 +96,7 @@ private:
     int32_t counter = 1;
     ntk.foreach_fanin( n, [&]( const auto& f ){
         auto const& p = ntk.get_node( f );
-        assert( ntk.fanout_size( p ) > 0 );
+        // assert( ntk.fanout_size( p ) > 0 );
 
         ntk.decr_h1( p );
         if ( ntk.fanout_size( p ) == 0 )
@@ -935,7 +935,8 @@ private:
     ++ntk.trav_id;
     for ( const auto& l : leaves )
     {
-      divs.emplace_back( l );
+      if ( ntk.fanout_size( l ) != 0 )
+        divs.emplace_back( l );
       ntk.set_visited( l, ntk.trav_id );
     }
 
@@ -970,13 +971,17 @@ private:
     for ( auto i = 0u; i < size; ++i )
     {
       auto const d = divs[i];
-      if ( ntk.fanout_size( d ) > 100 )
-      {
+      if ( ntk.fanout_size( d ) == 0 )
         continue;
-      }
+
+      if ( ntk.fanout_size( d ) > 100 )
+        continue;
 
       /* if the fanout has all fanins in the set, add it */
       ntk.foreach_fanout( d, [&]( node const& p ){
+          if ( ntk.fanout_size( p ) == 0 )
+            return true;
+
           if ( ntk.visited( p ) == ntk.trav_id || ntk.level( p ) > required )
           {
             return true; /* next fanout */
@@ -1032,6 +1037,8 @@ private:
     /* add the nodes in the MFFC */
     for ( const auto& t : temp )
     {
+      if ( ntk.fanout_size( t ) == 0 )
+        continue;
       divs.emplace_back( t );
     }
 
