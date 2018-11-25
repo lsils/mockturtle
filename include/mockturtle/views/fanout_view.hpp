@@ -145,6 +145,8 @@ private:
     _fanout.reset();
 
     this->foreach_gate( [&]( auto const& n ){
+        if ( Ntk::fanout_size( n ) == 0 ) return;
+
         this->foreach_fanin( n, [&]( auto const& c ){
             auto& fanout = _fanout[ c ];
             if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )

@@ -766,6 +766,9 @@ public:
         if ( ntk.fanout_size( n ) > 1000 )
           return true; /* next */
 
+        if ( ntk.fanout_size( n ) == 0 )
+          return true;
+
         /* compute a reconvergence-driven cut */
         auto const leaves = call_with_stopwatch( st.time_cuts, [&]() {
             return reconv_driven_cut( mgr, ntk, n );
@@ -793,6 +796,8 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
+    if ( ntk.is_constant( ntk.get_node( new_signal ) ) )
+      return;
     std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
     ntk.substitute_node( old_node, new_signal );
     ntk.update();
@@ -806,6 +811,7 @@ private:
     ntk.set_visited( n, ntk.trav_id );
 
     ntk.foreach_fanin( n, [&]( const auto& f ){
+      assert( ntk.get_node( f ) != 0 );
         collect_divisors_rec( ntk.get_node( f ), internal );
       });
 

@@ -419,8 +419,7 @@ public:
 
     // update fanin with new_signal and reorder if necessary
     node.children[fanin] = new_signal;
-    // update the reference counter of the new signal
-    _storage->nodes[new_signal.index].data[0].h1++;
+
     if ( node.children[1].index < node.children[0].index )
     {
       std::swap( node.children[0], node.children[1] );
@@ -439,7 +438,7 @@ public:
     }
     else if ( node.children[0].index == 0 ) /* constant child */
     {
-      return std::make_pair( n, node.children[0].weight ? signal{node.children[0]} : get_constant( false ) );
+      return std::make_pair( n, node.children[0].weight ? signal{node.children[1]} : get_constant( false ) );
     }
 
     // node already in hash table
@@ -447,6 +446,9 @@ public:
     {
       return std::make_pair( n, signal( it->second, 0 ) );
     }
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
 
     // insert updated node into hash table
     _storage->hash[node] = n;
@@ -473,18 +475,17 @@ public:
   {
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = 0;
-    return;
 
-    // if ( n != 0 && !is_pi( n ) )
-    // {
-    //   for ( auto i = 0u; i < 2u; ++i )
-    //   {
-    //     if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
-    //     {
-    //       _take_out_node( nobj.children[i].index );
-    //     }
-    //   }
-    // }
+    if ( n != 0 && !is_pi( n ) )
+    {
+      for ( auto i = 0u; i < 2u; ++i )
+      {
+        if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
+        {
+          _take_out_node( nobj.children[i].index );
+        }
+      }
+    }
   }
 
   void substitute_node( node const& old_node, signal const& new_signal )
