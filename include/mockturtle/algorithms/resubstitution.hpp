@@ -880,7 +880,10 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
-    if ( ntk.is_constant( ntk.get_node( new_signal ) ) )
+    //if ( ntk.is_constant( ntk.get_node( new_signal ) ) )
+    //  return;
+
+    if ( ntk.fanout_size( ntk.get_node( new_signal ) ) == 0 )
       return;
     std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
     ntk.substitute_node( old_node, new_signal );

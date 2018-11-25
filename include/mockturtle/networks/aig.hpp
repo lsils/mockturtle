@@ -432,7 +432,7 @@ public:
       if ( !diff_pol )
       {
         // make node invalid such that it is not recognized as CI
-        node.children[0].weight ^= 1;
+        node.children[1].weight ^= 1;
       }
       return std::make_pair( n, diff_pol ? get_constant( false ) : signal{node.children[0]} );
     }
