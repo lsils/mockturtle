@@ -32,24 +32,18 @@
 
 #pragma once
 
-#include "../networks/mig.hpp"
 #include "../traits.hpp"
-#include "../utils/progress_bar.hpp"
-#include "../utils/stopwatch.hpp"
+#include "reconv_cut2.hpp"
 #include "../views/depth_view.hpp"
 #include "../views/fanout_view.hpp"
-#include "../views/window_view.hpp"
-#include "simulation.hpp"
-#include "reconv_cut2.hpp"
 #include "../networks/aig.hpp"
 #include "../networks/mig.hpp"
 #include "../networks/xag.hpp"
 #include "../networks/xmg.hpp"
-#include "../io/write_verilog.hpp"
+#include "../utils/progress_bar.hpp"
+#include "../utils/stopwatch.hpp"
 
 #include <fmt/format.h>
-#include <kitty/dynamic_truth_table.hpp>
-#include <kitty/kitty.hpp>
 
 #include <iostream>
 #include <optional>
