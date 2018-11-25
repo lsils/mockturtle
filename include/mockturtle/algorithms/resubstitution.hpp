@@ -1076,13 +1076,9 @@ private:
 
       if constexpr ( std::is_same<typename Ntk::base_type, mig_network>::value )
       {
-        std::cout << "simulate MIG node " << d << std::endl;
-        std::cout << d << std::endl;
-        
         std::array<signal, 3u> fanins;
         ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
             fanins[i] = s;
-            std::cout << i << ' ' << ntk.get_node( s ) << std::endl;
           });
 
         /* simulate the MAJ3-node */
