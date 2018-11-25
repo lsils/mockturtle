@@ -39,10 +39,13 @@
 #include "../views/depth_view.hpp"
 #include "../views/fanout_view.hpp"
 #include "../views/window_view.hpp"
-#include "reconv_cut.hpp"
 #include "simulation.hpp"
 #include "reconv_cut2.hpp"
 #include "../networks/aig.hpp"
+#include "../networks/mig.hpp"
+#include "../networks/xag.hpp"
+#include "../networks/xmg.hpp"
+#include "../io/write_verilog.hpp"
 
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
@@ -275,6 +278,12 @@ struct resubstitution_stats
   /*! \brief Accumulated runtime for updating the network. */
   stopwatch<>::duration time_replace{0};
 
+  /*! \brief Accumulated runtime for substituting nodes. */
+  stopwatch<>::duration time_substitute{0};
+
+  /*! \brief Accumulated runtime for updating depth_view and fanout_view. */
+  stopwatch<>::duration time_update{0};
+
   /*! \brief Initial network size (before resubstitution) */
   uint64_t initial_size{0};
 
@@ -327,6 +336,8 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]            2-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub2 ) );
     std::cout << fmt::format( "[i]            3-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub3 ) );
     std::cout << fmt::format( "[i]   replace time            = {:>5.2f} secs\n", to_seconds( time_replace ) );
+    std::cout << fmt::format( "[i]     substitute            = {:>5.2f} secs\n", to_seconds( time_substitute ) );
+    std::cout << fmt::format( "[i]     update                = {:>5.2f} secs\n", to_seconds( time_update ) );
     std::cout << fmt::format( "[i] total divisors            = {:8d}\n",         ( num_total_divisors ) );
     std::cout << fmt::format( "[i] total leaves              = {:8d}\n",         ( num_total_leaves ) );
     std::cout << fmt::format( "[i] total gain                = {:8d} ({:>5.2f}\%)\n",
@@ -448,7 +459,7 @@ public:
     if ( phase.size() < ntk.size() )
       phase.resize( ntk.size() );
   }
-  
+
   bool get_phase( node const& n ) const
   {
     assert( n < data.size() );
@@ -459,7 +470,7 @@ public:
   void set_phase( node const& n )
   {
     assert( n < data.size() );
-    assert( n < phase.size() );    
+    assert( n < phase.size() );
     uint32_t *data_n = (uint32_t*)data[n];
     auto const p = data_n[0] & 1;
     if ( p )
@@ -473,7 +484,7 @@ public:
   void set_ith_var( node const& n, uint32_t i )
   {
     assert( n < data.size() );
-    assert( n < phase.size() );    
+    assert( n < phase.size() );
     data[n] = sims[i];
   }
 
@@ -880,14 +891,18 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
-    //if ( ntk.is_constant( ntk.get_node( new_signal ) ) )
-    //  return;
+    /* FIXME: SKIP constant replacement */
+    // std::cout << "call to substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
 
+    //if ( ntk.is_constant( ntk.get_node( new_signal ) ) )
     if ( ntk.fanout_size( ntk.get_node( new_signal ) ) == 0 )
+    {
+      std::cout << "skip call to substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
       return;
-    std::cout << "invoke substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
-    ntk.substitute_node( old_node, new_signal );
-    ntk.update();
+    }
+
+    call_with_stopwatch( st.time_substitute, [&]() { ntk.substitute_node( old_node, new_signal ); } );
+    call_with_stopwatch( st.time_update, [&]() { ntk.update(); } );
   }
 
   void collect_divisors_rec( node const& n, std::vector<node>& internal )
@@ -1034,7 +1049,7 @@ private:
     for ( const auto& d : divs )
     {
       assert( d != 0 );
-      
+
       if ( i < leaves.size() )
       {
         /* initialize the leaf */
@@ -1713,6 +1728,7 @@ private:
     // std::cout << std::endl;
 
     /* simulate the nodes */
+
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); });
 
     /* consider constants */
@@ -1829,9 +1845,6 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
   // static_assert( make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
   // static_assert( substitude_node_of_parents_v<Ntk>, "Ntk does not implement the substitute_node_of_parents method" );
-
-  if constexpr ( !std::is_same<Ntk, aig_network>::value )
-    return;
 
   /* FIXME */
   using view_t = depth_view<fanout_view<Ntk>>;

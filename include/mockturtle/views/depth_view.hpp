@@ -120,7 +120,7 @@ public:
 
   void update()
   {
-    std::cout << "update levels" << std::endl;
+    // std::cout << "update levels" << std::endl;
     _levels.reset( 0 );
 
     ++this->trav_id;
