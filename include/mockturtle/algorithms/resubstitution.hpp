@@ -182,11 +182,11 @@ struct resubstitution_params
   /*! \brief Maximum number of nodes compared during resubstitution. */
   uint32_t max_compare{20};
 
-  /*! \brief Number of fanout levels for ODC computation. */
-  uint32_t odc_levels{0};
+  /*! \brief Maximum fanout of a node to be considered as root. */
+  uint32_t skip_fanout_limit_for_roots{1000};
 
-  /*! \brief Maximum fanout of a node to be considered. */
-  uint32_t skip_fanout_limit{1000};
+  /*! \brief Maximum fanout of a node to be considered as divisor. */
+  uint32_t skip_fanout_limit_for_divisors{100};
 
   /*! \brief Extend window with nodes. */
   bool extend{false};
@@ -225,9 +225,6 @@ struct resubstitution_stats
 
   /*! \brief Accumulated runtime for divisor computation. */
   stopwatch<>::duration time_divs{0};
-
-  /*! \brief Accumulated runtime for window computation. */
-  stopwatch<>::duration time_windows{0};
 
   /*! \brief Accumulated runtime for depth computation. */
   stopwatch<>::duration time_depth{0};
@@ -319,7 +316,6 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]   cut time                = {:>5.2f} secs\n", to_seconds( time_cuts ) );
     std::cout << fmt::format( "[i]   mffc time               = {:>5.2f} secs\n", to_seconds( time_mffc ) );
     std::cout << fmt::format( "[i]   divs time               = {:>5.2f} secs\n", to_seconds( time_divs ) );
-    std::cout << fmt::format( "[i]   windows time            = {:>5.2f} secs\n", to_seconds( time_windows ) );
     std::cout << fmt::format( "[i]   depth time              = {:>5.2f} secs\n", to_seconds( time_depth ) );
     std::cout << fmt::format( "[i]   simulation time         = {:>5.2f} secs\n", to_seconds( time_simulation ) );
     std::cout << fmt::format( "[i]   evaluation time         = {:>5.2f} secs\n", to_seconds( time_eval ) );
@@ -328,6 +324,8 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]            S-resub        = {:>5.2f} secs\n",     to_seconds( time_resubS ) );
     std::cout << fmt::format( "[i]            1-resub {:6d} = {:>5.2f} secs ({:6d} ORs + {:6d} ANDs)\n",
                               num_div1_accepts, to_seconds( time_resub1 ), num_div1_or_accepts, num_div1_and_accepts );
+    // std::cout << fmt::format( "[i]            1-resub {:6d} = {:>5.2f} secs\n",
+    //                           num_div1_accepts, to_seconds( time_resub1 ) );
     std::cout << fmt::format( "[i]           12-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub12 ) );
     std::cout << fmt::format( "[i]            D-resub        = {:>5.2f} secs\n",     to_seconds( time_resubD ) );
     std::cout << fmt::format( "[i]            2-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub2 ) );
@@ -466,6 +464,7 @@ public:
 
   void set_phase( node const& n )
   {
+    if ( n == 0 ) return;
     assert( n < data.size() );
     assert( n < phase.size() );
     uint32_t *data_n = (uint32_t*)data[n];
@@ -865,12 +864,12 @@ public:
         if ( i >= size )
           return false; /* terminate */
 
-        /* skip nodes with many fanouts */
-        if ( ntk.fanout_size( n ) > 1000 )
+        if ( ntk.fanout_size( n ) == 0 )
           return true; /* next */
 
-        if ( ntk.fanout_size( n ) == 0 )
-          return true;
+        /* skip nodes with many fanouts */
+        if ( ntk.fanout_size( n ) > ps.skip_fanout_limit_for_roots )
+          return true; /* next */
 
         /* compute a reconvergence-driven cut */
         auto const leaves = call_with_stopwatch( st.time_cuts, [&]() {
@@ -917,7 +916,7 @@ private:
       });
 
     /* collect the internal nodes */
-    if ( ntk.value( n ) == 0 && ntk.fanout_size( n ) != 0 )
+    if ( ntk.value( n ) == 0 && ntk.fanout_size( n ) != 0 && n != 0 )
     {
       internal.emplace_back( n );
     }
@@ -974,7 +973,7 @@ private:
       if ( ntk.fanout_size( d ) == 0 )
         continue;
 
-      if ( ntk.fanout_size( d ) > 100 )
+      if ( ntk.fanout_size( d ) > ps.skip_fanout_limit_for_divisors )
         continue;
 
       /* if the fanout has all fanins in the set, add it */
@@ -1057,13 +1056,6 @@ private:
     for ( const auto& d : divs )
     {
       // assert( d != 0 );
-
-      /* skip zero divisors if they appear for some reason */
-      if ( d == 0 )
-      {
-        continue;
-      }
-
       if ( i < leaves.size() )
       {
         /* initialize the leaf */
@@ -1701,6 +1693,61 @@ private:
     }
   }
 
+  std::optional<signal> resub_div_maj3( node const& root, uint32_t required )
+  {
+    auto const s = ntk.make_signal( root );
+    for ( auto i = 0u; i < num_divs; ++i )
+    {
+      auto const& d0 = divs.at( i );
+
+      if ( ntk.level( d0 ) > required - 1 )
+        continue;
+
+      for ( auto j = i + 1; j < num_divs; ++j )
+      {
+        auto const& d1 = divs.at( j );
+
+        if ( ntk.level( d1 ) > required - 1 )
+          continue;
+
+        auto const s0 = ntk.make_signal( d0 );
+        auto const s1 = ntk.make_signal( d1 );
+
+        if ( !sims.maj3_equal(  s0, s1, s, s ) &&
+             !sims.maj3_equal( !s0, s1, s, s ) )
+          continue;
+
+        for ( auto k = j + 1; k < num_divs; ++k )
+        {
+          auto const& d2 = divs.at( k );
+
+          if ( ntk.level( d2 ) > required - 1 )
+            continue;
+
+          auto const s2 = ntk.make_signal( d2 );
+
+          /* ( l & r ) <-> root */
+          if ( sims.maj3_equal( s0, s1, s2, s ) )
+          {
+            auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+            auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+            auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+            return sims.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
+          }
+          else if ( sims.maj3_equal( !s0, s1, s2, s ) )
+          {
+            auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+            auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+            auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+            return sims.get_phase( root ) ? !ntk.create_maj( !a, b, c ) : ntk.create_maj( !a, b, c );
+          }
+        }
+      }
+    }
+
+    return std::optional<signal>();
+  }
+
   std::optional<signal> eval( node const& root, std::vector<node> const &leaves, uint32_t num_steps, bool update_level )
   {
     uint32_t const required = update_level ? 0 : std::numeric_limits<uint32_t>::max();
@@ -1755,55 +1802,94 @@ private:
     /* simulate the nodes */
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); });
 
-    /* consider constants */
-    auto g = call_with_stopwatch( st.time_resubC, [&]() {
-        return resub_const( root, required ); } );
-    if ( g )
+    if constexpr ( std::is_same<typename Ntk::base_type, aig_network>::value )
     {
-      ++st.num_const_accepts;
-      last_gain = num_mffc;
-      return g; /* accepted resub */
-    }
+      /* consider constants */
+      auto g = call_with_stopwatch( st.time_resubC, [&]() {
+          return resub_const( root, required ); } );
+      if ( g )
+      {
+        ++st.num_const_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
 
-    /* consider equal nodes */
-    g = call_with_stopwatch( st.time_resub0, [&]() {
-        return resub_div0( root, required ); });
-    if ( g )
-    {
-      ++st.num_div0_accepts;
-      last_gain = num_mffc;
-      return g; /* accepted resub */
-    }
+      /* consider equal nodes */
+      g = call_with_stopwatch( st.time_resub0, [&]() {
+          return resub_div0( root, required ); });
+      if ( g )
+      {
+        ++st.num_div0_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
 
-    if ( ps.max_inserts == 0 || num_mffc == 1 )
-      return std::optional<signal>();
+      if ( ps.max_inserts == 0 || num_mffc == 1 )
+        return std::optional<signal>();
 
-    /* get the one level divisors */
-    call_with_stopwatch( st.time_resubS, [&]() { resub_divS( root, required ); });
+      /* get the one level divisors */
+      call_with_stopwatch( st.time_resubS, [&]() { resub_divS( root, required ); });
 
-    /* consider one node */
-    g = call_with_stopwatch( st.time_resub1, [&]() {
-        return resub_div1( root, required ); });
-    if ( g )
-    {
-      ++st.num_div1_accepts;
-      last_gain = num_mffc;
-      return g; /* accepted resub */
-    }
+      /* consider one node */
+      g = call_with_stopwatch( st.time_resub1, [&]() {
+          return resub_div1( root, required ); });
+      if ( g )
+      {
+        ++st.num_div1_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
 
 #if 0
-    /* consider triples */
-    call_with_stopwatch( st.time_resub12, [&]() { resub_div12( root, required ); });
+      /* consider triples */
+      call_with_stopwatch( st.time_resub12, [&]() { resub_div12( root, required ); });
 
-    /* get the two level divisors */
-    call_with_stopwatch( st.time_resubD, [&]() { resub_divD( root, required ); });
+      /* get the two level divisors */
+      call_with_stopwatch( st.time_resubD, [&]() { resub_divD( root, required ); });
 
-    /* consider two nodes */
-    call_with_stopwatch( st.time_resub2, [&]() { resub_div2( root, required ); });
+      /* consider two nodes */
+      call_with_stopwatch( st.time_resub2, [&]() { resub_div2( root, required ); });
 
-    /* consider three nodes */
-    call_with_stopwatch( st.time_resub3, [&]() { resub_div3( root, required ); });
+      /* consider three nodes */
+      call_with_stopwatch( st.time_resub3, [&]() { resub_div3( root, required ); });
 #endif
+    }
+
+    if constexpr ( std::is_same<typename Ntk::base_type, mig_network>::value )
+    {
+      /* consider constants */
+      auto g = call_with_stopwatch( st.time_resubC, [&]() {
+          return resub_const( root, required ); } );
+      if ( g )
+      {
+        ++st.num_const_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
+
+      /* consider equal nodes */
+      g = call_with_stopwatch( st.time_resub0, [&]() {
+          return resub_div0( root, required ); });
+      if ( g )
+      {
+        ++st.num_div0_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
+
+      if ( ps.max_inserts == 0 || num_mffc == 1 )
+        return std::optional<signal>();
+
+      /* consider one node for majority */
+      g = call_with_stopwatch( st.time_resub1, [&]() {
+          return resub_div_maj3( root, required ); });
+      if ( g )
+      {
+        ++st.num_div1_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
+    }
 
     return std::optional<signal>();
   }
