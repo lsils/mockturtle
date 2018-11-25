@@ -482,6 +482,7 @@ public:
       {
         if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
         {
+          _storage->hash.erase( _storage->nodes[nobj.children[i].index] );
           _take_out_node( nobj.children[i].index );
         }
       }
