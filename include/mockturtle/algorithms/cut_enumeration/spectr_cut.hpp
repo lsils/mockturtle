@@ -61,10 +61,21 @@ bool operator<( cut_type<ComputeTruth, cut_enumeration_spectr_cut> const& c1, cu
 {
   constexpr auto eps{0.005f};
 
-  if ( c1->data.cost < c2->data.cost )
-    return true;
-  if ( c1->data.cost > c2->data.cost )
+  if ( c1.size() == c2.size() )
+  {
+    if ( c1->data.cost < c2->data.cost )
+      return true;
+    if ( c1->data.cost > c2->data.cost )
+      return false;
+  }
+  if ( c1.size() > c2.size() && c1->data.cost < c2->data.cost )
+  {
     return false;
+  }
+  if ( c1.size() < c2.size() && c1->data.cost > c2->data.cost )
+  {
+    return true;
+  }
   if ( c1->data.flow < c2->data.flow - eps )
     return true;
   if ( c1->data.flow > c2->data.flow + eps )
@@ -73,7 +84,7 @@ bool operator<( cut_type<ComputeTruth, cut_enumeration_spectr_cut> const& c1, cu
     return true;
   if ( c1->data.delay > c2->data.delay )
     return false;
-  return c1.size() < c2.size();
+  return c1.size() > c2.size();
 }
 
 template<>
