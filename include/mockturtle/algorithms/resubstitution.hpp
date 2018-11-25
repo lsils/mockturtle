@@ -508,6 +508,90 @@ public:
     }
   }
 
+  void compute_xor( node const& n, signal const& s0, signal const& s1 )
+  {
+    auto const n0 = ntk.get_node( s0 );
+    auto const n1 = ntk.get_node( s1 );
+
+    uint32_t *data_n = (uint32_t*)data[n];
+    uint32_t *data_0 = (uint32_t*)data[n0];
+    uint32_t *data_1 = (uint32_t*)data[n1];
+
+    if ( ntk.is_complemented( s0 ) && ntk.is_complemented( s1 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ~data_0[k] ^ ~data_1[k];
+    }
+    else if ( ntk.is_complemented( s0 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ~data_0[k] ^ data_1[k];
+    }
+    else if ( ntk.is_complemented( s1 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = data_0[k] ^ ~data_1[k];
+    }
+    else
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = data_0[k] ^ data_1[k];
+    }
+  }
+
+  void compute_maj3( node const& n, signal const& s0, signal const& s1, signal const& s2 )
+  {
+    auto const n0 = ntk.get_node( s0 );
+    auto const n1 = ntk.get_node( s1 );
+    auto const n2 = ntk.get_node( s2 );
+
+    uint32_t *data_n = (uint32_t*)data[n];
+    uint32_t *data_0 = (uint32_t*)data[n0];
+    uint32_t *data_1 = (uint32_t*)data[n1];
+    uint32_t *data_2 = (uint32_t*)data[n2];
+
+    if ( ntk.is_complemented( s0 ) && ntk.is_complemented( s1 ) && ntk.is_complemented( s2 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ( ~data_0[k] & ~data_1[k] ) | ( ~data_1[k] & ~data_2[k] ) | ( ~data_0[k] & ~data_2[k] );
+    }
+    else if ( ntk.is_complemented( s0 ) && ntk.is_complemented( s1 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ( ~data_0[k] & ~data_1[k] ) | ( ~data_1[k] & data_2[k] ) | ( ~data_0[k] & data_2[k] );
+    }
+    else if ( ntk.is_complemented( s1 ) && ntk.is_complemented( s2 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ( data_0[k] & ~data_1[k] ) | ( ~data_1[k] & ~data_2[k] ) | ( data_0[k] & ~data_2[k] );
+    }
+    else if ( ntk.is_complemented( s0 ) && ntk.is_complemented( s2 ) )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ( ~data_0[k] & data_1[k] ) | ( data_1[k] & ~data_2[k] ) | ( ~data_0[k] & ~data_2[k] );
+    }
+    else if ( ntk.is_complemented( s0 )  )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ( ~data_0[k] & data_1[k] ) | ( data_1[k] & data_2[k] ) | ( ~data_0[k] & data_2[k] );
+    }
+    else if ( ntk.is_complemented( s1 )  )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ( data_0[k] & ~data_1[k] ) | ( ~data_1[k] & data_2[k] ) | ( data_0[k] & data_2[k] );
+    }
+    else if ( ntk.is_complemented( s2 )  )
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ( data_0[k] & data_1[k] ) | ( data_1[k] & ~data_2[k] ) | ( data_0[k] & ~data_2[k] );
+    }
+    else
+    {
+      for ( auto k = 0u; k < num_words; ++k )
+        data_n[k] = ( data_0[k] & data_1[k] ) | ( data_1[k] & data_2[k] ) | ( data_0[k] & data_2[k] );
+    }
+  }
+
   bool implies( node const& a, node const& b ) const
   {
     auto data_a = (uint32_t*)data[a];
@@ -959,17 +1043,43 @@ private:
       /* set storage for the node's simulation info */
       sims.set_ith_var( d, i - leaves.size() + ps.max_pis );
 
-      /* NOTE: the next lines are implemented for AIGs only and
-         need to be changed for other graph data-structures */
-      std::array<signal, 2u> fanins;
-      ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
-          fanins[i] = s;
-        });
+      if constexpr ( std::is_same<typename Ntk::base_type, aig_network>::value )
+      {
+        std::array<signal, 2u> fanins;
+        ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
+            fanins[i] = s;
+          });
 
-      /* simulate the AND-node */
-      sims.compute_and( d, fanins[0u], fanins[1u] );
+        /* simulate the AND-node */
+        sims.compute_and( d, fanins[0u], fanins[1u] );
+        i++;
+        continue;
+      }
 
-      i++;
+      if constexpr ( std::is_same<typename Ntk::base_type, mig_network>::value )
+      {
+        std::array<signal, 3u> fanins;
+        ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
+            fanins[i] = s;
+          });
+
+        /* simulate the MAJ3-node */
+        sims.compute_maj3( d, fanins[0u], fanins[1u], fanins[2u] );
+        i++;
+        continue;
+      }
+
+      if constexpr ( std::is_same<typename Ntk::base_type, xag_network>::value )
+      {
+        assert( false && "simulation for XAG is not implemented" );
+      }
+
+      if constexpr ( std::is_same<typename Ntk::base_type, xmg_network>::value )
+      {
+        assert( false && "simulation for XMG is not implemented" );
+      }
+
+      assert( false && "unreachable" );
     }
 
     /* normalize */
