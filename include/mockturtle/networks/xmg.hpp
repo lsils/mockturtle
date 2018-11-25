@@ -196,6 +196,11 @@ public:
     return _storage->nodes[n].children[0].data == ~static_cast<std::size_t>( 0 ) && _storage->nodes[n].children[1].data == ~static_cast<std::size_t>( 0 ) && _storage->nodes[n].children[2].data == ~static_cast<std::size_t>( 0 );
   }
 
+  bool is_ci( node const& n ) const
+  {
+    return is_pi( n );
+  }
+
   bool constant_value( node const& n ) const
   {
     (void)n;
@@ -450,7 +455,7 @@ public:
   {
     (void)parents;
     (void)old_node;
-    (void)new_signal;    
+    (void)new_signal;
     assert( false && "yet not implemented" );
   }
 #pragma endregion
@@ -688,6 +693,16 @@ public:
 #pragma endregion
 
 #pragma region Custom node values
+  auto incr_h1( node const& n ) const
+  {
+    return _storage->nodes[n].data[0].h1++;
+  }
+
+  auto decr_h1( node const& n ) const
+  {
+    return --_storage->nodes[n].data[0].h1;
+  }
+
   void clear_values() const
   {
     std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[0].h2 = 0; } );

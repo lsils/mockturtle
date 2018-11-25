@@ -68,9 +68,7 @@ public:
   {
     /* increment the fanout counters for the leaves */
     for ( const auto& l : leaves )
-    {
       ntk.incr_h1( l );
-    }
 
     /* dereference the node */
     auto count1 = node_deref_rec( n );
@@ -83,9 +81,7 @@ public:
     assert( count1 == count2 );
 
     for ( const auto& l : leaves )
-    {
       ntk.decr_h1( l );
-    }
 
     return count1;
   }
@@ -441,7 +437,7 @@ public:
       for ( auto i = 0u; i < num_bits; ++i )
       {
         if ( i & ( 1 << k ) )
-          simulation_entry[i>>5] |= ( 1 << (i & 31 ) );
+          simulation_entry[i>>5] |= ( 1 << ( i & 31 ) );
       }
     }
   }
@@ -515,12 +511,17 @@ public:
 
   void compute_xor( node const& n, signal const& s0, signal const& s1 )
   {
+    assert( n != 0 );
     auto const n0 = ntk.get_node( s0 );
     auto const n1 = ntk.get_node( s1 );
 
+    uint32_t zero[num_words];
+    for ( auto i = 0u; i < num_words; ++i )
+      zero[i] = 0;
+
     uint32_t *data_n = (uint32_t*)data[n];
-    uint32_t *data_0 = (uint32_t*)data[n0];
-    uint32_t *data_1 = (uint32_t*)data[n1];
+    uint32_t *data_0 = ( ntk.is_constant( n0 ) ? (uint32_t*)(&zero) : (uint32_t*)data[n0] );
+    uint32_t *data_1 = ( ntk.is_constant( n1 ) ? (uint32_t*)(&zero) : (uint32_t*)data[n1] );
 
     if ( ntk.is_complemented( s0 ) && ntk.is_complemented( s1 ) )
     {
@@ -546,14 +547,20 @@ public:
 
   void compute_maj3( node const& n, signal const& s0, signal const& s1, signal const& s2 )
   {
+    assert( n != 0 );
+
     auto const n0 = ntk.get_node( s0 );
     auto const n1 = ntk.get_node( s1 );
     auto const n2 = ntk.get_node( s2 );
 
+    uint32_t zero[num_words];
+    for ( auto i = 0u; i < num_words; ++i )
+      zero[i] = 0;
+
     uint32_t *data_n = (uint32_t*)data[n];
-    uint32_t *data_0 = (uint32_t*)data[n0];
-    uint32_t *data_1 = (uint32_t*)data[n1];
-    uint32_t *data_2 = (uint32_t*)data[n2];
+    uint32_t *data_0 = ( ntk.is_constant( n0 ) ? (uint32_t*)(&zero) : (uint32_t*)data[n0] );
+    uint32_t *data_1 = ( ntk.is_constant( n1 ) ? (uint32_t*)(&zero) : (uint32_t*)data[n1] );
+    uint32_t *data_2 = ( ntk.is_constant( n2 ) ? (uint32_t*)(&zero) : (uint32_t*)data[n2] );
 
     if ( ntk.is_complemented( s0 ) && ntk.is_complemented( s1 ) && ntk.is_complemented( s2 ) )
     {
@@ -611,9 +618,9 @@ public:
 
   bool and_implies( signal const& a, signal const& b, node const& r ) const
   {
+    auto data_r = (uint32_t*)data[r];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
     auto data_b = (uint32_t*)data[ntk.get_node( b )];
-    auto data_r = (uint32_t*)data[r];
     for ( auto k = 0u; k < num_words; ++k )
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
@@ -627,9 +634,9 @@ public:
 
   bool and_equal( signal const& a, signal const& b, signal const& r ) const
   {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
     auto data_b = (uint32_t*)data[ntk.get_node( b )];
-    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     for ( auto k = 0u; k < num_words; ++k )
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
@@ -643,10 +650,10 @@ public:
 
   bool and3_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
   {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
     auto data_b = (uint32_t*)data[ntk.get_node( b )];
     auto data_c = (uint32_t*)data[ntk.get_node( c )];
-    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     for ( auto k = 0u; k < num_words; ++k )
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
@@ -661,10 +668,10 @@ public:
 
   bool and_or2_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
   {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
     auto data_b = (uint32_t*)data[ntk.get_node( b )];
     auto data_c = (uint32_t*)data[ntk.get_node( c )];
-    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     for ( auto k = 0u; k < num_words; ++k )
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
@@ -679,11 +686,11 @@ public:
 
   bool and_or22_equal( signal const& a, signal const& b, signal const& c, signal const& d, signal const& r ) const
   {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
     auto data_b = (uint32_t*)data[ntk.get_node( b )];
     auto data_c = (uint32_t*)data[ntk.get_node( c )];
     auto data_d = (uint32_t*)data[ntk.get_node( d )];
-    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     for ( auto k = 0u; k < num_words; ++k )
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
@@ -699,9 +706,9 @@ public:
 
   bool or_equal( signal const& a, signal const& b, signal const& r ) const
   {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
     auto data_b = (uint32_t*)data[ntk.get_node( b )];
-    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     for ( auto k = 0u; k < num_words; ++k )
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
@@ -715,10 +722,10 @@ public:
 
   bool or3_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
   {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
     auto data_b = (uint32_t*)data[ntk.get_node( b )];
     auto data_c = (uint32_t*)data[ntk.get_node( c )];
-    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     for ( auto k = 0u; k < num_words; ++k )
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
@@ -733,10 +740,10 @@ public:
 
   bool maj3_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
   {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
     auto data_b = (uint32_t*)data[ntk.get_node( b )];
     auto data_c = (uint32_t*)data[ntk.get_node( c )];
-    auto data_r = (uint32_t*)data[ntk.get_node( r )];
     for ( auto k = 0u; k < num_words; ++k )
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
@@ -885,15 +892,8 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
-    /* FIXME: SKIP constant replacement */
-    // std::cout << "call to substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
-
-    //if ( ntk.is_constant( ntk.get_node( new_signal ) ) )
     if ( ntk.fanout_size( ntk.get_node( new_signal ) ) == 0 )
-    {
-      std::cout << "skip call to substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
       return;
-    }
 
     call_with_stopwatch( st.time_substitute, [&]() { ntk.substitute_node( old_node, new_signal ); } );
     call_with_stopwatch( st.time_update, [&]() { ntk.update(); } );
@@ -907,12 +907,12 @@ private:
     ntk.set_visited( n, ntk.trav_id );
 
     ntk.foreach_fanin( n, [&]( const auto& f ){
-      assert( ntk.get_node( f ) != 0 );
+        // assert( ntk.get_node( f ) != 0 );
         collect_divisors_rec( ntk.get_node( f ), internal );
       });
 
     /* collect the internal nodes */
-    if ( ntk.value( n ) == 0 )
+    if ( ntk.value( n ) == 0 && n != 0 )
       internal.emplace_back( n );
   }
 
@@ -1042,7 +1042,13 @@ private:
     auto i = 0u;
     for ( const auto& d : divs )
     {
-      assert( d != 0 );
+      // assert( d != 0 );
+
+      /* skip zero divisors if they appear for some reason */
+      if ( d == 0 )
+      {
+        continue;
+      }
 
       if ( i < leaves.size() )
       {
@@ -1070,9 +1076,13 @@ private:
 
       if constexpr ( std::is_same<typename Ntk::base_type, mig_network>::value )
       {
+        std::cout << "simulate MIG node " << d << std::endl;
+        std::cout << d << std::endl;
+        
         std::array<signal, 3u> fanins;
         ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
             fanins[i] = s;
+            std::cout << i << ' ' << ntk.get_node( s ) << std::endl;
           });
 
         /* simulate the MAJ3-node */
@@ -1684,7 +1694,10 @@ private:
   {
     uint32_t const required = update_level ? 0 : std::numeric_limits<uint32_t>::max();
 
-    assert( num_steps >= 0 && num_steps <= 3 );
+    assert( num_steps >= 0 );
+    assert( num_steps <= 3 );
+
+    last_gain = -1;
 
     // std::cout << "current root = " << root << " with leaves ";
     // for ( const auto& l : leaves )
@@ -1706,6 +1719,13 @@ private:
         return collect_divisors( root, leaves, required );
       });
 
+    // std::cout << "divisors: ";
+    // for ( const auto& d : divs)
+    // {
+    //   std::cout << d << ' ';
+    // }
+    // std::cout << std::endl;
+
     if ( !div_comp_success )
       return std::optional<signal>();
 
@@ -1722,7 +1742,6 @@ private:
     // std::cout << std::endl;
 
     /* simulate the nodes */
-
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); });
 
     /* consider constants */

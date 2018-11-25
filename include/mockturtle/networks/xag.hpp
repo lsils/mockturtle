@@ -898,6 +898,16 @@ public:
 #pragma endregion
 
 #pragma region Custom node values
+  auto incr_h1( node const& n ) const
+  {
+    return _storage->nodes[n].data[0].h1++;
+  }
+
+  auto decr_h1( node const& n ) const
+  {
+    return --_storage->nodes[n].data[0].h1;
+  }
+
   void clear_values() const
   {
     std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[0].h2 = 0; } );
