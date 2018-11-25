@@ -24,14 +24,15 @@
  */
 
 /*!
-  \file xah_minmc_resynthesis.hpp
-  \brief xag resynthesis 
+  \file xag_minmc.hpp
+  \brief XAG resynthesis 
 
   \author Eleonora Testa
 */
 
 #pragma once
 
+#include <array>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -39,8 +40,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../algorithms/cleanup.hpp"
-#include "../utils/stopwatch.hpp"
 #include <kitty/algorithm.hpp>
 #include <kitty/bit_operations.hpp>
 #include <kitty/constructors.hpp>
@@ -48,13 +47,14 @@
 #include <kitty/operations.hpp>
 #include <kitty/print.hpp>
 #include <kitty/spectral.hpp>
-#include <mockturtle/io/write_bench.hpp>
-#include <mockturtle/io/write_verilog.hpp>
-#include <mockturtle/networks/xag.hpp>
-#include <mockturtle/views/cut_view.hpp>
-#include <mockturtle/views/topo_view.hpp>
 
-#include "../traits.hpp"
+#include "../cleanup.hpp"
+#include "../../traits.hpp"
+#include "../../io/write_bench.hpp"
+#include "../../io/write_verilog.hpp"
+#include "../../networks/xag.hpp"
+#include "../../utils/stopwatch.hpp"
+#include "../../views/cut_view.hpp"
 
 namespace mockturtle
 {
@@ -325,23 +325,23 @@ private:
       line.erase( 0, pos );
 
       auto circuit = line;
-      auto orig_circuit = circuit;
+      //auto orig_circuit = circuit;
 
       const std::string delimiter = " ";
-      std::string token = circuit.substr( 0, circuit.find( delimiter ) );
-      circuit.erase( 0, circuit.find( delimiter ) + delimiter.length() );
+      std::string token = circuit.substr( 0, circuit.find( ' ' ) );
+      circuit.erase( 0, circuit.find( ' ' ) + 1 );
       const auto inputs = std::stoul( token );
 
       std::vector<xag_network::signal> hashing_circ( db_pis->begin(), db_pis->begin() + inputs );
 
       while ( circuit.size() > 4 )
       {
-        std::vector<unsigned> signals( 2, 0 );
+        std::array<unsigned, 2> signals;
         std::vector<xag_network::signal> ff( 2 );
         for ( auto j = 0u; j < 2u; j++ )
         {
-          token = circuit.substr( 0, circuit.find( delimiter ) );
-          circuit.erase( 0, circuit.find( delimiter ) + delimiter.length() );
+          token = circuit.substr( 0, circuit.find( ' ' ) );
+          circuit.erase( 0, circuit.find( ' ' ) + 1 );
           signals[j] = std::stoul( token );
           if ( signals[j] == 0 )
           {
@@ -356,7 +356,7 @@ private:
             ff[j] = hashing_circ[signals[j] / 2 - 1] ^ ( signals[j] % 2 != 0 );
           }
         }
-        circuit.erase( 0, circuit.find( delimiter ) + delimiter.length() );
+        circuit.erase( 0, circuit.find( ' ' ) + 1 );
 
         if ( signals[0] > signals[1] )
         {
