@@ -295,6 +295,12 @@ struct resubstitution_stats
   /*! \brief Number of accepted one resubsitutions */
   uint64_t num_div1_accepts{0};
 
+  /*! \brief Number of accepted one OR-resubsitutions */
+  uint64_t num_div1_or_accepts{0};
+
+  /*! \brief Number of accepted one AND-resubsitutions */
+  uint64_t num_div1_and_accepts{0};
+
   /*! \brief Number of accepted two resubsitutions */
   uint64_t num_div2_accepts{0};
 
@@ -320,7 +326,8 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]     constant-resub {:6d} = {:>5.2f} secs\n", num_const_accepts, to_seconds( time_resubC ) );
     std::cout << fmt::format( "[i]            0-resub {:6d} = {:>5.2f} secs\n", num_div0_accepts, to_seconds( time_resub0 ) );
     std::cout << fmt::format( "[i]            S-resub        = {:>5.2f} secs\n",     to_seconds( time_resubS ) );
-    std::cout << fmt::format( "[i]            1-resub {:6d} = {:>5.2f} secs\n", num_div1_accepts, to_seconds( time_resub1 ) );
+    std::cout << fmt::format( "[i]            1-resub {:6d} = {:>5.2f} secs ({:6d} ORs + {:6d} ANDs)\n",
+                              num_div1_accepts, to_seconds( time_resub1 ), num_div1_or_accepts, num_div1_and_accepts );
     std::cout << fmt::format( "[i]           12-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub12 ) );
     std::cout << fmt::format( "[i]            D-resub        = {:>5.2f} secs\n",     to_seconds( time_resubD ) );
     std::cout << fmt::format( "[i]            2-resub {:6d} = {:>5.2f} secs\n", 0u, to_seconds( time_resub2 ) );
@@ -892,8 +899,6 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
-    if ( ntk.fanout_size( ntk.get_node( new_signal ) ) == 0 )
-      return;
 
     call_with_stopwatch( st.time_substitute, [&]() { ntk.substitute_node( old_node, new_signal ); } );
     call_with_stopwatch( st.time_update, [&]() { ntk.update(); } );
@@ -912,8 +917,10 @@ private:
       });
 
     /* collect the internal nodes */
-    if ( ntk.value( n ) == 0 && n != 0 )
+    if ( ntk.value( n ) == 0 && ntk.fanout_size( n ) != 0 )
+    {
       internal.emplace_back( n );
+    }
   }
 
   bool collect_divisors( node const& root, std::vector<node> const& leaves, uint32_t required )
@@ -1185,18 +1192,17 @@ private:
         auto const s0 = ntk.make_signal( d0 );
         auto const s1 = ntk.make_signal( d1 );
 
-        /* ( ~l & ~r ) <-> ~root */
+        /* ( l | r ) <-> root */
         if ( sims.or_equal( s0, s1, s ) )
         {
+          ++st.num_div1_or_accepts;
           auto const l = sims.get_phase( d0 ) ? !s0 : s0;
           auto const r = sims.get_phase( d1 ) ? !s1 : s1;
           return sims.get_phase( root ) ? !ntk.create_or( l, r ) : ntk.create_or( l, r );
-          // return ( sims.get_phase( d ) ^ sims.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
         }
       }
     }
 
-#if 0
     /* check for negative unate divisors */
     for ( auto i = 0u; i < divs_1un.size(); ++i )
     {
@@ -1209,14 +1215,16 @@ private:
         auto const s0 = ntk.make_signal( d0 );
         auto const s1 = ntk.make_signal( d1 );
 
-        /* ( ~l | ~r ) <-> ~root */
-        if ( sims.or_equal( !s0, !s1, !s ) )
+        /* ( l & r ) <-> root */
+        if ( sims.and_equal( s0, s1, s ) )
         {
-          return sims.get_phase( root ) ? !ntk.create_and( s0, s1 ) : ntk.create_and( s0, s1 );
+          ++st.num_div1_and_accepts;
+          auto const l = sims.get_phase( d0 ) ? !s0 : s0;
+          auto const r = sims.get_phase( d1 ) ? !s1 : s1;
+          return sims.get_phase( root ) ? !ntk.create_and( l, r ) : ntk.create_and( l, r );
         }
       }
     }
-#endif
 
     return std::optional<signal>();
   }
