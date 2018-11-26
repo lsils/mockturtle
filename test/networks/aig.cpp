@@ -523,7 +523,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
   CHECK( aig.num_gates() == 5u );
   CHECK( aig._storage->hash.size() == 4u );
   CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
-  CHECK( aig._storage->nodes[f1.index].children[1u].index == x3.index );
+  CHECK( aig._storage->nodes[f1.index].children[1u].index == x2.index );
 
   CHECK( aig._storage->nodes[f5.index].children[0u].index == f3.index );
   CHECK( aig._storage->nodes[f5.index].children[1u].index == f4.index );
@@ -569,12 +569,11 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[aig]" )
   CHECK( aig.num_gates() == 3u );
   CHECK( aig._storage->hash.size() == 1u );
   CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
-  CHECK( aig._storage->nodes[f1.index].children[1u].index == x3.index );
+  CHECK( aig._storage->nodes[f1.index].children[1u].index == x2.index );
   CHECK( aig._storage->nodes[f2.index].children[0u].index == x1.index );
   CHECK( aig._storage->nodes[f2.index].children[1u].index == x3.index );
-  CHECK( aig._storage->nodes[f3.index].children[0u].index == f2.index );
+  CHECK( aig._storage->nodes[f3.index].children[0u].index == f1.index );
   CHECK( aig._storage->nodes[f3.index].children[1u].index == f2.index );
-  CHECK( aig._storage->nodes[f3.index].children[0u].weight != aig._storage->nodes[f3.index].children[1u].weight );
   CHECK( aig._storage->outputs[0].index == f2.index );
 
   CHECK( aig.fanout_size( aig.get_node( f1 )) == 0u );
@@ -611,7 +610,7 @@ TEST_CASE( "substitute input by constant in NAND-based XOR circuit", "[aig]" )
   CHECK( aig.fanout_size( aig.get_node( f4 ) ) == 0u );
 }
 
-TEST_CASE( "substitute node by constant in NAND-based XOR circuit", "[selected]" )
+TEST_CASE( "substitute node by constant in NAND-based XOR circuit", "[aig]" )
 {
   aig_network aig;
   const auto x1 = aig.create_pi();
@@ -636,7 +635,7 @@ TEST_CASE( "substitute node by constant in NAND-based XOR circuit", "[selected]"
   CHECK( aig.fanout_size( aig.get_node( f4 ) ) == 0u );
 }
 
-TEST_CASE( "substitute node by constant in NAND-based XOR circuit (test case 2)", "[selected]" )
+TEST_CASE( "substitute node by constant in NAND-based XOR circuit (test case 2)", "[aig]" )
 {
   aig_network aig;
   const auto x1 = aig.create_pi();
