@@ -132,7 +132,7 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
   // without zero gain
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
     const auto before = ntk.num_gates();
-    akers_resynthesis resyn;
+    akers_resynthesis<mig_network> resyn;
     refactoring( ntk, resyn );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();
@@ -143,7 +143,7 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
   // with zero gain
   const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
     const auto before = ntk.num_gates();
-    akers_resynthesis resyn;
+    akers_resynthesis<mig_network> resyn;
     refactoring_params ps;
     ps.allow_zero_gain = true;
     refactoring( ntk, resyn, ps );

@@ -206,7 +206,7 @@ TEST_CASE( "Node resynthesis with Akers resynthesis", "[node_resynthesis]" )
   const auto f = klut.create_node( {a, b, c}, maj );
   klut.create_po( f );
 
-  akers_resynthesis resyn;
+  akers_resynthesis<mig_network> resyn;
   const auto mig = node_resynthesis<mig_network>( klut, resyn );
 
   CHECK( mig.size() == 5 );
