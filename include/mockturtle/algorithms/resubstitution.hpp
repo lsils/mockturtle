@@ -895,7 +895,8 @@ private:
     // std::cout << "call to substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
 
     //if ( ntk.is_constant( ntk.get_node( new_signal ) ) )
-    if ( ntk.fanout_size( ntk.get_node( new_signal ) ) == 0 )
+    //if ( ntk.fanout_size( ntk.get_node( new_signal ) ) == 0 )
+    if ( false )
     {
       std::cout << "skip call to substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
       return;
