@@ -27,7 +27,7 @@
   \file mig.hpp
   \brief MIG logic network implementation
 
-  \author Eleonora Testa
+  \author Eleonora Testa 
 */
 
 #pragma once
@@ -293,7 +293,7 @@ public:
 
     return {index, node_complement};
   }
-  
+
   signal create_and( signal const& a, signal const& b )
   {
     return create_maj( get_constant( false ), a, b );

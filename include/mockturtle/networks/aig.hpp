@@ -300,17 +300,17 @@ public:
       return a.complement ? b : get_constant( false );
     }
 
-    /* structural hashing */
     storage::element_type::node_type node;
     node.children[0] = a;
     node.children[1] = b;
 
+    /* structural hashing */
     const auto it = _storage->hash.find( node );
     if ( it != _storage->hash.end() )
     {
       return {it->second, 0};
     }
-    
+
     const auto index = _storage->nodes.size();
 
     if ( index >= .9 * _storage->nodes.capacity() )
@@ -489,7 +489,6 @@ public:
         }
         if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
         {
-          _storage->hash.erase( _storage->nodes[nobj.children[i].index] );
           _take_out_node( nobj.children[i].index );
         }
       }
@@ -522,44 +521,6 @@ public:
 
       // reset fan-in of old node
       _take_out_node( _old );
-    }
-  }
-
-  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
-  {
-    for ( auto& p : parents )
-    {
-      auto& n = _storage->nodes[p];
-      for ( auto& child : n.children )
-      {
-        if ( child.index == old_node )
-        {
-          child.index = new_signal.index;
-          child.weight ^= new_signal.complement;
-
-          // increment fan-in of new node
-          _storage->nodes[new_signal.index].data[0].h1++;
-
-          // decrement fan-in of old node
-          _storage->nodes[old_node].data[0].h1--;
-        }
-      }
-    }
-
-    /* check outputs */
-    for ( auto& output : _storage->outputs )
-    {
-      if ( output.index == old_node )
-      {
-        output.index = new_signal.index;
-        output.weight ^= new_signal.complement;
-
-        // increment fan-in of new node
-        _storage->nodes[new_signal.index].data[0].h1++;
-
-        // decrement fan-in of old node
-        _storage->nodes[old_node].data[0].h1--;
-      }
     }
   }
 #pragma endregion
