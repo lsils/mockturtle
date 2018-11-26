@@ -898,7 +898,7 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
-
+    // std::cout << "call to substitute_node " << old_node << " with " << ( ntk.is_complemented( new_signal ) ? "~" : "" ) << ntk.get_node( new_signal ) << std::endl;
     call_with_stopwatch( st.time_substitute, [&]() { ntk.substitute_node( old_node, new_signal ); } );
     call_with_stopwatch( st.time_update, [&]() { ntk.update(); } );
   }
@@ -1095,12 +1095,66 @@ private:
 
       if constexpr ( std::is_same<typename Ntk::base_type, xag_network>::value )
       {
-        assert( false && "simulation for XAG is not implemented" );
+        if ( ntk.is_and( d ) )
+        {          
+          std::array<signal, 2u> fanins;
+          ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
+              fanins[i] = s;
+            });
+
+          /* simulate the AND-node */
+          sims.compute_and( d, fanins[0u], fanins[1u] );
+          i++;
+          continue;
+        }
+        else if ( ntk.is_xor( d ) )
+        {
+          std::array<signal, 2u> fanins;
+          ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
+              fanins[i] = s;
+            });
+
+          /* simulate the XOR-node */
+          sims.compute_xor( d, fanins[0u], fanins[1u] );
+          i++;
+          continue;          
+        }
+        else
+        {
+          assert( false );
+        }
       }
 
       if constexpr ( std::is_same<typename Ntk::base_type, xmg_network>::value )
       {
-        assert( false && "simulation for XMG is not implemented" );
+        if ( ntk.is_xor( d ) )
+        {
+          std::array<signal, 2u> fanins;
+          ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
+              fanins[i] = s;
+            });
+
+          /* simulate the XOR-node */
+          sims.compute_xor( d, fanins[0u], fanins[1u] );
+          i++;
+          continue;
+        }
+        else if ( ntk.is_maj( d ) )
+        {
+          std::array<signal, 3u> fanins;
+          ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
+              fanins[i] = s;
+            });
+
+          /* simulate the MAJ3-node */
+          sims.compute_maj3( d, fanins[0u], fanins[1u], fanins[2u] );
+          i++;
+          continue;          
+        }
+        else
+        {
+          assert( false );
+        }
       }
 
       assert( false && "unreachable" );
@@ -1693,6 +1747,87 @@ private:
     }
   }
 
+  void resub_div_majS( node const& root, uint32_t required )
+  {
+    divs_1mp0.clear();
+    divs_1mp1.clear();
+    divs_1mp2.clear();
+
+    auto const s = ntk.make_signal( root );
+    for ( auto i = 0u; i < num_divs; ++i )
+    {
+      auto const& d0 = divs.at( i );
+
+      if ( ntk.level( d0 ) > required - 1 )
+        continue;
+
+      for ( auto j = i + 1; j < num_divs; ++j )
+      {
+        auto const& d1 = divs.at( j );
+
+        if ( ntk.level( d1 ) > required - 1 )
+          continue;
+
+        auto const s0 = ntk.make_signal( d0 );
+        auto const s1 = ntk.make_signal( d1 );
+
+        /* maj( s0, s1, s ) --> s */
+        // if ( !sims.maj3_equal(  s0, s1, s, s ) &&
+        //      !sims.maj3_equal( !s0, s1, s, s ) )
+        //   continue;
+        
+        for ( auto k = j + 1; k < num_divs; ++k )
+        {
+          auto const& d2 = divs.at( k );
+
+          if ( ntk.level( d2 ) > required - 1 )
+            continue;
+        
+          divs_1mp0.emplace_back( d0 );
+          divs_1mp1.emplace_back( d1 );
+          divs_1mp2.emplace_back( d2 );
+        }
+      }
+    }
+  }
+
+  std::optional<signal> resub_div_maj3( node const& root, uint32_t required )
+  {
+    (void)required;
+
+    auto s = ntk.make_signal( root );
+    
+    /* check positive unate divisors */
+    for ( auto i = 0u; i < divs_1mp0.size(); ++i )
+    {
+      auto d0 = divs_1mp0.at( i );
+      auto d1 = divs_1mp1.at( i );
+      auto d2 = divs_1mp2.at( i );
+
+      auto s0 = ntk.make_signal( d0 );
+      auto s1 = ntk.make_signal( d1 );
+      auto s2 = ntk.make_signal( d2 );
+      
+      if ( sims.maj3_equal( s0, s1, s2, s ) )
+      {
+        auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+        auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+        auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+        return sims.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
+      }
+      else if ( sims.maj3_equal( !s0, s1, s2, s ) )
+      {
+        auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+        auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+        auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+        return sims.get_phase( root ) ? !ntk.create_maj( !a, b, c ) : ntk.create_maj( !a, b, c );
+      }
+    }
+    
+    return std::optional<signal>();
+  }
+
+#if 0
   std::optional<signal> resub_div_maj3( node const& root, uint32_t required )
   {
     auto const s = ntk.make_signal( root );
@@ -1747,6 +1882,7 @@ private:
 
     return std::optional<signal>();
   }
+#endif
 
   std::optional<signal> eval( node const& root, std::vector<node> const &leaves, uint32_t num_steps, bool update_level )
   {
@@ -1880,6 +2016,9 @@ private:
       if ( ps.max_inserts == 0 || num_mffc == 1 )
         return std::optional<signal>();
 
+      /* get the one level divisors */
+      call_with_stopwatch( st.time_resubS, [&]() { resub_div_majS( root, required ); });
+
       /* consider one node for majority */
       g = call_with_stopwatch( st.time_resub1, [&]() {
           return resub_div_maj3( root, required ); });
@@ -1889,6 +2028,58 @@ private:
         last_gain = num_mffc;
         return g; /* accepted resub */
       }
+    }
+
+    if constexpr ( std::is_same<typename Ntk::base_type, xag_network>::value )
+    {
+      /* consider constants */
+      auto g = call_with_stopwatch( st.time_resubC, [&]() {
+          return resub_const( root, required ); } );
+      if ( g )
+      {
+        ++st.num_const_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
+
+      /* consider equal nodes */
+      g = call_with_stopwatch( st.time_resub0, [&]() {
+          return resub_div0( root, required ); });
+      if ( g )
+      {
+        ++st.num_div0_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
+
+      if ( ps.max_inserts == 0 || num_mffc == 1 )
+        return std::optional<signal>();
+    }
+
+    if constexpr ( std::is_same<typename Ntk::base_type, xmg_network>::value )
+    {
+      /* consider constants */
+      auto g = call_with_stopwatch( st.time_resubC, [&]() {
+          return resub_const( root, required ); } );
+      if ( g )
+      {
+        ++st.num_const_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
+
+      /* consider equal nodes */
+      g = call_with_stopwatch( st.time_resub0, [&]() {
+          return resub_div0( root, required ); });
+      if ( g )
+      {
+        ++st.num_div0_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
+
+      if ( ps.max_inserts == 0 || num_mffc == 1 )
+        return std::optional<signal>();      
     }
 
     return std::optional<signal>();
@@ -1917,6 +2108,10 @@ private:
   std::vector<signal> divs_2up1;
   std::vector<signal> divs_2un0;
   std::vector<signal> divs_2un1;
+
+  std::vector<node> divs_1mp0;
+  std::vector<node> divs_1mp1;
+  std::vector<node> divs_1mp2;
 }; /* resubstitution_impl */
 
 } /* namespace detail */
