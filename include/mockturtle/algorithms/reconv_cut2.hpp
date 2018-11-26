@@ -71,7 +71,7 @@ template<typename Ntk>
 int node_get_leaf_cost_one( Ntk const& ntk, typename Ntk::node const &node, int fanin_limit )
 {
   /* make sure the node is in the construction zone */
-  assert( ntk.visited( node ) == ntk.trav_id );
+  assert( ntk.visited( node ) == ntk.trav_id() );
 
   /* cannot expand over the PI node */
   if ( ntk.is_constant( node ) || ntk.is_ci( node ) )
@@ -80,7 +80,7 @@ int node_get_leaf_cost_one( Ntk const& ntk, typename Ntk::node const &node, int 
   /* get the cost of the cone */
   uint32_t cost = 0;
   ntk.foreach_fanin( node, [&]( const auto& f ){
-      cost += ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id ) ? 0 : 1;
+      cost += ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() ) ? 0 : 1;
     } );
 
   /* always accept if the number of leaves does not increase */
@@ -135,9 +135,9 @@ bool node_build_cut_level_one_int( Ntk const& ntk, std::vector<typename Ntk::nod
   /* add the fanins of best to leaves and visited */
   ntk.foreach_fanin( *best_fanin, [&]( const auto& f ){
       auto const& n = ntk.get_node( f );
-      if ( n != 0 && ( ntk.visited( n ) != ntk.trav_id ) )
+      if ( n != 0 && ( ntk.visited( n ) != ntk.trav_id() ) )
       {
-        ntk.set_visited( n, ntk.trav_id );
+        ntk.set_visited( n, ntk.trav_id() );
         visited.push_back( n );
         leaves.push_back( n );
       }
@@ -151,7 +151,7 @@ bool node_build_cut_level_one_int( Ntk const& ntk, std::vector<typename Ntk::nod
 template<class Ntk>
 std::vector<typename Ntk::node> node_find_cut( cut_manager<Ntk>& mgr, Ntk const& ntk, typename Ntk::node const& root )
 {
-  ++ntk.trav_id;
+  ntk.incr_trav_id();
 
   /* start the visited nodes and mark them */
   mgr.visited.clear();
@@ -161,7 +161,7 @@ std::vector<typename Ntk::node> node_find_cut( cut_manager<Ntk>& mgr, Ntk const&
       auto const& n = ntk.get_node( f );
       if ( n == 0 ) return true;
       mgr.visited.push_back( n );
-      ntk.set_visited( n, ntk.trav_id );
+      ntk.set_visited( n, ntk.trav_id() );
       return true;
     } );
 
