@@ -41,8 +41,9 @@
 #include "storage.hpp"
 
 #include <memory>
-#include <string>
 #include <optional>
+#include <stack>
+#include <string>
 
 namespace mockturtle
 {
@@ -346,25 +347,86 @@ public:
 #pragma endregion
 
 #pragma region Restructuring
-  void substitute_node( node const& old_node, signal const& new_signal )
+  std::optional<std::pair<node, signal>> _replace_in_node( node const& n, node const& old_node, signal new_signal )
   {
-    /* find all parents from old_node */
-    for ( auto& n : _storage->nodes )
-    {
-      for ( auto& child : n.children )
-      {
-        if ( child.index == old_node )
-        {
-          child.index = new_signal.index;
-          child.weight ^= new_signal.complement;
+    auto& node = _storage->nodes[n];
 
-          // increment fan-in of new node
-          _storage->nodes[new_signal.index].data[0].h1++;
-        }
+    uint32_t fanin = 0u;
+    for ( auto i = 0u; i < 4u; ++i )
+    {
+      if ( i == 3u )
+      {
+        return std::nullopt;
+      }
+
+      if ( node.children[i].index == old_node )
+      {
+        fanin = i;
+        new_signal.complement ^= node.children[i].weight;
+        break;
       }
     }
 
-    /* check outputs */
+    // determine potential new children of node n
+    signal child2 = new_signal;
+    signal child1 = node.children[(fanin + 1 ) % 3];
+    signal child0 = node.children[(fanin + 2 ) % 3];
+
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+    if ( child1.index > child2.index )
+    {
+      std::swap( child1, child2 );
+    }
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+
+    assert( child0.index <= child1.index );
+    assert( child1.index <= child2.index );
+
+    // check for trivial cases?
+    if ( child0.index == child1.index )
+    {
+      const auto diff_pol = child0.complement != child1.complement;
+      return std::make_pair( n, diff_pol ? child2 : child0 );
+    }
+    else if ( child1.index == child2.index )
+    {
+      const auto diff_pol = child1.complement != child2.complement;
+      return std::make_pair( n, diff_pol ? child0 : child1 );
+    }
+
+    // node already in hash table
+    storage::element_type::node_type _hash_obj;
+    _hash_obj.children[0] = child0;
+    _hash_obj.children[1] = child1;
+    _hash_obj.children[2] = child2;
+    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() )
+    {
+      return std::make_pair( n, signal( it->second, 0 ) );
+    }
+
+    // erase old node in hash table
+    _storage->hash.erase( node );
+
+    // insert updated node into hash table
+    node.children[0] = child0;
+    node.children[1] = child1;
+    node.children[2] = child2;
+    _storage->hash[node] = n;
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+
+    return std::nullopt;
+  }
+
+  void _replace_in_outputs( node const& old_node, signal const& new_signal )
+  {
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -376,9 +438,57 @@ public:
         _storage->nodes[new_signal.index].data[0].h1++;
       }
     }
+  }
 
-    // reset fan-in of old node
-    _storage->nodes[old_node].data[0].h1 = 0;
+  void _take_out_node( node const& n )
+  {
+    auto& nobj = _storage->nodes[n];
+    nobj.data[0].h1 = 0;
+    _storage->hash.erase( nobj );
+
+    if ( n != 0 && !is_pi( n ) )
+    {
+      for ( auto i = 0u; i < 3u; ++i )
+      {
+        if ( _storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
+        {
+          continue;
+        }
+        if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
+        {
+          _take_out_node( nobj.children[i].index );
+        }
+      }
+    }
+  }
+
+  void substitute_node( node const& old_node, signal const& new_signal )
+  {
+    std::stack<std::pair<node, signal>> to_substitute;
+    to_substitute.push( {old_node, new_signal} );
+
+    while ( !to_substitute.empty() )
+    {
+      const auto [_old, _new] = to_substitute.top();
+      to_substitute.pop();
+
+      for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
+      {
+        if ( is_pi( idx ) )
+          continue; /* ignore PIs */
+
+        if ( const auto repl = _replace_in_node( idx, _old, _new ); repl )
+        {
+          to_substitute.push( *repl );
+        }
+      }
+
+      /* check outputs */
+      _replace_in_outputs( _old, _new );
+
+      // reset fan-in of old node
+      _take_out_node( _old );
+    }
   }
 
   void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
