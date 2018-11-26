@@ -7,6 +7,7 @@
 
 #include <mockturtle/algorithms/akers_synthesis.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xmg.hpp>
 
 using namespace mockturtle;
 
@@ -54,6 +55,34 @@ TEST_CASE( "Check Akers for MAJ-5", "[akers_synthesis]" )
       fanin[j] = xs[mig.node_to_index( mig.get_node( s ) ) + 1];
     } );
     xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) );
+  } );
+  CHECK( xs[xs.size() - 1] == xs[0] );
+}
+
+TEST_CASE( "Check Akers for MAJ-5 in XMG", "[akers_synthesis]" )
+{
+  std::vector<kitty::dynamic_truth_table> xs{7, kitty::dynamic_truth_table( 5 )};
+
+  create_majority( xs[0] );
+  for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
+  {
+    set_bit( xs[1], i );
+  }
+
+  auto xmg = akers_synthesis<xmg_network>( xs[0], xs[1] );
+
+  kitty::create_nth_var( xs[2], 0 );
+  kitty::create_nth_var( xs[3], 1 );
+  kitty::create_nth_var( xs[4], 2 );
+  kitty::create_nth_var( xs[5], 3 );
+  kitty::create_nth_var( xs[6], 4 );
+
+  xmg.foreach_gate( [&]( auto n ) {
+    std::vector<kitty::dynamic_truth_table> fanin{3, kitty::dynamic_truth_table( 5 )};
+    xmg.foreach_fanin( n, [&]( auto s, auto j ) {
+      fanin[j] = xs[xmg.node_to_index( xmg.get_node( s ) ) + 1];
+    } );
+    xs.push_back( xmg.compute( n, fanin.begin(), fanin.end() ) );
   } );
   CHECK( xs[xs.size() - 1] == xs[0] );
 }
