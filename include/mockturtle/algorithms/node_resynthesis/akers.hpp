@@ -39,9 +39,9 @@
 #include <vector>
 
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/operators.hpp>
 
 #include "../../algorithms/akers_synthesis.hpp"
-#include "../../networks/mig.hpp"
 
 namespace mockturtle
 {
@@ -58,17 +58,18 @@ namespace mockturtle
    .. code-block:: c++
    
       const klut_network klut = ...;
-      akers_resynthesis resyn;
+      akers_resynthesis<mig_network> resyn;
       const auto mig = node_resynthesis<mig_network>( klut, resyn );
    \endverbatim
  */
+template<class Ntk>
 class akers_resynthesis
 {
 public:
   template<typename LeavesIterator, typename Fn>
-  void operator()( mig_network& mig, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
-    fn( akers_synthesis( mig, function, ~function.construct(), begin, end ) );
+    fn( akers_synthesis<Ntk>( ntk, function, ~function.construct(), begin, end ) );
   }
 };
 
