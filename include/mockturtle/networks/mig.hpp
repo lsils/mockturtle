@@ -32,21 +32,26 @@
 
 #pragma once
 
-#include <memory>
-#include <optional>
-#include <stack>
-#include <string>
+#include "../traits.hpp"
+#include "detail/foreach.hpp"
+#include "storage.hpp"
 
 #include <ez/direct_iterator.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
 
-#include "../traits.hpp"
-#include "detail/foreach.hpp"
-#include "storage.hpp"
+#include <memory>
+#include <optional>
+#include <stack>
+#include <string>
 
 namespace mockturtle
 {
+
+struct mig_storage_data
+{
+  uint32_t trav_id = 0u;
+};
 
 /*! \brief MIG storage container
 
@@ -61,7 +66,7 @@ namespace mockturtle
 
 using mig_node = regular_node<3, 2, 1>;
 using mig_storage = storage<mig_node,
-                            empty_storage_data>;
+                            mig_storage_data>;
 
 class mig_network
 {
@@ -809,10 +814,18 @@ public:
   }
 #pragma endregion
 
+  uint32_t trav_id() const
+  {
+    return _storage->data.trav_id;
+  }
+
+  void incr_trav_id() const
+  {
+    ++_storage->data.trav_id;
+  }
+
 public:
   std::shared_ptr<mig_storage> _storage;
-
-  mutable uint32_t trav_id{0};
 };
 
 } // namespace mockturtle

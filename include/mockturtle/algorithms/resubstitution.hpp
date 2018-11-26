@@ -128,9 +128,9 @@ private:
   void node_mffc_cone_rec( node const& n, std::vector<node>& cone, bool top_most )
   {
     /* skip visited nodes */
-    if ( ntk.visited( n ) == ntk.trav_id )
+    if ( ntk.visited( n ) == ntk.trav_id() )
       return;
-    ntk.set_visited( n, ntk.trav_id );
+    ntk.set_visited( n, ntk.trav_id() );
     // std::cout << "mffc computation visists " << n
     //           << "( " << ntk.fanout_size( n ) << " )" << std::endl;
 
@@ -149,7 +149,7 @@ private:
   void node_mffc_cone( node const& n, std::vector<node>& cone )
   {
     cone.clear();
-    ntk.trav_id++;
+    ntk.incr_trav_id();
     node_mffc_cone_rec( n, cone, true );
   }
 
@@ -905,9 +905,9 @@ private:
   void collect_divisors_rec( node const& n, std::vector<node>& internal )
   {
     /* skip visited nodes */
-    if ( ntk.visited( n ) == ntk.trav_id )
+    if ( ntk.visited( n ) == ntk.trav_id() )
       return;
-    ntk.set_visited( n, ntk.trav_id );
+    ntk.set_visited( n, ntk.trav_id() );
 
     ntk.foreach_fanin( n, [&]( const auto& f ){
         // assert( ntk.get_node( f ) != 0 );
@@ -930,12 +930,12 @@ private:
 
     /* add the leaves of the cuts to the divisors */
     divs.clear();
-    ++ntk.trav_id;
+    ntk.incr_trav_id();
     for ( const auto& l : leaves )
     {
       if ( ntk.fanout_size( l ) != 0 )
         divs.emplace_back( l );
-      ntk.set_visited( l, ntk.trav_id );
+      ntk.set_visited( l, ntk.trav_id() );
     }
 
     /* mark nodes in the MFFC */
@@ -980,14 +980,14 @@ private:
           if ( ntk.fanout_size( p ) == 0 )
             return true;
 
-          if ( ntk.visited( p ) == ntk.trav_id || ntk.level( p ) > required )
+          if ( ntk.visited( p ) == ntk.trav_id() || ntk.level( p ) > required )
           {
             return true; /* next fanout */
           }
 
           bool all_fanins_visited = true;
           ntk.foreach_fanin( p, [&]( const auto& g ){
-              if ( ntk.visited( ntk.get_node( g ) ) != ntk.trav_id )
+              if ( ntk.visited( ntk.get_node( g ) ) != ntk.trav_id() )
               {
                 all_fanins_visited = false;
                 return false; /* terminate fanin-loop */
@@ -1013,7 +1013,7 @@ private:
 
           divs.emplace_back( p );
           ++size;
-          ntk.set_visited( p, ntk.trav_id );
+          ntk.set_visited( p, ntk.trav_id() );
 
           /* quit computing divisors if there are too many of them */
           if ( ++counter == limit )

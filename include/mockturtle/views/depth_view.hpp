@@ -123,7 +123,7 @@ public:
     // std::cout << "update levels" << std::endl;
     _levels.reset( 0 );
 
-    ++this->trav_id;
+    this->incr_trav_id();
     compute_levels();
 
     Ntk::update();
@@ -132,9 +132,9 @@ public:
 private:
   uint32_t compute_levels( node const& n )
   {
-    if ( this->visited( n ) == this->trav_id )
+    if ( this->visited( n ) == this->trav_id() )
       return _levels[n];
-    this->set_visited( n, this->trav_id );
+    this->set_visited( n, this->trav_id() );
 
     if ( this->is_constant( n ) || this->is_pi( n ) )
     {
