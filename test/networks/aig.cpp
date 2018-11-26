@@ -490,7 +490,7 @@ TEST_CASE( "simulate some special functions in AIGs", "[aig]" )
   CHECK( result[1]._bits[0] == 0xd8u );
 }
 
-TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[selected]" )
+TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
 {
   aig_network aig;
   const auto x1 = aig.create_pi();
@@ -523,7 +523,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[selected
   CHECK( aig.num_gates() == 5u );
   CHECK( aig._storage->hash.size() == 4u );
   CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
-  CHECK( aig._storage->nodes[f1.index].children[1u].index == x3.index );
+  CHECK( aig._storage->nodes[f1.index].children[1u].index == x2.index );
 
   CHECK( aig._storage->nodes[f5.index].children[0u].index == f3.index );
   CHECK( aig._storage->nodes[f5.index].children[1u].index == f4.index );
@@ -536,7 +536,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[selected
   CHECK( aig.num_gates() == 4u );
 }
 
-TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[selected]" )
+TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[aig]" )
 {
   aig_network aig;
   const auto x1 = aig.create_pi();
@@ -569,12 +569,11 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[selected
   CHECK( aig.num_gates() == 3u );
   CHECK( aig._storage->hash.size() == 1u );
   CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
-  CHECK( aig._storage->nodes[f1.index].children[1u].index == x3.index );
+  CHECK( aig._storage->nodes[f1.index].children[1u].index == x2.index );
   CHECK( aig._storage->nodes[f2.index].children[0u].index == x1.index );
   CHECK( aig._storage->nodes[f2.index].children[1u].index == x3.index );
-  CHECK( aig._storage->nodes[f3.index].children[0u].index == f2.index );
+  CHECK( aig._storage->nodes[f3.index].children[0u].index == f1.index );
   CHECK( aig._storage->nodes[f3.index].children[1u].index == f2.index );
-  CHECK( aig._storage->nodes[f3.index].children[0u].weight != aig._storage->nodes[f3.index].children[1u].weight );
   CHECK( aig._storage->outputs[0].index == f2.index );
 
   CHECK( aig.fanout_size( aig.get_node( f1 )) == 0u );
@@ -584,4 +583,79 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[selected
   aig = cleanup_dangling( aig );
 
   CHECK( aig.num_gates() == 1u );
+}
+
+TEST_CASE( "substitute input by constant in NAND-based XOR circuit", "[aig]" )
+{
+  aig_network aig;
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+
+  const auto f1 = aig.create_nand( x1, x2 );
+  const auto f2 = aig.create_nand( x1, f1 );
+  const auto f3 = aig.create_nand( x2, f1 );
+  const auto f4 = aig.create_nand( f2, f3 );
+  aig.create_po( f4 );
+
+  CHECK( aig.num_gates() == 4u );
+  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x6 );
+
+  aig.substitute_node( aig.get_node( x1 ), aig.get_constant( true ) );
+
+  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x3 );
+
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f4 ) ) == 0u );
+}
+
+TEST_CASE( "substitute node by constant in NAND-based XOR circuit", "[aig]" )
+{
+  aig_network aig;
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+
+  const auto f1 = aig.create_nand( x1, x2 );
+  const auto f2 = aig.create_nand( x1, f1 );
+  const auto f3 = aig.create_nand( x2, f1 );
+  const auto f4 = aig.create_nand( f2, f3 );
+  aig.create_po( f4 );
+
+  CHECK( aig.num_gates() == 4u );
+  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x6 );
+
+  aig.substitute_node( aig.get_node( f3 ), aig.get_constant( false ) );
+
+  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x2 );
+
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f4 ) ) == 0u );
+}
+
+TEST_CASE( "substitute node by constant in NAND-based XOR circuit (test case 2)", "[aig]" )
+{
+  aig_network aig;
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+
+  const auto f1 = aig.create_nand( x1, x2 );
+  const auto f2 = aig.create_nand( x1, f1 );
+  const auto f3 = aig.create_nand( x2, f1 );
+  const auto f4 = aig.create_nand( f2, f3 );
+  aig.create_po( f4 );
+
+  CHECK( aig.num_gates() == 4u );
+  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x6 );
+
+  aig.substitute_node( aig.get_node( f1 ), aig.get_constant( false ) );
+
+  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0xe );
+
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f4 ) ) == 1u );
 }

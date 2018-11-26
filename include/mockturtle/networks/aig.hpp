@@ -33,6 +33,11 @@
 
 #pragma once
 
+#include <memory>
+#include <optional>
+#include <stack>
+#include <string>
+
 #include <ez/direct_iterator.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
@@ -40,11 +45,6 @@
 #include "../traits.hpp"
 #include "detail/foreach.hpp"
 #include "storage.hpp"
-
-#include <memory>
-#include <string>
-#include <stack>
-#include <optional>
 
 namespace mockturtle
 {
@@ -299,17 +299,17 @@ public:
       return a.complement ? b : get_constant( false );
     }
 
-    /* structural hashing */
     storage::element_type::node_type node;
     node.children[0] = a;
     node.children[1] = b;
 
+    /* structural hashing */
     const auto it = _storage->hash.find( node );
     if ( it != _storage->hash.end() )
     {
       return {it->second, 0};
     }
-    
+
     const auto index = _storage->nodes.size();
 
     if ( index >= .9 * _storage->nodes.capacity() )
@@ -398,7 +398,7 @@ public:
   {
     auto& node = _storage->nodes[n];
 
-    uint32_t fanin;
+    uint32_t fanin = 0u;
     if ( node.children[0].index == old_node )
     {
       fanin = 0u;
@@ -414,44 +414,45 @@ public:
       return std::nullopt;
     }
 
-    // erase old node in hash table
-    _storage->hash.erase( node );
+    // determine potential new children of node n
+    signal child1 = new_signal;
+    signal child0 = node.children[fanin ^ 1];
 
-    // update fanin with new_signal and reorder if necessary
-    node.children[fanin] = new_signal;
-
-    if ( node.children[1].index < node.children[0].index )
+    if ( child0.index > child1.index )
     {
-      std::swap( node.children[0], node.children[1] );
+      std::swap( child0, child1 );
     }
 
     // check for trivial cases?
-    if ( node.children[0].index == node.children[1].index )
+    if ( child0.index == child1.index )
     {
-      const auto diff_pol = node.children[0].weight != node.children[1].weight;
-      if ( !diff_pol )
-      {
-        // make node invalid such that it is not recognized as CI
-        node.children[1].weight ^= 1;
-      }
-      return std::make_pair( n, diff_pol ? get_constant( false ) : signal{node.children[0]} );
+      const auto diff_pol = child0.complement != child1.complement;
+      return std::make_pair( n, diff_pol ? get_constant( false ) : child1 );
     }
-    else if ( node.children[0].index == 0 ) /* constant child */
+    else if ( child0.index == 0 ) /* constant child */
     {
-      return std::make_pair( n, node.children[0].weight ? signal{node.children[1]} : get_constant( false ) );
+      return std::make_pair( n, child0.complement ? child1 : get_constant( false ) );
     }
 
     // node already in hash table
-    if ( const auto it = _storage->hash.find( node ); it != _storage->hash.end() )
+    storage::element_type::node_type _hash_obj;
+    _hash_obj.children[0] = child0;
+    _hash_obj.children[1] = child1;
+    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() )
     {
       return std::make_pair( n, signal( it->second, 0 ) );
     }
 
-    // update the reference counter of the new signal
-    _storage->nodes[new_signal.index].data[0].h1++;
+    // erase old node in hash table
+    _storage->hash.erase( node );
 
     // insert updated node into hash table
+    node.children[0] = child0;
+    node.children[1] = child1;
     _storage->hash[node] = n;
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
 
     return std::nullopt;
   }
@@ -475,11 +476,16 @@ public:
   {
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = 0;
+    _storage->hash.erase( nobj );
 
     if ( n != 0 && !is_pi( n ) )
     {
       for ( auto i = 0u; i < 2u; ++i )
       {
+        if ( _storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
+        {
+          continue;
+        }
         if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
         {
           _take_out_node( nobj.children[i].index );
@@ -514,44 +520,6 @@ public:
 
       // reset fan-in of old node
       _take_out_node( _old );
-    }
-  }
-
-  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
-  {
-    for ( auto& p : parents )
-    {
-      auto& n = _storage->nodes[p];
-      for ( auto& child : n.children )
-      {
-        if ( child.index == old_node )
-        {
-          child.index = new_signal.index;
-          child.weight ^= new_signal.complement;
-
-          // increment fan-in of new node
-          _storage->nodes[new_signal.index].data[0].h1++;
-
-          // decrement fan-in of old node
-          _storage->nodes[old_node].data[0].h1--;
-        }
-      }
-    }
-
-    /* check outputs */
-    for ( auto& output : _storage->outputs )
-    {
-      if ( output.index == old_node )
-      {
-        output.index = new_signal.index;
-        output.weight ^= new_signal.complement;
-
-        // increment fan-in of new node
-        _storage->nodes[new_signal.index].data[0].h1++;
-
-        // decrement fan-in of old node
-        _storage->nodes[old_node].data[0].h1--;
-      }
     }
   }
 #pragma endregion
