@@ -18,16 +18,16 @@ This page describes the interface of a logic network data structure in
 Mandatory types and constants
 -----------------------------
 
-The interaction with a logic network data structure is performed using three
-types for which no application details are assumed.  The following three types
+The interaction with a logic network data structure is performed using four
+types for which no application details are assumed.  The following four types
 must be defined within the network data structure.  They can be implemented as
 nested type, but may also be exposed as type alias.
 
 .. doxygenclass:: mockturtle::network
-   :members: node, signal, storage
+   :members: base_type, node, signal, storage
    :no-link:
 
-Futher, a network must expose the following compile-time constants:
+Further, a network must expose the following compile-time constants:
 
 .. code-block:: c++
 

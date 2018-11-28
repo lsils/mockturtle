@@ -89,6 +89,7 @@ public:
   static constexpr auto min_fanin_size = 2u;
   static constexpr auto max_fanin_size = 2u;
 
+  using base_type = xag_network;
   using storage = std::shared_ptr<xag_storage>;
   using node = uint64_t;
 

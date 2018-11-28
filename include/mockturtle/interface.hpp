@@ -46,6 +46,14 @@ static_assert( false, "file interface.hpp cannot be included, it's only used for
 class network final
 {
 public:
+  /*! \brief Type referring to itself.
+   *
+   * The ``base_type`` is the network type itself.  It is required, because
+   * views may extend networks, and this type provides a way to determine the
+   * underlying network type.
+   */
+  using base_type = network;
+
   /*! \brief Type representing a node.
    *
    * A ``node`` is a node in the logic network.  It could be a constant, a

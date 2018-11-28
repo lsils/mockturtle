@@ -55,7 +55,8 @@ struct is_network_type : std::false_type
 template<class Ntk>
 struct is_network_type<Ntk, std::enable_if_t<
                                 std::is_constructible_v<signal<Ntk>, node<Ntk>>,
-                                std::void_t<signal<Ntk>,
+                                std::void_t<typename Ntk::base_type,
+                                            signal<Ntk>,
                                             node<Ntk>,
                                             typename Ntk::storage,
                                             decltype( Ntk::max_fanin_size ),
