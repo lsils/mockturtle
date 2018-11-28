@@ -68,6 +68,7 @@ public:
   static constexpr auto min_fanin_size = 3u;
   static constexpr auto max_fanin_size = 3u;
 
+  using base_type = mig_network;
   using storage = std::shared_ptr<mig_storage>;
   using node = uint64_t;
 

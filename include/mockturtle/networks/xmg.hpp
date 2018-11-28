@@ -75,6 +75,7 @@ public:
   static constexpr auto min_fanin_size = 3u;
   static constexpr auto max_fanin_size = 3u;
 
+  using base_type = xmg_network;
   using storage = std::shared_ptr<xmg_storage>;
   using node = std::size_t;
 
