@@ -1565,6 +1565,7 @@ namespace percy
 
         inline void pd3_write_nonisomorphic(int nr_vertices, const char* const filename, int nr_in = -1)
         {
+            (void)nr_in;
             partial_dag g;
             partial_dag3_generator gen;
             auto fhandle = fopen(filename, "wb");
@@ -1584,7 +1585,7 @@ namespace percy
                 }
                 const auto can_repr = checker.crepr(g);
                 const auto res = can_reprs.insert(can_repr);
-                printf("%zu\r", ++ctr);
+                printf("%llu\r", ++ctr);
                 if (res.second) {
                     if (nr_in != -1 && g.nr_pi_fanins() >= nr_in)
                         write_partial_dag(g, fhandle);
@@ -1598,7 +1599,7 @@ namespace percy
                 for (int i = 0; i < gen->nr_vertices(); i++) {
                     g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
                 }
-                printf("%zu\r", ++ctr);
+                printf("%llu\r", ++ctr);
                 write_partial_dag(g, fhandle);
             });
 
@@ -1732,7 +1733,7 @@ namespace percy
                 ni_dags.push_back(g1);
             }
             if (show_progress)
-                printf("(%zu, %zu)\r", ++ctr, dags.size());
+                printf("(%llu, %llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1770,7 +1771,7 @@ namespace percy
             const auto& dag = dags[i];
             reprs[i] = checker.crepr(dag);
             if (show_progress)
-                printf("(%u,%zu)\r", ++ctr, dags.size());
+                printf("(%u,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1791,7 +1792,7 @@ namespace percy
                 }
             }
             if (show_progress)
-                printf("(%u,%zu)\r", ++ctr, dags.size());
+                printf("(%u,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1823,7 +1824,7 @@ namespace percy
             const auto& dag = dags[i];
             reprs[i] = checker.crepr(dag);
             if (show_progress)
-                printf("(%u,%zu)\r", ++ctr, dags.size());
+                printf("(%u,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1845,7 +1846,7 @@ namespace percy
                 is_iso[i] = 1;
             }
             if (show_progress)
-                printf("(%u,%zu)\r", ++ctr, dags.size());
+                printf("(%u,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1879,7 +1880,7 @@ namespace percy
                 ni_dags.push_back(g1);
             }
             if (show_progress)
-                printf("(%zu,%zu)\r", ++ctr, dags.size());
+                printf("(%llu,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
