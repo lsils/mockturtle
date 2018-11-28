@@ -118,6 +118,11 @@ public:
     return _levels[n];
   }
 
+  void resize_levels()
+  {
+    _levels.resize();
+  }
+
   void update()
   {
     // std::cout << "update levels" << std::endl;

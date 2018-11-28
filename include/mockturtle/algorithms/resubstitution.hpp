@@ -847,6 +847,83 @@ public:
     : ntk( ntk ), ps( ps ), st( st ), sims( ntk, ps.max_pis, ps.max_divisors )
   {
     st.initial_size = ntk.num_gates();
+
+    if constexpr ( std::is_same<typename Ntk::base_type, aig_network>::value ||
+                   std::is_same<typename Ntk::base_type, mig_network>::value ||
+                   std::is_same<typename Ntk::base_type, xag_network>::value )
+    {
+      auto const update_level_of_new_node = [&]( const auto& n ){
+        // std::cout << "update level of new node " << n << std::endl;
+
+        ntk.resize_levels();
+
+        /* update level */
+        auto max = 0u;
+        ntk.foreach_fanin( n, [&]( const auto& f ){
+            auto const l = ntk.level( ntk.get_node( f ) );
+            if ( max < l )
+              max = l;
+          });
+        return max;
+      };
+
+      auto const update_level_of_existing_node = [&]( const auto& n, const auto& old_children ){
+        // std::cout << "update level of existing node " << n << std::endl;
+
+        /* update level */
+        auto max = 0u;
+        ntk.foreach_fanin( n, [&]( const auto& f ){
+            auto const l = ntk.level( ntk.get_node( f ) );
+            if ( max < l )
+              max = l;
+          });
+        return max;
+      };
+
+      auto const update_fanout_of_new_node = [&]( const auto& n ){
+        // std::cout << "update fanout of new node " << n << std::endl;
+
+        ntk.resize_fanouts();
+
+        /* update fanout */
+        ntk.foreach_fanin( n, [&]( const auto& f ){
+            auto const p = ntk.get_node( f );
+            ntk.add_node( p, n );
+          });
+      };
+
+      auto const update_fanout_of_existing_node = [&]( const auto& n, const auto& old_children ){
+        // std::cout << "update fanout of existing node " << n << std::endl;
+
+        /* update fanout */
+        for ( const auto& c : old_children )
+          ntk.remove_node( ntk.get_node( c ), n );
+
+        ntk.foreach_fanin( n, [&]( const auto& f ){
+            auto const p = ntk.get_node( f );
+            ntk.add_node( p, n );
+          });
+      };
+
+      auto const update_fanout_of_deleted_node = [&]( const auto& n ){
+        // std::cout << "delete node " << n << std::endl;
+
+        /* update fanout */
+        ntk.set_fanout( n, {} );
+        ntk.foreach_fanin( n, [&]( const auto& f ){
+            auto const p = ntk.get_node( f );
+            ntk.remove_node( p, n );
+          });
+      };
+
+      ntk._events->on_add.emplace_back( update_level_of_new_node );
+      ntk._events->on_add.emplace_back( update_fanout_of_new_node );
+
+      ntk._events->on_modified.emplace_back( update_level_of_existing_node );
+      ntk._events->on_modified.emplace_back( update_fanout_of_existing_node );
+
+      ntk._events->on_delete.emplace_back( update_fanout_of_deleted_node );
+    }
   }
 
   void run()
@@ -899,7 +976,10 @@ private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
     call_with_stopwatch( st.time_substitute, [&]() { ntk.substitute_node( old_node, new_signal ); } );
-    call_with_stopwatch( st.time_update, [&]() { ntk.update(); } );
+    if constexpr ( std::is_same<typename Ntk::base_type, xmg_network>::value )
+    {
+      call_with_stopwatch( st.time_update, [&]() { ntk.update(); } );
+    }
   }
 
   void collect_divisors_rec( node const& n, std::vector<node>& internal )
@@ -1095,7 +1175,7 @@ private:
       if constexpr ( std::is_same<typename Ntk::base_type, xag_network>::value )
       {
         if ( ntk.is_and( d ) )
-        {          
+        {
           std::array<signal, 2u> fanins;
           ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
               fanins[i] = s;
@@ -1116,7 +1196,7 @@ private:
           /* simulate the XOR-node */
           sims.compute_xor( d, fanins[0u], fanins[1u] );
           i++;
-          continue;          
+          continue;
         }
         else
         {
@@ -1148,7 +1228,7 @@ private:
           /* simulate the MAJ3-node */
           sims.compute_maj3( d, fanins[0u], fanins[1u], fanins[2u] );
           i++;
-          continue;          
+          continue;
         }
         else
         {
@@ -1774,14 +1854,14 @@ private:
         // if ( !sims.maj3_equal(  s0, s1, s, s ) &&
         //      !sims.maj3_equal( !s0, s1, s, s ) )
         //   continue;
-        
+
         for ( auto k = j + 1; k < num_divs; ++k )
         {
           auto const& d2 = divs.at( k );
 
           if ( ntk.level( d2 ) > required - 1 )
             continue;
-        
+
           divs_1mp0.emplace_back( d0 );
           divs_1mp1.emplace_back( d1 );
           divs_1mp2.emplace_back( d2 );
@@ -1795,7 +1875,7 @@ private:
     (void)required;
 
     auto s = ntk.make_signal( root );
-    
+
     /* check positive unate divisors */
     for ( auto i = 0u; i < divs_1mp0.size(); ++i )
     {
@@ -1806,7 +1886,7 @@ private:
       auto s0 = ntk.make_signal( d0 );
       auto s1 = ntk.make_signal( d1 );
       auto s2 = ntk.make_signal( d2 );
-      
+
       if ( sims.maj3_equal( s0, s1, s2, s ) )
       {
         auto const a = sims.get_phase( d0 ) ? !s0 : s0;
@@ -1822,7 +1902,7 @@ private:
         return sims.get_phase( root ) ? !ntk.create_maj( !a, b, c ) : ntk.create_maj( !a, b, c );
       }
     }
-    
+
     return std::optional<signal>();
   }
 
@@ -2078,7 +2158,7 @@ private:
       }
 
       if ( ps.max_inserts == 0 || num_mffc == 1 )
-        return std::optional<signal>();      
+        return std::optional<signal>();
     }
 
     return std::optional<signal>();

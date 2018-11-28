@@ -104,6 +104,11 @@ public:
     _fanout.resize();
   }
 
+  void resize_fanouts()
+  {
+    _fanout.resize();
+  }
+
   std::vector<node> fanout( node const& n ) const
   {
     return _fanout[ n ];
@@ -117,6 +122,12 @@ public:
   void add_node( node const& n, node const& p )
   {
     _fanout[ n ].push_back( p );
+  }
+
+  void remove_node( node const& n, node const& p )
+  {
+    auto &f = _fanout[ n ];
+    f.erase( std::remove( f.begin(), f.end(), p ), f.end() );
   }
 
   void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
