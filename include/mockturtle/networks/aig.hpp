@@ -68,6 +68,7 @@ struct aig_storage_data
   uint32_t num_pis = 0u;
   uint32_t num_pos = 0u;
   std::vector<int8_t> latches;
+  uint32_t trav_id = 0u;
 };
 
 /*! \brief AIG storage container
@@ -894,6 +895,16 @@ public:
   {
   }
 #pragma endregion
+
+  uint32_t trav_id() const
+  {
+    return _storage->data.trav_id;
+  }
+
+  void incr_trav_id() const
+  {
+    ++_storage->data.trav_id;
+  }
 
 public:
   std::shared_ptr<aig_storage> _storage;
