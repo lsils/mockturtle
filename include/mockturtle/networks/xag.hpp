@@ -35,6 +35,7 @@
 #include "../traits.hpp"
 #include "detail/foreach.hpp"
 #include "storage.hpp"
+#include "events.hpp"
 
 #include <ez/direct_iterator.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -166,11 +167,15 @@ public:
     }
   };
 
-  xag_network() : _storage( std::make_shared<xag_storage>() )
+  xag_network()
+    : _storage( std::make_shared<xag_storage>() )
+    , _events( std::make_shared<network_events<xag_network>>() )
   {
   }
 
-  xag_network( std::shared_ptr<xag_storage> storage ) : _storage( storage )
+  xag_network( std::shared_ptr<xag_storage> storage )
+    : _storage( storage )
+    , _events( std::make_shared<network_events<xag_network>>() )
   {
   }
 #pragma endregion
@@ -308,6 +313,11 @@ public:
     /* increase ref-count to children */
     _storage->nodes[a.index].data[0].h1++;
     _storage->nodes[b.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_add )
+    {
+      fn( index );
+    }
 
     return {index, 0};
   }
@@ -484,6 +494,10 @@ public:
       return std::make_pair( n, signal( it->second, 0 ) );
     }
 
+    // remember before
+    const auto old_child0 = signal{node.children[0]};
+    const auto old_child1 = signal{node.children[1]};
+
     // erase old node in hash table
     _storage->hash.erase( node );
 
@@ -494,6 +508,11 @@ public:
 
     // update the reference counter of the new signal
     _storage->nodes[new_signal.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_modified )
+    {
+      fn( n, {old_child0, old_child1});
+    }
 
     return std::nullopt;
   }
@@ -518,6 +537,11 @@ public:
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = 0;
     _storage->hash.erase( nobj );
+
+    for ( auto const& fn : _events->on_delete )
+    {
+      fn( n );
+    }
 
     if ( n != 0 && !is_pi( n ) )
     {
@@ -1066,6 +1090,7 @@ public:
 
 public:
   std::shared_ptr<xag_storage> _storage;
+  std::shared_ptr<network_events<xag_network>> _events;
 };
 
 } // namespace mockturtle

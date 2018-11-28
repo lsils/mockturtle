@@ -35,6 +35,7 @@
 #include "../traits.hpp"
 #include "detail/foreach.hpp"
 #include "storage.hpp"
+#include "events.hpp"
 
 #include <ez/direct_iterator.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -154,11 +155,15 @@ public:
     }
   };
 
-  xmg_network() : _storage( std::make_shared<xmg_storage>() )
+  xmg_network()
+    : _storage( std::make_shared<xmg_storage>() )
+    , _events( std::make_shared<network_events<xmg_network>>() )
   {
   }
 
-  xmg_network( std::shared_ptr<xmg_storage> storage ) : _storage( storage )
+  xmg_network( std::shared_ptr<xmg_storage> storage )
+    : _storage( storage )
+    , _events( std::make_shared<network_events<xmg_network>>() )
   {
   }
 
@@ -300,6 +305,11 @@ public:
     _storage->nodes[b.index].data[0].h1++;
     _storage->nodes[c.index].data[0].h1++;
 
+    for ( auto const& fn : _events->on_add )
+    {
+      fn( index );
+    }
+
     return {index, node_complement};
   }
 
@@ -369,6 +379,11 @@ public:
     _storage->nodes[a.index].data[0].h1++;
     _storage->nodes[b.index].data[0].h1++;
     _storage->nodes[c.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_add )
+    {
+      fn( index );
+    }
 
     return {index, fcompl};
   }
@@ -769,6 +784,7 @@ public:
 
 public:
   std::shared_ptr<xmg_storage> _storage;
+  std::shared_ptr<network_events<xmg_network>> _events;
 };
 
 } // namespace mockturtle
