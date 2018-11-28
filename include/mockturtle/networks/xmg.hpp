@@ -40,6 +40,7 @@
 #include <kitty/operators.hpp>
 
 #include "../traits.hpp"
+#include "../utils/algorithm.hpp"
 #include "detail/foreach.hpp"
 #include "storage.hpp"
 
@@ -390,6 +391,23 @@ public:
   signal create_xnor( signal const& a, signal const& b )
   {
     return create_xor3( get_constant( true ), a, b );
+  }
+#pragma endregion
+
+#pragma region Create nary functions
+  signal create_nary_and( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
+  }
+
+  signal create_nary_or( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
+  }
+
+  signal create_nary_xor( std::vector<signal> const& fs )
+  {
+    return ternary_tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b, auto const& c ) { return create_xor3( a, b, c ); } );
   }
 #pragma endregion
 

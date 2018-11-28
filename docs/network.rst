@@ -99,6 +99,13 @@ Create ternary functions
    :members: create_maj, create_ite, create_xor3
    :no-link:
 
+Create nary functions
+~~~~~~~~~~~~~~~~~~~~~
+
+.. doxygenclass:: mockturtle::network
+   :members: create_nary_and, create_nary_or, create_nary_xor
+   :no-link:
+
 Create arbitrary functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
