@@ -268,6 +268,26 @@ public:
   signal create_xor3( signal const& a, signal const& b, signal const& c );
 #pragma endregion
 
+#pragma region Create nary functions
+  /*! \brief Creates a signal that computes the n-ary AND.
+   *
+   * If `fs` is empty, it returns constant-1.
+   */
+  signal create_nary_and( std::vector<signal> const& fs );
+
+  /*! \brief Creates a signal that computes the n-ary OR.
+   *
+   * If `fs` is empty, it returns constant-0.
+   */
+  signal create_nary_or( std::vector<signal> const& fs );
+
+  /*! \brief Creates a signal that computes the n-ary XOR.
+   *
+   * If `fs` is empty, it returns constant-0.
+   */
+  signal create_nary_xor( std::vector<signal> const& fs );
+#pragma endregion
+
 #pragma region Create arbitrary functions
   /*! \brief Creates node with arbitrary function.
    *
