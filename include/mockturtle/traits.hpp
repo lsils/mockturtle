@@ -472,6 +472,51 @@ template<class Ntk>
 inline constexpr bool has_create_xor3_v = has_create_xor3<Ntk>::value;
 #pragma endregion
 
+#pragma region has_create_nary_and
+template<class Ntk, class = void>
+struct has_create_nary_and : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_and<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_and( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_and_v = has_create_nary_and<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_nary_or
+template<class Ntk, class = void>
+struct has_create_nary_or : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_or<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_or( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_or_v = has_create_nary_or<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_nary_xor
+template<class Ntk, class = void>
+struct has_create_nary_xor : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_xor<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_xor( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_xor_v = has_create_nary_xor<Ntk>::value;
+#pragma endregion
+
 #pragma region has_create_node
 template<class Ntk, class = void>
 struct has_create_node : std::false_type
