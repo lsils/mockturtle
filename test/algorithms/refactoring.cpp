@@ -39,7 +39,7 @@ TEST_CASE( "Refactoring with Akers synthesis", "[refactoring]" )
   const auto f = mig.create_maj( a, mig.create_maj( a, b, c ), c );
   mig.create_po( f );
 
-  akers_resynthesis resyn;
+  akers_resynthesis<mig_network> resyn;
   refactoring( mig, resyn );
 
   mig = cleanup_dangling( mig );

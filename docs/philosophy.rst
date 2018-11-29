@@ -7,10 +7,10 @@ The *mockturtle* philosophy
 The mockturtle philosophy is based on a principle of 4 layers that depend on
 each other in a linear order as depicted in the figure on the right-hand side.
 The fundament, depicted by the bottom layer, is provided by the :ref:`network`.
-It defines naming conventions for types and methods for types and methods in
-classes that implement network interfaces, some of which are mandatory while
-others are optional.  The network interface API does *not* provide any
-implementations for a network though.
+It defines naming conventions for types and methods in classes that implement
+network interfaces, some of which are mandatory while others are optional.  The
+network interface API does *not* provide any implementations for a network
+though.
 
 Algorithms, the second layer, are implemented in terms of generic functions
 that takes as input an instance of some hypothetical network type and require

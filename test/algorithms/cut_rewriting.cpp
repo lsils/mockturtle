@@ -41,7 +41,7 @@ TEST_CASE( "Cut rewriting with Akers synthesis", "[cut_rewriting]" )
   const auto f = mig.create_maj( a, mig.create_maj( a, b, c ), c );
   mig.create_po( f );
 
-  akers_resynthesis resyn;
+  akers_resynthesis<mig_network> resyn;
   cut_rewriting( mig, resyn );
 
   mig = cleanup_dangling( mig );

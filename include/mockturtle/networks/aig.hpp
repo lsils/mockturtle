@@ -41,6 +41,7 @@
 #include <kitty/operators.hpp>
 
 #include "../traits.hpp"
+#include "../utils/algorithm.hpp"
 #include "detail/foreach.hpp"
 #include "storage.hpp"
 
@@ -90,6 +91,7 @@ public:
   static constexpr auto min_fanin_size = 2u;
   static constexpr auto max_fanin_size = 2u;
 
+  using base_type = aig_network;
   using storage = std::shared_ptr<aig_storage>;
   using node = uint64_t;
 
@@ -376,6 +378,23 @@ public:
   signal create_maj( signal const& a, signal const& b, signal const& c )
   {
     return create_or( create_and( a, b ), create_and( c, !create_and( !a, !b ) ) );
+  }
+#pragma endregion
+
+#pragma region Create nary functions
+  signal create_nary_and( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
+  }
+
+  signal create_nary_or( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
+  }
+
+  signal create_nary_xor( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_xor( a, b ); } );
   }
 #pragma endregion
 

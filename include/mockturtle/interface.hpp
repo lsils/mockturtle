@@ -46,6 +46,14 @@ static_assert( false, "file interface.hpp cannot be included, it's only used for
 class network final
 {
 public:
+  /*! \brief Type referring to itself.
+   *
+   * The ``base_type`` is the network type itself.  It is required, because
+   * views may extend networks, and this type provides a way to determine the
+   * underlying network type.
+   */
+  using base_type = network;
+
   /*! \brief Type representing a node.
    *
    * A ``node`` is a node in the logic network.  It could be a constant, a
@@ -258,6 +266,26 @@ public:
 
   /*! \brief Creates a signal that computes the ternary XOR operation. */
   signal create_xor3( signal const& a, signal const& b, signal const& c );
+#pragma endregion
+
+#pragma region Create nary functions
+  /*! \brief Creates a signal that computes the n-ary AND.
+   *
+   * If `fs` is empty, it returns constant-1.
+   */
+  signal create_nary_and( std::vector<signal> const& fs );
+
+  /*! \brief Creates a signal that computes the n-ary OR.
+   *
+   * If `fs` is empty, it returns constant-0.
+   */
+  signal create_nary_or( std::vector<signal> const& fs );
+
+  /*! \brief Creates a signal that computes the n-ary XOR.
+   *
+   * If `fs` is empty, it returns constant-0.
+   */
+  signal create_nary_xor( std::vector<signal> const& fs );
 #pragma endregion
 
 #pragma region Create arbitrary functions
