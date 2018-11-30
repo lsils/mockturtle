@@ -49,6 +49,11 @@
 namespace mockturtle
 {
 
+struct xmg_storage_data
+{
+  uint32_t trav_id = 0u;
+};
+
 /*! \brief XMG storage container
 
   XMGs have nodes with fan-in 3.  We split of one bit of the index pointer to
@@ -69,7 +74,7 @@ struct xmg_storage_node : regular_node<3, 2, 1>
 };
 
 using xmg_storage = storage<xmg_storage_node,
-                            empty_storage_data>;
+                            xmg_storage_data>;
 
 class xmg_network
 {
@@ -892,6 +897,16 @@ public:
   void set_visited( node const& n, uint32_t v ) const
   {
     _storage->nodes[n].data[1].h1 = v;
+  }
+
+  uint32_t trav_id() const
+  {
+    return _storage->data.trav_id;
+  }
+
+  void incr_trav_id() const
+  {
+    ++_storage->data.trav_id;
   }
 #pragma endregion
 

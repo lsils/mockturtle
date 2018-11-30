@@ -49,6 +49,11 @@
 namespace mockturtle
 {
 
+struct mig_storage_data
+{
+  uint32_t trav_id = 0u;
+};
+
 /*! \brief MIG storage container
 
   MIGs have nodes with fan-in 3.  We split of one bit of the index pointer to
@@ -62,7 +67,7 @@ namespace mockturtle
 
 using mig_node = regular_node<3, 2, 1>;
 using mig_storage = storage<mig_node,
-                            empty_storage_data>;
+                            mig_storage_data>;
 
 class mig_network
 {
@@ -802,6 +807,16 @@ public:
   void set_visited( node const& n, uint32_t v ) const
   {
     _storage->nodes[n].data[1].h1 = v;
+  }
+
+  uint32_t trav_id() const
+  {
+    return _storage->data.trav_id;
+  }
+
+  void incr_trav_id() const
+  {
+    ++_storage->data.trav_id;
   }
 #pragma endregion
 
