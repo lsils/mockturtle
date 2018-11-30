@@ -492,6 +492,9 @@ TEST_CASE( "simulate some special functions in AIGs", "[aig]" )
 
 TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
 {
+  CHECK( has_substitute_node_v<aig_network> );
+  CHECK( has_replace_in_node_v<aig_network> );
+
   aig_network aig;
   const auto x1 = aig.create_pi();
   const auto x2 = aig.create_pi();

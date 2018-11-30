@@ -434,7 +434,7 @@ public:
 #pragma endregion
 
 #pragma region Restructuring
-  std::optional<std::pair<node, signal>> _replace_in_node( node const& n, node const& old_node, signal new_signal )
+  std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal )
   {
     auto& node = _storage->nodes[n];
 
@@ -566,7 +566,7 @@ public:
         if ( is_pi( idx ) )
           continue; /* ignore PIs */
 
-        if ( const auto repl = _replace_in_node( idx, _old, _new ); repl )
+        if ( const auto repl = replace_in_node( idx, _old, _new ); repl )
         {
           to_substitute.push( *repl );
         }

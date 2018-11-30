@@ -33,10 +33,13 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <kitty/dynamic_truth_table.hpp>
+
+#include "traits.hpp"
 
 namespace mockturtle
 {
@@ -330,6 +333,23 @@ public:
    * \brief new_signal Signal to replace ``old_node`` with
    */
   void substitute_node( node const& old_node, signal const& new_signal );
+
+  /*! \brief Replaces a child node by a new signal in a node.
+   *
+   * If ``n`` has a child pointing to `old_node`, then it will be replaced by
+   * ``new_signal``.  If the replacement catches a trivial case, e.g., ``n``
+   * becomes a constant, then this will be returned as an optional replacement
+   * candidate by the function.
+   *
+   * The function updates the hash table. If no trivial case was found, it
+   * updates the hash table according to the new structure of ``n``.
+   *
+   * \brief n Node which may have ``old_node`` as a child
+   * \brief old_node Child to be replaced
+   * \brief new_signal Signel to replace ``old_node`` with
+   * \return May return new recursive replacement candidate
+   */
+  std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal );
 
   /*! \brief Replaces one node in a network by another signal.
    *
