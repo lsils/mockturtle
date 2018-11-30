@@ -78,6 +78,13 @@ struct cut_rewriting_params
   /*! \brief Use don't cares for optimization. */
   bool use_dont_cares{false};
 
+  /*! \brief Candidate selection strategy. */
+  enum
+  {
+    minimize_weight,
+    greedy
+  } candidate_selection_strategy = minimize_weight;
+
   /*! \brief Show progress. */
   bool progress{false};
 
@@ -493,7 +500,7 @@ public:
       std::cout << "[i] replacement dependency graph has " << g.num_vertices() << " vertices and " << g.num_edges() << " edges\n";
     }
 
-    const auto is = maximum_weighted_independent_set_gwmin( g );
+    const auto is = ( ps.candidate_selection_strategy == cut_rewriting_params::minimize_weight ) ? maximum_weighted_independent_set_gwmin( g ) : maximal_weighted_independent_set( g );
 
     if ( ps.very_verbose )
     {

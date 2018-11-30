@@ -55,7 +55,8 @@ struct is_network_type : std::false_type
 template<class Ntk>
 struct is_network_type<Ntk, std::enable_if_t<
                                 std::is_constructible_v<signal<Ntk>, node<Ntk>>,
-                                std::void_t<signal<Ntk>,
+                                std::void_t<typename Ntk::base_type,
+                                            signal<Ntk>,
                                             node<Ntk>,
                                             typename Ntk::storage,
                                             decltype( Ntk::max_fanin_size ),
@@ -469,6 +470,51 @@ struct has_create_xor3<Ntk, std::void_t<decltype( std::declval<Ntk>().create_xor
 
 template<class Ntk>
 inline constexpr bool has_create_xor3_v = has_create_xor3<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_nary_and
+template<class Ntk, class = void>
+struct has_create_nary_and : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_and<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_and( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_and_v = has_create_nary_and<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_nary_or
+template<class Ntk, class = void>
+struct has_create_nary_or : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_or<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_or( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_or_v = has_create_nary_or<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_nary_xor
+template<class Ntk, class = void>
+struct has_create_nary_xor : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_xor<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_xor( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_xor_v = has_create_nary_xor<Ntk>::value;
 #pragma endregion
 
 #pragma region has_create_node

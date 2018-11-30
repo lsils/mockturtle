@@ -1,5 +1,10 @@
 #include <catch.hpp>
 
+#include <algorithm>
+#include <vector>
+
+#include <kitty/algorithm.hpp>
+#include <kitty/bit_operations.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
@@ -525,4 +530,28 @@ TEST_CASE( "simulate some special functions in XAGs", "[xag]" )
 
   CHECK( result[0]._bits[0] == 0xe8u );
   CHECK( result[1]._bits[0] == 0xd8u );
+}
+
+TEST_CASE( "create nary functions in XAGs", "[xag]" )
+{
+  xag_network xag;
+  std::vector<xag_network::signal> pis( 8u );
+  std::generate( pis.begin(), pis.end(), [&]() { return xag.create_pi(); } );
+  xag.create_po( xag.create_nary_and( pis ) );
+  xag.create_po( xag.create_nary_or( pis ) );
+  xag.create_po( xag.create_nary_xor( pis ) );
+
+  CHECK( xag.num_gates() == 21u );
+
+  auto result = simulate<kitty::dynamic_truth_table>( xag, default_simulator<kitty::dynamic_truth_table>( 8 ) );
+
+  CHECK( kitty::count_ones( result[0] ) == 1u );
+  CHECK( kitty::get_bit( result[0], 255 ) );
+
+  CHECK( kitty::count_ones( result[1] ) == 255u );
+  CHECK( !kitty::get_bit( result[1], 0 ) );
+
+  auto copy = result[2].construct();
+  kitty::create_parity( copy );
+  CHECK( result[2] == copy );
 }

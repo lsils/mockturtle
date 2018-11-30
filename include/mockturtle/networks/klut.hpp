@@ -75,6 +75,7 @@ public:
   static constexpr auto min_fanin_size = 1;
   static constexpr auto max_fanin_size = 32;
 
+  using base_type = klut_network;
   using storage = std::shared_ptr<klut_storage>;
   using node = uint64_t;
   using signal = uint64_t;
