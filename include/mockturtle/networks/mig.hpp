@@ -697,13 +697,6 @@ public:
   {
     _storage->nodes[n].data[1].h1 = v;
   }
-#pragma endregion
-
-#pragma region General methods
-  void update()
-  {
-  }
-#pragma endregion
 
   uint32_t trav_id() const
   {
@@ -714,6 +707,13 @@ public:
   {
     ++_storage->data.trav_id;
   }
+#pragma endregion
+
+#pragma region General methods
+  void update()
+  {
+  }
+#pragma endregion
 
 public:
   std::shared_ptr<mig_storage> _storage;

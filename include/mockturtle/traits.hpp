@@ -1567,6 +1567,36 @@ template<class Ntk>
 inline constexpr bool has_set_visited_v = has_set_visited<Ntk>::value;
 #pragma endregion
 
+#pragma region trav_id
+template<class Ntk, class = void>
+struct has_trav_id : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_trav_id<Ntk, std::void_t<decltype( std::declval<Ntk>().trav_id() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_trav_id_v = has_trav_id<Ntk>::value;
+#pragma endregion
+
+#pragma region incr_trav_id
+template<class Ntk, class = void>
+struct has_incr_trav_id : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_incr_trav_id<Ntk, std::void_t<decltype( std::declval<Ntk>().incr_trav_id() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_incr_trav_id_v = has_incr_trav_id<Ntk>::value;
+#pragma endregion
+
 #pragma region has_update
 template<class Ntk, class = void>
 struct has_update : std::false_type

@@ -848,6 +848,16 @@ public:
 
   /*! \brief Sets the visited value of a node. */
   uint32_t set_visited( node const& n, uint32_t v ) const;
+
+  /*! \brief An id that can be used as a visited flag.
+   *
+   * By using the traversal is, one can reuse multiple visited flags over
+   * several levels.
+   */
+  uint32_t trav_id() const;
+
+  /*! \brief Increment the current traversal id. */
+  void incr_trav_id() const;
 #pragma endregion
 
 #pragma region General methods

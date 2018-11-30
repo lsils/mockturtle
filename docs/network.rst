@@ -203,10 +203,12 @@ purpose of checking whether a node was visited in traversing algorithms.
 Again, all visited-functions are constant, because a change to the visited
 flags is considered transparent to the network.  If a caller passes a constant
 network to an algorithm, the algorithm may change the visited flags but cannot
-change the structure of the network or any other *visible* property.
+change the structure of the network or any other *visible* property.  The use
+of traversal ids helps to use unique visited flags in multiple depending
+contexts.
 
 .. doxygenclass:: mockturtle::network
-   :members: clear_visited, visited, set_visited
+   :members: clear_visited, visited, set_visited, trav_id, incr_trav_id
    :no-link:
 
 General methods
