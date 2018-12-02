@@ -59,26 +59,55 @@
 namespace mockturtle
 {
 
+/*! \brief Parameters for xag_minmc_resynthesis. */
 struct xag_minmc_resynthesis_params
 {
-  bool print_stats{true};
+  /*! \brief Print statistics when resynthesis object is destroyed. */
+  bool print_stats{false};
+
+  /*! \brief Threshold for exhaustive don't care search.
+   *
+   * If the don't care set is smaller than this size, all possible covers with
+   * respect to the don't cares are explored.  Otherwise all covers are created
+   * that the on-set is extended by at most one element from the don't care set.
+   */
   uint32_t exhaustive_dc_limit{10u};
+
+  /*! \brief Verify database when parsing. */
   bool verify_database{false};
 };
 
+/*! \brief Statistics for xag_minmc_resynthesis. */
 struct xag_minmc_resynthesis_stats
 {
+  /*! \brief Total time. */
   stopwatch<>::duration time_total{0};
+
+  /*! \brief Time to parse database. */
   stopwatch<>::duration time_parse_db{0};
+  
+  /*! \brief Overall time to classify functions. */
   stopwatch<>::duration time_classify{0};
+
+  /*! \brief Overall time to construct candidate. */
   stopwatch<>::duration time_construct{0};
 
+  /*! \brief Cache hits for classified functions. */
   uint32_t cache_hits{0};
+
+  /*! \brief Cache misses for classified functions. */
   uint32_t cache_misses{0};
+
+  /*! \brief Number of aborts due to classification. */
   uint32_t classify_aborts{0};
+
+  /*! \brief Number of aborts due to unknown function. */
   uint32_t unknown_function_aborts{0};
+
+  /*! \brief Total number of don't cares considered. */
   uint32_t dont_cares{0};
 
+  /*! \brief Prints report. */
   void report() const
   {
     std::cout << fmt::format( "[i] total time     = {:>5.2f} secs\n", to_seconds( time_total ) );
@@ -93,11 +122,36 @@ struct xag_minmc_resynthesis_stats
   }
 };
 
+/*! \brief Resynthesis function based on pre-computed size-optimum MIGs.
+ *
+ * This resynthesis function can be passed to ``cut_rewriting`` with a cut size
+ * of at most 6.  It will produce an XMG based on pre-computed XMGs with a
+ * minimum multiplicative complexity.
+ *
+   \verbatim embed:rst
+  
+   Example
+   
+   .. code-block:: c++
+   
+      const xag_network xag = ...;
+      xag_minmc_resynthesis resyn;
+      cut_rewriting( xag, resyn );
+   \endverbatim
+ */
 class xag_minmc_resynthesis
 {
 public:
-  xag_minmc_resynthesis( std::string const& filename )
-      : db( std::make_shared<xag_network>() ),
+  /*! \brief Default constructor.
+   *
+   * \param filename Database file with precomputed functions (information to be added)
+   * \param ps Parameters
+   * \param pst Statistics
+   */
+  xag_minmc_resynthesis( std::string const& filename, xag_minmc_resynthesis_params const& ps = {}, xag_minmc_resynthesis_stats* pst = nullptr )
+      : ps( ps ),
+        pst( pst ),
+        db( std::make_shared<xag_network>() ),
         db_pis( std::make_shared<decltype( db_pis )::element_type>( 6u ) ),
         func_mc( std::make_shared<decltype( func_mc )::element_type>() ),
         classify_cache( std::make_shared<decltype( classify_cache )::element_type>() )
@@ -110,6 +164,11 @@ public:
     if ( ps.print_stats )
     {
       st.report();
+    }
+
+    if ( pst )
+    {
+      *pst = st;
     }
   }
 
@@ -406,6 +465,7 @@ private:
 private:
   xag_minmc_resynthesis_params ps;
   xag_minmc_resynthesis_stats st;
+  xag_minmc_resynthesis_stats *pst{nullptr};
 
   std::shared_ptr<xag_network> db;
   std::shared_ptr<std::vector<xag_network::signal>> db_pis;
