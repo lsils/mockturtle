@@ -118,6 +118,11 @@ public:
     return _levels[n];
   }
 
+  void set_level( node const& n, uint32_t level )
+  {
+    _levels[n] = level;
+  }
+
   void resize_levels()
   {
     _levels.resize();
