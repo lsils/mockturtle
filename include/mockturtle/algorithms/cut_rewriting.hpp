@@ -213,7 +213,7 @@ inline std::vector<uint32_t> maximum_weighted_independent_set_gwmin( graph& g )
   std::vector<uint32_t> vertices( g.num_vertices() );
   std::iota( vertices.begin(), vertices.end(), 0 );
 
-  std::sort( vertices.begin(), vertices.end(), [&g]( auto v, auto w ) {
+  std::stable_sort( vertices.begin(), vertices.end(), [&g]( auto v, auto w ) {
     const auto value_v = g.gwmin_value( v );
     const auto value_w = g.gwmin_value( w );
     return value_v > value_w || ( value_v == value_w && g.degree( v ) > g.degree( w ) );
