@@ -439,8 +439,10 @@ public:
           int32_t best_gain{-1};
 
           const auto on_signal = [&]( auto const& f_new ) {
-            int32_t gain = value - recursive_ref( ntk.get_node( f_new ) );
+            auto [v, contains] = recursive_ref_contains( ntk.get_node( f_new ), n );
             recursive_deref( ntk.get_node( f_new ) );
+
+            int32_t gain = contains ? -1 : value - v;
 
             if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
             {
@@ -567,6 +569,27 @@ private:
       }
     } );
     return value;
+  }
+
+  std::pair<int32_t, bool> recursive_ref_contains( node<Ntk> const& n, node<Ntk> const& repl )
+  {
+    /* terminate? */
+    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      return {0, false};
+
+    /* recursively collect nodes */
+    int32_t value = cost_fn( ntk, n );
+    bool contains = ( n == repl );
+    ntk.foreach_fanin( n, [&]( auto const& s ) {
+      contains = contains || ( ntk.get_node( s ) == repl );
+      if ( ntk.incr_value( ntk.get_node( s ) ) == 0 )
+      {
+        const auto [v, c] = recursive_ref_contains( ntk.get_node( s ), repl );
+        value += v;
+        contains = contains || c;
+      }
+    } );
+    return {value, contains};
   }
 
 private:
