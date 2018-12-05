@@ -111,7 +111,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 19, 80, 49, 98, 80, 200, 131, 507, 2, 258}} );
+  CHECK( v == std::vector<uint32_t>{{0, 20, 80, 49, 160, 79, 201, 131, 506, 2, 258}} );
 
   // with zero gain
   const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
@@ -125,7 +125,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     return before - ntk.num_gates();
   } );
 
-  CHECK( v2 == std::vector<uint32_t>{{0, 3, 36, 12, 55, 10, 86, 40, 107, 2, 46}} );
+  CHECK( v2 == std::vector<uint32_t>{{0, 20, 78, 49, 158, 79, 201, 131, 525, 2, 255}} );
 }
 
 TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis", "[quality]" )
@@ -287,7 +287,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis"
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 18, 4, 9, 84, 17, 117, 95, 248, 17, 22}} );
+  CHECK( v == std::vector<uint32_t>{{0, 18, 4, 9, 84, 17, 117, 95, 251, 17, 22}} );
 }
 
 #endif
