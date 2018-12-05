@@ -11,6 +11,7 @@
 #include <mockturtle/algorithms/lut_mapping.hpp>
 #include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
+#include <mockturtle/algorithms/node_resynthesis/aig_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
 #include <mockturtle/algorithms/node_resynthesis/exact.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
@@ -270,6 +271,23 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-c
   } );
 
   CHECK( v == std::vector<uint32_t>{{6, 172, 182, 296, 182, 189, 484, 841, 1385, 1851, 1292}} );
+}
+
+TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis", "[quality]" )
+{
+  aig_npn_resynthesis resyn;
+
+  // without zero gain
+  const auto v = foreach_benchmark<aig_network>( [&]( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    cut_rewriting_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    cut_rewriting( ntk, resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 18, 4, 9, 84, 17, 117, 95, 248, 17, 22}} );
 }
 
 #endif
