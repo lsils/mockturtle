@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file aig_npn.hpp
-  \brief Replace with size-optimum AIGs from NPN (from ABC rewrite)
+  \file xag_npn.hpp
+  \brief Replace with size-optimum XAGs and AIGs from NPN (from ABC rewrite)
 
   \author Mathias Soeken
 */
@@ -45,7 +45,6 @@
 
 #include "../../algorithms/simulation.hpp"
 #include "../../io/write_bench.hpp"
-#include "../../networks/aig.hpp"
 #include "../../networks/xag.hpp"
 #include "../../utils/node_map.hpp"
 #include "../../utils/stopwatch.hpp"
@@ -53,13 +52,13 @@
 namespace mockturtle
 {
 
-struct aig_npn_resynthesis_params
+struct xag_npn_resynthesis_params
 {
   /*! \brief Be verbose. */
   bool verbose{false};
 };
 
-struct aig_npn_resynthesis_stats
+struct xag_npn_resynthesis_stats
 {
   stopwatch<>::duration time_classes{0};
   stopwatch<>::duration time_db{0};
@@ -76,29 +75,68 @@ struct aig_npn_resynthesis_stats
 
 /*! \brief Resynthesis function based on pre-computed AIGs.
  *
+ * This resynthesis function can be passed to ``cut_rewriting``.  It will
+ * produce a network based on pre-computed XAGs with up to at most 4 variables.
+ * Consequently, the nodes' fan-in sizes in the input network must not exceed
+ * 4.
  *
+   \verbatim embed:rst
+  
+   Example
+   
+   .. code-block:: c++
+   
+      const aig_network aig = ...;
+      xag_npn_resynthesis resyn;
+      cut_rewriting( aig, resyn );
+   \endverbatim
  */
-class aig_npn_resynthesis
+template<class Ntk, class DatabaseNtk = xag_network>
+class xag_npn_resynthesis
 {
 public:
-  aig_npn_resynthesis()
-      : _classes( 1 << 16 )
+  xag_npn_resynthesis( xag_npn_resynthesis_params const& ps = {}, xag_npn_resynthesis_stats* pst = nullptr )
+      : ps( ps ),
+        pst( pst ),
+        _classes( 1 << 16 )
   {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+    static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and method" );
+    static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor method" );
+
+    static_assert( is_network_type_v<DatabaseNtk>, "DatabaseNtk is not a network type" );
+    static_assert( has_get_node_v<DatabaseNtk>, "DatabaseNtk does not implement the get_node method" );
+    static_assert( has_is_complemented_v<DatabaseNtk>, "DatabaseNtk does not implement the is_complemented method" );
+    static_assert( has_is_xor_v<DatabaseNtk>, "DatabaseNtk does not implement the is_xor method" );
+    static_assert( has_size_v<DatabaseNtk>, "DatabaseNtk does not implement the size method" );
+    static_assert( has_create_pi_v<DatabaseNtk>, "DatabaseNtk does not implement the create_pi method" );
+    static_assert( has_create_and_v<DatabaseNtk>, "DatabaseNtk does not implement the create_and method" );
+    static_assert( has_create_xor_v<DatabaseNtk>, "DatabaseNtk does not implement the create_xor method" );
+    static_assert( has_foreach_fanin_v<DatabaseNtk>, "DatabaseNtk does not implement the foreach_fanin method" );
+    static_assert( has_foreach_node_v<DatabaseNtk>, "DatabaseNtk does not implement the foreach_node method" );
+    static_assert( has_make_signal_v<DatabaseNtk>, "DatabaseNtk does not implement the make_signal method" );
+
     _repr.reserve( 222u );
     build_classes();
     build_db();
   }
 
-  virtual ~aig_npn_resynthesis()
+  virtual ~xag_npn_resynthesis()
   {
     if ( ps.verbose )
     {
       st.report();
     }
+
+    if ( pst )
+    {
+      *pst = st;
+    }
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( aig_network& aig, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
     kitty::static_truth_table<4> tt = kitty::extend_to<4>( function );
 
@@ -116,10 +154,10 @@ public:
 
     assert( repr == std::get<0>( config ) );
 
-    std::vector<aig_network::signal> pis( 4, aig.get_constant( false ) );
+    std::vector<signal<Ntk>> pis( 4, ntk.get_constant( false ) );
     std::copy( begin, end, pis.begin() );
 
-    std::vector<aig_network::signal> pis_perm( 4 );
+    std::vector<signal<Ntk>> pis_perm( 4 );
     auto perm = std::get<2>( config );
     for ( auto i = 0; i < 4; ++i )
     {
@@ -137,36 +175,35 @@ public:
 
     for ( auto const& cand : it->second )
     {
-      std::unordered_map<xag_network::node, aig_network::signal> db_to_ntk;
-      db_to_ntk[0] = aig.get_constant( false );
+      std::unordered_map<node<DatabaseNtk>, signal<Ntk>> db_to_ntk;
+      db_to_ntk[0] = ntk.get_constant( false );
       for ( auto i = 0; i < 4; ++i )
       {
         db_to_ntk[i + 1] = pis_perm[i];
       }
-      const auto f = copy_db_entry( aig, _db.get_node( cand ), db_to_ntk ) ^ _db.is_complemented( cand );
+      const auto f = copy_db_entry( ntk, _db.get_node( cand ), db_to_ntk ) ^ _db.is_complemented( cand );
       if ( !fn( ( ( phase >> 4 ) & 1 ) ? !f : f ) )
       {
         return;
       }
-      //break;
     }
   }
 
 private:
-  aig_network::signal
-  copy_db_entry( aig_network& aig, xag_network::node const& n, std::unordered_map<xag_network::node, aig_network::signal>& db_to_ntk ) const
+  signal<Ntk>
+  copy_db_entry( Ntk& ntk, node<DatabaseNtk> const& n, std::unordered_map<node<DatabaseNtk>, signal<Ntk>>& db_to_ntk ) const
   {
     if ( const auto it = db_to_ntk.find( n ); it != db_to_ntk.end() )
     {
       return it->second;
     }
 
-    std::array<aig_network::signal, 2> fanin;
+    std::array<signal<Ntk>, 2> fanin;
     _db.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      fanin[i] = copy_db_entry( aig, _db.get_node( f ), db_to_ntk ) ^ _db.is_complemented( f );
+      fanin[i] = copy_db_entry( ntk, _db.get_node( f ), db_to_ntk ) ^ _db.is_complemented( f );
     } );
 
-    const auto f = _db.is_xor( n ) ? aig.create_xor( fanin[0], fanin[1] ) : aig.create_and( fanin[0], fanin[1] );
+    const auto f = _db.is_xor( n ) ? ntk.create_xor( fanin[0], fanin[1] ) : ntk.create_and( fanin[0], fanin[1] );
     return db_to_ntk[n] = f;
   }
 
@@ -241,7 +278,6 @@ private:
         {
           _repr_to_signal[sim_res[n]].push_back( _db.make_signal( n ) );
         }
-        //std::cout << fmt::format( "[i] signal {} realizes class {}\n", n, kitty::to_hex( sim_res[n] ) );
       }
       else
       {
@@ -256,7 +292,6 @@ private:
           {
             _repr_to_signal[f].push_back( !_db.make_signal( n ) );
           }
-          //std::cout << fmt::format( "[i] signal !{} realizes class {}\n", n, kitty::to_hex( f ) );
         }
       }
     } );
@@ -265,14 +300,15 @@ private:
     st.covered_classes = _repr_to_signal.size();
   }
 
-  aig_npn_resynthesis_params ps;
-  aig_npn_resynthesis_stats st;
+  xag_npn_resynthesis_params ps;
+  xag_npn_resynthesis_stats st;
+  xag_npn_resynthesis_stats* pst{nullptr};
 
   std::vector<kitty::static_truth_table<4>> _repr;
   std::vector<uint8_t> _classes;
-  std::unordered_map<kitty::static_truth_table<4>, std::vector<xag_network::signal>, kitty::hash<kitty::static_truth_table<4>>> _repr_to_signal;
+  std::unordered_map<kitty::static_truth_table<4>, std::vector<signal<DatabaseNtk>>, kitty::hash<kitty::static_truth_table<4>>> _repr_to_signal;
 
-  xag_network _db;
+  DatabaseNtk _db;
 
   // clang-format off
   inline static const uint16_t subgraphs[]
