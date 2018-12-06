@@ -530,7 +530,7 @@ private:
 
    .. note::
 
-      The implementation of this algorithm was heavily inspired but cut
+      The implementation of this algorithm was heavily inspired buy cut
       enumeration implementations in ABC.
    \endverbatim
  */
