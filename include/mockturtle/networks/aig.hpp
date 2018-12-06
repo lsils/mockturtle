@@ -34,6 +34,8 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <stack>
 #include <string>
 
 #include <ez/direct_iterator.hpp>
@@ -77,7 +79,7 @@ struct aig_storage_data
   store a complemented attribute.  Every node has 64-bit of additional data
   used for the following purposes:
 
-  `data[0].h1`: Fan-out size
+  `data[0].h1`: Fan-out size (we use MSB to indicate whether a node is dead)
   `data[0].h2`: Application-specific value
   `data[1].h1`: Visited flag
 */
@@ -410,25 +412,71 @@ public:
 #pragma endregion
 
 #pragma region Restructuring
-  void substitute_node( node const& old_node, signal const& new_signal )
+  std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal )
   {
-    /* find all parents from old_node */
-    for ( auto& n : _storage->nodes )
-    {
-      for ( auto& child : n.children )
-      {
-        if ( child.index == old_node )
-        {
-          child.index = new_signal.index;
-          child.weight ^= new_signal.complement;
+    auto& node = _storage->nodes[n];
 
-          // increment fan-in of new node
-          _storage->nodes[new_signal.index].data[0].h1++;
-        }
-      }
+    uint32_t fanin = 0u;
+    if ( node.children[0].index == old_node )
+    {
+      fanin = 0u;
+      new_signal.complement ^= node.children[0].weight;
+    }
+    else if ( node.children[1].index == old_node )
+    {
+      fanin = 1u;
+      new_signal.complement ^= node.children[1].weight;
+    }
+    else
+    {
+      return std::nullopt;
     }
 
-    /* check outputs */
+    // determine potential new children of node n
+    signal child1 = new_signal;
+    signal child0 = node.children[fanin ^ 1];
+
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+
+    // check for trivial cases?
+    if ( child0.index == child1.index )
+    {
+      const auto diff_pol = child0.complement != child1.complement;
+      return std::make_pair( n, diff_pol ? get_constant( false ) : child1 );
+    }
+    else if ( child0.index == 0 ) /* constant child */
+    {
+      return std::make_pair( n, child0.complement ? child1 : get_constant( false ) );
+    }
+
+    // node already in hash table
+    storage::element_type::node_type _hash_obj;
+    _hash_obj.children[0] = child0;
+    _hash_obj.children[1] = child1;
+    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() )
+    {
+      return std::make_pair( n, signal( it->second, 0 ) );
+    }
+
+    // erase old node in hash table
+    _storage->hash.erase( node );
+
+    // insert updated node into hash table
+    node.children[0] = child0;
+    node.children[1] = child1;
+    _storage->hash[node] = n;
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+
+    return std::nullopt;
+  }
+
+  void replace_in_outputs( node const& old_node, signal const& new_signal )
+  {
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -440,9 +488,63 @@ public:
         _storage->nodes[new_signal.index].data[0].h1++;
       }
     }
+  }
 
-    // reset fan-in of old node
-    _storage->nodes[old_node].data[0].h1 = 0;
+  void take_out_node( node const& n )
+  {
+    /* we cannot delete PIs or constants */
+    if ( n == 0 || is_pi( n ) )
+      return;
+
+    auto& nobj = _storage->nodes[n];
+    nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
+    _storage->hash.erase( nobj );
+
+    for ( auto i = 0u; i < 2u; ++i )
+    {
+      if ( fanout_size( nobj.children[i].index ) == 0 )
+      {
+        continue;
+      }
+      if ( decr_fanout_size( nobj.children[i].index ) == 0 )
+      {
+        take_out_node( nobj.children[i].index );
+      }
+    }
+  }
+
+  inline bool is_dead( node const& n ) const
+  {
+    return ( _storage->nodes[n].data[0].h1 >> 31 ) & 1;
+  }
+
+  void substitute_node( node const& old_node, signal const& new_signal )
+  {
+    std::stack<std::pair<node, signal>> to_substitute;
+    to_substitute.push( {old_node, new_signal} );
+
+    while ( !to_substitute.empty() )
+    {
+      const auto [_old, _new] = to_substitute.top();
+      to_substitute.pop();
+
+      for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
+      {
+        if ( is_pi( idx ) )
+          continue; /* ignore PIs */
+
+        if ( const auto repl = replace_in_node( idx, _old, _new ); repl )
+        {
+          to_substitute.push( *repl );
+        }
+      }
+
+      /* check outputs */
+      replace_in_outputs( _old, _new );
+
+      // reset fan-in of old node
+      take_out_node( _old );
+    }
   }
 #pragma endregion
 
@@ -480,7 +582,7 @@ public:
 
   auto num_gates() const
   {
-    return static_cast<uint32_t>( _storage->nodes.size() - _storage->inputs.size() - 1 );
+    return static_cast<uint32_t>( _storage->hash.size() );
   }
 
   uint32_t fanin_size( node const& n ) const
@@ -492,7 +594,17 @@ public:
 
   uint32_t fanout_size( node const& n ) const
   {
-    return _storage->nodes[n].data[0].h1;
+    return _storage->nodes[n].data[0].h1 & UINT32_C( 0x7FFFFFFF );
+  }
+
+  uint32_t incr_fanout_size( node const& n ) const
+  {
+    return _storage->nodes[n].data[0].h1++ & UINT32_C( 0x7FFFFFFF );
+  }
+
+  uint32_t decr_fanout_size( node const& n ) const
+  {
+    return --_storage->nodes[n].data[0].h1 & UINT32_C( 0x7FFFFFFF );
   }
 
   bool is_and( node const& n ) const
@@ -678,9 +790,10 @@ public:
   template<typename Fn>
   void foreach_node( Fn&& fn ) const
   {
-    detail::foreach_element( ez::make_direct_iterator<uint64_t>( 0 ),
-                             ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
-                             fn );
+    detail::foreach_element_if( ez::make_direct_iterator<uint64_t>( 0 ),
+                                ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
+                                [this]( auto n ) { return !is_dead( n ); },
+                                fn );
   }
 
   template<typename Fn>
@@ -769,7 +882,7 @@ public:
   {
     detail::foreach_element_if( ez::make_direct_iterator<uint64_t>( 1 ), /* start from 1 to avoid constant */
                                 ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
-                                [this]( auto n ) { return !is_pi( n ); },
+                                [this]( auto n ) { return !is_pi( n ) && !is_dead( n ); },
                                 fn );
   }
 

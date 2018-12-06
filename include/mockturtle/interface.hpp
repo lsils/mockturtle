@@ -33,10 +33,13 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <kitty/dynamic_truth_table.hpp>
+
+#include "traits.hpp"
 
 namespace mockturtle
 {
@@ -331,6 +334,44 @@ public:
    */
   void substitute_node( node const& old_node, signal const& new_signal );
 
+  /*! \brief Replaces a child node by a new signal in a node.
+   *
+   * If ``n`` has a child pointing to ``old_node``, then it will be replaced by
+   * ``new_signal``.  If the replacement catches a trivial case, e.g., ``n``
+   * becomes a constant, then this will be returned as an optional replacement
+   * candidate by the function.
+   *
+   * The function updates the hash table. If no trivial case was found, it
+   * updates the hash table according to the new structure of ``n``.
+   *
+   * \brief n Node which may have ``old_node`` as a child
+   * \brief old_node Child to be replaced
+   * \brief new_signal Signel to replace ``old_node`` with
+   * \return May return new recursive replacement candidate
+   */
+  std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal );
+
+  /*! \brief Replaces a output driver by a new signal.
+   *
+   * If ``old_node`` is drive to some output, then it will be replaced by
+   * ``new_signal``.
+   * 
+   * \brief old_node Driver to be replaced
+   * \brief new_signal Signal replace ``old_node`` with
+   */
+  void replace_in_outputs( node const& old_node, signal const& new_signal );
+
+  /*! \brief Removes a node from the hash table.
+   *
+   * The node will be marked dead.  This status can be checked with ``is_dead``.
+   * The node is no longer visited in the ``foreach_node`` and ``foreach_gate``
+   * methods.  It still contributes to the overall ``size`` of the network, but
+   * ``num_gates`` does not take dead nodes into account.  Taking out a node
+   * does not change the indexes of other nodes.  The node will be removed from
+   * the hash table.
+   */
+  void take_out_node( node const& n );
+
   /*! \brief Replaces one node in a network by another signal.
    *
    * This method causes all nodes in ``parents`` that have ``old_node`` as
@@ -348,7 +389,7 @@ public:
 #pragma endregion
 
 #pragma region Structural properties
-  /*! \brief Returns the number of nodes (incl. constants and PIs). */
+  /*! \brief Returns the number of nodes (incl. constants and PIs and dead nodes). */
   uint32_t size() const;
 
   /*! \brief Returns the number of combinational inputs. */
@@ -363,11 +404,7 @@ public:
   /*! \brief Returns the number of primary outputs. */
   uint32_t num_pos() const;
 
-  /*! \brief Returns the number of gates. 
-   *
-   * The return value is equal to the size of the network without the number
-   * of constants and PIs.
-   */
+  /*! \brief Returns the number of gates (without dead nodes) */
   uint32_t num_gates() const;
 
   /*! \brief Returns the number of registers.
@@ -384,6 +421,20 @@ public:
 
   /*! \brief Returns the fanout size of a node. */
   uint32_t fanout_size( node const& n ) const;
+
+  /*! \brief Increments fanout size and returns old value.
+   *
+   * This is useful for ref-counting based algorithm.  The user of this function
+   * should make sure to bring the value back to a consistent state.
+   */
+  uint32_t incr_fanout_size( node const& n ) const;
+
+  /*! \brief Decrements fanout size and returns new value.
+   *
+   * This is useful for ref-counting based algorithm.  The user of this function
+   * should make sure to bring the value back to a consistent state.
+   */
+  uint32_t decr_fanout_size( node const& n ) const;
 
   /*! \brief Returns the length of the critical path. */
   uint32_t depth() const;
