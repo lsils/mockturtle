@@ -607,6 +607,21 @@ template<class Ntk>
 inline constexpr bool has_take_out_node_v = has_take_out_node<Ntk>::value;
 #pragma endregion
 
+#pragma region is_dead
+template<class Ntk, class = void>
+struct has_is_dead : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_dead<Ntk, std::void_t<decltype( std::declval<Ntk>().is_dead( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_dead_v = has_is_dead<Ntk>::value;
+#pragma endregion
+
 #pragma region has_substitute_node_of_parents
 template<class Ntk, class = void>
 struct has_substitute_node_of_parents : std::false_type
@@ -755,6 +770,36 @@ struct has_fanout_size<Ntk, std::void_t<decltype( std::declval<Ntk>().fanout_siz
 
 template<class Ntk>
 inline constexpr bool has_fanout_size_v = has_fanout_size<Ntk>::value;
+#pragma endregion
+
+#pragma region has_incr_fanout_size
+template<class Ntk, class = void>
+struct has_incr_fanout_size : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_incr_fanout_size<Ntk, std::void_t<decltype( std::declval<Ntk>().incr_fanout_size( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_incr_fanout_size_v = has_incr_fanout_size<Ntk>::value;
+#pragma endregion
+
+#pragma region has_decr_fanout_size
+template<class Ntk, class = void>
+struct has_decr_fanout_size : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_decr_fanout_size<Ntk, std::void_t<decltype( std::declval<Ntk>().decr_fanout_size( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_decr_fanout_size_v = has_decr_fanout_size<Ntk>::value;
 #pragma endregion
 
 #pragma region has_depth

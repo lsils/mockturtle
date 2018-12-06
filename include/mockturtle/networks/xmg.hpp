@@ -60,7 +60,7 @@ struct xmg_storage_data
   store a complemented attribute.  Every node has 64-bit of additional data
   used for the following purposes:
 
-  `data[0].h1`: Fan-out size
+  `data[0].h1`: Fan-out size (we use MSB to indicate whether a node is dead)
   `data[0].h2`: Application-specific value
   `data[1].h1`: Visited flag
 */
@@ -577,24 +577,30 @@ public:
 
   void take_out_node( node const& n )
   {
+    /* we cannot delete PIs or constants */
+    if ( n == 0 || is_pi( n ) )
+      return;
+
     auto& nobj = _storage->nodes[n];
-    nobj.data[0].h1 = 0;
+    nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
     _storage->hash.erase( nobj );
 
-    if ( n != 0 && !is_pi( n ) )
+    for ( auto i = 0u; i < 3u; ++i )
     {
-      for ( auto i = 0u; i < 3u; ++i )
+      if ( fanout_size( nobj.children[i].index ) == 0 )
       {
-        if ( _storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
-        {
-          continue;
-        }
-        if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
-        {
-          take_out_node( nobj.children[i].index );
-        }
+        continue;
+      }
+      if ( decr_fanout_size( nobj.children[i].index ) == 0 )
+      {
+        take_out_node( nobj.children[i].index );
       }
     }
+  }
+
+  inline bool is_dead( node const& n ) const
+  {
+    return ( _storage->nodes[n].data[0].h1 >> 31 ) & 1;
   }
 
   void substitute_node( node const& old_node, signal const& new_signal )
@@ -645,7 +651,7 @@ public:
 
   uint32_t num_gates() const
   {
-    return _storage->nodes.size() - _storage->inputs.size() - 1;
+    return static_cast<uint32_t>( _storage->hash.size() );
   }
 
   uint32_t fanin_size( node const& n ) const
@@ -657,7 +663,17 @@ public:
 
   uint32_t fanout_size( node const& n ) const
   {
-    return _storage->nodes[n].data[0].h1;
+    return _storage->nodes[n].data[0].h1 & UINT32_C( 0x7FFFFFFF );
+  }
+
+  uint32_t incr_fanout_size( node const& n ) const
+  {
+    return _storage->nodes[n].data[0].h1++ & UINT32_C( 0x7FFFFFFF );
+  }
+
+  uint32_t decr_fanout_size( node const& n ) const
+  {
+    return --_storage->nodes[n].data[0].h1 & UINT32_C( 0x7FFFFFFF );
   }
 
   bool is_and( node const& n ) const
@@ -735,9 +751,10 @@ public:
   template<typename Fn>
   void foreach_node( Fn&& fn ) const
   {
-    detail::foreach_element( ez::make_direct_iterator<std::size_t>( 0 ),
-                             ez::make_direct_iterator<std::size_t>( _storage->nodes.size() ),
-                             fn );
+    detail::foreach_element_if( ez::make_direct_iterator<uint64_t>( 0 ),
+                                ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
+                                [this]( auto n ) { return !is_dead( n ); },
+                                fn );
   }
 
   template<typename Fn>
@@ -757,7 +774,7 @@ public:
   {
     detail::foreach_element_if( ez::make_direct_iterator<std::size_t>( 1 ), // start from 1 to avoid constant
                                 ez::make_direct_iterator<std::size_t>( _storage->nodes.size() ),
-                                [this]( auto n ) { return !is_pi( n ); },
+                                [this]( auto n ) { return !is_pi( n ) && !is_dead( n ); },
                                 fn );
   }
 

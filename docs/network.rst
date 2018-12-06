@@ -117,14 +117,14 @@ Restructuring
 ~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: substitute_node, replace_in_node, replace_in_outputs, take_out_node, substitute_node_of_parents
+   :members: substitute_node, replace_in_node, replace_in_outputs, take_out_node, is_dead, substitute_node_of_parents
    :no-link:
 
 Structural properties
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: size, num_cis, num_cos, num_pis, num_pos, num_gates, num_registers, fanin_size, fanout_size, depth, level, is_and, is_or, is_xor, is_maj, is_ite, is_xor3
+   :members: size, num_cis, num_cos, num_pis, num_pos, num_gates, num_registers, fanin_size, fanout_size, incr_fanout_size, decr_fanout_size, depth, level, is_and, is_or, is_xor, is_maj, is_ite, is_xor3
    :no-link:
 
 Functional properties

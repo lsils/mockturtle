@@ -363,9 +363,12 @@ public:
 
   /*! \brief Removes a node from the hash table.
    *
-   * The node is still visited in all iteration methods and contributes to the
-   * overall size of the network.  Taking out a node does not change the
-   * indexes of other nodes.  The node will be removed from the hash table.
+   * The node will be marked dead.  This status can be checked with ``is_dead``.
+   * The node is no longer visited in the ``foreach_node`` and ``foreach_gate``
+   * methods.  It still contributes to the overall ``size`` of the network, but
+   * ``num_gates`` does not take dead nodes into account.  Taking out a node
+   * does not change the indexes of other nodes.  The node will be removed from
+   * the hash table.
    */
   void take_out_node( node const& n );
 
@@ -386,7 +389,7 @@ public:
 #pragma endregion
 
 #pragma region Structural properties
-  /*! \brief Returns the number of nodes (incl. constants and PIs). */
+  /*! \brief Returns the number of nodes (incl. constants and PIs and dead nodes). */
   uint32_t size() const;
 
   /*! \brief Returns the number of combinational inputs. */
@@ -401,11 +404,7 @@ public:
   /*! \brief Returns the number of primary outputs. */
   uint32_t num_pos() const;
 
-  /*! \brief Returns the number of gates. 
-   *
-   * The return value is equal to the size of the network without the number
-   * of constants and PIs.
-   */
+  /*! \brief Returns the number of gates (without dead nodes) */
   uint32_t num_gates() const;
 
   /*! \brief Returns the number of registers.
@@ -422,6 +421,20 @@ public:
 
   /*! \brief Returns the fanout size of a node. */
   uint32_t fanout_size( node const& n ) const;
+
+  /*! \brief Increments fanout size and returns old value.
+   *
+   * This is useful for ref-counting based algorithm.  The user of this function
+   * should make sure to bring the value back to a consistent state.
+   */
+  uint32_t incr_fanout_size( node const& n ) const;
+
+  /*! \brief Decrements fanout size and returns new value.
+   *
+   * This is useful for ref-counting based algorithm.  The user of this function
+   * should make sure to bring the value back to a consistent state.
+   */
+  uint32_t decr_fanout_size( node const& n ) const;
 
   /*! \brief Returns the length of the critical path. */
   uint32_t depth() const;

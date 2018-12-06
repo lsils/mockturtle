@@ -509,6 +509,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
 
   aig.create_po( f5 );
 
+  CHECK( aig.size() == 10u );
   CHECK( aig.num_gates() == 5u );
   CHECK( aig._storage->hash.size() == 5u );
   CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
@@ -519,11 +520,13 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
 
   CHECK( aig.fanout_size( aig.get_node( f1 )) == 1u );
   CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 1u );
+  CHECK( !aig.is_dead( aig.get_node( f1 ) ) );
 
   aig.substitute_node( aig.get_node( x2 ), x3 );
 
   // Node of signal f1 is now relabelled
-  CHECK( aig.num_gates() == 5u );
+  CHECK( aig.size() == 10u );
+  CHECK( aig.num_gates() == 4u );
   CHECK( aig._storage->hash.size() == 4u );
   CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
   CHECK( aig._storage->nodes[f1.index].children[1u].index == x2.index );
@@ -533,6 +536,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
 
   CHECK( aig.fanout_size( aig.get_node( f1 )) == 0u );
   CHECK( aig.fanout_size( aig.get_node( f3 )) == 2u );
+  CHECK( aig.is_dead( aig.get_node( f1 ) ) );
 
   aig = cleanup_dangling( aig );
 
@@ -569,7 +573,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[aig]" )
   aig.substitute_node( aig.get_node( x2 ), x3 );
 
   // Node of signal f1 is now relabelled
-  CHECK( aig.num_gates() == 3u );
+  CHECK( aig.num_gates() == 1u );
   CHECK( aig._storage->hash.size() == 1u );
   CHECK( aig._storage->nodes[f1.index].children[0u].index == x1.index );
   CHECK( aig._storage->nodes[f1.index].children[1u].index == x2.index );
@@ -632,10 +636,15 @@ TEST_CASE( "substitute node by constant in NAND-based XOR circuit", "[aig]" )
 
   CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x2 );
 
+  CHECK( aig.num_gates() == 2u );
   CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1u );
   CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1u );
   CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 0u );
   CHECK( aig.fanout_size( aig.get_node( f4 ) ) == 0u );
+  CHECK( !aig.is_dead( aig.get_node( f1 ) ) );
+  CHECK( !aig.is_dead( aig.get_node( f2 ) ) );
+  CHECK( aig.is_dead( aig.get_node( f3 ) ) );
+  CHECK( aig.is_dead( aig.get_node( f4 ) ) );
 }
 
 TEST_CASE( "substitute node by constant in NAND-based XOR circuit (test case 2)", "[aig]" )
