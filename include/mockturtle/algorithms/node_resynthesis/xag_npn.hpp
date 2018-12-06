@@ -87,8 +87,13 @@ struct xag_npn_resynthesis_stats
    .. code-block:: c++
    
       const aig_network aig = ...;
-      xag_npn_resynthesis resyn;
+      xag_npn_resynthesis<aig_network> resyn;
       cut_rewriting( aig, resyn );
+
+   .. note::
+
+      The implementation of this algorithm was heavily inspired buy the rewrite
+      command in AIG.  It uses the same underlying database of subcircuits.
    \endverbatim
  */
 template<class Ntk, class DatabaseNtk = xag_network>
