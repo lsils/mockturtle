@@ -29,6 +29,7 @@ namespace percy
             int
             get_op_var(const spec& spec, int step_idx, int var_idx)
             {
+                (void)spec;
                 assert(step_idx < spec.nr_steps);
                 assert(var_idx > 0);
                 assert(var_idx <= nr_op_vars_per_step);
@@ -39,6 +40,7 @@ namespace percy
             int
             get_sim_var(const spec& spec, const dag<FI>& dag, int step_idx, int t)
             {
+                (void)dag;
                 assert(step_idx < dag.get_nr_vertices());
 
                 return nr_op_vars + spec.get_tt_size() * step_idx + t;
