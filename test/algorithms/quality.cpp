@@ -111,7 +111,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 20, 80, 49, 160, 79, 201, 131, 506, 2, 258}} );
+  CHECK( v == std::vector<uint32_t>{{0, 20, 80, 49, 160, 79, 199, 131, 506, 2, 258}} );
 
   // with zero gain
   const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
@@ -125,7 +125,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     return before - ntk.num_gates();
   } );
 
-  CHECK( v2 == std::vector<uint32_t>{{0, 20, 78, 49, 158, 79, 201, 131, 525, 2, 255}} );
+  CHECK( v2 == std::vector<uint32_t>{{0, 20, 78, 49, 158, 79, 200, 131, 525, 2, 255}} );
 }
 
 TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis", "[quality]" )
@@ -139,7 +139,7 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 18, 34, 22, 114, 55, 141, 115, 423, 449, 67}} );
+  CHECK( v == std::vector<uint32_t>{{0, 18, 34, 22, 114, 56, 253, 113, 442, 449, 69}} );
 
   // with zero gain
   const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
@@ -152,7 +152,7 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
     return before - ntk.num_gates();
   } );
 
-  CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 114, 54, 143, 122, 417, 449, 66}} );
+  CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 115, 55, 254, 118, 443, 449, 66}} );
 }
 
 TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
@@ -286,24 +286,23 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis"
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 18, 4, 9, 84, 17, 117, 95, 251, 17, 22}} );
+  CHECK( v == std::vector<uint32_t>{{0, 18, 4, 9, 84, 17, 114, 93, 247, 17, 22}} );
 }
 
 TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis", "[quality]" )
 {
   xag_npn_resynthesis<xag_network> resyn;
 
-  const auto v = foreach_benchmark<xag_network>( [&]( auto& ntk, auto i ) {
+  const auto v = foreach_benchmark<xag_network>( [&]( auto& ntk, auto ) {
     const auto before = ntk.num_gates();
     cut_rewriting_params ps;
     ps.cut_enumeration_ps.cut_size = 4;
     cut_rewriting( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
-    write_bench( ntk, fmt::format( "/tmp/c{}.bench", i ) );
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 38, 200, 62, 248, 130, 240, 184, 489, 899, 409}} );
+  CHECK( v == std::vector<uint32_t>{{0, 38, 200, 62, 248, 124, 236, 174, 487, 561, 409}} );
 }
 
 #endif
