@@ -336,7 +336,7 @@ public:
 
   /*! \brief Replaces a child node by a new signal in a node.
    *
-   * If ``n`` has a child pointing to `old_node`, then it will be replaced by
+   * If ``n`` has a child pointing to ``old_node``, then it will be replaced by
    * ``new_signal``.  If the replacement catches a trivial case, e.g., ``n``
    * becomes a constant, then this will be returned as an optional replacement
    * candidate by the function.
@@ -350,6 +350,16 @@ public:
    * \return May return new recursive replacement candidate
    */
   std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal );
+
+  /*! \brief Replaces a output driver by a new signal.
+   *
+   * If ``old_node`` is drive to some output, then it will be replaced by
+   * ``new_signal``.
+   * 
+   * \brief old_node Driver to be replaced
+   * \brief new_signal Signal replace ``old_node`` with
+   */
+  void replace_in_outputs( node const& old_node, signal const& new_signal );
 
   /*! \brief Replaces one node in a network by another signal.
    *

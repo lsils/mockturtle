@@ -475,7 +475,7 @@ public:
     return std::nullopt;
   }
 
-  void _replace_in_outputs( node const& old_node, signal const& new_signal )
+  void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
     for ( auto& output : _storage->outputs )
     {
@@ -534,7 +534,7 @@ public:
       }
 
       /* check outputs */
-      _replace_in_outputs( _old, _new );
+      replace_in_outputs( _old, _new );
 
       // reset fan-in of old node
       _take_out_node( _old );
