@@ -457,7 +457,7 @@ public:
     }
   }
 
-  void _take_out_node( node const& n )
+  void take_out_node( node const& n )
   {
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = 0;
@@ -473,7 +473,7 @@ public:
         }
         if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
         {
-          _take_out_node( nobj.children[i].index );
+          take_out_node( nobj.children[i].index );
         }
       }
     }
@@ -504,7 +504,7 @@ public:
       replace_in_outputs( _old, _new );
 
       // reset fan-in of old node
-      _take_out_node( _old );
+      take_out_node( _old );
     }
   }
 

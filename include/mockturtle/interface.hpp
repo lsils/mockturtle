@@ -361,6 +361,14 @@ public:
    */
   void replace_in_outputs( node const& old_node, signal const& new_signal );
 
+  /*! \brief Removes a node from the hash table.
+   *
+   * The node is still visited in all iteration methods and contributes to the
+   * overall size of the network.  Taking out a node does not change the
+   * indexes of other nodes.  The node will be removed from the hash table.
+   */
+  void take_out_node( node const& n );
+
   /*! \brief Replaces one node in a network by another signal.
    *
    * This method causes all nodes in ``parents`` that have ``old_node`` as

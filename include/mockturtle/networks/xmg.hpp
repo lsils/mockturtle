@@ -60,20 +60,12 @@ struct xmg_storage_data
   store a complemented attribute.  Every node has 64-bit of additional data
   used for the following purposes:
 
-  `data[0].h1`: Fan-out size (the MSB bit is borrowed to store whether gate is XOR or MAJ)
+  `data[0].h1`: Fan-out size
   `data[0].h2`: Application-specific value
   `data[1].h1`: Visited flag
 */
 
-struct xmg_storage_node : regular_node<3, 2, 1>
-{
-  bool operator==( xmg_storage_node const& other ) const
-  {
-    return ( ( data[0].h1 >> 31 ) == ( other.data[0].h1 >> 31 ) ) && children == other.children;
-  }
-};
-
-using xmg_storage = storage<xmg_storage_node,
+using xmg_storage = storage<regular_node<3, 2, 1>,
                             xmg_storage_data>;
 
 class xmg_network
@@ -229,17 +221,14 @@ public:
     if ( a.index > b.index )
     {
       std::swap( a, b );
-      if ( b.index > c.index )
-        std::swap( b, c );
-      if ( a.index > b.index )
-        std::swap( a, b );
     }
-    else
+    if ( b.index > c.index )
     {
-      if ( b.index > c.index )
-        std::swap( b, c );
-      if ( a.index > b.index )
-        std::swap( a, b );
+      std::swap( b, c );
+    }
+    if ( a.index > b.index )
+    {
+      std::swap( a, b );
     }
 
     /* trivial cases */
@@ -303,20 +292,17 @@ public:
   signal create_xor3( signal a, signal b, signal c )
   {
     /* order inputs */
-    if ( a.index > b.index )
+    if ( a.index < b.index )
     {
       std::swap( a, b );
-      if ( b.index > c.index )
-        std::swap( b, c );
-      if ( a.index > b.index )
-        std::swap( a, b );
     }
-    else
+    if ( b.index < c.index )
     {
-      if ( b.index > c.index )
-        std::swap( b, c );
-      if ( a.index > b.index )
-        std::swap( a, b );
+      std::swap( b, c );
+    }
+    if ( a.index < b.index )
+    {
+      std::swap( a, b );
     }
 
     /* propagate complement edges */
@@ -332,7 +318,7 @@ public:
     {
       return a ^ fcompl;
     }
-    else if ( a.index == b.index == c.index )
+    else if ( ( a.index == b.index ) && ( b.index == c.index ) )
     {
       return a ^ fcompl;
     }
@@ -341,7 +327,6 @@ public:
     node.children[0] = a;
     node.children[1] = b;
     node.children[2] = c;
-    node.data[0].h1 |= UINT32_C( 0x80000000 ); /* set XOR flag of node */
 
     /* structural hashing */
     const auto it = _storage->hash.find( node );
@@ -460,23 +445,45 @@ public:
     signal child1 = node.children[(fanin + 1 ) % 3];
     signal child0 = node.children[(fanin + 2 ) % 3];
 
-    if ( child0.index > child1.index )
-    {
-      std::swap( child0, child1 );
-    }
-    if ( child1.index > child2.index )
-    {
-      std::swap( child1, child2 );
-    }
-    if ( child0.index > child1.index )
-    {
-      std::swap( child0, child1 );
-    }
-
-    assert( child0.index <= child1.index );
-    assert( child1.index <= child2.index );
-
     auto _is_maj = is_maj( n );
+
+    /* normalize order */
+    if ( _is_maj )
+    {
+      if ( child0.index > child1.index )
+      {
+        std::swap( child0, child1 );
+      }
+      if ( child1.index > child2.index )
+      {
+        std::swap( child1, child2 );
+      }
+      if ( child0.index > child1.index )
+      {
+        std::swap( child0, child1 );
+      }
+
+      assert( child0.index <= child1.index );
+      assert( child1.index <= child2.index );
+    }
+    else
+    {
+      if ( child0.index < child1.index )
+      {
+        std::swap( child0, child1 );
+      }
+      if ( child1.index < child2.index )
+      {
+        std::swap( child1, child2 );
+      }
+      if ( child0.index < child1.index )
+      {
+        std::swap( child0, child1 );
+      }
+
+      assert( child0.index >= child1.index );
+      assert( child1.index >= child2.index );
+    }
 
     // normalize complemented edges
     auto node_complement = false;
@@ -522,7 +529,7 @@ public:
       {
         return std::make_pair( n, child0 ^ node_complement );
       }
-      else if ( child0.index == child1.index == child2.index )
+      else if ( ( child0.index == child1.index ) && ( child1.index == child2.index ) )
       {
         return std::make_pair( n, child0 ^ node_complement );
       }
@@ -533,10 +540,6 @@ public:
     _hash_obj.children[0] = child0;
     _hash_obj.children[1] = child1;
     _hash_obj.children[2] = child2;
-    if ( !_is_maj )
-    {
-      _hash_obj.data[0].h1 |= UINT32_C( 0x80000000 ); /* set XOR flag of node */
-    }
     if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() )
     {
       return std::make_pair( n, signal( it->second, 0 ) );
@@ -572,7 +575,7 @@ public:
     }
   }
 
-  void _take_out_node( node const& n )
+  void take_out_node( node const& n )
   {
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = 0;
@@ -588,7 +591,7 @@ public:
         }
         if ( --_storage->nodes[nobj.children[i].index].data[0].h1 == 0 )
         {
-          _take_out_node( nobj.children[i].index );
+          take_out_node( nobj.children[i].index );
         }
       }
     }
@@ -619,7 +622,7 @@ public:
       replace_in_outputs( _old, _new );
 
       // reset fan-in of old node
-      _take_out_node( _old );
+      take_out_node( _old );
     }
   }
 #pragma endregion
@@ -654,7 +657,7 @@ public:
 
   uint32_t fanout_size( node const& n ) const
   {
-    return _storage->nodes[n].data[0].h1 & UINT32_C( 0x7FFFFFFF );
+    return _storage->nodes[n].data[0].h1;
   }
 
   bool is_and( node const& n ) const
@@ -677,7 +680,7 @@ public:
 
   bool is_maj( node const& n ) const
   {
-    return n > 0 && !is_pi( n ) && !( ( _storage->nodes[n].data[0].h1 >> 31 ) & 1 );
+    return n > 0 && !is_pi( n ) && _storage->nodes[n].children[0].index < _storage->nodes[n].children[1].index;
   }
 
   bool is_ite( node const& n ) const
@@ -688,16 +691,15 @@ public:
 
   bool is_xor3( node const& n ) const
   {
-    return n > 0 && !is_pi( n ) && ( ( _storage->nodes[n].data[0].h1 >> 31 ) & 1 );
+    return n > 0 && !is_pi( n ) && _storage->nodes[n].children[0].index > _storage->nodes[n].children[1].index;
   }
 #pragma endregion
 
 #pragma region Functional properties
   kitty::dynamic_truth_table node_function( const node& n ) const
   {
-    (void)n;
     kitty::dynamic_truth_table _tt( 3 );
-    _tt._bits[0] = ( ( _storage->nodes[n].data[0].h1 >> 31 ) & 1 ) ? 0x96 : 0xe8;
+    _tt._bits[0] = is_xor3( n ) ? 0x96 : 0xe8;
     return _tt;
   }
 #pragma endregion
@@ -819,7 +821,7 @@ public:
     auto v2 = *begin++;
     auto v3 = *begin++;
 
-    if ( ( ( _storage->nodes[n].data[0].h1 >> 31 ) & 1 ) )
+    if ( is_xor3( n ) )
     {
       return ( ( v1 ^ c1.weight ) != ( v2 ^ c2.weight ) ) != ( v3 ^ c3.weight );
     }
@@ -845,7 +847,7 @@ public:
     auto tt2 = *begin++;
     auto tt3 = *begin++;
 
-    if ( ( ( _storage->nodes[n].data[0].h1 >> 31 ) & 1 ) )
+    if ( is_xor3( n ) )
     {
       return ( c1.weight ? ~tt1 : tt1 ) ^ ( c2.weight ? ~tt2 : tt2 ) ^ ( c3.weight ? ~tt3 : tt3 );
     }

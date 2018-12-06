@@ -577,19 +577,34 @@ template<class Ntk>
 inline constexpr bool has_replace_in_node_v = has_replace_in_node<Ntk>::value;
 #pragma endregion
 
-#pragma region has_replace_in_parents
+#pragma region has_replace_in_outputs
 template<class Ntk, class = void>
-struct has_replace_in_parents : std::false_type
+struct has_replace_in_outputs : std::false_type
 {
 };
 
 template<class Ntk>
-struct has_replace_in_parents<Ntk, std::void_t<decltype( std::declval<Ntk>().replace_in_parents( std::declval<node<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+struct has_replace_in_outputs<Ntk, std::void_t<decltype( std::declval<Ntk>().replace_in_outputs( std::declval<node<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
 {
 };
 
 template<class Ntk>
-inline constexpr bool has_replace_in_parents_v = has_replace_in_parents<Ntk>::value;
+inline constexpr bool has_replace_in_outputs_v = has_replace_in_outputs<Ntk>::value;
+#pragma endregion
+
+#pragma region has_take_out_node
+template<class Ntk, class = void>
+struct has_take_out_node : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_take_out_node<Ntk, std::void_t<decltype( std::declval<Ntk>().take_out_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_take_out_node_v = has_take_out_node<Ntk>::value;
 #pragma endregion
 
 #pragma region has_substitute_node_of_parents
