@@ -83,7 +83,7 @@ public:
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    update();
+    update_fanouts();
   }
 
   template<typename Fn>
@@ -93,7 +93,7 @@ public:
     detail::foreach_element( _fanout[n].begin(), _fanout[n].end(), fn );
   }
 
-  void update()
+  void update_fanouts()
   {
     // std::cout << "update fanouts" << std::endl;
     compute_fanout();
@@ -121,7 +121,7 @@ public:
 
   void add_node( node const& n, node const& p )
   {
-    _fanout[ n ].push_back( p );
+    _fanout[ n ].emplace_back( p );
   }
 
   void remove_node( node const& n, node const& p )

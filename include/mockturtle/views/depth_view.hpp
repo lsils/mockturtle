@@ -105,7 +105,7 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    update();
+    update_levels();
   }
 
   uint32_t depth() const
@@ -113,12 +113,12 @@ public:
     return _depth;
   }
 
-  uint32_t level( node const& n ) const
+  int32_t level( node const& n ) const
   {
     return _levels[n];
   }
 
-  void set_level( node const& n, uint32_t level )
+  void set_level( node const& n, int32_t level )
   {
     _levels[n] = level;
   }
@@ -128,7 +128,7 @@ public:
     _levels.resize();
   }
 
-  void update()
+  void update_levels()
   {
     // std::cout << "update levels" << std::endl;
     _levels.reset( 0 );
@@ -136,7 +136,7 @@ public:
     this->incr_trav_id();
     compute_levels();
 
-    Ntk::update();
+    // Ntk::update();
   }
 
 private:
@@ -167,7 +167,7 @@ private:
     } );
   }
 
-  node_map<uint32_t, Ntk> _levels;
+  node_map<int32_t, Ntk> _levels;
   uint32_t _depth;
 };
 

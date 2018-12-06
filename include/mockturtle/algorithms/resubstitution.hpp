@@ -259,6 +259,9 @@ struct resubstitution_stats
   /*! \brief Accumulated runtime for three-resub. */
   stopwatch<>::duration time_resub3{0};
 
+  /*! \brief Accumulated runtime for R-resub. */
+  stopwatch<>::duration time_resubR{0};
+
   /*! \brief Accumulated runtime for cut evaluation/computing a resubsitution. */
   stopwatch<>::duration time_eval{0};
 
@@ -292,20 +295,41 @@ struct resubstitution_stats
   /*! \brief Number of accepted one resubsitutions */
   uint64_t num_div1_accepts{0};
 
-  /*! \brief Number of accepted one OR-resubsitutions */
-  uint64_t num_div1_or_accepts{0};
-
-  /*! \brief Number of accepted one AND-resubsitutions */
+  /*! \brief Number of accepted single AND-resubsitutions */
   uint64_t num_div1_and_accepts{0};
+
+  /*! \brief Number of accepted single OR-resubsitutions */
+  uint64_t num_div1_or_accepts{0};
 
   /*! \brief Number of accepted two resubsitutions using triples of unate divisors */
   uint64_t num_div12_accepts{0};
 
+  /*! \brief Number of accepted single 2AND-resubsitutions */
+  uint64_t num_div12_2and_accepts{0};
+
+  /*! \brief Number of accepted single 2OR-resubsitutions */
+  uint64_t num_div12_2or_accepts{0};
+
   /*! \brief Number of accepted two resubsitutions */
   uint64_t num_div2_accepts{0};
 
+  /*! \brief Number of accepted double AND-OR-resubsitutions */
+  uint64_t num_div2_and_or_accepts{0};
+
+  /*! \brief Number of accepted double OR-AND-resubsitutions */
+  uint64_t num_div2_or_and_accepts{0};
+
   /*! \brief Number of accepted three resubsitutions */
   uint64_t num_div3_accepts{0};
+
+  /*! \brief Number of accepted AND-2OR-resubsitutions */
+  uint64_t num_div3_and_2or_accepts{0};
+
+  /*! \brief Number of accepted OR-2AND-resubsitutions */
+  uint64_t num_div3_or_2and_accepts{0};
+
+  /*! \brief Number of accepted relevance-resubsitutions */
+  uint64_t num_divR_accepts{0};
 
   /*! \brief Number of filtered one resubsitutions */
   uint64_t num_one_filter{0};
@@ -315,27 +339,53 @@ struct resubstitution_stats
 
   void report() const
   {
-    std::cout << fmt::format( "[i] total time                = {:>5.2f} secs\n", to_seconds( time_total ) );
-    std::cout << fmt::format( "[i]   cut time                = {:>5.2f} secs\n", to_seconds( time_cuts ) );
-    std::cout << fmt::format( "[i]   mffc time               = {:>5.2f} secs\n", to_seconds( time_mffc ) );
-    std::cout << fmt::format( "[i]   divs time               = {:>5.2f} secs\n", to_seconds( time_divs ) );
-    std::cout << fmt::format( "[i]   depth time              = {:>5.2f} secs\n", to_seconds( time_depth ) );
-    std::cout << fmt::format( "[i]   simulation time         = {:>5.2f} secs\n", to_seconds( time_simulation ) );
-    std::cout << fmt::format( "[i]   evaluation time         = {:>5.2f} secs\n", to_seconds( time_eval ) );
-    std::cout << fmt::format( "[i]     constant-resub {:6d} = {:>5.2f} secs\n", num_const_accepts, to_seconds( time_resubC ) );
-    std::cout << fmt::format( "[i]            0-resub {:6d} = {:>5.2f} secs\n", num_div0_accepts, to_seconds( time_resub0 ) );
-    std::cout << fmt::format( "[i]            S-resub        = {:>5.2f} secs\n", to_seconds( time_resubS ) );
-    std::cout << fmt::format( "[i]            1-resub {:6d} = {:>5.2f} secs ({:6d} ORs + {:6d} ANDs)\n",
-                              num_div1_accepts, to_seconds( time_resub1 ), num_div1_or_accepts, num_div1_and_accepts );
-    // std::cout << fmt::format( "[i]            1-resub {:6d} = {:>5.2f} secs\n",
-    //                           num_div1_accepts, to_seconds( time_resub1 ) );
-    std::cout << fmt::format( "[i]           12-resub {:6d} = {:>5.2f} secs\n", num_div12_accepts, to_seconds( time_resub12 ) );
-    std::cout << fmt::format( "[i]            D-resub        = {:>5.2f} secs\n", to_seconds( time_resubD ) );
-    std::cout << fmt::format( "[i]            2-resub {:6d} = {:>5.2f} secs\n", num_div2_accepts, to_seconds( time_resub2 ) );
-    std::cout << fmt::format( "[i]            3-resub {:6d} = {:>5.2f} secs\n", num_div3_accepts, to_seconds( time_resub3 ) );
-    std::cout << fmt::format( "[i]   replace time            = {:>5.2f} secs\n", to_seconds( time_replace ) );
-    std::cout << fmt::format( "[i]     substitute            = {:>5.2f} secs\n", to_seconds( time_substitute ) );
-    std::cout << fmt::format( "[i]     update                = {:>5.2f} secs\n", to_seconds( time_update ) );
+    std::cout << fmt::format( "[i] total time                                                  ({:>5.2f} secs)\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i]   cut time                                                  ({:>5.2f} secs)\n", to_seconds( time_cuts ) );
+    std::cout << fmt::format( "[i]   mffc time                                                 ({:>5.2f} secs)\n", to_seconds( time_mffc ) );
+    std::cout << fmt::format( "[i]   divs time                                                 ({:>5.2f} secs)\n", to_seconds( time_divs ) );
+    std::cout << fmt::format( "[i]   depth time                                                ({:>5.2f} secs)\n", to_seconds( time_depth ) );
+    std::cout << fmt::format( "[i]   simulation time                                           ({:>5.2f} secs)\n", to_seconds( time_simulation ) );
+    std::cout << fmt::format( "[i]   evaluation time                                           ({:>5.2f} secs)\n", to_seconds( time_eval ) );
+
+      std::cout << "===== AIG =====" << std::endl;
+      std::cout << fmt::format( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
+                                num_const_accepts, to_seconds( time_resubC ) );
+      std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
+                                num_div0_accepts, to_seconds( time_resub0 ) );
+      std::cout << fmt::format( "[i]            S-resub                                          ({:>5.2f} secs)\n", to_seconds( time_resubS ) );
+      std::cout << fmt::format( "[i]            1-resub {:6d} = {:6d} ORs     + {:6d} ANDs    ({:>5.2f} secs)\n",
+                                num_div1_accepts, num_div1_or_accepts, num_div1_and_accepts, to_seconds( time_resub1 ) );
+      std::cout << fmt::format( "[i]           12-resub {:6d} = {:6d} 2AND    + {:6d} 2OR     ({:>5.2f} secs)\n",
+                                num_div12_accepts, num_div12_2and_accepts, num_div12_2or_accepts, to_seconds( time_resub12 ) );
+      std::cout << fmt::format( "[i]            D-resub                                          ({:>5.2f} secs)\n", to_seconds( time_resubD ) );
+      std::cout << fmt::format( "[i]            2-resub {:6d} = {:6d} AND-OR  + {:6d} OR-AND  ({:>5.2f} secs)\n",
+                                num_div2_accepts, num_div2_and_or_accepts, num_div2_or_and_accepts, to_seconds( time_resub2 ) );
+      std::cout << fmt::format( "[i]            3-resub {:6d} = {:6d} AND-2OR + {:6d} OR-2AND ({:>5.2f} secs)\n",
+                                num_div3_accepts, num_div3_and_2or_accepts, num_div3_or_2and_accepts, to_seconds( time_resub3 ) );
+      std::cout << fmt::format( "[i]            total   {:6d}\n",
+                                (num_const_accepts + num_div0_accepts + num_div1_accepts + num_div12_accepts + num_div2_accepts + num_div3_accepts) );
+
+      std::cout << "===== MIG =====" << std::endl;
+      std::cout << fmt::format( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
+                                num_const_accepts, to_seconds( time_resubC ) );
+      std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
+                                num_div0_accepts, to_seconds( time_resub0 ) );
+      std::cout << fmt::format( "[i]            S-resub                                          ({:>5.2f} secs)\n", to_seconds( time_resubS ) );
+      std::cout << fmt::format( "[i]            R-resub {:6d}                                   ({:>5.2f} secs)\n",
+                                num_divR_accepts, to_seconds( time_resubR ) );
+      std::cout << fmt::format( "[i]            1-resub {:6d} = {:6d} MAJ                      ({:>5.2f} secs)\n",
+                                num_div1_accepts, num_div1_accepts, to_seconds( time_resub1 ) );
+      std::cout << fmt::format( "[i]           12-resub {:6d} = {:6d} MAJ                      ({:>5.2f} secs)\n",
+                                num_div12_accepts, num_div12_accepts, to_seconds( time_resub12 ) );
+      std::cout << fmt::format( "[i]            D-resub                                          ({:>5.2f} secs)\n", to_seconds( time_resubD ) );
+      std::cout << fmt::format( "[i]            2-resub {:6d} = {:6d} 2MAJ                     ({:>5.2f} secs)\n",
+                                 num_div2_accepts, num_div2_accepts, to_seconds( time_resub2 ) );
+      std::cout << fmt::format( "[i]            total   {:6d}\n",
+                                (num_const_accepts + num_div0_accepts + num_divR_accepts + num_div1_accepts + num_div12_accepts + num_div2_accepts + num_div3_accepts) );
+
+    std::cout << fmt::format( "[i]   replace time                                              ({:>5.2f} secs)\n", to_seconds( time_replace ) );
+    std::cout << fmt::format( "[i]     substitute                                              ({:>5.2f} secs)\n", to_seconds( time_substitute ) );
+    std::cout << fmt::format( "[i]     update                                                  ({:>5.2f} secs)\n", to_seconds( time_update ) );
     std::cout << fmt::format( "[i] total divisors            = {:8d}\n",         ( num_total_divisors ) );
     std::cout << fmt::format( "[i] total leaves              = {:8d}\n",         ( num_total_leaves ) );
     std::cout << fmt::format( "[i] total gain                = {:8d} ({:>5.2f}\%)\n",
@@ -667,7 +717,7 @@ public:
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
       auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
-      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
       auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
       if ( ( tt_a & tt_b & tt_c ) != tt_r )
         return false; /* early termination */
@@ -675,7 +725,7 @@ public:
     return true;
   }
 
-  bool and_or2_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
+  bool or_and_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
   {
     auto data_r = (uint32_t*)data[ntk.get_node( r )];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
@@ -685,7 +735,25 @@ public:
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
       auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
-      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( tt_a | ( tt_b & tt_c ) ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool and_or_equal( signal const& a, signal const& b, signal const& c, signal const& r ) const
+  {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
       auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
       if ( ( tt_a & ( tt_b | tt_c ) ) != tt_r )
         return false; /* early termination */
@@ -693,7 +761,7 @@ public:
     return true;
   }
 
-  bool and_or22_equal( signal const& a, signal const& b, signal const& c, signal const& d, signal const& r ) const
+  bool and_2or_equal( signal const& a, signal const& b, signal const& c, signal const& d, signal const& r ) const
   {
     auto data_r = (uint32_t*)data[ntk.get_node( r )];
     auto data_a = (uint32_t*)data[ntk.get_node( a )];
@@ -704,10 +772,30 @@ public:
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
       auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
-      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
-      auto const& tt_d = ntk.is_complemented( b ) ? ~data_d[k] : data_d[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
+      auto const& tt_d = ntk.is_complemented( d ) ? ~data_d[k] : data_d[k];
       auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
       if ( ( ( tt_a | tt_b ) & ( tt_c | tt_d ) ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool or_2and_equal( signal const& a, signal const& b, signal const& c, signal const& d, signal const& r ) const
+  {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    auto data_d = (uint32_t*)data[ntk.get_node( d )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
+      auto const& tt_d = ntk.is_complemented( d ) ? ~data_d[k] : data_d[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( ( tt_a & tt_b ) | ( tt_c & tt_d ) ) != tt_r )
         return false; /* early termination */
     }
     return true;
@@ -739,7 +827,7 @@ public:
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
       auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
-      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
       auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
       if ( ( tt_a | tt_b | tt_c ) != tt_r )
         return false; /* early termination */
@@ -757,9 +845,91 @@ public:
     {
       auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
       auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
-      auto const& tt_c = ntk.is_complemented( b ) ? ~data_c[k] : data_c[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
       auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
       if ( ( ( tt_a & tt_b ) | ( tt_a & tt_c ) | ( tt_b & tt_c ) ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool maj2_equal( signal const& a, signal const& b, signal const& c, signal const& d, signal const& e, signal const& r ) const
+  {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    auto data_d = (uint32_t*)data[ntk.get_node( d )];
+    auto data_e = (uint32_t*)data[ntk.get_node( e )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
+      auto const& tt_d = ntk.is_complemented( d ) ? ~data_d[k] : data_d[k];
+      auto const& tt_e = ntk.is_complemented( e ) ? ~data_e[k] : data_e[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      auto const& tt_t = ( tt_a & tt_b ) | ( tt_a & tt_c ) | ( tt_b & tt_c );
+      if ( ( ( tt_t & tt_d ) | ( tt_t & tt_e ) | ( tt_d & tt_e ) ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool maj2_compl_equal( signal const& a, signal const& b, signal const& c, signal const& d, signal const& e, signal const& r ) const
+  {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    auto data_d = (uint32_t*)data[ntk.get_node( d )];
+    auto data_e = (uint32_t*)data[ntk.get_node( e )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
+      auto const& tt_d = ntk.is_complemented( d ) ? ~data_d[k] : data_d[k];
+      auto const& tt_e = ntk.is_complemented( e ) ? ~data_e[k] : data_e[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      auto const& tt_t = ~( ( tt_a & tt_b ) | ( tt_a & tt_c ) | ( tt_b & tt_c ) );
+      if ( ( ( tt_t & tt_d ) | ( tt_t & tt_e ) | ( tt_d & tt_e ) ) != tt_r )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool maj3_implies( signal const& a, signal const& b, signal const& c, signal const& r ) const
+  {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( ( ( tt_a & tt_b ) | ( tt_a & tt_c ) | ( tt_b & tt_c ) ) & ~tt_r ) != 0 )
+        return false; /* early termination */
+    }
+    return true;
+  }
+
+  bool maj3_implies_reverse( signal const& a, signal const& b, signal const& c, signal const& r ) const
+  {
+    auto data_r = (uint32_t*)data[ntk.get_node( r )];
+    auto data_a = (uint32_t*)data[ntk.get_node( a )];
+    auto data_b = (uint32_t*)data[ntk.get_node( b )];
+    auto data_c = (uint32_t*)data[ntk.get_node( c )];
+    for ( auto k = 0u; k < num_words; ++k )
+    {
+      auto const& tt_a = ntk.is_complemented( a ) ? ~data_a[k] : data_a[k];
+      auto const& tt_b = ntk.is_complemented( b ) ? ~data_b[k] : data_b[k];
+      auto const& tt_c = ntk.is_complemented( c ) ? ~data_c[k] : data_c[k];
+      auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+      if ( ( ~( ( tt_a & tt_b ) | ( tt_a & tt_c ) | ( tt_b & tt_c ) ) & tt_r ) != 0 )
         return false; /* early termination */
     }
     return true;
@@ -821,6 +991,69 @@ public:
     return true;
   }
 
+  bool maj3_relevance( signal const& x, signal const& y, signal const& z, signal const& r ) const
+  {
+    if ( ntk.get_node( x ) == 0 )
+    {
+      assert( ntk.get_node( y ) != 0 );
+      assert( ntk.get_node( z ) != 0 );
+      assert( ntk.get_node( r ) != 0 );
+      auto data_r = (uint32_t*)data[ntk.get_node( r )];
+      auto data_y = (uint32_t*)data[ntk.get_node( y )];
+      auto data_z = (uint32_t*)data[ntk.get_node( z )];
+      for ( auto k = 0u; k < num_words; ++k )
+      {
+        auto const& tt_x = ntk.is_complemented( x ) ? 0xffffffff : 0;
+        auto const& tt_y = ntk.is_complemented( y ) ? ~data_y[k] : data_y[k];
+        auto const& tt_z = ntk.is_complemented( z ) ? ~data_z[k] : data_z[k];
+        auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+        if ( ( ( tt_x ^ tt_r ) & ( tt_y ^ tt_z ) ) != 0 )
+          return false; /* early termination */
+      }
+      return true;
+    }
+    else if ( ntk.get_node( y ) == 0 )
+    {
+      assert( ntk.get_node( x ) != 0 );
+      assert( ntk.get_node( z ) != 0 );
+      assert( ntk.get_node( r ) != 0 );
+      auto data_r = (uint32_t*)data[ntk.get_node( r )];
+      auto data_x = (uint32_t*)data[ntk.get_node( x )];
+      auto data_z = (uint32_t*)data[ntk.get_node( z )];
+      for ( auto k = 0u; k < num_words; ++k )
+      {
+        auto const& tt_x = ntk.is_complemented( x ) ? ~data_x[k] : data_x[k];
+        auto const& tt_y = ntk.is_complemented( y ) ? 0xffffffff : 0;
+        auto const& tt_z = ntk.is_complemented( z ) ? ~data_z[k] : data_z[k];
+        auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+        if ( ( ( tt_x ^ tt_r ) & ( tt_y ^ tt_z ) ) != 0 )
+          return false; /* early termination */
+      }
+      return true;
+    }
+    else
+    {
+      assert( ntk.get_node( x ) != 0 );
+      assert( ntk.get_node( y ) != 0 );
+      assert( ntk.get_node( z ) != 0 );
+      assert( ntk.get_node( r ) != 0 );
+      auto data_r = (uint32_t*)data[ntk.get_node( r )];
+      auto data_x = (uint32_t*)data[ntk.get_node( x )];
+      auto data_y = (uint32_t*)data[ntk.get_node( y )];
+      auto data_z = (uint32_t*)data[ntk.get_node( z )];
+      for ( auto k = 0u; k < num_words; ++k )
+      {
+        auto const& tt_x = ntk.is_complemented( x ) ? ~data_x[k] : data_x[k];
+        auto const& tt_y = ntk.is_complemented( y ) ? ~data_y[k] : data_y[k];
+        auto const& tt_z = ntk.is_complemented( z ) ? ~data_z[k] : data_z[k];
+        auto const& tt_r = ntk.is_complemented( r ) ? ~data_r[k] : data_r[k];
+        if ( ( ( tt_x ^ tt_r ) & ( tt_y ^ tt_z ) ) != 0 )
+          return false; /* early termination */
+      }
+      return true;
+    }
+  }
+
 public:
   uint32_t size() const
   {
@@ -846,6 +1079,35 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
+  void update_node_level( node const& n, bool top_most = true )
+  {
+    int32_t curr_level = ntk.level( n );
+
+    int32_t max_level = 0;
+    ntk.foreach_fanin( n, [&]( const auto& f ){
+        auto const p = ntk.get_node( f );
+        auto const fanin_level = ntk.level( p );
+        if ( fanin_level > max_level )
+        {
+          max_level = fanin_level;
+        }
+      });
+    ++max_level;
+
+    if ( curr_level != max_level )
+    {
+      ntk.set_level( n, max_level );
+
+      /* update only one more level */
+      if ( top_most )
+      {
+        ntk.foreach_fanout( n, [&]( const auto& p ){
+            update_node_level( p, false );
+          });
+      }
+    }
+  }
+
   explicit resubstitution_impl( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats& st )
     : ntk( ntk ), ps( ps ), st( st ), sims( ntk, ps.max_pis, ps.max_divisors )
   {
@@ -856,38 +1118,17 @@ public:
                    std::is_same<typename Ntk::base_type, xag_network>::value )
     {
       auto const update_level_of_new_node = [&]( const auto& n ){
-        // std::cout << "update level of new node " << n << std::endl;
-
         ntk.resize_levels();
-
-        /* update level */
-        auto max = 0u;
-        ntk.foreach_fanin( n, [&]( const auto& f ){
-            auto const l = ntk.level( ntk.get_node( f ) );
-            if ( max < l )
-              max = l;
-          });
-        ntk.set_level( n, max+1 );
+        update_node_level( n );
       };
 
-      auto const update_level_of_existing_node = [&]( const auto& n, const auto& old_children ){
+      auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ){
         (void)old_children;
-        // std::cout << "update level of existing node " << n << std::endl;
-
-        /* update level */
-        auto max = 0u;
-        ntk.foreach_fanin( n, [&]( const auto& f ){
-            auto const l = ntk.level( ntk.get_node( f ) );
-            if ( max < l )
-              max = l;
-          });
-
-        ntk.set_level( n, max+1 );
+        update_node_level( n );
       };
 
       auto const update_fanout_of_new_node = [&]( const auto& n ){
-        // std::cout << "update fanout of new node " << n << std::endl;
-
+        assert( ntk.fanin_size( n ) > 0 );
         ntk.resize_fanouts();
 
         /* update fanout */
@@ -898,8 +1139,6 @@ public:
       };
 
       auto const update_fanout_of_existing_node = [&]( const auto& n, const auto& old_children ){
-        // std::cout << "update fanout of existing node " << n << std::endl;
-
         /* update fanout */
         for ( const auto& c : old_children )
           ntk.remove_node( ntk.get_node( c ), n );
@@ -911,8 +1150,6 @@ public:
       };
 
       auto const update_fanout_of_deleted_node = [&]( const auto& n ){
-        // std::cout << "delete node " << n << std::endl;
-
         /* update fanout */
         ntk.set_fanout( n, {} );
         ntk.foreach_fanin( n, [&]( const auto& f ){
@@ -921,13 +1158,19 @@ public:
           });
       };
 
-      ntk._events->on_add.emplace_back( update_level_of_new_node );
-      ntk._events->on_add.emplace_back( update_fanout_of_new_node );
+      auto const update_level_of_deleted_node = [&]( const auto& n ){
+        /* update fanout */
+        ntk.set_level( n, -1 );
+      };
 
-      ntk._events->on_modified.emplace_back( update_level_of_existing_node );
+      ntk._events->on_add.emplace_back( update_fanout_of_new_node );
+      ntk._events->on_add.emplace_back( update_level_of_new_node );
+
       ntk._events->on_modified.emplace_back( update_fanout_of_existing_node );
+      ntk._events->on_modified.emplace_back( update_level_of_existing_node );
 
       ntk._events->on_delete.emplace_back( update_fanout_of_deleted_node );
+      ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
     }
   }
 
@@ -940,7 +1183,6 @@ public:
 
     /* resynthesize each node once */
     const auto size = ntk.size();
-
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
         /* skip if all nodes have been tried */
         if ( i >= size )
@@ -980,23 +1222,7 @@ public:
 private:
   void replace_node( node const& old_node, signal const& new_signal, bool update_level = true )
   {
-    auto const fanout = ntk.fanout( old_node );
-
     call_with_stopwatch( st.time_substitute, [&]() { ntk.substitute_node( old_node, new_signal ); } );
-    if constexpr ( std::is_same<typename Ntk::base_type, xmg_network>::value )
-    {
-      call_with_stopwatch( st.time_update, [&]() { ntk.update(); } );
-    }
-    else
-    {
-      auto new_fanout = ntk.fanout( ntk.get_node( new_signal ) );
-      for ( const auto& p : fanout )
-      {
-        if ( std::find( new_fanout.begin(), new_fanout.end(), p ) == new_fanout.end() )
-          ntk.add_node( ntk.get_node( new_signal ), p );
-      }
-      ntk.set_fanout( ntk.get_node( new_signal ), new_fanout );
-    }
   }
 
   void collect_divisors_rec( node const& n, std::vector<node>& internal )
@@ -1012,7 +1238,7 @@ private:
       });
 
     /* collect the internal nodes */
-    if ( ntk.value( n ) == 0 && ntk.fanout_size( n ) != 0 && n != 0 )
+    if ( ntk.value( n ) == 0 && n != 0 ) /* ntk.fanout_size( n ) */
     {
       internal.emplace_back( n );
     }
@@ -1030,8 +1256,8 @@ private:
     ntk.incr_trav_id();
     for ( const auto& l : leaves )
     {
-      if ( ntk.fanout_size( l ) != 0 )
-        divs.emplace_back( l );
+      // if ( ntk.fanout_size( l ) != 0 )
+      divs.emplace_back( l );
       ntk.set_visited( l, ntk.trav_id() );
     }
 
@@ -1066,16 +1292,19 @@ private:
     for ( auto i = 0u; i < size; ++i )
     {
       auto const d = divs[i];
-      if ( ntk.fanout_size( d ) == 0 )
-        continue;
+
+      // if ( ntk.fanout_size( d ) == 0 )
+      //   continue;
 
       if ( ntk.fanout_size( d ) > ps.skip_fanout_limit_for_divisors )
+      {
         continue;
+      }
 
       /* if the fanout has all fanins in the set, add it */
       ntk.foreach_fanout( d, [&]( node const& p ){
-          if ( ntk.fanout_size( p ) == 0 )
-            return true;
+          // if ( ntk.fanout_size( p ) == 0 )
+          //   return true;
 
           if ( ntk.visited( p ) == ntk.trav_id() || ntk.level( p ) > required )
           {
@@ -1106,7 +1335,9 @@ private:
             });
 
           if ( has_root_as_child )
+          {
             return true; /* next fanout */
+          }
 
           divs.emplace_back( p );
           ++size;
@@ -1132,8 +1363,8 @@ private:
     /* add the nodes in the MFFC */
     for ( const auto& t : temp )
     {
-      if ( ntk.fanout_size( t ) == 0 )
-        continue;
+      // if ( ntk.fanout_size( t ) == 0 )
+      //   continue;
       divs.emplace_back( t );
     }
 
@@ -1300,7 +1531,6 @@ private:
     for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const& d = divs.at( i );
-
       if ( ntk.level( d ) > required - 1 )
         continue;
 
@@ -1320,6 +1550,94 @@ private:
 
       /* add the node to binates */
       divs_1b.emplace_back( d );
+    }
+  }
+
+  void resub_divD( node const& root, uint32_t required )
+  {
+    /* clear candidate divisors */
+    divs_2up0.clear();
+    divs_2up1.clear();
+    divs_2un0.clear();
+    divs_2un1.clear();
+
+    for ( auto i = 0u; i < divs_1b.size(); ++i )
+    {
+      auto const& d0 = divs_1b.at( i );
+      if ( ntk.level( d0 ) > required - 2 )
+        continue;
+
+      for ( auto j = i + 1; j < divs_1b.size(); ++j )
+      {
+        auto const& d1 = divs_1b.at( j );
+        if ( ntk.level( d1 ) > required - 2 )
+          continue;
+
+        auto const s0 = ntk.make_signal( d0 );
+        auto const s1 = ntk.make_signal( d1 );
+
+        if ( divs_2up0.size() < ps.max_divisors2 )
+        {
+          /* ( l & r ) --> root */
+          if ( sims.and_implies( s0, s1, root ) )
+          {
+            divs_2up0.emplace_back( s0 );
+            divs_2up1.emplace_back( s1 );
+          }
+
+          /* ( ~l & r ) --> root */
+          if ( sims.and_implies( !s0, s1, root ) )
+          {
+            divs_2up0.emplace_back( !s0 );
+            divs_2up1.emplace_back(  s1 );
+          }
+
+          /* ( l & ~r ) --> root */
+          if ( sims.and_implies( s0, !s1, root ) )
+          {
+            divs_2up0.emplace_back(  s0 );
+            divs_2up1.emplace_back( !s1 );
+          }
+
+          /* ( ~l & ~r ) --> root */
+          if ( sims.and_implies( !s0, !s1, root ) )
+          {
+            divs_2up0.emplace_back( !s0 );
+            divs_2up1.emplace_back( !s1 );
+          }
+        }
+
+        if ( divs_2un0.size() < ps.max_divisors2 )
+        {
+          /* root --> ( l & r ) */
+          if ( sims.and_implies_reverse( root, s0, s1 ) )
+          {
+            divs_2un0.emplace_back(  s0 );
+            divs_2un1.emplace_back(  s1 );
+          }
+
+          /* root --> ( ~l & r ) */
+          if ( sims.and_implies_reverse( root, s0, s1 ) )
+          {
+            divs_2un0.emplace_back( !s0 );
+            divs_2un1.emplace_back(  s1 );
+          }
+
+          /* root --> ( l & ~r ) */
+          if ( sims.and_implies_reverse( root, s0, s1 ) )
+          {
+            divs_2un0.emplace_back(  s0 );
+            divs_2un1.emplace_back( !s1 );
+          }
+
+          /* root --> ( ~l & ~r ) */
+          if ( sims.and_implies_reverse( root, s0, s1 ) )
+          {
+            divs_2un0.emplace_back( !s0 );
+            divs_2un1.emplace_back( !s1 );
+          }
+        }
+      }
     }
   }
 
@@ -1399,7 +1717,6 @@ private:
 
           if ( sims.or3_equal( s0, s1, s2, s ) )
           {
-            std::cout << "resub12 OR " << d0 << ' ' << d1 << ' ' << d2 << std::endl;
             auto const max_level = std::max({ ntk.level( d0 ), ntk.level( d1 ), ntk.level( d2 ) });
             assert( max_level <= required - 1 );
 
@@ -1422,6 +1739,7 @@ private:
             auto const a = sims.get_phase( max ) ? !ntk.make_signal( max ) : ntk.make_signal( max );
             auto const b = sims.get_phase( min0 ) ? !ntk.make_signal( min0 ) : ntk.make_signal( min0 );
             auto const c = sims.get_phase( min1 ) ? !ntk.make_signal( min1 ) : ntk.make_signal( min1 );
+            ++st.num_div12_2or_accepts;
             return sims.get_phase( root ) ? !ntk.create_or( a, ntk.create_or( b, c ) ) : ntk.create_or( a, ntk.create_or( b, c ) );
           }
         }
@@ -1467,6 +1785,7 @@ private:
             auto const a = sims.get_phase( max ) ? !ntk.make_signal( max ) : ntk.make_signal( max );
             auto const b = sims.get_phase( min0 ) ? !ntk.make_signal( min0 ) : ntk.make_signal( min0 );
             auto const c = sims.get_phase( min1 ) ? !ntk.make_signal( min1 ) : ntk.make_signal( min1 );
+            ++st.num_div12_2and_accepts;
             return sims.get_phase( root ) ? !ntk.create_and( a, ntk.create_and( b, c ) ) : ntk.create_and( a, ntk.create_and( b, c ) );
           }
         }
@@ -1476,7 +1795,7 @@ private:
     return std::optional<signal>();
   }
 
-  void resub_div2( node const& root, uint32_t required )
+  std::optional<signal> resub_div2( node const& root, uint32_t required )
   {
     (void)required;
 
@@ -1492,49 +1811,16 @@ private:
         auto const s1 = divs_2up0.at( j );
         auto const s2 = divs_2up1.at( j );
 
-        if ( ntk.is_complemented( s1 ) && ntk.is_complemented( s2 ) )
+        auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+        auto const b = sims.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+        auto const c = sims.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
+
+        if ( sims.or_and_equal( s0, s1, s2, s ) )
         {
-          if ( sims.and3_equal( !s0, !s1, !s2, !s ) )
-          {
-            std::cout << "candidate for two-resub: " << root << ' '
-                      << d0 << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << std::endl;
-            return;
-          }
-        }
-        else if ( ntk.is_complemented( s1 ) )
-        {
-          if ( sims.and_or2_equal( !s0, s1, !s2, !s ) )
-          {
-            std::cout << "candidate for two-resub: " << root << ' '
-                      << d0 << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << std::endl;
-            return;
-          }
-        }
-        else if ( ntk.is_complemented( s2 ) )
-        {
-          if ( sims.and_or2_equal( !s0, !s1, s2, !s ) )
-          {
-            std::cout << "candidate for two-resub: " << root << ' '
-                      << d0 << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << std::endl;
-            return;
-          }
-        }
-        else
-        {
-          if ( sims.and_or2_equal( !s0, !s1, !s2, !s ) )
-          {
-            std::cout << "candidate for two-resub: " << root << ' '
-                      << d0 << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << std::endl;
-            return;
-          }
+          ++st.num_div2_or_and_accepts;
+          return sims.get_phase( root ) ?
+            !ntk.create_or( a, ntk.create_and( b, c ) ) :
+             ntk.create_or( a, ntk.create_and( b, c ) );
         }
       }
     }
@@ -1549,55 +1835,24 @@ private:
         auto const s1 = divs_2un0.at( j );
         auto const s2 = divs_2un1.at( j );
 
-        if ( ntk.is_complemented( s1 ) && ntk.is_complemented( s2 ) )
+        auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+        auto const b = sims.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+        auto const c = sims.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
+
+        if ( sims.and_or_equal( s0, s1, s2, s ) )
         {
-          if ( sims.and_or2_equal( !s0, !s1, !s2, !s ) )
-          {
-            std::cout << "candidate for two-resub: " << root << ' '
-                      << d0 << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << std::endl;
-            return;
-          }
-        }
-        else if ( ntk.is_complemented( s1 ) )
-        {
-          if ( sims.and3_equal( !s0, s1, !s2, !s ) )
-          {
-            std::cout << "candidate for two-resub: " << root << ' '
-                      << d0 << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << std::endl;
-            return;
-          }
-        }
-        else if ( ntk.is_complemented( s2 ) )
-        {
-          if ( sims.and3_equal( !s0, !s1, s2, !s ) )
-          {
-            std::cout << "candidate for two-resub: " << root << ' '
-                      << d0 << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << std::endl;
-            return;
-          }
-        }
-        else
-        {
-          if ( sims.and3_equal( !s0, !s1, !s2, !s ) )
-          {
-            std::cout << "candidate for two-resub: " << root << ' '
-                      << d0 << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << std::endl;
-            return;
-          }
+          ++st.num_div2_and_or_accepts;
+          return sims.get_phase( root ) ?
+            !ntk.create_and( a, ntk.create_or( b, c ) ) :
+            ntk.create_and( a, ntk.create_or( b, c ) );
         }
       }
     }
+
+    return std::optional<signal>();
   }
 
-  void resub_div3( node const& root, uint32_t required )
+  std::optional<signal> resub_div3( node const& root, uint32_t required )
   {
     (void)required;
 
@@ -1608,243 +1863,173 @@ private:
       auto const s0 = divs_2up0.at( i );
       auto const s1 = divs_2up1.at( i );
 
-      uint32_t flag = (ntk.is_complemented( s0 ) << 3) | (ntk.is_complemented( s1 ) << 2);
-
       for ( auto j = i + 1; j < divs_2up0.size(); ++j )
       {
         auto const s2 = divs_2up0.at( j );
         auto const s3 = divs_2up1.at( j );
 
-        flag = ( flag & 12 ) | ( ntk.is_complemented( s2 ) << 1 ) | ( ntk.is_complemented( s3 ) );
-        assert( flag < 16 );
-
-        switch ( flag )
+        if ( sims.and_2or_equal( s0, s1, s2, s3, s ) )
         {
-        case  0: /* 0000 */
-          if ( sims.and_or22_equal( !s0, !s1, !s2, !s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
+          auto const a = sims.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
+          auto const b = sims.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+          auto const c = sims.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
+          auto const d = sims.get_phase( ntk.get_node( s3 ) ) ? !s3 : s3;
 
-        case  1: /* 0001 */
-          if ( sims.and_or22_equal( !s0, !s1, !s2,  s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case  2: /* 0010 */
-          if ( sims.and_or22_equal( !s0, !s1,  s2, !s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case  3: /* 0011 */
-          if ( sims.and_or22_equal( !s0, !s1,  s2,  s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case  4: /* 0100 */
-          if ( sims.and_or22_equal( !s0,  s1, !s2, !s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case  5: /* 0101 */
-          if ( sims.and_or22_equal( !s0,  s1, !s2,  s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case  6: /* 0110 */
-          if ( sims.and_or22_equal( !s0,  s1,  s2, !s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case  7: /* 0111 */
-          if ( sims.and_or22_equal( !s0,  s1,  s2,  s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case  8: /* 1000 */
-          if ( sims.and_or22_equal(  s0, !s1, !s2, !s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case  9: /* 1001 */
-          if ( sims.and_or22_equal(  s0, !s1, !s2,  s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case 10: /* 1010 */
-          if ( sims.and_or22_equal(  s0, !s1,  s2, !s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case 11: /* 1011 */
-          if ( sims.and_or22_equal(  s0, !s1,  s2,  s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case 12: /* 1100 */
-          if ( sims.and_or22_equal(  s0,  s1, !s2, !s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case 13: /* 1101 */
-          if ( sims.and_or22_equal(  s0,  s1, !s2,  s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case 14: /* 1110 */
-          if ( sims.and_or22_equal(  s0,  s1,  s2, !s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
-
-        case 15: /* 1111 */
-          if ( sims.and_or22_equal(  s0,  s1,  s2,  s3, !s ) )
-          {
-            std::cout << "candidate for three-resub: " << root << ' '
-                      << ntk.get_node( s0 ) << ' '
-                      << ntk.get_node( s1 ) << ' '
-                      << ntk.get_node( s2 ) << ' '
-                      << ntk.get_node( s3 ) << std::endl;
-            return;
-          }
+          ++st.num_div3_and_2or_accepts;
+          return sims.get_phase( root ) ?
+            !ntk.create_and( ntk.create_or( a, b ) , ntk.create_or( c, d ) ) :
+             ntk.create_and( ntk.create_or( a, b ) , ntk.create_or( c, d ) );
         }
       }
     }
+
+    for ( auto i = 0u; i < divs_2un0.size(); ++i )
+    {
+      auto const s0 = divs_2un0.at( i );
+      auto const s1 = divs_2un1.at( i );
+
+      for ( auto j = i + 1; j < divs_2un0.size(); ++j )
+      {
+        auto const s2 = divs_2un0.at( j );
+        auto const s3 = divs_2un1.at( j );
+
+        if ( sims.or_2and_equal( s0, s1, s2, s3, s ) )
+        {
+          auto const a = sims.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
+          auto const b = sims.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+          auto const c = sims.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
+          auto const d = sims.get_phase( ntk.get_node( s3 ) ) ? !s3 : s3;
+
+          ++st.num_div3_or_2and_accepts;
+          return sims.get_phase( root ) ?
+            !ntk.create_or( ntk.create_and( a, b ) , ntk.create_and( c, d ) ) :
+             ntk.create_or( ntk.create_and( a, b ) , ntk.create_and( c, d ) );
+        }
+      }
+    }
+
+    return std::optional<signal>();
   }
 
   void resub_div_majS( node const& root, uint32_t required )
   {
     divs_1mp0.clear();
     divs_1mp1.clear();
-    divs_1mp2.clear();
+    divs_1mn0.clear();
+    divs_1mn1.clear();
+    divs_1mb.clear();
 
     auto const s = ntk.make_signal( root );
     for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const& d0 = divs.at( i );
-
       if ( ntk.level( d0 ) > required - 1 )
         continue;
 
       for ( auto j = i + 1; j < num_divs; ++j )
       {
         auto const& d1 = divs.at( j );
-
         if ( ntk.level( d1 ) > required - 1 )
           continue;
 
         auto const s0 = ntk.make_signal( d0 );
         auto const s1 = ntk.make_signal( d1 );
 
-        /* maj( s0, s1, s ) --> s */
-        // if ( !sims.maj3_equal(  s0, s1, s, s ) &&
-        //      !sims.maj3_equal( !s0, s1, s, s ) )
-        //   continue;
-
-        for ( auto k = j + 1; k < num_divs; ++k )
+        /* Boolean filtering rule for MAJ-3 */
+        if ( sims.maj3_equal( s0, s1, s, s ) )
         {
-          auto const& d2 = divs.at( k );
-
-          if ( ntk.level( d2 ) > required - 1 )
-            continue;
-
           divs_1mp0.emplace_back( d0 );
           divs_1mp1.emplace_back( d1 );
-          divs_1mp2.emplace_back( d2 );
+          continue;
+        }
+
+        if ( sims.maj3_equal( !s0, s1, s, s ) )
+        {
+          divs_1mn0.emplace_back( d0 );
+          divs_1mn1.emplace_back( d1 );
+          continue;
+        }
+
+        if ( std::find( divs_1mb.begin(), divs_1mb.end(), d1 ) == divs_1mb.end() )
+          divs_1mb.emplace_back( d1 );
+      }
+
+      if ( std::find( divs_1mb.begin(), divs_1mb.end(), d0 ) == divs_1mb.end() )
+        divs_1mb.emplace_back( d0 );
+    }
+  }
+
+  void resub_div_majD( node const& root, uint32_t required )
+  {
+    divs_2mp0.clear();
+    divs_2mp1.clear();
+    divs_2mp2.clear();
+    divs_2mn0.clear();
+    divs_2mn1.clear();
+    divs_2mn2.clear();
+
+    auto const s = ntk.make_signal( root );
+    for ( auto i = 0u; i < divs_1mb.size(); ++i )
+    {
+      auto const& d0 = divs_1mb.at( i );
+      if ( ntk.level( d0 ) > required - 2 )
+        continue;
+
+      auto const s0 = ntk.make_signal( d0 );
+
+      for ( auto j = i + 1; j < divs_1mb.size(); ++j )
+      {
+        auto const& d1 = divs_1mb.at( j );
+        if ( ntk.level( d1 ) > required - 2 )
+          continue;
+
+        auto const s1 = ntk.make_signal( d1 );
+
+        for ( auto k = j + 1; k < divs_1mb.size(); ++k )
+        {
+          auto const& d2 = divs_1mb.at( k );
+          if ( ntk.level( d2 ) > required - 2 )
+            continue;
+
+          auto const s2 = ntk.make_signal( d2 );
+
+          if ( sims.maj3_implies( s0, s1, s2, s ) )
+          {
+            divs_2mp0.emplace_back( s0 );
+            divs_2mp1.emplace_back( s1 );
+            divs_2mp2.emplace_back( s2 );
+            continue;
+          }
+
+          if ( sims.maj3_implies( !s0, s1, s2, s ) )
+          {
+            divs_2mp0.emplace_back( !s0 );
+            divs_2mp1.emplace_back(  s1 );
+            divs_2mp2.emplace_back(  s2 );
+            continue;
+          }
+
+          if ( sims.maj3_implies_reverse( s, s0, s1, s2 ) )
+          {
+            divs_2mn0.emplace_back( s0 );
+            divs_2mn1.emplace_back( s1 );
+            divs_2mn2.emplace_back( s2 );
+            continue;
+          }
+
+          if ( sims.maj3_implies_reverse( s, !s0, s1, s2 ) )
+          {
+            divs_2mn0.emplace_back( !s0 );
+            divs_2mn1.emplace_back(  s1 );
+            divs_2mn2.emplace_back(  s2 );
+            continue;
+          }
         }
       }
     }
   }
 
-  std::optional<signal> resub_div_maj3( node const& root, uint32_t required )
+  std::optional<signal> resub_div_maj1( node const& root, uint32_t required )
   {
     (void)required;
 
@@ -1855,87 +2040,279 @@ private:
     {
       auto d0 = divs_1mp0.at( i );
       auto d1 = divs_1mp1.at( i );
-      auto d2 = divs_1mp2.at( i );
 
       auto s0 = ntk.make_signal( d0 );
       auto s1 = ntk.make_signal( d1 );
-      auto s2 = ntk.make_signal( d2 );
 
-      if ( sims.maj3_equal( s0, s1, s2, s ) )
+      for ( auto j = i + 1; j < divs_1mp0.size(); ++j )
       {
-        auto const a = sims.get_phase( d0 ) ? !s0 : s0;
-        auto const b = sims.get_phase( d1 ) ? !s1 : s1;
-        auto const c = sims.get_phase( d2 ) ? !s2 : s2;
-        return sims.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
-      }
-      else if ( sims.maj3_equal( !s0, s1, s2, s ) )
-      {
-        auto const a = sims.get_phase( d0 ) ? !s0 : s0;
-        auto const b = sims.get_phase( d1 ) ? !s1 : s1;
-        auto const c = sims.get_phase( d2 ) ? !s2 : s2;
-        return sims.get_phase( root ) ? !ntk.create_maj( !a, b, c ) : ntk.create_maj( !a, b, c );
+        auto d2 = divs_1mp0.at( j );
+        auto s2 = ntk.make_signal( d2 );
+
+        if ( sims.maj3_equal( s0, s1, s2, s ) )
+        {
+          auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+          auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+          auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+          return sims.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
+        }
+
+        d2 = divs_1mp1.at( j );
+        s2 = ntk.make_signal( d2 );
+
+        if ( sims.maj3_equal( s0, s1, s2, s ) )
+        {
+          auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+          auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+          auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+          return sims.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
+        }
       }
     }
 
-    return std::optional<signal>();
-  }
-
-#if 0
-  std::optional<signal> resub_div_maj3( node const& root, uint32_t required )
-  {
-    auto const s = ntk.make_signal( root );
-    for ( auto i = 0u; i < num_divs; ++i )
+    /* check negative unate divisors */
+    for ( auto i = 0u; i < divs_1mn0.size(); ++i )
     {
-      auto const& d0 = divs.at( i );
+      auto d0 = divs_1mn0.at( i );
+      auto d1 = divs_1mn1.at( i );
 
-      if ( ntk.level( d0 ) > required - 1 )
-        continue;
+      auto s0 = ntk.make_signal( d0 );
+      auto s1 = ntk.make_signal( d1 );
 
-      for ( auto j = i + 1; j < num_divs; ++j )
+      for ( auto j = i + 1; j < divs_1mn0.size(); ++j )
       {
-        auto const& d1 = divs.at( j );
+        auto d2 = divs_1mn0.at( j );
+        auto s2 = ntk.make_signal( d2 );
 
-        if ( ntk.level( d1 ) > required - 1 )
-          continue;
-
-        auto const s0 = ntk.make_signal( d0 );
-        auto const s1 = ntk.make_signal( d1 );
-
-        if ( !sims.maj3_equal(  s0, s1, s, s ) &&
-             !sims.maj3_equal( !s0, s1, s, s ) )
-          continue;
-
-        for ( auto k = j + 1; k < num_divs; ++k )
+        if ( sims.maj3_equal( !s0, s1, s2, s ) )
         {
-          auto const& d2 = divs.at( k );
+          auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+          auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+          auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+          return sims.get_phase( root ) ? !ntk.create_maj( !a, b, c ) : ntk.create_maj( !a, b, c );
+        }
 
-          if ( ntk.level( d2 ) > required - 1 )
-            continue;
+        d2 = divs_1mn1.at( j );
+        s2 = ntk.make_signal( d2 );
 
-          auto const s2 = ntk.make_signal( d2 );
-
-          /* ( l & r ) <-> root */
-          if ( sims.maj3_equal( s0, s1, s2, s ) )
-          {
-            auto const a = sims.get_phase( d0 ) ? !s0 : s0;
-            auto const b = sims.get_phase( d1 ) ? !s1 : s1;
-            auto const c = sims.get_phase( d2 ) ? !s2 : s2;
-            return sims.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
-          }
-          else if ( sims.maj3_equal( !s0, s1, s2, s ) )
-          {
-            auto const a = sims.get_phase( d0 ) ? !s0 : s0;
-            auto const b = sims.get_phase( d1 ) ? !s1 : s1;
-            auto const c = sims.get_phase( d2 ) ? !s2 : s2;
-            return sims.get_phase( root ) ? !ntk.create_maj( !a, b, c ) : ntk.create_maj( !a, b, c );
-          }
+        if ( sims.maj3_equal( !s0, s1, s2, s ) )
+        {
+          auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+          auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+          auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+          return sims.get_phase( root ) ? !ntk.create_maj( !a, b, c ) : ntk.create_maj( !a, b, c );
         }
       }
     }
 
     return std::optional<signal>();
   }
-#endif
+
+  std::optional<signal> resub_div_maj12( node const& root, uint32_t required )
+  {
+    (void)required;
+
+    auto s = ntk.make_signal( root );
+
+    /* check positive unate divisors */
+    for ( auto i = 0u; i < divs_1mp0.size(); ++i )
+    {
+      auto d0 = divs_1mp0.at( i );
+      auto d1 = divs_1mp1.at( i );
+
+      auto s0 = ntk.make_signal( d0 );
+      auto s1 = ntk.make_signal( d1 );
+
+      for ( auto j = i + 1; j < divs_1mb.size(); ++j )
+      {
+        auto d2 = divs_1mb.at( j );
+        auto s2 = ntk.make_signal( d2 );
+
+        if ( sims.maj3_equal( s0, s1, s2, s ) )
+        {
+          auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+          auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+          auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+          return sims.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
+        }
+      }
+    }
+
+    /* check negative unate divisors */
+    for ( auto i = 0u; i < divs_1mn0.size(); ++i )
+    {
+      auto d0 = divs_1mn0.at( i );
+      auto d1 = divs_1mn1.at( i );
+
+      auto s0 = ntk.make_signal( d0 );
+      auto s1 = ntk.make_signal( d1 );
+
+      for ( auto j = i + 1; j < divs_1mb.size(); ++j )
+      {
+        auto d2 = divs_1mb.at( j );
+        auto s2 = ntk.make_signal( d2 );
+
+        if ( sims.maj3_equal( !s0, s1, s2, s ) )
+        {
+          auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+          auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+          auto const c = sims.get_phase( d2 ) ? !s2 : s2;
+          return sims.get_phase( root ) ? !ntk.create_maj( !a, b, c ) : ntk.create_maj( !a, b, c );
+        }
+      }
+    }
+
+    return std::optional<signal>();
+  }
+
+  std::optional<signal> resub_div_majR( node const& root, uint32_t required )
+  {
+    (void)required;
+
+    std::vector<signal> fs;
+    ntk.foreach_fanin( root, [&]( const auto& f ){
+        fs.emplace_back( f );
+      });
+
+    for ( auto i = 0u; i < num_divs; ++i )
+    {
+      auto const& d0 = divs.at( i );
+      auto s = ntk.make_signal( d0 );
+
+      if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && sims.maj3_relevance( fs[0], fs[1], fs[2], s ) )
+      {
+        auto const a = sims.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
+        auto const b = sims.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
+        auto const c = sims.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
+
+        return sims.get_phase( root ) ?
+          !ntk.create_maj( sims.get_phase( d0 ) ? !s : s, b, c ) :
+          ntk.create_maj( sims.get_phase( d0 ) ? !s : s, b, c );
+      }
+      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && sims.maj3_relevance( fs[1], fs[0], fs[2], s ) )
+      {
+        auto const q = sims.get_phase( d0 ) ? !s : s;
+        auto const a = sims.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
+        auto const b = sims.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
+        auto const c = sims.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
+
+        return sims.get_phase( root ) ?
+          !ntk.create_maj( q, a, c ) :
+           ntk.create_maj( q, a, c );
+      }
+      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && sims.maj3_relevance( fs[2], fs[0], fs[1], s ) )
+      {
+        auto const a = sims.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
+        auto const b = sims.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
+        auto const c = sims.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
+
+        return sims.get_phase( root ) ?
+          !ntk.create_maj( sims.get_phase( d0 ) ? !s : s, a, b ) :
+          ntk.create_maj( sims.get_phase( d0 ) ? !s : s, a, b );
+      }
+      else if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && sims.maj3_relevance( !fs[0], fs[1], fs[2], s ) )
+      {
+        auto const a = sims.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
+        auto const b = sims.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
+        auto const c = sims.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
+
+        return sims.get_phase( root ) ?
+          !ntk.create_maj( sims.get_phase( d0 ) ? s : !s, b, c ) :
+           ntk.create_maj( sims.get_phase( d0 ) ? s : !s, b, c );
+      }
+      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && sims.maj3_relevance( !fs[1], fs[0], fs[2], s ) )
+      {
+        auto const a = sims.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
+        auto const b = sims.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
+        auto const c = sims.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
+
+        return sims.get_phase( root ) ?
+          !ntk.create_maj( sims.get_phase( d0 ) ? s : !s, a, c ) :
+           ntk.create_maj( sims.get_phase( d0 ) ? s : !s, a, c );
+      }
+      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && sims.maj3_relevance( !fs[2], fs[0], fs[1], s ) )
+      {
+        auto const a = sims.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
+        auto const b = sims.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
+        auto const c = sims.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
+
+        return sims.get_phase( root ) ?
+          !ntk.create_maj( sims.get_phase( d0 ) ? s : !s, a, b ) :
+           ntk.create_maj( sims.get_phase( d0 ) ? s : !s, a, b );
+      }
+    }
+
+    return std::optional<signal>();
+  }
+
+  std::optional<signal> resub_div_maj2( node const& root, uint32_t required )
+  {
+    (void)required;
+
+    auto s = ntk.make_signal( root );
+
+    /* check positive unate divisors */
+    for ( auto i = 0u; i < divs_1mp0.size(); ++i )
+    {
+      auto const d0 = divs_1mp0.at( i );
+      auto const s0 = ntk.make_signal( d0 );
+
+      auto const d1 = divs_1mp1.at( i );
+      auto const s1 = ntk.make_signal( d1 );
+
+      for ( auto j = 0u; j < divs_2mp0.size(); ++j )
+      {
+        auto const s2 = divs_2mp0.at( j );
+        auto const s3 = divs_2mp1.at( j );
+        auto const s4 = divs_2mp2.at( j );
+
+        auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+        auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+        auto const c = sims.get_phase( ntk.get_node( s2 ) ) ? !s1 : s2;
+        auto const d = sims.get_phase( ntk.get_node( s3 ) ) ? !s2 : s3;
+        auto const e = sims.get_phase( ntk.get_node( s4 ) ) ? !s3 : s4;
+
+        if ( sims.maj2_equal( s0, s1, s2, s3, s4, s ) )
+        {
+          return sims.get_phase( root ) ?
+            !ntk.create_maj( a, b, ntk.create_maj( c, d, e ) ) :
+             ntk.create_maj( a, b, ntk.create_maj( c, d, e ) );
+        }
+      }
+    }
+
+    /* check positive unate divisors */
+    for ( auto i = 0u; i < divs_1mn0.size(); ++i )
+    {
+      auto const d0 = divs_1mn0.at( i );
+      auto const s0 = ntk.make_signal( d0 );
+
+      auto const d1 = divs_1mn1.at( i );
+      auto const s1 = ntk.make_signal( d1 );
+
+      for ( auto j = 0u; j < divs_2mn0.size(); ++j )
+      {
+        auto const s2 = divs_2mn0.at( j );
+        auto const s3 = divs_2mn1.at( j );
+        auto const s4 = divs_2mn2.at( j );
+
+        auto const a = sims.get_phase( d0 ) ? !s0 : s0;
+        auto const b = sims.get_phase( d1 ) ? !s1 : s1;
+        auto const c = sims.get_phase( ntk.get_node( s2 ) ) ? !s1 : s2;
+        auto const d = sims.get_phase( ntk.get_node( s3 ) ) ? !s2 : s3;
+        auto const e = sims.get_phase( ntk.get_node( s4 ) ) ? !s3 : s4;
+
+        if ( sims.maj2_compl_equal( s0, s1, s2, s3, s4, s ) )
+        {
+          return sims.get_phase( root ) ?
+            !ntk.create_maj( a, b, !ntk.create_maj( c, d, e ) ) :
+             ntk.create_maj( a, b, !ntk.create_maj( c, d, e ) );
+        }
+      }
+    }
+
+    return std::optional<signal>();
+  }
 
   std::optional<signal> eval( node const& root, std::vector<node> const &leaves, uint32_t num_steps, bool update_level )
   {
@@ -1945,13 +2322,6 @@ private:
     assert( num_steps <= 3 );
 
     last_gain = -1;
-
-    // std::cout << "current root = " << root << " with leaves ";
-    // for ( const auto& l : leaves )
-    // {
-    //   std::cout << l << ' ';
-    // }
-    // std::cout << std::endl;
 
     /* collect the MFFC */
     int32_t num_mffc = call_with_stopwatch( st.time_mffc, [&]() {
@@ -1966,27 +2336,12 @@ private:
         return collect_divisors( root, leaves, required );
       });
 
-    // std::cout << "divisors: ";
-    // for ( const auto& d : divs)
-    // {
-    //   std::cout << d << ' ';
-    // }
-    // std::cout << std::endl;
-
     if ( !div_comp_success )
       return std::optional<signal>();
 
     /* update statistics */
     st.num_total_divisors += num_divs;
     st.num_total_leaves += leaves.size();
-
-    // std::cout << "root = " << root << ' ';
-    // std::cout << "divs = ";
-    // for ( const auto& d : divs )
-    // {
-    //   std::cout << d << ' ';
-    // }
-    // std::cout << std::endl;
 
     /* simulate the nodes */
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); });
@@ -2042,7 +2397,6 @@ private:
         return g; /* accepted resub */
       }
 
-#if 0
       /* get the two level divisors */
       call_with_stopwatch( st.time_resubD, [&]() { resub_divD( root, required ); });
 
@@ -2058,21 +2412,16 @@ private:
 
       if ( ps.max_inserts == 2 || num_mffc == 3 )
         return std::optional<signal>();
-#endif
 
-#if 0
       /* consider three nodes */
-      call_with_stopwatch( st.time_resub3, [&]() { resub_div3( root, required ); });
-
       g = call_with_stopwatch( st.time_resub3, [&]() {
-          return resub_div2( root, required ); });
+          return resub_div3( root, required ); });
       if ( g )
       {
         ++st.num_div3_accepts;
         last_gain = num_mffc - 3;
         return g; /* accepted resub */
       }
-#endif
 
       return std::optional<signal>();
     }
@@ -2099,6 +2448,16 @@ private:
         return g; /* accepted resub */
       }
 
+      /* relevance */
+      g = call_with_stopwatch( st.time_resubR, [&]() {
+          return resub_div_majR( root, required ); });
+      if ( g )
+      {
+        ++st.num_divR_accepts;
+        last_gain = num_mffc;
+        return g; /* accepted resub */
+      }
+
       if ( ps.max_inserts == 0 || num_mffc == 1 )
         return std::optional<signal>();
 
@@ -2107,11 +2466,37 @@ private:
 
       /* consider one node for majority */
       g = call_with_stopwatch( st.time_resub1, [&]() {
-          return resub_div_maj3( root, required ); });
+          return resub_div_maj1( root, required ); });
       if ( g )
       {
         ++st.num_div1_accepts;
-        last_gain = num_mffc;
+        last_gain = num_mffc - 1;
+        return g; /* accepted resub */
+      }
+
+      /* consider */
+      g = call_with_stopwatch( st.time_resub12, [&]() {
+          return resub_div_maj12( root, required ); });
+      if ( g )
+      {
+        ++st.num_div12_accepts;
+        last_gain = num_mffc - 1;
+        return g; /* accepted resub */
+      }
+
+      if ( ps.max_inserts == 1 || num_mffc == 2 )
+        return std::optional<signal>();
+
+      /* get the two level divisors */
+      call_with_stopwatch( st.time_resubD, [&]() { resub_div_majD( root, required ); });      
+
+      /* consider two node for majority */
+      g = call_with_stopwatch( st.time_resub2, [&]() {
+          return resub_div_maj2( root, required ); });
+      if ( g )
+      {
+        ++st.num_div2_accepts;
+        last_gain = num_mffc - 2;
         return g; /* accepted resub */
       }
     }
@@ -2173,6 +2558,7 @@ private:
 
 private:
   Ntk& ntk;
+
   resubstitution_params const& ps;
   resubstitution_stats& st;
 
@@ -2189,7 +2575,6 @@ private:
   std::vector<node> divs_1up; // unate positive candidates
   std::vector<node> divs_1un; // unate negative candidates
   std::vector<node> divs_1b; // binate candidates
-
   std::vector<signal> divs_2up0;
   std::vector<signal> divs_2up1;
   std::vector<signal> divs_2un0;
@@ -2197,7 +2582,15 @@ private:
 
   std::vector<node> divs_1mp0;
   std::vector<node> divs_1mp1;
-  std::vector<node> divs_1mp2;
+  std::vector<node> divs_1mn0;
+  std::vector<node> divs_1mn1;
+  std::vector<node> divs_1mb;
+  std::vector<signal> divs_2mp0;
+  std::vector<signal> divs_2mp1;
+  std::vector<signal> divs_2mp2;
+  std::vector<signal> divs_2mn0;
+  std::vector<signal> divs_2mn1;
+  std::vector<signal> divs_2mn2;
 }; /* resubstitution_impl */
 
 } /* namespace detail */
