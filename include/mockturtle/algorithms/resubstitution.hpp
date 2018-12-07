@@ -327,7 +327,7 @@ public:
           if ( tts[n] == ternary_majority( tts[x], tts[y], tts[z] ) )
           {
             const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-            fanout_ntk.resize();
+            fanout_ntk.resize_fanout();
             const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
             if ( result )
             {
@@ -338,7 +338,7 @@ public:
           else if ( tts[n] == ternary_majority( ~tts[x], tts[y], tts[z] ) )
           {
             const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-            fanout_ntk.resize();
+            fanout_ntk.resize_fanout();
             const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
             if ( result )
             {
@@ -449,7 +449,7 @@ public:
             if ( tts[n] == ternary_majority( tts[x], tts[y], tts[z] ) )
             {
               const auto new_signal = ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-              fanout_ntk.resize();
+              fanout_ntk.resize_fanout();
               const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
               if ( result )
               {
@@ -461,7 +461,7 @@ public:
             else if ( tts[n] == ternary_majority( ~tts[x], tts[y], tts[z] ) )
             {
               const auto new_signal = ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) );
-              fanout_ntk.resize();
+              fanout_ntk.resize_fanout();
               const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
               if ( result )
               {
@@ -524,7 +524,7 @@ public:
               {
                 const auto new_signal = ntk.create_maj( win.make_signal( u ), win.make_signal( v ),
                                                         ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                fanout_ntk.resize();
+                fanout_ntk.resize_fanout();
                 const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
                 if ( result )
                 {
@@ -536,7 +536,7 @@ public:
               {
                 const auto new_signal = ntk.create_maj( !win.make_signal( u ), win.make_signal( v ),
                                                         ntk.create_maj( win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                fanout_ntk.resize();
+                fanout_ntk.resize_fanout();
                 const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
                 if ( result )
                 {
@@ -548,7 +548,7 @@ public:
               {
                 const auto new_signal = ntk.create_maj( win.make_signal( u ), win.make_signal( v ),
                                                         ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                fanout_ntk.resize();
+                fanout_ntk.resize_fanout();
                 const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
                 if ( result )
                 {
@@ -560,7 +560,7 @@ public:
               {
                 const auto new_signal = ntk.create_maj( !win.make_signal( u ), win.make_signal( v ),
                                                         ntk.create_maj( !win.make_signal( x ), win.make_signal( y ), win.make_signal( z ) ) );
-                fanout_ntk.resize();
+                fanout_ntk.resize_fanout();
                 const auto result = resubstitute_node( win, n, new_signal, ps.zero_gain );
                 if ( result )
                 {
