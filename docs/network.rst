@@ -215,5 +215,5 @@ General methods
 ~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: update, events
+   :members: events
    :no-link:

@@ -67,3 +67,5 @@ v0.1 (not yet released)
     - Container to associate values to nodes (`node_map`) `#13 <https://github.com/lsils/mockturtle/pull/13>`_ `#76 <https://github.com/lsils/mockturtle/pull/76>`_
     - Progress bar (`progress_bar`) `#30 <https://github.com/lsils/mockturtle/pull/30>`_
     - Tracking time of computations (`stopwatch`, `call_with_stopwatch`, `make_with_stopwatch`) `#35 <https://github.com/lsils/mockturtle/pull/35>`_
+* Others:
+    - Network events `#107 <https://github.com/lsils/mockturtle/pull/107>`_

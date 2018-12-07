@@ -173,7 +173,7 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
     const auto before = depth_ntk.depth();
     mig_algebraic_depth_rewriting( depth_ntk );
     ntk = cleanup_dangling( ntk );
-    depth_ntk.update();
+    depth_ntk.update_levels();
     return before - depth_ntk.depth();
   } );
 
@@ -190,7 +190,7 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase"
     ps.allow_area_increase = false;
     mig_algebraic_depth_rewriting( depth_ntk, ps );
     ntk = cleanup_dangling( ntk );
-    depth_ntk.update();
+    depth_ntk.update_levels();
     CHECK( ntk.num_gates() <= size_before );
     return before - depth_ntk.depth();
   } );

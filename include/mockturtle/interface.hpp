@@ -913,15 +913,6 @@ public:
 #pragma endregion
 
 #pragma region General methods
-  /*! \brief Restores a consistent state.
-   *
-   * It is advised to implement this method for every network implementation
-   * and keep it empty.  Network interfaces are typically always in a
-   * consistent state.  The method is used in views, for which the state may
-   * become inconsistent if the underlying network changed.
-   */
-  void update();
-
   /*! \brief Returns network events object.
    *
    * Clients can register callbacks for network events to this object.  Events

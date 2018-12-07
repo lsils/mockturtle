@@ -48,7 +48,7 @@ namespace mockturtle
  * This view computes the fanout of each node of the network.
  * It implements the network interface method `foreach_fanout`.  The
  * fanout are computed at construction and can be recomputed by
- * calling the `update` method.
+ * calling the `update_fanout` method.
  *
  * **Required network functions:**
  * - `foreach_node`
@@ -83,7 +83,7 @@ public:
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    update();
+    update_fanout();
   }
 
   template<typename Fn>
@@ -93,7 +93,7 @@ public:
     detail::foreach_element( _fanout[n].begin(), _fanout[n].end(), fn );
   }
 
-  void update()
+  void update_fanout()
   {
     compute_fanout();
   }

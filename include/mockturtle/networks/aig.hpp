@@ -1038,10 +1038,6 @@ public:
 #pragma endregion
 
 #pragma region General methods
-  void update()
-  {
-  }
-
   auto& events() const
   {
     return *_events;

@@ -106,7 +106,7 @@ public:
     _leaves.reserve( 16 );
     _nodes.reserve( _limit );
     _inner.reserve( _limit );
-    update();
+    update_mffcs();
   }
 
   inline auto size() const { return _num_constants + _num_leaves + _inner.size(); }
@@ -162,7 +162,7 @@ public:
 
   inline auto node_to_index( node const& n ) const { return _node_to_index.at( n ); }
 
-  void update()
+  void update_mffcs()
   {
     _leaves.clear();
     _inner.clear();
