@@ -47,7 +47,7 @@ namespace mockturtle
  * This view computes the level of each node and also the depth of
  * the network.  It implements the network interface methods
  * `level` and `depth`.  The levels are computed at construction
- * and can be recomputed by calling the `update` method.
+ * and can be recomputed by calling the `update_levels` method.
  *
  * **Required network functions:**
  * - `size`
@@ -74,7 +74,7 @@ namespace mockturtle
       std::cout << "Depth: " << aig_depth.depth() << "\n";
    \endverbatim
  */
-template<typename Ntk, bool has_depth_interface = has_depth_v<Ntk> && has_level_v<Ntk>>
+template<typename Ntk, bool has_depth_interface = has_depth_v<Ntk> && has_level_v<Ntk> && has_update_levels_v<Ntk>>
 class depth_view
 {
 };
@@ -107,7 +107,7 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    update();
+    update_levels();
   }
 
   uint32_t depth() const
@@ -120,7 +120,7 @@ public:
     return _levels[n];
   }
 
-  void update()
+  void update_levels()
   {
     _levels.reset( 0 );
     compute_levels();

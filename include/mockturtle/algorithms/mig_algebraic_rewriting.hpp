@@ -219,7 +219,7 @@ private:
       const auto& [x, y, z, u, assoc] = *cand;
       auto opt = ntk.create_maj( z, assoc ? u : x, ntk.create_maj( x, y, u ) );
       ntk.substitute_node( n, opt );
-      ntk.update();
+      ntk.update_levels();
 
       return true;
     }
@@ -231,7 +231,7 @@ private:
                                  ntk.create_maj( ocs[0], ocs[1], ocs2[0] ),
                                  ntk.create_maj( ocs[0], ocs[1], ocs2[1] ) );
       ntk.substitute_node( n, opt );
-      ntk.update();
+      ntk.update_levels();
     }
     return true;
   }
@@ -313,9 +313,9 @@ private:
  * **Required network functions:**
  * - `get_node`
  * - `level`
+ * - `update_levels`
  * - `create_maj`
  * - `substitute_node`
- * - `update`
  * - `foreach_node`
  * - `foreach_po`
  * - `foreach_fanin`
@@ -341,7 +341,7 @@ void mig_algebraic_depth_rewriting( Ntk& ntk, mig_algebraic_depth_rewriting_para
   static_assert( has_level_v<Ntk>, "Ntk does not implement the level method" );
   static_assert( has_create_maj_v<Ntk>, "Ntk does not implement the create_maj method" );
   static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
-  static_assert( has_update_v<Ntk>, "Ntk does not implement the update method" );
+  static_assert( has_update_levels_v<Ntk>, "Ntk does not implement the update_levels method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );

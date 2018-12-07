@@ -832,6 +832,21 @@ template<class Ntk>
 inline constexpr bool has_level_v = has_level<Ntk>::value;
 #pragma endregion
 
+#pragma region has_update_levels
+template<class Ntk, class = void>
+struct has_update_levels : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_levels<Ntk, std::void_t<decltype( std::declval<Ntk>().update_levels() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_levels_v = has_update_levels<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_and
 template<class Ntk, class = void>
 struct has_is_and : std::false_type
@@ -1685,21 +1700,6 @@ struct has_incr_trav_id<Ntk, std::void_t<decltype( std::declval<Ntk>().incr_trav
 
 template<class Ntk>
 inline constexpr bool has_incr_trav_id_v = has_incr_trav_id<Ntk>::value;
-#pragma endregion
-
-#pragma region has_update
-template<class Ntk, class = void>
-struct has_update : std::false_type
-{
-};
-
-template<class Ntk>
-struct has_update<Ntk, std::void_t<decltype( std::declval<Ntk>().update() )>> : std::true_type
-{
-};
-
-template<class Ntk>
-inline constexpr bool has_update_v = has_update<Ntk>::value;
 #pragma endregion
 
 /*! \brief SFINAE based on iterator type (for compute functions).
