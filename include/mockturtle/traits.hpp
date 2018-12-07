@@ -877,6 +877,21 @@ template<class Ntk>
 inline constexpr bool has_update_topo_v = has_update_topo<Ntk>::value;
 #pragma endregion
 
+#pragma region has_update_fanout
+template<class Ntk, class = void>
+struct has_update_fanout : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_fanout<Ntk, std::void_t<decltype( std::declval<Ntk>().update_fanout() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_fanout_v = has_update_fanout<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_and
 template<class Ntk, class = void>
 struct has_is_and : std::false_type
