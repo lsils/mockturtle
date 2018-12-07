@@ -847,6 +847,21 @@ template<class Ntk>
 inline constexpr bool has_update_levels_v = has_update_levels<Ntk>::value;
 #pragma endregion
 
+#pragma region has_update_mffcs
+template<class Ntk, class = void>
+struct has_update_mffcs : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_mffcs<Ntk, std::void_t<decltype( std::declval<Ntk>().update_mffcs() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_mffcs_v = has_update_mffcs<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_and
 template<class Ntk, class = void>
 struct has_is_and : std::false_type
