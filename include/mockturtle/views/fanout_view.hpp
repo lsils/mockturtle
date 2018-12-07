@@ -140,7 +140,7 @@ public:
     std::set_intersection( parents_copy.begin(), parents_copy.end(), old_node_fanout.begin(), old_node_fanout.end(),
                            std::back_inserter( intersection ) );
 
-    resize();
+    resize_fanout();
     set_fanout( this->get_node( new_signal ), intersection );
   }
 
