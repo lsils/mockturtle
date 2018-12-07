@@ -111,7 +111,7 @@ public:
     static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
 
-    update();
+    update_topo();
   }
 
   /*! \brief Default constructor.
@@ -133,7 +133,7 @@ public:
     static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
 
-    update();
+    update_topo();
   }
 
   /*! \brief Reimplementation of `foreach_node`. */
@@ -169,7 +169,7 @@ public:
     return start_signal ? 1 : Ntk::num_pos();
   }
 
-  void update()
+  void update_topo()
   {
     this->clear_values();
     topo_order.reserve( this->size() );
