@@ -98,12 +98,12 @@ public:
     compute_fanout();
   }
 
-  void resize()
+  void resize_fanout()
   {
     _fanout.resize();
   }
 
-  std::vector<node> fanout( node const& n ) const
+  std::vector<node> fanout( node const& n ) const /* deprecated */
   {
     return _fanout[ n ];
   }
@@ -113,12 +113,18 @@ public:
     _fanout[ n ] = fanout;
   }
 
-  void add_node( node const& n, node const& p )
+  void add_fanout( node const& n, node const& p )
   {
-    _fanout[ n ].push_back( p );
+    _fanout[ n ].emplace_back( p );
   }
 
-  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal )
+  void remove_fanout( node const& n, node const& p )
+  {
+    auto &f = _fanout[ n ];
+    f.erase( std::remove( f.begin(), f.end(), p ), f.end() );
+  }
+
+  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal ) /* deprecated */
   {
     Ntk::substitute_node_of_parents( parents, old_node, new_signal );
 
