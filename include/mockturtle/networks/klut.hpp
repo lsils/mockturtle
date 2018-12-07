@@ -448,7 +448,7 @@ public:
     std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[1].h2 = 0; } );
   }
 
-  uint32_t visited( node const& n ) const
+  auto visited( node const& n ) const
   {
     return _storage->nodes[n].data[1].h2;
   }
@@ -466,12 +466,6 @@ public:
   void incr_trav_id() const
   {
     ++_storage->data.trav_id;
-  }
-#pragma endregion
-
-#pragma region General methods
-  void update()
-  {
   }
 #pragma endregion
 
