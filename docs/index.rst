@@ -21,6 +21,7 @@ Welcome to mockturtle's documentation!
    network
    implementations
    views
+   events
 
 .. toctree::
    :maxdepth: 2

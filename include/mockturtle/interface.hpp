@@ -39,6 +39,7 @@
 
 #include <kitty/dynamic_truth_table.hpp>
 
+#include "networks/events.hpp"
 #include "traits.hpp"
 
 namespace mockturtle
@@ -920,6 +921,13 @@ public:
    * become inconsistent if the underlying network changed.
    */
   void update();
+
+  /*! \brief Returns network events object.
+   *
+   * Clients can register callbacks for network events to this object.  Events
+   * include adding nodes, modifying nodes, and deleting nodes.
+   */
+  network_events<base_type>& events() const;
 #pragma endregion
 
 };

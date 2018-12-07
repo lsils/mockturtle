@@ -36,6 +36,7 @@
 #include "../traits.hpp"
 #include "../utils/truth_table_cache.hpp"
 #include "detail/foreach.hpp"
+#include "events.hpp"
 #include "storage.hpp"
 
 #include <ez/direct_iterator.hpp>
@@ -86,12 +87,16 @@ public:
   using node = uint64_t;
   using signal = uint64_t;
 
-  klut_network() : _storage( std::make_shared<klut_storage>() )
+  klut_network()
+      : _storage( std::make_shared<klut_storage>() ),
+        _events( std::make_shared<decltype( _events )::element_type>() )
   {
     _init();
   }
 
-  klut_network( std::shared_ptr<klut_storage> storage ) : _storage( storage )
+  klut_network( std::shared_ptr<klut_storage> storage )
+      : _storage( storage ),
+        _events( std::make_shared<decltype( _events )::element_type>() )
   {
     _init();
   }
@@ -210,6 +215,11 @@ public:
 
     set_value( index, 0 );
 
+    for ( auto const& fn : _events->on_add )
+    {
+      fn( index );
+    }
+
     return index;
   }
 
@@ -230,16 +240,24 @@ public:
   void substitute_node( node const& old_node, signal const& new_signal )
   {
     /* find all parents from old_node */
-    for ( auto& n : _storage->nodes )
+    for ( auto i = 0u; i < _storage->nodes.size(); ++i )
     {
+      auto& n = _storage->nodes[i];
       for ( auto& child : n.children )
       {
         if ( child == old_node )
         {
+          std::vector<signal> old_children( n.children.size() );
+          std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c ) { return c.index; } );
           child = new_signal;
 
           // increment fan-in of new node
           _storage->nodes[new_signal].data[0].h1++;
+
+          for ( auto const& fn : _events->on_modified )
+          {
+            fn( i, old_children );
+          }
         }
       }
     }
@@ -473,10 +491,16 @@ public:
   void update()
   {
   }
+
+  auto& events() const
+  {
+    return *_events;
+  }
 #pragma endregion
 
 public:
   std::shared_ptr<klut_storage> _storage;
+  std::shared_ptr<network_events<base_type>> _events;
 };
 
 } // namespace mockturtle
