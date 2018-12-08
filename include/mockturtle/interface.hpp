@@ -39,6 +39,7 @@
 
 #include <kitty/dynamic_truth_table.hpp>
 
+#include "networks/events.hpp"
 #include "traits.hpp"
 
 namespace mockturtle
@@ -910,6 +911,16 @@ public:
   /*! \brief Increment the current traversal id. */
   void incr_trav_id() const;
 #pragma endregion
+
+#pragma region General methods
+  /*! \brief Returns network events object.
+   *
+   * Clients can register callbacks for network events to this object.  Events
+   * include adding nodes, modifying nodes, and deleting nodes.
+   */
+  network_events<base_type>& events() const;
+#pragma endregion
+
 };
 
 } /* namespace mockturtle */

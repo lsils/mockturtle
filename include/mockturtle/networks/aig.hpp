@@ -45,6 +45,7 @@
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
 #include "detail/foreach.hpp"
+#include "events.hpp"
 #include "storage.hpp"
 
 namespace mockturtle
@@ -167,11 +168,15 @@ public:
     }
   };
 
-  aig_network() : _storage( std::make_shared<aig_storage>() )
+  aig_network()
+      : _storage( std::make_shared<aig_storage>() ),
+        _events( std::make_shared<decltype( _events )::element_type>() )
   {
   }
 
-  aig_network( std::shared_ptr<aig_storage> storage ) : _storage( storage )
+  aig_network( std::shared_ptr<aig_storage> storage )
+      : _storage( storage ),
+        _events( std::make_shared<decltype( _events )::element_type>() )
   {
   }
 #pragma endregion
@@ -327,6 +332,11 @@ public:
     _storage->nodes[a.index].data[0].h1++;
     _storage->nodes[b.index].data[0].h1++;
 
+    for ( auto const& fn : _events->on_add )
+    {
+      fn( index );
+    }
+
     return {index, 0};
   }
 
@@ -461,6 +471,10 @@ public:
       return std::make_pair( n, signal( it->second, 0 ) );
     }
 
+    // remember before
+    const auto old_child0 = signal{node.children[0]};
+    const auto old_child1 = signal{node.children[1]};
+
     // erase old node in hash table
     _storage->hash.erase( node );
 
@@ -471,6 +485,11 @@ public:
 
     // update the reference counter of the new signal
     _storage->nodes[new_signal.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_modified )
+    {
+      fn( n, {old_child0, old_child1} );
+    }
 
     return std::nullopt;
   }
@@ -499,6 +518,11 @@ public:
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
     _storage->hash.erase( nobj );
+
+    for ( auto const& fn : _events->on_delete )
+    {
+      fn( n );
+    }
 
     for ( auto i = 0u; i < 2u; ++i )
     {
@@ -1013,8 +1037,16 @@ public:
   }
 #pragma endregion
 
+#pragma region General methods
+  auto& events() const
+  {
+    return *_events;
+  }
+#pragma endregion
+
 public:
   std::shared_ptr<aig_storage> _storage;
+  std::shared_ptr<network_events<base_type>> _events;
 };
 
 } // namespace mockturtle

@@ -210,3 +210,10 @@ contexts.
 .. doxygenclass:: mockturtle::network
    :members: clear_visited, visited, set_visited, trav_id, incr_trav_id
    :no-link:
+
+General methods
+~~~~~~~~~~~~~~~
+
+.. doxygenclass:: mockturtle::network
+   :members: events
+   :no-link:
