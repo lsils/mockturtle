@@ -178,6 +178,7 @@ public:
 
       ntk.set_value( n, 0 );
       ntk.set_value( r, ntk.fanout_size( r ) );
+      win.resize_levels();
 
       return true;
     }
@@ -592,7 +593,6 @@ public:
 
     stopwatch t( st.time_total );
 
-    ntk.clear_visited();
     ntk.clear_values();
     ntk.foreach_node( [&]( auto const& n ) {
       ntk.set_value( n, ntk.fanout_size( n ) );
@@ -613,17 +613,19 @@ public:
         }
         return true;
       } );
+
       if ( has_mffc )
       {
         reconv_cut_params params{ps.max_pis};
         auto const leaves = call_with_stopwatch( st.time_cuts,
                                                 [&]() { return reconv_cut( params )( ntk, {n} ); } );
+
         using fanout_view_t = decltype( fanout_ntk );
         const auto extended_cut = make_with_stopwatch<window_view<fanout_view_t>>( st.time_windows, fanout_ntk, leaves, std::vector<typename fanout_view_t::node>{{n}}, /* extend = */ ps.extend );
         if ( extended_cut.size() > ps.max_nodes )
           return true;
-        auto win = call_with_stopwatch( st.time_depth, [&]() { return window( extended_cut ); } );
 
+        auto win = call_with_stopwatch( st.time_depth, [&]() { return window( extended_cut ); } );
         default_simulator<kitty::dynamic_truth_table> sim( win.num_pis() );
         const auto tts = call_with_stopwatch( st.time_simulation,
                                               [&]() { return simulate_nodes<kitty::dynamic_truth_table>( win, sim ); } );
@@ -655,7 +657,6 @@ private:
  * - `make_signal`
  * - `foreach_gate`
  * - `substitute_node_of_parents`
- * - `clear_visited`
  * - `clear_values`
  * - `fanout_size`
  * - `set_value`
@@ -674,7 +675,6 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
   static_assert( has_substitute_node_of_parents_v<Ntk>, "Ntk does not implement the substitute_node_of_parents method" );
-  static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
   static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );

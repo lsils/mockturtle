@@ -125,6 +125,7 @@ public:
   /*! \brief Mutable access to value by node. */
   reference operator[]( node const& n )
   {
+    assert( ntk.node_to_index( n ) < data->size() && "index out of bounds" );
     return (*data)[ntk.node_to_index( n )];
   }
 

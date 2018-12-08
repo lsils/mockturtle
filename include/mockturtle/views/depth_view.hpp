@@ -52,7 +52,6 @@ namespace mockturtle
  * **Required network functions:**
  * - `size`
  * - `get_node`
- * - `clear_visited`
  * - `visited`
  * - `set_visited`
  * - `foreach_fanin`
@@ -101,7 +100,6 @@ public:
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-    static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
@@ -120,37 +118,48 @@ public:
     return _levels[n];
   }
 
+  void set_level( node const& n, uint32_t level )
+  {
+    _levels[n] = level;
+  }
+
   void update_levels()
   {
     _levels.reset( 0 );
+
+    this->incr_trav_id();
     compute_levels();
-    this->clear_visited();
+  }
+
+  void resize_levels()
+  {
+    _levels.resize();
   }
 
 private:
   uint32_t compute_levels( node const& n )
   {
-    if ( this->visited( n ) )
+    if ( this->visited( n ) == this->trav_id() )
+    {
       return _levels[n];
+    }
+    this->set_visited( n, this->trav_id() );
 
     if ( this->is_constant( n ) || this->is_pi( n ) )
     {
-      this->set_visited( n, 1 );
       return _levels[n] = 0;
     }
 
     uint32_t level{0};
     this->foreach_fanin( n, [&]( auto const& f ) {
-      level = std::max( level, compute_levels( this->get_node( f ) ) );
+        level = std::max( level, compute_levels( this->get_node( f ) ) );
     } );
 
-    this->set_visited( n, 1 );
     return _levels[n] = level + 1;
   }
 
   void compute_levels()
   {
-    //this->clear_visited();
     _depth = 0;
     this->foreach_po( [&]( auto const& f ) {
       _depth = std::max( _depth, compute_levels( this->get_node( f ) ) );
