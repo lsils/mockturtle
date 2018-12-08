@@ -173,8 +173,8 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
     const auto before = depth_ntk.depth();
     mig_algebraic_depth_rewriting( depth_ntk );
     ntk = cleanup_dangling( ntk );
-    depth_ntk.update_levels();
-    return before - depth_ntk.depth();
+    depth_view depth_ntk2( ntk );
+    return before - depth_ntk2.depth();
   } );
 
   CHECK( v == std::vector<uint32_t>{{0, 4, 1, 8, 2, 4, 3, 11, 6, 35, 7}} );
@@ -190,9 +190,9 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase"
     ps.allow_area_increase = false;
     mig_algebraic_depth_rewriting( depth_ntk, ps );
     ntk = cleanup_dangling( ntk );
-    depth_ntk.update_levels();
+    depth_view depth_ntk2( ntk );
     CHECK( ntk.num_gates() <= size_before );
-    return before - depth_ntk.depth();
+    return before - depth_ntk2.depth();
   } );
 
   CHECK( v == std::vector<uint32_t>{{0, 1, 0, 5, 0, 0, 2, 6, 3, 0, 6}} );
