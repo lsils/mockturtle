@@ -42,13 +42,6 @@ TEST_CASE( "read and write names", "[aiger_reader]" )
   names.insert( aig.po_at( 0 ), "y0" );
   names.insert( aig.po_at( 1 ), "y1" );
 
-  auto const& str = [&]( std::vector<std::string> const& vs ){
-    std::string s;
-    for ( const auto& v : vs )
-      s += v + " ";
-    return s;
-  };
-
   CHECK( names.has_name( aig.make_signal( aig.pi_at( 0 ) ), "x0" ) );
   CHECK( names.has_name( aig.make_signal( aig.pi_at( 1 ) ), "x1" ) );
   CHECK( names.has_name( aig.po_at( 0 ), "y0" ) );
