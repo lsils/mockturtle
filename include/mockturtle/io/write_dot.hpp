@@ -314,7 +314,11 @@ void write_dot( Ntk const& ntk, std::ostream& os, Drawer const& drawer = {} )
 /*! \brief Writes network in DOT format into a file
  *
  * **Required network functions:**
- * - ...
+ * - is_constant
+ * - is_pi
+ * - foreach_node
+ * - foreach_fanin
+ * - foreach_po
  *
  * \param ntk Network
  * \param filename Filename
