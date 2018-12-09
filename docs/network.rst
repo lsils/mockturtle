@@ -18,16 +18,16 @@ This page describes the interface of a logic network data structure in
 Mandatory types and constants
 -----------------------------
 
-The interaction with a logic network data structure is performed using three
-types for which no application details are assumed.  The following three types
+The interaction with a logic network data structure is performed using four
+types for which no application details are assumed.  The following four types
 must be defined within the network data structure.  They can be implemented as
 nested type, but may also be exposed as type alias.
 
 .. doxygenclass:: mockturtle::network
-   :members: node, signal, storage
+   :members: base_type, node, signal, storage
    :no-link:
 
-Futher, a network must expose the following compile-time constants:
+Further, a network must expose the following compile-time constants:
 
 .. code-block:: c++
 
@@ -75,7 +75,7 @@ Primary I/O and constants
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_constant, create_pi, create_po, is_constant, is_pi, constant_value
+   :members: get_constant, create_pi, create_po, create_ro, create_ri, is_combinational, is_constant, is_ci, is_pi, is_ro, constant_value, latch_reset
    :no-link:
 
 Create unary functions
@@ -99,6 +99,13 @@ Create ternary functions
    :members: create_maj, create_ite, create_xor3
    :no-link:
 
+Create nary functions
+~~~~~~~~~~~~~~~~~~~~~
+
+.. doxygenclass:: mockturtle::network
+   :members: create_nary_and, create_nary_or, create_nary_xor
+   :no-link:
+
 Create arbitrary functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -110,14 +117,14 @@ Restructuring
 ~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: substitute_node, substitute_node_of_parents
+   :members: substitute_node, replace_in_node, replace_in_outputs, take_out_node, is_dead, substitute_node_of_parents
    :no-link:
 
 Structural properties
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: size, num_pis, num_pos, num_gates, fanin_size, fanout_size, depth, level, is_and, is_or, is_xor, is_maj, is_ite, is_xor3
+   :members: size, num_cis, num_cos, num_pis, num_pos, num_gates, num_registers, fanin_size, fanout_size, incr_fanout_size, decr_fanout_size, depth, level, is_and, is_or, is_xor, is_maj, is_ite, is_xor3
    :no-link:
 
 Functional properties
@@ -131,14 +138,14 @@ Nodes and signals
 ~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node
+   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node, ci_at, co_at, pi_at, po_at, ro_at, ri_at, ci_index, co_index, pi_index, po_index, ri_index, ro_index, ri_to_ro, ro_to_ri
    :no-link:
 
 Node and signal iterators
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_fanin, foreach_fanout
+   :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_register, foreach_fanin, foreach_fanout
    :no-link:
 
 Simulate values
@@ -196,15 +203,17 @@ purpose of checking whether a node was visited in traversing algorithms.
 Again, all visited-functions are constant, because a change to the visited
 flags is considered transparent to the network.  If a caller passes a constant
 network to an algorithm, the algorithm may change the visited flags but cannot
-change the structure of the network or any other *visible* property.
+change the structure of the network or any other *visible* property.  The use
+of traversal ids helps to use unique visited flags in multiple depending
+contexts.
 
 .. doxygenclass:: mockturtle::network
-   :members: clear_visited, visited, set_visited
+   :members: clear_visited, visited, set_visited, trav_id, incr_trav_id
    :no-link:
 
 General methods
 ~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: update
+   :members: events
    :no-link:

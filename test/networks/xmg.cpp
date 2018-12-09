@@ -1,9 +1,12 @@
 #include <catch.hpp>
 
+#include <kitty/algorithm.hpp>
+#include <kitty/bit_operations.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
 
@@ -243,7 +246,8 @@ TEST_CASE( "clone a node in xmg network", "[xmg]" )
   auto b1 = xmg1.create_pi();
   auto c1 = xmg1.create_pi();
   auto f1 = xmg1.create_maj( a1, b1, c1 );
-  CHECK( xmg1.size() == 5 );
+  auto g1 = xmg1.create_xor3( a1, b1, c1 );
+  CHECK( xmg1.size() == 6 );
 
   auto a2 = xmg2.create_pi();
   auto b2 = xmg2.create_pi();
@@ -251,10 +255,20 @@ TEST_CASE( "clone a node in xmg network", "[xmg]" )
   CHECK( xmg2.size() == 4 );
 
   auto f2 = xmg2.clone_node( xmg1, xmg1.get_node( f1 ), {a2, b2, c2} );
-  CHECK( xmg2.size() == 5 );
+  auto g2 = xmg2.clone_node( xmg1, xmg1.get_node( g1 ), {a2, b2, c2} );
+  CHECK( xmg2.size() == 6 );
 
-  xmg2.foreach_fanin( xmg2.get_node( f2 ), [&]( auto const& s, auto ) {
+  xmg2.foreach_fanin( xmg2.get_node( f2 ), [&]( auto const& s ) {
     CHECK( !xmg2.is_complemented( s ) );
+  } );
+
+  xmg2.foreach_gate( [&]( auto const& n, auto i ) {
+    switch ( i )
+    {
+      default: break;
+      case 0: CHECK( xmg2.is_maj( n ) ); break;
+      case 1: CHECK( xmg2.is_xor3( n ) ); break;
+    }
   } );
 }
 
@@ -533,4 +547,28 @@ TEST_CASE( "node substitution in xmgs", "[xmg]" )
       break;
     }
   } );
+}
+
+TEST_CASE( "create nary functions in XMGs", "[xmg]" )
+{
+  xmg_network xmg;
+  std::vector<xmg_network::signal> pis( 8u );
+  std::generate( pis.begin(), pis.end(), [&]() { return xmg.create_pi(); } );
+  xmg.create_po( xmg.create_nary_and( pis ) );
+  xmg.create_po( xmg.create_nary_or( pis ) );
+  xmg.create_po( xmg.create_nary_xor( pis ) );
+
+  CHECK( xmg.num_gates() == 18u );
+
+  auto result = simulate<kitty::dynamic_truth_table>( xmg, default_simulator<kitty::dynamic_truth_table>( 8 ) );
+
+  CHECK( kitty::count_ones( result[0] ) == 1u );
+  CHECK( kitty::get_bit( result[0], 255 ) );
+
+  CHECK( kitty::count_ones( result[1] ) == 255u );
+  CHECK( !kitty::get_bit( result[1], 0 ) );
+
+  auto copy = result[2].construct();
+  kitty::create_parity( copy );
+  CHECK( result[2] == copy );
 }

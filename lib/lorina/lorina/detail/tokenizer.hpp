@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <lorina/detail/utils.hpp>
 #include <iostream>
 #include <string>
 
@@ -85,7 +86,7 @@ public:
         {
           return tokenizer_return_code::valid;
         }
-        if ( ( c == '(' || c == ')' || c == '{' || c == '}' || c == ';' || c == ':' || c == ',' || c == '~' || c == '&' || c == '|' || c == '^' ) && !_quote_mode )
+        if ( ( c == '(' || c == ')' || c == '{' || c == '}' || c == ';' || c == ':' || c == ',' || c == '~' || c == '&' || c == '|' || c == '^' || c == '#' ) && !_quote_mode )
         {
           if ( token.empty() )
           {

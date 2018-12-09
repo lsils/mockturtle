@@ -5,12 +5,11 @@
 namespace percy
 {
 
-	inline int 
-	binomial_coeff(int n, int k)
+	inline unsigned binomial_coeff(int n, int k)
 	{
-		auto C = new int*[n + 1];
+		auto C = new unsigned*[n + 1];
 		for (int i = 0; i < n + 1; i++) {
-			C[i] = new int[k + 1];
+			C[i] = new unsigned[k + 1];
 		}
 
 		for (int i = 0; i <= n; i++) {
@@ -38,8 +37,7 @@ namespace percy
             otherwise. (In co-lexicographical order.)
     ***************************************************************************/
     template<typename fanin, int FI>
-    int
-    colex_compare(
+    int colex_compare(
             const std::array<fanin, FI>& fanins1,
             const std::array<fanin, FI>& fanins2)
     {
@@ -55,8 +53,7 @@ namespace percy
         return 0;
     }
 
-    int
-    colex_compare(const int* const fanins1, const int* const fanins2, int fanin)
+    inline int colex_compare(const int* const fanins1, const int* const fanins2, int fanin)
     {
         for (int i = fanin-1; i >= 0; i--) {
             if (fanins1[i] < fanins2[i]) {
@@ -70,8 +67,7 @@ namespace percy
         return 0;
     }
 
-    int
-    colex_compare(const std::vector<int>& fanins1, const std::vector<int>& fanins2)
+    inline int colex_compare(const std::vector<int>& fanins1, const std::vector<int>& fanins2)
     {
         assert(fanins1.size() == fanins2.size());
         for (int i = fanins1.size() - 1; i >= 0; i--) {
@@ -91,8 +87,7 @@ namespace percy
             otherwise. (In lexicographical order.)
     ***************************************************************************/
     template<typename fanin, int FI>
-    int
-    lex_compare(
+    int lex_compare(
             const std::array<fanin, FI>& fanins1,
             const std::array<fanin, FI>& fanins2)
     {
@@ -109,8 +104,7 @@ namespace percy
     }
 
     template<typename fanin, int FI>
-    int
-    lex_compare(const fanin* const fanins1, const fanin* const fanins2)
+    int lex_compare(const fanin* const fanins1, const fanin* const fanins2)
     {
         for (int i = 0; i < FI; i++) {
             if (fanins1[i] < fanins2[i]) {
@@ -124,8 +118,7 @@ namespace percy
         return 0;
     }
 
-    int
-    lex_compare(const std::vector<int>& fanins1, const std::vector<int>& fanins2)
+    inline int lex_compare(const std::vector<int>& fanins1, const std::vector<int>& fanins2)
     {
         assert(fanins1.size() == fanins2.size());
 
@@ -141,8 +134,7 @@ namespace percy
         return 0;
     }
 
-    int
-    lex_compare(const std::array<int, 3>& fanins1, const std::array<int, 3>& fanins2)
+    inline int lex_compare(const std::array<int, 3>& fanins1, const std::array<int, 3>& fanins2)
     {
         if (fanins1[0] < fanins2[0]) {
             return -1;
@@ -163,8 +155,7 @@ namespace percy
         return 0;
     }
 
-    int
-    colex_compare(const std::array<int, 3>& fanins1, const std::array<int, 3>& fanins2)
+    inline int colex_compare(const std::array<int, 3>& fanins1, const std::array<int, 3>& fanins2)
     {
         if (fanins1[2] < fanins2[2]) {
             return -1;

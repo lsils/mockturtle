@@ -15,6 +15,7 @@
 #include "solvers.hpp"
 #include "encoders.hpp"
 #include "cnf.hpp"
+#include <limits>
 
 /*******************************************************************************
     This module defines the interface to synthesize Boolean chains from
@@ -54,7 +55,7 @@ namespace percy
         return false;
     }
 
-    synth_result 
+    inline synth_result 
     std_synthesize(
         spec& spec, 
         chain& chain, 
@@ -64,7 +65,6 @@ namespace percy
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
-        encoder.set_dirty(true);
 
         if (stats) {
             stats->synth_time = 0;
@@ -123,17 +123,16 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     std_cegar_synthesize(
         spec& spec, 
         chain& chain, 
         solver_wrapper& solver, 
-        std_encoder& encoder,
+        std_cegar_encoder& encoder,
         synth_stats* stats = NULL)
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
-        encoder.set_dirty(true);
 
         if (stats) {
             stats->synth_time = 0;
@@ -152,7 +151,7 @@ namespace percy
             return success;
         }
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+        encoder.reset_sim_tts(spec.nr_in);
         spec.nr_steps = spec.initial_steps;
         while (true) {
             solver.restart();
@@ -160,7 +159,11 @@ namespace percy
                 spec.nr_steps++;
                 continue;
             }
-            while (true) {
+            auto iMint = 1;
+            for (int i = 0; iMint != -1; i++) {
+                if (!encoder.create_tt_clauses(spec, iMint - 1)) {
+                    break;
+                }
                 auto begin = std::chrono::steady_clock::now();
                 auto stat = solver.solve(spec.conflict_limit);
                 auto end = std::chrono::steady_clock::now();
@@ -168,44 +171,32 @@ namespace percy
                     std::chrono::duration_cast<std::chrono::microseconds>(
                         end - begin
                         ).count();
-
                 if (stats) {
                     stats->synth_time += elapsed_time;
                 }
-                if (stat == success) {
-                    encoder.extract_chain(spec, chain);
-                    auto sim_tts = chain.simulate();
-                    auto xor_tt = (sim_tts[0]) ^ (spec[0]);
-                    auto first_one = kitty::find_first_one_bit(xor_tt);
-                    if (first_one == -1) {
-                        if (stats) {
-                            stats->sat_time += elapsed_time;
-                        }
-                        return success;
-                    }
-                    // Add additional constraint.
-                    if (spec.verbosity) {
-                        printf("  CEGAR difference at tt index %ld\n",
-                            first_one);
-                    }
-                    if (!encoder.create_tt_clauses(spec, first_one - 1)) {
-                        spec.nr_steps++;
-                        break;
-                    }
-                } else if (stat == failure) {
+                if (stat == failure) {
                     if (stats) {
                         stats->unsat_time += elapsed_time;
                     }
-                    spec.nr_steps++;
                     break;
                 } else {
-                    return timeout;
+                    if (stats) {
+                        stats->sat_time += elapsed_time;
+                    }
                 }
+                iMint = encoder.simulate(spec);
             }
+            if (iMint == -1) {
+                encoder.cegar_extract_chain(spec, chain);
+                break;
+            }
+            spec.nr_steps++;
         }
+
+        return synth_result::success;
     }
 
-    std::unique_ptr<solver_wrapper>
+    inline std::unique_ptr<solver_wrapper>
     get_solver(SolverType type = SLV_BSAT2)
     {
         solver_wrapper * solver = nullptr;
@@ -239,27 +230,27 @@ namespace percy
         return res;
     }
 
-    std::unique_ptr<encoder>
-    get_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_KNUTH)
+    inline std::unique_ptr<encoder>
+    get_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_SSV)
     {
         encoder * enc = nullptr;
         std::unique_ptr<encoder> res;
 
         switch (enc_type) {
-        case ENC_KNUTH:
-            enc = new knuth_encoder(solver);
+        case ENC_SSV:
+            enc = new ssv_encoder(solver);
             break;
-        case ENC_EPFL:
-            enc = new epfl_encoder(solver);
+        case ENC_MSV:
+            enc = new msv_encoder(solver);
             break;
-        case ENC_BERKELEY:
-            enc = new berkeley_encoder(solver);
+        case ENC_DITT:
+            enc = new ditt_encoder(solver);
             break;
         case ENC_FENCE:
-            enc = new knuth_fence_encoder(solver);
+            enc = new ssv_fence_encoder(solver);
             break;
         case ENC_DAG:
-            enc = new knuth_dag_encoder<2>();
+            enc = new ssv_dag_encoder<2>();
             break;
         default:
             fprintf(stderr, "Error: encoder type %d not found\n", enc_type);
@@ -270,38 +261,11 @@ namespace percy
         return res;
     }
 
-    std::unique_ptr<enumerating_encoder>
-    get_enum_encoder(solver_wrapper& solver, EncoderType enc_type = ENC_KNUTH)
-    {
-        enumerating_encoder * enc = nullptr;
-        std::unique_ptr<enumerating_encoder> res;
-
-        switch (enc_type) {
-        case ENC_KNUTH:
-            enc = new knuth_encoder(solver);
-            break;
-        case ENC_EPFL:
-            enc = new epfl_encoder(solver);
-            break;
-        case ENC_FENCE:
-            enc = new knuth_fence_encoder(solver);
-            break;
-        default:
-            fprintf(stderr, "Error: enumerating encoder of ctype %d not found\n", enc_type);
-            exit(1);
-        }
-
-        res.reset(enc);
-        return res;
-    }
-
-
-    synth_result 
+    inline synth_result 
     fence_synthesize(spec& spec, chain& chain, solver_wrapper& solver, fence_encoder& encoder)
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -366,7 +330,7 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     fence_synthesize(
         spec& spec, 
         chain& chain, 
@@ -385,7 +349,7 @@ namespace percy
         return status;
     }
 
-    synth_result
+    inline synth_result
     fence_cegar_synthesize(
         spec& spec, 
         chain& chain, 
@@ -393,7 +357,6 @@ namespace percy
         fence_encoder& encoder, 
         fence& fence)
     {
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
         solver.restart();
         if (!encoder.cegar_encode(spec, fence)) {
             return failure;
@@ -414,7 +377,7 @@ namespace percy
                 }
                 // Add additional constraint.
                 if (spec.verbosity) {
-                    printf("  CEGAR difference at tt index %ld\n",
+                    printf("  CEGAR difference at tt index %lld\n",
                         first_one);
                 }
                 if (!encoder.create_tt_clauses(spec, first_one - 1)) {
@@ -426,13 +389,12 @@ namespace percy
         }
     }
     
-    synth_result 
+    inline synth_result 
     fence_cegar_synthesize(spec& spec, chain& chain, solver_wrapper& solver, fence_encoder& encoder)
     {
         assert(spec.get_nr_in() >= spec.fanin);
 
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -445,7 +407,7 @@ namespace percy
             return success;
         }
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
+        encoder.reset_sim_tts(spec.nr_in);
 
         fence f;
         po_filter<unbounded_generator> g(
@@ -478,6 +440,9 @@ namespace percy
                         sim_tt = ~sim_tt;
                     }
                     auto xor_tt = sim_tt ^ (spec[0]);
+                    if (spec.has_dc_mask(0)) {
+                        xor_tt &= ~spec.get_dc_mask(0);
+                    }
                     auto first_one = kitty::find_first_one_bit(xor_tt);
                     if (first_one == -1) {
                         encoder.extract_chain(spec, chain);
@@ -496,13 +461,15 @@ namespace percy
     }
 
     ///< TODO: implement
-    synth_result
+    /*
+    inline synth_result
     dag_synthesize(spec& spec, chain& chain, solver_wrapper& solver, dag_encoder<2>& encoder)
     {
         return failure;
     }
+    */
 
-    synth_result 
+    inline synth_result 
     synthesize(
         spec& spec, 
         chain& chain, 
@@ -515,20 +482,20 @@ namespace percy
         case SYNTH_STD:
             return std_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder), stats);
         case SYNTH_STD_CEGAR:
-            return std_cegar_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder), stats);
+            return std_cegar_synthesize(spec, chain, solver, static_cast<std_cegar_encoder&>(encoder), stats);
         case SYNTH_FENCE:
             return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
         case SYNTH_FENCE_CEGAR:
             return fence_cegar_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
-        case SYNTH_DAG:
-            return dag_synthesize(spec, chain, solver, static_cast<dag_encoder<2>&>(encoder));
+     //   case SYNTH_DAG:
+      //      return dag_synthesize(spec, chain, solver, static_cast<dag_encoder<2>&>(encoder));
         default:
             fprintf(stderr, "Error: synthesis method %d not supported\n", synth_method);
             exit(1);
         }
     }
 
-    synth_result
+    inline synth_result
     pd_synthesize(
         spec& spec, 
         chain& chain, 
@@ -543,7 +510,6 @@ namespace percy
         }
 
         synth_result status;
-        const auto begin = std::chrono::steady_clock::now();
         status = solver.solve(0);
 
         if (status == success) {
@@ -559,27 +525,20 @@ namespace percy
         }
     }
 
-    synth_result pd_cegar_synthesize(
+    inline synth_result pd_cegar_synthesize(
         spec& spec, 
         chain& chain, 
         const partial_dag& dag,
         solver_wrapper& solver, 
         partial_dag_encoder& encoder)
     {
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
         spec.nr_steps = dag.nr_vertices();
         solver.restart();
         if (!encoder.cegar_encode(spec, dag)) {
             return failure;
         }
         while (true) {
-            auto begin = std::chrono::steady_clock::now();
             auto stat = solver.solve(0);
-            auto end = std::chrono::steady_clock::now();
-            auto elapsed_time =
-                std::chrono::duration_cast<std::chrono::microseconds>(
-                    end - begin
-                    ).count();
 
             if (stat == success) {
                 auto sim_tt = encoder.simulate(spec, dag);
@@ -594,7 +553,7 @@ namespace percy
                 }
                 // Add additional constraint.
                 if (spec.verbosity) {
-                    printf("  CEGAR difference at tt index %ld\n",
+                    printf("  CEGAR difference at tt index %lld\n",
                         first_one);
                 }
                 if (!encoder.create_tt_clauses(spec, dag, first_one - 1)) {
@@ -608,12 +567,11 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     pd_synthesize_enum(
         spec& spec, 
         chain& chain, 
-        const partial_dag& dag,
-        synth_stats * stats = NULL)
+        const partial_dag& dag)
     {
         partial_dag_generator gen;
         chain.reset(spec.get_nr_in(), 1, dag.nr_vertices(), 2);
@@ -627,12 +585,11 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     pd_synthesize_enum(
         spec& spec, 
         chain& chain, 
-        const std::vector<partial_dag>& dags,
-        synth_stats * stats = NULL)
+        const std::vector<partial_dag>& dags)
     {
         partial_dag_generator gen;
         spec.preprocess();
@@ -650,7 +607,7 @@ namespace percy
 
         for (const auto& dag : dags) {
             const auto result = 
-                pd_synthesize_enum(spec, chain, dag, stats);
+                pd_synthesize_enum(spec, chain, dag);
             if (result == success) {
                 return success;
             }
@@ -659,7 +616,7 @@ namespace percy
         return failure;
     }
 
-    synth_result pd_synthesize(
+    inline synth_result pd_synthesize(
         spec& spec,
         chain& chain,
         const std::vector<partial_dag>& dags,
@@ -698,7 +655,7 @@ namespace percy
         return failure;
     }
 
-    synth_result
+    inline synth_result
     pd_synthesize_parallel(
         spec& spec, 
         chain& c, 
@@ -735,6 +692,7 @@ namespace percy
                 bsat_wrapper solver;
                 partial_dag_encoder encoder(solver);
                 partial_dag dag;
+                local_spec.nr_steps = 0;
 
                 while (*psize_found > local_spec.nr_steps) {
                     if (!q.try_dequeue(dag)) {
@@ -796,12 +754,13 @@ namespace percy
 
 
     /// Synthesizes a chain using a set of serialized partial DAGs.
-    synth_result pd_ser_synthesize(
+    inline synth_result pd_ser_synthesize(
         spec& spec,
         chain& chain,
         solver_wrapper& solver,
         partial_dag_encoder& encoder,
-        std::string file_prefix = "")
+        std::string file_prefix = "",
+        int max_time = std::numeric_limits<int>::max()) // Timeout in seconds
     {
         assert(spec.get_nr_in() >= spec.fanin);
         spec.preprocess();
@@ -819,6 +778,7 @@ namespace percy
 
         partial_dag g;
         spec.nr_steps = spec.initial_steps;
+        auto begin = std::chrono::steady_clock::now();
         while (true) {
             g.reset(2, spec.nr_steps);
             const auto filename = file_prefix + "pd" + std::to_string(spec.nr_steps) + ".bin";
@@ -831,9 +791,11 @@ namespace percy
             int buf;
             while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin1 = buf;
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin2 = buf;
                     g.set_vertex(i, fanin1, fanin2);
                 }
@@ -842,6 +804,14 @@ namespace percy
                     continue;
                 }
                 const auto status = solver.solve(0);
+                auto end = std::chrono::steady_clock::now();
+                auto elapsed_time =
+                    std::chrono::duration_cast<std::chrono::seconds>(
+                        end - begin
+                        ).count();
+                if (elapsed_time > max_time) {
+                    return timeout;
+                }
                 if (status == success) {
                     encoder.extract_chain(spec, g, chain);
                     fclose(fhandle);
@@ -856,7 +826,7 @@ namespace percy
     }
 
     /// Same as pd_ser_synthesize, but parallel.  
-    synth_result pd_ser_synthesize_parallel(
+    inline synth_result pd_ser_synthesize_parallel(
         spec& spec,
         chain& c,
         int num_threads = std::thread::hardware_concurrency(),
@@ -944,9 +914,11 @@ namespace percy
             int buf;
             while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
                 for (int i = 0; i < spec.nr_steps; i++) {
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    auto read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin1 = buf;
-                    (void)fread(&buf, sizeof(int), 1, fhandle);
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
                     auto fanin2 = buf;
                     g.set_vertex(i, fanin1, fanin2);
                 }
@@ -973,7 +945,7 @@ namespace percy
         return size_found == PD_SIZE_CONST ? failure : success;
     }
             
-    synth_result
+    inline synth_result
     pf_fence_synthesize(
         spec& spec, 
         chain& c, 
@@ -1007,7 +979,7 @@ namespace percy
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &c, &q] {
                     bsat_wrapper solver;
-                    knuth_fence2_encoder encoder(solver);
+                    ssv_fence2_encoder encoder(solver);
                     fence local_fence;
 
                     while (!(*pfound)) {
@@ -1062,7 +1034,7 @@ namespace percy
     /// One thread generates fences and places them on a concurrent
     /// queue. The remaining threads dequeue fences and try to
     /// synthesize chains with them.
-    synth_result
+    inline synth_result
     pf_synthesize(
         spec& spec, 
         chain&  chain, 
@@ -1079,12 +1051,12 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result
     synthesize(
         spec& spec, 
         chain& chain, 
         SolverType slv_type = SLV_BSAT2, 
-        EncoderType enc_type = ENC_KNUTH, 
+        EncoderType enc_type = ENC_SSV, 
         SynthMethod method = SYNTH_STD)
     {
         auto solver = get_solver(slv_type);
@@ -1092,7 +1064,7 @@ namespace percy
         return synthesize(spec, chain, *solver, *encoder, method);
     }
 
-    synth_result
+    inline synth_result
     next_solution(
         spec& spec, 
         chain& chain, 
@@ -1101,12 +1073,13 @@ namespace percy
         SynthMethod synth_method = SYNTH_STD)
     {
         if (!encoder.is_dirty()) {
+            encoder.set_dirty(true);
             switch (synth_method) {
             case SYNTH_STD:
             case SYNTH_STD_CEGAR:
-                return std_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder));
+                return std_synthesize(spec, chain, solver, dynamic_cast<std_encoder&>(encoder));
             case SYNTH_FENCE:
-                return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
+                return fence_synthesize(spec, chain, solver, dynamic_cast<fence_encoder&>(encoder));
             default:
                 fprintf(stderr, "Error: solution enumeration not supported for synth method %d\n", synth_method);
                 exit(1);
@@ -1134,7 +1107,7 @@ namespace percy
         return failure;
     }
 
-    synth_result
+    inline synth_result
     next_struct_solution(
         spec& spec, 
         chain& chain, 
@@ -1143,12 +1116,13 @@ namespace percy
         SynthMethod synth_method = SYNTH_STD)
     {
         if (!encoder.is_dirty()) {
+            encoder.set_dirty(true);
             switch (synth_method) {
             case SYNTH_STD:
             case SYNTH_STD_CEGAR:
-                return std_synthesize(spec, chain, solver, static_cast<std_encoder&>(encoder));
+                return std_synthesize(spec, chain, solver, dynamic_cast<std_encoder&>(encoder));
             case SYNTH_FENCE:
-                return fence_synthesize(spec, chain, solver, static_cast<fence_encoder&>(encoder));
+                return fence_synthesize(spec, chain, solver, dynamic_cast<fence_encoder&>(encoder));
             default:
                 fprintf(stderr, "Error: solution enumeration not supported for synth method %d\n", synth_method);
                 exit(1);
@@ -1176,7 +1150,7 @@ namespace percy
         return failure;
     }
 
-    synth_result
+    inline synth_result
     maj_synthesize(
         spec& spec, 
         mig& mig, 
@@ -1184,7 +1158,6 @@ namespace percy
         maj_encoder& encoder)
     {
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1219,7 +1192,24 @@ namespace percy
         }
     }
 
-    synth_result
+    inline int get_init_imint(const spec& spec)
+    {
+        int iMint = -1;
+        kitty::static_truth_table<6> tt;
+        for (int i = 1; i < (1 << spec.nr_in); i++) {
+            kitty::create_from_words(tt, &i, &i + 1);
+            const int nOnes = kitty::count_ones(tt);
+            if (nOnes < (spec.nr_in / 2) + 1) {
+                continue;
+            }
+            iMint = i;
+            break;
+        }
+
+        return iMint;
+    }
+
+    inline synth_result
     maj_cegar_synthesize(
         spec& spec, 
         mig& mig, 
@@ -1227,7 +1217,6 @@ namespace percy
         maj_encoder& encoder)
     {
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1240,28 +1229,30 @@ namespace percy
             return success;
         }
 
+        encoder.reset_sim_tts(spec.nr_in);
         spec.nr_steps = spec.initial_steps;
         while (true) {
             solver.restart();
-            if (!encoder.encode(spec)) {
+            if (!encoder.cegar_encode(spec)) {
                 spec.nr_steps++;
                 continue;
             }
-            while (true) {
-                const auto status = solver.solve(spec.conflict_limit);
+            auto iMint = get_init_imint(spec);
+            //printf("initial iMint: %d\n", iMint);
+            for (int i = 0; iMint != -1; i++) {
+                if (!encoder.create_tt_clauses(spec, iMint - 1)) {
+                    spec.nr_steps++;
+                    break;
+                }
 
+                printf("Iter %3d : ", i);
+                printf("Var =%5d  ", solver.nr_vars());
+                printf("Cla =%6d  ", solver.nr_clauses());
+                printf("Conf =%9d\n", solver.nr_conflicts());
+
+                const auto status = solver.solve(spec.conflict_limit);
                 if (status == success) {
-                    encoder.extract_mig(spec, mig);
-                    auto sim_tt = mig.simulate()[0];
-                    auto xor_tt = sim_tt ^ (spec[0]);
-                    auto first_one = kitty::find_first_one_bit(xor_tt);
-                    if (first_one == -1) {
-                        return success;
-                    }
-                    if (!encoder.create_tt_clauses(spec, first_one - 1)) {
-                        spec.nr_steps++;
-                        break;
-                    }
+                    iMint = encoder.simulate(spec);
                 } else if (status == failure) {
                     spec.nr_steps++;
                     break;
@@ -1269,14 +1260,17 @@ namespace percy
                     return timeout;
                 }
             }
+            if (iMint == -1) {
+                encoder.extract_mig(spec, mig);
+                return success;
+            }
         }
     }
 
-    synth_result
+    inline synth_result
     maj_fence_synthesize(spec& spec, mig& mig, solver_wrapper& solver, maj_encoder& encoder)
     {
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1329,7 +1323,7 @@ namespace percy
         }
     }
 
-    synth_result maj_fence_cegar_synthesize(
+    inline synth_result maj_fence_cegar_synthesize(
         spec& spec, 
         mig& mig, 
         solver_wrapper& solver, 
@@ -1338,7 +1332,6 @@ namespace percy
         assert(spec.get_nr_in() >= spec.fanin);
 
         spec.preprocess();
-        encoder.set_dirty(true);
 
         // The special case when the Boolean chain to be synthesized
         // consists entirely of trivial functions.
@@ -1351,7 +1344,6 @@ namespace percy
             return success;
         }
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
 
         fence f;
         po_filter<unbounded_generator> g(
@@ -1404,10 +1396,10 @@ namespace percy
         }
     }
 
-    synth_result
+    inline synth_result 
     parallel_maj_synthesize(
-        spec& spec, 
-        mig& mig, 
+        spec& spec,
+        mig& mig,
         int num_threads = std::thread::hardware_concurrency())
     {
         spec.preprocess();
@@ -1432,16 +1424,15 @@ namespace percy
         bool* pfound = &found;
         std::mutex found_mutex;
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
         spec.fanin = 3;
         spec.nr_steps = spec.initial_steps;
         while (true) {
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &mig, &q] {
-                    percy::mig local_mig;
-                    bsat_wrapper solver;
+                    bmcg_wrapper solver;
                     maj_encoder encoder(solver);
                     fence local_fence;
+                    encoder.reset_sim_tts(spec.nr_in);
 
                     while (!(*pfound)) {
                         if (!q.try_dequeue(local_fence)) {
@@ -1456,6 +1447,7 @@ namespace percy
                             }
                         }
 
+                        /*
                         if (spec.verbosity)
                         {
                             std::lock_guard<std::mutex> vlock(found_mutex);
@@ -1466,39 +1458,37 @@ namespace percy
                                 local_fence.nr_nodes(),
                                 local_fence.nr_levels());
                         }
+                        */
 
                         synth_result status;
                         solver.restart();
                         if (!encoder.cegar_encode(spec, local_fence)) {
                             continue;
                         }
-                        do {
-                            status = solver.solve(10);
-                            if (*pfound) {
+                        auto iMint = get_init_imint(spec);
+                        for (int i = 0; !(*pfound) && iMint != -1; i++) {
+                            if (!encoder.fence_create_tt_clauses(spec, iMint - 1)) {
                                 break;
-                            } else if (status == success) {
-                                encoder.fence_extract_mig(spec, local_mig);
-                                auto sim_tt = local_mig.simulate()[0];
-                                //auto sim_tt = encoder.simulate(spec);
-                                //if (spec.out_inv) {
-                                //    sim_tt = ~sim_tt;
-                                //}
-                                auto xor_tt = sim_tt ^ (spec[0]);
-                                auto first_one = kitty::find_first_one_bit(xor_tt);
-                                if (first_one != -1) {
-                                    if (!encoder.fence_create_tt_clauses(spec, first_one - 1)) {
-                                        break;
-                                    }
-                                    status = timeout;
-                                    continue;
-                                }
-                                std::lock_guard<std::mutex> vlock(found_mutex);
-                                if (!(*pfound)) {
-                                    encoder.fence_extract_mig(spec, mig);
-                                    *pfound = true;
-                                }
                             }
-                        } while (status == timeout);
+                            do {
+                                status = solver.solve(10);
+                                if (*pfound) {
+                                    break;
+                                }
+                            } while (status == timeout);
+
+                            if (status == failure) {
+                                break;
+                            }
+                            iMint = encoder.fence_simulate(spec);
+                        }
+                        if (iMint == -1) {
+                            std::lock_guard<std::mutex> vlock(found_mutex);
+                            if (!(*pfound)) {
+                                encoder.fence_extract_mig(spec, mig);
+                                *pfound = true;
+                            }
+                        }
                     }
                 });
             }
@@ -1518,7 +1508,7 @@ namespace percy
         return success;
     }
 
-    synth_result
+    inline synth_result
     parallel_nocegar_maj_synthesize(
         spec& spec, 
         mig& mig, 
@@ -1546,13 +1536,12 @@ namespace percy
         bool* pfound = &found;
         std::mutex found_mutex;
 
-        spec.nr_rand_tt_assigns = 2 * spec.get_nr_in();
         spec.fanin = 3;
         spec.nr_steps = spec.initial_steps;
         while (true) {
             for (int i = 0; i < num_threads; i++) {
                 threads[i] = std::thread([&spec, pfinished, pfound, &found_mutex, &mig, &q] {
-                    bsat_wrapper solver;
+                    bmcg_wrapper solver;
                     maj_encoder encoder(solver);
                     fence local_fence;
 
@@ -1616,8 +1605,7 @@ namespace percy
         return success;
     }
 
-
-    synth_result
+    inline synth_result
     next_solution(
         spec& spec,
         mig& mig,
@@ -1625,6 +1613,7 @@ namespace percy
         maj_encoder& encoder)
     {
         if (!encoder.is_dirty()) {
+            encoder.set_dirty(true);
             return maj_synthesize(spec, mig, solver, encoder);
         }
 
@@ -1647,6 +1636,241 @@ namespace percy
         }
 
         return failure;
+    }
+
+    inline synth_result maj_pd_synthesize(
+        spec& spec,
+        mig& mig,
+        const std::vector<partial_dag>& dags,
+        solver_wrapper& solver,
+        maj_encoder& encoder)
+    {
+        assert(spec.get_nr_in() >= 3);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        for (auto& dag : dags) {
+            spec.nr_steps = dag.nr_vertices();
+            solver.restart();
+            if (!encoder.encode(spec, dag)) {
+                continue;
+            }
+
+            const auto status = solver.solve(0);
+
+            if (status == success) {
+                encoder.extract_mig(spec, dag, mig);
+                //encoder.print_solver_state(spec, dag);
+                return success;
+            }
+        }
+        return failure;
+    }
+
+    inline synth_result maj_ser_synthesize(
+        spec& spec,
+        mig& mig,
+        solver_wrapper& solver,
+        maj_encoder& encoder,
+        std::string file_prefix = "",
+        int max_time = std::numeric_limits<int>::max()) // Timeout in seconds
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            mig.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                mig.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        partial_dag g;
+        spec.nr_steps = spec.initial_steps;
+        auto begin = std::chrono::steady_clock::now();
+        while (true) {
+            g.reset(3, spec.nr_steps);
+            const auto filename = file_prefix + "pd" + std::to_string(spec.nr_steps) + ".bin";
+            auto fhandle = fopen(filename.c_str(), "rb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open file %s\n", filename.c_str());
+                break;
+            }
+
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    auto read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
+                    auto fanin1 = buf;
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
+                    auto fanin2 = buf;
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
+                    auto fanin3 = buf;
+                    g.set_vertex(i, fanin1, fanin2, fanin3);
+                }
+                solver.restart();
+                if (!encoder.encode(spec, g)) {
+                    continue;
+                }
+                const auto status = solver.solve(0);
+                auto end = std::chrono::steady_clock::now();
+                auto elapsed_time =
+                    std::chrono::duration_cast<std::chrono::seconds>(
+                        end - begin
+                        ).count();
+                if (elapsed_time > max_time) {
+                    return timeout;
+                }
+                if (status == success) {
+                    encoder.extract_mig(spec, g, mig);
+                    fclose(fhandle);
+                    return success;
+                }
+            }
+            fclose(fhandle);
+            spec.nr_steps++;
+        }
+
+        return failure;
+    }
+
+    inline synth_result maj_ser_synthesize_parallel(
+        spec& spec,
+        mig& m,
+        int num_threads = std::thread::hardware_concurrency(),
+        std::string file_prefix ="")
+    {
+        assert(spec.get_nr_in() >= spec.fanin);
+        spec.preprocess();
+
+        // The special case when the Boolean chain to be synthesized
+        // consists entirely of trivial functions.
+        if (spec.nr_triv == spec.get_nr_out()) {
+            m.reset(spec.get_nr_in(), spec.get_nr_out(), 0);
+            for (int h = 0; h < spec.get_nr_out(); h++) {
+                m.set_output(h, (spec.triv_func(h) << 1) +
+                    ((spec.out_inv >> h) & 1));
+            }
+            return success;
+        }
+
+        std::vector<std::thread> threads(num_threads);
+        moodycamel::ConcurrentQueue<partial_dag> q(num_threads * 3);
+        bool finished_generating = false;
+        bool* pfinished = &finished_generating;
+        int size_found = PD_SIZE_CONST;
+        int* psize_found = &size_found;
+        std::mutex found_mutex;
+
+        for (int i = 0; i < num_threads; i++) {
+            threads[i] = std::thread([&spec, psize_found, pfinished, &found_mutex, &m, &q] {
+                percy::spec local_spec = spec;
+                bsat_wrapper solver;
+                maj_encoder encoder(solver);
+                partial_dag dag;
+
+                while (*psize_found > local_spec.nr_steps) {
+                    if (!q.try_dequeue(dag)) {
+                        if (*pfinished) {
+                            std::this_thread::yield();
+                            if (!q.try_dequeue(dag)) {
+                                break;
+                            }
+                        } else {
+                            std::this_thread::yield();
+                            continue;
+                        }
+                    }
+                    local_spec.nr_steps = dag.nr_vertices();
+                    synth_result status;
+                    solver.restart();
+                    if (!encoder.encode(local_spec, dag)) {
+                        continue;
+                    }
+                    while (true) {
+                        status = solver.solve(10);
+                        if (status == failure) {
+                            break;
+                        } else if (status == success) {
+                            std::lock_guard<std::mutex> vlock(found_mutex);
+                            if (*psize_found > local_spec.nr_steps) {
+                                encoder.extract_mig(local_spec, dag, m);
+                                *psize_found = local_spec.nr_steps;
+                            }
+                            break;
+                        } else if (*psize_found <= local_spec.nr_steps) {
+                            // Another thread found a solution that's
+                            // better or equal to this one.
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+
+        partial_dag g;
+        spec.nr_steps = spec.initial_steps;
+        while (size_found == PD_SIZE_CONST) {
+            g.reset(3, spec.nr_steps);
+            const auto filename = file_prefix + "pd" + std::to_string(spec.nr_steps) + ".bin";
+            auto fhandle = fopen(filename.c_str(), "rb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open PD file\n");
+                break;
+            }
+
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                for (int i = 0; i < spec.nr_steps; i++) {
+                    auto read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
+                    auto fanin1 = buf;
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
+                    auto fanin2 = buf;
+                    read = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(read > 0);
+                    auto fanin3 = buf;
+                    g.set_vertex(i, fanin1, fanin2, fanin3);
+                }
+                while (!q.try_enqueue(g)) {
+                    if (size_found == PD_SIZE_CONST) {
+                        std::this_thread::yield();
+                    } else {
+                        break;
+                    }
+                }
+                if (size_found != PD_SIZE_CONST) {
+                    break;
+                }
+            }
+            fclose(fhandle);
+            spec.nr_steps++;
+        }
+        finished_generating = true;
+        for (auto& thread : threads) {
+            thread.join();
+        }
+        spec.nr_steps = size_found;
+
+        return size_found == PD_SIZE_CONST ? failure : success;
     }
 }
 

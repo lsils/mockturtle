@@ -47,9 +47,7 @@
 namespace mockturtle
 {
 
-/*! \brief Implements an isolated view on a window in a network.
- *
- */
+/*! \brief Implements an isolated view on a window in a network. */
 template<typename Ntk>
 class window_view : public immutable_view<Ntk>
 {
@@ -71,24 +69,26 @@ public:
     static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
     static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
 
+    this->incr_trav_id();
+
     /* constants */
     add_node( this->get_node( this->get_constant( false ) ) );
-    this->set_visited( this->get_node( this->get_constant( false ) ), 1 );
+    this->set_visited( this->get_node( this->get_constant( false ) ), this->trav_id() );
     if ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) )
     {
       add_node( this->get_node( this->get_constant( true ) ) );
-      this->set_visited( this->get_node( this->get_constant( true ) ), 1 );
+      this->set_visited( this->get_node( this->get_constant( true ) ), this->trav_id() );
       ++_num_constants;
     }
 
     /* primary inputs */
     for ( auto const& leaf : leaves )
     {
-      if ( this->visited( leaf ) == 1 )
+      if ( this->visited( leaf ) == this->trav_id() )
         continue;
+      this->set_visited( leaf, this->trav_id() );
 
       add_node( leaf );
-      this->set_visited( leaf, 1 );
       ++_num_leaves;
     }
 
@@ -103,12 +103,6 @@ public:
     }
 
     add_roots( ntk );
-
-    /* restore visited */
-    for ( auto const& n : _nodes )
-    {
-      this->set_visited( n, 0 );
-    }
   }
 
   inline auto size() const { return _nodes.size(); }
@@ -151,7 +145,7 @@ public:
 
   uint32_t fanout_size( node const& n ) const
   {
-    return _fanout_size.at( node_to_index(n) );
+    return _fanout_size.at( node_to_index( n ) );
   }
 
 private:
@@ -172,15 +166,15 @@ private:
 
   void traverse( node const& n )
   {
-    if ( this->visited( n ) == 1 )
+    if ( this->visited( n ) == this->trav_id() )
       return;
+    this->set_visited( n, this->trav_id() );
 
     this->foreach_fanin( n, [&]( const auto& f ) {
       traverse( this->get_node( f ) );
     } );
 
     add_node( n );
-    this->set_visited( n, 1 );
   }
 
   void extend( Ntk const& ntk )

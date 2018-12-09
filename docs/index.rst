@@ -21,43 +21,47 @@ Welcome to mockturtle's documentation!
    network
    implementations
    views
+   events
 
 .. toctree::
    :maxdepth: 2
    :caption: Algorithms
 
-   cut_enumeration
-   lut_mapping
-   collapse_mapped
-   node_resynthesis
-   cut_rewriting
-   refactoring
-   mig_algebraic_rewriting
-   akers_synthesis
-   resubstitution
-   simulation
-   cleanup
+   algorithms/cut_enumeration
+   algorithms/lut_mapping
+   algorithms/collapse_mapped
+   algorithms/node_resynthesis
+   algorithms/cut_rewriting
+   algorithms/refactoring
+   algorithms/mig_algebraic_rewriting
+   algorithms/akers_synthesis
+   algorithms/resubstitution
+   algorithms/simulation
+   algorithms/cleanup
+   algorithms/reconv_cut
+   algorithms/dont_cares
+   algorithms/gates_to_nodes
 
 .. toctree::
    :maxdepth: 2
    :caption: Input/Output
 
-   lorina_readers
-   writers
+   io/lorina_readers
+   io/writers
 
 .. toctree::
    :maxdepth: 2
    :caption: Generators
 
-   arithmetic
-   control
-   modular_arithmetic
+   generators/arithmetic
+   generators/control
+   generators/modular_arithmetic
 
 .. toctree::
    :maxdepth: 2
    :caption: Utilities
 
-   util_data_structures
+   utils/util_data_structures
 
 Indices and tables
 ==================

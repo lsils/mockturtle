@@ -35,6 +35,7 @@
 #include "dynamic_truth_table.hpp"
 #include "operators.hpp"
 #include "static_truth_table.hpp"
+#include "spectral.hpp"
 
 /*! \cond PRIVATE */
 #include "detail/linear_constants.hpp"
@@ -111,8 +112,16 @@ inline void for_each_permutation_mask( unsigned num_vars, Fn&& fn )
 
   \param tt Truth table
 */
+template<typename TT, typename Callback = decltype( detail::exact_spectral_canonization_null_callback )>
+TT exact_linear_canonization( const TT& tt, Callback&& fn = detail::exact_spectral_canonization_null_callback )
+{
+  detail::miller_spectral_canonization_impl<TT> impl( tt, false, false, false );
+  return impl.run( fn ).first;
+}
+
+/*! \cond PRIVATE */
 template<typename TT>
-TT exact_linear_canonization( const TT& tt )
+TT exact_linear_canonization_old( const TT& tt )
 {
   auto min = tt;
 
@@ -122,6 +131,7 @@ TT exact_linear_canonization( const TT& tt )
 
   return min;
 }
+/*! \endcond */
 
 /*! \brief Applies exact linear classification and output negation
 
@@ -134,7 +144,7 @@ TT exact_linear_canonization( const TT& tt )
 template<typename TT>
 TT exact_linear_output_canonization( const TT& tt )
 {
-  return std::min( exact_linear_canonization( tt ), exact_linear_canonization( ~tt ) );
+  return std::min( exact_linear_canonization_old( tt ), exact_linear_canonization_old( ~tt ) );
 }
 
 /*! \brief Applies exact affine classification
@@ -145,8 +155,16 @@ TT exact_linear_output_canonization( const TT& tt )
 
   \param tt Truth table
 */
+template<typename TT, typename Callback = decltype( detail::exact_spectral_canonization_null_callback )>
+TT exact_affine_canonization( const TT& tt, Callback&& fn = detail::exact_spectral_canonization_null_callback )
+{
+  detail::miller_spectral_canonization_impl<TT> impl( tt, true, false, false );
+  return impl.run( fn ).first;
+}
+
+/*! \cond PRIVATE */
 template<typename TT>
-TT exact_affine_canonization( const TT& tt )
+TT exact_affine_canonization_old( const TT& tt )
 {
   const auto num_vars = tt.num_vars();
 
@@ -156,17 +174,18 @@ TT exact_affine_canonization( const TT& tt )
 
   const auto& flips = detail::flips[num_vars - 2u];
   
-  auto min = exact_linear_canonization( copy );
+  auto min = exact_linear_canonization_old( copy );
 
   for ( int j = flips.size() - 1; j >= 0; --j )
   {
     const auto pos = flips[j];
     flip_inplace( copy, pos );
-    min = std::min( min, exact_linear_canonization( copy ) );
+    min = std::min( min, exact_linear_canonization_old( copy ) );
   }
 
   return min;
 }
+/*! \endcond */
 
 /*! \brief Applies exact affine classification and output negation
 
@@ -180,7 +199,7 @@ TT exact_affine_canonization( const TT& tt )
 template<typename TT>
 TT exact_affine_output_canonization( const TT& tt )
 {
-  return std::min( exact_affine_canonization( tt ), exact_affine_canonization( ~tt ) );
+  return std::min( exact_affine_canonization_old( tt ), exact_affine_canonization_old( ~tt ) );
 }
 
 } /* namespace kitty */

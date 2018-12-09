@@ -8,6 +8,7 @@ namespace mockturtle
 class dummy_network
 {
 public:
+  using base_type = dummy_network;
   using node = uint32_t;
   using signal = uint32_t;
   using storage = uint64_t;

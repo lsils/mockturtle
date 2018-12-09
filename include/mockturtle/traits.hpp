@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <string>
 #include <type_traits>
 
 #include <kitty/dynamic_truth_table.hpp>
@@ -54,7 +55,8 @@ struct is_network_type : std::false_type
 template<class Ntk>
 struct is_network_type<Ntk, std::enable_if_t<
                                 std::is_constructible_v<signal<Ntk>, node<Ntk>>,
-                                std::void_t<signal<Ntk>,
+                                std::void_t<typename Ntk::base_type,
+                                            signal<Ntk>,
                                             node<Ntk>,
                                             typename Ntk::storage,
                                             decltype( Ntk::max_fanin_size ),
@@ -125,6 +127,51 @@ template<class Ntk>
 inline constexpr bool has_create_po_v = has_create_po<Ntk>::value;
 #pragma endregion
 
+#pragma region has_create_ro
+template<class Ntk, class = void>
+struct has_create_ro : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ro( std::string() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_ro_v = has_create_ro<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_ri
+template<class Ntk, class = void>
+struct has_create_ri : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_ri<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ri( std::declval<signal<Ntk>>(), int8_t(), std::string() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_ri_v = has_create_ri<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_combinational
+template<class Ntk, class = void>
+struct has_is_combinational : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_combinational<Ntk, std::void_t<decltype( std::declval<Ntk>().is_combinational() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_combinational_v = has_is_combinational<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_constant
 template<class Ntk, class = void>
 struct has_is_constant : std::false_type
@@ -140,6 +187,21 @@ template<class Ntk>
 inline constexpr bool has_is_constant_v = has_is_constant<Ntk>::value;
 #pragma endregion
 
+#pragma region has_is_ci
+template<class Ntk, class = void>
+struct has_is_ci : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_ci<Ntk, std::void_t<decltype( std::declval<Ntk>().is_ci( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_ci_v = has_is_ci<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_pi
 template<class Ntk, class = void>
 struct has_is_pi : std::false_type
@@ -153,6 +215,21 @@ struct has_is_pi<Ntk, std::void_t<decltype( std::declval<Ntk>().is_pi( std::decl
 
 template<class Ntk>
 inline constexpr bool has_is_pi_v = has_is_pi<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_ro
+template<class Ntk, class = void>
+struct has_is_ro : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().is_ro( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_ro_v = has_is_ro<Ntk>::value;
 #pragma endregion
 
 #pragma region has_constant_value
@@ -395,6 +472,51 @@ template<class Ntk>
 inline constexpr bool has_create_xor3_v = has_create_xor3<Ntk>::value;
 #pragma endregion
 
+#pragma region has_create_nary_and
+template<class Ntk, class = void>
+struct has_create_nary_and : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_and<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_and( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_and_v = has_create_nary_and<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_nary_or
+template<class Ntk, class = void>
+struct has_create_nary_or : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_or<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_or( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_or_v = has_create_nary_or<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_nary_xor
+template<class Ntk, class = void>
+struct has_create_nary_xor : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_xor<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_xor( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_xor_v = has_create_nary_xor<Ntk>::value;
+#pragma endregion
+
 #pragma region has_create_node
 template<class Ntk, class = void>
 struct has_create_node : std::false_type
@@ -425,21 +547,6 @@ template<class Ntk>
 inline constexpr bool has_clone_node_v = has_clone_node<Ntk>::value;
 #pragma endregion
 
-#pragma region has_size
-template<class Ntk, class = void>
-struct has_size : std::false_type
-{
-};
-
-template<class Ntk>
-struct has_size<Ntk, std::void_t<decltype( std::declval<Ntk>().size() )>> : std::true_type
-{
-};
-
-template<class Ntk>
-inline constexpr bool has_size_v = has_size<Ntk>::value;
-#pragma endregion
-
 #pragma region has_substitute_node
 template<class Ntk, class = void>
 struct has_substitute_node : std::false_type
@@ -455,6 +562,66 @@ template<class Ntk>
 inline constexpr bool has_substitute_node_v = has_substitute_node<Ntk>::value;
 #pragma endregion
 
+#pragma region has_replace_in_node
+template<class Ntk, class = void>
+struct has_replace_in_node : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_replace_in_node<Ntk, std::void_t<decltype( std::declval<Ntk>().replace_in_node( std::declval<node<Ntk>>(), std::declval<node<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_replace_in_node_v = has_replace_in_node<Ntk>::value;
+#pragma endregion
+
+#pragma region has_replace_in_outputs
+template<class Ntk, class = void>
+struct has_replace_in_outputs : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_replace_in_outputs<Ntk, std::void_t<decltype( std::declval<Ntk>().replace_in_outputs( std::declval<node<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_replace_in_outputs_v = has_replace_in_outputs<Ntk>::value;
+#pragma endregion
+
+#pragma region has_take_out_node
+template<class Ntk, class = void>
+struct has_take_out_node : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_take_out_node<Ntk, std::void_t<decltype( std::declval<Ntk>().take_out_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_take_out_node_v = has_take_out_node<Ntk>::value;
+#pragma endregion
+
+#pragma region is_dead
+template<class Ntk, class = void>
+struct has_is_dead : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_dead<Ntk, std::void_t<decltype( std::declval<Ntk>().is_dead( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_dead_v = has_is_dead<Ntk>::value;
+#pragma endregion
+
 #pragma region has_substitute_node_of_parents
 template<class Ntk, class = void>
 struct has_substitute_node_of_parents : std::false_type
@@ -468,6 +635,51 @@ struct has_substitute_node_of_parents<Ntk, std::void_t<decltype( std::declval<Nt
 
 template<class Ntk>
 inline constexpr bool has_substitute_node_of_parents_v = has_substitute_node_of_parents<Ntk>::value;
+#pragma endregion
+
+#pragma region has_size
+template<class Ntk, class = void>
+struct has_size : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_size<Ntk, std::void_t<decltype( std::declval<Ntk>().size() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_size_v = has_size<Ntk>::value;
+#pragma endregion
+
+#pragma region has_num_cis
+template<class Ntk, class = void>
+struct has_num_cis : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_num_cis<Ntk, std::void_t<decltype( std::declval<Ntk>().num_cis() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_num_cis_v = has_num_cis<Ntk>::value;
+#pragma endregion
+
+#pragma region has_num_cos
+template<class Ntk, class = void>
+struct has_num_cos : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_num_cos<Ntk, std::void_t<decltype( std::declval<Ntk>().num_cos() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_num_cos_v = has_num_cos<Ntk>::value;
 #pragma endregion
 
 #pragma region has_num_pis
@@ -515,6 +727,21 @@ template<class Ntk>
 inline constexpr bool has_num_gates_v = has_num_gates<Ntk>::value;
 #pragma endregion
 
+#pragma region has_num_registers
+template<class Ntk, class = void>
+struct has_num_registers : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_num_registers<Ntk, std::void_t<decltype( std::declval<Ntk>().num_registers() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_num_registers_v = has_num_registers<Ntk>::value;
+#pragma endregion
+
 #pragma region has_fanin_size
 template<class Ntk, class = void>
 struct has_fanin_size : std::false_type
@@ -545,6 +772,36 @@ template<class Ntk>
 inline constexpr bool has_fanout_size_v = has_fanout_size<Ntk>::value;
 #pragma endregion
 
+#pragma region has_incr_fanout_size
+template<class Ntk, class = void>
+struct has_incr_fanout_size : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_incr_fanout_size<Ntk, std::void_t<decltype( std::declval<Ntk>().incr_fanout_size( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_incr_fanout_size_v = has_incr_fanout_size<Ntk>::value;
+#pragma endregion
+
+#pragma region has_decr_fanout_size
+template<class Ntk, class = void>
+struct has_decr_fanout_size : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_decr_fanout_size<Ntk, std::void_t<decltype( std::declval<Ntk>().decr_fanout_size( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_decr_fanout_size_v = has_decr_fanout_size<Ntk>::value;
+#pragma endregion
+
 #pragma region has_depth
 template<class Ntk, class = void>
 struct has_depth : std::false_type
@@ -573,6 +830,66 @@ struct has_level<Ntk, std::void_t<decltype( std::declval<Ntk>().level( std::decl
 
 template<class Ntk>
 inline constexpr bool has_level_v = has_level<Ntk>::value;
+#pragma endregion
+
+#pragma region has_update_levels
+template<class Ntk, class = void>
+struct has_update_levels : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_levels<Ntk, std::void_t<decltype( std::declval<Ntk>().update_levels() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_levels_v = has_update_levels<Ntk>::value;
+#pragma endregion
+
+#pragma region has_update_mffcs
+template<class Ntk, class = void>
+struct has_update_mffcs : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_mffcs<Ntk, std::void_t<decltype( std::declval<Ntk>().update_mffcs() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_mffcs_v = has_update_mffcs<Ntk>::value;
+#pragma endregion
+
+#pragma region has_update_topo
+template<class Ntk, class = void>
+struct has_update_topo : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_topo<Ntk, std::void_t<decltype( std::declval<Ntk>().update_topo() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_topo_v = has_update_topo<Ntk>::value;
+#pragma endregion
+
+#pragma region has_update_fanout
+template<class Ntk, class = void>
+struct has_update_fanout : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_fanout<Ntk, std::void_t<decltype( std::declval<Ntk>().update_fanout() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_fanout_v = has_update_fanout<Ntk>::value;
 #pragma endregion
 
 #pragma region has_is_and
@@ -755,6 +1072,216 @@ template<class Ntk>
 inline constexpr bool has_index_to_node_v = has_index_to_node<Ntk>::value;
 #pragma endregion
 
+#pragma region has_ci_at
+template<class Ntk, class = void>
+struct has_ci_at : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_ci_at<Ntk, std::void_t<decltype( std::declval<Ntk>().ci_at( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_ci_at_v = has_ci_at<Ntk>::value;
+#pragma endregion
+
+#pragma region has_co_at
+template<class Ntk, class = void>
+struct has_co_at : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_co_at<Ntk, std::void_t<decltype( std::declval<Ntk>().co_at( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_co_at_v = has_co_at<Ntk>::value;
+#pragma endregion
+
+#pragma region has_pi_at
+template<class Ntk, class = void>
+struct has_pi_at : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_pi_at<Ntk, std::void_t<decltype( std::declval<Ntk>().pi_at( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_pi_at_v = has_pi_at<Ntk>::value;
+#pragma endregion
+
+#pragma region has_po_at
+template<class Ntk, class = void>
+struct has_po_at : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_po_at<Ntk, std::void_t<decltype( std::declval<Ntk>().po_at( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_po_at_v = has_po_at<Ntk>::value;
+#pragma endregion
+
+#pragma region has_ro_at
+template<class Ntk, class = void>
+struct has_ro_at : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_ro_at<Ntk, std::void_t<decltype( std::declval<Ntk>().ro_at( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_ro_at_v = has_ro_at<Ntk>::value;
+#pragma endregion
+
+#pragma region has_ri_at
+template<class Ntk, class = void>
+struct has_ri_at : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_ri_at<Ntk, std::void_t<decltype( std::declval<Ntk>().ri_at( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_ri_at_v = has_ri_at<Ntk>::value;
+#pragma endregion
+
+#pragma region ci_index
+template<class Ntk, class = void>
+struct ci_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct ci_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool ci_index_v = ci_index<Ntk>::value;
+#pragma endregion
+
+#pragma region co_index
+template<class Ntk, class = void>
+struct co_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct co_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool co_index_v = co_index<Ntk>::value;
+#pragma endregion
+
+#pragma region pi_index
+template<class Ntk, class = void>
+struct pi_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct pi_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool pi_index_v = pi_index<Ntk>::value;
+#pragma endregion
+
+#pragma region po_index
+template<class Ntk, class = void>
+struct po_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct po_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool po_index_v = po_index<Ntk>::value;
+#pragma endregion
+
+#pragma region ro_index
+template<class Ntk, class = void>
+struct ro_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct ro_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool ro_index_v = ro_index<Ntk>::value;
+#pragma endregion
+
+#pragma region ri_index
+template<class Ntk, class = void>
+struct ri_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct ri_index<Ntk, std::void_t<decltype( std::declval<Ntk>().index_to_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool ri_index_v = ri_index<Ntk>::value;
+#pragma endregion
+
+#pragma region has_ro_to_ri
+template<class Ntk, class = void>
+struct has_ro_to_ri : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_ro_to_ri<Ntk, std::void_t<decltype( std::declval<Ntk>().ro_to_ri( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_ro_to_ri_v = has_ro_to_ri<Ntk>::value;
+#pragma endregion
+
+#pragma region has_ri_to_ro
+template<class Ntk, class = void>
+struct has_ri_to_ro : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_ri_to_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().ri_to_ro( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_ri_to_ro_v = has_ri_to_ro<Ntk>::value;
+#pragma endregion
+
 #pragma region has_foreach_node
 template<class Ntk, class = void>
 struct has_foreach_node : std::false_type
@@ -768,6 +1295,36 @@ struct has_foreach_node<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_n
 
 template<class Ntk>
 inline constexpr bool has_foreach_node_v = has_foreach_node<Ntk>::value;
+#pragma endregion
+
+#pragma region has_foreach_ci
+template<class Ntk, class = void>
+struct has_foreach_ci : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_ci<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_ci( std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_ci_v = has_foreach_ci<Ntk>::value;
+#pragma endregion
+
+#pragma region has_foreach_co
+template<class Ntk, class = void>
+struct has_foreach_co : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_co<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_co( std::declval<void( signal<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_co_v = has_foreach_co<Ntk>::value;
 #pragma endregion
 
 #pragma region has_foreach_pi
@@ -800,6 +1357,36 @@ template<class Ntk>
 inline constexpr bool has_foreach_po_v = has_foreach_po<Ntk>::value;
 #pragma endregion
 
+#pragma region has_foreach_ro
+template<class Ntk, class = void>
+struct has_foreach_ro : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_ro( std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_ro_v = has_foreach_ro<Ntk>::value;
+#pragma endregion
+
+#pragma region has_foreach_ri
+template<class Ntk, class = void>
+struct has_foreach_ri : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_ri<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_ri( std::declval<void( signal<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_ri_v = has_foreach_ri<Ntk>::value;
+#pragma endregion
+
 #pragma region has_foreach_gate
 template<class Ntk, class = void>
 struct has_foreach_gate : std::false_type
@@ -813,6 +1400,21 @@ struct has_foreach_gate<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_g
 
 template<class Ntk>
 inline constexpr bool has_foreach_gate_v = has_foreach_gate<Ntk>::value;
+#pragma endregion
+
+#pragma region has_foreach_register
+template<class Ntk, class = void>
+struct has_foreach_register : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_register<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_register( std::declval<void( std::pair<node<Ntk>,signal<Ntk>>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_register_v = has_foreach_register<Ntk>::value;
 #pragma endregion
 
 #pragma region has_foreach_fanin
@@ -1115,19 +1717,34 @@ template<class Ntk>
 inline constexpr bool has_set_visited_v = has_set_visited<Ntk>::value;
 #pragma endregion
 
-#pragma region has_update
+#pragma region trav_id
 template<class Ntk, class = void>
-struct has_update : std::false_type
+struct has_trav_id : std::false_type
 {
 };
 
 template<class Ntk>
-struct has_update<Ntk, std::void_t<decltype( std::declval<Ntk>().update() )>> : std::true_type
+struct has_trav_id<Ntk, std::void_t<decltype( std::declval<Ntk>().trav_id() )>> : std::true_type
 {
 };
 
 template<class Ntk>
-inline constexpr bool has_update_v = has_update<Ntk>::value;
+inline constexpr bool has_trav_id_v = has_trav_id<Ntk>::value;
+#pragma endregion
+
+#pragma region incr_trav_id
+template<class Ntk, class = void>
+struct has_incr_trav_id : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_incr_trav_id<Ntk, std::void_t<decltype( std::declval<Ntk>().incr_trav_id() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_incr_trav_id_v = has_incr_trav_id<Ntk>::value;
 #pragma endregion
 
 /*! \brief SFINAE based on iterator type (for compute functions).

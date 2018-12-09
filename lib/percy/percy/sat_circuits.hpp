@@ -9,7 +9,7 @@ namespace percy
     /// can be used to check if the binary sum of the variables is less than, equal to, or greater
     /// than C.
     /// This encoding is due to Andrey Mokhov.
-    void create_cardinality_circuit(
+    inline void create_cardinality_circuit(
         solver_wrapper * solver,
         const std::vector<int>& sum_vars,
         const std::vector<int>& res_vars,

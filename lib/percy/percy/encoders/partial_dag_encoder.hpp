@@ -27,10 +27,10 @@ namespace percy
         // so this is a constant.
         const int PD_OP_VARS_PER_STEP = 3;
 
-        static constexpr int NR_SIM_TTS = 32;
+        static const int NR_SIM_TTS = 32;
         std::vector<kitty::dynamic_truth_table> sim_tts { NR_SIM_TTS };
 
-        inline int nr_svars_for_step(
+        int nr_svars_for_step(
             const spec& spec, 
             const partial_dag& dag, 
             int i) const
@@ -52,6 +52,19 @@ namespace percy
             default: // No fanin flexibility
                 return 0;
             }
+        }
+
+        int nr_pi_fanins_for_step(const partial_dag& dag, int i) const
+        {
+            const auto& vertex = dag.get_vertex(i);
+            auto nr_pi_fanins = 0;
+            if (vertex[1] == FANIN_PI) {
+                nr_pi_fanins = 2;
+            } else if (vertex[0] == FANIN_PI) {
+                nr_pi_fanins = 1;
+            }
+
+            return nr_pi_fanins;
         }
 
         int get_sel_var(
@@ -86,7 +99,7 @@ namespace percy
             return sim_offset + spec.get_tt_size() * step_idx + t;
         }
 
-        int get_op_var(const spec& spec, int step_idx, int var_idx) const
+        int get_op_var(int step_idx, int var_idx) const
         {
             return ops_offset + step_idx * PD_OP_VARS_PER_STEP + var_idx;
         }
@@ -271,20 +284,20 @@ namespace percy
             bool status = true;
             for (int i = 0; i < spec.nr_steps; i++) {
                 // Dissallow the constant zero operator.
-                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 0);
-                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 0);
-                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 0);
+                pLits[0] = pabc::Abc_Var2Lit(get_op_var(i, 0), 0);
+                pLits[1] = pabc::Abc_Var2Lit(get_op_var(i, 1), 0);
+                pLits[2] = pabc::Abc_Var2Lit(get_op_var(i, 2), 0);
                 status &= solver->add_clause(pLits, pLits + 3);
 
                 // Dissallow variable projections.
-                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 0);
-                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 1);
-                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 1);
+                pLits[0] = pabc::Abc_Var2Lit(get_op_var(i, 0), 0);
+                pLits[1] = pabc::Abc_Var2Lit(get_op_var(i, 1), 1);
+                pLits[2] = pabc::Abc_Var2Lit(get_op_var(i, 2), 1);
                 status &= solver->add_clause(pLits, pLits + 3);
 
-                pLits[0] = pabc::Abc_Var2Lit(get_op_var(spec, i, 0), 1);
-                pLits[1] = pabc::Abc_Var2Lit(get_op_var(spec, i, 1), 0);
-                pLits[2] = pabc::Abc_Var2Lit(get_op_var(spec, i, 2), 1);
+                pLits[0] = pabc::Abc_Var2Lit(get_op_var(i, 0), 1);
+                pLits[1] = pabc::Abc_Var2Lit(get_op_var(i, 1), 0);
+                pLits[2] = pabc::Abc_Var2Lit(get_op_var(i, 2), 1);
                 status &= solver->add_clause(pLits, pLits + 3);
             }
 
@@ -326,7 +339,7 @@ namespace percy
 
             if (b | c) {
                 pLits[ctr++] = pabc::Abc_Var2Lit(
-                    get_op_var(spec, i, ((c << 1) | b) - 1), 1 - a);
+                    get_op_var(i, ((c << 1) | b) - 1), 1 - a);
             }
 
             auto status = solver->add_clause(pLits, pLits + ctr);
@@ -371,7 +384,7 @@ namespace percy
 
             if (b | c) {
                 pLits[ctr++] = pabc::Abc_Var2Lit(
-                    get_op_var(spec, i, ((c << 1) | b) - 1), 1 - a);
+                    get_op_var(i, ((c << 1) | b) - 1), 1 - a);
             }
 
             return solver->add_clause(pLits, pLits + ctr);
@@ -510,7 +523,6 @@ namespace percy
                 vcreate_tt_clauses(spec, dag, t);
             }
         }
-
 
         bool reapply_helper(
             const spec& spec,
@@ -667,88 +679,6 @@ namespace percy
             return reapply_helper(spec, dag, svars, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
 
-        void colex_helper(
-            const spec& spec,
-            const partial_dag& dag, 
-            int i, 
-            int j, 
-            int k, 
-            int sel_var) 
-        {
-            int pLits[2];
-
-            const auto& vertex = dag.get_vertex(i + 1);
-            auto nr_pi_fanins = 0;
-            if (vertex[1] == FANIN_PI) {
-                nr_pi_fanins = 2;
-            } else if (vertex[0] == FANIN_PI) {
-                nr_pi_fanins = 1;
-            }
-            if (nr_pi_fanins == 1) {
-                const auto kp = spec.nr_in + vertex[1] - 1;
-                for (int jp = 0; jp < spec.nr_in; jp++) {
-                    if ((kp == k && jp < j) || (kp < k)) {
-                        const auto sel_varp = get_sel_var(spec, dag, i + 1, jp);
-                        int ctr = 0;
-                        if (sel_var != -1) {
-                            pLits[ctr++] = pabc::Abc_Var2Lit(sel_var, 1);
-                        }
-                        pLits[ctr++] = pabc::Abc_Var2Lit(sel_varp, 1);
-                        (void)solver->add_clause(pLits, pLits + ctr);
-                    }
-                }
-            } else if (nr_pi_fanins == 2) {
-                auto svar_ctr = 0;
-                for (int kp = 1; kp < spec.nr_in; kp++) {
-                    for (int jp = 0; jp < kp; jp++) {
-                        if ((kp == k && jp < j) || (kp < k)) {
-                            const auto sel_varp = get_sel_var(spec, dag, i + 1, svar_ctr);
-                            int ctr = 0;
-                            if (sel_var != -1) {
-                                pLits[ctr++] = pabc::Abc_Var2Lit(sel_var, 1);
-                            }
-                            pLits[ctr++] = pabc::Abc_Var2Lit(sel_varp, 1);
-                            (void)solver->add_clause(pLits, pLits + ctr);
-                        }
-                        svar_ctr++;
-                    }
-                }
-            }
-        }
-        
-        void create_colex_clauses(const spec& spec, const partial_dag& dag)
-        {
-            for (int i = 0; i < spec.nr_steps - 1; i++) {
-                const auto& vertex = dag.get_vertex(i);
-                auto nr_pi_fanins = 0;
-                if (vertex[1] == FANIN_PI) {
-                    nr_pi_fanins = 2;
-                } else if (vertex[0] == FANIN_PI) {
-                    nr_pi_fanins = 1;
-                }
-                if (nr_pi_fanins == 0) {
-                    const auto j = spec.nr_in + vertex[0] - 1;
-                    const auto k = spec.nr_in + vertex[1] - 1;
-                    colex_helper(spec, dag, i, j, k, -1);
-                } else if (nr_pi_fanins == 1) {
-                    const auto k = spec.nr_in + vertex[1] - 1;
-                    for (int j = 0; j < spec.nr_in; j++) {
-                        const auto sel_var = get_sel_var(spec, dag, i, j);
-                        colex_helper(spec, dag, i, j, k, sel_var);
-                    }
-                } else {
-                    auto svar_ctr = 0;
-                    for (int k = 1; k < spec.nr_in; k++) {
-                        for (int j = 0; j < k; j++) {
-                            const auto sel_var = get_sel_var(spec, dag, i, svar_ctr++);
-                            if (k == 1) continue;
-                            colex_helper(spec, dag, i, j, k, sel_var);
-                        }
-                    }
-                }
-            }
-        }
-
         bool create_symvar_clauses(const spec& spec, const partial_dag& dag)
         {
             for (int q = 1; q < spec.nr_in; q++) {
@@ -899,10 +829,6 @@ namespace percy
                 return false;
             }
 
-            if (spec.add_colex_clauses) {
-                create_colex_clauses(spec, dag);
-            }
-
             if (spec.add_symvar_clauses && !create_symvar_clauses(spec, dag)) {
                 return false;
             }
@@ -974,12 +900,14 @@ namespace percy
         cegar_encode(const spec& spec, const partial_dag& dag)
         {
             cegar_create_variables(spec, dag);
+            /*
             for (int i = 0; i < spec.nr_rand_tt_assigns; i++) {
                 const auto t = rand() % spec.get_tt_size();
                 //printf("creating tt/IO clause at idx %d\n", t+1);
                 vcreate_tt_clauses(spec, dag, t);
                 vfix_output_sim_vars(spec, t);
             }
+            */
 
             create_cardinality_constraints(spec, dag);
 
@@ -995,10 +923,6 @@ namespace percy
                 return false;
             }
             
-            if (spec.add_colex_clauses) {
-                create_colex_clauses(spec, dag);
-            }
-
             if (spec.add_symvar_clauses && !create_symvar_clauses(spec, dag)) {
                 return false;
             }
@@ -1018,7 +942,7 @@ namespace percy
             for (int i = 0; i < spec.nr_steps; i++) {
                 kitty::dynamic_truth_table op(2);
                 for (int j = 0; j < PD_OP_VARS_PER_STEP; j++) {
-                    if (solver->var_value(get_op_var(spec, i, j))) {
+                    if (solver->var_value(get_op_var(i, j))) {
                         kitty::set_bit(op, j + 1);
                     }
                 }
@@ -1145,12 +1069,12 @@ namespace percy
 
         kitty::dynamic_truth_table& simulate(const spec& spec, const partial_dag& dag)
         {
-            int op_inputs[2];
+            int op_inputs[2] = { 0, 0 };
 
             for (int i = 0; i < spec.nr_steps; i++) {
                 char op = 0;
                 for (int j = 0; j < PD_OP_VARS_PER_STEP; j++) {
-                    if (solver->var_value(get_op_var(spec, i, j))) {
+                    if (solver->var_value(get_op_var(i, j))) {
                         op |= (1 << (j + 1));
                     }
                 }

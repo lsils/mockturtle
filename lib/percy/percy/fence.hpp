@@ -595,7 +595,7 @@ namespace percy
     /***************************************************************************
         Generates all fences of k nodes.
     ***************************************************************************/
-    std::vector<fence>
+    inline std::vector<fence>
     generate_fences(int k, bool po_filter=true, int nr_outputs=1)
     {
         std::vector<fence> fences;
@@ -612,7 +612,7 @@ namespace percy
     /***************************************************************************
         Overloaded version that appends generated fences to existing vector.
     ***************************************************************************/
-    void
+    inline void
     generate_fences(
             std::vector<fence>& fences, 
             int k, 
@@ -631,7 +631,7 @@ namespace percy
         Generates all fences of k nodes and puts them into a concurrent queue
         to be consumed by other threads.
     ***************************************************************************/
-    void
+    inline void
     generate_fences(spec& spec, moodycamel::ConcurrentQueue<fence>& q)
     {
         rec_fence_generator gen;
@@ -642,7 +642,7 @@ namespace percy
         }
     }
     
-    void print_fence(const fence& f)
+    inline void print_fence(const fence& f)
     {
         for (int i = f.nr_levels()-1; i >= 0; i--) {
             printf("  ");

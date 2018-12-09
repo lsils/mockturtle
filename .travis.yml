@@ -50,20 +50,18 @@ matrix:
     before_install:
       - brew update
       - brew install llvm
-    env: COMPILER=/usr/local/Cellar/llvm/6.0.1/bin/clang++
+    env: COMPILER=/usr/local/opt/llvm/bin/clang++
   - os: osx
     osx_image: xcode8.3
     compiler: gcc
     before_install:
       - brew update
-      - brew cask uninstall oclint
       - brew install gcc
-    env: COMPILER=/usr/local/Cellar/gcc/8.2.0/bin/g++-8
+    env: COMPILER=/usr/local/opt/gcc/bin/g++-8
   - os: osx
     osx_image: xcode8.3
     compiler: gcc
     before_install:
       - brew update
-      - brew cask uninstall oclint
       - brew install gcc@7
-    env: COMPILER=/usr/local/Cellar/gcc@7/7.3.0/bin/g++-7
+    env: COMPILER=/usr/local/opt/gcc@7/bin/g++-7

@@ -181,7 +181,7 @@ public:
   /*! \brief Callback method for parsed header of justice property.
    *
    * \param index Index of the justice property
-   * \param lit Number of assigned literals
+   * \param size Number of assigned literals
    */
   virtual void on_justice_header( unsigned index, std::size_t size ) const
   {
@@ -192,7 +192,7 @@ public:
   /*! \brief Callback method for parsed justice property.
    *
    * \param index Index of the justice property
-   * \param lit Assigned literal
+   * \param lits Assigned literals
    */
   virtual void on_justice( unsigned index, const std::vector<unsigned>& lits ) const
   {
@@ -692,7 +692,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
   std::string header_line;
   std::getline( in, header_line );
 
-  std::size_t _m, _i, _l, _o, _a, _b, _c, _j, _f;
+  uint32_t _m, _i, _l, _o, _a, _b, _c, _j, _f;
 
   /* parse header */
   if ( std::regex_search( header_line, m, aig_regex::header ) )
@@ -713,10 +713,10 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
     _l = header[3u];
     _o = header[4u];
     _a = header[5u];
-    _b = header.size() > 6 ? header[6u] : 0ul;
-    _c = header.size() > 7 ? header[7u] : 0ul;
-    _j = header.size() > 8 ? header[8u] : 0ul;
-    _f = header.size() > 9 ? header[9u] : 0ul;
+    _b = header.size() > 6 ? header[6u] : 0u;
+    _c = header.size() > 7 ? header[7u] : 0u;
+    _j = header.size() > 8 ? header[8u] : 0u;
+    _f = header.size() > 9 ? header[9u] : 0u;
     reader.on_header( _m, _i, _l, _o, _a, _b, _c, _j, _f );
   }
   else
@@ -732,13 +732,13 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
   std::string line;
 
   /* inputs */
-  for ( auto i = 0ul; i < _i; ++i )
+  for ( auto i = 0u; i < _i; ++i )
   {
     reader.on_input( i, 2u*(i+1) );
   }
 
   /* latches */
-  for ( auto i = 0ul; i < _l; ++i )
+  for ( auto i = 0u; i < _l; ++i )
   {
     std::getline( in, line );
     const auto tokens = detail::split( line, " " );
@@ -759,21 +759,21 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
     reader.on_latch( _i + i + 1u, next, init_value );
   }
 
-  for ( auto i = 0ul; i < _o; ++i )
+  for ( auto i = 0u; i < _o; ++i )
   {
     std::getline( in, line );
     reader.on_output( i, std::atol( line.c_str() ) );
   }
 
   /* bad state properties */
-  for ( auto i = 0ul; i < _b; ++i )
+  for ( auto i = 0u; i < _b; ++i )
   {
     std::getline( in, line );
     reader.on_bad_state( i, std::atol( line.c_str() ) );
   }
 
   /* constraints */
-  for ( auto i = 0ul; i < _c; ++i )
+  for ( auto i = 0u; i < _c; ++i )
   {
     std::getline( in, line );
     reader.on_constraint( i, std::atol( line.c_str() ) );
@@ -781,7 +781,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
 
   /* justice properties */
   std::vector<std::size_t> justice_sizes;
-  for ( auto i = 0ul; i < _j; ++i )
+  for ( auto i = 0u; i < _j; ++i )
   {
     std::getline( in, line );
     const auto justice_size = std::atol( line.c_str() );
@@ -789,10 +789,10 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
     reader.on_justice_header( i, justice_size );
   }
 
-  for ( auto i = 0ul; i < _j; ++i )
+  for ( auto i = 0u; i < _j; ++i )
   {
     std::vector<unsigned> lits;
-    for ( auto j = 0ul; j < justice_sizes[i]; ++j )
+    for ( auto j = 0u; j < justice_sizes[i]; ++j )
     {
       std::getline( in, line );
       const auto lit = std::atol( line.c_str() );
@@ -802,7 +802,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
   }
 
   /* fairness */
-  for ( auto i = 0ul; i < _f; ++i )
+  for ( auto i = 0u; i < _f; ++i )
   {
     std::getline( in, line );
     reader.on_fairness( i, std::atol( line.c_str() ) );

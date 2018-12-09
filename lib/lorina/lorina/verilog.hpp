@@ -36,7 +36,7 @@
 #include <lorina/diagnostics.hpp>
 #include <lorina/detail/utils.hpp>
 #include <lorina/detail/tokenizer.hpp>
-#include <regex>
+#include <lorina/verilog_regex.hpp>
 #include <iostream>
 
 namespace lorina
@@ -51,7 +51,7 @@ class verilog_reader
 public:
   /*! \brief Callback method for parsed module.
    *
-   * \param model_name Name of the module
+   * \param module_name Name of the module
    * \param inouts Container for input and output names
    */
   virtual void on_module_header( const std::string& module_name, const std::vector<std::string>& inouts ) const
@@ -98,7 +98,7 @@ public:
     (void)rhs;
   }
 
-  /*! \brief Callback method for parsed and gate `LHS = OP1 & OP2 ;`.
+  /*! \brief Callback method for parsed AND-gate with 2 operands `LHS = OP1 & OP2 ;`.
    *
    * \param lhs Left-hand side of assignment
    * \param op1 operand1 of assignment
@@ -111,7 +111,7 @@ public:
     (void)op2;
   }
 
-  /*! \brief Callback method for parsed or gate `LHS = OP1 | OP2 ;`.
+  /*! \brief Callback method for parsed OR-gate with 2 operands `LHS = OP1 | OP2 ;`.
    *
    * \param lhs Left-hand side of assignment
    * \param op1 operand1 of assignment
@@ -124,7 +124,7 @@ public:
     (void)op2;
   }
 
-  /*! \brief Callback method for parsed or gate `LHS = OP1 ^ OP2 ;`.
+  /*! \brief Callback method for parsed XOR-gate with 2 operands `LHS = OP1 ^ OP2 ;`.
    *
    * \param lhs Left-hand side of assignment
    * \param op1 operand1 of assignment
@@ -137,11 +137,57 @@ public:
     (void)op2;
   }
 
+  /*! \brief Callback method for parsed AND-gate with 3 operands `LHS = OP1 & OP2 & OP3 ;`.
+   *
+   * \param lhs Left-hand side of assignment
+   * \param op1 operand1 of assignment
+   * \param op2 operand2 of assignment
+   * \param op3 operand3 of assignment
+   */
+  virtual void on_and3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const
+  {
+    (void)lhs;
+    (void)op1;
+    (void)op2;
+    (void)op3;
+  }
+
+  /*! \brief Callback method for parsed OR-gate with 3 operands `LHS = OP1 | OP2 | OP3 ;`.
+   *
+   * \param lhs Left-hand side of assignment
+   * \param op1 operand1 of assignment
+   * \param op2 operand2 of assignment
+   * \param op3 operand3 of assignment
+   */
+  virtual void on_or3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const
+  {
+    (void)lhs;
+    (void)op1;
+    (void)op2;
+    (void)op3;
+  }
+
+  /*! \brief Callback method for parsed XOR-gate with 3 operands `LHS = OP1 ^ OP2 ^ OP3 ;`.
+   *
+   * \param lhs Left-hand side of assignment
+   * \param op1 operand1 of assignment
+   * \param op2 operand2 of assignment
+   * \param op3 operand3 of assignment
+   */
+  virtual void on_xor3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const
+  {
+    (void)lhs;
+    (void)op1;
+    (void)op2;
+    (void)op3;
+  }
+
   /*! \brief Callback method for parsed majority-of-3 gate `LHS = ( OP1 & OP2 ) | ( OP1 & OP3 ) | ( OP2 & OP3 ) ;`.
    *
    * \param lhs Left-hand side of assignment
    * \param op1 operand1 of assignment
    * \param op2 operand2 of assignment
+   * \param op3 operand3 of assignment
    */
   virtual void on_maj3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const
   {
@@ -261,6 +307,30 @@ public:
     _os << fmt::format("assign {} = {} ^ {} ;\n", lhs, p1, p2 );
   }
 
+  void on_and3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
+  {
+    const std::string p1 = op1.second ? fmt::format( "~{}", op1.first ) : op1.first;
+    const std::string p2 = op2.second ? fmt::format( "~{}", op2.first ) : op2.first;
+    const std::string p3 = op3.second ? fmt::format( "~{}", op3.first ) : op3.first;
+    _os << fmt::format("assign {} = {} & {} & {} ;\n", lhs, p1, p2, p3 );
+  }
+
+  void on_or3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
+  {
+    const std::string p1 = op1.second ? fmt::format( "~{}", op1.first ) : op1.first;
+    const std::string p2 = op2.second ? fmt::format( "~{}", op2.first ) : op2.first;
+    const std::string p3 = op3.second ? fmt::format( "~{}", op3.first ) : op3.first;
+    _os << fmt::format("assign {} = {} | {} | {} ;\n", lhs, p1, p2, p3 );
+  }
+
+  void on_xor3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
+  {
+    const std::string p1 = op1.second ? fmt::format( "~{}", op1.first ) : op1.first;
+    const std::string p2 = op2.second ? fmt::format( "~{}", op2.first ) : op2.first;
+    const std::string p3 = op3.second ? fmt::format( "~{}", op3.first ) : op3.first;
+    _os << fmt::format("assign {} = {} ^ {} ^ {} ;\n", lhs, p1, p2, p3 );
+  }
+
   void on_maj3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
   {
     const std::string p1 = op1.second ? fmt::format( "~{}", op1.first ) : op1.first;
@@ -282,21 +352,76 @@ public:
   std::ostream& _os; /*!< Output stream */
 }; /* verilog_pretty_printer */
 
-namespace verilog_regex
-{
-static std::regex immediate_assign( R"(^(~)?([[:alnum:]\[\]_']+)$)" );
-static std::regex binary_expression( R"(^(~)?([[:alnum:]\[\]_']+)([&|^])(~)?([[:alnum:]\[\]_']+)$)" );
-static std::regex maj3_expression( R"(^\((~)?([[:alnum:]\[\]_']+)&(~)?([[:alnum:]\[\]_']+)\)\|\((~)?([[:alnum:]\[\]_']+)&(~)?([[:alnum:]\[\]_']+)\)\|\((~)?([[:alnum:]\[\]_']+)&(~)?([[:alnum:]\[\]_']+)\)$)" );
-} // namespace verilog_regex
-
+/*! \brief Simple parser for VERILOG format.
+ *
+ * Simplistic grammar-oriented parser for a structural VERILOG format.
+ *
+ */
 class verilog_parser
 {
 public:
+  /*! \brief Construct a VERILOG parser
+   *
+   * \param in Input stream
+   * \param reader A verilog reader
+   * \param diag A diagnostic engine
+   */
   verilog_parser( std::istream& in, const verilog_reader& reader, diagnostic_engine* diag = nullptr )
     : tok( in )
     , reader( reader )
     , diag( diag )
-  {}
+    , on_action([&]( std::vector<std::pair<std::string,bool>> inputs, std::string output, std::string type ){
+                  if ( type == "assign" )
+                  {
+                    assert( inputs.size() == 1u );
+                    reader.on_assign( output, inputs[0] );
+                  }
+                  else if ( type == "and2" )
+                  {
+                    assert( inputs.size() == 2u );
+                    reader.on_and( output, inputs[0], inputs[1] );
+                  }
+                  else if ( type == "or2" )
+                  {
+                    assert( inputs.size() == 2u );
+                    reader.on_or( output, inputs[0], inputs[1] );
+                  }
+                  else if ( type == "xor2" )
+                  {
+                    assert( inputs.size() == 2u );
+                    reader.on_xor( output, inputs[0], inputs[1] );
+                  }
+                  else if ( type == "and3" )
+                  {
+                    assert( inputs.size() == 3u );
+                    reader.on_and3( output, inputs[0], inputs[1], inputs[2] );
+                  }
+                  else if ( type == "or3" )
+                  {
+                    assert( inputs.size() == 3u );
+                    reader.on_or3( output, inputs[0], inputs[1], inputs[2] );
+                  }
+                  else if ( type == "xor3" )
+                  {
+                    assert( inputs.size() == 3u );
+                    reader.on_xor3( output, inputs[0], inputs[1], inputs[2] );
+                  }
+                  else if ( type == "maj3" )
+                  {
+                    assert( inputs.size() == 3u );
+                    reader.on_maj3( output, inputs[0], inputs[1], inputs[2] );
+                  }
+                  else
+                  {
+                    assert( false );
+                  }
+                })
+  {
+    on_action.declare_known( "0" );
+    on_action.declare_known( "1" );
+    on_action.declare_known( "1'b0" );
+    on_action.declare_known( "1'b1" );
+  }
 
   bool get_token( std::string& token )
   {
@@ -322,7 +447,6 @@ public:
 
     return ( result == detail::tokenizer_return_code::valid );
   }
-
 
   bool parse_module()
   {
@@ -403,6 +527,17 @@ public:
       if ( !valid ) return false;
     }
 
+    /* check dangling objects */
+    const auto& deps = on_action.unresolved_dependencies();
+    for ( const auto& r : on_action.unresolved_dependencies() )
+    {
+      if ( diag )
+      {
+        diag->report( diagnostic_level::warning,
+                      fmt::format( "unresolved dependencies: `{0}` requires `{1}`",  r.first, r.second ) );
+      }
+    }
+
     if ( token == "endmodule" )
     {
       /* callback */
@@ -465,6 +600,9 @@ public:
 
     /* callback */
     reader.on_inputs( inputs );
+
+    for ( const auto& i : inputs )
+      on_action.declare_known( i );
 
     return true;
   }
@@ -556,7 +694,7 @@ public:
     if ( std::regex_match( s, sm, verilog_regex::immediate_assign ) )
     {
       assert( sm.size() == 3u );
-      reader.on_assign( lhs, {sm[2], sm[1] == "~"} );
+      on_action.call_deferred( { sm[2] }, lhs, {{sm[2], sm[1] == "~"}}, lhs, "assign" );
     }
     else if ( std::regex_match( s, sm, verilog_regex::binary_expression ) )
     {
@@ -567,15 +705,44 @@ public:
 
       if ( op == "&" )
       {
-        reader.on_and( lhs, arg0, arg1 );
+        on_action.call_deferred( { arg0.first, arg1.first }, lhs, {arg0, arg1}, lhs, "and2" );
       }
       else if ( op == "|" )
       {
-        reader.on_or( lhs, arg0, arg1 );
+        on_action.call_deferred( { arg0.first, arg1.first }, lhs, {arg0, arg1}, lhs, "or2" );
       }
       else if ( op == "^" )
       {
-        reader.on_xor( lhs, arg0, arg1 );
+        on_action.call_deferred( { arg0.first, arg1.first }, lhs, {arg0, arg1}, lhs, "xor2" );
+      }
+      else
+      {
+        return false;
+      }
+    }
+    else if ( std::regex_match( s, sm, verilog_regex::ternary_expression ) )
+    {
+      assert( sm.size() == 9u );
+      std::pair<std::string,bool> arg0 = {sm[2], sm[1] == "~"};
+      std::pair<std::string,bool> arg1 = {sm[5], sm[4] == "~"};
+      std::pair<std::string,bool> arg2 = {sm[8], sm[7] == "~"};
+      auto op = sm[3];
+      if ( sm[6] != op )
+      {
+        return false;
+      }
+
+      if ( op == "&" )
+      {
+        on_action.call_deferred( { arg0.first, arg1.first, arg2.first }, lhs, {arg0, arg1, arg2}, lhs, "and3" );
+      }
+      else if ( op == "|" )
+      {
+        on_action.call_deferred( { arg0.first, arg1.first, arg2.first }, lhs, {arg0, arg1, arg2}, lhs, "or3" );
+      }
+      else if ( op == "^" )
+      {
+        on_action.call_deferred( { arg0.first, arg1.first, arg2.first }, lhs, {arg0, arg1, arg2}, lhs, "xor3" );
       }
       else
       {
@@ -599,7 +766,7 @@ public:
       args.push_back( b0 );
       args.push_back( c0 );
 
-      reader.on_maj3( lhs, a0, b0, c0 );
+      on_action.call_deferred( { a0.first, b0.first, c0.first }, lhs, args, lhs, "maj3" );
     }
     else
     {
@@ -616,6 +783,8 @@ private:
 
   std::string token;
   bool valid = false;
+
+  detail::call_in_topological_order<std::vector<std::pair<std::string,bool>>, std::string, std::string> on_action;
 }; /* verilog_parser */
 
 /*! \brief Reader function for VERILOG format.

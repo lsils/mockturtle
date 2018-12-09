@@ -73,6 +73,7 @@ public:
   using storage = typename Ntk::storage;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
+  static constexpr bool is_topologically_sorted = true;
 
 public:
   explicit cut_view( Ntk const& ntk, std::vector<node> const& leaves, node const& root )
@@ -104,7 +105,7 @@ public:
     }
   }
 
-  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<_Ntk::signal, _Ntk::node>>>
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   explicit cut_view( Ntk const& ntk, std::vector<signal> const& leaves, node const& root )
       : immutable_view<Ntk>( ntk ), _root( root )
   {
@@ -223,5 +224,11 @@ public:
   spp::sparse_hash_map<node, uint32_t> _node_to_index;
   node _root;
 };
+
+template<class T>
+cut_view(T const&, std::vector<node<T>> const&, node<T> const&) -> cut_view<T>;
+
+template<class T, typename = std::enable_if_t<!std::is_same_v<typename T::signal, typename T::node>>>
+cut_view(T const&, std::vector<signal<T>> const&, node<T> const&) -> cut_view<T>;
 
 } /* namespace mockturtle */

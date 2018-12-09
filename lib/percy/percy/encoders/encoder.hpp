@@ -25,7 +25,7 @@ namespace percy
         }
     };
 
-    class enumerating_encoder : public encoder
+    class enumerating_encoder
     {
     protected:
         bool dirty = false;
@@ -33,7 +33,6 @@ namespace percy
     public:
         virtual bool block_solution(const spec& spec) = 0;
         virtual bool block_struct_solution(const spec& spec) = 0;
-        virtual void extract_chain(const spec& spec, chain& chain) = 0;
 
         void reset()
         {
@@ -42,24 +41,57 @@ namespace percy
 
         bool is_dirty() { return dirty; }
         void set_dirty(bool dirty) { this->dirty = dirty;  }
+        virtual void extract_chain(const spec& spec, chain& chain) = 0;
     };
 
-    class std_encoder : public enumerating_encoder
+    class std_encoder : public encoder
     {
     public:
         virtual bool encode(const spec& spec) = 0;
         virtual bool cegar_encode(const spec& spec) = 0;
         virtual bool create_tt_clauses(const spec& spec, int idx) = 0;
         virtual void print_solver_state(const spec& spec) = 0;
+        virtual void extract_chain(const spec& spec, chain& chain) = 0;
     };
 
-    class fence_encoder : public enumerating_encoder
+    class std_cegar_encoder : public std_encoder
+    {
+    protected:
+        static const int NR_SIM_TTS = 18;
+        std::vector<kitty::dynamic_truth_table> sim_tts{ NR_SIM_TTS };
+
+    public:
+        /// Simulates the current state of the encoder and returns an index
+        /// of a minterm which is different from the specified function.
+        /// Returns -1 if no such index exists.
+        /// Note: we subtract 1 from the actual index, as we encode only
+        /// normal functions.
+        virtual int simulate(const spec& spec) = 0;
+        
+        virtual void cegar_extract_chain(const spec& spec, chain& chain) = 0;
+
+        /// Resets the simulation truth tables, based on the number of PIs.
+        void reset_sim_tts(int nr_in)
+        {
+            for (int i = 0; i < NR_SIM_TTS; i++) {
+                sim_tts[i] = kitty::dynamic_truth_table(nr_in);
+                if (i < nr_in) {
+                    kitty::create_nth_var(sim_tts[i], i);
+                }
+            }
+        }
+    };
+
+    class fence_encoder : public encoder
     {
     public:
         virtual bool encode(const spec& spec, const fence& f) = 0;
         virtual bool cegar_encode(const spec& spec, const fence& f) = 0;
         virtual bool create_tt_clauses(const spec& spec, int idx) = 0;
         virtual kitty::dynamic_truth_table& simulate(const spec& spec) = 0;
+
+        virtual void extract_chain(const spec& spec, chain& chain) = 0;
+        virtual void reset_sim_tts(int) { }
     };
 
     template<int FI>
@@ -124,8 +156,7 @@ namespace percy
         return status;
     }
 
-    void
-    fanin_init(std::vector<int>& fanins, int max_fanin_id)
+    inline void fanin_init(std::vector<int>& fanins, int max_fanin_id)
     {
         fanins[fanins.size()-1] = max_fanin_id--;
         for (int i = fanins.size() - 2; i >= 0; i--) {
@@ -133,8 +164,7 @@ namespace percy
         }
     }
 
-    void
-    fanin_init(std::vector<int>& fanins, int max_fanin_id, int start_idx)
+    inline void fanin_init(std::vector<int>& fanins, int max_fanin_id, int start_idx)
     {
         fanins[start_idx] = max_fanin_id--;
         for (int i = start_idx-1; i >= 0; i--) {
@@ -142,8 +172,7 @@ namespace percy
         }
     }
 
-    bool
-    fanin_inc(std::vector<int>& fanins, const int max_fanin_id)
+    inline bool fanin_inc(std::vector<int>& fanins, const int max_fanin_id)
     {
         for (auto i = 0u; i < fanins.size(); i++) {
             if (i < fanins.size() - 1) {
@@ -166,16 +195,14 @@ namespace percy
         return false;
     }
 
-    void
-    print_fanin(const std::vector<int>& fanins)
+    inline void print_fanin(const std::vector<int>& fanins)
     {
         for (auto i = 0u; i < fanins.size(); i++) {
             printf("%d ", fanins[i] + 1);
         }
     }
 
-    void
-    print_fanin(const int* const fanins, int nr_fanins)
+    inline void print_fanin(const int* const fanins, int nr_fanins)
     {
         for (auto i = 0; i < nr_fanins; i++) {
             printf("%d ", fanins[i] + 1);

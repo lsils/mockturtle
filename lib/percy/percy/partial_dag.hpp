@@ -65,7 +65,7 @@ namespace percy
             void 
             foreach_vertex(Fn&& fn) const
             {
-                for (std::size_t i = 0; i < nr_vertices(); i++) {
+                for (int i = 0; i < nr_vertices(); i++) {
                     fn(vertices[i], i);
                 }
             }
@@ -105,6 +105,15 @@ namespace percy
                 assert(v_idx < nr_vertices());
                 vertices[v_idx][0] = fi1;
                 vertices[v_idx][1] = fi2;
+            }
+            
+            void
+            set_vertex(int v_idx, int fi1, int fi2, int fi3)
+            {
+                assert(v_idx < nr_vertices());
+                vertices[v_idx][0] = fi1;
+                vertices[v_idx][1] = fi2;
+                vertices[v_idx][2] = fi3;
             }
 
             void 
@@ -161,11 +170,10 @@ namespace percy
                 EMPTYGRAPH(g1,m,total_vertices);
                 for (int i = 1; i < total_vertices; i++) {
                     const auto& vertex = get_vertex(i);
-                    if (vertex[0] != FANIN_PI) {
-                        ADDONEARC(g1, vertex[0] - 1, i, m);
-                    }
-                    if (vertex[1] != FANIN_PI) {
-                        ADDONEARC(g1, vertex[1] - 1, i, m);
+                    for (const auto fanin : vertex) {
+                        if (fanin != FANIN_PI) {
+                            ADDONEARC(g1, fanin - 1, i, m);
+                        }
                     }
                 }
 
@@ -174,11 +182,10 @@ namespace percy
                 EMPTYGRAPH(g2,m,total_vertices);
                 for (int i = 0; i < total_vertices; i++) {
                     const auto& vertex = g.get_vertex(i);
-                    if (vertex[0] != FANIN_PI) {
-                        ADDONEARC(g2, vertex[0] - 1, i, m);
-                    }
-                    if (vertex[1] != FANIN_PI) {
-                        ADDONEARC(g2, vertex[1] - 1, i, m);
+                    for (const auto fanin : vertex) {
+                        if (fanin != FANIN_PI) {
+                            ADDONEARC(g2, fanin - 1, i, m);
+                        }
                     }
                 }
 
@@ -239,7 +246,6 @@ namespace percy
         // selecting them will not result in a valid DAG.
         int _disabled_matrix[18][18][18];
 
-        // If true, generates only connected DAGs.
         partial_gen_type _gen_type = GEN_NOREAPPLY;
 
         // The index at which backtracking should terminate.
@@ -717,379 +723,997 @@ namespace percy
         }
     };
 
-#ifndef DISABLE_NAUTY
-    class pd_iso_checker
+    class partial_dag3_generator
     {
     private:
-        int total_vertices;
-        int *lab1;
-        size_t lab1_sz = 0;
-        int *lab2;
-        size_t lab2_sz = 0;
-        int *ptn;
-        size_t ptn_sz = 0;
-        int *orbits;
-        size_t orbits_sz = 0;
-        int *map;
-        size_t map_sz = 0;
-        graph *g1;
-        size_t g1_sz = 0;
-        graph *g2;
-        size_t g2_sz = 0;
-        graph *cg1;
-        size_t cg1_sz = 0;
-        graph *cg2;
-        size_t cg2_sz = 0;
-        statsblk stats;
-        int m;
+        int _nr_vertices;
+        int _verbosity = 0;
+        bool _initialized;
+        int _level;
+        uint64_t _nr_solutions;
 
-        void initialize()
-        {
-            m = SETWORDSNEEDED(total_vertices);;
+        // Array indicating which steps have been covered. (And how many
+        // times.) 
+        int _covered_steps[18];
 
-            DYNALLOC1(int,lab1,lab1_sz,total_vertices,"malloc");
-            DYNALLOC1(int,lab2,lab2_sz,total_vertices,"malloc");
-            DYNALLOC1(int,ptn,ptn_sz,total_vertices,"malloc");
-            DYNALLOC1(int,orbits,orbits_sz,total_vertices,"malloc");
-            DYNALLOC1(int,map,map_sz,total_vertices,"malloc");
-            
-            DYNALLOC2(graph,g1,g1_sz,total_vertices,m,"malloc");
-            DYNALLOC2(graph,g2,g2_sz,total_vertices,m,"malloc");
+        // Array indicating which steps are "disabled", meaning that
+        // selecting them will not result in a valid DAG.
+        int _disabled_matrix[18][18][18][18];
 
-            DYNALLOC2(graph,cg1,cg1_sz,total_vertices,m,"malloc");
-            DYNALLOC2(graph,cg2,cg2_sz,total_vertices,m,"malloc");
-        }
+        partial_gen_type _gen_type = GEN_NOREAPPLY;
+
+        // The index at which backtracking should terminate.
+        int _stop_level = -1;
+
+        // Function to call when a solution is found.
+        std::function<void(partial_dag3_generator*)> _callback;
 
     public:
-        pd_iso_checker(int _total_vertices)
+        partial_dag3_generator() : _initialized(false) { }
+
+        partial_dag3_generator(int nr_vertices)
         {
-            total_vertices = _total_vertices;
-            initialize();
+            reset(nr_vertices);
         }
 
-        ~pd_iso_checker()
-        {
-            DYNFREE(lab1,lab1_sz);
-            DYNFREE(lab2,lab2_sz);
-            DYNFREE(ptn,ptn_sz);
-            DYNFREE(orbits,orbits_sz);
-            DYNFREE(map,map_sz);
-            
-            DYNFREE(g1,g1_sz);
-            DYNFREE(g2,g2_sz);
+        int _js[18];
+        int _ks[18];
+        int _ls[18];
 
-            DYNFREE(cg1,cg1_sz);
-            DYNFREE(cg2,cg2_sz);
+        // The level from which the search is assumed to have started
+        int _start_level = 1;
+
+        int nr_vertices() const { return _nr_vertices; }
+
+        void verbosity(int verbosity) { _verbosity = verbosity; }
+        int verbosity() { return _verbosity; }
+
+        partial_gen_type gen_type() const { return _gen_type; }
+        void gen_type(partial_gen_type gen_type) { _gen_type = gen_type; }
+
+        void set_callback(std::function<void(partial_dag3_generator*)>& f)
+        {
+            _callback = f;
         }
 
-        bool isomorphic(const partial_dag& dag1, const partial_dag& dag2)
+        void set_callback(std::function<void(partial_dag3_generator*)>&& f)
         {
-            void (*adjacencies)(graph*, int*, int*, int, 
-                    int, int, int*, int, boolean, int, int) = NULL;
-
-            DEFAULTOPTIONS_DIGRAPH(options);
-            options.getcanon = TRUE;
-
-            const auto nr_vertices = dag1.nr_vertices();
-
-            EMPTYGRAPH(g1, m, nr_vertices);
-            EMPTYGRAPH(g2, m, nr_vertices);
-
-            for (int i = 1; i < nr_vertices; i++) {
-                const auto& vertex = dag1.get_vertex(i);
-                if (vertex[0] != FANIN_PI) {
-                    ADDONEARC(g1, vertex[0] - 1, i, m);
-                }
-                if (vertex[1] != FANIN_PI) {
-                    ADDONEARC(g1, vertex[1] - 1, i, m);
-                }
-            }
-
-            for (int i = 0; i < nr_vertices; i++) {
-                const auto& vertex = dag2.get_vertex(i);
-                if (vertex[0] != FANIN_PI) {
-                    ADDONEARC(g2, vertex[0] - 1, i, m);
-                }
-                if (vertex[1] != FANIN_PI) {
-                    ADDONEARC(g2, vertex[1] - 1, i, m);
-                }
-            }
-
-            densenauty(g1,lab1,ptn,orbits,&options,&stats,m,nr_vertices,cg1);
-            densenauty(g2,lab2,ptn,orbits,&options,&stats,m,nr_vertices,cg2);
-
-            bool isomorphic = true;
-            for (int k = 0; k < m*nr_vertices; k++) {
-                if (cg1[k] != cg2[k]) {
-                    isomorphic = false;
-                    break;
-                }
-            }
-            return isomorphic;
+            _callback = std::move(f);
         }
 
-        /// Computes the canonical representation of the given DAG 
-        /// and returns it as a vector of numbers.
-        std::vector<graph> crepr(const partial_dag& dag)
+        void clear_callback()
         {
-            void (*adjacencies)(graph*, int*, int*, int, 
-                    int, int, int*, int, boolean, int, int) = NULL;
-
-            DEFAULTOPTIONS_DIGRAPH(options);
-            options.getcanon = TRUE;
-
-            const auto nr_vertices = dag.nr_vertices();
-            std::vector<graph> repr(m*dag.nr_vertices());
-
-            EMPTYGRAPH(g1, m, nr_vertices);
-
-            for (int i = 1; i < nr_vertices; i++) {
-                const auto& vertex = dag.get_vertex(i);
-                if (vertex[0] != FANIN_PI) {
-                    ADDONEARC(g1, vertex[0] - 1, i, m);
-                }
-                if (vertex[1] != FANIN_PI) {
-                    ADDONEARC(g1, vertex[1] - 1, i, m);
-                }
-            }
-
-            densenauty(g1,lab1,ptn,orbits,&options,&stats,m,nr_vertices,cg1);
-
-            for (int k = 0; k < m * nr_vertices; k++) {
-                repr[k] =  cg1[k];
-            }
-
-            return repr;
+            _callback = 0;
         }
 
+        void reset(int nr_vertices)
+        {
+            assert(nr_vertices > 0);
+
+            if (_verbosity) {
+                printf("setting nr. vertices=%d\n", nr_vertices);
+            }
+
+            _nr_vertices = nr_vertices;
+
+            for (int i = 0; i < 18; i++) {
+                _covered_steps[i] = 0;
+            }
+
+            for (int i = 0; i < 18; i++) {
+                for (int l = 2; l < 18; l++) {
+                    for (int k = 1; k < l; k++) {
+                        for (int j = 0; j < k; j++) {
+                            _disabled_matrix[i][j][k][l] = 0;
+                        }
+                    }
+                }
+
+                // The first vertex can only point to PIs
+                _js[0] = 0;
+                _ks[0] = 0;
+                _ls[0] = 0;
+
+                _nr_solutions = 0;
+                _level = 0;
+                _stop_level = -1;
+
+                _initialized = true;
+            }
+        }
+
+        auto count_tuples()
+        {
+            assert(_initialized);
+            _level = _start_level;
+            _nr_solutions = 0;
+
+            search_tuples();
+
+            return _nr_solutions;
+        }
+
+        void search_tuples()
+        {
+            if (_level == _nr_vertices) {
+                ++_nr_solutions;
+                if (_verbosity) {
+                    printf("Found solution: ");
+                    for (int i = 0; i < _nr_vertices; i++) {
+                        const auto j = _js[i];
+                        const auto k = _ks[i];
+                        const auto l = _ls[i];
+                        if (i > 0) {
+                            printf(" - ");
+                        }
+                        printf("(%d, %d, %d)", j, k, l);
+                    }
+                    printf("\n");
+                }
+                backtrack();
+            } else {
+                // It's always possible that this node is only connected to PIs
+                _js[_level] = 0;
+                _ks[_level] = 0;
+                _ls[_level] = 0;
+                ++_level;
+                search_tuples();
+
+                // It may also just have one internal connection
+                for (int l = 1; l <= _level; l++) {
+                    _ls[_level] = l;
+                    ++_level;
+                    search_tuples();
+                }
+
+                // Or at least two internal connections
+                for (int l = 2; l <= _level; l++) {
+                    for (int k = 1; k < l; k++) {
+                        for (int j = 0; j < k; j++) {
+                            _js[_level] = j;
+                            _ks[_level] = k;
+                            _ls[_level] = l;
+                            ++_level;
+                            search_tuples();
+                        }
+                    }
+                }
+                backtrack();
+            }
+        }
+
+        auto count_connected_dags()
+        {
+            assert(_initialized);
+            _level = _start_level;
+            _nr_solutions = 0;
+
+            search_connected_dags();
+
+            return _nr_solutions;
+        }
+
+        void search_connected_dags()
+        {
+            if (_level == _nr_vertices) {
+                for (int i = 1; i <= _nr_vertices - 1; i++) {
+                    if (_covered_steps[i] == 0) {
+                        // There is some uncovered internal step, so the
+                        // graph cannot be connected.
+                        backtrack();
+                        return;
+                    }
+                }
+                ++_nr_solutions;
+                if (_verbosity) {
+                    printf("Found solution: ");
+                    for (int i = 0; i < _nr_vertices; i++) {
+                        const auto j = _js[i];
+                        const auto k = _ks[i];
+                        const auto l = _ls[i];
+                        if (i > 0) {
+                            printf(" - ");
+                        }
+                        printf("(%d, %d, %d)", j, k, l);
+                    }
+                    printf("\n");
+                }
+                backtrack();
+            } else {
+                // It's always possible that this node is only connected to PIs
+                _js[_level] = 0;
+                _ks[_level] = 0;
+                _ls[_level] = 0;
+                ++_level;
+                search_connected_dags();
+
+                // It may also just have one internal connection
+                for (int l = 1; l <= _level; l++) {
+                    _ls[_level] = l;
+                    ++_covered_steps[l];
+                    ++_level;
+                    search_connected_dags();
+                }
+
+                // Or at least two internal connections
+                for (int l = 2; l <= _level; l++) {
+                    for (int k = 1; k < l; k++) {
+                        for (int j = 0; j < k; j++) {
+                            _js[_level] = j;
+                            _ks[_level] = k;
+                            _ls[_level] = l;
+                            ++_covered_steps[j];
+                            ++_covered_steps[k];
+                            ++_covered_steps[l];
+                            ++_level;
+                            search_connected_dags();
+                        }
+                    }
+                }
+                backtrack();
+            }
+        }
+
+        auto count_colex_dags()
+        {
+            assert(_initialized);
+            _level = 1;
+            _nr_solutions = 0;
+
+            search_colex_dags();
+
+            return _nr_solutions;
+        }
+
+        void search_colex_dags()
+        {
+            if (_level == _nr_vertices) {
+                for (int i = 1; i <= _nr_vertices - 1; i++) {
+                    if (_covered_steps[i] == 0) {
+                        // There is some uncovered internal step, so the
+                        // graph cannot be connected.
+                        backtrack();
+                        return;
+                    }
+                }
+                ++_nr_solutions;
+                if (_verbosity) {
+                    printf("Found solution: ");
+                    for (int i = 0; i < _nr_vertices; i++) {
+                        const auto j = _js[i];
+                        const auto k = _ks[i];
+                        const auto l = _ls[i];
+                        if (i > 0) {
+                            printf(" - ");
+                        }
+                        printf("(%d, %d, %d)", j, k, l);
+                    }
+                    printf("\n");
+                }
+                backtrack();
+            } else {
+                // We are only interested in DAGs that are in
+                // co-lexicographical order. Look at the previous step
+                // on the stack, the current step should be greater or
+                // equal to it.
+                const auto start_j = _js[_level - 1];
+                const auto start_k = _ks[_level - 1];
+                const auto start_l = _ls[_level - 1];
+
+                _js[_level] = start_j;
+                _ks[_level] = start_k;
+                _ls[_level] = start_l;
+                ++_covered_steps[start_j];
+                ++_covered_steps[start_k];
+                ++_covered_steps[start_l];
+                ++_level;
+                search_colex_dags();
+                
+                // One internal connection
+                if (start_j == 0 && start_k == 0) {
+                    for (int l = start_l + 1; l <= _level; l++) {
+                        _ls[_level] = l;
+                        ++_covered_steps[l];
+                        ++_level;
+                        search_colex_dags();
+                    }
+                }
+
+                for (int l = start_l; l <= _level; l++) {
+                    for (int k = start_k; k < l; k++) {
+                        for (int j = start_j; j < k; j++) {
+                            ++_covered_steps[j];
+                            ++_covered_steps[k];
+                            ++_covered_steps[l];
+                            _js[_level] = j;
+                            _ks[_level] = k;
+                            _ls[_level] = l;
+                            ++_level;
+                            search_colex_dags();
+                        }
+                    }
+                }
+                
+                backtrack();
+            }
+        }
+
+        auto count_noreapply_dags()
+        {
+            assert(_initialized);
+            _nr_solutions = 0;
+            _level = 1;
+
+            search_noreapply_dags();
+
+            return _nr_solutions;
+        }
+
+        void search_noreapply_dags()
+        {
+            if (_level == _nr_vertices) {
+                for (int i = 1; i <= _nr_vertices - 1; i++) {
+                    if (_covered_steps[i] == 0) {
+                        // There is some uncovered internal step, so the
+                        // graph cannot be connected.
+                        noreapply_backtrack();
+                        return;
+                    }
+                }
+                ++_nr_solutions;
+                if (_verbosity) {
+                    printf("Found solution: ");
+                    for (int i = 0; i < _nr_vertices; i++) {
+                        const auto j = _js[i];
+                        const auto k = _ks[i];
+                        const auto l = _ls[i];
+                        if (i > 0) {
+                            printf(" - ");
+                        }
+                        printf("(%d, %d, %d)", j, k, l);
+                    }
+                    printf("\n");
+                }
+                if (_callback) {
+                    _callback(this);
+                }
+                noreapply_backtrack();
+            } else {
+                const auto start_j = _js[_level - 1];
+                const auto start_k = _ks[_level - 1];
+                const auto start_l = _ls[_level - 1];
+
+                _js[_level] = start_j;
+                _ks[_level] = start_k;
+                _ls[_level] = start_l;
+                ++_covered_steps[start_j];
+                ++_covered_steps[start_k];
+                ++_covered_steps[start_l];
+                ++_level;
+                search_noreapply_dags();
+
+                // One internal connection
+                if (start_j == 0 && start_k == 0) {
+                    for (int l = start_l + 1; l <= _level; l++) {
+                        _ls[_level] = l;
+                        ++_covered_steps[l];
+                        ++_level;
+                        search_noreapply_dags();
+                    }
+                }
+                
+                for (int l = start_l; l <= _level; l++) {
+                    for (int k = start_k; k < l; k++) {
+                        for (int j = start_j; j < k; j++) {
+                            if (_disabled_matrix[_level][j][k][l]) {
+                                continue;
+                            }
+                            ++_covered_steps[j];
+                            ++_covered_steps[k];
+                            ++_covered_steps[l];
+
+                            if (k > 0) {
+                                for (int ip = _level + 1; ip < _nr_vertices; ip++) {
+                                    if (j > 0) {
+                                        ++_disabled_matrix[ip][j][k][_level + 1];
+                                        ++_disabled_matrix[ip][j][l][_level + 1];
+                                    }
+                                    ++_disabled_matrix[ip][k][l][_level + 1];
+                                }
+                            }
+                            _js[_level] = j;
+                            _ks[_level] = k;
+                            _ls[_level] = l;
+                            ++_level;
+                            search_noreapply_dags();
+                        }
+                    }
+                }
+
+                noreapply_backtrack();
+            }
+        }
+
+        void backtrack()
+        {
+            --_level;
+            if (_level > _stop_level) {
+                const auto j = _js[_level];
+                const auto k = _ks[_level];
+                const auto l = _ls[_level];
+                --_covered_steps[j];
+                --_covered_steps[k];
+                --_covered_steps[l];
+            }
+        }
+
+        void noreapply_backtrack()
+        {
+            --_level;
+            if (_level > _stop_level) {
+                const auto j = _js[_level];
+                const auto k = _ks[_level];
+                const auto l = _ls[_level];
+                --_covered_steps[j];
+                --_covered_steps[k];
+                --_covered_steps[l];
+                if (k > 0) {
+                    for (int ip = _level + 1; ip < _nr_vertices; ip++) {
+                        if (j > 0) {
+                            --_disabled_matrix[ip][j][k][_level + 1];
+                            --_disabled_matrix[ip][j][l][_level + 1];
+                        }
+                        --_disabled_matrix[ip][k][l][_level + 1];
+                    }
+                }
+            }
+        }
+
+        auto count_dags()
+        {
+            switch (_gen_type) {
+            case GEN_TUPLES:
+                return count_tuples();
+            case GEN_CONNECTED:
+                return count_connected_dags();
+            case GEN_COLEX:
+                return count_colex_dags();
+            default:
+                return count_noreapply_dags();
+            }
+        }
     };
+
+#ifndef DISABLE_NAUTY
+        class pd_iso_checker
+        {
+        private:
+            int total_vertices;
+            int *lab1;
+            size_t lab1_sz = 0;
+            int *lab2;
+            size_t lab2_sz = 0;
+            int *ptn;
+            size_t ptn_sz = 0;
+            int *orbits;
+            size_t orbits_sz = 0;
+            int *map;
+            size_t map_sz = 0;
+            graph *g1;
+            size_t g1_sz = 0;
+            graph *g2;
+            size_t g2_sz = 0;
+            graph *cg1;
+            size_t cg1_sz = 0;
+            graph *cg2;
+            size_t cg2_sz = 0;
+            statsblk stats;
+            int m;
+
+            void initialize()
+            {
+                m = SETWORDSNEEDED(total_vertices);;
+
+                DYNALLOC1(int, lab1, lab1_sz, total_vertices, "malloc");
+                DYNALLOC1(int, lab2, lab2_sz, total_vertices, "malloc");
+                DYNALLOC1(int, ptn, ptn_sz, total_vertices, "malloc");
+                DYNALLOC1(int, orbits, orbits_sz, total_vertices, "malloc");
+                DYNALLOC1(int, map, map_sz, total_vertices, "malloc");
+
+                DYNALLOC2(graph, g1, g1_sz, total_vertices, m, "malloc");
+                DYNALLOC2(graph, g2, g2_sz, total_vertices, m, "malloc");
+
+                DYNALLOC2(graph, cg1, cg1_sz, total_vertices, m, "malloc");
+                DYNALLOC2(graph, cg2, cg2_sz, total_vertices, m, "malloc");
+            }
+
+        public:
+            pd_iso_checker(int _total_vertices)
+            {
+                total_vertices = _total_vertices;
+                initialize();
+            }
+
+            ~pd_iso_checker()
+            {
+                DYNFREE(lab1, lab1_sz);
+                DYNFREE(lab2, lab2_sz);
+                DYNFREE(ptn, ptn_sz);
+                DYNFREE(orbits, orbits_sz);
+                DYNFREE(map, map_sz);
+
+                DYNFREE(g1, g1_sz);
+                DYNFREE(g2, g2_sz);
+
+                DYNFREE(cg1, cg1_sz);
+                DYNFREE(cg2, cg2_sz);
+            }
+
+            bool isomorphic(const partial_dag& dag1, const partial_dag& dag2)
+            {
+                void(*adjacencies)(graph*, int*, int*, int,
+                    int, int, int*, int, boolean, int, int) = NULL;
+
+                DEFAULTOPTIONS_DIGRAPH(options);
+                options.getcanon = TRUE;
+
+                const auto nr_vertices = dag1.nr_vertices();
+
+                EMPTYGRAPH(g1, m, nr_vertices);
+                EMPTYGRAPH(g2, m, nr_vertices);
+
+                for (int i = 1; i < nr_vertices; i++) {
+                    const auto& vertex = dag1.get_vertex(i);
+                    for (const auto fanin : vertex) {
+                        if (fanin != FANIN_PI) {
+                            ADDONEARC(g1, fanin - 1, i, m);
+                        }
+                    }
+                }
+
+                for (int i = 0; i < nr_vertices; i++) {
+                    const auto& vertex = dag2.get_vertex(i);
+                    for (const auto fanin : vertex) {
+                        if (fanin != FANIN_PI) {
+                            ADDONEARC(g2, fanin - 1, i, m);
+                        }
+                    }
+                }
+
+                densenauty(g1, lab1, ptn, orbits, &options, &stats, m, nr_vertices, cg1);
+                densenauty(g2, lab2, ptn, orbits, &options, &stats, m, nr_vertices, cg2);
+
+                bool isomorphic = true;
+                for (int k = 0; k < m*nr_vertices; k++) {
+                    if (cg1[k] != cg2[k]) {
+                        isomorphic = false;
+                        break;
+                    }
+                }
+                return isomorphic;
+            }
+
+            /// Computes the canonical representation of the given DAG 
+            /// and returns it as a vector of numbers.
+            std::vector<graph> crepr(const partial_dag& dag)
+            {
+                void(*adjacencies)(graph*, int*, int*, int,
+                    int, int, int*, int, boolean, int, int) = NULL;
+
+                DEFAULTOPTIONS_DIGRAPH(options);
+                options.getcanon = TRUE;
+
+                const auto nr_vertices = dag.nr_vertices();
+                std::vector<graph> repr(m*dag.nr_vertices());
+
+                EMPTYGRAPH(g1, m, nr_vertices);
+
+                for (int i = 1; i < nr_vertices; i++) {
+                    const auto& vertex = dag.get_vertex(i);
+                    for (const auto fanin : vertex) {
+                        if (fanin != FANIN_PI)
+                            ADDONEARC(g1, fanin - 1, i, m);
+                    }
+                }
+
+                densenauty(g1, lab1, ptn, orbits, &options, &stats, m, nr_vertices, cg1);
+
+                for (int k = 0; k < m * nr_vertices; k++) {
+                    repr[k] = cg1[k];
+                }
+
+                return repr;
+            }
+
+        };
 #endif
 
-    /// Writes a collection of partial DAGs to the specified filename
-    /// NOTE: currently only serialization of DAGs with 2 fanins is supported.
-    /// The format which is written: <nr-vertices><fanin1-vertex1><fanin2-vertex1>...<fanin1-vertexn><fanin2-vertexn>.
-    void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
-    {
-        auto fhandle = fopen(filename, "wb");
-        if (fhandle == NULL) {
-            fprintf(stderr, "Error: unable to open output file\n");
-            exit(1);
+        /// Writes a collection of partial DAGs to the specified filename
+        /// NOTE: currently only serialization of DAGs with 2 fanins is supported.
+        /// The format which is written: <nr-vertices><fanin1-vertex1><fanin2-vertex1>...<fanin1-vertexn><fanin2-vertexn>.
+        inline void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
+        {
+            auto fhandle = fopen(filename, "wb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open output file\n");
+                exit(1);
+            }
+
+            for (auto& dag : dags) {
+                int buf = dag.nr_vertices();
+                fwrite(&buf, sizeof(int), 1, fhandle);
+                for (int i = 0; i < dag.nr_vertices(); i++) {
+                    auto& v = dag.get_vertex(i);
+                    buf = v[0];
+                    auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    buf = v[1];
+                    stat = fwrite(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                }
+            }
+
+            fclose(fhandle);
         }
 
-        for (auto& dag : dags) {
+        inline void write_partial_dag(const partial_dag& dag, FILE* fhandle)
+        {
             int buf = dag.nr_vertices();
             fwrite(&buf, sizeof(int), 1, fhandle);
             for (int i = 0; i < dag.nr_vertices(); i++) {
                 auto& v = dag.get_vertex(i);
-                buf = v[0];
-                auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-                buf = v[1];
-                stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
+                for (const auto fanin : v) {
+                    buf = fanin;
+                    auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                }
             }
         }
 
-        fclose(fhandle);
-    }
+        /// Reads serialized partial DAGs from file
+        inline std::vector<partial_dag> read_partial_dags(const char* const filename)
+        {
+            std::vector<partial_dag> dags;
 
-    void write_partial_dag(const partial_dag& dag, FILE* fhandle)
-    {
-        int buf = dag.nr_vertices();
-        fwrite(&buf, sizeof(int), 1, fhandle);
-        for (int i = 0; i < dag.nr_vertices(); i++) {
-            auto& v = dag.get_vertex(i);
-            buf = v[0];
-            auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
-            assert(stat == 1);
-            buf = v[1];
-            stat = fwrite(&buf, sizeof(int), 1, fhandle);
-            assert(stat == 1);
+            auto fhandle = fopen(filename, "rb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open output file\n");
+                exit(1);
+            }
+
+            partial_dag g;
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                auto nr_vertices = buf;
+                g.reset(2, nr_vertices);
+                for (int i = 0; i < nr_vertices; i++) {
+                    auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    auto fanin1 = buf;
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    auto fanin2 = buf;
+                    g.set_vertex(i, fanin1, fanin2);
+                }
+                dags.push_back(g);
+            }
+
+            fclose(fhandle);
+
+            return dags;
         }
-    }
 
-    /// Reads serialized partial DAGs from file
-    std::vector<partial_dag> read_partial_dags(const char* const filename)
-    {
-        std::vector<partial_dag> dags;
+        inline std::vector<partial_dag> read_partial_dag3s(const char* const filename)
+        {
+            std::vector<partial_dag> dags;
 
-        auto fhandle = fopen(filename, "rb");
-        if (fhandle == NULL) {
-            fprintf(stderr, "Error: unable to open output file\n");
-            exit(1);
+            auto fhandle = fopen(filename, "rb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open output file\n");
+                exit(1);
+            }
+
+            partial_dag g;
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                auto nr_vertices = buf;
+                g.reset(3, nr_vertices);
+                for (int i = 0; i < nr_vertices; i++) {
+                    auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    auto fanin1 = buf;
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    auto fanin2 = buf;
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    auto fanin3 = buf;
+                    g.set_vertex(i, fanin1, fanin2, fanin3);
+                }
+                dags.push_back(g);
+            }
+
+            fclose(fhandle);
+
+            return dags;
         }
 
-        partial_dag g;
-        int buf;
-        while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
-            auto nr_vertices = buf;
+        inline size_t count_partial_dags(FILE* fhandle)
+        {
+            size_t nr_dags = 0;
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                auto nr_vertices = buf;
+                for (int i = 0; i < nr_vertices; i++) {
+                    auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                }
+                nr_dags++;
+            }
+
+            return nr_dags;
+        }
+
+        inline size_t count_partial_dag3s(FILE* fhandle)
+        {
+            size_t nr_dags = 0;
+            int buf;
+            while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
+                auto nr_vertices = buf;
+                for (int i = 0; i < nr_vertices; i++) {
+                    auto stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                    stat = fread(&buf, sizeof(int), 1, fhandle);
+                    assert(stat == 1);
+                }
+                nr_dags++;
+            }
+
+            return nr_dags;
+        }
+
+        /// Generate all partial DAGs of the specified number
+        /// of vertices.
+        inline std::vector<partial_dag> pd_generate(int nr_vertices)
+        {
+            partial_dag g;
+            partial_dag_generator gen;
+            std::vector<partial_dag> dags;
+
+            gen.set_callback([&g, &dags]
+            (partial_dag_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                }
+                dags.push_back(g);
+            });
+
             g.reset(2, nr_vertices);
-            for (int i = 0; i < nr_vertices; i++) {
-                auto stat = fread(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-                auto fanin1 = buf;
-                stat = fread(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-                auto fanin2 = buf;
-                g.set_vertex(i, fanin1, fanin2);
-            }
-            dags.push_back(g);
+            gen.reset(nr_vertices);
+            gen.count_dags();
+
+            return dags;
         }
-
-        fclose(fhandle);
-
-        return dags;
-    }
-
-    size_t count_partial_dags(FILE* fhandle)
-    {
-        size_t nr_dags = 0;
-        int buf;
-        while (fread(&buf, sizeof(int), 1, fhandle) != 0) {
-            auto nr_vertices = buf;
-            for (int i = 0; i < nr_vertices; i++) {
-                auto stat = fread(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-                stat = fread(&buf, sizeof(int), 1, fhandle);
-                assert(stat == 1);
-            }
-            nr_dags++;
-        }
-
-        return nr_dags;
-    }
-
-
-    /// Generate all partial DAGs of the specified number
-    /// of vertices.
-    std::vector<partial_dag> pd_generate(int nr_vertices)
-    {
-        partial_dag g;
-        partial_dag_generator gen;
-        std::vector<partial_dag> dags;
-
-        gen.set_callback([&g, &dags]
-        (partial_dag_generator* gen) {
-            for (int i = 0; i < gen->nr_vertices(); i++) {
-                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
-            }
-            dags.push_back(g);
-        });
-
-        g.reset(2, nr_vertices);
-        gen.reset(nr_vertices);
-        gen.count_dags();
-
-        return dags;
-    }
 
 #ifndef DISABLE_NAUTY
-    std::vector<partial_dag> pd_generate_nonisomorphic(int nr_vertices)
-    {
-        partial_dag g;
-        partial_dag_generator gen;
-        std::vector<partial_dag> dags;
-        std::set<std::vector<graph>> can_reprs;
-        pd_iso_checker checker(nr_vertices);
+        inline std::vector<partial_dag> pd_generate_nonisomorphic(int nr_vertices)
+        {
+            partial_dag g;
+            partial_dag_generator gen;
+            std::vector<partial_dag> dags;
+            std::set<std::vector<graph>> can_reprs;
+            pd_iso_checker checker(nr_vertices);
 
-        gen.set_callback([&g, &dags, &can_reprs, &checker]
-        (partial_dag_generator* gen) {
-            for (int i = 0; i < gen->nr_vertices(); i++) {
-                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
-            }
-            const auto can_repr = checker.crepr(g);
-            const auto res = can_reprs.insert(can_repr);
-            if (res.second)
-                dags.push_back(g);
-        });
+            gen.set_callback([&g, &dags, &can_reprs, &checker]
+            (partial_dag_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                }
+                const auto can_repr = checker.crepr(g);
+                const auto res = can_reprs.insert(can_repr);
+                if (res.second)
+                    dags.push_back(g);
+            });
 
-        g.reset(2, nr_vertices);
-        gen.reset(nr_vertices);
-        gen.count_dags();
+            g.reset(2, nr_vertices);
+            gen.reset(nr_vertices);
+            gen.count_dags();
 
-        return dags;
-    }
-
-    void pd_write_nonisomorphic(int nr_vertices, const char* const filename)
-    {
-        partial_dag g;
-        partial_dag_generator gen;
-        std::set<std::vector<graph>> can_reprs;
-        pd_iso_checker checker(nr_vertices);
-
-        auto fhandle = fopen(filename, "wb");
-
-        gen.set_callback([&g, fhandle, &can_reprs, &checker]
-        (partial_dag_generator* gen) {
-            for (int i = 0; i < gen->nr_vertices(); i++) {
-                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
-            }
-            const auto can_repr = checker.crepr(g);
-            const auto res = can_reprs.insert(can_repr);
-            if (res.second)
-                write_partial_dag(g, fhandle);
-        });
-
-        g.reset(2, nr_vertices);
-        gen.reset(nr_vertices);
-        gen.count_dags();
-
-        fclose(fhandle);
-    }
+            return dags;
+        }
 #endif
 
-    /// Generate all partial DAGs up to the specified number
-    /// of vertices.
-    std::vector<partial_dag> pd_generate_max(int max_vertices)
-    {
-        partial_dag g;
-        partial_dag_generator gen;
-        std::vector<partial_dag> dags;
+        inline void pd_write_nonisomorphic(int nr_vertices, const char* const filename)
+        {
+            partial_dag g;
+            partial_dag_generator gen;
+            auto fhandle = fopen(filename, "wb");
+#ifndef DISABLE_NAUTY
+            std::set<std::vector<graph>> can_reprs;
+            pd_iso_checker checker(nr_vertices);
 
-        gen.set_callback([&g, &dags]
-        (partial_dag_generator* gen) {
-            for (int i = 0; i < gen->nr_vertices(); i++) {
-                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
-            }
-            dags.push_back(g);
-        });
+            gen.set_callback([&g, fhandle, &can_reprs, &checker]
+            (partial_dag_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                }
+                const auto can_repr = checker.crepr(g);
+                const auto res = can_reprs.insert(can_repr);
+                if (res.second)
+                    write_partial_dag(g, fhandle);
+            });
+#else
+            gen.set_callback([&g, fhandle]
+            (partial_dag_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                }
+                write_partial_dag(g, fhandle);
+            });
 
-        for (int i = 1; i <= max_vertices; i++) {
-            g.reset(2, i);
-            gen.reset(i);
+#endif
+            g.reset(2, nr_vertices);
+            gen.reset(nr_vertices);
             gen.count_dags();
+
+            fclose(fhandle);
         }
 
-        return dags;
-    }
-
-    std::vector<partial_dag> pd_generate_filtered(int max_vertices, int nr_in)
-    {
-        partial_dag g;
-        partial_dag_generator gen;
-        std::vector<partial_dag> dags;
-
-        gen.set_callback([&g, &dags, nr_in]
-        (partial_dag_generator* gen) {
-            for (int i = 0; i < gen->nr_vertices(); i++) {
-                g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+        inline void pd3_write_nonisomorphic(int nr_vertices, const char* const filename, int nr_in = -1)
+        {
+            (void)nr_in;
+            partial_dag g;
+            partial_dag3_generator gen;
+            auto fhandle = fopen(filename, "wb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open PD file\n");
+                exit(1);
             }
-            if (g.nr_pi_fanins() >= nr_in) {
+            uint64_t ctr = 0;
+#ifndef DISABLE_NAUTY
+            std::set<std::vector<graph>> can_reprs;
+            pd_iso_checker checker(nr_vertices);
+
+            gen.set_callback([&g, fhandle, &can_reprs, &checker, nr_in, &ctr]
+            (partial_dag3_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
+                }
+                const auto can_repr = checker.crepr(g);
+                const auto res = can_reprs.insert(can_repr);
+                printf("%llu\r", ++ctr);
+                if (res.second) {
+                    if (nr_in != -1 && g.nr_pi_fanins() >= nr_in)
+                        write_partial_dag(g, fhandle);
+                    else if (nr_in == -1)
+                        write_partial_dag(g, fhandle);
+                }
+            });
+#else
+            gen.set_callback([&g, fhandle, &ctr]
+            (partial_dag3_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
+                }
+                printf("%llu\r", ++ctr);
+                write_partial_dag(g, fhandle);
+            });
+
+#endif
+            g.reset(3, nr_vertices);
+            gen.reset(nr_vertices);
+            gen.count_dags();
+            printf("\n");
+
+            fclose(fhandle);
+        }
+
+        /// Generate all partial DAGs up to the specified number
+        /// of vertices.
+        inline std::vector<partial_dag> pd_generate_max(int max_vertices)
+        {
+            partial_dag g;
+            partial_dag_generator gen;
+            std::vector<partial_dag> dags;
+
+            gen.set_callback([&g, &dags]
+            (partial_dag_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                }
                 dags.push_back(g);
-            }
-        });
+            });
 
-        for (int i = 1; i <= max_vertices; i++) {
-            g.reset(2, i);
-            gen.reset(i);
-            gen.count_dags();
+            for (int i = 1; i <= max_vertices; i++) {
+                g.reset(2, i);
+                gen.reset(i);
+                gen.count_dags();
+            }
+
+            return dags;
         }
 
-        return dags;
-    }
+        inline std::vector<partial_dag> pd3_generate_max(int max_vertices, int nr_in)
+        {
+            partial_dag g;
+            partial_dag3_generator gen;
+            std::vector<partial_dag> dags;
+
+            gen.set_callback([&g, &dags, nr_in]
+            (partial_dag3_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
+                }
+                if (g.nr_pi_fanins() >= nr_in) {
+                    dags.push_back(g);
+                }
+            });
+
+            for (int i = 1; i <= max_vertices; i++) {
+                g.reset(3, i);
+                gen.reset(i);
+                gen.count_dags();
+            }
+
+            return dags;
+        }
+
+        inline std::vector<partial_dag> pd_generate_filtered(int max_vertices, int nr_in)
+        {
+            partial_dag g;
+            partial_dag_generator gen;
+            std::vector<partial_dag> dags;
+
+            gen.set_callback([&g, &dags, nr_in]
+            (partial_dag_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+                }
+                if (g.nr_pi_fanins() >= nr_in) {
+                    dags.push_back(g);
+                }
+            });
+
+            for (int i = 1; i <= max_vertices; i++) {
+                g.reset(2, i);
+                gen.reset(i);
+                gen.count_dags();
+            }
+
+            return dags;
+        }
+
+        inline std::vector<partial_dag> pd3_generate_filtered(int max_vertices, int nr_in)
+        {
+            partial_dag g;
+            partial_dag3_generator gen;
+            std::vector<partial_dag> dags;
+
+            gen.set_callback([&g, &dags, nr_in]
+            (partial_dag3_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
+                }
+                if (g.nr_pi_fanins() >= nr_in) {
+                    dags.push_back(g);
+                }
+            });
+
+            for (int i = 1; i <= max_vertices; i++) {
+                g.reset(3, i);
+                gen.reset(i);
+                gen.count_dags();
+            }
+
+            return dags;
+        }
 
 #ifndef DISABLE_NAUTY
-    std::vector<partial_dag> pd_filter_isomorphic(
+    inline std::vector<partial_dag> pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
         std::vector<partial_dag>& ni_dags,
         bool show_progress = false)
@@ -1109,7 +1733,7 @@ namespace percy
                 ni_dags.push_back(g1);
             }
             if (show_progress)
-                printf("(%zu, %zu)\r", ++ctr, dags.size());
+                printf("(%llu, %llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1117,7 +1741,7 @@ namespace percy
         return ni_dags;
     }
 
-    std::vector<partial_dag> pd_filter_isomorphic(
+    inline std::vector<partial_dag> pd_filter_isomorphic(
         const std::vector<partial_dag>& dags,
         bool show_progress = false)
     {
@@ -1128,7 +1752,7 @@ namespace percy
 
     /// Filters out isomorphic DAGs. NOTE: assumes that
     /// all gven DAGs have the same number of vertices.
-    void pd_filter_isomorphic_fast(
+    inline void pd_filter_isomorphic_fast(
         const std::vector<partial_dag>& dags, 
         std::vector<partial_dag>& ni_dags,
         bool show_progress = false)
@@ -1147,7 +1771,7 @@ namespace percy
             const auto& dag = dags[i];
             reprs[i] = checker.crepr(dag);
             if (show_progress)
-                printf("(%u,%zu)\r", ++ctr, dags.size());
+                printf("(%u,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1168,7 +1792,7 @@ namespace percy
                 }
             }
             if (show_progress)
-                printf("(%u,%zu)\r", ++ctr, dags.size());
+                printf("(%u,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1181,7 +1805,7 @@ namespace percy
     }
 
     /// Isomorphism check using set containinment (hashing)
-    void pd_filter_isomorphic_sfast(
+    inline void pd_filter_isomorphic_sfast(
         const std::vector<partial_dag>& dags, 
         std::vector<partial_dag>& ni_dags,
         bool show_progress = false)
@@ -1200,7 +1824,7 @@ namespace percy
             const auto& dag = dags[i];
             reprs[i] = checker.crepr(dag);
             if (show_progress)
-                printf("(%u,%zu)\r", ++ctr, dags.size());
+                printf("(%u,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1222,7 +1846,7 @@ namespace percy
                 is_iso[i] = 1;
             }
             if (show_progress)
-                printf("(%u,%zu)\r", ++ctr, dags.size());
+                printf("(%u,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1234,8 +1858,7 @@ namespace percy
         }
     }
 
-
-    void pd_filter_isomorphic(
+    inline void pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
         int max_size, 
         std::vector<partial_dag>& ni_dags,
@@ -1257,14 +1880,14 @@ namespace percy
                 ni_dags.push_back(g1);
             }
             if (show_progress)
-                printf("(%zu,%zu)\r", ++ctr, dags.size());
+                printf("(%llu,%llu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
         ni_dags = dags;
     }
 
-    std::vector<partial_dag> pd_filter_isomorphic(
+    inline std::vector<partial_dag> pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
         int max_size,
         bool show_progress = false)

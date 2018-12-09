@@ -2,12 +2,15 @@
 
 #if !defined(_WIN32) && !defined(_WIN64)
 
+#undef var_Undef
+
 #pragma GCC diagnostic push
 
 #pragma GCC diagnostic ignored "-Wall"
 #pragma GCC diagnostic ignored "-Wparentheses"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wpedantic"
+
 
 #ifndef USE_GLUCOSE
 #include <syrup/parallel/MultiSolvers.h>
@@ -19,6 +22,11 @@
 
 #pragma GCC diagnostic pop
 
+#undef var_Undef
+
+#define var_Undef (0xffffffffU >> 4)
+
+
 namespace percy
 {
 
@@ -26,6 +34,7 @@ namespace percy
     {
     private:
         GWType* solver;
+        int nr_threads = 0;
         
     public:
         glucose_wrapper()
@@ -42,7 +51,15 @@ namespace percy
         void restart()
         {
             delete solver;
+#ifdef USE_SYRUP
+            if (nr_threads > 0) {
+                solver = new GWType(nr_threads);
+            } else {
+                solver = new GWType;
+            }
+#else
             solver = new GWType;
+#endif
         }
 
 
@@ -159,6 +176,15 @@ namespace percy
         synth_result solve(pabc::lit*, pabc::lit*, int cl)
         {
             return solve(cl);
+        }
+#endif
+
+#ifdef USE_SYRUP
+        void set_nr_threads(int nr_threads)
+        {
+            delete solver;
+            this->nr_threads = nr_threads;
+            solver = new Glucose::MultiSolvers(nr_threads);
         }
 #endif
     };

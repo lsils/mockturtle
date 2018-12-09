@@ -159,9 +159,15 @@ namespace percy
             /// not be changed.
             void denormalize()
             {
+                // Does nothing if there are no steps to push inverters into.
+                if (steps.size() == 0) {
+                    return;
+                }
+                
                 if (outputs.size() == 1) {
                     if (outputs[0] & 1) {
-                        invert();
+                        operators[steps.size() - 1] = ~operators[steps.size() - 1];
+                        outputs[0] = (outputs[0] ^ 1);
                     }
                     return;
                 }
@@ -565,7 +571,41 @@ namespace percy
                 return true;
             }
 
-            
+            bool is_aig()
+            {
+                if (fanin != 2) {
+                    return false;
+                }
+                kitty::dynamic_truth_table in1(2), in2(2);
+                kitty::create_nth_var(in1, 0);
+                kitty::create_nth_var(in2, 1);
+                const auto tt1 = in1 & in2;
+                const auto tt2 = ~in1 & in2;
+                const auto tt3 = in1 & ~in2;
+                const auto tt4 = in1 | in2;
+                for (const auto& op : operators) {
+                    if (op != tt1 && op != tt2 && op != tt3 && op != tt4) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            bool is_mag()
+            {
+                if (fanin != 3) {
+                    return false;
+                }
+                kitty::dynamic_truth_table maj_tt(3);
+                kitty::create_majority(maj_tt);
+
+                for (const auto& op : operators) {
+                    if (op != maj_tt) {
+                        return false;
+                    }
+                }
+                return true;
+            }
 
             void
             copy(const chain& c)
@@ -732,6 +772,41 @@ namespace percy
             print_expression()
             {
                 to_expression(std::cout);
+            }
+
+            void step_to_mag_expression(std::ostream& s, int step_idx)
+            {
+                assert(fanin == 3);
+
+                if (step_idx < nr_in) {
+                    s << char(('a' + step_idx));
+                    return;
+                }
+                const auto& step = get_step(step_idx - nr_in);
+                s << "<";
+                step_to_mag_expression(s, step[0]);
+                step_to_mag_expression(s, step[1]);
+                step_to_mag_expression(s, step[2]);
+                s << ">";
+            }
+
+            void to_mag_expression(std::ostream& s)
+            {
+                assert(outputs.size() == 1 && fanin == 3);
+                const auto outlit = outputs[0];
+                const auto outvar = outlit >> 1;
+                if (outvar == 0) { // Special case of constant 0
+                    s << "0";
+                } else {
+                    step_to_mag_expression(s, outvar-1);
+                }
+            }
+
+            void print_mag()
+            {
+                std::cout << steps.size() << "-step MAJ chain\n";
+                to_mag_expression(std::cout);
+                std::cout << "\n";
             }
 
             template<int FI>
