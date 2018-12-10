@@ -182,7 +182,6 @@ private:
 
     p++;         /* point to number of outputs */
     const auto num_functions = *p++;
-    auto num_pos = 0u;
 
     for ( auto i = 0u; i < num_functions; ++i )
     {

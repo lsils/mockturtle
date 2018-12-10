@@ -120,6 +120,14 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
  * This method reconstructs a network and omits all dangling nodes.  The
  * network types of the source and destination network are the same.
  *
+   \verbatim embed:rst
+
+   .. note::
+
+      This method returns the cleaned up network as a return value.  It does
+      *not* modify the input network.
+   \endverbatim
+ *
  * **Required network functions:**
  * - `get_node`
  * - `node_to_index`

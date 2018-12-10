@@ -255,7 +255,7 @@ TEST_CASE( "clone a node in xmg network", "[xmg]" )
   CHECK( xmg2.size() == 4 );
 
   auto f2 = xmg2.clone_node( xmg1, xmg1.get_node( f1 ), {a2, b2, c2} );
-  auto g2 = xmg2.clone_node( xmg1, xmg1.get_node( g1 ), {a2, b2, c2} );
+  xmg2.clone_node( xmg1, xmg1.get_node( g1 ), {a2, b2, c2} );
   CHECK( xmg2.size() == 6 );
 
   xmg2.foreach_fanin( xmg2.get_node( f2 ), [&]( auto const& s ) {

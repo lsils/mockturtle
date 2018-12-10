@@ -528,7 +528,6 @@ public:
     }
 
     /* check dangling objects */
-    const auto& deps = on_action.unresolved_dependencies();
     for ( const auto& r : on_action.unresolved_dependencies() )
     {
       if ( diag )
