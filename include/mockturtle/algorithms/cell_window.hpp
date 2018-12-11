@@ -33,12 +33,15 @@
 #pragma once
 
 #include <optional>
+#include <unordered_set>
 #include <vector>
 
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
+
+#include <sparsepp/spp.h>
 
 namespace mockturtle
 {
@@ -50,9 +53,7 @@ public:
   cell_window( Ntk const& ntk )
       : _ntk( ntk ),
         _cell_refs( ntk ),
-        _cell_parents( ntk ),
-        _node_mask( ntk ),
-        _gate_mask( ntk )
+        _cell_parents( ntk )
   {
     // is_cell_root
     // foreach_gate
@@ -64,31 +65,24 @@ public:
     // trav_id
     // get_constant
 
+    _nodes.reserve( _max_gates >> 1 );
+    _gates.reserve( _max_gates );
     init_cell_refs();
   }
 
-  std::pair<std::vector<node<Ntk>>, std::vector<node<Ntk>>> window_for( node<Ntk> const& pivot )
+  std::pair<spp::sparse_hash_set<node<Ntk>>, spp::sparse_hash_set<node<Ntk>>> window_for( node<Ntk> const& pivot )
   {
     print_time<> pt;
     assert( _ntk.is_cell_root( pivot ) );
 
     // reset old window
-    for ( auto const& n : _nodes )
-    {
-      _node_mask[n] = false;
-    }
     _nodes.clear();
-    for ( auto const& g : _gates )
-    {
-      _gate_mask[g] = false;
-    }
     _gates.clear();
 
     auto gates = collect_mffc( pivot );
     add_node( pivot, gates );
 
-
-    if ( gates.size() > 64u )
+    if ( gates.size() > _max_gates )
     {
       assert( false );
     }
@@ -98,12 +92,11 @@ public:
     {
       gates = collect_mffc( *next );
 
-      if ( _gates.size() + gates.size() > 64u )
+      if ( _gates.size() + gates.size() > _max_gates )
       {
         break;
       }
       add_node( *next, gates );
-
     }
 
     return {_nodes, _gates};
@@ -129,31 +122,26 @@ private:
 
   std::vector<node<Ntk>> collect_mffc( node<Ntk> const& pivot )
   {
-    std::vector<node<Ntk>> fanin;
-    _ntk.foreach_cell_fanin( pivot, [&]( auto const& f ) {
-      fanin.push_back( f );
-    } );
-
     _ntk.incr_trav_id();
-    auto gates = collect_gates( pivot, fanin );
-    const auto it = std::remove_if( gates.begin(), gates.end(), [&]( auto const& g ) { return _gate_mask[g]; } );
+    auto gates = collect_gates( pivot );
+    const auto it = std::remove_if( gates.begin(), gates.end(), [&]( auto const& g ) { return _gates.count( g ); } );
     gates.erase( it, gates.end() );
     return gates;
   }
 
-  std::vector<node<Ntk>> collect_gates( node<Ntk> const& pivot, std::vector<node<Ntk>> const& fanin )
+  std::vector<node<Ntk>> collect_gates( node<Ntk> const& pivot )
   {
     assert( !_ntk.is_pi( pivot ) );
 
     _ntk.set_visited( _ntk.get_node( _ntk.get_constant( false ) ), _ntk.trav_id() );
     _ntk.set_visited( _ntk.get_node( _ntk.get_constant( true ) ), _ntk.trav_id() );
 
-    for ( auto const& n : fanin )
-    {
+    _ntk.foreach_cell_fanin( pivot, [&]( auto const& n ) {
       _ntk.set_visited( n, _ntk.trav_id() );
-    }
+    } );
 
     std::vector<node<Ntk>> gates;
+    gates.reserve( 64 );
     collect_gates_rec( pivot, gates );
     return gates;
   }
@@ -174,15 +162,11 @@ private:
 
   void add_node( node<Ntk> const& pivot, std::vector<node<Ntk>> const& gates )
   {
-    _nodes.push_back( pivot );
-    assert( !_node_mask[pivot] );
-    _node_mask[pivot] = true;
+    _nodes.insert( pivot );
 
     for ( auto const& g : gates )
     {
-      _gates.push_back( g );
-      assert( !_gate_mask[g] );
-      _gate_mask[g] = true;
+      _gates.insert( g );
     }
   }
 
@@ -204,7 +188,7 @@ private:
       for ( auto const& n : _nodes )
       {
         _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
-          if ( !_node_mask[n2] && !_ntk.is_pi( n2 ) && !_cell_refs[n2] )
+          if ( !_nodes.count( n2 ) && !_ntk.is_pi( n2 ) && !_cell_refs[n2] )
           {
             candidates.push_back( n2 );
             inputs.insert( n2 );
@@ -212,7 +196,7 @@ private:
         } );
       }
 
-      if ( candidates.size() )
+      if ( !candidates.empty() )
       {
         const auto best = max_element_unary(
             candidates.begin(), candidates.end(),
@@ -231,7 +215,7 @@ private:
       for ( auto const& n : _nodes )
       {
         _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
-          if ( !_node_mask[n2] && !_ntk.is_pi( n2 ) )
+          if ( !_nodes.count( n2 ) && !_ntk.is_pi( n2 ) )
           {
             candidates.push_back( n2 );
             inputs.insert( n2 );
@@ -245,7 +229,7 @@ private:
           continue;
         if ( _cell_refs[n] >= 5 )
           continue;
-        if ( _cell_refs[n] == 1 && _cell_parents[n].size() == 1 && !_node_mask[_cell_parents[n].front()] )
+        if ( _cell_refs[n] == 1 && _cell_parents[n].size() == 1 && !_nodes.count( _cell_parents[n].front() ) )
         {
           candidates.clear();
           candidates.push_back( _cell_parents[n].front() );
@@ -254,11 +238,11 @@ private:
         std::copy_if( _cell_parents[n].begin(), _cell_parents[n].end(),
                       std::back_inserter( candidates ),
                       [&]( auto const& g ) {
-                        return !_node_mask[g];
+                        return !_nodes.count( g );
                       } );
       }
 
-      if ( candidates.size() )
+      if ( !candidates.empty() )
       {
         const auto best = max_element_unary(
             candidates.begin(), candidates.end(),
@@ -295,13 +279,13 @@ private:
 private:
   Ntk const& _ntk;
 
-  std::vector<node<Ntk>> _nodes; /* cell roots in current window */
-  std::vector<node<Ntk>> _gates; /* gates in current window */
+  spp::sparse_hash_set<node<Ntk>> _nodes; /* cell roots in current window */
+  spp::sparse_hash_set<node<Ntk>> _gates; /* gates in current window */
 
   node_map<uint32_t, Ntk> _cell_refs;                  /* ref counts for cells */
   node_map<std::vector<node<Ntk>>, Ntk> _cell_parents; /* parent cells */
-  node_map<bool, Ntk> _node_mask;                      /* cell roots included in current window */
-  node_map<bool, Ntk> _gate_mask;                      /* gates included in the window */
+
+  uint32_t _max_gates{64u};
 };
 
 } // namespace mockturtle
