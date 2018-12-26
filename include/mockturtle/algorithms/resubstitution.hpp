@@ -40,7 +40,6 @@
 
 #include <kitty/static_truth_table.hpp>
 #include <kitty/constructors.hpp>
-#include <kitty/print.hpp>
 
 namespace mockturtle
 {
@@ -59,10 +58,10 @@ struct resubstitution_params
   uint32_t max_divisors{150};
 
   /*! \brief Maximum number of pair-wise divisors to consider. */
-  uint32_t max_divisors2{500};
+  // uint32_t max_divisors2{500};
 
   /*! \brief Maximum number of nodes per reconvergence-driven window. */
-  uint32_t max_nodes{100};
+  // uint32_t max_nodes{100};
 
   /*! \brief Maximum number of nodes added by resubstitution. */
   uint32_t max_inserts{2};
@@ -321,7 +320,7 @@ private:
   std::vector<bool> phase;
 }; /* simulator */
 
-struct generic_resub_functor_stats
+struct default_resub_functor_stats
 {
   /*! \brief Accumulated runtime for const-resub */
   stopwatch<>::duration time_resubC{0};
@@ -348,14 +347,14 @@ struct generic_resub_functor_stats
 };
 
 template<typename Ntk, typename Simulator>
-class generic_resub_functor
+class default_resub_functor
 {
 public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-  using stats = generic_resub_functor_stats;
+  using stats = default_resub_functor_stats;
 
-  explicit generic_resub_functor( Ntk const& ntk, Simulator const& sim, std::vector<node> const& divs, generic_resub_functor_stats& st )
+  explicit default_resub_functor( Ntk const& ntk, Simulator const& sim, std::vector<node> const& divs, default_resub_functor_stats& st )
     : ntk( ntk )
     , sim( sim )
     , divs( divs )
@@ -363,8 +362,11 @@ public:
   {
   }
 
-  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t& cost ) const
+  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& cost ) const
   {
+    (void)max_inserts;
+    (void)num_mffc;
+
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
         return resub_const( root, required );
@@ -425,7 +427,7 @@ private:
   Simulator const& sim;
   std::vector<node> const& divs;
   stats& st;
-}; /* generic_resub_functor */
+}; /* default_resub_functor */
 
 template<class Ntk, class Simulator, class ResubFn>
 class resubstitution_impl
@@ -559,7 +561,7 @@ private:
     ResubFn resub_fn( ntk, sim, divs, resub_st );
 
     uint32_t cost = 0;
-    auto const& r = resub_fn( root, required, cost );
+    auto const& r = resub_fn( root, required, ps.max_inserts, num_mffc, cost );
     last_gain = num_mffc - cost;
     return r;
   }
@@ -758,7 +760,7 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   {
     using truthtable_t = kitty::static_truth_table<8>;
     using simulator_t = detail::simulator<Ntk,truthtable_t>;
-    using resubstitution_functor_t = detail::generic_resub_functor<Ntk,simulator_t>;
+    using resubstitution_functor_t = detail::default_resub_functor<Ntk,simulator_t>;
     typename resubstitution_functor_t::stats resub_st;
     detail::resubstitution_impl<Ntk,simulator_t,resubstitution_functor_t> p( ntk, ps, st, resub_st );
     p.run();
@@ -772,7 +774,7 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   {
     using truthtable_t = kitty::dynamic_truth_table;
     using simulator_t = detail::simulator<Ntk,truthtable_t>;
-    using resubstitution_functor_t = detail::generic_resub_functor<Ntk,simulator_t>;
+    using resubstitution_functor_t = detail::default_resub_functor<Ntk,simulator_t>;
     typename resubstitution_functor_t::stats resub_st;
     detail::resubstitution_impl<Ntk,simulator_t,resubstitution_functor_t> p( ntk, ps, st, resub_st );
     p.run();

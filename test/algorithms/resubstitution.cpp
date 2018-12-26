@@ -11,6 +11,8 @@
 
 #include <kitty/static_truth_table.hpp>
 
+#include <mockturtle/algorithms/aig_resub.hpp>
+
 using namespace mockturtle;
 
 TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
@@ -35,7 +37,7 @@ TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
   fanout_view<aig_network> fanout_view{aig};
   view_t resub_view{fanout_view};
 
-  resubstitution( resub_view );
+  aig_resubstitution( resub_view );
 
   aig = cleanup_dangling( aig );
 
