@@ -267,7 +267,7 @@ public:
       return g; /* accepted resub */
     }
 
-    if ( ps.max_inserts == 2 || num_mffc == 3 )
+    if ( max_inserts == 2 || num_mffc == 3 )
       return std::optional<signal>();
 
     /* consider three nodes */
@@ -618,7 +618,7 @@ public:
         auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
         auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
 
-        if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == s )
+        if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == tt )
         {
           ++st.num_div2_or_and_accepts;
           return sim.get_phase( root ) ?
@@ -645,7 +645,7 @@ public:
         auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
         auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
 
-        if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == s )
+        if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == tt )
         {
           ++st.num_div2_or_and_accepts;
           return sim.get_phase( root ) ?
@@ -680,7 +680,7 @@ public:
         auto const& tt_s2 = sim.get_tt( s2 );
         auto const& tt_s3 = sim.get_tt( s3 );
 
-        if ( ( tt_s0 | tt_s1 ) & ( tt_s2 | tt_s3 ) == tt )
+        if ( ( ( tt_s0 | tt_s1 ) & ( tt_s2 | tt_s3 ) ) == tt )
         {
           auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
           auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
@@ -710,7 +710,7 @@ public:
         auto const& tt_s2 = sim.get_tt( s2 );
         auto const& tt_s3 = sim.get_tt( s3 );
 
-        if ( ( tt_s0 & tt_s1 ) | ( tt_s2 & tt_s3 ) == tt )
+        if ( ( ( tt_s0 & tt_s1 ) | ( tt_s2 & tt_s3 ) ) == tt )
         {
           auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
           auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
