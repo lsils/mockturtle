@@ -4,9 +4,12 @@
 #include <mockturtle/views/fanout_view.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/traits.hpp>
+
+#include <kitty/static_truth_table.hpp>
 
 using namespace mockturtle;
 
@@ -25,6 +28,9 @@ TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
   CHECK( aig.num_pos() == 1 );
   CHECK( aig.num_gates() == 2 );
 
+  const auto tt = simulate<kitty::static_truth_table<2>>( aig )[0];
+  CHECK( tt._bits == 0x8 );
+
   using view_t = depth_view<fanout_view<aig_network>>;
   fanout_view<aig_network> fanout_view{aig};
   view_t resub_view{fanout_view};
@@ -32,6 +38,10 @@ TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
   resubstitution( resub_view );
 
   aig = cleanup_dangling( aig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<2>>( aig )[0];
+  CHECK( tt_opt._bits == tt._bits );
 
   CHECK( aig.size() == 4 );
   CHECK( aig.num_pis() == 2 );
@@ -55,6 +65,9 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 2 );
 
+  const auto tt = simulate<kitty::static_truth_table<3>>( mig )[0];
+  CHECK( tt._bits == 0xe8 );
+
   using view_t = depth_view<fanout_view<mig_network>>;
   fanout_view<mig_network> fanout_view{mig};
   view_t resub_view{fanout_view};
@@ -62,6 +75,10 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   resubstitution( resub_view );
 
   mig = cleanup_dangling( mig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<3>>( mig )[0];
+  CHECK( tt_opt._bits == tt._bits );
 
   CHECK( mig.size() == 5 );
   CHECK( mig.num_pis() == 3 );
