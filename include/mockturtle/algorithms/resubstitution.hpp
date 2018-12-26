@@ -242,23 +242,23 @@ private:
   Ntk const& ntk;
 };
 
-template<typename Ntk, int num_pis>
+template<typename Ntk, typename TT>
 class simulator
 {
 public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-  using TT = kitty::static_truth_table<num_pis>;
+  using truthtable_t = TT;
 
-  explicit simulator( Ntk const& ntk, uint32_t num_divisors )
+  explicit simulator( Ntk const& ntk, uint32_t num_divisors, uint32_t max_pis )
     : ntk( ntk )
     , num_divisors( num_divisors )
     , tts( num_divisors )
     , node_to_index( ntk.size(), 0u )
     , phase( ntk.size(), false )
   {
-    TT tt;
-    for ( auto i = 0; i < num_pis; ++i )
+    auto tt = kitty::create<truthtable_t>( max_pis );
+    for ( auto i = 0; i < tt.num_vars(); ++i )
     {
       kitty::create_nth_var( tt, i );
       tts[i+1] = tt;
@@ -272,13 +272,13 @@ public:
     node_to_index[n] = index;
   }
 
-  TT get_tt( signal const& s ) const
+  truthtable_t get_tt( signal const& s ) const
   {
     auto const tt = tts.at( node_to_index.at( ntk.get_node( s ) ) );
     return ntk.is_complemented( s ) ? ~tt : tt;
   }
 
-  void set_tt( uint32_t index, TT const& tt )
+  void set_tt( uint32_t index, truthtable_t const& tt )
   {
     tts[index] = tt;
   }
@@ -316,7 +316,7 @@ private:
   Ntk const& ntk;
   uint32_t num_divisors;
 
-  std::vector<TT> tts;
+  std::vector<truthtable_t> tts;
   std::vector<uint32_t> node_to_index;
   std::vector<bool> phase;
 }; /* simulator */
@@ -427,7 +427,7 @@ private:
   stats& st;
 }; /* generic_resub_functor */
 
-template<class Ntk, class ResubFn>
+template<class Ntk, class Simulator, class ResubFn>
 class resubstitution_impl
 {
 public:
@@ -435,7 +435,7 @@ public:
   using signal = typename Ntk::signal;
 
   explicit resubstitution_impl( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats& st, typename ResubFn::stats& resub_st )
-    : ntk( ntk ), sim( ntk, 150 ), ps( ps ), st( st ), resub_st( resub_st )
+    : ntk( ntk ), sim( ntk, ps.max_divisors, ps.max_pis ), ps( ps ), st( st ), resub_st( resub_st )
   {
     st.initial_size = ntk.num_gates();
   }
@@ -496,14 +496,10 @@ private:
     for ( auto i = 0u; i < divs.size(); ++i )
     {
       const auto d = divs.at( i );
-      // std::cout << "[i] divisor " << d << " with index " << i << std::endl;
 
       /* skip constant 0 */
       if ( d == 0 )
-      {
-        // std::cout << "[i] skip const 0" << std::endl;
         continue;
-      }
 
       /* assign leaves to variables */
       if ( i < leaves.size() )
@@ -512,8 +508,9 @@ private:
         continue;
       }
 
+      /* compute truth tables of inner nodes */
       sim.assign( d, i - leaves.size() + ps.max_pis + 1 );
-      std::vector<kitty::static_truth_table<8>> tts;
+      std::vector<typename Simulator::truthtable_t> tts;
       ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
           (void)i;
           tts.emplace_back( sim.get_tt( s ) );
@@ -692,7 +689,7 @@ private:
 
 private:
   Ntk& ntk;
-  simulator<Ntk,8> sim;
+  Simulator sim;
 
   resubstitution_params const& ps;
   resubstitution_stats& st;
@@ -756,18 +753,36 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
 
-  using simulator_t = detail::simulator<Ntk,8>;
-  using resubstitution_functor_t = detail::generic_resub_functor<Ntk,simulator_t>;
-
   resubstitution_stats st;
-  typename resubstitution_functor_t::stats resub_st;
-  detail::resubstitution_impl<Ntk,resubstitution_functor_t> p( ntk, ps, st, resub_st );
-  p.run();
-  if ( ps.verbose )
+  if ( ps.max_pis == 8 )
   {
-    st.report();
-    resub_st.report();
+    using truthtable_t = kitty::static_truth_table<8>;
+    using simulator_t = detail::simulator<Ntk,truthtable_t>;
+    using resubstitution_functor_t = detail::generic_resub_functor<Ntk,simulator_t>;
+    typename resubstitution_functor_t::stats resub_st;
+    detail::resubstitution_impl<Ntk,simulator_t,resubstitution_functor_t> p( ntk, ps, st, resub_st );
+    p.run();
+    if ( ps.verbose )
+    {
+      st.report();
+      resub_st.report();
+    }
   }
+  else
+  {
+    using truthtable_t = kitty::dynamic_truth_table;
+    using simulator_t = detail::simulator<Ntk,truthtable_t>;
+    using resubstitution_functor_t = detail::generic_resub_functor<Ntk,simulator_t>;
+    typename resubstitution_functor_t::stats resub_st;
+    detail::resubstitution_impl<Ntk,simulator_t,resubstitution_functor_t> p( ntk, ps, st, resub_st );
+    p.run();
+    if ( ps.verbose )
+    {
+      st.report();
+      resub_st.report();
+    }
+  }
+
   if ( pst )
   {
     *pst = st;
