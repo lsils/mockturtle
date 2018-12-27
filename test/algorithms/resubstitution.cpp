@@ -8,10 +8,12 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/traits.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 
 #include <kitty/static_truth_table.hpp>
 
 #include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/mig_resub.hpp>
 
 using namespace mockturtle;
 
@@ -74,7 +76,7 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   fanout_view<mig_network> fanout_view{mig};
   view_t resub_view{fanout_view};
 
-  resubstitution( resub_view );
+  mig_resubstitution( resub_view );
 
   mig = cleanup_dangling( mig );
 

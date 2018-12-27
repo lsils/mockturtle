@@ -32,65 +32,10 @@
 
 #pragma once
 
-namespace kitty
-{
-
-/*! \brief Bitwise OR of two truth tables */
-inline bool implies( const dynamic_truth_table& first, const dynamic_truth_table& second )
-{
-  return is_const0( ~(( ~first ) | second ) );
-}
-
-/*! \brief Bitwise OR of two truth tables */
-template<int NumVars>
-inline bool implies( const static_truth_table<NumVars>& first, const static_truth_table<NumVars>& second )
-{
-  return is_const0( ~(( ~first ) | second ) );
-}
-
-}
+#include <mockturtle/algorithms/resubstitution.hpp>
 
 namespace mockturtle
 {
-
-namespace detail
-{
-
-struct unate_divisors
-{
-  using signal = typename aig_network::signal;
-
-  std::vector<signal> positive_divisors;
-  std::vector<signal> negative_divisors;
-  std::vector<signal> next_candidates;
-
-  void clear()
-  {
-    positive_divisors.clear();
-    negative_divisors.clear();
-    next_candidates.clear();
-  }
-};
-
-struct binate_divisors
-{
-  using signal = typename aig_network::signal;
-
-  std::vector<signal> positive_divisors0;
-  std::vector<signal> positive_divisors1;
-  std::vector<signal> negative_divisors0;
-  std::vector<signal> negative_divisors1;
-
-  void clear()
-  {
-    positive_divisors0.clear();
-    positive_divisors1.clear();
-    negative_divisors0.clear();
-    negative_divisors1.clear();
-  }
-};
-
-} /* detail */
 
 struct aig_resub_stats
 {
@@ -188,6 +133,41 @@ public:
   using signal = aig_network::signal;
   using stats = aig_resub_stats;
 
+  struct unate_divisors
+  {
+    using signal = typename aig_network::signal;
+
+    std::vector<signal> positive_divisors;
+    std::vector<signal> negative_divisors;
+    std::vector<signal> next_candidates;
+
+    void clear()
+    {
+      positive_divisors.clear();
+      negative_divisors.clear();
+      next_candidates.clear();
+    }
+  };
+
+  struct binate_divisors
+  {
+    using signal = typename aig_network::signal;
+
+    std::vector<signal> positive_divisors0;
+    std::vector<signal> positive_divisors1;
+    std::vector<signal> negative_divisors0;
+    std::vector<signal> negative_divisors1;
+
+    void clear()
+    {
+      positive_divisors0.clear();
+      positive_divisors1.clear();
+      negative_divisors0.clear();
+      negative_divisors1.clear();
+    }
+  };
+
+public:
   explicit aig_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, stats& st )
     : ntk( ntk )
     , sim( sim )
@@ -734,8 +714,8 @@ private:
   std::vector<node> const& divs;
   stats& st;
 
-  detail::unate_divisors udivs;
-  detail::binate_divisors bdivs;
+  unate_divisors udivs;
+  binate_divisors bdivs;
 }; /* aig_resub_functor */
 
 template<class Ntk>

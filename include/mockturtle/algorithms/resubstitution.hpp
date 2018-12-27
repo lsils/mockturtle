@@ -41,6 +41,24 @@
 #include <kitty/static_truth_table.hpp>
 #include <kitty/constructors.hpp>
 
+namespace kitty
+{
+
+/*! \brief Implies */
+inline bool implies( const dynamic_truth_table& first, const dynamic_truth_table& second )
+{
+  return is_const0( ~(( ~first ) | second ) );
+}
+
+/*! \brief Implies */
+template<int NumVars>
+inline bool implies( const static_truth_table<NumVars>& first, const static_truth_table<NumVars>& second )
+{
+  return is_const0( ~(( ~first ) | second ) );
+}
+
+} /* namespace kitty */
+
 namespace mockturtle
 {
 
