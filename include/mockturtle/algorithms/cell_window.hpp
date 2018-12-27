@@ -55,15 +55,15 @@ public:
         _cell_refs( ntk ),
         _cell_parents( ntk )
   {
-    // is_cell_root
-    // foreach_gate
-    // foreach_po
-    // foreach_cell_fanin
-    // get_node
-    // incr_trav_id
-    // set_visited
-    // trav_id
-    // get_constant
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_is_cell_root_v<Ntk>, "Ntk does not implement the is_cell_root method" );
+    static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+    static_assert( has_foreach_cell_fanin_v<Ntk>, "Ntk does not implement the foreach_cell_fanin method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_incr_trav_id_v<Ntk>, "Ntk does not implement the incr_trav_id method" );
+    static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+    static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
 
     _nodes.reserve( _max_gates >> 1 );
     _gates.reserve( _max_gates );
@@ -79,7 +79,9 @@ public:
     _nodes.clear();
     _gates.clear();
 
-    auto gates = collect_mffc( pivot );
+    std::vector<node<Ntk>> gates;
+    gates.reserve( _max_gates );
+    collect_mffc( pivot, gates );
     add_node( pivot, gates );
 
     if ( gates.size() > _max_gates )
@@ -90,7 +92,8 @@ public:
     std::optional<node<Ntk>> next;
     while ( ( next = find_next_pivot() ) )
     {
-      gates = collect_mffc( *next );
+      gates.clear();
+      collect_mffc( *next, gates );
 
       if ( _gates.size() + gates.size() > _max_gates )
       {
@@ -120,16 +123,15 @@ private:
     } );
   }
 
-  std::vector<node<Ntk>> collect_mffc( node<Ntk> const& pivot )
+  void collect_mffc( node<Ntk> const& pivot, std::vector<node<Ntk>>& gates )
   {
     _ntk.incr_trav_id();
-    auto gates = collect_gates( pivot );
+    collect_gates( pivot, gates );
     const auto it = std::remove_if( gates.begin(), gates.end(), [&]( auto const& g ) { return _gates.count( g ); } );
     gates.erase( it, gates.end() );
-    return gates;
   }
 
-  std::vector<node<Ntk>> collect_gates( node<Ntk> const& pivot )
+  void collect_gates( node<Ntk> const& pivot, std::vector<node<Ntk>>& gates )
   {
     assert( !_ntk.is_pi( pivot ) );
 
@@ -140,10 +142,7 @@ private:
       _ntk.set_visited( n, _ntk.trav_id() );
     } );
 
-    std::vector<node<Ntk>> gates;
-    gates.reserve( 64 );
     collect_gates_rec( pivot, gates );
-    return gates;
   }
 
   void collect_gates_rec( node<Ntk> const& n, std::vector<node<Ntk>>& gates )
@@ -163,11 +162,7 @@ private:
   void add_node( node<Ntk> const& pivot, std::vector<node<Ntk>> const& gates )
   {
     _nodes.insert( pivot );
-
-    for ( auto const& g : gates )
-    {
-      _gates.insert( g );
-    }
+    std::copy( gates.begin(), gates.end(), std::insert_iterator( _gates, _gates.begin() ) );
   }
 
   std::optional<node<Ntk>> find_next_pivot()
