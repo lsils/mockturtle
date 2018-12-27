@@ -70,3 +70,4 @@ v0.1 (not yet released)
     - Tracking time of computations (`stopwatch`, `call_with_stopwatch`, `make_with_stopwatch`) `#35 <https://github.com/lsils/mockturtle/pull/35>`_
 * Others:
     - Network events `#107 <https://github.com/lsils/mockturtle/pull/107>`_
+    - MIG cost functions `#115 <https://github.com/lsils/mockturtle/pull/115>`_

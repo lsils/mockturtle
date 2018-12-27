@@ -59,6 +59,12 @@ Welcome to mockturtle's documentation!
 
 .. toctree::
    :maxdepth: 2
+   :caption: Properties
+
+   properties
+
+.. toctree::
+   :maxdepth: 2
    :caption: Utilities
 
    utils/util_data_structures
