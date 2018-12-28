@@ -109,19 +109,21 @@ struct aig_resub_stats
   {
     std::cout << "[i] kernel: aig_resub_functor\n";
     std::cout << fmt::format( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
-                                num_const_accepts, to_seconds( time_resubC ) );
-      std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
-                                num_div0_accepts, to_seconds( time_resub0 ) );
-      std::cout << fmt::format( "[i]            collect unate divisors                        ({:>5.2f} secs)\n", to_seconds( time_collect_unate_divisors ) );
-      std::cout << fmt::format( "[i]           12-resub {:6d} = {:6d} 2AND    + {:6d} 2OR     ({:>5.2f} secs)\n",
-                                num_div12_accepts, num_div12_2and_accepts, num_div12_2or_accepts, to_seconds( time_resub12 ) );
-      std::cout << fmt::format( "[i]            collect binate divisors                       ({:>5.2f} secs)\n", to_seconds( time_collect_binate_divisors ) );
-      std::cout << fmt::format( "[i]            2-resub {:6d} = {:6d} AND-OR  + {:6d} OR-AND  ({:>5.2f} secs)\n",
-                                num_div2_accepts, num_div2_and_or_accepts, num_div2_or_and_accepts, to_seconds( time_resub2 ) );
-      std::cout << fmt::format( "[i]            3-resub {:6d} = {:6d} AND-2OR + {:6d} OR-2AND ({:>5.2f} secs)\n",
-                                num_div3_accepts, num_div3_and_2or_accepts, num_div3_or_2and_accepts, to_seconds( time_resub3 ) );
-      std::cout << fmt::format( "[i]            total   {:6d}\n",
-                                (num_const_accepts + num_div0_accepts + num_div1_accepts + num_div12_accepts + num_div2_accepts + num_div3_accepts) );
+                              num_const_accepts, to_seconds( time_resubC ) );
+    std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
+                              num_div0_accepts, to_seconds( time_resub0 ) );
+    std::cout << fmt::format( "[i]            collect unate divisors                           ({:>5.2f} secs)\n", to_seconds( time_collect_unate_divisors ) );
+    std::cout << fmt::format( "[i]            1-resub {:6d}                                   ({:>5.2f} secs)\n",
+                              num_div1_accepts, to_seconds( time_resub1 ) );
+    std::cout << fmt::format( "[i]           12-resub {:6d} = {:6d} 2AND    + {:6d} 2OR     ({:>5.2f} secs)\n",
+                              num_div12_accepts, num_div12_2and_accepts, num_div12_2or_accepts, to_seconds( time_resub12 ) );
+    std::cout << fmt::format( "[i]            collect binate divisors                          ({:>5.2f} secs)\n", to_seconds( time_collect_binate_divisors ) );
+    std::cout << fmt::format( "[i]            2-resub {:6d} = {:6d} AND-OR  + {:6d} OR-AND  ({:>5.2f} secs)\n",
+                              num_div2_accepts, num_div2_and_or_accepts, num_div2_or_and_accepts, to_seconds( time_resub2 ) );
+    std::cout << fmt::format( "[i]            3-resub {:6d} = {:6d} AND-2OR + {:6d} OR-2AND ({:>5.2f} secs)\n",
+                              num_div3_accepts, num_div3_and_2or_accepts, num_div3_or_2and_accepts, to_seconds( time_resub3 ) );
+    std::cout << fmt::format( "[i]            total   {:6d}\n",
+                              (num_const_accepts + num_div0_accepts + num_div1_accepts + num_div12_accepts + num_div2_accepts + num_div3_accepts) );
   }
 }; /* aig_resub_stats */
 
@@ -248,7 +250,7 @@ public:
     }
 
     if ( max_inserts == 2 || num_mffc == 3 )
-      return std::optional<signal>();
+      return std::nullopt;
 
     /* consider three nodes */
     g = call_with_stopwatch( st.time_resub3, [&]() {
@@ -378,7 +380,7 @@ public:
       }
     }
 
-    return std::optional<signal>();
+    return std::nullopt;
   }
 
   std::optional<signal> resub_div12( node const& root, uint32_t required )
@@ -488,7 +490,7 @@ public:
       }
     }
 
-    return std::optional<signal>();
+    return std::nullopt;
   }
 
   void collect_binate_divisors( node const& root, uint32_t required )
@@ -635,7 +637,7 @@ public:
       }
     }
 
-    return std::optional<signal>();
+    return std::nullopt;
   }
 
   std::optional<signal> resub_div3( node const& root, uint32_t required )
@@ -705,7 +707,7 @@ public:
       }
     }
 
-    return std::optional<signal>();
+    return std::nullopt;
   }
 
 private:

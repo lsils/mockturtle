@@ -282,6 +282,14 @@ public:
     }
   }
 
+  void resize()
+  {
+    if ( ntk.size() > node_to_index.size() )
+      node_to_index.resize( ntk.size(), 0u );
+    if ( ntk.size() > phase.size() )
+      phase.resize( ntk.size(), false );
+  }
+
   void assign( node const& n, uint32_t index )
   {
     assert( n < node_to_index.size() );
@@ -356,11 +364,11 @@ struct default_resub_functor_stats
   {
     std::cout << "[i] kernel: default_resub_functor\n";
     std::cout << fmt::format( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
-                                num_const_accepts, to_seconds( time_resubC ) );
-      std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
-                                num_div0_accepts, to_seconds( time_resub0 ) );
-      std::cout << fmt::format( "[i]            total   {:6d}\n",
-                                (num_const_accepts + num_div0_accepts) );
+                              num_const_accepts, to_seconds( time_resubC ) );
+    std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
+                              num_div0_accepts, to_seconds( time_resub0 ) );
+    std::cout << fmt::format( "[i]            total   {:6d}\n",
+                              (num_const_accepts + num_div0_accepts) );
   }
 };
 
@@ -458,6 +466,61 @@ public:
     : ntk( ntk ), sim( ntk, ps.max_divisors, ps.max_pis ), ps( ps ), st( st ), resub_st( resub_st )
   {
     st.initial_size = ntk.num_gates();
+
+    auto const update_level_of_new_node = [&]( const auto& n ){
+      ntk.resize_levels();
+      update_node_level( n );
+    };
+
+    auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ){
+      (void)old_children;
+      update_node_level( n );
+    };
+
+    auto const update_fanout_of_new_node = [&]( const auto& n ){
+      assert( ntk.fanin_size( n ) > 0 );
+      ntk.resize_fanout();
+
+      /* update fanout */
+      ntk.foreach_fanin( n, [&]( const auto& f ){
+          auto const p = ntk.get_node( f );
+          ntk.add_fanout( p, n );
+        });
+    };
+
+    auto const update_fanout_of_existing_node = [&]( const auto& n, const auto& old_children ){
+      /* update fanout */
+      for ( const auto& c : old_children )
+        ntk.remove_fanout( ntk.get_node( c ), n );
+
+      ntk.foreach_fanin( n, [&]( const auto& f ){
+          auto const p = ntk.get_node( f );
+          ntk.add_fanout( p, n );
+        });
+    };
+
+    auto const update_fanout_of_deleted_node = [&]( const auto& n ){
+      /* update fanout */
+      ntk.set_fanout( n, {} );
+      ntk.foreach_fanin( n, [&]( const auto& f ){
+          auto const p = ntk.get_node( f );
+          ntk.remove_fanout( p, n );
+        });
+    };
+
+    auto const update_level_of_deleted_node = [&]( const auto& n ){
+      /* update fanout */
+      ntk.set_level( n, -1 );
+    };
+
+    ntk._events->on_add.emplace_back( update_fanout_of_new_node );
+    ntk._events->on_add.emplace_back( update_level_of_new_node );
+
+    ntk._events->on_modified.emplace_back( update_fanout_of_existing_node );
+    ntk._events->on_modified.emplace_back( update_level_of_existing_node );
+
+    ntk._events->on_delete.emplace_back( update_fanout_of_deleted_node );
+    ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
   }
 
   void run()
@@ -511,8 +574,38 @@ public:
   }
 
 private:
+  void update_node_level( node const& n, bool top_most = true )
+  {
+    uint32_t curr_level = ntk.level( n );
+
+    uint32_t max_level = 0;
+    ntk.foreach_fanin( n, [&]( const auto& f ){
+        auto const p = ntk.get_node( f );
+        auto const fanin_level = ntk.level( p );
+        if ( fanin_level > max_level )
+        {
+          max_level = fanin_level;
+        }
+      });
+    ++max_level;
+
+    if ( curr_level != max_level )
+    {
+      ntk.set_level( n, max_level );
+
+      /* update only one more level */
+      if ( top_most )
+      {
+        ntk.foreach_fanout( n, [&]( const auto& p ){
+            update_node_level( p, false );
+          });
+      }
+    }
+  }
+
   void simulate( std::vector<node> const &leaves )
   {
+    sim.resize();
     for ( auto i = 0u; i < divs.size(); ++i )
     {
       const auto d = divs.at( i );
@@ -533,7 +626,7 @@ private:
       std::vector<typename Simulator::truthtable_t> tts;
       ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
           (void)i;
-          tts.emplace_back( sim.get_tt( s ) );
+          tts.emplace_back( sim.get_tt( ntk.make_signal( ntk.get_node( s ) ) ) ); /* ignore sign */
         });
 
       auto const tt = ntk.compute( d, tts.begin(), tts.end() );
