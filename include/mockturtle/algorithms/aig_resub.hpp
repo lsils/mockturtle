@@ -170,15 +170,16 @@ public:
   };
 
 public:
-  explicit aig_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, stats& st )
+  explicit aig_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
     : ntk( ntk )
     , sim( sim )
     , divs( divs )
+    , num_divs( num_divs )
     , st( st )
   {
   }
 
-  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& cost )
+  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
@@ -187,7 +188,7 @@ public:
     if ( g )
     {
       ++st.num_const_accepts;
-      cost = 0;
+      last_gain = num_mffc;
       return g; /* accepted resub */
     }
 
@@ -198,7 +199,7 @@ public:
     if ( g )
     {
       ++st.num_div0_accepts;
-      cost = 0;
+      last_gain = num_mffc;
       return g; /* accepted resub */
     }
 
@@ -217,7 +218,7 @@ public:
     if ( g )
     {
       ++st.num_div1_accepts;
-      cost = 1;
+      last_gain = num_mffc - 1;
       return g; /* accepted resub */
     }
 
@@ -230,7 +231,7 @@ public:
     if ( g )
     {
       ++st.num_div12_accepts;
-      cost = 2;
+      last_gain = num_mffc - 2;
       return g; /* accepted resub */
     }
 
@@ -245,7 +246,7 @@ public:
     if ( g )
     {
       ++st.num_div2_accepts;
-      cost = 2;
+      last_gain = num_mffc - 2;
       return g; /* accepted resub */
     }
 
@@ -258,7 +259,7 @@ public:
     if ( g )
     {
       ++st.num_div3_accepts;
-      cost = 3;
+      last_gain = num_mffc - 3;
       return g; /* accepted resub */
     }
 
@@ -280,11 +281,9 @@ public:
   {
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
-    for ( const auto& d : divs )
+    for ( auto i = 0u; i < num_divs; ++i )
     {
-      if ( root == d )
-        break;
-
+      auto const d = divs.at( i );
       if ( tt != sim.get_tt( ntk.make_signal( d ) ) )
         continue; /* next */
 
@@ -299,10 +298,9 @@ public:
     udivs.clear();
 
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
-    for ( const auto& d : divs )
+    for ( auto i = 0u; i < num_divs; ++i )
     {
-      if ( d == root )
-        break;
+      auto const d = divs.at( i );
 
       if ( ntk.level( d ) > required - 1 )
         continue;
@@ -336,8 +334,6 @@ public:
     for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
     {
       auto const& s0 = udivs.positive_divisors.at( i );
-      if ( root == ntk.get_node( s0 ) )
-        break;
 
       for ( auto j = i + 1; j < udivs.positive_divisors.size(); ++j )
       {
@@ -360,8 +356,6 @@ public:
     for ( auto i = 0u; i < udivs.negative_divisors.size(); ++i )
     {
       auto const& s0 = udivs.negative_divisors.at( i );
-      if ( root == ntk.get_node( s0 ) )
-        break;
 
       for ( auto j = i + 1; j < udivs.negative_divisors.size(); ++j )
       {
@@ -391,12 +385,14 @@ public:
     /* check positive unate divisors */
     for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
     {
+      auto const s0 = udivs.positive_divisors.at( i );
+
       for ( auto j = i + 1; j < udivs.positive_divisors.size(); ++j )
       {
+        auto const s1 = udivs.positive_divisors.at( j );
+
         for ( auto k = j + 1; k < udivs.positive_divisors.size(); ++k )
         {
-          auto const s0 = udivs.positive_divisors.at( i );
-          auto const s1 = udivs.positive_divisors.at( j );
           auto const s2 = udivs.positive_divisors.at( k );
 
           auto const& tt_s0 = sim.get_tt( s0 );
@@ -433,7 +429,7 @@ public:
             auto const c = sim.get_phase( ntk.get_node( min1 ) ) ? !min1 : min1;
 
             ++st.num_div12_2or_accepts;
-            return sim.get_phase( root ) ? !ntk.create_or( a, ntk.create_or( b, c ) ) : ntk.create_and( a, ntk.create_or( b, c ) );
+            return sim.get_phase( root ) ? !ntk.create_or( a, ntk.create_or( b, c ) ) : ntk.create_or( a, ntk.create_or( b, c ) );
           }
         }
       }
@@ -442,12 +438,14 @@ public:
     /* check negative unate divisors */
     for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
     {
+      auto const s0 = udivs.positive_divisors.at( i );
+
       for ( auto j = i + 1; j < udivs.positive_divisors.size(); ++j )
       {
+        auto const s1 = udivs.positive_divisors.at( j );
+
         for ( auto k = j + 1; k < udivs.positive_divisors.size(); ++k )
         {
-          auto const s0 = udivs.positive_divisors.at( i );
-          auto const s1 = udivs.positive_divisors.at( j );
           auto const s2 = udivs.positive_divisors.at( k );
 
           auto const& tt_s0 = sim.get_tt( s0 );
@@ -501,18 +499,12 @@ public:
     for ( auto i = 0u; i < udivs.next_candidates.size(); ++i )
     {
       auto const& s0 = udivs.next_candidates.at( i );
-      if ( ntk.get_node( s0 ) == root )
-        break;
-
       if ( ntk.level( ntk.get_node( s0 ) ) > required - 2 )
         continue;
 
       for ( auto j = i + 1; j < udivs.next_candidates.size(); ++j )
       {
         auto const& s1 = udivs.next_candidates.at( j );
-        if ( ntk.get_node( s1 ) == root )
-          break;
-
         if ( ntk.level( ntk.get_node( s1 ) ) > required - 2 )
           continue;
 
@@ -714,6 +706,7 @@ private:
   Ntk& ntk;
   Simulator const& sim;
   std::vector<node> const& divs;
+  uint32_t const num_divs;
   stats& st;
 
   unate_divisors udivs;

@@ -71,7 +71,7 @@ struct mig_resub_stats
 
   /*! \brief Accumulated runtime for relevance resub */
   stopwatch<>::duration time_resubR{0};
-  
+
   /*! \brief Accumulated runtime for 12-resub. */
   stopwatch<>::duration time_resub12{0};
 
@@ -95,7 +95,7 @@ struct mig_resub_stats
 
   /*! \brief Number of accepted relevance resubsitutions */
   uint32_t num_divR_accepts{0};
-  
+
   /*! \brief Number of accepted single AND-resubsitutions */
   uint64_t num_div1_and_accepts{0};
 
@@ -189,15 +189,16 @@ public:
   };
 
 public:
-  explicit mig_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, stats& st )
+  explicit mig_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
     : ntk( ntk )
     , sim( sim )
     , divs( divs )
+    , num_divs( num_divs )
     , st( st )
   {
   }
 
-  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& cost )
+  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
@@ -206,7 +207,7 @@ public:
     if ( g )
     {
       ++st.num_const_accepts;
-      cost = 0;
+      last_gain = num_mffc;
       return g; /* accepted resub */
     }
 
@@ -217,7 +218,7 @@ public:
     if ( g )
     {
       ++st.num_div0_accepts;
-      cost = 0;
+      last_gain = num_mffc;
       return g; /* accepted resub */
     }
 
@@ -228,10 +229,10 @@ public:
     if ( g )
     {
       ++st.num_divR_accepts;
-      cost = 0;
+      last_gain = num_mffc;
       return g; /* accepted resub */
     }
-        
+
     if ( max_inserts == 0 || num_mffc == 1 )
       return std::nullopt;
 
@@ -247,7 +248,7 @@ public:
     if ( g )
     {
       ++st.num_div1_accepts;
-      cost = 1;
+      last_gain = num_mffc - 1;
       return g; /* accepted resub */
     }
 
@@ -260,7 +261,7 @@ public:
     if ( g )
     {
       ++st.num_div12_accepts;
-      cost = 2;
+      last_gain = num_mffc - 2;
       return g; /* accepted resub */
     }
 
@@ -275,7 +276,7 @@ public:
     if ( g )
     {
       ++st.num_div2_accepts;
-      cost = 2;
+      last_gain = num_mffc - 2;
       return g; /* accepted resub */
     }
 
@@ -297,10 +298,9 @@ public:
   {
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
-    for ( const auto& d : divs )
+    for ( auto i = 0u; i < num_divs; ++i )
     {
-      if ( root == d )
-        break;
+      auto const d = divs.at( i );
 
       if ( tt != sim.get_tt( ntk.make_signal( d ) ) )
         continue; /* next */
@@ -392,7 +392,7 @@ public:
            ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, b );
       }
     }
-    
+
     return std::nullopt;
   }
 
@@ -401,27 +401,21 @@ public:
     udivs.clear();
 
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
-    for ( auto i = 0u; i < divs.size(); ++i )
+    for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const d0 = divs.at( i );
-      if ( d0 == root )
-        break;
-
       if ( ntk.level( d0 ) > required - 1 )
         continue;
 
-      for ( auto j = i + 1; j < divs.size(); ++j )
+      for ( auto j = i + 1; j < num_divs; ++j )
       {
         auto const d1 = divs.at( j );
-        if ( d1 == root )
-          break;
-
         if ( ntk.level( d1 ) > required - 1 )
           continue;
 
         auto const& tt_s0 = sim.get_tt( ntk.make_signal( d0 ) );
         auto const& tt_s1 = sim.get_tt( ntk.make_signal( d1 ) );
-        
+
         /* Boolean filtering rule for MAJ-3 */
         if ( kitty::ternary_majority( tt_s0, tt_s1, tt ) == tt )
         {
@@ -464,10 +458,10 @@ public:
         auto const& tt_s0 = sim.get_tt( s0 );
         auto const& tt_s1 = sim.get_tt( s1 );
         auto tt_s2 = sim.get_tt( s2 );
-        
+
         if ( kitty::ternary_majority( tt_s0, tt_s1, tt_s2 ) == tt )
         {
-          // ++st.num_div1_maj_accepts;          
+          // ++st.num_div1_maj_accepts;
           auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
           auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
           auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
@@ -501,7 +495,7 @@ public:
         auto const& tt_s0 = sim.get_tt( s0 );
         auto const& tt_s1 = sim.get_tt( s1 );
         auto tt_s2 = sim.get_tt( s2 );
-        
+
         if ( kitty::ternary_majority( ~tt_s0, tt_s1, tt_s2 ) == tt )
         {
           // ++st.num_div1_maj_accepts;
@@ -525,13 +519,13 @@ public:
       }
     }
 
-    return std::optional<signal>();
+    return std::nullopt;
   }
 
   std::optional<signal> resub_div12( node const& root, uint32_t required )
   {
     (void)required;
-    
+
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
 
@@ -555,7 +549,7 @@ public:
           auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
           auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
           return sim.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
-        }        
+        }
       }
     }
 
@@ -579,11 +573,11 @@ public:
           auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
           auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
           return sim.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
-        }        
+        }
       }
     }
 
-    return std::optional<signal>();
+    return std::nullopt;
   }
 
   void collect_binate_divisors( node const& root, uint32_t required )
@@ -594,31 +588,22 @@ public:
     for ( auto i = 0u; i < udivs.next_candidates.size(); ++i )
     {
       auto const& s0 = udivs.next_candidates.at( i );
-      if ( ntk.get_node( s0 ) == root )
-        break;
-
       if ( ntk.level( ntk.get_node( s0 ) ) > required - 2 )
         continue;
 
       auto const& tt_s0 = sim.get_tt( s0 );
-      
+
       for ( auto j = i + 1; j < udivs.next_candidates.size(); ++j )
       {
         auto const& s1 = udivs.next_candidates.at( j );
-        if ( ntk.get_node( s1 ) == root )
-          break;
-
         if ( ntk.level( ntk.get_node( s1 ) ) > required - 2 )
           continue;
 
         auto const& tt_s1 = sim.get_tt( s1 );
-        
+
         for ( auto k = j + 1; k < udivs.next_candidates.size(); ++k )
         {
           auto const& s2 = udivs.next_candidates.at( k );
-          if ( ntk.get_node( s2 ) == root )
-            continue;
-
           if ( ntk.level( ntk.get_node( s2 ) ) > required - 2 )
             continue;
 
@@ -659,7 +644,7 @@ public:
       }
     }
   }
-  
+
   std::optional<signal> resub_div2( node const& root, uint32_t required )
   {
     (void)required;
@@ -722,23 +707,24 @@ public:
         auto const& tt_s2 = sim.get_tt( s2 );
         auto const& tt_s3 = sim.get_tt( s3 );
         auto const& tt_s4 = sim.get_tt( s4 );
-        
+
         if ( kitty::ternary_majority( ~kitty::ternary_majority( tt_s0, tt_s1, tt_s2 ), tt_s3, tt_s4 ) == tt )
         {
           return sim.get_phase( root ) ?
             !ntk.create_maj( a, b, ntk.create_maj( c, d, e ) ) :
              ntk.create_maj( a, b, ntk.create_maj( c, d, e ) );
         }
-      }      
+      }
     }
 
-    return std::optional<signal>();
+    return std::nullopt;
   }
 
 private:
   Ntk& ntk;
   Simulator const& sim;
   std::vector<node> const& divs;
+  uint32_t const num_divs;
   stats& st;
 
   unate_divisors udivs;

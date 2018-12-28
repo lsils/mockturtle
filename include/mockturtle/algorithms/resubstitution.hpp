@@ -380,15 +380,16 @@ public:
   using signal = typename Ntk::signal;
   using stats = default_resub_functor_stats;
 
-  explicit default_resub_functor( Ntk const& ntk, Simulator const& sim, std::vector<node> const& divs, default_resub_functor_stats& st )
+  explicit default_resub_functor( Ntk const& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, default_resub_functor_stats& st )
     : ntk( ntk )
     , sim( sim )
     , divs( divs )
+    , num_divs( num_divs )
     , st( st )
   {
   }
 
-  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& cost ) const
+  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain ) const
   {
     (void)max_inserts;
     (void)num_mffc;
@@ -400,7 +401,7 @@ public:
     if ( g )
     {
       ++st.num_const_accepts;
-      cost = 0;
+      last_gain = num_mffc;
       return g; /* accepted resub */
     }
 
@@ -411,7 +412,7 @@ public:
     if ( g )
     {
       ++st.num_div0_accepts;
-      cost = 0;
+      last_gain = num_mffc;;
       return g; /* accepted resub */
     }
 
@@ -452,6 +453,7 @@ private:
   Ntk const& ntk;
   Simulator const& sim;
   std::vector<node> const& divs;
+  uint32_t num_divs;
   stats& st;
 }; /* default_resub_functor */
 
@@ -669,12 +671,8 @@ private:
     /* simulate the nodes */
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); });
 
-    ResubFn resub_fn( ntk, sim, divs, resub_st );
-
-    uint32_t cost = 0;
-    auto const& r = resub_fn( root, required, ps.max_inserts, num_mffc, cost );
-    last_gain = num_mffc - cost;
-    return r;
+    ResubFn resub_fn( ntk, sim, divs, num_divs, resub_st );
+    return resub_fn( root, required, ps.max_inserts, num_mffc, last_gain );
   }
 
   void collect_divisors_rec( node const& n, std::vector<node>& internal )
