@@ -22,6 +22,7 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/mapping_view.hpp>
 
 #include <fmt/format.h>
@@ -157,8 +158,12 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
 
 TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
 {
+  using view_t = depth_view<fanout_view<mig_network>>;
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
-    resubstitution( ntk );
+    fanout_view<mig_network> fanout_view{ntk};
+    view_t resub_view{fanout_view};
+    const auto before = ntk.num_gates();
+    resubstitution( resub_view );
     ntk = cleanup_dangling( ntk );
     return ntk.num_gates();
   } );
