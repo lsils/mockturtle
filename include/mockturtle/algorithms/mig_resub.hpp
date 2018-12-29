@@ -127,14 +127,14 @@ struct mig_resub_stats
                               num_const_accepts, to_seconds( time_resubC ) );
     std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
                               num_div0_accepts, to_seconds( time_resub0 ) );
-    std::cout << fmt::format( "[i]            collect unate divisors                        ({:>5.2f} secs)\n", to_seconds( time_collect_unate_divisors ) );
+    std::cout << fmt::format( "[i]            collect unate divisors                           ({:>5.2f} secs)\n", to_seconds( time_collect_unate_divisors ) );
     std::cout << fmt::format( "[i]            R-resub {:6d}                                   ({:>5.2f} secs)\n",
                               num_divR_accepts, to_seconds( time_resubR ) );
     std::cout << fmt::format( "[i]            1-resub {:6d} = {:6d} MAJ                      ({:>5.2f} secs)\n",
                               num_div1_accepts, num_div1_accepts, to_seconds( time_resub1 ) );
     std::cout << fmt::format( "[i]           12-resub {:6d} = {:6d} MAJ                      ({:>5.2f} secs)\n",
                               num_div12_accepts, num_div12_accepts, to_seconds( time_resub12 ) );
-    std::cout << fmt::format( "[i]            collect binate divisors                       ({:>5.2f} secs)\n", to_seconds( time_collect_binate_divisors ) );
+    std::cout << fmt::format( "[i]            collect binate divisors                          ({:>5.2f} secs)\n", to_seconds( time_collect_binate_divisors ) );
     std::cout << fmt::format( "[i]            2-resub {:6d} = {:6d} 2MAJ                     ({:>5.2f} secs)\n",
                                num_div2_accepts, num_div2_accepts, to_seconds( time_resub2 ) );
     std::cout << fmt::format( "[i]            total   {:6d}\n",
@@ -535,9 +535,9 @@ public:
       auto const& s0 = udivs.positive_divisors0.at( i );
       auto const& s1 = udivs.positive_divisors1.at( i );
 
-      for ( auto j = i + 1; j < udivs.positive_divisors0.size(); ++j )
+      for ( auto j = i + 1; j < udivs.next_candidates.size(); ++j )
       {
-        auto const& s2 = udivs.next_candidates.at( i );
+        auto const& s2 = udivs.next_candidates.at( j );
 
         auto const& tt_s0 = sim.get_tt( s0 );
         auto const& tt_s1 = sim.get_tt( s1 );
@@ -559,9 +559,9 @@ public:
       auto const& s0 = udivs.negative_divisors0.at( i );
       auto const& s1 = udivs.negative_divisors1.at( i );
 
-      for ( auto j = i + 1; j < udivs.negative_divisors0.size(); ++j )
+      for ( auto j = i + 1; j < udivs.next_candidates.size(); ++j )
       {
-        auto const& s2 = udivs.next_candidates.at( i );
+        auto const& s2 = udivs.next_candidates.at( j );
 
         auto const& tt_s0 = sim.get_tt( s0 );
         auto const& tt_s1 = sim.get_tt( s1 );
