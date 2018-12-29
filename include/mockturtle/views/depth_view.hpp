@@ -73,7 +73,7 @@ namespace mockturtle
       std::cout << "Depth: " << aig_depth.depth() << "\n";
    \endverbatim
  */
-template<typename Ntk, bool has_depth_interface = has_depth_v<Ntk> && has_level_v<Ntk> && has_update_levels_v<Ntk>>
+template<typename Ntk, bool has_depth_interface = has_depth_v<Ntk>&& has_level_v<Ntk>&& has_update_levels_v<Ntk>>
 class depth_view
 {
 };
@@ -95,11 +95,20 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  explicit depth_view( Ntk const& ntk ) : Ntk( ntk ), _levels( ntk )
+  /*! \brief Standard constructor.
+   *
+   * \param ntk Base network
+   * \param count_complements Count inverters as 1
+   */
+  explicit depth_view( Ntk const& ntk, bool count_complements = false )
+      : Ntk( ntk ),
+        _count_complements( count_complements ),
+        _levels( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
@@ -152,7 +161,12 @@ private:
 
     uint32_t level{0};
     this->foreach_fanin( n, [&]( auto const& f ) {
-        level = std::max( level, compute_levels( this->get_node( f ) ) );
+      auto clevel = compute_levels( this->get_node( f ) );
+      if ( _count_complements && this->is_complemented( f ) )
+      {
+        clevel++;
+      }
+      level = std::max( level, clevel );
     } );
 
     return _levels[n] = level + 1;
@@ -162,15 +176,24 @@ private:
   {
     _depth = 0;
     this->foreach_po( [&]( auto const& f ) {
-      _depth = std::max( _depth, compute_levels( this->get_node( f ) ) );
+      auto clevel = compute_levels( this->get_node( f ) );
+      if ( _count_complements && this->is_complemented( f ) )
+      {
+        clevel++;
+      }
+      _depth = std::max( _depth, clevel );
     } );
   }
 
+  bool _count_complements{false};
   node_map<uint32_t, Ntk> _levels;
   uint32_t _depth;
 };
 
 template<class T>
-depth_view(T const&) -> depth_view<T>;
+depth_view( T const& ) -> depth_view<T>;
+
+template<class T>
+depth_view( T const&, bool ) -> depth_view<T>;
 
 } // namespace mockturtle

@@ -5,7 +5,7 @@
 
 # mockturtle
 
-<img src="https://cdn.rawgit.com/lsils/mockturtle/master/mockturtle.svg" width="64" height="64" align="left" style="margin-right: 12pt" />
+<img src="https://cdn.jsdelivr.net/gh/lsils/mockturtle@master/mockturtle.svg" width="64" height="64" align="left" style="margin-right: 12pt" />
 mockturtle is a C++-17 logic network library.  It provides several logic
 network implementations (such as And-inverter graphs, Majority-inverter graphs,
 and k-LUT networks), and generic algorithms for logic synthesis and logic
