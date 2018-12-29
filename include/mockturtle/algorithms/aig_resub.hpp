@@ -417,7 +417,7 @@ public:
               min0 = s0;
               min1 = s2;
             }
-            else
+            else if ( ntk.level( ntk.get_node( s2 ) ) == max_level )
             {
               max = s2;
               min0 = s0;
@@ -470,7 +470,7 @@ public:
               min0 = s0;
               min1 = s2;
             }
-            else
+            else if ( ntk.level( ntk.get_node( s2 ) ) == max_level )
             {
               max = s2;
               min0 = s0;
