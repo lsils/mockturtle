@@ -270,7 +270,7 @@ public:
   explicit simulator( Ntk const& ntk, uint32_t num_divisors, uint32_t max_pis )
     : ntk( ntk )
     , num_divisors( num_divisors )
-    , tts( num_divisors )
+    , tts( num_divisors + 1 )
     , node_to_index( ntk.size(), 0u )
     , phase( ntk.size(), false )
   {
@@ -293,7 +293,7 @@ public:
   void assign( node const& n, uint32_t index )
   {
     assert( n < node_to_index.size() );
-    assert( index < num_divisors );
+    assert( index < num_divisors + 1 );
     node_to_index[n] = index;
   }
 
@@ -719,7 +719,7 @@ private:
       return false;
 
     /* get the number of divisors to collect */
-    int32_t limit = ps.max_divisors - ps.max_pis - ( divs.size() - leaves.size() + temp.size() );
+    int32_t limit = ps.max_divisors - ps.max_pis - ( divs.size() + 1 - leaves.size() + temp.size() );
 
     /* explore the fanouts, which are not in the MFFC */
     int32_t counter = 0;
