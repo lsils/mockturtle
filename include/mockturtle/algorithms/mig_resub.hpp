@@ -355,7 +355,6 @@ public:
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
-        auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
 
         return sim.get_phase( root ) ?
           !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, b ) :
@@ -363,7 +362,6 @@ public:
       }
       else if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && relevance( ~tt0, tt1, tt2, tt ) )
       {
-        auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
 
@@ -374,7 +372,6 @@ public:
       else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && relevance( ~tt1, tt0, tt2, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
-        auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
 
         return sim.get_phase( root ) ?
@@ -385,7 +382,6 @@ public:
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
-        auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
 
         return sim.get_phase( root ) ?
           !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, b ) :
@@ -648,8 +644,8 @@ public:
   std::optional<signal> resub_div2( node const& root, uint32_t required )
   {
     (void)required;
-    auto s = ntk.make_signal( root );
-    auto const& tt = sim.get_tt( ntk.make_signal( root ) );
+    auto const s = ntk.make_signal( root );
+    auto const& tt = sim.get_tt( s );
 
     /* check positive unate divisors */
     for ( auto i = 0u; i < udivs.positive_divisors0.size(); ++i )
