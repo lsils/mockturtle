@@ -148,7 +148,7 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]   substitute                                                ({:>5.2f} secs)\n", to_seconds( time_substitute ) );
     std::cout << fmt::format( "[i] total divisors            = {:8d}\n",         ( num_total_divisors ) );
     std::cout << fmt::format( "[i] total leaves              = {:8d}\n",         ( num_total_leaves ) );
-    std::cout << fmt::format( "[i] estimated gain            = {:8d} ({:>5.2f}\%)\n",
+    std::cout << fmt::format( "[i] estimated gain            = {:8d} ({:>5.2f}%)\n",
                               estimated_gain, ( (100.0 * estimated_gain) / initial_size ) );
   }
 };
