@@ -543,26 +543,26 @@ public:
           auto const& tt_s1 = sim.get_tt( s1 );
           if ( kitty::implies( tt, tt_s0 & tt_s1 ) )
           {
-            bdivs.positive_divisors0.emplace_back(  s0 );
-            bdivs.positive_divisors1.emplace_back(  s1 );
+            bdivs.negative_divisors0.emplace_back(  s0 );
+            bdivs.negative_divisors1.emplace_back(  s1 );
           }
 
           if ( kitty::implies( tt, ~tt_s0 & tt_s1 ) )
           {
-            bdivs.positive_divisors0.emplace_back( !s0 );
-            bdivs.positive_divisors1.emplace_back(  s1 );
+            bdivs.negative_divisors0.emplace_back( !s0 );
+            bdivs.negative_divisors1.emplace_back(  s1 );
           }
 
           if ( kitty::implies( tt, tt_s0 & ~tt_s1 ) )
           {
-            bdivs.positive_divisors0.emplace_back(  s0 );
-            bdivs.positive_divisors1.emplace_back( !s1 );
+            bdivs.negative_divisors0.emplace_back(  s0 );
+            bdivs.negative_divisors1.emplace_back( !s1 );
           }
 
           if ( kitty::implies( tt, ~tt_s0 & ~tt_s1 ) )
           {
-            bdivs.positive_divisors0.emplace_back( !s0 );
-            bdivs.positive_divisors1.emplace_back( !s1 );
+            bdivs.negative_divisors0.emplace_back( !s0 );
+            bdivs.negative_divisors1.emplace_back( !s1 );
           }
         }
       }
