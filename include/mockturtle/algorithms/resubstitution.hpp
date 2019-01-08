@@ -624,7 +624,7 @@ private:
       }
 
       /* compute truth tables of inner nodes */
-      sim.assign( d, i - leaves.size() + ps.max_pis + 1 );
+      sim.assign( d, i - uint32_t( leaves.size() ) + ps.max_pis + 1 );
       std::vector<typename Simulator::truthtable_t> tts;
       ntk.foreach_fanin( d, [&]( const auto& s, auto i ){
           (void)i;
@@ -632,7 +632,7 @@ private:
         });
 
       auto const tt = ntk.compute( d, tts.begin(), tts.end() );
-      sim.set_tt( i - leaves.size() + ps.max_pis + 1, tt );
+      sim.set_tt( i - uint32_t( leaves.size() ) + ps.max_pis + 1, tt );
     }
 
     /* normalize truth tables */
@@ -719,7 +719,7 @@ private:
       return false;
 
     /* get the number of divisors to collect */
-    int32_t limit = ps.max_divisors - ps.max_pis - ( divs.size() + 1 - leaves.size() + temp.size() );
+    int32_t limit = ps.max_divisors - ps.max_pis - ( uint32_t( divs.size() ) + 1 - uint32_t( leaves.size() ) + uint32_t( temp.size() ) );
 
     /* explore the fanouts, which are not in the MFFC */
     int32_t counter = 0;
@@ -784,7 +784,7 @@ private:
     }
 
     /* get the number of divisors */
-    num_divs = divs.size();
+    num_divs = uint32_t( divs.size() );
 
     /* add the nodes in the MFFC */
     for ( const auto& t : temp )
