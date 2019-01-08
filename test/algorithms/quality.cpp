@@ -17,6 +17,8 @@
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/write_bench.hpp>
 #include <mockturtle/networks/aig.hpp>
@@ -163,12 +165,12 @@ TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
     fanout_view<mig_network> fanout_view{ntk};
     view_t resub_view{fanout_view};
     const auto before = ntk.num_gates();
-    resubstitution( resub_view );
+    mig_resubstitution( resub_view );
     ntk = cleanup_dangling( ntk );
-    return ntk.num_gates();
+    return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{6, 198, 393, 317, 497, 330, 693, 996, 1735, 1902, 1444}} );
+  CHECK( v == std::vector<uint32_t>{{0, 39, 6, 16, 6, 15, 57, 53, 105, 17, 40}} );
 }
 
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
@@ -276,6 +278,21 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-c
   } );
 
   CHECK( v == std::vector<uint32_t>{{6, 172, 182, 296, 182, 189, 484, 841, 1385, 1851, 1292}} );
+}
+
+TEST_CASE( "Test quality of AIG resubstitution", "[quality]" )
+{
+  using view_t = depth_view<fanout_view<aig_network>>;
+  const auto v = foreach_benchmark<aig_network>( []( auto& ntk, auto ) {
+    fanout_view<aig_network> fanout_view{ntk};
+    view_t resub_view{fanout_view};
+    const auto before = ntk.num_gates();
+    aig_resubstitution( resub_view );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 40, 0, 13, 0, 27, 76, 44, 135, 218, 43}} );
 }
 
 TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis", "[quality]" )
