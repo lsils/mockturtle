@@ -33,6 +33,7 @@
 #pragma once
 
 #include <algorithm>
+#include <numeric>
 #include <string>
 #include <type_traits>
 
