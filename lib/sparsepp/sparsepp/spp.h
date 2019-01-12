@@ -1064,6 +1064,7 @@ private:
     // T can be std::pair<const K, V>, but sometime we need to cast to a mutable type
     // ------------------------------------------------------------------------------
     typedef typename spp_::cvt<T>::type                    mutable_value_type;
+    typedef mutable_value_type &                           mutable_reference;
     typedef mutable_value_type *                           mutable_pointer;
     typedef const mutable_value_type *                     const_mutable_pointer;
 
@@ -1332,9 +1333,9 @@ private:
     void _init_val(mutable_value_type *p, reference val)
     {
 #if !defined(SPP_NO_CXX11_RVALUE_REFERENCES)
-        ::new (p) value_type(std::move(val));
+        ::new (p) value_type(std::move((mutable_reference)val));
 #else
-        ::new (p) value_type(val);
+        ::new (p) value_type((mutable_reference)val);
 #endif
     }
 
@@ -1348,7 +1349,7 @@ private:
     void _set_val(value_type *p, reference val)
     {
 #if !defined(SPP_NO_CXX11_RVALUE_REFERENCES)
-        *(mutable_pointer)p = std::move(val);
+        *(mutable_pointer)p = std::move((mutable_reference)val);
 #else
         using std::swap;
         swap(*(mutable_pointer)p, *(mutable_pointer)&val);
@@ -1381,7 +1382,7 @@ private:
         }
 
         for (uint32_t i = num_items; i > offset; --i)
-            memcpy(_group + i, _group + i-1, sizeof(*_group));
+            memcpy(static_cast<void *>(_group + i), _group + i-1, sizeof(*_group));
 
         _init_val((mutable_pointer)(_group + offset), val);
     }
@@ -1485,7 +1486,7 @@ private:
         _group[offset].~value_type();
 
         for (size_type i = offset; i < num_items - 1; ++i)
-            memcpy(_group + i, _group + i + 1, sizeof(*_group));
+            memcpy(static_cast<void *>(_group + i), _group + i + 1, sizeof(*_group));
 
         if (_sizing(num_items - 1) != num_alloc)
         {
@@ -2087,7 +2088,7 @@ public:
             if (sz)
             {
                 _alloc_group_array(sz, first, last);
-                memcpy(first, _first_group, sizeof(*first) * (std::min)(sz, old_sz));
+                memcpy(static_cast<void *>(first), _first_group, sizeof(*first) * (std::min)(sz, old_sz));
             }
 
             if (sz < old_sz)
@@ -3233,7 +3234,7 @@ public:
     std::pair<iterator, bool> insert(P &&obj)
     {
         _resize_delta(1);                      // adding an object, grow if need be
-        value_type val(std::forward<value_type>(obj));
+        value_type val(std::forward<P>(obj));
         return _insert_noresize(val);
     }
 #endif
