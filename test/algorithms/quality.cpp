@@ -17,6 +17,7 @@
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/algorithms/satlut_mapping.hpp>
 #include <mockturtle/algorithms/aig_resub.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
@@ -63,6 +64,20 @@ TEST_CASE( "Test quality of lut_mapping", "[quality]" )
   } );
 
   CHECK( v == std::vector<uint32_t>{{2, 50, 68, 77, 68, 71, 97, 231, 275, 453, 347}} );
+}
+
+TEST_CASE( "Test quality of satlut_mapping", "[quality]" )
+{
+  const auto v = foreach_benchmark<aig_network>( []( auto& ntk, auto i ) {
+    if ( i > 1355 ) return 0u;
+    mapping_view<aig_network, true> mapped{ntk};
+    satlut_mapping<mapping_view<aig_network, true>, true>( mapped );
+    auto lut = *collapse_mapped_network<klut_network>( mapped );
+    write_bench( lut, fmt::format( "/tmp/test{}.bench", i ) );
+    return mapped.num_cells();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{2, 50, 64, 76, 66, 0, 0, 0, 0, 0, 0}} );
 }
 
 TEST_CASE( "Test quality of MIG networks", "[quality]" )
