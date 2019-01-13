@@ -57,6 +57,13 @@ struct satlut_mapping_params
    */
   cut_enumeration_params cut_enumeration_ps{};
 
+  /*! \brief Conflict limit for SAT solver.
+   *
+   * The default limit is 0, which means the number of conflicts is not used
+   * as a resource limit.
+   */
+  uint32_t conflict_limit{0u};
+
   /*! \brief Be verbose. */
   bool verbose{false};
 };
@@ -68,6 +75,8 @@ struct satlut_mapping_stats
 
   void report()
   {
+    std::cout << fmt::format( "[i] number of SAT variables: {}", num_vars )
+              << fmt::format( "[i] number of SAT clauses:   {}", num_clauses );
   }
 };
 
@@ -186,13 +195,13 @@ public:
     st.num_vars = solver.nr_vars();
     st.num_clauses = solver.nr_clauses();
 
-    auto best_size = card_out.size();
+    auto best_size = ntk.has_mapping() ? ntk.num_cells() : card_out.size();
 
     while ( true )
     {
       auto assump = pabc::Abc_Var2Lit( card_out[card_out.size() - best_size], 1 );
 
-      if ( const auto result = solver.solve( &assump, &assump + 1, 0 ); result == percy::success )
+      if ( const auto result = solver.solve( &assump, &assump + 1, ps.conflict_limit ); result == percy::success )
       {
         ntk.clear_mapping();
         ntk.foreach_gate( [&]( auto n ) {
@@ -248,6 +257,17 @@ template<class Ntk, bool StoreFunction = false, typename CutData = cut_enumerati
 void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapping_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_num_gates_v<Ntk>, "Ntk does not implement the num_gates method" );
+  static_assert( has_num_cells_v<Ntk>, "Ntk does not implement the num_cells method" );
+  static_assert( has_has_mapping_v<Ntk>, "Ntk does not implement the has_mapping method" );
+  static_assert( has_clear_mapping_v<Ntk>, "Ntk does not implement the clear_mapping method" );
+  static_assert( has_add_to_mapping_v<Ntk>, "Ntk does not implement the add_to_mapping method" );
+  static_assert( !StoreFunction || has_set_cell_function_v<Ntk>, "Ntk does not implement the set_cell_function method" );
 
   satlut_mapping_stats st;
   detail::satlut_mapping_impl<Ntk, StoreFunction, CutData> p( ntk, ps, st );
