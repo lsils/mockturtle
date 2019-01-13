@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <numeric>
+#include <random>
 #include <vector>
 
 #include <mockturtle/generators/sorting.hpp>
@@ -19,7 +20,7 @@ TEST_CASE( "sorting networks based on bubble sort", "[sorting]" )
     for ( auto r = 0u; r < std::max( n, 1u ); ++r )
     {
       auto copy = list;
-      std::random_shuffle( copy.begin(), copy.end() );
+      std::shuffle( copy.begin(), copy.end(), std::default_random_engine( 0 ) );
 
       bubble_sorting_network( n, [&]( auto a, auto b ) {
         if ( copy[a] > copy[b] )
@@ -43,7 +44,7 @@ TEST_CASE( "sorting networks based on insertion sort", "[sorting]" )
     for ( auto r = 0u; r < std::max( n, 1u ); ++r )
     {
       auto copy = list;
-      std::random_shuffle( copy.begin(), copy.end() );
+      std::shuffle( copy.begin(), copy.end(), std::default_random_engine( 0 ) );
 
       insertion_sorting_network( n, [&]( auto a, auto b ) {
         if ( copy[a] > copy[b] )
