@@ -220,6 +220,12 @@ public:
           }
         } );
 
+        if ( ntk.num_cells() == ntk.num_pos() )
+        {
+          /* no further improvement possible */
+          break;
+        }
+
         best_size = ntk.num_cells() - 1;
       }
       else
