@@ -34,6 +34,8 @@
 
 #include "../generators/sorting.hpp"
 #include "../utils/node_map.hpp"
+#include "../utils/progress_bar.hpp"
+#include "../utils/stopwatch.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/mf_cut.hpp"
 
@@ -64,19 +66,33 @@ struct satlut_mapping_params
    */
   uint32_t conflict_limit{0u};
 
+  /*! \brief Show progress. */
+  bool progress{false};
+
   /*! \brief Be verbose. */
   bool verbose{false};
 };
 
 struct satlut_mapping_stats
 {
+  /*! \brief Total runtime. */
+  stopwatch<>::duration time_total{0};
+
+  /*! \brief Total runtime. */
+  stopwatch<>::duration time_sat{0};
+
+  /*! \brief Number of SAT variables. */
   uint64_t num_vars{0u};
+
+  /*! \brief Number of SAT clauses. */
   uint64_t num_clauses{0u};
 
   void report()
   {
-    std::cout << fmt::format( "[i] number of SAT variables: {}", num_vars )
-              << fmt::format( "[i] number of SAT clauses:   {}", num_clauses );
+    std::cout << fmt::format( "[i] total time              = {:>7.2f} secs\n", to_seconds( time_total ) )
+              << fmt::format( "[i] SAT solving time        = {:>7.2f} secs\n", to_seconds( time_sat ) )
+              << fmt::format( "[i] number of SAT variables = {}\n", num_vars )
+              << fmt::format( "[i] number of SAT clauses   = {}\n", num_clauses );
   }
 };
 
@@ -144,6 +160,8 @@ public:
 
   void run()
   {
+    stopwatch t( st.time_total );
+
     std::vector<int> card_inp;
     node_map<int, Ntk> gate_var( ntk );
     node_map<std::vector<int>, Ntk> cut_vars( ntk );
@@ -197,11 +215,15 @@ public:
 
     auto best_size = ntk.has_mapping() ? ntk.num_cells() : card_out.size();
 
+    progress_bar pbar{"satlut iteration = {0}   try size = {1}", ps.progress};
+    auto iteration = 0u;
     while ( true )
     {
+      pbar( ++iteration, best_size );
       auto assump = pabc::Abc_Var2Lit( card_out[card_out.size() - best_size], 1 );
 
-      if ( const auto result = solver.solve( &assump, &assump + 1, ps.conflict_limit ); result == percy::success )
+      const auto result = call_with_stopwatch( st.time_sat, [&]() { return solver.solve( &assump, &assump + 1, ps.conflict_limit ); } );
+      if ( result == percy::success )
       {
         ntk.clear_mapping();
         ntk.foreach_gate( [&]( auto n ) {
