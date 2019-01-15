@@ -32,6 +32,8 @@
 
 #pragma once
 
+#include <cmath>
+
 #include "../generators/sorting.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
@@ -104,8 +106,21 @@ std::vector<int> cardinality_network( Solver& solver, std::vector<int> const& va
 {
   int lits[3];
 
+  std::cout << "[i] number of variables = " << vars.size() << "\n";
+
+  auto logn = static_cast<uint32_t>( ceil( log2( vars.size() ) ) );
+  std::cout << "[i] next power of 2     = " << ( 1u << logn ) << "\n";
+
   auto current = vars;
-  bubble_sorting_network( vars.size(), [&]( auto a, auto b ) {
+
+  if ( current.size() != ( 1u << logn ) )
+  {
+    current.resize( 1u << logn, next_var );
+    lits[0] = pabc::Abc_Var2Lit( next_var++, 1 );
+    solver.add_clause( lits, lits + 1);
+  }
+
+  batcher_sorting_network( current.size(), [&]( auto a, auto b ) {
     auto va = current[a];
     auto vb = current[b];
     auto va_next = next_var++;
@@ -138,6 +153,13 @@ std::vector<int> cardinality_network( Solver& solver, std::vector<int> const& va
     current[a] = va_next;
     current[b] = vb_next;
   } );
+
+  for ( auto i = 0u; i < current.size() - 1; ++i )
+  {
+    lits[0] = pabc::Abc_Var2Lit( current[i], 1 );
+    lits[1] = pabc::Abc_Var2Lit( current[i + 1], 0 );
+    solver.add_clause( lits, lits + 2);
+  }
 
   return current;
 }
