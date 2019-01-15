@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,38 +24,66 @@
  */
 
 /*!
-  \file string_utils.hpp
-  \brief String utils
+  \file sorting.hpp
+  \brief Generate sorting networks
 
   \author Mathias Soeken
 */
 
 #pragma once
 
-#include <algorithm>
-#include <numeric>
-#include <string>
-#include <type_traits>
+#include <cstdint>
 
 namespace mockturtle
 {
 
-template<class Iterator, class MapFn, class JoinFn>
-std::invoke_result_t<MapFn, typename Iterator::value_type> map_and_join( Iterator begin, Iterator end, MapFn&& map_fn, JoinFn&& join_fn )
+/*! \brief Generates sorting network based on bubble sort.
+ *
+ * The functor is called for every comparator in the network.  The arguments
+ * to the functor are two integers that define on which lines the comparator
+ * acts.
+ *
+ * \param n Number of elements to sort
+ * \param compare_fn Functor
+ */
+template<class Fn>
+void bubble_sorting_network( uint32_t n, Fn&& compare_fn )
 {
-  if constexpr ( std::is_same_v<std::decay_t<JoinFn>, std::string> )
+  if ( n <= 1 )
   {
-    return std::accumulate( begin + 1, end, map_fn( *begin ),
-                            [&]( auto const& a, auto const& v ) {
-                              return a + join_fn + map_fn( v );
-                            } );
+    return;
   }
-  else
+  for ( auto c = n - 1; c >= 1; --c )
   {
-    return std::accumulate( begin + 1, end, map_fn( *begin ),
-                            [&]( auto const& a, auto const& v ) {
-                              return join_fn( a, map_fn( v ) );
-                            } );
+    for ( auto j = 0u; j < c; ++j )
+    {
+      compare_fn( j, j + 1 );
+    }
+  }
+}
+
+/*! \brief Generates sorting network based on insertion sort.
+ *
+ * The functor is called for every comparator in the network.  The arguments
+ * to the functor are two integers that define on which lines the comparator
+ * acts.
+ *
+ * \param n Number of elements to sort
+ * \param compare_fn Functor
+ */
+template<class Fn>
+void insertion_sorting_network( uint32_t n, Fn&& compare_fn )
+{
+  if ( n <= 1 )
+  {
+    return;
+  }
+  for ( auto c = 1u; c < n; ++c )
+  {
+    for ( int j = c - 1; j >= 0; --j )
+    {
+      compare_fn( j, j + 1 );
+    }
   }
 }
 

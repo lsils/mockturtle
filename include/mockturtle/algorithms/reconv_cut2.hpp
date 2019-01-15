@@ -74,7 +74,7 @@ int node_get_leaf_cost_one( Ntk const& ntk, typename Ntk::node const &node, int 
   assert( ntk.visited( node ) == ntk.trav_id() );
 
   /* cannot expand over the PI node */
-  if ( ntk.is_constant( node ) || ntk.is_ci( node ) )
+  if ( ntk.is_constant( node ) || ntk.is_pi( node ) )
     return 999;
 
   /* get the cost of the cone */
@@ -196,7 +196,7 @@ std::vector<node<Ntk>> reconv_driven_cut( cut_manager<Ntk>& mgr, Ntk const& ntk,
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
-  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" ); // FIXME: is_ci
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the is_pi method" );
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
   static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
