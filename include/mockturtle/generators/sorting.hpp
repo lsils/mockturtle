@@ -94,14 +94,14 @@ namespace detail
 template<class Fn>
 void batcher_merge( std::vector<uint32_t> const& list, Fn&& compare_fn )
 {
-  if ( list.size() == 2 )
+  if ( list.size() == 2u )
   {
     compare_fn( list[0], list[1] );
     return;
   }
 
   std::vector<uint32_t> even, odd;
-  for ( auto i = 0; i < list.size(); i += 2 )
+  for ( auto i = 0u; i < list.size(); i += 2 )
   {
     even.push_back( list[i] );
     odd.push_back( list[i + 1] );
@@ -120,7 +120,7 @@ template<class Fn>
 void batcher_sort( uint32_t begin, uint32_t end, Fn&& compare_fn )
 {
   const auto size = end - begin;
-  if ( size == 2 )
+  if ( size == 2u )
   {
     compare_fn( begin, begin + 1 );
     return;
