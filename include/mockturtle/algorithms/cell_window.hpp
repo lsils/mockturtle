@@ -51,11 +51,11 @@ template<class Ntk>
 class cell_window : public Ntk
 {
 public:
-  cell_window( Ntk const& ntk )
+  cell_window( Ntk const& ntk, uint32_t max_gates = 64 )
       : Ntk( ntk ),
-        _ntk( ntk ),
         _cell_refs( ntk ),
-        _cell_parents( ntk )
+        _cell_parents( ntk ),
+        _max_gates( max_gates )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_is_cell_root_v<Ntk>, "Ntk does not implement the is_cell_root method" );
@@ -66,6 +66,7 @@ public:
     static_assert( has_incr_trav_id_v<Ntk>, "Ntk does not implement the incr_trav_id method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+    static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
 
     if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
     {
@@ -80,7 +81,7 @@ public:
   void compute_window_for( node<Ntk> const& pivot )
   {
     //print_time<> pt;
-    assert( _ntk.is_cell_root( pivot ) );
+    assert( Ntk::is_cell_root( pivot ) );
 
     // reset old window
     _nodes.clear();
@@ -137,33 +138,65 @@ public:
     return _num_constants + _leaves.size() + _gates.size();
   }
 
+  bool is_pi( node<Ntk> const& n ) const
+  {
+    return _leaves.count( n );
+  }
+
+  bool is_cell_root( node<Ntk> const& n ) const
+  {
+    return _nodes.count( n );
+  }
+
+  bool has_mapping() const
+  {
+    // TODO
+    return true;
+  }
+
+  bool clear_mapping() const
+  {
+    // TODO
+  }
+
   template<typename Fn>
   void foreach_pi( Fn&& fn ) const
   {
     detail::foreach_element( _leaves.begin(), _leaves.end(), fn );
   }
 
+  template<typename Fn>
+  void foreach_po( Fn&& fn ) const
+  {
+    detail::foreach_element( _roots.begin(), _roots.end(), fn );
+  }
+
+  template<typename Fn>
+  void foreach_gate( Fn&& fn ) const
+  {
+    detail::foreach_element( _gates.begin(), _gates.end(), fn );
+  }
+
 private:
   void init_cell_refs()
   {
     /* initial ref counts for cells */
-    _ntk.foreach_gate( [&]( auto const& n ) {
-      if ( _ntk.is_cell_root( n ) )
+    Ntk::foreach_gate( [&]( auto const& n ) {
+      if ( Ntk::is_cell_root( n ) )
       {
-        _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
+        Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
           _cell_refs[n2]++;
           _cell_parents[n2].push_back( n );
         } );
-      }
-    } );
-    _ntk.foreach_po( [&]( auto const& f ) {
+    } } );
+    Ntk::foreach_po( [&]( auto const& f ) {
       _cell_refs[f]++;
     } );
   }
 
   void collect_mffc( node<Ntk> const& pivot, std::vector<node<Ntk>>& gates )
   {
-    _ntk.incr_trav_id();
+    Ntk::incr_trav_id();
     collect_gates( pivot, gates );
     const auto it = std::remove_if( gates.begin(), gates.end(), [&]( auto const& g ) { return _gates.count( g ); } );
     gates.erase( it, gates.end() );
@@ -171,13 +204,13 @@ private:
 
   void collect_gates( node<Ntk> const& pivot, std::vector<node<Ntk>>& gates )
   {
-    assert( !_ntk.is_pi( pivot ) );
+    assert( !Ntk::is_pi( pivot ) );
 
-    _ntk.set_visited( _ntk.get_node( _ntk.get_constant( false ) ), _ntk.trav_id() );
-    _ntk.set_visited( _ntk.get_node( _ntk.get_constant( true ) ), _ntk.trav_id() );
+    Ntk::set_visited( Ntk::get_node( Ntk::get_constant( false ) ), Ntk::trav_id() );
+    Ntk::set_visited( Ntk::get_node( Ntk::get_constant( true ) ), Ntk::trav_id() );
 
-    _ntk.foreach_cell_fanin( pivot, [&]( auto const& n ) {
-      _ntk.set_visited( n, _ntk.trav_id() );
+    Ntk::foreach_cell_fanin( pivot, [&]( auto const& n ) {
+      Ntk::set_visited( n, Ntk::trav_id() );
     } );
 
     collect_gates_rec( pivot, gates );
@@ -185,20 +218,25 @@ private:
 
   void collect_gates_rec( node<Ntk> const& n, std::vector<node<Ntk>>& gates )
   {
-    if ( _ntk.visited( n ) == _ntk.trav_id() )
+    if ( Ntk::visited( n ) == Ntk::trav_id() )
       return;
-    if ( _ntk.is_constant( n ) || _ntk.is_pi( n ) )
+    if ( Ntk::is_constant( n ) || Ntk::is_pi( n ) )
       return;
 
-    _ntk.set_visited( n, _ntk.trav_id() );
-    _ntk.foreach_fanin( n, [&]( auto const& f ) {
-      collect_gates_rec( _ntk.get_node( f ), gates );
+    Ntk::set_visited( n, Ntk::trav_id() );
+    Ntk::foreach_fanin( n, [&]( auto const& f ) {
+      collect_gates_rec( Ntk::get_node( f ), gates );
     } );
     gates.push_back( n );
   }
 
   void add_node( node<Ntk> const& pivot, std::vector<node<Ntk>> const& gates )
   {
+    /*std::cout << "add_node(" << pivot << ", { ";
+    for ( auto const& g : gates ) {
+      std::cout << g << " ";
+    }
+    std::cout << "})\n";*/
     _nodes.insert( pivot );
     std::copy( gates.begin(), gates.end(), std::insert_iterator( _gates, _gates.begin() ) );
   }
@@ -208,7 +246,7 @@ private:
     /* deref */
     for ( auto const& n : _nodes )
     {
-      _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
+      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
         _cell_refs[n2]--;
       } );
     }
@@ -220,8 +258,8 @@ private:
     {
       for ( auto const& n : _nodes )
       {
-        _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
-          if ( !_nodes.count( n2 ) && !_ntk.is_pi( n2 ) && !_cell_refs[n2] )
+        Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
+          if ( !_nodes.count( n2 ) && !Ntk::is_pi( n2 ) && !_cell_refs[n2] )
           {
             candidates.push_back( n2 );
             inputs.insert( n2 );
@@ -235,7 +273,7 @@ private:
             candidates.begin(), candidates.end(),
             [&]( auto const& cand ) {
               auto cnt{0};
-              _ntk.foreach_cell_fanin( cand, [&]( auto const& n2 ) {
+              this->foreach_cell_fanin( cand, [&]( auto const& n2 ) {
                 cnt += inputs.count( n2 );
               } );
               return cnt;
@@ -247,8 +285,8 @@ private:
 
       for ( auto const& n : _nodes )
       {
-        _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
-          if ( !_nodes.count( n2 ) && !_ntk.is_pi( n2 ) )
+        Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
+          if ( !_nodes.count( n2 ) && !Ntk::is_pi( n2 ) )
           {
             candidates.push_back( n2 );
             inputs.insert( n2 );
@@ -281,7 +319,7 @@ private:
             candidates.begin(), candidates.end(),
             [&]( auto const& cand ) {
               auto cnt{0};
-              _ntk.foreach_cell_fanin( cand, [&]( auto const& n2 ) {
+              this->foreach_cell_fanin( cand, [&]( auto const& n2 ) {
                 cnt += inputs.count( n2 );
               } );
               return cnt;
@@ -291,11 +329,11 @@ private:
       }
     } while ( false );
 
-    /* deref */
+    /* ref */
     for ( auto const& n : _nodes )
     {
-      _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
-        _cell_refs[n2]--;
+      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
+        _cell_refs[n2]++;
       } );
     }
 
@@ -314,8 +352,8 @@ private:
     _leaves.clear();
     for ( auto const& g : _gates )
     {
-      _ntk.foreach_fanin( g, [&]( auto const& f ) {
-        auto const child = _ntk.get_node( f );
+      Ntk::foreach_fanin( g, [&]( auto const& f ) {
+        auto const child = Ntk::get_node( f );
         if ( !_gates.count( child ) )
         {
           _leaves.insert( child );
@@ -326,7 +364,7 @@ private:
     _roots.clear();
     for ( auto const& n : _nodes )
     {
-      _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
+      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
         _cell_refs[n2]--;
       } );
     }
@@ -334,30 +372,28 @@ private:
     {
       if ( _cell_refs[n] )
       {
-        _roots.insert( n );
+        _roots.insert( Ntk::make_signal( n ) );
       }
     }
     for ( auto const& n : _nodes )
     {
-      _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
+      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
         _cell_refs[n2]++;
       } );
     }
   }
 
 private:
-  Ntk const& _ntk;
-
-  spp::sparse_hash_set<node<Ntk>> _nodes;  /* cell roots in current window */
-  spp::sparse_hash_set<node<Ntk>> _gates;  /* gates in current window */
-  spp::sparse_hash_set<node<Ntk>> _leaves; /* leaves of current window */
-  spp::sparse_hash_set<node<Ntk>> _roots;  /* roots of current window */
+  spp::sparse_hash_set<node<Ntk>> _nodes;   /* cell roots in current window */
+  spp::sparse_hash_set<node<Ntk>> _gates;   /* gates in current window */
+  spp::sparse_hash_set<node<Ntk>> _leaves;  /* leaves of current window */
+  spp::sparse_hash_set<signal<Ntk>> _roots; /* roots of current window */
 
   node_map<uint32_t, Ntk> _cell_refs;                  /* ref counts for cells */
   node_map<std::vector<node<Ntk>>, Ntk> _cell_parents; /* parent cells */
 
   uint32_t _num_constants{1u};
-  uint32_t _max_gates{128u};
+  uint32_t _max_gates{};
 };
 
 } // namespace mockturtle
