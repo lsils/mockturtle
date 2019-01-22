@@ -124,7 +124,7 @@ template<class Ntk>
 inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
 {
   /* c must be smaller than 2^k */
-  assert( c < ( 1 << a.size() ) );
+  assert( c < ( UINT64_C( 1 ) << a.size() ) );
 
   /* refer to simpler case */
   if ( c == 0 )
@@ -170,7 +170,7 @@ template<class Ntk>
 inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
 {
   /* c must be smaller than 2^k */
-  assert( c < ( 1 << a.size() ) );
+  assert( c < ( UINT64_C( 1 ) << a.size() ) );
 
   /* refer to simpler case */
   if ( c == 0 )

@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <string>
 #include <type_traits>
 
 #include <kitty/dynamic_truth_table.hpp>
@@ -54,7 +55,8 @@ struct is_network_type : std::false_type
 template<class Ntk>
 struct is_network_type<Ntk, std::enable_if_t<
                                 std::is_constructible_v<signal<Ntk>, node<Ntk>>,
-                                std::void_t<signal<Ntk>,
+                                std::void_t<typename Ntk::base_type,
+                                            signal<Ntk>,
                                             node<Ntk>,
                                             typename Ntk::storage,
                                             decltype( Ntk::max_fanin_size ),
@@ -470,6 +472,51 @@ template<class Ntk>
 inline constexpr bool has_create_xor3_v = has_create_xor3<Ntk>::value;
 #pragma endregion
 
+#pragma region has_create_nary_and
+template<class Ntk, class = void>
+struct has_create_nary_and : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_and<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_and( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_and_v = has_create_nary_and<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_nary_or
+template<class Ntk, class = void>
+struct has_create_nary_or : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_or<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_or( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_or_v = has_create_nary_or<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_nary_xor
+template<class Ntk, class = void>
+struct has_create_nary_xor : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_nary_xor<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nary_xor( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_nary_xor_v = has_create_nary_xor<Ntk>::value;
+#pragma endregion
+
 #pragma region has_create_node
 template<class Ntk, class = void>
 struct has_create_node : std::false_type
@@ -513,6 +560,66 @@ struct has_substitute_node<Ntk, std::void_t<decltype( std::declval<Ntk>().substi
 
 template<class Ntk>
 inline constexpr bool has_substitute_node_v = has_substitute_node<Ntk>::value;
+#pragma endregion
+
+#pragma region has_replace_in_node
+template<class Ntk, class = void>
+struct has_replace_in_node : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_replace_in_node<Ntk, std::void_t<decltype( std::declval<Ntk>().replace_in_node( std::declval<node<Ntk>>(), std::declval<node<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_replace_in_node_v = has_replace_in_node<Ntk>::value;
+#pragma endregion
+
+#pragma region has_replace_in_outputs
+template<class Ntk, class = void>
+struct has_replace_in_outputs : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_replace_in_outputs<Ntk, std::void_t<decltype( std::declval<Ntk>().replace_in_outputs( std::declval<node<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_replace_in_outputs_v = has_replace_in_outputs<Ntk>::value;
+#pragma endregion
+
+#pragma region has_take_out_node
+template<class Ntk, class = void>
+struct has_take_out_node : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_take_out_node<Ntk, std::void_t<decltype( std::declval<Ntk>().take_out_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_take_out_node_v = has_take_out_node<Ntk>::value;
+#pragma endregion
+
+#pragma region is_dead
+template<class Ntk, class = void>
+struct has_is_dead : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_dead<Ntk, std::void_t<decltype( std::declval<Ntk>().is_dead( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_dead_v = has_is_dead<Ntk>::value;
 #pragma endregion
 
 #pragma region has_substitute_node_of_parents
@@ -665,6 +772,36 @@ template<class Ntk>
 inline constexpr bool has_fanout_size_v = has_fanout_size<Ntk>::value;
 #pragma endregion
 
+#pragma region has_incr_fanout_size
+template<class Ntk, class = void>
+struct has_incr_fanout_size : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_incr_fanout_size<Ntk, std::void_t<decltype( std::declval<Ntk>().incr_fanout_size( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_incr_fanout_size_v = has_incr_fanout_size<Ntk>::value;
+#pragma endregion
+
+#pragma region has_decr_fanout_size
+template<class Ntk, class = void>
+struct has_decr_fanout_size : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_decr_fanout_size<Ntk, std::void_t<decltype( std::declval<Ntk>().decr_fanout_size( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_decr_fanout_size_v = has_decr_fanout_size<Ntk>::value;
+#pragma endregion
+
 #pragma region has_depth
 template<class Ntk, class = void>
 struct has_depth : std::false_type
@@ -693,6 +830,66 @@ struct has_level<Ntk, std::void_t<decltype( std::declval<Ntk>().level( std::decl
 
 template<class Ntk>
 inline constexpr bool has_level_v = has_level<Ntk>::value;
+#pragma endregion
+
+#pragma region has_update_levels
+template<class Ntk, class = void>
+struct has_update_levels : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_levels<Ntk, std::void_t<decltype( std::declval<Ntk>().update_levels() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_levels_v = has_update_levels<Ntk>::value;
+#pragma endregion
+
+#pragma region has_update_mffcs
+template<class Ntk, class = void>
+struct has_update_mffcs : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_mffcs<Ntk, std::void_t<decltype( std::declval<Ntk>().update_mffcs() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_mffcs_v = has_update_mffcs<Ntk>::value;
+#pragma endregion
+
+#pragma region has_update_topo
+template<class Ntk, class = void>
+struct has_update_topo : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_topo<Ntk, std::void_t<decltype( std::declval<Ntk>().update_topo() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_topo_v = has_update_topo<Ntk>::value;
+#pragma endregion
+
+#pragma region has_update_fanout
+template<class Ntk, class = void>
+struct has_update_fanout : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_update_fanout<Ntk, std::void_t<decltype( std::declval<Ntk>().update_fanout() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_update_fanout_v = has_update_fanout<Ntk>::value;
 #pragma endregion
 
 #pragma region has_is_and
@@ -1520,19 +1717,34 @@ template<class Ntk>
 inline constexpr bool has_set_visited_v = has_set_visited<Ntk>::value;
 #pragma endregion
 
-#pragma region has_update
+#pragma region trav_id
 template<class Ntk, class = void>
-struct has_update : std::false_type
+struct has_trav_id : std::false_type
 {
 };
 
 template<class Ntk>
-struct has_update<Ntk, std::void_t<decltype( std::declval<Ntk>().update() )>> : std::true_type
+struct has_trav_id<Ntk, std::void_t<decltype( std::declval<Ntk>().trav_id() )>> : std::true_type
 {
 };
 
 template<class Ntk>
-inline constexpr bool has_update_v = has_update<Ntk>::value;
+inline constexpr bool has_trav_id_v = has_trav_id<Ntk>::value;
+#pragma endregion
+
+#pragma region incr_trav_id
+template<class Ntk, class = void>
+struct has_incr_trav_id : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_incr_trav_id<Ntk, std::void_t<decltype( std::declval<Ntk>().incr_trav_id() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_incr_trav_id_v = has_incr_trav_id<Ntk>::value;
 #pragma endregion
 
 /*! \brief SFINAE based on iterator type (for compute functions).

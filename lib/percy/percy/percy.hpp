@@ -377,7 +377,7 @@ namespace percy
                 }
                 // Add additional constraint.
                 if (spec.verbosity) {
-                    printf("  CEGAR difference at tt index %ld\n",
+                    printf("  CEGAR difference at tt index %lld\n",
                         first_one);
                 }
                 if (!encoder.create_tt_clauses(spec, first_one - 1)) {
@@ -553,7 +553,7 @@ namespace percy
                 }
                 // Add additional constraint.
                 if (spec.verbosity) {
-                    printf("  CEGAR difference at tt index %ld\n",
+                    printf("  CEGAR difference at tt index %lld\n",
                         first_one);
                 }
                 if (!encoder.create_tt_clauses(spec, dag, first_one - 1)) {

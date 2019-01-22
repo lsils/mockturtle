@@ -48,8 +48,13 @@ Resynthesis functions
 
 .. doxygenclass:: mockturtle::exact_resynthesis
 
+.. doxygenclass:: mockturtle::xag_npn_resynthesis
+
 .. doxygenclass:: mockturtle::mig_npn_resynthesis
 
 .. doxygenclass:: mockturtle::xmg_npn_resynthesis
+
+.. doxygenclass:: mockturtle::xag_minmc_resynthesis
+   :members:
 
 .. doxygenclass:: mockturtle::direct_resynthesis

@@ -33,10 +33,14 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <kitty/dynamic_truth_table.hpp>
+
+#include "networks/events.hpp"
+#include "traits.hpp"
 
 namespace mockturtle
 {
@@ -46,6 +50,14 @@ static_assert( false, "file interface.hpp cannot be included, it's only used for
 class network final
 {
 public:
+  /*! \brief Type referring to itself.
+   *
+   * The ``base_type`` is the network type itself.  It is required, because
+   * views may extend networks, and this type provides a way to determine the
+   * underlying network type.
+   */
+  using base_type = network;
+
   /*! \brief Type representing a node.
    *
    * A ``node`` is a node in the logic network.  It could be a constant, a
@@ -260,6 +272,26 @@ public:
   signal create_xor3( signal const& a, signal const& b, signal const& c );
 #pragma endregion
 
+#pragma region Create nary functions
+  /*! \brief Creates a signal that computes the n-ary AND.
+   *
+   * If `fs` is empty, it returns constant-1.
+   */
+  signal create_nary_and( std::vector<signal> const& fs );
+
+  /*! \brief Creates a signal that computes the n-ary OR.
+   *
+   * If `fs` is empty, it returns constant-0.
+   */
+  signal create_nary_or( std::vector<signal> const& fs );
+
+  /*! \brief Creates a signal that computes the n-ary XOR.
+   *
+   * If `fs` is empty, it returns constant-0.
+   */
+  signal create_nary_xor( std::vector<signal> const& fs );
+#pragma endregion
+
 #pragma region Create arbitrary functions
   /*! \brief Creates node with arbitrary function.
    *
@@ -303,6 +335,44 @@ public:
    */
   void substitute_node( node const& old_node, signal const& new_signal );
 
+  /*! \brief Replaces a child node by a new signal in a node.
+   *
+   * If ``n`` has a child pointing to ``old_node``, then it will be replaced by
+   * ``new_signal``.  If the replacement catches a trivial case, e.g., ``n``
+   * becomes a constant, then this will be returned as an optional replacement
+   * candidate by the function.
+   *
+   * The function updates the hash table. If no trivial case was found, it
+   * updates the hash table according to the new structure of ``n``.
+   *
+   * \brief n Node which may have ``old_node`` as a child
+   * \brief old_node Child to be replaced
+   * \brief new_signal Signel to replace ``old_node`` with
+   * \return May return new recursive replacement candidate
+   */
+  std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal );
+
+  /*! \brief Replaces a output driver by a new signal.
+   *
+   * If ``old_node`` is drive to some output, then it will be replaced by
+   * ``new_signal``.
+   * 
+   * \brief old_node Driver to be replaced
+   * \brief new_signal Signal replace ``old_node`` with
+   */
+  void replace_in_outputs( node const& old_node, signal const& new_signal );
+
+  /*! \brief Removes a node from the hash table.
+   *
+   * The node will be marked dead.  This status can be checked with ``is_dead``.
+   * The node is no longer visited in the ``foreach_node`` and ``foreach_gate``
+   * methods.  It still contributes to the overall ``size`` of the network, but
+   * ``num_gates`` does not take dead nodes into account.  Taking out a node
+   * does not change the indexes of other nodes.  The node will be removed from
+   * the hash table.
+   */
+  void take_out_node( node const& n );
+
   /*! \brief Replaces one node in a network by another signal.
    *
    * This method causes all nodes in ``parents`` that have ``old_node`` as
@@ -320,7 +390,7 @@ public:
 #pragma endregion
 
 #pragma region Structural properties
-  /*! \brief Returns the number of nodes (incl. constants and PIs). */
+  /*! \brief Returns the number of nodes (incl. constants and PIs and dead nodes). */
   uint32_t size() const;
 
   /*! \brief Returns the number of combinational inputs. */
@@ -335,11 +405,7 @@ public:
   /*! \brief Returns the number of primary outputs. */
   uint32_t num_pos() const;
 
-  /*! \brief Returns the number of gates. 
-   *
-   * The return value is equal to the size of the network without the number
-   * of constants and PIs.
-   */
+  /*! \brief Returns the number of gates (without dead nodes) */
   uint32_t num_gates() const;
 
   /*! \brief Returns the number of registers.
@@ -356,6 +422,20 @@ public:
 
   /*! \brief Returns the fanout size of a node. */
   uint32_t fanout_size( node const& n ) const;
+
+  /*! \brief Increments fanout size and returns old value.
+   *
+   * This is useful for ref-counting based algorithm.  The user of this function
+   * should make sure to bring the value back to a consistent state.
+   */
+  uint32_t incr_fanout_size( node const& n ) const;
+
+  /*! \brief Decrements fanout size and returns new value.
+   *
+   * This is useful for ref-counting based algorithm.  The user of this function
+   * should make sure to bring the value back to a consistent state.
+   */
+  uint32_t decr_fanout_size( node const& n ) const;
 
   /*! \brief Returns the length of the critical path. */
   uint32_t depth() const;
@@ -820,17 +900,25 @@ public:
 
   /*! \brief Sets the visited value of a node. */
   uint32_t set_visited( node const& n, uint32_t v ) const;
+
+  /*! \brief An id that can be used as a visited flag.
+   *
+   * By using the traversal is, one can reuse multiple visited flags over
+   * several levels.
+   */
+  uint32_t trav_id() const;
+
+  /*! \brief Increment the current traversal id. */
+  void incr_trav_id() const;
 #pragma endregion
 
 #pragma region General methods
-  /*! \brief Restores a consistent state.
+  /*! \brief Returns network events object.
    *
-   * It is advised to implement this method for every network implementation
-   * and keep it empty.  Network interfaces are typically always in a
-   * consistent state.  The method is used in views, for which the state may
-   * become inconsistent if the underlying network changed.
+   * Clients can register callbacks for network events to this object.  Events
+   * include adding nodes, modifying nodes, and deleting nodes.
    */
-  void update();
+  network_events<base_type>& events() const;
 #pragma endregion
 
 };

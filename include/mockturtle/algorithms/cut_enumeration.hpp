@@ -40,9 +40,12 @@
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 
+#include <fmt/format.h>
+
 #include "../traits.hpp"
 #include "../utils/cuts.hpp"
 #include "../utils/mixed_radix.hpp"
+#include "../utils/stopwatch.hpp"
 #include "../utils/truth_table_cache.hpp"
 
 namespace mockturtle
@@ -63,6 +66,25 @@ struct cut_enumeration_params
 
   /*! \brief Prune cuts by removing don't cares. */
   bool minimize_truth_table{false};
+
+  /*! \brief Be verbose. */
+  bool verbose{false};
+};
+
+struct cut_enumeration_stats
+{
+  /*! \brief Total time. */
+  stopwatch<>::duration time_total{0};
+
+  /*! \brief Time for truth table computation. */
+  stopwatch<>::duration time_truth_table{0};
+
+  /*! \brief Prints report. */
+  void report() const
+  {
+    std::cout << fmt::format( "[i] total time       = {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i] truth table time = {:>5.2f} secs\n", to_seconds( time_truth_table ) );
+  }
 };
 
 static constexpr uint32_t max_cut_size = 16;
@@ -92,7 +114,7 @@ template<typename Ntk, bool ComputeTruth, typename CutData>
 struct network_cuts;
 
 template<typename Ntk, bool ComputeTruth = false, typename CutData = empty_cut_data>
-network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_enumeration_params const& ps = {} );
+network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_enumeration_params const& ps = {}, cut_enumeration_stats * pst = nullptr );
 
 /* function to update a cut */
 template<typename CutData>
@@ -206,7 +228,7 @@ private:
   friend class detail::cut_enumeration_impl;
 
   template<typename _Ntk, bool _ComputeTruth, typename _CutData>
-  friend network_cuts<_Ntk, _ComputeTruth, _CutData> cut_enumeration( _Ntk const& ntk, cut_enumeration_params const& ps );
+  friend network_cuts<_Ntk, _ComputeTruth, _CutData> cut_enumeration( _Ntk const& ntk, cut_enumeration_params const& ps, cut_enumeration_stats * pst );
 
 private:
   void add_zero_cut( uint32_t index )
@@ -252,9 +274,10 @@ public:
   using cut_t = typename network_cuts<Ntk, ComputeTruth, CutData>::cut_t;
   using cut_set_t = typename network_cuts<Ntk, ComputeTruth, CutData>::cut_set_t;
 
-  explicit cut_enumeration_impl( Ntk const& ntk, cut_enumeration_params const& ps, network_cuts<Ntk, ComputeTruth, CutData>& cuts )
+  explicit cut_enumeration_impl( Ntk const& ntk, cut_enumeration_params const& ps, cut_enumeration_stats& st, network_cuts<Ntk, ComputeTruth, CutData>& cuts )
       : ntk( ntk ),
         ps( ps ),
+        st( st ),
         cuts( cuts )
   {
   }
@@ -262,6 +285,8 @@ public:
 public:
   void run()
   {
+    stopwatch t( st.time_total );
+
     ntk.foreach_node( [this]( auto node ) {
       const auto index = ntk.node_to_index( node );
       if ( ntk.is_constant( node ) )
@@ -289,6 +314,8 @@ public:
 private:
   uint32_t compute_truth_table( uint32_t index, std::vector<cut_t const*> const& vcuts, cut_t& res )
   {
+    stopwatch t( st.time_truth_table );
+
     std::vector<kitty::dynamic_truth_table> tt( vcuts.size() );
     auto i = 0;
     for ( auto const& cut : vcuts )
@@ -458,6 +485,7 @@ private:
 private:
   Ntk const& ntk;
   cut_enumeration_params const& ps;
+  cut_enumeration_stats& st;
   network_cuts<Ntk, ComputeTruth, CutData>& cuts;
 
   std::array<cut_set_t*, Ntk::max_fanin_size + 1> lcuts;
@@ -507,12 +535,12 @@ private:
 
    .. note::
 
-      The implementation of this algorithm was heavily inspired but cut
+      The implementation of this algorithm was heavily inspired buy cut
       enumeration implementations in ABC.
    \endverbatim
  */
 template<typename Ntk, bool ComputeTruth, typename CutData>
-network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_enumeration_params const& ps )
+network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_enumeration_params const& ps, cut_enumeration_stats * pst )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
@@ -524,9 +552,20 @@ network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_en
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( !ComputeTruth || has_compute_v<Ntk, kitty::dynamic_truth_table>, "Ntk does not implement the compute method for kitty::dynamic_truth_table" );
 
+  cut_enumeration_stats st;
   network_cuts<Ntk, ComputeTruth, CutData> res( ntk.size() );
-  detail::cut_enumeration_impl<Ntk, ComputeTruth, CutData> p( ntk, ps, res );
+  detail::cut_enumeration_impl<Ntk, ComputeTruth, CutData> p( ntk, ps, st, res );
   p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+  if ( pst )
+  {
+    *pst = st;
+  }
+
   return res;
 }
 

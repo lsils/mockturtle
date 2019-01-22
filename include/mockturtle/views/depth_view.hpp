@@ -47,12 +47,11 @@ namespace mockturtle
  * This view computes the level of each node and also the depth of
  * the network.  It implements the network interface methods
  * `level` and `depth`.  The levels are computed at construction
- * and can be recomputed by calling the `update` method.
+ * and can be recomputed by calling the `update_levels` method.
  *
  * **Required network functions:**
  * - `size`
  * - `get_node`
- * - `clear_visited`
  * - `visited`
  * - `set_visited`
  * - `foreach_fanin`
@@ -74,7 +73,7 @@ namespace mockturtle
       std::cout << "Depth: " << aig_depth.depth() << "\n";
    \endverbatim
  */
-template<typename Ntk, bool has_depth_interface = has_depth_v<Ntk> && has_level_v<Ntk>>
+template<typename Ntk, bool has_depth_interface = has_depth_v<Ntk>&& has_level_v<Ntk>&& has_update_levels_v<Ntk>>
 class depth_view
 {
 };
@@ -96,18 +95,26 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  explicit depth_view( Ntk const& ntk ) : Ntk( ntk ), _levels( ntk )
+  /*! \brief Standard constructor.
+   *
+   * \param ntk Base network
+   * \param count_complements Count inverters as 1
+   */
+  explicit depth_view( Ntk const& ntk, bool count_complements = false )
+      : Ntk( ntk ),
+        _count_complements( count_complements ),
+        _levels( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-    static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
+    static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    update();
+    update_levels();
   }
 
   uint32_t depth() const
@@ -120,48 +127,73 @@ public:
     return _levels[n];
   }
 
-  void update()
+  void set_level( node const& n, uint32_t level )
+  {
+    _levels[n] = level;
+  }
+
+  void update_levels()
   {
     _levels.reset( 0 );
+
+    this->incr_trav_id();
     compute_levels();
-    this->clear_visited();
+  }
+
+  void resize_levels()
+  {
+    _levels.resize();
   }
 
 private:
   uint32_t compute_levels( node const& n )
   {
-    if ( this->visited( n ) )
+    if ( this->visited( n ) == this->trav_id() )
+    {
       return _levels[n];
+    }
+    this->set_visited( n, this->trav_id() );
 
     if ( this->is_constant( n ) || this->is_pi( n ) )
     {
-      this->set_visited( n, 1 );
       return _levels[n] = 0;
     }
 
     uint32_t level{0};
     this->foreach_fanin( n, [&]( auto const& f ) {
-      level = std::max( level, compute_levels( this->get_node( f ) ) );
+      auto clevel = compute_levels( this->get_node( f ) );
+      if ( _count_complements && this->is_complemented( f ) )
+      {
+        clevel++;
+      }
+      level = std::max( level, clevel );
     } );
 
-    this->set_visited( n, 1 );
     return _levels[n] = level + 1;
   }
 
   void compute_levels()
   {
-    //this->clear_visited();
     _depth = 0;
     this->foreach_po( [&]( auto const& f ) {
-      _depth = std::max( _depth, compute_levels( this->get_node( f ) ) );
+      auto clevel = compute_levels( this->get_node( f ) );
+      if ( _count_complements && this->is_complemented( f ) )
+      {
+        clevel++;
+      }
+      _depth = std::max( _depth, clevel );
     } );
   }
 
+  bool _count_complements{false};
   node_map<uint32_t, Ntk> _levels;
   uint32_t _depth;
 };
 
 template<class T>
-depth_view(T const&) -> depth_view<T>;
+depth_view( T const& ) -> depth_view<T>;
+
+template<class T>
+depth_view( T const&, bool ) -> depth_view<T>;
 
 } // namespace mockturtle

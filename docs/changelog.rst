@@ -5,7 +5,7 @@ v0.1 (not yet released)
 -----------------------
 
 * Initial network interface
-  `#1 <https://github.com/lsils/mockturtle/pull/1>`_ `#61 <https://github.com/lsils/mockturtle/pull/61>`_
+  `#1 <https://github.com/lsils/mockturtle/pull/1>`_ `#61 <https://github.com/lsils/mockturtle/pull/61>`_ `#96 <https://github.com/lsils/mockturtle/pull/96>`_ `#99 <https://github.com/lsils/mockturtle/pull/99>`_
 * Network implementations:
     - AIG network (`aig_network`) `#1 <https://github.com/lsils/mockturtle/pull/1>`_ `#62 <https://github.com/lsils/mockturtle/pull/62>`_
     - MIG network (`mig_network`) `#4 <https://github.com/lsils/mockturtle/pull/4>`_
@@ -33,6 +33,8 @@ v0.1 (not yet released)
     - XMG algebraic depth rewriting (`xmg_algebraic_depth_rewriting`) `#86 <https://github.com/lsils/mockturtle/pull/86>`_
     - Convert gate-based networks to node-based networks (`gates_to_nodes`) `#90 <https://github.com/lsils/mockturtle/pull/90>`_
     - Direct resynthesis of functions into primitives (`direct_resynthesis`) `#90 <https://github.com/lsils/mockturtle/pull/90>`_
+    - XAG optimum multiplicative complexity resynthesis (`xag_minmc_resynthesis`) `#100 <https://github.com/lsils/mockturtle/pull/100>`_
+    - AIG/XAG resynthesis (`xag_npn_resynthesis`) `#102 <https://github.com/lsils/mockturtle/pull/102>`_
 * Views:
     - Visit nodes in topological order (`topo_view`) `#3 <https://github.com/lsils/mockturtle/pull/3>`_
     - Disable structural modifications to network (`immutable_view`) `#3 <https://github.com/lsils/mockturtle/pull/3>`_
@@ -48,6 +50,8 @@ v0.1 (not yet released)
     - Write networks to BENCH files (`write_bench`) `#10 <https://github.com/lsils/mockturtle/pull/10>`_
     - Read Verilog files using *lorina* (`verilog_reader`) `#40 <https://github.com/lsils/mockturtle/pull/40>`_
     - Write networks to Verilog files (`write_verilog`) `#65 <https://github.com/lsils/mockturtle/pull/65>`_
+    - Read PLA files using *lorina* (`pla_reader`) `#97 <https://github.com/lsils/mockturtle/pull/97>`_
+    - Write networks to DOT files (`write_dot`) `#111 <https://github.com/lsils/mockturtle/pull/111>`_
 * Generators for arithmetic circuits:
     - Carry ripple adder (`carry_ripple_adder`) `#5 <https://github.com/lsils/mockturtle/pull/5>`_
     - Carry ripple subtractor (`carry_ripple_subtractor`) `#32 <https://github.com/lsils/mockturtle/pull/32>`_
@@ -64,3 +68,6 @@ v0.1 (not yet released)
     - Container to associate values to nodes (`node_map`) `#13 <https://github.com/lsils/mockturtle/pull/13>`_ `#76 <https://github.com/lsils/mockturtle/pull/76>`_
     - Progress bar (`progress_bar`) `#30 <https://github.com/lsils/mockturtle/pull/30>`_
     - Tracking time of computations (`stopwatch`, `call_with_stopwatch`, `make_with_stopwatch`) `#35 <https://github.com/lsils/mockturtle/pull/35>`_
+* Others:
+    - Network events `#107 <https://github.com/lsils/mockturtle/pull/107>`_
+    - MIG cost functions `#115 <https://github.com/lsils/mockturtle/pull/115>`_

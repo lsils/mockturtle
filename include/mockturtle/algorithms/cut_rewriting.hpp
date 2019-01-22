@@ -78,6 +78,13 @@ struct cut_rewriting_params
   /*! \brief Use don't cares for optimization. */
   bool use_dont_cares{false};
 
+  /*! \brief Candidate selection strategy. */
+  enum
+  {
+    minimize_weight,
+    greedy
+  } candidate_selection_strategy = minimize_weight;
+
   /*! \brief Show progress. */
   bool progress{false};
 
@@ -206,7 +213,7 @@ inline std::vector<uint32_t> maximum_weighted_independent_set_gwmin( graph& g )
   std::vector<uint32_t> vertices( g.num_vertices() );
   std::iota( vertices.begin(), vertices.end(), 0 );
 
-  std::sort( vertices.begin(), vertices.end(), [&g]( auto v, auto w ) {
+  std::stable_sort( vertices.begin(), vertices.end(), [&g]( auto v, auto w ) {
     const auto value_v = g.gwmin_value( v );
     const auto value_w = g.gwmin_value( w );
     return value_v > value_w || ( value_v == value_w && g.degree( v ) > g.degree( w ) );
@@ -432,8 +439,10 @@ public:
           int32_t best_gain{-1};
 
           const auto on_signal = [&]( auto const& f_new ) {
-            int32_t gain = value - recursive_ref( ntk.get_node( f_new ) );
+            auto [v, contains] = recursive_ref_contains( ntk.get_node( f_new ), n );
             recursive_deref( ntk.get_node( f_new ) );
+
+            int32_t gain = contains ? -1 : value - v;
 
             if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
             {
@@ -493,7 +502,7 @@ public:
       std::cout << "[i] replacement dependency graph has " << g.num_vertices() << " vertices and " << g.num_edges() << " edges\n";
     }
 
-    const auto is = maximum_weighted_independent_set_gwmin( g );
+    const auto is = ( ps.candidate_selection_strategy == cut_rewriting_params::minimize_weight ) ? maximum_weighted_independent_set_gwmin( g ) : maximal_weighted_independent_set( g );
 
     if ( ps.very_verbose )
     {
@@ -560,6 +569,27 @@ private:
       }
     } );
     return value;
+  }
+
+  std::pair<int32_t, bool> recursive_ref_contains( node<Ntk> const& n, node<Ntk> const& repl )
+  {
+    /* terminate? */
+    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      return {0, false};
+
+    /* recursively collect nodes */
+    int32_t value = cost_fn( ntk, n );
+    bool contains = ( n == repl );
+    ntk.foreach_fanin( n, [&]( auto const& s ) {
+      contains = contains || ( ntk.get_node( s ) == repl );
+      if ( ntk.incr_value( ntk.get_node( s ) ) == 0 )
+      {
+        const auto [v, c] = recursive_ref_contains( ntk.get_node( s ), repl );
+        value += v;
+        contains = contains || c;
+      }
+    } );
+    return {value, contains};
   }
 
 private:
