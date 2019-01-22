@@ -33,6 +33,7 @@
 #pragma once
 
 #include <chrono>
+#include <iostream>
 #include <type_traits>
 
 namespace mockturtle
