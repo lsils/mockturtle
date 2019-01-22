@@ -157,6 +157,29 @@ public:
     signals[lhs] = _ntk.create_xor( op1.second ? _ntk.create_not( a ) : a, op2.second ? _ntk.create_not( b ) : b );
   }
 
+  void on_xor3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
+  {
+    if ( signals.find( op1.first ) == signals.end() )
+      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op1.first ) << std::endl;
+    if ( signals.find( op2.first ) == signals.end()  )
+      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op2.first ) << std::endl;
+    if ( signals.find( op3.first ) == signals.end()  )
+      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op3.first ) << std::endl;
+
+    auto a = signals[op1.first];
+    auto b = signals[op2.first];
+    auto c = signals[op3.first];
+
+    if constexpr ( has_create_xor3_v<Ntk> )
+    {
+      signals[lhs] = _ntk.create_xor3( op1.second ? _ntk.create_not( a ) : a, op2.second ? _ntk.create_not( b ) : b, op3.second ? _ntk.create_not( c ) : c );
+    }
+    else
+    {
+      signals[lhs] = _ntk.create_xor( _ntk.create_xor( op1.second ? _ntk.create_not( a ) : a, op2.second ? _ntk.create_not( b ) : b ), op3.second ? _ntk.create_not( c ) : c );
+    }
+  }
+
   void on_maj3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
   {
     if ( signals.find( op1.first ) == signals.end() )
