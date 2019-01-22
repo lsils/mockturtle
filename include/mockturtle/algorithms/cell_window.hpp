@@ -36,6 +36,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "../networks/detail/foreach.hpp"
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
 #include "../utils/node_map.hpp"
@@ -47,11 +48,12 @@ namespace mockturtle
 {
 
 template<class Ntk>
-class cell_window
+class cell_window : public Ntk
 {
 public:
   cell_window( Ntk const& ntk )
-      : _ntk( ntk ),
+      : Ntk( ntk ),
+        _ntk( ntk ),
         _cell_refs( ntk ),
         _cell_parents( ntk )
   {
@@ -65,14 +67,19 @@ public:
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
 
+    if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
+    {
+      _num_constants++;
+    }
+
     _nodes.reserve( _max_gates >> 1 );
     _gates.reserve( _max_gates );
     init_cell_refs();
   }
 
-  std::pair<spp::sparse_hash_set<node<Ntk>>, spp::sparse_hash_set<node<Ntk>>> window_for( node<Ntk> const& pivot )
+  void compute_window_for( node<Ntk> const& pivot )
   {
-    print_time<> pt;
+    //print_time<> pt;
     assert( _ntk.is_cell_root( pivot ) );
 
     // reset old window
@@ -102,7 +109,38 @@ public:
       add_node( *next, gates );
     }
 
-    return {_nodes, _gates};
+    find_leaves_and_roots();
+  }
+
+  uint32_t num_pis() const
+  {
+    return _leaves.size();
+  }
+
+  uint32_t num_pos() const
+  {
+    return _roots.size();
+  }
+
+  uint32_t num_gates() const
+  {
+    return _gates.size();
+  }
+
+  uint32_t num_cells() const
+  {
+    return _nodes.size();
+  }
+
+  uint32_t size() const
+  {
+    return _num_constants + _leaves.size() + _gates.size();
+  }
+
+  template<typename Fn>
+  void foreach_pi( Fn&& fn ) const
+  {
+    detail::foreach_element( _leaves.begin(), _leaves.end(), fn );
   }
 
 private:
@@ -271,16 +309,55 @@ private:
     }
   }
 
+  void find_leaves_and_roots()
+  {
+    _leaves.clear();
+    for ( auto const& g : _gates )
+    {
+      _ntk.foreach_fanin( g, [&]( auto const& f ) {
+        auto const child = _ntk.get_node( f );
+        if ( !_gates.count( child ) )
+        {
+          _leaves.insert( child );
+        }
+      } );
+    }
+
+    _roots.clear();
+    for ( auto const& n : _nodes )
+    {
+      _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
+        _cell_refs[n2]--;
+      } );
+    }
+    for ( auto const& n : _nodes )
+    {
+      if ( _cell_refs[n] )
+      {
+        _roots.insert( n );
+      }
+    }
+    for ( auto const& n : _nodes )
+    {
+      _ntk.foreach_cell_fanin( n, [&]( auto const& n2 ) {
+        _cell_refs[n2]++;
+      } );
+    }
+  }
+
 private:
   Ntk const& _ntk;
 
-  spp::sparse_hash_set<node<Ntk>> _nodes; /* cell roots in current window */
-  spp::sparse_hash_set<node<Ntk>> _gates; /* gates in current window */
+  spp::sparse_hash_set<node<Ntk>> _nodes;  /* cell roots in current window */
+  spp::sparse_hash_set<node<Ntk>> _gates;  /* gates in current window */
+  spp::sparse_hash_set<node<Ntk>> _leaves; /* leaves of current window */
+  spp::sparse_hash_set<node<Ntk>> _roots;  /* roots of current window */
 
   node_map<uint32_t, Ntk> _cell_refs;                  /* ref counts for cells */
   node_map<std::vector<node<Ntk>>, Ntk> _cell_parents; /* parent cells */
 
-  uint32_t _max_gates{64u};
+  uint32_t _num_constants{1u};
+  uint32_t _max_gates{128u};
 };
 
 } // namespace mockturtle
