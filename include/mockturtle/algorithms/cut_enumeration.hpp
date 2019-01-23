@@ -69,6 +69,9 @@ struct cut_enumeration_params
 
   /*! \brief Be verbose. */
   bool verbose{false};
+
+  /*! \brief Be very verbose. */
+  bool very_verbose{false};
 };
 
 struct cut_enumeration_stats
@@ -297,6 +300,12 @@ public:
 
     ntk.foreach_node( [this]( auto node ) {
       const auto index = ntk.node_to_index( node );
+
+      if ( ps.very_verbose )
+      {
+        std::cout << fmt::format( "[i] compute cut for node {} (index = {})\n", node, index );
+      }
+
       if ( ntk.is_constant( node ) )
       {
         cuts.add_zero_cut( index );
@@ -364,7 +373,7 @@ private:
     const auto fanin = 2;
 
     uint32_t pairs{1};
-    ntk.foreach_fanin( index, [this, &pairs]( auto child, auto i ) {
+    ntk.foreach_fanin( ntk.index_to_node( index ), [this, &pairs]( auto child, auto i ) {
       lcuts[i] = &cuts.cuts( ntk.node_to_index( ntk.get_node( child ) ) );
       pairs *= static_cast<uint32_t>( lcuts[i]->size() );
     } );
