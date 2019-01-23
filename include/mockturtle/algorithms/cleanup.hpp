@@ -79,7 +79,7 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
   /* foreach node in topological order */
   topo_view topo{ntk};
   topo.foreach_node( [&]( auto node ) {
-    if ( ntk.is_constant( node ) || ntk.is_pi( node ) )
+    if ( ntk.is_constant( node ) || ntk.is_ci( node ) )
       return;
 
     /* collect children */
@@ -120,14 +120,6 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
  * This method reconstructs a network and omits all dangling nodes.  The
  * network types of the source and destination network are the same.
  *
-   \verbatim embed:rst
-
-   .. note::
-
-      This method returns the cleaned up network as a return value.  It does
-      *not* modify the input network.
-   \endverbatim
- *
  * **Required network functions:**
  * - `get_node`
  * - `node_to_index`
@@ -140,8 +132,9 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
  * - `foreach_pi`
  * - `foreach_po`
  * - `clone_node`
- * - `is_pi`
+ * - `is_ci`
  * - `is_constant`
+ * - `create_ro`
  */
 template<typename Ntk>
 Ntk cleanup_dangling( Ntk const& ntk )
@@ -158,14 +151,30 @@ Ntk cleanup_dangling( Ntk const& ntk )
   static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_clone_node_v<Ntk>, "Ntk does not implement the clone_node method" );
-  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci method" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_create_ro_v<Ntk>, "Ntk does not implement the create_ro method" );
+
 
   Ntk dest;
   std::vector<signal<Ntk>> pis;
-  ntk.foreach_pi( [&]( auto ) {
-    pis.push_back( dest.create_pi() );
-  } );
+
+  //creates latches in the target network
+  for ( auto i = 0u; i < ntk.num_latches(); ++i ){
+      dest._storage->data.latches.emplace_back(0);
+  }
+
+  //create PIs
+  for ( auto i = 0u; i < ntk.num_pis() - ntk.num_latches(); ++i )
+  {
+      pis.push_back( dest.create_pi() );
+  }
+
+  //create Registers Outputs
+  for ( auto i = ntk.num_pis() - ntk.num_latches(); i < ntk.num_pis(); ++i )
+  {
+      pis.push_back( dest.create_ro() );
+  }
 
   for ( auto f : cleanup_dangling( ntk, dest, pis.begin(), pis.end() ) )
   {

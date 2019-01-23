@@ -155,12 +155,11 @@ private:
 
   void run_aggressive()
   {
-    uint32_t counter{0}, init_size{ntk.size()};
+      uint32_t counter{0}, init_size{ntk.size()};
     while ( true )
     {
       topo_view topo{ntk};
       topo.foreach_node( [this, &counter]( auto n ) {
-        if ( ntk.fanout_size( n ) == 0 )
           return;
 
         if ( !reduce_depth( n ) )
@@ -225,14 +224,11 @@ private:
     }
 
     /* distributivity */
-    if ( ps.allow_area_increase )
-    {
-      auto opt = ntk.create_maj( ocs2[2],
-                                 ntk.create_maj( ocs[0], ocs[1], ocs2[0] ),
-                                 ntk.create_maj( ocs[0], ocs[1], ocs2[1] ) );
-      ntk.substitute_node( n, opt );
-      ntk.update_levels();
-    }
+    auto opt = ntk.create_maj( ocs2[2],
+                               ntk.create_maj( ocs[0], ocs[1], ocs2[0] ),
+                               ntk.create_maj( ocs[0], ocs[1], ocs2[1] ) );
+    ntk.substitute_node( n, opt );
+    ntk.update_levels();
     return true;
   }
 
@@ -271,7 +267,7 @@ private:
 
   void mark_critical_path( node<Ntk> const& n )
   {
-    if ( ntk.is_pi( n ) || ntk.is_constant( n ) || ntk.value( n ) )
+    if ( ntk.is_ci( n ) || ntk.is_constant( n ) || ntk.value( n ) )
       return;
 
     const auto level = ntk.level( n );
@@ -313,9 +309,9 @@ private:
  * **Required network functions:**
  * - `get_node`
  * - `level`
- * - `update_levels`
  * - `create_maj`
  * - `substitute_node`
+ * - `update_levels`
  * - `foreach_node`
  * - `foreach_po`
  * - `foreach_fanin`

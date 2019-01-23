@@ -34,7 +34,7 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #include "../networks/detail/foreach.hpp"
@@ -54,11 +54,8 @@ namespace mockturtle
  * `foreach_node`, `foreach_gate`, `is_pi`, `node_to_index`, and
  * `index_to_node`.
  *
- * This view assumes that all nodes' visited flags are set 0 before creating
- * the view.  The view guarantees that all the nodes in the view will have a 0
- * visited flag after the construction.
- *
  * **Required network functions:**
+ * - `clear_visited`
  * - `set_visited`
  * - `visited`
  * - `get_node`
@@ -76,10 +73,11 @@ public:
   static constexpr bool is_topologically_sorted = true;
 
 public:
-  explicit cut_view( Ntk const& ntk, std::vector<node> const& leaves, node const& root )
+  explicit cut_view( Ntk const& ntk, const std::vector<node>& leaves, const node& root )
       : immutable_view<Ntk>( ntk ), _root( root )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
@@ -105,11 +103,12 @@ public:
     }
   }
 
-  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
-  explicit cut_view( Ntk const& ntk, std::vector<signal> const& leaves, node const& root )
+    template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
+    explicit cut_view( Ntk const& ntk, const std::vector<signal>& leaves, const node& root )
       : immutable_view<Ntk>( ntk ), _root( root )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_clear_visited_v<Ntk>, "Ntk does not implement the clear_visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
@@ -200,7 +199,7 @@ private:
 
   inline void add_node( node const& n )
   {
-    _node_to_index[n] = static_cast<uint32_t>( _nodes.size() );
+    _node_to_index[n] = _nodes.size();
     _nodes.push_back( n );
   }
 
@@ -218,17 +217,17 @@ private:
   }
 
 public:
-  unsigned _num_constants{1};
-  unsigned _num_leaves{0};
-  std::vector<node> _nodes;
-  spp::sparse_hash_map<node, uint32_t> _node_to_index;
-  node _root;
+    unsigned _num_constants{1};
+    unsigned _num_leaves{0};
+    std::vector<node> _nodes;
+    spp::sparse_hash_map<node, uint32_t> _node_to_index;
+    node _root;
 };
 
-template<class T>
-cut_view(T const&, std::vector<node<T>> const&, node<T> const&) -> cut_view<T>;
+    template<class T>
+    cut_view(T const&, std::vector<node<T>> const&, node<T> const&) -> cut_view<T>;
 
-template<class T, typename = std::enable_if_t<!std::is_same_v<typename T::signal, typename T::node>>>
-cut_view(T const&, std::vector<signal<T>> const&, node<T> const&) -> cut_view<T>;
+    template<class T, typename = std::enable_if_t<!std::is_same_v<typename T::signal, typename T::node>>>
+    cut_view(T const&, std::vector<signal<T>> const&, node<T> const&) -> cut_view<T>;
 
 } /* namespace mockturtle */
