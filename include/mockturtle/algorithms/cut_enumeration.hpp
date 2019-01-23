@@ -218,9 +218,17 @@ public:
     return support;
   }
 
-  uint32_t insert_truth_table( kitty::dynamic_truth_table tt)
+  /*! \brief Inserts a truth table into the truth table cache.
+   *
+   * This message can be used when manually adding or modifying cuts from the
+   * cut sets.
+   *
+   * \param tt Truth table to add
+   * \return Literal id from the truth table store
+   */
+  uint32_t insert_truth_table( kitty::dynamic_truth_table const& tt )
   {
-    return _truth_tables.insert(tt);
+    return _truth_tables.insert( tt );
   }
 
 private:
