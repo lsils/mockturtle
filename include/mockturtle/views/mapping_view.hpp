@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <memory>
 #include <vector>
 
 #include "../networks/detail/foreach.hpp"
@@ -132,98 +133,100 @@ public:
    *
    * Constructs mapping view on another network.
    */
-  mapping_view( Ntk const& ntk ) : immutable_view<Ntk>( ntk )
+  mapping_view( Ntk const& ntk )
+      : immutable_view<Ntk>( ntk ),
+        _mapping_storage( std::make_shared<typename decltype( _mapping_storage )::element_type>() )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
 
-    _mapping_storage.mappings.resize( ntk.size(), 0 );
+    _mapping_storage->mappings.resize( ntk.size(), 0 );
 
     if constexpr ( StoreFunction )
     {
       /* insert 0 truth table */
-      _mapping_storage.cache.insert( kitty::dynamic_truth_table( 0 ) );
+      _mapping_storage->cache.insert( kitty::dynamic_truth_table( 0 ) );
 
       /* default each truth table to 0 */
-      _mapping_storage.functions.resize( ntk.size(), 0 );
+      _mapping_storage->functions.resize( ntk.size(), 0 );
     }
   }
 
   bool has_mapping() const
   {
-    return _mapping_storage.mapping_size > 0;
+    return _mapping_storage->mapping_size > 0;
   }
 
   bool is_cell_root( node const& n ) const
   {
-    return _mapping_storage.mappings[this->node_to_index( n )] != 0;
+    return _mapping_storage->mappings[this->node_to_index( n )] != 0;
   }
 
   void clear_mapping()
   {
-    _mapping_storage.mappings.clear();
-    _mapping_storage.mappings.resize( this->size(), 0 );
-    _mapping_storage.mapping_size = 0;
+    _mapping_storage->mappings.clear();
+    _mapping_storage->mappings.resize( this->size(), 0 );
+    _mapping_storage->mapping_size = 0;
   }
 
   uint32_t num_cells() const
   {
-    return _mapping_storage.mapping_size;
+    return _mapping_storage->mapping_size;
   }
 
   template<typename LeavesIterator>
   void add_to_mapping( node const& n, LeavesIterator begin, LeavesIterator end )
   {
-    auto& mindex = _mapping_storage.mappings[this->node_to_index( n )];
+    auto& mindex = _mapping_storage->mappings[this->node_to_index( n )];
 
     /* increase mapping size? */
     if ( mindex == 0 )
     {
-      _mapping_storage.mapping_size++;
+      _mapping_storage->mapping_size++;
     }
 
     /* set starting index of leafs */
-    mindex = static_cast<uint32_t>( _mapping_storage.mappings.size() );
+    mindex = static_cast<uint32_t>( _mapping_storage->mappings.size() );
 
     /* insert number of leafs */
-    _mapping_storage.mappings.push_back( static_cast<uint32_t>( std::distance( begin, end ) ) );
+    _mapping_storage->mappings.push_back( static_cast<uint32_t>( std::distance( begin, end ) ) );
 
     /* insert leaf indexes */
     while ( begin != end )
     {
-      _mapping_storage.mappings.push_back( this->node_to_index( *begin++ ) );
+      _mapping_storage->mappings.push_back( this->node_to_index( *begin++ ) );
     }
   }
 
   void remove_from_mapping( node const& n )
   {
-    auto& mindex = _mapping_storage.mappings[this->node_to_index( n )];
+    auto& mindex = _mapping_storage->mappings[this->node_to_index( n )];
 
     if ( mindex != 0 )
     {
-      _mapping_storage.mapping_size--;
+      _mapping_storage->mapping_size--;
     }
 
-    _mapping_storage.mappings[this->node_to_index( n )] = 0;
+    _mapping_storage->mappings[this->node_to_index( n )] = 0;
   }
 
   template<bool enabled = StoreFunction, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
   kitty::dynamic_truth_table cell_function( node const& n ) const
   {
-    return _mapping_storage.cache[_mapping_storage.functions[this->node_to_index( n )]];
+    return _mapping_storage->cache[_mapping_storage->functions[this->node_to_index( n )]];
   }
 
   template<bool enabled = StoreFunction, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
   void set_cell_function( node const& n, kitty::dynamic_truth_table const& function )
   {
-    _mapping_storage.functions[this->node_to_index( n )] = _mapping_storage.cache.insert( function );
+    _mapping_storage->functions[this->node_to_index( n )] = _mapping_storage->cache.insert( function );
   }
 
   template<typename Fn>
   void foreach_cell_fanin( node const& n, Fn&& fn ) const
   {
-    auto it = _mapping_storage.mappings.begin() + _mapping_storage.mappings[this->node_to_index( n )];
+    auto it = _mapping_storage->mappings.begin() + _mapping_storage->mappings[this->node_to_index( n )];
     const auto size = *it++;
     using IteratorType = decltype( it );
     detail::foreach_element_transform<IteratorType, typename Ntk::node>( it, it + size,
@@ -231,7 +234,7 @@ public:
   }
 
 private:
-  detail::mapping_view_storage<StoreFunction> _mapping_storage;
+  std::shared_ptr<detail::mapping_view_storage<StoreFunction>> _mapping_storage;
 };
 
 template<class T>
