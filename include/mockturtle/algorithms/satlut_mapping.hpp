@@ -73,6 +73,9 @@ struct satlut_mapping_params
 
   /*! \brief Be verbose. */
   bool verbose{false};
+
+  /*! \brief Be very verbose. */
+  bool very_verbose{false};
 };
 
 struct satlut_mapping_stats
@@ -106,11 +109,7 @@ std::vector<int> cardinality_network( Solver& solver, std::vector<int> const& va
 {
   int lits[3];
 
-  std::cout << "[i] number of variables = " << vars.size() << "\n";
-
   auto logn = static_cast<uint32_t>( ceil( log2( vars.size() ) ) );
-  std::cout << "[i] next power of 2     = " << ( 1u << logn ) << "\n";
-
   auto current = vars;
 
   if ( current.size() != ( 1u << logn ) )
@@ -205,7 +204,7 @@ public:
       std::vector<int> gate_is_mapped;
       gate_is_mapped.push_back( pabc::Abc_Var2Lit( gate_var[n], 1 ) );
 
-      for ( auto const& cut : cuts.cuts( n ) )
+      for ( auto const& cut : cuts.cuts( ntk.node_to_index( n ) ) )
       {
         if ( cut->size() == 1 )
         {
@@ -235,22 +234,25 @@ public:
     st.num_vars = solver.nr_vars();
     st.num_clauses = solver.nr_clauses();
 
-    auto best_size = ntk.has_mapping() ? ntk.num_cells() : card_out.size();
+    auto best_size = ntk.has_mapping() ? ntk.num_cells() : card_inp.size();
 
     progress_bar pbar{"satlut iteration = {0}   try size = {1}", ps.progress};
     auto iteration = 0u;
     while ( true )
     {
       pbar( ++iteration, best_size );
+      std::cout << "try with " << best_size << " cells\n";
       auto assump = pabc::Abc_Var2Lit( card_out[card_out.size() - best_size], 1 );
 
       const auto result = call_with_stopwatch( st.time_sat, [&]() { return solver.solve( &assump, &assump + 1, ps.conflict_limit ); } );
       if ( result == percy::success )
       {
+        std::cout << "[i] IMPROVED!\n";
         ntk.clear_mapping();
         ntk.foreach_gate( [&]( auto n ) {
           if ( solver.var_value( gate_var[n] ) )
           {
+            std::cout << ".";
             for ( auto i = 0u; i < cut_vars[n].size(); ++i )
             {
               if ( solver.var_value( cut_vars[n][i] ) )
@@ -272,6 +274,7 @@ public:
             }
           }
         } );
+        std::cout << " " << ntk.num_cells() << "\n";
 
         if ( ntk.num_cells() == ntk.num_pos() )
         {
