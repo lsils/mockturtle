@@ -200,12 +200,12 @@ public:
 
   void clear_mapping()
   {
-    _storage->_nodes.clear();
     _storage->_has_mapping = false;
     for ( auto const& n : _storage->_nodes )
     {
       Ntk::remove_from_mapping( n );
     }
+    _storage->_nodes.clear();
   }
 
   template<typename LeavesIterator>
