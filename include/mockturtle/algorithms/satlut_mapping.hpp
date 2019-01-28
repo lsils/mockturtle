@@ -241,18 +241,15 @@ public:
     while ( true )
     {
       pbar( ++iteration, best_size );
-      std::cout << "try with " << best_size << " cells\n";
       auto assump = pabc::Abc_Var2Lit( card_out[card_out.size() - best_size], 1 );
 
       const auto result = call_with_stopwatch( st.time_sat, [&]() { return solver.solve( &assump, &assump + 1, ps.conflict_limit ); } );
       if ( result == percy::success )
       {
-        std::cout << "[i] IMPROVED!\n";
         ntk.clear_mapping();
         ntk.foreach_gate( [&]( auto n ) {
           if ( solver.var_value( gate_var[n] ) )
           {
-            std::cout << ".";
             for ( auto i = 0u; i < cut_vars[n].size(); ++i )
             {
               if ( solver.var_value( cut_vars[n][i] ) )
@@ -274,7 +271,6 @@ public:
             }
           }
         } );
-        std::cout << " " << ntk.num_cells() << "\n";
 
         if ( ntk.num_cells() == ntk.num_pos() )
         {
