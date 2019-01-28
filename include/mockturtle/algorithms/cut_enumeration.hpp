@@ -343,7 +343,7 @@ private:
       ++i;
     }
 
-    auto tt_res = ntk.compute( index, tt.begin(), tt.end() );
+    auto tt_res = ntk.compute( ntk.index_to_node( index ), tt.begin(), tt.end() );
 
     if ( ps.minimize_truth_table )
     {
