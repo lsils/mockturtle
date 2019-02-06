@@ -462,9 +462,11 @@ private:
     }
   }
 
-private:
+public:
   xag_minmc_resynthesis_params ps;
   xag_minmc_resynthesis_stats st;
+
+private:
   xag_minmc_resynthesis_stats *pst{nullptr};
 
   std::shared_ptr<xag_network> db;
