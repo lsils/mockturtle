@@ -122,10 +122,10 @@ struct xag_minmc_resynthesis_stats
   }
 };
 
-/*! \brief Resynthesis function based on pre-computed size-optimum MIGs.
+/*! \brief Resynthesis function to minimize multiplicative complexity in XAGs.
  *
  * This resynthesis function can be passed to ``cut_rewriting`` with a cut size
- * of at most 6.  It will produce an XMG based on pre-computed XMGs with a
+ * of at most 6.  It will produce an XAG based on pre-computed XAGs with a
  * minimum multiplicative complexity.
  *
    \verbatim embed:rst
