@@ -341,7 +341,7 @@ public:
     }
     else
     {
-      cut_view topo{*db, *db_pis, db->get_node( circuit )};
+      cut_view<xag_network> topo{*db, *db_pis, db->get_node( circuit )};
       output = cleanup_dangling( topo, xag, pis.begin(), pis.end() ).front();
     }
     if ( db->is_complemented( circuit ) )
@@ -434,7 +434,7 @@ private:
       /* verify */
       if (ps.verify_database)
       {
-        cut_view view{*db, *db_pis, db->get_node( f )};
+        cut_view<xag_network> view{*db, *db_pis, db->get_node( f )};
         kitty::static_truth_table<6> tt, tt_repr;
         kitty::create_from_hex_string( tt, original );
         kitty::create_from_hex_string( tt_repr, token_f );
