@@ -225,7 +225,7 @@ private:
     this->set_value( n, 1 );
 
     /* mark children */
-    this->foreach_fanin( n, [this]( auto f, auto ) {
+    this->foreach_fanin( n, [this]( auto f ) {
       create_topo_rec( this->get_node( f ) );
     } );
 
