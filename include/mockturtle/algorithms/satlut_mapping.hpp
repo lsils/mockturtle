@@ -234,13 +234,19 @@ public:
     st.num_vars = solver.nr_vars();
     st.num_clauses = solver.nr_clauses();
 
-    auto best_size = ntk.has_mapping() ? ntk.num_cells() : card_inp.size();
+    auto best_size = ntk.has_mapping() ? ntk.num_cells() + 1 : card_inp.size();
 
     progress_bar pbar{"satlut iteration = {0}   try size = {1}", ps.progress};
     auto iteration = 0u;
     while ( true )
     {
       pbar( ++iteration, best_size );
+      if ( best_size > card_out.size() )
+      {
+        std::cout << fmt::format( "[e] best_size = {}   card_inp.size() = {}   card_out.size() = {}   ntk.num_cells = {}   ntk.has_mapping = {}\n",
+        best_size, card_inp.size(), card_out.size(), ntk.num_cells(), ntk.has_mapping() );
+        assert( false );
+      }
       auto assump = pabc::Abc_Var2Lit( card_out[card_out.size() - best_size], 1 );
 
       const auto result = call_with_stopwatch( st.time_sat, [&]() { return solver.solve( &assump, &assump + 1, ps.conflict_limit ); } );
@@ -278,7 +284,7 @@ public:
           break;
         }
 
-        best_size = ntk.num_cells() - 1;
+        best_size = ntk.num_cells();
       }
       else
       {
