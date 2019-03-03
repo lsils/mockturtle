@@ -36,7 +36,6 @@
 #include <iomanip>
 #include <iostream>
 #include <set>
-#include <unordered_map>
 #include <vector>
 
 #include "../networks/mig.hpp"
@@ -286,8 +285,8 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
 
   ntk.clear_visited();
 
-  ntk.foreach_node( [&]( auto const& n ) {
-    if ( n >= cuts.nodes_size() || ntk.is_constant( n ) || ntk.is_pi( n ) )
+  ntk.foreach_node( [&]( auto const& n, auto index ) {
+    if ( index >= cuts.nodes_size() || ntk.is_constant( n ) || ntk.is_pi( n ) )
       return;
 
     if ( mffc_size( ntk, n ) == 1 )
@@ -304,7 +303,12 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
       if ( ( *cut )->data.gain < ( allow_zero_gain ? 0 : 1 ) )
         continue;
 
-      cut_view<Ntk> dcut( ntk, std::vector<node<Ntk>>( cut->begin(), cut->end() ), n );
+      std::vector<node<Ntk>> leaves;
+      for ( auto leaf_index : *cut )
+      {
+        leaves.push_back( ntk.index_to_node( leaf_index ) );
+      }
+      cut_view<Ntk> dcut( ntk, leaves, n );
       dcut.foreach_gate( [&]( auto const& n2 ) {
         //if ( dcut.is_constant( n2 ) || dcut.is_pi( n2 ) )
         //  return;
@@ -402,9 +406,9 @@ public:
     const auto size = ntk.size();
     auto max_total_gain = 0u;
     progress_bar pbar{ntk.size(), "cut_rewriting |{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ) + "   comm. gain = {3}", ps.progress};
-    ntk.foreach_node( [&]( auto const& n ) {
+    ntk.foreach_node( [&]( auto const& n, auto index ) {
       /* stop once all original nodes were visited */
-      if ( n >= size )
+      if ( index >= size )
         return false;
 
       /* do not iterate over constants or PIs */
@@ -425,7 +429,7 @@ public:
         const auto tt = cuts.truth_table( *cut );
         assert( cut->size() == static_cast<unsigned>( tt.num_vars() ) );
 
-        pbar( n, n, best_replacements[n].size(), max_total_gain );
+        pbar( index, ntk.node_to_index( n ), best_replacements[n].size(), max_total_gain );
 
         std::vector<signal<Ntk>> children;
         for ( auto l : *cut )
@@ -524,7 +528,7 @@ public:
 
       const auto replacement = best_replacements[v_node][v_cut];
 
-      if ( ntk.node_to_index( ntk.is_constant( ntk.get_node( replacement ) ) ) || v_node == ntk.get_node( replacement ) )
+      if ( ntk.is_constant( ntk.get_node( replacement ) ) || v_node == ntk.get_node( replacement ) )
         continue;
 
       if ( ps.very_verbose )
