@@ -899,7 +899,7 @@ public:
   uint32_t visited( node const& n ) const;
 
   /*! \brief Sets the visited value of a node. */
-  uint32_t set_visited( node const& n, uint32_t v ) const;
+  void set_visited( node const& n, uint32_t v ) const;
 
   /*! \brief An id that can be used as a visited flag.
    *
