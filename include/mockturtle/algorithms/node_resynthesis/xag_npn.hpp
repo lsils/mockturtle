@@ -109,6 +109,7 @@ public:
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
     static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and method" );
     static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor method" );
+    static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
 
     static_assert( is_network_type_v<DatabaseNtk>, "DatabaseNtk is not a network type" );
     static_assert( has_get_node_v<DatabaseNtk>, "DatabaseNtk does not implement the get_node method" );
@@ -162,11 +163,11 @@ public:
     std::vector<signal<Ntk>> pis( 4, ntk.get_constant( false ) );
     std::copy( begin, end, pis.begin() );
 
-    std::vector<signal<Ntk>> pis_perm( 4 );
+    std::vector<signal<Ntk>> pis_perm;
     auto perm = std::get<2>( config );
     for ( auto i = 0; i < 4; ++i )
     {
-      pis_perm[i] = pis[perm[i]];
+      pis_perm.push_back( pis[perm[i]] );
     }
 
     const auto& phase = std::get<1>( config );
@@ -174,7 +175,7 @@ public:
     {
       if ( ( phase >> perm[i] ) & 1 )
       {
-        pis_perm[i] = !pis_perm[i];
+        pis_perm[i] = ntk.create_not( pis_perm[i] );
       }
     }
 
@@ -186,8 +187,12 @@ public:
       {
         db_to_ntk[i + 1] = pis_perm[i];
       }
-      const auto f = copy_db_entry( ntk, _db.get_node( cand ), db_to_ntk ) ^ _db.is_complemented( cand );
-      if ( !fn( ( ( phase >> 4 ) & 1 ) ? !f : f ) )
+      auto f = copy_db_entry( ntk, _db.get_node( cand ), db_to_ntk );
+      if ( _db.is_complemented( cand ) != ( ( phase >> 4 ) & 1 ) )
+      {
+        f = ntk.create_not( f );
+      }
+      if ( !fn( f ) )
       {
         return;
       }
@@ -203,9 +208,10 @@ private:
       return it->second;
     }
 
-    std::array<signal<Ntk>, 2> fanin;
-    _db.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      fanin[i] = copy_db_entry( ntk, _db.get_node( f ), db_to_ntk ) ^ _db.is_complemented( f );
+    std::vector<signal<Ntk>> fanin;
+    //std::array<signal<Ntk>, 2> fanin;
+    _db.foreach_fanin( n, [&]( auto const& f ) {
+      fanin.push_back( copy_db_entry( ntk, _db.get_node( f ), db_to_ntk ) ^ _db.is_complemented( f ) );
     } );
 
     const auto f = _db.is_xor( n ) ? ntk.create_xor( fanin[0], fanin[1] ) : ntk.create_and( fanin[0], fanin[1] );

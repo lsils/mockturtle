@@ -251,7 +251,7 @@ public:
           std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c ) { return c.index; } );
           child = new_signal;
 
-          // increment fan-in of new node
+          // increment fan-out of new node
           _storage->nodes[new_signal].data[0].h1++;
 
           for ( auto const& fn : _events->on_modified )
@@ -269,12 +269,12 @@ public:
       {
         output = new_signal;
 
-        // increment fan-in of new node
+        // increment fan-out of new node
         _storage->nodes[new_signal].data[0].h1++;
       }
     }
 
-    // reset fan-in of old node
+    // reset fan-out of old node
     _storage->nodes[old_node].data[0].h1 = 0;
   }
 #pragma endregion
