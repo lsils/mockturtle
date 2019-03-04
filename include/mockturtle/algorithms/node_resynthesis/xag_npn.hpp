@@ -182,10 +182,11 @@ public:
     for ( auto const& cand : it->second )
     {
       std::unordered_map<node<DatabaseNtk>, signal<Ntk>> db_to_ntk;
-      db_to_ntk[0] = ntk.get_constant( false );
+
+      db_to_ntk.insert( {0, ntk.get_constant( false )} );
       for ( auto i = 0; i < 4; ++i )
       {
-        db_to_ntk[i + 1] = pis_perm[i];
+        db_to_ntk.insert( {i + 1, pis_perm[i]} );
       }
       auto f = copy_db_entry( ntk, _db.get_node( cand ), db_to_ntk );
       if ( _db.is_complemented( cand ) != ( ( phase >> 4 ) & 1 ) )
@@ -211,11 +212,17 @@ private:
     std::vector<signal<Ntk>> fanin;
     //std::array<signal<Ntk>, 2> fanin;
     _db.foreach_fanin( n, [&]( auto const& f ) {
-      fanin.push_back( copy_db_entry( ntk, _db.get_node( f ), db_to_ntk ) ^ _db.is_complemented( f ) );
+      auto ntk_f = copy_db_entry( ntk, _db.get_node( f ), db_to_ntk );
+      if ( _db.is_complemented( f ) )
+      {
+        ntk_f = ntk.create_not( ntk_f );
+      }
+      fanin.push_back( ntk_f );
     } );
 
     const auto f = _db.is_xor( n ) ? ntk.create_xor( fanin[0], fanin[1] ) : ntk.create_and( fanin[0], fanin[1] );
-    return db_to_ntk[n] = f;
+    db_to_ntk.insert( {n, f} );
+    return f;
   }
 
   void build_classes()

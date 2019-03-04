@@ -292,7 +292,7 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
     if ( mffc_size( ntk, n ) == 1 )
       return;
 
-    const auto& set = cuts.cuts( static_cast<uint32_t>( n ) );
+    const auto& set = cuts.cuts( ntk.node_to_index( n ) );
 
     auto cctr{0u};
     for ( auto const& cut : set )
@@ -312,13 +312,13 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
       dcut.foreach_gate( [&]( auto const& n2 ) {
         //if ( dcut.is_constant( n2 ) || dcut.is_pi( n2 ) )
         //  return;
-        conflicts[n2].emplace_back( n, cctr );
+        conflicts[ntk.node_to_index( n2 )].emplace_back( n, cctr );
       } );
 
       auto v = g.add_vertex( ( *cut )->data.gain );
       assert( v == vertex_to_cut_addr.size() );
       vertex_to_cut_addr.emplace_back( n, cctr );
-      cut_addr_to_vertex[n].emplace_back( v );
+      cut_addr_to_vertex[ntk.node_to_index( n )].emplace_back( v );
 
       ++cctr;
     }
@@ -333,9 +333,9 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
         const auto [n1, c1] = conflicts[n][i];
         const auto [n2, c2] = conflicts[n][j];
 
-        if ( cut_addr_to_vertex[n1][c1] != cut_addr_to_vertex[n2][c2] )
+        if ( cut_addr_to_vertex[ntk.node_to_index( n1 )][c1] != cut_addr_to_vertex[ntk.node_to_index( n2 )][c2] )
         {
-          g.add_edge( cut_addr_to_vertex[n1][c1], cut_addr_to_vertex[n2][c2] );
+          g.add_edge( cut_addr_to_vertex[ntk.node_to_index( n1 )][c1], cut_addr_to_vertex[ntk.node_to_index( n2 )][c2] );
         }
       }
     }
@@ -420,7 +420,7 @@ public:
         return true;
 
       /* foreach cut */
-      for ( auto& cut : cuts.cuts( n ) )
+      for ( auto& cut : cuts.cuts( ntk.node_to_index( n ) ) )
       {
         /* skip trivial cuts */
         if ( cut->size() <= 2 )
@@ -520,7 +520,7 @@ public:
 
       if ( ps.very_verbose )
       {
-        std::cout << "[i] try to rewrite cut #" << v_cut << " in node #" << v_node << "\n";
+        std::cout << "[i] try to rewrite cut #" << v_cut << " in node #" << ntk.node_to_index( v_node ) << "\n";
       }
 
       if ( best_replacements[v_node].empty() )
@@ -533,7 +533,7 @@ public:
 
       if ( ps.very_verbose )
       {
-        std::cout << "[i] optimize cut #" << v_cut << " in node #" << v_node << " and replace with node " << ntk.get_node( replacement ) << "\n";
+        std::cout << "[i] optimize cut #" << v_cut << " in node #" << ntk.node_to_index( v_node ) << " and replace with node " << ntk.node_to_index( ntk.get_node( replacement ) ) << "\n";
       }
 
       ntk.substitute_node( v_node, replacement );
