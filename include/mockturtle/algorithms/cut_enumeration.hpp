@@ -437,7 +437,7 @@ private:
     const auto fanin = cut_sizes.size();
     lcuts[fanin] = &cuts.cuts( index );
 
-    auto& rcuts = *lcuts[fanin == 1 ? 0 : fanin];
+    auto& rcuts = *lcuts[fanin];
 
     if ( fanin > 1 )
     {
@@ -489,14 +489,29 @@ private:
 
       /* limit the maximum number of cuts */
       rcuts.limit( ps.cut_limit - 1 );
+    } else { /* fanin == 1 */
+      rcuts.clear();
+
+      for ( auto const& cut : *lcuts[0] ) {
+        cut_t new_cut = *cut;
+
+        if constexpr ( ComputeTruth )
+        {
+          new_cut->func_id = compute_truth_table( index, {cut}, new_cut );
+        }
+
+        cut_enumeration_update_cut<CutData>::apply( new_cut, cuts, ntk, ntk.index_to_node( index ) );
+
+        rcuts.insert( new_cut );
+      }
+
+      /* limit the maximum number of cuts */
+      rcuts.limit( ps.cut_limit - 1 );
     }
 
     cuts._total_cuts += static_cast<uint32_t>( rcuts.size() );
 
-    if ( fanin == 1 || rcuts.size() > 1 || ( *rcuts.begin() )->size() > 1 )
-    {
-      cuts.add_unit_cut( index );
-    }
+    cuts.add_unit_cut( index );
   }
 
 private:

@@ -82,6 +82,24 @@ template<int MaxLeaves, typename T = empty_cut_data>
 class cut
 {
 public:
+  /*! \brief Default constructor.
+   */
+  cut() = default;
+
+  /*! \brief Copy constructor.
+   *
+   * Copies leaves, length, signature, and data.
+   *
+   * \param other Other cut
+   */
+  cut( cut const& other )
+  {
+    _cend = _end = std::copy( other.begin(), other.end(), _leaves.begin() );
+    _length = other._length;
+    _signature = other._signature;
+    _data = other._data;
+  }
+
   /*! \brief Assignment operator.
    *
    * Copies leaves, length, signature, and data.

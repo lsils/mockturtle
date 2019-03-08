@@ -35,6 +35,7 @@
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <set>
 #include <vector>
 
@@ -83,6 +84,12 @@ struct cut_rewriting_params
     minimize_weight,
     greedy
   } candidate_selection_strategy = minimize_weight;
+
+  /*! \brief Minimum candidate cut size */
+  uint32_t min_cand_cut_size{3u};
+
+  /*! \brief Minimum candidate cut size override (in conflict graph) */
+  std::optional<uint32_t> min_cand_cut_size_override{};
 
   /*! \brief Show progress. */
   bool progress{false};
@@ -269,7 +276,7 @@ struct cut_enumeration_cut_rewriting_cut
 };
 
 template<typename Ntk, bool ComputeTruth>
-std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_graph( Ntk const& ntk, network_cuts<Ntk, ComputeTruth, cut_enumeration_cut_rewriting_cut> const& cuts, bool allow_zero_gain )
+std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_graph( Ntk const& ntk, network_cuts<Ntk, ComputeTruth, cut_enumeration_cut_rewriting_cut> const& cuts, cut_rewriting_params const& ps )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -297,10 +304,15 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
     auto cctr{0u};
     for ( auto const& cut : set )
     {
-      if ( cut->size() <= 2 )
+      if ( ps.min_cand_cut_size_override )
+      {
+        if ( cut->size() < *ps.min_cand_cut_size_override )
+          continue;
+      }
+      else if ( cut->size() < ps.min_cand_cut_size )
         continue;
 
-      if ( ( *cut )->data.gain < ( allow_zero_gain ? 0 : 1 ) )
+      if ( ( *cut )->data.gain < ( ps.allow_zero_gain ? 0 : 1 ) )
         continue;
 
       std::vector<node<Ntk>> leaves;
@@ -423,7 +435,7 @@ public:
       for ( auto& cut : cuts.cuts( ntk.node_to_index( n ) ) )
       {
         /* skip trivial cuts */
-        if ( cut->size() <= 2 )
+        if ( cut->size() < ps.min_cand_cut_size )
           continue;
 
         const auto tt = cuts.truth_table( *cut );
@@ -499,7 +511,7 @@ public:
     } );
 
     stopwatch t2( st.time_mis );
-    auto [g, map] = network_cuts_graph( ntk, cuts, ps.allow_zero_gain );
+    auto [g, map] = network_cuts_graph( ntk, cuts, ps );
 
     if ( ps.very_verbose )
     {
