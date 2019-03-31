@@ -192,6 +192,25 @@ private:
 
 } // namespace detail
 
+/*! \brief DSD decomposition
+ *
+ * This function applies DSD decomposition on an input truth table and
+ * constructs a network based on all possible decompositions.  If the truth
+ * table is only partially decomposable, then the remaining *prime function*
+ * is returned back to the caller using the call back `on_prime` together with
+ * the computed primary inputs for that remainder.
+ *
+ * The `on_prime` function must be of type `NtkDest::signal(
+ * kitty::dynamic_truth_table const&, std::vector<NtkDest::signal> const&)`.
+ *
+ * **Required network functions:**
+ * - `create_not`
+ * - `create_and`
+ * - `create_or`
+ * - `create_lt`
+ * - `create_le`
+ * - `create_xor`
+ */
 template<class Ntk, class Fn>
 signal<Ntk> dsd_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime )
 {

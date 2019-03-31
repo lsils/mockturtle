@@ -5,6 +5,7 @@
 #include <mockturtle/algorithms/dsd_decomposition.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/xag.hpp>
 
 using namespace mockturtle;
@@ -59,5 +60,29 @@ TEST_CASE( "Full DSD decomposition on some 10-input functions into XAGs", "[dsd_
     default_simulator<kitty::dynamic_truth_table> sim( table.num_vars() );
     CHECK( simulate<kitty::dynamic_truth_table>( xag, sim )[0] == table );
   }
+}
+
+TEST_CASE( "Partial DSD decomposition into k-LUT network", "[dsd_decomposition]" )
+{
+  kitty::dynamic_truth_table table( 5u );
+  kitty::create_from_expression( table, "{a<(bc)de>}" );
+
+  klut_network ntk;
+  const auto x1 = ntk.create_pi();
+  const auto x2 = ntk.create_pi();
+  const auto x3 = ntk.create_pi();
+  const auto x4 = ntk.create_pi();
+  const auto x5 = ntk.create_pi();
+
+  auto fn = [&]( kitty::dynamic_truth_table const& remainder, std::vector<klut_network::signal> const& children ) {
+    return ntk.create_node( children, remainder );
+  };
+
+  ntk.create_po( dsd_decomposition( ntk, table, {x1, x2, x3, x4, x5}, fn ) );
+
+  CHECK( ntk.num_gates() == 3u );
+
+  default_simulator<kitty::dynamic_truth_table> sim( table.num_vars() );
+  CHECK( simulate<kitty::dynamic_truth_table>( ntk, sim )[0] == table );
 }
 
