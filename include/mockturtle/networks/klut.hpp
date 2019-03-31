@@ -121,6 +121,26 @@ private:
     kitty::create_from_words( tt_and, &_and, &_and + 1 );
     _storage->data.cache.insert( tt_and );
 
+    static uint64_t _or = 0xe;
+    kitty::dynamic_truth_table tt_or( 2 );
+    kitty::create_from_words( tt_or, &_or, &_or + 1 );
+    _storage->data.cache.insert( tt_or );
+
+    static uint64_t _lt = 0x4;
+    kitty::dynamic_truth_table tt_lt( 2 );
+    kitty::create_from_words( tt_lt, &_lt, &_lt + 1 );
+    _storage->data.cache.insert( tt_lt );
+
+    static uint64_t _le = 0xd;
+    kitty::dynamic_truth_table tt_le( 2 );
+    kitty::create_from_words( tt_le, &_le, &_le + 1 );
+    _storage->data.cache.insert( tt_le );
+
+    static uint64_t _xor = 0x6;
+    kitty::dynamic_truth_table tt_xor( 2 );
+    kitty::create_from_words( tt_xor, &_xor, &_xor + 1 );
+    _storage->data.cache.insert( tt_xor );
+
     /* truth tables for constants */
     _storage->nodes[0].data[1].h1 = 0;
     _storage->nodes[1].data[1].h1 = 1;
@@ -187,6 +207,26 @@ public:
   signal create_and( signal a, signal b )
   {
     return _create_node( {a, b}, 4 );
+  }
+
+  signal create_or( signal a, signal b )
+  {
+    return _create_node( {a, b}, 6 );
+  }
+
+  signal create_lt( signal a, signal b )
+  {
+    return _create_node( {a, b}, 8 );
+  }
+
+  signal create_le( signal a, signal b )
+  {
+    return _create_node( {a, b}, 11 );
+  }
+
+  signal create_xor( signal a, signal b )
+  {
+    return _create_node( {a, b}, 12 );
   }
 #pragma endregion
 
