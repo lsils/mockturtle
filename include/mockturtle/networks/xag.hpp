@@ -355,6 +355,16 @@ public:
     return create_and( !a, !b );
   }
 
+  signal create_lt( signal const& a, signal const& b )
+  {
+    return create_and( !a, b );
+  }
+
+  signal create_le( signal const& a, signal const& b )
+  {
+    return !create_and( a, !b );
+  }
+
   signal create_xor( signal a, signal b )
   {
     /* order inputs a > b it is a XOR */
