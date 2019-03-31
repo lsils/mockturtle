@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2018  EPFL
+ * Copyright (C) 2017-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file non.hpp
+  \file npn.hpp
   \brief Implements NPN canonization algorithms
 
   \author Mathias Soeken
