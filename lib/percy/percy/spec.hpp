@@ -89,6 +89,8 @@ namespace percy
         int64_t sat_time = 0;   ///< How much time was spent on UNSAT formulae (in us)
         int64_t unsat_time = 0; ///< How much time was spent on SAT formulae (in us)
         int64_t synth_time = 0; ///< How much time was spent on SAT formulae (in us)
+        int nr_vars = 0;
+        int nr_clauses = 0;
     }; 
 
     class spec

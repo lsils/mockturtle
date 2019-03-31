@@ -218,7 +218,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[qual
 
     exact_resynthesis_params erps;
     erps.cache = cache;
-    exact_resynthesis resyn( 2, erps );
+    exact_resynthesis<klut_network> resyn( 2, erps );
     auto lut2 = node_resynthesis<klut_network>( lut, resyn );
     lut2 = cleanup_dangling( lut2 );
     return lut2.num_gates();
@@ -241,7 +241,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (best-ca
     exact_resynthesis_params erps;
     erps.cache = cache;
     erps.add_lex_func_clauses = false;
-    exact_resynthesis resyn( 2, erps );
+    exact_resynthesis<klut_network> resyn( 2, erps );
     auto lut2 = node_resynthesis<klut_network>( lut, resyn );
     lut2 = cleanup_dangling( lut2 );
     return lut2.num_gates();
@@ -271,7 +271,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-c
     erps.add_nontriv_clauses = false;
     erps.add_noreapply_clauses = false;
     erps.add_symvar_clauses = false;
-    exact_resynthesis resyn( 2, erps );
+    exact_resynthesis<klut_network> resyn( 2, erps );
     auto lut2 = node_resynthesis<klut_network>( lut, resyn );
     lut2 = cleanup_dangling( lut2 );
     return lut2.num_gates();

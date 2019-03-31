@@ -238,24 +238,6 @@ inline void foreach_line_in_file_escape( std::istream& in, const std::function<b
   }
 }
 
-/* format with vector (see https://stackoverflow.com/questions/39493542/building-a-dynamic-list-of-named-arguments-for-fmtlib) */
-inline std::string format_with_vector( const std::string& fmtstr, const std::vector<std::string>& values )
-{
-  assert( values.size() <= 16u );
-
-  std::vector<fmt::internal::Value> data( values.size() );
-  fmt::ULongLong types = 0;
-
-  for ( auto i = 0u; i < values.size(); ++i )
-  {
-    types |= static_cast<uint64_t>( fmt::internal::Value::STRING ) << ( i * 4 );
-    data[i].string.value = values[i].data();
-    data[i].string.size = values[i].size();
-  }
-
-  return fmt::format( fmtstr, fmt::ArgList( types, &data[0] ) );
-}
-
 template<char sep>
 inline std::vector<std::string> split_with_quotes( const std::string& commands )
 {
