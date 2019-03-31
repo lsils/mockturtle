@@ -1,8 +1,8 @@
 Change Log
 ==========
 
-v0.1 (not yet released)
------------------------
+v0.1 (March 31, 2019)
+---------------------
 
 * Initial network interface
   `#1 <https://github.com/lsils/mockturtle/pull/1>`_ `#61 <https://github.com/lsils/mockturtle/pull/61>`_ `#96 <https://github.com/lsils/mockturtle/pull/96>`_ `#99 <https://github.com/lsils/mockturtle/pull/99>`_
