@@ -389,6 +389,16 @@ public:
     return !create_or( a, b );
   }
 
+  signal create_lt( signal const& a, signal const& b )
+  {
+    return create_and( !a, b );
+  }
+
+  signal create_le( signal const& a, signal const& b )
+  {
+    return !create_and( a, !b );
+  }
+
   signal create_xor( signal const& a, signal const& b )
   {
     return create_xor3( get_constant( false ), a, b );
