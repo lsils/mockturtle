@@ -54,22 +54,15 @@ class dsd_decomposition_impl
 public:
   dsd_decomposition_impl( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime )
       : _ntk( ntk ),
-        _func( func ),
-        _children( children ),
+        remainder( func ),
+        support( children.size() ),
+        pis( children ),
         _on_prime( on_prime )
   {
+    std::iota( support.begin(), support.end(), 0u );
   }
 
   signal<Ntk> run()
-  {
-    auto remainder = _func;
-    std::vector<uint8_t> support( _children.size() );
-    std::iota( support.begin(), support.end(), 0u );
-    return decompose( remainder, support, _children );
-  }
-
-private:
-  signal<Ntk> decompose( kitty::dynamic_truth_table& remainder, std::vector<uint8_t> const& support, std::vector<signal<Ntk>> const& pis )
   {
     /* terminal cases */
     if ( support.size() == 0u )
@@ -108,9 +101,8 @@ private:
            res != kitty::top_decomposition::none )
       {
         /* remove var from support, pis do not change */
-        auto new_support = support;
-        new_support.erase( std::remove( new_support.begin(), new_support.end(), var ), new_support.end() );
-        const auto right = decompose( remainder, new_support, pis );
+        support.erase( std::remove( support.begin(), support.end(), var ), support.end() );
+        const auto right = run();
 
         switch ( res )
         {
@@ -139,34 +131,31 @@ private:
              res != kitty::bottom_decomposition::none )
         {
           /* update pis based on decomposition type */
-          auto new_pis = pis;
-
           switch ( res )
           {
           default:
             assert( false );
           case kitty::bottom_decomposition::and_:
-            new_pis[support[i]] = _ntk.create_and( pis[support[i]], pis[support[j]] );
+            pis[support[i]] = _ntk.create_and( pis[support[i]], pis[support[j]] );
             break;
           case kitty::bottom_decomposition::or_:
-            new_pis[support[i]] = _ntk.create_or( pis[support[i]], pis[support[j]] );
+            pis[support[i]] = _ntk.create_or( pis[support[i]], pis[support[j]] );
             break;
           case kitty::bottom_decomposition::lt_:
-            new_pis[support[i]] = _ntk.create_lt( pis[support[i]], pis[support[j]] );
+            pis[support[i]] = _ntk.create_lt( pis[support[i]], pis[support[j]] );
             break;
           case kitty::bottom_decomposition::le_:
-            new_pis[support[i]] = _ntk.create_le( pis[support[i]], pis[support[j]] );
+            pis[support[i]] = _ntk.create_le( pis[support[i]], pis[support[j]] );
             break;
           case kitty::bottom_decomposition::xor_:
-            new_pis[support[i]] = _ntk.create_xor( pis[support[i]], pis[support[j]] );
+            pis[support[i]] = _ntk.create_xor( pis[support[i]], pis[support[j]] );
             break;
           }
 
           /* remove var from support */
-          auto new_support = support;
-          new_support.erase( new_support.begin() + j );
+          support.erase( support.begin() + j );
 
-          return decompose( remainder, new_support, new_pis );
+          return run();
         }
       }
     }
@@ -185,8 +174,9 @@ private:
 
 private:
   Ntk& _ntk;
-  kitty::dynamic_truth_table const& _func;
-  std::vector<signal<Ntk>> const& _children;
+  kitty::dynamic_truth_table remainder;
+  std::vector<uint8_t> support;
+  std::vector<signal<Ntk>> pis;
   Fn&& _on_prime;
 };
 
