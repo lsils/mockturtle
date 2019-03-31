@@ -1043,4 +1043,27 @@ bool create_from_expression( TT& tt, const std::string& expression )
   return true;
 }
 
+/*! \brief Creates function where on-set corresponds to prime numbers
+
+  This creates a function in which \f$f(x) = 1\f$, if and only if \f$x\f$ is
+  a prime number in its integer representation.  The function only works for
+  truth tables with at most 10 variables.  The number of variables is determined
+  from the truth table.
+
+  \param tt Truth table
+*/
+template<class TT>
+void create_prime( TT& tt )
+{
+  if ( tt.num_vars() > 10 ) return;
+
+  clear( tt );
+  auto p = detail::primes;
+
+  while ( *p < tt.num_bits() )
+  {
+    set_bit( tt, *p++ );
+  }
+}
+
 } // namespace kitty
