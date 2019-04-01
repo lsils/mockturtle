@@ -261,8 +261,9 @@ template<class Ntk = aig_network>
 class exact_aig_resynthesis
 {
 public:
-  explicit exact_aig_resynthesis( exact_resynthesis_params const& ps = {} )
-      : _ps( ps )
+  explicit exact_aig_resynthesis( bool _allow_xor = false, exact_resynthesis_params const& ps = {} )
+      : _allow_xor( _allow_xor ),
+        _ps( ps )
   {
   }
 
@@ -278,7 +279,10 @@ public:
     // TODO: special case for small functions (up to 2 variables)?
 
     percy::spec spec;
-    spec.set_primitive( percy::AIG );
+    if ( !_allow_xor )
+    {
+      spec.set_primitive( percy::AIG );
+    }
     spec.fanin = 2;
     spec.verbosity = 0;
     spec.add_alonce_clauses = _ps.add_alonce_clauses;
@@ -337,6 +341,7 @@ public:
       {
       default:
         std::cerr << "[e] unsupported operation " << kitty::to_hex( c->get_operator( i ) ) << "\n";
+        assert( false );
         break;
       case 0x8:
         signals.emplace_back( ntk.create_and( c1, c2 ) );
@@ -357,6 +362,7 @@ public:
   }
 
 private:
+  bool _allow_xor = false;
   exact_resynthesis_params _ps;
 };
 
