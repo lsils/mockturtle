@@ -32,10 +32,11 @@
 
 #pragma once
 
+#include "../views/topo_view.hpp"
+#include "../utils/stopwatch.hpp"
+
 #include <iostream>
 #include <optional>
-
-#include "../views/topo_view.hpp"
 
 namespace mockturtle
 {
