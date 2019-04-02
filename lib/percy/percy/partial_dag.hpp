@@ -129,6 +129,11 @@ namespace percy
                 return vertices[v_idx];
             }
 
+            const std::vector<std::vector<int>>& get_vertices() const 
+            {
+                return vertices;
+            }
+
             int nr_vertices() const
             {
                 return vertices.size();
@@ -1199,13 +1204,13 @@ namespace percy
             size_t orbits_sz = 0;
             int *map;
             size_t map_sz = 0;
-            graph *g1;
+            graph *g1 = NULL;
             size_t g1_sz = 0;
-            graph *g2;
+            graph *g2 = NULL;
             size_t g2_sz = 0;
-            graph *cg1;
+            graph *cg1 = NULL;
             size_t cg1_sz = 0;
-            graph *cg2;
+            graph *cg2 = NULL;
             size_t cg2_sz = 0;
             statsblk stats;
             int m;
@@ -1328,34 +1333,6 @@ namespace percy
         };
 #endif
 
-        /// Writes a collection of partial DAGs to the specified filename
-        /// NOTE: currently only serialization of DAGs with 2 fanins is supported.
-        /// The format which is written: <nr-vertices><fanin1-vertex1><fanin2-vertex1>...<fanin1-vertexn><fanin2-vertexn>.
-        inline void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
-        {
-            auto fhandle = fopen(filename, "wb");
-            if (fhandle == NULL) {
-                fprintf(stderr, "Error: unable to open output file\n");
-                exit(1);
-            }
-
-            for (auto& dag : dags) {
-                int buf = dag.nr_vertices();
-                fwrite(&buf, sizeof(int), 1, fhandle);
-                for (int i = 0; i < dag.nr_vertices(); i++) {
-                    auto& v = dag.get_vertex(i);
-                    buf = v[0];
-                    auto stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                    assert(stat == 1);
-                    buf = v[1];
-                    stat = fwrite(&buf, sizeof(int), 1, fhandle);
-                    assert(stat == 1);
-                }
-            }
-
-            fclose(fhandle);
-        }
-
         inline void write_partial_dag(const partial_dag& dag, FILE* fhandle)
         {
             int buf = dag.nr_vertices();
@@ -1368,6 +1345,22 @@ namespace percy
                     assert(stat == 1);
                 }
             }
+        }
+
+        /// Writes a collection of partial DAGs to the specified filename
+        inline void write_partial_dags(const std::vector<partial_dag>& dags, const char* const filename)
+        {
+            auto fhandle = fopen(filename, "wb");
+            if (fhandle == NULL) {
+                fprintf(stderr, "Error: unable to open output file\n");
+                exit(1);
+            }
+
+            for (auto& dag : dags) {
+                write_partial_dag(dag, fhandle);
+            }
+
+            fclose(fhandle);
         }
 
         /// Reads serialized partial DAGs from file
@@ -1585,7 +1578,7 @@ namespace percy
                 }
                 const auto can_repr = checker.crepr(g);
                 const auto res = can_reprs.insert(can_repr);
-                printf("%llu\r", ++ctr);
+                printf("%zu\r", ++ctr);
                 if (res.second) {
                     if (nr_in != -1 && g.nr_pi_fanins() >= nr_in)
                         write_partial_dag(g, fhandle);
@@ -1712,6 +1705,93 @@ namespace percy
             return dags;
         }
 
+        // Same as pd_generate_filtered, but generates only those PDs with the
+        // exact number of specified vertices.
+        inline std::vector<partial_dag> pd3_exact_generate_filtered(int nr_vertices, int nr_in)
+        {
+            partial_dag g;
+            partial_dag3_generator gen;
+            std::vector<partial_dag> dags;
+
+            gen.set_callback([&g, &dags, nr_in]
+            (partial_dag3_generator* gen) {
+                for (int i = 0; i < gen->nr_vertices(); i++) {
+                    g.set_vertex(i, gen->_js[i], gen->_ks[i], gen->_ls[i]);
+                }
+                if (g.nr_pi_fanins() >= nr_in) {
+                    dags.push_back(g);
+                }
+            });
+
+            g.reset(3, nr_vertices);
+            gen.reset(nr_vertices);
+            gen.count_dags();
+
+            return dags;
+        }
+
+    /// Isomorphism check using set containinment (hashing)
+    inline void pd_filter_isomorphic_sfast(
+        const std::vector<partial_dag>& dags, 
+        std::vector<partial_dag>& ni_dags,
+        bool show_progress = false)
+    {
+        (void)show_progress;
+#ifndef DISABLE_NAUTY
+        if (dags.size() == 0) {
+            return;
+        }
+
+        const auto nr_vertices = dags[0].nr_vertices();
+        pd_iso_checker checker(nr_vertices);
+        std::vector<std::vector<graph>> reprs(dags.size());
+        auto ctr = 0u;
+        if (show_progress)
+            printf("computing canonical representations\n");
+        for (auto i = 0u; i < dags.size(); i++) {
+            const auto& dag = dags[i];
+            reprs[i] = checker.crepr(dag);
+            if (show_progress)
+                printf("(%u,%zu)\r", ++ctr, dags.size());
+        }
+        if (show_progress)
+            printf("\n");
+
+        std::vector<int> is_iso(dags.size());
+        for (auto i = 0u; i < dags.size(); i++) {
+            is_iso[i] = 0;
+        }
+
+        std::set<std::vector<graph>> can_reps;
+        
+        ctr = 0u;
+        if (show_progress)
+            printf("checking isomorphisms\n");
+        for (auto i = 0u; i < dags.size(); i++) {
+            auto repr = reprs[i];
+            const auto res = can_reps.insert(repr);
+            if (!res.second) { // Already have an isomorphic representative
+                is_iso[i] = 1;
+            }
+            if (show_progress)
+                printf("(%u,%zu)\r", ++ctr, dags.size());
+        }
+        if (show_progress)
+            printf("\n");
+
+        for (auto i = 0u; i < dags.size(); i++) {
+            if (!is_iso[i]) {
+                ni_dags.push_back(dags[i]);
+            }
+        }
+#else
+        for (auto& dag : dags) {
+            ni_dags.push_back(dag);
+        }
+#endif
+    }
+
+
 #ifndef DISABLE_NAUTY
     inline std::vector<partial_dag> pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
@@ -1733,7 +1813,7 @@ namespace percy
                 ni_dags.push_back(g1);
             }
             if (show_progress)
-                printf("(%llu, %llu)\r", ++ctr, dags.size());
+                printf("(%zu, %zu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1771,7 +1851,7 @@ namespace percy
             const auto& dag = dags[i];
             reprs[i] = checker.crepr(dag);
             if (show_progress)
-                printf("(%u,%llu)\r", ++ctr, dags.size());
+                printf("(%u,%zu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1792,7 +1872,7 @@ namespace percy
                 }
             }
             if (show_progress)
-                printf("(%u,%llu)\r", ++ctr, dags.size());
+                printf("(%u,%zu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");
@@ -1804,60 +1884,7 @@ namespace percy
         }
     }
 
-    /// Isomorphism check using set containinment (hashing)
-    inline void pd_filter_isomorphic_sfast(
-        const std::vector<partial_dag>& dags, 
-        std::vector<partial_dag>& ni_dags,
-        bool show_progress = false)
-    {
-        if (dags.size() == 0) {
-            return;
-        }
-
-        const auto nr_vertices = dags[0].nr_vertices();
-        pd_iso_checker checker(nr_vertices);
-        std::vector<std::vector<graph>> reprs(dags.size());
-        auto ctr = 0u;
-        if (show_progress)
-            printf("computing canonical representations\n");
-        for (auto i = 0u; i < dags.size(); i++) {
-            const auto& dag = dags[i];
-            reprs[i] = checker.crepr(dag);
-            if (show_progress)
-                printf("(%u,%llu)\r", ++ctr, dags.size());
-        }
-        if (show_progress)
-            printf("\n");
-
-        std::vector<int> is_iso(dags.size());
-        for (auto i = 0u; i < dags.size(); i++) {
-            is_iso[i] = 0;
-        }
-
-        std::set<std::vector<graph>> can_reps;
-        
-        ctr = 0u;
-        if (show_progress)
-            printf("checking isomorphisms\n");
-        for (auto i = 0u; i < dags.size(); i++) {
-            auto repr = reprs[i];
-            const auto res = can_reps.insert(repr);
-            if (!res.second) { // Already have an isomorphic representative
-                is_iso[i] = 1;
-            }
-            if (show_progress)
-                printf("(%u,%llu)\r", ++ctr, dags.size());
-        }
-        if (show_progress)
-            printf("\n");
-
-        for (auto i = 0u; i < dags.size(); i++) {
-            if (!is_iso[i]) {
-                ni_dags.push_back(dags[i]);
-            }
-        }
-    }
-
+    
     inline void pd_filter_isomorphic(
         const std::vector<partial_dag>& dags, 
         int max_size, 
@@ -1880,7 +1907,7 @@ namespace percy
                 ni_dags.push_back(g1);
             }
             if (show_progress)
-                printf("(%llu,%llu)\r", ++ctr, dags.size());
+                printf("(%zu,%zu)\r", ++ctr, dags.size());
         }
         if (show_progress)
             printf("\n");

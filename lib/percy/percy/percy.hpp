@@ -70,6 +70,8 @@ namespace percy
             stats->synth_time = 0;
             stats->sat_time = 0;
             stats->unsat_time = 0;
+            stats->nr_vars = 0;
+            stats->nr_clauses = 0;
         }
 
         // The special case when the Boolean chain to be synthesized
@@ -89,6 +91,10 @@ namespace percy
             if (!encoder.encode(spec)) {
                 spec.nr_steps++;
                 continue;
+            }
+            if (stats) {
+                stats->nr_vars = solver.nr_vars();
+                stats->nr_clauses = solver.nr_clauses();
             }
 
             auto begin = std::chrono::steady_clock::now();

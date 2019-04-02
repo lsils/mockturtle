@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -88,7 +88,7 @@ struct exact_resynthesis_params
    
       const klut_network klut = ...;
 
-      exact_resynthesis resyn( 3 );
+      exact_resynthesis<klut_network> resyn( 3 );
       cut_rewriting( klut, resyn );
       klut = cleanup_dangling( klut );
    \endverbatim
@@ -108,7 +108,7 @@ struct exact_resynthesis_params
 
       exact_resynthesis_params ps;
       ps.cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
-      exact_resynthesis resyn( 3, ps );
+      exact_resynthesis<klut_network> resyn( 3, ps );
       cut_rewriting( klut, resyn );
       klut = cleanup_dangling( klut );
 
@@ -118,6 +118,7 @@ struct exact_resynthesis_params
    \endverbatim
  *
  */
+template<class Ntk = klut_network>
 class exact_resynthesis
 {
 public:
@@ -128,17 +129,17 @@ public:
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( klut_network& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
     operator()( ntk, function, function.construct(), begin, end, fn );
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( klut_network& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
     if ( static_cast<uint32_t>( function.num_vars() ) <= _fanin_size )
     {
-      fn( ntk.create_node( std::vector<klut_network::signal>( begin, end ), function ) );
+      fn( ntk.create_node( std::vector<signal<Ntk>>( begin, end ), function ) );
       return;
     }
 
@@ -192,11 +193,11 @@ public:
       return;
     }
 
-    std::vector<klut_network::signal> signals( begin, end );
+    std::vector<signal<Ntk>> signals( begin, end );
 
     for ( auto i = 0; i < c->get_nr_steps(); ++i )
     {
-      std::vector<klut_network::signal> fanin;
+      std::vector<signal<Ntk>> fanin;
       for ( const auto& child : c->get_step( i ) )
       {
         fanin.emplace_back( signals[child] );
@@ -226,7 +227,7 @@ private:
    
       const aig_network aig = ...;
 
-      exact_aig_resynthesis resyn;
+      exact_aig_resynthesis<aig_network> resyn;
       cut_rewriting( aig, resyn );
       aig = cleanup_dangling( aig );
    \endverbatim
@@ -242,13 +243,13 @@ private:
    
    .. code-block:: c++
    
-      const klut_network klut = ...;
+      const aig_network aig = ...;
 
       exact_aig_resynthesis_params ps;
       ps.cache = std::make_shared<exact_aig_resynthesis_params::cache_map_t>();
-      exact_aig_resynthesis resyn( ps );
-      cut_rewriting( klut, resyn );
-      klut = cleanup_dangling( klut );
+      exact_aig_resynthesis<aig_network> resyn( ps );
+      cut_rewriting( aig, resyn );
+      aig = cleanup_dangling( aig );
 
    The underlying engine for this resynthesis function is percy_.
 
@@ -256,6 +257,7 @@ private:
    \endverbatim
  *
  */
+template<class Ntk = aig_network>
 class exact_aig_resynthesis
 {
 public:
@@ -265,13 +267,13 @@ public:
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( aig_network& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
     operator()( ntk, function, function.construct(), begin, end, fn );
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( aig_network& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
     // TODO: special case for small functions (up to 2 variables)?
 
@@ -325,7 +327,7 @@ public:
       return;
     }
 
-    std::vector<aig_network::signal> signals( begin, end );
+    std::vector<signal<Ntk>> signals( begin, end );
 
     for ( auto i = 0; i < c->get_nr_steps(); ++i )
     {
