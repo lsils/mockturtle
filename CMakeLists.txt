@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Options
 option(MOCKTURTLE_EXAMPLES "Build examples" ON)
 option(MOCKTURTLE_TEST "Build tests" OFF)
+option(MOCKTURTLE_EXPERIMENTS "Build experiments" OFF)
 
 if(UNIX)
   # show quite some warnings (but remove some intentionally)
@@ -29,4 +30,8 @@ endif()
 
 if(MOCKTURTLE_TEST)
   add_subdirectory(test)
+endif()
+
+if(MOCKTURTLE_EXPERIMENTS)
+  add_subdirectory(experiments)
 endif()
