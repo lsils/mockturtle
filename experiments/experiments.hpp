@@ -236,27 +236,6 @@ private:
   nlohmann::json data_;
 };
 
-template<class Ntk>
-bool abc_cec( Ntk const& ntk, std::string const& benchmark )
-{
-  mockturtle::write_bench( ntk, "/tmp/test.bench" );
-  std::string command = fmt::format( "abc -q \"cec -n /Users/soeken/epfl/benchmarks/epfl/arithmetic/{}.aig /tmp/test.bench\"", benchmark );
-
-  std::array<char, 128> buffer;
-  std::string result;
-  std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
-  if ( !pipe )
-  {
-    throw std::runtime_error( "popen() failed" );
-  }
-  while ( fgets( buffer.data(), buffer.size(), pipe.get() ) != nullptr )
-  {
-    result += buffer.data();
-  }
-
-  return result.size() >= 23 && result.substr( 0u, 23u ) == "Networks are equivalent";
-}
-
 // clang-format off
 static constexpr uint32_t adder      = 0b00000000000000000001;
 static constexpr uint32_t bar        = 0b00000000000000000010;
@@ -284,7 +263,7 @@ static constexpr uint32_t all        = 0b11111111111111111111;
 // clang-format on
 
 static const char* benchmarks[] = {
-    "adder", "bar", "div", "hyp", "log2", "max", "mulitplier", "sin", "sqrt", "square",
+    "adder", "bar", "div", "hyp", "log2", "max", "multiplier", "sin", "sqrt", "square",
     "arbiter", "cavlc", "ctrl", "dec", "i2c", "int2float", "mem_ctrl", "priority", "router", "voter"};
 
 std::vector<std::string> epfl_benchmarks( uint32_t selection = all )
@@ -307,6 +286,27 @@ std::string benchmark_path( std::string const& benchmark_name )
 #else
   return fmt::format( "{}benchmarks/{}.aig", EXPERIMENTS_PATH, benchmark_name );
 #endif
+}
+
+template<class Ntk>
+bool abc_cec( Ntk const& ntk, std::string const& benchmark )
+{
+  mockturtle::write_bench( ntk, "/tmp/test.bench" );
+  std::string command = fmt::format( "abc -q \"cec -n {} /tmp/test.bench\"", benchmark_path( benchmark ) );
+
+  std::array<char, 128> buffer;
+  std::string result;
+  std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
+  if ( !pipe )
+  {
+    throw std::runtime_error( "popen() failed" );
+  }
+  while ( fgets( buffer.data(), buffer.size(), pipe.get() ) != nullptr )
+  {
+    result += buffer.data();
+  }
+
+  return result.size() >= 23 && result.substr( 0u, 23u ) == "Networks are equivalent";
 }
 
 } // namespace experiments
