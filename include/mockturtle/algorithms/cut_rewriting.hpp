@@ -37,14 +37,17 @@
 #include <iostream>
 #include <optional>
 #include <set>
+#include <type_traits>
 #include <vector>
 
+#include "../networks/klut.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
+#include "../views/fanout_view2.hpp"
 #include "cut_enumeration.hpp"
 #include "detail/mffc_utils.hpp"
 #include "dont_cares.hpp"
@@ -680,8 +683,17 @@ void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params c
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
 
   cut_rewriting_stats st;
-  detail::cut_rewriting_impl<Ntk, RewritingFn, NodeCostFn> p( ntk, rewriting_fn, ps, st, cost_fn );
-  p.run();
+  if constexpr ( std::is_same_v<typename Ntk::base_type, klut_network> )
+  {
+    detail::cut_rewriting_impl<Ntk, RewritingFn, NodeCostFn> p( ntk, rewriting_fn, ps, st, cost_fn );
+    p.run();
+  }
+  else
+  {
+    fanout_view2<Ntk> ntk_fo{ntk};
+    detail::cut_rewriting_impl<fanout_view2<Ntk>, RewritingFn, NodeCostFn> p( ntk_fo, rewriting_fn, ps, st, cost_fn );
+    p.run();
+  }
 
   if ( ps.verbose )
   {
