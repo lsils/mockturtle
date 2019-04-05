@@ -404,11 +404,11 @@ private:
           signals[j] = std::stoul( token );
           if ( signals[j] == 0 )
           {
-            ff[j] = db->get_constant( true );
+            ff[j] = db->get_constant( false );
           }
           else if ( signals[j] == 1 )
           {
-            ff[j] = db->get_constant( false );
+            ff[j] = db->get_constant( true );
           }
           else
           {
