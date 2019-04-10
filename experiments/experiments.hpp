@@ -120,6 +120,15 @@ private:
 
 static constexpr const char* use_github_revision = "##GITHUB##";
 
+template<typename T, typename... Ts>
+struct first_type
+{
+  using type = T;
+};
+
+template<typename... Ts>
+using first_type_t = typename first_type<Ts...>::type;
+
 template<typename... ColumnTypes>
 class experiment
 {
@@ -128,6 +137,7 @@ public:
   explicit experiment( std::string_view name, T... column_names )
       : name_( name )
   {
+    static_assert( ( sizeof...( ColumnTypes ) > 0 ), "at least one column must be specified" );
     static_assert( ( sizeof...( ColumnTypes ) == sizeof...( T ) ), "number of column names must match column types" );
     static_assert( ( std::is_constructible_v<std::string, T> && ... ), "all column names must be strings" );
     ( column_names_.push_back( column_names ), ... );
@@ -186,6 +196,25 @@ public:
     rows_.emplace_back( args... );
   }
 
+  nlohmann::json const& dataset( std::string const& version, nlohmann::json const& def ) const
+  {
+    if ( version.empty() )
+    {
+      return def;
+    }
+    else
+    {
+      if ( const auto it = std::find_if( data_.begin(), data_.end(), [&]( auto const& entry ) { return entry["version"] == version; } ); it != data_.end() )
+      {
+        return *it;
+      }
+      else
+      {
+        throw std::exception();
+      }
+    }
+  }
+
   bool table( std::string const& version = {}, std::ostream& os = std::cout ) const
   {
     if ( data_.empty() )
@@ -196,31 +225,95 @@ public:
 
     try
     {
-      auto const& dataset = [&]() {
-        if ( version.empty() )
-        {
-          return data_.back();
-        }
-        else
-        {
-          if ( const auto it = std::find_if( data_.begin(), data_.end(), [&]( auto const& entry ) { return entry["version"] == version; } ); it != data_.end() )
-          {
-            return *it;
-          }
-          else
-          {
-            throw std::exception();
-          }
-        }
-      }();
+      auto const& data = dataset( version, data_.back() );
       fmt::print( "[i] dataset " );
-      fmt::print( fg( fmt::terminal_color::blue ), "{}\n", dataset["version"] );
+      fmt::print( fg( fmt::terminal_color::blue ), "{}\n", data["version"] );
 
-      json_table( dataset["entries"], column_names_ ).print( os );
+      json_table( data["entries"], column_names_ ).print( os );
     }
     catch ( ... )
     {
       fmt::print( "[w] version {} not found\n", version );
+      return false;
+    }
+
+    return true;
+  }
+
+  bool compare( std::string const& old_version = {}, std::string const& current_version = {}, std::ostream& os = std::cout )
+  {
+    if ( data_.size() < 2u )
+    {
+      fmt::print( "[w] dataset contains less than two entry sets\n" );
+      return false;
+    }
+
+    try
+    {
+      auto const& data_old = dataset( old_version, data_[data_.size() - 2u] );
+      auto const& data_cur = dataset( current_version, data_.back() );
+
+      auto const& entries_old = data_old["entries"];
+      auto const& entries_cur = data_cur["entries"];
+
+      fmt::print( "[i] compare " );
+      fmt::print( fg( fmt::terminal_color::blue ), "{}", data_old["version"] );
+      fmt::print( " to " );
+      fmt::print( fg( fmt::terminal_color::blue ), "{}\n", data_cur["version"] );
+
+      /* collect keys */
+      using first_t = first_type_t<ColumnTypes...>;
+      std::vector<first_t> keys;
+      for ( auto const& entry : entries_cur )
+      {
+        nlohmann::json const& j = entry[column_names_.front()];
+        keys.push_back( j.get<first_t>() );
+      }
+      for ( auto const& entry : entries_old )
+      {
+        nlohmann::json const& j = entry[column_names_.front()];
+        auto value = j.get<first_t>();
+        if ( std::find( keys.begin(), keys.end(), value ) == keys.end() )
+        {
+          keys.push_back( value );
+        }
+      }
+
+      /* prepare entries */
+      auto find_key = [&]( nlohmann::json const& entries, first_t const& key ) {
+        return std::find_if( entries.begin(), entries.end(), [&]( auto const& entry ) {
+          nlohmann::json const& j = entry[column_names_.front()];
+          return j.get<first_t>() == key;
+        } );
+      };
+
+      auto compare_columns = column_names_;
+      std::transform( column_names_.begin() + 1, column_names_.end(), std::back_inserter( compare_columns ),
+                      []( auto const& name ) { return name + "'"; } );
+
+      nlohmann::json compare_entries;
+      for ( auto const& key : keys )
+      {
+        nlohmann::json row;
+        if ( auto const it = find_key( entries_old, key ); it != entries_old.end() )
+        {
+          row = *it;
+        }
+        if ( auto const it = find_key( entries_cur, key ); it != entries_cur.end() )
+        {
+          for ( auto i = 1u; i < column_names_.size(); ++i )
+          {
+            row[column_names_[i] + "'"] = (*it)[column_names_[i]];
+          }
+        }
+        compare_entries.push_back( row );
+      }
+
+      json_table( compare_entries, compare_columns ).print( os );
+    }
+    catch ( ... )
+    {
+      fmt::print( "[w] dataset not found\n" );
       return false;
     }
 
