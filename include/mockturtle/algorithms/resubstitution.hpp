@@ -183,6 +183,7 @@ public:
 
     /* reference it back */
     auto count2 = node_ref_rec( n );
+    (void)count2;
     assert( count1 == count2 );
 
     for ( const auto& l : leaves )
