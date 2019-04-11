@@ -1,0 +1,47 @@
+[
+  {
+    "entries": [
+      {
+        "benchmark": "adder",
+        "cells_baseline": 192,
+        "cells_final": 192,
+        "cells_init": 192,
+        "equivalent": true,
+        "runtime": 0.0674389973282814
+      },
+      {
+        "benchmark": "bar",
+        "cells_baseline": 512,
+        "cells_final": 512,
+        "cells_init": 512,
+        "equivalent": true,
+        "runtime": 0.2410459965467453
+      },
+      {
+        "benchmark": "max",
+        "cells_baseline": 714,
+        "cells_final": 709,
+        "cells_init": 740,
+        "equivalent": true,
+        "runtime": 2.055243968963623
+      },
+      {
+        "benchmark": "multiplier",
+        "cells_baseline": 4966,
+        "cells_final": 5203,
+        "cells_init": 6475,
+        "equivalent": true,
+        "runtime": 29.17317771911621
+      },
+      {
+        "benchmark": "sin",
+        "cells_baseline": 1255,
+        "cells_final": 1311,
+        "cells_init": 1534,
+        "equivalent": true,
+        "runtime": 3.199244976043701
+      }
+    ],
+    "version": "163846c"
+  }
+]
