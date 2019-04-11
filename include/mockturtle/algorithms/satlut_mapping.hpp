@@ -38,6 +38,8 @@
 #include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
+#include "../views/topo_view.hpp"
+#include "cell_window.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/mf_cut.hpp"
 
@@ -321,6 +323,80 @@ void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapp
   satlut_mapping_stats st;
   detail::satlut_mapping_impl<Ntk, StoreFunction, CutData> p( ntk, ps, st );
   p.run();
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
+
+template<class Ntk, bool StoreFunction = false, typename CutData = cut_enumeration_mf_cut>
+void satlut_mapping( Ntk& ntk, uint32_t window_size, satlut_mapping_params ps = {}, satlut_mapping_stats* pst = nullptr )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_num_gates_v<Ntk>, "Ntk does not implement the num_gates method" );
+  static_assert( has_num_cells_v<Ntk>, "Ntk does not implement the num_cells method" );
+  static_assert( has_has_mapping_v<Ntk>, "Ntk does not implement the has_mapping method" );
+  static_assert( has_clear_mapping_v<Ntk>, "Ntk does not implement the clear_mapping method" );
+  static_assert( has_add_to_mapping_v<Ntk>, "Ntk does not implement the add_to_mapping method" );
+  static_assert( has_is_cell_root_v<Ntk>, "Ntk does not implement the is_cell_root method" );
+  static_assert( !StoreFunction || has_set_cell_function_v<Ntk>, "Ntk does not implement the set_cell_function method" );
+
+  if ( !ntk.has_mapping() )
+  {
+    return;
+  }
+
+  satlut_mapping_stats st;
+  stopwatch<>::duration time_total{};
+  cell_window window( ntk, window_size );
+  progress_bar pbar{ntk.size(), "satlut (windowed) |{0}| node = {1:>4} / " + std::to_string( ntk.size() ), ps.progress};
+  ps.progress = false; /* do not show inner progress */
+  ntk.foreach_gate( [&]( auto n, int index ) {
+    stopwatch<> t( time_total );
+    pbar( index, ntk.node_to_index( n ) );
+    if ( ntk.is_cell_root( n ) )
+    {
+      if ( !window.compute_window_for( n ) ) /* window has been visited before */
+      {
+        return true;
+      }
+
+      if ( ps.verbose )
+      {
+        std::cout << fmt::format( "[i] cell {:>5}   size = {:>4}   nodes = {:>2}   gates = {:>3}   pis = {:>3}   pos = {:>3}\n",
+                                  n,
+                                  window.size(),
+                                  window.num_cells(),
+                                  window.num_gates(),
+                                  window.num_pis(),
+                                  window.num_pos() );
+      }
+      if ( window.num_cells() == window.num_pos() || window.num_pos() == 0 )
+      {
+        return true;
+      }
+      topo_view window_topo{window};
+      detail::satlut_mapping_impl<decltype(window_topo), StoreFunction, CutData> p( window_topo, ps, st );
+      p.run();
+      return true;
+    }
+
+    return true;
+  } );
+
+  st.time_total = time_total;
+
   if ( ps.verbose )
   {
     st.report();
