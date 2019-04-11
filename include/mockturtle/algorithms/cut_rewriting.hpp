@@ -690,7 +690,9 @@ void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params c
   }
   else
   {
-    fanout_view2<Ntk> ntk_fo{ntk};
+    fanout_view2_params fvps;
+    fvps.update_on_delete = false;
+    fanout_view2<Ntk> ntk_fo{ntk, fvps};
     detail::cut_rewriting_impl<fanout_view2<Ntk>, RewritingFn, NodeCostFn> p( ntk_fo, rewriting_fn, ps, st, cost_fn );
     p.run();
   }
