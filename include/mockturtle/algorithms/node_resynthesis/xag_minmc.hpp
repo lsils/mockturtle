@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -122,10 +122,10 @@ struct xag_minmc_resynthesis_stats
   }
 };
 
-/*! \brief Resynthesis function based on pre-computed size-optimum MIGs.
+/*! \brief Resynthesis function to minimize multiplicative complexity in XAGs.
  *
  * This resynthesis function can be passed to ``cut_rewriting`` with a cut size
- * of at most 6.  It will produce an XMG based on pre-computed XMGs with a
+ * of at most 6.  It will produce an XAG based on pre-computed XAGs with a
  * minimum multiplicative complexity.
  *
    \verbatim embed:rst
@@ -341,7 +341,7 @@ public:
     }
     else
     {
-      cut_view topo{*db, *db_pis, db->get_node( circuit )};
+      cut_view<xag_network> topo{*db, *db_pis, db->get_node( circuit )};
       output = cleanup_dangling( topo, xag, pis.begin(), pis.end() ).front();
     }
     if ( db->is_complemented( circuit ) )
@@ -404,11 +404,11 @@ private:
           signals[j] = std::stoul( token );
           if ( signals[j] == 0 )
           {
-            ff[j] = db->get_constant( true );
+            ff[j] = db->get_constant( false );
           }
           else if ( signals[j] == 1 )
           {
-            ff[j] = db->get_constant( false );
+            ff[j] = db->get_constant( true );
           }
           else
           {
@@ -434,7 +434,7 @@ private:
       /* verify */
       if (ps.verify_database)
       {
-        cut_view view{*db, *db_pis, db->get_node( f )};
+        cut_view<xag_network> view{*db, *db_pis, db->get_node( f )};
         kitty::static_truth_table<6> tt, tt_repr;
         kitty::create_from_hex_string( tt, original );
         kitty::create_from_hex_string( tt_repr, token_f );
@@ -462,9 +462,11 @@ private:
     }
   }
 
-private:
+public:
   xag_minmc_resynthesis_params ps;
   xag_minmc_resynthesis_stats st;
+
+private:
   xag_minmc_resynthesis_stats *pst{nullptr};
 
   std::shared_ptr<xag_network> db;

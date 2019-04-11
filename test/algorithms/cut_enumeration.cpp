@@ -2,8 +2,11 @@
 
 #include <iostream>
 
+#include <kitty/constructors.hpp>
+#include <kitty/dynamic_truth_table.hpp>
 #include <mockturtle/algorithms/cut_enumeration.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/klut.hpp>
 
 using namespace mockturtle;
 
@@ -133,4 +136,42 @@ TEST_CASE( "compute truth tables of AIG cuts", "[cut_enumeration]" )
   CHECK( cuts.truth_table( cuts.cuts( i4 )[1] )._bits[0] == 0x9 );
   CHECK( cuts.truth_table( cuts.cuts( i4 )[2] )._bits[0] == 0x0d );
   CHECK( cuts.truth_table( cuts.cuts( i4 )[3] )._bits[0] == 0x0d );
+}
+
+TEST_CASE( "compute XOR network cuts in 2-LUT network", "[cut_enumeration]" )
+{
+  klut_network klut;
+
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+
+  const auto g1 = klut.create_not( a );
+  const auto g2 = klut.create_and( g1, b );
+  const auto g3 = klut.create_not( b );
+  const auto g4 = klut.create_and( a, g3 );
+
+  kitty::dynamic_truth_table or_func( 2u );
+  kitty::create_from_binary_string( or_func, "1110" );
+  const auto g5 = klut.create_node( {g2, g4}, or_func );
+  klut.create_po( g5 );
+
+  cut_enumeration_params ps;
+  const auto cuts = cut_enumeration<klut_network, true>( klut, ps );
+
+  CHECK( cuts.cuts( g1 ).size() == 2u );
+  CHECK( cuts.cuts( g3 ).size() == 2u );
+
+  for ( auto const& cut : cuts.cuts( g1 ) ) {
+    CHECK( cut->size() == 1u );
+  }
+
+  for ( auto const& cut : cuts.cuts( g3 ) ) {
+    CHECK( cut->size() == 1u );
+  }
+
+  for ( auto const& cut : cuts.cuts( g5 ) ) {
+    if ( cut->size() == 2u && *cut->begin() == 2u ) {
+      CHECK( cuts.truth_table( *cut )._bits[0] == 0x6u );
+    }
+  }
 }

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -225,7 +225,7 @@ private:
     this->set_value( n, 1 );
 
     /* mark children */
-    this->foreach_fanin( n, [this]( auto f, auto ) {
+    this->foreach_fanin( n, [this]( auto f ) {
       create_topo_rec( this->get_node( f ) );
     } );
 

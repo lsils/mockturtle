@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -33,6 +33,7 @@
 #pragma once
 
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/networks/aig.hpp>
 
 namespace mockturtle
 {
@@ -379,6 +380,7 @@ public:
 
   std::optional<signal> resub_div12( node const& root, uint32_t required )
   {
+    (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
 

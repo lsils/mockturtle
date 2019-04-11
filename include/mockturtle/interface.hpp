@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -899,7 +899,7 @@ public:
   uint32_t visited( node const& n ) const;
 
   /*! \brief Sets the visited value of a node. */
-  uint32_t set_visited( node const& n, uint32_t v ) const;
+  void set_visited( node const& n, uint32_t v ) const;
 
   /*! \brief An id that can be used as a visited flag.
    *

@@ -12,7 +12,7 @@ if (NOT TARGET ez)
 endif()
 
 if (NOT TARGET fmt)
-  add_library(fmt INTERFACE)
+  add_library(fmt INTERFACE) # v5.3.0
   target_include_directories(fmt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/fmt)
   target_compile_definitions(fmt INTERFACE FMT_HEADER_ONLY)
 endif()
@@ -31,6 +31,11 @@ if (NOT TARGET lorina)
   add_library(lorina INTERFACE) # v0.1
   target_include_directories(lorina INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/lorina)
   target_link_libraries(lorina INTERFACE rang fmt)
+endif()
+
+if (NOT TARGET json)
+  add_library(json INTERFACE) # v3.5.0
+  target_include_directories(json INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/json)
 endif()
 
 if (NOT TARGET percy)

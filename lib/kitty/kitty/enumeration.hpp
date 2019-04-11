@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2018  EPFL
+ * Copyright (C) 2017-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -43,7 +43,7 @@ namespace kitty
 
 /*! \brief Enumerate all representatives using 1-neighborhood search.
 
-  This example is based on Algorithm 4.2.1 in the PhD thesis
+  This function is based on Algorithm 4.2.1 in the PhD thesis
   "Analysis of Affine Equivalent Boolean Functions for Cryptography"
   by J.E. Fuller (Queensland University of Technology)
 
