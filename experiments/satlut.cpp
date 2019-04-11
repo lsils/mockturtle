@@ -45,16 +45,28 @@ int main()
   std::unordered_map<std::string, uint32_t> baseline = {
     {"adder", 192},
     {"bar", 512},
+    {"div", 15640},
+    {"log2", 6607},
     {"max", 714},
     {"multiplier", 4966},
     {"sin", 1255},
     {"sqrt", 4498},
-    {"square", 3353}
+    {"square", 3353},
+    {"arbiter", 2599},
+    {"cavlc", 116},
+    {"ctrl", 28},
+    {"dec", 287},
+    {"i2c", 338},
+    {"int2float", 47},
+    {"mem_ctrl", 11164},
+    {"priority", 217},
+    {"router", 46},
+    {"voter", 2158}
   };
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, float, bool> exp( "satlut", "benchmark", "cells_baseline", "cells_init", "cells_final", "runtime", "equivalent" );
 
-  for ( auto const& benchmark : epfl_benchmarks( adder | bar | max | multiplier | experiments::sin ) )
+  for ( auto const& benchmark : epfl_benchmarks( ~hyp & ~experiments::div ) )
   {
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
