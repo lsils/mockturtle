@@ -482,49 +482,15 @@ public:
       update_node_level( n );
     };
 
-    auto const update_fanout_of_new_node = [&]( const auto& n ){
-      assert( ntk.fanin_size( n ) > 0 );
-      ntk.resize_fanout();
-
-      /* update fanout */
-      ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const p = ntk.get_node( f );
-          ntk.add_fanout( p, n );
-        });
-    };
-
-    auto const update_fanout_of_existing_node = [&]( const auto& n, const auto& old_children ){
-      /* update fanout */
-      for ( const auto& c : old_children )
-        ntk.remove_fanout( ntk.get_node( c ), n );
-
-      ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const p = ntk.get_node( f );
-          ntk.add_fanout( p, n );
-        });
-    };
-
-    auto const update_fanout_of_deleted_node = [&]( const auto& n ){
-      /* update fanout */
-      ntk.set_fanout( n, {} );
-      ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const p = ntk.get_node( f );
-          ntk.remove_fanout( p, n );
-        });
-    };
-
     auto const update_level_of_deleted_node = [&]( const auto& n ){
       /* update fanout */
       ntk.set_level( n, -1 );
     };
 
-    ntk._events->on_add.emplace_back( update_fanout_of_new_node );
     ntk._events->on_add.emplace_back( update_level_of_new_node );
 
-    ntk._events->on_modified.emplace_back( update_fanout_of_existing_node );
     ntk._events->on_modified.emplace_back( update_level_of_existing_node );
 
-    ntk._events->on_delete.emplace_back( update_fanout_of_deleted_node );
     ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
   }
 

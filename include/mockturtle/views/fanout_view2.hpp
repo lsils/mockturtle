@@ -140,30 +140,9 @@ public:
     compute_fanout();
   }
 
-  void resize_fanout()
-  {
-    _fanout.resize();
-  }
-
   std::vector<node> fanout( node const& n ) const /* deprecated */
   {
     return _fanout[ n ];
-  }
-
-  void set_fanout( node const& n, std::vector<node> const& fanout )
-  {
-    _fanout[ n ] = fanout;
-  }
-
-  void add_fanout( node const& n, node const& p )
-  {
-    _fanout[ n ].emplace_back( p );
-  }
-
-  void remove_fanout( node const& n, node const& p )
-  {
-    auto &f = _fanout[ n ];
-    f.erase( std::remove( f.begin(), f.end(), p ), f.end() );
   }
 
   void substitute_node( node const& old_node, signal const& new_signal )
@@ -191,26 +170,6 @@ public:
       // reset fan-in of old node
       Ntk::take_out_node( _old );
     }
-  }
-
-  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal ) /* deprecated */
-  {
-    Ntk::substitute_node_of_parents( parents, old_node, new_signal );
-
-    std::vector<node> old_node_fanout = _fanout[ old_node ];
-    std::sort( old_node_fanout.begin(), old_node_fanout.end() );
-
-    std::vector<node> parents_copy( parents );
-    std::sort( parents_copy.begin(), parents_copy.end() );
-
-    _fanout[ old_node ] = {};
-
-    std::vector<node> intersection;
-    std::set_intersection( parents_copy.begin(), parents_copy.end(), old_node_fanout.begin(), old_node_fanout.end(),
-                           std::back_inserter( intersection ) );
-
-    resize_fanout();
-    set_fanout( this->get_node( new_signal ), intersection );
   }
 
 private:
