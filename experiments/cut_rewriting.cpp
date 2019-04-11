@@ -66,7 +66,7 @@ int main()
   }
 
   exp.save();
-  exp.table();
+  exp.compare();
 
   return 0;
 }
