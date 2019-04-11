@@ -188,7 +188,7 @@ public:
                       {"entries", entries}} );
 
     std::ofstream os( filename_, std::ofstream::out );
-    os << data_.dump() << "\n";
+    os << data_.dump( 2 ) << "\n";
   }
 
   void operator()( ColumnTypes... args )
