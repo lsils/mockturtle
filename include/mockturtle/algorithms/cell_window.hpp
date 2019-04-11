@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <unordered_set>
@@ -44,6 +45,16 @@
 #include "../utils/stopwatch.hpp"
 
 #include <sparsepp/spp.h>
+
+template<>
+struct std::hash<std::array<uint64_t, 2>>
+{
+  auto operator()( std::array<uint64_t, 2> const& key ) const
+  {
+    std::hash<uint32_t> hasher;
+    return hasher( key[0] ) * 31 + hasher( key[1] );
+  }
+};
 
 namespace mockturtle
 {
@@ -72,6 +83,9 @@ public:
   spp::sparse_hash_set<node<Ntk>> _gates;   /* gates in current window */
   spp::sparse_hash_set<node<Ntk>> _leaves;  /* leaves of current window */
   spp::sparse_hash_set<signal<Ntk>> _roots; /* roots of current window */
+
+  std::array<uint64_t, 2> _window_mask;
+  spp::sparse_hash_set<std::array<uint64_t, 2>> _window_hash;
 
   node_map<uint32_t, Ntk> _cell_refs;                  /* ref counts for cells */
   node_map<std::vector<node<Ntk>>, Ntk> _cell_parents; /* parent cells */
@@ -110,7 +124,7 @@ public:
     _storage->_max_gates = max_gates;
   }
 
-  void compute_window_for( node<Ntk> const& pivot )
+  bool compute_window_for( node<Ntk> const& pivot )
   {
     init_cell_refs();
 
@@ -146,6 +160,8 @@ public:
 
     find_leaves_and_roots();
     set_indexes();
+
+    return _storage->_window_hash.insert( _storage->_window_mask ).second;
   }
 
   uint32_t num_pis() const
@@ -416,6 +432,7 @@ private:
   void find_leaves_and_roots()
   {
     _storage->_leaves.clear();
+    _storage->_window_mask[0] = 0u;
     for ( auto const& g : _storage->_gates )
     {
       Ntk::foreach_fanin( g, [&]( auto const& f ) {
@@ -423,11 +440,13 @@ private:
         if ( !_storage->_gates.count( child ) )
         {
           _storage->_leaves.insert( child );
+          _storage->_window_mask[0] |= UINT64_C( 1 ) << ( Ntk::node_to_index( child ) % 64 );
         }
       } );
     }
 
     _storage->_roots.clear();
+    _storage->_window_mask[1] = 0u;
     for ( auto const& n : _storage->_nodes )
     {
       Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
@@ -439,6 +458,7 @@ private:
       if ( _storage->_cell_refs[n] )
       {
         _storage->_roots.insert( Ntk::make_signal( n ) );
+        _storage->_window_mask[1] |= UINT64_C( 1 ) << ( Ntk::node_to_index( n ) % 64 );
       }
     }
     for ( auto const& n : _storage->_nodes )
