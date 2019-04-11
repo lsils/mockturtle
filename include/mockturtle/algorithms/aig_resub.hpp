@@ -33,6 +33,7 @@
 #pragma once
 
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/networks/aig.hpp>
 
 namespace mockturtle
 {
@@ -379,6 +380,7 @@ public:
 
   std::optional<signal> resub_div12( node const& root, uint32_t required )
   {
+    (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
 

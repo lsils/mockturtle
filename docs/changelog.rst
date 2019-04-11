@@ -1,6 +1,11 @@
 Change Log
 ==========
 
+v0.2 (not yet released)
+-----------------------
+
+* Framework for performing quality and performance experiments `#140 <https://github.com/lsils/mockturtle/pull/140>`_
+
 v0.1 (March 31, 2019)
 ---------------------
 

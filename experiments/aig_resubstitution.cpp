@@ -28,11 +28,14 @@
 
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
+#include <mockturtle/algorithms/aig_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/cut_rewriting.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/views/depth_view.hpp>
+#include <mockturtle/views/fanout_view.hpp>
+#include <mockturtle/views/fanout_view2.hpp>
 
 #include <experiments.hpp>
 
@@ -41,7 +44,7 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "cut_rewriting", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "aig_resubstitution", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -49,18 +52,22 @@ int main()
     aig_network aig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
 
-    xag_npn_resynthesis<aig_network> resyn;
+    resubstitution_params ps;
+    resubstitution_stats st;
 
-    cut_rewriting_params ps;
-    ps.cut_enumeration_ps.cut_size = 4;
-    ps.progress = true;
+    using view_t = fanout_view2<depth_view<aig_network>>;
+    depth_view depth_view{aig};
+    view_t resub_view{depth_view};
+    ps.max_pis = 8u;
+    ps.max_inserts = 1u;
+    ps.progress = false;
 
-    uint32_t size_before = aig.num_gates();
-    cut_rewriting_stats st;
-    cut_rewriting( aig, resyn, ps, &st );
+    const uint32_t size_before = aig.num_gates();
+    aig_resubstitution( resub_view, ps, &st );
+
     aig = cleanup_dangling( aig );
 
-    auto cec = abc_cec( aig, benchmark );
+    const auto cec = abc_cec( aig, benchmark );
 
     exp( benchmark, size_before, aig.num_gates(), to_seconds( st.time_total ), cec );
   }
