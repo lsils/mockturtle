@@ -57,32 +57,37 @@ public:
   generate_cnf_impl( Ntk const& ntk, clause_callback_t const& fn )
       : ntk_( ntk ),
         fn_( fn ),
-        node_vars_( ntk )
+        node_lits_( ntk )
   {
   }
 
   std::vector<uint32_t> run()
   {
-    // TODO constants
+    /* constants are mapped to var 0 */
+    node_lits_[ntk_.get_constant( false )] = make_lit( 0 );
+    if ( ntk_.get_node( ntk_.get_constant( false ) ) != ntk_.get_node( ntk_.get_constant( true ) ) )
+    {
+      node_lits_[ntk_.get_constant( true )] = make_lit( 0, true );
+    }
 
-    /* first indexes are for PIs */
+    /* first indexes (starting from 1) are for PIs */
     ntk_.foreach_pi( [&]( auto const& n, auto i ) {
-      node_vars_[n] = i;
+      node_lits_[n] = make_lit( i + 1 );
     } );
 
     /* compute vars for nodes */
-    uint32_t next_var = ntk_.num_pis();
+    uint32_t next_var = ntk_.num_pis() + 1;
     ntk_.foreach_gate( [&]( auto const& n ) {
-      node_vars_[n] = next_var++;
+      node_lits_[n] = make_lit( next_var++ );
     } );
 
     /* compute clauses for nodes */
     ntk_.foreach_gate( [&]( auto const& n ) {
       std::vector<uint32_t> child_lits;
       ntk_.foreach_fanin( n, [&]( auto const& f ) {
-        child_lits.push_back( make_lit( node_vars_[f], ntk_.is_complemented( f ) ) );
+        child_lits.push_back( lit_not_cond( node_lits_[f], ntk_.is_complemented( f ) ) );
       } );
-      uint32_t node_lit = make_lit( node_vars_[n], false );
+      uint32_t node_lit = node_lits_[n];
 
       if constexpr ( has_is_and_v<Ntk> )
       {
@@ -147,7 +152,7 @@ public:
 
     std::vector<uint32_t> output_lits;
     ntk_.foreach_po( [&]( auto const& f ) {
-      output_lits.push_back( make_lit( node_vars_[f], ntk_.is_complemented( f ) ) );
+      output_lits.push_back( lit_not_cond( node_lits_[f], ntk_.is_complemented( f ) ) );
     } );
 
     return output_lits;
@@ -212,7 +217,7 @@ private:
     fn_( {a, c, lit_not( d )} );
   }
 
-  constexpr uint32_t make_lit( uint32_t var, bool is_complemented ) const
+  constexpr uint32_t make_lit( uint32_t var, bool is_complemented = false ) const
   {
     return ( var << 1 ) | ( is_complemented ? 1 : 0 );
   }
@@ -222,11 +227,16 @@ private:
     return lit ^ 0x1;
   }
 
+  constexpr uint32_t lit_not_cond( uint32_t lit, bool cond ) const
+  {
+    return cond ? lit ^ 0x1 : lit;
+  }
+
 private:
   Ntk const& ntk_;
   clause_callback_t const& fn_;
 
-  node_map<uint32_t, Ntk> node_vars_;
+  node_map<uint32_t, Ntk> node_lits_;
 };
 
 } // namespace detail

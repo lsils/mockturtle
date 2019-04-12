@@ -27,9 +27,9 @@ TEST_CASE( "Translate XAG into CNF", "[cnf]" )
     solver.add_clause( clause );
   } )[0];
 
-  CHECK( output == 11 );
+  CHECK( output == 13 );
 
   const auto res = solver.solve( &output, &output + 1, 0 );
   CHECK( res == percy::synth_result::success );
-  CHECK( solver.var_value( 0u ) != solver.var_value( 1u ) ); /* input values are different */
+  CHECK( solver.var_value( 1u ) != solver.var_value( 2u ) ); /* input values are different */
 }
