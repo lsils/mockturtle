@@ -24,8 +24,6 @@ TEST_CASE( "Translate XAG into CNF", "[cnf]" )
 
   percy::bsat_wrapper solver;
   int output = generate_cnf( xag, [&]( auto const& clause ) {
-    //auto lits = (int*)( const_cast<uint32_t*>( clause.data() ) );
-    //solver.add_clause( lits, lits + clause.size() );
     solver.add_clause( clause );
   } )[0];
 
