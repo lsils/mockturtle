@@ -8,6 +8,8 @@ v0.2 (not yet released)
 * Algorithms:
     - CNF generation (`generate_cnf`) `#145 <https://github.com/lsils/mockturtle/pull/145>`_
     - SAT-based LUT mapping (`satlut_mapping`) `#122 <https://github.com/lsils/mockturtle/pull/122>`_
+* I/O:
+    - Write networks to DIMACS files for CNF (`write_dimacs`) `#146 <https://github.com/lsils/mockturtle/pull/146>`_
 
 v0.1 (March 31, 2019)
 ---------------------
