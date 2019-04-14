@@ -1,6 +1,9 @@
 LUT mapping
 -----------
 
+Dynamic-programming based heuristic
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 **Header:** ``mockturtle/algorithms/lut_mapping.hpp``
 
 LUT mapping with cut size :math:`k` partitions a logic network into mapped
@@ -38,8 +41,7 @@ for the cut of each mapped node:
    ps.cut_enumeration_ps.cut_size = 8;
    lut_mapping<mapped_view<mig_network, true>, true>( mapped_mig );
 
-Parameters and statistics
-~~~~~~~~~~~~~~~~~~~~~~~~~
+**Parameters and statistics**
 
 .. doxygenstruct:: mockturtle::lut_mapping_params
    :members:
@@ -47,7 +49,28 @@ Parameters and statistics
 .. doxygenstruct:: mockturtle::lut_mapping_stats
    :members:
 
-Algorithm
-~~~~~~~~~
+**Algorithm**
 
 .. doxygenfunction:: mockturtle::lut_mapping
+
+
+SAT-based mapping
+~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/algorithms/satlut_mapping.hpp``
+
+This algorithm has a similar interface to the heuristic described above, but
+uses SAT to find mappings with fewer number of cells.
+
+**Parameters and statistics**
+
+.. doxygenstruct:: mockturtle::satlut_mapping_params
+   :members:
+
+.. doxygenstruct:: mockturtle::satlut_mapping_stats
+   :members:
+
+**Algorithm**
+
+.. doxygenfunction:: mockturtle::satlut_mapping(Ntk&, satlut_mapping_params const&, satlut_mapping_stats *)
+.. doxygenfunction:: mockturtle::satlut_mapping(Ntk&, uint32_t, satlut_mapping_params, satlut_mapping_stats *)

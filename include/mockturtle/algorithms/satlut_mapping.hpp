@@ -49,6 +49,11 @@
 namespace mockturtle
 {
 
+/*! \brief Parameters for satlut_mapping.
+ *
+ * The data structure `satlut_mapping_params` holds configurable parameters with
+ * default arguments for `satlut_mapping`.
+ */
 struct satlut_mapping_params
 {
   satlut_mapping_params()
@@ -80,6 +85,11 @@ struct satlut_mapping_params
   bool very_verbose{false};
 };
 
+/*! \brief Statistics for satlut_mapping.
+ *
+ * The data structure `satlut_mapping_stats` provides data collected by running
+ * `satlut_mapping`.
+ */
 struct satlut_mapping_stats
 {
   /*! \brief Total runtime. */
@@ -304,6 +314,36 @@ private:
 
 } // namespace detail
 
+/*! \brief SAT-LUT mapping.
+ *
+ * This algorithm implements the SAT-based area-oriented LUT mapping algorithm
+ * presented in [B. Schmitt, A. Mishchenko, and R.K. Brayton, *ASP-DAC* **23**
+ * (2018), 586-591].
+ *
+ * The interface is similar to the one in `lut_mapping`.
+ * 
+ * This algorithm applies SAT-LUT mapping to the whole networking and therefore
+ * may show poor performance for larger networks.  There exists a method with
+ * the same name that takes as input a window size to apply SAT-LUT mapping to
+ * windows.
+ *
+ * **Required network functions:**
+ * - `is_pi`
+ * - `index_to_node`
+ * - `node_to_index`
+ * - `foreach_gate`
+ * - `foreach_po`
+ * - `num_gates`
+ * - `num_cells`
+ * - `has_mapping`
+ * - `clear_mapping`
+ * - `add_to_mapping`
+ * - `set_cell_function` if `StoreFunction` is true
+ * 
+ * \param ntk Logic network to be mapped
+ * \param ps Parameters
+ * \param st Statistics
+ */
 template<class Ntk, bool StoreFunction = false, typename CutData = cut_enumeration_mf_cut>
 void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapping_stats* pst = nullptr )
 {
@@ -334,6 +374,34 @@ void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapp
   }
 }
 
+/*! \brief SAT-LUT mapping (windowed).
+ *
+ * This algorithm applies SAT-LUT mapping to windows of a given size (e.g., 32,
+ * 64, 128) and can therefore better deal with larger networks.  It has
+ * otherwise the same interface as `satlut_mapping`.
+ *
+ * The initial network must already contain a mapping, e.g., found with
+ * `lut_mapping`.
+ * 
+ * **Required network functions:**
+ * - `is_pi`
+ * - `index_to_node`
+ * - `node_to_index`
+ * - `foreach_gate`
+ * - `foreach_po`
+ * - `num_gates`
+ * - `num_cells`
+ * - `has_mapping`
+ * - `clear_mapping`
+ * - `add_to_mapping`
+ * - `is_cell_root`
+ * - `set_cell_function` if `StoreFunction` is true
+ * 
+ * \param ntk Logic network to be mapped
+ * \param window_size Maximum number of gates in a window
+ * \param ps Parameters
+ * \param st Statistics
+ */
 template<class Ntk, bool StoreFunction = false, typename CutData = cut_enumeration_mf_cut>
 void satlut_mapping( Ntk& ntk, uint32_t window_size, satlut_mapping_params ps = {}, satlut_mapping_stats* pst = nullptr )
 {
