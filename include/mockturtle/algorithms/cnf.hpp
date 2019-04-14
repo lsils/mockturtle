@@ -36,8 +36,8 @@
 #include <functional>
 #include <vector>
 
-#include <kitty/constructors.hpp>
 #include <kitty/cnf.hpp>
+#include <kitty/constructors.hpp>
 
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
@@ -45,7 +45,55 @@
 namespace mockturtle
 {
 
+inline constexpr uint32_t make_lit( uint32_t var, bool is_complemented = false )
+{
+  return ( var << 1 ) | ( is_complemented ? 1 : 0 );
+}
+
+inline constexpr uint32_t lit_not( uint32_t lit )
+{
+  return lit ^ 0x1;
+}
+
+inline constexpr uint32_t lit_not_cond( uint32_t lit, bool cond )
+{
+  return cond ? lit ^ 0x1 : lit;
+}
+
 using clause_callback_t = std::function<void( std::vector<uint32_t> const& )>;
+
+template<class Ntk>
+node_map<uint32_t, Ntk> node_literals( Ntk const& ntk )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+
+  node_map<uint32_t, Ntk> node_lits( ntk );
+
+  /* constants are mapped to var 0 */
+  node_lits[ntk.get_constant( false )] = make_lit( 0 );
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  {
+    node_lits[ntk.get_constant( true )] = make_lit( 0, true );
+  }
+
+  /* first indexes (starting from 1) are for PIs */
+  ntk.foreach_pi( [&]( auto const& n, auto i ) {
+    node_lits[n] = make_lit( i + 1 );
+  } );
+
+  /* compute literals for nodes */
+  uint32_t next_var = ntk.num_pis() + 1;
+  ntk.foreach_gate( [&]( auto const& n ) {
+    node_lits[n] = make_lit( next_var++ );
+  } );
+
+  return node_lits;
+}
 
 namespace detail
 {
@@ -57,29 +105,14 @@ public:
   generate_cnf_impl( Ntk const& ntk, clause_callback_t const& fn )
       : ntk_( ntk ),
         fn_( fn ),
-        node_lits_( ntk )
+        node_lits_( node_literals( ntk ) )
   {
   }
 
   std::vector<uint32_t> run()
   {
-    /* constants are mapped to var 0 */
-    node_lits_[ntk_.get_constant( false )] = make_lit( 0 );
-    if ( ntk_.get_node( ntk_.get_constant( false ) ) != ntk_.get_node( ntk_.get_constant( true ) ) )
-    {
-      node_lits_[ntk_.get_constant( true )] = make_lit( 0, true );
-    }
-
-    /* first indexes (starting from 1) are for PIs */
-    ntk_.foreach_pi( [&]( auto const& n, auto i ) {
-      node_lits_[n] = make_lit( i + 1 );
-    } );
-
-    /* compute vars for nodes */
-    uint32_t next_var = ntk_.num_pis() + 1;
-    ntk_.foreach_gate( [&]( auto const& n ) {
-      node_lits_[n] = make_lit( next_var++ );
-    } );
+    /* unit clause for constant-0 */
+    fn_( {1} );
 
     /* compute clauses for nodes */
     ntk_.foreach_gate( [&]( auto const& n ) {
@@ -143,10 +176,23 @@ public:
         }
       }
 
-      // TODO general case
+      /* general case */
       const auto cnf = kitty::cnf_characteristic( ntk_.node_function( n ) );
 
-      assert( false );
+      child_lits.push_back( node_lit );
+      for ( auto const& cube : cnf )
+      {
+        std::vector<uint32_t> clause;
+        for ( auto i = 0u; i <= ntk_.fanin_size( n ); ++i )
+        {
+          if ( cube.get_mask( i ) )
+          {
+            clause.push_back( lit_not_cond( child_lits[i], !cube.get_bit( i ) ) );
+          }
+        }
+        fn_( clause );
+      }
+
       return true;
     } );
 
@@ -215,21 +261,6 @@ private:
     fn_( {lit_not( a ), b, lit_not( d )} );
     fn_( {a, lit_not( c ), d} );
     fn_( {a, c, lit_not( d )} );
-  }
-
-  constexpr uint32_t make_lit( uint32_t var, bool is_complemented = false ) const
-  {
-    return ( var << 1 ) | ( is_complemented ? 1 : 0 );
-  }
-
-  constexpr uint32_t lit_not( uint32_t lit ) const
-  {
-    return lit ^ 0x1;
-  }
-
-  constexpr uint32_t lit_not_cond( uint32_t lit, bool cond ) const
-  {
-    return cond ? lit ^ 0x1 : lit;
   }
 
 private:
