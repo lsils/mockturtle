@@ -2,6 +2,9 @@
 
 #include "solver_wrapper.hpp"
 
+#include <cstdint>
+#include <vector>
+
 namespace percy
 {
     class bsat_wrapper : public solver_wrapper
@@ -49,6 +52,13 @@ namespace percy
         int add_clause(pabc::lit* begin, pabc::lit* end)
         {
             return pabc::sat_solver_addclause(solver, begin, end);
+        }
+
+        /* mockturtle style clause */
+        int add_clause(std::vector<uint32_t> const& clause)
+        {
+            auto lits = (int*)(const_cast<uint32_t*>(clause.data()));
+            return pabc::sat_solver_addclause(solver, lits, lits + clause.size());
         }
 
         void add_var()
