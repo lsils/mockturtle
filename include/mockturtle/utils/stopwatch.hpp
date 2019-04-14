@@ -36,6 +36,8 @@
 #include <iostream>
 #include <type_traits>
 
+#include <fmt/format.h>
+
 namespace mockturtle
 {
 
@@ -144,7 +146,7 @@ template<class T, class... Args, class Clock = std::chrono::steady_clock>
 T make_with_stopwatch( typename Clock::duration& dur, Args... args )
 {
   stopwatch<Clock> t( dur );
-  return T{ std::forward<Args>( args )... };
+  return T{std::forward<Args>( args )...};
 }
 
 /*! \brief Utility function to convert duration into seconds. */
@@ -153,5 +155,25 @@ inline double to_seconds( Duration const& dur )
 {
   return std::chrono::duration_cast<std::chrono::duration<double>>( dur ).count();
 }
+
+template<class Clock = std::chrono::steady_clock>
+class print_time
+{
+public:
+  print_time()
+      : _t( new stopwatch<Clock>( _d ) )
+  {
+  }
+
+  ~print_time()
+  {
+    delete _t;
+    std::cout << fmt::format( "[i] run-time: {:5.2f} secs\n", to_seconds( _d ) );
+  }
+
+private:
+  stopwatch<Clock>* _t{nullptr};
+  typename stopwatch<Clock>::duration _d{};
+};
 
 } // namespace mockturtle

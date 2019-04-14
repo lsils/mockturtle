@@ -17,6 +17,7 @@
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/algorithms/satlut_mapping.hpp>
 #include <mockturtle/algorithms/aig_resub.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
