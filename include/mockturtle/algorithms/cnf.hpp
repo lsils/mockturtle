@@ -61,8 +61,19 @@ inline constexpr uint32_t lit_not_cond( uint32_t lit, bool cond )
   return cond ? lit ^ 0x1 : lit;
 }
 
+/*! \brief Clause callback function for generate_cnf. */
 using clause_callback_t = std::function<void( std::vector<uint32_t> const& )>;
 
+/*! \brief Create a default node literal map.
+ *
+ * In the default map, constants are mapped to variable `0` (literal `1` for
+ * constant-1 and literal `0` for constant-0).  Then each primary input is
+ * mapped to variables `1, ..., n`.  Then the next variables are assigned to
+ * each gate in order, unless `gate_offset` is overriden which will be used for
+ * the next variable id.  Therefore, this function can be used to create two
+ * independent sets of node literals for two networks, but keep the same indexes
+ * for the primary inputs.
+ */
 template<class Ntk>
 node_map<uint32_t, Ntk> node_literals( Ntk const& ntk, std::optional<uint32_t> const& gate_offset = {} )
 {
@@ -103,7 +114,7 @@ template<class Ntk>
 class generate_cnf_impl
 {
 public:
-  generate_cnf_impl( Ntk const& ntk, clause_callback_t const& fn, node_map<uint32_t, Ntk>* node_lits )
+  generate_cnf_impl( Ntk const& ntk, clause_callback_t const& fn, std::optional<node_map<uint32_t, Ntk>> const& node_lits )
       : ntk_( ntk ),
         fn_( fn ),
         node_lits_( node_lits ? *node_lits : node_literals( ntk ) )
@@ -273,10 +284,38 @@ private:
 
 } // namespace detail
 
+/*! \brief Generates CNF for a logic network.
+ *
+ * This function generates a CNF for a logic network using the Tseytin encoding
+ * for regular gates and ISOP-based CNF generation for arbitrary node functions.
+ *
+ * Input to the function are the network `ntk` and a clause callback function
+ * `fn`.  For each clause that is generated, `fn` is called.  A clause is
+ * represented as a vector of literals `std::vector<uint32_t>`, following the
+ * customary literal convention, i.e., for a variable `v` its positive literal
+ * is `2 * v` and its negative literal is `2 * v + 1`.  The third optional
+ * parameter can be used to pass an alternative mapping of nodes to literals.
+ * If none is given, it uses the default literal map created with the
+ * `node_literals` function.
+ *
+ * The return value of the function is a vector with a literal for each primary
+ * output in the network, following the same order as the primary outputs have
+ * been created.
+ *
+ * \param ntk Logic network
+ * \param fn Clause creation function
+ * \param node_lits (optional) custom node literal map
+ */
 template<class Ntk>
-std::vector<uint32_t> generate_cnf( Ntk const& ntk, clause_callback_t const& fn, node_map<uint32_t, Ntk>* node_lits = nullptr )
+std::vector<uint32_t> generate_cnf( Ntk const& ntk, clause_callback_t const& fn, std::optional<node_map<uint32_t, Ntk>> const& node_lits = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
+  static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
 
   detail::generate_cnf_impl<Ntk> impl( ntk, fn, node_lits );
   return impl.run();

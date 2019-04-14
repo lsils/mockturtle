@@ -39,6 +39,7 @@ Welcome to mockturtle's documentation!
    algorithms/simulation
    algorithms/dsd_decomposition
    algorithms/cleanup
+   algorithms/cnf
    algorithms/reconv_cut
    algorithms/dont_cares
    algorithms/gates_to_nodes

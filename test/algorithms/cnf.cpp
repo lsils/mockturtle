@@ -93,10 +93,9 @@ TEST_CASE( "Use CNF generation for CEC on XAG", "[cnf]" )
     solver.add_clause( clause );
   } )[0];
 
-  auto lits = node_literals( xag2, xag1.size() );
   auto output2 = generate_cnf( xag2, [&]( auto const& clause ) {
     solver.add_clause( clause );
-  }, &lits )[0];
+  }, std::make_optional( node_literals( xag2, xag1.size() ) ) )[0];
 
   CHECK( output1 == 13 );
   CHECK( output2 == 14 );
