@@ -5,6 +5,8 @@ v0.2 (not yet released)
 -----------------------
 
 * Framework for performing quality and performance experiments `#140 <https://github.com/lsils/mockturtle/pull/140>`_
+* Algorithms:
+    - CNF generation (`generate_cnf`) `#145 <https://github.com/lsils/mockturtle/pull/145>`_
 
 v0.1 (March 31, 2019)
 ---------------------
