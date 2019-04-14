@@ -34,6 +34,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 #include <kitty/cnf.hpp>
@@ -63,7 +64,7 @@ inline constexpr uint32_t lit_not_cond( uint32_t lit, bool cond )
 using clause_callback_t = std::function<void( std::vector<uint32_t> const& )>;
 
 template<class Ntk>
-node_map<uint32_t, Ntk> node_literals( Ntk const& ntk )
+node_map<uint32_t, Ntk> node_literals( Ntk const& ntk, std::optional<uint32_t> const& gate_offset = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
@@ -87,7 +88,7 @@ node_map<uint32_t, Ntk> node_literals( Ntk const& ntk )
   } );
 
   /* compute literals for nodes */
-  uint32_t next_var = ntk.num_pis() + 1;
+  uint32_t next_var = gate_offset ? *gate_offset : ntk.num_pis() + 1;
   ntk.foreach_gate( [&]( auto const& n ) {
     node_lits[n] = make_lit( next_var++ );
   } );
@@ -102,10 +103,10 @@ template<class Ntk>
 class generate_cnf_impl
 {
 public:
-  generate_cnf_impl( Ntk const& ntk, clause_callback_t const& fn )
+  generate_cnf_impl( Ntk const& ntk, clause_callback_t const& fn, node_map<uint32_t, Ntk>* node_lits )
       : ntk_( ntk ),
         fn_( fn ),
-        node_lits_( node_literals( ntk ) )
+        node_lits_( node_lits ? *node_lits : node_literals( ntk ) )
   {
   }
 
@@ -273,11 +274,11 @@ private:
 } // namespace detail
 
 template<class Ntk>
-std::vector<uint32_t> generate_cnf( Ntk const& ntk, clause_callback_t const& fn )
+std::vector<uint32_t> generate_cnf( Ntk const& ntk, clause_callback_t const& fn, node_map<uint32_t, Ntk>* node_lits = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
 
-  detail::generate_cnf_impl<Ntk> impl( ntk, fn );
+  detail::generate_cnf_impl<Ntk> impl( ntk, fn, node_lits );
   return impl.run();
 }
 

@@ -66,3 +66,44 @@ TEST_CASE( "Translate k-LUT network into CNF", "[cnf]" )
   CHECK( res == percy::synth_result::success );
   CHECK( ( ( solver.var_value( 1u ) == solver.var_value( 2u ) ) && ( solver.var_value( 2u ) == solver.var_value( 3u ) ) ) ); /* input values are the same */
 }
+
+TEST_CASE( "Use CNF generation for CEC on XAG", "[cnf]" )
+{
+  xag_network xag1, xag2;
+
+  const auto a = xag1.create_pi();
+  const auto b = xag1.create_pi();
+
+  const auto f1 = xag1.create_nand( a, b );
+  const auto f2 = xag1.create_nand( a, f1 );
+  const auto f3 = xag1.create_nand( b, f1 );
+  const auto f4 = xag1.create_nand( f2, f3 );
+
+  xag1.create_po( f4 );
+
+  const auto a_ = xag2.create_pi();
+  const auto b_ = xag2.create_pi();
+
+  const auto f1_ = xag2.create_xor( a_, b_ );
+
+  xag2.create_po( f1_ );
+
+  percy::bsat_wrapper solver;
+  auto output1 = generate_cnf( xag1, [&]( auto const& clause ) {
+    solver.add_clause( clause );
+  } )[0];
+
+  auto lits = node_literals( xag2, xag1.size() );
+  auto output2 = generate_cnf( xag2, [&]( auto const& clause ) {
+    solver.add_clause( clause );
+  }, &lits )[0];
+
+  CHECK( output1 == 13 );
+  CHECK( output2 == 14 );
+
+  solver.add_clause( {output1, output2} );
+  solver.add_clause( {lit_not( output1 ), lit_not( output2 )} );
+
+  const auto res = solver.solve( 0 );
+  CHECK( res == percy::synth_result::failure );
+}
