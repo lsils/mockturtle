@@ -64,6 +64,9 @@ struct cut_enumeration_params
   /*! \brief Maximum number of cuts for a node. */
   uint32_t cut_limit{25u};
 
+  /*! \brief Maximum number of fan-ins for a node. */
+  uint32_t fanin_limit{10u};
+
   /*! \brief Prune cuts by removing don't cares. */
   bool minimize_truth_table{false};
 
@@ -439,7 +442,7 @@ private:
 
     auto& rcuts = *lcuts[fanin];
 
-    if ( fanin > 1 )
+    if ( fanin > 1 && fanin <= ps.fanin_limit )
     {
       rcuts.clear();
 
@@ -489,7 +492,7 @@ private:
 
       /* limit the maximum number of cuts */
       rcuts.limit( ps.cut_limit - 1 );
-    } else { /* fanin == 1 */
+    } else if ( fanin == 1 ) {
       rcuts.clear();
 
       for ( auto const& cut : *lcuts[0] ) {
