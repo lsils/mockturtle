@@ -159,21 +159,6 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
   CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 115, 55, 254, 118, 443, 449, 66}} );
 }
 
-TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
-{
-  using view_t = depth_view<fanout_view<mig_network>>;
-  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
-    fanout_view<mig_network> fanout_view{ntk};
-    view_t resub_view{fanout_view};
-    const auto before = ntk.num_gates();
-    mig_resubstitution( resub_view );
-    ntk = cleanup_dangling( ntk );
-    return before - ntk.num_gates();
-  } );
-
-  CHECK( v == std::vector<uint32_t>{{0, 39, 6, 16, 6, 15, 57, 53, 105, 17, 40}} );
-}
-
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
 {
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
@@ -279,21 +264,6 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-c
   } );
 
   CHECK( v == std::vector<uint32_t>{{6, 172, 182, 296, 182, 189, 484, 841, 1385, 1851, 1292}} );
-}
-
-TEST_CASE( "Test quality of AIG resubstitution", "[quality]" )
-{
-  using view_t = depth_view<fanout_view<aig_network>>;
-  const auto v = foreach_benchmark<aig_network>( []( auto& ntk, auto ) {
-    fanout_view<aig_network> fanout_view{ntk};
-    view_t resub_view{fanout_view};
-    const auto before = ntk.num_gates();
-    aig_resubstitution( resub_view );
-    ntk = cleanup_dangling( ntk );
-    return before - ntk.num_gates();
-  } );
-
-  CHECK( v == std::vector<uint32_t>{{0, 40, 0, 13, 0, 27, 76, 44, 135, 218, 43}} );
 }
 
 TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis", "[quality]" )
