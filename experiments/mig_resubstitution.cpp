@@ -28,11 +28,11 @@
 
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
-#include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
-#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/mig.hpp>
 
 #include <experiments.hpp>
 
@@ -41,13 +41,13 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "aig_resubstitution", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "mig_resubstitution", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
-    aig_network aig;
-    lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
+    mig_network mig;
+    lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( mig ) );
 
     resubstitution_params ps;
     resubstitution_stats st;
@@ -56,18 +56,18 @@ int main()
     ps.max_inserts = 1u;
     ps.progress = false;
 
-    const uint32_t size_before = aig.num_gates();
-    aig_resubstitution( aig, ps, &st );
+    const uint32_t size_before = mig.num_gates();
+    mig_resubstitution( mig, ps, &st );
 
-    aig = cleanup_dangling( aig );
+    mig = cleanup_dangling( mig );
 
-    const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
+    const auto cec = benchmark == "hyp" ? true : abc_cec( mig, benchmark );
 
-    exp( benchmark, size_before, aig.num_gates(), to_seconds( st.time_total ), cec );
+    exp( benchmark, size_before, mig.num_gates(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();
-  exp.compare();
+  exp.table();
 
   return 0;
 }
