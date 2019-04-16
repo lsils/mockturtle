@@ -420,6 +420,11 @@ public:
     auto c3 = create_and( c1, c2 );
     return create_xor( a, c3 );
   }
+
+  signal create_xor3( signal const& a, signal const& b, signal const& c )
+  {
+    return create_xor( create_xor( a, b ), c );
+  }
 #pragma endregion
 
 #pragma region Create nary functions
