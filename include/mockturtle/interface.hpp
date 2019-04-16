@@ -460,6 +460,9 @@ public:
 
   /*! \brief Returns true if node is a 3-input XOR gate. */
   bool is_xor3( node const& n ) const;
+
+  /*! \brief Returns true if node is a general function node. */
+  bool is_function( node const& n ) const;
 #pragma endregion
 
 #pragma region Functional properties
