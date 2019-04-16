@@ -37,6 +37,7 @@ Welcome to mockturtle's documentation!
    algorithms/akers_synthesis
    algorithms/resubstitution
    algorithms/simulation
+   algorithms/miter
    algorithms/dsd_decomposition
    algorithms/cleanup
    algorithms/cnf
