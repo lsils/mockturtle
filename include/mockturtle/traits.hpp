@@ -982,6 +982,21 @@ template<class Ntk>
 inline constexpr bool has_is_xor3_v = has_is_xor3<Ntk>::value;
 #pragma endregion
 
+#pragma region has_is_function
+template<class Ntk, class = void>
+struct has_is_function : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_function<Ntk, std::void_t<decltype( std::declval<Ntk>().is_function( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_function_v = has_is_function<Ntk>::value;
+#pragma endregion
+
 #pragma region has_node_function
 template<class Ntk, class = void>
 struct has_node_function : std::false_type

@@ -388,6 +388,11 @@ public:
 
     return create_and( !create_and( !cond, f_else ), !create_and( cond, f_then ) ) ^ !f_compl;
   }
+
+  signal create_xor3( signal const& a, signal const& b, signal const& c )
+  {
+    return create_xor( create_xor( a, b ), c );
+  }
 #pragma endregion
 
 #pragma region Create nary functions

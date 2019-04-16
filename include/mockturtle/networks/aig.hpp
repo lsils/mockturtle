@@ -402,6 +402,11 @@ public:
   {
     return create_or( create_and( a, b ), create_and( c, !create_and( !a, !b ) ) );
   }
+
+  signal create_xor3( signal const& a, signal const& b, signal const& c )
+  {
+    return create_xor( create_xor( a, b ), c );
+  }
 #pragma endregion
 
 #pragma region Create nary functions

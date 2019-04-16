@@ -32,6 +32,8 @@
 
 #pragma once
 
+#include <iostream>
+#include <type_traits>
 #include <vector>
 
 #include "../traits.hpp"
@@ -48,7 +50,7 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
 
   static_assert( is_network_type_v<NtkSource>, "NtkSource is not a network type" );
   static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
-  
+
   static_assert( has_get_node_v<NtkSource>, "NtkSource does not implement the get_node method" );
   static_assert( has_get_constant_v<NtkSource>, "NtkSource does not implement the get_constant method" );
   static_assert( has_foreach_pi_v<NtkSource>, "NtkSource does not implement the foreach_pi method" );
@@ -56,7 +58,7 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
   static_assert( has_is_constant_v<NtkSource>, "NtkSource does not implement the is_constant method" );
   static_assert( has_is_complemented_v<NtkSource>, "NtkSource does not implement the is_complemented method" );
   static_assert( has_foreach_po_v<NtkSource>, "NtkSource does not implement the foreach_po method" );
-  
+
   static_assert( has_get_constant_v<NtkDest>, "NtkDest does not implement the get_constant method" );
   static_assert( has_create_not_v<NtkDest>, "NtkDest does not implement the create_not method" );
   static_assert( has_clone_node_v<NtkDest>, "NtkDest does not implement the clone_node method" );
@@ -95,7 +97,77 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
         children.push_back( f );
       }
     } );
-    old_to_new[node] = dest.clone_node( ntk, node, children );
+    if constexpr ( std::is_same_v<NtkSource, NtkDest> )
+    {
+      old_to_new[node] = dest.clone_node( ntk, node, children );
+    }
+    else
+    {
+      do
+      {
+        if constexpr ( has_is_and_v<NtkSource> )
+        {
+          static_assert( has_create_and_v<NtkDest>, "NtkDest cannot create AND gates" );
+          if ( ntk.is_and( node ) )
+          {
+            old_to_new[node] = dest.create_and( children[0], children[1] );
+            break;
+          }
+        }
+        if constexpr ( has_is_or_v<NtkSource> )
+        {
+          static_assert( has_create_or_v<NtkDest>, "NtkDest cannot create OR gates" );
+          if ( ntk.is_or( node ) )
+          {
+            old_to_new[node] = dest.create_or( children[0], children[1] );
+            break;
+          }
+        }
+        if constexpr ( has_is_xor_v<NtkSource> )
+        {
+          static_assert( has_create_xor_v<NtkDest>, "NtkDest cannot create XOR gates" );
+          if ( ntk.is_xor( node ) )
+          {
+            old_to_new[node] = dest.create_xor( children[0], children[1] );
+            break;
+          }
+        }
+        if constexpr ( has_is_maj_v<NtkSource> )
+        {
+          static_assert( has_create_maj_v<NtkDest>, "NtkDest cannot create MAJ gates" );
+          if ( ntk.is_maj( node ) )
+          {
+            old_to_new[node] = dest.create_maj( children[0], children[1], children[2] );
+            break;
+          }
+        }
+        if constexpr ( has_is_ite_v<NtkSource> )
+        {
+          static_assert( has_create_ite_v<NtkDest>, "NtkDest cannot create ITE gates" );
+          if ( ntk.is_ite( node ) )
+          {
+            old_to_new[node] = dest.create_ite( children[0], children[1], children[2] );
+            break;
+          }
+        }
+        if constexpr ( has_is_xor3_v<NtkSource> )
+        {
+          static_assert( has_create_xor3_v<NtkDest>, "NtkDest cannot create XOR3 gates" );
+          if ( ntk.is_xor3( node ) )
+          {
+            old_to_new[node] = dest.create_xor3( children[0], children[1], children[2] );
+            break;
+          }
+        }
+        if constexpr ( has_is_function_v<NtkSource> )
+        {
+          static_assert( has_create_node_v<NtkDest>, "NtkDest cannot create arbitrary function gates" );
+          old_to_new[node] = dest.create_node( children, ntk.node_function( node ) );
+          break;
+        }
+        std::cerr << "[e] something went wrong, could not copy node " << ntk.node_to_index( node ) << "\n";
+      } while ( false );
+    }
   } );
 
   /* create outputs in same order */
