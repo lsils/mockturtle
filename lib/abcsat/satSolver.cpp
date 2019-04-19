@@ -163,12 +163,12 @@ int * Abc_MergeSortCost( int * pCosts, int nSize )
 // Just like 'assert()' but expression will be evaluated in the release version as well.
 static inline void check(int expr) { assert(expr); }
 
-static void printlits(lit* begin, lit* end)
-{
-    int i;
-    for (i = 0; i < end - begin; i++)
-        printf(L_LIT" ",L_lit(begin[i]));
-}
+//static void printlits(lit* begin, lit* end)
+//{
+//    int i;
+//    for (i = 0; i < end - begin; i++)
+//        printf(L_LIT" ",L_lit(begin[i]));
+//}
 
 //=================================================================================================
 // Random numbers:
@@ -578,31 +578,6 @@ static inline void selectionsort(void** array, int size, int(*comp)(const void *
                 best_i = j;
         }
         tmp = array[i]; array[i] = array[best_i]; array[best_i] = tmp;
-    }
-}
-
-static void sortrnd(void** array, int size, int(*comp)(const void *, const void *), double* seed)
-{
-    if (size <= 15)
-        selectionsort(array, size, comp);
-
-    else{
-        void*       pivot = array[irand(seed, size)];
-        void*       tmp;
-        int         i = -1;
-        int         j = size;
-
-        for(;;){
-            do i++; while(comp(array[i], pivot)<0);
-            do j--; while(comp(pivot, array[j])<0);
-
-            if (i >= j) break;
-
-            tmp = array[i]; array[i] = array[j]; array[j] = tmp;
-        }
-
-        sortrnd(array    , i     , comp, seed);
-        sortrnd(&array[i], size-i, comp, seed);
     }
 }
 
