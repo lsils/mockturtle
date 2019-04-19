@@ -104,6 +104,11 @@ template<class Ntk>
 class cell_window : public Ntk
 {
 public:
+  using storage = typename std::shared_ptr<detail::cell_window_storage<Ntk>>;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+public:
   cell_window( Ntk const& ntk, uint32_t max_gates = 64 )
       : Ntk( ntk ),
       _storage( std::make_shared<detail::cell_window_storage<Ntk>>( ntk ) )
@@ -124,7 +129,7 @@ public:
     _storage->_max_gates = max_gates;
   }
 
-  bool compute_window_for( node<Ntk> const& pivot )
+  bool compute_window_for( node const& pivot )
   {
     init_cell_refs();
 
@@ -135,7 +140,7 @@ public:
     _storage->_nodes.clear();
     _storage->_gates.clear();
 
-    std::vector<node<Ntk>> gates;
+    std::vector<node> gates;
     gates.reserve( _storage->_max_gates );
     collect_mffc( pivot, gates );
     add_node( pivot, gates );
@@ -145,7 +150,7 @@ public:
       assert( false );
     }
 
-    std::optional<node<Ntk>> next;
+    std::optional<node> next;
     while ( ( next = find_next_pivot() ) )
     {
       gates.clear();
@@ -189,22 +194,22 @@ public:
     return _storage->_num_constants + _storage->_leaves.size() + _storage->_gates.size();
   }
 
-  bool is_pi( node<Ntk> const& n ) const
+  bool is_pi( node const& n ) const
   {
     return _storage->_leaves.count( n );
   }
 
-  bool is_cell_root( node<Ntk> const& n ) const
+  bool is_cell_root( node const& n ) const
   {
     return _storage->_nodes.count( n );
   }
 
-  uint32_t node_to_index( node<Ntk> const& n ) const
+  uint32_t node_to_index( node const& n ) const
   {
     return _storage->_node_to_index.at( n );
   }
 
-  node<Ntk> index_to_node( uint32_t index ) const
+  node index_to_node( uint32_t index ) const
   {
     return _storage->_index_to_node[index];
   }
@@ -225,7 +230,7 @@ public:
   }
 
   template<typename LeavesIterator>
-  void add_to_mapping( node<Ntk> const& n, LeavesIterator begin, LeavesIterator end )
+  void add_to_mapping( node const& n, LeavesIterator begin, LeavesIterator end )
   {
     _storage->_has_mapping = true;
     _storage->_nodes.insert( n );
@@ -276,7 +281,7 @@ private:
     } );
   }
 
-  void collect_mffc( node<Ntk> const& pivot, std::vector<node<Ntk>>& gates )
+  void collect_mffc( node const& pivot, std::vector<node>& gates )
   {
     Ntk::incr_trav_id();
     collect_gates( pivot, gates );
@@ -284,7 +289,7 @@ private:
     gates.erase( it, gates.end() );
   }
 
-  void collect_gates( node<Ntk> const& pivot, std::vector<node<Ntk>>& gates )
+  void collect_gates( node const& pivot, std::vector<node>& gates )
   {
     assert( !Ntk::is_pi( pivot ) );
 
@@ -298,7 +303,7 @@ private:
     collect_gates_rec( pivot, gates );
   }
 
-  void collect_gates_rec( node<Ntk> const& n, std::vector<node<Ntk>>& gates )
+  void collect_gates_rec( node const& n, std::vector<node>& gates )
   {
     if ( Ntk::visited( n ) == Ntk::trav_id() )
       return;
@@ -312,7 +317,7 @@ private:
     gates.push_back( n );
   }
 
-  void add_node( node<Ntk> const& pivot, std::vector<node<Ntk>> const& gates )
+  void add_node( node const& pivot, std::vector<node> const& gates )
   {
     /*std::cout << "add_node(" << pivot << ", { ";
     for ( auto const& g : gates ) {
@@ -323,7 +328,7 @@ private:
     std::copy( gates.begin(), gates.end(), std::insert_iterator( _storage->_gates, _storage->_gates.begin() ) );
   }
 
-  std::optional<node<Ntk>> find_next_pivot()
+  std::optional<node> find_next_pivot()
   {
     /* deref */
     for ( auto const& n : _storage->_nodes )
@@ -333,8 +338,8 @@ private:
       } );
     }
 
-    std::vector<node<Ntk>> candidates;
-    std::unordered_set<node<Ntk>> inputs;
+    std::vector<node> candidates;
+    std::unordered_set<node> inputs;
 
     do
     {
