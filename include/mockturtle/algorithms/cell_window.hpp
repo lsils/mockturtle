@@ -291,7 +291,7 @@ private:
     Ntk::set_visited( Ntk::get_node( Ntk::get_constant( false ) ), Ntk::trav_id() );
     Ntk::set_visited( Ntk::get_node( Ntk::get_constant( true ) ), Ntk::trav_id() );
 
-    Ntk::foreach_cell_fanin( pivot, [&]( auto const& n ) {
+    Ntk::foreach_cell_fanin( pivot, [this]( auto const& n ) {
       Ntk::set_visited( n, Ntk::trav_id() );
     } );
 
