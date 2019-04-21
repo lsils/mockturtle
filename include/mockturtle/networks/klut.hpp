@@ -34,6 +34,7 @@
 #pragma once
 
 #include "../traits.hpp"
+#include "../utils/algorithm.hpp"
 #include "../utils/truth_table_cache.hpp"
 #include "detail/foreach.hpp"
 #include "events.hpp"
@@ -259,6 +260,23 @@ signal create_maj( signal a, signal b, signal c )
   signal create_xor3( signal a, signal b, signal c )
   {
     return _create_node( {a, b, c}, 18 );
+  }
+#pragma endregion
+
+#pragma region Create nary functions
+  signal create_nary_and( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
+  }
+
+  signal create_nary_or( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
+  }
+
+  signal create_nary_xor( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_xor( a, b ); } );
   }
 #pragma endregion
 
