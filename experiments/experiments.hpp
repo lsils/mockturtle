@@ -240,7 +240,10 @@ public:
     return true;
   }
 
-  bool compare( std::string const& old_version = {}, std::string const& current_version = {}, std::ostream& os = std::cout )
+  bool compare( std::string const& old_version = {},
+                std::string const& current_version = {},
+                std::vector<std::string> const& track_columns = {},
+                std::ostream& os = std::cout )
   {
     if ( data_.size() < 2u )
     {
@@ -279,6 +282,13 @@ public:
         }
       }
 
+      /* track differences */
+      std::unordered_map<std::string, uint32_t> differences;
+      for ( auto const& column : track_columns )
+      {
+        differences[column] = 0u;
+      }
+
       /* prepare entries */
       auto find_key = [&]( nlohmann::json const& entries, first_t const& key ) {
         return std::find_if( entries.begin(), entries.end(), [&]( auto const& entry ) {
@@ -295,21 +305,42 @@ public:
       for ( auto const& key : keys )
       {
         nlohmann::json row;
-        if ( auto const it = find_key( entries_old, key ); it != entries_old.end() )
+        const auto it_old = find_key( entries_old, key );
+        if ( it_old != entries_old.end() )
         {
-          row = *it;
-        }
+          row = *it_old;
+        }        
         if ( auto const it = find_key( entries_cur, key ); it != entries_cur.end() )
         {
+          if ( it_old == entries_old.end() )
+          {
+            row[column_names_[0]] = (*it)[column_names_[0]];
+          }
           for ( auto i = 1u; i < column_names_.size(); ++i )
           {
             row[column_names_[i] + "'"] = (*it)[column_names_[i]];
+
+            if ( it_old != entries_old.end() )
+            {
+              if ( const auto it_diff = differences.find( column_names_[i] ); it_diff != differences.end() && row[column_names_[i]] != row[column_names_[i] + "'"] )
+              {
+                it_diff->second++;
+              }
+            }
           }
         }
         compare_entries.push_back( row );
       }
 
       json_table( compare_entries, compare_columns ).print( os );
+
+      for ( const auto& [k, v] : differences ) {
+        if ( v == 0u ) {
+          os << fmt::format( "[i] no differences in column '{}'\n", k );
+        } else {
+          os << fmt::format( "[i] {} differences in column '{}'\n", v, k );
+        }
+      }
     }
     catch ( ... )
     {
