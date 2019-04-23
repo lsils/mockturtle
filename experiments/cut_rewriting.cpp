@@ -66,7 +66,7 @@ int main()
   }
 
   exp.save();
-  exp.compare();
+  exp.compare( {}, {}, {"size_after"});
 
   return 0;
 }
