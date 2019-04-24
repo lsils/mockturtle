@@ -26,6 +26,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
