@@ -44,6 +44,12 @@
 namespace mockturtle
 {
 
+/*! \brief Cut for CNF mapping applications.
+
+  This cut type uses the clause count in the CNF encoding of the cut function
+  as cost function.  It requires truth table computation during cut enumeration
+  or LUT mapping in order to work.
+*/
 struct cut_enumeration_cnf_cut
 {
   uint32_t delay{0};
@@ -74,8 +80,8 @@ struct cut_enumeration_update_cut<cut_enumeration_cnf_cut>
   {
     uint32_t delay{0};
     auto tt = cuts.truth_table( cut );
-    auto spectrum = kitty::cnf_characteristic( tt );
-    cut->data.cost = spectrum.size();
+    auto cnf = kitty::cnf_characteristic( tt );
+    cut->data.cost = cnf;
     float flow = cut.size() < 2 ? 0.0f : 1.0f;
 
     for ( auto leaf : cut )
