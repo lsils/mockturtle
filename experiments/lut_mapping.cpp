@@ -28,11 +28,14 @@
 
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
-#include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/cut_rewriting.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <mockturtle/algorithms/collapse_mapped.hpp>
+#include <mockturtle/algorithms/equivalence_checking.hpp>
+#include <mockturtle/algorithms/lut_mapping.hpp>
+#include <mockturtle/algorithms/miter.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/klut.hpp>
+#include <mockturtle/views/mapping_view.hpp>
 
 #include <experiments.hpp>
 
@@ -41,32 +44,27 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "cut_rewriting", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, double, double, bool> exp( "lut_mapping", "benchmark", "luts", "runtime", "runtime cec", "equivalent" );
 
-  for ( auto const& benchmark : epfl_benchmarks() )
+  for ( auto const& benchmark : epfl_benchmarks( ( adder | bar | max | experiments::random ) & ~mem_ctrl & ~voter ) )
   {
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
 
-    xag_npn_resynthesis<aig_network> resyn;
+    lut_mapping_stats st;
+    mapping_view<aig_network, true> mapped_aig{aig};
+    lut_mapping<decltype( mapped_aig ), true>( mapped_aig, {}, &st );
+    const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
 
-    cut_rewriting_params ps;
-    ps.cut_enumeration_ps.cut_size = 4;
-    ps.progress = true;
+    equivalence_checking_stats ecst;
+    auto cec = *equivalence_checking( *miter<klut_network>( aig, klut ), {}, &ecst );
 
-    uint32_t size_before = aig.num_gates();
-    cut_rewriting_stats st;
-    cut_rewriting( aig, resyn, ps, &st );
-    aig = cleanup_dangling( aig );
-
-    auto cec = abc_cec( aig, benchmark );
-
-    exp( benchmark, size_before, aig.num_gates(), to_seconds( st.time_total ), cec );
+    exp( benchmark, klut.num_gates(), to_seconds( st.time_total ), to_seconds( ecst.time_total ), cec );
   }
 
   exp.save();
-  exp.compare( {}, {}, {"size_after"});
+  exp.table();
 
   return 0;
 }

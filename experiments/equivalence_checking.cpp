@@ -34,7 +34,6 @@
 #include <mockturtle/algorithms/miter.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
-#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
 
 #include <experiments.hpp>
@@ -87,8 +86,6 @@ int main()
 
     equivalence_checking_stats st;
     auto cec = *equivalence_checking( *miter<aig_network>( orig, aig ), {}, &st );
-
-    write_verilog( aig, fmt::format( "/tmp/{}.v", benchmark ) );
 
     exp( benchmark, baseline[benchmark], to_seconds( st.time_total ), cec );
   }
