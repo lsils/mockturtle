@@ -482,7 +482,7 @@ private:
  * - `uint32_t delay`
  * - `float flow`
  * - `float costs`
- * 
+ *
  * See `include/mockturtle/algorithms/cut_enumeration/mf_cut.hpp` for one
  * example of a CutData type that implements the cost function that is used in
  * the LUT mapper `&mf` in ABC.

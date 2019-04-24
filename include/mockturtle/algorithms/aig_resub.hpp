@@ -484,7 +484,7 @@ public:
             auto const c = sim.get_phase( ntk.get_node( min1 ) ) ? !min1 : min1;
 
             ++st.num_div12_2and_accepts;
-            return sim.get_phase( root ) ? !ntk.create_and( a, ntk.create_and( b, c ) ) : ntk.create_and( a, ntk.create_and( b, c ) );            
+            return sim.get_phase( root ) ? !ntk.create_and( a, ntk.create_and( b, c ) ) : ntk.create_and( a, ntk.create_and( b, c ) );
           }
         }
       }

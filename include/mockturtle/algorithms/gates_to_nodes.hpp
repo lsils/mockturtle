@@ -62,7 +62,7 @@ namespace mockturtle
  * - `is_pi`
  * - `is_complemented`
  * - `node_function`
- * 
+ *
  * **Required network functions for return value (type NtkDest):**
  * - `create_pi`
  * - `create_po`

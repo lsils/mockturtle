@@ -638,7 +638,7 @@ private:
  * some rewriting algorithms in the folder
  * `mockturtle/algorithms/node_resyntesis`, since the resynthesis functions
  * have the same signature.
- * 
+ *
  * In contrast to node resynthesis, cut rewriting uses the same type for the
  * input and output network.  Consequently, the algorithm does not return a
  * new network but applies changes in-place to the input network.

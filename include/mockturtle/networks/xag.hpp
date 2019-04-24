@@ -27,7 +27,7 @@
   \file xag.hpp
   \brief Xor-And Graph (XAG) logic network implementation
 
-  \author Eleonora Testa 
+  \author Eleonora Testa
 */
 
 #pragma once

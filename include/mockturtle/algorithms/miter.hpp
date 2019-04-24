@@ -48,7 +48,7 @@ namespace mockturtle
  * has the same number of inputs and one primary output.  This output is the
  * OR of XORs of all primary output pairs.  In other words, the miter outputs
  * 1 for all input assignments in which the two input networks differ.
- * 
+ *
  * All networks may have different types.  The method returns an optional, which
  * is `nullopt`, whenever the two input networks don't match in their number of
  * primary inputs and primary outputs.

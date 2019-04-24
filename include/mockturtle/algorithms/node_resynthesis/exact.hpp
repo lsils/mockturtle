@@ -81,11 +81,11 @@ struct exact_resynthesis_params
  * runtime, `k` should be 3 or 4.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const klut_network klut = ...;
 
       exact_resynthesis<klut_network> resyn( 3 );
@@ -99,11 +99,11 @@ struct exact_resynthesis_params
  * runtime.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const klut_network klut = ...;
 
       exact_resynthesis_params ps;
@@ -220,11 +220,11 @@ private:
  * resynthized in terms of an optimum size AIG network.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const aig_network aig = ...;
 
       exact_aig_resynthesis<aig_network> resyn;
@@ -238,11 +238,11 @@ private:
  * runtime.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const aig_network aig = ...;
 
       exact_aig_resynthesis_params ps;

@@ -165,7 +165,7 @@ private:
  * - `foreach_fanin`
  * - `node_function`
  * - `foreach_po`
- * 
+ *
  * **Required network functions for return value (type NtkDest):**
  * - `get_constant`
  * - `create_pi`

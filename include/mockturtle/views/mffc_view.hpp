@@ -52,7 +52,7 @@ namespace mockturtle
  * which are already among the visited nodes.  Therefore the final view only
  * has outgoing edges to nodes not in the view from the given root node or from
  * the newly generated primary inputs.
- * 
+ *
  * The view reimplements the methods `size`, `num_pis`, `num_pos`, `foreach_pi`,
  * `foreach_po`, `foreach_node`, `foreach_gate`, `is_pi`, `node_to_index`, and
  * `index_to_node`.
@@ -189,7 +189,7 @@ private:
   {
     if ( Ntk::is_constant( n ) )
       return true;
-    
+
     if ( Ntk::is_pi( n ) )
     {
       _nodes.push_back( n );
@@ -273,7 +273,7 @@ private:
     /* is permanently marked? */
     if ( _colors[idx] == 2u )
       return;
-    
+
     /* mark node temporarily */
     _colors[idx] = 1u;
 

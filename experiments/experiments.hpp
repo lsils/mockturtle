@@ -309,7 +309,7 @@ public:
         if ( it_old != entries_old.end() )
         {
           row = *it_old;
-        }        
+        }
         if ( auto const it = find_key( entries_cur, key ); it != entries_cur.end() )
         {
           if ( it_old == entries_old.end() )

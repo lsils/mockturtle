@@ -203,7 +203,7 @@ private:
  * The algorithm performs changes directly in the input network and keeps the
  * substituted structures dangling in the network.  They can be cleaned up using
  * the `cleanup_dangling` algorithm.
- * 
+ *
  * The refactoring function must be of type `NtkDest::signal(NtkDest&,
  * kitty::dynamic_truth_table const&, LeavesIterator, LeavesIterator)` where
  * `LeavesIterator` can be dereferenced to a `NtkDest::signal`.  The last two

@@ -30,7 +30,7 @@ network structure with the required mapping methods.
 
 The next example is more complex.  It uses an MIG as underlying network
 structure, changes the cut size :math:`k` to 8, and also computes the functions
-for the cut of each mapped node: 
+for the cut of each mapped node:
 
 .. code-block:: c++
 
