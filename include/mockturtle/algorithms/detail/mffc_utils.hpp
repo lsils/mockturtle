@@ -113,4 +113,3 @@ uint32_t mffc_size( Ntk const& ntk, node<Ntk> const& n )
 }
 
 } /* namespace mockturtle::detail */
-

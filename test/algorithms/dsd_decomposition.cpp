@@ -85,4 +85,3 @@ TEST_CASE( "Partial DSD decomposition into k-LUT network", "[dsd_decomposition]"
   default_simulator<kitty::dynamic_truth_table> sim( table.num_vars() );
   CHECK( simulate<kitty::dynamic_truth_table>( ntk, sim )[0] == table );
 }
-

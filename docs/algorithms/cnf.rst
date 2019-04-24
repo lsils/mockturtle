@@ -19,4 +19,3 @@ network.
 .. doxygenfunction:: mockturtle::node_literals
 .. doxygenfunction:: mockturtle::generate_cnf
 .. doxygentypedef:: mockturtle::clause_callback_t
-
