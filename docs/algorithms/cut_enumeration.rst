@@ -78,3 +78,21 @@ Algorithm
 
 .. doxygenfunction:: mockturtle::cut_enumeration
 
+Pre-defined cut types
+~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/algorithms/cut_enumeration/gia_cut.hpp``
+
+.. doxygenstruct:: mockturtle::cut_enumeration_gia_cut
+
+**Header:** ``mockturtle/algorithms/cut_enumeration/mf_cut.hpp``
+
+.. doxygenstruct:: mockturtle::cut_enumeration_mf_cut
+
+**Header:** ``mockturtle/algorithms/cut_enumeration/cnf_cut.hpp``
+
+.. doxygenstruct:: mockturtle::cut_enumeration_cnf_cut
+
+**Header:** ``mockturtle/algorithms/cut_enumeration/spectr_cut.hpp``
+
+.. doxygenstruct:: mockturtle::cut_enumeration_spectr_cut

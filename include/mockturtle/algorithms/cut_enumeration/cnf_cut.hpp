@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file mf_cut.hpp
-  \brief Cut enumeration for MF mapping (see giaMf.c)
+  \file cnf_cut.hpp
+  \brief Cut enumeration for CNF mapping
 
   \author Mathias Soeken
 */
@@ -39,14 +39,18 @@
 
 #include "../cut_enumeration.hpp"
 
+#include <kitty/cnf.hpp>
+
 namespace mockturtle
 {
 
-/*! \brief Cut implementation based on ABC's giaMf.c
+/*! \brief Cut for CNF mapping applications.
 
-  See <a href="https://github.com/berkeley-abc/abc/blob/master/src/aig/gia/giaMf.c">giaMf.c</a> in ABC's repository.
+  This cut type uses the clause count in the CNF encoding of the cut function
+  as cost function.  It requires truth table computation during cut enumeration
+  or LUT mapping in order to work.
 */
-struct cut_enumeration_mf_cut
+struct cut_enumeration_cnf_cut
 {
   uint32_t delay{0};
   float flow{0};
@@ -54,7 +58,7 @@ struct cut_enumeration_mf_cut
 };
 
 template<bool ComputeTruth>
-bool operator<( cut_type<ComputeTruth, cut_enumeration_mf_cut> const& c1, cut_type<ComputeTruth, cut_enumeration_mf_cut> const& c2 )
+bool operator<( cut_type<ComputeTruth, cut_enumeration_cnf_cut> const& c1, cut_type<ComputeTruth, cut_enumeration_cnf_cut> const& c2 )
 {
   constexpr auto eps{0.005f};
   if ( c1->data.flow < c2->data.flow - eps )
@@ -69,13 +73,16 @@ bool operator<( cut_type<ComputeTruth, cut_enumeration_mf_cut> const& c1, cut_ty
 }
 
 template<>
-struct cut_enumeration_update_cut<cut_enumeration_mf_cut>
+struct cut_enumeration_update_cut<cut_enumeration_cnf_cut>
 {
   template<typename Cut, typename NetworkCuts, typename Ntk>
   static void apply( Cut& cut, NetworkCuts const& cuts, Ntk const& ntk, node<Ntk> const& n )
   {
     uint32_t delay{0};
-    float flow = cut->data.cost = cut.size() < 2 ? 0.0f : 1.0f;
+    auto tt = cuts.truth_table( cut );
+    auto cnf = kitty::cnf_characteristic( tt );
+    cut->data.cost = cnf;
+    float flow = cut.size() < 2 ? 0.0f : 1.0f;
 
     for ( auto leaf : cut )
     {
@@ -90,7 +97,7 @@ struct cut_enumeration_update_cut<cut_enumeration_mf_cut>
 };
 
 template<int MaxLeaves>
-std::ostream& operator<<( std::ostream& os, cut<MaxLeaves, cut_data<false, cut_enumeration_mf_cut>> const& c )
+std::ostream& operator<<( std::ostream& os, cut<MaxLeaves, cut_data<false, cut_enumeration_cnf_cut>> const& c )
 {
   os << "{ ";
   std::copy( c.begin(), c.end(), std::ostream_iterator<uint32_t>( os, " " ) );

@@ -1,0 +1,6 @@
+version: 1.7.5
+
+sphinx:
+  configuration: docs/conf.py
+
+formats: html
