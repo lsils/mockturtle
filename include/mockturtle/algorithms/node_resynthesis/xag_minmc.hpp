@@ -25,7 +25,7 @@
 
 /*!
   \file xag_minmc.hpp
-  \brief XAG resynthesis 
+  \brief XAG resynthesis
 
   \author Eleonora Testa
 */
@@ -85,7 +85,7 @@ struct xag_minmc_resynthesis_stats
 
   /*! \brief Time to parse database. */
   stopwatch<>::duration time_parse_db{0};
-  
+
   /*! \brief Overall time to classify functions. */
   stopwatch<>::duration time_classify{0};
 
@@ -129,11 +129,11 @@ struct xag_minmc_resynthesis_stats
  * minimum multiplicative complexity.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const xag_network xag = ...;
       xag_minmc_resynthesis resyn;
       cut_rewriting( xag, resyn );

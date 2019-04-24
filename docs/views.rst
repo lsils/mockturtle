@@ -73,4 +73,3 @@ algorithm.  Several views are implemented in mockturtle.
 
 .. doxygenclass:: mockturtle::window_view
    :members:
-

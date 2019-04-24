@@ -128,7 +128,7 @@ public:
 
 private:
   Ntk const& miter_;
-  equivalence_checking_params const& ps_; 
+  equivalence_checking_params const& ps_;
   equivalence_checking_stats& st_;
 };
 

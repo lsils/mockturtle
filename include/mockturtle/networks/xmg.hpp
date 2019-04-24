@@ -27,7 +27,7 @@
   \file xmg.hpp
   \brief XMG logic network implementation
 
-  \author Mathias Soeken 
+  \author Mathias Soeken
 */
 
 #pragma once

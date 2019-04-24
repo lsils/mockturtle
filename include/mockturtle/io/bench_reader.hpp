@@ -55,11 +55,11 @@ namespace mockturtle
  * - `create_node`
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       klut_network klut;
       lorina::read_bench( "file.bench", bench_reader( klut ) );
    \endverbatim

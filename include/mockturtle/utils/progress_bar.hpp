@@ -44,11 +44,11 @@ namespace mockturtle
 /*! \brief Prints progress bars.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       { // some block
         progress_bar bar( 100, "|{0}| neg. index = {1}, index squared = {2}" );
 
@@ -87,7 +87,7 @@ public:
    * This constructor is used when a the total number of iterations is not
    * known.  In this case, the progress is not visually printed. When using this
    * constructor, just pass the arguments for the `fmt` string.
-   * 
+   *
    * \param fmt Format strind; used with `fmt::format`, parameters are passed
    *            to `operator()`
    * \param enable If true, output is printed, otherwise not

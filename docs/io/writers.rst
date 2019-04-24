@@ -36,4 +36,3 @@ Write into DOT files (Graphviz)
 .. doxygenfunction:: mockturtle::write_dot(Ntk const&, std::string const&, Drawer const&)
 
 .. doxygenfunction:: mockturtle::write_dot(Ntk const&, std::ostream&, Drawer const&)
-

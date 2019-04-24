@@ -194,7 +194,7 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase"
 TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[quality]" )
 {
   auto cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
- 
+
   const auto v = foreach_benchmark<aig_network>( [&cache]( auto& ntk, auto ) {
     mapping_view<aig_network, true> mapped{ntk};
     lut_mapping_params ps;
@@ -216,7 +216,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[qual
 TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (best-case setting)", "[quality]" )
 {
   auto cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
- 
+
   const auto v = foreach_benchmark<aig_network>( [&cache]( auto& ntk, auto ) {
     mapping_view<aig_network, true> mapped{ntk};
     lut_mapping_params ps;
@@ -241,7 +241,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-c
   return; /* disable, because slow */
 
   auto cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
- 
+
   const auto v = foreach_benchmark<aig_network>( [&cache]( auto& ntk, auto ) {
     mapping_view<aig_network, true> mapped{ntk};
     lut_mapping_params ps;

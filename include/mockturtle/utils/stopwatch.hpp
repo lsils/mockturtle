@@ -50,11 +50,11 @@ namespace mockturtle
  * to the durationr reference.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       stopwatch<>::duration time{0};
 
       { // some block
@@ -103,13 +103,13 @@ private:
  * The function that is passed as second parameter can be any callable object
  * that takes no parameters.  This construction can be used to avoid
  * pre-declaring the result type of a computation that should be tracked.
- * 
+ *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       stopwatch<>::duration time{0};
 
       auto result = call_with_stopwatch( time, [&]() { return function( parameters ); } );
@@ -131,11 +131,11 @@ std::invoke_result_t<Fn> call_with_stopwatch( typename Clock::duration& dur, Fn&
  * returns the constructed object.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       stopwatch<>::duration time{0};
 
       // create vector with 100000 elements initialized to 42

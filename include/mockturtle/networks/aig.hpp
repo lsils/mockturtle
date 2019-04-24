@@ -1085,4 +1085,3 @@ struct hash<mockturtle::aig_network::signal>
 }; /* hash */
 
 } // namespace std
-

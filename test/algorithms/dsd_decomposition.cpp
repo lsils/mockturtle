@@ -39,7 +39,7 @@ TEST_CASE( "Full DSD decomposition on some 4-input functions into AIGs", "[dsd_d
 TEST_CASE( "Full DSD decomposition on some 10-input functions into XAGs", "[dsd_decomposition]" )
 {
   std::vector<std::string> functions = {"0080004000080004ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-                                        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb", 
+                                        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb",
                                         "000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb"};
 
   for ( auto const& func : functions )
@@ -85,4 +85,3 @@ TEST_CASE( "Partial DSD decomposition into k-LUT network", "[dsd_decomposition]"
   default_simulator<kitty::dynamic_truth_table> sim( table.num_vars() );
   CHECK( simulate<kitty::dynamic_truth_table>( ntk, sim )[0] == table );
 }
-

@@ -321,7 +321,7 @@ private:
  * (2018), 586-591].
  *
  * The interface is similar to the one in `lut_mapping`.
- * 
+ *
  * This algorithm applies SAT-LUT mapping to the whole networking and therefore
  * may show poor performance for larger networks.  There exists a method with
  * the same name that takes as input a window size to apply SAT-LUT mapping to
@@ -339,7 +339,7 @@ private:
  * - `clear_mapping`
  * - `add_to_mapping`
  * - `set_cell_function` if `StoreFunction` is true
- * 
+ *
  * \param ntk Logic network to be mapped
  * \param ps Parameters
  * \param st Statistics
@@ -382,7 +382,7 @@ void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapp
  *
  * The initial network must already contain a mapping, e.g., found with
  * `lut_mapping`.
- * 
+ *
  * **Required network functions:**
  * - `is_pi`
  * - `index_to_node`
@@ -396,7 +396,7 @@ void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapp
  * - `add_to_mapping`
  * - `is_cell_root`
  * - `set_cell_function` if `StoreFunction` is true
- * 
+ *
  * \param ntk Logic network to be mapped
  * \param window_size Maximum number of gates in a window
  * \param ps Parameters

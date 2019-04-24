@@ -166,12 +166,12 @@ public:
   void create_ri( signal const& s, std::string const& name = {} );
 
   /*! \brief Checks whether the network is combinational.
-   * 
+   *
    * Returns true if and only if the network has no registers (neither
    * register outputs nor register inputs).
    */
   bool is_combinational() const;
-  
+
   /*! \brief Checks whether a node is a constant node. */
   bool is_constant( node const& n ) const;
 
@@ -356,7 +356,7 @@ public:
    *
    * If ``old_node`` is drive to some output, then it will be replaced by
    * ``new_signal``.
-   * 
+   *
    * \brief old_node Driver to be replaced
    * \brief new_signal Signal replace ``old_node`` with
    */
@@ -473,7 +473,7 @@ public:
    * functions are AND, complemented edges are not taken into account.  Also,
    * in an MIG, all gate functions are MAJ, independently of complemented edges
    * and possible constant inputs.
-   * 
+   *
    * In order to retreive a function with respect to complemented edges one can
    * use the `compute` function with a truth table as simulation value.
    */
@@ -532,7 +532,7 @@ public:
    *              primary inputs (exclusive).
    */
   node pi_at( uint32_t index ) const;
-  
+
   /*! \brief Returns the primary output signal for an index.
    *
    * \param index A value between 0 (inclusive) and the number of
@@ -544,7 +544,7 @@ public:
    *
    * \param index A value between 0 (inclusive) and the number of
    *              register outputs (exclusive).
-   */  
+   */
   node ro_at( uint32_t index ) const;
 
   /*! \brief Returns the register input signal for an index.
