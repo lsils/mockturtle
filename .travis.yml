@@ -3,8 +3,8 @@ language: cpp
 script:
   - mkdir build
   - cd build
-  - cmake -DCMAKE_CXX_COMPILER=$COMPILER -DMOCKTURTLE_TEST=ON ..
-  - make run_tests
+  - cmake -DCMAKE_CXX_COMPILER=$COMPILER -DMOCKTURTLE_TEST=ON -DMOCKTURTLE_EXPERIMENTS=ON ..
+  - make all
   - ./test/run_tests "~[quality]"
 
 matrix:
