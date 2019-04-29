@@ -189,6 +189,11 @@ public:
     _storage->outputs.emplace_back( f.index, f.complement );
   }
 
+  bool is_combinational() const
+  {
+    return true;
+  }
+
   bool is_constant( node const& n ) const
   {
     return n == 0;

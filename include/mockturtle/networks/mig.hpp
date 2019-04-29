@@ -225,6 +225,12 @@ public:
     return _storage->data.latches[ index ];
   }
 
+  bool is_combinational() const
+  {
+    return ( static_cast<uint32_t>( _storage->inputs.size() ) == _storage->data.num_pis &&
+             static_cast<uint32_t>( _storage->outputs.size() ) == _storage->data.num_pos );
+  }
+
   bool is_constant( node const& n ) const
   {
     return n == 0;
