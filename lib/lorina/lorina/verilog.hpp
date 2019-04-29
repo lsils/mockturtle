@@ -212,7 +212,7 @@ public:
   virtual void on_endmodule() const {}
 }; /* verilog_reader */
 
-/*! \brief A VERILOG reader for prettyprinting the VERILOG format.
+/*! \brief A VERILOG reader for prettyprinting a simplistic VERILOG format.
  *
  * Callbacks for prettyprinting of BLIF.
  *
@@ -351,6 +351,133 @@ public:
 
   std::ostream& _os; /*!< Output stream */
 }; /* verilog_pretty_printer */
+
+
+/*! \brief A writer for a simplistic VERILOG format.
+ *
+ * Callbacks for writing the VERILOG format.
+ *
+ */
+class verilog_writer
+{
+public:
+  /*! \brief Constructs a VERILOG writer.
+   *
+   * \param os Output stream
+   */
+  verilog_writer( std::ostream& os )
+    : _os( os )
+  {}
+
+  /*! \brief Callback method for writing begin of a module declaration.
+   *
+   * \param name Module name
+   * \param xs List of module inputs
+   * \param ys List of module outputs
+   * \param ys List of module wires
+   */
+  virtual void on_module_begin( std::string const& name, std::vector<std::string> const& xs, std::vector<std::string> const& ys, std::vector<std::string> const& ws ) const
+  {
+    std::string in, out, wire;
+
+    /* assemble input declaration */
+    for ( auto i = 0u; i < xs.size(); ++i )
+    {
+      in.append( xs.at( i ) );
+      if ( i != xs.size() - 1 )
+        in.append( ", " );
+    }
+
+    /* assemble output declaration */
+    for ( auto i = 0u; i < ys.size(); ++i )
+    {
+      out.append( ys.at( i ) );
+      if ( i != ys.size() - 1 )
+        out.append( ", " );
+    }
+
+    /* assemble wire declaration */
+    for ( auto i = 0u; i < ws.size(); ++i )
+    {
+      wire.append( ws.at( i ) );
+      if ( i != ws.size() - 1 )
+        wire.append( ", " );
+    }
+
+    _os << fmt::format( "module {}({}, {});\n", name, in, out )
+        << fmt::format( "  input {};\n", in )
+        << fmt::format( "  output {};\n", out );
+
+    if ( ws.size() > 0 )
+      _os << fmt::format( "  wire {};\n", wire );
+  }
+
+  /*! \brief Callback method for writing end of a module declaration. */
+  virtual void on_module_end() const
+  {
+    _os << "endmodule" << std::endl;
+  }
+
+  /*! \brief Callback method for writing an assignment statement.
+   *
+   * \param out Output signal
+   * \param xs List of input signals
+   * \param op Operator
+   */
+  virtual void on_assign( std::string const& out, std::vector<std::pair<bool,std::string>> const& ins, std::string const& op ) const
+  {
+    std::string args;
+
+    /* assemble arguments */
+    for ( auto i = 0u; i < ins.size(); ++i )
+    {
+      args.append( fmt::format( "{}{}", ins.at( i ).first ? "~" : "", ins.at( i ).second ) );
+      if ( i != ins.size() - 1 )
+        args.append( fmt::format( " {} ", op ) );
+    }
+
+    _os << fmt::format( "  assign {} = {};\n", out, args );
+  }
+
+  /*! \brief Callback method for writing a maj3 assignment statement.
+   *
+   * \param out Output signal
+   * \param xs List of three input signals
+   */
+  virtual void on_assign_maj3( std::string const& out, std::vector<std::pair<bool,std::string>> const& ins ) const
+  {
+    assert( ins.size() == 3u );
+    _os << fmt::format( "  assign {0} = ({1}{2} & {3}{4}) | ({1}{2} & {5}{6}) | ({3}{4} & {5}{6});\n",
+                        out,
+                        ins.at( 0 ).first ? "~" : "", ins.at( 0 ).second,
+                        ins.at( 1 ).first ? "~" : "", ins.at( 1 ).second,
+                        ins.at( 2 ).first ? "~" : "", ins.at( 2 ).second );
+  }
+
+  /*! \brief Callback method for writing an assignment statement with unknown operator.
+   *
+   * \param out Output signal
+   */
+  virtual void on_assign_unknown_gate( std::string const& out ) const
+  {
+    _os << fmt::format( "  assign {} = unknown gate;\n", out );
+  }
+
+  /*! \brief Callback method for writing a maj3 assignment statement.
+   *
+   * \param out Output signal
+   * \param xs List of three input signals
+   */
+  virtual void on_assign_po( std::string const& out, std::pair<bool,std::string> const& in ) const
+  {
+    _os << fmt::format( "  assign {} = {}{};\n",
+                        out,
+                        in.first ? "~" : "", in.second );
+  }
+
+protected:
+  std::ostream& _os; /*!< Output stream */
+}; /* verilog_writer */
 
 /*! \brief Simple parser for VERILOG format.
  *
