@@ -111,6 +111,8 @@ void write_verilog( Ntk const& ntk, std::ostream& os )
   static_assert( has_is_maj_v<Ntk>, "Ntk does not implement the is_maj method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
 
+  assert( ntk.is_combinational() && "Network has to be combinational" );
+
   std::vector<std::string> xs;
   for ( auto i = 0u; i < ntk.num_pis(); ++i )
     xs.emplace_back( fmt::format( "x{}", i ) );

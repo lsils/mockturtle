@@ -191,6 +191,11 @@ public:
     _storage->outputs.emplace_back( f );
   }
 
+  bool is_combinational() const
+  {
+    return true;
+  }
+
   bool is_constant( node const& n ) const
   {
     return n <= 1;
