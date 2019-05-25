@@ -4,10 +4,17 @@ project(mockturtle LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Options:
+#  - Release
+#  - RelWithDebInfo
+#  - MinSizeRel
+#  - Debug
+set(CMAKE_BUILD_TYPE Debug)
+
 # Options
-option(MOCKTURTLE_EXAMPLES "Build examples" ON)
+option(MOCKTURTLE_EXAMPLES "Build examples" OFF)
 option(MOCKTURTLE_TEST "Build tests" OFF)
-option(MOCKTURTLE_EXPERIMENTS "Build experiments" OFF)
+option(MOCKTURTLE_EXPERIMENTS "Build experiments" ON)
 
 if(UNIX)
   # show quite some warnings (but remove some intentionally)
