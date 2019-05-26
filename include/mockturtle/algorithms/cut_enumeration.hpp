@@ -611,7 +611,7 @@ network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_en
 // determines whether a given node exists in the cut.
 template<typename Ntk>
 std::pair<bool, std::vector<std::vector<uint64_t>>>
-fast_small_cut_enumeration( Ntk const& ntk ) {
+fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   // You cannot check whether a graph is topologically sorted at compile-time,
   // but the is_topologically_sorted_v<Ntk> template is used inside the
@@ -667,42 +667,40 @@ fast_small_cut_enumeration( Ntk const& ntk ) {
     uint8_t count = 0;
 
     while ( n > 0 ) {
-        count = count + 1;
-        n = n & ( n - 1 );
+      count = count + 1;
+      n = n & ( n - 1 );
     }
 
     return count;
   };
 
-  auto visit_n_tuple = [&cut_sets, &bit_cnt] (
+  auto visit_n_tuple = [&cut_sets, &bit_cnt, &cut_size] (
     node_idx_t node_idx,
     std::vector<node_idx_t> const& fanin_idx,
     std::vector<node_idx_t> const& cut_idx
   ) {
-      cut_t C = 0;
-      for ( auto i = 0U; i < fanin_idx.size(); i++ ) {
-          C |= cut_sets.at( fanin_idx[i] ).at( cut_idx[i] );
+    cut_t C = 0;
+    for ( auto i = 0U; i < fanin_idx.size(); i++ ) {
+      C |= cut_sets.at( fanin_idx[i] ).at( cut_idx[i] );
+    }
+
+    // Restrict cut sizes as per user request.
+    if ( bit_cnt( C ) > cut_size ) {
+      return;
+    }
+
+    // Don't add new cut if existing cut dominates it.
+    for ( auto C_prime : cut_sets.at( node_idx ) ) {
+      cut_t shared_nodes = C_prime & C;
+      cut_t C_prime_extra_nodes = shared_nodes ^ C_prime;
+
+      bool C_prime_dominates_C = C_prime_extra_nodes == 0;
+      if ( C_prime_dominates_C ) {
+        return;
       }
+    }
 
-      // Will never happen as we are using a uint64_t and it cannot contain more
-      // than 64 1s, but we leave this comparison here to mimic the cut
-      // enumeration algorithm in the lecture notes.
-      if ( bit_cnt( C ) > max_nodes ) {
-          return;
-      }
-
-      // Don't add new cut if existing cut dominates it.
-      for ( auto C_prime : cut_sets.at( node_idx ) ) {
-          cut_t shared_nodes = C_prime & C;
-          cut_t C_prime_extra_nodes = shared_nodes ^ C_prime;
-
-          bool C_prime_dominates_C = C_prime_extra_nodes == 0;
-          if ( C_prime_dominates_C ) {
-              return;
-          }
-      }
-
-      cut_sets.at( node_idx ).push_back( C );
+    cut_sets.at( node_idx ).push_back( C );
   };
 
   // Enumerates cuts of a given node. The inputs of the node can have variable
