@@ -34,15 +34,15 @@ int main()
   // Example circuit from lecture
   const auto x1 = aig.create_pi();
   const auto x2 = aig.create_pi();
-  const auto x3 = aig.create_and(x1, x2);
-  const auto x4 = aig.create_or(x1, x3);
-  const auto x5 = aig.create_or(x2, x3);
-  const auto x6 = aig.create_and(x4, x5);
-  aig.create_po(x6);
+  const auto x3 = aig.create_and( x1, x2 );
+  const auto x4 = aig.create_or( x1, x3 );
+  const auto x5 = aig.create_or( x2, x3 );
+  const auto x6 = aig.create_and( x4, x5 );
+  aig.create_po( x6 );
 
-  mockturtle::topo_view aig_topo(aig);
+  mockturtle::topo_view aig_topo( aig );
 
-  auto cuts = mockturtle::fast_small_cut_enumeration(aig_topo);
+  const auto cuts = mockturtle::fast_small_cut_enumeration( aig_topo );
 
   return 0;
 }

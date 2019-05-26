@@ -611,18 +611,18 @@ network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_en
 // determines whether a given node exists in the cut.
 template<typename Ntk>
 std::pair<bool, std::vector<std::vector<uint64_t>>>
-fast_small_cut_enumeration(Ntk const& ntk) {
-  static_assert(is_network_type_v<Ntk>, "Ntk is not a network type");
+fast_small_cut_enumeration( Ntk const& ntk ) {
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   // You cannot check whether a graph is topologically sorted at compile-time,
   // but the is_topologically_sorted_v<Ntk> template is used inside the
   // topo_view class to determine whether the input graph should just be copied
   // as it is already topologically-sorted, or whether the graph's topological
   // order is to be computed.
-  // static_assert(is_topologically_sorted_v<Ntk>, "Ntk is not a topologically-sorted network");
-  static_assert(has_size_v<Ntk>, "Ntk does not implement the size method");
-  static_assert(has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method");
-  static_assert(has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method");
-  static_assert(has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method");
+  // static_assert( is_topologically_sorted_v<Ntk>, "Ntk is not a topologically-sorted network" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
 
   // Max 64 nodes, so 8 bits are enough for indices.
   using node_idx_t = uint8_t;
@@ -634,8 +634,8 @@ fast_small_cut_enumeration(Ntk const& ntk) {
   // return a boolean flag stating whether the cut-sets returned by this
   // function are valid or not.
   constexpr node_idx_t max_nodes = 64;
-  if (ntk.size() > max_nodes) {
-    return std::make_pair(false, cut_sets_t());
+  if ( ntk.size() > max_nodes ) {
+    return std::make_pair( false, cut_sets_t() );
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -646,7 +646,7 @@ fast_small_cut_enumeration(Ntk const& ntk) {
   // nodes, so no need to allocate +1 memory slots like in the lecture notes
   // to explicitly represent constants.
   // By definition of the vector constructor, each cut-set is initialized to {}.
-  cut_sets_t cut_sets(ntk.size());
+  cut_sets_t cut_sets( ntk.size() );
 
   //////////////////////////////////////////////////////////////////////////////
   // Helper functions //////////////////////////////////////////////////////////
@@ -655,7 +655,7 @@ fast_small_cut_enumeration(Ntk const& ntk) {
   auto set_bit = [] (
     node_idx_t idx
   ) {
-    return static_cast<cut_t>(1) << idx;
+    return static_cast<cut_t>( 1 ) << idx;
   };
 
   // Algorithm for counting #bits set to 1 in a uint64_t. Inspired from the
@@ -666,9 +666,9 @@ fast_small_cut_enumeration(Ntk const& ntk) {
   ) {
     uint8_t count = 0;
 
-    while (n > 0) {
+    while ( n > 0 ) {
         count = count + 1;
-        n = n & (n-1);
+        n = n & ( n - 1 );
     }
 
     return count;
@@ -680,29 +680,29 @@ fast_small_cut_enumeration(Ntk const& ntk) {
     std::vector<node_idx_t> const& cut_idx
   ) {
       cut_t C = 0;
-      for (auto i = 0U; i < fanin_idx.size(); i++) {
-          C |= cut_sets.at(fanin_idx[i]).at(cut_idx[i]);
+      for ( auto i = 0U; i < fanin_idx.size(); i++ ) {
+          C |= cut_sets.at( fanin_idx[i] ).at( cut_idx[i] );
       }
 
       // Will never happen as we are using a uint64_t and it cannot contain more
       // than 64 1s, but we leave this comparison here to mimic the cut
       // enumeration algorithm in the lecture notes.
-      if (bit_cnt(C) > max_nodes) {
+      if ( bit_cnt( C ) > max_nodes ) {
           return;
       }
 
       // Don't add new cut if existing cut dominates it.
-      for (auto C_prime : cut_sets.at(node_idx)) {
+      for ( auto C_prime : cut_sets.at( node_idx ) ) {
           cut_t shared_nodes = C_prime & C;
           cut_t C_prime_extra_nodes = shared_nodes ^ C_prime;
 
           bool C_prime_dominates_C = C_prime_extra_nodes == 0;
-          if (C_prime_dominates_C) {
+          if ( C_prime_dominates_C ) {
               return;
           }
       }
 
-      cut_sets.at(node_idx).push_back(C);
+      cut_sets.at( node_idx ).push_back( C );
   };
 
   // Enumerates cuts of a given node. The inputs of the node can have variable
@@ -714,7 +714,7 @@ fast_small_cut_enumeration(Ntk const& ntk) {
     Ntk const& ntk,
     node<Ntk> const& node
   ) {
-    node_idx_t node_idx = ntk.node_to_index(node);
+    node_idx_t node_idx = ntk.node_to_index( node );
 
     // Index of the node's fan-ins.
     std::vector<node_idx_t> fanin_idx;
@@ -730,33 +730,33 @@ fast_small_cut_enumeration(Ntk const& ntk) {
     // query their number of cuts.
     ntk.foreach_fanin(
       node,
-      [&] (auto sig) {
-        auto fanin_node = ntk.get_node(sig);
-        auto fanin_node_idx = ntk.node_to_index(fanin_node);
+      [&] ( auto sig ) {
+        auto fanin_node = ntk.get_node( sig );
+        auto fanin_node_idx = ntk.node_to_index( fanin_node );
 
-        fanin_idx.push_back(fanin_node_idx);
+        fanin_idx.push_back( fanin_node_idx );
         // Radix of the given fan-in is determined by the number of cuts it has.
-        cut_set_size.push_back(cut_sets.at(fanin_node_idx).size());
+        cut_set_size.push_back( cut_sets.at( fanin_node_idx ).size() );
         // Start counting from (0, 0, ... , 0)
-        cut_idx.push_back(0);
+        cut_idx.push_back( 0 );
       }
     );
 
     // Fan-in = number of cut-sets we must perform a cross-product over.
-    auto const num_cut_sets = ntk.fanin_size(node);
+    auto const num_cut_sets = ntk.fanin_size( node );
 
     uint8_t j = 0;
-    while (j != num_cut_sets) {
-      visit_n_tuple(node_idx, fanin_idx, cut_idx);
+    while ( j != num_cut_sets ) {
+      visit_n_tuple( node_idx, fanin_idx, cut_idx );
 
       j = 0;
-      while ((j != num_cut_sets) && (cut_idx.at(j) == cut_set_size.at(j) - 1)) {
-        cut_idx.at(j) = 0;
+      while ( ( j != num_cut_sets ) && ( cut_idx.at( j ) == cut_set_size.at( j ) - 1 ) ) {
+        cut_idx.at( j ) = 0;
         j += 1;
       }
 
-      if (j != num_cut_sets) {
-        cut_idx.at(j) += 1;
+      if ( j != num_cut_sets ) {
+        cut_idx.at( j ) += 1;
       }
     }
   };
@@ -767,29 +767,29 @@ fast_small_cut_enumeration(Ntk const& ntk) {
 
   // Primary inputs only have themselves as their cut-set.
   ntk.foreach_pi(
-    [&](auto node) {
-      auto const idx = ntk.node_to_index(node);
-      cut_sets.at(idx) = { set_bit(idx) };
+    [&]( auto node ) {
+      auto const idx = ntk.node_to_index( node );
+      cut_sets.at( idx ) = { set_bit( idx ) };
     }
   );
 
   // Going through remaining gates (excluding constants and primary inputs).
   ntk.foreach_gate(
-    [&](auto node) {
+    [&]( auto node ) {
       // Technically don't need to do this as vectors are constructed with zero
       // length, but we leave it for clarity.
-      auto const idx = ntk.node_to_index(node);
-      cut_sets.at(idx) = {};
+      auto const idx = ntk.node_to_index( node );
+      cut_sets.at( idx ) = {};
 
       // Need to do use TAOCP Vol 4A mixed-radix n-tuple generation algorithm
       // here to enumerate cross-product of the node's fan-in cut-sets.
-      cut_enumeration_node(ntk, node);
+      cut_enumeration_node( ntk, node );
 
-      cut_sets.at(idx).push_back(set_bit(idx));
+      cut_sets.at( idx ).push_back( set_bit( idx ) );
     }
   );
 
-  return std::make_pair(true, cut_sets);
+  return std::make_pair( true, cut_sets );
 }
 
 } /* namespace mockturtle */
