@@ -9,11 +9,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #  - RelWithDebInfo
 #  - MinSizeRel
 #  - Debug
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 # Options
-option(MOCKTURTLE_EXAMPLES "Build examples" OFF)
-option(MOCKTURTLE_TEST "Build tests" OFF)
+option(MOCKTURTLE_EXAMPLES "Build examples" ON)
+option(MOCKTURTLE_TEST "Build tests" ON)
 option(MOCKTURTLE_EXPERIMENTS "Build experiments" ON)
 
 if(UNIX)

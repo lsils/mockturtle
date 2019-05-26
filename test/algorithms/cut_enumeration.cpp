@@ -175,3 +175,155 @@ TEST_CASE( "compute XOR network cuts in 2-LUT network", "[cut_enumeration]" )
     }
   }
 }
+
+TEST_CASE( "enumerate cuts for an AIG (small graph version)", "[fast_small_cut_enumeration]" )
+{
+  aig_network aig;
+
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto f1 = aig.create_nand( a, b );
+  const auto f2 = aig.create_nand( f1, a );
+  const auto f3 = aig.create_nand( f1, b );
+  const auto f4 = aig.create_nand( f2, f3 );
+  aig.create_po( f4 );
+
+  const auto [cuts_valid, cuts] = mockturtle::fast_small_cut_enumeration( aig );
+
+  // This graph is smaller than 64 nodes so the cut enumeration algorithm should
+  // produce a valid cut.
+  CHECK( cuts_valid );
+
+  const auto bitcut_to_vector = [] ( uint64_t bitcut ) {
+    std::vector<uint32_t> v;
+
+    for ( auto i = 0U; i < 64; i++ ) {
+      if ( bitcut & ( static_cast<uint64_t>( 1 ) << i ) ) {
+        v.push_back( i );
+      }
+    }
+
+    return v;
+  };
+
+  // Check primary input cuts.
+  aig.foreach_pi(
+    [&] ( auto n ) {
+      if ( aig.is_constant( n ) ) {
+        return;
+      }
+
+      auto const n_idx = aig.node_to_index( n );
+      auto const& cut_set = cuts.at( n_idx );
+
+      for ( auto const& cut_set_i : cut_set ) {
+        auto const& cut_node_indices = bitcut_to_vector( cut_set_i );
+        // Primary inputs only have themselves as cuts.
+        CHECK( cut_node_indices == std::vector<uint32_t>{ n_idx } );
+      }
+    }
+  );
+
+  // Check gate cuts.
+  const auto i1 = aig.node_to_index( aig.get_node( f1 ) );
+  const auto i2 = aig.node_to_index( aig.get_node( f2 ) );
+  const auto i3 = aig.node_to_index( aig.get_node( f3 ) );
+  const auto i4 = aig.node_to_index( aig.get_node( f4 ) );
+
+  CHECK( cuts.at( i1 ).size() == 2 );
+  CHECK( cuts.at( i2 ).size() == 3 );
+  CHECK( cuts.at( i3 ).size() == 3 );
+  CHECK( cuts.at( i4 ).size() == 5 );
+
+  CHECK( bitcut_to_vector( cuts.at( i1 )[0] ) == std::vector<uint32_t>{ 1, 2 } );
+  CHECK( bitcut_to_vector( cuts.at( i1 )[1] ) == std::vector<uint32_t>{ 3 } );
+
+  CHECK( bitcut_to_vector( cuts.at( i2 )[0] ) == std::vector<uint32_t>{ 1, 2 } );
+  CHECK( bitcut_to_vector( cuts.at( i2 )[1] ) == std::vector<uint32_t>{ 1, 3 } );
+  CHECK( bitcut_to_vector( cuts.at( i2 )[2] ) == std::vector<uint32_t>{ 4 } );
+
+  CHECK( bitcut_to_vector( cuts.at( i3 )[0] ) == std::vector<uint32_t>{ 1, 2 } );
+  CHECK( bitcut_to_vector( cuts.at( i3 )[1] ) == std::vector<uint32_t>{ 2, 3 } );
+  CHECK( bitcut_to_vector( cuts.at( i3 )[2] ) == std::vector<uint32_t>{ 5 } );
+
+  CHECK( bitcut_to_vector( cuts.at( i4 )[0] ) == std::vector<uint32_t>{ 1, 2 } );
+  CHECK( bitcut_to_vector( cuts.at( i4 )[1] ) == std::vector<uint32_t>{ 2, 3, 4 } );
+  CHECK( bitcut_to_vector( cuts.at( i4 )[2] ) == std::vector<uint32_t>{ 1, 3, 5 } );
+  CHECK( bitcut_to_vector( cuts.at( i4 )[3] ) == std::vector<uint32_t>{ 4, 5 } );
+  CHECK( bitcut_to_vector( cuts.at( i4 )[4] ) == std::vector<uint32_t>{ 6 } );
+}
+
+TEST_CASE( "enumerate smaller cuts for an AIG (small graph version)", "[fast_small_cut_enumeration]" )
+{
+  aig_network aig;
+
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto f1 = aig.create_nand( a, b );
+  const auto f2 = aig.create_nand( f1, a );
+  const auto f3 = aig.create_nand( f1, b );
+  const auto f4 = aig.create_nand( f2, f3 );
+  aig.create_po( f4 );
+
+  const auto [cuts_valid, cuts] = mockturtle::fast_small_cut_enumeration( aig, 2 );
+
+  // This graph is smaller than 64 nodes so the cut enumeration algorithm should
+  // produce a valid cut.
+  CHECK( cuts_valid );
+
+  const auto bitcut_to_vector = [] ( uint64_t bitcut ) {
+    std::vector<uint32_t> v;
+
+    for ( auto i = 0U; i < 64; i++ ) {
+      if ( bitcut & ( static_cast<uint64_t>( 1 ) << i ) ) {
+        v.push_back( i );
+      }
+    }
+
+    return v;
+  };
+
+  // Check primary input cuts.
+  aig.foreach_pi(
+    [&] ( auto n ) {
+      if ( aig.is_constant( n ) ) {
+        return;
+      }
+
+      auto const n_idx = aig.node_to_index( n );
+      auto const& cut_set = cuts.at( n_idx );
+
+      for ( auto const& cut_set_i : cut_set ) {
+        auto const& cut_node_indices = bitcut_to_vector( cut_set_i );
+        // Primary inputs only have themselves as cuts.
+        CHECK( cut_node_indices == std::vector<uint32_t>{ n_idx } );
+      }
+    }
+  );
+
+  // Check gate cuts.
+  const auto i1 = aig.node_to_index( aig.get_node( f1 ) );
+  const auto i2 = aig.node_to_index( aig.get_node( f2 ) );
+  const auto i3 = aig.node_to_index( aig.get_node( f3 ) );
+  const auto i4 = aig.node_to_index( aig.get_node( f4 ) );
+
+  CHECK( cuts.at( i1 ).size() == 2 );
+  CHECK( cuts.at( i2 ).size() == 3 );
+  CHECK( cuts.at( i3 ).size() == 3 );
+  CHECK( cuts.at( i4 ).size() == 3 );
+
+  CHECK( bitcut_to_vector( cuts.at( i1 )[0] ) == std::vector<uint32_t>{ 1, 2 } );
+  CHECK( bitcut_to_vector( cuts.at( i1 )[1] ) == std::vector<uint32_t>{ 3 } );
+
+  CHECK( bitcut_to_vector( cuts.at( i2 )[0] ) == std::vector<uint32_t>{ 1, 2 } );
+  CHECK( bitcut_to_vector( cuts.at( i2 )[1] ) == std::vector<uint32_t>{ 1, 3 } );
+  CHECK( bitcut_to_vector( cuts.at( i2 )[2] ) == std::vector<uint32_t>{ 4 } );
+
+  CHECK( bitcut_to_vector( cuts.at( i3 )[0] ) == std::vector<uint32_t>{ 1, 2 } );
+  CHECK( bitcut_to_vector( cuts.at( i3 )[1] ) == std::vector<uint32_t>{ 2, 3 } );
+  CHECK( bitcut_to_vector( cuts.at( i3 )[2] ) == std::vector<uint32_t>{ 5 } );
+
+  CHECK( bitcut_to_vector( cuts.at( i4 )[0] ) == std::vector<uint32_t>{ 1, 2 } );
+  CHECK( bitcut_to_vector( cuts.at( i4 )[1] ) == std::vector<uint32_t>{ 4, 5 } );
+  CHECK( bitcut_to_vector( cuts.at( i4 )[2] ) == std::vector<uint32_t>{ 6 } );
+}
