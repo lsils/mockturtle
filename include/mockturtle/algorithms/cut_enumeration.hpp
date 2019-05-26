@@ -609,6 +609,49 @@ network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_en
 // This function expects to receive a network where nodes are sorted in
 // topological order. Cuts are represented as a 64-bit bit vector where each bit
 // determines whether a given node exists in the cut.
+
+/*! \brief Cut enumeration.
+ *
+ * This function implements a generic fast cut enumeration algorithm for graphs
+ * containing at most 64 nodes. It is generic as it supports graphs in which
+ * nodes can have variable fan-in. Speed and space-efficiency are achieved by
+ * representing cuts as 64-bit bit vectors, i.e. each bit represents whether or
+ * not a node is in a cut. Cut-set union and domination operations then
+ * transform into bitwise operations that can be performed in a few clock cycles
+ * each.
+ *
+ * Like the larger cut_enumeration algorithm, this algorithm traverses all nodes
+ * in topological order and computes a node's cuts based on its fanins' cuts.
+ * Dominated cuts are filtered and are not added to the cut set. For each node a
+ * unit cut is added to the end of each cut set.
+ *
+ * This function computes all cuts of the network (i.e. the number of generated
+ * cuts is not bounded). Though the number of cuts cannot be bounded, their size
+ * can be bound by passing a `cut_size` argument to the function.
+ *
+ * **Required network functions:**
+ * - `fanin_size`
+ * - `foreach_fanin`
+ * - `foreach_gate`
+ * - `foreach_pi`
+ * - `get_node`
+ * - `node_to_index`
+ * - `size`
+ *
+ * Note that this algorithm *only* works for graphs with at most 64 nodes.
+ * However, since we cannot know the size of a graph at compile-time, this
+ * function returns a boolean value in addition to the cut sets to indicate
+ * whether the input graph is valid or not, and therefore whether the cuts are
+ * to be interpreted by the calling program.
+ *
+ * \verbatim embed:rst
+ *
+ * .. warning::
+ *
+ *    This algorithm expects the nodes in the network to be in topological
+ *    order.  If the network does not guarantee a topological order of nodes one
+ *    can wrap the network parameter in a ``topo_view`` view.
+ */
 template<typename Ntk>
 std::pair<bool, std::vector<std::vector<uint64_t>>>
 fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
@@ -658,8 +701,10 @@ fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
     return static_cast<cut_t>( 1 ) << idx;
   };
 
-  // Algorithm for counting #bits set to 1 in a uint64_t. Inspired from the
-  // following stackoverlow thread:
+  // Algorithm for counting #1 bits in a uint64_t. It is efficient as it only
+  // iterates as many times as the bit count to avoid always performing 64
+  // iterations. Inspired from the following threads:
+  // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetNaive
   // https://stackoverflow.com/questions/8871204/count-number-of-1s-in-binary-representation
   auto bit_cnt = [] (
     cut_t n
@@ -674,22 +719,44 @@ fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
     return count;
   };
 
+  // Operation to perform on each n-tuple. In the cut generation algorithm this
+  // involves computing a new cut from the fan-in nodes' selected cuts, checking
+  // whether an existing cut dominates it, and if not, adding it to the cutset
+  // of the current node.
   auto visit_n_tuple = [&cut_sets, &bit_cnt, &cut_size] (
+    // Node for which we are computing the cut.
     node_idx_t node_idx,
+    // Fan-in of the current node.
     std::vector<node_idx_t> const& fanin_idx,
+    // Index of the cut to choose from the given fan-in node.
     std::vector<node_idx_t> const& cut_idx
   ) {
+    // Compute new cut.
     cut_t C = 0;
     for ( auto i = 0U; i < fanin_idx.size(); i++ ) {
       C |= cut_sets.at( fanin_idx[i] ).at( cut_idx[i] );
     }
 
-    // Restrict cut sizes as per user request.
+    // Restrict cut sizes if too large.
     if ( bit_cnt( C ) > cut_size ) {
       return;
     }
 
-    // Don't add new cut if existing cut dominates it.
+    // Don't add new cut if existing cut dominates it. A cut C' dominates
+    // another cut C if C' is a subset of C. Being a subset means that C' has at
+    // most the same bits set as C, but no more bits.
+    //
+    // So if we AND their bitsets together, we can see what they have in common,
+    // then we can XOR this with C' original bits to see if C' has any bit
+    // active that C does not.
+    //
+    //   C' = 0b 00110
+    //   C  = 0b 01010 AND
+    //        --------
+    //        0b 00010
+    //   C' = 0b 00110 XOR
+    //        --------
+    //        0b 00100 => C' does NOT dominate C as it contains a node that C does not.
     for ( auto C_prime : cut_sets.at( node_idx ) ) {
       cut_t shared_nodes = C_prime & C;
       cut_t C_prime_extra_nodes = shared_nodes ^ C_prime;
@@ -705,9 +772,9 @@ fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
 
   // Enumerates cuts of a given node. The inputs of the node can have variable
   // fan-in, so the cut-sets they have could have different sizes. We therefore
-  // cannot use N nested for-loops to perform a cross product since we don't
-  // know the cut-set sizes in advance. We instead use the mixed-radix n-tuple
-  // generation algorithm in TAOCP, Vol 4A, algorithm M.
+  // cannot use N nested for-loops to perform a cross product of the fan-in cuts
+  // since we don't know the cut-set sizes in advance. We instead use the
+  // mixed-radix n-tuple generation algorithm in TAOCP, Vol 4A, algorithm M.
   auto cut_enumeration_node = [&cut_sets, &visit_n_tuple] (
     Ntk const& ntk,
     node<Ntk> const& node
@@ -718,10 +785,10 @@ fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
     std::vector<node_idx_t> fanin_idx;
 
     // Number of cuts of a given fan-in node ("radix" in TAOCP, Vol 4A, Algorithm M).
-    std::vector<size_t> cut_set_size; // radix (r[n-1], ... , r[0])
+    std::vector<size_t> cut_set_size; // radix (m[n-1], ... , m[0]) in TAOCP
 
     // Index of a cut of a given fan-in node ("value" in TAOCP, Vol 4A, Algorithm M).
-    std::vector<node_idx_t> cut_idx;  // value (a[n-1], ... , a[0])
+    std::vector<node_idx_t> cut_idx;  // value (a[n-1], ... , a[0]) in TAOCP
 
     // We start by initializing the indices of the fan-in nodes' cuts and their
     // radix. Need to get the the index of the fan-in nodes for this so we can
@@ -747,12 +814,12 @@ fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
     while ( j != num_cut_sets ) {
       visit_n_tuple( node_idx, fanin_idx, cut_idx );
 
+      // Mixed-radix n-tuple generation algorithm. Adding 1 to the n-tuple.
       j = 0;
       while ( ( j != num_cut_sets ) && ( cut_idx.at( j ) == cut_set_size.at( j ) - 1 ) ) {
         cut_idx.at( j ) = 0;
         j += 1;
       }
-
       if ( j != num_cut_sets ) {
         cut_idx.at( j ) += 1;
       }
@@ -779,8 +846,9 @@ fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
       auto const idx = ntk.node_to_index( node );
       cut_sets.at( idx ) = {};
 
-      // Need to do use TAOCP Vol 4A mixed-radix n-tuple generation algorithm
-      // here to enumerate cross-product of the node's fan-in cut-sets.
+      // Internally uses TAOCP Vol 4A algorithm M, mixed-radix n-tuple
+      // generation, to enumerate the cross-product of the node's fan-in
+      // cut-sets.
       cut_enumeration_node( ntk, node );
 
       cut_sets.at( idx ).push_back( set_bit( idx ) );
