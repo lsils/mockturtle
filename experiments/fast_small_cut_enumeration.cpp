@@ -37,7 +37,7 @@ int main()
   const auto x3 = aig.create_and(x1, x2);
   const auto x4 = aig.create_or(x1, x3);
   const auto x5 = aig.create_or(x2, x3);
-  const auto x6 = aig.create_xor(x4, x5);
+  const auto x6 = aig.create_and(x4, x5);
   aig.create_po(x6);
 
   mockturtle::topo_view aig_topo(aig);

@@ -693,7 +693,10 @@ fast_small_cut_enumeration(Ntk const& ntk) {
 
       // Don't add new cut if existing cut dominates it.
       for (auto C_prime : cut_sets.at(node_idx)) {
-          bool C_prime_dominates_C = C_prime ^ C;
+          cut_t shared_nodes = C_prime & C;
+          cut_t C_prime_extra_nodes = shared_nodes ^ C_prime;
+
+          bool C_prime_dominates_C = C_prime_extra_nodes == 0;
           if (C_prime_dominates_C) {
               return;
           }
