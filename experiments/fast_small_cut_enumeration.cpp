@@ -23,12 +23,53 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
 #include <mockturtle/algorithms/cut_enumeration.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/views/topo_view.hpp>
 
-int main()
-{
+std::string cut_to_str( uint64_t cut ) {
+  std::vector<uint64_t> indices;
+  for ( auto i = 0U; i < 64; i++ ) {
+    if ( cut & ( static_cast<uint64_t>( 1 ) << i ) ) {
+      indices.push_back( i );
+    }
+  }
+
+  std::ostringstream oss;
+  oss << "{ ";
+
+  for ( auto i = 0U; i < indices.size(); i++ ) {
+    oss << indices.at( i );
+
+    if ( i != indices.size() - 1 ) {
+      oss << ", ";
+    }
+  }
+
+  oss << " }";
+  return oss.str();
+}
+
+std::string cut_set_to_str( std::vector<uint64_t> cut_set ) {
+  std::ostringstream oss;
+  oss << "{ ";
+
+  for ( auto i = 0U; i < cut_set.size(); i++ ) {
+    oss << cut_to_str( cut_set.at( i ) );
+
+    if ( i != cut_set.size() - 1 ) {
+      oss << ", ";
+    }
+  }
+
+  oss << " }";
+  return oss.str();
+}
+
+int main() {
   mockturtle::aig_network aig;
 
   // Example circuit from lecture
@@ -42,7 +83,18 @@ int main()
 
   mockturtle::topo_view aig_topo( aig );
 
-  const auto cuts = mockturtle::fast_small_cut_enumeration( aig_topo );
+  const auto [cuts_valid, cuts] = mockturtle::fast_small_cut_enumeration( aig_topo );
+
+  if (!cuts_valid) {
+    std::cerr << "Error: graph must have <= 64 nodes" << "\n";
+    return EXIT_FAILURE;
+  }
+
+  for ( auto i = 0U; i < cuts.size(); i++ ) {
+    auto const& cut_set( cuts.at( i ) );
+    auto const& cut_set_str( cut_set_to_str( cut_set ) );
+    std::cout << "Cuts of node " << i << " => " << cut_set_str << "\n";
+  }
 
   return 0;
 }
