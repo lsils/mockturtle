@@ -188,7 +188,9 @@ TEST_CASE( "enumerate cuts for an AIG (small graph version)", "[fast_small_cut_e
   const auto f4 = aig.create_nand( f2, f3 );
   aig.create_po( f4 );
 
-  const auto [cuts_valid, cuts] = mockturtle::fast_small_cut_enumeration( aig );
+  bool cuts_valid;
+  std::vector<std::vector<uint64_t>> cuts;
+  std::tie( cuts_valid, cuts ) = mockturtle::fast_small_cut_enumeration( aig );
 
   // This graph is smaller than 64 nodes so the cut enumeration algorithm should
   // produce a valid cut.
@@ -265,7 +267,9 @@ TEST_CASE( "enumerate smaller cuts for an AIG (small graph version)", "[fast_sma
   const auto f4 = aig.create_nand( f2, f3 );
   aig.create_po( f4 );
 
-  const auto [cuts_valid, cuts] = mockturtle::fast_small_cut_enumeration( aig, 2 );
+  bool cuts_valid;
+  std::vector<std::vector<uint64_t>> cuts;
+  std::tie( cuts_valid, cuts ) = mockturtle::fast_small_cut_enumeration( aig, 2 );
 
   // This graph is smaller than 64 nodes so the cut enumeration algorithm should
   // produce a valid cut.
