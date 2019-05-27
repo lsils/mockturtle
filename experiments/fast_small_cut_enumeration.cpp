@@ -53,7 +53,7 @@ std::string cut_to_str( uint64_t cut ) {
   return oss.str();
 }
 
-std::string cut_set_to_str( std::vector<uint64_t> cut_set ) {
+std::string cut_set_to_str( std::vector<uint64_t> const& cut_set ) {
   std::ostringstream oss;
   oss << "{ ";
 
@@ -83,12 +83,15 @@ int main() {
 
   mockturtle::topo_view aig_topo( aig );
 
-  const auto [cuts_valid, cuts] = mockturtle::fast_small_cut_enumeration( aig_topo );
-
-  if (!cuts_valid) {
+  auto cuts_optional = mockturtle::fast_small_cut_enumeration( aig );
+  // This graph is smaller than 64 nodes so the cut enumeration algorithm should
+  // produce a valid cut.
+  if ( !cuts_optional.has_value() ) {
     std::cerr << "Error: graph must have <= 64 nodes" << "\n";
     return EXIT_FAILURE;
   }
+
+  auto cuts = cuts_optional.value();
 
   for ( auto i = 0U; i < cuts.size(); i++ ) {
     auto const& cut_set( cuts.at( i ) );

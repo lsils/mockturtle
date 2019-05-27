@@ -36,7 +36,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
-#include <tuple>
+#include <optional>
 #include <vector>
 
 #include <kitty/constructors.hpp>
@@ -640,9 +640,7 @@ network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_en
  *
  * Note that this algorithm *only* works for graphs with at most 64 nodes.
  * However, since we cannot know the size of a graph at compile-time, this
- * function returns a boolean value in addition to the cut sets to indicate
- * whether the input graph is valid or not, and therefore whether the cuts are
- * to be interpreted by the calling program.
+ * function returns the results wrapped in an std::optional.
  *
  * \verbatim embed:rst
  *
@@ -653,7 +651,7 @@ network_cuts<Ntk, ComputeTruth, CutData> cut_enumeration( Ntk const& ntk, cut_en
  *    can wrap the network parameter in a ``topo_view`` view.
  */
 template<typename Ntk>
-std::pair<bool, std::vector<std::vector<uint64_t>>>
+std::optional<std::vector<std::vector<uint64_t>>>
 fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   // You cannot check whether a graph is topologically sorted at compile-time,
@@ -678,7 +676,7 @@ fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
   // function are valid or not.
   constexpr node_idx_t max_nodes = 64;
   if ( ntk.size() > max_nodes ) {
-    return std::make_pair( false, cut_sets_t() );
+    return std::nullopt;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -855,7 +853,7 @@ fast_small_cut_enumeration( Ntk const& ntk , const uint8_t cut_size = 4 ) {
     }
   );
 
-  return std::make_pair( true, cut_sets );
+  return cut_sets;
 }
 
 } /* namespace mockturtle */
