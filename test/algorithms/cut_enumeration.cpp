@@ -191,9 +191,9 @@ TEST_CASE( "enumerate cuts for an AIG (small graph version)", "[fast_small_cut_e
   auto cuts_optional = mockturtle::fast_small_cut_enumeration( aig );
   // This graph is smaller than 64 nodes so the cut enumeration algorithm should
   // produce a valid cut.
-  CHECK( cuts_optional.has_value() );
+  CHECK( cuts_optional );
 
-  auto cuts = cuts_optional.value();
+  auto cuts = *cuts_optional;
 
   const auto bitcut_to_vector = [] ( uint64_t bitcut ) {
     std::vector<uint32_t> v;
@@ -269,9 +269,9 @@ TEST_CASE( "enumerate smaller cuts for an AIG (small graph version)", "[fast_sma
   auto cuts_optional = mockturtle::fast_small_cut_enumeration( aig, 2 );
   // This graph is smaller than 64 nodes so the cut enumeration algorithm should
   // produce a valid cut.
-  CHECK( cuts_optional.has_value() );
+  CHECK( cuts_optional );
 
-  auto cuts = cuts_optional.value();
+  auto cuts = *cuts_optional;
 
   const auto bitcut_to_vector = [] ( uint64_t bitcut ) {
     std::vector<uint32_t> v;

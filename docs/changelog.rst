@@ -13,8 +13,11 @@ v0.2 (not yet released)
     - Miter generation (`miter`) `#148 <https://github.com/lsils/mockturtle/pull/148>`_
     - Combinational equivalence checking (`equivalence_checking`) `#149 <https://github.com/lsils/mockturtle/pull/149>`_
     - CNF based cut enumeration (`cnf_cut`) `#155 <https://github.com/lsils/mockturtle/pull/155>`_
+    - Fast cut enumeration for small networks (`fast_small_cut_enumeration`, contributed by Sahand Kashani-Akhavan) `#161 <https://github.com/lsils/mockturtle/pull/161>`_
 * I/O:
     - Write networks to DIMACS files for CNF (`write_dimacs`) `#146 <https://github.com/lsils/mockturtle/pull/146>`_
+* Generators for arithmetic circuits:
+    - Sideways sum generator (`sideways_sum_adder`, contributed by Jovan Blanuša) `#159 <https://github.com/lsils/mockturtle/pull/159>`_
 
 v0.1 (March 31, 2019)
 ---------------------
