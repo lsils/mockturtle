@@ -34,6 +34,7 @@
 
 #include <utility>
 #include <vector>
+#include <list>
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -89,6 +90,48 @@ inline std::pair<signal<Ntk>, signal<Ntk>> full_adder( Ntk& ntk, const signal<Nt
     const auto w5 = ntk.create_nor( c, w3 );
     const auto sum = ntk.create_nor( w4, w5 );
     const auto carry = ntk.create_or( w1, w4 );
+
+    return {sum, carry};
+  }
+}
+
+/*! \brief Inserts a half adder into a network.
+ *
+ * Inserts a half adder for two inputs (two 1-bit operands)
+ * into the network and returns a pair of sum and carry bit.
+ *
+ * It creates three 2-input gate network composed of AND and NOR gates.
+ *
+ * \param ntk Network
+ * \param a First input operand
+ * \param b Second input operand
+ * \return Pair of sum (`first`) and carry (`second`)
+ */
+template<typename Ntk>
+inline std::pair<signal<Ntk>, signal<Ntk>> half_adder( Ntk& ntk, const signal<Ntk>& a, const signal<Ntk>& b )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+
+  /* specialization for LUT-ish networks */
+  if constexpr ( has_create_node_v<Ntk> )
+  {
+    kitty::dynamic_truth_table tt_and( 2u ), tt_xor( 2u );
+    kitty::create_from_hex_string( tt_and, "8" );
+    kitty::create_from_hex_string( tt_xor, "6" );
+
+    const auto sum = ntk.create_node( {a, b}, tt_xor );
+    const auto carry = ntk.create_node( {a, b}, tt_and );
+
+    return {sum, carry};
+  }
+  else
+  {
+    static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and method" );
+    static_assert( has_create_nor_v<Ntk>, "Ntk does not implement the create_nor method" );
+
+    const auto carry = ntk.create_and( a, b );
+    const auto w2 = ntk.create_nor( a, b );
+    const auto sum = ntk.create_nor( carry, w2 );
 
     return {sum, carry};
   }
@@ -178,6 +221,85 @@ inline std::vector<signal<Ntk>> carry_ripple_multiplier( Ntk& ntk, std::vector<s
   for ( auto i = 0u; i < a.size(); ++i )
   {
     std::tie( res[b.size() + i], carry ) = full_adder( ntk, tmp[i], tmp[a.size() + i], carry );
+  }
+
+  return res;
+}
+
+/*! \brief Creates a sideways sum adder using half and full adders
+ *
+ * The function creates the adder in `ntk` and returns output signals,
+ * whose size is floor(log2(a.size()))+1.
+ *
+ * \param ntk Network
+ * \param a Input operand
+ */
+template<typename Ntk>
+inline std::vector<signal<Ntk>> sideways_sum_adder( Ntk& ntk, std::vector<signal<Ntk>> const& a )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+
+  int n = a.size();
+
+  int out_n = 1; // floor(log2(n) + 1)
+  int tmpn = n;
+  while( tmpn >>= 1 ) out_n++;
+
+  std::list<signal<Ntk>> sum_bits, carry_bits;
+
+  auto *first_level  = &sum_bits;
+  auto *second_level = &carry_bits;
+
+  auto res = constant_word( ntk, 0, out_n );
+  int output_ind = 0;
+
+  for(int i = 0; i < n; i++)
+    first_level->push_back(a[i]);
+
+  while(1)
+  {
+    while(!first_level->empty())
+    {
+      if(first_level->size() == 1)
+      {
+        auto in_sig = first_level->front();
+        first_level->pop_front();
+        res[output_ind++] = in_sig;
+      }
+      else if(first_level->size() == 2)
+      {
+        auto in_sig1 = first_level->front();
+        first_level->pop_front();
+        auto in_sig2 = first_level->front();
+        first_level->pop_front();
+        signal<Ntk> tmp_sum;
+        signal<Ntk> tmp_carry;
+        std::tie( tmp_sum, tmp_carry ) = half_adder( ntk, in_sig1, in_sig2 );
+        first_level->push_back(tmp_sum);
+        second_level->push_back(tmp_carry);
+      }
+      else // first_level->size() >=3
+      {
+        auto in_sig1 = first_level->front();
+        first_level->pop_front();
+        auto in_sig2 = first_level->front();
+        first_level->pop_front();
+        auto in_sig3 = first_level->front();
+        first_level->pop_front();
+        signal<Ntk> tmp_sum;
+        signal<Ntk> tmp_carry;
+        std::tie( tmp_sum, tmp_carry ) = full_adder( ntk, in_sig1, in_sig2, in_sig3 );
+        first_level->push_back(tmp_sum);
+        second_level->push_back(tmp_carry);
+      }
+    }
+
+    if(second_level->empty()) break;
+
+    // swapping buffers
+    auto tmp = first_level;
+    first_level = second_level;
+    second_level = tmp;
   }
 
   return res;
