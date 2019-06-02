@@ -96,3 +96,8 @@ Pre-defined cut types
 **Header:** ``mockturtle/algorithms/cut_enumeration/spectr_cut.hpp``
 
 .. doxygenstruct:: mockturtle::cut_enumeration_spectr_cut
+
+Special-purpose implementations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. doxygenfunction:: mockturtle::fast_small_cut_enumeration
