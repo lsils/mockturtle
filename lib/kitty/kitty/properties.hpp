@@ -26,7 +26,6 @@
 /*!
   \file properties.hpp
   \brief Implements property checks for Boolean function
-
   \author Mathias Soeken
 */
 
@@ -44,12 +43,10 @@ namespace kitty
 {
 
 /*! \brief Returns the Chow parameter of a function
-
   The Chow parameters is a set of values \f$N(f), \Sigma(f)\f$, where \f$N(f)\f$
   is the size of the ON-set, and \f$\Sigma(f)\f$ is the sum of all input
   assignments in the ON-set.  For example for \f$f = x_1 \lor x_2\f$ the
   function returns \f$(3, (2,2))\f$.
-
   \param tt Truth table
 */
 template<typename TT>
@@ -76,7 +73,6 @@ std::pair<uint32_t, std::vector<uint32_t>> chow_parameters( const TT& tt )
 }
 
 /*! \brief Checks whether a function is canalizing
-
   \param tt Truth table
 */
 template<typename TT>
@@ -111,9 +107,7 @@ bool is_canalizing( const TT& tt )
 }
 
 /*! \brief Checks whether a function is Horn
-
   A function is Horn, if it can be represented using Horn clauses.
-
   \param tt Truth table
 */
 template<typename TT>
@@ -134,9 +128,7 @@ bool is_horn( const TT& tt )
 }
 
 /*! \brief Checks whether a function is Krom
-
   A function is Krom, if it can be represented using Krom clauses.
-
   \param tt Truth table
 */
 template<typename TT>
@@ -161,9 +153,7 @@ bool is_krom( const TT& tt )
 }
 
 /*! \brief Checks whether a function is symmetric in a pair of variables
-
   A function is symmetric in two variables, if it is invariant to swapping them.
-
   \param tt Truth table
   \param var_index1 Index of first variable
   \param var_index2 Index of second variable
@@ -174,13 +164,57 @@ bool is_symmetric_in( const TT& tt, uint8_t var_index1, uint8_t var_index2 )
   return tt == swap( tt, var_index1, var_index2 );
 }
 
-/*! \brief Generate runlength encoding of a function
+/*! \brief Checks whether a function is monotone
+  A function is monotone if f(x) ≤ f(y) whenever x ⊆ y
+  \param tt Truth table
+*/
+template<typename TT>
+bool is_monotone( const TT& tt )
+{
+  auto numvars = tt.num_vars();
 
+  for ( auto i = 0; i < numvars; i++ )
+  {
+    auto const tt1 = cofactor0( tt, i );
+    auto const tt2 = cofactor1( tt, i );
+    for ( auto bit = 0; bit < ( 2 << ( numvars - 1 ) ); bit++ )
+    {
+      if ( get_bit( tt1, bit ) <= get_bit( tt2, bit ) )
+      {
+        continue;
+      }
+      else
+      {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/*! \brief Checks whether a function is selfdual
+  A function is selfdual if !f(x, y, ..., z) = f(!x, !y, ..., !z)
+  \param tt Truth table
+*/
+template<typename TT>
+bool is_selfdual( const TT& tt )
+{
+  auto numvars = tt.num_vars();
+  auto tt1 = tt;
+  auto tt2 = ~tt1;
+  for ( auto i = 0; i < numvars; i++ )
+  {
+    tt1 = flip( tt1, i );
+  }
+
+  return tt2 == tt1;
+}
+
+/*! \brief Generate runlength encoding of a function
   This function iterates through the bits of a function and calls a function
   for each runlength and value.  For example, if this function is called for
   the AND function 1000, it will call `fn` first with arguments `false` and `3`,
   and then a second time with arguments `true`, and `1`.
-
   \param tt Truth table
   \param fn Function of signature `void(bool, uint32_t)`
 */
@@ -208,12 +242,10 @@ void foreach_runlength( const TT& tt, Fn&& fn )
 }
 
 /*! \brief Returns the runlength encoding pattern of a function
-
   This function does only count the lengths, e.g., for 1000 it will return
   `{3, 1}`, and so it does for the NAND function 0111.
-
   \param tt Truth table
-*/ 
+*/
 template<typename TT>
 std::vector<uint32_t> runlength_pattern( const TT& tt )
 {
