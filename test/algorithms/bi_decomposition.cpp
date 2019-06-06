@@ -9,9 +9,10 @@
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/xag.hpp>
 
+
 using namespace mockturtle;
 
-TEST_CASE( "Bi-decomposition on some 4-input functions into AIGs", "[bi_decomposition_f]" )
+TEST_CASE( "Bi-decomposition on some 4-input functions into AIGs", "[bi_decomposition]" )
 {
   std::vector<std::string> functions = {"b0bb", "00b0", "0804", "090f", "abcd", "3ah6"};
 
@@ -35,7 +36,7 @@ TEST_CASE( "Bi-decomposition on some 4-input functions into AIGs", "[bi_decompos
   }
 }
 
-TEST_CASE( "Bi-decomposition on some 10-input functions into XAGs", "[bi_decomposition_f]" )
+TEST_CASE( "Bi-decomposition on some 10-input functions into XAGs", "[bi_decomposition]" )
 {
   std::vector<std::string> functions = {"0080004000080004ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
                                         "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb",

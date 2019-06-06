@@ -80,7 +80,7 @@ public:
       switch ( res )
       {
       default:
-        //assert( false );
+        assert( false );
       case kitty::bi_decomposition::and_:
         return _ntk.create_and( left, right );
       case kitty::bi_decomposition::or_:
@@ -113,7 +113,7 @@ public:
           {
             return pis[h];
           }
-          else if (binary_and( remainder, dc_remainder ) == ~var )
+          else if ( binary_and( remainder, dc_remainder ) == ~var )
           {
             return _ntk.create_not( pis[h] );
           }
@@ -121,7 +121,7 @@ public:
       }
     }
 
-  
+    assert( false );
   }
 
 private:
