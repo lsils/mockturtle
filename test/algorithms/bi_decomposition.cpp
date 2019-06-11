@@ -38,19 +38,20 @@ TEST_CASE( "Bi-decomposition on some 4-input functions into AIGs", "[bi_decompos
 
 TEST_CASE( "Bi-decomposition on some 10-input functions into XAGs", "[bi_decomposition]" )
 {
-  std::vector<std::string> functions = {"0080004000080004ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-                                        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb",
-                                        "000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb"};
+  //std::vector<std::string> functions = {"0080004000080004ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                                       // "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb",
+                                        //"000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb"};
 
-  for ( auto const& func : functions )
-  {
-    kitty::dynamic_truth_table table( 10u );
-    kitty::dynamic_truth_table dc( 10u );
+ // for ( auto const& func : functions )
+  //{
+    auto func = "777688887776fffe";
+    kitty::dynamic_truth_table table( 6u );
+    kitty::dynamic_truth_table dc( 6u );
     kitty::create_from_hex_string( table, func );
-    kitty::create_from_hex_string( dc, "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" );
+    kitty::create_from_hex_string( dc, "ffffffffffffffff");//"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" );
 
     xag_network xag;
-    std::vector<xag_network::signal> pis( 10u );
+    std::vector<xag_network::signal> pis( 6u );
     std::generate( pis.begin(), pis.end(), [&]() { return xag.create_pi(); } );
 
     xag.create_po( bi_decomposition_f( xag, table, dc, pis ) );
@@ -59,5 +60,5 @@ TEST_CASE( "Bi-decomposition on some 10-input functions into XAGs", "[bi_decompo
 
     default_simulator<kitty::dynamic_truth_table> sim( table.num_vars() );
     CHECK( binary_and( simulate<kitty::dynamic_truth_table>( xag, sim )[0], dc ) == binary_and( table, dc ) );
-  }
+  //}
 }
