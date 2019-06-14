@@ -39,7 +39,6 @@
 
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
-#include <kitty/print.hpp>
 
 #include "../../algorithms/bi_decomposition.hpp"
 
@@ -58,17 +57,18 @@ namespace mockturtle
 
       const xag_network xag = ...;
       bidecomposition_resynthesis<xag_network> resyn;
-      const auto xag = refactoring(xag, resyn );
+      const auto xag = refactoring( xag, resyn );
    \endverbatim
  */
+
 template<class Ntk>
 class bidecomposition_resynthesis
 {
 public:
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dc, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
-    fn( bi_decomposition_f<Ntk>( ntk, function, ~cares, {begin,end} ) );
+    fn( bi_decomposition<Ntk>( ntk, function, ~dc, {begin, end} ) );
   }
 
   template<typename LeavesIterator, typename Fn>

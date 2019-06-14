@@ -28,27 +28,26 @@
   \brief Refactoring
 
   \author Mathias Soeken
+  \author Eleonora Testa 
 */
- 
 #pragma once
 
 #include <iostream>
 
-#include "detail/mffc_utils.hpp"
-#include "simulation.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
-#include "dont_cares.hpp"
-#include "cut_rewriting.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
 #include "../views/mffc_view.hpp"
 #include "../views/topo_view.hpp"
+#include "cut_rewriting.hpp"
+#include "detail/mffc_utils.hpp"
+#include "dont_cares.hpp"
+#include "simulation.hpp"
 
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/print.hpp>
 
 namespace mockturtle
 {
@@ -114,29 +113,18 @@ struct has_refactoring_with_dont_cares : std::false_type
 
 template<class Ntk, class RefactoringFn, class Iterator>
 struct has_refactoring_with_dont_cares<Ntk,
-                                   RefactoringFn, Iterator,
-                                   std::void_t<decltype( std::declval<RefactoringFn>()( std::declval<Ntk&>(),
-                                                                                      std::declval<kitty::dynamic_truth_table>(),
-                                                                                      std::declval<kitty::dynamic_truth_table>(),
-                                                                                      std::declval<Iterator const&>(),
-                                                                                      std::declval<Iterator const&>(),
-                                                                                      std::declval<void( signal<Ntk> )>() ) )>> : std::true_type
+                                       RefactoringFn, Iterator,
+                                       std::void_t<decltype( std::declval<RefactoringFn>()( std::declval<Ntk&>(),
+                                                                                            std::declval<kitty::dynamic_truth_table>(),
+                                                                                            std::declval<kitty::dynamic_truth_table>(),
+                                                                                            std::declval<Iterator const&>(),
+                                                                                            std::declval<Iterator const&>(),
+                                                                                            std::declval<void( signal<Ntk> )>() ) )>> : std::true_type
 {
 };
 
 template<class Ntk, class RefactoringFn, class Iterator>
 inline constexpr bool has_refactoring_with_dont_cares_v = has_refactoring_with_dont_cares<Ntk, RefactoringFn, Iterator>::value;
-
-/* template<class Ntk>
-struct unit_cost
-{
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& node ) const
-  {
-    (void)ntk;
-    (void)node;
-    return 1u;
-  }
-};*/
 
 template<class Ntk, class RefactoringFn, class NodeCostFn>
 class refactoring_impl
@@ -163,12 +151,10 @@ public:
       {
         return false;
       }
-
       if ( ntk.fanout_size( n ) == 0u )
       {
         return true;
       }
-
       const auto mffc = make_with_stopwatch<mffc_view<Ntk>>( st.time_mffc, ntk, n );
 
       pbar( i, i, _candidates, _estimated_gain );
@@ -177,7 +163,7 @@ public:
       {
         return true;
       }
-      
+
       std::vector<signal<Ntk>> leaves( mffc.num_pis() );
       mffc.foreach_pi( [&]( auto const& n, auto j ) {
         leaves[j] = ntk.make_signal( n );
@@ -189,28 +175,28 @@ public:
       signal<Ntk> new_f;
       {
         if ( ps.use_dont_cares )
+        {
+          if constexpr ( has_refactoring_with_dont_cares_v<Ntk, RefactoringFn, decltype( leaves.begin() )> )
           {
-            if constexpr ( has_refactoring_with_dont_cares_v<Ntk, RefactoringFn, decltype( leaves.begin() )> )
+            std::vector<node<Ntk>> pivots;
+            for ( auto const& c : leaves )
             {
-              std::vector<node<Ntk>> pivots;
-              for ( auto const& c : leaves )
-              {
-                pivots.push_back( ntk.get_node( c ) );
-              }
-              stopwatch t( st.time_refactoring );
-              refactoring_fn( ntk, tt, satisfiability_dont_cares( ntk, pivots ), leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+              pivots.push_back( ntk.get_node( c ) );
             }
-            else
-            {
-              stopwatch t( st.time_refactoring );
-              refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
-            }
+            stopwatch t( st.time_refactoring );
+            refactoring_fn( ntk, tt, satisfiability_dont_cares( ntk, pivots ), leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
           }
           else
           {
             stopwatch t( st.time_refactoring );
             refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
-          } 
+          }
+        }
+        else
+        {
+          stopwatch t( st.time_refactoring );
+          refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+        }
       }
 
       if ( n == ntk.get_node( new_f ) )
@@ -240,7 +226,7 @@ public:
   }
 
 private:
-uint32_t recursive_deref( node<Ntk> const& n )
+  uint32_t recursive_deref( node<Ntk> const& n )
   {
     /* terminate? */
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
@@ -323,7 +309,7 @@ private:
  * \param cost_fn Node cost function (a functor with signature `uint32_t(Ntk const&, node<Ntk> const&)`)
  */
 template<class Ntk, class RefactoringFn, class NodeCostFn = detail::unit_cost<Ntk>>
-void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps = {}, refactoring_stats *pst = nullptr , NodeCostFn const& cost_fn = {})
+void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps = {}, refactoring_stats* pst = nullptr, NodeCostFn const& cost_fn = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
