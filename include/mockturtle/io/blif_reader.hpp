@@ -32,15 +32,13 @@
 
 #pragma once
 
-// #include <iostream>
-// #include <map>
-
 #include <mockturtle/networks/aig.hpp>
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <lorina/blif.hpp>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -84,7 +82,12 @@ public:
   {
     auto const len = 1u << inputs.size();
 
-    std::string func( len, '0' );
+    assert( cover.size() > 0u );
+    assert( cover.at( 0u ).second.size() == 1 );
+    auto const first_output_value = cover.at( 0u ).second.at( 0u );
+    auto const default_value = first_output_value == '0' ? '1' : '0';
+
+    std::string func( len, default_value );
     for ( const auto& c : cover )
     {
       assert( c.second.size() == 1 );
@@ -100,12 +103,13 @@ public:
     }
 
     kitty::dynamic_truth_table tt( static_cast<int>( inputs.size() ) );
+    std::reverse( std::begin( func ), std::end( func ) );
     kitty::create_from_binary_string( tt, func );
       
     std::vector<signal<Ntk>> input_signals;
     for ( const auto& i : inputs )
     {
-      input_signals.emplace_back( signals[i] );
+      input_signals.push_back( signals.at( i ) );
     }
     signals[output] = ntk_.create_node( input_signals, tt );
   }
