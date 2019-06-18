@@ -53,6 +53,7 @@ namespace mockturtle
  * - `create_pi`
  * - `create_po`
  * - `create_node`
+ * - `get_constant`
  *
    \verbatim embed:rst
 
@@ -75,6 +76,7 @@ public:
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
     static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po function" );
     static_assert( has_create_node_v<Ntk>, "Ntk does not implement the create_node function" );
+    static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant function" );
   }
 
   ~blif_reader()
@@ -102,6 +104,18 @@ public:
 
   virtual void on_gate( const std::vector<std::string>& inputs, const std::string& output, const output_cover_t& cover ) const override
   {
+    if ( inputs.size() == 0 )
+    {
+      assert( cover.size() == 1u );
+      assert( cover.at( 0u ).first.size() == 0u );
+      assert( cover.at( 0u ).second.size() == 1u );
+
+      auto const assigned_value = cover.at( 0u ).second.at( 0u );
+      auto const const_value = ntk_.get_constant( assigned_value == '1' ? true : false );
+      signals[output] = const_value;
+      return;
+    }
+
     auto const len = 1u << inputs.size();
 
     assert( cover.size() > 0u );
