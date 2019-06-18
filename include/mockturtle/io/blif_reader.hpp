@@ -62,7 +62,7 @@ namespace mockturtle
    .. code-block:: c++
 
       klut_network klut;
-      lorina::read_bench( "file.bench", blif_reader( klut ) );
+      lorina::read_blif( "file.blif", blif_reader( klut ) );
    \endverbatim
  */
 template<typename Ntk>
