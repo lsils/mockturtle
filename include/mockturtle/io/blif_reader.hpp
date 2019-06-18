@@ -47,13 +47,35 @@
 namespace mockturtle
 {
 
+/*! \brief Lorina reader callback for BLIF files.
+ *
+ * **Required network functions:**
+ * - `create_pi`
+ * - `create_po`
+ * - `create_node`
+ *
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+      klut_network klut;
+      lorina::read_bench( "file.bench", blif_reader( klut ) );
+   \endverbatim
+ */
 template<typename Ntk>
 class blif_reader : public lorina::blif_reader
 {
 public:
   explicit blif_reader( Ntk& ntk )
     : ntk_( ntk )
-  {}
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
+    static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po function" );
+    static_assert( has_create_node_v<Ntk>, "Ntk does not implement the create_node function" );
+  }
 
   ~blif_reader()
   {
