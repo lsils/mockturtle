@@ -17,6 +17,7 @@ v0.2 (not yet released)
 * I/O:
     - Write networks to DIMACS files for CNF (`write_dimacs`) `#146 <https://github.com/lsils/mockturtle/pull/146>`_
     - Read BLIF files using *lorina* (`blif_reader`) `#167 <https://github.com/lsils/mockturtle/pull/167>`_
+    - Write networks to BLIF files (`write_blif`) `#169 <https://github.com/lsils/mockturtle/pull/169>`_
 * Generators for arithmetic circuits:
     - Sideways sum generator (`sideways_sum_adder`, contributed by Jovan Blanuša) `#159 <https://github.com/lsils/mockturtle/pull/159>`_
 
