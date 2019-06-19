@@ -84,9 +84,9 @@ public:
     for ( auto const& o : outputs )
     {
       ntk_.create_po( signals[o], o );
-    }    
+    }
   }
-  
+
   virtual void on_model( const std::string& model_name ) const override
   {
     (void)model_name;
@@ -104,8 +104,14 @@ public:
 
   virtual void on_gate( const std::vector<std::string>& inputs, const std::string& output, const output_cover_t& cover ) const override
   {
-    if ( inputs.size() == 0 )
+    if ( inputs.size() == 0u )
     {
+      if ( cover.size() == 0u )
+      {
+        signals[output] = ntk_.get_constant( false );
+        return;
+      }
+
       assert( cover.size() == 1u );
       assert( cover.at( 0u ).first.size() == 0u );
       assert( cover.at( 0u ).second.size() == 1u );
@@ -127,7 +133,7 @@ public:
     for ( const auto& c : cover )
     {
       assert( c.second.size() == 1 );
-      
+
       uint32_t pos = 0u;
       for ( auto i = 0u; i < c.first.size(); ++i )
       {
@@ -141,10 +147,11 @@ public:
     kitty::dynamic_truth_table tt( static_cast<int>( inputs.size() ) );
     std::reverse( std::begin( func ), std::end( func ) );
     kitty::create_from_binary_string( tt, func );
-      
+
     std::vector<signal<Ntk>> input_signals;
     for ( const auto& i : inputs )
     {
+      assert( signals.find( i ) != signals.end() );
       input_signals.push_back( signals.at( i ) );
     }
     signals[output] = ntk_.create_node( input_signals, tt );
@@ -156,7 +163,7 @@ public:
   {
     (void)comment;
   }
-  
+
 private:
   Ntk& ntk_;
 
