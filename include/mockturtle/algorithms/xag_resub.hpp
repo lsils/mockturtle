@@ -639,6 +639,7 @@ public:
 
     auto const update_level_of_new_node = [&]( const auto& n ) {
       ntk.resize_levels();
+      ntk.resize_fanout();
       update_node_level( n );
     };
 
