@@ -32,9 +32,17 @@
 
 #pragma once
 
-#include <mockturtle/networks/xag.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/print.hpp>
+#include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/networks/xag.hpp>
+
+#include "../traits.hpp"
+#include "../utils/progress_bar.hpp"
+#include "../utils/stopwatch.hpp"
+#include "../views/depth_view.hpp"
+#include "../views/fanout_view2.hpp"
+#include "reconv_cut2.hpp"
 
 namespace mockturtle
 {
@@ -62,14 +70,15 @@ public:
 
     /* dereference the node */
     auto count1 = node_deref_rec( n );
-
     /* collect the nodes inside the MFFC */
     node_mffc_cone( n, inside );
 
     /* reference it back */
     auto count2 = node_ref_rec( n );
     (void)count2;
-    assert( count1 == count2 );
+
+    assert( count1.first == count2.first );
+    assert( count1.second == count2.second );
 
     for ( const auto& l : leaves )
       ntk.decr_fanout_size( l );
@@ -81,6 +90,7 @@ private:
   /* ! \brief Dereference the node's MFFC */
   std::pair<int32_t, int32_t> node_deref_rec( node const& n )
   {
+
     if ( ntk.is_pi( n ) )
       return {0, 0};
 
@@ -88,9 +98,13 @@ private:
     int32_t counter_xor = 0;
 
     if ( ntk.is_and( n ) )
+    {
       counter_and = 1;
+    }
     else if ( ntk.is_xor( n ) )
+    {
       counter_xor = 1;
+    }
 
     ntk.foreach_fanin( n, [&]( const auto& f ) {
       auto const& p = ntk.get_node( f );
@@ -98,8 +112,9 @@ private:
       ntk.decr_fanout_size( p );
       if ( ntk.fanout_size( p ) == 0 )
       {
-        counter_and += node_deref_rec( p ).first;
-        counter_xor += node_deref_rec( p ).second;
+        auto counter = node_deref_rec( p );
+        counter_and += counter.first;
+        counter_xor += counter.second;
       }
     } );
 
@@ -116,9 +131,13 @@ private:
     int32_t counter_xor = 0;
 
     if ( ntk.is_and( n ) )
+    {
       counter_and = 1;
+    }
     else if ( ntk.is_xor( n ) )
+    {
       counter_xor = 1;
+    }
 
     ntk.foreach_fanin( n, [&]( const auto& f ) {
       auto const& p = ntk.get_node( f );
@@ -127,8 +146,9 @@ private:
       ntk.incr_fanout_size( p );
       if ( v == 0 )
       {
-        counter_and += node_ref_rec( p ).first;
-        counter_xor += node_ref_rec( p ).second;
+        auto counter = node_ref_rec( p );
+        counter_and += counter.first;
+        counter_xor += counter.second;
       }
     } );
 
@@ -164,91 +184,6 @@ private:
 private:
   Ntk const& ntk;
 };
-
-/* template<typename Ntk, typename TT>
-class simulator
-{
-public:
-  using node = typename Ntk::node;
-  using signal = typename Ntk::signal;
-  using truthtable_t = TT;
-
-  explicit simulator( Ntk const& ntk, uint32_t num_divisors, uint32_t max_pis )
-      : ntk( ntk ), num_divisors( num_divisors ), tts( num_divisors + 1 ), node_to_index( ntk.size(), 0u ), phase( ntk.size(), false )
-  {
-    auto tt = kitty::create<truthtable_t>( max_pis );
-    tts[0] = tt;
-
-    for ( auto i = 0; i < tt.num_vars(); ++i )
-    {
-      kitty::create_nth_var( tt, i );
-      tts[i + 1] = tt;
-    }
-  }
-
-  void resize()
-  {
-    if ( ntk.size() > node_to_index.size() )
-      node_to_index.resize( ntk.size(), 0u );
-    if ( ntk.size() > phase.size() )
-      phase.resize( ntk.size(), false );
-  }
-
-  void assign( node const& n, uint32_t index )
-  {
-    assert( n < node_to_index.size() );
-    assert( index < num_divisors + 1 );
-    node_to_index[n] = index;
-  }
-
-  truthtable_t get_tt( signal const& s ) const
-  {
-    auto const tt = tts.at( node_to_index.at( ntk.get_node( s ) ) );
-    return ntk.is_complemented( s ) ? ~tt : tt;
-  }
-
-  void set_tt( uint32_t index, truthtable_t const& tt )
-  {
-    tts[index] = tt;
-  }
-
-  void normalize( std::vector<node> const& nodes )
-  {
-    for ( const auto& n : nodes )
-    {
-      assert( n < phase.size() );
-      assert( n < node_to_index.size() );
-
-      if ( n == 0 )
-        return;
-
-      auto& tt = tts[node_to_index.at( n )];
-      if ( kitty::get_bit( tt, 0 ) )
-      {
-        tt = ~tt;
-        phase[n] = true;
-      }
-      else
-      {
-        phase[n] = false;
-      }
-    }
-  }
-
-  bool get_phase( node const& n ) const
-  {
-    assert( n < phase.size() );
-    return phase.at( n );
-  }
-
-private:
-  Ntk const& ntk;
-  uint32_t num_divisors;
-
-  std::vector<truthtable_t> tts;
-  std::vector<uint32_t> node_to_index;
-  std::vector<bool> phase;
-}; /* simulator */
 
 struct xag_resub_stats
 {
@@ -319,7 +254,6 @@ public:
 
   std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_and_mffc, uint32_t num_xor_mffc, uint32_t& last_gain )
   {
-    std::cout << " divisors = " << divs.size() << std::endl; 
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
       return resub_const( root, required );
@@ -342,52 +276,60 @@ public:
       return g; /* accepted resub */
     }
 
-    /* if ( max_inserts == 0 || num_mffc == 1 )  perche per me chissne perche tanto aggiungo solamente XOR
-      return std::nullopt; */
-
-    /* consider equal nodes */
-    g = call_with_stopwatch( st.time_resub1, [&]() {
-      return resub_div1( root, required );
-    } );
-    std::cout << "finito resub 1\n";
-    if ( g )
+    if ( num_and_mffc == 0 )
     {
-      ++st.num_div1_accepts;
-      last_gain = num_and_mffc;
-      "accept resub 1\n";
-      return g; /* accepted resub */
+       if ( max_inserts == 0 || num_xor_mffc == 1 )
+        return std::nullopt;
+
+      g = call_with_stopwatch( st.time_resub1, [&]() {
+        return resub_div1( root, required );
+      } );
+      if ( g )
+      {
+        ++st.num_div1_accepts;
+        last_gain = 0;
+        return g; /* accepted resub */
+      }
+
+      if ( max_inserts == 1 || num_xor_mffc == 2 )
+        return std::nullopt;
+
+      /* consider two nodes */
+      g = call_with_stopwatch( st.time_resub2, [&]() { return resub_div2( root, required ); } );
+      if ( g )
+      {
+        ++st.num_div2_accepts;
+        last_gain = 0; 
+        return g; /* accepted resub */
+      }
     }
-
-    //if ( max_inserts == 1 || num_mffc == 2 )
-    //return std::nullopt;
-
-    /* consider two nodes */
-    //g = call_with_stopwatch( st.time_resub2, [&]() { return resub_div2( root, required ); } );
-    /* if ( g )
+    else
     {
-      ++st.num_div2_accepts;
-      last_gain = num_and_mffc; // - 2;
-      return g;                 /* accepted resub 
-    }*/
-
-    //if ( max_inserts == 2 || num_mffc == 3 )
-    //return std::nullopt;
-
-    /* consider three nodes 
-    g = call_with_stopwatch( st.time_resub3, [&]() { return resub_div3( root, required ); } );
-    if ( g )
-    {
-      ++st.num_div3_accepts;
-      last_gain = num_and_mffc; // - 3;
-      return g;                 /* accepted resub 
-  }*/
-    std::cout << "non fa nulla\n"; 
+      
+      g = call_with_stopwatch( st.time_resub1, [&]() {
+        return resub_div1( root, required );
+      } );
+      if ( g )
+      {
+        ++st.num_div1_accepts;
+        last_gain = num_and_mffc;
+        return g; /* accepted resub */
+      }
+ 
+      /* consider two nodes */
+      g = call_with_stopwatch( st.time_resub2, [&]() { return resub_div2( root, required ); } );
+      if ( g )
+      {
+        ++st.num_div2_accepts;
+        last_gain = num_and_mffc; 
+        return g;                 /*  accepted resub */
+      }
+    }  
     return std::nullopt;
   }
 
   std::optional<signal> resub_const( node const& root, uint32_t required ) const
   {
-    std::cout << "resub const \n";
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
     if ( tt == sim.get_tt( ntk.get_constant( false ) ) )
@@ -399,7 +341,6 @@ public:
 
   std::optional<signal> resub_div0( node const& root, uint32_t required ) const
   {
-    std::cout << "resub div0 \n";
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
     for ( auto i = 0u; i < num_divs; ++i )
@@ -414,48 +355,29 @@ public:
 
   std::optional<signal> resub_div1( node const& root, uint32_t required )
   {
-    std::cout << "::::::::: \n";
-    std::cout << ntk.node_to_index(root) << std::endl;
-    std::cout << "resub div1 \n";
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
 
     /* check for divisors  */
-    for ( auto i = 0u; i < divs.size(); ++i )
-   // ntk.foreach_node( [&]( auto n, auto i )
+    for ( auto i = 0u; i < divs.size() - 1; ++i )
     {
-      std::cout << i << std::endl; 
       auto const& s0 = divs.at( i );
 
-     for ( auto j = i+1; j < divs.size(); ++j )
+      for ( auto j = i + 1; j < divs.size() - 1; ++j )
       {
-        std::cout << j << std::endl; 
         auto const& s1 = divs.at( j );
-
         auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
         auto const& tt_s1 = sim.get_tt( ntk.make_signal( s1 ) );
-        std::cout << to_binary(tt_s0) << std::endl; 
-        std::cout << to_binary(tt_s1) << std::endl;
-        std::cout << to_binary(tt_s0^tt_s1 ) << std::endl; 
-        std::cout << to_binary(tt) << std::endl;
 
         if ( ( tt_s0 ^ tt_s1 ) == tt )
-        { 
-          std::cout << "PERFETTO 1\n";
-          auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 ) : ntk.make_signal( s0 );
-          std::cout << "PERFETTO 2\n";
-          auto const r = sim.get_phase( s1 ) ? !ntk.make_signal( s1 ) : ntk.make_signal( s1 );
-          std::cout << "PERFETTO 3\n";
-          std::cout << "phase root: " << sim.get_phase( root ) << std::endl; 
-          auto h = ntk.create_xor( l, r );
-          std::cout << "PERFETTO\n";
-          auto g = sim.get_phase( root ) ? !h : ntk.create_xor( l, r );
-          
-          return g;
-        }
-        else if ( ( tt_s0 ^ tt_s1 ) == kitty::unary_not( tt ))
         {
-          auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 )  : ntk.make_signal( s0 ) ;
+          auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 ) : ntk.make_signal( s0 );
+          auto const r = sim.get_phase( s1 ) ? !ntk.make_signal( s1 ) : ntk.make_signal( s1 );
+          return sim.get_phase( root ) ? !ntk.create_xor( l, r ) : ntk.create_xor( l, r );
+        }
+        else if ( ( tt_s0 ^ tt_s1 ) == kitty::unary_not( tt ) )
+        {
+          auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 ) : ntk.make_signal( s0 );
           auto const r = sim.get_phase( s1 ) ? !ntk.make_signal( s1 ) : ntk.make_signal( s1 );
           return sim.get_phase( root ) ? ntk.create_xor( l, r ) : !ntk.create_xor( l, r );
         }
@@ -464,23 +386,21 @@ public:
     return std::nullopt;
   }
 
-  /* std::optional<signal> resub_div2( node const& root, uint32_t required )
+  std::optional<signal> resub_div2( node const& root, uint32_t required )
   {
-    std::cout << "resub div2 \n";
     (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
-    for ( auto i = 0u; i < divs.size(); ++i )
+    for ( auto i = 0u; i < divs.size() - 1; ++i )
     {
       auto const s0 = divs.at( i );
 
-      for ( auto j = i + 1; j < divs.size(); ++j )
+      for ( auto j = i + 1; j < divs.size() - 1; ++j )
       {
         auto const s1 = divs.at( j );
 
-        for ( auto k = j + 1; k < divs.size(); ++k )
+        for ( auto k = j + 1; k < divs.size() - 1; ++k )
         {
-          std::cout << " k = "<< k <<"\n";
           auto const s2 = divs.at( k );
           auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
           auto const& tt_s1 = sim.get_tt( ntk.make_signal( s1 ) );
@@ -488,21 +408,21 @@ public:
 
           if ( ( tt_s0 ^ tt_s1 ^ tt_s2 ) == tt )
           {
-            auto const max_level = std::max( {ntk.level( s0  ),
-                                              ntk.level( s1  ),
-                                              ntk.level(  s2  )} );
+            auto const max_level = std::max( {ntk.level( s0 ),
+                                              ntk.level( s1 ),
+                                              ntk.level( s2 )} );
             assert( max_level <= required - 1 );
 
             signal max = ntk.make_signal( s0 );
             signal min0 = ntk.make_signal( s1 );
             signal min1 = ntk.make_signal( s2 );
-            if ( ntk.level( s1  ) == max_level )
+            if ( ntk.level( s1 ) == max_level )
             {
               max = ntk.make_signal( s1 );
               min0 = ntk.make_signal( s0 );
               min1 = ntk.make_signal( s2 );
             }
-            else if ( ntk.level(  s2  ) == max_level )
+            else if ( ntk.level( s2 ) == max_level )
             {
               max = ntk.make_signal( s2 );
               min0 = ntk.make_signal( s0 );
@@ -515,23 +435,23 @@ public:
 
             return sim.get_phase( root ) ? !ntk.create_xor( a, ntk.create_xor( b, c ) ) : ntk.create_xor( a, ntk.create_xor( b, c ) );
           }
-          else if ( ( tt_s0 ^ tt_s1 ^ tt_s2 ) == kitty::unary_not(tt) )
+          else if ( ( tt_s0 ^ tt_s1 ^ tt_s2 ) == kitty::unary_not( tt ) )
           {
-            auto const max_level = std::max( {ntk.level( s0  ),
-                                              ntk.level( s1  ),
-                                              ntk.level(  s2  )} );
+            auto const max_level = std::max( {ntk.level( s0 ),
+                                              ntk.level( s1 ),
+                                              ntk.level( s2 )} );
             assert( max_level <= required - 1 );
 
             signal max = ntk.make_signal( s0 );
             signal min0 = ntk.make_signal( s1 );
             signal min1 = ntk.make_signal( s2 );
-            if ( ntk.level( s1  ) == max_level )
+            if ( ntk.level( s1 ) == max_level )
             {
               max = ntk.make_signal( s1 );
               min0 = ntk.make_signal( s0 );
               min1 = ntk.make_signal( s2 );
             }
-            else if ( ntk.level(  s2  ) == max_level )
+            else if ( ntk.level( s2 ) == max_level )
             {
               max = ntk.make_signal( s2 );
               min0 = ntk.make_signal( s0 );
@@ -548,74 +468,7 @@ public:
       }
     }
     return std::nullopt;
-  }*/
-
-  /* per ora questo aspetterei a farlo : vediamo come va 
-  std::optional<signal> resub_div3( node const& root, uint32_t required )
-  {
-    (void)required;
-
-    auto const s = ntk.make_signal( root );
-    auto const& tt = sim.get_tt( s );
-
-    for ( auto i = 0u; i < bdivs.positive_divisors0.size(); ++i )
-    {
-      auto const s0 = bdivs.positive_divisors0.at( i );
-      auto const s1 = bdivs.positive_divisors1.at( i );
-
-      for ( auto j = i + 1; j < bdivs.positive_divisors0.size(); ++j )
-      {
-        auto const s2 = bdivs.positive_divisors0.at( j );
-        auto const s3 = bdivs.positive_divisors1.at( j );
-
-        auto const& tt_s0 = sim.get_tt( s0 );
-        auto const& tt_s1 = sim.get_tt( s1 );
-        auto const& tt_s2 = sim.get_tt( s2 );
-        auto const& tt_s3 = sim.get_tt( s3 );
-
-        if ( ( ( tt_s0 | tt_s1 ) & ( tt_s2 | tt_s3 ) ) == tt )
-        {
-          auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
-          auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
-          auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
-          auto const d = sim.get_phase( ntk.get_node( s3 ) ) ? !s3 : s3;
-
-          ++st.num_div3_and_2or_accepts;
-          return sim.get_phase( root ) ? !ntk.create_and( ntk.create_or( a, b ), ntk.create_or( c, d ) ) : ntk.create_and( ntk.create_or( a, b ), ntk.create_or( c, d ) );
-        }
-      }
-    }
-
-    for ( auto i = 0u; i < bdivs.negative_divisors0.size(); ++i )
-    {
-      auto const s0 = bdivs.negative_divisors0.at( i );
-      auto const s1 = bdivs.negative_divisors1.at( i );
-
-      for ( auto j = i + 1; j < bdivs.negative_divisors0.size(); ++j )
-      {
-        auto const s2 = bdivs.negative_divisors0.at( j );
-        auto const s3 = bdivs.negative_divisors1.at( j );
-
-        auto const& tt_s0 = sim.get_tt( s0 );
-        auto const& tt_s1 = sim.get_tt( s1 );
-        auto const& tt_s2 = sim.get_tt( s2 );
-        auto const& tt_s3 = sim.get_tt( s3 );
-
-        if ( ( ( tt_s0 & tt_s1 ) | ( tt_s2 & tt_s3 ) ) == tt )
-        {
-          auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
-          auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
-          auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
-          auto const d = sim.get_phase( ntk.get_node( s3 ) ) ? !s3 : s3;
-
-          ++st.num_div3_or_2and_accepts;
-          return sim.get_phase( root ) ? !ntk.create_or( ntk.create_and( a, b ), ntk.create_and( c, d ) ) : ntk.create_or( ntk.create_and( a, b ), ntk.create_and( c, d ) );
-        }
-      }
-    }
-
-    return std::nullopt;
-  }*/
+  }
 
 private:
   Ntk& ntk;
@@ -641,16 +494,23 @@ public:
       ntk.resize_levels();
       ntk.resize_fanout();
       update_node_level( n );
+      ntk.update_fanout();
+      //update_node_fanout( n );
     };
 
     auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
       (void)old_children;
+      ntk.resize_levels();
+      ntk.resize_fanout();
       update_node_level( n );
+      ntk.update_fanout();
+      //update_node_fanout( n );
     };
 
     auto const update_level_of_deleted_node = [&]( const auto& n ) {
-      /* update fanout */
       ntk.set_level( n, -1 );
+      ntk.update_fanout();
+      ntk.update_levels();
     };
 
     ntk._events->on_add.emplace_back( update_level_of_new_node );
@@ -671,7 +531,7 @@ public:
     progress_bar pbar{ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
 
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
-      std::cout << " for each gate \n" << std::endl; 
+      
       if ( i >= size )
         return false; /* terminate */
 
@@ -685,13 +545,11 @@ public:
         return true; /* next */
 
       /* compute a reconvergence-driven cut */
-      std::cout << "reconv cut\n";
       auto const leaves = call_with_stopwatch( st.time_cuts, [&]() {
         return reconv_driven_cut( mgr, ntk, n );
       } );
 
       /* evaluate this cut */
-      std::cout << "evaluate\n";
       auto const g = call_with_stopwatch( st.time_eval, [&]() {
         return evaluate( n, leaves, ps.max_inserts );
       } );
@@ -699,14 +557,11 @@ public:
       {
         return true; /* next */
       }
-      
-      std::cout << " finito evaluate\n";
       /* update progress bar */
       candidates++;
       st.estimated_gain += last_gain;
 
       /* update network */
-      std::cout << "sub\n";
       call_with_stopwatch( st.time_substitute, [&]() {
         ntk.substitute_node( n, *g );
       } );
@@ -742,6 +597,18 @@ private:
           update_node_level( p, false );
         } );
       }
+    }
+  }
+
+  void update_node_fanout( node const& n )
+  {
+    auto curr_fanout = ntk.fanout( n );
+    std::vector<node> new_fanout;
+    ntk.foreach_fanout( n, [&]( const auto& p ) { new_fanout.push_back( p ); } );
+
+    if ( curr_fanout != new_fanout )
+    {
+      ntk.set_fanout( n, new_fanout );
     }
   }
 
@@ -812,7 +679,6 @@ private:
 
     // TODO here I have all the nodes, thus I can create the map.
     ResubFn resub_fn( ntk, sim, divs, num_divs, resub_st );
-    std::cout << "resub\n";
     return resub_fn( root, required, ps.max_inserts, num_mffc.first, num_mffc.second, last_gain );
   }
 
@@ -961,7 +827,6 @@ private:
 template<class Ntk>
 void resubstitution_minmc( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
-  std::cout << " start minmn \n";
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
@@ -992,7 +857,6 @@ void resubstitution_minmc( Ntk& ntk, resubstitution_params const& ps = {}, resub
     using resubstitution_functor_t = detail::xag_resub_functor<resub_view_t, simulator_t>;
     typename resubstitution_functor_t::stats resub_st;
     detail::resubstitution_impl_xag<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
-    std::cout << "run \n";
     p.run();
     if ( ps.verbose )
     {
