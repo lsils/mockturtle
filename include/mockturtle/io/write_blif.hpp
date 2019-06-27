@@ -139,7 +139,7 @@ void write_blif( Ntk const& ntk, std::ostream& os )
   os << std::flush;
 }
 
-/*! \brief Writes network in BENCH format into a file
+/*! \brief Writes network in BLIF format into a file
  *
  * **Required network functions:**
  * - `fanin_size`
