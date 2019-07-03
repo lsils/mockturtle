@@ -231,8 +231,6 @@ struct xag_resub_stats
                               num_div1_accepts, to_seconds( time_resub1 ) );
     std::cout << fmt::format( "[i]            2-resub {:6d}                                   ({:>5.2f} secs)\n",
                               num_div2_accepts, to_seconds( time_resub2 ) );
-    std::cout << fmt::format( "[i]            3-resub {:6d}                                   ({:>5.2f} secs)\n",
-                              num_div3_accepts, to_seconds( time_resub3 ) );
     std::cout << fmt::format( "[i]            total   {:6d}\n",
                               ( num_const_accepts + num_div0_accepts + num_div1_accepts + num_div12_accepts + num_div2_accepts + num_div3_accepts ) );
   }
@@ -247,8 +245,8 @@ public:
   using stats = xag_resub_stats;
 
 public:
-  explicit xag_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
-      : ntk( ntk ), sim( sim ), divs( divs ), num_divs( num_divs ), st( st )
+  explicit xag_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st, std::unordered_map<std::string, node> map_tt_divs )
+      : ntk( ntk ), sim( sim ), divs( divs ), num_divs( num_divs ), st( st ), map_tt_divs( map_tt_divs )
   {
   }
 
@@ -278,7 +276,7 @@ public:
 
     if ( num_and_mffc == 0 )
     {
-       if ( max_inserts == 0 || num_xor_mffc == 1 )
+      if ( max_inserts == 0 || num_xor_mffc == 1 )
         return std::nullopt;
 
       g = call_with_stopwatch( st.time_resub1, [&]() {
@@ -299,13 +297,13 @@ public:
       if ( g )
       {
         ++st.num_div2_accepts;
-        last_gain = 0; 
+        last_gain = 0;
         return g; /* accepted resub */
       }
     }
     else
     {
-      
+
       g = call_with_stopwatch( st.time_resub1, [&]() {
         return resub_div1( root, required );
       } );
@@ -315,16 +313,16 @@ public:
         last_gain = num_and_mffc;
         return g; /* accepted resub */
       }
- 
+
       /* consider two nodes */
       g = call_with_stopwatch( st.time_resub2, [&]() { return resub_div2( root, required ); } );
       if ( g )
       {
         ++st.num_div2_accepts;
-        last_gain = num_and_mffc; 
-        return g;                 /*  accepted resub */
+        last_gain = num_and_mffc;
+        return g; /*  accepted resub */
       }
-    }  
+    }
     return std::nullopt;
   }
 
@@ -359,7 +357,7 @@ public:
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
 
     /* check for divisors  */
-    for ( auto i = 0u; i < divs.size() - 1; ++i )
+    /* for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const& s0 = divs.at( i );
 
@@ -382,6 +380,37 @@ public:
           return sim.get_phase( root ) ? ntk.create_xor( l, r ) : !ntk.create_xor( l, r );
         }
       }
+    }*/
+    for ( auto i = 0u; i < num_divs - 1; ++i )
+    {
+      auto const& s0 = divs.at( i );
+      auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
+      std::unordered_map<std::string, node>::iterator it = map_tt_divs.find( kitty::to_hex( tt_s0 ^ tt ) );
+
+      if ( it == map_tt_divs.end() )
+      {
+        continue;
+      }
+      else
+      {
+        auto const& s1 = it->second;
+        auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 ) : ntk.make_signal( s0 );
+        auto const r = sim.get_phase( s1 ) ? !ntk.make_signal( s1 ) : ntk.make_signal( s1 );
+        return sim.get_phase( root ) ? !ntk.create_xor( l, r ) : ntk.create_xor( l, r );
+      }
+
+      it = map_tt_divs.find( kitty::to_hex( tt_s0 ^ kitty::unary_not( tt ) ) );
+      if ( it == map_tt_divs.end() )
+      {
+        continue;
+      }
+      else
+      {
+        auto const& s1 = it->second;
+        auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 ) : ntk.make_signal( s0 );
+        auto const r = sim.get_phase( s1 ) ? !ntk.make_signal( s1 ) : ntk.make_signal( s1 );
+        return sim.get_phase( root ) ? ntk.create_xor( l, r ) : !ntk.create_xor( l, r );
+      }
     }
     return std::nullopt;
   }
@@ -391,15 +420,15 @@ public:
     (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
-    for ( auto i = 0u; i < divs.size() - 1; ++i )
+    /* for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const s0 = divs.at( i );
 
-      for ( auto j = i + 1; j < divs.size() - 1; ++j )
+      for ( auto j = i + 1; j < num_divs; ++j )
       {
         auto const s1 = divs.at( j );
 
-        for ( auto k = j + 1; k < divs.size() - 1; ++k )
+        for ( auto k = j + 1; k < num_divs; ++k )
         {
           auto const s2 = divs.at( k );
           auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
@@ -466,6 +495,90 @@ public:
           }
         }
       }
+    }*/
+    for ( auto i = 0u; i < num_divs - 1; ++i )
+    {
+      auto const s0 = divs.at( i );
+
+      for ( auto j = i + 1; j < num_divs - 1; ++j )
+      {
+        auto const s1 = divs.at( j );
+        auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
+        auto const& tt_s1 = sim.get_tt( ntk.make_signal( s1 ) );
+        std::unordered_map<std::string, node>::iterator it = map_tt_divs.find( kitty::to_hex( tt_s0 ^ tt_s1 ^ tt ) );
+
+        if ( it == map_tt_divs.end() )
+        {
+          continue;
+        }
+        else
+        {
+          auto const& s2 = it->second;
+          auto const max_level = std::max( {ntk.level( s0 ),
+                                            ntk.level( s1 ),
+                                            ntk.level( s2 )} );
+          assert( max_level <= required - 1 );
+
+          signal max = ntk.make_signal( s0 );
+          signal min0 = ntk.make_signal( s1 );
+          signal min1 = ntk.make_signal( s2 );
+          if ( ntk.level( s1 ) == max_level )
+          {
+            max = ntk.make_signal( s1 );
+            min0 = ntk.make_signal( s0 );
+            min1 = ntk.make_signal( s2 );
+          }
+          else if ( ntk.level( s2 ) == max_level )
+          {
+            max = ntk.make_signal( s2 );
+            min0 = ntk.make_signal( s0 );
+            min1 = ntk.make_signal( s1 );
+          }
+
+          auto const a = sim.get_phase( ntk.get_node( max ) ) ? !max : max;
+          auto const b = sim.get_phase( ntk.get_node( min0 ) ) ? !min0 : min0;
+          auto const c = sim.get_phase( ntk.get_node( min1 ) ) ? !min1 : min1;
+
+          return sim.get_phase( root ) ? !ntk.create_xor( a, ntk.create_xor( b, c ) ) : ntk.create_xor( a, ntk.create_xor( b, c ) );
+        }
+
+        it = map_tt_divs.find( kitty::to_hex( tt_s0 ^ tt_s1 ^ kitty::unary_not( tt ) ) );
+
+        if ( it == map_tt_divs.end() )
+        {
+          continue;
+        }
+        else
+        {
+          auto const& s2 = it->second;
+          auto const max_level = std::max( {ntk.level( s0 ),
+                                            ntk.level( s1 ),
+                                            ntk.level( s2 )} );
+          assert( max_level <= required - 1 );
+
+          signal max = ntk.make_signal( s0 );
+          signal min0 = ntk.make_signal( s1 );
+          signal min1 = ntk.make_signal( s2 );
+          if ( ntk.level( s1 ) == max_level )
+          {
+            max = ntk.make_signal( s1 );
+            min0 = ntk.make_signal( s0 );
+            min1 = ntk.make_signal( s2 );
+          }
+          else if ( ntk.level( s2 ) == max_level )
+          {
+            max = ntk.make_signal( s2 );
+            min0 = ntk.make_signal( s0 );
+            min1 = ntk.make_signal( s1 );
+          }
+
+          auto const a = sim.get_phase( ntk.get_node( max ) ) ? !max : max;
+          auto const b = sim.get_phase( ntk.get_node( min0 ) ) ? !min0 : min0;
+          auto const c = sim.get_phase( ntk.get_node( min1 ) ) ? !min1 : min1;
+
+          return sim.get_phase( root ) ? ntk.create_xor( a, ntk.create_xor( b, c ) ) : !ntk.create_xor( a, ntk.create_xor( b, c ) );
+        }
+      }
     }
     return std::nullopt;
   }
@@ -476,7 +589,8 @@ private:
   std::vector<node> const& divs;
   uint32_t const num_divs;
   stats& st;
-}; /* xag_resub_functor */
+  std::unordered_map<std::string, node> map_tt_divs;
+}; // namespace detail
 
 template<class Ntk, class Simulator, class ResubFn>
 class resubstitution_impl_xag
@@ -531,7 +645,6 @@ public:
     progress_bar pbar{ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
 
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
-      
       if ( i >= size )
         return false; /* terminate */
 
@@ -677,8 +790,16 @@ private:
     /* simulate the nodes */
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); } );
 
-    // TODO here I have all the nodes, thus I can create the map.
-    ResubFn resub_fn( ntk, sim, divs, num_divs, resub_st );
+    /* save tt of all divisors to make resub faster */
+    std::unordered_map<std::string, node> map_tt_divs;
+    for ( auto i = 0u; i < num_divs - 1; i++ )
+    {
+      auto const s0 = divs.at( i );
+      auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
+      map_tt_divs.insert( {kitty::to_hex( tt_s0 ), s0} );
+    }
+
+    ResubFn resub_fn( ntk, sim, divs, num_divs, resub_st, map_tt_divs );
     return resub_fn( root, required, ps.max_inserts, num_mffc.first, num_mffc.second, last_gain );
   }
 
@@ -822,7 +943,7 @@ private:
   uint32_t num_divs{0};
 };
 
-} /* namespace detail */
+} // namespace detail
 
 template<class Ntk>
 void resubstitution_minmc( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
@@ -885,4 +1006,4 @@ void resubstitution_minmc( Ntk& ntk, resubstitution_params const& ps = {}, resub
   }
 }
 
-} /* namespace mockturtle */
+} // namespace mockturtle
