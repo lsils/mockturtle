@@ -252,30 +252,31 @@ inline std::vector<signal<Ntk>> sideways_sum_adder( Ntk& ntk, std::vector<signal
 
   int out_n = 1; // floor(log2(n) + 1)
   int tmpn = n;
-  while( tmpn >>= 1 ) out_n++;
+  while ( tmpn >>= 1 )
+    out_n++;
 
   std::list<signal<Ntk>> sum_bits, carry_bits;
 
-  auto *first_level  = &sum_bits;
-  auto *second_level = &carry_bits;
+  auto* first_level = &sum_bits;
+  auto* second_level = &carry_bits;
 
   auto res = constant_word( ntk, 0, out_n );
   int output_ind = 0;
 
-  for(int i = 0; i < n; i++)
-    first_level->push_back(a[i]);
+  for ( int i = 0; i < n; i++ )
+    first_level->push_back( a[i] );
 
-  while(1)
+  while ( 1 )
   {
-    while(!first_level->empty())
+    while ( !first_level->empty() )
     {
-      if(first_level->size() == 1)
+      if ( first_level->size() == 1 )
       {
         auto in_sig = first_level->front();
         first_level->pop_front();
         res[output_ind++] = in_sig;
       }
-      else if(first_level->size() == 2)
+      else if ( first_level->size() == 2 )
       {
         auto in_sig1 = first_level->front();
         first_level->pop_front();
@@ -284,8 +285,8 @@ inline std::vector<signal<Ntk>> sideways_sum_adder( Ntk& ntk, std::vector<signal
         signal<Ntk> tmp_sum;
         signal<Ntk> tmp_carry;
         std::tie( tmp_sum, tmp_carry ) = half_adder( ntk, in_sig1, in_sig2 );
-        first_level->push_back(tmp_sum);
-        second_level->push_back(tmp_carry);
+        first_level->push_back( tmp_sum );
+        second_level->push_back( tmp_carry );
       }
       else // first_level->size() >=3
       {
@@ -298,12 +299,13 @@ inline std::vector<signal<Ntk>> sideways_sum_adder( Ntk& ntk, std::vector<signal
         signal<Ntk> tmp_sum;
         signal<Ntk> tmp_carry;
         std::tie( tmp_sum, tmp_carry ) = full_adder( ntk, in_sig1, in_sig2, in_sig3 );
-        first_level->push_back(tmp_sum);
-        second_level->push_back(tmp_carry);
+        first_level->push_back( tmp_sum );
+        second_level->push_back( tmp_carry );
       }
     }
 
-    if(second_level->empty()) break;
+    if ( second_level->empty() )
+      break;
 
     // swapping buffers
     auto tmp = first_level;
