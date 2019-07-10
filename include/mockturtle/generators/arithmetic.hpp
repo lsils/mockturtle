@@ -247,7 +247,7 @@ inline std::pair<signal<Ntk>, signal<Ntk>> carry_lookahead_adder_inplace_rec( Nt
                                                                               typename std::vector<signal<Ntk>>::iterator proBegin,
                                                                               typename std::vector<signal<Ntk>>::iterator carBegin )
 {
-  auto const term_case = [&]( signal<Ntk> const& gen0, signal<Ntk> const& gen1, signal<Ntk> const& pro0, signal<Ntk> const& pro1, signal<Ntk> const& car ) -> std::array<signal<Ntk>, 3> {
+  auto const term_case = [&]( signal<Ntk> const& gen0, signal<Ntk> const& gen1, signal<Ntk> const& pro0, signal<Ntk> const& pro1, signal<Ntk> const& car ) -> std::tuple<signal<Ntk>, signal<Ntk>, signal<Ntk>> {
     auto tmp = ntk.create_and( gen0, pro1 );
     auto rPro = ntk.create_and( pro0, pro1 );
     auto rGen = ntk.create_or( ntk.create_or( gen1, tmp ), ntk.create_and( rPro, car ) );
@@ -260,23 +260,20 @@ inline std::pair<signal<Ntk>, signal<Ntk>> carry_lookahead_adder_inplace_rec( Nt
 
   if ( m == 2 )
   {
-    signal<Ntk> gen, pro, car;
-    std::tie( gen, pro, car ) = term_case( *genBegin, *( genBegin + 1 ), *proBegin, *( proBegin + 1 ), *carBegin );
+    const auto [gen, pro, car] = term_case( *genBegin, *( genBegin + 1 ), *proBegin, *( proBegin + 1 ), *carBegin );
     *( carBegin + 1 ) = car;
     return {gen, pro};
   }
   else
   {
-    signal<Ntk> gen0, gen1, pro0, pro1, car;
-
     m >>= 1;
-    std::tie( gen0, pro0 ) = carry_lookahead_adder_inplace_rec( ntk, genBegin, genBegin + m, proBegin, carBegin );
+    const auto [gen0, pro0] = carry_lookahead_adder_inplace_rec( ntk, genBegin, genBegin + m, proBegin, carBegin );
     *( carBegin + m ) = gen0;
-    std::tie( gen1, pro1 ) = carry_lookahead_adder_inplace_rec( ntk, genBegin + m, genEnd, proBegin + m, carBegin + m );
+    const auto [gen1, pro1] = carry_lookahead_adder_inplace_rec( ntk, genBegin + m, genEnd, proBegin + m, carBegin + m );
 
-    std::tie( gen0, pro0, car ) = term_case( gen0, gen1, pro0, pro1, *carBegin );
+    const auto [gen, pro, car] = term_case( gen0, gen1, pro0, pro1, *carBegin );
     *( carBegin + m ) = car;
-    return {gen0, pro0};
+    return {gen, pro};
   }
 }
 
