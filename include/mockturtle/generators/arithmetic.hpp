@@ -235,6 +235,8 @@ inline std::vector<signal<Ntk>> carry_ripple_multiplier( Ntk& ntk, std::vector<s
   return res;
 }
 
+// CLA implementation based on Alan Mishchenko's implementation in
+// https://github.com/berkeley-abc/abc/blob/master/src/base/wlc/wlcBlast.c
 namespace detail
 {
 
@@ -298,6 +300,17 @@ inline void carry_lookahead_adder_inplace_pow2( Ntk& ntk, std::vector<signal<Ntk
 
 }
 
+/*! \brief Creates carry lookahead adder structure.
+ *
+ * Creates a carry lookahead structure composed of full adders.  The vectors `a`
+ * and `b` must have the same size.  The resulting sum bits are eventually
+ * stored in `a` and the carry bit will be overriden to store the output carry
+ * bit.
+ *
+ * \param a First input operand, will also have the output after the call
+ * \param b Second input operand
+ * \param carry Carry bit, will also have the output carry after the call
+ */
 template<typename Ntk>
 inline void carry_lookahead_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, signal<Ntk>& carry )
 {
