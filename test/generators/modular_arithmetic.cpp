@@ -11,6 +11,7 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xag.hpp>
 
 using namespace mockturtle;
 
@@ -64,6 +65,12 @@ TEST_CASE( "build an 8-bit modular adder with different networks", "[modular_ari
   simulate_modular_adder<klut_network>( 0, 255 );
   simulate_modular_adder<klut_network>( 200, 200 );
   simulate_modular_adder<klut_network>( 120, 250 );
+
+  simulate_modular_adder<xag_network>( 37, 73 );
+  simulate_modular_adder<xag_network>( 0, 255 );
+  simulate_modular_adder<xag_network>( 0, 255 );
+  simulate_modular_adder<xag_network>( 200, 200 );
+  simulate_modular_adder<xag_network>( 120, 250 );
 }
 
 template<typename Ntk>
@@ -157,6 +164,12 @@ TEST_CASE( "build an 8-bit modular subtractor with different networks", "[modula
   simulate_modular_subtractor<klut_network>( 0, 255 );
   simulate_modular_subtractor<klut_network>( 200, 200 );
   simulate_modular_subtractor<klut_network>( 120, 250 );
+
+  simulate_modular_subtractor<xag_network>( 37, 73 );
+  simulate_modular_subtractor<xag_network>( 0, 255 );
+  simulate_modular_subtractor<xag_network>( 0, 255 );
+  simulate_modular_subtractor<xag_network>( 200, 200 );
+  simulate_modular_subtractor<xag_network>( 120, 250 );
 }
 
 template<typename Ntk>
