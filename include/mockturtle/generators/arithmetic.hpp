@@ -235,6 +235,86 @@ inline std::vector<signal<Ntk>> carry_ripple_multiplier( Ntk& ntk, std::vector<s
   return res;
 }
 
+namespace detail
+{
+
+template<typename Ntk>
+inline std::pair<signal<Ntk>, signal<Ntk>> carry_lookahead_adder_inplace_rec( Ntk& ntk,
+                                                                              typename std::vector<signal<Ntk>>::iterator genBegin,
+                                                                              typename std::vector<signal<Ntk>>::iterator genEnd,
+                                                                              typename std::vector<signal<Ntk>>::iterator proBegin,
+                                                                              typename std::vector<signal<Ntk>>::iterator carBegin )
+{
+  auto const term_case = [&]( signal<Ntk> const& gen0, signal<Ntk> const& gen1, signal<Ntk> const& pro0, signal<Ntk> const& pro1, signal<Ntk> const& car ) -> std::array<signal<Ntk>, 3> {
+    auto tmp = ntk.create_and( gen0, pro1 );
+    auto rPro = ntk.create_and( pro0, pro1 );
+    auto rGen = ntk.create_or( ntk.create_or( gen1, tmp ), ntk.create_and( rPro, car ) );
+    auto rCar = ntk.create_or( gen0, ntk.create_and( pro0, car ) );
+
+    return {rGen, rPro, rCar};
+  };
+
+  auto m = std::distance( genBegin, genEnd );
+
+  if ( m == 2 )
+  {
+    signal<Ntk> gen, pro, car;
+    std::tie( gen, pro, car ) = term_case( *genBegin, *( genBegin + 1 ), *proBegin, *( proBegin + 1 ), *carBegin );
+    *( carBegin + 1 ) = car;
+    return {gen, pro};
+  }
+  else
+  {
+    signal<Ntk> gen0, gen1, pro0, pro1, car;
+
+    m >>= 1;
+    std::tie( gen0, pro0 ) = carry_lookahead_adder_inplace_rec( ntk, genBegin, genBegin + m, proBegin, carBegin );
+    *( carBegin + m ) = gen0;
+    std::tie( gen1, pro1 ) = carry_lookahead_adder_inplace_rec( ntk, genBegin + m, genEnd, proBegin + m, carBegin + m );
+
+    std::tie( gen0, pro0, car ) = term_case( gen0, gen1, pro0, pro1, *carBegin );
+    *( carBegin + m ) = car;
+    return {gen0, pro0};
+  }
+}
+
+template<typename Ntk>
+inline void carry_lookahead_adder_inplace_pow2( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, signal<Ntk>& carry )
+{
+  if ( a.size() == 1u )
+  {
+    a[0] = full_adder( ntk, a[0], b[0], carry ).first;
+    return;
+  }
+
+  std::vector<signal<Ntk>> gen( a.size() ), pro( a.size() ), car( a.size() + 1 );
+  car[0] = carry;
+  std::transform( a.begin(), a.end(), b.begin(), gen.begin(), [&]( auto const& f, auto const& g ) { return ntk.create_and( f, g ); } );
+  std::transform( a.begin(), a.end(), b.begin(), pro.begin(), [&]( auto const& f, auto const& g ) { return ntk.create_xor( f, g ); } );
+
+  carry_lookahead_adder_inplace_rec( ntk, gen.begin(), gen.end(), pro.begin(), car.begin() );
+  std::transform( pro.begin(), pro.end(), car.begin(), a.begin(), [&]( auto const& f, auto const& g ) { return ntk.create_xor( f, g ); } );
+}
+
+}
+
+template<typename Ntk>
+inline void carry_lookahead_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, signal<Ntk>& carry )
+{
+  /* extend bitsize to next power of two */
+  const auto log2 = static_cast<uint32_t>( std::ceil( std::log2( static_cast<double>( a.size() + 1 ) ) ) );
+
+  std::vector<signal<Ntk>> a_ext( a.begin(), a.end() );
+  a_ext.resize( 1 << log2, ntk.get_constant( false ) );
+  std::vector<signal<Ntk>> b_ext( b.begin(), b.end() );
+  b_ext.resize( 1 << log2, ntk.get_constant( false ) );
+
+  detail::carry_lookahead_adder_inplace_pow2( ntk, a_ext, b_ext, carry );
+
+  std::copy_n( a_ext.begin(), a.size(), a.begin() );
+  carry = a_ext[a.size()];
+}
+
 /*! \brief Creates a sideways sum adder using half and full adders
  *
  * The function creates the adder in `ntk` and returns output signals,
