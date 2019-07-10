@@ -40,6 +40,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 
 #include "../traits.hpp"
+#include "../networks/aig.hpp"
 #include "control.hpp"
 
 namespace mockturtle
@@ -52,7 +53,8 @@ namespace mockturtle
  *
  * By default creates a seven 2-input gate network composed of AND, NOR, and OR
  * gates.  If network has `create_node` function, creates two 3-input gate
- * network.
+ * network.  If the network has ternary `create_maj` and `create_xor3`
+ * functions, it will use them (except for AIGs).
  *
  * \param ntk Network
  * \param a First input operand
@@ -75,6 +77,13 @@ inline std::pair<signal<Ntk>, signal<Ntk>> full_adder( Ntk& ntk, const signal<Nt
     const auto sum = ntk.create_node( {a, b, c}, tt_xor );
     const auto carry = ntk.create_node( {a, b, c}, tt_maj );
 
+    return {sum, carry};
+  }
+  /* use MAJ and XOR3 if available by network, unless network is AIG */
+  else if constexpr ( !std::is_same_v<typename Ntk::base_type, aig_network> && has_create_maj_v<Ntk> && has_create_xor3_v<Ntk> )
+  {
+    const auto carry = ntk.create_maj( a, b, c);
+    const auto sum = ntk.create_xor3( a, b, c );
     return {sum, carry};
   }
   else
