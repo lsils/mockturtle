@@ -31,7 +31,7 @@ inline void test_ripple_carry_adder( uint32_t width, uint32_t expected_count, ui
 {
   Ntk ntk;
 
-  std::vector<signal<Ntk>> as( width ), bs( width );
+  std::vector<typename Ntk::signal> as( width ), bs( width );
   std::generate( as.begin(), as.end(), [&]() { return ntk.create_pi(); } );
   std::generate( bs.begin(), bs.end(), [&]() { return ntk.create_pi(); } );
 
