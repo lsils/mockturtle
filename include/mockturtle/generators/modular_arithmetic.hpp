@@ -114,6 +114,9 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
   carry_ripple_adder_inplace( ntk, a, b, carry );
 }
 
+namespace legacy
+{
+
 /*! \brief Creates modular adder
  *
  * Given two input words of the same size *k*, this function creates a circuit
@@ -145,6 +148,53 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
   carry_ripple_subtractor_inplace( ntk, a, word, carry_inv );
 
   mux_inplace( ntk, !carry, a, sum );
+}
+
+}
+
+/*! \brief Creates modular adder
+ *
+ * Given two input words of the same size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(a + b) \bmod m\f$. 
+ * The first input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
+{
+  // simpler case
+  if ( m == ( UINT64_C( 1 ) << a.size() ) )
+  {
+    modular_adder_inplace( ntk, a, b );
+    return;
+  }
+
+  // bit-size for corrected addition
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  assert( bitsize <= a.size() );
+
+  // corrected registers
+  std::vector<signal<Ntk>> a_trim( a.begin(), a.begin() + bitsize );
+  std::vector<signal<Ntk>> b_trim( b.begin(), b.begin() + bitsize );
+
+  // 1. Compute (a + b) on bitsize bits
+  auto carry = ntk.get_constant( false );
+  carry_ripple_adder_inplace( ntk, a_trim, b_trim, carry ); /* a_trim <- a + b */
+
+  // store result in sum (and extend it to bitsize + 1 bits)
+  auto sum = a_trim; /* sum <- a + b */
+  sum.emplace_back( ntk.get_constant( false ) );
+
+  // 2. Compute (a + b) - m (m is represented as word) on (bitsize + 1) bits
+  const auto word = constant_word( ntk, m, bitsize + 1 );
+  auto carry_inv = ntk.get_constant( true );
+  a_trim.emplace_back( carry );
+  carry_ripple_subtractor_inplace( ntk, a_trim, word, carry_inv ); /* a_trim <- a + b - c */
+
+  // if overflow occurred in step 2, return result from step 2, otherwise, result from step 1.
+  mux_inplace( ntk, carry_inv, a_trim, sum );
+
+  // copy corrected register back into input register
+  std::copy_n( a_trim.begin(), bitsize, a.begin() );
 }
 
 /*! \brief Creates modular subtractor
