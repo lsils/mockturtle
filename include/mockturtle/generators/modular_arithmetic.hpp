@@ -156,20 +156,14 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
  *
  * Given two input words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(a + b) \bmod m\f$. 
+ * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
  * The first input word `a` is overriden and stores the output signals.
  */
 template<class Ntk>
-inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
+inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
 {
-  // simpler case
-  if ( m == ( UINT64_C( 1 ) << a.size() ) )
-  {
-    modular_adder_inplace( ntk, a, b );
-    return;
-  }
-
   // bit-size for corrected addition
-  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  const uint32_t bitsize = static_cast<uint32_t>( m.size() );
   assert( bitsize <= a.size() );
 
   // corrected registers
@@ -185,7 +179,8 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
   sum.emplace_back( ntk.get_constant( false ) );
 
   // 2. Compute (a + b) - m (m is represented as word) on (bitsize + 1) bits
-  const auto word = constant_word( ntk, m, bitsize + 1 );
+  std::vector<signal<Ntk>> word( bitsize + 1, ntk.get_constant( false ) );
+  std::transform( m.begin(), m.end(), word.begin(), [&]( auto b ) { return ntk.get_constant( b ); } );
   auto carry_inv = ntk.get_constant( true );
   a_trim.emplace_back( carry );
   carry_ripple_subtractor_inplace( ntk, a_trim, word, carry_inv ); /* a_trim <- a + b - c */
@@ -195,6 +190,33 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
 
   // copy corrected register back into input register
   std::copy_n( a_trim.begin(), bitsize, a.begin() );
+}
+
+/*! \brief Creates modular adder
+ *
+ * Given two input words of the same size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(a + b) \bmod m\f$. 
+ * The first input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
+{
+  // simpler case
+  if ( m == ( UINT64_C( 1 ) << a.size() ) )
+  {
+    modular_adder_inplace( ntk, a, b );
+    return;
+  }
+
+  // bit-size for corrected addition
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  std::vector<bool> mvec( bitsize );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    mvec[i] = static_cast<bool>( ( m >> i ) & 1 );
+  }
+
+  modular_adder_inplace( ntk, a, b, mvec );
 }
 
 /*! \brief Creates modular subtractor
