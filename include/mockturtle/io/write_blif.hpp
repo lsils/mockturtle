@@ -24,10 +24,10 @@
  */
 
 /*!
-  \file write_bench.hpp
-  \brief Write networks to BENCH format
+  \file write_blif.hpp
+  \brief Write networks to BLIF format
 
-  \author Mathias Soeken
+  \author Heinz Riener
 */
 
 #pragma once
@@ -39,124 +39,129 @@
 #include <fmt/format.h>
 #include <kitty/operations.hpp>
 #include <kitty/print.hpp>
+#include <kitty/isop.hpp>
 
 #include "../traits.hpp"
 
 namespace mockturtle
 {
 
-/*! \brief Writes network in BENCH format into output stream
+/*! \brief Writes network in BLIF format into output stream
  *
  * An overloaded variant exists that writes the network into a file.
  *
  * **Required network functions:**
+ * - `fanin_size`
+ * - `foreach_fanin`
+ * - `foreach_pi`
+ * - `foreach_po`
+ * - `get_node`
  * - `is_constant`
  * - `is_pi`
- * - `is_complemented`
- * - `get_node`
- * - `num_pos`
- * - `node_to_index`
  * - `node_function`
+ * - `node_to_index`
+ * - `num_pis`
+ * - `num_pos`
  *
  * \param ntk Network
  * \param os Output stream
  */
 template<class Ntk>
-void write_bench( Ntk const& ntk, std::ostream& os )
+void write_blif( Ntk const& ntk, std::ostream& os )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
-  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
   static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
 
-  ntk.foreach_pi( [&]( auto const& n ) {
-    os << fmt::format( "INPUT(n{})\n", ntk.node_to_index( n ) );
-  } );
+  topo_view topo_ntk{ntk};
 
-  for ( auto i = 0u; i < ntk.num_pos(); ++i )
+  os << ".model netlist\n";
+
+  if ( topo_ntk.num_pis() > 0u )
   {
-    os << fmt::format( "OUTPUT(po{})\n", i );
+    os << ".inputs ";
+    topo_ntk.foreach_pi( [&]( auto const& n ) {
+        os << fmt::format( "n{} ", topo_ntk.node_to_index( n ) );
+      } );
+    os << "\n";
   }
 
-  os << fmt::format( "n{} = gnd\n", ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) ) );
-  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  if ( topo_ntk.num_pos() > 0u )
   {
-    os << fmt::format( "n{} = vdd\n", ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ) );
+    os << ".outputs ";
+    topo_ntk.foreach_po( [&]( auto const& n, auto index ) {
+        os << fmt::format( "po{} ", index );
+      } );
+    os << "\n";
   }
 
-  ntk.foreach_node( [&]( auto const& n ) {
-    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+  os << ".names n0\n";
+  os << "0\n";
+
+  os << ".names n1\n";
+  os << "1\n";
+
+  topo_ntk.foreach_node( [&]( auto const& n ) {
+    if ( topo_ntk.is_constant( n ) || topo_ntk.is_pi( n ) )
       return; /* continue */
 
-    auto func = ntk.node_function( n );
-    std::string children;
-    auto first = true;
-    ntk.foreach_fanin( n, [&]( auto const& c, auto i ) {
-      if ( ntk.is_complemented( c ) )
-      {
-        kitty::flip_inplace( func, i );
-      }
-      if ( first )
-      {
-        first = false;
-      }
-      else
-      {
-        children += ", ";
-      }
+    os << fmt::format( ".names " );
+    topo_ntk.foreach_fanin( n, [&]( auto const& c ) {
+        os << fmt::format( "n{} ", topo_ntk.node_to_index( c ) );
+      });
+    os << fmt::format( " n{}\n", topo_ntk.node_to_index( n ) );
 
-      children += fmt::format( "n{}", ntk.node_to_index( ntk.get_node( c ) ) );
-    } );
-
-    os << fmt::format( "n{} = LUT 0x{} ({})\n",
-                       ntk.node_to_index( n ),
-                       kitty::to_hex( func ), children );
-  } );
-
-  /* outputs */
-  ntk.foreach_po( [&]( auto const& s, auto i ) {
-    if ( ntk.is_constant( ntk.get_node( s ) ) )
+    auto const func = topo_ntk.node_function( n );
+    for ( const auto& cube : isop( func ) )
     {
-      os << fmt::format( "po{} = {}\n",
-                         i,
-                         ( ntk.constant_value( ntk.get_node( s ) ) ^ ntk.is_complemented( s ) ) ? "vdd" : "gnd" );
+      cube.print( topo_ntk.fanin_size( n ), os );
+      os << " 1\n";
     }
-    else
-    {
-      os << fmt::format( "po{} = LUT 0x{} (n{})\n",
-                         i,
-                         ntk.is_complemented( s ) ? 1 : 2,
-                         ntk.node_to_index( ntk.get_node( s ) ) );
-    }
-  } );
+    });
 
+  if ( topo_ntk.num_pos() > 0u )
+  {
+    topo_ntk.foreach_po( [&]( auto const& n, auto index ) {
+        os << fmt::format( ".names n{} po{}\n1 1\n", topo_ntk.node_to_index( n ), index );
+      } );
+  }
+
+  os << ".end\n";
   os << std::flush;
 }
 
 /*! \brief Writes network in BENCH format into a file
  *
  * **Required network functions:**
+ * - `fanin_size`
+ * - `foreach_fanin`
+ * - `foreach_pi`
+ * - `foreach_po`
+ * - `get_node`
  * - `is_constant`
  * - `is_pi`
- * - `is_complemented`
- * - `get_node`
- * - `num_pos`
- * - `node_to_index`
  * - `node_function`
+ * - `node_to_index`
+ * - `num_pis`
+ * - `num_pos`
  *
  * \param ntk Network
  * \param filename Filename
  */
 template<class Ntk>
-void write_bench( Ntk const& ntk, std::string const& filename )
+void write_blif( Ntk const& ntk, std::string const& filename )
 {
   std::ofstream os( filename.c_str(), std::ofstream::out );
-  write_bench( ntk, os );
+  write_blif( ntk, os );
   os.close();
 }
 
