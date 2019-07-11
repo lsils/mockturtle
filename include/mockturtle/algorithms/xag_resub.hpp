@@ -36,6 +36,7 @@
 #include <kitty/print.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/networks/xag.hpp>
+#include "dont_cares.hpp"
 
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
@@ -202,6 +203,21 @@ struct xag_resub_stats
   /*! \brief Accumulated runtime for three-resub. */
   stopwatch<>::duration time_resub3{0};
 
+  /*! \brief Accumulated runtime for one-resub */
+  stopwatch<>::duration time_resub1_and{0};
+
+  /*! \brief Accumulated runtime for one-resub */
+  stopwatch<>::duration time_resub2_and{0};
+
+  /*! \brief Accumulated runtime for collecting unate divisors. */
+  stopwatch<>::duration time_collect_unate_divisors{0};
+
+  /*! \brief Accumulated runtime for collecting unate divisors. */
+  stopwatch<>::duration time_collect_binate_divisors{0};
+
+  /*! \brief Accumulated runtime for 12-resub. */
+  stopwatch<>::duration time_resub12{0};
+
   /*! \brief Number of accepted constant resubsitutions */
   uint32_t num_const_accepts{0};
 
@@ -211,14 +227,17 @@ struct xag_resub_stats
   /*! \brief Number of accepted one resubsitutions */
   uint64_t num_div1_accepts{0};
 
-  /*! \brief Number of accepted two resubsitutions using triples of divisors */
-  uint64_t num_div12_accepts{0};
-
   /*! \brief Number of accepted two resubsitutions */
   uint64_t num_div2_accepts{0};
 
-  /*! \brief Number of accepted three resubsitutions */
-  uint64_t num_div3_accepts{0};
+  /*! \brief Number of accepted one resubsitutions for AND */
+  uint64_t num_div1_and_accepts{0};
+
+  /*! \brief Number of accepted one resubsitutions for AND */
+  uint64_t num_div2_and_accepts{0};
+
+  /*! \brief Number of accepted two resubsitutions using triples of unate divisors */
+  uint64_t num_div12_accepts{0};
 
   void report() const
   {
@@ -231,8 +250,16 @@ struct xag_resub_stats
                               num_div1_accepts, to_seconds( time_resub1 ) );
     std::cout << fmt::format( "[i]            2-resub {:6d}                                   ({:>5.2f} secs)\n",
                               num_div2_accepts, to_seconds( time_resub2 ) );
+    std::cout << fmt::format( "[i]            1-resub AND {:6d}                                   ({:>5.2f} secs)\n",
+                              num_div1_and_accepts, to_seconds( time_resub1_and ) );
+    std::cout << fmt::format( "[i]           12-resub {:6d}                                      ({:>5.2f} secs)\n",
+                              num_div12_accepts, to_seconds( time_resub12 ) );
+    std::cout << fmt::format( "[i]            2-resub AND {:6d}                                   ({:>5.2f} secs)\n",
+                              num_div2_and_accepts, to_seconds( time_resub2_and ) );
+    std::cout << fmt::format( "[i]            collect unate divisors                           ({:>5.2f} secs)\n", to_seconds( time_collect_unate_divisors ) );
+    std::cout << fmt::format( "[i]            collect binate divisors                           ({:>5.2f} secs)\n", to_seconds( time_collect_binate_divisors ) );
     std::cout << fmt::format( "[i]            total   {:6d}\n",
-                              ( num_const_accepts + num_div0_accepts + num_div1_accepts + num_div12_accepts + num_div2_accepts + num_div3_accepts ) );
+                              ( num_const_accepts + num_div0_accepts + num_div1_accepts + num_div2_accepts + num_div1_and_accepts + num_div12_accepts + num_div2_and_accepts) );
   }
 }; /* xag_resub_stats */
 
@@ -243,6 +270,40 @@ public:
   using node = xag_network::node;
   using signal = xag_network::signal;
   using stats = xag_resub_stats;
+
+  struct unate_divisors
+  {
+    using signal = typename xag_network::signal;
+
+    std::vector<signal> positive_divisors;
+    std::vector<signal> negative_divisors;
+    std::vector<signal> next_candidates;
+
+    void clear()
+    {
+      positive_divisors.clear();
+      negative_divisors.clear();
+      next_candidates.clear();
+    }
+  };
+
+  struct binate_divisors
+  {
+    using signal = typename xag_network::signal;
+
+    std::vector<signal> positive_divisors0;
+    std::vector<signal> positive_divisors1;
+    std::vector<signal> negative_divisors0;
+    std::vector<signal> negative_divisors1;
+
+    void clear()
+    {
+      positive_divisors0.clear();
+      positive_divisors1.clear();
+      negative_divisors0.clear();
+      negative_divisors1.clear();
+    }
+  };
 
 public:
   explicit xag_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st, std::unordered_map<std::string, node> map_tt_divs )
@@ -321,6 +382,47 @@ public:
         ++st.num_div2_accepts;
         last_gain = num_and_mffc;
         return g; /*  accepted resub */
+      }
+
+      if ( num_and_mffc < 2 ) /* it is worth trying also AND resub here */
+        return std::nullopt;
+
+      /* collect level one divisors */
+      call_with_stopwatch( st.time_collect_unate_divisors, [&]() {
+        collect_unate_divisors( root, required );
+      } );
+
+      g = call_with_stopwatch( st.time_resub1_and, [&]() { return resub_div1_and( root, required ); } );
+      if ( g )
+      {
+        ++st.num_div1_and_accepts;
+        last_gain = num_and_mffc - 1;
+        return g; /*  accepted resub */
+      }
+      if ( num_and_mffc < 3 ) /* it is worth trying also AND-12 resub here */
+        return std::nullopt;
+
+      /* consider triples */
+      g = call_with_stopwatch( st.time_resub12, [&]() { return resub_div12( root, required ); } );
+      if ( g )
+      {
+        ++st.num_div12_accepts;
+        last_gain = num_and_mffc - 2;
+        return g; /* accepted resub */
+      }
+
+      /* collect level two divisors */
+      call_with_stopwatch( st.time_collect_binate_divisors, [&]() {
+        collect_binate_divisors( root, required );
+      } );
+
+      /* consider two nodes */
+      g = call_with_stopwatch( st.time_resub2_and, [&]() { return resub_div2_and( root, required ); } );
+      if ( g )
+      {
+        ++st.num_div2_and_accepts;
+        last_gain = num_and_mffc - 2;
+        return g; /* accepted resub */
       }
     }
     return std::nullopt;
@@ -583,6 +685,331 @@ public:
     return std::nullopt;
   }
 
+  void collect_unate_divisors( node const& root, uint32_t required )
+  {
+    udivs.clear();
+
+    auto const& tt = sim.get_tt( ntk.make_signal( root ) );
+    for ( auto i = 0u; i < num_divs; ++i )
+    {
+      auto const d = divs.at( i );
+
+      if ( ntk.level( d ) > required - 1 )
+        continue;
+
+      auto const& tt_d = sim.get_tt( ntk.make_signal( d ) );
+
+      /* check positive containment */
+      if ( kitty::implies( tt_d, tt ) )
+      {
+        udivs.positive_divisors.emplace_back( ntk.make_signal( d ) );
+        continue;
+      }
+
+      /* check negative containment */
+      if ( kitty::implies( tt, tt_d ) )
+      {
+        udivs.negative_divisors.emplace_back( ntk.make_signal( d ) );
+        continue;
+      }
+
+      udivs.next_candidates.emplace_back( ntk.make_signal( d ) );
+    }
+  }
+
+  std::optional<signal> resub_div1_and( node const& root, uint32_t required )
+  {
+    (void)required;
+    auto const& tt = sim.get_tt( ntk.make_signal( root ) );
+
+    /* check for positive unate divisors */
+    for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
+    {
+      auto const& s0 = udivs.positive_divisors.at( i );
+
+      for ( auto j = i + 1; j < udivs.positive_divisors.size(); ++j )
+      {
+        auto const& s1 = udivs.positive_divisors.at( j );
+
+        auto const& tt_s0 = sim.get_tt( s0 );
+        auto const& tt_s1 = sim.get_tt( s1 );
+
+        if ( ( tt_s0 | tt_s1 ) == tt )
+        {
+          auto const l = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
+          auto const r = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+          return sim.get_phase( root ) ? !ntk.create_or( l, r ) : ntk.create_or( l, r );
+        }
+      }
+    }
+    /* check for negative unate divisors */
+    for ( auto i = 0u; i < udivs.negative_divisors.size(); ++i )
+    {
+      auto const& s0 = udivs.negative_divisors.at( i );
+
+      for ( auto j = i + 1; j < udivs.negative_divisors.size(); ++j )
+      {
+        auto const& s1 = udivs.negative_divisors.at( j );
+
+        auto const& tt_s0 = sim.get_tt( s0 );
+        auto const& tt_s1 = sim.get_tt( s1 );
+
+        if ( ( tt_s0 & tt_s1 ) == tt )
+        {
+          auto const l = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
+          auto const r = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+          return sim.get_phase( root ) ? !ntk.create_and( l, r ) : ntk.create_and( l, r );
+        }
+      }
+    }
+
+    return std::nullopt;
+  }
+
+  std::optional<signal> resub_div12( node const& root, uint32_t required )
+  {
+    (void)required;
+    auto const s = ntk.make_signal( root );
+    auto const& tt = sim.get_tt( s );
+
+    /* check positive unate divisors */
+    for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
+    {
+      auto const s0 = udivs.positive_divisors.at( i );
+
+      for ( auto j = i + 1; j < udivs.positive_divisors.size(); ++j )
+      {
+        auto const s1 = udivs.positive_divisors.at( j );
+
+        for ( auto k = j + 1; k < udivs.positive_divisors.size(); ++k )
+        {
+          auto const s2 = udivs.positive_divisors.at( k );
+
+          auto const& tt_s0 = sim.get_tt( s0 );
+          auto const& tt_s1 = sim.get_tt( s1 );
+          auto const& tt_s2 = sim.get_tt( s2 );
+
+          if ( ( tt_s0 | tt_s1 | tt_s2 ) == tt )
+          {
+            auto const max_level = std::max( {ntk.level( ntk.get_node( s0 ) ),
+                                              ntk.level( ntk.get_node( s1 ) ),
+                                              ntk.level( ntk.get_node( s2 ) )} );
+            assert( max_level <= required - 1 );
+
+            signal max = s0;
+            signal min0 = s1;
+            signal min1 = s2;
+            if ( ntk.level( ntk.get_node( s1 ) ) == max_level )
+            {
+              max = s1;
+              min0 = s0;
+              min1 = s2;
+            }
+            else if ( ntk.level( ntk.get_node( s2 ) ) == max_level )
+            {
+              max = s2;
+              min0 = s0;
+              min1 = s1;
+            }
+
+            auto const a = sim.get_phase( ntk.get_node( max ) ) ? !max : max;
+            auto const b = sim.get_phase( ntk.get_node( min0 ) ) ? !min0 : min0;
+            auto const c = sim.get_phase( ntk.get_node( min1 ) ) ? !min1 : min1;
+
+            return sim.get_phase( root ) ? !ntk.create_or( a, ntk.create_or( b, c ) ) : ntk.create_or( a, ntk.create_or( b, c ) );
+          }
+        }
+      }
+    }
+
+    /* check negative unate divisors */
+    for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
+    {
+      auto const s0 = udivs.positive_divisors.at( i );
+
+      for ( auto j = i + 1; j < udivs.positive_divisors.size(); ++j )
+      {
+        auto const s1 = udivs.positive_divisors.at( j );
+
+        for ( auto k = j + 1; k < udivs.positive_divisors.size(); ++k )
+        {
+          auto const s2 = udivs.positive_divisors.at( k );
+
+          auto const& tt_s0 = sim.get_tt( s0 );
+          auto const& tt_s1 = sim.get_tt( s1 );
+          auto const& tt_s2 = sim.get_tt( s2 );
+
+          if ( ( tt_s0 & tt_s1 & tt_s2 ) == tt )
+          {
+            auto const max_level = std::max( {ntk.level( ntk.get_node( s0 ) ),
+                                              ntk.level( ntk.get_node( s1 ) ),
+                                              ntk.level( ntk.get_node( s2 ) )} );
+            assert( max_level <= required - 1 );
+
+            signal max = s0;
+            signal min0 = s1;
+            signal min1 = s2;
+            if ( ntk.level( ntk.get_node( s1 ) ) == max_level )
+            {
+              max = s1;
+              min0 = s0;
+              min1 = s2;
+            }
+            else if ( ntk.level( ntk.get_node( s2 ) ) == max_level )
+            {
+              max = s2;
+              min0 = s0;
+              min1 = s1;
+            }
+
+            auto const a = sim.get_phase( ntk.get_node( max ) ) ? !max : max;
+            auto const b = sim.get_phase( ntk.get_node( min0 ) ) ? !min0 : min0;
+            auto const c = sim.get_phase( ntk.get_node( min1 ) ) ? !min1 : min1;
+
+            return sim.get_phase( root ) ? !ntk.create_and( a, ntk.create_and( b, c ) ) : ntk.create_and( a, ntk.create_and( b, c ) );
+          }
+        }
+      }
+    }
+
+    return std::nullopt;
+  }
+
+  void collect_binate_divisors( node const& root, uint32_t required )
+  {
+    bdivs.clear();
+
+    auto const& tt = sim.get_tt( ntk.make_signal( root ) );
+    for ( auto i = 0u; i < udivs.next_candidates.size(); ++i )
+    {
+      auto const& s0 = udivs.next_candidates.at( i );
+      if ( ntk.level( ntk.get_node( s0 ) ) > required - 2 )
+        continue;
+
+      for ( auto j = i + 1; j < udivs.next_candidates.size(); ++j )
+      {
+        auto const& s1 = udivs.next_candidates.at( j );
+        if ( ntk.level( ntk.get_node( s1 ) ) > required - 2 )
+          continue;
+
+        if ( bdivs.positive_divisors0.size() < 500 ) // ps.max_divisors2
+        {
+          auto const& tt_s0 = sim.get_tt( s0 );
+          auto const& tt_s1 = sim.get_tt( s1 );
+          if ( kitty::implies( tt_s0 & tt_s1, tt ) )
+          {
+            bdivs.positive_divisors0.emplace_back( s0 );
+            bdivs.positive_divisors1.emplace_back( s1 );
+          }
+
+          if ( kitty::implies( ~tt_s0 & tt_s1, tt ) )
+          {
+            bdivs.positive_divisors0.emplace_back( !s0 );
+            bdivs.positive_divisors1.emplace_back( s1 );
+          }
+
+          if ( kitty::implies( tt_s0 & ~tt_s1, tt ) )
+          {
+            bdivs.positive_divisors0.emplace_back( s0 );
+            bdivs.positive_divisors1.emplace_back( !s1 );
+          }
+
+          if ( kitty::implies( ~tt_s0 & ~tt_s1, tt ) )
+          {
+            bdivs.positive_divisors0.emplace_back( !s0 );
+            bdivs.positive_divisors1.emplace_back( !s1 );
+          }
+        }
+
+        if ( bdivs.negative_divisors0.size() < 500 ) // ps.max_divisors2
+        {
+          auto const& tt_s0 = sim.get_tt( s0 );
+          auto const& tt_s1 = sim.get_tt( s1 );
+          if ( kitty::implies( tt, tt_s0 & tt_s1 ) )
+          {
+            bdivs.negative_divisors0.emplace_back( s0 );
+            bdivs.negative_divisors1.emplace_back( s1 );
+          }
+
+          if ( kitty::implies( tt, ~tt_s0 & tt_s1 ) )
+          {
+            bdivs.negative_divisors0.emplace_back( !s0 );
+            bdivs.negative_divisors1.emplace_back( s1 );
+          }
+
+          if ( kitty::implies( tt, tt_s0 & ~tt_s1 ) )
+          {
+            bdivs.negative_divisors0.emplace_back( s0 );
+            bdivs.negative_divisors1.emplace_back( !s1 );
+          }
+
+          if ( kitty::implies( tt, ~tt_s0 & ~tt_s1 ) )
+          {
+            bdivs.negative_divisors0.emplace_back( !s0 );
+            bdivs.negative_divisors1.emplace_back( !s1 );
+          }
+        }
+      }
+    }
+  }
+
+  std::optional<signal> resub_div2_and( node const& root, uint32_t required )
+  {
+    (void)required;
+    auto const s = ntk.make_signal( root );
+    auto const& tt = sim.get_tt( s );
+
+    /* check positive unate divisors */
+    for ( const auto& s0 : udivs.positive_divisors )
+    {
+      auto const& tt_s0 = sim.get_tt( s0 );
+
+      for ( auto j = 0u; j < bdivs.positive_divisors0.size(); ++j )
+      {
+        auto const s1 = bdivs.positive_divisors0.at( j );
+        auto const s2 = bdivs.positive_divisors1.at( j );
+
+        auto const& tt_s1 = sim.get_tt( s1 );
+        auto const& tt_s2 = sim.get_tt( s2 );
+
+        auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
+        auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+        auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
+
+        if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == tt )
+        {
+          return sim.get_phase( root ) ? !ntk.create_or( a, ntk.create_and( b, c ) ) : ntk.create_or( a, ntk.create_and( b, c ) );
+        }
+      }
+    }
+
+    /* check negative unate divisors */
+    for ( const auto& s0 : udivs.negative_divisors )
+    {
+      auto const& tt_s0 = sim.get_tt( s0 );
+
+      for ( auto j = 0u; j < bdivs.negative_divisors0.size(); ++j )
+      {
+        auto const s1 = bdivs.negative_divisors0.at( j );
+        auto const s2 = bdivs.negative_divisors1.at( j );
+
+        auto const& tt_s1 = sim.get_tt( s1 );
+        auto const& tt_s2 = sim.get_tt( s2 );
+
+        auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
+        auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
+        auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
+
+        if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == tt )
+        {
+          return sim.get_phase( root ) ? !ntk.create_and( a, ntk.create_or( b, c ) ) : ntk.create_and( a, ntk.create_or( b, c ) );
+        }
+      }
+    }
+
+    return std::nullopt;
+  }
+
 private:
   Ntk& ntk;
   Simulator const& sim;
@@ -590,6 +1017,9 @@ private:
   uint32_t const num_divs;
   stats& st;
   std::unordered_map<std::string, node> map_tt_divs;
+
+  unate_divisors udivs;
+  binate_divisors bdivs;
 }; // namespace detail
 
 template<class Ntk, class Simulator, class ResubFn>
@@ -608,8 +1038,7 @@ public:
       ntk.resize_levels();
       ntk.resize_fanout();
       update_node_level( n );
-      ntk.update_fanout();
-      //update_node_fanout( n );
+      update_node_fanout( n );
     };
 
     auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
@@ -617,14 +1046,12 @@ public:
       ntk.resize_levels();
       ntk.resize_fanout();
       update_node_level( n );
-      ntk.update_fanout();
-      //update_node_fanout( n );
+      update_node_fanout( n );
     };
 
     auto const update_level_of_deleted_node = [&]( const auto& n ) {
       ntk.set_level( n, -1 );
       ntk.update_fanout();
-      ntk.update_levels();
     };
 
     ntk._events->on_add.emplace_back( update_level_of_new_node );
