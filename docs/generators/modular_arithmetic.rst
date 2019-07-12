@@ -9,6 +9,7 @@ Addition and Subtraction
 
 .. doxygenfunction:: mockturtle::modular_adder_inplace(Ntk&, std::vector<signal<Ntk>>&, std::vector<signal<Ntk>> const&)
 .. doxygenfunction:: mockturtle::modular_adder_inplace(Ntk&, std::vector<signal<Ntk>>&, std::vector<signal<Ntk>> const&, uint64_t)
+.. doxygenfunction:: mockturtle::modular_adder_inplace(Ntk&, std::vector<signal<Ntk>>&, std::vector<signal<Ntk>> const&, std::vector<bool> const&)
 .. doxygenfunction:: mockturtle::modular_subtractor_inplace(Ntk&, std::vector<signal<Ntk>>&, std::vector<signal<Ntk>> const&)
 .. doxygenfunction:: mockturtle::modular_subtractor_inplace(Ntk&, std::vector<signal<Ntk>>&, std::vector<signal<Ntk>> const&, uint64_t)
 
