@@ -263,7 +263,7 @@ struct xag_resub_stats
   }
 }; /* xag_resub_stats */
 
-template<typename Ntk, typename Simulator>
+template<typename Ntk, typename Simulator, typename TT>
 struct xag_resub_functor
 {
 public:
@@ -311,8 +311,8 @@ public:
   {
   }
 
-  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_and_mffc, uint32_t num_xor_mffc, uint32_t& last_gain )
-  {
+  std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t num_and_mffc, uint32_t num_xor_mffc, uint32_t& last_gain )
+  {   
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
       return resub_const( root, required );
@@ -366,7 +366,7 @@ public:
     {
 
       g = call_with_stopwatch( st.time_resub1, [&]() {
-        return resub_div1( root, required );
+        return resub_div1( root,  required );
       } );
       if ( g )
       {
@@ -431,7 +431,7 @@ public:
   std::optional<signal> resub_const( node const& root, uint32_t required ) const
   {
     (void)required;
-    auto const tt = sim.get_tt( ntk.make_signal( root ) );
+    auto tt = sim.get_tt( ntk.make_signal( root ) );
     if ( tt == sim.get_tt( ntk.get_constant( false ) ) )
     {
       return sim.get_phase( root ) ? ntk.get_constant( true ) : ntk.get_constant( false );
@@ -446,17 +446,20 @@ public:
     for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const d = divs.at( i );
-      if ( tt != sim.get_tt( ntk.make_signal( d ) ) )
+      if ( tt != sim.get_tt( ntk.make_signal( d ) ))
         continue;
       return ( sim.get_phase( d ) ^ sim.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
     }
     return std::nullopt;
   }
 
+// TODO: devo aggiungere i dont cares da qui in poi 
+
   std::optional<signal> resub_div1( node const& root, uint32_t required )
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
+    
 
     /* check for divisors  */
     /* for ( auto i = 0u; i < num_divs; ++i )
@@ -483,12 +486,11 @@ public:
         }
       }
     }*/
-    for ( auto i = 0u; i < num_divs - 1; ++i )
+    for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const& s0 = divs.at( i );
       auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
       std::unordered_map<std::string, node>::iterator it = map_tt_divs.find( kitty::to_hex( tt_s0 ^ tt ) );
-
       if ( it == map_tt_divs.end() )
       {
         continue;
@@ -1022,7 +1024,7 @@ private:
   binate_divisors bdivs;
 }; // namespace detail
 
-template<class Ntk, class Simulator, class ResubFn>
+template<class Ntk, class Simulator, class ResubFn, class TT>
 class resubstitution_impl_xag
 {
 public:
@@ -1225,9 +1227,19 @@ private:
       auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
       map_tt_divs.insert( {kitty::to_hex( tt_s0 ), s0} );
     }
+    
+    /*  TT care;  // TODO: resize needed 
+    if (ps.use_dont_cares)
+        care = ~satisfiability_dont_cares( ntk, leaves );
+    else 
+    {  
+      assert (is_const0(care));
+      care = ~care;   
+    }*/
+    auto care = sim.get_tt( ntk.make_signal( divs.at( 0 ) ) );
 
     ResubFn resub_fn( ntk, sim, divs, num_divs, resub_st, map_tt_divs );
-    return resub_fn( root, required, ps.max_inserts, num_mffc.first, num_mffc.second, last_gain );
+    return resub_fn( root, care, required, ps.max_inserts, num_mffc.first, num_mffc.second, last_gain );
   }
 
   void collect_divisors_rec( node const& n, std::vector<node>& internal )
@@ -1402,9 +1414,9 @@ void resubstitution_minmc( Ntk& ntk, resubstitution_params const& ps = {}, resub
   {
     using truthtable_t = kitty::static_truth_table<8>;
     using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
-    using resubstitution_functor_t = detail::xag_resub_functor<resub_view_t, simulator_t>;
+    using resubstitution_functor_t = detail::xag_resub_functor<resub_view_t, simulator_t, truthtable_t>;
     typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl_xag<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
+    detail::resubstitution_impl_xag<resub_view_t, simulator_t, resubstitution_functor_t, truthtable_t> p( resub_view, ps, st, resub_st );
     p.run();
     if ( ps.verbose )
     {
@@ -1416,9 +1428,9 @@ void resubstitution_minmc( Ntk& ntk, resubstitution_params const& ps = {}, resub
   {
     using truthtable_t = kitty::dynamic_truth_table;
     using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
-    using resubstitution_functor_t = detail::xag_resub_functor<resub_view_t, simulator_t>; // Xag resub is the default here
+    using resubstitution_functor_t = detail::xag_resub_functor<resub_view_t, simulator_t, truthtable_t>; // Xag resub is the default here
     typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl_xag<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
+    detail::resubstitution_impl_xag<resub_view_t, simulator_t, resubstitution_functor_t, truthtable_t> p( resub_view, ps, st, resub_st );
     p.run();
     if ( ps.verbose )
     {

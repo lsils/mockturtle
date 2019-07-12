@@ -96,6 +96,9 @@ struct resubstitution_params
 
   /*! \brief Be verbose. */
   bool verbose{false};
+
+  /*! \brief Use don't cares for optimization. */
+  bool use_dont_cares{false};
 };
 
 /*! \brief Statistics for resubstitution.
