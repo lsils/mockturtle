@@ -295,8 +295,6 @@ TEST_CASE( "check 8-bit modular multiplication", "[modular_arithmetic]" )
 
     CHECK( to_int( simulate<bool>( ntk, input_word_simulator( ( a << 8 ) + b ) ) ) % 243 == ( a * b ) % 243 );
   }
-
-  write_bench( ntk, "/tmp/montgomery8_243.bench" );
 }
 
 TEST_CASE( "check 16-bit modular multiplication", "[modular_arithmetic]" )
