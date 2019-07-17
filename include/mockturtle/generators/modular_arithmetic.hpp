@@ -296,4 +296,52 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
   a = detail::to_montgomery_form( ntk, zero_extend( ntk, a, nbits + rbits ), n, rbits, np );
 }
 
+/*! \brief Creates modular doubling (multiplication by 2)
+ *
+ * Given one input word \f$a\f$ of size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$. 
+ * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
+ * The input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<bool> const& m )
+{
+  assert( a.size() >= m.size() );
+  const auto bitsize = m.size();
+  std::vector<signal<Ntk>> a_trim( a.begin(), a.begin() + bitsize );
+
+  std::vector<signal<Ntk>> shifted( bitsize + 1u, ntk.get_constant( false ) );
+  std::copy( a_trim.begin(), a_trim.end(), shifted.begin() + 1u );
+  std::copy_n( shifted.begin(), bitsize, a_trim.begin() );
+
+  std::vector<signal<Ntk>> word( bitsize + 1, ntk.get_constant( false ) );
+  std::transform( m.begin(), m.end(), word.begin(), [&]( auto b ) { return ntk.get_constant( b ); } );
+
+  auto carry_inv = ntk.get_constant( true );
+  carry_ripple_subtractor_inplace( ntk, shifted, word, carry_inv );
+
+  mux_inplace( ntk, ntk.create_not( carry_inv ), a_trim, std::vector<signal<Ntk>>( shifted.begin(), shifted.begin() + bitsize ) );
+  std::copy( a_trim.begin(), a_trim.end(), a.begin() );
+}
+
+/*! \brief Creates modular doubling (multiplication by 2)
+ *
+ * Given one input word \f$a\f$ of size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$. 
+ * The input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uint64_t m )
+{
+  // bit-size for corrected addition
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  std::vector<bool> mvec( bitsize );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    mvec[i] = static_cast<bool>( ( m >> i ) & 1 );
+  }
+
+  modular_doubling_inplace( ntk, a, mvec );
+}
+
 } // namespace mockturtle

@@ -16,4 +16,6 @@ Addition and Subtraction
 Multiplication
 ~~~~~~~~~~~~~~
 
-.. doxygenfunction:: modular_multiplication_inplace(Ntk& ntk, std::vector<signal<Ntk>>&, std::vector<signal<Ntk>> const&, uint64_t)
+.. doxygenfunction:: mockturtle::modular_doubling(Ntk&, std::vector<signal<Ntk>>&, uint64_t)
+.. doxygenfunction:: mockturtle::modular_doubling(Ntk&, std::vector<signal<Ntk>>&, std::vector<bool> const&)
+.. doxygenfunction:: mockturtle::modular_multiplication_inplace(Ntk& ntk, std::vector<signal<Ntk>>&, std::vector<signal<Ntk>> const&, uint64_t)

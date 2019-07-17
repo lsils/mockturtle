@@ -223,6 +223,42 @@ TEST_CASE( "build an k-bit modular subtractor with constants", "[modular_arithme
   }
 }
 
+template<typename Ntk>
+void simulate_modular_doubling( uint32_t op, uint32_t k, uint64_t c )
+{
+  Ntk ntk;
+
+  std::vector<typename Ntk::signal> a( k );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
+
+  modular_doubling_inplace( ntk, a, c );
+
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
+
+  CHECK( ntk.num_pis() == k );
+  CHECK( ntk.num_pos() == k );
+
+  const auto simm = simulate<bool>( ntk, input_word_simulator( op ) );
+  CHECK( simm.size() == k );
+  const auto result = ( op * 2 ) % c;
+  CHECK( to_int( simm ) == result );
+}
+
+TEST_CASE( "check modular doubling", "[modular_arithmetic]" )
+{
+  std::default_random_engine gen( 655321 );
+
+  for ( auto i = 0; i < 1000; ++i )
+  {
+    auto k = std::uniform_int_distribution<uint32_t>( 5, 16 )( gen );
+    auto c = std::uniform_int_distribution<uint64_t>( 1, ( 1 << k ) - 2 )( gen );
+    auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
+
+    simulate_modular_doubling<aig_network>( a, k, c );
+    simulate_modular_doubling<mig_network>( a, k, c );
+  }
+}
+
 TEST_CASE( "check Montgomery numbers", "[modular_arithmetic]" )
 {
   CHECK( detail::compute_montgomery_parameters<int64_t>( 5 ) == std::pair<int64_t, int64_t>{16, 3} );
