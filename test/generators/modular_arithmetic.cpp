@@ -111,7 +111,7 @@ TEST_CASE( "build an k-bit modular adder with constants", "[modular_arithmetic]"
   for ( auto i = 0; i < 1000; ++i )
   {
     auto k = std::uniform_int_distribution<uint32_t>( 5, 16 )( gen );
-    auto c = std::uniform_int_distribution<uint64_t>( 1, ( 1 << k ) - 2 )( gen );
+    auto c = std::uniform_int_distribution<uint64_t>( 2, ( 1 << k ) - 2 )( gen );
     auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
     auto b = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
 
@@ -214,7 +214,7 @@ TEST_CASE( "build an k-bit modular subtractor with constants", "[modular_arithme
   for ( auto i = 0; i < 1000; ++i )
   {
     auto k = std::uniform_int_distribution<uint32_t>( 5, 16 )( gen );
-    auto c = std::uniform_int_distribution<uint64_t>( 1, 20 )( gen );
+    auto c = std::uniform_int_distribution<uint64_t>( 2, 20 )( gen );
     auto a = std::uniform_int_distribution<uint32_t>( 0, ( 1 << k ) - c - 1 )( gen );
     auto b = std::uniform_int_distribution<uint32_t>( 0, ( 1 << k ) - c - 1 )( gen );
 
@@ -251,11 +251,50 @@ TEST_CASE( "check modular doubling", "[modular_arithmetic]" )
   for ( auto i = 0; i < 1000; ++i )
   {
     auto k = std::uniform_int_distribution<uint32_t>( 5, 16 )( gen );
-    auto c = std::uniform_int_distribution<uint64_t>( 1, ( 1 << k ) - 2 )( gen );
+    auto c = std::uniform_int_distribution<uint64_t>( 2, ( 1 << k ) - 2 )( gen );
     auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
 
     simulate_modular_doubling<aig_network>( a, k, c );
     simulate_modular_doubling<mig_network>( a, k, c );
+  }
+}
+
+template<typename Ntk>
+void simulate_modular_multiplication( uint32_t op1, uint32_t op2, uint32_t k, uint64_t c )
+{
+  Ntk ntk;
+
+  std::vector<typename Ntk::signal> a( k );
+  std::vector<typename Ntk::signal> b( k );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
+
+  modular_multiplication_inplace2( ntk, a, b, c );
+
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
+
+  CHECK( ntk.num_pis() == 2 * k );
+  CHECK( ntk.num_pos() == k );
+
+  const auto simm = simulate<bool>( ntk, input_word_simulator( ( op1 << k ) + op2 ) );
+  CHECK( simm.size() == k );
+  const auto result = ( op1 * op2 ) % c;
+  CHECK( to_int( simm ) == result );
+}
+
+TEST_CASE( "check modular multiplication", "[modular_arithmetic]" )
+{
+  std::default_random_engine gen( 655321 );
+
+  for ( auto i = 0; i < 100; ++i )
+  {
+    auto k = std::uniform_int_distribution<uint32_t>( 5, 16 )( gen );
+    auto c = std::uniform_int_distribution<uint64_t>( 2, ( 1 << k ) - 2 )( gen );
+    auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
+    auto b = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
+
+    simulate_modular_multiplication<aig_network>( a, b, k, c );
+    simulate_modular_multiplication<mig_network>( a, b, k, c );
   }
 }
 

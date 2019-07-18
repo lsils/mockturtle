@@ -344,4 +344,43 @@ inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uin
   modular_doubling_inplace( ntk, a, mvec );
 }
 
+template<class Ntk>
+inline void modular_multiplication_inplace2( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
+{
+  assert( a.size() >= m.size() );
+  assert( a.size() == b.size() );
+
+  const auto bitsize = m.size();
+  std::vector<signal<Ntk>> a_trim( a.begin(), a.begin() + bitsize );
+  std::vector<signal<Ntk>> b_trim( b.begin(), b.begin() + bitsize );
+
+  std::vector<signal<Ntk>> accu( bitsize );
+  auto itA = a_trim.rbegin();
+  std::transform( b_trim.begin(), b_trim.end(), accu.begin(), [&]( auto const& f ) { return ntk.create_and( *itA, f ); } );
+
+  while ( ++itA != a_trim.rend() )
+  {
+    modular_doubling_inplace( ntk, accu, m );
+    std::vector<signal<Ntk>> summand( bitsize );
+    std::transform( b_trim.begin(), b_trim.end(), summand.begin(), [&]( auto const& f ) { return ntk.create_and( *itA, f ); } );
+    modular_adder_inplace( ntk, accu, summand, m );
+  }
+
+  std::copy( accu.begin(), accu.end(), a.begin() );
+}
+
+template<class Ntk>
+inline void modular_multiplication_inplace2( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
+{
+  // bit-size for corrected addition
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  std::vector<bool> mvec( bitsize );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    mvec[i] = static_cast<bool>( ( m >> i ) & 1 );
+  }
+
+  modular_multiplication_inplace2( ntk, a, b, mvec );
+}
+
 } // namespace mockturtle
