@@ -261,7 +261,6 @@ inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std
 template<class Ntk>
 inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uint64_t m )
 {
-  // bit-size for corrected addition
   const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
   std::vector<bool> mvec( bitsize );
   for ( auto i = 0u; i < bitsize; ++i )
@@ -270,6 +269,60 @@ inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uin
   }
 
   modular_doubling_inplace( ntk, a, mvec );
+}
+
+/*! \brief Creates modular halving (corrected division by 2)
+ *
+ * Given one input word \f$a\f$ of size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(a / 2) \bmod m\f$.  The
+ * modulus must be odd, and the function is evaluated to \f$a / 2\f$, if `a` is
+ * even and to \f$(a + m) / 2\f$, if `a` is odd.
+ * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
+ * The input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_halving_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<bool> const& m )
+{
+  assert( a.size() >= m.size() );
+  assert( m.size() > 0u );
+  assert( m[0] );
+  const auto bitsize = m.size();
+  std::vector<signal<Ntk>> a_trim( a.begin(), a.begin() + bitsize );
+
+  std::vector<signal<Ntk>> extended( bitsize + 1u, ntk.get_constant( false ) ), a_extended( bitsize + 1u, ntk.get_constant( false ) );
+  std::copy( a_trim.begin(), a_trim.end(), extended.begin() );
+  std::copy( a_trim.begin(), a_trim.end(), a_extended.begin() );
+
+  std::vector<signal<Ntk>> word( bitsize + 1, ntk.get_constant( false ) );
+  std::transform( m.begin(), m.end(), word.begin(), [&]( auto b ) { return ntk.get_constant( b ); } );
+
+  auto carry = ntk.get_constant( false );
+  carry_ripple_adder_inplace( ntk, extended, word, carry );
+
+  mux_inplace( ntk, a_trim[0], extended, a_extended );
+
+  std::copy_n( extended.begin() + 1, bitsize, a.begin() );
+}
+
+/*! \brief Creates modular halving (corrected division by 2)
+ *
+ * Given one input word \f$a\f$ of size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(a / 2) \bmod m\f$.  The
+ * modulus must be odd, and the function is evaluated to \f$a / 2\f$, if `a` is
+ * even and to \f$(a + m) / 2\f$, if `a` is odd.
+ * The input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_halving_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uint64_t m )
+{
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  std::vector<bool> mvec( bitsize );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    mvec[i] = static_cast<bool>( ( m >> i ) & 1 );
+  }
+
+  modular_halving_inplace( ntk, a, mvec );
 }
 
 /*! \brief Creates modular multiplication
@@ -313,7 +366,6 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
 template<class Ntk>
 inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
 {
-  // bit-size for corrected addition
   const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
   std::vector<bool> mvec( bitsize );
   for ( auto i = 0u; i < bitsize; ++i )

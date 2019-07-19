@@ -260,6 +260,42 @@ TEST_CASE( "check modular doubling", "[modular_arithmetic]" )
 }
 
 template<typename Ntk>
+void simulate_modular_halving( uint32_t op, uint32_t k, uint64_t c )
+{
+  Ntk ntk;
+
+  std::vector<typename Ntk::signal> a( k );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
+
+  modular_halving_inplace( ntk, a, c );
+
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
+
+  CHECK( ntk.num_pis() == k );
+  CHECK( ntk.num_pos() == k );
+
+  const auto simm = simulate<bool>( ntk, input_word_simulator( op ) );
+  CHECK( simm.size() == k );
+  const auto result = op % 2 ? ( op + c ) / 2 : op / 2;
+  CHECK( to_int( simm ) == result );
+}
+
+TEST_CASE( "check modular halving", "[modular_arithmetic]" )
+{
+  std::default_random_engine gen( 655321 );
+
+  for ( auto i = 0; i < 1000; ++i )
+  {
+    auto k = std::uniform_int_distribution<uint32_t>( 5, 16 )( gen );
+    auto c = std::uniform_int_distribution<uint64_t>( 2, ( 1 << ( k - 1 ) ) - 2 )( gen ) * 2 + 1;
+    auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
+
+    simulate_modular_halving<aig_network>( a, k, c );
+    simulate_modular_halving<mig_network>( a, k, c );
+  }
+}
+
+template<typename Ntk>
 void simulate_modular_multiplication( uint32_t op1, uint32_t op2, uint32_t k, uint64_t c )
 {
   Ntk ntk;
