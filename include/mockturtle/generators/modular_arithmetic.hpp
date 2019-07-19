@@ -114,44 +114,6 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
   carry_ripple_adder_inplace( ntk, a, b, carry );
 }
 
-namespace legacy
-{
-
-/*! \brief Creates modular adder
- *
- * Given two input words of the same size *k*, this function creates a circuit
- * that computes *k* output signals that represent \f$(a + b) \bmod (2^k -
- * c)\f$.  The first input word `a` is overriden and stores the output signals.
- */
-template<class Ntk>
-inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
-{
-  /* c must be smaller than 2^k */
-  assert( c < ( UINT64_C( 1 ) << a.size() ) );
-
-  /* refer to simpler case */
-  if ( c == 0 )
-  {
-    modular_adder_inplace( ntk, a, b );
-    return;
-  }
-
-  const auto word = constant_word( ntk, c, static_cast<uint32_t>( a.size() ) );
-  auto carry = ntk.get_constant( false );
-  carry_ripple_adder_inplace( ntk, a, word, carry );
-
-  carry = ntk.get_constant( false );
-  carry_ripple_adder_inplace( ntk, a, b, carry );
-
-  std::vector<signal<Ntk>> sum( a.begin(), a.end() );
-  auto carry_inv = ntk.get_constant( true );
-  carry_ripple_subtractor_inplace( ntk, a, word, carry_inv );
-
-  mux_inplace( ntk, !carry, a, sum );
-}
-
-}
-
 /*! \brief Creates modular adder
  *
  * Given two input words of the same size *k*, this function creates a circuit
@@ -262,6 +224,144 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
   mux_inplace( ntk, carry, a, sum );
 }
 
+/*! \brief Creates modular doubling (multiplication by 2)
+ *
+ * Given one input word \f$a\f$ of size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$. 
+ * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
+ * The input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<bool> const& m )
+{
+  assert( a.size() >= m.size() );
+  const auto bitsize = m.size();
+  std::vector<signal<Ntk>> a_trim( a.begin(), a.begin() + bitsize );
+
+  std::vector<signal<Ntk>> shifted( bitsize + 1u, ntk.get_constant( false ) );
+  std::copy( a_trim.begin(), a_trim.end(), shifted.begin() + 1u );
+  std::copy_n( shifted.begin(), bitsize, a_trim.begin() );
+
+  std::vector<signal<Ntk>> word( bitsize + 1, ntk.get_constant( false ) );
+  std::transform( m.begin(), m.end(), word.begin(), [&]( auto b ) { return ntk.get_constant( b ); } );
+
+  auto carry_inv = ntk.get_constant( true );
+  carry_ripple_subtractor_inplace( ntk, shifted, word, carry_inv );
+
+  mux_inplace( ntk, ntk.create_not( carry_inv ), a_trim, std::vector<signal<Ntk>>( shifted.begin(), shifted.begin() + bitsize ) );
+  std::copy( a_trim.begin(), a_trim.end(), a.begin() );
+}
+
+/*! \brief Creates modular doubling (multiplication by 2)
+ *
+ * Given one input word \f$a\f$ of size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$. 
+ * The input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uint64_t m )
+{
+  // bit-size for corrected addition
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  std::vector<bool> mvec( bitsize );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    mvec[i] = static_cast<bool>( ( m >> i ) & 1 );
+  }
+
+  modular_doubling_inplace( ntk, a, mvec );
+}
+
+/*! \brief Creates modular multiplication
+ *
+ * Given two inputs words of the same size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(ab) \bmod c\f$.
+ * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
+ * The first input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
+{
+  assert( a.size() >= m.size() );
+  assert( a.size() == b.size() );
+
+  const auto bitsize = m.size();
+  std::vector<signal<Ntk>> a_trim( a.begin(), a.begin() + bitsize );
+  std::vector<signal<Ntk>> b_trim( b.begin(), b.begin() + bitsize );
+
+  std::vector<signal<Ntk>> accu( bitsize );
+  auto itA = a_trim.rbegin();
+  std::transform( b_trim.begin(), b_trim.end(), accu.begin(), [&]( auto const& f ) { return ntk.create_and( *itA, f ); } );
+
+  while ( ++itA != a_trim.rend() )
+  {
+    modular_doubling_inplace( ntk, accu, m );
+    std::vector<signal<Ntk>> summand( bitsize );
+    std::transform( b_trim.begin(), b_trim.end(), summand.begin(), [&]( auto const& f ) { return ntk.create_and( *itA, f ); } );
+    modular_adder_inplace( ntk, accu, summand, m );
+  }
+
+  std::copy( accu.begin(), accu.end(), a.begin() );
+}
+
+/*! \brief Creates modular multiplication
+ *
+ * Given two inputs words of the same size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(ab) \bmod c\f$.
+ * The first input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
+{
+  // bit-size for corrected addition
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  std::vector<bool> mvec( bitsize );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    mvec[i] = static_cast<bool>( ( m >> i ) & 1 );
+  }
+
+  modular_multiplication_inplace( ntk, a, b, mvec );
+}
+
+
+
+namespace legacy
+{
+
+/*! \brief Creates modular adder
+ *
+ * Given two input words of the same size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(a + b) \bmod (2^k -
+ * c)\f$.  The first input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
+{
+  /* c must be smaller than 2^k */
+  assert( c < ( UINT64_C( 1 ) << a.size() ) );
+
+  /* refer to simpler case */
+  if ( c == 0 )
+  {
+    modular_adder_inplace( ntk, a, b );
+    return;
+  }
+
+  const auto word = constant_word( ntk, c, static_cast<uint32_t>( a.size() ) );
+  auto carry = ntk.get_constant( false );
+  carry_ripple_adder_inplace( ntk, a, word, carry );
+
+  carry = ntk.get_constant( false );
+  carry_ripple_adder_inplace( ntk, a, b, carry );
+
+  std::vector<signal<Ntk>> sum( a.begin(), a.end() );
+  auto carry_inv = ntk.get_constant( true );
+  carry_ripple_subtractor_inplace( ntk, a, word, carry_inv );
+
+  mux_inplace( ntk, !carry, a, sum );
+}
+
 /*! \brief Creates modular multiplication based on Montgomery multiplication
  *
  * Given two inputs words of the same size *k*, this function creates a circuit
@@ -294,6 +394,8 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
 
   a = detail::to_montgomery_form( ntk, zero_extend( ntk, carry_ripple_multiplier( ntk, ma, mb ), nbits + rbits ), n, rbits, np );
   a = detail::to_montgomery_form( ntk, zero_extend( ntk, a, nbits + rbits ), n, rbits, np );
+}
+
 }
 
 } // namespace mockturtle
