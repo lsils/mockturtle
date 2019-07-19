@@ -386,7 +386,7 @@ TEST_CASE( "check Montgomery encoding", "[modular_arithmetic]" )
   CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 10u ) ) ) == 1 );
 }
 
-TEST_CASE( "create bool vectors from hex strings", "[selected]" )
+TEST_CASE( "create bool vectors from hex strings", "[modular_arithmetic]" )
 {
 
   auto vec_from_hex = []( uint32_t size, std::string const& hex, bool shrink ) {
