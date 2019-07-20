@@ -376,6 +376,84 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
   modular_multiplication_inplace( ntk, a, b, mvec );
 }
 
+/*! \brief Creates vector of Booleans from hex string
+ *
+ * This function can be used to create moduli for very large numbers that cannot
+ * be represented using any of the integer built-in data types.  If the vector
+ * `res` is too small for the value `hex` most-significant digits will be
+ * ignored.
+ */
+void bool_vector_from_hex( std::vector<bool>& res, std::string_view hex, bool shrink_to_fit = true )
+{
+  auto itR = res.begin();
+  auto itS = hex.rbegin();
+
+  while ( itR != res.end() && itS != hex.rend() )
+  {
+    uint32_t number{0};
+    if ( *itS >= '0' && *itS <= '9' )
+    {
+      number = *itS - '0';
+    }
+    else if ( *itS >= 'a' && *itS <= 'f' )
+    {
+      number = *itS - 'a' + 10;
+    }
+    else if ( *itS >= 'A' && *itS <= 'F' )
+    {
+      number = *itS - 'A' + 10;
+    }
+    else
+    {
+      assert( false && "invalid hex number" );
+    }
+
+    for ( auto i = 0u; i < 4u; ++i )
+    {
+      *itR++ = ( number >> i ) & 1;
+      if ( itR == res.end() )
+      {
+        break;
+      }
+    }
+
+    ++itS;
+  }
+
+  if ( shrink_to_fit )
+  {
+    auto find_last = []( std::vector<bool>::const_iterator itFirst,
+                         std::vector<bool>::const_iterator itLast,
+                         bool value ) -> std::vector<bool>::const_iterator {
+      auto cur = itLast;
+      while ( itFirst != itLast )
+      {
+        if ( *itFirst == value )
+        {
+          cur = itFirst;
+        }
+        ++itFirst;
+      }
+      return cur;
+    };
+
+    const auto itLast = find_last( res.begin(), res.end(), true );
+    if ( itLast == res.end() )
+    {
+      res.clear();
+    }
+    else
+    {
+      res.erase( find_last( res.begin(), res.end(), true ) + 1u, res.end() );
+    }
+  }
+  else
+  {
+    /* in case the hex string was short, fill remaining values with false */
+    std::fill( itR, res.end(), false );
+  }
+}
+
 
 
 namespace legacy

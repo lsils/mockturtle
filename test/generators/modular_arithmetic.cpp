@@ -385,3 +385,25 @@ TEST_CASE( "check Montgomery encoding", "[modular_arithmetic]" )
   CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 9u ) ) ) == 2 );
   CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 10u ) ) ) == 1 );
 }
+
+TEST_CASE( "create bool vectors from hex strings", "[modular_arithmetic]" )
+{
+
+  auto vec_from_hex = []( uint32_t size, std::string const& hex, bool shrink ) {
+    std::vector<bool> mod( size );
+    bool_vector_from_hex( mod, hex, shrink );
+    return mod;
+  };
+
+  CHECK( vec_from_hex( 8, "e8", false ) == std::vector<bool>{{false, false, false, true, false, true, true, true}} );
+  CHECK( vec_from_hex( 8, "e8", true ) == std::vector<bool>{{false, false, false, true, false, true, true, true}} );
+
+  CHECK( vec_from_hex( 4, "e8", false ) == std::vector<bool>{{false, false, false, true}} );
+  CHECK( vec_from_hex( 4, "e8", true ) == std::vector<bool>{{false, false, false, true}} );
+
+  CHECK( vec_from_hex( 4, "e7", false ) == std::vector<bool>{{true, true, true, false}} );
+  CHECK( vec_from_hex( 4, "e7", true ) == std::vector<bool>{{true, true, true}} );
+
+  CHECK( vec_from_hex( 3, "0", false ) == std::vector<bool>{{false, false, false}} );
+  CHECK( vec_from_hex( 3, "0", true ).size() == 0 );
+}
