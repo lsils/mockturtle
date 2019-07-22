@@ -4,10 +4,13 @@
 #include <random>
 #include <vector>
 
+#include <fmt/format.h>
+
 #include <mockturtle/traits.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/generators/modular_arithmetic.hpp>
 #include <mockturtle/io/write_bench.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -73,8 +76,8 @@ TEST_CASE( "build an 8-bit modular adder with different networks", "[modular_ari
   simulate_modular_adder<xag_network>( 120, 250 );
 }
 
-template<typename Ntk>
-void simulate_modular_adder2( uint32_t op1, uint32_t op2, uint32_t k, uint64_t c )
+template<typename Ntk, typename AdderFn>
+void simulate_modular_adder2( uint32_t op1, uint32_t op2, uint32_t k, uint64_t c, AdderFn&& adder )
 {
   Ntk ntk;
 
@@ -82,7 +85,7 @@ void simulate_modular_adder2( uint32_t op1, uint32_t op2, uint32_t k, uint64_t c
   std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
   std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
 
-  modular_adder_inplace( ntk, a, b, c );
+  adder( ntk, a, b, c );
 
   std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
 
@@ -101,8 +104,8 @@ TEST_CASE( "build an k-bit modular adder with constants", "[modular_arithmetic]"
   {
     for ( uint32_t j = 0u; j < 29u; ++j )
     {
-      simulate_modular_adder2<aig_network>( i, j, 5, 29 );
-      simulate_modular_adder2<mig_network>( i, j, 5, 29 );
+      simulate_modular_adder2<aig_network>( i, j, 5, 29, []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_adder_inplace( ntk, a, b, c ); } );
+      simulate_modular_adder2<mig_network>( i, j, 5, 29, []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_adder_inplace( ntk, a, b, c ); } );
     }
   }
 
@@ -115,8 +118,33 @@ TEST_CASE( "build an k-bit modular adder with constants", "[modular_arithmetic]"
     auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
     auto b = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
 
-    simulate_modular_adder2<aig_network>( a, b, k, c );
-    simulate_modular_adder2<mig_network>( a, b, k, c );
+    simulate_modular_adder2<aig_network>( a, b, k, c, []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_adder_inplace( ntk, a, b, c ); } );
+    simulate_modular_adder2<mig_network>( a, b, k, c, []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_adder_inplace( ntk, a, b, c ); } );
+  }
+}
+
+TEST_CASE( "build Hiasat modular adder", "[modular_arithmetic]" )
+{
+  for ( uint32_t i = 0u; i < 29u; ++i )
+  {
+    for ( uint32_t j = 0u; j < 29u; ++j )
+    {
+      simulate_modular_adder2<aig_network>( i, j, 5, 29, []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_adder_hiasat_inplace( ntk, a, b, c ); } );
+      simulate_modular_adder2<xag_network>( i, j, 5, 29, []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_adder_hiasat_inplace( ntk, a, b, c ); } );
+    }
+  }
+
+  std::default_random_engine gen( 655321 );
+
+  for ( auto i = 0; i < 1000; ++i )
+  {
+    auto k = std::uniform_int_distribution<uint32_t>( 5, 16 )( gen );
+    auto c = std::uniform_int_distribution<uint64_t>( 2, ( 1 << k ) - 2 )( gen );
+    auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
+    auto b = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
+
+    simulate_modular_adder2<aig_network>( a, b, k, c, []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_adder_hiasat_inplace( ntk, a, b, c ); } );
+    simulate_modular_adder2<xag_network>( a, b, k, c, []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_adder_hiasat_inplace( ntk, a, b, c ); } );
   }
 }
 

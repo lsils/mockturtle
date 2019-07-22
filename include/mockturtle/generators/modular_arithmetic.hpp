@@ -99,6 +99,15 @@ std::vector<signal<Ntk>> to_montgomery_form( Ntk& ntk, std::vector<signal<Ntk>> 
   return m;
 }
 
+inline void invert_modulus( std::vector<bool>& m )
+{
+  m.flip();
+  auto it = m.begin();
+  do {
+    *it = !*it;
+  } while ( !*it++ );
+}
+
 } /* namespace detail */
 
 /*! \brief Creates modular adder
@@ -179,6 +188,107 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
   }
 
   modular_adder_inplace( ntk, a, b, mvec );
+}
+
+template<class Ntk>
+inline void modular_adder_hiasat_inplace( Ntk& ntk, std::vector<signal<Ntk>>& x, std::vector<signal<Ntk>> const& y, std::vector<bool> const& m )
+{
+  assert( m.size() <= x.size() );
+  assert( x.size() == y.size() );
+
+  const uint32_t bitsize = static_cast<uint32_t>( m.size() );
+
+  // corrected registers
+  std::vector<signal<Ntk>> x_trim( x.begin(), x.begin() + bitsize );
+  std::vector<signal<Ntk>> y_trim( y.begin(), y.begin() + bitsize );
+
+  // compute Z-vector from m-vector (Z = 2^bitsize - m)
+  auto z = m;
+  detail::invert_modulus( z );
+
+  /* SAC unit */
+  std::vector<signal<Ntk>> A( bitsize ), B( bitsize + 1 ), a( bitsize ), b( bitsize + 1 );
+
+  B[0] = b[0] = ntk.get_constant( false );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    A[i] = ntk.create_xor( x_trim[i], y_trim[i] );
+    B[i + 1] = ntk.create_and( x_trim[i], y_trim[i] );
+    a[i] = z[i] ? ntk.create_xnor( x_trim[i], y_trim[i] ) : A[i];
+    b[i + 1] = z[i] ? ntk.create_or( x_trim[i], y_trim[i] ) : B[i + 1];
+  }
+
+  /* CPG unit */
+  std::vector<signal<Ntk>> G( bitsize ), P( bitsize + 1 ), g( bitsize ), p( bitsize + 1 );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    G[i] = ntk.create_and( A[i], B[i] );
+    P[i] = ntk.create_xor( A[i], B[i] );
+    g[i] = ntk.create_and( a[i], b[i] );
+    p[i] = ntk.create_xor( a[i], b[i] );
+  }
+  P[bitsize] = B[bitsize];
+  p[bitsize] = b[bitsize];
+
+  //std::for_each( G.begin(), G.end(), [&]( auto const& f ) { ntk.create_po( f ); } );
+  //std::for_each( P.begin(), P.end(), [&]( auto const& f ) { ntk.create_po( f ); } );
+  //std::for_each( g.begin(), g.end(), [&]( auto const& f ) { ntk.create_po( f ); } );
+  //std::for_each( p.begin(), p.end(), [&]( auto const& f ) { ntk.create_po( f ); } );
+
+  /* CLA for C_out */
+  std::vector<signal<Ntk>> C( bitsize );
+  C[0] = p[bitsize];
+  for ( auto i = 1u; i < bitsize; ++i )
+  {
+    std::vector<signal<Ntk>> cube;
+    cube.push_back( g[i] );
+    for ( auto j = i + 1u; j < bitsize; ++j )
+    {
+      cube.push_back( p[j] );
+    }
+    C[i] = ntk.create_nary_and( cube );
+  }
+  const auto Cout = ntk.create_nary_or( C );
+  //ntk.create_po( Cout );
+
+  /* MUX store result in p and g */
+  p.pop_back();
+  P.pop_back();
+  mux_inplace( ntk, Cout, g, G );
+  mux_inplace( ntk, Cout, p, P );
+
+  /* CLAS */
+  C[0] = ntk.get_constant( false );
+  for ( auto i = 1u; i < bitsize; ++i )
+  {
+    C[i] = ntk.create_or( g[i - 1], ntk.create_and( p[i - 1], C[i - 1] ) );
+  }
+
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    x[i] = ntk.create_xor( p[i], C[i] );
+  }
+}
+
+template<class Ntk>
+inline void modular_adder_hiasat_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
+{
+  // simpler case
+  if ( m == ( UINT64_C( 1 ) << a.size() ) )
+  {
+    modular_adder_inplace( ntk, a, b );
+    return;
+  }
+
+  // bit-size for corrected addition
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  std::vector<bool> mvec( bitsize );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    mvec[i] = static_cast<bool>( ( m >> i ) & 1 );
+  }
+
+  modular_adder_hiasat_inplace( ntk, a, b, mvec );
 }
 
 /*! \brief Creates modular subtractor
