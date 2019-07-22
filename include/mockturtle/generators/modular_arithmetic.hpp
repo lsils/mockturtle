@@ -230,11 +230,6 @@ inline void modular_adder_hiasat_inplace( Ntk& ntk, std::vector<signal<Ntk>>& x,
   P[bitsize] = B[bitsize];
   p[bitsize] = b[bitsize];
 
-  //std::for_each( G.begin(), G.end(), [&]( auto const& f ) { ntk.create_po( f ); } );
-  //std::for_each( P.begin(), P.end(), [&]( auto const& f ) { ntk.create_po( f ); } );
-  //std::for_each( g.begin(), g.end(), [&]( auto const& f ) { ntk.create_po( f ); } );
-  //std::for_each( p.begin(), p.end(), [&]( auto const& f ) { ntk.create_po( f ); } );
-
   /* CLA for C_out */
   std::vector<signal<Ntk>> C( bitsize );
   C[0] = p[bitsize];
