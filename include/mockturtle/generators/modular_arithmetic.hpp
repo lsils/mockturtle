@@ -99,6 +99,15 @@ std::vector<signal<Ntk>> to_montgomery_form( Ntk& ntk, std::vector<signal<Ntk>> 
   return m;
 }
 
+inline void invert_modulus( std::vector<bool>& m )
+{
+  m.flip();
+  auto it = m.begin();
+  do {
+    *it = !*it;
+  } while ( !*it++ );
+}
+
 } /* namespace detail */
 
 /*! \brief Creates modular adder
@@ -181,6 +190,102 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
   modular_adder_inplace( ntk, a, b, mvec );
 }
 
+template<class Ntk>
+inline void modular_adder_hiasat_inplace( Ntk& ntk, std::vector<signal<Ntk>>& x, std::vector<signal<Ntk>> const& y, std::vector<bool> const& m )
+{
+  assert( m.size() <= x.size() );
+  assert( x.size() == y.size() );
+
+  const uint32_t bitsize = static_cast<uint32_t>( m.size() );
+
+  // corrected registers
+  std::vector<signal<Ntk>> x_trim( x.begin(), x.begin() + bitsize );
+  std::vector<signal<Ntk>> y_trim( y.begin(), y.begin() + bitsize );
+
+  // compute Z-vector from m-vector (Z = 2^bitsize - m)
+  auto z = m;
+  detail::invert_modulus( z );
+
+  /* SAC unit */
+  std::vector<signal<Ntk>> A( bitsize ), B( bitsize + 1 ), a( bitsize ), b( bitsize + 1 );
+
+  B[0] = b[0] = ntk.get_constant( false );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    A[i] = ntk.create_xor( x_trim[i], y_trim[i] );
+    B[i + 1] = ntk.create_and( x_trim[i], y_trim[i] );
+    a[i] = z[i] ? ntk.create_xnor( x_trim[i], y_trim[i] ) : A[i];
+    b[i + 1] = z[i] ? ntk.create_or( x_trim[i], y_trim[i] ) : B[i + 1];
+  }
+
+  /* CPG unit */
+  std::vector<signal<Ntk>> G( bitsize ), P( bitsize + 1 ), g( bitsize ), p( bitsize + 1 );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    G[i] = ntk.create_and( A[i], B[i] );
+    P[i] = ntk.create_xor( A[i], B[i] );
+    g[i] = ntk.create_and( a[i], b[i] );
+    p[i] = ntk.create_xor( a[i], b[i] );
+  }
+  P[bitsize] = B[bitsize];
+  p[bitsize] = b[bitsize];
+
+  /* CLA for C_out */
+  std::vector<signal<Ntk>> C( bitsize );
+  C[0] = p[bitsize];
+  for ( auto i = 1u; i < bitsize; ++i )
+  {
+    std::vector<signal<Ntk>> cube;
+    cube.push_back( g[i] );
+    for ( auto j = i + 1u; j < bitsize; ++j )
+    {
+      cube.push_back( p[j] );
+    }
+    C[i] = ntk.create_nary_and( cube );
+  }
+  const auto Cout = ntk.create_nary_or( C );
+  //ntk.create_po( Cout );
+
+  /* MUX store result in p and g */
+  p.pop_back();
+  P.pop_back();
+  mux_inplace( ntk, Cout, g, G );
+  mux_inplace( ntk, Cout, p, P );
+
+  /* CLAS */
+  C[0] = ntk.get_constant( false );
+  for ( auto i = 1u; i < bitsize; ++i )
+  {
+    C[i] = ntk.create_or( g[i - 1], ntk.create_and( p[i - 1], C[i - 1] ) );
+  }
+
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    x[i] = ntk.create_xor( p[i], C[i] );
+  }
+}
+
+template<class Ntk>
+inline void modular_adder_hiasat_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
+{
+  // simpler case
+  if ( m == ( UINT64_C( 1 ) << a.size() ) )
+  {
+    modular_adder_inplace( ntk, a, b );
+    return;
+  }
+
+  // bit-size for corrected addition
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  std::vector<bool> mvec( bitsize );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    mvec[i] = static_cast<bool>( ( m >> i ) & 1 );
+  }
+
+  modular_adder_hiasat_inplace( ntk, a, b, mvec );
+}
+
 /*! \brief Creates modular subtractor
  *
  * Given two input words of the same size *k*, this function creates a circuit
@@ -197,31 +302,69 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
 /*! \brief Creates modular subtractor
  *
  * Given two input words of the same size *k*, this function creates a circuit
- * that computes *k* output signals that represent \f$(a - b) \bmod (2^k -
- * c)\f$.  The first input word `a` is overriden and stores the output signals.
+ * that computes *k* output signals that represent \f$(a - b) \bmod m\f$. 
+ * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
+ * The first input word `a` is overriden and stores the output signals.
  */
 template<class Ntk>
-inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
+inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
 {
-  /* c must be smaller than 2^k */
-  assert( c < ( UINT64_C( 1 ) << a.size() ) );
+  // bit-size for corrected addition
+  const uint32_t bitsize = static_cast<uint32_t>( m.size() );
+  assert( bitsize <= a.size() );
 
-  /* refer to simpler case */
-  if ( c == 0 )
+  // corrected registers
+  std::vector<signal<Ntk>> a_trim( a.begin(), a.begin() + bitsize );
+  std::vector<signal<Ntk>> b_trim( b.begin(), b.begin() + bitsize );
+
+  // 1. Compute (a - b) on bitsize bits
+  auto carry_inv = ntk.get_constant( true );
+  carry_ripple_subtractor_inplace( ntk, a_trim, b_trim, carry_inv ); /* a_trim <- a - b */
+
+  // store result in sum (and extend it to bitsize + 1 bits)
+  auto sum = a_trim; /* sum <- a - b */
+
+  sum.emplace_back( ntk.get_constant( false ) );
+
+  // 2. Compute (a - b) + m (m is represented as word) on (bitsize + 1) bits
+  std::vector<signal<Ntk>> word( bitsize + 1, ntk.get_constant( false ) );
+  std::transform( m.begin(), m.end(), word.begin(), [&]( auto b ) { return ntk.get_constant( b ); } );
+  auto carry = ntk.get_constant( false );
+  a_trim.emplace_back( ntk.create_not( carry_inv ) );
+  carry_ripple_adder_inplace( ntk, a_trim, word, carry ); /* a_trim <- (a - b) + c */
+
+  // if overflow occurred in step 2, return result from step 2, otherwise, result from step 1.
+  mux_inplace( ntk, carry, a_trim, sum );
+
+  // copy corrected register back into input register
+  std::copy_n( a_trim.begin(), bitsize, a.begin() );
+}
+
+/*! \brief Creates modular subtractor
+ *
+ * Given two input words of the same size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(a - b) \bmod m\f$. 
+ * The first input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
+{
+  // simpler case
+  if ( m == ( UINT64_C( 1 ) << a.size() ) )
   {
     modular_subtractor_inplace( ntk, a, b );
     return;
   }
 
-  auto carry = ntk.get_constant( true );
-  carry_ripple_subtractor_inplace( ntk, a, b, carry );
+  // bit-size for corrected subtraction
+  const auto bitsize = static_cast<uint32_t>( std::ceil( std::log2( m ) ) );
+  std::vector<bool> mvec( bitsize );
+  for ( auto i = 0u; i < bitsize; ++i )
+  {
+    mvec[i] = static_cast<bool>( ( m >> i ) & 1 );
+  }
 
-  const auto word = constant_word( ntk, c, static_cast<uint32_t>( a.size() ) );
-  std::vector<signal<Ntk>> sum( a.begin(), a.end() );
-  auto carry_inv = ntk.get_constant( true );
-  carry_ripple_subtractor_inplace( ntk, sum, word, carry_inv );
-
-  mux_inplace( ntk, carry, a, sum );
+  modular_subtractor_inplace( ntk, a, b, mvec );
 }
 
 /*! \brief Creates modular doubling (multiplication by 2)
@@ -490,6 +633,36 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
   carry_ripple_subtractor_inplace( ntk, a, word, carry_inv );
 
   mux_inplace( ntk, !carry, a, sum );
+}
+
+/*! \brief Creates modular subtractor
+ *
+ * Given two input words of the same size *k*, this function creates a circuit
+ * that computes *k* output signals that represent \f$(a - b) \bmod (2^k -
+ * c)\f$.  The first input word `a` is overriden and stores the output signals.
+ */
+template<class Ntk>
+inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
+{
+  /* c must be smaller than 2^k */
+  assert( c < ( UINT64_C( 1 ) << a.size() ) );
+
+  /* refer to simpler case */
+  if ( c == 0 )
+  {
+    modular_subtractor_inplace( ntk, a, b );
+    return;
+  }
+
+  auto carry = ntk.get_constant( true );
+  carry_ripple_subtractor_inplace( ntk, a, b, carry );
+
+  const auto word = constant_word( ntk, c, static_cast<uint32_t>( a.size() ) );
+  std::vector<signal<Ntk>> sum( a.begin(), a.end() );
+  auto carry_inv = ntk.get_constant( true );
+  carry_ripple_subtractor_inplace( ntk, sum, word, carry_inv );
+
+  mux_inplace( ntk, carry, a, sum );
 }
 
 /*! \brief Creates modular multiplication based on Montgomery multiplication
