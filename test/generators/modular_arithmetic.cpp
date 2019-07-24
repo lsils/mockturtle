@@ -76,27 +76,52 @@ TEST_CASE( "build an 8-bit modular adder with different networks", "[modular_ari
   simulate_modular_adder<xag_network>( 120, 250 );
 }
 
-template<typename Ntk, typename ArithFn, typename EvaluateFn>
-void simulate_binary_modular_arithmetic( uint32_t op1, uint32_t op2, uint32_t k, uint64_t c, ArithFn&& operation, EvaluateFn&& evaluate )
+template<typename Ntk, typename ArithFn, typename EvaluateFn, typename... Ops>
+void simulate_modular_arithmetic( uint32_t k, uint64_t c, ArithFn&& operation, EvaluateFn&& evaluate, Ops... ops )
 {
   Ntk ntk;
 
-  std::vector<typename Ntk::signal> a( k ), b( k );
-  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
-  std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
+  constexpr auto NumOps = sizeof...( Ops );
+  static_assert( NumOps > 0, "at least one operand must be passed" );
 
-  operation( ntk, a, b, c );
+  std::array<uint32_t, NumOps> aops{ops...};
 
-  std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
+  using signal_arr_t = std::array<std::vector<typename Ntk::signal>, NumOps>;
+  signal_arr_t signals;
+  for ( auto i = 0u; i < NumOps; ++i )
+  {
+    signals[i] = std::vector<typename Ntk::signal>( k );
+    std::generate( signals[i].begin(), signals[i].end(), [&ntk]() { return ntk.create_pi(); } );
+  }
 
-  CHECK( ntk.num_pis() == 2u * k );
+  std::apply( [&]( auto&&... args ) { operation( ntk, args..., c ); }, signals );
+
+  std::for_each( signals[0].begin(), signals[0].end(), [&]( auto f ) { ntk.create_po( f ); } );
+
+  CHECK( ntk.num_pis() == NumOps * k );
   CHECK( ntk.num_pos() == k );
 
-  const auto simm = simulate<bool>( ntk, input_word_simulator( ( op2 << k ) + op1 ) );
+  const auto assign = std::accumulate( aops.rbegin(), aops.rend(), 0u, [&]( auto a, auto v ) { return ( a << k ) + v; } );
+  const auto simm = simulate<bool>( ntk, input_word_simulator( assign ) );
   CHECK( simm.size() == k );
-  const auto result = evaluate( op1, op2, c );
+  const auto result = std::apply( [&]( auto&&... args ) { return evaluate( args..., c ); }, aops );
   const auto actual = to_int( simm );
   CHECK( actual == result );
+}
+
+template<typename Ntk, typename ArithFn, typename EvaluateFn>
+void test_unary_modular_arithmetic( ArithFn&& operation, EvaluateFn&& evaluate, int rounds = 1000 )
+{
+  std::default_random_engine gen( 655321 );
+
+  for ( auto i = 0; i < rounds; ++i )
+  {
+    auto k = std::uniform_int_distribution<uint32_t>( 5, 16 )( gen );
+    auto c = std::uniform_int_distribution<uint64_t>( 2, ( 1 << k ) - 2 )( gen );
+    auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
+
+    simulate_modular_arithmetic<Ntk>( k, c, operation, evaluate, a );
+  }
 }
 
 template<typename Ntk, typename ArithFn, typename EvaluateFn>
@@ -111,7 +136,7 @@ void test_binary_modular_arithmetic( ArithFn&& operation, EvaluateFn&& evaluate,
     auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
     auto b = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
 
-    simulate_binary_modular_arithmetic<Ntk>( a, b, k, c, operation, evaluate );
+    simulate_modular_arithmetic<Ntk>( k, c, operation, evaluate, a, b );
   }
 }
 
@@ -135,64 +160,14 @@ TEST_CASE( "build default modular subtractor", "[modular_arithmetic]" )
   test_binary_modular_arithmetic<xag_network>( []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_subtractor_inplace( ntk, a, b, c ); }, []( auto a, auto b, auto c ) { return a >= b ? ( a - b ) : a + ( c - b ); } );
 }
 
-template<typename Ntk>
-void simulate_modular_doubling( uint32_t op, uint32_t k, uint64_t c )
+TEST_CASE( "build default modular doubling", "[modular_arithmetic]" )
 {
-  Ntk ntk;
-
-  std::vector<typename Ntk::signal> a( k );
-  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
-
-  modular_doubling_inplace( ntk, a, c );
-
-  std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
-
-  CHECK( ntk.num_pis() == k );
-  CHECK( ntk.num_pos() == k );
-
-  const auto simm = simulate<bool>( ntk, input_word_simulator( op ) );
-  CHECK( simm.size() == k );
-  const auto result = ( op * 2 ) % c;
-  CHECK( to_int( simm ) == result );
+  test_unary_modular_arithmetic<aig_network>( []( auto& ntk, auto& a, uint64_t c ) { modular_doubling_inplace( ntk, a, c ); }, []( auto a, auto c ) { return ( a * 2 ) % c; } );
+  test_unary_modular_arithmetic<mig_network>( []( auto& ntk, auto& a, uint64_t c ) { modular_doubling_inplace( ntk, a, c ); }, []( auto a, auto c ) { return ( a * 2 ) % c; } );
+  test_unary_modular_arithmetic<xag_network>( []( auto& ntk, auto& a, uint64_t c ) { modular_doubling_inplace( ntk, a, c ); }, []( auto a, auto c ) { return ( a * 2 ) % c; } );
 }
 
-TEST_CASE( "check modular doubling", "[modular_arithmetic]" )
-{
-  std::default_random_engine gen( 655321 );
-
-  for ( auto i = 0; i < 1000; ++i )
-  {
-    auto k = std::uniform_int_distribution<uint32_t>( 5, 16 )( gen );
-    auto c = std::uniform_int_distribution<uint64_t>( 2, ( 1 << k ) - 2 )( gen );
-    auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
-
-    simulate_modular_doubling<aig_network>( a, k, c );
-    simulate_modular_doubling<mig_network>( a, k, c );
-  }
-}
-
-template<typename Ntk>
-void simulate_modular_halving( uint32_t op, uint32_t k, uint64_t c )
-{
-  Ntk ntk;
-
-  std::vector<typename Ntk::signal> a( k );
-  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
-
-  modular_halving_inplace( ntk, a, c );
-
-  std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
-
-  CHECK( ntk.num_pis() == k );
-  CHECK( ntk.num_pos() == k );
-
-  const auto simm = simulate<bool>( ntk, input_word_simulator( op ) );
-  CHECK( simm.size() == k );
-  const auto result = op % 2 ? ( op + c ) / 2 : op / 2;
-  CHECK( to_int( simm ) == result );
-}
-
-TEST_CASE( "check modular halving", "[modular_arithmetic]" )
+TEST_CASE( "build default modular halving", "[modular_arithmetic]" )
 {
   std::default_random_engine gen( 655321 );
 
@@ -202,8 +177,9 @@ TEST_CASE( "check modular halving", "[modular_arithmetic]" )
     auto c = std::uniform_int_distribution<uint64_t>( 2, ( 1 << ( k - 1 ) ) - 2 )( gen ) * 2 + 1;
     auto a = std::uniform_int_distribution<uint32_t>( 0, c - 1 )( gen );
 
-    simulate_modular_halving<aig_network>( a, k, c );
-    simulate_modular_halving<mig_network>( a, k, c );
+    simulate_modular_arithmetic<aig_network>( k, c, []( auto& ntk, auto& a, uint64_t c ) { modular_halving_inplace( ntk, a, c ); }, []( auto a, auto c ) { return a % 2 ? ( a + c ) / 2 : a / 2; }, a );
+    simulate_modular_arithmetic<mig_network>( k, c, []( auto& ntk, auto& a, uint64_t c ) { modular_halving_inplace( ntk, a, c ); }, []( auto a, auto c ) { return a % 2 ? ( a + c ) / 2 : a / 2; }, a );
+    simulate_modular_arithmetic<xag_network>( k, c, []( auto& ntk, auto& a, uint64_t c ) { modular_halving_inplace( ntk, a, c ); }, []( auto a, auto c ) { return a % 2 ? ( a + c ) / 2 : a / 2; }, a );
   }
 }
 
