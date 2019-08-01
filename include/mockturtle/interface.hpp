@@ -915,6 +915,17 @@ public:
   void incr_trav_id() const;
 #pragma endregion
 
+#pragma region Signal naming
+  /*! \brief Checks if a signal has a name. */
+  bool has_name( signal const& s ) const;
+
+  /*! \brief Set the name of a signal. */
+  void set_name( signal const& s, std::string const& name );
+
+  /*! \brief Returns the name of a signal. */
+  std::string get_name( signal const& s ) const;
+#end endregion
+
 #pragma region General methods
   /*! \brief Returns network events object.
    *
