@@ -85,23 +85,48 @@ void write_blif( Ntk const& ntk, std::ostream& os )
   topo_view topo_ntk{ntk};
 
   os << ".model netlist\n";
-
   if ( topo_ntk.num_pis() > 0u )
   {
-    os << ".inputs ";
-    topo_ntk.foreach_pi( [&]( auto const& n ) {
-        os << fmt::format( "n{} ", topo_ntk.node_to_index( n ) );
-      } );
-    os << "\n";
+    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+    {
+      os << ".inputs ";
+      topo_ntk.foreach_pi( [&]( auto const& n ) {
+          auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
+          std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_n{}", topo_ntk.get_node( s ) );
+          os << name << ' ';
+        });
+      os << "\n";
+    }
+    else
+    {
+      os << ".inputs ";
+      topo_ntk.foreach_pi( [&]( auto const& n ) {
+          os << fmt::format( "c_n{} ", topo_ntk.node_to_index( n ) );
+        } );
+      os << "\n";
+    }
   }
 
   if ( topo_ntk.num_pos() > 0u )
   {
-    os << ".outputs ";
-    topo_ntk.foreach_po( [&]( auto const& n, auto index ) {
-        os << fmt::format( "po{} ", index );
-      } );
-    os << "\n";
+    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+    {
+      os << ".outputs ";
+      topo_ntk.foreach_po( [&]( auto const& n, auto index ) {
+          auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
+          std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "po{}", index );
+          os << name << ' ';
+        } );
+      os << "\n";
+    }
+    else
+    {
+      os << ".outputs ";
+      topo_ntk.foreach_po( [&]( auto const& n, auto index ) {
+          os << fmt::format( "po{} ", index );
+        } );
+      os << "\n";
+    }
   }
 
   os << ".names n0\n";
@@ -116,9 +141,28 @@ void write_blif( Ntk const& ntk, std::ostream& os )
 
     os << fmt::format( ".names " );
     topo_ntk.foreach_fanin( n, [&]( auto const& c ) {
-        os << fmt::format( "n{} ", topo_ntk.node_to_index( c ) );
+        if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+        {
+          auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( c ) );
+          std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_n{}", topo_ntk.get_node( s ) );
+          os << name << ' ';
+        }
+        else
+        {
+          os << fmt::format( "c_n{} ", topo_ntk.node_to_index( c ) );
+        }
       });
-    os << fmt::format( " n{}\n", topo_ntk.node_to_index( n ) );
+
+    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+    {
+      auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
+      std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_n{}", topo_ntk.get_node( s ) );
+      os << ' ' << name << '\n';
+    }
+    else
+    {
+      os << fmt::format( " c_n{}\n", topo_ntk.node_to_index( n ) );
+    }
 
     auto const func = topo_ntk.node_function( n );
     for ( const auto& cube : isop( func ) )
@@ -131,7 +175,18 @@ void write_blif( Ntk const& ntk, std::ostream& os )
   if ( topo_ntk.num_pos() > 0u )
   {
     topo_ntk.foreach_po( [&]( auto const& n, auto index ) {
-        os << fmt::format( ".names n{} po{}\n1 1\n", topo_ntk.node_to_index( n ), index );
+        if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+        {
+          auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
+          if ( !topo_ntk.has_name( s ) )
+          {
+            os << fmt::format( ".names c_n{} po{}\n1 1\n", topo_ntk.node_to_index( n ), index );
+          }
+        }
+        else
+        {
+          os << fmt::format( ".names c_n{} po{}\n1 1\n", topo_ntk.node_to_index( n ), index );
+        }
       } );
   }
 
