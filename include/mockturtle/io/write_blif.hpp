@@ -129,10 +129,10 @@ void write_blif( Ntk const& ntk, std::ostream& os )
     }
   }
 
-  os << ".names n0\n";
+  os << ".names c_n0\n";
   os << "0\n";
 
-  os << ".names n1\n";
+  os << ".names c_n1\n";
   os << "1\n";
 
   topo_ntk.foreach_node( [&]( auto const& n ) {
