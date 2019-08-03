@@ -14,6 +14,8 @@ v0.2 (not yet released)
     - Combinational equivalence checking (`equivalence_checking`) `#149 <https://github.com/lsils/mockturtle/pull/149>`_
     - CNF based cut enumeration (`cnf_cut`) `#155 <https://github.com/lsils/mockturtle/pull/155>`_
     - Fast cut enumeration for small networks (`fast_small_cut_enumeration`, contributed by Sahand Kashani-Akhavan) `#161 <https://github.com/lsils/mockturtle/pull/161>`_
+* Views:
+    - Assign names to signals (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_
 * I/O:
     - Write networks to DIMACS files for CNF (`write_dimacs`) `#146 <https://github.com/lsils/mockturtle/pull/146>`_
     - Read BLIF files using *lorina* (`blif_reader`) `#167 <https://github.com/lsils/mockturtle/pull/167>`_
