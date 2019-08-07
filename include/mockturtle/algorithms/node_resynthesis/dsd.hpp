@@ -53,8 +53,9 @@ public:
   template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
-    bool success{false};
+    bool success{true};
     const auto on_prime = [&]( kitty::dynamic_truth_table const& remainder, std::vector<signal<Ntk>> const& leaves ) {
+      success = false;
       signal<Ntk> f = ntk.get_constant( false );
 
       const auto on_signal = [&]( signal<Ntk> const& _f ) {

@@ -53,7 +53,7 @@ int main()
   ps.cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
   exact_aig_resynthesis<aig_network> exact_resyn( false, ps );
 
-  for ( auto const& benchmark : epfl_benchmarks( adder/* | bar | experiments::div | experiments::log2*/ ) )
+  for ( auto const& benchmark : epfl_benchmarks( adder | bar | experiments::div | experiments::log2 ) )
   {
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
@@ -71,7 +71,7 @@ int main()
     // does not work with resyn at the moment, but works with putting exact_resyn directly.
     aig_network aig2 = node_resynthesis<aig_network>( klut, resyn, {}, &nrst );
 
-    auto cec = *equivalence_checking( *miter<klut_network>( aig, aig2 ) );
+    auto cec = abc_cec( aig2, benchmark ); //*equivalence_checking( *miter<aig_network>( aig, aig2 ) );
 
     exp( benchmark, aig2.num_gates(), to_seconds( st.time_total ) + to_seconds( nrst.time_total ), cec );
   }
