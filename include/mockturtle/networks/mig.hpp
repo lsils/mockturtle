@@ -225,6 +225,12 @@ public:
     return _storage->data.latches[ index ];
   }
 
+  bool is_combinational() const
+  {
+    return ( static_cast<uint32_t>( _storage->inputs.size() ) == _storage->data.num_pis &&
+             static_cast<uint32_t>( _storage->outputs.size() ) == _storage->data.num_pos );
+  }
+
   bool is_constant( node const& n ) const
   {
     return n == 0;
@@ -387,6 +393,11 @@ public:
     }
 
     return create_and( !create_and( !cond, f_else ), !create_and( cond, f_then ) ) ^ !f_compl;
+  }
+
+  signal create_xor3( signal const& a, signal const& b, signal const& c )
+  {
+    return create_maj( !a, create_maj( a, !b, c ), create_maj( a, b, !c ) );
   }
 #pragma endregion
 

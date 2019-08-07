@@ -23,7 +23,7 @@ TEST_CASE( "Exact AIG for MAJ", "[exact]" )
   std::vector<aig_network::signal> pis = {a, b, c};
 
   exact_aig_resynthesis<aig_network> resyn;
-  resyn( aig, maj, pis.begin(), pis.end(), [&]( auto const& f ) { 
+  resyn( aig, maj, pis.begin(), pis.end(), [&]( auto const& f ) {
     aig.create_po( f );
   } );
 
@@ -46,7 +46,7 @@ TEST_CASE( "Exact XAG for MAJ", "[exact]" )
   std::vector<xag_network::signal> pis = {a, b, c};
 
   exact_aig_resynthesis<xag_network> resyn;
-  resyn( xag, maj, pis.begin(), pis.end(), [&]( auto const& f ) { 
+  resyn( xag, maj, pis.begin(), pis.end(), [&]( auto const& f ) {
     xag.create_po( f );
   } );
 

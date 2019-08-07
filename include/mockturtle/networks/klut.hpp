@@ -34,6 +34,7 @@
 #pragma once
 
 #include "../traits.hpp"
+#include "../utils/algorithm.hpp"
 #include "../utils/truth_table_cache.hpp"
 #include "detail/foreach.hpp"
 #include "events.hpp"
@@ -141,6 +142,21 @@ private:
     kitty::create_from_words( tt_xor, &_xor, &_xor + 1 );
     _storage->data.cache.insert( tt_xor );
 
+    static uint64_t _maj = 0xe8;
+    kitty::dynamic_truth_table tt_maj( 3 );
+    kitty::create_from_words( tt_maj, &_maj, &_maj + 1 );
+    _storage->data.cache.insert( tt_maj );
+
+    static uint64_t _ite = 0xd8;
+    kitty::dynamic_truth_table tt_ite( 3 );
+    kitty::create_from_words( tt_ite, &_ite, &_ite + 1 );
+    _storage->data.cache.insert( tt_ite );
+
+    static uint64_t _xor3 = 0x96;
+    kitty::dynamic_truth_table tt_xor3( 3 );
+    kitty::create_from_words( tt_xor3, &_xor3, &_xor3 + 1 );
+    _storage->data.cache.insert( tt_xor3 );
+
     /* truth tables for constants */
     _storage->nodes[0].data[1].h1 = 0;
     _storage->nodes[1].data[1].h1 = 1;
@@ -173,6 +189,11 @@ public:
     _storage->nodes[f].data[0].h1++;
 
     _storage->outputs.emplace_back( f );
+  }
+
+  bool is_combinational() const
+  {
+    return true;
   }
 
   bool is_constant( node const& n ) const
@@ -227,6 +248,40 @@ public:
   signal create_xor( signal a, signal b )
   {
     return _create_node( {a, b}, 12 );
+  }
+#pragma endregion
+
+#pragma region Create ternary functions
+signal create_maj( signal a, signal b, signal c )
+  {
+    return _create_node( {a, b, c}, 14 );
+  }
+
+  signal create_ite( signal a, signal b, signal c )
+  {
+    return _create_node( {a, b, c}, 16 );
+  }
+
+  signal create_xor3( signal a, signal b, signal c )
+  {
+    return _create_node( {a, b, c}, 18 );
+  }
+#pragma endregion
+
+#pragma region Create nary functions
+  signal create_nary_and( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
+  }
+
+  signal create_nary_or( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
+  }
+
+  signal create_nary_xor( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_xor( a, b ); } );
   }
 #pragma endregion
 
@@ -348,6 +403,11 @@ public:
   uint32_t fanout_size( node const& n ) const
   {
     return _storage->nodes[n].data[0].h1;
+  }
+
+  bool is_function( node const& n ) const
+  {
+    return n > 1 && !is_pi( n );
   }
 #pragma endregion
 

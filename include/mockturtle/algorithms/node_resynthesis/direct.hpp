@@ -65,11 +65,11 @@ struct direct_resynthesis_params
  * ``cut_rewriting``, and ``refactoring``.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const klut_network klut = ...;
       direct_resynthesis resyn;
       const auto mig = node_resynthesis<mig_network>( klut, resyn );

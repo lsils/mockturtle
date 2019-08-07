@@ -37,8 +37,11 @@ Welcome to mockturtle's documentation!
    algorithms/akers_synthesis
    algorithms/resubstitution
    algorithms/simulation
+   algorithms/equivalence_checking
+   algorithms/miter
    algorithms/dsd_decomposition
    algorithms/cleanup
+   algorithms/cnf
    algorithms/reconv_cut
    algorithms/dont_cares
    algorithms/gates_to_nodes

@@ -59,11 +59,11 @@ namespace mockturtle
  * complement.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       truth_table_cache cache;
 
       kitty::dynamic_truth_table maj( 3 );

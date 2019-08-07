@@ -40,6 +40,10 @@
 namespace mockturtle
 {
 
+/*! \brief Cut implementation based on ABC's giaCut.c
+
+  See <a href="https://github.com/berkeley-abc/abc/blob/master/src/aig/gia/giaCut.c">giaCut.c</a> in ABC's repository.
+*/
 struct cut_enumeration_gia_cut
 {
   uint32_t num_tree_leaves;

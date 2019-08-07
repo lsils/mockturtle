@@ -89,7 +89,7 @@ void foreach_mixed_radix_tuple( Iterator begin, Iterator end, Fn&& fn )
       {
         --itp;
       }
-      
+
       if ( itm == begin )
       {
         ret = true;

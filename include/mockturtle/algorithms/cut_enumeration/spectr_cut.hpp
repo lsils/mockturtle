@@ -49,6 +49,12 @@
 namespace mockturtle
 {
 
+/*! \brief Cut based on spectral properties.
+
+  This cut type uses the number of non-zero coefficients in the cut function as
+  cost function.  It requires truth table computation during cut enumeration
+  or LUT mapping in order to work.
+*/
 struct cut_enumeration_spectr_cut
 {
   uint32_t delay{0u};

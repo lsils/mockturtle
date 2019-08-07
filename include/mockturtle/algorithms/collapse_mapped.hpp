@@ -217,7 +217,7 @@ private:
  * complementations in the subject graph:
  *
  * - If an output driver is only used in positive form, nothing changes
- * - If an output driver is only used in complemented form, the cell function 
+ * - If an output driver is only used in complemented form, the cell function
  *   of the node is negated.
  * - If an output driver is used in both forms, two nodes will be created for
  *   the mapped node.

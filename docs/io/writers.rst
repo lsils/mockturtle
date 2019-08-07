@@ -19,6 +19,15 @@ Write into structural Verilog files
 
 .. doxygenfunction:: mockturtle::write_verilog(Ntk const&, std::ostream&)
 
+Write into DIMACS files (CNF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/io/write_cnf.hpp``
+
+.. doxygenfunction:: mockturtle::write_dimacs(Ntk const&, std::string const&)
+
+.. doxygenfunction:: mockturtle::write_dimacs(Ntk const&, std::ostream&)
+
 Write into DOT files (Graphviz)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -27,4 +36,3 @@ Write into DOT files (Graphviz)
 .. doxygenfunction:: mockturtle::write_dot(Ntk const&, std::string const&, Drawer const&)
 
 .. doxygenfunction:: mockturtle::write_dot(Ntk const&, std::ostream&, Drawer const&)
-

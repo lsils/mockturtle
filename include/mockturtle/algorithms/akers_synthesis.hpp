@@ -51,9 +51,9 @@
 namespace mockturtle
 {
 
-/* cube operators needed from Kitty :  
+/* cube operators needed from Kitty :
 - & (bitwise and )
-- is_subset_of 
+- is_subset_of
 - is_const0
 */
 

@@ -86,4 +86,20 @@ T ternary_tree_reduce( Iterator first, Iterator last, T const& init, TernaryOper
   }
 }
 
+template<class Iterator, class UnaryOperation, class T>
+Iterator max_element_unary( Iterator first, Iterator last, UnaryOperation&& fn, T const& init )
+{
+  auto best = last;
+  auto max = init;
+  for ( ; first != last; ++first )
+  {
+    if ( const auto v = fn( *first ) > max )
+    {
+      max = v;
+      best = first;
+    }
+  }
+  return best;
+}
+
 } /* namespace mockturtle */

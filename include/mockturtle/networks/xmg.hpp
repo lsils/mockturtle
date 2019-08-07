@@ -27,7 +27,7 @@
   \file xmg.hpp
   \brief XMG logic network implementation
 
-  \author Mathias Soeken 
+  \author Mathias Soeken
 */
 
 #pragma once
@@ -187,6 +187,11 @@ public:
     _storage->nodes[f.index].data[0].h1++;
 
     _storage->outputs.emplace_back( f.index, f.complement );
+  }
+
+  bool is_combinational() const
+  {
+    return true;
   }
 
   bool is_constant( node const& n ) const
@@ -367,6 +372,24 @@ public:
     }
 
     return {index, fcompl};
+  }
+
+  signal create_ite( signal cond, signal f_then, signal f_else )
+  {
+    bool f_compl{false};
+    if ( f_then.index < f_else.index )
+    {
+      std::swap( f_then, f_else );
+      cond.complement ^= 1;
+    }
+    if ( f_then.complement )
+    {
+      f_then.complement = 0;
+      f_else.complement ^= 1;
+      f_compl = true;
+    }
+
+    return create_and( !create_and( !cond, f_else ), !create_and( cond, f_then ) ) ^ !f_compl;
   }
 
   signal create_and( signal const& a, signal const& b )

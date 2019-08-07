@@ -81,11 +81,11 @@ struct xag_npn_resynthesis_stats
  * 4.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const aig_network aig = ...;
       xag_npn_resynthesis<aig_network> resyn;
       cut_rewriting( aig, resyn );

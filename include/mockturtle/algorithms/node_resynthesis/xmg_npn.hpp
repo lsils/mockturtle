@@ -60,11 +60,11 @@ namespace mockturtle
  * 4.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const klut_network klut = ...;
       xmg_npn_resynthesis resyn;
       const auto xmg = node_resynthesis<xmg_network>( klut, resyn );

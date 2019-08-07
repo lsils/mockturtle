@@ -36,6 +36,8 @@
 #include <iostream>
 #include <type_traits>
 
+#include <fmt/format.h>
+
 namespace mockturtle
 {
 
@@ -48,11 +50,11 @@ namespace mockturtle
  * to the durationr reference.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       stopwatch<>::duration time{0};
 
       { // some block
@@ -101,13 +103,13 @@ private:
  * The function that is passed as second parameter can be any callable object
  * that takes no parameters.  This construction can be used to avoid
  * pre-declaring the result type of a computation that should be tracked.
- * 
+ *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       stopwatch<>::duration time{0};
 
       auto result = call_with_stopwatch( time, [&]() { return function( parameters ); } );
@@ -129,11 +131,11 @@ std::invoke_result_t<Fn> call_with_stopwatch( typename Clock::duration& dur, Fn&
  * returns the constructed object.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       stopwatch<>::duration time{0};
 
       // create vector with 100000 elements initialized to 42
@@ -144,7 +146,7 @@ template<class T, class... Args, class Clock = std::chrono::steady_clock>
 T make_with_stopwatch( typename Clock::duration& dur, Args... args )
 {
   stopwatch<Clock> t( dur );
-  return T{ std::forward<Args>( args )... };
+  return T{std::forward<Args>( args )...};
 }
 
 /*! \brief Utility function to convert duration into seconds. */
@@ -153,5 +155,25 @@ inline double to_seconds( Duration const& dur )
 {
   return std::chrono::duration_cast<std::chrono::duration<double>>( dur ).count();
 }
+
+template<class Clock = std::chrono::steady_clock>
+class print_time
+{
+public:
+  print_time()
+      : _t( new stopwatch<Clock>( _d ) )
+  {
+  }
+
+  ~print_time()
+  {
+    delete _t;
+    std::cout << fmt::format( "[i] run-time: {:5.2f} secs\n", to_seconds( _d ) );
+  }
+
+private:
+  stopwatch<Clock>* _t{nullptr};
+  typename stopwatch<Clock>::duration _d{};
+};
 
 } // namespace mockturtle

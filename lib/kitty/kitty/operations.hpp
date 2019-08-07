@@ -28,6 +28,7 @@
   \brief Implements several operations on truth tables
 
   \author Mathias Soeken
+  \author Mahyar Emami (mahyar.emami@epfl.ch)
 */
 
 #pragma once
@@ -997,6 +998,44 @@ inline TT shift_right( const TT& tt, uint64_t shift )
   auto copy = tt;
   shift_right_inplace( copy, shift );
   return copy;
+}
+
+/*! \brief Composes a truth table.
+
+  Given a function `f`, and a set of truth tables as arguments, computes the
+  composed truth table.  For example, if `f(x1, x2) = 1001` and
+  `vars = {x1 = 1001, x2= 1010}`, the function returns 1000. This function can
+  be regarded as a general operator with arity `vars.size()` where the behavior
+  of the operator is given by f.
+
+  \param f The outer function
+  \param vars The ordered set of input variables
+  \return The composed truth table with vars.size() variables
+*/
+template<class TTf, class TTv>
+auto compose_truth_table( const TTf& f, const std::vector<TTv>& vars )
+{
+  assert( vars.size() == static_cast<std::size_t>( f.num_vars() ) );
+  auto composed = vars[0].construct();
+
+  for ( uint64_t i = 0u; i < composed.num_bits(); ++i )
+  {
+    uint64_t index = 0u;
+    for ( uint64_t j = 0u; j < vars.size(); ++j )
+    {
+      index += get_bit( vars[j], i ) << j;
+    }
+    if ( get_bit( f, index ) )
+    {
+      set_bit( composed, i );
+    }
+    else
+    {
+      clear_bit( composed, i );
+    }
+  }
+
+  return composed;
 }
 
 } // namespace kitty
