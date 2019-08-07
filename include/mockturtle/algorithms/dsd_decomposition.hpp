@@ -37,10 +37,12 @@
 
 #include "../traits.hpp"
 
+#include <fmt/format.h>
 #include <kitty/constructors.hpp>
 #include <kitty/decomposition.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <kitty/print.hpp>
 
 namespace mockturtle
 {
@@ -65,17 +67,13 @@ public:
   signal<Ntk> run()
   {
     /* terminal cases */
-    if ( support.size() == 0u )
+    if ( kitty::is_const0( remainder ) )
     {
-      if ( kitty::is_const0( remainder ) )
-      {
-        return _ntk.get_constant( false );
-      }
-      else
-      {
-        assert( kitty::is_const0( ~remainder ) );
-        return _ntk.get_constant( true );
-      }
+      return _ntk.get_constant( false );
+    }
+    if ( kitty::is_const0( ~remainder ) )
+    {
+      return _ntk.get_constant( true );
     }
 
     /* projection case */
@@ -89,6 +87,11 @@ public:
       }
       else
       {
+        if ( remainder != ~var )
+        {
+          fmt::print( "remainder = {}, vars = {}\n", kitty::to_binary( remainder ), remainder.num_vars() );
+          assert( false );
+        }
         assert( remainder == ~var );
         return _ntk.create_not( pis[support.front()] );
       }
