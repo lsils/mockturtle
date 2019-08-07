@@ -41,6 +41,29 @@
 namespace mockturtle
 {
 
+/*! \brief Resynthesis function based on DSD decomposition.
+ *
+ * This resynthesis function can be passed to ``node_resynthesis``,
+ * ``cut_rewriting``, and ``refactoring``.  The given truth table will be
+ * resynthized based on DSD decomposition.  Since DSD decomposition may not be
+ * able to decompose the whole truth table, a different fall-back resynthesis
+ * function must be passed to this function.
+ *
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+      const aig_network aig = ...;
+
+      exact_aig_resynthesis<aig_network> fallback; // fallback
+      dsd_resynthesis<aig_network, decltype( fallback )> resyn( fallback );
+      cut_rewriting( aig, resyn );
+      aig = cleanup_dangling( aig );
+   \endverbatim
+ *
+ */
 template<class Ntk, class ResynthesisFn>
 class dsd_resynthesis
 {
@@ -81,8 +104,5 @@ public:
 private:
   ResynthesisFn& _resyn_fn;
 };
-
-//template<class Ntk, class Fn>
-//dsd_resynthesis(Fn&&) -> dsd_resynthesis<Ntk, Fn>;
 
 } /* namespace mockturtle */
