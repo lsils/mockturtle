@@ -245,9 +245,9 @@ private:
 
       const aig_network aig = ...;
 
-      exact_aig_resynthesis_params ps;
-      ps.cache = std::make_shared<exact_aig_resynthesis_params::cache_map_t>();
-      exact_aig_resynthesis<aig_network> resyn( ps );
+      exact_resynthesis_params ps;
+      ps.cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
+      exact_aig_resynthesis<aig_network> resyn( false, ps );
       cut_rewriting( aig, resyn );
       aig = cleanup_dangling( aig );
 
