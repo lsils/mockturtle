@@ -131,8 +131,11 @@ void write_blif( Ntk const& ntk, std::ostream& os )
   os << ".names c_n0\n";
   os << "0\n";
 
-  os << ".names c_n1\n";
-  os << "1\n";
+  if ( ntk.get_constant( false ) != ntk.get_constant( true ) )
+  {
+    os << ".names c_n1\n";
+    os << "1\n";
+  }
 
   /* write nodes */
   topo_ntk.foreach_node( [&]( auto const& n ) {
@@ -153,8 +156,6 @@ void write_blif( Ntk const& ntk, std::ostream& os )
           {
             os << fmt::format( "c_n{} ", topo_ntk.node_to_index( topo_ntk.get_node( f ) ) );
           }
-
-          // assert( !topo_ntk.is_complemented( f ) );
         });
 
       /* write fanout of node */
