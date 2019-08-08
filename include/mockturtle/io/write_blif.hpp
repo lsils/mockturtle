@@ -172,17 +172,14 @@ void write_blif( Ntk const& ntk, std::ostream& os )
 
       /* write truth table of node */
       auto func = topo_ntk.node_function( n );
-      topo_ntk.foreach_fanin( n, [&]( auto const& f, auto index ) {
-          if ( topo_ntk.is_complemented( f ) )
-          {
-            kitty::dynamic_truth_table _var( topo_ntk.fanin_size( n ) );
-            kitty::create_nth_var( _var, index );
-            func ^= _var;
-          }
-        });
 
-      for ( const auto& cube : isop( func ) )
+      for ( auto cube : isop( func ) )
       {
+        topo_ntk.foreach_fanin( n, [&]( auto const& f, auto index ) {
+            if ( cube.get_mask( index ) && topo_ntk.is_complemented( f ) )
+              cube.flip_bit( index );
+          });
+
         cube.print( topo_ntk.fanin_size( n ), os );
         os << " 1\n";
       }
