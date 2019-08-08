@@ -55,6 +55,7 @@ public:
   names_view( names_view<Ntk> const& named_ntk )
     : Ntk( named_ntk )
     , _signal_names( named_ntk._signal_names )
+    , _output_names( named_ntk._output_names )
   {
   }
 
@@ -77,8 +78,24 @@ public:
     return _signal_names.at( s );
   }
 
+  bool has_output_name( uint32_t index ) const
+  {
+    return ( _output_names.find( index ) != _output_names.end() );
+  }
+
+  void set_output_name( uint32_t index, std::string const& name )
+  {
+    _output_names[index] = name;
+  }
+
+  std::string get_output_name( uint32_t index ) const
+  {
+    return _output_names.at( index );
+  }
+
 private:
   std::map<signal, std::string> _signal_names;
+  std::map<uint32_t, std::string> _output_names;
 }; /* names_view */
 
 template<class T>

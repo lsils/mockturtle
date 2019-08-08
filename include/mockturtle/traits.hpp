@@ -1807,6 +1807,51 @@ template<class Ntk>
 inline constexpr bool has_has_name_v = has_has_name<Ntk>::value;
 #pragma endregion
 
+#pragma region has_get_output_name
+template<class Ntk, class = void>
+struct has_get_output_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_get_output_name<Ntk, std::void_t<decltype( std::declval<Ntk>().get_output_name( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_get_output_name_v = has_get_output_name<Ntk>::value;
+#pragma endregion
+
+#pragma region has_set_output_name
+template<class Ntk, class = void>
+struct has_set_output_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_set_output_name<Ntk, std::void_t<decltype( std::declval<Ntk>().set_output_name( uint32_t(), std::string() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_set_output_name_v = has_set_output_name<Ntk>::value;
+#pragma endregion
+
+#pragma region has_has_output_name
+template<class Ntk, class = void>
+struct has_has_output_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_output_name<Ntk, std::void_t<decltype( std::declval<Ntk>().has_output_name( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_output_name_v = has_has_output_name<Ntk>::value;
+#pragma endregion
+
 /*! \brief SFINAE based on iterator type (for compute functions).
  */
 template<typename Iterator, typename T>
