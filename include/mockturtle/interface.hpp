@@ -924,6 +924,15 @@ public:
 
   /*! \brief Returns the name of a signal. */
   std::string get_name( signal const& s ) const;
+
+  /*! \brief Checks if an output signal has a name. */
+  bool has_output_name( uint32_t index ) const;
+
+  /*! \brief Set the name of an output signal. */
+  void set_output_name( uint32_t index, std::string const& name );
+
+  /*! \brief Returns the name of an output signal. */
+  std::string get_output_name( uint32_t index ) const;
 #end endregion
 
 #pragma region General methods
