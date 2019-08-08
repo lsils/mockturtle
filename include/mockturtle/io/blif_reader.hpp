@@ -84,10 +84,6 @@ public:
     for ( auto const& o : outputs )
     {
       ntk_.create_po( signals[o], o );
-      if constexpr ( has_set_name_v<Ntk> )
-      {
-        ntk_.set_name( signals[o], o );
-      }
     }
   }
 
@@ -107,6 +103,10 @@ public:
 
   virtual void on_output( const std::string& name ) const override
   {
+    if constexpr ( has_set_output_name_v<Ntk> )
+    {
+      ntk_.set_output_name( outputs.size(), name );
+    }
     outputs.emplace_back( name );
   }
 

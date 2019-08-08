@@ -32,16 +32,18 @@
 
 #pragma once
 
+#include "../traits.hpp"
+
+#include <kitty/constructors.hpp>
+#include <kitty/isop.hpp>
+#include <kitty/operations.hpp>
+#include <kitty/print.hpp>
+
+#include <fmt/format.h>
+
 #include <fstream>
 #include <iostream>
 #include <string>
-
-#include <fmt/format.h>
-#include <kitty/operations.hpp>
-#include <kitty/print.hpp>
-#include <kitty/isop.hpp>
-
-#include "../traits.hpp"
 
 namespace mockturtle
 {
@@ -84,110 +86,121 @@ void write_blif( Ntk const& ntk, std::ostream& os )
 
   topo_view topo_ntk{ntk};
 
+  /* write model */
   os << ".model netlist\n";
+
+  /* write inputs */
   if ( topo_ntk.num_pis() > 0u )
   {
-    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
-    {
       os << ".inputs ";
       topo_ntk.foreach_pi( [&]( auto const& n ) {
-          auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
-          std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_n{}", topo_ntk.get_node( s ) );
-          os << name << ' ';
-        });
-      os << "\n";
-    }
-    else
-    {
-      os << ".inputs ";
-      topo_ntk.foreach_pi( [&]( auto const& n ) {
-          os << fmt::format( "c_n{} ", topo_ntk.node_to_index( n ) );
+          if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+          {
+            signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
+            std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_{}", topo_ntk.get_node( s ) );
+            os << name << ' ';
+          }
+          else
+          {
+            os << fmt::format( "c_n{} ", topo_ntk.node_to_index( n ) );
+          }
         } );
       os << "\n";
-    }
   }
 
+  /* write outputs */
   if ( topo_ntk.num_pos() > 0u )
   {
-    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
-    {
-      os << ".outputs ";
-      topo_ntk.foreach_po( [&]( auto const& n, auto index ) {
-          auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
-          std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "po{}", index );
-          os << name << ' ';
-        } );
-      os << "\n";
-    }
-    else
-    {
-      os << ".outputs ";
-      topo_ntk.foreach_po( [&]( auto const& n, auto index ) {
-          os << fmt::format( "po{} ", index );
-        } );
-      os << "\n";
-    }
-  }
-
-  os << ".names c_n0\n";
-  os << "0\n";
-
-  os << ".names c_n1\n";
-  os << "1\n";
-
-  topo_ntk.foreach_node( [&]( auto const& n ) {
-    if ( topo_ntk.is_constant( n ) || topo_ntk.is_pi( n ) )
-      return; /* continue */
-
-    os << fmt::format( ".names " );
-    topo_ntk.foreach_fanin( n, [&]( auto const& c ) {
-        if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+    os << ".outputs ";
+    topo_ntk.foreach_po( [&]( auto const& f, auto index ) {
+        (void)f;
+        if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
         {
-          auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( c ) );
-          std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_n{}", topo_ntk.get_node( s ) );
-          os << name << ' ';
+          std::string const output_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : fmt::format( "po_n{}", index );
+          os << output_name << ' ';
         }
         else
         {
-          os << fmt::format( "c_n{} ", topo_ntk.node_to_index( c ) );
+          os << fmt::format( "po{} ", index );
         }
       });
+    os << "\n";
+  }
 
-    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
-    {
-      auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
-      std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_n{}", topo_ntk.get_node( s ) );
-      os << ' ' << name << '\n';
-    }
-    else
-    {
-      os << fmt::format( " c_n{}\n", topo_ntk.node_to_index( n ) );
-    }
+  /* write constants */
+  os << ".names c_n0\n";
+  os << "0\n";
 
-    auto const func = topo_ntk.node_function( n );
-    for ( const auto& cube : isop( func ) )
-    {
-      cube.print( topo_ntk.fanin_size( n ), os );
-      os << " 1\n";
-    }
+  if ( ntk.get_constant( false ) != ntk.get_constant( true ) )
+  {
+    os << ".names c_n1\n";
+    os << "1\n";
+  }
+
+  /* write nodes */
+  topo_ntk.foreach_node( [&]( auto const& n ) {
+      if ( topo_ntk.is_constant( n ) || topo_ntk.is_pi( n ) )
+        return; /* continue */
+
+      os << fmt::format( ".names " );
+
+      /* write fanins of node */
+      topo_ntk.foreach_fanin( n, [&]( auto const& f ) {
+          if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+          {
+            signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.node_to_index( topo_ntk.get_node( f ) ) );
+            std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_n{}", topo_ntk.get_node( s ) );
+            os << name << ' ';
+          }
+          else
+          {
+            os << fmt::format( "c_n{} ", topo_ntk.node_to_index( topo_ntk.get_node( f ) ) );
+          }
+        });
+
+      /* write fanout of node */
+      if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+      {
+        auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
+        std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_n{}", topo_ntk.get_node( s ) );
+        os << name << '\n';
+      }
+      else
+      {
+        os << fmt::format( "c_n{}\n", topo_ntk.node_to_index( n ) );
+      }
+
+      /* write truth table of node */
+      auto func = topo_ntk.node_function( n );
+
+      for ( auto cube : isop( func ) )
+      {
+        topo_ntk.foreach_fanin( n, [&]( auto const& f, auto index ) {
+            if ( cube.get_mask( index ) && topo_ntk.is_complemented( f ) )
+              cube.flip_bit( index );
+          });
+
+        cube.print( topo_ntk.fanin_size( n ), os );
+        os << " 1\n";
+      }
     });
 
   if ( topo_ntk.num_pos() > 0u )
   {
-    topo_ntk.foreach_po( [&]( auto const& n, auto index ) {
-        if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+    topo_ntk.foreach_po( [&]( auto const& f, auto index ){
+        auto const minterm_string = topo_ntk.is_complemented( f ) ? "0" : "1";
+        if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> && has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
         {
-          auto const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
-          if ( !topo_ntk.has_name( s ) )
-          {
-            os << fmt::format( ".names c_n{} po{}\n1 1\n", topo_ntk.node_to_index( n ), index );
-          }
+          signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.node_to_index( topo_ntk.get_node( f ) ) );
+          std::string const node_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "c_n{}", topo_ntk.get_node( s ) );
+          std::string const output_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : fmt::format( "po_n{}", index );
+          os << fmt::format( ".names {} {}\n{} 1\n", node_name, output_name, minterm_string, index );
         }
         else
         {
-          os << fmt::format( ".names c_n{} po{}\n1 1\n", topo_ntk.node_to_index( n ), index );
+          os << fmt::format( ".names c_n{} po{}\n{} 1\n", topo_ntk.node_to_index( topo_ntk.node_to_index( topo_ntk.get_node( f ) ) ), index, minterm_string );
         }
-      } );
+      });
   }
 
   os << ".end\n";
