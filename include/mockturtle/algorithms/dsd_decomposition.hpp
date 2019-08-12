@@ -57,11 +57,16 @@ public:
   dsd_decomposition_impl( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime )
       : _ntk( ntk ),
         remainder( func ),
-        support( children.size() ),
         pis( children ),
         _on_prime( on_prime )
   {
-    std::iota( support.begin(), support.end(), 0u );
+    for ( auto i = 0; i < func.num_vars(); ++i )
+    {
+      if ( kitty::has_var( func, i ) )
+      {
+        support.push_back( i );
+      }
+    }
   }
 
   signal<Ntk> run()
