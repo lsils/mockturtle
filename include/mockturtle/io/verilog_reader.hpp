@@ -96,7 +96,7 @@ public:
     }
   }
 
-  void on_inputs( const std::vector<std::string>& names ) const override
+  void on_inputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
     for ( const auto& name : names )
     {
@@ -104,7 +104,7 @@ public:
     }
   }
 
-  void on_outputs( const std::vector<std::string>& names ) const override
+  void on_outputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
     for ( const auto& name : names )
     {

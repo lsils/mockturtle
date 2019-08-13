@@ -54,7 +54,7 @@ public:
    *
    * \param number_of_inputs Number of inputs
    */
-  virtual void on_number_of_inputs( std::size_t number_of_inputs ) const
+  virtual void on_number_of_inputs( uint64_t number_of_inputs ) const
   {
     (void)number_of_inputs;
   }
@@ -63,7 +63,7 @@ public:
    *
    * \param number_of_outputs Number of outputs
    */
-  virtual void on_number_of_outputs( std::size_t number_of_outputs ) const
+  virtual void on_number_of_outputs( uint64_t number_of_outputs ) const
   {
     (void)number_of_outputs;
   }
@@ -72,7 +72,7 @@ public:
    *
    * \param number_of_terms Number of terms
    */
-  virtual void on_number_of_terms( std::size_t number_of_terms ) const
+  virtual void on_number_of_terms( uint64_t number_of_terms ) const
   {
     (void)number_of_terms;
   }
@@ -127,7 +127,7 @@ public:
    *
    * \param number_of_inputs Number of inputs
    */
-  virtual void on_number_of_inputs( std::size_t number_of_inputs ) const
+  virtual void on_number_of_inputs( uint64_t number_of_inputs ) const
   {
     _os << fmt::format( ".i {}\n", number_of_inputs );
   }
@@ -136,7 +136,7 @@ public:
    *
    * \param number_of_outputs Number of outputs
    */
-  virtual void on_number_of_outputs( std::size_t number_of_outputs ) const
+  virtual void on_number_of_outputs( uint64_t number_of_outputs ) const
   {
     _os << fmt::format( ".o {}\n", number_of_outputs );
   }
@@ -145,7 +145,7 @@ public:
    *
    * \param number_of_terms Number of terms
    */
-  virtual void on_number_of_terms( std::size_t number_of_terms ) const
+  virtual void on_number_of_terms( uint64_t number_of_terms ) const
   {
     _os << fmt::format( ".p {}\n", number_of_terms );
   }
@@ -199,17 +199,17 @@ public:
   {
   }
 
-  virtual void on_number_of_inputs( std::size_t number_of_inputs ) const override
+  virtual void on_number_of_inputs( uint64_t number_of_inputs ) const override
   {
     _os << ".i " << number_of_inputs << std::endl;
   }
 
-  virtual void on_number_of_outputs( std::size_t number_of_outputs ) const override
+  virtual void on_number_of_outputs( uint64_t number_of_outputs ) const override
   {
     _os << ".o " << number_of_outputs << std::endl;
   }
 
-  virtual void on_number_of_terms( std::size_t number_of_terms ) const override
+  virtual void on_number_of_terms( uint64_t number_of_terms ) const override
   {
     _os << ".p " << number_of_terms << std::endl;
   }

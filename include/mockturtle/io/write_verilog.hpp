@@ -67,6 +67,13 @@ format_fanin( Ntk const& ntk, node<Ntk> const& n, node_map<std::string, Ntk>& no
 
 } // namespace detail
 
+struct write_verilog_params
+{
+  std::string module_name = "top";
+  std::vector<std::pair<std::string, uint32_t>> input_names;
+  std::vector<std::pair<std::string, uint32_t>> output_names;
+};
+
 /*! \brief Writes network in structural Verilog format into output stream
  *
  * An overloaded variant exists that writes the network into a file.
@@ -92,7 +99,7 @@ format_fanin( Ntk const& ntk, node<Ntk> const& n, node_map<std::string, Ntk>& no
  * \param os Output stream
  */
 template<class Ntk>
-void write_verilog( Ntk const& ntk, std::ostream& os )
+void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const& ps = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
@@ -113,21 +120,89 @@ void write_verilog( Ntk const& ntk, std::ostream& os )
 
   assert( ntk.is_combinational() && "Network has to be combinational" );
 
-  std::vector<std::string> xs;
-  for ( auto i = 0u; i < ntk.num_pis(); ++i )
-    xs.emplace_back( fmt::format( "x{}", i ) );
+  std::vector<std::string> xs, inputs;
+  if ( ps.input_names.empty() )
+  {
+    for ( auto i = 0u; i < ntk.num_pis(); ++i )
+      xs.emplace_back( fmt::format( "x{}", i ) );
+    inputs = xs;
+  }
+  else
+  {
+    uint32_t ctr{0u};
+    for ( auto const& [name, width] : ps.input_names )
+    {
+      inputs.emplace_back( name );
+      ctr += width;
+      for ( auto i = 0u; i < width; ++i )
+      {
+        xs.emplace_back( fmt::format( "{}[{}]", name, i ) );
+      }
+    }
+    if ( ctr != ntk.num_pis() )
+    {
+      std::cerr << "[e] input names do not partition all inputs\n";
+    }
+  }
 
-  std::vector<std::string> ys;
-  for ( auto i = 0u; i < ntk.num_pos(); ++i )
-    ys.emplace_back( fmt::format( "y{}", i ) );
+  std::vector<std::string> ys, outputs;
+  if ( ps.output_names.empty() )
+  {
+    for ( auto i = 0u; i < ntk.num_pos(); ++i )
+      ys.emplace_back( fmt::format( "y{}", i ) );
+    outputs = ys;
+  }
+  else
+  {
+    uint32_t ctr{0u};
+    for ( auto const& [name, width] : ps.output_names )
+    {
+      outputs.emplace_back( name );
+      ctr += width;
+      for ( auto i = 0u; i < width; ++i )
+      {
+        ys.emplace_back( fmt::format( "{}[{}]", name, i ) );
+      }
+    }
+    if ( ctr != ntk.num_pos() )
+    {
+      std::cerr << "[e] output names do not partition all outputs\n";
+    }
+  }
 
   std::vector<std::string> ws;
-  ntk.foreach_gate( [&]( auto const& n ){
-      ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
-    });
+  ntk.foreach_gate( [&]( auto const& n ) {
+    ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
+  } );
 
   lorina::verilog_writer writer( os );
-  writer.on_module_begin( "top", xs, ys, ws );
+  writer.on_module_begin( ps.module_name, inputs, outputs );
+  if ( ps.input_names.empty() )
+  {
+    writer.on_input( xs );
+  }
+  else
+  {
+    for ( auto const& [name, width] : ps.input_names )
+    {
+      writer.on_input( width, name );
+    }
+  }
+  if ( ps.output_names.empty() )
+  {
+    writer.on_output( ys );
+  }
+  else
+  {
+    for ( auto const& [name, width] : ps.output_names )
+    {
+      writer.on_output( width, name );
+    }
+  }
+  if ( !ws.empty() )
+  {
+    writer.on_wire( ws );
+  }
 
   node_map<std::string, Ntk> node_names( ntk );
   node_names[ntk.get_constant( false )] = "1'b0";
@@ -135,7 +210,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os )
     node_names[ntk.get_constant( true )] = "1'b1";
 
   ntk.foreach_pi( [&]( auto const& n, auto i ) {
-    node_names[n] = fmt::format( "x{}", i );
+    node_names[n] = xs[i];
   } );
 
   topo_view ntk_topo{ntk};
@@ -166,7 +241,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os )
 
       if ( ntk.is_constant( ntk.get_node( children[0u] ) ) )
       {
-        std::vector<std::pair<bool,std::string>> vs;
+        std::vector<std::pair<bool, std::string>> vs;
         vs.emplace_back( std::make_pair( ntk.is_complemented( children[1u] ), node_names[ntk.get_node( children[1u] )] ) );
         vs.emplace_back( std::make_pair( ntk.is_complemented( children[2u] ), node_names[ntk.get_node( children[2u] )] ) );
 
@@ -185,18 +260,17 @@ void write_verilog( Ntk const& ntk, std::ostream& os )
       {
         writer.on_assign_maj3( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ) );
       }
-
     }
     else
     {
-      writer.on_assign_unknown_gate( node_names[ n ] );
+      writer.on_assign_unknown_gate( node_names[n] );
     }
 
     return true;
   } );
 
   ntk.foreach_po( [&]( auto const& f, auto i ) {
-      writer.on_assign_po( fmt::format( "y{}", i ), std::make_pair( ntk.is_complemented( f ), node_names[f] ) );
+    writer.on_assign_po( ys[i], std::make_pair( ntk.is_complemented( f ), node_names[f] ) );
   } );
 
   writer.on_module_end();
@@ -225,10 +299,10 @@ void write_verilog( Ntk const& ntk, std::ostream& os )
  * \param filename Filename
  */
 template<class Ntk>
-void write_verilog( Ntk const& ntk, std::string const& filename )
+void write_verilog( Ntk const& ntk, std::string const& filename, write_verilog_params const& ps = {} )
 {
   std::ofstream os( filename.c_str(), std::ofstream::out );
-  write_verilog( ntk, os );
+  write_verilog( ntk, os, ps );
   os.close();
 }
 
