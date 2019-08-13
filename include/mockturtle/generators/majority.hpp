@@ -61,39 +61,61 @@ signal<Ntk> general_associativity( Ntk& ntk, signal<Ntk> const& y, std::vector<s
 
 } // namespace detail
 
+/*! \brief Implements Majority-7 using 7 MAJ operations.
+ *
+ * All majority operations require no inverters and are leafy.
+ */
+template<class Ntk>
+signal<Ntk> majority7( Ntk& ntk, std::array<signal<Ntk>, 7> const& xs )
+{
+  const auto side = [&]( std::array<signal<Ntk>, 6> const& ws ) {
+    const auto l1 = ntk.create_maj( ws[0], ws[1], ws[2] );
+    return detail::general_associativity( ntk, l1, {ws[3], ws[4], ws[5]} );
+  };
+
+  return ntk.create_maj(
+      side( {xs[1], xs[2], xs[3], xs[4], xs[5], xs[6]} ),
+      xs[0],
+      side( {xs[4], xs[5], xs[6], xs[1], xs[2], xs[3]} ) );
+}
+
+/*! \brief Implements Majority-9 using 13 MAJ operations.
+ *
+ * All majority operations require no inverters.
+ */
 template<class Ntk>
 signal<Ntk> majority9_13( Ntk& ntk, std::array<signal<Ntk>, 9> const& xs )
 {
-  // LHS
-  const auto l1 = ntk.create_maj( xs[3], xs[4], xs[5] );
-  const auto l2 = detail::general_associativity( ntk, l1, {xs[0], xs[1], xs[2]} );
-  const auto lhs = detail::general_associativity( ntk, l2, {xs[6], xs[7], xs[8]} );
+  const auto side = [&]( std::array<signal<Ntk>, 9> const& ws ) {
+    const auto l1 = ntk.create_maj( ws[3], ws[4], ws[5] );
+    const auto l2 = detail::general_associativity( ntk, l1, {ws[0], ws[1], ws[2]} );
+    return detail::general_associativity( ntk, l2, {ws[6], ws[7], ws[8]} );
+  };
 
-  // RHS
-  const auto r1 = ntk.create_maj( xs[6], xs[7], xs[8] );
-  const auto r2 = detail::general_associativity( ntk, r1, {xs[0], xs[1], xs[2]} );
-  const auto rhs = detail::general_associativity( ntk, r2, {xs[3], xs[4], xs[5]} );
-
-  return ntk.create_maj( lhs, detail::fake_majority9( ntk, xs ), rhs );
+  return ntk.create_maj(
+      side( xs ),
+      detail::fake_majority9( ntk, xs ),
+      side( {xs[0], xs[1], xs[2], xs[6], xs[7], xs[8], xs[3], xs[4], xs[5]} ) );
 }
 
+/*! \brief Implements Majority-9 using 12 MAJ operations.
+ *
+ * This construction requires one inverter.
+ */
 template<class Ntk>
 signal<Ntk> majority9_12( Ntk& ntk, std::array<signal<Ntk>, 9> const& xs )
 {
-  // common
-  const auto bottom = ntk.create_maj( ntk.create_not( xs[0] ), xs[1], xs[2] );
+  const auto side = [&]( std::array<signal<Ntk>, 9> const& ws ) {
+    const auto bottom = ntk.create_maj( ntk.create_not( ws[0] ), ws[1], ws[2] );
+    const auto l1 = ntk.create_maj( ws[3], ws[4], ws[5] );
+    const auto l2 = ntk.create_maj( ws[0], l1, bottom );
+    return detail::general_associativity( ntk, l2, {ws[6], ws[7], ws[8]} );
+  };
 
-  // LHS
-  const auto l1 = ntk.create_maj( xs[3], xs[4], xs[5] );
-  const auto l2 = ntk.create_maj( xs[0], l1, bottom );
-  const auto lhs = detail::general_associativity( ntk, l2, {xs[6], xs[7], xs[8]} );
-
-  // RHS
-  const auto r1 = ntk.create_maj( xs[6], xs[7], xs[8] );
-  const auto r2 = ntk.create_maj( xs[0], r1, bottom );
-  const auto rhs = detail::general_associativity( ntk, r2, {xs[3], xs[4], xs[5]} );
-
-  return ntk.create_maj( lhs, detail::fake_majority9( ntk, xs ), rhs );
+  return ntk.create_maj(
+      side( xs ),
+      detail::fake_majority9( ntk, xs ),
+      side( {xs[0], xs[1], xs[2], xs[6], xs[7], xs[8], xs[3], xs[4], xs[5]} ) );
 }
 
 } // namespace mockturtle

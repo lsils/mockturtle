@@ -32,6 +32,16 @@ inline bool implements_majority( Ntk const& ntk )
   return maj == simulate<kitty::dynamic_truth_table>( ntk, sim )[0];
 }
 
+TEST_CASE( "build majority-7 with 7 gates", "[majority]" )
+{
+  auto [mig, pis] = init_network<mig_network, 7>();
+  mig.create_po( majority7( mig, pis ) );
+
+  CHECK( 7u == mig.num_gates() );
+  CHECK( 7u == mig.num_pis() );
+  CHECK( implements_majority( mig ) );
+}
+
 TEST_CASE( "build majority-9 with 13 gates and no inverters", "[majority]" )
 {
   auto [mig, pis] = init_network<mig_network, 9>();
