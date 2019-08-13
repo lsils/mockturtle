@@ -5,6 +5,7 @@
 
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 
 #include <kitty/kitty.hpp>
@@ -55,4 +56,26 @@ TEST_CASE( "read a VERILOG file into MIG network", "[verilog_reader]" )
       break;
     }
     } );
+}
+
+TEST_CASE( "read a VERILOG file with instances", "[verilog_reader]" )
+{
+  mig_network mig;
+
+  std::string file{
+    "module top( a, b, c );\n"
+    "  input [7:0] a, b ;\n"
+    "  output [8:0] c;\n"
+    "  ripple_carry_adder #(8) add1(.x1(a), .x2(b), .y(c));\n"
+    "endmodule\n"};
+
+  std::istringstream in( file );
+  auto result = lorina::read_verilog( in, verilog_reader( mig ) );
+  mig = cleanup_dangling( mig );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+  CHECK( mig.num_pis() == 16 );
+  CHECK( mig.num_pos() == 9 );
+  CHECK( mig.num_gates() == 32 );
 }
