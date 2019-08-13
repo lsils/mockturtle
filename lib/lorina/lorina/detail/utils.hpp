@@ -35,7 +35,6 @@
 #include <cstdlib>
 #include <fstream>
 #include <functional>
-#include <functional>
 #include <locale>
 #include <memory>
 #include <numeric>
@@ -43,6 +42,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #ifndef _WIN32
 #include <libgen.h>
@@ -165,11 +165,6 @@ inline std::string join( const T& t, const std::string& sep )
       [&]( const std::string& s, const typename T::value_type& v ) { return s + sep + std::string( v ); } );
 }
 
-inline bool file_exists( const std::string& filename )
-{
-  return std::ifstream( filename ).good();
-}
-
 /* string utils are from https://stackoverflow.com/a/217605 */
 
 inline void ltrim( std::string& s )
@@ -192,18 +187,6 @@ inline void trim( std::string& s )
 {
   ltrim( s );
   rtrim( s );
-}
-
-inline std::string ltrim_copy( std::string s )
-{
-  ltrim( s );
-  return s;
-}
-
-inline std::string rtrim_copy( std::string s )
-{
-  rtrim( s );
-  return s;
 }
 
 inline std::string trim_copy( std::string s )
@@ -238,80 +221,6 @@ inline void foreach_line_in_file_escape( std::istream& in, const std::function<b
   }
 }
 
-template<char sep>
-inline std::vector<std::string> split_with_quotes( const std::string& commands )
-{
-  std::vector<std::string> result;
-  std::string current;
-
-  enum _state
-  {
-    normal,
-    quote,
-    escape
-  };
-
-  _state s = normal;
-
-  for ( auto c : commands )
-  {
-    switch ( s )
-    {
-    case normal:
-      switch ( c )
-      {
-      case '"':
-        current += c;
-        s = quote;
-        break;
-
-      case sep:
-        trim( current );
-        result.push_back( current );
-        current.clear();
-        break;
-
-      default:
-        current += c;
-        break;
-      }
-      break;
-
-    case quote:
-      switch ( c )
-      {
-      case '"':
-        current += c;
-        s = normal;
-        break;
-
-      case '\\':
-        current += c;
-        s = escape;
-        break;
-
-      default:
-        current += c;
-        break;
-      };
-      break;
-
-    case escape:
-      current += c;
-      s = quote;
-      break;
-    }
-  }
-
-  trim( current );
-  if ( !current.empty() )
-  {
-    result.push_back( current );
-  }
-
-  return result;
-}
-
 // https://stackoverflow.com/a/14266139
 inline std::vector<std::string> split( const std::string& str, const std::string& sep )
 {
@@ -327,26 +236,6 @@ inline std::vector<std::string> split( const std::string& str, const std::string
   result.push_back( trim_copy( str.substr( last ) ) );
 
   return result;
-}
-
-// based on https://stackoverflow.com/questions/5612182/convert-string-with-explicit-escape-sequence-into-relative-character
-inline std::string unescape_quotes( const std::string& s )
-{
-  std::string res;
-  std::string::const_iterator it = s.begin();
-
-  while ( it != s.end() )
-  {
-    char c = *it++;
-    if ( c == '\\' && it != s.end() && *it == '"' )
-    {
-      c = '"';
-      ++it;
-    }
-    res += c;
-  }
-
-  return res;
 }
 
 #ifndef _WIN32

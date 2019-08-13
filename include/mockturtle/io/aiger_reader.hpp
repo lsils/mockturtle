@@ -157,7 +157,7 @@ public:
     }
   }
 
-  void on_header( std::size_t, std::size_t num_inputs, std::size_t num_latches, std::size_t, std::size_t ) const override
+  void on_header( uint64_t, uint64_t num_inputs, uint64_t num_latches, uint64_t, uint64_t ) const override
   {
     (void)num_latches;
     assert( num_latches == 0 && "AIG has latches, not supported yet." );
@@ -292,7 +292,7 @@ public:
     }
   }
 
-  void on_header( std::size_t, std::size_t num_inputs, std::size_t num_latches, std::size_t, std::size_t ) const override
+  void on_header( uint64_t, uint64_t num_inputs, uint64_t num_latches, uint64_t, uint64_t ) const override
   {
     _num_inputs = num_inputs;
 

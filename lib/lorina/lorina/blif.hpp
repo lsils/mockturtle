@@ -191,13 +191,6 @@ inline return_code read_blif( std::istream& in, const blif_reader& reader, diagn
 {
   return_code result = return_code::success;
 
-  const auto dispatch_function = [&]( std::vector<std::string> inputs, std::string output, std::vector<std::pair<std::string, std::string>> tt )
-    {
-      reader.on_gate( inputs, output, tt );
-    };
-
-  detail::call_in_topological_order<std::vector<std::string>, std::string, std::vector<std::pair<std::string, std::string>>> on_action( dispatch_function );
-
   std::smatch m;
   detail::foreach_line_in_file_escape( in, [&]( std::string line ) {
     redo:
@@ -234,8 +227,7 @@ inline return_code read_blif( std::istream& in, const blif_reader& reader, diagn
           return false;
         } );
 
-        // reader.on_gate( args, output, tt );
-        on_action.call_deferred( args, output, args, output, tt );
+        reader.on_gate( args, output, tt );
 
         if ( in.eof() )
         {
@@ -261,9 +253,7 @@ inline return_code read_blif( std::istream& in, const blif_reader& reader, diagn
       {
         for ( const auto& input : detail::split( detail::trim_copy( m[1] ), " " ) )
         {
-          auto const s = detail::trim_copy( input );
-          on_action.declare_known( s );
-          reader.on_input( s );
+          reader.on_input( detail::trim_copy( input ) );
         }
         return true;
       }
