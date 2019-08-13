@@ -61,6 +61,7 @@ Welcome to mockturtle's documentation!
    generators/arithmetic
    generators/control
    generators/modular_arithmetic
+   generators/majority
 
 .. toctree::
    :maxdepth: 2
