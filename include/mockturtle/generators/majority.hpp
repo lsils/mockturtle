@@ -61,6 +61,18 @@ signal<Ntk> general_associativity( Ntk& ntk, signal<Ntk> const& y, std::vector<s
 
 } // namespace detail
 
+/*! \brief Implements Majority-5 using 4 MAJ operations.
+ *
+ * All majority operations require no inverters and are leafy.
+ */
+template<class Ntk>
+signal<Ntk> majority5( Ntk& ntk, std::array<signal<Ntk>, 5> const& xs )
+{
+  const auto lhs = ntk.create_maj( xs[0], xs[1], xs[2] );
+  const auto rhs = detail::general_associativity( ntk, xs[3], {xs[0], xs[1], xs[2]} );
+  return ntk.create_maj( lhs, xs[4], rhs );
+}
+
 /*! \brief Implements Majority-7 using 7 MAJ operations.
  *
  * All majority operations require no inverters and are leafy.
