@@ -55,3 +55,48 @@ TEST_CASE( "Exact XAG for MAJ", "[exact]" )
   CHECK( xag.num_gates() == 4u );
   CHECK( simulate<kitty::dynamic_truth_table>( xag, sim )[0] == maj );
 }
+
+TEST_CASE( "Exact AIG for XOR", "[exact]" )
+{
+  kitty::dynamic_truth_table _xor( 2u );
+  kitty::create_from_hex_string( _xor, "6" );
+
+  xag_network xag;
+  const auto a = xag.create_pi();
+  const auto b = xag.create_pi();
+
+  std::vector<xag_network::signal> pis = {a, b};
+
+  exact_aig_resynthesis<xag_network> resyn( false );
+  resyn( xag, _xor, pis.begin(), pis.end(), [&]( auto const& f ) {
+    xag.create_po( f );
+  } );
+
+  default_simulator<kitty::dynamic_truth_table> sim( 2u );
+  CHECK( xag.num_pos() == 1u );
+  CHECK( xag.num_gates() == 3u );
+  CHECK( simulate<kitty::dynamic_truth_table>( xag, sim )[0] == _xor );
+}
+
+
+TEST_CASE( "Exact XAG for XOR", "[exact]" )
+{
+  kitty::dynamic_truth_table _xor( 2u );
+  kitty::create_from_hex_string( _xor, "6" );
+
+  xag_network xag;
+  const auto a = xag.create_pi();
+  const auto b = xag.create_pi();
+
+  std::vector<xag_network::signal> pis = {a, b};
+
+  exact_aig_resynthesis<xag_network> resyn( true );
+  resyn( xag, _xor, pis.begin(), pis.end(), [&]( auto const& f ) {
+    xag.create_po( f );
+  } );
+
+  default_simulator<kitty::dynamic_truth_table> sim( 2u );
+  CHECK( xag.num_pos() == 1u );
+  CHECK( xag.num_gates() == 1u );
+  CHECK( simulate<kitty::dynamic_truth_table>( xag, sim )[0] == _xor );
+}
