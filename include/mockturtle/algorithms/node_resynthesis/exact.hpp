@@ -355,6 +355,9 @@ public:
       case 0xe:
         signals.emplace_back( !ntk.create_and( !c1, !c2 ) );
         break;
+      case 0x6:
+        signals.emplace_back( ntk.create_xor( c1, c2 ) );
+        break;
       }
     }
 
