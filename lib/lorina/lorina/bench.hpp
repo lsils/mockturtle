@@ -236,8 +236,9 @@ inline return_code read_bench( std::istream& in, const bench_reader& reader, dia
 
   /* check dangling objects */
   const auto& deps = on_action.unresolved_dependencies();
-  result = deps.size() > 0 ? return_code::parse_error : return_code::success;
-  for ( const auto& r : on_action.unresolved_dependencies() )
+  if ( deps.size() > 0 )
+    result = return_code::parse_error;
+  for ( const auto& r : deps )
   {
     if ( diag )
     {
