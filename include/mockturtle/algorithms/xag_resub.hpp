@@ -453,19 +453,18 @@ public:
     return std::nullopt;
   }
 
-// TODO: devo aggiungere i dont cares da qui in poi 
+// TODO: add DC
 
   std::optional<signal> resub_div1( node const& root, uint32_t required )
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
-    
 
     /* check for divisors  */
-    /* for ( auto i = 0u; i < num_divs; ++i )
+    /* for ( auto i = 0u; i < divs.size() - 1; ++i )
     {
       auto const& s0 = divs.at( i );
-
+      
       for ( auto j = i + 1; j < divs.size() - 1; ++j )
       {
         auto const& s1 = divs.at( j );
@@ -600,11 +599,11 @@ public:
         }
       }
     }*/
-    for ( auto i = 0u; i < num_divs - 1; ++i )
+    for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const s0 = divs.at( i );
 
-      for ( auto j = i + 1; j < num_divs - 1; ++j )
+      for ( auto j = i + 1; j < num_divs; ++j )
       {
         auto const s1 = divs.at( j );
         auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
@@ -1221,7 +1220,7 @@ private:
 
     /* save tt of all divisors to make resub faster */
     std::unordered_map<std::string, node> map_tt_divs;
-    for ( auto i = 0u; i < num_divs - 1; i++ )
+    for ( auto i = 0u; i < num_divs; i++ )
     {
       auto const s0 = divs.at( i );
       auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );

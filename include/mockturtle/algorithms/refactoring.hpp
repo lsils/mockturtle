@@ -34,6 +34,7 @@
 
 #include <iostream>
 
+#include "../io/write_verilog.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
@@ -41,6 +42,7 @@
 #include "../views/cut_view.hpp"
 #include "../views/mffc_view.hpp"
 #include "../views/topo_view.hpp"
+#include "cleanup.hpp"
 #include "cut_rewriting.hpp"
 #include "detail/mffc_utils.hpp"
 #include "dont_cares.hpp"
@@ -165,13 +167,14 @@ public:
       }
 
       std::vector<signal<Ntk>> leaves( mffc.num_pis() );
-      mffc.foreach_pi( [&]( auto const& n, auto j ) {
-        leaves[j] = ntk.make_signal( n );
+      mffc.foreach_pi( [&]( auto const& m, auto j ) {
+        leaves[j] = ntk.make_signal( m );
       } );
 
       default_simulator<kitty::dynamic_truth_table> sim( mffc.num_pis() );
       const auto tt = call_with_stopwatch( st.time_simulation,
                                            [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
+
       signal<Ntk> new_f;
       {
         if ( ps.use_dont_cares )
@@ -184,6 +187,7 @@ public:
               pivots.push_back( ntk.get_node( c ) );
             }
             stopwatch t( st.time_refactoring );
+
             refactoring_fn( ntk, tt, satisfiability_dont_cares( ntk, pivots ), leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
           }
           else
@@ -209,18 +213,22 @@ public:
 
       if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
       {
+
         ++_candidates;
         _estimated_gain += gain;
         ntk.substitute_node( n, new_f );
         ntk.set_value( n, 0 );
         ntk.set_value( ntk.get_node( new_f ), ntk.fanout_size( ntk.get_node( new_f ) ) );
+        for ( auto i = 0; i < leaves.size(); i++ )
+        {
+          ntk.set_value( ntk.get_node( leaves[i] ), ntk.fanout_size( ntk.get_node( leaves[i] ) ) );
+        }
       }
       else
       {
         recursive_deref( ntk.get_node( new_f ) );
         recursive_ref( n );
       }
-
       return true;
     } );
   }

@@ -61,7 +61,7 @@ template<class Ntk>
 kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vector<node<Ntk>> const& leaves, uint32_t max_tfi_inputs = 16u )
 {
   auto extended_leaves = reconv_cut( reconv_cut_params{max_tfi_inputs} )( ntk, leaves );
-
+  
   fanout_view<Ntk> fanout_ntk{ntk};
   fanout_ntk.clear_visited();
 

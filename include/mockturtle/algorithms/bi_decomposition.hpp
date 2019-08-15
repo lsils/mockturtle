@@ -41,6 +41,7 @@
 #include <kitty/decomposition.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <kitty/print.hpp>
 
 namespace mockturtle
 {
@@ -90,53 +91,44 @@ public:
       }
     }
 
-    auto bi_dec = kitty::is_bi_decomposable( remainder, dc_remainder );
+    auto bi_dec = kitty::is_bi_decomposable( remainder, dc_remainder, 1 );
     auto res = std::get<1>( bi_dec );
-
-    if ( ( is_const0( binary_and( std::get<2>( bi_dec )[2], std::get<2>( bi_dec )[3] ) ) ) || ( is_const0( binary_and( std::get<2>( bi_dec )[0], std::get<2>( bi_dec )[1] ) ) ) )
-    {
-      for ( auto f = 0u; f < dc_remainder.num_bits(); f++ )
-      {
-        set_bit( dc_remainder, f );
-      }
-      bi_dec = kitty::is_bi_decomposable( remainder, dc_remainder );
-      res = std::get<1>( bi_dec );
-    }
-
+  
     remainder = std::get<2>( bi_dec )[0];
     dc_remainder = std::get<2>( bi_dec )[1];
     const auto right = run();
+   
 
     remainder = std::get<2>( bi_dec )[2];
     dc_remainder = std::get<2>( bi_dec )[3];
     const auto left = run();
 
-    switch ( res )
-    {
-    default:
-      assert( false );
-    case kitty::bi_decomposition::and_:
+    if ( res == kitty::bi_decomposition::and_ )
     {
       return _ntk.create_and( left, right );
     }
-    case kitty::bi_decomposition::or_:
+    else if ( res == kitty::bi_decomposition::or_ )
     {
       return _ntk.create_or( left, right );
     }
-    case kitty::bi_decomposition::weak_and_:
+    else if ( res == kitty::bi_decomposition::weak_and_ )
     {
       return _ntk.create_and( left, right );
     }
-    case kitty::bi_decomposition::weak_or_:
+    else if ( res == kitty::bi_decomposition::weak_or_ )
     {
       return _ntk.create_or( left, right );
     }
-    case kitty::bi_decomposition::xor_:
+    else if ( res == kitty::bi_decomposition::xor_ )
     {
       return _ntk.create_xor( left, right );
     }
+    else
+    {
+      assert( false );
+      return signal<Ntk>();
     }
-    assert( false );
+      
   }
 
 private:

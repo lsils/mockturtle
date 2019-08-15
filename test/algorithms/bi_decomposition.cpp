@@ -53,9 +53,36 @@ TEST_CASE( "Bi-decomposition on some 10-input functions into XAGs", "[bi_decompo
 
     xag.create_po( bi_decomposition( xag, table, care, pis ) );
 
-    std::cout << xag.num_gates() << std::endl;
-
     default_simulator<kitty::dynamic_truth_table> sim( table.num_vars() );
     CHECK( binary_and( simulate<kitty::dynamic_truth_table>( xag, sim )[0], care ) == binary_and( table, care ) );
   }
 }
+
+TEST_CASE( "Bi-decomposition on random functions of different size", "[bi_decomposition]" )
+{
+  for ( uint32_t var = 0u; var <= 6u; ++var )
+  {
+    for ( auto i = 0u; i < 100u; ++i )
+   {
+      kitty::dynamic_truth_table func( var ), care( var );
+      kitty::create_random( func );
+      kitty::create_random( care );
+      care = ~func.construct();
+
+      xag_network ntk;
+      std::vector<xag_network::signal> pis( var );
+      std::generate( pis.begin(), pis.end(), [&]() { return ntk.create_pi(); } );
+      ntk.create_po( bi_decomposition( ntk, func, care, pis ) );
+
+      default_simulator<kitty::dynamic_truth_table> sim( func.num_vars() );
+
+      if ( kitty::binary_and( care, simulate<kitty::dynamic_truth_table>( ntk, sim )[0] ) != kitty::binary_and( care, func ) )
+      {
+        std::cout << "func = " << kitty::to_hex( func ) << "\n";
+        std::cout << "care = " << kitty::to_hex( care ) << "\n";
+        REQUIRE(false);
+      }
+    }
+  }
+}
+
