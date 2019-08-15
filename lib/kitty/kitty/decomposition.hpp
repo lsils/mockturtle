@@ -38,8 +38,8 @@
 #include <unordered_map>
 
 #include "constructors.hpp"
-#include "implicant.hpp"
 #include "operations.hpp"
+#include "implicant.hpp"
 
 namespace kitty
 {
@@ -582,7 +582,6 @@ std::tuple<std::vector<int>, std::vector<int>, std::vector<TT>> group_variables_
 
 inline std::tuple<std::vector<int>, std::vector<int>, bi_decomposition> best_variable_grouping( const std::pair<std::vector<int>, std::vector<int>>& x_or, const std::pair<std::vector<int>, std::vector<int>>& x_and, const std::pair<std::vector<int>, std::vector<int>>& x_xor, bool xor_cost )
 {
-
   if ( xor_cost )
   {
     if ( ( x_xor.first.size() != 0 ) & ( x_xor.second.size() != 0 ) )
@@ -646,28 +645,16 @@ std::vector<TT> derive_b( const TT& tt, const TT& dc, const std::tuple<std::vect
   {
     auto rb = exist_set( binary_and( ~tt, dc ), std::get<0>( x_best ) );
     qb.push_back( exist_set( binary_and( binary_and( tt, dc ), ~fa ), std::get<0>( x_best ) ) );
-    assert( !is_const0( rb ));
-    if (is_const0(qb[0]))
-    std::cout << "AZZZZ!\n";
+    assert( !is_const0( rb ) );
     qb.push_back( binary_or( qb[0], rb ) );
     return qb;
   }
   else // (( std::get<2>( x_best ) == bi_decomposition::and_) || ( std::get<2>( x_best ) == bi_decomposition::weak_and_) )
   {
-   
     qb.push_back( exist_set( binary_and( tt, dc ), std::get<0>( x_best ) ) );
-    //std::cout << "qb = " << to_binary(qb[0]) << "\n";
-    //std::cout << "fa = " << to_binary(fa) << "\n";
-    //std::cout << "R = " << to_binary(binary_and( ~tt, dc )) << "\n";
-    //std::cout << "R & fa = " << to_binary(binary_and( binary_and( ~tt, dc ), fa )) << "\n";
-    auto rb = exist_set( binary_and( binary_and( ~tt, dc ), ~fa ), std::get<0>( x_best ) );  // from Alan's code 
-    //std::cout << "Rb = " << to_binary(rb) << "\n";
-    if (is_const0(rb))
-       //qb.push_back( ~rb );
-       std::cout << "azz\n";
-    else
-       qb.push_back( binary_or( qb[0], rb ) );
-    assert( !is_const0( qb[0] ));
+    auto rb = exist_set( binary_and( binary_and( ~tt, dc ), ~fa ), std::get<0>( x_best ) );
+    qb.push_back( binary_or( qb[0], rb ) );
+    assert( !is_const0( qb[0] ) );
     return qb;
   }
 }
@@ -706,30 +693,8 @@ std::vector<TT> derive_a( const TT& tt, const TT& dc, const std::tuple<std::vect
   }
 }
 
-} /* namespace detail */
-/* \endcond */
-
-/*! \brief Checks whether a function is bi-decomposable. 
-
-  \verbatim embed:rst
-  Checks whether an incompletely specified function (ISF) ``tt`` can be represented by the function
-  :math:`f = h(l(X_1, X_3), g(X_2, X_3))`.  
-  It returns a tuple of: 
-  1. :math:'f', which is a completely specified Boolean function compatible with the input ISF 
-  2. :math:'h', which is the type of decomposition (and, or, xor, weak and, weak or)
-  3. :math:'l' and :math:'g', given as ISF (ON-set and DC-set)
-
-  The algorithm is inspired by "An Algorithm for Bi-Decomposition of Logic Functions" by A. Mishchenko et al. 
-  presented in DAC 2001. 
-
-  \endverbatim
-
-  \param tt ON-set of the input function \f$f\f$
-  \param dc DC-set of the input function \f$f\f$
-*/
-
 template<class TT>
-std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& tt, const TT& dc, bool xor_cost )
+std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& tt, const TT& dc, bool cost )
 {
 
   auto fa = tt.construct();
@@ -758,7 +723,7 @@ std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& 
   auto x_or = detail::group_variables_or( tt, dc, support );
   auto x_and = detail::group_variables_or( ~tt, dc, support );
   auto x_xor = detail::group_variables_xor( tt, dc, support );
-  auto x_best = detail::best_variable_grouping( x_or, x_and, std::make_pair( std::get<0>( x_xor ), std::get<1>( x_xor ) ), xor_cost );
+  auto x_best = detail::best_variable_grouping( x_or, x_and, std::make_pair( std::get<0>( x_xor ), std::get<1>( x_xor ) ), cost );
 
   if ( std::get<2>( x_best ) == bi_decomposition::none )
   {
@@ -783,11 +748,15 @@ std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& 
   }
 
   qa = detail::derive_a( tt, dc, x_best );
-  if ((std::get<2>( x_best ) == bi_decomposition::or_) || (std::get<2>( x_best ) == bi_decomposition::weak_or_))
-  qb = detail::derive_b( tt, dc, x_best, qa[0] );
-  else 
-  qb = detail::derive_b( tt, dc, x_best, binary_and(~qa[0], qa[1]) );
-  
+  if ( ( std::get<2>( x_best ) == bi_decomposition::or_ ) || ( std::get<2>( x_best ) == bi_decomposition::weak_or_ ) )
+  {
+    qb = detail::derive_b( tt, dc, x_best, qa[0] );
+  }
+  else
+  {
+    qb = detail::derive_b( tt, dc, x_best, binary_and( ~qa[0], qa[1] ) );
+  }
+
   fa = qa[0];
   fb = qb[0];
 
@@ -802,6 +771,63 @@ std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& 
   {
     return std::make_tuple( binary_or( fa, fb ), std::get<2>( x_best ), qa );
   }
+}
+
+} /* namespace detail */
+/* \endcond */
+
+/*! \brief Checks whether a function is bi-decomposable. 
+
+  \verbatim embed:rst
+  Checks whether an incompletely specified function (ISF) ``tt`` can be represented by the function
+  :math:`f = h(l(X_1, X_3), g(X_2, X_3))`.  
+  It returns a tuple of: 
+  1. :math:'f', which is a completely specified Boolean function compatible with the input ISF 
+  2. :math:'h', which is the type of decomposition (and, or, xor, weak and, weak or)
+  3. :math:'l' and :math:'g', given as ISF (ON-set and DC-set)
+
+  The algorithm is inspired by "An Algorithm for Bi-Decomposition of Logic Functions" by A. Mishchenko et al. 
+  presented in DAC 2001. 
+
+  \endverbatim
+
+  \param tt ON-set of the input function \f$f\f$
+  \param dc DC-set of the input function \f$f\f$
+*/
+
+template<class TT>
+std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& tt, const TT& dc )
+{
+  return detail::is_bi_decomposable( tt, dc, 0 );
+}
+
+/*! \brief Checks whether a function is bi-decomposable using XOR as preferred operation. 
+
+  \verbatim embed:rst
+  Checks whether an incompletely specified function (ISF) ``tt`` can be represented by the function
+  :math:`f = h(l(X_1, X_3), g(X_2, X_3))`.  
+  It returns a tuple of: 
+  1. :math:'f', which is a completely specified Boolean function compatible with the input ISF 
+  2. :math:'h', which is the type of decomposition (and, or, xor, weak and, weak or)
+  3. :math:'l' and :math:'g', given as ISF (ON-set and DC-set)
+
+  The algorithm is inspired by "An Algorithm for Bi-Decomposition of Logic Functions" by A. Mishchenko et al. 
+  presented in DAC 2001. 
+
+  The cost is changed to add more XOR gates compared to AND/OR gates. This cost function is motivated by 
+  minimizing the number of AND gates in XAGs for cryptography and security applications. For these applications
+  XOR gates are "free". 
+
+  \endverbatim
+
+  \param tt ON-set of the input function \f$f\f$
+  \param dc DC-set of the input function \f$f\f$
+*/
+
+template<class TT>
+std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable_mc( const TT& tt, const TT& dc )
+{
+  return detail::is_bi_decomposable( tt, dc, 1 );
 }
 
 namespace detail

@@ -91,7 +91,7 @@ public:
       }
     }
 
-    auto bi_dec = kitty::is_bi_decomposable( remainder, dc_remainder, 1 );
+    auto bi_dec = kitty::is_bi_decomposable_mc( remainder, dc_remainder);
     auto res = std::get<1>( bi_dec );
   
     remainder = std::get<2>( bi_dec )[0];
