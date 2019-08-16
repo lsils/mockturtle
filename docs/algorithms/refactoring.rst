@@ -16,6 +16,24 @@ method.
    refactoring( mig, resyn );
    mig = cleanup_dangling( mig );
 
+It is possible to change the cost function of nodes in refactoring.  Here is
+an example, in which the cost function only accounts for AND gates in a network,
+which corresponds to the multiplicative complexity of a function.
+
+.. code-block:: c++
+
+template<class Ntk>
+struct free_xor_cost
+{
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n ) const
+  {
+    return ntk.is_xor( n ) ? 0 : 1;
+  }
+};
+
+   SomeResynthesisClass resyn;
+   refactoring( ntk, resyn, free_xor_cost<Ntk>());
+
 Parameters and statistics
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
