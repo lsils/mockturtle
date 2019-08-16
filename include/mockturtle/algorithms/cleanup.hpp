@@ -252,7 +252,9 @@ Ntk cleanup_dangling( Ntk const& ntk )
 /*! \brief Cleans up LUT nodes.
  *
  * This method reconstructs a LUT network and optimizes LUTs when they do not
- * depend on all their fanin.
+ * depend on all their fanin, or when some of the fanin are constant inputs.
+ *
+ * Constant gate inputs will be propagated.
  *
    \verbatim embed:rst
 
@@ -293,6 +295,7 @@ Ntk cleanup_luts( Ntk const& ntk )
   static_assert( has_create_node_v<Ntk>, "Ntk does not implement the create_node method" );
   static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_constant_value_v<Ntk>, "Ntk does not implement the constant_value method" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
   static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
@@ -316,6 +319,23 @@ Ntk cleanup_luts( Ntk const& ntk )
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) ) return true; /* continue */
 
     auto func = ntk.node_function( n );
+
+    /* constant propagation */
+    ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+      if ( dest.is_constant( old_to_new[f] ) )
+      {
+        if ( dest.constant_value( old_to_new[f] ) != ntk.is_complemented( f ) )
+        {
+          kitty::cofactor1_inplace( func, i );
+        }
+        else
+        {
+          kitty::cofactor0_inplace( func, i );
+        }
+      }
+    } );
+
+
     const auto support = kitty::min_base_inplace( func );
     auto new_func = kitty::shrink_to( func, support.size() );
 
