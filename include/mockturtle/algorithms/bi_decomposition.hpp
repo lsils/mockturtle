@@ -57,11 +57,7 @@ public:
       : _ntk( ntk ),
         remainder( func ),
         dc_remainder( dc ),
-        support( children.size() ),
-        pis( children )
-  {
-    std::iota( support.begin(), support.end(), 0u );
-  }
+        pis( children ) {}
 
   signal<Ntk> run()
   {
@@ -91,7 +87,7 @@ public:
       }
     }
 
-    auto bi_dec = kitty::is_bi_decomposable( remainder, dc_remainder );
+    auto bi_dec = kitty::is_bi_decomposable_mc( remainder, dc_remainder );
     auto res = std::get<1>( bi_dec );
 
     remainder = std::get<2>( bi_dec )[0];
@@ -133,7 +129,6 @@ private:
   Ntk& _ntk;
   kitty::dynamic_truth_table remainder;
   kitty::dynamic_truth_table dc_remainder;
-  std::vector<uint8_t> support;
   std::vector<signal<Ntk>> pis;
 };
 
@@ -141,10 +136,10 @@ private:
 
 /*! \brief Bi decomposition
  *
- * This function applies bi-decomposition on an input truth table inside the network.  
+ * This function applies bi-decomposition on a truth table inside the network.  
  *
  * Note that the number of variables in `func` and `care` must be the same.
- * The function will create a network composed on two-input gates with as many primary inputs as number of
+ * The function will create a network composed on two-input gates with as many primary inputs as the number of
  * variables in `func` and a single output.
  *
  * **Required network functions:**

@@ -44,6 +44,12 @@ Algorithm
 Resynthesis functions
 ~~~~~~~~~~~~~~~~~~~~~
 
+.. doxygenclass:: mockturtle::akers_resynthesis
+
+.. doxygenclass:: mockturtle::bidecomposition_resynthesis
+
+.. doxygenclass:: mockturtle::exact_resynthesis
+
 .. doxygenclass:: mockturtle::xag_npn_resynthesis
 
 .. doxygenclass:: mockturtle::mig_npn_resynthesis
@@ -53,12 +59,4 @@ Resynthesis functions
 .. doxygenclass:: mockturtle::xag_minmc_resynthesis
    :members:
 
-.. doxygenclass:: mockturtle::exact_resynthesis
-
-.. doxygenclass:: mockturtle::dsd_resynthesis
-
-.. doxygenclass:: mockturtle::shannon_resynthesis
-
 .. doxygenclass:: mockturtle::direct_resynthesis
-
-.. doxygenclass:: mockturtle::akers_resynthesis
