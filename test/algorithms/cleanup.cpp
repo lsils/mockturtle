@@ -169,3 +169,58 @@ TEST_CASE( "cleanup LUT network with implicit constant", "[cleanup]" )
     CHECK( ntk.get_constant( i == 1 ) == f );
   });
 }
+
+TEST_CASE( "cleanup LUT network with constant propagation", "[cleanup]" )
+{
+  klut_network ntk;
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+
+  ntk.create_po( ntk.create_maj( a, ntk.get_constant( false ), b ) );
+  ntk.create_po( ntk.create_maj( a, ntk.get_constant( true ), b ) );
+
+  CHECK( 2u == ntk.num_pis() );
+  CHECK( 2u == ntk.num_pos() );
+  CHECK( 2u == ntk.num_gates() );
+  CHECK( 6u == ntk.size() );
+  ntk.foreach_gate( [&]( auto const& n ) { 
+    CHECK( 3u == ntk.fanin_size( n ) );
+  } );
+
+  ntk = cleanup_luts( ntk );
+
+  CHECK( 2u == ntk.num_pis() );
+  CHECK( 2u == ntk.num_pos() );
+  CHECK( 2u == ntk.num_gates() );
+  CHECK( 6u == ntk.size() );
+  ntk.foreach_gate( [&]( auto const& n, auto i ) { 
+    CHECK( 2u == ntk.fanin_size( n ) );
+    CHECK( ( i == 0 ? 0b1000 : 0b1110 ) == *( ntk.node_function( n ).begin() ) );
+  });
+}
+
+TEST_CASE( "cleanup LUT network with nested constant propagation", "[cleanup]" )
+{
+  klut_network ntk;
+  const auto a = ntk.create_pi();
+
+  kitty::dynamic_truth_table func( 5u );
+  const auto f = ntk.create_not( ntk.get_constant( true ) );
+  ntk.create_po( ntk.create_and( a, f ) );
+  ntk.create_po( ntk.create_and( a, ntk.create_not( f ) ) );
+
+  CHECK( 1u == ntk.num_pis() );
+  CHECK( 2u == ntk.num_pos() );
+  CHECK( 4u == ntk.num_gates() );
+  CHECK( 7u == ntk.size() );
+
+  ntk = cleanup_luts( ntk );
+
+  CHECK( 1u == ntk.num_pis() );
+  CHECK( 2u == ntk.num_pos() );
+  CHECK( 0u == ntk.num_gates() );
+  CHECK( 3u == ntk.size() );
+  ntk.foreach_po( [&]( auto const& f, auto i ) {
+    CHECK( ( i == 0 ? ntk.get_constant( false ) : a ) == f );
+  });
+}
