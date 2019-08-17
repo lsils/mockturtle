@@ -47,7 +47,7 @@ public:
   using signal = typename Ntk::signal;
 
 public:
-  names_view( Ntk const& ntk )
+  names_view( Ntk const& ntk = Ntk() )
     : Ntk( ntk )
   {
   }
@@ -63,6 +63,26 @@ private:
   names_view<Ntk> operator=( names_view<Ntk> const& named_ntk );
 
 public:
+  signal create_pi( std::string const& name = {} )
+  {
+    const auto s = Ntk::create_pi( name );
+    if ( !name.empty() )
+    {
+      set_name( s, name );
+    }
+    return s;
+  }
+
+  void create_po( signal const& s, std::string const& name = {} )
+  {
+    const auto index = Ntk::num_pos();
+    Ntk::create_po( s, name );
+    if ( !name.empty() )
+    {
+      set_output_name( index, name );
+    }
+  }
+
   bool has_name( signal const& s ) const
   {
     return ( _signal_names.find( s ) != _signal_names.end() );
