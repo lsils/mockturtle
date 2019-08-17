@@ -397,7 +397,9 @@ public:
 
   signal create_xor3( signal const& a, signal const& b, signal const& c )
   {
-    return create_maj( !a, create_maj( a, !b, c ), create_maj( a, b, !c ) );
+    const auto f = create_maj( a, !b, c );
+    const auto g = create_maj( a, b, !c );
+    return create_maj( !a, f, g );
   }
 #pragma endregion
 
