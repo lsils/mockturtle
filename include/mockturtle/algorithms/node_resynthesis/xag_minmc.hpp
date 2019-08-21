@@ -49,6 +49,7 @@
 #include <kitty/spectral.hpp>
 
 #include "../cleanup.hpp"
+#include "../simulation.hpp"
 #include "../../traits.hpp"
 #include "../../io/write_bench.hpp"
 #include "../../io/write_verilog.hpp"
