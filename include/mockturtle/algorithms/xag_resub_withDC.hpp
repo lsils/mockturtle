@@ -258,13 +258,13 @@ public:
         auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
         auto const& tt_s1 = sim.get_tt( ntk.make_signal( s1 ) );
 
-        if ( ( tt_s0 ^ tt_s1 ) == tt )
+        if ( binary_and(( tt_s0 ^ tt_s1 ), care) == binary_and(tt, care) )
         {
           auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 ) : ntk.make_signal( s0 );
           auto const r = sim.get_phase( s1 ) ? !ntk.make_signal( s1 ) : ntk.make_signal( s1 );
           return sim.get_phase( root ) ? !ntk.create_xor( l, r ) : ntk.create_xor( l, r );
         }
-        else if ( ( tt_s0 ^ tt_s1 ) == kitty::unary_not( tt ) )
+        else if ( binary_and(( tt_s0 ^ tt_s1 ),care) == binary_and(kitty::unary_not( tt ), care) )
         {
           auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 ) : ntk.make_signal( s0 );
           auto const r = sim.get_phase( s1 ) ? !ntk.make_signal( s1 ) : ntk.make_signal( s1 );
