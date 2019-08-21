@@ -58,12 +58,12 @@ TEST_CASE( "Bi-decomposition on some 10-input functions into XAGs", "[bi_decompo
   }
 }
 
-TEST_CASE( "Bi-decomposition on random functions of different size", "[bi_decomposition]" )
+TEST_CASE( "Bi-decomposition on random functions of different size into XAGs", "[bi_decomposition]" )
 {
   for ( uint32_t var = 0u; var <= 6u; ++var )
   {
     for ( auto i = 0u; i < 100u; ++i )
-   {
+    {
       kitty::dynamic_truth_table func( var ), care( var );
       kitty::create_random( func );
       kitty::create_random( care );
@@ -76,13 +76,7 @@ TEST_CASE( "Bi-decomposition on random functions of different size", "[bi_decomp
 
       default_simulator<kitty::dynamic_truth_table> sim( func.num_vars() );
 
-      if ( kitty::binary_and( care, simulate<kitty::dynamic_truth_table>( ntk, sim )[0] ) != kitty::binary_and( care, func ) )
-      {
-        std::cout << "func = " << kitty::to_hex( func ) << "\n";
-        std::cout << "care = " << kitty::to_hex( care ) << "\n";
-        REQUIRE(false);
-      }
+      CHECK( kitty::binary_and( care, simulate<kitty::dynamic_truth_table>( ntk, sim )[0] ) == kitty::binary_and( care, func ) );
     }
   }
 }
-

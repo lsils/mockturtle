@@ -798,7 +798,7 @@ std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& 
 template<class TT>
 std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& tt, const TT& dc )
 {
-  return detail::is_bi_decomposable( tt, dc, 0 );
+  return detail::is_bi_decomposable( tt, dc, false );
 }
 
 /*! \brief Checks whether a function is bi-decomposable using XOR as preferred operation. 
@@ -827,7 +827,7 @@ std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& 
 template<class TT>
 std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable_mc( const TT& tt, const TT& dc )
 {
-  return detail::is_bi_decomposable( tt, dc, 1 );
+  return detail::is_bi_decomposable( tt, dc, true );
 }
 
 namespace detail

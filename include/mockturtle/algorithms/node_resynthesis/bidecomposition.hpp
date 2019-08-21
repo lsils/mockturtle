@@ -47,7 +47,7 @@ namespace mockturtle
 
 /*! \brief Resynthesis function based on bi-decomposition
  *
- * This resynthesis function can be passed to ``refactoring``.
+ * This resynthesis function can be passed to  ``refactoring``.
  *
    \verbatim embed:rst
 
@@ -77,5 +77,4 @@ public:
     operator()( ntk, function, function.construct(), begin, end, fn );
   }
 };
-
 } /* namespace mockturtle */
