@@ -44,6 +44,17 @@
 namespace mockturtle
 {
 
+/*! \brief Extract linear circuit from XAG
+ *
+ * Creates a new XAG that only contains the XOR gates of the original XAG.  For
+ * each AND gate, the new XAG will contain one additional PI (for the AND
+ * output) and two additional POs (for the AND inputs) in the same order as the
+ * AND gates are traversed in topological order.
+ *
+ * Besides the new XAG, this function returns a vector of the size of all
+ * original AND gates with pointers to the signals refering to the AND's fanin
+ * and fanout (in that order).
+ */
 inline std::pair<xag_network, std::vector<std::array<xag_network::signal, 3>>>
 extract_linear_circuit( xag_network const& xag )
 {
@@ -174,6 +185,13 @@ private:
 
 } // namespace detail
 
+/*! \brief Re-insert AND gates in linear circuit
+ *
+ * Given an extracted linear circuit from `extract_linear_circuit` and the
+ * number of original AND gates, this function re-inserts the AND gates,
+ * assuming that they are represented as PI and PO pairs at the end of the
+ * original PIs and POs.
+ */
 inline xag_network merge_linear_circuit( xag_network const& xag, uint32_t num_and_gates )
 {
   return detail::merge_linear_circuit_impl( xag, num_and_gates ).run();
