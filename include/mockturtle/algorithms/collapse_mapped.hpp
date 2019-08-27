@@ -289,7 +289,8 @@ std::optional<NtkDest> collapse_mapped_network( NtkSource const& ntk )
   {
     detail::collapse_mapped_network_impl<NtkDest, NtkSource> p( ntk );
     NtkDest dest;
-    return p.run( dest );
+    p.run( dest );
+    return dest;
   }
 }
 
