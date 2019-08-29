@@ -21,7 +21,7 @@ namespace mockturtle
     signal<Ntk> majority_n_bdd( Ntk& ntk, std::array<signal<Ntk>, N> const& xs ) {
         const auto logic1 = ntk.get_constant( true );
         const auto logic0 = ntk.get_constant( false );
-        std::vector<signal<Ntk>> dp[xs.size()];
+        std::array<std::vector<signal<Ntk>>, N> dp;
         dp[0].push_back( xs[0] );
         for( auto r = 1u; r <= xs.size() / 2; r++ ){
             dp[r].push_back( ntk.create_maj( logic0, dp[r-1][0], xs[r] ) );
