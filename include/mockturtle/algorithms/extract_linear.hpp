@@ -162,16 +162,20 @@ private:
       const auto pi_index = and_pi[f];
       const auto c1 = run_rec( xag.po_at( orig_pos + 2 * pi_index ) );
       const auto c2 = run_rec( xag.po_at( orig_pos + 2 * pi_index + 1 ) );
-      return old_to_new[f] = dest.create_and( c1, c2 ) ^ xag.is_complemented( f );
+      const auto new_f = dest.create_and( c1, c2 );
+      old_to_new[f] = new_f;
+      return new_f ^ xag.is_complemented( f );
     }
 
     const auto n = xag.get_node( f );
     assert( xag.is_xor( n ) );
     std::array<xag_network::signal, 2> children;
-    xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      children[i] = run_rec( f );
+    xag.foreach_fanin( n, [&]( auto const& cf, auto i ) {
+      children[i] = run_rec( cf );
     } );
-    return old_to_new[f] = dest.create_xor( children[0], children[1] ) ^ xag.is_complemented( f );
+    const auto new_f = dest.create_xor( children[0], children[1] );
+    return old_to_new[f] = new_f;
+    return new_f ^ xag.is_complemented( f );
   }
 
 private:
