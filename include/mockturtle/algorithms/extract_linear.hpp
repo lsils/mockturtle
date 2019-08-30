@@ -141,7 +141,7 @@ public:
       if ( i == orig_pos )
         return false;
 
-      dest.create_po( run_rec( f ) );
+      dest.create_po( run_rec( xag.get_node( f ) ) ^ xag.is_complemented( f ) );
 
       return true;
     } );
@@ -150,28 +150,29 @@ public:
   }
 
 private:
-  xag_network::signal run_rec( xag_network::signal const& f )
+  xag_network::signal run_rec( xag_network::node const& n )
   {
-    if ( old_to_new.has( xag.get_node( f ) ) )
+    if ( old_to_new.has( n ) )
     {
-      return old_to_new[f] ^ xag.is_complemented( f );
+      return old_to_new[n];
     }
 
-    if ( and_pi.has( xag.get_node( f ) ) )
+    if ( and_pi.has( n ) )
     {
-      const auto pi_index = and_pi[f];
-      const auto c1 = run_rec( xag.po_at( orig_pos + 2 * pi_index ) );
-      const auto c2 = run_rec( xag.po_at( orig_pos + 2 * pi_index + 1 ) );
-      return old_to_new[f] = dest.create_and( c1, c2 ) ^ xag.is_complemented( f );
+      const auto pi_index = and_pi[n];
+      const auto f1 = xag.po_at( orig_pos + 2 * pi_index );
+      const auto f2 = xag.po_at( orig_pos + 2 * pi_index + 1 );
+      const auto c1 = run_rec( xag.get_node( f1 ) ) ^ xag.is_complemented( f1 );
+      const auto c2 = run_rec( xag.get_node( f2 ) ) ^ xag.is_complemented( f2 );
+      return old_to_new[n] = dest.create_and( c1, c2 );
     }
 
-    const auto n = xag.get_node( f );
     assert( xag.is_xor( n ) );
     std::array<xag_network::signal, 2> children;
-    xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      children[i] = run_rec( f );
+    xag.foreach_fanin( n, [&]( auto const& cf, auto i ) {
+      children[i] = run_rec( xag.get_node( cf ) ) ^ xag.is_complemented( cf );
     } );
-    return old_to_new[f] = dest.create_xor( children[0], children[1] ) ^ xag.is_complemented( f );
+    return old_to_new[n] = dest.create_xor( children[0], children[1] );
   }
 
 private:
