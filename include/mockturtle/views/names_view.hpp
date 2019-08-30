@@ -33,7 +33,8 @@
 #pragma once
 
 #include "../traits.hpp"
-#include <unordered_map>
+
+#include <map>
 
 namespace mockturtle
 {
