@@ -17,6 +17,7 @@ v0.2 (not yet released)
     - Shannon decomposition (`shannon_decomposition`) `#183 <https://github.com/lsils/mockturtle/pull/183>`_
     - Cleanup LUT networks (`cleanup_luts`) `#191 <https://github.com/lsils/mockturtle/pull/191>`_
     - Extract linear subcircuits in XAGs (`extract_linear_circuit` and `merge_linear_circuit`) `#204 <https://github.com/lsils/mockturtle/pull/204>`_
+    - Linear resynthesis using Paar algorithm (`linear_resynthesis_paar`) `#211 <https://github.com/lsils/mockturtle/pull/211>`_
 * Views:
     - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
 * I/O:
