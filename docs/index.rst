@@ -46,6 +46,7 @@ Welcome to mockturtle's documentation!
    algorithms/reconv_cut
    algorithms/dont_cares
    algorithms/extract_linear
+   algorithms/linear_resynthesis
    algorithms/gates_to_nodes
 
 .. toctree::
