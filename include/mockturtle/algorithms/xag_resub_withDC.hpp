@@ -126,6 +126,7 @@ public:
 
     if ( num_and_mffc == 0 )
     {
+      return std::nullopt;
       if ( max_inserts == 0 || num_xor_mffc == 1 )
         return std::nullopt;
 

@@ -174,7 +174,6 @@ public:
       default_simulator<kitty::dynamic_truth_table> sim( mffc.num_pis() );
       const auto tt = call_with_stopwatch( st.time_simulation,
                                            [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
-
       signal<Ntk> new_f;
       {
         if ( ps.use_dont_cares )
