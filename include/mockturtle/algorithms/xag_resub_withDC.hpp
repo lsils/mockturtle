@@ -126,7 +126,7 @@ public:
 
     if ( num_and_mffc == 0 )
     {
-      return std::nullopt;
+      //return std::nullopt;
       if ( max_inserts == 0 || num_xor_mffc == 1 )
         return std::nullopt;
 
@@ -222,6 +222,11 @@ public:
   {
     (void)required;
     auto tt = sim.get_tt( ntk.make_signal( root ) );
+    if(care.num_vars() > tt.num_vars())
+    care = kitty::shrink_to(care, tt.num_vars());
+    else 
+    care = kitty::extend_to(care, tt.num_vars());
+
     if ( binary_and(tt, care) == sim.get_tt( ntk.get_constant( false ) ) )
     {
       return sim.get_phase( root ) ? ntk.get_constant( true ) : ntk.get_constant( false );
@@ -236,6 +241,10 @@ public:
     for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const d = divs.at( i );
+      if(care.num_vars() > tt.num_vars())
+    care = kitty::shrink_to(care, tt.num_vars());
+    else 
+    care = kitty::extend_to(care, tt.num_vars());
       if ( binary_and(tt, care) != binary_and(sim.get_tt( ntk.make_signal( d ) ), care) )
         continue;
       return ( sim.get_phase( d ) ^ sim.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
@@ -247,7 +256,10 @@ public:
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
-
+    if(care.num_vars() > tt.num_vars())
+    care = kitty::shrink_to(care, tt.num_vars());
+    else 
+    care = kitty::extend_to(care, tt.num_vars());
     /* check for divisors  */
     for ( auto i = 0u; i < num_divs; ++i )
     {
@@ -281,6 +293,11 @@ public:
     (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
+    if(care.num_vars() > tt.num_vars())
+    care = kitty::shrink_to(care, tt.num_vars());
+    else 
+    care = kitty::extend_to(care, tt.num_vars());
+
     for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const s0 = divs.at( i );
@@ -396,6 +413,10 @@ public:
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
+    if(care.num_vars() > tt.num_vars())
+    care = kitty::shrink_to(care, tt.num_vars());
+    else 
+    care = kitty::extend_to(care, tt.num_vars());
 
     /* check for positive unate divisors */
     for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
@@ -446,6 +467,10 @@ public:
     (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
+    if(care.num_vars() > tt.num_vars())
+    care = kitty::shrink_to(care, tt.num_vars());
+    else 
+    care = kitty::extend_to(care, tt.num_vars());
 
     /* check positive unate divisors */
     for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
@@ -633,6 +658,10 @@ public:
     (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
+    if(care.num_vars() > tt.num_vars())
+    care = kitty::shrink_to(care, tt.num_vars());
+    else 
+    care = kitty::extend_to(care, tt.num_vars());
 
     /* check positive unate divisors */
     for ( const auto& s0 : udivs.positive_divisors )
