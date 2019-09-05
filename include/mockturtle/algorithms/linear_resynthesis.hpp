@@ -150,8 +150,15 @@ public:
     }
 
     xag.foreach_po( [&]( auto const& f, auto i ) {
-      assert( linear_equations[i].size() == 1u );
-      dest.create_po( signals[linear_equations[i].front()] ^ xag.is_complemented( f ) );
+      if ( linear_equations[i].empty() )
+      {
+        dest.create_po( dest.get_constant( xag.is_complemented( f ) ) );
+      }
+      else
+      {
+        assert( linear_equations[i].size() == 1u );
+        dest.create_po( signals[linear_equations[i].front()] ^ xag.is_complemented( f ) );
+      }
     } );
 
     return dest;
