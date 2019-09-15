@@ -76,7 +76,7 @@ extract_linear_circuit( xag_network const& xag )
     {
       std::array<xag_network::signal, 3> signal_tuple;
       xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
-        signal_tuple[i] = f;
+        signal_tuple[i] = old_to_new[f] ^ xag.is_complemented( f );
       } );
       const auto and_pi = dest.create_pi();
       old_to_new[n] = and_pi;
@@ -123,26 +123,27 @@ public:
   {
     old_to_new[xag.get_constant( false )] = dest.get_constant( false );
 
-    uint32_t orig_pis = xag.num_pis() - num_and_gates;
+    orig_pis = xag.num_pis() - num_and_gates;
     orig_pos = xag.num_pos() - 2 * num_and_gates;
 
     xag.foreach_pi( [&]( auto const& n, auto i ) {
-      if ( i < orig_pis )
-      {
-        old_to_new[n] = dest.create_pi();
-      }
-      else
-      {
-        and_pi[n] = i - orig_pis;
-      }
+      if ( i == orig_pis )
+        return false;
+
+      old_to_new[n] = dest.create_pi();
+      return true;
     } );
+
+    for ( auto i = 0u; i < num_and_gates; ++i )
+    {
+      create_and( i );
+    }
 
     xag.foreach_po( [&]( auto const& f, auto i ) {
       if ( i == orig_pos )
         return false;
 
-      dest.create_po( run_rec( f ) );
-
+      dest.create_po( run_rec( xag.get_node( f ) ) ^ xag.is_complemented( f ) );
       return true;
     } );
 
@@ -150,35 +151,40 @@ public:
   }
 
 private:
-  xag_network::signal run_rec( xag_network::signal const& f )
+  xag_network::signal create_and( uint32_t index )
   {
-    if ( old_to_new.has( xag.get_node( f ) ) )
+    if ( old_to_new.has( xag.pi_at( orig_pis + index ) ) )
     {
-      return old_to_new[f] ^ xag.is_complemented( f );
+      return old_to_new[xag.pi_at( orig_pis + index )];
     }
 
-    if ( and_pi.has( xag.get_node( f ) ) )
+    const auto f1 = xag.po_at( orig_pos + 2u * index );
+    const auto f2 = xag.po_at( orig_pos + 2u * index + 1u );
+    const auto c1 = run_rec( xag.get_node( f1 ) ) ^ xag.is_complemented( f1 );
+    const auto c2 = run_rec( xag.get_node( f2 ) ) ^ xag.is_complemented( f2 );
+    return old_to_new[xag.pi_at( orig_pis + index )] = dest.create_and( c1, c2 );
+  }
+
+  xag_network::signal run_rec( xag_network::node const& n )
+  {
+    if ( old_to_new.has( n ) )
     {
-      const auto pi_index = and_pi[f];
-      const auto c1 = run_rec( xag.po_at( orig_pos + 2 * pi_index ) );
-      const auto c2 = run_rec( xag.po_at( orig_pos + 2 * pi_index + 1 ) );
-      return old_to_new[f] = dest.create_and( c1, c2 ) ^ xag.is_complemented( f );
+      return old_to_new[n];
     }
 
-    const auto n = xag.get_node( f );
     assert( xag.is_xor( n ) );
     std::array<xag_network::signal, 2> children;
-    xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      children[i] = run_rec( f );
+    xag.foreach_fanin( n, [&]( auto const& cf, auto i ) {
+      children[i] = run_rec( xag.get_node( cf ) ) ^ xag.is_complemented( cf );
     } );
-    return old_to_new[f] = dest.create_xor( children[0], children[1] ) ^ xag.is_complemented( f );
+    return old_to_new[n] = dest.create_xor( children[0], children[1] );
   }
 
 private:
   xag_network dest;
   xag_network const& xag;
   uint32_t num_and_gates;
-  uint32_t orig_pos;
+  uint32_t orig_pis, orig_pos;
   unordered_node_map<xag_network::signal, xag_network> old_to_new;
   unordered_node_map<uint32_t, xag_network> and_pi;
 };
