@@ -364,10 +364,7 @@ TEST_CASE( "majority-9 optimization", "[mig_rewrite]" ) {
     
     mig.substitute_node( mig.get_node( get_pos( mig )[0] ), substitute_maj_n( mig, mig.get_node( get_pos( mig )[0] ), 7 ) );
     mig = cleanup_dangling( mig );
-    
     apply_rule_forward( mig, get_fwd_comp_assocs<mig_network> );
-    
-    CHECK( ( mig.num_gates() == 15u ) );
     CHECK( implements_majority( mig ) );
 }
 
