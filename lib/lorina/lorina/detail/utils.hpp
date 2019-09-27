@@ -273,6 +273,11 @@ inline std::string basename( const std::string& filepath )
 }
 #endif
 
+inline bool starts_with( std::string const& s, std::string const& match )
+{
+  return ( s.substr( 0, match.size() ) == match );
+}
+
 } // namespace detail
 } // namespace lorina
 
