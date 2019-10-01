@@ -39,7 +39,6 @@ namespace percy
 
             int get_op_var(const spec& spec, int step_idx, int var_idx) const 
             {
-                (void)spec;
                 assert(step_idx < spec.nr_steps);
                 assert(var_idx > 0);
                 assert(var_idx <= nr_op_vars_per_step);
@@ -72,7 +71,6 @@ namespace percy
 
             int get_lex_var(const spec& spec, int step_idx, int op_idx) const
             {
-                (void)spec;
                 assert(step_idx < spec.nr_steps);
                 assert(op_idx < nr_op_vars_per_step);
 

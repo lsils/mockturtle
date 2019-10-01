@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -124,7 +124,7 @@ void write_bench( Ntk const& ntk, std::ostream& os )
     {
       os << fmt::format( "po{} = {}\n",
                          i,
-                         ntk.is_complemented( s ) ? "vdd" : "gnd" );
+                         ( ntk.constant_value( ntk.get_node( s ) ) ^ ntk.is_complemented( s ) ) ? "vdd" : "gnd" );
     }
     else
     {

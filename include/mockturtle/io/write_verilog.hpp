@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -37,6 +37,7 @@
 #include <iostream>
 #include <string>
 
+#include <lorina/verilog.hpp>
 #include <ez/direct_iterator.hpp>
 #include <fmt/format.h>
 
@@ -53,19 +54,25 @@ using namespace std::string_literals;
 namespace detail
 {
 
-template<int Fanin, class Ntk>
-std::pair<std::array<std::string, Fanin>, std::array<std::string, Fanin>>
+template<class Ntk>
+std::vector<std::pair<bool, std::string>>
 format_fanin( Ntk const& ntk, node<Ntk> const& n, node_map<std::string, Ntk>& node_names )
 {
-  std::array<std::string, Fanin> children, inv;
-  ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
-    children[i] = node_names[f];
-    inv[i] = ntk.is_complemented( f ) ? "~" : "";
-  } );
-  return {children, inv};
+  std::vector<std::pair<bool, std::string>> children;
+  ntk.foreach_fanin( n, [&]( auto const& f ) {
+      children.emplace_back( std::make_pair( ntk.is_complemented( f ), node_names[f] ) );
+    });
+  return children;
 }
 
 } // namespace detail
+
+struct write_verilog_params
+{
+  std::string module_name = "top";
+  std::vector<std::pair<std::string, uint32_t>> input_names;
+  std::vector<std::pair<std::string, uint32_t>> output_names;
+};
 
 /*! \brief Writes network in structural Verilog format into output stream
  *
@@ -92,7 +99,7 @@ format_fanin( Ntk const& ntk, node<Ntk> const& n, node_map<std::string, Ntk>& no
  * \param os Output stream
  */
 template<class Ntk>
-void write_verilog( Ntk const& ntk, std::ostream& os )
+void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const& ps = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
@@ -111,109 +118,162 @@ void write_verilog( Ntk const& ntk, std::ostream& os )
   static_assert( has_is_maj_v<Ntk>, "Ntk does not implement the is_maj method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
 
-  const auto xs = map_and_join( ez::make_direct_iterator<decltype( ntk.num_pis() )>( 0 ),
-                                ez::make_direct_iterator( ntk.num_pis() ),
-                                []( auto i ) { return fmt::format( "x{}", i ); }, ", "s );
-  const auto ys = map_and_join( ez::make_direct_iterator<decltype( ntk.num_pis() )>( 0 ),
-                                ez::make_direct_iterator( ntk.num_pos() ),
-                                []( auto i ) { return fmt::format( "y{}", i ); }, ", "s );
+  assert( ntk.is_combinational() && "Network has to be combinational" );
 
-  os << fmt::format( "module top({}, {});\n", xs, ys )
-     << fmt::format( "  input {};\n", xs )
-     << fmt::format( "  output {};\n", ys );
-
-  node_map<std::string, Ntk> node_names( ntk );
-
-  node_names[ntk.get_constant( false )] = "1'b0";
-  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  std::vector<std::string> xs, inputs;
+  if ( ps.input_names.empty() )
   {
-    node_names[ntk.get_constant( true )] = "1'b1";
+    for ( auto i = 0u; i < ntk.num_pis(); ++i )
+      xs.emplace_back( fmt::format( "x{}", i ) );
+    inputs = xs;
+  }
+  else
+  {
+    uint32_t ctr{0u};
+    for ( auto const& [name, width] : ps.input_names )
+    {
+      inputs.emplace_back( name );
+      ctr += width;
+      for ( auto i = 0u; i < width; ++i )
+      {
+        xs.emplace_back( fmt::format( "{}[{}]", name, i ) );
+      }
+    }
+    if ( ctr != ntk.num_pis() )
+    {
+      std::cerr << "[e] input names do not partition all inputs\n";
+    }
   }
 
+  std::vector<std::string> ys, outputs;
+  if ( ps.output_names.empty() )
+  {
+    for ( auto i = 0u; i < ntk.num_pos(); ++i )
+      ys.emplace_back( fmt::format( "y{}", i ) );
+    outputs = ys;
+  }
+  else
+  {
+    uint32_t ctr{0u};
+    for ( auto const& [name, width] : ps.output_names )
+    {
+      outputs.emplace_back( name );
+      ctr += width;
+      for ( auto i = 0u; i < width; ++i )
+      {
+        ys.emplace_back( fmt::format( "{}[{}]", name, i ) );
+      }
+    }
+    if ( ctr != ntk.num_pos() )
+    {
+      std::cerr << "[e] output names do not partition all outputs\n";
+    }
+  }
+
+  std::vector<std::string> ws;
+  ntk.foreach_gate( [&]( auto const& n ) {
+    ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
+  } );
+
+  lorina::verilog_writer writer( os );
+  writer.on_module_begin( ps.module_name, inputs, outputs );
+  if ( ps.input_names.empty() )
+  {
+    writer.on_input( xs );
+  }
+  else
+  {
+    for ( auto const& [name, width] : ps.input_names )
+    {
+      writer.on_input( width, name );
+    }
+  }
+  if ( ps.output_names.empty() )
+  {
+    writer.on_output( ys );
+  }
+  else
+  {
+    for ( auto const& [name, width] : ps.output_names )
+    {
+      writer.on_output( width, name );
+    }
+  }
+  if ( !ws.empty() )
+  {
+    writer.on_wire( ws );
+  }
+
+  node_map<std::string, Ntk> node_names( ntk );
+  node_names[ntk.get_constant( false )] = "1'b0";
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+    node_names[ntk.get_constant( true )] = "1'b1";
+
   ntk.foreach_pi( [&]( auto const& n, auto i ) {
-    node_names[n] = fmt::format( "x{}", i );
+    node_names[n] = xs[i];
   } );
 
   topo_view ntk_topo{ntk};
-
-  /* declare wires */
-  if ( ntk.num_gates() > 0 )
-  {
-    os << "  wire ";
-    auto first = true;
-    ntk.foreach_gate( [&]( auto const& n ) {
-        if ( first )
-          first = false;
-        else
-          os << ", ";
-        os << fmt::format( "n{}", ntk.node_to_index( n ) );
-      } );
-    os << ";\n";
-  }
 
   ntk_topo.foreach_node( [&]( auto const& n ) {
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
       return true;
 
+    /* assign a name */
+    node_names[n] = fmt::format( "n{}", ntk.node_to_index( n ) );
+
     if ( ntk.is_and( n ) )
     {
-      const auto [children, inv] = detail::format_fanin<2, Ntk>( ntk, n, node_names );
-      os << fmt::format( "  assign n{} = {}{} & {}{};\n", ntk.node_to_index( n ),
-                         inv[0], children[0], inv[1], children[1] );
+      writer.on_assign( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ), "&" );
     }
     else if ( ntk.is_or( n ) )
     {
-      const auto [children, inv] = detail::format_fanin<2, Ntk>( ntk, n, node_names );
-      os << fmt::format( "  assign n{} = {}{} | {}{};\n", ntk.node_to_index( n ),
-                         inv[0], children[0], inv[1], children[1] );
+      writer.on_assign( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ), "|" );
     }
-    else if ( ntk.is_xor( n ) )
+    else if ( ntk.is_xor( n ) || ntk.is_xor3( n ) )
     {
-      const auto [children, inv] = detail::format_fanin<2, Ntk>( ntk, n, node_names );
-      os << fmt::format( "  assign n{} = {}{} ^ {}{};\n", ntk.node_to_index( n ),
-                         inv[0], children[0], inv[1], children[1] );
-    }
-    else if ( ntk.is_xor3( n ) )
-    {
-      const auto [children, inv] = detail::format_fanin<3, Ntk>( ntk, n, node_names );
-      os << fmt::format( "  assign n{} = {}{} ^ {}{} ^ {}{};\n", ntk.node_to_index( n ),
-                         inv[0], children[0], inv[1], children[1], inv[2], children[2] );
+      writer.on_assign( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ), "^" );
     }
     else if ( ntk.is_maj( n ) )
     {
-      signal<Ntk> first_child;
-      ntk.foreach_fanin( n, [&]( auto const& f ) { first_child = f; return false; } );
+      std::array<signal<Ntk>, 3> children;
+      ntk.foreach_fanin( n, [&]( auto const& f, auto i ) { children[i] = f; } );
 
-      const auto [children, inv] = detail::format_fanin<3, Ntk>( ntk, n, node_names );
-      if ( ntk.is_constant( ntk.get_node( first_child ) ) )
+      if ( ntk.is_constant( ntk.get_node( children[0u] ) ) )
       {
-        os << fmt::format( "  assign n{0} = {1}{3} {5} {2}{4};\n",
-                           ntk.node_to_index( n ),
-                           inv[1], inv[2], children[1], children[2],
-                           ntk.is_complemented( first_child ) ? "|" : "&" );
+        std::vector<std::pair<bool, std::string>> vs;
+        vs.emplace_back( std::make_pair( ntk.is_complemented( children[1u] ), node_names[ntk.get_node( children[1u] )] ) );
+        vs.emplace_back( std::make_pair( ntk.is_complemented( children[2u] ), node_names[ntk.get_node( children[2u] )] ) );
+
+        if ( ntk.is_complemented( children[0u] ) )
+        {
+          // or
+          writer.on_assign( node_names[n], {vs[0u], vs[1u]}, "|" );
+        }
+        else
+        {
+          // and
+          writer.on_assign( node_names[n], {vs[0u], vs[1u]}, "&" );
+        }
       }
       else
       {
-        os << fmt::format( "  assign n{0} = ({1}{4} & {2}{5}) | ({1}{4} & {3}{6}) | ({2}{5} & {3}{6});\n",
-                           ntk.node_to_index( n ),
-                           inv[0], inv[1], inv[2], children[0], children[1], children[2] );
+        writer.on_assign_maj3( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ) );
       }
     }
     else
     {
-      os << fmt::format( "  assign n{} = unknown gate;\n", ntk.node_to_index( n ) );
+      writer.on_assign_unknown_gate( node_names[n] );
     }
 
-    node_names[n] = fmt::format( "n{}", ntk.node_to_index( n ) );
     return true;
   } );
 
   ntk.foreach_po( [&]( auto const& f, auto i ) {
-    os << fmt::format( "  assign y{} = {}{};\n", i, ntk.is_complemented( f ) ? "~" : "", node_names[f] );
+    writer.on_assign_po( ys[i], std::make_pair( ntk.is_complemented( f ), node_names[f] ) );
   } );
 
-  os << "endmodule\n"
-     << std::flush;
+  writer.on_module_end();
 }
 
 /*! \brief Writes network in structural Verilog format into a file
@@ -239,10 +299,10 @@ void write_verilog( Ntk const& ntk, std::ostream& os )
  * \param filename Filename
  */
 template<class Ntk>
-void write_verilog( Ntk const& ntk, std::string const& filename )
+void write_verilog( Ntk const& ntk, std::string const& filename, write_verilog_params const& ps = {} )
 {
   std::ofstream os( filename.c_str(), std::ofstream::out );
-  write_verilog( ntk, os );
+  write_verilog( ntk, os, ps );
   os.close();
 }
 

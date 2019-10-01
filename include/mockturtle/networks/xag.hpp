@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file xag.hpp
   \brief Xor-And Graph (XAG) logic network implementation
 
-  \author Eleonora Testa 
+  \author Eleonora Testa
 */
 
 #pragma once
@@ -355,6 +355,16 @@ public:
     return create_and( !a, !b );
   }
 
+  signal create_lt( signal const& a, signal const& b )
+  {
+    return create_and( !a, b );
+  }
+
+  signal create_le( signal const& a, signal const& b )
+  {
+    return !create_and( a, !b );
+  }
+
   signal create_xor( signal a, signal b )
   {
     /* order inputs a > b it is a XOR */
@@ -409,6 +419,11 @@ public:
     auto c2 = create_xor( a, c );
     auto c3 = create_and( c1, c2 );
     return create_xor( a, c3 );
+  }
+
+  signal create_xor3( signal const& a, signal const& b, signal const& c )
+  {
+    return create_xor( create_xor( a, b ), c );
   }
 #pragma endregion
 

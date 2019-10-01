@@ -91,7 +91,6 @@ namespace percy
             int
             get_op_var(const spec& spec, int step_idx, int var_idx) const
             {
-                (void)spec;
                 assert(step_idx < spec.nr_steps);
                 assert(var_idx > 0);
                 assert(var_idx <= nr_op_vars_per_step);

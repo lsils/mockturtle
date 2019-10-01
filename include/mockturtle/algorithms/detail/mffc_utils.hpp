@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -113,4 +113,3 @@ uint32_t mffc_size( Ntk const& ntk, node<Ntk> const& n )
 }
 
 } /* namespace mockturtle::detail */
-

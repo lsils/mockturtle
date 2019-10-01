@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -42,6 +42,10 @@
 namespace mockturtle
 {
 
+/*! \brief Cut implementation based on ABC's giaMf.c
+
+  See <a href="https://github.com/berkeley-abc/abc/blob/master/src/aig/gia/giaMf.c">giaMf.c</a> in ABC's repository.
+*/
 struct cut_enumeration_mf_cut
 {
   uint32_t delay{0};

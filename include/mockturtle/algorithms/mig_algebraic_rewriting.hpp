@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -32,10 +32,11 @@
 
 #pragma once
 
+#include "../views/topo_view.hpp"
+#include "../utils/stopwatch.hpp"
+
 #include <iostream>
 #include <optional>
-
-#include "../views/topo_view.hpp"
 
 namespace mockturtle
 {
@@ -83,6 +84,13 @@ struct mig_algebraic_depth_rewriting_params
   bool allow_area_increase{true};
 };
 
+/*! \brief Statistics for mig_algebraic_depth_rewriting. */
+struct mig_algebraic_depth_rewriting_stats
+{
+  /*! \brief Total runtime. */
+  stopwatch<>::duration time_total{0};
+};
+
 namespace detail
 {
 
@@ -90,13 +98,15 @@ template<class Ntk>
 class mig_algebraic_depth_rewriting_impl
 {
 public:
-  mig_algebraic_depth_rewriting_impl( Ntk& ntk, mig_algebraic_depth_rewriting_params const& ps )
-      : ntk( ntk ), ps( ps )
+  mig_algebraic_depth_rewriting_impl( Ntk& ntk, mig_algebraic_depth_rewriting_params const& ps, mig_algebraic_depth_rewriting_stats& st )
+    : ntk( ntk ), ps( ps ), st( st )
   {
   }
 
   void run()
   {
+    stopwatch t( st.time_total );
+
     switch ( ps.strategy )
     {
     case mig_algebraic_depth_rewriting_params::dfs:
@@ -298,6 +308,7 @@ private:
 private:
   Ntk& ntk;
   mig_algebraic_depth_rewriting_params const& ps;
+  mig_algebraic_depth_rewriting_stats& st;
 };
 
 } // namespace detail
@@ -334,7 +345,7 @@ private:
    \endverbatim
  */
 template<class Ntk>
-void mig_algebraic_depth_rewriting( Ntk& ntk, mig_algebraic_depth_rewriting_params const& ps = {} )
+void mig_algebraic_depth_rewriting( Ntk& ntk, mig_algebraic_depth_rewriting_params const& ps = {}, mig_algebraic_depth_rewriting_stats *pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
@@ -351,8 +362,14 @@ void mig_algebraic_depth_rewriting( Ntk& ntk, mig_algebraic_depth_rewriting_para
   static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
 
-  detail::mig_algebraic_depth_rewriting_impl<Ntk> p( ntk, ps );
+  mig_algebraic_depth_rewriting_stats st;
+  detail::mig_algebraic_depth_rewriting_impl<Ntk> p( ntk, ps, st );
   p.run();
+
+  if ( pst )
+  {
+    *pst = st;
+  }
 }
 
 } /* namespace mockturtle */

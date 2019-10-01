@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -58,20 +58,20 @@ struct empty_cut_data
  * is an empty struct that does not consume memory.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       std::vector<uint32_t> data{1, 2, 3, 4};
-  
+
       cut<10> cut1;
       cut1.set_leaves( data.begin(), data.end() );
-  
+
       cut<10, uint32_t> cut2;
       cut2.set_leaves( data.begin(), data.end() );
       cut2.data() = 42u;
-  
+
       struct cut_data { uint32_t costs; };
       cut<20, cut_data> c3;
       c3.set_leaves( std::vector<uint32_t>{1, 2, 3} );
@@ -82,6 +82,24 @@ template<int MaxLeaves, typename T = empty_cut_data>
 class cut
 {
 public:
+  /*! \brief Default constructor.
+   */
+  cut() = default;
+
+  /*! \brief Copy constructor.
+   *
+   * Copies leaves, length, signature, and data.
+   *
+   * \param other Other cut
+   */
+  cut( cut const& other )
+  {
+    _cend = _end = std::copy( other.begin(), other.end(), _leaves.begin() );
+    _length = other._length;
+    _signature = other._signature;
+    _data = other._data;
+  }
+
   /*! \brief Assignment operator.
    *
    * Copies leaves, length, signature, and data.
@@ -141,7 +159,7 @@ public:
    * If \f$L_1\f$ are the leaves of the current cut and \f$L_2\f$ are the leaves
    * of `that`, then this method returns true if and only if
    * \f$L_1 \subseteq L_2\f$.
-   * 
+   *
    * \param that Other cut
    */
   bool dominates( cut const& that ) const;
@@ -153,7 +171,7 @@ public:
    * the cut and \f$L_2\f$ of `that`.  The merge is only successful if the
    * union has not more than `cut_size` elements.  In that case, the function
    * returns `false`, otherwise `true`.
-   * 
+   *
    * \param that Other cut
    * \param res Resulting cut
    * \param cut_size Maximum cut size
@@ -292,17 +310,17 @@ bool cut<MaxLeaves, T>::merge( cut const& that, cut& res, uint32_t cut_size ) co
  * The aim of a cut set is to contain cuts and maintain two propeties.  First,
  * all cuts are ordered according to the `<` operator, and second, all cuts
  * are irredundant, i.e., no cut in the set dominates another cut in the set.
- * 
+ *
  * The cut set is defined using the `CutType` of cuts it should hold and a
  * maximum number of cuts it can hold.  No check is performed whether a cut set
  * is full, and therefore the caller must not insert cuts into a full set.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       cut_set<cut<10>, 30> cuts;
 
       cut<10> c1, c2, c3, c4;
@@ -344,7 +362,7 @@ public:
    * This function should only be called to create a set of cuts which is known
    * to be sorted and irredundant (i.e., no cut in the set dominates another
    * cut).
-   * 
+   *
    * \param begin Begin iterator to leaf indexes
    * \param end End iterator (exclusive) to leaf indexes
    * \return Reference to the added cut
@@ -363,16 +381,16 @@ public:
    * This method will insert a cut into a set and maintain an order.  Before the
    * cut is inserted into the correct position, it will remove all cuts that are
    * dominated by `cut`.
-   * 
+   *
    * If `cut` is dominated by any of the cuts in the set, it will still be
    * inserted.  The caller is responsible to check whether `cut` is dominated
    * before inserting it into the set.
-   * 
+   *
    * \param cut Cut to insert.
    */
   void insert( CutType const& cut );
 
-  /*! \brief Begin iterator (constant). 
+  /*! \brief Begin iterator (constant).
    *
    * The iterator will point to a cut pointer.
    */

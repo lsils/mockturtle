@@ -17,6 +17,7 @@
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/algorithms/satlut_mapping.hpp>
 #include <mockturtle/algorithms/aig_resub.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
@@ -114,7 +115,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 20, 80, 49, 160, 79, 199, 131, 506, 2, 258}} );
+  CHECK( v == std::vector<uint32_t>{{0, 20, 80, 49, 160, 79, 195, 131, 506, 2, 258}} );
 
   // with zero gain
   const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
@@ -128,7 +129,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     return before - ntk.num_gates();
   } );
 
-  CHECK( v2 == std::vector<uint32_t>{{0, 20, 78, 49, 158, 79, 200, 131, 525, 2, 255}} );
+  CHECK( v2 == std::vector<uint32_t>{{0, 20, 78, 49, 158, 79, 196, 132, 525, 2, 255}} );
 }
 
 TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis", "[quality]" )
@@ -156,21 +157,6 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
   } );
 
   CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 115, 55, 254, 118, 443, 449, 66}} );
-}
-
-TEST_CASE( "Test quality of MIG resubstitution", "[quality]" )
-{
-  using view_t = depth_view<fanout_view<mig_network>>;
-  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
-    fanout_view<mig_network> fanout_view{ntk};
-    view_t resub_view{fanout_view};
-    const auto before = ntk.num_gates();
-    mig_resubstitution( resub_view );
-    ntk = cleanup_dangling( ntk );
-    return before - ntk.num_gates();
-  } );
-
-  CHECK( v == std::vector<uint32_t>{{0, 39, 6, 16, 6, 15, 57, 53, 105, 17, 40}} );
 }
 
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
@@ -208,7 +194,7 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase"
 TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[quality]" )
 {
   auto cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
- 
+
   const auto v = foreach_benchmark<aig_network>( [&cache]( auto& ntk, auto ) {
     mapping_view<aig_network, true> mapped{ntk};
     lut_mapping_params ps;
@@ -218,7 +204,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[qual
 
     exact_resynthesis_params erps;
     erps.cache = cache;
-    exact_resynthesis resyn( 2, erps );
+    exact_resynthesis<klut_network> resyn( 2, erps );
     auto lut2 = node_resynthesis<klut_network>( lut, resyn );
     lut2 = cleanup_dangling( lut2 );
     return lut2.num_gates();
@@ -230,7 +216,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[qual
 TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (best-case setting)", "[quality]" )
 {
   auto cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
- 
+
   const auto v = foreach_benchmark<aig_network>( [&cache]( auto& ntk, auto ) {
     mapping_view<aig_network, true> mapped{ntk};
     lut_mapping_params ps;
@@ -241,7 +227,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (best-ca
     exact_resynthesis_params erps;
     erps.cache = cache;
     erps.add_lex_func_clauses = false;
-    exact_resynthesis resyn( 2, erps );
+    exact_resynthesis<klut_network> resyn( 2, erps );
     auto lut2 = node_resynthesis<klut_network>( lut, resyn );
     lut2 = cleanup_dangling( lut2 );
     return lut2.num_gates();
@@ -255,7 +241,7 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-c
   return; /* disable, because slow */
 
   auto cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
- 
+
   const auto v = foreach_benchmark<aig_network>( [&cache]( auto& ntk, auto ) {
     mapping_view<aig_network, true> mapped{ntk};
     lut_mapping_params ps;
@@ -271,28 +257,13 @@ TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis (worst-c
     erps.add_nontriv_clauses = false;
     erps.add_noreapply_clauses = false;
     erps.add_symvar_clauses = false;
-    exact_resynthesis resyn( 2, erps );
+    exact_resynthesis<klut_network> resyn( 2, erps );
     auto lut2 = node_resynthesis<klut_network>( lut, resyn );
     lut2 = cleanup_dangling( lut2 );
     return lut2.num_gates();
   } );
 
   CHECK( v == std::vector<uint32_t>{{6, 172, 182, 296, 182, 189, 484, 841, 1385, 1851, 1292}} );
-}
-
-TEST_CASE( "Test quality of AIG resubstitution", "[quality]" )
-{
-  using view_t = depth_view<fanout_view<aig_network>>;
-  const auto v = foreach_benchmark<aig_network>( []( auto& ntk, auto ) {
-    fanout_view<aig_network> fanout_view{ntk};
-    view_t resub_view{fanout_view};
-    const auto before = ntk.num_gates();
-    aig_resubstitution( resub_view );
-    ntk = cleanup_dangling( ntk );
-    return before - ntk.num_gates();
-  } );
-
-  CHECK( v == std::vector<uint32_t>{{0, 40, 0, 13, 0, 27, 76, 44, 135, 218, 43}} );
 }
 
 TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis", "[quality]" )
@@ -303,12 +274,14 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis"
     const auto before = ntk.num_gates();
     cut_rewriting_params ps;
     ps.cut_enumeration_ps.cut_size = 4;
+    ps.min_cand_cut_size = 2;
+    ps.min_cand_cut_size_override = 3;
     cut_rewriting( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 18, 4, 9, 84, 17, 114, 93, 247, 17, 22}} );
+  CHECK( v == std::vector<uint32_t>{{0, 17, 4, 9, 60, 16, 113, 93, 250, 17, 21}} );
 }
 
 TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis", "[quality]" )
@@ -319,12 +292,14 @@ TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis"
     const auto before = ntk.num_gates();
     cut_rewriting_params ps;
     ps.cut_enumeration_ps.cut_size = 4;
+    ps.min_cand_cut_size = 2;
+    ps.min_cand_cut_size_override = 3;
     cut_rewriting( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 38, 200, 62, 248, 124, 236, 174, 487, 561, 409}} );
+  CHECK( v == std::vector<uint32_t>{{0, 31, 152, 50, 176, 79, 215, 134, 411, 869, 293}} );
 }
 
 #endif

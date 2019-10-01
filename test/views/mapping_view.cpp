@@ -66,7 +66,7 @@ TEST_CASE( "create a mapping in an AIG", "[mapping_view]" )
 
   CHECK( !mapped_aig.has_mapping() );
   CHECK( mapped_aig.num_cells() == 0u );
-  
+
   CHECK( !mapped_aig.is_cell_root( aig.get_node( a ) ) );
   CHECK( !mapped_aig.is_cell_root( aig.get_node( b ) ) );
   CHECK( !mapped_aig.is_cell_root( aig.get_node( c ) ) );
@@ -79,7 +79,7 @@ TEST_CASE( "create a mapping in an AIG", "[mapping_view]" )
 
   CHECK( mapped_aig.has_mapping() );
   CHECK( mapped_aig.num_cells() == 2u );
-  
+
   CHECK( !mapped_aig.is_cell_root( aig.get_node( a ) ) );
   CHECK( !mapped_aig.is_cell_root( aig.get_node( b ) ) );
   CHECK( !mapped_aig.is_cell_root( aig.get_node( c ) ) );
@@ -91,7 +91,7 @@ TEST_CASE( "create a mapping in an AIG", "[mapping_view]" )
 
   CHECK( !mapped_aig.has_mapping() );
   CHECK( mapped_aig.num_cells() == 0u );
-  
+
   CHECK( !mapped_aig.is_cell_root( aig.get_node( a ) ) );
   CHECK( !mapped_aig.is_cell_root( aig.get_node( b ) ) );
   CHECK( !mapped_aig.is_cell_root( aig.get_node( c ) ) );

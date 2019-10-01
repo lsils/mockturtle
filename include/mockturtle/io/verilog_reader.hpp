@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -96,16 +96,18 @@ public:
     }
   }
 
-  void on_inputs( const std::vector<std::string>& names ) const override
+  void on_inputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
+    (void)size;
     for ( const auto& name : names )
     {
       signals[name] = _ntk.create_pi( name );
     }
   }
 
-  void on_outputs( const std::vector<std::string>& names ) const override
+  void on_outputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
+    (void)size;
     for ( const auto& name : names )
     {
       outputs.emplace_back( name );

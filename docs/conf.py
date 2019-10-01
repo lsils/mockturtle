@@ -47,7 +47,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'mockturtle'
-copyright = '2018, EPFL LSI'
+copyright = '2018-2019, EPFL LSI'
 author = 'EPFL LSI'
 
 # The version info for the project you're documenting, acts as replacement for

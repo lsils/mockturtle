@@ -355,6 +355,7 @@ static inline int sat_solver_add_const( sat_solver * pSat, int iVar, int fCompl 
     Lits[0] = toLitCond( iVar, fCompl );
     Cid = sat_solver_addclause( pSat, Lits, Lits + 1 );
     assert( Cid );
+    (void)Cid;
     return 1;
 }
 static inline int sat_solver_add_buffer( sat_solver * pSat, int iVarA, int iVarB, int fCompl )
@@ -395,6 +396,7 @@ static inline int sat_solver_add_buffer_enable( sat_solver * pSat, int iVarA, in
     Lits[2] = toLitCond( iVarEn, 1 );
     Cid = sat_solver_addclause( pSat, Lits, Lits + 3 );
     assert( Cid );
+    (void)Cid;
     return 2;
 }
 static inline int sat_solver_add_and( sat_solver * pSat, int iVar, int iVar0, int iVar1, int fCompl0, int fCompl1, int fCompl )
@@ -417,6 +419,7 @@ static inline int sat_solver_add_and( sat_solver * pSat, int iVar, int iVar0, in
     Lits[2] = toLitCond( iVar1, !fCompl1 );
     Cid = sat_solver_addclause( pSat, Lits, Lits + 3 );
     assert( Cid );
+    (void)Cid;
     return 3;
 }
 static inline int sat_solver_add_xor( sat_solver * pSat, int iVarA, int iVarB, int iVarC, int fCompl )
@@ -448,6 +451,7 @@ static inline int sat_solver_add_xor( sat_solver * pSat, int iVarA, int iVarB, i
     Lits[2] = toLitCond( iVarC, 1 );
     Cid = sat_solver_addclause( pSat, Lits, Lits + 3 );
     assert( Cid );
+    (void)Cid;
     return 4;
 }
 static inline int sat_solver_add_mux( sat_solver * pSat, int iVarZ, int iVarC, int iVarT, int iVarE, int iComplC, int iComplT, int iComplE, int iComplZ )
@@ -494,6 +498,7 @@ static inline int sat_solver_add_mux( sat_solver * pSat, int iVarZ, int iVarC, i
     Lits[2] = toLitCond( iVarZ, 0 ^ iComplZ );
     Cid = sat_solver_addclause( pSat, Lits, Lits + 3 );
     assert( Cid );
+    (void)Cid;
     return 6;
 }
 static inline int sat_solver_add_mux41( sat_solver * pSat, int iVarZ, int iVarC0, int iVarC1, int iVarD0, int iVarD1, int iVarD2, int iVarD3 )
@@ -558,6 +563,7 @@ static inline int sat_solver_add_mux41( sat_solver * pSat, int iVarZ, int iVarC0
     Lits[3] = toLitCond( iVarZ,  1 );
     Cid = sat_solver_addclause( pSat, Lits, Lits + 4 );
     assert( Cid );
+    (void)Cid;
     return 8;
 }
 static inline int sat_solver_add_xor_and( sat_solver * pSat, int iVarF, int iVarA, int iVarB, int iVarC )
@@ -597,6 +603,7 @@ static inline int sat_solver_add_xor_and( sat_solver * pSat, int iVarF, int iVar
     Lits[3] = toLitCond( iVarC, 1 );
     Cid = sat_solver_addclause( pSat, Lits, Lits + 4 );
     assert( Cid );
+    (void)Cid;
     return 5;
 }
 static inline int sat_solver_add_constraint( sat_solver * pSat, int iVar, int iVar2, int fCompl )
@@ -614,6 +621,7 @@ static inline int sat_solver_add_constraint( sat_solver * pSat, int iVar, int iV
     Lits[1] = toLitCond( iVar2, 1 );
     Cid = sat_solver_addclause( pSat, Lits, Lits + 2 );
     assert( Cid );
+    (void)Cid;
     return 2;
 }
 
@@ -637,6 +645,7 @@ static inline int sat_solver_add_half_sorter( sat_solver * pSat, int iVarA, int 
     Lits[2] = toLitCond( iVar1, 1 );
     Cid = sat_solver_addclause( pSat, Lits, Lits + 3 );
     assert( Cid );
+    (void)Cid;
     return 3;
 }
 

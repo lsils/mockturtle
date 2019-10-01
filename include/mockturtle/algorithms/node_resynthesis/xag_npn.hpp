@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -81,18 +81,18 @@ struct xag_npn_resynthesis_stats
  * 4.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const aig_network aig = ...;
       xag_npn_resynthesis<aig_network> resyn;
       cut_rewriting( aig, resyn );
 
    .. note::
 
-      The implementation of this algorithm was heavily inspired buy the rewrite
+      The implementation of this algorithm was heavily inspired by the rewrite
       command in AIG.  It uses the same underlying database of subcircuits.
    \endverbatim
  */
@@ -109,6 +109,7 @@ public:
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
     static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and method" );
     static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor method" );
+    static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
 
     static_assert( is_network_type_v<DatabaseNtk>, "DatabaseNtk is not a network type" );
     static_assert( has_get_node_v<DatabaseNtk>, "DatabaseNtk does not implement the get_node method" );
@@ -162,11 +163,11 @@ public:
     std::vector<signal<Ntk>> pis( 4, ntk.get_constant( false ) );
     std::copy( begin, end, pis.begin() );
 
-    std::vector<signal<Ntk>> pis_perm( 4 );
+    std::vector<signal<Ntk>> pis_perm;
     auto perm = std::get<2>( config );
     for ( auto i = 0; i < 4; ++i )
     {
-      pis_perm[i] = pis[perm[i]];
+      pis_perm.push_back( pis[perm[i]] );
     }
 
     const auto& phase = std::get<1>( config );
@@ -174,20 +175,25 @@ public:
     {
       if ( ( phase >> perm[i] ) & 1 )
       {
-        pis_perm[i] = !pis_perm[i];
+        pis_perm[i] = ntk.create_not( pis_perm[i] );
       }
     }
 
     for ( auto const& cand : it->second )
     {
       std::unordered_map<node<DatabaseNtk>, signal<Ntk>> db_to_ntk;
-      db_to_ntk[0] = ntk.get_constant( false );
+
+      db_to_ntk.insert( {0, ntk.get_constant( false )} );
       for ( auto i = 0; i < 4; ++i )
       {
-        db_to_ntk[i + 1] = pis_perm[i];
+        db_to_ntk.insert( {i + 1, pis_perm[i]} );
       }
-      const auto f = copy_db_entry( ntk, _db.get_node( cand ), db_to_ntk ) ^ _db.is_complemented( cand );
-      if ( !fn( ( ( phase >> 4 ) & 1 ) ? !f : f ) )
+      auto f = copy_db_entry( ntk, _db.get_node( cand ), db_to_ntk );
+      if ( _db.is_complemented( cand ) != ( ( phase >> 4 ) & 1 ) )
+      {
+        f = ntk.create_not( f );
+      }
+      if ( !fn( f ) )
       {
         return;
       }
@@ -203,13 +209,20 @@ private:
       return it->second;
     }
 
-    std::array<signal<Ntk>, 2> fanin;
-    _db.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      fanin[i] = copy_db_entry( ntk, _db.get_node( f ), db_to_ntk ) ^ _db.is_complemented( f );
+    std::vector<signal<Ntk>> fanin;
+    //std::array<signal<Ntk>, 2> fanin;
+    _db.foreach_fanin( n, [&]( auto const& f ) {
+      auto ntk_f = copy_db_entry( ntk, _db.get_node( f ), db_to_ntk );
+      if ( _db.is_complemented( f ) )
+      {
+        ntk_f = ntk.create_not( ntk_f );
+      }
+      fanin.push_back( ntk_f );
     } );
 
     const auto f = _db.is_xor( n ) ? ntk.create_xor( fanin[0], fanin[1] ) : ntk.create_and( fanin[0], fanin[1] );
-    return db_to_ntk[n] = f;
+    db_to_ntk.insert( {n, f} );
+    return f;
   }
 
   void build_classes()

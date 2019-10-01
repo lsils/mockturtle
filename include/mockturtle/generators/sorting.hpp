@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <numeric>
 #include <cstdint>
 
 namespace mockturtle
@@ -85,6 +86,61 @@ void insertion_sorting_network( uint32_t n, Fn&& compare_fn )
       compare_fn( j, j + 1 );
     }
   }
+}
+
+namespace detail
+{
+
+template<class Fn>
+void batcher_merge( std::vector<uint32_t> const& list, Fn&& compare_fn )
+{
+  if ( list.size() == 2u )
+  {
+    compare_fn( list[0], list[1] );
+    return;
+  }
+
+  std::vector<uint32_t> even, odd;
+  for ( auto i = 0u; i < list.size(); i += 2 )
+  {
+    even.push_back( list[i] );
+    odd.push_back( list[i + 1] );
+  }
+
+  batcher_merge( even, compare_fn );
+  batcher_merge( odd, compare_fn );
+
+  for ( auto i = 1u; i < list.size() - 2; i += 2 )
+  {
+    compare_fn( list[i], list[i + 1] );
+  }
+}
+
+template<class Fn>
+void batcher_sort( uint32_t begin, uint32_t end, Fn&& compare_fn )
+{
+  const auto size = end - begin;
+  if ( size == 2u )
+  {
+    compare_fn( begin, begin + 1 );
+    return;
+  }
+
+  batcher_sort( begin, begin + size / 2, compare_fn );
+  batcher_sort( begin + size / 2, end, compare_fn );
+
+  std::vector<uint32_t> list( size );
+  std::iota( list.begin(), list.end(), begin );
+  batcher_merge( list, compare_fn );
+}
+
+} // namespace detail
+
+template<class Fn>
+void batcher_sorting_network( uint32_t n, Fn&& compare_fn )
+{
+  if ( n < 2 ) return;
+  detail::batcher_sort( 0u, n, compare_fn );
 }
 
 } // namespace mockturtle

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -81,11 +81,11 @@ inline constexpr bool implements_mapping_interface_v = has_has_mapping_v<Ntk> &&
  * `true`, it also adds functions for `cell_function` and `set_cell_function`.
  * For the latter case, this view requires more memory to also store the cells'
  * truth tables.
- * 
+ *
  * **Required network functions:**
  * - `size`
  * - `node_to_index`
- * 
+ *
  * Example
  *
    \verbatim embed:rst

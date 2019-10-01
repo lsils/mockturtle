@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -34,6 +34,7 @@
 #pragma once
 
 #include "../traits.hpp"
+#include "../utils/algorithm.hpp"
 #include "../utils/truth_table_cache.hpp"
 #include "detail/foreach.hpp"
 #include "events.hpp"
@@ -121,6 +122,41 @@ private:
     kitty::create_from_words( tt_and, &_and, &_and + 1 );
     _storage->data.cache.insert( tt_and );
 
+    static uint64_t _or = 0xe;
+    kitty::dynamic_truth_table tt_or( 2 );
+    kitty::create_from_words( tt_or, &_or, &_or + 1 );
+    _storage->data.cache.insert( tt_or );
+
+    static uint64_t _lt = 0x4;
+    kitty::dynamic_truth_table tt_lt( 2 );
+    kitty::create_from_words( tt_lt, &_lt, &_lt + 1 );
+    _storage->data.cache.insert( tt_lt );
+
+    static uint64_t _le = 0xd;
+    kitty::dynamic_truth_table tt_le( 2 );
+    kitty::create_from_words( tt_le, &_le, &_le + 1 );
+    _storage->data.cache.insert( tt_le );
+
+    static uint64_t _xor = 0x6;
+    kitty::dynamic_truth_table tt_xor( 2 );
+    kitty::create_from_words( tt_xor, &_xor, &_xor + 1 );
+    _storage->data.cache.insert( tt_xor );
+
+    static uint64_t _maj = 0xe8;
+    kitty::dynamic_truth_table tt_maj( 3 );
+    kitty::create_from_words( tt_maj, &_maj, &_maj + 1 );
+    _storage->data.cache.insert( tt_maj );
+
+    static uint64_t _ite = 0xd8;
+    kitty::dynamic_truth_table tt_ite( 3 );
+    kitty::create_from_words( tt_ite, &_ite, &_ite + 1 );
+    _storage->data.cache.insert( tt_ite );
+
+    static uint64_t _xor3 = 0x96;
+    kitty::dynamic_truth_table tt_xor3( 3 );
+    kitty::create_from_words( tt_xor3, &_xor3, &_xor3 + 1 );
+    _storage->data.cache.insert( tt_xor3 );
+
     /* truth tables for constants */
     _storage->nodes[0].data[1].h1 = 0;
     _storage->nodes[1].data[1].h1 = 1;
@@ -155,6 +191,11 @@ public:
     _storage->outputs.emplace_back( f );
   }
 
+  bool is_combinational() const
+  {
+    return true;
+  }
+
   bool is_constant( node const& n ) const
   {
     return n <= 1;
@@ -187,6 +228,60 @@ public:
   signal create_and( signal a, signal b )
   {
     return _create_node( {a, b}, 4 );
+  }
+
+  signal create_or( signal a, signal b )
+  {
+    return _create_node( {a, b}, 6 );
+  }
+
+  signal create_lt( signal a, signal b )
+  {
+    return _create_node( {a, b}, 8 );
+  }
+
+  signal create_le( signal a, signal b )
+  {
+    return _create_node( {a, b}, 11 );
+  }
+
+  signal create_xor( signal a, signal b )
+  {
+    return _create_node( {a, b}, 12 );
+  }
+#pragma endregion
+
+#pragma region Create ternary functions
+signal create_maj( signal a, signal b, signal c )
+  {
+    return _create_node( {a, b, c}, 14 );
+  }
+
+  signal create_ite( signal a, signal b, signal c )
+  {
+    return _create_node( {a, b, c}, 16 );
+  }
+
+  signal create_xor3( signal a, signal b, signal c )
+  {
+    return _create_node( {a, b, c}, 18 );
+  }
+#pragma endregion
+
+#pragma region Create nary functions
+  signal create_nary_and( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
+  }
+
+  signal create_nary_or( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
+  }
+
+  signal create_nary_xor( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_xor( a, b ); } );
   }
 #pragma endregion
 
@@ -251,7 +346,7 @@ public:
           std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c ) { return c.index; } );
           child = new_signal;
 
-          // increment fan-in of new node
+          // increment fan-out of new node
           _storage->nodes[new_signal].data[0].h1++;
 
           for ( auto const& fn : _events->on_modified )
@@ -269,12 +364,12 @@ public:
       {
         output = new_signal;
 
-        // increment fan-in of new node
+        // increment fan-out of new node
         _storage->nodes[new_signal].data[0].h1++;
       }
     }
 
-    // reset fan-in of old node
+    // reset fan-out of old node
     _storage->nodes[old_node].data[0].h1 = 0;
   }
 #pragma endregion
@@ -308,6 +403,11 @@ public:
   uint32_t fanout_size( node const& n ) const
   {
     return _storage->nodes[n].data[0].h1;
+  }
+
+  bool is_function( node const& n ) const
+  {
+    return n > 1 && !is_pi( n );
   }
 #pragma endregion
 

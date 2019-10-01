@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -40,6 +40,10 @@
 namespace mockturtle
 {
 
+/*! \brief Cut implementation based on ABC's giaCut.c
+
+  See <a href="https://github.com/berkeley-abc/abc/blob/master/src/aig/gia/giaCut.c">giaCut.c</a> in ABC's repository.
+*/
 struct cut_enumeration_gia_cut
 {
   uint32_t num_tree_leaves;
@@ -66,6 +70,7 @@ struct cut_enumeration_update_cut<cut_enumeration_gia_cut>
   static void apply( Cut& cut, NetworkCuts const& cuts, Ntk const& ntk, node<Ntk> const& n )
   {
     (void)n;
+    (void)cuts;
     cut->data.num_tree_leaves = std::count_if( cut.begin(), cut.end(),
                                                [&ntk]( auto index ) {
                                                  return ntk.fanout_size( index ) == 1;

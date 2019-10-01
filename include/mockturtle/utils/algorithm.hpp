@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -84,6 +84,22 @@ T ternary_tree_reduce( Iterator first, Iterator last, T const& init, TernaryOper
   }
   break;
   }
+}
+
+template<class Iterator, class UnaryOperation, class T>
+Iterator max_element_unary( Iterator first, Iterator last, UnaryOperation&& fn, T const& init )
+{
+  auto best = last;
+  auto max = init;
+  for ( ; first != last; ++first )
+  {
+    if ( const auto v = fn( *first ) > max )
+    {
+      max = v;
+      best = first;
+    }
+  }
+  return best;
 }
 
 } /* namespace mockturtle */

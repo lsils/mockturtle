@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -76,13 +76,13 @@ public:
     static_assert( has_create_nary_xor_v<Ntk>, "Ntk does not implement the create_nary_xor function" );
   }
 
-  void on_number_of_inputs( std::size_t number_of_inputs ) const override
+  void on_number_of_inputs( uint64_t number_of_inputs ) const override
   {
     _pis.resize( number_of_inputs );
     std::generate( _pis.begin(), _pis.end(), [this]() { return _ntk.create_pi(); } );
   }
 
-  void on_number_of_outputs( std::size_t number_of_outputs ) const override
+  void on_number_of_outputs( uint64_t number_of_outputs ) const override
   {
     _products.resize( number_of_outputs );
   }

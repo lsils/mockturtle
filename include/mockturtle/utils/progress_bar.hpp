@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -44,11 +44,11 @@ namespace mockturtle
 /*! \brief Prints progress bars.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       { // some block
         progress_bar bar( 100, "|{0}| neg. index = {1}, index squared = {2}" );
 
@@ -64,6 +64,10 @@ class progress_bar
 public:
   /*! \brief Constructor.
    *
+   * This constructor is used when a the total number of iterations is known,
+   * and the progress should be visually printed.  When using this constructor,
+   * the current iteration must be provided to the `operator()` call.
+   *
    * \param size Number of iterations (for progress bar)
    * \param fmt Format strind; used with `fmt::format`, first placeholder `{0}`
    *            is used for progress bar, the others for the parameters passed
@@ -72,7 +76,25 @@ public:
    * \param os Output stream
    */
   progress_bar( uint32_t size, std::string const& fmt, bool enable = true, std::ostream& os = std::cout )
-      : _size( size ),
+      : _show_progress( true ),
+        _size( size ),
+        _fmt( fmt ),
+        _enable( enable ),
+        _os( os ) {}
+
+  /*! \brief Constructor.
+   *
+   * This constructor is used when a the total number of iterations is not
+   * known.  In this case, the progress is not visually printed. When using this
+   * constructor, just pass the arguments for the `fmt` string.
+   *
+   * \param fmt Format strind; used with `fmt::format`, parameters are passed
+   *            to `operator()`
+   * \param enable If true, output is printed, otherwise not
+   * \param os Output stream
+   */
+  progress_bar( std::string const& fmt, bool enable = true, std::ostream& os = std::cout )
+      : _show_progress( false ),
         _fmt( fmt ),
         _enable( enable ),
         _os( os ) {}
@@ -88,22 +110,25 @@ public:
 
   /*! \brief Prints and updates the progress bar status.
    *
-   * This updates the progress to `pos` and re-prints the progress line.  The
-   * previous print of the line is removed.  All arguments for the format string
-   * except for the first one `{0}` are passed as variadic arguments after
-   * `pos`.
+   * This updates the progress and re-prints the progress line.  The previous
+   * print of the line is removed.  If the progress bar has a progress segment
+   * the first argument must be an integer indicating the current progress
+   * with respect to the `size` parameter passed to the constructor.
    *
-   * \param pos Progress position (must be smaller than `size`)
+   * \param first Progress position or first argument
    * \param args Vardiadic argument pack with values for format string
    */
-  template<typename... Args>
-  void operator()( uint32_t pos, Args... args )
+  template<typename First, typename... Args>
+  void operator()( First first, Args... args )
   {
-    if ( !_enable )
-      return;
-
-    int spidx = static_cast<int>( ( 6.0 * pos ) / _size );
-    _os << "\u001B[G" << fmt::format( _fmt, spinner.substr( spidx * 5, 5 ), args... ) << std::flush;
+    if ( _show_progress )
+    {
+      show_with_progress( first, args... );
+    }
+    else
+    {
+      show_without_progress( first, args... );
+    }
   }
 
   /*! \brief Removes the progress bar.
@@ -120,6 +145,27 @@ public:
   }
 
 private:
+  template<typename... Args>
+  void show_with_progress( uint32_t pos, Args... args )
+  {
+    if ( !_enable )
+      return;
+
+    int spidx = static_cast<int>( ( 6.0 * pos ) / _size );
+    _os << "\u001B[G" << fmt::format( _fmt, spinner.substr( spidx * 5, 5 ), args... ) << std::flush;
+  }
+
+  template<typename... Args>
+  void show_without_progress( Args... args )
+  {
+    if ( !_enable )
+      return;
+
+    _os << "\u001B[G" << fmt::format( _fmt, args... ) << std::flush;
+  }
+
+private:
+  bool _show_progress;
   uint32_t _size;
   std::string _fmt;
   bool _enable;

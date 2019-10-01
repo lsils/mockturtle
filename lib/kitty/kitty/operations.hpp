@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2018  EPFL
+ * Copyright (C) 2017-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,6 +28,7 @@
   \brief Implements several operations on truth tables
 
   \author Mathias Soeken
+  \author Mahyar Emami (mahyar.emami@epfl.ch)
 */
 
 #pragma once
@@ -109,6 +110,37 @@ inline TT ternary_ite( const TT& first, const TT& second, const TT& third )
   return ternary_operation( first, second, third, []( auto a, auto b, auto c ) { return ( a & b ) ^ ( ~a & c ); } );
 }
 
+/*! \brief Muxes two truth tables based on a variable
+
+  \param var_index Variable index
+  \param then_ Truth table for the then-case
+  \param else_ Truth table for the else-case
+*/
+template<typename TT>
+inline TT mux_var( uint8_t var_index, const TT& then_, const TT& else_ )
+{
+  if ( var_index < 6u )
+  {
+    return binary_operation( then_, else_,
+                             [&]( auto a, auto b ) { return ( a & detail::projections[var_index] ) |
+                                                            ( b & detail::projections_neg[var_index] ); } );
+  }
+  else
+  {
+    const auto step = 1u << ( var_index - 6u );
+    auto j = 0u;
+    auto res = then_.construct();
+
+    std::transform( then_.begin(), then_.end(), else_.begin(), res.begin(),
+      [&]( auto a, auto b ) {
+        return ( j++ % ( 2 * step ) ) < step ? b : a;
+      }
+    );
+
+    return res;
+  }
+}
+
 /*! \brief Checks whether two truth tables are equal
 
   \param first First truth table
@@ -123,6 +155,17 @@ inline bool equal( const TT& first, const TT& second )
   }
 
   return binary_predicate( first, second, std::equal_to<>() );
+}
+
+/*! \brief Checks if first truth table implies a second truth table
+
+  \param first First truth table
+  \param second Second truth table
+*/
+template<typename TT>
+inline bool implies( const TT& first, const TT& second )
+{
+  return is_const0( binary_operation( first, second, []( auto a, auto b ) { return ~( ~a | b ); } ) );
 }
 
 /*! \brief Checks whether a truth table is lexicographically smaller than another
@@ -955,6 +998,44 @@ inline TT shift_right( const TT& tt, uint64_t shift )
   auto copy = tt;
   shift_right_inplace( copy, shift );
   return copy;
+}
+
+/*! \brief Composes a truth table.
+
+  Given a function `f`, and a set of truth tables as arguments, computes the
+  composed truth table.  For example, if `f(x1, x2) = 1001` and
+  `vars = {x1 = 1001, x2= 1010}`, the function returns 1000. This function can
+  be regarded as a general operator with arity `vars.size()` where the behavior
+  of the operator is given by f.
+
+  \param f The outer function
+  \param vars The ordered set of input variables
+  \return The composed truth table with vars.size() variables
+*/
+template<class TTf, class TTv>
+auto compose_truth_table( const TTf& f, const std::vector<TTv>& vars )
+{
+  assert( vars.size() == static_cast<std::size_t>( f.num_vars() ) );
+  auto composed = vars[0].construct();
+
+  for ( uint64_t i = 0u; i < composed.num_bits(); ++i )
+  {
+    uint64_t index = 0u;
+    for ( uint64_t j = 0u; j < vars.size(); ++j )
+    {
+      index += get_bit( vars[j], i ) << j;
+    }
+    if ( get_bit( f, index ) )
+    {
+      set_bit( composed, i );
+    }
+    else
+    {
+      clear_bit( composed, i );
+    }
+  }
+
+  return composed;
 }
 
 } // namespace kitty
