@@ -26,6 +26,7 @@
 /*!
   \file mig.hpp
   \brief MIG logic network implementation
+
   \author Eleonora Testa
 */
 
@@ -58,9 +59,11 @@ struct mig_storage_data
 };
 
 /*! \brief MIG storage container
+
   MIGs have nodes with fan-in 3.  We split of one bit of the index pointer to
   store a complemented attribute.  Every node has 64-bit of additional data
   used for the following purposes:
+
   `data[0].h1`: Fan-out size (we use MSB to indicate whether a node is dead)
   `data[0].h2`: Application-specific value
   `data[1].h1`: Visited flag
@@ -219,7 +222,7 @@ public:
   int8_t latch_reset( uint32_t index ) const
   {
     assert( index < _storage->data.latches.size() );
-    return _storage->data.latches[ index ];
+    return _storage->data.latches[index];
   }
 
   bool is_combinational() const
@@ -245,7 +248,7 @@ public:
 
   bool is_ro( node const& n ) const
   {
-    return _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data && _storage->nodes[n].children[0].data >= static_cast<uint64_t>(_storage->data.num_pis);
+    return _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data && _storage->nodes[n].children[0].data >= static_cast<uint64_t>( _storage->data.num_pis );
   }
 
   bool constant_value( node const& n ) const
@@ -460,8 +463,8 @@ public:
 
     // determine potential new children of node n
     signal child2 = new_signal;
-    signal child1 = node.children[(fanin + 1 ) % 3];
-    signal child0 = node.children[(fanin + 2 ) % 3];
+    signal child1 = node.children[( fanin + 1 ) % 3];
+    signal child0 = node.children[( fanin + 2 ) % 3];
 
     if ( child0.index > child1.index )
     {
@@ -776,37 +779,37 @@ public:
   node ci_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() );
-    return *(_storage->inputs.begin() + index);
+    return *( _storage->inputs.begin() + index );
   }
 
   signal co_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() );
-    return *(_storage->outputs.begin() + index);
+    return *( _storage->outputs.begin() + index );
   }
 
   node pi_at( uint32_t index ) const
   {
     assert( index < _storage->data.num_pis );
-    return *(_storage->inputs.begin() + index);
+    return *( _storage->inputs.begin() + index );
   }
 
   signal po_at( uint32_t index ) const
   {
     assert( index < _storage->data.num_pos );
-    return *(_storage->outputs.begin() + index);
+    return *( _storage->outputs.begin() + index );
   }
 
   node ro_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() - _storage->data.num_pis );
-    return *(_storage->inputs.begin() + _storage->data.num_pis + index);
+    return *( _storage->inputs.begin() + _storage->data.num_pis + index );
   }
 
   signal ri_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() - _storage->data.num_pos );
-    return *(_storage->outputs.begin() + _storage->data.num_pos + index);
+    return *( _storage->outputs.begin() + _storage->data.num_pos + index );
   }
 
   uint32_t ci_index( node const& n ) const
@@ -818,14 +821,14 @@ public:
   uint32_t co_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_co( [&]( const auto& x, auto index ){
+    foreach_co( [&]( const auto& x, auto index ) {
       if ( x == s )
       {
         i = index;
         return false;
       }
       return true;
-    });
+    } );
     return i;
   }
 
@@ -838,14 +841,14 @@ public:
   uint32_t po_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_po( [&]( const auto& x, auto index ){
+    foreach_po( [&]( const auto& x, auto index ) {
       if ( x == s )
       {
         i = index;
         return false;
       }
       return true;
-    });
+    } );
     return i;
   }
 
@@ -858,14 +861,14 @@ public:
   uint32_t ri_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_ri( [&]( const auto& x, auto index ){
+    foreach_ri( [&]( const auto& x, auto index ) {
       if ( x == s )
       {
         i = index;
         return false;
       }
       return true;
-    });
+    } );
     return i;
   }
 
@@ -884,10 +887,11 @@ public:
   template<typename Fn>
   void foreach_node( Fn&& fn ) const
   {
-    detail::foreach_element_if( ez::make_direct_iterator<uint64_t>( 0 ),
-                                ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
-                                [this]( auto n ) { return !is_dead( n ); },
-                                fn );
+    detail::foreach_element_if(
+        ez::make_direct_iterator<uint64_t>( 0 ),
+        ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
+        [this]( auto n ) { return !is_dead( n ); },
+        fn );
   }
 
   template<typename Fn>
@@ -929,44 +933,44 @@ public:
   template<typename Fn>
   void foreach_register( Fn&& fn ) const
   {
-    static_assert( detail::is_callable_with_index_v<Fn, std::pair<signal,node>, void> ||
-    detail::is_callable_without_index_v<Fn, std::pair<signal,node>, void> ||
-    detail::is_callable_with_index_v<Fn, std::pair<signal,node>, bool> ||
-    detail::is_callable_without_index_v<Fn, std::pair<signal,node>, bool> );
+    static_assert( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> ||
+                   detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> ||
+                   detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> ||
+                   detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> );
 
     assert( _storage->inputs.size() - _storage->data.num_pis == _storage->outputs.size() - _storage->data.num_pos );
     auto ro = _storage->inputs.begin() + _storage->data.num_pis;
     auto ri = _storage->outputs.begin() + _storage->data.num_pos;
-    if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal,node>, bool> )
+    if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> )
     {
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
-        if ( !fn( std::make_pair(ri++, ro++) ) )
+        if ( !fn( std::make_pair( ri++, ro++ ) ) )
           return;
       }
     }
-    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal,node>, bool> )
+    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> )
     {
       uint32_t index{0};
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
-        if ( !fn( std::make_pair(ri++, ro++), index++ ) )
+        if ( !fn( std::make_pair( ri++, ro++ ), index++ ) )
           return;
       }
     }
-    else if constexpr( detail::is_callable_without_index_v<Fn, std::pair<signal,node>, void> )
+    else if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> )
     {
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
-        fn( std::make_pair(*ri++, *ro++) );
+        fn( std::make_pair( *ri++, *ro++ ) );
       }
     }
-    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal,node>, void> )
+    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> )
     {
       uint32_t index{0};
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
-        fn( std::make_pair(*ri++, *ro++), index++ );
+        fn( std::make_pair( *ri++, *ro++ ), index++ );
       }
     }
   }
@@ -974,10 +978,11 @@ public:
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
-    detail::foreach_element_if( ez::make_direct_iterator<uint64_t>( 1 ), // start from 1 to avoid constant
-                                ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
-                                [this]( auto n ) { return !is_ci( n ) && !is_dead( n ); },
-                                fn );
+    detail::foreach_element_if(
+        ez::make_direct_iterator<uint64_t>( 1 ), // start from 1 to avoid constant
+        ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
+        [this]( auto n ) { return !is_ci( n ) && !is_dead( n ); },
+        fn );
   }
 
   template<typename Fn>
@@ -1137,7 +1142,7 @@ namespace std
 template<>
 struct hash<mockturtle::mig_network::signal>
 {
-  uint64_t operator()( mockturtle::mig_network::signal const &s ) const noexcept
+  uint64_t operator()( mockturtle::mig_network::signal const& s ) const noexcept
   {
     uint64_t k = s.data;
     k ^= k >> 33;
