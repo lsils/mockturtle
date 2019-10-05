@@ -173,6 +173,61 @@ TEST_CASE( "create and use primary outputs in an xag", "[xag]" )
   } );
 }
 
+TEST_CASE( "create and use register in an XOR", "[xag]" )
+{
+  xag_network xag;
+
+  CHECK( has_foreach_po_v<xag_network> );
+  CHECK( has_create_po_v<xag_network> );
+  CHECK( has_create_pi_v<xag_network> );
+  CHECK( has_create_ro_v<xag_network> );
+  CHECK( has_create_ri_v<xag_network> );
+  CHECK( has_create_and_v<xag_network> );
+
+  const auto x1 = xag.create_pi();
+  const auto x2 = xag.create_pi();
+  const auto x3 = xag.create_pi();
+
+  CHECK( xag.size() == 4 );
+  CHECK( xag.num_registers() == 0 );
+  CHECK( xag.num_pis() == 3 );
+  CHECK( xag.num_pos() == 0 );
+  CHECK( xag.is_combinational() );
+
+  const auto f1 = xag.create_and( x1, x2 );
+  xag.create_po( f1 );
+  xag.create_po( !f1 );
+
+  const auto f2 = xag.create_xor( f1, x3 );
+  xag.create_ri( f2 );
+
+  const auto ro = xag.create_ro();
+  xag.create_po( ro );
+
+  CHECK( xag.num_pos() == 3 );
+  CHECK( xag.num_registers() == 1 );
+  CHECK( !xag.is_combinational() );
+
+  xag.foreach_po( [&]( auto s, auto i ){
+    switch ( i )
+    {
+    case 0:
+      CHECK( s == f1 );
+      break;
+    case 1:
+      CHECK( s == !f1 );
+      break;
+    case 2:
+      // Check if the output (connected to the register) data is the same as the node data being registered.
+      CHECK( f2.data == xag.po_at( i ).data );
+      break;
+    default:
+      CHECK( false );
+      break;
+    }
+  });
+}
+
 TEST_CASE( "create unary operations in an xag", "[xag]" )
 {
   xag_network xag;

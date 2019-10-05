@@ -145,6 +145,7 @@ TEST_CASE( "create and use register in an XMG", "[xmg]" )
   CHECK( has_create_ro_v<xmg_network> );
   CHECK( has_create_ri_v<xmg_network> );
   CHECK( has_create_maj_v<xmg_network> );
+  CHECK( has_create_xor_v<xmg_network> );
 
   const auto c0 = xmg.get_constant( false );
   const auto x1 = xmg.create_pi();
@@ -156,33 +157,39 @@ TEST_CASE( "create and use register in an XMG", "[xmg]" )
   CHECK( xmg.num_registers() == 0 );
   CHECK( xmg.num_pis() == 4 );
   CHECK( xmg.num_pos() == 0 );
+  CHECK( xmg.is_combinational() );
 
-  const auto f1 = xmg.create_maj(x1, x2, x3);
+  const auto f1 = xmg.create_maj( x1, x2, x3 );
   xmg.create_po( f1 );
   xmg.create_po( !f1 );
 
-  const auto f2 = xmg.create_maj(f1, x4, c0);
-  xmg.create_ri(f2);
+  const auto f2 = xmg.create_maj( f1, x4, c0 );
+  const auto f3 = xmg.create_xor( f1, f2 );
+  xmg.create_ri( f3 );
 
   const auto ro = xmg.create_ro();
   xmg.create_po( ro );
 
   CHECK( xmg.num_pos() == 3 );
   CHECK( xmg.num_registers() == 1 );
+  CHECK( !xmg.is_combinational() );
 
   xmg.foreach_po( [&]( auto s, auto i ){
     switch ( i )
     {
-      case 0:
-        CHECK ( s == f1);
-        break;
-      case 1:
-        CHECK ( s == !f1);
-        break;
-      case 2:
-        //check if the output (connected to the register) data is the same as the node data being registered.
-        CHECK ( f2.data == xmg.po_at(i).data);
-        break;
+    case 0:
+      CHECK( s == f1 );
+      break;
+    case 1:
+      CHECK( s == !f1 );
+      break;
+    case 2:
+      // Check if the output (connected to the register) data is the same as the node data being registered.
+      CHECK( f3.data == xmg.po_at( i ).data );
+      break;
+    default:
+      CHECK( false );
+      break;      
     }
   });
 }
