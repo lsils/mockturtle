@@ -107,20 +107,64 @@ public:
   {
     if ( type.size() > 2 && std::string_view( type ).substr( 0, 2 ) == "0x" && inputs.size() <= 6u )
     {
+      /* modern-style gate definition */
       kitty::dynamic_truth_table tt( static_cast<int>( inputs.size() ) );
       kitty::create_from_hex_string( tt, type.substr( 2 ) );
 
       std::vector<signal<Ntk>> input_signals;
       for ( const auto& i : inputs )
-      {
         input_signals.push_back( signals[i] );
-      }
 
       signals[output] = _ntk.create_node( input_signals, tt );
     }
     else
     {
-      assert( false );
+      /* old-style gate definition */
+      std::vector<signal<Ntk>> input_signals;
+      for ( const auto& i : inputs )
+        input_signals.push_back( signals[i] );
+
+      kitty::dynamic_truth_table tt( static_cast<int>( inputs.size() ) );
+
+      if ( type == "NOT" )
+      {
+        kitty::dynamic_truth_table a( inputs.size() );
+        tt = ~a;
+      }
+      else if ( type == "BUFF" )
+      {
+        kitty::dynamic_truth_table a( inputs.size() );
+        tt = a;
+      }
+      else if ( type == "AND" )
+      {
+        kitty::dynamic_truth_table a( inputs.size() );
+        kitty::dynamic_truth_table b( inputs.size() );
+        tt = a & b;
+      }
+      else if ( type == "NAND" )
+      {
+        kitty::dynamic_truth_table a( inputs.size() );
+        kitty::dynamic_truth_table b( inputs.size() );
+        tt = ~( a & b );
+      }
+      else if ( type == "OR" )
+      {
+        kitty::dynamic_truth_table a( inputs.size() );
+        kitty::dynamic_truth_table b( inputs.size() );
+        tt = a | b;
+      }
+      else if ( type == "NOR" )
+      {
+        kitty::dynamic_truth_table a( inputs.size() );
+        kitty::dynamic_truth_table b( inputs.size() );
+        tt = ~( a | b );
+      }
+      else
+      {
+        assert( false && "unsupported gate type" );
+      }
+      signals[output] = _ntk.create_node( input_signals, tt );
     }
   }
 
