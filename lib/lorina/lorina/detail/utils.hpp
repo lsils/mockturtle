@@ -80,15 +80,18 @@ public:
 
   void declare_known( const std::string& known )
   {
-    _waits_for[ known ];
+    _known.emplace( known );
   }
-  
+
   void call_deferred( const std::vector<std::string>& inputs, const std::string& output, Args... params )
   {
     /* do we have all inputs */
     std::unordered_set<std::string> unknown;
     for ( const auto& input : inputs )
     {
+      if ( _known.find( input ) != _known.end() )
+        continue;
+
       auto it = _waits_for.find( input );
       if ( it == _waits_for.end() || !it->second.empty() )
       {
@@ -149,8 +152,9 @@ public:
     }
     return deps;
   }
-  
+
 private:
+  std::unordered_set<std::string> _known;
   std::unordered_map<std::string, std::unordered_set<std::string>> _triggers;
   std::unordered_map<std::string, std::unordered_set<std::string>> _waits_for;
   std::function<void(Args...)> f;
