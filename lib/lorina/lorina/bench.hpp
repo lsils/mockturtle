@@ -141,7 +141,13 @@ public:
 
   virtual void on_gate( const std::vector<std::string>& inputs, const std::string& output, const std::string& type ) const override
   {
-    _os << fmt::format( "{0} = {1}({2})", output, type, detail::join( inputs, "," ) ) << std::endl;
+    assert( type.size() >= 2u );
+    if ( type[0] == '0' && type[1] == 'x' )
+      _os << fmt::format( "{0} = LUT {1}({2})", output, type, detail::join( inputs, "," ) ) << std::endl;
+    else
+      _os << fmt::format( "{0} = {1}({2})", output, type, detail::join( inputs, "," ) ) << std::endl;
+  }
+
   }
 
   virtual void on_assign( const std::string& input, const std::string& output ) const override
