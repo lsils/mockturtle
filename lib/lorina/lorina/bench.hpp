@@ -154,8 +154,6 @@ public:
 
 namespace bench_regex
 {
-static std::regex input( R"(INPUT\((.*)\))" );
-static std::regex output( R"(OUTPUT\((.*)\))" );
 static std::regex gate( R"((.*)\s+=\s+(.*)\((.*)\))" );
 static std::regex dff( R"((.*)\s+=\s+DFF\((.+)\))" );
 static std::regex lut( R"((.*)\s+=\s+LUT\s+(.*)\((.*)\))" );
@@ -203,18 +201,23 @@ inline return_code read_bench( std::istream& in, const bench_reader& reader, dia
       return true;
 
     /* INPUT(<string>) */
-    if ( std::regex_search( line, m, bench_regex::input ) )
+    if ( line.substr( 0u, 6u ) == "INPUT(" )
     {
-      const auto s = detail::trim_copy( m[1] );
+      auto const pos = line.find_first_of( ")", 7u );
+      assert( pos != std::string::npos );
+      auto const s = line.substr( 6u, pos - 6u );
       on_action.declare_known( s );
       reader.on_input( s );
       return true;
     }
 
     /* OUTPUT(<string>) */
-    if ( std::regex_search( line, m, bench_regex::output ) )
+    if ( line.substr( 0u, 7u ) == "OUTPUT(" )
     {
-      reader.on_output( detail::trim_copy( m[1] ) );
+      auto const pos = line.find_first_of( ")", 8u );
+      auto const s = line.substr( 7u, pos - 7u );
+      assert( pos != std::string::npos );
+      reader.on_output( detail::trim_copy( s ) );
       return true;
     }
 
