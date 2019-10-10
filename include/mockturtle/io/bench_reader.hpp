@@ -86,7 +86,6 @@ public:
     {
       _ntk.create_po( signals.at( o ), o );
     }
-    }
   }
 
   void on_input( const std::string& name ) const override
