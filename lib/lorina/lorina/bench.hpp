@@ -148,6 +148,9 @@ public:
       _os << fmt::format( "{0} = {1}({2})", output, type, detail::join( inputs, "," ) ) << std::endl;
   }
 
+  virtual void on_dff( const std::string& input, const std::string& output ) const override
+  {
+    _os << fmt::format( "{0} = DFF({1})", output, input ) << std::endl;
   }
 
   virtual void on_assign( const std::string& input, const std::string& output ) const override
