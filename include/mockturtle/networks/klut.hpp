@@ -198,17 +198,18 @@ public:
     return po_index;
   }
 
-  signal create_ro( std::string const& name = {} )
+  signal create_ro( std::string const& name = std::string() )
   {
     (void)name;
 
     auto const index = _storage->nodes.size();
-    /* auto& node = */_storage->nodes.emplace_back();
+    _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
+    _storage->nodes[index].data[1].h1 = 2;
     return index;
   }
 
-  uint32_t create_ri( signal const& f, int8_t reset = 0, std::string const& name = {} )
+  uint32_t create_ri( signal const& f, int8_t reset = 0, std::string const& name = std::string() )
   {
     (void)name;
 
@@ -496,7 +497,7 @@ signal create_maj( signal a, signal b, signal c )
 
   bool is_function( node const& n ) const
   {
-    return n > 1 && !is_pi( n );
+    return n > 1 && !is_ci( n );
   }
 #pragma endregion
 
@@ -739,14 +740,14 @@ signal create_maj( signal a, signal b, signal c )
   {
     detail::foreach_element_if( ez::make_direct_iterator<uint64_t>( 2 ), /* start from 2 to avoid constants */
                                 ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
-                                [this]( auto n ) { return !is_pi( n ); },
+                                [this]( auto n ) { return !is_ci( n ); },
                                 fn );
   }
 
   template<typename Fn>
   void foreach_fanin( node const& n, Fn&& fn ) const
   {
-    if ( n == 0 || is_pi( n ) )
+    if ( n == 0 || is_ci( n ) )
       return;
 
     using IteratorType = decltype( _storage->outputs.begin() );
