@@ -323,7 +323,7 @@ signal create_maj( signal a, signal b, signal c )
     if ( children.size() == 0u )
     {
       assert( function.num_vars() == 0u );
-      return kitty::is_const0( function ) ? get_constant( false ) : get_constant( true );
+      return get_constant( !kitty::is_const0( function ) );
     }
     return _create_node( children, _storage->data.cache.insert( function ) );
   }
