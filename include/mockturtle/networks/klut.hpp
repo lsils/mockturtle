@@ -320,6 +320,11 @@ signal create_maj( signal a, signal b, signal c )
 
   signal create_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
   {
+    if ( children.size() == 0u )
+    {
+      assert( function.num_vars() == 0u );
+      return kitty::is_const0( function ) ? get_constant( false ) : get_constant( true );
+    }
     return _create_node( children, _storage->data.cache.insert( function ) );
   }
 
