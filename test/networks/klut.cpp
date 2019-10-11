@@ -91,7 +91,6 @@ TEST_CASE( "create and use register in a k-LUT network", "[klut]" )
   CHECK( has_create_maj_v<klut_network> );
 
   const auto c0 = klut.get_constant( false );
-  const auto c1 = klut.get_constant( true );
   const auto x1 = klut.create_pi();
   const auto x2 = klut.create_pi();
   const auto x3 = klut.create_pi();
@@ -99,38 +98,101 @@ TEST_CASE( "create and use register in a k-LUT network", "[klut]" )
 
   CHECK( klut.size() == 6 );
   CHECK( klut.num_registers() == 0 );
-  CHECK( klut.num_pis() == 4 );
-  CHECK( klut.num_pos() == 0 );
+  CHECK( klut.num_cis() == 4 );
+  CHECK( klut.num_cos() == 0 );
 
   const auto f1 = klut.create_maj( x1, x2, x3 );
   klut.create_po( f1 );
-  klut.create_po( !f1 );
+
+  CHECK( klut.num_pos() == 1 );
+
+  const auto s1 = klut.create_ro(); // ntk. input
+  klut.create_po( s1 ); // po
 
   const auto f2 = klut.create_maj( f1, x4, c0 );
-  klut.create_ri( f2 );
+  klut.create_ri( f2 ); // ntk. output
 
-  const auto ro = klut.create_ro();
-  klut.create_po( ro );
-
-  CHECK( klut.num_pos() == 3 );
   CHECK( klut.num_registers() == 1 );
+  CHECK( klut.num_cis() == 4 + 1 );
+  CHECK( klut.num_cos() == 2 + 1 );
 
-  klut.foreach_po( [&]( auto s, auto i ){
-    switch ( i )
-    {
-    case 0:
-      CHECK ( s == f1 );
-      break;
-    case 1:
-      CHECK ( s == !f1 );
-      break;
-    case 2:
-      CHECK( f2 == klut.po_at( i ) );
-      break;
-    default:
-      CHECK( false );
-    }
-  });
+  klut.foreach_pi( [&]( auto const& node, auto index ){
+      CHECK( klut.is_pi( node ) );
+      switch ( index )
+      {
+      case 0:
+        CHECK( node == x1 ); /* first pi */
+        break;
+      case 1:
+        CHECK( node == x2 ); /* second pi */
+        break;
+      case 2:
+        CHECK( node == x3 ); /* third pi */
+        break;
+      case 3:
+        CHECK( node == x4 ); /* fourth pi */
+        break;
+      default:
+        CHECK( false );
+      }
+    });
+
+  klut.foreach_ci( [&]( auto const& node, auto index ){
+      CHECK( klut.is_ci( node ) );
+      switch ( index )
+      {
+      case 0:
+        CHECK( node == x1 ); /* first pi */
+        break;
+      case 1:
+        CHECK( node == x2 ); /* second pi */
+        break;
+      case 2:
+        CHECK( node == x3 ); /* third pi */
+        break;
+      case 3:
+        CHECK( node == x4 ); /* fourth pi */
+        break;
+      case 4:
+        CHECK( node == s1 ); /* first state-bit */
+        CHECK(  klut.is_ci( node ) );
+        CHECK( !klut.is_pi( node ) );
+        break;
+      default:
+        CHECK( false );
+      }
+    });
+
+  klut.foreach_po( [&]( auto const& node, auto index ){
+      switch ( index )
+      {
+      case 0:
+        CHECK( node == f1 ); /* first po */
+        break;
+      case 1:
+        CHECK( node == s1 ); /* second po */
+        break;
+      default:
+        CHECK( false );
+      }
+    });
+
+  klut.foreach_co( [&]( auto const& node, auto index ){
+      switch ( index )
+      {
+      case 0:
+        CHECK( node == f1 ); /* first po */
+        break;
+      case 1:
+        CHECK( node == s1 ); /* second po */
+        break;
+      case 2:
+        CHECK( node == f2 ); /* first next-state bit */
+        break;
+      default:
+        CHECK( false );
+      }
+    });
 }
 
 TEST_CASE( "create unary operations in a k-LUT network", "[klut]" )

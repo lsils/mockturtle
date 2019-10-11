@@ -239,17 +239,44 @@ public:
 
   bool is_ci( node const& n ) const
   {
-    return n > 1 && _storage->nodes[n].children.empty();
+    bool found = false;
+    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.end(), [&found,&n]( auto const& node ){
+        if ( node == n )
+        {
+          found = true;
+          return false;
+        }
+        return true;
+      } );
+    return found;
   }
 
   bool is_pi( node const& n ) const
   {
-    return n > 1 && n < _storage->data.num_pis && _storage->nodes[n].children.empty();
+    bool found = false;
+    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.begin() + _storage->data.num_pis, [&found,&n]( auto const& node ){
+        if ( node == n )
+        {
+          found = true;
+          return false;
+        }
+        return true;
+      } );
+    return found;
   }
 
   bool is_ro( node const& n ) const
   {
-    return n > _storage->data.num_pis && _storage->nodes[n].children.empty();
+    bool found = false;
+    detail::foreach_element( _storage->inputs.begin() + _storage->data.num_pis, _storage->inputs.end(), [&found,&n]( auto const& node ){
+        if ( node == n )
+        {
+          found = true;
+          return false;
+        }
+        return true;
+      } );
+    return found;
   }
 
   bool constant_value( node const& n ) const
