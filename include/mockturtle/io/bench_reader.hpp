@@ -84,7 +84,7 @@ public:
   {
     for ( auto const& o : outputs )
     {
-      _ntk.create_po( signals[o], o );
+      _ntk.create_po( signals.at( o ), o );
     }
   }
 
@@ -100,7 +100,7 @@ public:
 
   void on_assign( const std::string& input, const std::string& output ) const override
   {
-    signals[output] = signals[input];
+    signals[output] = signals.at( input );
   }
 
   void on_gate( const std::vector<std::string>& inputs, const std::string& output, const std::string& type ) const override
@@ -126,39 +126,45 @@ public:
 
       kitty::dynamic_truth_table tt( static_cast<int>( inputs.size() ) );
 
+      std::vector<kitty::dynamic_truth_table> vs( inputs.size(), tt );
+      for ( auto i = 0u; i < inputs.size(); ++i )
+        kitty::create_nth_var( vs[i], i );
+
       if ( type == "NOT" )
       {
-        kitty::dynamic_truth_table a( inputs.size() );
-        tt = ~a;
+        assert( inputs.size() == 1u );
+        tt = ~vs.at( 0u );
       }
       else if ( type == "BUFF" )
       {
-        kitty::dynamic_truth_table a( inputs.size() );
-        tt = a;
+        assert( inputs.size() == 1u );
+        tt = vs.at( 0u );
       }
       else if ( type == "AND" )
       {
-        kitty::dynamic_truth_table a( inputs.size() );
-        kitty::dynamic_truth_table b( inputs.size() );
-        tt = a & b;
+        tt = vs.at( 0u );
+        for ( auto i = 1u; i < inputs.size(); ++i )
+          tt &= vs.at( i );
       }
       else if ( type == "NAND" )
       {
-        kitty::dynamic_truth_table a( inputs.size() );
-        kitty::dynamic_truth_table b( inputs.size() );
-        tt = ~( a & b );
+        tt = vs.at( 0u );
+        for ( auto i = 1u; i < inputs.size(); ++i )
+          tt &= vs.at( i );
+        tt = ~tt;
       }
       else if ( type == "OR" )
       {
-        kitty::dynamic_truth_table a( inputs.size() );
-        kitty::dynamic_truth_table b( inputs.size() );
-        tt = a | b;
+        tt = vs.at( 0u );
+        for ( auto i = 1u; i < inputs.size(); ++i )
+          tt |= vs.at( i );
       }
       else if ( type == "NOR" )
       {
-        kitty::dynamic_truth_table a( inputs.size() );
-        kitty::dynamic_truth_table b( inputs.size() );
-        tt = ~( a | b );
+        tt = vs.at( 0u );
+        for ( auto i = 1u; i < inputs.size(); ++i )
+          tt |= vs.at( i );
+        tt = ~tt;
       }
       else
       {
