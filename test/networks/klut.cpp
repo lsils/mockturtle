@@ -176,11 +176,16 @@ TEST_CASE( "create nodes and compute a function in a k-LUT network", "[klut]" )
   const auto b = klut.create_pi();
   const auto c = klut.create_pi();
 
-  kitty::dynamic_truth_table tt_maj( 3u ), tt_xor( 3u );
+  kitty::dynamic_truth_table tt_maj( 3u ), tt_xor( 3u ), tt_const0( 0u );
   kitty::create_from_hex_string( tt_maj, "e8" );
   kitty::create_from_hex_string( tt_xor, "96" );
 
   CHECK( klut.size() == 5 );
+
+  const auto _const0 = klut.create_node( {}, tt_const0 );
+  const auto _const1 = klut.create_node( {}, ~tt_const0 );
+  CHECK( _const0 == klut.get_constant( false ) );
+  CHECK( _const1 == klut.get_constant( true ) );
 
   const auto _maj = klut.create_node( {a, b, c}, tt_maj );
   const auto _xor = klut.create_node( {a, b, c}, tt_xor );
