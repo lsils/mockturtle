@@ -19,7 +19,7 @@
 namespace mockturtle
 {
 
-/*! \brief Compute the truthtable for signal, given the truth table map of nodes.
+/*! \brief Compute the truth table for signal, given the truth table map of nodes.
      *
      */
 template<typename T, typename Ntk>
@@ -815,7 +815,7 @@ signal<Ntk> relabel_recursively( Ntk& ntk, const Ntk& opt_ntk, signal<Ntk> opt_r
   }
   else
   {
-    // If the the node is already explored, it is not cached in the current implementation.
+    // If the node is already explored, it is not cached in the current implementation.
     // Caching can be implemented to avoid repetitive calls.
     std::vector<signal<Ntk>> c = get_children( opt_ntk, opt_root_node );
     result = ntk.create_maj(
