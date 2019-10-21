@@ -724,7 +724,7 @@ public:
 
   bool is_maj( node const& n ) const
   {
-    return n > 0 && !is_pi( n );
+    return n > 0 && !is_ci( n );
   }
 
   bool is_ite( node const& n ) const
@@ -814,7 +814,8 @@ public:
 
   uint32_t ci_index( node const& n ) const
   {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data &&
+            _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data );
     return ( _storage->nodes[n].children[0].data );
   }
 
@@ -834,7 +835,10 @@ public:
 
   uint32_t pi_index( node const& n ) const
   {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && 
+            _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data);
+    assert( _storage->nodes[n].children[0].data < _storage->data.num_pis );
+
     return ( _storage->nodes[n].children[0].data );
   }
 
@@ -854,7 +858,10 @@ public:
 
   uint32_t ro_index( node const& n ) const
   {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && 
+            _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data );
+    assert( _storage->nodes[n].children[0].data >= _storage->data.num_pis );
+
     return ( _storage->nodes[n].children[0].data - _storage->data.num_pis );
   }
 
@@ -909,13 +916,13 @@ public:
   template<typename Fn>
   void foreach_pi( Fn&& fn ) const
   {
-    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.end(), fn );
+    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.begin() + _storage->data.num_pis, fn );
   }
 
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
-    detail::foreach_element( _storage->outputs.begin(), _storage->outputs.end(), fn );
+    detail::foreach_element( _storage->outputs.begin(), _storage->outputs.begin() + _storage->data.num_pos, fn );
   }
 
   template<typename Fn>
@@ -988,7 +995,7 @@ public:
   template<typename Fn>
   void foreach_fanin( node const& n, Fn&& fn ) const
   {
-    if ( n == 0 || is_pi( n ) )
+    if ( n == 0 || is_ci( n ) )
       return;
 
     static_assert( detail::is_callable_without_index_v<Fn, signal, bool> ||

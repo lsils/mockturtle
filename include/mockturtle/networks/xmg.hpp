@@ -183,15 +183,18 @@ public:
     return {index, 0};
   }
 
-  void create_po( signal const& f, std::string const& name = {} )
+  uint32_t create_po( signal const& f, std::string const& name = {} )
   {
     (void)name;
 
     /* increase ref-count to children */
     _storage->nodes[f.index].data[0].h1++;
+
+    auto const po_index = _storage->outputs.size();
+    _storage->outputs.emplace_back( f.index, f.complement );
     ++_storage->data.num_pos;
 
-    _storage->outputs.emplace_back( f.index, f.complement );
+    return po_index; 
   }
 
   signal create_ro( std::string const& name = {} )
@@ -200,7 +203,7 @@ public:
 
     auto const index = _storage->nodes.size();
     auto& node = _storage->nodes.emplace_back();
-    node.children[0].data = node.children[1].data = _storage->inputs.size();
+    node.children[0].data = node.children[1].data = node.children[2].data = _storage->inputs.size();
     _storage->inputs.emplace_back( index );
     return {index, 0};
   }
@@ -220,7 +223,7 @@ public:
   int8_t latch_reset( uint32_t index ) const
   {
     assert( index < _storage->data.latches.size() );
-    return _storage->data.latches[index];
+    return _storage->data.latches[ index ];
   }
 
   bool is_combinational() const
@@ -819,7 +822,7 @@ public:
 
   bool is_maj( node const& n ) const
   {
-    return n > 0 && !is_pi( n ) && _storage->nodes[n].children[0].index < _storage->nodes[n].children[1].index;
+    return n > 0 && !is_ci( n ) && _storage->nodes[n].children[0].index < _storage->nodes[n].children[1].index;
   }
 
   bool is_ite( node const& n ) const
@@ -830,7 +833,7 @@ public:
 
   bool is_xor3( node const& n ) const
   {
-    return n > 0 && !is_pi( n ) && _storage->nodes[n].children[0].index > _storage->nodes[n].children[1].index;
+    return n > 0 && !is_ci( n ) && _storage->nodes[n].children[0].index > _storage->nodes[n].children[1].index;
   }
 #pragma endregion
 
@@ -907,7 +910,8 @@ public:
 
   uint32_t ci_index( node const& n ) const
   {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data &&
+            _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data );
     return ( _storage->nodes[n].children[0].data );
   }
 
@@ -927,7 +931,9 @@ public:
 
   uint32_t pi_index( node const& n ) const
   {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data &&  
+            _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data );
+    assert( _storage->nodes[n].children[0].data < _storage->data.num_pis );
     return ( _storage->nodes[n].children[0].data );
   }
 
@@ -947,7 +953,9 @@ public:
 
   uint32_t ro_index( node const& n ) const
   {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && 
+            _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data );
+    assert( _storage->nodes[n].children[0].data >= _storage->data.num_pis );
     return ( _storage->nodes[n].children[0].data - _storage->data.num_pis );
   }
 
@@ -1002,13 +1010,13 @@ public:
   template<typename Fn>
   void foreach_pi( Fn&& fn ) const
   {
-    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.end(), fn );
+    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.begin() + _storage->data.num_pis, fn );
   }
 
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
-    detail::foreach_element( _storage->outputs.begin(), _storage->outputs.end(), fn );
+    detail::foreach_element( _storage->outputs.begin(), _storage->outputs.begin() + _storage->data.num_pos, fn );
   }
 
   template<typename Fn>

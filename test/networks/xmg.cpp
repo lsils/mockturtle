@@ -135,7 +135,7 @@ TEST_CASE( "create and use primary outputs in an xmg", "[xmg]" )
   } );
 }
 
-TEST_CASE( "create and use register in an XMG", "[xmg]" )
+TEST_CASE( "create and use register in an xmg network", "[xmg]" )
 {
   xmg_network xmg;
 
@@ -145,7 +145,6 @@ TEST_CASE( "create and use register in an XMG", "[xmg]" )
   CHECK( has_create_ro_v<xmg_network> );
   CHECK( has_create_ri_v<xmg_network> );
   CHECK( has_create_maj_v<xmg_network> );
-  CHECK( has_create_xor_v<xmg_network> );
 
   const auto c0 = xmg.get_constant( false );
   const auto x1 = xmg.create_pi();
@@ -155,41 +154,99 @@ TEST_CASE( "create and use register in an XMG", "[xmg]" )
 
   CHECK( xmg.size() == 5 );
   CHECK( xmg.num_registers() == 0 );
-  CHECK( xmg.num_pis() == 4 );
-  CHECK( xmg.num_pos() == 0 );
-  CHECK( xmg.is_combinational() );
+  CHECK( xmg.num_cis() == 4 );
+  CHECK( xmg.num_cos() == 0 );
 
   const auto f1 = xmg.create_maj( x1, x2, x3 );
   xmg.create_po( f1 );
-  xmg.create_po( !f1 );
+
+  CHECK( xmg.num_pos() == 1 );
+
+  const auto s1 = xmg.create_ro(); // ntk. input
+  xmg.create_po( s1 ); // po
 
   const auto f2 = xmg.create_maj( f1, x4, c0 );
-  const auto f3 = xmg.create_xor( f1, f2 );
-  xmg.create_ri( f3 );
+  xmg.create_ri( f2 ); // ntk. output
 
-  const auto ro = xmg.create_ro();
-  xmg.create_po( ro );
-
-  CHECK( xmg.num_pos() == 3 );
   CHECK( xmg.num_registers() == 1 );
-  CHECK( !xmg.is_combinational() );
+  CHECK( xmg.num_cis() == 4 + 1 );
+  CHECK( xmg.num_cos() == 2 + 1 );
 
-  xmg.foreach_po( [&]( auto s, auto i ){
-    switch ( i )
+  xmg.foreach_pi( [&]( auto const& node, auto index ){
+    CHECK( xmg.is_pi( node ) );
+    switch ( index )
     {
-    case 0:
-      CHECK( s == f1 );
-      break;
-    case 1:
-      CHECK( s == !f1 );
-      break;
-    case 2:
-      // Check if the output (connected to the register) data is the same as the node data being registered.
-      CHECK( f3.data == xmg.po_at( i ).data );
-      break;
-    default:
-      CHECK( false );
-      break;      
+      case 0:
+        CHECK( xmg.make_signal(node) == x1 ); /* first pi */
+        break;
+      case 1:
+        CHECK( xmg.make_signal(node) == x2 ); /* second pi */
+        break;
+      case 2:
+        CHECK( xmg.make_signal(node) == x3 ); /* third pi */
+        break;
+      case 3:
+        CHECK( xmg.make_signal(node) == x4 ); /* fourth pi */
+        break;
+      default:
+        CHECK( false );
+    }
+  });
+
+  xmg.foreach_ci( [&]( auto const& node, auto index ){
+    CHECK( xmg.is_ci( node ) );
+    switch ( index )
+    {
+      case 0:
+        CHECK( xmg.make_signal(node) == x1 ); /* first pi */
+        break;
+      case 1:
+        CHECK( xmg.make_signal(node) == x2 ); /* second pi */
+        break;
+      case 2:
+        CHECK( xmg.make_signal(node) == x3 ); /* third pi */
+        break;
+      case 3:
+        CHECK( xmg.make_signal(node) == x4 ); /* fourth pi */
+        break;
+      case 4:
+        CHECK( xmg.make_signal(node) == s1 ); /* first state-bit */
+        CHECK(  xmg.is_ci( node ) );
+        CHECK( !xmg.is_pi( node ) );
+        break;
+      default:
+        CHECK( false );
+    }
+  });
+
+  xmg.foreach_po( [&]( auto const& node, auto index ){
+    switch ( index )
+    {
+      case 0:
+        CHECK( node == f1 ); /* first po */
+        break;
+      case 1:
+        CHECK( node == s1 ); /* second po */
+        break;
+      default:
+        CHECK( false );
+    }
+  });
+
+  xmg.foreach_co( [&]( auto const& node, auto index ){
+    switch ( index )
+    {
+      case 0:
+        CHECK( node == f1 ); /* first po */
+        break;
+      case 1:
+        CHECK( node == s1 ); /* second po */
+        break;
+      case 2:
+        CHECK( node == f2 ); /* first next-state bit */
+        break;
+      default:
+        CHECK( false );
     }
   });
 }
