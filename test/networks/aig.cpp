@@ -166,7 +166,7 @@ TEST_CASE( "create and use register in an AIG", "[aig]" )
   CHECK( aig.num_pos() == 3 );
   CHECK( aig.num_registers() == 1 );
 
-  aig.foreach_po( [&]( auto s, auto i ){
+  aig.foreach_po( [&]( auto s, auto i ) {
     switch ( i )
     {
     case 0:
@@ -183,7 +183,7 @@ TEST_CASE( "create and use register in an AIG", "[aig]" )
       CHECK( false );
       break;
     }
-  });
+  } );
 }
 
 TEST_CASE( "create unary operations in an AIG", "[aig]" )
@@ -571,7 +571,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
   CHECK( aig._storage->nodes[f5.index].children[0u].index == f3.index );
   CHECK( aig._storage->nodes[f5.index].children[1u].index == f4.index );
 
-  CHECK( aig.fanout_size( aig.get_node( f1 )) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1u );
   CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 1u );
   CHECK( !aig.is_dead( aig.get_node( f1 ) ) );
 
@@ -587,8 +587,8 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
   CHECK( aig._storage->nodes[f5.index].children[0u].index == f3.index );
   CHECK( aig._storage->nodes[f5.index].children[1u].index == f4.index );
 
-  CHECK( aig.fanout_size( aig.get_node( f1 )) == 0u );
-  CHECK( aig.fanout_size( aig.get_node( f3 )) == 2u );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 2u );
   CHECK( aig.is_dead( aig.get_node( f1 ) ) );
 
   aig = cleanup_dangling( aig );
@@ -619,7 +619,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[aig]" )
   CHECK( aig._storage->nodes[f3.index].children[1u].index == f2.index );
   CHECK( aig._storage->outputs[0].index == f3.index );
 
-  CHECK( aig.fanout_size( aig.get_node( f1 )) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1u );
   CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1u );
   CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 1u );
 
@@ -636,9 +636,9 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[aig]" )
   CHECK( aig._storage->nodes[f3.index].children[1u].index == f2.index );
   CHECK( aig._storage->outputs[0].index == f2.index );
 
-  CHECK( aig.fanout_size( aig.get_node( f1 )) == 0u );
-  CHECK( aig.fanout_size( aig.get_node( f2 )) == 1u );
-  CHECK( aig.fanout_size( aig.get_node( f3 )) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 0u );
 
   aig = cleanup_dangling( aig );
 

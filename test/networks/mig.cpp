@@ -169,7 +169,7 @@ TEST_CASE( "create and use register in an MIG", "[mig]" )
   CHECK( mig.num_registers() == 1 );
   CHECK( !mig.is_combinational() );
 
-  mig.foreach_po( [&]( auto s, auto i ){
+  mig.foreach_po( [&]( auto s, auto i ) {
     switch ( i )
     {
     case 0:
@@ -186,7 +186,7 @@ TEST_CASE( "create and use register in an MIG", "[mig]" )
       CHECK( false );
       break;
     }
-  });
+  } );
 }
 
 TEST_CASE( "create unary operations in an MIG", "[mig]" )

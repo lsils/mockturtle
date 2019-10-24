@@ -201,7 +201,7 @@ TEST_CASE( "create and use register in an xag network", "[xag]" )
   CHECK( xag.num_pos() == 1 );
 
   const auto s1 = xag.create_ro(); // ntk. input
-  xag.create_po( s1 ); // po
+  xag.create_po( s1 );             // po
 
   const auto f2 = xag.create_xor3( f1, x4, c0 );
   xag.create_ri( f2 ); // ntk. output
@@ -210,83 +210,83 @@ TEST_CASE( "create and use register in an xag network", "[xag]" )
   CHECK( xag.num_cis() == 4 + 1 );
   CHECK( xag.num_cos() == 2 + 1 );
 
-  xag.foreach_pi( [&]( auto const& node, auto index ){
+  xag.foreach_pi( [&]( auto const& node, auto index ) {
     CHECK( xag.is_pi( node ) );
     switch ( index )
     {
-      case 0:
-        CHECK( xag.make_signal(node) == x1 ); /* first pi */
-        break;
-      case 1:
-        CHECK( xag.make_signal(node) == x2 ); /* second pi */
-        break;
-      case 2:
-        CHECK( xag.make_signal(node) == x3 ); /* third pi */
-        break;
-      case 3:
-        CHECK( xag.make_signal(node) == x4 ); /* fourth pi */
-        break;
-      default:
-        CHECK( false );
+    case 0:
+      CHECK( xag.make_signal( node ) == x1 ); /* first pi */
+      break;
+    case 1:
+      CHECK( xag.make_signal( node ) == x2 ); /* second pi */
+      break;
+    case 2:
+      CHECK( xag.make_signal( node ) == x3 ); /* third pi */
+      break;
+    case 3:
+      CHECK( xag.make_signal( node ) == x4 ); /* fourth pi */
+      break;
+    default:
+      CHECK( false );
     }
-  });
+  } );
 
-  xag.foreach_ci( [&]( auto const& node, auto index ){
+  xag.foreach_ci( [&]( auto const& node, auto index ) {
     CHECK( xag.is_ci( node ) );
     switch ( index )
     {
-      case 0:
-        CHECK( xag.make_signal(node) == x1 ); /* first pi */
-        break;
-      case 1:
-        CHECK( xag.make_signal(node) == x2 ); /* second pi */
-        break;
-      case 2:
-        CHECK( xag.make_signal(node) == x3 ); /* third pi */
-        break;
-      case 3:
-        CHECK( xag.make_signal(node) == x4 ); /* fourth pi */
-        break;
-      case 4:
-        CHECK( xag.make_signal(node) == s1 ); /* first state-bit */
-        CHECK(  xag.is_ci( node ) );
-        CHECK( !xag.is_pi( node ) );
-        break;
-      default:
-        CHECK( false );
+    case 0:
+      CHECK( xag.make_signal( node ) == x1 ); /* first pi */
+      break;
+    case 1:
+      CHECK( xag.make_signal( node ) == x2 ); /* second pi */
+      break;
+    case 2:
+      CHECK( xag.make_signal( node ) == x3 ); /* third pi */
+      break;
+    case 3:
+      CHECK( xag.make_signal( node ) == x4 ); /* fourth pi */
+      break;
+    case 4:
+      CHECK( xag.make_signal( node ) == s1 ); /* first state-bit */
+      CHECK( xag.is_ci( node ) );
+      CHECK( !xag.is_pi( node ) );
+      break;
+    default:
+      CHECK( false );
     }
-  });
+  } );
 
-  xag.foreach_po( [&]( auto const& node, auto index ){
+  xag.foreach_po( [&]( auto const& node, auto index ) {
     switch ( index )
     {
-      case 0:
-        CHECK( node == f1 ); /* first po */
-        break;
-      case 1:
-        CHECK( node == s1 ); /* second po */
-        break;
-      default:
-        CHECK( false );
+    case 0:
+      CHECK( node == f1 ); /* first po */
+      break;
+    case 1:
+      CHECK( node == s1 ); /* second po */
+      break;
+    default:
+      CHECK( false );
     }
-  });
+  } );
 
-  xag.foreach_co( [&]( auto const& node, auto index ){
+  xag.foreach_co( [&]( auto const& node, auto index ) {
     switch ( index )
     {
-      case 0:
-        CHECK( node == f1 ); /* first po */
-        break;
-      case 1:
-        CHECK( node == s1 ); /* second po */
-        break;
-      case 2:
-        CHECK( node == f2 ); /* first next-state bit */
-        break;
-      default:
-        CHECK( false );
+    case 0:
+      CHECK( node == f1 ); /* first po */
+      break;
+    case 1:
+      CHECK( node == s1 ); /* second po */
+      break;
+    case 2:
+      CHECK( node == f2 ); /* first next-state bit */
+      break;
+    default:
+      CHECK( false );
     }
-  });
+  } );
 }
 
 TEST_CASE( "create unary operations in an xag", "[xag]" )
