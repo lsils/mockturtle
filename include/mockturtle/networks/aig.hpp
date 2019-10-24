@@ -777,6 +777,8 @@ public:
   uint32_t pi_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    assert( _storage->nodes[n].children[0].data < _storage->data.num_pis );
+
     return ( _storage->nodes[n].children[0].data );
   }
 
@@ -797,6 +799,8 @@ public:
   uint32_t ro_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
+    assert( _storage->nodes[n].children[0].data >= _storage->data.num_pis );
+
     return ( _storage->nodes[n].children[0].data - _storage->data.num_pis );
   }
 
