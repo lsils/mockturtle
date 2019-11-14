@@ -371,8 +371,10 @@ public:
 
   std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain ) const
   {
+    /* The default resubstitution functor does not insert any gates
+       and consequently does not use the argument `max_inserts`. Other
+       functors, however, make use of this argument. */
     (void)max_inserts;
-    (void)num_mffc;
 
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
@@ -501,7 +503,7 @@ public:
 
         /* evaluate this cut */
         auto const g = call_with_stopwatch( st.time_eval, [&]() {
-            return evaluate( n, leaves, ps.max_inserts );
+            return evaluate( n, leaves );
           });
         if ( !g )
         {
@@ -585,9 +587,8 @@ private:
     sim.normalize( divs );
   }
 
-  std::optional<signal> evaluate( node const& root, std::vector<node> const &leaves, uint32_t max_inserts )
+  std::optional<signal> evaluate( node const& root, std::vector<node> const &leaves )
   {
-    (void)max_inserts;
     uint32_t const required = std::numeric_limits<uint32_t>::max();
 
     last_gain = 0;
