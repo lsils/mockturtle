@@ -42,24 +42,6 @@
 #include <kitty/static_truth_table.hpp>
 #include <kitty/constructors.hpp>
 
-namespace kitty
-{
-
-/*! \brief Implies */
-inline bool implies( const dynamic_truth_table& first, const dynamic_truth_table& second )
-{
-  return is_const0( ~(( ~first ) | second ) );
-}
-
-/*! \brief Implies */
-template<int NumVars>
-inline bool implies( const static_truth_table<NumVars>& first, const static_truth_table<NumVars>& second )
-{
-  return is_const0( ~(( ~first ) | second ) );
-}
-
-} /* namespace kitty */
-
 namespace mockturtle
 {
 
@@ -75,12 +57,6 @@ struct resubstitution_params
 
   /*! \brief Maximum number of divisors to consider. */
   uint32_t max_divisors{150};
-
-  /*! \brief Maximum number of pair-wise divisors to consider. */
-  // uint32_t max_divisors2{500};
-
-  /*! \brief Maximum number of nodes per reconvergence-driven window. */
-  // uint32_t max_nodes{100};
 
   /*! \brief Maximum number of nodes added by resubstitution. */
   uint32_t max_inserts{2};
