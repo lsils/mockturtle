@@ -480,9 +480,9 @@ public:
     /* start the managers */
     cut_manager<Ntk> mgr( ps.max_pis );
 
-    const auto size = ntk.size();
     progress_bar pbar{ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
 
+    auto const size = ntk.num_gates();
     ntk.foreach_gate( [&]( auto const& n, auto i ){
         if ( i >= size )
           return false; /* terminate */
@@ -601,7 +601,7 @@ private:
         return num_mffc;
       });
 
-    /* collect the divisor nodes */
+    /* collect the divisor nodes in the cut */
     bool div_comp_success = call_with_stopwatch( st.time_divs, [&]() {
         return collect_divisors( root, leaves, required );
       });
@@ -615,7 +615,7 @@ private:
     st.num_total_divisors += num_divs;
     st.num_total_leaves += leaves.size();
 
-    /* simulate the nodes */
+    /* simulate the collected divisors */
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); });
 
     ResubFn resub_fn( ntk, sim, divs, num_divs, resub_st );
