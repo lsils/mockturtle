@@ -172,7 +172,7 @@ public:
     return {0, static_cast<uint64_t>( value ? 1 : 0 )};
   }
 
-  signal create_pi( std::string const& name = {} )
+  signal create_pi( std::string const& name = std::string() )
   {
     (void)name;
 
@@ -184,7 +184,7 @@ public:
     return {index, 0};
   }
 
-  uint32_t create_po( signal const& f, std::string const& name = {} )
+  uint32_t create_po( signal const& f, std::string const& name = std::string() )
   {
     (void)name;
 
@@ -196,7 +196,7 @@ public:
     return po_index;
   }
 
-  signal create_ro( std::string const& name = {} )
+  signal create_ro( std::string const& name = std::string() )
   {
     (void)name;
 
@@ -207,7 +207,7 @@ public:
     return {index, 0};
   }
 
-  uint32_t create_ri( signal const& f, int8_t reset = 0, std::string const& name = {} )
+  uint32_t create_ri( signal const& f, int8_t reset = 0, std::string const& name = std::string() )
   {
     (void)name;
 
