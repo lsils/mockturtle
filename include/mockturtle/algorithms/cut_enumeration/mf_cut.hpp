@@ -42,6 +42,10 @@
 namespace mockturtle
 {
 
+/*! \brief Cut implementation based on ABC's giaMf.c
+
+  See <a href="https://github.com/berkeley-abc/abc/blob/master/src/aig/gia/giaMf.c">giaMf.c</a> in ABC's repository.
+*/
 struct cut_enumeration_mf_cut
 {
   uint32_t delay{0};

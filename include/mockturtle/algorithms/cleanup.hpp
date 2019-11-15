@@ -32,7 +32,11 @@
 
 #pragma once
 
+#include <iostream>
+#include <type_traits>
 #include <vector>
+
+#include <kitty/operations.hpp>
 
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
@@ -48,7 +52,7 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
 
   static_assert( is_network_type_v<NtkSource>, "NtkSource is not a network type" );
   static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
-  
+
   static_assert( has_get_node_v<NtkSource>, "NtkSource does not implement the get_node method" );
   static_assert( has_get_constant_v<NtkSource>, "NtkSource does not implement the get_constant method" );
   static_assert( has_foreach_pi_v<NtkSource>, "NtkSource does not implement the foreach_pi method" );
@@ -56,7 +60,7 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
   static_assert( has_is_constant_v<NtkSource>, "NtkSource does not implement the is_constant method" );
   static_assert( has_is_complemented_v<NtkSource>, "NtkSource does not implement the is_complemented method" );
   static_assert( has_foreach_po_v<NtkSource>, "NtkSource does not implement the foreach_po method" );
-  
+
   static_assert( has_get_constant_v<NtkDest>, "NtkDest does not implement the get_constant method" );
   static_assert( has_create_not_v<NtkDest>, "NtkDest does not implement the create_not method" );
   static_assert( has_clone_node_v<NtkDest>, "NtkDest does not implement the clone_node method" );
@@ -95,7 +99,77 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
         children.push_back( f );
       }
     } );
-    old_to_new[node] = dest.clone_node( ntk, node, children );
+    if constexpr ( std::is_same_v<NtkSource, NtkDest> )
+    {
+      old_to_new[node] = dest.clone_node( ntk, node, children );
+    }
+    else
+    {
+      do
+      {
+        if constexpr ( has_is_and_v<NtkSource> )
+        {
+          static_assert( has_create_and_v<NtkDest>, "NtkDest cannot create AND gates" );
+          if ( ntk.is_and( node ) )
+          {
+            old_to_new[node] = dest.create_and( children[0], children[1] );
+            break;
+          }
+        }
+        if constexpr ( has_is_or_v<NtkSource> )
+        {
+          static_assert( has_create_or_v<NtkDest>, "NtkDest cannot create OR gates" );
+          if ( ntk.is_or( node ) )
+          {
+            old_to_new[node] = dest.create_or( children[0], children[1] );
+            break;
+          }
+        }
+        if constexpr ( has_is_xor_v<NtkSource> )
+        {
+          static_assert( has_create_xor_v<NtkDest>, "NtkDest cannot create XOR gates" );
+          if ( ntk.is_xor( node ) )
+          {
+            old_to_new[node] = dest.create_xor( children[0], children[1] );
+            break;
+          }
+        }
+        if constexpr ( has_is_maj_v<NtkSource> )
+        {
+          static_assert( has_create_maj_v<NtkDest>, "NtkDest cannot create MAJ gates" );
+          if ( ntk.is_maj( node ) )
+          {
+            old_to_new[node] = dest.create_maj( children[0], children[1], children[2] );
+            break;
+          }
+        }
+        if constexpr ( has_is_ite_v<NtkSource> )
+        {
+          static_assert( has_create_ite_v<NtkDest>, "NtkDest cannot create ITE gates" );
+          if ( ntk.is_ite( node ) )
+          {
+            old_to_new[node] = dest.create_ite( children[0], children[1], children[2] );
+            break;
+          }
+        }
+        if constexpr ( has_is_xor3_v<NtkSource> )
+        {
+          static_assert( has_create_xor3_v<NtkDest>, "NtkDest cannot create XOR3 gates" );
+          if ( ntk.is_xor3( node ) )
+          {
+            old_to_new[node] = dest.create_xor3( children[0], children[1], children[2] );
+            break;
+          }
+        }
+        if constexpr ( has_is_function_v<NtkSource> )
+        {
+          static_assert( has_create_node_v<NtkDest>, "NtkDest cannot create arbitrary function gates" );
+          old_to_new[node] = dest.create_node( children, ntk.node_function( node ) );
+          break;
+        }
+        std::cerr << "[e] something went wrong, could not copy node " << ntk.node_to_index( node ) << "\n";
+      } while ( false );
+    }
   } );
 
   /* create outputs in same order */
@@ -171,6 +245,138 @@ Ntk cleanup_dangling( Ntk const& ntk )
   {
     dest.create_po( f );
   }
+
+  return dest;
+}
+
+/*! \brief Cleans up LUT nodes.
+ *
+ * This method reconstructs a LUT network and optimizes LUTs when they do not
+ * depend on all their fanin, or when some of the fanin are constant inputs.
+ *
+ * Constant gate inputs will be propagated.
+ *
+   \verbatim embed:rst
+
+   .. note::
+
+      This method returns the cleaned up network as a return value.  It does
+      *not* modify the input network.
+   \endverbatim
+ *
+ * **Required network functions:**
+ * - `get_node`
+ * - `get_constant`
+ * - `foreach_pi`
+ * - `foreach_po`
+ * - `foreach_node`
+ * - `foreach_fanin`
+ * - `create_pi`
+ * - `create_po`
+ * - `create_node`
+ * - `create_not`
+ * - `is_constant`
+ * - `is_pi`
+ * - `is_complemented`
+ * - `node_function`
+ */
+template<class Ntk>
+Ntk cleanup_luts( Ntk const& ntk )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi method" );
+  static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po method" );
+  static_assert( has_create_node_v<Ntk>, "Ntk does not implement the create_node method" );
+  static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_constant_value_v<Ntk>, "Ntk does not implement the constant_value method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
+
+  Ntk dest;
+  node_map<signal<Ntk>, Ntk> old_to_new( ntk );
+
+  // PIs and constants
+  ntk.foreach_pi( [&]( auto const& n ) {
+    old_to_new[n] = dest.create_pi();
+  } );
+  old_to_new[ntk.get_constant( false )] = dest.get_constant( false );
+  if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
+  {
+    old_to_new[ntk.get_constant( true )] = dest.get_constant( true );
+  }
+
+  // iterate through nodes
+  topo_view topo{ntk};
+  topo.foreach_node( [&]( auto const& n ) {
+    if ( ntk.is_constant( n ) || ntk.is_pi( n ) ) return true; /* continue */
+
+    auto func = ntk.node_function( n );
+
+    /* constant propagation */
+    ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+      if ( dest.is_constant( old_to_new[f] ) )
+      {
+        if ( dest.constant_value( old_to_new[f] ) != ntk.is_complemented( f ) )
+        {
+          kitty::cofactor1_inplace( func, i );
+        }
+        else
+        {
+          kitty::cofactor0_inplace( func, i );
+        }
+      }
+    } );
+
+
+    const auto support = kitty::min_base_inplace( func );
+    auto new_func = kitty::shrink_to( func, support.size() );
+
+    std::vector<signal<Ntk>> children;
+    if ( auto var = support.begin(); var != support.end() )
+    {
+      ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+        if ( *var == i )
+        {
+          auto const& new_f = old_to_new[f];
+          children.push_back( ntk.is_complemented( f ) ? dest.create_not( new_f ) : new_f );
+          if ( ++var == support.end() )
+          {
+            return false;
+          }
+        }
+        return true;
+      } );
+    }
+
+    if ( new_func.num_vars() == 0u )
+    {
+      old_to_new[n] = dest.get_constant( !kitty::is_const0( new_func ) );
+    }
+    else if ( new_func.num_vars() == 1u )
+    {
+      old_to_new[n] = *( new_func.begin() ) == 0b10 ? children.front() : dest.create_not( children.front() );
+    }
+    else
+    {
+      old_to_new[n] = dest.create_node( children, new_func );
+    }
+
+    return true;
+  } );
+
+  // POs
+  ntk.foreach_po( [&]( auto const& f ) {
+    auto const& new_f = old_to_new[f];
+    dest.create_po( ntk.is_complemented( f ) ? dest.create_not( new_f ) : new_f );
+  });
 
   return dest;
 }

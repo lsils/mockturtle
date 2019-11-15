@@ -42,7 +42,6 @@
 #include <kitty/print.hpp>
 
 #include "../../algorithms/cleanup.hpp"
-#include "../../io/write_bench.hpp"
 #include "../../networks/mig.hpp"
 #include "../../traits.hpp"
 #include "../../views/topo_view.hpp"
@@ -59,11 +58,11 @@ namespace mockturtle
  * 4.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const klut_network klut = ...;
       mig_npn_resynthesis resyn;
       const auto mig = node_resynthesis<mig_network>( klut, resyn );

@@ -72,7 +72,6 @@ public:
     token = "";
 
     char c;
-
     while ( get_char( c ) )
     {
       if ( c == '\n' && _comment_mode )
@@ -86,7 +85,7 @@ public:
         {
           return tokenizer_return_code::valid;
         }
-        if ( ( c == '(' || c == ')' || c == '{' || c == '}' || c == ';' || c == ':' || c == ',' || c == '~' || c == '&' || c == '|' || c == '^' || c == '#' ) && !_quote_mode )
+        if ( ( c == '(' || c == ')' || c == '{' || c == '}' || c == ';' || c == ':' || c == ',' || c == '~' || c == '&' || c == '|' || c == '^' || c == '#' || c == '[' || c == ']' ) && !_quote_mode )
         {
           if ( token.empty() )
           {

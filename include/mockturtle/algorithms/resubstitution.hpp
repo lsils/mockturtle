@@ -36,28 +36,11 @@
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/depth_view.hpp"
+#include "../views/fanout_view2.hpp"
 #include "reconv_cut2.hpp"
 
 #include <kitty/static_truth_table.hpp>
 #include <kitty/constructors.hpp>
-
-namespace kitty
-{
-
-/*! \brief Implies */
-inline bool implies( const dynamic_truth_table& first, const dynamic_truth_table& second )
-{
-  return is_const0( ~(( ~first ) | second ) );
-}
-
-/*! \brief Implies */
-template<int NumVars>
-inline bool implies( const static_truth_table<NumVars>& first, const static_truth_table<NumVars>& second )
-{
-  return is_const0( ~(( ~first ) | second ) );
-}
-
-} /* namespace kitty */
 
 namespace mockturtle
 {
@@ -74,12 +57,6 @@ struct resubstitution_params
 
   /*! \brief Maximum number of divisors to consider. */
   uint32_t max_divisors{150};
-
-  /*! \brief Maximum number of pair-wise divisors to consider. */
-  // uint32_t max_divisors2{500};
-
-  /*! \brief Maximum number of nodes per reconvergence-driven window. */
-  // uint32_t max_nodes{100};
 
   /*! \brief Maximum number of nodes added by resubstitution. */
   uint32_t max_inserts{2};
@@ -183,6 +160,7 @@ public:
 
     /* reference it back */
     auto count2 = node_ref_rec( n );
+    (void)count2;
     assert( count1 == count2 );
 
     for ( const auto& l : leaves )
@@ -393,8 +371,10 @@ public:
 
   std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain ) const
   {
+    /* The default resubstitution functor does not insert any gates
+       and consequently does not use the argument `max_inserts`. Other
+       functors, however, make use of this argument. */
     (void)max_inserts;
-    (void)num_mffc;
 
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
@@ -481,49 +461,15 @@ public:
       update_node_level( n );
     };
 
-    auto const update_fanout_of_new_node = [&]( const auto& n ){
-      assert( ntk.fanin_size( n ) > 0 );
-      ntk.resize_fanout();
-
-      /* update fanout */
-      ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const p = ntk.get_node( f );
-          ntk.add_fanout( p, n );
-        });
-    };
-
-    auto const update_fanout_of_existing_node = [&]( const auto& n, const auto& old_children ){
-      /* update fanout */
-      for ( const auto& c : old_children )
-        ntk.remove_fanout( ntk.get_node( c ), n );
-
-      ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const p = ntk.get_node( f );
-          ntk.add_fanout( p, n );
-        });
-    };
-
-    auto const update_fanout_of_deleted_node = [&]( const auto& n ){
-      /* update fanout */
-      ntk.set_fanout( n, {} );
-      ntk.foreach_fanin( n, [&]( const auto& f ){
-          auto const p = ntk.get_node( f );
-          ntk.remove_fanout( p, n );
-        });
-    };
-
     auto const update_level_of_deleted_node = [&]( const auto& n ){
       /* update fanout */
       ntk.set_level( n, -1 );
     };
 
-    ntk._events->on_add.emplace_back( update_fanout_of_new_node );
     ntk._events->on_add.emplace_back( update_level_of_new_node );
 
-    ntk._events->on_modified.emplace_back( update_fanout_of_existing_node );
     ntk._events->on_modified.emplace_back( update_level_of_existing_node );
 
-    ntk._events->on_delete.emplace_back( update_fanout_of_deleted_node );
     ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
   }
 
@@ -534,9 +480,9 @@ public:
     /* start the managers */
     cut_manager<Ntk> mgr( ps.max_pis );
 
-    const auto size = ntk.size();
     progress_bar pbar{ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
 
+    auto const size = ntk.num_gates();
     ntk.foreach_gate( [&]( auto const& n, auto i ){
         if ( i >= size )
           return false; /* terminate */
@@ -557,7 +503,7 @@ public:
 
         /* evaluate this cut */
         auto const g = call_with_stopwatch( st.time_eval, [&]() {
-            return evaluate( n, leaves, ps.max_inserts );
+            return evaluate( n, leaves );
           });
         if ( !g )
         {
@@ -641,9 +587,8 @@ private:
     sim.normalize( divs );
   }
 
-  std::optional<signal> evaluate( node const& root, std::vector<node> const &leaves, uint32_t max_inserts )
+  std::optional<signal> evaluate( node const& root, std::vector<node> const &leaves )
   {
-    (void)max_inserts;
     uint32_t const required = std::numeric_limits<uint32_t>::max();
 
     last_gain = 0;
@@ -656,21 +601,21 @@ private:
         return num_mffc;
       });
 
-    /* collect the divisor nodes */
+    /* collect the divisor nodes in the cut */
     bool div_comp_success = call_with_stopwatch( st.time_divs, [&]() {
         return collect_divisors( root, leaves, required );
       });
 
     if ( !div_comp_success )
     {
-      return std::optional<signal>();
+      return std::nullopt;
     }
 
     /* update statistics */
     st.num_total_divisors += num_divs;
     st.num_total_leaves += leaves.size();
 
-    /* simulate the nodes */
+    /* simulate the collected divisors */
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); });
 
     ResubFn resub_fn( ntk, sim, divs, num_divs, resub_st );
@@ -857,7 +802,6 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
-  static_assert( has_level_v<Ntk>, "Ntk does not implement the has_level method" );
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
   static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
   static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
@@ -866,14 +810,18 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
 
+  using resub_view_t = fanout_view2<depth_view<Ntk>>;
+  depth_view<Ntk> depth_view{ntk};
+  resub_view_t resub_view{depth_view};
+
   resubstitution_stats st;
   if ( ps.max_pis == 8 )
   {
     using truthtable_t = kitty::static_truth_table<8>;
-    using simulator_t = detail::simulator<Ntk,truthtable_t>;
-    using resubstitution_functor_t = detail::default_resub_functor<Ntk,simulator_t>;
+    using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
+    using resubstitution_functor_t = detail::default_resub_functor<resub_view_t, simulator_t>;
     typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl<Ntk,simulator_t,resubstitution_functor_t> p( ntk, ps, st, resub_st );
+    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
     p.run();
     if ( ps.verbose )
     {
@@ -884,10 +832,10 @@ void resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitut
   else
   {
     using truthtable_t = kitty::dynamic_truth_table;
-    using simulator_t = detail::simulator<Ntk,truthtable_t>;
-    using resubstitution_functor_t = detail::default_resub_functor<Ntk,simulator_t>;
+    using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
+    using resubstitution_functor_t = detail::default_resub_functor<resub_view_t, simulator_t>;
     typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl<Ntk,simulator_t,resubstitution_functor_t> p( ntk, ps, st, resub_st );
+    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
     p.run();
     if ( ps.verbose )
     {

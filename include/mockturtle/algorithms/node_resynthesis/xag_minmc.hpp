@@ -25,7 +25,7 @@
 
 /*!
   \file xag_minmc.hpp
-  \brief XAG resynthesis 
+  \brief XAG resynthesis
 
   \author Eleonora Testa
 */
@@ -49,9 +49,8 @@
 #include <kitty/spectral.hpp>
 
 #include "../cleanup.hpp"
+#include "../simulation.hpp"
 #include "../../traits.hpp"
-#include "../../io/write_bench.hpp"
-#include "../../io/write_verilog.hpp"
 #include "../../networks/xag.hpp"
 #include "../../utils/stopwatch.hpp"
 #include "../../views/cut_view.hpp"
@@ -85,7 +84,7 @@ struct xag_minmc_resynthesis_stats
 
   /*! \brief Time to parse database. */
   stopwatch<>::duration time_parse_db{0};
-  
+
   /*! \brief Overall time to classify functions. */
   stopwatch<>::duration time_classify{0};
 
@@ -129,11 +128,11 @@ struct xag_minmc_resynthesis_stats
  * minimum multiplicative complexity.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const xag_network xag = ...;
       xag_minmc_resynthesis resyn;
       cut_rewriting( xag, resyn );
@@ -404,11 +403,11 @@ private:
           signals[j] = std::stoul( token );
           if ( signals[j] == 0 )
           {
-            ff[j] = db->get_constant( true );
+            ff[j] = db->get_constant( false );
           }
           else if ( signals[j] == 1 )
           {
-            ff[j] = db->get_constant( false );
+            ff[j] = db->get_constant( true );
           }
           else
           {

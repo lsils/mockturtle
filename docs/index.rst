@@ -37,10 +37,16 @@ Welcome to mockturtle's documentation!
    algorithms/akers_synthesis
    algorithms/resubstitution
    algorithms/simulation
+   algorithms/equivalence_checking
+   algorithms/miter
    algorithms/dsd_decomposition
+   algorithms/shannon_decomposition
    algorithms/cleanup
+   algorithms/cnf
    algorithms/reconv_cut
    algorithms/dont_cares
+   algorithms/extract_linear
+   algorithms/linear_resynthesis
    algorithms/gates_to_nodes
 
 .. toctree::
@@ -57,6 +63,7 @@ Welcome to mockturtle's documentation!
    generators/arithmetic
    generators/control
    generators/modular_arithmetic
+   generators/majority
 
 .. toctree::
    :maxdepth: 2

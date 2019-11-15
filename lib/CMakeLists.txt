@@ -33,9 +33,14 @@ if (NOT TARGET lorina)
   target_link_libraries(lorina INTERFACE rang fmt)
 endif()
 
+if (NOT TARGET json)
+  add_library(json INTERFACE) # v3.5.0
+  target_include_directories(json INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/json)
+endif()
+
 if (NOT TARGET percy)
   add_library(percy INTERFACE) # >v0.1.2
-  target_include_directories(percy INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/percy)
+  target_include_directories(percy SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/percy)
   target_compile_definitions(percy INTERFACE DISABLE_NAUTY)
 
   set(THREADS_PREFER_PTHREAD_FLAG ON)

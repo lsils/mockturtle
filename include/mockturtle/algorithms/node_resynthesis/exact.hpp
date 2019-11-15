@@ -81,11 +81,11 @@ struct exact_resynthesis_params
  * runtime, `k` should be 3 or 4.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const klut_network klut = ...;
 
       exact_resynthesis<klut_network> resyn( 3 );
@@ -99,11 +99,11 @@ struct exact_resynthesis_params
  * runtime.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const klut_network klut = ...;
 
       exact_resynthesis_params ps;
@@ -220,11 +220,11 @@ private:
  * resynthized in terms of an optimum size AIG network.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const aig_network aig = ...;
 
       exact_aig_resynthesis<aig_network> resyn;
@@ -238,16 +238,16 @@ private:
  * runtime.
  *
    \verbatim embed:rst
-  
+
    Example
-   
+
    .. code-block:: c++
-   
+
       const aig_network aig = ...;
 
-      exact_aig_resynthesis_params ps;
-      ps.cache = std::make_shared<exact_aig_resynthesis_params::cache_map_t>();
-      exact_aig_resynthesis<aig_network> resyn( ps );
+      exact_resynthesis_params ps;
+      ps.cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
+      exact_aig_resynthesis<aig_network> resyn( false, ps );
       cut_rewriting( aig, resyn );
       aig = cleanup_dangling( aig );
 
@@ -261,8 +261,9 @@ template<class Ntk = aig_network>
 class exact_aig_resynthesis
 {
 public:
-  explicit exact_aig_resynthesis( exact_resynthesis_params const& ps = {} )
-      : _ps( ps )
+  explicit exact_aig_resynthesis( bool _allow_xor = false, exact_resynthesis_params const& ps = {} )
+      : _allow_xor( _allow_xor ),
+        _ps( ps )
   {
   }
 
@@ -278,7 +279,10 @@ public:
     // TODO: special case for small functions (up to 2 variables)?
 
     percy::spec spec;
-    spec.set_primitive( percy::AIG );
+    if ( !_allow_xor )
+    {
+      spec.set_primitive( percy::AIG );
+    }
     spec.fanin = 2;
     spec.verbosity = 0;
     spec.add_alonce_clauses = _ps.add_alonce_clauses;
@@ -337,6 +341,7 @@ public:
       {
       default:
         std::cerr << "[e] unsupported operation " << kitty::to_hex( c->get_operator( i ) ) << "\n";
+        assert( false );
         break;
       case 0x8:
         signals.emplace_back( ntk.create_and( c1, c2 ) );
@@ -350,6 +355,9 @@ public:
       case 0xe:
         signals.emplace_back( !ntk.create_and( !c1, !c2 ) );
         break;
+      case 0x6:
+        signals.emplace_back( ntk.create_xor( c1, c2 ) );
+        break;
       }
     }
 
@@ -357,6 +365,7 @@ public:
   }
 
 private:
+  bool _allow_xor = false;
   exact_resynthesis_params _ps;
 };
 

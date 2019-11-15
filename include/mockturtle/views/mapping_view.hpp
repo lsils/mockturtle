@@ -81,11 +81,11 @@ inline constexpr bool implements_mapping_interface_v = has_has_mapping_v<Ntk> &&
  * `true`, it also adds functions for `cell_function` and `set_cell_function`.
  * For the latter case, this view requires more memory to also store the cells'
  * truth tables.
- * 
+ *
  * **Required network functions:**
  * - `size`
  * - `node_to_index`
- * 
+ *
  * Example
  *
    \verbatim embed:rst

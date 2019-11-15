@@ -33,6 +33,7 @@
 #pragma once
 
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/networks/mig.hpp>
 
 namespace kitty
 {
@@ -653,7 +654,6 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
-  static_assert( has_level_v<Ntk>, "Ntk does not implement the has_level method" );
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
   static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
   static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
@@ -662,14 +662,18 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
 
+  using resub_view_t = fanout_view2<depth_view<Ntk>>;
+  depth_view<Ntk> depth_view{ntk};
+  resub_view_t resub_view{depth_view};
+
   resubstitution_stats st;
   if ( ps.max_pis == 8 )
   {
     using truthtable_t = kitty::static_truth_table<8>;
-    using simulator_t = detail::simulator<Ntk,truthtable_t>;
-    using resubstitution_functor_t = mig_resub_functor<Ntk,simulator_t>;
+    using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
+    using resubstitution_functor_t = mig_resub_functor<resub_view_t, simulator_t>;
     typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl<Ntk,simulator_t,resubstitution_functor_t> p( ntk, ps, st, resub_st );
+    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
     p.run();
     if ( ps.verbose )
     {
@@ -680,10 +684,10 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   else
   {
     using truthtable_t = kitty::dynamic_truth_table;
-    using simulator_t = detail::simulator<Ntk,truthtable_t>;
-    using resubstitution_functor_t = mig_resub_functor<Ntk,simulator_t>;
+    using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
+    using resubstitution_functor_t = mig_resub_functor<resub_view_t, simulator_t>;
     typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl<Ntk,simulator_t,resubstitution_functor_t> p( ntk, ps, st, resub_st );
+    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
     p.run();
     if ( ps.verbose )
     {

@@ -3,6 +3,7 @@
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <mockturtle/algorithms/dsd_decomposition.hpp>
+#include <mockturtle/algorithms/shannon_decomposition.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
@@ -39,7 +40,7 @@ TEST_CASE( "Full DSD decomposition on some 4-input functions into AIGs", "[dsd_d
 TEST_CASE( "Full DSD decomposition on some 10-input functions into XAGs", "[dsd_decomposition]" )
 {
   std::vector<std::string> functions = {"0080004000080004ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-                                        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb", 
+                                        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb",
                                         "000000000000000000000000000000003333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb3333bbbbf3f3fbfbff33ffbbfff3fffb"};
 
   for ( auto const& func : functions )
@@ -86,3 +87,28 @@ TEST_CASE( "Partial DSD decomposition into k-LUT network", "[dsd_decomposition]"
   CHECK( simulate<kitty::dynamic_truth_table>( ntk, sim )[0] == table );
 }
 
+TEST_CASE( "DSD decomposition on random functions of different size", "[dsd_decomposition]" )
+{
+  for ( uint32_t var = 0u; var <= 6u; ++var )
+  {
+    for ( auto i = 0u; i < 100u; ++i )
+    {
+      kitty::dynamic_truth_table func( var );
+      kitty::create_random( func );
+
+      aig_network ntk;
+      std::vector<aig_network::signal> pis( var );
+      std::generate( pis.begin(), pis.end(), [&]() { return ntk.create_pi(); } );
+
+      auto on_prime = [&]( kitty::dynamic_truth_table const& func, std::vector<aig_network::signal> const& pis ) {
+        return shannon_decomposition( ntk, func, pis );
+      };
+
+      ntk.create_po( dsd_decomposition( ntk, func, pis, on_prime ) );
+
+      default_simulator<kitty::dynamic_truth_table> sim( func.num_vars() );
+
+      CHECK( simulate<kitty::dynamic_truth_table>( ntk, sim )[0] == func );
+    }
+  }
+}
