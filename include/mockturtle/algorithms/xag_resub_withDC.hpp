@@ -115,7 +115,7 @@ public:
 
     /* consider equal nodes */
     g = call_with_stopwatch( st.time_resub0, [&]() {
-      return resub_div0( root, care,  required );
+      return resub_div0( root, care, required );
     } );
     if ( g )
     {
@@ -126,7 +126,7 @@ public:
 
     if ( num_and_mffc == 0 )
     {
-      //return std::nullopt;
+      return std::nullopt;
       if ( max_inserts == 0 || num_xor_mffc == 1 )
         return std::nullopt;
 
@@ -222,12 +222,12 @@ public:
   {
     (void)required;
     auto tt = sim.get_tt( ntk.make_signal( root ) );
-    if(care.num_vars() > tt.num_vars())
-    care = kitty::shrink_to(care, tt.num_vars());
-    else 
-    care = kitty::extend_to(care, tt.num_vars());
+    if ( care.num_vars() > tt.num_vars() )
+      care = kitty::shrink_to( care, tt.num_vars() );
+    else
+      care = kitty::extend_to( care, tt.num_vars() );
 
-    if ( binary_and(tt, care) == sim.get_tt( ntk.get_constant( false ) ) )
+    if ( binary_and( tt, care ) == sim.get_tt( ntk.get_constant( false ) ) )
     {
       return sim.get_phase( root ) ? ntk.get_constant( true ) : ntk.get_constant( false );
     }
@@ -238,14 +238,15 @@ public:
   {
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
+    if ( care.num_vars() > tt.num_vars() )
+      care = kitty::shrink_to( care, tt.num_vars() );
+    else
+      care = kitty::extend_to( care, tt.num_vars() );
     for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const d = divs.at( i );
-      if(care.num_vars() > tt.num_vars())
-    care = kitty::shrink_to(care, tt.num_vars());
-    else 
-    care = kitty::extend_to(care, tt.num_vars());
-      if ( binary_and(tt, care) != binary_and(sim.get_tt( ntk.make_signal( d ) ), care) )
+
+      if ( binary_and( tt, care ) != binary_and( sim.get_tt( ntk.make_signal( d ) ), care ) )
         continue;
       return ( sim.get_phase( d ) ^ sim.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
     }
@@ -256,10 +257,10 @@ public:
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
-    if(care.num_vars() > tt.num_vars())
-    care = kitty::shrink_to(care, tt.num_vars());
-    else 
-    care = kitty::extend_to(care, tt.num_vars());
+    if ( care.num_vars() > tt.num_vars() )
+      care = kitty::shrink_to( care, tt.num_vars() );
+    else
+      care = kitty::extend_to( care, tt.num_vars() );
     /* check for divisors  */
     for ( auto i = 0u; i < num_divs; ++i )
     {
@@ -271,13 +272,13 @@ public:
         auto const& tt_s0 = sim.get_tt( ntk.make_signal( s0 ) );
         auto const& tt_s1 = sim.get_tt( ntk.make_signal( s1 ) );
 
-        if ( binary_and(( tt_s0 ^ tt_s1 ), care) == binary_and(tt, care) )
+        if ( binary_and( ( tt_s0 ^ tt_s1 ), care ) == binary_and( tt, care ) )
         {
           auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 ) : ntk.make_signal( s0 );
           auto const r = sim.get_phase( s1 ) ? !ntk.make_signal( s1 ) : ntk.make_signal( s1 );
           return sim.get_phase( root ) ? !ntk.create_xor( l, r ) : ntk.create_xor( l, r );
         }
-        else if ( binary_and(( tt_s0 ^ tt_s1 ),care) == binary_and(kitty::unary_not( tt ), care) )
+        else if ( binary_and( ( tt_s0 ^ tt_s1 ), care ) == binary_and( kitty::unary_not( tt ), care ) )
         {
           auto const l = sim.get_phase( s0 ) ? !ntk.make_signal( s0 ) : ntk.make_signal( s0 );
           auto const r = sim.get_phase( s1 ) ? !ntk.make_signal( s1 ) : ntk.make_signal( s1 );
@@ -293,10 +294,10 @@ public:
     (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
-    if(care.num_vars() > tt.num_vars())
-    care = kitty::shrink_to(care, tt.num_vars());
-    else 
-    care = kitty::extend_to(care, tt.num_vars());
+    if ( care.num_vars() > tt.num_vars() )
+      care = kitty::shrink_to( care, tt.num_vars() );
+    else
+      care = kitty::extend_to( care, tt.num_vars() );
 
     for ( auto i = 0u; i < num_divs; ++i )
     {
@@ -313,7 +314,7 @@ public:
           auto const& tt_s1 = sim.get_tt( ntk.make_signal( s1 ) );
           auto const& tt_s2 = sim.get_tt( ntk.make_signal( s2 ) );
 
-          if ( binary_and(( tt_s0 ^ tt_s1 ^ tt_s2 ), care) == binary_and(tt, care) )
+          if ( binary_and( ( tt_s0 ^ tt_s1 ^ tt_s2 ), care ) == binary_and( tt, care ) )
           {
             auto const max_level = std::max( {ntk.level( s0 ),
                                               ntk.level( s1 ),
@@ -342,7 +343,7 @@ public:
 
             return sim.get_phase( root ) ? !ntk.create_xor( a, ntk.create_xor( b, c ) ) : ntk.create_xor( a, ntk.create_xor( b, c ) );
           }
-          else if ( binary_and(( tt_s0 ^ tt_s1 ^ tt_s2 ), care) == binary_and(kitty::unary_not( tt ), care) )
+          else if ( binary_and( ( tt_s0 ^ tt_s1 ^ tt_s2 ), care ) == binary_and( kitty::unary_not( tt ), care ) )
           {
             auto const max_level = std::max( {ntk.level( s0 ),
                                               ntk.level( s1 ),
@@ -413,10 +414,10 @@ public:
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
-    if(care.num_vars() > tt.num_vars())
-    care = kitty::shrink_to(care, tt.num_vars());
-    else 
-    care = kitty::extend_to(care, tt.num_vars());
+    if ( care.num_vars() > tt.num_vars() )
+      care = kitty::shrink_to( care, tt.num_vars() );
+    else
+      care = kitty::extend_to( care, tt.num_vars() );
 
     /* check for positive unate divisors */
     for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
@@ -430,7 +431,7 @@ public:
         auto const& tt_s0 = sim.get_tt( s0 );
         auto const& tt_s1 = sim.get_tt( s1 );
 
-        if ( binary_and(( tt_s0 | tt_s1 ), care) == binary_and(tt, care) )
+        if ( binary_and( ( tt_s0 | tt_s1 ), care ) == binary_and( tt, care ) )
         {
           auto const l = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
           auto const r = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
@@ -450,7 +451,7 @@ public:
         auto const& tt_s0 = sim.get_tt( s0 );
         auto const& tt_s1 = sim.get_tt( s1 );
 
-        if ( binary_and(( tt_s0 & tt_s1 ), care) == binary_and(tt, care) )
+        if ( binary_and( ( tt_s0 & tt_s1 ), care ) == binary_and( tt, care ) )
         {
           auto const l = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
           auto const r = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
@@ -467,10 +468,10 @@ public:
     (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
-    if(care.num_vars() > tt.num_vars())
-    care = kitty::shrink_to(care, tt.num_vars());
-    else 
-    care = kitty::extend_to(care, tt.num_vars());
+    if ( care.num_vars() > tt.num_vars() )
+      care = kitty::shrink_to( care, tt.num_vars() );
+    else
+      care = kitty::extend_to( care, tt.num_vars() );
 
     /* check positive unate divisors */
     for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
@@ -489,7 +490,7 @@ public:
           auto const& tt_s1 = sim.get_tt( s1 );
           auto const& tt_s2 = sim.get_tt( s2 );
 
-          if ( binary_and(( tt_s0 | tt_s1 | tt_s2 ), care) == binary_and(tt, care) )
+          if ( binary_and( ( tt_s0 | tt_s1 | tt_s2 ), care ) == binary_and( tt, care ) )
           {
             auto const max_level = std::max( {ntk.level( ntk.get_node( s0 ) ),
                                               ntk.level( ntk.get_node( s1 ) ),
@@ -539,7 +540,7 @@ public:
           auto const& tt_s1 = sim.get_tt( s1 );
           auto const& tt_s2 = sim.get_tt( s2 );
 
-          if ( binary_and(( tt_s0 & tt_s1 & tt_s2 ), care) == binary_and(tt, care) )
+          if ( binary_and( ( tt_s0 & tt_s1 & tt_s2 ), care ) == binary_and( tt, care ) )
           {
             auto const max_level = std::max( {ntk.level( ntk.get_node( s0 ) ),
                                               ntk.level( ntk.get_node( s1 ) ),
@@ -658,10 +659,10 @@ public:
     (void)required;
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
-    if(care.num_vars() > tt.num_vars())
-    care = kitty::shrink_to(care, tt.num_vars());
-    else 
-    care = kitty::extend_to(care, tt.num_vars());
+    if ( care.num_vars() > tt.num_vars() )
+      care = kitty::shrink_to( care, tt.num_vars() );
+    else
+      care = kitty::extend_to( care, tt.num_vars() );
 
     /* check positive unate divisors */
     for ( const auto& s0 : udivs.positive_divisors )
@@ -680,7 +681,7 @@ public:
         auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
         auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
 
-        if ( binary_and(( tt_s0 | ( tt_s1 & tt_s2 ) ), care) == binary_and(tt, care) )
+        if ( binary_and( ( tt_s0 | ( tt_s1 & tt_s2 ) ), care ) == binary_and( tt, care ) )
         {
           return sim.get_phase( root ) ? !ntk.create_or( a, ntk.create_and( b, c ) ) : ntk.create_or( a, ntk.create_and( b, c ) );
         }
@@ -704,7 +705,7 @@ public:
         auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
         auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
 
-        if ( binary_and(( tt_s0 | ( tt_s1 & tt_s2 ) ), care) == binary_and(tt, care) )
+        if ( binary_and( ( tt_s0 | ( tt_s1 & tt_s2 ) ), care ) == binary_and( tt, care ) )
         {
           return sim.get_phase( root ) ? !ntk.create_and( a, ntk.create_or( b, c ) ) : ntk.create_and( a, ntk.create_or( b, c ) );
         }
@@ -771,7 +772,7 @@ public:
     /* start the managers */
     cut_manager<Ntk> mgr( ps.max_pis );
 
-    const auto size = ntk.size();
+    const auto size = ntk.num_gates();
     progress_bar pbar{ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
 
     ntk.foreach_gate( [&]( auto const& n, auto i ) {

@@ -453,7 +453,6 @@ public:
     return std::nullopt;
   }
 
-// TODO: add DC
 
   std::optional<signal> resub_div1( node const& root, uint32_t required )
   {
@@ -1069,7 +1068,7 @@ public:
     /* start the managers */
     cut_manager<Ntk> mgr( ps.max_pis );
 
-    const auto size = ntk.size();
+    const auto size = ntk.num_gates();
     progress_bar pbar{ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
 
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
