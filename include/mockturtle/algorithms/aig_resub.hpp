@@ -128,7 +128,7 @@ struct aig_resub_stats
   }
 }; /* aig_resub_stats */
 
-template<typename Ntk, typename Simulator>
+template<typename Ntk, typename Simulator, typename TT>
 struct aig_resub_functor
 {
 public:
@@ -180,7 +180,7 @@ public:
   {
   }
 
-  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
+  std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
@@ -745,10 +745,12 @@ void aig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   if ( ps.max_pis == 8 )
   {
     using truthtable_t = kitty::static_truth_table<8>;
+    using truthtable_dc_t = kitty::dynamic_truth_table;
     using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
-    using resubstitution_functor_t = aig_resub_functor<resub_view_t, simulator_t>;
+    using node_mffc_t = detail::node_mffc_inside<Ntk>;
+    using resubstitution_functor_t = aig_resub_functor<resub_view_t, simulator_t, truthtable_dc_t>;
     typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
+    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t, truthtable_dc_t, node_mffc_t> p( resub_view, ps, st, resub_st );
     p.run();
     if ( ps.verbose )
     {
@@ -760,9 +762,10 @@ void aig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   {
     using truthtable_t = kitty::dynamic_truth_table;
     using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
-    using resubstitution_functor_t = aig_resub_functor<resub_view_t, simulator_t>;
+    using node_mffc_t = detail::node_mffc_inside<Ntk>;
+    using resubstitution_functor_t = aig_resub_functor<resub_view_t, simulator_t, truthtable_t>;
     typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
+    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t, truthtable_t, node_mffc_t> p( resub_view, ps, st, resub_st );
     p.run();
     if ( ps.verbose )
     {

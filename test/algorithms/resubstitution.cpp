@@ -14,7 +14,7 @@
 
 #include <mockturtle/algorithms/aig_resub.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
-#include <mockturtle/algorithms/xag_resub.hpp>
+#include <mockturtle/algorithms/xag_resub_withDC.hpp>
 
 using namespace mockturtle;
 
@@ -109,13 +109,14 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
   const auto tt = simulate<kitty::static_truth_table<2>>( xag )[0];
 
   resubstitution_params ps;
-  ps.max_inserts = 4;
+  //ps.max_inserts = 4;
+  
 
   using view_t = depth_view<fanout_view<xag_network>>;
   fanout_view<xag_network> fanout_view{xag};
   view_t resub_view{fanout_view};
 
-  resubstitution_minmc( resub_view , ps);
+  resubstitution_minmc_withDC( resub_view , ps);
 
   xag = cleanup_dangling( xag );
 
