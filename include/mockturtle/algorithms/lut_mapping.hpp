@@ -384,6 +384,9 @@ private:
       }
     }
 
+    if ( best_cut == -1 )
+      return;
+
     if constexpr ( ELA )
     {
       if ( map_refs[index] > 0 )

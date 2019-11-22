@@ -34,7 +34,6 @@
 
 #include <iostream>
 
-#include "../io/write_verilog.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
@@ -174,6 +173,7 @@ public:
       default_simulator<kitty::dynamic_truth_table> sim( mffc.num_pis() );
       const auto tt = call_with_stopwatch( st.time_simulation,
                                            [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
+
       signal<Ntk> new_f;
       {
         if ( ps.use_dont_cares )
@@ -187,7 +187,7 @@ public:
             }
             stopwatch t( st.time_refactoring );
 
-            refactoring_fn( ntk, tt, satisfiability_dont_cares( ntk, pivots ), leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+            refactoring_fn( ntk, tt, satisfiability_dont_cares( ntk, pivots, 16u ), leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
           }
           else
           {
@@ -218,7 +218,7 @@ public:
         ntk.substitute_node( n, new_f );
         ntk.set_value( n, 0 );
         ntk.set_value( ntk.get_node( new_f ), ntk.fanout_size( ntk.get_node( new_f ) ) );
-        for ( auto i = 0; i < leaves.size(); i++ )
+        for ( auto i = 0u; i < leaves.size(); i++ )
         {
           ntk.set_value( ntk.get_node( leaves[i] ), ntk.fanout_size( ntk.get_node( leaves[i] ) ) );
         }

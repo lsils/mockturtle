@@ -37,10 +37,12 @@
 
 #include "../traits.hpp"
 
+#include <fmt/format.h>
 #include <kitty/constructors.hpp>
 #include <kitty/decomposition.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <kitty/print.hpp>
 
 namespace mockturtle
 {
@@ -55,27 +57,28 @@ public:
   dsd_decomposition_impl( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime )
       : _ntk( ntk ),
         remainder( func ),
-        support( children.size() ),
         pis( children ),
         _on_prime( on_prime )
   {
-    std::iota( support.begin(), support.end(), 0u );
+    for ( auto i = 0; i < func.num_vars(); ++i )
+    {
+      if ( kitty::has_var( func, i ) )
+      {
+        support.push_back( i );
+      }
+    }
   }
 
   signal<Ntk> run()
   {
     /* terminal cases */
-    if ( support.size() == 0u )
+    if ( kitty::is_const0( remainder ) )
     {
-      if ( kitty::is_const0( remainder ) )
-      {
-        return _ntk.get_constant( false );
-      }
-      else
-      {
-        assert( kitty::is_const0( ~remainder ) );
-        return _ntk.get_constant( true );
-      }
+      return _ntk.get_constant( false );
+    }
+    if ( kitty::is_const0( ~remainder ) )
+    {
+      return _ntk.get_constant( true );
     }
 
     /* projection case */
@@ -89,6 +92,11 @@ public:
       }
       else
       {
+        if ( remainder != ~var )
+        {
+          fmt::print( "remainder = {}, vars = {}\n", kitty::to_binary( remainder ), remainder.num_vars() );
+          assert( false );
+        }
         assert( remainder == ~var );
         return _ntk.create_not( pis[support.front()] );
       }

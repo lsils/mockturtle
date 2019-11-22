@@ -73,3 +73,11 @@ algorithm.  Several views are implemented in mockturtle.
 
 .. doxygenclass:: mockturtle::window_view
    :members:
+
+`names_view`: Assign names to signals and outputs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/names_view.hpp``
+
+.. doxygenclass:: mockturtle::names_view
+   :members:

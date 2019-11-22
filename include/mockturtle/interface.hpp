@@ -111,7 +111,7 @@ public:
    *
    * \param name Optional name for the input
    */
-  signal create_pi( std::string const& name = {} );
+  signal create_pi( std::string const& name = std::string() );
 
   /*! \brief Creates a primary output in the network.
    *
@@ -123,7 +123,7 @@ public:
    * \param s Signal that drives the created primary output
    * \param name Optional name for the output
    */
-  void create_po( signal const& s, std::string const& name = {} );
+  void create_po( signal const& s, std::string const& name = std::string() );
 
   /*! \brief Creates a register output in the network.
    *
@@ -141,7 +141,7 @@ public:
    *
    * \param name Optional name for the register output
    */
-  signal create_ro( std::string const& name = {} );
+  signal create_ro( std::string const& name = std::string() );
 
   /*! \brief Creates a register input in the network.
    *
@@ -163,7 +163,7 @@ public:
    * \param s Signal that drives the created primary output
    * \param name Optional name for the output
    */
-  void create_ri( signal const& s, std::string const& name = {} );
+  void create_ri( signal const& s, std::string const& name = std::string() );
 
   /*! \brief Checks whether the network is combinational.
    *
@@ -442,6 +442,9 @@ public:
 
   /*! \brief Returns the level of a node. */
   uint32_t level( node const& n ) const;
+
+  /*! \brief Returns true, if node is on critical path */
+  bool is_on_critical_path( node const& n ) const;
 
   /*! \brief Returns true if node is an AND gate. */
   bool is_and( node const& n ) const;
@@ -914,6 +917,26 @@ public:
   /*! \brief Increment the current traversal id. */
   void incr_trav_id() const;
 #pragma endregion
+
+#pragma region Signal naming
+  /*! \brief Checks if a signal has a name. */
+  bool has_name( signal const& s ) const;
+
+  /*! \brief Set the name of a signal. */
+  void set_name( signal const& s, std::string const& name );
+
+  /*! \brief Returns the name of a signal. */
+  std::string get_name( signal const& s ) const;
+
+  /*! \brief Checks if an output signal has a name. */
+  bool has_output_name( uint32_t index ) const;
+
+  /*! \brief Set the name of an output signal. */
+  void set_output_name( uint32_t index, std::string const& name );
+
+  /*! \brief Returns the name of an output signal. */
+  std::string get_output_name( uint32_t index ) const;
+#end endregion
 
 #pragma region General methods
   /*! \brief Returns network events object.
