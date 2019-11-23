@@ -452,6 +452,7 @@ public:
       ntk.resize_levels();
       ntk.resize_fanout();
       update_node_level( n );
+      //ntk.update_fanout();
       update_node_fanout( n );
     };
 
@@ -460,6 +461,7 @@ public:
       ntk.resize_levels();
       ntk.resize_fanout();
       update_node_level( n );
+      //ntk.update_fanout();
       update_node_fanout( n );
     };
 

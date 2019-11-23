@@ -146,6 +146,11 @@ public:
     _fanout.resize();
   }
 
+  void set_fanout( node const& n, std::vector<node> const& fanout )
+  {
+    _fanout[ n ] = fanout;
+  }
+
   std::vector<node> fanout( node const& n ) const /* deprecated */
   {
     return _fanout[n];
