@@ -36,8 +36,8 @@
 #include <stack>
 #include <vector>
 
-#include "../traits.hpp"
 #include "../networks/detail/foreach.hpp"
+#include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
 
@@ -83,8 +83,8 @@ class fanout_view2<Ntk, false> : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
-  using node    = typename Ntk::node;
-  using signal  = typename Ntk::signal;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
   fanout_view2( Ntk const& ntk, fanout_view2_params const& ps = {} ) : Ntk( ntk ), _fanout( ntk ), _ps( ps )
   {
@@ -108,7 +108,8 @@ public:
     {
       Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
         (void)previous;
-        for ( auto const& f : previous ) {
+        for ( auto const& f : previous )
+        {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
         }
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
@@ -140,9 +141,14 @@ public:
     compute_fanout();
   }
 
+  void resize_fanout()
+  {
+    _fanout.resize();
+  }
+
   std::vector<node> fanout( node const& n ) const /* deprecated */
   {
-    return _fanout[ n ];
+    return _fanout[n];
   }
 
   void substitute_node( node const& old_node, signal const& new_signal )
@@ -177,15 +183,15 @@ private:
   {
     _fanout.reset();
 
-    this->foreach_gate( [&]( auto const& n ){
-        this->foreach_fanin( n, [&]( auto const& c ){
-            auto& fanout = _fanout[ c ];
-            if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
-            {
-              fanout.push_back( n );
-            }
-          });
-      });
+    this->foreach_gate( [&]( auto const& n ) {
+      this->foreach_fanin( n, [&]( auto const& c ) {
+        auto& fanout = _fanout[c];
+        if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
+        {
+          fanout.push_back( n );
+        }
+      } );
+    } );
   }
 
   node_map<std::vector<node>, Ntk> _fanout;
@@ -193,6 +199,6 @@ private:
 };
 
 template<class T>
-fanout_view2(T const&, fanout_view2_params const& ps = {}) -> fanout_view2<T>;
+fanout_view2( T const&, fanout_view2_params const& ps = {} )->fanout_view2<T>;
 
 } // namespace mockturtle
