@@ -371,7 +371,8 @@ public:
        and consequently does not use the argument `max_inserts`. Other
        functors, however, make use of this argument. */
     (void)max_inserts;
-
+    assert(is_const0(care));
+    
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
       return resub_const( root, required );

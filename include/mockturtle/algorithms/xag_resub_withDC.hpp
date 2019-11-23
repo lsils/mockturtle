@@ -37,7 +37,6 @@
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/networks/xag.hpp>
 
-
 namespace mockturtle
 {
 
@@ -114,7 +113,7 @@ struct xag_resub_stats
     std::cout << fmt::format( "[i]            collect unate divisors                           ({:>5.2f} secs)\n", to_seconds( time_collect_unate_divisors ) );
     std::cout << fmt::format( "[i]            collect binate divisors                           ({:>5.2f} secs)\n", to_seconds( time_collect_binate_divisors ) );
     std::cout << fmt::format( "[i]            total   {:6d}\n",
-                              ( num_const_accepts + num_div0_accepts + num_div1_accepts + num_div2_accepts + num_div1_and_accepts + num_div12_accepts + num_div2_and_accepts) );
+                              ( num_const_accepts + num_div0_accepts + num_div1_accepts + num_div2_accepts + num_div1_and_accepts + num_div12_accepts + num_div2_and_accepts ) );
   }
 }; /* xag_resub_stats */
 
@@ -310,7 +309,7 @@ public:
   std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, std::pair<uint32_t, uint32_t> num_mffc, uint32_t& last_gain )
   {
 
-    uint32_t num_and_mffc = num_mffc.first; 
+    uint32_t num_and_mffc = num_mffc.first;
     uint32_t num_xor_mffc = num_mffc.second;
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
@@ -936,7 +935,6 @@ private:
   binate_divisors bdivs;
 }; /* xag_resub_functor */
 
-
 template<class Ntk>
 void resubstitution_minmc_withDC( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
@@ -967,7 +965,7 @@ void resubstitution_minmc_withDC( Ntk& ntk, resubstitution_params const& ps = {}
   using truthtable_t = kitty::dynamic_truth_table;
   using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
   using node_mffc_t = detail::node_mffc_inside_xag<Ntk>;
-  using resubstitution_functor_t = xag_resub_functor<resub_view_t, simulator_t, truthtable_t>; // Xag resub is the default here
+  using resubstitution_functor_t = xag_resub_functor<resub_view_t, simulator_t, truthtable_t>; 
   typename resubstitution_functor_t::stats resub_st;
   detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t, truthtable_t, node_mffc_t> p( resub_view, ps, st, resub_st );
   p.run();
