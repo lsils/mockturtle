@@ -391,10 +391,8 @@ static const char* benchmarks[] = {
     "arbiter", "cavlc", "ctrl", "dec", "i2c", "int2float", "mem_ctrl", "priority", "router", "voter"};
 
 static const char* crypto_epfl_benchmarks[] = {
-    //"adder_untilsat", "bar_untilsat", "div_untilsat", "log2_untilsat", "max_untilsat", "multiplier_untilsat", "sin_untilsat", "sqrt_untilsat", "square_untilsat",
-    //"arbiter_untilsat", 
-    //
-    "ctrl_untilsat"}; //"dec_untilsat", "i2c_untilsat", "int2float_untilsat" }; //"mem_ctrl_untilsat", "priority_untilsat", "router_untilsat", "voter_untilsat"};
+    "adder_untilsat", "bar_untilsat", "div_untilsat", "log2_untilsat", "max_untilsat", "multiplier_untilsat", "sin_untilsat", "sqrt_untilsat", "square_untilsat",
+    "arbiter_untilsat", "ctrl_untilsat" , "dec_untilsat", "i2c_untilsat", "int2float_untilsat" , "mem_ctrl_untilsat", "priority_untilsat", "router_untilsat", "voter_untilsat"};
 
 std::vector<std::string> epfl_benchmarks( uint32_t selection = all )
 {
@@ -412,7 +410,7 @@ std::vector<std::string> epfl_benchmarks( uint32_t selection = all )
 std::vector<std::string> crypto_benchmarks( )
 {
   std::vector<std::string> result;
-  for ( uint32_t i = 0u; i < 1u; ++i )
+  for ( uint32_t i = 0u; i < 19u; ++i )
   {
       result.push_back( crypto_epfl_benchmarks[i] );
   }
