@@ -390,6 +390,12 @@ static const char* benchmarks[] = {
     "adder", "bar", "div", "hyp", "log2", "max", "multiplier", "sin", "sqrt", "square",
     "arbiter", "cavlc", "ctrl", "dec", "i2c", "int2float", "mem_ctrl", "priority", "router", "voter"};
 
+static const char* crypto_epfl_benchmarks[] = {
+    //"adder_untilsat", "bar_untilsat", "div_untilsat", "log2_untilsat", "max_untilsat", "multiplier_untilsat", "sin_untilsat", "sqrt_untilsat", "square_untilsat",
+    //"arbiter_untilsat", 
+    //
+    "ctrl_untilsat"}; //"dec_untilsat", "i2c_untilsat", "int2float_untilsat" }; //"mem_ctrl_untilsat", "priority_untilsat", "router_untilsat", "voter_untilsat"};
+
 std::vector<std::string> epfl_benchmarks( uint32_t selection = all )
 {
   std::vector<std::string> result;
@@ -403,6 +409,16 @@ std::vector<std::string> epfl_benchmarks( uint32_t selection = all )
   return result;
 }
 
+std::vector<std::string> crypto_benchmarks( )
+{
+  std::vector<std::string> result;
+  for ( uint32_t i = 0u; i < 1u; ++i )
+  {
+      result.push_back( crypto_epfl_benchmarks[i] );
+  }
+  return result;
+}
+
 std::string benchmark_path( std::string const& benchmark_name )
 {
 #ifndef EXPERIMENTS_PATH
@@ -412,11 +428,20 @@ std::string benchmark_path( std::string const& benchmark_name )
 #endif
 }
 
+std::string crypto_benchmark_path( std::string const& benchmark_name )
+{
+#ifndef EXPERIMENTS_PATH
+  return fmt::format( "{}.v", benchmark_name );
+#else
+  return fmt::format( "{}crypto_benchmarks/{}.v", EXPERIMENTS_PATH, benchmark_name );
+#endif
+}
+
 template<class Ntk>
 bool abc_cec( Ntk const& ntk, std::string const& benchmark )
 {
   mockturtle::write_bench( ntk, "/tmp/test.bench" );
-  std::string command = fmt::format( "abc -q \"cec -n {} /tmp/test.bench\"", benchmark_path( benchmark ) );
+  std::string command = fmt::format( "abc -q \"cec -n {} /tmp/test.bench\"", crypto_benchmark_path( benchmark ) );
 
   std::array<char, 128> buffer;
   std::string result;

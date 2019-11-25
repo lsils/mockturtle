@@ -1,0 +1,18 @@
+[
+  {
+    "entries": [
+      {
+        "avg. runtime [s]": 17.03667449951172,
+        "benchmark": "ctrl_untilsat",
+        "equivalent": true,
+        "improvement %": 47.0,
+        "iterations": 2,
+        "num_and": 85,
+        "num_and_opt": 45,
+        "num_xor": 8,
+        "num_xor_opt": 49
+      }
+    ],
+    "version": "135d4de"
+  }
+]
