@@ -392,7 +392,7 @@ static const char* benchmarks[] = {
 
 static const char* crypto_epfl_benchmarks[] = {
     "adder_untilsat", "bar_untilsat", "div_untilsat", "log2_untilsat", "max_untilsat", "multiplier_untilsat", "sin_untilsat", "sqrt_untilsat", "square_untilsat",
-    "arbiter_untilsat", "ctrl_untilsat" , "dec_untilsat", "i2c_untilsat", "int2float_untilsat" , "mem_ctrl_untilsat", "priority_untilsat", "router_untilsat", "voter_untilsat"};
+    "arbiter_untilsat", "cavlc_untilsat", "ctrl_untilsat" , "dec_untilsat", "i2c_untilsat", "int2float_untilsat" , "mem_ctrl_untilsat", "priority_untilsat", "router_untilsat", "voter_untilsat"};
 
 std::vector<std::string> epfl_benchmarks( uint32_t selection = all )
 {
