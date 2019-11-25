@@ -107,12 +107,12 @@ int main( int argc, char** argv )
     ps.cut_enumeration_ps.cut_size = 6;
     ps.cut_enumeration_ps.cut_limit = 12;
     ps.verbose = true;
-    ps.progress = true;
+    ps.progress = false;
     ps.min_cand_cut_size = 2u;
 
     refactoring_params ps2;
     ps2.verbose = true;
-    ps2.progress = true;
+    ps2.progress = false;
     ps2.allow_zero_gain = false;
     ps2.max_pis = 15;
     ps2.use_dont_cares = true;
@@ -121,7 +121,7 @@ int main( int argc, char** argv )
     ps3.max_divisors = 100;
     ps3.max_inserts = 4;
     ps3.max_pis = 8u;
-    ps3.progress = true;
+    ps3.progress = false;
     ps3.verbose = true;
     ps3.use_dont_cares = true;
 
