@@ -41,6 +41,7 @@
 #include "reconv_cut2.hpp"
 
 #include <kitty/constructors.hpp>
+#include <kitty/print.hpp>
 #include <kitty/static_truth_table.hpp>
 
 namespace mockturtle
@@ -371,7 +372,7 @@ public:
        and consequently does not use the argument `max_inserts`. Other
        functors, however, make use of this argument. */
     (void)max_inserts;
-    assert(is_const0(care));
+    assert(kitty::is_const0(~care));
     
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
@@ -635,11 +636,11 @@ private:
     /* simulate the collected divisors */
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); } );
 
-    TT care;
+    auto care = kitty::create<TT>( leaves.size() );
     if ( ps.use_dont_cares )
       care = ~satisfiability_dont_cares( ntk, leaves, 12u );
     else 
-      care = ~(~care); 
+      care = (~care); 
 
     ResubFn resub_fn( ntk, sim, divs, num_divs, resub_st );
     return resub_fn( root, care, required, ps.max_inserts, num_mffc, last_gain );

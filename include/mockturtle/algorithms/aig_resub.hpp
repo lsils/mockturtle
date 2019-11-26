@@ -183,7 +183,7 @@ public:
   std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
     
-    assert(is_const0(care));
+    assert(is_const0(~care));
     
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
