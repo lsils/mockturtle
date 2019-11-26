@@ -413,7 +413,7 @@ std::vector<std::string> epfl_benchmarks( uint32_t selection = all )
 std::vector<std::string> crypto_benchmarks( )
 {
   std::vector<std::string> result;
-  for ( uint32_t i = 0u; i < 32u; ++i )
+  for ( uint32_t i = 0u; i < 33u; ++i )
   {
       result.push_back( crypto_epfl_benchmarks[i] );
   }

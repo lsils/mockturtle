@@ -125,26 +125,26 @@ int main( int argc, char** argv )
     ps3.verbose = true;
     ps3.use_dont_cares = true;
 
-    xag_minmc_resynthesis resyn( argv[1] );
-    bidecomposition_resynthesis<xag_network> resyn2;
+    //xag_minmc_resynthesis resyn( argv[1] );
+    //bidecomposition_resynthesis<xag_network> resyn2;
 
     auto i = 0u;
     const clock_t begin_time = clock();
 
-    while ( num_and > num_and_aft )
-    {
-      if ( i > 0 )
-      {
-        num_and = num_and_aft;
-      }
-      i++;
+    //while ( num_and > num_and_aft )
+    //{
+      //if ( i > 0 )
+      ///{
+      //  num_and = num_and_aft;
+      //}
+      //i++;
       num_and_aft = 0u;
       num_xor_aft = 0u;
 
-      cut_rewriting( xag, resyn, ps, nullptr, ::detail::mc_cost<xag_network>() );
-      xag = cleanup_dangling( xag );
-      refactoring( xag, resyn2, ps2, nullptr, ::detail::free_xor_cost<xag_network>() );
-      xag = cleanup_dangling( xag );
+      //cut_rewriting( xag, resyn, ps, nullptr, ::detail::mc_cost<xag_network>() );
+      //xag = cleanup_dangling( xag );
+      //refactoring( xag, resyn2, ps2, nullptr, ::detail::free_xor_cost<xag_network>() );
+      //xag = cleanup_dangling( xag );
       using view_t = depth_view<fanout_view<xag_network>>;
       fanout_view<xag_network> fanout_view{xag};
       view_t resub_view{fanout_view};
@@ -163,7 +163,7 @@ int main( int argc, char** argv )
           num_xor_aft++;
         }
       } );
-    }
+    //}
 
     std::cout << " num and after = " << num_and_aft << std::endl;
     std::cout << " num xor after = " << num_xor_aft << std::endl;
