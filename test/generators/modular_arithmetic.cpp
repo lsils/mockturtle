@@ -263,3 +263,21 @@ TEST_CASE( "create bool vectors from hex strings", "[modular_arithmetic]" )
   CHECK( vec_from_hex( 3, "0", false ) == std::vector<bool>{{false, false, false}} );
   CHECK( vec_from_hex( 3, "0", true ).size() == 0 );
 }
+
+TEST_CASE( "build Montgomery multiplier", "[selected]" )
+{
+  xag_network xag;
+
+  std::vector<xag_network::signal> xs( 6u ), ys( 6u );
+  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+  std::generate( ys.begin(), ys.end(), [&]() { return xag.create_pi(); } );
+
+  const auto pos = montgomery_multiplication( xag, xs, ys, 17 );
+  std::for_each( pos.begin(), pos.end(), [&]( auto const& f) { xag.create_po( f ); });
+
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 14 << 6 ) + 6 ) ) ) == 13 );
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 6 << 6 ) + 14 ) ) ) == 13 );
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 3 << 6 ) + 16 ) ) ) == 5 );
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 16 << 6 ) + 3 ) ) ) == 5 );
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 0 << 6 ) + 4 ) ) ) == 0 );
+}

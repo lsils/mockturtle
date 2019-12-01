@@ -35,6 +35,8 @@
 #include <cstdint>
 #include <vector>
 
+#include <fmt/format.h>
+
 #include "../traits.hpp"
 #include "arithmetic.hpp"
 #include "control.hpp"
@@ -699,6 +701,51 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
   a = detail::to_montgomery_form( ntk, zero_extend( ntk, a, nbits + rbits ), n, rbits, np );
 }
 
+}
+
+template<class Ntk>
+inline std::vector<signal<Ntk>> montgomery_multiplication( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b, uint64_t N )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+
+  const auto logR = a.size();
+  const auto R = 1 << logR;
+
+  // egcd
+  int64_t s = 0, old_s = 1, r = R, old_r = N;
+  while ( r )
+  {
+    const auto q = old_r / r;
+    std::tie( old_r, r ) = std::pair{r, old_r - q * r};
+    std::tie( old_s, s ) = std::pair{s, old_s - q * s};
+  }
+  const auto NN = abs( old_s );
+
+  //std::cout << fmt::format( "[i] R = {}, NN = {}, N = {}\n", R, NN, N );
+
+  /* multiply a and b and truncate to least-significant logR bits */
+  auto mult1 = carry_ripple_multiplier( ntk, a, b );
+  std::vector<signal<Ntk>> mult1_truncated( mult1.begin(), mult1.begin() + logR );
+
+  /* compute (((a * b) % R) * NN) % R */
+  auto mult2 = carry_ripple_multiplier( ntk, mult1_truncated, constant_word( ntk, NN, logR ) );
+  mult2.resize( a.size() );
+
+  auto summand = carry_ripple_multiplier( ntk, mult2, constant_word( ntk, N, logR ) );
+
+  assert( mult1.size() == 2 * logR );
+  assert( summand.size() == 2 * logR );
+
+  auto carry = ntk.get_constant( false );
+  carry_ripple_adder_inplace( ntk, mult1, summand, carry );
+  mult1.erase( mult1.begin(), mult1.begin() + logR );
+
+  auto tcopy = mult1;
+  carry = ntk.get_constant( true );
+  carry_ripple_subtractor_inplace( ntk, tcopy, constant_word( ntk, N, logR ), carry );
+  mux_inplace( ntk, carry, tcopy, mult1 );
+
+  return tcopy;
 }
 
 } // namespace mockturtle
