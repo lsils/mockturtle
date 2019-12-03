@@ -7,6 +7,7 @@
 #include <fmt/format.h>
 
 #include <mockturtle/traits.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/generators/modular_arithmetic.hpp>
 #include <mockturtle/io/write_bench.hpp>
@@ -264,7 +265,7 @@ TEST_CASE( "create bool vectors from hex strings", "[modular_arithmetic]" )
   CHECK( vec_from_hex( 3, "0", true ).size() == 0 );
 }
 
-TEST_CASE( "build Montgomery multiplier", "[selected]" )
+TEST_CASE( "build Montgomery multiplier", "[modular_arithmetic]" )
 {
   xag_network xag;
 
@@ -280,4 +281,151 @@ TEST_CASE( "build Montgomery multiplier", "[selected]" )
   CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 3 << 6 ) + 16 ) ) ) == 5 );
   CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 16 << 6 ) + 3 ) ) ) == 5 );
   CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 0 << 6 ) + 4 ) ) ) == 0 );
+}
+
+TEST_CASE( "build Montgomery multiplier 10-bit", "[modular_arithmetic]" )
+{
+  xag_network xag;
+
+  std::vector<xag_network::signal> xs( 10u ), ys( 10u );
+  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+  std::generate( ys.begin(), ys.end(), [&]() { return xag.create_pi(); } );
+
+  const auto pos = montgomery_multiplication( xag, xs, ys, 661 );
+  std::for_each( pos.begin(), pos.end(), [&]( auto const& f) { xag.create_po( f ); });
+
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 115 << 10 ) + 643 ) ) ) == 106 );
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 643 << 10 ) + 115 ) ) ) == 106 );
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 362 << 10 ) + 278 ) ) ) == 374 );
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 278 << 10 ) + 362 ) ) ) == 374 );
+}
+
+TEST_CASE( "build Montgomery multiplier 30-bit", "[modular_arithmetic]" )
+{
+  xag_network xag;
+
+  std::vector<xag_network::signal> xs( 30u ), ys( 30u );
+  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+  std::generate( ys.begin(), ys.end(), [&]() { return xag.create_pi(); } );
+
+  const auto pos = montgomery_multiplication( xag, xs, ys, 1027761563 );
+  std::for_each( pos.begin(), pos.end(), [&]( auto const& f) { xag.create_po( f ); });
+
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 516764288ul << 30ul ) + 411767756ul ) ) ) == 287117401ul );
+}
+
+TEST_CASE( "build Montgomery multiplier 192-bit", "[modular_arithmetic]" )
+{
+  xag_network xag;
+
+  std::vector<xag_network::signal> xs( 192u ), ys( 192u );
+  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+  std::generate( ys.begin(), ys.end(), [&]() { return xag.create_pi(); } );
+
+  std::vector<bool> N( 192u ), NN( 192u );
+  bool_vector_from_hex( N, "fffffffffffffffffffffffffffffffeffffffffffffffff", false );
+  bool_vector_from_hex( NN, "ffffffffffffffff0000000000000001", false );
+
+  CHECK( N.size() == 192u );
+  CHECK( NN.size() == 192u );
+
+  const auto pos = montgomery_multiplication( xag, xs, ys, N, NN );
+  std::for_each( pos.begin(), pos.end(), [&]( auto const& f) { xag.create_po( f ); });
+}
+
+TEST_CASE( "build Montgomery multiplier 224-bit", "[modular_arithmetic]" )
+{
+  xag_network xag;
+
+  std::vector<xag_network::signal> xs( 224u ), ys( 224u );
+  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+  std::generate( ys.begin(), ys.end(), [&]() { return xag.create_pi(); } );
+
+  std::vector<bool> N( 224u ), NN( 224u );
+  bool_vector_from_hex( N, "ffffffffffffffffffffffffffffffff000000000000000000000001", false );
+  bool_vector_from_hex( NN, "1000000000000000000000001000000000000000000000001", false );
+
+  CHECK( N.size() == 224u );
+  CHECK( NN.size() == 224u );
+
+  const auto pos = montgomery_multiplication( xag, xs, ys, N, NN );
+  std::for_each( pos.begin(), pos.end(), [&]( auto const& f) { xag.create_po( f ); });
+}
+
+TEST_CASE( "build Montgomery multiplier 256-bit", "[modular_arithmetic]" )
+{
+  xag_network xag;
+
+  std::vector<xag_network::signal> xs( 256u ), ys( 256u );
+  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+  std::generate( ys.begin(), ys.end(), [&]() { return xag.create_pi(); } );
+
+  std::vector<bool> N( 256u ), NN( 256u );
+  bool_vector_from_hex( N, "ffffffff00000001000000000000000000000000ffffffffffffffffffffffff", false );
+  bool_vector_from_hex( NN, "fffffffdfffffffffffffffffffffffeffffffffffffffffffffffff", false );
+
+  CHECK( N.size() == 256u );
+  CHECK( NN.size() == 256u );
+
+  const auto pos = montgomery_multiplication( xag, xs, ys, N, NN );
+  std::for_each( pos.begin(), pos.end(), [&]( auto const& f) { xag.create_po( f ); });
+}
+
+TEST_CASE( "build Montgomery multiplier 384-bit", "[modular_arithmetic]" )
+{
+  xag_network xag;
+
+  std::vector<xag_network::signal> xs( 384u ), ys( 384u );
+  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+  std::generate( ys.begin(), ys.end(), [&]() { return xag.create_pi(); } );
+
+  std::vector<bool> N( 384u ), NN( 384u );
+  bool_vector_from_hex( N, "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff", false );
+  bool_vector_from_hex( NN, "14000000140000000c00000002fffffffcfffffffafffffffbfffffffe00000000000000010000000100000001", false );
+
+  CHECK( N.size() == 384u );
+  CHECK( NN.size() == 384u );
+
+  const auto pos = montgomery_multiplication( xag, xs, ys, N, NN );
+  std::for_each( pos.begin(), pos.end(), [&]( auto const& f) { xag.create_po( f ); });
+}
+
+TEST_CASE( "build Montgomery multiplier 521-bit", "[modular_arithmetic]" )
+{
+  xag_network xag;
+
+  std::vector<xag_network::signal> xs( 521u ), ys( 521u );
+  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+  std::generate( ys.begin(), ys.end(), [&]() { return xag.create_pi(); } );
+
+  std::vector<bool> N( 521u ), NN( 521u );
+  bool_vector_from_hex( N, "1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", false );
+  bool_vector_from_hex( NN, "1", false );
+
+  CHECK( N.size() == 521u );
+  CHECK( NN.size() == 521u );
+
+  const auto pos = montgomery_multiplication( xag, xs, ys, N, NN );
+  std::for_each( pos.begin(), pos.end(), [&]( auto const& f) { xag.create_po( f ); });
+}
+
+TEST_CASE( "10-bit constant multiplication by 661", "[modular_arithmetic]" )
+{
+  xag_network xag;
+
+  std::vector<xag_network::signal> xs( 10u );
+  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+
+  std::vector<bool> constant = {true, false, true, false, true, false, false, true, false, true};
+  const auto sum = modular_constant_multiplier( xag, xs, constant );
+  std::for_each( sum.begin(), sum.end(), [&]( auto const& f) { xag.create_po( f ); });
+
+  std::default_random_engine gen;
+  std::uniform_int_distribution<int> dist( 0, 1023 );
+
+  for ( auto i = 0u; i < 100u; ++i )
+  {
+    const auto v = dist( gen );
+    CHECK( to_int( simulate<bool>( xag, input_word_simulator( v ) ) ) == ( ( 661 * v ) % 1024 ) );
+  }
 }

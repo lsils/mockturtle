@@ -502,7 +502,7 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
   std::copy( accu.begin(), accu.end(), a.begin() );
 }
 
-/*! \brief Creates modular multiplication
+/*! \brief Creates modular multiplier
  *
  * Given two inputs words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(ab) \bmod c\f$.
@@ -519,6 +519,38 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
   }
 
   modular_multiplication_inplace( ntk, a, b, mvec );
+}
+
+/*! \brief Creates modular constant-multiplier
+ *
+ * Given an input word of size *k* and a constant with the same bit-width,
+ * this function creates a circuit that computes \f$(a\cdot\mathrm{constant}) \bmod 2^k\f$.
+ */
+template<typename Ntk>
+inline std::vector<signal<Ntk>> modular_constant_multiplier( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<bool> const& constant )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+
+  std::vector<signal<Ntk>> sum( a.size(), ntk.get_constant( false ) );
+
+  auto it = std::find( constant.begin(), constant.end(), true );
+  if ( it != constant.end() )
+  {
+    auto shift = std::distance( constant.begin(), it );
+    std::copy_n( a.begin(), a.size() - shift, sum.begin() + shift );
+    it = std::find( it + 1, constant.end(), true );
+
+    while ( it != constant.end() ) {
+      shift = std::distance( constant.begin(), it );
+      std::vector<signal<Ntk>> summand( a.size(), ntk.get_constant( false ) );
+      std::copy_n( a.begin(), a.size() - shift, summand.begin() + shift );
+      auto carry = ntk.get_constant( false );
+      carry_ripple_adder_inplace( ntk, sum, summand, carry );
+      it = std::find( it + 1, constant.end(), true );
+    }
+  }
+
+  return sum;
 }
 
 /*! \brief Creates vector of Booleans from hex string
@@ -703,6 +735,59 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
 
 }
 
+/*! \brief Creates a multiplier assuming Montgomery numbers as inputs.
+ *
+ * This modular multiplication assumes the two inputs *a* and *b* to be
+ * Montgomery numbers representing \f$a \cdot 2^k \bmod N\f$, where \f$N\f$ is
+ * the modulus as bit-string, and \f$k\f$ is the bit-width of *a* and *b*.  It
+ * returns a signal of length *b*.  The last paramaeter *NN* must be computed
+ * such that \f$R \cdot 2^k = N \cdot NN\f$ using the extended GCD.
+ */
+template<class Ntk>
+inline std::vector<signal<Ntk>> montgomery_multiplication( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& N, std::vector<bool> const& NN )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  assert( a.size() == b.size() );
+
+  const auto logR = a.size();
+
+  std::vector<signal<Ntk>> Nword( logR, ntk.get_constant( false ) );
+  std::transform( N.begin(), N.end(), Nword.begin(), [&]( auto b ) { return ntk.get_constant( b ); } );
+
+  /* multiply a and b and truncate to least-significant logR bits */
+  auto mult1 = carry_ripple_multiplier( ntk, a, b );
+  std::vector<signal<Ntk>> mult1_truncated( mult1.begin(), mult1.begin() + logR );
+
+  /* compute (((a * b) % R) * NN) % R */
+  auto mult2 = modular_constant_multiplier( ntk, mult1_truncated, NN );
+
+  mult2.resize( 2 * logR, ntk.get_constant( false ) );
+  auto Ncopy = N;
+  Ncopy.resize( 2 * logR, false );
+  auto summand = modular_constant_multiplier( ntk, mult2, Ncopy );
+
+  assert( mult1.size() == 2 * logR );
+  assert( summand.size() == 2 * logR );
+
+  auto carry = ntk.get_constant( false );
+  carry_ripple_adder_inplace( ntk, mult1, summand, carry );
+  mult1.erase( mult1.begin(), mult1.begin() + logR );
+
+  auto tcopy = mult1;
+  carry = ntk.get_constant( true );
+  carry_ripple_subtractor_inplace( ntk, tcopy, Nword, carry );
+  mux_inplace( ntk, carry, tcopy, mult1 );
+
+  return tcopy;
+}
+
+/*! \brief Creates a multiplier assuming Montgomery numbers as inputs.
+ *
+ * This modular multiplication assumes the two inputs *a* and *b* to be
+ * Montgomery numbers representing \f$a \cdot 2^k \bmod N\f$, where \f$N\f$ is
+ * the modulus, and \f$k\f$ is the bit-width of *a* and *b*.  It returns a
+ * signal of length *b*.
+ */
 template<class Ntk>
 inline std::vector<signal<Ntk>> montgomery_multiplication( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b, uint64_t N )
 {
@@ -721,31 +806,16 @@ inline std::vector<signal<Ntk>> montgomery_multiplication( Ntk& ntk, std::vector
   }
   const auto NN = abs( old_s );
 
+  std::vector<bool> Nvec( logR ), NNvec( logR );
+  for ( auto i = 0u; i < logR; ++i )
+  {
+    Nvec[i] = static_cast<bool>( ( N >> i ) & 1 );
+    NNvec[i] = static_cast<bool>( ( NN >> i ) & 1 );
+  }
+
   //std::cout << fmt::format( "[i] R = {}, NN = {}, N = {}\n", R, NN, N );
 
-  /* multiply a and b and truncate to least-significant logR bits */
-  auto mult1 = carry_ripple_multiplier( ntk, a, b );
-  std::vector<signal<Ntk>> mult1_truncated( mult1.begin(), mult1.begin() + logR );
-
-  /* compute (((a * b) % R) * NN) % R */
-  auto mult2 = carry_ripple_multiplier( ntk, mult1_truncated, constant_word( ntk, NN, logR ) );
-  mult2.resize( a.size() );
-
-  auto summand = carry_ripple_multiplier( ntk, mult2, constant_word( ntk, N, logR ) );
-
-  assert( mult1.size() == 2 * logR );
-  assert( summand.size() == 2 * logR );
-
-  auto carry = ntk.get_constant( false );
-  carry_ripple_adder_inplace( ntk, mult1, summand, carry );
-  mult1.erase( mult1.begin(), mult1.begin() + logR );
-
-  auto tcopy = mult1;
-  carry = ntk.get_constant( true );
-  carry_ripple_subtractor_inplace( ntk, tcopy, constant_word( ntk, N, logR ), carry );
-  mux_inplace( ntk, carry, tcopy, mult1 );
-
-  return tcopy;
+  return montgomery_multiplication( ntk, a, b, Nvec, NNvec );
 }
 
 } // namespace mockturtle
