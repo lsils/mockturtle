@@ -47,6 +47,13 @@
 namespace mockturtle
 {
 
+/*! \brief Parameters for dsd_decomposition */
+struct dsd_decomposition_params
+{
+  /*! \brief Apply XOR decomposition. */
+  bool with_xor{true};
+};
+
 namespace detail
 {
 
@@ -54,11 +61,12 @@ template<class Ntk, class Fn>
 class dsd_decomposition_impl
 {
 public:
-  dsd_decomposition_impl( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime )
+  dsd_decomposition_impl( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime, dsd_decomposition_params const& ps )
       : _ntk( ntk ),
         remainder( func ),
         pis( children ),
-        _on_prime( on_prime )
+        _on_prime( on_prime ),
+        _ps( ps )
   {
     for ( auto i = 0; i < func.num_vars(); ++i )
     {
@@ -106,7 +114,7 @@ public:
     for ( auto var : support )
     {
       if ( auto res = kitty::is_top_decomposable( remainder, var, &remainder );
-           res != kitty::top_decomposition::none )
+           res != kitty::top_decomposition::none && ( _ps.with_xor || res != kitty::top_decomposition::xor_ ) )
       {
         /* remove var from support, pis do not change */
         support.erase( std::remove( support.begin(), support.end(), var ), support.end() );
@@ -136,7 +144,7 @@ public:
       for ( auto i = 0u; i < j; ++i )
       {
         if ( auto res = kitty::is_bottom_decomposable( remainder, support[i], support[j], &remainder );
-             res != kitty::bottom_decomposition::none )
+             res != kitty::bottom_decomposition::none && ( _ps.with_xor || res != kitty::bottom_decomposition::xor_ ) )
         {
           /* update pis based on decomposition type */
           switch ( res )
@@ -186,6 +194,7 @@ private:
   std::vector<uint8_t> support;
   std::vector<signal<Ntk>> pis;
   Fn&& _on_prime;
+  dsd_decomposition_params const& _ps;
 };
 
 } // namespace detail
@@ -210,7 +219,7 @@ private:
  * - `create_xor`
  */
 template<class Ntk, class Fn>
-signal<Ntk> dsd_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime )
+signal<Ntk> dsd_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime, dsd_decomposition_params const& ps = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
@@ -220,7 +229,7 @@ signal<Ntk> dsd_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func,
   static_assert( has_create_le_v<Ntk>, "Ntk does not implement the create_le method" );
   static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor method" );
 
-  detail::dsd_decomposition_impl<Ntk, Fn> impl( ntk, func, children, on_prime );
+  detail::dsd_decomposition_impl<Ntk, Fn> impl( ntk, func, children, on_prime, ps );
   return impl.run();
 }
 
