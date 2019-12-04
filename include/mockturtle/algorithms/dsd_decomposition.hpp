@@ -113,8 +113,8 @@ public:
     /* try top decomposition */
     for ( auto var : support )
     {
-      if ( auto res = kitty::is_top_decomposable( remainder, var, &remainder );
-           res != kitty::top_decomposition::none && ( _ps.with_xor || res != kitty::top_decomposition::xor_ ) )
+      if ( auto res = kitty::is_top_decomposable( remainder, var, &remainder, _ps.with_xor );
+           res != kitty::top_decomposition::none )
       {
         /* remove var from support, pis do not change */
         support.erase( std::remove( support.begin(), support.end(), var ), support.end() );
@@ -143,8 +143,8 @@ public:
     {
       for ( auto i = 0u; i < j; ++i )
       {
-        if ( auto res = kitty::is_bottom_decomposable( remainder, support[i], support[j], &remainder );
-             res != kitty::bottom_decomposition::none && ( _ps.with_xor || res != kitty::bottom_decomposition::xor_ ) )
+        if ( auto res = kitty::is_bottom_decomposable( remainder, support[i], support[j], &remainder, _ps.with_xor );
+             res != kitty::bottom_decomposition::none )
         {
           /* update pis based on decomposition type */
           switch ( res )
