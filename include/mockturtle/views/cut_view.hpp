@@ -139,7 +139,8 @@ public:
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
-    detail::foreach_element( &_root, &_root + 1, fn );
+    std::vector<signal> roots{{_root}};
+    detail::foreach_element( roots.begin(), roots.end(), fn );
   }
 
   inline bool is_pi( node const& pi ) const
