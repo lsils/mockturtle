@@ -76,8 +76,22 @@ public:
   static constexpr bool is_topologically_sorted = true;
 
 public:
-  explicit cut_view( Ntk const& ntk, std::vector<node> const& leaves, node const& root )
+  explicit cut_view( Ntk const& ntk, std::vector<node> const& leaves, signal const& root )
       : immutable_view<Ntk>( ntk ), _root( root )
+  {
+    construct( leaves );
+  }
+
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
+  explicit cut_view( Ntk const& ntk, std::vector<signal> const& leaves, signal const& root )
+      : immutable_view<Ntk>( ntk ), _root( root )
+  {
+    construct( leaves );
+  }
+
+private:
+  template<typename LeaveType>
+  void construct( std::vector<LeaveType> const& leaves )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
@@ -86,6 +100,7 @@ public:
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
     static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
     static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+    static_assert( std::is_same_v<LeaveType, node> || std::is_same_v<LeaveType, signal>, "leaves must be vector of either node or signal" );
 
     /* constants */
     add_constants();
@@ -93,10 +108,17 @@ public:
     /* primary inputs */
     for ( auto const& leaf : leaves )
     {
-      add_leaf( leaf );
+      if constexpr ( std::is_same_v<LeaveType, node> )
+      {
+        add_leaf( leaf );
+      }
+      else
+      {
+        add_leaf( this->get_node( leaf ) );
+      }
     }
 
-    traverse( root );
+    traverse( this->get_node( _root ) );
 
     /* restore visited */
     for ( auto const& n : _nodes )
@@ -105,37 +127,7 @@ public:
     }
   }
 
-  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
-  explicit cut_view( Ntk const& ntk, std::vector<signal> const& leaves, node const& root )
-      : immutable_view<Ntk>( ntk ), _root( root )
-  {
-    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-    static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
-    static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
-    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-    static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
-    static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
-    static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
-
-    /* constants */
-    add_constants();
-
-    /* primary inputs */
-    for ( auto const& f : leaves )
-    {
-      const auto leaf = this->get_node( f );
-      add_leaf( leaf );
-    }
-
-    traverse( root );
-
-    /* restore visited */
-    for ( auto const& n : _nodes )
-    {
-      this->set_visited( n, 0 );
-    }
-  }
-
+public:
   inline auto size() const { return _nodes.size(); }
   inline auto num_pis() const { return _num_leaves; }
   inline auto num_pos() const { return 1; }
@@ -147,8 +139,7 @@ public:
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
-    std::vector<signal> signals( 1, this->make_signal( _root ) );
-    detail::foreach_element( signals.begin(), signals.end(), fn );
+    detail::foreach_element( &_root, &_root + 1, fn );
   }
 
   inline bool is_pi( node const& pi ) const
@@ -222,13 +213,13 @@ public:
   unsigned _num_leaves{0};
   std::vector<node> _nodes;
   spp::sparse_hash_map<node, uint32_t> _node_to_index;
-  node _root;
+  signal _root;
 };
 
 template<class T>
-cut_view(T const&, std::vector<node<T>> const&, node<T> const&) -> cut_view<T>;
+cut_view(T const&, std::vector<node<T>> const&, signal<T> const&) -> cut_view<T>;
 
 template<class T, typename = std::enable_if_t<!std::is_same_v<typename T::signal, typename T::node>>>
-cut_view(T const&, std::vector<signal<T>> const&, node<T> const&) -> cut_view<T>;
+cut_view(T const&, std::vector<signal<T>> const&, signal<T> const&) -> cut_view<T>;
 
 } /* namespace mockturtle */
