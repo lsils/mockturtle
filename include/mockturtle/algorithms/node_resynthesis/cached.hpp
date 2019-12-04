@@ -68,8 +68,7 @@ public:
       auto on_signal = [&]( signal<Ntk> const& f ) {
         if ( !found_one )
         {
-          // TODO: pass f as signal, and not as node */
-          _cache.insert( function, cut_view( ntk, std::vector<signal<Ntk>>( begin, end ), ntk.get_node( f ) ) );
+          _cache.insert( function, cut_view( ntk, std::vector<signal<Ntk>>( begin, end ), f ) );
           found_one = true;
         }
         fn( f );
