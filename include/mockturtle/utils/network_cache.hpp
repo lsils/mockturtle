@@ -73,7 +73,8 @@ public:
     return _map.find( key ) != _map.end();
   }
 
-  bool insert( Key const& key, Ntk const& ntk )
+  template<class _Ntk>
+  bool insert( Key const& key, _Ntk const& ntk )
   {
     /* ntk must have one primary output and not too many primary inputs */
     if ( ntk.num_pos() != 1u || ntk.num_pis() > _pis.size() )

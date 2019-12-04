@@ -33,10 +33,14 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_set>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/hash.hpp>
 
 #include "../../traits.hpp"
+#include "../../algorithms/cleanup.hpp"
+#include "../../utils/network_cache.hpp"
+#include "../../views/cut_view.hpp"
 
 namespace mockturtle
 {
@@ -72,9 +76,9 @@ public:
           found_one = true;
         }
         fn( f );
-      }
+      };
 
-      _resyn_fn( ntk, function, begin, leaves, end, on_signal );
+      _resyn_fn( ntk, function, begin, end, on_signal );
 
       if ( !found_one )
       {
