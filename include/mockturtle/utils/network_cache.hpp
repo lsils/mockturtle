@@ -32,15 +32,19 @@
 
 #pragma once
 
+#include <sstream>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
 
 #include <fmt/format.h>
 #include <kitty/print.hpp>
+#include <nlohmann/json.hpp>
 
 #include "../traits.hpp"
 #include "../algorithms/simulation.hpp"
+#include "../io/verilog_reader.hpp"
+#include "../io/write_verilog.hpp"
 #include "../views/topo_view.hpp"
 
 namespace mockturtle
@@ -100,15 +104,15 @@ public:
 
     /* insert ntk into _db, create an output and return the index of the output */
     const auto f = cleanup_dangling( ntk, _db, _pis.begin(), _pis.begin() + ntk.num_pis() ).front();
-    insert_signal( key, f, ntk.num_pis() );
+    insert_signal( key, f );
     return true;
   }
 
-  void insert_signal( Key const& key, signal<Ntk> const& f, uint64_t support_size )
+  void insert_signal( Key const& key, signal<Ntk> const& f )
   {
     _map.emplace( key, f );
-    _support.emplace( f, support_size );
     _db.create_po( f );
+    _output_functions.push_back( key );
   }
 
   signal<Ntk> get( Key const& key ) const
@@ -121,59 +125,41 @@ public:
     return topo_view<Ntk>( _db, _map.at( key ) );
   }
 
-  void verify() const
+  void insert_json( nlohmann::json const& data )
   {
-    if ( _map.size() != _db.num_pos() )
+    if ( const auto num_pis = data["num_pis"].get<uint32_t>(); num_pis > _pis.size() )
     {
-      std::cout << "[e] size of map does not match number of POs\n";
-    }
-    std::cout << "[i] number of entries: " << _db.num_pos() << "\n";
-
-    if constexpr ( std::is_same_v<Key, kitty::dynamic_truth_table> )
-    {
-      default_simulator<kitty::dynamic_truth_table> sim( _pis.size() );
-      const auto results = simulate<kitty::dynamic_truth_table>( _db, sim );
-      for ( auto i = 0u; i < results.size(); ++i )
+      for ( uint32_t i = _pis.size(); i < num_pis; ++i )
       {
-        const auto f = _db.po_at( i );
-        if ( !_support.count( f ) )
-        {
-          std::cout << "[e] could not find support information for output " << i << "\n";
-          continue;
-        }
-
-        const auto tt = kitty::shrink_to( results[i], _support.at( f ) );
-        fmt::print( "[i] output {} has signal ({}, {}) and truth table {}\n",
-                    i, _db.get_node( f ), _db.is_complemented( f ), kitty::to_hex( tt ) );
-
-        const auto it = _map.find( tt );
-
-        if ( it == _map.end() )
-        {
-          std::cout << "[e] could not find simulated output " << i
-                    << " in map with truth table " << kitty::to_hex( tt ) << "\n";
-        }
-        else if ( it->second != f )
-        {
-          std::cout << "[e] mismatch in network cache: "
-                    << "signal at output " << i << " is " << _db.get_node( f )
-                    << ", expected " << _db.get_node( it->second ) << "\n";
-        }
-      }
-
-      for ( const auto& [k, v] : _map )
-      {
-        fmt::print( "[i] maps {} to signal ({}, {})\n",
-                    kitty::to_hex( k ), _db.get_node( v ), _db.is_complemented( v ) );
+        _pis.emplace_back( _db.create_pi() );
       }
     }
+
+    std::istringstream sstr( data["db"].get<std::string>() );
+    Ntk read_ntk;
+    lorina::read_verilog( sstr, verilog_reader( read_ntk ) );
+    const auto pos = cleanup_dangling( read_ntk, _db, _pis.begin(), _pis.end() );
+
+    auto cntr = 0u;
+    for ( auto const& tt : data["output_functions"].get<std::vector<Key>>() )
+    {
+      insert_signal( tt, pos[cntr++] );
+    }
+  }
+
+  nlohmann::json to_json() const
+  {
+    std::stringstream sstr;
+    write_verilog( _db, sstr );
+
+    return nlohmann::json{{"num_pis", _pis.size()}, {"output_functions", _output_functions}, {"db", sstr.str()}};
   }
 
 private:
   Ntk _db;
   std::vector<signal<Ntk>> _pis;
-  std::unordered_map<signal<Ntk>, uint32_t> _support;
   std::unordered_map<Key, signal<Ntk>, Hash> _map;
+  std::vector<Key> _output_functions;
 };
 
 } /* namespace mockturtle */
