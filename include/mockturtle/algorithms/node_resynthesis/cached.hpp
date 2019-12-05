@@ -40,7 +40,6 @@
 #include "../../traits.hpp"
 #include "../../algorithms/cleanup.hpp"
 #include "../../utils/network_cache.hpp"
-#include "../../views/cut_view.hpp"
 
 namespace mockturtle
 {
@@ -72,13 +71,13 @@ public:
       auto on_signal = [&]( signal<Ntk> const& f ) {
         if ( !found_one )
         {
-          _cache.insert( function, cut_view( ntk, std::vector<signal<Ntk>>( begin, end ), f ) );
+          _cache.insert_signal( function, f, std::distance( begin, end ) );
           found_one = true;
+          fn( cleanup_dangling( _cache.get_view( function ), ntk, begin, end ).front() );
         }
-        fn( f );
       };
 
-      _resyn_fn( ntk, function, begin, end, on_signal );
+      _resyn_fn( _cache.network(), function, _cache.pis().begin(), _cache.pis().begin() + function.num_vars(), on_signal );
 
       if ( !found_one )
       {
