@@ -100,7 +100,11 @@ private:
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
     static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
     static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+    static_assert( has_incr_trav_id_v<Ntk>, "Ntk does not implement the incr_trav_id method" );
+    static_assert( has_trav_id_v<Ntk>, "Ntk does not implement the trav_id method" );
     static_assert( std::is_same_v<LeaveType, node> || std::is_same_v<LeaveType, signal>, "leaves must be vector of either node or signal" );
+
+    this->incr_trav_id();
 
     /* constants */
     add_constants();
@@ -121,10 +125,10 @@ private:
     traverse( this->get_node( _root ) );
 
     /* restore visited */
-    for ( auto const& n : _nodes )
-    {
-      this->set_visited( n, 0 );
-    }
+    //for ( auto const& n : _nodes )
+    //{
+    //  this->set_visited( n, 0 );
+    //}
   }
 
 public:
@@ -171,22 +175,22 @@ private:
   inline void add_constants()
   {
     add_node( this->get_node( this->get_constant( false ) ) );
-    this->set_visited( this->get_node( this->get_constant( false ) ), 1 );
+    this->set_visited( this->get_node( this->get_constant( false ) ), this->trav_id() );
     if ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) )
     {
       add_node( this->get_node( this->get_constant( true ) ) );
-      this->set_visited( this->get_node( this->get_constant( true ) ), 1 );
+      this->set_visited( this->get_node( this->get_constant( true ) ), this->trav_id() );
       ++_num_constants;
     }
   }
 
   inline void add_leaf( node const& leaf )
   {
-    if ( this->visited( leaf ) == 1 )
+    if ( this->visited( leaf ) == this->trav_id() )
       return;
 
     add_node( leaf );
-    this->set_visited( leaf, 1 );
+    this->set_visited( leaf, this->trav_id() );
     ++_num_leaves;
   }
 
@@ -198,7 +202,7 @@ private:
 
   void traverse( node const& n )
   {
-    if ( this->visited( n ) == 1 )
+    if ( this->visited( n ) == this->trav_id() )
       return;
 
     this->foreach_fanin( n, [&]( const auto& f ) {
@@ -206,7 +210,7 @@ private:
     } );
 
     add_node( n );
-    this->set_visited( n, 1 );
+    this->set_visited( n, this->trav_id() );
   }
 
 public:
