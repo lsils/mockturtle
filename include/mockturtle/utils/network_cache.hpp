@@ -88,6 +88,11 @@ public:
     return _pis;
   }
 
+  auto size() const
+  {
+    return _db.num_pos();
+  }
+
   bool has( Key const& key ) const
   {
     return _map.find( key ) != _map.end();

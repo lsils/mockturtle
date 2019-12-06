@@ -36,6 +36,7 @@
 
 #include <kitty/dynamic_truth_table.hpp>
 
+#include "traits.hpp"
 #include "../dsd_decomposition.hpp"
 
 namespace mockturtle
@@ -91,7 +92,6 @@ public:
     const auto on_prime = [&]( kitty::dynamic_truth_table const& remainder, std::vector<signal<Ntk>> const& leaves ) {
       success = false;
       signal<Ntk> f = ntk.get_constant( false );
-
       if ( _ps.prime_input_limit && leaves.size() > *_ps.prime_input_limit )
       {
         return f;
@@ -106,6 +106,11 @@ public:
         return true;
       };
       auto _leaves = leaves;
+
+      if constexpr ( has_set_bounds_v<ResynthesisFn> )
+      {
+        _resyn_fn.set_bounds( static_cast<uint32_t>( _leaves.size() ), std::nullopt );
+      }
       _resyn_fn( ntk, remainder, _leaves.begin(), _leaves.end(), on_signal );
       return f;
     };
