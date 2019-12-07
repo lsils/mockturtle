@@ -72,10 +72,7 @@ public:
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi method" );
 
-    for ( uint32_t i = 0u; i < num_vars; ++i )
-    {
-      _pis.emplace_back( _db.create_pi() );
-    }
+    ensure_pis( num_vars );
   }
 
   Ntk& network()
@@ -86,6 +83,17 @@ public:
   std::vector<signal<Ntk>> const& pis() const
   {
     return _pis;
+  }
+
+  void ensure_pis( uint32_t count )
+  {
+    if ( count > _pis.size() )
+    {
+      for ( auto i = _pis.size(); i < count; ++i )
+      {
+        _pis.emplace_back( _db.create_pi() );
+      }
+    }
   }
 
   auto size() const
@@ -132,13 +140,7 @@ public:
 
   void insert_json( nlohmann::json const& data )
   {
-    if ( const auto num_pis = data["num_pis"].get<uint32_t>(); num_pis > _pis.size() )
-    {
-      for ( uint32_t i = _pis.size(); i < num_pis; ++i )
-      {
-        _pis.emplace_back( _db.create_pi() );
-      }
-    }
+    ensure_pis( data["num_pis"].get<uint32_t>() );
 
     std::istringstream sstr( data["db"].get<std::string>() );
     Ntk read_ntk;

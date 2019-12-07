@@ -122,6 +122,22 @@ public:
     }
   }
 
+  void clear_functions()
+  {
+    if constexpr ( has_clear_functions_v<ResynthesisFn> )
+    {
+      _resyn_fn.clear_functions();
+    }
+  }
+
+  void add_function( signal<Ntk> const& s, kitty::dynamic_truth_table const& tt )
+  {
+    if constexpr ( has_add_function_v<ResynthesisFn, Ntk> )
+    {
+      _resyn_fn.add_function( s, tt );
+    }
+  }
+  
 private:
   ResynthesisFn& _resyn_fn;
   dsd_resynthesis_params _ps;

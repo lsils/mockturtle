@@ -77,7 +77,8 @@ public:
     : _resyn_fn( resyn_fn ),
       _cache( max_pis ),
       _cache_filename( cache_filename ),
-      _blacklist_cache_info( blacklist_cache_info )
+      _blacklist_cache_info( blacklist_cache_info ),
+      _initial_size( max_pis )
   {
     if ( !_cache_filename.empty() )
     {
@@ -94,6 +95,21 @@ public:
   }
 
 private:
+  using cache_key_t = std::pair<kitty::dynamic_truth_table, std::vector<kitty::dynamic_truth_table>>;
+
+  struct cache_hash
+  {
+    std::size_t operator()( const cache_key_t& p ) const
+    {
+      auto seed = _h( p.first );
+      std::for_each( p.second.begin(), p.second.end(), [&]( auto const& tt ) { kitty::hash_combine( seed, _h( tt ) ); } );
+      return seed;
+    }
+
+  private:
+    kitty::hash<kitty::dynamic_truth_table> _h;
+  };
+
   using blacklist_cache_key_t = std::pair<kitty::dynamic_truth_table, BlacklistCacheInfo>;
 
   struct blacklist_cache_hash
@@ -141,10 +157,11 @@ public:
   template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
-    if ( _cache.has( function ) )
+    if ( auto const key = std::make_pair( function, _existing_functions );
+         _cache.has( key ) )
     {
       ++_cache_hits;
-      fn( cleanup_dangling( _cache.get_view( function ), ntk, begin, end ).front() );
+      fn( cleanup_dangling( _cache.get_view( key ), ntk, begin, end ).front() );
     }
     else if ( is_blacklisted( function ) )
     {
@@ -158,9 +175,11 @@ public:
         if ( !found_one )
         {
           ++_cache_misses;
-          _cache.insert_signal( function, f );
+          _cache.insert_signal( key, f );
           found_one = true;
-          fn( cleanup_dangling( _cache.get_view( function ), ntk, begin, end ).front() );
+          std::vector<signal<Ntk>> signals( begin, end );
+          std::copy( _existing_signals.begin(), _existing_signals.end(), std::back_inserter( signals ) );
+          fn( cleanup_dangling( _cache.get_view( key ), ntk, signals.begin(), signals.end() ).front() );
         }
       };
 
@@ -172,7 +191,7 @@ public:
       }
     }
   }
-
+  
   void set_bounds( std::optional<uint32_t> const& lower_bound, std::optional<uint32_t> const& upper_bound )
   {
     if constexpr ( has_set_bounds_v<ResynthesisFn> )
@@ -181,6 +200,35 @@ public:
     }
   }
 
+  void clear_functions()
+  {
+    if constexpr ( has_clear_functions_v<ResynthesisFn> )
+    {
+      _existing_signals.clear();
+      _existing_functions.clear();
+      _resyn_fn.clear_functions();
+    }
+  }
+
+  void add_function( signal<Ntk> const& s, kitty::dynamic_truth_table const& tt )
+  {
+    if constexpr ( has_add_function_v<ResynthesisFn, Ntk> )
+    {
+      // index of cache PI to foward
+      const auto pi_index = _initial_size + _existing_signals.size();
+
+      _existing_signals.push_back( s );
+      _existing_functions.push_back( tt );
+      _cache.ensure_pis( _initial_size + _existing_functions.size() );
+
+      _resyn_fn.add_function( _cache.pis()[pi_index], tt );
+    }
+    else
+    {
+      // TODO assert or warn?
+    }
+  }
+    
   void report() const
   {
     fmt::print( "[i] cache hits              = {}\n", _cache_hits );
@@ -212,10 +260,14 @@ private:
 
 private:
   ResynthesisFn _resyn_fn;
-  network_cache<Ntk, kitty::dynamic_truth_table, kitty::hash<kitty::dynamic_truth_table>> _cache;
+  network_cache<Ntk, cache_key_t, cache_hash> _cache;
   std::unordered_set<blacklist_cache_key_t, blacklist_cache_hash, blacklist_cache_equal> _blacklist_cache;
   std::string _cache_filename;
   BlacklistCacheInfo _blacklist_cache_info;
+  uint32_t _initial_size{};
+
+  std::vector<kitty::dynamic_truth_table> _existing_functions;
+  std::vector<signal<Ntk>> _existing_signals;
 
   /* statistics */
   uint32_t _cache_hits{};

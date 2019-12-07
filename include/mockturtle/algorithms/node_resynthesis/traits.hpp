@@ -32,6 +32,10 @@
 
 #pragma once
 
+#include "../../traits.hpp"
+
+#include <kitty/dynamic_truth_table.hpp>
+
 #include <cstdint>
 #include <optional>
 #include <type_traits>
@@ -52,6 +56,36 @@ struct has_set_bounds<ResynFn, std::void_t<decltype( std::declval<ResynFn>().set
 
 template<class ResynFn>
 inline constexpr bool has_set_bounds_v = has_set_bounds<ResynFn>::value;
+#pragma endregion
+
+#pragma region has_clear_functions
+template<class ResynFn, class = void>
+struct has_clear_functions : std::false_type
+{
+};
+
+template<class ResynFn>
+struct has_clear_functions<ResynFn, std::void_t<decltype( std::declval<ResynFn>().clear_functions() )>> : std::true_type
+{
+};
+
+template<class ResynFn>
+inline constexpr bool has_clear_functions_v = has_clear_functions<ResynFn>::value;
+#pragma endregion
+
+#pragma region has_add_function
+template<class ResynFn, class Ntk, class = void>
+struct has_add_function : std::false_type
+{
+};
+
+template<class ResynFn, class Ntk>
+struct has_add_function<ResynFn, Ntk, std::void_t<decltype( std::declval<ResynFn>().add_function( signal<Ntk>(), kitty::dynamic_truth_table() ) )>> : std::true_type
+{
+};
+
+template<class ResynFn, class Ntk>
+inline constexpr bool has_add_function_v = has_add_function<ResynFn,Ntk>::value;
 #pragma endregion
 
 } /* namespace mockturtle */
