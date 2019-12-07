@@ -161,7 +161,10 @@ public:
          _cache.has( key ) )
     {
       ++_cache_hits;
-      fn( cleanup_dangling( _cache.get_view( key ), ntk, begin, end ).front() );
+      std::vector<signal<Ntk>> signals( _cache.pis().size(), ntk.get_constant( false ) );
+      std::copy( begin, end, signals.begin() );
+      std::copy( _existing_signals.begin(), _existing_signals.end(), signals.begin() + _initial_size );
+      fn( cleanup_dangling( _cache.get_view( key ), ntk, signals.begin(), signals.end() ).front() );
     }
     else if ( is_blacklisted( function ) )
     {
@@ -177,8 +180,10 @@ public:
           ++_cache_misses;
           _cache.insert_signal( key, f );
           found_one = true;
-          std::vector<signal<Ntk>> signals( begin, end );
-          std::copy( _existing_signals.begin(), _existing_signals.end(), std::back_inserter( signals ) );
+
+          std::vector<signal<Ntk>> signals( _cache.pis().size(), ntk.get_constant( false ) );
+          std::copy( begin, end, signals.begin() );
+          std::copy( _existing_signals.begin(), _existing_signals.end(), signals.begin() + _initial_size );
           fn( cleanup_dangling( _cache.get_view( key ), ntk, signals.begin(), signals.end() ).front() );
         }
       };
