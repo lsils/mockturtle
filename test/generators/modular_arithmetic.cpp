@@ -191,58 +191,6 @@ TEST_CASE( "build default modular multiplier", "[modular_arithmetic]" )
   test_binary_modular_arithmetic<xag_network>( []( auto& ntk, auto& a, auto const& b, uint64_t c ) { modular_multiplication_inplace( ntk, a, b, c ); }, []( auto a, auto b, auto c ) { return ( a * b ) % c; }, 100u );
 }
 
-TEST_CASE( "check Montgomery numbers", "[modular_arithmetic]" )
-{
-  CHECK( detail::compute_montgomery_parameters<int64_t>( 5 ) == std::pair<int64_t, int64_t>{16, 3} );
-  CHECK( detail::compute_montgomery_parameters<int64_t>( 21 ) == std::pair<int64_t, int64_t>{64, 3} );
-  CHECK( detail::compute_montgomery_parameters<int64_t>( 43 ) == std::pair<int64_t, int64_t>{128, 125} );
-  CHECK( detail::compute_montgomery_parameters<int64_t>( 59 ) == std::pair<int64_t, int64_t>{128, 13} );
-}
-
-TEST_CASE( "check Montgomery encoding", "[modular_arithmetic]" )
-{
-  const int64_t n = 11u;
-  const auto nbits = static_cast<int64_t>( std::ceil( std::log2( n ) ) );
-
-  auto [r, np] = detail::compute_montgomery_parameters( n );
-  const auto rbits = static_cast<int64_t>( std::log2( r ) );
-
-  CHECK( r == 32 );
-  CHECK( np == 29 );
-
-  aig_network ntk;
-  std::vector<aig_network::signal> pis;
-  for ( auto i = 0; i < nbits; ++i )
-  {
-    pis.push_back( ntk.create_pi() );
-  }
-  for ( auto i = 0; i < rbits; ++i )
-  {
-    pis.push_back( ntk.get_constant( false ) );
-  }
-
-  const auto MON = detail::to_montgomery_form( ntk, pis, n, rbits, np );
-
-  for ( auto const& m : MON )
-  {
-    ntk.create_po( m );
-  }
-
-  CHECK( MON.size() == nbits );
-
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 0u ) ) ) == 0 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 1u ) ) ) == 10 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 2u ) ) ) == 9 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 3u ) ) ) == 8 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 4u ) ) ) == 7 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 5u ) ) ) == 6 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 6u ) ) ) == 5 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 7u ) ) ) == 4 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 8u ) ) ) == 3 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 9u ) ) ) == 2 );
-  CHECK( to_int( simulate<bool>( ntk, input_word_simulator( 10u ) ) ) == 1 );
-}
-
 TEST_CASE( "create bool vectors from hex strings", "[modular_arithmetic]" )
 {
 
