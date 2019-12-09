@@ -507,13 +507,8 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
   modular_multiplication_inplace( ntk, a, b, mvec );
 }
 
-/*! \brief Creates modular constant-multiplier
- *
- * Given an input word of size *k* and a constant with the same bit-width,
- * this function creates a circuit that computes \f$(a\cdot\mathrm{constant}) \bmod 2^k\f$.
- */
 template<typename Ntk>
-inline std::vector<signal<Ntk>> modular_constant_multiplier_old( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<bool> const& constant )
+inline std::vector<signal<Ntk>> modular_constant_multiplier_one_bits( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<bool> const& constant )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
 
@@ -537,6 +532,56 @@ inline std::vector<signal<Ntk>> modular_constant_multiplier_old( Ntk& ntk, std::
   }
 
   return sum;
+}
+
+template<class Ntk>
+inline std::vector<signal<Ntk>> modular_constant_multiplier_csd( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<bool> const& constant )
+{
+  // constant == 0
+  if ( std::find( constant.begin(), constant.end(), true ) == constant.end() )
+  {
+    return std::vector<signal<Ntk>>( a.size(), ntk.get_constant( false ) );
+  }
+  // constant == 1
+  else if ( constant.front() && std::find( constant.begin() + 1, constant.end(), true ) == constant.end() )
+  {
+    return a;
+  }
+  // constant % 2 == 0
+  else if ( !constant.front() )
+  {
+    // constant / 2
+    std::vector<bool> new_constant( a.size(), false );
+    std::copy( constant.begin() + 1, constant.end(), new_constant.begin() );
+    auto res = modular_constant_multiplier( ntk, a, new_constant );
+    res.insert( res.begin(), ntk.get_constant( false ) );
+    res.pop_back();
+    return res;
+  }
+  // constant % 4 == 1u
+  else if ( !constant[1] )
+  {
+    auto res = modular_constant_multiplier( ntk, a, detail::decrement( constant ) );
+    modular_adder_inplace( ntk, res, a );
+    return res;
+  }
+  else /* ( constant % 4 == 3u ) */
+  {
+    auto res = modular_constant_multiplier( ntk, a, detail::increment( constant ) );
+    modular_subtractor_inplace( ntk, res, a );
+    return res;
+  }
+}
+
+/*! \brief Creates modular constant-multiplier
+ *
+ * Given an input word of size *k* and a constant with the same bit-width,
+ * this function creates a circuit that computes \f$(a\cdot\mathrm{constant}) \bmod 2^k\f$.
+ */
+template<class Ntk>
+inline std::vector<signal<Ntk>> modular_constant_multiplier( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<bool> const& constant )
+{
+  return modular_constant_multiplier_csd( ntk, a, constant );
 }
 
 /*! \brief Creates vector of Booleans from hex string
@@ -614,45 +659,6 @@ void bool_vector_from_hex( std::vector<bool>& res, std::string_view hex, bool sh
   {
     /* in case the hex string was short, fill remaining values with false */
     std::fill( itR, res.end(), false );
-  }
-}
-
-template<class Ntk>
-inline std::vector<signal<Ntk>> modular_constant_multiplier( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<bool> const& constant )
-{
-  // constant == 0
-  if ( std::find( constant.begin(), constant.end(), true ) == constant.end() )
-  {
-    return std::vector<signal<Ntk>>( a.size(), ntk.get_constant( false ) );
-  }
-  // constant == 1
-  else if ( constant.front() && std::find( constant.begin() + 1, constant.end(), true ) == constant.end() )
-  {
-    return a;
-  }
-  // constant % 2 == 0
-  else if ( !constant.front() )
-  {
-    // constant / 2
-    std::vector<bool> new_constant( a.size(), false );
-    std::copy( constant.begin() + 1, constant.end(), new_constant.begin() );
-    auto res = modular_constant_multiplier( ntk, a, new_constant );
-    res.insert( res.begin(), ntk.get_constant( false ) );
-    res.pop_back();
-    return res;
-  }
-  // constant % 4 == 1u
-  else if ( !constant[1] )
-  {
-    auto res = modular_constant_multiplier( ntk, a, detail::decrement( constant ) );
-    modular_adder_inplace( ntk, res, a );
-    return res;
-  }
-  else /* ( constant % 4 == 3u ) */
-  {
-    auto res = modular_constant_multiplier( ntk, a, detail::increment( constant ) );
-    modular_subtractor_inplace( ntk, res, a );
-    return res;
   }
 }
 
