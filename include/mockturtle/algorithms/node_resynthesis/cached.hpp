@@ -251,12 +251,17 @@ private:
     is >> data;
 
     _cache.insert_json( data["cache"] );
-    _blacklist_cache = data["blacklist_cache"].get<std::unordered_set<blacklist_cache_key_t, blacklist_cache_hash, blacklist_cache_equal>>();
+    data["blacklist_cache"].get_to( _blacklist_cache );
+    data["initial_size"].get_to( _initial_size );
   }
 
   void save()
   {
-    nlohmann::json data{{"cache", _cache.to_json()}, {"blacklist_cache", _blacklist_cache}};
+    nlohmann::json data{
+      {"cache", _cache.to_json()},
+      {"blacklist_cache", _blacklist_cache},
+      {"initial_size", _initial_size}
+    };
 
     std::ofstream os( _cache_filename.c_str(), std::ofstream::out );
     os << data.dump() << "\n";
