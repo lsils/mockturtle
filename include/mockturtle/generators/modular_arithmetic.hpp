@@ -831,8 +831,8 @@ inline std::vector<signal<Ntk>> montgomery_multiplication( Ntk& ntk, std::vector
 
   const auto logR = a.size();
 
-  std::vector<signal<Ntk>> Nword( logR, ntk.get_constant( false ) );
-  std::transform( N.begin(), N.end(), Nword.begin(), [&]( auto b ) { return ntk.get_constant( b ); } );
+  std::vector<signal<Ntk>> Nbits( logR, ntk.get_constant( false ) );
+  std::transform( N.begin(), N.end(), Nbits.begin(), [&]( auto b ) { return ntk.get_constant( b ); } );
 
   /* multiply a and b and truncate to least-significant logR bits */
   auto mult1 = carry_ripple_multiplier( ntk, a, b );
@@ -855,7 +855,7 @@ inline std::vector<signal<Ntk>> montgomery_multiplication( Ntk& ntk, std::vector
 
   auto tcopy = mult1;
   carry = ntk.get_constant( true );
-  carry_ripple_subtractor_inplace( ntk, tcopy, Nword, carry );
+  carry_ripple_subtractor_inplace( ntk, tcopy, Nbits, carry );
   mux_inplace( ntk, carry, tcopy, mult1 );
 
   return tcopy;
