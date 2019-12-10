@@ -187,7 +187,9 @@ private:
 
       ntk.decr_fanout_size( p );
       if ( ntk.fanout_size( p ) == 0 )
+      {
         counter += node_deref_rec( p );
+      }
     } );
 
     return counter;
@@ -206,7 +208,9 @@ private:
       auto v = ntk.fanout_size( p );
       ntk.incr_fanout_size( p );
       if ( v == 0 )
+      {
         counter += node_ref_rec( p );
+      }
     } );
 
     return counter;
@@ -372,8 +376,8 @@ public:
        and consequently does not use the argument `max_inserts`. Other
        functors, however, make use of this argument. */
     (void)max_inserts;
-    assert(kitty::is_const0(~care));
-    
+    assert( kitty::is_const0( ~care ) );
+
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
       return resub_const( root, required );
@@ -639,8 +643,8 @@ private:
     auto care = kitty::create<TT>( leaves.size() );
     if ( ps.use_dont_cares )
       care = ~satisfiability_dont_cares( ntk, leaves, 12u );
-    else 
-      care = (~care); 
+    else
+      care = ~care;
 
     ResubFn resub_fn( ntk, sim, divs, num_divs, resub_st );
     return resub_fn( root, care, required, ps.max_inserts, num_mffc, last_gain );
