@@ -259,7 +259,7 @@ TEST_CASE( "build Montgomery multiplier 30-bit", "[modular_arithmetic]" )
   const auto pos = montgomery_multiplication( xag, xs, ys, 1027761563 );
   std::for_each( pos.begin(), pos.end(), [&]( auto const& f) { xag.create_po( f ); });
 
-  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 516764288ul << 30ul ) + 411767756ul ) ) ) == 287117401ul );
+  CHECK( to_int( simulate<bool>( xag, input_word_simulator( ( 516764288ull << 30ull ) + 411767756ull ) ) ) == 287117401ull );
 }
 
 TEST_CASE( "build Montgomery multiplier 192-bit", "[modular_arithmetic]" )
