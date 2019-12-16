@@ -50,10 +50,12 @@ namespace detail
 inline void invert_modulus( std::vector<bool>& m )
 {
   m.flip();
-  auto it = m.begin();
-  do {
-    *it = !*it;
-  } while ( !*it++ );
+
+  for ( auto i = 0u; i < m.size(); ++i )
+  {
+    m[i] = !m[i];
+    if ( m[i] ) break;
+  }
 }
 
 inline void increment_inplace( std::vector<bool>& word )
