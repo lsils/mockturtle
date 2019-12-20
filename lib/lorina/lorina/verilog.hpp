@@ -665,6 +665,30 @@ public:
     _os << fmt::format( "  assign {} = {} ;\n", out, args );
   }
 
+  /*! \brief Callback method for writing a module instantiation statement.
+   *
+   * \param module_name Name of the kind of module
+   * \param params List of parameters
+   * \param inst_name Name of the module instance
+   * \param args List of input and output signals
+   */
+  void on_module_instantiation(std::string const& module_name, std::vector<std::string> const& params,
+                               std::string const& inst_name, std::vector<std::pair<std::string, std::string>> const& args) const
+  {
+    (void)params;
+
+    _os << "  " << module_name << " " << inst_name << "(";
+    for (auto i = 0u; args.size() > i; ++i)
+    {
+      _os << "." << args.at(i).first << "(" << args.at(i).second << ")";
+      if (i + 1 < args.size())
+        _os << ", ";
+    }
+    _os << ")";
+
+    _os << ";\n";
+  }
+
   /*! \brief Callback method for writing a maj3 assignment statement.
    *
    * \param out Output signal
