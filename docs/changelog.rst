@@ -18,6 +18,7 @@ v0.2 (not yet released)
     - Cleanup LUT networks (`cleanup_luts`) `#191 <https://github.com/lsils/mockturtle/pull/191>`_
     - Extract linear subcircuits in XAGs (`extract_linear_circuit` and `merge_linear_circuit`) `#204 <https://github.com/lsils/mockturtle/pull/204>`_
     - Linear resynthesis using Paar algorithm (`linear_resynthesis_paar`) `#211 <https://github.com/lsils/mockturtle/pull/211>`_
+    - AND gate optimization by computing transitive linear fanin `#232 <https://github.com/lsils/mockturtle/pull/232>`_
 * Views:
     - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
 * I/O:
@@ -35,6 +36,8 @@ v0.2 (not yet released)
     - Create modulus vector from hex string for modular arithmetic functions (`bool_vector_from_hex`) `#176 <https://github.com/lsils/mockturtle/pull/176>`_
     - Modular addition based on Hiasat and modular subtraction `#177 <https://github.com/lsils/mockturtle/pull/177>`_
     - Majority-9 networks (`majority5`, `majority7`, `majority9_12`, `majority9_13`) `#185 <https://github.com/lsils/mockturtle/pull/185>`_
+    - Modular multiplication of Montgomery numbers (`montgomery_multiplication`) `#227 <https://github.com/lsils/mockturtle/pull/227>`_
+    - Constant modular multiplication (`modular_constant_multiplier`) `#227 <https://github.com/lsils/mockturtle/pull/227>`_
 * Properties:
     - Costs based on multiplicative complexity (`multiplicative_complexity` and `multiplicative_complexity_depth`) `#170 <https://github.com/lsils/mockturtle/pull/170>`_
 
