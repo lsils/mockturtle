@@ -892,6 +892,21 @@ template<class Ntk>
 inline constexpr bool has_update_fanout_v = has_update_fanout<Ntk>::value;
 #pragma endregion
 
+#pragma region has_is_on_critical_path
+template<class Ntk, class = void>
+struct has_is_on_critical_path : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_on_critical_path<Ntk, std::void_t<decltype( std::declval<Ntk>().is_on_critical_path( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_on_critical_path_v = has_is_on_critical_path<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_and
 template<class Ntk, class = void>
 struct has_is_and : std::false_type
@@ -1760,6 +1775,96 @@ struct has_incr_trav_id<Ntk, std::void_t<decltype( std::declval<Ntk>().incr_trav
 
 template<class Ntk>
 inline constexpr bool has_incr_trav_id_v = has_incr_trav_id<Ntk>::value;
+#pragma endregion
+
+#pragma region has_get_name
+template<class Ntk, class = void>
+struct has_get_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_get_name<Ntk, std::void_t<decltype( std::declval<Ntk>().get_name( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_get_name_v = has_get_name<Ntk>::value;
+#pragma endregion
+
+#pragma region has_set_name
+template<class Ntk, class = void>
+struct has_set_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_set_name<Ntk, std::void_t<decltype( std::declval<Ntk>().set_name( std::declval<signal<Ntk>>(), std::string() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_set_name_v = has_set_name<Ntk>::value;
+#pragma endregion
+
+#pragma region has_has_name
+template<class Ntk, class = void>
+struct has_has_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_name<Ntk, std::void_t<decltype( std::declval<Ntk>().has_name( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_name_v = has_has_name<Ntk>::value;
+#pragma endregion
+
+#pragma region has_get_output_name
+template<class Ntk, class = void>
+struct has_get_output_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_get_output_name<Ntk, std::void_t<decltype( std::declval<Ntk>().get_output_name( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_get_output_name_v = has_get_output_name<Ntk>::value;
+#pragma endregion
+
+#pragma region has_set_output_name
+template<class Ntk, class = void>
+struct has_set_output_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_set_output_name<Ntk, std::void_t<decltype( std::declval<Ntk>().set_output_name( uint32_t(), std::string() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_set_output_name_v = has_set_output_name<Ntk>::value;
+#pragma endregion
+
+#pragma region has_has_output_name
+template<class Ntk, class = void>
+struct has_has_output_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_output_name<Ntk, std::void_t<decltype( std::declval<Ntk>().has_output_name( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_output_name_v = has_has_output_name<Ntk>::value;
 #pragma endregion
 
 /*! \brief SFINAE based on iterator type (for compute functions).

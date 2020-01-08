@@ -14,17 +14,30 @@ v0.2 (not yet released)
     - Combinational equivalence checking (`equivalence_checking`) `#149 <https://github.com/lsils/mockturtle/pull/149>`_
     - CNF based cut enumeration (`cnf_cut`) `#155 <https://github.com/lsils/mockturtle/pull/155>`_
     - Fast cut enumeration for small networks (`fast_small_cut_enumeration`, contributed by Sahand Kashani-Akhavan) `#161 <https://github.com/lsils/mockturtle/pull/161>`_
+    - Shannon decomposition (`shannon_decomposition`) `#183 <https://github.com/lsils/mockturtle/pull/183>`_
+    - Cleanup LUT networks (`cleanup_luts`) `#191 <https://github.com/lsils/mockturtle/pull/191>`_
+    - Extract linear subcircuits in XAGs (`extract_linear_circuit` and `merge_linear_circuit`) `#204 <https://github.com/lsils/mockturtle/pull/204>`_
+    - Linear resynthesis using Paar algorithm (`linear_resynthesis_paar`) `#211 <https://github.com/lsils/mockturtle/pull/211>`_
+    - AND gate optimization by computing transitive linear fanin `#232 <https://github.com/lsils/mockturtle/pull/232>`_
+* Views:
+    - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
 * I/O:
     - Write networks to DIMACS files for CNF (`write_dimacs`) `#146 <https://github.com/lsils/mockturtle/pull/146>`_
     - Read BLIF files using *lorina* (`blif_reader`) `#167 <https://github.com/lsils/mockturtle/pull/167>`_
-    - Write networks to BLIF files (`write_blif`) `#169 <https://github.com/lsils/mockturtle/pull/169>`_
-* Generators for arithmetic circuits:
+    - Write networks to BLIF files (`write_blif`) `#169 <https://github.com/lsils/mockturtle/pull/169>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
+* Resynthesis functions:
+    - Resynthesis function based on DSD decomposition (`dsd_resynthesis`) `#182 <https://github.com/lsils/mockturtle/pull/182>`_
+    - Resynthesis function based on Shannon decomposition (`shannon_resynthesis`) `#185 <https://github.com/lsils/mockturtle/pull/185>`_
+* Generators:
     - Sideways sum generator (`sideways_sum_adder`, contributed by Jovan Blanuša) `#159 <https://github.com/lsils/mockturtle/pull/159>`_
     - Carry lookahead adder (`carry_lookahead_adder_inplace`) `#171 <https://github.com/lsils/mockturtle/pull/171>`_
     - Improved modular multiplication (based on doubling `modular_multiplication_inplace`) `#174 <https://github.com/lsils/mockturtle/pull/174>`_
     - Modular doubling and halving (`modular_doubling_inplace` and `modular_halving_inplace`) `#174 <https://github.com/lsils/mockturtle/pull/174>`_ `#175 <https://github.com/lsils/mockturtle/pull/175>`_
     - Create modulus vector from hex string for modular arithmetic functions (`bool_vector_from_hex`) `#176 <https://github.com/lsils/mockturtle/pull/176>`_
     - Modular addition based on Hiasat and modular subtraction `#177 <https://github.com/lsils/mockturtle/pull/177>`_
+    - Majority-9 networks (`majority5`, `majority7`, `majority9_12`, `majority9_13`) `#185 <https://github.com/lsils/mockturtle/pull/185>`_
+    - Modular multiplication of Montgomery numbers (`montgomery_multiplication`) `#227 <https://github.com/lsils/mockturtle/pull/227>`_
+    - Constant modular multiplication (`modular_constant_multiplier`) `#227 <https://github.com/lsils/mockturtle/pull/227>`_
 * Properties:
     - Costs based on multiplicative complexity (`multiplicative_complexity` and `multiplicative_complexity_depth`) `#170 <https://github.com/lsils/mockturtle/pull/170>`_
 

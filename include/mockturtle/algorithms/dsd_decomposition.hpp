@@ -37,13 +37,22 @@
 
 #include "../traits.hpp"
 
+#include <fmt/format.h>
 #include <kitty/constructors.hpp>
 #include <kitty/decomposition.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <kitty/print.hpp>
 
 namespace mockturtle
 {
+
+/*! \brief Parameters for dsd_decomposition */
+struct dsd_decomposition_params
+{
+  /*! \brief Apply XOR decomposition. */
+  bool with_xor{true};
+};
 
 namespace detail
 {
@@ -52,30 +61,32 @@ template<class Ntk, class Fn>
 class dsd_decomposition_impl
 {
 public:
-  dsd_decomposition_impl( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime )
+  dsd_decomposition_impl( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime, dsd_decomposition_params const& ps )
       : _ntk( ntk ),
         remainder( func ),
-        support( children.size() ),
         pis( children ),
-        _on_prime( on_prime )
+        _on_prime( on_prime ),
+        _ps( ps )
   {
-    std::iota( support.begin(), support.end(), 0u );
+    for ( auto i = 0; i < func.num_vars(); ++i )
+    {
+      if ( kitty::has_var( func, i ) )
+      {
+        support.push_back( i );
+      }
+    }
   }
 
   signal<Ntk> run()
   {
     /* terminal cases */
-    if ( support.size() == 0u )
+    if ( kitty::is_const0( remainder ) )
     {
-      if ( kitty::is_const0( remainder ) )
-      {
-        return _ntk.get_constant( false );
-      }
-      else
-      {
-        assert( kitty::is_const0( ~remainder ) );
-        return _ntk.get_constant( true );
-      }
+      return _ntk.get_constant( false );
+    }
+    if ( kitty::is_const0( ~remainder ) )
+    {
+      return _ntk.get_constant( true );
     }
 
     /* projection case */
@@ -89,6 +100,11 @@ public:
       }
       else
       {
+        if ( remainder != ~var )
+        {
+          fmt::print( "remainder = {}, vars = {}\n", kitty::to_binary( remainder ), remainder.num_vars() );
+          assert( false );
+        }
         assert( remainder == ~var );
         return _ntk.create_not( pis[support.front()] );
       }
@@ -97,7 +113,7 @@ public:
     /* try top decomposition */
     for ( auto var : support )
     {
-      if ( auto res = kitty::is_top_decomposable( remainder, var, &remainder );
+      if ( auto res = kitty::is_top_decomposable( remainder, var, &remainder, _ps.with_xor );
            res != kitty::top_decomposition::none )
       {
         /* remove var from support, pis do not change */
@@ -127,7 +143,7 @@ public:
     {
       for ( auto i = 0u; i < j; ++i )
       {
-        if ( auto res = kitty::is_bottom_decomposable( remainder, support[i], support[j], &remainder );
+        if ( auto res = kitty::is_bottom_decomposable( remainder, support[i], support[j], &remainder, _ps.with_xor );
              res != kitty::bottom_decomposition::none )
         {
           /* update pis based on decomposition type */
@@ -178,6 +194,7 @@ private:
   std::vector<uint8_t> support;
   std::vector<signal<Ntk>> pis;
   Fn&& _on_prime;
+  dsd_decomposition_params const& _ps;
 };
 
 } // namespace detail
@@ -202,7 +219,7 @@ private:
  * - `create_xor`
  */
 template<class Ntk, class Fn>
-signal<Ntk> dsd_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime )
+signal<Ntk> dsd_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<signal<Ntk>> const& children, Fn&& on_prime, dsd_decomposition_params const& ps = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
@@ -212,7 +229,7 @@ signal<Ntk> dsd_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func,
   static_assert( has_create_le_v<Ntk>, "Ntk does not implement the create_le method" );
   static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor method" );
 
-  detail::dsd_decomposition_impl<Ntk, Fn> impl( ntk, func, children, on_prime );
+  detail::dsd_decomposition_impl<Ntk, Fn> impl( ntk, func, children, on_prime, ps );
   return impl.run();
 }
 
