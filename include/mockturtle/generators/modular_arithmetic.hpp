@@ -181,6 +181,14 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
 }
 
 template<class Ntk>
+inline std::vector<signal<Ntk>> modular_adder( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
+{
+  auto w = a;
+  modular_adder_inplace( ntk, w, b, m );
+  return w;
+}
+
+template<class Ntk>
 inline void modular_adder_hiasat_inplace( Ntk& ntk, std::vector<signal<Ntk>>& x, std::vector<signal<Ntk>> const& y, std::vector<bool> const& m )
 {
   assert( m.size() <= x.size() );
@@ -357,6 +365,14 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
   modular_subtractor_inplace( ntk, a, b, mvec );
 }
 
+template<class Ntk>
+inline std::vector<signal<Ntk>> modular_subtractor( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
+{
+  auto w = a;
+  modular_subtractor_inplace( ntk, w, b, m );
+  return w;
+}
+
 /*! \brief Creates modular doubling (multiplication by 2)
  *
  * Given one input word \f$a\f$ of size *k*, this function creates a circuit
@@ -507,6 +523,14 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
   }
 
   modular_multiplication_inplace( ntk, a, b, mvec );
+}
+
+template<class Ntk>
+inline std::vector<signal<Ntk>> modular_multiplication( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
+{
+  auto w = a;
+  modular_multiplication_inplace( ntk, w, b, m );
+  return w;
 }
 
 template<typename Ntk>
