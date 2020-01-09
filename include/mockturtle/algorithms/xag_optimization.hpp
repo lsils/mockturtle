@@ -36,6 +36,7 @@
 #include <string>
 
 #include "cleanup.hpp"
+#include "dont_cares.hpp"
 #include "../networks/xag.hpp"
 #include "../utils/node_map.hpp"
 #include "../views/topo_view.hpp"
@@ -180,6 +181,56 @@ private:
 xag_network xag_constant_fanin_optimization( xag_network const& xag )
 {
   return detail::xag_constant_fanin_optimization_impl( xag ).run();
+}
+
+/*! \brief Optimizes some AND gates using satisfiability don't cares
+ *
+ * If an AND gate is satisfiability don't care for assignment 00, it can be
+ * replaced by an XNOR gate, therefore reducing the multiplicative complexity.
+ */
+xag_network xag_dont_cares_optimization( xag_network const& xag )
+{
+  node_map<xag_network::signal, xag_network> old_to_new( xag );
+
+  xag_network dest;
+  old_to_new[xag.get_constant( false )] = dest.get_constant( false );
+
+  xag.foreach_pi( [&]( auto const& n ) {
+    old_to_new[n] = dest.create_pi();
+  } );
+
+  satisfiability_dont_cares_checker<xag_network> checker( xag );
+
+  topo_view<xag_network>{xag}.foreach_node( [&]( auto const& n ) {
+    if ( xag.is_constant( n ) || xag.is_pi( n ) ) return;
+
+    std::array<xag_network::signal, 2> fanin;
+    xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
+      fanin[i] = old_to_new[f] ^ xag.is_complemented( f );
+    } );
+
+    if ( xag.is_and( n ) )
+    {
+      if ( checker.is_dont_care( n, {false, false} ) )
+      {
+        old_to_new[n] = dest.create_xnor( fanin[0], fanin[1] );
+      }
+      else
+      {
+        old_to_new[n] = dest.create_and( fanin[0], fanin[1] );
+      }
+    }
+    else /* is XOR */
+    {
+      old_to_new[n] = dest.create_xor( fanin[0], fanin[1] );
+    }
+  } );
+
+  xag.foreach_po( [&]( auto const& f ) {
+    dest.create_po( old_to_new[f] ^ xag.is_complemented( f ) );
+  });
+
+  return dest;
 }
 
 } /* namespace mockturtle */

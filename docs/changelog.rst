@@ -18,8 +18,9 @@ v0.2 (not yet released)
     - Cleanup LUT networks (`cleanup_luts`) `#191 <https://github.com/lsils/mockturtle/pull/191>`_
     - Extract linear subcircuits in XAGs (`extract_linear_circuit` and `merge_linear_circuit`) `#204 <https://github.com/lsils/mockturtle/pull/204>`_
     - Linear resynthesis using Paar algorithm (`linear_resynthesis_paar`) `#211 <https://github.com/lsils/mockturtle/pull/211>`_
-    - AND gate optimization by computing transitive linear fanin `#232 <https://github.com/lsils/mockturtle/pull/232>`_
-    - SAT-based satisfiability don't cares checker (`satisfiability_dont_cares_checker`) `236 <https://github.com/lsils/mockturtle/pull/236>`_
+    - XAG optimization by computing transitive linear fanin `#232 <https://github.com/lsils/mockturtle/pull/232>`_
+    - SAT-based satisfiability don't cares checker (`satisfiability_dont_cares_checker`) `#236 <https://github.com/lsils/mockturtle/pull/236>`_
+    - XAG optimization based on satisfiability don't cares (`xag_dont_cares_optimization`) `#237 <https://github.com/lsils/mockturtle/pull/237>`_
 * Views:
     - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
 * I/O:
