@@ -33,6 +33,7 @@
 #pragma once
 
 #include "../traits.hpp"
+#include "../views/topo_view.hpp"
 
 #include <kitty/constructors.hpp>
 #include <kitty/isop.hpp>

@@ -28,14 +28,10 @@
   \brief Refactoring
 
   \author Mathias Soeken
+  \author Eleonora Testa 
 */
-
 #pragma once
 
-#include <iostream>
-
-#include "detail/mffc_utils.hpp"
-#include "simulation.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
@@ -43,6 +39,11 @@
 #include "../views/cut_view.hpp"
 #include "../views/mffc_view.hpp"
 #include "../views/topo_view.hpp"
+#include "cleanup.hpp"
+#include "cut_rewriting.hpp"
+#include "detail/mffc_utils.hpp"
+#include "dont_cares.hpp"
+#include "simulation.hpp"
 
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
@@ -62,6 +63,9 @@ struct refactoring_params
 
   /*! \brief Allow zero-gain substitutions */
   bool allow_zero_gain{false};
+
+  /*! \brief Use don't cares for optimization. */
+  bool use_dont_cares{false};
 
   /*! \brief Show progress. */
   bool progress{false};
@@ -101,18 +105,35 @@ struct refactoring_stats
 namespace detail
 {
 
-template<class Ntk, class RefactoringFn>
+template<class Ntk, class RefactoringFn, class Iterator, class = void>
+struct has_refactoring_with_dont_cares : std::false_type
+{
+};
+
+template<class Ntk, class RefactoringFn, class Iterator>
+struct has_refactoring_with_dont_cares<Ntk,
+                                       RefactoringFn, Iterator,
+                                       std::void_t<decltype( std::declval<RefactoringFn>()( std::declval<Ntk&>(),
+                                                                                            std::declval<kitty::dynamic_truth_table>(),
+                                                                                            std::declval<kitty::dynamic_truth_table>(),
+                                                                                            std::declval<Iterator const&>(),
+                                                                                            std::declval<Iterator const&>(),
+                                                                                            std::declval<void( signal<Ntk> )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk, class RefactoringFn, class Iterator>
+inline constexpr bool has_refactoring_with_dont_cares_v = has_refactoring_with_dont_cares<Ntk, RefactoringFn, Iterator>::value;
+
+template<class Ntk, class RefactoringFn, class NodeCostFn>
 class refactoring_impl
 {
 public:
-  refactoring_impl( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps, refactoring_stats& st )
-      : ntk( ntk ), refactoring_fn( refactoring_fn ), ps( ps ), st( st )
-  {
-  }
+  refactoring_impl( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps, refactoring_stats& st, NodeCostFn const& cost_fn )
+      : ntk( ntk ), refactoring_fn( refactoring_fn ), ps( ps ), st( st ), cost_fn( cost_fn ) {}
 
   void run()
   {
-    const auto size = ntk.size();
     progress_bar pbar{ntk.size(), "refactoring |{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
 
     stopwatch t( st.time_total );
@@ -123,17 +144,16 @@ public:
       ntk.set_value( n, ntk.fanout_size( n ) );
     } );
 
+    const auto size = ntk.num_gates();
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
       if ( i >= size )
       {
         return false;
       }
-
       if ( ntk.fanout_size( n ) == 0u )
       {
         return true;
       }
-
       const auto mffc = make_with_stopwatch<mffc_view<Ntk>>( st.time_mffc, ntk, n );
 
       pbar( i, i, _candidates, _estimated_gain );
@@ -151,10 +171,33 @@ public:
       default_simulator<kitty::dynamic_truth_table> sim( mffc.num_pis() );
       const auto tt = call_with_stopwatch( st.time_simulation,
                                            [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
+
       signal<Ntk> new_f;
       {
-        stopwatch t( st.time_refactoring );
-        refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+        if ( ps.use_dont_cares )
+        {
+          if constexpr ( has_refactoring_with_dont_cares_v<Ntk, RefactoringFn, decltype( leaves.begin() )> )
+          {
+            std::vector<node<Ntk>> pivots;
+            for ( auto const& c : leaves )
+            {
+              pivots.push_back( ntk.get_node( c ) );
+            }
+            stopwatch t( st.time_refactoring );
+
+            refactoring_fn( ntk, tt, satisfiability_dont_cares( ntk, pivots, 16u ), leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+          }
+          else
+          {
+            stopwatch t( st.time_refactoring );
+            refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+          }
+        }
+        else
+        {
+          stopwatch t( st.time_refactoring );
+          refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+        }
       }
 
       if ( n == ntk.get_node( new_f ) )
@@ -162,26 +205,63 @@ public:
         return true;
       }
 
-      int32_t gain = detail::recursive_deref( ntk, n );
-      gain -= detail::recursive_ref( ntk, ntk.get_node( new_f ) );
+      int32_t gain = recursive_deref( n );
+      gain -= recursive_ref( ntk.get_node( new_f ) );
 
       if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
       {
         ++_candidates;
         _estimated_gain += gain;
         ntk.substitute_node( n, new_f );
-
         ntk.set_value( n, 0 );
         ntk.set_value( ntk.get_node( new_f ), ntk.fanout_size( ntk.get_node( new_f ) ) );
+        for ( auto i = 0u; i < leaves.size(); i++ )
+        {
+          ntk.set_value( ntk.get_node( leaves[i] ), ntk.fanout_size( ntk.get_node( leaves[i] ) ) );
+        }
       }
       else
       {
-        detail::recursive_deref( ntk, ntk.get_node( new_f ) );
-        detail::recursive_ref( ntk, n );
+        recursive_deref( ntk.get_node( new_f ) );
+        recursive_ref( n );
       }
-
       return true;
     } );
+  }
+
+private:
+  uint32_t recursive_deref( node<Ntk> const& n )
+  {
+    /* terminate? */
+    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      return 0;
+
+    /* recursively collect nodes */
+    uint32_t value{cost_fn( ntk, n )};
+    ntk.foreach_fanin( n, [&]( auto const& s ) {
+      if ( ntk.decr_value( ntk.get_node( s ) ) == 0 )
+      {
+        value += recursive_deref( ntk.get_node( s ) );
+      }
+    } );
+    return value;
+  }
+
+  uint32_t recursive_ref( node<Ntk> const& n )
+  {
+    /* terminate? */
+    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      return 0;
+
+    /* recursively collect nodes */
+    uint32_t value{cost_fn( ntk, n )};
+    ntk.foreach_fanin( n, [&]( auto const& s ) {
+      if ( ntk.incr_value( ntk.get_node( s ) ) == 0 )
+      {
+        value += recursive_ref( ntk.get_node( s ) );
+      }
+    } );
+    return value;
   }
 
 private:
@@ -189,6 +269,7 @@ private:
   RefactoringFn&& refactoring_fn;
   refactoring_params const& ps;
   refactoring_stats& st;
+  NodeCostFn cost_fn;
 
   uint32_t _candidates{0};
   uint32_t _estimated_gain{0};
@@ -199,7 +280,7 @@ private:
 /*! \brief Boolean refactoring.
  *
  * This algorithm performs refactoring by collapsing maximal fanout-free cones
- * (MFFCs) into truth tables and recreate a new network structure from it.
+ * (MFFCs) into truth tables and recreating a new network structure from it.
  * The algorithm performs changes directly in the input network and keeps the
  * substituted structures dangling in the network.  They can be cleaned up using
  * the `cleanup_dangling` algorithm.
@@ -229,9 +310,10 @@ private:
  * \param refactoring_fn Refactoring function
  * \param ps Refactoring params
  * \param pst Refactoring statistics
+ * \param cost_fn Node cost function (a functor with signature `uint32_t(Ntk const&, node<Ntk> const&)`)
  */
-template<class Ntk, class RefactoringFn>
-void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps = {}, refactoring_stats *pst = nullptr )
+template<class Ntk, class RefactoringFn, class NodeCostFn = detail::unit_cost<Ntk>>
+void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params const& ps = {}, refactoring_stats* pst = nullptr, NodeCostFn const& cost_fn = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
@@ -246,7 +328,7 @@ void refactoring( Ntk& ntk, RefactoringFn&& refactoring_fn, refactoring_params c
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
 
   refactoring_stats st;
-  detail::refactoring_impl<Ntk, RefactoringFn> p( ntk, refactoring_fn, ps, st );
+  detail::refactoring_impl<Ntk, RefactoringFn, NodeCostFn> p( ntk, refactoring_fn, ps, st, cost_fn );
   p.run();
   if ( ps.verbose )
   {

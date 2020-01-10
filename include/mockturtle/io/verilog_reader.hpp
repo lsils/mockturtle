@@ -103,6 +103,7 @@ public:
 
   void on_inputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
+    (void)size;
     for ( const auto& name : names )
     {
       if ( size.empty() )
@@ -125,6 +126,7 @@ public:
 
   void on_outputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
+    (void)size;
     for ( const auto& name : names )
     {
       if ( size.empty() )

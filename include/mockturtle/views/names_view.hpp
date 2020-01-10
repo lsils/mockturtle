@@ -33,7 +33,8 @@
 #pragma once
 
 #include "../traits.hpp"
-#include <unordered_map>
+
+#include <map>
 
 namespace mockturtle
 {
@@ -47,7 +48,7 @@ public:
   using signal = typename Ntk::signal;
 
 public:
-  names_view( Ntk const& ntk )
+  names_view( Ntk const& ntk = Ntk() )
     : Ntk( ntk )
   {
   }
@@ -59,10 +60,43 @@ public:
   {
   }
 
-private:
-  names_view<Ntk> operator=( names_view<Ntk> const& named_ntk );
+  names_view<Ntk>& operator=( names_view<Ntk> const& named_ntk )
+  {
+    std::map<signal, std::string> new_signal_names;
+    std::vector<signal> current_pis;
+    Ntk::foreach_pi( [&]( auto const& n ) {
+        current_pis.emplace_back( Ntk::make_signal( n ) );
+      });
+    named_ntk.foreach_pi( [&]( auto const& n, auto i ) {
+        if ( const auto it = _signal_names.find( current_pis[i] ); it != _signal_names.end() )
+          new_signal_names[named_ntk.make_signal( n )] = it->second;
+      } );
 
-public:
+    Ntk::operator=( named_ntk );
+    _signal_names = new_signal_names;
+    return *this;
+  }
+
+  signal create_pi( std::string const& name = {} )
+  {
+    const auto s = Ntk::create_pi( name );
+    if ( !name.empty() )
+    {
+      set_name( s, name );
+    }
+    return s;
+  }
+
+  void create_po( signal const& s, std::string const& name = {} )
+  {
+    const auto index = Ntk::num_pos();
+    Ntk::create_po( s, name );
+    if ( !name.empty() )
+    {
+      set_output_name( index, name );
+    }
+  }
+
   bool has_name( signal const& s ) const
   {
     return ( _signal_names.find( s ) != _signal_names.end() );

@@ -2,8 +2,10 @@
 
 #include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
+#include <mockturtle/algorithms/node_resynthesis/bidecomposition.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
@@ -48,6 +50,58 @@ TEST_CASE( "Refactoring with Akers synthesis", "[refactoring]" )
   CHECK( mig.num_pis() == 3 );
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 1 );
+}
+
+namespace detail
+{
+template<class Ntk>
+struct free_xor_cost
+{
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n ) const
+  {
+    return ntk.is_xor( n ) ? 0 : 1;
+  }
+};
+} // namespace detail
+
+TEST_CASE( "Refactoring with bi-decomposition", "[refactoring]" )
+{
+  xag_network xag;
+  const auto a = xag.create_pi();
+  const auto b = xag.create_pi();
+
+  const auto f = xag.create_or( xag.create_and(a, xag.create_not(b)), xag.create_and( xag.create_not(a), b));
+  xag.create_po( f );
+
+  bidecomposition_resynthesis<xag_network> resyn;
+  refactoring( xag, resyn );
+
+  xag = cleanup_dangling( xag );
+
+  CHECK( xag.size() == 4 );
+  CHECK( xag.num_pis() == 2 );
+  CHECK( xag.num_pos() == 1 );
+  CHECK( xag.num_gates() == 1 );
+}
+
+TEST_CASE( "Refactoring with bi-decomposition and different cost (free xor)", "[refactoring]" )
+{
+  xag_network xag;
+  const auto a = xag.create_pi();
+  const auto b = xag.create_pi();
+
+  const auto f = xag.create_or( xag.create_and(a, xag.create_not(b)), xag.create_and( xag.create_not(a), b));
+  xag.create_po( f );
+
+  bidecomposition_resynthesis<xag_network> resyn;
+  refactoring( xag, resyn, {}, nullptr, ::detail::free_xor_cost<xag_network>());
+
+  xag = cleanup_dangling( xag );
+
+  CHECK( xag.size() == 4 );
+  CHECK( xag.num_pis() == 2 );
+  CHECK( xag.num_pos() == 1 );
+  CHECK( xag.num_gates() == 1 );
 }
 
 TEST_CASE( "Refactoring from constant", "[refactoring]" )
