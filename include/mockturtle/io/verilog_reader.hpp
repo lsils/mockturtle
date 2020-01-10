@@ -37,6 +37,7 @@
 #include <cctype>
 #include <iostream>
 #include <map>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,7 @@
 
 #include "../traits.hpp"
 #include "../generators/arithmetic.hpp"
+#include "../generators/modular_arithmetic.hpp"
 
 namespace mockturtle
 {
@@ -282,7 +284,7 @@ public:
     {
       if ( !num_args_equals( 3u ) ) return;
       if ( !num_params_equals( 1u ) ) return;
-      const auto bitwidth = parse_value( params[0u] );
+      const auto bitwidth = parse_small_value( params[0u] );
       if ( !register_has_size( args[0].second, bitwidth ) ) return;
       if ( !register_has_size( args[1].second, bitwidth ) ) return;
 
@@ -293,6 +295,22 @@ public:
       a_copy.push_back( carry );
       add_register( args[2].second, a_copy );
     }
+    else if ( module_name == "montgomery_multiplier" )
+    {
+      if ( !num_args_equals( 3u ) ) return;
+      if ( !num_params_equals( 3u ) ) return;
+      const auto bitwidth = parse_small_value( params[0u] );
+      if ( !register_has_size( args[0].second, bitwidth ) ) return;
+      if ( !register_has_size( args[1].second, bitwidth ) ) return;
+
+      auto N = parse_value( params[1u] );
+      auto NN = parse_value( params[2u] );
+
+      N.resize( bitwidth );
+      NN.resize( bitwidth );
+
+      add_register( args[2].second, montgomery_multiplication( _ntk, registers[args[0].second], registers[args[1].second], N, NN ) );
+    }
     else
     {
       std::cout << fmt::format( "[e] unknown module name {}\n", module_name );
@@ -300,14 +318,33 @@ public:
   }
 
 private:
-  uint32_t parse_value( const std::string& value ) const
+  std::vector<bool> parse_value( const std::string& value ) const
   {
+    std::smatch match;
+
     if ( std::all_of( value.begin(), value.end(), isdigit ) )
     {
-      return static_cast<uint32_t>( std::stoul( value ) );
+      std::vector<bool> res( 64u );
+      bool_vector_from_dec( res, static_cast<uint64_t>( std::stoul( value ) ) );
+      return res;
+    }
+    else if ( std::regex_match( value, match, hex_string ) )
+    {
+      std::vector<bool> res( static_cast<uint64_t>( std::stoul( match.str( 1 ) ) ) );
+      bool_vector_from_hex( res, match.str( 2 ) );
+      return res;
+    }
+    else
+    {
+      fmt::print( "[e] cannot parse number '{}'\n", value );
     }
     assert( false );
-    return 0;
+    return {};
+  }
+
+  uint64_t parse_small_value( const std::string& value ) const
+  {
+    return bool_vector_to_long( parse_value( value ) );
   }
 
   uint32_t parse_size( const std::string& size ) const
@@ -319,7 +356,7 @@ private:
 
     if ( auto const l = size.size(); l > 2 && size[l - 2] == ':' && size[l - 1] == '0' )
     {
-      return parse_value( size.substr( 0u, l - 2 ) ) + 1u;
+      return parse_small_value( size.substr( 0u, l - 2 ) ) + 1u;
     }
 
     assert( false );
@@ -332,6 +369,8 @@ private:
   mutable std::map<std::string, signal<Ntk>> signals;
   mutable std::map<std::string, std::vector<signal<Ntk>>> registers;
   mutable std::vector<std::string> outputs;
+
+  std::regex hex_string{"(\\d+)'h([0-9a-fA-F]+)"};
 };
 
 } /* namespace mockturtle */
