@@ -49,6 +49,7 @@ Welcome to mockturtle's documentation!
    algorithms/linear_resynthesis
    algorithms/gates_to_nodes
    algorithms/xag_optimization
+   algorithms/xmg_optimization
 
 .. toctree::
    :maxdepth: 2
