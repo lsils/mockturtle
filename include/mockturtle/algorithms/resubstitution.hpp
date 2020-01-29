@@ -456,25 +456,25 @@ public:
 
     auto const update_level_of_new_node = [&]( const auto& n ) {
       ntk.resize_levels();
-      ntk.resize_fanout();
+      //ntk.resize_fanout();
       update_node_level( n );
       //ntk.update_fanout();
-      update_node_fanout( n );
+      //update_node_fanout( n );
     };
 
     auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
       (void)old_children;
       ntk.resize_levels();
-      ntk.resize_fanout();
+      //ntk.resize_fanout();
       update_node_level( n );
       //ntk.update_fanout();
-      update_node_fanout( n );
+      //update_node_fanout( n );
     };
 
     auto const update_level_of_deleted_node = [&]( const auto& n ) {
       /* update fanout */
       ntk.set_level( n, -1 );
-      ntk.update_fanout();
+      //ntk.update_fanout();
     };
 
     ntk._events->on_add.emplace_back( update_level_of_new_node );
