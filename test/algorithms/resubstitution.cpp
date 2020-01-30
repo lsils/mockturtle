@@ -2,6 +2,7 @@
 
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/fanout_view.hpp>
+#include <mockturtle/views/fanout_view2.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
@@ -97,14 +98,15 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
 
   const auto a = xag.create_pi();
   const auto b = xag.create_pi();
+  const auto c = xag.create_pi();
 
-  const auto f = xag.create_or( xag.create_and(a, xag.create_not(b)), xag.create_and(b, xag.create_not(a)) );
+  const auto f = xag.create_xor(xag.create_or( xag.create_and(a, xag.create_not(b)), xag.create_and(b, xag.create_not(a)) ), c);
   xag.create_po( f );
 
-  CHECK( xag.size() == 6 );
-  CHECK( xag.num_pis() == 2 );
+  CHECK( xag.size() == 8 );
+  CHECK( xag.num_pis() == 3 );
   CHECK( xag.num_pos() == 1 );
-  CHECK( xag.num_gates() == 3 );
+  CHECK( xag.num_gates() == 4 );
 
   const auto tt = simulate<kitty::static_truth_table<2>>( xag )[0];
 
@@ -112,10 +114,9 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
   //ps.max_inserts = 4;
   
 
-  using view_t = depth_view<fanout_view<xag_network>>;
-  fanout_view<xag_network> fanout_view{xag};
+  using view_t = depth_view<fanout_view2<xag_network>>;
+  fanout_view2<xag_network> fanout_view{xag};
   view_t resub_view{fanout_view};
-
   resubstitution_minmc_withDC( resub_view , ps);
 
   xag = cleanup_dangling( xag );
@@ -124,8 +125,8 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
   const auto tt_opt = simulate<kitty::static_truth_table<2>>( xag )[0];
   CHECK( tt_opt._bits == tt._bits );
 
-  CHECK( xag.size() == 4 );
-  CHECK( xag.num_pis() == 2 );
+  CHECK( xag.size() == 6 );
+  CHECK( xag.num_pis() == 3 );
   CHECK( xag.num_pos() == 1 );
-  CHECK( xag.num_gates() == 1 );
+  CHECK( xag.num_gates() == 2 );
 }
