@@ -1,0 +1,14 @@
+[
+  {
+    "entries": [
+      {
+        "benchmark": "adder",
+        "equivalent": true,
+        "runtime": 0.04691010341048241,
+        "size_after": 894,
+        "size_before": 1020
+      }
+    ],
+    "version": "3485fcd"
+  }
+]
