@@ -4,8 +4,8 @@
       {
         "benchmark": "adder",
         "equivalent": true,
-        "runtime": 0.04691010341048241,
-        "size_after": 894,
+        "runtime": 0.0,
+        "size_after": 1020,
         "size_before": 1020
       }
     ],

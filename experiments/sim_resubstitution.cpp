@@ -30,7 +30,6 @@
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/sim_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 
@@ -51,8 +50,8 @@ int main()
     aig_network aig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
 
-    resubstitution_params ps;
-    resubstitution_stats st;
+    simresub_params ps;
+    simresub_stats st;
 
     ps.max_pis = 8u;
     ps.max_inserts = 1u;
