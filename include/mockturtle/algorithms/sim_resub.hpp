@@ -32,89 +32,127 @@
 
 #pragma once
 
-#include "../utils/stopwatch.hpp"
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/algorithms/resubstitution.hpp>
 
 namespace mockturtle
 {
 
-struct simresub_params
-{
-  /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
-  uint32_t max_pis{8};
-
-  /*! \brief Maximum number of divisors to consider. */
-  uint32_t max_divisors{150};
-
-  /*! \brief Maximum number of nodes added by resubstitution. */
-  uint32_t max_inserts{2};
-
-  /*! \brief Maximum fanout of a node to be considered as root. */
-  uint32_t skip_fanout_limit_for_roots{1000};
-
-  /*! \brief Maximum fanout of a node to be considered as divisor. */
-  uint32_t skip_fanout_limit_for_divisors{100};
-
-  /*! \brief Show progress. */
-  bool progress{false};
-
-  /*! \brief Be verbose. */
-  bool verbose{false};
-};
-
 struct simresub_stats
 {
-  /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  /*! \brief Accumulated runtime for const-resub */
+  stopwatch<>::duration time_resubC{0};
 
-  /*! \brief Accumulated runtime for cut computation. */
-  stopwatch<>::duration time_cuts{0};
+  /*! \brief Accumulated runtime for zero-resub */
+  stopwatch<>::duration time_resub0{0};
 
-  /*! \brief Accumulated runtime for cut evaluation/computing a resubsitution. */
-  stopwatch<>::duration time_eval{0};
+  /*! \brief Number of accepted constant resubsitutions */
+  uint32_t num_const_accepts{0};
 
-  /*! \brief Accumulated runtime for mffc computation. */
-  stopwatch<>::duration time_mffc{0};
-
-  /*! \brief Accumulated runtime for divisor computation. */
-  stopwatch<>::duration time_divs{0};
-
-  /*! \brief Accumulated runtime for updating the network. */
-  stopwatch<>::duration time_substitute{0};
-
-  /*! \brief Accumulated runtime for simulation. */
-  stopwatch<>::duration time_simulation{0};
-
-  /*! \brief Initial network size (before resubstitution) */
-  uint64_t initial_size{0};
-
-  /*! \brief Total number of divisors  */
-  uint64_t num_total_divisors{0};
-
-  /*! \brief Total number of leaves  */
-  uint64_t num_total_leaves{0};
-
-  /*! \brief Total number of gain  */
-  uint64_t estimated_gain{0};
+  /*! \brief Number of accepted zero resubsitutions */
+  uint32_t num_div0_accepts{0};
 
   void report() const
   {
-    std::cout << fmt::format( "[i] total time                                                  ({:>5.2f} secs)\n", to_seconds( time_total ) );
-    std::cout << fmt::format( "[i]   cut time                                                  ({:>5.2f} secs)\n", to_seconds( time_cuts ) );
-    std::cout << fmt::format( "[i]   mffc time                                                 ({:>5.2f} secs)\n", to_seconds( time_mffc ) );
-    std::cout << fmt::format( "[i]   divs time                                                 ({:>5.2f} secs)\n", to_seconds( time_divs ) );
-    std::cout << fmt::format( "[i]   simulation time                                           ({:>5.2f} secs)\n", to_seconds( time_simulation ) );
-    std::cout << fmt::format( "[i]   evaluation time                                           ({:>5.2f} secs)\n", to_seconds( time_eval ) );
-    std::cout << fmt::format( "[i]   substitute                                                ({:>5.2f} secs)\n", to_seconds( time_substitute ) );
-    std::cout << fmt::format( "[i] total divisors            = {:8d}\n",         ( num_total_divisors ) );
-    std::cout << fmt::format( "[i] total leaves              = {:8d}\n",         ( num_total_leaves ) );
-    std::cout << fmt::format( "[i] estimated gain            = {:8d} ({:>5.2f}%)\n",
-                              estimated_gain, ( (100.0 * estimated_gain) / initial_size ) );
+    std::cout << "[i] kernel: default_resub_functor\n";
+    std::cout << fmt::format( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
+                              num_const_accepts, to_seconds( time_resubC ) );
+    std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
+                              num_div0_accepts, to_seconds( time_resub0 ) );
+    std::cout << fmt::format( "[i]            total   {:6d}\n",
+                              (num_const_accepts + num_div0_accepts) );
   }
 };
 
+template<typename Ntk, typename Simulator>
+class simresub_functor
+{
+public:
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+  using stats = simresub_stats;
+
+  explicit simresub_functor( Ntk const& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, simresub_stats& st )
+    : ntk( ntk )
+    , sim( sim )
+    , divs( divs )
+    , num_divs( num_divs )
+    , st( st )
+  {
+  }
+
+  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain ) const
+  {
+    /* The default resubstitution functor does not insert any gates
+       and consequently does not use the argument `max_inserts`. Other
+       functors, however, make use of this argument. */
+    (void)max_inserts;
+
+    /* consider constants */
+    auto g = call_with_stopwatch( st.time_resubC, [&]() {
+        return resub_const( root, required );
+      } );
+    if ( g )
+    {
+      ++st.num_const_accepts;
+      last_gain = num_mffc;
+      return g; /* accepted resub */
+    }
+
+    /* consider equal nodes */
+    g = call_with_stopwatch( st.time_resub0, [&]() {
+        return resub_div0( root, required );
+      } );
+    if ( g )
+    {
+      ++st.num_div0_accepts;
+      last_gain = num_mffc;;
+      return g; /* accepted resub */
+    }
+
+    return std::nullopt;
+  }
+
+private:
+  std::optional<signal> resub_const( node const& root, uint32_t required ) const
+  {
+    (void)required;
+    auto const tt = sim.get_tt( ntk.make_signal( root ) );
+    if ( tt == sim.get_tt( ntk.get_constant( false ) ) )
+    {
+      return sim.get_phase( root ) ? ntk.get_constant( true ) : ntk.get_constant( false );
+    }
+    return std::nullopt;
+  }
+
+  std::optional<signal> resub_div0( node const& root, uint32_t required ) const
+  {
+    (void)required;
+    auto const tt = sim.get_tt( ntk.make_signal( root ) );
+    for ( const auto& d : divs )
+    {
+      if ( root == d )
+        break;
+
+      if ( tt != sim.get_tt( ntk.make_signal( d ) ) )
+        continue; /* next */
+
+      return ( sim.get_phase( d ) ^ sim.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
+    }
+
+    return std::nullopt;
+  }
+
+private:
+  Ntk const& ntk;
+  Simulator const& sim;
+  std::vector<node> const& divs;
+  uint32_t num_divs;
+  stats& st;
+}; /* simresub_functor */
+
 template<class Ntk>
-void sim_resubstitution( Ntk& ntk, simresub_params const& ps = {}, simresub_stats* pst = nullptr )
+void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
   /* TODO: check if basetype of ntk is aig */
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -135,45 +173,28 @@ void sim_resubstitution( Ntk& ntk, simresub_params const& ps = {}, simresub_stat
   static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
 
-  std::cout<<"sim resub"<<std::endl;
-  /*using resub_view_t = fanout_view2<depth_view<Ntk>>;
+  using resub_view_t = fanout_view2<depth_view<Ntk>>;
   depth_view<Ntk> depth_view{ntk};
   resub_view_t resub_view{depth_view};
 
   resubstitution_stats st;
-  if ( ps.max_pis == 8 )
+
+  using truthtable_t = kitty::static_truth_table<8>;
+  using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
+  using resubstitution_functor_t = simresub_functor<resub_view_t, simulator_t>;
+  typename resubstitution_functor_t::stats resub_st;
+  detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
+  p.run();
+  if ( ps.verbose )
   {
-    using truthtable_t = kitty::static_truth_table<8>;
-    using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
-    using resubstitution_functor_t = aig_resub_functor<resub_view_t, simulator_t>;
-    typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
-    p.run();
-    if ( ps.verbose )
-    {
-      st.report();
-      resub_st.report();
-    }
-  }
-  else
-  {
-    using truthtable_t = kitty::dynamic_truth_table;
-    using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
-    using resubstitution_functor_t = aig_resub_functor<resub_view_t, simulator_t>;
-    typename resubstitution_functor_t::stats resub_st;
-    detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
-    p.run();
-    if ( ps.verbose )
-    {
-      st.report();
-      resub_st.report();
-    }
+    st.report();
+    resub_st.report();
   }
 
   if ( pst )
   {
     *pst = st;
-  }*/
+  }
 }
 
 } /* namespace mockturtle */

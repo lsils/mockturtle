@@ -44,14 +44,14 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    if ( benchmark != "adder" ) continue;
+    //if ( benchmark != "adder" ) continue;
 
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
 
-    simresub_params ps;
-    simresub_stats st;
+    resubstitution_params ps;
+    resubstitution_stats st;
 
     ps.max_pis = 8u;
     ps.max_inserts = 1u;
