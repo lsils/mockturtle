@@ -2,7 +2,7 @@
 
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/traits.hpp>
-#include <mockturtle/views/fanout_view2.hpp>
+#include <mockturtle/views/fanout_view.hpp>
 #include <mockturtle/views/window_view.hpp>
 #include <mockturtle/algorithms/reconv_cut.hpp>
 
@@ -24,12 +24,12 @@ TEST_CASE( "create window view on AIG", "[window_view]" )
   CHECK( aig.num_pos() == 1 );
   CHECK( aig.num_gates() == 4 );
 
-  fanout_view2<aig_network> fanout_ntk( aig );
+  fanout_view<aig_network> fanout_ntk( aig );
   fanout_ntk.clear_visited();
 
   const auto pivot1 = aig.get_node( f3 );
   auto const& leaves1 = reconv_cut( reconv_cut_params{4} )( aig, { pivot1 } );
-  window_view<fanout_view2<aig_network>> win1( fanout_ntk, leaves1, { pivot1 }, false );
+  window_view<fanout_view<aig_network>> win1( fanout_ntk, leaves1, { pivot1 }, false );
 
   CHECK( is_network_type_v<decltype( win1 )> );
   CHECK( win1.size() == 5 );
@@ -38,14 +38,14 @@ TEST_CASE( "create window view on AIG", "[window_view]" )
 
   const auto pivot2 = aig.get_node( f2 );
   auto const& leaves2 = reconv_cut( reconv_cut_params{4} )( aig, { pivot2 } );
-  window_view<fanout_view2<aig_network>> win2( fanout_ntk, leaves2, { pivot2 }, false );
+  window_view<fanout_view<aig_network>> win2( fanout_ntk, leaves2, { pivot2 }, false );
   CHECK( win2.size() == 5 );
   CHECK( win2.num_pis() == 2 );
   CHECK( win2.num_pos() == 3 ); // a, f1, f3
 
   const auto pivot3 = aig.get_node( f1 );
   auto const& leaves3 = reconv_cut( reconv_cut_params{4} )( aig, { pivot3 } );
-  window_view<fanout_view2<aig_network>> win3( fanout_ntk, leaves3, { pivot3 }, true );
+  window_view<fanout_view<aig_network>> win3( fanout_ntk, leaves3, { pivot3 }, true );
   CHECK( win3.size() == 7 );
   CHECK( win3.num_pis() == 2 );
   CHECK( win3.num_pos() == 1 ); // f4

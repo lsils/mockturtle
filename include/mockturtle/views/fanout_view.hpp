@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file fanout_view2.hpp
+  \file fanout_view.hpp
   \brief Implements fanout for a network
 
   \author Heinz Riener
@@ -44,7 +44,7 @@
 namespace mockturtle
 {
 
-struct fanout_view2_params
+struct fanout_view_params
 {
   bool update_on_add{true};
   bool update_on_modified{true};
@@ -64,29 +64,29 @@ struct fanout_view2_params
  *
  */
 template<typename Ntk, bool has_fanout_interface = has_foreach_fanout_v<Ntk>>
-class fanout_view2
+class fanout_view
 {
 };
 
 template<typename Ntk>
-class fanout_view2<Ntk, true> : public Ntk
+class fanout_view<Ntk, true> : public Ntk
 {
 public:
-  fanout_view2( Ntk const& ntk, fanout_view2_params const& ps = {} ) : Ntk( ntk )
+  fanout_view( Ntk const& ntk, fanout_view_params const& ps = {} ) : Ntk( ntk )
   {
     (void)ps;
   }
 };
 
 template<typename Ntk>
-class fanout_view2<Ntk, false> : public Ntk
+class fanout_view<Ntk, false> : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
   using node    = typename Ntk::node;
   using signal  = typename Ntk::signal;
 
-  fanout_view2( Ntk const& ntk, fanout_view2_params const& ps = {} ) : Ntk( ntk ), _fanout( ntk ), _ps( ps )
+  fanout_view( Ntk const& ntk, fanout_view_params const& ps = {} ) : Ntk( ntk ), _fanout( ntk ), _ps( ps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -142,7 +142,7 @@ public:
 
   std::vector<node> fanout( node const& n ) const /* deprecated */
   {
-    return _fanout[ n ];
+    return _fanout[n];
   }
 
   void substitute_node( node const& old_node, signal const& new_signal )
@@ -167,7 +167,7 @@ public:
       /* check outputs */
       Ntk::replace_in_outputs( _old, _new );
 
-      // reset fan-in of old node
+      /* reset fan-in of old node */
       Ntk::take_out_node( _old );
     }
   }
@@ -179,7 +179,7 @@ private:
 
     this->foreach_gate( [&]( auto const& n ){
         this->foreach_fanin( n, [&]( auto const& c ){
-            auto& fanout = _fanout[ c ];
+            auto& fanout = _fanout[c];
             if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
             {
               fanout.push_back( n );
@@ -189,10 +189,10 @@ private:
   }
 
   node_map<std::vector<node>, Ntk> _fanout;
-  fanout_view2_params _ps;
+  fanout_view_params _ps;
 };
 
 template<class T>
-fanout_view2(T const&, fanout_view2_params const& ps = {}) -> fanout_view2<T>;
+fanout_view( T const&, fanout_view_params const& ps = {} ) -> fanout_view<T>;
 
 } // namespace mockturtle

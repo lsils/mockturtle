@@ -40,7 +40,7 @@
 #include "../algorithms/simulation.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
-#include "../views/fanout_view2.hpp"
+#include "../views/fanout_view.hpp"
 #include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
 
@@ -67,10 +67,10 @@ kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vecto
 {
   auto extended_leaves = reconv_cut( reconv_cut_params{max_tfi_inputs} )( ntk, leaves );
 
-  fanout_view2<Ntk> fanout_ntk{ntk};
+  fanout_view<Ntk> fanout_ntk{ntk};
   fanout_ntk.clear_visited();
 
-  window_view<fanout_view2<Ntk>> window_ntk{fanout_ntk, extended_leaves, leaves, false};
+  window_view<fanout_view<Ntk>> window_ntk{fanout_ntk, extended_leaves, leaves, false};
 
   default_simulator<kitty::dynamic_truth_table> sim( window_ntk.num_pis() );
   const auto tts = simulate_nodes<kitty::dynamic_truth_table>( window_ntk, sim );
@@ -103,10 +103,10 @@ kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vecto
 template<class Ntk>
 kitty::dynamic_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, std::vector<node<Ntk>> const& leaves, std::vector<node<Ntk>> const& roots )
 {
-  fanout_view2<Ntk> fanout_ntk{ntk};
+  fanout_view<Ntk> fanout_ntk{ntk};
   fanout_ntk.clear_visited();
 
-  window_view<fanout_view2<Ntk>> window_ntk{fanout_ntk, leaves, roots, false};
+  window_view<fanout_view<Ntk>> window_ntk{fanout_ntk, leaves, roots, false};
 
   default_simulator<kitty::dynamic_truth_table> sim( window_ntk.num_pis() );
   unordered_node_map<kitty::dynamic_truth_table, Ntk> node_to_value0( ntk );
