@@ -37,8 +37,8 @@ TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
   const auto tt = simulate<kitty::static_truth_table<2>>( aig )[0];
   CHECK( tt._bits == 0x8 );
 
-  using view_t = depth_view<fanout_view<aig_network>>;
-  fanout_view<aig_network> fanout_view{aig};
+  using view_t = depth_view<fanout_view2<aig_network>>;
+  fanout_view2<aig_network> fanout_view{aig};
   view_t resub_view{fanout_view};
 
   aig_resubstitution( resub_view );
@@ -74,8 +74,8 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   const auto tt = simulate<kitty::static_truth_table<3>>( mig )[0];
   CHECK( tt._bits == 0xe8 );
 
-  using view_t = depth_view<fanout_view<mig_network>>;
-  fanout_view<mig_network> fanout_view{mig};
+  using view_t = depth_view<fanout_view2<mig_network>>;
+  fanout_view2<mig_network> fanout_view{mig};
   view_t resub_view{fanout_view};
 
   mig_resubstitution( resub_view );
@@ -111,8 +111,6 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
   const auto tt = simulate<kitty::static_truth_table<2>>( xag )[0];
 
   resubstitution_params ps;
-  //ps.max_inserts = 4;
-  
 
   using view_t = depth_view<fanout_view2<xag_network>>;
   fanout_view2<xag_network> fanout_view{xag};

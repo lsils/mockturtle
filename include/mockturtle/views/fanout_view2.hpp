@@ -26,6 +26,7 @@
 /*!
   \file fanout_view2.hpp
   \brief Implements fanout for a network
+  
   \author Heinz Riener
 */
 
