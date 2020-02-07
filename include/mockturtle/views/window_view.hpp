@@ -41,7 +41,6 @@
 
 #include "../traits.hpp"
 #include "../networks/detail/foreach.hpp"
-#include "../views/fanout_view.hpp"
 #include "immutable_view.hpp"
 
 namespace mockturtle

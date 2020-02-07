@@ -4,7 +4,7 @@
 #include <set>
 
 #include <mockturtle/algorithms/reconv_cut.hpp>
-#include <mockturtle/views/fanout_view.hpp>
+#include <mockturtle/views/fanout_view2.hpp>
 #include <mockturtle/networks/aig.hpp>
 
 using namespace mockturtle;
@@ -54,7 +54,7 @@ TEST_CASE( "generate fanout-cuts for an AIG", "[cut_generation]" )
 
   using set_t = std::set<node<aig_network>>;
 
-  fanout_view<aig_network> fanout_aig{aig};
+  fanout_view2<aig_network> fanout_aig{aig};
   fanout_aig.clear_visited();
 
   /* helper functions for generating leaves */

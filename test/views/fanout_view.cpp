@@ -6,7 +6,7 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/klut.hpp>
-#include <mockturtle/views/fanout_view.hpp>
+#include <mockturtle/views/fanout_view2.hpp>
 
 using namespace mockturtle;
 
@@ -16,12 +16,12 @@ void test_fanout_view()
   CHECK( is_network_type_v<Ntk> );
   CHECK( !has_foreach_fanout_v<Ntk> );
 
-  using fanout_ntk = fanout_view<Ntk>;
+  using fanout_ntk = fanout_view2<Ntk>;
 
   CHECK( is_network_type_v<fanout_ntk> );
   CHECK( has_foreach_fanout_v<fanout_ntk> );
 
-  using fanout_fanout_ntk = fanout_view<fanout_ntk>;
+  using fanout_fanout_ntk = fanout_view2<fanout_ntk>;
 
   CHECK( is_network_type_v<fanout_fanout_ntk> );
   CHECK( has_foreach_fanout_v<fanout_fanout_ntk> );
@@ -45,7 +45,7 @@ TEST_CASE( "compute fanout for AIG", "[fanout_view]" )
   const auto f4 = aig.create_nand( f2, f3 );
   aig.create_po( f4 );
 
-  fanout_view fanout_aig{aig};
+  fanout_view2 fanout_aig{aig};
 
   {
     std::set<node<aig_network>> nodes;

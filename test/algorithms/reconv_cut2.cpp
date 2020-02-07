@@ -4,7 +4,7 @@
 #include <set>
 
 #include <mockturtle/algorithms/reconv_cut2.hpp>
-#include <mockturtle/views/fanout_view.hpp>
+#include <mockturtle/views/fanout_view2.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/networks/aig.hpp>
 
@@ -23,9 +23,9 @@ TEST_CASE( "generate reconvergence-driven cuts for an AIG", "[cut_generation]" )
 
   using set_t = std::set<node<aig_network>>;
 
-  fanout_view<aig_network> aig_fanout_view( aig );
-  depth_view<fanout_view<aig_network>> aig_view( aig_fanout_view );
-  cut_manager<depth_view<fanout_view<aig_network>>> mgr( 6 );
+  fanout_view2<aig_network> aig_fanout_view( aig );
+  depth_view<fanout_view2<aig_network>> aig_view( aig_fanout_view );
+  cut_manager<depth_view<fanout_view2<aig_network>>> mgr( 6 );
 
   auto leaves = [&]( const auto& s, uint32_t size = 1000u ){
     mgr.node_size_max = size;
