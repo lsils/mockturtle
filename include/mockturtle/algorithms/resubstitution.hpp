@@ -456,25 +456,17 @@ public:
 
     auto const update_level_of_new_node = [&]( const auto& n ) {
       ntk.resize_levels();
-      //ntk.resize_fanout();
       update_node_level( n );
-      //ntk.update_fanout();
-      //update_node_fanout( n );
     };
 
     auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
       (void)old_children;
       ntk.resize_levels();
-      //ntk.resize_fanout();
       update_node_level( n );
-      //ntk.update_fanout();
-      //update_node_fanout( n );
     };
 
     auto const update_level_of_deleted_node = [&]( const auto& n ) {
-      /* update fanout */
       ntk.set_level( n, -1 );
-      //ntk.update_fanout();
     };
 
     ntk._events->on_add.emplace_back( update_level_of_new_node );
@@ -561,18 +553,6 @@ private:
           update_node_level( p, false );
         } );
       }
-    }
-  }
-
-  void update_node_fanout( node const& n )
-  {
-    auto curr_fanout = ntk.fanout( n );
-    std::vector<node> new_fanout;
-    ntk.foreach_fanout( n, [&]( const auto& p ) { new_fanout.push_back( p ); } );
-
-    if ( curr_fanout != new_fanout )
-    {
-      ntk.set_fanout( n, new_fanout );
     }
   }
 
