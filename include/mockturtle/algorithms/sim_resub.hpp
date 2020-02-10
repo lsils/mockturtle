@@ -34,9 +34,43 @@
 
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
+#include <kitty/constructors.hpp>
+#include <kitty/dynamic_truth_table.hpp>
+#include <kitty/operators.hpp>
+#include "cnf.hpp"
+#include "cleanup.hpp"
+#include <percy/solvers/bsat2.hpp>
 
 namespace mockturtle
 {
+
+struct simresub_params
+{
+  /*! \brief Number of initial simulation patterns = 2^num_pattern_base. */
+  uint32_t num_pattern_base{4};
+
+  /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
+  uint32_t max_pis{8};
+
+  /*! \brief Maximum number of divisors to consider. */
+  uint32_t max_divisors{150};
+
+  /*! \brief Maximum number of nodes added by resubstitution. */
+  uint32_t max_inserts{2};
+
+  /*! \brief Maximum fanout of a node to be considered as root. */
+  uint32_t skip_fanout_limit_for_roots{1000};
+
+  /*! \brief Maximum fanout of a node to be considered as divisor. */
+  uint32_t skip_fanout_limit_for_divisors{100};
+
+  /*! \brief Show progress. */
+  bool progress{false};
+
+  /*! \brief Be verbose. */
+  bool verbose{false};
+};
 
 struct simresub_stats
 {
@@ -64,6 +98,71 @@ struct simresub_stats
   }
 };
 
+class partial_simulator
+{
+public:
+  partial_simulator() = delete;
+  partial_simulator( unsigned num_pis, unsigned num_pattern_base ) : num_pattern_base( num_pattern_base ), added_bits( 63 )
+  {
+    patterns.resize(num_pis);
+    for ( auto i = 0u; i < num_pis; ++i )
+    {
+      kitty::dynamic_truth_table tt( num_pattern_base );
+      kitty::create_random( tt );
+      patterns.at(i) = tt._bits;
+    }
+    zero = kitty::dynamic_truth_table( num_pattern_base );
+    current_block = zero.num_blocks() - 1;
+  }
+
+  kitty::dynamic_truth_table compute_constant( bool value ) const
+  {
+    return value ? ~zero : zero;
+  }
+
+  kitty::dynamic_truth_table compute_pi( uint32_t index ) const
+  {
+    kitty::dynamic_truth_table tt( num_pattern_base );
+    tt._bits = patterns.at( index );
+    return tt;
+  }
+
+  kitty::dynamic_truth_table compute_not( kitty::dynamic_truth_table const& value ) const
+  {
+    return ~value;
+  }
+
+  void add_pattern( std::vector<bool> pattern )
+  {
+    if ( ++added_bits >= 64 )
+    {
+      added_bits = 0;
+      ++current_block;
+      
+      if ( current_block >= zero.num_blocks() - 1 ) // if number of blocks(64) test patterns is not enough
+      {
+        ++num_pattern_base;
+        for ( auto i = 0u; i < patterns.size(); ++i ) // for each PI
+          patterns.at(i).resize( 1 << (num_pattern_base-6) , 0u );
+        zero = kitty::dynamic_truth_table( num_pattern_base );
+      }
+    }
+
+    for ( auto i = 0u; i < pattern.size(); ++i )
+    {
+      if ( pattern.at(i) )
+        patterns.at(i).at(current_block) |= (uint64_t)1u << added_bits;
+    }
+  }
+
+private:
+  std::vector<std::vector<uint64_t>> patterns;
+  kitty::dynamic_truth_table zero;
+  unsigned num_pattern_base;
+  unsigned added_bits;
+  unsigned current_block;
+};
+
 template<typename Ntk, typename Simulator>
 class simresub_functor
 {
@@ -83,11 +182,7 @@ public:
 
   std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain ) const
   {
-    /* The default resubstitution functor does not insert any gates
-       and consequently does not use the argument `max_inserts`. Other
-       functors, however, make use of this argument. */
     (void)max_inserts;
-
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
         return resub_const( root, required );
@@ -96,17 +191,6 @@ public:
     {
       ++st.num_const_accepts;
       last_gain = num_mffc;
-      return g; /* accepted resub */
-    }
-
-    /* consider equal nodes */
-    g = call_with_stopwatch( st.time_resub0, [&]() {
-        return resub_div0( root, required );
-      } );
-    if ( g )
-    {
-      ++st.num_div0_accepts;
-      last_gain = num_mffc;;
       return g; /* accepted resub */
     }
 
@@ -152,7 +236,7 @@ private:
 }; /* simresub_functor */
 
 template<class Ntk>
-void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
+void sim_resubstitution( Ntk& ntk, simresub_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
   /* TODO: check if basetype of ntk is aig */
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -179,7 +263,7 @@ void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
 
   resubstitution_stats st;
 
-  using truthtable_t = kitty::static_truth_table<8>;
+  /*using truthtable_t = kitty::static_truth_table<8>;
   using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
   using resubstitution_functor_t = simresub_functor<resub_view_t, simulator_t>;
   typename resubstitution_functor_t::stats resub_st;
@@ -189,7 +273,66 @@ void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   {
     st.report();
     resub_st.report();
-  }
+  }*/
+
+
+  partial_simulator sim( ntk.num_pis(), ps.num_pattern_base );
+  auto tts = simulate_nodes<kitty::dynamic_truth_table, Ntk, partial_simulator>( ntk, sim );
+  kitty::dynamic_truth_table zero = sim.compute_constant(false);
+  std::vector<node<Ntk>> constant_gates;
+
+  ntk.foreach_gate( [&]( auto const& n ) 
+  {
+    if ( (tts[n] == zero) || (tts[n] == ~zero) )
+    {
+      //std::cout<< "const node " << n << std::endl;
+
+      Ntk rootNtk;
+      std::vector<signal<Ntk>> pis;
+      for ( auto i = 0u; i < ntk.num_pis(); ++i )
+        pis.push_back( rootNtk.create_pi() );
+      const auto pos = cleanup_dangling( ntk, rootNtk, pis.begin(), pis.end() );
+      rootNtk.create_po( (tts[n] == ~zero)? ntk.create_not(ntk.make_signal(n)) : ntk.make_signal(n) );
+    
+      percy::bsat_wrapper solver;
+      int output = generate_cnf( rootNtk, [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } )[0];
+    
+      const auto res = solver.solve( &output, &output + 1, 0 );
+      if ( res == percy::synth_result::success )
+      {
+        //std::cout << "SAT: add pattern. ";
+        std::vector<bool> pattern;
+        for ( auto i = 1u; i <= rootNtk.num_pis(); ++i )
+          pattern.push_back(solver.var_value( i ));
+        sim.add_pattern(pattern);
+      }
+      else
+      {
+        //std::cout << "UNSAT: this is a constant node. (" << n << ")" << std::endl;
+        constant_gates.push_back(n);
+      }
+    }
+  } );
+
+  /* just to check */
+  auto tts2 = simulate_nodes<kitty::dynamic_truth_table, Ntk, partial_simulator>( ntk, sim );
+  ntk.foreach_gate( [&]( auto const& n ) 
+  {
+    if ( (tts2[n] == sim.compute_constant(false)) || (tts2[n] == sim.compute_constant(true)) )
+    {
+      bool found = false;
+      for ( auto i = 0u; i < constant_gates.size(); ++i )
+        if ( constant_gates.at(i) == n ) 
+        {
+          found = true;
+          break;
+        }
+      if ( !found )
+        std::cout<< "still const node " << n << std::endl;
+    }
+  } );
 
   if ( pst )
   {
