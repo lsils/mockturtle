@@ -33,11 +33,16 @@
 #pragma once
 
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/algorithms/resubstitution.hpp>
+//#include <mockturtle/algorithms/resubstitution.hpp>
+#include "../utils/progress_bar.hpp"
+#include "../utils/stopwatch.hpp"
+#include "../views/depth_view.hpp"
+#include "../views/fanout_view2.hpp"
 #include <mockturtle/algorithms/simulation.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include "../utils/node_map.hpp"
 #include "cnf.hpp"
 #include "cleanup.hpp"
 #include <percy/solvers/bsat2.hpp>
@@ -48,10 +53,10 @@ namespace mockturtle
 struct simresub_params
 {
   /*! \brief Number of initial simulation patterns = 2^num_pattern_base. */
-  uint32_t num_pattern_base{4};
+  uint32_t num_pattern_base{7};
 
-  /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
-  uint32_t max_pis{8};
+  /*! \brief Number of reserved blocks(64 bits) for generated simulation patterns. */
+  uint32_t num_reserved_blocks{1};
 
   /*! \brief Maximum number of divisors to consider. */
   uint32_t max_divisors{150};
@@ -70,39 +75,50 @@ struct simresub_params
 
   /*! \brief Be verbose. */
   bool verbose{false};
+
+  /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
+  uint32_t max_pis{8};
 };
 
 struct simresub_stats
 {
-  /*! \brief Accumulated runtime for const-resub */
-  stopwatch<>::duration time_resubC{0};
+  stopwatch<>::duration time_total{0};
 
-  /*! \brief Accumulated runtime for zero-resub */
-  stopwatch<>::duration time_resub0{0};
+  /* total time for initial simulation and complete pattern generation */
+  stopwatch<>::duration time_simgen{0};
 
-  /*! \brief Number of accepted constant resubsitutions */
-  uint32_t num_const_accepts{0};
+  /* total time for simulations */
+  stopwatch<>::duration time_sim{0};
 
-  /*! \brief Number of accepted zero resubsitutions */
-  uint32_t num_div0_accepts{0};
+  /* total time for SAT solving */
+  stopwatch<>::duration time_sat{0};
+
+  /*! \brief Initial network size (before resubstitution) */
+  uint64_t initial_size{0};
+
+  uint32_t num_constant{0};
+  uint32_t num_generated_patterns{0};
 
   void report() const
   {
-    std::cout << "[i] kernel: default_resub_functor\n";
-    std::cout << fmt::format( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
-                              num_const_accepts, to_seconds( time_resubC ) );
-    std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
-                              num_div0_accepts, to_seconds( time_resub0 ) );
-    std::cout << fmt::format( "[i]            total   {:6d}\n",
-                              (num_const_accepts + num_div0_accepts) );
+    //std::cout << "[i] kernel: default_resub_functor\n";
+    //std::cout << fmt::format( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
+    //                          num_const_accepts, to_seconds( time_resubC ) );
+    //std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
+    //                          num_div0_accepts, to_seconds( time_resub0 ) );
+    //std::cout << fmt::format( "[i]            total   {:6d}\n",
+    //                          (num_const_accepts + num_div0_accepts) );
   }
 };
+
+namespace detail
+{
 
 class partial_simulator
 {
 public:
   partial_simulator() = delete;
-  partial_simulator( unsigned num_pis, unsigned num_pattern_base ) : num_pattern_base( num_pattern_base ), added_bits( 63 )
+  partial_simulator( unsigned num_pis, unsigned num_pattern_base, unsigned num_reserved_blocks ) : num_pattern_base( num_pattern_base ), added_bits( 63 )
   {
     patterns.resize(num_pis);
     for ( auto i = 0u; i < num_pis; ++i )
@@ -110,9 +126,12 @@ public:
       kitty::dynamic_truth_table tt( num_pattern_base );
       kitty::create_random( tt );
       patterns.at(i) = tt._bits;
+      /* clear the last `num_reserved_blocks` blocks */
+      patterns.at(i).resize( tt.num_blocks() - num_reserved_blocks );
+      patterns.at(i).resize( tt.num_blocks(), 0u );
     }
     zero = kitty::dynamic_truth_table( num_pattern_base );
-    current_block = zero.num_blocks() - 1;
+    current_block = zero.num_blocks() - num_reserved_blocks - 1;
   }
 
   kitty::dynamic_truth_table compute_constant( bool value ) const
@@ -132,19 +151,16 @@ public:
     return ~value;
   }
 
-  void add_pattern( std::vector<bool> pattern )
+  bool add_pattern( std::vector<bool> pattern )
   {
     if ( ++added_bits >= 64 )
     {
       added_bits = 0;
-      ++current_block;
-      
-      if ( current_block >= zero.num_blocks() - 1 ) // if number of blocks(64) test patterns is not enough
+
+      if ( ++current_block >= zero.num_blocks() ) // if number of blocks(64) test patterns is not enough
       {
-        ++num_pattern_base;
-        for ( auto i = 0u; i < patterns.size(); ++i ) // for each PI
-          patterns.at(i).resize( 1 << (num_pattern_base-6) , 0u );
-        zero = kitty::dynamic_truth_table( num_pattern_base );
+        //std::cout<< "exceeded!" << std::endl;
+        return true;
       }
     }
 
@@ -153,6 +169,8 @@ public:
       if ( pattern.at(i) )
         patterns.at(i).at(current_block) |= (uint64_t)1u << added_bits;
     }
+
+    return false;
   }
 
 private:
@@ -163,80 +181,337 @@ private:
   unsigned current_block;
 };
 
-template<typename Ntk, typename Simulator>
-class simresub_functor
+
+template<class NtkBase, class Ntk>
+class simresub_impl
 {
 public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-  using stats = simresub_stats;
 
-  explicit simresub_functor( Ntk const& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, simresub_stats& st )
-    : ntk( ntk )
-    , sim( sim )
-    , divs( divs )
-    , num_divs( num_divs )
-    , st( st )
+  explicit simresub_impl( NtkBase& ntkbase, Ntk& ntk, simresub_params const& ps, simresub_stats& st )
+    : ntkbase( ntkbase ), ntk( ntk ), ps( ps ), st( st )
   {
+    st.initial_size = ntk.num_gates();
+
+    //auto const update_level_of_new_node = [&]( const auto& n ){
+    //  ntk.resize_levels();
+    //  update_node_level( n );
+    //};
+    //
+    //auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ){
+    //  (void)old_children;
+    //  update_node_level( n );
+    //};
+    //
+    //auto const update_level_of_deleted_node = [&]( const auto& n ){
+    //  /* update fanout */
+    //  ntk.set_level( n, -1 );
+    //};
+    //
+    //ntk._events->on_add.emplace_back( update_level_of_new_node );
+    //
+    //ntk._events->on_modified.emplace_back( update_level_of_existing_node );
+    //
+    //ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
   }
 
-  std::optional<signal> operator()( node const& root, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain ) const
+  void run()
   {
-    (void)max_inserts;
-    /* consider constants */
-    auto g = call_with_stopwatch( st.time_resubC, [&]() {
-        return resub_const( root, required );
-      } );
-    if ( g )
-    {
-      ++st.num_const_accepts;
-      last_gain = num_mffc;
-      return g; /* accepted resub */
-    }
+    stopwatch t( st.time_total );
 
-    return std::nullopt;
+    /* start the managers */
+    progress_bar pbar{ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
+    partial_simulator sim( ntk.num_pis(), ps.num_pattern_base, ps.num_reserved_blocks );
+
+    call_with_stopwatch( st.time_simgen, [&]() {
+      simulate_generate( sim );
+    });
+
+    /* iterate through all nodes and try to replace it */
+    auto const size = ntk.num_gates();
+    ntk.foreach_gate( [&]( auto const& n, auto i ){
+        if ( i >= size )
+          return false; /* terminate */
+
+        //pbar( i, i, candidates, st.estimated_gain );
+
+        if ( ntk.is_dead( n ) )
+          return true; /* next */
+
+        /* skip nodes with many fanouts */
+        if ( ntk.fanout_size( n ) > ps.skip_fanout_limit_for_roots )
+          return true; /* next */
+
+        ///* compute a reconvergence-driven cut */
+        //auto const leaves = call_with_stopwatch( st.time_cuts, [&]() {
+        //    return reconv_driven_cut( mgr, ntk, n );
+        //  });
+        //
+        ///* evaluate this cut */
+        //auto const g = call_with_stopwatch( st.time_eval, [&]() {
+        //    return evaluate( n, leaves );
+        //  });
+        //if ( !g )
+        //{
+        //  return true; /* next */
+        //}
+        //
+        ///* update progress bar */
+        //candidates++;
+        //st.estimated_gain += last_gain;
+        //
+        ///* update network */
+        //call_with_stopwatch( st.time_substitute, [&]() {
+        //    ntk.substitute_node( n, *g );
+        //  });
+
+        return true; /* next */
+      });
   }
 
 private:
-  std::optional<signal> resub_const( node const& root, uint32_t required ) const
+  void update_node_level( node const& n, bool top_most = true )
   {
-    (void)required;
-    auto const tt = sim.get_tt( ntk.make_signal( root ) );
-    if ( tt == sim.get_tt( ntk.get_constant( false ) ) )
+    uint32_t curr_level = ntk.level( n );
+
+    uint32_t max_level = 0;
+    ntk.foreach_fanin( n, [&]( const auto& f ){
+        auto const p = ntk.get_node( f );
+        auto const fanin_level = ntk.level( p );
+        if ( fanin_level > max_level )
+        {
+          max_level = fanin_level;
+        }
+      });
+    ++max_level;
+
+    if ( curr_level != max_level )
     {
-      return sim.get_phase( root ) ? ntk.get_constant( true ) : ntk.get_constant( false );
+      ntk.set_level( n, max_level );
+
+      /* update only one more level */
+      if ( top_most )
+      {
+        ntk.foreach_fanout( n, [&]( const auto& p ){
+            update_node_level( p, false );
+          });
+      }
     }
-    return std::nullopt;
   }
 
-  std::optional<signal> resub_div0( node const& root, uint32_t required ) const
+  void collect_divisors_rec( node const& n, std::vector<node>& internal )
   {
-    (void)required;
-    auto const tt = sim.get_tt( ntk.make_signal( root ) );
-    for ( const auto& d : divs )
+    /* skip visited nodes */
+    if ( ntk.visited( n ) == ntk.trav_id() )
+      return;
+    ntk.set_visited( n, ntk.trav_id() );
+
+    ntk.foreach_fanin( n, [&]( const auto& f ){
+        collect_divisors_rec( ntk.get_node( f ), internal );
+      });
+
+    /* collect the internal nodes */
+    if ( ntk.value( n ) == 0 && n != 0 ) /* ntk.fanout_size( n ) */
+      internal.emplace_back( n );
+  }
+
+  bool collect_divisors( node const& root, std::vector<node> const& leaves, uint32_t required )
+  {
+    /* add the leaves of the cuts to the divisors */
+    divs.clear();
+
+    ntk.incr_trav_id();
+    for ( const auto& l : leaves )
     {
-      if ( root == d )
+      divs.emplace_back( l );
+      ntk.set_visited( l, ntk.trav_id() );
+    }
+
+    /* mark nodes in the MFFC */
+    for ( const auto& t : temp )
+      ntk.set_value( t, 1 );
+
+    /* collect the cone (without MFFC) */
+    collect_divisors_rec( root, divs );
+
+    /* unmark the current MFFC */
+    for ( const auto& t : temp )
+      ntk.set_value( t, 0 );
+
+    /* check if the number of divisors is not exceeded */
+    if ( divs.size() - leaves.size() + temp.size() >= ps.max_divisors - ps.max_pis )
+      return false;
+
+    /* get the number of divisors to collect */
+    int32_t limit = ps.max_divisors - ps.max_pis - ( uint32_t( divs.size() ) + 1 - uint32_t( leaves.size() ) + uint32_t( temp.size() ) );
+
+    /* explore the fanouts, which are not in the MFFC */
+    int32_t counter = 0;
+    bool quit = false;
+
+    /* NOTE: this is tricky and cannot be converted to a range-based loop */
+    auto size = divs.size();
+    for ( auto i = 0u; i < size; ++i )
+    {
+      auto const d = divs.at( i );
+
+      if ( ntk.fanout_size( d ) > ps.skip_fanout_limit_for_divisors )
+        continue;
+
+      /* if the fanout has all fanins in the set, add it */
+      ntk.foreach_fanout( d, [&]( node const& p ){
+          if ( ntk.visited( p ) == ntk.trav_id() || ntk.level( p ) > required )
+            return true; /* next fanout */
+
+          bool all_fanins_visited = true;
+          ntk.foreach_fanin( p, [&]( const auto& g ){
+              if ( ntk.visited( ntk.get_node( g ) ) != ntk.trav_id() )
+              {
+                all_fanins_visited = false;
+                return false; /* terminate fanin-loop */
+              }
+              return true; /* next fanin */
+            });
+
+          if ( !all_fanins_visited )
+            return true; /* next fanout */
+
+          bool has_root_as_child = false;
+          ntk.foreach_fanin( p, [&]( const auto& g ){
+              if ( ntk.get_node( g ) == root )
+              {
+                has_root_as_child = true;
+                return false; /* terminate fanin-loop */
+              }
+              return true; /* next fanin */
+            });
+
+          if ( has_root_as_child )
+            return true; /* next fanout */
+
+          divs.emplace_back( p );
+          ++size;
+          ntk.set_visited( p, ntk.trav_id() );
+
+          /* quit computing divisors if there are too many of them */
+          if ( ++counter == limit )
+          {
+            quit = true;
+            return false; /* terminate fanout-loop */
+          }
+
+          return true; /* next fanout */
+        });
+
+      if ( quit )
         break;
-
-      if ( tt != sim.get_tt( ntk.make_signal( d ) ) )
-        continue; /* next */
-
-      return ( sim.get_phase( d ) ^ sim.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
     }
 
-    return std::nullopt;
+    /* get the number of divisors */
+    num_divs = uint32_t( divs.size() );
+
+    /* add the nodes in the MFFC */
+    for ( const auto& t : temp )
+    {
+      divs.emplace_back( t );
+    }
+
+    assert( root == divs.at( divs.size()-1u ) );
+    assert( divs.size() - leaves.size() <= ps.max_divisors - ps.max_pis );
+
+    return true;
+  }
+
+  void simulate_generate( partial_simulator& sim )
+  {
+    unordered_node_map<kitty::dynamic_truth_table, NtkBase> tts ( ntkbase );
+    call_with_stopwatch( st.time_sim, [&]() {
+      simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, tts, sim );
+    });
+
+    node_map<uint32_t, NtkBase> literals = node_literals( ntkbase );
+    percy::bsat_wrapper solver;
+    generate_cnf<NtkBase>( ntkbase, [&]( auto const& clause ) {
+      solver.add_clause( clause );
+    }, literals );
+    std::vector<pabc::lit> assumptions( 1 );
+
+    kitty::dynamic_truth_table zero = sim.compute_constant(false);
+    unordered_node_map<bool, NtkBase> constant_gates( ntkbase );
+  
+    ntk.foreach_gate( [&]( auto const& n ) 
+    {
+      if ( (tts[n] == zero) || (tts[n] == ~zero) )
+      {
+        //std::cout<< "const node " << n << std::endl;
+        assumptions[0] = lit_not_cond( literals[n], (tts[n] == ~zero) );
+      
+        const auto res = call_with_stopwatch( st.time_sat, [&]() {
+          return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
+        });
+        
+        if ( res == percy::synth_result::success )
+        {
+          //std::cout << "SAT: add pattern. ";
+          std::vector<bool> pattern;
+          for ( auto i = 1u; i <= ntk.num_pis(); ++i )
+            pattern.push_back(solver.var_value( i ));
+          if ( sim.add_pattern(pattern) )
+            return false; /* generated patterns exceed limit, stop generating */
+          ++st.num_generated_patterns;
+
+          /* re-simulate */
+          call_with_stopwatch( st.time_sim, [&]() {
+            simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, tts, sim );
+          });
+        }
+        else
+        {
+          //std::cout << "UNSAT: this is a constant node. (" << n << ")" << std::endl;
+          constant_gates[n] = (tts[n] == ~zero);
+          ++st.num_constant;
+        }
+      }
+
+      return true; /* next gate */
+    } );
+  
+    /* just to check */
+    auto tts2 = call_with_stopwatch( st.time_sim, [&]() {
+      return simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, sim );
+    });
+
+    ntk.foreach_gate( [&]( auto const& n ) 
+    {
+      if ( (tts2[n] == sim.compute_constant(false)) || (tts2[n] == sim.compute_constant(true)) )
+      {
+        if ( !constant_gates.has(n) )
+          std::cout<< "still const node " << n << std::endl;
+      }
+    } );
   }
 
 private:
-  Ntk const& ntk;
-  Simulator const& sim;
-  std::vector<node> const& divs;
-  uint32_t num_divs;
-  stats& st;
-}; /* simresub_functor */
+  NtkBase& ntkbase;
+  Ntk& ntk;
+
+  simresub_params const& ps;
+  simresub_stats& st;
+
+  /* temporary statistics for progress bar */
+  uint32_t candidates{0};
+  uint32_t last_gain{0};
+
+  std::vector<node> temp;
+  std::vector<node> divs;
+  uint32_t num_divs{0};
+};
+
+} /* namespace detail */
 
 template<class Ntk>
-void sim_resubstitution( Ntk& ntk, simresub_params const& ps = {}, resubstitution_stats* pst = nullptr )
+void sim_resubstitution( Ntk& ntk, simresub_params const& ps = {}, simresub_stats* pst = nullptr )
 {
   /* TODO: check if basetype of ntk is aig */
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -261,83 +536,15 @@ void sim_resubstitution( Ntk& ntk, simresub_params const& ps = {}, resubstitutio
   depth_view<Ntk> depth_view{ntk};
   resub_view_t resub_view{depth_view};
 
-  resubstitution_stats st;
+  simresub_stats st;
 
-  /*using truthtable_t = kitty::static_truth_table<8>;
-  using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
-  using resubstitution_functor_t = simresub_functor<resub_view_t, simulator_t>;
-  typename resubstitution_functor_t::stats resub_st;
-  detail::resubstitution_impl<resub_view_t, simulator_t, resubstitution_functor_t> p( resub_view, ps, st, resub_st );
+  detail::simresub_impl<Ntk, resub_view_t> p( ntk, resub_view, ps, st );
   p.run();
   if ( ps.verbose )
-  {
     st.report();
-    resub_st.report();
-  }*/
-
-
-  partial_simulator sim( ntk.num_pis(), ps.num_pattern_base );
-  auto tts = simulate_nodes<kitty::dynamic_truth_table, Ntk, partial_simulator>( ntk, sim );
-  kitty::dynamic_truth_table zero = sim.compute_constant(false);
-  std::vector<node<Ntk>> constant_gates;
-
-  ntk.foreach_gate( [&]( auto const& n ) 
-  {
-    if ( (tts[n] == zero) || (tts[n] == ~zero) )
-    {
-      //std::cout<< "const node " << n << std::endl;
-
-      Ntk rootNtk;
-      std::vector<signal<Ntk>> pis;
-      for ( auto i = 0u; i < ntk.num_pis(); ++i )
-        pis.push_back( rootNtk.create_pi() );
-      const auto pos = cleanup_dangling( ntk, rootNtk, pis.begin(), pis.end() );
-      rootNtk.create_po( (tts[n] == ~zero)? ntk.create_not(ntk.make_signal(n)) : ntk.make_signal(n) );
-    
-      percy::bsat_wrapper solver;
-      int output = generate_cnf( rootNtk, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } )[0];
-    
-      const auto res = solver.solve( &output, &output + 1, 0 );
-      if ( res == percy::synth_result::success )
-      {
-        //std::cout << "SAT: add pattern. ";
-        std::vector<bool> pattern;
-        for ( auto i = 1u; i <= rootNtk.num_pis(); ++i )
-          pattern.push_back(solver.var_value( i ));
-        sim.add_pattern(pattern);
-      }
-      else
-      {
-        //std::cout << "UNSAT: this is a constant node. (" << n << ")" << std::endl;
-        constant_gates.push_back(n);
-      }
-    }
-  } );
-
-  /* just to check */
-  auto tts2 = simulate_nodes<kitty::dynamic_truth_table, Ntk, partial_simulator>( ntk, sim );
-  ntk.foreach_gate( [&]( auto const& n ) 
-  {
-    if ( (tts2[n] == sim.compute_constant(false)) || (tts2[n] == sim.compute_constant(true)) )
-    {
-      bool found = false;
-      for ( auto i = 0u; i < constant_gates.size(); ++i )
-        if ( constant_gates.at(i) == n ) 
-        {
-          found = true;
-          break;
-        }
-      if ( !found )
-        std::cout<< "still const node " << n << std::endl;
-    }
-  } );
 
   if ( pst )
-  {
     *pst = st;
-  }
 }
 
 } /* namespace mockturtle */

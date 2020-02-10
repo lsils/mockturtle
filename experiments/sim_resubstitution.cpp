@@ -40,32 +40,33 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "sim_resubstitution", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, float, float, float, bool> exp( "sim_resubstitution", "benchmark", "num_constant", "generated_patterns", "total time", "sim time", "SAT time", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    if ( benchmark != "sin" ) continue;
+    if ( benchmark == "hyp" || benchmark == "log2" ) continue;
 
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
 
     simresub_params ps;
-    resubstitution_stats st;
+    simresub_stats st;
 
-    ps.num_pattern_base = 9u;
+    ps.num_pattern_base = 15u;
+    ps.num_reserved_blocks = 100u;
     ps.max_pis = 8u;
     ps.max_inserts = 1u;
     ps.progress = false;
 
-    const uint32_t size_before = aig.num_gates();
+    //const uint32_t size_before = aig.num_gates();
     sim_resubstitution( aig, ps, &st );
 
     aig = cleanup_dangling( aig );
 
     const auto cec = true; //benchmark == "hyp" ? true : abc_cec( aig, benchmark );
 
-    exp( benchmark, size_before, aig.num_gates(), to_seconds( st.time_total ), cec );
+    exp( benchmark, st.num_constant, st.num_generated_patterns, to_seconds( st.time_total ), to_seconds( st.time_sim ), to_seconds( st.time_sat ), cec );
   }
 
   exp.save();
