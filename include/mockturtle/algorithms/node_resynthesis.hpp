@@ -111,10 +111,20 @@ public:
       }
       } );
 
+    ntk.foreach_ro( [&]( auto n ) {
+      node2new[n] = ntk_dest.create_ro();
+      ntk_dest._storage->latch_information[ntk_dest.get_node(node2new[n])] = ntk._storage->latch_information[n];
+      if constexpr ( has_has_name_v<NtkSource> && has_get_name_v<NtkSource> && has_set_name_v<NtkDest> )
+      {
+        if ( ntk.has_name( ntk.make_signal( n ) ) )
+          ntk_dest.set_name( node2new[n], ntk.get_name( ntk.make_signal( n ) ) );
+      }
+      } );
+
     /* map nodes */
     topo_view ntk_topo{ntk};
     ntk_topo.foreach_node( [&]( auto n ) {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
         return;
 
       std::vector<signal<NtkDest>> children;
@@ -145,6 +155,19 @@ public:
           if ( ntk.has_output_name( index ) )
           {
             ntk_dest.set_output_name( index, ntk.get_output_name( index ) );
+          }
+        }
+      } );
+
+    ntk.foreach_ri( [&]( auto const& f, auto index ) {
+        auto const o = ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
+        ntk_dest.create_ri( o );
+
+        if constexpr ( has_has_output_name_v<NtkSource> && has_get_output_name_v<NtkSource> && has_set_output_name_v<NtkDest> )
+        {
+          if ( ntk.has_output_name( index ) )
+          {
+            ntk_dest.set_output_name( index + ntk.num_pos(), ntk.get_output_name( index + ntk.num_pos() ) );
           }
         }
       } );

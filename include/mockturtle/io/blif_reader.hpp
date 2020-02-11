@@ -26,7 +26,6 @@
 /*!
   \file blif_reader.hpp
   \brief Lorina reader for BLIF files
-
   \author Heinz Riener
 */
 
@@ -56,11 +55,8 @@ namespace mockturtle
  * - `get_constant`
  *
    \verbatim embed:rst
-
    Example
-
    .. code-block:: c++
-
       klut_network klut;
       lorina::read_blif( "file.blif", blif_reader( klut ) );
    \endverbatim
@@ -85,6 +81,15 @@ public:
     {
       ntk_.create_po( signals[o], o );
     }
+
+    for ( auto const& latch : latches )
+    {
+      auto const lit = std::get<0>( latch );
+      auto const reset = std::get<1>( latch );
+
+      auto signal = signals[lit];
+      ntk_.create_ri( signal, reset );
+    }
   }
 
   virtual void on_model( const std::string& model_name ) const override
@@ -108,6 +113,68 @@ public:
       ntk_.set_output_name( outputs.size(), name );
     }
     outputs.emplace_back( name );
+  }
+
+  virtual void on_latch( const std::string& input, const std::string& output, const latch_type& l_type, const std::string& control, const latch_init_value& reset ) const override
+  {
+    signals[output] = ntk_.create_ro( output );
+    if constexpr ( has_set_name_v<Ntk> && has_set_output_name_v<Ntk>)
+    {
+      ntk_.set_name( signals[output], output );
+      ntk_.set_output_name( outputs.size() + latches.size(), input );
+    }
+
+    std::string type = l_type == latch_type::FALLING ? "fe" : (l_type == latch_type::RISING ? "re" : (l_type == latch_type::ACTIVE_HIGH ? "ah" : (l_type == latch_type::ACTIVE_LOW ? "al" : (l_type == latch_type::ASYNC ? "as" : ""))));
+    uint32_t r;
+    if(reset == latch_init_value::NONDETERMINISTIC){
+      r = 2;
+    }
+    else if(reset == latch_init_value::ONE){
+      r = 1;
+    }
+    else if(reset == latch_init_value::ZERO){
+      r = 0;
+    }
+    else{
+      r = 3;
+    }
+    
+    latch_info l_info;
+    l_info.control = control;
+    l_info.init = r;
+    l_info.type = type;
+    // std::cout << "5 adding to latch_information\n";
+    ntk_._storage->latch_information[ntk_.get_node(signals[output])] = l_info;
+    latches.emplace_back( std::make_tuple( input, r, type, control, "" ) );
+  }
+
+  virtual void on_latch( const std::string& input, const std::string& output, const latch_init_value& reset ) const override
+  {
+    signals[output] = ntk_.create_ro( output );
+    if constexpr ( has_set_name_v<Ntk> && has_set_output_name_v<Ntk>)
+    {
+      ntk_.set_name( signals[output], output );
+      ntk_.set_output_name( outputs.size() + latches.size(), input );
+    }
+    uint32_t r;
+    if(reset == latch_init_value::NONDETERMINISTIC){
+      r = 2;
+    }
+    else if(reset == latch_init_value::ONE){
+      r = 1;
+    }
+    else if(reset == latch_init_value::ZERO){
+      r = 0;
+    }
+    else{
+      r = 3;
+    }
+    latch_info l_info;
+    l_info.control = "";
+    l_info.init = r;
+    l_info.type = "";
+    ntk_._storage->latch_information[ntk_.get_node(signals[output])] = l_info;
+    latches.emplace_back( std::make_tuple( input, r, "", "", "" ) );
   }
 
   virtual void on_gate( const std::vector<std::string>& inputs, const std::string& output, const output_cover_t& cover ) const override
@@ -162,6 +229,7 @@ public:
       assert( signals.find( i ) != signals.end() );
       input_signals.push_back( signals.at( i ) );
     }
+
     signals[output] = ntk_.create_node( input_signals, tt );
   }
 
@@ -177,6 +245,7 @@ private:
 
   mutable std::map<std::string, signal<Ntk>> signals;
   mutable std::vector<std::string> outputs;
+  mutable std::vector<std::tuple<std::string, int8_t, std::string, std::string, std::string>> latches;
 }; /* blif_reader */
 
 } /* namespace mockturtle */

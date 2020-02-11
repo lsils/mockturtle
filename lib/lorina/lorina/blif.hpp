@@ -26,7 +26,6 @@
 /*!
   \file blif.hpp
   \brief Implements blif parser
-
   \author Heinz Riener
 */
 
@@ -50,6 +49,24 @@ class blif_reader
 public:
   /*! \brief Type of the output cover as truth table. */
   using output_cover_t = std::vector<std::pair<std::string, std::string>>;
+  /*! Latch input values */
+  enum latch_init_value
+  {
+    ZERO = 0 /*!< Initialized with 0 */
+  , ONE /*!< Initialized with 1 */
+  , NONDETERMINISTIC /*!< Not initialized (non-deterministic value) */
+  , UNKNOWN
+  };
+
+  enum latch_type
+  {
+    FALLING = 0
+  , RISING
+  , ACTIVE_HIGH
+  , ACTIVE_LOW
+  , ASYNC
+  , NONE
+  };
 
 public:
   /*! \brief Callback method for parsed model.
@@ -77,6 +94,22 @@ public:
   virtual void on_output( const std::string& name ) const
   {
     (void)name;
+  }
+
+  virtual void on_latch( const std::string& input, const std::string& output, const latch_type& type, const std::string& control, const latch_init_value& reset ) const
+  {
+    (void)input;
+    (void)output;
+    (void)type;
+    (void)control;
+    (void)reset;
+  }
+
+  virtual void on_latch( const std::string& input, const std::string& output, const latch_init_value& reset ) const
+  {
+    (void)input;
+    (void)output;
+    (void)reset;
   }
 
   /*! \brief Callback method for parsed gate.
@@ -141,6 +174,16 @@ public:
     if ( first_output ) _os << std::endl << ".output ";
     _os << name << " ";
     first_output = false;
+  }
+
+  virtual void on_latch( const std::string& input, const std::string& output, const latch_type& type, const std::string& control, const latch_init_value& init ) const
+  {
+    _os << std::endl << fmt::format( ".latch {0} {1} {2} {3} {4}", input, output, type, control, init ) << std::endl;
+  }
+
+  virtual void on_latch( const std::string& input, const std::string& output, const latch_init_value& init ) const
+  {
+    _os << std::endl << fmt::format( ".latch {0} {1} {2}", input, output, init ) << std::endl;
   }
 
   virtual void on_gate( const std::vector<std::string>& inputs, const std::string& output, const output_cover_t& cover ) const
@@ -261,9 +304,109 @@ inline return_code read_blif( std::istream& in, const blif_reader& reader, diagn
         {
           auto const s = detail::trim_copy( input );
           on_action.declare_known( s );
+          
           reader.on_input( s );
         }
         return true;
+      }
+
+      /* .latch <list of whitespace separated strings> */
+      if ( detail::starts_with( line, ".latch" ) )
+      {
+        std::string const latch_declaration = line.substr( 6 );
+        std::string elements;
+        std::vector<std::string> latch_elements = detail::split( detail::trim_copy( latch_declaration ), " " );
+        if ( latch_elements.size() == 3 )
+        {
+          std::string input = latch_elements[0];
+          std::string output = latch_elements[1];
+          std::string latch_init = latch_elements[2];
+
+          blif_reader::latch_init_value reset;
+          if ( latch_init == "0" )
+          {
+            reset = blif_reader::latch_init_value::ZERO;
+          }
+          else if ( latch_init == "1" )
+          {
+            reset = blif_reader::latch_init_value::ONE;
+          }
+          else if ( latch_init == "2" )
+          {
+            reset = blif_reader::latch_init_value::NONDETERMINISTIC;
+          }
+          else{
+            reset = blif_reader::latch_init_value::UNKNOWN;
+          }
+          on_action.declare_known( output );
+          reader.on_latch(input, output, reset);
+          on_action.compute_dependencies(output);
+
+          return true;
+        }
+        else
+        {
+          if ( latch_elements.size() == 5 )
+          {
+            std::string input = latch_elements[0];
+            std::string output = latch_elements[1];
+            std::string type = latch_elements[2];
+            std::string control = latch_elements[3];
+            std::string latch_init = latch_elements[4];
+
+            blif_reader::latch_type l_type;
+            if ( type == "fe" )
+            {
+              l_type = blif_reader::latch_type::FALLING;
+            }
+            else if ( type == "re" )
+            {
+              l_type = blif_reader::latch_type::RISING;
+            }
+            else if ( type == "ah" )
+            {
+              l_type = blif_reader::latch_type::ACTIVE_HIGH;
+            }
+            else if ( type == "al" )
+            {
+              l_type = blif_reader::latch_type::ACTIVE_LOW;
+            }
+            else 
+            {
+              l_type = blif_reader::latch_type::ASYNC;
+            }
+
+            blif_reader::latch_init_value reset;
+            if ( latch_init == "0" )
+            {
+              reset = blif_reader::latch_init_value::ZERO;
+            }
+            else if ( latch_init == "1" )
+            {
+              reset = blif_reader::latch_init_value::ONE;
+            }
+            else if ( latch_init == "2" )
+            {
+              reset = blif_reader::latch_init_value::NONDETERMINISTIC;
+            }
+            else{
+              reset = blif_reader::latch_init_value::UNKNOWN;
+            }
+
+            on_action.declare_known( output );
+            reader.on_latch(input, output, l_type, control, reset);
+            on_action.compute_dependencies(output);
+          }
+          else if ( diag )
+          {
+            diag->report( diagnostic_level::error,
+                      fmt::format( "latch format not supported `{0}`", line ) );
+
+            result = return_code::parse_error;
+          }
+          
+          return true;
+        }
       }
 
       /* .outputs <list of whitespace separated strings> */
@@ -272,7 +415,8 @@ inline return_code read_blif( std::istream& in, const blif_reader& reader, diagn
         std::string const output_declaration = line.substr( 8 );
         for ( const auto& output : detail::split( detail::trim_copy( output_declaration ), " " ) )
         {
-          reader.on_output( detail::trim_copy( output ) );
+          auto const s = detail::trim_copy( output );
+          reader.on_output( s );
         }
         return true;
       }
