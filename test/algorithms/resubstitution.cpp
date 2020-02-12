@@ -3,10 +3,12 @@
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/fanout_view.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/algorithms/xmg_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
 #include <mockturtle/io/write_verilog.hpp>
 
@@ -89,3 +91,47 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 1 );
 }
+
+TEST_CASE( "Resubstitution of XMG", "[resubstitution]" )
+{
+  xmg_network xmg;
+
+  const auto a = xmg.create_pi();
+  const auto b = xmg.create_pi();
+  const auto c = xmg.create_pi();
+
+  const auto g = xmg.create_maj( a, xmg.create_maj( a, b, c ), c );
+  const auto h = xmg.create_xor3( a, xmg.create_xor3( a, b, c ), c );
+  xmg.create_po( g );
+  xmg.create_po( h );
+  std::cout << xmg.get_node(g) <<" " <<   xmg.get_node(h) << std::endl;
+
+  CHECK( xmg.size() == 8 );
+  CHECK( xmg.num_pis() == 3 );
+  CHECK( xmg.num_pos() == 2 );
+  CHECK( xmg.num_gates() == 4 );
+
+  const auto tt1 = simulate<kitty::static_truth_table<3>>( xmg )[0];
+  const auto tt2 = simulate<kitty::static_truth_table<3>>( xmg )[1];
+  CHECK( tt1._bits == 0xe8 );
+  CHECK( tt2._bits == 0xcc );
+
+  using view_t = depth_view<fanout_view<xmg_network>>;
+  fanout_view<xmg_network> fanout_view{xmg};
+  view_t resub_view{fanout_view};
+
+  xmg_resubstitution( resub_view );
+
+  xmg = cleanup_dangling( xmg );
+
+  /* check equivalence */
+  const auto tt_opt1 = simulate<kitty::static_truth_table<3>>( xmg )[0];
+  const auto tt_opt2 = simulate<kitty::static_truth_table<3>>( xmg )[1];
+  CHECK( tt_opt1._bits == tt1._bits );
+  CHECK( tt_opt2._bits == tt2._bits );
+
+  CHECK( xmg.size() == 5 );
+  CHECK( xmg.num_pis() == 3 );
+  CHECK( xmg.num_pos() == 2 );
+  CHECK( xmg.num_gates() == 1 );
+} 
