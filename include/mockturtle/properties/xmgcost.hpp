@@ -73,6 +73,7 @@ struct xmg_cost_params
     fmt::print( "#total_xor3 = {} / #total_maj = {} / #xor2 = {} / #xor3 = {} / #actual_maj = {} / #remaining_maj = {} \n", total_xor3, total_maj, actual_xor2, actual_xor3, actual_maj, remaining_maj );
   }
 };
+
 template<class Ntk>
 uint32_t num_inverters( Ntk const& ntk )
 {
@@ -108,6 +109,7 @@ uint32_t num_inverters( Ntk const& ntk )
  *
  * \param ntk Network
  */
+
 template<class Ntk>
 uint32_t num_dangling_inputs( Ntk const& ntk )
 {

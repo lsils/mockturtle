@@ -63,10 +63,10 @@ inline uint64_t rdb( const TT& tt )
 template<typename TT>
 inline uint64_t db( const TT& tt, const TT& rel_tt )
 {
-  return kitty::count_ones( ~tt & ~rel_tt ) * kitty::count_ones( tt & rel_tt ) + kitty::count_ones( ~tt & rel_tt ) * kitty::count_ones( tt & ~rel_tt ); 
+  return kitty::count_ones( ~tt & ~rel_tt ) * kitty::count_ones( tt & rel_tt ) + kitty::count_ones( ~tt & rel_tt ) * kitty::count_ones( tt & ~rel_tt );
 }
 
-} /* detail */
+} // namespace detail
 
 struct xmg_resub_stats
 {
@@ -100,12 +100,12 @@ struct xmg_resub_stats
   {
     fmt::print( "[i] kernel: xmg_resub_functor\n" );
     fmt::print( "[i] constant-resub {:6d}                                                           ({:>5.2f} secs)\n",
-                              num_const_accepts, to_seconds( time_resubC ) );
+                num_const_accepts, to_seconds( time_resubC ) );
     fmt::print( "[i]        0-resub {:6d}                                                           ({:>5.2f} secs)\n",
-                              num_div0_accepts, to_seconds( time_resub0 ) );
+                num_div0_accepts, to_seconds( time_resub0 ) );
     fmt::print( "[i]        1-resub {:6d} = {:6d} XOR3 + {:6d} XNOR3 + {:6d} MAJ3 + {:6d} NOT-MAJ3  ({:>5.2f} secs)\n",
-                              num_div1_accepts, num_div1_xor3_accepts, num_div1_xnor3_accepts, num_div1_maj3_accepts, num_div1_not_maj3_accepts,
-                              to_seconds( time_resub1 ) );
+                num_div1_accepts, num_div1_xor3_accepts, num_div1_xnor3_accepts, num_div1_maj3_accepts, num_div1_not_maj3_accepts,
+                to_seconds( time_resub1 ) );
     fmt::print( "[i] filtering candidates: {:6d} candidates in first loop + {:6d} candidates in second loop\n", num_filtered0, num_filtered1 );
   }
 }; /* xmg_resub_stats */
@@ -120,11 +120,7 @@ public:
 
 public:
   explicit xmg_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
-    : ntk( ntk )
-    , sim( sim )
-    , divs( divs )
-    , num_divs( num_divs )
-    , st( st )
+      : ntk( ntk ), sim( sim ), divs( divs ), num_divs( num_divs ), st( st )
   {
   }
 
@@ -134,8 +130,8 @@ public:
 
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
-        return resub_const( root, required );
-      } );
+      return resub_const( root, required );
+    } );
     if ( g )
     {
       ++st.num_const_accepts;
@@ -145,8 +141,8 @@ public:
 
     /* consider equal nodes */
     g = call_with_stopwatch( st.time_resub0, [&]() {
-        return resub_div0( root, required );
-      } );
+      return resub_div0( root, required );
+    } );
     if ( g )
     {
       ++st.num_div0_accepts;
@@ -159,8 +155,8 @@ public:
 
     /* consider adding one gate */
     g = call_with_stopwatch( st.time_resub1, [&]() {
-        return resub_div1( root, required );
-      } );
+      return resub_div1( root, required );
+    } );
     if ( g )
     {
       ++st.num_div1_accepts;
@@ -202,14 +198,14 @@ public:
   struct divisor
   {
     explicit divisor( uint32_t node, int32_t entropy )
-      : node( node )
-      , entropy( entropy )
-    {}
+        : node( node ), entropy( entropy )
+    {
+    }
 
     uint32_t node;
     int32_t entropy;
   };
-  
+
   std::optional<signal> resub_div1( node const& root, uint32_t required )
   {
     (void)required;
@@ -225,7 +221,7 @@ public:
     }
     std::sort( std::rbegin( sorted_divs ), std::rend( sorted_divs ),
                [&]( auto const& u, auto const& v ) {
-                 return u.entropy < v.entropy; 
+                 return u.entropy < v.entropy;
                } );
 
     for ( auto i = 0u; i < sorted_divs.size(); ++i )
@@ -241,9 +237,9 @@ public:
         auto const s1 = ntk.make_signal( sorted_divs.at( j ).node );
         auto const& tt1 = sim.get_tt( s1 );
         auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
-        
+
         int64_t const db_s1 = sorted_divs.at( j ).entropy;
-        if ( ( 2u*db_s1 ) < bound0 )
+        if ( ( 2u * db_s1 ) < bound0 )
         {
           st.num_filtered0 += ( sorted_divs.size() - j - 1 ) * ( sorted_divs.size() - j );
           break;
@@ -262,7 +258,7 @@ public:
             st.num_filtered1 += sorted_divs.size() - k - 1;
             break;
           }
-          
+
           if ( tt == detail::ternary_xor( tt0, tt1, tt2 ) )
           {
             /* XOR3 */
@@ -292,96 +288,6 @@ public:
     }
     return std::nullopt;
   }
-
-#if 0
-  std::optional<signal> resub_div1( node const& root, uint32_t required )
-  {
-    (void)required;
-    auto const& tt = sim.get_tt( ntk.make_signal( root ) );
-    int32_t const root_rdb = detail::rdb( tt );
-
-    /* copy divisors */
-    std::vector<uint32_t> sorted_divs( std::begin( divs ), std::begin( divs ) + num_divs );    
-    assert( sorted_divs.size() == num_divs );
-    
-    /* sort divisors */
-    std::sort( std::begin( sorted_divs ), std::end( sorted_divs ),
-               [&]( auto i, auto j ) {
-                 auto const s0 = ntk.make_signal( i );
-                 auto const s1 = ntk.make_signal( j );
-                 auto const& tt0 = sim.get_tt( s0 );
-                 auto const& tt1 = sim.get_tt( s1 );
-                 return detail::db( tt0, tt ) < detail::db( tt1, tt ); 
-               } );
-    std::reverse( std::begin( sorted_divs ), std::end( sorted_divs ) );
-
-    for ( auto i = 0u; i < sorted_divs.size(); ++i )
-    {
-      auto const s0 = ntk.make_signal( sorted_divs.at( i ) );
-      auto const& tt0 = sim.get_tt( s0 );
-      auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
-
-      int64_t const db_s0 = detail::db( tt, tt0 );
-      int64_t const bound0 = root_rdb - db_s0;
-      
-      for ( auto j = i + 1; j < sorted_divs.size(); ++j )
-      {
-        auto const s1 = ntk.make_signal( sorted_divs.at( j ) );
-        auto const& tt1 = sim.get_tt( s1 );
-        auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
-        
-        int64_t const db_s1 = detail::db( tt, tt1 );
-        if ( ( 2u*db_s1 ) < bound0 )
-        {
-          st.num_filtered0 += ( sorted_divs.size() - j - 1 ) * ( sorted_divs.size() - j );
-          break;
-        }
-
-        int64_t const bound1 = root_rdb - db_s0 - db_s1;
-
-        for ( auto k = j + 1; k < sorted_divs.size(); ++k )
-        {
-          auto const s2 = ntk.make_signal( sorted_divs.at( k ) );
-          auto const& tt2 = sim.get_tt( s2 );
-          auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
-
-          int64_t const db_s2 = detail::db( tt, tt2 );          
-          if ( db_s2 < bound1 )
-          {
-            st.num_filtered1 += sorted_divs.size() - k - 1;
-            break;
-          }
-          
-          if ( tt == detail::ternary_xor( tt0, tt1, tt2 ) )
-          {
-            /* XOR3 */
-            ++st.num_div1_xor3_accepts;
-            return sim.get_phase( root ) ? !ntk.create_xor3( a, b, c ) : ntk.create_xor3( a, b, c );
-          }
-          else if ( tt == detail::ternary_xor( ~tt0, tt1, tt2 ) )
-          {
-            /* XNOR3 */
-            ++st.num_div1_xnor3_accepts;
-            return sim.get_phase( root ) ? !ntk.create_xor3( !a, b, c ) : ntk.create_xor3( !a, b, c );
-          }
-          else if ( tt == kitty::ternary_majority( tt0, tt1, tt2 ) )
-          {
-            /* MAJ3 */
-            ++st.num_div1_maj3_accepts;
-            return sim.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
-          }
-          else if ( tt == kitty::ternary_majority( ~tt0, tt1, tt2 ) )
-          {
-            /* NOT-MAJ3 */
-            ++st.num_div1_not_maj3_accepts;
-            return sim.get_phase( root ) ? !ntk.create_maj( !a, b, c ) : ntk.create_maj( !a, b, c );
-          }
-        }
-      }
-    }
-    return std::nullopt;
-  }
-#endif
 
 private:
   Ntk& ntk;
