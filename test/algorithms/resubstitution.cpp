@@ -2,7 +2,6 @@
 
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/fanout_view.hpp>
-#include <mockturtle/views/fanout_view2.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
@@ -37,8 +36,8 @@ TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
   const auto tt = simulate<kitty::static_truth_table<2>>( aig )[0];
   CHECK( tt._bits == 0x8 );
 
-  using view_t = depth_view<fanout_view2<aig_network>>;
-  fanout_view2<aig_network> fanout_view{aig};
+  using view_t = depth_view<fanout_view<aig_network>>;
+  fanout_view<aig_network> fanout_view{aig};
   view_t resub_view{fanout_view};
 
   aig_resubstitution( resub_view );
@@ -74,8 +73,8 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   const auto tt = simulate<kitty::static_truth_table<3>>( mig )[0];
   CHECK( tt._bits == 0xe8 );
 
-  using view_t = depth_view<fanout_view2<mig_network>>;
-  fanout_view2<mig_network> fanout_view{mig};
+  using view_t = depth_view<fanout_view<mig_network>>;
+  fanout_view<mig_network> fanout_view{mig};
   view_t resub_view{fanout_view};
 
   mig_resubstitution( resub_view );
@@ -112,8 +111,8 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
 
   resubstitution_params ps;
 
-  using view_t = depth_view<fanout_view2<xag_network>>;
-  fanout_view2<xag_network> fanout_view{xag};
+  using view_t = depth_view<fanout_view<xag_network>>;
+  fanout_view<xag_network> fanout_view{xag};
   view_t resub_view{fanout_view};
   resubstitution_minmc_withDC( resub_view , ps);
 
