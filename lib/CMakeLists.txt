@@ -40,7 +40,7 @@ endif()
 
 if (NOT TARGET percy)
   add_library(percy INTERFACE) # >v0.1.2
-  target_include_directories(percy SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/percy mockturtle)
+  target_include_directories(percy SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/percy)
   target_compile_definitions(percy INTERFACE DISABLE_NAUTY)
 
   set(THREADS_PREFER_PTHREAD_FLAG ON)
