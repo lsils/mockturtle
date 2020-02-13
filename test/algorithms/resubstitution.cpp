@@ -106,7 +106,6 @@ TEST_CASE( "Resubstitution of XMG", "[resubstitution]" )
   const auto h = xmg.create_xor3( a, xmg.create_xor3( a, b, c ), c );
   xmg.create_po( g );
   xmg.create_po( h );
-  std::cout << xmg.get_node(g) <<" " <<   xmg.get_node(h) << std::endl;
 
   CHECK( xmg.size() == 8 );
   CHECK( xmg.num_pis() == 3 );
