@@ -164,8 +164,8 @@ public:
       }
 
       std::vector<signal<Ntk>> leaves( mffc.num_pis() );
-      mffc.foreach_pi( [&]( auto const& n, auto j ) {
-        leaves[j] = ntk.make_signal( n );
+      mffc.foreach_pi( [&]( auto const& m, auto j ) {
+        leaves[j] = ntk.make_signal( m );
       } );
 
       default_simulator<kitty::dynamic_truth_table> sim( mffc.num_pis() );
@@ -210,6 +210,7 @@ public:
 
       if ( gain > 0 || ( ps.allow_zero_gain && gain == 0 ) )
       {
+
         ++_candidates;
         _estimated_gain += gain;
         ntk.substitute_node( n, new_f );
