@@ -11,7 +11,6 @@ matrix:
   include:
   - os: linux
     dist: trusty
-    sudo: required
     compiler: gcc
     addons:
       apt:
@@ -22,7 +21,6 @@ matrix:
     env: COMPILER=g++-7
   - os: linux
     dist: trusty
-    sudo: required
     compiler: gcc
     addons:
       apt:
@@ -33,7 +31,6 @@ matrix:
     env: COMPILER=g++-8
   - os: linux
     dist: trusty
-    sudo: required
     compiler: clang
     addons:
       apt:
