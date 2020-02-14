@@ -112,7 +112,7 @@
 #include "mockturtle/views/immutable_view.hpp"
 #include "mockturtle/views/topo_view.hpp"
 #include "mockturtle/views/window_view.hpp"
-#include "mockturtle/views/fanout_view2.hpp"
+#include "mockturtle/views/fanout_view.hpp"
 #include "mockturtle/views/names_view.hpp"
 #include "mockturtle/views/mapping_view.hpp"
 #include "mockturtle/views/fanout_view.hpp"
