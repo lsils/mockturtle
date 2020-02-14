@@ -19,10 +19,12 @@
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/satlut_mapping.hpp>
 #include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/xmg_resub.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/write_bench.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/views/depth_view.hpp>
@@ -300,6 +302,22 @@ TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis"
   } );
 
   CHECK( v == std::vector<uint32_t>{{0, 31, 152, 50, 176, 79, 215, 134, 411, 869, 293}} );
+}
+
+TEST_CASE( "Test quality improvement for XMG3 Resubstitution", "[quality]" )
+{
+
+  const auto v = foreach_benchmark<xmg_network>( [&]( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    resubstitution_params ps;
+    resubstitution_stats st;
+    ps.max_pis = 8u;
+    ps.max_inserts = 1u;
+    xmg_resubstitution( ntk, ps, &st );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+  CHECK( v == std::vector<uint32_t>{{0, 38, 46, 22, 62, 72, 76, 75, 265, 888, 189}} );
 }
 
 #endif
