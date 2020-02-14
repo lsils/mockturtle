@@ -19,10 +19,12 @@
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/satlut_mapping.hpp>
 #include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/xmg_resub.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/write_bench.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/views/depth_view.hpp>
