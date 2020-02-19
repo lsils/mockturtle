@@ -333,7 +333,6 @@ TEST_CASE( "Test quality improvement for XMG3 Resubstitution", "[quality]" )
     ps.max_inserts = 1u;
     xmg_resubstitution( ntk, ps, &st );
     ntk = cleanup_dangling( ntk );
-    st.report();
     return before - ntk.num_gates();
   } );
 
