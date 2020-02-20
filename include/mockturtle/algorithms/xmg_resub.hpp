@@ -221,7 +221,9 @@ public:
     }
     std::sort( std::rbegin( sorted_divs ), std::rend( sorted_divs ),
                [&]( auto const& u, auto const& v ) {
-                 return u.entropy < v.entropy;
+                 if ( u.entropy == v.entropy )
+                    return u.node < v.node;
+                 return u.entropy < v.entropy ;
                } );
 
     for ( auto i = 0u; i < sorted_divs.size(); ++i )
