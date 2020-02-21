@@ -46,6 +46,7 @@
 #include "cnf.hpp"
 #include "cleanup.hpp"
 #include <percy/solvers/bsat2.hpp>
+#include "reconv_cut2.hpp"
 
 namespace mockturtle
 {
@@ -102,12 +103,19 @@ struct simresub_stats
   /* time for divisor collection */
   stopwatch<>::duration time_divs{0};
 
+  /* time for checking implications (containment) */
+  stopwatch<>::duration time_collect_unate_divisors{0};
+
   /* time for doing substitution */
   stopwatch<>::duration time_substitute{0};
 
-  /* time & number of equal node substitutions */
+  /* time & number of r == d (equal) node substitutions */
   stopwatch<>::duration time_resub0{0};
   uint32_t num_div0_accepts{0};
+
+  /* time & number of r == d1 &| d2 node substitutions */
+  stopwatch<>::duration time_resub1{0};
+  uint32_t num_div1_accepts{0};
 
   /*! \brief Initial network size (before resubstitution) */
   uint64_t initial_size{0};
@@ -411,7 +419,9 @@ public:
           return true; /* next */
 
         /* use all the PIs as the cut */
-        auto const leaves = PIs;
+        //auto const leaves = PIs;
+        cut_manager<Ntk> mgr( ps.max_pis );
+        auto const leaves = reconv_driven_cut( mgr, ntk, n );
         
         /* evaluate this cut */
         auto const g = call_with_stopwatch( st.time_eval, [&]() {
@@ -422,12 +432,14 @@ public:
         /* update progress bar */
         candidates++;
         st.estimated_gain += last_gain;
-        
         /* update network */
         call_with_stopwatch( st.time_substitute, [&]() {
             ntk.substitute_node( n, *g );
           });
-
+        /* re-simulate */
+        call_with_stopwatch( st.time_sim, [&]() {
+            simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, tts, sim );
+          });
         return true; /* next */
       });
   }
@@ -692,6 +704,26 @@ private:
     if ( ps.max_inserts == 0 || num_mffc == 1 )
       return std::nullopt;
 
+    /* collect level one divisors */
+    call_with_stopwatch( st.time_collect_unate_divisors, [&]() {
+        collect_unate_divisors( root, required );
+      });
+
+    /* consider equal nodes */
+    g = call_with_stopwatch( st.time_resub1, [&]() {
+        return resub_div1( root, required );
+      } );
+    if ( g )
+    {
+      ++st.num_div1_accepts;
+      last_gain = num_mffc - 1;
+      return g; /* accepted resub */
+    }
+
+    if ( ps.max_inserts == 1 || num_mffc == 2 )
+      return std::nullopt;
+
+
     return std::nullopt;
   }
 
@@ -699,18 +731,20 @@ private:
   {
     (void)required;
     auto const tt = tts[root];
-    for ( auto i = 0u; i < num_divs; ++i )
+
+    //for ( auto i = 0u; i < num_divs; ++i )
+    for ( int i = num_divs-1; i >= 0; --i )
     {
       auto const d = divs.at( i );
       if ( tt == tts[d] || tt == ~tts[d] )
       {
         solver.add_var();
-        auto nlit = make_lit( solver.nr_vars() - 1 );
+        auto nlit = make_lit( solver.nr_vars()-1 );
         solver.add_clause( {literals[root], literals[d], nlit} );
         solver.add_clause( {literals[root], lit_not( literals[d] ), lit_not( nlit )} );
         solver.add_clause( {lit_not( literals[root] ), literals[d], lit_not( nlit )} );
         solver.add_clause( {lit_not( literals[root] ), lit_not( literals[d] ), nlit} );
-        std::vector<pabc::lit> assumptions( 1, lit_not_cond( nlit, (tt == ~tts[d]) ) );
+        std::vector<pabc::lit> assumptions( 1, lit_not_cond( nlit, (tt == tts[d]) ) );
       
         const auto res = call_with_stopwatch( st.time_sat, [&]() {
           return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
@@ -719,8 +753,8 @@ private:
         if ( res == percy::synth_result::success ) /* CEX found */
         {
           std::vector<bool> pattern;
-          for ( auto i = 1u; i <= ntk.num_pis(); ++i )
-            pattern.push_back(solver.var_value( i ));
+          for ( auto j = 1u; j <= ntk.num_pis(); ++j )
+            pattern.push_back(solver.var_value( j ));
           if ( sim.add_pattern(pattern) )
           {
             fStop = true;
@@ -735,6 +769,168 @@ private:
         }
         else /* proved equal */
           return ( tt == tts[d] )? ntk.make_signal( d ): !ntk.make_signal( d );
+      }
+    }
+
+    return std::nullopt;
+  }
+
+  void collect_unate_divisors( node const& root, uint32_t required )
+  {
+    udivs.clear();
+
+    auto const& tt = tts[root];
+    for ( auto i = 0u; i < num_divs; ++i )
+    {
+      auto const d = divs.at( i );
+
+      if ( ntk.level( d ) > required - 1 )
+        continue;
+
+      auto const& tt_d = tts[d];
+
+      /* check positive containment */
+      if ( kitty::implies( tt_d, tt ) )
+      {
+        udivs.positive_divisors.emplace_back( ntk.make_signal( d ) );
+        continue;
+      }
+
+      /* check negative containment */
+      if ( kitty::implies( tt, tt_d ) )
+      {
+        udivs.negative_divisors.emplace_back( ntk.make_signal( d ) );
+        continue;
+      }
+
+      udivs.next_candidates.emplace_back( ntk.make_signal( d ) );
+    }
+  }
+
+  std::optional<signal> resub_div1( node const& root, uint32_t required )
+  {
+    (void)required;
+    auto const& tt = tts[root];
+
+    /* check for positive unate divisors */
+    for ( auto i = 0u; i < udivs.positive_divisors.size(); ++i )
+    {
+      auto const& s0 = udivs.positive_divisors.at( i );
+
+      for ( auto j = i + 1; j < udivs.positive_divisors.size(); ++j )
+      {
+        auto const& s1 = udivs.positive_divisors.at( j );
+
+        auto const& tt_s0 = tts[s0];
+        auto const& tt_s1 = tts[s1];
+
+        if ( ( tt_s0 | tt_s1 ) == tt )
+        {
+          solver.add_var();
+          auto nlit = make_lit( solver.nr_vars()-1 );
+          solver.add_clause( {literals[root], literals[ntk.get_node(s0)], literals[ntk.get_node(s1)], nlit} );
+          solver.add_clause( {literals[root], lit_not( literals[ntk.get_node(s0)] ), lit_not( nlit )} );
+          solver.add_clause( {literals[root], lit_not( literals[ntk.get_node(s1)] ), lit_not( nlit )} );
+          solver.add_clause( {lit_not( literals[root] ), literals[ntk.get_node(s0)], literals[ntk.get_node(s1)], lit_not( nlit )} );
+          solver.add_clause( {lit_not( literals[root] ), lit_not( literals[ntk.get_node(s0)] ), nlit} );
+          solver.add_clause( {lit_not( literals[root] ), lit_not( literals[ntk.get_node(s1)] ), nlit} );
+          std::vector<pabc::lit> assumptions( 1, lit_not( nlit ) );
+        
+          const auto res = call_with_stopwatch( st.time_sat, [&]() {
+            return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
+          });
+          
+          if ( res == percy::synth_result::success ) /* CEX found */
+          {
+            std::vector<bool> pattern;
+            for ( auto j = 1u; j <= ntk.num_pis(); ++j )
+              pattern.push_back(solver.var_value( j ));
+            if ( sim.add_pattern(pattern) )
+            {
+              fStop = true;
+              return std::nullopt; /* number of generated patterns exceeds limit */
+            }
+            ++st.num_cex;
+  
+            /* re-simulate */
+            call_with_stopwatch( st.time_sim, [&]() {
+              simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, tts, sim );
+            });
+          }
+          else /* proved substitution */
+          {
+            auto g = ntk.create_or( s0, s1 );
+            /* update CNF */
+            literals.resize( ntk.size() );
+            solver.add_var();
+            literals[g] = make_lit( solver.nr_vars()-1 );
+            solver.add_clause( {lit_not( literals[ntk.get_node(s0)] ), literals[g]} );
+            solver.add_clause( {lit_not( literals[ntk.get_node(s1)] ), literals[g]} );
+            solver.add_clause( {literals[ntk.get_node(s0)], literals[ntk.get_node(s1)], lit_not( literals[g] )} );
+            return g;
+          }
+        }
+      }
+    }
+
+    /* check for negative unate divisors */
+    for ( auto i = 0u; i < udivs.negative_divisors.size(); ++i )
+    {
+      auto const& s0 = udivs.negative_divisors.at( i );
+
+      for ( auto j = i + 1; j < udivs.negative_divisors.size(); ++j )
+      {
+        auto const& s1 = udivs.negative_divisors.at( j );
+
+        auto const& tt_s0 = tts[s0];
+        auto const& tt_s1 = tts[s1];
+
+        if ( ( tt_s0 & tt_s1 ) == tt )
+        {
+          solver.add_var();
+          auto nlit = make_lit( solver.nr_vars()-1 );
+          solver.add_clause( {literals[root], literals[s0], nlit} );
+          solver.add_clause( {literals[root], literals[s1], nlit} );
+          solver.add_clause( {literals[root], lit_not( literals[s0] ), lit_not( literals[s1] ), lit_not( nlit )} );
+          solver.add_clause( {lit_not( literals[root] ), literals[s0], lit_not( nlit )} );
+          solver.add_clause( {lit_not( literals[root] ), literals[s1], lit_not( nlit )} );
+          solver.add_clause( {lit_not( literals[root] ), lit_not( literals[s0] ), lit_not( literals[s1] ), nlit} );
+          std::vector<pabc::lit> assumptions( 1, lit_not( nlit ) );
+        
+          const auto res = call_with_stopwatch( st.time_sat, [&]() {
+            return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
+          });
+          
+          if ( res == percy::synth_result::success ) /* CEX found */
+          {
+            std::vector<bool> pattern;
+            for ( auto j = 1u; j <= ntk.num_pis(); ++j )
+              pattern.push_back(solver.var_value( j ));
+            if ( sim.add_pattern(pattern) )
+            {
+              fStop = true;
+              return std::nullopt; /* number of generated patterns exceeds limit */
+            }
+            ++st.num_cex;
+  
+            /* re-simulate */
+            call_with_stopwatch( st.time_sim, [&]() {
+              simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, tts, sim );
+            });
+          }
+          else /* proved substitution */
+          {
+            auto g = ntk.create_and( s0, s1 );
+            /* update CNF */
+            literals.resize( ntk.size() );
+            solver.add_var();
+            literals[g] = make_lit( solver.nr_vars()-1 );
+            solver.add_clause( {lit_not( literals[g] ), literals[s0]} );
+            solver.add_clause( {lit_not( literals[g] ), literals[s1]} );
+            solver.add_clause( {lit_not( literals[s0] ), lit_not( literals[s1] ), literals[g]} );
+            return g;
+          }
+        }
       }
     }
 

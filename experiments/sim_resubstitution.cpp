@@ -42,11 +42,12 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, float, float, bool> exp( "sim_resubstitution", "benchmark", "#PI", "size", "size_after", "#pat aug", "#cex", "#const", "#div0", "total time", "sim time", "SAT time", "sub. time", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, float, float, bool> exp( "sim_resubstitution", "benchmark", "#PI", "size", "size_after", "#pat aug", "#cex", "#const", "#div0", "#div1", "total time", "sim time", "SAT time", "sub. time", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    if ( benchmark == "hyp" || benchmark == "log2" ) continue;
+    if ( benchmark == "hyp" || benchmark == "mem_ctrl" || benchmark == "log2" || benchmark == "div" || benchmark == "sqrt") continue;
+    //if ( benchmark != "sin" ) continue;
 
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig, orig;
@@ -56,10 +57,11 @@ int main()
     simresub_params ps;
     simresub_stats st;
 
-    ps.num_pattern_base = (benchmark=="div"||benchmark=="mem_ctrl")? 17u: 15u;
-    ps.num_reserved_blocks = (benchmark=="div"||benchmark=="mem_ctrl")? 200u: 100u;
+    ps.num_pattern_base = (benchmark=="div")? 17u: 15u;
+    ps.num_reserved_blocks = (benchmark=="div")? 200u: 100u;
     // assert ( ps.num_reserved_blocks < (1 << (num_pattern_base-6)) );
-    ps.max_pis = 8u;
+    ps.max_pis = 10u; //100u; //8u;
+    ps.max_divisors = 500u;
     ps.max_inserts = 1u;
     ps.progress = false;
 
@@ -72,8 +74,8 @@ int main()
     //cec_ps.conflict_limit = 100;
     //const auto cec_res = equivalence_checking( *miter<aig_network>( orig, aig ), cec_ps );
     //const auto cec = true; //cec_res && *cec_res;
-
-    exp( benchmark, aig.num_pis(), orig.num_gates(), aig.num_gates(), st.num_generated_patterns, st.num_cex, st.num_constant, st.num_div0_accepts, to_seconds( st.time_total ), to_seconds( st.time_sim ), to_seconds( st.time_sat ), to_seconds( st.time_substitute ), cec );
+    std::cout << "num_total_divisors = " << st.num_total_divisors << std::endl;
+    exp( benchmark, aig.num_pis(), orig.num_gates(), aig.num_gates(), st.num_generated_patterns, st.num_cex, st.num_constant, st.num_div0_accepts, st.num_div1_accepts, to_seconds( st.time_total ), to_seconds( st.time_sim ), to_seconds( st.time_sat ), to_seconds( st.time_substitute ), cec );
   }
 
   exp.save();
