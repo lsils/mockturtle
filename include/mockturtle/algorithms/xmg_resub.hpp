@@ -48,24 +48,6 @@ inline TT ternary_xor( const TT& first, const TT& second, const TT& third )
   return kitty::ternary_operation( first, second, third, []( auto a, auto b, auto c ) { return ( ( a ^ b ) ^ c ); } );
 }
 
-template<typename TT>
-inline uint64_t count_zeroes( const TT& tt )
-{
-  return kitty::count_ones( ~tt );
-}
-
-template<typename TT>
-inline uint64_t rdb( const TT& tt )
-{
-  return count_zeroes( tt ) * kitty::count_ones( tt );
-}
-
-template<typename TT>
-inline uint64_t db( const TT& tt, const TT& rel_tt )
-{
-  return kitty::count_ones( ~tt & ~rel_tt ) * kitty::count_ones( tt & rel_tt ) + kitty::count_ones( ~tt & rel_tt ) * kitty::count_ones( tt & ~rel_tt );
-}
-
 } // namespace detail
 
 struct xmg_resub_stats
@@ -210,14 +192,14 @@ public:
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
-    int32_t const root_rdb = detail::rdb( tt );
+    int32_t const root_rdb = absolute_disinguishing_power( tt );
 
     std::vector<divisor> sorted_divs;
     for ( auto it = std::begin( divs ), ie = std::begin( divs ) + num_divs; it != ie; ++it )
     {
       auto const s = ntk.make_signal( *it );
       auto const& tt_s = sim.get_tt( s );
-      sorted_divs.emplace_back( *it, detail::db( tt_s, tt ) );
+      sorted_divs.emplace_back( *it, relative_distinguishing_power( tt_s, tt ) );
     }
     std::sort( std::rbegin( sorted_divs ), std::rend( sorted_divs ),
                [&]( auto const& u, auto const& v ) {

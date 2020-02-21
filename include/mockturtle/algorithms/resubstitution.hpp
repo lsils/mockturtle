@@ -43,6 +43,7 @@
 #include <kitty/constructors.hpp>
 #include <kitty/print.hpp>
 #include <kitty/static_truth_table.hpp>
+#include <kitty/properties.hpp>
 
 namespace mockturtle
 {
