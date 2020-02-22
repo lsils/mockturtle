@@ -107,7 +107,7 @@ public:
   {
   }
 
-  std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
+  std::optional<signal> operator()( node const& root, TT& care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
     assert( is_const0( ~care ) );
 
@@ -150,7 +150,7 @@ public:
     return std::nullopt;
   }
 
-  std::optional<signal> resub_const( node const& root, TT care, uint32_t required ) const
+  std::optional<signal> resub_const( node const& root, TT& care, uint32_t required ) const
   {
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
@@ -166,7 +166,7 @@ public:
     return std::nullopt;
   }
 
-  std::optional<signal> resub_div0( node const& root, TT care, uint32_t required ) const
+  std::optional<signal> resub_div0( node const& root, TT& care, uint32_t required ) const
   {
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
@@ -198,7 +198,7 @@ public:
     int32_t entropy;
   };
 
-  std::optional<signal> resub_div1( node const& root, TT care, uint32_t required )
+  std::optional<signal> resub_div1( node const& root, TT& care, uint32_t required )
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
@@ -326,7 +326,6 @@ void xmg_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   resubstitution_stats st;
   if ( ps.max_pis == 8 )
   {
-    //using truthtable_t = kitty::static_truth_table<8>;
     using truthtable_t = kitty::dynamic_truth_table;
     using truthtable_dc_t = kitty::dynamic_truth_table;
     using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
