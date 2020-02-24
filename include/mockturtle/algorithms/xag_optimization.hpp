@@ -91,7 +91,7 @@ public:
         }
         else if ( lfi[n].size() == 1 )
         {
-          old2new[n] = dest.make_signal( lfi[n].front() );
+          old2new[n] = old2new[lfi[n].front()];
         }
         else
         {
