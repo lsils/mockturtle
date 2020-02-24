@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 
@@ -119,26 +120,7 @@ private:
   std::vector<xag_network::node> merge( std::vector<xag_network::node> const& s1, std::vector<xag_network::node> const& s2 ) const
   {
     std::vector<xag_network::node> s;
-    auto it1 = s1.begin();
-    auto it2 = s2.begin();
-    while ( it1 != s1.end() && it2 != s2.end() )
-    {
-      if ( *it1 < *it2 )
-      {
-        s.push_back( *it1++ );
-      }
-      else if ( *it2 < *it1 )
-      {
-        s.push_back( *it2++ );
-      }
-      else
-      {
-        ++it1;
-        ++it2;
-      }
-    }
-    std::copy( it1, s1.end(), std::back_inserter( s ) );
-    std::copy( it2, s2.end(), std::back_inserter( s ) );
+    std::set_symmetric_difference( s1.cbegin(), s1.cend(), s2.cbegin(), s2.cend(), std::back_inserter( s ) );
     return s;
   }
 
