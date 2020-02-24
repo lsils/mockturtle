@@ -141,7 +141,7 @@ private:
  */
 xag_network xag_constant_fanin_optimization( xag_network const& xag )
 {
-  return cleanup_dangling( detail::xag_constant_fanin_optimization_impl( xag ).run() );
+  return detail::xag_constant_fanin_optimization_impl( xag ).run();
 }
 
 /*! \brief Optimizes some AND gates using satisfiability don't cares
