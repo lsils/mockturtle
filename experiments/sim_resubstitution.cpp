@@ -47,7 +47,7 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     if ( benchmark == "hyp" || benchmark == "mem_ctrl" || benchmark == "log2" || benchmark == "div" || benchmark == "sqrt") continue;
-    //if ( benchmark != "sin" ) continue;
+    //if ( benchmark != "voter" ) continue;
 
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig, orig;
@@ -67,6 +67,8 @@ int main()
 
     sim_resubstitution( aig, ps, &st );
     aig = cleanup_dangling( aig );
+    //sim_resubstitution( aig, ps, &st );
+    //aig = cleanup_dangling( aig );
     //orig = cleanup_dangling( orig );
 
     const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
@@ -74,7 +76,7 @@ int main()
     //cec_ps.conflict_limit = 100;
     //const auto cec_res = equivalence_checking( *miter<aig_network>( orig, aig ), cec_ps );
     //const auto cec = true; //cec_res && *cec_res;
-    std::cout << "num_total_divisors = " << st.num_total_divisors << std::endl;
+    //std::cout << "num_total_divisors = " << st.num_total_divisors << std::endl;
     exp( benchmark, aig.num_pis(), orig.num_gates(), aig.num_gates(), st.num_generated_patterns, st.num_cex, st.num_constant, st.num_div0_accepts, st.num_div1_accepts, to_seconds( st.time_total ), to_seconds( st.time_sim ), to_seconds( st.time_sat ), to_seconds( st.time_substitute ), cec );
   }
 
