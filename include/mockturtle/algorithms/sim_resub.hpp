@@ -359,7 +359,7 @@ public:
 
   explicit simresub_impl( NtkBase& ntkbase, Ntk& ntk, simresub_params const& ps, simresub_stats& st )
     : ntkbase( ntkbase ), ntk( ntk ), ps( ps ), st( st ), 
-      tts( ntkbase ), sim( ntk.num_pis(), ps.num_pattern_base, ps.num_reserved_blocks ), literals( node_literals( ntkbase ) )
+      tts( ntkbase ), phase( ntkbase, false ), sim( ntk.num_pis(), ps.num_pattern_base, ps.num_reserved_blocks ), literals( node_literals( ntkbase ) )
   {
     st.initial_size = ntk.num_gates(); 
 
@@ -663,6 +663,8 @@ private:
           std::cout<< "still const node " << n << std::endl;
       }
     } );*/
+
+    normalizeTT();
   }
 
   std::optional<signal> evaluate( node const& root, std::vector<node> const &leaves )
@@ -727,6 +729,18 @@ private:
     return std::nullopt;
   }
 
+  void normalizeTT()
+  {
+    //return;
+    ntk.foreach_gate( [&]( auto const& n ){
+      if ( kitty::get_bit( tts[n], 0 ) )
+      {
+        phase[n] = true;
+        tts[n] = ~tts[n];
+      }
+    });
+  }
+
   std::optional<signal> resub_div0( node const& root, uint32_t required ) 
   {
     (void)required;
@@ -736,7 +750,7 @@ private:
     for ( int i = num_divs-1; i >= 0; --i )
     {
       auto const d = divs.at( i );
-      if ( tt == tts[d] || tt == ~tts[d] )
+      if ( tt == tts[d] )
       {
         solver.add_var();
         auto nlit = make_lit( solver.nr_vars()-1 );
@@ -744,7 +758,7 @@ private:
         solver.add_clause( {literals[root], lit_not( literals[d] ), lit_not( nlit )} );
         solver.add_clause( {lit_not( literals[root] ), literals[d], lit_not( nlit )} );
         solver.add_clause( {lit_not( literals[root] ), lit_not( literals[d] ), nlit} );
-        std::vector<pabc::lit> assumptions( 1, lit_not_cond( nlit, (tt == tts[d]) ) );
+        std::vector<pabc::lit> assumptions( 1, lit_not_cond( nlit, phase[root] == phase[d] ) );
       
         const auto res = call_with_stopwatch( st.time_sat, [&]() {
           return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
@@ -765,10 +779,11 @@ private:
           /* re-simulate */
           call_with_stopwatch( st.time_sim, [&]() {
             simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, tts, sim );
+            normalizeTT();
           });
         }
         else /* proved equal */
-          return ( tt == tts[d] )? ntk.make_signal( d ): !ntk.make_signal( d );
+          return ( phase[root] == phase[d] )? ntk.make_signal( d ): !ntk.make_signal( d );
       }
     }
 
@@ -826,14 +841,18 @@ private:
 
         if ( ( tt_s0 | tt_s1 ) == tt )
         {
+          auto l_r = lit_not_cond( literals[root], phase[root] );
+          auto l_s0 = lit_not_cond( literals[ntk.get_node(s0)], phase[ntk.get_node(s0)]);
+          auto l_s1 = lit_not_cond( literals[ntk.get_node(s1)], phase[ntk.get_node(s1)]);
+
           solver.add_var();
           auto nlit = make_lit( solver.nr_vars()-1 );
-          solver.add_clause( {literals[root], literals[ntk.get_node(s0)], literals[ntk.get_node(s1)], nlit} );
-          solver.add_clause( {literals[root], lit_not( literals[ntk.get_node(s0)] ), lit_not( nlit )} );
-          solver.add_clause( {literals[root], lit_not( literals[ntk.get_node(s1)] ), lit_not( nlit )} );
-          solver.add_clause( {lit_not( literals[root] ), literals[ntk.get_node(s0)], literals[ntk.get_node(s1)], lit_not( nlit )} );
-          solver.add_clause( {lit_not( literals[root] ), lit_not( literals[ntk.get_node(s0)] ), nlit} );
-          solver.add_clause( {lit_not( literals[root] ), lit_not( literals[ntk.get_node(s1)] ), nlit} );
+          solver.add_clause( {l_r, l_s0, l_s1, nlit} );
+          solver.add_clause( {l_r, lit_not( l_s0 ), lit_not( nlit )} );
+          solver.add_clause( {l_r, lit_not( l_s1 ), lit_not( nlit )} );
+          solver.add_clause( {lit_not( l_r ), l_s0, l_s1, lit_not( nlit )} );
+          solver.add_clause( {lit_not( l_r ), lit_not( l_s0 ), nlit} );
+          solver.add_clause( {lit_not( l_r ), lit_not( l_s1 ), nlit} );
           std::vector<pabc::lit> assumptions( 1, lit_not( nlit ) );
         
           const auto res = call_with_stopwatch( st.time_sat, [&]() {
@@ -855,18 +874,19 @@ private:
             /* re-simulate */
             call_with_stopwatch( st.time_sim, [&]() {
               simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, tts, sim );
+              normalizeTT();
             });
           }
           else /* proved substitution */
           {
-            auto g = ntk.create_or( s0, s1 );
+            auto g = phase[root]? !ntk.create_or( phase[s0]? !s0: s0, phase[s1]? !s1: s1 ) :ntk.create_or( phase[s0]? !s0: s0, phase[s1]? !s1: s1 );
             /* update CNF */
             literals.resize( ntk.size() );
             solver.add_var();
             literals[g] = make_lit( solver.nr_vars()-1 );
-            solver.add_clause( {lit_not( literals[ntk.get_node(s0)] ), literals[g]} );
-            solver.add_clause( {lit_not( literals[ntk.get_node(s1)] ), literals[g]} );
-            solver.add_clause( {literals[ntk.get_node(s0)], literals[ntk.get_node(s1)], lit_not( literals[g] )} );
+            solver.add_clause( {lit_not( l_s0 ), literals[g]} );
+            solver.add_clause( {lit_not( l_s1 ), literals[g]} );
+            solver.add_clause( {l_s0, l_s1, lit_not( literals[g] )} );
             return g;
           }
         }
@@ -887,14 +907,18 @@ private:
 
         if ( ( tt_s0 & tt_s1 ) == tt )
         {
+          auto l_r = lit_not_cond( literals[root], phase[root] );
+          auto l_s0 = lit_not_cond( literals[ntk.get_node(s0)], phase[ntk.get_node(s0)]);
+          auto l_s1 = lit_not_cond( literals[ntk.get_node(s1)], phase[ntk.get_node(s1)]);
+
           solver.add_var();
           auto nlit = make_lit( solver.nr_vars()-1 );
-          solver.add_clause( {literals[root], literals[s0], nlit} );
-          solver.add_clause( {literals[root], literals[s1], nlit} );
-          solver.add_clause( {literals[root], lit_not( literals[s0] ), lit_not( literals[s1] ), lit_not( nlit )} );
-          solver.add_clause( {lit_not( literals[root] ), literals[s0], lit_not( nlit )} );
-          solver.add_clause( {lit_not( literals[root] ), literals[s1], lit_not( nlit )} );
-          solver.add_clause( {lit_not( literals[root] ), lit_not( literals[s0] ), lit_not( literals[s1] ), nlit} );
+          solver.add_clause( {l_r, l_s0, nlit} );
+          solver.add_clause( {l_r, l_s1, nlit} );
+          solver.add_clause( {l_r, lit_not( l_s0 ), lit_not( l_s1 ), lit_not( nlit )} );
+          solver.add_clause( {lit_not( l_r ), l_s0, lit_not( nlit )} );
+          solver.add_clause( {lit_not( l_r ), l_s1, lit_not( nlit )} );
+          solver.add_clause( {lit_not( l_r ), lit_not( l_s0 ), lit_not( l_s1 ), nlit} );
           std::vector<pabc::lit> assumptions( 1, lit_not( nlit ) );
         
           const auto res = call_with_stopwatch( st.time_sat, [&]() {
@@ -916,18 +940,19 @@ private:
             /* re-simulate */
             call_with_stopwatch( st.time_sim, [&]() {
               simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, tts, sim );
+              normalizeTT();
             });
           }
           else /* proved substitution */
           {
-            auto g = ntk.create_and( s0, s1 );
+            auto g = phase[root]? !ntk.create_and( phase[s0]? !s0: s0, phase[s1]? !s1: s1 ) :ntk.create_and( phase[s0]? !s0: s0, phase[s1]? !s1: s1 );
             /* update CNF */
             literals.resize( ntk.size() );
             solver.add_var();
             literals[g] = make_lit( solver.nr_vars()-1 );
-            solver.add_clause( {lit_not( literals[g] ), literals[s0]} );
-            solver.add_clause( {lit_not( literals[g] ), literals[s1]} );
-            solver.add_clause( {lit_not( literals[s0] ), lit_not( literals[s1] ), literals[g]} );
+            solver.add_clause( {lit_not( literals[g] ), l_s0} );
+            solver.add_clause( {lit_not( literals[g] ), l_s1} );
+            solver.add_clause( {lit_not( l_s0 ), lit_not( l_s1 ), literals[g]} );
             return g;
           }
         }
@@ -951,6 +976,7 @@ private:
   bool fStop{false}; /* signal indicating cex limit exceeded */
 
   TT tts;
+  node_map<bool, NtkBase> phase;
   partial_simulator sim;
   node_map<uint32_t, NtkBase> literals;
   percy::bsat_wrapper solver;

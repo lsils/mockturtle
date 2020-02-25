@@ -45,6 +45,8 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
+    if ( benchmark == "hyp" || benchmark == "mem_ctrl" || benchmark == "log2" || benchmark == "div" ) continue;
+
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
@@ -54,6 +56,7 @@ int main()
 
     ps.max_pis = 8u;
     ps.max_inserts = 1u;
+    ps.verbose = true;
     ps.progress = false;
 
     const uint32_t size_before = aig.num_gates();
@@ -67,7 +70,7 @@ int main()
   }
 
   exp.save();
-  exp.compare();
+  exp.table();
 
   return 0;
 }
