@@ -78,6 +78,9 @@ struct resubstitution_params
 
   /*! \brief Use don't cares for optimization. */
   bool use_dont_cares{false};
+
+  /* \brief Window size for don't cares calculation */
+  uint32_t window_size{12u};
 };
 
 /*! \brief Statistics for resubstitution.
@@ -623,7 +626,7 @@ private:
 
     auto care = kitty::create<TT>( leaves.size() );
     if ( ps.use_dont_cares )
-      care = ~satisfiability_dont_cares( ntk, leaves, 12u );
+      care = ~satisfiability_dont_cares( ntk, leaves, ps.window_size );
     else
       care = ~care;
 
