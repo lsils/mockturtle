@@ -111,6 +111,12 @@ public:
   {
     assert( is_const0( ~care ) );
 
+    auto const tt = sim.get_tt( ntk.make_signal( root ) );
+    if ( care.num_vars() > tt.num_vars() )
+      care = kitty::shrink_to( care, tt.num_vars() );
+    else
+      care = kitty::extend_to( care, tt.num_vars() );
+
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
       return resub_const( root, care, required );
@@ -154,10 +160,6 @@ public:
   {
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
-    if ( care.num_vars() > tt.num_vars() )
-      care = kitty::shrink_to( care, tt.num_vars() );
-    else
-      care = kitty::extend_to( care, tt.num_vars() );
 
     if ( binary_and( tt, care ) == sim.get_tt( ntk.get_constant( false ) ) )
     {
@@ -170,10 +172,6 @@ public:
   {
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
-    if ( care.num_vars() > tt.num_vars() )
-      care = kitty::shrink_to( care, tt.num_vars() );
-    else
-      care = kitty::extend_to( care, tt.num_vars() );
     for ( auto i = 0u; i < num_divs; ++i )
     {
       auto const d = divs.at( i );
@@ -202,11 +200,6 @@ public:
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
-
-    if ( care.num_vars() > tt.num_vars() )
-      care = kitty::shrink_to( care, tt.num_vars() );
-    else
-      care = kitty::extend_to( care, tt.num_vars() );
 
     int32_t const root_rdb = absolute_disinguishing_power( tt );
 
