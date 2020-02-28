@@ -36,7 +36,7 @@
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/depth_view.hpp"
-#include "../views/fanout_view2.hpp"
+#include "../views/fanout_view.hpp"
 #include <mockturtle/algorithms/simulation.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -1001,7 +1001,7 @@ void sim_resubstitution( Ntk& ntk, simresub_params const& ps = {}, simresub_stat
   static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
 
-  using resub_view_t = fanout_view2<depth_view<Ntk>>;
+  using resub_view_t = fanout_view<depth_view<Ntk>>;
   depth_view<Ntk> depth_view{ntk};
   resub_view_t resub_view{depth_view};
 
