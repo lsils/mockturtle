@@ -33,7 +33,6 @@
 #pragma once
 
 #include <mockturtle/networks/aig.hpp>
-//#include <mockturtle/algorithms/resubstitution.hpp>
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/depth_view.hpp"
