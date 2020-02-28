@@ -290,4 +290,27 @@ std::vector<uint32_t> runlength_pattern( const TT& tt )
   return pattern;
 }
 
+/*! \brief Returns the absolute distinguishing power of a function
+  The absolute distinguishing power of a function f is the number of
+  distinguishing pair {i,j} of bits, where f(i) != f(j).
+  \param tt Truth table
+*/
+template<typename TT>
+inline uint64_t absolute_disinguishing_power( const TT& tt )
+{
+  return count_zeros( tt ) * count_ones( tt );
+}
+
+/*! brief Returns the relative distinguishing power of a function wrt. to target function
+  Quantifies the number of distinguishing pairs in the target function
+  that can be distinguished by the function.
+  \param tt Truth table of function
+  \param target_tt Truth table of target function
+*/
+template<typename TT>
+inline uint64_t relative_distinguishing_power( const TT& tt, const TT& target_tt )
+{
+  return count_ones( ~tt & ~target_tt ) * count_ones( tt & target_tt ) + count_ones( ~tt & target_tt ) * count_ones( tt & ~target_tt ); 
+}
+
 } // namespace kitty

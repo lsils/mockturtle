@@ -4,8 +4,10 @@
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
 #include <mockturtle/algorithms/node_resynthesis/exact.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
+#include <mockturtle/algorithms/node_resynthesis/xmg3_npn.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
@@ -29,6 +31,27 @@ TEST_CASE( "Cut rewriting of bad MAJ", "[cut_rewriting]" )
   CHECK( mig.num_pis() == 3 );
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 1 );
+}
+
+TEST_CASE("Cut rewriting with XMG3 4-input npn database", "[cut_rewriting]")
+{
+
+    xmg_network xmg;
+    const auto a = xmg.create_pi();
+    const auto b = xmg.create_pi();
+    const auto c = xmg.create_pi();
+
+    const auto h = xmg.create_xor3( a, xmg.create_maj( a, b, c ), c );
+
+    xmg.create_po(h);
+    xmg3_npn_resynthesis<xmg_network> resyn;
+    cut_rewriting( xmg, resyn );
+
+    xmg = cleanup_dangling( xmg );
+    CHECK( xmg.size() == 5 );
+    CHECK( xmg.num_pis() == 3 );
+    CHECK( xmg.num_pos() == 1 );
+    CHECK( xmg.num_gates() == 1 );
 }
 
 TEST_CASE( "Cut rewriting with Akers synthesis", "[cut_rewriting]" )
