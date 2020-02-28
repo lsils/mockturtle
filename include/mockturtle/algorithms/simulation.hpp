@@ -158,6 +158,72 @@ public:
   }
 };
 
+class partial_simulator
+{
+public:
+  partial_simulator() = delete;
+  partial_simulator( unsigned num_pis, unsigned num_pattern_base, unsigned num_reserved_blocks, std::default_random_engine::result_type seed = 0 ) : num_pattern_base( num_pattern_base ), added_bits( 63 )
+  {
+    patterns.resize(num_pis);
+    for ( auto i = 0u; i < num_pis; ++i )
+    {
+      kitty::dynamic_truth_table tt( num_pattern_base );
+      kitty::create_random( tt, seed+i );
+      patterns.at(i) = tt._bits;
+      /* clear the last `num_reserved_blocks` blocks */
+      patterns.at(i).resize( tt.num_blocks() - num_reserved_blocks );
+      patterns.at(i).resize( tt.num_blocks(), 0u );
+    }
+    zero = kitty::dynamic_truth_table( num_pattern_base );
+    current_block = zero.num_blocks() - num_reserved_blocks - 1;
+  }
+
+  kitty::dynamic_truth_table compute_constant( bool value ) const
+  {
+    return value ? ~zero : zero;
+  }
+
+  kitty::dynamic_truth_table compute_pi( uint32_t index ) const
+  {
+    kitty::dynamic_truth_table tt( num_pattern_base );
+    tt._bits = patterns.at( index );
+    return tt;
+  }
+
+  kitty::dynamic_truth_table compute_not( kitty::dynamic_truth_table const& value ) const
+  {
+    return ~value;
+  }
+
+  bool add_pattern( std::vector<bool>& pattern )
+  {
+    if ( ++added_bits >= 64 )
+    {
+      added_bits = 0;
+
+      if ( ++current_block >= zero.num_blocks() ) // if number of blocks(64) of test patterns is not enough
+      {
+        return true;
+      }
+    }
+
+    for ( auto i = 0u; i < pattern.size(); ++i )
+    {
+      if ( pattern.at(i) )
+        patterns.at(i).at(current_block) |= (uint64_t)1u << added_bits;
+    }
+
+    return false;
+  }
+
+private:
+  std::vector<std::vector<uint64_t>> patterns;
+  kitty::dynamic_truth_table zero;
+  unsigned num_pattern_base;
+  unsigned added_bits;
+  unsigned current_block;
+};
+
 /*! \brief Simulates a network with a generic simulator.
  *
  * This is a generic simulation algorithm that can simulate arbitrary values.
