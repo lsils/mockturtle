@@ -293,9 +293,8 @@ public:
     {
       added_bits = 0;
 
-      if ( ++current_block >= zero.num_blocks() ) // if number of blocks(64) test patterns is not enough
+      if ( ++current_block >= zero.num_blocks() ) // if number of blocks(64) of test patterns is not enough
       {
-        //std::cout<< "exceeded!" << std::endl;
         return true;
       }
     }
@@ -614,7 +613,6 @@ private:
     {
       if ( (tts[n] == zero) || (tts[n] == ~zero) )
       {
-        //std::cout<< "const node " << n << std::endl;
         assumptions[0] = lit_not_cond( literals[n], (tts[n] == ~zero) );
       
         const auto res = call_with_stopwatch( st.time_sat, [&]() {
@@ -639,7 +637,6 @@ private:
         else
         {
           //std::cout << "UNSAT: this is a constant node. (" << n << ")" << std::endl;
-          //constant_gates[n] = (tts[n] == ~zero);
           ++st.num_constant;
           auto g = ntk.get_constant( tts[n] == ~zero );
           /* update network */
@@ -652,20 +649,6 @@ private:
 
       return true; /* next gate */
     } );
-  
-    /* just to check completeness */
-    /*auto tts2 = call_with_stopwatch( st.time_sim, [&]() {
-      return simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, sim );
-    });
-
-    ntk.foreach_gate( [&]( auto const& n ) 
-    {
-      if ( (tts2[n] == sim.compute_constant(false)) || (tts2[n] == sim.compute_constant(true)) )
-      {
-        if ( !constant_gates.has(n) )
-          std::cout<< "still const node " << n << std::endl;
-      }
-    } );*/
 
     normalizeTT();
   }
