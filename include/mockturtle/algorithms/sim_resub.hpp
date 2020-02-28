@@ -80,7 +80,7 @@ struct simresub_params
   /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
   uint32_t max_pis{8};
 
-  uint32_t random_seed{0};
+  std::default_random_engine::result_type random_seed{0};
 };
 
 struct simresub_stats
@@ -260,7 +260,7 @@ public:
     for ( auto i = 0u; i < num_pis; ++i )
     {
       kitty::dynamic_truth_table tt( num_pattern_base );
-      kitty::create_random( tt, seed );
+      kitty::create_random( tt, seed+i );
       patterns.at(i) = tt._bits;
       /* clear the last `num_reserved_blocks` blocks */
       patterns.at(i).resize( tt.num_blocks() - num_reserved_blocks );
@@ -287,7 +287,7 @@ public:
     return ~value;
   }
 
-  bool add_pattern( std::vector<bool> pattern )
+  bool add_pattern( std::vector<bool>& pattern )
   {
     if ( ++added_bits >= 64 )
     {
@@ -626,7 +626,10 @@ private:
           for ( auto i = 1u; i <= ntk.num_pis(); ++i )
             pattern.push_back(solver.var_value( i ));
           if ( sim.add_pattern(pattern) )
+          {
+            fStop = true;
             return false; /* number of generated patterns exceeds limit, stop generating */
+          }
           ++st.num_generated_patterns;
 
           /* re-simulate */
@@ -717,7 +720,6 @@ private:
 
   void normalizeTT()
   {
-    //return;
     phase.resize();
     ntk.foreach_gate( [&]( auto const& n ){
       if ( kitty::get_bit( tts[n], 0 ) )
@@ -751,7 +753,7 @@ private:
           return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
         });
         
-        if ( res == percy::synth_result::success ) /* CEX found */
+        if ( res == percy::synth_result::success && !fStop ) /* CEX found */
         {
           std::vector<bool> pattern;
           for ( auto j = 1u; j <= ntk.num_pis(); ++j )
@@ -846,7 +848,7 @@ private:
             return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
           });
           
-          if ( res == percy::synth_result::success ) /* CEX found */
+          if ( res == percy::synth_result::success && !fStop ) /* CEX found */
           {
             std::vector<bool> pattern;
             for ( auto j = 1u; j <= ntk.num_pis(); ++j )
@@ -912,7 +914,7 @@ private:
             return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
           });
           
-          if ( res == percy::synth_result::success ) /* CEX found */
+          if ( res == percy::synth_result::success && !fStop ) /* CEX found */
           {
             std::vector<bool> pattern;
             for ( auto j = 1u; j <= ntk.num_pis(); ++j )
