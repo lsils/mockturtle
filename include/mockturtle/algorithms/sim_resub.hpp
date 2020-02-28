@@ -79,6 +79,8 @@ struct simresub_params
 
   /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
   uint32_t max_pis{8};
+
+  uint32_t random_seed{0};
 };
 
 struct simresub_stats
@@ -252,13 +254,13 @@ class partial_simulator
 {
 public:
   partial_simulator() = delete;
-  partial_simulator( unsigned num_pis, unsigned num_pattern_base, unsigned num_reserved_blocks ) : num_pattern_base( num_pattern_base ), added_bits( 63 )
+  partial_simulator( unsigned num_pis, unsigned num_pattern_base, unsigned num_reserved_blocks, std::default_random_engine::result_type seed = 0 ) : num_pattern_base( num_pattern_base ), added_bits( 63 )
   {
     patterns.resize(num_pis);
     for ( auto i = 0u; i < num_pis; ++i )
     {
       kitty::dynamic_truth_table tt( num_pattern_base );
-      kitty::create_random( tt );
+      kitty::create_random( tt, seed );
       patterns.at(i) = tt._bits;
       /* clear the last `num_reserved_blocks` blocks */
       patterns.at(i).resize( tt.num_blocks() - num_reserved_blocks );
@@ -359,7 +361,7 @@ public:
 
   explicit simresub_impl( NtkBase& ntkbase, Ntk& ntk, simresub_params const& ps, simresub_stats& st )
     : ntkbase( ntkbase ), ntk( ntk ), ps( ps ), st( st ), 
-      tts( ntkbase ), phase( ntkbase, false ), sim( ntk.num_pis(), ps.num_pattern_base, ps.num_reserved_blocks ), literals( node_literals( ntkbase ) )
+      tts( ntkbase ), phase( ntkbase, false ), sim( ntk.num_pis(), ps.num_pattern_base, ps.num_reserved_blocks, ps.random_seed ), literals( node_literals( ntkbase ) )
   {
     st.initial_size = ntk.num_gates(); 
 
