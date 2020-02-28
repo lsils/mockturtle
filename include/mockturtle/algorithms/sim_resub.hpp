@@ -411,9 +411,6 @@ public:
 
         pbar( i, i, candidates, st.estimated_gain );
 
-        if ( ntk.is_dead( n ) )
-          return true; /* next */
-
         /* skip nodes with many fanouts */
         if ( ntk.fanout_size( n ) > ps.skip_fanout_limit_for_roots )
           return true; /* next */
