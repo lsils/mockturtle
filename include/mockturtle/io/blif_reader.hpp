@@ -115,7 +115,7 @@ public:
     outputs.emplace_back( name );
   }
 
-  virtual void on_latch( const std::string& input, const std::string& output, const latch_type& l_type, const std::string& control, const latch_init_value& reset ) const override
+  virtual void on_latch( const std::string& input, const std::string& output, const std::optional<latch_type>& l_type, const std::optional<std::string>& control, const std::optional<latch_init_value>& reset ) const override
   {
     signals[output] = ntk_.create_ro( output );
     if constexpr ( has_set_name_v<Ntk> && has_set_output_name_v<Ntk>)
@@ -124,58 +124,67 @@ public:
       ntk_.set_output_name( outputs.size() + latches.size(), input );
     }
 
-    std::string type = l_type == latch_type::FALLING ? "fe" : (l_type == latch_type::RISING ? "re" : (l_type == latch_type::ACTIVE_HIGH ? "ah" : (l_type == latch_type::ACTIVE_LOW ? "al" : (l_type == latch_type::ASYNC ? "as" : ""))));
-    uint32_t r;
-    if(reset == latch_init_value::NONDETERMINISTIC){
-      r = 2;
+    std::string type = "re";
+    if( l_type.has_value() )
+    {
+      type = l_type == latch_type::FALLING ? "fe" : (l_type == latch_type::RISING ? "re" : (l_type == latch_type::ACTIVE_HIGH ? "ah" : (l_type == latch_type::ACTIVE_LOW ? "al" : (l_type == latch_type::ASYNC ? "as" : ""))));
     }
-    else if(reset == latch_init_value::ONE){
-      r = 1;
-    }
-    else if(reset == latch_init_value::ZERO){
-      r = 0;
-    }
-    else{
-      r = 3;
+
+    uint32_t r = 3;
+    if( reset.has_value() ){
+      if(reset.value() == latch_init_value::NONDETERMINISTIC){
+        r = 2;
+      }
+      else if(reset.value() == latch_init_value::ONE){
+        r = 1;
+      }
+      else if(reset.value() == latch_init_value::ZERO){
+        r = 0;
+      }
+      else{
+        r = 3;
+      }
     }
     
     latch_info l_info;
-    l_info.control = control;
     l_info.init = r;
     l_info.type = type;
-    // std::cout << "5 adding to latch_information\n";
+    if(control.has_value())
+      l_info.control = control.value();
+    else
+      l_info.control = "clock";
     ntk_._storage->latch_information[ntk_.get_node(signals[output])] = l_info;
-    latches.emplace_back( std::make_tuple( input, r, type, control, "" ) );
+    latches.emplace_back( std::make_tuple( input, r, type, l_info.control, "" ) );
   }
 
-  virtual void on_latch( const std::string& input, const std::string& output, const latch_init_value& reset ) const override
-  {
-    signals[output] = ntk_.create_ro( output );
-    if constexpr ( has_set_name_v<Ntk> && has_set_output_name_v<Ntk>)
-    {
-      ntk_.set_name( signals[output], output );
-      ntk_.set_output_name( outputs.size() + latches.size(), input );
-    }
-    uint32_t r;
-    if(reset == latch_init_value::NONDETERMINISTIC){
-      r = 2;
-    }
-    else if(reset == latch_init_value::ONE){
-      r = 1;
-    }
-    else if(reset == latch_init_value::ZERO){
-      r = 0;
-    }
-    else{
-      r = 3;
-    }
-    latch_info l_info;
-    l_info.control = "";
-    l_info.init = r;
-    l_info.type = "";
-    ntk_._storage->latch_information[ntk_.get_node(signals[output])] = l_info;
-    latches.emplace_back( std::make_tuple( input, r, "", "", "" ) );
-  }
+  // virtual void on_latch( const std::string& input, const std::string& output, const latch_init_value& reset ) const override
+  // {
+  //   signals[output] = ntk_.create_ro( output );
+  //   if constexpr ( has_set_name_v<Ntk> && has_set_output_name_v<Ntk>)
+  //   {
+  //     ntk_.set_name( signals[output], output );
+  //     ntk_.set_output_name( outputs.size() + latches.size(), input );
+  //   }
+  //   uint32_t r;
+  //   if(reset == latch_init_value::NONDETERMINISTIC){
+  //     r = 2;
+  //   }
+  //   else if(reset == latch_init_value::ONE){
+  //     r = 1;
+  //   }
+  //   else if(reset == latch_init_value::ZERO){
+  //     r = 0;
+  //   }
+  //   else{
+  //     r = 3;
+  //   }
+  //   latch_info l_info;
+  //   l_info.control = "";
+  //   l_info.init = r;
+  //   l_info.type = "";
+  //   ntk_._storage->latch_information[ntk_.get_node(signals[output])] = l_info;
+  //   latches.emplace_back( std::make_tuple( input, r, "", "", "" ) );
+  // }
 
   virtual void on_gate( const std::vector<std::string>& inputs, const std::string& output, const output_cover_t& cover ) const override
   {
