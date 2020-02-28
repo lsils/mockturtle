@@ -439,6 +439,7 @@ public:
         /* re-simulate */
         call_with_stopwatch( st.time_sim, [&]() {
             simulate_nodes<kitty::dynamic_truth_table, NtkBase, partial_simulator>( ntk, tts, sim );
+            normalizeTT();
           });
         return true; /* next */
       });
@@ -732,6 +733,7 @@ private:
   void normalizeTT()
   {
     //return;
+    phase.resize();
     ntk.foreach_gate( [&]( auto const& n ){
       if ( kitty::get_bit( tts[n], 0 ) )
       {
@@ -881,7 +883,7 @@ private:
           {
             auto g = phase[root]? !ntk.create_or( phase[s0]? !s0: s0, phase[s1]? !s1: s1 ) :ntk.create_or( phase[s0]? !s0: s0, phase[s1]? !s1: s1 );
             /* update CNF */
-            literals.resize( ntk.size() );
+            literals.resize();
             solver.add_var();
             literals[g] = make_lit( solver.nr_vars()-1 );
             solver.add_clause( {lit_not( l_s0 ), literals[g]} );
@@ -947,7 +949,7 @@ private:
           {
             auto g = phase[root]? !ntk.create_and( phase[s0]? !s0: s0, phase[s1]? !s1: s1 ) :ntk.create_and( phase[s0]? !s0: s0, phase[s1]? !s1: s1 );
             /* update CNF */
-            literals.resize( ntk.size() );
+            literals.resize();
             solver.add_var();
             literals[g] = make_lit( solver.nr_vars()-1 );
             solver.add_clause( {lit_not( literals[g] ), l_s0} );
