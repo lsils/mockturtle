@@ -159,6 +159,16 @@ inline uint64_t count_ones( const static_truth_table<NumVars, true>& tt )
 }
 /*! \endcond */
 
+/*! \brief Count zeros in truth table
+
+  \param tt Truth table
+*/
+template<typename TT>
+inline uint64_t count_zeros( const TT& tt )
+{
+  return count_ones( ~tt );
+}
+
 /*! \cond PRIVATE */
 inline int64_t find_first_bit_in_word( uint64_t word )
 {

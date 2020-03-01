@@ -366,4 +366,3 @@ namespace percy
     };
 
 }
-

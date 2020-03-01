@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file xag_constant_fanin_optimization.hpp
-  \brief Finds constant transitive linear fanin to AND gates
+  \file xag_optimization.hpp
+  \brief Various XAG optimization algorithms
 
   \author Mathias Soeken
 */
@@ -35,11 +35,11 @@
 #include <cstdint>
 #include <string>
 
-#include "cleanup.hpp"
-#include "dont_cares.hpp"
 #include "../networks/xag.hpp"
 #include "../utils/node_map.hpp"
 #include "../views/topo_view.hpp"
+#include "cleanup.hpp"
+#include "dont_cares.hpp"
 
 namespace mockturtle
 {
@@ -51,9 +51,7 @@ class xag_constant_fanin_optimization_impl
 {
 public:
   xag_constant_fanin_optimization_impl( xag_network const& xag )
-      : xag( xag ),
-        old2new( xag ),
-        lfi( xag )
+      : xag( xag )
   {
   }
 
@@ -61,13 +59,17 @@ public:
   {
     xag_network dest;
 
+    node_map<xag_network::signal, xag_network> old2new( xag );
+    node_map<std::vector<xag_network::node>, xag_network> lfi( xag );
+
     old2new[xag.get_node( xag.get_constant( false ) )] = dest.get_constant( false );
-    if ( xag.get_node( xag.get_constant( true ) ) != xag.get_node( xag.get_constant( true ) ) )
+    if ( xag.get_node( xag.get_constant( true ) ) != xag.get_node( xag.get_constant( false ) ) )
     {
       old2new[xag.get_node( xag.get_constant( true ) )] = dest.get_constant( true );
     }
     xag.foreach_pi( [&]( auto const& n ) {
       old2new[n] = dest.create_pi();
+      lfi[n].emplace_back( n );
     } );
     topo_view{xag}.foreach_node( [&]( auto const& n ) {
       if ( xag.is_constant( n ) || xag.is_pi( n ) )
@@ -75,79 +77,59 @@ public:
 
       if ( xag.is_xor( n ) )
       {
-        std::vector<xag_network::signal> children;
-        xag.foreach_fanin( n, [&]( auto const& f ) {
-          children.push_back( old2new[xag.get_node( f )] );
-        } );
-        old2new[n] = dest.create_xor( children[0], children[1] );
-      }
-      else /* is AND */
-      {
-        // 1st bool is true, if LFI is empty
-        // 2nd bool is complement flag of child
-        // 3rd is corresponding dest child
-        std::array<std::tuple<bool, bool, xag_network::signal>, 2> lfi_info;
+        std::array<xag_network::signal*, 2> children;
+        std::array<std::vector<xag_network::node>*, 2> clfi;
         xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
-          lfi_info[i] = {compute_lfi( xag.get_node( f ) ).empty(), xag.is_complemented( f ), old2new[xag.get_node( f )] ^ xag.is_complemented(f)};
+          children[i] = &old2new[f];
+          clfi[i] = &lfi[f];
         } );
-
-        if ( std::get<0>( lfi_info[0] ) )
+        lfi[n] = merge( *clfi[0], *clfi[1] );
+        if ( lfi[n].size() == 0 )
         {
-          old2new[n] = std::get<1>( lfi_info[0] ) ? std::get<2>( lfi_info[1] ) : dest.get_constant( false );
+          old2new[n] = dest.get_constant( false );
         }
-        else if ( std::get<0>( lfi_info[1] ) )
+        else if ( lfi[n].size() == 1 )
         {
-          old2new[n] = std::get<1>( lfi_info[1] ) ? std::get<2>( lfi_info[0] ) : dest.get_constant( false );
+          old2new[n] = dest.make_signal( lfi[n].front() );
         }
         else
         {
-          old2new[n] = dest.create_and( std::get<2>( lfi_info[0] ), std::get<2>( lfi_info[1] ) );
+          old2new[n] = dest.create_xor( *children[0], *children[1] );
         }
+      }
+      else /* is AND */
+      {
+        lfi[n].emplace_back( n );
+        std::vector<xag_network::signal> children;
+        xag.foreach_fanin( n, [&]( auto const& f ) {
+          children.push_back( old2new[f] ^ xag.is_complemented( f ) );
+        } );
+        old2new[n] = dest.create_and( children[0], children[1] );
       }
     } );
 
     xag.foreach_po( [&]( auto const& f ) {
-      dest.create_po( old2new[xag.get_node( f )] ^ xag.is_complemented( f ) );
+      dest.create_po( old2new[f] ^ xag.is_complemented( f ) );
     } );
 
     return cleanup_dangling( dest );
   }
 
 private:
-  std::vector<xag_network::node> const& compute_lfi( xag_network::node const& n )
+  std::vector<xag_network::node> merge( std::vector<xag_network::node> const& s1, std::vector<xag_network::node> const& s2 ) const
   {
-    if ( lfi.has( n ) )
-    {
-      return lfi[n];
-    }
-
-    assert( !xag.is_constant( n ) );
-
-    if ( xag.is_pi( n ) || xag.is_and( n ) )
-    {
-      return lfi[n] = {n};
-    }
-
-    // TODO generalize for n-ary XOR
-    assert( xag.is_xor( n ) && xag.fanin_size( n ) == 2u );
-    std::array<std::vector<xag_network::node>, 2> child_lfi;
-    xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      child_lfi[i] = compute_lfi( xag.get_node( f ) );
-    } );
-
-    // merge LFIs
-    std::vector<xag_network::node> node_lfi;
-    auto it1 = child_lfi[0].begin();
-    auto it2 = child_lfi[1].begin();
-    while ( it1 != child_lfi[0].end() && it2 != child_lfi[1].end() )
+    std::vector<xag_network::node> s;
+    auto it1 = s1.begin();
+    auto it2 = s2.begin();
+    while ( it1 != s1.end() && it2 != s2.end() )
     {
       if ( *it1 < *it2 )
       {
-        node_lfi.push_back( *it1++ );
+        s.push_back( *it1++ );
       }
       else if ( *it2 < *it1 )
       {
-        node_lfi.push_back( *it2++ );
+        s.push_back( *it2++ );
       }
       else
       {
@@ -155,19 +137,16 @@ private:
         ++it2;
       }
     }
-    std::copy( it1, child_lfi[0].end(), std::back_inserter( node_lfi ) );
-    std::copy( it2, child_lfi[1].end(), std::back_inserter( node_lfi ) );
-
-    return lfi[n] = node_lfi;
+    std::copy( it1, s1.end(), std::back_inserter( s ) );
+    std::copy( it2, s2.end(), std::back_inserter( s ) );
+    return s;
   }
 
 private:
   xag_network const& xag;
-  node_map<xag_network::signal, xag_network> old2new;
-  unordered_node_map<std::vector<xag_network::node>, xag_network> lfi;
 };
 
-}
+} // namespace detail
 
 /*! \brief Optimizes some AND gates by computing transitive linear fanin
  *
@@ -180,7 +159,7 @@ private:
  */
 xag_network xag_constant_fanin_optimization( xag_network const& xag )
 {
-  return detail::xag_constant_fanin_optimization_impl( xag ).run();
+  return cleanup_dangling( detail::xag_constant_fanin_optimization_impl( xag ).run() );
 }
 
 /*! \brief Optimizes some AND gates using satisfiability don't cares
@@ -202,7 +181,8 @@ xag_network xag_dont_cares_optimization( xag_network const& xag )
   satisfiability_dont_cares_checker<xag_network> checker( xag );
 
   topo_view<xag_network>{xag}.foreach_node( [&]( auto const& n ) {
-    if ( xag.is_constant( n ) || xag.is_pi( n ) ) return;
+    if ( xag.is_constant( n ) || xag.is_pi( n ) )
+      return;
 
     std::array<xag_network::signal, 2> fanin;
     xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
@@ -228,7 +208,7 @@ xag_network xag_dont_cares_optimization( xag_network const& xag )
 
   xag.foreach_po( [&]( auto const& f ) {
     dest.create_po( old_to_new[f] ^ xag.is_complemented( f ) );
-  });
+  } );
 
   return dest;
 }
