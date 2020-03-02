@@ -75,7 +75,7 @@ namespace mockturtle
  * \param os Output stream
  */
 template<class Ntk>
-void write_blif( Ntk const& topo_ntk, std::ostream& os, write_blif_params const& ps = {} )
+void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
@@ -90,7 +90,7 @@ void write_blif( Ntk const& topo_ntk, std::ostream& os, write_blif_params const&
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
 
-  // topo_view topo_ntk{ntk};
+  topo_view topo_ntk{ntk};
 
   /* write model */
   os << ".model top\n";
