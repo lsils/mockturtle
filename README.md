@@ -22,7 +22,7 @@ and prints them for each node.
 #include <mockturtle/mockturtle.hpp>
 #include <lorina/aiger.hpp>
 
-aig_network aig;
+mockturtle::aig_network aig;
 lorina::read_aiger( "file.aig", mockturtle::aiger_reader( aig ) );
 
 const auto cuts = cut_enumeration( aig );

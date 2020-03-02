@@ -7,11 +7,10 @@ script:
   - make all
   - ./test/run_tests "~[quality]"
 
-matrix:
+jobs:
   include:
   - os: linux
     dist: trusty
-    sudo: required
     compiler: gcc
     addons:
       apt:
@@ -22,7 +21,6 @@ matrix:
     env: COMPILER=g++-7
   - os: linux
     dist: trusty
-    sudo: required
     compiler: gcc
     addons:
       apt:
@@ -33,7 +31,6 @@ matrix:
     env: COMPILER=g++-8
   - os: linux
     dist: trusty
-    sudo: required
     compiler: clang
     addons:
       apt:
@@ -45,7 +42,7 @@ matrix:
           - g++-7
     env: COMPILER=clang++-6.0
   - os: osx
-    osx_image: xcode9.4
+    osx_image: xcode10.2
     compiler: clang
     before_install:
       - brew update
