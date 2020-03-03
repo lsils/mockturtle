@@ -51,7 +51,7 @@ struct partial_truth_table
     \param reserved_bits Number of bits to be reserved (at least) initially
   */
   explicit partial_truth_table( int num_bits, int reserved_bits = 0 )
-      : _bits( ( num_bits + reserved_bits ) ? ( ( num_bits + reserved_bits - 1 ) >> 6 + 1 ) : 0 ),
+      : _bits( ( num_bits + reserved_bits ) ? ( (( num_bits + reserved_bits - 1 ) >> 6) + 1 ) : 0 ),
         _num_bits( num_bits )
   {
   }
@@ -126,7 +126,7 @@ struct partial_truth_table
     \param other Other truth table
   */
   template<class TT, typename = std::enable_if_t<is_truth_table<TT>::value>>
-  dynamic_truth_table& operator=( const TT& other )
+  partial_truth_table& operator=( const TT& other )
   {
     _bits.resize( other.num_blocks() );
     std::copy( other.begin(), other.end(), begin() );
@@ -144,7 +144,7 @@ struct partial_truth_table
   */
   inline void mask_bits() noexcept
   {
-    int s = _num_bits ? ( ( _num_bits - 1 ) >> 6 + 1 ) : 0;
+    unsigned s = _num_bits ? ( (( _num_bits - 1 ) >> 6) + 1 ) : 0;
     for ( auto i = s; i < _bits.size(); ++i )
     {
       _bits[i] &= 0u;
@@ -159,7 +159,7 @@ struct partial_truth_table
   {
     _num_bits = num_bits;
 
-    int needed_blocks = num_bits ? ( ( num_bits - 1 ) >> 6 + 1 ) : 0;
+    unsigned needed_blocks = num_bits ? ( (( num_bits - 1 ) >> 6) + 1 ) : 0;
     if ( needed_blocks > _bits.size() )
     {
       _bits.resize( needed_blocks, 0u );
@@ -181,8 +181,55 @@ template<>
 struct is_truth_table<kitty::partial_truth_table> : std::true_type {};
 
 
+/*************************************************************************
+* Stuff originally in operators.hpp and operations.hpp and algorithm.hpp *
+**************************************************************************/
 
+/*! \brief Computes a predicate based on two truth tables
 
+  The dimensions of `first` and `second` must match.  This is ensured
+  at compile-time for static truth tables, but at run-time for dynamic
+  truth tables.
 
+  \param first First truth table
+  \param second Second truth table
+  \param op Binary operation that takes as input two words (`uint64_t`) and returns a Boolean
+
+  \return true or false based on the predicate
+ */
+template<typename Fn>
+bool binary_predicate( const partial_truth_table& first, const partial_truth_table& second, Fn&& op )
+{
+  assert( first.num_bits() == second.num_bits() );
+
+  return std::equal( first.begin(), first.end(), second.begin(), op );
+}
+
+/*! \brief Checks whether two truth tables are equal
+
+  \param first First truth table
+  \param second Second truth table
+*/
+inline bool equal( const partial_truth_table& first, const partial_truth_table& second )
+{
+  if ( first.num_bits() != second.num_bits() )
+  {
+    return false;
+  }
+
+  return binary_predicate( first, second, std::equal_to<>() );
+}
+
+/*! \brief Operator for equal */
+inline bool operator==( const partial_truth_table& first, const partial_truth_table& second )
+{
+  return equal( first, second );
+}
+
+/*! \brief Operator for not equal */
+inline bool operator!=( const partial_truth_table& first, const partial_truth_table& second )
+{
+  return !equal( first, second );
+}
 
 } // namespace kitty
