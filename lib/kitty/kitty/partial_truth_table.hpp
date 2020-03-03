@@ -38,6 +38,7 @@
 
 #include "detail/constants.hpp"
 #include "traits.hpp"
+#include "operations.hpp"
 
 namespace kitty
 {
@@ -67,7 +68,7 @@ struct partial_truth_table
   /*! Constructs a new dynamic truth table instance with the same number of variables. */
   inline partial_truth_table construct() const
   {
-    return partial_truth_table( _num_bits );
+    return partial_truth_table( _num_bits, ( _bits.size() << 6 ) - _num_bits );
   }
 
   /*! Returns number of (allocated) blocks.
@@ -182,7 +183,7 @@ struct is_truth_table<kitty::partial_truth_table> : std::true_type {};
 
 
 /*************************************************************************
-* Stuff originally in operators.hpp and operations.hpp and algorithm.hpp *
+* Stuff originally in operations.hpp and algorithm.hpp *
 **************************************************************************/
 
 /*! \brief Computes a predicate based on two truth tables
@@ -218,6 +219,16 @@ inline bool equal( const partial_truth_table& first, const partial_truth_table& 
   }
 
   return binary_predicate( first, second, std::equal_to<>() );
+}
+
+/************************************
+* Stuff originally in operators.hpp *
+*************************************/
+
+/*! \brief Operator for unary_not */
+inline partial_truth_table operator~( const partial_truth_table& tt )
+{
+  return unary_not( tt );
 }
 
 /*! \brief Operator for equal */

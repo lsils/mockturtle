@@ -42,6 +42,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
 #include <kitty/static_truth_table.hpp>
+#include <kitty/partial_truth_table.hpp>
 
 namespace mockturtle
 {
@@ -158,7 +159,16 @@ public:
   }
 };
 
+template<class SimulationType>
 class partial_simulator
+{
+public:
+  partial_simulator() = delete;
+};
+
+/* partial simulator implementation with dynamic_truth_table */
+template<>
+class partial_simulator<kitty::dynamic_truth_table>
 {
 public:
   partial_simulator() = delete;
@@ -222,6 +232,68 @@ private:
   unsigned num_pattern_base;
   unsigned added_bits;
   unsigned current_block;
+};
+
+/* partial simulator implementation with partial_truth_table */
+template<>
+class partial_simulator<kitty::partial_truth_table>
+{
+public:
+  partial_simulator() = delete;
+  partial_simulator( unsigned num_pis, unsigned num_pattern_base, unsigned num_reserved_blocks, std::default_random_engine::result_type seed = 0 )
+     : num_bits( 1 << num_pattern_base )
+  {
+    patterns.resize(num_pis);
+    for ( auto i = 0u; i < num_pis; ++i )
+    {
+      kitty::partial_truth_table tt( num_bits, num_reserved_blocks << 6 );
+      kitty::create_random( tt, seed+i );
+      patterns.at(i) = tt._bits;
+    }
+  }
+
+  kitty::partial_truth_table compute_constant( bool value ) const
+  {
+    kitty::partial_truth_table zero( num_bits, ( patterns.at(0).size() << 6 ) - num_bits );
+    return value ? ~zero : zero;
+  }
+
+  kitty::partial_truth_table compute_pi( uint32_t index ) const
+  {
+    kitty::partial_truth_table tt( num_bits, ( patterns.at(0).size() << 6 ) - num_bits );
+    tt._bits = patterns.at( index );
+    return tt;
+  }
+
+  kitty::partial_truth_table compute_not( kitty::partial_truth_table const& value ) const
+  {
+    return ~value;
+  }
+
+  /*bool add_pattern( std::vector<bool>& pattern )
+  {
+    if ( ++added_bits >= 64 )
+    {
+      added_bits = 0;
+
+      if ( ++current_block >= zero.num_blocks() ) // if number of blocks(64) of test patterns is not enough
+      {
+        return true;
+      }
+    }
+
+    for ( auto i = 0u; i < pattern.size(); ++i )
+    {
+      if ( pattern.at(i) )
+        patterns.at(i).at(current_block) |= (uint64_t)1u << added_bits;
+    }
+
+    return false;
+  }*/
+
+private:
+  std::vector<std::vector<uint64_t>> patterns;
+  unsigned num_bits;
 };
 
 /*! \brief Simulates a network with a generic simulator.
