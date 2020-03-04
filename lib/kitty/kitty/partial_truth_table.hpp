@@ -65,7 +65,7 @@ struct partial_truth_table
    */
   partial_truth_table() : _num_bits( 0 ) {}
 
-  /*! Constructs a new dynamic truth table instance with the same number of variables. */
+  /*! Constructs a new dynamic truth table instance with the same number of bits and blocks. */
   inline partial_truth_table construct() const
   {
     return partial_truth_table( _num_bits, ( _bits.size() << 6 ) - _num_bits );
@@ -74,6 +74,10 @@ struct partial_truth_table
   /*! Returns number of (allocated) blocks.
    */
   inline auto num_blocks() const noexcept { return _bits.size(); }
+
+  /*! Returns number of (used) blocks.
+   */
+  inline unsigned num_used_blocks() const noexcept { return _num_bits ? ( ( ( _num_bits - 1 ) >> 6 ) + 1 ) : 0; }
 
   /*! Returns number of (used) bits.
    */
@@ -145,14 +149,13 @@ struct partial_truth_table
   */
   inline void mask_bits() noexcept
   {
-    unsigned s = _num_bits ? ( (( _num_bits - 1 ) >> 6) + 1 ) : 0;
-    for ( auto i = s; i < _bits.size(); ++i )
+    for ( auto i = num_used_blocks(); i < _bits.size(); ++i )
     {
       _bits[i] &= 0u;
     }
     if ( _num_bits % 64 )
     {
-      _bits[s-1] &= 0xFFFFFFFFFFFFFFFF << (_num_bits % 64);
+      _bits[num_used_blocks() - 1] &= 0xFFFFFFFFFFFFFFFF << (_num_bits % 64);
     }
   }
 
@@ -182,9 +185,66 @@ template<>
 struct is_truth_table<kitty::partial_truth_table> : std::true_type {};
 
 
-/*************************************************************************
-* Stuff originally in operations.hpp and algorithm.hpp *
-**************************************************************************/
+/************************************
+* Stuff originally in algorithm.hpp *
+*************************************/
+
+/*! \brief Perform bitwise binary operation on two truth tables
+
+  The dimensions of `first` and `second` must match.  This is ensured
+  at compile-time for static truth tables, but at run-time for dynamic
+  truth tables.
+
+  \param first First truth table
+  \param second Second truth table
+  \param op Binary operation that takes as input two words (`uint64_t`) and returns a word
+
+  \return new constructed truth table of same type and dimensions
+ */
+template<typename Fn>
+auto binary_operation( const partial_truth_table& first, const partial_truth_table& second, Fn&& op )
+{
+  assert( first.num_bits() == second.num_bits() );
+
+  auto result = first.construct();
+  std::transform( first.cbegin(), first.cbegin() + first.num_used_blocks(), second.cbegin(), result.begin(), op );
+  result.mask_bits();
+  return result;
+}
+
+/*! \brief Perform bitwise ternary operation on three truth tables
+
+  The dimensions of `first`, `second`, and `third` must match.  This
+  is ensured at compile-time for static truth tables, but at run-time
+  for dynamic truth tables.
+
+  \param first First truth table
+  \param second Second truth table
+  \param third Third truth table
+  \param op Ternary operation that takes as input two words (`uint64_t`) and returns a word
+
+  \return new constructed truth table of same type and dimensions
+ */
+template<typename Fn>
+auto ternary_operation( const partial_truth_table& first, const partial_truth_table& second, const partial_truth_table& third, Fn&& op )
+{
+  assert( first.num_bits() == second.num_bits() && second.num_bits() == third.num_bits() );
+
+  auto result = first.construct();
+  auto it1 = first.cbegin();
+  const auto it1_e = first.cbegin() + first.num_used_blocks();
+  auto it2 = second.cbegin();
+  auto it3 = third.cbegin();
+  auto it = result.begin();
+
+  while ( it1 != it1_e )
+  {
+    *it++ = op( *it1++, *it2++, *it3++ );
+  }
+
+  result.mask_bits();
+  return result;
+}
 
 /*! \brief Computes a predicate based on two truth tables
 
@@ -203,8 +263,15 @@ bool binary_predicate( const partial_truth_table& first, const partial_truth_tab
 {
   assert( first.num_bits() == second.num_bits() );
 
-  return std::equal( first.begin(), first.end(), second.begin(), op );
+  return std::equal( first.begin(), first.begin() + first.num_used_blocks(), second.begin(), op );
 }
+
+/**************************************
+* Stuff originally in operations.hpp  *
+* - Many other functions may not work *
+*   either, but they maybe also don't *
+*   make sense for partial TT.        *
+***************************************/
 
 /*! \brief Checks whether two truth tables are equal
 
@@ -223,12 +290,49 @@ inline bool equal( const partial_truth_table& first, const partial_truth_table& 
 
 /************************************
 * Stuff originally in operators.hpp *
+* - The same as dynamic_truth_table.*
 *************************************/
 
 /*! \brief Operator for unary_not */
 inline partial_truth_table operator~( const partial_truth_table& tt )
 {
   return unary_not( tt );
+}
+
+/*! \brief Operator for binary_and */
+inline partial_truth_table operator&( const partial_truth_table& first, const partial_truth_table& second )
+{
+  return binary_and( first, second );
+}
+
+/*! \brief Operator for binary_and and assign */
+inline void operator&=( partial_truth_table& first, const partial_truth_table& second )
+{
+  first = binary_and( first, second );
+}
+
+/*! \brief Operator for binary_or */
+inline partial_truth_table operator|( const partial_truth_table& first, const partial_truth_table& second )
+{
+  return binary_or( first, second );
+}
+
+/*! \brief Operator for binary_or and assign */
+inline void operator|=( partial_truth_table& first, const partial_truth_table& second )
+{
+  first = binary_or( first, second );
+}
+
+/*! \brief Operator for binary_xor */
+inline partial_truth_table operator^( const partial_truth_table& first, const partial_truth_table& second )
+{
+  return binary_xor( first, second );
+}
+
+/*! \brief Operator for binary_xor and assign */
+inline void operator^=( partial_truth_table& first, const partial_truth_table& second )
+{
+  first = binary_xor( first, second );
 }
 
 /*! \brief Operator for equal */
@@ -242,5 +346,52 @@ inline bool operator!=( const partial_truth_table& first, const partial_truth_ta
 {
   return !equal( first, second );
 }
+
+/*! \brief Operator for less_than */
+inline bool operator<( const partial_truth_table& first, const partial_truth_table& second )
+{
+  return less_than( first, second );
+}
+
+/*
+  Need to overwrite the following functions in operations.hpp
+  in order to allow shift operators:
+  - shift_left
+  - shift_left_inplace
+  - shift_right
+  - shift_right_inplace
+*/
+
+///*! \brief Operator for left_shift */
+//inline partial_truth_table operator<<( const partial_truth_table& tt, uint64_t shift )
+//{
+//  return shift_left( tt, shift );
+//}
+//
+///*! \brief Operator for left_shift_inplace */
+//inline void operator<<=( partial_truth_table& tt, uint64_t shift )
+//{
+//  shift_left_inplace( tt, shift );
+//}
+//
+///*! \brief Operator for right_shift */
+//inline partial_truth_table operator>>( const partial_truth_table& tt, uint64_t shift )
+//{
+//  return shift_right( tt, shift );
+//}
+//
+///*! \brief Operator for right_shift_inplace */
+//inline void operator>>=( partial_truth_table& tt, uint64_t shift )
+//{
+//  shift_right_inplace( tt, shift );
+//}
+
+/*****************************************
+* Stuff originally in bit_operations.hpp *
+* - find_first_bit_difference and        *
+*   find_last_bit_difference should be   *
+*   overwritten; others should work.     *
+******************************************/
+
 
 } // namespace kitty
