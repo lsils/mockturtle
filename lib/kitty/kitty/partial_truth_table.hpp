@@ -145,7 +145,8 @@ struct partial_truth_table
   /*! Masks the number of valid truth table bits.
 
     If there are reserved blocks or if not all the bits in the last block are used up,
-    we block out the remaining bits (fill with zero).  
+    we block out the remaining bits (fill with zero).
+    Bits are used from LSB.
   */
   inline void mask_bits() noexcept
   {
@@ -155,7 +156,7 @@ struct partial_truth_table
     }
     if ( _num_bits % 64 )
     {
-      _bits[num_used_blocks() - 1] &= 0xFFFFFFFFFFFFFFFF << (_num_bits % 64);
+      _bits[num_used_blocks() - 1] &= 0xFFFFFFFFFFFFFFFF >> ( 64 - (_num_bits % 64) );
     }
   }
 
@@ -173,6 +174,38 @@ struct partial_truth_table
   }
 
   // void reserve()
+
+  inline void add_bit( bool bit ) noexcept
+  {
+    resize( _num_bits + 1 );
+    if ( bit )
+      _bits[num_used_blocks() - 1] |= 1 << ( _num_bits % 64 - 1 );
+  }
+
+  inline void add_bits( std::vector<bool>& bits ) noexcept
+  {
+    for ( unsigned i = 0; i < bits.size(); ++i )
+      add_bit( bits.at(i) );
+  }
+
+  /* \param num_bits Number of bits in `bits` to be added (count from LSB) */
+  inline void add_bits( uint64_t bits, int num_bits = 64 ) noexcept
+  {
+    assert( num_bits <= 64 );
+    
+    if ( ( _num_bits % 64 ) + num_bits <= 64 ) /* no need for a new block */
+    {
+      _bits[num_used_blocks() - 1] |= bits << ( _num_bits % 64 );
+      _num_bits += num_bits;
+    }
+    else
+    {
+      auto first_half_len = 64 - ( _num_bits % 64 );
+      _bits[num_used_blocks() - 1] |= bits << ( _num_bits % 64 );
+      resize( _num_bits + num_bits );
+      _bits[num_used_blocks() - 1] |= ( bits & ( 0xFFFFFFFFFFFFFFFF >> ( 64 - num_bits ) ) ) >> first_half_len;
+    }
+  }
 
   /*! \cond PRIVATE */
 public: /* fields */
