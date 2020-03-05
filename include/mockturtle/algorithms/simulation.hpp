@@ -431,6 +431,66 @@ void simulate_nodes( Ntk const& ntk, unordered_node_map<SimulationType, Ntk>& no
   } );
 }
 
+/* helper function to fix the non-topological order problem */
+template<class Ntk>
+void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, partial_simulator<kitty::partial_truth_table> const& sim, int& num_bits )
+{
+  std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
+  ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+    if ( !node_to_value.has( ntk.get_node(f) ) || node_to_value[ntk.get_node( f )].num_bits() != num_bits )
+      simulate_fanin_cone( ntk, ntk.get_node(f), node_to_value, sim, num_bits );
+    fanin_values[i] = node_to_value[ntk.get_node( f )];
+  } );
+  node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
+}
+
+/* specialization for partial_truth_table */
+template<class Ntk>
+void simulate_nodes( Ntk const& ntk, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, partial_simulator<kitty::partial_truth_table> const& sim )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_constant_value_v<Ntk>, "Ntk does not implement the constant_value method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
+  static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
+  static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute method for kitty::partial_truth_table" );
+
+  auto num_bits = sim.compute_constant(false).num_bits();
+
+  /* constants */
+  if ( !node_to_value.has( ntk.get_node( ntk.get_constant( false ) ) ) || node_to_value[ntk.get_node( ntk.get_constant( false ) )].num_bits() != num_bits )
+  {
+    node_to_value[ntk.get_node( ntk.get_constant( false ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
+  }
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  {
+    if ( !node_to_value.has( ntk.get_node( ntk.get_constant( true ) ) ) || node_to_value[ntk.get_node( ntk.get_constant( true ) )].num_bits() != num_bits )
+    {
+      node_to_value[ntk.get_node( ntk.get_constant( true ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( true ) ) ) );
+    }
+  }
+
+  /* pis */
+  ntk.foreach_pi( [&]( auto const& n, auto i ) {
+    if ( !node_to_value.has( n ) || node_to_value[n].num_bits() != num_bits )
+    {
+      node_to_value[n] = sim.compute_pi( i );
+    }
+  } );
+
+  /* gates */
+  ntk.foreach_gate( [&]( auto const& n ) {
+    if ( !node_to_value.has( n ) || node_to_value[n].num_bits() != num_bits )
+    {
+      simulate_fanin_cone( ntk, n, node_to_value, sim, num_bits );
+    }
+  } );
+}
+
 /*! \brief Simulates a network with a generic simulator.
  *
  * This is a generic simulation algorithm that can simulate arbitrary values.
