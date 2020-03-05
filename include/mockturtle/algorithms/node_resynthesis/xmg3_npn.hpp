@@ -221,7 +221,7 @@ private:
       fanin.push_back( ntk_f );
     } );
 
-    auto const f = _db.is_xor3( n ) ? ntk.create_xor3( fanin[0], fanin[1], fanin[2] ) : ntk.create_maj( fanin[0], fanin[1], fanin[2] );
+    const auto f = _db.is_xor3( n ) ? ntk.create_xor3( fanin[0], fanin[1], fanin[2] ) : ntk.create_maj( fanin[0], fanin[1], fanin[2] );
     db_to_ntk.insert( {n, f} );
     return f;
   }
