@@ -149,17 +149,11 @@ public:
 
     /* get representative of function */
     const auto repr = _repr[_classes[*tt.cbegin()]];
-    //std::cout << "there a representation in the class ";
-    //kitty::print_hex(repr);
-    //std::cout <<std::endl;
 
     /* check if representative has circuits */
     const auto it = _repr_to_signal.find( repr );
     if ( it == _repr_to_signal.end() )
     {
-      //std::cout << "Not found " << std::endl;
-      //kitty::print_hex(tt);
-      //std::cout << std::endl;
       return;
     }
 
@@ -205,7 +199,6 @@ public:
         return;
       }
     }
-    
   }
 
 private:
@@ -228,25 +221,7 @@ private:
       fanin.push_back( ntk_f );
     } );
 
-
-    //signal<Ntk> f;
-
-    //if (_db.is_xor3 ( n ))
-    //{
-    //    std::cout << "Xor Condition " << std::endl;
-    //    f = ntk.create_xor3( fanin[0], fanin[1], fanin[2] );
-    //}
-    //else if (_db.is_maj( n ))
-    //{
-    //    std::cout << "Maj Condition " << std::endl;
-    //    f = ntk.create_maj ( fanin[0], fanin[1], fanin[2] );
-    //}
-    //else 
-    //{
-    //    std::cout << "Const Condition " << std::endl;
-    //}
-
-    auto const f = _db.is_xor3( n ) ? ntk.create_xor3( fanin[0], fanin[1], fanin[2] ) : ntk.create_maj( fanin[0], fanin[1], fanin[2] ); 
+    auto const f = _db.is_xor3( n ) ? ntk.create_xor3( fanin[0], fanin[1], fanin[2] ) : ntk.create_maj( fanin[0], fanin[1], fanin[2] );
     db_to_ntk.insert( {n, f} );
     return f;
   }
@@ -278,7 +253,7 @@ private:
   {
     stopwatch t( st.time_db );
 
-    _db.get_constant(false);
+    _db.get_constant( false );
     /* four primary inputs */
     _db.create_pi();
     _db.create_pi();
@@ -292,7 +267,7 @@ private:
       auto entry1 = *p++;
       auto entry2 = *p++;
 
-      if ( entry0 == 0 && entry1 == 0 && entry2 == 0)
+      if ( entry0 == 0 && entry1 == 0 && entry2 == 0 )
         break;
 
       auto is_xor = entry0 & 1;
@@ -315,12 +290,6 @@ private:
     const auto sim_res = simulate_nodes<kitty::static_truth_table<4>>( _db );
 
     _db.foreach_node( [&]( auto n ) {
-            //std::cout << "repr to signal " << " " ;
-            //kitty::print_hex(sim_res[n]);
-            //std::cout <<std::endl;
-            //std::cout << "repr to signal complemented " << " " ;
-            //kitty::print_hex(~sim_res[n]);
-            //std::cout << std::endl;
       if ( _repr[_classes[*sim_res[n].cbegin()]] == sim_res[n] )
       {
         if ( _repr_to_signal.count( sim_res[n] ) == 0 )
