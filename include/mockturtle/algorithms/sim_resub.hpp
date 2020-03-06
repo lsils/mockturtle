@@ -556,7 +556,7 @@ private:
         
         if ( res == percy::synth_result::success )
         {
-          //std::cout << "SAT: add pattern. ";
+          //std::cout << "SAT: add pattern. (" << n << ")" << std::endl;
           std::vector<bool> pattern;
           for ( auto i = 1u; i <= ntk.num_pis(); ++i )
             pattern.push_back(solver.var_value( i ));
@@ -570,6 +570,7 @@ private:
           /* re-simulate */
           call_with_stopwatch( st.time_sim, [&]() {
             simulate_nodes<Ntk>( ntk, tts, sim );
+            zero = sim.compute_constant(false);
           });
         }
         else
@@ -668,7 +669,7 @@ private:
   std::optional<signal> resub_div0( node const& root, uint32_t required ) 
   {
     (void)required;
-    auto const tt = tts[root];
+    auto const& tt = tts[root];
 
     //for ( auto i = 0u; i < num_divs; ++i )
     for ( int i = num_divs-1; i >= 0; --i )

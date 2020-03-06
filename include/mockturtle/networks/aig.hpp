@@ -40,6 +40,7 @@
 
 #include <ez/direct_iterator.hpp>
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/partial_truth_table.hpp>
 #include <kitty/operators.hpp>
 
 #include "../traits.hpp"
@@ -999,6 +1000,38 @@ public:
     auto tt2 = *begin++;
 
     return ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
+  }
+
+  template<typename Iterator>
+  void compute( node const& n, kitty::partial_truth_table& result, Iterator begin, Iterator end ) const
+  {
+    (void)end;
+    /* TODO: assert type of *begin is partial_truth_table */
+
+    assert( n != 0 && !is_ci( n ) );
+
+    auto const& c1 = _storage->nodes[n].children[0];
+    auto const& c2 = _storage->nodes[n].children[1];
+
+    auto tt1 = *begin++;
+    auto tt2 = *begin++;
+
+    assert( tt1.num_bits() == tt2.num_bits() );
+    assert( tt1.num_bits() >= result.num_bits() );
+    if ( result.num_bits() == 0 )
+    {
+      result = ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
+    }
+    else
+    {
+      //auto ctt1 = tt1.construct();
+      //auto ctt2 = tt2.construct();
+      //if ( c1.weight ) unary_operation( ctt1, tt1, []( auto a ) { return ~a; }, result.num_used_blocks() - 1 );
+      //if ( c2.weight ) unary_operation( ctt2, tt2, []( auto a ) { return ~a; }, result.num_used_blocks() - 1 );
+//
+      //binary_operation( result, ctt1, ctt2, std::bit_and<>(), result.num_used_blocks() - 1 );
+      binary_operation( result, c1.weight ? ~tt1 : tt1, c2.weight ? ~tt2 : tt2, std::bit_and<>(), result.num_used_blocks() - 1 );
+    }
   }
 #pragma endregion
 

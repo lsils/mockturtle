@@ -441,7 +441,7 @@ void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered
       simulate_fanin_cone( ntk, ntk.get_node(f), node_to_value, sim, num_bits );
     fanin_values[i] = node_to_value[ntk.get_node( f )];
   } );
-  node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
+  ntk.compute( n, node_to_value[n], fanin_values.begin(), fanin_values.end() );
 }
 
 /* specialization for partial_truth_table */

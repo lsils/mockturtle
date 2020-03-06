@@ -245,6 +245,43 @@ auto binary_operation( const partial_truth_table& first, const partial_truth_tab
   return result;
 }
 
+/*! \brief Perform bitwise binary operation on two truth tables
+
+  The dimensions of `first` and `second` must match.  This is ensured
+  at compile-time for static truth tables, but at run-time for dynamic
+  truth tables.
+
+  \param first First truth table
+  \param second Second truth table
+  \param op Binary operation that takes as input two words (`uint64_t`) and returns a word
+  \param num_blocks_offset Number of blocks that don't need to be computed (the first `num_blocks_offset` blocks of `result` will remain the same before computation)
+
+  \return new constructed truth table of same type and dimensions
+ */
+template<typename Fn>
+void binary_operation( partial_truth_table& result, const partial_truth_table& first, const partial_truth_table& second, Fn&& op, int const& num_blocks_offset = 0 )
+{
+  assert( first.num_bits() == second.num_bits() );
+
+  result.resize( first.num_bits() );
+  std::transform( first.cbegin() + num_blocks_offset, first.cbegin() + first.num_used_blocks(), second.cbegin() + num_blocks_offset, result.begin() + num_blocks_offset, op );
+}
+
+/*! \brief Perform bitwise unary operation on truth table
+
+  \param tt Truth table
+  \param op Unary operation that takes as input a word (`uint64_t`) and returns a word
+  \param num_blocks_offset Number of blocks that don't need to be computed (the first `num_blocks_offset` blocks of `result` will remain the same before computation)
+
+  \return new constructed truth table of same type and dimensions
+ */
+template<typename Fn>
+void unary_operation( partial_truth_table& result, const partial_truth_table& tt, Fn&& op, int const& num_blocks_offset = 0 )
+{
+  result.resize( tt.num_bits() );
+  std::transform( tt.cbegin() + num_blocks_offset, tt.cbegin() + tt.num_used_blocks(), result.begin() + num_blocks_offset, op );
+}
+
 /*! \brief Perform bitwise ternary operation on three truth tables
 
   The dimensions of `first`, `second`, and `third` must match.  This

@@ -47,7 +47,7 @@ int main()
     if ( benchmark == "hyp" || benchmark == "mem_ctrl" || benchmark == "log2" || benchmark == "div" || benchmark == "sqrt") continue;
     //if ( benchmark != "voter" ) continue;
 
-    fmt::print( "[i] processing {}\n", benchmark );
+    //fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig, orig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( orig ) );
@@ -55,8 +55,8 @@ int main()
     simresub_params ps;
     simresub_stats st;
 
-    ps.num_pattern_base = (benchmark=="div")? 17u: 15u;
-    ps.num_reserved_blocks = (benchmark=="div")? 200u: 100u;
+    ps.num_pattern_base = (benchmark=="div")? 17u: 10u;
+    ps.num_reserved_blocks = (benchmark=="div")? 200u: 10u;
     // assert ( ps.num_reserved_blocks < (1 << (num_pattern_base-6)) );
     ps.max_pis = 10u; //100u; //8u;
     ps.max_divisors = 500u;
