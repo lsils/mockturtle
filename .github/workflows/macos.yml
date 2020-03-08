@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build-gcc8:
-    name: Build with GNU GCC 8 on Mac OS
+    name: Build with GNU GCC 8
     runs-on: macOS-latest
 
     steps:
@@ -22,7 +22,7 @@ jobs:
         cd build
         ./test/run_tests "~[quality]"
   build-gcc9:
-    name: Build with GNU GCC 9 on Mac OS
+    name: Build with GNU GCC 9
     runs-on: macOS-latest
 
     steps:
