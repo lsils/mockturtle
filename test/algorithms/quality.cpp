@@ -320,7 +320,7 @@ TEST_CASE( "Test quality improvement for XMG3 rewriting with 4-input NPN databas
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 27, 224, 70, 272, 149, 283, 189, 651, 464, 499}} );
+  CHECK( v == std::vector<uint32_t>{{1, 27, 224, 70, 272, 151, 280, 195, 659, 464, 503}} );
 }
 
 TEST_CASE( "Test quality improvement for XMG3 Resubstitution", "[quality]" )
