@@ -270,4 +270,48 @@ void print_xmas_tree_for_functions( uint32_t num_vars,
   detail::print_xmas_tree( os, 1 << num_vars, _preds );
 }
 
+
+/*! \brief Creates an expression for an ANF form
+ *
+ * \param anf Truth table in ANF encoding
+ */
+template<class TT>
+std::string anf_to_expression( const TT& anf )
+{
+  const auto terms = count_ones( anf );
+
+  if ( terms == 0u )
+  {
+    return "0";
+  }
+
+  std::string expr;
+
+  for_each_one_bit( anf, [&]( auto bit ) {
+    if ( bit == 0 )
+    {
+      expr += "1";
+      return;
+    }
+    auto weight = __builtin_popcount( bit );
+    if ( weight != 1 )
+    {
+      expr += "(";
+    }
+    for ( auto i = 0; i < anf.num_vars(); ++i )
+    {
+      if ( ( bit >> i ) & 1 )
+      {
+        expr += std::string( 1, 'a' + i );
+      }
+    }
+    if ( weight != 1 )
+    {
+      expr += ")";
+    }
+  } );
+
+  return terms == 1 ? expr : "[" + expr + "]";
+}
+
 } /* namespace kitty */
