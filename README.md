@@ -1,5 +1,6 @@
-[![Build Status](https://travis-ci.org/lsils/mockturtle.svg?branch=master)](https://travis-ci.org/lsils/mockturtle)
-[![Build status](https://ci.appveyor.com/api/projects/status/2jo09dyjl8t8psrj?svg=true)](https://ci.appveyor.com/project/msoeken/mockturtle)
+[![Actions Status](https://github.com/lsils/mockturtle/workflows/Linux%20CI/badge.svg)](https://github.com/lsils/mockturtle/actions)
+[![Actions Status](https://github.com/lsils/mockturtle/workflows/MacOS%20CI/badge.svg)](https://github.com/lsils/mockturtle/actions)
+[![Actions Status](https://github.com/lsils/mockturtle/workflows/Windows%20CI/badge.svg)](https://github.com/lsils/mockturtle/actions)
 [![Documentation Status](https://readthedocs.org/projects/mockturtle/badge/?version=latest)](http://mockturtle.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
