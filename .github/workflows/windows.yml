@@ -1,0 +1,27 @@
+name: Windows CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    name: Build with Visual Studio
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Create build directory
+      run: mkdir build
+    - name: Run CMake
+      run: cmake -G "Visual Studio 16 2019" -DMOCKTURTLE_TEST=ON ..
+      working-directory: ./build
+    - name: Build kitty
+      run: |
+        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln /t:run_tests
+      working-directory: ./build
+      shell: cmd
+    - name: Run tests
+      run: |
+        cd build
+        .\test\Debug\run_tests "~[quality]"
