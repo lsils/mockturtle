@@ -310,13 +310,14 @@ void create_from_cubes( TT& tt, const std::vector<cube>& cubes, bool esop = fals
 
     auto bits = cube._bits;
     auto mask = cube._mask;
-
+    
     for ( auto i = 0; i < tt.num_vars(); ++i )
     {
       if ( mask & 1 )
       {
         auto var = tt.construct();
         create_nth_var( var, i, !( bits & 1 ) );
+
         product &= var;
       }
       bits >>= 1;
@@ -362,13 +363,13 @@ void create_from_clauses( TT& tt, const std::vector<cube>& clauses, bool esop = 
 
     auto bits = clause._bits;
     auto mask = clause._mask;
-
+    
     for ( auto i = 0; i < tt.num_vars(); ++i )
     {
       if ( mask & 1 )
       {
         auto var = tt.construct();
-        create_nth_var( var, i, !( bits & 1 ) );
+        create_nth_var( var, i, ( bits & 1 ) );
 
         if ( esop )
         {
