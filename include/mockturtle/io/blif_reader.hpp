@@ -206,31 +206,41 @@ public:
       return;
     }
 
-    auto const len = 1u << inputs.size();
-
     assert( cover.size() > 0u );
     assert( cover.at( 0u ).second.size() == 1 );
     auto const first_output_value = cover.at( 0u ).second.at( 0u );
-    auto const default_value = first_output_value == '0' ? '1' : '0';
 
-    std::string func( len, default_value );
+    std::vector<kitty::cube> minterms;
+    std::vector<kitty::cube> maxterms;
     for ( const auto& c : cover )
     {
       assert( c.second.size() == 1 );
 
-      uint32_t pos = 0u;
-      for ( auto i = 0u; i < c.first.size(); ++i )
-      {
-        if ( c.first.at( i ) == '1' )
-          pos += 1u << i;
-      }
+      auto const output = c.second[0u];
+      assert( output == '0' || output == '1' );
+      assert( output == first_output_value );
 
-      func[pos] = c.second.at( 0u );
+      if ( output == '1' )
+      {
+        minterms.emplace_back( kitty::cube( c.first ) );
+      }
+      else if ( output == '0' )
+      {
+        maxterms.emplace_back( kitty::cube( c.first ) );
+      }
     }
 
-    kitty::dynamic_truth_table tt( static_cast<int>( inputs.size() ) );
-    std::reverse( std::begin( func ), std::end( func ) );
-    kitty::create_from_binary_string( tt, func );
+    assert( minterms.size() == 0u || maxterms.size() == 0u );
+
+    kitty::dynamic_truth_table tt( int( inputs.size() ) );
+    if ( minterms.size() != 0 )
+    {
+      kitty::create_from_cubes( tt, minterms, false );
+    }
+    else if ( maxterms.size() != 0 )
+    {
+      kitty::create_from_clauses( tt, maxterms, false );
+    }
 
     std::vector<signal<Ntk>> input_signals;
     for ( const auto& i : inputs )
