@@ -1,6 +1,6 @@
 name: MacOS CI
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build-gcc8:
