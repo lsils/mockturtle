@@ -39,6 +39,8 @@
 #pragma once
 
 #include "bit_operations.hpp"
+#include "constructors.hpp"
+#include "esop.hpp"
 #include "detail/mscfix.hpp"
 
 #include <cmath>
@@ -597,7 +599,7 @@ inline TT exact_spectral_canonization( const TT& tt, Callback&& fn = detail::exa
   entry is the representative, and the second entry indicates whether the
   solution is known to be exact or not.
 
-  The function can be passed as second argument a callback that is called with a
+  A function can be passed as second argument that is callback called with a
   vector of spectral operations necessary to transform the input function into
   the representative.
 
@@ -611,6 +613,243 @@ inline std::pair<TT, bool> exact_spectral_canonization_limit( const TT& tt, unsi
   detail::miller_spectral_canonization_impl<TT> impl( tt );
   impl.set_limit( step_limit );
   return impl.run( fn );
+}
+
+namespace detail
+{
+
+template<class TT>
+struct anf_spectrum
+{
+public:
+  explicit anf_spectrum( const TT& tt )
+    : _anf( detail::algebraic_normal_form( tt ) ),
+      _khots( tt.num_vars() + 1, tt.construct() )
+  {
+    for ( auto i = 0; i <= tt.num_vars(); ++i )
+    {
+      create_equals( _khots[i], i );
+    }
+  }
+
+private:
+  auto permutation( unsigned i, unsigned j )
+  {
+    spectral_operation op( spectral_operation::kind::permutation, 1 << i, 1 << j );
+
+    swap_inplace( _anf, i, j );
+
+    return op;
+  }
+
+  auto input_negation( unsigned i )
+  {
+    spectral_operation op( spectral_operation::kind::input_negation, 1 << i );
+
+    _anf ^= cofactor1( _anf, i ) & nth_var<TT>( _anf.num_vars(), i, true );
+
+    return op;
+  }
+
+  auto output_negation()
+  {
+    flip_bit( _anf, 0 );
+
+    return spectral_operation( spectral_operation::kind::output_negation );
+  }
+
+  auto spectral_translation( int i, int j )
+  {
+    spectral_operation op( spectral_operation::kind::spectral_translation, 1 << i, 1 << j );
+
+    _anf ^= ( cofactor1( _anf, i ) ^ cofactor0( cofactor1( _anf, i ), j ) ) & nth_var<TT>( _anf.num_vars(), j ) & nth_var<TT>( _anf.num_vars(), i, true );
+
+    return op;
+  }
+
+  auto disjoint_translation( int i )
+  {
+    spectral_operation op( spectral_operation::kind::disjoint_translation, 1 << i );
+
+    flip_bit( _anf, 1 << i );
+
+    return op;
+  }
+
+  template<class Fn>
+  void foreach_term_of_size( uint32_t k, Fn&& fn, int64_t start = 0 )
+  {
+    auto term = find_first_one_bit( _anf & _khots[k], start );
+
+    while ( term != -1 )
+    {
+      fn( term );
+      term = find_first_one_bit( _anf & _khots[k], term + 1 );
+    }
+  }
+
+  void insert( const spectral_operation& op )
+  {
+    _transforms.push_back( op );
+  }
+
+public:
+  bool classify()
+  {
+    bool repeat = true;
+    auto rounds = 0u;
+    while ( repeat && rounds++ < 2u )
+    {
+      if ( count_ones( _anf ) < 2 )
+      {
+        break;
+      }
+
+      repeat = false;
+      for ( auto k = 2; k < _anf.num_vars(); ++k )
+      {
+        foreach_term_of_size( k, [&]( auto term ) {
+          auto mask = _anf.construct();
+          create_from_cubes( mask, {cube( term, term )} );
+
+          const auto i = find_first_one_bit( _anf & _khots[k + 1] & mask );
+          if ( i != -1 )
+          {
+            insert( input_negation( detail::log2[i & ~term] ) );
+            repeat = true;
+          }
+          else
+          {
+            foreach_term_of_size( k, [&]( auto term2 ) {
+              if ( __builtin_popcount( term ^ term2 ) == 2 )
+              {
+                const auto vari = detail::log2[term & ~term2];
+                const auto varj = detail::log2[term2 & ~term];
+
+                insert( spectral_translation( vari, varj ) );
+                repeat = true;
+              }
+            }, term + 1 );
+          }
+        } );
+      }
+    }
+
+    if ( get_bit( _anf, 0 ) )
+    {
+      insert( output_negation() );
+    }
+
+    for ( auto i = 0; i < _anf.num_vars(); ++i )
+    {
+      if ( get_bit( _anf, 1 << i ) )
+      {
+        insert( disjoint_translation( i ) );
+      }
+    }
+
+    auto mask = 0u;
+    bool disjoint = true;
+    for_each_one_bit( _anf, [&]( auto word ) {
+      if ( word & mask ) {
+        disjoint = false;
+      } else {
+        mask |= word;
+      }
+    });
+
+    if ( disjoint )
+    {
+      auto dest_var = 0;
+      for ( auto k = 2; k < _anf.num_vars(); ++k )
+      {
+        foreach_term_of_size( k, [&]( auto term ) {
+          while ( term != 0 )
+          {
+            const auto vari = detail::log2[term & ~( term - 1 )];
+
+            // swap i with dest_var
+            if ( vari != dest_var )
+            {
+              insert( permutation( vari, dest_var ) );
+            }
+            ++dest_var;
+
+            term &= ( term - 1 );
+          }
+        } );
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
+  const TT& anf() const
+  {
+    return _anf;
+  }
+
+  TT truth_table() const
+  {
+    return detail::algebraic_normal_form( _anf );
+  }
+
+  template<class Callback>
+  void get_transformations( Callback&& fn ) const
+  {
+    fn( _transforms );
+  }
+
+private:
+  TT _anf;
+  std::vector<TT> _khots;
+  std::vector<spectral_operation> _transforms;
+};
+
+}
+
+/*! \brief Exact spectral canonization (with Reed-Muller preprocessor)
+
+  A function can be passed as second argument that is callback called with a
+  vector of spectral operations necessary to transform the input function into
+  the representative.
+
+  The algorithm is based on the paper: M. Soeken, E. Testa, D.M. Miller: A
+  hybrid spectral method for checking Boolean function equivalence, PACRIM 2019.
+
+  \param tt Truth table
+  \param fn Callback to retrieve list of transformations (optional)
+ */
+template<typename TT, typename Callback = decltype( detail::exact_spectral_canonization_null_callback )>
+inline TT hybrid_exact_spectral_canonization( const TT& tt, Callback&& fn = detail::exact_spectral_canonization_null_callback )
+{
+  (void)fn;
+
+  std::vector<detail::spectral_operation> transforms;
+
+  detail::anf_spectrum<TT> anf( tt );
+
+  bool is_disjoint = anf.classify();
+  anf.get_transformations( [&]( const auto& t ) { std::copy( t.begin(), t.end(), std::back_inserter( transforms ) ); } );
+
+  if ( !is_disjoint )
+  {
+    const auto miller_repr = exact_spectral_canonization( anf.truth_table(), [&]( const auto& t ) {
+      std::copy( t.begin(), t.end(), std::back_inserter( transforms ) );
+    } );
+    detail::anf_spectrum<TT> anf_post( miller_repr );
+    anf_post.classify();
+    anf_post.get_transformations( [&]( const auto& t ) { std::copy( t.begin(), t.end(), std::back_inserter( transforms ) ); } );
+    fn( transforms );
+    return anf_post.truth_table();
+  }
+  else
+  {
+    fn( transforms );
+    return anf.truth_table();
+  }
 }
 
 /*! \brief Print spectral representation of a function in RW order
@@ -910,6 +1149,35 @@ inline uint32_t get_spectral_class( const TT& tt )
   }
 
   return 48;
+}
+
+namespace detail
+{
+static std::vector<uint64_t> spectral_repr[] = {
+    {0x0},
+    {0x0},
+    {0x0, 0x8},
+    {0x00, 0x80, 0x88},
+    {0x0000, 0x8000, 0x8080, 0x0888, 0x8888, 0x2a80, 0xf888, 0x7888},
+    {0xaa55aa55, 0xaa55ab55, 0xaa55bb55, 0xaa5dbb55, 0xaaddbb55, 0xaa5dbb51, 0x2a5dbb51, 0xaaddbb51, 0x2a5dbf51, 0x6a5dbb51, 0x2addbb51, 0xa8ddbb51, 0xaeddda51, 0x0a5dbf51, 0x8addda51, 0xa8dd9b51, 0x88ddbb51, 0x88ddbb11, 0x8c5dda51, 0xa89d9b51, 0x8eddda51, 0xaefdda51, 0x025dbf51, 0x88ddda51, 0x88dd9b51, 0xceddda51, 0x0eddda51, 0x425dbf51, 0x8cddda51, 0x88dddb51, 0x289d9b51, 0x86fdda51, 0x88dddb71, 0xcefdda51, 0x0efdda51, 0x288d9b51, 0x8cfdda51, 0x8cdddb51, 0x8ccdda51, 0x289d9b41, 0x488ddb51, 0xccfdda51, 0x688d9b51, 0x288d9b41, 0x288d1b41, 0xdcfdda51, 0x68ad9b51, 0x688ddb51}};
+}
+
+/*! \brief Returns spectral representative using lookup
+ *
+ * This function returns the spectral representative for functions with up to 5
+ * variables, but does not give the possibility to obtain the transformation
+ * sequence to obtain the function from the representative.
+ *
+ * \brief func Truth table for function with at most 5 variables.
+ */
+template<class TT>
+TT spectral_representative( const TT& func )
+{
+  auto r = func.construct();
+  const auto index = get_spectral_class( func );
+  const auto word = detail::spectral_repr[func.num_vars()][index];
+  kitty::create_from_words( r, &word, &word + 1 );
+  return r;
 }
 
 } /* namespace kitty */
