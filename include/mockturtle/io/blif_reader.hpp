@@ -211,11 +211,8 @@ public:
 
     std::vector<kitty::cube> minterms;
     std::vector<kitty::cube> maxterms;
-    std::cout << "Output: " << output << "\n";
-    std::cout << "Cover:\n";
     for ( const auto& c : cover )
     {
-      std::cout << "first: " << c.first << " second: " << c.second << "\n";
       assert( c.second.size() == 1 );
 
       auto const output = c.second[0u];
@@ -243,7 +240,7 @@ public:
     {
       kitty::create_from_clauses( tt, maxterms, false );
     }
-    
+
     std::vector<signal<Ntk>> input_signals;
     for ( const auto& i : inputs )
     {
