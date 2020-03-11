@@ -46,7 +46,7 @@ jobs:
         cd build
         ./test/run_tests "~[quality]"
   build-clang9:
-    name: Build with Clag 9
+    name: Build with Clang 9
     runs-on: macOS-latest
 
     steps:
