@@ -26,10 +26,13 @@ namespace mockturtle::detail
 {
 // clang-format off
 std::vector<std::vector<std::tuple<uint32_t, uint64_t, std::vector<uint32_t>, std::string>>> minmc_xags = {
-  {},
-  {},
-  {},
-  {},
+  {{0, 0x0, {1 << 8 | 0, 0}, "0"}},
+  {{0, 0x0, {1 << 8 | 0, 0}, "0"}},
+  {{0, 0x0, {1 << 8 | 0, 0},                 "0"},
+   {1, 0x8, {1 << 16 | 1 << 8 | 2, 2, 4, 6}, "(ab)"}},
+  {{0, 0x00, {1 << 8 | 0, 0},                        "0"},
+   {2, 0x88, {1 << 16 | 1 << 8 | 2, 2, 4, 6},        "(ab)"},
+   {1, 0x80, {2 << 16 | 1 << 8 | 3, 2, 4, 6, 8, 10}, "(abc)"}},
   {{0, 0x0000, {1 << 8 | 0, 0},                                                "0"},
    {1, 0x8000, {3 << 16 | 1 << 8 | 4, 2, 4, 6, 8, 10, 12, 14},                 "(abcd)"},
    {2, 0x8080, {2 << 16 | 1 << 8 | 3, 2, 4, 6, 8, 10},                         "(abc)"},
@@ -113,12 +116,12 @@ static void check_minmc_xags()
   }
 }
 
-TEST_CASE( "create 4-input XAGs from binary index list", "[index_list]" )
+TEST_CASE( "create MC-optumum XAGs from binary index list", "[index_list]" )
 {
+  check_minmc_xags<0>();
+  check_minmc_xags<1>();
+  check_minmc_xags<2>();
+  check_minmc_xags<3>();
   check_minmc_xags<4>();
-}
-
-TEST_CASE( "create 5-input XAGs from binary index list", "[index_list]" )
-{
   check_minmc_xags<5>();
 }
