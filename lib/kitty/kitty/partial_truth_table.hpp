@@ -218,6 +218,8 @@ struct partial_truth_table
       return;
     }
 
+    std::ios oldState(nullptr);
+    oldState.copyfmt(std::cout);
     switch ( type )
     {
       case 0:
@@ -231,6 +233,7 @@ struct partial_truth_table
           std::cout << std::bitset<64>( _bits.at( i ) ) << "_";
         std::cout << std::bitset<64>( _bits.at( num_used_blocks() - 1 ) ) << std::endl;
     }
+    std::cout.copyfmt(oldState);
   }
 
   /*! \cond PRIVATE */
