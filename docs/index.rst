@@ -57,6 +57,7 @@ Welcome to mockturtle's documentation!
 
    io/lorina_readers
    io/writers
+   io/other
 
 .. toctree::
    :maxdepth: 2
