@@ -137,6 +137,32 @@ public:
     }
   }
 
+  void compute_dependencies( const std::string& output )
+  {
+    /* trigger computation */
+    _waits_for[output]; /* init empty, makes sure nothing is waiting for this output */
+    std::stack<std::string> computed;
+    computed.push( output );
+    while ( !computed.empty() )
+    {
+      auto next = computed.top();
+      computed.pop();
+
+      // C++17: std::apply( f, _stored_params[next] );
+      detail::apply( f, _stored_params[next] );
+
+      for ( const auto& other : _triggers[next] )
+      {
+        _waits_for[other].erase( next );
+        if ( _waits_for[other].empty() )
+        {
+          computed.push( other );
+        }
+      }
+      _triggers[next].clear();
+    }
+  }
+
   std::vector<std::pair<std::string,std::string>> unresolved_dependencies()
   {
     std::vector<std::pair<std::string,std::string>> deps;
@@ -234,10 +260,17 @@ inline std::vector<std::string> split( const std::string& str, const std::string
   size_t next = 0;
   while ( ( next = str.find( sep, last ) ) != std::string::npos )
   {
-    result.push_back( trim_copy( str.substr( last, next - last ) ) );
+    std::string substring = str.substr( last, next - last );
+    if ( substring.length() > 0 ){
+      std::string sub = str.substr( last, next - last );
+      sub.erase(remove(sub.begin(), sub.end(), ' '), sub.end());
+      result.push_back( sub );
+    }
     last = next + 1;
   }
-  result.push_back( trim_copy( str.substr( last ) ) );
+  std::string substring = str.substr( last );
+  substring.erase(remove(substring.begin(), substring.end(), ' '), substring.end());
+  result.push_back( substring );
 
   return result;
 }
