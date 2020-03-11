@@ -43,13 +43,13 @@
 namespace kitty
 {
 
-/*! Truth table in which number of variables is known at runtime.
+/*! Truth table with resizable number of bits
 */
 struct partial_truth_table
 {
   /*! Standard constructor.
     \param num_bits Number of bits in use initially
-    \param reserved_bits Number of bits to be reserved (at least) initially
+    \param reserved_bits Number of bits to be reserved (at least) initially (not sure if this is useful)
   */
   explicit partial_truth_table( int num_bits, int reserved_bits = 0 )
       : _bits( ( num_bits + reserved_bits ) ? ( (( num_bits + reserved_bits - 1 ) >> 6) + 1 ) : 0 ),
@@ -65,7 +65,7 @@ struct partial_truth_table
    */
   partial_truth_table() : _num_bits( 0 ) {}
 
-  /*! Constructs a new dynamic truth table instance with the same number of bits and blocks. */
+  /*! Constructs a new partial truth table instance with the same number of bits and blocks. */
   inline partial_truth_table construct() const
   {
     return partial_truth_table( _num_bits, ( _bits.size() << 6 ) - _num_bits );
@@ -204,6 +204,32 @@ struct partial_truth_table
       _bits[num_used_blocks() - 1] |= bits << ( _num_bits % 64 );
       resize( _num_bits + num_bits );
       _bits[num_used_blocks() - 1] |= ( bits & ( 0xFFFFFFFFFFFFFFFF >> ( 64 - num_bits ) ) ) >> first_half_len;
+    }
+  }
+
+  /*! Print the partial truth table
+    \param type 0 = hex; 1 = binary
+  */
+  inline void print( int type = 0 ) const noexcept
+  {
+    if ( _num_bits == 0 )
+    {
+      std::cout << "empty truth table" << std::endl;
+      return;
+    }
+
+    switch ( type )
+    {
+      case 0:
+        for ( auto i = 0u; i < num_used_blocks() - 1; ++i )
+          std::cout << std::setw( 16 ) << std::setfill( '0' ) << std::hex << _bits.at( i ) << "_";
+        std::cout << std::setw( 16 ) << std::setfill( '0' ) << std::hex << _bits.at( num_used_blocks() - 1 ) << std::endl;
+        break;
+
+      case 1:
+        for ( auto i = 0u; i < num_used_blocks() - 1; ++i )
+          std::cout << std::bitset<64>( _bits.at( i ) ) << "_";
+        std::cout << std::bitset<64>( _bits.at( num_used_blocks() - 1 ) ) << std::endl;
     }
   }
 
