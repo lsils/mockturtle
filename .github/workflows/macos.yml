@@ -1,6 +1,12 @@
 name: MacOS CI
 
-on: [push]
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
 
 jobs:
   build-gcc8:
@@ -40,7 +46,7 @@ jobs:
         cd build
         ./test/run_tests "~[quality]"
   build-clang9:
-    name: Build with Clag 9
+    name: Build with Clang 9
     runs-on: macOS-latest
 
     steps:
