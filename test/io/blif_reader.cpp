@@ -52,10 +52,10 @@ TEST_CASE( "read a combinational BLIF file into KLUT network", "[blif_reader]" )
     switch ( i )
     {
     case 0:
-      CHECK( kitty::to_hex( tts[i] ) == "87" );
+      CHECK( kitty::to_hex( tts[i] ) == "07" );
       break;
     case 1:
-      CHECK( kitty::to_hex( tts[i] ) == "78" );
+      CHECK( kitty::to_hex( tts[i] ) == "f8" );
       break;
     }
     } );
