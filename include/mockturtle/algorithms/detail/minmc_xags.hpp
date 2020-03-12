@@ -39,6 +39,10 @@
 namespace mockturtle::detail
 {
 
+// These circuits are based on Cryptology ePrint Archive: Report 2015/848
+// Meltem Sönmez Turan and Rene Péralta:
+// The Multiplicative Complexity of Boolean Functions on Four and Five Variables
+
 // clang-format off
 static std::vector<std::vector<std::tuple<uint32_t, uint64_t, std::vector<uint32_t>, std::string>>> minmc_xags = {
   {{0, 0x0, {1 << 8 | 0, 0}, "0"}},

@@ -32,6 +32,9 @@
 
 #pragma once
 
+#include <type_traits>
+#include <vector>
+
 #include "../traits.hpp"
 
 #include <kitty/detail/constants.hpp>
@@ -66,6 +69,11 @@ namespace mockturtle
 template<class Ntk, class SynthesisFn>
 signal<Ntk> apply_spectral_transformations( Ntk& dest, std::vector<kitty::detail::spectral_operation> const& transformations, std::vector<signal<Ntk>> const& leaves, SynthesisFn&& synthesis_fn )
 {
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
+  static_assert( has_create_nary_xor_v<Ntk>, "Ntk does not implement the create_nary_xor method" );
+  static_assert( std::is_invocable_r_v<signal<Ntk>, SynthesisFn, Ntk&, std::vector<signal<Ntk>> const&>, "SythesisFn does not have expected signature" );
+
   auto _leaves = leaves;
   std::vector<signal<Ntk>> _final_xors;
   bool _output_neg = false;
