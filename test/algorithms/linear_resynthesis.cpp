@@ -53,3 +53,18 @@ TEST_CASE( "Linear resynthesis with Paar algorithm 2", "[linear_resynthesis]" )
     CHECK( f1[i] == f2[i] );
   }
 }
+
+TEST_CASE( "Exact linear synthesis with SAT (example from paper)", "[linear_resynthesis]" )
+{
+  std::vector<std::vector<bool>> matrix = {
+    {true, true, true, true, true},
+    {true, true, true, true, false},
+    {true, true, true, false, true},
+    {false, false, true, true, true},
+    {true, false, false, false, true}
+  };
+
+  const auto xag = exact_linear_synthesis<xag_network>( matrix );
+
+  CHECK( xag.num_gates() == 6u );
+}
