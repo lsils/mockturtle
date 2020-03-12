@@ -137,7 +137,9 @@ static void check_repr_match()
     kitty::dynamic_truth_table f_tt( NumVars );
     kitty::create_from_words( f_tt, &tt, &tt + 1 );
     const auto func = kitty::spectral_representative( f_tt );
+    const auto func2 = kitty::hybrid_exact_spectral_canonization( f_tt );
     CHECK( func == f_tt );
+    CHECK( func2 == f_tt );
   }
 }
 
