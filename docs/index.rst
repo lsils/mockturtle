@@ -50,6 +50,7 @@ Welcome to mockturtle's documentation!
    algorithms/gates_to_nodes
    algorithms/xag_optimization
    algorithms/xmg_optimization
+   algorithms/equivalence_classes
 
 .. toctree::
    :maxdepth: 2
