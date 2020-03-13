@@ -31,7 +31,8 @@
 */
 
 #pragma once
-
+#include "dont_cares.hpp"
+#include <kitty/operations.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/networks/xmg.hpp>
 
@@ -106,14 +107,20 @@ public:
   {
   }
 
-  std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
+  std::optional<signal> operator()( node const& root, TT& care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
     (void)care;
     assert( is_const0( ~care ) );
 
+    auto const tt = sim.get_tt( ntk.make_signal( root ) );
+    if ( care.num_vars() > tt.num_vars() )
+      care = kitty::shrink_to( care, tt.num_vars() );
+    else
+      care = kitty::extend_to( care, tt.num_vars() );
+
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
-      return resub_const( root, required );
+      return resub_const( root, care, required );
     } );
     if ( g )
     {
@@ -124,7 +131,7 @@ public:
 
     /* consider equal nodes */
     g = call_with_stopwatch( st.time_resub0, [&]() {
-      return resub_div0( root, required );
+      return resub_div0( root, care, required );
     } );
     if ( g )
     {
@@ -138,7 +145,7 @@ public:
 
     /* consider adding one gate */
     g = call_with_stopwatch( st.time_resub1, [&]() {
-      return resub_div1( root, required );
+      return resub_div1( root, care, required );
     } );
     if ( g )
     {
@@ -150,18 +157,19 @@ public:
     return std::nullopt;
   }
 
-  std::optional<signal> resub_const( node const& root, uint32_t required ) const
+  std::optional<signal> resub_const( node const& root, TT& care, uint32_t required ) const
   {
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
-    if ( tt == sim.get_tt( ntk.get_constant( false ) ) )
+
+    if ( binary_and( tt, care ) == sim.get_tt( ntk.get_constant( false ) ) )
     {
       return sim.get_phase( root ) ? ntk.get_constant( true ) : ntk.get_constant( false );
     }
     return std::nullopt;
   }
 
-  std::optional<signal> resub_div0( node const& root, uint32_t required ) const
+  std::optional<signal> resub_div0( node const& root, TT& care, uint32_t required ) const
   {
     (void)required;
     auto const tt = sim.get_tt( ntk.make_signal( root ) );
@@ -169,7 +177,7 @@ public:
     {
       auto const d = divs.at( i );
 
-      if ( tt != sim.get_tt( ntk.make_signal( d ) ) )
+      if ( binary_and( tt, care ) != binary_and( sim.get_tt( ntk.make_signal( d ) ), care ) )
         continue; /* next */
 
       return ( sim.get_phase( d ) ^ sim.get_phase( root ) ) ? !ntk.make_signal( d ) : ntk.make_signal( d );
@@ -189,10 +197,11 @@ public:
     int32_t entropy;
   };
 
-  std::optional<signal> resub_div1( node const& root, uint32_t required )
+  std::optional<signal> resub_div1( node const& root, TT& care, uint32_t required )
   {
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
+
     int32_t const root_rdb = absolute_disinguishing_power( tt );
 
     std::vector<divisor> sorted_divs;
@@ -244,25 +253,25 @@ public:
             break;
           }
 
-          if ( tt == detail::ternary_xor( tt0, tt1, tt2 ) )
+          if ( binary_and( tt, care ) == binary_and( detail::ternary_xor( tt0, tt1, tt2 ), care ) )
           {
             /* XOR3 */
             ++st.num_div1_xor3_accepts;
             return sim.get_phase( root ) ? !ntk.create_xor3( a, b, c ) : ntk.create_xor3( a, b, c );
           }
-          else if ( tt == detail::ternary_xor( ~tt0, tt1, tt2 ) )
+          else if ( binary_and( tt, care ) == binary_and( detail::ternary_xor( ~tt0, tt1, tt2 ), care ) )
           {
             /* XNOR3 */
             ++st.num_div1_xnor3_accepts;
             return sim.get_phase( root ) ? !ntk.create_xor3( !a, b, c ) : ntk.create_xor3( !a, b, c );
           }
-          else if ( tt == kitty::ternary_majority( tt0, tt1, tt2 ) )
+          else if ( binary_and( tt, care ) == binary_and( kitty::ternary_majority( tt0, tt1, tt2 ), care ) )
           {
             /* MAJ3 */
             ++st.num_div1_maj3_accepts;
             return sim.get_phase( root ) ? !ntk.create_maj( a, b, c ) : ntk.create_maj( a, b, c );
           }
-          else if ( tt == kitty::ternary_majority( ~tt0, tt1, tt2 ) )
+          else if ( binary_and( tt, care ) == binary_and( kitty::ternary_majority( ~tt0, tt1, tt2 ), care ) )
           {
             /* NOT-MAJ3 */
             ++st.num_div1_not_maj3_accepts;
@@ -311,7 +320,7 @@ void xmg_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   resubstitution_stats st;
   if ( ps.max_pis == 8 )
   {
-    using truthtable_t = kitty::static_truth_table<8>;
+    using truthtable_t = kitty::dynamic_truth_table;
     using truthtable_dc_t = kitty::dynamic_truth_table;
     using simulator_t = detail::simulator<resub_view_t, truthtable_t>;
     using resubstitution_functor_t = xmg_resub_functor<resub_view_t, simulator_t, truthtable_dc_t>;
