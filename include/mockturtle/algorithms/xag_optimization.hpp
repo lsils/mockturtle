@@ -71,7 +71,8 @@ public:
       old2new[n] = dest.create_pi();
       lfi[n].emplace_back( n );
     } );
-    topo_view{xag}.foreach_node( [&]( auto const& n ) {
+    topo_view topo{xag};
+    topo.foreach_node( [&]( auto const& n ) {
       if ( xag.is_constant( n ) || xag.is_pi( n ) )
         return;
 
