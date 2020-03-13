@@ -383,7 +383,7 @@ void create_from_clauses( TT& tt, const std::vector<cube>& clauses, bool esop = 
       if ( mask & 1 )
       {
         auto var = tt.construct();
-        create_nth_var( var, i, ( bits & 1 ) );
+        create_nth_var( var, i, !( bits & 1 ) );
 
         if ( esop )
         {

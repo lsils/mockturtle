@@ -226,7 +226,7 @@ public:
       }
       else if ( output == '0' )
       {
-        maxterms.emplace_back( kitty::cube( c.first ) );
+        maxterms.emplace_back( !kitty::cube( c.first ) );
       }
     }
 
