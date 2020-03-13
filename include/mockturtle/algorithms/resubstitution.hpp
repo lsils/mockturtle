@@ -376,6 +376,7 @@ public:
     /* The default resubstitution functor does not insert any gates
        and consequently does not use the argument `max_inserts`. Other
        functors, however, make use of this argument. */
+    (void)care;
     (void)max_inserts;
     assert( kitty::is_const0( ~care ) );
 

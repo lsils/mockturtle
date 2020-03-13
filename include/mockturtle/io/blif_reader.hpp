@@ -218,6 +218,7 @@ public:
       auto const output = c.second[0u];
       assert( output == '0' || output == '1' );
       assert( output == first_output_value );
+      (void)first_output_value;
 
       if ( output == '1' )
       {
