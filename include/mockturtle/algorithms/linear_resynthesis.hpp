@@ -639,6 +639,12 @@ private:
 
 } // namespace detail
 
+/*! \brief Extracts linear matrix from XOR-based XAG
+ *
+ * This algorithm can be used to extract the linear matrix represented by an
+ * XAG that only contains XOR gates and no inverters at the outputs.  The matrix
+ * can be passed as an argument to `exact_linear_synthesis`.
+ */
 template<class Ntk>
 std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
 {
@@ -648,6 +654,15 @@ std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
   return simulate<std::vector<bool>>( detail::linear_xag{ ntk }, sim );
 }
 
+/*! \brief Optimum linear circuit synthesis (based on SAT)
+ *
+ * This algorithm creates an XAG that is only composed of XOR gates.  It is
+ * given as input a linear matrix, represented as vector of bool-vectors.  The
+ * size of the outer vector corresponds to the number of outputs, the size of
+ * each inner vector must be the same and corresponds to the number of inputs.
+ *
+ * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
+ */
 template<class Ntk>
 Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {} )
 {
@@ -656,6 +671,14 @@ Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix,
   return detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps}.run();
 }
 
+/*! \brief Optimum linear circuit resynthesis (based on SAT)
+ *
+ * This algorithm extracts the linear matrix from an XAG that only contains of
+ * XOR gates and no inversions and returns a new XAG that has the optimum number
+ * of XOR gates to represent the same function.
+ *
+ * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
+ */
 template<typename Ntk>
 Ntk exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {} )
 {
