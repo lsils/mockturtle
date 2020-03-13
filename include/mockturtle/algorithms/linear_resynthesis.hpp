@@ -37,11 +37,13 @@
 #include <unordered_set>
 #include <vector>
 
+#include "../algorithms/cnf.hpp"
 #include "../algorithms/simulation.hpp"
 #include "../networks/xag.hpp"
 #include "../traits.hpp"
 
 #include <fmt/format.h>
+#include <percy/solvers/bsat2.hpp>
 
 namespace mockturtle
 {
@@ -54,13 +56,41 @@ class linear_sum_simulator
 public:
   std::vector<uint32_t> compute_constant( bool ) const { return {}; }
   std::vector<uint32_t> compute_pi( uint32_t index ) const { return {index}; }
-  std::vector<uint32_t> compute_not( std::vector<uint32_t> const& value ) const { return value; }
+  std::vector<uint32_t> compute_not( std::vector<uint32_t> const& value ) const
+  {
+    assert( false && "No NOTs in linear forms allowed" );
+    std::abort();
+    return value;
+  }
 };
 
-class linear_sum_xag : public xag_network
+class linear_matrix_simulator
 {
 public:
-  linear_sum_xag( xag_network const& xag ) : xag_network( xag ) {}
+  linear_matrix_simulator( uint32_t num_inputs ) : num_inputs_( num_inputs ) {}
+
+  std::vector<bool> compute_constant( bool ) const { return std::vector<bool>( num_inputs_, false ); }
+  std::vector<bool> compute_pi( uint32_t index ) const
+  {
+    std::vector<bool> row( num_inputs_, false );
+    row[index] = true;
+    return row;
+  }
+  std::vector<bool> compute_not( std::vector<bool> const& value ) const
+  {
+    assert( false && "No NOTs in linear forms allowed" );
+    std::abort();
+    return value;
+  }
+
+private:
+  uint32_t num_inputs_;
+};
+
+class linear_xag : public xag_network
+{
+public:
+  linear_xag( xag_network const& xag ) : xag_network( xag ) {}
 
   template<typename Iterator>
   iterates_over_t<Iterator, std::vector<uint32_t>>
@@ -79,6 +109,7 @@ public:
     if ( c1.index < c2.index )
     {
       assert( false );
+      std::abort();
       return {};
     }
     else
@@ -113,6 +144,34 @@ public:
         std::copy( it2, set2.end(), std::back_inserter( result ) );
       }
 
+      return result;
+    }
+  }
+
+  template<typename Iterator>
+  iterates_over_t<Iterator, std::vector<bool>>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    (void)end;
+
+    assert( n != 0 && !is_pi( n ) );
+
+    auto const& c1 = _storage->nodes[n].children[0];
+    auto const& c2 = _storage->nodes[n].children[1];
+
+    auto set1 = *begin++;
+    auto set2 = *begin++;
+
+    if ( c1.index < c2.index )
+    {
+      assert( false );
+      std::abort();
+      return {};
+    }
+    else
+    {
+      std::vector<bool> result( set1.size() );
+      std::transform( set1.begin(), set1.end(), set2.begin(), result.begin(), std::not_equal_to<bool>{} );
       return result;
     }
   }
@@ -169,7 +228,7 @@ private:
   {
     occurrance_to_pairs.resize( 1u );
 
-    linear_sum_xag lxag{xag};
+    linear_xag lxag{xag};
     linear_equations = simulate<std::vector<uint32_t>>( lxag, linear_sum_simulator{} );
 
     for ( auto o = 0u; o < linear_equations.size(); ++o )
@@ -309,5 +368,325 @@ Ntk linear_resynthesis_paar( Ntk const& xag )
 
   return detail::linear_resynthesis_paar_impl<Ntk>( xag ).run();
 }
+
+
+struct exact_linear_synthesis_params
+{
+  /*! \brief Be verbose. */
+  bool verbose{false};
+
+  /*! \brief Be very verbose (debug messages). */
+  bool very_verbose{false};
+};
+
+namespace detail
+{
+
+template<class Ntk>
+struct exact_linear_synthesis_impl
+{
+  exact_linear_synthesis_impl( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps )
+      : n_( linear_matrix.front().size() ),
+        m_( linear_matrix.size() ),
+        linear_matrix_( linear_matrix ),
+        ps_( ps )
+  {
+  }
+
+  Ntk run()
+  {
+    k_ = m_;
+    while ( true )
+    {
+      if ( ps_.verbose )
+      {
+        fmt::print( "[i] try to find a solution with {} steps\n", k_ );
+      }
+      percy::bsat_wrapper solver;
+      ensure_row_size2( solver );
+      ensure_connectivity( solver );
+      ensure_outputs( solver );
+      if ( solver.solve( 0 ) == percy::success )
+      {
+        if ( ps_.very_verbose )
+        {
+          debug_solution( solver );
+        }
+        return extract_solution( solver );
+        break;
+      }
+      ++k_;
+    }
+  }
+
+private:
+  // 0 <= i <= k - 1
+  // 0 <= j <= n - 1
+  uint32_t b( uint32_t i, uint32_t j ) const
+  {
+    return 1 + i * n_ + j;
+  }
+
+  uint32_t num_bs() const
+  {
+    return k_ * n_;
+  }
+
+  // 0 <= i <= k - 1
+  // 0 <= p <= i - 1
+  uint32_t c( uint32_t i, uint32_t p ) const
+  {
+    return 1 + num_bs() + ( ( ( i - 1 ) * i ) / 2 ) + p;
+  }
+
+  uint32_t num_cs() const
+  {
+    return ( ( k_ - 1 ) * k_ ) / 2;
+  }
+
+  // 0 <= i <= k - 1
+  // 0 <= j <= n + i - 1
+  uint32_t b_or_c( uint32_t i, uint32_t j ) const
+  {
+    return j < n_ ? b( i, j ) : c( i, j - n_ );
+  }
+
+  // 0 <= l <= m - 1
+  // 0 <= i <= k - 1
+  uint32_t f( uint32_t l, uint32_t i ) const
+  {
+    return 1 + num_bs() + num_cs() + l * k_ + i;
+  }
+
+  uint32_t num_fs() const
+  {
+    return k_ * m_;
+  }
+
+  // 0 <= j <= n - 1
+  // 0 <= i <= k - 1
+  uint32_t phi( uint32_t j, uint32_t i ) const
+  {
+    return j * k_ + i;
+  }
+
+  void ensure_row_size2( percy::bsat_wrapper& solver ) const
+  {
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      /* at least 2 */
+      for ( auto cpl = 0u; cpl <= n_ + i; ++cpl )
+      {
+        std::vector<uint32_t> lits( n_ + i );
+        for ( auto j = 0u; j < n_ + i; ++j )
+        {
+          lits[j] = make_lit( b_or_c( i, j ), cpl == j );
+        }
+        solver.add_clause( lits );
+      }
+
+      /* at most 2 */
+      int plit[3];
+      for ( auto j = 2u; j < n_ + i; ++j )
+      {
+        plit[0] = make_lit( b_or_c( i, j ), true );
+        for ( auto jj = 1u; jj < j; ++jj )
+        {
+          plit[1] = make_lit( b_or_c( i, jj ), true );
+          for ( auto jjj = 0u; jjj < jj; ++jjj )
+          {
+            plit[2] = make_lit( b_or_c( i, jjj ), true );
+            solver.add_clause( plit, plit + 3 );
+          }
+        }
+      }
+    }
+  }
+
+  void ensure_connectivity( percy::bsat_wrapper& solver ) const
+  {
+    xag_network pntk;
+    std::vector<xag_network::signal> nodes( 1 + num_bs() + num_cs() + num_fs() );
+    nodes.front() = pntk.get_constant( false );
+    std::generate( nodes.begin() + 1u, nodes.end(), [&]() { return pntk.create_pi(); } );
+
+    // phi function
+    std::vector<xag_network::signal> phis( k_ * n_ );
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      for ( auto j = 0u; j < n_; ++j )
+      {
+        std::vector<xag_network::signal> xors( 1 + i );
+        auto it = xors.begin();
+        *it++ = nodes[b( i, j )];
+        for ( auto p = 0u; p < i; ++p )
+        {
+          *it++ = pntk.create_and( nodes[c( i, p )], phis[phi( j, p )] );
+        }
+        phis[phi( j, i )] = pntk.create_nary_xor( xors );
+      }
+    }
+
+    std::vector<xag_network::signal> impls;
+    for ( auto l = 0u; l < m_; ++l )
+    {
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        std::vector<xag_network::signal> ands( n_ );
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          ands[j] = pntk.create_xnor( phis[phi( j, i )], pntk.get_constant( linear_matrix_[l][j] ) );
+        }
+        impls.push_back( pntk.create_or( pntk.create_not( nodes[f( l, i )] ), pntk.create_nary_and( ands ) ) );
+      }
+    }
+    pntk.create_po( pntk.create_nary_and( impls ) );
+
+    int output = generate_cnf( pntk, [&]( auto const& clause ) {
+      solver.add_clause( clause );
+    } )[0];
+    solver.add_clause( &output, &output + 1 );
+  }
+
+  void ensure_outputs( percy::bsat_wrapper& solver ) const
+  {
+    for ( auto l = 0u; l < m_; ++l )
+    {
+      std::vector<uint32_t> lits( k_ );
+      int plit[2];
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        lits[i] = make_lit( f( l, i ) );
+        plit[0] = make_lit( f( l, i ), true );
+        for ( auto ii = i + 1; ii < k_; ++ii )
+        {
+          plit[1] = make_lit( f( l, ii ), true );
+          solver.add_clause( plit, plit + 2 );
+        }
+      }
+      solver.add_clause( lits );
+    }
+  }
+
+  Ntk extract_solution( percy::bsat_wrapper& solver ) const
+  {
+    Ntk ntk;
+
+    std::vector<signal<Ntk>> nodes( n_ );
+    std::generate( nodes.begin(), nodes.end(), [&]() { return ntk.create_pi(); } );
+
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      std::array<signal<Ntk>, 2> children;
+      auto it = children.begin();
+      for ( auto j = 0u; j < n_ + i; ++j )
+      {
+        if ( solver.var_value( b_or_c( i, j ) ) )
+        {
+          *it++ = nodes[j];
+        }
+      }
+      nodes.push_back( ntk.create_xor( children[0], children[1] ) );
+    }
+
+    for ( auto l = 0u; l < m_; ++l )
+    {
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        if ( solver.var_value( f( l, i ) ) )
+        {
+          ntk.create_po( nodes[n_ + i] );
+          break;
+        }
+      }
+    }
+
+    return ntk;
+  }
+
+private:
+  void debug_solution( percy::bsat_wrapper& solver ) const
+  {
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      fmt::print( i == 0 ? "B =" : "   " );
+      for ( auto j = 0u; j < n_; ++j )
+      {
+        fmt::print( " {}", solver.var_value( b( i, j ) ) );
+      }
+      fmt::print( i == 0 ? " C =" : "    " );
+      for ( auto p = 0u; p < i; ++p )
+      {
+        fmt::print( " {}", solver.var_value( c( i, p ) ) );
+      }
+      fmt::print( std::string( 2 * ( k_ - i ), ' ' ) );
+      fmt::print( i == 0u ? " F =" : "    " );
+      for ( auto l = 0u; l < m_; ++l )
+      {
+        fmt::print( " {}", solver.var_value( f( l, i ) ) );
+      }
+      fmt::print( "\n" );
+    }
+  }
+
+private:
+  uint32_t n_{};
+  uint32_t m_{};
+  uint32_t k_{};
+  std::vector<std::vector<bool>> const& linear_matrix_;
+  exact_linear_synthesis_params const& ps_;
+};
+
+} // namespace detail
+
+/*! \brief Extracts linear matrix from XOR-based XAG
+ *
+ * This algorithm can be used to extract the linear matrix represented by an
+ * XAG that only contains XOR gates and no inverters at the outputs.  The matrix
+ * can be passed as an argument to `exact_linear_synthesis`.
+ */
+template<class Ntk>
+std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
+
+  detail::linear_matrix_simulator sim( ntk.num_pis() );
+  return simulate<std::vector<bool>>( detail::linear_xag{ ntk }, sim );
+}
+
+/*! \brief Optimum linear circuit synthesis (based on SAT)
+ *
+ * This algorithm creates an XAG that is only composed of XOR gates.  It is
+ * given as input a linear matrix, represented as vector of bool-vectors.  The
+ * size of the outer vector corresponds to the number of outputs, the size of
+ * each inner vector must be the same and corresponds to the number of inputs.
+ *
+ * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
+ */
+template<class Ntk>
+Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {} )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
+
+  return detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps}.run();
+}
+
+/*! \brief Optimum linear circuit resynthesis (based on SAT)
+ *
+ * This algorithm extracts the linear matrix from an XAG that only contains of
+ * XOR gates and no inversions and returns a new XAG that has the optimum number
+ * of XOR gates to represent the same function.
+ *
+ * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
+ */
+template<typename Ntk>
+Ntk exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {} )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
+
+  const auto linear_matrix = get_linear_matrix( ntk );
+  return detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps}.run();
+}
+
 
 } /* namespace mockturtle */
