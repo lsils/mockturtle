@@ -56,13 +56,41 @@ class linear_sum_simulator
 public:
   std::vector<uint32_t> compute_constant( bool ) const { return {}; }
   std::vector<uint32_t> compute_pi( uint32_t index ) const { return {index}; }
-  std::vector<uint32_t> compute_not( std::vector<uint32_t> const& value ) const { return value; }
+  std::vector<uint32_t> compute_not( std::vector<uint32_t> const& value ) const
+  {
+    assert( false && "No NOTs in linear forms allowed" );
+    std::abort();
+    return value;
+  }
 };
 
-class linear_sum_xag : public xag_network
+class linear_matrix_simulator
 {
 public:
-  linear_sum_xag( xag_network const& xag ) : xag_network( xag ) {}
+  linear_matrix_simulator( uint32_t num_inputs ) : num_inputs_( num_inputs ) {}
+
+  std::vector<bool> compute_constant( bool ) const { return std::vector<bool>( num_inputs_, false ); }
+  std::vector<bool> compute_pi( uint32_t index ) const
+  {
+    std::vector<bool> row( num_inputs_, false );
+    row[index] = true;
+    return row;
+  }
+  std::vector<bool> compute_not( std::vector<bool> const& value ) const
+  {
+    assert( false && "No NOTs in linear forms allowed" );
+    std::abort();
+    return value;
+  }
+
+private:
+  uint32_t num_inputs_;
+};
+
+class linear_xag : public xag_network
+{
+public:
+  linear_xag( xag_network const& xag ) : xag_network( xag ) {}
 
   template<typename Iterator>
   iterates_over_t<Iterator, std::vector<uint32_t>>
@@ -81,6 +109,7 @@ public:
     if ( c1.index < c2.index )
     {
       assert( false );
+      std::abort();
       return {};
     }
     else
@@ -115,6 +144,34 @@ public:
         std::copy( it2, set2.end(), std::back_inserter( result ) );
       }
 
+      return result;
+    }
+  }
+
+  template<typename Iterator>
+  iterates_over_t<Iterator, std::vector<bool>>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    (void)end;
+
+    assert( n != 0 && !is_pi( n ) );
+
+    auto const& c1 = _storage->nodes[n].children[0];
+    auto const& c2 = _storage->nodes[n].children[1];
+
+    auto set1 = *begin++;
+    auto set2 = *begin++;
+
+    if ( c1.index < c2.index )
+    {
+      assert( false );
+      std::abort();
+      return {};
+    }
+    else
+    {
+      std::vector<bool> result( set1.size() );
+      std::transform( set1.begin(), set1.end(), set2.begin(), result.begin(), std::not_equal_to<bool>{} );
       return result;
     }
   }
@@ -171,7 +228,7 @@ private:
   {
     occurrance_to_pairs.resize( 1u );
 
-    linear_sum_xag lxag{xag};
+    linear_xag lxag{xag};
     linear_equations = simulate<std::vector<uint32_t>>( lxag, linear_sum_simulator{} );
 
     for ( auto o = 0u; o < linear_equations.size(); ++o )
@@ -583,11 +640,30 @@ private:
 } // namespace detail
 
 template<class Ntk>
+std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
+
+  detail::linear_matrix_simulator sim( ntk.num_pis() );
+  return simulate<std::vector<bool>>( detail::linear_xag{ ntk }, sim );
+}
+
+template<class Ntk>
 Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {} )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   return detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps}.run();
 }
+
+template<typename Ntk>
+Ntk exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {} )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
+
+  const auto linear_matrix = get_linear_matrix( ntk );
+  return detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps}.run();
+}
+
 
 } /* namespace mockturtle */
