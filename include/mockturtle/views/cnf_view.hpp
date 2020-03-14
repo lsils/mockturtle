@@ -55,6 +55,10 @@ namespace mockturtle
  * case solving was satisfiable.  Finally, methods `var` and `lit` can be used
  * to access variable and literal information for nodes and signals,
  * respectively, in order to add custom clauses with the `add_clause` methods.
+ *
+ * The CNF is generated additively and cannot be modified after nodes have been
+ * added.  Therefore, a network cannot modify or delete nodes when wrapped in a
+ * `cnf_view`.
  */
 template<typename Ntk>
 class cnf_view : public Ntk
@@ -80,16 +84,29 @@ public:
     register_events();
   }
 
+  /* \brief Returns the variable associated to a node. */
   inline uint32_t var( node const& n ) const
   {
     return Ntk::node_to_index( n );
   }
 
+  /*! \brief Returns the literal associated to a signal. */
   inline uint32_t lit( signal const& f ) const
   {
     return make_lit( var( Ntk::get_node( f ) ), Ntk::is_complemented( f ) );
   }
 
+  /*! \brief Solves the network with a set of custom assumptions.
+   *
+   * This function does not assert any primary output, unless specified
+   * explicitly through the assumptions.
+   *
+   * The function returns `nullopt`, if no solution can be found (due to a
+   * conflict limit), or `true` in case of SAT, and `false` in case of UNSAT.
+   *
+   * \param assumptions Vector of literals to be assumped when solving
+   * \param limit Conflict limit (unlimited if 0)
+   */
   inline std::optional<bool> solve( std::vector<int> assumptions, int limit = 0 )
   {
     switch ( solver_.solve( &assumptions[0], &assumptions[0] + 1, limit ) )
@@ -103,6 +120,13 @@ public:
     }
   }
 
+  /*! \brief Solves the network by asserting all primary outputs to be true
+   *
+   * The function returns `nullopt`, if no solution can be found (due to a
+   * conflict limit), or `true` in case of SAT, and `false` in case of UNSAT.
+   *
+   * \param limit Conflict limit (unlimited if 0)
+   */
   inline std::optional<bool> solve( int limit = 0 )
   {
     std::vector<int> assumptions;
@@ -112,11 +136,13 @@ public:
     return solve( assumptions, limit );
   }
 
+  /*! \brief Return model value for a node. */
   inline bool value( node const& n )
   {
     return solver_.var_value( var( n ) );
   }
 
+  /* \brief Returns all model values for all primary inputs. */
   std::vector<bool> pi_values()
   {
     std::vector<bool> values( Ntk::num_pis() );
@@ -126,11 +152,13 @@ public:
     return values;
   }
 
+  /*! \brief Adds a clause to the solver. */
   void add_clause( std::vector<uint32_t> const& clause )
   {
     solver_.add_clause( clause );
   }
 
+  /*! \brief Adds a clause to the solver. */
   template<typename... Lit, typename = std::enable_if_t<std::conjunction_v<std::is_same<Lit, uint32_t>...>>>
   void add_clause( Lit... lits )
   {
