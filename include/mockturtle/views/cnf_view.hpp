@@ -142,7 +142,34 @@ private:
       }
     }
 
-    std::abort();
+    if constexpr ( has_is_maj_v<Ntk> )
+    {
+      if ( Ntk::is_maj( n ) )
+      {
+        detail::on_maj( node_lit, child_lits[0], child_lits[1], child_lits[2], add_clause );
+        return;
+      }
+    }
+
+    if constexpr ( has_is_ite_v<Ntk> )
+    {
+      if ( Ntk::is_ite( n ) )
+      {
+        detail::on_ite( node_lit, child_lits[0], child_lits[1], child_lits[2], add_clause );
+        return;
+      }
+    }
+
+    if constexpr ( has_is_xor3_v<Ntk> )
+    {
+      if ( Ntk::is_xor3( n ) )
+      {
+        detail::on_xor3( node_lit, child_lits[0], child_lits[1], child_lits[2], add_clause );
+        return;
+      }
+    }
+
+    detail::on_function( node_lit, child_lits, Ntk::node_function( n ), add_clause );
   }
 
 private:

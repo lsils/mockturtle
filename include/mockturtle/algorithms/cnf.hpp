@@ -128,6 +128,28 @@ inline void on_ite( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& f
   fn( {a, c, lit_not( d )} );
 }
 
+/* general case */
+template<class ClauseFn>
+inline void on_function( uint32_t f, std::vector<uint32_t> const& child_lits, kitty::dynamic_truth_table const& function, ClauseFn&& fn )
+{
+  const auto cnf = kitty::cnf_characteristic( function );
+
+  auto lits = child_lits;
+  lits.push_back( f );
+  for ( auto const& cube : cnf )
+  {
+    std::vector<uint32_t> clause;
+    for ( auto i = 0u; i < lits.size(); ++i )
+    {
+      if ( cube.get_mask( i ) )
+      {
+        clause.push_back( lit_not_cond( lits[i], !cube.get_bit( i ) ) );
+      }
+    }
+    fn( clause );
+  }
+}
+
 } // namespace detail
 
 /*! \brief Clause callback function for generate_cnf. */
@@ -258,22 +280,7 @@ public:
       }
 
       /* general case */
-      const auto cnf = kitty::cnf_characteristic( ntk_.node_function( n ) );
-
-      child_lits.push_back( node_lit );
-      for ( auto const& cube : cnf )
-      {
-        std::vector<uint32_t> clause;
-        for ( auto i = 0u; i <= ntk_.fanin_size( n ); ++i )
-        {
-          if ( cube.get_mask( i ) )
-          {
-            clause.push_back( lit_not_cond( child_lits[i], !cube.get_bit( i ) ) );
-          }
-        }
-        fn_( clause );
-      }
-
+      detail::on_function( node_lit, child_lits, ntk_.node_function( n ), fn_ );
       return true;
     } );
 
