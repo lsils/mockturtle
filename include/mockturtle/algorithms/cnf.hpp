@@ -61,6 +61,75 @@ inline constexpr uint32_t lit_not_cond( uint32_t lit, bool cond )
   return cond ? lit ^ 0x1 : lit;
 }
 
+namespace detail
+{
+
+/* c = a & b */
+template<class ClauseFn>
+inline void on_and( uint32_t c, uint32_t a, uint32_t b, ClauseFn&& fn )
+{
+  fn( {a, lit_not( c )} );
+  fn( {b, lit_not( c )} );
+  fn( {lit_not( a ), lit_not( b ), c} );
+}
+
+/* c = a | b */
+template<class ClauseFn>
+inline void on_or( uint32_t c, uint32_t a, uint32_t b, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), c} );
+  fn( {lit_not( b ), c} );
+  fn( {a, b, lit_not( c )} );
+}
+
+/* c = a ^ b */
+template<class ClauseFn>
+inline void on_xor( uint32_t c, uint32_t a, uint32_t b, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), lit_not( b ), lit_not( c )} );
+  fn( {lit_not( a ), b, c} );
+  fn( {a, lit_not( b ), c} );
+  fn( {a, b, lit_not( c )} );
+}
+
+/* d = <abc> */
+template<class ClauseFn>
+inline void on_maj( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), lit_not( b ), d} );
+  fn( {lit_not( a ), lit_not( c ), d} );
+  fn( {lit_not( b ), lit_not( c ), d} );
+  fn( {a, b, lit_not( d )} );
+  fn( {a, c, lit_not( d )} );
+  fn( {b, c, lit_not( d )} );
+}
+
+/* d = a ^ b ^ c */
+template<class ClauseFn>
+inline void on_xor3( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), b, c, d} );
+  fn( {a, lit_not( b ), c, d} );
+  fn( {a, b, lit_not( c ), d} );
+  fn( {a, b, c, lit_not( d )} );
+  fn( {a, lit_not( b ), lit_not( c ), lit_not( d )} );
+  fn( {lit_not( a ), b, lit_not( c ), lit_not( d )} );
+  fn( {lit_not( a ), lit_not( b ), c, lit_not( d )} );
+  fn( {lit_not( a ), lit_not( b ), lit_not( c ), d} );
+}
+
+/* d = a ? b : c */
+template<class ClauseFn>
+inline void on_ite( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), lit_not( b ), d} );
+  fn( {lit_not( a ), b, lit_not( d )} );
+  fn( {a, lit_not( c ), d} );
+  fn( {a, c, lit_not( d )} );
+}
+
+} // namespace detail
+
 /*! \brief Clause callback function for generate_cnf. */
 using clause_callback_t = std::function<void( std::vector<uint32_t> const& )>;
 
@@ -138,7 +207,7 @@ public:
       {
         if ( ntk_.is_and( n ) )
         {
-          on_and( node_lit, child_lits[0], child_lits[1] );
+          detail::on_and( node_lit, child_lits[0], child_lits[1], fn_ );
           return true;
         }
       }
@@ -147,7 +216,7 @@ public:
       {
         if ( ntk_.is_or( n ) )
         {
-          on_or( node_lit, child_lits[0], child_lits[1] );
+          detail::on_or( node_lit, child_lits[0], child_lits[1], fn_ );
           return true;
         }
       }
@@ -156,7 +225,7 @@ public:
       {
         if ( ntk_.is_xor( n ) )
         {
-          on_xor( node_lit, child_lits[0], child_lits[1] );
+          detail::on_xor( node_lit, child_lits[0], child_lits[1], fn_ );
           return true;
         }
       }
@@ -165,7 +234,7 @@ public:
       {
         if ( ntk_.is_maj( n ) )
         {
-          on_maj( node_lit, child_lits[0], child_lits[1], child_lits[2] );
+          detail::on_maj( node_lit, child_lits[0], child_lits[1], child_lits[2], fn_ );
           return true;
         }
       }
@@ -174,7 +243,7 @@ public:
       {
         if ( ntk_.is_ite( n ) )
         {
-          on_ite( node_lit, child_lits[0], child_lits[1], child_lits[2] );
+          detail::on_ite( node_lit, child_lits[0], child_lits[1], child_lits[2], fn_ );
           return true;
         }
       }
@@ -183,7 +252,7 @@ public:
       {
         if ( ntk_.is_xor3( n ) )
         {
-          on_xor3( node_lit, child_lits[0], child_lits[1], child_lits[2] );
+          detail::on_xor3( node_lit, child_lits[0], child_lits[1], child_lits[2], fn_ );
           return true;
         }
       }
@@ -214,65 +283,6 @@ public:
     } );
 
     return output_lits;
-  }
-
-private:
-  /* c = a & b */
-  inline void on_and( uint32_t c, uint32_t a, uint32_t b )
-  {
-    fn_( {a, lit_not( c )} );
-    fn_( {b, lit_not( c )} );
-    fn_( {lit_not( a ), lit_not( b ), c} );
-  }
-
-  /* c = a | b */
-  inline void on_or( uint32_t c, uint32_t a, uint32_t b )
-  {
-    fn_( {lit_not( a ), c} );
-    fn_( {lit_not( b ), c} );
-    fn_( {a, b, lit_not( c )} );
-  }
-
-  /* c = a ^ b */
-  inline void on_xor( uint32_t c, uint32_t a, uint32_t b )
-  {
-    fn_( {lit_not( a ), lit_not( b ), lit_not( c )} );
-    fn_( {lit_not( a ), b, c} );
-    fn_( {a, lit_not( b ), c} );
-    fn_( {a, b, lit_not( c )} );
-  }
-
-  /* d = <abc> */
-  inline void on_maj( uint32_t d, uint32_t a, uint32_t b, uint32_t c )
-  {
-    fn_( {lit_not( a ), lit_not( b ), d} );
-    fn_( {lit_not( a ), lit_not( c ), d} );
-    fn_( {lit_not( b ), lit_not( c ), d} );
-    fn_( {a, b, lit_not( d )} );
-    fn_( {a, c, lit_not( d )} );
-    fn_( {b, c, lit_not( d )} );
-  }
-
-  /* d = a ^ b ^ c */
-  inline void on_xor3( uint32_t d, uint32_t a, uint32_t b, uint32_t c )
-  {
-    fn_( {lit_not( a ), b, c, d} );
-    fn_( {a, lit_not( b ), c, d} );
-    fn_( {a, b, lit_not( c ), d} );
-    fn_( {a, b, c, lit_not( d )} );
-    fn_( {a, lit_not( b ), lit_not( c ), lit_not( d )} );
-    fn_( {lit_not( a ), b, lit_not( c ), lit_not( d )} );
-    fn_( {lit_not( a ), lit_not( b ), c, lit_not( d )} );
-    fn_( {lit_not( a ), lit_not( b ), lit_not( c ), d} );
-  }
-
-  /* d = a ? b : c */
-  inline void on_ite( uint32_t d, uint32_t a, uint32_t b, uint32_t c )
-  {
-    fn_( {lit_not( a ), lit_not( b ), d} );
-    fn_( {lit_not( a ), b, lit_not( d )} );
-    fn_( {a, lit_not( c ), d} );
-    fn_( {a, c, lit_not( d )} );
   }
 
 private:
