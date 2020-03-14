@@ -54,3 +54,22 @@ TEST_CASE( "cnf_view with custom clauses", "[cnf_view]" )
   CHECK( mig.value( mig.get_node( b ) ) );
   CHECK( mig.value( mig.get_node( c ) ) );
 }
+
+TEST_CASE( "find multiple solutions with cnf_view", "[cnf_view]" )
+{
+  cnf_view<mig_network> mig;
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto c = mig.create_pi();
+  mig.create_po( mig.create_maj( a, b, c ) );
+
+  auto ctr = 0u;
+  while ( *mig.solve() )
+  {
+    ++ctr;
+    const auto solution = mig.pi_values();
+    CHECK( std::count( solution.begin(), solution.end(), true ) >= 2 );
+    mig.block();
+  }
+  CHECK( ctr == 4u );
+}

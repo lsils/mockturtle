@@ -152,6 +152,16 @@ public:
     return values;
   }
 
+  /*! \brief Blocks last model for primary input values. */
+  void block()
+  {
+    std::vector<uint32_t> blocking_clause( Ntk::num_pis() );
+    Ntk::foreach_pi( [&]( auto const& n, auto i ) {
+      blocking_clause[i] = make_lit( var( n ), value( n ) );
+    });
+    add_clause( blocking_clause );
+  }
+
   /*! \brief Adds a clause to the solver. */
   void add_clause( std::vector<uint32_t> const& clause )
   {
