@@ -56,6 +56,15 @@ public:
   // can only be constructed as empty network
   cnf_view() : Ntk()
   {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+    static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
+
     register_events();
   }
 
@@ -101,7 +110,7 @@ public:
     std::vector<bool> values( Ntk::num_pis() );
     Ntk::foreach_pi( [&]( auto const& n, auto i ) {
       values[i] = value( n );
-    });
+    } );
     return values;
   }
 
