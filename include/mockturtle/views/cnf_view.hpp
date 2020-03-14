@@ -69,12 +69,8 @@ public:
     return make_lit( var( Ntk::get_node( f ) ), Ntk::is_complemented( f ) );
   }
 
-  std::optional<bool> solve( int limit = 0 )
+  inline std::optional<bool> solve( std::vector<int> assumptions, int limit = 0 )
   {
-    std::vector<int> assumptions;
-    Ntk::foreach_po( [&]( auto const& f ) {
-      assumptions.push_back( lit( f ) );
-    } );
     switch ( solver_.solve( &assumptions[0], &assumptions[0] + 1, limit ) )
     {
     case percy::success:
@@ -84,6 +80,29 @@ public:
     case percy::timeout:
       return std::nullopt;
     }
+  }
+
+  inline std::optional<bool> solve( int limit = 0 )
+  {
+    std::vector<int> assumptions;
+    Ntk::foreach_po( [&]( auto const& f ) {
+      assumptions.push_back( lit( f ) );
+    } );
+    return solve( assumptions, limit );
+  }
+
+  inline bool value( node const& n )
+  {
+    return solver_.var_value( var( n ) );
+  }
+
+  std::vector<bool> pi_values()
+  {
+    std::vector<bool> values( Ntk::num_pis() );
+    Ntk::foreach_pi( [&]( auto const& n, auto i ) {
+      values[i] = value( n );
+    });
+    return values;
   }
 
 private:
