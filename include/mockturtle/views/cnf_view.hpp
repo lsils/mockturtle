@@ -44,6 +44,18 @@
 namespace mockturtle
 {
 
+/*! \brief A view to connect logic network creation to SAT solving.
+ *
+ * When using this view to create a new network, it creates a CNF internally
+ * while nodes are added to the network.  It also contains a SAT solver.  The
+ * network can be solved by calling the `solve` method, which by default assumes
+ * that each output should compute `true` (an overload of the `solve` method can
+ * override this default behaviour and apply custom assumptions).  Further,
+ * the methods `value` and `pi_values` can be used to access model values in
+ * case solving was satisfiable.  Finally, methods `var` and `lit` can be used
+ * to access variable and literal information for nodes and signals,
+ * respectively, in order to add custom clauses with the `add_clause` methods.
+ */
 template<typename Ntk>
 class cnf_view : public Ntk
 {
@@ -114,6 +126,17 @@ public:
     return values;
   }
 
+  void add_clause( std::vector<uint32_t> const& clause )
+  {
+    solver_.add_clause( clause );
+  }
+
+  template<typename... Lit, typename = std::enable_if_t<std::conjunction_v<std::is_same<Lit, uint32_t>...>>>
+  void add_clause( Lit... lits )
+  {
+    solver_.add_clause( std::vector<uint32_t>{{lits...}} );
+  }
+
 private:
   void register_events()
   {
@@ -133,8 +156,8 @@ private:
 
   void on_add( node const& n )
   {
-    const auto add_clause = [&]( std::vector<uint32_t> const& clause ) {
-      solver_.add_clause( clause );
+    const auto _add_clause = [&]( std::vector<uint32_t> const& clause ) {
+      add_clause( clause );
     };
 
     const auto node_lit = lit( Ntk::make_signal( n ) );
@@ -147,7 +170,7 @@ private:
     {
       if ( Ntk::is_and( n ) )
       {
-        detail::on_and( node_lit, child_lits[0], child_lits[1], add_clause );
+        detail::on_and( node_lit, child_lits[0], child_lits[1], _add_clause );
         return;
       }
     }
@@ -156,7 +179,7 @@ private:
     {
       if ( Ntk::is_or( n ) )
       {
-        detail::on_or( node_lit, child_lits[0], child_lits[1], add_clause );
+        detail::on_or( node_lit, child_lits[0], child_lits[1], _add_clause );
         return;
       }
     }
@@ -165,7 +188,7 @@ private:
     {
       if ( Ntk::is_xor( n ) )
       {
-        detail::on_xor( node_lit, child_lits[0], child_lits[1], add_clause );
+        detail::on_xor( node_lit, child_lits[0], child_lits[1], _add_clause );
         return;
       }
     }
@@ -174,7 +197,7 @@ private:
     {
       if ( Ntk::is_maj( n ) )
       {
-        detail::on_maj( node_lit, child_lits[0], child_lits[1], child_lits[2], add_clause );
+        detail::on_maj( node_lit, child_lits[0], child_lits[1], child_lits[2], _add_clause );
         return;
       }
     }
@@ -183,7 +206,7 @@ private:
     {
       if ( Ntk::is_ite( n ) )
       {
-        detail::on_ite( node_lit, child_lits[0], child_lits[1], child_lits[2], add_clause );
+        detail::on_ite( node_lit, child_lits[0], child_lits[1], child_lits[2], _add_clause );
         return;
       }
     }
@@ -192,12 +215,12 @@ private:
     {
       if ( Ntk::is_xor3( n ) )
       {
-        detail::on_xor3( node_lit, child_lits[0], child_lits[1], child_lits[2], add_clause );
+        detail::on_xor3( node_lit, child_lits[0], child_lits[1], child_lits[2], _add_clause );
         return;
       }
     }
 
-    detail::on_function( node_lit, child_lits, Ntk::node_function( n ), add_clause );
+    detail::on_function( node_lit, child_lits, Ntk::node_function( n ), _add_clause );
   }
 
 private:

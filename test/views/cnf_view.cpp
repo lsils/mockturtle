@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/views/cnf_view.hpp>
 
@@ -34,4 +35,22 @@ TEST_CASE( "create a simple miter of non-equivalent functions with cnf_view", "[
   CHECK( result );  /* has result */
   CHECK( *result ); /* result is SAT */
   CHECK( xag.pi_values() == std::vector<bool>{{true, true}} );
+}
+
+TEST_CASE( "cnf_view with custom clauses", "[cnf_view]" )
+{
+  cnf_view<mig_network> mig;
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto c = mig.create_pi();
+  mig.create_po( mig.create_maj( a, b, c ) );
+
+  mig.add_clause( lit_not( mig.lit( a ) ) );
+  mig.add_clause( mig.lit( b ) );
+  const auto result = mig.solve();
+  CHECK( result );
+  CHECK( *result );
+  CHECK( !mig.value( mig.get_node( a ) ) );
+  CHECK( mig.value( mig.get_node( b ) ) );
+  CHECK( mig.value( mig.get_node( c ) ) );
 }
