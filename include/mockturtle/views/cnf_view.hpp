@@ -109,7 +109,7 @@ public:
    */
   inline std::optional<bool> solve( std::vector<int> assumptions, int limit = 0 )
   {
-    switch ( solver_.solve( &assumptions[0], &assumptions[0] + 1, limit ) )
+    switch ( solver_.solve( &assumptions[0], &assumptions[0] + assumptions.size(), limit ) )
     {
     case percy::success:
       return true;
