@@ -33,6 +33,7 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -372,6 +373,12 @@ Ntk linear_resynthesis_paar( Ntk const& xag )
 
 struct exact_linear_synthesis_params
 {
+  /*! \brief Upper bound on number of XOR gates. If used, best solution is found decreasing */
+  std::optional<uint32_t> upper_bound{};
+
+  /*! \brief Conflict limit for SAT solving (default 0 = no limit). */
+  int conflict_limit{0};
+
   /*! \brief Be verbose. */
   bool verbose{false};
 
@@ -468,6 +475,12 @@ struct exact_linear_synthesis_impl
 
   Ntk run()
   {
+    return ps_.upper_bound ? run_decreasing() : run_increasing();
+  }
+
+private:
+  Ntk run_increasing()
+  {
     k_ = m_;
     while ( true )
     {
@@ -479,7 +492,7 @@ struct exact_linear_synthesis_impl
       ensure_row_size2( solver );
       ensure_connectivity( solver );
       ensure_outputs( solver );
-      const auto res = call_with_stopwatch( st_.time_solving, [&]() { return solver.solve( 0 ); } );
+      const auto res = call_with_stopwatch( st_.time_solving, [&]() { return solver.solve( ps_.conflict_limit ); } );
       if ( res == percy::success )
       {
         if ( ps_.very_verbose )
@@ -487,9 +500,39 @@ struct exact_linear_synthesis_impl
           debug_solution( solver );
         }
         return extract_solution( solver );
-        break;
       }
       ++k_;
+    }
+  }
+
+  Ntk run_decreasing()
+  {
+    Ntk best;
+    k_ = *ps_.upper_bound;
+    while ( true )
+    {
+      if ( ps_.verbose )
+      {
+        fmt::print( "[i] try to find a solution with {} steps, solving time so far = {:.2f} secs\n", k_, to_seconds( st_.time_solving ) );
+      }
+      percy::bsat_wrapper solver;
+      ensure_row_size2( solver );
+      ensure_connectivity( solver );
+      ensure_outputs( solver );
+      const auto res = call_with_stopwatch( st_.time_solving, [&]() { return solver.solve( ps_.conflict_limit ); } );
+      if ( res == percy::success )
+      {
+        if ( ps_.very_verbose )
+        {
+          debug_solution( solver );
+        }
+        best = extract_solution( solver );
+        --k_;
+      }
+      else
+      {
+        return best;
+      }
     }
   }
 
@@ -614,7 +657,7 @@ private:
       }
     }
 
-    // No two steps are te same
+    // No two steps are the same
     for ( auto i = 0u; i < k_; ++i )
     {
       for ( auto p = 0u; p < i; ++p )
@@ -650,25 +693,11 @@ private:
     //    solver.add_clause( lits );
     //  }
     //}
-
-    // at most one output (if no duplicates)
-    for ( auto i = 0u; i < k_; ++i )
-    {
-      for ( auto l = 1u; l < m_; ++l )
-      {
-        int lits[2];
-        lits[0] = make_lit( f( l, i ), true );
-        for ( auto ll = 0u; ll < l; ++ll )
-        {
-          lits[1] = make_lit( f( ll, i ), true );
-          solver.add_clause( lits, lits + 2 );
-        }
-      }
-    }
   }
 
   void ensure_outputs( percy::bsat_wrapper& solver ) const
   {
+    // each output covers at least one row
     for ( auto l = 0u; l < m_; ++l )
     {
       std::vector<uint32_t> lits( k_ );
@@ -685,6 +714,21 @@ private:
       }
       solver.add_clause( lits );
     }
+
+    // at most one output (if no duplicates) per row
+    //for ( auto i = 0u; i < k_; ++i )
+    //{
+    //  for ( auto l = 1u; l < m_; ++l )
+    //  {
+    //    int lits[2];
+    //    lits[0] = make_lit( f( l, i ), true );
+    //    for ( auto ll = 0u; ll < l; ++ll )
+    //    {
+    //      lits[1] = make_lit( f( ll, i ), true );
+    //      solver.add_clause( lits, lits + 2 );
+    //    }
+    //  }
+    //}
   }
 
   Ntk extract_solution( percy::bsat_wrapper& solver ) const
