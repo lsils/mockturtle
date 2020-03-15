@@ -379,6 +379,9 @@ struct exact_linear_synthesis_params
   /*! \brief Conflict limit for SAT solving (default 0 = no limit). */
   int conflict_limit{0};
 
+  /*! \brief Solution must be cancellation-free. */
+  bool cancellation_free{false};
+
   /*! \brief Be verbose. */
   bool verbose{false};
 
@@ -580,13 +583,6 @@ private:
     return k_ * m_;
   }
 
-  // 0 <= j <= n - 1
-  // 0 <= i <= k - 1
-  uint32_t psi( uint32_t j, uint32_t i ) const
-  {
-    return j * k_ + i;
-  }
-
   void ensure_row_size2( percy::bsat_wrapper& solver ) const
   {
     for ( auto i = 0u; i < k_; ++i )
@@ -627,6 +623,12 @@ private:
     nodes.front() = pntk.get_constant( false );
     std::generate( nodes.begin() + 1u, nodes.end(), [&]() { return pntk.create_pi(); } );
 
+    // 0 <= j <= n - 1
+    // 0 <= i <= k - 1
+    const auto psi_phi = [&]( uint32_t j, uint32_t i ) {
+      return j * k_ + i;
+    };
+
     // psi function
     std::vector<xag_network::signal> psis( k_ * n_ );
     for ( auto i = 0u; i < k_; ++i )
@@ -638,9 +640,9 @@ private:
         *it++ = nodes[b( i, j )];
         for ( auto p = 0u; p < i; ++p )
         {
-          *it++ = pntk.create_and( nodes[c( i, p )], psis[psi( j, p )] );
+          *it++ = pntk.create_and( nodes[c( i, p )], psis[psi_phi( j, p )] );
         }
-        psis[psi( j, i )] = pntk.create_nary_xor( xors );
+        psis[psi_phi( j, i )] = pntk.create_nary_xor( xors );
       }
     }
 
@@ -651,7 +653,7 @@ private:
         std::vector<xag_network::signal> ands( n_ );
         for ( auto j = 0u; j < n_; ++j )
         {
-          ands[j] = pntk.create_xnor( psis[psi( j, i )], pntk.get_constant( linear_matrix_[l][j] ) );
+          ands[j] = pntk.create_xnor( psis[psi_phi( j, i )], pntk.get_constant( linear_matrix_[l][j] ) );
         }
         pntk.create_po( pntk.create_or( pntk.create_not( nodes[f( l, i )] ), pntk.create_nary_and( ands ) ) );
       }
@@ -665,12 +667,42 @@ private:
         std::vector<xag_network::signal> ors( n_ );
         for ( auto j = 0u; j < n_; ++j )
         {
-          ors[j] = pntk.create_xor( psis[psi( j, p )], psis[psi( j, i )] );
+          ors[j] = pntk.create_xor( psis[psi_phi( j, p )], psis[psi_phi( j, i )] );
         }
         pntk.create_po( pntk.create_nary_or( ors ) );
       }
     }
 
+    if ( ps_.cancellation_free )
+    {
+      // phi function
+      std::vector<xag_network::signal> phis( k_ * n_ );
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          std::vector<xag_network::signal> ors( 1 + i );
+          auto it = ors.begin();
+          *it++ = nodes[b( i, j )];
+          for ( auto p = 0u; p < i; ++p )
+          {
+            *it++ = pntk.create_and( nodes[c( i, p )], phis[psi_phi( j, p )] );
+          }
+          phis[psi_phi( j, i )] = pntk.create_nary_or( ors );
+        }
+      }
+
+      // not cancellation-free
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          pntk.create_po( pntk.create_xnor( psis[psi_phi( j, i )], phis[psi_phi( j, i )] ) );
+        }
+      }
+    }
+
+    const auto node_lits = node_literals( pntk );
     auto outputs = generate_cnf( pntk, [&]( auto const& clause ) {
       solver.add_clause( clause );
     } );
@@ -680,19 +712,19 @@ private:
     }
 
     // at least 2 inputs in each compute form
-    //for ( auto i = 0u; i < k_; ++i )
-    //{
-    //  /* at least 2 */
-    //  for ( auto cpl = 0u; cpl <= n_; ++cpl )
-    //  {
-    //    std::vector<uint32_t> lits( n_ );
-    //    for ( auto j = 0u; j < n_; ++j )
-    //    {
-    //      lits[j] = make_lit( psi( j, i ), cpl == j );
-    //    }
-    //    solver.add_clause( lits );
-    //  }
-    //}
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      /* at least 2 */
+      for ( auto cpl = 0u; cpl <= n_; ++cpl )
+      {
+        std::vector<uint32_t> lits( n_ );
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          lits[j] = lit_not_cond( node_lits[psis[psi_phi( j, i )]], cpl == j );
+        }
+        solver.add_clause( lits );
+      }
+    }
   }
 
   void ensure_outputs( percy::bsat_wrapper& solver ) const
