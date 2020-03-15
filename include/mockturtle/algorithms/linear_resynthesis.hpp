@@ -369,7 +369,6 @@ Ntk linear_resynthesis_paar( Ntk const& xag )
   return detail::linear_resynthesis_paar_impl<Ntk>( xag ).run();
 }
 
-
 struct exact_linear_synthesis_params
 {
   /*! \brief Be verbose. */
@@ -386,11 +385,67 @@ template<class Ntk>
 struct exact_linear_synthesis_impl
 {
   exact_linear_synthesis_impl( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps )
-      : n_( linear_matrix.front().size() ),
-        m_( linear_matrix.size() ),
-        linear_matrix_( linear_matrix ),
-        ps_( ps )
+      : ps_( ps )
   {
+    if ( ps_.very_verbose )
+    {
+      fmt::print( "[i] input matrix =\n" );
+      debug_matrix( linear_matrix );
+    }
+
+    /* check matrix for trivial entries */
+    for ( auto j = 0u; j < linear_matrix.size(); ++j )
+    {
+      const auto& row = linear_matrix[j];
+      n_ = row.size();
+
+      auto cnt = 0u;
+      auto idx = 0u;
+      for ( auto i = 0u; i < row.size(); ++i )
+      {
+        if ( row[i] )
+        {
+          idx = i;
+          if ( ++cnt == 2u )
+          {
+            break;
+          }
+        }
+      }
+      if ( cnt == 0u )
+      {
+        /* constant 0 is encoded as input n */
+        trivial_pos_.emplace_back( j, n_ );
+      }
+      else if ( cnt == 1u )
+      {
+        trivial_pos_.emplace_back( j, idx );
+      }
+      else
+      {
+        linear_matrix_.push_back( row );
+      }
+    }
+
+    m_ = linear_matrix_.size();
+
+    if ( ps_.very_verbose )
+    {
+      fmt::print( "[i] problem matrix =\n" );
+      debug_matrix( linear_matrix_ );
+      fmt::print( "\n[i] trivial POs =\n" );
+      for ( auto const& [j, i] : trivial_pos_ )
+      {
+        if ( i == n_ )
+        {
+          fmt::print( "f{} = 0\n", j );
+        }
+        else
+        {
+          fmt::print( "f{} = x{}\n", j, i );
+        }
+      }
+    }
   }
 
   Ntk run()
@@ -589,13 +644,23 @@ private:
       nodes.push_back( ntk.create_xor( children[0], children[1] ) );
     }
 
+    auto it = trivial_pos_.begin();
+    auto poctr = 0u;
     for ( auto l = 0u; l < m_; ++l )
     {
+      while ( it != trivial_pos_.end() && it->first == poctr )
+      {
+        ntk.create_po( it->second == n_ ? ntk.get_constant( false ) : nodes[it->second] );
+        poctr++;
+        ++it;
+      }
+
       for ( auto i = 0u; i < k_; ++i )
       {
         if ( solver.var_value( f( l, i ) ) )
         {
           ntk.create_po( nodes[n_ + i] );
+          poctr++;
           break;
         }
       }
@@ -605,6 +670,18 @@ private:
   }
 
 private:
+  void debug_matrix( std::vector<std::vector<bool>> const& matrix ) const
+  {
+    for ( auto const& row : matrix )
+    {
+      for ( auto b : row )
+      {
+        fmt::print( "{}", b ? '1' : '0' );
+      }
+      fmt::print( "\n" );
+    }
+  }
+
   void debug_solution( percy::bsat_wrapper& solver ) const
   {
     for ( auto i = 0u; i < k_; ++i )
@@ -631,9 +708,10 @@ private:
 
 private:
   uint32_t n_{};
-  uint32_t m_{};
+  uint32_t m_{0u};
   uint32_t k_{};
-  std::vector<std::vector<bool>> const& linear_matrix_;
+  std::vector<std::vector<bool>> linear_matrix_;
+  std::vector<std::pair<uint32_t, uint32_t>> trivial_pos_;
   exact_linear_synthesis_params const& ps_;
 };
 
@@ -651,7 +729,7 @@ std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   detail::linear_matrix_simulator sim( ntk.num_pis() );
-  return simulate<std::vector<bool>>( detail::linear_xag{ ntk }, sim );
+  return simulate<std::vector<bool>>( detail::linear_xag{ntk}, sim );
 }
 
 /*! \brief Optimum linear circuit synthesis (based on SAT)
@@ -687,6 +765,5 @@ Ntk exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params cons
   const auto linear_matrix = get_linear_matrix( ntk );
   return detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps}.run();
 }
-
 
 } /* namespace mockturtle */
