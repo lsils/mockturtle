@@ -136,3 +136,35 @@ TEST_CASE( "More difficult example with upper bound", "[linear_resynthesis]" )
   CHECK( get_linear_matrix( xag ) == matrix );
   CHECK( xag.num_gates() == 10u );
 }
+
+TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; with cancellations", "[linear_resynthesis]" )
+{
+  std::vector<std::vector<bool>> matrix = {
+    {true, true, false, false},
+    {true, true, true, false},
+    {true, true, true, true},
+    {false, true, true, true}
+  };
+
+  const auto xag = exact_linear_synthesis<xag_network>( matrix );
+
+  CHECK( get_linear_matrix( xag ) == matrix );
+  CHECK( xag.num_gates() == 4u );
+}
+
+TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; cancellation-free", "[linear_resynthesis]" )
+{
+  std::vector<std::vector<bool>> matrix = {
+    {true, true, false, false},
+    {true, true, true, false},
+    {true, true, true, true},
+    {false, true, true, true}
+  };
+
+  exact_linear_synthesis_params ps;
+  ps.cancellation_free = true;
+  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+
+  CHECK( get_linear_matrix( xag ) == matrix );
+  CHECK( xag.num_gates() == 5u );
+}

@@ -379,6 +379,18 @@ struct exact_linear_synthesis_params
   /*! \brief Conflict limit for SAT solving (default 0 = no limit). */
   int conflict_limit{0};
 
+  /*! \brief Solution must be cancellation-free. */
+  bool cancellation_free{false};
+
+  /*! \brief Ignore inputs in any step to compute this output.
+   *
+   * Either the vector is empty, if no inputs should be ignored, or it has as
+   * many entries as rows in the input matrix.  Each entry is a vector of input
+   * indexes (starting from 0) to be ignored, an entry can be the empty vector,
+   * if no inputs should be ignored for some output.
+   */
+  std::vector<std::vector<uint32_t>> ignore_inputs;
+
   /*! \brief Be verbose. */
   bool verbose{false};
 
@@ -418,6 +430,13 @@ struct exact_linear_synthesis_impl
       debug_matrix( linear_matrix );
     }
 
+    /* check whether ignore inputs matches matrix size */
+    if ( !ps_.ignore_inputs.empty() && ps_.ignore_inputs.size() != linear_matrix.size() )
+    {
+      fmt::print( "[e] size of ignored inputs vector must match number of rows in linear matrix" );
+      std::abort();
+    }
+
     /* check matrix for trivial entries */
     for ( auto j = 0u; j < linear_matrix.size(); ++j )
     {
@@ -449,6 +468,10 @@ struct exact_linear_synthesis_impl
       else
       {
         linear_matrix_.push_back( row );
+        if ( !ps_.ignore_inputs.empty() )
+        {
+          ignore_inputs_.push_back( ps_.ignore_inputs[j] );
+        }
       }
     }
 
@@ -468,6 +491,14 @@ struct exact_linear_synthesis_impl
         else
         {
           fmt::print( "f{} = x{}\n", j, i );
+        }
+      }
+      if ( !ignore_inputs_.empty() )
+      {
+        fmt::print( "\n[i] ignored inputs =\n" );
+        for ( auto j = 0u; j < ignore_inputs_.size(); ++j )
+        {
+          fmt::print( "for f{} ignore {{{}}}\n", j, fmt::join( ignore_inputs_[j], ", " ) );
         }
       }
     }
@@ -580,13 +611,6 @@ private:
     return k_ * m_;
   }
 
-  // 0 <= j <= n - 1
-  // 0 <= i <= k - 1
-  uint32_t phi( uint32_t j, uint32_t i ) const
-  {
-    return j * k_ + i;
-  }
-
   void ensure_row_size2( percy::bsat_wrapper& solver ) const
   {
     for ( auto i = 0u; i < k_; ++i )
@@ -627,8 +651,14 @@ private:
     nodes.front() = pntk.get_constant( false );
     std::generate( nodes.begin() + 1u, nodes.end(), [&]() { return pntk.create_pi(); } );
 
-    // phi function
-    std::vector<xag_network::signal> phis( k_ * n_ );
+    // 0 <= j <= n - 1
+    // 0 <= i <= k - 1
+    const auto psi_phi = [&]( uint32_t j, uint32_t i ) {
+      return j * k_ + i;
+    };
+
+    // psi function
+    std::vector<xag_network::signal> psis( k_ * n_ );
     for ( auto i = 0u; i < k_; ++i )
     {
       for ( auto j = 0u; j < n_; ++j )
@@ -638,9 +668,9 @@ private:
         *it++ = nodes[b( i, j )];
         for ( auto p = 0u; p < i; ++p )
         {
-          *it++ = pntk.create_and( nodes[c( i, p )], phis[phi( j, p )] );
+          *it++ = pntk.create_and( nodes[c( i, p )], psis[psi_phi( j, p )] );
         }
-        phis[phi( j, i )] = pntk.create_nary_xor( xors );
+        psis[psi_phi( j, i )] = pntk.create_nary_xor( xors );
       }
     }
 
@@ -651,7 +681,7 @@ private:
         std::vector<xag_network::signal> ands( n_ );
         for ( auto j = 0u; j < n_; ++j )
         {
-          ands[j] = pntk.create_xnor( phis[phi( j, i )], pntk.get_constant( linear_matrix_[l][j] ) );
+          ands[j] = pntk.create_xnor( psis[psi_phi( j, i )], pntk.get_constant( linear_matrix_[l][j] ) );
         }
         pntk.create_po( pntk.create_or( pntk.create_not( nodes[f( l, i )] ), pntk.create_nary_and( ands ) ) );
       }
@@ -665,12 +695,45 @@ private:
         std::vector<xag_network::signal> ors( n_ );
         for ( auto j = 0u; j < n_; ++j )
         {
-          ors[j] = pntk.create_xor( phis[phi( j, p )], phis[phi( j, i )] );
+          ors[j] = pntk.create_xor( psis[psi_phi( j, p )], psis[psi_phi( j, i )] );
         }
         pntk.create_po( pntk.create_nary_or( ors ) );
       }
     }
 
+    std::vector<xag_network::signal> phis( k_ * n_ );
+    if ( !ignore_inputs_.empty() || ps_.cancellation_free )
+    {
+      // phi function
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          std::vector<xag_network::signal> ors( 1 + i );
+          auto it = ors.begin();
+          *it++ = nodes[b( i, j )];
+          for ( auto p = 0u; p < i; ++p )
+          {
+            *it++ = pntk.create_and( nodes[c( i, p )], phis[psi_phi( j, p )] );
+          }
+          phis[psi_phi( j, i )] = pntk.create_nary_or( ors );
+        }
+      }
+
+      // cancellation-free
+      if ( ps_.cancellation_free )
+      {
+        for ( auto i = 0u; i < k_; ++i )
+        {
+          for ( auto j = 0u; j < n_; ++j )
+          {
+            pntk.create_po( pntk.create_xnor( psis[psi_phi( j, i )], phis[psi_phi( j, i )] ) );
+          }
+        }
+      }
+    }
+
+    const auto node_lits = node_literals( pntk );
     auto outputs = generate_cnf( pntk, [&]( auto const& clause ) {
       solver.add_clause( clause );
     } );
@@ -679,20 +742,38 @@ private:
       solver.add_clause( &output, &output + 1 );
     }
 
+    // ignored inputs
+    if ( !ignore_inputs_.empty() )
+    {
+      for ( auto l = 0u; l < m_; ++l )
+      {
+        for ( auto j : ignore_inputs_[l] )
+        {
+          for ( auto i = 0u; i < k_; ++i )
+          {
+            int lits[2];
+            lits[0] = make_lit( f( l, i ), true );
+            lits[1] = lit_not( node_lits[phis[psi_phi( j, i )]] );
+            solver.add_clause( lits, lits + 2 );
+          }
+        }
+      }
+    }
+
     // at least 2 inputs in each compute form
-    //for ( auto i = 0u; i < k_; ++i )
-    //{
-    //  /* at least 2 */
-    //  for ( auto cpl = 0u; cpl <= n_; ++cpl )
-    //  {
-    //    std::vector<uint32_t> lits( n_ );
-    //    for ( auto j = 0u; j < n_; ++j )
-    //    {
-    //      lits[j] = make_lit( phi( j, i ), cpl == j );
-    //    }
-    //    solver.add_clause( lits );
-    //  }
-    //}
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      /* at least 2 */
+      for ( auto cpl = 0u; cpl <= n_; ++cpl )
+      {
+        std::vector<uint32_t> lits( n_ );
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          lits[j] = lit_not_cond( node_lits[psis[psi_phi( j, i )]], cpl == j );
+        }
+        solver.add_clause( lits );
+      }
+    }
   }
 
   void ensure_outputs( percy::bsat_wrapper& solver ) const
@@ -820,6 +901,7 @@ private:
   uint32_t k_{};
   std::vector<std::vector<bool>> linear_matrix_;
   std::vector<std::pair<uint32_t, uint32_t>> trivial_pos_;
+  std::vector<std::vector<uint32_t>> ignore_inputs_;
   exact_linear_synthesis_params const& ps_;
   exact_linear_synthesis_stats& st_;
 };
