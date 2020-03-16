@@ -382,6 +382,15 @@ struct exact_linear_synthesis_params
   /*! \brief Solution must be cancellation-free. */
   bool cancellation_free{false};
 
+  /*! \brief Ignore inputs in any step to compute this output.
+   *
+   * Either the vector is empty, if no inputs should be ignored, or it has as
+   * many entries as rows in the input matrix.  Each entry is a vector of input
+   * indexes (starting from 0) to be ignored, an entry can be the empty vector,
+   * if no inputs should be ignored for some output.
+   */
+  std::vector<std::vector<uint32_t>> ignore_inputs;
+
   /*! \brief Be verbose. */
   bool verbose{false};
 
@@ -421,6 +430,13 @@ struct exact_linear_synthesis_impl
       debug_matrix( linear_matrix );
     }
 
+    /* check whether ignore inputs matches matrix size */
+    if ( !ps_.ignore_inputs.empty() && ps_.ignore_inputs.size() != linear_matrix.size() )
+    {
+      fmt::print( "[e] size of ignored inputs vector must match number of rows in linear matrix" );
+      std::abort();
+    }
+
     /* check matrix for trivial entries */
     for ( auto j = 0u; j < linear_matrix.size(); ++j )
     {
@@ -452,6 +468,10 @@ struct exact_linear_synthesis_impl
       else
       {
         linear_matrix_.push_back( row );
+        if ( !ps_.ignore_inputs.empty() )
+        {
+          ignore_inputs_.push_back( ps_.ignore_inputs[j] );
+        }
       }
     }
 
@@ -471,6 +491,14 @@ struct exact_linear_synthesis_impl
         else
         {
           fmt::print( "f{} = x{}\n", j, i );
+        }
+      }
+      if ( !ignore_inputs_.empty() )
+      {
+        fmt::print( "\n[i] ignored inputs =\n" );
+        for ( auto j = 0u; j < ignore_inputs_.size(); ++j )
+        {
+          fmt::print( "for f{} ignore {{{}}}\n", j, fmt::join( ignore_inputs_[j], ", " ) );
         }
       }
     }
@@ -673,10 +701,10 @@ private:
       }
     }
 
-    if ( ps_.cancellation_free )
+    std::vector<xag_network::signal> phis( k_ * n_ );
+    if ( !ignore_inputs_.empty() || ps_.cancellation_free )
     {
       // phi function
-      std::vector<xag_network::signal> phis( k_ * n_ );
       for ( auto i = 0u; i < k_; ++i )
       {
         for ( auto j = 0u; j < n_; ++j )
@@ -692,12 +720,15 @@ private:
         }
       }
 
-      // not cancellation-free
-      for ( auto i = 0u; i < k_; ++i )
+      // cancellation-free
+      if ( ps_.cancellation_free )
       {
-        for ( auto j = 0u; j < n_; ++j )
+        for ( auto i = 0u; i < k_; ++i )
         {
-          pntk.create_po( pntk.create_xnor( psis[psi_phi( j, i )], phis[psi_phi( j, i )] ) );
+          for ( auto j = 0u; j < n_; ++j )
+          {
+            pntk.create_po( pntk.create_xnor( psis[psi_phi( j, i )], phis[psi_phi( j, i )] ) );
+          }
         }
       }
     }
@@ -709,6 +740,24 @@ private:
     for ( int output : outputs )
     {
       solver.add_clause( &output, &output + 1 );
+    }
+
+    // ignored inputs
+    if ( !ignore_inputs_.empty() )
+    {
+      for ( auto l = 0u; l < m_; ++l )
+      {
+        for ( auto j : ignore_inputs_[l] )
+        {
+          for ( auto i = 0u; i < k_; ++i )
+          {
+            int lits[2];
+            lits[0] = make_lit( f( l, i ), true );
+            lits[1] = lit_not( node_lits[phis[psi_phi( j, i )]] );
+            solver.add_clause( lits, lits + 2 );
+          }
+        }
+      }
     }
 
     // at least 2 inputs in each compute form
@@ -852,6 +901,7 @@ private:
   uint32_t k_{};
   std::vector<std::vector<bool>> linear_matrix_;
   std::vector<std::pair<uint32_t, uint32_t>> trivial_pos_;
+  std::vector<std::vector<uint32_t>> ignore_inputs_;
   exact_linear_synthesis_params const& ps_;
   exact_linear_synthesis_stats& st_;
 };
