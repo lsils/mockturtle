@@ -86,7 +86,7 @@ inline dynamic_truth_table create<dynamic_truth_table>( unsigned num_vars )
   \param complement If true, realize inverse projection
 */
 template<typename TT>
-void create_nth_var( TT& tt, uint64_t var_index, bool complement = false )
+void create_nth_var( TT& tt, uint8_t var_index, bool complement = false )
 {
   if ( tt.num_vars() <= 6 )
   {
@@ -123,7 +123,7 @@ void create_nth_var( TT& tt, uint64_t var_index, bool complement = false )
 
 /*! \cond PRIVATE */
 template<int NumVars>
-void create_nth_var( static_truth_table<NumVars, true>& tt, uint64_t var_index, bool complement = false )
+void create_nth_var( static_truth_table<NumVars, true>& tt, uint8_t var_index, bool complement = false )
 {
   /* assign from precomputed table */
   tt._bits = complement ? ~detail::projections[var_index] : detail::projections[var_index];
@@ -132,6 +132,20 @@ void create_nth_var( static_truth_table<NumVars, true>& tt, uint64_t var_index, 
   tt.mask_bits();
 }
 /*! \endcond */
+
+/*! \brief Constructs projections (single-variable functions) out-of-place
+
+  \param tt Truth table
+  \param var_index Index of the variable, must be smaller than the truth table's number of variables
+  \param complement If true, realize inverse projection
+*/
+template<class TT>
+TT nth_var( uint8_t num_vars, uint8_t var_index, bool complement = false )
+{
+  TT tt = create<TT>( num_vars );
+  create_nth_var( tt, var_index, complement );
+  return tt;
+}
 
 /*! \brief Constructs truth table from binary string
 
@@ -310,13 +324,14 @@ void create_from_cubes( TT& tt, const std::vector<cube>& cubes, bool esop = fals
 
     auto bits = cube._bits;
     auto mask = cube._mask;
-
+    
     for ( auto i = 0; i < tt.num_vars(); ++i )
     {
       if ( mask & 1 )
       {
         auto var = tt.construct();
         create_nth_var( var, i, !( bits & 1 ) );
+
         product &= var;
       }
       bits >>= 1;
@@ -362,7 +377,7 @@ void create_from_clauses( TT& tt, const std::vector<cube>& clauses, bool esop = 
 
     auto bits = clause._bits;
     auto mask = clause._mask;
-
+    
     for ( auto i = 0; i < tt.num_vars(); ++i )
     {
       if ( mask & 1 )
@@ -433,12 +448,21 @@ template<typename TT>
 void create_equals( TT& tt, uint8_t bitcount )
 {
   clear( tt );
+  if ( bitcount > tt.num_vars() ) return;
 
-  for ( uint64_t x = 0; x < tt.num_bits(); ++x )
+  if ( tt.num_vars() <= 6 )
   {
-    if ( __builtin_popcount( x ) == bitcount )
+    const auto word = detail::onehots[tt.num_vars()][bitcount];
+    create_from_words( tt, &word, &word + 1 );
+  }
+  else
+  {
+    for ( uint64_t x = 0; x < tt.num_bits(); ++x )
     {
-      set_bit( tt, x );
+      if ( __builtin_popcount( x ) == bitcount )
+      {
+        set_bit( tt, x );
+      }
     }
   }
 }

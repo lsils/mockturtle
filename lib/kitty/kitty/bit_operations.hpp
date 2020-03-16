@@ -155,9 +155,19 @@ inline uint64_t count_ones( const TT& tt )
 template<int NumVars>
 inline uint64_t count_ones( const static_truth_table<NumVars, true>& tt )
 {
-  return __builtin_popcount( tt._bits );
+  return __builtin_popcount( tt._bits & 0xffffffff ) + __builtin_popcount( tt._bits >> 32 );
 }
 /*! \endcond */
+
+/*! \brief Count zeros in truth table
+
+  \param tt Truth table
+*/
+template<typename TT>
+inline uint64_t count_zeros( const TT& tt )
+{
+  return count_ones( ~tt );
+}
 
 /*! \cond PRIVATE */
 inline int64_t find_first_bit_in_word( uint64_t word )
@@ -253,7 +263,18 @@ inline int64_t find_last_bit_in_word( uint64_t word )
 template<typename TT>
 int64_t find_first_one_bit( const TT& tt, int64_t start = 0 )
 {
-  const auto it = std::find_if( tt.cbegin() + ( start >> 6 ), tt.cend(), []( auto word ) { return word != 0; } );
+  uint64_t mask = ~( ( UINT64_C( 1 ) << uint64_t( start % 64 ) ) - 1u );
+  auto it = tt.cbegin() + ( start >> 6 );
+  if ( it != tt.cend() && ( *it & mask ) != 0 )
+  {
+    return 64 * std::distance( tt.cbegin(), it ) + find_first_bit_in_word( *it & mask );
+  }
+  else if ( it == tt.cend() )
+  {
+    return -1;
+  }
+
+  it = std::find_if( it + 1, tt.cend(), []( auto word ) { return word != 0; } );
 
   if ( it == tt.cend() )
   {

@@ -31,11 +31,13 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cinttypes>
 #include <utility>
 #include <vector>
 
 #include "bit_operations.hpp"
+#include "esop.hpp"
 #include "operations.hpp"
 #include "operators.hpp"
 
@@ -288,6 +290,47 @@ std::vector<uint32_t> runlength_pattern( const TT& tt )
     pattern.push_back( length );
   } );
   return pattern;
+}
+
+/*! \brief Compute polynomial degree
+  The polyomial degree is the number of variables in the largest monomial in
+  the functoons ANF (PPRM).
+  \param tt Truth table
+*/
+template<typename TT>
+inline uint32_t polynomial_degree( const TT& tt )
+{
+  const auto cubes = esop_from_pprm( tt );
+  if ( cubes.empty() ) /* zero function */
+  {
+    return 0u;
+  }
+  const auto max = std::max_element( cubes.begin(), cubes.end(),
+                                     []( auto const& c1, auto const& c2 ) { return c1.num_literals() < c2.num_literals(); } );
+  return max->num_literals();
+}
+
+/*! \brief Returns the absolute distinguishing power of a function
+  The absolute distinguishing power of a function f is the number of
+  distinguishing pair {i,j} of bits, where f(i) != f(j).
+  \param tt Truth table
+*/
+template<typename TT>
+inline uint64_t absolute_disinguishing_power( const TT& tt )
+{
+  return count_zeros( tt ) * count_ones( tt );
+}
+
+/*! brief Returns the relative distinguishing power of a function wrt. to target function
+  Quantifies the number of distinguishing pairs in the target function
+  that can be distinguished by the function.
+  \param tt Truth table of function
+  \param target_tt Truth table of target function
+*/
+template<typename TT>
+inline uint64_t relative_distinguishing_power( const TT& tt, const TT& target_tt )
+{
+  return count_ones( ~tt & ~target_tt ) * count_ones( tt & target_tt ) + count_ones( ~tt & target_tt ) * count_ones( tt & ~target_tt ); 
 }
 
 } // namespace kitty

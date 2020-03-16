@@ -34,6 +34,7 @@
 
 #include <string>
 #include <type_traits>
+#include <map>
 
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/traits.hpp>
@@ -680,6 +681,21 @@ struct has_num_cos<Ntk, std::void_t<decltype( std::declval<Ntk>().num_cos() )>> 
 
 template<class Ntk>
 inline constexpr bool has_num_cos_v = has_num_cos<Ntk>::value;
+#pragma endregion
+
+#pragma region has_num_latches
+template<class Ntk, class = void>
+struct has_num_latches : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_num_latches<Ntk, std::void_t<decltype( std::declval<Ntk>().num_latches() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_num_latches_v = has_num_latches<Ntk>::value;
 #pragma endregion
 
 #pragma region has_num_pis

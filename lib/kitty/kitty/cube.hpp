@@ -139,6 +139,12 @@ public:
     return _value < that._value;
   }
 
+  /*! \brief Returns the negated cube */
+  inline cube operator!() const
+  {
+    return {!_bits, _mask};
+  }
+
   /*! \brief Merges two cubes of distance-1 */
   inline cube merge( const cube& that ) const
   {
@@ -268,10 +274,10 @@ inline void print_cubes( const std::vector<cube>& cubes, unsigned length = 32u, 
   for ( const auto& cube : cubes )
   {
     cube.print( length, os );
-    std::cout << '\n';
+    os << '\n';
   }
 
-  std::cout << std::flush;
+  os << std::flush;
 }
 
 template<>

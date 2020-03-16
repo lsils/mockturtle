@@ -18,12 +18,20 @@ v0.2 (not yet released)
     - Cleanup LUT networks (`cleanup_luts`) `#191 <https://github.com/lsils/mockturtle/pull/191>`_
     - Extract linear subcircuits in XAGs (`extract_linear_circuit` and `merge_linear_circuit`) `#204 <https://github.com/lsils/mockturtle/pull/204>`_
     - Linear resynthesis using Paar algorithm (`linear_resynthesis_paar`) `#211 <https://github.com/lsils/mockturtle/pull/211>`_
+    - XAG optimization by computing transitive linear fanin `#232 <https://github.com/lsils/mockturtle/pull/232>`_
+    - SAT-based satisfiability don't cares checker (`satisfiability_dont_cares_checker`) `#236 <https://github.com/lsils/mockturtle/pull/236>`_
+    - XAG optimization based on satisfiability don't cares (`xag_dont_cares_optimization`) `#237 <https://github.com/lsils/mockturtle/pull/237>`_
+    - XMG optimization based on satisfiability don't cares (`xmg_dont_cares_optimization`) `#239 <https://github.com/lsils/mockturtle/pull/239>`_
+    - Create circuit based on spectral equivalence transformation sequences (`apply_spectral_transformations`) `#263 <https://github.com/lsils/mockturtle/pull/263>`_
+    - Exact linear resynthesis using SAT (`exact_linear_resynthesis`, `exact_linear_synthesis`) `#265 <https://github.com/lsils/mockturtle/pull/265>`_
 * Views:
     - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
+    - Creates a CNF while creating a network (`cnf_view`) `#181 <https://github.com/lsils/mockturtle/pull/274>`_ `#184 <https://github.com/lsils/mockturtle/pull/274>`_
 * I/O:
     - Write networks to DIMACS files for CNF (`write_dimacs`) `#146 <https://github.com/lsils/mockturtle/pull/146>`_
     - Read BLIF files using *lorina* (`blif_reader`) `#167 <https://github.com/lsils/mockturtle/pull/167>`_
     - Write networks to BLIF files (`write_blif`) `#169 <https://github.com/lsils/mockturtle/pull/169>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
+    - Create circuit from integer index list (`create_from_binary_index_list`) `#259 <https://github.com/lsils/mockturtle/pull/259>`_
 * Resynthesis functions:
     - Resynthesis function based on DSD decomposition (`dsd_resynthesis`) `#182 <https://github.com/lsils/mockturtle/pull/182>`_
     - Resynthesis function based on Shannon decomposition (`shannon_resynthesis`) `#185 <https://github.com/lsils/mockturtle/pull/185>`_
@@ -35,6 +43,9 @@ v0.2 (not yet released)
     - Create modulus vector from hex string for modular arithmetic functions (`bool_vector_from_hex`) `#176 <https://github.com/lsils/mockturtle/pull/176>`_
     - Modular addition based on Hiasat and modular subtraction `#177 <https://github.com/lsils/mockturtle/pull/177>`_
     - Majority-9 networks (`majority5`, `majority7`, `majority9_12`, `majority9_13`) `#185 <https://github.com/lsils/mockturtle/pull/185>`_
+    - Modular multiplication of Montgomery numbers (`montgomery_multiplication`) `#227 <https://github.com/lsils/mockturtle/pull/227>`_
+    - Constant modular multiplication (`modular_constant_multiplier`) `#227 <https://github.com/lsils/mockturtle/pull/227>`_
+    - Out-of-place modular addition, subtraction, and multiplication (`modular_adder`, `modular_subtractor`, `modular_multiplication`) `#234 <https://github.com/lsils/mockturtle/pull/234>`_
 * Properties:
     - Costs based on multiplicative complexity (`multiplicative_complexity` and `multiplicative_complexity_depth`) `#170 <https://github.com/lsils/mockturtle/pull/170>`_
 

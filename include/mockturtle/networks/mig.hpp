@@ -661,6 +661,11 @@ public:
     return static_cast<uint32_t>( _storage->outputs.size() );
   }
 
+  uint32_t num_latches() const
+  {
+      return _storage->data.latches.size();
+  }
+
   auto num_pis() const
   {
     return _storage->data.num_pis;
@@ -886,7 +891,7 @@ public:
 
   node ri_to_ro( signal const& s ) const
   {
-    return *( _storage->inputs.begin() + ri_index( s ) );
+    return *( _storage->inputs.begin() + _storage->data.num_pis + ri_index( s ) );
   }
 #pragma endregion
 
