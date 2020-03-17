@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
+ * Copyright (C) 2017-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -146,7 +146,7 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_p_canonization( const TT& t
     where *n* is the number of variables in `tt`
   - input permutation to apply
 
-  \param tt The truth table
+  \param tt The truth table (with at most 6 variables)
   \param fn Callback for each visited truth table in the class (default does nothing)
   \return NPN configuration
 */

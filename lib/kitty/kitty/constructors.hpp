@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
+ * Copyright (C) 2017-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -324,14 +324,13 @@ void create_from_cubes( TT& tt, const std::vector<cube>& cubes, bool esop = fals
 
     auto bits = cube._bits;
     auto mask = cube._mask;
-    
+
     for ( auto i = 0; i < tt.num_vars(); ++i )
     {
       if ( mask & 1 )
       {
         auto var = tt.construct();
         create_nth_var( var, i, !( bits & 1 ) );
-
         product &= var;
       }
       bits >>= 1;
@@ -377,7 +376,7 @@ void create_from_clauses( TT& tt, const std::vector<cube>& clauses, bool esop = 
 
     auto bits = clause._bits;
     auto mask = clause._mask;
-    
+
     for ( auto i = 0; i < tt.num_vars(); ++i )
     {
       if ( mask & 1 )
