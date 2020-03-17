@@ -1,6 +1,10 @@
 #include <catch.hpp>
 
+#if __GNUC__ == 7
+#include <experimental/filesystem>
+#else
 #include <filesystem>
+#endif
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -10,6 +14,12 @@
 #include <mockturtle/networks/xag.hpp>
 
 using namespace mockturtle;
+
+#if __GNUC__ == 7
+namespace fs = std::experimental::filesystem::v1;
+#else
+namespace fs = std::filesystem;
+#endif
 
 TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
 {
@@ -42,7 +52,7 @@ TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
     CHECK( tts[1] == maj );
   }
 
-  CHECK( std::filesystem::exists( "mockturtle-test-cache.db" ) );
-  CHECK( !std::filesystem::exists( "mockturtle-test-cache.db.bak" ) );
-  std::filesystem::remove( "mockturtle-test-cache.db" );
+  CHECK( fs::exists( "mockturtle-test-cache.db" ) );
+  CHECK( !fs::exists( "mockturtle-test-cache.db.bak" ) );
+  fs::remove( "mockturtle-test-cache.db" );
 }

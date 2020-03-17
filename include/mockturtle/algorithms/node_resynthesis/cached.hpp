@@ -33,7 +33,11 @@
 #pragma once
 
 #include <cstdint>
+#if __GNUC__ == 7
+#include <experimental/filesystem>
+#else
 #include <filesystem>
+#endif
 #include <fstream>
 #include <unordered_set>
 #include <kitty/dynamic_truth_table.hpp>
@@ -48,6 +52,12 @@
 
 namespace mockturtle
 {
+
+#if __GNUC__ == 7
+namespace fs = std::experimental::filesystem::v1;
+#else
+namespace fs = std::filesystem;
+#endif
 
 struct no_blacklist_cache_info
 {
@@ -266,18 +276,18 @@ private:
 
     // make a backup of existing cache file, if it exists
     std::string _backup_filename = fmt::format( "{}.bak", _backup_filename );
-    if ( std::filesystem::exists( _cache_filename ) )
+    if ( fs::exists( _cache_filename ) )
     {
-      std::filesystem::copy( _cache_filename, _backup_filename );
+      fs::copy( _cache_filename, _backup_filename );
     }
 
     std::ofstream os( _cache_filename.c_str(), std::ofstream::out );
     os << data.dump() << "\n";
     os.close();
 
-    if ( std::filesystem::exists( _backup_filename ) )
+    if ( fs::exists( _backup_filename ) )
     {
-      std::filesystem::remove( _backup_filename );
+      fs::remove( _backup_filename );
     }
   }
 
