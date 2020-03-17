@@ -44,10 +44,10 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    if ( benchmark == "hyp" || benchmark == "mem_ctrl" || benchmark == "log2" || benchmark == "div" || benchmark == "sqrt") continue;
-    //if ( benchmark != "voter" ) continue;
+    //if ( benchmark == "hyp" || benchmark == "mem_ctrl" || benchmark == "log2" || benchmark == "div" || benchmark == "sqrt") continue;
+    if ( benchmark != "ctrl" ) continue;
 
-    //fmt::print( "[i] processing {}\n", benchmark );
+    fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig, orig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( orig ) );
