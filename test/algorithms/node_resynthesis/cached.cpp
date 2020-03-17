@@ -23,23 +23,26 @@ TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
 
   std::vector<xag_network::signal> pis = {a, b, c};
 
-  exact_aig_resynthesis<xag_network> exact_resyn;
-  cached_resynthesis<xag_network, decltype( exact_resyn )> resyn( exact_resyn, 6u, "mockturtle-test-cache.db" );
+  {
+    exact_aig_resynthesis<xag_network> exact_resyn;
+    cached_resynthesis<xag_network, decltype( exact_resyn )> resyn( exact_resyn, 6u, "mockturtle-test-cache.db" );
 
-  resyn( xag, maj, pis.begin(), pis.end(), [&]( auto const& f ) {
-    xag.create_po( f );
-  } );
-  resyn( xag, maj, pis.begin(), pis.end(), [&]( auto const& f ) {
-    xag.create_po( f );
-  } );
+    resyn( xag, maj, pis.begin(), pis.end(), [&]( auto const& f ) {
+      xag.create_po( f );
+    } );
+    resyn( xag, maj, pis.begin(), pis.end(), [&]( auto const& f ) {
+      xag.create_po( f );
+    } );
 
-  default_simulator<kitty::dynamic_truth_table> sim( 3u );
-  CHECK( xag.num_pos() == 2u );
-  CHECK( xag.num_gates() == 4u );
-  const auto tts = simulate<kitty::dynamic_truth_table>( xag, sim );
-  CHECK( tts[0] == maj );
-  CHECK( tts[1] == maj );
+    default_simulator<kitty::dynamic_truth_table> sim( 3u );
+    CHECK( xag.num_pos() == 2u );
+    CHECK( xag.num_gates() == 4u );
+    const auto tts = simulate<kitty::dynamic_truth_table>( xag, sim );
+    CHECK( tts[0] == maj );
+    CHECK( tts[1] == maj );
+  }
 
   CHECK( std::filesystem::exists( "mockturtle-test-cache.db" ) );
   CHECK( !std::filesystem::exists( "mockturtle-test-cache.db.bak" ) );
+  std::filesystem::remove( "mockturtle-test-cache.db" );
 }
