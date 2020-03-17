@@ -13,6 +13,7 @@
 #include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
+#include <mockturtle/algorithms/node_resynthesis/akers.hpp>
 #include <mockturtle/algorithms/node_resynthesis/exact.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
@@ -134,6 +135,33 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
   } );
 
   CHECK( v2 == std::vector<uint32_t>{{0, 20, 78, 49, 158, 79, 196, 132, 525, 2, 255}} );
+}
+
+TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis", "[quality]" )
+{
+  // without zero gain
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    akers_resynthesis<mig_network> resyn;
+    refactoring( ntk, resyn );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 18, 34, 22, 114, 56, 253, 113, 442, 449, 69}} );
+
+  // with zero gain
+  const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    akers_resynthesis<mig_network> resyn;
+    refactoring_params ps;
+    ps.allow_zero_gain = true;
+    refactoring( ntk, resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 115, 55, 254, 118, 443, 449, 66}} );
 }
 
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
