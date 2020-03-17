@@ -4,6 +4,7 @@
 #include <string>
 
 #include <mockturtle/io/blif_reader.hpp>
+#include <mockturtle/io/write_blif.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
@@ -227,7 +228,7 @@ TEST_CASE( "read a BLIF file containing latch declaration bug that requires upda
 
 TEST_CASE( "read a combinational BLIF file with max terms", "[blif_reader]" )
 {
-  klut_network klut;
+  klut_network klut, klut2;
 
   std::string file{
     ".model top\n"
@@ -243,17 +244,29 @@ TEST_CASE( "read a combinational BLIF file with max terms", "[blif_reader]" )
 
   std::istringstream in( file );
   auto result = lorina::read_blif( in, blif_reader( klut ) );
+  CHECK( result == lorina::return_code::success );
 
   /* structural checks */
-  CHECK( result == lorina::return_code::success );
   CHECK( klut.size() == 6 );
   CHECK( klut.num_pis() == 3 );
   CHECK( klut.num_pos() == 2 );
   CHECK( klut.num_gates() == 1 );
+
+  std::stringstream out;
+  write_blif( klut, out );
+  result = lorina::read_blif( out, blif_reader( klut2 ) );
+  CHECK( result == lorina::return_code::success );
+
+  /* structural checks */
+  CHECK( klut2.size() == 7 );
+  CHECK( klut2.num_pis() == 3 );
+  CHECK( klut2.num_pos() == 2 );
+  CHECK( klut2.num_gates() == 2 );
 
   /* functional checks */
   default_simulator<kitty::dynamic_truth_table> sim( klut.num_pis() );
   const auto tts = simulate<kitty::dynamic_truth_table>( klut, sim );
   CHECK( kitty::to_hex( tts[0] ) == "d8" );
   CHECK( kitty::to_hex( tts[1] ) == "d8" );
+  CHECK( tts == simulate<kitty::dynamic_truth_table>( klut2, sim ) );
 }
