@@ -275,7 +275,7 @@ private:
     };
 
     // make a backup of existing cache file, if it exists
-    std::string _backup_filename = fmt::format( "{}.bak", _backup_filename );
+    std::string _backup_filename = fmt::format( "{}.bak", _cache_filename );
     if ( fs::exists( _cache_filename ) )
     {
       fs::copy( _cache_filename, _backup_filename );
