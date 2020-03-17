@@ -139,6 +139,12 @@ public:
     return _value < that._value;
   }
 
+  /*! \brief Returns the negated cube */
+  inline cube operator~() const
+  {
+    return {~_bits, _mask};
+  }
+
   /*! \brief Merges two cubes of distance-1 */
   inline cube merge( const cube& that ) const
   {
