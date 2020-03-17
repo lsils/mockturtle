@@ -241,7 +241,7 @@ public:
   /*! \brief Constant access to value by node. */
   const_reference operator[]( node const& n ) const
   {
-    assert( !has( n ) && "index out of bounds" );
+    assert( has( n ) && "index out of bounds" );
     return (*data)[ntk.node_to_index( n )];
   }
 
@@ -264,7 +264,7 @@ public:
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   const_reference operator[]( signal const& f ) const
   {
-    assert( !has( ntk.get_node( f ) ) && "index out of bounds" );
+    assert( has( ntk.get_node( f ) ) && "index out of bounds" );
     return (*data)[ntk.node_to_index( ntk.get_node( f ) )];
   }
 

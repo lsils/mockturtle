@@ -33,6 +33,7 @@
 #pragma once
 
 #include <iostream>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -40,6 +41,7 @@
 #include "../algorithms/cnf.hpp"
 #include "../algorithms/simulation.hpp"
 #include "../networks/xag.hpp"
+#include "../utils/stopwatch.hpp"
 #include "../traits.hpp"
 
 #include <fmt/format.h>
@@ -369,14 +371,47 @@ Ntk linear_resynthesis_paar( Ntk const& xag )
   return detail::linear_resynthesis_paar_impl<Ntk>( xag ).run();
 }
 
-
 struct exact_linear_synthesis_params
 {
+  /*! \brief Upper bound on number of XOR gates. If used, best solution is found decreasing */
+  std::optional<uint32_t> upper_bound{};
+
+  /*! \brief Conflict limit for SAT solving (default 0 = no limit). */
+  int conflict_limit{0};
+
+  /*! \brief Solution must be cancellation-free. */
+  bool cancellation_free{false};
+
+  /*! \brief Ignore inputs in any step to compute this output.
+   *
+   * Either the vector is empty, if no inputs should be ignored, or it has as
+   * many entries as rows in the input matrix.  Each entry is a vector of input
+   * indexes (starting from 0) to be ignored, an entry can be the empty vector,
+   * if no inputs should be ignored for some output.
+   */
+  std::vector<std::vector<uint32_t>> ignore_inputs;
+
   /*! \brief Be verbose. */
   bool verbose{false};
 
   /*! \brief Be very verbose (debug messages). */
   bool very_verbose{false};
+};
+
+struct exact_linear_synthesis_stats
+{
+  /*! \brief Total time. */
+  stopwatch<>::duration time_total{0};
+
+  /*! \brief Time for SAT solving. */
+  stopwatch<>::duration time_solving{0};
+
+  /*! \brief Prints report. */
+  void report() const
+  {
+    fmt::print( "[i] total time   = {:>5.2f} secs\n", to_seconds( time_total ) );
+    fmt::print( "[i] solving time = {:>5.2f} secs\n", to_seconds( time_solving ) );
+  }
 };
 
 namespace detail
@@ -385,37 +420,150 @@ namespace detail
 template<class Ntk>
 struct exact_linear_synthesis_impl
 {
-  exact_linear_synthesis_impl( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps )
-      : n_( linear_matrix.front().size() ),
-        m_( linear_matrix.size() ),
-        linear_matrix_( linear_matrix ),
-        ps_( ps )
+  exact_linear_synthesis_impl( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps, exact_linear_synthesis_stats& st )
+      : ps_( ps ),
+        st_( st )
   {
+    if ( ps_.very_verbose )
+    {
+      fmt::print( "[i] input matrix =\n" );
+      debug_matrix( linear_matrix );
+    }
+
+    /* check whether ignore inputs matches matrix size */
+    if ( !ps_.ignore_inputs.empty() && ps_.ignore_inputs.size() != linear_matrix.size() )
+    {
+      fmt::print( "[e] size of ignored inputs vector must match number of rows in linear matrix" );
+      std::abort();
+    }
+
+    /* check matrix for trivial entries */
+    for ( auto j = 0u; j < linear_matrix.size(); ++j )
+    {
+      const auto& row = linear_matrix[j];
+      n_ = row.size();
+
+      auto cnt = 0u;
+      auto idx = 0u;
+      for ( auto i = 0u; i < row.size(); ++i )
+      {
+        if ( row[i] )
+        {
+          idx = i;
+          if ( ++cnt == 2u )
+          {
+            break;
+          }
+        }
+      }
+      if ( cnt == 0u )
+      {
+        /* constant 0 is encoded as input n */
+        trivial_pos_.emplace_back( j, n_ );
+      }
+      else if ( cnt == 1u )
+      {
+        trivial_pos_.emplace_back( j, idx );
+      }
+      else
+      {
+        linear_matrix_.push_back( row );
+        if ( !ps_.ignore_inputs.empty() )
+        {
+          ignore_inputs_.push_back( ps_.ignore_inputs[j] );
+        }
+      }
+    }
+
+    m_ = linear_matrix_.size();
+
+    if ( ps_.very_verbose )
+    {
+      fmt::print( "[i] problem matrix =\n" );
+      debug_matrix( linear_matrix_ );
+      fmt::print( "\n[i] trivial POs =\n" );
+      for ( auto const& [j, i] : trivial_pos_ )
+      {
+        if ( i == n_ )
+        {
+          fmt::print( "f{} = 0\n", j );
+        }
+        else
+        {
+          fmt::print( "f{} = x{}\n", j, i );
+        }
+      }
+      if ( !ignore_inputs_.empty() )
+      {
+        fmt::print( "\n[i] ignored inputs =\n" );
+        for ( auto j = 0u; j < ignore_inputs_.size(); ++j )
+        {
+          fmt::print( "for f{} ignore {{{}}}\n", j, fmt::join( ignore_inputs_[j], ", " ) );
+        }
+      }
+    }
   }
 
   Ntk run()
+  {
+    return ps_.upper_bound ? run_decreasing() : run_increasing();
+  }
+
+private:
+  Ntk run_increasing()
   {
     k_ = m_;
     while ( true )
     {
       if ( ps_.verbose )
       {
-        fmt::print( "[i] try to find a solution with {} steps\n", k_ );
+        fmt::print( "[i] try to find a solution with {} steps, solving time so far = {:.2f} secs\n", k_, to_seconds( st_.time_solving ) );
       }
       percy::bsat_wrapper solver;
       ensure_row_size2( solver );
       ensure_connectivity( solver );
       ensure_outputs( solver );
-      if ( solver.solve( 0 ) == percy::success )
+      const auto res = call_with_stopwatch( st_.time_solving, [&]() { return solver.solve( ps_.conflict_limit ); } );
+      if ( res == percy::success )
       {
         if ( ps_.very_verbose )
         {
           debug_solution( solver );
         }
         return extract_solution( solver );
-        break;
       }
       ++k_;
+    }
+  }
+
+  Ntk run_decreasing()
+  {
+    Ntk best;
+    k_ = *ps_.upper_bound;
+    while ( true )
+    {
+      if ( ps_.verbose )
+      {
+        fmt::print( "[i] try to find a solution with {} steps, solving time so far = {:.2f} secs\n", k_, to_seconds( st_.time_solving ) );
+      }
+      percy::bsat_wrapper solver;
+      ensure_row_size2( solver );
+      ensure_connectivity( solver );
+      ensure_outputs( solver );
+      const auto res = call_with_stopwatch( st_.time_solving, [&]() { return solver.solve( ps_.conflict_limit ); } );
+      if ( res == percy::success )
+      {
+        if ( ps_.very_verbose )
+        {
+          debug_solution( solver );
+        }
+        best = extract_solution( solver );
+        --k_;
+      }
+      else
+      {
+        return best;
+      }
     }
   }
 
@@ -463,13 +611,6 @@ private:
     return k_ * m_;
   }
 
-  // 0 <= j <= n - 1
-  // 0 <= i <= k - 1
-  uint32_t phi( uint32_t j, uint32_t i ) const
-  {
-    return j * k_ + i;
-  }
-
   void ensure_row_size2( percy::bsat_wrapper& solver ) const
   {
     for ( auto i = 0u; i < k_; ++i )
@@ -510,8 +651,14 @@ private:
     nodes.front() = pntk.get_constant( false );
     std::generate( nodes.begin() + 1u, nodes.end(), [&]() { return pntk.create_pi(); } );
 
-    // phi function
-    std::vector<xag_network::signal> phis( k_ * n_ );
+    // 0 <= j <= n - 1
+    // 0 <= i <= k - 1
+    const auto psi_phi = [&]( uint32_t j, uint32_t i ) {
+      return j * k_ + i;
+    };
+
+    // psi function
+    std::vector<xag_network::signal> psis( k_ * n_ );
     for ( auto i = 0u; i < k_; ++i )
     {
       for ( auto j = 0u; j < n_; ++j )
@@ -521,13 +668,12 @@ private:
         *it++ = nodes[b( i, j )];
         for ( auto p = 0u; p < i; ++p )
         {
-          *it++ = pntk.create_and( nodes[c( i, p )], phis[phi( j, p )] );
+          *it++ = pntk.create_and( nodes[c( i, p )], psis[psi_phi( j, p )] );
         }
-        phis[phi( j, i )] = pntk.create_nary_xor( xors );
+        psis[psi_phi( j, i )] = pntk.create_nary_xor( xors );
       }
     }
 
-    std::vector<xag_network::signal> impls;
     for ( auto l = 0u; l < m_; ++l )
     {
       for ( auto i = 0u; i < k_; ++i )
@@ -535,21 +681,104 @@ private:
         std::vector<xag_network::signal> ands( n_ );
         for ( auto j = 0u; j < n_; ++j )
         {
-          ands[j] = pntk.create_xnor( phis[phi( j, i )], pntk.get_constant( linear_matrix_[l][j] ) );
+          ands[j] = pntk.create_xnor( psis[psi_phi( j, i )], pntk.get_constant( linear_matrix_[l][j] ) );
         }
-        impls.push_back( pntk.create_or( pntk.create_not( nodes[f( l, i )] ), pntk.create_nary_and( ands ) ) );
+        pntk.create_po( pntk.create_or( pntk.create_not( nodes[f( l, i )] ), pntk.create_nary_and( ands ) ) );
       }
     }
-    pntk.create_po( pntk.create_nary_and( impls ) );
 
-    int output = generate_cnf( pntk, [&]( auto const& clause ) {
+    // No two steps are the same
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      for ( auto p = 0u; p < i; ++p )
+      {
+        std::vector<xag_network::signal> ors( n_ );
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          ors[j] = pntk.create_xor( psis[psi_phi( j, p )], psis[psi_phi( j, i )] );
+        }
+        pntk.create_po( pntk.create_nary_or( ors ) );
+      }
+    }
+
+    std::vector<xag_network::signal> phis( k_ * n_ );
+    if ( !ignore_inputs_.empty() || ps_.cancellation_free )
+    {
+      // phi function
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          std::vector<xag_network::signal> ors( 1 + i );
+          auto it = ors.begin();
+          *it++ = nodes[b( i, j )];
+          for ( auto p = 0u; p < i; ++p )
+          {
+            *it++ = pntk.create_and( nodes[c( i, p )], phis[psi_phi( j, p )] );
+          }
+          phis[psi_phi( j, i )] = pntk.create_nary_or( ors );
+        }
+      }
+
+      // cancellation-free
+      if ( ps_.cancellation_free )
+      {
+        for ( auto i = 0u; i < k_; ++i )
+        {
+          for ( auto j = 0u; j < n_; ++j )
+          {
+            pntk.create_po( pntk.create_xnor( psis[psi_phi( j, i )], phis[psi_phi( j, i )] ) );
+          }
+        }
+      }
+    }
+
+    const auto node_lits = node_literals( pntk );
+    auto outputs = generate_cnf( pntk, [&]( auto const& clause ) {
       solver.add_clause( clause );
-    } )[0];
-    solver.add_clause( &output, &output + 1 );
+    } );
+    for ( int output : outputs )
+    {
+      solver.add_clause( &output, &output + 1 );
+    }
+
+    // ignored inputs
+    if ( !ignore_inputs_.empty() )
+    {
+      for ( auto l = 0u; l < m_; ++l )
+      {
+        for ( auto j : ignore_inputs_[l] )
+        {
+          for ( auto i = 0u; i < k_; ++i )
+          {
+            int lits[2];
+            lits[0] = make_lit( f( l, i ), true );
+            lits[1] = lit_not( node_lits[phis[psi_phi( j, i )]] );
+            solver.add_clause( lits, lits + 2 );
+          }
+        }
+      }
+    }
+
+    // at least 2 inputs in each compute form
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      /* at least 2 */
+      for ( auto cpl = 0u; cpl <= n_; ++cpl )
+      {
+        std::vector<uint32_t> lits( n_ );
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          lits[j] = lit_not_cond( node_lits[psis[psi_phi( j, i )]], cpl == j );
+        }
+        solver.add_clause( lits );
+      }
+    }
   }
 
   void ensure_outputs( percy::bsat_wrapper& solver ) const
   {
+    // each output covers at least one row
     for ( auto l = 0u; l < m_; ++l )
     {
       std::vector<uint32_t> lits( k_ );
@@ -566,6 +795,21 @@ private:
       }
       solver.add_clause( lits );
     }
+
+    // at most one output (if no duplicates) per row
+    //for ( auto i = 0u; i < k_; ++i )
+    //{
+    //  for ( auto l = 1u; l < m_; ++l )
+    //  {
+    //    int lits[2];
+    //    lits[0] = make_lit( f( l, i ), true );
+    //    for ( auto ll = 0u; ll < l; ++ll )
+    //    {
+    //      lits[1] = make_lit( f( ll, i ), true );
+    //      solver.add_clause( lits, lits + 2 );
+    //    }
+    //  }
+    //}
   }
 
   Ntk extract_solution( percy::bsat_wrapper& solver ) const
@@ -589,13 +833,23 @@ private:
       nodes.push_back( ntk.create_xor( children[0], children[1] ) );
     }
 
+    auto it = trivial_pos_.begin();
+    auto poctr = 0u;
     for ( auto l = 0u; l < m_; ++l )
     {
+      while ( it != trivial_pos_.end() && it->first == poctr )
+      {
+        ntk.create_po( it->second == n_ ? ntk.get_constant( false ) : nodes[it->second] );
+        poctr++;
+        ++it;
+      }
+
       for ( auto i = 0u; i < k_; ++i )
       {
         if ( solver.var_value( f( l, i ) ) )
         {
           ntk.create_po( nodes[n_ + i] );
+          poctr++;
           break;
         }
       }
@@ -605,6 +859,18 @@ private:
   }
 
 private:
+  void debug_matrix( std::vector<std::vector<bool>> const& matrix ) const
+  {
+    for ( auto const& row : matrix )
+    {
+      for ( auto b : row )
+      {
+        fmt::print( "{}", b ? '1' : '0' );
+      }
+      fmt::print( "\n" );
+    }
+  }
+
   void debug_solution( percy::bsat_wrapper& solver ) const
   {
     for ( auto i = 0u; i < k_; ++i )
@@ -631,10 +897,13 @@ private:
 
 private:
   uint32_t n_{};
-  uint32_t m_{};
+  uint32_t m_{0u};
   uint32_t k_{};
-  std::vector<std::vector<bool>> const& linear_matrix_;
+  std::vector<std::vector<bool>> linear_matrix_;
+  std::vector<std::pair<uint32_t, uint32_t>> trivial_pos_;
+  std::vector<std::vector<uint32_t>> ignore_inputs_;
   exact_linear_synthesis_params const& ps_;
+  exact_linear_synthesis_stats& st_;
 };
 
 } // namespace detail
@@ -651,7 +920,7 @@ std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   detail::linear_matrix_simulator sim( ntk.num_pis() );
-  return simulate<std::vector<bool>>( detail::linear_xag{ ntk }, sim );
+  return simulate<std::vector<bool>>( detail::linear_xag{ntk}, sim );
 }
 
 /*! \brief Optimum linear circuit synthesis (based on SAT)
@@ -664,11 +933,22 @@ std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
 template<class Ntk>
-Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {} )
+Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
-  return detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps}.run();
+  exact_linear_synthesis_stats st;
+  const auto xag = detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps, st}.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+  if ( pst )
+  {
+    *pst = st;
+  }
+  return xag;
 }
 
 /*! \brief Optimum linear circuit resynthesis (based on SAT)
@@ -680,13 +960,12 @@ Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix,
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
 template<typename Ntk>
-Ntk exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {} )
+Ntk exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   const auto linear_matrix = get_linear_matrix( ntk );
-  return detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps}.run();
+  return exact_linear_synthesis<Ntk>( linear_matrix, ps, pst );
 }
-
 
 } /* namespace mockturtle */

@@ -97,3 +97,74 @@ TEST_CASE( "Exact linear synthesis with SAT (example from paper)", "[linear_resy
 
   CHECK( xag.num_gates() == 6u );
 }
+
+TEST_CASE( "More difficult example", "[linear_resynthesis]" )
+{
+  std::vector<std::vector<bool>> matrix = {
+      {false, true, false, false, false, false, true, true},
+      {false, false, false, true, false, false, false, false},
+      {true, true, true, true, false, false, false, false},
+      {false, true, false, true, true, true, false, false},
+      {true, false, false, true, true, true, false, false},
+      {false, true, false, false, false, false, true, false},
+      {true, true, false, false, false, false, true, false}};
+
+  exact_linear_synthesis_params ps;
+  ps.conflict_limit = 5000;
+  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+
+  CHECK( get_linear_matrix( xag ) == matrix );
+  CHECK( xag.num_gates() == 10u );
+}
+
+TEST_CASE( "More difficult example with upper bound", "[linear_resynthesis]" )
+{
+  std::vector<std::vector<bool>> matrix = {
+      {false, true, false, false, false, false, true, true},
+      {false, false, false, true, false, false, false, false},
+      {true, true, true, true, false, false, false, false},
+      {false, true, false, true, true, true, false, false},
+      {true, false, false, true, true, true, false, false},
+      {false, true, false, false, false, false, true, false},
+      {true, true, false, false, false, false, true, false}};
+
+  exact_linear_synthesis_params ps;
+  ps.conflict_limit = 5000;
+  ps.upper_bound = 15u;
+  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+
+  CHECK( get_linear_matrix( xag ) == matrix );
+  CHECK( xag.num_gates() == 10u );
+}
+
+TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; with cancellations", "[linear_resynthesis]" )
+{
+  std::vector<std::vector<bool>> matrix = {
+    {true, true, false, false},
+    {true, true, true, false},
+    {true, true, true, true},
+    {false, true, true, true}
+  };
+
+  const auto xag = exact_linear_synthesis<xag_network>( matrix );
+
+  CHECK( get_linear_matrix( xag ) == matrix );
+  CHECK( xag.num_gates() == 4u );
+}
+
+TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; cancellation-free", "[linear_resynthesis]" )
+{
+  std::vector<std::vector<bool>> matrix = {
+    {true, true, false, false},
+    {true, true, true, false},
+    {true, true, true, true},
+    {false, true, true, true}
+  };
+
+  exact_linear_synthesis_params ps;
+  ps.cancellation_free = true;
+  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+
+  CHECK( get_linear_matrix( xag ) == matrix );
+  CHECK( xag.num_gates() == 5u );
+}

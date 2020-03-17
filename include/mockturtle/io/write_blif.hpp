@@ -267,7 +267,6 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     {
       if( index >= topo_ntk.num_cos() - topo_ntk.num_latches() ) 
       {
-        auto const ro_sig = topo_ntk.make_signal( topo_ntk.ri_to_ro( f ) );
         if(!ps.skip_feedthrough || ( topo_ntk.get_node( f ) != index)){
           os << fmt::format( ".names new_n{} li{}\n{} 1\n", f_node, latch_idx, minterm_string );
           latch_idx++;
