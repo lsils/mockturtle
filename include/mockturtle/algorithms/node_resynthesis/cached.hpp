@@ -53,12 +53,6 @@
 namespace mockturtle
 {
 
-#if __GNUC__ == 7
-namespace fs = std::experimental::filesystem::v1;
-#else
-namespace fs = std::filesystem;
-#endif
-
 struct no_blacklist_cache_info
 {
   bool retry( no_blacklist_cache_info const& old_info ) const
@@ -268,6 +262,12 @@ private:
 
   void save()
   {
+#if __GNUC__ == 7
+    namespace fs = std::experimental::filesystem::v1;
+#else
+    namespace fs = std::filesystem;
+#endif
+
     nlohmann::json data{
       {"cache", _cache.to_json()},
       {"blacklist_cache", _blacklist_cache},
