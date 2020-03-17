@@ -373,6 +373,7 @@ public:
           });
         /* re-simulate */
         call_with_stopwatch( st.time_sim, [&]() {
+            un_normalizeTT();
             simulate_nodes<Ntk>( ntk, tts, sim );
             normalizeTT();
           });
@@ -662,6 +663,16 @@ private:
     });
   }
 
+  void un_normalizeTT()
+  {
+    ntk.foreach_gate( [&]( auto const& n ){
+      if ( phase[n] )
+      {
+        tts[n] = ~tts[n];
+      }
+    });
+  }
+
   std::optional<signal> resub_div0( node const& root, uint32_t required ) 
   {
     (void)required;
@@ -695,6 +706,7 @@ private:
 
           /* re-simulate */
           call_with_stopwatch( st.time_sim, [&]() {
+            un_normalizeTT();
             simulate_nodes<Ntk>( ntk, tts, sim );
             normalizeTT();
           });
@@ -786,6 +798,7 @@ private:
   
             /* re-simulate */
             call_with_stopwatch( st.time_sim, [&]() {
+              un_normalizeTT();
               simulate_nodes<Ntk>( ntk, tts, sim );
               normalizeTT();
             });
@@ -849,6 +862,7 @@ private:
   
             /* re-simulate */
             call_with_stopwatch( st.time_sim, [&]() {
+              un_normalizeTT();
               simulate_nodes<Ntk>( ntk, tts, sim );
               normalizeTT();
             });
