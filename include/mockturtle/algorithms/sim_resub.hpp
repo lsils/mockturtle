@@ -560,7 +560,7 @@ private:
           std::vector<bool> pattern;
           for ( auto i = 1u; i <= ntk.num_pis(); ++i )
             pattern.push_back(solver.var_value( i ));
-          sim.add_pattern(pattern)
+          sim.add_pattern(pattern);
           ++st.num_generated_patterns;
 
           /* re-simulate */
@@ -690,7 +690,7 @@ private:
           std::vector<bool> pattern;
           for ( auto j = 1u; j <= ntk.num_pis(); ++j )
             pattern.push_back(solver.var_value( j ));
-          sim.add_pattern(pattern)
+          sim.add_pattern(pattern);
           ++st.num_cex;
 
           /* re-simulate */
@@ -781,7 +781,7 @@ private:
             std::vector<bool> pattern;
             for ( auto j = 1u; j <= ntk.num_pis(); ++j )
               pattern.push_back(solver.var_value( j ));
-            sim.add_pattern(pattern)
+            sim.add_pattern(pattern);
             ++st.num_cex;
   
             /* re-simulate */
@@ -844,7 +844,7 @@ private:
             std::vector<bool> pattern;
             for ( auto j = 1u; j <= ntk.num_pis(); ++j )
               pattern.push_back(solver.var_value( j ));
-            sim.add_pattern(pattern)
+            sim.add_pattern(pattern);
             ++st.num_cex;
   
             /* re-simulate */
