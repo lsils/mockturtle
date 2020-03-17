@@ -33,6 +33,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <unordered_set>
 #include <kitty/dynamic_truth_table.hpp>
@@ -263,9 +264,21 @@ private:
       {"initial_size", _initial_size}
     };
 
+    // make a backup of existing cache file, if it exists
+    std::string _backup_filename = fmt::format( "{}.bak", _backup_filename );
+    if ( std::filesystem::exists( _cache_filename ) )
+    {
+      std::filesystem::copy( _cache_filename, _backup_filename );
+    }
+
     std::ofstream os( _cache_filename.c_str(), std::ofstream::out );
     os << data.dump() << "\n";
     os.close();
+
+    if ( std::filesystem::exists( _backup_filename ) )
+    {
+      std::filesystem::remove( _backup_filename );
+    }
   }
 
 private:
