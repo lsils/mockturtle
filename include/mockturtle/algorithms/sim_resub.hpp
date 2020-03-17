@@ -343,7 +343,7 @@ public:
     /* iterate through all nodes and try to replace it */
     auto const size = ntk.num_gates();
     ntk.foreach_gate( [&]( auto const& n, auto i ){
-        if ( i >= size || fStop )
+        if ( i >= size )
           return false; /* terminate */
 
         pbar( i, i, candidates, st.estimated_gain );
@@ -560,11 +560,7 @@ private:
           std::vector<bool> pattern;
           for ( auto i = 1u; i <= ntk.num_pis(); ++i )
             pattern.push_back(solver.var_value( i ));
-          if ( sim.add_pattern(pattern) )
-          {
-            fStop = true;
-            return false; /* number of generated patterns exceeds limit, stop generating */
-          }
+          sim.add_pattern(pattern)
           ++st.num_generated_patterns;
 
           /* re-simulate */
@@ -689,16 +685,12 @@ private:
           return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
         });
         
-        if ( res == percy::synth_result::success && !fStop ) /* CEX found */
+        if ( res == percy::synth_result::success ) /* CEX found */
         {
           std::vector<bool> pattern;
           for ( auto j = 1u; j <= ntk.num_pis(); ++j )
             pattern.push_back(solver.var_value( j ));
-          if ( sim.add_pattern(pattern) )
-          {
-            fStop = true;
-            return std::nullopt; /* number of generated patterns exceeds limit */
-          }
+          sim.add_pattern(pattern)
           ++st.num_cex;
 
           /* re-simulate */
@@ -784,16 +776,12 @@ private:
             return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
           });
           
-          if ( res == percy::synth_result::success && !fStop ) /* CEX found */
+          if ( res == percy::synth_result::success ) /* CEX found */
           {
             std::vector<bool> pattern;
             for ( auto j = 1u; j <= ntk.num_pis(); ++j )
               pattern.push_back(solver.var_value( j ));
-            if ( sim.add_pattern(pattern) )
-            {
-              fStop = true;
-              return std::nullopt; /* number of generated patterns exceeds limit */
-            }
+            sim.add_pattern(pattern)
             ++st.num_cex;
   
             /* re-simulate */
@@ -804,6 +792,7 @@ private:
           }
           else /* proved substitution */
           {
+            //std::cout<<"found substitution "<<(phase[root]?"~":"")<< unsigned(root)<<" = "<<(phase[s0]?"~":"")<<unsigned(ntk.get_node(s0))<<" OR "<<(phase[s1]?"~":"")<<unsigned(ntk.get_node(s1))<<"\n";
             auto g = phase[root]? !ntk.create_or( phase[s0]? !s0: s0, phase[s1]? !s1: s1 ) :ntk.create_or( phase[s0]? !s0: s0, phase[s1]? !s1: s1 );
             /* update CNF */
             literals.resize();
@@ -850,16 +839,12 @@ private:
             return solver.solve( &assumptions[0], &assumptions[0] + 1, 0 );
           });
           
-          if ( res == percy::synth_result::success && !fStop ) /* CEX found */
+          if ( res == percy::synth_result::success ) /* CEX found */
           {
             std::vector<bool> pattern;
             for ( auto j = 1u; j <= ntk.num_pis(); ++j )
               pattern.push_back(solver.var_value( j ));
-            if ( sim.add_pattern(pattern) )
-            {
-              fStop = true;
-              return std::nullopt; /* number of generated patterns exceeds limit */
-            }
+            sim.add_pattern(pattern)
             ++st.num_cex;
   
             /* re-simulate */
@@ -897,8 +882,6 @@ private:
   /* temporary statistics for progress bar */
   uint32_t candidates{0};
   uint32_t last_gain{0};
-
-  bool fStop{false}; /* signal indicating cex limit exceeded */
 
   TT tts;
   node_map<bool, NtkBase> phase;
