@@ -187,7 +187,7 @@ private:
     } );
     Ntk::events().on_delete.push_back( []( auto const& n ) {
       (void)n;
-      assert( false && "nodes should not be modified in cnf_view" );
+      assert( false && "nodes should not be deleted in cnf_view" );
       std::abort();
     } );
   }
