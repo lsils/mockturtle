@@ -147,6 +147,8 @@ public:
 
     /* map primary outputs */
     ntk.foreach_po( [&]( auto const& f, auto index ) {
+        (void)index;
+
         auto const o = ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
         ntk_dest.create_po( o );
 
@@ -160,6 +162,8 @@ public:
       } );
 
     ntk.foreach_ri( [&]( auto const& f, auto index ) {
+        (void)index;
+
         auto const o = ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
         ntk_dest.create_ri( o );
 
