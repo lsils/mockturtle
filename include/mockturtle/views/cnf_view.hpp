@@ -115,6 +115,7 @@ public:
       return true;
     case percy::failure:
       return false;
+    default:
     case percy::timeout:
       return std::nullopt;
     }
