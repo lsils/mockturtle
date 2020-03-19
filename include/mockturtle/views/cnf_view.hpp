@@ -181,6 +181,14 @@ public:
     solver_.add_clause( clause );
   }
 
+  /*! \brief Adds a clause from signals to the solver. */
+  void add_clause( std::vector<signal> const& clause )
+  {
+    std::vector<uint32_t> lits( clause.size() );
+    std::transform( clause.begin(), clause.end(), lits.begin(), [&]( auto const& s ) { return lit( s ); } );
+    solver_.add_clause( lits );
+  }
+
   /*! \brief Adds a clause to the solver.
    *
    * Entries are either all literals or network signals.
