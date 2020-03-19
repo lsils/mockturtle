@@ -163,17 +163,42 @@ public:
     add_clause( blocking_clause );
   }
 
+  /*! \brief Number of variables. */
+  inline uint32_t num_vars()
+  {
+    return solver_.nr_vars();
+  }
+
+  /*! \brief Number of clauses. */
+  inline uint32_t num_clauses()
+  {
+    return solver_.nr_clauses();
+  }
+
   /*! \brief Adds a clause to the solver. */
   void add_clause( std::vector<uint32_t> const& clause )
   {
     solver_.add_clause( clause );
   }
 
-  /*! \brief Adds a clause to the solver. */
-  template<typename... Lit, typename = std::enable_if_t<std::conjunction_v<std::is_same<Lit, uint32_t>...>>>
+  /*! \brief Adds a clause to the solver.
+   *
+   * Entries are either all literals or network signals.
+   */
+  template<typename... Lit, typename = std::enable_if_t<
+    std::disjunction_v<
+      std::conjunction<std::is_same<Lit, uint32_t>...>,
+      std::conjunction<std::is_same<Lit, signal>...>>>>
   void add_clause( Lit... lits )
   {
-    solver_.add_clause( std::vector<uint32_t>{{lits...}} );
+    if constexpr ( std::conjunction_v<std::is_same<Lit, uint32_t>...> )
+    {
+      solver_.add_clause( std::vector<uint32_t>{{lits...}} );
+    }
+    else
+    {
+      solver_.add_clause( std::vector<uint32_t>{{lit( lits )...}} );
+    }
   }
 
 private:
