@@ -504,13 +504,13 @@ struct exact_linear_synthesis_impl
     }
   }
 
-  Ntk run()
+  std::optional<Ntk> run()
   {
     return ps_.upper_bound ? run_decreasing() : run_increasing();
   }
 
 private:
-  Ntk run_increasing()
+  std::optional<Ntk> run_increasing()
   {
     k_ = m_;
     while ( true )
@@ -536,9 +536,9 @@ private:
     }
   }
 
-  Ntk run_decreasing()
+  std::optional<Ntk> run_decreasing()
   {
-    Ntk best;
+    std::optional<Ntk> best{};
     k_ = *ps_.upper_bound;
     while ( true )
     {
@@ -560,7 +560,7 @@ private:
         best = extract_solution( solver );
         --k_;
       }
-      else
+      else /* if unsat or timeout */
       {
         return best;
       }
@@ -654,7 +654,7 @@ private:
     // 0 <= j <= n - 1
     // 0 <= i <= k - 1
     const auto psi_phi = [&]( uint32_t j, uint32_t i ) {
-      return j * k_ + i;
+      return i * n_ + j;
     };
 
     // psi function
@@ -753,7 +753,7 @@ private:
           {
             int lits[2];
             lits[0] = make_lit( f( l, i ), true );
-            lits[1] = lit_not( node_lits[phis[psi_phi( j, i )]] );
+            lits[1] = lit_not_cond( node_lits[phis[psi_phi( j, i )]], !pntk.is_complemented( phis[psi_phi( j, i )] ) );
             solver.add_clause( lits, lits + 2 );
           }
         }
@@ -933,7 +933,7 @@ std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
 template<class Ntk>
-Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
+std::optional<Ntk> exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
@@ -960,7 +960,7 @@ Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix,
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
 template<typename Ntk>
-Ntk exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
+std::optional<Ntk> exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
