@@ -109,7 +109,9 @@ public:
    */
   inline std::optional<bool> solve( std::vector<int> assumptions, int limit = 0 )
   {
-    switch ( solver_.solve( &assumptions[0], &assumptions[0] + assumptions.size(), limit ) )
+    const auto res = assumptions.empty() ? solver_.solve( limit ) : solver_.solve( &assumptions[0], &assumptions[0] + assumptions.size(), limit );
+
+    switch ( res )
     {
     case percy::success:
       return true;
@@ -141,6 +143,12 @@ public:
   inline bool value( node const& n )
   {
     return solver_.var_value( var( n ) );
+  }
+
+  /*! \brief Return model value for a node (takes complementation into account). */
+  inline bool value( signal const& f )
+  {
+    return value( Ntk::get_node( f ) ) != Ntk::is_complemented( f );
   }
 
   /* \brief Returns all model values for all primary inputs. */
