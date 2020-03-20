@@ -578,7 +578,7 @@ private:
         {
           ands[j] = pntk_.create_xnor( psi( j, i ), pntk_.get_constant( linear_matrix_[l][j] ) );
         }
-        pntk_.create_po( pntk_.create_or( !f( l, i ), pntk_.create_nary_and( ands ) ) );
+        pntk_.add_clause( !f( l, i ), pntk_.create_nary_and( ands ) );
       }
     }
 
@@ -592,7 +592,7 @@ private:
         {
           ors[j] = pntk_.create_xor( psi( j, p ), psi( j, i ) );
         }
-        pntk_.create_po( pntk_.create_nary_or( ors ) );
+        pntk_.add_clause( ors );
       }
     }
 
@@ -621,7 +621,8 @@ private:
         {
           for ( auto j = 0u; j < n_; ++j )
           {
-            pntk_.create_po( pntk_.create_xnor( psi( j, i ), phi( j, i ) ) );
+            pntk_.add_clause( !psi( j, i ), phi( j, i ) );
+            pntk_.add_clause( psi( j, i ), !phi( j, i ) );
           }
         }
       }
