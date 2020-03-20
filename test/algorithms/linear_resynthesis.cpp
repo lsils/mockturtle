@@ -79,7 +79,7 @@ TEST_CASE( "Extract linear matrix from linear network", "[linear_resynthesis]" )
   CHECK( xag.num_gates() == 9u );
   CHECK( matrix == expected );
 
-  const auto xag_optimized = exact_linear_resynthesis( xag );
+  const auto xag_optimized = *exact_linear_resynthesis( xag );
   CHECK( xag_optimized.num_gates() == 6u );
 }
 
@@ -93,7 +93,7 @@ TEST_CASE( "Exact linear synthesis with SAT (example from paper)", "[linear_resy
     {true, false, false, false, true}
   };
 
-  const auto xag = exact_linear_synthesis<xag_network>( matrix );
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix );
 
   CHECK( xag.num_gates() == 6u );
 }
@@ -111,7 +111,7 @@ TEST_CASE( "More difficult example", "[linear_resynthesis]" )
 
   exact_linear_synthesis_params ps;
   ps.conflict_limit = 5000;
-  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix, ps );
 
   CHECK( get_linear_matrix( xag ) == matrix );
   CHECK( xag.num_gates() == 10u );
@@ -131,7 +131,7 @@ TEST_CASE( "More difficult example with upper bound", "[linear_resynthesis]" )
   exact_linear_synthesis_params ps;
   ps.conflict_limit = 5000;
   ps.upper_bound = 15u;
-  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix, ps );
 
   CHECK( get_linear_matrix( xag ) == matrix );
   CHECK( xag.num_gates() == 10u );
@@ -146,7 +146,7 @@ TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; with cancellations", "[line
     {false, true, true, true}
   };
 
-  const auto xag = exact_linear_synthesis<xag_network>( matrix );
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix );
 
   CHECK( get_linear_matrix( xag ) == matrix );
   CHECK( xag.num_gates() == 4u );
@@ -163,7 +163,7 @@ TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; cancellation-free", "[linea
 
   exact_linear_synthesis_params ps;
   ps.cancellation_free = true;
-  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix, ps );
 
   CHECK( get_linear_matrix( xag ) == matrix );
   CHECK( xag.num_gates() == 5u );
