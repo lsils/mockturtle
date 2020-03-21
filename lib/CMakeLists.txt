@@ -6,11 +6,6 @@ if (NOT TARGET sparsepp)
   endif()
 endif()
 
-if (NOT TARGET ez)
-  add_library(ez INTERFACE) # v1.0
-  target_include_directories(ez INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/ez)
-endif()
-
 if (NOT TARGET fmt)
   add_library(fmt INTERFACE) # v5.3.0
   target_include_directories(fmt INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/fmt)
