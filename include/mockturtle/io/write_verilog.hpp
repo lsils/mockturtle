@@ -38,7 +38,6 @@
 #include <string>
 
 #include <lorina/verilog.hpp>
-#include <ez/direct_iterator.hpp>
 #include <fmt/format.h>
 
 #include "../traits.hpp"
