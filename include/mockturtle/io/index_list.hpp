@@ -33,9 +33,14 @@
 #pragma once
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
+#include "../networks/aig.hpp"
+#include "../networks/xag.hpp"
 #include "../traits.hpp"
+
+#include <fmt/format.h>
 
 namespace mockturtle
 {
@@ -129,6 +134,52 @@ Ntk create_from_binary_index_list( IndexIterator begin )
     ntk.create_po( f );
   }
   return ntk;
+}
+
+namespace detail
+{
+
+template<class Ntk>
+std::string to_index_list( Ntk const& ntk )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network> || std::is_same_v<typename Ntk::base_type, aig_network>, "Ntk must be XAG or AIG" );
+
+  /* compute signature */
+  auto s = fmt::format( "{{{} << 16 | {} << 8 | {}", ntk.num_gates(), ntk.num_pos(), ntk.num_pis() );
+
+  ntk.foreach_pi( [&]( auto const& n, auto i ) {
+    if ( ntk.node_to_index( n ) != i + 1 ) {
+      fmt::print( "[e] network is not in normalized index order (violated by PI {})\n", i + 1 );
+      std::abort();
+    }
+  });
+
+  ntk.foreach_gate( [&]( auto const& n, auto i ) {
+    if ( ntk.node_to_index( n ) != ntk.num_pis() + i + 1 )
+    {
+      fmt::print( "[e] network is not in normalized index order (violated by node {})\n", ntk.node_to_index( n ) );
+      std::abort();
+    }
+
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      if ( ntk.node_to_index( ntk.get_node( f ) ) > ntk.node_to_index( n ) )
+      {
+        fmt::print( "[e] node {} not in topological order\n", ntk.node_to_index( n ) );
+        std::abort();
+      }
+      s += fmt::format( ", {}", 2 * ntk.node_to_index( ntk.get_node( f ) ) + ( ntk.is_complemented( f ) ? 1 : 0 ) );
+    } );
+  } );
+
+  ntk.foreach_po( [&]( auto const& f ) {
+    s += fmt::format( ", {}", 2 * ntk.node_to_index( ntk.get_node( f ) ) + ( ntk.is_complemented( f ) ? 1 : 0 ) );
+  });
+
+  s += "}";
+
+  return s;
+}
+
 }
 
 } /* namespace mockturtle */
