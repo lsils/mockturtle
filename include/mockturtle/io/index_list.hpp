@@ -108,4 +108,27 @@ std::vector<signal<Ntk>> create_from_binary_index_list( Ntk& dest, IndexIterator
   return pos;
 }
 
+/*! \brief Creates AND and XOR gates from binary index list.
+ *
+ * An out-of-place variant for create_from_binary_index_list.
+ */
+template<class Ntk, class IndexIterator>
+Ntk create_from_binary_index_list( IndexIterator begin )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi method" );
+  static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po method" );
+
+  static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<IndexIterator>::value_type>, uint32_t>, "IndexIterator value_type must be uint32_t" );
+
+  Ntk ntk;
+  std::vector<signal<Ntk>> pis( *begin & 0xff );
+  std::generate( pis.begin(), pis.end(), [&]() { return ntk.create_pi(); } );
+  for ( auto const& f : create_from_binary_index_list<Ntk>( ntk, begin, pis.begin() ) )
+  {
+    ntk.create_po( f );
+  }
+  return ntk;
+}
+
 } /* namespace mockturtle */
