@@ -4,6 +4,7 @@
 *------------------------------------------------------------------------------------------------*/
 #pragma once
 
+#include "../../utils/platforms.hpp"
 
 #if defined(BILL_WINDOWS_PLATFORM)
 #pragma warning(push)
@@ -36,7 +37,6 @@
 #pragma GCC diagnostic pop
 #endif
 
-#include "../../utils/platforms.hpp"
 #include "types.hpp"
 
 #include <memory>
