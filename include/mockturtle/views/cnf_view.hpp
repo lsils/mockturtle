@@ -41,9 +41,10 @@
 #include "../algorithms/cnf.hpp"
 #include "../traits.hpp"
 
+#include <bill/sat/interface/common.hpp>
+#include <bill/sat/interface/glucose.hpp>
 #include <fmt/format.h>
 #include <percy/cnf.hpp>
-#include <percy/solvers/bsat2.hpp>
 
 namespace mockturtle
 {
@@ -70,7 +71,7 @@ struct cnf_view_params
  * added.  Therefore, a network cannot modify or delete nodes when wrapped in a
  * `cnf_view`.
  */
-template<typename Ntk>
+template<typename Ntk, bill::solvers Solver = bill::solvers::glucose_41>
 class cnf_view : public Ntk
 {
 public:
@@ -93,19 +94,34 @@ public:
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
     static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
 
+    const auto v = solver_.add_variable(); /* for the constant input */
+    assert( v == var( Ntk::get_node( Ntk::get_constant( false ) ) ) );
+    (void)v;
+
     register_events();
   }
 
+  signal create_pi( std::string const& name = std::string() )
+  {
+    const auto f = Ntk::create_pi( name );
+
+    const auto v = solver_.add_variable();
+    assert( v == var( Ntk::get_node( f ) ) );
+    (void)v;
+
+    return f;
+  }
+
   /* \brief Returns the variable associated to a node. */
-  inline uint32_t var( node const& n ) const
+  inline bill::var_type var( node const& n ) const
   {
     return Ntk::node_to_index( n );
   }
 
   /*! \brief Returns the literal associated to a signal. */
-  inline uint32_t lit( signal const& f ) const
+  inline bill::lit_type lit( signal const& f ) const
   {
-    return make_lit( var( Ntk::get_node( f ) ), Ntk::is_complemented( f ) );
+    return bill::lit_type( var( Ntk::get_node( f ) ), Ntk::is_complemented( f ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive );
   }
 
   /*! \brief Solves the network with a set of custom assumptions.
@@ -119,34 +135,37 @@ public:
    * \param assumptions Vector of literals to be assumped when solving
    * \param limit Conflict limit (unlimited if 0)
    */
-  inline std::optional<bool> solve( std::vector<int> assumptions, int limit = 0 )
+  inline std::optional<bool> solve( bill::result::clause_type const& assumptions, uint32_t limit = 0 )
   {
     if ( ps_.write_dimacs )
     {
-      for ( auto l : assumptions )
+      for ( const auto& a : assumptions )
       {
+        auto l = pabc::Abc_Var2Lit( a.variable(), a.is_complemented() );
         dimacs_.add_clause( &l, &l + 1 );
       }
 
-      dimacs_.set_nr_vars( solver_.nr_vars() );
+      dimacs_.set_nr_vars( solver_.num_variables() );
 
       auto fd = fopen( ps_.write_dimacs->c_str(), "w" );
       dimacs_.to_dimacs( fd );
       fclose( fd );
     }
 
-    const auto res = assumptions.empty() ? solver_.solve( limit ) : solver_.solve( &assumptions[0], &assumptions[0] + assumptions.size(), limit );
+    const auto res = solver_.solve( assumptions, limit );
 
     switch ( res )
     {
-    case percy::success:
+    case bill::result::states::satisfiable:
+      model_ = solver_.get_model().model();
       return true;
-    case percy::failure:
+    case bill::result::states::unsatisfiable:
       return false;
     default:
-    case percy::timeout:
       return std::nullopt;
     }
+
+    return std::nullopt;
   }
 
   /*! \brief Solves the network by asserting all primary outputs to be true
@@ -158,7 +177,7 @@ public:
    */
   inline std::optional<bool> solve( int limit = 0 )
   {
-    std::vector<int> assumptions;
+    bill::result::clause_type assumptions;
     Ntk::foreach_po( [&]( auto const& f ) {
       assumptions.push_back( lit( f ) );
     } );
@@ -168,7 +187,7 @@ public:
   /*! \brief Return model value for a node. */
   inline bool value( node const& n )
   {
-    return solver_.var_value( var( n ) );
+    return model_.at( var( n ) ) == bill::lbool_type::true_;
   }
 
   /*! \brief Return model value for a node (takes complementation into account). */
@@ -190,9 +209,9 @@ public:
   /*! \brief Blocks last model for primary input values. */
   void block()
   {
-    std::vector<uint32_t> blocking_clause( Ntk::num_pis() );
-    Ntk::foreach_pi( [&]( auto const& n, auto i ) {
-      blocking_clause[i] = make_lit( var( n ), value( n ) );
+    bill::result::clause_type blocking_clause;
+    Ntk::foreach_pi( [&]( auto const& n ) {
+      blocking_clause.push_back( bill::lit_type( var( n ), value( n ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive ) );
     });
     add_clause( blocking_clause );
   }
@@ -200,21 +219,25 @@ public:
   /*! \brief Number of variables. */
   inline uint32_t num_vars()
   {
-    return solver_.nr_vars();
+    return solver_.num_variables();
   }
 
   /*! \brief Number of clauses. */
   inline uint32_t num_clauses()
   {
-    return solver_.nr_clauses();
+    return solver_.num_clauses();
   }
 
   /*! \brief Adds a clause to the solver. */
-  void add_clause( std::vector<uint32_t> const& clause )
+  void add_clause( bill::result::clause_type const& clause )
   {
     if ( ps_.write_dimacs )
     {
-      std::vector<int> lits( clause.begin(), clause.end() );
+      std::vector<int> lits;
+      for ( auto c : clause )
+      {
+        lits.push_back( pabc::Abc_Var2Lit( c.variable(), c.is_complemented() ) );
+      }
       dimacs_.add_clause( &lits[0], &lits[0] + lits.size() );
     }
     solver_.add_clause( clause );
@@ -223,8 +246,8 @@ public:
   /*! \brief Adds a clause from signals to the solver. */
   void add_clause( std::vector<signal> const& clause )
   {
-    std::vector<uint32_t> lits( clause.size() );
-    std::transform( clause.begin(), clause.end(), lits.begin(), [&]( auto const& s ) { return lit( s ); } );
+    bill::result::clause_type lits;
+    std::transform( clause.begin(), clause.end(), std::back_inserter( lits ), [&]( auto const& s ) { return lit( s ); } );
     add_clause( lits );
   }
 
@@ -234,17 +257,17 @@ public:
    */
   template<typename... Lit, typename = std::enable_if_t<
     std::disjunction_v<
-      std::conjunction<std::is_same<Lit, uint32_t>...>,
+      std::conjunction<std::is_same<Lit, bill::lit_type>...>,
       std::conjunction<std::is_same<Lit, signal>...>>>>
   void add_clause( Lit... lits )
   {
-    if constexpr ( std::conjunction_v<std::is_same<Lit, uint32_t>...> )
+    if constexpr ( std::conjunction_v<std::is_same<Lit, bill::lit_type>...> )
     {
-      add_clause( std::vector<uint32_t>{{lits...}} );
+      add_clause( bill::result::clause_type{{lits...}} );
     }
     else
     {
-      add_clause( std::vector<uint32_t>{{lit( lits )...}} );
+      add_clause( bill::result::clause_type{{lit( lits )...}} );
     }
   }
 
@@ -267,12 +290,16 @@ private:
 
   void on_add( node const& n )
   {
-    const auto _add_clause = [&]( std::vector<uint32_t> const& clause ) {
+    const auto v = solver_.add_variable();
+    assert( v == var( n ) );
+    (void)v;
+
+    const auto _add_clause = [&]( bill::result::clause_type const& clause ) {
       add_clause( clause );
     };
 
     const auto node_lit = lit( Ntk::make_signal( n ) );
-    std::vector<uint32_t> child_lits;
+    bill::result::clause_type child_lits;
     Ntk::foreach_fanin( n, [&]( auto const& f ) {
       child_lits.push_back( lit( f ) );
     } );
@@ -335,7 +362,8 @@ private:
   }
 
 private:
-  percy::bsat_wrapper solver_;
+  bill::solver<Solver> solver_;
+  bill::result::model_type model_;
   percy::cnf_formula dimacs_;
 
   cnf_view_params ps_;

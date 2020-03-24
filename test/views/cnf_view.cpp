@@ -45,7 +45,7 @@ TEST_CASE( "cnf_view with custom clauses", "[cnf_view]" )
   const auto c = mig.create_pi();
   mig.create_po( mig.create_maj( a, b, c ) );
 
-  mig.add_clause( lit_not( mig.lit( a ) ) );
+  mig.add_clause( ~mig.lit( a ) );
   mig.add_clause( mig.lit( b ) );
   const auto result = mig.solve();
   CHECK( result );

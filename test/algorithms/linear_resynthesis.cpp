@@ -110,7 +110,7 @@ TEST_CASE( "More difficult example", "[linear_resynthesis]" )
       {true, true, false, false, false, false, true, false}};
 
   exact_linear_synthesis_params ps;
-  ps.conflict_limit = 5000;
+  ps.conflict_limit = 10000;
   const auto xag = *exact_linear_synthesis<xag_network>( matrix, ps );
 
   CHECK( get_linear_matrix( xag ) == matrix );
@@ -129,7 +129,7 @@ TEST_CASE( "More difficult example with upper bound", "[linear_resynthesis]" )
       {true, true, false, false, false, false, true, false}};
 
   exact_linear_synthesis_params ps;
-  ps.conflict_limit = 5000;
+  ps.conflict_limit = 10000;
   ps.upper_bound = 15u;
   const auto xag = *exact_linear_synthesis<xag_network>( matrix, ps );
 
