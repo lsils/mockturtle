@@ -95,7 +95,7 @@ public:
     static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
 
     const auto v = solver_.add_variable(); /* for the constant input */
-    assert( v == 0 );
+    assert( v == var( Ntk::get_node( Ntk::get_constant( false ) ) ) );
     (void)v;
 
     register_events();
@@ -106,7 +106,7 @@ public:
     const auto f = Ntk::create_pi( name );
 
     const auto v = solver_.add_variable();
-    assert( v == Ntk::node_to_index( Ntk::get_node( f  ) ) );
+    assert( v == var( Ntk::get_node( f ) ) );
     (void)v;
 
     return f;
@@ -289,7 +289,7 @@ private:
   void on_add( node const& n )
   {
     const auto v = solver_.add_variable();
-    assert( v == Ntk::node_to_index( n ) );
+    assert( v == var( n ) );
     (void)v;
 
     const auto _add_clause = [&]( bill::result::clause_type const& clause ) {
