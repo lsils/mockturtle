@@ -33,16 +33,26 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdio>
+#include <optional>
+#include <string>
 #include <vector>
 
 #include "../algorithms/cnf.hpp"
 #include "../traits.hpp"
 
 #include <fmt/format.h>
+#include <percy/cnf.hpp>
 #include <percy/solvers/bsat2.hpp>
 
 namespace mockturtle
 {
+
+struct cnf_view_params
+{
+  /*! \brief Write DIMACS file, whenever solve is called. */
+  std::optional<std::string> write_dimacs{};
+};
 
 /*! \brief A view to connect logic network creation to SAT solving.
  *
@@ -70,7 +80,9 @@ public:
 
 public:
   // can only be constructed as empty network
-  cnf_view() : Ntk()
+  explicit cnf_view( cnf_view_params const& ps = {} )
+    : Ntk(),
+      ps_( ps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
@@ -109,6 +121,20 @@ public:
    */
   inline std::optional<bool> solve( std::vector<int> assumptions, int limit = 0 )
   {
+    if ( ps_.write_dimacs )
+    {
+      for ( auto l : assumptions )
+      {
+        dimacs_.add_clause( &l, &l + 1 );
+      }
+
+      dimacs_.set_nr_vars( solver_.nr_vars() );
+
+      auto fd = fopen( ps_.write_dimacs->c_str(), "w" );
+      dimacs_.to_dimacs( fd );
+      fclose( fd );
+    }
+
     const auto res = assumptions.empty() ? solver_.solve( limit ) : solver_.solve( &assumptions[0], &assumptions[0] + assumptions.size(), limit );
 
     switch ( res )
@@ -186,6 +212,11 @@ public:
   /*! \brief Adds a clause to the solver. */
   void add_clause( std::vector<uint32_t> const& clause )
   {
+    if ( ps_.write_dimacs )
+    {
+      std::vector<int> lits( clause.begin(), clause.end() );
+      dimacs_.add_clause( &lits[0], &lits[0] + lits.size() );
+    }
     solver_.add_clause( clause );
   }
 
@@ -194,7 +225,7 @@ public:
   {
     std::vector<uint32_t> lits( clause.size() );
     std::transform( clause.begin(), clause.end(), lits.begin(), [&]( auto const& s ) { return lit( s ); } );
-    solver_.add_clause( lits );
+    add_clause( lits );
   }
 
   /*! \brief Adds a clause to the solver.
@@ -209,11 +240,11 @@ public:
   {
     if constexpr ( std::conjunction_v<std::is_same<Lit, uint32_t>...> )
     {
-      solver_.add_clause( std::vector<uint32_t>{{lits...}} );
+      add_clause( std::vector<uint32_t>{{lits...}} );
     }
     else
     {
-      solver_.add_clause( std::vector<uint32_t>{{lit( lits )...}} );
+      add_clause( std::vector<uint32_t>{{lit( lits )...}} );
     }
   }
 
@@ -305,6 +336,9 @@ private:
 
 private:
   percy::bsat_wrapper solver_;
+  percy::cnf_formula dimacs_;
+
+  cnf_view_params ps_;
 };
 
 } /* namespace mockturtle */
