@@ -41,10 +41,10 @@
 #include "../algorithms/cnf.hpp"
 #include "../traits.hpp"
 
-#include <bill/sat/solver.hpp>
+#include <bill/sat/interface/common.hpp>
+#include <bill/sat/interface/glucose.hpp>
 #include <fmt/format.h>
 #include <percy/cnf.hpp>
-#include <percy/solvers/bsat2.hpp>
 
 namespace mockturtle
 {
@@ -164,6 +164,8 @@ public:
     default:
       return std::nullopt;
     }
+
+    return std::nullopt;
   }
 
   /*! \brief Solves the network by asserting all primary outputs to be true
