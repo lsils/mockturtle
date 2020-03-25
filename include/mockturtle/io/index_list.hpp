@@ -32,18 +32,76 @@
 
 #pragma once
 
-#include <algorithm>
-#include <string>
-#include <vector>
-
 #include "../networks/aig.hpp"
 #include "../networks/xag.hpp"
 #include "../traits.hpp"
 
+#include <percy/percy.hpp>
 #include <fmt/format.h>
+
+#include <algorithm>
+#include <string>
+#include <vector>
+
 
 namespace mockturtle
 {
+
+class index_list
+{
+public:
+  struct entry
+  {
+  public:
+    explicit entry( kitty::dynamic_truth_table const& tt, uint32_t gate )
+      : tt( tt )
+      , gate( gate )
+    {}
+
+    bool operator==( entry const& other ) const
+    {
+      return tt == other.tt && gate == other.gate;
+    }
+
+    bool operator<( entry const& other ) const
+    {
+      return ( tt < other.tt ) || ( tt == other.tt && gate < other.gate );
+    }
+
+    kitty::dynamic_truth_table tt;
+    uint32_t gate;
+  }; /* entry */
+
+  explicit index_list( uint32_t num_nodes, uint32_t num_inputs, uint32_t num_outputs )
+    : num_nodes( num_nodes )
+    , num_inputs( num_inputs )
+    , num_outputs( num_outputs )
+  {
+  }
+
+  void add( uint32_t d )
+  {
+    data.emplace_back( d );
+  }
+
+  std::string to_string() const
+  {
+    auto s = fmt::format( "{{{} << 16 | {} << 8 | {}", num_nodes, num_outputs, num_inputs );
+    for ( const auto& d : data )
+    {
+      s += fmt::format( ", {}", d );
+    }
+    s += "}";
+    return s;
+  }
+
+protected:
+  uint32_t num_nodes;
+  uint32_t num_inputs;
+  uint32_t num_outputs;
+
+  std::vector<uint32_t> data;
+}; /* index_list */
 
 /*! \brief Creates AND and XOR gates from binary index list.
  *
@@ -178,6 +236,106 @@ std::string to_index_list( Ntk const& ntk )
   s += "}";
 
   return s;
+}
+
+template<typename Fn, typename T>
+void compute_permutations( Fn&& fn, std::vector<T>& vs, uint32_t k )
+{
+  do
+  {
+    fn( vs );
+    std::reverse( vs.begin() + k, vs.end() );
+  }
+  while ( std::next_permutation( vs.begin(), vs.end() ) );
+}
+
+template<class IndexListType>
+IndexListType index_list_from_chain( percy::chain const& chain )
+{
+  /* precompute possible operator functions */
+  std::vector<index_list::entry> functions;
+
+  kitty::dynamic_truth_table const0{3}, x0{3}, x1{3}, x2{3};
+  kitty::create_nth_var( x0, 0u );
+  kitty::create_nth_var( x1, 1u );
+  kitty::create_nth_var( x2, 2u );
+
+  /* prepare elementary functions */
+  std::vector<kitty::dynamic_truth_table> elementaries = { const0, ~const0, x0, ~x0, x1, ~x1, x2, ~x2 };
+
+  std::vector<uint32_t> indices;
+  for ( auto i = 0u; i < elementaries.size(); ++i )
+    indices.emplace_back( i );
+  std::sort( std::begin( indices ), std::end( indices) );
+
+  auto store_gate_functions = [&]( std::vector<uint32_t> const& vs ){
+    /* maj function */
+    {
+      auto const f = kitty::ternary_majority( elementaries[vs[0u]], elementaries[vs[1u]], elementaries[vs[2u]] );
+      auto const entry = index_list::entry( f, ( 0u << 3 | (vs[0u] % 2) << 2 | (vs[1u] % 2) << 1) | (vs[2u] % 2) );
+      if ( std::find( std::begin( functions ), std::end( functions ), entry ) == std::end( functions ) )
+      {
+        functions.emplace_back( entry );
+      }
+    }
+
+    /* xor3 function */
+    {
+      auto const f = elementaries[vs[0u]] ^ elementaries[vs[1u]] ^ elementaries[vs[2u]];
+      auto const entry = index_list::entry( f, ( 1u << 3 | (vs[0u] % 2) << 2 | (vs[1u] % 2) << 1) | (vs[2u] % 2) );
+      if ( std::find( std::begin( functions ), std::end( functions ), entry ) == std::end( functions ) )
+      {
+        functions.emplace_back( entry );
+      }
+    }
+  };
+
+  compute_permutations( store_gate_functions, indices, 3u );
+
+  /* generate the index list */
+  IndexListType index_list( chain.get_nr_steps(), chain.get_nr_outputs(), chain.get_nr_inputs() );
+  for ( auto i = 0; i < chain.get_nr_steps(); ++i )
+  {
+    auto const& step = chain.get_step( i );
+    auto const& op = chain.get_operator( i );
+
+    auto const it = std::find_if( std::begin( functions ), std::end( functions ),
+                                  [&]( auto const& entry ){
+                                    return entry.tt == op;
+                                  });
+    assert( it != std::end( functions ) );
+
+    std::array<uint32_t, 3u> complemented = { ( it->gate >> 2u ) & 1, ( it->gate >> 1u ) & 1, ( it->gate >> 0u ) & 1 };
+    auto const gate_kind = ( it->gate >> 3u ) & 1;
+    switch ( gate_kind )
+    {
+    case 0u:
+      {
+        // fmt::print( "<{} {} {}>\n",
+        //             2*(step[0u]+1) + complemented[0u],
+        //             2*(step[1u]+1) + complemented[1u],
+        //             2*(step[2u]+1) + complemented[2u] );
+        index_list.add( 2*(step[0u]+1) + complemented[0u] );
+        index_list.add( 2*(step[1u]+1) + complemented[1u] );
+        index_list.add( 2*(step[2u]+1) + complemented[2u] );
+        break;
+      }
+    case 1u:
+      {
+        // fmt::print( "{{{} {} {}}}\n",
+        //             2*( step[2u] + 1 ) + complemented[2u],
+        //             2*( step[1u] + 1 ) + complemented[1u],
+        //             2*( step[0u] + 1 ) + complemented[0u] );
+        index_list.add( 2*(step[0u]+1) + complemented[0u] );
+        index_list.add( 2*(step[1u]+1) + complemented[1u] );
+        index_list.add( 2*(step[2u]+1) + complemented[2u] );
+        break;
+      }
+    default:
+      std::abort();
+    }
+  }
+  return index_list;
 }
 
 }
