@@ -78,18 +78,30 @@ public:
     : Ntk(), cnf_view_( cnf_view ), literals_( *this )
   { }
 
+  cnf_view_impl( CnfView& cnf_view, Ntk& ntk ) 
+    : Ntk( ntk ), cnf_view_( cnf_view ), literals_( *this )
+  { }
+
   void init()
   {
     cnf_view_.solver_.add_variables( Ntk::size() );
 
-    /* unit clause for constant-0 */
-    cnf_view_.solver_.add_clause( bill::lit_type( 0, bill::lit_type::polarities::positive ) );
+    /* unit clause for constants */
+    bill::lit_type lit_const( 0, bill::lit_type::polarities::negative );
+    cnf_view_.add_clause( lit_const );
+    literals_[Ntk::get_constant( false )] = lit_const;
+    if ( Ntk::get_node( Ntk::get_constant( false ) ) != Ntk::get_node( Ntk::get_constant( true ) ) )
+    {
+      literals_[Ntk::get_constant( true )] = ~lit_const;
+    }
 
-    Ntk::foreach_pi( [&]( auto const& n, auto i ) {
-      literals_[n] = bill::lit_type( i+1, bill::lit_type::polarities::positive );
+    uint32_t v = 0;
+    Ntk::foreach_pi( [&]( auto const& n ) {
+      literals_[n] = bill::lit_type( ++v, bill::lit_type::polarities::positive );
     } );
 
     Ntk::foreach_gate( [&]( auto const& n ) {
+      literals_[n] = bill::lit_type( ++v, bill::lit_type::polarities::positive );
       cnf_view_.on_add( n, false );
     } );
   }
@@ -194,8 +206,27 @@ public:
     {
       const auto v = solver_.add_variable(); /* for the constant input */
       assert( v == var( Ntk::get_node( Ntk::get_constant( false ) ) ) );
-      (void)v;
+      add_clause( bill::lit_type( v, bill::lit_type::polarities::negative ) );
     }
+
+    register_events();
+  }
+
+  template<bool enabled = AllowModify, typename = std::enable_if_t<enabled>>
+  explicit cnf_view( Ntk& ntk, cnf_view_params const& ps = {} )
+    : cnf_view_impl_t( *this, ntk ),
+      ps_( ps )
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+    static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
+
+    cnf_view_impl_t::init();
 
     register_events();
   }
@@ -455,15 +486,15 @@ private:
 
   void on_add( node const& n, bool add_var = true ) /* add_var is only used when AllowModify = true */
   {
-    bill::lit_type node_lit(0, bill::lit_type::polarities::positive);
-    bill::lit_type switch_lit(0, bill::lit_type::polarities::positive);
+    bill::lit_type node_lit;
+    bill::lit_type switch_lit;
 
     if constexpr ( AllowModify )
     {
       if ( add_var )
       {
         node_lit = bill::lit_type( solver_.add_variable(), bill::lit_type::polarities::positive );
-        cnf_view_impl_t::literals_.resize( bill::lit_type(0, bill::lit_type::polarities::positive) );
+        cnf_view_impl_t::literals_.resize();
         cnf_view_impl_t::literals_[n] = node_lit;
       }
       else
@@ -471,7 +502,7 @@ private:
   
       switch_lit = bill::lit_type( solver_.add_variable(), bill::lit_type::polarities::positive );
       cnf_view_impl_t::switches_.resize( Ntk::size() );
-      cnf_view_impl_t::switches_[Ntk::node_to_index( n )] = bill::lit_type( switch_lit.variable(), bill::lit_type::polarities::negative ); //lit_not( switch_lit );
+      cnf_view_impl_t::switches_[Ntk::node_to_index( n )] = ~switch_lit;
     }
     else
     {
