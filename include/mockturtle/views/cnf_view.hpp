@@ -49,10 +49,12 @@
 namespace mockturtle
 {
 
+template<bool AllowModify> /* only use to distinguish constructors */
 struct cnf_view_params
 {
   /*! \brief Write DIMACS file, whenever solve is called. */
   std::optional<std::string> write_dimacs{};
+  bool auto_update{true}; /* only used when AllowModify = true */
 };
 
 /*! \brief A view to connect logic network creation to SAT solving.
@@ -71,7 +73,7 @@ struct cnf_view_params
  * added.  Therefore, a network cannot modify or delete nodes when wrapped in a
  * `cnf_view`.
  */
-template<typename Ntk, bill::solvers Solver = bill::solvers::glucose_41>
+template<typename Ntk, bool AllowModify = false, bill::solvers Solver = bill::solvers::glucose_41>
 class cnf_view : public Ntk
 {
 public:
@@ -79,9 +81,22 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
+  template<bool AllowModify_s = false>
+  struct lit_maps
+  {
+  };
+  
+  template<>
+  struct lit_maps<true>
+  {
+    node_map<bill::lit_type, Ntk> literals;
+    std::vector<bill::lit_type> switches;
+  };
+
 public:
   // can only be constructed as empty network
-  explicit cnf_view( cnf_view_params const& ps = {} )
+  template<bool enabled = AllowModify, typename = std::enable_if_t<!enabled>>
+  explicit cnf_view( cnf_view_params<false> const& ps = {} )
     : Ntk(),
       ps_( ps )
   {
@@ -101,11 +116,49 @@ public:
     register_events();
   }
 
+  template<bool enabled = AllowModify, typename = std::enable_if_t<enabled>>
+  cnf_view( cnf_view_params<true> const& ps = {} )
+  : Ntk(), ps_( ps ), maps_( { .literals = node_map<bill::lit_type, Ntk>( Ntk() ) } ) 
+  /* TODO: should use this to initialize node_map; also, lit_type doesn't have a default constructor... */
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+    static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
+
+    register_events();
+
+    solver_.add_variables( Ntk::size() );
+
+    /* unit clause for constant-0 */
+    solver_.add_clause( bill::lit_type( 0, bill::lit_type::polarities::positive ) );
+
+    Ntk::foreach_pi( [&]( auto const& n, auto i ) {
+      literals_[n] = bill::lit_type( i+1, bill::lit_type::polarities::positive );
+    } );
+
+    Ntk::foreach_gate( [&]( auto const& n ) {
+      on_add( n, false );
+    } );
+  }
+
   signal create_pi( std::string const& name = std::string() )
   {
     const auto f = Ntk::create_pi( name );
 
     const auto v = solver_.add_variable();
+    
+    if constexpr ( AllowModify )
+    {
+      literals_.resize( bill::lit_type( 0, bill::lit_type::polarities::positive ) );
+      literals_[f] = bill::lit_type( v, bill::lit_type::polarities::positive );
+      return f;
+    }
+
     assert( v == var( Ntk::get_node( f ) ) );
     (void)v;
 
@@ -115,6 +168,8 @@ public:
   /* \brief Returns the variable associated to a node. */
   inline bill::var_type var( node const& n ) const
   {
+    if constexpr ( AllowModify )
+      return literals_[n].variable();
     return Ntk::node_to_index( n );
   }
 
@@ -122,6 +177,14 @@ public:
   inline bill::lit_type lit( signal const& f ) const
   {
     return bill::lit_type( var( Ntk::get_node( f ) ), Ntk::is_complemented( f ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive );
+  }
+
+  /*! \brief Returns the switching literal associated to a node. */
+  template<bool enabled = AllowModify, typename = std::enable_if_t<enabled>>
+  inline bill::lit_type switch_lit( node const& n ) const
+  {
+    assert( !ntk_.is_pi( n ) && !ntk_.is_constant( n ) && "PI and constant node are not switch-able" );
+    return switches_[Ntk::node_to_index( n )];
   }
 
   /*! \brief Solves the network with a set of custom assumptions.
@@ -137,6 +200,46 @@ public:
    */
   inline std::optional<bool> solve( bill::result::clause_type const& assumptions, uint32_t limit = 0 )
   {
+    if constexpr ( AllowModify )
+    {
+      std::vector<bill::lit_type> assumptions_copy = assumptions;
+      for ( auto i = 1u; i < switches_.size(); ++i )
+      {
+        if ( Ntk::is_pi( Ntk::index_to_node( i ) ) ) continue;
+        assumptions_copy.push_back( switches_[i] );
+      }
+
+      if ( ps_.write_dimacs )
+      {
+        for ( const auto& a : assumptions_copy )
+        {
+          auto l = pabc::Abc_Var2Lit( a.variable(), a.is_complemented() );
+          dimacs_.add_clause( &l, &l + 1 );
+        }
+  
+        dimacs_.set_nr_vars( solver_.num_variables() );
+  
+        auto fd = fopen( ps_.write_dimacs->c_str(), "w" );
+        dimacs_.to_dimacs( fd );
+        fclose( fd );
+      }
+  
+      const auto res = solver_.solve( assumptions_copy, limit );
+  
+      switch ( res )
+      {
+      case bill::result::states::satisfiable:
+        model_ = solver_.get_model().model();
+        return true;
+      case bill::result::states::unsatisfiable:
+        return false;
+      default:
+        return std::nullopt;
+      }
+  
+      return std::nullopt;
+    }
+
     if ( ps_.write_dimacs )
     {
       for ( const auto& a : assumptions )
@@ -206,6 +309,14 @@ public:
     return values;
   }
 
+  /*! \brief Whether a node is currently activated (included in CNF). */
+  template<bool enabled = AllowModify, typename = std::enable_if_t<enabled>>
+  inline bool is_activated( node const& n ) const
+  {
+    return switch_lit( n ).is_complemented();
+    /* clauses are activated if switch literal is complemented */
+  }
+
   /*! \brief Blocks last model for primary input values. */
   void block()
   {
@@ -214,6 +325,22 @@ public:
       blocking_clause.push_back( bill::lit_type( var( n ), value( n ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive ) );
     });
     add_clause( blocking_clause );
+  }
+
+  /*! \brief Deactivates the clauses for a node. */
+  template<bool enabled = AllowModify, typename = std::enable_if_t<enabled>>
+  void deactivate( node const& n )
+  {
+    if ( is_activated( n ) )
+      switches_[Ntk::node_to_index( n )].complement();
+  }
+
+  /*! \brief (Re-)activates the clauses for a node. */
+  template<bool enabled = AllowModify, typename = std::enable_if_t<enabled>>
+  void activate( node const& n )
+  {
+    if ( !is_activated( n ) )
+      switches_[Ntk::node_to_index( n )].complement();
   }
 
   /*! \brief Number of variables. */
@@ -275,30 +402,75 @@ private:
   void register_events()
   {
     Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
-    Ntk::events().on_modified.push_back( []( auto const& n, auto const& previous ) {
-      (void)n;
+    Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
       (void)previous;
+      if constexpr ( AllowModify )
+      {
+        if ( ps_.auto_update )
+          on_modified( n );
+        return;
+      }
+
+      (void)n;
       assert( false && "nodes should not be modified in cnf_view" );
       std::abort();
     } );
-    Ntk::events().on_delete.push_back( []( auto const& n ) {
+    Ntk::events().on_delete.push_back( [this]( auto const& n ) {
+      if constexpr ( AllowModify )
+      {
+        if ( ps_.auto_update )
+          on_delete( n );
+        return;
+      }
+
       (void)n;
       assert( false && "nodes should not be deleted in cnf_view" );
       std::abort();
     } );
   }
 
-  void on_add( node const& n )
+  void on_add( node const& n, bool add_var = true ) /* add_var is only used when AllowModify = true */
   {
-    const auto v = solver_.add_variable();
-    assert( v == var( n ) );
-    (void)v;
+    bill::lit_type node_lit(0, bill::lit_type::polarities::positive);
+    bill::lit_type switch_lit(0, bill::lit_type::polarities::positive);
+
+    if constexpr ( AllowModify )
+    {
+      if ( add_var )
+      {
+        node_lit = bill::lit_type( solver_.add_variable(), bill::lit_type::polarities::positive );
+        literals_.resize( bill::lit_type(0, bill::lit_type::polarities::positive) );
+        literals_[n] = node_lit;
+      }
+      else
+        node_lit = literals_[n];
+  
+      switch_lit = bill::lit_type( solver_.add_variable(), bill::lit_type::polarities::positive );
+      switches_.resize( Ntk::size() );
+      switches_[Ntk::node_to_index( n )] = bill::lit_type( switch_lit.variable(), bill::lit_type::polarities::negative ); //lit_not( switch_lit );
+    }
+    else
+    {
+      const auto v = solver_.add_variable();
+      assert( v == var( n ) );
+      (void)v;
+
+      node_lit = lit( Ntk::make_signal( n ) );
+    }
 
     const auto _add_clause = [&]( bill::result::clause_type const& clause ) {
-      add_clause( clause );
+      if constexpr ( AllowModify )
+      {
+        bill::result::clause_type clause_ = clause;
+        clause_.push_back( switch_lit );
+        add_clause( clause_ );
+      }
+      else
+      {
+        add_clause( clause );
+      }
     };
-
-    const auto node_lit = lit( Ntk::make_signal( n ) );
+    
     bill::result::clause_type child_lits;
     Ntk::foreach_fanin( n, [&]( auto const& f ) {
       child_lits.push_back( lit( f ) );
@@ -361,12 +533,32 @@ private:
     detail::on_function( node_lit, child_lits, Ntk::node_function( n ), _add_clause );
   }
 
+  template<bool enabled = AllowModify, typename = std::enable_if_t<enabled>>
+  void on_modified( node const& n )
+  {
+    deactivate( n );
+    add_clause( switch_lit( n ) );
+    on_add( n, false ); 
+    /* reuse literals_[n] (so that the fanout clauses are still valid),
+    but create a new switches_[n] to control a new set of gate clauses */
+  }
+
+  template<bool enabled = AllowModify, typename = std::enable_if_t<enabled>>
+  void on_delete( node const& n )
+  {
+    deactivate( n );
+  }
+
 private:
   bill::solver<Solver> solver_;
   bill::result::model_type model_;
   percy::cnf_formula dimacs_;
 
-  cnf_view_params ps_;
+  cnf_view_params<AllowModify> ps_;
+
+  lit_maps<AllowModify> maps_;
+  node_map<bill::lit_type, Ntk>& literals_ = maps_.literals;
+  std::vector<bill::lit_type>& switches_ = maps_.switches;
 };
 
 } /* namespace mockturtle */
