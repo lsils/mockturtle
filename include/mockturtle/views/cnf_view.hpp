@@ -53,12 +53,18 @@ struct cnf_view_params
 {
   /*! \brief Write DIMACS file, whenever solve is called. */
   std::optional<std::string> write_dimacs{};
-  bool auto_update{true}; /* only used when AllowModify = true */
+
+  /*! \brief Automatically update clauses when network is modified. 
+             Only meaningful when AllowModify = true. */
+  bool auto_update{true};
 };
 
 /* forward declaration */
 template<typename Ntk, bool AllowModify = false, bill::solvers Solver = bill::solvers::glucose_41>
 class cnf_view;
+
+namespace detail
+{
 
 template<typename CnfView, typename Ntk, bool AllowModify = false, bill::solvers Solver = bill::solvers::glucose_41>
 class cnf_view_impl : public Ntk
@@ -124,14 +130,18 @@ public:
   void deactivate( node const& n )
   {
     if ( is_activated( n ) )
+    {
       switches_[Ntk::node_to_index( n )].complement();
+    }
   }
 
   /*! \brief (Re-)activates the clauses for a node. */
   void activate( node const& n )
   {
     if ( !is_activated( n ) )
+    {
       switches_[Ntk::node_to_index( n )].complement();
+    }
   }
 
   void on_modified( node const& n )
@@ -155,6 +165,8 @@ private:
   std::vector<bill::lit_type> switches_;
 };
 
+} /* namespace detail */
+
 /*! \brief A view to connect logic network creation to SAT solving.
  *
  * When using this view to create a new network, it creates a CNF internally
@@ -172,12 +184,12 @@ private:
  * `cnf_view`.
  */
 template<typename Ntk, bool AllowModify, bill::solvers Solver>
-class cnf_view : public cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>
+class cnf_view : public detail::cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>
 {
-  friend class cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>;
+  friend class detail::cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>;
 
 public:
-  using cnf_view_impl_t = cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>;
+  using cnf_view_impl_t = detail::cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>;
 
   using storage = typename Ntk::storage;
   using node = typename Ntk::node;
@@ -254,7 +266,9 @@ public:
   inline bill::var_type var( node const& n ) const
   {
     if constexpr ( AllowModify )
+    {
       return cnf_view_impl_t::literals_[n].variable();;
+    }
     return Ntk::node_to_index( n );
   }
 
@@ -282,7 +296,7 @@ public:
       std::vector<bill::lit_type> assumptions_copy = assumptions;
       for ( auto i = 1u; i < cnf_view_impl_t::switches_.size(); ++i )
       {
-        if ( Ntk::is_pi( Ntk::index_to_node( i ) ) ) continue;
+        if ( Ntk::is_pi( Ntk::index_to_node( i ) ) ) { continue; }
         assumptions_copy.push_back( cnf_view_impl_t::switches_[i] );
       }
 
@@ -460,7 +474,9 @@ private:
       if constexpr ( AllowModify )
       {
         if ( ps_.auto_update )
+        {
           cnf_view_impl_t::on_modified( n );
+        }
         return;
       }
 
@@ -473,7 +489,9 @@ private:
       if constexpr ( AllowModify )
       {
         if ( ps_.auto_update )
+        {
           cnf_view_impl_t::on_delete( n );
+        }
         return;
       }
 
@@ -498,7 +516,9 @@ private:
         cnf_view_impl_t::literals_[n] = node_lit;
       }
       else
+      {
         node_lit = cnf_view_impl_t::literals_[n];
+      }
   
       switch_lit = bill::lit_type( solver_.add_variable(), bill::lit_type::polarities::positive );
       cnf_view_impl_t::switches_.resize( Ntk::size() );
