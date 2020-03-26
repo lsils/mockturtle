@@ -73,3 +73,66 @@ TEST_CASE( "find multiple solutions with cnf_view", "[cnf_view]" )
   }
   CHECK( ctr == 4u );
 }
+
+/* cnf_view with AllowModify option */
+
+TEST_CASE( "modify network", "[cnf_view]" )
+{
+  cnf_view<xag_network, true> xag;
+  const auto a = xag.create_pi();
+  const auto b = xag.create_pi();
+
+  const auto f = xag.create_and( a, b );
+  xag.create_po( f );
+  const auto g = xag.create_xor( a, b );
+  xag.substitute_node( xag.get_node( f ), g );
+
+  const auto result = xag.solve();
+  CHECK( result );
+  CHECK( *result );
+  CHECK( xag.value( xag.get_node( a ) ) != xag.value( xag.get_node( b ) ) );
+}
+
+TEST_CASE( "deactivate node", "[cnf_view]" )
+{
+  cnf_view<xag_network, true> xag;
+  const auto a = xag.create_pi();
+  const auto b = xag.create_pi();
+  const auto f = xag.create_xor( a, b );
+  xag.create_po( f );
+
+  /* virtually replacing XOR with AND */
+  xag.deactivate( xag.get_node( f ) );
+  CHECK( !xag.is_activated( xag.get_node( f ) ) );
+  xag.add_clause( xag.lit( a ), ~xag.lit( f ) );
+  xag.add_clause( xag.lit( b ), ~xag.lit( f ) );
+  xag.add_clause( ~xag.lit( a ), ~xag.lit( b ), xag.lit( f ) );
+
+  const auto result = xag.solve();
+  CHECK( result );
+  CHECK( *result );
+  CHECK( xag.value( xag.get_node( a ) ) );
+  CHECK( xag.value( xag.get_node( b ) ) );
+}
+
+TEST_CASE( "build cnf_view on top of existing network and create_pi afterwards", "[cnf_view]" )
+{
+  mig_network mig;
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto c = mig.create_pi();
+  mig.create_po( mig.create_maj( a, b, c ) );
+
+  cnf_view<mig_network, true> view( mig );
+  const auto d = view.create_pi();
+  view.create_po( view.create_maj( a, b, d ) );
+  view.create_po( !a );
+
+  const auto result = view.solve();
+  CHECK( result ); 
+  CHECK( *result );
+  CHECK( !view.value( view.get_node( a ) ) );
+  CHECK( view.value( view.get_node( b ) ) );
+  CHECK( view.value( view.get_node( c ) ) );
+  CHECK( view.value( view.get_node( d ) ) );
+}

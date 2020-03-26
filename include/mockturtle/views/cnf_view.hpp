@@ -267,7 +267,7 @@ public:
   {
     if constexpr ( AllowModify )
     {
-      return cnf_view_impl_t::literals_[n].variable();;
+      return cnf_view_impl_t::literals_[n].variable();
     }
     return Ntk::node_to_index( n );
   }
