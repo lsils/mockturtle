@@ -494,6 +494,14 @@ struct exact_linear_synthesis_problem_network
       }
     }
 
+    /* maybe some trivial POs are still left. */
+    while ( it != trivial_pos_.end() && it->first == poctr )
+    {
+      ntk.create_po( it->second == n_ ? ntk.get_constant( false ) : nodes[it->second] );
+      poctr++;
+      ++it;
+    }
+
     return ntk;
   }
 
@@ -838,6 +846,21 @@ struct exact_linear_synthesis_impl
 
   std::optional<Ntk> run()
   {
+    if ( m_ == 0u )
+    {
+      Ntk ntk;
+
+      std::vector<signal<Ntk>> nodes( n_ );
+      std::generate( nodes.begin(), nodes.end(), [&]() { return ntk.create_pi(); } );
+
+      for ( auto po : trivial_pos_ )
+      {
+        ntk.create_po( po.second == n_ ? ntk.get_constant( false ) : nodes[po.second] );
+      }
+
+      return ntk;
+    }
+
     return ps_.upper_bound ? run_decreasing() : run_increasing();
   }
 
