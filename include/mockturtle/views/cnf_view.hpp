@@ -598,4 +598,7 @@ private:
   cnf_view_params ps_;
 };
 
+template<class T>
+cnf_view(T const&) -> cnf_view<T, true>;
+
 } /* namespace mockturtle */

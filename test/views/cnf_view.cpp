@@ -123,13 +123,13 @@ TEST_CASE( "build cnf_view on top of existing network and create_pi afterwards",
   const auto c = mig.create_pi();
   mig.create_po( mig.create_maj( a, b, c ) );
 
-  cnf_view<mig_network, true> view( mig );
+  cnf_view view( mig );
   const auto d = view.create_pi();
   view.create_po( view.create_maj( a, b, d ) );
   view.create_po( !a );
 
   const auto result = view.solve();
-  CHECK( result ); 
+  CHECK( result );
   CHECK( *result );
   CHECK( !view.value( view.get_node( a ) ) );
   CHECK( view.value( view.get_node( b ) ) );
