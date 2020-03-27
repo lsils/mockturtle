@@ -28,6 +28,7 @@
   \brief Creates a CNF while creating a network
 
   \author Mathias Soeken
+  \author Lee Siang-Yun
 */
 
 #pragma once
@@ -70,7 +71,7 @@ template<typename CnfView, typename Ntk, bool AllowModify = false, bill::solvers
 class cnf_view_impl : public Ntk
 {
 public:
-  cnf_view_impl( CnfView& cnf_view ): Ntk() { (void)cnf_view; }
+  cnf_view_impl( CnfView& cnf_view ) : Ntk() { (void)cnf_view; }
 };
 
 template<typename CnfView, typename Ntk, bill::solvers Solver>
@@ -80,13 +81,15 @@ class cnf_view_impl<CnfView, Ntk, true, Solver> : public Ntk
   using node = typename Ntk::node;
 
 public:
-  cnf_view_impl( CnfView& cnf_view ) 
-    : Ntk(), cnf_view_( cnf_view ), literals_( *this )
-  { }
+  cnf_view_impl( CnfView& cnf_view )
+      : Ntk(), cnf_view_( cnf_view ), literals_( *this )
+  {
+  }
 
-  cnf_view_impl( CnfView& cnf_view, Ntk& ntk ) 
-    : Ntk( ntk ), cnf_view_( cnf_view ), literals_( *this )
-  { }
+  cnf_view_impl( CnfView& cnf_view, Ntk& ntk )
+      : Ntk( ntk ), cnf_view_( cnf_view ), literals_( *this )
+  {
+  }
 
   void init()
   {
@@ -148,7 +151,7 @@ public:
   {
     deactivate( n );
     cnf_view_.add_clause( switch_lit( n ) );
-    cnf_view_.on_add( n, false ); 
+    cnf_view_.on_add( n, false );
     /* reuse literals_[n] (so that the fanout clauses are still valid),
     but create a new switches_[n] to control a new set of gate clauses */
   }
@@ -198,8 +201,8 @@ public:
 public:
   // can only be constructed as empty network
   explicit cnf_view( cnf_view_params const& ps = {} )
-    : cnf_view_impl_t( *this ),
-      ps_( ps )
+      : cnf_view_impl_t( *this ),
+        ps_( ps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
@@ -226,8 +229,8 @@ public:
 
   template<bool enabled = AllowModify, typename = std::enable_if_t<enabled>>
   explicit cnf_view( Ntk& ntk, cnf_view_params const& ps = {} )
-    : cnf_view_impl_t( *this, ntk ),
-      ps_( ps )
+      : cnf_view_impl_t( *this, ntk ),
+        ps_( ps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
@@ -248,7 +251,7 @@ public:
     const auto f = Ntk::create_pi( name );
 
     const auto v = solver_.add_variable();
-    
+
     if constexpr ( AllowModify )
     {
       cnf_view_impl_t::literals_.resize( bill::lit_type( 0, bill::lit_type::polarities::positive ) );
@@ -291,32 +294,24 @@ public:
    */
   inline std::optional<bool> solve( bill::result::clause_type const& assumptions, uint32_t limit = 0 )
   {
-    if constexpr ( AllowModify )
-    {
-      std::vector<bill::lit_type> assumptions_copy = assumptions;
-      for ( auto i = 1u; i < cnf_view_impl_t::switches_.size(); ++i )
-      {
-        if ( Ntk::is_pi( Ntk::index_to_node( i ) ) ) { continue; }
-        assumptions_copy.push_back( cnf_view_impl_t::switches_[i] );
-      }
-
+    const auto _write_dimacs = [&]( bill::result::clause_type const& assumps ) {
       if ( ps_.write_dimacs )
       {
-        for ( const auto& a : assumptions_copy )
+        for ( const auto& a : assumps )
         {
           auto l = pabc::Abc_Var2Lit( a.variable(), a.is_complemented() );
           dimacs_.add_clause( &l, &l + 1 );
         }
-  
         dimacs_.set_nr_vars( solver_.num_variables() );
-  
         auto fd = fopen( ps_.write_dimacs->c_str(), "w" );
         dimacs_.to_dimacs( fd );
         fclose( fd );
       }
-  
-      const auto res = solver_.solve( assumptions_copy, limit );
-  
+    };
+
+    const auto _solve = [&]( bill::result::clause_type const& assumps ) -> std::optional<bool> {
+      const auto res = solver_.solve( assumps, limit );
+
       switch ( res )
       {
       case bill::result::states::satisfiable:
@@ -327,39 +322,27 @@ public:
       default:
         return std::nullopt;
       }
-  
-      return std::nullopt;
-    }
 
-    if ( ps_.write_dimacs )
+      return std::nullopt;
+    };
+
+    if constexpr ( AllowModify )
     {
-      for ( const auto& a : assumptions )
+      bill::result::clause_type assumptions_copy = assumptions;
+      for ( auto i = 1u; i < cnf_view_impl_t::switches_.size(); ++i )
       {
-        auto l = pabc::Abc_Var2Lit( a.variable(), a.is_complemented() );
-        dimacs_.add_clause( &l, &l + 1 );
+        if ( !Ntk::is_pi( Ntk::index_to_node( i ) ) )
+        {
+          assumptions_copy.push_back( cnf_view_impl_t::switches_[i] );
+        }
       }
 
-      dimacs_.set_nr_vars( solver_.num_variables() );
-
-      auto fd = fopen( ps_.write_dimacs->c_str(), "w" );
-      dimacs_.to_dimacs( fd );
-      fclose( fd );
+      _write_dimacs( assumptions_copy );
+      return _solve( assumptions_copy );
     }
 
-    const auto res = solver_.solve( assumptions, limit );
-
-    switch ( res )
-    {
-    case bill::result::states::satisfiable:
-      model_ = solver_.get_model().model();
-      return true;
-    case bill::result::states::unsatisfiable:
-      return false;
-    default:
-      return std::nullopt;
-    }
-
-    return std::nullopt;
+    _write_dimacs( assumptions );
+    return _solve( assumptions );
   }
 
   /*! \brief Solves the network by asserting all primary outputs to be true
@@ -379,23 +362,23 @@ public:
   }
 
   /*! \brief Return model value for a node. */
-  inline bool value( node const& n )
+  inline bool model_value( node const& n ) const
   {
     return model_.at( var( n ) ) == bill::lbool_type::true_;
   }
 
   /*! \brief Return model value for a node (takes complementation into account). */
-  inline bool value( signal const& f )
+  inline bool model_value( signal const& f ) const
   {
-    return value( Ntk::get_node( f ) ) != Ntk::is_complemented( f );
+    return model_value( Ntk::get_node( f ) ) != Ntk::is_complemented( f );
   }
 
   /* \brief Returns all model values for all primary inputs. */
-  std::vector<bool> pi_values()
+  std::vector<bool> pi_model_values()
   {
     std::vector<bool> values( Ntk::num_pis() );
     Ntk::foreach_pi( [&]( auto const& n, auto i ) {
-      values[i] = value( n );
+      values[i] = model_value( n );
     } );
     return values;
   }
@@ -405,19 +388,19 @@ public:
   {
     bill::result::clause_type blocking_clause;
     Ntk::foreach_pi( [&]( auto const& n ) {
-      blocking_clause.push_back( bill::lit_type( var( n ), value( n ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive ) );
-    });
+      blocking_clause.push_back( bill::lit_type( var( n ), model_value( n ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive ) );
+    } );
     add_clause( blocking_clause );
   }
 
   /*! \brief Number of variables. */
-  inline uint32_t num_vars()
+  inline uint32_t num_vars() const
   {
     return solver_.num_variables();
   }
 
   /*! \brief Number of clauses. */
-  inline uint32_t num_clauses()
+  inline uint32_t num_clauses() const
   {
     return solver_.num_clauses();
   }
@@ -450,9 +433,9 @@ public:
    * Entries are either all literals or network signals.
    */
   template<typename... Lit, typename = std::enable_if_t<
-    std::disjunction_v<
-      std::conjunction<std::is_same<Lit, bill::lit_type>...>,
-      std::conjunction<std::is_same<Lit, signal>...>>>>
+                                std::disjunction_v<
+                                    std::conjunction<std::is_same<Lit, bill::lit_type>...>,
+                                    std::conjunction<std::is_same<Lit, signal>...>>>>
   void add_clause( Lit... lits )
   {
     if constexpr ( std::conjunction_v<std::is_same<Lit, bill::lit_type>...> )
@@ -519,7 +502,7 @@ private:
       {
         node_lit = cnf_view_impl_t::literals_[n];
       }
-  
+
       switch_lit = bill::lit_type( solver_.add_variable(), bill::lit_type::polarities::positive );
       cnf_view_impl_t::switches_.resize( Ntk::size() );
       cnf_view_impl_t::switches_[Ntk::node_to_index( n )] = ~switch_lit;
@@ -545,7 +528,7 @@ private:
         add_clause( clause );
       }
     };
-    
+
     bill::result::clause_type child_lits;
     Ntk::foreach_fanin( n, [&]( auto const& f ) {
       child_lits.push_back( lit( f ) );
@@ -615,5 +598,8 @@ private:
 
   cnf_view_params ps_;
 };
+
+template<class T>
+cnf_view(T const&) -> cnf_view<T, true>;
 
 } /* namespace mockturtle */
