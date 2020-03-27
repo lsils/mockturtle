@@ -464,7 +464,7 @@ struct exact_linear_synthesis_problem_network
       auto it = children.begin();
       for ( auto j = 0u; j < n_ + i; ++j )
       {
-        if ( pntk_.value( b_or_c( i, j ) ) )
+        if ( pntk_.model_value( b_or_c( i, j ) ) )
         {
           *it++ = nodes[j];
         }
@@ -485,7 +485,7 @@ struct exact_linear_synthesis_problem_network
 
       for ( auto i = 0u; i < k_; ++i )
       {
-        if ( pntk_.value( f( l, i ) ) )
+        if ( pntk_.model_value( f( l, i ) ) )
         {
           ntk.create_po( nodes[n_ + i] );
           poctr++;
@@ -512,18 +512,18 @@ struct exact_linear_synthesis_problem_network
       fmt::print( i == 0 ? "B =" : "   " );
       for ( auto j = 0u; j < n_; ++j )
       {
-        fmt::print( " {}", (int)pntk_.value( b( i, j ) ) );
+        fmt::print( " {}", (int)pntk_.model_value( b( i, j ) ) );
       }
       fmt::print( i == 0 ? " C =" : "    " );
       for ( auto p = 0u; p < i; ++p )
       {
-        fmt::print( " {}", (int)pntk_.value( c( i, p ) ) );
+        fmt::print( " {}", (int)pntk_.model_value( c( i, p ) ) );
       }
       fmt::print( std::string( 2 * ( k_ - i ), ' ' ) );
       fmt::print( i == 0u ? " F =" : "    " );
       for ( auto l = 0u; l < m_; ++l )
       {
-        fmt::print( " {}", (int)pntk_.value( f( l, i ) ) );
+        fmt::print( " {}", (int)pntk_.model_value( f( l, i ) ) );
       }
       fmt::print( "\n" );
     }

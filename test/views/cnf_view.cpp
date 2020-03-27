@@ -34,7 +34,7 @@ TEST_CASE( "create a simple miter of non-equivalent functions with cnf_view", "[
   const auto result = xag.solve();
   CHECK( result );  /* has result */
   CHECK( *result ); /* result is SAT */
-  CHECK( xag.pi_values() == std::vector<bool>{{true, true}} );
+  CHECK( xag.pi_model_values() == std::vector<bool>{{true, true}} );
 }
 
 TEST_CASE( "cnf_view with custom clauses", "[cnf_view]" )
@@ -50,9 +50,9 @@ TEST_CASE( "cnf_view with custom clauses", "[cnf_view]" )
   const auto result = mig.solve();
   CHECK( result );
   CHECK( *result );
-  CHECK( !mig.value( mig.get_node( a ) ) );
-  CHECK( mig.value( mig.get_node( b ) ) );
-  CHECK( mig.value( mig.get_node( c ) ) );
+  CHECK( !mig.model_value( mig.get_node( a ) ) );
+  CHECK( mig.model_value( mig.get_node( b ) ) );
+  CHECK( mig.model_value( mig.get_node( c ) ) );
 }
 
 TEST_CASE( "find multiple solutions with cnf_view", "[cnf_view]" )
@@ -67,7 +67,7 @@ TEST_CASE( "find multiple solutions with cnf_view", "[cnf_view]" )
   while ( *mig.solve() )
   {
     ++ctr;
-    const auto solution = mig.pi_values();
+    const auto solution = mig.pi_model_values();
     CHECK( std::count( solution.begin(), solution.end(), true ) >= 2 );
     mig.block();
   }
@@ -90,7 +90,7 @@ TEST_CASE( "modify network", "[cnf_view]" )
   const auto result = xag.solve();
   CHECK( result );
   CHECK( *result );
-  CHECK( xag.value( xag.get_node( a ) ) != xag.value( xag.get_node( b ) ) );
+  CHECK( xag.model_value( xag.get_node( a ) ) != xag.model_value( xag.get_node( b ) ) );
 }
 
 TEST_CASE( "deactivate node", "[cnf_view]" )
@@ -111,8 +111,8 @@ TEST_CASE( "deactivate node", "[cnf_view]" )
   const auto result = xag.solve();
   CHECK( result );
   CHECK( *result );
-  CHECK( xag.value( xag.get_node( a ) ) );
-  CHECK( xag.value( xag.get_node( b ) ) );
+  CHECK( xag.model_value( xag.get_node( a ) ) );
+  CHECK( xag.model_value( xag.get_node( b ) ) );
 }
 
 TEST_CASE( "build cnf_view on top of existing network and create_pi afterwards", "[cnf_view]" )
@@ -131,8 +131,8 @@ TEST_CASE( "build cnf_view on top of existing network and create_pi afterwards",
   const auto result = view.solve();
   CHECK( result );
   CHECK( *result );
-  CHECK( !view.value( view.get_node( a ) ) );
-  CHECK( view.value( view.get_node( b ) ) );
-  CHECK( view.value( view.get_node( c ) ) );
-  CHECK( view.value( view.get_node( d ) ) );
+  CHECK( !view.model_value( view.get_node( a ) ) );
+  CHECK( view.model_value( view.get_node( b ) ) );
+  CHECK( view.model_value( view.get_node( c ) ) );
+  CHECK( view.model_value( view.get_node( d ) ) );
 }

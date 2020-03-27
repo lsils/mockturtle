@@ -361,23 +361,23 @@ public:
   }
 
   /*! \brief Return model value for a node. */
-  inline bool value( node const& n ) const
+  inline bool model_value( node const& n ) const
   {
     return model_.at( var( n ) ) == bill::lbool_type::true_;
   }
 
   /*! \brief Return model value for a node (takes complementation into account). */
-  inline bool value( signal const& f ) const
+  inline bool model_value( signal const& f ) const
   {
-    return value( Ntk::get_node( f ) ) != Ntk::is_complemented( f );
+    return model_value( Ntk::get_node( f ) ) != Ntk::is_complemented( f );
   }
 
   /* \brief Returns all model values for all primary inputs. */
-  std::vector<bool> pi_values()
+  std::vector<bool> pi_model_values()
   {
     std::vector<bool> values( Ntk::num_pis() );
     Ntk::foreach_pi( [&]( auto const& n, auto i ) {
-      values[i] = value( n );
+      values[i] = model_value( n );
     } );
     return values;
   }
@@ -387,7 +387,7 @@ public:
   {
     bill::result::clause_type blocking_clause;
     Ntk::foreach_pi( [&]( auto const& n ) {
-      blocking_clause.push_back( bill::lit_type( var( n ), value( n ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive ) );
+      blocking_clause.push_back( bill::lit_type( var( n ), model_value( n ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive ) );
     } );
     add_clause( blocking_clause );
   }
