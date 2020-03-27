@@ -43,6 +43,7 @@
 #include "../networks/klut.hpp"
 #include "../networks/mig.hpp"
 #include "../traits.hpp"
+#include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
@@ -379,17 +380,6 @@ struct has_rewrite_with_dont_cares<Ntk,
 template<class Ntk, class RewritingFn, class Iterator>
 inline constexpr bool has_rewrite_with_dont_cares_v = has_rewrite_with_dont_cares<Ntk, RewritingFn, Iterator>::value;
 
-template<class Ntk>
-struct unit_cost
-{
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& node ) const
-  {
-    (void)ntk;
-    (void)node;
-    return 1u;
-  }
-};
-
 template<class Ntk, class RewritingFn, class NodeCostFn>
 class cut_rewriting_impl
 {
@@ -664,7 +654,7 @@ private:
  * \param pst Rewriting statistics
  * \param cost_fn Node cost function (a functor with signature `uint32_t(Ntk const&, node<Ntk> const&)`)
  */
-template<class Ntk, class RewritingFn, class NodeCostFn = detail::unit_cost<Ntk>>
+template<class Ntk, class RewritingFn, class NodeCostFn = unit_cost<Ntk>>
 void cut_rewriting( Ntk& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats* pst = nullptr, NodeCostFn const& cost_fn = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
