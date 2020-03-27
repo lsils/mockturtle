@@ -115,6 +115,11 @@ public:
     } );
   }
 
+  inline bill::var_type add_var()
+  {
+    return cnf_view_.solver_.add_variable();
+  }
+
   /*! \brief Returns the switching literal associated to a node. */
   inline bill::lit_type switch_lit( node const& n ) const
   {
@@ -273,6 +278,12 @@ public:
       return cnf_view_impl_t::literals_[n].variable();
     }
     return Ntk::node_to_index( n );
+  }
+
+  /*! \brief Returns the literal associated to a node. */
+  inline bill::lit_type lit( node const& n ) const
+  {
+    return bill::lit_type( var( n ), bill::lit_type::polarities::positive );
   }
 
   /*! \brief Returns the literal associated to a signal. */
