@@ -23,7 +23,7 @@ class var_type {
 	constexpr static uint32_t max_value = (std::numeric_limits<uint32_t>::max() >> 1);
 
 public:
-	constexpr var_type(uint32_t var)
+	constexpr var_type(uint32_t var = 0)
 	    : data_(var)
 	{
 		assert(var < max_value);
@@ -76,7 +76,7 @@ public:
 		negative = 1,
 	};
 
-	constexpr lit_type(var_type var, polarities polarity)
+	constexpr lit_type(var_type var = var_type(), polarities polarity = polarities::positive)
 	    : data_((var << 1) | ((polarity == polarities::positive) ? 0 : 1))
 	{}
 
