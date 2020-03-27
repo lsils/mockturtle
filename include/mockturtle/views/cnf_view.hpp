@@ -28,6 +28,7 @@
   \brief Creates a CNF while creating a network
 
   \author Mathias Soeken
+  \author Lee Siang-Yun
 */
 
 #pragma once
