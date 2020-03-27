@@ -217,7 +217,11 @@ private:
       const auto lvl = _levels[n];
       this->foreach_fanin( n, [&]( auto const& f ) {
         const auto cn = this->get_node( f );
-        const auto offset = _ps.count_complements && this->is_complemented( f ) ? 2u : 1u;
+        auto offset = _cost_fn( *this, n );
+        if ( _ps.count_complements && this->is_complemented( f ) )
+        {
+          offset++;
+        }
         if ( _levels[cn] + offset == lvl && !_crit_path[cn] )
         {
           set_critical_path( cn );
