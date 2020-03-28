@@ -50,4 +50,30 @@ struct unit_cost
   }
 };
 
+template<class Ntk>
+struct mc_cost
+{
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& node ) const
+  {
+    if constexpr ( has_is_xor_v<Ntk> )
+    {
+      if ( ntk.is_xor( node ) )
+      {
+        return 0u;
+      }
+    }
+
+    if constexpr ( has_is_xor3_v<Ntk> )
+    {
+      if ( ntk.is_xor3( node ) )
+      {
+        return 0u;
+      }
+    }
+
+    // TODO (Does not take into account general node functions)
+    return 1u;
+  }
+};
+
 } /* namespace mockturtle */
