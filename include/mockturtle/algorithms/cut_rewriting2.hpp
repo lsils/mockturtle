@@ -33,9 +33,13 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 #include "../traits.hpp"
+#include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
+#include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "cleanup.hpp"
 #include "cut_enumeration.hpp"
@@ -47,39 +51,12 @@
 namespace mockturtle::future
 {
 
-struct cut_rewriting_params
-{
-  /*! \brief Cut enumeration parameters. */
-  cut_enumeration_params cut_enumeration_ps;
-
-  /*! \brief Allow zero-gain substitutions. */
-  bool allow_zero_gain{false};
-
-  /*! \brief Be verbose. */
-  bool verbose{false};
-};
-
-struct cut_rewriting_stats
-{
-  /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{};
-
-  /*! \brief Cut enumeration runtime. */
-  stopwatch<>::duration time_cuts{};
-
-  void report()
-  {
-    fmt::print( "[i] total time     = {:>5.2f} secs\n", to_seconds( time_total ) );
-    fmt::print( "[i] cut enum. time = {:>5.2f} secs\n", to_seconds( time_cuts ) );
-  }
-};
-
 namespace detail
 {
 
 using namespace mockturtle::detail;
 
-template<class Ntk, class RewritingFn>
+template<class Ntk, class RewritingFn, class NodeCostFn>
 struct cut_rewriting_impl
 {
   cut_rewriting_impl( Ntk const& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps, cut_rewriting_stats& st )
@@ -112,63 +89,14 @@ struct cut_rewriting_impl
     ntk_.foreach_node( [&]( auto const& n ) {
       ntk_.set_value( n, ntk_.fanout_size( n ) );
     } );
-    res.events().on_add.push_back( [&]( auto const& n ) {
-      res.foreach_fanin( n, [&]( auto const& f ) {
-        res.incr_value( res.get_node( f ) );
-      } );
-    } );
 
-    ntk_.foreach_gate( [&]( auto const& n ) {
-      // TODO progress bar
+    progress_bar pbar{ntk_.num_gates(), "cut_rewriting |{0}| node = {1:>4} / " + std::to_string( ntk_.num_gates() ), ps_.progress};
+    ntk_.foreach_gate( [&]( auto const& n, auto i ) {
+      pbar( i, i );
 
       /* nothing to optimize? */
-      int32_t value = mffc_size( ntk_, n );
+      int32_t value = mffc_size<Ntk, NodeCostFn>( ntk_, n );
       if ( value == 1 )
-      {
-        std::vector<signal<Ntk>> children( ntk_.fanin_size( n ) );
-        ntk_.foreach_fanin( n, [&]( auto const& f, auto i ) {
-          children[i] = old2new[f] ^ ntk_.is_complemented( f );
-        } );
-
-        old2new[n] = res.clone_node( ntk_, n, children );
-        return;
-      }
-
-      /* foreach cut */
-      int32_t best_gain = -1;
-      signal<Ntk> best_signal;
-      for ( auto& cut : cuts.cuts( ntk_.node_to_index( n ) ) )
-      {
-        // TOOO skip cuts
-        if ( cut->size() <= 2 ) continue;
-
-        const auto tt = cuts.truth_table( *cut );
-        assert( cut->size() == static_cast<unsigned>( tt.num_vars() ) );
-
-        // TODO progress bar
-
-        std::vector<signal<Ntk>> children( cut->size() );
-        auto ctr = 0u;
-        for ( auto l : *cut )
-        {
-          children[ctr++] = old2new[ntk_.index_to_node( l )];
-        }
-
-        const auto on_signal = [&]( auto const& f_new ) {
-          int32_t gain = value - mffc_size( res, res.get_node( f_new ) );
-
-          if ( ( gain > 0 || ( ps_.allow_zero_gain && gain == 0 ) ) && gain > best_gain )
-          {
-            best_gain = gain;
-            best_signal = f_new;
-          }
-
-          return true;
-        };
-        rewriting_fn_( res, cuts.truth_table( *cut ), children.begin(), children.end(), on_signal );
-      }
-
-      if ( best_gain == -1 )
       {
         std::vector<signal<Ntk>> children( ntk_.fanin_size( n ) );
         ntk_.foreach_fanin( n, [&]( auto const& f, auto i ) {
@@ -179,8 +107,58 @@ struct cut_rewriting_impl
       }
       else
       {
-        old2new[n] = best_signal;
+        /* foreach cut */
+        int32_t best_gain = -1;
+        signal<Ntk> best_signal;
+        for ( auto& cut : cuts.cuts( ntk_.node_to_index( n ) ) )
+        {
+          /* skip small enough cuts */
+          if ( cut->size() == 1 || cut->size() < ps_.min_cand_cut_size )
+            continue;
+
+          const auto tt = cuts.truth_table( *cut );
+          assert( cut->size() == static_cast<unsigned>( tt.num_vars() ) );
+
+          std::vector<signal<Ntk>> children( cut->size() );
+          auto ctr = 0u;
+          for ( auto l : *cut )
+          {
+            children[ctr++] = old2new[ntk_.index_to_node( l )];
+          }
+
+          const auto on_signal = [&]( auto const& f_new ) {
+            auto value2 = recursive_ref<Ntk, NodeCostFn>( res, res.get_node( f_new ) );
+            recursive_deref<Ntk, NodeCostFn>( res, res.get_node( f_new ) );
+            int32_t gain = value - value2;
+
+            if ( ( gain > 0 || ( ps_.allow_zero_gain && gain == 0 ) ) && gain > best_gain )
+            {
+              best_gain = gain;
+              best_signal = f_new;
+            }
+
+            return true;
+          };
+          stopwatch<> t( st_.time_rewriting );
+          rewriting_fn_( res, cuts.truth_table( *cut ), children.begin(), children.end(), on_signal );
+        }
+
+        if ( best_gain == -1 )
+        {
+          std::vector<signal<Ntk>> children( ntk_.fanin_size( n ) );
+          ntk_.foreach_fanin( n, [&]( auto const& f, auto i ) {
+            children[i] = old2new[f] ^ ntk_.is_complemented( f );
+          } );
+
+          old2new[n] = res.clone_node( ntk_, n, children );
+        }
+        else
+        {
+          old2new[n] = best_signal;
+        }
       }
+
+      recursive_ref<Ntk, NodeCostFn>( res, res.get_node( old2new[n] ) );
     } );
 
     /* create POs */
@@ -200,15 +178,15 @@ private:
 
 } // namespace detail
 
-template<class Ntk, class RewritingFn>
+template<class Ntk, class RewritingFn, class NodeCostFn = unit_cost<Ntk>>
 Ntk cut_rewriting( Ntk const& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats* pst = nullptr )
 {
   cut_rewriting_stats st;
-  const auto result = detail::cut_rewriting_impl<Ntk, RewritingFn>( ntk, rewriting_fn, ps, st ).run();
+  const auto result = detail::cut_rewriting_impl<Ntk, RewritingFn, NodeCostFn>( ntk, rewriting_fn, ps, st ).run();
 
   if ( ps.verbose )
   {
-    st.report();
+    st.report( false );
   }
   if ( pst )
   {
