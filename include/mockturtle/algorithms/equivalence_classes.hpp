@@ -121,4 +121,35 @@ signal<Ntk> apply_spectral_transformations( Ntk& dest, std::vector<kitty::detail
   return _output_neg ? dest.create_not( output ) : output;
 }
 
+/*! \brief Applies NPN transformations to a network
+ *
+ * A synthesis function `synthesis_fn` computes a network into `dest` and
+ * computes an output signal.  Both the inputs and the outputs to that synthesis
+ * function are transformed according to `phase` and `perm`, based on NPN
+ * classification.  The vector `leaves` are the original inputs to the
+ * output function, which is returned in terms of a signal into the network.
+ *
+ * The signature of `synthesis_fn` is `signal<Ntk>(Ntk&, std::vector<signal<Ntk>> const&)`.
+ *
+ * \param dest Destination network for synthesis
+ * \param phase Input and output complementation
+ * \param perm Input permutation
+ * \param leaves Original inputs, which might be transformed
+ * \param synthesis_fn Synthesis function to create the inner function (without transformations)
+ */
+template<class Ntk, class SynthesisFn>
+signal<Ntk> apply_npn_transformations( Ntk& dest, uint32_t phase, std::vector<uint8_t> const& perm, std::vector<signal<Ntk>> const& leaves, SynthesisFn&& synthesis_fn )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
+  static_assert( has_create_nary_xor_v<Ntk>, "Ntk does not implement the create_nary_xor method" );
+  static_assert( std::is_invocable_r_v<signal<Ntk>, SynthesisFn, Ntk&, std::vector<signal<Ntk>> const&>, "SythesisFn does not have expected signature" );
+
+  std::vector<signal<Ntk>> _leaves( perm.size() );
+  std::transform( perm.begin(), perm.end(), _leaves.begin(), [&]( auto const& i ) { return ( phase >> i ) & 1 ? dest.create_not( leaves[i] ) : leaves[i]; });
+
+  const auto f = synthesis_fn( dest, _leaves );
+  return ( phase >> leaves.size() ) & 1 ? dest.create_not( f ) : f;
+}
+
 } /* namespace mockturtle */

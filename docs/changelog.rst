@@ -22,7 +22,7 @@ v0.2 (not yet released)
     - SAT-based satisfiability don't cares checker (`satisfiability_dont_cares_checker`) `#236 <https://github.com/lsils/mockturtle/pull/236>`_
     - XAG optimization based on satisfiability don't cares (`xag_dont_cares_optimization`) `#237 <https://github.com/lsils/mockturtle/pull/237>`_
     - XMG optimization based on satisfiability don't cares (`xmg_dont_cares_optimization`) `#239 <https://github.com/lsils/mockturtle/pull/239>`_
-    - Create circuit based on spectral equivalence transformation sequences (`apply_spectral_transformations`) `#263 <https://github.com/lsils/mockturtle/pull/263>`_
+    - Create circuit based on spectral equivalence transformation sequences and NPN transformations (`apply_spectral_transformations` `apply_npn_transformations`) `#263 <https://github.com/lsils/mockturtle/pull/263>`_ `#301 <https://github.com/lsils/mockturtle/pull/301>`_
     - Exact linear resynthesis using SAT (`exact_linear_resynthesis`, `exact_linear_synthesis`) `#265 <https://github.com/lsils/mockturtle/pull/265>`_
     - XAG optimization by linear resynthesis (`linear_resynthesis_optimization`, `exact_linear_resynthesis_optimization`) `#296 <https://github.com/lsils/mockturtle/pull/296>`_
 * Views:
