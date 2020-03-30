@@ -1,12 +1,16 @@
 #include <catch.hpp>
 
 #include <mockturtle/algorithms/cut_rewriting.hpp>
+#include <mockturtle/algorithms/cut_rewriting2.hpp>
 #include <mockturtle/algorithms/node_resynthesis/exact.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
+#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xmg3_npn.hpp>
+#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xmg.hpp>
+#include <mockturtle/utils/cost_functions.hpp>
 #include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
@@ -159,18 +163,6 @@ TEST_CASE( "Cut rewriting with exact LUT synthesis", "[cut_rewriting]" )
   CHECK( klut.num_gates() == 2u );
 }
 
-namespace detail
-{
-template<class Ntk>
-struct free_xor_cost
-{
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n ) const
-  {
-    return ntk.is_xor( n ) ? 0 : 1;
-  }
-};
-} // namespace detail
-
 TEST_CASE( "Cut rewriting with alternative costs", "[cut_rewriting]" )
 {
   mig_network mig;
@@ -182,7 +174,7 @@ TEST_CASE( "Cut rewriting with alternative costs", "[cut_rewriting]" )
   mig.create_po( f );
 
   mig_npn_resynthesis resyn;
-  cut_rewriting( mig, resyn, {}, nullptr, ::detail::free_xor_cost<mig_network>() );
+  cut_rewriting( mig, resyn, {}, nullptr, mc_cost<mig_network>() );
 
   mig = cleanup_dangling( mig );
 
@@ -190,4 +182,33 @@ TEST_CASE( "Cut rewriting with alternative costs", "[cut_rewriting]" )
   CHECK( mig.num_pis() == 3 );
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 1 );
+}
+
+TEST_CASE( "Cut rewriting should avoid cycles", "[cut_rewriting]" )
+{
+  aig_network aig;
+  const auto x0 = aig.create_pi();
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+
+  const auto n0 = aig.create_and( x1, !x2 );
+  const auto n1 = aig.create_and( !x0, n0 );
+  const auto n2 = aig.create_and( x0, !n0 );
+  const auto n3 = aig.create_and( !n1, !n2 );
+  const auto n4 = aig.create_and( x1, x2 );
+  const auto n5 = aig.create_and( x0, !n4 );
+  const auto n6 = aig.create_and( !x0, n4 );
+  const auto n7 = aig.create_and( !n5, !n6 );
+  aig.create_po( n3 );
+  aig.create_po( n7 );
+
+  xag_npn_resynthesis<aig_network> resyn;
+  cut_rewriting_params ps;
+  ps.cut_enumeration_ps.cut_size = 4;
+  aig = future::cut_rewriting( aig, resyn, ps );
+
+  CHECK( aig.size() == 12 );
+  CHECK( aig.num_pis() == 3 );
+  CHECK( aig.num_pos() == 2 );
+  CHECK( aig.num_gates() == 8 );
 }
