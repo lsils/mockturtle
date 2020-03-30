@@ -32,25 +32,25 @@ TEST_CASE( "Cut rewriting of bad MAJ", "[cut_rewriting]" )
   CHECK( mig.num_gates() == 1 );
 }
 
-TEST_CASE("Cut rewriting with XMG3 4-input npn database", "[cut_rewriting]")
+TEST_CASE( "Cut rewriting with XMG3 4-input npn database", "[cut_rewriting]" )
 {
 
-    xmg_network xmg;
-    const auto a = xmg.create_pi();
-    const auto b = xmg.create_pi();
-    const auto c = xmg.create_pi();
+  xmg_network xmg;
+  const auto a = xmg.create_pi();
+  const auto b = xmg.create_pi();
+  const auto c = xmg.create_pi();
 
-    const auto h = xmg.create_xor3( a, xmg.create_maj( a, b, c ), c );
+  const auto h = xmg.create_xor3( a, xmg.create_maj( a, b, c ), c );
 
-    xmg.create_po(h);
-    xmg3_npn_resynthesis<xmg_network> resyn;
-    cut_rewriting( xmg, resyn );
+  xmg.create_po( h );
+  xmg3_npn_resynthesis<xmg_network> resyn;
+  cut_rewriting( xmg, resyn );
 
-    xmg = cleanup_dangling( xmg );
-    CHECK( xmg.size() == 5 );
-    CHECK( xmg.num_pis() == 3 );
-    CHECK( xmg.num_pos() == 1 );
-    CHECK( xmg.num_gates() == 1 );
+  xmg = cleanup_dangling( xmg );
+  CHECK( xmg.size() == 5 );
+  CHECK( xmg.num_pis() == 3 );
+  CHECK( xmg.num_pos() == 1 );
+  CHECK( xmg.num_gates() == 1 );
 }
 
 TEST_CASE( "Cut rewriting from constant", "[cut_rewriting]" )

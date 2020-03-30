@@ -124,12 +124,15 @@ struct cut_rewriting_stats
   /*! \brief Runtime to find minimal independent set. */
   stopwatch<>::duration time_mis{0};
 
-  void report() const
+  void report( bool show_time_mis = true ) const
   {
-    std::cout << fmt::format( "[i] total time     = {:>5.2f} secs\n", to_seconds( time_total ) );
-    std::cout << fmt::format( "[i] cut enum. time = {:>5.2f} secs\n", to_seconds( time_cuts ) );
-    std::cout << fmt::format( "[i] rewriting time = {:>5.2f} secs\n", to_seconds( time_rewriting ) );
-    std::cout << fmt::format( "[i] ind. set time  = {:>5.2f} secs\n", to_seconds( time_mis ) );
+    fmt::print( "[i] total time     = {:>5.2f} secs\n", to_seconds( time_total ) );
+    fmt::print( "[i] cut enum. time = {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    fmt::print( "[i] rewriting time = {:>5.2f} secs\n", to_seconds( time_rewriting ) );
+    if ( show_time_mis )
+    {
+      fmt::print( "[i] ind. set time  = {:>5.2f} secs\n", to_seconds( time_mis ) );
+    }
   }
 };
 
@@ -442,14 +445,14 @@ public:
           children.push_back( ntk.make_signal( ntk.index_to_node( l ) ) );
         }
 
-        int32_t value = recursive_deref( n );
+        int32_t value = recursive_deref<Ntk, NodeCostFn>( ntk, n );
         {
           stopwatch t( st.time_rewriting );
           int32_t best_gain{-1};
 
           const auto on_signal = [&]( auto const& f_new ) {
             auto [v, contains] = recursive_ref_contains( ntk.get_node( f_new ), n );
-            recursive_deref( ntk.get_node( f_new ) );
+            recursive_deref<Ntk, NodeCostFn>( ntk, ntk.get_node( f_new ) );
 
             int32_t gain = contains ? -1 : value - v;
 
@@ -497,7 +500,7 @@ public:
           }
         }
 
-        recursive_ref( n );
+        recursive_ref<Ntk, NodeCostFn>( ntk, n );
       }
 
       return true;
@@ -546,40 +549,6 @@ public:
   }
 
 private:
-  uint32_t recursive_deref( node<Ntk> const& n )
-  {
-    /* terminate? */
-    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
-      return 0;
-
-    /* recursively collect nodes */
-    uint32_t value{cost_fn( ntk, n )};
-    ntk.foreach_fanin( n, [&]( auto const& s ) {
-      if ( ntk.decr_value( ntk.get_node( s ) ) == 0 )
-      {
-        value += recursive_deref( ntk.get_node( s ) );
-      }
-    } );
-    return value;
-  }
-
-  uint32_t recursive_ref( node<Ntk> const& n )
-  {
-    /* terminate? */
-    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
-      return 0;
-
-    /* recursively collect nodes */
-    uint32_t value{cost_fn( ntk, n )};
-    ntk.foreach_fanin( n, [&]( auto const& s ) {
-      if ( ntk.incr_value( ntk.get_node( s ) ) == 0 )
-      {
-        value += recursive_ref( ntk.get_node( s ) );
-      }
-    } );
-    return value;
-  }
-
   std::pair<int32_t, bool> recursive_ref_contains( node<Ntk> const& n, node<Ntk> const& repl )
   {
     /* terminate? */
