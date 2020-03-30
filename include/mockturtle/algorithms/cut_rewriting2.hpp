@@ -90,7 +90,10 @@ struct cut_rewriting_impl
       ntk_.set_value( n, ntk_.fanout_size( n ) );
     } );
 
-    progress_bar pbar{ntk_.num_gates(), "cut_rewriting |{0}| node = {1:>4} / " + std::to_string( ntk_.num_gates() ), ps_.progress};
+    /* original cost */
+    const auto orig_cost = costs<Ntk, NodeCostFn>( ntk_ );
+
+    progress_bar pbar{ntk_.num_gates(), "cut_rewriting |{0}| node = {1:>4} / " + std::to_string( ntk_.num_gates() ) + "   original cost = " + std::to_string( orig_cost ), ps_.progress};
     ntk_.foreach_gate( [&]( auto const& n, auto i ) {
       pbar( i, i );
 
@@ -166,7 +169,10 @@ struct cut_rewriting_impl
       res.create_po( old2new[f] ^ ntk_.is_complemented( f ) );
     } );
 
-    return cleanup_dangling( res );
+    res = cleanup_dangling( res );
+
+    /* new costs */
+    return costs<Ntk, NodeCostFn>( res ) > orig_cost ? ntk_ : res;
   }
 
 private:
