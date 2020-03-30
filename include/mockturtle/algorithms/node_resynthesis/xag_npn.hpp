@@ -103,7 +103,7 @@ public:
   xag_npn_resynthesis( xag_npn_resynthesis_params const& ps = {}, xag_npn_resynthesis_stats* pst = nullptr )
       : ps( ps ),
         pst( pst ),
-        _classes( 1 << 16 )
+        _repr( 1u << 16u )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
@@ -123,7 +123,6 @@ public:
     static_assert( has_foreach_node_v<DatabaseNtk>, "DatabaseNtk does not implement the foreach_node method" );
     static_assert( has_make_signal_v<DatabaseNtk>, "DatabaseNtk does not implement the make_signal method" );
 
-    _repr.reserve( 222u );
     build_classes();
     build_db();
   }
@@ -147,7 +146,7 @@ public:
     kitty::static_truth_table<4> tt = kitty::extend_to<4>( function );
 
     /* get representative of function */
-    const auto repr = _repr[_classes[*tt.cbegin()]];
+    const auto [repr, phase, perm] = _repr[*tt.cbegin()];
 
     /* check if representative has circuits */
     const auto it = _repr_to_signal.find( repr );
@@ -156,44 +155,20 @@ public:
       return;
     }
 
-    const auto config = kitty::exact_npn_canonization( tt );
-
-    assert( repr == std::get<0>( config ) );
-
     std::vector<signal<Ntk>> pis( 4, ntk.get_constant( false ) );
     std::copy( begin, end, pis.begin() );
 
-    std::vector<signal<Ntk>> pis_perm;
-    auto perm = std::get<2>( config );
+    std::unordered_map<node<DatabaseNtk>, signal<Ntk>> db_to_ntk;
+    db_to_ntk.insert( {0, ntk.get_constant( false )} );
     for ( auto i = 0; i < 4; ++i )
     {
-      pis_perm.push_back( pis[perm[i]] );
-    }
-
-    const auto& phase = std::get<1>( config );
-    for ( auto i = 0; i < 4; ++i )
-    {
-      if ( ( phase >> perm[i] ) & 1 )
-      {
-        pis_perm[i] = ntk.create_not( pis_perm[i] );
-      }
+      db_to_ntk.insert( {i + 1, ( phase >> perm[i] & 1 ) ? ntk.create_not( pis[perm[i]] ) : pis[perm[i]]} );
     }
 
     for ( auto const& cand : it->second )
     {
-      std::unordered_map<node<DatabaseNtk>, signal<Ntk>> db_to_ntk;
-
-      db_to_ntk.insert( {0, ntk.get_constant( false )} );
-      for ( auto i = 0; i < 4; ++i )
-      {
-        db_to_ntk.insert( {i + 1, pis_perm[i]} );
-      }
-      auto f = copy_db_entry( ntk, _db.get_node( cand ), db_to_ntk );
-      if ( _db.is_complemented( cand ) != ( ( phase >> 4 ) & 1 ) )
-      {
-        f = ntk.create_not( f );
-      }
-      if ( !fn( f ) )
+      const auto f = copy_db_entry( ntk, _db.get_node( cand ), db_to_ntk );
+      if ( !fn( _db.is_complemented( cand ) != ( phase >> 4 & 1 ) ? ntk.create_not( f ) : f ) )
       {
         return;
       }
@@ -229,23 +204,11 @@ private:
   {
     stopwatch t( st.time_classes );
 
-    kitty::dynamic_truth_table map( 16u );
-    std::transform( map.cbegin(), map.cend(), map.begin(), []( auto word ) { return ~word; } );
-
-    int64_t index = 0;
     kitty::static_truth_table<4> tt;
-    while ( index != -1 )
-    {
-      kitty::create_from_words( tt, &index, &index + 1 );
-      const auto res = kitty::exact_npn_canonization( tt, [&]( const auto& tt ) {
-        _classes[*tt.cbegin()] = _repr.size();
-        kitty::clear_bit( map, *tt.cbegin() );
-      } );
-      _repr.push_back( std::get<0>( res ) );
-
-      /* find next non-classified truth table */
-      index = find_first_one_bit( map );
-    }
+    do {
+      _repr[*tt.cbegin()] = kitty::exact_npn_canonization( tt );
+      kitty::next_inplace( tt );
+    } while ( !kitty::is_const0( tt ) );
   }
 
   void build_db()
@@ -286,7 +249,7 @@ private:
     const auto sim_res = simulate_nodes<kitty::static_truth_table<4>>( _db );
 
     _db.foreach_node( [&]( auto n ) {
-      if ( _repr[_classes[*sim_res[n].cbegin()]] == sim_res[n] )
+      if ( std::get<0>( _repr[*sim_res[n].cbegin()] ) == sim_res[n] )
       {
         if ( _repr_to_signal.count( sim_res[n] ) == 0 )
         {
@@ -300,7 +263,7 @@ private:
       else
       {
         const auto f = ~sim_res[n];
-        if ( _repr[_classes[*f.cbegin()]] == f )
+        if ( std::get<0>( _repr[*f.cbegin()] ) == f )
         {
           if ( _repr_to_signal.count( f ) == 0 )
           {
@@ -322,8 +285,7 @@ private:
   xag_npn_resynthesis_stats st;
   xag_npn_resynthesis_stats* pst{nullptr};
 
-  std::vector<kitty::static_truth_table<4>> _repr;
-  std::vector<uint8_t> _classes;
+  std::vector<std::tuple<kitty::static_truth_table<4>, uint32_t, std::vector<uint8_t>>> _repr;
   std::unordered_map<kitty::static_truth_table<4>, std::vector<signal<DatabaseNtk>>, kitty::hash<kitty::static_truth_table<4>>> _repr_to_signal;
 
   DatabaseNtk _db;
