@@ -258,6 +258,30 @@ public:
       }
     }
 
+    if constexpr ( has_is_nary_and_v<Ntk> )
+    {
+      if ( ntk.is_nary_and( n ) )
+      {
+        return "lightcoral";
+      }
+    }
+
+    if constexpr ( has_is_nary_or_v<Ntk> )
+    {
+      if ( ntk.is_nary_or( n ) )
+      {
+        return "palegreen2";
+      }
+    }
+
+    if constexpr ( has_is_nary_xor_v<Ntk> )
+    {
+      if ( ntk.is_nary_xor( n ) )
+      {
+        return "lightskyblue";
+      }
+    }
+
     return default_dot_drawer<Ntk>::node_fillcolor( ntk, n );
   }
 
