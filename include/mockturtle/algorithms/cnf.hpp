@@ -39,6 +39,7 @@
 
 #include <bill/sat/interface/common.hpp>
 #include <bill/sat/interface/types.hpp>
+#include <fmt/format.h>
 #include <kitty/cnf.hpp>
 #include <kitty/constructors.hpp>
 
@@ -364,6 +365,32 @@ public:
         {
           detail::on_xor3( node_lit, child_lits[0], child_lits[1], child_lits[2], fn_ );
           return true;
+        }
+      }
+
+      if constexpr ( has_is_nary_and_v<Ntk> )
+      {
+        if ( ntk_.is_nary_and( n ) )
+        {
+          fmt::print( "[e] nary-AND not yet supported in generate_cnf" );
+          std::abort();
+        }
+      }
+
+      if constexpr ( has_is_nary_or_v<Ntk> )
+      {
+        if ( ntk_.is_nary_or( n ) )
+        {
+          fmt::print( "[e] nary-OR not yet supported in generate_cnf" );
+          std::abort();
+        }
+      }
+      if constexpr ( has_is_nary_xor_v<Ntk> )
+      {
+        if ( ntk_.is_nary_xor( n ) )
+        {
+          fmt::print( "[e] nary-XOR not yet supported in generate_cnf" );
+          std::abort();
         }
       }
 
