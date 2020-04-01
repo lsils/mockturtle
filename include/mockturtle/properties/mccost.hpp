@@ -251,6 +251,33 @@ std::optional<uint32_t> multiplicative_complexity_depth( Ntk const& ntk )
       }
     }
 
+    if ( has_is_nary_and_v<Ntk> )
+    {
+      if ( ntk.is_nary_and( n ) )
+      {
+        level[n] = max_level + static_cast<uint32_t>( std::ceil( std::log2( ntk.fanin_size( n ) ) ) );
+        return true;
+      }
+    }
+
+    if ( has_is_nary_or_v<Ntk> )
+    {
+      if ( ntk.is_nary_or( n ) )
+      {
+        level[n] = max_level + static_cast<uint32_t>( std::ceil( std::log2( ntk.fanin_size( n ) ) ) );
+        return true;
+      }
+    }
+
+    if ( has_is_nary_xor_v<Ntk> )
+    {
+      if ( ntk.is_nary_xor( n ) )
+      {
+        level[n] = max_level;
+        return true;
+      }
+    }
+
     valid = false;
     return false; /* break */
   } );
