@@ -599,6 +599,36 @@ private:
       }
     }
 
+    if constexpr ( has_is_nary_and_v<Ntk> )
+    {
+      if ( Ntk::is_nary_and( n ) )
+      {
+        fmt::print( "[e] nary-AND not yet supported in generate_cnf" );
+        std::abort();
+        return;
+      }
+    }
+
+    if constexpr ( has_is_nary_or_v<Ntk> )
+    {
+      if ( Ntk::is_nary_or( n ) )
+      {
+        fmt::print( "[e] nary-OR not yet supported in generate_cnf" );
+        std::abort();
+        return;
+      }
+    }
+
+    if constexpr ( has_is_nary_xor_v<Ntk> )
+    {
+      if ( Ntk::is_nary_xor( n ) )
+      {
+        fmt::print( "[e] nary-XOR not yet supported in generate_cnf" );
+        std::abort();
+        return;
+      }
+    }
+
     detail::on_function( node_lit, child_lits, Ntk::node_function( n ), _add_clause );
   }
 
