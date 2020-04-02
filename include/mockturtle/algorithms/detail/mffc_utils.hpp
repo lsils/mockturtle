@@ -43,6 +43,21 @@
 namespace mockturtle::detail
 {
 
+template<class Ntk>
+void initialize_values_with_fanout( Ntk& ntk )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
+  static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+
+  ntk.clear_values();
+  ntk.foreach_node( [&]( auto const& n ) {
+    ntk.set_value( n, ntk.fanout_size( n ) );
+  } );
+}
+
 template<typename Ntk, typename TermCond, class NodeCostFn = unit_cost<Ntk>>
 uint32_t recursive_deref( Ntk const& ntk, node<Ntk> const& n, TermCond const& terminate )
 {
