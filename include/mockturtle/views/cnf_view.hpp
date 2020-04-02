@@ -181,15 +181,16 @@ private:
  * while nodes are added to the network.  It also contains a SAT solver.  The
  * network can be solved by calling the `solve` method, which by default assumes
  * that each output should compute `true` (an overload of the `solve` method can
- * override this default behaviour and apply custom assumptions).  Further,
- * the methods `value` and `pi_values` can be used to access model values in
- * case solving was satisfiable.  Finally, methods `var` and `lit` can be used
- * to access variable and literal information for nodes and signals,
+ * override this default behaviour and apply custom assumptions).  Further, the
+ * methods `model_value` and `pi_vmodel_alues` can be used to access model
+ * values in case solving was satisfiable.  Finally, methods `var` and `lit` can
+ * be used to access variable and literal information for nodes and signals,
  * respectively, in order to add custom clauses with the `add_clause` methods.
  *
- * The CNF is generated additively and cannot be modified after nodes have been
- * added.  Therefore, a network cannot modify or delete nodes when wrapped in a
- * `cnf_view`.
+ * The `cnf_view` can also be wrapped around an existing network by setting the
+ * `AllowModify` template parameter to true.  Then it also updates the CNF when
+ * nodes are deleted or modified.  This comes with an addition cost in variable
+ * and clause size.
  */
 template<typename Ntk, bool AllowModify, bill::solvers Solver>
 class cnf_view : public detail::cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>
@@ -227,6 +228,13 @@ public:
       const auto v = solver_.add_variable(); /* for the constant input */
       assert( v == var( Ntk::get_node( Ntk::get_constant( false ) ) ) );
       add_clause( bill::lit_type( v, bill::lit_type::polarities::negative ) );
+
+      if ( Ntk::get_node( Ntk::get_constant( true ) ) != Ntk::get_node( Ntk::get_constant( false ) ) )
+      {
+        const auto v = solver_.add_variable(); /* for the constant input */
+        assert( v == var( Ntk::get_node( Ntk::get_constant( true ) ) ) );
+        add_clause( bill::lit_type( v, bill::lit_type::polarities::positive ) );
+      }
     }
 
     register_events();
@@ -287,6 +295,7 @@ public:
   }
 
   /*! \brief Returns the literal associated to a signal. */
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   inline bill::lit_type lit( signal const& f ) const
   {
     return bill::lit_type( var( Ntk::get_node( f ) ), Ntk::is_complemented( f ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive );
@@ -379,6 +388,7 @@ public:
   }
 
   /*! \brief Return model value for a node (takes complementation into account). */
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   inline bool model_value( signal const& f ) const
   {
     return model_value( Ntk::get_node( f ) ) != Ntk::is_complemented( f );
