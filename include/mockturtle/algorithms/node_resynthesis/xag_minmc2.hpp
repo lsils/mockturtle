@@ -1,0 +1,129 @@
+/* mockturtle: C++ logic network library
+ * Copyright (C) 2018-2019  EPFL
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following
+ * conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/*!
+  \file xag_minmc2.hpp
+  \brief XAG resynthesis
+
+  \author Eleonora Testa
+  \author Mathias Soeken
+*/
+
+#pragma once
+
+#include <cstdint>
+#include <unordered_map>
+#include <vector>
+
+#include "../../io/index_list.hpp"
+#include "../../networks/xag.hpp"
+#include "../detail/minmc_xags.hpp"
+#include "../equivalence_classes.hpp"
+
+#include <fmt/format.h>
+#include <kitty/print.hpp>
+#include <kitty/spectral.hpp>
+
+namespace mockturtle::future
+{
+
+struct xag_minmc_resynthesis_stats
+{
+  /*! \brief Database size in bytes. */
+  uint64_t db_size{};
+};
+
+template<class Ntk = xag_network>
+class xag_minmc_resynthesis
+{
+public:
+  xag_minmc_resynthesis()
+  {
+    build_db();
+  }
+
+  template<typename LeavesIterator, typename Fn>
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  {
+    *this( ntk, function, function.construct(), begin, end, fn );
+  }
+
+  template<typename LeavesIterator, typename Fn>
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  {
+    const auto num_vars = function.num_vars();
+    uint64_t repr;
+    std::vector<kitty::detail::spectral_operation> trans;
+
+    if ( const auto itCache = cache_[num_vars].find( *function.cbegin() ); itCache != cache_[num_vars].end() )
+    {
+      repr = itCache->second.first;
+      trans = itCache->second.second;
+    }
+    else
+    {
+      repr = *kitty::hybrid_exact_spectral_canonization( function, [&]( auto const& ops ) { trans = ops; } ).cbegin();
+      cache_[num_vars][*function.cbegin()] = {repr, trans};
+    }
+
+    const auto it = db_[num_vars].find( repr );
+    if ( it == db_[num_vars].end() )
+    {
+      fmt::print( "[w] cannot find repr {:x} in database.\n", repr );
+    }
+
+    const auto f = apply_spectral_transformations( ntk, trans, std::vector<signal<Ntk>>( begin, end ), [&]( xag_network& ntk, std::vector<signal<Ntk>> const& leaves ) {
+      return create_from_binary_index_list( ntk, it->second.begin(), leaves.begin() )[0u];
+    } );
+
+    fn( f );
+  }
+
+private:
+  void build_db()
+  {
+    st_.db_size += sizeof( db_ );
+
+    for ( auto i = 0u; i < detail::minmc_xags.size(); ++i )
+    {
+      for ( auto const& [cls, word, repr, expr] : detail::minmc_xags[i] )
+      {
+        db_[i][word] = repr;
+        st_.db_size += sizeof( word ) + sizeof( repr ) + sizeof( uint32_t ) * repr.size();
+      }
+    }
+
+    fmt::print( "[i] db size = {:>5.2f} Kb", st_.db_size / 1024.0f );
+  }
+
+private:
+  std::vector<std::unordered_map<uint64_t, std::vector<uint32_t>>> db_{7u};
+  std::vector<std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<kitty::detail::spectral_operation>>>> cache_{7u};
+
+private:
+  xag_minmc_resynthesis_stats st_;
+};
+
+} // namespace mockturtle::future

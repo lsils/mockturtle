@@ -43,6 +43,7 @@
 #include "../utils/stopwatch.hpp"
 #include "cleanup.hpp"
 #include "cut_enumeration.hpp"
+#include "cut_rewriting.hpp"
 #include "detail/mffc_utils.hpp"
 
 #include <fmt/format.h>
@@ -59,7 +60,7 @@ using namespace mockturtle::detail;
 template<class Ntk, class RewritingFn, class NodeCostFn>
 struct cut_rewriting_impl
 {
-  cut_rewriting_impl( Ntk const& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps, cut_rewriting_stats& st )
+  cut_rewriting_impl( Ntk const& ntk, RewritingFn& rewriting_fn, cut_rewriting_params const& ps, cut_rewriting_stats& st )
       : ntk_( ntk ),
         rewriting_fn_( rewriting_fn ),
         ps_( ps ),
@@ -165,7 +166,7 @@ struct cut_rewriting_impl
 
 private:
   Ntk const& ntk_;
-  RewritingFn&& rewriting_fn_;
+  RewritingFn& rewriting_fn_;
   cut_rewriting_params const& ps_;
   cut_rewriting_stats& st_;
 };
@@ -173,7 +174,7 @@ private:
 } // namespace detail
 
 template<class Ntk, class RewritingFn, class NodeCostFn = unit_cost<Ntk>>
-Ntk cut_rewriting( Ntk const& ntk, RewritingFn&& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats* pst = nullptr )
+Ntk cut_rewriting( Ntk const& ntk, RewritingFn& rewriting_fn, cut_rewriting_params const& ps = {}, cut_rewriting_stats* pst = nullptr )
 {
   cut_rewriting_stats st;
   const auto result = detail::cut_rewriting_impl<Ntk, RewritingFn, NodeCostFn>( ntk, rewriting_fn, ps, st ).run();
