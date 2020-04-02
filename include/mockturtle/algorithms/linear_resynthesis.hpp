@@ -418,9 +418,10 @@ struct exact_linear_synthesis_stats
 namespace detail
 {
 
+template<bill::solvers Solver>
 struct exact_linear_synthesis_problem_network
 {
-  using problem_network_t = cnf_view<xag_network>;
+  using problem_network_t = cnf_view<xag_network, false, Solver>;
 
   exact_linear_synthesis_problem_network( uint32_t num_steps, std::vector<std::vector<bool>> const& linear_matrix, std::vector<std::vector<uint32_t>> const& ignore_inputs, std::vector<std::pair<uint32_t, uint32_t>> const& trivial_pos, exact_linear_synthesis_params const& ps )
       : linear_matrix_( linear_matrix ),
@@ -537,7 +538,7 @@ private:
       /* at least 2 */
       for ( auto cpl = 0u; cpl <= n_ + i; ++cpl )
       {
-        std::vector<problem_network_t::signal> lits( n_ + i );
+        std::vector<signal<problem_network_t>> lits( n_ + i );
         for ( auto j = 0u; j < n_ + i; ++j )
         {
           lits[j] = b_or_c( i, j ) ^ ( cpl == j );
@@ -566,7 +567,7 @@ private:
     {
       for ( auto j = 0u; j < n_; ++j )
       {
-        std::vector<problem_network_t::signal> xors( 1 + i );
+        std::vector<signal<problem_network_t>> xors( 1 + i );
         auto it = xors.begin();
         *it++ = b( i, j );
         for ( auto p = 0u; p < i; ++p )
@@ -581,7 +582,7 @@ private:
     {
       for ( auto i = 0u; i < k_; ++i )
       {
-        std::vector<problem_network_t::signal> ands( n_ );
+        std::vector<signal<problem_network_t>> ands( n_ );
         for ( auto j = 0u; j < n_; ++j )
         {
           ands[j] = pntk_.create_xnor( psi( j, i ), pntk_.get_constant( linear_matrix_[l][j] ) );
@@ -595,7 +596,7 @@ private:
     {
       for ( auto p = 0u; p < i; ++p )
       {
-        std::vector<problem_network_t::signal> ors( n_ );
+        std::vector<signal<problem_network_t>> ors( n_ );
         for ( auto j = 0u; j < n_; ++j )
         {
           ors[j] = pntk_.create_xor( psi( j, p ), psi( j, i ) );
@@ -611,7 +612,7 @@ private:
       {
         for ( auto j = 0u; j < n_; ++j )
         {
-          std::vector<problem_network_t::signal> ors( 1 + i );
+          std::vector<signal<problem_network_t>> ors( 1 + i );
           auto it = ors.begin();
           *it++ = b( i, j );
           for ( auto p = 0u; p < i; ++p )
@@ -657,7 +658,7 @@ private:
       /* at least 2 */
       for ( auto cpl = 0u; cpl <= n_; ++cpl )
       {
-        std::vector<problem_network_t::signal> lits( n_ );
+        std::vector<signal<problem_network_t>> lits( n_ );
         for ( auto j = 0u; j < n_; ++j )
         {
           lits[j] = psi( j, i ) ^ ( cpl == j );
@@ -672,7 +673,7 @@ private:
     // each output covers at least one row
     for ( auto l = 0u; l < m_; ++l )
     {
-      std::vector<problem_network_t::signal> lits( k_ );
+      std::vector<signal<problem_network_t>> lits( k_ );
       for ( auto i = 0u; i < k_; ++i )
       {
         lits[i] = f( l, i );
@@ -699,42 +700,42 @@ private:
 
   // 0 <= i <= k - 1
   // 0 <= j <= n - 1
-  const problem_network_t::signal& b( uint32_t i, uint32_t j ) const
+  const signal<problem_network_t>& b( uint32_t i, uint32_t j ) const
   {
     return bs_[i * n_ + j];
   }
 
   // 0 <= i <= k - 1
   // 0 <= p <= i - 1
-  const problem_network_t::signal& c( uint32_t i, uint32_t p ) const
+  const signal<problem_network_t>& c( uint32_t i, uint32_t p ) const
   {
     return cs_[( ( ( i - 1 ) * i ) / 2 ) + p];
   }
 
   // 0 <= i <= k - 1
   // 0 <= j <= n + i - 1
-  const problem_network_t::signal& b_or_c( uint32_t i, uint32_t j ) const
+  const signal<problem_network_t>& b_or_c( uint32_t i, uint32_t j ) const
   {
     return j < n_ ? b( i, j ) : c( i, j - n_ );
   }
 
   // 0 <= l <= m - 1
   // 0 <= i <= k - 1
-  const problem_network_t::signal& f( uint32_t l, uint32_t i ) const
+  const signal<problem_network_t>& f( uint32_t l, uint32_t i ) const
   {
     return fs_[l * k_ + i];
   }
 
   // 0 <= j <= n - 1
   // 0 <= i <= k - 1
-  problem_network_t::signal& psi( uint32_t j, uint32_t i )
+  signal<problem_network_t>& psi( uint32_t j, uint32_t i )
   {
     return psis_[i * n_ + j];
   }
 
   // 0 <= j <= n - 1
   // 0 <= i <= k - 1
-  problem_network_t::signal& phi( uint32_t j, uint32_t i )
+  signal<problem_network_t>& phi( uint32_t j, uint32_t i )
   {
     return phis_[i * n_ + j];
   }
@@ -745,11 +746,11 @@ private:
   uint32_t n_;
   uint32_t m_;
 
-  std::vector<problem_network_t::signal> bs_;
-  std::vector<problem_network_t::signal> cs_;
-  std::vector<problem_network_t::signal> fs_;
-  std::vector<problem_network_t::signal> psis_;
-  std::vector<problem_network_t::signal> phis_;
+  std::vector<signal<problem_network_t>> bs_;
+  std::vector<signal<problem_network_t>> cs_;
+  std::vector<signal<problem_network_t>> fs_;
+  std::vector<signal<problem_network_t>> psis_;
+  std::vector<signal<problem_network_t>> phis_;
 
   problem_network_t pntk_;
   std::vector<std::vector<uint32_t>> const& ignore_inputs_;
@@ -757,7 +758,7 @@ private:
   exact_linear_synthesis_params const& ps_;
 };
 
-template<class Ntk>
+template<class Ntk, bill::solvers Solver>
 struct exact_linear_synthesis_impl
 {
   exact_linear_synthesis_impl( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps, exact_linear_synthesis_stats& st )
@@ -875,7 +876,7 @@ private:
         fmt::print( "[i] try to find a solution with {} steps, solving time so far = {:.2f} secs\n", k_, to_seconds( st_.time_solving ) );
       }
 
-      exact_linear_synthesis_problem_network pntk( k_, linear_matrix_, ignore_inputs_, trivial_pos_, ps_ );
+      exact_linear_synthesis_problem_network<Solver> pntk( k_, linear_matrix_, ignore_inputs_, trivial_pos_, ps_ );
       const auto res = call_with_stopwatch( st_.time_solving, [&]() { return pntk.solve(); } );
       if ( res && *res )
       {
@@ -883,7 +884,7 @@ private:
         {
           pntk.debug_solution();
         }
-        return pntk.extract_solution<Ntk>();
+        return pntk.template extract_solution<Ntk>();
       }
       ++k_;
     }
@@ -899,7 +900,7 @@ private:
       {
         fmt::print( "[i] try to find a solution with {} steps, solving time so far = {:.2f} secs\n", k_, to_seconds( st_.time_solving ) );
       }
-      exact_linear_synthesis_problem_network pntk( k_, linear_matrix_, ignore_inputs_, trivial_pos_, ps_ );
+      exact_linear_synthesis_problem_network<Solver> pntk( k_, linear_matrix_, ignore_inputs_, trivial_pos_, ps_ );
       const auto res = call_with_stopwatch( st_.time_solving, [&]() { return pntk.solve(); } );
       if ( res && *res )
       {
@@ -907,7 +908,7 @@ private:
         {
           pntk.debug_solution();
         }
-        best = pntk.extract_solution<Ntk>();
+        best = pntk.template extract_solution<Ntk>();
         --k_;
       }
       else /* if unsat or timeout */
@@ -966,13 +967,13 @@ std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
  *
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
-template<class Ntk>
+template<class Ntk = xag_network, bill::solvers Solver = bill::solvers::glucose_41>
 std::optional<Ntk> exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   exact_linear_synthesis_stats st;
-  const auto xag = detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps, st}.run();
+  const auto xag = detail::exact_linear_synthesis_impl<Ntk, Solver>{linear_matrix, ps, st}.run();
 
   if ( ps.verbose )
   {
@@ -993,13 +994,13 @@ std::optional<Ntk> exact_linear_synthesis( std::vector<std::vector<bool>> const&
  *
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
-template<typename Ntk>
+template<class Ntk = xag_network, bill::solvers Solver = bill::solvers::glucose_41>
 std::optional<Ntk> exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   const auto linear_matrix = get_linear_matrix( ntk );
-  return exact_linear_synthesis<Ntk>( linear_matrix, ps, pst );
+  return exact_linear_synthesis<Ntk, Solver>( linear_matrix, ps, pst );
 }
 
 } /* namespace mockturtle */

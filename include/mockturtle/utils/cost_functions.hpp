@@ -71,6 +71,38 @@ struct mc_cost
       }
     }
 
+    if constexpr ( has_is_nary_and_v<Ntk> )
+    {
+      if ( ntk.is_nary_and( node ) )
+      {
+        if ( ntk.fanin_size( node ) > 1u )
+        {
+          return ntk.fanin_size( node ) - 1u;
+        }
+        return 0u;
+      }
+    }
+
+    if constexpr ( has_is_nary_or_v<Ntk> )
+    {
+      if ( ntk.is_nary_or( node ) )
+      {
+        if ( ntk.fanin_size( node ) > 1u )
+        {
+          return ntk.fanin_size( node ) - 1u;
+        }
+        return 0u;
+      }
+    }
+
+    if constexpr ( has_is_nary_xor_v<Ntk> )
+    {
+      if ( ntk.is_nary_xor( node ) )
+      {
+        return 0u;
+      }
+    }
+
     // TODO (Does not take into account general node functions)
     return 1u;
   }
