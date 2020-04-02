@@ -71,7 +71,9 @@ struct cut_rewriting_impl
     stopwatch t( st_.time_total );
 
     /* initial node map */
-    auto [res, old2new] = initialize_copy_network<Ntk>( ntk_ );
+    auto p = initialize_copy_network<Ntk>( ntk_ );
+    auto res = p.first;
+    auto old2new = p.second;
 
     /* enumerate cuts */
     const auto cuts = call_with_stopwatch( st_.time_cuts, [&]() { return cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk_, ps_.cut_enumeration_ps ); } );
