@@ -70,25 +70,13 @@ struct cut_rewriting_impl
     stopwatch t( st_.time_total );
 
     /* initial node map */
-    Ntk res;
-    node_map<signal<Ntk>, Ntk> old2new( ntk_ );
-    old2new[ntk_.get_constant( false )] = res.get_constant( false );
-    if ( ntk_.get_node( ntk_.get_constant( true ) ) != ntk_.get_node( ntk_.get_constant( false ) ) )
-    {
-      old2new[ntk_.get_constant( true )] = res.get_constant( true );
-    }
-    ntk_.foreach_pi( [&]( auto const& n ) {
-      old2new[n] = res.create_pi();
-    } );
+    auto [res, old2new] = initialize_copy_network<Ntk>( ntk_ );
 
     /* enumerate cuts */
     const auto cuts = call_with_stopwatch( st_.time_cuts, [&]() { return cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk_, ps_.cut_enumeration_ps ); } );
 
     /* for cost estimation we use reference counters initialized by the fanout size */
-    ntk_.clear_values();
-    ntk_.foreach_node( [&]( auto const& n ) {
-      ntk_.set_value( n, ntk_.fanout_size( n ) );
-    } );
+    initialize_values_with_fanout( ntk_ );
 
     /* original cost */
     const auto orig_cost = costs<Ntk, NodeCostFn>( ntk_ );
