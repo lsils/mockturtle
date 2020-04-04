@@ -26,6 +26,7 @@ v0.2 (not yet released)
     - Create circuit based on spectral equivalence transformation sequences and NPN transformations (`apply_spectral_transformations` `apply_npn_transformations`) `#263 <https://github.com/lsils/mockturtle/pull/263>`_ `#301 <https://github.com/lsils/mockturtle/pull/301>`_
     - Exact linear resynthesis using SAT (`exact_linear_resynthesis`, `exact_linear_synthesis`) `#265 <https://github.com/lsils/mockturtle/pull/265>`_
     - XAG optimization by linear resynthesis (`linear_resynthesis_optimization`, `exact_linear_resynthesis_optimization`) `#296 <https://github.com/lsils/mockturtle/pull/296>`_
+    - Davio decomposition (`positive_davio_decomposition`, `positive_davio_decomposition`) `#308 <https://github.com/lsils/mockturtle/pull/308>`_
 * Views:
     - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
     - Creates a CNF while creating a network (`cnf_view`) `#181 <https://github.com/lsils/mockturtle/pull/274>`_ `#184 <https://github.com/lsils/mockturtle/pull/274>`_
@@ -37,6 +38,7 @@ v0.2 (not yet released)
 * Resynthesis functions:
     - Resynthesis function based on DSD decomposition (`dsd_resynthesis`) `#182 <https://github.com/lsils/mockturtle/pull/182>`_
     - Resynthesis function based on Shannon decomposition (`shannon_resynthesis`) `#185 <https://github.com/lsils/mockturtle/pull/185>`_
+    - Resynthesis function based on Davio decomposition (`positive_davio_resynthesis`, `negative_davio_resynthesis`) `#308 <https://github.com/lsils/mockturtle/pull/308>`_
 * Generators:
     - Sideways sum generator (`sideways_sum_adder`, contributed by Jovan Blanuša) `#159 <https://github.com/lsils/mockturtle/pull/159>`_
     - Carry lookahead adder (`carry_lookahead_adder_inplace`) `#171 <https://github.com/lsils/mockturtle/pull/171>`_

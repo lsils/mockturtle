@@ -24,55 +24,33 @@
  */
 
 /*!
-  \file shannon.hpp
-  \brief Use Shannon decomposition for resynthesis
+  \file null.hpp
+  \brief No resynthesis (as default synthesis engine)
 
   \author Mathias Soeken
 */
 
 #pragma once
 
-#include <algorithm>
-#include <vector>
-
 #include <kitty/dynamic_truth_table.hpp>
-
 #include "../../traits.hpp"
-#include "../shannon_decomposition.hpp"
 
 namespace mockturtle
 {
 
-/*! \brief Resynthesis function based on Shannon decomposition.
- *
- * This resynthesis function can be passed to ``node_resynthesis``,
- * ``cut_rewriting``, and ``refactoring``.  The given truth table will be
- * resynthized based on Shanon decomposition.
- *
-   \verbatim embed:rst
 
-   Example
-
-   .. code-block:: c++
-
-      const klut_network klut = ...;
-
-      shannon_resynthesis<xag_network> resyn;
-      auto xag = node_resynthesis<xag_network>( klut, resyn );
-   \endverbatim
- *
- */
 template<class Ntk>
-class shannon_resynthesis
+class null_resynthesis
 {
 public:
   template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
-    std::vector<uint32_t> vars( function.num_vars() );
-    std::iota( vars.begin(), vars.end(), 0u );
-    const auto f = shannon_decomposition( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ) );
-    fn( f );
+    (void)ntk;
+    (void)function;
+    (void)begin;
+    (void)end;
+    (void)fn;
   }
 };
 
