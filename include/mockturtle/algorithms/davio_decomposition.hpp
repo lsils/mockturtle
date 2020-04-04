@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file shannon_decomposition.hpp
-  \brief Shannon decomposition
+  \file davio_decomposition.hpp
+  \brief Davio decomposition
 
   \author Mathias Soeken
 */
@@ -52,14 +52,15 @@ namespace detail
 {
 
 template<class Ntk, class SynthesisFn>
-class shannon_decomposition_impl
+class davio_decomposition_impl
 {
 public:
-  shannon_decomposition_impl( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<uint32_t> const& vars, std::vector<signal<Ntk>> const& children, SynthesisFn const& resyn )
+  davio_decomposition_impl( Ntk& ntk, bool polarity, kitty::dynamic_truth_table const& func, std::vector<uint32_t> const& vars, std::vector<signal<Ntk>> const& children, SynthesisFn const& resyn )
       : ntk_( ntk ),
+        polarity_( polarity ),
         func_( func ),
-        vars_( vars ),
         pis_( children ),
+        vars_( vars ),
         resyn_( resyn )
   {
     cache_.insert( {func.construct(), ntk_.get_constant( false )} );
@@ -115,7 +116,15 @@ private:
       /* decompose */
       const auto f0 = decompose( var_index + 1, kitty::cofactor0( func, vars_[var_index] ) );
       const auto f1 = decompose( var_index + 1, kitty::cofactor1( func, vars_[var_index] ) );
-      f = ntk_.create_ite( pis_[vars_[var_index]], f1, f0 );
+
+      if ( polarity_ )
+      {
+        f = ntk_.create_xor( f0, ntk_.create_and( pis_[vars_[var_index]], ntk_.create_xor( f0, f1 ) ) );
+      }
+      else
+      {
+        f = ntk_.create_xor( f1, ntk_.create_and( ntk_.create_not( pis_[vars_[var_index]] ), ntk_.create_xor( f0, f1 ) ) );
+      }
     }
     cache_.insert( {func, f} );
     return f;
@@ -123,36 +132,65 @@ private:
 
 private:
   Ntk& ntk_;
+  bool polarity_;
   kitty::dynamic_truth_table func_;
-  std::vector<uint32_t> vars_;
   std::vector<signal<Ntk>> const& pis_;
+  std::vector<uint32_t> const& vars_;
   SynthesisFn const& resyn_;
   std::unordered_map<kitty::dynamic_truth_table, signal<Ntk>, kitty::hash<kitty::dynamic_truth_table>> cache_;
 };
 
 } // namespace detail
 
-/*! \brief Shannon decomposition
+/*! \brief Positive Davio decomposition
  *
- * This function applies Shannon decomposition on an input truth table and
+ * This function applies positive Davio decomposition on an input truth table and
  * constructs a network based.  The variabe ordering can be specified as
  * an input.  If not all variables are specified, the remaining co-factors
  * are synthesizes using the resynthesis function.
  *
  * **Required network functions:**
  * - `create_not`
- * - `create_ite`
+ * - `create_and`
+ * - `create_xor`
  * - `get_constant`
  */
 template<class Ntk, class SynthesisFn = null_resynthesis<Ntk>>
-signal<Ntk> shannon_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<uint32_t> const& vars, std::vector<signal<Ntk>> const& children, SynthesisFn const& resyn = {} )
+signal<Ntk> positive_davio_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<uint32_t> const& vars, std::vector<signal<Ntk>> const& children, SynthesisFn const& resyn = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
-  static_assert( has_create_ite_v<Ntk>, "Ntk does not implement the create_ite method" );
+  static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_ite method" );
+  static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_ite method" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
 
-  detail::shannon_decomposition_impl<Ntk, SynthesisFn> impl( ntk, func, vars, children, resyn );
+  detail::davio_decomposition_impl<Ntk, SynthesisFn> impl( ntk, true, func, vars, children, resyn );
+  return impl.run();
+}
+
+/*! \brief Negative Davio decomposition
+ *
+ * This function applies positive Davio decomposition on an input truth table and
+ * constructs a network based.  The variabe ordering can be specified as
+ * an input.  If not all variables are specified, the remaining co-factors
+ * are synthesizes using the resynthesis function.
+ *
+ * **Required network functions:**
+ * - `create_not`
+ * - `create_and`
+ * - `create_xor`
+ * - `get_constant`
+ */
+template<class Ntk, class SynthesisFn = null_resynthesis<Ntk>>
+signal<Ntk> negative_davio_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& func, std::vector<uint32_t> const& vars, std::vector<signal<Ntk>> const& children, SynthesisFn const& resyn = {} )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
+  static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_ite method" );
+  static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_ite method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+
+  detail::davio_decomposition_impl<Ntk, SynthesisFn> impl( ntk, false, func, vars, children, resyn );
   return impl.run();
 }
 
