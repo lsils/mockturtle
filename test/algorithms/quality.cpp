@@ -114,7 +114,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     mig_npn_resynthesis resyn;
     cut_rewriting_params ps;
     ps.cut_enumeration_ps.cut_size = 4;
-    cut_rewriting( ntk, resyn, ps );
+    cut_rewriting_with_compatibility_graph( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();
   } );
@@ -128,7 +128,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     cut_rewriting_params ps;
     ps.allow_zero_gain = true;
     ps.cut_enumeration_ps.cut_size = 4;
-    cut_rewriting( ntk, resyn, ps );
+    cut_rewriting_with_compatibility_graph( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();
   } );
@@ -253,7 +253,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis"
     ps.cut_enumeration_ps.cut_size = 4;
     ps.min_cand_cut_size = 2;
     ps.min_cand_cut_size_override = 3;
-    cut_rewriting( ntk, resyn, ps );
+    cut_rewriting_with_compatibility_graph( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();
   } );
@@ -271,7 +271,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis"
     ps.cut_enumeration_ps.cut_size = 4;
     ps.min_cand_cut_size = 2;
     ps.min_cand_cut_size_override = 3;
-    cut_rewriting( ntk, resyn, ps );
+    cut_rewriting_with_compatibility_graph( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();
   } );
@@ -287,7 +287,7 @@ TEST_CASE( "Test quality improvement for XMG3 rewriting with 4-input NPN databas
     const auto before = ntk.num_gates();
     cut_rewriting_params ps;
     ps.cut_enumeration_ps.cut_size = 4;
-    cut_rewriting( ntk, resyn, ps );
+    cut_rewriting_with_compatibility_graph( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();
   } );

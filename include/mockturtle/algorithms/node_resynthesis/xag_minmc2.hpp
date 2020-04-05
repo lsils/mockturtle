@@ -49,6 +49,13 @@
 namespace mockturtle::future
 {
 
+struct xag_minmc_resynthesis_params
+{
+  /*! \brief Be verbose. */
+  bool verbose{false};
+};
+
+
 struct xag_minmc_resynthesis_stats
 {
   /*! \brief Database size in bytes. */
@@ -65,13 +72,14 @@ public:
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
-    *this( ntk, function, function.construct(), begin, end, fn );
+    (void)dont_cares;
+    (*this)( ntk, function, function.construct(), begin, end, fn );
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     const auto num_vars = function.num_vars();
     uint64_t repr;
@@ -115,14 +123,18 @@ private:
       }
     }
 
-    fmt::print( "[i] db size = {:>5.2f} Kb", st_.db_size / 1024.0f );
+    if ( ps_.verbose )
+    {
+      fmt::print( "[i] db size = {:>5.2f} Kb", st_.db_size / 1024.0f );
+    }
   }
 
 private:
   std::vector<std::unordered_map<uint64_t, std::vector<uint32_t>>> db_{7u};
-  std::vector<std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<kitty::detail::spectral_operation>>>> cache_{7u};
+  mutable std::vector<std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<kitty::detail::spectral_operation>>>> cache_{7u};
 
 private:
+  xag_minmc_resynthesis_params ps_;
   xag_minmc_resynthesis_stats st_;
 };
 

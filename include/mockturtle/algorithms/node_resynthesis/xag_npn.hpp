@@ -88,7 +88,7 @@ struct xag_npn_resynthesis_stats
 
       const aig_network aig = ...;
       xag_npn_resynthesis<aig_network> resyn;
-      cut_rewriting( aig, resyn );
+      aig = cut_rewriting( aig, resyn );
 
    .. note::
 
