@@ -89,7 +89,7 @@ struct xmg3_npn_resynthesis_stats
 
       const aig_network aig = ...;
       xmg3_npn_resynthesis<aig_network> resyn;
-      cut_rewriting( aig, resyn );
+      aig = cut_rewriting( aig, resyn );
 
    .. note::
 
@@ -143,7 +143,7 @@ public:
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     kitty::static_truth_table<4> tt = kitty::extend_to<4>( function );
 

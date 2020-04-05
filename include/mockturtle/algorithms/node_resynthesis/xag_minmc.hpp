@@ -135,7 +135,7 @@ struct xag_minmc_resynthesis_stats
 
       const xag_network xag = ...;
       xag_minmc_resynthesis resyn;
-      cut_rewriting( xag, resyn );
+      xag = cut_rewriting( xag, resyn );
    \endverbatim
  */
 class xag_minmc_resynthesis
