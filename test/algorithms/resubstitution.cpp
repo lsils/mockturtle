@@ -35,7 +35,7 @@ TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
   CHECK( aig.num_pos() == 1 );
   CHECK( aig.num_gates() == 2 );
 
-  const auto tt = simulate<kitty::static_truth_table<2>>( aig )[0];
+  const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
   CHECK( tt._bits == 0x8 );
 
   using view_t = depth_view<fanout_view<aig_network>>;
@@ -47,7 +47,7 @@ TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
   aig = cleanup_dangling( aig );
 
   /* check equivalence */
-  const auto tt_opt = simulate<kitty::static_truth_table<2>>( aig )[0];
+  const auto tt_opt = simulate<kitty::static_truth_table<2u>>( aig )[0];
   CHECK( tt_opt._bits == tt._bits );
 
   CHECK( aig.size() == 4 );
@@ -72,7 +72,7 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 2 );
 
-  const auto tt = simulate<kitty::static_truth_table<3>>( mig )[0];
+  const auto tt = simulate<kitty::static_truth_table<3u>>( mig )[0];
   CHECK( tt._bits == 0xe8 );
 
   using view_t = depth_view<fanout_view<mig_network>>;
@@ -84,7 +84,7 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   mig = cleanup_dangling( mig );
 
   /* check equivalence */
-  const auto tt_opt = simulate<kitty::static_truth_table<3>>( mig )[0];
+  const auto tt_opt = simulate<kitty::static_truth_table<3u>>( mig )[0];
   CHECK( tt_opt._bits == tt._bits );
 
   CHECK( mig.size() == 5 );
@@ -111,8 +111,8 @@ TEST_CASE( "Resubstitution of XMG", "[resubstitution]" )
   CHECK( xmg.num_pos() == 2 );
   CHECK( xmg.num_gates() == 4 );
 
-  const auto tt1 = simulate<kitty::static_truth_table<3>>( xmg )[0];
-  const auto tt2 = simulate<kitty::static_truth_table<3>>( xmg )[1];
+  const auto tt1 = simulate<kitty::static_truth_table<3u>>( xmg )[0];
+  const auto tt2 = simulate<kitty::static_truth_table<3u>>( xmg )[1];
   CHECK( tt1._bits == 0xe8 );
   CHECK( tt2._bits == 0xcc );
 
@@ -125,8 +125,8 @@ TEST_CASE( "Resubstitution of XMG", "[resubstitution]" )
   xmg = cleanup_dangling( xmg );
 
   /* check equivalence */
-  const auto tt_opt1 = simulate<kitty::static_truth_table<3>>( xmg )[0];
-  const auto tt_opt2 = simulate<kitty::static_truth_table<3>>( xmg )[1];
+  const auto tt_opt1 = simulate<kitty::static_truth_table<3u>>( xmg )[0];
+  const auto tt_opt2 = simulate<kitty::static_truth_table<3u>>( xmg )[1];
   CHECK( tt_opt1._bits == tt1._bits );
   CHECK( tt_opt2._bits == tt2._bits );
 
@@ -152,7 +152,7 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
   CHECK( xag.num_pos() == 1 );
   CHECK( xag.num_gates() == 4 );
 
-  const auto tt = simulate<kitty::static_truth_table<2>>( xag )[0];
+  const auto tt = simulate<kitty::static_truth_table<2u>>( xag )[0];
 
   resubstitution_params ps;
 
@@ -164,7 +164,7 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
   xag = cleanup_dangling( xag );
 
   /* check equivalence */
-  const auto tt_opt = simulate<kitty::static_truth_table<2>>( xag )[0];
+  const auto tt_opt = simulate<kitty::static_truth_table<2u>>( xag )[0];
   CHECK( tt_opt._bits == tt._bits );
 
   CHECK( xag.size() == 6 );
