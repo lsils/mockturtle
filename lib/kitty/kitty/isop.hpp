@@ -35,6 +35,7 @@
 #include "cube.hpp"
 #include "operations.hpp"
 #include "operators.hpp"
+#include "traits.hpp"
 
 namespace kitty
 {
@@ -119,6 +120,8 @@ TT isop_rec( const TT& tt, const TT& dc, uint8_t var_index, std::vector<cube>& c
 template<typename TT>
 inline std::vector<cube> isop( const TT& tt )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   std::vector<cube> cubes;
   detail::isop_rec( tt, tt, tt.num_vars(), cubes );
   return cubes;

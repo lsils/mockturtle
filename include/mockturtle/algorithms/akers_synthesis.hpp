@@ -836,7 +836,7 @@ Ntk akers_synthesis( kitty::dynamic_truth_table const& func, kitty::dynamic_trut
   Ntk ntk;
   std::vector<signal<Ntk>> pis;
 
-  for ( auto i = 0; i < func.num_vars(); ++i )
+  for ( auto i = 0u; i < func.num_vars(); ++i )
   {
     pis.push_back( ntk.create_pi() );
   }

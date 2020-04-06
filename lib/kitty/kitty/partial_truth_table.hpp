@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2020  EPFL
+ * Copyright (C) 2017-2019  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,10 +24,10 @@
  */
 
 /*!
-  \file dynamic_truth_table.hpp
-  \brief Implements dynamic_truth_table
+  \file partial_truth_table.hpp
+  \brief Implements partial_truth_table
 
-  \author Mathias Soeken
+  \author Siang-Yun Lee
 */
 
 #pragma once
@@ -35,6 +35,8 @@
 #include <cstdint>
 #include <type_traits>
 #include <vector>
+#include <iostream>
+#include <iomanip>
 
 #include "detail/constants.hpp"
 #include "traits.hpp"
@@ -42,53 +44,40 @@
 namespace kitty
 {
 
-/*! Truth table in which number of variables is known at runtime.
+/*! Truth table with resizable number of bits
 */
-struct dynamic_truth_table
+struct partial_truth_table
 {
   /*! Standard constructor.
-
-    The number of variables provided to the truth table can be
-    computed at runtime.  However, once the truth table is constructed
-    its number of variables cannot change anymore.
-
-    The constructor computes the number of blocks and resizes the
-    vector accordingly.
-
-    \param num_vars Number of variables
+    \param num_bits Number of bits in use initially
   */
-  explicit dynamic_truth_table( uint32_t num_vars )
-      : _bits( ( num_vars <= 6 ) ? 1u : ( 1u << ( num_vars - 6 ) ) ),
-        _num_vars( num_vars )
+  explicit partial_truth_table( uint32_t num_bits )
+      : _bits( num_bits ? ( ( ( num_bits - 1 ) >> 6 ) + 1 ) : 0 ),
+        _num_bits( num_bits )
   {
   }
 
   /*! Empty constructor.
 
-    Creates an empty truth table. It has 0 variables, but no bits, i.e., it is
-    different from a truth table for the constant function.  This constructor is
+    Creates an empty truth table. It has no bit in use. This constructor is
     only used for convenience, if algorithms require the existence of default
     constructable classes.
    */
-  dynamic_truth_table() : _num_vars( 0 ) {}
+  partial_truth_table() : _num_bits( 0 ) {}
 
-  /*! Constructs a new dynamic truth table instance with the same number of variables. */
-  inline dynamic_truth_table construct() const
+  /*! Constructs a new partial truth table instance with the same number of bits and blocks. */
+  inline partial_truth_table construct() const
   {
-    return dynamic_truth_table( _num_vars );
+    return partial_truth_table( _num_bits );
   }
 
-  /*! Returns number of variables.
-   */
-  inline auto num_vars() const noexcept { return _num_vars; }
-
-  /*! Returns number of blocks.
+  /*! Returns number of (allocated) blocks.
    */
   inline auto num_blocks() const noexcept { return _bits.size(); }
 
-  /*! Returns number of bits.
+  /*! Returns number of (used) bits.
    */
-  inline auto num_bits() const noexcept { return uint64_t( 1 ) << _num_vars; }
+  inline auto num_bits() const noexcept { return _num_bits; }
 
   /*! \brief Begin iterator to bits.
    */
@@ -137,45 +126,90 @@ struct dynamic_truth_table
 
     \param other Other truth table
   */
-  template<class TT, typename = std::enable_if_t<is_truth_table<TT>::value && is_complete_truth_table<TT>::value>>
-  dynamic_truth_table& operator=( const TT& other )
+  template<class TT, typename = std::enable_if_t<is_truth_table<TT>::value>>
+  partial_truth_table& operator=( const TT& other )
   {
     _bits.resize( other.num_blocks() );
     std::copy( other.begin(), other.end(), begin() );
-    _num_vars = other.num_vars();
-
-    if ( _num_vars < 6 )
-    {
-      mask_bits();
-    }
+    _num_bits = 1 << other.num_vars();
 
     return *this;
   }
 
   /*! Masks the number of valid truth table bits.
 
-    If the truth table has less than 6 variables, it may not use all
-    the bits.  This operation makes sure to zero out all non-valid
-    bits.
+    If not all the bits in the last block are used up,
+    we block out the remaining bits (fill with zero).
+    Bits are used from LSB.
   */
   inline void mask_bits() noexcept
   {
-    if ( _num_vars < 6 )
+    if ( _num_bits % 64 )
     {
-      _bits[0u] &= detail::masks[_num_vars];
+      _bits.back() &= 0xFFFFFFFFFFFFFFFF >> ( 64 - ( _num_bits % 64 ) );
     }
+  }
+
+  inline void resize( int num_bits ) noexcept
+  {
+    _num_bits = num_bits;
+
+    unsigned needed_blocks = num_bits ? ( ( ( num_bits - 1 ) >> 6 ) + 1 ) : 0;
+    if ( needed_blocks > _bits.size() )
+    {
+      _bits.resize( needed_blocks, 0u );
+    }
+
+    mask_bits();
+  }
+
+  inline void add_bit( bool bit ) noexcept
+  {
+    resize( _num_bits + 1 );
+    if ( bit )
+    {
+      _bits.back() |= (uint64_t)1 << ( _num_bits % 64 - 1 );
+    }
+  }
+
+  inline void add_bits( std::vector<bool>& bits ) noexcept
+  {
+    for ( unsigned i = 0; i < bits.size(); ++i )
+    {
+      add_bit( bits.at( i ) );
+    }
+  }
+
+  /* \param num_bits Number of bits in `bits` to be added (count from LSB) */
+  inline void add_bits( uint64_t bits, int num_bits = 64 ) noexcept
+  {
+    assert( num_bits <= 64 );
+
+    if ( ( _num_bits % 64 ) + num_bits <= 64 ) /* no need for a new block */
+    {
+      _bits.back() |= bits << ( _num_bits % 64 );
+    }
+    else
+    {
+      auto first_half_len = 64 - ( _num_bits % 64 );
+      _bits.back() |= bits << ( _num_bits % 64 );
+      _bits.emplace_back( 0u );
+      _bits.back() |= ( bits & ( 0xFFFFFFFFFFFFFFFF >> ( 64 - num_bits ) ) ) >> first_half_len;
+    }
+    _num_bits += num_bits;
   }
 
   /*! \cond PRIVATE */
 public: /* fields */
   std::vector<uint64_t> _bits;
-  uint32_t _num_vars;
+  uint32_t _num_bits;
   /*! \endcond */
 };
 
 template<>
-struct is_truth_table<kitty::dynamic_truth_table> : std::true_type {};
+struct is_truth_table<kitty::partial_truth_table> : std::true_type {};
 
 template<>
-struct is_complete_truth_table<kitty::dynamic_truth_table> : std::true_type {};
+struct is_complete_truth_table<kitty::partial_truth_table> : std::false_type {};
+
 } // namespace kitty
