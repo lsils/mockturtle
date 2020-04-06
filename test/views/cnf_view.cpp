@@ -173,7 +173,6 @@ TEST_CASE( "destructor", "[cnf_view]" )
   const auto c = mig.create_pi();
   mig.create_po( mig.create_maj( a, b, c ) );
 
-  if ( true ) 
   {
     cnf_view view( mig );
     mig.events().on_add.push_back( []( auto const& n ) { (void)n; } );
