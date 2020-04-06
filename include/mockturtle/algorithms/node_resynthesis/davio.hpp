@@ -33,6 +33,7 @@
 #pragma once
 
 #include <algorithm>
+#include <optional>
 #include <vector>
 
 #include <kitty/dynamic_truth_table.hpp>
