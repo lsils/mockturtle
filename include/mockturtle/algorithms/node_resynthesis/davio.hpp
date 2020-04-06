@@ -38,7 +38,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 
 #include "../../traits.hpp"
-#include "../davio_decomposition.hpp"
+#include "../decomposition.hpp"
 
 namespace mockturtle
 {
@@ -62,18 +62,36 @@ namespace mockturtle
    \endverbatim
  *
  */
-template<class Ntk>
+template<class Ntk, class ResynFn = null_resynthesis<Ntk>>
 class positive_davio_resynthesis
 {
 public:
+  positive_davio_resynthesis( std::optional<uint32_t> const& threshold = {}, ResynFn* resyn = nullptr )
+      : threshold_( threshold ),
+        resyn_( resyn ) {}
+
   template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
-    std::vector<uint32_t> vars( function.num_vars() );
-    std::iota( vars.begin(), vars.end(), 0u );
-    const auto f = positive_davio_decomposition( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ) );
-    fn( f );
+    if ( threshold_ )
+    {
+      std::vector<uint32_t> vars( function.num_vars() - std::min<uint32_t>( *threshold_, function.num_vars() ) );
+      std::iota( vars.begin(), vars.end(), 0u );
+      const auto f = positive_davio_decomposition<Ntk, ResynFn>( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ), *resyn_ );
+      fn( f );
+    }
+    else
+    {
+      std::vector<uint32_t> vars( function.num_vars() );
+      std::iota( vars.begin(), vars.end(), 0u );
+      const auto f = positive_davio_decomposition( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ) );
+      fn( f );
+    }
   }
+
+private:
+  std::optional<uint32_t> threshold_;
+  ResynFn* resyn_;
 };
 
 /*! \brief Resynthesis function based on Davio decomposition.
@@ -95,18 +113,36 @@ public:
    \endverbatim
  *
  */
-template<class Ntk>
+template<class Ntk, class ResynFn = null_resynthesis<Ntk>>
 class negative_davio_resynthesis
 {
 public:
+  negative_davio_resynthesis( std::optional<uint32_t> const& threshold = {}, ResynFn* resyn = nullptr )
+      : threshold_( threshold ),
+        resyn_( resyn ) {}
+
   template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
-    std::vector<uint32_t> vars( function.num_vars() );
-    std::iota( vars.begin(), vars.end(), 0u );
-    const auto f = negative_davio_decomposition( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ) );
-    fn( f );
+    if ( threshold_ )
+    {
+      std::vector<uint32_t> vars( function.num_vars() - std::min<uint32_t>( *threshold_, function.num_vars() ) );
+      std::iota( vars.begin(), vars.end(), 0u );
+      const auto f = negative_davio_decomposition<Ntk, ResynFn>( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ), *resyn_ );
+      fn( f );
+    }
+    else
+    {
+      std::vector<uint32_t> vars( function.num_vars() );
+      std::iota( vars.begin(), vars.end(), 0u );
+      const auto f = negative_davio_decomposition( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ) );
+      fn( f );
+    }
   }
+
+private:
+  std::optional<uint32_t> threshold_;
+  ResynFn* resyn_;
 };
 
 } /* namespace mockturtle */

@@ -3,7 +3,7 @@
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <mockturtle/algorithms/dsd_decomposition.hpp>
-#include <mockturtle/algorithms/shannon_decomposition.hpp>
+#include <mockturtle/algorithms/decomposition.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
