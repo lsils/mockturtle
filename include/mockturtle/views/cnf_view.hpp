@@ -91,6 +91,13 @@ public:
   {
   }
 
+  ~cnf_view_impl()
+  {
+    Ntk::events().on_add.erase( Ntk::events().on_add.begin() + event_ptr_[0] );
+    Ntk::events().on_modified.erase( Ntk::events().on_modified.begin() + event_ptr_[1] );
+    Ntk::events().on_delete.erase( Ntk::events().on_delete.begin() + event_ptr_[2] );
+  }
+
   void init()
   {
     cnf_view_.solver_.add_variables( Ntk::size() );
@@ -113,6 +120,10 @@ public:
       literals_[n] = bill::lit_type( ++v, bill::lit_type::polarities::positive );
       cnf_view_.on_add( n, false );
     } );
+
+    event_ptr_[0] = Ntk::events().on_add.size();
+    event_ptr_[1] = Ntk::events().on_modified.size();
+    event_ptr_[2] = Ntk::events().on_delete.size();
   }
 
   inline bill::var_type add_var()
@@ -171,6 +182,8 @@ private:
 
   node_map<bill::lit_type, Ntk> literals_;
   std::vector<bill::lit_type> switches_;
+
+  int event_ptr_[3];
 };
 
 } /* namespace detail */
