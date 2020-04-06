@@ -275,7 +275,7 @@ public: /* fields */
 template<uint32_t NumVars>
 struct is_truth_table<kitty::static_truth_table<NumVars>> : std::true_type {};
 
-template<int NumVars>
+template<uint32_t NumVars>
 struct is_complete_truth_table<kitty::static_truth_table<NumVars>> : std::true_type {};
 
 } // namespace kitty
