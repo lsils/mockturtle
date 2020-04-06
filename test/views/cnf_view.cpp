@@ -164,3 +164,20 @@ TEST_CASE( "build cnf_view for k-LUT network", "[cnf_view]" )
   CHECK( result );
   CHECK( !*result );
 }
+
+TEST_CASE( "destructor", "[cnf_view]" )
+{
+  mig_network mig;
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto c = mig.create_pi();
+  mig.create_po( mig.create_maj( a, b, c ) );
+
+  {
+    cnf_view view( mig );
+    mig.events().on_add.push_back( []( auto const& n ) { (void)n; } );
+  }
+  
+  CHECK( mig.events().on_add.size() == 1 );
+  CHECK( mig.events().on_delete.size() == 0 );
+}
