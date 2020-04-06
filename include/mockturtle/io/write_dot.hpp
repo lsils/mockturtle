@@ -179,6 +179,30 @@ public:
       }
     }
 
+    if constexpr ( has_is_nary_and_v<Ntk> )
+    {
+      if ( ntk.is_nary_and( n ) )
+      {
+        return "AND";
+      }
+    }
+
+    if constexpr ( has_is_nary_or_v<Ntk> )
+    {
+      if ( ntk.is_nary_or( n ) )
+      {
+        return "OR";
+      }
+    }
+
+    if constexpr ( has_is_nary_xor_v<Ntk> )
+    {
+      if ( ntk.is_nary_xor( n ) )
+      {
+        return "XOR";
+      }
+    }
+
     return default_dot_drawer<Ntk>::node_label( ntk, n );
   }
 
@@ -229,6 +253,30 @@ public:
     if constexpr ( has_is_xor3_v<Ntk> )
     {
       if ( ntk.is_xor3( n ) )
+      {
+        return "lightskyblue";
+      }
+    }
+
+    if constexpr ( has_is_nary_and_v<Ntk> )
+    {
+      if ( ntk.is_nary_and( n ) )
+      {
+        return "lightcoral";
+      }
+    }
+
+    if constexpr ( has_is_nary_or_v<Ntk> )
+    {
+      if ( ntk.is_nary_or( n ) )
+      {
+        return "palegreen2";
+      }
+    }
+
+    if constexpr ( has_is_nary_xor_v<Ntk> )
+    {
+      if ( ntk.is_nary_xor( n ) )
       {
         return "lightskyblue";
       }

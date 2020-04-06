@@ -446,14 +446,15 @@ public:
 #pragma region Create arbitrary functions
   signal clone_node( xag_network const& other, node const& source, std::vector<signal> const& children )
   {
-    (void)other;
-    (void)source;
     assert( children.size() == 2u );
     if ( other.is_and( source ) )
-      //if ( children[0u].index < children[1u].index )
+    {
       return create_and( children[0u], children[1u] );
+    }
     else
+    {
       return create_xor( children[0u], children[1u] );
+    }
   }
 #pragma endregion
 
@@ -719,6 +720,24 @@ public:
   }
 
   bool is_xor3( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_nary_and( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_nary_or( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_nary_xor( node const& n ) const
   {
     (void)n;
     return false;

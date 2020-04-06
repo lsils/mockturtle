@@ -40,7 +40,7 @@ Welcome to mockturtle's documentation!
    algorithms/equivalence_checking
    algorithms/miter
    algorithms/dsd_decomposition
-   algorithms/shannon_decomposition
+   algorithms/decomposition
    algorithms/cleanup
    algorithms/cnf
    algorithms/reconv_cut

@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/views/cnf_view.hpp>
@@ -135,4 +136,48 @@ TEST_CASE( "build cnf_view on top of existing network and create_pi afterwards",
   CHECK( view.model_value( view.get_node( b ) ) );
   CHECK( view.model_value( view.get_node( c ) ) );
   CHECK( view.model_value( view.get_node( d ) ) );
+}
+
+TEST_CASE( "build cnf_view for k-LUT network", "[cnf_view]" )
+{
+  cnf_view<klut_network> ntk;
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+  ntk.create_po( ntk.create_not( ntk.create_xor( ntk.create_maj( a, b, c ), ntk.create_xor3( a, b, c ) ) ) );
+
+  auto result = ntk.solve();
+  CHECK( result );
+  CHECK( *result );
+  auto v = ntk.pi_model_values();
+  auto check = ( v == std::vector<bool>{{true, true, true}} ) || ( v == std::vector<bool>{{false, false, false}} );
+  CHECK( check );
+  ntk.block();
+  result = ntk.solve();
+  CHECK( result );
+  CHECK( *result );
+  v = ntk.pi_model_values();
+  check = ( v == std::vector<bool>{{true, true, true}} ) || ( v == std::vector<bool>{{false, false, false}} );
+  CHECK( check );
+  ntk.block();
+  result = ntk.solve();
+  CHECK( result );
+  CHECK( !*result );
+}
+
+TEST_CASE( "destructor", "[cnf_view]" )
+{
+  mig_network mig;
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto c = mig.create_pi();
+  mig.create_po( mig.create_maj( a, b, c ) );
+
+  {
+    cnf_view view( mig );
+    mig.events().on_add.push_back( []( auto const& n ) { (void)n; } );
+  }
+  
+  CHECK( mig.events().on_add.size() == 1 );
+  CHECK( mig.events().on_delete.size() == 0 );
 }

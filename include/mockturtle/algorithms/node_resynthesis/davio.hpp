@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file shannon.hpp
-  \brief Use Shannon decomposition for resynthesis
+  \file davio.hpp
+  \brief Use Davio decomposition for resynthesis
 
   \author Mathias Soeken
 */
@@ -40,12 +40,11 @@
 
 #include "../../traits.hpp"
 #include "../decomposition.hpp"
-#include "null.hpp"
 
 namespace mockturtle
 {
 
-/*! \brief Resynthesis function based on Shannon decomposition.
+/*! \brief Resynthesis function based on Davio decomposition.
  *
  * This resynthesis function can be passed to ``node_resynthesis``,
  * ``cut_rewriting``, and ``refactoring``.  The given truth table will be
@@ -59,16 +58,16 @@ namespace mockturtle
 
       const klut_network klut = ...;
 
-      shannon_resynthesis<xag_network> resyn;
+      positive_davio_resynthesis<xag_network> resyn;
       auto xag = node_resynthesis<xag_network>( klut, resyn );
    \endverbatim
  *
  */
 template<class Ntk, class ResynFn = null_resynthesis<Ntk>>
-class shannon_resynthesis
+class positive_davio_resynthesis
 {
 public:
-  shannon_resynthesis( std::optional<uint32_t> const& threshold = {}, ResynFn* resyn = nullptr )
+  positive_davio_resynthesis( std::optional<uint32_t> const& threshold = {}, ResynFn* resyn = nullptr )
       : threshold_( threshold ),
         resyn_( resyn ) {}
 
@@ -79,14 +78,65 @@ public:
     {
       std::vector<uint32_t> vars( function.num_vars() - std::min<uint32_t>( *threshold_, function.num_vars() ) );
       std::iota( vars.begin(), vars.end(), 0u );
-      const auto f = shannon_decomposition<Ntk, ResynFn>( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ), *resyn_ );
+      const auto f = positive_davio_decomposition<Ntk, ResynFn>( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ), *resyn_ );
       fn( f );
     }
     else
     {
       std::vector<uint32_t> vars( function.num_vars() );
       std::iota( vars.begin(), vars.end(), 0u );
-      const auto f = shannon_decomposition( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ) );
+      const auto f = positive_davio_decomposition( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ) );
+      fn( f );
+    }
+  }
+
+private:
+  std::optional<uint32_t> threshold_;
+  ResynFn* resyn_;
+};
+
+/*! \brief Resynthesis function based on Davio decomposition.
+ *
+ * This resynthesis function can be passed to ``node_resynthesis``,
+ * ``cut_rewriting``, and ``refactoring``.  The given truth table will be
+ * resynthized based on Shanon decomposition.
+ *
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+      const klut_network klut = ...;
+
+      negative_davio_resynthesis<xag_network> resyn;
+      auto xag = node_resynthesis<xag_network>( klut, resyn );
+   \endverbatim
+ *
+ */
+template<class Ntk, class ResynFn = null_resynthesis<Ntk>>
+class negative_davio_resynthesis
+{
+public:
+  negative_davio_resynthesis( std::optional<uint32_t> const& threshold = {}, ResynFn* resyn = nullptr )
+      : threshold_( threshold ),
+        resyn_( resyn ) {}
+
+  template<typename LeavesIterator, typename Fn>
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
+  {
+    if ( threshold_ )
+    {
+      std::vector<uint32_t> vars( function.num_vars() - std::min<uint32_t>( *threshold_, function.num_vars() ) );
+      std::iota( vars.begin(), vars.end(), 0u );
+      const auto f = negative_davio_decomposition<Ntk, ResynFn>( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ), *resyn_ );
+      fn( f );
+    }
+    else
+    {
+      std::vector<uint32_t> vars( function.num_vars() );
+      std::iota( vars.begin(), vars.end(), 0u );
+      const auto f = negative_davio_decomposition( ntk, function, vars, std::vector<signal<Ntk>>( begin, end ) );
       fn( f );
     }
   }

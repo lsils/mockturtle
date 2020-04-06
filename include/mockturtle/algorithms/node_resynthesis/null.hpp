@@ -24,57 +24,34 @@
  */
 
 /*!
-  \file bidecomposition.hpp
-  \brief Resynthesis with bi_decomposition
+  \file null.hpp
+  \brief No resynthesis (as default synthesis engine)
 
-  \author Eleonora Testa
+  \author Mathias Soeken
 */
 
 #pragma once
 
-#include <iostream>
-#include <sstream>
-#include <unordered_map>
-#include <vector>
-
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/operators.hpp>
-
-#include "../../algorithms/bi_decomposition.hpp"
+#include "../../traits.hpp"
 
 namespace mockturtle
 {
 
-/*! \brief Resynthesis function based on bi-decomposition
- *
- * This resynthesis function can be passed to  ``refactoring``.
- *
-   \verbatim embed:rst
-
-   Example
-
-   .. code-block:: c++
-
-      const xag_network xag = ...;
-      bidecomposition_resynthesis<xag_network> resyn;
-      const auto xag = refactoring( xag, resyn );
-   \endverbatim
- */
 
 template<class Ntk>
-class bidecomposition_resynthesis
+class null_resynthesis
 {
 public:
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dc, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
-  {
-    fn( bi_decomposition<Ntk>( ntk, function, ~dc, {begin, end} ) );
-  }
-
-  template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
-    operator()( ntk, function, function.construct(), begin, end, fn );
+    (void)ntk;
+    (void)function;
+    (void)begin;
+    (void)end;
+    (void)fn;
   }
 };
+
 } /* namespace mockturtle */

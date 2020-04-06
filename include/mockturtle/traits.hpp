@@ -1013,6 +1013,51 @@ template<class Ntk>
 inline constexpr bool has_is_xor3_v = has_is_xor3<Ntk>::value;
 #pragma endregion
 
+#pragma region has_is_nary_and
+template<class Ntk, class = void>
+struct has_is_nary_and : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_nary_and<Ntk, std::void_t<decltype( std::declval<Ntk>().is_nary_and( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_nary_and_v = has_is_nary_and<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_nary_or
+template<class Ntk, class = void>
+struct has_is_nary_or : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_nary_or<Ntk, std::void_t<decltype( std::declval<Ntk>().is_nary_or( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_nary_or_v = has_is_nary_or<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_nary_xor
+template<class Ntk, class = void>
+struct has_is_nary_xor : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_nary_xor<Ntk, std::void_t<decltype( std::declval<Ntk>().is_nary_xor( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_nary_xor_v = has_is_nary_xor<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_function
 template<class Ntk, class = void>
 struct has_is_function : std::false_type
