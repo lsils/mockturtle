@@ -128,8 +128,10 @@ inline void print_xmas_tree( std::ostream& os, uint32_t num_vars,
 template<typename TT>
 void print_binary( const TT& tt, std::ostream& os = std::cout )
 {
-  for_each_block_reversed( tt, [&tt, &os]( auto word ) {
-    std::string chunk( std::min<uint64_t>( tt.num_bits(), 64 ), '0' );
+  auto const chunk_size = std::min<uint64_t>( tt.num_bits(), 64 );
+  for_each_block_reversed( tt, [&tt, &os, chunk_size]( auto word ) {
+    bool first = ( word == *( tt.crbegin() ) );
+    std::string chunk( chunk_size, '0' );
     auto it = chunk.rbegin();
     while ( word && it != chunk.rend() )
     {
@@ -140,7 +142,21 @@ void print_binary( const TT& tt, std::ostream& os = std::cout )
       ++it;
       word >>= 1;
     }
-    os << chunk;
+    if constexpr ( std::is_same<TT, partial_truth_table>::value )
+    {
+      if ( first && ( chunk_size == 64 ) && ( tt.num_bits() % 64 ) )
+      {
+        os << chunk.substr( 64 - ( tt.num_bits() % 64 ) );
+      }
+      else
+      {
+        os << chunk;
+      }
+    }
+    else
+    {
+      os << chunk;
+    }
   } );
 }
 
@@ -154,8 +170,17 @@ void print_binary( const TT& tt, std::ostream& os = std::cout )
 template<typename TT>
 void print_hex( const TT& tt, std::ostream& os = std::cout )
 {
-  const auto chunk_size = std::min<uint64_t>( tt.num_vars() <= 1 ? 1 : ( tt.num_bits() >> 2 ), 16 );
-  for_each_block_reversed( tt, [&os, chunk_size]( auto word ) {
+  uint64_t chunk_size;
+  if constexpr ( std::is_same<TT, partial_truth_table>::value )
+  {
+    chunk_size = 16;
+  }
+  else
+  {
+    chunk_size = std::min<uint64_t>( tt.num_vars() <= 1 ? 1 : ( tt.num_bits() >> 2 ), 16 );
+  }
+  for_each_block_reversed( tt, [&tt, &os, chunk_size]( auto word ) {
+    bool first = ( word == *( tt.crbegin() ) );
     std::string chunk( chunk_size, '0' );
     auto it = chunk.rbegin();
     while ( word && it != chunk.rend() )
@@ -172,7 +197,21 @@ void print_hex( const TT& tt, std::ostream& os = std::cout )
       ++it;
       word >>= 4;
     }
-    os << chunk;
+    if constexpr ( std::is_same<TT, partial_truth_table>::value )
+    {
+      if ( first && ( ( tt.num_bits() >> 2 ) % 16 ) )
+      {
+        os << chunk.substr( ( tt.num_bits() % 4 ) ? ( 15 - ( ( tt.num_bits() >> 2 ) % 16 ) ) : ( 16 - ( ( tt.num_bits() >> 2 ) % 16 ) ) );
+      }
+      else
+      {
+        os << chunk;
+      }
+    }
+    else
+    {
+      os << chunk;
+    }
   } );
 }
 
@@ -230,7 +269,7 @@ inline std::string to_hex( const TT& tt )
   \param tt Truth table
   \param os Output stream
 */
-template<class TT>
+template<typename TT, typename = std::enable_if_t<!std::is_same<TT, partial_truth_table>::value>>
 void print_xmas_tree_for_function( const TT& tt, std::ostream& os = std::cout )
 {
   detail::print_xmas_tree( os, tt.num_vars(),
@@ -270,12 +309,11 @@ void print_xmas_tree_for_functions( uint32_t num_vars,
   detail::print_xmas_tree( os, 1 << num_vars, _preds );
 }
 
-
 /*! \brief Creates an expression for an ANF form
  *
  * \param anf Truth table in ANF encoding
  */
-template<class TT>
+template<typename TT, typename = std::enable_if_t<!std::is_same<TT, partial_truth_table>::value>>
 std::string anf_to_expression( const TT& anf )
 {
   const auto terms = count_ones( anf );
@@ -298,7 +336,7 @@ std::string anf_to_expression( const TT& anf )
     {
       expr += "(";
     }
-    for ( auto i = 0; i < anf.num_vars(); ++i )
+    for ( auto i = 0u; i < anf.num_vars(); ++i )
     {
       if ( ( bit >> i ) & 1 )
       {

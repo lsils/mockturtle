@@ -40,4 +40,7 @@ namespace kitty
 template<class TT>
 struct is_truth_table : std::false_type {};
 
+template<class TT>
+struct is_complete_truth_table : std::false_type {};
+
 }

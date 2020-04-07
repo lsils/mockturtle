@@ -658,11 +658,11 @@ TEST_CASE( "substitute input by constant in NAND-based XOR circuit", "[aig]" )
   aig.create_po( f4 );
 
   CHECK( aig.num_gates() == 4u );
-  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x6 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x6 );
 
   aig.substitute_node( aig.get_node( x1 ), aig.get_constant( true ) );
 
-  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x3 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x3 );
 
   CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 0u );
   CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 0u );
@@ -683,11 +683,11 @@ TEST_CASE( "substitute node by constant in NAND-based XOR circuit", "[aig]" )
   aig.create_po( f4 );
 
   CHECK( aig.num_gates() == 4u );
-  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x6 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x6 );
 
   aig.substitute_node( aig.get_node( f3 ), aig.get_constant( false ) );
 
-  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x2 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x2 );
 
   CHECK( aig.num_gates() == 2u );
   CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1u );
@@ -713,11 +713,11 @@ TEST_CASE( "substitute node by constant in NAND-based XOR circuit (test case 2)"
   aig.create_po( f4 );
 
   CHECK( aig.num_gates() == 4u );
-  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0x6 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x6 );
 
   aig.substitute_node( aig.get_node( f1 ), aig.get_constant( false ) );
 
-  CHECK( simulate<kitty::static_truth_table<2>>( aig )[0]._bits == 0xe );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0xe );
 
   CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 0u );
   CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 0u );

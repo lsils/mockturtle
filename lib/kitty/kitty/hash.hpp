@@ -83,7 +83,7 @@ struct hash
 };
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 struct hash<static_truth_table<NumVars, true>>
 {
   inline std::size_t operator()( const static_truth_table<NumVars, true>& tt ) const

@@ -1201,7 +1201,7 @@ namespace percy
     inline int get_init_imint(const spec& spec)
     {
         int iMint = -1;
-        kitty::static_truth_table<6> tt;
+        kitty::static_truth_table<6u> tt;
         for (int i = 1; i < (1 << spec.nr_in); i++) {
             kitty::create_from_words(tt, &i, &i + 1);
             const int nOnes = kitty::count_ones(tt);
