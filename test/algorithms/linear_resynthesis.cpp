@@ -23,8 +23,8 @@ TEST_CASE( "Linear resynthesis with Paar algorithm", "[linear_resynthesis]" )
   CHECK( 7u == xag2.num_pis() );
   CHECK( 5u == xag2.num_pos() );
 
-  const auto f1 = simulate<kitty::static_truth_table<7>>( xag );
-  const auto f2 = simulate<kitty::static_truth_table<7>>( xag2 );
+  const auto f1 = simulate<kitty::static_truth_table<7u>>( xag );
+  const auto f2 = simulate<kitty::static_truth_table<7u>>( xag2 );
   for ( auto i = 0u; i < f1.size(); ++i )
   {
     CHECK( f1[i] == f2[i] );
@@ -46,8 +46,8 @@ TEST_CASE( "Linear resynthesis with Paar algorithm 2", "[linear_resynthesis]" )
   CHECK( 5u == xag2.num_pis() );
   CHECK( 3u == xag2.num_pos() );
 
-  const auto f1 = simulate<kitty::static_truth_table<5>>( xag );
-  const auto f2 = simulate<kitty::static_truth_table<5>>( xag2 );
+  const auto f1 = simulate<kitty::static_truth_table<5u>>( xag );
+  const auto f2 = simulate<kitty::static_truth_table<5u>>( xag2 );
   for ( auto i = 0u; i < f1.size(); ++i )
   {
     CHECK( f1[i] == f2[i] );

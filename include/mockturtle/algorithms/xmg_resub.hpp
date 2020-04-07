@@ -202,7 +202,7 @@ public:
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
 
-    int32_t const root_rdb = absolute_disinguishing_power( tt );
+    int32_t const root_rdb = absolute_distinguishing_power( tt );
 
     std::vector<divisor> sorted_divs;
     for ( auto it = std::begin( divs ), ie = std::begin( divs ) + num_divs; it != ie; ++it )

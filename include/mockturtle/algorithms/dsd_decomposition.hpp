@@ -68,7 +68,7 @@ public:
         _on_prime( on_prime ),
         _ps( ps )
   {
-    for ( auto i = 0; i < func.num_vars(); ++i )
+    for ( auto i = 0u; i < func.num_vars(); ++i )
     {
       if ( kitty::has_var( func, i ) )
       {

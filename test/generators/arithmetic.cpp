@@ -33,7 +33,7 @@ TEST_CASE( "build a full adder with an AIG", "[arithmetic]" )
   aig.create_po( sum );
   aig.create_po( carry );
 
-  const auto simm = simulate<kitty::static_truth_table<3>>( aig );
+  const auto simm = simulate<kitty::static_truth_table<3u>>( aig );
   CHECK( simm.size() == 2 );
   CHECK( simm[0]._bits == 0x96 );
   CHECK( simm[1]._bits == 0xe8 );
@@ -50,7 +50,7 @@ TEST_CASE( "build a half adder with an AIG", "[arithmetic]" )
   aig.create_po( sum );
   aig.create_po( carry );
 
-  const auto simm = simulate<kitty::static_truth_table<2>>( aig );
+  const auto simm = simulate<kitty::static_truth_table<2u>>( aig );
   CHECK( simm.size() == 2 );
   CHECK( simm[0]._bits == 0x6 );
   CHECK( simm[1]._bits == 0x8 );
@@ -74,7 +74,7 @@ TEST_CASE( "build a 2-bit adder with an AIG", "[arithmetic]" )
   CHECK( aig.num_pos() == 3 );
   CHECK( aig.num_gates() == 14 );
 
-  const auto simm = simulate<kitty::static_truth_table<5>>( aig );
+  const auto simm = simulate<kitty::static_truth_table<5u>>( aig );
   CHECK( simm.size() == 3 );
   CHECK( simm[0]._bits == 0xa5a55a5a );
   CHECK( simm[1]._bits == 0xc936936c );

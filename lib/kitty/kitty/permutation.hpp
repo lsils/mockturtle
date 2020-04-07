@@ -219,7 +219,7 @@ TT delta_swap( const TT& tt, uint64_t delta, const TT& omega )
 template<typename TT>
 void permute_with_masks_inplace( TT& tt, const std::vector<TT>& masks )
 {
-  for ( auto k = 0; k < tt.num_vars(); ++k )
+  for ( auto k = 0u; k < tt.num_vars(); ++k )
   {
     delta_swap_inplace( tt, uint64_t( 1 ) << k, masks[k] );
   }

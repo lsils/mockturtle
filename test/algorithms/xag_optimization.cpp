@@ -18,7 +18,7 @@ TEST_CASE( "Edge cases for linear resynthesis", "[xag_optimization]" )
     xag.create_po( xag.create_nary_and( pis ) );
 
     const auto opt = exact_linear_resynthesis_optimization( xag );
-    CHECK( simulate<kitty::static_truth_table<4>>( xag ) == simulate<kitty::static_truth_table<4>>( opt ) );
+    CHECK( simulate<kitty::static_truth_table<4>>( xag ) == simulate<kitty::static_truth_table<4u>>( opt ) );
   }
 
   {
@@ -28,6 +28,6 @@ TEST_CASE( "Edge cases for linear resynthesis", "[xag_optimization]" )
     xag.create_po( xag.create_xor( xag.create_and( pis[0u], pis[1u] ), xag.create_and( pis[2u], pis[3u] ) ) );
 
     const auto opt = exact_linear_resynthesis_optimization( xag );
-    CHECK( simulate<kitty::static_truth_table<4>>( xag ) == simulate<kitty::static_truth_table<4>>( opt ) );
+    CHECK( simulate<kitty::static_truth_table<4>>( xag ) == simulate<kitty::static_truth_table<4u>>( opt ) );
   }
 }

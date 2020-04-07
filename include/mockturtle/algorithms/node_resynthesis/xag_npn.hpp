@@ -143,7 +143,7 @@ public:
   template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
-    kitty::static_truth_table<4> tt = kitty::extend_to<4>( function );
+    kitty::static_truth_table<4u> tt = kitty::extend_to<4u>( function );
 
     /* get representative of function */
     const auto [repr, phase, perm] = _repr[*tt.cbegin()];
@@ -199,7 +199,7 @@ private:
   {
     stopwatch t( st.time_classes );
 
-    kitty::static_truth_table<4> tt;
+    kitty::static_truth_table<4u> tt;
     do {
       _repr[*tt.cbegin()] = kitty::exact_npn_canonization( tt );
       kitty::next_inplace( tt );
@@ -211,7 +211,7 @@ private:
     stopwatch t( st.time_db );
 
     _db = create_from_binary_index_list<DatabaseNtk>( subgraphs );
-    const auto sim_res = simulate_nodes<kitty::static_truth_table<4>>( _db );
+    const auto sim_res = simulate_nodes<kitty::static_truth_table<4u>>( _db );
 
     _db.foreach_node( [&]( auto n ) {
       if ( std::get<0>( _repr[*sim_res[n].cbegin()] ) == sim_res[n] )
@@ -250,8 +250,8 @@ private:
   xag_npn_resynthesis_stats st;
   xag_npn_resynthesis_stats* pst{nullptr};
 
-  std::vector<std::tuple<kitty::static_truth_table<4>, uint32_t, std::vector<uint8_t>>> _repr;
-  std::unordered_map<kitty::static_truth_table<4>, std::vector<signal<DatabaseNtk>>, kitty::hash<kitty::static_truth_table<4>>> _repr_to_signal;
+  std::vector<std::tuple<kitty::static_truth_table<4u>, uint32_t, std::vector<uint8_t>>> _repr;
+  std::unordered_map<kitty::static_truth_table<4u>, std::vector<signal<DatabaseNtk>>, kitty::hash<kitty::static_truth_table<4u>>> _repr_to_signal;
 
   DatabaseNtk _db;
 
