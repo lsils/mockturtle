@@ -131,11 +131,6 @@ public:
     return cnf_view_.solver_.add_variable();
   }
 
-  inline bill::var_type add_var()
-  {
-    return cnf_view_.solver_.add_variable();
-  }
-
   /*! \brief Returns the switching literal associated to a node. */
   inline bill::lit_type switch_lit( node const& n ) const
   {
