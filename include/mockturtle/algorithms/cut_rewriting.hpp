@@ -49,6 +49,7 @@
 #include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
 #include "../views/fanout_view.hpp"
+#include "cleanup.hpp"
 #include "cut_enumeration.hpp"
 #include "detail/mffc_utils.hpp"
 #include "dont_cares.hpp"
