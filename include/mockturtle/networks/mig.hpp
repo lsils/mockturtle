@@ -189,7 +189,7 @@ public:
 
     /* increase ref-count to children */
     _storage->nodes[f.index].data[0].h1++;
-    auto const po_index = _storage->outputs.size();
+    auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
     _storage->outputs.emplace_back( f.index, f.complement );
     ++_storage->data.num_pos;
     return po_index;
@@ -212,7 +212,7 @@ public:
 
     /* increase ref-count to children */
     _storage->nodes[f.index].data[0].h1++;
-    auto const ri_index = _storage->outputs.size();
+    auto const ri_index = static_cast<uint32_t>( _storage->outputs.size() );
     _storage->outputs.emplace_back( f.index, f.complement );
     _storage->data.latches.emplace_back( reset );
     return ri_index;
@@ -662,7 +662,7 @@ public:
 
   uint32_t num_latches() const
   {
-      return _storage->data.latches.size();
+      return static_cast<uint32_t>( _storage->data.latches.size() );
   }
 
   auto num_pis() const
@@ -838,7 +838,7 @@ public:
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data &&
             _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data );
-    return ( _storage->nodes[n].children[0].data );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data );
   }
 
   uint32_t co_index( signal const& s ) const
@@ -861,7 +861,7 @@ public:
             _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data);
     assert( _storage->nodes[n].children[0].data < _storage->data.num_pis );
 
-    return ( _storage->nodes[n].children[0].data );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data );
   }
 
   uint32_t po_index( signal const& s ) const
@@ -884,7 +884,7 @@ public:
             _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data );
     assert( _storage->nodes[n].children[0].data >= _storage->data.num_pis );
 
-    return ( _storage->nodes[n].children[0].data - _storage->data.num_pis );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data - _storage->data.num_pis );
   }
 
   uint32_t ri_index( signal const& s ) const
