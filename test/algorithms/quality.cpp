@@ -21,15 +21,14 @@
 #include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/satlut_mapping.hpp>
-#include <mockturtle/algorithms/aig_resub.hpp>
-#include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/xmg_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/write_bench.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/mapping_view.hpp>
 
@@ -148,7 +147,7 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 18, 34, 22, 114, 56, 253, 113, 442, 449, 69}} );
+  CHECK( v == std::vector<uint32_t>{{0, 18, 34, 22, 114, 56, 153, 107, 432, 449, 69}} );
 
   // with zero gain
   const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
@@ -161,7 +160,7 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
     return before - ntk.num_gates();
   } );
 
-  CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 115, 55, 254, 118, 443, 449, 66}} );
+  CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 115, 55, 139, 107, 409, 449, 66}} );
 }
 
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
