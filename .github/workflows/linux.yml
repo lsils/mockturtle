@@ -25,6 +25,7 @@ jobs:
         make run_tests
     - name: Run tests
       run: |
+        cd build
         ./test/run_tests
     - name: Run lcov
       run: |
