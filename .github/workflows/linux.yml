@@ -11,7 +11,7 @@ on:
 jobs:
   build-gcc7:
     runs-on: ubuntu-latest
-    name: Build with GNU GCC 7
+    name: GNU GCC 7
     
     steps:
     - uses: actions/checkout@v1
@@ -29,7 +29,7 @@ jobs:
         ./test/run_tests "~[quality]"
   build-gcc8:
     runs-on: ubuntu-latest
-    name: Build with GNU GCC 8
+    name: GNU GCC 8
     
     steps:
     - uses: actions/checkout@v1
@@ -47,7 +47,7 @@ jobs:
         ./test/run_tests "~[quality]"
   build-gcc9:
     runs-on: ubuntu-latest
-    name: Build with GNU GCC 9
+    name: GNU GCC 9
     
     steps:
     - uses: actions/checkout@v1
@@ -65,7 +65,7 @@ jobs:
         ./test/run_tests "~[quality]"
   build-clang8:
     runs-on: ubuntu-latest
-    name: Build with Clang 8
+    name: Clang 8
     
     steps:
     - uses: actions/checkout@v1
@@ -83,7 +83,7 @@ jobs:
         ./test/run_tests "~[quality]"
   build-clang9:
     runs-on: ubuntu-latest
-    name: Build with Clang 9
+    name: Clang 9
     
     steps:
     - uses: actions/checkout@v1
