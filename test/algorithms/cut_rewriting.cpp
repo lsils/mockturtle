@@ -71,7 +71,7 @@ TEST_CASE( "Cut rewriting with Akers synthesis", "[cut_rewriting]" )
   mig.create_po( f );
 
   akers_resynthesis<mig_network> resyn;
-  cut_rewriting( mig, resyn );
+  cut_rewriting_with_compatibility_graph( mig, resyn );
 
   mig = cleanup_dangling( mig );
 
