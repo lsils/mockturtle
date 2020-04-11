@@ -85,7 +85,7 @@
 #include "mockturtle/algorithms/xmg_optimization.hpp"
 #include "mockturtle/algorithms/cut_enumeration.hpp"
 #include "mockturtle/algorithms/cell_window.hpp"
-#include "mockturtle/algorithms/shannon_decomposition.hpp"
+#include "mockturtle/algorithms/decomposition.hpp"
 #include "mockturtle/algorithms/node_resynthesis.hpp"
 #include "mockturtle/algorithms/linear_resynthesis.hpp"
 #include "mockturtle/algorithms/mig_resub.hpp"

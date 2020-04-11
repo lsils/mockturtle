@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
+ * Copyright (C) 2017-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -37,6 +37,7 @@
 #include <vector>
 
 #include "cube.hpp"
+#include "traits.hpp"
 
 namespace kitty
 {
@@ -100,6 +101,8 @@ std::pair<std::vector<cube>, std::vector<uint64_t>> simple_spp( const std::vecto
 template<typename TT>
 void create_from_spp( TT& tt, const std::vector<cube>& cubes, const std::vector<uint64_t>& sums )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   clear( tt );
 
   for ( auto cube : cubes )
@@ -109,7 +112,7 @@ void create_from_spp( TT& tt, const std::vector<cube>& cubes, const std::vector<
     auto bits = cube._bits;
     auto mask = cube._mask;
 
-    for ( auto i = 0; i < tt.num_vars(); ++i )
+    for ( auto i = 0u; i < tt.num_vars(); ++i )
     {
       if ( mask & 1 )
       {
@@ -126,7 +129,7 @@ void create_from_spp( TT& tt, const std::vector<cube>& cubes, const std::vector<
       if ( mask & 1 )
       {
         auto ssum = tt.construct();
-        for ( auto j = 0; j < tt.num_vars(); ++j )
+        for ( auto j = 0u; j < tt.num_vars(); ++j )
         {
           if ( ( sums[i] >> j ) & 1 )
           {

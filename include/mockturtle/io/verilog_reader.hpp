@@ -284,7 +284,7 @@ public:
     {
       if ( !num_args_equals( 3u ) ) return;
       if ( !num_params_equals( 1u ) ) return;
-      const auto bitwidth = parse_small_value( params[0u] );
+      const auto bitwidth = static_cast<uint32_t>( parse_small_value( params[0u] ) );
       if ( !register_has_size( args[0].second, bitwidth ) ) return;
       if ( !register_has_size( args[1].second, bitwidth ) ) return;
 
@@ -299,7 +299,7 @@ public:
     {
       if ( !num_args_equals( 3u ) ) return;
       if ( !num_params_equals( 3u ) ) return;
-      const auto bitwidth = parse_small_value( params[0u] );
+      const auto bitwidth = static_cast<uint32_t>( parse_small_value( params[0u] ) );
       if ( !register_has_size( args[0].second, bitwidth ) ) return;
       if ( !register_has_size( args[1].second, bitwidth ) ) return;
 

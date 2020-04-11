@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
+ * Copyright (C) 2017-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -47,6 +47,7 @@
 #include "hash.hpp"
 #include "operations.hpp"
 #include "operators.hpp"
+#include "traits.hpp"
 
 namespace kitty
 {
@@ -305,6 +306,8 @@ TT algebraic_normal_form( const TT& func )
 template<typename TT>
 inline std::vector<cube> esop_from_optimum_pkrm( const TT& tt )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   std::unordered_set<cube, hash<cube>> cubes;
   detail::expansion_cache<TT> cache;
 
@@ -317,6 +320,8 @@ inline std::vector<cube> esop_from_optimum_pkrm( const TT& tt )
 template<typename TT>
 inline std::vector<cube> esop_from_pprm_slow( const TT& tt )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   std::unordered_set<cube, hash<cube>> cubes;
   detail::esop_from_pprm_rec( cubes, tt, 0, cube() );
 
@@ -333,6 +338,8 @@ inline std::vector<cube> esop_from_pprm_slow( const TT& tt )
 template<class TT>
 std::vector<cube> esop_from_pprm( const TT& func )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   std::vector<cube> cubes;
   for_each_one_bit( detail::algebraic_normal_form( func ), [&]( auto bit ) {
     cubes.emplace_back( (uint32_t)bit, (uint32_t)bit );

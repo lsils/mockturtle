@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
+ * Copyright (C) 2017-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -40,6 +40,7 @@
 #include "esop.hpp"
 #include "operations.hpp"
 #include "operators.hpp"
+#include "traits.hpp"
 
 namespace kitty
 {
@@ -51,7 +52,7 @@ namespace kitty
   function returns \f$(3, (2,2))\f$.
   \param tt Truth table
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 std::pair<uint32_t, std::vector<uint32_t>> chow_parameters( const TT& tt )
 {
   assert( tt.num_vars() <= 32 );
@@ -77,7 +78,7 @@ std::pair<uint32_t, std::vector<uint32_t>> chow_parameters( const TT& tt )
 /*! \brief Checks whether a function is canalizing
   \param tt Truth table
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 bool is_canalizing( const TT& tt )
 {
   uint32_t f1or{}, f0or{};
@@ -170,12 +171,12 @@ bool is_symmetric_in( const TT& tt, uint8_t var_index1, uint8_t var_index2 )
   A function is monotone if f(x) ≤ f(y) whenever x ⊆ y
   \param tt Truth table
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 bool is_monotone( const TT& tt )
 {
   auto numvars = tt.num_vars();
 
-  for ( auto i = 0; i < numvars; i++ )
+  for ( auto i = 0u; i < numvars; i++ )
   {
     auto const tt1 = cofactor0( tt, i );
     auto const tt2 = cofactor1( tt, i );
@@ -198,13 +199,13 @@ bool is_monotone( const TT& tt )
   A function is selfdual if !f(x, y, ..., z) = f(!x, !y, ..., !z)
   \param tt Truth table
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 bool is_selfdual( const TT& tt )
 {
   auto numvars = tt.num_vars();
   auto tt1 = tt;
   auto tt2 = ~tt1;
-  for ( auto i = 0; i < numvars; i++ )
+  for ( auto i = 0u; i < numvars; i++ )
   {
     tt1 = flip( tt1, i );
   }
@@ -227,7 +228,7 @@ bool is_normal( const TT& tt )
   variable or constant zero.
   \param tt Truth table
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 bool is_trivial( const TT& tt )
 {
   /* compare to constants */
@@ -236,7 +237,7 @@ bool is_trivial( const TT& tt )
 
   /* compare to variables */
   TT tt_check = tt;
-  for ( auto i = 0; i < tt.num_vars(); ++i )
+  for ( auto i = 0u; i < tt.num_vars(); ++i )
   {
     create_nth_var( tt_check, i );
     if ( tt == tt_check || tt == ~tt_check )
@@ -312,18 +313,18 @@ inline uint32_t polynomial_degree( const TT& tt )
 
 /*! \brief Returns the absolute distinguishing power of a function
   The absolute distinguishing power of a function f is the number of
-  distinguishing pair {i,j} of bits, where f(i) != f(j).
+  distinguishing bit pair {i,j} such that f(i) != f(j).
   \param tt Truth table
 */
 template<typename TT>
-inline uint64_t absolute_disinguishing_power( const TT& tt )
+inline uint64_t absolute_distinguishing_power( const TT& tt )
 {
   return count_zeros( tt ) * count_ones( tt );
 }
 
-/*! brief Returns the relative distinguishing power of a function wrt. to target function
-  Quantifies the number of distinguishing pairs in the target function
-  that can be distinguished by the function.
+/*! \brief Returns the relative distinguishing power of a function wrt. to a target function
+  Quantifies the number of distinguishing bit pairs in the target function
+  that can be distinguished by another function.
   \param tt Truth table of function
   \param target_tt Truth table of target function
 */
@@ -331,6 +332,43 @@ template<typename TT>
 inline uint64_t relative_distinguishing_power( const TT& tt, const TT& target_tt )
 {
   return count_ones( ~tt & ~target_tt ) * count_ones( tt & target_tt ) + count_ones( ~tt & target_tt ) * count_ones( tt & ~target_tt ); 
+}
+
+/*! \brief Return true iff each distinguishing bit pair of the target
+  function is also distinguishable by the divisor functions
+  \param target Truth table of the target functions
+  \param divisors Truth tables of the divisor functions
+*/
+template<typename TT>
+bool is_covered_with_divisors( TT const& target, std::vector<TT> const& divisors )
+{
+  /* iterate over all bit pairs of the target function */
+  for ( uint32_t j = 1u; j < target.num_bits(); ++j )
+  {
+    for ( uint32_t i = 0u; i < j; ++i )
+    {
+      /* check if the bit pair is distinguished by the target function */
+      if ( get_bit( target, i ) != get_bit( target, j ) )
+      {
+        /* check if this bit pair is also distinguished by a divisor function */
+        bool found = false;
+        for ( const auto& d : divisors )
+        {
+          if ( get_bit( d, i ) != get_bit( d, j ) )
+          {
+            found = true;
+            break;
+          }
+        }
+
+        if ( !found )
+        {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
 }
 
 } // namespace kitty

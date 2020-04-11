@@ -33,9 +33,16 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
+#include <iostream>
 #include <string>
+#include <vector>
 
+#include "../algorithms/extract_linear.hpp"
+#include "../algorithms/linear_resynthesis.hpp"
+#include "../io/write_verilog.hpp"
 #include "../networks/xag.hpp"
+#include "../properties/mccost.hpp"
 #include "../utils/node_map.hpp"
 #include "../views/topo_view.hpp"
 #include "cleanup.hpp"
@@ -78,8 +85,8 @@ public:
 
       if ( xag.is_xor( n ) )
       {
-        std::array<xag_network::signal*, 2> children;
-        std::array<std::vector<xag_network::node>*, 2> clfi;
+        std::array<xag_network::signal*, 2> children{};
+        std::array<std::vector<xag_network::node>*, 2> clfi{};
         xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
           children[i] = &old2new[f];
           clfi[i] = &lfi[f];
@@ -158,7 +165,7 @@ private:
  * property of the XOR operation.  In such cases the AND gate can be replaced
  * by a constant or a fanin.
  */
-xag_network xag_constant_fanin_optimization( xag_network const& xag )
+inline xag_network xag_constant_fanin_optimization( xag_network const& xag )
 {
   return cleanup_dangling( detail::xag_constant_fanin_optimization_impl( xag ).run() );
 }
@@ -168,7 +175,7 @@ xag_network xag_constant_fanin_optimization( xag_network const& xag )
  * If an AND gate is satisfiability don't care for assignment 00, it can be
  * replaced by an XNOR gate, therefore reducing the multiplicative complexity.
  */
-xag_network xag_dont_cares_optimization( xag_network const& xag )
+inline xag_network xag_dont_cares_optimization( xag_network const& xag )
 {
   node_map<xag_network::signal, xag_network> old_to_new( xag );
 
@@ -185,7 +192,7 @@ xag_network xag_dont_cares_optimization( xag_network const& xag )
     if ( xag.is_constant( n ) || xag.is_pi( n ) )
       return;
 
-    std::array<xag_network::signal, 2> fanin;
+    std::array<xag_network::signal, 2> fanin{};
     xag.foreach_fanin( n, [&]( auto const& f, auto i ) {
       fanin[i] = old_to_new[f] ^ xag.is_complemented( f );
     } );
@@ -212,6 +219,61 @@ xag_network xag_dont_cares_optimization( xag_network const& xag )
   } );
 
   return dest;
+}
+
+/*! \brief Optimizes XOR gates by linear network resynthesis
+ *
+ * See `exact_linear_resynthesis_optimization` for an example implementation
+ * of this function.
+ */
+inline xag_network linear_resynthesis_optimization( xag_network const& xag, std::function<xag_network(xag_network const&)> linear_resyn, std::function<void(std::vector<uint32_t> const&)> const& on_ignore_inputs = {} )
+{
+  const auto num_ands = *multiplicative_complexity( xag );
+  const auto linear = extract_linear_circuit( xag ).first;
+
+  /* ignore inputs (if linear resynthesis is not cancellation-free) */
+  on_ignore_inputs( {} );
+  for ( auto i = 0u; i < num_ands; ++i )
+  {
+    std::vector<uint32_t> ignore( num_ands - i );
+    std::iota( ignore.begin(), ignore.end(), xag.num_pis() + i );
+    on_ignore_inputs( ignore );
+    on_ignore_inputs( ignore );
+  }
+
+  const auto linear_optimized = linear_resyn( linear );
+
+  assert( linear.num_pis() == linear_optimized.num_pis() );
+  assert( linear.num_pos() == linear_optimized.num_pos() );
+  assert( linear.num_pis() == xag.num_pis() + num_ands );
+  assert( linear.num_pos() == 1 + 2 * num_ands );
+
+  return merge_linear_circuit( linear_optimized, num_ands );
+}
+
+/*! \brief Optimizes XOR gates by exact linear network resynthesis
+ */
+inline xag_network exact_linear_resynthesis_optimization( xag_network const& xag, uint32_t conflict_limit = 0u )
+{
+  exact_linear_synthesis_params ps;
+  ps.conflict_limit = conflict_limit;
+
+  const auto linear_resyn = [&]( xag_network const& linear ) {
+    if ( const auto optimized = exact_linear_resynthesis( linear, ps ); optimized )
+    {
+      return *optimized;
+    }
+    else
+    {
+      return linear;
+    }
+  };
+
+  const auto on_ignore_inputs = [&]( std::vector<uint32_t> const& ignore ) {
+    ps.ignore_inputs.push_back( ignore );
+  };
+
+  return linear_resynthesis_optimization( xag, linear_resyn, on_ignore_inputs );
 }
 
 } /* namespace mockturtle */

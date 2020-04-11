@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
+ * Copyright (C) 2017-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -36,6 +36,7 @@
 #include <numeric>
 
 #include "static_truth_table.hpp"
+#include "partial_truth_table.hpp"
 #include "detail/mscfix.hpp"
 
 namespace kitty
@@ -53,7 +54,7 @@ void set_bit( TT& tt, uint64_t index )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 void set_bit( static_truth_table<NumVars, true>& tt, uint64_t index )
 {
   tt._bits |= uint64_t( 1 ) << index;
@@ -74,7 +75,7 @@ auto get_bit( const TT& tt, uint64_t index )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 auto get_bit( const static_truth_table<NumVars, true>& tt, uint64_t index )
 {
   return ( tt._bits >> index ) & 0x1;
@@ -95,7 +96,7 @@ void clear_bit( TT& tt, uint64_t index )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 void clear_bit( static_truth_table<NumVars, true>& tt, uint64_t index )
 {
   tt._bits &= ~( uint64_t( 1 ) << index );
@@ -114,7 +115,7 @@ void flip_bit( TT& tt, uint64_t index )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 void flip_bit( static_truth_table<NumVars, true>& tt, uint64_t index )
 {
   tt._bits ^= uint64_t( 1 ) << index;
@@ -131,7 +132,7 @@ void clear( TT& tt )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 void clear( static_truth_table<NumVars, true>& tt )
 {
   tt._bits = 0;
@@ -152,7 +153,7 @@ inline uint64_t count_ones( const TT& tt )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 inline uint64_t count_ones( const static_truth_table<NumVars, true>& tt )
 {
   return __builtin_popcount( tt._bits & 0xffffffff ) + __builtin_popcount( tt._bits >> 32 );
@@ -313,7 +314,14 @@ int64_t find_last_one_bit( const TT& tt )
 template<typename TT>
 int64_t find_first_bit_difference( const TT& first, const TT& second )
 {
-  assert( first.num_vars() == second.num_vars() );
+  if constexpr ( std::is_same<TT, partial_truth_table>::value )
+  {
+    assert( first.num_bits() == second.num_bits() );
+  }
+  else
+  {
+    assert( first.num_vars() == second.num_vars() );
+  }
 
   auto it = first.cbegin();
   auto it2 = second.cbegin();
@@ -342,7 +350,14 @@ int64_t find_first_bit_difference( const TT& first, const TT& second )
 template<typename TT>
 int64_t find_last_bit_difference( const TT& first, const TT& second )
 {
-  assert( first.num_vars() == second.num_vars() );
+  if constexpr ( std::is_same<TT, partial_truth_table>::value )
+  {
+    assert( first.num_bits() == second.num_bits() );
+  }
+  else
+  {
+    assert( first.num_vars() == second.num_vars() );
+  }
 
   auto it = first.crbegin();
   auto it2 = second.crbegin();

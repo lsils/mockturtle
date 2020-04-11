@@ -40,7 +40,6 @@
 #include "events.hpp"
 #include "storage.hpp"
 
-#include <ez/direct_iterator.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 
@@ -192,7 +191,7 @@ public:
     /* increase ref-count to children */
     _storage->nodes[f].data[0].h1++;
 
-    auto const po_index = _storage->outputs.size();
+    auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
     _storage->outputs.emplace_back( f );
     ++_storage->data.num_pos;
     return po_index;
@@ -202,7 +201,7 @@ public:
   {
     (void)name;
 
-    auto const index = _storage->nodes.size();
+    auto const index = static_cast<uint32_t>( _storage->nodes.size() );
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
     _storage->nodes[index].data[1].h1 = 2;
@@ -215,7 +214,7 @@ public:
 
     /* increase ref-count to children */
     _storage->nodes[f].data[0].h1++;
-    auto const ri_index = _storage->outputs.size();
+    auto const ri_index = static_cast<uint32_t>( _storage->outputs.size() );
     _storage->outputs.emplace_back( f );
     _storage->data.latches.emplace_back( reset );
     return ri_index;
@@ -224,7 +223,7 @@ public:
   int8_t latch_reset( uint32_t index ) const
   {
     assert( index < _storage->data.latches.size() );
-    return _storage->data.latches[ index ];
+    return _storage->data.latches[index];
   }
 
   bool is_combinational() const
@@ -471,7 +470,7 @@ signal create_maj( signal a, signal b, signal c )
 
   uint32_t num_latches() const
   {
-      return _storage->data.latches.size();
+      return static_cast<uint32_t>( _storage->data.latches.size() );
   }
 
   auto num_pis() const
@@ -584,7 +583,7 @@ signal create_maj( signal a, signal b, signal c )
   uint32_t ci_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
-    return ( _storage->nodes[n].children[0].data );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data );
   }
 
   uint32_t co_index( signal const& s ) const
@@ -604,7 +603,7 @@ signal create_maj( signal a, signal b, signal c )
   uint32_t pi_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
-    return ( _storage->nodes[n].children[0].data );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data );
   }
 
   uint32_t po_index( signal const& s ) const
@@ -624,7 +623,7 @@ signal create_maj( signal a, signal b, signal c )
   uint32_t ro_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
-    return ( _storage->nodes[n].children[0].data - _storage->data.num_pis );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data - _storage->data.num_pis );
   }
 
   uint32_t ri_index( signal const& s ) const
@@ -656,9 +655,8 @@ signal create_maj( signal a, signal b, signal c )
   template<typename Fn>
   void foreach_node( Fn&& fn ) const
   {
-    detail::foreach_element( ez::make_direct_iterator<uint64_t>( 0 ),
-                             ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
-                             fn );
+    auto r = range<uint64_t>( _storage->nodes.size() );
+    detail::foreach_element( r.begin(), r.end(), fn );
   }
 
   template<typename Fn>
@@ -748,8 +746,8 @@ signal create_maj( signal a, signal b, signal c )
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
-    detail::foreach_element_if( ez::make_direct_iterator<uint64_t>( 2 ), /* start from 2 to avoid constants */
-                                ez::make_direct_iterator<uint64_t>( _storage->nodes.size() ),
+    auto r = range<uint64_t>( 2u, _storage->nodes.size() ); /* start from 2 to avoid constants */
+    detail::foreach_element_if( r.begin(), r.end(),
                                 [this]( auto n ) { return !is_ci( n ); },
                                 fn );
   }

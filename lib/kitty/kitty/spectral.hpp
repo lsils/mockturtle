@@ -1,6 +1,6 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
- * Copyright (C) 2017-2019  University of Victoria
+ * Copyright (C) 2017-2020  EPFL
+ * Copyright (C) 2017-2020  University of Victoria
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -42,6 +42,7 @@
 #include "constructors.hpp"
 #include "esop.hpp"
 #include "detail/mscfix.hpp"
+#include "traits.hpp"
 
 #include <cmath>
 #include <iomanip>
@@ -587,6 +588,8 @@ inline void exact_spectral_canonization_null_callback( const std::vector<spectra
 template<typename TT, typename Callback = decltype( detail::exact_spectral_canonization_null_callback )>
 inline TT exact_spectral_canonization( const TT& tt, Callback&& fn = detail::exact_spectral_canonization_null_callback )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   detail::miller_spectral_canonization_impl<TT> impl( tt );
   return impl.run( fn ).first;
 }
@@ -610,6 +613,8 @@ inline TT exact_spectral_canonization( const TT& tt, Callback&& fn = detail::exa
 template<typename TT, typename Callback = decltype( detail::exact_spectral_canonization_null_callback )>
 inline std::pair<TT, bool> exact_spectral_canonization_limit( const TT& tt, unsigned step_limit, Callback&& fn = detail::exact_spectral_canonization_null_callback )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   detail::miller_spectral_canonization_impl<TT> impl( tt );
   impl.set_limit( step_limit );
   return impl.run( fn );
@@ -626,7 +631,7 @@ public:
     : _anf( detail::algebraic_normal_form( tt ) ),
       _khots( tt.num_vars() + 1, tt.construct() )
   {
-    for ( auto i = 0; i <= tt.num_vars(); ++i )
+    for ( auto i = 0u; i <= tt.num_vars(); ++i )
     {
       create_equals( _khots[i], i );
     }
@@ -706,7 +711,7 @@ public:
       }
 
       repeat = false;
-      for ( auto k = 2; k < _anf.num_vars(); ++k )
+      for ( auto k = 2u; k < _anf.num_vars(); ++k )
       {
         foreach_term_of_size( k, [&]( auto term ) {
           auto mask = _anf.construct();
@@ -740,7 +745,7 @@ public:
       insert( output_negation() );
     }
 
-    for ( auto i = 0; i < _anf.num_vars(); ++i )
+    for ( auto i = 0u; i < _anf.num_vars(); ++i )
     {
       if ( get_bit( _anf, 1 << i ) )
       {
@@ -761,7 +766,7 @@ public:
     if ( disjoint )
     {
       auto dest_var = 0;
-      for ( auto k = 2; k < _anf.num_vars(); ++k )
+      for ( auto k = 2u; k < _anf.num_vars(); ++k )
       {
         foreach_term_of_size( k, [&]( auto term ) {
           while ( term != 0 )
@@ -825,6 +830,8 @@ private:
 template<typename TT, typename Callback = decltype( detail::exact_spectral_canonization_null_callback )>
 inline TT hybrid_exact_spectral_canonization( const TT& tt, Callback&& fn = detail::exact_spectral_canonization_null_callback )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   (void)fn;
 
   std::vector<detail::spectral_operation> transforms;
@@ -860,6 +867,8 @@ inline TT hybrid_exact_spectral_canonization( const TT& tt, Callback&& fn = deta
 template<typename TT>
 inline void print_spectrum( const TT& tt, std::ostream& os = std::cout )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   const auto spectrum = detail::spectrum::from_truth_table( tt );
   spectrum.print( os, detail::get_rw_coeffecient_order( tt.num_vars() ) );
 }
@@ -874,6 +883,8 @@ inline void print_spectrum( const TT& tt, std::ostream& os = std::cout )
 template<typename TT>
 inline std::vector<int32_t> rademacher_walsh_spectrum( const TT& tt )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   const auto spectrum = detail::spectrum::from_truth_table( tt );
   return spectrum.coefficients();
 }
@@ -893,6 +904,8 @@ inline std::vector<int32_t> rademacher_walsh_spectrum( const TT& tt )
 template<typename TT>
 inline std::vector<int32_t> autocorrelation_spectrum( const TT& tt )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   std::vector<int32_t> spectrum( 1, tt.num_bits() );
   spectrum.reserve( tt.num_bits() );
 
@@ -944,6 +957,8 @@ inline std::vector<uint32_t> spectrum_distribution( const std::vector<int32_t>& 
 template<typename TT>
 inline uint32_t get_spectral_class( const TT& tt )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   assert( tt.num_vars() <= 5 );
 
   const auto rwd = spectrum_distribution( rademacher_walsh_spectrum( tt ) );
@@ -1159,7 +1174,7 @@ static std::vector<uint64_t> spectral_repr[] = {
     {0x0, 0x8},
     {0x00, 0x80, 0x88},
     {0x0000, 0x8000, 0x8080, 0x0888, 0x8888, 0x2a80, 0xf888, 0x7888},
-    {0xaa55aa55, 0xaa55ab55, 0xaa55bb55, 0xaa5dbb55, 0xaaddbb55, 0xaa5dbb51, 0x2a5dbb51, 0xaaddbb51, 0x2a5dbf51, 0x6a5dbb51, 0x2addbb51, 0xa8ddbb51, 0xaeddda51, 0x0a5dbf51, 0x8addda51, 0xa8dd9b51, 0x88ddbb51, 0x88ddbb11, 0x8c5dda51, 0xa89d9b51, 0x8eddda51, 0xaefdda51, 0x025dbf51, 0x88ddda51, 0x88dd9b51, 0xceddda51, 0x0eddda51, 0x425dbf51, 0x8cddda51, 0x88dddb51, 0x289d9b51, 0x86fdda51, 0x88dddb71, 0xcefdda51, 0x0efdda51, 0x288d9b51, 0x8cfdda51, 0x8cdddb51, 0x8ccdda51, 0x289d9b41, 0x488ddb51, 0xccfdda51, 0x688d9b51, 0x288d9b41, 0x288d1b41, 0xdcfdda51, 0x68ad9b51, 0x688ddb51}};
+    {0x00000000, 0x80000000, 0x80008000, 0x00808080, 0x80808080, 0x08888000, 0xaa2a2a80, 0x88080808, 0x2888a000, 0xf7788000, 0xa8202020, 0x08880888, 0xbd686868, 0xaa808080, 0x7e686868, 0x2208a208, 0x08888888, 0x88888888, 0xea404040, 0x2a802a80, 0x73d28c88, 0xea808080, 0xa28280a0, 0x13284c88, 0xa2220888, 0xaae6da80, 0x58d87888, 0x8c88ac28, 0x8880f880, 0x9ee8e888, 0x4268c268, 0x16704c80, 0x78888888, 0x4966bac0, 0x372840a0, 0x5208d288, 0x7ca00428, 0xf8880888, 0x2ec0ae40, 0xf888f888, 0x58362ec0, 0x0eb8f6c0, 0x567cea40, 0xf8887888, 0x78887888, 0xe72890a0, 0x268cea40, 0x6248eac0}};
 }
 
 /*! \brief Returns spectral representative using lookup
@@ -1173,6 +1188,8 @@ static std::vector<uint64_t> spectral_repr[] = {
 template<class TT>
 TT spectral_representative( const TT& func )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   auto r = func.construct();
   const auto index = get_spectral_class( func );
   const auto word = detail::spectral_repr[func.num_vars()][index];

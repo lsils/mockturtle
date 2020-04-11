@@ -1,14 +1,9 @@
 if (NOT TARGET sparsepp)
   add_library(sparsepp INTERFACE) # 2018.2
-  target_include_directories(sparsepp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/sparsepp)
+  target_include_directories(sparsepp SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/sparsepp)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "8.1.0")
     target_compile_options(sparsepp INTERFACE -Wno-class-memaccess)
   endif()
-endif()
-
-if (NOT TARGET ez)
-  add_library(ez INTERFACE) # v1.0
-  target_include_directories(ez INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/ez)
 endif()
 
 if (NOT TARGET fmt)
@@ -19,7 +14,7 @@ endif()
 
 if (NOT TARGET kitty)
   add_library(kitty INTERFACE) # v0.4
-  target_include_directories(kitty INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/kitty)
+  target_include_directories(kitty SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/kitty)
 endif()
 
 if (NOT TARGET range)
@@ -57,4 +52,9 @@ if (NOT TARGET percy)
     target_compile_definitions(libabcsat PUBLIC WIN32_NO_DLL)
   endif()
   target_link_libraries(percy INTERFACE libabcsat)
+endif()
+
+if (NOT TARGET bill)
+  add_library(bill INTERFACE)
+  target_include_directories(bill SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/bill)
 endif()

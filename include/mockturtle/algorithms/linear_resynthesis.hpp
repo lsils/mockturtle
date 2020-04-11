@@ -42,6 +42,7 @@
 #include "../algorithms/simulation.hpp"
 #include "../networks/xag.hpp"
 #include "../utils/stopwatch.hpp"
+#include "../views/cnf_view.hpp"
 #include "../traits.hpp"
 
 #include <fmt/format.h>
@@ -417,7 +418,347 @@ struct exact_linear_synthesis_stats
 namespace detail
 {
 
-template<class Ntk>
+template<bill::solvers Solver>
+struct exact_linear_synthesis_problem_network
+{
+  using problem_network_t = cnf_view<xag_network, false, Solver>;
+
+  exact_linear_synthesis_problem_network( uint32_t num_steps, std::vector<std::vector<bool>> const& linear_matrix, std::vector<std::vector<uint32_t>> const& ignore_inputs, std::vector<std::pair<uint32_t, uint32_t>> const& trivial_pos, exact_linear_synthesis_params const& ps )
+      : linear_matrix_( linear_matrix ),
+        k_( num_steps ),
+        n_( linear_matrix.front().size() ),
+        m_( linear_matrix.size() ),
+        bs_( k_ * n_ ),
+        cs_( ( ( k_ - 1 ) * k_ ) / 2 ),
+        fs_( k_ * m_ ),
+        psis_( k_ * n_ ),
+        phis_( k_ * n_ ),
+        ignore_inputs_( ignore_inputs ),
+        trivial_pos_( trivial_pos ),
+        ps_( ps )
+  {
+    std::generate( bs_.begin(), bs_.end(), [&]() { return pntk_.create_pi(); } );
+    std::generate( cs_.begin(), cs_.end(), [&]() { return pntk_.create_pi(); } );
+    std::generate( fs_.begin(), fs_.end(), [&]() { return pntk_.create_pi(); } );
+
+    ensure_row_size2();
+    ensure_connectivity();
+    ensure_outputs();
+  }
+
+  std::optional<bool> solve()
+  {
+    return pntk_.solve( ps_.conflict_limit );
+  }
+
+  template<class Ntk>
+  Ntk extract_solution()
+  {
+    Ntk ntk;
+
+    std::vector<signal<Ntk>> nodes( n_ );
+    std::generate( nodes.begin(), nodes.end(), [&]() { return ntk.create_pi(); } );
+
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      std::array<signal<Ntk>, 2> children;
+      auto it = children.begin();
+      for ( auto j = 0u; j < n_ + i; ++j )
+      {
+        if ( pntk_.model_value( b_or_c( i, j ) ) )
+        {
+          *it++ = nodes[j];
+        }
+      }
+      nodes.push_back( ntk.create_xor( children[0], children[1] ) );
+    }
+
+    auto it = trivial_pos_.begin();
+    auto poctr = 0u;
+    for ( auto l = 0u; l < m_; ++l )
+    {
+      while ( it != trivial_pos_.end() && it->first == poctr )
+      {
+        ntk.create_po( it->second == n_ ? ntk.get_constant( false ) : nodes[it->second] );
+        poctr++;
+        ++it;
+      }
+
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        if ( pntk_.model_value( f( l, i ) ) )
+        {
+          ntk.create_po( nodes[n_ + i] );
+          poctr++;
+          break;
+        }
+      }
+    }
+
+    /* maybe some trivial POs are still left. */
+    while ( it != trivial_pos_.end() && it->first == poctr )
+    {
+      ntk.create_po( it->second == n_ ? ntk.get_constant( false ) : nodes[it->second] );
+      poctr++;
+      ++it;
+    }
+
+    return ntk;
+  }
+
+  void debug_solution()
+  {
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      fmt::print( i == 0 ? "B =" : "   " );
+      for ( auto j = 0u; j < n_; ++j )
+      {
+        fmt::print( " {}", (int)pntk_.model_value( b( i, j ) ) );
+      }
+      fmt::print( i == 0 ? " C =" : "    " );
+      for ( auto p = 0u; p < i; ++p )
+      {
+        fmt::print( " {}", (int)pntk_.model_value( c( i, p ) ) );
+      }
+      fmt::print( std::string( 2 * ( k_ - i ), ' ' ) );
+      fmt::print( i == 0u ? " F =" : "    " );
+      for ( auto l = 0u; l < m_; ++l )
+      {
+        fmt::print( " {}", (int)pntk_.model_value( f( l, i ) ) );
+      }
+      fmt::print( "\n" );
+    }
+  }
+
+private:
+  void ensure_row_size2()
+  {
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      /* at least 2 */
+      for ( auto cpl = 0u; cpl <= n_ + i; ++cpl )
+      {
+        std::vector<signal<problem_network_t>> lits( n_ + i );
+        for ( auto j = 0u; j < n_ + i; ++j )
+        {
+          lits[j] = b_or_c( i, j ) ^ ( cpl == j );
+        }
+        pntk_.add_clause( lits );
+      }
+
+      /* at most 2 */
+      for ( auto j = 2u; j < n_ + i; ++j )
+      {
+        for ( auto jj = 1u; jj < j; ++jj )
+        {
+          for ( auto jjj = 0u; jjj < jj; ++jjj )
+          {
+            pntk_.add_clause( !b_or_c( i, j ), !b_or_c( i, jj ), !b_or_c( i, jjj ) );
+          }
+        }
+      }
+    }
+  }
+
+  void ensure_connectivity()
+  {
+    // psi function
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      for ( auto j = 0u; j < n_; ++j )
+      {
+        std::vector<signal<problem_network_t>> xors( 1 + i );
+        auto it = xors.begin();
+        *it++ = b( i, j );
+        for ( auto p = 0u; p < i; ++p )
+        {
+          *it++ = pntk_.create_and( c( i, p ), psi( j, p ) );
+        }
+        psi( j, i ) = pntk_.create_nary_xor( xors );
+      }
+    }
+
+    for ( auto l = 0u; l < m_; ++l )
+    {
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        std::vector<signal<problem_network_t>> ands( n_ );
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          ands[j] = pntk_.create_xnor( psi( j, i ), pntk_.get_constant( linear_matrix_[l][j] ) );
+        }
+        pntk_.add_clause( !f( l, i ), pntk_.create_nary_and( ands ) );
+      }
+    }
+
+    // No two steps are the same
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      for ( auto p = 0u; p < i; ++p )
+      {
+        std::vector<signal<problem_network_t>> ors( n_ );
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          ors[j] = pntk_.create_xor( psi( j, p ), psi( j, i ) );
+        }
+        pntk_.add_clause( ors );
+      }
+    }
+
+    if ( !ignore_inputs_.empty() || ps_.cancellation_free )
+    {
+      // phi function
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          std::vector<signal<problem_network_t>> ors( 1 + i );
+          auto it = ors.begin();
+          *it++ = b( i, j );
+          for ( auto p = 0u; p < i; ++p )
+          {
+            *it++ = pntk_.create_and( c( i, p ), phi( j, p ) );
+          }
+          phi( j, i ) = pntk_.create_nary_or( ors );
+        }
+      }
+
+      // cancellation-free
+      if ( ps_.cancellation_free )
+      {
+        for ( auto i = 0u; i < k_; ++i )
+        {
+          for ( auto j = 0u; j < n_; ++j )
+          {
+            pntk_.add_clause( !psi( j, i ), phi( j, i ) );
+            pntk_.add_clause( psi( j, i ), !phi( j, i ) );
+          }
+        }
+      }
+    }
+
+    // ignored inputs
+    if ( !ignore_inputs_.empty() )
+    {
+      for ( auto l = 0u; l < m_; ++l )
+      {
+        for ( auto j : ignore_inputs_[l] )
+        {
+          for ( auto i = 0u; i < k_; ++i )
+          {
+            pntk_.add_clause( !f( l, i ), !phi( j, i ) );
+          }
+        }
+      }
+    }
+
+    // at least 2 inputs in each compute form
+    for ( auto i = 0u; i < k_; ++i )
+    {
+      /* at least 2 */
+      for ( auto cpl = 0u; cpl <= n_; ++cpl )
+      {
+        std::vector<signal<problem_network_t>> lits( n_ );
+        for ( auto j = 0u; j < n_; ++j )
+        {
+          lits[j] = psi( j, i ) ^ ( cpl == j );
+        }
+        pntk_.add_clause( lits );
+      }
+    }
+  }
+
+  void ensure_outputs()
+  {
+    // each output covers at least one row
+    for ( auto l = 0u; l < m_; ++l )
+    {
+      std::vector<signal<problem_network_t>> lits( k_ );
+      for ( auto i = 0u; i < k_; ++i )
+      {
+        lits[i] = f( l, i );
+        for ( auto ii = i + 1; ii < k_; ++ii )
+        {
+          pntk_.add_clause( !f( l, i ), !f( l, ii ) );
+        }
+      }
+      pntk_.add_clause( lits );
+    }
+
+    // at most one output (if no duplicates) per row
+    //for ( auto i = 0u; i < k_; ++i )
+    //{
+    //  for ( auto l = 1u; l < m_; ++l )
+    //  {
+    //    for ( auto ll = 0u; ll < l; ++ll )
+    //    {
+    //      pntk_.add_clause( !f( l, i ), !f( ll, i ) );
+    //    }
+    //  }
+    //}
+  }
+
+  // 0 <= i <= k - 1
+  // 0 <= j <= n - 1
+  const signal<problem_network_t>& b( uint32_t i, uint32_t j ) const
+  {
+    return bs_[i * n_ + j];
+  }
+
+  // 0 <= i <= k - 1
+  // 0 <= p <= i - 1
+  const signal<problem_network_t>& c( uint32_t i, uint32_t p ) const
+  {
+    return cs_[( ( ( i - 1 ) * i ) / 2 ) + p];
+  }
+
+  // 0 <= i <= k - 1
+  // 0 <= j <= n + i - 1
+  const signal<problem_network_t>& b_or_c( uint32_t i, uint32_t j ) const
+  {
+    return j < n_ ? b( i, j ) : c( i, j - n_ );
+  }
+
+  // 0 <= l <= m - 1
+  // 0 <= i <= k - 1
+  const signal<problem_network_t>& f( uint32_t l, uint32_t i ) const
+  {
+    return fs_[l * k_ + i];
+  }
+
+  // 0 <= j <= n - 1
+  // 0 <= i <= k - 1
+  signal<problem_network_t>& psi( uint32_t j, uint32_t i )
+  {
+    return psis_[i * n_ + j];
+  }
+
+  // 0 <= j <= n - 1
+  // 0 <= i <= k - 1
+  signal<problem_network_t>& phi( uint32_t j, uint32_t i )
+  {
+    return phis_[i * n_ + j];
+  }
+
+private:
+  std::vector<std::vector<bool>> const &linear_matrix_;
+  uint32_t k_;
+  uint32_t n_;
+  uint32_t m_;
+
+  std::vector<signal<problem_network_t>> bs_;
+  std::vector<signal<problem_network_t>> cs_;
+  std::vector<signal<problem_network_t>> fs_;
+  std::vector<signal<problem_network_t>> psis_;
+  std::vector<signal<problem_network_t>> phis_;
+
+  problem_network_t pntk_;
+  std::vector<std::vector<uint32_t>> const& ignore_inputs_;
+  std::vector<std::pair<uint32_t, uint32_t>> const& trivial_pos_;
+  exact_linear_synthesis_params const& ps_;
+};
+
+template<class Ntk, bill::solvers Solver>
 struct exact_linear_synthesis_impl
 {
   exact_linear_synthesis_impl( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps, exact_linear_synthesis_stats& st )
@@ -504,358 +845,77 @@ struct exact_linear_synthesis_impl
     }
   }
 
-  Ntk run()
+  std::optional<Ntk> run()
   {
+    if ( m_ == 0u )
+    {
+      Ntk ntk;
+
+      std::vector<signal<Ntk>> nodes( n_ );
+      std::generate( nodes.begin(), nodes.end(), [&]() { return ntk.create_pi(); } );
+
+      for ( auto po : trivial_pos_ )
+      {
+        ntk.create_po( po.second == n_ ? ntk.get_constant( false ) : nodes[po.second] );
+      }
+
+      return ntk;
+    }
+
     return ps_.upper_bound ? run_decreasing() : run_increasing();
   }
 
 private:
-  Ntk run_increasing()
+  std::optional<Ntk> run_increasing()
   {
-    k_ = m_;
+    auto k_ = m_;
     while ( true )
     {
       if ( ps_.verbose )
       {
         fmt::print( "[i] try to find a solution with {} steps, solving time so far = {:.2f} secs\n", k_, to_seconds( st_.time_solving ) );
       }
-      percy::bsat_wrapper solver;
-      ensure_row_size2( solver );
-      ensure_connectivity( solver );
-      ensure_outputs( solver );
-      const auto res = call_with_stopwatch( st_.time_solving, [&]() { return solver.solve( ps_.conflict_limit ); } );
-      if ( res == percy::success )
+
+      exact_linear_synthesis_problem_network<Solver> pntk( k_, linear_matrix_, ignore_inputs_, trivial_pos_, ps_ );
+      const auto res = call_with_stopwatch( st_.time_solving, [&]() { return pntk.solve(); } );
+      if ( res && *res )
       {
         if ( ps_.very_verbose )
         {
-          debug_solution( solver );
+          pntk.debug_solution();
         }
-        return extract_solution( solver );
+        return pntk.template extract_solution<Ntk>();
       }
       ++k_;
     }
   }
 
-  Ntk run_decreasing()
+  std::optional<Ntk> run_decreasing()
   {
-    Ntk best;
-    k_ = *ps_.upper_bound;
+    std::optional<Ntk> best{};
+    auto k_ = *ps_.upper_bound;
     while ( true )
     {
       if ( ps_.verbose )
       {
         fmt::print( "[i] try to find a solution with {} steps, solving time so far = {:.2f} secs\n", k_, to_seconds( st_.time_solving ) );
       }
-      percy::bsat_wrapper solver;
-      ensure_row_size2( solver );
-      ensure_connectivity( solver );
-      ensure_outputs( solver );
-      const auto res = call_with_stopwatch( st_.time_solving, [&]() { return solver.solve( ps_.conflict_limit ); } );
-      if ( res == percy::success )
+      exact_linear_synthesis_problem_network<Solver> pntk( k_, linear_matrix_, ignore_inputs_, trivial_pos_, ps_ );
+      const auto res = call_with_stopwatch( st_.time_solving, [&]() { return pntk.solve(); } );
+      if ( res && *res )
       {
         if ( ps_.very_verbose )
         {
-          debug_solution( solver );
+          pntk.debug_solution();
         }
-        best = extract_solution( solver );
+        best = pntk.template extract_solution<Ntk>();
         --k_;
       }
-      else
+      else /* if unsat or timeout */
       {
         return best;
       }
     }
-  }
-
-private:
-  // 0 <= i <= k - 1
-  // 0 <= j <= n - 1
-  uint32_t b( uint32_t i, uint32_t j ) const
-  {
-    return 1 + i * n_ + j;
-  }
-
-  uint32_t num_bs() const
-  {
-    return k_ * n_;
-  }
-
-  // 0 <= i <= k - 1
-  // 0 <= p <= i - 1
-  uint32_t c( uint32_t i, uint32_t p ) const
-  {
-    return 1 + num_bs() + ( ( ( i - 1 ) * i ) / 2 ) + p;
-  }
-
-  uint32_t num_cs() const
-  {
-    return ( ( k_ - 1 ) * k_ ) / 2;
-  }
-
-  // 0 <= i <= k - 1
-  // 0 <= j <= n + i - 1
-  uint32_t b_or_c( uint32_t i, uint32_t j ) const
-  {
-    return j < n_ ? b( i, j ) : c( i, j - n_ );
-  }
-
-  // 0 <= l <= m - 1
-  // 0 <= i <= k - 1
-  uint32_t f( uint32_t l, uint32_t i ) const
-  {
-    return 1 + num_bs() + num_cs() + l * k_ + i;
-  }
-
-  uint32_t num_fs() const
-  {
-    return k_ * m_;
-  }
-
-  void ensure_row_size2( percy::bsat_wrapper& solver ) const
-  {
-    for ( auto i = 0u; i < k_; ++i )
-    {
-      /* at least 2 */
-      for ( auto cpl = 0u; cpl <= n_ + i; ++cpl )
-      {
-        std::vector<uint32_t> lits( n_ + i );
-        for ( auto j = 0u; j < n_ + i; ++j )
-        {
-          lits[j] = make_lit( b_or_c( i, j ), cpl == j );
-        }
-        solver.add_clause( lits );
-      }
-
-      /* at most 2 */
-      int plit[3];
-      for ( auto j = 2u; j < n_ + i; ++j )
-      {
-        plit[0] = make_lit( b_or_c( i, j ), true );
-        for ( auto jj = 1u; jj < j; ++jj )
-        {
-          plit[1] = make_lit( b_or_c( i, jj ), true );
-          for ( auto jjj = 0u; jjj < jj; ++jjj )
-          {
-            plit[2] = make_lit( b_or_c( i, jjj ), true );
-            solver.add_clause( plit, plit + 3 );
-          }
-        }
-      }
-    }
-  }
-
-  void ensure_connectivity( percy::bsat_wrapper& solver ) const
-  {
-    xag_network pntk;
-    std::vector<xag_network::signal> nodes( 1 + num_bs() + num_cs() + num_fs() );
-    nodes.front() = pntk.get_constant( false );
-    std::generate( nodes.begin() + 1u, nodes.end(), [&]() { return pntk.create_pi(); } );
-
-    // 0 <= j <= n - 1
-    // 0 <= i <= k - 1
-    const auto psi_phi = [&]( uint32_t j, uint32_t i ) {
-      return j * k_ + i;
-    };
-
-    // psi function
-    std::vector<xag_network::signal> psis( k_ * n_ );
-    for ( auto i = 0u; i < k_; ++i )
-    {
-      for ( auto j = 0u; j < n_; ++j )
-      {
-        std::vector<xag_network::signal> xors( 1 + i );
-        auto it = xors.begin();
-        *it++ = nodes[b( i, j )];
-        for ( auto p = 0u; p < i; ++p )
-        {
-          *it++ = pntk.create_and( nodes[c( i, p )], psis[psi_phi( j, p )] );
-        }
-        psis[psi_phi( j, i )] = pntk.create_nary_xor( xors );
-      }
-    }
-
-    for ( auto l = 0u; l < m_; ++l )
-    {
-      for ( auto i = 0u; i < k_; ++i )
-      {
-        std::vector<xag_network::signal> ands( n_ );
-        for ( auto j = 0u; j < n_; ++j )
-        {
-          ands[j] = pntk.create_xnor( psis[psi_phi( j, i )], pntk.get_constant( linear_matrix_[l][j] ) );
-        }
-        pntk.create_po( pntk.create_or( pntk.create_not( nodes[f( l, i )] ), pntk.create_nary_and( ands ) ) );
-      }
-    }
-
-    // No two steps are the same
-    for ( auto i = 0u; i < k_; ++i )
-    {
-      for ( auto p = 0u; p < i; ++p )
-      {
-        std::vector<xag_network::signal> ors( n_ );
-        for ( auto j = 0u; j < n_; ++j )
-        {
-          ors[j] = pntk.create_xor( psis[psi_phi( j, p )], psis[psi_phi( j, i )] );
-        }
-        pntk.create_po( pntk.create_nary_or( ors ) );
-      }
-    }
-
-    std::vector<xag_network::signal> phis( k_ * n_ );
-    if ( !ignore_inputs_.empty() || ps_.cancellation_free )
-    {
-      // phi function
-      for ( auto i = 0u; i < k_; ++i )
-      {
-        for ( auto j = 0u; j < n_; ++j )
-        {
-          std::vector<xag_network::signal> ors( 1 + i );
-          auto it = ors.begin();
-          *it++ = nodes[b( i, j )];
-          for ( auto p = 0u; p < i; ++p )
-          {
-            *it++ = pntk.create_and( nodes[c( i, p )], phis[psi_phi( j, p )] );
-          }
-          phis[psi_phi( j, i )] = pntk.create_nary_or( ors );
-        }
-      }
-
-      // cancellation-free
-      if ( ps_.cancellation_free )
-      {
-        for ( auto i = 0u; i < k_; ++i )
-        {
-          for ( auto j = 0u; j < n_; ++j )
-          {
-            pntk.create_po( pntk.create_xnor( psis[psi_phi( j, i )], phis[psi_phi( j, i )] ) );
-          }
-        }
-      }
-    }
-
-    const auto node_lits = node_literals( pntk );
-    auto outputs = generate_cnf( pntk, [&]( auto const& clause ) {
-      solver.add_clause( clause );
-    } );
-    for ( int output : outputs )
-    {
-      solver.add_clause( &output, &output + 1 );
-    }
-
-    // ignored inputs
-    if ( !ignore_inputs_.empty() )
-    {
-      for ( auto l = 0u; l < m_; ++l )
-      {
-        for ( auto j : ignore_inputs_[l] )
-        {
-          for ( auto i = 0u; i < k_; ++i )
-          {
-            int lits[2];
-            lits[0] = make_lit( f( l, i ), true );
-            lits[1] = lit_not( node_lits[phis[psi_phi( j, i )]] );
-            solver.add_clause( lits, lits + 2 );
-          }
-        }
-      }
-    }
-
-    // at least 2 inputs in each compute form
-    for ( auto i = 0u; i < k_; ++i )
-    {
-      /* at least 2 */
-      for ( auto cpl = 0u; cpl <= n_; ++cpl )
-      {
-        std::vector<uint32_t> lits( n_ );
-        for ( auto j = 0u; j < n_; ++j )
-        {
-          lits[j] = lit_not_cond( node_lits[psis[psi_phi( j, i )]], cpl == j );
-        }
-        solver.add_clause( lits );
-      }
-    }
-  }
-
-  void ensure_outputs( percy::bsat_wrapper& solver ) const
-  {
-    // each output covers at least one row
-    for ( auto l = 0u; l < m_; ++l )
-    {
-      std::vector<uint32_t> lits( k_ );
-      int plit[2];
-      for ( auto i = 0u; i < k_; ++i )
-      {
-        lits[i] = make_lit( f( l, i ) );
-        plit[0] = make_lit( f( l, i ), true );
-        for ( auto ii = i + 1; ii < k_; ++ii )
-        {
-          plit[1] = make_lit( f( l, ii ), true );
-          solver.add_clause( plit, plit + 2 );
-        }
-      }
-      solver.add_clause( lits );
-    }
-
-    // at most one output (if no duplicates) per row
-    //for ( auto i = 0u; i < k_; ++i )
-    //{
-    //  for ( auto l = 1u; l < m_; ++l )
-    //  {
-    //    int lits[2];
-    //    lits[0] = make_lit( f( l, i ), true );
-    //    for ( auto ll = 0u; ll < l; ++ll )
-    //    {
-    //      lits[1] = make_lit( f( ll, i ), true );
-    //      solver.add_clause( lits, lits + 2 );
-    //    }
-    //  }
-    //}
-  }
-
-  Ntk extract_solution( percy::bsat_wrapper& solver ) const
-  {
-    Ntk ntk;
-
-    std::vector<signal<Ntk>> nodes( n_ );
-    std::generate( nodes.begin(), nodes.end(), [&]() { return ntk.create_pi(); } );
-
-    for ( auto i = 0u; i < k_; ++i )
-    {
-      std::array<signal<Ntk>, 2> children;
-      auto it = children.begin();
-      for ( auto j = 0u; j < n_ + i; ++j )
-      {
-        if ( solver.var_value( b_or_c( i, j ) ) )
-        {
-          *it++ = nodes[j];
-        }
-      }
-      nodes.push_back( ntk.create_xor( children[0], children[1] ) );
-    }
-
-    auto it = trivial_pos_.begin();
-    auto poctr = 0u;
-    for ( auto l = 0u; l < m_; ++l )
-    {
-      while ( it != trivial_pos_.end() && it->first == poctr )
-      {
-        ntk.create_po( it->second == n_ ? ntk.get_constant( false ) : nodes[it->second] );
-        poctr++;
-        ++it;
-      }
-
-      for ( auto i = 0u; i < k_; ++i )
-      {
-        if ( solver.var_value( f( l, i ) ) )
-        {
-          ntk.create_po( nodes[n_ + i] );
-          poctr++;
-          break;
-        }
-      }
-    }
-
-    return ntk;
   }
 
 private:
@@ -871,34 +931,9 @@ private:
     }
   }
 
-  void debug_solution( percy::bsat_wrapper& solver ) const
-  {
-    for ( auto i = 0u; i < k_; ++i )
-    {
-      fmt::print( i == 0 ? "B =" : "   " );
-      for ( auto j = 0u; j < n_; ++j )
-      {
-        fmt::print( " {}", solver.var_value( b( i, j ) ) );
-      }
-      fmt::print( i == 0 ? " C =" : "    " );
-      for ( auto p = 0u; p < i; ++p )
-      {
-        fmt::print( " {}", solver.var_value( c( i, p ) ) );
-      }
-      fmt::print( std::string( 2 * ( k_ - i ), ' ' ) );
-      fmt::print( i == 0u ? " F =" : "    " );
-      for ( auto l = 0u; l < m_; ++l )
-      {
-        fmt::print( " {}", solver.var_value( f( l, i ) ) );
-      }
-      fmt::print( "\n" );
-    }
-  }
-
 private:
   uint32_t n_{};
   uint32_t m_{0u};
-  uint32_t k_{};
   std::vector<std::vector<bool>> linear_matrix_;
   std::vector<std::pair<uint32_t, uint32_t>> trivial_pos_;
   std::vector<std::vector<uint32_t>> ignore_inputs_;
@@ -932,13 +967,13 @@ std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
  *
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
-template<class Ntk>
-Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
+template<class Ntk = xag_network, bill::solvers Solver = bill::solvers::glucose_41>
+std::optional<Ntk> exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   exact_linear_synthesis_stats st;
-  const auto xag = detail::exact_linear_synthesis_impl<Ntk>{linear_matrix, ps, st}.run();
+  const auto xag = detail::exact_linear_synthesis_impl<Ntk, Solver>{linear_matrix, ps, st}.run();
 
   if ( ps.verbose )
   {
@@ -959,13 +994,13 @@ Ntk exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix,
  *
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
-template<typename Ntk>
-Ntk exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
+template<class Ntk = xag_network, bill::solvers Solver = bill::solvers::glucose_41>
+std::optional<Ntk> exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   const auto linear_matrix = get_linear_matrix( ntk );
-  return exact_linear_synthesis<Ntk>( linear_matrix, ps, pst );
+  return exact_linear_synthesis<Ntk, Solver>( linear_matrix, ps, pst );
 }
 
 } /* namespace mockturtle */

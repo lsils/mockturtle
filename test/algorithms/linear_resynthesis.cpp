@@ -23,8 +23,8 @@ TEST_CASE( "Linear resynthesis with Paar algorithm", "[linear_resynthesis]" )
   CHECK( 7u == xag2.num_pis() );
   CHECK( 5u == xag2.num_pos() );
 
-  const auto f1 = simulate<kitty::static_truth_table<7>>( xag );
-  const auto f2 = simulate<kitty::static_truth_table<7>>( xag2 );
+  const auto f1 = simulate<kitty::static_truth_table<7u>>( xag );
+  const auto f2 = simulate<kitty::static_truth_table<7u>>( xag2 );
   for ( auto i = 0u; i < f1.size(); ++i )
   {
     CHECK( f1[i] == f2[i] );
@@ -46,8 +46,8 @@ TEST_CASE( "Linear resynthesis with Paar algorithm 2", "[linear_resynthesis]" )
   CHECK( 5u == xag2.num_pis() );
   CHECK( 3u == xag2.num_pos() );
 
-  const auto f1 = simulate<kitty::static_truth_table<5>>( xag );
-  const auto f2 = simulate<kitty::static_truth_table<5>>( xag2 );
+  const auto f1 = simulate<kitty::static_truth_table<5u>>( xag );
+  const auto f2 = simulate<kitty::static_truth_table<5u>>( xag2 );
   for ( auto i = 0u; i < f1.size(); ++i )
   {
     CHECK( f1[i] == f2[i] );
@@ -79,7 +79,7 @@ TEST_CASE( "Extract linear matrix from linear network", "[linear_resynthesis]" )
   CHECK( xag.num_gates() == 9u );
   CHECK( matrix == expected );
 
-  const auto xag_optimized = exact_linear_resynthesis( xag );
+  const auto xag_optimized = *exact_linear_resynthesis( xag );
   CHECK( xag_optimized.num_gates() == 6u );
 }
 
@@ -93,7 +93,7 @@ TEST_CASE( "Exact linear synthesis with SAT (example from paper)", "[linear_resy
     {true, false, false, false, true}
   };
 
-  const auto xag = exact_linear_synthesis<xag_network>( matrix );
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix );
 
   CHECK( xag.num_gates() == 6u );
 }
@@ -110,8 +110,8 @@ TEST_CASE( "More difficult example", "[linear_resynthesis]" )
       {true, true, false, false, false, false, true, false}};
 
   exact_linear_synthesis_params ps;
-  ps.conflict_limit = 5000;
-  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+  ps.conflict_limit = 10000;
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix, ps );
 
   CHECK( get_linear_matrix( xag ) == matrix );
   CHECK( xag.num_gates() == 10u );
@@ -129,9 +129,9 @@ TEST_CASE( "More difficult example with upper bound", "[linear_resynthesis]" )
       {true, true, false, false, false, false, true, false}};
 
   exact_linear_synthesis_params ps;
-  ps.conflict_limit = 5000;
+  ps.conflict_limit = 10000;
   ps.upper_bound = 15u;
-  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix, ps );
 
   CHECK( get_linear_matrix( xag ) == matrix );
   CHECK( xag.num_gates() == 10u );
@@ -146,7 +146,7 @@ TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; with cancellations", "[line
     {false, true, true, true}
   };
 
-  const auto xag = exact_linear_synthesis<xag_network>( matrix );
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix );
 
   CHECK( get_linear_matrix( xag ) == matrix );
   CHECK( xag.num_gates() == 4u );
@@ -163,7 +163,7 @@ TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; cancellation-free", "[linea
 
   exact_linear_synthesis_params ps;
   ps.cancellation_free = true;
-  const auto xag = exact_linear_synthesis<xag_network>( matrix, ps );
+  const auto xag = *exact_linear_synthesis<xag_network>( matrix, ps );
 
   CHECK( get_linear_matrix( xag ) == matrix );
   CHECK( xag.num_gates() == 5u );

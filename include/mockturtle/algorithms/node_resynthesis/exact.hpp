@@ -93,8 +93,7 @@ struct exact_resynthesis_params
       const klut_network klut = ...;
 
       exact_resynthesis<klut_network> resyn( 3 );
-      cut_rewriting( klut, resyn );
-      klut = cleanup_dangling( klut );
+      klut = cut_rewriting( klut, resyn );
    \endverbatim
  *
  * A cache can be passed as second parameter to the constructor, which will
@@ -113,8 +112,7 @@ struct exact_resynthesis_params
       exact_resynthesis_params ps;
       ps.cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
       exact_resynthesis<klut_network> resyn( 3, ps );
-      cut_rewriting( klut, resyn );
-      klut = cleanup_dangling( klut );
+      klut = cut_rewriting( klut, resyn );
 
    The underlying engine for this resynthesis function is percy_.
 
@@ -133,13 +131,13 @@ public:
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     operator()( ntk, function, function.construct(), begin, end, fn );
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     if ( static_cast<uint32_t>( function.num_vars() ) <= _fanin_size )
     {
@@ -244,8 +242,7 @@ private:
       const aig_network aig = ...;
 
       exact_aig_resynthesis<aig_network> resyn;
-      cut_rewriting( aig, resyn );
-      aig = cleanup_dangling( aig );
+      aig = cut_rewriting( aig, resyn );
    \endverbatim
  *
  * A cache can be passed as second parameter to the constructor, which will
@@ -264,8 +261,7 @@ private:
       exact_resynthesis_params ps;
       ps.cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
       exact_aig_resynthesis<aig_network> resyn( false, ps );
-      cut_rewriting( aig, resyn );
-      aig = cleanup_dangling( aig );
+      aig = cut_rewriting( aig, resyn );
 
    The underlying engine for this resynthesis function is percy_.
 
@@ -284,13 +280,13 @@ public:
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     operator()( ntk, function, function.construct(), begin, end, fn );
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     // TODO: special case for small functions (up to 2 variables)?
 

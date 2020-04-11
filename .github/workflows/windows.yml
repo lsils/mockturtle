@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    name: Build with Visual Studio
+    name: Visual Studio
 
     steps:
     - uses: actions/checkout@v1

@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
+ * Copyright (C) 2017-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -41,7 +41,9 @@
 #include "algorithm.hpp"
 #include "dynamic_truth_table.hpp"
 #include "static_truth_table.hpp"
+#include "partial_truth_table.hpp"
 #include "detail/shift.hpp"
+#include "traits.hpp"
 
 namespace kitty
 {
@@ -158,6 +160,18 @@ inline bool equal( const TT& first, const TT& second )
   return binary_predicate( first, second, std::equal_to<>() );
 }
 
+/*! \cond PRIVATE */
+inline bool equal( const partial_truth_table& first, const partial_truth_table& second )
+{
+  if ( first.num_bits() != second.num_bits() )
+  {
+    return false;
+  }
+
+  return binary_predicate( first, second, std::equal_to<>() );
+}
+/*! \endcond */
+
 /*! \brief Checks if first truth table implies a second truth table
 
   \param first First truth table
@@ -184,7 +198,7 @@ inline bool less_than( const TT& first, const TT& second )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 inline bool less_than( const static_truth_table<NumVars, true>& first, const static_truth_table<NumVars, true>& second )
 {
   return first._bits < second._bits;
@@ -202,7 +216,7 @@ inline bool is_const0( const TT& tt )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 inline bool is_const0( const static_truth_table<NumVars, true>& tt )
 {
   return tt._bits == 0;
@@ -214,7 +228,7 @@ inline bool is_const0( const static_truth_table<NumVars, true>& tt )
   \param tt Truth table
   \param var_index Variable index
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 bool has_var( const TT& tt, uint8_t var_index )
 {
   assert( var_index < tt.num_vars() );
@@ -241,7 +255,7 @@ bool has_var( const TT& tt, uint8_t var_index )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 bool has_var( const static_truth_table<NumVars, true>& tt, uint8_t var_index )
 {
   assert( var_index < tt.num_vars() );
@@ -281,10 +295,26 @@ void next_inplace( TT& tt )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 inline void next_inplace( static_truth_table<NumVars, true>& tt )
 {
   tt._bits++;
+  tt.mask_bits();
+}
+/*! \endcond */
+
+/*! \cond PRIVATE */
+template<int NumVars>
+inline void next_inplace( partial_truth_table& tt )
+{
+  for ( auto i = 0u; i < tt.num_blocks(); ++i )
+  {
+    /* If incrementing the word does not lead to an overflow, we're done*/
+    if ( ++tt._bits[i] != 0u )
+    {
+      break;
+    }
+  }
   tt.mask_bits();
 }
 /*! \endcond */
@@ -308,7 +338,7 @@ inline TT next( const TT& tt )
   \param tt Truth table
   \param var_index Variable index
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 void cofactor0_inplace( TT& tt, uint8_t var_index )
 {
   if ( tt.num_vars() <= 6 || var_index < 6 )
@@ -332,7 +362,7 @@ void cofactor0_inplace( TT& tt, uint8_t var_index )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 void cofactor0_inplace( static_truth_table<NumVars, true>& tt, uint8_t var_index )
 {
   tt._bits = ( ( tt._bits & detail::projections_neg[var_index] ) << ( 1 << var_index ) ) |
@@ -358,7 +388,7 @@ TT cofactor0( const TT& tt, uint8_t var_index )
   \param tt Truth table
   \param var_index Variable index
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 void cofactor1_inplace( TT& tt, uint8_t var_index )
 {
   if ( tt.num_vars() <= 6 || var_index < 6 )
@@ -382,7 +412,7 @@ void cofactor1_inplace( TT& tt, uint8_t var_index )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 void cofactor1_inplace( static_truth_table<NumVars, true>& tt, uint8_t var_index )
 {
   tt._bits = ( tt._bits & detail::projections[var_index] ) | ( ( tt._bits & detail::projections[var_index] ) >> ( 1 << var_index ) );
@@ -411,7 +441,7 @@ TT cofactor1( const TT& tt, uint8_t var_index )
   \param tt Truth table
   \param var_index A variable
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 void swap_adjacent_inplace( TT& tt, uint8_t var_index )
 {
   assert( var_index < tt.num_vars() - 1 );
@@ -457,7 +487,7 @@ void swap_adjacent_inplace( TT& tt, uint8_t var_index )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 void swap_adjacent_inplace( static_truth_table<NumVars, true>& tt, uint8_t var_index )
 {
   assert( var_index < tt.num_vars() );
@@ -496,7 +526,7 @@ inline TT swap_adjacent( const TT& tt, uint8_t var_index )
   \param var_index1 First variable
   \param var_index2 Second variable
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 void swap_inplace( TT& tt, uint8_t var_index1, uint8_t var_index2 )
 {
   if ( var_index1 == var_index2 )
@@ -561,7 +591,7 @@ void swap_inplace( TT& tt, uint8_t var_index1, uint8_t var_index2 )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 inline void swap_inplace( static_truth_table<NumVars, true>& tt, uint8_t var_index1, uint8_t var_index2 )
 {
   if ( var_index1 == var_index2 )
@@ -606,7 +636,7 @@ inline TT swap( const TT& tt, uint8_t var_index1, uint8_t var_index2 )
   \param tt Truth table
   \param var_index A variable
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 void flip_inplace( TT& tt, uint8_t var_index )
 {
   assert( var_index < tt.num_vars() );
@@ -640,7 +670,7 @@ void flip_inplace( TT& tt, uint8_t var_index )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 inline void flip_inplace( static_truth_table<NumVars, true>& tt, uint8_t var_index )
 {
   assert( var_index < tt.num_vars() );
@@ -682,13 +712,13 @@ inline TT flip( const TT& tt, uint8_t var_index )
 
   \param tt Truth table
  */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 std::vector<uint8_t> min_base_inplace( TT& tt )
 {
   std::vector<uint8_t> support;
 
-  auto k = 0;
-  for ( auto i = 0; i < tt.num_vars(); ++i )
+  auto k = 0u;
+  for ( auto i = 0u; i < tt.num_vars(); ++i )
   {
     if ( !has_var( tt, i ) )
     {
@@ -732,7 +762,7 @@ void expand_inplace( TT& tt, const std::vector<uint8_t>& support )
   \param tt Larger truth table to create
   \param from Smaller truth table to copy from
 */
-template<typename TT, typename TTFrom>
+template<typename TT, typename TTFrom, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 void extend_to_inplace( TT& tt, const TTFrom& from )
 {
   assert( tt.num_vars() >= from.num_vars() );
@@ -767,7 +797,7 @@ void extend_to_inplace( TT& tt, const TTFrom& from )
 
   \param from Smaller truth table to copy from
 */
-template<int NumVars, typename TTFrom>
+template<uint32_t NumVars, typename TTFrom>
 inline static_truth_table<NumVars> extend_to( const TTFrom& from )
 {
   static_truth_table<NumVars> tt;
@@ -801,7 +831,7 @@ inline dynamic_truth_table extend_to( const TTFrom& from, unsigned num_vars )
   \param tt Smaller truth table to create
   \param from Larger truth table to copy from
 */
-template<typename TT, typename TTFrom>
+template<typename TT, typename TTFrom, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 void shrink_to_inplace( TT& tt, const TTFrom& from )
 {
   assert( tt.num_vars() <= from.num_vars() );
@@ -823,7 +853,7 @@ void shrink_to_inplace( TT& tt, const TTFrom& from )
 
   \param from Smaller truth table to copy from
 */
-template<int NumVars, typename TTFrom>
+template<uint32_t NumVars, typename TTFrom>
 inline static_truth_table<NumVars> shrink_to( const TTFrom& from )
 {
   static_truth_table<NumVars> tt;
@@ -902,11 +932,50 @@ void shift_left_inplace( TT& tt, uint64_t shift )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 inline void shift_left_inplace( static_truth_table<NumVars, true>& tt, uint64_t shift )
 {
   tt._bits <<= shift;
   tt.mask_bits();
+}
+/*! \endcond */
+
+/*! \cond PRIVATE */
+inline void shift_left_inplace( partial_truth_table& tt, uint64_t shift )
+{
+  if ( shift >= tt.num_bits() )
+  {
+    clear( tt );
+    return;
+  }
+
+  if ( shift > 0u )
+  {
+    const auto last = tt.num_blocks() - 1u;
+    const auto div = shift / 64u;
+    const auto rem = shift % 64u;
+
+    if ( rem != 0u )
+    {
+      const auto rshift = 64u - rem;
+      for ( auto i = last - div; i > 0; --i )
+      {
+        tt._bits[i + div] = ( tt._bits[i] << rem ) | ( tt._bits[i - 1] >> rshift );
+      }
+      tt._bits[div] = tt._bits[0] << rem;
+    }
+    else
+    {
+      for ( auto i = last - div; i > 0; --i )
+      {
+        tt._bits[i + div] = tt._bits[i];
+      }
+      tt._bits[div] = tt._bits[0];
+    }
+
+    std::fill_n( std::begin( tt._bits ), div, 0u );
+    tt.mask_bits();
+  }
 }
 /*! \endcond */
 
@@ -979,10 +1048,49 @@ void shift_right_inplace( TT& tt, uint64_t shift )
 }
 
 /*! \cond PRIVATE */
-template<int NumVars>
+template<uint32_t NumVars>
 inline void shift_right_inplace( static_truth_table<NumVars, true>& tt, uint64_t shift )
 {
   tt._bits >>= shift;
+}
+/*! \endcond */
+
+/*! \cond PRIVATE */
+inline void shift_right_inplace( partial_truth_table& tt, uint64_t shift )
+{
+  if ( shift >= tt.num_bits() )
+  {
+    clear( tt );
+    return;
+  }
+
+  if ( shift > 0u )
+  {
+    tt.mask_bits();
+
+    const auto last = tt.num_blocks() - 1u;
+    const auto div = shift / 64u;
+    const auto rem = shift % 64u;
+
+    if ( rem != 0u )
+    {
+      const auto rshift = 64u - rem;
+      for ( auto i = div; i < last; ++i )
+      {
+        tt._bits[i - div] = ( tt._bits[i] >> rem ) | ( tt._bits[i + 1] << rshift );
+      }
+      tt._bits[last - div] = tt._bits[last] >> rem;
+    }
+    else
+    {
+      for ( auto i = div; i <= last; ++i )
+      {
+        tt._bits[i - div] = tt._bits[i];
+      }
+    }
+
+    std::fill_n( std::begin( tt._bits ) + ( tt.num_blocks() - div ), div, 0u );
+  }
 }
 /*! \endcond */
 
@@ -1013,7 +1121,7 @@ inline TT shift_right( const TT& tt, uint64_t shift )
   \param vars The ordered set of input variables
   \return The composed truth table with vars.size() variables
 */
-template<class TTf, class TTv>
+template<class TTf, class TTv, typename = std::enable_if_t<is_complete_truth_table<TTf>::value>>
 inline auto compose_truth_table( const TTf& f, const std::vector<TTv>& vars )
 {
   assert( vars.size() == static_cast<std::size_t>( f.num_vars() ) );
@@ -1054,7 +1162,7 @@ inline auto compose_truth_table( const TTf& f, const std::vector<TTv>& vars )
   \param tt Truth table
   \param mask Shift mask
 */
-template<class TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 inline void shift_with_mask_inplace( TT& f, uint8_t mask )
 {
   assert( f.num_vars() <= 6 );

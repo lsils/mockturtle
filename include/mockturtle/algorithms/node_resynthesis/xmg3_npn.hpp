@@ -89,7 +89,7 @@ struct xmg3_npn_resynthesis_stats
 
       const aig_network aig = ...;
       xmg3_npn_resynthesis<aig_network> resyn;
-      cut_rewriting( aig, resyn );
+      aig = cut_rewriting( aig, resyn );
 
    .. note::
 
@@ -143,9 +143,9 @@ public:
   }
 
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
-    kitty::static_truth_table<4> tt = kitty::extend_to<4>( function );
+    kitty::static_truth_table<4u> tt = kitty::extend_to<4u>( function );
 
     /* get representative of function */
     const auto repr = _repr[_classes[*tt.cbegin()]];
@@ -234,7 +234,7 @@ private:
     std::transform( map.cbegin(), map.cend(), map.begin(), []( auto word ) { return ~word; } );
 
     int64_t index = 0;
-    kitty::static_truth_table<4> tt;
+    kitty::static_truth_table<4u> tt;
     while ( index != -1 )
     {
       kitty::create_from_words( tt, &index, &index + 1 );
@@ -287,7 +287,7 @@ private:
       }
     }
 
-    const auto sim_res = simulate_nodes<kitty::static_truth_table<4>>( _db );
+    const auto sim_res = simulate_nodes<kitty::static_truth_table<4u>>( _db );
 
     _db.foreach_node( [&]( auto n ) {
       if ( _repr[_classes[*sim_res[n].cbegin()]] == sim_res[n] )
@@ -326,9 +326,9 @@ private:
   xmg3_npn_resynthesis_stats st;
   xmg3_npn_resynthesis_stats* pst{nullptr};
 
-  std::vector<kitty::static_truth_table<4>> _repr;
+  std::vector<kitty::static_truth_table<4u>> _repr;
   std::vector<uint32_t> _classes;
-  std::unordered_map<kitty::static_truth_table<4>, std::vector<signal<DatabaseNtk>>, kitty::hash<kitty::static_truth_table<4>>> _repr_to_signal;
+  std::unordered_map<kitty::static_truth_table<4u>, std::vector<signal<DatabaseNtk>>, kitty::hash<kitty::static_truth_table<4u>>> _repr_to_signal;
 
   DatabaseNtk _db;
 

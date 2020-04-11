@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
+ * Copyright (C) 2017-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -40,6 +40,7 @@
 #include "constructors.hpp"
 #include "operations.hpp"
 #include "implicant.hpp"
+#include "traits.hpp"
 
 namespace kitty
 {
@@ -100,6 +101,8 @@ enum class bi_decomposition
 template<class TT>
 top_decomposition is_top_decomposable( const TT& tt, uint32_t var_index, TT* func = nullptr, bool allow_xor = true )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   auto var = tt.construct();
   kitty::create_nth_var( var, var_index );
 
@@ -183,6 +186,8 @@ top_decomposition is_top_decomposable( const TT& tt, uint32_t var_index, TT* fun
 template<class TT>
 bottom_decomposition is_bottom_decomposable( const TT& tt, uint32_t var_index1, uint32_t var_index2, TT* func = nullptr, bool allow_xor = true )
 {
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
   const auto tt0 = cofactor0( tt, var_index1 );
   const auto tt1 = cofactor1( tt, var_index1 );
 
@@ -279,7 +284,7 @@ TT select_one_cube( const TT& q )
   auto minterms = kitty::get_minterms( q );
   const uint64_t min = minterms[0];
   set_bit( m, min );
-  for ( auto i = 0; i < q.num_vars(); i++ )
+  for ( auto i = 0u; i < q.num_vars(); i++ )
   {
     std::vector<int> h( 1, i );
     auto m_p = exist_set( m, h );
@@ -712,7 +717,7 @@ std::tuple<TT, bi_decomposition, std::vector<TT>> is_bi_decomposable( const TT& 
   }
 
   std::vector<int> support;
-  for ( auto x = 0; x < tt.num_vars(); x++ )
+  for ( auto x = 0u; x < tt.num_vars(); x++ )
   {
     if ( has_var( binary_and( tt, dc ), x ) )
     {
@@ -886,6 +891,10 @@ bool is_ashenhurst_decomposable( const TTf& tt,
                                  const TTg& outer_func,
                                  const TTh& inner_func )
 {
+  static_assert( is_complete_truth_table<TTf>::value, "Can only be applied on complete truth tables." );
+  static_assert( is_complete_truth_table<TTg>::value, "Can only be applied on complete truth tables." );
+  static_assert( is_complete_truth_table<TTh>::value, "Can only be applied on complete truth tables." );
+
   std::vector<TTf> y_vars;
   std::vector<TTf> z_vars;
 
@@ -919,6 +928,10 @@ bool is_ashenhurst_decomposable( const TTf& tt,
 template<class TTf, class TTg, class TTh>
 uint32_t ashenhurst_decomposition( const TTf& tt, const std::vector<uint32_t>& ys_index, std::vector<std::pair<TTg, TTh>>& decomposition )
 {
+  static_assert( is_complete_truth_table<TTf>::value, "Can only be applied on complete truth tables." );
+  static_assert( is_complete_truth_table<TTg>::value, "Can only be applied on complete truth tables." );
+  static_assert( is_complete_truth_table<TTh>::value, "Can only be applied on complete truth tables." );
+
   std::vector<uint32_t> zs_index = detail::enumerate_zs_index( ys_index, tt.num_vars() - 1 );
   decomposition.clear();
 
