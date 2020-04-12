@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(MOCKTURTLE_EXAMPLES "Build examples" ON)
 option(MOCKTURTLE_TEST "Build tests" OFF)
 option(MOCKTURTLE_EXPERIMENTS "Build experiments" OFF)
+option(BILL_Z3 "Enable Z3 interface for bill library" OFF)
 option(ENABLE_COVERAGE "Enable coverage reporting for gcc/clang" OFF)
 
 if(UNIX)
