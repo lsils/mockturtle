@@ -243,7 +243,7 @@ private:
     } );
 
     st.db_size = _db.size();
-    st.covered_classes = _repr_to_signal.size();
+    st.covered_classes = static_cast<uint32_t>( _repr_to_signal.size() );
   }
 
   xag_npn_resynthesis_params ps;

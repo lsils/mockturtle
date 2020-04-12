@@ -38,7 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <sparsepp/spp.h>
+#include "../utils/include/spp.hpp"
 
 namespace mockturtle
 {

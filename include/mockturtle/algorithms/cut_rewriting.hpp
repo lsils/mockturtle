@@ -708,7 +708,7 @@ struct cut_rewriting_impl
       {
         std::vector<signal<Ntk>> children( ntk_.fanin_size( n ) );
         ntk_.foreach_fanin( n, [&]( auto const& f, auto i ) {
-          children[i] = old2new[f] ^ ntk_.is_complemented( f );
+          children[i] = ntk_.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f];
         } );
 
         old2new[n] = res.clone_node( ntk_, n, children );
@@ -755,7 +755,7 @@ struct cut_rewriting_impl
         {
           std::vector<signal<Ntk>> children( ntk_.fanin_size( n ) );
           ntk_.foreach_fanin( n, [&]( auto const& f, auto i ) {
-            children[i] = old2new[f] ^ ntk_.is_complemented( f );
+            children[i] = ntk_.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f];
           } );
 
           old2new[n] = res.clone_node( ntk_, n, children );
@@ -771,7 +771,7 @@ struct cut_rewriting_impl
 
     /* create POs */
     ntk_.foreach_po( [&]( auto const& f ) {
-      res.create_po( old2new[f] ^ ntk_.is_complemented( f ) );
+      res.create_po( ntk_.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] );
     } );
 
     res = cleanup_dangling( res );

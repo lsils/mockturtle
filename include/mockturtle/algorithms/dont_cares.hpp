@@ -40,6 +40,7 @@
 #include "../algorithms/simulation.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
+#include "../utils/include/percy.hpp"
 #include "../views/fanout_view.hpp"
 #include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
@@ -47,7 +48,6 @@
 #include <fmt/format.h>
 #include <kitty/bit_operations.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <percy/solvers/bsat2.hpp>
 
 namespace mockturtle
 {
@@ -76,7 +76,7 @@ kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vecto
   const auto tts = simulate_nodes<kitty::dynamic_truth_table>( window_ntk, sim );
 
   /* first create care and then invert */
-  kitty::dynamic_truth_table care( leaves.size() );
+  kitty::dynamic_truth_table care( static_cast<uint32_t>( leaves.size() ) );
   for ( auto i = 0u; i < ( 1u << window_ntk.num_pis() ); ++i )
   {
     uint32_t entry{0u};

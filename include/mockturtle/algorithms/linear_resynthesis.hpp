@@ -46,7 +46,6 @@
 #include "../traits.hpp"
 
 #include <fmt/format.h>
-#include <percy/solvers/bsat2.hpp>
 
 namespace mockturtle
 {
@@ -426,8 +425,8 @@ struct exact_linear_synthesis_problem_network
   exact_linear_synthesis_problem_network( uint32_t num_steps, std::vector<std::vector<bool>> const& linear_matrix, std::vector<std::vector<uint32_t>> const& ignore_inputs, std::vector<std::pair<uint32_t, uint32_t>> const& trivial_pos, exact_linear_synthesis_params const& ps )
       : linear_matrix_( linear_matrix ),
         k_( num_steps ),
-        n_( linear_matrix.front().size() ),
-        m_( linear_matrix.size() ),
+        n_( static_cast<uint32_t>( linear_matrix.front().size() ) ),
+        m_( static_cast<uint32_t>( linear_matrix.size() ) ),
         bs_( k_ * n_ ),
         cs_( ( ( k_ - 1 ) * k_ ) / 2 ),
         fs_( k_ * m_ ),
@@ -782,7 +781,7 @@ struct exact_linear_synthesis_impl
     for ( auto j = 0u; j < linear_matrix.size(); ++j )
     {
       const auto& row = linear_matrix[j];
-      n_ = row.size();
+      n_ = static_cast<uint32_t>( row.size() );
 
       auto cnt = 0u;
       auto idx = 0u;
@@ -816,7 +815,7 @@ struct exact_linear_synthesis_impl
       }
     }
 
-    m_ = linear_matrix_.size();
+    m_ = static_cast<uint32_t>( linear_matrix_.size() );
 
     if ( ps_.very_verbose )
     {

@@ -40,12 +40,12 @@
 #include <vector>
 
 #include "../algorithms/cnf.hpp"
+#include "../utils/include/percy.hpp"
 #include "../traits.hpp"
 
 #include <bill/sat/interface/common.hpp>
 #include <bill/sat/interface/glucose.hpp>
 #include <fmt/format.h>
-#include <percy/cnf.hpp>
 
 namespace mockturtle
 {

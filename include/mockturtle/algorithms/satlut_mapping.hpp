@@ -35,6 +35,7 @@
 #include <cmath>
 
 #include "../generators/sorting.hpp"
+#include "../utils/include/percy.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
@@ -44,7 +45,6 @@
 #include "cut_enumeration/mf_cut.hpp"
 
 #include <fmt/format.h>
-#include <percy/solvers/bsat2.hpp>
 
 namespace mockturtle
 {
