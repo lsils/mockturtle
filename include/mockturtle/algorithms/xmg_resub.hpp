@@ -202,7 +202,7 @@ public:
     (void)required;
     auto const& tt = sim.get_tt( ntk.make_signal( root ) );
 
-    int32_t const root_rdb = absolute_distinguishing_power( tt );
+    const auto root_rdb = static_cast<int32_t>( absolute_distinguishing_power( tt ) );
 
     std::vector<divisor> sorted_divs;
     for ( auto it = std::begin( divs ), ie = std::begin( divs ) + num_divs; it != ie; ++it )
@@ -235,7 +235,7 @@ public:
         int64_t const db_s1 = sorted_divs.at( j ).entropy;
         if ( ( 2u * db_s1 ) < bound0 )
         {
-          st.num_filtered0 += ( sorted_divs.size() - j - 1 ) * ( sorted_divs.size() - j );
+          st.num_filtered0 += static_cast<uint32_t>( ( sorted_divs.size() - j - 1 ) * ( sorted_divs.size() - j ) );
           break;
         }
 
@@ -249,7 +249,7 @@ public:
           int64_t const db_s2 = sorted_divs.at( k ).entropy;
           if ( db_s2 < bound1 )
           {
-            st.num_filtered1 += sorted_divs.size() - k - 1;
+            st.num_filtered1 += static_cast<uint32_t>( sorted_divs.size() - k - 1 );
             break;
           }
 

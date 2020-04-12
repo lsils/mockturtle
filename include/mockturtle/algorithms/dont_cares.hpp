@@ -118,7 +118,7 @@ kitty::dynamic_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
   node_to_value1[n] = ~sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
   simulate_nodes( ntk, node_to_value1, sim );
 
-  kitty::dynamic_truth_table care( leaves.size() );
+  kitty::dynamic_truth_table care( static_cast<uint32_t>( leaves.size() ) );
   for ( const auto& r : roots )
   {
     care |= node_to_value0[r] ^ node_to_value1[r];

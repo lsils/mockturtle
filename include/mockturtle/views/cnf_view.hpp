@@ -183,7 +183,7 @@ private:
   node_map<bill::lit_type, Ntk> literals_;
   std::vector<bill::lit_type> switches_;
 
-  int event_ptr_[3];
+  std::size_t event_ptr_[3];
 };
 
 } /* namespace detail */
@@ -336,7 +336,8 @@ public:
           dimacs_.add_clause( &l, &l + 1 );
         }
         dimacs_.set_nr_vars( solver_.num_variables() );
-        auto fd = fopen( ps_.write_dimacs->c_str(), "w" );
+        FILE *fd = nullptr;
+        fopen_s( &fd, ps_.write_dimacs->c_str(), "w" );
         dimacs_.to_dimacs( fd );
         fclose( fd );
       }

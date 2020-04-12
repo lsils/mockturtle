@@ -299,7 +299,7 @@ private:
   void replace_one_pair( index_pair_t const& p )
   {
     const auto [a, b] = p;
-    auto c = signals.size();
+    auto c = static_cast<uint32_t>( signals.size() );
     signals.push_back( dest.create_xor( signals[a], signals[b] ) );
 
     /* update data structures */

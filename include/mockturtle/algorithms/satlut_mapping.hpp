@@ -124,14 +124,14 @@ std::vector<int> cardinality_network( Solver& solver, std::vector<int> const& va
   auto logn = static_cast<uint32_t>( ceil( log2( vars.size() ) ) );
   auto current = vars;
 
-  if ( current.size() != ( 1u << logn ) )
+  if ( current.size() != static_cast<uint64_t>( 1u ) << logn )
   {
-    current.resize( 1u << logn, next_var );
+    current.resize( static_cast<uint64_t>( 1u ) << logn, next_var );
     lits[0] = pabc::Abc_Var2Lit( next_var++, 1 );
     solver.add_clause( lits, lits + 1);
   }
 
-  batcher_sorting_network( current.size(), [&]( auto a, auto b ) {
+  batcher_sorting_network( static_cast<uint32_t>( current.size() ), [&]( auto a, auto b ) {
     auto va = current[a];
     auto vb = current[b];
     auto va_next = next_var++;

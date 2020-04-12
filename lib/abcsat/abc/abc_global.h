@@ -26,16 +26,18 @@
 ////////////////////////////////////////////////////////////////////////
 
 #include <cstdint>
-#ifdef _WIN32
-#ifndef __MINGW32__
+#ifdef _MSC_VER
 //#define inline __inline // compatible with MS VS 6.0
+#pragma warning(push)
 #pragma warning(disable : 4152) // warning C4152: nonstandard extension, function/data pointer conversion in expression
 #pragma warning(disable : 4200) // warning C4200: nonstandard extension used : zero-sized array in struct/union
 #pragma warning(disable : 4244) // warning C4244: '+=' : conversion from 'int ' to 'unsigned short ', possible loss of data
+#pragma warning(disable : 4302) // warning C4302: 'type cast': truncation from 'void *' to 'pabc::ABC_PTRINT_T'
+#pragma warning(disable : 4311) // warning C4311: 'type cast': pointer truncation from 'void *' to 'pabc::ABC_PTRINT_T'
+#pragma warning(disable : 4312) // warning C4312: 'type cast': conversion from 'pabc::ABC_PTRINT_T' to 'void *' of greater size
 #pragma warning(disable : 4514) // warning C4514: 'Vec_StrPop' : unreferenced inline function has been removed
 #pragma warning(disable : 4710) // warning C4710: function 'Vec_PtrGrow' not inlined
 //#pragma warning( disable : 4273 )
-#endif
 #endif
 
 #ifdef WIN32
@@ -408,6 +410,10 @@ extern int *  Abc_QuickSortCost( int * pCosts, int nSize, int fDecrease );
 
 
 ABC_NAMESPACE_HEADER_END
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #endif
 
