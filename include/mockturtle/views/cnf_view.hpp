@@ -336,8 +336,12 @@ public:
           dimacs_.add_clause( &l, &l + 1 );
         }
         dimacs_.set_nr_vars( solver_.num_variables() );
+#ifdef _MSC_VER
         FILE *fd = nullptr;
         fopen_s( &fd, ps_.write_dimacs->c_str(), "w" );
+#else
+        FILE *fd = fopen( ps_.write_dimacs->c_str(), "w" );
+#endif
         dimacs_.to_dimacs( fd );
         fclose( fd );
       }
