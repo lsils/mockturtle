@@ -209,7 +209,7 @@ public:
     {
       auto const s = ntk.make_signal( *it );
       auto const& tt_s = sim.get_tt( s );
-      sorted_divs.emplace_back( *it, relative_distinguishing_power( tt_s, tt ) );
+      sorted_divs.emplace_back( static_cast<uint32_t>( *it ), static_cast<uint32_t>( relative_distinguishing_power( tt_s, tt ) ) );
     }
     std::sort( std::rbegin( sorted_divs ), std::rend( sorted_divs ),
                [&]( auto const& u, auto const& v ) {

@@ -338,7 +338,7 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
       auto v = g.add_vertex( ( *cut )->data.gain );
       assert( v == vertex_to_cut_addr.size() );
       vertex_to_cut_addr.emplace_back( n, cctr );
-      cut_addr_to_vertex[ntk.node_to_index( n )].emplace_back( v );
+      cut_addr_to_vertex[ntk.node_to_index( n )].emplace_back( static_cast<uint32_t>( v ) );
 
       ++cctr;
     }
