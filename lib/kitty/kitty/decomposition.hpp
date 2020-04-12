@@ -600,7 +600,7 @@ inline std::tuple<std::vector<int>, std::vector<int>, bi_decomposition> best_var
     }
   }
 
-  int diff_or = x_or.first.size() - x_or.second.size();
+  int diff_or = static_cast<int>( x_or.first.size() ) - static_cast<int>( x_or.second.size() );
   if ( ( x_or.first.size() == 0 ) || ( x_or.second.size() == 0 ) )
   {
     diff_or = 100;
@@ -610,7 +610,7 @@ inline std::tuple<std::vector<int>, std::vector<int>, bi_decomposition> best_var
     diff_or = -diff_or;
   }
 
-  int diff_and = x_and.first.size() - x_and.second.size();
+  int diff_and = static_cast<int>( x_and.first.size() ) - static_cast<int>( x_and.second.size() );
   if ( ( x_and.first.size() == 0 ) || ( x_and.second.size() == 0 ) )
   {
     diff_and = 100;
@@ -620,7 +620,7 @@ inline std::tuple<std::vector<int>, std::vector<int>, bi_decomposition> best_var
     diff_and = -diff_and;
   }
 
-  int diff_xor = x_xor.first.size() - x_xor.second.size();
+  int diff_xor = static_cast<int>( x_xor.first.size() ) - static_cast<int>( x_xor.second.size() );
   if ( ( x_xor.first.size() == 0 ) || ( x_xor.second.size() == 0 ) )
   {
     diff_xor = 100;
@@ -950,7 +950,7 @@ uint32_t ashenhurst_decomposition( const TTf& tt, const std::vector<uint32_t>& y
     } while ( !is_const0( h ) );
     next_inplace( g );
   } while ( !is_const0( g ) );
-  return decomposition.size();
+  return static_cast<uint32_t>( decomposition.size() );
 }
 
 } // namespace kitty

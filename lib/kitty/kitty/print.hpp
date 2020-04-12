@@ -129,8 +129,7 @@ template<typename TT>
 void print_binary( const TT& tt, std::ostream& os = std::cout )
 {
   auto const chunk_size = std::min<uint64_t>( tt.num_bits(), 64 );
-  for_each_block_reversed( tt, [&tt, &os, chunk_size]( auto word ) {
-    bool first = ( word == *( tt.crbegin() ) );
+  for_each_block_reversed( tt, [&os, chunk_size]( auto word ) {
     std::string chunk( chunk_size, '0' );
     auto it = chunk.rbegin();
     while ( word && it != chunk.rend() )
@@ -142,16 +141,32 @@ void print_binary( const TT& tt, std::ostream& os = std::cout )
       ++it;
       word >>= 1;
     }
-    if constexpr ( std::is_same<TT, partial_truth_table>::value )
+    os << chunk;
+  } );
+}
+
+/*! \cond PRIVATE */
+inline void print_binary( const partial_truth_table& tt, std::ostream& os )
+{
+  auto const chunk_size = std::min<uint64_t>( tt.num_bits(), 64 );
+  bool first = true;
+  for_each_block_reversed( tt, [&tt, &os, chunk_size, &first]( auto word ) {
+    std::string chunk( chunk_size, '0' );
+    auto it = chunk.rbegin();
+    while ( word && it != chunk.rend() )
     {
-      if ( first && ( chunk_size == 64 ) && ( tt.num_bits() % 64 ) )
+      if ( word & 1 )
       {
-        os << chunk.substr( 64 - ( tt.num_bits() % 64 ) );
+        *it = '1';
       }
-      else
-      {
-        os << chunk;
-      }
+      ++it;
+      word >>= 1;
+    }
+
+    if ( first && ( chunk_size == 64 ) && ( tt.num_bits() % 64 ) )
+    {
+      first = false;
+      os << chunk.substr( 64 - ( tt.num_bits() % 64 ) );
     }
     else
     {
@@ -159,6 +174,7 @@ void print_binary( const TT& tt, std::ostream& os = std::cout )
     }
   } );
 }
+/*! \endcond */
 
 /*! \brief Prints truth table in hexadecimal representation
 
@@ -170,17 +186,9 @@ void print_binary( const TT& tt, std::ostream& os = std::cout )
 template<typename TT>
 void print_hex( const TT& tt, std::ostream& os = std::cout )
 {
-  uint64_t chunk_size;
-  if constexpr ( std::is_same<TT, partial_truth_table>::value )
-  {
-    chunk_size = 16;
-  }
-  else
-  {
-    chunk_size = std::min<uint64_t>( tt.num_vars() <= 1 ? 1 : ( tt.num_bits() >> 2 ), 16 );
-  }
-  for_each_block_reversed( tt, [&tt, &os, chunk_size]( auto word ) {
-    bool first = ( word == *( tt.crbegin() ) );
+  auto const chunk_size = std::min<uint64_t>( tt.num_vars() <= 1 ? 1 : ( tt.num_bits() >> 2 ), 16 );
+
+  for_each_block_reversed( tt, [&os, chunk_size]( auto word ) {
     std::string chunk( chunk_size, '0' );
     auto it = chunk.rbegin();
     while ( word && it != chunk.rend() )
@@ -188,25 +196,45 @@ void print_hex( const TT& tt, std::ostream& os = std::cout )
       auto hex = word & 0xf;
       if ( hex < 10 )
       {
-        *it = '0' + hex;
+        *it = '0' + static_cast<char>( hex );
       }
       else
       {
-        *it = 'a' + ( hex - 10 );
+        *it = 'a' + static_cast<char>( hex - 10 );
       }
       ++it;
       word >>= 4;
     }
-    if constexpr ( std::is_same<TT, partial_truth_table>::value )
+    os << chunk;
+  } );
+}
+
+/*! \cond PRIVATE */
+inline void print_hex( const partial_truth_table& tt, std::ostream& os )
+{
+  bool first = true;
+  for_each_block_reversed( tt, [&tt, &os, &first]( auto word ) {
+    std::string chunk( 16, '0' );
+    auto it = chunk.rbegin();
+    while ( word && it != chunk.rend() )
     {
-      if ( first && ( ( tt.num_bits() >> 2 ) % 16 ) )
+      auto hex = word & 0xf;
+      if ( hex < 10 )
       {
-        os << chunk.substr( ( tt.num_bits() % 4 ) ? ( 15 - ( ( tt.num_bits() >> 2 ) % 16 ) ) : ( 16 - ( ( tt.num_bits() >> 2 ) % 16 ) ) );
+        *it = '0' + static_cast<char>( hex );
       }
       else
       {
-        os << chunk;
+        *it = 'a' + static_cast<char>( hex - 10 );
       }
+      ++it;
+      word >>= 4;
+    }
+
+    if ( first && ( tt.num_bits() % 64 ) )
+    {
+      first = false;
+      os << chunk.substr( ( tt.num_bits() % 4 ) ? ( 15 - ( ( tt.num_bits() >> 2 ) % 16 ) ) : ( 16 - ( ( tt.num_bits() >> 2 ) % 16 ) ) );
     }
     else
     {
@@ -214,6 +242,7 @@ void print_hex( const TT& tt, std::ostream& os = std::cout )
     }
   } );
 }
+/*! \endcond */
 
 /*! \brief Prints truth table in raw binary presentation (for file I/O)
 
@@ -331,7 +360,7 @@ std::string anf_to_expression( const TT& anf )
       expr += "1";
       return;
     }
-    auto weight = __builtin_popcount( bit );
+    auto weight = __builtin_popcount( static_cast<uint32_t>( bit ) );
     if ( weight != 1 )
     {
       expr += "(";
