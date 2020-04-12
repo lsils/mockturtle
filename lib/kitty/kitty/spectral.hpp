@@ -676,7 +676,7 @@ private:
   {
     spectral_operation op( spectral_operation::kind::disjoint_translation, 1 << i );
 
-    flip_bit( _anf, 1 << i );
+    flip_bit( _anf, UINT64_C( 1 ) << i );
 
     return op;
   }
@@ -715,7 +715,7 @@ public:
       {
         foreach_term_of_size( k, [&]( auto term ) {
           auto mask = _anf.construct();
-          create_from_cubes( mask, {cube( term, term )} );
+          create_from_cubes( mask, {cube( static_cast<uint32_t>( term ), static_cast<uint32_t>( term ) )} );
 
           const auto i = find_first_one_bit( _anf & _khots[k + 1] & mask );
           if ( i != -1 )
@@ -726,7 +726,7 @@ public:
           else
           {
             foreach_term_of_size( k, [&]( auto term2 ) {
-              if ( __builtin_popcount( term ^ term2 ) == 2 )
+              if ( __builtin_popcount( static_cast<uint32_t>( term ^ term2 ) ) == 2 )
               {
                 const auto vari = detail::log2[term & ~term2];
                 const auto varj = detail::log2[term2 & ~term];
@@ -747,7 +747,7 @@ public:
 
     for ( auto i = 0u; i < _anf.num_vars(); ++i )
     {
-      if ( get_bit( _anf, 1 << i ) )
+      if ( get_bit( _anf, UINT64_C( 1 ) << i ) )
       {
         insert( disjoint_translation( i ) );
       }
@@ -906,7 +906,7 @@ inline std::vector<int32_t> autocorrelation_spectrum( const TT& tt )
 {
   static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
 
-  std::vector<int32_t> spectrum( 1, tt.num_bits() );
+  std::vector<int32_t> spectrum( 1, static_cast<uint32_t>( tt.num_bits() ) );
   spectrum.reserve( tt.num_bits() );
 
   for ( uint64_t i = 1; i < tt.num_bits(); ++i )

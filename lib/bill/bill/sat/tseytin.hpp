@@ -5,6 +5,7 @@
 #pragma once
 
 #include "interface/types.hpp"
+#include <vector>
 
 namespace bill {
 

@@ -99,7 +99,7 @@ private:
     {
       auto copy = func;
       const auto support = kitty::min_base_inplace( copy );
-      const auto small_func = kitty::shrink_to( copy, support.size() );
+      const auto small_func = kitty::shrink_to( copy, static_cast<unsigned int>( support.size() ) );
       std::vector<signal<Ntk>> small_pis( support.size() );
       for ( auto i = 0u; i < support.size(); ++i )
       {
@@ -179,7 +179,7 @@ private:
     {
       auto copy = func;
       const auto support = kitty::min_base_inplace( copy );
-      const auto small_func = kitty::shrink_to( copy, support.size() );
+      const auto small_func = kitty::shrink_to( copy, static_cast<unsigned int>( support.size() ) );
       std::vector<signal<Ntk>> small_pis( support.size() );
       for ( auto i = 0u; i < support.size(); ++i )
       {

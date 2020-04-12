@@ -364,7 +364,7 @@ Ntk cleanup_luts( Ntk const& ntk )
 
 
     const auto support = kitty::min_base_inplace( func );
-    auto new_func = kitty::shrink_to( func, support.size() );
+    auto new_func = kitty::shrink_to( func, static_cast<unsigned int>( support.size() ) );
 
     std::vector<signal<Ntk>> children;
     if ( auto var = support.begin(); var != support.end() )

@@ -68,7 +68,14 @@ inline TT unary_not( const TT& tt )
 template<typename TT>
 inline TT unary_not_if( const TT& tt, bool cond )
 {
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4146)
+#endif
   const auto mask = -static_cast<uint64_t>( cond );
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
   return unary_operation( tt, [mask]( auto a ) { return a ^ mask; } );
 }
 
@@ -236,12 +243,12 @@ bool has_var( const TT& tt, uint8_t var_index )
   if ( tt.num_vars() <= 6 || var_index < 6 )
   {
     return std::any_of( std::begin( tt._bits ), std::end( tt._bits ),
-                        [var_index]( uint64_t word ) { return ( ( word >> ( 1 << var_index ) ) & detail::projections_neg[var_index] ) !=
+                        [var_index]( uint64_t word ) { return ( ( word >> ( uint64_t( 1 ) << var_index ) ) & detail::projections_neg[var_index] ) !=
                                                               ( word & detail::projections_neg[var_index] ); } );
   }
 
   const auto step = 1 << ( var_index - 6 );
-  for ( auto i = 0u; i < tt.num_blocks(); i += 2 * step )
+  for ( auto i = 0u; i < static_cast<uint32_t>( tt.num_blocks() ); i += 2 * step )
   {
     for ( auto j = 0; j < step; ++j )
     {
@@ -276,14 +283,14 @@ bool has_var( const static_truth_table<NumVars, true>& tt, uint8_t var_index )
 template<typename TT>
 void next_inplace( TT& tt )
 {
-  if ( tt.num_vars() <= 6 )
+  if ( tt.num_vars() <= 6u )
   {
     tt._bits[0]++;
     tt.mask_bits();
   }
   else
   {
-    for ( auto i = 0u; i < tt.num_blocks(); ++i )
+    for ( auto i = 0u; i < static_cast<uint32_t>( tt.num_blocks() ); ++i )
     {
       /* If incrementing the word does not lead to an overflow, we're done*/
       if ( ++tt._bits[i] != 0 )
@@ -304,10 +311,9 @@ inline void next_inplace( static_truth_table<NumVars, true>& tt )
 /*! \endcond */
 
 /*! \cond PRIVATE */
-template<int NumVars>
 inline void next_inplace( partial_truth_table& tt )
 {
-  for ( auto i = 0u; i < tt.num_blocks(); ++i )
+  for ( auto i = 0u; i < static_cast<uint32_t>( tt.num_blocks() ); ++i )
   {
     /* If incrementing the word does not lead to an overflow, we're done*/
     if ( ++tt._bits[i] != 0u )
@@ -345,13 +351,13 @@ void cofactor0_inplace( TT& tt, uint8_t var_index )
   {
     std::transform( std::begin( tt._bits ), std::end( tt._bits ),
                     std::begin( tt._bits ),
-                    [var_index]( uint64_t word ) { return ( ( word & detail::projections_neg[var_index] ) << ( 1 << var_index ) ) |
+                    [var_index]( uint64_t word ) { return ( ( word & detail::projections_neg[var_index] ) << ( uint64_t( 1 ) << var_index ) ) |
                                                           ( word & detail::projections_neg[var_index] ); } );
   }
   else
   {
     const auto step = 1 << ( var_index - 6 );
-    for ( auto i = 0u; i < tt.num_blocks(); i += 2 * step )
+    for ( auto i = 0u; i < static_cast<uint32_t>( tt.num_blocks() ); i += 2 * step )
     {
       for ( auto j = 0; j < step; ++j )
       {
@@ -396,12 +402,12 @@ void cofactor1_inplace( TT& tt, uint8_t var_index )
     std::transform( std::begin( tt._bits ), std::end( tt._bits ),
                     std::begin( tt._bits ),
                     [var_index]( uint64_t word ) { return ( word & detail::projections[var_index] ) |
-                                                          ( ( word & detail::projections[var_index] ) >> ( 1 << var_index ) ); } );
+                                                          ( ( word & detail::projections[var_index] ) >> ( uint64_t( 1 ) << var_index ) ); } );
   }
   else
   {
     const auto step = 1 << ( var_index - 6 );
-    for ( auto i = 0u; i < tt.num_blocks(); i += 2 * step )
+    for ( auto i = 0u; i < static_cast<uint32_t>( tt.num_blocks() ); i += 2 * step )
     {
       for ( auto j = 0; j < step; ++j )
       {
@@ -746,7 +752,7 @@ std::vector<uint8_t> min_base_inplace( TT& tt )
 template<typename TT>
 void expand_inplace( TT& tt, const std::vector<uint8_t>& support )
 {
-  for ( int i = support.size() - 1; i >= 0; --i )
+  for ( int i = static_cast<int>( support.size() ) - 1; i >= 0; --i )
   {
     assert( i <= support[i] );
     swap_inplace( tt, i, support[i] );

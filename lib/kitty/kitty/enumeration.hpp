@@ -62,7 +62,7 @@ void fuller_neighborhood_enumeration( std::vector<TT>& functions, CanonizationFn
   functions.front() = canonization_fn( functions.front() );
 
   /* get number of bits from seed truth table */
-  const auto num_bits = functions.front().num_bits();
+  const auto num_bits = static_cast<uint64_t>( functions.front().num_bits() );
   std::vector<TT> neighborhood( num_bits );
   uint32_t num{1};
   std::stack<TT> stack;

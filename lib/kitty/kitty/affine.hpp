@@ -187,7 +187,7 @@ TT exact_affine_canonization_old( const TT& tt )
 
   auto min = exact_linear_canonization_old( copy );
 
-  for ( int j = flips.size() - 1; j >= 0; --j )
+  for ( int j = static_cast<int>( flips.size() ) - 1; j >= 0; --j )
   {
     const auto pos = flips[j];
     flip_inplace( copy, pos );

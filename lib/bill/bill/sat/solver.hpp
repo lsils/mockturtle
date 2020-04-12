@@ -9,3 +9,4 @@
 #include "interface/ghack.hpp"
 #include "interface/glucose.hpp"
 #include "interface/maple.hpp"
+#include "interface/z3.hpp"
