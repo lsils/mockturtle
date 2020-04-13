@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-gcc8:
-    name: Build with GNU GCC 8
+    name: GNU GCC 8
     runs-on: macOS-latest
 
     steps:
@@ -28,7 +28,7 @@ jobs:
         cd build
         ./test/run_tests "~[quality]"
   build-gcc9:
-    name: Build with GNU GCC 9
+    name: GNU GCC 9
     runs-on: macOS-latest
 
     steps:
@@ -46,7 +46,7 @@ jobs:
         cd build
         ./test/run_tests "~[quality]"
   build-clang9:
-    name: Build with Clang 9
+    name: Clang 9
     runs-on: macOS-latest
 
     steps:

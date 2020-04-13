@@ -52,7 +52,7 @@ std::vector<uint32_t> get_minterms( const TT& tt )
   std::vector<uint32_t> m;
   m.reserve( count_ones( tt ) );
   for_each_one_bit( tt, [&m]( auto index ) {
-    m.emplace_back( index );
+    m.emplace_back( static_cast<uint32_t>( index ) );
   } );
   return m;
 }

@@ -34,6 +34,7 @@
 #pragma once
 
 #include <cstdint>
+#include <fstream>
 #include <unordered_map>
 #include <vector>
 
@@ -43,8 +44,11 @@
 #include "../equivalence_classes.hpp"
 
 #include <fmt/format.h>
+#include <kitty/constructors.hpp>
+#include <kitty/dynamic_truth_table.hpp>
 #include <kitty/print.hpp>
 #include <kitty/spectral.hpp>
+#include <lorina/detail/utils.hpp>
 
 namespace mockturtle::future
 {
@@ -71,11 +75,29 @@ public:
     build_db();
   }
 
-  template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
+  void load_from_file( std::string const& filename )
   {
-    (void)dont_cares;
-    (*this)( ntk, function, function.construct(), begin, end, fn );
+    if ( ps_.verbose )
+    {
+      fmt::print( "start loading\n" );
+    }
+    kitty::dynamic_truth_table func( 6u );
+    std::ifstream in( filename, std::ifstream::in );
+    std::string line;
+    while ( std::getline( in, line ) )
+    {
+      const auto vline = lorina::detail::split( line, " " );
+      kitty::create_from_hex_string( func, vline[0] );
+      const auto sindexes = lorina::detail::split( vline[3], "," );
+      std::vector<uint32_t> index_list( sindexes.size() );
+      std::transform( sindexes.begin(), sindexes.end(), index_list.begin(), [&]( std::string const& s ) { return static_cast<uint32_t>( std::stoul( s ) ); } );
+      db_[6u][*func.cbegin()] = index_list;
+      st_.db_size += sizeof( uint64_t ) + sizeof( sindexes ) + sizeof( uint32_t ) * sindexes.size();
+    }
+    if ( ps_.verbose )
+    {
+      fmt::print( "done loading, size = {:>5.2f} Kb\n", st_.db_size / 1024.0f );
+    }
   }
 
   template<typename LeavesIterator, typename Fn>
@@ -100,6 +122,7 @@ public:
     if ( it == db_[num_vars].end() )
     {
       fmt::print( "[w] cannot find repr {:x} in database.\n", repr );
+      return;
     }
 
     const auto f = apply_spectral_transformations( ntk, trans, std::vector<signal<Ntk>>( begin, end ), [&]( xag_network& ntk, std::vector<signal<Ntk>> const& leaves ) {
@@ -125,7 +148,7 @@ private:
 
     if ( ps_.verbose )
     {
-      fmt::print( "[i] db size = {:>5.2f} Kb", st_.db_size / 1024.0f );
+      fmt::print( "[i] db size = {:>5.2f} Kb\n", st_.db_size / 1024.0f );
     }
   }
 

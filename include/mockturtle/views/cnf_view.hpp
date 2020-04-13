@@ -40,12 +40,12 @@
 #include <vector>
 
 #include "../algorithms/cnf.hpp"
+#include "../utils/include/percy.hpp"
 #include "../traits.hpp"
 
 #include <bill/sat/interface/common.hpp>
 #include <bill/sat/interface/glucose.hpp>
 #include <fmt/format.h>
-#include <percy/cnf.hpp>
 
 namespace mockturtle
 {
@@ -183,7 +183,7 @@ private:
   node_map<bill::lit_type, Ntk> literals_;
   std::vector<bill::lit_type> switches_;
 
-  int event_ptr_[3];
+  std::size_t event_ptr_[3];
 };
 
 } /* namespace detail */
@@ -336,7 +336,12 @@ public:
           dimacs_.add_clause( &l, &l + 1 );
         }
         dimacs_.set_nr_vars( solver_.num_variables() );
-        auto fd = fopen( ps_.write_dimacs->c_str(), "w" );
+#ifdef _MSC_VER
+        FILE *fd = nullptr;
+        fopen_s( &fd, ps_.write_dimacs->c_str(), "w" );
+#else
+        FILE *fd = fopen( ps_.write_dimacs->c_str(), "w" );
+#endif
         dimacs_.to_dimacs( fd );
         fclose( fd );
       }

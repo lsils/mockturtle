@@ -58,7 +58,7 @@ std::pair<uint32_t, std::vector<uint32_t>> chow_parameters( const TT& tt )
   assert( tt.num_vars() <= 32 );
 
   const auto n = tt.num_vars();
-  const auto nf = count_ones( tt );
+  const auto nf = static_cast<uint32_t>( count_ones( tt ) );
 
   std::vector<uint32_t> sf( n, 0u );
   for_each_one_bit( tt, [&sf]( auto minterm ) {
@@ -87,7 +87,7 @@ bool is_canalizing( const TT& tt )
   uint32_t max = static_cast<uint32_t>( ( uint64_t( 1 ) << tt.num_vars() ) - 1 );
   f1and = f0and = max;
 
-  for ( uint32_t i = 0u; i < tt.num_bits(); ++i )
+  for ( uint32_t i = 0u; i < static_cast<uint32_t>( tt.num_bits() ); ++i )
   {
     if ( get_bit( tt, i ) == 0 )
     {
@@ -116,7 +116,7 @@ bool is_canalizing( const TT& tt )
 template<typename TT>
 bool is_horn( const TT& tt )
 {
-  for ( uint32_t i = 1u; i < tt.num_bits(); ++i )
+  for ( uint32_t i = 1u; i < static_cast<uint32_t>( tt.num_bits() ); ++i )
   {
     for ( uint32_t j = 0u; j < i; ++j )
     {
@@ -137,7 +137,7 @@ bool is_horn( const TT& tt )
 template<typename TT>
 bool is_krom( const TT& tt )
 {
-  for ( uint32_t i = 2u; i < tt.num_bits(); ++i )
+  for ( uint32_t i = 2u; i < static_cast<uint32_t>( tt.num_bits() ); ++i )
   {
     for ( uint32_t j = 1u; j < i; ++j )
     {
@@ -263,7 +263,7 @@ void foreach_runlength( const TT& tt, Fn&& fn )
 
   for ( auto i = 1ull; i < tt.num_bits(); ++i )
   {
-    if ( get_bit( tt, i ) != current )
+    if ( static_cast<bool>( get_bit( tt, i ) ) != current )
     {
       fn( current, length );
       current = !current;

@@ -368,7 +368,7 @@ private:
 
     while ( std::getline( file1, line ) )
     {
-      pos = line.find( '\t' );
+      pos = static_cast<unsigned>( line.find( '\t' ) );
       const auto name = line.substr( 0, pos++ );
       auto original = line.substr( pos, 16u );
       pos += 17u;

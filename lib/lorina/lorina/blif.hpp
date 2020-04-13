@@ -26,6 +26,7 @@
 /*!
   \file blif.hpp
   \brief Implements BLIF parser
+
   \author Heinz Riener
 */
 

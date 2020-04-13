@@ -90,15 +90,15 @@ public:
     }
 
     /* generate gates */
-    std::mt19937 rng( seed );
-    std::uniform_int_distribution<int> rule_dist( 0, _gens.size()-1u );
+    std::mt19937 rng( static_cast<unsigned int>( seed ) );
+    std::uniform_int_distribution<int> rule_dist( 0, static_cast<int>( _gens.size() - 1u ) );
 
     auto gate_counter = ntk.num_gates();
     while ( gate_counter < num_gates )
     {
       auto const r = _gens.at( rule_dist( rng ) );
 
-      std::uniform_int_distribution<int> dist( 0, fs.size()-1 );
+      std::uniform_int_distribution<int> dist( 0, static_cast<int>( fs.size() - 1 ) );
       std::vector<signal> args;
       for ( auto i = 0u; i < r.num_args; ++i )
       {

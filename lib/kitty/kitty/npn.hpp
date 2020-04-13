@@ -113,7 +113,7 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_p_canonization( const TT& t
 
     if ( t1 < tmin )
     {
-      best_swap = i;
+      best_swap = static_cast<int>( i );
       tmin = t1;
     }
   }
@@ -164,14 +164,14 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_npn_canonization( const TT&
   if ( num_vars == 0 )
   {
     const auto bit = get_bit( tt, 0 );
-    return std::make_tuple( unary_not_if( tt, bit ), bit, std::vector<uint8_t>{} );
+    return std::make_tuple( unary_not_if( tt, bit ), static_cast<uint32_t>( bit ), std::vector<uint8_t>{} );
   }
 
   /* Special case for n = 1 */
   if ( num_vars == 1 )
   {
     const auto bit1 = get_bit( tt, 1 );
-    return std::make_tuple( unary_not_if( tt, bit1 ), bit1 << 1, std::vector<uint8_t>{0} );
+    return std::make_tuple( unary_not_if( tt, bit1 ), static_cast<uint32_t>( bit1 << 1 ), std::vector<uint8_t>{0} );
   }
 
   assert( num_vars >= 2 && num_vars <= 6 );
@@ -200,7 +200,7 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_npn_canonization( const TT&
 
     if ( t1 < tmin || t2 < tmin )
     {
-      best_swap = i;
+      best_swap = static_cast<int>( i );
       tmin = std::min( t1, t2 );
       invo = tmin == t2;
     }
@@ -220,7 +220,7 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_npn_canonization( const TT&
     if ( t1 < tmin || t2 < tmin )
     {
       best_swap = -1;
-      best_flip = j;
+      best_flip = static_cast<int>( j );
       tmin = std::min( t1, t2 );
       invo = tmin == t2;
     }
@@ -236,8 +236,8 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_npn_canonization( const TT&
 
       if ( t1 < tmin || t2 < tmin )
       {
-        best_swap = i;
-        best_flip = j;
+        best_swap = static_cast<int>( i );
+        best_flip = static_cast<int>( j );
         tmin = std::min( t1, t2 );
         invo = tmin == t2;
       }
