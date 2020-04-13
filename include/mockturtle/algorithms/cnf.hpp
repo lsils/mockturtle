@@ -37,6 +37,9 @@
 #include <optional>
 #include <vector>
 
+#include <bill/sat/interface/common.hpp>
+#include <bill/sat/interface/types.hpp>
+#include <fmt/format.h>
 #include <kitty/cnf.hpp>
 #include <kitty/constructors.hpp>
 
@@ -60,6 +63,183 @@ inline constexpr uint32_t lit_not_cond( uint32_t lit, bool cond )
 {
   return cond ? lit ^ 0x1 : lit;
 }
+
+namespace detail
+{
+
+/* c = a & b */
+template<class ClauseFn>
+inline void on_and( uint32_t c, uint32_t a, uint32_t b, ClauseFn&& fn )
+{
+  fn( {a, lit_not( c )} );
+  fn( {b, lit_not( c )} );
+  fn( {lit_not( a ), lit_not( b ), c} );
+}
+
+/* c = a & b */
+template<class ClauseFn>
+inline void on_and( bill::lit_type c, bill::lit_type a, bill::lit_type b, ClauseFn&& fn )
+{
+  fn( {a, ~c} );
+  fn( {b, ~c} );
+  fn( {~a, ~b, c} );
+}
+
+/* c = a | b */
+template<class ClauseFn>
+inline void on_or( uint32_t c, uint32_t a, uint32_t b, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), c} );
+  fn( {lit_not( b ), c} );
+  fn( {a, b, lit_not( c )} );
+}
+
+/* c = a | b */
+template<class ClauseFn>
+inline void on_or( bill::lit_type c, bill::lit_type a, bill::lit_type b, ClauseFn&& fn )
+{
+  fn( {~a, c} );
+  fn( {~b, c} );
+  fn( {a, b, ~c} );
+}
+
+/* c = a ^ b */
+template<class ClauseFn>
+inline void on_xor( uint32_t c, uint32_t a, uint32_t b, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), lit_not( b ), lit_not( c )} );
+  fn( {lit_not( a ), b, c} );
+  fn( {a, lit_not( b ), c} );
+  fn( {a, b, lit_not( c )} );
+}
+
+/* c = a ^ b */
+template<class ClauseFn>
+inline void on_xor( bill::lit_type c, bill::lit_type a, bill::lit_type b, ClauseFn&& fn )
+{
+  fn( {~a, ~b, ~c} );
+  fn( {~a, b, c} );
+  fn( {a, ~b, c} );
+  fn( {a, b, ~c} );
+}
+
+/* d = <abc> */
+template<class ClauseFn>
+inline void on_maj( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), lit_not( b ), d} );
+  fn( {lit_not( a ), lit_not( c ), d} );
+  fn( {lit_not( b ), lit_not( c ), d} );
+  fn( {a, b, lit_not( d )} );
+  fn( {a, c, lit_not( d )} );
+  fn( {b, c, lit_not( d )} );
+}
+
+/* d = <abc> */
+template<class ClauseFn>
+inline void on_maj( bill::lit_type d, bill::lit_type a, bill::lit_type b, bill::lit_type c, ClauseFn&& fn )
+{
+  fn( {~a, ~b, d} );
+  fn( {~a, ~c, d} );
+  fn( {~b, ~c, d} );
+  fn( {a, b, ~d} );
+  fn( {a, c, ~d} );
+  fn( {b, c, ~d} );
+}
+
+/* d = a ^ b ^ c */
+template<class ClauseFn>
+inline void on_xor3( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), b, c, d} );
+  fn( {a, lit_not( b ), c, d} );
+  fn( {a, b, lit_not( c ), d} );
+  fn( {a, b, c, lit_not( d )} );
+  fn( {a, lit_not( b ), lit_not( c ), lit_not( d )} );
+  fn( {lit_not( a ), b, lit_not( c ), lit_not( d )} );
+  fn( {lit_not( a ), lit_not( b ), c, lit_not( d )} );
+  fn( {lit_not( a ), lit_not( b ), lit_not( c ), d} );
+}
+
+/* d = a ^ b ^ c */
+template<class ClauseFn>
+inline void on_xor3( bill::lit_type d, bill::lit_type a, bill::lit_type b, bill::lit_type c, ClauseFn&& fn )
+{
+  fn( {~a, b, c, d} );
+  fn( {a, ~b, c, d} );
+  fn( {a, b, ~c, d} );
+  fn( {a, b, c, ~d} );
+  fn( {a, ~b, ~c, ~d} );
+  fn( {~a, b, ~c, ~d} );
+  fn( {~a, ~b, c, ~d} );
+  fn( {~a, ~b, ~c, d} );
+}
+
+/* d = a ? b : c */
+template<class ClauseFn>
+inline void on_ite( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& fn )
+{
+  fn( {lit_not( a ), lit_not( b ), d} );
+  fn( {lit_not( a ), b, lit_not( d )} );
+  fn( {a, lit_not( c ), d} );
+  fn( {a, c, lit_not( d )} );
+}
+
+/* d = a ? b : c */
+template<class ClauseFn>
+inline void on_ite( bill::lit_type d, bill::lit_type a, bill::lit_type b, bill::lit_type c, ClauseFn&& fn )
+{
+  fn( {~a, ~b, d} );
+  fn( {~a, b, ~d} );
+  fn( {a, ~c, d} );
+  fn( {a, c, ~d} );
+}
+
+/* general case */
+template<class ClauseFn>
+inline void on_function( uint32_t f, std::vector<uint32_t> const& child_lits, kitty::dynamic_truth_table const& function, ClauseFn&& fn )
+{
+  const auto cnf = kitty::cnf_characteristic( function );
+
+  auto lits = child_lits;
+  lits.push_back( f );
+  for ( auto const& cube : cnf )
+  {
+    std::vector<uint32_t> clause;
+    for ( auto i = 0u; i < lits.size(); ++i )
+    {
+      if ( cube.get_mask( i ) )
+      {
+        clause.push_back( lit_not_cond( lits[i], !cube.get_bit( i ) ) );
+      }
+    }
+    fn( clause );
+  }
+}
+
+/* general case */
+template<class ClauseFn>
+inline void on_function( bill::lit_type f, std::vector<bill::lit_type> const& child_lits, kitty::dynamic_truth_table const& function, ClauseFn&& fn )
+{
+  const auto cnf = kitty::cnf_characteristic( function );
+
+  auto lits = child_lits;
+  lits.push_back( f );
+  for ( auto const& cube : cnf )
+  {
+    bill::result::clause_type clause;
+    for ( auto i = 0u; i < lits.size(); ++i )
+    {
+      if ( cube.get_mask( i ) )
+      {
+        clause.push_back( cube.get_bit( i ) ? lits[i] : ~lits[i] );
+      }
+    }
+    fn( clause );
+  }
+}
+
+} // namespace detail
 
 /*! \brief Clause callback function for generate_cnf. */
 using clause_callback_t = std::function<void( std::vector<uint32_t> const& )>;
@@ -138,7 +318,7 @@ public:
       {
         if ( ntk_.is_and( n ) )
         {
-          on_and( node_lit, child_lits[0], child_lits[1] );
+          detail::on_and( node_lit, child_lits[0], child_lits[1], fn_ );
           return true;
         }
       }
@@ -147,7 +327,7 @@ public:
       {
         if ( ntk_.is_or( n ) )
         {
-          on_or( node_lit, child_lits[0], child_lits[1] );
+          detail::on_or( node_lit, child_lits[0], child_lits[1], fn_ );
           return true;
         }
       }
@@ -156,7 +336,7 @@ public:
       {
         if ( ntk_.is_xor( n ) )
         {
-          on_xor( node_lit, child_lits[0], child_lits[1] );
+          detail::on_xor( node_lit, child_lits[0], child_lits[1], fn_ );
           return true;
         }
       }
@@ -165,7 +345,7 @@ public:
       {
         if ( ntk_.is_maj( n ) )
         {
-          on_maj( node_lit, child_lits[0], child_lits[1], child_lits[2] );
+          detail::on_maj( node_lit, child_lits[0], child_lits[1], child_lits[2], fn_ );
           return true;
         }
       }
@@ -174,7 +354,7 @@ public:
       {
         if ( ntk_.is_ite( n ) )
         {
-          on_ite( node_lit, child_lits[0], child_lits[1], child_lits[2] );
+          detail::on_ite( node_lit, child_lits[0], child_lits[1], child_lits[2], fn_ );
           return true;
         }
       }
@@ -183,28 +363,39 @@ public:
       {
         if ( ntk_.is_xor3( n ) )
         {
-          on_xor3( node_lit, child_lits[0], child_lits[1], child_lits[2] );
+          detail::on_xor3( node_lit, child_lits[0], child_lits[1], child_lits[2], fn_ );
           return true;
         }
       }
 
-      /* general case */
-      const auto cnf = kitty::cnf_characteristic( ntk_.node_function( n ) );
-
-      child_lits.push_back( node_lit );
-      for ( auto const& cube : cnf )
+      if constexpr ( has_is_nary_and_v<Ntk> )
       {
-        std::vector<uint32_t> clause;
-        for ( auto i = 0u; i <= ntk_.fanin_size( n ); ++i )
+        if ( ntk_.is_nary_and( n ) )
         {
-          if ( cube.get_mask( i ) )
-          {
-            clause.push_back( lit_not_cond( child_lits[i], !cube.get_bit( i ) ) );
-          }
+          fmt::print( "[e] nary-AND not yet supported in generate_cnf" );
+          std::abort();
         }
-        fn_( clause );
       }
 
+      if constexpr ( has_is_nary_or_v<Ntk> )
+      {
+        if ( ntk_.is_nary_or( n ) )
+        {
+          fmt::print( "[e] nary-OR not yet supported in generate_cnf" );
+          std::abort();
+        }
+      }
+      if constexpr ( has_is_nary_xor_v<Ntk> )
+      {
+        if ( ntk_.is_nary_xor( n ) )
+        {
+          fmt::print( "[e] nary-XOR not yet supported in generate_cnf" );
+          std::abort();
+        }
+      }
+
+      /* general case */
+      detail::on_function( node_lit, child_lits, ntk_.node_function( n ), fn_ );
       return true;
     } );
 
@@ -214,65 +405,6 @@ public:
     } );
 
     return output_lits;
-  }
-
-private:
-  /* c = a & b */
-  inline void on_and( uint32_t c, uint32_t a, uint32_t b )
-  {
-    fn_( {a, lit_not( c )} );
-    fn_( {b, lit_not( c )} );
-    fn_( {lit_not( a ), lit_not( b ), c} );
-  }
-
-  /* c = a | b */
-  inline void on_or( uint32_t c, uint32_t a, uint32_t b )
-  {
-    fn_( {lit_not( a ), c} );
-    fn_( {lit_not( b ), c} );
-    fn_( {a, b, lit_not( c )} );
-  }
-
-  /* c = a ^ b */
-  inline void on_xor( uint32_t c, uint32_t a, uint32_t b )
-  {
-    fn_( {lit_not( a ), lit_not( b ), lit_not( c )} );
-    fn_( {lit_not( a ), b, c} );
-    fn_( {a, lit_not( b ), c} );
-    fn_( {a, b, lit_not( c )} );
-  }
-
-  /* d = <abc> */
-  inline void on_maj( uint32_t d, uint32_t a, uint32_t b, uint32_t c )
-  {
-    fn_( {lit_not( a ), lit_not( b ), d} );
-    fn_( {lit_not( a ), lit_not( c ), d} );
-    fn_( {lit_not( b ), lit_not( c ), d} );
-    fn_( {a, b, lit_not( d )} );
-    fn_( {a, c, lit_not( d )} );
-    fn_( {b, c, lit_not( d )} );
-  }
-
-  /* d = a ^ b ^ c */
-  inline void on_xor3( uint32_t d, uint32_t a, uint32_t b, uint32_t c )
-  {
-    fn_( {lit_not( a ), b, c, d} );
-    fn_( {a, lit_not( b ), c, d} );
-    fn_( {a, b, lit_not( c ), d} );
-    fn_( {a, b, c, lit_not( d )} );
-    fn_( {a, lit_not( b ), lit_not( c ), lit_not( d )} );
-    fn_( {lit_not( a ), b, lit_not( c ), lit_not( d )} );
-    fn_( {lit_not( a ), lit_not( b ), c, lit_not( d )} );
-    fn_( {lit_not( a ), lit_not( b ), lit_not( c ), d} );
-  }
-
-  /* d = a ? b : c */
-  inline void on_ite( uint32_t d, uint32_t a, uint32_t b, uint32_t c )
-  {
-    fn_( {lit_not( a ), lit_not( b ), d} );
-    fn_( {lit_not( a ), b, lit_not( d )} );
-    fn_( {a, lit_not( c ), d} );
-    fn_( {a, c, lit_not( d )} );
   }
 
 private:

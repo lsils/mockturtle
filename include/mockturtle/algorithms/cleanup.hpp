@@ -161,6 +161,33 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
             break;
           }
         }
+        if constexpr ( has_is_nary_and_v<NtkSource> )
+        {
+          static_assert( has_create_nary_and_v<NtkDest>, "NtkDest cannot create n-ary AND gates" );
+          if ( ntk.is_nary_and( node ) )
+          {
+            old_to_new[node] = dest.create_nary_and( children );
+            break;
+          }
+        }
+        if constexpr ( has_is_nary_or_v<NtkSource> )
+        {
+          static_assert( has_create_nary_or_v<NtkDest>, "NtkDest cannot create n-ary OR gates" );
+          if ( ntk.is_nary_or( node ) )
+          {
+            old_to_new[node] = dest.create_nary_or( children );
+            break;
+          }
+        }
+        if constexpr ( has_is_nary_xor_v<NtkSource> )
+        {
+          static_assert( has_create_nary_xor_v<NtkDest>, "NtkDest cannot create n-ary XOR gates" );
+          if ( ntk.is_nary_xor( node ) )
+          {
+            old_to_new[node] = dest.create_nary_xor( children );
+            break;
+          }
+        }
         if constexpr ( has_is_function_v<NtkSource> )
         {
           static_assert( has_create_node_v<NtkDest>, "NtkDest cannot create arbitrary function gates" );
@@ -337,7 +364,7 @@ Ntk cleanup_luts( Ntk const& ntk )
 
 
     const auto support = kitty::min_base_inplace( func );
-    auto new_func = kitty::shrink_to( func, support.size() );
+    auto new_func = kitty::shrink_to( func, static_cast<unsigned int>( support.size() ) );
 
     std::vector<signal<Ntk>> children;
     if ( auto var = support.begin(); var != support.end() )

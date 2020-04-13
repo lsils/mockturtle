@@ -181,6 +181,14 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
 }
 
 template<class Ntk>
+inline std::vector<signal<Ntk>> modular_adder( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
+{
+  auto w = a;
+  modular_adder_inplace( ntk, w, b, m );
+  return w;
+}
+
+template<class Ntk>
 inline void modular_adder_hiasat_inplace( Ntk& ntk, std::vector<signal<Ntk>>& x, std::vector<signal<Ntk>> const& y, std::vector<bool> const& m )
 {
   assert( m.size() <= x.size() );
@@ -357,6 +365,14 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
   modular_subtractor_inplace( ntk, a, b, mvec );
 }
 
+template<class Ntk>
+inline std::vector<signal<Ntk>> modular_subtractor( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
+{
+  auto w = a;
+  modular_subtractor_inplace( ntk, w, b, m );
+  return w;
+}
+
 /*! \brief Creates modular doubling (multiplication by 2)
  *
  * Given one input word \f$a\f$ of size *k*, this function creates a circuit
@@ -509,6 +525,14 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
   modular_multiplication_inplace( ntk, a, b, mvec );
 }
 
+template<class Ntk>
+inline std::vector<signal<Ntk>> modular_multiplication( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
+{
+  auto w = a;
+  modular_multiplication_inplace( ntk, w, b, m );
+  return w;
+}
+
 template<typename Ntk>
 inline std::vector<signal<Ntk>> modular_constant_multiplier_one_bits( Ntk& ntk, std::vector<signal<Ntk>> const& a, std::vector<bool> const& constant )
 {
@@ -593,7 +617,7 @@ inline std::vector<signal<Ntk>> modular_constant_multiplier( Ntk& ntk, std::vect
  * `res` is too small for the value `hex` most-significant digits will be
  * ignored.
  */
-void bool_vector_from_hex( std::vector<bool>& res, std::string_view hex, bool shrink_to_fit = true )
+inline void bool_vector_from_hex( std::vector<bool>& res, std::string_view hex, bool shrink_to_fit = true )
 {
   auto itR = res.begin();
   auto itS = hex.rbegin();
@@ -662,6 +686,24 @@ void bool_vector_from_hex( std::vector<bool>& res, std::string_view hex, bool sh
     /* in case the hex string was short, fill remaining values with false */
     std::fill( itR, res.end(), false );
   }
+}
+
+inline void bool_vector_from_dec( std::vector<bool>& res, uint64_t value )
+{
+  auto it = res.begin();
+  while ( value && it != res.end() )
+  {
+    *it++ = value % 2;
+    value >>= 1;
+  }
+}
+
+inline uint64_t bool_vector_to_long( std::vector<bool> const& vec )
+{
+  return std::accumulate( vec.begin(), vec.end(), std::make_pair( 0u, 0ul ),
+                          []( auto accu, auto bit ) {
+                              return std::make_pair( accu.first + 1u, accu.second + ( bit ? 1ul << accu.first : 0ul ) );
+                          } ).second;
 }
 
 /*! \brief Creates a multiplier assuming Montgomery numbers as inputs.

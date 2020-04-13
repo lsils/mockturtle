@@ -37,7 +37,7 @@ TEST_CASE( "Simulate XOR AIG circuit with static truth table", "[simulation]" )
   const auto f4 = aig.create_nand( f2, f3 );
   aig.create_po( f4 );
 
-  const auto tt = simulate<kitty::static_truth_table<2>>( aig )[0];
+  const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
   CHECK( tt._bits == 0x6 );
 }
 

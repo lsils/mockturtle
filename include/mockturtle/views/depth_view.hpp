@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "../traits.hpp"
+#include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
 
@@ -44,6 +45,7 @@ namespace mockturtle
 
 struct depth_view_params
 {
+  /*! \brief Take complemented edges into account for depth computation. */
   bool count_complements{false};
 };
 
@@ -78,13 +80,13 @@ struct depth_view_params
       std::cout << "Depth: " << aig_depth.depth() << "\n";
    \endverbatim
  */
-template<typename Ntk, bool has_depth_interface = has_depth_v<Ntk>&& has_level_v<Ntk>&& has_update_levels_v<Ntk>>
+template<class Ntk, class NodeCostFn = unit_cost<Ntk>, bool has_depth_interface = has_depth_v<Ntk>&& has_level_v<Ntk>&& has_update_levels_v<Ntk>>
 class depth_view
 {
 };
 
-template<typename Ntk>
-class depth_view<Ntk, true> : public Ntk
+template<class Ntk, class NodeCostFn>
+class depth_view<Ntk, NodeCostFn, true> : public Ntk
 {
 public:
   depth_view( Ntk const& ntk, depth_view_params const& ps = {} ) : Ntk( ntk )
@@ -93,8 +95,8 @@ public:
   }
 };
 
-template<typename Ntk>
-class depth_view<Ntk, false> : public Ntk
+template<class Ntk, class NodeCostFn>
+class depth_view<Ntk, NodeCostFn, false> : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
@@ -106,11 +108,12 @@ public:
    * \param ntk Base network
    * \param count_complements Count inverters as 1
    */
-  explicit depth_view( Ntk const& ntk, depth_view_params const& ps = {} )
+  explicit depth_view( Ntk const& ntk, NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
       : Ntk( ntk ),
         _ps( ps ),
         _levels( ntk ),
-        _crit_path( ntk )
+        _crit_path( ntk ),
+        _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -182,7 +185,7 @@ private:
       level = std::max( level, clevel );
     } );
 
-    return _levels[n] = level + 1;
+    return _levels[n] = level + _cost_fn( *this, n );
   }
 
   void compute_levels()
@@ -214,7 +217,11 @@ private:
       const auto lvl = _levels[n];
       this->foreach_fanin( n, [&]( auto const& f ) {
         const auto cn = this->get_node( f );
-        const auto offset = _ps.count_complements && this->is_complemented( f ) ? 2u : 1u;
+        auto offset = _cost_fn( *this, n );
+        if ( _ps.count_complements && this->is_complemented( f ) )
+        {
+          offset++;
+        }
         if ( _levels[cn] + offset == lvl && !_crit_path[cn] )
         {
           set_critical_path( cn );
@@ -227,12 +234,13 @@ private:
   node_map<uint32_t, Ntk> _levels;
   node_map<uint32_t, Ntk> _crit_path;
   uint32_t _depth;
+  NodeCostFn _cost_fn;
 };
 
 template<class T>
 depth_view( T const& )->depth_view<T>;
 
-template<class T>
-depth_view( T const&, depth_view_params const& )->depth_view<T>;
+template<class T, class NodeCostFn = unit_cost<T>>
+depth_view( T const&, NodeCostFn const&, depth_view_params const& )->depth_view<T, NodeCostFn>;
 
 } // namespace mockturtle
