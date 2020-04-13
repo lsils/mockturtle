@@ -25,11 +25,9 @@ TEST_CASE( "generate reconvergence-driven cuts for an AIG", "[cut_generation]" )
 
   fanout_view<aig_network> aig_fanout_view( aig );
   depth_view<fanout_view<aig_network>> aig_view( aig_fanout_view );
-  cut_manager<depth_view<fanout_view<aig_network>>> mgr( 6 );
 
   auto leaves = [&]( const auto& s, uint32_t size = 1000u ){
-    mgr.node_size_max = size;
-    const auto leaves = reconv_driven_cut( mgr, aig_view, aig.get_node( s ) );
+    const auto leaves = reconv_driven_cut( aig_view, aig.get_node( s ), reconv_cut_parameters{.node_size_max = 6u} );
     return set_t( leaves.begin(), leaves.end() );
   };
 
