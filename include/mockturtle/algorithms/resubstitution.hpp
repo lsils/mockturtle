@@ -485,9 +485,6 @@ public:
   {
     stopwatch t( st.time_total );
 
-    /* start the managers */
-    cut_manager<Ntk> mgr( ps.max_pis );
-
     progress_bar pbar{ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
 
     auto const size = ntk.num_gates();
@@ -506,7 +503,7 @@ public:
 
       /* compute a reconvergence-driven cut */
       auto const leaves = call_with_stopwatch( st.time_cuts, [&]() {
-        return reconv_driven_cut( mgr, ntk, n );
+        return reconv_driven_cut( ntk, n, reconv_cut_parameters{.node_size_max = ps.max_pis} );
       } );
 
       /* evaluate this cut */
