@@ -779,7 +779,7 @@ public:
   uint32_t ci_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
-    return ( _storage->nodes[n].children[0].data );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data );
   }
 
   uint32_t co_index( signal const& s ) const
@@ -801,7 +801,7 @@ public:
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
     assert( _storage->nodes[n].children[0].data < _storage->data.num_pis );
 
-    return ( _storage->nodes[n].children[0].data );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data );
   }
 
   uint32_t po_index( signal const& s ) const
@@ -823,7 +823,7 @@ public:
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
     assert( _storage->nodes[n].children[0].data >= _storage->data.num_pis );
 
-    return ( _storage->nodes[n].children[0].data - _storage->data.num_pis );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data - _storage->data.num_pis );
   }
 
   uint32_t ri_index( signal const& s ) const

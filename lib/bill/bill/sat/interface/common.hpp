@@ -28,7 +28,9 @@
 #include "../solver/glucose.hpp"
 #include "../solver/maple.hpp"
 #if !defined(BILL_WINDOWS_PLATFORM)
+#ifndef LIN64
 #define LIN64
+#endif
 #define ABC_USE_NAMESPACE pabc
 #define ABC_NAMESPACE pabc
 #define ABC_USE_NO_READLINE
@@ -137,6 +139,9 @@ enum class solvers {
 	maple,
 	bsat2,
 	bmcg,
+#if defined(BILL_HAS_Z3)
+	z3
+#endif
 #endif
 };
 

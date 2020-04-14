@@ -184,7 +184,7 @@ public:
     }
     auto prime_large = remainder;
     kitty::min_base_inplace( prime_large );
-    auto prime = kitty::shrink_to( prime_large, support.size() );
+    auto prime = kitty::shrink_to( prime_large, static_cast<unsigned int>( support.size() ) );
     return _on_prime( prime, new_pis );
   }
 

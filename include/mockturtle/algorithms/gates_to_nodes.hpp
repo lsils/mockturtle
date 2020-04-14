@@ -158,7 +158,7 @@ NtkDest single_node_network( NtkSrc const& src )
   for ( auto tt : tts )
   {
     const auto support = kitty::min_base_inplace( tt );
-    const auto small_tt = kitty::shrink_to( tt, support.size() );
+    const auto small_tt = kitty::shrink_to( tt, static_cast<unsigned int>( support.size() ) );
     std::vector<signal<NtkDest>> children( support.size() );
     for ( auto i = 0u; i < support.size(); ++i )
     {

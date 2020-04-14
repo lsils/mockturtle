@@ -791,7 +791,7 @@ signal create_maj( signal a, signal b, signal c )
     auto result = tts.front().construct();
     const auto gate_tt = _storage->data.cache[_storage->nodes[n].data[1].h1];
 
-    for ( auto i = 0u; i < result.num_bits(); ++i )
+    for ( uint32_t i = 0u; i < static_cast<uint32_t>( result.num_bits() ); ++i )
     {
       uint32_t pattern = 0u;
       for ( auto j = 0u; j < nfanin; ++j )

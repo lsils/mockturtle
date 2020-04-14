@@ -91,7 +91,7 @@ void create_nth_var( TT& tt, uint8_t var_index, bool complement = false )
 {
   if constexpr ( std::is_same<TT, partial_truth_table>::value )
   {
-    assert( tt.num_bits() >= ( 1 << var_index ) );
+    assert( tt.num_bits() >= ( UINT64_C( 1 ) << var_index ) );
     if ( tt.num_bits() <= 64 )
     {
       /* assign from precomputed table */
@@ -124,7 +124,7 @@ void create_nth_var( TT& tt, uint8_t var_index, bool complement = false )
     const auto c = 1 << ( var_index - 6 );
     const auto zero = uint64_t( 0 );
     const auto one = ~zero;
-    auto block = 0u;
+    auto block = uint64_t( 0u );
 
     while ( block < tt.num_blocks() )
     {
@@ -268,25 +268,25 @@ void create_from_hex_string( partial_truth_table& tt, const std::string& hex )
   /* the first char; may not use all 4 bits */
   auto i = detail::hex_to_int[static_cast<unsigned char>( hex[0] )];
 
-  int s = len - tt.num_bits(); /* number of leading bits not used. 0 <= s < 4 */
+  auto s = len - tt.num_bits(); /* number of leading bits not used. 0 <= s < 4 */
 
-  if ( ( s <= 0 ) && ( i & 8 ) )
+  if ( ( s <= 0u ) && ( i & 8 ) )
   {
     set_bit( tt, j );
   }
-  if ( ( s <= 1 ) && ( i & 4 ) )
+  if ( ( s <= 1u ) && ( i & 4 ) )
   {
     set_bit( tt, j + s - 1 );
   }
-  if ( ( s <= 2 ) && ( i & 2 ) )
+  if ( ( s <= 2u ) && ( i & 2 ) )
   {
     set_bit( tt, j + s - 2 );
   }
-  if ( ( s <= 3 ) && ( i & 1 ) )
+  if ( ( s <= 3u ) && ( i & 1 ) )
   {
     set_bit( tt, j + s - 3 );
   }
-  j -= 4 - s;
+  j -= static_cast<uint32_t>( 4u - s );
 
   for ( auto c = 1u; c < hex.size(); ++c )
   {
@@ -354,7 +354,7 @@ void create_random( TT& tt, std::default_random_engine::result_type seed )
 template<typename TT>
 void create_random( TT& tt )
 {
-  create_random( tt, std::chrono::system_clock::now().time_since_epoch().count() );
+  create_random( tt, static_cast<std::default_random_engine::result_type>( std::chrono::system_clock::now().time_since_epoch().count() ) );
 }
 
 /*! \brief Constructs a truth table from a range of words
@@ -506,7 +506,7 @@ void create_threshold( TT& tt, uint8_t threshold )
 
   for ( uint64_t x = 0; x < tt.num_bits(); ++x )
   {
-    if ( __builtin_popcount( x ) > threshold )
+    if ( __builtin_popcount( static_cast<uint32_t>( x ) ) > threshold )
     {
       set_bit( tt, x );
     }
@@ -536,7 +536,7 @@ void create_equals( TT& tt, uint8_t bitcount )
   {
     for ( uint64_t x = 0; x < tt.num_bits(); ++x )
     {
-      if ( __builtin_popcount( x ) == bitcount )
+      if ( __builtin_popcount( static_cast<uint32_t>( x ) ) == bitcount )
       {
         set_bit( tt, x );
       }
@@ -560,7 +560,7 @@ void create_symmetric( TT& tt, uint64_t counts )
 
   for ( uint64_t x = 0; x < tt.num_bits(); ++x )
   {
-    if ( ( counts >> __builtin_popcount( x ) ) & 1 )
+    if ( ( counts >> __builtin_popcount( static_cast<uint32_t>( x ) ) ) & 1 )
     {
       set_bit( tt, x );
     }

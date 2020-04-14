@@ -665,7 +665,7 @@ namespace Glucose {
 // Default hash/equals functions
 //
 
-static inline uint32_t hash(std::string x) {std::hash<std::string> hasher;return hasher(x); }
+static inline uint32_t hash(std::string x) {std::hash<std::string> hasher;return static_cast<uint32_t>(hasher(x)); }
 
 template<class K> struct Hash  { uint32_t operator()(const K& k)               const { return hash(k);  } };
 template<class K> struct Equal { bool     operator()(const K& k1, const K& k2) const { return k1 == k2; } };

@@ -480,7 +480,7 @@ TEST_CASE( "custom node values in AIGs", "[aig]" )
   aig.clear_values();
   aig.foreach_node( [&]( auto n ) {
     CHECK( aig.value( n ) == 0 );
-    aig.set_value( n, n );
+    aig.set_value( n, static_cast<uint32_t>( n ) );
     CHECK( aig.value( n ) == n );
     CHECK( aig.incr_value( n ) == n );
     CHECK( aig.value( n ) == n + 1 );

@@ -625,7 +625,7 @@ private:
     /* simulate the collected divisors */
     call_with_stopwatch( st.time_simulation, [&]() { simulate( leaves ); } );
 
-    auto care = kitty::create<TT>( leaves.size() );
+    auto care = kitty::create<TT>( static_cast<unsigned int>( leaves.size() ) );
     if ( ps.use_dont_cares )
       care = ~satisfiability_dont_cares( ntk, leaves, ps.window_size );
     else

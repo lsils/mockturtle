@@ -41,10 +41,10 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/hash.hpp>
 #include <kitty/print.hpp>
-#include <percy/percy.hpp>
 
 #include "../../networks/aig.hpp"
 #include "../../networks/klut.hpp"
+#include "../../utils/include/percy.hpp"
 
 namespace mockturtle
 {

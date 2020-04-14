@@ -76,7 +76,7 @@ public:
 		negative = 1,
 	};
 
-	constexpr lit_type(var_type var = var_type(), polarities polarity = polarities::positive)
+	constexpr lit_type(var_type var = {}, polarities polarity = polarities::positive)
 	    : data_((var << 1) | ((polarity == polarities::positive) ? 0 : 1))
 	{}
 
