@@ -609,7 +609,7 @@ private:
     c_to_f[0x30] = ntk.get_constant( false );
     c_to_f[0x31] = ntk.get_constant( true );
 
-    for ( auto i = 0; i < func.num_vars(); ++i )
+    for ( auto i = 0u; i < func.num_vars(); ++i )
     {
       auto pi = *begin++; // should take the leaves values
       c_to_f[0x41 + i] = !pi;
