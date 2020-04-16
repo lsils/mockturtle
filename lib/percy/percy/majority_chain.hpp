@@ -450,7 +450,7 @@ public:
   }
 
 public:
-  int nr_in;
+  uint32_t nr_in;
   std::vector<int> outputs;
   std::vector<step> steps;
   std::vector<int> operators;
