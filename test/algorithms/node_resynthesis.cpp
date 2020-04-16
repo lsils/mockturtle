@@ -6,6 +6,7 @@
 #include <mockturtle/algorithms/node_resynthesis/direct.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xmg_npn.hpp>
+#include <mockturtle/algorithms/node_resynthesis/exact.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
@@ -43,6 +44,46 @@ TEST_CASE( "Node resynthesis with optimum xmg networks with 4-input parity funct
   CHECK( xmg.num_pis() == 4 );
   CHECK( xmg.num_pos() == 1 );
   CHECK( xmg.num_gates() == 3 );
+  xmg.foreach_po( [&]( auto const& f ) {
+    CHECK( !xmg.is_complemented( f ) );
+  } );
+
+  xmg.foreach_node( [&]( auto n ) {
+    xmg.foreach_fanin( n, [&]( auto const& f ) {
+      CHECK( !xmg.is_complemented( f ) );
+    } );
+  } );
+
+  xmg.foreach_gate( [&]( auto n ) {
+    CHECK( xmg.is_xor3( n ) );
+  } );
+}
+
+TEST_CASE( "Node resynthesis with optimum xmg networks with exact synthesis", "[node_resynthesis]" )
+{
+  kitty::dynamic_truth_table x1( 4 ), x2( 4 ), x3( 4 ), x4( 4 );
+  kitty::create_nth_var( x1, 0 );
+  kitty::create_nth_var( x2, 1 );
+  kitty::create_nth_var( x3, 2 );
+  kitty::create_nth_var( x4, 3 );
+
+  const auto parity = x1 ^ x2 ^ x3 ^ x4;
+
+  klut_network klut;
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto c = klut.create_pi();
+  const auto d = klut.create_pi();
+  const auto f = klut.create_node( {a, b, c, d}, parity );
+  klut.create_po( f );
+
+  exact_xmg_resynthesis resyn( {.num_candidates = 1} );
+  const auto xmg = node_resynthesis<xmg_network>( klut, resyn );
+
+  CHECK( xmg.size() == 7 );
+  CHECK( xmg.num_pis() == 4 );
+  CHECK( xmg.num_pos() == 1 );
+  CHECK( xmg.num_gates() == 2 );
   xmg.foreach_po( [&]( auto const& f ) {
     CHECK( !xmg.is_complemented( f ) );
   } );
