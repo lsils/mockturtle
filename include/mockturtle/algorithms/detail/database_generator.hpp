@@ -72,12 +72,12 @@ public:
 
     /* resynthesize the function and add it to the database */
     resyn( ntk, tt, std::begin( pis ), std::end( pis ),
-           [&]( const signal& s, uint32_t n )
+           [&]( const signal& s )
            {
              if ( ps.verbose )
              {
                std::cout << "[i] function: "; kitty::print_binary( tt );
-               std::cout << " stored at PO #" << ntk.num_pos() << ' ' << n << std::endl;
+               std::cout << " stored at PO #" << ntk.num_pos() << std::endl;
              }
              ntk.create_po( s );
            } );

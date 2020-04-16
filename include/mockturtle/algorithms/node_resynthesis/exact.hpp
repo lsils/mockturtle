@@ -512,7 +512,7 @@ public:
 
         case 0x96:
           signals.emplace_back( ntk.create_xor3( c1,  c2,  c3 ) );
-          continue;
+          break;
 
         default:
           std::cerr << "[e] unsupported operation " << kitty::to_hex( chain.get_operator( i ) ) << "\n";
@@ -521,7 +521,7 @@ public:
         }
       }
 
-      fn( chain.is_output_inverted( 0 ) ? !signals.back() : signals.back(), chain.get_nr_steps() );
+      fn( chain.is_output_inverted( 0 ) ? !signals.back() : signals.back() );
     }
   }
 
