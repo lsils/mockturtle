@@ -40,6 +40,7 @@ v0.2 (not yet released)
     - Resynthesis function based on DSD decomposition (`dsd_resynthesis`) `#182 <https://github.com/lsils/mockturtle/pull/182>`_
     - Resynthesis function based on Shannon decomposition (`shannon_resynthesis`) `#185 <https://github.com/lsils/mockturtle/pull/185>`_
     - Resynthesis function based on Davio decomposition (`positive_davio_resynthesis`, `negative_davio_resynthesis`) `#308 <https://github.com/lsils/mockturtle/pull/308>`_
+    - Exact resynthesis function for XMGs using XOR3 and majority gates (`exact_xmg_resynthesis`) `#328 <https://github.com/lsils/mockturtle/pull/328>`_
 * Generators:
     - Sideways sum generator (`sideways_sum_adder`, contributed by Jovan Blanuša) `#159 <https://github.com/lsils/mockturtle/pull/159>`_
     - Carry lookahead adder (`carry_lookahead_adder_inplace`) `#171 <https://github.com/lsils/mockturtle/pull/171>`_
