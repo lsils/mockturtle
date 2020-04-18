@@ -71,6 +71,7 @@ TEST_CASE( "Exact XMG for MAJ", "[exact]" )
   exact_xmg_resynthesis<xmg_network> resyn;
   resyn( xmg, maj, pis.begin(), pis.end(), [&]( auto const& f ) {
     xmg.create_po( f );
+    return false;
   } );
 
   default_simulator<kitty::dynamic_truth_table> sim( 3u );
@@ -138,6 +139,7 @@ TEST_CASE( "Exact XMG for XOR2", "[exact]" )
   exact_xmg_resynthesis<xmg_network> resyn;
   resyn( xmg, _xor, pis.begin(), pis.end(), [&]( auto const& f ) {
     xmg.create_po( f );
+    return false;
   } );
 
   default_simulator<kitty::dynamic_truth_table> sim( 2u );
@@ -161,6 +163,7 @@ TEST_CASE( "Exact XMG for XOR3", "[exact]" )
   exact_xmg_resynthesis<xmg_network> resyn;
   resyn( xmg, _xor, pis.begin(), pis.end(), [&]( auto const& f ) {
     xmg.create_po( f );
+    return false;
   } );
 
   default_simulator<kitty::dynamic_truth_table> sim( 3u );
