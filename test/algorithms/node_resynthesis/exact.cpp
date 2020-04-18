@@ -123,6 +123,29 @@ TEST_CASE( "Exact XAG for XOR", "[exact]" )
   CHECK( simulate<kitty::dynamic_truth_table>( xag, sim )[0] == _xor );
 }
 
+TEST_CASE( "Exact XMG for XOR2", "[exact]" )
+{
+  kitty::dynamic_truth_table _xor( 2u );
+  kitty::create_from_hex_string( _xor, "6" );
+
+  xmg_network xmg;
+  const auto a = xmg.create_pi();
+  const auto b = xmg.create_pi();
+  const auto c = xmg.create_pi();
+
+  std::vector<xmg_network::signal> pis = {a, b};
+
+  exact_xmg_resynthesis<xmg_network> resyn;
+  resyn( xmg, _xor, pis.begin(), pis.end(), [&]( auto const& f ) {
+    xmg.create_po( f );
+  } );
+
+  default_simulator<kitty::dynamic_truth_table> sim( 2u );
+  CHECK( xmg.num_pos() == 1u );
+  CHECK( xmg.num_gates() == 1u );
+  CHECK( simulate<kitty::dynamic_truth_table>( xmg, sim )[0] == _xor );
+}
+
 TEST_CASE( "Exact XMG for XOR3", "[exact]" )
 {
   kitty::dynamic_truth_table _xor( 3u );

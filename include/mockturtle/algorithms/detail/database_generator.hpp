@@ -40,8 +40,8 @@ namespace mockturtle::detail
 
 struct database_generator_params
 {
-  uint32_t num_vars = 4u;
-  bool verbose = false;
+  uint32_t num_vars{4u};
+  bool verbose{false};
 }; /* database_generator_param */
 
 template<typename Ntk, typename ResynFn>

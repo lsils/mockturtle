@@ -42,11 +42,11 @@
 #include <kitty/hash.hpp>
 #include <kitty/print.hpp>
 #include <kitty/traits.hpp>
+#include <percy/percy.hpp>
 
 #include "../../networks/aig.hpp"
 #include "../../networks/xmg.hpp"
 #include "../../networks/klut.hpp"
-#include "../../utils/include/percy.hpp"
 
 namespace mockturtle
 {
@@ -291,7 +291,6 @@ public:
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, kitty::dynamic_truth_table const& dont_cares, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     // TODO: special case for small functions (up to 2 variables)?
-
     percy::spec spec;
     if ( !_allow_xor )
     {
@@ -398,6 +397,7 @@ private:
 struct exact_xmg_resynthesis_params
 {
   uint32_t num_candidates{10u};
+  bool use_only_self_dual_gates{false};
 };
 
 /*! \brief Resynthesis function based on exact synthesis for XMGs.
@@ -435,11 +435,13 @@ public:
   }
 
   template<typename LeavesIterator, typename TT, typename Fn>
-  void operator()( Ntk& ntk, TT const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
+  void operator()( Ntk& ntk, TT function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     static_assert( kitty::is_complete_truth_table<TT>::value, "Truth table must be complete" );
 
     using signal = mockturtle::signal<Ntk>;
+    auto const tt = function.num_vars() < 3u ? kitty::extend_to( function, 3u ) : function;
+    bool const normal = kitty::is_normal( tt );
 
     percy::chain chain;
     percy::spec spec;
@@ -455,20 +457,42 @@ public:
     kitty::create_nth_var( b, 1 );
     kitty::create_nth_var( c, 2 );
 
-    spec.add_primitive( const0 );
-    spec.add_primitive( a );
-    spec.add_primitive( b );
-    spec.add_primitive( c );
-    spec.add_primitive( kitty::ternary_majority(  a,  b,  c ) );
-    spec.add_primitive( kitty::ternary_majority( ~a,  b,  c ) );
-    spec.add_primitive( kitty::ternary_majority(  a, ~b,  c ) );
-    spec.add_primitive( kitty::ternary_majority(  a,  b, ~c ) );
-    spec.add_primitive( a ^ b ^ c );
+    spec.add_primitive( const0 ); // 00
+    spec.add_primitive( a ); // aa
+    spec.add_primitive( b ); // cc
+    spec.add_primitive( c ); // f0
+
+    /* add self dual gate functions */
+    spec.add_primitive( kitty::ternary_majority(  a,  b,  c ) ); // e8
+    spec.add_primitive( kitty::ternary_majority( ~a,  b,  c ) ); // d4
+    spec.add_primitive( kitty::ternary_majority(  a, ~b,  c ) ); // b2
+    spec.add_primitive( kitty::ternary_majority(  a,  b, ~c ) ); // 8e
+    spec.add_primitive( a ^ b ); // 66
+    spec.add_primitive( a ^ c ); // 3c
+    spec.add_primitive( b ^ c ); // 5a
+    spec.add_primitive( a ^ b ^ c ); // 96
+
+    /* add non-self dual gate functions */
+    if ( !ps.use_only_self_dual_gates )
+    {
+      spec.add_primitive( kitty::ternary_majority(  const0,   b,  c ) ); // c0
+      spec.add_primitive( kitty::ternary_majority( ~const0,   b,  c ) ); // fc
+      spec.add_primitive( kitty::ternary_majority(  const0,  ~b,  c ) ); // 30
+      spec.add_primitive( kitty::ternary_majority(  const0,   b, ~c ) ); // 0c
+      spec.add_primitive( kitty::ternary_majority(   a,  const0,  c ) ); // a0
+      spec.add_primitive( kitty::ternary_majority(  ~a,  const0,  c ) ); // 50
+      spec.add_primitive( kitty::ternary_majority(   a, ~const0,  c ) ); // fa
+      spec.add_primitive( kitty::ternary_majority(   a,  const0, ~c ) ); // 0a
+      spec.add_primitive( kitty::ternary_majority(   a,  b,  const0 ) ); // 88
+      spec.add_primitive( kitty::ternary_majority(   a,  b, ~const0 ) ); // ee
+      spec.add_primitive( kitty::ternary_majority(  ~a,  b,  const0 ) ); // 44
+      spec.add_primitive( kitty::ternary_majority(   a, ~b,  const0 ) ); // 22
+    }
 
     percy::bsat_wrapper solver;
     percy::ssv_encoder encoder(solver);
 
-    spec[0] = kitty::is_normal( function ) ? function : ~function;
+    spec[0] = normal ? tt : ~tt;
 
     for ( auto i = 0u; i < ps.num_candidates; ++i )
     {
@@ -481,7 +505,9 @@ public:
       auto const sim = chain.simulate();
       assert( chain.simulate()[0] == spec[0] );
 
-      std::vector<signal> signals( begin, end );
+      std::vector<signal> signals( tt.num_vars(), ntk.get_constant( false ) );
+      std::copy( begin, end, signals.begin() );
+
       for ( auto i = 0; i < chain.get_nr_steps(); ++i )
       {
         auto const c1 = signals[chain.get_step( i )[0]];
@@ -493,27 +519,66 @@ public:
         case 0x00:
           signals.emplace_back( ntk.get_constant( false ) );
           break;
-
         case 0xe8:
           signals.emplace_back( ntk.create_maj( c1,  c2,  c3 ) );
           break;
-
         case 0xd4:
           signals.emplace_back( ntk.create_maj( !c1,  c2,  c3 ) );
           break;
-
         case 0xb2:
           signals.emplace_back( ntk.create_maj( c1,  !c2,  c3 ) );
           break;
-
         case 0x8e:
           signals.emplace_back( ntk.create_maj( c1,  c2,  !c3 ) );
           break;
-
         case 0x96:
           signals.emplace_back( ntk.create_xor3( c1,  c2,  c3 ) );
           break;
-
+        case 0xc0:
+          signals.emplace_back( ntk.create_maj(  ntk.get_constant( false ),  c2,  c3 ) ); // c0
+          break;
+        case 0xfc:
+          signals.emplace_back( ntk.create_maj( !ntk.get_constant( false ),  c2,  c3 ) ); // fc
+          break;
+        case 0x30:
+          signals.emplace_back( ntk.create_maj(  ntk.get_constant( false ), !c2,  c3 ) ); // 30
+          break;
+        case 0x0c:
+          signals.emplace_back( ntk.create_maj(  ntk.get_constant( false ),  c2, !c3 ) ); // 0c
+          break;
+        case 0xa0:
+          signals.emplace_back( ntk.create_maj(   c1,  ntk.get_constant( false ),  c3 ) ); // 0a
+          break;
+        case 0x50:
+          signals.emplace_back( ntk.create_maj(  !c1,  ntk.get_constant( false ),  c3 ) ); // 50
+          break;
+        case 0xfa:
+          signals.emplace_back( ntk.create_maj(   c1, !ntk.get_constant( false ),  c3 ) ); // fa
+          break;
+        case 0x0a:
+          signals.emplace_back( ntk.create_maj(   c1,  ntk.get_constant( false ), !c3 ) ); // 0a
+          break;
+        case 0x88:
+          signals.emplace_back( ntk.create_maj(   c1,  c2,  ntk.get_constant( false ) ) ); // 88
+          break;
+        case 0xee:
+          signals.emplace_back( ntk.create_maj(   c1,  c2, !ntk.get_constant( false ) ) ); // ee
+          break;
+        case 0x44:
+          signals.emplace_back( ntk.create_maj(  !c1,  c2,  ntk.get_constant( false ) ) ); // 44
+          break;
+        case 0x22:
+          signals.emplace_back( ntk.create_maj(   c1, !c2,  ntk.get_constant( false ) ) ); // 22
+          break;
+        case 0x66:
+          signals.emplace_back( ntk.create_xor( c1, c2 ) );
+          break;
+        case 0x3c:
+          signals.emplace_back( ntk.create_xor( c2, c3 ) );
+          break;
+        case 0x5a:
+          signals.emplace_back( ntk.create_xor( c1, c3 ) );
+          break;
         default:
           std::cerr << "[e] unsupported operation " << kitty::to_hex( chain.get_operator( i ) ) << "\n";
           assert( false );
@@ -521,7 +586,13 @@ public:
         }
       }
 
-      fn( chain.is_output_inverted( 0 ) ? !signals.back() : signals.back() );
+      assert( chain.get_outputs().size() > 0u );
+      uint32_t const output_index = ( chain.get_outputs()[0u] >> 1u );
+      auto const output_signal = output_index == 0u ? ntk.get_constant( false ) : signals[output_index - 1];
+      if ( !fn( chain.is_output_inverted( 0 ) ^ normal ? output_signal : !output_signal ) )
+      {
+        return; /* quit */
+      }
     }
   }
 
