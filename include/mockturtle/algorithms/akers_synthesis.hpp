@@ -821,7 +821,7 @@ signal<Ntk> akers_synthesis( Ntk& ntk, kitty::dynamic_truth_table const& func, k
     return ntk.get_constant( 1 );
 
   tt_1 = func;
-  for ( auto i = 0; i < func.num_vars(); i++ )
+  for ( auto i = 0u; i < func.num_vars(); i++ )
   {
     create_nth_var( tt_1, i );
     auto it = *pi++;
