@@ -435,7 +435,7 @@ public:
   }
 
   template<typename LeavesIterator, typename TT, typename Fn>
-  void operator()( Ntk& ntk, TT function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
+  void operator()( Ntk& ntk, TT const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     static_assert( kitty::is_complete_truth_table<TT>::value, "Truth table must be complete" );
 

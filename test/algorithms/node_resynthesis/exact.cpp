@@ -132,7 +132,6 @@ TEST_CASE( "Exact XMG for XOR2", "[exact]" )
   xmg_network xmg;
   const auto a = xmg.create_pi();
   const auto b = xmg.create_pi();
-  const auto c = xmg.create_pi();
 
   std::vector<xmg_network::signal> pis = {a, b};
 
