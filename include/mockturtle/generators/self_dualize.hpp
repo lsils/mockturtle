@@ -85,7 +85,7 @@ aig_network self_dualize_aig( aig_network const& src_aig )
       }
 
       cut_view<aig_network> view( src_aig, leaves, f );
-      topo_view topo_view( view );
+      topo_view<decltype( view )> topo_view( view );
 
       /* create cone once */
       topo_view.foreach_gate( [&]( const auto& g ){
