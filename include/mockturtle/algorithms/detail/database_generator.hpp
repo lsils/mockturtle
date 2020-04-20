@@ -33,6 +33,9 @@
 
 #pragma once
 
+#include <kitty/properties.hpp>
+#include <kitty/print.hpp>
+
 #include <vector>
 
 namespace mockturtle::detail
@@ -41,6 +44,7 @@ namespace mockturtle::detail
 struct database_generator_params
 {
   uint32_t num_vars{4u};
+  bool multiple_candidates{false};
   bool verbose{false};
 }; /* database_generator_param */
 
@@ -80,6 +84,7 @@ public:
                std::cout << " stored at PO #" << ntk.num_pos() << std::endl;
              }
              ntk.create_po( s );
+             return ps.multiple_candidates;
            } );
   }
 
