@@ -6,8 +6,8 @@
 TEST_CASE( "Solve cover greedily", "[cover]" )
 {
   using namespace mockturtle;
-  
-  kitty::partial_truth_table d0{6}, d1{6}, d2{6}, d3{6}, target{6};  
+
+  kitty::partial_truth_table d0{6}, d1{6}, d2{6}, d3{6}, target{6};
   d0.add_bit( 1 );
   d0.add_bit( 1 );
   d0.add_bit( 1 );
@@ -35,7 +35,7 @@ TEST_CASE( "Solve cover greedily", "[cover]" )
   d3.add_bit( 1 );
   d3.add_bit( 0 );
   d3.add_bit( 1 );
-  
+
   target.add_bit( 1 );
   target.add_bit( 0 );
   target.add_bit( 1 );
