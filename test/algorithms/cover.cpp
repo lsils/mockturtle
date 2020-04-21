@@ -43,7 +43,7 @@ TEST_CASE( "Solve cover greedily", "[cover]" )
   target.add_bit( 0 );
   target.add_bit( 1 );
 
-  /* traget = d1 ^ d2 ^ d3 and d0 is an additional divisor to distract the solver */
+  /* target = d1 ^ d2 ^ d3 and d0 is an additional divisor to distract the solver */
   divisor_cover cov( target );
   cov.add_divisor( d0 );
   cov.add_divisor( d1 );
@@ -66,4 +66,6 @@ TEST_CASE( "Solve cover greedily", "[cover]" )
       }
       ++solution_counter;
     });
+
+  CHECK( solution_counter == 1u );
 }
