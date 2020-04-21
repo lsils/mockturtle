@@ -32,6 +32,8 @@
 
 #pragma once
 
+#include "../traits.hpp"
+
 #include <vector>
 #include <queue>
 
