@@ -47,7 +47,7 @@ template<typename Ntk>
 class sort_by_pivot_distance
 {
 public:
-  using node = node<Ntk>;
+  using node = typename Ntk::node;
 
 public:
   explicit sort_by_pivot_distance( Ntk const& ntk, node const& pivot )
@@ -97,8 +97,8 @@ template<class Ntk, class CostFn = detail::sort_by_pivot_distance<Ntk>>
 class frontier
 {
 public:
-  using node = node<Ntk>;
-  using signal = signal<Ntk>;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
 public:
   explicit frontier( Ntk const& ntk, node const& pivot, std::vector<node> const& leaves,
