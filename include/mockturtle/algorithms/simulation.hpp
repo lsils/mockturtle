@@ -34,6 +34,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <fstream>
 
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
@@ -41,6 +42,8 @@
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <kitty/partial_truth_table.hpp>
+#include <kitty/print.hpp>
 #include <kitty/static_truth_table.hpp>
 
 namespace mockturtle
@@ -156,6 +159,88 @@ public:
   {
     return ~value;
   }
+};
+
+class partial_simulator
+{
+public:
+  partial_simulator() = delete;
+  partial_simulator( unsigned num_pis, unsigned num_pattern, std::default_random_engine::result_type seed = 0 )
+  {
+    assert( num_pis > 0 );
+
+    for ( auto i = 0u; i < num_pis; ++i )
+    {
+      patterns.emplace_back( num_pattern );
+      kitty::create_random( patterns.back(), seed + i );
+    }
+  }
+
+  /* copy constructor */
+  partial_simulator( partial_simulator const& sim )
+  {
+    patterns = sim.patterns;
+  }
+
+  partial_simulator( std::vector<kitty::partial_truth_table> const& pats )
+  {
+    patterns = pats;
+  }
+
+  partial_simulator( const std::string& filename, uint32_t length = 0 )
+  {
+    std::ifstream in( filename, std::ifstream::in );
+    std::string line;
+
+    while ( getline( in, line ) )
+    {
+      patterns.emplace_back( line.length() * 4 );
+      kitty::create_from_hex_string( patterns.back(), line );
+      if ( length != 0 )
+        patterns.back().resize( length );
+    }
+
+    in.close();
+  }
+
+  kitty::partial_truth_table compute_constant( bool value ) const
+  {
+    kitty::partial_truth_table zero( patterns.at( 0 ).num_bits() );
+    return value ? ~zero : zero;
+  }
+
+  kitty::partial_truth_table compute_pi( uint32_t index ) const
+  {
+    return patterns.at( index );
+  }
+
+  kitty::partial_truth_table compute_not( kitty::partial_truth_table const& value ) const
+  {
+    return ~value;
+  }
+
+  void add_pattern( std::vector<bool>& pattern )
+  {
+    assert( pattern.size() == patterns.size() );
+
+    for ( auto i = 0u; i < pattern.size(); ++i )
+    {
+      patterns.at( i ).add_bit( pattern.at( i ) );
+    }
+  }
+
+  void write_patterns( const std::string& filename )
+  {
+    std::ofstream out( filename, std::ofstream::out );
+    for ( auto i = 0u; i < patterns.size(); ++i )
+    {
+      out << kitty::to_hex( patterns.at( i ) ) << "\n";
+    }
+    out.close();
+  }
+
+private:
+  std::vector<kitty::partial_truth_table> patterns;
 };
 
 /*! \brief Simulates a network with a generic simulator.
@@ -302,6 +387,72 @@ void simulate_nodes( Ntk const& ntk, unordered_node_map<SimulationType, Ntk>& no
       } );
 
       node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
+    }
+  } );
+}
+
+namespace detail
+{
+
+/* helper function to fix the non-topological order problem */
+template<class Ntk>
+void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, partial_simulator const& sim, uint32_t& num_bits )
+{
+  std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
+  ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+    if ( !node_to_value.has( ntk.get_node( f ) ) || node_to_value[ntk.get_node( f )].num_bits() != num_bits )
+      simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim, num_bits );
+    fanin_values[i] = node_to_value[ntk.get_node( f )];
+  } );
+  ntk.compute( n, node_to_value[n], fanin_values.begin(), fanin_values.end() );
+}
+
+} // namespace detail
+
+/* specialization for partial_truth_table */
+template<class Ntk>
+void simulate_nodes( Ntk const& ntk, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, partial_simulator const& sim )
+{
+  /* TODO: The partial_truth_table specialized ntk.compute is currently only implemented in AIG. */
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_constant_value_v<Ntk>, "Ntk does not implement the constant_value method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
+  static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
+  static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute method for kitty::partial_truth_table" );
+
+  auto num_bits = sim.compute_constant( false ).num_bits();
+
+  /* constants */
+  if ( !node_to_value.has( ntk.get_node( ntk.get_constant( false ) ) ) || node_to_value[ntk.get_node( ntk.get_constant( false ) )].num_bits() != num_bits )
+  {
+    node_to_value[ntk.get_node( ntk.get_constant( false ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
+  }
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  {
+    if ( !node_to_value.has( ntk.get_node( ntk.get_constant( true ) ) ) || node_to_value[ntk.get_node( ntk.get_constant( true ) )].num_bits() != num_bits )
+    {
+      node_to_value[ntk.get_node( ntk.get_constant( true ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( true ) ) ) );
+    }
+  }
+
+  /* pis */
+  ntk.foreach_pi( [&]( auto const& n, auto i ) {
+    if ( !node_to_value.has( n ) || node_to_value[n].num_bits() != num_bits )
+    {
+      node_to_value[n] = sim.compute_pi( i );
+    }
+  } );
+
+  /* gates */
+  ntk.foreach_gate( [&]( auto const& n ) {
+    if ( !node_to_value.has( n ) || node_to_value[n].num_bits() != num_bits )
+    {
+      detail::simulate_fanin_cone( ntk, n, node_to_value, sim, num_bits );
     }
   } );
 }
