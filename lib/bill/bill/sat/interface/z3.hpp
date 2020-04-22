@@ -106,7 +106,6 @@ public:
 	result::states solve(std::vector<lit_type> const& assumptions = {},
 	                     uint32_t conflict_limit = 0u)
 	{
-		(void) conflict_limit;
 		z3::expr_vector vec(ctx_);
 		for (auto const& lit : assumptions)
 			vec.push_back(lit.is_complemented() ? !vars_[lit.variable()] :

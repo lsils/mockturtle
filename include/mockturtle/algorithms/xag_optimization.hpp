@@ -38,6 +38,9 @@
 #include <string>
 #include <vector>
 
+#include <bill/sat/interface/common.hpp>
+#include <bill/sat/interface/glucose.hpp>
+
 #include "../algorithms/extract_linear.hpp"
 #include "../algorithms/linear_resynthesis.hpp"
 #include "../io/write_verilog.hpp"
@@ -229,6 +232,11 @@ inline xag_network xag_dont_cares_optimization( xag_network const& xag )
 inline xag_network linear_resynthesis_optimization( xag_network const& xag, std::function<xag_network(xag_network const&)> linear_resyn, std::function<void(std::vector<uint32_t> const&)> const& on_ignore_inputs = {} )
 {
   const auto num_ands = *multiplicative_complexity( xag );
+  if ( num_ands == 0u )
+  {
+    return linear_resyn( xag );
+  }
+
   const auto linear = extract_linear_circuit( xag ).first;
 
   /* ignore inputs (if linear resynthesis is not cancellation-free) */
@@ -253,13 +261,14 @@ inline xag_network linear_resynthesis_optimization( xag_network const& xag, std:
 
 /*! \brief Optimizes XOR gates by exact linear network resynthesis
  */
+template<bill::solvers Solver = bill::solvers::glucose_41>
 inline xag_network exact_linear_resynthesis_optimization( xag_network const& xag, uint32_t conflict_limit = 0u )
 {
   exact_linear_synthesis_params ps;
   ps.conflict_limit = conflict_limit;
 
   const auto linear_resyn = [&]( xag_network const& linear ) {
-    if ( const auto optimized = exact_linear_resynthesis( linear, ps ); optimized )
+    if ( const auto optimized = exact_linear_resynthesis<xag_network, Solver>( linear, ps ); optimized )
     {
       return *optimized;
     }
