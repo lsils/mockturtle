@@ -167,7 +167,7 @@ public:
   partial_simulator() = delete;
   partial_simulator( unsigned num_pis, unsigned num_pattern, std::default_random_engine::result_type seed = 0 )
   {
-    assert( num_pis > 0 );
+    assert( num_pis > 0u );
 
     for ( auto i = 0u; i < num_pis; ++i )
     {
