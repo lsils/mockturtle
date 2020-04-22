@@ -292,7 +292,7 @@ bool cut<MaxLeaves, T>::merge( cut const& that, cut& res, uint32_t cut_size ) co
   if ( _length + that._length > cut_size )
   {
     const auto sign = _signature + that._signature;
-    if ( __builtin_popcount( static_cast<uint32_t>( sign & 0xffffffff ) ) + __builtin_popcount( static_cast<uint32_t>( sign >> 32 ) ) > cut_size )
+    if ( uint32_t( __builtin_popcount( static_cast<uint32_t>( sign & 0xffffffff ) ) ) + uint32_t( __builtin_popcount( static_cast<uint32_t>( sign >> 32 ) ) ) > cut_size )
     {
       return false;
     }

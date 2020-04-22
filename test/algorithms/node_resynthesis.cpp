@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include <mockturtle/algorithms/node_resynthesis.hpp>
+#include <mockturtle/algorithms/node_resynthesis/akers.hpp>
 #include <mockturtle/algorithms/node_resynthesis/direct.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xmg_npn.hpp>
@@ -175,6 +176,37 @@ TEST_CASE( "Node resynthesis with optimum networks", "[node_resynthesis]" )
   klut.create_po( f );
 
   mig_npn_resynthesis resyn;
+  const auto mig = node_resynthesis<mig_network>( klut, resyn );
+
+  CHECK( mig.size() == 5 );
+  CHECK( mig.num_pis() == 3 );
+  CHECK( mig.num_pos() == 1 );
+  CHECK( mig.num_gates() == 1 );
+
+  mig.foreach_po( [&]( auto const& f ) {
+    CHECK( !mig.is_complemented( f ) );
+  } );
+
+  mig.foreach_node( [&]( auto n ) {
+    mig.foreach_fanin( n, [&]( auto const& f ) {
+      CHECK( !mig.is_complemented( f ) );
+    } );
+  } );
+}
+
+TEST_CASE( "Node resynthesis with Akers resynthesis", "[node_resynthesis]" )
+{
+  kitty::dynamic_truth_table maj( 3 );
+  kitty::create_majority( maj );
+
+  klut_network klut;
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto c = klut.create_pi();
+  const auto f = klut.create_node( {a, b, c}, maj );
+  klut.create_po( f );
+
+  akers_resynthesis<mig_network> resyn;
   const auto mig = node_resynthesis<mig_network>( klut, resyn );
 
   CHECK( mig.size() == 5 );
