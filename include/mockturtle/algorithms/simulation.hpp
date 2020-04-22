@@ -187,7 +187,7 @@ public:
     patterns = pats;
   }
 
-  partial_simulator( const std::string& filename, uint32_t length = 0 )
+  partial_simulator( const std::string& filename, uint32_t length = 0u )
   {
     std::ifstream in( filename, std::ifstream::in );
     std::string line;
