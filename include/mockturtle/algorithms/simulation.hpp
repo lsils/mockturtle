@@ -196,8 +196,10 @@ public:
     {
       patterns.emplace_back( line.length() * 4 );
       kitty::create_from_hex_string( patterns.back(), line );
-      if ( length != 0 )
+      if ( length != 0u )
+      {
         patterns.back().resize( length );
+      }
     }
 
     in.close();
