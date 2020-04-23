@@ -123,16 +123,13 @@ struct balancing_impl
   Ntk run()
   {
     /* input arrival times and mapping */
-    old_to_new_[ntk_.get_constant( false )] = dest_.get_constant( false );
-    levels_[ntk_.get_constant( false )] = 0u;
+    old_to_new_[ntk_.get_constant( false )] = {dest_.get_constant( false ), 0u};
     if ( ntk_.get_node( ntk_.get_constant( false ) ) != ntk_.get_node( ntk_.get_constant( true ) ) )
     {
-      old_to_new_[ntk_.get_constant( true )] = dest_.get_constant( true );
-      levels_[ntk_.get_constant( true )] = 0u;
+      old_to_new_[ntk_.get_constant( true )] = {dest_.get_constant( true ), 0u};
     }
     ntk_.foreach_pi( [&]( auto const& n ) {
-      old_to_new_[n] = dest_.create_pi();
-      levels_[n] = 0u;
+      old_to_new_[n] = {dest_.create_pi(), 0u};
     } );
 
     stopwatch<> t( st_.time_total );
@@ -142,49 +139,39 @@ struct balancing_impl
     const auto size = ntk_.size();
     progress_bar pbar{ntk_.size(), "balancing |{0}| node = {1:>4} / " + std::to_string( size ) + "   current level = {2}", ps_.progress};
     topo_view<Ntk>{ntk_}.foreach_node( [&]( auto const& n, auto index ) {
-      if ( index == size )
-        return false;
-
       pbar( index, index, current_level );
 
       if ( ntk_.is_constant( n ) || ntk_.is_pi( n ) )
       {
-        return true;
+        return;
       }
 
-      signal<Ntk> best_signal;
-      uint32_t best_level = std::numeric_limits<uint32_t>::max();
+      arrival_time_pair<Ntk> best{{}, std::numeric_limits<uint32_t>::max()};
       uint32_t best_size{};
       for ( auto& cut : cuts.cuts( ntk_.node_to_index( n ) ) )
       {
         if ( cut->size() == 1u )
+        {
           continue;
+        }
 
         std::vector<arrival_time_pair<Ntk>> arrival_times( cut->size() );
-        std::transform( cut->begin(), cut->end(), arrival_times.begin(), [&]( auto leaf ) -> arrival_time_pair<Ntk> {
-          auto leaf_node = ntk_.index_to_node( leaf );
-          auto leaf_level = levels_[leaf_node];
-          return {old_to_new_[leaf_node], leaf_level};
-        });
+        std::transform( cut->begin(), cut->end(), arrival_times.begin(), [&]( auto leaf ) { return old_to_new_[leaf]; });
 
-        rebalancing_fn_( dest_, cuts.truth_table( *cut ), arrival_times, best_level, best_size, [&]( arrival_time_pair<Ntk> const& cand, uint32_t cand_size ) {
-          if ( cand.level < best_level || ( cand.level == best_level && cand_size < best_size ) )
+        rebalancing_fn_( dest_, cuts.truth_table( *cut ), arrival_times, best.level, best_size, [&]( arrival_time_pair<Ntk> const& cand, uint32_t cand_size ) {
+          if ( cand.level < best.level || ( cand.level == best.level && cand_size < best_size ) )
           {
-            best_signal = cand.f;
-            best_level = cand.level;
+            best = cand;
             best_size = cand_size;
           }
         });
       }
-      levels_[n] = best_level;
-      old_to_new_[n] = best_signal;
-      current_level = std::max( current_level, best_level );
-
-      return true;
+      old_to_new_[n] = best;
+      current_level = std::max( current_level, best.level );
     } );
 
     ntk_.foreach_po( [&]( auto const& f ) {
-      const auto s = old_to_new_[f];
+      const auto s = old_to_new_[f].f;
       dest_.create_po( ntk_.is_complemented( f ) ? dest_.create_not( s ) : s );
     } );
 
@@ -198,7 +185,7 @@ private:
   balancing_params const& ps_;
   balancing_stats& st_;
 
-  node_map<signal<Ntk>, Ntk> old_to_new_;
+  node_map<arrival_time_pair<Ntk>, Ntk> old_to_new_;
   node_map<uint32_t, Ntk> levels_;
 };
 
