@@ -1,0 +1,216 @@
+[
+  {
+    "entries": [
+      {
+        "RT 4": 0.0381278,
+        "RT 6": 0.174033,
+        "benchmark": "adder",
+        "depth": 255,
+        "depth 4": 171,
+        "depth 6": 105,
+        "size": 1020,
+        "size 4": 1397,
+        "size 6": 2169
+      },
+      {
+        "RT 4": 0.1308824,
+        "RT 6": 0.676073,
+        "benchmark": "bar",
+        "depth": 12,
+        "depth 4": 12,
+        "depth 6": 12,
+        "size": 3336,
+        "size 4": 3336,
+        "size 6": 3336
+      },
+      {
+        "RT 4": 3.1077049,
+        "RT 6": 23.7085526,
+        "benchmark": "div",
+        "depth": 4372,
+        "depth 4": 2961,
+        "depth 6": 2305,
+        "size": 57247,
+        "size 4": 92425,
+        "size 6": 141735
+      },
+      {
+        "RT 4": 2.622275,
+        "RT 6": 29.7000635,
+        "benchmark": "log2",
+        "depth": 444,
+        "depth 4": 278,
+        "depth 6": 258,
+        "size": 32060,
+        "size 4": 47838,
+        "size 6": 72990
+      },
+      {
+        "RT 4": 0.1001915,
+        "RT 6": 0.5553738,
+        "benchmark": "max",
+        "depth": 287,
+        "depth 4": 177,
+        "depth 6": 143,
+        "size": 2865,
+        "size 4": 3767,
+        "size 6": 4063
+      },
+      {
+        "RT 4": 1.9590171,
+        "RT 6": 10.7824366,
+        "benchmark": "multiplier",
+        "depth": 274,
+        "depth 4": 186,
+        "depth 6": 162,
+        "size": 27062,
+        "size 4": 41206,
+        "size 6": 55863
+      },
+      {
+        "RT 4": 0.4167063,
+        "RT 6": 8.7527864,
+        "benchmark": "sin",
+        "depth": 225,
+        "depth 4": 137,
+        "depth 6": 123,
+        "size": 5416,
+        "size 4": 8998,
+        "size 6": 9794
+      },
+      {
+        "RT 4": 1.0723049,
+        "RT 6": 10.675819,
+        "benchmark": "sqrt",
+        "depth": 5058,
+        "depth 4": 4095,
+        "depth 6": 3977,
+        "size": 24618,
+        "size 4": 29731,
+        "size 6": 36507
+      },
+      {
+        "RT 4": 1.3051347,
+        "RT 6": 7.4452107,
+        "benchmark": "square",
+        "depth": 250,
+        "depth 4": 169,
+        "depth 6": 130,
+        "size": 18484,
+        "size 4": 23727,
+        "size 6": 23976
+      },
+      {
+        "RT 4": 0.7306073,
+        "RT 6": 2.1840276,
+        "benchmark": "arbiter",
+        "depth": 87,
+        "depth 4": 59,
+        "depth 6": 38,
+        "size": 11839,
+        "size 4": 9151,
+        "size 6": 7174
+      },
+      {
+        "RT 4": 0.0285151,
+        "RT 6": 0.140805,
+        "benchmark": "cavlc",
+        "depth": 16,
+        "depth 4": 13,
+        "depth 6": 11,
+        "size": 693,
+        "size 4": 732,
+        "size 6": 757
+      },
+      {
+        "RT 4": 0.0131632,
+        "RT 6": 0.0281519,
+        "benchmark": "ctrl",
+        "depth": 10,
+        "depth 4": 7,
+        "depth 6": 5,
+        "size": 174,
+        "size 4": 145,
+        "size 6": 140
+      },
+      {
+        "RT 4": 0.0126114,
+        "RT 6": 0.0194634,
+        "benchmark": "dec",
+        "depth": 3,
+        "depth 4": 3,
+        "depth 6": 3,
+        "size": 304,
+        "size 4": 304,
+        "size 6": 304
+      },
+      {
+        "RT 4": 0.0365404,
+        "RT 6": 0.1353685,
+        "benchmark": "i2c",
+        "depth": 20,
+        "depth 4": 13,
+        "depth 6": 10,
+        "size": 1342,
+        "size 4": 1473,
+        "size 6": 1564
+      },
+      {
+        "RT 4": 0.0095459,
+        "RT 6": 0.0432792,
+        "benchmark": "int2float",
+        "depth": 16,
+        "depth 4": 12,
+        "depth 6": 9,
+        "size": 260,
+        "size 4": 261,
+        "size 6": 285
+      },
+      {
+        "RT 4": 1.4656049,
+        "RT 6": 60.3010024,
+        "benchmark": "mem_ctrl",
+        "depth": 114,
+        "depth 4": 78,
+        "depth 6": 58,
+        "size": 46836,
+        "size 4": 61125,
+        "size 6": 83501
+      },
+      {
+        "RT 4": 0.0358097,
+        "RT 6": 0.1378108,
+        "benchmark": "priority",
+        "depth": 250,
+        "depth 4": 166,
+        "depth 6": 125,
+        "size": 978,
+        "size 4": 1236,
+        "size 6": 3885
+      },
+      {
+        "RT 4": 0.0150206,
+        "RT 6": 0.0478858,
+        "benchmark": "router",
+        "depth": 54,
+        "depth 4": 25,
+        "depth 6": 20,
+        "size": 257,
+        "size 4": 330,
+        "size 6": 441
+      },
+      {
+        "RT 4": 0.7481873,
+        "RT 6": 5.5986999,
+        "benchmark": "voter",
+        "depth": 70,
+        "depth 4": 61,
+        "depth 6": 59,
+        "size": 13758,
+        "size 4": 15926,
+        "size 6": 16129
+      }
+    ],
+    "version": "8e4a74f"
+  }
+]
