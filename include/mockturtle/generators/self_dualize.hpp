@@ -81,6 +81,7 @@ aig_network self_dualize_aig( aig_network const& src_aig )
       /* check if all leaves are pis */
       for ( const auto& l : leaves )
       {
+        (void)l;
         assert( src_aig.is_pi( l ) );
       }
 
