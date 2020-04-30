@@ -39,7 +39,7 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, double, uint32_t, uint32_t, double> exp( "sop_balancing", "benchmark", "size", "depth", "size 4", "depth 4", "RT 4", "size 6", "depth 6", "RT 6" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, double, bool, uint32_t, uint32_t, double, bool> exp( "sop_balancing", "benchmark", "size", "depth", "size 4", "depth 4", "RT 4", "cec 4", "size 6", "depth 6", "RT 6", "cec 6" );
 
   sop_rebalancing<aig_network> sop_balancing;
 
@@ -52,7 +52,7 @@ int main()
     balancing_params ps;
     balancing_stats st4, st6;
 
-    ps.progress = false;
+    ps.progress = true;
     ps.cut_enumeration_ps.cut_size = 4u;
     const auto aig4 = balancing( aig, {sop_balancing}, ps, &st4 );
 
@@ -63,12 +63,15 @@ int main()
     depth_view daig4{aig4};
     depth_view daig6{aig6};
 
+    const auto cec4 = abc_cec( aig4, benchmark );
+    const auto cec6 = abc_cec( aig6, benchmark );
+
     exp( benchmark,
          aig.num_gates(), daig.depth(),
          aig4.num_gates(), daig4.depth(),
-         to_seconds( st4.time_total ),
+         to_seconds( st4.time_total ), cec4,
          aig6.num_gates(), daig6.depth(),
-         to_seconds( st6.time_total ) );
+         to_seconds( st6.time_total ), cec6 );
   }
 
   exp.save();

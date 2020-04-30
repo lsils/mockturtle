@@ -65,6 +65,12 @@ struct arrival_time_compare
 template<class Ntk>
 using arrival_time_queue = std::priority_queue<arrival_time_pair<Ntk>, std::vector<arrival_time_pair<Ntk>>, arrival_time_compare<Ntk>>;
 
+/*! \brief SOP rebalancing function
+ *
+ * This class can be used together with the generic `balancing` function.  It
+ * converts each cut function into an SOP and then performs weight-oriented
+ * tree balancing on the AND terms and the outer OR function.
+ */
 template<class Ntk>
 struct sop_rebalancing
 {

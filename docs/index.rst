@@ -33,6 +33,7 @@ Welcome to mockturtle's documentation!
    algorithms/node_resynthesis
    algorithms/cut_rewriting
    algorithms/refactoring
+   algorithms/balancing
    algorithms/mig_algebraic_rewriting
    algorithms/akers_synthesis
    algorithms/resubstitution

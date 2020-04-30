@@ -35,6 +35,7 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -51,6 +52,8 @@
 namespace mockturtle
 {
 
+/*! \brief Parameters for balancing.
+ */
 struct balancing_params
 {
   /*! \brief Cut enumeration params. */
@@ -63,6 +66,8 @@ struct balancing_params
   bool verbose{false};
 };
 
+/*! \brief Statistics for balancing.
+ */
 struct balancing_stats
 {
   /*! \brief Total run-time. */
@@ -114,22 +119,23 @@ struct balancing_impl
       : ntk_( ntk ),
         rebalancing_fn_( rebalancing_fn ),
         ps_( ps ),
-        st_( st ),
-        old_to_new_( ntk ),
-        levels_( ntk )
+        st_( st )
   {
   }
 
   Ntk run()
   {
+    Ntk dest;
+    node_map<arrival_time_pair<Ntk>, Ntk> old_to_new( ntk_ );
+
     /* input arrival times and mapping */
-    old_to_new_[ntk_.get_constant( false )] = {dest_.get_constant( false ), 0u};
+    old_to_new[ntk_.get_constant( false )] = {dest.get_constant( false ), 0u};
     if ( ntk_.get_node( ntk_.get_constant( false ) ) != ntk_.get_node( ntk_.get_constant( true ) ) )
     {
-      old_to_new_[ntk_.get_constant( true )] = {dest_.get_constant( true ), 0u};
+      old_to_new[ntk_.get_constant( true )] = {dest.get_constant( true ), 0u};
     }
     ntk_.foreach_pi( [&]( auto const& n ) {
-      old_to_new_[n] = {dest_.create_pi(), 0u};
+      old_to_new[n] = {dest.create_pi(), 0u};
     } );
 
     stopwatch<> t( st_.time_total );
@@ -150,15 +156,15 @@ struct balancing_impl
       uint32_t best_size{};
       for ( auto& cut : cuts.cuts( ntk_.node_to_index( n ) ) )
       {
-        if ( cut->size() == 1u )
+        if ( cut->size() == 1u || kitty::is_const0( cuts.truth_table( *cut ) ) )
         {
           continue;
         }
 
         std::vector<arrival_time_pair<Ntk>> arrival_times( cut->size() );
-        std::transform( cut->begin(), cut->end(), arrival_times.begin(), [&]( auto leaf ) { return old_to_new_[leaf]; });
+        std::transform( cut->begin(), cut->end(), arrival_times.begin(), [&]( auto leaf ) { return old_to_new[ntk_.index_to_node( leaf )]; });
 
-        rebalancing_fn_( dest_, cuts.truth_table( *cut ), arrival_times, best.level, best_size, [&]( arrival_time_pair<Ntk> const& cand, uint32_t cand_size ) {
+        rebalancing_fn_( dest, cuts.truth_table( *cut ), arrival_times, best.level, best_size, [&]( arrival_time_pair<Ntk> const& cand, uint32_t cand_size ) {
           if ( cand.level < best.level || ( cand.level == best.level && cand_size < best_size ) )
           {
             best = cand;
@@ -166,34 +172,64 @@ struct balancing_impl
           }
         });
       }
-      old_to_new_[n] = best;
+      old_to_new[n] = best;
       current_level = std::max( current_level, best.level );
     } );
 
     ntk_.foreach_po( [&]( auto const& f ) {
-      const auto s = old_to_new_[f].f;
-      dest_.create_po( ntk_.is_complemented( f ) ? dest_.create_not( s ) : s );
+      const auto s = old_to_new[f].f;
+      dest.create_po( ntk_.is_complemented( f ) ? dest.create_not( s ) : s );
     } );
 
-    return cleanup_dangling( dest_ );
+    return cleanup_dangling( dest );
   }
 
 private:
   Ntk const& ntk_;
   rebalancing_function_t<Ntk> const& rebalancing_fn_;
-  Ntk dest_;
   balancing_params const& ps_;
   balancing_stats& st_;
-
-  node_map<arrival_time_pair<Ntk>, Ntk> old_to_new_;
-  node_map<uint32_t, Ntk> levels_;
 };
 
 } // namespace detail
 
+/*! Balancing of a logic network
+ *
+ * This function implements a dynamic-programming and cut-enumeration based
+ * balancing algorithm.  It returns a new network of the same type and performs
+ * generic balancing by providing a rebalancing function.
+ *
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+      const auto aig = ...;
+
+      sop_balancing<aig_network> balance_fn;
+      balance_params ps;
+      ps.cut_enumeration_ps.cut_size = 6u;
+      const auto balanced_aig = balance( aig, {balance_fn}, ps );
+   \endverbatim
+ */
 template<class Ntk>
 Ntk balancing( Ntk const& ntk, rebalancing_function_t<Ntk> const& rebalancing_fn = {}, balancing_params const& ps = {}, balancing_stats* pst = nullptr )
 {
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
+  static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi method" );
+  static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+
   balancing_stats st;
   const auto dest = detail::balancing_impl<Ntk>{ntk, rebalancing_fn, ps, st}.run();
 
