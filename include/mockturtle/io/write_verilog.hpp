@@ -262,6 +262,30 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     }
     else
     {
+      if constexpr ( has_is_nary_and_v<Ntk> )
+      {
+        if ( ntk.is_nary_and( n ) )
+        {
+          writer.on_assign( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ), "&" );
+          return true;
+        }
+      }
+      if constexpr ( has_is_nary_or_v<Ntk> )
+      {
+        if ( ntk.is_nary_or( n ) )
+        {
+          writer.on_assign( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ), "|" );
+          return true;
+        }
+      }
+      if constexpr ( has_is_nary_xor_v<Ntk> )
+      {
+        if ( ntk.is_nary_xor( n ) )
+        {
+          writer.on_assign( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ), "^" );
+          return true;
+        }
+      }
       writer.on_assign_unknown_gate( node_names[n] );
     }
 
