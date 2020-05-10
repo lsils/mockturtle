@@ -24,9 +24,12 @@ TEST_CASE( "Validator on AIGs", "[validator]" )
   CHECK( v.validate( aig.get_node( f1 ), f2 ) == false );
   CHECK( unsigned( v.cex[0] ) + unsigned( v.cex[1] ) == 1u ); /* either 01 or 10 */
 
-  circuit_validator<aig_network>::gate::fanin fi1{.idx = 0, .inv = true};
-  circuit_validator<aig_network>::gate::fanin fi2{.idx = 1, .inv = true};
-  circuit_validator<aig_network>::gate g{.fanins = {fi1, fi2}};
+  circuit_validator<aig_network>::gate::fanin fi1;
+  fi1.idx = 0; fi1.inv = true;
+  circuit_validator<aig_network>::gate::fanin fi2;
+  fi2.idx = 1; fi2.inv = true;
+  circuit_validator<aig_network>::gate g;
+  g.fanins = {fi1, fi2};
   CHECK( v.validate( aig.get_node( f3 ), {aig.get_node(f1), aig.get_node(f2)}, {g}, false ) == true );
 }
 
