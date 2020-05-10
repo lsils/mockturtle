@@ -140,6 +140,17 @@ public:
 	}
 #pragma endregion
 
+	void bookmark()
+	{
+		/* do not handle number of variables and clauses for now */
+		solver_.push();
+	}
+
+	void rollback( uint32_t n = 1 )
+	{
+		solver_.pop( n );
+	}
+
 private:
 	z3::context ctx_;
 	z3::solver solver_;
