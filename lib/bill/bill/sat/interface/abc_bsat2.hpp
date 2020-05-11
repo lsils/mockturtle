@@ -10,6 +10,7 @@
 #include <memory>
 #include <variant>
 #include <vector>
+#include <random>
 
 namespace bill {
 
@@ -41,6 +42,7 @@ public:
 	{
 		pabc::sat_solver_restart(solver_);
 		state_ = result::states::undefined;
+		randomize = false;
 	}
 
 	var_type add_variable()
@@ -111,6 +113,15 @@ public:
 		if (num_variables() == 0u)
 			return result::states::undefined;
 
+		if ( randomize )
+		{
+			std::vector<uint32_t> vars;
+		    for ( auto i = 0u; i < num_variables(); ++i )
+		      if ( random() % 2 )
+		        vars.push_back( i );
+	        pabc::sat_solver_set_polarity( solver_, (int*)(const_cast<uint32_t*>(vars.data())), vars.size() );
+		}
+
 		int result;
 		if (assumptions.size() > 0u) {
 			/* solve with assumptions */
@@ -152,6 +163,24 @@ public:
 	}
 #pragma endregion
 
+    void bookmark()
+    {
+        pabc::sat_solver_bookmark(solver_);
+    }
+
+    void rollback( uint32_t n = 1u )
+    {
+    	assert( n == 1u && "bsat does not support multiple rollbacks" ); (void)n;
+        pabc::sat_solver_rollback(solver_);
+    }
+
+    void set_random_phase( uint32_t seed = 0u )
+    {
+    	randomize = true;
+        pabc::sat_solver_set_random(solver_, 1);
+        random.seed( seed );
+    }
+
 private:
 	/*! \brief Backend solver */
 	solver_type* solver_ = nullptr;
@@ -161,6 +190,9 @@ private:
 
 	/*! \brief Temporary storage for one clause */
 	pabc::lit literals[2048];
+
+	std::default_random_engine random;
+	bool randomize = false;
 };
 #endif
 

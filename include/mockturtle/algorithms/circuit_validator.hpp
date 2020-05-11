@@ -104,11 +104,11 @@ public:
     //static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
     if constexpr ( use_bookmark )
     {
-      static_assert( Solver == bill::solvers::z3, "Solver does not support bookmark/rollback" );
+      static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support bookmark/rollback" );
     }
     if ( ps.randomize )
     {
-      static_assert( Solver == bill::solvers::z3, "Solver does not support set_random" );
+      static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support set_random" );
     }
 
     restart();
