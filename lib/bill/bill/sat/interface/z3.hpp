@@ -146,9 +146,15 @@ public:
 		solver_.push();
 	}
 
-	void rollback( uint32_t n = 1 )
+	void rollback( uint32_t n = 1u )
 	{
 		solver_.pop( n );
+	}
+
+	void set_random_phase( uint32_t seed = 0u )
+	{
+		solver_.set("sat.random_seed", seed);
+		solver_.set("phase_selection", 5u);
 	}
 
 private:

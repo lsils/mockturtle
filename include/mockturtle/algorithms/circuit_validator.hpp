@@ -47,6 +47,8 @@ struct validator_params
   int odc_levels{0};
 
   uint32_t conflict_limit{1000};
+
+  uint32_t random_seed{0};
 };
 
 template<class Ntk, bill::solvers Solver = bill::solvers::z3, bool use_bookmark = true>
@@ -168,6 +170,8 @@ private:
   void restart()
   {
     solver.restart();
+    solver.set_random_phase( ps.random_seed );
+
     solver.add_variables( ntk.size() );
     generate_cnf<Ntk, bill::lit_type>( ntk, [&]( auto const& clause ) {
       solver.add_clause( clause );
