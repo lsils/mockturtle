@@ -46,8 +46,13 @@ struct validator_params
   /*! \brief Whether to consider ODC, and how many levels. 0 = no. -1 = Consider TFO until PO. */
   int odc_levels{0};
 
+  /*! \brief Conflict limit of the SAT solver. */
   uint32_t conflict_limit{1000};
 
+  /*! \brief Whether to randomize counter examples. */
+  bool randomize{false};
+
+  /*! \brief Seed for randomized solving. */
   uint32_t random_seed{0};
 };
 
@@ -62,6 +67,7 @@ public:
   enum gate_type 
   {
     AND,
+    XOR,
   };
 
   struct gate
@@ -99,6 +105,10 @@ public:
     if constexpr ( use_bookmark )
     {
       static_assert( Solver == bill::solvers::z3, "Solver does not support bookmark/rollback" );
+    }
+    if ( ps.randomize )
+    {
+      static_assert( Solver == bill::solvers::z3, "Solver does not support set_random" );
     }
 
     restart();
@@ -144,20 +154,17 @@ public:
   */
   void add_node( node const& n )
   {
-    /* only support AIGs for now */
-    assert( ntk.is_and( n ) );
-
-    literals.resize();
-    literals[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+    /* only support AND2 and XOR2 for now */
+    assert( ntk.is_and( n ) || ntk.is_xor( n ) );
 
     std::vector<bill::lit_type> lit_fi;
     ntk.foreach_fanin( n, [&]( const auto& f ){
       lit_fi.emplace_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
     });
+    assert( lit_fi.size() == 2u );
 
-    detail::on_and<add_clause_fn_t>( literals[n], lit_fi[0], lit_fi[1], [&]( auto const& clause ) {
-      solver.add_clause( clause );
-    });
+    literals.resize();
+    literals[n] = add_tmp_gate( lit_fi[0], lit_fi[1], ntk.is_and( n ) ? AND : XOR );
   }
 
   /* should be called when the function of one or more nodes has been modified (typically when utilizing ODCs) */
@@ -170,23 +177,35 @@ private:
   void restart()
   {
     solver.restart();
-    solver.set_random_phase( ps.random_seed );
-
+    if ( ps.randomize )
+    {
+      solver.set_random_phase( ps.random_seed );
+    }
+    
     solver.add_variables( ntk.size() );
     generate_cnf<Ntk, bill::lit_type>( ntk, [&]( auto const& clause ) {
       solver.add_clause( clause );
     }, literals );
   }
 
-  bill::lit_type add_tmp_and( bill::lit_type a, bill::lit_type b, gate_type type = AND )
+  bill::lit_type add_tmp_gate( bill::lit_type a, bill::lit_type b, gate_type type = AND )
   {
-    /* only support AIGs for now */
-    assert( type == AND );
+    /* only support AND2 and XOR2 for now */
+    assert( type == AND || type == XOR );
 
     auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-    detail::on_and<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause ) {
-      solver.add_clause( clause );
-    });
+    if ( type == AND )
+    {
+      detail::on_and<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      });
+    }
+    else if ( type == XOR )
+    {
+      detail::on_xor<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      });
+    }
 
     return nlit;
   }
@@ -197,7 +216,7 @@ private:
     assert( g.fanins[0].idx < lits.size() );
     assert( g.fanins[1].idx < lits.size() );
 
-    return add_tmp_and( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), g.type );
+    return add_tmp_gate( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), g.type );
   }
 
   bool validate( node const& root, bill::lit_type const& lit )
