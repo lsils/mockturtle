@@ -74,3 +74,8 @@ if (NOT TARGET bill)
     endif()
   endif()
 endif()
+
+if (NOT TARGET libabcesop)
+  set(STATIC_LIBABC true)
+  add_subdirectory(abcesop)
+endif()
