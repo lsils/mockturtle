@@ -45,10 +45,12 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <time.h>
-#include "eabc/vec.h"
+#include "eabc/abc_global.h"
+#include "eabc/vecInt.h"
+#include "eabc/vecPtr.h"
 #include "eabc/vecWec.h"
 
-ABC_NAMESPACE_HEADER_START 
+namespace abc::exorcism { 
 
 ////////////////////////////////////////////////////////////////////////
 ///                       MACRO DEFINITIONS                          ///
@@ -184,6 +186,6 @@ typedef enum { VAR_NEG = 1, VAR_POS, VAR_ABS  } varvalue;
 // the flag in some function calls can take one of the follwing values
 typedef enum { DIST2, DIST3, DIST4 } cubedist;
 
-ABC_NAMESPACE_HEADER_END
+}
 
 #endif

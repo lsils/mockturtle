@@ -28,7 +28,7 @@
 
 #include <stdio.h>
 
-ABC_NAMESPACE_HEADER_START
+namespace abc::exorcism {
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -1163,7 +1163,7 @@ static inline Vec_Ptr_t * Vec_PtrAllocTruthTables( int nVars )
 
 
 
-ABC_NAMESPACE_HEADER_END
+}
 
 #endif
 

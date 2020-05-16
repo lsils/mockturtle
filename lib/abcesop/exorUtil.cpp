@@ -44,7 +44,7 @@
 
 #include "eabc/exor.h"
 
-ABC_NAMESPACE_IMPL_START
+namespace abc::exorcism {
 
 ////////////////////////////////////////////////////////////////////////
 ///                      EXTERNAL VARIABLES                         ////
@@ -224,5 +224,5 @@ int WriteResultIntoFile( char * pFileName )
 ///////////////////////////////////////////////////////////////////
 
 
-ABC_NAMESPACE_IMPL_END
+}
 

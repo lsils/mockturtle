@@ -40,7 +40,7 @@
 
 #include "eabc/exor.h"
 
-ABC_NAMESPACE_IMPL_START
+namespace abc::exorcism {
 
 ////////////////////////////////////////////////////////////////////////
 ///                       MACRO DEFINITIONS                          ///
@@ -746,4 +746,4 @@ void ExorLinkCubeIteratorCleanUp( int fTakeLastGroup )
 ///////////////////////////////////////////////////////////////////
 
 
-ABC_NAMESPACE_IMPL_END
+}

@@ -42,7 +42,7 @@
 
 #include "eabc/exor.h"
 
-ABC_NAMESPACE_IMPL_START
+namespace abc::exorcism {
 
 ////////////////////////////////////////////////////////////////////////
 ///                       EXTERNAL FUNCTIONS                         ///
@@ -187,4 +187,4 @@ Cube * GetFreeCube()
 ///////////////////////////////////////////////////////////////////
 
 
-ABC_NAMESPACE_IMPL_END
+}

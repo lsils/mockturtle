@@ -46,11 +46,10 @@
 ////////////////////////////////////////////////////////////////////////
 
 #include "eabc/exor.h"
-//#include "base/abc/abc.h"
 
 #include <functional>
 
-ABC_NAMESPACE_IMPL_START
+namespace abc::exorcism {
 
 ///////////////////////////////////////////////////////////////////////
 ///                      GLOBAL VARIABLES                            ///
@@ -909,19 +908,19 @@ int Exorcism( Vec_Wec_t * vEsop, int nIns, int nOuts, std::function<void(uint32_
 
         // write the input variables
         uint32_t mask{}, bits{};
-        for ( v = 0; v < eabc::g_CoverInfo.nVarsIn; v++ )
+        for ( v = 0; v < g_CoverInfo.nVarsIn; v++ )
         {
           int Value = GetVar( p, v );
-          if ( Value == eabc::VAR_NEG )
+          if ( Value == VAR_NEG )
           {
             mask |= 1 << v;
           }
-          else if ( Value == eabc::VAR_POS )
+          else if ( Value == VAR_POS )
           {
             mask |= 1 << v;
             bits |= 1 << v;
           }
-          else if ( Value == eabc::VAR_ABS )
+          else if ( Value == VAR_ABS )
           {
             // do nothing
           }
@@ -985,5 +984,5 @@ int Abc_ExorcismMain( Vec_Wec_t * vEsop, int nIns, int nOuts, std::function<void
 ///////////////////////////////////////////////////////////////////
 
 
-ABC_NAMESPACE_IMPL_END
+}
 

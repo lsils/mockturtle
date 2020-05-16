@@ -40,7 +40,7 @@
 
 #include "eabc/exor.h"
 
-ABC_NAMESPACE_IMPL_START
+namespace abc::exorcism {
 
 ////////////////////////////////////////////////////////////////////////
 ///                       MACRO DEFINITIONS                          ///
@@ -422,4 +422,4 @@ void InsertVarsWithoutClearing( Cube * pC, int * pVars, int nVarsIn, int * pVarV
 ///////////////////////////////////////////////////////////////////
 
 
-ABC_NAMESPACE_IMPL_END
+}

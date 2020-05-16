@@ -40,9 +40,9 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/esop.hpp>
 
-namespace eabc
+namespace abc::exorcism
 {
-  extern int Abc_ExorcismMain( eabc::Vec_Wec_t * vEsop, int nIns, int nOuts, std::function<void(uint32_t, uint32_t)> const& onCube, int Quality, int Verbosity, int nCubesMax, int fUseQCost );
+  extern int Abc_ExorcismMain( Vec_Wec_t * vEsop, int nIns, int nOuts, std::function<void(uint32_t, uint32_t)> const& onCube, int Quality, int Verbosity, int nCubesMax, int fUseQCost );
 }
 
 namespace mockturtle
@@ -50,23 +50,23 @@ namespace mockturtle
 
 std::vector<kitty::cube> exorcism( std::vector<kitty::cube> const& esop, uint32_t num_vars )
 {
-  auto vesop = eabc::Vec_WecAlloc( esop.size() );
+  auto vesop = abc::exorcism::Vec_WecAlloc( esop.size() );
 
   for ( auto const& cube : esop )
   {
-    auto vcube = eabc::Vec_WecPushLevel( vesop );
+    auto vcube = abc::exorcism::Vec_WecPushLevel( vesop );
     for ( auto i = 0u; i < num_vars; ++i )
     {
       if ( !cube.get_mask( i ) ) continue;
-      eabc::Vec_IntPush( vcube, cube.get_bit( i ) ? 2 * i : 2 * i + 1 );
+      abc::exorcism::Vec_IntPush( vcube, cube.get_bit( i ) ? 2 * i : 2 * i + 1 );
     }
-    eabc::Vec_IntPush( vcube, -1 );
+    abc::exorcism::Vec_IntPush( vcube, -1 );
   }
 
   std::vector<kitty::cube> exorcism_esop;
-  eabc::Abc_ExorcismMain( vesop, num_vars, 1, [&]( uint32_t bits, uint32_t mask ) { exorcism_esop.emplace_back( bits, mask ); }, 2, 0, 4 * esop.size(), 0 );
+  abc::exorcism::Abc_ExorcismMain( vesop, num_vars, 1, [&]( uint32_t bits, uint32_t mask ) { exorcism_esop.emplace_back( bits, mask ); }, 2, 0, 4 * esop.size(), 0 );
 
-  eabc::Vec_WecFree( vesop );
+  abc::exorcism::Vec_WecFree( vesop );
 
   return exorcism_esop;
 }
