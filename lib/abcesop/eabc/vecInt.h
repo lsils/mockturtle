@@ -18,9 +18,7 @@
 
 ***********************************************************************/
  
-#ifndef ABC__misc__vec__vecInt_h
-#define ABC__misc__vec__vecInt_h
-
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////
 ///                          INCLUDES                                ///
@@ -2065,8 +2063,6 @@ static inline void Vec_IntRemapArray( Vec_Int_t * vOld2New, Vec_Int_t * vOld, Ve
 }
 
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////
 ///                       END OF FILE                                ///
