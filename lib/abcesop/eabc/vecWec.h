@@ -17,10 +17,8 @@
   Revision    [$Id: vecWec.h,v 1.00 2005/06/20 00:00:00 alanmi Exp $]
 
 ***********************************************************************/
- 
-#ifndef ABC__misc__vec__vecWec_h
-#define ABC__misc__vec__vecWec_h
 
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////
 ///                          INCLUDES                                ///
@@ -734,8 +732,6 @@ static inline void Vec_WecRemoveEmpty( Vec_Wec_t * vCubes )
 
 
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////
 ///                       END OF FILE                                ///

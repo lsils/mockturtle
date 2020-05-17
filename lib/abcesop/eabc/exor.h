@@ -38,8 +38,7 @@
 ///                  http://vlsi.colorado.edu/~fabio/                ///
 ////////////////////////////////////////////////////////////////////////
 
-#ifndef __EXORMAIN_H__
-#define __EXORMAIN_H__
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -187,5 +186,3 @@ typedef enum { VAR_NEG = 1, VAR_POS, VAR_ABS  } varvalue;
 typedef enum { DIST2, DIST3, DIST4 } cubedist;
 
 }
-
-#endif
