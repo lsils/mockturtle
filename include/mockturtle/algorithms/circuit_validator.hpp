@@ -83,7 +83,7 @@ public:
   };
 
   explicit circuit_validator( Ntk const& ntk, validator_params const& ps = {} )
-    : ntk( ntk ), ps( ps ), literals( node_literals<Ntk, bill::lit_type>( ntk ) ), cex( ntk.num_pis() )
+    : ntk( ntk ), ps( ps ), literals( ntk ), cex( ntk.num_pis() )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
@@ -230,6 +230,25 @@ private:
       solver.set_random_phase( ps.random_seed );
     }
     
+    literals.reset();
+    /* constants are mapped to var 0 */
+    literals[ntk.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
+    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+    {
+      literals[ntk.get_constant( true )] = bill::lit_type( 0, bill::lit_type::polarities::negative );
+    }
+
+    /* first indexes (starting from 1) are for PIs */
+    ntk.foreach_pi( [&]( auto const& n, auto i ) {
+      literals[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive );
+    } );
+
+    /* compute literals for nodes */
+    uint32_t next_var = ntk.num_pis() + 1;
+    ntk.foreach_gate( [&]( auto const& n ) {
+      literals[n] = bill::lit_type( next_var++, bill::lit_type::polarities::positive );
+    } );
+
     solver.add_variables( ntk.size() );
     generate_cnf<Ntk, bill::lit_type>( ntk, [&]( auto const& clause ) {
       solver.add_clause( clause );
