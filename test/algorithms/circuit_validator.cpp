@@ -19,7 +19,7 @@ TEST_CASE( "Validating NEQ nodes and get CEX", "[validator]" )
 
   circuit_validator v( aig );
 
-  CHECK( v.validate( aig.get_node( f1 ), f2 ) == false );
+  CHECK( *( v.validate( aig.get_node( f1 ), f2 ) ) == false );
   CHECK( unsigned( v.cex[0] ) + unsigned( v.cex[1] ) == 1u ); /* either 01 or 10 */
 }
 
@@ -36,7 +36,7 @@ TEST_CASE( "Validating EQ nodes in XAG", "[validator]" )
 
   circuit_validator v( xag );
 
-  CHECK( v.validate( xag.get_node( f3 ), !g ) == true );
+  CHECK( *( v.validate( xag.get_node( f3 ), !g ) ) == true );
 }
 
 TEST_CASE( "Validating with non-existing circuit", "[validator]" )
@@ -57,7 +57,7 @@ TEST_CASE( "Validating with non-existing circuit", "[validator]" )
   fi2.idx = 1; fi2.inv = true;
   circuit_validator<aig_network>::gate g;
   g.fanins = {fi1, fi2};
-  CHECK( v.validate( aig.get_node( f3 ), {aig.get_node( f1 ), aig.get_node( f2 )}, {g}, false ) == true );
+  CHECK( *( v.validate( aig.get_node( f3 ), {aig.get_node( f1 ), aig.get_node( f2 )}, {g}, false ) ) == true );
 }
 
 TEST_CASE( "Validating after circuit update", "[validator]" )
@@ -80,7 +80,7 @@ TEST_CASE( "Validating after circuit update", "[validator]" )
   v.add_node( aig.get_node( g2 ) );
   v.add_node( aig.get_node( g3 ) );
 
-  CHECK( v.validate( aig.get_node( f3 ), g3 ) == true );
+  CHECK( *( v.validate( aig.get_node( f3 ), g3 ) ) == true );
 }
 
 TEST_CASE( "Validating const nodes", "[validator]" )
@@ -101,8 +101,8 @@ TEST_CASE( "Validating const nodes", "[validator]" )
 
   circuit_validator v( aig );
 
-  CHECK( v.validate( aig.get_node( h ), false ) == true );
-  CHECK( v.validate( aig.get_node( f1 ), false ) == false );
+  CHECK( *( v.validate( aig.get_node( h ), false ) ) == true );
+  CHECK( *( v.validate( aig.get_node( f1 ), false ) ) == false );
   CHECK( v.cex[0] == false );
   CHECK( v.cex[1] == true );
 }
@@ -130,10 +130,10 @@ TEST_CASE( "Validating with ODC", "[validator]" )
 
   /* considering only 1 level, f1 can not be substituted with const 0 */
   ps.odc_levels = 1;
-  CHECK( v.validate( aig.get_node( f1 ), false ) == false );
+  CHECK( *( v.validate( aig.get_node( f1 ), false ) ) == false );
   
   /* considering 2 levels, f1 can be substituted with const 0 */
   ps.odc_levels = 2;
-  CHECK( v.validate( aig.get_node( f1 ), false ) == true );
-  CHECK( v.validate( aig.get_node( f1 ), aig.get_node( aig.get_constant( false ) ) ) == true );
+  CHECK( *( v.validate( aig.get_node( f1 ), false ) ) == true );
+  CHECK( *( v.validate( aig.get_node( f1 ), aig.get_node( aig.get_constant( false ) ) ) ) == true );
 }

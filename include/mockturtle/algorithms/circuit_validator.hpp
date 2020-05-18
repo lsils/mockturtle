@@ -123,13 +123,13 @@ public:
   }
 
   /* validate with an existing signal in the network */
-  bool validate( node const& root, signal const& d )
+  std::optional<bool> validate( node const& root, signal const& d )
   {
     return validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
   }
 
   /* validate with a circuit composed of `divs` which are existing nodes in the network */
-  bool validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
+  std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
   {
     if constexpr ( use_bookmark )
     {
@@ -158,7 +158,7 @@ public:
   }
 
   /* validate whether `root` is a constant of `value` */
-  bool validate( node const& root, bool value )
+  std::optional<bool> validate( node const& root, bool value )
   {
     assert( literals[root].variable() != bill::var_type( 0 ) );
     if constexpr ( use_bookmark )
@@ -166,7 +166,7 @@ public:
       solver.bookmark();
     }
 
-    bool res;
+    std::optional<bool> res;
     if constexpr ( use_odc )
     {
       if ( ps.odc_levels != 0 )
@@ -267,7 +267,7 @@ private:
     return add_clauses_for_gate( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), std::nullopt, g.type );
   }
 
-  bool solve( std::vector<bill::lit_type> assumptions )
+  std::optional<bool> solve( std::vector<bill::lit_type> assumptions )
   {
     auto const res = solver.solve( assumptions, ps.conflict_limit );
     if ( res == bill::result::states::satisfiable )
@@ -277,11 +277,16 @@ private:
       {
         cex.at( i ) = model.at( i + 1 ) == bill::lbool_type::true_; 
       }
+      return false;
     }
-    return res == bill::result::states::unsatisfiable;
+    else if ( res == bill::result::states::unsatisfiable )
+    {
+      return true;
+    }
+    return std::nullopt; /* timeout or something wrong */
   }
 
-  bool validate( node const& root, bill::lit_type const& lit )
+  std::optional<bool> validate( node const& root, bill::lit_type const& lit )
   {
     assert( literals[root].variable() != bill::var_type( 0 ) );
     if constexpr ( use_bookmark )
@@ -289,7 +294,7 @@ private:
       solver.bookmark();
     }
 
-    bool res;
+    std::optional<bool> res;
     if constexpr ( use_odc )
     {
       if ( ps.odc_levels != 0 )
