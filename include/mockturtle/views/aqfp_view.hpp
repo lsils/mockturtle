@@ -41,8 +41,8 @@
 #include "../networks/detail/foreach.hpp"
 #include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
-#include <mockturtle/networks/mig.hpp>
-#include <mockturtle/views/depth_view.hpp>
+#include "mockturtle/networks/mig.hpp"
+#include "mockturtle/views/depth_view.hpp"
 
 namespace mockturtle
 {
@@ -111,10 +111,14 @@ public:
   aqfp_view( Ntk const& ntk, aqfp_view_params const& ps = {} )
    : Ntk( ntk ), _fanout( ntk ), _ps( ps ), _max_fanout( std::pow( ps.splitter_capacity, ps.max_splitter_levels ) ), _node_depth( this ), _depth_view( ntk, _node_depth )
   {
-    static_assert( std::is_same<Ntk, mig_network>::value, "Ntk is not mig_network type" );
     static_assert( !has_depth_v<Ntk> && !has_level_v<Ntk> && !has_update_levels_v<Ntk>, "Ntk already has depth interfaces" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+
+    if constexpr ( !std::is_same<Ntk, mig_network>::value )
+    {
+      std::cerr << "[w] Ntk is not mig_network type.\n";
+    }
 
     update_fanout();
 
@@ -163,11 +167,6 @@ public:
   {
     compute_fanout();
     _depth_view.update_levels();
-  }
-
-  std::vector<node> fanout( node const& n ) const /* deprecated */
-  {
-    return _fanout[n];
   }
 
   /*! \brief Additional depth caused by the splitters of node `n` */
