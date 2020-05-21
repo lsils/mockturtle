@@ -131,15 +131,22 @@ public:
   /* validate with a circuit composed of `divs` which are existing nodes in the network */
   std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
   {
+    return validate( root, divs.begin(), divs.end(), ckt, output_negation );
+  }
+
+  template<class iterator_type>
+  std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
+  {
     if constexpr ( use_bookmark )
     {
       solver.bookmark();
     }
 
     std::vector<bill::lit_type> lits;
-    for ( auto n : divs )
+    while ( divs_begin != divs_end )
     {
-      lits.emplace_back( literals[n] );
+      lits.emplace_back( literals[*divs_begin] );
+      divs_begin++;
     }
 
     for ( auto g : ckt )
