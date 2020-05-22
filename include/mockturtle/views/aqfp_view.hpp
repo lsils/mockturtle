@@ -229,7 +229,7 @@ public:
       assert( level( fo ) > nlevel );
       count += level( fo ) - nlevel - 1u;
     }
-    return count + num_splitter_levels( n );
+    return count + num_splitters( n );
   }
 
   void substitute_node( node const& old_node, signal const& new_signal )
