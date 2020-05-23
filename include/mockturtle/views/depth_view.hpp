@@ -56,6 +56,12 @@ struct depth_view_params
  * `level` and `depth`.  The levels are computed at construction
  * and can be recomputed by calling the `update_levels` method.
  *
+ * It also automatically updates levels, and depth when creating nodes or
+ * creating a PO on a depth_view, however, it does not update the information,
+ * when modifying or deleting nodes, neither will the critical paths be
+ * recalculated (due to efficiency reasons).  In order to recalculate levels,
+ * depth, and critical paths, one can call `update_levels` instead.
+ *
  * **Required network functions:**
  * - `size`
  * - `get_node`
@@ -125,6 +131,8 @@ public:
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
     update_levels();
+
+    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
   }
 
   uint32_t depth() const
@@ -159,6 +167,12 @@ public:
   void resize_levels()
   {
     _levels.resize();
+  }
+
+  void create_po( signal const& f )
+  {
+    Ntk::create_po( f );
+    _depth = std::max( _depth, _levels[f] );
   }
 
 private:
@@ -228,6 +242,23 @@ private:
         }
       } );
     }
+  }
+
+  void on_add( node const& n )
+  {
+    _levels.resize();
+
+    uint32_t level{0};
+    this->foreach_fanin( n, [&]( auto const& f ) {
+      auto clevel = _levels[f];
+      if ( _ps.count_complements && this->is_complemented( f ) )
+      {
+        clevel++;
+      }
+      level = std::max( level, clevel );
+    } );
+
+    _levels[n] = level + _cost_fn( *this, n );
   }
 
   depth_view_params _ps;
