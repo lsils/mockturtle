@@ -125,6 +125,19 @@ public:
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
     update_levels();
+
+    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
+    Ntk::events().on_modified.push_back( []( auto const& n, auto const& previous ) {
+      (void)n;
+      (void)previous;
+      assert( false && "nodes should not be modified in cnf_view" );
+      std::abort();
+    } );
+    Ntk::events().on_delete.push_back( []( auto const& n ) {
+      (void)n;
+      assert( false && "nodes should not be deleted in cnf_view" );
+      std::abort();
+    } );
   }
 
   uint32_t depth() const
@@ -159,6 +172,12 @@ public:
   void resize_levels()
   {
     _levels.resize();
+  }
+
+  void create_po( signal const& f )
+  {
+    Ntk::create_po( f );
+    _depth = std::max( _depth, _levels[f] );
   }
 
 private:
@@ -228,6 +247,23 @@ private:
         }
       } );
     }
+  }
+
+  void on_add( node const& n )
+  {
+    _levels.resize();
+
+    uint32_t level{0};
+    this->foreach_fanin( n, [&]( auto const& f ) {
+      auto clevel = _levels[f];
+      if ( _ps.count_complements && this->is_complemented( f ) )
+      {
+        clevel++;
+      }
+      level = std::max( level, clevel );
+    } );
+
+    _levels[n] = level + _cost_fn( *this, n );
   }
 
   depth_view_params _ps;
