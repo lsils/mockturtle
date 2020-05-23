@@ -56,6 +56,12 @@ struct depth_view_params
  * `level` and `depth`.  The levels are computed at construction
  * and can be recomputed by calling the `update_levels` method.
  *
+ * It also automatically updates levels, and depth when creating nodes or
+ * creating a PO on a depth_view, however, it does not update the information,
+ * when modifying or deleting nodes, neither will the critical paths be
+ * recalculated (due to efficiency reasons).  In order to recalculate levels,
+ * depth, and critical paths, one can call `update_levels` instead.
+ *
  * **Required network functions:**
  * - `size`
  * - `get_node`
@@ -127,17 +133,6 @@ public:
     update_levels();
 
     Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
-    Ntk::events().on_modified.push_back( []( auto const& n, auto const& previous ) {
-      (void)n;
-      (void)previous;
-      assert( false && "nodes should not be modified in cnf_view" );
-      std::abort();
-    } );
-    Ntk::events().on_delete.push_back( []( auto const& n ) {
-      (void)n;
-      assert( false && "nodes should not be deleted in cnf_view" );
-      std::abort();
-    } );
   }
 
   uint32_t depth() const
