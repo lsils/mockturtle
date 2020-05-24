@@ -233,7 +233,7 @@ public:
     }
     else
     {
-      assert( l_fi.size() == 3u );
+      assert( lit_fi.size() == 3u );
       assert( ntk.is_maj( n ) || ntk.is_xor3( n ) );
       literals[n] = add_clauses_for_3input_gate( lit_fi[0], lit_fi[1], lit_fi[2], std::nullopt, ntk.is_maj( n ) ? MAJ : XOR );
     }
