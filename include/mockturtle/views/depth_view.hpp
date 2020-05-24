@@ -287,7 +287,7 @@ private:
   depth_view_params _ps;
   node_map<uint32_t, Ntk> _levels;
   node_map<uint32_t, Ntk> _crit_path;
-  uint32_t _depth;
+  uint32_t _depth{};
   NodeCostFn _cost_fn;
 };
 
