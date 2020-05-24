@@ -110,15 +110,15 @@ public:
   };
 
   aqfp_view( Ntk const& ntk, aqfp_view_params const& ps = {} )
-   : Ntk( ntk ), _fanout( ntk ), _ps( ps ), _max_fanout( std::pow( ps.splitter_capacity, ps.max_splitter_levels ) ), _node_depth( this ), _depth_view( ntk, _node_depth )
+   : Ntk( ntk ), _fanout( ntk ), _external_ref_count( ntk ), _ps( ps ), _max_fanout( std::pow( ps.splitter_capacity, ps.max_splitter_levels ) ), _node_depth( this ), _depth_view( ntk, _node_depth )
   {
     static_assert( !has_depth_v<Ntk> && !has_level_v<Ntk> && !has_update_levels_v<Ntk>, "Ntk already has depth interfaces" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    if constexpr ( !std::is_same<Ntk, mig_network>::value )
+    if constexpr ( !std::is_same<typename Ntk::base_type, mig_network>::value )
     {
-      std::cerr << "[w] Ntk is not mig_network type.\n";
+      std::cerr << "[w] base_type of Ntk is not mig_network.\n";
     }
 
     update_fanout();
@@ -173,7 +173,7 @@ public:
   uint32_t num_splitter_levels ( node const& n ) const
   {
     /* TODO: generalize for other `max_splitter_levels` values */
-    return _fanout[n].size() > _ps.splitter_capacity ? 2u : (_fanout[n].size() > 1u ? 1u : 0u);
+    return fanout_size( n ) > _ps.splitter_capacity ? 2u : (fanout_size( n ) > 1u ? 1u : 0u);
   }
 
   /* \brief Level of node `n` itself. Not the highest level of its splitters */
@@ -192,11 +192,11 @@ public:
   uint32_t num_splitters ( node const& n ) const
   {
     /* TODO: generalize for other `max_splitter_levels` values */
-    if ( _fanout[n].size() <= 1u )
+    if ( fanout_size( n ) <= 1u )
     {
       return 0u;
     }
-    else if ( _fanout[n].size() <= _ps.splitter_capacity )
+    else if ( fanout_size( n ) <= _ps.splitter_capacity )
     {
       return 1u;
     }
@@ -204,7 +204,7 @@ public:
     {
       /* TODO: currently always fill up the second layer of splitters, but it's unnecessary */
       return _ps.splitter_capacity + 1u;
-      //return std::floor( float( _fanout[n].size() ) / float( _ps.splitter_capacity ) ) + 1u;
+      //return std::floor( float( fanout_size( n ) ) / float( _ps.splitter_capacity ) ) + 1u;
     }
   }
 
@@ -222,14 +222,18 @@ public:
   uint32_t num_buffers( node const& n ) const
   {
     uint32_t count = 0u;
-    auto const& fanouts = _fanout[n];
     uint32_t nlevel = level( n ) + num_splitter_levels( n );
-    for ( auto fo : fanouts )
+    for ( auto fo : _fanout[n] )
     {
       assert( level( fo ) >= nlevel );
       count += level( fo ) - nlevel - 1u;
       nlevel = level( fo ) - 1u;
     }
+    if ( _external_ref_count[n] > 0u )
+    {
+      count += depth() - nlevel;
+    }
+
     return count + num_splitters( n );
   }
 
@@ -263,9 +267,15 @@ public:
   }
 
 private:
+  uint32_t fanout_size( node const& n ) const
+  {
+    return _fanout[n].size() + _external_ref_count[n];
+  }
+
   void compute_fanout()
   {
     _fanout.reset();
+    _external_ref_count.reset();
 
     this->foreach_gate( [&]( auto const& n ){
         this->foreach_fanin( n, [&]( auto const& c ){
@@ -277,14 +287,18 @@ private:
           });
       });
 
+    this->foreach_po( [&]( auto const& f ){
+        _external_ref_count[f]++;
+      });
+
     _depth_view.update_levels();
 
     this->foreach_gate( [&]( auto const& n ){
         if constexpr ( Check )
         {
-          if ( _fanout[n].size() > _max_fanout )
+          if ( fanout_size( n ) > _max_fanout )
           {
-            std::cerr << "[e] node " << n << " has too many (" << _fanout[n].size() << ") fanouts!\n";
+            std::cerr << "[e] node " << n << " has too many (" << fanout_size( n ) << ") fanouts!\n";
           }
         }
         /* sort the fanouts by their level */
@@ -297,6 +311,7 @@ private:
 
 private:
   node_map<std::vector<node>, Ntk> _fanout;
+  node_map<uint32_t, Ntk> _external_ref_count;
   aqfp_view_params _ps;
   uint64_t _max_fanout;
 

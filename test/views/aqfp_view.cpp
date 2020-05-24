@@ -74,3 +74,32 @@ TEST_CASE( "aqfp_view test with two layers of splitters", "[aqfp_view]" )
   CHECK( view.depth() == 7u );
   CHECK( view.num_buffers() == 20u );
 }
+
+TEST_CASE( "fanout splitters and buffers", "[aqfp_view]" )
+{
+  mig_network mig;
+  auto const a = mig.create_pi();
+  auto const b = mig.create_pi();
+  auto const c = mig.create_pi();
+  auto const d = mig.create_pi();
+
+  auto const f1 = mig.create_maj( a, b, c );
+  auto const f2 = mig.create_maj( f1, c, d );
+  mig.create_po( f1 );
+  mig.create_po( !f1 );
+  mig.create_po( f2 );
+  mig.create_po( f2 );
+  mig.create_po( !f2 );
+
+  aqfp_view view{mig};
+
+  CHECK( view.depth() == 4u );
+
+  CHECK( view.num_splitters( view.get_node( f1 ) ) == 1u );
+  CHECK( view.num_splitters( view.get_node( f2 ) ) == 1u );
+
+  CHECK( view.num_buffers( view.get_node( f1 ) ) == 3u );
+  CHECK( view.num_buffers( view.get_node( f2 ) ) == 1u );
+
+  CHECK( view.num_buffers() == 4u );
+}
