@@ -36,6 +36,7 @@
 #include <stack>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 
 #include "../traits.hpp"
 #include "../networks/detail/foreach.hpp"
@@ -166,7 +167,6 @@ public:
   void update_fanout()
   {
     compute_fanout();
-    _depth_view.update_levels();
   }
 
   /*! \brief Additional depth caused by the splitters of node `n` */
@@ -223,11 +223,12 @@ public:
   {
     uint32_t count = 0u;
     auto const& fanouts = _fanout[n];
-    uint32_t const nlevel = level( n ) + num_splitter_levels( n );
+    uint32_t nlevel = level( n ) + num_splitter_levels( n );
     for ( auto fo : fanouts )
     {
-      assert( level( fo ) > nlevel );
+      assert( level( fo ) >= nlevel );
       count += level( fo ) - nlevel - 1u;
+      nlevel = level( fo ) - 1u;
     }
     return count + num_splitters( n );
   }
@@ -276,6 +277,8 @@ private:
           });
       });
 
+    _depth_view.update_levels();
+
     this->foreach_gate( [&]( auto const& n ){
         if constexpr ( Check )
         {
@@ -285,6 +288,10 @@ private:
           }
         }
         /* sort the fanouts by their level */
+        auto& fanout = _fanout[n];
+        std::sort( fanout.begin(), fanout.end(), [&](node a, node b){
+          return level( a ) < level( b );
+        });
       });
   }
 

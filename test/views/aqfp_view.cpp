@@ -70,7 +70,7 @@ TEST_CASE( "aqfp_view test with two layers of splitters", "[aqfp_view]" )
   mig.create_po( f12 );
 
   aqfp_view view{mig};
-  CHECK( view.num_buffers( view.get_node( f2 ) ) == 11u );
+  CHECK( view.num_buffers( view.get_node( f2 ) ) == 7u );
   CHECK( view.depth() == 7u );
-  CHECK( view.num_buffers() == 24u );
+  CHECK( view.num_buffers() == 20u );
 }
