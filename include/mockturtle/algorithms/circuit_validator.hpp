@@ -35,8 +35,9 @@
 #include "../utils/node_map.hpp"
 #include "cnf.hpp"
 #include <bill/sat/interface/common.hpp>
+#include <bill/sat/interface/glucose.hpp>
 #include <bill/sat/interface/z3.hpp>
-//#include <bill/sat/interface/glucose.hpp>
+#include <bill/sat/interface/abc_bsat2.hpp>
 
 namespace mockturtle
 {
@@ -49,14 +50,11 @@ struct validator_params
   /*! \brief Conflict limit of the SAT solver. */
   uint32_t conflict_limit{1000};
 
-  /*! \brief Whether to randomize counter examples. */
-  bool randomize{false};
-
   /*! \brief Seed for randomized solving. */
   uint32_t random_seed{0};
 };
 
-template<class Ntk, bill::solvers Solver = bill::solvers::z3, bool use_bookmark = true, bool use_odc = false>
+template<class Ntk, bill::solvers Solver = bill::solvers::glucose_41, bool use_bookmark = false, bool randomize = false, bool use_odc = false>
 class circuit_validator
 {
 public:
@@ -68,6 +66,7 @@ public:
   {
     AND,
     XOR,
+    MAJ
   };
 
   struct gate
@@ -101,14 +100,32 @@ public:
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_is_and_v<Ntk>, "Ntk does not implement the is_and method" );
     static_assert( has_is_xor_v<Ntk>, "Ntk does not implement the is_xor method" );
+    static_assert( has_is_xor3_v<Ntk>, "Ntk does not implement the is_xor3 method" );
+    static_assert( has_is_maj_v<Ntk>, "Ntk does not implement the is_maj method" );
     
     if constexpr ( use_bookmark )
     {
-      static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support bookmark/rollback" );
+      #if !defined(BILL_WINDOWS_PLATFORM) && defined(BILL_HAS_Z3)
+        static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support bookmark/rollback" );
+      #elif !defined(BILL_WINDOWS_PLATFORM)
+        static_assert( Solver == bill::solvers::bsat2, "Solver does not support bookmark/rollback" );
+      #elif defined(BILL_HAS_Z3)
+        static_assert( Solver == bill::solvers::z3, "Solver does not support bookmark/rollback" );
+      #else
+        static_assert( false, "Solver does not support bookmark/rollback" );
+      #endif
     }
-    if ( ps.randomize )
+    if constexpr ( randomize )
     {
-      assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2 && "Solver does not support set_random" );
+      #if !defined(BILL_WINDOWS_PLATFORM) && defined(BILL_HAS_Z3)
+        static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support set_random" );
+      #elif !defined(BILL_WINDOWS_PLATFORM)
+        static_assert( Solver == bill::solvers::bsat2, "Solver does not support set_random" );
+      #elif defined(BILL_HAS_Z3)
+        static_assert( Solver == bill::solvers::z3, "Solver does not support set_random" );
+      #else
+        static_assert( false, "Solver does not support set_random" );
+      #endif
     }
     if constexpr ( use_odc )
     {
@@ -178,13 +195,6 @@ public:
     {
       if ( ps.odc_levels != 0 )
       {
-        //std::vector<bill::lit_type> l_fi;
-        //ntk.foreach_fanin( root, [&]( auto const& fi ){
-        //  l_fi.emplace_back( lit_not_cond( literals[fi], ntk.is_complemented( fi ) ) );
-        //});
-        //assert( l_fi.size() == 2u );
-        //assert( ntk.is_and( root ) || ntk.is_xor( root ) );
-        //auto nlit = add_clauses_for_gate( l_fi[0], l_fi[1], std::nullopt, ntk.is_and( root )? AND: XOR );
         res = solve( {build_odc_window( root, ~literals[root] ), lit_not_cond( literals[root], value )} );
       }
       else
@@ -209,17 +219,24 @@ public:
   */
   void add_node( node const& n )
   {
-    /* only support AND2 and XOR2 for now */
-    assert( ntk.is_and( n ) || ntk.is_xor( n ) );
-
     std::vector<bill::lit_type> lit_fi;
     ntk.foreach_fanin( n, [&]( const auto& f ){
       lit_fi.emplace_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
     });
-    assert( lit_fi.size() == 2u );
 
     literals.resize();
-    literals[n] = add_clauses_for_gate( lit_fi[0], lit_fi[1], std::nullopt, ntk.is_and( n ) ? AND : XOR );
+    assert( lit_fi.size() == 2u || lit_fi.size() == 3u );
+    if ( lit_fi.size() == 2u )
+    {
+      assert( ntk.is_and( n ) || ntk.is_xor( n ) );
+      literals[n] = add_clauses_for_2input_gate( lit_fi[0], lit_fi[1], std::nullopt, ntk.is_and( n ) ? AND : XOR );
+    }
+    else
+    {
+      assert( l_fi.size() == 3u );
+      assert( ntk.is_maj( n ) || ntk.is_xor3( n ) );
+      literals[n] = add_clauses_for_3input_gate( lit_fi[0], lit_fi[1], lit_fi[2], std::nullopt, ntk.is_maj( n ) ? MAJ : XOR );
+    }
   }
 
   /* should be called when the function of one or more nodes has been modified (typically when utilizing ODCs) */
@@ -232,7 +249,7 @@ private:
   void restart()
   {
     solver.restart();
-    if ( ps.randomize )
+    if constexpr ( randomize )
     {
       solver.set_random_phase( ps.random_seed );
     }
@@ -262,9 +279,8 @@ private:
     }, literals );
   }
 
-  bill::lit_type add_clauses_for_gate( bill::lit_type a, bill::lit_type b, std::optional<bill::lit_type> c = std::nullopt, gate_type type = AND )
+  bill::lit_type add_clauses_for_2input_gate( bill::lit_type a, bill::lit_type b, std::optional<bill::lit_type> c = std::nullopt, gate_type type = AND )
   {
-    /* only support AND2 and XOR2 for now */
     assert( type == AND || type == XOR );
 
     auto nlit = c ? *c : bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
@@ -284,13 +300,45 @@ private:
     return nlit;
   }
 
+  bill::lit_type add_clauses_for_3input_gate( bill::lit_type a, bill::lit_type b, bill::lit_type c, std::optional<bill::lit_type> d = std::nullopt, gate_type type = MAJ )
+  {
+    assert( type == MAJ || type == XOR );
+
+    auto nlit = d ? *d : bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+    if ( type == MAJ )
+    {
+      detail::on_maj<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      });
+    }
+    else if ( type == XOR )
+    {
+      detail::on_xor3<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      });
+    }
+
+    return nlit;
+  }
+
   bill::lit_type add_tmp_gate( std::vector<bill::lit_type> const& lits, gate const& g )
   {
-    assert( g.fanins.size() == 2u );
-    assert( g.fanins[0].idx < lits.size() );
-    assert( g.fanins[1].idx < lits.size() );
+    /* currently supports AND2, XOR2, XOR3, MAJ3 */
+    assert( g.fanins.size() == 2u || g.fanins.size() == 3u );
 
-    return add_clauses_for_gate( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), std::nullopt, g.type );
+    if ( g.fanins.size() == 2u )
+    {
+      assert( g.fanins[0].idx < lits.size() );
+      assert( g.fanins[1].idx < lits.size() );
+      return add_clauses_for_2input_gate( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), std::nullopt, g.type );
+    }
+    else
+    {
+      assert( g.fanins[0].idx < lits.size() );
+      assert( g.fanins[1].idx < lits.size() );
+      assert( g.fanins[2].idx < lits.size() );
+      return add_clauses_for_3input_gate( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), lit_not_cond( lits[g.fanins[2].idx], g.fanins[2].inv ), std::nullopt, g.type );
+    }
   }
 
   std::optional<bool> solve( std::vector<bill::lit_type> assumptions )
@@ -390,9 +438,17 @@ private:
       ntk.foreach_fanin( fo, [&]( auto const& fi ){
         l_fi.emplace_back( lit_not_cond( lits.has( ntk.get_node(fi) )? lits[fi]: literals[fi], ntk.is_complemented( fi ) ) );
       });
-      assert( l_fi.size() == 2u );
-      assert( ntk.is_and( fo ) || ntk.is_xor( fo ) );
-      add_clauses_for_gate( l_fi[0], l_fi[1], lits[fo], ntk.is_and( fo )? AND: XOR );
+      if ( l_fi.size() == 2u )
+      {
+        assert( ntk.is_and( fo ) || ntk.is_xor( fo ) );
+        add_clauses_for_2input_gate( l_fi[0], l_fi[1], lits[fo], ntk.is_and( fo )? AND: XOR );
+      }
+      else
+      {
+        assert( l_fi.size() == 3u );
+        assert( ntk.is_maj( fo ) || ntk.is_xor3( fo ) );
+        add_clauses_for_3input_gate( l_fi[0], l_fi[1], l_fi[2], lits[fo], ntk.is_maj( fo )? MAJ: XOR );
+      }
 
       if ( level == ps.odc_levels ) return true;
 
@@ -424,7 +480,7 @@ private:
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   void add_miter_clauses( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, std::vector<bill::lit_type>& miter )
   {
-    miter.emplace_back( add_clauses_for_gate( literals[n], lits[n], std::nullopt, XOR ) );
+    miter.emplace_back( add_clauses_for_2input_gate( literals[n], lits[n], std::nullopt, XOR ) );
   }
 
 private:
