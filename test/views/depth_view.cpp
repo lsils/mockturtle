@@ -111,8 +111,7 @@ TEST_CASE( "compute critical path information", "[depth_view]" )
 
 TEST_CASE( "compute levels during node construction", "[depth_view]" )
 {
-  xag_network xag;
-  depth_view dxag{xag};
+  depth_view<xag_network> dxag;
 
   const auto a = dxag.create_pi();
   const auto b = dxag.create_pi();
