@@ -109,6 +109,25 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
+  explicit depth_view( NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
+      : Ntk(),
+        _ps( ps ),
+        _levels( *this ),
+        _crit_path( *this ),
+        _cost_fn( cost_fn )
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+    static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
+    static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+
+    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
+  }
+
   /*! \brief Standard constructor.
    *
    * \param ntk Base network
@@ -134,6 +153,10 @@ public:
 
     Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
   }
+
+  // We should add these or make sure that members are properly copied
+  //depth_view( depth_view<Ntk> const& ) = delete;
+  //depth_view<Ntk> operator=( depth_view<Ntk> const& ) = delete;
 
   uint32_t depth() const
   {
