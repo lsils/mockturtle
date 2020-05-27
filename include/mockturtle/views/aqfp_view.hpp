@@ -59,15 +59,15 @@ struct aqfp_view_params
 };
 
 /*! \brief Implements/Overwrites `foreach_fanout`, `depth`, `level`
- * `num_buffers`, `num_splitters`, `num_splitter_levels` methods for MIG network.
+ * `num_buffers`, `num_splitter_levels` methods for MIG network.
  *
  * This view computes the fanout of each node of the network.
  * It implements the network interface method `foreach_fanout`.  The
  * fanout are computed at construction and can be recomputed by
  * calling the `update_fanout` method.
  * 
- * The number of fanouts of each node is restricted to (`splitter_capacity`
- * to the power of `max_splitter_levels`).
+ * The number of fanouts of each buffer is restricted to `splitter_capacity`.
+ * The additional depth of a node introduced by splitters limited to at most `max_splitter_levels`.
  *
  * **Required network functions:**
  * - `foreach_node`
@@ -188,27 +188,7 @@ public:
     return _depth_view.depth();
   }
 
-  /*! \brief Number of splitters at the fanout of node `n` */
-  uint32_t num_splitters ( node const& n ) const
-  {
-    /* TODO: generalize for other `max_splitter_levels` values */
-    if ( fanout_size( n ) <= 1u )
-    {
-      return 0u;
-    }
-    else if ( fanout_size( n ) <= _ps.splitter_capacity )
-    {
-      return 1u;
-    }
-    else
-    {
-      /* TODO: currently always fill up the second layer of splitters, but it's unnecessary */
-      return _ps.splitter_capacity + 1u;
-      //return std::floor( float( fanout_size( n ) ) / float( _ps.splitter_capacity ) ) + 1u;
-    }
-  }
-
-  /*! \brief Get the number of buffers (including splitters) in the whole circuit */
+  /*! \brief Get the number of buffers/splitters in the whole circuit */
   uint32_t num_buffers() const
   {
     uint32_t count = 0u;
@@ -218,23 +198,62 @@ public:
     return count;
   }
 
-  /*! \brief Get the number of buffers (including splitters) between `n` and all its fanouts */
+  /*! \brief Get the number of buffers/splitters between `n` and all its fanouts */
   uint32_t num_buffers( node const& n ) const
   {
-    uint32_t count = 0u;
-    uint32_t nlevel = level( n ) + num_splitter_levels( n );
+    if ( num_splitter_levels( n ) == 0u )
+    {
+      if ( fanout_size( n ) > 0u )
+      {
+        assert( fanout_size( n ) == 1u );
+        return _external_ref_count[n] > 0u ? depth() - level( n ) : level( _fanout[n][0] ) - level( n ) - 1u;
+      }
+      return 0u;
+    }
+
+    /* fanout sizes at each level (pair<level, size>) */
+    std::vector<std::pair<uint32_t, uint32_t>> fanout_sizes;
+
+    /* lowest fanout should be at level(n) + 2 */
+    uint32_t nlevel = level( n ) + 1u;
+    
     for ( auto fo : _fanout[n] )
     {
       assert( level( fo ) >= nlevel );
-      count += level( fo ) - nlevel - 1u;
-      nlevel = level( fo ) - 1u;
+      if ( level( fo ) == nlevel )
+      {
+        fanout_sizes.back().second++;
+      }
+      else
+      {
+        nlevel = level( fo );
+        fanout_sizes.emplace_back( std::make_pair( nlevel, 1u ) );
+      }
     }
     if ( _external_ref_count[n] > 0u )
     {
-      count += depth() - nlevel;
+      fanout_sizes.emplace_back( std::make_pair( depth() + 1u, _external_ref_count[n] ) );
+    }
+    assert( fanout_sizes.size() >= 1u );
+
+    uint32_t count = 0u;
+    for ( int i = fanout_sizes.size() - 2; i >= 0; --i )
+    {
+      auto s = num_splitters( fanout_sizes[i+1].second );
+      assert( s <= _ps.splitter_capacity && s > 0u );
+      if ( fanout_sizes[i].first == fanout_sizes[i+1].first - 1u )
+      {
+        fanout_sizes[i].second += s;
+      }
+
+      count += s + fanout_sizes[i+1].first - fanout_sizes[i].first - 1u;
     }
 
-    return count + num_splitters( n );
+    assert( fanout_sizes[0].first == level( n ) + num_splitter_levels( n ) + 1u );
+    count += num_splitters( fanout_sizes[0].second ) + fanout_sizes[0].first - level( n ) - 2u;
+    /* There may be one more buffer (and redundant level) when total fanout > 4 but only <= 4 are at the lowest level. */
+
+    return count;
   }
 
   void substitute_node( node const& old_node, signal const& new_signal )
@@ -270,6 +289,12 @@ private:
   uint32_t fanout_size( node const& n ) const
   {
     return _fanout[n].size() + _external_ref_count[n];
+  }
+
+  /* Number of splitters needed at the lower level */
+  uint32_t num_splitters( uint32_t const& num_fanouts ) const
+  {
+    return std::ceil( float( num_fanouts ) / float( _ps.splitter_capacity ) );
   }
 
   void compute_fanout()
