@@ -56,6 +56,12 @@ struct depth_view_params
  * `level` and `depth`.  The levels are computed at construction
  * and can be recomputed by calling the `update_levels` method.
  *
+ * It also automatically updates levels, and depth when creating nodes or
+ * creating a PO on a depth_view, however, it does not update the information,
+ * when modifying or deleting nodes, neither will the critical paths be
+ * recalculated (due to efficiency reasons).  In order to recalculate levels,
+ * depth, and critical paths, one can call `update_levels` instead.
+ *
  * **Required network functions:**
  * - `size`
  * - `get_node`
@@ -103,6 +109,25 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
+  explicit depth_view( NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
+      : Ntk(),
+        _ps( ps ),
+        _levels( *this ),
+        _crit_path( *this ),
+        _cost_fn( cost_fn )
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+    static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
+    static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+
+    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
+  }
+
   /*! \brief Standard constructor.
    *
    * \param ntk Base network
@@ -125,7 +150,13 @@ public:
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
     update_levels();
+
+    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
   }
+
+  // We should add these or make sure that members are properly copied
+  //depth_view( depth_view<Ntk> const& ) = delete;
+  //depth_view<Ntk> operator=( depth_view<Ntk> const& ) = delete;
 
   uint32_t depth() const
   {
@@ -159,6 +190,12 @@ public:
   void resize_levels()
   {
     _levels.resize();
+  }
+
+  void create_po( signal const& f )
+  {
+    Ntk::create_po( f );
+    _depth = std::max( _depth, _levels[f] );
   }
 
 private:
@@ -230,10 +267,27 @@ private:
     }
   }
 
+  void on_add( node const& n )
+  {
+    _levels.resize();
+
+    uint32_t level{0};
+    this->foreach_fanin( n, [&]( auto const& f ) {
+      auto clevel = _levels[f];
+      if ( _ps.count_complements && this->is_complemented( f ) )
+      {
+        clevel++;
+      }
+      level = std::max( level, clevel );
+    } );
+
+    _levels[n] = level + _cost_fn( *this, n );
+  }
+
   depth_view_params _ps;
   node_map<uint32_t, Ntk> _levels;
   node_map<uint32_t, Ntk> _crit_path;
-  uint32_t _depth;
+  uint32_t _depth{};
   NodeCostFn _cost_fn;
 };
 
