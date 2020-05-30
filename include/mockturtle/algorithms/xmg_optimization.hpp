@@ -51,7 +51,7 @@ namespace mockturtle
  * If a MAJ gate is satisfiability don't care for assignments 000 and 111, it can be
  * replaced by an XNOR gate.
  */
-xmg_network xmg_dont_cares_optimization( xmg_network const& xmg )
+inline xmg_network xmg_dont_cares_optimization( xmg_network const& xmg )
 {
   node_map<xmg_network::signal, xmg_network> old_to_new( xmg );
 

@@ -48,6 +48,7 @@
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/cut_view.hpp"
+#include "../views/depth_view.hpp"
 #include "../views/fanout_view.hpp"
 #include "cleanup.hpp"
 #include "cut_enumeration.hpp"
@@ -95,6 +96,9 @@ struct cut_rewriting_params
 
   /*! \brief Minimum candidate cut size override (in conflict graph) */
   std::optional<uint32_t> min_cand_cut_size_override{};
+
+  /*! \brief If true, candidates are only accepted if they do not increase logic level of node. */
+  bool preserve_depth{false};
 
   /*! \brief Show progress. */
   bool progress{false};
@@ -671,7 +675,7 @@ void cut_rewriting_with_compatibility_graph( Ntk& ntk, RewritingFn&& rewriting_f
 namespace detail
 {
 
-template<class Ntk, class RewritingFn, class NodeCostFn>
+template<class NtkDest, class Ntk, class RewritingFn, class NodeCostFn>
 struct cut_rewriting_impl
 {
   cut_rewriting_impl( Ntk const& ntk, RewritingFn const& rewriting_fn, cut_rewriting_params const& ps, cut_rewriting_stats& st )
@@ -680,14 +684,21 @@ struct cut_rewriting_impl
         ps_( ps ),
         st_( st ) {}
 
-  Ntk run()
+  NtkDest run()
   {
     stopwatch t( st_.time_total );
 
     /* initial node map */
-    auto p = initialize_copy_network<Ntk>( ntk_ );
-    auto res = p.first;
-    auto old2new = p.second;
+    node_map<signal<Ntk>, Ntk> old2new( ntk_ );
+    Ntk res;
+    old2new[ntk_.get_constant( false )] = res.get_constant( false );
+    if ( ntk_.get_node( ntk_.get_constant( true ) ) != ntk_.get_node( ntk_.get_constant( false ) ) )
+    {
+      old2new[ntk_.get_constant( true )] = res.get_constant( true );
+    }
+    ntk_.foreach_pi( [&]( auto const& n ) {
+      old2new[n] = res.create_pi();
+    } );
 
     /* enumerate cuts */
     const auto cuts = call_with_stopwatch( st_.time_cuts, [&]() { return cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk_, ps_.cut_enumeration_ps ); } );
@@ -741,8 +752,19 @@ struct cut_rewriting_impl
 
             if ( ( gain > 0 || ( ps_.allow_zero_gain && gain == 0 ) ) && gain > best_gain )
             {
-              best_gain = gain;
-              best_signal = f_new;
+              if constexpr ( has_level_v<Ntk> )
+              {
+                if ( !ps_.preserve_depth || res.level( res.get_node( f_new ) ) <= ntk_.level( n ) )
+                {
+                  best_gain = gain;
+                  best_signal = f_new;
+                }
+              }
+              else
+              {
+                best_gain = gain;
+                best_signal = f_new;
+              }
             }
 
             return true;
@@ -774,10 +796,10 @@ struct cut_rewriting_impl
       res.create_po( ntk_.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] );
     } );
 
-    res = cleanup_dangling( res );
+    NtkDest ret = cleanup_dangling<NtkDest>( res );
 
     /* new costs */
-    return costs<Ntk, NodeCostFn>( res ) > orig_cost ? ntk_ : res;
+    return costs<NtkDest, NodeCostFn>( ret ) > orig_cost ? static_cast<NtkDest>( ntk_ ) : ret;
   }
 
 private:
@@ -817,7 +839,17 @@ template<class Ntk, class RewritingFn, class NodeCostFn = unit_cost<Ntk>>
 Ntk cut_rewriting( Ntk const& ntk, RewritingFn const& rewriting_fn = {}, cut_rewriting_params const& ps = {}, cut_rewriting_stats* pst = nullptr )
 {
   cut_rewriting_stats st;
-  const auto result = detail::cut_rewriting_impl<Ntk, RewritingFn, NodeCostFn>( ntk, rewriting_fn, ps, st ).run();
+  const auto result = [&]() {
+    if ( ps.preserve_depth )
+    {
+      depth_view<Ntk, NodeCostFn> depth_ntk{ntk};
+      return detail::cut_rewriting_impl<Ntk, depth_view<Ntk, NodeCostFn>, RewritingFn, NodeCostFn>( depth_ntk, rewriting_fn, ps, st ).run();
+    }
+    else
+    {
+      return detail::cut_rewriting_impl<Ntk, Ntk, RewritingFn, NodeCostFn>( ntk, rewriting_fn, ps, st ).run();
+    }
+  }();
 
   if ( ps.verbose )
   {
