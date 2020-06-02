@@ -21,7 +21,7 @@ class solver<solvers::z3> {
 public:
 #pragma region Constructors
 	solver()
-	    : solver_(ctx_)
+	    : solver_(ctx_), var_ctr_( 1, 0u ), cls_ctr_( 1, 0u )
 	{
 	}
 
@@ -38,15 +38,17 @@ public:
 	{
 		solver_.reset();
 		vars_.clear();
-		var_ctr_ = 0u;
-		cls_ctr_ = 0u;
+		var_ctr_.clear();
+		var_ctr_.emplace_back( 0u );
+		cls_ctr_.clear();
+		cls_ctr_.emplace_back( 0u );
 		state_ = result::states::undefined;
 	}
 
 	var_type add_variable()
 	{
-		vars_.push_back(ctx_.bool_const(fmt::format("x{}", var_ctr_).c_str()));
-		return var_ctr_++;
+		vars_.push_back(ctx_.bool_const(fmt::format("x{}", var_ctr_.back()).c_str()));
+		return var_ctr_.back()++;
 	}
 
 	void add_variables(uint32_t num_variables = 1)
@@ -66,7 +68,7 @@ public:
 			++it;
 		}
 		solver_.add(mk_or(vec));
-		++cls_ctr_;
+		++cls_ctr_.back();
 		return result::states::dirty;
 	}
 
@@ -131,24 +133,32 @@ public:
 #pragma region Properties
 	uint32_t num_variables() const
 	{
-		return var_ctr_;
+		return var_ctr_.back();
 	}
 
 	uint32_t num_clauses() const
 	{
-		return cls_ctr_;
+		return cls_ctr_.back();
 	}
 #pragma endregion
 
-	void bookmark()
+	void push()
 	{
-		/* do not handle number of variables and clauses for now */
 		solver_.push();
+		var_ctr_.emplace_back( var_ctr_.back() );
+		cls_ctr_.emplace_back( cls_ctr_.back() );
 	}
 
-	void rollback( uint32_t n = 1u )
+	void pop( uint32_t n = 1u )
 	{
+		assert( n < var_ctr_.size() );
 		solver_.pop( n );
+		var_ctr_.resize( var_ctr_.size() - n );
+		cls_ctr_.resize( cls_ctr_.size() - n );
+		if ( vars_.size() > var_ctr_.back() )
+		{
+			vars_.erase( vars_.begin() + var_ctr_.back(), vars_.end() );
+		}
 	}
 
 	void set_random_phase( uint32_t seed = 0u )
@@ -162,8 +172,8 @@ private:
 	z3::solver solver_;
 	result::states state_ = result::states::undefined;
 	std::vector<z3::expr> vars_;
-	uint32_t var_ctr_{};
-	uint32_t cls_ctr_{};
+	std::vector<uint32_t> var_ctr_;
+	std::vector<uint32_t> cls_ctr_;
 };
 
 } // namespace bill

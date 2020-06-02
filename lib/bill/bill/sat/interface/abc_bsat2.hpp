@@ -14,7 +14,6 @@
 
 namespace bill {
 
-#if !defined(BILL_WINDOWS_PLATFORM)
 template<>
 class solver<solvers::bsat2> {
 	using solver_type = pabc::sat_solver;
@@ -116,10 +115,14 @@ public:
 		if ( randomize )
 		{
 			std::vector<uint32_t> vars;
-		    for ( auto i = 0u; i < num_variables(); ++i )
-		      if ( random() % 2 )
-		        vars.push_back( i );
-	        pabc::sat_solver_set_polarity( solver_, (int*)(const_cast<uint32_t*>(vars.data())), vars.size() );
+			for ( auto i = 0u; i < num_variables(); ++i )
+			{
+				if ( random() % 2 )
+				{
+					vars.push_back( i );
+				}
+			}
+			pabc::sat_solver_set_polarity( solver_, (int*)(const_cast<uint32_t*>(vars.data())), vars.size() );
 		}
 
 		int result;
@@ -163,23 +166,23 @@ public:
 	}
 #pragma endregion
 
-    void bookmark()
-    {
-        pabc::sat_solver_bookmark(solver_);
-    }
+	void push()
+	{
+		pabc::sat_solver_bookmark(solver_);
+	}
 
-    void rollback( uint32_t n = 1u )
-    {
-    	assert( n == 1u && "bsat does not support multiple rollbacks" ); (void)n;
-        pabc::sat_solver_rollback(solver_);
-    }
+	void pop( uint32_t n = 1u )
+	{
+		assert( n == 1u && "bsat does not support multiple step pop" ); (void)n;
+	    pabc::sat_solver_rollback(solver_);
+	}
 
-    void set_random_phase( uint32_t seed = 0u )
-    {
-    	randomize = true;
-        pabc::sat_solver_set_random(solver_, 1);
-        random.seed( seed );
-    }
+	void set_random_phase( uint32_t seed = 0u )
+	{
+		randomize = true;
+		pabc::sat_solver_set_random(solver_, 1);
+		random.seed( seed );
+	}
 
 private:
 	/*! \brief Backend solver */
@@ -194,6 +197,5 @@ private:
 	std::default_random_engine random;
 	bool randomize = false;
 };
-#endif
 
 } // namespace bill
