@@ -54,7 +54,7 @@ struct validator_params
   uint32_t random_seed{0};
 };
 
-template<class Ntk, bill::solvers Solver = bill::solvers::glucose_41, bool use_bookmark = false, bool randomize = false, bool use_odc = false>
+template<class Ntk, bill::solvers Solver = bill::solvers::glucose_41, bool use_pushpop = false, bool randomize = false, bool use_odc = false>
 class circuit_validator
 {
 public:
@@ -103,16 +103,16 @@ public:
     static_assert( has_is_xor3_v<Ntk>, "Ntk does not implement the is_xor3 method" );
     static_assert( has_is_maj_v<Ntk>, "Ntk does not implement the is_maj method" );
     
-    if constexpr ( use_bookmark )
+    if constexpr ( use_pushpop )
     {
       #if !defined(BILL_WINDOWS_PLATFORM) && defined(BILL_HAS_Z3)
-        static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support bookmark/rollback" );
+        static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support push/pop" );
       #elif !defined(BILL_WINDOWS_PLATFORM)
-        static_assert( Solver == bill::solvers::bsat2, "Solver does not support bookmark/rollback" );
+        static_assert( Solver == bill::solvers::bsat2, "Solver does not support push/pop" );
       #elif defined(BILL_HAS_Z3)
-        static_assert( Solver == bill::solvers::z3, "Solver does not support bookmark/rollback" );
+        static_assert( Solver == bill::solvers::z3, "Solver does not support push/pop" );
       #else
-        static_assert( false, "Solver does not support bookmark/rollback" );
+        static_assert( false, "Solver does not support push/pop" );
       #endif
     }
     if constexpr ( randomize )
@@ -154,9 +154,9 @@ public:
   template<class iterator_type>
   std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
   {
-    if constexpr ( use_bookmark )
+    if constexpr ( use_pushpop )
     {
-      solver.bookmark();
+      solver.push();
     }
 
     std::vector<bill::lit_type> lits;
@@ -173,9 +173,9 @@ public:
 
     auto const res = validate( root, lit_not_cond( lits.back(), output_negation ) );
 
-    if constexpr ( use_bookmark )
+    if constexpr ( use_pushpop )
     {
-      solver.rollback();
+      solver.pop();
     }
 
     return res;
@@ -185,9 +185,9 @@ public:
   std::optional<bool> validate( node const& root, bool value )
   {
     assert( literals[root].variable() != bill::var_type( 0 ) );
-    if constexpr ( use_bookmark )
+    if constexpr ( use_pushpop )
     {
-      solver.bookmark();
+      solver.push();
     }
 
     std::optional<bool> res;
@@ -207,9 +207,9 @@ public:
       res = solve( {lit_not_cond( literals[root], value )} );
     }
 
-    if constexpr ( use_bookmark )
+    if constexpr ( use_pushpop )
     {
-      solver.rollback();
+      solver.pop();
     }
     return res;
   }
@@ -363,9 +363,9 @@ private:
   std::optional<bool> validate( node const& root, bill::lit_type const& lit )
   {
     assert( literals[root].variable() != bill::var_type( 0 ) );
-    if constexpr ( use_bookmark )
+    if constexpr ( use_pushpop )
     {
-      solver.bookmark();
+      solver.push();
     }
 
     std::optional<bool> res;
@@ -391,9 +391,9 @@ private:
       res = solve( {~nlit} );
     }
 
-    if constexpr ( use_bookmark )
+    if constexpr ( use_pushpop )
     {
-      solver.rollback();
+      solver.pop();
     }
     return res;
   }
