@@ -34,10 +34,10 @@
 
 #include "../utils/node_map.hpp"
 #include "cnf.hpp"
+#include <bill/sat/interface/abc_bsat2.hpp>
 #include <bill/sat/interface/common.hpp>
 #include <bill/sat/interface/glucose.hpp>
 #include <bill/sat/interface/z3.hpp>
-#include <bill/sat/interface/abc_bsat2.hpp>
 
 namespace mockturtle
 {
@@ -62,7 +62,7 @@ public:
   using signal = typename Ntk::signal;
   using add_clause_fn_t = std::function<void( std::vector<bill::lit_type> const& )>;
 
-  enum gate_type 
+  enum gate_type
   {
     AND,
     XOR,
@@ -82,50 +82,45 @@ public:
   };
 
   explicit circuit_validator( Ntk const& ntk, validator_params const& ps = {} )
-    : ntk( ntk ), ps( ps ), literals( ntk ), cex( ntk.num_pis() )
+      : ntk( ntk ), ps( ps ), literals( ntk ), cex( ntk.num_pis() )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
     static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
-    //static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
     static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
-    //static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
     static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
-    //static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
-    //static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
-    //static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_is_and_v<Ntk>, "Ntk does not implement the is_and method" );
     static_assert( has_is_xor_v<Ntk>, "Ntk does not implement the is_xor method" );
     static_assert( has_is_xor3_v<Ntk>, "Ntk does not implement the is_xor3 method" );
     static_assert( has_is_maj_v<Ntk>, "Ntk does not implement the is_maj method" );
-    
+
     if constexpr ( use_pushpop )
     {
-      #if !defined(BILL_WINDOWS_PLATFORM) && defined(BILL_HAS_Z3)
-        static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support push/pop" );
-      #elif !defined(BILL_WINDOWS_PLATFORM)
-        static_assert( Solver == bill::solvers::bsat2, "Solver does not support push/pop" );
-      #elif defined(BILL_HAS_Z3)
-        static_assert( Solver == bill::solvers::z3, "Solver does not support push/pop" );
-      #else
-        static_assert( false, "Solver does not support push/pop" );
-      #endif
+#if !defined( BILL_WINDOWS_PLATFORM ) && defined( BILL_HAS_Z3 )
+      static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support push/pop" );
+#elif !defined( BILL_WINDOWS_PLATFORM )
+      static_assert( Solver == bill::solvers::bsat2, "Solver does not support push/pop" );
+#elif defined( BILL_HAS_Z3 )
+      static_assert( Solver == bill::solvers::z3, "Solver does not support push/pop" );
+#else
+      static_assert( false, "Solver does not support push/pop" );
+#endif
     }
     if constexpr ( randomize )
     {
-      #if !defined(BILL_WINDOWS_PLATFORM) && defined(BILL_HAS_Z3)
-        static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support set_random" );
-      #elif !defined(BILL_WINDOWS_PLATFORM)
-        static_assert( Solver == bill::solvers::bsat2, "Solver does not support set_random" );
-      #elif defined(BILL_HAS_Z3)
-        static_assert( Solver == bill::solvers::z3, "Solver does not support set_random" );
-      #else
-        static_assert( false, "Solver does not support set_random" );
-      #endif
+#if !defined( BILL_WINDOWS_PLATFORM ) && defined( BILL_HAS_Z3 )
+      static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support set_random" );
+#elif !defined( BILL_WINDOWS_PLATFORM )
+      static_assert( Solver == bill::solvers::bsat2, "Solver does not support set_random" );
+#elif defined( BILL_HAS_Z3 )
+      static_assert( Solver == bill::solvers::z3, "Solver does not support set_random" );
+#else
+      static_assert( false, "Solver does not support set_random" );
+#endif
     }
     if constexpr ( use_odc )
     {
@@ -133,7 +128,6 @@ public:
       static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
       static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
       static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
-      //static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
     }
 
     restart();
@@ -202,7 +196,7 @@ public:
         res = solve( {lit_not_cond( literals[root], value )} );
       }
     }
-    else 
+    else
     {
       res = solve( {lit_not_cond( literals[root], value )} );
     }
@@ -220,9 +214,9 @@ public:
   void add_node( node const& n )
   {
     std::vector<bill::lit_type> lit_fi;
-    ntk.foreach_fanin( n, [&]( const auto& f ){
+    ntk.foreach_fanin( n, [&]( const auto& f ) {
       lit_fi.emplace_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
-    });
+    } );
 
     literals.resize();
     assert( lit_fi.size() == 2u || lit_fi.size() == 3u );
@@ -253,7 +247,7 @@ private:
     {
       solver.set_random_phase( ps.random_seed );
     }
-    
+
     literals.reset();
     /* constants are mapped to var 0 */
     literals[ntk.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
@@ -274,9 +268,11 @@ private:
     } );
 
     solver.add_variables( ntk.size() );
-    generate_cnf<Ntk, bill::lit_type>( ntk, [&]( auto const& clause ) {
-      solver.add_clause( clause );
-    }, literals );
+    generate_cnf<Ntk, bill::lit_type>(
+        ntk, [&]( auto const& clause ) {
+          solver.add_clause( clause );
+        },
+        literals );
   }
 
   bill::lit_type add_clauses_for_2input_gate( bill::lit_type a, bill::lit_type b, std::optional<bill::lit_type> c = std::nullopt, gate_type type = AND )
@@ -288,13 +284,13 @@ private:
     {
       detail::on_and<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause ) {
         solver.add_clause( clause );
-      });
+      } );
     }
     else if ( type == XOR )
     {
       detail::on_xor<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause ) {
         solver.add_clause( clause );
-      });
+      } );
     }
 
     return nlit;
@@ -309,13 +305,13 @@ private:
     {
       detail::on_maj<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
         solver.add_clause( clause );
-      });
+      } );
     }
     else if ( type == XOR )
     {
       detail::on_xor3<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
         solver.add_clause( clause );
-      });
+      } );
     }
 
     return nlit;
@@ -349,7 +345,7 @@ private:
       auto model = solver.get_model().model();
       for ( auto i = 0u; i < ntk.num_pis(); ++i )
       {
-        cex.at( i ) = model.at( i + 1 ) == bill::lbool_type::true_; 
+        cex.at( i ) = model.at( i + 1 ) == bill::lbool_type::true_;
       }
       return false;
     }
@@ -379,15 +375,15 @@ private:
       {
         auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
         solver.add_clause( {literals[root], lit, nlit} );
-        solver.add_clause( {~(literals[root]), ~lit, nlit} );
+        solver.add_clause( {~( literals[root] ), ~lit, nlit} );
         res = solve( {~nlit} );
       }
     }
-    else 
+    else
     {
       auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
       solver.add_clause( {literals[root], lit, nlit} );
-      solver.add_clause( {~(literals[root]), ~lit, nlit} );
+      solver.add_clause( {~( literals[root] ), ~lit, nlit} );
       res = solve( {~nlit} );
     }
 
@@ -414,54 +410,58 @@ private:
     duplicate_fanout_cone_rec( root, lits, 1 );
 
     /* miter for POs */
-    ntk.foreach_po( [&]( auto const& f ){
-      if ( !lits.has( ntk.get_node( f ) ) ) return true; /* PO not in TFO, skip */
+    ntk.foreach_po( [&]( auto const& f ) {
+      if ( !lits.has( ntk.get_node( f ) ) )
+        return true; /* PO not in TFO, skip */
       add_miter_clauses( ntk.get_node( f ), lits, miter );
       return true; /* next */
-    });
+    } );
 
     assert( miter.size() > 0 && "max fanout depth < odc_levels (-1 is infinity) and there is no PO in TFO cone" );
     auto nlit2 = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
     miter.emplace_back( nlit2 );
     solver.add_clause( miter );
-    return ~nlit2 ;
+    return ~nlit2;
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   void duplicate_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, int level )
   {
-    ntk.foreach_fanout( n, [&]( auto const& fo ){
-      if ( ntk.visited( fo ) == ntk.trav_id() ) return true; /* skip */
+    ntk.foreach_fanout( n, [&]( auto const& fo ) {
+      if ( ntk.visited( fo ) == ntk.trav_id() )
+        return true; /* skip */
       ntk.set_visited( fo, ntk.trav_id() );
 
       std::vector<bill::lit_type> l_fi;
-      ntk.foreach_fanin( fo, [&]( auto const& fi ){
-        l_fi.emplace_back( lit_not_cond( lits.has( ntk.get_node(fi) )? lits[fi]: literals[fi], ntk.is_complemented( fi ) ) );
-      });
+      ntk.foreach_fanin( fo, [&]( auto const& fi ) {
+        l_fi.emplace_back( lit_not_cond( lits.has( ntk.get_node( fi ) ) ? lits[fi] : literals[fi], ntk.is_complemented( fi ) ) );
+      } );
       if ( l_fi.size() == 2u )
       {
         assert( ntk.is_and( fo ) || ntk.is_xor( fo ) );
-        add_clauses_for_2input_gate( l_fi[0], l_fi[1], lits[fo], ntk.is_and( fo )? AND: XOR );
+        add_clauses_for_2input_gate( l_fi[0], l_fi[1], lits[fo], ntk.is_and( fo ) ? AND : XOR );
       }
       else
       {
         assert( l_fi.size() == 3u );
         assert( ntk.is_maj( fo ) || ntk.is_xor3( fo ) );
-        add_clauses_for_3input_gate( l_fi[0], l_fi[1], l_fi[2], lits[fo], ntk.is_maj( fo )? MAJ: XOR );
+        add_clauses_for_3input_gate( l_fi[0], l_fi[1], l_fi[2], lits[fo], ntk.is_maj( fo ) ? MAJ : XOR );
       }
 
-      if ( level == ps.odc_levels ) return true;
+      if ( level == ps.odc_levels )
+        return true;
 
       duplicate_fanout_cone_rec( fo, lits, level + 1 );
       return true; /* next */
-    });
+    } );
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   void make_lit_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk>& lits, std::vector<bill::lit_type>& miter, int level )
   {
-    ntk.foreach_fanout( n, [&]( auto const& fo ){
-      if ( ntk.visited( fo ) == ntk.trav_id() ) return true; /* skip */
+    ntk.foreach_fanout( n, [&]( auto const& fo ) {
+      if ( ntk.visited( fo ) == ntk.trav_id() )
+        return true; /* skip */
       ntk.set_visited( fo, ntk.trav_id() );
 
       lits[fo] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
@@ -471,10 +471,10 @@ private:
         add_miter_clauses( fo, lits, miter );
         return true;
       }
-      
+
       make_lit_fanout_cone_rec( fo, lits, miter, level + 1 );
       return true; /* next */
-    });
+    } );
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
