@@ -100,26 +100,18 @@ public:
 
     if constexpr ( use_pushpop )
     {
-#if !defined( BILL_WINDOWS_PLATFORM ) && defined( BILL_HAS_Z3 )
+#if defined( BILL_HAS_Z3 )
       static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support push/pop" );
-#elif !defined( BILL_WINDOWS_PLATFORM )
-      static_assert( Solver == bill::solvers::bsat2, "Solver does not support push/pop" );
-#elif defined( BILL_HAS_Z3 )
-      static_assert( Solver == bill::solvers::z3, "Solver does not support push/pop" );
 #else
-      static_assert( false, "Solver does not support push/pop" );
+      static_assert( Solver == bill::solvers::bsat2, "Solver does not support push/pop" );
 #endif
     }
     if constexpr ( randomize )
     {
-#if !defined( BILL_WINDOWS_PLATFORM ) && defined( BILL_HAS_Z3 )
+#if defined( BILL_HAS_Z3 )
       static_assert( Solver == bill::solvers::z3 || Solver == bill::solvers::bsat2, "Solver does not support set_random" );
-#elif !defined( BILL_WINDOWS_PLATFORM )
-      static_assert( Solver == bill::solvers::bsat2, "Solver does not support set_random" );
-#elif defined( BILL_HAS_Z3 )
-      static_assert( Solver == bill::solvers::z3, "Solver does not support set_random" );
 #else
-      static_assert( false, "Solver does not support set_random" );
+      static_assert( Solver == bill::solvers::bsat2, "Solver does not support set_random" );
 #endif
     }
     if constexpr ( use_odc )
@@ -134,15 +126,33 @@ public:
   }
 
   /* validate with an existing signal in the network */
+  std::optional<bool> validate( signal const& f, signal const& d )
+  {
+    return validate( ntk.get_node( f ), lit_not_cond( literals[d], ntk.is_complemented( f ) ^ ntk.is_complemented( d ) ) );
+  }
+
+  /* validate with an existing signal in the network */
   std::optional<bool> validate( node const& root, signal const& d )
   {
     return validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
   }
 
   /* validate with a circuit composed of `divs` which are existing nodes in the network */
+  std::optional<bool> validate( signal const& f, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
+  {
+    return validate( ntk.get_node( f ), divs.begin(), divs.end(), ckt, output_negation ^ ntk.is_complemented( f ) );
+  }
+
+  /* validate with a circuit composed of `divs` which are existing nodes in the network */
   std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
   {
     return validate( root, divs.begin(), divs.end(), ckt, output_negation );
+  }
+
+  template<class iterator_type>
+  std::optional<bool> validate( signal const& f, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
+  {
+    return validate( ntk.get_node( f ), divs_begin, divs_end, ckt, output_negation ^ ntk.is_complemented( f ) );
   }
 
   template<class iterator_type>
@@ -173,6 +183,12 @@ public:
     }
 
     return res;
+  }
+
+  /* validate whether `f` is a constant of `value` */
+  std::optional<bool> validate( signal const& f, bool value )
+  {
+    return validate( ntk.get_node( f ), value ^ ntk.is_complemented( f ) );
   }
 
   /* validate whether `root` is a constant of `value` */
