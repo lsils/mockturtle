@@ -73,11 +73,20 @@ public:
   {
     struct fanin
     {
-      uint32_t idx; /* index in the concatenated list of `divs` and `ckt` */
+      /*! \brief Index in the concatenated list of `divs` and `ckt`. */
+      uint32_t idx;
+
+      /*! \brief Input negation. */
       bool inv{false};
     };
 
+    /*! \brief Fanins of the gate. */
     std::vector<fanin> fanins;
+
+    /*! \brief Type of the gate. 
+     *
+     * Supported types include AND, XOR, and MAJ.
+     */
     gate_type type{AND};
   };
 
@@ -125,36 +134,41 @@ public:
     restart();
   }
 
-  /* validate with an existing signal in the network */
+  /*! \brief Validate functional equivalence of signals `f` and `d`. */
   std::optional<bool> validate( signal const& f, signal const& d )
   {
     return validate( ntk.get_node( f ), lit_not_cond( literals[d], ntk.is_complemented( f ) ^ ntk.is_complemented( d ) ) );
   }
 
-  /* validate with an existing signal in the network */
+  /*! \brief Validate functional equivalence of node `root` and signal `d`. */
   std::optional<bool> validate( node const& root, signal const& d )
   {
     return validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
   }
 
-  /* validate with a circuit composed of `divs` which are existing nodes in the network */
+  /*! \brief Validate functional equivalence of signal `f` with a circuit. */
   std::optional<bool> validate( signal const& f, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
   {
     return validate( ntk.get_node( f ), divs.begin(), divs.end(), ckt, output_negation ^ ntk.is_complemented( f ) );
   }
 
-  /* validate with a circuit composed of `divs` which are existing nodes in the network */
+  /*! \brief Validate functional equivalence of node `root` with a circuit.
+   * 
+   * The circuit `ckt` uses `divs` as inputs, which are existing nodes in the network.
+   */
   std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
   {
     return validate( root, divs.begin(), divs.end(), ckt, output_negation );
   }
 
+  /*! \brief Validate functional equivalence of signal `f` with a circuit. */
   template<class iterator_type>
   std::optional<bool> validate( signal const& f, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
   {
     return validate( ntk.get_node( f ), divs_begin, divs_end, ckt, output_negation ^ ntk.is_complemented( f ) );
   }
 
+  /*! \brief Validate functional equivalence of node `root` with a circuit. */
   template<class iterator_type>
   std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
   {
@@ -185,13 +199,13 @@ public:
     return res;
   }
 
-  /* validate whether `f` is a constant of `value` */
+  /*! \brief Validate whether signal `f` is a constant of `value`. */
   std::optional<bool> validate( signal const& f, bool value )
   {
     return validate( ntk.get_node( f ), value ^ ntk.is_complemented( f ) );
   }
 
-  /* validate whether `root` is a constant of `value` */
+  /*! \brief Validate whether node `root` is a constant of `value`. */
   std::optional<bool> validate( node const& root, bool value )
   {
     assert( literals[root].variable() != bill::var_type( 0 ) );
@@ -224,9 +238,12 @@ public:
     return res;
   }
 
-  /* add clauses for a new node (created after construction of validator) 
-    Note: should be called manually every time or be added to ntk.on_add events
-  */
+  /*! \brief Add CNF clauses for a newly created node.
+   *
+   * This function should be called when a new node is created after 
+   * construction of circuit_validator.
+   * It can be called manually every time or be added to ntk.on_add events.
+   */
   void add_node( node const& n )
   {
     std::vector<bill::lit_type> lit_fi;
@@ -249,7 +266,11 @@ public:
     }
   }
 
-  /* should be called when the function of one or more nodes has been modified (typically when utilizing ODCs) */
+  /*! \brief Update CNF clauses.
+   *
+   * This function should be called when the function of one or more nodes
+   * has been modified (typically when utilizing ODCs).
+   */
   void update()
   {
     restart();
