@@ -11,6 +11,13 @@
 
 namespace bill {
 
+/*! \brief Adds CNF clauses for `y = ((l_0 ^ ... ^ l_{n-1}) == pol)` to the solver.
+ *
+ * \param solver Solver
+ * \param clause List of literals
+ * \param pol Clause polarity
+ * \return Literal y
+ */
 template<typename Solver>
 lit_type add_xor_clause(Solver& solver, std::vector<lit_type> const& clause,
                         lit_type::polarities pol = lit_type::polarities::positive)
