@@ -1,5 +1,5 @@
 Functional equivalence of circuit nodes
---------------
+---------------------------------------
 
 **Header:** ``mockturtle/algorithms/circuit_validator.hpp``
 
@@ -46,6 +46,11 @@ The following code shows how to check functional equivalence of a root node to s
    {
      std::cout << "f3 is equivalent to NOT(NOT f1 AND NOT f2)\n";
    }
+
+**Parameters**
+
+.. doxygenstruct:: mockturtle::validator_params
+   :members:
 
 **Validate with existing signals**
 
