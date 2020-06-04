@@ -35,6 +35,7 @@
 #include <cstdint>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -42,9 +43,11 @@
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
 
+#include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
+#include "../views/depth_view.hpp"
 #include "../views/topo_view.hpp"
 #include "cleanup.hpp"
 #include "cut_enumeration.hpp"
@@ -58,6 +61,9 @@ struct balancing_params
 {
   /*! \brief Cut enumeration params. */
   cut_enumeration_params cut_enumeration_ps;
+
+  /*! \brief Optimize only on critical path. */
+  bool only_on_critical_path{false};
 
   /*! \brief Show progress. */
   bool progress{false};
@@ -112,7 +118,7 @@ using rebalancing_function_t = std::function<void(Ntk&, kitty::dynamic_truth_tab
 namespace detail
 {
 
-template<class Ntk>
+template<class Ntk, class CostFn>
 struct balancing_impl
 {
   balancing_impl( Ntk const& ntk, rebalancing_function_t<Ntk> const& rebalancing_fn, balancing_params const& ps, balancing_stats& st )
@@ -138,6 +144,12 @@ struct balancing_impl
       old_to_new[n] = {dest.create_pi(), 0u};
     } );
 
+    std::shared_ptr<depth_view<Ntk, CostFn>> depth_ntk;
+    if ( ps_.only_on_critical_path )
+    {
+      depth_ntk = std::make_shared<depth_view<Ntk, CostFn>>( ntk_ );
+    }
+
     stopwatch<> t( st_.time_total );
     const auto cuts = cut_enumeration<Ntk, true>( ntk_, ps_.cut_enumeration_ps, &st_.cut_enumeration_st );
 
@@ -149,6 +161,17 @@ struct balancing_impl
 
       if ( ntk_.is_constant( n ) || ntk_.is_pi( n ) )
       {
+        return;
+      }
+
+      if ( ps_.only_on_critical_path && !depth_ntk->is_on_critical_path( n ) )
+      {
+        std::vector<signal<Ntk>> children;
+        ntk_.foreach_fanin( n, [&]( auto const& f ) {
+          const auto f_best = old_to_new[f].f;
+          children.push_back( ntk_.is_complemented( f ) ? dest.create_not( f_best ) : f_best );
+        });
+        old_to_new[n] = {dest.clone_node( ntk_, n, children ), depth_ntk->level( n )};
         return;
       }
 
@@ -199,6 +222,11 @@ private:
  * balancing algorithm.  It returns a new network of the same type and performs
  * generic balancing by providing a rebalancing function.
  *
+ * The template parameter `CostFn` is only used to compute the critical paths,
+ * when the `only_on_critical_path` parameter is assigned true.  Note that the
+ * size for rewriting candidates is computed by the rebalancing function and
+ * may not correspond to the cost given by CostFn.
+ *
    \verbatim embed:rst
 
    Example
@@ -213,7 +241,7 @@ private:
       const auto balanced_aig = balance( aig, {balance_fn}, ps );
    \endverbatim
  */
-template<class Ntk>
+template<class Ntk, class CostFn = unit_cost<Ntk>>
 Ntk balancing( Ntk const& ntk, rebalancing_function_t<Ntk> const& rebalancing_fn = {}, balancing_params const& ps = {}, balancing_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -231,7 +259,7 @@ Ntk balancing( Ntk const& ntk, rebalancing_function_t<Ntk> const& rebalancing_fn
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
 
   balancing_stats st;
-  const auto dest = detail::balancing_impl<Ntk>{ntk, rebalancing_fn, ps, st}.run();
+  const auto dest = detail::balancing_impl<Ntk, CostFn>{ntk, rebalancing_fn, ps, st}.run();
 
   if ( pst )
   {
