@@ -28,9 +28,11 @@ v0.2 (not yet released)
     - XAG optimization by linear resynthesis (`linear_resynthesis_optimization`, `exact_linear_resynthesis_optimization`) `#296 <https://github.com/lsils/mockturtle/pull/296>`_
     - Davio decomposition (`positive_davio_decomposition`, `positive_davio_decomposition`) `#308 <https://github.com/lsils/mockturtle/pull/308>`_
     - Collapse network into single node per output network `#309 <https://github.com/lsils/mockturtle/pull/309>`_
+    - Generic balancing algorithm `#340 <https://github.com/lsils/mockturtle/pull/340>`_
+    - Check functional equivalence (`circuit_validator`) `#346 <https://github.com/lsils/mockturtle/pull/346>`_
 * Views:
     - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
-    - Creates a CNF while creating a network (`cnf_view`) `#181 <https://github.com/lsils/mockturtle/pull/274>`_ `#184 <https://github.com/lsils/mockturtle/pull/274>`_
+    - Creates a CNF while creating a network (`cnf_view`) `#274 <https://github.com/lsils/mockturtle/pull/274>`_
 * I/O:
     - Write networks to DIMACS files for CNF (`write_dimacs`) `#146 <https://github.com/lsils/mockturtle/pull/146>`_
     - Read BLIF files using *lorina* (`blif_reader`) `#167 <https://github.com/lsils/mockturtle/pull/167>`_
@@ -53,6 +55,8 @@ v0.2 (not yet released)
     - Constant modular multiplication (`modular_constant_multiplier`) `#227 <https://github.com/lsils/mockturtle/pull/227>`_
     - Out-of-place modular addition, subtraction, and multiplication (`modular_adder`, `modular_subtractor`, `modular_multiplication`) `#234 <https://github.com/lsils/mockturtle/pull/234>`_
     - Create self-dualization of a logic network (`self_dualize_aig`) `#331 <https://github.com/lsils/mockturtle/pull/331>`_
+    - Binary decoder (`binary_decoder`) `#342 <https://github.com/lsils/mockturtle/pull/342>`_
+    - 2^k MUX (`binary_mux` and `binary_mux_klein_paterson`) `#342 <https://github.com/lsils/mockturtle/pull/342>`_
 * Properties:
     - Costs based on multiplicative complexity (`multiplicative_complexity` and `multiplicative_complexity_depth`) `#170 <https://github.com/lsils/mockturtle/pull/170>`_
 

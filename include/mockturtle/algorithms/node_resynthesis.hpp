@@ -132,6 +132,7 @@ public:
         children.push_back( ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f] );
       } );
 
+      bool performed_resyn = false;
       resynthesis_fn( ntk_dest, ntk.node_function( n ), children.begin(), children.end(), [&]( auto const& f ) {
         node2new[n] = f;
 
@@ -141,8 +142,15 @@ public:
             ntk_dest.set_name( f, ntk.get_name( ntk.make_signal( n ) ) );
         }
 
+        performed_resyn = true;
         return false;
       } );
+
+      if ( !performed_resyn )
+      {
+        fmt::print( "[e] could not perform resynthesis for node {} in node_resynthesis\n", ntk.node_to_index( n ) );
+        std::abort();
+      }
     } );
 
     /* map primary outputs */

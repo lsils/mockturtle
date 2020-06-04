@@ -33,6 +33,7 @@ Welcome to mockturtle's documentation!
    algorithms/node_resynthesis
    algorithms/cut_rewriting
    algorithms/refactoring
+   algorithms/balancing
    algorithms/mig_algebraic_rewriting
    algorithms/akers_synthesis
    algorithms/resubstitution
@@ -51,6 +52,7 @@ Welcome to mockturtle's documentation!
    algorithms/xag_optimization
    algorithms/xmg_optimization
    algorithms/equivalence_classes
+   algorithms/circuit_validator
 
 .. toctree::
    :maxdepth: 2

@@ -59,9 +59,19 @@ inline constexpr uint32_t lit_not( uint32_t lit )
   return lit ^ 0x1;
 }
 
+inline bill::lit_type lit_not( bill::lit_type lit )
+{
+  return ~lit;
+}
+
 inline constexpr uint32_t lit_not_cond( uint32_t lit, bool cond )
 {
   return cond ? lit ^ 0x1 : lit;
+}
+
+inline bill::lit_type lit_not_cond( bill::lit_type lit, bool cond )
+{
+  return cond ? ~lit : lit;
 }
 
 namespace detail
@@ -242,7 +252,8 @@ inline void on_function( bill::lit_type f, std::vector<bill::lit_type> const& ch
 } // namespace detail
 
 /*! \brief Clause callback function for generate_cnf. */
-using clause_callback_t = std::function<void( std::vector<uint32_t> const& )>;
+template<class lit_t>
+using clause_callback_t = std::function<void( std::vector<lit_t> const& )>;
 
 /*! \brief Create a default node literal map.
  *
@@ -254,8 +265,8 @@ using clause_callback_t = std::function<void( std::vector<uint32_t> const& )>;
  * independent sets of node literals for two networks, but keep the same indexes
  * for the primary inputs.
  */
-template<class Ntk>
-node_map<uint32_t, Ntk> node_literals( Ntk const& ntk, std::optional<uint32_t> const& gate_offset = {} )
+template<class Ntk, typename lit_t = uint32_t>
+node_map<lit_t, Ntk> node_literals( Ntk const& ntk, std::optional<uint32_t> const& gate_offset = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
@@ -264,25 +275,48 @@ node_map<uint32_t, Ntk> node_literals( Ntk const& ntk, std::optional<uint32_t> c
   static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
 
-  node_map<uint32_t, Ntk> node_lits( ntk );
+  node_map<lit_t, Ntk> node_lits( ntk );
 
-  /* constants are mapped to var 0 */
-  node_lits[ntk.get_constant( false )] = make_lit( 0 );
-  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  if constexpr ( std::is_same<lit_t, uint32_t>::value )
   {
-    node_lits[ntk.get_constant( true )] = make_lit( 0, true );
+    /* constants are mapped to var 0 */
+    node_lits[ntk.get_constant( false )] = make_lit( 0 );
+    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+    {
+      node_lits[ntk.get_constant( true )] = make_lit( 0, true );
+    }
+
+    /* first indexes (starting from 1) are for PIs */
+    ntk.foreach_pi( [&]( auto const& n, auto i ) {
+      node_lits[n] = make_lit( i + 1 );
+    } );
+
+    /* compute literals for nodes */
+    uint32_t next_var = gate_offset ? *gate_offset : ntk.num_pis() + 1;
+    ntk.foreach_gate( [&]( auto const& n ) {
+      node_lits[n] = make_lit( next_var++ );
+    } );
   }
+  else if constexpr ( std::is_same<lit_t, bill::lit_type>::value )
+  {
+    /* constants are mapped to var 0 */
+    node_lits[ntk.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
+    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+    {
+      node_lits[ntk.get_constant( true )] = bill::lit_type( 0, bill::lit_type::polarities::negative );
+    }
 
-  /* first indexes (starting from 1) are for PIs */
-  ntk.foreach_pi( [&]( auto const& n, auto i ) {
-    node_lits[n] = make_lit( i + 1 );
-  } );
+    /* first indexes (starting from 1) are for PIs */
+    ntk.foreach_pi( [&]( auto const& n, auto i ) {
+      node_lits[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive );
+    } );
 
-  /* compute literals for nodes */
-  uint32_t next_var = gate_offset ? *gate_offset : ntk.num_pis() + 1;
-  ntk.foreach_gate( [&]( auto const& n ) {
-    node_lits[n] = make_lit( next_var++ );
-  } );
+    /* compute literals for nodes */
+    uint32_t next_var = gate_offset ? *gate_offset : ntk.num_pis() + 1;
+    ntk.foreach_gate( [&]( auto const& n ) {
+      node_lits[n] = bill::lit_type( next_var++, bill::lit_type::polarities::positive );
+    } );
+  }
 
   return node_lits;
 }
@@ -290,29 +324,29 @@ node_map<uint32_t, Ntk> node_literals( Ntk const& ntk, std::optional<uint32_t> c
 namespace detail
 {
 
-template<class Ntk>
+template<class Ntk, typename lit_t>
 class generate_cnf_impl
 {
 public:
-  generate_cnf_impl( Ntk const& ntk, clause_callback_t const& fn, std::optional<node_map<uint32_t, Ntk>> const& node_lits )
+  generate_cnf_impl( Ntk const& ntk, clause_callback_t<lit_t> const& fn, std::optional<node_map<lit_t, Ntk>> const& node_lits )
       : ntk_( ntk ),
         fn_( fn ),
-        node_lits_( node_lits ? *node_lits : node_literals( ntk ) )
+        node_lits_( node_lits ? *node_lits : node_literals<Ntk, lit_t>( ntk ) )
   {
   }
 
-  std::vector<uint32_t> run()
+  std::vector<lit_t> run()
   {
     /* unit clause for constant-0 */
-    fn_( {1} );
+    fn_( {lit_not( node_lits_[ntk_.get_constant( false )])} );
 
     /* compute clauses for nodes */
     ntk_.foreach_gate( [&]( auto const& n ) {
-      std::vector<uint32_t> child_lits;
+      std::vector<lit_t> child_lits;
       ntk_.foreach_fanin( n, [&]( auto const& f ) {
         child_lits.push_back( lit_not_cond( node_lits_[f], ntk_.is_complemented( f ) ) );
       } );
-      uint32_t node_lit = node_lits_[n];
+      lit_t node_lit = node_lits_[n];
 
       if constexpr ( has_is_and_v<Ntk> )
       {
@@ -399,7 +433,7 @@ public:
       return true;
     } );
 
-    std::vector<uint32_t> output_lits;
+    std::vector<lit_t> output_lits;
     ntk_.foreach_po( [&]( auto const& f ) {
       output_lits.push_back( lit_not_cond( node_lits_[f], ntk_.is_complemented( f ) ) );
     } );
@@ -409,9 +443,9 @@ public:
 
 private:
   Ntk const& ntk_;
-  clause_callback_t const& fn_;
+  clause_callback_t<lit_t> const& fn_;
 
-  node_map<uint32_t, Ntk> node_lits_;
+  node_map<lit_t, Ntk> node_lits_;
 };
 
 } // namespace detail
@@ -439,7 +473,7 @@ private:
  * \param node_lits (optional) custom node literal map
  */
 template<class Ntk>
-std::vector<uint32_t> generate_cnf( Ntk const& ntk, clause_callback_t const& fn, std::optional<node_map<uint32_t, Ntk>> const& node_lits = {} )
+std::vector<uint32_t> generate_cnf( Ntk const& ntk, clause_callback_t<uint32_t> const& fn, std::optional<node_map<uint32_t, Ntk>> const& node_lits = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
@@ -449,7 +483,22 @@ std::vector<uint32_t> generate_cnf( Ntk const& ntk, clause_callback_t const& fn,
   static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
   static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
 
-  detail::generate_cnf_impl<Ntk> impl( ntk, fn, node_lits );
+  detail::generate_cnf_impl<Ntk, uint32_t> impl( ntk, fn, node_lits );
+  return impl.run();
+}
+
+template<class Ntk, typename lit_t = bill::lit_type>
+std::vector<lit_t> generate_cnf( Ntk const& ntk, clause_callback_t<lit_t> const& fn, std::optional<node_map<lit_t, Ntk>> const& node_lits = {} )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
+  static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
+
+  detail::generate_cnf_impl<Ntk, lit_t> impl( ntk, fn, node_lits );
   return impl.run();
 }
 

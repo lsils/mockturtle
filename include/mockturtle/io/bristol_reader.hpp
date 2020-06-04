@@ -116,16 +116,22 @@ public:
     }
     else
     {
-      fmt::print( "Unknown {} gate {} with {} inputs!", gate, out, in.size() );
+      fmt::print( "[e] unknown {} gate {} with {} inputs!", gate, out, in.size() );
       std::abort();
     }
 
-    if ( ++gate_ctr_ == num_gates_ )
+    ++gate_ctr_;
+
+    if ( gate_ctr_ == num_gates_ )
     {
       for ( auto i = signal_.size() - num_pos_; i < signal_.size(); ++i )
       {
         ntk_.create_po( signal_[i] );
       }
+    }
+    else if ( gate_ctr_ > num_gates_ )
+    {
+      fmt::print( "[w] adding dangling {} gate with inputs {} and output {}\n", gate, fmt::join( in, ", " ), out );
     }
   }
 

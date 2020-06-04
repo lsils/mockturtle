@@ -26,7 +26,7 @@ if(UNIX)
   endif()
 endif()
 if(MSVC)
-  add_compile_options(/EHsc)
+  add_compile_options(/EHsc /bigobj)
 endif()
 
 add_subdirectory(include)
