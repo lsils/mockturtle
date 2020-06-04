@@ -62,15 +62,15 @@ The following code shows how to check functional equivalence of a root node to s
 
 **Validate with non-existing circuit**
 
-.. doxygenstruct:: mockturtle::circuit_validator::gate
-   :members: fanins, type
-.. doxygenstruct:: mockturtle::circuit_validator::gate::fanin
-   :members: idx, inv
-
 .. doxygenfunction:: mockturtle::circuit_validator::validate( signal const&, std::vector<node> const&, std::vector<gate> const&, bool )
 .. doxygenfunction:: mockturtle::circuit_validator::validate( node const&, std::vector<node> const&, std::vector<gate> const&, bool )
 .. doxygenfunction:: mockturtle::circuit_validator::validate( signal const&, iterator_type, iterator_type, std::vector<gate> const&, bool )
 .. doxygenfunction:: mockturtle::circuit_validator::validate( node const&, iterator_type, iterator_type, std::vector<gate> const&, bool )
+
+.. doxygenstruct:: mockturtle::circuit_validator::gate
+   :members: fanins, type
+.. doxygenstruct:: mockturtle::circuit_validator::gate::fanin
+   :members: idx, inv
 
 **Updating**
 
