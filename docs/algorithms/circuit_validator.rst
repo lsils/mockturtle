@@ -29,7 +29,8 @@ The following code shows how to check functional equivalence of a root node to s
       }
       else
       {
-         std::cout << "f1 and f2 have different values under PI assignment: " << v.cex[0] << v.cex[1] << "\n";
+         std::cout << "f1 and f2 have different values under PI assignment: ";
+         std::cout << v.cex[0] << v.cex[1] << "\n";
       }
    }
 
@@ -39,7 +40,7 @@ The following code shows how to check functional equivalence of a root node to s
    fi2.idx = 1; fi2.inv = true;
    circuit_validator<aig_network>::gate g;
    g.fanins = {fi1, fi2};
-   g.type = circuit_validator::gate_type::AND;
+   g.type = circuit_validator<aig_network>::gate_type::AND;
 
    result = v.validate( f3, {aig.get_node( f1 ), aig.get_node( f2 )}, {g}, true );
    if ( result && *result )
@@ -61,16 +62,17 @@ The following code shows how to check functional equivalence of a root node to s
 
 **Validate with non-existing circuit**
 
-.. doxygenstruct:: mockturtle::circuit_validator::gate
-   :members: fanins, type
-.. doxygenstruct:: mockturtle::circuit_validator::gate::fanin
-   :members: idx, inv
-
 .. doxygenfunction:: mockturtle::circuit_validator::validate( signal const&, std::vector<node> const&, std::vector<gate> const&, bool )
 .. doxygenfunction:: mockturtle::circuit_validator::validate( node const&, std::vector<node> const&, std::vector<gate> const&, bool )
 .. doxygenfunction:: mockturtle::circuit_validator::validate( signal const&, iterator_type, iterator_type, std::vector<gate> const&, bool )
 .. doxygenfunction:: mockturtle::circuit_validator::validate( node const&, iterator_type, iterator_type, std::vector<gate> const&, bool )
 
+.. doxygenstruct:: mockturtle::circuit_validator::gate
+   :members: fanins, type
+.. doxygenstruct:: mockturtle::circuit_validator::gate::fanin
+   :members: idx, inv
+
 **Updating**
+
 .. doxygenfunction:: mockturtle::circuit_validator::add_node
 .. doxygenfunction:: mockturtle::circuit_validator::update
