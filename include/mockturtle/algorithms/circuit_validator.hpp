@@ -44,7 +44,7 @@ namespace mockturtle
 
 struct validator_params
 {
-  /*! \brief Whether to consider ODC, and how many levels. 0 = no. -1 = Consider TFO until PO. */
+  /*! \brief Whether to consider ODC, and how many levels. 0 = No consideration. -1 = Consider TFO until PO. */
   int odc_levels{0};
 
   /*! \brief Conflict limit of the SAT solver. */
@@ -146,16 +146,20 @@ public:
     return validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
   }
 
-  /*! \brief Validate functional equivalence of signal `f` with a circuit. */
+  /*! \brief Validate functional equivalence of signal `f` with a circuit.
+   * 
+   * The circuit `ckt` uses `divs` as inputs, which are existing nodes in the network.
+   *
+   * \param divs Existing nodes in the network, serving as PIs of `ckt`.
+   * \param ckt Circuit built with `divs` as inputs. Please see the documentation of `circuit_validator::gate` for its data structure.
+   * \param output_negation Output negation of the topmost gate of the circuit.
+   */
   std::optional<bool> validate( signal const& f, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
   {
     return validate( ntk.get_node( f ), divs.begin(), divs.end(), ckt, output_negation ^ ntk.is_complemented( f ) );
   }
 
-  /*! \brief Validate functional equivalence of node `root` with a circuit.
-   * 
-   * The circuit `ckt` uses `divs` as inputs, which are existing nodes in the network.
-   */
+  /*! \brief Validate functional equivalence of node `root` with a circuit. */
   std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
   {
     return validate( root, divs.begin(), divs.end(), ckt, output_negation );
@@ -242,7 +246,7 @@ public:
    *
    * This function should be called when a new node is created after 
    * construction of circuit_validator.
-   * It can be called manually every time or be added to ntk.on_add events.
+   * It can be called manually every time or be added to `ntk.on_add` events.
    */
   void add_node( node const& n )
   {
