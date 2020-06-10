@@ -232,6 +232,12 @@ public:
     return data->find( ntk.node_to_index( n ) ) != data->end();
   }
 
+  /*! \brief Check if a key is already defined. */
+  bool has( signal const& f ) const
+  {
+    return data->find( ntk.node_to_index( ntk.get_node( f ) ) ) != data->end();
+  }
+
   /*! \brief Mutable access to value by node. */
   reference operator[]( node const& n )
   {

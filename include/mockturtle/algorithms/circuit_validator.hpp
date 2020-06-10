@@ -44,6 +44,9 @@ namespace mockturtle
 
 struct validator_params
 {
+  /*! \brief Maximum number of clauses of the SAT solver. */
+  uint32_t max_solver_size{10000};
+
   /*! \brief Whether to consider ODC, and how many levels. 0 = No consideration. -1 = Consider TFO until PO. */
   int odc_levels{0};
 
@@ -137,12 +140,20 @@ public:
   /*! \brief Validate functional equivalence of signals `f` and `d`. */
   std::optional<bool> validate( signal const& f, signal const& d )
   {
+    if ( !literals.has( d ) )
+    {
+      construct( ntk.get_node( d ) );
+    }
     return validate( ntk.get_node( f ), lit_not_cond( literals[d], ntk.is_complemented( f ) ^ ntk.is_complemented( d ) ) );
   }
 
   /*! \brief Validate functional equivalence of node `root` and signal `d`. */
   std::optional<bool> validate( node const& root, signal const& d )
   {
+    if ( !literals.has( d ) )
+    {
+      construct( ntk.get_node( d ) );
+    }
     return validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
   }
 
@@ -184,6 +195,10 @@ public:
     std::vector<bill::lit_type> lits;
     while ( divs_begin != divs_end )
     {
+      if ( !literals.has( *divs_begin ) )
+      {
+        construct( *divs_begin );
+      }
       lits.emplace_back( literals[*divs_begin] );
       divs_begin++;
     }
@@ -212,6 +227,10 @@ public:
   /*! \brief Validate whether node `root` is a constant of `value`. */
   std::optional<bool> validate( node const& root, bool value )
   {
+    if ( !literals.has( root ) )
+    {
+      construct( root );
+    }
     assert( literals[root].variable() != bill::var_type( 0 ) );
     if constexpr ( use_pushpop )
     {
@@ -250,7 +269,7 @@ public:
    */
   void add_node( node const& n )
   {
-    std::vector<bill::lit_type> lit_fi;
+    /*std::vector<bill::lit_type> lit_fi;
     ntk.foreach_fanin( n, [&]( const auto& f ) {
       lit_fi.emplace_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
     } );
@@ -267,7 +286,7 @@ public:
       assert( lit_fi.size() == 3u );
       assert( ntk.is_maj( n ) || ntk.is_xor3( n ) );
       literals[n] = add_clauses_for_3input_gate( lit_fi[0], lit_fi[1], lit_fi[2], std::nullopt, ntk.is_maj( n ) ? MAJ : XOR );
-    }
+    }*/
   }
 
   /*! \brief Update CNF clauses.
@@ -303,17 +322,59 @@ private:
     } );
 
     /* compute literals for nodes */
-    uint32_t next_var = ntk.num_pis() + 1;
-    ntk.foreach_gate( [&]( auto const& n ) {
-      literals[n] = bill::lit_type( next_var++, bill::lit_type::polarities::positive );
-    } );
+    //uint32_t next_var = ntk.num_pis() + 1;
+    //ntk.foreach_gate( [&]( auto const& n ) {
+    //  literals[n] = bill::lit_type( next_var++, bill::lit_type::polarities::positive );
+    //} );
 
-    solver.add_variables( ntk.size() );
-    generate_cnf<Ntk, bill::lit_type>(
-        ntk, [&]( auto const& clause ) {
-          solver.add_clause( clause );
-        },
-        literals );
+    solver.add_variables( ntk.num_pis() + 1 );
+    solver.add_clause( {~literals[ntk.get_constant( false )]} );
+
+    //generate_cnf<Ntk, bill::lit_type>(
+    //    ntk, [&]( auto const& clause ) {
+    //      solver.add_clause( clause );
+    //    },
+    //    literals );
+  }
+
+  void construct( node const& n )
+  {
+    assert( !literals.has( n ) );
+
+    std::vector<bill::lit_type> child_lits;
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      if ( !literals.has( f ) )
+      {
+        construct( ntk.get_node( f ) );
+      }
+      child_lits.push_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
+    } );
+    bill::lit_type node_lit = literals[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+
+    if ( ntk.is_and( n ) )
+    {
+      detail::on_and<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
+    else if ( ntk.is_xor( n ) )
+    {
+      detail::on_xor<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
+    else if ( ntk.is_xor3( n ) )
+    {
+      detail::on_xor3<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
+    else if ( ntk.is_maj( n ) )
+    {
+      detail::on_maj<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
   }
 
   bill::lit_type add_clauses_for_2input_gate( bill::lit_type a, bill::lit_type b, std::optional<bill::lit_type> c = std::nullopt, gate_type type = AND )
@@ -381,6 +442,11 @@ private:
   std::optional<bool> solve( std::vector<bill::lit_type> assumptions )
   {
     auto const res = solver.solve( assumptions, ps.conflict_limit );
+    if ( solver.num_clauses() > ps.max_solver_size )
+    {
+      restart();
+    }
+
     if ( res == bill::result::states::satisfiable )
     {
       auto model = solver.get_model().model();
@@ -399,6 +465,10 @@ private:
 
   std::optional<bool> validate( node const& root, bill::lit_type const& lit )
   {
+    if ( !literals.has( root ) )
+    {
+      construct( root );
+    }
     assert( literals[root].variable() != bill::var_type( 0 ) );
     if constexpr ( use_pushpop )
     {
@@ -475,6 +545,10 @@ private:
 
       std::vector<bill::lit_type> l_fi;
       ntk.foreach_fanin( fo, [&]( auto const& fi ) {
+        if ( !literals.has( fi ) )
+        {
+          construct( ntk.get_node( fi ) );
+        }
         l_fi.emplace_back( lit_not_cond( lits.has( ntk.get_node( fi ) ) ? lits[fi] : literals[fi], ntk.is_complemented( fi ) ) );
       } );
       if ( l_fi.size() == 2u )
@@ -529,7 +603,7 @@ private:
 
   validator_params const& ps;
 
-  node_map<bill::lit_type, Ntk> literals;
+  unordered_node_map<bill::lit_type, Ntk> literals;
   bill::solver<Solver> solver;
 
 public:
