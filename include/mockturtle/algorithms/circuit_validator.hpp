@@ -187,6 +187,11 @@ public:
   template<class iterator_type>
   std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
   {
+    if ( !literals.has( root ) )
+    {
+      construct( root );
+    }
+    
     if constexpr ( use_pushpop )
     {
       solver.push();
@@ -232,17 +237,21 @@ public:
       construct( root );
     }
     assert( literals[root].variable() != bill::var_type( 0 ) );
-    if constexpr ( use_pushpop )
-    {
-      solver.push();
-    }
 
     std::optional<bool> res;
     if constexpr ( use_odc )
     {
       if ( ps.odc_levels != 0 )
       {
+        if constexpr ( use_pushpop )
+        {
+          solver.push();
+        }
         res = solve( {build_odc_window( root, ~literals[root] ), lit_not_cond( literals[root], value )} );
+        if constexpr ( use_pushpop )
+        {
+          solver.pop();
+        }
       }
       else
       {
@@ -254,10 +263,6 @@ public:
       res = solve( {lit_not_cond( literals[root], value )} );
     }
 
-    if constexpr ( use_pushpop )
-    {
-      solver.pop();
-    }
     return res;
   }
 
@@ -470,17 +475,21 @@ private:
       construct( root );
     }
     assert( literals[root].variable() != bill::var_type( 0 ) );
-    if constexpr ( use_pushpop )
-    {
-      solver.push();
-    }
 
     std::optional<bool> res;
     if constexpr ( use_odc )
     {
       if ( ps.odc_levels != 0 )
       {
+        if constexpr ( use_pushpop )
+        {
+          solver.push();
+        }
         res = solve( {build_odc_window( root, lit )} );
+        if constexpr ( use_pushpop )
+        {
+          solver.pop();
+        }
       }
       else
       {
@@ -498,10 +507,6 @@ private:
       res = solve( {~nlit} );
     }
 
-    if constexpr ( use_pushpop )
-    {
-      solver.pop();
-    }
     return res;
   }
 
