@@ -191,11 +191,6 @@ public:
     {
       construct( root );
     }
-    
-    if constexpr ( use_pushpop )
-    {
-      solver.push();
-    }
 
     std::vector<bill::lit_type> lits;
     while ( divs_begin != divs_end )
@@ -206,6 +201,11 @@ public:
       }
       lits.emplace_back( literals[*divs_begin] );
       divs_begin++;
+    }
+
+    if constexpr ( use_pushpop )
+    {
+      solver.push();
     }
 
     for ( auto g : ckt )
