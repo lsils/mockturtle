@@ -263,6 +263,10 @@ public:
       res = solve( {lit_not_cond( literals[root], value )} );
     }
 
+    if ( solver.num_clauses() > ps.max_solver_size )
+    {
+      restart();
+    }
     return res;
   }
 
@@ -447,10 +451,6 @@ private:
   std::optional<bool> solve( std::vector<bill::lit_type> assumptions )
   {
     auto const res = solver.solve( assumptions, ps.conflict_limit );
-    if ( solver.num_clauses() > ps.max_solver_size )
-    {
-      restart();
-    }
 
     if ( res == bill::result::states::satisfiable )
     {
@@ -507,6 +507,10 @@ private:
       res = solve( {~nlit} );
     }
 
+    if ( solver.num_clauses() > ps.max_solver_size )
+    {
+      restart();
+    }
     return res;
   }
 
