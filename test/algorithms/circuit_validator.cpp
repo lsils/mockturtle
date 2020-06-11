@@ -93,13 +93,9 @@ TEST_CASE( "Validating after circuit update", "[validator]" )
 
   circuit_validator v( aig );
 
-  /* new nodes created after construction of `circuit_validator` have to be added to it manually with `add_node` */
   auto const g1 = aig.create_and( a, b );
   auto const g2 = aig.create_and( !a, !b );
   auto const g3 = aig.create_or( g1, g2 );
-  v.add_node( aig.get_node( g1 ) );
-  v.add_node( aig.get_node( g2 ) );
-  v.add_node( aig.get_node( g3 ) );
 
   CHECK( *( v.validate( aig.get_node( f3 ), g3 ) ) == true );
 }

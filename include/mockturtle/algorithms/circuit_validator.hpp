@@ -44,8 +44,8 @@ namespace mockturtle
 
 struct validator_params
 {
-  /*! \brief Maximum number of clauses of the SAT solver. */
-  uint32_t max_solver_size{10000};
+  /*! \brief Maximum number of clauses of the SAT solver. (incremental CNF construction) */
+  uint32_t max_clauses{1000};
 
   /*! \brief Whether to consider ODC, and how many levels. 0 = No consideration. -1 = Consider TFO until PO. */
   int odc_levels{0};
@@ -145,7 +145,7 @@ public:
       construct( ntk.get_node( d ) );
     }
     auto const res = validate( ntk.get_node( f ), lit_not_cond( literals[d], ntk.is_complemented( f ) ^ ntk.is_complemented( d ) ) );
-    if ( solver.num_clauses() > ps.max_solver_size )
+    if ( solver.num_clauses() > ps.max_clauses )
     {
       restart();
     }
@@ -160,7 +160,7 @@ public:
       construct( ntk.get_node( d ) );
     }
     auto const res = validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
-    if ( solver.num_clauses() > ps.max_solver_size )
+    if ( solver.num_clauses() > ps.max_clauses )
     {
       restart();
     }
@@ -230,7 +230,7 @@ public:
       solver.pop();
     }
 
-    if ( solver.num_clauses() > ps.max_solver_size )
+    if ( solver.num_clauses() > ps.max_clauses )
     {
       restart();
     }
@@ -278,39 +278,11 @@ public:
       res = solve( {lit_not_cond( literals[root], value )} );
     }
 
-    if ( solver.num_clauses() > ps.max_solver_size )
+    if ( solver.num_clauses() > ps.max_clauses )
     {
       restart();
     }
     return res;
-  }
-
-  /*! \brief Add CNF clauses for a newly created node.
-   *
-   * This function should be called when a new node is created after 
-   * construction of circuit_validator.
-   * It can be called manually every time or be added to `ntk.on_add` events.
-   */
-  void add_node( node const& n )
-  {
-    /*std::vector<bill::lit_type> lit_fi;
-    ntk.foreach_fanin( n, [&]( const auto& f ) {
-      lit_fi.emplace_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
-    } );
-
-    literals.resize();
-    assert( lit_fi.size() == 2u || lit_fi.size() == 3u );
-    if ( lit_fi.size() == 2u )
-    {
-      assert( ntk.is_and( n ) || ntk.is_xor( n ) );
-      literals[n] = add_clauses_for_2input_gate( lit_fi[0], lit_fi[1], std::nullopt, ntk.is_and( n ) ? AND : XOR );
-    }
-    else
-    {
-      assert( lit_fi.size() == 3u );
-      assert( ntk.is_maj( n ) || ntk.is_xor3( n ) );
-      literals[n] = add_clauses_for_3input_gate( lit_fi[0], lit_fi[1], lit_fi[2], std::nullopt, ntk.is_maj( n ) ? MAJ : XOR );
-    }*/
   }
 
   /*! \brief Update CNF clauses.
