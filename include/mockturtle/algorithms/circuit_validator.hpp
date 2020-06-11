@@ -144,7 +144,12 @@ public:
     {
       construct( ntk.get_node( d ) );
     }
-    return validate( ntk.get_node( f ), lit_not_cond( literals[d], ntk.is_complemented( f ) ^ ntk.is_complemented( d ) ) );
+    auto const res = validate( ntk.get_node( f ), lit_not_cond( literals[d], ntk.is_complemented( f ) ^ ntk.is_complemented( d ) ) );
+    if ( solver.num_clauses() > ps.max_solver_size )
+    {
+      restart();
+    }
+    return res;
   }
 
   /*! \brief Validate functional equivalence of node `root` and signal `d`. */
@@ -154,7 +159,12 @@ public:
     {
       construct( ntk.get_node( d ) );
     }
-    return validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
+    auto const res = validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
+    if ( solver.num_clauses() > ps.max_solver_size )
+    {
+      restart();
+    }
+    return res;
   }
 
   /*! \brief Validate functional equivalence of signal `f` with a circuit.
@@ -218,6 +228,11 @@ public:
     if constexpr ( use_pushpop )
     {
       solver.pop();
+    }
+
+    if ( solver.num_clauses() > ps.max_solver_size )
+    {
+      restart();
     }
 
     return res;
@@ -507,10 +522,6 @@ private:
       res = solve( {~nlit} );
     }
 
-    if ( solver.num_clauses() > ps.max_solver_size )
-    {
-      restart();
-    }
     return res;
   }
 
