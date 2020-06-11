@@ -3,6 +3,10 @@ Functional equivalence of circuit nodes
 
 **Header:** ``mockturtle/algorithms/circuit_validator.hpp``
 
+This class can be used to validate potential circuit optimization choices. It checks the functional equivalence of a circuit node with an existing or non-existing signal with SAT, with optional consideration of observability don't-care (ODC).
+
+If more advanced SAT validation is needed, one could consider using ``cnf_view`` instead, which also constructs the CNF clauses of circuit nodes.
+
 **Example**
 
 The following code shows how to check functional equivalence of a root node to signals existing in the network, or created with nodes within the network. If not, get the counter example.
@@ -34,18 +38,20 @@ The following code shows how to check functional equivalence of a root node to s
       }
    }
 
-   circuit_validator<aig_network>::gate::fanin fi1;
-   fi1.idx = 0; fi1.inv = true;
-   circuit_validator<aig_network>::gate::fanin fi2;
-   fi2.idx = 1; fi2.inv = true;
-   circuit_validator<aig_network>::gate g;
-   g.fanins = {fi1, fi2};
+   circuit_validator<aig_network>::gate::fanin gi1; gi1.idx = 0; gi1.inv = true;
+   circuit_validator<aig_network>::gate::fanin gi2; gi2.idx = 1; gi2.inv = true;
+   circuit_validator<aig_network>::gate g; g.fanins = {gi1, gi2};
    g.type = circuit_validator<aig_network>::gate_type::AND;
 
-   result = v.validate( f3, {aig.get_node( f1 ), aig.get_node( f2 )}, {g}, true );
+   circuit_validator<aig_network>::gate::fanin hi1; hi1.idx = 2; hi1.inv = false;
+   circuit_validator<aig_network>::gate::fanin hi2; hi2.idx = 0; hi2.inv = false;
+   circuit_validator<aig_network>::gate h; h.fanins = {hi1, hi2};
+   h.type = circuit_validator<aig_network>::gate_type::AND;
+
+   result = v.validate( f3, {aig.get_node( f1 ), aig.get_node( f2 )}, {g, h}, true );
    if ( result && *result )
    {
-     std::cout << "f3 is equivalent to NOT(NOT f1 AND NOT f2)\n";
+     std::cout << "f3 is equivalent to NOT((NOT f1 AND NOT f2) AND f1)\n";
    }
 
 **Parameters**
@@ -74,5 +80,4 @@ The following code shows how to check functional equivalence of a root node to s
 
 **Updating**
 
-.. doxygenfunction:: mockturtle::circuit_validator::add_node
 .. doxygenfunction:: mockturtle::circuit_validator::update
