@@ -3,6 +3,10 @@ Functional equivalence of circuit nodes
 
 **Header:** ``mockturtle/algorithms/circuit_validator.hpp``
 
+This class can be used to validate potential circuit optimization choices. It checks the functional equivalence of a circuit node with an existing or non-existing signal with SAT, with optional consideration of observability don't-care (ODC).
+
+If more advanced SAT validation is needed, one could consider using ``cnf_view`` instead, which also constructs the CNF clauses of circuit nodes.
+
 **Example**
 
 The following code shows how to check functional equivalence of a root node to signals existing in the network, or created with nodes within the network. If not, get the counter example.
@@ -34,18 +38,18 @@ The following code shows how to check functional equivalence of a root node to s
       }
    }
 
-   circuit_validator<aig_network>::gate::fanin fi1;
-   fi1.idx = 0; fi1.inv = true;
-   circuit_validator<aig_network>::gate::fanin fi2;
-   fi2.idx = 1; fi2.inv = true;
-   circuit_validator<aig_network>::gate g;
-   g.fanins = {fi1, fi2};
-   g.type = circuit_validator<aig_network>::gate_type::AND;
+   circuit_validator<aig_network>::gate::fanin gi1{0, true};
+   circuit_validator<aig_network>::gate::fanin gi2{1, true};
+   circuit_validator<aig_network>::gate g{{gi1, gi2}, circuit_validator<aig_network>::gate_type::AND};
 
-   result = v.validate( f3, {aig.get_node( f1 ), aig.get_node( f2 )}, {g}, true );
+   circuit_validator<aig_network>::gate::fanin hi1{2, false};
+   circuit_validator<aig_network>::gate::fanin hi2{0, false};
+   circuit_validator<aig_network>::gate h{{hi1, hi2}, circuit_validator<aig_network>::gate_type::AND};
+
+   result = v.validate( f3, {aig.get_node( f1 ), aig.get_node( f2 )}, {g, h}, true );
    if ( result && *result )
    {
-     std::cout << "f3 is equivalent to NOT(NOT f1 AND NOT f2)\n";
+     std::cout << "f3 is equivalent to NOT((NOT f1 AND NOT f2) AND f1)\n";
    }
 
 **Parameters**
@@ -70,9 +74,8 @@ The following code shows how to check functional equivalence of a root node to s
 .. doxygenstruct:: mockturtle::circuit_validator::gate
    :members: fanins, type
 .. doxygenstruct:: mockturtle::circuit_validator::gate::fanin
-   :members: idx, inv
+   :members: index, inverted
 
 **Updating**
 
-.. doxygenfunction:: mockturtle::circuit_validator::add_node
 .. doxygenfunction:: mockturtle::circuit_validator::update
