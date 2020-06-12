@@ -86,7 +86,55 @@ public:
   using node    = typename Ntk::node;
   using signal  = typename Ntk::signal;
 
-  fanout_view( Ntk const& ntk, fanout_view_params const& ps = {} ) : Ntk( ntk ), _fanout( ntk ), _ps( ps )
+  explicit fanout_view( fanout_view_params const& ps = {} )
+    : Ntk()
+    , _fanout( *this )
+    , _ps( ps )
+  {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+
+    update_fanout();
+
+    if ( _ps.update_on_add )
+    {
+      Ntk::events().on_add.push_back( [this]( auto const& n ) {
+        _fanout.resize();
+        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
+          _fanout[f].push_back( n );
+        } );
+      } );
+    }
+
+    if ( _ps.update_on_modified )
+    {
+      Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
+        (void)previous;
+        for ( auto const& f : previous ) {
+          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+        }
+        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
+          _fanout[f].push_back( n );
+        } );
+      } );
+    }
+
+    if ( _ps.update_on_delete )
+    {
+      Ntk::events().on_delete.push_back( [this]( auto const& n ) {
+        _fanout[n].clear();
+        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
+          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+        } );
+      } );
+    }
+  }
+
+  explicit fanout_view( Ntk const& ntk, fanout_view_params const& ps = {} )
+    : Ntk( ntk )
+    , _fanout( ntk )
+    , _ps( ps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
