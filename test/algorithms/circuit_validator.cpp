@@ -71,12 +71,10 @@ TEST_CASE( "Validating with non-existing circuit", "[validator]" )
 
   circuit_validator v( aig );
 
-  circuit_validator<aig_network>::gate::fanin fi1;
-  fi1.idx = 0; fi1.inv = true;
-  circuit_validator<aig_network>::gate::fanin fi2;
-  fi2.idx = 1; fi2.inv = true;
-  circuit_validator<aig_network>::gate g;
-  g.fanins = {fi1, fi2};
+  circuit_validator<aig_network>::gate::fanin gi1{0, true};
+  circuit_validator<aig_network>::gate::fanin gi2{1, true};
+  circuit_validator<aig_network>::gate g{{gi1, gi2}, circuit_validator<aig_network>::gate_type::AND};
+
   CHECK( *( v.validate( f3, {aig.get_node( f1 ), aig.get_node( f2 )}, {g}, true ) ) == true );
   CHECK( *( v.validate( aig.get_node( f3 ), {aig.get_node( f1 ), aig.get_node( f2 )}, {g}, false ) ) == true );
 }

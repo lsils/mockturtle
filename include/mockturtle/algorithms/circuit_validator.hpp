@@ -76,11 +76,11 @@ public:
   {
     struct fanin
     {
-      /*! \brief Index in the concatenated list of `divs` and `ckt`. */
-      uint32_t idx;
+      /*! \brief Index in the concatenated list of `divs` and `circuit`. */
+      uint32_t index;
 
       /*! \brief Input negation. */
-      bool inv{false};
+      bool inverted{false};
     };
 
     /*! \brief Fanins of the gate. */
@@ -169,33 +169,33 @@ public:
 
   /*! \brief Validate functional equivalence of signal `f` with a circuit.
    * 
-   * The circuit `ckt` uses `divs` as inputs, which are existing nodes in the network.
+   * The circuit `circuit` uses `divs` as inputs, which are existing nodes in the network.
    *
-   * \param divs Existing nodes in the network, serving as PIs of `ckt`.
-   * \param ckt Circuit built with `divs` as inputs. Please see the documentation of `circuit_validator::gate` for its data structure.
+   * \param divs Existing nodes in the network, serving as PIs of `circuit`.
+   * \param circuit Circuit built with `divs` as inputs. Please see the documentation of `circuit_validator::gate` for its data structure.
    * \param output_negation Output negation of the topmost gate of the circuit.
    */
-  std::optional<bool> validate( signal const& f, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
+  std::optional<bool> validate( signal const& f, std::vector<node> const& divs, std::vector<gate> const& circuit, bool output_negation = false )
   {
-    return validate( ntk.get_node( f ), divs.begin(), divs.end(), ckt, output_negation ^ ntk.is_complemented( f ) );
+    return validate( ntk.get_node( f ), divs.begin(), divs.end(), circuit, output_negation ^ ntk.is_complemented( f ) );
   }
 
   /*! \brief Validate functional equivalence of node `root` with a circuit. */
-  std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
+  std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& circuit, bool output_negation = false )
   {
-    return validate( root, divs.begin(), divs.end(), ckt, output_negation );
+    return validate( root, divs.begin(), divs.end(), circuit, output_negation );
   }
 
   /*! \brief Validate functional equivalence of signal `f` with a circuit. */
   template<class iterator_type>
-  std::optional<bool> validate( signal const& f, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
+  std::optional<bool> validate( signal const& f, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& circuit, bool output_negation = false )
   {
-    return validate( ntk.get_node( f ), divs_begin, divs_end, ckt, output_negation ^ ntk.is_complemented( f ) );
+    return validate( ntk.get_node( f ), divs_begin, divs_end, circuit, output_negation ^ ntk.is_complemented( f ) );
   }
 
   /*! \brief Validate functional equivalence of node `root` with a circuit. */
   template<class iterator_type>
-  std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
+  std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& circuit, bool output_negation = false )
   {
     if ( !literals.has( root ) )
     {
@@ -218,7 +218,7 @@ public:
       solver.push();
     }
 
-    for ( auto g : ckt )
+    for ( auto g : circuit )
     {
       lits.emplace_back( add_tmp_gate( lits, g ) );
     }
@@ -422,16 +422,16 @@ private:
 
     if ( g.fanins.size() == 2u )
     {
-      assert( g.fanins[0].idx < lits.size() );
-      assert( g.fanins[1].idx < lits.size() );
-      return add_clauses_for_2input_gate( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), std::nullopt, g.type );
+      assert( g.fanins[0].index < lits.size() );
+      assert( g.fanins[1].index < lits.size() );
+      return add_clauses_for_2input_gate( lit_not_cond( lits[g.fanins[0].index], g.fanins[0].inverted ), lit_not_cond( lits[g.fanins[1].index], g.fanins[1].inverted ), std::nullopt, g.type );
     }
     else
     {
-      assert( g.fanins[0].idx < lits.size() );
-      assert( g.fanins[1].idx < lits.size() );
-      assert( g.fanins[2].idx < lits.size() );
-      return add_clauses_for_3input_gate( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), lit_not_cond( lits[g.fanins[2].idx], g.fanins[2].inv ), std::nullopt, g.type );
+      assert( g.fanins[0].index < lits.size() );
+      assert( g.fanins[1].index < lits.size() );
+      assert( g.fanins[2].index < lits.size() );
+      return add_clauses_for_3input_gate( lit_not_cond( lits[g.fanins[0].index], g.fanins[0].inverted ), lit_not_cond( lits[g.fanins[1].index], g.fanins[1].inverted ), lit_not_cond( lits[g.fanins[2].index], g.fanins[2].inverted ), std::nullopt, g.type );
     }
   }
 

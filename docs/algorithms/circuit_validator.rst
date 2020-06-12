@@ -38,15 +38,13 @@ The following code shows how to check functional equivalence of a root node to s
       }
    }
 
-   circuit_validator<aig_network>::gate::fanin gi1; gi1.idx = 0; gi1.inv = true;
-   circuit_validator<aig_network>::gate::fanin gi2; gi2.idx = 1; gi2.inv = true;
-   circuit_validator<aig_network>::gate g; g.fanins = {gi1, gi2};
-   g.type = circuit_validator<aig_network>::gate_type::AND;
+   circuit_validator<aig_network>::gate::fanin gi1{0, true};
+   circuit_validator<aig_network>::gate::fanin gi2{1, true};
+   circuit_validator<aig_network>::gate g{{gi1, gi2}, circuit_validator<aig_network>::gate_type::AND};
 
-   circuit_validator<aig_network>::gate::fanin hi1; hi1.idx = 2; hi1.inv = false;
-   circuit_validator<aig_network>::gate::fanin hi2; hi2.idx = 0; hi2.inv = false;
-   circuit_validator<aig_network>::gate h; h.fanins = {hi1, hi2};
-   h.type = circuit_validator<aig_network>::gate_type::AND;
+   circuit_validator<aig_network>::gate::fanin hi1{2, false};
+   circuit_validator<aig_network>::gate::fanin hi2{0, false};
+   circuit_validator<aig_network>::gate h{{hi1, hi2}, circuit_validator<aig_network>::gate_type::AND};
 
    result = v.validate( f3, {aig.get_node( f1 ), aig.get_node( f2 )}, {g, h}, true );
    if ( result && *result )
@@ -76,7 +74,7 @@ The following code shows how to check functional equivalence of a root node to s
 .. doxygenstruct:: mockturtle::circuit_validator::gate
    :members: fanins, type
 .. doxygenstruct:: mockturtle::circuit_validator::gate::fanin
-   :members: idx, inv
+   :members: index, inverted
 
 **Updating**
 
