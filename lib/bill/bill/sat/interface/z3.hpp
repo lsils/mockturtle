@@ -21,9 +21,10 @@ class solver<solvers::z3> {
 public:
 #pragma region Constructors
 	solver()
-	    : solver_(ctx_), var_ctr_( 1, 0u ), cls_ctr_( 1, 0u )
-	{
-	}
+	    : solver_(ctx_)
+	    , variable_counter_(1, 0u)
+	    , clause_counter_(1, 0u)
+	{}
 
 	~solver()
 	{}
@@ -38,17 +39,17 @@ public:
 	{
 		solver_.reset();
 		vars_.clear();
-		var_ctr_.clear();
-		var_ctr_.emplace_back( 0u );
-		cls_ctr_.clear();
-		cls_ctr_.emplace_back( 0u );
+		variable_counter_.clear();
+		variable_counter_.emplace_back(0u);
+		clause_counter_.clear();
+		clause_counter_.emplace_back(0u);
 		state_ = result::states::undefined;
 	}
 
 	var_type add_variable()
 	{
-		vars_.push_back(ctx_.bool_const(fmt::format("x{}", var_ctr_.back()).c_str()));
-		return var_ctr_.back()++;
+		vars_.push_back(ctx_.bool_const(fmt::format("x{}", variable_counter_.back()).c_str()));
+		return variable_counter_.back()++;
 	}
 
 	void add_variables(uint32_t num_variables = 1)
@@ -68,7 +69,7 @@ public:
 			++it;
 		}
 		solver_.add(mk_or(vec));
-		++cls_ctr_.back();
+		++clause_counter_.back();
 		return result::states::dirty;
 	}
 
@@ -112,7 +113,9 @@ public:
 		for (auto const& lit : assumptions)
 			vec.push_back(lit.is_complemented() ? !vars_[lit.variable()] :
 			                                      vars_[lit.variable()]);
-		solver_.set("sat.max_conflicts", conflict_limit == 0u ? std::numeric_limits<uint32_t>::max() : conflict_limit);
+		solver_.set("sat.max_conflicts", conflict_limit == 0u ?
+		                                     std::numeric_limits<uint32_t>::max() :
+		                                     conflict_limit);
 		switch (solver_.check(vec)) {
 		case z3::sat:
 			state_ = result::states::satisfiable;
@@ -133,47 +136,57 @@ public:
 #pragma region Properties
 	uint32_t num_variables() const
 	{
-		return var_ctr_.back();
+		return variable_counter_.back();
 	}
 
 	uint32_t num_clauses() const
 	{
-		return cls_ctr_.back();
+		return clause_counter_.back();
 	}
 #pragma endregion
 
 	void push()
 	{
 		solver_.push();
-		var_ctr_.emplace_back( var_ctr_.back() );
-		cls_ctr_.emplace_back( cls_ctr_.back() );
+		variable_counter_.emplace_back(variable_counter_.back());
+		clause_counter_.emplace_back(clause_counter_.back());
 	}
 
-	void pop( uint32_t n = 1u )
+	void pop(uint32_t num_levels = 1u)
 	{
-		assert( n < var_ctr_.size() );
-		solver_.pop( n );
-		var_ctr_.resize( var_ctr_.size() - n );
-		cls_ctr_.resize( cls_ctr_.size() - n );
-		if ( vars_.size() > var_ctr_.back() )
-		{
-			vars_.erase( vars_.begin() + var_ctr_.back(), vars_.end() );
+		assert(num_levels < variable_counter_.size());
+		solver_.pop(num_levels);
+		variable_counter_.resize(variable_counter_.size() - num_levels);
+		clause_counter_.resize(clause_counter_.size() - num_levels);
+		if (vars_.size() > variable_counter_.back()) {
+			vars_.erase(vars_.begin() + variable_counter_.back(), vars_.end());
 		}
 	}
 
-	void set_random_phase( uint32_t seed = 0u )
+	void set_random_phase(uint32_t seed = 0u)
 	{
 		solver_.set("sat.random_seed", seed);
 		solver_.set("phase_selection", 5u);
 	}
 
 private:
+	/*! \brief Backend solver context object */
 	z3::context ctx_;
+
+	/*! \brief Backend solver */
 	z3::solver solver_;
+
+	/*! \brief Current state of the solver */
 	result::states state_ = result::states::undefined;
+
+	/*! \brief Variables */
 	std::vector<z3::expr> vars_;
-	std::vector<uint32_t> var_ctr_;
-	std::vector<uint32_t> cls_ctr_;
+
+	/*! \brief Stacked counter for number of variables */
+	std::vector<uint32_t> variable_counter_;
+
+	/*! \brief Stacked counter for number of clauses */
+	std::vector<uint32_t> clause_counter_;
 };
 
 } // namespace bill
