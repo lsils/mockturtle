@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2019  EPFL
+ * Copyright (C) 2017-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -137,6 +137,12 @@ public:
   inline bool operator<( const cube& that ) const
   {
     return _value < that._value;
+  }
+
+  /*! \brief Returns the negated cube */
+  inline cube operator~() const
+  {
+    return {~_bits, _mask};
   }
 
   /*! \brief Merges two cubes of distance-1 */

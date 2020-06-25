@@ -45,7 +45,7 @@ inline bool relevance( const dynamic_truth_table& tt0, const dynamic_truth_table
 }
 
 /*! \brief Relevance */
-template<int NumVars>
+template<uint32_t NumVars>
 inline bool relevance( const static_truth_table<NumVars>& tt0, const static_truth_table<NumVars>& tt1, const static_truth_table<NumVars>& tt2, const static_truth_table<NumVars>& tt )
 {
   return is_const0( ( ( tt0 ^ tt ) & ( tt1 ^ tt2 ) ) );
@@ -181,7 +181,7 @@ public:
 
   std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
-  
+    (void)care;
     assert(is_const0(~care));
 
     /* consider constants */
