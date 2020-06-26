@@ -33,6 +33,7 @@
 #pragma once
 
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <random>
 
@@ -145,6 +146,26 @@ inline random_logic_generator<aig_network> default_random_aig_generator()
     {
       assert( vs.size() == 2u );
       return aig.create_and( vs[0], vs[1] );
+    }, 2u} );
+
+  return gen_t( rules );
+}
+
+/*! \brief Generates a random XAG network */
+inline random_logic_generator<xag_network> default_random_xag_generator()
+{
+  using gen_t = random_logic_generator<xag_network>;
+
+  gen_t::rules_t rules;
+  rules.emplace_back( gen_t::rule{[]( xag_network& xag, std::vector<xag_network::signal> const& vs ) -> xag_network::signal
+    {
+      assert( vs.size() == 2u );
+      return xag.create_and( vs[0], vs[1] );
+    }, 2u} );
+  rules.emplace_back( gen_t::rule{[]( xag_network& xag, std::vector<xag_network::signal> const& vs ) -> xag_network::signal
+    {
+      assert( vs.size() == 2u );
+      return xag.create_xor( vs[0], vs[1] );
     }, 2u} );
 
   return gen_t( rules );
