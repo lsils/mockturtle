@@ -2,6 +2,7 @@
 
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xag.hpp>
 
 #include <kitty/static_truth_table.hpp>
 
@@ -119,14 +120,14 @@ TEST_CASE( "Partial simulator", "[simulation]" )
 
 TEST_CASE( "Add pattern and re-simulate with partial_simulator", "[simulation]" )
 {
-  aig_network aig;
+  xag_network xag;
 
-  const auto a = aig.create_pi();
-  const auto b = aig.create_pi();
-  const auto c = aig.create_pi();
-  const auto f1 = aig.create_xor( a, b );
-  const auto f2 = aig.create_xor( f1, c );
-  aig.create_po( f2 ); /* f2 = a ^ b ^ c */
+  const auto a = xag.create_pi();
+  const auto b = xag.create_pi();
+  const auto c = xag.create_pi();
+  const auto f1 = xag.create_xor( a, b );
+  const auto f2 = xag.create_xor( f1, c );
+  xag.create_po( f2 ); /* f2 = a ^ b ^ c */
 
   std::vector<kitty::partial_truth_table> pats( 3 );
   pats[0].add_bits( 0x1, 2 ); /* a = 01 */
@@ -134,10 +135,10 @@ TEST_CASE( "Add pattern and re-simulate with partial_simulator", "[simulation]" 
   pats[2].add_bits( 0x1, 2 ); /* c = 01 */
   partial_simulator sim( pats );
 
-  unordered_node_map<kitty::partial_truth_table, aig_network> node_to_value( aig );
-  simulate_nodes( aig, node_to_value, sim );
+  unordered_node_map<kitty::partial_truth_table, xag_network> node_to_value( xag );
+  simulate_nodes( xag, node_to_value, sim );
   CHECK( sim.num_bits() == 2u );
-  CHECK( ( aig.is_complemented( f2 ) ? ~node_to_value[f2] : node_to_value[f2] )._bits[0] == 0x1 ); /* f2 = 01 */
+  CHECK( ( xag.is_complemented( f2 ) ? ~node_to_value[f2] : node_to_value[f2] )._bits[0] == 0x1 ); /* f2 = 01 */
 
   std::vector<bool> pattern( 3 );
   pattern[0] = 0; pattern[1] = 1; pattern[2] = 0;
@@ -146,9 +147,9 @@ TEST_CASE( "Add pattern and re-simulate with partial_simulator", "[simulation]" 
   sim.add_pattern( pattern );
   /* a = 1001, b = 0101, c = 0001 */
 
-  simulate_nodes( aig, node_to_value, sim, false );
+  simulate_nodes( xag, node_to_value, sim, false );
   CHECK( sim.num_bits() == 4u );
-  CHECK( ( aig.is_complemented( f2 ) ? ~node_to_value[f2] : node_to_value[f2] )._bits[0] == 0xd ); /* f2 = 1101 */
+  CHECK( ( xag.is_complemented( f2 ) ? ~node_to_value[f2] : node_to_value[f2] )._bits[0] == 0xd ); /* f2 = 1101 */
 }
 
 TEST_CASE( "Incremental simulation with partial_simulator", "[simulation]" )
