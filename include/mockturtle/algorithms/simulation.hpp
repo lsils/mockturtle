@@ -269,6 +269,7 @@ public:
     ++num_patterns;
   }
 
+  /*! \brief Writes the simulation patterns into a file. */
   void write_patterns( const std::string& filename )
   {
     std::ofstream out( filename, std::ofstream::out );
@@ -487,6 +488,8 @@ void update_const_pi( Ntk const& ntk, unordered_node_map<kitty::partial_truth_ta
  * 
  * It is assumed that `node_to_value.has( n )` is true for every node except `n`,
  * but not necessarily up to date. If not, needed nodes in its transitive fanin cone will be re-simulated.
+ * Note that re-simulation is only done for the last block, no matter how many bits are used in this block.
+ * Hence, it is advised to call `simulate_nodes` with `simulate_whole_tt = false` whenever `sim.num_bits() % 64 == 0`.
  * 
  */
 template<class Ntk>
@@ -527,7 +530,7 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
 template<class Ntk>
 void simulate_nodes( Ntk const& ntk, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, partial_simulator const& sim, bool simulate_whole_tt = true )
 {
-  /* TODO: The partial_truth_table specialized ntk.compute is currently only implemented in AIG. */
+  /* TODO: The partial_truth_table specialized ntk.compute is currently only implemented in AIG and XAG. */
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
   static_assert( has_constant_value_v<Ntk>, "Ntk does not implement the constant_value method" );
