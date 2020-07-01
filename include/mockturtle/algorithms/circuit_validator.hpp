@@ -284,6 +284,64 @@ public:
     return res;
   }
 
+  /*! \brief Generate more patterns for node `root` to be `value`, blocking several known patterns. 
+   *
+   * Requires `use_pushpop = true`.
+   *
+   * If `block_patterns` and the returned vector are both empty, `root` is validated to be a constant of `!value`.
+   *
+   * \param block_patterns Patterns to be blocked in the solver. (Will not generate any of them.)
+   * \param num_patterns Number of patterns to be generated, if possible. (The size of the result may be smaller than this number, but never larger.)
+   */
+  template<bool enabled = use_pushpop, typename = std::enable_if_t<enabled>>
+  std::vector<std::vector<bool>> generate_pattern( node const& root, bool value, std::vector<std::vector<bool>> const& block_patterns, uint32_t num_patterns )
+  {
+    if ( !literals.has( root ) )
+    {
+      construct( root );
+    }
+
+    solver.push();
+
+    for ( auto const& pattern : block_patterns )
+    {
+      block_pattern( pattern );
+    }
+
+    std::vector<bill::lit_type> assumptions( {lit_not_cond( literals[root], !value )} );
+    if constexpr ( use_odc )
+    {
+      if ( ps.odc_levels != 0 )
+      {
+        assumptions.emplace_back( build_odc_window( root, ~literals[root] ) );
+      }
+    }
+
+    std::optional<bool> res;
+    std::vector<std::vector<bool>> generated;
+    for ( auto i = 0u; i < num_patterns; ++i )
+    {
+      res = solve( assumptions );
+
+      if ( !res || *res ) /* timeout or UNSAT */
+      {
+        break;
+      }
+      else /* SAT */
+      {
+        generated.emplace_back( cex );
+        block_pattern( cex );
+      }
+    }
+
+    solver.pop();
+    if ( solver.num_clauses() > ps.max_clauses )
+    {
+      restart();
+    }
+    return generated;
+  }
+
   /*! \brief Update CNF clauses.
    *
    * This function should be called when the function of one or more nodes
@@ -316,20 +374,8 @@ private:
       literals[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive );
     } );
 
-    /* compute literals for nodes */
-    //uint32_t next_var = ntk.num_pis() + 1;
-    //ntk.foreach_gate( [&]( auto const& n ) {
-    //  literals[n] = bill::lit_type( next_var++, bill::lit_type::polarities::positive );
-    //} );
-
     solver.add_variables( ntk.num_pis() + 1 );
     solver.add_clause( {~literals[ntk.get_constant( false )]} );
-
-    //generate_cnf<Ntk, bill::lit_type>(
-    //    ntk, [&]( auto const& clause ) {
-    //      solver.add_clause( clause );
-    //    },
-    //    literals );
   }
 
   void construct( node const& n )
@@ -494,6 +540,16 @@ private:
     }
 
     return res;
+  }
+
+  void block_pattern( std::vector<bool> const& pattern )
+  {
+    assert( pattern.size() == ntk.num_pis() );
+    std::vector<bill::lit_type> clause;
+    ntk.foreach_pi( [&]( auto const& n, auto i ) {
+      clause.emplace_back( lit_not_cond( literals[n] , pattern[i] ) );
+    } );
+    solver.add_clause( clause );
   }
 
 private:
