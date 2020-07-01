@@ -122,6 +122,27 @@ TEST_CASE( "Validating const nodes", "[validator]" )
   CHECK( v.cex[1] == true );
 }
 
+TEST_CASE( "Validating with the const node", "[validator]" )
+{
+  /* original circuit */
+  aig_network aig;
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const f1 = aig.create_and( !a, b );
+  auto const f2 = aig.create_and( a, !b );
+  auto const f3 = aig.create_or( f1, f2 ); // a ^ b
+
+  auto const g1 = aig.create_and( a, b );
+  auto const g2 = aig.create_and( !a, !b );
+  auto const g3 = aig.create_or( g1, g2 ); // a == b
+
+  auto const h = aig.create_and( f3, g3 ); // const 0
+
+  circuit_validator v( aig );
+
+  CHECK( *( v.validate( aig.get_constant( false ), aig.get_node( h ) ) ) == true );
+}
+
 TEST_CASE( "Validating with ODC", "[validator]" )
 {
   /* original circuit */
