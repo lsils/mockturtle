@@ -513,7 +513,6 @@ private:
     {
       construct( root );
     }
-    assert( literals[root].variable() != bill::var_type( 0 ) );
 
     std::optional<bool> res;
     if constexpr ( use_odc )

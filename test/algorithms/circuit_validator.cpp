@@ -140,7 +140,7 @@ TEST_CASE( "Validating with the const node", "[validator]" )
 
   circuit_validator v( aig );
 
-  CHECK( *( v.validate( aig.get_constant( false ), aig.get_node( h ) ) ) == true );
+  CHECK( *( v.validate( aig.get_constant( false ), h ) ) == true );
 }
 
 TEST_CASE( "Generate multiple patterns", "[validator]" )
