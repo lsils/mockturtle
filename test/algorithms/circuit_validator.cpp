@@ -147,6 +147,10 @@ TEST_CASE( "Generate multiple patterns", "[validator]" )
     CHECK( ( pattern[0] ^ pattern[1] ^ pattern[2] ) == true );
     CHECK( pattern != block_pattern[0] );
   }
+
+  /* blocking patterns should not affect later validations */
+  CHECK( *( v.validate( f1, false ) ) == false ); /* f1 is not a constant 0 */
+  CHECK( ( v.cex[0] ^ v.cex[1] ) == true );
 }
 
 TEST_CASE( "Validating with ODC", "[validator]" )
