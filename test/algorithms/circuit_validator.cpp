@@ -116,31 +116,14 @@ TEST_CASE( "Validating const nodes", "[validator]" )
 
   circuit_validator v( aig );
 
+  /* several APIs are available */
   CHECK( *( v.validate( aig.get_node( h ), false ) ) == true );
+  CHECK( *( v.validate( h, false ) ) == true );
+  CHECK( *( v.validate( aig.get_constant( false ), h ) ) == true );
+
   CHECK( *( v.validate( f1, false ) ) == false );
   CHECK( v.cex[0] == false );
   CHECK( v.cex[1] == true );
-}
-
-TEST_CASE( "Validating with the const node", "[validator]" )
-{
-  /* original circuit */
-  aig_network aig;
-  auto const a = aig.create_pi();
-  auto const b = aig.create_pi();
-  auto const f1 = aig.create_and( !a, b );
-  auto const f2 = aig.create_and( a, !b );
-  auto const f3 = aig.create_or( f1, f2 ); // a ^ b
-
-  auto const g1 = aig.create_and( a, b );
-  auto const g2 = aig.create_and( !a, !b );
-  auto const g3 = aig.create_or( g1, g2 ); // a == b
-
-  auto const h = aig.create_and( f3, g3 ); // const 0
-
-  circuit_validator v( aig );
-
-  CHECK( *( v.validate( aig.get_constant( false ), h ) ) == true );
 }
 
 TEST_CASE( "Generate multiple patterns", "[validator]" )
