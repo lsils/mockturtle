@@ -38,6 +38,8 @@
 
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
+#include "../networks/aig.hpp"
+#include "../networks/xag.hpp"
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -190,21 +192,16 @@ public:
 
   /* copy constructor */
   partial_simulator( partial_simulator const& sim )
-  {
-    patterns = sim.patterns;
-    num_patterns = sim.num_patterns;
-  }
+    : patterns( sim.patterns ), num_patterns( sim.num_patterns )
+  { }
 
   /*! \brief Create a `partial_simulator` with given simulation patterns.
    *
    * \param initial_patterns Initial simulation patterns.
    */
   partial_simulator( std::vector<kitty::partial_truth_table> const& initial_patterns )
-  {
-    patterns = initial_patterns;
-    assert( patterns.size() > 0 );
-    num_patterns = patterns[0].num_bits();
-  }
+    : patterns( initial_patterns ), num_patterns( patterns.at( 0 ).num_bits() )
+  { }
 
   /*! \brief Create a `partial_simulator` with simulation patterns read from a file.
    *
@@ -495,6 +492,15 @@ void update_const_pi( Ntk const& ntk, unordered_node_map<kitty::partial_truth_ta
 template<class Ntk>
 void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, partial_simulator const& sim )
 {
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_constant_value_v<Ntk>, "Ntk does not implement the constant_value method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute method for kitty::partial_truth_table" );
+  static_assert( std::is_same_v<typename Ntk::base_type, aig_network> || std::is_same_v<typename Ntk::base_type, xag_network>, "The partial_truth_table specialized ntk.compute is currently only implemented in AIG and XAG" );
+
   if ( !node_to_value.has( n ) )
   {
     std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
@@ -530,7 +536,6 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
 template<class Ntk>
 void simulate_nodes( Ntk const& ntk, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, partial_simulator const& sim, bool simulate_whole_tt = true )
 {
-  /* TODO: The partial_truth_table specialized ntk.compute is currently only implemented in AIG and XAG. */
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
   static_assert( has_constant_value_v<Ntk>, "Ntk does not implement the constant_value method" );
@@ -538,9 +543,8 @@ void simulate_nodes( Ntk const& ntk, unordered_node_map<kitty::partial_truth_tab
   static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
-  static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
-  static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
   static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute method for kitty::partial_truth_table" );
+  static_assert( std::is_same_v<typename Ntk::base_type, aig_network> || std::is_same_v<typename Ntk::base_type, xag_network>, "The partial_truth_table specialized ntk.compute is currently only implemented in AIG and XAG" );
 
   detail::update_const_pi( ntk, node_to_value, sim );
 
