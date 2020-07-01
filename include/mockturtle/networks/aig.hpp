@@ -1024,6 +1024,7 @@ public:
     return ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
   }
 
+  /*! \brief Re-compute the last block. */
   template<typename Iterator>
   void compute( node const& n, kitty::partial_truth_table& result, Iterator begin, Iterator end ) const
   {
@@ -1040,15 +1041,11 @@ public:
 
     assert( tt1.num_bits() == tt2.num_bits() );
     assert( tt1.num_bits() >= result.num_bits() );
-    if ( result.num_bits() == 0 )
-    {
-      result = ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
-    }
-    else
-    {
-      result.resize( tt1.num_bits() );
-      result._bits.back() = ( c1.weight ? ~(tt1._bits.back()) : tt1._bits.back() ) & ( c2.weight ? ~(tt2._bits.back()) : tt2._bits.back() );
-    }
+    assert( result.num_blocks() == tt1.num_blocks() || ( result.num_blocks() == tt1.num_blocks() - 1 && result.num_bits() % 64 == 0 ) );
+
+    result.resize( tt1.num_bits() );
+    result._bits.back() = ( c1.weight ? ~(tt1._bits.back()) : tt1._bits.back() ) & ( c2.weight ? ~(tt2._bits.back()) : tt2._bits.back() );
+    result.mask_bits();
   }
 #pragma endregion
 
