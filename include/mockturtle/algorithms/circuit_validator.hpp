@@ -294,14 +294,14 @@ public:
    * \param num_patterns Number of patterns to be generated, if possible. (The size of the result may be smaller than this number, but never larger.)
    */
   template<bool enabled = use_pushpop, typename = std::enable_if_t<enabled>>
-  std::vector<std::vector<bool>> generate_pattern( signal const& f, bool value, std::vector<std::vector<bool>> const& block_patterns, uint32_t num_patterns )
+  std::vector<std::vector<bool>> generate_pattern( signal const& f, bool value, std::vector<std::vector<bool>> const& block_patterns = {}, uint32_t num_patterns = 1u )
   {
     return generate_pattern( ntk.get_node( f ), value ^ ntk.is_complemented( f ), block_patterns, num_patterns );
   }
 
   /*! \brief Generate more patterns for node `root` to be `value`, blocking several known patterns. */
   template<bool enabled = use_pushpop, typename = std::enable_if_t<enabled>>
-  std::vector<std::vector<bool>> generate_pattern( node const& root, bool value, std::vector<std::vector<bool>> const& block_patterns, uint32_t num_patterns )
+  std::vector<std::vector<bool>> generate_pattern( node const& root, bool value, std::vector<std::vector<bool>> const& block_patterns = {}, uint32_t num_patterns = 1u )
   {
     if ( !literals.has( root ) )
     {
