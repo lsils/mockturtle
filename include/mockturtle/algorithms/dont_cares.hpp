@@ -150,27 +150,52 @@ void clearTFO_rec( Ntk const& ntk, unordered_node_map<TT, Ntk>& ttsNOT, node<Ntk
   });
 }
 
+template<class Ntk>
+void simulate_TFO_rec( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, unordered_node_map<kitty::partial_truth_table, Ntk>& tts, int level )
+{
+  if ( ntk.visited( n ) == ntk.trav_id() ) /* visited */
+  {
+    return;
+  }
+  ntk.set_visited( n, ntk.trav_id() );
+
+  if ( !tts.has( n ) || tts[n].num_bits() != sim.num_bits() )
+  {
+    simulate_node<Ntk>( ntk, n, tts, sim );
+  }
+
+  ntk.foreach_fanout( n, [&]( auto const& fo ){
+    simulate_TFO_rec( ntk, fo, sim, tts, level - 1 );   
+  });
+}
+
 } /* namespace detail */
 
 /* Compute the don't care input patterns in the partial simulator `sim` of node `n` with respect to `roots`
 such that under these PI patterns the value of n doesn't affect outputs of roots. */
 template<class Ntk>
-kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, unordered_node_map<kitty::partial_truth_table, Ntk> const& tts, int levels = -1 )
+kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, unordered_node_map<kitty::partial_truth_table, Ntk>& tts, int levels = -1 )
 {
   std::vector<node<Ntk>> roots( ntk.num_pos() );
   ntk.foreach_po( [&]( auto const& f, auto i ){ roots.at(i) = ntk.get_node( f ); });
 
-  unordered_node_map<kitty::partial_truth_table, Ntk> ttsNOT = tts.copy(); // same as tts except for TFOs
+  ntk.incr_trav_id();
+  detail::simulate_TFO_rec( ntk, n, sim, tts, levels );
+  unordered_node_map<kitty::partial_truth_table, Ntk> ttsNOT = tts.copy();
 
   ntk.incr_trav_id();
   detail::clearTFO_rec( ntk, ttsNOT, n, roots, levels );
   ttsNOT[n] = ~tts[n];
-  simulate_nodes( ntk, ttsNOT, sim );
+  ntk.incr_trav_id();
+  detail::simulate_TFO_rec( ntk, n, sim, ttsNOT, levels );
 
   kitty::partial_truth_table care( tts[n].num_bits() );
   for ( const auto& r : roots )
   {
-    care |= tts[r] ^ ttsNOT[r];
+    if ( tts[r].num_bits() == care.num_bits() )
+    {
+      care |= tts[r] ^ ttsNOT[r];
+    }
   }
   return ~care;
 }

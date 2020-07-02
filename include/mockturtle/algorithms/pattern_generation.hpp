@@ -165,6 +165,7 @@ private:
           simulate_node<Ntk>( ntk, n, tts, sim );
         } );
       }
+      assert( zero.num_bits() == sim.num_bits() );
 
       if ( ( tts[n] == zero ) || ( tts[n] == ~zero ) )
       {
@@ -263,6 +264,8 @@ private:
   {
     progress_bar pbar{ntk.size(), "patgen-obs |{0}| node = {1:>4} #pat = {2:>4}", ps.progress};
 
+    kitty::partial_truth_table zero = sim.compute_constant( false );
+
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
       pbar( i, i, sim.num_bits() );
 
@@ -274,13 +277,21 @@ private:
         }
       }
 
+      if ( tts[n].num_bits() != sim.num_bits() )
+      {
+        call_with_stopwatch( st.time_sim, [&]() {
+          simulate_node<Ntk>( ntk, n, tts, sim );
+        } );
+      }
+      assert( zero.num_bits() == sim.num_bits() );
+
       /* compute ODC */
       auto odc = call_with_stopwatch( st.time_odc, [&]() {
         return observability_dont_cares<Ntk>( ntk, n, sim, tts, ps.odc_levels );
       } );
 
       /* check if under non-ODCs n is always the same value */
-      if ( ( tts[n] & ~odc ) == sim.compute_constant( false ) )
+      if ( ( tts[n] & ~odc ) == zero )
       {
         if ( ps.verbose )
         {
@@ -304,6 +315,8 @@ private:
               assert( ( tts[n] & ~odc2 ) != sim.compute_constant( false ) );
               std::cout << "\t\t[i] added generated pattern to resolve unobservability.\n";
             }
+
+            zero = sim.compute_constant( false );
           }
           else
           {
@@ -315,7 +328,7 @@ private:
           }
         }
       }
-      else if ( ( tts[n] | odc ) == sim.compute_constant( true ) )
+      else if ( ( tts[n] | odc ) == ~zero )
       {
         if ( ps.verbose )
         {
@@ -339,6 +352,8 @@ private:
               assert( ( tts[n] | odc2 ) != sim.compute_constant( true ) );
               std::cout << "\t\t[i] added generated pattern to resolve unobservability.\n";
             }
+
+            zero = sim.compute_constant( false );
           }
           else
           {
@@ -403,7 +418,7 @@ private:
   pattern_generation_stats& st;
 
   validator_params& vps;
-  circuit_validator<Ntk, bill::solvers::z3, true, true, use_odc> validator;
+  circuit_validator<Ntk, bill::solvers::bsat2, true, true, use_odc> validator;
 
   TT tts;
   std::vector<signal> const_nodes;
