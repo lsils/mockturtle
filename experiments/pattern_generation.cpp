@@ -45,33 +45,20 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    //if ( benchmark != "iwls2005/mem_ctrl" ) continue;
-
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
     auto size_before = aig.num_gates();
 
-    patgen_params ps;
-    patgen_stats st;
+    pattern_generation_params ps;
+    pattern_generation_stats st;
 
-    uint32_t num_random_pattern = 256;
-    std::string write_pats = "256sa1/" + benchmark + ".pat";
+    uint32_t num_random_pattern = 1000;
 
-    ps.num_stuck_at = 1;
-    //ps.observability_type1 = true;
-    //ps.observability_type2 = true;
-    //ps.odc_levels = 5;    
-    ps.random_seed = 1689;
-    ps.progress = false;
-    //ps.verbose = true;
-
-    partial_simulator sim( aig.num_pis(), num_random_pattern, ps.random_seed );
+    partial_simulator sim( aig.num_pis(), num_random_pattern );
 
     pattern_generation( aig, sim, ps, &st );
     aig = cleanup_dangling( aig );
-
-    sim.write_patterns( write_pats );
 
     const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
     exp( benchmark, aig.num_pis(), size_before, sim.num_bits(), st.num_generated_patterns, st.num_constant, to_seconds( st.time_total ), to_seconds( st.time_sim ), to_seconds( st.time_sat ), cec );
