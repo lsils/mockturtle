@@ -146,7 +146,7 @@ void clearTFO_rec( Ntk const& ntk, unordered_node_map<TT, Ntk>& ttsNOT, node<Ntk
   }
 
   ntk.foreach_fanout( n, [&]( auto const& fo ){
-    clearTFO_rec( ntk, ttsNOT, fo, roots, level - 1 );   
+    clearTFO_rec( ntk, ttsNOT, fo, roots, level - 1 );
   });
 }
 
@@ -165,14 +165,25 @@ void simulate_TFO_rec( Ntk const& ntk, node<Ntk> const& n, partial_simulator con
   }
 
   ntk.foreach_fanout( n, [&]( auto const& fo ){
-    simulate_TFO_rec( ntk, fo, sim, tts, level - 1 );   
+    simulate_TFO_rec( ntk, fo, sim, tts, level - 1 );
   });
 }
 
 } /* namespace detail */
 
-/* Compute the don't care input patterns in the partial simulator `sim` of node `n` with respect to `roots`
-such that under these PI patterns the value of n doesn't affect outputs of roots. */
+/*! \brief Compute the observability don't care patterns in a partial_simulator with respect to a node.
+ *
+ * A pattern is unobservable w.r.t. a node `n` if under this input assignment,
+ * replacing `n` with `!n` does not affect the value of any primary output or
+ * any leaf node of `levels` levels of transitive fanout cone.
+ *
+ * Return value: a `partial_truth_table` with the same length as `sim.num_bits()`.
+ * A `1` in it corresponds to an unobservable pattern.
+ *
+ * \param sim The `partial_simulator` containing the patterns to be tested.
+ * \param tts Stores the simulation signatures of each node. Can be empty or incomplete.
+ * \param levels Level of tansitive fanout to consider. -1 = consider until PO.
+ */
 template<class Ntk>
 kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, unordered_node_map<kitty::partial_truth_table, Ntk>& tts, int levels = -1 )
 {
@@ -200,20 +211,24 @@ kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
   return ~care;
 }
 
-/* Check if node `n` is observable with respect to `roots`
-such that under input assignment `pattern` the value of `n` doesn't affect outputs of `roots`. 
-Returns true if is observable. (at least one PO is affected) */
+/*! \brief Check if a pattern is observable with respect to a node.
+ *
+ * A pattern is unobservable w.r.t. a node `n` if under this input assignment,
+ * replacing `n` with `!n` does not affect the value of any primary output or
+ * any leaf node of `levels` levels of transitive fanout cone.
+ *
+ * \param levels Level of tansitive fanout to consider. -1 = consider until PO.
+ */
 template<class Ntk>
 bool pattern_is_observable( Ntk const& ntk, node<Ntk> const& n, std::vector<bool> const& pattern, int levels = -1 )
 {
   std::vector<node<Ntk>> roots( ntk.num_pos() );
   ntk.foreach_po( [&]( auto const& f, auto i ){ roots.at(i) = ntk.get_node( f ); });
 
-  default_simulator<bool> sim(pattern);
-  unordered_node_map<bool, Ntk> tts(ntk);
-  unordered_node_map<bool, Ntk> ttsNOT(ntk);
+  default_simulator<bool> sim( pattern );
+  unordered_node_map<bool, Ntk> tts( ntk );
   simulate_nodes( ntk, tts, sim );
-  simulate_nodes( ntk, ttsNOT, sim ); // copying doesn't work for unordered_node_map<bool, Ntk>, not sure why
+  unordered_node_map<bool, Ntk> ttsNOT = tts.copy();
 
   ntk.incr_trav_id();
   detail::clearTFO_rec( ntk, ttsNOT, n, roots, levels );
