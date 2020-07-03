@@ -501,6 +501,11 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
   static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute method for kitty::partial_truth_table" );
   static_assert( std::is_same_v<typename Ntk::base_type, aig_network> || std::is_same_v<typename Ntk::base_type, xag_network>, "The partial_truth_table specialized ntk.compute is currently only implemented in AIG and XAG" );
 
+  if ( node_to_value[ntk.get_node( ntk.get_constant( false ) )].num_bits() != sim.num_bits() )
+  {
+    detail::update_const_pi( ntk, node_to_value, sim );
+  }
+    
   if ( !node_to_value.has( n ) )
   {
     std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
@@ -519,10 +524,6 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
   }
   else if ( node_to_value[n].num_bits() != sim.num_bits() )
   {
-    if ( node_to_value[ntk.get_node( ntk.get_constant( false ) )].num_bits() != sim.num_bits() )
-    {
-      detail::update_const_pi( ntk, node_to_value, sim );
-    }
     detail::re_simulate_fanin_cone( ntk, n, node_to_value, sim );
   }
 }
