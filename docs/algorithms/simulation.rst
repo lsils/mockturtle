@@ -90,7 +90,7 @@ Note that currently only AIG and XAG are supported.
 
 .. doxygenfunction:: mockturtle::partial_simulator::num_bits()
 
-.. doxygenfunction:: mockturtle::partial_simulator::write_patterns( const std::string& )
+.. doxygenfunction:: mockturtle::partial_simulator::get_patterns()
 
 .. doxygenfunction:: mockturtle::simulate_nodes( Ntk const&, unordered_node_map<kitty::partial_truth_table, Ntk>&, partial_simulator const&, bool )
 

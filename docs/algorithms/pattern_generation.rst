@@ -20,7 +20,7 @@ patterns are then written out to a file.
 
    partial_simulator sim( aig.num_pis(), 256 );
    pattern_generation( aig, sim, ps );
-   sim.write_patterns( "patterns.pat" );
+   write_patterns( sim, "patterns.pat" );
 
 
 Parameters and statistics

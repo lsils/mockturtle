@@ -45,7 +45,6 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
 #include <kitty/partial_truth_table.hpp>
-#include <kitty/print.hpp>
 #include <kitty/static_truth_table.hpp>
 
 namespace mockturtle
@@ -266,15 +265,14 @@ public:
     ++num_patterns;
   }
 
-  /*! \brief Writes the simulation patterns into a file. */
-  void write_patterns( const std::string& filename )
+  /*! \brief Get the simulation patterns.
+   *
+   * Returns a vector of `num_pis()` patterns stored in `kitty::partial_truth_table`s.
+   *
+   */
+  std::vector<kitty::partial_truth_table> get_patterns() const
   {
-    std::ofstream out( filename, std::ofstream::out );
-    for ( auto i = 0u; i < patterns.size(); ++i )
-    {
-      out << kitty::to_hex( patterns.at( i ) ) << "\n";
-    }
-    out.close();
+    return patterns;
   }
 
 private:

@@ -441,7 +441,7 @@ private:
  * or already containing some patterns generated from previous runs 
  * (`partial_simulator( filename )`) or randomly generated
  * (`partial_simulator( ntk.num_pis(), num_random_patterns )`). The generated
- * patterns can then be written out with `sim.write_patterns( filename )`
+ * patterns can then be written out with `write_patterns`
  * or directly be used by passing the simulator to another algorithm.
  */
 template<class Ntk>
