@@ -45,7 +45,6 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
 #include <kitty/partial_truth_table.hpp>
-#include <kitty/print.hpp>
 #include <kitty/static_truth_table.hpp>
 
 namespace mockturtle
@@ -266,15 +265,14 @@ public:
     ++num_patterns;
   }
 
-  /*! \brief Writes the simulation patterns into a file. */
-  void write_patterns( const std::string& filename )
+  /*! \brief Get the simulation patterns.
+   *
+   * Returns a vector of `num_pis()` patterns stored in `kitty::partial_truth_table`s.
+   *
+   */
+  std::vector<kitty::partial_truth_table> get_patterns() const
   {
-    std::ofstream out( filename, std::ofstream::out );
-    for ( auto i = 0u; i < patterns.size(); ++i )
-    {
-      out << kitty::to_hex( patterns.at( i ) ) << "\n";
-    }
-    out.close();
+    return patterns;
   }
 
 private:
@@ -483,10 +481,10 @@ void update_const_pi( Ntk const& ntk, unordered_node_map<kitty::partial_truth_ta
 
 /*! \brief (re-)simulate `n` and its transitive fanin cone.
  * 
- * It is assumed that `node_to_value.has( n )` is true for every node except `n`,
- * but not necessarily up to date. If not, needed nodes in its transitive fanin cone will be re-simulated.
- * Note that re-simulation is only done for the last block, no matter how many bits are used in this block.
- * Hence, it is advised to call `simulate_nodes` with `simulate_whole_tt = false` whenever `sim.num_bits() % 64 == 0`.
+ * Note that re-simulation (when `node_to_value.has( n ) == false`) is only done
+ * for the last block, no matter how many bits are used in this block.
+ * Hence, it is advised to call `simulate_nodes` with `simulate_whole_tt = false`
+ * whenever `sim.num_bits() % 64 == 0`.
  * 
  */
 template<class Ntk>
@@ -501,12 +499,20 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
   static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute method for kitty::partial_truth_table" );
   static_assert( std::is_same_v<typename Ntk::base_type, aig_network> || std::is_same_v<typename Ntk::base_type, xag_network>, "The partial_truth_table specialized ntk.compute is currently only implemented in AIG and XAG" );
 
+  if ( node_to_value[ntk.get_node( ntk.get_constant( false ) )].num_bits() != sim.num_bits() )
+  {
+    detail::update_const_pi( ntk, node_to_value, sim );
+  }
+    
   if ( !node_to_value.has( n ) )
   {
     std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
     ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      assert( node_to_value.has( ntk.get_node( f ) ) );
-      if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
+      if ( !node_to_value.has( ntk.get_node( f ) ) )
+      {
+        simulate_node( ntk, ntk.get_node( f ), node_to_value, sim );
+      }
+      else if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
       {
         detail::re_simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
       }
@@ -516,10 +522,6 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
   }
   else if ( node_to_value[n].num_bits() != sim.num_bits() )
   {
-    if ( node_to_value[ntk.get_node( ntk.get_constant( false ) )].num_bits() != sim.num_bits() )
-    {
-      detail::update_const_pi( ntk, node_to_value, sim );
-    }
     detail::re_simulate_fanin_cone( ntk, n, node_to_value, sim );
   }
 }

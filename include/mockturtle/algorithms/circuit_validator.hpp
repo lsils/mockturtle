@@ -215,7 +215,7 @@ public:
 
     if constexpr ( use_pushpop )
     {
-      solver.push();
+      push();
     }
 
     for ( auto g : circuit )
@@ -227,7 +227,7 @@ public:
 
     if constexpr ( use_pushpop )
     {
-      solver.pop();
+      pop();
     }
 
     if ( solver.num_clauses() > ps.max_clauses )
@@ -259,12 +259,12 @@ public:
       {
         if constexpr ( use_pushpop )
         {
-          solver.push();
+          push();
         }
         res = solve( {build_odc_window( root, ~literals[root] ), lit_not_cond( literals[root], value )} );
         if constexpr ( use_pushpop )
         {
-          solver.pop();
+          pop();
         }
       }
       else
@@ -308,7 +308,7 @@ public:
       construct( root );
     }
 
-    solver.push();
+    push();
 
     for ( auto const& pattern : block_patterns )
     {
@@ -341,7 +341,7 @@ public:
       }
     }
 
-    solver.pop();
+    pop();
     if ( solver.num_clauses() > ps.max_clauses )
     {
       restart();
@@ -388,6 +388,13 @@ private:
   void construct( node const& n )
   {
     assert( !literals.has( n ) );
+    if constexpr ( use_pushpop )
+    {
+      if ( between_push_pop )
+      {
+        tmp.emplace_back( n );
+      }
+    }
 
     std::vector<bill::lit_type> child_lits;
     ntk.foreach_fanin( n, [&]( auto const& f ) {
@@ -423,6 +430,23 @@ private:
         solver.add_clause( clause );
       } );
     }
+  }
+
+  void push()
+  {
+    solver.push();
+    between_push_pop = true;
+    tmp.clear();
+  }
+
+  void pop()
+  {
+    solver.pop();
+    for ( auto& n : tmp )
+    {
+      literals.erase( n );
+    }
+    between_push_pop = false;
   }
 
   bill::lit_type add_clauses_for_2input_gate( bill::lit_type a, bill::lit_type b, std::optional<bill::lit_type> c = std::nullopt, gate_type type = AND )
@@ -521,12 +545,12 @@ private:
       {
         if constexpr ( use_pushpop )
         {
-          solver.push();
+          push();
         }
         res = solve( {build_odc_window( root, lit )} );
         if constexpr ( use_pushpop )
         {
-          solver.pop();
+          pop();
         }
       }
       else
@@ -632,6 +656,11 @@ private:
         return true; /* skip */
       ntk.set_visited( fo, ntk.trav_id() );
 
+      if ( !literals.has( fo ) )
+      {
+        construct( fo );
+      }
+
       lits[fo] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
 
       if ( level == ps.odc_levels )
@@ -648,6 +677,7 @@ private:
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   void add_miter_clauses( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, std::vector<bill::lit_type>& miter )
   {
+    assert( literals.has( n ) && literals[n] != literals[ntk.get_constant( false )] );
     miter.emplace_back( add_clauses_for_2input_gate( literals[n], lits[n], std::nullopt, XOR ) );
   }
 
@@ -658,6 +688,9 @@ private:
 
   unordered_node_map<bill::lit_type, Ntk> literals;
   bill::solver<Solver> solver;
+
+  bool between_push_pop = false;
+  std::vector<node> tmp;
 
 public:
   std::vector<bool> cex;
