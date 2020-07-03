@@ -56,7 +56,9 @@ TEST_CASE( "Constant node removal", "[pattern_generation]" )
   CHECK( aig.num_gates() == 7 );
 
   partial_simulator sim( aig.num_pis(), 0 );
-  pattern_generation( aig, sim );
+  pattern_generation_params ps;
+  ps.substitute_const = true;
+  pattern_generation( aig, sim, ps );
 
   CHECK( aig.num_gates() == 6 );
 }

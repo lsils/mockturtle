@@ -41,7 +41,7 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, float, bool> exp( "pattern_generation", "benchmark", "#PI", "size", "#pat", "#pat gen", "#const", "t_total", "t_sim", "t_SAT", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, float> exp( "pattern_generation", "benchmark", "#PI", "size", "#pat", "#pat gen", "#const", "t_total", "t_sim", "t_SAT" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -54,14 +54,10 @@ int main()
     pattern_generation_stats st;
 
     uint32_t num_random_pattern = 1000;
-
     partial_simulator sim( aig.num_pis(), num_random_pattern );
-
     pattern_generation( aig, sim, ps, &st );
-    aig = cleanup_dangling( aig );
 
-    const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
-    exp( benchmark, aig.num_pis(), size_before, sim.num_bits(), st.num_generated_patterns, st.num_constant, to_seconds( st.time_total ), to_seconds( st.time_sim ), to_seconds( st.time_sat ), cec );
+    exp( benchmark, aig.num_pis(), size_before, sim.num_bits(), st.num_generated_patterns, st.num_constant, to_seconds( st.time_total ), to_seconds( st.time_sim ), to_seconds( st.time_sat ) );
   }
 
   exp.save();
