@@ -49,7 +49,7 @@ namespace mockturtle
 struct pattern_generation_params
 {
   /*! \brief Whether to remove constant nodes. Requires `substitute_node`. */
-  bool substitute_const{true};
+  bool substitute_const{false};
 
   /*! \brief Number of patterns each node should have for both values. */
   uint32_t num_stuck_at{1};
