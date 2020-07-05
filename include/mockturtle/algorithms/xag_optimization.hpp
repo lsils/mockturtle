@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -101,7 +102,7 @@ public:
         }
         else if ( lfi[n].size() == 1 )
         {
-          old2new[n] = dest.make_signal( lfi[n].front() );
+          old2new[n] = old2new[lfi[n].front()];
         }
         else
         {
@@ -130,26 +131,7 @@ private:
   std::vector<xag_network::node> merge( std::vector<xag_network::node> const& s1, std::vector<xag_network::node> const& s2 ) const
   {
     std::vector<xag_network::node> s;
-    auto it1 = s1.begin();
-    auto it2 = s2.begin();
-    while ( it1 != s1.end() && it2 != s2.end() )
-    {
-      if ( *it1 < *it2 )
-      {
-        s.push_back( *it1++ );
-      }
-      else if ( *it2 < *it1 )
-      {
-        s.push_back( *it2++ );
-      }
-      else
-      {
-        ++it1;
-        ++it2;
-      }
-    }
-    std::copy( it1, s1.end(), std::back_inserter( s ) );
-    std::copy( it2, s2.end(), std::back_inserter( s ) );
+    std::set_symmetric_difference( s1.cbegin(), s1.cend(), s2.cbegin(), s2.cend(), std::back_inserter( s ) );
     return s;
   }
 
@@ -170,7 +152,7 @@ private:
  */
 inline xag_network xag_constant_fanin_optimization( xag_network const& xag )
 {
-  return cleanup_dangling( detail::xag_constant_fanin_optimization_impl( xag ).run() );
+  return detail::xag_constant_fanin_optimization_impl( xag ).run();
 }
 
 /*! \brief Optimizes some AND gates using satisfiability don't cares

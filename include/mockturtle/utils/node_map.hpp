@@ -238,6 +238,22 @@ public:
     return data->find( ntk.node_to_index( ntk.get_node( f ) ) ) != data->end();
   }
 
+  void erase( node const& n )
+  {
+    if ( has( n ) )
+    {
+      data->erase( ntk.node_to_index( n ) );
+    }
+  }
+
+  /* Make a deep copy */
+  node_map<T, Ntk, std::unordered_map<typename Ntk::node, T>> copy() const
+  {
+    node_map<T, Ntk, std::unordered_map<typename Ntk::node, T>> copy(ntk);
+    *(copy.data) = *data;
+    return copy;
+  }
+
   /*! \brief Mutable access to value by node. */
   reference operator[]( node const& n )
   {
