@@ -37,7 +37,7 @@
 
 namespace mockturtle
 {
-
+#if 0
 enum gate_type
 {
   AND,
@@ -55,6 +55,7 @@ struct gate
   std::vector<fanin> fanins;
   gate_type type{AND};
 };
+#endif
 
 class abc_resub
 {
@@ -128,6 +129,7 @@ public:
     return std::nullopt;
   }
 
+#if 0 /* not used */
   std::optional<std::vector<gate>> compute_function( bool& output_negation, uint32_t num_inserts, bool useXOR = false )
   {
     int index_list_size;
@@ -152,6 +154,7 @@ public:
 
     return std::nullopt;
   }
+#endif
 
   void dump( std::string const file = "dump.txt" ) const
   {
