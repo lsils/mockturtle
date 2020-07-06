@@ -51,7 +51,12 @@ struct pattern_generation_params
   /*! \brief Whether to remove constant nodes. Requires `substitute_node`. */
   bool substitute_const{false};
 
-  /*! \brief Number of patterns each node should have for both values. When this parameter is set to greater than 1, and if the network has more than 2048 PIs, the `BUFFER_SIZE` in `lib/bill/sat/interface/abc_bsat2.hpp` has to be increased to at least `ntk.num_pis()`. */
+  /*! \brief Number of patterns each node should have for both values. 
+   * 
+   * When this parameter is set to greater than 1, and if the network has more
+   * than 2048 PIs, the `BUFFER_SIZE` in `lib/bill/sat/interface/abc_bsat2.hpp`
+   * has to be increased to at least `ntk.num_pis()`.
+   */
   uint32_t num_stuck_at{1};
 
   /*! \brief Whether to consider observability, and how many levels. 0 = no. -1 = Consider TFO until PO. */
