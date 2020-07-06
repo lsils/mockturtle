@@ -286,7 +286,9 @@ public:
 
   /*! \brief Generate pattern(s) for signal `f` to be `value`, optionally blocking several known patterns. 
    *
-   * Requires `use_pushpop = true`.
+   * Requires `use_pushpop = true`, which is only supported for `bsat2` and `z3`. If `bsat2` is used, 
+   * and if the network has more than 2048 PIs, the `BUFFER_SIZE` in `lib/bill/sat/interface/abc_bsat2.hpp`
+   * has to be increased to at least `ntk.num_pis()`.
    *
    * If `block_patterns` and the returned vector are both empty, `f` is validated to be a constant of `!value`.
    *
