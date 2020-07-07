@@ -170,7 +170,7 @@ public:
 class partial_simulator
 {
 public:
-  partial_simulator() = delete;
+  partial_simulator() {}
 
   /*! \brief Create a `partial_simulator` with random simulation patterns.
    *
