@@ -48,7 +48,7 @@ namespace abc::exorcism
 namespace mockturtle
 {
 
-std::vector<kitty::cube> exorcism( std::vector<kitty::cube> const& esop, uint32_t num_vars )
+inline std::vector<kitty::cube> exorcism( std::vector<kitty::cube> const& esop, uint32_t num_vars )
 {
   auto vesop = abc::exorcism::Vec_WecAlloc( esop.size() );
 
@@ -71,7 +71,7 @@ std::vector<kitty::cube> exorcism( std::vector<kitty::cube> const& esop, uint32_
   return exorcism_esop;
 }
 
-std::vector<kitty::cube> exorcism( kitty::dynamic_truth_table const& func )
+inline std::vector<kitty::cube> exorcism( kitty::dynamic_truth_table const& func )
 {
   return exorcism( kitty::esop_from_optimum_pkrm( func ), func.num_vars() );
 }
