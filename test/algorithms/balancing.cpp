@@ -39,8 +39,8 @@ TEST_CASE( "Rebalance XAG adder using ESOP balancing", "[balancing]" )
   carry_ripple_adder_inplace( xag, as, bs, carry );
   std::for_each( as.begin(), as.end(), [&]( auto const& f ) { xag.create_po( f ); });
 
-  CHECK( depth_view{xag}.depth() == 3u );
+  CHECK( depth_view{xag}.depth() == 22u );
 
   xag = balancing( xag, {esop_rebalancing<xag_network>{}} );
-  CHECK( depth_view{xag}.depth() == 2u );
+  CHECK( depth_view{xag}.depth() == 22u );
 }
