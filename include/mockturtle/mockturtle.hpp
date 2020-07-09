@@ -92,6 +92,8 @@
 #include "mockturtle/algorithms/reconv_cut.hpp"
 #include "mockturtle/algorithms/resubstitution.hpp"
 #include "mockturtle/algorithms/aig_resub.hpp"
+#include "mockturtle/algorithms/circuit_validator.hpp"
+#include "mockturtle/algorithms/pattern_generation.hpp"
 #include "mockturtle/utils/stopwatch.hpp"
 #include "mockturtle/utils/truth_table_cache.hpp"
 #include "mockturtle/utils/string_utils.hpp"

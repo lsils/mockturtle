@@ -57,6 +57,7 @@ v0.2 (not yet released)
     - Create self-dualization of a logic network (`self_dualize_aig`) `#331 <https://github.com/lsils/mockturtle/pull/331>`_
     - Binary decoder (`binary_decoder`) `#342 <https://github.com/lsils/mockturtle/pull/342>`_
     - 2^k MUX (`binary_mux` and `binary_mux_klein_paterson`) `#342 <https://github.com/lsils/mockturtle/pull/342>`_
+    - Random logic networks for XAGs (`random_logic_generator`) `#366 <https://github.com/lsils/mockturtle/pull/366>`_
 * Properties:
     - Costs based on multiplicative complexity (`multiplicative_complexity` and `multiplicative_complexity_depth`) `#170 <https://github.com/lsils/mockturtle/pull/170>`_
 

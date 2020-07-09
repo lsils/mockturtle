@@ -79,3 +79,13 @@ The following code shows how to check functional equivalence of a root node to s
 **Updating**
 
 .. doxygenfunction:: mockturtle::circuit_validator::update
+
+**Generate multiple patterns**
+
+A simulation pattern is a collection of value assignments to every primary inputs.
+A counter-example of a failing validation is a simulation pattern under which the nodes being validated have different simulation values. 
+It can be directly read from the public data member ``circuit_validator::cex`` (which is a ``std::vector<bool>`` of size ``Ntk::num_pis()``) after a call to (any type of) ``circuit_validator::validate`` which returns ``false``.
+If multiple different patterns are desired, one can call ``circuit_validator::generate_pattern``. However, this is currently only supported for constant validation.
+
+.. doxygenfunction:: mockturtle::circuit_validator::generate_pattern( signal const&, bool, std::vector<std::vector<bool>> const&, uint32_t )
+.. doxygenfunction:: mockturtle::circuit_validator::generate_pattern( node const&, bool, std::vector<std::vector<bool>> const&, uint32_t )

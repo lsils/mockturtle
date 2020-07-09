@@ -36,3 +36,12 @@ Write into DOT files (Graphviz)
 .. doxygenfunction:: mockturtle::write_dot(Ntk const&, std::string const&, Drawer const&)
 
 .. doxygenfunction:: mockturtle::write_dot(Ntk const&, std::ostream&, Drawer const&)
+
+Write simulation patterns into file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/io/write_patterns.hpp``
+
+.. doxygenfunction:: mockturtle::write_patterns(partial_simulator const&, std::string const&)
+
+.. doxygenfunction:: mockturtle::write_patterns(partial_simulator const&, std::ostream&)

@@ -53,6 +53,7 @@ Welcome to mockturtle's documentation!
    algorithms/xmg_optimization
    algorithms/equivalence_classes
    algorithms/circuit_validator
+   algorithms/pattern_generation
 
 .. toctree::
    :maxdepth: 2
