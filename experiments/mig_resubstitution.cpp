@@ -30,7 +30,6 @@
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/mig.hpp>
 

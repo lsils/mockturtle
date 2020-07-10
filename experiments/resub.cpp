@@ -29,7 +29,7 @@
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/resubstitution2.hpp>
+#include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 

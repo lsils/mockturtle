@@ -41,7 +41,7 @@
 #include <bill/sat/interface/z3.hpp>
 #include <kitty/partial_truth_table.hpp>
 
-#include <mockturtle/algorithms/resubstitution2.hpp>
+#include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/circuit_validator.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/algorithms/pattern_generation.hpp>
