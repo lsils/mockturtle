@@ -29,13 +29,11 @@
 
   TODOs:
   - ordinary sim_resub functor
-  - (ODC consideration for sim_resub)
+  - Adjust the interface & stats of window-based resub functors
   - Documentation
-  - Adjust the interface of window-based resub functors
-  - Replace resubstitution.hpp, and adjust other algorithms depending
-    on it with the new interface
 
   More TODOs:
+  - (ODC consideration for sim_resub)
   - (Unify different MFFC implementations)
   - Integrate node_resynthesis engines
   - Integrate frontier-based exploration
@@ -221,11 +219,12 @@ struct default_collector_stats
   }
 };
 
-template<class Ntk, class CutMgr = cut_manager<Ntk>, class MffcMgr = node_mffc_inside<Ntk>>
+template<class Ntk, class MffcMgr = node_mffc_inside<Ntk>, typename MffcRes = uint32_t, class CutMgr = cut_manager<Ntk>>
 class default_divisor_collector
 {
 public:
   using stats = default_collector_stats;
+  using mffc_result_t = MffcRes;
   using node = typename Ntk::node;
 
 public:
@@ -246,7 +245,7 @@ public:
    *
    * `divs` and `MFFC` are in topological order. 
    */
-  bool run( node const& n, uint32_t& potential_gain )
+  bool run( node const& n, mffc_result_t& potential_gain )
   {
     /* skip nodes with many fanouts */
     if ( ntk.fanout_size( n ) > ps.skip_fanout_limit_for_roots )
@@ -461,12 +460,13 @@ struct window_resub_stats
   }
 };
 
-template<class Ntk, class TTsim, class TTdc = kitty::dynamic_truth_table, class ResubFn = default_resub_functor<Ntk, window_simulator<Ntk, TTsim>, TTdc>>
+template<class Ntk, class TTsim, class TTdc = kitty::dynamic_truth_table, class ResubFn = default_resub_functor<Ntk, window_simulator<Ntk, TTsim>, TTdc>, typename MffcRes = uint32_t>
 class window_based_resub_engine
 {
 public:
   static constexpr bool require_leaves_and_MFFC = true;
   using stats = window_resub_stats<typename ResubFn::stats>;
+  using mffc_result_t = MffcRes;
 
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
@@ -476,7 +476,7 @@ public:
   {
   }
 
-  std::optional<signal> run( node const& n, std::vector<node> const& leaves, std::vector<node> const& divs, std::vector<node> const& MFFC, uint32_t potential_gain, uint32_t& last_gain )
+  std::optional<signal> run( node const& n, std::vector<node> const& leaves, std::vector<node> const& divs, std::vector<node> const& MFFC, mffc_result_t potential_gain, uint32_t& last_gain )
   {
     /* simulate the collected divisors */
     call_with_stopwatch( st.time_sim, [&]() {
@@ -575,10 +575,13 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using resub_callback_t = std::function<bool( Ntk&, node const&, signal const& )>;
+  using mffc_result_t = typename ResubEngine::mffc_result_t;
 
   explicit resubstitution_impl( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats& st, engine_st_t& engine_st, collector_st_t& collector_st, resub_callback_t const& callback = substitute_fn<Ntk> )
       : ntk( ntk ), ps( ps ), st( st ), engine_st( engine_st ), collector_st( collector_st ), callback( callback )
   {
+    static_assert( std::is_same_v<typename ResubEngine::mffc_result_t, typename DivCollector::mffc_result_t>, "MFFC result type of the engine and the collector are different" );
+
     st.initial_size = ntk.num_gates();
 
     auto const update_level_of_new_node = [&]( const auto& n ) {
@@ -628,7 +631,7 @@ public:
       }
 
       /* compute cut, collect divisors, compute MFFC */
-      uint32_t potential_gain;
+      mffc_result_t potential_gain;
       const auto collector_success = call_with_stopwatch( st.time_divs, [&]() {
         return collector.run( n, potential_gain );
       });
