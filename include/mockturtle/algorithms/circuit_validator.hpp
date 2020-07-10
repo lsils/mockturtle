@@ -61,6 +61,7 @@ template<class Ntk, bill::solvers Solver = bill::solvers::glucose_41, bool use_p
 class circuit_validator
 {
 public:
+  static constexpr bool use_odc_ = use_odc;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using add_clause_fn_t = std::function<void( std::vector<bill::lit_type> const& )>;

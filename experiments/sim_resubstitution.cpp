@@ -28,10 +28,8 @@
 
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
-#include <mockturtle/algorithms/sim_resub.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/algorithms/pattern_generation.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/sim_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 
@@ -42,54 +40,29 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, float, float, float, bool> exp( "sim_resubstitution", "benchmark", "#PI", "size", "gain", "#pat", "#cex", "#divk", "t_total", "t_structural", "t_sim", "t_SAT", "t_k", "cec" );
+  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "sim_resub", "benchmark", "size", "gain", "runtime", "equivalent" );
 
-  //for ( auto const& benchmark : epfl_benchmarks() )
-  for ( auto const& benchmark : iwls_benchmarks() )
+  for ( auto const& benchmark : epfl_benchmarks() )
   {
-    //if ( benchmark.substr( 0, 4 ) == "leon" ) continue;
-
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
-    //if ( aig.num_gates() > 20000 ) continue;
 
-    simresub_params ps;
-    simresub_stats st;
+    resubstitution_params ps;
+    resubstitution_stats st;
 
-    ps.max_pis = 10u;
-    ps.max_divisors = 150u;
-    ps.max_inserts = 1u;
-    //ps.progress = true;
+    //ps.pattern_filename = "256sa1obs/" + benchmark + ".pat";
+    ps.max_pis = 10;
+    ps.max_inserts = 1;
+    //ps.verbose = true;
 
-    bool useExternal = true;
-    //ps.write_pats = "patCEX/" + benchmark + ".pat";
-
-    pattern_generation_stats st_pat;
-    partial_simulator sim(1,1);
-    if ( useExternal )
-    {
-      sim = partial_simulator( "1024sa1/" + benchmark + ".pat" );
-      //sim = partial_simulator( "patCEX/" + benchmark + ".pat" );
-    }
-    else
-    {
-      pattern_generation_params ps_pat;
-      ps_pat.random_seed = 1689;
-      //ps_pat.num_stuck_at = 0;
-      //ps_pat.odc_levels = 5;
-      ps_pat.progress = true;
-      sim = partial_simulator( aig.num_pis(), 256 );
-      pattern_generation( aig, sim, ps_pat, &st_pat );
-    }
-
-    const uint32_t num_total_patterns = sim.num_bits();
-    const uint32_t size0 = aig.num_gates();
-    sim_resubstitution( aig, sim, ps, &st );
+    const uint32_t size_before = aig.num_gates();
+    sim_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
-    const auto cec = abc_cec( aig, benchmark );
-    exp( benchmark, aig.num_pis(), size0, size0 - aig.num_gates(), num_total_patterns, st.num_cex, st.num_resub, to_seconds( st.time_total ), to_seconds( st.time_divs ) + to_seconds( st.time_mffc ) + to_seconds( st.time_cut ) + to_seconds( st.time_callback ), to_seconds( st.time_sim ), to_seconds( st.time_sat ), to_seconds( st.time_compute_function ), cec );
+    const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
+
+    exp( benchmark, size_before, size_before - aig.num_gates(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();

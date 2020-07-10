@@ -28,9 +28,8 @@
   \brief Generalized resubstitution framework
 
   TODOs:
-  - Integrate ordinary sim_resub & pat_gen, move related code to sim_resub.hpp
+  - ordinary sim_resub functor
   - (ODC consideration for sim_resub)
-  - Provide some examples of composed algorithms (partly done)
   - Documentation
   - Adjust the interface of window-based resub functors
   - Replace resubstitution.hpp, and adjust other algorithms depending
@@ -55,7 +54,6 @@
 #pragma once
 
 #include <vector>
-#include <algorithm>
 
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
@@ -65,13 +63,6 @@
 #include "detail/resub_utils.hpp"
 #include "dont_cares.hpp"
 #include "reconv_cut2.hpp"
-
-#include "../utils/abc_resub.hpp"
-#include <mockturtle/algorithms/circuit_validator.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
-
-//#include <mockturtle/networks/aig.hpp>
-//#include <mockturtle/algorithms/aig_resub.hpp>
 
 namespace mockturtle
 {
@@ -109,22 +100,34 @@ struct resubstitution_params
   /*! \brief Use don't cares for optimization. */
   bool use_dont_cares{false};
 
-  /* \brief Window size for don't cares calculation */
+  /* \brief Window size for don't cares calculation. */
   uint32_t window_size{12u};
 
   /****** simulation-based resub engine ******/
 
-  /*! \brief Maximum number of divisors to consider in k-resub engine. */
-  uint32_t max_divisors_k{50};
+  /*! \brief Whether to use pre-generated patterns stored in a file.
+   * If not, by default, 1024 random pattern + 1x stuck-at patterns will be generated.
+   */
+  std::optional<std::string> pattern_filename{};
 
-  /*! \brief Maximum number of trials to call the k-resub engine. */
-  uint32_t num_trials_k{100};
+  /*! \brief Whether to save the appended patterns (with CEXs) into file. */
+  std::optional<std::string> save_patterns{};
 
   /*! \brief Conflict limit for the SAT solver. */
   uint32_t conflict_limit{1000};
 
   /*! \brief Random seed for the SAT solver (influences the randomness of counter-examples). */
   uint32_t random_seed{0};
+
+  /*! \brief Whether to utilize ODC, and how many levels. 0 = no. -1 = Consider TFO until PO. */
+  int odc_levels{0};
+
+  /*! \brief Maximum number of trials to call the functor. */
+  uint32_t max_trials{100};
+
+  /* k-resub engine specific */
+  /*! \brief Maximum number of divisors to consider in k-resub engine. */
+  uint32_t max_divisors_k{50};
 };
 
 /*! \brief Statistics for resubstitution.
@@ -546,294 +549,6 @@ private:
   window_simulator<Ntk, TTsim> sim;
 }; /* window_based_resub_engine */
 
-struct sim_resub_stats
-{
-  /*! \brief Time for simulation. */
-  stopwatch<>::duration time_sim{0};
-
-  /*! \brief Time for SAT solving. */
-  stopwatch<>::duration time_sat{0};
-
-  /*! \brief Time for finding dependency function. */
-  stopwatch<>::duration time_compute_function{0};
-
-  /*! \brief Time for interfacing with ABC. */
-  stopwatch<>::duration time_interface{0};
-
-  /*! \brief Number of counter-examples. */
-  uint32_t num_cex{0};
-
-  /*! \brief Number of successful resubstitutions. */
-  uint32_t num_resub{0};
-
-  /*! \brief Number of SAT solver timeout. */
-  uint32_t num_timeout{0};
-
-  void report() const
-  {
-    // clang-format off
-    std::cout <<              "[i] <ResubEngine: simulation_based_resub_engine>\n";
-    std::cout <<              "[i]     ========  Stats  ========\n";
-    std::cout << fmt::format( "[i]     #resub   = {:6d}\n", num_resub );
-    std::cout << fmt::format( "[i]     #CEX     = {:6d}\n", num_cex );
-    std::cout << fmt::format( "[i]     #timeout = {:6d}\n", num_timeout );
-    std::cout <<              "[i]     ======== Runtime ========\n";
-    std::cout << fmt::format( "[i]     simulation:       {:>5.2f} secs\n", to_seconds( time_sim ) );
-    std::cout << fmt::format( "[i]     SAT:              {:>5.2f} secs\n", to_seconds( time_sat ) );
-    std::cout << fmt::format( "[i]     compute function: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
-    std::cout << fmt::format( "[i]     interfacing:      {:>5.2f} secs\n", to_seconds( time_interface ) );
-    std::cout <<              "[i]     =========================\n\n";
-    // clang-format on
-  }
-};
-
-template<class Ntk>
-class simulation_based_resub_engine
-{
-public:
-  static constexpr bool require_leaves_and_MFFC = false;
-  using stats = sim_resub_stats;
-
-  using node = typename Ntk::node;
-  using signal = typename Ntk::signal;
-  using TT = unordered_node_map<kitty::partial_truth_table, Ntk>;
-  using validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>;
-  using vgate = typename validator_t::gate;
-  using fanin = typename vgate::fanin;
-  using gtype = typename validator_t::gate_type;
-
-  explicit simulation_based_resub_engine( Ntk& ntk, resubstitution_params const& ps, stats& st )
-      : ntk( ntk ), ps( ps ), st( st ), tts( ntk ), sim( ntk.num_pis(), 256 ), validator( ntk, vps )
-  {
-    vps.conflict_limit = ps.conflict_limit;
-    vps.random_seed = ps.random_seed;
-
-    ntk._events->on_add.emplace_back( [&]( const auto& n ) {
-      call_with_stopwatch( st.time_sim, [&]() {
-        simulate_node<Ntk>( ntk, n, tts, sim );
-      });
-    } );
-
-    /* first simulation: the whole circuit; from 0 bits. */
-    call_with_stopwatch( st.time_sim, [&]() {
-      simulate_nodes<Ntk>( ntk, tts, sim );
-    });
-
-    call_with_stopwatch( st.time_interface, [&]() {
-      abcresub::Abc_ResubPrepareManager( sim.compute_constant( false ).num_blocks() );
-    });
-  }
-
-  ~simulation_based_resub_engine()
-  {
-    call_with_stopwatch( st.time_interface, [&]() {
-      abcresub::Abc_ResubPrepareManager( 0 );
-    });
-  }
-
-  std::optional<signal> run( node const& n, std::vector<node> const& divs, uint32_t potential_gain, uint32_t& last_gain )
-  {
-    uint32_t size = 0;
-    const auto g = call_with_stopwatch( st.time_compute_function, [&]() {
-      return resub_divk( n, divs, std::min( int( potential_gain ) - 1, int( ps.max_inserts ) ), size );
-    });
-    if ( g )
-    {
-      last_gain = potential_gain - size;
-    }
-    return g;
-  }
-
-private:
-  void found_cex()
-  {
-    ++st.num_cex;
-    sim.add_pattern( validator.cex );
-
-    /* re-simulate the whole circuit (for the last block) when a block is full */
-    if ( sim.num_bits() % 64 == 0 )
-    {
-      call_with_stopwatch( st.time_sim, [&]() {
-        simulate_nodes<Ntk>( ntk, tts, sim, false );
-      } );
-
-      call_with_stopwatch( st.time_interface, [&]() {
-        abcresub::Abc_ResubPrepareManager( sim.compute_constant( false ).num_blocks() );
-      } );
-    }
-  }
-
-  void check_tts( node const& n )
-  {
-    if ( tts[n].num_bits() != sim.num_bits() )
-    {
-      call_with_stopwatch( st.time_sim, [&]() {
-        simulate_node<Ntk>( ntk, n, tts, sim );
-      } );
-    }
-  }
-
-  std::optional<signal> resub_divk( node const& root, std::vector<node> const& divs, uint32_t num_inserts, uint32_t& size )
-  {
-    for ( auto j = 0u; j < ps.num_trials_k; ++j )
-    {
-      check_tts( root );
-      for ( auto i = 0u; i < divs.size(); ++i )
-      {
-        check_tts( divs[i] );
-      }
-
-      call_with_stopwatch( st.time_interface, [&]() {
-        abcresub::Abc_ResubPrepareManager( sim.compute_constant( false ).num_blocks() );
-      });
-      abc_resub rs( 2ul + divs.size(), tts[root].num_blocks(), ps.max_divisors_k );
-      call_with_stopwatch( st.time_interface, [&]() {
-        rs.add_root( root, tts );
-        rs.add_divisors( std::begin( divs ), std::end( divs ), tts );
-      });
-
-      auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
-        if constexpr ( std::is_same<typename Ntk::base_type, xag_network>::value )
-        {
-          return rs.compute_function( num_inserts, true );
-        }
-        else
-        {
-          return rs.compute_function( num_inserts, false );
-        }
-      } );
-
-      if ( res )
-      {
-        auto const& index_list = *res;
-        if ( index_list.size() == 1u ) /* div0 or constant */
-        {
-          const auto valid = call_with_stopwatch( st.time_sat, [&]() {
-            if ( index_list[0] < 2 )
-            {
-              return validator.validate( root, ntk.get_constant( bool( index_list[0] ) ) );
-            }
-            assert( index_list[0] >= 4 );
-            return validator.validate( root, bool( index_list[0] % 2 ) ? !ntk.make_signal( divs[( index_list[0] >> 1u ) - 2u] ) : ntk.make_signal( divs[( index_list[0] >> 1u ) - 2u] ) );
-          } );
-
-          if ( !valid ) /* timeout */
-          {
-            ++st.num_timeout;
-            break;
-          }
-          else
-          {
-            if ( *valid )
-            {
-              size = 0u;
-              if ( index_list[0] < 2 )
-              {
-                return ntk.get_constant( bool( index_list[0] ) );
-              }
-              else
-              {
-                return bool( index_list[0] % 2 ) ? !ntk.make_signal( divs[( index_list[0] >> 1u ) - 2u] ) : ntk.make_signal( divs[( index_list[0] >> 1u ) - 2u] );
-              }
-            }
-            else
-            {
-              found_cex();
-              continue;
-            }
-          }
-        }
-
-        uint64_t const num_gates = ( index_list.size() - 1u ) / 2u;
-        std::vector<vgate> gates;
-        gates.reserve( num_gates );
-        size = 0u;
-
-        call_with_stopwatch( st.time_interface, [&]() {
-          for ( auto i = 0u; i < num_gates; ++i )
-          {
-            fanin f0{uint32_t( ( index_list[2 * i] >> 1u ) - 2u ), bool( index_list[2 * i] % 2 )};
-            fanin f1{uint32_t( ( index_list[2 * i + 1u] >> 1u ) - 2u ), bool( index_list[2 * i + 1u] % 2 )};
-            gates.emplace_back( vgate{{f0, f1}, f0.index < f1.index ? gtype::AND : gtype::XOR} );
-
-            if constexpr ( std::is_same<typename Ntk::base_type, xag_network>::value )
-            {
-              ++size;
-            }
-            else
-            {
-              size += ( gates[i].type == gtype::AND ) ? 1u : 3u;
-            }
-          }
-        });
-        bool const out_neg = bool( index_list.back() % 2 );
-        assert( size <= num_inserts );
-
-        const auto valid = call_with_stopwatch( st.time_sat, [&]() {
-          return validator.validate( root, std::begin( divs ), std::end( divs ), gates, out_neg );
-        } );
-
-        if ( !valid ) /* timeout */
-        {
-          ++st.num_timeout;
-          break;
-        }
-        else
-        {
-          if ( *valid )
-          {
-            std::vector<signal> ckt;
-
-            call_with_stopwatch( st.time_interface, [&]() {
-              for ( auto i = 0u; i < divs.size(); ++i )
-              {
-                ckt.emplace_back( ntk.make_signal( divs[i] ) );
-              }
-
-              for ( auto g : gates )
-              {
-                auto const f0 = g.fanins[0].inverted ? !ckt[g.fanins[0].index] : ckt[g.fanins[0].index];
-                auto const f1 = g.fanins[1].inverted ? !ckt[g.fanins[1].index] : ckt[g.fanins[1].index];
-                if ( g.type == gtype::AND )
-                {
-                  ckt.emplace_back( ntk.create_and( f0, f1 ) );
-                }
-                else if ( g.type == gtype::XOR )
-                {
-                  ckt.emplace_back( ntk.create_xor( f0, f1 ) );
-                }
-              }
-            });
-
-            return out_neg ? !ckt.back() : ckt.back();
-          }
-          else
-          {
-            found_cex();
-          }
-        }
-      }
-      else /* loop until no result can be found by the engine */
-      {
-        return std::nullopt;
-      }
-    }
-
-    return std::nullopt;
-  }
-
-private:
-  Ntk& ntk;
-  resubstitution_params const& ps;
-  stats& st;
-
-  TT tts;
-  partial_simulator sim;
-
-  validator_params vps;
-  validator_t validator;
-}; /* simulation_based_resub_engine */
-
 /*! \brief The top-level resubstitution flow.
  *
  * **Template arguments:**
@@ -1029,30 +744,60 @@ void default_resub( Ntk& ntk, resubstitution_params const& ps = {}, resubstituti
   depth_view<Ntk> depth_view{ntk};
   resub_view_t resub_view{depth_view};
 
-  using resub_impl_t = detail::resubstitution_impl<resub_view_t>;
-  using engine_st_t = typename resub_impl_t::engine_st_t;
-  using collector_st_t = typename resub_impl_t::collector_st_t;
-  resubstitution_stats st;
-  engine_st_t engine_st;
-  collector_st_t collector_st;
-
-  resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
-  p.run();
-
-  if ( ps.verbose )
+  if ( ps.max_pis == 8 )
   {
-    st.report();
-    engine_st.report();
-    collector_st.report();
+    using truthtable_t = kitty::static_truth_table<8>;
+    using truthtable_dc_t = kitty::dynamic_truth_table;
+    using engine_t = typename detail::window_based_resub_engine<resub_view_t, truthtable_t, truthtable_dc_t>;
+    using resub_impl_t = detail::resubstitution_impl<resub_view_t, engine_t>;
+    using engine_st_t = typename resub_impl_t::engine_st_t;
+    using collector_st_t = typename resub_impl_t::collector_st_t;
+    resubstitution_stats st;
+    engine_st_t engine_st;
+    collector_st_t collector_st;
+
+    resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
+    p.run();
+
+    if ( ps.verbose )
+    {
+      st.report();
+      collector_st.report();
+      engine_st.report();
+    }
+
+    if ( pst )
+    {
+      *pst = st;
+    }
   }
-
-  if ( pst )
+  else
   {
-    *pst = st;
+    using resub_impl_t = detail::resubstitution_impl<resub_view_t>;
+    using engine_st_t = typename resub_impl_t::engine_st_t;
+    using collector_st_t = typename resub_impl_t::collector_st_t;
+    resubstitution_stats st;
+    engine_st_t engine_st;
+    collector_st_t collector_st;
+
+    resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
+    p.run();
+
+    if ( ps.verbose )
+    {
+      st.report();
+      collector_st.report();
+      engine_st.report();
+    }
+
+    if ( pst )
+    {
+      *pst = st;
+    }
   }
 }
 
-#if 0 // To compile this function, you need to include aig_resub.hpp, but NOT include resubstitution.hpp in it.
+#if 0 // Move to their corresponding files
 /*! \brief Window-based Boolean resubstitution on AIG. */
 void aig_resub( aig_network& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
@@ -1081,7 +826,6 @@ void aig_resub( aig_network& ntk, resubstitution_params const& ps = {}, resubsti
     *pst = st;
   }
 }
-#endif
 
 /*! \brief Simulation-based Boolean resubstitution. */
 template<class Ntk>
@@ -1105,8 +849,8 @@ void sim_resub( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_s
   if ( ps.verbose )
   {
     st.report();
-    engine_st.report();
     collector_st.report();
+    engine_st.report();
   }
 
   if ( pst )
@@ -1114,4 +858,5 @@ void sim_resub( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_s
     *pst = st;
   }
 }
+#endif
 } /* namespace mockturtle */
