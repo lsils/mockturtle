@@ -644,7 +644,7 @@ public:
 
       /* try to find a resubstitution with the divisors */
       auto g = call_with_stopwatch( st.time_resub, [&]() {
-        if constexpr ( resub_engine.require_leaves_and_MFFC ) /* window-based */
+        if constexpr ( ResubEngine::require_leaves_and_MFFC ) /* window-based */
         {
           return resub_engine.run( n, collector.leaves, collector.divs, collector.MFFC, potential_gain, last_gain );
         }

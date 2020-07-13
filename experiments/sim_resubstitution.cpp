@@ -57,7 +57,7 @@ int main()
     //ps.verbose = true;
 
     const uint32_t size_before = aig.num_gates();
-    sim_resub( aig, ps, &st );
+    sim_resubstitution( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
     const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );

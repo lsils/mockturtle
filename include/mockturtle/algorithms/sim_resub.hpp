@@ -482,7 +482,7 @@ private:
  * This can be read in from a file or generated with `pattern_generation`.
  */
 template<class Ntk>
-void sim_resub( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
+void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
   static_assert( std::is_same<typename Ntk::base_type, aig_network>::value || std::is_same<typename Ntk::base_type, xag_network>::value, "Currently only supports AIG and XAG" );
 
