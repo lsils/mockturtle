@@ -720,7 +720,7 @@ private:
 
 /*! \brief Window-based Boolean resubstitution with default resub functor (only div0). */
 template<class Ntk>
-void default_resub( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
+void default_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );

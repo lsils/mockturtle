@@ -40,7 +40,7 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "sim_resub", "benchmark", "size", "gain", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "sim_resubstitution", "benchmark", "size", "gain", "runtime", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -51,10 +51,8 @@ int main()
     resubstitution_params ps;
     resubstitution_stats st;
 
-    //ps.pattern_filename = "256sa1obs/" + benchmark + ".pat";
-    ps.max_pis = 10;
+    //ps.pattern_filename = "1024sa1/" + benchmark + ".pat";
     ps.max_inserts = 1;
-    //ps.verbose = true;
 
     const uint32_t size_before = aig.num_gates();
     sim_resubstitution( aig, ps, &st );
