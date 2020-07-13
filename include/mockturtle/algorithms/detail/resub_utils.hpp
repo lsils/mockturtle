@@ -35,6 +35,10 @@
 
 #pragma once
 
+#include <vector>
+#include <optional>
+#include <iostream>
+
 #include <kitty/constructors.hpp>
 
 namespace mockturtle::detail

@@ -28,11 +28,10 @@
   \brief Generalized resubstitution framework
 
   TODOs:
-  - ordinary sim_resub functor
-  - Adjust the interface & stats of window-based resub functors
   - Documentation
 
   More TODOs:
+  - Adjust the interface & stats of window-based resub functors
   - (ODC consideration for sim_resub)
   - (Unify different MFFC implementations)
   - Integrate node_resynthesis engines
