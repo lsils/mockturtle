@@ -27,9 +27,6 @@
   \file resubstitution.hpp
   \brief Generalized resubstitution framework
 
-  TODOs:
-  - Documentation
-
   More TODOs:
   - Adjust the interface & stats of window-based resub functors
   - (ODC consideration for sim_resub)
@@ -94,36 +91,36 @@ struct resubstitution_params
 
   /****** window-based resub engine ******/
 
-  /*! \brief Use don't cares for optimization. */
+  /*! \brief Use don't cares for optimization. Only used by window-based resub engine. */
   bool use_dont_cares{false};
 
-  /* \brief Window size for don't cares calculation. */
+  /* \brief Window size for don't cares calculation. Only used by window-based resub engine. */
   uint32_t window_size{12u};
 
   /****** simulation-based resub engine ******/
 
   /*! \brief Whether to use pre-generated patterns stored in a file.
-   * If not, by default, 1024 random pattern + 1x stuck-at patterns will be generated.
+   * If not, by default, 1024 random pattern + 1x stuck-at patterns will be generated. Only used by simulation-based resub engine.
    */
   std::optional<std::string> pattern_filename{};
 
-  /*! \brief Whether to save the appended patterns (with CEXs) into file. */
+  /*! \brief Whether to save the appended patterns (with CEXs) into file. Only used by simulation-based resub engine. */
   std::optional<std::string> save_patterns{};
 
-  /*! \brief Conflict limit for the SAT solver. */
+  /*! \brief Conflict limit for the SAT solver. Only used by simulation-based resub engine. */
   uint32_t conflict_limit{1000};
 
-  /*! \brief Random seed for the SAT solver (influences the randomness of counter-examples). */
+  /*! \brief Random seed for the SAT solver (influences the randomness of counter-examples). Only used by simulation-based resub engine. */
   uint32_t random_seed{0};
 
-  /*! \brief Whether to utilize ODC, and how many levels. 0 = no. -1 = Consider TFO until PO. */
+  /*! \brief Whether to utilize ODC, and how many levels. 0 = no. -1 = Consider TFO until PO. Only used by simulation-based resub engine. */
   int odc_levels{0};
 
-  /*! \brief Maximum number of trials to call the functor. */
+  /*! \brief Maximum number of trials to call the resub functor. Only used by simulation-based resub engine. */
   uint32_t max_trials{100};
 
   /* k-resub engine specific */
-  /*! \brief Maximum number of divisors to consider in k-resub engine. */
+  /*! \brief Maximum number of divisors to consider in k-resub engine. Only used by `abc_resub_functor` with simulation-based resub engine. */
   uint32_t max_divisors_k{50};
 };
 
@@ -146,13 +143,13 @@ struct resubstitution_stats
   /*! \brief Accumulated runtime of the callback function. */
   stopwatch<>::duration time_callback{0};
 
-  /*! \brief Total number of divisors  */
+  /*! \brief Total number of divisors. */
   uint64_t num_total_divisors{0};
 
-  /*! \brief Total number of gain  */
+  /*! \brief Total number of gain. */
   uint64_t estimated_gain{0};
 
-  /*! \brief Initial network size (before resubstitution) */
+  /*! \brief Initial network size (before resubstitution). */
   uint64_t initial_size{0};
 
   void report() const
@@ -218,6 +215,23 @@ struct default_collector_stats
   }
 };
 
+/*! \brief Prepare the three public data members `leaves`, `divs` and `MFFC`
+ * to be ready for usage.
+ *
+ * `leaves`: sufficient support for all divisors
+ * `divs`: divisor nodes that can be used for resubstitution
+ * `MFFC`: MFFC nodes which are needed to do simulation from
+ * `leaves`, through `divs` and `MFFC` until the root node,
+ * but should be excluded from resubstitution.
+ * The last element of `MFFC` is always the root node.
+ *
+ * `divs` and `MFFC` are in topological order. 
+ *
+ * \param MffcMgr Manager class to compute the potential gain if a 
+ * resubstitution exists (number of MFFC nodes when the cost function is circuit size).
+ * \param MffcRes Typename of the return value of `MffcMgr`.
+ * \param CutMgr Manager class to compute the cut to construct the window.
+ */
 template<class Ntk, class MffcMgr = node_mffc_inside<Ntk>, typename MffcRes = uint32_t, class CutMgr = cut_manager<Ntk>>
 class default_divisor_collector
 {
@@ -232,18 +246,6 @@ public:
   {
   }
 
-  /* Prepare the three public data members `leaves`, `divs` and `MFFC`
-   * to be ready for usage.
-   *
-   * `leaves`: sufficient support for all divisors
-   * `divs`: divisor nodes that can be used for resubstitution
-   * `MFFC`: MFFC nodes which are needed to do simulation from
-   * `leaves`, through `divs` and `MFFC` until the root node,
-   * but should be excluded from resubstitution.
-   * The last element of `MFFC` is always the root node.
-   *
-   * `divs` and `MFFC` are in topological order. 
-   */
   bool run( node const& n, mffc_result_t& potential_gain )
   {
     /* skip nodes with many fanouts */
@@ -457,6 +459,32 @@ struct window_resub_stats
   }
 };
 
+/*! \brief Window-based resubstitution engine.
+ * 
+ * This engine computes the complete truth tables of nodes within a window
+ * with the leaves as inputs. It does not verify the resubstitution candidates
+ * given by the resubstitution functor. This engine requires the divisor
+ * collector to prepare three data members: `leaves`, `divs` and `MFFC`.
+ *
+ * Required interfaces of the resubstitution functor:
+ * - Constructor: `resub_fn( Ntk const& ntk, Simulator const& sim,`
+ * `std::vector<node> const& divs, uint32_t num_divs, default_resub_functor_stats& st )`
+ * - A public `operator()`: `std::optional<signal> operator()`
+ * `( node const& root, TTdc care, uint32_t required, uint32_t max_inserts,`
+ * `uint32_t potential_gain, uint32_t& last_gain ) const`
+ *
+ * Compatible resubstitution functors implemented:
+ * - `default_resub_functor`
+ * - `aig_resub_functor`
+ * - `mig_resub_functor`
+ * - `xmg_resub_functor`
+ * - `xag_resub_functor`
+ *
+ * \param TTsim Truth table type for simulation.
+ * \param TTdc Truth table type for don't-care computation.
+ * \param ResubFn Resubstitution functor to compute the resubstitution.
+ * \param MffcRes Typename of `potential_gain` needed by the resubstitution functor.
+ */
 template<class Ntk, class TTsim, class TTdc = kitty::dynamic_truth_table, class ResubFn = default_resub_functor<Ntk, window_simulator<Ntk, TTsim>, TTdc>, typename MffcRes = uint32_t>
 class window_based_resub_engine
 {
@@ -546,15 +574,14 @@ private:
   window_simulator<Ntk, TTsim> sim;
 }; /* window_based_resub_engine */
 
-/*! \brief The top-level resubstitution flow.
+/*! \brief The top-level resubstitution framework.
  *
- * **Template arguments:**
- * - ResubEngine: The engine that computes the resubtitution for a given root
+ * \param ResubEngine The engine that computes the resubtitution for a given root
  * node and divisors. One can choose from `window_based_resub_engine` which
  * does complete simulation within small windows, or `simulation_based_resub_engine`
  * which does partial simulation on the whole circuit.
  *
- * - DivCollector: Collects divisors near a given root node, and compute
+ * \param DivCollector Collects divisors near a given root node, and compute
  * the potential gain (MFFC size or its variants).
  * Currently only `default_divisor_collector` is implemented, but
  * a frontier-based approach may be integrated in the future.
@@ -574,6 +601,15 @@ public:
   using resub_callback_t = std::function<bool( Ntk&, node const&, signal const& )>;
   using mffc_result_t = typename ResubEngine::mffc_result_t;
 
+  /*! \brief Constructor of the top-level resubstitution framework.
+   *
+   * \param ntk The network to be optimized.
+   * \param ps Resubstitution parameters.
+   * \param st Top-level resubstitution statistics.
+   * \param engine_st Statistics of the resubstitution engine.
+   * \param collector_st Statistics of the divisor collector.
+   * \param callback Callback function when a resubstitution is found.
+   */
   explicit resubstitution_impl( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats& st, engine_st_t& engine_st, collector_st_t& collector_st, resub_callback_t const& callback = substitute_fn<Ntk> )
       : ntk( ntk ), ps( ps ), st( st ), engine_st( engine_st ), collector_st( collector_st ), callback( callback )
   {

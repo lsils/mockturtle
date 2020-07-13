@@ -30,6 +30,7 @@ v0.2 (not yet released)
     - Collapse network into single node per output network `#309 <https://github.com/lsils/mockturtle/pull/309>`_
     - Generic balancing algorithm `#340 <https://github.com/lsils/mockturtle/pull/340>`_
     - Check functional equivalence (`circuit_validator`) `#346 <https://github.com/lsils/mockturtle/pull/346>`_
+    - Restructured resubstitution framework (`resubstitution`), simulation-guided resubstitution (`sim_resub`) `#373 <https://github.com/lsils/mockturtle/pull/373>`_
 * Views:
     - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
     - Creates a CNF while creating a network (`cnf_view`) `#274 <https://github.com/lsils/mockturtle/pull/274>`_

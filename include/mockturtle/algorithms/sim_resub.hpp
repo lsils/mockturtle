@@ -742,6 +742,32 @@ struct sim_resub_stats
   }
 };
 
+/*! \brief Simulation-based resubstitution engine.
+ * 
+ * This engine simulates in the whole network and uses partial truth tables
+ * to find potential resubstitutions. It then formally verifies the resubstitution
+ * candidates given by the resubstitution functor. If the validation fails,
+ * a counter-example will be added to the simulation patterns, and the functor
+ * will be invoked again with updated truth tables, looping until it returns
+ * `std::nullopt`. This engine only requires the divisor collector to prepare `divs`.
+ *
+ * Please refer to the following paper for further details.
+ *
+ * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 / ICCAD 2020.
+ *
+ * Interfaces of the resubstitution functor:
+ * - Constructor: `resub_fn( Ntk const& ntk, resubstitution_params const& ps, stats& st,`
+ * `TT const& tts, node const& root, std::vector<node> const& divs, uint32_t const num_inserts )`
+ * - A public `operator()`: `std::optional<signal> operator()( uint32_t& size )`
+ *
+ * Compatible resubstitution functors implemented:
+ * - `sim_aig_resub_functor`: compute div0 and div1 resub by truth table comparison
+ * - `abc_resub_functor`: dependency function computation engine ported from ABC
+ *
+ * \param validator_t Specialization of `circuit_validator`.
+ * \param ResubFn Resubstitution functor to compute the resubstitution.
+ * \param MffcRes Typename of `potential_gain` needed by the resubstitution functor.
+ */
 template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = abc_resub_functor<Ntk, validator_t>, typename MffcRes = uint32_t>
 class simulation_based_resub_engine
 {
@@ -960,15 +986,6 @@ private:
 
 } /* namespace detail */
 
-/*! \brief Simulation-guided Boolean resubstitution algorithm.
- *
- * Please refer to [1] for details of the algorithm.
- *
- * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 / ICCAD 2020.
- *
- * \param sim Reference of a `partial_simulator` object where simulation patterns are stored.
- * This can be read in from a file or generated with `pattern_generation`.
- */
 template<class Ntk>
 void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
