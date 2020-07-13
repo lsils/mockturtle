@@ -261,11 +261,9 @@ public:
 
     /* collect the MFFC */
     MffcMgr mffc_mgr( ntk );
-    auto num_mffc = call_with_stopwatch( st.time_mffc, [&]() {
+    potential_gain = call_with_stopwatch( st.time_mffc, [&]() {
       return mffc_mgr.run( n, leaves, MFFC );
     });
-    assert( num_mffc == int( MFFC.size() ) ); // will not be true for MC cost function
-    potential_gain = num_mffc;
 
     /* collect the divisor nodes in the cut */
     bool div_comp_success = call_with_stopwatch( st.time_divs, [&]() {
@@ -751,13 +749,11 @@ void default_resub( Ntk& ntk, resubstitution_params const& ps = {}, resubstituti
   {
     using truthtable_t = kitty::static_truth_table<8>;
     using truthtable_dc_t = kitty::dynamic_truth_table;
-    using engine_t = detail::window_based_resub_engine<resub_view_t, truthtable_t, truthtable_dc_t>;
-    using resub_impl_t = detail::resubstitution_impl<resub_view_t, engine_t>;
-    using engine_st_t = typename resub_impl_t::engine_st_t;
-    using collector_st_t = typename resub_impl_t::collector_st_t;
+    using resub_impl_t = detail::resubstitution_impl<resub_view_t, typename detail::window_based_resub_engine<resub_view_t, truthtable_t, truthtable_dc_t>>;
+
     resubstitution_stats st;
-    engine_st_t engine_st;
-    collector_st_t collector_st;
+    typename resub_impl_t::engine_st_t engine_st;
+    typename resub_impl_t::collector_st_t collector_st;
 
     resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
     p.run();
@@ -777,11 +773,10 @@ void default_resub( Ntk& ntk, resubstitution_params const& ps = {}, resubstituti
   else
   {
     using resub_impl_t = detail::resubstitution_impl<resub_view_t>;
-    using engine_st_t = typename resub_impl_t::engine_st_t;
-    using collector_st_t = typename resub_impl_t::collector_st_t;
+
     resubstitution_stats st;
-    engine_st_t engine_st;
-    collector_st_t collector_st;
+    typename resub_impl_t::engine_st_t engine_st;
+    typename resub_impl_t::collector_st_t collector_st;
 
     resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
     p.run();

@@ -259,12 +259,13 @@ struct sim_resub_stats
   }
 };
 
-template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = abc_resub_functor<Ntk, validator_t>>
+template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = abc_resub_functor<Ntk, validator_t>, typename MffcRes = uint32_t>
 class simulation_based_resub_engine
 {
 public:
   static constexpr bool require_leaves_and_MFFC = false;
   using stats = sim_resub_stats<typename ResubFn::stats>;
+  using mffc_result_t = MffcRes;
 
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
@@ -489,14 +490,11 @@ void sim_resub( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_s
   depth_view<Ntk> depth_view{ntk};
   resub_view_t resub_view{depth_view};
 
-  //using resub_functor_t = typename detail::abc_resub_functor<Ntk, kitty::partial_truth_table>;
-  using resub_engine_t = typename detail::simulation_based_resub_engine<resub_view_t>;
-  using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, resub_engine_t>;
-  using engine_st_t = typename resub_impl_t::engine_st_t;
-  using collector_st_t = typename resub_impl_t::collector_st_t;
+  using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t>>;
+
   resubstitution_stats st;
-  engine_st_t engine_st;
-  collector_st_t collector_st;
+  typename resub_impl_t::engine_st_t engine_st;
+  typename resub_impl_t::collector_st_t collector_st;
 
   resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
   p.run();

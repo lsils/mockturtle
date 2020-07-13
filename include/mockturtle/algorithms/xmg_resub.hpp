@@ -318,15 +318,11 @@ void xmg_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
 
   using truthtable_t = kitty::dynamic_truth_table;
   using truthtable_dc_t = kitty::dynamic_truth_table;
-  using simulator_t = detail::window_simulator<resub_view_t, truthtable_t>;
-  using resubstitution_functor_t = xmg_resub_functor<resub_view_t, simulator_t, truthtable_dc_t>;
-  using engine_t = detail::window_based_resub_engine<resub_view_t, truthtable_t, truthtable_dc_t, resubstitution_functor_t>;
-  using resub_impl_t = detail::resubstitution_impl<resub_view_t, engine_t>;
-  using engine_st_t = typename resub_impl_t::engine_st_t;
-  using collector_st_t = typename resub_impl_t::collector_st_t;
+  using resub_impl_t = detail::resubstitution_impl<resub_view_t, typename detail::window_based_resub_engine<resub_view_t, truthtable_t, truthtable_dc_t, xmg_resub_functor<resub_view_t, typename detail::window_simulator<resub_view_t, truthtable_t>, truthtable_dc_t>>>;
+
   resubstitution_stats st;
-  engine_st_t engine_st;
-  collector_st_t collector_st;
+  typename resub_impl_t::engine_st_t engine_st;
+  typename resub_impl_t::collector_st_t collector_st;
 
   resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
   p.run();
