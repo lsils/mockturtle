@@ -4,7 +4,7 @@
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/algorithms/pattern_generation.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xag.hpp>
 
 #include <kitty/bit_operations.hpp>
 
