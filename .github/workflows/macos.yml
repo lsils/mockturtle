@@ -39,7 +39,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=/usr/local/opt/gcc/bin/g++-9 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=/usr/local/opt/gcc@9/bin/g++-9 -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |
