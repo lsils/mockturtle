@@ -7,6 +7,7 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
@@ -437,6 +438,8 @@ TEST_CASE( "compute values in AIGs", "[aig]" )
 
   CHECK( has_compute_v<aig_network, bool> );
   CHECK( has_compute_v<aig_network, kitty::dynamic_truth_table> );
+  CHECK( has_compute_v<aig_network, kitty::partial_truth_table> );
+  CHECK( has_compute_inplace_v<aig_network, kitty::partial_truth_table> );
 
   const auto x1 = aig.create_pi();
   const auto x2 = aig.create_pi();
@@ -445,17 +448,73 @@ TEST_CASE( "compute values in AIGs", "[aig]" )
   aig.create_po( f1 );
   aig.create_po( f2 );
 
-  std::vector<bool> values{{true, false}};
+  {
+    std::vector<bool> values{{true, false}};
 
-  CHECK( aig.compute( aig.get_node( f1 ), values.begin(), values.end() ) == false );
-  CHECK( aig.compute( aig.get_node( f2 ), values.begin(), values.end() ) == true );
+    CHECK( aig.compute( aig.get_node( f1 ), values.begin(), values.end() ) == false );
+    CHECK( aig.compute( aig.get_node( f2 ), values.begin(), values.end() ) == true );
+  }
 
-  std::vector<kitty::dynamic_truth_table> xs{2, kitty::dynamic_truth_table( 2 )};
-  kitty::create_nth_var( xs[0], 0 );
-  kitty::create_nth_var( xs[1], 1 );
+  {
+    std::vector<kitty::dynamic_truth_table> xs{2, kitty::dynamic_truth_table( 2 )};
+    kitty::create_nth_var( xs[0], 0 );
+    kitty::create_nth_var( xs[1], 1 );
 
-  CHECK( aig.compute( aig.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
-  CHECK( aig.compute( aig.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
+    CHECK( aig.compute( aig.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
+    CHECK( aig.compute( aig.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
+  }
+
+  {
+    std::vector<kitty::partial_truth_table> xs{2};
+
+    CHECK( aig.compute( aig.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
+    CHECK( aig.compute( aig.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 0 ); xs[1].add_bit( 1 );
+
+    CHECK( aig.compute( aig.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
+    CHECK( aig.compute( aig.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 1 ); xs[1].add_bit( 0 );
+
+    CHECK( aig.compute( aig.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
+    CHECK( aig.compute( aig.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 0 ); xs[1].add_bit( 0 );
+
+    CHECK( aig.compute( aig.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
+    CHECK( aig.compute( aig.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 1 ); xs[1].add_bit( 1 );
+
+    CHECK( aig.compute( aig.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
+    CHECK( aig.compute( aig.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
+  }
+
+  {
+    std::vector<kitty::partial_truth_table> xs{2};
+    kitty::partial_truth_table result;
+
+    xs[0].add_bit( 0 ); xs[1].add_bit( 1 );
+
+    aig.compute( aig.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    aig.compute( aig.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 1 ); xs[1].add_bit( 0 );
+
+    aig.compute( aig.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    aig.compute( aig.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 0 ); xs[1].add_bit( 0 );
+
+    aig.compute( aig.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    aig.compute( aig.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 1 ); xs[1].add_bit( 1 );
+
+    aig.compute( aig.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    aig.compute( aig.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+  }
 }
 
 TEST_CASE( "custom node values in AIGs", "[aig]" )

@@ -1553,6 +1553,21 @@ template<class Ntk, typename T>
 inline constexpr bool has_compute_v = has_compute<Ntk, T>::value;
 #pragma endregion
 
+#pragma region has_compute_inplace
+template<class Ntk, typename T, class = void>
+struct has_compute_inplace : std::false_type
+{
+};
+
+template<class Ntk, typename T>
+struct has_compute_inplace<Ntk, T, std::void_t<decltype( std::declval<Ntk>().compute( std::declval<node<Ntk>>(), std::declval<T&>(), std::begin( std::vector<T>() ), std::end( std::vector<T>() ) ) )>> : std::true_type
+{
+};
+
+template<class Ntk, typename T>
+inline constexpr bool has_compute_inplace_v = has_compute_inplace<Ntk, T>::value;
+#pragma endregion
+
 #pragma region has_has_mapping
 template<class Ntk, class = void>
 struct has_has_mapping : std::false_type
@@ -1937,5 +1952,8 @@ using iterates_over_t = std::enable_if_t<std::is_same_v<typename Iterator::value
  */
 template<typename Iterator>
 using iterates_over_truth_table_t = std::enable_if_t<kitty::is_truth_table<typename Iterator::value_type>::value, typename Iterator::value_type>;
+
+template<class Iterator, typename T>
+inline constexpr bool iterates_over_v = std::is_same_v<typename Iterator::value_type, T>;
 
 } /* namespace mockturtle */
