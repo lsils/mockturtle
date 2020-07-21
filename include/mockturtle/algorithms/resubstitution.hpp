@@ -27,19 +27,6 @@
   \file resubstitution.hpp
   \brief Generalized resubstitution framework
 
-  More TODOs:
-  - Adjust the interface & stats of window-based resub functors
-  - (ODC consideration for sim_resub)
-  - (Unify different MFFC implementations)
-  - Integrate node_resynthesis engines
-  - Integrate frontier-based exploration
-  - Provide possibility of different cost functions:
-      If it's a different way of counting circuit size, simply replace
-      `node_mffc_inside`.
-      If it's circuit depth, we will need another `divisor_collector`
-      implementation, which does not exclude MFFC nodes, and computes
-      the desired `potential_gain`.
-      The `resub_engine`s also need to be adjusted.
 
   \author Heinz Riener
   \author Siang-Yun Lee
