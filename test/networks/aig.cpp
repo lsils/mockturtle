@@ -464,7 +464,7 @@ TEST_CASE( "compute values in AIGs", "[aig]" )
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{2, kitty::partial_truth_table( 4 )};
+    std::vector<kitty::partial_truth_table> xs{2};
 
     CHECK( aig.compute( aig.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( aig.compute( aig.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );

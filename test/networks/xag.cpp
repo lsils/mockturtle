@@ -536,7 +536,7 @@ TEST_CASE( "node and signal iteration in an xag", "[xag]" )
   CHECK( mask == 2 );
 }
 
-TEST_CASE( "compute values in xags", "[xag]" )
+TEST_CASE( "compute values in XAGs", "[xag]" )
 {
   xag_network xag;
 
@@ -569,7 +569,7 @@ TEST_CASE( "compute values in xags", "[xag]" )
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{2, kitty::partial_truth_table( 4 )};
+    std::vector<kitty::partial_truth_table> xs{2};
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );

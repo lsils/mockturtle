@@ -497,7 +497,7 @@ TEST_CASE( "compute values in MIGs", "[mig]" )
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{3, kitty::partial_truth_table( 8 )};
+    std::vector<kitty::partial_truth_table> xs{3};
 
     CHECK( mig.compute( mig.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( mig.compute( mig.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
