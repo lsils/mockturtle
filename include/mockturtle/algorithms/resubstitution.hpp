@@ -699,7 +699,8 @@ public:
 
       /* update network */
       call_with_stopwatch( st.time_callback, [&]() {
-        return callback( ntk, n, *g );
+        ntk.substitute_node( n, *g );
+        //return callback( ntk, n, *g );
       } );
 
       return true; /* next */
