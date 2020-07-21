@@ -51,7 +51,12 @@ struct pattern_generation_params
   /*! \brief Whether to remove constant nodes. Requires `substitute_node`. */
   bool substitute_const{false};
 
-  /*! \brief Number of patterns each node should have for both values. */
+  /*! \brief Number of patterns each node should have for both values. 
+   * 
+   * When this parameter is set to greater than 1, and if the network has more
+   * than 2048 PIs, the `BUFFER_SIZE` in `lib/bill/sat/interface/abc_bsat2.hpp`
+   * has to be increased to at least `ntk.num_pis()`.
+   */
   uint32_t num_stuck_at{1};
 
   /*! \brief Whether to consider observability, and how many levels. 0 = no. -1 = Consider TFO until PO. */
@@ -434,7 +439,7 @@ private:
  * stuck-at value checking and observability checking. Please refer to
  * [1] for details of the algorithm and its purpose.
  *
- * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 / ICCAD 2020.
+ * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 (arXiv:2007.02579).
  *
  * \param sim Reference of a `partial_simulator` object where the generated 
  * patterns will be stored. It can be empty (`partial_simulator( ntk.num_pis(), 0 )`)
