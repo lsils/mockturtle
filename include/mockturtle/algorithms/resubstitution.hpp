@@ -610,8 +610,8 @@ public:
    * \param collector_st Statistics of the divisor collector.
    * \param callback Callback function when a resubstitution is found.
    */
-  explicit resubstitution_impl( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats& st, engine_st_t& engine_st, collector_st_t& collector_st, resub_callback_t const& callback = substitute_fn<Ntk> )
-      : ntk( ntk ), ps( ps ), st( st ), engine_st( engine_st ), collector_st( collector_st ), callback( callback )
+  explicit resubstitution_impl( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats& st, engine_st_t& engine_st, collector_st_t& collector_st )
+      : ntk( ntk ), ps( ps ), st( st ), engine_st( engine_st ), collector_st( collector_st )
   {
     static_assert( std::is_same_v<typename ResubEngine::mffc_result_t, typename DivCollector::mffc_result_t>, "MFFC result type of the engine and the collector are different" );
 
@@ -639,7 +639,7 @@ public:
     ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
   }
 
-  void run()
+  void run( resub_callback_t const& callback = substitute_fn<Ntk> )
   {
     stopwatch t( st.time_total );
 
@@ -698,9 +698,8 @@ public:
       st.estimated_gain += last_gain;
 
       /* update network */
-      callback( ntk, n, *g );
       call_with_stopwatch( st.time_callback, [&]() {
-        //return callback( ntk, n, *g );
+        return callback( ntk, n, *g );
       } );
 
       return true; /* next */
@@ -745,8 +744,6 @@ private:
   resubstitution_stats& st;
   engine_st_t& engine_st;
   collector_st_t& collector_st;
-
-  resub_callback_t const& callback;
 
   /* temporary statistics for progress bar */
   uint32_t candidates{0};
