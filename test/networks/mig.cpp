@@ -469,6 +469,7 @@ TEST_CASE( "compute values in MIGs", "[mig]" )
   CHECK( has_compute_v<mig_network, bool> );
   CHECK( has_compute_v<mig_network, kitty::dynamic_truth_table> );
   CHECK( has_compute_v<mig_network, kitty::partial_truth_table> );
+  CHECK( has_compute_inplace_v<mig_network, kitty::partial_truth_table> );
 
   const auto x1 = mig.create_pi();
   const auto x2 = mig.create_pi();

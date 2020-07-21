@@ -543,6 +543,7 @@ TEST_CASE( "compute values in xags", "[xag]" )
   CHECK( has_compute_v<xag_network, bool> );
   CHECK( has_compute_v<xag_network, kitty::dynamic_truth_table> );
   CHECK( has_compute_v<xag_network, kitty::partial_truth_table> );
+  CHECK( has_compute_inplace_v<xag_network, kitty::partial_truth_table> );
 
   const auto x1 = xag.create_pi();
   const auto x2 = xag.create_pi();

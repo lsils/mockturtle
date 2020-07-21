@@ -438,6 +438,7 @@ TEST_CASE( "compute values in AIGs", "[aig]" )
   CHECK( has_compute_v<aig_network, bool> );
   CHECK( has_compute_v<aig_network, kitty::dynamic_truth_table> );
   CHECK( has_compute_v<aig_network, kitty::partial_truth_table> );
+  CHECK( has_compute_inplace_v<aig_network, kitty::partial_truth_table> );
 
   const auto x1 = aig.create_pi();
   const auto x2 = aig.create_pi();
