@@ -753,7 +753,7 @@ struct sim_resub_stats
  *
  * Please refer to the following paper for further details.
  *
- * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 / ICCAD 2020.
+ * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 (arXiv:2007.02579).
  *
  * Interfaces of the resubstitution functor:
  * - Constructor: `resub_fn( Ntk const& ntk, resubstitution_params const& ps, stats& st,`

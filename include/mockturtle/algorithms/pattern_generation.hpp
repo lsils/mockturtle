@@ -439,7 +439,7 @@ private:
  * stuck-at value checking and observability checking. Please refer to
  * [1] for details of the algorithm and its purpose.
  *
- * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 / ICCAD 2020.
+ * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 (arXiv:2007.02579).
  *
  * \param sim Reference of a `partial_simulator` object where the generated 
  * patterns will be stored. It can be empty (`partial_simulator( ntk.num_pis(), 0 )`)
