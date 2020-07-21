@@ -1953,4 +1953,7 @@ using iterates_over_t = std::enable_if_t<std::is_same_v<typename Iterator::value
 template<typename Iterator>
 using iterates_over_truth_table_t = std::enable_if_t<kitty::is_truth_table<typename Iterator::value_type>::value, typename Iterator::value_type>;
 
+template<class Iterator, typename T>
+inline constexpr bool iterates_over_v = std::is_same_v<typename Iterator::value_type, T>;
+
 } /* namespace mockturtle */

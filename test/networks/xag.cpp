@@ -594,6 +594,31 @@ TEST_CASE( "compute values in XAGs", "[xag]" )
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
   }
+
+  {
+    std::vector<kitty::partial_truth_table> xs{2};
+    kitty::partial_truth_table result;
+
+    xs[0].add_bit( 0 ); xs[1].add_bit( 1 );
+
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 1 ); xs[1].add_bit( 0 );
+
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 0 ); xs[1].add_bit( 0 );
+
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 1 ); xs[1].add_bit( 1 );
+
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );    
+  }
 }
 
 TEST_CASE( "custom node values in xags", "[xag]" )

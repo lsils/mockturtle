@@ -7,6 +7,7 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
@@ -488,6 +489,31 @@ TEST_CASE( "compute values in AIGs", "[aig]" )
 
     CHECK( aig.compute( aig.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( aig.compute( aig.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
+  }
+
+  {
+    std::vector<kitty::partial_truth_table> xs{2};
+    kitty::partial_truth_table result;
+
+    xs[0].add_bit( 0 ); xs[1].add_bit( 1 );
+
+    aig.compute( aig.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    aig.compute( aig.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 1 ); xs[1].add_bit( 0 );
+
+    aig.compute( aig.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    aig.compute( aig.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 0 ); xs[1].add_bit( 0 );
+
+    aig.compute( aig.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    aig.compute( aig.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+
+    xs[0].add_bit( 1 ); xs[1].add_bit( 1 );
+
+    aig.compute( aig.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
+    aig.compute( aig.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
   }
 }
 
