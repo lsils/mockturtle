@@ -637,10 +637,6 @@ public:
     ntk._events->on_modified.emplace_back( update_level_of_existing_node );
 
     ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
-
-    std::cout << "testing callback function...\n"; std::cout.flush();
-    callback( ntk, ntk.get_node( ntk.get_constant( false ) ), ntk.get_constant( false ) );
-    std::cout << "callback works!\n";
   }
 
   void run()
@@ -702,8 +698,9 @@ public:
       st.estimated_gain += last_gain;
 
       /* update network */
+      callback( ntk, n, *g );
       call_with_stopwatch( st.time_callback, [&]() {
-        return callback( ntk, n, *g );
+        //return callback( ntk, n, *g );
       } );
 
       return true; /* next */
