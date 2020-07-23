@@ -218,8 +218,9 @@ struct default_collector_stats
  * \param MffcMgr Manager class to compute the potential gain if a
  * resubstitution exists (number of MFFC nodes when the cost function is circuit size).
  * \param MffcRes Typename of the return value of `MffcMgr`.
+ * \param cut_comp Manager class to compute reconvergence-driven cuts.
  */
-template<class Ntk, class MffcMgr = node_mffc_inside<Ntk>, typename MffcRes = uint32_t>
+template<class Ntk, class MffcMgr = node_mffc_inside<Ntk>, typename MffcRes = uint32_t, typename cut_comp = detail::reconvergence_driven_cut_impl<Ntk>>
 class default_divisor_collector
 {
 public:
@@ -227,9 +228,12 @@ public:
   using mffc_result_t = MffcRes;
   using node = typename Ntk::node;
 
+  using cut_comp_parameters_type = typename cut_comp::parameters_type;
+  using cut_comp_statistics_type = typename cut_comp::statistics_type;
+
 public:
   explicit default_divisor_collector( Ntk const& ntk, resubstitution_params const& ps, stats& st )
-    : ntk( ntk ), ps( ps ), st( st ), cuts( ntk, reconvergence_driven_cut_parameters{ps.max_pis}, cuts_st )
+    : ntk( ntk ), ps( ps ), st( st ), cuts( ntk, cut_comp_parameters_type{ps.max_pis}, cuts_st )
   {
   }
 
@@ -243,7 +247,7 @@ public:
 
     /* compute a reconvergence-driven cut */
     leaves = call_with_stopwatch( st.time_cuts, [&]() {
-        return reconvergence_driven_cut( ntk, n, reconvergence_driven_cut_parameters{ps.max_pis} ).first;
+        return cuts.run( { n } ).first;
     });
     st.num_total_leaves += leaves.size();
 
@@ -402,11 +406,11 @@ private:
 
 private:
   Ntk const& ntk;
-  resubstitution_params const& ps;
+  resubstitution_params ps;
   stats& st;
 
-  detail::reconvergence_driven_cut_impl<Ntk> cuts;
-  reconvergence_driven_cut_statistics cuts_st;
+  cut_comp cuts;
+  cut_comp_statistics_type cuts_st;
 
 public:
   std::vector<node> leaves;
