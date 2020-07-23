@@ -73,7 +73,7 @@ aig_network self_dualize_aig( aig_network const& src_aig )
   reconvergence_driven_cut_parameters ps;
   ps.max_leaves = 99999999u;
   reconvergence_driven_cut_statistics st;
-  detail::reconvergence_driven_cut_impl2<aig_network, false, false> cut_generator( src_aig, ps, st );
+  detail::reconvergence_driven_cut_impl<aig_network, false, false> cut_generator( src_aig, ps, st );
 
   src_aig.foreach_po( [&]( const auto& f ){
       auto leaves = cut_generator.run( { src_aig.get_node( f ) } ).first;

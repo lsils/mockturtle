@@ -88,8 +88,8 @@ public:
   using parameters_type = reconvergence_driven_cut_parameters;
   using statistics_type = reconvergence_driven_cut_statistics;
 
-  using node = node<Ntk>;
-  using signal = signal<Ntk>;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
 public:
   explicit reconvergence_driven_cut_impl( Ntk const& ntk, reconvergence_driven_cut_parameters const& ps, reconvergence_driven_cut_statistics& st )
@@ -265,8 +265,8 @@ public:
   using parameters_type = reconvergence_driven_cut_parameters;
   using statistics_type = reconvergence_driven_cut_statistics;
 
-  using node = node<Ntk>;
-  using signal = signal<Ntk>;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
 public:
   explicit reconvergence_driven_cut_impl2( Ntk const& ntk, reconvergence_driven_cut_parameters const& ps, reconvergence_driven_cut_statistics& st )
