@@ -211,7 +211,7 @@ private:
     /* always accept if the number of leaves does not increase */
     if ( cost < ntk.fanin_size( node ) )
     {
-      return std::numeric_limits<uint64_t>::max(); /* really? */
+      return cost;
     }
 
     /* skip nodes with many fanouts */
@@ -226,7 +226,7 @@ private:
 
 private:
   Ntk const& ntk;
-  reconvergence_driven_cut_parameters const& ps;
+  reconvergence_driven_cut_parameters ps;
   reconvergence_driven_cut_statistics& st;
 
   std::vector<node> leaves;
@@ -258,8 +258,9 @@ public:
     ++st.num_calls;
 
     /* clean up if necessary */
-    assert( nodes.empty() );
+    nodes.clear();
     leaves.clear();
+    assert( nodes.empty() );
 
     for ( const auto& pivot : pivots )
     {
@@ -336,7 +337,7 @@ public:
 
 private:
   Ntk const& ntk;
-  reconvergence_driven_cut_parameters const& ps;
+  reconvergence_driven_cut_parameters ps;
   reconvergence_driven_cut_statistics& st;
 
   std::vector<node> leaves;
