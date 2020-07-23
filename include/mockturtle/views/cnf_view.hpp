@@ -548,6 +548,7 @@ private:
     }
     else
     {
+      (void)add_var;
       const auto v = solver_.add_variable();
       assert( v == var( n ) );
       (void)v;
