@@ -34,16 +34,17 @@
 
 #pragma once
 
-#include <vector>
-
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/depth_view.hpp"
 #include "../views/fanout_view.hpp"
+
 #include "detail/resub_utils.hpp"
 #include "dont_cares.hpp"
-#include "reconv_cut2.hpp"
+#include "reconv_cut.hpp"
+
+#include <vector>
 
 namespace mockturtle
 {
@@ -152,7 +153,7 @@ struct resubstitution_stats
     std::cout << fmt::format( "[i]       ResubEngine : {:>5.2f} secs\n", to_seconds( time_resub ) );
     std::cout << fmt::format( "[i]       callback    : {:>5.2f} secs\n", to_seconds( time_callback ) );
     std::cout <<              "[i]     =========================\n\n";
-    // clang-format on 
+    // clang-format on
   }
 };
 
@@ -176,7 +177,7 @@ bool report_fn( Ntk& ntk, typename Ntk::node const& n, typename Ntk::signal cons
 
 struct default_collector_stats
 {
-  /*! \brief Total number of leaves  */
+  /*! \brief Total number of leaves. */
   uint64_t num_total_leaves{0};
 
   /*! \brief Accumulated runtime for cut computation. */
@@ -198,28 +199,27 @@ struct default_collector_stats
     std::cout << fmt::format( "[i]     MFFC        : {:>5.2f} secs\n", to_seconds( time_mffc ) );
     std::cout << fmt::format( "[i]     divs collect: {:>5.2f} secs\n", to_seconds( time_divs ) );
     std::cout <<              "[i]     =========================\n\n";
-    // clang-format on  
+    // clang-format on
   }
 };
 
-/*! \brief Prepare the three public data members `leaves`, `divs` and `MFFC`
+/*! \brief Prepare the three public data members `leaves`, `divs` and `mffc`
  * to be ready for usage.
  *
  * `leaves`: sufficient support for all divisors
  * `divs`: divisor nodes that can be used for resubstitution
- * `MFFC`: MFFC nodes which are needed to do simulation from
- * `leaves`, through `divs` and `MFFC` until the root node,
+ * `mffc`: MFFC nodes which are needed to do simulation from
+ * `leaves`, through `divs` and `mffc` until the root node,
  * but should be excluded from resubstitution.
- * The last element of `MFFC` is always the root node.
+ * The last element of `mffc` is always the root node.
  *
- * `divs` and `MFFC` are in topological order. 
+ * `divs` and `mffc` are in topological order.
  *
- * \param MffcMgr Manager class to compute the potential gain if a 
+ * \param MffcMgr Manager class to compute the potential gain if a
  * resubstitution exists (number of MFFC nodes when the cost function is circuit size).
  * \param MffcRes Typename of the return value of `MffcMgr`.
- * \param CutMgr Manager class to compute the cut to construct the window.
  */
-template<class Ntk, class MffcMgr = node_mffc_inside<Ntk>, typename MffcRes = uint32_t, class CutMgr = cut_manager<Ntk>>
+template<class Ntk, class MffcMgr = node_mffc_inside<Ntk>, typename MffcRes = uint32_t>
 class default_divisor_collector
 {
 public:
@@ -229,7 +229,7 @@ public:
 
 public:
   explicit default_divisor_collector( Ntk const& ntk, resubstitution_params const& ps, stats& st )
-      : ntk( ntk ), ps( ps ), st( st ), cut_mgr( ps.max_pis )
+    : ntk( ntk ), ps( ps ), st( st ), cuts( ntk, reconvergence_driven_cut_parameters{ps.max_pis}, cuts_st )
   {
   }
 
@@ -243,14 +243,14 @@ public:
 
     /* compute a reconvergence-driven cut */
     leaves = call_with_stopwatch( st.time_cuts, [&]() {
-      return reconv_driven_cut( cut_mgr, ntk, n );
+        return reconvergence_driven_cut( ntk, n, reconvergence_driven_cut_parameters{ps.max_pis} ).first;
     });
     st.num_total_leaves += leaves.size();
 
     /* collect the MFFC */
     MffcMgr mffc_mgr( ntk );
     potential_gain = call_with_stopwatch( st.time_mffc, [&]() {
-      return mffc_mgr.run( n, leaves, MFFC );
+      return mffc_mgr.run( n, leaves, mffc );
     });
 
     /* collect the divisor nodes in the cut */
@@ -300,7 +300,7 @@ private:
     }
 
     /* mark nodes in the MFFC */
-    for ( const auto& t : MFFC )
+    for ( const auto& t : mffc )
     {
       ntk.set_value( t, 1 );
     }
@@ -309,25 +309,25 @@ private:
     collect_divisors_rec( root );
 
     /* unmark the current MFFC */
-    for ( const auto& t : MFFC )
+    for ( const auto& t : mffc )
     {
       ntk.set_value( t, 0 );
     }
 
     /* check if the number of divisors is not exceeded */
-    if ( divs.size() - leaves.size() + MFFC.size() >= ps.max_divisors - ps.max_pis )
+    if ( divs.size() - leaves.size() + mffc.size() >= ps.max_divisors - ps.max_pis )
     {
       return false;
     }
 
     /* get the number of divisors to collect */
-    int32_t limit = ps.max_divisors - ps.max_pis - ( uint32_t( divs.size() ) + 1 - uint32_t( leaves.size() ) + uint32_t( MFFC.size() ) );
+    int32_t limit = ps.max_divisors - ps.max_pis - ( uint32_t( divs.size() ) + 1 - uint32_t( leaves.size() ) + uint32_t( mffc.size() ) );
 
     /* explore the fanouts, which are not in the MFFC */
     int32_t counter = 0;
     bool quit = false;
 
-    /* NOTE: this is tricky and cannot be converted to a range-based loop */
+    /* note: this is tricky and cannot be converted to a range-based loop */
     auto size = divs.size();
     for ( auto i = 0u; i < size; ++i )
     {
@@ -393,9 +393,9 @@ private:
       }
     }
 
-    /* Note: different from the previous version, now we do not add MFFC nodes into divs */
-    assert( root == MFFC.at( MFFC.size() - 1u ) );
-    assert( divs.size() + MFFC.size() - leaves.size() <= ps.max_divisors - ps.max_pis );
+    /* note: different from the previous version, now we do not add MFFC nodes into divs */
+    assert( root == mffc.at( mffc.size() - 1u ) );
+    assert( divs.size() + mffc.size() - leaves.size() <= ps.max_divisors - ps.max_pis );
 
     return true;
   }
@@ -405,12 +405,13 @@ private:
   resubstitution_params const& ps;
   stats& st;
 
-  CutMgr cut_mgr;
+  detail::reconvergence_driven_cut_impl<Ntk> cuts;
+  reconvergence_driven_cut_statistics cuts_st;
 
 public:
   std::vector<node> leaves;
   std::vector<node> divs;
-  std::vector<node> MFFC;
+  std::vector<node> mffc;
 };
 
 template<typename ResubFnSt>
@@ -442,16 +443,16 @@ struct window_resub_stats
     std::cout <<              "[i]     ======== Details ========\n";
     functor_st.report();
     std::cout <<              "[i]     =========================\n\n";
-    // clang-format on  
+    // clang-format on
   }
 };
 
 /*! \brief Window-based resubstitution engine.
- * 
+ *
  * This engine computes the complete truth tables of nodes within a window
  * with the leaves as inputs. It does not verify the resubstitution candidates
  * given by the resubstitution functor. This engine requires the divisor
- * collector to prepare three data members: `leaves`, `divs` and `MFFC`.
+ * collector to prepare three data members: `leaves`, `divs` and `mffc`.
  *
  * Required interfaces of the resubstitution functor:
  * - Constructor: `resub_fn( Ntk const& ntk, Simulator const& sim,`
@@ -476,7 +477,7 @@ template<class Ntk, class TTsim, class TTdc = kitty::dynamic_truth_table, class 
 class window_based_resub_engine
 {
 public:
-  static constexpr bool require_leaves_and_MFFC = true;
+  static constexpr bool require_leaves_and_mffc = true;
   using stats = window_resub_stats<typename ResubFn::stats>;
   using mffc_result_t = MffcRes;
 
@@ -488,11 +489,11 @@ public:
   {
   }
 
-  std::optional<signal> run( node const& n, std::vector<node> const& leaves, std::vector<node> const& divs, std::vector<node> const& MFFC, mffc_result_t potential_gain, uint32_t& last_gain )
+  std::optional<signal> run( node const& n, std::vector<node> const& leaves, std::vector<node> const& divs, std::vector<node> const& mffc, mffc_result_t potential_gain, uint32_t& last_gain )
   {
     /* simulate the collected divisors */
     call_with_stopwatch( st.time_sim, [&]() {
-      simulate( leaves, divs, MFFC );
+      simulate( leaves, divs, mffc );
     });
 
     auto care = kitty::create<TTdc>( static_cast<unsigned int>( leaves.size() ) );
@@ -519,12 +520,12 @@ public:
   }
 
 private:
-  void simulate( std::vector<node> const& leaves, std::vector<node> const& divs, std::vector<node> const& MFFC )
+  void simulate( std::vector<node> const& leaves, std::vector<node> const& divs, std::vector<node> const& mffc )
   {
     sim.resize();
-    for ( auto i = 0u; i < divs.size() + MFFC.size(); ++i )
+    for ( auto i = 0u; i < divs.size() + mffc.size(); ++i )
     {
-      const auto d = i < divs.size() ? divs.at( i ) : MFFC.at( i - divs.size() );
+      const auto d = i < divs.size() ? divs.at( i ) : mffc.at( i - divs.size() );
 
       /* skip constant 0 */
       if ( d == 0 )
@@ -550,7 +551,7 @@ private:
 
     /* normalize truth tables */
     sim.normalize( divs );
-    sim.normalize( MFFC );
+    sim.normalize( mffc );
   }
 
 private:
@@ -573,7 +574,7 @@ private:
  * Currently only `default_divisor_collector` is implemented, but
  * a frontier-based approach may be integrated in the future.
  * When using `window_based_resub_engine`, the `DivCollector` should prepare
- * three public data members: `leaves`, `divs`, and `MFFC` (see documentation
+ * three public data members: `leaves`, `divs`, and `mffc` (see documentation
  * of `default_divisor_collector` for details). When using `simulation_based_resub_engine`,
  * only `divs` is needed.
  */
@@ -666,9 +667,9 @@ public:
 
       /* try to find a resubstitution with the divisors */
       auto g = call_with_stopwatch( st.time_resub, [&]() {
-        if constexpr ( ResubEngine::require_leaves_and_MFFC ) /* window-based */
+        if constexpr ( ResubEngine::require_leaves_and_mffc ) /* window-based */
         {
-          return resub_engine.run( n, collector.leaves, collector.divs, collector.MFFC, potential_gain, last_gain );
+          return resub_engine.run( n, collector.leaves, collector.divs, collector.mffc, potential_gain, last_gain );
         }
         else /* simulation-based */
         {

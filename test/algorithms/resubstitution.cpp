@@ -11,13 +11,13 @@
 #include <mockturtle/traits.hpp>
 #include <mockturtle/io/write_verilog.hpp>
 
-#include <kitty/static_truth_table.hpp>
-
 #include <mockturtle/algorithms/aig_resub.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/xmg_resub.hpp>
 #include <mockturtle/algorithms/xag_resub_withDC.hpp>
 #include <mockturtle/algorithms/sim_resub.hpp>
+
+#include <kitty/static_truth_table.hpp>
 
 using namespace mockturtle;
 
