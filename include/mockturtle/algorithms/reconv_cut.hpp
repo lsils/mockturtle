@@ -437,7 +437,7 @@ std::pair<std::vector<node<Ntk>>, std::vector<node<Ntk>>> reconvergence_driven_c
 template<typename Ntk, bool compute_nodes = false, bool sort_equal_cost_by_level = true>
 std::pair<std::vector<node<Ntk>>, std::vector<node<Ntk>>> reconvergence_driven_cut( Ntk const& ntk, node<Ntk> const& pivot, reconvergence_driven_cut_parameters const& ps = {}, reconvergence_driven_cut_statistics *pst = nullptr )
 {
-  return detail::reconvergence_driven_cut<Ntk, compute_nodes, sort_equal_cost_by_level>( ntk, { pivot }, ps, pst );
+  return reconvergence_driven_cut<Ntk, compute_nodes, sort_equal_cost_by_level>( ntk, std::vector<node<Ntk>>{ pivot }, ps, pst );
 }
 
 /*! \brief Reconvergence-driven cut towards inputs.
@@ -458,7 +458,7 @@ std::pair<std::vector<node<Ntk>>, std::vector<node<Ntk>>> reconvergence_driven_c
 template<typename Ntk, bool compute_nodes = false, bool sort_equal_cost_by_level = true>
 std::pair<std::vector<node<Ntk>>, std::vector<node<Ntk>>> reconvergence_driven_cut( Ntk const& ntk, signal<Ntk> const& pivot, reconvergence_driven_cut_parameters const& ps = {}, reconvergence_driven_cut_statistics *pst = nullptr )
 {
-  return reconvergence_driven_cut<Ntk, compute_nodes, sort_equal_cost_by_level>( ntk, ntk.get_node( pivot ), ps, pst );
+  return reconvergence_driven_cut<Ntk, compute_nodes, sort_equal_cost_by_level>( ntk, std::vector<node<Ntk>>{ ntk.get_node( pivot ) }, ps, pst );
 }
 
 } /* mockturtle */
