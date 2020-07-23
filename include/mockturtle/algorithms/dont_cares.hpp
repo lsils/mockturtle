@@ -63,10 +63,15 @@ namespace mockturtle
  * \param max_tfi_inputs Maximum number of inputs in the transitive fanin.
  */
 template<class Ntk>
-kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vector<node<Ntk>> const& leaves, uint32_t max_tfi_inputs = 16u )
+kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vector<node<Ntk>> const& leaves, uint64_t max_tfi_inputs = 16u )
 {
-  auto extended_leaves = reconv_cut( reconv_cut_params{max_tfi_inputs} )( ntk, leaves );
-  
+  reconvergence_driven_cut_parameters ps;
+  ps.max_leaves = max_tfi_inputs;
+  reconvergence_driven_cut_statistics st;
+
+  detail::reconvergence_driven_cut_impl<Ntk, false, false> cuts( ntk, ps, st ) ;
+  auto const extended_leaves = cuts.run( leaves ).first;
+
   fanout_view<Ntk> fanout_ntk{ntk};
   fanout_ntk.clear_visited();
 

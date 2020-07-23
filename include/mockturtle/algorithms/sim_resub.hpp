@@ -772,7 +772,7 @@ template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers:
 class simulation_based_resub_engine
 {
 public:
-  static constexpr bool require_leaves_and_MFFC = false;
+  static constexpr bool require_leaves_and_mffc = false;
   using stats = sim_resub_stats<typename ResubFn::stats>;
   using mffc_result_t = MffcRes;
 
