@@ -25,8 +25,8 @@
 
 /*!
   \file reconv_cut.hpp
-  \brief Implements of reconvergence-driven cuts (based on ABC's
-  implementation in `abcReconv.c` by Alan Mishchenko.
+  \brief Implements reconvergence-driven cuts (based on ABC's
+  implementation in `abcReconv.c` by Alan Mishchenko).
 
   \author Heinz Riener
 */
@@ -37,6 +37,7 @@
 
 #include <optional>
 #include <cassert>
+#include <iostream>
 
 namespace mockturtle
 {
