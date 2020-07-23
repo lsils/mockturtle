@@ -437,27 +437,28 @@ std::pair<std::vector<node<Ntk>>, std::vector<node<Ntk>>> reconvergence_driven_c
 template<typename Ntk, bool compute_nodes = false, bool sort_equal_cost_by_level = true>
 std::pair<std::vector<node<Ntk>>, std::vector<node<Ntk>>> reconvergence_driven_cut( Ntk const& ntk, node<Ntk> const& pivot, reconvergence_driven_cut_parameters const& ps = {}, reconvergence_driven_cut_statistics *pst = nullptr )
 {
-  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
-  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci method" );
-  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-  static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
-  static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
-  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
-  if constexpr ( sort_equal_cost_by_level )
-  {
-    static_assert( has_level_v<Ntk>, "Ntk does not implement the level method" );
-  }
+  return detail::reconvergence_driven_cut<Ntk, compute_nodes, sort_equal_cost_by_level>( ntk, { pivot }, ps, pst );
+}
 
-  using Impl = detail::reconvergence_driven_cut_impl<Ntk, compute_nodes, sort_equal_cost_by_level>;
-
-  reconvergence_driven_cut_statistics st;
-  auto const result = detail::reconvergence_driven_cut<Ntk, Impl>( ntk, { pivot }, ps, st );
-  if ( pst )
-  {
-    *pst = st;
-  }
-  return result;
+/*! \brief Reconvergence-driven cut towards inputs.
+ *
+ * This class implements a generation algorithm for
+ * reconvergence-driven cuts.  The cut grows towards the primary
+ * inputs starting from a single pivot signal.
+ *
+ * **Required network functions:**
+ * - `is_constant`
+ * - `is_pi`
+ * - `get_node`
+ * - `visited`
+ * - `has_visited`
+ * - `foreach_fanin`
+ *
+ */
+template<typename Ntk, bool compute_nodes = false, bool sort_equal_cost_by_level = true>
+std::pair<std::vector<node<Ntk>>, std::vector<node<Ntk>>> reconvergence_driven_cut( Ntk const& ntk, signal<Ntk> const& pivot, reconvergence_driven_cut_parameters const& ps = {}, reconvergence_driven_cut_statistics *pst = nullptr )
+{
+  return reconvergence_driven_cut<Ntk, compute_nodes, sort_equal_cost_by_level>( ntk, ntk.get_node( pivot ), ps, pst );
 }
 
 } /* mockturtle */
