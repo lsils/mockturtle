@@ -48,7 +48,7 @@ TEST_CASE( "generate fanin-cuts for an AIG using function API", "[reconv_cut]" )
 TEST_CASE( "generate fanin-cuts for an AIG using manager class API", "[reconv_cut]" )
 {
   using cuts_impl = detail::reconvergence_driven_cut_impl<aig_network, false, false>;
-  using signal = signal<aig_network>;
+  using signal = aig_network::signal;
 
   aig_network aig;
   const auto a = aig.create_pi();
