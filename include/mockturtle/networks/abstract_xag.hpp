@@ -45,6 +45,7 @@
 
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
+#include "../utils/include/spp.hpp"
 #include "detail/foreach.hpp"
 
 namespace mockturtle
@@ -481,7 +482,11 @@ public:
     {
       complement ^= f.complement;
       auto const& node = _storage->nodes[f.index];
-      if ( node.fanin_size == 0u )
+      if ( f.index == 0 )
+      {
+        // do nothing
+      }
+      else if ( node.fanin_size == 0u )
       {
         merge_one( f.index );
       }
