@@ -523,7 +523,18 @@ bool abc_cec( Ntk const& ntk, std::string const& benchmark )
     result += buffer.data();
   }
 
-  return result.size() >= 23 && result.substr( 0u, 23u ) == "Networks are equivalent";
+  /* search for one line which says "Networks are equivalent" and ignore all other debug output from ABC */
+  std::stringstream ss( result );
+  std::string line;
+  while ( std::getline( ss, line, '\n' ) )
+  {
+    if ( line.size() >= 23u && line.substr( 0u, 23u ) == "Networks are equivalent" )
+    {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 } // namespace experiments

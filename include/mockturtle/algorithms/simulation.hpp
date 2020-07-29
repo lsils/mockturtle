@@ -38,8 +38,6 @@
 
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
-#include "../networks/aig.hpp"
-#include "../networks/xag.hpp"
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -170,7 +168,7 @@ public:
 class partial_simulator
 {
 public:
-  partial_simulator() = delete;
+  partial_simulator() {}
 
   /*! \brief Create a `partial_simulator` with random simulation patterns.
    *
@@ -479,7 +477,7 @@ void update_const_pi( Ntk const& ntk, unordered_node_map<kitty::partial_truth_ta
 
 } // namespace detail
 
-/*! \brief (re-)simulate `n` and its transitive fanin cone.
+/*! \brief (Re-)simulate `n` and its transitive fanin cone.
  * 
  * Note that re-simulation (when `node_to_value.has( n ) == false`) is only done
  * for the last block, no matter how many bits are used in this block.
@@ -496,8 +494,8 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
-  static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute method for kitty::partial_truth_table" );
-  static_assert( std::is_same_v<typename Ntk::base_type, aig_network> || std::is_same_v<typename Ntk::base_type, xag_network>, "The partial_truth_table specialized ntk.compute is currently only implemented in AIG and XAG" );
+  static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute specialization for kitty::partial_truth_table" );
+  static_assert( has_compute_inplace_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the in-place compute specialization for kitty::partial_truth_table" );
 
   if ( node_to_value[ntk.get_node( ntk.get_constant( false ) )].num_bits() != sim.num_bits() )
   {
@@ -545,8 +543,8 @@ void simulate_nodes( Ntk const& ntk, unordered_node_map<kitty::partial_truth_tab
   static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
-  static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute method for kitty::partial_truth_table" );
-  static_assert( std::is_same_v<typename Ntk::base_type, aig_network> || std::is_same_v<typename Ntk::base_type, xag_network>, "The partial_truth_table specialized ntk.compute is currently only implemented in AIG and XAG" );
+  static_assert( has_compute_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the compute specialization for kitty::partial_truth_table" );
+  static_assert( has_compute_inplace_v<Ntk, kitty::partial_truth_table>, "Ntk does not implement the in-place compute specialization for kitty::partial_truth_table" );
 
   detail::update_const_pi( ntk, node_to_value, sim );
 

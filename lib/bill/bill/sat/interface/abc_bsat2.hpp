@@ -17,6 +17,7 @@ namespace bill {
 template<>
 class solver<solvers::bsat2> {
 	using solver_type = pabc::sat_solver;
+	static constexpr uint32_t BUFFER_SIZE = 2048;
 
 public:
 #pragma region Constructors
@@ -67,6 +68,7 @@ public:
 	auto add_clause(std::vector<lit_type>::const_iterator it,
 	                std::vector<lit_type>::const_iterator ie)
 	{
+		assert(ie-it <= BUFFER_SIZE && "clause size exceeds limit. Please increase BUFFER_SIZE in bill/sat/interface/abc_bsat2.hpp");
 		++clause_counter.back();
 		auto counter = 0u;
 		while (it != ie) {
@@ -136,6 +138,7 @@ public:
 
 		int result;
 		if (assumptions.size() > 0u) {
+			assert(assumptions.size() <= BUFFER_SIZE && "assumption size exceeds limit. Please increase BUFFER_SIZE in bill/sat/interface/abc_bsat2.hpp");
 			/* solve with assumptions */
 			uint32_t counter = 0u;
 			auto it = assumptions.begin();
@@ -207,7 +210,7 @@ private:
 	result::states state_ = result::states::undefined;
 
 	/*! \brief Temporary storage for one clause */
-	pabc::lit literals[2048];
+	pabc::lit literals[BUFFER_SIZE];
 
 	/*! \brief Whether to randomize initial variable values */
 	bool randomize = false;

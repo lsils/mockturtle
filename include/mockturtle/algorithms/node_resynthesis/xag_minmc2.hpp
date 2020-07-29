@@ -139,8 +139,9 @@ private:
 
     for ( auto i = 0u; i < detail::minmc_xags.size(); ++i )
     {
-      for ( auto const& [cls, word, repr, expr] : detail::minmc_xags[i] )
+      for ( auto const& [_, word, repr, expr] : detail::minmc_xags[i] )
       {
+        (void)_;
         db_[i][word] = repr;
         st_.db_size += sizeof( word ) + sizeof( repr ) + sizeof( uint32_t ) * repr.size();
       }

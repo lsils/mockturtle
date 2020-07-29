@@ -28,7 +28,8 @@ TEST_CASE( "create window view on AIG", "[window_view]" )
   fanout_ntk.clear_visited();
 
   const auto pivot1 = aig.get_node( f3 );
-  auto const& leaves1 = reconv_cut( reconv_cut_params{4} )( aig, { pivot1 } );
+
+  const auto leaves1 = reconvergence_driven_cut<aig_network, false, false>( aig, pivot1 ).first;
   window_view<fanout_view<aig_network>> win1( fanout_ntk, leaves1, { pivot1 }, false );
 
   CHECK( is_network_type_v<decltype( win1 )> );
@@ -37,14 +38,14 @@ TEST_CASE( "create window view on AIG", "[window_view]" )
   CHECK( win1.num_pos() == 3 ); // b, f1, f2
 
   const auto pivot2 = aig.get_node( f2 );
-  auto const& leaves2 = reconv_cut( reconv_cut_params{4} )( aig, { pivot2 } );
+  const auto leaves2 = reconvergence_driven_cut<aig_network, false, false>( aig, pivot2 ).first;
   window_view<fanout_view<aig_network>> win2( fanout_ntk, leaves2, { pivot2 }, false );
   CHECK( win2.size() == 5 );
   CHECK( win2.num_pis() == 2 );
   CHECK( win2.num_pos() == 3 ); // a, f1, f3
 
   const auto pivot3 = aig.get_node( f1 );
-  auto const& leaves3 = reconv_cut( reconv_cut_params{4} )( aig, { pivot3 } );
+  const auto leaves3 = reconvergence_driven_cut<aig_network, false, false>( aig, pivot3 ).first;
   window_view<fanout_view<aig_network>> win3( fanout_ntk, leaves3, { pivot3 }, true );
   CHECK( win3.size() == 7 );
   CHECK( win3.num_pis() == 2 );

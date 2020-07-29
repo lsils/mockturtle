@@ -53,7 +53,7 @@ namespace mockturtle
  * \param sim The `partial_simulator` object containing simulation patterns
  * \param out Output stream
  */
-void write_patterns( partial_simulator const& sim, std::ostream& out = std::cout )
+inline void write_patterns( partial_simulator const& sim, std::ostream& out = std::cout )
 {
   auto const& patterns = sim.get_patterns();
   for ( auto i = 0u; i < patterns.size(); ++i )
@@ -70,7 +70,7 @@ void write_patterns( partial_simulator const& sim, std::ostream& out = std::cout
  * \param sim The `partial_simulator` object containing simulation patterns
  * \param filename Filename
  */
-void write_patterns( partial_simulator const& sim, std::string const& filename )
+inline void write_patterns( partial_simulator const& sim, std::string const& filename )
 {
   std::ofstream os( filename.c_str(), std::ofstream::out );
   write_patterns( sim, os );
