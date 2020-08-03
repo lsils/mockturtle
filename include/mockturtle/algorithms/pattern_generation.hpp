@@ -111,7 +111,7 @@ struct pattern_generation_stats
 namespace detail
 {
 
-template<class Ntk, bool use_odc = false>
+template<class Ntk, class Simulator, bool use_odc = false>
 class patgen_impl
 {
 public:
@@ -119,7 +119,7 @@ public:
   using signal = typename Ntk::signal;
   using TT = unordered_node_map<kitty::partial_truth_table, Ntk>;
 
-  explicit patgen_impl( Ntk& ntk, partial_simulator& sim, pattern_generation_params const& ps, validator_params& vps, pattern_generation_stats& st )
+  explicit patgen_impl( Ntk& ntk, Simulator& sim, pattern_generation_params const& ps, validator_params& vps, pattern_generation_stats& st )
       : ntk( ntk ), ps( ps ), st( st ), vps( vps ), validator( ntk, vps ),
         tts( ntk ), sim( sim )
   {
@@ -136,6 +136,14 @@ public:
     if ( ps.num_stuck_at > 0 )
     {
       stuck_at_check();
+      if constexpr( std::is_same_v<Simulator, bit_packed_simulator> )
+      {
+        sim.pack_bits();
+        call_with_stopwatch( st.time_sim, [&]() {
+          tts.reset();
+          simulate_nodes<Ntk>( ntk, tts, sim, true );
+        } );
+      }
       if ( ps.substitute_const )
       {
         for ( auto n : const_nodes )
@@ -226,7 +234,7 @@ private:
             }
           }
 
-          new_pattern( validator.cex );
+          new_pattern( validator.cex, n );
 
           if ( ps.num_stuck_at > 1 )
           {
@@ -236,7 +244,7 @@ private:
             } );
             for ( auto& pattern : generated )
             {
-              new_pattern( pattern );
+              new_pattern( pattern, n );
             }
           }
 
@@ -311,7 +319,7 @@ private:
         {
           if ( !( *res ) )
           {
-            new_pattern( validator.cex );
+            new_pattern( validator.cex, n );
             ++st.unobservable_type2;
 
             if ( ps.verbose )
@@ -348,7 +356,7 @@ private:
         {
           if ( !( *res ) )
           {
-            new_pattern( validator.cex );
+            new_pattern( validator.cex, n );
             ++st.unobservable_type2;
 
             if ( ps.verbose )
@@ -376,9 +384,18 @@ private:
   }
 
 private:
-  void new_pattern( std::vector<bool> const& pattern )
+  void new_pattern( std::vector<bool> const& pattern, node const& n )
   {
-    sim.add_pattern( pattern );
+    if constexpr( std::is_same_v<Simulator, bit_packed_simulator> )
+    {
+      sim.add_pattern( pattern, compute_support( n ) );
+    }
+    else
+    {
+      (void)n;
+      sim.add_pattern( pattern );
+    }
+    
     ++st.num_generated_patterns;
 
     /* re-simulate */
@@ -411,9 +428,36 @@ private:
     } );
     for ( auto& pattern : generated )
     {
-      new_pattern( pattern );
+      new_pattern( pattern, n );
     }
     zero = sim.compute_constant( false );
+  }
+
+  std::vector<bool> compute_support( node const& n )
+  {
+    ntk.incr_trav_id();
+    ntk.set_visited( n, ntk.trav_id() );
+    mark_support_rec( n );
+
+    std::vector<bool> care( ntk.num_pis(), false );
+    ntk.foreach_pi( [&]( auto const& f, uint32_t i ) {
+      if ( ntk.visited( f ) == ntk.trav_id() )
+      {
+        care[i] = true;
+      }
+    });
+    return care;
+  }
+
+  void mark_support_rec( node const& n )
+  {
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() )
+        { return true; }
+      ntk.set_visited( ntk.get_node( f ), ntk.trav_id() );
+      mark_support_rec( ntk.get_node( f ) );
+      return true;
+    });
   }
 
 private:
@@ -428,7 +472,7 @@ private:
   TT tts;
   std::vector<signal> const_nodes;
 
-  partial_simulator& sim;
+  Simulator& sim;
 };
 
 } /* namespace detail */
@@ -441,22 +485,24 @@ private:
  *
  * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 (arXiv:2007.02579).
  *
- * \param sim Reference of a `partial_simulator` object where the generated 
- * patterns will be stored. It can be empty (`partial_simulator( ntk.num_pis(), 0 )`)
+ * \param sim Reference of a `partial_simulator` or `bit_packed_simulator`
+ * object where the generated patterns will be stored.
+ * It can be empty (`Simulator( ntk.num_pis(), 0 )`)
  * or already containing some patterns generated from previous runs 
- * (`partial_simulator( filename )`) or randomly generated
- * (`partial_simulator( ntk.num_pis(), num_random_patterns )`). The generated
+ * (`Simulator( filename )`) or randomly generated
+ * (`Simulator( ntk.num_pis(), num_random_patterns )`). The generated
  * patterns can then be written out with `write_patterns`
  * or directly be used by passing the simulator to another algorithm.
  */
-template<class Ntk>
-void pattern_generation( Ntk& ntk, partial_simulator& sim, pattern_generation_params const& ps = {}, pattern_generation_stats* pst = nullptr )
+template<class Ntk, class Simulator>
+void pattern_generation( Ntk& ntk, Simulator& sim, pattern_generation_params const& ps = {}, pattern_generation_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
   static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+  static_assert( std::is_same_v<Simulator, partial_simulator> || std::is_same_v<Simulator, bit_packed_simulator>, "Simulator should be either partial_simulator or bit_packed_simulator" );
 
   pattern_generation_stats st;
   validator_params vps;
@@ -469,7 +515,7 @@ void pattern_generation( Ntk& ntk, partial_simulator& sim, pattern_generation_pa
     using fanout_view_t = fanout_view<Ntk>;
     fanout_view_t fanout_view{ntk};
 
-    detail::patgen_impl<fanout_view_t, true> p( fanout_view, sim, ps, vps, st );
+    detail::patgen_impl<fanout_view_t, Simulator, true> p( fanout_view, sim, ps, vps, st );
     p.run();
   }
   else

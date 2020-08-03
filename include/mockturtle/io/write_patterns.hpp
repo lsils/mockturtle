@@ -50,11 +50,14 @@ namespace mockturtle
  * The output contains `num_pis()` lines, each line contains a stream of
  * simulation values of a primary input, represented in hexadecimal.
  *
- * \param sim The `partial_simulator` object containing simulation patterns
+ * \param sim The `partial_simulator` or `bit_packed_simulator` object containing simulation patterns
  * \param out Output stream
  */
-inline void write_patterns( partial_simulator const& sim, std::ostream& out = std::cout )
+template<class Simulator>
+void write_patterns( Simulator const& sim, std::ostream& out = std::cout )
 {
+  static_assert( std::is_same_v<Simulator, partial_simulator> || std::is_same_v<Simulator, bit_packed_simulator>, "This function is specialized for partial_simulator or bit_packed_simulator" );
+
   auto const& patterns = sim.get_patterns();
   for ( auto i = 0u; i < patterns.size(); ++i )
   {
@@ -67,11 +70,14 @@ inline void write_patterns( partial_simulator const& sim, std::ostream& out = st
  * The output contains `num_pis()` lines, each line contains a stream of
  * simulation values of a primary input, represented in hexadecimal.
  *
- * \param sim The `partial_simulator` object containing simulation patterns
+ * \param sim The `partial_simulator` or `bit_packed_simulator` object containing simulation patterns
  * \param filename Filename
  */
-inline void write_patterns( partial_simulator const& sim, std::string const& filename )
+template<class Simulator>
+void write_patterns( Simulator const& sim, std::string const& filename )
 {
+  static_assert( std::is_same_v<Simulator, partial_simulator> || std::is_same_v<Simulator, bit_packed_simulator>, "This function is specialized for partial_simulator or bit_packed_simulator" );
+
   std::ofstream os( filename.c_str(), std::ofstream::out );
   write_patterns( sim, os );
   os.close();

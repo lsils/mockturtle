@@ -379,6 +379,7 @@ public:
         {
           move_pattern( p, pos + ( block << 6 ) );
           empty_slots.emplace_back( p );
+          break;
         }
       }
     }
