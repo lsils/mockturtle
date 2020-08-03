@@ -257,6 +257,10 @@ public:
     return num_patterns;
   }
 
+  /*! \brief Add a pattern (primary input assignment) into the pattern set.
+   *
+   * \param pattern The pattern. Length should be the same as number of PIs.
+   */
   void add_pattern( std::vector<bool> const& pattern )
   {
     assert( pattern.size() == patterns.size() );
@@ -270,8 +274,7 @@ public:
 
   /*! \brief Get the simulation patterns.
    *
-   * Returns a vector of `num_pis()` patterns stored in `kitty::partial_truth_table`s.
-   *
+   * \return A vector of `num_pis()` patterns stored in `kitty::partial_truth_table`s.
    */
   std::vector<kitty::partial_truth_table> get_patterns() const
   {
@@ -283,6 +286,12 @@ private:
   uint32_t num_patterns;
 };
 
+/*! \brief Simulates partial truth tables, and performs bit packing when requested.
+ *
+ * This class has the same interfaces as `partial_simulator`, except that
+ * (1) care bits should be provided as the second argument of `add_pattern`; and
+ * (2) `pack_bits` can be called to reduce the size of pattern set.
+ */
 class bit_packed_simulator : public partial_simulator
 {
 public:
@@ -297,23 +306,38 @@ public:
   bit_packed_simulator( unsigned num_pis, unsigned num_patterns, std::default_random_engine::result_type seed = 0 )
     : partial_simulator( num_pis, num_patterns, seed ), packed_patterns( num_patterns )
   {
-    for ( auto i = 0u; i < num_pis; ++i )
-    {
-      care.emplace_back( num_patterns );
-      care.back() = ~care.back();
-    }
+    fill_cares( num_pis );
+  }
+
+  /* copy constructor */
+  bit_packed_simulator( bit_packed_simulator const& sim )
+    : partial_simulator( sim ), care( sim.care ), packed_patterns( sim.packed_patterns )
+  { }
+
+  /* copy constructor from `partial_simulator` */
+  bit_packed_simulator( partial_simulator const& sim )
+    : partial_simulator( sim ), packed_patterns( num_patterns )
+  {
+    fill_cares( patterns.size() );
   }
 
   bit_packed_simulator( std::vector<kitty::partial_truth_table> const& initial_patterns )
     : partial_simulator( initial_patterns ), packed_patterns( num_patterns )
   {
-    for ( auto i = 0u; i < patterns.size(); ++i )
-    {
-      care.emplace_back( num_patterns );
-      care.back() = ~care.back();
-    }
+    fill_cares( patterns.size() );
   }
 
+  bit_packed_simulator( const std::string& filename, uint32_t length = 0u )
+    : partial_simulator( filename, length ), packed_patterns( num_patterns )
+  {
+    fill_cares( patterns.size() );
+  }
+
+  /*! \brief Add a pattern (primary input assignment) into the pattern set.
+   *
+   * \param pattern The pattern. Length should be the same as number of PIs.
+   * \param care_bits Care bits of the pattern. Length should be the same as `pattern`.
+   */
   void add_pattern( std::vector<bool> const& pattern, std::vector<bool> const& care_bits )
   {
     assert( pattern.size() == care_bits.size() );
@@ -327,7 +351,10 @@ public:
     ++num_patterns;
   }
 
-  /* return true when some patterns are packed (so that update of truth tables is needed) */
+  /*! \brief Try to pack the newly added patterns (since the last call) into preceding patterns.
+   *
+   * \return `true` when some patterns are packed (so that update of simulated truth tables is needed)
+   */
   bool pack_bits()
   {
     if ( num_patterns == 0u ) { return false; }
@@ -387,6 +414,16 @@ public:
   }
 
 private:
+  /* all bits in patterns generated before construction are care bits */
+  void fill_cares( uint32_t const num_pis )
+  {
+    for ( auto i = 0u; i < num_pis; ++i )
+    {
+      care.emplace_back( num_patterns );
+      care.back() = ~care.back();
+    }
+  }
+
   /* move the pattern at position `from` to position `to`. */
   void move_pattern( uint32_t const from, uint32_t const to )
   {
@@ -659,7 +696,7 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
   }
 }
 
-/*! \brief Simulates a network with a partial simulator.
+/*! \brief Simulates a network with `partial_simulator` (or `bit_packed_simulator`).
  *
  * This is the specialization for `partial_truth_table`.
  * This function simulates every node in the circuit.
