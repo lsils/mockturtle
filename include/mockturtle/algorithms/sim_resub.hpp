@@ -815,7 +815,7 @@ public:
 
     /* first simulation: the whole circuit; from 0 bits. */
     call_with_stopwatch( st.time_sim, [&]() {
-      simulate_nodes<Ntk>( ntk, tts, sim );
+      simulate_nodes<Ntk>( ntk, tts, sim, true );
     });
   }
 

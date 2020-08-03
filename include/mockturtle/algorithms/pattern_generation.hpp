@@ -130,7 +130,7 @@ public:
     stopwatch t( st.time_total );
 
     call_with_stopwatch( st.time_sim, [&]() {
-      simulate_nodes<Ntk>( ntk, tts, sim );
+      simulate_nodes<Ntk>( ntk, tts, sim, true );
     } );
 
     if ( ps.num_stuck_at > 0 )
