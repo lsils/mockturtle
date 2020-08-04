@@ -159,6 +159,14 @@ public:
     if constexpr ( use_odc )
     {
       observability_check();
+      if constexpr( std::is_same_v<Simulator, bit_packed_simulator> )
+      {
+        sim.pack_bits();
+        call_with_stopwatch( st.time_sim, [&]() {
+          tts.reset();
+          simulate_nodes<Ntk>( ntk, tts, sim, true );
+        } );
+      }
     }
   }
 
@@ -435,8 +443,28 @@ private:
 
   std::vector<bool> compute_support( node const& n )
   {
+    if constexpr ( use_odc )
+    {
+      if ( ps.odc_levels != 0 )
+      {
+        std::vector<node> leaves;
+        ntk.incr_trav_id();
+        mark_fanout_leaves_rec( n, 1, leaves );
+        ntk.foreach_po( [&]( auto const& f ) {
+          if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() )
+          {
+            leaves.emplace_back( ntk.get_node( f ) );
+          }
+        });
+
+        for ( auto& l : leaves )
+        {
+          ntk.incr_trav_id();
+          mark_support_rec( l );
+        }
+      }
+    }
     ntk.incr_trav_id();
-    ntk.set_visited( n, ntk.trav_id() );
     mark_support_rec( n );
 
     std::vector<bool> care( ntk.num_pis(), false );
@@ -451,6 +479,10 @@ private:
 
   void mark_support_rec( node const& n )
   {
+    if ( ntk.visited( n ) == ntk.trav_id() )
+      { return; }
+    ntk.set_visited( n, ntk.trav_id() );
+
     ntk.foreach_fanin( n, [&]( auto const& f ) {
       if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() )
         { return true; }
@@ -458,6 +490,24 @@ private:
       mark_support_rec( ntk.get_node( f ) );
       return true;
     });
+  }
+
+  void mark_fanout_leaves_rec( node const& n, int level, std::vector<node>& leaves )
+  {
+    ntk.foreach_fanout( n, [&]( auto const& fo ) {
+      if ( ntk.visited( fo ) == ntk.trav_id() )
+        { return true; }
+      ntk.set_visited( fo, ntk.trav_id() );
+
+      if ( level == ps.odc_levels )
+      {
+        leaves.emplace_back( fo );
+        return true;
+      }
+
+      mark_fanout_leaves_rec( fo, level + 1, leaves );
+      return true;
+    } );
   }
 
 private:
