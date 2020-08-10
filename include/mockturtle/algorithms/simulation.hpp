@@ -340,6 +340,7 @@ public:
    */
   void add_pattern( std::vector<bool> const& pattern, std::vector<bool> const& care_bits )
   {
+    std::cout<<"[i] add pattern...\n";
     assert( pattern.size() == care_bits.size() );
     assert( pattern.size() == patterns.size() );
 
@@ -412,9 +413,11 @@ public:
         patterns[i].resize( num_patterns );
         care[i].resize( num_patterns );
       }
+      std::cout<<"[i] bit packing finished...\n";
       packed_patterns = num_patterns;
       return true;
     }
+    std::cout<<"[i] bit packing finished...\n";
     packed_patterns = num_patterns;
     return false;
   }
