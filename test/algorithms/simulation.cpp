@@ -194,8 +194,6 @@ TEST_CASE( "Incremental simulation with partial_simulator", "[simulation]" )
 
 TEST_CASE( "Bit packing", "[simulation]" )
 {
-#if defined(WIN32) || defined(__WIN32__) || defined(_WIN32) || defined(_MSC_VER) || defined(__MINGW32__)
-#else
   std::vector<kitty::partial_truth_table> pats( 5 );
   pats[0].add_bits( 0x1, 2 ); /* x0 = 01 */
   pats[1].add_bits( 0x1, 2 ); /* x1 = 01 */
@@ -255,5 +253,4 @@ TEST_CASE( "Bit packing", "[simulation]" )
   CHECK( ( sim.compute_pi( 2 )._bits[0] & 0x0f ) == 0x0d ); /* x2 = xxx1101 -> x1101 */
   CHECK( ( sim.compute_pi( 3 )._bits[0] & 0x0f ) == 0x0d ); /* x3 = xx1x101 -> x1101 */
   CHECK( ( sim.compute_pi( 4 )._bits[0] & 0x1f ) == 0x1d ); /* x4 = x1x1101 -> 11101 */
-#endif
 }

@@ -357,6 +357,7 @@ public:
    */
   bool pack_bits()
   {
+    std::cout<<"[i] bit packing...\n";
     if ( num_patterns == 0u ) { return false; }
     if ( num_patterns == packed_patterns ) { return false; }
     assert( num_patterns > packed_patterns );
@@ -384,6 +385,7 @@ public:
       }
     }
 
+    std::cout<<"[i] removing "<<empty_slots.size()<<" empty_slots\n";
     if ( empty_slots.size() > 0u )
     {
       /* fill the empty slots (from smaller values; `empty_slots` should be reversely sorted) */
@@ -391,12 +393,15 @@ public:
       int j = 0;
       for ( int i = empty_slots.size() - 1; i >= 0; --i )
       {
+        std::cout<<"    [i] i = "<<i<<"\n";
         while ( empty_slots[j] >= num_patterns - 1 && j <= i )
         {
           if ( empty_slots[j] == num_patterns - 1 ) { --num_patterns; }
           ++j;
+          std::cout<<"    [i] ... j = "<<j<<"\n";
         }
         if ( j > i ) { break; }
+        std::cout<<"    [i] move from "<<num_patterns-1<<" to "<<empty_slots[i]<<"\n";
         move_pattern( num_patterns - 1, empty_slots[i] );
         --num_patterns;
       }
