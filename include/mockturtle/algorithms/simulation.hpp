@@ -340,7 +340,6 @@ public:
    */
   void add_pattern( std::vector<bool> const& pattern, std::vector<bool> const& care_bits )
   {
-    std::cout<<"[i] add pattern...\n";
     assert( pattern.size() == care_bits.size() );
     assert( pattern.size() == patterns.size() );
 
@@ -358,7 +357,6 @@ public:
    */
   bool pack_bits()
   {
-    std::cout<<"[i] bit packing...\n";
     if ( num_patterns == 0u ) { return false; }
     if ( num_patterns == packed_patterns ) { return false; }
     assert( num_patterns > packed_patterns );
@@ -386,7 +384,6 @@ public:
       }
     }
 
-    std::cout<<"[i] removing "<<empty_slots.size()<<" empty_slots\n";
     if ( empty_slots.size() > 0u )
     {
       /* fill the empty slots (from smaller values; `empty_slots` should be reversely sorted) */
@@ -394,30 +391,25 @@ public:
       int j = 0;
       for ( int i = empty_slots.size() - 1; i >= 0; --i )
       {
-        std::cout<<"    [i] i = "<<i<<"\n";
         while ( empty_slots[j] >= num_patterns - 1 && j <= i )
         {
           if ( empty_slots[j] == num_patterns - 1 ) { --num_patterns; }
           ++j;
-          std::cout<<"    [i] ... j = "<<j<<". condition: "<<(empty_slots[j] >= num_patterns - 1 && j <= i)<< "\n";
+          if ( j == empty_slots.size() ) { break; }
         }
         if ( j > i ) { break; }
-        std::cout<<"    [i] move from "<<num_patterns-1<<" to "<<empty_slots[i]<<"\n";
         move_pattern( num_patterns - 1, empty_slots[i] );
         --num_patterns;
       }
-      std::cout<<"[i] exit while loop\n";
       assert( patterns[0].num_bits() - num_patterns == empty_slots.size() );
       for ( auto i = 0u; i < patterns.size(); ++i )
       {
         patterns[i].resize( num_patterns );
         care[i].resize( num_patterns );
       }
-      std::cout<<"[i] bit packing finished...\n";
       packed_patterns = num_patterns;
       return true;
     }
-    std::cout<<"[i] bit packing finished...\n";
     packed_patterns = num_patterns;
     return false;
   }
