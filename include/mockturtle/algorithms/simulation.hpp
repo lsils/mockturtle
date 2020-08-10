@@ -399,14 +399,14 @@ public:
         {
           if ( empty_slots[j] == num_patterns - 1 ) { --num_patterns; }
           ++j;
-          std::cout<<"    [i] ... j = "<<j<<"\n";
+          std::cout<<"    [i] ... j = "<<j<<". condition: "<<(empty_slots[j] >= num_patterns - 1 && j <= i)<< "\n";
         }
         if ( j > i ) { break; }
         std::cout<<"    [i] move from "<<num_patterns-1<<" to "<<empty_slots[i]<<"\n";
         move_pattern( num_patterns - 1, empty_slots[i] );
         --num_patterns;
       }
-    
+      std::cout<<"[i] exit while loop\n";
       assert( patterns[0].num_bits() - num_patterns == empty_slots.size() );
       for ( auto i = 0u; i < patterns.size(); ++i )
       {
