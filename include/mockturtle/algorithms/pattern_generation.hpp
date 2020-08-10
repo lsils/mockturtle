@@ -443,12 +443,12 @@ private:
 
   std::vector<bool> compute_support( node const& n )
   {
+    ntk.incr_trav_id();
     if constexpr ( use_odc )
     {
       if ( ps.odc_levels != 0 )
       {
         std::vector<node> leaves;
-        ntk.incr_trav_id();
         mark_fanout_leaves_rec( n, 1, leaves );
         ntk.foreach_po( [&]( auto const& f ) {
           if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() )
@@ -457,14 +457,13 @@ private:
           }
         });
 
+        ntk.incr_trav_id();
         for ( auto& l : leaves )
         {
-          ntk.incr_trav_id();
           mark_support_rec( l );
         }
       }
     }
-    ntk.incr_trav_id();
     mark_support_rec( n );
 
     std::vector<bool> care( ntk.num_pis(), false );
@@ -486,7 +485,6 @@ private:
     ntk.foreach_fanin( n, [&]( auto const& f ) {
       if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() )
         { return true; }
-      ntk.set_visited( ntk.get_node( f ), ntk.trav_id() );
       mark_support_rec( ntk.get_node( f ) );
       return true;
     });
