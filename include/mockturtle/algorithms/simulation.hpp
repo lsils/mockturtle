@@ -395,7 +395,7 @@ public:
         {
           if ( empty_slots[j] == num_patterns - 1 ) { --num_patterns; }
           ++j;
-          if ( j == empty_slots.size() ) { break; }
+          if ( j == (int)empty_slots.size() ) { break; }
         }
         if ( j > i ) { break; }
         move_pattern( num_patterns - 1, empty_slots[i] );
