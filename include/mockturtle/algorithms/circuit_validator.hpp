@@ -95,7 +95,7 @@ public:
   };
 
   explicit circuit_validator( Ntk const& ntk, validator_params const& ps = {} )
-      : ntk( ntk ), ps( ps ), literals( ntk ), cex( ntk.num_pis() )
+      : ntk( ntk ), ps( ps ), literals( ntk ), num_invoke( 0u ), cex( ntk.num_pis() )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
@@ -146,7 +146,7 @@ public:
       construct( ntk.get_node( d ) );
     }
     auto const res = validate( ntk.get_node( f ), lit_not_cond( literals[d], ntk.is_complemented( f ) ^ ntk.is_complemented( d ) ) );
-    if ( solver.num_clauses() > ps.max_clauses )
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
     {
       restart();
     }
@@ -161,7 +161,7 @@ public:
       construct( ntk.get_node( d ) );
     }
     auto const res = validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
-    if ( solver.num_clauses() > ps.max_clauses )
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
     {
       restart();
     }
@@ -231,7 +231,7 @@ public:
       pop();
     }
 
-    if ( solver.num_clauses() > ps.max_clauses )
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
     {
       restart();
     }
@@ -278,7 +278,7 @@ public:
       res = solve( {lit_not_cond( literals[root], value )} );
     }
 
-    if ( solver.num_clauses() > ps.max_clauses )
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
     {
       restart();
     }
@@ -345,7 +345,7 @@ public:
     }
 
     pop();
-    if ( solver.num_clauses() > ps.max_clauses )
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
     {
       restart();
     }
@@ -365,6 +365,7 @@ public:
 private:
   void restart()
   {
+    num_invoke = 0u;
     solver.restart();
     if constexpr ( randomize )
     {
@@ -516,6 +517,7 @@ private:
 
   std::optional<bool> solve( std::vector<bill::lit_type> assumptions )
   {
+    ++num_invoke;
     auto const res = solver.solve( assumptions, ps.conflict_limit );
 
     if ( res == bill::result::states::satisfiable )
@@ -691,6 +693,9 @@ private:
 
   unordered_node_map<bill::lit_type, Ntk> literals;
   bill::solver<Solver> solver;
+
+  static const uint32_t MIN_NUM_INVOKE = 20u;
+  uint32_t num_invoke;
 
   bool between_push_pop = false;
   std::vector<node> tmp;
