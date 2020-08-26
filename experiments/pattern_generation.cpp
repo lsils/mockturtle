@@ -54,7 +54,7 @@ int main()
     pattern_generation_stats st;
 
     uint32_t num_random_pattern = 1000;
-    partial_simulator sim( aig.num_pis(), num_random_pattern );
+    bit_packed_simulator sim( aig.num_pis(), num_random_pattern );
     pattern_generation( aig, sim, ps, &st );
 
     exp( benchmark, aig.num_pis(), size_before, sim.num_bits(), st.num_generated_patterns, st.num_constant, to_seconds( st.time_total ), to_seconds( st.time_sim ), to_seconds( st.time_sat ) );

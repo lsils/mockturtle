@@ -566,7 +566,7 @@ struct abc_resub_functor_stats
     std::cout << fmt::format( "[i]         #solution = {:6d}\n", num_success );
     std::cout << fmt::format( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
     std::cout << fmt::format( "[i]         ABC time:   {:>5.2f} secs\n", to_seconds( time_compute_function ) );
-    std::cout << fmt::format( "[i]         interface:  {:>5.2f} secs\n", to_seconds( time_compute_function ) );
+    std::cout << fmt::format( "[i]         interface:  {:>5.2f} secs\n", to_seconds( time_interface ) );
     // clang-format on
   }
 };
@@ -815,7 +815,7 @@ public:
 
     /* first simulation: the whole circuit; from 0 bits. */
     call_with_stopwatch( st.time_sim, [&]() {
-      simulate_nodes<Ntk>( ntk, tts, sim );
+      simulate_nodes<Ntk>( ntk, tts, sim, true );
     });
   }
 
