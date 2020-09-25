@@ -28,23 +28,28 @@
   \brief Write networks to AIGER format
 
   \author Heinz Riener
+
+  A detailed description of the (binary) AIGER format and its encoding is available at [1].
+
+  [1] http://fmv.jku.at/aiger/
 */
 
 #pragma once
 
 #include "../traits.hpp"
 
-#include <fmt/format.h>
-
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <stdio.h>
+#include <cstdio>
 
 namespace mockturtle
 {
 
-void encode( std::vector<unsigned char>& buffer, unsigned lit )
+namespace detail
+{
+
+void encode( std::vector<unsigned char>& buffer, uint32_t lit )
 {
   unsigned char ch;
   while ( lit & ~0x7f )
@@ -57,8 +62,35 @@ void encode( std::vector<unsigned char>& buffer, unsigned lit )
   buffer.push_back( ch );
 }
 
+} /* detail */
+
+/*! \brief Writes a combinational AIG network in binary AIGER format into a file
+ *
+ * **Required network functions:**
+ * - `num_cis`
+ * - `num_cos`
+ * - `foreach_gate`
+ * - `foreach_fanin`
+ * - `foreach_po`
+ * - `get_node`
+ * - `is_complemented`
+ *
+ * \param aig Combinational AIG network
+ * \param os Output stream
+ */
 void write_aiger( aig_network const& aig, std::ostream& os )
 {
+  static_assert( is_network_type_v<aig_network>, "Ntk is not a network type" );
+  static_assert( has_num_cis_v<aig_network>, "Ntk does not implement the num_cis method" );
+  static_assert( has_num_cos_v<aig_network>, "Ntk does not implement the num_cos method" );
+  static_assert( has_foreach_gate_v<aig_network>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_fanin_v<aig_network>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_foreach_po_v<aig_network>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_get_node_v<aig_network>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_complemented_v<aig_network>, "Ntk does not implement the is_complemented method" );
+
+  assert( aig.is_combinational() && "Network has to be combinational" );
+
   using node = aig_network::node;
   using signal = aig_network::signal;
 
@@ -94,16 +126,33 @@ void write_aiger( aig_network const& aig, std::ostream& os )
     }
 
     assert( lits[2] < lits[0] );
-    encode( buffer, lits[0] - lits[2] );
-    encode( buffer, lits[2] - lits[1] );
+    detail::encode( buffer, lits[0] - lits[2] );
+    detail::encode( buffer, lits[2] - lits[1] );
   });
 
   for ( const auto& b : buffer )
   {
     os.put( b );
   }
+
+  /* COMMENT */
+  os.put( 'c' );
 }
 
+/*! \brief Writes a combinational AIG network in binary AIGER format into a file
+ *
+ * **Required network functions:**
+ * - `num_cis`
+ * - `num_cos`
+ * - `foreach_gate`
+ * - `foreach_fanin`
+ * - `foreach_po`
+ * - `get_node`
+ * - `is_complemented`
+ *
+ * \param aig Combinational AIG network
+ * \param filename Filename
+ */
 void write_aiger( aig_network const& aig, std::string const& filename )
 {
   std::ofstream os( filename.c_str(), std::ofstream::out );
