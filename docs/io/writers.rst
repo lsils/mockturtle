@@ -4,11 +4,29 @@ Write into file formats
 Write into BENCH files
 ~~~~~~~~~~~~~~~~~~~~~~
 
+**Header:** ``mockturtle/io/write_aiger.hpp``
+
+.. doxygenfunction:: mockturtle::write_aiger(Ntk const&, std::string const&)
+
+.. doxygenfunction:: mockturtle::write_aiger(Ntk const&, std::ostream&)
+
+Write into BENCH files
+~~~~~~~~~~~~~~~~~~~~~~
+
 **Header:** ``mockturtle/io/write_bench.hpp``
 
 .. doxygenfunction:: mockturtle::write_bench(Ntk const&, std::string const&)
 
 .. doxygenfunction:: mockturtle::write_bench(Ntk const&, std::ostream&)
+
+Write into BLIF files
+~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/io/write_blif.hpp``
+
+.. doxygenfunction:: mockturtle::write_blif(Ntk const&, std::string const&)
+
+.. doxygenfunction:: mockturtle::write_blif(Ntk const&, std::ostream&)
 
 Write into structural Verilog files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
