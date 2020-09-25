@@ -39,6 +39,7 @@ v0.2 (not yet released)
     - Read BLIF files using *lorina* (`blif_reader`) `#167 <https://github.com/lsils/mockturtle/pull/167>`_
     - Write networks to BLIF files (`write_blif`) `#169 <https://github.com/lsils/mockturtle/pull/169>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
     - Create circuit from integer index list (`create_from_binary_index_list`) `#259 <https://github.com/lsils/mockturtle/pull/259>`_
+    - Write networks to AIGER files (`write_aiger`) `#379 <https://github.com/lsils/mockturtle/pull/379>`_
 * Resynthesis functions:
     - Resynthesis function based on DSD decomposition (`dsd_resynthesis`) `#182 <https://github.com/lsils/mockturtle/pull/182>`_
     - Resynthesis function based on Shannon decomposition (`shannon_resynthesis`) `#185 <https://github.com/lsils/mockturtle/pull/185>`_
