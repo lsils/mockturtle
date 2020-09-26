@@ -190,9 +190,11 @@ public:
 	void pop(uint32_t num_levels = 1u)
 	{
 		assert(num_levels == 1u && "bsat does not support multiple step pop");
+		assert(variable_counter.size() >= num_levels);
+		assert(clause_counter.size() >= num_levels);
 		pabc::sat_solver_rollback(solver_);
-		variable_counter.resize(variable_counter.size() - num_levels);
-		clause_counter.resize(clause_counter.size() - num_levels);
+		variable_counter.resize(uint32_t(variable_counter.size() - num_levels));
+		clause_counter.resize(uint32_t(clause_counter.size() - num_levels));
 	}
 
 	void set_random_phase(uint32_t seed = 0u)
