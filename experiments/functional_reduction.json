@@ -1,0 +1,187 @@
+[
+  {
+    "entries": [
+      {
+        "FE nodes": 2,
+        "benchmark": "adder",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.005993469152599573,
+        "size": 1020,
+        "size_after": 1020
+      },
+      {
+        "FE nodes": 2,
+        "benchmark": "bar",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.015822796151041985,
+        "size": 3336,
+        "size_after": 3336
+      },
+      {
+        "FE nodes": 2,
+        "benchmark": "div",
+        "const": 8,
+        "equivalent": true,
+        "runtime": 1.3918981552124023,
+        "size": 57247,
+        "size_after": 57203
+      },
+      {
+        "FE nodes": 1,
+        "benchmark": "hyp",
+        "const": 2,
+        "equivalent": true,
+        "runtime": 6.0427422523498535,
+        "size": 214335,
+        "size_after": 214331
+      },
+      {
+        "FE nodes": 3,
+        "benchmark": "log2",
+        "const": 24,
+        "equivalent": true,
+        "runtime": 7.759164810180664,
+        "size": 32060,
+        "size_after": 31644
+      },
+      {
+        "FE nodes": 1,
+        "benchmark": "max",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.018430721014738083,
+        "size": 2865,
+        "size_after": 2865
+      },
+      {
+        "FE nodes": 1,
+        "benchmark": "multiplier",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.4886188507080078,
+        "size": 27062,
+        "size_after": 27062
+      },
+      {
+        "FE nodes": 1,
+        "benchmark": "sin",
+        "const": 4,
+        "equivalent": true,
+        "runtime": 0.49799105525016785,
+        "size": 5416,
+        "size_after": 5377
+      },
+      {
+        "FE nodes": 1,
+        "benchmark": "sqrt",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.10506930202245712,
+        "size": 24618,
+        "size_after": 24618
+      },
+      {
+        "FE nodes": 1,
+        "benchmark": "square",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.15569952130317688,
+        "size": 18484,
+        "size_after": 18484
+      },
+      {
+        "FE nodes": 4,
+        "benchmark": "arbiter",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.4612380266189575,
+        "size": 11839,
+        "size_after": 11839
+      },
+      {
+        "FE nodes": 6,
+        "benchmark": "cavlc",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.00280905794352293,
+        "size": 693,
+        "size_after": 693
+      },
+      {
+        "FE nodes": 4,
+        "benchmark": "ctrl",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.0008573969826102257,
+        "size": 174,
+        "size_after": 174
+      },
+      {
+        "FE nodes": 8,
+        "benchmark": "dec",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.006288647186011076,
+        "size": 304,
+        "size_after": 304
+      },
+      {
+        "FE nodes": 45,
+        "benchmark": "i2c",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.012985759414732456,
+        "size": 1342,
+        "size_after": 1342
+      },
+      {
+        "FE nodes": 7,
+        "benchmark": "int2float",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.0011102140415459871,
+        "size": 260,
+        "size_after": 260
+      },
+      {
+        "FE nodes": 137,
+        "benchmark": "mem_ctrl",
+        "const": 1,
+        "equivalent": true,
+        "runtime": 3.2297370433807373,
+        "size": 46836,
+        "size_after": 46834
+      },
+      {
+        "FE nodes": 2,
+        "benchmark": "priority",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.0043844860047101974,
+        "size": 978,
+        "size_after": 978
+      },
+      {
+        "FE nodes": 1,
+        "benchmark": "router",
+        "const": 0,
+        "equivalent": true,
+        "runtime": 0.0050890520215034485,
+        "size": 257,
+        "size_after": 257
+      },
+      {
+        "FE nodes": 1,
+        "benchmark": "voter",
+        "const": 6,
+        "equivalent": true,
+        "runtime": 1.274780511856079,
+        "size": 13758,
+        "size_after": 13721
+      }
+    ],
+    "version": "24da50f"
+  }
+]
