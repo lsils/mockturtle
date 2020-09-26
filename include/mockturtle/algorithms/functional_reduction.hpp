@@ -38,9 +38,9 @@
 #include <bill/sat/interface/abc_bsat2.hpp>
 #include <kitty/partial_truth_table.hpp>
 
-#include <mockturtle/io/write_patterns.hpp>
 #include <mockturtle/algorithms/circuit_validator.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
+#include <mockturtle/io/write_patterns.hpp>
 
 namespace mockturtle
 {
@@ -148,7 +148,7 @@ public:
     /* first simulation: the whole circuit; from 0 bits. */
     call_with_stopwatch( st.time_sim, [&]() {
       simulate_nodes<Ntk>( ntk, tts, sim, true );
-    });
+    } );
 
     /* remove constant nodes. */
     substitute_constants();
@@ -202,7 +202,7 @@ private:
       {
         found_cex();
         zero = sim.compute_constant( false );
-        one = sim.compute_constant( true );      
+        one = sim.compute_constant( true );
       }
       else /* UNSAT, constant verified */
       {
@@ -235,7 +235,7 @@ private:
         {
           g = ntk.make_signal( n );
         }
-        else if ( ntt == tts[n])
+        else if ( ntt == tts[n] )
         {
           g = !ntk.make_signal( n );
         }
@@ -321,11 +321,13 @@ private:
     bool continue_loop = true;
     ntk.foreach_fanin( n, [&]( auto const& f ) {
       if ( ntk.visited( ntk.get_node( f ) ) == trav_id )
-        { return true; } /* skip visited node, continue looping. */
+      {
+        return true;
+      } /* skip visited node, continue looping. */
 
       continue_loop = foreach_transitive_fanin_rec( ntk.get_node( f ), trav_id, fn );
       return continue_loop; /* break `foreach_fanin` loop immediately when receiving `false`. */
-    });
+    } );
     return continue_loop; /* return `false` only if `false` has ever been received from recursive calls. */
   }
 
