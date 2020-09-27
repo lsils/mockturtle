@@ -180,7 +180,7 @@ public:
    * \param num_pis Number of primary inputs, which is the same as the length of a simulation pattern.
    * \param num_patterns Number of initial random simulation patterns.
    */
-  partial_simulator( unsigned num_pis, unsigned num_patterns, std::default_random_engine::result_type seed = 0 )
+  partial_simulator( unsigned num_pis, unsigned num_patterns, std::default_random_engine::result_type seed = 1 )
     : num_patterns( num_patterns )
   {
     assert( num_pis > 0u );
