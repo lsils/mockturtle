@@ -34,6 +34,7 @@
 
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
+#include "../views/fanout_view.hpp"
 
 #include <bill/sat/interface/abc_bsat2.hpp>
 #include <kitty/partial_truth_table.hpp>
@@ -64,8 +65,11 @@ struct functional_reduction_params
   /*! \brief Whether to save the appended patterns (with CEXs) into file. */
   std::optional<std::string> save_patterns{};
 
-  /*! \brief Maximum number of nodes in the transitive fanin cone to be compared to. */
+  /*! \brief Maximum number of nodes in the transitive fanin cone (and their fanouts) to be compared to. */
   uint32_t max_TFI_nodes{1000};
+
+  /*! \brief Maximum fanout count of a node in the transitive fanin cone to explore its fanouts. */
+  uint32_t skip_fanout_limit{100};
 
   /*! \brief Conflict limit for the SAT solver. */
   uint32_t conflict_limit{100};
@@ -238,58 +242,113 @@ private:
       check_tts( root );
       auto tt = tts[root];
       auto ntt = ~tts[root];
-      auto j = 0u;
+      std::vector<node> tfi;
+      bool keep_trying = true;
       foreach_transitive_fanin( root, [&]( auto const& n ) {
-        if ( ++j > ps.max_TFI_nodes )
+        tfi.emplace_back( n );
+        if ( tfi.size() > ps.max_TFI_nodes )
         {
           return false;
         }
-
-        signal g;
-        if ( tt == tts[n] )
-        {
-          g = ntk.make_signal( n );
-        }
-        else if ( ntt == tts[n] )
-        {
-          g = !ntk.make_signal( n );
-        }
-        else /* not equivalent */
-        {
-          return true; /* try next transitive fanin node */
-        }
-
-        /* update progress bar */
-        candidates++;
-
-        const auto res = call_with_stopwatch( st.time_sat, [&]() {
-          return validator.validate( n, g );
-        } );
-        if ( !res ) /* timeout */
-        {
-          ++st.num_timeout;
-          return true; /* try next transitive fanin node */
-        }
-        else if ( !( *res ) ) /* SAT, cex found */
-        {
-          found_cex();
-          check_tts( root );
-          tt = tts[root];
-          ntt = ~tts[root];
-          return true; /* try next transitive fanin node */
-        }
-        else /* UNSAT, equivalent node verified */
-        {
-          ++st.num_reduction;
-          ++st.num_equ_accepts;
-          /* update network */
-          ntk.substitute_node( n, g );
-          return false; /* break `foreach_transitive_fanin` */
-        }
+        
+        keep_trying = try_node( tt, ntt, root, n );
+        return keep_trying;
       } );
+
+      if ( keep_trying ) /* didn't find a substitution in TFI cone, explore fanouts. */
+      {
+        for ( auto j = 0u; j < tfi.size() && tfi.size() <= ps.max_TFI_nodes && keep_trying; ++j )
+        {
+          auto& n = tfi.at( j );
+          if ( ntk.fanout_size( n ) > ps.skip_fanout_limit )
+            { continue; }
+
+          /* if the fanout has all fanins in the set, add it */
+          ntk.foreach_fanout( n, [&]( node const& p ) {
+            if ( ntk.visited( p ) == ntk.trav_id() )
+              { return true; /* next fanout */ }
+
+            bool all_fanins_visited = true;
+            ntk.foreach_fanin( p, [&]( const auto& g ) {
+              if ( ntk.visited( ntk.get_node( g ) ) != ntk.trav_id() )
+              {
+                all_fanins_visited = false;
+                return false; /* terminate fanin-loop */
+              }
+              return true; /* next fanin */
+            } );
+            if ( !all_fanins_visited )
+              { return true; /* next fanout */ }
+
+            bool has_root_as_child = false;
+            ntk.foreach_fanin( p, [&]( const auto& g ) {
+              if ( ntk.get_node( g ) == root )
+              {
+                has_root_as_child = true;
+                return false; /* terminate fanin-loop */
+              }
+              return true; /* next fanin */
+            } );
+            if ( has_root_as_child )
+              { return true; /* next fanout */ }
+
+            tfi.emplace_back( p );
+            ntk.set_visited( p, ntk.trav_id() );
+
+            check_tts( p );
+            keep_trying = try_node( tt, ntt, root, p );
+            return keep_trying;
+          } );
+        }
+      }
 
       return true; /* next */
     } );
+  }
+
+  bool try_node( kitty::partial_truth_table& tt, kitty::partial_truth_table& ntt, node const& root, node const& n )
+  {
+    signal g;
+    if ( tt == tts[n] )
+    {
+      g = ntk.make_signal( n );
+    }
+    else if ( ntt == tts[n] )
+    {
+      g = !ntk.make_signal( n );
+    }
+    else /* not equivalent */
+    {
+      return true; /* try next transitive fanin node */
+    }
+
+    /* update progress bar */
+    candidates++;
+
+    const auto res = call_with_stopwatch( st.time_sat, [&]() {
+      return validator.validate( root, g );
+    } );
+    if ( !res ) /* timeout */
+    {
+      ++st.num_timeout;
+      return true; /* try next transitive fanin node */
+    }
+    else if ( !( *res ) ) /* SAT, cex found */
+    {
+      found_cex();
+      check_tts( root );
+      tt = tts[root];
+      ntt = ~tts[root];
+      return true; /* try next transitive fanin node */
+    }
+    else /* UNSAT, equivalent node verified */
+    {
+      ++st.num_reduction;
+      ++st.num_equ_accepts;
+      /* update network */
+      ntk.substitute_node( root, g );
+      return false; /* break `foreach_transitive_fanin` */
+    }
   }
 
   void found_cex()
@@ -320,27 +379,29 @@ private:
   void foreach_transitive_fanin( node const& n, Fn&& fn )
   {
     ntk.incr_trav_id();
-    auto trav_id = ntk.trav_id();
+    ntk.set_visited( n, ntk.trav_id() );
 
-    foreach_transitive_fanin_rec( n, trav_id, fn );
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      return foreach_transitive_fanin_rec( ntk.get_node( f ), fn );
+    });
   }
 
   template<typename Fn>
-  bool foreach_transitive_fanin_rec( node const& n, uint32_t const& trav_id, Fn&& fn )
+  bool foreach_transitive_fanin_rec( node const& n, Fn&& fn )
   {
-    ntk.set_visited( n, trav_id );
+    ntk.set_visited( n, ntk.trav_id() );
     if ( !fn( n ) )
     {
       return false;
     }
     bool continue_loop = true;
     ntk.foreach_fanin( n, [&]( auto const& f ) {
-      if ( ntk.visited( ntk.get_node( f ) ) == trav_id )
+      if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() )
       {
         return true;
       } /* skip visited node, continue looping. */
 
-      continue_loop = foreach_transitive_fanin_rec( ntk.get_node( f ), trav_id, fn );
+      continue_loop = foreach_transitive_fanin_rec( ntk.get_node( f ), fn );
       return continue_loop; /* break `foreach_fanin` loop immediately when receiving `false`. */
     } );
     return continue_loop; /* return `false` only if `false` has ever been received from recursive calls. */
@@ -385,8 +446,11 @@ void functional_reduction( Ntk& ntk, functional_reduction_params const& ps = {},
   vps.max_clauses = ps.max_clauses;
   vps.conflict_limit = ps.conflict_limit;
 
+  using fanout_view_t = fanout_view<Ntk>;
+  fanout_view_t fanout_view{ntk};
+
   functional_reduction_stats st;
-  detail::functional_reduction_impl p( ntk, ps, vps, st );
+  detail::functional_reduction_impl p( fanout_view, ps, vps, st );
   p.run();
 
   if ( ps.verbose )
