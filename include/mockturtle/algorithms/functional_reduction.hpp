@@ -53,16 +53,22 @@ struct functional_reduction_params
   /*! \brief Be verbose. */
   bool verbose{false};
 
+  /*! \brief Whether to repeat until no further improvement can be found. */
+  bool saturation{false};
+
   /*! \brief Whether to use pre-generated patterns stored in a file.
-   * If not, by default, 1024 random pattern + 1x stuck-at patterns will be generated.
+   * If not, by default, 256 random patterns will be used.
    */
   std::optional<std::string> pattern_filename{};
 
   /*! \brief Whether to save the appended patterns (with CEXs) into file. */
   std::optional<std::string> save_patterns{};
 
+  /*! \brief Maximum number of nodes in the transitive fanin cone to be compared to. */
+  uint32_t max_TFI_nodes{1000};
+
   /*! \brief Conflict limit for the SAT solver. */
-  uint32_t conflict_limit{1000};
+  uint32_t conflict_limit{100};
 
   /*! \brief Maximum number of clauses of the SAT solver. (incremental CNF construction) */
   uint32_t max_clauses{1000};
@@ -85,9 +91,6 @@ struct functional_reduction_stats
   /*! \brief Number of accepted functionally equivalent nodes. */
   uint32_t num_equ_accepts{0};
 
-  /*! \brief Number of patterns used. */
-  uint32_t num_pats{0};
-
   /*! \brief Number of counter-examples (SAT calls). */
   uint32_t num_cex{0};
 
@@ -99,6 +102,20 @@ struct functional_reduction_stats
 
   void report() const
   {
+    // clang-format off
+    std::cout <<              "[i] Functional Reduction\n";
+    std::cout <<              "[i] ========  Stats  ========\n";
+    std::cout << fmt::format( "[i] #constant = {:8d}\n", num_const_accepts );
+    std::cout << fmt::format( "[i] #FE pairs = {:8d}\n", num_equ_accepts );
+    std::cout << fmt::format( "[i] #SAT      = {:8d}\n", num_cex );
+    std::cout << fmt::format( "[i] #UNSAT    = {:8d}\n", num_reduction );
+    std::cout << fmt::format( "[i] #TIMEOUT  = {:8d}\n", num_timeout );
+    std::cout <<              "[i] ======== Runtime ========\n";
+    std::cout << fmt::format( "[i] total        : {:>5.2f} secs\n", to_seconds( time_total ) );
+    std::cout << fmt::format( "[i]   simulation : {:>5.2f} secs\n", to_seconds( time_sim ) );
+    std::cout << fmt::format( "[i]   SAT solving: {:>5.2f} secs\n", to_seconds( time_sat ) );
+    std::cout <<              "[i] =========================\n\n";
+    // clang-format on
   }
 };
 
@@ -108,18 +125,15 @@ template<typename Ntk, typename validator_t = circuit_validator<Ntk, bill::solve
 class functional_reduction_impl
 {
 public:
-  using stats = functional_reduction_stats;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using TT = unordered_node_map<kitty::partial_truth_table, Ntk>;
 
-  explicit functional_reduction_impl( Ntk& ntk, functional_reduction_params const& ps, stats& st )
-      : ntk( ntk ), ps( ps ), st( st ), tts( ntk ), validator( ntk, vps )
+  explicit functional_reduction_impl( Ntk& ntk, functional_reduction_params const& ps, validator_params const& vps, functional_reduction_stats& st )
+      : ntk( ntk ), ps( ps ), st( st ), tts( ntk ),
+        sim( ps.pattern_filename ? partial_simulator( *ps.pattern_filename ) : partial_simulator( ntk.num_pis(), 256 ) ), validator( ntk, vps )
   {
     static_assert( !validator_t::use_odc_, "`circuit_validator::use_odc` flag should be turned off." );
-
-    vps.conflict_limit = ps.conflict_limit;
-    vps.max_clauses = ps.max_clauses;
   }
 
   ~functional_reduction_impl()
@@ -134,17 +148,6 @@ public:
   {
     stopwatch t( st.time_total );
 
-    /* prepare simulation patterns. */
-    if ( ps.pattern_filename )
-    {
-      sim = partial_simulator( *ps.pattern_filename );
-    }
-    else
-    {
-      sim = partial_simulator( ntk.num_pis(), 256 );
-    }
-    st.num_pats = sim.num_bits();
-
     /* first simulation: the whole circuit; from 0 bits. */
     call_with_stopwatch( st.time_sim, [&]() {
       simulate_nodes<Ntk>( ntk, tts, sim, true );
@@ -154,7 +157,13 @@ public:
     substitute_constants();
 
     /* substitute functional equivalent nodes. */
+    auto size_before = ntk.size();
     substitute_equivalent_nodes();
+    while ( ps.saturation && ntk.size() != size_before )
+    {
+      size_before = ntk.size();
+      substitute_equivalent_nodes();
+    }
   }
 
 private:
@@ -229,7 +238,13 @@ private:
       check_tts( root );
       auto tt = tts[root];
       auto ntt = ~tts[root];
+      auto j = 0u;
       foreach_transitive_fanin( root, [&]( auto const& n ) {
+        if ( ++j > ps.max_TFI_nodes )
+        {
+          return false;
+        }
+
         signal g;
         if ( tt == tts[n] )
         {
@@ -334,12 +349,10 @@ private:
 private:
   Ntk& ntk;
   functional_reduction_params const& ps;
-  stats& st;
+  functional_reduction_stats& st;
 
   TT tts;
   partial_simulator sim;
-
-  validator_params vps;
   validator_t validator;
 
   uint32_t candidates{0};
@@ -350,8 +363,12 @@ private:
 template<class Ntk>
 void functional_reduction( Ntk& ntk, functional_reduction_params const& ps = {}, functional_reduction_stats* pst = nullptr )
 {
+  validator_params vps;
+  vps.max_clauses = ps.max_clauses;
+  vps.conflict_limit = ps.conflict_limit;
+
   functional_reduction_stats st;
-  detail::functional_reduction_impl p( ntk, ps, st );
+  detail::functional_reduction_impl p( ntk, ps, vps, st );
   p.run();
 
   if ( ps.verbose )
