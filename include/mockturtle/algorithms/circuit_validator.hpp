@@ -48,7 +48,7 @@ struct validator_params
   uint32_t max_clauses{1000};
 
   /*! \brief Whether to consider ODC, and how many levels. 0 = No consideration. -1 = Consider TFO until PO. */
-  int odc_levels{0};
+  int32_t odc_levels{0};
 
   /*! \brief Conflict limit of the SAT solver. */
   uint32_t conflict_limit{1000};
@@ -618,7 +618,7 @@ private:
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
-  void duplicate_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, int level )
+  void duplicate_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, int32_t level )
   {
     ntk.foreach_fanout( n, [&]( auto const& fo ) {
       if ( ntk.visited( fo ) == ntk.trav_id() )
@@ -654,7 +654,7 @@ private:
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
-  void make_lit_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk>& lits, std::vector<bill::lit_type>& miter, int level )
+  void make_lit_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk>& lits, std::vector<bill::lit_type>& miter, int32_t level )
   {
     ntk.foreach_fanout( n, [&]( auto const& fo ) {
       if ( ntk.visited( fo ) == ntk.trav_id() )

@@ -60,7 +60,7 @@ struct pattern_generation_params
   uint32_t num_stuck_at{1};
 
   /*! \brief Whether to consider observability, and how many levels. 0 = no. -1 = Consider TFO until PO. */
-  int odc_levels{0};
+  int32_t odc_levels{0};
 
   /*! \brief Show progress. */
   bool progress{false};
@@ -490,7 +490,7 @@ private:
     });
   }
 
-  void mark_fanout_leaves_rec( node const& n, int level, std::vector<node>& leaves )
+  void mark_fanout_leaves_rec( node const& n, int32_t level, std::vector<node>& leaves )
   {
     ntk.foreach_fanout( n, [&]( auto const& fo ) {
       if ( ntk.visited( fo ) == ntk.trav_id() )
