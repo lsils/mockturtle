@@ -360,9 +360,27 @@ private:
 
 } /* namespace detail */
 
+/*! \brief Functional reduction.
+ *
+ * Removes constant nodes and substitute functionally equivalent nodes.
+ */
 template<class Ntk>
 void functional_reduction( Ntk& ntk, functional_reduction_params const& ps = {}, functional_reduction_stats* pst = nullptr )
 {
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+  static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
+  static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
+
   validator_params vps;
   vps.max_clauses = ps.max_clauses;
   vps.conflict_limit = ps.conflict_limit;
