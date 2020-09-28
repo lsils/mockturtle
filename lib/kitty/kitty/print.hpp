@@ -146,7 +146,7 @@ void print_binary( const TT& tt, std::ostream& os = std::cout )
 }
 
 /*! \cond PRIVATE */
-inline void print_binary( const partial_truth_table& tt, std::ostream& os )
+inline void print_binary( const partial_truth_table& tt, std::ostream& os = std::cout )
 {
   auto const chunk_size = std::min<uint64_t>( tt.num_bits(), 64 );
   bool first = true;
@@ -210,7 +210,7 @@ void print_hex( const TT& tt, std::ostream& os = std::cout )
 }
 
 /*! \cond PRIVATE */
-inline void print_hex( const partial_truth_table& tt, std::ostream& os )
+inline void print_hex( const partial_truth_table& tt, std::ostream& os = std::cout )
 {
   bool first = true;
   for_each_block_reversed( tt, [&tt, &os, &first]( auto word ) {
