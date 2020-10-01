@@ -46,6 +46,86 @@
 namespace mockturtle
 {
 
+/*! \brief Identify outputs using reference counting
+ *
+ * Identify outputs using a reference counting approach.  The
+ * algorithm counts the references of the fanins of all nodes and
+ * compares them with the fanout_sizes of the respective nodes.  If
+ * reference count and fanout_size do not match, then the node is
+ * references outside of the node set and the respective is identified
+ * as an output.
+ *
+ * \param inputs Inputs of a window
+ * \param nodes Inner nodes of a window (i.e., the intersection of
+ *              inputs and nodes is assumed to be empty)
+ * \param refs Reference counters (in the size of the network and
+ *             initialized to 0)
+ * \return Output signals of the window
+ */
+template<typename Ntk>
+std::vector<typename Ntk::signal> find_outputs( Ntk const& ntk,
+                                                std::vector<typename Ntk::node> const& inputs,
+                                                std::vector<typename Ntk::node> const& nodes,
+                                                std::vector<uint32_t>& refs )
+{
+  using signal = typename Ntk::signal;
+  std::vector<signal> outputs;
+
+  /* create a new traversal ID */
+  ntk.incr_trav_id();
+
+  /* mark the inputs visited */
+  for ( auto const& i : inputs )
+  {
+    ntk.set_visited( i, ntk.trav_id() );
+  }
+
+  /* reference fanins of nodes */
+  for ( auto const& n : nodes )
+  {
+    if ( ntk.visited( n ) == ntk.trav_id() )
+    {
+      continue;
+    }
+
+    assert( !ntk.is_constant( n ) && !ntk.is_pi( n ) );
+    ntk.foreach_fanin( n, [&]( signal const& fi ){
+      refs[ntk.get_node( fi )] += 1;
+    });
+  }
+
+  /* if the fanout_size of a node does not match the reference count,
+     the node has fanout outside of the window is an output */
+  for ( const auto& n : nodes )
+  {
+    if ( ntk.visited( n ) == ntk.trav_id() )
+    {
+      continue;
+    }
+
+    if ( ntk.fanout_size( n ) != refs[n] )
+    {
+      outputs.emplace_back( ntk.make_signal( n ) );
+    }
+  }
+
+  /* dereference fanins of nodes */
+  for ( auto const& n : nodes )
+  {
+    if ( ntk.visited( n ) == ntk.trav_id() )
+    {
+      continue;
+    }
+
+    assert( !ntk.is_constant( n ) && !ntk.is_pi( n ) );
+    ntk.foreach_fanin( n, [&]( signal const& fi ){
+      refs[ntk.get_node( fi )] -= 1;
+    });
+  }
+
+  return outputs;
+}
+
 /*! \brief Implements an isolated view on a window in a network.
  *
  * This view creates a network from a window in a large network.  The
