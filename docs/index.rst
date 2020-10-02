@@ -54,6 +54,7 @@ Welcome to mockturtle's documentation!
    algorithms/equivalence_classes
    algorithms/circuit_validator
    algorithms/pattern_generation
+   algorithms/functional_reduction
 
 .. toctree::
    :maxdepth: 2
