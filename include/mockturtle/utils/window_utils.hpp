@@ -25,10 +25,15 @@
 
 /*!
   \file window_utils.hpp
-  \brief Utils to structurally collect node sets
+  \brief Utilities to collect small-scale sets of nodes
 
   \author Heinz Riener
 */
+
+#include <algorithm>
+#include <set>
+#include <type_traits>
+#include <vector>
 
 namespace mockturtle
 {
@@ -64,6 +69,14 @@ inline void collect_nodes_recur( Ntk const& ntk, typename Ntk::node const& n, st
   *
   * The output set has to be chosen in a way such that every path from
   * PIs to outputs passes through at least one input.
+  *
+  * **Required network functions:**
+  * - `foreach_fanin`
+  * - `get_node`
+  * - `incr_trav_id`
+  * - `set_visited`
+  * - `trav_id`
+  * - `visited`
   */
 template<typename Ntk, typename = std::enable_if_t<!std::is_same_v<typename Ntk::signal, typename Ntk::node>>>
 inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
@@ -91,6 +104,14 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
   *
   * The output set has to be chosen in a way such that every path from
   * PIs to outputs passes through at least one input.
+  *
+  * **Required network functions:**
+  * - `foreach_fanin`
+  * - `get_node`
+  * - `incr_trav_id`
+  * - `set_visited`
+  * - `trav_id`
+  * - `visited`
   */
 template<typename Ntk>
 inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
@@ -130,12 +151,25 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
  * references outside of the node set and the respective is identified
  * as an output.
  *
+ * \param ntk A network
  * \param inputs Inputs of a window
  * \param nodes Inner nodes of a window (i.e., the intersection of
  *              inputs and nodes is assumed to be empty)
  * \param refs Reference counters (in the size of the network and
  *             initialized to 0)
  * \return Output signals of the window
+  *
+  * **Required network functions:**
+  * - `fanout_size`
+  * - `foreach_fanin`
+  * - `get_node`
+  * - `incr_trav_id`
+  * - `is_ci`
+  * - `is_constant`
+  * - `make_signal`
+  * - `set_visited`
+  * - `trav_id`
+  * - `visited`
  */
 template<typename Ntk>
 inline std::vector<typename Ntk::signal> find_outputs( Ntk const& ntk,
@@ -163,7 +197,7 @@ inline std::vector<typename Ntk::signal> find_outputs( Ntk const& ntk,
       continue;
     }
 
-    assert( !ntk.is_constant( n ) && !ntk.is_pi( n ) );
+    assert( !ntk.is_constant( n ) && !ntk.is_ci( n ) );
     ntk.foreach_fanin( n, [&]( signal const& fi ){
       refs[ntk.get_node( fi )] += 1;
     });
@@ -192,13 +226,134 @@ inline std::vector<typename Ntk::signal> find_outputs( Ntk const& ntk,
       continue;
     }
 
-    assert( !ntk.is_constant( n ) && !ntk.is_pi( n ) );
+    assert( !ntk.is_constant( n ) && !ntk.is_ci( n ) );
     ntk.foreach_fanin( n, [&]( signal const& fi ){
       refs[ntk.get_node( fi )] -= 1;
     });
   }
 
   return outputs;
+}
+
+/*! \brief Expand a nodes towards TFO
+ *
+ * Iteratively expands the inner nodes of the window with those
+ * fanouts that are supported by the window until a fixed-point is
+ * reached.
+ *
+ * \param ntk A network
+ * \param inputs Input nodes of a window
+ * \param nodes Inner nodes of a window
+ *
+ * **Required network functions:**
+ * - `foreach_fanin`
+ * - `foreach_fanout`
+ * - `get_node`
+ * - `incr_trav_id`
+ * - `is_ci`
+ * - `set_visited`
+ * - `trav_id`
+ * - `visited`
+ */
+template<typename Ntk>
+void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
+{
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  auto explore_fanouts = [&]( Ntk const& ntk, node const& n, std::set<node>& result ){
+    ntk.foreach_fanout( n, [&]( node const& fo, uint64_t index ){
+      /* only look at the first few fanouts */
+      if ( index > 5 )
+      {
+        return false;
+      }
+      /* skip all nodes that are already in nodex */
+      if ( ntk.visited( fo ) == ntk.trav_id() )
+      {
+        return true;
+      }
+      result.insert( fo );
+      return true;
+    });
+  };
+
+  /* create a new traversal ID */
+  ntk.incr_trav_id();
+
+  /* mark the inputs visited */
+  for ( auto const& i : inputs )
+  {
+    ntk.set_visited( i, ntk.trav_id() );
+  }
+  /* mark the nodes visited */
+  for ( const auto& n : nodes )
+  {
+    ntk.set_visited( n, ntk.trav_id() );
+  }
+
+  /* collect all nodes that have fanouts not yet contained in nodes */
+  std::set<node> eps;
+  for ( const auto& n : inputs )
+  {
+    explore_fanouts( ntk, n, eps );
+  }
+  for ( const auto& n : nodes )
+  {
+    explore_fanouts( ntk, n, eps );
+  }
+
+  bool changed = true;
+  std::set<node> new_eps;
+  while ( changed )
+  {
+    new_eps.clear();
+    changed = false;
+
+    auto it = std::begin( eps );
+    while ( it != std::end( eps ) )
+    {
+      node const ep = *it;
+      if ( ntk.visited( ep ) == ntk.trav_id() )
+      {
+        it = eps.erase( it );
+        continue;
+      }
+
+      bool all_children_belong_to_window = true;
+      ntk.foreach_fanin( ep, [&]( signal const& fi ){
+        node const child = ntk.get_node( fi );
+        if ( ntk.visited( child ) != ntk.trav_id() )
+        {
+          all_children_belong_to_window = false;
+          return false;
+        }
+        return true;
+      });
+
+      if ( all_children_belong_to_window )
+      {
+        assert( ep != 0 );
+        assert( !ntk.is_ci( ep ) );
+        nodes.emplace_back( ep );
+        ntk.set_visited( ep, ntk.trav_id() );
+        it = eps.erase( it );
+
+        explore_fanouts( ntk, ep, new_eps );
+      }
+
+      if ( it != std::end( eps ) )
+      {
+        ++it;
+      }
+    }
+
+    if ( !new_eps.empty() )
+    {
+      eps.insert( std::begin( new_eps ), std::end( new_eps ) );
+      changed = true;
+    }
+  }
 }
 
 } /* namespace mockturtle */

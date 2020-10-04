@@ -211,12 +211,43 @@ TEST_CASE( "collect nodes", "[window_view]" )
 
   using node = typename aig_network::node;
   using signal = typename aig_network::signal;
-  
-  std::vector<node> input_boundary{aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d )};
-  std::vector<signal> output_boundary{f3, f4};
 
-  std::vector<node> const nodes{collect_nodes( aig, input_boundary, output_boundary )};
+  std::vector<node> inputs{aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d )};
+  std::vector<signal> outputs{f3, f4};
+  std::vector<node> const gates{collect_nodes( aig, inputs, outputs )};
+
+  CHECK( gates.size() == aig.num_gates() );
   aig.foreach_gate( [&]( node const& n ){
-    CHECK( std::find( std::begin( nodes ), std::end( nodes ), n ) != std::end( nodes ) );
+    CHECK( std::find( std::begin( gates ), std::end( gates ), n ) != std::end( gates ) );
+  });
+}
+
+TEST_CASE( "expand towards tfo", "[window_view]" )
+{
+  aig_network aig;
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const c = aig.create_pi();
+  auto const d = aig.create_pi();
+  auto const f1 = aig.create_xor( a, b );
+  auto const f2 = aig.create_xor( c, d );
+  auto const f3 = aig.create_xor( f1, f2 );
+  auto const f4 = aig.create_and( f1, f2 );
+  aig.create_po( f3 );
+  aig.create_po( f4 );
+
+  using node = typename aig_network::node;
+  using signal = typename aig_network::signal;
+
+  fanout_view<aig_network> faig( aig );
+
+  std::vector<node> inputs{faig.get_node( a ), faig.get_node( b ), faig.get_node( c ), faig.get_node( d )};
+  std::vector<signal> outputs{f1};
+  std::vector<node> gates{collect_nodes( faig, inputs, outputs )};
+  expand_towards_tfo( faig, inputs, gates );
+
+  CHECK( gates.size() == aig.num_gates() );
+  aig.foreach_gate( [&]( node const& n ){
+    CHECK( std::find( std::begin( gates ), std::end( gates ), n ) != std::end( gates ) );
   });
 }
