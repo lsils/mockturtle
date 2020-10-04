@@ -66,9 +66,9 @@ namespace mockturtle
  * support set.  The outputs could be automatically computed.
  *
  * The window_view implements one new API method:
- *   1.) `belongs_to_window`: takes a node as input and returns true
- *       if and only if this node is a constant, an input, or an inner
- *       node of the window
+ *   1.) `belongs_to`: takes a node as input and returns true if and
+ *       only if this node is a constant, an input, or an inner node
+ *       of the window
  */
 template<typename Ntk>
 class window_view : public immutable_view<Ntk>
@@ -102,7 +102,13 @@ public:
   }
 
 #pragma region Window
-  inline bool belongs_to_window( node const& n ) const
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
+  inline bool belongs_to( signal const& s ) const
+  {
+    return std::find( std::begin( _nodes ), std::end( _nodes ), get_node( s ) ) != std::end( _nodes );
+  }
+
+  inline bool belongs_to( node const& n ) const
   {
     return std::find( std::begin( _nodes ), std::end( _nodes ), n ) != std::end( _nodes );
   }
@@ -149,6 +155,8 @@ public:
     return static_cast<uint32_t>( _nodes.size() - _inputs.size() - 1u );
   }
 
+  inline uint32_t fanout_size( node const& n ) const = delete;
+
   inline uint32_t node_to_index( node const& n ) const
   {
     return _node_to_index.at( n );
@@ -168,8 +176,6 @@ public:
   {
     return is_pi( n );
   }
-
-  inline uint32_t fanout_size( node const& n ) const = delete;
 #pragma endregion
 
 #pragma region Node and signal iterators

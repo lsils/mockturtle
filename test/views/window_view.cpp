@@ -31,7 +31,7 @@ bool window_is_well_formed( Ntk const& ntk )
   bool all_fanins_belong_to_window = true;
   ntk.foreach_node( [&]( node const& n ){
     ntk.foreach_fanin( n, [&]( signal const& fi ){
-      if ( !ntk.belongs_to_window( ntk.get_node( fi ) ) )
+      if ( !ntk.belongs_to( ntk.get_node( fi ) ) )
       {
         all_fanins_belong_to_window = false;
         return false; /* terminate */
@@ -49,7 +49,7 @@ bool window_is_well_formed( Ntk const& ntk )
 
   bool all_outputs_belong_to_window = true;
   ntk.foreach_po( [&]( signal const& o ){
-    if ( !ntk.belongs_to_window( ntk.get_node( o ) ) )
+    if ( !ntk.belongs_to( ntk.get_node( o ) ) )
     {
       all_outputs_belong_to_window = false;
       return false; /* terminate */
@@ -90,10 +90,10 @@ TEST_CASE( "create new window view on AIG", "[window_view]" )
     CHECK( view.num_cis() == 2 );
     CHECK( view.num_cos() == 1 );
 
-    CHECK(  view.belongs_to_window( view.get_node( f1 ) ) );
-    CHECK( !view.belongs_to_window( view.get_node( f2 ) ) );
-    CHECK(  view.belongs_to_window( view.get_node( f3 ) ) );
-    CHECK( !view.belongs_to_window( view.get_node( f4 ) ) );
+    CHECK(  view.belongs_to( view.get_node( f1 ) ) );
+    CHECK( !view.belongs_to( view.get_node( f2 ) ) );
+    CHECK(  view.belongs_to( view.get_node( f3 ) ) );
+    CHECK( !view.belongs_to( view.get_node( f4 ) ) );
 
     CHECK( collect_fanin_nodes( view, view.get_node( f1 ) ).size() == 2 );
     CHECK( collect_fanin_nodes( view, view.get_node( f3 ) ).size() == 2 );
@@ -112,10 +112,10 @@ TEST_CASE( "create new window view on AIG", "[window_view]" )
     CHECK( view.num_cis() == 2 );
     CHECK( view.num_cos() == 1 );
 
-    CHECK(  view.belongs_to_window( view.get_node( f1 ) ) );
-    CHECK( !view.belongs_to_window( view.get_node( f2 ) ) );
-    CHECK(  view.belongs_to_window( view.get_node( f3 ) ) );
-    CHECK( !view.belongs_to_window( view.get_node( f4 ) ) );
+    CHECK(  view.belongs_to( view.get_node( f1 ) ) );
+    CHECK( !view.belongs_to( view.get_node( f2 ) ) );
+    CHECK(  view.belongs_to( view.get_node( f3 ) ) );
+    CHECK( !view.belongs_to( view.get_node( f4 ) ) );
 
     CHECK( collect_fanin_nodes( view, view.get_node( f1 ) ).size() == 0 );
     CHECK( collect_fanin_nodes( view, view.get_node( f3 ) ).size() == 2 );
@@ -135,10 +135,10 @@ TEST_CASE( "create new window view on AIG", "[window_view]" )
     CHECK( view.num_cis() == 2 );
     CHECK( view.num_cos() == 1 );
 
-    CHECK(  view.belongs_to_window( view.get_node( f1 ) ) );
-    CHECK(  view.belongs_to_window( view.get_node( f2 ) ) );
-    CHECK( !view.belongs_to_window( view.get_node( f3 ) ) );
-    CHECK( !view.belongs_to_window( view.get_node( f4 ) ) );
+    CHECK(  view.belongs_to( view.get_node( f1 ) ) );
+    CHECK(  view.belongs_to( view.get_node( f2 ) ) );
+    CHECK( !view.belongs_to( view.get_node( f3 ) ) );
+    CHECK( !view.belongs_to( view.get_node( f4 ) ) );
 
     CHECK( collect_fanin_nodes( view, view.get_node( f1 ) ).size() == 2 );
     CHECK( collect_fanin_nodes( view, view.get_node( f2 ) ).size() == 2 );
@@ -158,10 +158,10 @@ TEST_CASE( "create new window view on AIG", "[window_view]" )
     CHECK( view.num_cis() == 2 );
     CHECK( view.num_cos() == 1 );
 
-    CHECK( view.belongs_to_window( view.get_node( f1 ) ) );
-    CHECK( view.belongs_to_window( view.get_node( f2 ) ) );
-    CHECK( view.belongs_to_window( view.get_node( f3 ) ) );
-    CHECK( view.belongs_to_window( view.get_node( f4 ) ) );
+    CHECK( view.belongs_to( view.get_node( f1 ) ) );
+    CHECK( view.belongs_to( view.get_node( f2 ) ) );
+    CHECK( view.belongs_to( view.get_node( f3 ) ) );
+    CHECK( view.belongs_to( view.get_node( f4 ) ) );
 
     CHECK( collect_fanin_nodes( view, view.get_node( f1 ) ).size() == 2 );
     CHECK( collect_fanin_nodes( view, view.get_node( f2 ) ).size() == 2 );
@@ -183,10 +183,10 @@ TEST_CASE( "create new window view on AIG", "[window_view]" )
     CHECK( view.num_cis() == 2 );
     CHECK( view.num_cos() == 2 );
 
-    CHECK(  view.belongs_to_window( view.get_node( f1 ) ) );
-    CHECK(  view.belongs_to_window( view.get_node( f2 ) ) );
-    CHECK(  view.belongs_to_window( view.get_node( f3 ) ) );
-    CHECK( !view.belongs_to_window( view.get_node( f4 ) ) );
+    CHECK(  view.belongs_to( view.get_node( f1 ) ) );
+    CHECK(  view.belongs_to( view.get_node( f2 ) ) );
+    CHECK(  view.belongs_to( view.get_node( f3 ) ) );
+    CHECK( !view.belongs_to( view.get_node( f4 ) ) );
 
     CHECK( collect_fanin_nodes( view, view.get_node( f1 ) ).size() == 2 );
     CHECK( collect_fanin_nodes( view, view.get_node( f2 ) ).size() == 2 );
