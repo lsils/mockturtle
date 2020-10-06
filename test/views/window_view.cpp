@@ -268,8 +268,6 @@ TEST_CASE( "zero-cost TFI expansion", "[window_utils]" )
   auto const f5 = aig.create_and( f3, f4 );
   aig.create_po( f5 );
 
-  write_dot( aig, std::cout );
-
   std::vector<uint32_t> colors( aig.size() );
 
   {
