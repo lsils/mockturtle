@@ -356,4 +356,76 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
   }
 }
 
+/*! \brief Performs zero-cost expansion of a set of nodes towards TFI
+ *
+ * \param ntk A network
+ * \param inputs Input nodes
+ * \param colors Auxiliar data structure with `ntk.size()` elements
+ * \param color A value used to mark inputs
+ * \return True if and only if the inputs form a trivial cut that
+ *         cannot be further extended, e.g., when the cut only
+ *         consists of PIs.
+ *
+ * On termination, `colors[i] == color` if `i \in inputs`.  However,
+ *   previous inputs are also marked.
+ */
+template<typename Ntk>
+bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs, std::vector<uint32_t>& colors, uint32_t color )
+{
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  assert( ntk.size() == colors.size() );
+
+  /* mark all inputs */
+  for ( auto const& i : inputs )
+  {
+    colors[i] = color;
+  }
+
+  /* we call a set of inputs (= a cut) trivial if all nodes are either
+     constants or CIs, such that they cannot be further expanded towards
+     the TFI */
+  bool trivial_cut = false;
+
+  /* repeat expansion towards TFI until a fix-point is reached */
+  bool changed = true;
+  while ( changed )
+  {
+    changed = false;
+    trivial_cut = true;
+
+    for ( auto it = std::begin( inputs ); it != std::end( inputs ); ++it )
+    {
+      /* count how many fanins are not in the cut */
+      uint32_t count_fanin_outside{0};
+      std::optional<node> ep;
+
+      ntk.foreach_fanin( *it, [&]( signal const& fi ){
+        node const n = ntk.get_node( fi );
+        trivial_cut = false;
+
+        if ( colors[n] != color )
+        {
+          ++count_fanin_outside;
+          ep = n;
+        }
+      });
+
+      /* if only one fanin is not in the cut, then the input expansion
+         can be done wihout affecting the cut size */
+      if ( count_fanin_outside == 1u )
+      {
+        /* expand the cut */
+        assert( ep );
+        it = inputs.erase( it );
+        inputs.push_back( *ep );
+        changed = true;
+      }
+    }
+  }
+
+  return trivial_cut;
+}
+
 } /* namespace mockturtle */
