@@ -358,6 +358,11 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
 
 /*! \brief Performs zero-cost expansion of a set of nodes towards TFI
  *
+ * The algorithm potentially derives a different cut of the same size
+ * that is closer to the network's PIs.  This expansion towards TFI is
+ * called zero-cost because it merges nodes only if the number of
+ * inputs does not increase.
+ *
  * \param ntk A network
  * \param inputs Input nodes
  * \param colors Auxiliar data structure with `ntk.size()` elements
@@ -368,9 +373,15 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
  *
  * On termination, `colors[i] == color` if `i \in inputs`.  However,
  *   previous inputs are also marked.
+ *
+ * **Required network functions:**
+ * - `size`
+ * - `foreach_fanin`
+ * - `get_node`
  */
 template<typename Ntk>
-bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs, std::vector<uint32_t>& colors, uint32_t color )
+bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs,
+                          std::vector<uint32_t>& colors, uint32_t color )
 {
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
@@ -429,7 +440,8 @@ bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& input
       }
     }
 
-    std::copy( std::begin( new_inputs ), std::end( new_inputs ), std::back_inserter( inputs ) );
+    std::copy( std::begin( new_inputs ), std::end( new_inputs ),
+               std::back_inserter( inputs ) );
     new_inputs.clear();
   }
 
