@@ -66,9 +66,8 @@ namespace mockturtle
  * support set.  The outputs could be automatically computed.
  *
  * The window_view implements one new API method:
- *   1.) `belongs_to`: takes a node as input and returns true if and
- *       only if this node is a constant, an input, or an inner node
- *       of the window
+ *   1.) `belongs_to`: takes a node (or a signal) and returns true if and
+ *       only if the corresponding node belongs to the window
  */
 template<typename Ntk>
 class window_view : public immutable_view<Ntk>

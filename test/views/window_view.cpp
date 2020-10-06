@@ -61,7 +61,7 @@ bool window_is_well_formed( Ntk const& ntk )
          all_outputs_belong_to_window;
 }
 
-TEST_CASE( "create new window view on AIG", "[window_view]" )
+TEST_CASE( "create window view on AIG", "[window_view]" )
 {
   aig_network aig;
   const auto a = aig.create_pi();
