@@ -252,7 +252,8 @@ TEST_CASE( "expand towards tfo", "[window_view]" )
   });
 }
 
-TEST_CASE( "zero-cost TFI expansion", "[window_utils]" )
+
+TEST_CASE( "expand node set towards TFI without increasing costs", "[window_utils]" )
 {
   using node = typename aig_network::node;
 
@@ -312,6 +313,61 @@ TEST_CASE( "zero-cost TFI expansion", "[window_utils]" )
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{aig.get_node( f3 ), aig.get_node( f4 )} );
+  }
+}
+
+TEST_CASE( "expand node set towards TFI", "[window_utils]" )
+{
+  using node = typename aig_network::node;
+
+  aig_network aig;
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const c = aig.create_pi();
+  auto const d = aig.create_pi();
+  auto const f1 = aig.create_and( b, c );
+  auto const f2 = aig.create_and( b, f1 );
+  auto const f3 = aig.create_and( a, f2 );
+  auto const f4 = aig.create_and( d, f2 );
+  auto const f5 = aig.create_and( f3, f4 );
+  aig.create_po( f5 );
+
+  std::vector<uint32_t> colors( aig.size() );
+
+  {
+    /* a cut that can be expanded without increasing cut-size */
+    std::vector<node> inputs{aig.get_node( a ), aig.get_node( b ), aig.get_node( f1 ), aig.get_node( d )};
+    expand_towards_tfi( aig, inputs, 5u, colors, 1u );
+
+    std::sort( std::begin( inputs ), std::end( inputs ) );
+    CHECK( inputs == std::vector<node>{aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d )} );
+  }
+
+  {
+    /* a cut that cannot be expanded without increasing cut-size */
+    std::vector<node> inputs{aig.get_node( f3 ), aig.get_node( f4 )};
+    expand_towards_tfi( aig, inputs, 4u, colors, 2u );
+
+    std::sort( std::begin( inputs ), std::end( inputs ) );
+    CHECK( inputs == std::vector<node>{aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d )} );
+  }
+
+  {
+    /* a cut that cannot be expanded without increasing cut-size */
+    std::vector<node> inputs{aig.get_node( f2 ), aig.get_node( f3 ), aig.get_node( f4 )};
+    expand_towards_tfi( aig, inputs, 4u, colors, 3u );
+
+    std::sort( std::begin( inputs ), std::end( inputs ) );
+    CHECK( inputs == std::vector<node>{aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d )} );
+  }
+
+  {
+    /* a cut that cannot be expanded without increasing cut-size */
+    std::vector<node> inputs{aig.get_node( f3 ), aig.get_node( f5 )};
+    expand_towards_tfi( aig, inputs, 3u, colors, 4u );
+
+    std::sort( std::begin( inputs ), std::end( inputs ) );
+    CHECK( inputs == std::vector<node>{aig.get_node( a ), aig.get_node( d ), aig.get_node( f2 )} );
   }
 }
 

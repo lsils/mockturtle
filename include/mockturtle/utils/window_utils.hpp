@@ -235,6 +235,7 @@ inline std::vector<typename Ntk::signal> find_outputs( Ntk const& ntk,
   return outputs;
 }
 
+
 /*! \brief Expand a nodes towards TFO
  *
  * Iteratively expands the inner nodes of the window with those
@@ -446,6 +447,101 @@ bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& input
   }
 
   return trivial_cut;
+}
+
+namespace detail
+{
+
+template<typename Ntk>
+inline void evaluate_fanin( typename Ntk::node const& n, std::vector<std::pair<typename Ntk::node, uint32_t>>& candidates )
+{
+  auto it = std::find_if( std::begin( candidates ), std::end( candidates ),
+                          [&n]( auto const& p ){
+                            return p.first == n;
+                          } );
+  if ( it == std::end( candidates ) )
+  {
+    candidates.push_back( std::make_pair( n, 1u ) );
+  }
+  else
+  {
+    ++it->second;
+  }
+}
+
+template<typename Ntk>
+inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs )
+{
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  std::vector<std::pair<node, uint32_t>> candidates;
+  for ( auto const& i : inputs )
+  {
+    if ( ntk.is_constant( i ) || ntk.is_ci( i ) )
+    {
+      continue;
+    }
+    ntk.foreach_fanin( i, [&]( signal const& fi ){
+      detail::evaluate_fanin<Ntk>( ntk.get_node( fi ), candidates );
+    });
+  }
+
+  std::pair<node, uint32_t> best_fanin;
+  for ( auto const& candidate : candidates )
+  {
+    if ( candidate.second > best_fanin.second ||
+         ( candidate.second == best_fanin.second && ntk.fanout_size( candidate.first ) > ntk.fanout_size( best_fanin.first ) ) )
+    {
+      best_fanin = candidate;
+    }
+  }
+
+  assert( best_fanin.first != 0 );
+  return best_fanin.first;
+}
+
+} /* namespace detail */
+
+/*! \brief Performs expansion of a set of nodes towards TFI
+ *
+ * \param ntk A network
+ * \param inputs Input nodes
+ * \param input_limit Size limit for the maximum number of input nodes
+ * \param colors Auxiliar data structure with `ntk.size()` elements
+ * \param color A value used to mark inputs
+ */
+template<typename Ntk>
+void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs, uint32_t input_limit,
+                         std::vector<uint32_t>& colors, uint32_t color )
+{
+  using node = typename Ntk::node;
+  static constexpr uint32_t const MAX_ITERATIONS{5u};
+
+  if ( expand0_towards_tfi( ntk, inputs, colors, color ) )
+  {
+    return;
+  }
+
+  std::vector<node> best_cut{inputs};
+  bool trivial_cut = false;
+  uint32_t iterations{0};
+  while ( !trivial_cut && ( inputs.size() <= input_limit || iterations <= MAX_ITERATIONS ) )
+  {
+    node const n = detail::select_next_fanin_to_expand_tfi( ntk, inputs );
+    inputs.push_back( n );
+    colors[n] = color;
+    trivial_cut = expand0_towards_tfi( ntk, inputs, colors, color );
+
+    if ( inputs.size() <= input_limit )
+    {
+      best_cut = inputs;
+    }
+
+    iterations = inputs.size() > input_limit ? iterations + 1 : 0;
+  }
+
+  inputs = best_cut;
 }
 
 } /* namespace mockturtle */
