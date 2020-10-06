@@ -390,12 +390,13 @@ bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& input
 
   /* repeat expansion towards TFI until a fix-point is reached */
   bool changed = true;
+  std::vector<node> new_inputs;
   while ( changed )
   {
     changed = false;
     trivial_cut = true;
 
-    for ( auto it = std::begin( inputs ); it != std::end( inputs ); ++it )
+    for ( auto it = std::begin( inputs ); it != std::end( inputs ); )
     {
       /* count how many fanins are not in the cut */
       uint32_t count_fanin_outside{0};
@@ -419,10 +420,17 @@ bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& input
         /* expand the cut */
         assert( ep );
         it = inputs.erase( it );
-        inputs.push_back( *ep );
+        new_inputs.push_back( *ep );
         changed = true;
       }
+      else
+      {
+        ++it;
+      }
     }
+
+    std::copy( std::begin( new_inputs ), std::end( new_inputs ), std::back_inserter( inputs ) );
+    new_inputs.clear();
   }
 
   return trivial_cut;
