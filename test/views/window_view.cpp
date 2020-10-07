@@ -397,6 +397,13 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
+  struct window_info
+  {
+    std::vector<node> inputs;
+    std::vector<node> nodes;
+    std::vector<signal> outputs;
+  };
+  
 protected:
   /* constant node used to denotes invalid window element */
   static constexpr node INVALID_NODE{0};
@@ -406,28 +413,49 @@ public:
     : ntk( ntk )
     , colors( ntk )
     , path( ntk.size() )
+    , refs( ntk.size() )
   {
   }
 
-  void run( node const& pivot )
+  std::optional<window_info> run( node const& pivot )
   {
-    std::vector<node> inputs;
-    std::optional<std::vector<node>> nodes;
-    std::vector<signal> outputs;
-
     /* find a reconvergence from the pivot and collect the nodes */
+    std::optional<std::vector<node>> nodes;
     if ( !( nodes = identify_reconvergence( pivot, 1u ) ) )
     {
       /* if there is no reconvergence, then optimization is not possible */
-      return;
+      return std::nullopt;
     }
+
+    /* collect the fanins for these nodes */    
+    colors.new_color();    
+    std::vector<node> inputs = collect_inputs( ntk, *nodes, colors );
+
+    /* expand the nodes towards the TFI */
+    colors.new_color();
+    expand_towards_tfi( ntk, inputs, 6u, colors );
+
+    /* expand the nodes towards the TFO */
+    colors.new_color();
+    expand_towards_tfi( ntk, inputs, 6u, colors );
+    levelized_expand_towards_tfo( ntk, inputs, *nodes, colors );
+
+    /* collect the nodes with fanout outside of nodes */    
+    colors.new_color();
+    std::vector<signal> outputs = collect_outputs( ntk, inputs, *nodes, refs, colors );
+
+    /* sort nodes */
+    std::sort( std::begin( inputs ), std::end( inputs ) );
+    std::sort( std::begin( *nodes ), std::end( *nodes ) );
+
+    return window_info{inputs, *nodes, outputs};
   }
 
 protected:
   std::optional<std::vector<node>> identify_reconvergence( node const& pivot, uint64_t num_iterations )
   {
-    std::vector<node> visited;
-
+    visited.clear();
+    
     ntk.foreach_fanin( pivot, [&]( signal const& fi ){
       colors.new_color();
 
@@ -479,7 +507,7 @@ protected:
         return false;
       }
 
-      if ( is_path_colored( fi_node ) )
+      if ( colors.colored( fi_node, ntk.max_fanin_size - 1 ) )
       {
         return true; /* next */
       }
@@ -508,7 +536,7 @@ protected:
       return;
     }
 
-    assert( have_same_color( n, pred ) );
+    assert( colors.same_color( n, pred ) );
     gather_nodes_recursively( pred );
   }
 
@@ -517,6 +545,7 @@ protected:
   colors_impl1<Ntk> colors;
   std::vector<node> visited;
   std::vector<node> path;
+  std::vector<uint32_t> refs;
 }; /* create_window_impl */
 
 TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
@@ -689,5 +718,33 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
 
     std::sort( std::begin( nodes ), std::end( nodes ) );
     CHECK( nodes == std::vector<node>{aig.get_node( f1 ), aig.get_node( f2 ), aig.get_node( f4 )} );
+  }
+}
+
+TEST_CASE( "make a window", "[create_window]" )
+{
+  aig_network aig;
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const c = aig.create_pi();
+  auto const d = aig.create_pi();
+  auto const f1 = aig.create_and( b, c );
+  auto const f2 = aig.create_and( b, f1 );
+  auto const f3 = aig.create_and( a, f2 );
+  auto const f4 = aig.create_and( d, f2 );
+  auto const f5 = aig.create_and( f3, f4 );
+  aig.create_po( f5 );
+
+  fanout_view fanout_aig{aig};
+  depth_view depth_aig{fanout_aig};
+  
+  create_window_impl2 windowing( depth_aig );
+  auto info = windowing.run( depth_aig.get_node( f5 ) );
+  if ( info )
+  {
+    window_view win( aig, info->inputs, info->outputs, info->nodes );
+    CHECK( win.num_cis() == 4u );
+    CHECK( win.num_cos() == 2u );
+    CHECK( win.num_gates() == 4u );
   }
 }

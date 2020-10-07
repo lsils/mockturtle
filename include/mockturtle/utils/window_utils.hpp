@@ -142,6 +142,39 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
   return nodes;
 }
 
+/*! \brief Identify inputs using reference counting
+ */
+template<typename Ntk, typename ColorMap>
+std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<typename Ntk::node> const& nodes, ColorMap& colors )
+{
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+  
+  /* mark all nodes with a new color */
+  for ( const auto& n : nodes )
+  {
+    colors.paint( n );
+  }
+
+  /* if a fanin is not colored, then it's an input */
+  std::vector<node> inputs;
+  for ( const auto& n : nodes )
+  {
+    ntk.foreach_fanin( n, [&]( signal const& fi ){
+      node const n = ntk.get_node( fi );
+      if ( !colors.colored( n ) )
+      {
+        if ( std::find( std::begin( inputs ), std::end( inputs ), n ) == std::end( inputs ) )
+        {
+          inputs.push_back( n );
+        }
+      }
+    });
+  }
+
+  return inputs;
+}
+
 /*! \brief Identify outputs using reference counting
  *
  * Identify outputs using a reference counting approach.  The
@@ -157,6 +190,7 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
  *              inputs and nodes is assumed to be empty)
  * \param refs Reference counters (in the size of the network and
  *             initialized to 0)
+ * \param colors 
  * \return Output signals of the window
   *
   * **Required network functions:**
@@ -171,28 +205,27 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
   * - `trav_id`
   * - `visited`
  */
-template<typename Ntk>
-inline std::vector<typename Ntk::signal> find_outputs( Ntk const& ntk,
-                                                       std::vector<typename Ntk::node> const& inputs,
-                                                       std::vector<typename Ntk::node> const& nodes,
-                                                       std::vector<uint32_t>& refs )
+  template<typename Ntk, typename ColorMap>
+inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
+                                                          std::vector<typename Ntk::node> const& inputs,
+                                                          std::vector<typename Ntk::node> const& nodes,
+                                                          std::vector<uint32_t>& refs,
+                                                          ColorMap& colors )
 {
   using signal = typename Ntk::signal;
-  std::vector<signal> outputs;
 
-  /* create a new traversal ID */
-  ntk.incr_trav_id();
+  std::vector<signal> outputs;
 
   /* mark the inputs visited */
   for ( auto const& i : inputs )
   {
-    ntk.set_visited( i, ntk.trav_id() );
+    colors.paint( i );
   }
 
   /* reference fanins of nodes */
   for ( auto const& n : nodes )
   {
-    if ( ntk.visited( n ) == ntk.trav_id() )
+    if ( colors.colored( n ) )
     {
       continue;
     }
@@ -207,7 +240,7 @@ inline std::vector<typename Ntk::signal> find_outputs( Ntk const& ntk,
      the node has fanout outside of the window is an output */
   for ( const auto& n : nodes )
   {
-    if ( ntk.visited( n ) == ntk.trav_id() )
+    if ( colors.colored( n ) )
     {
       continue;
     }
@@ -221,7 +254,7 @@ inline std::vector<typename Ntk::signal> find_outputs( Ntk const& ntk,
   /* dereference fanins of nodes */
   for ( auto const& n : nodes )
   {
-    if ( ntk.visited( n ) == ntk.trav_id() )
+    if ( colors.colored( n ) )
     {
       continue;
     }
