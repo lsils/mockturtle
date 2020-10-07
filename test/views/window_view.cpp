@@ -38,6 +38,16 @@ public:
     return ntk.visited( n ) == ntk.trav_id();
   }
 
+  bool colored( node const& n, uint32_t k ) const
+  {
+    return ntk.visited( n ) >= ntk.trav_id() - k;
+  }
+
+  bool same_color( node const& a, node const& b ) const
+  {
+    return ntk.visited( a ) == ntk.visited( b );
+  }
+
   bool fanins_colored( node const& n ) const
   {
     bool result = true;
@@ -55,6 +65,11 @@ public:
   void paint( node const& n )
   {
     ntk.set_visited( n, ntk.trav_id() );
+  }
+
+  void paint( node const& n, node const& a )
+  {
+    ntk.set_visited( n, ntk.visited( a ) );
   }
 
 protected:
@@ -89,6 +104,16 @@ public:
     return values[n] == value;
   }
 
+  bool colored( node const& n, uint32_t k ) const
+  {
+    return values[n] >= value - k;
+  }
+
+  bool same_color( node const& a, node const& b ) const
+  {
+    return values[a] == values[b];
+  }
+
   bool fanins_colored( node const& n ) const
   {
     bool result = true;
@@ -106,6 +131,12 @@ public:
   void paint( node const& n )
   {
     values[n] = value;
+  }
+
+  void paint( node const& n, node const& a )
+  {
+    values[n] = values[a];
+    ntk.set_visited( n, ntk.visited( a ) );
   }
 
 protected:
@@ -358,6 +389,135 @@ TEST_CASE( "expand towards tfo", "[window_view]" )
   });
 }
 
+
+template<typename Ntk>
+class create_window_impl2
+{
+public:
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+protected:
+  /* constant node used to denotes invalid window element */
+  static constexpr node INVALID_NODE{0};
+
+public:
+  create_window_impl2( Ntk const& ntk )
+    : ntk( ntk )
+    , colors( ntk )
+    , path( ntk.size() )
+  {
+  }
+
+  void run( node const& pivot )
+  {
+    std::vector<node> inputs;
+    std::optional<std::vector<node>> nodes;
+    std::vector<signal> outputs;
+
+    /* find a reconvergence from the pivot and collect the nodes */
+    if ( !( nodes = identify_reconvergence( pivot, 1u ) ) )
+    {
+      /* if there is no reconvergence, then optimization is not possible */
+      return;
+    }
+  }
+
+protected:
+  std::optional<std::vector<node>> identify_reconvergence( node const& pivot, uint64_t num_iterations )
+  {
+    std::vector<node> visited;
+
+    ntk.foreach_fanin( pivot, [&]( signal const& fi ){
+      colors.new_color();
+
+      node const& n = ntk.get_node( fi );
+      colors.paint( n );
+      path[n] = INVALID_NODE;
+      visited.push_back( n );
+    });
+
+    uint64_t start{0};
+    uint64_t stop;
+    for ( uint32_t iteration = 0u; iteration < num_iterations; ++iteration )
+    {
+      stop = visited.size();
+      for ( uint32_t i = start; i < stop; ++i )
+      {
+        node const n = visited.at( i );
+        std::optional<node> meet = explore_frontier_of_node( n );
+        if ( meet )
+        {
+          visited.clear();
+          gather_nodes_recursively( *meet );
+          gather_nodes_recursively( n );
+          visited.push_back( pivot );
+          return visited;
+        }
+      }
+      start = stop;
+    }
+
+    return std::nullopt;
+  }
+
+  std::optional<node> explore_frontier_of_node( node const& n )
+  {
+    std::optional<node> meet;
+    ntk.foreach_fanin( n, [&]( signal const& fi ){
+      node const& fi_node = ntk.get_node( fi );
+      if ( ntk.is_constant( fi_node ) || ntk.is_ci( fi_node ) )
+      {
+        return true; /* next */
+      }
+
+      if ( colors.colored( n, ntk.max_fanin_size - 1 ) &&
+           colors.colored( fi_node, ntk.max_fanin_size - 1 ) &&
+           !colors.same_color( n, fi_node ) )
+      {
+        meet = fi_node;
+        return false;
+      }
+
+      if ( is_path_colored( fi_node ) )
+      {
+        return true; /* next */
+      }
+
+      colors.paint( fi_node, n );
+      path[fi_node] = n;
+      visited.push_back( fi_node );
+      return true; /* next */
+    });
+
+    return meet;
+  }
+
+  /* collect nodes recursively following along the `path` until INVALID_NODE is reached */
+  void gather_nodes_recursively( node const& n )
+  {
+    if ( n == INVALID_NODE )
+    {
+      return;
+    }
+
+    visited.push_back( n );
+    node const pred = path[n];
+    if ( pred == INVALID_NODE )
+    {
+      return;
+    }
+
+    assert( have_same_color( n, pred ) );
+    gather_nodes_recursively( pred );
+  }
+
+protected:
+  Ntk const& ntk;
+  colors_impl1<Ntk> colors;
+  std::vector<node> visited;
+  std::vector<node> path;
+}; /* create_window_impl */
 
 TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
 {
