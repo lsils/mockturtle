@@ -235,128 +235,6 @@ inline std::vector<typename Ntk::signal> find_outputs( Ntk const& ntk,
   return outputs;
 }
 
-
-/*! \brief Expand a nodes towards TFO
- *
- * Iteratively expands the inner nodes of the window with those
- * fanouts that are supported by the window until a fixed-point is
- * reached.
- *
- * \param ntk A network
- * \param inputs Input nodes of a window
- * \param nodes Inner nodes of a window
- *
- * **Required network functions:**
- * - `foreach_fanin`
- * - `foreach_fanout`
- * - `get_node`
- * - `incr_trav_id`
- * - `is_ci`
- * - `set_visited`
- * - `trav_id`
- * - `visited`
- */
-template<typename Ntk>
-void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
-{
-  using node = typename Ntk::node;
-  using signal = typename Ntk::signal;
-
-  auto explore_fanouts = [&]( Ntk const& ntk, node const& n, std::set<node>& result ){
-    ntk.foreach_fanout( n, [&]( node const& fo, uint64_t index ){
-      /* only look at the first few fanouts */
-      if ( index > 5 )
-      {
-        return false;
-      }
-      /* skip all nodes that are already in nodex */
-      if ( ntk.visited( fo ) == ntk.trav_id() )
-      {
-        return true;
-      }
-      result.insert( fo );
-      return true;
-    });
-  };
-
-  /* create a new traversal ID */
-  ntk.incr_trav_id();
-
-  /* mark the inputs visited */
-  for ( auto const& i : inputs )
-  {
-    ntk.set_visited( i, ntk.trav_id() );
-  }
-  /* mark the nodes visited */
-  for ( const auto& n : nodes )
-  {
-    ntk.set_visited( n, ntk.trav_id() );
-  }
-
-  /* collect all nodes that have fanouts not yet contained in nodes */
-  std::set<node> eps;
-  for ( const auto& n : inputs )
-  {
-    explore_fanouts( ntk, n, eps );
-  }
-  for ( const auto& n : nodes )
-  {
-    explore_fanouts( ntk, n, eps );
-  }
-
-  bool changed = true;
-  std::set<node> new_eps;
-  while ( changed )
-  {
-    new_eps.clear();
-    changed = false;
-
-    auto it = std::begin( eps );
-    while ( it != std::end( eps ) )
-    {
-      node const ep = *it;
-      if ( ntk.visited( ep ) == ntk.trav_id() )
-      {
-        it = eps.erase( it );
-        continue;
-      }
-
-      bool all_children_belong_to_window = true;
-      ntk.foreach_fanin( ep, [&]( signal const& fi ){
-        node const child = ntk.get_node( fi );
-        if ( ntk.visited( child ) != ntk.trav_id() )
-        {
-          all_children_belong_to_window = false;
-          return false;
-        }
-        return true;
-      });
-
-      if ( all_children_belong_to_window )
-      {
-        assert( ep != 0 );
-        assert( !ntk.is_ci( ep ) );
-        nodes.emplace_back( ep );
-        ntk.set_visited( ep, ntk.trav_id() );
-        it = eps.erase( it );
-
-        explore_fanouts( ntk, ep, new_eps );
-      }
-
-      if ( it != std::end( eps ) )
-      {
-        ++it;
-      }
-    }
-
-    if ( !new_eps.empty() )
-    {
-      eps.insert( std::begin( new_eps ), std::end( new_eps ) );
-      changed = true;
-    }
-  }
-}
-
 /*! \brief Performs in-place zero-cost expansion of a set of nodes towards TFI
  *
  * The algorithm potentially derives a different cut of the same size
@@ -532,6 +410,7 @@ void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs
                          std::vector<uint32_t>& colors, uint32_t color )
 {
   using node = typename Ntk::node;
+
   static constexpr uint32_t const MAX_ITERATIONS{5u};
 
   if ( expand0_towards_tfi( ntk, inputs, colors, color ) )
@@ -558,6 +437,230 @@ void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs
   }
 
   inputs = best_cut;
+}
+
+/*! \brief Performs in-place expansion of a set of nodes towards TFO
+ *
+ * Iteratively expands the inner nodes of the window with those
+ * fanouts that are supported by the window until a fixed-point is
+ * reached.
+ *
+ * \param ntk A network
+ * \param inputs Input nodes of a window
+ * \param nodes Inner nodes of a window
+ *
+ * **Required network functions:**
+ * - `foreach_fanin`
+ * - `foreach_fanout`
+ * - `get_node`
+ * - `incr_trav_id`
+ * - `is_ci`
+ * - `set_visited`
+ * - `trav_id`
+ * - `visited`
+ */
+template<typename Ntk>
+void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
+{
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  auto explore_fanouts = [&]( Ntk const& ntk, node const& n, std::set<node>& result ){
+    ntk.foreach_fanout( n, [&]( node const& fo, uint64_t index ){
+      /* only look at the first few fanouts */
+      if ( index > 5 )
+      {
+        return false;
+      }
+      /* skip all nodes that are already in nodex */
+      if ( ntk.visited( fo ) == ntk.trav_id() )
+      {
+        return true;
+      }
+      result.insert( fo );
+      return true;
+    });
+  };
+
+  /* create a new traversal ID */
+  ntk.incr_trav_id();
+
+  /* mark the inputs visited */
+  for ( auto const& i : inputs )
+  {
+    ntk.set_visited( i, ntk.trav_id() );
+  }
+  /* mark the nodes visited */
+  for ( const auto& n : nodes )
+  {
+    ntk.set_visited( n, ntk.trav_id() );
+  }
+
+  /* collect all nodes that have fanouts not yet contained in nodes */
+  std::set<node> eps;
+  for ( const auto& n : inputs )
+  {
+    explore_fanouts( ntk, n, eps );
+  }
+  for ( const auto& n : nodes )
+  {
+    explore_fanouts( ntk, n, eps );
+  }
+
+  bool changed = true;
+  std::set<node> new_eps;
+  while ( changed )
+  {
+    new_eps.clear();
+    changed = false;
+
+    auto it = std::begin( eps );
+    while ( it != std::end( eps ) )
+    {
+      node const ep = *it;
+      if ( ntk.visited( ep ) == ntk.trav_id() )
+      {
+        it = eps.erase( it );
+        continue;
+      }
+
+      bool all_children_belong_to_window = true;
+      ntk.foreach_fanin( ep, [&]( signal const& fi ){
+        node const child = ntk.get_node( fi );
+        if ( ntk.visited( child ) != ntk.trav_id() )
+        {
+          all_children_belong_to_window = false;
+          return false;
+        }
+        return true;
+      });
+
+      if ( all_children_belong_to_window )
+      {
+        assert( ep != 0 );
+        assert( !ntk.is_ci( ep ) );
+        nodes.emplace_back( ep );
+        ntk.set_visited( ep, ntk.trav_id() );
+        it = eps.erase( it );
+
+        explore_fanouts( ntk, ep, new_eps );
+      }
+
+      if ( it != std::end( eps ) )
+      {
+        ++it;
+      }
+    }
+
+    if ( !new_eps.empty() )
+    {
+      eps.insert( std::begin( new_eps ), std::end( new_eps ) );
+      changed = true;
+    }
+  }
+}
+
+/*! \brief Performs in-place expansion of a set of nodes towards TFO
+ *
+ * Iteratively expands the inner nodes of the window with those
+ * fanouts that are supported by the window.  Explores the fanouts
+ * level by level.  Starting with those that are closest to the
+ * inputs.
+ *
+ * \param ntk A network
+ * \param inputs Input nodes of a window
+ * \param nodes Inner nodes of a window
+ * \param colors Auxiliar data structure with `ntk.size()` elements
+ * \param color A value used to mark inputs
+ */
+template<typename Ntk>
+void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes,
+                                   std::vector<uint32_t>& colors, uint32_t color )
+{
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  static constexpr uint32_t const MAX_FANOUTS{5u};
+
+  /* returns true if and only if `n` is marked with `color` */
+  auto is_colored = [&]( node const& n ) -> bool
+  {
+    return colors.at( n ) == color;
+  };
+
+  /* returns true if and only if all fanins of `n` are marked with `color` */
+  auto all_fanins_colored = [&]( node const& n ) -> bool
+  {
+    bool result = true;
+    ntk.foreach_fanin( n, [&]( signal const& fi ){
+      if ( !is_colored( ntk.get_node( fi ) ) )
+      {
+        result = false;
+        return false;
+      }
+      return true;
+    });
+    return result;
+  };
+
+  /* mapping from level to nodes (which nodes are on a certain level?) */
+  std::vector<std::vector<node>> levels;
+
+  /* list of indicves of used levels (avoid iterating over all levels) */
+  std::vector<uint32_t> used;
+
+  /* remove all nodes */
+  nodes.clear();
+
+  /* mark all inputs and add fill their level information into `levels` and `used` */
+  for ( const auto& i : inputs )
+  {
+    uint32_t const node_level = ntk.level( i );
+    colors[i] = color;
+    levels[node_level].push_back( i );
+    if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
+    {
+      used.push_back( node_level );
+    }
+  }
+
+  for ( uint32_t const& index : used )
+  {
+    std::vector<node>& level = levels.at( index );
+    for ( auto it = std::begin( level ); it != std::end( level ); ++it )
+    {
+      node const n = *it;
+      ntk.foreach_fanout( n, [&]( node const& fo, uint64_t index ){
+        /* avoid getting stuck on nodes with many fanouts */
+        if ( index == MAX_FANOUTS )
+        {
+          return false;
+        }
+
+        /* ignore nodes wihout fanins */
+        if ( ntk.is_constant( fo ) || ntk.is_ci( fo ) )
+        {
+          return true;
+        }
+
+        if ( !is_colored( fo ) && all_fanins_colored( fo ) )
+        {
+          /* add fanout to nodes */
+          nodes.push_back( fo );
+
+          /* update data structured */
+          uint32_t const node_level = ntk.level( fo );
+          colors[fo] = color;
+          levels.at( node_level ).push_back( fo );
+          if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
+          {
+            used.push_back( node_level );
+          }
+        }
+      });
+    }
+    level.clear();
+  }
 }
 
 } /* namespace mockturtle */

@@ -372,11 +372,3 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
     CHECK( inputs == std::vector<node>{aig.get_node( a ), aig.get_node( d ), aig.get_node( f2 )} );
   }
 }
-
-  }
-
-  {
-
-  }
-}
-
