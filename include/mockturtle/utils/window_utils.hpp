@@ -357,7 +357,7 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
   }
 }
 
-/*! \brief Performs zero-cost expansion of a set of nodes towards TFI
+/*! \brief Performs in-place zero-cost expansion of a set of nodes towards TFI
  *
  * The algorithm potentially derives a different cut of the same size
  * that is closer to the network's PIs.  This expansion towards TFI is
@@ -461,10 +461,12 @@ inline void evaluate_fanin( typename Ntk::node const& n, std::vector<std::pair<t
                           } );
   if ( it == std::end( candidates ) )
   {
+    /* new fanin: referenced for the 1st time */
     candidates.push_back( std::make_pair( n, 1u ) );
   }
   else
   {
+    /* otherwise, if not new, then just increase the reference counter */
     ++it->second;
   }
 }
@@ -475,6 +477,10 @@ inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
+  assert( inputs.size() > 0u && "inputs must not be empty" );
+  // assert( cut_is_not_trivial( inputs ) );
+
+  /* evaluate the fanins with respect to their costs (how often are they referenced) */
   std::vector<std::pair<node, uint32_t>> candidates;
   for ( auto const& i : inputs )
   {
@@ -487,6 +493,7 @@ inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::
     });
   }
 
+  /* select the fanin with maximum reference count; if two fanins have equal reference count, select the one with more fanouts */
   std::pair<node, uint32_t> best_fanin;
   for ( auto const& candidate : candidates )
   {
@@ -497,13 +504,22 @@ inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::
     }
   }
 
+  /* as long as the inputs do not form a trivial cut, this procedure will always find a fanin to expand */
   assert( best_fanin.first != 0 );
+
   return best_fanin.first;
 }
 
 } /* namespace detail */
 
-/*! \brief Performs expansion of a set of nodes towards TFI
+/*! \brief Performs in-place expansion of a set of nodes towards TFI
+ *
+ * Expand the inputs towards TFI by iteratively selecting the fanins
+ * with the highest reference count within the cut and highest number
+ * of fanouts.  Expansion continues until either `inputs` forms a
+ * trivial cut or the `inputs`'s size reaches `input_limit`.  The
+ * procedure allows a temporary increase of `inputs` beyond the
+ * `input_limit` for at most `MAX_ITERATIONS`.
  *
  * \param ntk A network
  * \param inputs Input nodes
