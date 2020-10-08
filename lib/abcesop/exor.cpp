@@ -48,6 +48,7 @@
 #include "eabc/exor.h"
 
 #include <functional>
+#include <cstdint>
 
 namespace abc::exorcism {
 
