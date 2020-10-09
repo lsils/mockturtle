@@ -25,8 +25,7 @@
 
 /*!
   \file resubstitution.hpp
-  \brief Generalized resubstitution framework
-
+  \brief Generic resubstitution framework
 
   \author Heinz Riener
   \author Siang-Yun Lee
