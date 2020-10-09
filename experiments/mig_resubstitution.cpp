@@ -64,7 +64,7 @@ int main()
     mig = cleanup_dangling( mig );
 
     bool const cec = benchmark == "hyp" ? true : abc_cec( fanout_mig, benchmark );
-    exp( benchmark, size_before, fanout_mig.num_gates(), to_seconds( st.time_total ), cec );
+    exp( benchmark, size_before, mig.num_gates(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();
