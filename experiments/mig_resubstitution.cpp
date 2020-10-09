@@ -55,14 +55,15 @@ int main()
     ps.max_inserts = 1u;
     ps.progress = false;
 
-    const uint32_t size_before = mig.num_gates();
-    mig_resubstitution( mig, ps, &st );
+    depth_view depth_mig{mig};
+    fanout_view fanout_mig{depth_mig};
 
+    uint32_t const size_before = fanout_mig.num_gates();
+    mig_resubstitution( fanout_mig, ps, &st );
     mig = cleanup_dangling( mig );
 
-    const auto cec = benchmark == "hyp" ? true : abc_cec( mig, benchmark );
-
-    exp( benchmark, size_before, mig.num_gates(), to_seconds( st.time_total ), cec );
+    bool const cec = benchmark == "hyp" ? true : abc_cec( fanout_mig, benchmark );
+    exp( benchmark, size_before, fanout_mig.num_gates(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();

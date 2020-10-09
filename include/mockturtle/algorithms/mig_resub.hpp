@@ -25,7 +25,7 @@
 
 /*!
   \file mig_resub.hpp
-  \brief Resubstitution
+  \brief Majority-specific resustitution rules
 
   \author Heinz Riener
 */
@@ -643,11 +643,44 @@ private:
   binate_divisors bdivs;
 }; /* mig_resub_functor */
 
+/*! \brief MIG-specific resubstitution algorithm.
+ *
+ * This algorithms iterates over each node, creates a
+ * reconvergence-driven cut, and attempts to re-express the node's
+ * function using existing nodes from the cut.  Node which are no
+ * longer used (including nodes in their transitive fanins) can then
+ * be removed.  The objective is to reduce the size of the network as
+ * much as possible while maintaing the global input-output
+ * functionality.
+ *
+ * **Required network functions:**
+ * - `clear_values`
+ * - `fanout_size`
+ * - `foreach_fanin`
+ * - `foreach_gate`
+ * - `foreach_node`
+ * - `get_constant`
+ * - `get_node`
+ * - `is_complemented`
+ * - `is_pi`
+ * - `make_signal`
+ * - `set_value`
+ * - `set_visited`
+ * - `size`
+ * - `substitute_node`
+ * - `value`
+ * - `visited`
+ *
+ * \param ntk A network type derived from mig_network
+ * \param ps Resubstitution parameters
+ * \param pst Resubstitution statistics
+ */
 template<class Ntk>
 void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
-  /* TODO: check if basetype of ntk is aig */
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( std::is_same_v<typename Ntk::base_type, mig_network>, "Network type is not mig_network" );
+
   static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
@@ -665,21 +698,21 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
 
-  using resub_view_t = fanout_view<depth_view<Ntk>>;
-  depth_view<Ntk> depth_view{ntk};
-  resub_view_t resub_view{depth_view};
+  // using resub_view_t = fanout_view<depth_view<Ntk>>;
+  // depth_view<Ntk> depth_view{ntk};
+  // resub_view_t resub_view{depth_view};
 
   if ( ps.max_pis == 8 )
   {
     using truthtable_t = kitty::static_truth_table<8u>;
     using truthtable_dc_t = kitty::dynamic_truth_table;
-    using resub_impl_t = detail::resubstitution_impl<resub_view_t, typename detail::window_based_resub_engine<resub_view_t, truthtable_t, truthtable_dc_t, mig_resub_functor<resub_view_t, typename detail::window_simulator<resub_view_t, truthtable_t>, truthtable_dc_t>>>;
+    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, mig_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>>>;
 
     resubstitution_stats st;
     typename resub_impl_t::engine_st_t engine_st;
     typename resub_impl_t::collector_st_t collector_st;
 
-    resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
+    resub_impl_t p( ntk, ps, st, engine_st, collector_st );
     p.run();
 
     if ( ps.verbose )
@@ -698,13 +731,13 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   {
     using truthtable_t = kitty::dynamic_truth_table;
     using truthtable_dc_t = kitty::dynamic_truth_table;
-    using resub_impl_t = detail::resubstitution_impl<resub_view_t, typename detail::window_based_resub_engine<resub_view_t, truthtable_t, truthtable_dc_t, mig_resub_functor<resub_view_t, typename detail::window_simulator<resub_view_t, truthtable_t>, truthtable_dc_t>>>;
+    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, mig_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>>>;
 
     resubstitution_stats st;
     typename resub_impl_t::engine_st_t engine_st;
     typename resub_impl_t::collector_st_t collector_st;
 
-    resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
+    resub_impl_t p( ntk, ps, st, engine_st, collector_st );
     p.run();
 
     if ( ps.verbose )
