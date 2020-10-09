@@ -654,15 +654,18 @@ private:
  * functionality.
  *
  * **Required network functions:**
+ *
  * - `clear_values`
  * - `fanout_size`
  * - `foreach_fanin`
+ * - `foreach_fanout`
  * - `foreach_gate`
  * - `foreach_node`
  * - `get_constant`
  * - `get_node`
  * - `is_complemented`
  * - `is_pi`
+ * - `level`
  * - `make_signal`
  * - `set_value`
  * - `set_visited`
@@ -697,10 +700,8 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the has substitute_node method" );
   static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
-
-  // using resub_view_t = fanout_view<depth_view<Ntk>>;
-  // depth_view<Ntk> depth_view{ntk};
-  // resub_view_t resub_view{depth_view};
+  static_assert( has_level_v<Ntk>, "Ntk does not implement the level method" );
+  static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
 
   if ( ps.max_pis == 8 )
   {

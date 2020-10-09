@@ -23,34 +23,35 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <string>
-#include <vector>
-
-#include <fmt/format.h>
-#include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/views/depth_view.hpp>
+#include <mockturtle/views/fanout_view.hpp>
+#include <lorina/aiger.hpp>
 
 #include <experiments.hpp>
+#include <fmt/format.h>
+#include <string>
 
 int main()
 {
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "mig_resubstitution", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, float, bool>
+    exp( "mig_resubstitution", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
+
     mig_network mig;
     lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( mig ) );
 
     resubstitution_params ps;
     resubstitution_stats st;
-
     ps.max_pis = 8u;
     ps.max_inserts = 1u;
     ps.progress = false;
