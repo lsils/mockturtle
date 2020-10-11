@@ -72,5 +72,6 @@ uses SAT to find mappings with fewer number of cells.
 
 **Algorithm**
 
-.. doxygenfunction:: mockturtle::satlut_mapping(Ntk&, satlut_mapping_params const&, satlut_mapping_stats *)
-.. doxygenfunction:: mockturtle::satlut_mapping(Ntk&, uint32_t, satlut_mapping_params, satlut_mapping_stats *)
+.. doxygenfunction:: satlut_mapping(Ntk &ntk, satlut_mapping_params const &ps = {}, satlut_mapping_stats *pst = nullptr)
+.. doxygenfunction:: satlut_mapping(Ntk &ntk, uint32_t window_size, satlut_mapping_params ps = {}, satlut_mapping_stats *pst = nullptr)
+
