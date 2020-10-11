@@ -31,7 +31,8 @@ Welcome to mockturtle's documentation!
    algorithms/collapse_mapped
    algorithms/node_resynthesis
    algorithms/dsd_decomposition
-   algorithms/decomposition   
+   algorithms/decomposition
+   algorithms/bi_decomposition
    algorithms/cut_rewriting
    algorithms/refactoring
    algorithms/balancing
