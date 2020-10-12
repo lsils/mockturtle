@@ -39,7 +39,7 @@ namespace mockturtle
 /*! \brief Index list for majority-inverter graphs.
  *
  * Small network consisting of majority gates and inverters
- * represented as a list of indices.
+ * represented as a list of literals.
  */
 struct mig_index_list
 {
@@ -47,9 +47,12 @@ public:
   using element_type = uint64_t;
 
 public:
-  explicit mig_index_list()
+  explicit mig_index_list( uint64_t num_pis = 0, uint64_t num_pos = 0 )
     : values( 2u, 0u )
-  {}
+  {
+    values[0u] = num_pis;
+    values[1u] = num_pos;
+  }
 
   explicit mig_index_list( std::vector<element_type> const& values )
     : values( std::begin( values ), std::end( values ) )
@@ -99,9 +102,9 @@ public:
     }
   }
 
-  void add_input()
+  void add_inputs( uint64_t num_pis = 1u )
   {
-    ++values.at( 0u );
+    values.at( 0u ) += num_pis ;
   }
 
   void add_gate( element_type lit0, element_type lit1, element_type lit2 )
@@ -121,7 +124,8 @@ private:
   std::vector<element_type> values;
 };
 
-/*! \brief Generates an mig_index_list from a network */
+/*! \brief Generates an mig_index_list from a network
+ */
 template<typename Ntk>
 void encode( mig_index_list& indices, Ntk const& ntk )
 {
@@ -129,10 +133,7 @@ void encode( mig_index_list& indices, Ntk const& ntk )
   using signal = typename Ntk::signal;
 
   /* inputs */
-  for ( uint64_t i = 0; i < ntk.num_pis(); ++i )
-  {
-    indices.add_input();
-  }
+  indices.add_inputs( ntk.num_pis() );
 
   /* gates */
   ntk.foreach_gate( [&]( node const& n ){
@@ -153,7 +154,8 @@ void encode( mig_index_list& indices, Ntk const& ntk )
   assert( indices.size() == 2u + 3u*ntk.num_gates() + ntk.num_pos() );
 }
 
-/*! \brief Generates a network from a mig_index_list */
+/*! \brief Generates a network from a mig_index_list
+ */
 template<typename Ntk>
 void decode( Ntk& ntk, mig_index_list const& indices )
 {
@@ -169,7 +171,8 @@ void decode( Ntk& ntk, mig_index_list const& indices )
           [&]( signal const& s ){ ntk.create_po( s ); });
 }
 
-/*! \brief Inserts a mig_index_list into an existing network */
+/*! \brief Inserts a mig_index_list into an existing network
+ */
 template<typename Ntk, typename BeginIter, typename EndIter, typename Fn>
 void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indices, Fn&& fn )
 {
