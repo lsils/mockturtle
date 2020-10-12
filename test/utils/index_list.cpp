@@ -1,6 +1,7 @@
 #include <catch.hpp>
 
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/index_list.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <kitty/static_truth_table.hpp>
@@ -19,8 +20,8 @@ TEST_CASE( "decode mig_index_list into mig_network", "[index_list]" )
   CHECK( mig.num_pis() == 4u );
   CHECK( mig.num_pos() == 1u );
 
-  const auto tt = simulate<kitty::static_truth_table<2u>>( mig )[0];
-  CHECK( tt._bits == 0x8 );
+  const auto tt = simulate<kitty::static_truth_table<4u>>( mig )[0];
+  CHECK( tt._bits == 0xecc8 );
 }
 
 TEST_CASE( "encode mig_network into mig_index_list", "[index_list]" )
@@ -43,3 +44,42 @@ TEST_CASE( "encode mig_network into mig_index_list", "[index_list]" )
   CHECK( mig_il.size() == 9u );
   CHECK( mig_il.raw() == std::vector<uint64_t>{4, 1, 2, 4, 6, 4, 8, 10, 12} );
 }
+
+TEST_CASE( "decode abc_index_list into xag_network", "[index_list]" )
+{
+  std::vector<uint64_t> const raw_list{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 4, 6, 8, 12, 10, 14, 14};
+  abc_index_list xag_il{raw_list};
+
+  xag_network xag;
+  decode( xag, xag_il );
+
+  CHECK( xag.num_gates() == 3u );
+  CHECK( xag.num_pis() == 4u );
+  CHECK( xag.num_pos() == 1u );
+
+  const auto tt = simulate<kitty::static_truth_table<4u>>( xag )[0];
+  CHECK( tt._bits == 0x7888 );
+}
+
+TEST_CASE( "encode xag_network into abc_index_list", "[index_list]" )
+{
+  xag_network xag;
+  auto const a = xag.create_pi();
+  auto const b = xag.create_pi();
+  auto const c = xag.create_pi();
+  auto const d = xag.create_pi();
+  auto const t0 = xag.create_and( a, b );
+  auto const t1 = xag.create_and( c, d );
+  auto const t2 = xag.create_xor( t0, t1 );
+  xag.create_po( t2 );
+
+  abc_index_list xag_il;
+  encode( xag_il, xag );
+
+  CHECK( xag_il.num_pis() == 4u );
+  CHECK( xag_il.num_pos() == 1u );
+  CHECK( xag_il.num_entries() == 3u );
+  CHECK( xag_il.size() == 18u );
+  CHECK( xag_il.raw() == std::vector<uint64_t>{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 4, 6, 8, 12, 10, 14, 14} );
+}
+
