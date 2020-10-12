@@ -48,11 +48,8 @@ public:
 
 public:
   explicit mig_index_list( uint64_t num_pis = 0, uint64_t num_pos = 0 )
-    : values( 2u, 0u )
-  {
-    values[0u] = num_pis;
-    values[1u] = num_pos;
-  }
+    : values( {num_pis, num_pos} )
+  {}
 
   explicit mig_index_list( std::vector<element_type> const& values )
     : values( std::begin( values ), std::end( values ) )
@@ -125,6 +122,22 @@ private:
 };
 
 /*! \brief Generates an mig_index_list from a network
+ *
+ * The function requires `ntk` to consist of majority gates.
+ *
+ * **Required network functions:**
+ * - `foreach_fanin`
+ * - `foreach_gate`
+ * - `get_node`
+ * - `is_complemented`
+ * - `is_maj`
+ * - `node_to_index`
+ * - `num_gates`
+ * - `num_pis`
+ * - `num_pos`
+ *
+ * \param indices An index list
+ * \param ntk A logic network
  */
 template<typename Ntk>
 void encode( mig_index_list& indices, Ntk const& ntk )
@@ -155,6 +168,15 @@ void encode( mig_index_list& indices, Ntk const& ntk )
 }
 
 /*! \brief Generates a network from a mig_index_list
+ *
+ * **Required network functions:**
+ * - `create_maj`
+ * - `create_pi`
+ * - `create_po`
+ * - `get_constant`
+ *
+ * \param ntk A logic network
+ * \param indices An index list
  */
 template<typename Ntk>
 void decode( Ntk& ntk, mig_index_list const& indices )
@@ -172,6 +194,16 @@ void decode( Ntk& ntk, mig_index_list const& indices )
 }
 
 /*! \brief Inserts a mig_index_list into an existing network
+ *
+ * **Required network functions:**
+ * - `get_constant`
+ * - `create_maj`
+ *
+ * \param ntk A logic network
+ * \param begin Begin iterator of signal inputs
+ * \param end End iterator of signal inputs
+ * \param indices An index list
+ * \param fn Callback function
  */
 template<typename Ntk, typename BeginIter, typename EndIter, typename Fn>
 void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indices, Fn&& fn )
