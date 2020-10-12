@@ -121,7 +121,7 @@ private:
   std::vector<element_type> values;
 };
 
-/*! \brief Generates a network from an index_list */
+/*! \brief Generates an mig_index_list from a network */
 template<typename Ntk>
 void encode( mig_index_list& indices, Ntk const& ntk )
 {
@@ -136,6 +136,8 @@ void encode( mig_index_list& indices, Ntk const& ntk )
 
   /* gates */
   ntk.foreach_gate( [&]( node const& n ){
+    assert( ntk.is_maj( n ) );
+
     std::array<uint64_t, 3u> lits;
     ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ){
       lits[index] = 2*ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
@@ -151,7 +153,7 @@ void encode( mig_index_list& indices, Ntk const& ntk )
   assert( indices.size() == 2u + 3u*ntk.num_gates() + ntk.num_pos() );
 }
 
-/*! \brief Generates a network from an mig_index_list */
+/*! \brief Generates a network from a mig_index_list */
 template<typename Ntk>
 void decode( Ntk& ntk, mig_index_list const& indices )
 {
