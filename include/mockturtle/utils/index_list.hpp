@@ -45,10 +45,10 @@ namespace mockturtle
 struct abc_index_list
 {
 public:
-  using element_type = uint64_t;
+  using element_type = uint32_t;
 
 public:
-  explicit abc_index_list( uint64_t num_pis = 0 )
+  explicit abc_index_list( uint32_t num_pis = 0 )
     : _num_pis( num_pis )
     , values( /* add constant */{ 0u, 1u } )
   {}
@@ -90,7 +90,7 @@ public:
     return values.size();
   }
 
-  uint64_t num_entries() const
+  uint64_t num_gates() const
   {
     return ( values.size() - ( ( 1 + _num_pis + _num_pos ) << 1u ) ) >> 1u;
   }
@@ -124,7 +124,7 @@ public:
     }
   }
 
-  void add_inputs( uint64_t num_pis = 1u )
+  void add_inputs( uint32_t num_pis = 1u )
   {
     _num_pis += num_pis;
     for ( auto i = 0u; i < num_pis; ++i )
@@ -156,9 +156,9 @@ public:
   }
 
 private:
-  uint64_t _num_pis{0};
-  uint64_t _num_pos{0};
-  std::vector<uint64_t> values;
+  uint32_t _num_pis{0};
+  uint32_t _num_pos{0};
+  std::vector<uint32_t> values;
 };
 
 /*! \brief Generates an abc_index_list from a network
@@ -191,8 +191,8 @@ void encode( abc_index_list& indices, Ntk const& ntk )
   ntk.foreach_gate( [&]( node const& n ){
     assert( ntk.is_and( n ) || ntk.is_xor( n ) );
 
-    std::array<uint64_t, 2u> lits;
-    ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ){
+    std::array<uint32_t, 2u> lits;
+    ntk.foreach_fanin( n, [&]( signal const& fi, uint32_t index ){
       lits[index] = 2*ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
     });
 
@@ -239,11 +239,11 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
     signals.push_back( *it );
   }
 
-  indices.foreach_entry( [&]( uint64_t lit0, uint64_t lit1 ){
+  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1 ){
     assert( lit0 != lit1 );
 
-    uint64_t const i0 = lit0 >> 1;
-    uint64_t const i1 = lit1 >> 1;
+    uint32_t const i0 = lit0 >> 1;
+    uint32_t const i1 = lit1 >> 1;
     signal const s0 = ( lit0 % 2 ) ? !signals.at( i0 ) : signals.at( i0 );
     signal const s1 = ( lit1 % 2 ) ? !signals.at( i1 ) : signals.at( i1 );
 
@@ -257,8 +257,8 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
     }
   });
 
-  indices.foreach_po( [&]( uint64_t lit ){
-    uint64_t const i = lit >> 1;
+  indices.foreach_po( [&]( uint32_t lit ){
+    uint32_t const i = lit >> 1;
     fn( ( lit % 2 ) ? !signals.at( i ) : signals.at( i ) );
   });
 }
@@ -271,12 +271,13 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
 struct mig_index_list
 {
 public:
-  using element_type = uint64_t;
+  using element_type = uint32_t;
 
 public:
-  explicit mig_index_list( uint64_t num_pis = 0 )
-    : values( {num_pis, 0u} )
-  {}
+  explicit mig_index_list( uint32_t num_pis = 0 )
+    : values( {num_pis} )
+  {
+  }
 
   explicit mig_index_list( std::vector<element_type> const& values )
     : values( std::begin( values ), std::end( values ) )
@@ -292,26 +293,26 @@ public:
     return values.size();
   }
 
-  uint64_t num_entries() const
+  uint64_t num_gates() const
   {
-    return ( values.size() - 2u - num_pos() ) / 3u;
+    return ( values.at( 0 ) >> 16 );
   }
 
   uint64_t num_pis() const
   {
-    return values.at( 0u );
+    return values.at( 0 ) & 0xff;
   }
 
   uint64_t num_pos() const
   {
-    return values.at( 1u );
+    return ( values.at( 0 ) >> 8 ) & 0xff;
   }
 
   template<typename Fn>
   void foreach_entry( Fn&& fn ) const
   {
-    assert( ( values.size() - 2u - num_pos() ) % 3 == 0 );
-    for ( uint64_t i = 2u; i < values.size() - num_pos(); i += 3 )
+    assert( ( values.size() - 1u - num_pos() ) % 3 == 0 );
+    for ( uint64_t i = 1u; i < values.size() - num_pos(); i += 3 )
     {
       fn( values.at( i ), values.at( i+1 ), values.at( i+2 ) );
     }
@@ -326,13 +327,16 @@ public:
     }
   }
 
-  void add_inputs( uint64_t num_pis = 1u )
+  void add_inputs( uint32_t n = 1u )
   {
-    values.at( 0u ) += num_pis ;
+    assert( num_pis() + n <= 0xff );
+    values.at( 0u ) += n;
   }
 
-  void add_gate( element_type lit0, element_type lit1, element_type lit2 )
+  void add_maj( element_type lit0, element_type lit1, element_type lit2 )
   {
+    assert( num_gates() + 1u <= 0xffff );
+    values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
     values.push_back( lit0 );
     values.push_back( lit1 );
     values.push_back( lit2 );
@@ -340,7 +344,8 @@ public:
 
   void add_output( element_type lit )
   {
-    ++values.at( 1u );
+    assert( num_pos() + 1 <= 0xff );
+    values.at( 0u ) = ( num_pos() + 1 ) << 8 | ( values.at( 0u ) & 0xffff00ff );
     values.push_back( lit );
   }
 
@@ -379,11 +384,11 @@ void encode( mig_index_list& indices, Ntk const& ntk )
   ntk.foreach_gate( [&]( node const& n ){
     assert( ntk.is_maj( n ) );
 
-    std::array<uint64_t, 3u> lits;
+    std::array<uint32_t, 3u> lits;
     ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ){
       lits[index] = 2*ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
     });
-    indices.add_gate( lits[0u], lits[1u], lits[2u] );
+    indices.add_maj( lits[0u], lits[1u], lits[2u] );
   });
 
   /* outputs */
@@ -391,7 +396,7 @@ void encode( mig_index_list& indices, Ntk const& ntk )
     indices.add_output( 2*ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
   });
 
-  assert( indices.size() == 2u + 3u*ntk.num_gates() + ntk.num_pos() );
+  assert( indices.size() == 1u + 3u*ntk.num_gates() + ntk.num_pos() );
 }
 
 /*! \brief Inserts a mig_index_list into an existing network
@@ -418,18 +423,18 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indic
     signals.push_back( *it );
   }
 
-  indices.foreach_entry( [&]( uint64_t lit0, uint64_t lit1, uint64_t lit2 ){
-    uint64_t const i0 = lit0 >> 1;
-    uint64_t const i1 = lit1 >> 1;
-    uint64_t const i2 = lit2 >> 1;
+  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
+    uint32_t const i0 = lit0 >> 1;
+    uint32_t const i1 = lit1 >> 1;
+    uint32_t const i2 = lit2 >> 1;
     signal const s0 = ( lit0 % 2 ) ? !signals.at( i0 ) : signals.at( i0 );
     signal const s1 = ( lit1 % 2 ) ? !signals.at( i1 ) : signals.at( i1 );
     signal const s2 = ( lit2 % 2 ) ? !signals.at( i2 ) : signals.at( i2 );
     signals.push_back( ntk.create_maj( s0, s1, s2 ) );
   });
 
-  indices.foreach_po( [&]( uint64_t lit ){
-    uint64_t const i = lit >> 1;
+  indices.foreach_po( [&]( uint32_t lit ){
+    uint32_t const i = lit >> 1;
     fn( ( lit % 2 ) ? !signals.at( i ) : signals.at( i ) );
   });
 }
