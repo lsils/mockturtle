@@ -210,7 +210,7 @@ private:
   {
     stopwatch t( st.time_db );
 
-    decode( _db, xag_index_list{std::vector( subgraphs, subgraphs + sizeof subgraphs / sizeof subgraphs[0] )} );
+    decode( _db, xag_index_list{std::vector<uint32_t>{subgraphs, subgraphs + sizeof subgraphs / sizeof subgraphs[0]}} );
     const auto sim_res = simulate_nodes<kitty::static_truth_table<4u>>( _db );
 
     _db.foreach_node( [&]( auto n ) {

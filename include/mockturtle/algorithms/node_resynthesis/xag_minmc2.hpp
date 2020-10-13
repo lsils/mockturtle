@@ -150,6 +150,7 @@ private:
       for ( auto const& [_, word, repr, expr] : detail::minmc_xags[i] )
       {
         (void)_;
+        (void)expr;
         db_[i][word] = repr;
         st_.db_size += sizeof( word ) + sizeof( repr ) + sizeof( uint32_t ) * repr.size();
       }
