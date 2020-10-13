@@ -38,7 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../../io/index_list.hpp"
+#include "../../utils/index_list.hpp"
 #include "../../networks/xag.hpp"
 #include "../detail/minmc_xags.hpp"
 #include "../equivalence_classes.hpp"
@@ -126,7 +126,15 @@ public:
     }
 
     const auto f = apply_spectral_transformations( ntk, trans, std::vector<signal<Ntk>>( begin, end ), [&]( xag_network& ntk, std::vector<signal<Ntk>> const& leaves ) {
-      return create_from_binary_index_list( ntk, it->second.begin(), leaves.begin() )[0u];
+      xag_index_list il{it->second};
+      std::vector<xag_network::signal> pos;
+      insert( ntk, std::begin( leaves ), std::begin( leaves ) + il.num_pis(), il,
+              [&]( xag_network::signal const& f )
+              {
+                pos.push_back( f );
+              } );
+      assert( pos.size() == 1u );
+      return pos[0u];
     } );
 
     fn( f );

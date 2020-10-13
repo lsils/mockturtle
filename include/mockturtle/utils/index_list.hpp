@@ -29,6 +29,8 @@
   \author Heinz Riener
 */
 
+#pragma once
+
 #include "../traits.hpp"
 
 #include <fmt/format.h>
@@ -738,6 +740,8 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list const& indic
   static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, signal<Ntk>>, "BeginIter value_type must be Ntk signal type" );
   static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, signal<Ntk>>, "EndIter value_type must be Ntk signal type" );
 
+  assert( uint64_t( std::distance( begin, end ) ) == indices.num_pis() );
+
   using signal = typename Ntk::signal;
 
   std::vector<signal> signals;
@@ -749,18 +753,16 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list const& indic
 
   indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1 ){
     assert( lit0 != lit1 );
-
     uint32_t const i0 = lit0 >> 1;
     uint32_t const i1 = lit1 >> 1;
-    signal const s0 = ( lit0 % 2 ) ? !signals.at( i0 ) : signals.at( i0 );
-    signal const s1 = ( lit1 % 2 ) ? !signals.at( i1 ) : signals.at( i1 );
-
-    signals.push_back( lit0 < lit1 ? ntk.create_and( s0, s1 ) : ntk.create_xor( s0, s1 ) );
+    signal const s0 = ( lit0 % 2 ) ? ntk.create_not( signals.at( i0 ) ) : signals.at( i0 );
+    signal const s1 = ( lit1 % 2 ) ? ntk.create_not( signals.at( i1 ) ) : signals.at( i1 );
+    signals.push_back( lit0 > lit1 ? ntk.create_xor( s0, s1 ) : ntk.create_and( s0, s1 ) );
   });
 
   indices.foreach_po( [&]( uint32_t lit ){
     uint32_t const i = lit >> 1;
-    fn( ( lit % 2 ) ? !signals.at( i ) : signals.at( i ) );
+    fn( ( lit % 2 ) ? ntk.create_not( signals.at( i ) ) : signals.at( i ) );
   });
 }
 
@@ -782,11 +784,9 @@ void decode( Ntk& ntk, IndexList const& indices )
 
   using signal = typename Ntk::signal;
 
-  std::vector<signal> signals;
-  for ( uint64_t i = 0; i < indices.num_pis(); ++i )
-  {
-    signals.push_back( ntk.create_pi() );
-  }
+  std::vector<signal> signals( indices.num_pis() );
+  std::generate( std::begin( signals ), std::end( signals ),
+                 [&]() { return ntk.create_pi(); });
 
   insert( ntk, std::begin( signals ), std::end( signals ), indices,
           [&]( signal const& s ){ ntk.create_po( s ); });
