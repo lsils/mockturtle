@@ -439,6 +439,206 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indic
   });
 }
 
+/*! \brief Index list for xor-and graphs.
+ *
+ * Small network represented as a list of literals. Supports XOR and
+ * AND gates.
+ */
+struct xag_index_list
+{
+public:
+  using element_type = uint32_t;
+
+public:
+  explicit xag_index_list( uint32_t num_pis = 0 )
+    : values( {num_pis} )
+  {
+  }
+
+  explicit xag_index_list( std::vector<element_type> const& values )
+    : values( std::begin( values ), std::end( values ) )
+  {}
+
+  std::vector<element_type> raw() const
+  {
+    return values;
+  }
+
+  uint64_t size() const
+  {
+    return values.size();
+  }
+
+  uint64_t num_gates() const
+  {
+    return ( values.at( 0 ) >> 16 );
+  }
+
+  uint64_t num_pis() const
+  {
+    return values.at( 0 ) & 0xff;
+  }
+
+  uint64_t num_pos() const
+  {
+    return ( values.at( 0 ) >> 8 ) & 0xff;
+  }
+
+  template<typename Fn>
+  void foreach_entry( Fn&& fn ) const
+  {
+    assert( ( values.size() - 1u - num_pos() ) % 2 == 0 );
+    for ( uint64_t i = 1u; i < values.size() - num_pos(); i += 2 )
+    {
+      fn( values.at( i ), values.at( i+1 ) );
+    }
+  }
+
+  template<typename Fn>
+  void foreach_po( Fn&& fn ) const
+  {
+    for ( uint64_t i = values.size() - num_pos(); i < values.size(); ++i )
+    {
+      fn( values.at( i ) );
+    }
+  }
+
+  void add_inputs( uint32_t n = 1u )
+  {
+    assert( num_pis() + n <= 0xff );
+    values.at( 0u ) += n;
+  }
+
+  void add_and( element_type lit0, element_type lit1 )
+  {
+    assert( num_gates() + 1u <= 0xffff );
+    values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
+    values.push_back( lit0 );
+    values.push_back( lit1 );
+  }
+
+  void add_xor( element_type lit0, element_type lit1 )
+  {
+    assert( num_gates() + 1u <= 0xffff );
+    values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
+    values.push_back( lit0 );
+    values.push_back( lit1 );
+  }
+
+  void add_output( element_type lit )
+  {
+    assert( num_pos() + 1 <= 0xff );
+    values.at( 0u ) = ( num_pos() + 1 ) << 8 | ( values.at( 0u ) & 0xffff00ff );
+    values.push_back( lit );
+  }
+
+private:
+  std::vector<element_type> values;
+};
+
+/*! \brief Generates a xag_index_list from a network
+ *
+ * The function requires `ntk` to consist of XOR and AND gates.
+ *
+ * **Required network functions:**
+ * - `foreach_fanin`
+ * - `foreach_gate`
+ * - `get_node`
+ * - `is_and`
+ * - `is_complemented`
+ * - `is_xor`
+ * - `node_to_index`
+ * - `num_gates`
+ * - `num_pis`
+ * - `num_pos`
+ *
+ * \param indices An index list
+ * \param ntk A logic network
+ */
+template<typename Ntk>
+void encode( xag_index_list& indices, Ntk const& ntk )
+{
+  using node   = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  /* inputs */
+  indices.add_inputs( ntk.num_pis() );
+
+  /* gates */
+  ntk.foreach_gate( [&]( node const& n ){
+    assert( ntk.is_and( n ) || ntk.is_xor( n ) );
+
+    std::array<uint32_t, 2u> lits;
+    ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ){
+      lits[index] = 2*ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
+    });
+
+    if ( ntk.is_and( n ) )
+    {
+      indices.add_and( lits[0u], lits[1u] );
+    }
+    else if ( ntk.is_xor( n ) )
+    {
+      indices.add_xor( lits[0u], lits[1u] );
+    }
+  });
+
+  /* outputs */
+  ntk.foreach_po( [&]( signal const& f ){
+    indices.add_output( 2*ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
+  });
+
+  assert( indices.size() == 1u + 2u*ntk.num_gates() + ntk.num_pos() );
+}
+
+/*! \brief Inserts a xag_index_list into an existing network
+ *
+ * **Required network functions:**
+ * - `get_constant`
+ * - `create_maj`
+ *
+ * \param ntk A logic network
+ * \param begin Begin iterator of signal inputs
+ * \param end End iterator of signal inputs
+ * \param indices An index list
+ * \param fn Callback function
+ */
+template<typename Ntk, typename BeginIter, typename EndIter, typename Fn>
+void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list const& indices, Fn&& fn )
+{
+  using signal = typename Ntk::signal;
+
+  std::vector<signal> signals;
+  signals.emplace_back( ntk.get_constant( false ) );
+  for ( auto it = begin; it != end; ++it )
+  {
+    signals.push_back( *it );
+  }
+
+  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1 ){
+    assert( lit0 != lit1 );
+
+    uint32_t const i0 = lit0 >> 1;
+    uint32_t const i1 = lit1 >> 1;
+    signal const s0 = ( lit0 % 2 ) ? !signals.at( i0 ) : signals.at( i0 );
+    signal const s1 = ( lit1 % 2 ) ? !signals.at( i1 ) : signals.at( i1 );
+
+    if ( lit0 < lit1 )
+    {
+      signals.push_back( ntk.create_and( s0, s1 ) );
+    }
+    else if ( lit0 > lit1 )
+    {
+      signals.push_back( ntk.create_xor( s0, s1 ) );
+    }
+  });
+
+  indices.foreach_po( [&]( uint32_t lit ){
+    uint32_t const i = lit >> 1;
+    fn( ( lit % 2 ) ? !signals.at( i ) : signals.at( i ) );
+  });
+}
+
 /*! \brief Generates a network from an index_list
  *
  * **Required network functions:**
