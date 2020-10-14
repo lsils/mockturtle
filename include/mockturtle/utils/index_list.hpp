@@ -60,9 +60,17 @@ public:
 
 public:
   explicit abc_index_list( uint32_t num_pis = 0 )
-    : _num_pis( num_pis )
-    , values( /* add constant */{ 0u, 1u } )
-  {}
+  {
+    /* add constants */
+    values.push_back( 0u );
+    values.push_back( 1u );
+
+    /* add inputs */
+    if ( num_pis > 0 )
+    {
+      add_inputs( num_pis );
+    }
+  }
 
   explicit abc_index_list( std::vector<element_type> const& values )
     : values( std::begin( values ), std::end( values ) )
@@ -80,7 +88,6 @@ public:
         break;
       }
     }
-
     for ( ; ( i+1 ) < values.size(); i+=2 )
     {
       assert( !( values.at( i ) == 0 && values.at( i + 1 ) == 0 ) );
@@ -312,19 +319,17 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
  */
 inline std::string to_index_list_string( abc_index_list const& indices )
 {
+  auto const raw = indices.raw();
+
   std::string s{"{"};
-  auto it = indices.raw().begin();
-  while ( true )
+  auto it = std::begin( raw );
+  while ( it != std::end( raw ) )
   {
     s += std::to_string( *it );
-    it++;
-    if ( it != indices.raw().end() )
+    ++it;
+    if ( it != std::end( raw ) )
     {
       s += ", ";
-    }
-    else
-    {
-      break;
     }
   }
   s += "}";
