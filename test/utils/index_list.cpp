@@ -43,7 +43,7 @@ TEST_CASE( "encode mig_network into mig_index_list", "[index_list]" )
   CHECK( mig_il.num_gates() == 2u );
   CHECK( mig_il.size() == 8u );
   CHECK( mig_il.raw() == std::vector<uint32_t>{4 | ( 1 << 8 ) | ( 2 << 16 ), 2, 4, 6, 4, 8, 10, 12} );
-  CHECK( to_string( mig_il ) == "{4 | 1 << 8 | 2 << 16, 2, 4, 6, 4, 8, 10, 12}" );
+  CHECK( to_index_list_string( mig_il ) == "{4 | 1 << 8 | 2 << 16, 2, 4, 6, 4, 8, 10, 12}" );
 }
 
 TEST_CASE( "decode abc_index_list into xag_network", "[index_list]" )
@@ -82,7 +82,7 @@ TEST_CASE( "encode xag_network into abc_index_list", "[index_list]" )
   CHECK( xag_il.num_gates() == 3u );
   CHECK( xag_il.size() == 18u );
   CHECK( xag_il.raw() == std::vector<uint32_t>{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 4, 6, 8, 12, 10, 14, 14} );
-  CHECK( to_string( xag_il ) == "{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 4, 6, 8, 12, 10, 14, 14}" );
+  CHECK( to_index_list_string( xag_il ) == "{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 4, 6, 8, 12, 10, 14, 14}" );
 }
 
 TEST_CASE( "decode xag_index_list into xag_network", "[index_list]" )
@@ -121,5 +121,5 @@ TEST_CASE( "encode xag_network into xag_index_list", "[index_list]" )
   CHECK( xag_il.num_gates() == 3u );
   CHECK( xag_il.size() == 8u );
   CHECK( xag_il.raw() == std::vector<uint32_t>{4 | ( 1 << 8 ) | ( 3 << 16 ), 2, 4, 6, 8, 12, 10, 14} );
-  CHECK( to_string( xag_il ) == "{4 | 1 << 8 | 3 << 16, 2, 4, 6, 8, 12, 10, 14}" );
+  CHECK( to_index_list_string( xag_il ) == "{4 | 1 << 8 | 3 << 16, 2, 4, 6, 8, 12, 10, 14}" );
 }

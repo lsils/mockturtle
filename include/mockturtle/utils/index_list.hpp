@@ -207,10 +207,10 @@ void encode( abc_index_list& indices, Ntk const& ntk )
   using node   = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  ntk.foreach_pi( [&]( node const& n, uint64_t i ) {
-    if ( ntk.node_to_index( n ) != i + 1 )
+  ntk.foreach_pi( [&]( node const& n, uint64_t index ) {
+    if ( ntk.node_to_index( n ) != index + 1 )
     {
-      fmt::print( "[e] network is not in normalized index order (violated by PI {})\n", i + 1 );
+      fmt::print( "[e] network is not in normalized index order (violated by PI {})\n", index + 1 );
       std::abort();
     }
   });
@@ -310,14 +310,13 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
  * \param indices An index list
  * \return A string representation of the index list
  */
-inline std::string to_string( abc_index_list const& indices )
+inline std::string to_index_list_string( abc_index_list const& indices )
 {
-  std::string s;
-  s += "{";
+  std::string s{"{"};
   auto it = indices.raw().begin();
   while ( true )
   {
-    s += fmt::format( "{}", *it );
+    s += std::to_string( *it );
     it++;
     if ( it != indices.raw().end() )
     {
@@ -550,7 +549,7 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indic
  * \param indices An index list
  * \return A string representation of the index list
  */
-inline std::string to_string( mig_index_list const& indices )
+inline std::string to_index_list_string( mig_index_list const& indices )
 {
   auto s = fmt::format( "{{{} | {} << 8 | {} << 16", indices.num_pis(), indices.num_pos(), indices.num_gates() );
 
@@ -819,7 +818,7 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list const& indic
  * \param indices An index list
  * \return A string representation of the index list
  */
-inline std::string to_string( xag_index_list const& indices )
+inline std::string to_index_list_string( xag_index_list const& indices )
 {
   auto s = fmt::format( "{{{} | {} << 8 | {} << 16", indices.num_pis(), indices.num_pos(), indices.num_gates() );
 
