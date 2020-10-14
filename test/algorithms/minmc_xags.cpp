@@ -1,25 +1,14 @@
 #include <catch.hpp>
 
+#include <mockturtle/algorithms/detail/minmc_xags.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
+#include <mockturtle/networks/xag.hpp>
+#include <mockturtle/utils/index_list.hpp>
+#include <kitty/spectral.hpp>
+
 #include <algorithm>
 #include <cstdint>
 #include <vector>
-
-#include <mockturtle/algorithms/detail/minmc_xags.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_minmc.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/algorithms/xag_optimization.hpp>
-#include <mockturtle/io/index_list.hpp>
-#include <mockturtle/io/write_dot.hpp>
-#include <mockturtle/io/verilog_reader.hpp>
-#include <mockturtle/io/write_verilog.hpp>
-#include <mockturtle/networks/xag.hpp>
-#include <mockturtle/properties/mccost.hpp>
-#include <mockturtle/traits.hpp>
-
-#include <kitty/constructors.hpp>
-#include <kitty/operators.hpp>
-#include <kitty/spectral.hpp>
-#include <lorina/verilog.hpp>
 
 using namespace mockturtle;
 
@@ -28,13 +17,7 @@ static void check_minmc_xags()
 {
   for ( auto const& [cls, tt, repr, expr] : detail::minmc_xags[NumVars] ) {
     xag_network xag;
-    std::vector<xag_network::signal> pis( NumVars );
-    std::generate( pis.begin(), pis.end(), [&]() { return xag.create_pi(); });
-
-    for ( auto const& po : create_from_binary_index_list( xag, repr.begin(), pis.begin() ) )
-    {
-      xag.create_po( po );
-    }
+    decode( xag, xag_index_list{repr} );
 
     const auto f = simulate<kitty::static_truth_table<NumVars>>( xag )[0];
     auto f_tt = f.construct(), f_expr = f.construct();
@@ -46,7 +29,7 @@ static void check_minmc_xags()
   }
 }
 
-TEST_CASE( "create MC-optumum XAGs from binary index list", "[index_list]" )
+TEST_CASE( "create MC-optumum XAGs from xag_index_list", "[minmc_xags]" )
 {
   check_minmc_xags<0>();
   check_minmc_xags<1>();
@@ -73,7 +56,7 @@ static void check_repr_match()
   }
 }
 
-TEST_CASE( "check representatives for database functions", "[index_list]" )
+TEST_CASE( "check representatives for database functions", "[minmc_xags]" )
 {
   check_repr_match<0>();
   check_repr_match<1>();
