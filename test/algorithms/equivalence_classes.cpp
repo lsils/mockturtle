@@ -5,7 +5,6 @@
 #include <mockturtle/algorithms/detail/minmc_xags.hpp>
 #include <mockturtle/algorithms/equivalence_classes.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/io/index_list.hpp>
 #include <mockturtle/utils/index_list.hpp>
 #include <mockturtle/networks/xag.hpp>
 

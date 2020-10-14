@@ -26,7 +26,9 @@
 /*!
   \file index_list.hpp
   \brief List of indices to represent small networks.
+
   \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once
@@ -303,6 +305,33 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
   });
 }
 
+/*! \brief Converts an abc_index_list to a string
+ *
+ * \param indices An index list
+ * \return A string representation of the index list
+ */
+inline std::string to_string( abc_index_list const& indices )
+{
+  std::string s;
+  s += "{";
+  auto it = indices.raw().begin();
+  while ( true )
+  {
+    s += fmt::format( "{}", *it );
+    it++;
+    if ( it != indices.raw().end() )
+    {
+      s += ", ";
+    }
+    else
+    {
+      break;
+    }
+  }
+  s += "}";
+  return s;
+}
+
 /*! \brief Index list for majority-inverter graphs.
  *
  * Small network consisting of majority gates and inverters
@@ -504,12 +533,9 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indic
   }
 
   indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
-    uint32_t const i0 = lit0 >> 1;
-    uint32_t const i1 = lit1 >> 1;
-    uint32_t const i2 = lit2 >> 1;
-    signal const s0 = ( lit0 % 2 ) ? !signals.at( i0 ) : signals.at( i0 );
-    signal const s1 = ( lit1 % 2 ) ? !signals.at( i1 ) : signals.at( i1 );
-    signal const s2 = ( lit2 % 2 ) ? !signals.at( i2 ) : signals.at( i2 );
+    signal const s0 = ( lit0 % 2 ) ? !signals.at( lit0 >> 1 ) : signals.at( lit0 >> 1 );
+    signal const s1 = ( lit1 % 2 ) ? !signals.at( lit1 >> 1 ) : signals.at( lit1 >> 1 );
+    signal const s2 = ( lit2 % 2 ) ? !signals.at( lit2 >> 1 ) : signals.at( lit2 >> 1 );
     signals.push_back( ntk.create_maj( s0, s1, s2 ) );
   });
 
@@ -517,6 +543,28 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indic
     uint32_t const i = lit >> 1;
     fn( ( lit % 2 ) ? !signals.at( i ) : signals.at( i ) );
   });
+}
+
+/*! \brief Converts an mig_index_list to a string
+ *
+ * \param indices An index list
+ * \return A string representation of the index list
+ */
+inline std::string to_string( mig_index_list const& indices )
+{
+  auto s = fmt::format( "{{{} | {} << 8 | {} << 16", indices.num_pis(), indices.num_pos(), indices.num_gates() );
+
+  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
+    s += fmt::format( ", {}, {}, {}", lit0, lit1, lit2 );
+  });
+
+  indices.foreach_po( [&]( uint32_t lit ) {
+    s += fmt::format( ", {}", lit );
+  });
+
+  s += "}";
+
+  return s;
 }
 
 /*! \brief Index list for xor-and graphs.
@@ -764,6 +812,28 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list const& indic
     uint32_t const i = lit >> 1;
     fn( ( lit % 2 ) ? ntk.create_not( signals.at( i ) ) : signals.at( i ) );
   });
+}
+
+/*! \brief Converts an xag_index_list to a string
+ *
+ * \param indices An index list
+ * \return A string representation of the index list
+ */
+inline std::string to_string( xag_index_list const& indices )
+{
+  auto s = fmt::format( "{{{} | {} << 8 | {} << 16", indices.num_pis(), indices.num_pos(), indices.num_gates() );
+
+  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1 ){
+    s += fmt::format( ", {}, {}", lit0, lit1 );
+  });
+
+  indices.foreach_po( [&]( uint32_t lit ) {
+    s += fmt::format( ", {}", lit );
+  });
+
+  s += "}";
+
+  return s;
 }
 
 /*! \brief Generates a network from an index_list

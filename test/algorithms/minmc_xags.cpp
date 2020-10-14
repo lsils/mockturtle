@@ -29,7 +29,7 @@ static void check_minmc_xags()
   }
 }
 
-TEST_CASE( "create MC-optumum XAGs from binary index list", "[index_list]" )
+TEST_CASE( "create MC-optumum XAGs from xag_index_list", "[minmc_xags]" )
 {
   check_minmc_xags<0>();
   check_minmc_xags<1>();
@@ -56,7 +56,7 @@ static void check_repr_match()
   }
 }
 
-TEST_CASE( "check representatives for database functions", "[index_list]" )
+TEST_CASE( "check representatives for database functions", "[minmc_xags]" )
 {
   check_repr_match<0>();
   check_repr_match<1>();
