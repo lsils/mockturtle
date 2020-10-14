@@ -6,144 +6,9 @@
 #include <mockturtle/views/window_view.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/algorithms/reconv_cut.hpp>
+#include <mockturtle/views/color_view.hpp>
 
 using namespace mockturtle;
-
-template<typename Ntk>
-struct colors_impl1
-{
-public:
-  using node = typename Ntk::node;
-  using signal = typename Ntk::signal;
-
-public:
-  colors_impl1( Ntk const& ntk )
-    : ntk( ntk )
-  {
-    ntk.incr_trav_id();
-  }
-
-  void new_color()
-  {
-    ntk.incr_trav_id();
-  }
-
-  uint32_t color() const
-  {
-    return ntk.trav_id();
-  }
-
-  bool colored( node const& n ) const
-  {
-    return ntk.visited( n ) == ntk.trav_id();
-  }
-
-  bool colored( node const& n, uint32_t k ) const
-  {
-    return ntk.visited( n ) >= ntk.trav_id() - k;
-  }
-
-  bool same_color( node const& a, node const& b ) const
-  {
-    return ntk.visited( a ) == ntk.visited( b );
-  }
-
-  bool fanins_colored( node const& n ) const
-  {
-    bool result = true;
-    ntk.foreach_fanin( n, [&]( signal const& fi ){
-      if ( !colored( ntk.get_node( fi ) ) )
-      {
-        result = false;
-        return false;
-      }
-      return true;
-    });
-    return result;
-  }
-
-  void paint( node const& n )
-  {
-    ntk.set_visited( n, ntk.trav_id() );
-  }
-
-  void paint( node const& n, node const& a )
-  {
-    ntk.set_visited( n, ntk.visited( a ) );
-  }
-
-protected:
-  Ntk const& ntk;
-};
-
-template<typename Ntk>
-struct colors_impl2
-{
-public:
-  using node = typename Ntk::node;
-  using signal = typename Ntk::signal;
-
-public:
-  colors_impl2( Ntk const& ntk )
-    : ntk( ntk )
-    , values( ntk.size() )
-  {}
-
-  void new_color()
-  {
-    ++value;
-  }
-
-  uint32_t color() const
-  {
-    return value;
-  }
-
-  bool colored( node const& n ) const
-  {
-    return values[n] == value;
-  }
-
-  bool colored( node const& n, uint32_t k ) const
-  {
-    return values[n] >= value - k;
-  }
-
-  bool same_color( node const& a, node const& b ) const
-  {
-    return values[a] == values[b];
-  }
-
-  bool fanins_colored( node const& n ) const
-  {
-    bool result = true;
-    ntk.foreach_fanin( n, [&]( signal const& fi ){
-      if ( !colored( ntk.get_node( fi ) ) )
-      {
-        result = false;
-        return false;
-      }
-      return true;
-    });
-    return result;
-  }
-
-  void paint( node const& n )
-  {
-    values[n] = value;
-  }
-
-  void paint( node const& n, node const& a )
-  {
-    values[n] = values[a];
-    ntk.set_visited( n, ntk.visited( a ) );
-  }
-
-protected:
-  Ntk const& ntk;
-  std::vector<uint32_t> values;
-  uint32_t value{1};
-};
 
 template<typename Ntk>
 std::vector<typename Ntk::node> collect_fanin_nodes( Ntk const& ntk, typename Ntk::node const& n )
@@ -389,9 +254,8 @@ TEST_CASE( "expand towards tfo", "[window_view]" )
   });
 }
 
-
 template<typename Ntk>
-class create_window_impl2
+class create_window_impl
 {
 public:
   using node = typename Ntk::node;
@@ -403,15 +267,14 @@ public:
     std::vector<node> nodes;
     std::vector<signal> outputs;
   };
-  
+
 protected:
   /* constant node used to denotes invalid window element */
   static constexpr node INVALID_NODE{0};
 
 public:
-  create_window_impl2( Ntk const& ntk )
+  create_window_impl( Ntk const& ntk )
     : ntk( ntk )
-    , colors( ntk )
     , path( ntk.size() )
     , refs( ntk.size() )
   {
@@ -427,24 +290,23 @@ public:
       return std::nullopt;
     }
 
-    /* collect the fanins for these nodes */    
-    colors.new_color();    
-    std::vector<node> inputs = collect_inputs( ntk, *nodes, colors );
+    /* collect the fanins for these nodes */
+    ntk.new_color();
+    std::vector<node> inputs = collect_inputs( ntk, *nodes );
 
     /* expand the nodes towards the TFI */
-    colors.new_color();
-    expand_towards_tfi( ntk, inputs, 6u, colors );
+    ntk.new_color();
+    expand_towards_tfi( ntk, inputs, 6u );
 
     /* expand the nodes towards the TFO */
-    colors.new_color();
-    expand_towards_tfi( ntk, inputs, 6u, colors );
-    levelized_expand_towards_tfo( ntk, inputs, *nodes, colors );
+    ntk.new_color();
+    levelized_expand_towards_tfo( ntk, inputs, *nodes );
 
-    /* collect the nodes with fanout outside of nodes */    
-    colors.new_color();
-    std::vector<signal> outputs = collect_outputs( ntk, inputs, *nodes, refs, colors );
+    /* collect the nodes with fanout outside of nodes */
+    ntk.new_color();
+    std::vector<signal> outputs = collect_outputs( ntk, inputs, *nodes, refs );
 
-    /* sort nodes */
+    /* top. sort nodes */
     std::sort( std::begin( inputs ), std::end( inputs ) );
     std::sort( std::begin( *nodes ), std::end( *nodes ) );
 
@@ -455,14 +317,12 @@ protected:
   std::optional<std::vector<node>> identify_reconvergence( node const& pivot, uint64_t num_iterations )
   {
     visited.clear();
-    
     ntk.foreach_fanin( pivot, [&]( signal const& fi ){
-      colors.new_color();
-
+      uint32_t const color = ntk.new_color();
       node const& n = ntk.get_node( fi );
-      colors.paint( n );
       path[n] = INVALID_NODE;
       visited.push_back( n );
+      ntk.paint( n, color );
     });
 
     uint64_t start{0};
@@ -499,20 +359,20 @@ protected:
         return true; /* next */
       }
 
-      if ( colors.colored( n, ntk.max_fanin_size - 1 ) &&
-           colors.colored( fi_node, ntk.max_fanin_size - 1 ) &&
-           !colors.same_color( n, fi_node ) )
+      if ( ntk.eval_color( n, [this]( auto c ){ return c > ntk.current_color() - ntk.max_fanin_size; } )&&
+           ntk.eval_color( fi_node, [this]( auto c ){ return c > ntk.current_color() - ntk.max_fanin_size; } ) &&
+           ntk.eval_color( n, fi_node, []( auto c0, auto c1 ){ return c0 != c1; } ) )
       {
         meet = fi_node;
         return false;
       }
 
-      if ( colors.colored( fi_node, ntk.max_fanin_size - 1 ) )
+      if ( ntk.eval_color( fi_node, [this]( auto c ){ return c > ntk.current_color() - ntk.max_fanin_size; } ) )
       {
         return true; /* next */
       }
 
-      colors.paint( fi_node, n );
+      ntk.paint( fi_node, n );
       path[fi_node] = n;
       visited.push_back( fi_node );
       return true; /* next */
@@ -536,13 +396,12 @@ protected:
       return;
     }
 
-    assert( colors.same_color( n, pred ) );
+    assert( ntk.eval_color( n, pred, []( auto c0, auto c1 ){ return c0 == c1; } ) );
     gather_nodes_recursively( pred );
   }
 
 protected:
   Ntk const& ntk;
-  colors_impl1<Ntk> colors;
   std::vector<node> visited;
   std::vector<node> path;
   std::vector<uint32_t> refs;
@@ -552,25 +411,25 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
 {
   using node = typename aig_network::node;
 
-  aig_network aig;
-  auto const a = aig.create_pi();
-  auto const b = aig.create_pi();
-  auto const c = aig.create_pi();
-  auto const d = aig.create_pi();
-  auto const f1 = aig.create_and( b, c );
-  auto const f2 = aig.create_and( b, f1 );
-  auto const f3 = aig.create_and( a, f2 );
-  auto const f4 = aig.create_and( d, f2 );
-  auto const f5 = aig.create_and( f3, f4 );
-  aig.create_po( f5 );
+  aig_network _aig;
+  auto const a = _aig.create_pi();
+  auto const b = _aig.create_pi();
+  auto const c = _aig.create_pi();
+  auto const d = _aig.create_pi();
+  auto const f1 = _aig.create_and( b, c );
+  auto const f2 = _aig.create_and( b, f1 );
+  auto const f3 = _aig.create_and( a, f2 );
+  auto const f4 = _aig.create_and( d, f2 );
+  auto const f5 = _aig.create_and( f3, f4 );
+  _aig.create_po( f5 );
 
-  colors_impl1 colors( aig );
+  color_view aig{_aig};
 
   {
     /* a cut that can be expanded without increasing cut-size */
     std::vector<node> inputs{aig.get_node( a ), aig.get_node( b ), aig.get_node( f1 ), aig.get_node( d )};
 
-    bool const trivial_cut = expand0_towards_tfi( aig, inputs, colors );
+    bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( trivial_cut );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
@@ -578,12 +437,12 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
   }
 
   {
-    colors.new_color();
+    aig.new_color();
 
     /* a cut that cannot be expanded without increasing cut-size */
     std::vector<node> inputs{aig.get_node( f3 ), aig.get_node( f4 )};
 
-    bool const trivial_cut = expand0_towards_tfi( aig, inputs, colors );
+    bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
@@ -591,12 +450,12 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
   }
 
   {
-    colors.new_color();
+    aig.new_color();
 
     /* a cut that can be moved towards the PIs */
     std::vector<node> inputs{aig.get_node( f2 ), aig.get_node( f3 ), aig.get_node( f4 )};
 
-    bool const trivial_cut = expand0_towards_tfi( aig, inputs, colors );
+    bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
@@ -604,12 +463,12 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
   }
 
   {
-    colors.new_color();
+    aig.new_color();
 
     /* the cut { f3, f5 } can be simplified to { f3, f4 } */
     std::vector<node> inputs{aig.get_node( f3 ), aig.get_node( f5 )};
 
-    bool const trivial_cut = expand0_towards_tfi( aig, inputs, colors );
+    bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
@@ -617,12 +476,12 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
   }
 
   {
-    colors.new_color();
+    aig.new_color();
 
     /* the cut { f4, f5 } also can be simplified to { f3, f4 } */
     std::vector<node> inputs{aig.get_node( f4 ), aig.get_node( f5 )};
 
-    bool const trivial_cut = expand0_towards_tfi( aig, inputs, colors );
+    bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
@@ -634,46 +493,46 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
 {
   using node = typename aig_network::node;
 
-  aig_network aig;
-  auto const a = aig.create_pi();
-  auto const b = aig.create_pi();
-  auto const c = aig.create_pi();
-  auto const d = aig.create_pi();
-  auto const f1 = aig.create_and( b, c );
-  auto const f2 = aig.create_and( b, f1 );
-  auto const f3 = aig.create_and( a, f2 );
-  auto const f4 = aig.create_and( d, f2 );
-  auto const f5 = aig.create_and( f3, f4 );
-  aig.create_po( f5 );
+  aig_network _aig;
+  auto const a = _aig.create_pi();
+  auto const b = _aig.create_pi();
+  auto const c = _aig.create_pi();
+  auto const d = _aig.create_pi();
+  auto const f1 = _aig.create_and( b, c );
+  auto const f2 = _aig.create_and( b, f1 );
+  auto const f3 = _aig.create_and( a, f2 );
+  auto const f4 = _aig.create_and( d, f2 );
+  auto const f5 = _aig.create_and( f3, f4 );
+  _aig.create_po( f5 );
 
-  colors_impl1 colors( aig );
+  color_view aig{_aig};
 
   {
     /* expand from { f5 } to 4-cut { a, b, c, d } */
     std::vector<node> inputs{aig.get_node( f5 )};
-    expand_towards_tfi( aig, inputs, 4u, colors );
+    expand_towards_tfi( aig, inputs, 4u );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d )} );
   }
 
   {
-    colors.new_color();
+    aig.new_color();
 
     /* expand from { f3, f5 } to 3-cut { a, b, f2 } */
     std::vector<node> inputs{aig.get_node( f3 ), aig.get_node( f5 )};
-    expand_towards_tfi( aig, inputs, 3u, colors );
+    expand_towards_tfi( aig, inputs, 3u );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{aig.get_node( a ), aig.get_node( d ), aig.get_node( f2 )} );
   }
 
   {
-    colors.new_color();
+    aig.new_color();
 
     /* expand from { f4, f5 } to 3-cut { a, b, f2 } */
     std::vector<node> inputs{aig.get_node( f4 ), aig.get_node( f5 )};
-    expand_towards_tfi( aig, inputs, 3u, colors );
+    expand_towards_tfi( aig, inputs, 3u );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{aig.get_node( a ), aig.get_node( d ), aig.get_node( f2 )} );
@@ -684,37 +543,36 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
 {
   using node = typename aig_network::node;
 
-  aig_network aig;
-  auto const a = aig.create_pi();
-  auto const b = aig.create_pi();
-  auto const c = aig.create_pi();
-  auto const d = aig.create_pi();
-  auto const f1 = aig.create_and( b, c );
-  auto const f2 = aig.create_and( b, f1 );
-  auto const f3 = aig.create_and( a, f2 );
-  auto const f4 = aig.create_and( d, f2 );
-  auto const f5 = aig.create_and( f3, f4 );
-  aig.create_po( f5 );
+  aig_network _aig;
+  auto const a = _aig.create_pi();
+  auto const b = _aig.create_pi();
+  auto const c = _aig.create_pi();
+  auto const d = _aig.create_pi();
+  auto const f1 = _aig.create_and( b, c );
+  auto const f2 = _aig.create_and( b, f1 );
+  auto const f3 = _aig.create_and( a, f2 );
+  auto const f4 = _aig.create_and( d, f2 );
+  auto const f5 = _aig.create_and( f3, f4 );
+  _aig.create_po( f5 );
 
-  std::vector<node> inputs{aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d )};
+  std::vector<node> inputs{_aig.get_node( a ), _aig.get_node( b ), _aig.get_node( c ), _aig.get_node( d )};
 
-  fanout_view fanout_aig{aig};
+  fanout_view fanout_aig{_aig};
   depth_view depth_aig{fanout_aig};
+  color_view aig{depth_aig};
 
   {
     std::vector<node> nodes;
-    expand_towards_tfo( depth_aig, inputs, nodes );
+    expand_towards_tfo( aig, inputs, nodes );
 
     std::sort( std::begin( nodes ), std::end( nodes ) );
     CHECK( nodes == std::vector<node>{aig.get_node( f1 ), aig.get_node( f2 ), aig.get_node( f3 ),
                                        aig.get_node( f4 ), aig.get_node( f5 )} );
   }
 
-  colors_impl1 colors( aig );
-
   {
     std::vector<node> nodes;
-    levelized_expand_towards_tfo( depth_aig, inputs, nodes, colors );
+    levelized_expand_towards_tfo( aig, inputs, nodes );
 
     std::sort( std::begin( nodes ), std::end( nodes ) );
     CHECK( nodes == std::vector<node>{aig.get_node( f1 ), aig.get_node( f2 ), aig.get_node( f4 )} );
@@ -723,23 +581,32 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
 
 TEST_CASE( "make a window", "[create_window]" )
 {
-  aig_network aig;
-  auto const a = aig.create_pi();
-  auto const b = aig.create_pi();
-  auto const c = aig.create_pi();
-  auto const d = aig.create_pi();
-  auto const f1 = aig.create_and( b, c );
-  auto const f2 = aig.create_and( b, f1 );
-  auto const f3 = aig.create_and( a, f2 );
-  auto const f4 = aig.create_and( d, f2 );
-  auto const f5 = aig.create_and( f3, f4 );
-  aig.create_po( f5 );
+  aig_network _aig;
+  auto const a = _aig.create_pi();
+  auto const b = _aig.create_pi();
+  auto const c = _aig.create_pi();
+  auto const d = _aig.create_pi();
+  auto const f1 = _aig.create_and( b, c );
+  auto const f2 = _aig.create_and( b, f1 );
+  auto const f3 = _aig.create_and( a, f2 );
+  auto const f4 = _aig.create_and( d, f2 );
+  auto const f5 = _aig.create_and( f3, f4 );
+  _aig.create_po( f5 );
 
-  fanout_view fanout_aig{aig};
+  fanout_view fanout_aig{_aig};
   depth_view depth_aig{fanout_aig};
-  
-  create_window_impl2 windowing( depth_aig );
-  auto info = windowing.run( depth_aig.get_node( f5 ) );
+  color_view aig{depth_aig};
+
+  /* FIXME: fix mismatch between color_view.value and trav_id */
+  // while ( aig.trav_id() > aig.current_color() )
+  // {
+  //   aig.new_color();
+  // }
+  // assert( aig.trav_id() == aig.current_color() );
+
+  create_window_impl windowing( aig );
+  auto info = windowing.run( aig.get_node( f5 ) );
+  CHECK( info );
   if ( info )
   {
     window_view win( aig, info->inputs, info->outputs, info->nodes );

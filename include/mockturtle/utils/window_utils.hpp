@@ -144,8 +144,8 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
 
 /*! \brief Identify inputs using reference counting
  */
-template<typename Ntk, typename ColorMap>
-std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<typename Ntk::node> const& nodes, ColorMap& colors )
+template<typename Ntk>
+std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<typename Ntk::node> const& nodes )
 {
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
@@ -153,7 +153,7 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
   /* mark all nodes with a new color */
   for ( const auto& n : nodes )
   {
-    colors.paint( n );
+    ntk.paint( n );
   }
 
   /* if a fanin is not colored, then it's an input */
@@ -162,7 +162,7 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
   {
     ntk.foreach_fanin( n, [&]( signal const& fi ){
       node const n = ntk.get_node( fi );
-      if ( !colors.colored( n ) )
+      if ( !ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
       {
         if ( std::find( std::begin( inputs ), std::end( inputs ), n ) == std::end( inputs ) )
         {
@@ -190,7 +190,6 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
  *              inputs and nodes is assumed to be empty)
  * \param refs Reference counters (in the size of the network and
  *             initialized to 0)
- * \param colors 
  * \return Output signals of the window
   *
   * **Required network functions:**
@@ -205,12 +204,11 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
   * - `trav_id`
   * - `visited`
  */
-  template<typename Ntk, typename ColorMap>
+  template<typename Ntk>
 inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
                                                           std::vector<typename Ntk::node> const& inputs,
                                                           std::vector<typename Ntk::node> const& nodes,
-                                                          std::vector<uint32_t>& refs,
-                                                          ColorMap& colors )
+                                                          std::vector<uint32_t>& refs )
 {
   using signal = typename Ntk::signal;
 
@@ -219,13 +217,13 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
   /* mark the inputs visited */
   for ( auto const& i : inputs )
   {
-    colors.paint( i );
+    ntk.paint( i );
   }
 
   /* reference fanins of nodes */
   for ( auto const& n : nodes )
   {
-    if ( colors.colored( n ) )
+    if ( ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
     {
       continue;
     }
@@ -240,7 +238,7 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
      the node has fanout outside of the window is an output */
   for ( const auto& n : nodes )
   {
-    if ( colors.colored( n ) )
+    if ( ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
     {
       continue;
     }
@@ -254,7 +252,7 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
   /* dereference fanins of nodes */
   for ( auto const& n : nodes )
   {
-    if ( colors.colored( n ) )
+    if ( ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
     {
       continue;
     }
@@ -277,7 +275,6 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
  *
  * \param ntk A network
  * \param inputs Input nodes
- * \param colors Auxiliar data structure to mark nodes
  * \return True if and only if the inputs form a trivial cut that
  *         cannot be further extended, e.g., when the cut only
  *         consists of PIs.
@@ -290,9 +287,8 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
  * - `foreach_fanin`
  * - `get_node`
  */
-template<typename Ntk, typename ColorMap>
-bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs,
-                          ColorMap& colors )
+template<typename Ntk>
+bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs )
 {
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
@@ -300,7 +296,7 @@ bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& input
   /* mark all inputs */
   for ( auto const& i : inputs )
   {
-    colors.paint( i );
+    ntk.paint( i );
   }
 
   /* we call a set of inputs (= a cut) trivial if all nodes are either
@@ -326,7 +322,7 @@ bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& input
         node const n = ntk.get_node( fi );
         trivial_cut = false;
 
-        if ( !colors.colored( n ) )
+        if ( !ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
         {
           ++count_fanin_outside;
           ep = n;
@@ -432,17 +428,15 @@ inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::
  * \param ntk A network
  * \param inputs Input nodes
  * \param input_limit Size limit for the maximum number of input nodes
- * \param colors Auxiliar data structure to mark nodes
  */
-template<typename Ntk, typename ColorMap>
-void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs, uint32_t input_limit,
-                         ColorMap& colors )
+template<typename Ntk>
+void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs, uint32_t input_limit )
 {
   using node = typename Ntk::node;
 
   static constexpr uint32_t const MAX_ITERATIONS{5u};
 
-  if ( expand0_towards_tfi( ntk, inputs, colors ) )
+  if ( expand0_towards_tfi( ntk, inputs ) )
   {
     return;
   }
@@ -454,8 +448,8 @@ void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs
   {
     node const n = detail::select_next_fanin_to_expand_tfi( ntk, inputs );
     inputs.push_back( n );
-    colors.paint( n );
-    trivial_cut = expand0_towards_tfi( ntk, inputs, colors );
+    ntk.paint( n );
+    trivial_cut = expand0_towards_tfi( ntk, inputs );
 
     if ( inputs.size() <= input_limit )
     {
@@ -599,7 +593,6 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
  * \param ntk A network
  * \param inputs Input nodes of a window
  * \param nodes Inner nodes of a window
- * \param colors Auxiliar data structure to mark nodes
  *
  * **Required network functions:**
  * - `foreach_fanin`
@@ -608,10 +601,14 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
  * - `level`
  * - `is_constant`
  * - `is_ci`
+ * - `depth`
+ * - `paint`
+ * - `eval_color`
+ * - `current_color`
+ * - `eval_fanins_color`
  */
-template<typename Ntk, typename ColorMap>
-void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes,
-                                   ColorMap& colors )
+template<typename Ntk>
+void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
 {
   using node = typename Ntk::node;
 
@@ -630,7 +627,7 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   for ( const auto& i : inputs )
   {
     uint32_t const node_level = ntk.level( i );
-    colors.paint( i );
+    ntk.paint( i );
     levels[node_level].push_back( i );
     if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
     {
@@ -656,14 +653,15 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
           return true;
         }
 
-        if ( !colors.colored( fo ) && colors.fanins_colored( fo ) )
+        if ( !ntk.eval_color( fo, [&ntk]( auto c ){ return c == ntk.current_color(); } ) &&
+              ntk.eval_fanins_color( fo, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
         {
           /* add fanout to nodes */
           nodes.push_back( fo );
 
           /* update data structured */
           uint32_t const node_level = ntk.level( fo );
-          colors.paint( fo );
+          ntk.paint( fo );
           levels.at( node_level ).push_back( fo );
           if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
           {

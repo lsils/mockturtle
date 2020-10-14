@@ -35,6 +35,7 @@
 namespace mockturtle
 {
 
+
 /*!\brief Manager view for traversal IDs (in-place storage).
  *
  * Traversal IDs, called colors, are unsigned integers that can be
@@ -57,19 +58,21 @@ public:
   }
 
   /*! \brief Returns a new color and increases the current color */
-  uint32_t new_color()
+  uint32_t new_color() const
   {
-    return ++value;
+    return ++this->_storage->data.trav_id;
+    // return ++value;
   }
 
   /*! \brief Returns the current color */
   uint32_t current_color() const
   {
-    return value;
+    return this->_storage->data.trav_id;
+    // return value;
   }
 
   /*! \brief Assigns all nodes to `color` */
-  void clear( uint32_t color = 0 ) const
+  void clear_colors( uint32_t color = 0 ) const
   {
     std::for_each( this->_storage->nodes.begin(), this->_storage->nodes.end(),
                    [color]( auto& n ) { n.data[1].h1 = color; } );
@@ -81,10 +84,16 @@ public:
     return this->_storage->nodes[n].data[1].h1;
   }
 
+  /*! \brief Returns the color of a node */
+  auto color( signal const& n ) const
+  {
+    return this->_storage->nodes[this->get_node( n )].data[1].h1;
+  }
+
   /*! \brief Assigns the current color to a node */
   void paint( node const& n ) const
   {
-    this->_storage->nodes[n].data[1].h1 = value;
+    this->_storage->nodes[n].data[1].h1 = current_color();
   }
 
   /*! \brief Assigns `color` to a node */
@@ -130,7 +139,7 @@ public:
   }
 
 protected:
-  uint32_t value{0};
+  // mutable uint32_t value{0};
 }; /* color_view */
 
 /*!\brief Manager view for traversal IDs (out-of-place storage).
@@ -155,7 +164,7 @@ public:
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   }
 
-  uint32_t new_color()
+  uint32_t new_color() const
   {
     return ++value;
   }
@@ -165,7 +174,7 @@ public:
     return value;
   }
 
-  void clear( uint32_t color = 0 ) const
+  void clear_colors( uint32_t color = 0 ) const
   {
     std::for_each( std::begin( values ), std::end( values ),
                    [color]( auto& v ) { v = color; } );
@@ -174,6 +183,11 @@ public:
   auto color( node const& n ) const
   {
     return values[n];
+  }
+
+  auto color( signal const& n ) const
+  {
+    return values[this->get_node( n )];
   }
 
   void paint( node const& n ) const
@@ -223,7 +237,7 @@ public:
 
 protected:
   mutable std::vector<uint32_t> values;
-  uint32_t value{0};
+  mutable uint32_t value{0};
 }; /* out_of_place_color_view */
 
 } /* mockturtle */
