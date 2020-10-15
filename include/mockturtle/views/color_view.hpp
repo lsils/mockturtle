@@ -35,7 +35,6 @@
 namespace mockturtle
 {
 
-
 /*!\brief Manager view for traversal IDs (in-place storage).
  *
  * Traversal IDs, called colors, are unsigned integers that can be

@@ -1,10 +1,56 @@
 #include <catch.hpp>
 
-#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/traits.hpp>
+#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xag.hpp>
+#include <mockturtle/networks/xmg.hpp>
+#include <mockturtle/networks/klut.hpp>
 #include <mockturtle/views/color_view.hpp>
 
 using namespace mockturtle;
+
+template<typename Ntk>
+void test_color_view()
+{
+  CHECK( is_network_type_v<Ntk> );
+  CHECK( !has_new_color_v<Ntk> );
+  CHECK( !has_current_color_v<Ntk> );
+  CHECK( !has_clear_colors_v<Ntk> );
+  CHECK( !has_color_v<Ntk> );
+  CHECK( !has_paint_v<Ntk> );
+  CHECK( !has_eval_color_v<Ntk> );
+  CHECK( !has_eval_fanins_color_v<Ntk> );
+
+  using color_ntk = color_view<Ntk>;
+  CHECK( is_network_type_v<color_ntk> );
+  CHECK( has_new_color_v<color_ntk> );
+  CHECK( has_current_color_v<color_ntk> );
+  CHECK( has_clear_colors_v<color_ntk> );
+  CHECK( has_color_v<color_ntk> );
+  CHECK( has_paint_v<color_ntk> );
+  CHECK( has_eval_color_v<color_ntk> );
+  CHECK( has_eval_fanins_color_v<color_ntk> );
+
+  using color_color_ntk = color_view<color_ntk>;
+  CHECK( is_network_type_v<color_color_ntk> );
+  CHECK( has_new_color_v<color_color_ntk> );
+  CHECK( has_current_color_v<color_color_ntk> );
+  CHECK( has_clear_colors_v<color_color_ntk> );
+  CHECK( has_color_v<color_color_ntk> );
+  CHECK( has_paint_v<color_color_ntk> );
+  CHECK( has_eval_color_v<color_color_ntk> );
+  CHECK( has_eval_fanins_color_v<color_color_ntk> );
+};
+
+TEST_CASE( "create different color views", "[color_view]" )
+{
+  test_color_view<aig_network>();
+  test_color_view<mig_network>();
+  test_color_view<xag_network>();
+  test_color_view<xmg_network>();
+  test_color_view<klut_network>();
+}
 
 TEST_CASE( "in-place color view", "[color_view]" )
 {
