@@ -41,6 +41,16 @@ void test_color_view()
   CHECK( has_paint_v<color_color_ntk> );
   CHECK( has_eval_color_v<color_color_ntk> );
   CHECK( has_eval_fanins_color_v<color_color_ntk> );
+
+  using out_of_place_color_ntk = out_of_place_color_view<Ntk>;
+  CHECK( is_network_type_v<out_of_place_color_ntk> );
+  CHECK( has_new_color_v<out_of_place_color_ntk> );
+  CHECK( has_current_color_v<out_of_place_color_ntk> );
+  CHECK( has_clear_colors_v<out_of_place_color_ntk> );
+  CHECK( has_color_v<out_of_place_color_ntk> );
+  CHECK( has_paint_v<out_of_place_color_ntk> );
+  CHECK( has_eval_color_v<out_of_place_color_ntk> );
+  CHECK( has_eval_fanins_color_v<out_of_place_color_ntk> );
 };
 
 TEST_CASE( "create different color views", "[color_view]" )
