@@ -424,6 +424,7 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
   _aig.create_po( f5 );
 
   color_view aig{_aig};
+  aig.new_color();
 
   {
     /* a cut that can be expanded without increasing cut-size */
@@ -506,6 +507,7 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
   _aig.create_po( f5 );
 
   color_view aig{_aig};
+  aig.new_color();
 
   {
     /* expand from { f5 } to 4-cut { a, b, c, d } */
@@ -560,6 +562,7 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
   fanout_view fanout_aig{_aig};
   depth_view depth_aig{fanout_aig};
   color_view aig{depth_aig};
+  aig.new_color();
 
   {
     std::vector<node> nodes;
@@ -596,13 +599,7 @@ TEST_CASE( "make a window", "[create_window]" )
   fanout_view fanout_aig{_aig};
   depth_view depth_aig{fanout_aig};
   color_view aig{depth_aig};
-
-  /* FIXME: fix mismatch between color_view.value and trav_id */
-  // while ( aig.trav_id() > aig.current_color() )
-  // {
-  //   aig.new_color();
-  // }
-  // assert( aig.trav_id() == aig.current_color() );
+  aig.new_color();
 
   create_window_impl windowing( aig );
   auto info = windowing.run( aig.get_node( f5 ) );

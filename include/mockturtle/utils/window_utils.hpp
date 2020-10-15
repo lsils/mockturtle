@@ -322,7 +322,7 @@ bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& input
         node const n = ntk.get_node( fi );
         trivial_cut = false;
 
-        if ( !ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
+        if ( ntk.eval_color( n, [&ntk]( auto c ){ return c != ntk.current_color(); } ) )
         {
           ++count_fanin_outside;
           ep = n;
