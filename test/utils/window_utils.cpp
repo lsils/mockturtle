@@ -1,12 +1,12 @@
 #include <catch.hpp>
 
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/traits.hpp>
+#include <mockturtle/views/color_view.hpp>
+#include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/fanout_view.hpp>
 #include <mockturtle/views/window_view.hpp>
-#include <mockturtle/views/depth_view.hpp>
-#include <mockturtle/algorithms/reconv_cut.hpp>
-#include <mockturtle/views/color_view.hpp>
+#include <mockturtle/utils/window_utils.hpp>
+#include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
 
@@ -179,7 +179,7 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
   }
 }
 
-TEST_CASE( "create window from pivot", "[window_utils]" )
+TEST_CASE( "create window for pivot", "[window_utils]" )
 {
   aig_network _aig;
   auto const a = _aig.create_pi();
@@ -199,11 +199,9 @@ TEST_CASE( "create window from pivot", "[window_utils]" )
   aig.new_color();
 
   create_window_impl windowing( aig );
-  auto info = windowing.run( aig.get_node( f5 ) );
-  CHECK( info );
-  if ( info )
+  if ( auto w = windowing.run( aig.get_node( f5 ), 6u ) )
   {
-    window_view win( aig, info->inputs, info->outputs, info->nodes );
+    window_view win( aig, w->inputs, w->outputs, w->nodes );
     CHECK( win.num_cis() == 4u );
     CHECK( win.num_cos() == 2u );
     CHECK( win.num_gates() == 4u );

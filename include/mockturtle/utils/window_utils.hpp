@@ -30,6 +30,8 @@
   \author Heinz Riener
 */
 
+#pragma once
+
 #include <algorithm>
 #include <set>
 #include <type_traits>
@@ -213,13 +215,9 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
   * - `fanout_size`
   * - `foreach_fanin`
   * - `get_node`
-  * - `incr_trav_id`
   * - `is_ci`
   * - `is_constant`
   * - `make_signal`
-  * - `set_visited`
-  * - `trav_id`
-  * - `visited`
  */
 template<typename Ntk>
 inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
@@ -503,13 +501,7 @@ void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs
  * - `foreach_fanin`
  * - `foreach_fanout`
  * - `get_node`
- * - `incr_trav_id`
  * - `is_ci`
- * - `set_visited`
- * - `trav_id`
- * - `visited`
- * - `eval_color`
- * - `current_color`
  * - `new_color`
  */
 template<typename Ntk>
@@ -590,7 +582,7 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
         assert( ep != 0 );
         assert( !ntk.is_ci( ep ) );
         nodes.emplace_back( ep );
-        ntk.set_visited( ep, ntk.trav_id() );
+        ntk.paint( ep );
         it = eps.erase( it );
 
         explore_fanouts( ntk, ep, new_eps );
@@ -624,18 +616,18 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
  * \param nodes Inner nodes of a window
  *
  * **Required network functions:**
+ * - `current_color`
+ * - `depth`
+ * - `eval_color`
+ * - `eval_fanins_color`
  * - `foreach_fanin`
  * - `foreach_fanout`
  * - `get_node`
- * - `level`
- * - `is_constant`
  * - `is_ci`
- * - `depth`
- * - `paint`
- * - `eval_color`
- * - `current_color`
- * - `eval_fanins_color`
+ * - `is_constant`
+ * - `level`
  * - `new_color`
+ * - `paint`
  */
 template<typename Ntk>
 void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
@@ -708,6 +700,27 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   }
 }
 
+/*! \brief Create a (l,k)-window around a pivot.
+ *
+ * Expands a reconvergency rooted in a given pivot node `p` into a
+ * window with l inputs and k outputs.
+ *
+ * Uses a new color.
+ *
+ * **Required network functions:**
+ * - `current_color`
+ * - `depth`
+ * - `eval_color`
+ * - `eval_fanins_color`
+ * - `foreach_fanin`
+ * - `foreach_fanout`
+ * - `get_node`
+ * - `is_ci`
+ * - `is_constant`
+ * - `level`
+ * - `new_color`
+ * - `paint`
+ */
 template<typename Ntk>
 class create_window_impl
 {
@@ -715,7 +728,7 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  struct window_info
+  struct window
   {
     std::vector<node> inputs;
     std::vector<node> nodes;
@@ -726,6 +739,9 @@ protected:
   /* constant node used to denotes invalid window element */
   static constexpr node INVALID_NODE{0};
 
+  /* number of iterations */
+  static constexpr uint32_t NUM_ITERATIONS{5};
+
 public:
   create_window_impl( Ntk const& ntk )
     : ntk( ntk )
@@ -734,11 +750,11 @@ public:
   {
   }
 
-  std::optional<window_info> run( node const& pivot )
+  std::optional<window> run( node const& pivot, uint32_t cut_size )
   {
     /* find a reconvergence from the pivot and collect the nodes */
     std::optional<std::vector<node>> nodes;
-    if ( !( nodes = identify_reconvergence( pivot, 1u ) ) )
+    if ( !( nodes = identify_reconvergence( pivot, NUM_ITERATIONS ) ) )
     {
       /* if there is no reconvergence, then optimization is not possible */
       return std::nullopt;
@@ -750,7 +766,7 @@ public:
 
     /* expand the nodes towards the TFI */
     ntk.new_color();
-    expand_towards_tfi( ntk, inputs, 6u );
+    expand_towards_tfi( ntk, inputs, cut_size );
 
     /* expand the nodes towards the TFO */
     ntk.new_color();
@@ -764,7 +780,7 @@ public:
     std::sort( std::begin( inputs ), std::end( inputs ) );
     std::sort( std::begin( *nodes ), std::end( *nodes ) );
 
-    return window_info{inputs, *nodes, outputs};
+    return window{inputs, *nodes, outputs};
   }
 
 protected:
