@@ -449,8 +449,8 @@ void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs
     node const n = detail::select_next_fanin_to_expand_tfi( ntk, inputs );
     inputs.push_back( n );
     ntk.paint( n );
-    trivial_cut = expand0_towards_tfi( ntk, inputs );
 
+    trivial_cut = expand0_towards_tfi( ntk, inputs );
     if ( inputs.size() <= input_limit )
     {
       best_cut = inputs;
@@ -623,7 +623,7 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   /* remove all nodes */
   nodes.clear();
 
-  /* mark all inputs and add fill their level information into `levels` and `used` */
+  /* mark all inputs and fill their level information into `levels` and `used` */
   for ( const auto& i : inputs )
   {
     uint32_t const node_level = ntk.level( i );
@@ -653,7 +653,7 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
           return true;
         }
 
-        if ( !ntk.eval_color( fo, [&ntk]( auto c ){ return c == ntk.current_color(); } ) &&
+        if (  ntk.eval_color( fo, [&ntk]( auto c ){ return c != ntk.current_color(); } ) &&
               ntk.eval_fanins_color( fo, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
         {
           /* add fanout to nodes */

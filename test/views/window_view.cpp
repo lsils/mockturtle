@@ -574,6 +574,8 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
   }
 
   {
+    aig.new_color();
+
     std::vector<node> nodes;
     levelized_expand_towards_tfo( aig, inputs, nodes );
 
