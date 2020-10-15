@@ -85,6 +85,7 @@ public:
   }
 
   /*! \brief Returns the color of a node */
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   auto color( signal const& n ) const
   {
     return this->_storage->nodes[this->get_node( n )].data[1].h1;

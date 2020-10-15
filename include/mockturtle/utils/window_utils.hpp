@@ -46,11 +46,11 @@ inline void collect_nodes_recur( Ntk const& ntk, typename Ntk::node const& n, st
 {
   using signal = typename Ntk::signal;
 
-  if ( ntk.visited( n ) == ntk.trav_id() )
+  if ( ntk.eval_color( n, [&]( auto c ){ return c == ntk.current_color(); } ) )
   {
     return;
   }
-  ntk.set_visited( n, ntk.trav_id() );
+  ntk.paint( n );
 
   ntk.foreach_fanin( n, [&]( signal const& fi ){
     collect_nodes_recur( ntk, ntk.get_node( fi ), nodes );
@@ -70,13 +70,15 @@ inline void collect_nodes_recur( Ntk const& ntk, typename Ntk::node const& n, st
   * The output set has to be chosen in a way such that every path from
   * PIs to outputs passes through at least one input.
   *
+  * Uses a new color.
+  *
   * **Required network functions:**
+  * - `current_color`
+  * - `eval_color`
   * - `foreach_fanin`
   * - `get_node`
-  * - `incr_trav_id`
-  * - `set_visited`
-  * - `trav_id`
-  * - `visited`
+  * - `new_color`
+  * - `paint`
   */
 template<typename Ntk, typename = std::enable_if_t<!std::is_same_v<typename Ntk::signal, typename Ntk::node>>>
 inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
@@ -105,13 +107,15 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
   * The output set has to be chosen in a way such that every path from
   * PIs to outputs passes through at least one input.
   *
+  * Uses a new color.
+  *
   * **Required network functions:**
+  * - `current_color`
+  * - `eval_color`
   * - `foreach_fanin`
   * - `get_node`
-  * - `incr_trav_id`
-  * - `set_visited`
-  * - `trav_id`
-  * - `visited`
+  * - `new_color`
+  * - `paint`
   */
 template<typename Ntk>
 inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
@@ -120,17 +124,16 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
 {
   using node = typename Ntk::node;
 
-  /* create a new traversal ID */
-  ntk.incr_trav_id();
+  ntk.new_color();
 
   /* mark inputs visited */
   for ( auto const& i : inputs )
   {
-    if ( ntk.visited( i ) == ntk.trav_id() )
+    if ( ntk.eval_color( i, [&]( auto c ){ return c == ntk.current_color(); } ) )
     {
       continue;
     }
-    ntk.set_visited( i, ntk.trav_id() );
+    ntk.paint( i );
   }
 
   /* recursively collect all nodes in between inputs and outputs */
@@ -143,13 +146,25 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
 }
 
 /*! \brief Identify inputs using reference counting
+ *
+ * Uses a new_color.
+ *
+ * **Required network functions:**
+ * - `current_color`
+ * - `eval_color`
+ * - `foreach_fanin`
+ * - `get_node`
+ * - `new_color`
+ * - `paint`
  */
 template<typename Ntk>
 std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<typename Ntk::node> const& nodes )
 {
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-  
+
+  ntk.new_color();
+
   /* mark all nodes with a new color */
   for ( const auto& n : nodes )
   {
@@ -193,6 +208,8 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
  * \return Output signals of the window
   *
   * **Required network functions:**
+  * - `current_color`
+  * - `eval_color`
   * - `fanout_size`
   * - `foreach_fanin`
   * - `get_node`
@@ -204,7 +221,7 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
   * - `trav_id`
   * - `visited`
  */
-  template<typename Ntk>
+template<typename Ntk>
 inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
                                                           std::vector<typename Ntk::node> const& inputs,
                                                           std::vector<typename Ntk::node> const& nodes,
@@ -268,10 +285,13 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
 
 /*! \brief Performs in-place zero-cost expansion of a set of nodes towards TFI
  *
- * The algorithm potentially derives a different cut of the same size
+ * The algorithm attempts to derive a different cut of the same size
  * that is closer to the network's PIs.  This expansion towards TFI is
  * called zero-cost because it merges nodes only if the number of
  * inputs does not increase.
+ *
+ * Uses the current color to mark nodes.  Only nodes not painted with
+ * the current color are considered for expanding the cut.
  *
  * \param ntk A network
  * \param inputs Input nodes
@@ -279,13 +299,13 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
  *         cannot be further extended, e.g., when the cut only
  *         consists of PIs.
  *
- * On termination, `colors[i] == color` if `i \in inputs`.  However,
- *   previous inputs are also marked.
- *
  * **Required network functions:**
- * - `size`
+ * - `current_color`
+ * - `eval_color`
  * - `foreach_fanin`
  * - `get_node`
+ * - `paint`
+ * - `size`
  */
 template<typename Ntk>
 bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs )
@@ -425,6 +445,8 @@ inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::
  * procedure allows a temporary increase of `inputs` beyond the
  * `input_limit` for at most `MAX_ITERATIONS`.
  *
+ * Uses a new color.
+ *
  * \param ntk A network
  * \param inputs Input nodes
  * \param input_limit Size limit for the maximum number of input nodes
@@ -436,6 +458,7 @@ void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs
 
   static constexpr uint32_t const MAX_ITERATIONS{5u};
 
+  ntk.new_color();
   if ( expand0_towards_tfi( ntk, inputs ) )
   {
     return;
@@ -468,11 +491,15 @@ void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs
  * fanouts that are supported by the window until a fixed-point is
  * reached.
  *
+ * Uses a new color.
+ *
  * \param ntk A network
  * \param inputs Input nodes of a window
  * \param nodes Inner nodes of a window
  *
  * **Required network functions:**
+ * - `current_color`
+ * - `eval_color`
  * - `foreach_fanin`
  * - `foreach_fanout`
  * - `get_node`
@@ -481,6 +508,9 @@ void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs
  * - `set_visited`
  * - `trav_id`
  * - `visited`
+ * - `eval_color`
+ * - `current_color`
+ * - `new_color`
  */
 template<typename Ntk>
 void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
@@ -495,8 +525,8 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
       {
         return false;
       }
-      /* skip all nodes that are already in nodex */
-      if ( ntk.visited( fo ) == ntk.trav_id() )
+      /* skip all nodes that are already in nodes */
+      if ( ntk.eval_color( fo, [&]( auto c ){ return c == ntk.current_color(); } ) )
       {
         return true;
       }
@@ -506,24 +536,21 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
   };
 
   /* create a new traversal ID */
-  ntk.incr_trav_id();
+  ntk.new_color();
 
   /* mark the inputs visited */
-  for ( auto const& i : inputs )
-  {
-    ntk.set_visited( i, ntk.trav_id() );
-  }
+  std::for_each( std::begin( inputs ), std::end( inputs ),
+                 [&ntk]( node const& n ){ ntk.paint( n ); } );
+
   /* mark the nodes visited */
-  for ( const auto& n : nodes )
-  {
-    ntk.set_visited( n, ntk.trav_id() );
-  }
+  std::for_each( std::begin( nodes ), std::end( nodes ),
+                 [&ntk]( node const& n ){ ntk.paint( n ); } );
 
   /* collect all nodes that have fanouts not yet contained in nodes */
   std::set<node> eps;
-  for ( const auto& n : inputs )
+  for ( const auto& i : inputs )
   {
-    explore_fanouts( ntk, n, eps );
+    explore_fanouts( ntk, i, eps );
   }
   for ( const auto& n : nodes )
   {
@@ -541,7 +568,7 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
     while ( it != std::end( eps ) )
     {
       node const ep = *it;
-      if ( ntk.visited( ep ) == ntk.trav_id() )
+      if ( ntk.eval_color( ep, [&]( auto c ){ return c == ntk.current_color(); } ) )
       {
         it = eps.erase( it );
         continue;
@@ -550,7 +577,7 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
       bool all_children_belong_to_window = true;
       ntk.foreach_fanin( ep, [&]( signal const& fi ){
         node const child = ntk.get_node( fi );
-        if ( ntk.visited( child ) != ntk.trav_id() )
+        if ( ntk.eval_color( child, [&]( auto c ){ return c != ntk.current_color(); } ) )
         {
           all_children_belong_to_window = false;
           return false;
@@ -590,6 +617,8 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
  * level by level.  Starting with those that are closest to the
  * inputs.
  *
+ * Uses a new color.
+ *
  * \param ntk A network
  * \param inputs Input nodes of a window
  * \param nodes Inner nodes of a window
@@ -606,6 +635,7 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
  * - `eval_color`
  * - `current_color`
  * - `eval_fanins_color`
+ * - `new_color`
  */
 template<typename Ntk>
 void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
@@ -613,6 +643,8 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   using node = typename Ntk::node;
 
   static constexpr uint32_t const MAX_FANOUTS{5u};
+
+  ntk.new_color();
 
   /* mapping from level to nodes (which nodes are on a certain level?) */
   std::vector<std::vector<node>> levels( ntk.depth() );
@@ -653,8 +685,8 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
           return true;
         }
 
-        if (  ntk.eval_color( fo, [&ntk]( auto c ){ return c != ntk.current_color(); } ) &&
-              ntk.eval_fanins_color( fo, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
+        if ( ntk.eval_color( fo, [&ntk]( auto c ){ return c != ntk.current_color(); } ) &&
+             ntk.eval_fanins_color( fo, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
         {
           /* add fanout to nodes */
           nodes.push_back( fo );

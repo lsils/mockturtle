@@ -199,20 +199,22 @@ TEST_CASE( "create window view on AIG", "[window_view]" )
 
 TEST_CASE( "collect nodes", "[window_view]" )
 {
-  aig_network aig;
-  auto const a = aig.create_pi();
-  auto const b = aig.create_pi();
-  auto const c = aig.create_pi();
-  auto const d = aig.create_pi();
-  auto const f1 = aig.create_xor( a, b );
-  auto const f2 = aig.create_xor( c, d );
-  auto const f3 = aig.create_xor( f1, f2 );
-  auto const f4 = aig.create_and( f1, f2 );
-  aig.create_po( f3 );
-  aig.create_po( f4 );
+  aig_network _aig;
+  auto const a = _aig.create_pi();
+  auto const b = _aig.create_pi();
+  auto const c = _aig.create_pi();
+  auto const d = _aig.create_pi();
+  auto const f1 = _aig.create_xor( a, b );
+  auto const f2 = _aig.create_xor( c, d );
+  auto const f3 = _aig.create_xor( f1, f2 );
+  auto const f4 = _aig.create_and( f1, f2 );
+  _aig.create_po( f3 );
+  _aig.create_po( f4 );
 
   using node = typename aig_network::node;
   using signal = typename aig_network::signal;
+
+  color_view aig{_aig};
 
   std::vector<node> inputs{aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d )};
   std::vector<signal> outputs{f3, f4};
@@ -226,27 +228,28 @@ TEST_CASE( "collect nodes", "[window_view]" )
 
 TEST_CASE( "expand towards tfo", "[window_view]" )
 {
-  aig_network aig;
-  auto const a = aig.create_pi();
-  auto const b = aig.create_pi();
-  auto const c = aig.create_pi();
-  auto const d = aig.create_pi();
-  auto const f1 = aig.create_xor( a, b );
-  auto const f2 = aig.create_xor( c, d );
-  auto const f3 = aig.create_xor( f1, f2 );
-  auto const f4 = aig.create_and( f1, f2 );
-  aig.create_po( f3 );
-  aig.create_po( f4 );
+  aig_network _aig;
+  auto const a = _aig.create_pi();
+  auto const b = _aig.create_pi();
+  auto const c = _aig.create_pi();
+  auto const d = _aig.create_pi();
+  auto const f1 = _aig.create_xor( a, b );
+  auto const f2 = _aig.create_xor( c, d );
+  auto const f3 = _aig.create_xor( f1, f2 );
+  auto const f4 = _aig.create_and( f1, f2 );
+  _aig.create_po( f3 );
+  _aig.create_po( f4 );
 
   using node = typename aig_network::node;
   using signal = typename aig_network::signal;
 
-  fanout_view<aig_network> faig( aig );
+  fanout_view faig{_aig};
+  color_view aig{faig};
 
-  std::vector<node> inputs{faig.get_node( a ), faig.get_node( b ), faig.get_node( c ), faig.get_node( d )};
+  std::vector<node> inputs{aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d )};
   std::vector<signal> outputs{f1};
-  std::vector<node> gates{collect_nodes( faig, inputs, outputs )};
-  expand_towards_tfo( faig, inputs, gates );
+  std::vector<node> gates{collect_nodes( aig, inputs, outputs )};
+  expand_towards_tfo( aig, inputs, gates );
 
   CHECK( gates.size() == aig.num_gates() );
   aig.foreach_gate( [&]( node const& n ){
@@ -424,9 +427,9 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
   _aig.create_po( f5 );
 
   color_view aig{_aig};
-  aig.new_color();
-
   {
+    aig.new_color();
+
     /* a cut that can be expanded without increasing cut-size */
     std::vector<node> inputs{aig.get_node( a ), aig.get_node( b ), aig.get_node( f1 ), aig.get_node( d )};
 
@@ -507,7 +510,6 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
   _aig.create_po( f5 );
 
   color_view aig{_aig};
-  aig.new_color();
 
   {
     /* expand from { f5 } to 4-cut { a, b, c, d } */
@@ -519,8 +521,6 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
   }
 
   {
-    aig.new_color();
-
     /* expand from { f3, f5 } to 3-cut { a, b, f2 } */
     std::vector<node> inputs{aig.get_node( f3 ), aig.get_node( f5 )};
     expand_towards_tfi( aig, inputs, 3u );
@@ -530,8 +530,6 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
   }
 
   {
-    aig.new_color();
-
     /* expand from { f4, f5 } to 3-cut { a, b, f2 } */
     std::vector<node> inputs{aig.get_node( f4 ), aig.get_node( f5 )};
     expand_towards_tfi( aig, inputs, 3u );
@@ -562,7 +560,6 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
   fanout_view fanout_aig{_aig};
   depth_view depth_aig{fanout_aig};
   color_view aig{depth_aig};
-  aig.new_color();
 
   {
     std::vector<node> nodes;
@@ -574,8 +571,6 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
   }
 
   {
-    aig.new_color();
-
     std::vector<node> nodes;
     levelized_expand_towards_tfo( aig, inputs, nodes );
 
