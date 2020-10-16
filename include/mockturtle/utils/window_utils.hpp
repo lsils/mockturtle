@@ -165,9 +165,8 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  ntk.new_color();
-
   /* mark all nodes with a new color */
+  ntk.new_color();
   for ( const auto& n : nodes )
   {
     ntk.paint( n );
@@ -178,14 +177,15 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
   for ( const auto& n : nodes )
   {
     ntk.foreach_fanin( n, [&]( signal const& fi ){
-      node const n = ntk.get_node( fi );
-      if ( !ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
+      node const i = ntk.get_node( fi );
+      if ( ntk.eval_color( i, [&ntk]( auto c ){ return c != ntk.current_color(); } ) )
       {
-        if ( std::find( std::begin( inputs ), std::end( inputs ), n ) == std::end( inputs ) )
+        if ( std::find( std::begin( inputs ), std::end( inputs ), i ) == std::end( inputs ) )
         {
-          inputs.push_back( n );
+          inputs.push_back( i );
         }
       }
+      return true;
     });
   }
 
@@ -230,6 +230,7 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
   std::vector<signal> outputs;
 
   /* mark the inputs visited */
+  ntk.new_color();
   for ( auto const& i : inputs )
   {
     ntk.paint( i );
@@ -250,7 +251,7 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
   }
 
   /* if the fanout_size of a node does not match the reference count,
-     the node has fanout outside of the window is an output */
+     the node has fanouts outside of the window is an output */
   for ( const auto& n : nodes )
   {
     if ( ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
@@ -410,8 +411,14 @@ inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::
     {
       continue;
     }
+
     ntk.foreach_fanin( i, [&]( signal const& fi ){
+      if ( ntk.is_constant( ntk.get_node( fi ) ) )
+      {
+        return true;
+      }
       detail::evaluate_fanin<Ntk>( ntk.get_node( fi ), candidates );
+      return true;
     });
   }
 
@@ -639,9 +646,10 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   ntk.new_color();
 
   /* mapping from level to nodes (which nodes are on a certain level?) */
-  std::vector<std::vector<node>> levels( ntk.depth() );
+  std::vector<std::vector<node>> levels;
+  levels.resize( ntk.depth() + 1 );
 
-  /* list of indicves of used levels (avoid iterating over all levels) */
+  /* list of indices of used levels (avoid iterating over all levels) */
   std::vector<uint32_t> used;
 
   /* remove all nodes */
@@ -652,19 +660,20 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   {
     uint32_t const node_level = ntk.level( i );
     ntk.paint( i );
-    levels[node_level].push_back( i );
+    levels.at( node_level ).push_back( i );
     if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
     {
       used.push_back( node_level );
     }
   }
+  std::sort( std::begin( used ), std::end( used ) );
 
-  for ( uint32_t const& index : used )
+  for ( uint32_t index = 0u; index < used.size(); ++index )
   {
     std::vector<node>& level = levels.at( index );
-    for ( auto it = std::begin( level ); it != std::end( level ); ++it )
+    for ( auto j = 0u; j < level.size(); ++j )
     {
-      ntk.foreach_fanout( *it, [&]( node const& fo, uint64_t index ){
+      ntk.foreach_fanout( level[j], [&]( node const& fo, uint64_t index ){
         /* avoid getting stuck on nodes with many fanouts */
         if ( index == MAX_FANOUTS )
         {
@@ -761,20 +770,26 @@ public:
     }
 
     /* collect the fanins for these nodes */
-    ntk.new_color();
     std::vector<node> inputs = collect_inputs( ntk, *nodes );
+    if ( inputs.size() > cut_size )
+    {
+      return std::nullopt;
+    }
 
     /* expand the nodes towards the TFI */
-    ntk.new_color();
     expand_towards_tfi( ntk, inputs, cut_size );
+    assert( inputs.size() <= cut_size );
 
     /* expand the nodes towards the TFO */
-    ntk.new_color();
     levelized_expand_towards_tfo( ntk, inputs, *nodes );
+    if ( nodes->empty() )
+    {
+      return std::nullopt;
+    }
 
     /* collect the nodes with fanout outside of nodes */
-    ntk.new_color();
     std::vector<signal> outputs = collect_outputs( ntk, inputs, *nodes, refs );
+    assert( outputs.size() > 0u );
 
     /* top. sort nodes */
     std::sort( std::begin( inputs ), std::end( inputs ) );
@@ -786,6 +801,8 @@ public:
 protected:
   std::optional<std::vector<node>> identify_reconvergence( node const& pivot, uint64_t num_iterations )
   {
+    ntk.new_color();
+
     visited.clear();
     ntk.foreach_fanin( pivot, [&]( signal const& fi ){
       uint32_t const color = ntk.new_color();

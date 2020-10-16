@@ -196,7 +196,6 @@ TEST_CASE( "create window for pivot", "[window_utils]" )
   fanout_view fanout_aig{_aig};
   depth_view depth_aig{fanout_aig};
   color_view aig{depth_aig};
-  aig.new_color();
 
   create_window_impl windowing( aig );
   if ( auto w = windowing.run( aig.get_node( f5 ), 6u ) )
