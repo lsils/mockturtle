@@ -175,7 +175,8 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
     levelized_expand_towards_tfo( aig, inputs, nodes );
 
     std::sort( std::begin( nodes ), std::end( nodes ) );
-    CHECK( nodes == std::vector<node>{aig.get_node( f1 ), aig.get_node( f2 ), aig.get_node( f4 )} );
+    CHECK( nodes == std::vector<node>{aig.get_node( f1 ), aig.get_node( f2 ), aig.get_node( f3 ),
+                                      aig.get_node( f4 ), aig.get_node( f5 )} );
   }
 }
 
@@ -202,7 +203,7 @@ TEST_CASE( "create window for pivot", "[window_utils]" )
   {
     window_view win( aig, w->inputs, w->outputs, w->nodes );
     CHECK( win.num_cis() == 4u );
-    CHECK( win.num_cos() == 2u );
-    CHECK( win.num_gates() == 4u );
+    CHECK( win.num_cos() == 1u );
+    CHECK( win.num_gates() == 5u );
   }
 }
