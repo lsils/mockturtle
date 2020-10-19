@@ -1943,6 +1943,111 @@ template<class Ntk>
 inline constexpr bool has_has_output_name_v = has_has_output_name<Ntk>::value;
 #pragma endregion
 
+#pragma region has_new_color
+template<class Ntk, class = void>
+struct has_new_color : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_new_color<Ntk, std::void_t<decltype( std::declval<Ntk>().new_color() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_new_color_v = has_new_color<Ntk>::value;
+#pragma endregion
+
+#pragma region has_current_color
+template<class Ntk, class = void>
+struct has_current_color : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_current_color<Ntk, std::void_t<decltype( std::declval<Ntk>().current_color() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_current_color_v = has_current_color<Ntk>::value;
+#pragma endregion
+
+#pragma region has_clear_colors
+template<class Ntk, class = void>
+struct has_clear_colors : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_clear_colors<Ntk, std::void_t<decltype( std::declval<Ntk>().clear_colors( uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_clear_colors_v = has_clear_colors<Ntk>::value;
+#pragma endregion
+
+#pragma region has_color
+template<class Ntk, class = void>
+struct has_color : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_color<Ntk, std::void_t<decltype( std::declval<Ntk>().color( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_color_v = has_color<Ntk>::value;
+#pragma endregion
+
+#pragma region has_paint
+template<class Ntk, class = void>
+struct has_paint : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_paint<Ntk, std::void_t<decltype( std::declval<Ntk>().paint( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_paint_v = has_paint<Ntk>::value;
+#pragma endregion
+
+#pragma region has_eval_color
+template<class Ntk, class = void>
+struct has_eval_color : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_eval_color<Ntk, std::void_t<decltype( std::declval<Ntk>().eval_color( std::declval<node<Ntk>>(), std::declval<void( uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_eval_color_v = has_eval_color<Ntk>::value;
+#pragma endregion
+
+#pragma region has_eval_fanins_color
+template<class Ntk, class = void>
+struct has_eval_fanins_color : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_eval_fanins_color<Ntk, std::void_t<decltype( std::declval<Ntk>().eval_fanins_color( std::declval<node<Ntk>>(), std::declval<void( uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_eval_fanins_color_v = has_eval_fanins_color<Ntk>::value;
+#pragma endregion
+
 /*! \brief SFINAE based on iterator type (for compute functions).
  */
 template<typename Iterator, typename T>

@@ -49,6 +49,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <cstdint>
 
 namespace abc::exorcism {
 

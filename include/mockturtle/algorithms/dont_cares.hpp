@@ -44,6 +44,7 @@
 #include "../views/fanout_view.hpp"
 #include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
+#include "../views/color_view.hpp"
 
 #include <fmt/format.h>
 #include <kitty/bit_operations.hpp>
@@ -74,8 +75,10 @@ kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vecto
 
   fanout_view<Ntk> fanout_ntk{ntk};
   fanout_ntk.clear_visited();
+  color_view<Ntk> color_ntk{fanout_ntk};
 
-  window_view<fanout_view<Ntk>> window_ntk{fanout_ntk, extended_leaves, leaves, false};
+  std::vector<node<Ntk>> gates{collect_nodes( color_ntk, extended_leaves, leaves )};
+  window_view window_ntk{color_ntk, extended_leaves, leaves, gates};
 
   default_simulator<kitty::dynamic_truth_table> sim( window_ntk.num_pis() );
   const auto tts = simulate_nodes<kitty::dynamic_truth_table>( window_ntk, sim );
@@ -110,8 +113,10 @@ kitty::dynamic_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
 {
   fanout_view<Ntk> fanout_ntk{ntk};
   fanout_ntk.clear_visited();
+  color_view<Ntk> color_ntk{fanout_ntk};
 
-  window_view<fanout_view<Ntk>> window_ntk{fanout_ntk, leaves, roots, false};
+  std::vector<node<Ntk>> gates{collect_nodes( color_ntk, leaves, roots )};
+  window_view window_ntk{color_ntk, leaves, roots, gates};
 
   default_simulator<kitty::dynamic_truth_table> sim( window_ntk.num_pis() );
   unordered_node_map<kitty::dynamic_truth_table, Ntk> node_to_value0( ntk );
