@@ -35,6 +35,8 @@ v0.2 (not yet released)
 * Views:
     - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
     - Creates a CNF while creating a network (`cnf_view`) `#274 <https://github.com/lsils/mockturtle/pull/274>`_
+    - Revised window view (`window_view`) `#381 <https://github.com/lsils/mockturtle/pull/381>`_
+    - In-place and out-of-place color view (`color_view`, `out_of_place_color_view`) `#381 <https://github.com/lsils/mockturtle/pull/381>`_
 * I/O:
     - Write networks to DIMACS files for CNF (`write_dimacs`) `#146 <https://github.com/lsils/mockturtle/pull/146>`_
     - Read BLIF files using *lorina* (`blif_reader`) `#167 <https://github.com/lsils/mockturtle/pull/167>`_
@@ -63,6 +65,8 @@ v0.2 (not yet released)
     - Random logic networks for XAGs (`random_logic_generator`) `#366 <https://github.com/lsils/mockturtle/pull/366>`_
 * Properties:
     - Costs based on multiplicative complexity (`multiplicative_complexity` and `multiplicative_complexity_depth`) `#170 <https://github.com/lsils/mockturtle/pull/170>`_
+* Utils:
+    - Computing windows and manipulating cuts (`create_window_impl`, `collect_nodes`, `collect_inputs`, `collect_outputs`, `expand0_towards_tfi`, `expand_towards_tfi`, `expand_towards_tfo`, `levelized_expand_towards_tfo`) `#381 <https://github.com/lsils/mockturtle/pull/381>`_
 
 v0.1 (March 31, 2019)
 ---------------------
