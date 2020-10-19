@@ -1,6 +1,6 @@
 add_library(experiments INTERFACE)
 target_include_directories(experiments INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(experiments INTERFACE fmt json)
+target_link_libraries(experiments INTERFACE fmt json matplot)
 
 # check for git revision
 if(EXISTS ${PROJECT_SOURCE_DIR}/.git)
