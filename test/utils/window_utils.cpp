@@ -199,7 +199,7 @@ TEST_CASE( "create window for pivot", "[window_utils]" )
   color_view aig{depth_aig};
 
   create_window_impl windowing( aig );
-  if ( auto w = windowing.run( aig.get_node( f5 ), 6u ) )
+  if ( auto w = windowing.run( aig.get_node( f5 ), 6u, 5u ) )
   {
     window_view win( aig, w->inputs, w->outputs, w->nodes );
     CHECK( win.num_cis() == 4u );

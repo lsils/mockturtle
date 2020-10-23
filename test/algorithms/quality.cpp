@@ -341,19 +341,19 @@ TEST_CASE( "Test quality improvement for XMG3 Resubstitution", "[quality]" )
 TEST_CASE( "Test quality of 6-input windowing for AIG", "[quality]" )
 {
   std::vector<std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>> const result =
-    {{1, 4, 2, 4},
-     {64, 384, 178, 312},
-     {40, 240, 64, 296},
-     {44, 264, 81, 173},
-     {152, 784, 232, 616},
-     {71, 401, 149, 337},
-     {106, 636, 190, 500},
-     {242, 1440, 1075, 1321},
-     {215, 1232, 903, 1683},
-     {1161, 6871, 2366, 2904},
-     {388, 2229, 2151, 3179}};
+    {{2, 8, 5, 8},
+     {112, 672, 397, 962},
+     {110, 500, 466, 1186},
+     {73, 390, 393, 817},
+     {318, 1428, 1314, 3942},
+     {116, 604, 429, 1083},
+     {242, 1310, 553, 2193},
+     {469, 2675, 3357, 5613},
+     {572, 3080, 2529, 7524},
+     {1877, 11103, 7914, 23530},
+     {771, 4093, 4547, 9014}};
 
-  const auto v = foreach_benchmark<aig_network>( [&]( auto& ntk, auto ){
+  const auto v = foreach_benchmark<aig_network>( [&]( auto& ntk, auto i ){
     fanout_view fntk{ntk};
     depth_view dntk{fntk};
     color_view aig{dntk};
@@ -364,8 +364,8 @@ TEST_CASE( "Test quality of 6-input windowing for AIG", "[quality]" )
     uint32_t num_gates{0};
 
     create_window_impl windowing( aig );
-    aig.foreach_node( [&]( aig_network::node const& n ){
-      if ( const auto w = windowing.run( n, 6u ) )
+    aig.foreach_gate( [&]( aig_network::node const& n ){
+      if ( const auto w = windowing.run( n, 6u, 5u ) )
       {
         window_view win( aig, w->inputs, w->outputs, w->nodes );
         ++num_windows;
@@ -374,6 +374,8 @@ TEST_CASE( "Test quality of 6-input windowing for AIG", "[quality]" )
         num_gates += win.num_gates();
       }
     });
+
+    // fmt::print( "{{{}, {}, {}, {}}}\n", num_windows, num_pis, num_pos, num_gates );
     return std::make_tuple( num_windows, num_pis, num_pos, num_gates );
   });
 
