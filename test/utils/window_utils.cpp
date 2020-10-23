@@ -32,6 +32,10 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
 
     /* a cut that can be expanded without increasing cut-size */
     std::vector<node> inputs{aig.get_node( a ), aig.get_node( b ), aig.get_node( f1 ), aig.get_node( d )};
+    for ( const auto& i : inputs )
+    {
+      aig.paint( i );
+    }
 
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( trivial_cut );
@@ -45,6 +49,10 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
 
     /* a cut that cannot be expanded without increasing cut-size */
     std::vector<node> inputs{aig.get_node( f3 ), aig.get_node( f4 )};
+    for ( const auto& i : inputs )
+    {
+      aig.paint( i );
+    }
 
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
@@ -58,6 +66,10 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
 
     /* a cut that can be moved towards the PIs */
     std::vector<node> inputs{aig.get_node( f2 ), aig.get_node( f3 ), aig.get_node( f4 )};
+    for ( const auto& i : inputs )
+    {
+      aig.paint( i );
+    }
 
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
@@ -71,6 +83,10 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
 
     /* the cut { f3, f5 } can be simplified to { f3, f4 } */
     std::vector<node> inputs{aig.get_node( f3 ), aig.get_node( f5 )};
+    for ( const auto& i : inputs )
+    {
+      aig.paint( i );
+    }
 
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
@@ -84,6 +100,10 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
 
     /* the cut { f4, f5 } also can be simplified to { f3, f4 } */
     std::vector<node> inputs{aig.get_node( f4 ), aig.get_node( f5 )};
+    for ( const auto& i : inputs )
+    {
+      aig.paint( i );
+    }
 
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
@@ -112,8 +132,15 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
   color_view aig{_aig};
 
   {
+    aig.new_color();
+
     /* expand from { f5 } to 4-cut { a, b, c, d } */
     std::vector<node> inputs{aig.get_node( f5 )};
+    for ( const auto& i : inputs )
+    {
+      aig.paint( i );
+    }
+
     expand_towards_tfi( aig, inputs, 4u );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
@@ -121,8 +148,15 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
   }
 
   {
-    /* expand from { f3, f5 } to 3-cut { a, b, f2 } */
+    aig.new_color();
+
+    /* expand from { f3, f5 } to 3-cut { a, d, f2 } */
     std::vector<node> inputs{aig.get_node( f3 ), aig.get_node( f5 )};
+    for ( const auto& i : inputs )
+    {
+      aig.paint( i );
+    }
+
     expand_towards_tfi( aig, inputs, 3u );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
@@ -130,8 +164,15 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
   }
 
   {
-    /* expand from { f4, f5 } to 3-cut { a, b, f2 } */
+    aig.new_color();
+
+    /* expand from { f4, f5 } to 3-cut { a, d, f2 } */
     std::vector<node> inputs{aig.get_node( f4 ), aig.get_node( f5 )};
+    for ( const auto& i : inputs )
+    {
+      aig.paint( i );
+    }
+
     expand_towards_tfi( aig, inputs, 3u );
 
     std::sort( std::begin( inputs ), std::end( inputs ) );
