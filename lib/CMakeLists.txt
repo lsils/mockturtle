@@ -85,7 +85,7 @@ if (NOT TARGET libabcesop)
   add_subdirectory(abcesop)
 endif()
 
-if (NOT TARGET matplot)
+if (ENABLE_MATPLOTLIB AND NOT TARGET matplot)
   find_package(Python3 COMPONENTS Development NumPy)
   add_library(matplot INTERFACE)
   target_include_directories(matplot INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/matplot/ ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS})
