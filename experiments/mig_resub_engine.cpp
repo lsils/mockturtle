@@ -54,7 +54,7 @@ int main()
   }
 
 #if 0
-  kitty::create_from_hex_string( tts[0], "1e" ); // target
+  kitty::create_from_hex_string( tts[0], "01d8" ); // target
 
   mig_resub_engine<kitty::dynamic_truth_table> engine( n );
   engine.add_root( 0, tts );
@@ -65,11 +65,23 @@ int main()
   const auto res = engine.compute_function( 10u );
 
 #else
-  uint64_t total_size = 0u;
-  for ( uint64_t func = 0u; func < (1 << (1<<n)); ++func )
+  std::unordered_set<kitty::dynamic_truth_table, kitty::hash<kitty::dynamic_truth_table>> classes;
+  kitty::dynamic_truth_table tt( n );
+
+  do
   {
-    tts[0]._bits[0] = func;
-    tts[0].mask_bits();
+    /* apply NPN canonization and add resulting representative to set */
+    const auto res = kitty::exact_npn_canonization( tt );
+    classes.insert( std::get<0>( res ) );
+
+    /* increment truth table */
+    kitty::next_inplace( tt );
+  } while ( !kitty::is_const0( tt ) );
+
+  uint64_t total_size = 0u, failed = 0u;
+  for ( auto const& func : classes )
+  {
+    tts[0] = func;
     std::cout << "function: "; kitty::print_hex( tts[0] );
     mig_resub_engine<kitty::dynamic_truth_table> engine( n );
     engine.add_root( 0, tts );
@@ -77,10 +89,11 @@ int main()
     {
       engine.add_divisor( i+1, tts );
     }
-    const auto res = engine.compute_function( 10u );
+    const auto res = engine.compute_function( 15u );
     if ( !res )
     {
-      std::cout << " did not find solution within 10 nodes.\n";
+      std::cout << " did not find solution within 15 nodes.\n";
+      ++failed;
     }
     else
     {
@@ -91,6 +104,7 @@ int main()
   }
 
   std::cout << "total size: " << total_size << "\n";
+  std::cout << "failed: " << failed << "\n";
 #endif
   return 0;
 }

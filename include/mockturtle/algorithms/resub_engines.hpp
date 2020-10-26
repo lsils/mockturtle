@@ -198,7 +198,7 @@ private:
 template<class TT>
 class mig_resub_engine
 {
-  bool p = false;
+  bool p = 0;
   /*! \brief Internal data structure */
   struct expansion_position
   {
@@ -225,14 +225,6 @@ class mig_resub_engine
   {
     std::vector<uint32_t> fanins; /* ids of divisors */
     TT function; /* resulting function */
-  };
-
-  struct TTHasher
-  {
-    uint64_t operator()( TT const& tt ) const
-    {
-      return tt._bits[0];
-    }
   };
 
 public:
@@ -368,6 +360,10 @@ private:
           pos = i;
           max_mismatch = mismatch;
         }
+      }
+      if ( leaves.size() == 0u )
+      {
+        break;
       }
       expansion_position node_position = leaves.at( pos );
       leaves.erase( leaves.begin() + pos );
@@ -637,7 +633,7 @@ private:
   std::vector<TT> divisors;
   std::vector<uint64_t> scores;
   std::vector<maj_node> maj_nodes; /* the really used nodes */
-  std::unordered_map<TT, simple_maj, TTHasher> computed_table; /* map from care to a simple_maj with divisors as fanins */
+  std::unordered_map<TT, simple_maj, kitty::hash<TT>> computed_table; /* map from care to a simple_maj with divisors as fanins */
 
   std::vector<expansion_position> leaves;
   std::vector<expansion_position> back_up;
