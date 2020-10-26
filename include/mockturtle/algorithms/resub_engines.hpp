@@ -198,7 +198,7 @@ private:
 template<class TT>
 class mig_resub_engine
 {
-  bool p = 0;
+  bool p = 0; // verbose printing
   /*! \brief Internal data structure */
   struct expansion_position
   {
@@ -261,26 +261,14 @@ public:
 
   std::optional<std::vector<uint32_t>> compute_function( uint32_t num_inserts )
   {
-    uint64_t max_score = 0u;
-    uint32_t max_i = 0u;
     for ( auto i = 0u; i < divisors.size(); ++i )
     {
-      scores.at( i ) = kitty::count_ones( divisors.at( i ) );
       if (p) { std::cout<<"["<<i<<"] "; kitty::print_binary( divisors.at( i ) ); std::cout << "\n"; }
-      if ( scores.at( i ) > max_score )
+      if ( kitty::is_const0( ~divisors.at( i ) ) )
       {
-        max_score = scores.at( i );
-        max_i = i;
-        if ( max_score == num_bits )
-        {
-          break;
-        }
+        /* 0-resub (including constants) */
+        return std::vector<uint32_t>( {i} );
       }
-    }
-    /* 0-resub (including constants) */
-    if ( max_score == num_bits )
-    {
-      return std::vector<uint32_t>( {max_i} );
     }
 
     if ( num_inserts == 0u )
@@ -298,26 +286,79 @@ private:
     maj_nodes.reserve( size_limit );
     /* topmost node: care is const1 */
     TT const const1 = divisors.at( 0u ) | divisors.at( 1u );
-    simple_maj const top_node = top_down_approach_try_one( const1 );
-    maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), top_node.fanins, {divisors.at( top_node.fanins[0] ), divisors.at( top_node.fanins[1] ), divisors.at( top_node.fanins[2] )}, const1} );
+    simple_maj const top_node = expand_one( const1 );
+    
     if ( kitty::is_const0( ~top_node.function ) )
     {
       /* 1-resub */
       std::vector<uint32_t> index_list;
-      index_list.emplace_back( maj_nodes.at( 0u ).fanins.at( 0u ) );
-      index_list.emplace_back( maj_nodes.at( 0u ).fanins.at( 1u ) );
-      index_list.emplace_back( maj_nodes.at( 0u ).fanins.at( 2u ) );
+      index_list.emplace_back( top_node.fanins.at( 0u ) );
+      index_list.emplace_back( top_node.fanins.at( 1u ) );
+      index_list.emplace_back( top_node.fanins.at( 2u ) );
       index_list.emplace_back( divisors.size() );
       return index_list;
     }
-    else
+
+    std::vector<maj_node> copy;
+    for ( int32_t i = 0; i < 3; ++i )
     {
-      leaves.emplace_back( expansion_position{0, 0} );
-      leaves.emplace_back( expansion_position{0, 1} );
-      leaves.emplace_back( expansion_position{0, 2} );
+      if (p) { std::cout<<"=== try expand "<<i<<" first ===\n"; }
+      maj_nodes.clear();
+      maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), top_node.fanins, {divisors.at( top_node.fanins[0] ), divisors.at( top_node.fanins[1] ), divisors.at( top_node.fanins[2] )}, const1} );
+
+      TT const care = ~( divisors.at( top_node.fanins[sibling_index( i, 1 )] ) & divisors.at( top_node.fanins[sibling_index( i, 2 )] ) );
+      if ( evaluate_one( care, divisors.at( top_node.fanins[i] ), expansion_position{0, i} ) )
+      {
+        /* 2-resub */
+        copy = maj_nodes;
+        break;
+      }
+
+      leaves.clear();
+      back_up.clear();
+      leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 1 )} );
+      leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 2 )} );
+      if ( !refine() )
+      {
+        continue;
+      }
+
+      if ( copy.size() == 0u || maj_nodes.size() < copy.size() )
+      {
+        copy = maj_nodes;
+      }
     }
 
-    bool first_round = true;
+    if ( copy.size() == 0u )
+    {
+      return std::nullopt;
+    }
+    std::vector<uint32_t> index_list;
+    std::unordered_map<uint32_t, uint32_t> id_map;
+    for ( auto i = 0u; i < copy.size(); ++i )
+    {
+      auto& n = copy.at( copy.size() - i - 1u );
+      for ( auto j = 0u; j < 3u; ++j )
+      {
+        if ( n.fanins.at( j ) < divisors.size() )
+        {
+          index_list.emplace_back( n.fanins.at( j ) );
+        }
+        else
+        {
+          auto mapped = id_map.find( n.fanins.at( j ) );
+          assert( mapped != id_map.end() );
+          index_list.emplace_back( mapped->second );
+        }
+        id_map[n.id] = divisors.size() + i * 2;
+      }
+    }
+    index_list.emplace_back( ( id_map.find( copy.at( 0u ).id ) )->second );
+    return index_list;
+  }
+
+  bool refine()
+  {
     while ( ( leaves.size() != 0u || back_up.size() != 0u ) && maj_nodes.size() < size_limit )
     {
       if ( leaves.size() == 0u )
@@ -326,9 +367,7 @@ private:
         back_up.clear();
         first_round = false;
       }
-      // TODO: Choose a best leaf to expand
-      //expansion_position node_position = leaves.back();
-      //leaves.pop_back();
+
       uint32_t max_mismatch = 0u;
       uint32_t pos = 0u;
       for ( int32_t i = 0; (unsigned)i < leaves.size(); ++i )
@@ -373,47 +412,60 @@ private:
       TT const& original_function = parent_node.fanin_functions.at( fi );
       TT const care = parent_node.care & ~( sibling_func( parent_node, fi, 1 ) & sibling_func( parent_node, fi, 2 ) );
 
-      simple_maj const new_node = top_down_approach_try_one( care, node_position );
-      uint64_t const original_score = score( original_function, care );
-      uint64_t const new_score = score( new_node.function, care );
-      if ( new_score < original_score )
+      if ( evaluate_one( care, original_function, node_position ) )
       {
-        if (p) { std::cout << "get worse. (" << new_score << ")\n"; }
-        continue;
+        return true;
       }
+    }
+    return false;
+  }
 
-      if ( new_score == original_score )
+  bool evaluate_one( TT const& care, TT const& original_function, expansion_position const& node_position )
+  {
+    maj_node& parent_node = maj_nodes.at( node_position.parent_position );
+    uint32_t const& fi = node_position.fanin_num;
+
+    simple_maj const new_node = expand_one( care, node_position );
+    uint64_t const original_score = score( original_function, care );
+    uint64_t const new_score = score( new_node.function, care );
+    if ( new_score < original_score )
+    {
+      if (p) { std::cout << "get worse. (" << new_score << ")\n"; }
+      return false;
+    }
+
+    if ( new_score == original_score )
+    {
+      if (p) { std::cout<<"score stays the same.\n"; }
+      if ( kitty::count_ones( new_node.function & parent_node.care ) > kitty::count_ones( original_function & parent_node.care ) )
       {
-        if (p) { std::cout<<"score stays the same.\n"; }
-        if ( kitty::count_ones( new_node.function & parent_node.care ) > kitty::count_ones( original_function & parent_node.care ) )
+        if (p) { std::cout<<"...but covers more care bits of parent node.\n"; }
+      }
+      else if ( kitty::count_ones( new_node.function & parent_node.care ) == kitty::count_ones( original_function & parent_node.care ) && new_node.function != original_function )
+      {
+        if (p) { std::cout<<"...and also covers the same # of care bits of parent node, but the function is different.\n"; }
+        if ( first_round )
         {
-          if (p) { std::cout<<"...but covers more care bits of parent node.\n"; }
-        }
-        else if ( kitty::count_ones( new_node.function & parent_node.care ) == kitty::count_ones( original_function & parent_node.care ) && new_node.function != original_function )
-        {
-          if (p) { std::cout<<"...and also covers the same # of care bits of parent node, but the function is different.\n"; }
-          if ( first_round )
-          {
-            back_up.emplace_back( node_position );
-            continue;
-          }
-        }
-        else
-        {
-          continue;
+          back_up.emplace_back( node_position );
+          return false;
         }
       }
-
-      /* construct the new node */
-      uint32_t const new_id = maj_nodes.size() + divisors.size();
-      maj_nodes.emplace_back( maj_node{new_id, new_node.fanins, {divisors.at( new_node.fanins[0] ), divisors.at( new_node.fanins[1] ), divisors.at( new_node.fanins[2] )}, care, node_position} );
-      update_fanin( parent_node, fi, new_id, new_node.function );
-
-      if ( kitty::is_const0( ~new_node.function & care ) )
+      else
       {
-        if (p) { std::cout<<"care bits all fulfilled.\n"; }
-        if ( node_fulfilled( maj_nodes.at( 0u ) ) )
-        {
+        return false;
+      }
+    }
+
+    /* construct the new node */
+    uint32_t const new_id = maj_nodes.size() + divisors.size();
+    maj_nodes.emplace_back( maj_node{new_id, new_node.fanins, {divisors.at( new_node.fanins[0] ), divisors.at( new_node.fanins[1] ), divisors.at( new_node.fanins[2] )}, care, node_position} );
+    update_fanin( parent_node, fi, new_id, new_node.function );
+
+    if ( kitty::is_const0( ~new_node.function & care ) )
+    {
+      if (p) { std::cout<<"care bits all fulfilled.\n"; }
+      if ( node_fulfilled( maj_nodes.at( 0u ) ) )
+      {
         if (p) {
           std::cout<<"\n======== solution found =========\n";
           for ( auto i = 0u; i < maj_nodes.size(); ++i )
@@ -430,43 +482,20 @@ private:
             std::cout<<"\n\n";
           }
         }
-          std::vector<uint32_t> index_list;
-          std::unordered_map<uint32_t, uint32_t> id_map;
-          for ( auto i = 0u; i < maj_nodes.size(); ++i )
-          {
-            auto& n = maj_nodes.at( maj_nodes.size() - i - 1u );
-            for ( auto j = 0u; j < 3u; ++j )
-            {
-              if ( n.fanins.at( j ) < divisors.size() )
-              {
-                index_list.emplace_back( n.fanins.at( j ) );
-              }
-              else
-              {
-                auto mapped = id_map.find( n.fanins.at( j ) );
-                assert( mapped != id_map.end() );
-                index_list.emplace_back( mapped->second );
-              }
-              id_map[n.id] = divisors.size() + i * 2;
-            }
-          }
-          index_list.emplace_back( ( id_map.find( maj_nodes.at( 0u ).id ) )->second );
-          return index_list;
-        }
-      }
-      else
-      {
-        if (p) { std::cout<<"improved but still not fulfilling all care bits, add children to queue.\n"; }
-        leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 0} );
-        leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 1} );
-        leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 2} );
+        return true;
       }
     }
-    return std::nullopt;
+    else
+    {
+      if (p) { std::cout<<"improved but still not fulfilling all care bits, add children to queue.\n"; }
+      leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 0} );
+      leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 1} );
+      leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 2} );
+    }
+    return false;
   }
   
-  /* default values are just redundant values because they are not used for the first node */
-  simple_maj top_down_approach_try_one( TT const& care, expansion_position const& node_position = {} )
+  simple_maj expand_one( TT const& care, expansion_position const& node_position = {} )
   {
     if (p) { std::cout << "\n\nexpanding node " << node_position.parent_position << " at fanin " << node_position.fanin_num << ".\ncare = "; kitty::print_binary( care ); std::cout<<"\n"; }
 
@@ -637,6 +666,7 @@ private:
 
   std::vector<expansion_position> leaves;
   std::vector<expansion_position> back_up;
+  bool first_round = true;
 }; /* mig_resub_engine */
 
 } /* namespace mockturtle */

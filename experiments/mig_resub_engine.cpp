@@ -54,7 +54,7 @@ int main()
   }
 
 #if 0
-  kitty::create_from_hex_string( tts[0], "01d8" ); // target
+  kitty::create_from_hex_string( tts[0], "17ac" ); // target
 
   mig_resub_engine<kitty::dynamic_truth_table> engine( n );
   engine.add_root( 0, tts );
@@ -63,6 +63,14 @@ int main()
     engine.add_divisor( i+1, tts );
   }
   const auto res = engine.compute_function( 10u );
+  if ( !res )
+  {
+    std::cout << "did not find solution within 15 nodes.\n";
+  }
+  else
+  {
+    std::cout << "found solution of size " << ( (*res).size() - 1 ) / 3 << "\n";
+  }
 
 #else
   std::unordered_set<kitty::dynamic_truth_table, kitty::hash<kitty::dynamic_truth_table>> classes;
