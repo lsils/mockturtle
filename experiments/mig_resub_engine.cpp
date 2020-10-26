@@ -44,24 +44,53 @@ int main()
 {
   //using namespace experiments;
   using namespace mockturtle;
+  auto n = 3u;
 
-  std::vector<kitty::dynamic_truth_table> tts( 4, kitty::dynamic_truth_table( 3 ) );
+  std::vector<kitty::dynamic_truth_table> tts( n + 1, kitty::dynamic_truth_table( n ) );
 
-  // DOT: 00011010
-  // ONEHOT: 00010110
-  // GAMBLE: 10000001
-  kitty::create_from_binary_string( tts[0], "10000001" ); // target
-  kitty::create_nth_var( tts[1], 0 );
-  kitty::create_nth_var( tts[2], 1 );
-  kitty::create_nth_var( tts[3], 2 );
+  for ( auto i = 0u; i < n; ++i )
+  {
+    kitty::create_nth_var( tts[i+1], i );
+  }
 
-  mig_resub_engine<kitty::dynamic_truth_table, true> engine( 3 );
+#if 0
+  kitty::create_from_hex_string( tts[0], "1e" ); // target
+
+  mig_resub_engine<kitty::dynamic_truth_table> engine( n );
   engine.add_root( 0, tts );
-  engine.add_divisor( 1, tts );
-  engine.add_divisor( 2, tts );
-  engine.add_divisor( 3, tts );
+  for ( auto i = 0u; i < n; ++i )
+  {
+    engine.add_divisor( i+1, tts );
+  }
+  const auto res = engine.compute_function( 10u );
 
-  const auto res = engine.compute_function( 5u );
+#else
+  uint64_t total_size = 0u;
+  for ( uint64_t func = 0u; func < (1 << (1<<n)); ++func )
+  {
+    tts[0]._bits[0] = func;
+    tts[0].mask_bits();
+    std::cout << "function: "; kitty::print_hex( tts[0] );
+    mig_resub_engine<kitty::dynamic_truth_table> engine( n );
+    engine.add_root( 0, tts );
+    for ( auto i = 0u; i < n; ++i )
+    {
+      engine.add_divisor( i+1, tts );
+    }
+    const auto res = engine.compute_function( 10u );
+    if ( !res )
+    {
+      std::cout << " did not find solution within 10 nodes.\n";
+    }
+    else
+    {
+      assert( ( (*res).size() - 1 ) % 3 == 0 );
+      std::cout << " found solution of size " << ( (*res).size() - 1 ) / 3 << "\n";
+      total_size += ( (*res).size() - 1 ) / 3;
+    }
+  }
 
+  std::cout << "total size: " << total_size << "\n";
+#endif
   return 0;
 }

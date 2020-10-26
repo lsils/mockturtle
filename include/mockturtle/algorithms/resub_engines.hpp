@@ -34,38 +34,23 @@
 
 #include <kitty/kitty.hpp>
 
+#include <vector>
+#include <unordered_map>
+
 namespace mockturtle
 {
-#define two_cares 0
 
-template<class TT, bool use_top_down = true>
-class mig_resub_engine
+template<class TT>
+class mig_resub_engine_bottom_up
 {
-  /*! \brief Internal data structure */
-  struct expansion_position
-  {
-    int32_t parent_position = -1; // maj_nodes.at( ... )
-    int32_t fanin_num = -1; // 0, 1, 2
-
-    bool operator==( expansion_position const& e ) const
-    {
-      return parent_position == e.parent_position && fanin_num == e.fanin_num;
-    }
-  };
-
   struct maj_node
   {
     uint32_t id; /* ( id - divisors.size() ) / 2 = its position in maj_nodes */
     std::vector<uint32_t> fanins; /* ids of its three fanins */
-
-    /* only used in top-down */
-    std::vector<TT> fanin_functions = std::vector<TT>();
-    TT care = TT();
-    expansion_position parent = expansion_position();
   };
 
 public:
-  explicit mig_resub_engine( uint64_t num_divisors, uint64_t max_num_divisors = 50ul )
+  explicit mig_resub_engine_bottom_up( uint64_t num_divisors, uint64_t max_num_divisors = 50ul )
     : max_num_divisors( max_num_divisors ), counter( 2u ), divisors( ( num_divisors + 1 ) * 2 ), scores( ( num_divisors + 1 ) * 2 )
   { }
 
@@ -125,14 +110,7 @@ public:
     }
     size_limit = num_inserts;
 
-    if constexpr ( use_top_down )
-    {
-      return top_down_approach();
-    }
-    else
-    {
-      return bottom_up_approach();
-    }
+    return bottom_up_approach();
   }
 
 private:
@@ -203,27 +181,141 @@ private:
     }
   }
 
+private:
+  uint64_t max_num_divisors;
+  uint64_t counter;
+  uint32_t size_limit;
+  uint32_t num_bits;
+
+  uint32_t max_i, max_j, max_k;
+
+  std::vector<TT> divisors;
+  std::vector<uint64_t> scores;
+  std::vector<maj_node> maj_nodes;
+
+}; /* mig_resub_engine_bottom_up */
+
+template<class TT>
+class mig_resub_engine
+{
+  bool p = false;
+  /*! \brief Internal data structure */
+  struct expansion_position
+  {
+    int32_t parent_position = -1; // maj_nodes.at( ... )
+    int32_t fanin_num = -1; // 0, 1, 2
+
+    bool operator==( expansion_position const& e ) const
+    {
+      return parent_position == e.parent_position && fanin_num == e.fanin_num;
+    }
+  };
+
+  struct maj_node
+  {
+    uint32_t id; /* maj_nodes.at( id - divisors.size() ) */
+    std::vector<uint32_t> fanins; /* ids of its three fanins */
+
+    std::vector<TT> fanin_functions = std::vector<TT>();
+    TT care = TT();
+    expansion_position parent = expansion_position();
+  };
+
+  struct simple_maj
+  {
+    std::vector<uint32_t> fanins; /* ids of divisors */
+    TT function; /* resulting function */
+  };
+
+  struct TTHasher
+  {
+    uint64_t operator()( TT const& tt ) const
+    {
+      return tt._bits[0];
+    }
+  };
+
+public:
+  explicit mig_resub_engine( uint64_t num_divisors, uint64_t max_num_divisors = 50ul )
+    : max_num_divisors( max_num_divisors ), counter( 2u ), divisors( ( num_divisors + 1 ) * 2 ), scores( ( num_divisors + 1 ) * 2 )
+  { }
+
+  template<class node_type, class truth_table_storage_type>
+  void add_root( node_type const& node, truth_table_storage_type const& tts )
+  {
+    divisors.at( 0u ) = ~tts[node]; // const 0 XNOR target = ~target
+    divisors.at( 1u ) = tts[node]; // const 1 XNOR target = target
+    num_bits = tts[node].num_bits();
+  }
+
+  template<class node_type, class truth_table_storage_type>
+  void add_divisor( node_type const& node, truth_table_storage_type const& tts )
+  {
+    assert( tts[node].num_bits() == num_bits );
+    divisors.at( counter++ ) = tts[node] ^ divisors.at( 0u ); // XNOR target = XOR ~target
+    divisors.at( counter++ ) = ~tts[node] ^ divisors.at( 0u );
+  }
+
+  template<class iterator_type, class truth_table_storage_type>
+  void add_divisors( iterator_type begin, iterator_type end, truth_table_storage_type const& tts )
+  { 
+    assert( counter == 2u );
+    while ( begin != end )
+    {
+      add_divisor( *begin, tts );
+      ++begin;
+    }
+  }
+
+  std::optional<std::vector<uint32_t>> compute_function( uint32_t num_inserts )
+  {
+    uint64_t max_score = 0u;
+    uint32_t max_i = 0u;
+    for ( auto i = 0u; i < divisors.size(); ++i )
+    {
+      scores.at( i ) = kitty::count_ones( divisors.at( i ) );
+      if (p) { std::cout<<"["<<i<<"] "; kitty::print_binary( divisors.at( i ) ); std::cout << "\n"; }
+      if ( scores.at( i ) > max_score )
+      {
+        max_score = scores.at( i );
+        max_i = i;
+        if ( max_score == num_bits )
+        {
+          break;
+        }
+      }
+    }
+    /* 0-resub (including constants) */
+    if ( max_score == num_bits )
+    {
+      return std::vector<uint32_t>( {max_i} );
+    }
+
+    if ( num_inserts == 0u )
+    {
+      return std::nullopt;
+    }
+    size_limit = num_inserts;
+
+    return top_down_approach();
+  }
+
+private:
   std::optional<std::vector<uint32_t>> top_down_approach()
   {
     maj_nodes.reserve( size_limit );
     /* topmost node: care is const1 */
     TT const const1 = divisors.at( 0u ) | divisors.at( 1u );
-  #if two_cares
-    top_down_approach_try_one( const1, const1 );
-  #else
-    top_down_approach_try_one( const1 );
-  #endif
-    std::cout<<"first node built.\n";
-    maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), {max_i, max_j, max_k}, {divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k )}, const1} );
-    if ( kitty::is_const0( ~kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k ) ) ) )
+    simple_maj const top_node = top_down_approach_try_one( const1 );
+    maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), top_node.fanins, {divisors.at( top_node.fanins[0] ), divisors.at( top_node.fanins[1] ), divisors.at( top_node.fanins[2] )}, const1} );
+    if ( kitty::is_const0( ~top_node.function ) )
     {
-      std::cout<<"care bits all fulfilled.\n";
       /* 1-resub */
       std::vector<uint32_t> index_list;
       index_list.emplace_back( maj_nodes.at( 0u ).fanins.at( 0u ) );
       index_list.emplace_back( maj_nodes.at( 0u ).fanins.at( 1u ) );
       index_list.emplace_back( maj_nodes.at( 0u ).fanins.at( 2u ) );
-      index_list.emplace_back( maj_nodes.at( 0u ).id );
+      index_list.emplace_back( divisors.size() );
       return index_list;
     }
     else
@@ -233,63 +325,82 @@ private:
       leaves.emplace_back( expansion_position{0, 2} );
     }
 
-    while ( leaves.size() != 0u && maj_nodes.size() < size_limit )
+    bool first_round = true;
+    while ( ( leaves.size() != 0u || back_up.size() != 0u ) && maj_nodes.size() < size_limit )
     {
+      if ( leaves.size() == 0u )
+      {
+        leaves = back_up;
+        back_up.clear();
+        first_round = false;
+      }
       // TODO: Choose a best leaf to expand
-      expansion_position node_position = leaves.back();
-      leaves.pop_back();
+      //expansion_position node_position = leaves.back();
+      //leaves.pop_back();
+      uint32_t max_mismatch = 0u;
+      uint32_t pos = 0u;
+      for ( int32_t i = 0; (unsigned)i < leaves.size(); ++i )
+      {
+        maj_node& parent_node = maj_nodes.at( leaves[i].parent_position );
+        uint32_t const& fi = leaves[i].fanin_num;
+        TT const& original_function = parent_node.fanin_functions.at( fi );
+
+        if ( parent_node.fanins.at( fi ) >= divisors.size() ) /* already expanded */
+        {
+          leaves.erase( leaves.begin() + i );
+          --i;
+          continue;
+        }
+
+        TT const care = parent_node.care & ~( sibling_func( parent_node, fi, 1 ) & sibling_func( parent_node, fi, 2 ) );
+        if ( fulfilled( original_function, care ) /* already fulfilled */
+             || care == parent_node.care /* probably cannot improve */
+           )
+        {
+          leaves.erase( leaves.begin() + i );
+          --i;
+          continue;
+        }
+
+        uint32_t const mismatch = count_ones( care & ~original_function );
+        if ( mismatch > max_mismatch )
+        {
+          pos = i;
+          max_mismatch = mismatch;
+        }
+      }
+      expansion_position node_position = leaves.at( pos );
+      leaves.erase( leaves.begin() + pos );
 
       maj_node& parent_node = maj_nodes.at( node_position.parent_position );
       uint32_t const& fi = node_position.fanin_num;
       TT const& original_function = parent_node.fanin_functions.at( fi );
-
-      if ( parent_node.fanins.at( fi ) >= divisors.size() ) /* already expanded */
-      {
-        continue;
-      }
-
-    #if two_cares
-      TT const care1 = parent_node.care & ~sibling_func( parent_node, fi, 1 );
-      TT const care2 = parent_node.care & ~sibling_func( parent_node, fi, 2 );
-      TT const care = care1 | care2;
-      uint64_t const original_score = score( original_function, care1, care2 );
-    #else
       TT const care = parent_node.care & ~( sibling_func( parent_node, fi, 1 ) & sibling_func( parent_node, fi, 2 ) );
+
+      simple_maj const new_node = top_down_approach_try_one( care, node_position );
       uint64_t const original_score = score( original_function, care );
-    #endif
-
-      if ( fulfilled( original_function, care ) ) /* already fulfilled */
-      {
-        continue;
-      }
-
-    #if two_cares
-      top_down_approach_try_one( care1, care2, node_position );
-    #else
-      top_down_approach_try_one( care, node_position );
-    #endif
-      
-      auto const current_function = kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k ) );
-      std::cout<<"resulting function: "; kitty::print_binary(current_function); std::cout<<"\n";
-
-    #if two_cares
-      auto new_score = score( current_function, care1, care2 );
-    #else
-      auto new_score = score( current_function, care );
-    #endif
-
+      uint64_t const new_score = score( new_node.function, care );
       if ( new_score < original_score )
       {
-        std::cout << "get worse. (" << new_score << ")\n";
+        if (p) { std::cout << "get worse. (" << new_score << ")\n"; }
         continue;
       }
 
       if ( new_score == original_score )
       {
-        if ( kitty::count_ones( current_function & parent_node.care ) >= kitty::count_ones( original_function & parent_node.care ) &&
-             current_function != original_function )
+        if (p) { std::cout<<"score stays the same.\n"; }
+        if ( kitty::count_ones( new_node.function & parent_node.care ) > kitty::count_ones( original_function & parent_node.care ) )
         {
-          std::cout<<"score stays the same but covers more care bits of parent node, or also the same but different function.\n";
+          if (p) { std::cout<<"...but covers more care bits of parent node.\n"; }
+        }
+        else if ( kitty::count_ones( new_node.function & parent_node.care ) == kitty::count_ones( original_function & parent_node.care ) && new_node.function != original_function )
+        {
+          if (p) { std::cout<<"...and also covers the same # of care bits of parent node, but the function is different.\n"; }
+          if ( first_round )
+          {
+            back_up.emplace_back( node_position );
+            continue;
+          }
         }
         else
         {
@@ -298,15 +409,16 @@ private:
       }
 
       /* construct the new node */
-      auto new_id = maj_nodes.back().id + 2u;
-      maj_nodes.emplace_back( maj_node{new_id, {max_i, max_j, max_k}, {divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k )}, care, node_position} );
-      update_fanin( parent_node, fi, new_id, current_function );
+      uint32_t const new_id = maj_nodes.size() + divisors.size();
+      maj_nodes.emplace_back( maj_node{new_id, new_node.fanins, {divisors.at( new_node.fanins[0] ), divisors.at( new_node.fanins[1] ), divisors.at( new_node.fanins[2] )}, care, node_position} );
+      update_fanin( parent_node, fi, new_id, new_node.function );
 
-      if ( kitty::is_const0( ~current_function & care ) )
+      if ( kitty::is_const0( ~new_node.function & care ) )
       {
-        std::cout<<"care bits all fulfilled.\n";
+        if (p) { std::cout<<"care bits all fulfilled.\n"; }
         if ( node_fulfilled( maj_nodes.at( 0u ) ) )
         {
+        if (p) {
           std::cout<<"\n======== solution found =========\n";
           for ( auto i = 0u; i < maj_nodes.size(); ++i )
           {
@@ -321,101 +433,101 @@ private:
             kitty::print_binary(kitty::ternary_majority(maj_nodes[i].fanin_functions[0], maj_nodes[i].fanin_functions[1], maj_nodes[i].fanin_functions[2]));
             std::cout<<"\n\n";
           }
+        }
           std::vector<uint32_t> index_list;
-          // TODO: translate
+          std::unordered_map<uint32_t, uint32_t> id_map;
+          for ( auto i = 0u; i < maj_nodes.size(); ++i )
+          {
+            auto& n = maj_nodes.at( maj_nodes.size() - i - 1u );
+            for ( auto j = 0u; j < 3u; ++j )
+            {
+              if ( n.fanins.at( j ) < divisors.size() )
+              {
+                index_list.emplace_back( n.fanins.at( j ) );
+              }
+              else
+              {
+                auto mapped = id_map.find( n.fanins.at( j ) );
+                assert( mapped != id_map.end() );
+                index_list.emplace_back( mapped->second );
+              }
+              id_map[n.id] = divisors.size() + i * 2;
+            }
+          }
+          index_list.emplace_back( ( id_map.find( maj_nodes.at( 0u ).id ) )->second );
           return index_list;
         }
       }
       else
       {
-        std::cout<<"improved but still not fulfilling all care bits, add children to queue.\n";
-        leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1), 0} );
-        leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1), 1} );
-        leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1), 2} );
+        if (p) { std::cout<<"improved but still not fulfilling all care bits, add children to queue.\n"; }
+        leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 0} );
+        leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 1} );
+        leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 2} );
       }
     }
     return std::nullopt;
   }
   
   /* default values are just redundant values because they are not used for the first node */
-#if two_cares
-  void top_down_approach_try_one( TT const& care1, TT const& care2, expansion_position const& node_position = {} )
-#else
-  void top_down_approach_try_one( TT const& care, expansion_position const& node_position = {} )
-#endif
+  simple_maj top_down_approach_try_one( TT const& care, expansion_position const& node_position = {} )
   {
-    std::cout << "\n\nexpanding node " << node_position.parent_position << " at fanin " << node_position.fanin_num << ".\ncare = ";
-  #if two_cares
-    kitty::print_binary( care1 ); std::cout<<" "; kitty::print_binary( care2 );
-  #else
-    kitty::print_binary( care );
-  #endif
+    if (p) { std::cout << "\n\nexpanding node " << node_position.parent_position << " at fanin " << node_position.fanin_num << ".\ncare = "; kitty::print_binary( care ); std::cout<<"\n"; }
 
-    std::cout << "\nchoosing first fanin:\n";
+    /* look up in computed_table */
+    auto computed = computed_table.find( care );
+    if ( computed != computed_table.end() )
+    {
+      //std::cout<<"cache hit!\n";
+      return computed->second;
+    }
+
     /* the first fanin: cover most care bits */
     uint64_t max_score = 0u;
-    max_i = 0u;
+    uint32_t max_i = 0u;
     for ( auto i = 0u; i < divisors.size(); ++i )
     {
-    #if two_cares
-      scores.at( i ) = kitty::count_ones( divisors.at( i ) & care1 ) + kitty::count_ones( divisors.at( i ) & care2 );
-    #else
       scores.at( i ) = kitty::count_ones( divisors.at( i ) & care );
-    #endif
-      std::cout<<"["<<i<<"] "; kitty::print_binary( divisors.at( i ) ); std::cout << ": " << scores.at(i) << "\n";
       if ( scores.at( i ) > max_score )
       {
         max_score = scores.at( i );
         max_i = i;
       }
     }
-    std::cout<<"===== chosen " << max_i <<"\n\nchoosing second fanin:\n";
 
     /* the second fanin: 2 * #newly-covered-bits + 1 * #cover-again-bits */
     max_score = 0u;
-    max_j = 0u;
+    uint32_t max_j = 0u;
     auto const not_covered_by_i = ~divisors.at( max_i );
     for ( auto j = 0u; j < divisors.size(); ++j )
     {
-    #if two_cares
-      auto const covered_by_j1 = divisors.at( j ) & care1;
-      auto const covered_by_j2 = divisors.at( j ) & care2;
-      scores.at( j ) = kitty::count_ones( covered_by_j1 ) + kitty::count_ones( not_covered_by_i & covered_by_j1 ) + kitty::count_ones( covered_by_j2 ) + kitty::count_ones( not_covered_by_i & covered_by_j2 );
-    #else
       auto const covered_by_j = divisors.at( j ) & care;
       scores.at( j ) = kitty::count_ones( covered_by_j ) + kitty::count_ones( not_covered_by_i & covered_by_j );
-    #endif
-      std::cout<<"["<<j<<"] "; kitty::print_binary( divisors.at( j ) ); std::cout << ": " << scores.at(j) << "\n";
       if ( scores.at( j ) > max_score && !same_divisor( j, max_i ) )
       {
         max_score = scores.at( j );
         max_j = j;
       }
     }
-    std::cout<<"===== chosen " << max_j <<"\n\nchoosing third fanin:\n";
 
     /* the third fanin: 2 * #cover-never-covered-bits + 1 * #cover-covered-once-bits */
     max_score = 0u;
-    max_k = 0u;
+    uint32_t max_k = 0u;
     auto const not_covered_by_j = ~divisors.at( max_j );
     for ( auto k = 0u; k < divisors.size(); ++k )
     {
-    #if two_cares
-      auto const covered_by_k1 = divisors.at( k ) & care1;
-      auto const covered_by_k2 = divisors.at( k ) & care2;
-      scores.at( k ) = kitty::count_ones( covered_by_k1 & not_covered_by_i ) + kitty::count_ones( covered_by_k1 & not_covered_by_j ) + kitty::count_ones( covered_by_k2 & not_covered_by_i ) + kitty::count_ones( covered_by_k2 & not_covered_by_j );
-    #else
       auto const covered_by_k = divisors.at( k ) & care;
       scores.at( k ) = kitty::count_ones( covered_by_k & not_covered_by_i ) + kitty::count_ones( covered_by_k & not_covered_by_j );
-    #endif
-      std::cout<<"["<<k<<"] "; kitty::print_binary( divisors.at( k ) ); std::cout << ": " << scores.at(k) << "\n";
       if ( scores.at( k ) > max_score && !same_divisor( k, max_i ) && !same_divisor( k, max_j ) )
       {
         max_score = scores.at( k );
         max_k = k;
       }
     }
-    std::cout<<"===== chosen " << max_k <<"\n";
+
+    if (p) { std::cout<<"resulting function: <"<<max_i<<", "<<max_j<<", "<<max_k<<"> = "; kitty::print_binary(kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k ) )); std::cout<<"\n"; }
+    computed_table[care] = simple_maj( {{max_i, max_j, max_k}, kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k ) )} );
+    return computed_table[care];
   }
 
 private:
@@ -434,17 +546,10 @@ private:
     return fulfilled( kitty::ternary_majority( node.fanin_functions.at( 0u ), node.fanin_functions.at( 1u ), node.fanin_functions.at( 2u ) ), node.care );
   }
 
-#if two_cares
-  uint64_t score( TT const& func, TT const& care1, TT const& care2 )
-  {
-    return kitty::count_ones( func & care1 ) + kitty::count_ones( func & care2 );
-  }
-#else
   uint64_t score( TT const& func, TT const& care )
   {
     return kitty::count_ones( func & care );
   }
-#endif
 
   void update_fanin( maj_node& parent_node, uint32_t const fi, uint32_t const new_id, TT const& new_function )
   {
@@ -515,7 +620,7 @@ private:
   inline uint32_t id_to_pos( uint32_t const id )
   {
     assert( id >= divisors.size() );
-    return ( id - divisors.size() ) / 2;
+    return ( id - divisors.size() );
   }
 
   inline maj_node& id_to_node( uint32_t const id )
@@ -529,14 +634,13 @@ private:
   uint32_t size_limit;
   uint32_t num_bits;
 
-  uint32_t max_i, max_j, max_k;
-
   std::vector<TT> divisors;
   std::vector<uint64_t> scores;
-  std::vector<maj_node> maj_nodes;
+  std::vector<maj_node> maj_nodes; /* the really used nodes */
+  std::unordered_map<TT, simple_maj, TTHasher> computed_table; /* map from care to a simple_maj with divisors as fanins */
 
-  /* pairs of (maj_nodes index, fanin number) */
-  std::vector<expansion_position> leaves; // can convert to a queue
+  std::vector<expansion_position> leaves;
+  std::vector<expansion_position> back_up;
 }; /* mig_resub_engine */
 
 } /* namespace mockturtle */

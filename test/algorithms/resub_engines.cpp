@@ -9,7 +9,7 @@
 
 using namespace mockturtle;
 
-TEST_CASE( "MIG resub engine -- 0-resub", "[resub_engines]" )
+TEST_CASE( "MIG resub engine (bottom-up) -- 0-resub", "[resub_engines]" )
 {
   std::vector<kitty::dynamic_truth_table> tts( 4, kitty::dynamic_truth_table( 3 ) );
 
@@ -18,7 +18,7 @@ TEST_CASE( "MIG resub engine -- 0-resub", "[resub_engines]" )
   kitty::create_from_binary_string( tts[2], "10000001" );
   kitty::create_from_binary_string( tts[3], "11001001" );
 
-  mig_resub_engine<kitty::dynamic_truth_table> engine( 3 );
+  mig_resub_engine_bottom_up<kitty::dynamic_truth_table> engine( 3 );
   engine.add_root( 0, tts );
   engine.add_divisor( 1, tts );
   engine.add_divisor( 2, tts );
@@ -30,7 +30,7 @@ TEST_CASE( "MIG resub engine -- 0-resub", "[resub_engines]" )
   CHECK( (*res)[0] == 7u );
 }
 
-TEST_CASE( "MIG resub engine -- 1-resub", "[resub_engines]" )
+TEST_CASE( "MIG resub engine (bottom-up) -- 1-resub", "[resub_engines]" )
 {
   std::vector<kitty::dynamic_truth_table> tts( 4, kitty::dynamic_truth_table( 3 ) );
 
@@ -39,7 +39,7 @@ TEST_CASE( "MIG resub engine -- 1-resub", "[resub_engines]" )
   kitty::create_from_binary_string( tts[2], "11001001" );
   kitty::create_from_binary_string( tts[3], "01000111" );
 
-  mig_resub_engine<kitty::dynamic_truth_table, false> engine( tts.size() - 1u );
+  mig_resub_engine_bottom_up<kitty::dynamic_truth_table> engine( tts.size() - 1u );
   engine.add_root( 0, tts );
   for ( auto i = 1u; i < tts.size(); ++i )
   {
@@ -64,7 +64,7 @@ TEST_CASE( "MIG resub engine -- 1-resub", "[resub_engines]" )
   CHECK( target == ans );
 }
 
-TEST_CASE( "MIG resub engine -- bottom-up, 2-resub", "[resub_engines]" )
+TEST_CASE( "MIG resub engine (bottom-up) -- 2-resub", "[resub_engines]" )
 {
   std::vector<kitty::dynamic_truth_table> tts( 5, kitty::dynamic_truth_table( 3 ) );
 
@@ -74,7 +74,7 @@ TEST_CASE( "MIG resub engine -- bottom-up, 2-resub", "[resub_engines]" )
   kitty::create_from_binary_string( tts[3], "10011110" );
   kitty::create_from_binary_string( tts[4], "01011111" );
 
-  mig_resub_engine<kitty::dynamic_truth_table, false> engine( tts.size() - 1u );
+  mig_resub_engine_bottom_up<kitty::dynamic_truth_table> engine( tts.size() - 1u );
   engine.add_root( 0, tts );
   for ( auto i = 1u; i < tts.size(); ++i )
   {
