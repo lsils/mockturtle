@@ -149,7 +149,7 @@ inline std::vector<typename Ntk::node> collect_nodes( Ntk const& ntk,
 
 /*! \brief Identify inputs using reference counting
  *
- * Uses a new_color.
+ * Uses a new_color and marks all nodes and inputs.
  *
  * **Required network functions:**
  * - `current_color`
@@ -187,6 +187,12 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
       }
       return true;
     });
+  }
+
+  /* mark all inputs */
+  for ( const auto& n : inputs )
+  {
+    ntk.paint( n );
   }
 
   return inputs;
@@ -282,6 +288,24 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
   return outputs;
 }
 
+namespace detail
+{
+
+template<typename Ntk>
+inline bool cut_is_trivial( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs )
+{
+  for( const auto& n : inputs )
+  {
+    if ( !ntk.is_constant( n ) && !ntk.is_ci( n ) )
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+} /* detail */
+
 /*! \brief Performs in-place zero-cost expansion of a set of nodes towards TFI
  *
  * The algorithm attempts to derive a different cut of the same size
@@ -289,8 +313,12 @@ inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
  * called zero-cost because it merges nodes only if the number of
  * inputs does not increase.
  *
+ * Precondition: This procedure presumes that nodes and inputs are
+ * painted in the current color.
+ *
  * Uses the current color to mark nodes.  Only nodes not painted with
- * the current color are considered for expanding the cut.
+ * the current color are considered for expanding the cut.  Nodes
+ * marked are considered already in the cut.
  *
  * \param ntk A network
  * \param inputs Input nodes
@@ -312,56 +340,61 @@ bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& input
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  /* mark all inputs */
-  for ( auto const& i : inputs )
-  {
-    ntk.paint( i );
-  }
-
   /* we call a set of inputs (= a cut) trivial if all nodes are either
      constants or CIs, such that they cannot be further expanded towards
      the TFI */
-  bool trivial_cut = false;
+  bool trivial_cut{true};
 
   /* repeat expansion towards TFI until a fix-point is reached */
-  bool changed = true;
+  bool changed{true};
   std::vector<node> new_inputs;
   while ( changed )
   {
-    changed = false;
     trivial_cut = true;
+    changed = false;
 
     for ( auto it = std::begin( inputs ); it != std::end( inputs ); )
     {
-      /* count how many fanins are not in the cut */
+      assert( ntk.color( *it ) == ntk.current_color() );
+      if ( ntk.is_constant( *it ) || ntk.is_ci( *it ) )
+      {
+        ++it;
+        continue;
+      }
+      trivial_cut = false;
+
+      /* count how many fanins are already in the cut */
       uint32_t count_fanin_outside{0};
       std::optional<node> ep;
-
       ntk.foreach_fanin( *it, [&]( signal const& fi ){
         node const n = ntk.get_node( fi );
-        trivial_cut = false;
-
-        if ( ntk.eval_color( n, [&ntk]( auto c ){ return c != ntk.current_color(); } ) )
+        if ( ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
         {
           ++count_fanin_outside;
+        }
+        else
+        {
           ep = n;
         }
       });
 
-      /* if only one fanin is not in the cut, then the input expansion
-         can be done wihout affecting the cut size */
-      if ( count_fanin_outside == 1u )
-      {
-        /* expand the cut */
-        assert( ep );
-        it = inputs.erase( it );
-        new_inputs.push_back( *ep );
-        changed = true;
-      }
-      else
+      /* if the expansion is not cost-free, then proceeded with the next leaf */
+      if ( count_fanin_outside + 1 < ntk.fanin_size( *it ) )
       {
         ++it;
+        continue;
       }
+
+      if ( ep )
+      {
+        if ( ntk.eval_color( *ep, [&ntk]( auto c ){ return c != ntk.current_color(); } ) )
+        {
+          new_inputs.push_back( *ep );
+          ntk.paint( *ep );
+        }
+      }
+      it = inputs.erase( it );
+      changed = true;
     }
 
     std::copy( std::begin( new_inputs ), std::end( new_inputs ),
@@ -369,6 +402,7 @@ bool expand0_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& input
     new_inputs.clear();
   }
 
+  assert( trivial_cut == detail::cut_is_trivial( ntk, inputs ) );
   return trivial_cut;
 }
 
@@ -401,9 +435,9 @@ inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::
   using signal = typename Ntk::signal;
 
   assert( inputs.size() > 0u && "inputs must not be empty" );
-  // assert( cut_is_not_trivial( inputs ) );
+  assert( !cut_is_trivial( ntk, inputs ) );
 
-  /* evaluate the fanins with respect to their costs (how often are they referenced) */
+  /* evaluate the fanins with respect to their costs (how often are they referenced?) */
   std::vector<std::pair<node, uint32_t>> candidates;
   for ( auto const& i : inputs )
   {
@@ -422,8 +456,10 @@ inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::
     });
   }
 
+  assert( candidates.size() > 0u );
+
   /* select the fanin with maximum reference count; if two fanins have equal reference count, select the one with more fanouts */
-  std::pair<node, uint32_t> best_fanin;
+  std::pair<node, uint32_t> best_fanin{candidates[0]};
   for ( auto const& candidate : candidates )
   {
     if ( candidate.second > best_fanin.second ||
@@ -450,6 +486,9 @@ inline typename Ntk::node select_next_fanin_to_expand_tfi( Ntk const& ntk, std::
  * procedure allows a temporary increase of `inputs` beyond the
  * `input_limit` for at most `MAX_ITERATIONS`.
  *
+ * Precondition: This procedure presumes that nodes and inputs are
+ * painted in the current color.
+ *
  * Uses a new color.
  *
  * \param ntk A network
@@ -463,31 +502,44 @@ void expand_towards_tfi( Ntk const& ntk, std::vector<typename Ntk::node>& inputs
 
   static constexpr uint32_t const MAX_ITERATIONS{5u};
 
-  ntk.new_color();
   if ( expand0_towards_tfi( ntk, inputs ) )
   {
     return;
   }
 
-  std::vector<node> best_cut{inputs};
+  std::optional<std::vector<node>> best_cut;
+  if ( inputs.size() <= input_limit )
+  {
+    best_cut = inputs;
+  }
+
   bool trivial_cut = false;
   uint32_t iterations{0};
-  while ( !trivial_cut && ( inputs.size() <= input_limit || iterations <= MAX_ITERATIONS ) )
+  while ( !trivial_cut && ( inputs.size() <= input_limit || iterations < MAX_ITERATIONS ) )
   {
     node const n = detail::select_next_fanin_to_expand_tfi( ntk, inputs );
     inputs.push_back( n );
     ntk.paint( n );
 
     trivial_cut = expand0_towards_tfi( ntk, inputs );
-    if ( inputs.size() <= input_limit )
+    assert( trivial_cut == detail::cut_is_trivial( ntk, inputs ) );
+
+    iterations = inputs.size() > input_limit ? iterations + 1 : 0;
+    if ( inputs.size() <= input_limit &&
+         ( !best_cut || best_cut->size() <= inputs.size() ) )
     {
       best_cut = inputs;
     }
-
-    iterations = inputs.size() > input_limit ? iterations + 1 : 0;
   }
 
-  inputs = best_cut;
+  if ( best_cut )
+  {
+    inputs = *best_cut;
+  }
+  else
+  {
+    assert( inputs.size() > input_limit );
+  }
 }
 
 /*! \brief Performs in-place expansion of a set of nodes towards TFO
@@ -670,7 +722,7 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
 
   for ( uint32_t index = 0u; index < used.size(); ++index )
   {
-    std::vector<node>& level = levels.at( index );
+    std::vector<node>& level = levels.at( used[index] );
     for ( auto j = 0u; j < level.size(); ++j )
     {
       ntk.foreach_fanout( level[j], [&]( node const& fo, uint64_t index ){
@@ -699,6 +751,7 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
           if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
           {
             used.push_back( node_level );
+            std::sort( std::begin( used ), std::end( used ) );
           }
         }
 
@@ -759,11 +812,11 @@ public:
   {
   }
 
-  std::optional<window> run( node const& pivot, uint32_t cut_size )
+  std::optional<window> run( node const& pivot, uint32_t cut_size, uint32_t num_levels )
   {
     /* find a reconvergence from the pivot and collect the nodes */
     std::optional<std::vector<node>> nodes;
-    if ( !( nodes = identify_reconvergence( pivot, NUM_ITERATIONS ) ) )
+    if ( !( nodes = identify_reconvergence( pivot, num_levels ) ) )
     {
       /* if there is no reconvergence, then optimization is not possible */
       return std::nullopt;
@@ -771,29 +824,28 @@ public:
 
     /* collect the fanins for these nodes */
     std::vector<node> inputs = collect_inputs( ntk, *nodes );
-    if ( inputs.size() > cut_size )
+    if ( inputs.size() <= cut_size + 3 )
+    {
+      /* expand the nodes towards the TFI */
+      expand_towards_tfi( ntk, inputs, cut_size );
+
+      /* expand the nodes towards the TFO */
+      std::sort( std::begin( inputs ), std::end( inputs ) );
+      levelized_expand_towards_tfo( ntk, inputs, *nodes );
+    }
+
+    if ( inputs.size() > cut_size || nodes->empty() )
     {
       return std::nullopt;
     }
-
-    /* expand the nodes towards the TFI */
-    expand_towards_tfi( ntk, inputs, cut_size );
-    assert( inputs.size() <= cut_size );
-
-    /* expand the nodes towards the TFO */
-    levelized_expand_towards_tfo( ntk, inputs, *nodes );
-    if ( nodes->empty() )
-    {
-      return std::nullopt;
-    }
-
-    /* collect the nodes with fanout outside of nodes */
-    std::vector<signal> outputs = collect_outputs( ntk, inputs, *nodes, refs );
-    assert( outputs.size() > 0u );
 
     /* top. sort nodes */
     std::sort( std::begin( inputs ), std::end( inputs ) );
     std::sort( std::begin( *nodes ), std::end( *nodes ) );
+
+    /* collect the nodes with fanout outside of nodes */
+    std::vector<signal> outputs = collect_outputs( ntk, inputs, *nodes, refs );
+    assert( outputs.size() > 0u );
 
     return window{inputs, *nodes, outputs};
   }
@@ -801,8 +853,9 @@ public:
 protected:
   std::optional<std::vector<node>> identify_reconvergence( node const& pivot, uint64_t num_iterations )
   {
-    ntk.new_color();
+    assert( !ntk.is_ci( pivot ) && !ntk.is_constant( pivot ) );
 
+    ntk.new_color();
     visited.clear();
     ntk.foreach_fanin( pivot, [&]( signal const& fi ){
       uint32_t const color = ntk.new_color();
@@ -824,7 +877,7 @@ protected:
         if ( meet )
         {
           visited.clear();
-          gather_nodes_recursively( *meet );
+          gather_nodes_recursively( path[*meet] );
           gather_nodes_recursively( n );
           visited.push_back( pivot );
           return visited;
@@ -838,15 +891,15 @@ protected:
 
   std::optional<node> explore_frontier_of_node( node const& n )
   {
+    if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
+    {
+      return std::nullopt;
+    }
+
     std::optional<node> meet;
     ntk.foreach_fanin( n, [&]( signal const& fi ){
       node const& fi_node = ntk.get_node( fi );
-      if ( ntk.is_constant( fi_node ) || ntk.is_ci( fi_node ) )
-      {
-        return true; /* next */
-      }
-
-      if ( ntk.eval_color( n, [this]( auto c ){ return c > ntk.current_color() - ntk.max_fanin_size; } )&&
+      if ( ntk.eval_color( n, [this]( auto c ){ return c > ntk.current_color() - ntk.max_fanin_size; } ) &&
            ntk.eval_color( fi_node, [this]( auto c ){ return c > ntk.current_color() - ntk.max_fanin_size; } ) &&
            ntk.eval_color( n, fi_node, []( auto c0, auto c1 ){ return c0 != c1; } ) )
       {
@@ -862,6 +915,7 @@ protected:
       ntk.paint( fi_node, n );
       path[fi_node] = n;
       visited.push_back( fi_node );
+
       return true; /* next */
     });
 
@@ -877,6 +931,7 @@ protected:
     }
 
     visited.push_back( n );
+
     node const pred = path[n];
     if ( pred == INVALID_NODE )
     {
