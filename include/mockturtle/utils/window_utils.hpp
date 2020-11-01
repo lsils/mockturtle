@@ -704,9 +704,6 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   /* list of indices of used levels (avoid iterating over all levels) */
   std::vector<uint32_t> used;
 
-  /* remove all nodes */
-  nodes.clear();
-
   /* mark all inputs and fill their level information into `levels` and `used` */
   for ( const auto& i : inputs )
   {
@@ -718,6 +715,19 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
       used.push_back( node_level );
     }
   }
+
+  /* mark all nodes and fill their level information into `levels` and `used` */
+  for ( const auto& n : nodes )
+  {
+    uint32_t const node_level = ntk.level( n );
+    ntk.paint( n );
+    levels.at( node_level ).push_back( n );
+    if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
+    {
+      used.push_back( node_level );
+    }
+  }
+
   std::sort( std::begin( used ), std::end( used ) );
 
   for ( uint32_t index = 0u; index < used.size(); ++index )
@@ -760,6 +770,51 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
     }
     level.clear();
   }
+}
+
+namespace detail
+{
+
+template<typename Ntk>
+void cover_recursive( Ntk const& ntk, typename Ntk::node const& root, std::vector<typename Ntk::node>& nodes )
+{
+  if ( ntk.color( root ) == ntk.current_color() )
+  {
+    return;
+  }
+
+  ntk.foreach_fanin( root, [&]( auto const& fi ){
+    cover_recursive( ntk, ntk.get_node( fi ), nodes );
+  });
+
+  nodes.push_back( root );
+}
+
+} /* detail */
+
+template<typename Ntk>
+std::vector<typename Ntk::node> cover( Ntk const& ntk, typename Ntk::node const& root, std::vector<typename Ntk::node> const& leaves )
+{
+  ntk.new_color();
+  for ( auto const& l : leaves )
+  {
+    ntk.paint( l );
+  }
+
+  std::vector<typename Ntk::node> nodes;
+  detail::cover_recursive( ntk, root, nodes );
+
+  for ( auto const& l : leaves )
+  {
+    nodes.push_back( l );
+  }
+
+  /* remove duplicates */
+  std::sort( std::begin( nodes ), std::end( nodes ) );
+  auto last = std::unique( std::begin( nodes ), std::end( nodes ) );
+  nodes.erase( last, std::end( nodes ) );
+
+  return nodes;
 }
 
 /*! \brief Create a (l,k)-window around a pivot.
@@ -828,6 +883,9 @@ public:
     {
       /* expand the nodes towards the TFI */
       expand_towards_tfi( ntk, inputs, cut_size );
+
+      /* compute the cover of the (pivot, inputs)-cut */
+      *nodes = cover( ntk, pivot, inputs );
 
       /* expand the nodes towards the TFO */
       std::sort( std::begin( inputs ), std::end( inputs ) );
