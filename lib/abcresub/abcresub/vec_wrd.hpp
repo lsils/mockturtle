@@ -32,10 +32,28 @@ inline Vec_Wrd_t * Vec_WrdAlloc( int nCap )
     return p;
 }
 
+inline void Vec_WrdErase( Vec_Wrd_t * p )
+{
+    ABC_FREE( p->pArray );
+    p->nSize = 0;
+    p->nCap = 0;
+}
+
 inline void Vec_WrdFree( Vec_Wrd_t * p )
 {
     ABC_FREE( p->pArray );
     ABC_FREE( p );
+}
+
+inline word * Vec_WrdArray( Vec_Wrd_t * p )
+{
+    return p->pArray;
+}
+
+inline word Vec_WrdEntry( Vec_Wrd_t * p, int i )
+{
+    assert( i >= 0 && i < p->nSize );
+    return p->pArray[i];
 }
 
 inline word * Vec_WrdEntryP( Vec_Wrd_t * p, int i )
@@ -62,6 +80,11 @@ inline void Vec_WrdFill( Vec_Wrd_t * p, int nSize, word Fill )
     p->nSize = nSize;
 }
 
+inline void Vec_WrdClear( Vec_Wrd_t * p )
+{
+    p->nSize = 0;
+}
+
 inline void Vec_WrdPush( Vec_Wrd_t * p, word Entry )
 {
     if ( p->nSize == p->nCap )
@@ -78,5 +101,5 @@ inline int Vec_WrdSize( Vec_Wrd_t * p )
 {
     return p->nSize;
 }
-  
-} /* abcresub */
+
+} /* namespace abcresub */
