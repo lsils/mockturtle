@@ -804,11 +804,6 @@ std::vector<typename Ntk::node> cover( Ntk const& ntk, typename Ntk::node const&
   std::vector<typename Ntk::node> nodes;
   detail::cover_recursive( ntk, root, nodes );
 
-  for ( auto const& l : leaves )
-  {
-    nodes.push_back( l );
-  }
-
   /* remove duplicates */
   std::sort( std::begin( nodes ), std::end( nodes ) );
   auto last = std::unique( std::begin( nodes ), std::end( nodes ) );
