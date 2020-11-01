@@ -56,6 +56,13 @@ inline void Vec_PtrClear( Vec_Ptr_t * p )
     p->nSize = 0;
 }
 
+inline void Vec_PtrErase( Vec_Ptr_t * p )
+{
+    ABC_FREE( p->pArray );
+    p->nSize = 0;
+    p->nCap = 0;
+}
+
 inline void Vec_PtrFree( Vec_Ptr_t * p )
 {
     ABC_FREE( p->pArray );
