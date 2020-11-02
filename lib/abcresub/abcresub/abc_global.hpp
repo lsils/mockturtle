@@ -19,7 +19,12 @@ inline int      Abc_Lit2Var( int Lit )                 { assert(Lit >= 0); retur
 inline int      Abc_Var2Lit( int Var, int c )          { assert(Var >= 0 && !(c >> 1)); return Var + Var + c;        }
 inline int      Abc_LitNot( int Lit )                  { assert(Lit >= 0); return Lit ^ 1;                           }
 inline int      Abc_LitNotCond( int Lit, int c )       { assert(Lit >= 0); return Lit ^ (int)(c > 0);                }
+inline int      Abc_Lit2LitL( int * pMap, int Lit )    { assert(Lit >= 0); return Abc_LitNotCond( pMap[Abc_Lit2Var(Lit)], Abc_LitIsCompl(Lit) );   }
 
+#ifndef ABC_SWAP
+#define ABC_SWAP(Type, a, b)  { Type t = a; a = b; b = t; }
+#endif /* ABC_SWAP */
+  
 #ifndef ABC_CONST
 #define ABC_CONST(number) number ## ULL
 #endif /* ABC_CONST */
