@@ -65,6 +65,7 @@ TEST_CASE( "create a topo_view on an AIG without topo order", "[topo_view]" )
 
   aig.create_po( gate1 );
 
+  /* test topological order of nodes */
   std::vector<node<aig_network>> nodes;
   aig.foreach_node( [&nodes]( auto node ) { nodes.push_back( node ); } );
   CHECK( nodes == std::vector<node<aig_network>>{{0, 1, 2, 3, 4, 5}} );
@@ -73,4 +74,19 @@ TEST_CASE( "create a topo_view on an AIG without topo order", "[topo_view]" )
   nodes.clear();
   aig2.foreach_node( [&nodes]( auto node ) { nodes.push_back( node ); } );
   CHECK( nodes == std::vector<node<aig_network>>{{0, 1, 2, 3, 5, 4}} );
+
+  /* test topological order of gates */
+  std::vector<node<aig_network>> gates;
+  aig.foreach_gate( [&gates]( auto node ) { gates.push_back( node ); } );
+  CHECK( gates == std::vector<node<aig_network>>{{4, 5}} );
+
+  gates.clear();
+  aig2.foreach_gate( [&gates]( auto node ) { gates.push_back( node ); } );
+  CHECK( gates == std::vector<node<aig_network>>{{5, 4}} );
+
+  /* test normalized index order */
+  uint32_t counter = 0;
+  aig2.foreach_node( [&aig2,&counter]( auto node ) {
+    CHECK( aig2.node_to_index( node ) == counter++ );
+  } );
 }
