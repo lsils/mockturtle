@@ -90,7 +90,7 @@ public:
     }
     for ( ; ( i+1 ) < values.size(); i+=2 )
     {
-      assert( !( values.at( i ) == 0 && values.at( i + 1 ) == 0 ) );
+      // assert( !( values.at( i ) == 0 && values.at( i + 1 ) == 0 ) );
       if ( values.at( i ) == values.at( i+1 ) )
       {
         ++_num_pos;
@@ -124,7 +124,7 @@ public:
   }
 
   template<typename Fn>
-  void foreach_entry( Fn&& fn ) const
+  void foreach_gate( Fn&& fn ) const
   {
     assert( ( values.size() % 2 ) == 0 );
     for ( uint64_t i = ( 1 + _num_pis ) << 1u; i < values.size() - ( _num_pos << 1 ); i += 2 )
@@ -136,7 +136,7 @@ public:
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
-    for ( uint64_t i = values.size() - _num_pos; i < values.size(); ++i )
+    for ( uint64_t i = values.size() - 2*_num_pos; i < values.size(); i+=2 )
     {
       fn( values.at( i ) );
     }
@@ -246,10 +246,18 @@ void encode( abc_index_list& indices, Ntk const& ntk )
 
     if ( ntk.is_and( n ) )
     {
+      if ( lits[0] > lits[1] )
+      {
+        std::swap( lits[0], lits[1] );
+      }
       indices.add_and( lits[0u], lits[1u] );
     }
     else if ( ntk.is_xor( n ) )
     {
+      if ( lits[0] < lits[1] )
+      {
+        std::swap( lits[0], lits[1] );
+      }
       indices.add_xor( lits[0u], lits[1u] );
     }
   });
@@ -295,7 +303,7 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
     signals.push_back( *it );
   }
 
-  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
     assert( lit0 != lit1 );
 
     uint32_t const i0 = lit0 >> 1;
@@ -386,7 +394,7 @@ public:
   }
 
   template<typename Fn>
-  void foreach_entry( Fn&& fn ) const
+  void foreach_gate( Fn&& fn ) const
   {
     assert( ( values.size() - 1u - num_pos() ) % 3 == 0 );
     for ( uint64_t i = 1u; i < values.size() - num_pos(); i += 3 )
@@ -536,7 +544,7 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indic
     signals.push_back( *it );
   }
 
-  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
     signal const s0 = ( lit0 % 2 ) ? !signals.at( lit0 >> 1 ) : signals.at( lit0 >> 1 );
     signal const s1 = ( lit1 % 2 ) ? !signals.at( lit1 >> 1 ) : signals.at( lit1 >> 1 );
     signal const s2 = ( lit2 % 2 ) ? !signals.at( lit2 >> 1 ) : signals.at( lit2 >> 1 );
@@ -558,7 +566,7 @@ inline std::string to_index_list_string( mig_index_list const& indices )
 {
   auto s = fmt::format( "{{{} | {} << 8 | {} << 16", indices.num_pis(), indices.num_pos(), indices.num_gates() );
 
-  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
     s += fmt::format( ", {}, {}, {}", lit0, lit1, lit2 );
   });
 
@@ -632,7 +640,7 @@ public:
   }
 
   template<typename Fn>
-  void foreach_entry( Fn&& fn ) const
+  void foreach_gate( Fn&& fn ) const
   {
     assert( ( values.size() - 1u - num_pos() ) % 2 == 0 );
     for ( uint64_t i = 1u; i < values.size() - num_pos(); i += 2 )
@@ -803,7 +811,7 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list const& indic
     signals.push_back( *it );
   }
 
-  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
     assert( lit0 != lit1 );
     uint32_t const i0 = lit0 >> 1;
     uint32_t const i1 = lit1 >> 1;
@@ -827,7 +835,7 @@ inline std::string to_index_list_string( xag_index_list const& indices )
 {
   auto s = fmt::format( "{{{} | {} << 8 | {} << 16", indices.num_pis(), indices.num_pos(), indices.num_gates() );
 
-  indices.foreach_entry( [&]( uint32_t lit0, uint32_t lit1 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
     s += fmt::format( ", {}, {}", lit0, lit1 );
   });
 

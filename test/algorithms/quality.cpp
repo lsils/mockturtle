@@ -353,7 +353,7 @@ TEST_CASE( "Test quality of 6-input windowing for AIG", "[quality]" )
      {2066, 12237, 8972, 31547},
      {771, 4093, 4555, 9118}};
 
-  const auto v = foreach_benchmark<aig_network>( [&]( auto& ntk, auto i ){
+  const auto v = foreach_benchmark<aig_network>( [&]( auto& ntk, auto ){
     fanout_view fntk{ntk};
     depth_view dntk{fntk};
     color_view aig{dntk};
