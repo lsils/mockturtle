@@ -43,7 +43,10 @@
 namespace mockturtle
 {
 
-/*! \brief Ensures topological order for the `foreach_node` and `foreach_gate` interface method.
+/*! \brief Ensures topological order for of all nodes reachable from the outputs.
+ *
+ * Overrides the interface methods `foreach_node`, `foreach_gate`,
+ * `size`, `num_gates`.
  *
  * This class computes *on construction* a topological order of the nodes which
  * are reachable from the outputs.  Constant nodes and primary inputs will also
@@ -137,6 +140,19 @@ public:
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
 
     update_topo();
+  }
+
+  /*! \brief Reimplementation of `size`. */
+  auto size() const
+  {
+    return static_cast<uint32_t>( topo_order.size() );
+  }
+
+  /*! \brief Reimplementation of `num_gates`. */
+  auto num_gates() const
+  {
+    uint32_t const offset = 1u + this->num_pis() + ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) ); 
+    return static_cast<uint32_t>( topo_order.size() - offset );
   }
 
   /*! \brief Reimplementation of `node_to_index`. */
@@ -244,14 +260,14 @@ private:
     if ( this->visited( n ) == this->trav_id() )
       return;
 
-    /* is temporarily marked? */
+    /* ensure that the node is not temporarily marked */
     assert( this->visited( n ) != this->trav_id() - 1 );
 
     /* mark node temporarily */
     this->set_visited( n, this->trav_id() - 1 );
 
     /* mark children */
-    this->foreach_fanin( n, [this]( auto f ) {
+    this->foreach_fanin( n, [this]( signal const& f ) {
       create_topo_rec( this->get_node( f ) );
     } );
 

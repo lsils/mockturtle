@@ -39,11 +39,15 @@ TEST_CASE( "create a topo_view on an AIG without output", "[topo_view]" )
   std::set<node<aig_network>> nodes;
   aig.foreach_node( [&nodes]( auto node ) { nodes.insert( node ); } );
   CHECK( nodes.size() == 6 );
+  CHECK( aig.size() == 6 );
+  CHECK( aig.num_gates() == 3 );
 
   topo_view aig2{aig};
   nodes.clear();
   aig2.foreach_node( [&nodes]( auto node ) { nodes.insert( node ); } );
   CHECK( nodes.size() == 3 );
+  CHECK( aig2.size() == 3 );
+  CHECK( aig2.num_gates() == 0 );
 }
 
 TEST_CASE( "create a topo_view on an AIG without topo order", "[topo_view]" )
