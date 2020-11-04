@@ -862,6 +862,12 @@ public:
   {
   }
 
+  void resize( uint32_t size )
+  {
+    path.resize( size );
+    refs.resize( size );
+  }
+
   std::optional<window> run( node const& pivot, uint32_t cut_size, uint32_t num_levels )
   {
     /* find a reconvergence from the pivot and collect the nodes */
