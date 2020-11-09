@@ -25,7 +25,7 @@
 
 /*!
   \file spp.hpp
-  \brief Include sparsepp, disable warnings for Windows
+  \brief Include paralell_hashmap, disable warnings for Windows
 
   \author Mathias Soeken
 */
@@ -37,8 +37,8 @@
 #pragma warning(disable: 4244)
 #pragma warning(disable: 4267)
 #pragma warning(disable: 4996)
-#include <sparsepp/spp.h>
+#include <parallel_hashmap/phmap.h>
 #pragma warning(pop)
 #else
-#include <sparsepp/spp.h>
+#include <parallel_hashmap/phmap.h>
 #endif
