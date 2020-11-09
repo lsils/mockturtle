@@ -38,7 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../utils/include/phmap.hpp"
+#include <parallel_hashmap/phmap.h>
 
 namespace mockturtle
 {

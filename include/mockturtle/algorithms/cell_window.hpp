@@ -38,10 +38,11 @@
 #include <unordered_set>
 #include <vector>
 
+#include <parallel_hashmap/phmap.h>
+
 #include "../networks/detail/foreach.hpp"
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
-#include "../utils/include/phmap.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 

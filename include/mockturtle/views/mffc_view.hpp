@@ -36,8 +36,9 @@
 #include <cstdint>
 #include <vector>
 
+#include <parallel_hashmap/phmap.h>
+
 #include "../networks/detail/foreach.hpp"
-#include "../utils/include/phmap.hpp"
 #include "../traits.hpp"
 #include "immutable_view.hpp"
 

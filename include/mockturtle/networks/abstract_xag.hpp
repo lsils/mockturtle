@@ -42,10 +42,10 @@
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <parallel_hashmap/phmap.h>
 
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
-#include "../utils/include/phmap.hpp"
 #include "detail/foreach.hpp"
 
 namespace mockturtle
