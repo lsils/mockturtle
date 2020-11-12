@@ -69,7 +69,7 @@ struct pattern_generation_params
   bool verbose{false};
 
   /*! \brief Random seed. */
-  std::default_random_engine::result_type random_seed{0};
+  std::default_random_engine::result_type random_seed{1};
 
   /*! \brief Conflict limit of the SAT solver. */
   uint32_t conflict_limit{1000};
@@ -167,6 +167,11 @@ public:
           simulate_nodes<Ntk>( ntk, tts, sim, true );
         } );
       }
+    }
+
+    if constexpr( std::is_same_v<Simulator, bit_packed_simulator> )
+    {
+      sim.randomize_dont_care_bits( ps.random_seed );
     }
   }
 

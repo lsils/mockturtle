@@ -98,10 +98,10 @@ struct resubstitution_params
   uint32_t conflict_limit{1000};
 
   /*! \brief Random seed for the SAT solver (influences the randomness of counter-examples). Only used by simulation-based resub engine. */
-  uint32_t random_seed{0};
+  uint32_t random_seed{1};
 
   /*! \brief Whether to utilize ODC, and how many levels. 0 = no. -1 = Consider TFO until PO. Only used by simulation-based resub engine. */
-  int odc_levels{0};
+  int32_t odc_levels{0};
 
   /*! \brief Maximum number of trials to call the resub functor. Only used by simulation-based resub engine. */
   uint32_t max_trials{100};
