@@ -1,5 +1,5 @@
-Expressive simulation pattern generation
-----------------------------------------
+Simulation pattern generation
+-----------------------------
 
 **Header:** ``mockturtle/algorithms/pattern_generation.hpp``
 

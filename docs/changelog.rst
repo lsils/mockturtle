@@ -35,12 +35,15 @@ v0.2 (not yet released)
 * Views:
     - Assign names to signals and outputs (`names_view`) `#181 <https://github.com/lsils/mockturtle/pull/181>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
     - Creates a CNF while creating a network (`cnf_view`) `#274 <https://github.com/lsils/mockturtle/pull/274>`_
+    - Revised window view (`window_view`) `#381 <https://github.com/lsils/mockturtle/pull/381>`_
+    - In-place and out-of-place color view (`color_view`, `out_of_place_color_view`) `#381 <https://github.com/lsils/mockturtle/pull/381>`_
 * I/O:
     - Write networks to DIMACS files for CNF (`write_dimacs`) `#146 <https://github.com/lsils/mockturtle/pull/146>`_
     - Read BLIF files using *lorina* (`blif_reader`) `#167 <https://github.com/lsils/mockturtle/pull/167>`_
     - Write networks to BLIF files (`write_blif`) `#169 <https://github.com/lsils/mockturtle/pull/169>`_ `#184 <https://github.com/lsils/mockturtle/pull/184>`_
-    - Create circuit from integer index list (`create_from_binary_index_list`) `#259 <https://github.com/lsils/mockturtle/pull/259>`_
     - Write networks to AIGER files (`write_aiger`) `#379 <https://github.com/lsils/mockturtle/pull/379>`_
+* Utils
+    - Create circuit from integer index list (`encode`, `decode`, `insert`, `to_index_list_string`) `#385 <https://github.com/lsils/mockturtle/pull/385>`_
 * Resynthesis functions:
     - Resynthesis function based on DSD decomposition (`dsd_resynthesis`) `#182 <https://github.com/lsils/mockturtle/pull/182>`_
     - Resynthesis function based on Shannon decomposition (`shannon_resynthesis`) `#185 <https://github.com/lsils/mockturtle/pull/185>`_
@@ -63,6 +66,8 @@ v0.2 (not yet released)
     - Random logic networks for XAGs (`random_logic_generator`) `#366 <https://github.com/lsils/mockturtle/pull/366>`_
 * Properties:
     - Costs based on multiplicative complexity (`multiplicative_complexity` and `multiplicative_complexity_depth`) `#170 <https://github.com/lsils/mockturtle/pull/170>`_
+* Utils:
+    - Computing windows and manipulating cuts (`create_window_impl`, `collect_nodes`, `collect_inputs`, `collect_outputs`, `expand0_towards_tfi`, `expand_towards_tfi`, `expand_towards_tfo`, `levelized_expand_towards_tfo`) `#381 <https://github.com/lsils/mockturtle/pull/381>`_
 
 v0.1 (March 31, 2019)
 ---------------------

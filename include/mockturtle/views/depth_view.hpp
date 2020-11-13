@@ -178,6 +178,11 @@ public:
     _levels[n] = level;
   }
 
+  void set_depth( uint32_t level )
+  {
+    _depth = level;
+  }
+
   void update_levels()
   {
     _levels.reset( 0 );

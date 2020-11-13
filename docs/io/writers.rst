@@ -1,7 +1,7 @@
 Write into file formats
 -----------------------
 
-Write into BENCH files
+Write into AIGER files
 ~~~~~~~~~~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/io/write_aiger.hpp``

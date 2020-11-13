@@ -63,6 +63,13 @@ inline void Vec_IntClear( Vec_Int_t * p )
     p->nSize = 0;
 }
 
+inline void Vec_IntErase( Vec_Int_t * p )
+{
+    ABC_FREE( p->pArray );
+    p->nSize = 0;
+    p->nCap = 0;
+}
+
 inline void Vec_IntFree( Vec_Int_t * p )
 {
     ABC_FREE( p->pArray );
@@ -124,6 +131,13 @@ inline void Vec_IntPushTwo( Vec_Int_t * p, int Entry1, int Entry2 )
     Vec_IntPush( p, Entry2 );
 }
 
+inline void Vec_IntPushArray( Vec_Int_t * p, int * pEntries, int nEntries )
+{
+    int i;
+    for ( i = 0; i < nEntries; i++ )
+        Vec_IntPush( p, pEntries[i] );
+}
+
 inline int Vec_IntTwoFindCommon( Vec_Int_t * vArr1, Vec_Int_t * vArr2, Vec_Int_t * vArr )
 {
     int * pBeg1 = vArr1->pArray;
@@ -152,6 +166,38 @@ inline Vec_Int_t * Vec_IntDup( Vec_Int_t * pVec )
     p->pArray = p->nCap? ABC_ALLOC( int, p->nCap ) : NULL;
     memcpy( p->pArray, pVec->pArray, sizeof(int) * (size_t)pVec->nSize );
     return p;
+}
+
+inline void Vec_IntAppend( Vec_Int_t * vVec1, Vec_Int_t * vVec2 )
+{
+    int Entry, i;
+    Vec_IntForEachEntry( vVec2, Entry, i )
+        Vec_IntPush( vVec1, Entry );
+}
+
+inline int Vec_IntFind( Vec_Int_t * p, int Entry )
+{
+    int i;
+    for ( i = 0; i < p->nSize; i++ )
+        if ( p->pArray[i] == Entry )
+            return i;
+    return -1;
+}
+
+inline void Vec_IntZero( Vec_Int_t * p )
+{
+    p->pArray = NULL;
+    p->nSize = 0;
+    p->nCap = 0;
+}
+
+inline void Vec_IntFill( Vec_Int_t * p, int nSize, int Fill )
+{
+    int i;
+    Vec_IntGrow( p, nSize );
+    for ( i = 0; i < nSize; i++ )
+        p->pArray[i] = Fill;
+    p->nSize = nSize;
 }
 
 } /* namespace abcresub */

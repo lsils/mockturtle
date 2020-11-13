@@ -232,7 +232,6 @@ public:
     _storage->outputs.emplace_back( f.index, f.complement );
     _storage->data.latches.emplace_back( reset );
     return static_cast<uint32_t>( ri_index );
-
   }
 
   int8_t latch_reset( uint32_t index ) const

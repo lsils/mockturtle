@@ -303,7 +303,7 @@ public:
 
   bit_packed_simulator() {}
 
-  bit_packed_simulator( unsigned num_pis, unsigned num_patterns, std::default_random_engine::result_type seed = 0 )
+  bit_packed_simulator( unsigned num_pis, unsigned num_patterns, std::default_random_engine::result_type seed = 1 )
     : partial_simulator( num_pis, num_patterns, seed ), packed_patterns( num_patterns )
   {
     fill_cares( num_pis );
@@ -412,6 +412,16 @@ public:
     }
     packed_patterns = num_patterns;
     return false;
+  }
+
+  void randomize_dont_care_bits( std::default_random_engine::result_type seed = 1 )
+  {
+    for ( auto i = 0u; i < patterns.size(); ++i )
+    {
+      kitty::partial_truth_table tt( num_patterns );
+      kitty::create_random( tt, seed + patterns.size() + i );
+      patterns.at( i ) = ( patterns.at( i ) & care.at( i ) ) | ( tt & ~care.at( i ) );
+    }
   }
 
 private:

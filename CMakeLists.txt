@@ -10,6 +10,7 @@ option(MOCKTURTLE_TEST "Build tests" OFF)
 option(MOCKTURTLE_EXPERIMENTS "Build experiments" OFF)
 option(BILL_Z3 "Enable Z3 interface for bill library" OFF)
 option(ENABLE_COVERAGE "Enable coverage reporting for gcc/clang" OFF)
+option(ENABLE_MATPLOTLIB "Enable matplotlib library in experiments" OFF)
 
 if(UNIX)
   # show quite some warnings (but remove some intentionally)
