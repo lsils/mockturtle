@@ -783,3 +783,33 @@ TEST_CASE( "substitute node by constant in NAND-based XOR circuit (test case 2)"
   CHECK( aig.fanout_size( aig.get_node( f3 ) ) == 0u );
   CHECK( aig.fanout_size( aig.get_node( f4 ) ) == 1u );
 }
+
+TEST_CASE( "remove node from AIG", "[aig]" )
+{
+  aig_network aig;
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+
+  const auto f1 = aig.create_and( x1, x2 );
+  const auto f2 = aig.create_or( x1, x2 );
+  (void)f2;
+
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 2u );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 2u );
+
+  /* delete node */
+  CHECK( !aig.is_dead( aig.get_node( f1 ) ) );
+  aig.take_out_node( aig.get_node( f1 ) );
+
+  CHECK( aig.is_dead( aig.get_node( f1 ) ) );
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1u );
+
+  /* ensure that double deletion has no affect on x1 and x2 */
+  CHECK( aig.is_dead( aig.get_node( f1 ) ) );
+  aig.take_out_node( aig.get_node( f1 ) );
+
+  CHECK( aig.is_dead( aig.get_node( f1 ) ) );
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1u );
+}

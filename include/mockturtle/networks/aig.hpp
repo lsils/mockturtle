@@ -525,8 +525,8 @@ public:
 
   void take_out_node( node const& n )
   {
-    /* we cannot delete CIs or constants */
-    if ( n == 0 || is_ci( n ) )
+    /* we cannot delete CIs, constants, or already dead nodes */
+    if ( n == 0 || is_ci( n ) || is_dead( n ))
       return;
 
     auto& nobj = _storage->nodes[n];
