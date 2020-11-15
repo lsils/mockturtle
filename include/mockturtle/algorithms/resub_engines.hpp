@@ -224,7 +224,7 @@ class mig_resub_engine
   struct simple_maj
   {
     std::vector<uint32_t> fanins; /* ids of divisors */
-    TT function; /* resulting function */
+    TT function = TT(); /* resulting function */
   };
 
 public:
@@ -286,46 +286,57 @@ private:
     maj_nodes.reserve( size_limit );
     /* topmost node: care is const1 */
     TT const const1 = divisors.at( 0u ) | divisors.at( 1u );
-    simple_maj const top_node = expand_one( const1 );
+    //simple_maj const top_node = expand_one( const1 );
+    std::vector<simple_maj> top_node_choices = construct_top();
     
-    if ( kitty::is_const0( ~top_node.function ) )
+    if ( top_node_choices.size() == 1u && kitty::is_const0( ~top_node_choices[0].function ) )
     {
       /* 1-resub */
       std::vector<uint32_t> index_list;
-      index_list.emplace_back( top_node.fanins.at( 0u ) );
-      index_list.emplace_back( top_node.fanins.at( 1u ) );
-      index_list.emplace_back( top_node.fanins.at( 2u ) );
+      index_list.emplace_back( top_node_choices[0].fanins.at( 0u ) );
+      index_list.emplace_back( top_node_choices[0].fanins.at( 1u ) );
+      index_list.emplace_back( top_node_choices[0].fanins.at( 2u ) );
       index_list.emplace_back( divisors.size() );
       return index_list;
     }
+    if ( size_limit == 1u )
+    {
+      return std::nullopt;
+    }
 
     std::vector<maj_node> copy;
-    for ( int32_t i = 0; i < 3; ++i )
+    for ( simple_maj const& top_node : top_node_choices )
     {
-      if (p) { std::cout<<"=== try expand "<<i<<" first ===\n"; }
-      maj_nodes.clear();
-      maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), top_node.fanins, {divisors.at( top_node.fanins[0] ), divisors.at( top_node.fanins[1] ), divisors.at( top_node.fanins[2] )}, const1} );
-
-      TT const care = ~( divisors.at( top_node.fanins[sibling_index( i, 1 )] ) & divisors.at( top_node.fanins[sibling_index( i, 2 )] ) );
-      if ( evaluate_one( care, divisors.at( top_node.fanins[i] ), expansion_position{0, i} ) )
+      if (p) { std::cout<<"===== try with top node <"<<top_node.fanins[0]<<", "<<top_node.fanins[1]<<", "<<top_node.fanins[2]<<"> =====\n"; }
+      for ( int32_t i = 0; i < 3; ++i )
       {
-        /* 2-resub */
-        copy = maj_nodes;
-        break;
-      }
+        if (p) { std::cout<<"=== try expand "<<i<<" first ===\n"; }
+        maj_nodes.clear();
+        maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), top_node.fanins, {divisors.at( top_node.fanins[0] ), divisors.at( top_node.fanins[1] ), divisors.at( top_node.fanins[2] )}, const1} );
 
-      leaves.clear();
-      back_up.clear();
-      leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 1 )} );
-      leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 2 )} );
-      if ( !refine() )
-      {
-        continue;
-      }
+        TT const care = ~( divisors.at( top_node.fanins[sibling_index( i, 1 )] ) & divisors.at( top_node.fanins[sibling_index( i, 2 )] ) );
+        if ( evaluate_one( care, divisors.at( top_node.fanins[i] ), expansion_position{0, i} ) )
+        {
+          /* 2-resub */
+          copy = maj_nodes;
+          break;
+        }
 
-      if ( copy.size() == 0u || maj_nodes.size() < copy.size() )
-      {
-        copy = maj_nodes;
+        leaves.clear();
+        improve_in_parent.clear();
+        shuffle.clear();
+        first_round = true;
+        leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 1 )} );
+        leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 2 )} );
+        if ( !refine() )
+        {
+          continue;
+        }
+
+        if ( copy.size() == 0u || maj_nodes.size() < copy.size() )
+        {
+          copy = maj_nodes;
+        }
       }
     }
 
@@ -359,16 +370,24 @@ private:
 
   bool refine()
   {
-    while ( ( leaves.size() != 0u || back_up.size() != 0u ) && maj_nodes.size() < size_limit )
+    while ( ( leaves.size() != 0u || improve_in_parent.size() != 0u || shuffle.size() != 0u ) && maj_nodes.size() < size_limit )
     {
       if ( leaves.size() == 0u )
       {
-        leaves = back_up;
-        back_up.clear();
+        if ( improve_in_parent.size() != 0u )
+        {
+          leaves = improve_in_parent;
+          improve_in_parent.clear();
+        }
+        else
+        {
+          leaves = shuffle;
+          shuffle.clear();
+        }
         first_round = false;
       }
 
-      uint32_t max_mismatch = 0u;
+      uint32_t min_mismatch = num_bits + 1;
       uint32_t pos = 0u;
       for ( int32_t i = 0; (unsigned)i < leaves.size(); ++i )
       {
@@ -394,10 +413,10 @@ private:
         }
 
         uint32_t const mismatch = count_ones( care & ~original_function );
-        if ( mismatch > max_mismatch )
+        if ( mismatch < min_mismatch )
         {
           pos = i;
-          max_mismatch = mismatch;
+          min_mismatch = mismatch;
         }
       }
       if ( leaves.size() == 0u )
@@ -440,14 +459,31 @@ private:
       if ( kitty::count_ones( new_node.function & parent_node.care ) > kitty::count_ones( original_function & parent_node.care ) )
       {
         if (p) { std::cout<<"...but covers more care bits of parent node.\n"; }
+        if ( first_round )
+        {
+          /* We put it into a back-up queue for now */
+          improve_in_parent.emplace_back( node_position );
+          return false;
+        }
+        else
+        {
+          /* When there is no other possibilities, we try one in the back-up queues, and go back to the stricter state */
+          first_round = true;
+        }
       }
       else if ( kitty::count_ones( new_node.function & parent_node.care ) == kitty::count_ones( original_function & parent_node.care ) && new_node.function != original_function )
       {
         if (p) { std::cout<<"...and also covers the same # of care bits of parent node, but the function is different.\n"; }
         if ( first_round )
         {
-          back_up.emplace_back( node_position );
+          /* We put it into a back-up queue for now */
+          shuffle.emplace_back( node_position );
           return false;
+        }
+        else
+        {
+          /* When there is no other possibilities, we try one in the back-up queues, and go back to the stricter state */
+          first_round = true;
         }
       }
       else
@@ -553,6 +589,95 @@ private:
     if (p) { std::cout<<"resulting function: <"<<max_i<<", "<<max_j<<", "<<max_k<<"> = "; kitty::print_binary(kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k ) )); std::cout<<"\n"; }
     computed_table[care] = simple_maj( {{max_i, max_j, max_k}, kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k ) )} );
     return computed_table[care];
+  }
+
+  std::vector<simple_maj> construct_top()
+  {
+    if (p) { std::cout << "constructing topmost node\n"; }
+    std::vector<simple_maj> res;
+
+    /* the first fanin: cover most bits */
+    uint64_t max_score = 0u;
+    for ( auto i = 0u; i < divisors.size(); ++i )
+    {
+      scores.at( i ) = kitty::count_ones( divisors.at( i ) );
+      if ( scores.at( i ) > max_score )
+      {
+        max_score = scores.at( i );
+      }
+    }
+    for ( auto i = 0u; i < divisors.size(); ++i )
+    {
+      if ( scores.at( i ) == max_score )
+      {
+        if ( construct_top( i, res ) )
+        {
+          break;
+        }
+      }
+    }
+    return res;
+  }
+
+  bool construct_top( uint32_t max_i, std::vector<simple_maj>& res )
+  {
+    /* the second fanin: 2 * #newly-covered-bits + 1 * #cover-again-bits */
+    uint64_t max_score = 0u;
+    auto const not_covered_by_i = ~divisors.at( max_i );
+    for ( auto j = 0u; j < divisors.size(); ++j )
+    {
+      auto const covered_by_j = divisors.at( j );
+      scores.at( j ) = kitty::count_ones( covered_by_j ) + kitty::count_ones( not_covered_by_i & covered_by_j );
+      if ( scores.at( j ) > max_score && !same_divisor( j, max_i ) )
+      {
+        max_score = scores.at( j );
+      }
+    }
+    for ( auto j = 0u; j < divisors.size(); ++j )
+    {
+      if ( scores.at( j ) == max_score )
+      {
+        if ( construct_top( max_i, j, res ) )
+        {
+          break;
+        }
+      }
+    }
+    return false;
+  }
+
+  bool construct_top( uint32_t max_i, uint32_t max_j, std::vector<simple_maj>& res )
+  {
+    /* the third fanin: 2 * #cover-never-covered-bits + 1 * #cover-covered-once-bits */
+    uint64_t max_score = 0u;
+    auto const not_covered_by_i = ~divisors.at( max_i );
+    auto const not_covered_by_j = ~divisors.at( max_j );
+    for ( auto k = 0u; k < divisors.size(); ++k )
+    {
+      auto const covered_by_k = divisors.at( k );
+      scores.at( k ) = kitty::count_ones( covered_by_k & not_covered_by_i ) + kitty::count_ones( covered_by_k & not_covered_by_j );
+      if ( scores.at( k ) > max_score && !same_divisor( k, max_i ) && !same_divisor( k, max_j ) )
+      {
+        max_score = scores.at( k );
+      }
+    }
+
+    for ( auto k = 0u; k < divisors.size(); ++k )
+    {
+      if ( scores.at( k ) == max_score )
+      {
+        TT const func = kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( k ) );
+        if (p) { std::cout<<"<"<<max_i<<", "<<max_j<<", "<<k<<"> = "; kitty::print_binary(func); std::cout<<"\n"; }
+        if ( kitty::is_const0( ~func ) )
+        {
+          res.clear();
+          res.emplace_back( simple_maj( {{max_i, max_j, k}, func} ) );
+          return true;
+        }
+        res.emplace_back( simple_maj( {{max_i, max_j, k}, func} ) );
+      }
+    }
+    return false;
   }
 
 private:
@@ -664,8 +789,7 @@ private:
   std::vector<maj_node> maj_nodes; /* the really used nodes */
   std::unordered_map<TT, simple_maj, kitty::hash<TT>> computed_table; /* map from care to a simple_maj with divisors as fanins */
 
-  std::vector<expansion_position> leaves;
-  std::vector<expansion_position> back_up;
+  std::vector<expansion_position> leaves, improve_in_parent, shuffle;
   bool first_round = true;
 }; /* mig_resub_engine */
 
