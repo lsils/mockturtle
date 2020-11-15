@@ -147,10 +147,19 @@ bool network_is_acylic_recur( Ntk const& ntk, typename Ntk::node const& n )
   }
 
   ntk.paint( n, ntk.current_color() - 1 );
+
+  bool result{true};
   ntk.foreach_fanin( n, [&]( signal const& fi ) {
-    network_is_acylic_recur( ntk, ntk.get_node( fi ) );
+    if ( !network_is_acylic_recur( ntk, ntk.get_node( fi ) ) )
+    {
+      result = false;
+      return false;
+    }
+    return true;
   });
   ntk.paint( n, ntk.current_color() );
+
+  return result;
 }
 
 } /* namespace detail */
@@ -180,14 +189,17 @@ bool network_is_acylic( Ntk const& ntk )
     ntk.paint( n );
   });
 
+  bool result{true};
   ntk.foreach_co( [&]( signal const& o ){
     if ( !detail::network_is_acylic_recur( ntk, ntk.get_node( o ) ) )
     {
+      result = false;
       return false;
     }
+    return true;
   });
 
-  return true;
+  return result;
 }
 
 } /* namespace mockturtle */
