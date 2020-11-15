@@ -511,6 +511,9 @@ public:
 
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
+    if ( is_dead( old_node ) )
+      return;
+
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
