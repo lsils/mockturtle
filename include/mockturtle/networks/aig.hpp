@@ -312,6 +312,7 @@ public:
     const auto it = _storage->hash.find( node );
     if ( it != _storage->hash.end() )
     {
+      assert( !is_dead( it->second ) );
       return {it->second, 0};
     }
 
