@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2020  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -36,10 +36,10 @@
 #include "../networks/detail/foreach.hpp"
 #include "../utils/window_utils.hpp"
 #include "immutable_view.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
-#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -65,9 +65,13 @@ namespace mockturtle
  * because there are different strategies to construct a window from a
  * support set.  The outputs could be automatically computed.
  *
- * The window_view implements one new API method:
+ * The window_view implements three new API methods:
  *   1.) `belongs_to`: takes a node (or a signal) and returns true if and
  *       only if the corresponding node belongs to the window
+ *   2.) `foreach_internal_fanout`: takes a node and invokes a predicate
+         on all fanout nodes of the node that belong to the window
+ *   3.) `foreach_exnteral_fanout`: takes a node and invokes a predicate
+         on all fanouts of the node that do not belong to the window
  */
 template<typename Ntk>
 class window_view : public immutable_view<Ntk>
@@ -175,6 +179,17 @@ public:
   {
     return is_pi( n );
   }
+
+  signal po_at( uint32_t index ) const
+  {
+    assert( index < _outputs.size() );
+    return *( std::begin( _outputs ) + index );
+  }
+
+  signal co_at( uint32_t index ) const
+  {
+    return po_at( index );
+  }
 #pragma endregion
 
 #pragma region Node and signal iterators
@@ -245,6 +260,28 @@ public:
     /* if it's not a window input, the node has to be a window node */
     assert( std::find( std::begin( _nodes ) + 1 + _inputs.size(), std::end( _nodes ), n ) != std::end( _nodes ) );
     immutable_view<Ntk>::foreach_fanin( n, fn );
+  }
+
+  template<typename Fn>
+  void foreach_internal_fanout( node const& n, Fn&& fn ) const
+  {
+    this->foreach_fanout( n, [&]( node const& fo ){
+      if ( tbelongs_to( fo ) )
+      {
+        fn( fo );
+      }
+    });
+  }
+
+  template<typename Fn>
+  void foreach_external_fanout( node const& n, Fn&& fn ) const
+  {
+    this->foreach_fanout( n, [&]( node const& fo ){
+      if ( !belongs_to( fo ) )
+      {
+        fn( fo );
+      }
+    });
   }
 #pragma endregion
 
