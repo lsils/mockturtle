@@ -312,6 +312,7 @@ public:
     const auto it = _storage->hash.find( node );
     if ( it != _storage->hash.end() )
     {
+      assert( !is_dead( it->second ) );
       return {it->second, 0};
     }
 
@@ -510,6 +511,9 @@ public:
 
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
+    if ( is_dead( old_node ) )
+      return;
+
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -525,8 +529,8 @@ public:
 
   void take_out_node( node const& n )
   {
-    /* we cannot delete CIs or constants */
-    if ( n == 0 || is_ci( n ) )
+    /* we cannot delete CIs, constants, or already dead nodes */
+    if ( n == 0 || is_ci( n ) || is_dead( n ) )
       return;
 
     auto& nobj = _storage->nodes[n];
@@ -568,7 +572,7 @@ public:
 
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
-        if ( is_ci( idx ) )
+        if ( is_ci( idx ) || is_dead( idx ) )
           continue; /* ignore CIs */
 
         if ( const auto repl = replace_in_node( idx, _old, _new ); repl )
