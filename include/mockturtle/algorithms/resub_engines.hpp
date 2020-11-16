@@ -314,6 +314,13 @@ private:
         maj_nodes.clear();
         maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), top_node.fanins, {divisors.at( top_node.fanins[0] ), divisors.at( top_node.fanins[1] ), divisors.at( top_node.fanins[2] )}, const1} );
 
+        leaves.clear();
+        improve_in_parent.clear();
+        shuffle.clear();
+        first_round = true;
+        leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 1 )} );
+        leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 2 )} );
+
         TT const care = ~( divisors.at( top_node.fanins[sibling_index( i, 1 )] ) & divisors.at( top_node.fanins[sibling_index( i, 2 )] ) );
         if ( evaluate_one( care, divisors.at( top_node.fanins[i] ), expansion_position{0, i} ) )
         {
@@ -322,12 +329,6 @@ private:
           break;
         }
 
-        leaves.clear();
-        improve_in_parent.clear();
-        shuffle.clear();
-        first_round = true;
-        leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 1 )} );
-        leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 2 )} );
         if ( !refine() )
         {
           continue;
@@ -372,6 +373,11 @@ private:
   {
     while ( ( leaves.size() != 0u || improve_in_parent.size() != 0u || shuffle.size() != 0u ) && maj_nodes.size() < size_limit )
     {
+      if (p) {
+        std::cout<<"leaves: "; for(auto l : leaves) std::cout<<"("<<l.parent_position<<", "<<l.fanin_num<<") "; std::cout<<"\n";
+        std::cout<<"improve_in_parent: "; for(auto l : improve_in_parent) std::cout<<"("<<l.parent_position<<", "<<l.fanin_num<<") "; std::cout<<"\n";
+        std::cout<<"shuffle: "; for(auto l : shuffle) std::cout<<"("<<l.parent_position<<", "<<l.fanin_num<<") "; std::cout<<"\n";
+      }
       if ( leaves.size() == 0u )
       {
         if ( improve_in_parent.size() != 0u )
