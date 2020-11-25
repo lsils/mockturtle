@@ -351,12 +351,10 @@ private:
         updates.push_back( p );
       }
 
-      for ( auto idx = 1u; idx < ntk._storage->nodes.size(); ++idx )
+      const auto parents = ntk.fanout( _old );
+      for ( auto n : parents )
       {
-        if ( ntk.is_ci( idx ) || ntk.is_dead( idx ) )
-          continue; /* ignore CIs */
-
-        if ( const auto repl = ntk.replace_in_node( idx, _old, _new ); repl )
+        if ( const auto repl = ntk.replace_in_node( n, _old, _new ); repl )
         {
           to_substitute.push( *repl );
           ++st.num_restrashes;
