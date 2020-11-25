@@ -63,6 +63,46 @@ struct window_rewriting_stats
 namespace detail
 {
 
+template<typename Ntk>
+bool is_contained_in_tfi_recursive( Ntk const& ntk, typename Ntk::node const& node, typename Ntk::node const& n )
+{
+  if ( ntk.color( node ) == ntk.current_color() )
+  {
+    return false;
+  }
+  ntk.paint( node );
+
+  if ( n == node )
+  {
+    return true;
+  }
+
+  bool found = false;
+  ntk.foreach_fanin( node, [&]( typename Ntk::signal const& fi ){
+    if ( is_contained_in_tfi_recursive( ntk, ntk.get_node( fi ), n ) )
+    {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+
+  return found;
+}
+
+} /* namespace detail */
+
+template<typename Ntk>
+bool is_contained_in_tfi( Ntk const& ntk, typename Ntk::node const& node, typename Ntk::node const& n )
+{
+  /* do not even build the TFI and just search for the node */
+  ntk.new_color();
+  return is_contained_in_tfi_recursive( ntk, node, n );
+}
+
+namespace detail
+{
+
 template<class Ntk>
 class window_rewriting_impl
 {
@@ -137,40 +177,42 @@ public:
 
         std::vector<signal> new_outputs;
         uint32_t counter{0};
-        bool substitution_failure = false;
 
         ++st.num_substitutions;
         insert( ntk, std::begin( signals ), std::end( signals ), *il_opt,
                 [&]( signal const& _new )
                 {
                   auto const _old = outputs.at( counter++ );
-                  if ( substitution_failure )
-                  {
-                    if ( ntk.fanout_size( ntk.get_node( _new ) ) == 0 )
-                    {
-                      ntk.take_out_node( ntk.get_node( _new ) );
-                    }
-                    return true;
-                  }
                   if ( _old == _new )
                   {
                     return true;
                   }
-                  else if ( ntk.level( ntk.get_node( _old ) ) >= ntk.level( ntk.get_node( _new ) ) )
+
+                  /* ensure that _old is not in the TFI of _new */
+                  // assert( !is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) );
+                  if ( is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) )
                   {
-                    auto const updates = substitute_node( ntk.get_node( _old ), topo_win.is_complemented( _old ) ? !_new : _new );
-                    update_vector( outputs, updates );
+                    std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
+                    ntk.take_out_node( ntk.get_node( _new ) );
+                    return false;
                   }
-                  else
-                  {
-                    if ( ntk.fanout_size( ntk.get_node( _new ) ) == 0 )
-                    {
-                      ntk.take_out_node( ntk.get_node( _new ) );
-                    }
-                    substitution_failure = true;
-                  }
+
+                  auto const updates = substitute_node( ntk.get_node( _old ), topo_win.is_complemented( _old ) ? !_new : _new );
+                  update_vector( outputs, updates );
                   return true;
                 });
+
+        /* recompute levels and depth */
+        ntk.update_levels();
+
+        /* ensure that no dead nodes are reachable */
+        assert( count_reachable_dead_nodes( ntk ) == 0u );
+
+        /* ensure that the network structure is still acyclic */
+        assert( network_is_acylic( ntk ) );
+
+        /* ensure that the levels and depth is correct */
+        assert( check_network_levels( ntk ) );
 
         /* update internal data structures in windowing */
         windowing.resize( ntk.size() );
@@ -301,10 +343,6 @@ private:
     if ( curr_level != max_level )
     {
       ntk.set_level( n, max_level );
-      if ( max_level >= ntk.depth() )
-      {
-        ntk.set_depth( max_level + 1 );
-      }
 
       /* update only one more level */
       if ( top_most )

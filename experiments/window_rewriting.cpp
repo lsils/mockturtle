@@ -44,7 +44,7 @@ int main()
   experiment<std::string, uint64_t, uint64_t, double, uint64_t, bool>
     exp( "window_rewriting", "benchmark", "size_before", "size_after", "runtime", "resubs", "equivalent" );
 
-  for ( auto const& benchmark : epfl_benchmarks() )
+  for ( auto const& benchmark : all_benchmarks( iscas | epfl ) )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
