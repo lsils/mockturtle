@@ -250,7 +250,10 @@ public:
                   if ( ps.filter_cyclic_substitutions && is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) )
                   {
                     std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
-                    ntk.take_out_node( ntk.get_node( _new ) );
+                    if ( ntk.fanout_size( ntk.get_node( _new ) ) == 0u )
+                    {
+                      ntk.take_out_node( ntk.get_node( _new ) );
+                    }
                     return false;
                   }
 
