@@ -811,3 +811,36 @@ TEST_CASE( "invoke take_out_node two times on the same node", "[aig]" )
   CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1u );
   CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1u );
 }
+
+TEST_CASE( "substitute node and restrash", "[aig]" )
+{
+  aig_network aig;
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+
+  auto const f1 = aig.create_and( x1, x2 );
+  auto const f2 = aig.create_and( f1, x2 );
+  aig.create_po( f2 );
+
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 2 );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x8 );
+
+  /* substitute f1 with x1
+   *
+   * this is a very interesting test case because replacing f1 with x1
+   * in f2 makes f2 and f1 equal.  a correct implementation will
+   * create a new entry in the hash, although (x1, x2) is already
+   * there, because (x1, x2) will be deleted in the next step.
+   */
+  aig.substitute_node( aig.get_node( f1 ), x1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x8 );
+
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 0 );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
+}
