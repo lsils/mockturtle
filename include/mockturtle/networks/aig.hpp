@@ -584,8 +584,16 @@ public:
       /* check outputs */
       replace_in_outputs( _old, _new );
 
-      // reset fan-in of old node
-      take_out_node( _old );
+      /* recursively reset old node */
+      if ( _old != _new.index )
+      {
+        take_out_node( _old );
+      }
+      else
+      {
+        /* if _old is substituted by its complement, then only decrement _old */
+        decr_fanout_size( _old );
+      }
     }
   }
 #pragma endregion
