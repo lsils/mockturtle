@@ -844,3 +844,30 @@ TEST_CASE( "substitute node and restrash", "[aig]" )
   CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 0 );
   CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
 }
+
+TEST_CASE( "substitute node with complemented node", "[aig]" )
+{
+  aig_network aig;
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+
+  auto const f1 = aig.create_and( x1, x2 );
+  auto const f2 = aig.create_and( x1, f1 );
+  aig.create_po( f2 );
+
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 2 );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x8 );
+
+  aig.substitute_node( aig.get_node( f2 ), !f2 );
+
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 2 );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x7 );
+}
