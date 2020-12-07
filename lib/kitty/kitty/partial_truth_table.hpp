@@ -37,6 +37,7 @@
 #include <vector>
 #include <iostream>
 #include <iomanip>
+#include <cassert>
 
 #include "detail/constants.hpp"
 #include "traits.hpp"

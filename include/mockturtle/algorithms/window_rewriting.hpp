@@ -39,6 +39,7 @@
 
 #include <abcresub/abcresub2.hpp>
 #include <fmt/format.h>
+#include <stack>
 
 #pragma once
 
