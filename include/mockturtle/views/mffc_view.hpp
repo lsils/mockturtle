@@ -36,8 +36,9 @@
 #include <cstdint>
 #include <vector>
 
+#include <parallel_hashmap/phmap.h>
+
 #include "../networks/detail/foreach.hpp"
-#include "../utils/include/spp.hpp"
 #include "../traits.hpp"
 #include "immutable_view.hpp"
 
@@ -291,7 +292,7 @@ public:
   std::vector<node> _nodes, _constants, _leaves, _inner, _topo;
   std::vector<uint8_t> _colors;
   unsigned _num_constants{1}, _num_leaves{0};
-  spp::sparse_hash_map<node, uint32_t> _node_to_index;
+  phmap::flat_hash_map<node, uint32_t> _node_to_index;
   node _root;
   bool _empty{true};
   uint32_t _limit{100};
