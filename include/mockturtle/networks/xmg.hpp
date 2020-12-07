@@ -296,10 +296,6 @@ public:
     {
       return ( b.complement == c.complement ) ? b : a;
     }
-    else if ( a.index == b.index == c.index )
-    {
-      return ( a.complement == b.complement ) ? a : c;
-    }
 
     /*  complemented edges minimization */
     auto node_complement = false;
@@ -376,10 +372,6 @@ public:
       return c ^ fcompl;
     }
     else if ( b.index == c.index )
-    {
-      return a ^ fcompl;
-    }
-    else if ( ( a.index == b.index ) && ( b.index == c.index ) )
     {
       return a ^ fcompl;
     }
@@ -620,10 +612,6 @@ public:
         return std::make_pair( n, child2 ^ node_complement );
       }
       else if ( child1.index == child2.index )
-      {
-        return std::make_pair( n, child0 ^ node_complement );
-      }
-      else if ( ( child0.index == child1.index ) && ( child1.index == child2.index ) )
       {
         return std::make_pair( n, child0 ^ node_complement );
       }
