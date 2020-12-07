@@ -39,6 +39,7 @@
 #pragma once
 
 #include <mockturtle/networks/aig.hpp>
+#include <parallel_hashmap/phmap_dump.h>
 #include <fstream>
 
 namespace mockturtle
@@ -54,49 +55,43 @@ public:
   using pointer_type = typename node_type::pointer_type;
 
 public:
-  bool operator()( std::ostream *os, uint64_t const& data ) const
+  bool operator()( phmap::BinaryOutputArchive& os, uint64_t const& data ) const
   {
-    os->write( (char*)&data, sizeof( uint64_t ) );
-    return os->good();
+    return os.dump( (char*)&data, sizeof( uint64_t ) );
   }
 
-  bool operator()( std::istream *is, uint64_t* data ) const
+  bool operator()( phmap::BinaryInputArchive& ar_input, uint64_t* data ) const
   {
-    is->read( (char*)data, sizeof( uint64_t ) );
-    return is->good();
-  }
-
-  template<int PointerFieldSize>
-  bool operator()( std::ostream *os, node_pointer<PointerFieldSize> const& ptr ) const
-  {
-    os->write( (char*)&ptr.data, sizeof( ptr.data ) );
-    return os->good();
+    return ar_input.load( (char*)data, sizeof( uint64_t ) );
   }
 
   template<int PointerFieldSize>
-  bool operator()( std::istream *is, node_pointer<PointerFieldSize>* ptr ) const
+  bool operator()( phmap::BinaryOutputArchive& os, node_pointer<PointerFieldSize> const& ptr ) const
   {
-    is->read( (char*)&ptr->data, sizeof( ptr->data ) );
-    return is->good();
+    return os.dump( (char*)&ptr.data, sizeof( ptr.data ) );
+  }
+
+  template<int PointerFieldSize>
+  bool operator()( phmap::BinaryInputArchive& ar_input, node_pointer<PointerFieldSize>* ptr ) const
+  {
+    return ar_input.load( (char*)&ptr->data, sizeof( ptr->data ) );
   }
   
-  bool operator()( std::ostream *os, cauint64_t const& data ) const
+  bool operator()( phmap::BinaryOutputArchive& os, cauint64_t const& data ) const
   {
-    os->write( (char*)&data.n, sizeof( data.n ) );
-    return os->good();
+    return os.dump( (char*)&data.n, sizeof( data.n ) );
   }
 
-  bool operator()( std::istream *is, cauint64_t* data ) const
+  bool operator()( phmap::BinaryInputArchive& ar_input, cauint64_t* data ) const
   {
-    is->read( (char*)&data->n, sizeof( data->n ) );
-    return is->good();
+    return ar_input.load( (char*)&data->n, sizeof( data->n ) );
   }
   
   template<int Fanin, int Size, int PointerFieldSize>
-  bool operator()( std::ostream *os, regular_node<Fanin, Size, PointerFieldSize> const& n ) const
+  bool operator()( phmap::BinaryOutputArchive& os, regular_node<Fanin, Size, PointerFieldSize> const& n ) const
   {
     uint64_t size = n.children.size();
-    os->write( (char*)&size, sizeof( uint64_t ) );
+    os.dump( (char*)&size, sizeof( uint64_t ) );
 
     for ( const auto& c : n.children )
     {
@@ -108,7 +103,7 @@ public:
     }
 
     size = n.data.size();
-    os->write( (char*)&size, sizeof( uint64_t ) );
+    os.dump( (char*)&size, sizeof( uint64_t ) );
     for ( const auto& d : n.data )
     {
       bool result = this->operator()( os, d );
@@ -118,18 +113,18 @@ public:
       }
     }
 
-    return os->good();
+    return true;
   }
 
   template<int Fanin, int Size, int PointerFieldSize>
-  bool operator()( std::istream *is, const regular_node<Fanin, Size, PointerFieldSize>* n ) const
+  bool operator()( phmap::BinaryInputArchive& ar_input, const regular_node<Fanin, Size, PointerFieldSize>* n ) const
   {
     uint64_t size;
-    is->read( (char*)&size, sizeof( uint64_t ) );
+    ar_input.load( (char*)&size, sizeof( uint64_t ) );
     for ( uint64_t i = 0; i < size; ++i )
     {
       pointer_type ptr;
-      bool result = this->operator()( is, &ptr );
+      bool result = this->operator()( ar_input, &ptr );
       if ( !result )
       {
         return false;
@@ -137,11 +132,11 @@ public:
       const_cast<regular_node<Fanin, Size, PointerFieldSize>*>( n )->children[i] = ptr;
     }
 
-    is->read( (char*)&size, sizeof( uint64_t ) );
+    ar_input.load( (char*)&size, sizeof( uint64_t ) );
     for ( uint64_t i = 0; i < size; ++i )
     {
       cauint64_t data;
-      bool result = this->operator()( is, &data );
+      bool result = this->operator()( ar_input, &data );
       if ( !result )
       {
         return false;
@@ -149,24 +144,24 @@ public:
       const_cast<regular_node<Fanin, Size, PointerFieldSize>*>( n )->data[i] = data;
     }
 
-    return is->good();
+    return true;
   }
 
-  bool operator()( std::ostream *os, std::pair<const node_type, uint64_t> const& value ) const
+  bool operator()( phmap::BinaryOutputArchive& os, std::pair<const node_type, uint64_t> const& value ) const
   {
     return this->operator()( os, value.first ) && this->operator()( os, value.second );
   }
 
-  bool operator()( std::istream *is, std::pair<const node_type, uint64_t>* value ) const
+  bool operator()( phmap::BinaryInputArchive& ar_input, std::pair<const node_type, uint64_t>* value ) const
   {
-    return this->operator()( is, &value->first ) && this->operator()( is, &value->second );
+    return this->operator()( ar_input, &value->first ) && this->operator()( ar_input, &value->second );
   }
 
-  bool operator()( std::ostream *os, aig_storage const& storage ) const
+  bool operator()( phmap::BinaryOutputArchive& os, aig_storage const& storage ) const
   {
     /* nodes */
     uint64_t size = storage.nodes.size();
-    os->write( (char*)&size, sizeof( uint64_t ) );
+    os.dump( (char*)&size, sizeof( uint64_t ) );
     for ( const auto& n : storage.nodes )
     {
       if ( !this->operator()( os, n ) )
@@ -177,7 +172,7 @@ public:
 
     /* inputs */
     size = storage.inputs.size();
-    os->write( (char*)&size, sizeof( uint64_t ) );
+    os.dump( (char*)&size, sizeof( uint64_t ) );
     for ( const auto& i : storage.inputs )
     {
       if ( !this->operator()( os, i ) )
@@ -188,7 +183,7 @@ public:
 
     /* outputs */
     size = storage.outputs.size();
-    os->write( (char*)&size, sizeof( uint64_t ) );
+    os.dump( (char*)&size, sizeof( uint64_t ) );
     for ( const auto& o : storage.outputs )
     {
       if ( !this->operator()( os, o ) )
@@ -198,30 +193,33 @@ public:
     }
 
     /* hash */
-    const_cast<aig_storage&>( storage ).hash.serialize( *this, os );
+    if (! const_cast<aig_storage&>( storage ).hash.dump( os ) )
+    {
+      return false;
+    }
 
     /* storage data */
-    os->write( (char*)&storage.data.num_pis, sizeof( uint32_t ) );
-    os->write( (char*)&storage.data.num_pos, sizeof( uint32_t ) );
+    os.dump( (char*)&storage.data.num_pis, sizeof( uint32_t ) );
+    os.dump( (char*)&storage.data.num_pos, sizeof( uint32_t ) );
     size = storage.data.latches.size();
     for ( const auto& l : storage.data.latches )
     {
-      os->write( (char*)&l, sizeof( int8_t ) );
+      os.dump( (char*)&l, sizeof( int8_t ) );
     }
-    os->write( (char*)&storage.data.trav_id, sizeof( uint32_t ) );    
+    os.dump( (char*)&storage.data.trav_id, sizeof( uint32_t ) );    
     
     return true;
   }
 
-  bool operator()( std::istream *is, aig_storage* storage ) const
+  bool operator()( phmap::BinaryInputArchive& ar_input, aig_storage* storage ) const
   {
     /* nodes */
     uint64_t size;
-    is->read( (char*)&size, sizeof( uint64_t ) );
+    ar_input.load( (char*)&size, sizeof( uint64_t ) );
     for ( uint64_t i = 0; i < size; ++i )
     {
       node_type n;
-      if ( !this->operator()( is, &n ) )
+      if ( !this->operator()( ar_input, &n ) )
       {
         return false;
       }
@@ -229,20 +227,20 @@ public:
     }
   
     /* inputs */
-    is->read( (char*)&size, sizeof( uint64_t ) );
+    ar_input.load( (char*)&size, sizeof( uint64_t ) );
     for ( uint64_t i = 0; i < size; ++i )
     {
       uint64_t value;
-      is->read( (char*)&value, sizeof( uint64_t ) );
+      ar_input.load( (char*)&value, sizeof( uint64_t ) );
       storage->inputs.push_back( value );
     }
 
     /* outputs */
-    is->read( (char*)&size, sizeof( uint64_t ) );
+    ar_input.load( (char*)&size, sizeof( uint64_t ) );
     for ( uint64_t i = 0; i < size; ++i )
     {
       pointer_type ptr;
-      if ( !this->operator()( is, &ptr ) )
+      if ( !this->operator()( ar_input, &ptr ) )
       {
         return false;
       }
@@ -250,22 +248,22 @@ public:
     }
 
     /* hash */
-    if ( !storage->hash.unserialize( *this, is ) )
+    if ( !storage->hash.load( ar_input ) )
     {
       return false;
     }
   
     /* aig_storage_data */
-    is->read( (char*)&storage->data.num_pis, sizeof( uint32_t ) );
-    is->read( (char*)&storage->data.num_pos, sizeof( uint32_t ) );
-    is->read( (char*)&size, sizeof( uint64_t ) );
+    ar_input.load( (char*)&storage->data.num_pis, sizeof( uint32_t ) );
+    ar_input.load( (char*)&storage->data.num_pos, sizeof( uint32_t ) );
+    ar_input.load( (char*)&size, sizeof( uint64_t ) );
     for ( uint64_t i = 0; i < size; ++i )
     {
       int8_t l;
-      is->read( (char*)&l, sizeof( int8_t ) );    
+      ar_input.load( (char*)&l, sizeof( int8_t ) );    
       storage->data.latches.push_back( l );
     }
-    is->read( (char*)&storage->data.trav_id, sizeof( uint32_t ) );
+    ar_input.load( (char*)&storage->data.trav_id, sizeof( uint32_t ) );
 
     return true;
   }
@@ -273,18 +271,17 @@ public:
 
 } /* namespace detail */
 
-/*! \brief Serializes a combinational AIG network to a stream
+/*! \brief Serializes a combinational AIG network to a archive
  *
  * \param aig Combinational AIG network
- * \param os Output stream
+ * \param os Output archive
  */
-inline std::ostream& serialize_network( aig_network const& aig, std::ostream& os )
+inline void serialize_network( aig_network const& aig, phmap::BinaryOutputArchive& os )
 {
   detail::serializer _serializer;
-  bool const okay = _serializer( &os, *aig._storage );
+  bool const okay = _serializer( os, *aig._storage );
   (void)okay;
   assert( okay && "failed to serialize the network onto stream" );
-  return os;
 }
 
 /*! \brief Serializes a combinational AIG network in a file
@@ -294,18 +291,16 @@ inline std::ostream& serialize_network( aig_network const& aig, std::ostream& os
  */
 inline void serialize_network( aig_network const& aig, std::string const& filename )
 {
-  std::ofstream os;
-  os.open( filename, std::fstream::out | std::fstream::binary );
-  serialize_network( aig, os );
-  os.close();
+  phmap::BinaryOutputArchive ar_out(filename.c_str());
+  serialize_network( aig, ar_out );
 }
 
-/*! \brief Deserializes a combinational AIG network from a stream
+/*! \brief Deserializes a combinational AIG network from a input archive
  *
- * \param is Input stream
+ * \param ar_input Input archive
  * \return Deserialized AIG network
  */
-inline aig_network deserialize_network( std::istream& is )
+inline aig_network deserialize_network( phmap::BinaryInputArchive& ar_input )
 {
   detail::serializer _serializer;
   auto storage = std::make_shared<aig_storage>();
@@ -315,7 +310,7 @@ inline aig_network deserialize_network( std::istream& is )
   storage->latch_information.clear();
   storage->hash.clear();
 
-  bool const okay = _serializer( &is, storage.get() );
+  bool const okay = _serializer( ar_input, storage.get() );
   (void)okay;
   assert( okay && "failed to deserialize the network onto stream" );
   return aig_network{storage};
@@ -328,10 +323,8 @@ inline aig_network deserialize_network( std::istream& is )
  */
 inline aig_network deserialize_network( std::string const& filename )
 {
-  std::ifstream is;
-  is.open( filename, std::fstream::in | std::fstream::binary );
-  auto aig = deserialize_network( is );
-  is.close();
+  phmap::BinaryInputArchive ar_input(filename.c_str());
+  auto aig = deserialize_network( ar_input );
   return aig;
 }
 
