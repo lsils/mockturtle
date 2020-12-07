@@ -279,7 +279,7 @@ public:
 inline void serialize_network( aig_network const& aig, phmap::BinaryOutputArchive& os )
 {
   detail::serializer _serializer;
-  bool const okay = _serializer( &os, *aig._storage );
+  bool const okay = _serializer( os, *aig._storage );
   (void)okay;
   assert( okay && "failed to serialize the network onto stream" );
 }
