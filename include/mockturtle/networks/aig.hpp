@@ -312,6 +312,7 @@ public:
     const auto it = _storage->hash.find( node );
     if ( it != _storage->hash.end() )
     {
+      assert( !is_dead( it->second ) );
       return {it->second, 0};
     }
 
@@ -480,7 +481,7 @@ public:
     storage::element_type::node_type _hash_obj;
     _hash_obj.children[0] = child0;
     _hash_obj.children[1] = child1;
-    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() )
+    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() && it->second != old_node )
     {
       return std::make_pair( n, signal( it->second, 0 ) );
     }
@@ -510,6 +511,9 @@ public:
 
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
+    if ( is_dead( old_node ) )
+      return;
+
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -525,8 +529,8 @@ public:
 
   void take_out_node( node const& n )
   {
-    /* we cannot delete CIs or constants */
-    if ( n == 0 || is_ci( n ) )
+    /* we cannot delete CIs, constants, or already dead nodes */
+    if ( n == 0 || is_ci( n ) || is_dead( n ) )
       return;
 
     auto& nobj = _storage->nodes[n];
@@ -568,7 +572,7 @@ public:
 
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
-        if ( is_ci( idx ) )
+        if ( is_ci( idx ) || is_dead( idx ) )
           continue; /* ignore CIs */
 
         if ( const auto repl = replace_in_node( idx, _old, _new ); repl )
@@ -580,8 +584,16 @@ public:
       /* check outputs */
       replace_in_outputs( _old, _new );
 
-      // reset fan-in of old node
-      take_out_node( _old );
+      /* recursively reset old node */
+      if ( _old != _new.index )
+      {
+        take_out_node( _old );
+      }
+      else
+      {
+        /* if _old is substituted by its complement, then only decrement _old */
+        decr_fanout_size( _old );
+      }
     }
   }
 #pragma endregion

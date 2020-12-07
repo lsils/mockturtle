@@ -279,8 +279,9 @@ public:
 inline void serialize_network( aig_network const& aig, phmap::BinaryOutputArchive& os )
 {
   detail::serializer _serializer;
-  bool const okay = _serializer( os, *aig._storage );
-  assert( okay && "failed to serialize the network onto archive" );
+  bool const okay = _serializer( &os, *aig._storage );
+  (void)okay;
+  assert( okay && "failed to serialize the network onto stream" );
 }
 
 /*! \brief Serializes a combinational AIG network in a file
@@ -310,7 +311,8 @@ inline aig_network deserialize_network( phmap::BinaryInputArchive& ar_input )
   storage->hash.clear();
 
   bool const okay = _serializer( ar_input, storage.get() );
-  assert( okay && "failed to deserialize the network from archive" );
+  (void)okay;
+  assert( okay && "failed to deserialize the network onto stream" );
   return aig_network{storage};
 }
 

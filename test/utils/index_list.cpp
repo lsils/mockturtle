@@ -49,7 +49,7 @@ TEST_CASE( "encode mig_network into mig_index_list", "[index_list]" )
 TEST_CASE( "decode abc_index_list into xag_network", "[index_list]" )
 {
   std::vector<uint32_t> const raw_list{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 4, 6, 8, 12, 10, 14, 14};
-  abc_index_list xag_il{raw_list};
+  abc_index_list xag_il( raw_list, 4u );
 
   xag_network xag;
   decode( xag, xag_il );

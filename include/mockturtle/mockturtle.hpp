@@ -28,21 +28,23 @@
   \brief Main header file for mockturtle
 
   \author Mathias Soeken
+  \author Heinz Riener
 */
 
 #pragma once
 
 #include "mockturtle/traits.hpp"
-#include "mockturtle/io/write_bench.hpp"
+#include "mockturtle/io/aiger_reader.hpp"
 #include "mockturtle/io/bench_reader.hpp"
-#include "mockturtle/io/verilog_reader.hpp"
-#include "mockturtle/io/write_blif.hpp"
 #include "mockturtle/io/blif_reader.hpp"
+#include "mockturtle/io/pla_reader.hpp"
+#include "mockturtle/io/verilog_reader.hpp"
+#include "mockturtle/io/write_aiger.hpp"
+#include "mockturtle/io/write_bench.hpp"
+#include "mockturtle/io/write_blif.hpp"
+#include "mockturtle/io/write_dimacs.hpp"
 #include "mockturtle/io/write_dot.hpp"
 #include "mockturtle/io/write_verilog.hpp"
-#include "mockturtle/io/pla_reader.hpp"
-#include "mockturtle/io/aiger_reader.hpp"
-#include "mockturtle/io/write_dimacs.hpp"
 #include "mockturtle/algorithms/simulation.hpp"
 #include "mockturtle/algorithms/xag_resub_withDC.hpp"
 #include "mockturtle/algorithms/xmg_resub.hpp"
