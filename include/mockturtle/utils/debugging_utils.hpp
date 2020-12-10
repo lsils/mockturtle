@@ -202,4 +202,72 @@ bool network_is_acylic( Ntk const& ntk )
   return result;
 }
 
+
+template<typename Ntk>
+bool check_fanouts( Ntk const& ntk )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size function" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node function" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin function" );
+  static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout function" );
+  static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co function" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size function" );
+
+  using node   = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  for ( auto i = 0u; i < ntk.size(); ++i )
+  {
+    uint32_t fanout_counter{0};
+
+    bool fanout_error = false;
+    ntk.foreach_fanout( i, [&]( node fo ){
+      ++fanout_counter;
+
+      /* check the fanins of the fanout  */
+      bool found = false;
+      ntk.foreach_fanin( fo, [&]( signal fi ){
+        if ( ntk.get_node( fi ) == i )
+        {
+          found = true;
+          return false;
+        }
+        return true;
+      });
+
+      /* if errors have been detected, then terminate */
+      if ( !found )
+      {
+        fanout_error = true;
+        return false;
+      }
+
+      return true;
+    });
+
+    /* report error */
+    if ( fanout_error )
+    {
+      return false;
+    }
+
+    /* update the fanout counter by considering outputs */
+    ntk.foreach_co( [&]( signal f ){
+      if ( ntk.get_node( f ) == i )
+      {
+        ++fanout_counter;
+      }
+    });
+
+    /* report error fanout_size does not match with the counter */
+    if ( fanout_counter != ntk.fanout_size( i ) )
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 } /* namespace mockturtle */
