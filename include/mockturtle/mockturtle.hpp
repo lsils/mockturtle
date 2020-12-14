@@ -28,22 +28,23 @@
   \brief Main header file for mockturtle
 
   \author Mathias Soeken
+  \author Heinz Riener
 */
 
 #pragma once
 
 #include "mockturtle/traits.hpp"
-#include "mockturtle/io/write_bench.hpp"
+#include "mockturtle/io/aiger_reader.hpp"
 #include "mockturtle/io/bench_reader.hpp"
-#include "mockturtle/io/verilog_reader.hpp"
-#include "mockturtle/io/write_blif.hpp"
 #include "mockturtle/io/blif_reader.hpp"
+#include "mockturtle/io/pla_reader.hpp"
+#include "mockturtle/io/verilog_reader.hpp"
+#include "mockturtle/io/write_aiger.hpp"
+#include "mockturtle/io/write_bench.hpp"
+#include "mockturtle/io/write_blif.hpp"
+#include "mockturtle/io/write_dimacs.hpp"
 #include "mockturtle/io/write_dot.hpp"
 #include "mockturtle/io/write_verilog.hpp"
-#include "mockturtle/io/pla_reader.hpp"
-#include "mockturtle/io/index_list.hpp"
-#include "mockturtle/io/aiger_reader.hpp"
-#include "mockturtle/io/write_dimacs.hpp"
 #include "mockturtle/algorithms/simulation.hpp"
 #include "mockturtle/algorithms/xag_resub_withDC.hpp"
 #include "mockturtle/algorithms/xmg_resub.hpp"
@@ -65,7 +66,7 @@
 #include "mockturtle/algorithms/cnf.hpp"
 #include "mockturtle/algorithms/miter.hpp"
 #include "mockturtle/algorithms/collapse_mapped.hpp"
-#include "mockturtle/algorithms/reconv_cut2.hpp"
+#include "mockturtle/algorithms/reconv_cut.hpp"
 #include "mockturtle/algorithms/refactoring.hpp"
 #include "mockturtle/algorithms/node_resynthesis/exact.hpp"
 #include "mockturtle/algorithms/node_resynthesis/shannon.hpp"
@@ -89,10 +90,13 @@
 #include "mockturtle/algorithms/node_resynthesis.hpp"
 #include "mockturtle/algorithms/linear_resynthesis.hpp"
 #include "mockturtle/algorithms/mig_resub.hpp"
-#include "mockturtle/algorithms/reconv_cut.hpp"
 #include "mockturtle/algorithms/resubstitution.hpp"
 #include "mockturtle/algorithms/aig_resub.hpp"
+#include "mockturtle/algorithms/circuit_validator.hpp"
+#include "mockturtle/algorithms/pattern_generation.hpp"
+#include "mockturtle/algorithms/functional_reduction.hpp"
 #include "mockturtle/utils/stopwatch.hpp"
+#include "mockturtle/utils/index_list.hpp"
 #include "mockturtle/utils/truth_table_cache.hpp"
 #include "mockturtle/utils/string_utils.hpp"
 #include "mockturtle/utils/algorithm.hpp"
