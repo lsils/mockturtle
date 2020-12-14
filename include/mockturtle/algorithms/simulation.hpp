@@ -192,10 +192,9 @@ public:
     }
   }
 
-  /* copy constructor */
-  partial_simulator( partial_simulator const& sim )
-    : patterns( sim.patterns ), num_patterns( sim.num_patterns )
-  { }
+  /* copy constructors */
+  partial_simulator( partial_simulator const& sim ) = default;
+  partial_simulator& operator=( partial_simulator const& sim ) = default;
 
   /*! \brief Create a `partial_simulator` with given simulation patterns.
    *
@@ -309,10 +308,9 @@ public:
     fill_cares( num_pis );
   }
 
-  /* copy constructor */
-  bit_packed_simulator( bit_packed_simulator const& sim )
-    : partial_simulator( sim ), care( sim.care ), packed_patterns( sim.packed_patterns )
-  { }
+  /* copy constructors */
+  bit_packed_simulator( bit_packed_simulator const& sim ) = default;
+  bit_packed_simulator& operator=( bit_packed_simulator const& sim ) = default;
 
   /* copy constructor from `partial_simulator` */
   bit_packed_simulator( partial_simulator const& sim )
