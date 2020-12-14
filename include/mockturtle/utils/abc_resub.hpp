@@ -74,21 +74,20 @@ public:
     release();
   }
 
-  template<class node_type, class truth_table_storage_type>
-  void add_root( node_type const& node, truth_table_storage_type const& tts )
+  template<class truth_table_type>
+  void add_root( truth_table_type const& tt, truth_table_type const& care )
   {
-    add_divisor( node, tts, true ); /* off-set */
-    add_divisor( node, tts, false ); /* on-set */
+    add_divisor( ~tt & care ); /* off-set */
+    add_divisor( tt & care ); /* on-set */
   }
 
-  template<class node_type, class truth_table_storage_type>
-  void add_divisor( node_type const& node, truth_table_storage_type const& tts, bool complement = false )
+  template<class truth_table_type>
+  void add_divisor( truth_table_type const& tt )
   {
     assert( abc_tts != nullptr && "assume that memory for truth tables has been allocated" );
     assert( abc_divs != nullptr && "assume that memory for divisors has been allocated" );
 
-    assert( tts[node].num_blocks() == num_blocks_per_truth_table );
-    auto const tt = complement ? ~tts[node] : tts[node];
+    assert( tt.num_blocks() == num_blocks_per_truth_table );
     for ( uint64_t i = 0ul; i < num_blocks_per_truth_table; ++i )
     {
       Vec_WrdPush( abc_tts, tt._bits[i] );
@@ -105,7 +104,7 @@ public:
 
     while ( begin != end )
     {
-      add_divisor( *begin, tts );
+      add_divisor( tts[*begin] );
       ++begin;
     }
   }
