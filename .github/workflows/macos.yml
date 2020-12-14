@@ -47,7 +47,7 @@ jobs:
         ./test/run_tests "~[quality]"
   build-gcc10:
     name: GNU GCC 10
-    runs-on: macOS-latest
+    runs-on: macOS-11.0
 
     steps:
     - uses: actions/checkout@v1
