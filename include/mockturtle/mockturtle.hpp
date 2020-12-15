@@ -130,3 +130,4 @@
 #include "mockturtle/views/fanout_view.hpp"
 #include "mockturtle/views/cut_view.hpp"
 #include "mockturtle/views/depth_view.hpp"
+#include "mockturtle/views/aqfp_view.hpp"
