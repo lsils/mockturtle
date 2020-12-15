@@ -35,7 +35,7 @@ TEST_CASE( "aqfp_view simple test", "[aqfp_view]" )
   CHECK( view.num_buffers() == 2u );
 }
 
-TEST_CASE( "aqfp_view test with two layers of splitters", "[aqfp_view]" )
+TEST_CASE( "two layers of splitters", "[aqfp_view]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();

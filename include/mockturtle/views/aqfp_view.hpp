@@ -32,18 +32,18 @@
 
 #pragma once
 
-#include <cstdint>
-#include <stack>
-#include <vector>
-#include <cmath>
-#include <algorithm>
-
 #include "../traits.hpp"
 #include "../networks/detail/foreach.hpp"
 #include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
 #include "mockturtle/networks/mig.hpp"
 #include "mockturtle/views/depth_view.hpp"
+
+#include <cstdint>
+#include <stack>
+#include <vector>
+#include <cmath>
+#include <algorithm>
 
 namespace mockturtle
 {
@@ -58,40 +58,54 @@ struct aqfp_view_params
   uint32_t max_splitter_levels{2u};
 };
 
-/*! \brief Implements/Overwrites `foreach_fanout`, `depth`, `level`
+/*! \brief Implements `foreach_fanout`, `depth`, `level`
  * `num_buffers`, `num_splitter_levels` methods for MIG network.
  *
- * This view computes the fanout of each node of the network.
- * It implements the network interface method `foreach_fanout`.  The
- * fanout are computed at construction and can be recomputed by
- * calling the `update_fanout` method.
+ * This view calculates the number of buffers (for path balancing) and 
+ * splitters (for multi-fanout) after AQFP technology mapping from an MIG
+ * network. The calculation is rather naive without much optimization such
+ * as retiming, which can serve as an upper bound on the cost or as a
+ * baseline for future works on buffer optimization to be compared to.
  * 
+ * In AQFP technology, (1) MAJ gates can only have one fanout. If more than one
+ * fanout is needed, a splitter has to be inserted in between, which also 
+ * takes one clock cycle (counts toward the network depth). (2) All fanins of
+ * a MAJ gate have to arrive at the same time (at the same level). If one
+ * fanin path is shorter, buffers have to be inserted to balance it. 
+ * Buffers and splitters are essentially the same component in this technology.
+ *
+ * Some assumptions are made: (1) PIs do not need to be balanced (they are 
+ * always available). (2) POs count toward the fanout sizes and have to be
+ * balanced.
+ *
  * The number of fanouts of each buffer is restricted to `splitter_capacity`.
- * The additional depth of a node introduced by splitters limited to at most `max_splitter_levels`.
+ * The additional depth of a node introduced by splitters is limited to at
+ * most `max_splitter_levels`. These two parameters are defined in
+ * `aqfp_view_params`. Following these restrictions, the maximum number of 
+ * fanouts of a node in the original MIG network is limited to 
+ * `pow(splitter_capacity, max_splitter_levels)`. To ensure this, one should
+ * apply `fanout_limit_view` before `aqfp_view` to duplicate the nodes with
+ * too many fanouts. The template parameter `CheckFanoutLimit` can be set to
+ * `true` to check for this restriction.
+ *
+ * The network depth and the levels of each node are determined first by the 
+ * number of fanouts and adding sufficient levels for splitters assuming all
+ * fanouts are at the lowest possible level. This could be suboptimal when some
+ * fanouts are only needed at higher levels. Then, the number of buffers (which
+ * also serve as splitters) is counted in a way that signals are only splitted 
+ * before the level where they are needed (i.e., sharing of buffers among
+ * multiple fanouts is maximized).
+ *
+ * Updating the network with this view is supported (`substitute_node` and 
+ * `create_po` are overwritten) but not advised because of efficiency concern.
  *
  * **Required network functions:**
  * - `foreach_node`
  * - `foreach_fanin`
  *
  */
-template<typename Ntk, bool Check = false, bool has_fanout_interface = has_foreach_fanout_v<Ntk>>
-class aqfp_view
-{
-};
-
-template<typename Ntk, bool Check>
-class aqfp_view<Ntk, Check, true> : public Ntk
-{
-public:
-  aqfp_view( Ntk const& ntk, aqfp_view_params const& ps = {} ) : Ntk( ntk )
-  {
-    std::cerr << "[w] aqfp_view should not be built on top of fanout_view.\n";
-    (void)ps;
-  }
-};
-
-template<typename Ntk, bool Check>
-class aqfp_view<Ntk, Check, false> : public Ntk
+template<typename Ntk, bool CheckFanoutLimit = false>
+class aqfp_view : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
@@ -112,6 +126,7 @@ public:
   aqfp_view( Ntk const& ntk, aqfp_view_params const& ps = {} )
    : Ntk( ntk ), _fanout( ntk ), _external_ref_count( ntk ), _ps( ps ), _max_fanout( std::pow( ps.splitter_capacity, ps.max_splitter_levels ) ), _node_depth( this ), _depth_view( ntk, _node_depth )
   {
+    static_assert( !has_foreach_fanout_v<Ntk> && "Ntk already has fanout interfaces" );
     static_assert( !has_depth_v<Ntk> && !has_level_v<Ntk> && !has_update_levels_v<Ntk>, "Ntk already has depth interfaces" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
@@ -127,6 +142,7 @@ public:
     {
       Ntk::events().on_add.push_back( [this]( auto const& n ) {
         _fanout.resize();
+        _external_ref_count.resize();
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].push_back( n );
         } );
@@ -142,7 +158,9 @@ public:
         }
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].push_back( n );
+          on_update( Ntk::get_node( f ) );
         } );
+        _depth_view.update_levels();
       } );
     }
 
@@ -153,6 +171,7 @@ public:
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
         } );
+        _depth_view.update_levels();
       } );
     }
   }
@@ -169,20 +188,19 @@ public:
     compute_fanout();
   }
 
-  /*! \brief Additional depth caused by the splitters of node `n` */
+  /*! \brief Additional depth caused by the splitters of node `n`. */
   uint32_t num_splitter_levels ( node const& n ) const
   {
-    /* TODO: generalize for other `max_splitter_levels` values */
-    return fanout_size( n ) > _ps.splitter_capacity ? 2u : (fanout_size( n ) > 1u ? 1u : 0u);
+    return std::ceil( std::log( fanout_size( n ) ) / std::log( _ps.splitter_capacity ) );
   }
 
-  /* \brief Level of node `n` itself. Not the highest level of its splitters */
+  /*! \brief Level of node `n` itself. Not the highest level of its splitters */
   uint32_t level ( node const& n ) const
   {
     return _depth_view.level( n ) - num_splitter_levels( n );
   }
 
-  /* \brief Circuit depth */
+  /*! \brief Circuit depth */
   uint32_t depth() const
   {
     return _depth_view.depth();
@@ -203,20 +221,20 @@ public:
   {
     if ( num_splitter_levels( n ) == 0u )
     {
+      /* single fanout */
       if ( fanout_size( n ) > 0u )
       {
         assert( fanout_size( n ) == 1u );
         return _external_ref_count[n] > 0u ? depth() - level( n ) : level( _fanout[n][0] ) - level( n ) - 1u;
       }
+      /* dangling */
       return 0u;
     }
 
     /* fanout sizes at each level (pair<level, size>) */
     std::vector<std::pair<uint32_t, uint32_t>> fanout_sizes;
-
-    /* lowest fanout should be at level(n) + 2 */
     uint32_t nlevel = level( n ) + 1u;
-    
+    fanout_sizes.emplace_back( std::make_pair( nlevel, 0u ) );
     for ( auto fo : _fanout[n] )
     {
       assert( level( fo ) >= nlevel );
@@ -234,32 +252,43 @@ public:
     {
       fanout_sizes.emplace_back( std::make_pair( depth() + 1u, _external_ref_count[n] ) );
     }
-    assert( fanout_sizes.size() >= 1u );
+    assert( fanout_sizes.size() > 1u );
+    assert( fanout_sizes[0].second == 0u );
 
+    /* count buffers from the highest level */
     uint32_t count = 0u;
-    for ( int i = fanout_sizes.size() - 2; i >= 0; --i )
+    for ( auto i = fanout_sizes.size() - 1; i > 0; --i )
     {
-      auto s = num_splitters( fanout_sizes[i+1].second );
-      assert( s <= _ps.splitter_capacity && s > 0u );
-      if ( fanout_sizes[i].first == fanout_sizes[i+1].first - 1u )
+      auto l = fanout_sizes[i].first - 1;
+      /* number of splitters needed in level `l` */
+      auto s = num_splitters( fanout_sizes[i].second );
+      count += s;
+
+      if ( fanout_sizes[i-1].first == l )
       {
-        fanout_sizes[i].second += s;
+        fanout_sizes[i-1].second += s;
       }
-
-      count += s + fanout_sizes[i+1].first - fanout_sizes[i].first - 1u;
+      else /* there is no other fanouts in level `l` */
+      {
+        if ( s == 1 )
+        {
+          count += l - fanout_sizes[i-1].first;
+          fanout_sizes[i-1].second++;
+        }
+        else
+        {
+          fanout_sizes.insert( fanout_sizes.begin() + i, std::make_pair( l, s ) );
+          ++i;
+        }
+      }
     }
-
-    assert( fanout_sizes[0].first == level( n ) + num_splitter_levels( n ) + 1u );
-    count += num_splitters( fanout_sizes[0].second ) + fanout_sizes[0].first - level( n ) - 2u;
-    /* There may be one more buffer (and redundant level) when total fanout > 4 but only <= 4 are at the lowest level. */
+    assert( fanout_sizes[0].second == 1 );
 
     return count;
   }
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
-    std::cerr << "[e] aqfp_view has not been tested for network updating yet.\n";
-
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( {old_node, new_signal} );
 
@@ -283,6 +312,14 @@ public:
       /* reset fan-in of old node */
       Ntk::take_out_node( _old );
     }
+    compute_fanout();
+  }
+
+  uint32_t create_po( signal const& f, std::string const& name = std::string() )
+  {
+    auto const ret = Ntk::create_po( f, name );
+    _external_ref_count[f]++;
+    return ret;
   }
 
 private:
@@ -291,7 +328,7 @@ private:
     return _fanout[n].size() + _external_ref_count[n];
   }
 
-  /* Number of splitters needed at the lower level */
+  /* Return the number of splitters needed in one level lower */
   uint32_t num_splitters( uint32_t const& num_fanouts ) const
   {
     return std::ceil( float( num_fanouts ) / float( _ps.splitter_capacity ) );
@@ -319,19 +356,24 @@ private:
     _depth_view.update_levels();
 
     this->foreach_gate( [&]( auto const& n ){
-        if constexpr ( Check )
-        {
-          if ( fanout_size( n ) > _max_fanout )
-          {
-            std::cerr << "[e] node " << n << " has too many (" << fanout_size( n ) << ") fanouts!\n";
-          }
-        }
-        /* sort the fanouts by their level */
-        auto& fanout = _fanout[n];
-        std::sort( fanout.begin(), fanout.end(), [&](node a, node b){
-          return level( a ) < level( b );
-        });
+        on_update( n );
       });
+  }
+
+  void on_update( node const& n )
+  {
+    if constexpr ( CheckFanoutLimit )
+    {
+      if ( fanout_size( n ) > _max_fanout )
+      {
+        std::cerr << "[e] node " << n << " has too many (" << fanout_size( n ) << ") fanouts!\n";
+      }
+    }
+    /* sort the fanouts by their level */
+    auto& fanout = _fanout[n];
+    std::sort( fanout.begin(), fanout.end(), [&](node a, node b){
+      return level( a ) < level( b );
+    });
   }
 
 private:
