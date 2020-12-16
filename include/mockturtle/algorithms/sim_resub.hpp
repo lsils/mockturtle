@@ -824,6 +824,10 @@ public:
             {
               ++st.num_resub;
               last_gain = potential_gain;
+              if constexpr ( validator_t::use_odc_ )
+              {
+                validator.update();
+              }
               return g;
             }
             else
@@ -849,6 +853,10 @@ public:
             {
               ++st.num_resub;
               last_gain = potential_gain - size;
+              if constexpr ( validator_t::use_odc_ )
+              {
+                validator.update();
+              }
               return translate( c, c.divs );
             }
             else
@@ -946,25 +954,52 @@ void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   depth_view<Ntk> depth_view{ntk};
   resub_view_t resub_view{depth_view};
 
-  using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t>>;
-
-  resubstitution_stats st;
-  typename resub_impl_t::engine_st_t engine_st;
-  typename resub_impl_t::collector_st_t collector_st;
-
-  resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
-  p.run();
-
-  if ( ps.verbose )
+  if ( ps.odc_levels != 0 )
   {
-    st.report();
-    collector_st.report();
-    engine_st.report();
+    using validator_t = circuit_validator<resub_view_t, bill::solvers::bsat2, false, true, true>;
+    using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t, validator_t>>;
+
+    resubstitution_stats st;
+    typename resub_impl_t::engine_st_t engine_st;
+    typename resub_impl_t::collector_st_t collector_st;
+
+    resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
+    p.run();
+
+    if ( ps.verbose )
+    {
+      st.report();
+      collector_st.report();
+      engine_st.report();
+    }
+
+    if ( pst )
+    {
+      *pst = st;
+    }
   }
-
-  if ( pst )
+  else
   {
-    *pst = st;
+    using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t>>;
+
+    resubstitution_stats st;
+    typename resub_impl_t::engine_st_t engine_st;
+    typename resub_impl_t::collector_st_t collector_st;
+
+    resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
+    p.run();
+
+    if ( ps.verbose )
+    {
+      st.report();
+      collector_st.report();
+      engine_st.report();
+    }
+
+    if ( pst )
+    {
+      *pst = st;
+    }
   }
 }
 
