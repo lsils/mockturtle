@@ -628,6 +628,7 @@ public:
         take_out_node( _old );
       }
       else
+  }
 
   void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
   {
