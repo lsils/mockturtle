@@ -42,6 +42,7 @@
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <parallel_hashmap/phmap.h>
 
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
@@ -100,7 +101,7 @@ struct abstract_xag_storage
   std::vector<uint32_t> children;
   std::vector<uint32_t> inputs;
   std::vector<std::pair<uint32_t, bool>> outputs;
-  spp::sparse_hash_map<node_type, uint32_t, abstract_xag_node_hash, abstract_xag_node_eq> hash;
+  phmap::flat_hash_map<node_type, uint32_t, abstract_xag_node_hash, abstract_xag_node_eq> hash;
 
   uint32_t trav_id = 0u;
   uint32_t depth = 0u;
@@ -481,7 +482,11 @@ public:
     {
       complement ^= f.complement;
       auto const& node = _storage->nodes[f.index];
-      if ( node.fanin_size == 0u )
+      if ( f.index == 0 )
+      {
+        // do nothing
+      }
+      else if ( node.fanin_size == 0u )
       {
         merge_one( f.index );
       }

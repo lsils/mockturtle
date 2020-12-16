@@ -44,8 +44,11 @@ namespace mockturtle
 
 struct validator_params
 {
+  /*! \brief Maximum number of clauses of the SAT solver. (incremental CNF construction) */
+  uint32_t max_clauses{1000};
+
   /*! \brief Whether to consider ODC, and how many levels. 0 = No consideration. -1 = Consider TFO until PO. */
-  int odc_levels{0};
+  int32_t odc_levels{0};
 
   /*! \brief Conflict limit of the SAT solver. */
   uint32_t conflict_limit{1000};
@@ -58,6 +61,7 @@ template<class Ntk, bill::solvers Solver = bill::solvers::glucose_41, bool use_p
 class circuit_validator
 {
 public:
+  static constexpr bool use_odc_ = use_odc;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using add_clause_fn_t = std::function<void( std::vector<bill::lit_type> const& )>;
@@ -73,11 +77,11 @@ public:
   {
     struct fanin
     {
-      /*! \brief Index in the concatenated list of `divs` and `ckt`. */
-      uint32_t idx;
+      /*! \brief Index in the concatenated list of `divs` and `circuit`. */
+      uint32_t index;
 
       /*! \brief Input negation. */
-      bool inv{false};
+      bool inverted{false};
     };
 
     /*! \brief Fanins of the gate. */
@@ -91,7 +95,7 @@ public:
   };
 
   explicit circuit_validator( Ntk const& ntk, validator_params const& ps = {} )
-      : ntk( ntk ), ps( ps ), literals( ntk ), cex( ntk.num_pis() )
+      : ntk( ntk ), ps( ps ), literals( ntk ), num_invoke( 0u ), cex( ntk.num_pis() )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
@@ -137,58 +141,85 @@ public:
   /*! \brief Validate functional equivalence of signals `f` and `d`. */
   std::optional<bool> validate( signal const& f, signal const& d )
   {
-    return validate( ntk.get_node( f ), lit_not_cond( literals[d], ntk.is_complemented( f ) ^ ntk.is_complemented( d ) ) );
+    if ( !literals.has( d ) )
+    {
+      construct( ntk.get_node( d ) );
+    }
+    auto const res = validate( ntk.get_node( f ), lit_not_cond( literals[d], ntk.is_complemented( f ) ^ ntk.is_complemented( d ) ) );
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
+    {
+      restart();
+    }
+    return res;
   }
 
   /*! \brief Validate functional equivalence of node `root` and signal `d`. */
   std::optional<bool> validate( node const& root, signal const& d )
   {
-    return validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
+    if ( !literals.has( d ) )
+    {
+      construct( ntk.get_node( d ) );
+    }
+    auto const res = validate( root, lit_not_cond( literals[d], ntk.is_complemented( d ) ) );
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
+    {
+      restart();
+    }
+    return res;
   }
 
   /*! \brief Validate functional equivalence of signal `f` with a circuit.
    * 
-   * The circuit `ckt` uses `divs` as inputs, which are existing nodes in the network.
+   * The circuit `circuit` uses `divs` as inputs, which are existing nodes in the network.
    *
-   * \param divs Existing nodes in the network, serving as PIs of `ckt`.
-   * \param ckt Circuit built with `divs` as inputs. Please see the documentation of `circuit_validator::gate` for its data structure.
+   * \param divs Existing nodes in the network, serving as PIs of `circuit`.
+   * \param circuit Circuit built with `divs` as inputs. Please see the documentation of `circuit_validator::gate` for its data structure.
    * \param output_negation Output negation of the topmost gate of the circuit.
    */
-  std::optional<bool> validate( signal const& f, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
+  std::optional<bool> validate( signal const& f, std::vector<node> const& divs, std::vector<gate> const& circuit, bool output_negation = false )
   {
-    return validate( ntk.get_node( f ), divs.begin(), divs.end(), ckt, output_negation ^ ntk.is_complemented( f ) );
+    return validate( ntk.get_node( f ), divs.begin(), divs.end(), circuit, output_negation ^ ntk.is_complemented( f ) );
   }
 
   /*! \brief Validate functional equivalence of node `root` with a circuit. */
-  std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& ckt, bool output_negation = false )
+  std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& circuit, bool output_negation = false )
   {
-    return validate( root, divs.begin(), divs.end(), ckt, output_negation );
+    return validate( root, divs.begin(), divs.end(), circuit, output_negation );
   }
 
   /*! \brief Validate functional equivalence of signal `f` with a circuit. */
   template<class iterator_type>
-  std::optional<bool> validate( signal const& f, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
+  std::optional<bool> validate( signal const& f, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& circuit, bool output_negation = false )
   {
-    return validate( ntk.get_node( f ), divs_begin, divs_end, ckt, output_negation ^ ntk.is_complemented( f ) );
+    return validate( ntk.get_node( f ), divs_begin, divs_end, circuit, output_negation ^ ntk.is_complemented( f ) );
   }
 
   /*! \brief Validate functional equivalence of node `root` with a circuit. */
   template<class iterator_type>
-  std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& ckt, bool output_negation = false )
+  std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& circuit, bool output_negation = false )
   {
-    if constexpr ( use_pushpop )
+    if ( !literals.has( root ) )
     {
-      solver.push();
+      construct( root );
     }
 
     std::vector<bill::lit_type> lits;
     while ( divs_begin != divs_end )
     {
+      if ( !literals.has( *divs_begin ) )
+      {
+        construct( *divs_begin );
+      }
       lits.emplace_back( literals[*divs_begin] );
       divs_begin++;
     }
 
-    for ( auto g : ckt )
+    if constexpr ( use_pushpop )
+    {
+      push();
+    }
+
+    for ( auto g : circuit )
     {
       lits.emplace_back( add_tmp_gate( lits, g ) );
     }
@@ -197,7 +228,12 @@ public:
 
     if constexpr ( use_pushpop )
     {
-      solver.pop();
+      pop();
+    }
+
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
+    {
+      restart();
     }
 
     return res;
@@ -212,10 +248,9 @@ public:
   /*! \brief Validate whether node `root` is a constant of `value`. */
   std::optional<bool> validate( node const& root, bool value )
   {
-    assert( literals[root].variable() != bill::var_type( 0 ) );
-    if constexpr ( use_pushpop )
+    if ( !literals.has( root ) )
     {
-      solver.push();
+      construct( root );
     }
 
     std::optional<bool> res;
@@ -223,7 +258,15 @@ public:
     {
       if ( ps.odc_levels != 0 )
       {
+        if constexpr ( use_pushpop )
+        {
+          push();
+        }
         res = solve( {build_odc_window( root, ~literals[root] ), lit_not_cond( literals[root], value )} );
+        if constexpr ( use_pushpop )
+        {
+          pop();
+        }
       }
       else
       {
@@ -235,39 +278,78 @@ public:
       res = solve( {lit_not_cond( literals[root], value )} );
     }
 
-    if constexpr ( use_pushpop )
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
     {
-      solver.pop();
+      restart();
     }
     return res;
   }
 
-  /*! \brief Add CNF clauses for a newly created node.
+  /*! \brief Generate pattern(s) for signal `f` to be `value`, optionally blocking several known patterns. 
    *
-   * This function should be called when a new node is created after 
-   * construction of circuit_validator.
-   * It can be called manually every time or be added to `ntk.on_add` events.
+   * Requires `use_pushpop = true`, which is only supported for `bsat2` and `z3`. If `bsat2` is used, 
+   * and if the network has more than 2048 PIs, the `BUFFER_SIZE` in `lib/bill/sat/interface/abc_bsat2.hpp`
+   * has to be increased to at least `ntk.num_pis()`.
+   *
+   * If `block_patterns` and the returned vector are both empty, `f` is validated to be a constant of `!value`.
+   *
+   * \param block_patterns Patterns to be blocked in the solver. (Will not generate any of them.)
+   * \param num_patterns Number of patterns to be generated, if possible. (The size of the result may be smaller than this number, but never larger.)
    */
-  void add_node( node const& n )
+  template<bool enabled = use_pushpop, typename = std::enable_if_t<enabled>>
+  std::vector<std::vector<bool>> generate_pattern( signal const& f, bool value, std::vector<std::vector<bool>> const& block_patterns = {}, uint32_t num_patterns = 1u )
   {
-    std::vector<bill::lit_type> lit_fi;
-    ntk.foreach_fanin( n, [&]( const auto& f ) {
-      lit_fi.emplace_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
-    } );
+    return generate_pattern( ntk.get_node( f ), value ^ ntk.is_complemented( f ), block_patterns, num_patterns );
+  }
 
-    literals.resize();
-    assert( lit_fi.size() == 2u || lit_fi.size() == 3u );
-    if ( lit_fi.size() == 2u )
+  /*! \brief Generate pattern(s) for node `root` to be `value`, optionally blocking several known patterns. */
+  template<bool enabled = use_pushpop, typename = std::enable_if_t<enabled>>
+  std::vector<std::vector<bool>> generate_pattern( node const& root, bool value, std::vector<std::vector<bool>> const& block_patterns = {}, uint32_t num_patterns = 1u )
+  {
+    if ( !literals.has( root ) )
     {
-      assert( ntk.is_and( n ) || ntk.is_xor( n ) );
-      literals[n] = add_clauses_for_2input_gate( lit_fi[0], lit_fi[1], std::nullopt, ntk.is_and( n ) ? AND : XOR );
+      construct( root );
     }
-    else
+
+    push();
+
+    for ( auto const& pattern : block_patterns )
     {
-      assert( lit_fi.size() == 3u );
-      assert( ntk.is_maj( n ) || ntk.is_xor3( n ) );
-      literals[n] = add_clauses_for_3input_gate( lit_fi[0], lit_fi[1], lit_fi[2], std::nullopt, ntk.is_maj( n ) ? MAJ : XOR );
+      block_pattern( pattern );
     }
+
+    std::vector<bill::lit_type> assumptions( {lit_not_cond( literals[root], !value )} );
+    if constexpr ( use_odc )
+    {
+      if ( ps.odc_levels != 0 )
+      {
+        assumptions.emplace_back( build_odc_window( root, ~literals[root] ) );
+      }
+    }
+
+    std::optional<bool> res;
+    std::vector<std::vector<bool>> generated;
+    for ( auto i = 0u; i < num_patterns; ++i )
+    {
+      res = solve( assumptions );
+
+      if ( !res || *res ) /* timeout or UNSAT */
+      {
+        break;
+      }
+      else /* SAT */
+      {
+        generated.emplace_back( cex );
+        block_pattern( cex );
+      }
+    }
+
+    pop();
+    if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
+    {
+      restart();
+    }
+    return generated;
   }
 
   /*! \brief Update CNF clauses.
@@ -283,6 +365,7 @@ public:
 private:
   void restart()
   {
+    num_invoke = 0u;
     solver.restart();
     if constexpr ( randomize )
     {
@@ -302,18 +385,72 @@ private:
       literals[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive );
     } );
 
-    /* compute literals for nodes */
-    uint32_t next_var = ntk.num_pis() + 1;
-    ntk.foreach_gate( [&]( auto const& n ) {
-      literals[n] = bill::lit_type( next_var++, bill::lit_type::polarities::positive );
-    } );
+    solver.add_variables( ntk.num_pis() + 1 );
+    solver.add_clause( {~literals[ntk.get_constant( false )]} );
+  }
 
-    solver.add_variables( ntk.size() );
-    generate_cnf<Ntk, bill::lit_type>(
-        ntk, [&]( auto const& clause ) {
-          solver.add_clause( clause );
-        },
-        literals );
+  void construct( node const& n )
+  {
+    assert( !literals.has( n ) );
+    if constexpr ( use_pushpop )
+    {
+      if ( between_push_pop )
+      {
+        tmp.emplace_back( n );
+      }
+    }
+
+    std::vector<bill::lit_type> child_lits;
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      if ( !literals.has( f ) )
+      {
+        construct( ntk.get_node( f ) );
+      }
+      child_lits.push_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
+    } );
+    bill::lit_type node_lit = literals[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+
+    if ( ntk.is_and( n ) )
+    {
+      detail::on_and<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
+    else if ( ntk.is_xor( n ) )
+    {
+      detail::on_xor<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
+    else if ( ntk.is_xor3( n ) )
+    {
+      detail::on_xor3<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
+    else if ( ntk.is_maj( n ) )
+    {
+      detail::on_maj<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
+  }
+
+  void push()
+  {
+    solver.push();
+    between_push_pop = true;
+    tmp.clear();
+  }
+
+  void pop()
+  {
+    solver.pop();
+    for ( auto& n : tmp )
+    {
+      literals.erase( n );
+    }
+    between_push_pop = false;
   }
 
   bill::lit_type add_clauses_for_2input_gate( bill::lit_type a, bill::lit_type b, std::optional<bill::lit_type> c = std::nullopt, gate_type type = AND )
@@ -365,22 +502,24 @@ private:
 
     if ( g.fanins.size() == 2u )
     {
-      assert( g.fanins[0].idx < lits.size() );
-      assert( g.fanins[1].idx < lits.size() );
-      return add_clauses_for_2input_gate( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), std::nullopt, g.type );
+      assert( g.fanins[0].index < lits.size() );
+      assert( g.fanins[1].index < lits.size() );
+      return add_clauses_for_2input_gate( lit_not_cond( lits[g.fanins[0].index], g.fanins[0].inverted ), lit_not_cond( lits[g.fanins[1].index], g.fanins[1].inverted ), std::nullopt, g.type );
     }
     else
     {
-      assert( g.fanins[0].idx < lits.size() );
-      assert( g.fanins[1].idx < lits.size() );
-      assert( g.fanins[2].idx < lits.size() );
-      return add_clauses_for_3input_gate( lit_not_cond( lits[g.fanins[0].idx], g.fanins[0].inv ), lit_not_cond( lits[g.fanins[1].idx], g.fanins[1].inv ), lit_not_cond( lits[g.fanins[2].idx], g.fanins[2].inv ), std::nullopt, g.type );
+      assert( g.fanins[0].index < lits.size() );
+      assert( g.fanins[1].index < lits.size() );
+      assert( g.fanins[2].index < lits.size() );
+      return add_clauses_for_3input_gate( lit_not_cond( lits[g.fanins[0].index], g.fanins[0].inverted ), lit_not_cond( lits[g.fanins[1].index], g.fanins[1].inverted ), lit_not_cond( lits[g.fanins[2].index], g.fanins[2].inverted ), std::nullopt, g.type );
     }
   }
 
   std::optional<bool> solve( std::vector<bill::lit_type> assumptions )
   {
+    ++num_invoke;
     auto const res = solver.solve( assumptions, ps.conflict_limit );
+
     if ( res == bill::result::states::satisfiable )
     {
       auto model = solver.get_model().model();
@@ -399,10 +538,9 @@ private:
 
   std::optional<bool> validate( node const& root, bill::lit_type const& lit )
   {
-    assert( literals[root].variable() != bill::var_type( 0 ) );
-    if constexpr ( use_pushpop )
+    if ( !literals.has( root ) )
     {
-      solver.push();
+      construct( root );
     }
 
     std::optional<bool> res;
@@ -410,7 +548,15 @@ private:
     {
       if ( ps.odc_levels != 0 )
       {
+        if constexpr ( use_pushpop )
+        {
+          push();
+        }
         res = solve( {build_odc_window( root, lit )} );
+        if constexpr ( use_pushpop )
+        {
+          pop();
+        }
       }
       else
       {
@@ -428,11 +574,17 @@ private:
       res = solve( {~nlit} );
     }
 
-    if constexpr ( use_pushpop )
-    {
-      solver.pop();
-    }
     return res;
+  }
+
+  void block_pattern( std::vector<bool> const& pattern )
+  {
+    assert( pattern.size() == ntk.num_pis() );
+    std::vector<bill::lit_type> clause;
+    ntk.foreach_pi( [&]( auto const& n, auto i ) {
+      clause.emplace_back( lit_not_cond( literals[n] , pattern[i] ) );
+    } );
+    solver.add_clause( clause );
   }
 
 private:
@@ -466,7 +618,7 @@ private:
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
-  void duplicate_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, int level )
+  void duplicate_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, int32_t level )
   {
     ntk.foreach_fanout( n, [&]( auto const& fo ) {
       if ( ntk.visited( fo ) == ntk.trav_id() )
@@ -475,6 +627,10 @@ private:
 
       std::vector<bill::lit_type> l_fi;
       ntk.foreach_fanin( fo, [&]( auto const& fi ) {
+        if ( !literals.has( fi ) )
+        {
+          construct( ntk.get_node( fi ) );
+        }
         l_fi.emplace_back( lit_not_cond( lits.has( ntk.get_node( fi ) ) ? lits[fi] : literals[fi], ntk.is_complemented( fi ) ) );
       } );
       if ( l_fi.size() == 2u )
@@ -498,12 +654,17 @@ private:
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
-  void make_lit_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk>& lits, std::vector<bill::lit_type>& miter, int level )
+  void make_lit_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk>& lits, std::vector<bill::lit_type>& miter, int32_t level )
   {
     ntk.foreach_fanout( n, [&]( auto const& fo ) {
       if ( ntk.visited( fo ) == ntk.trav_id() )
         return true; /* skip */
       ntk.set_visited( fo, ntk.trav_id() );
+
+      if ( !literals.has( fo ) )
+      {
+        construct( fo );
+      }
 
       lits[fo] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
 
@@ -521,6 +682,7 @@ private:
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   void add_miter_clauses( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, std::vector<bill::lit_type>& miter )
   {
+    assert( literals.has( n ) && literals[n] != literals[ntk.get_constant( false )] );
     miter.emplace_back( add_clauses_for_2input_gate( literals[n], lits[n], std::nullopt, XOR ) );
   }
 
@@ -529,8 +691,14 @@ private:
 
   validator_params const& ps;
 
-  node_map<bill::lit_type, Ntk> literals;
+  unordered_node_map<bill::lit_type, Ntk> literals;
   bill::solver<Solver> solver;
+
+  static const uint32_t MIN_NUM_INVOKE = 20u;
+  uint32_t num_invoke;
+
+  bool between_push_pop = false;
+  std::vector<node> tmp;
 
 public:
   std::vector<bool> cex;

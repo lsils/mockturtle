@@ -916,15 +916,67 @@ public:
   /*! \brief Sets the visited value of a node. */
   void set_visited( node const& n, uint32_t v ) const;
 
-  /*! \brief An id that can be used as a visited flag.
-   *
-   * By using the traversal is, one can reuse multiple visited flags over
-   * several levels.
-   */
+  /*! \brief Returns the current traversal id. */
   uint32_t trav_id() const;
 
   /*! \brief Increment the current traversal id. */
   void incr_trav_id() const;
+#pragma endregion
+
+#pragma beginregion Color values
+  /* Color values offer a more recent and flexible mechanism to manage
+     and manipulate traversal ids. */
+
+  /*! \brief Returns a new color and increases the current color. */
+  uint32_t new_color() const;
+
+  /*! \brief Returns the current color. */
+  uint32_t current_color() const;
+
+  /*! \brief Resets all nodes colors to value `color`. */
+  void clear_colors( uint32_t color = 0 ) const;
+
+  /*! \brief Returns the color of a node. */
+  auto color( node const& n ) const;
+
+  /*! \brief Returns the color of a node. */
+  auto color( signal const& n ) const;
+
+  /*! \brief Assigns the current color to a node. */
+  void paint( node const& n ) const;
+
+  /*! \brief Assigns `color` to a node. */
+  void paint( node const& n, uint32_t color ) const;
+
+  /*! \brief Copies the color from `other` to `n`. */
+  void paint( node const& n, node const& other ) const;
+
+  /*! \brief Evaluates a predicate on the color of a node.
+   *
+   * The predicate `pred` is any callable that must have the signature
+   * ``bool(color_type)``, where `color_type` is the
+   * implementation-dependent type returned by the method `color`.
+   */
+  template<typename Pred>
+  bool eval_color( node const& n, Pred&& pred ) const;
+
+  /*! \brief Evaluates a predicate on the colors of two nodes.
+   *
+   * The predicate `pred` is any callable that must have the signature
+   * ``bool(color_type,color_type)``, where `color_type` is the
+   * implementation-dependent type returned by the method `color`.
+   */
+  template<typename Pred>
+  bool eval_color( node const& a, node const& b, Pred&& pred ) const;
+
+  /*! \brief Evaluates a predicate on the colors of the fanins of a node.
+   *
+   * The predicate `pred` is any callable that must have the signature
+   * ``bool(color_type)``, where `color_type` is the
+   * implementation-dependent type returned by the method `color`.
+   */
+  template<typename Pred>
+  bool eval_fanins_color( node const& n, Pred&& pred ) const;
 #pragma endregion
 
 #pragma region Signal naming
@@ -945,7 +997,7 @@ public:
 
   /*! \brief Returns the name of an output signal. */
   std::string get_output_name( uint32_t index ) const;
-#end endregion
+#pragma endregion
 
 #pragma region General methods
   /*! \brief Returns network events object.

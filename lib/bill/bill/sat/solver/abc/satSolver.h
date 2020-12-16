@@ -310,7 +310,12 @@ static inline int sat_solver_set_random(sat_solver* s, int fNotUseRandom)
 
 static inline void sat_solver_bookmark(sat_solver* s)
 {
-    assert( s->qhead == s->qtail );
+    if ( s->qtail != s->qhead )
+    {
+        int status = sat_solver_simplify( s );
+        assert( status != 0 ); (void)status;
+        assert( s->qtail == s->qhead );
+    }
     s->iVarPivot    = s->size;
     s->iTrailPivot  = s->qhead;
     Sat_MemBookMark( &s->Mem );
