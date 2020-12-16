@@ -48,6 +48,7 @@
 #include <optional>
 #include <stack>
 #include <string>
+
 namespace mockturtle
 {
 
@@ -627,7 +628,7 @@ public:
       {
         take_out_node( _old );
       }
-      else
+    }
   }
 
   void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
@@ -646,7 +647,7 @@ public:
     };
 
     /* register event to delete substitutions if their right-hand side
-       node has been removed */
+       nodes get deleted */
     _events->on_delete.push_back( clean_substitutions );
 
     /* increment fanout_size of all signals to be used in
@@ -776,7 +777,7 @@ public:
           }
         }
 
-        /* release from substitution list */
+        /* decrement fanout_size when released from substitution list */
         decr_fanout_size( get_node( new_signal ) );
       }
     }
