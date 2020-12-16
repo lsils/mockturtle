@@ -33,21 +33,21 @@
 
 #pragma once
 
-#include <memory>
-#include <optional>
-#include <stack>
-#include <string>
-
-#include <kitty/dynamic_truth_table.hpp>
-#include <kitty/partial_truth_table.hpp>
-#include <kitty/operators.hpp>
-
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
 #include "detail/foreach.hpp"
 #include "events.hpp"
 #include "storage.hpp"
 
+#include <kitty/dynamic_truth_table.hpp>
+#include <kitty/partial_truth_table.hpp>
+#include <kitty/operators.hpp>
+
+#include <list>
+#include <memory>
+#include <optional>
+#include <stack>
+#include <string>
 namespace mockturtle
 {
 
@@ -521,9 +521,28 @@ public:
         output.index = new_signal.index;
         output.weight ^= new_signal.complement;
 
-        // increment fan-in of new node
-        _storage->nodes[new_signal.index].data[0].h1++;
+        if ( old_node != new_signal.index )
+        {
+          /* increment fan-in of new node */
+          _storage->nodes[new_signal.index].data[0].h1++;
+        }
       }
+    }
+  }
+
+  void delete_node( node const& n )
+  {
+    /* we cannot delete CIs, constants, or already dead nodes */
+    if ( n == 0 || is_ci( n ) || is_dead( n ) )
+      return;
+
+    auto& nobj = _storage->nodes[n];
+    nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
+    _storage->hash.erase( nobj );
+
+    for ( auto const& fn : _events->on_delete )
+    {
+      fn( n );
     }
   }
 
@@ -551,6 +570,25 @@ public:
       if ( decr_fanout_size( nobj.children[i].index ) == 0 )
       {
         take_out_node( nobj.children[i].index );
+      }
+    }
+  }
+
+  void deref_and_delete_if_unused( node const& n )
+  {
+    if ( !is_dead( n ) )
+    {
+      if ( fanout_size( n ) > 0 )
+      {
+        decr_fanout_size( n );
+      }
+      if ( fanout_size( n ) == 0 )
+      {
+        delete_node( n );
+
+        foreach_fanin( n, [&]( signal const& fi ){
+          deref_and_delete_if_unused( get_node( fi ) );
+        });
       }
     }
   }
@@ -590,11 +628,159 @@ public:
         take_out_node( _old );
       }
       else
+
+  void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
+  {
+    auto clean_substitutions = [&]( node const& n )
+    {
+      std::remove_if( std::begin( substitutions ), std::end( substitutions ),
+                      [&]( auto const& s ){
+                        if ( s.first == n )
+                        {
+                          deref_and_delete_if_unused( get_node( s.second ) );
+                          return true; /* remove substitution from list */
+                        }
+                        return false; /* keep */
+                      } );
+    };
+
+    /* register event to delete substitutions if their right-hand side
+       node has been removed */
+    _events->on_delete.push_back( clean_substitutions );
+
+    /* increment fanout_size of all signals to be used in
+       substitutions to ensure that they will not be deleted */
+    for ( const auto& s : substitutions )
+    {
+      incr_fanout_size( get_node( s.second ) );
+    }
+
+    while ( !substitutions.empty() )
+    {
+      auto const [old_node, new_signal] = substitutions.front();
+      substitutions.pop_front();
+
+      for ( auto index = 1u; index < _storage->nodes.size(); ++index )
       {
-        /* if _old is substituted by its complement, then only decrement _old */
-        decr_fanout_size( _old );
+        /* skip CIs and dead nodes */
+        if ( is_ci( index ) || is_dead( index ) )
+          continue;
+
+        /* skip nodes that will be deleted */
+        if ( std::find_if( std::begin( substitutions ), std::end( substitutions ),
+                           [&index]( auto s ){ return s.first == index; } ) != std::end( substitutions ) )
+          continue;
+
+        /* replace in node */
+        {
+          auto _new = new_signal;
+          auto& node = _storage->nodes[index];
+
+          uint32_t fanin = 0u;
+          if ( node.children[0].index == old_node )
+          {
+            fanin = 0u;
+            _new.complement ^= node.children[0].weight;
+          }
+          else if ( node.children[1].index == old_node )
+          {
+            fanin = 1u;
+            _new.complement ^= node.children[1].weight;
+          }
+          else
+          {
+            continue;
+          }
+
+          /* determine potential new children of node n */
+          signal child1 = _new;
+          signal child0 = node.children[fanin ^ 1];
+
+          if ( child0.index > child1.index )
+          {
+            std::swap( child0, child1 );
+          }
+
+          /* trivial cases */
+          if ( child0.index == child1.index )
+          {
+            bool const diff_pol = child0.complement != child1.complement;
+            auto s = diff_pol ? get_constant( false ) : child1;
+            incr_fanout_size( get_node( s ) );
+            substitutions.emplace_back( index, s );
+            continue;
+          }
+          else if ( child0.index == 0 ) /* constant child */
+          {
+            auto s = child0.complement ? child1 : get_constant( false );
+            incr_fanout_size( get_node( s ) );
+            substitutions.emplace_back( index, s );
+            continue;
+          }
+
+          /* node already in hash table */
+          storage::element_type::node_type _hash_obj;
+          _hash_obj.children[0] = child0;
+          _hash_obj.children[1] = child1;
+          if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() && it->second != old_node )
+            {
+            auto s = signal( it->second, 0 );
+            incr_fanout_size( get_node( s ) );
+            substitutions.emplace_back( index, s );
+            continue;
+          }
+
+          /* remember before */
+          auto const old_child0 = signal{node.children[0]};
+          auto const old_child1 = signal{node.children[1]};
+
+          /* erase old node in hash table */
+          _storage->hash.erase( node );
+
+          /* insert updated node into hash table */
+          node.children[0] = child0;
+          node.children[1] = child1;
+          _storage->hash[node] = index;
+
+          incr_fanout_size( get_node( _new ) );
+          deref_and_delete_if_unused( old_node );
+
+          for ( auto const& fn : _events->on_modified )
+          {
+            fn( index, {old_child0, old_child1} );
+          }
+        }
+
+        /* replace in outputs */
+        for ( auto& output : _storage->outputs )
+        {
+          if ( output.index == old_node )
+          {
+            output.index = new_signal.index;
+            output.weight ^= new_signal.complement;
+
+            incr_fanout_size( get_node( new_signal ) );
+            deref_and_delete_if_unused( old_node );
+          }
+        }
+
+        /* replace in substitutions */
+        for ( auto& s : substitutions )
+        {
+          if ( get_node( s.second ) == old_node )
+          {
+            s.second = is_complemented( s.second ) ? !new_signal : new_signal;
+            incr_fanout_size( get_node( new_signal ) );
+            deref_and_delete_if_unused( old_node );
+          }
+        }
+
+        /* release from substitution list */
+        decr_fanout_size( get_node( new_signal ) );
       }
     }
+
+    _events->on_delete.pop_back();
   }
 #pragma endregion
 
