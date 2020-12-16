@@ -139,7 +139,7 @@ kitty::dynamic_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
 namespace detail {
 
 template<class Ntk, class TT>
-void clearTFO_rec( Ntk const& ntk, unordered_node_map<TT, Ntk>& ttsNOT, node<Ntk> const& n, std::vector<node<Ntk>>& roots, int level )
+void clearTFO_rec( Ntk const& ntk, unordered_node_map<TT, Ntk>& tts, node<Ntk> const& n, std::set<node<Ntk>>& roots, int level )
 {
   if ( ntk.visited( n ) == ntk.trav_id() ) /* visited */
   {
@@ -147,16 +147,16 @@ void clearTFO_rec( Ntk const& ntk, unordered_node_map<TT, Ntk>& ttsNOT, node<Ntk
   }
   ntk.set_visited( n, ntk.trav_id() );
 
-  ttsNOT.erase( n );
+  tts.erase( n );
 
   if ( level == 0 )
   {
-    roots.emplace_back( n );
+    roots.insert( n );
     return;
   }
 
   ntk.foreach_fanout( n, [&]( auto const& fo ){
-    clearTFO_rec( ntk, ttsNOT, fo, roots, level - 1 );
+    clearTFO_rec( ntk, tts, fo, roots, level - 1 );
   });
 }
 
@@ -169,9 +169,18 @@ void simulate_TFO_rec( Ntk const& ntk, node<Ntk> const& n, partial_simulator con
   }
   ntk.set_visited( n, ntk.trav_id() );
 
-  if ( !tts.has( n ) || tts[n].num_bits() != sim.num_bits() )
+  if ( !tts.has( n ) )
   {
     simulate_node<Ntk>( ntk, n, tts, sim );
+  }
+  else
+  {
+    assert( tts[n].num_bits() == sim.num_bits() );
+  }
+
+  if ( level == 0 )
+  {
+    return;
   }
 
   ntk.foreach_fanout( n, [&]( auto const& fo ){
@@ -197,25 +206,49 @@ void simulate_TFO_rec( Ntk const& ntk, node<Ntk> const& n, partial_simulator con
 template<class Ntk>
 kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, unordered_node_map<kitty::partial_truth_table, Ntk>& tts, int levels = -1 )
 {
-  std::vector<node<Ntk>> roots( ntk.num_pos() );
-  ntk.foreach_po( [&]( auto const& f, auto i ){ roots.at(i) = ntk.get_node( f ); });
+  std::set<node<Ntk>> roots;
+  unordered_node_map<kitty::partial_truth_table, Ntk> tts_roots( ntk );
 
+  /* Make sure n is up-to-date and record its truth table. */
+  if ( !tts.has( n ) || tts[n].num_bits() != sim.num_bits() )
+  {
+    simulate_node<Ntk>( ntk, n, tts, sim );
+  }
+  auto const tt_n = tts[n];
+
+  /* Clear (mark) TFO nodes and collect roots (leaves). */
+  ntk.incr_trav_id();
+  detail::clearTFO_rec( ntk, tts, n, roots, levels );
+  ntk.foreach_po( [&]( auto const& f )
+  {
+    if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() ) /* PO is in TFO */
+    {
+      roots.insert( ntk.get_node( f ) );
+    }
+  });
+
+  /* Simulate the negated version and collect TTs of roots. */
+  tts[n] = ~tt_n;
   ntk.incr_trav_id();
   detail::simulate_TFO_rec( ntk, n, sim, tts, levels );
-  unordered_node_map<kitty::partial_truth_table, Ntk> ttsNOT = tts.copy();
-
-  ntk.incr_trav_id();
-  detail::clearTFO_rec( ntk, ttsNOT, n, roots, levels );
-  ttsNOT[n] = ~tts[n];
-  ntk.incr_trav_id();
-  detail::simulate_TFO_rec( ntk, n, sim, ttsNOT, levels );
-
-  kitty::partial_truth_table care( tts[n].num_bits() );
   for ( const auto& r : roots )
   {
-    if ( tts[r].num_bits() == care.num_bits() )
+    tts_roots[r] = tts[r];
+  }
+
+  /* Revert the negation and simulate again */
+  tts[n] = tt_n;
+  ntk.incr_trav_id();
+  detail::clearTFO_rec( ntk, tts, n, roots, levels );
+  ntk.incr_trav_id();
+  detail::simulate_TFO_rec( ntk, n, sim, tts, levels );
+
+  kitty::partial_truth_table care( sim.num_bits() );
+  for ( const auto& r : roots )
+  {
+    if ( tts[r].num_bits() == sim.num_bits() )
     {
-      care |= tts[r] ^ ttsNOT[r];
+      care |= tts[r] ^ tts_roots[r];
     }
   }
   return ~care;
@@ -232,25 +265,12 @@ kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
 template<class Ntk>
 bool pattern_is_observable( Ntk const& ntk, node<Ntk> const& n, std::vector<bool> const& pattern, int levels = -1 )
 {
-  std::vector<node<Ntk>> roots( ntk.num_pos() );
-  ntk.foreach_po( [&]( auto const& f, auto i ){ roots.at(i) = ntk.get_node( f ); });
+  partial_simulator sim( ntk.num_pis(), 0 );
+  sim.add_pattern( pattern );
+  unordered_node_map<kitty::partial_truth_table, Ntk> tts( ntk );
 
-  default_simulator<bool> sim( pattern );
-  unordered_node_map<bool, Ntk> tts( ntk );
-  simulate_nodes( ntk, tts, sim );
-  unordered_node_map<bool, Ntk> ttsNOT = tts.copy();
-
-  ntk.incr_trav_id();
-  detail::clearTFO_rec( ntk, ttsNOT, n, roots, levels );
-  ttsNOT[n] = !tts[n];
-  simulate_nodes( ntk, ttsNOT, sim );
-
-  bool care = false;
-  for ( const auto& r : roots )
-  {
-    care |= tts[r] ^ ttsNOT[r];
-  }
-  return care;
+  auto const care = observability_dont_cares( ntk, n, sim, tts, levels );
+  return !kitty::is_const0( care );
 }
 
 /*! \brief SAT-based satisfiability don't cares checker
