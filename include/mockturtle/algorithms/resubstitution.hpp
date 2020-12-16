@@ -649,11 +649,6 @@ public:
 
       pbar( i, i, candidates, st.estimated_gain );
 
-      if ( ntk.is_dead( n ) )
-      {
-        return true; /* next */
-      }
-
       /* compute cut, collect divisors, compute MFFC */
       mffc_result_t potential_gain;
       const auto collector_success = call_with_stopwatch( st.time_divs, [&]() {
