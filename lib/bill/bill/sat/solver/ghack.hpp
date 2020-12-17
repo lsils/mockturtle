@@ -1472,10 +1472,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #ifndef Ghack_System_h
 #define Ghack_System_h
 
-#if defined(__linux__)
-#include <fpu_control.h>
-#endif
-
 
 
 //-------------------------------------------------------------------------------------------------

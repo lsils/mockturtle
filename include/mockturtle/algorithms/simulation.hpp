@@ -608,6 +608,8 @@ void simulate_nodes( Ntk const& ntk, unordered_node_map<SimulationType, Ntk>& no
 
 namespace detail
 {
+/* Forward declaration */
+template<class Ntk, class Simulator> void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim );
 
 template<class Ntk, class Simulator>
 void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim )
@@ -618,7 +620,10 @@ void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered
     {
       simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
     }
-    else assert( node_to_value[ntk.get_node( f )].num_bits() == sim.num_bits() );
+    else if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
+    {
+      re_simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
+    }
     fanin_values[i] = node_to_value[ntk.get_node( f )];
   } );
   node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
@@ -629,8 +634,11 @@ void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unorde
 {
   std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
   ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
-    assert( node_to_value.has( ntk.get_node( f ) ) );
-    if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
+    if ( !node_to_value.has( ntk.get_node( f ) ) )
+    {
+      simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
+    }
+    else if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
     {
       re_simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
     }
@@ -685,19 +693,7 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
     
   if ( !node_to_value.has( n ) )
   {
-    std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
-    ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      if ( !node_to_value.has( ntk.get_node( f ) ) )
-      {
-        simulate_node( ntk, ntk.get_node( f ), node_to_value, sim );
-      }
-      else if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
-      {
-        detail::re_simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
-      }
-      fanin_values[i] = node_to_value[ntk.get_node( f )];
-    } );
-    node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
+    detail::simulate_fanin_cone( ntk, n, node_to_value, sim );
   }
   else if ( node_to_value[n].num_bits() != sim.num_bits() )
   {
