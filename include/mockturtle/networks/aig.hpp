@@ -586,7 +586,6 @@ public:
       if ( fanout_size( n ) == 0 )
       {
         delete_node( n );
-
         foreach_fanin( n, [&]( signal const& fi ){
           deref_and_delete_if_unused( get_node( fi ) );
         });
@@ -635,15 +634,16 @@ public:
   {
     auto clean_substitutions = [&]( node const& n )
     {
-      std::remove_if( std::begin( substitutions ), std::end( substitutions ),
-                      [&]( auto const& s ){
-                        if ( s.first == n )
-                        {
-                          deref_and_delete_if_unused( get_node( s.second ) );
-                          return true; /* remove substitution from list */
-                        }
-                        return false; /* keep */
-                      } );
+      substitutions.erase( std::remove_if( std::begin( substitutions ), std::end( substitutions ),
+                                           [&]( auto const& s ){
+                                             if ( s.first == n )
+                                             {
+                                               deref_and_delete_if_unused( get_node( s.second ) );
+                                               return true; /* remove substitution from list */
+                                             }
+                                             return false; /* keep */
+                                           } ),
+                           std::end( substitutions ) );
     };
 
     /* register event to delete substitutions if their right-hand side
@@ -752,34 +752,34 @@ public:
             fn( index, {old_child0, old_child1} );
           }
         }
-
-        /* replace in outputs */
-        for ( auto& output : _storage->outputs )
-        {
-          if ( output.index == old_node )
-          {
-            output.index = new_signal.index;
-            output.weight ^= new_signal.complement;
-
-            incr_fanout_size( get_node( new_signal ) );
-            deref_and_delete_if_unused( old_node );
-          }
-        }
-
-        /* replace in substitutions */
-        for ( auto& s : substitutions )
-        {
-          if ( get_node( s.second ) == old_node )
-          {
-            s.second = is_complemented( s.second ) ? !new_signal : new_signal;
-            incr_fanout_size( get_node( new_signal ) );
-            deref_and_delete_if_unused( old_node );
-          }
-        }
-
-        /* decrement fanout_size when released from substitution list */
-        decr_fanout_size( get_node( new_signal ) );
       }
+
+      /* replace in outputs */
+      for ( auto& output : _storage->outputs )
+      {
+        if ( output.index == old_node )
+        {
+          output.index = new_signal.index;
+          output.weight ^= new_signal.complement;
+
+          incr_fanout_size( get_node( new_signal ) );
+          deref_and_delete_if_unused( old_node );
+        }
+      }
+
+      /* replace in substitutions */
+      for ( auto& s : substitutions )
+      {
+        if ( get_node( s.second ) == old_node )
+        {
+          s.second = is_complemented( s.second ) ? !new_signal : new_signal;
+          incr_fanout_size( get_node( new_signal ) );
+          deref_and_delete_if_unused( old_node );
+        }
+      }
+
+      /* decrement fanout_size when released from substitution list */
+      decr_fanout_size( get_node( new_signal ) );
     }
 
     _events->on_delete.pop_back();
