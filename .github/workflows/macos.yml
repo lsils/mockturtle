@@ -47,7 +47,7 @@ jobs:
         ./test/run_tests "~[quality]"
   build-gcc10:
     name: GNU GCC 10
-    runs-on: macOS-11.0
+    runs-on: macOS-latest
 
     steps:
     - uses: actions/checkout@v1
@@ -64,7 +64,7 @@ jobs:
         cd build
         ./test/run_tests "~[quality]"
   build-clang:
-    name: Clang 11
+    name: Clang 12
     runs-on: macOS-latest
 
     steps:
