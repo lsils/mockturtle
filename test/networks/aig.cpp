@@ -902,7 +902,16 @@ TEST_CASE( "substitute multiple nodes", "[aig]" )
   CHECK( aig.is_dead( aig.get_node( n8 ) ) );
   CHECK( aig.is_dead( aig.get_node( n9 ) ) );
 
+  CHECK( aig.fanout_size( aig.get_node( aig.get_constant( false ) ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( x3 ) ) == 0u );
   CHECK( aig.fanout_size( aig.get_node( n4 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( n5 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( n6 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( n7 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( n8 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( n9 ) ) == 0u );
 
   aig.foreach_po( [&]( signal const o, uint32_t index ){
     switch ( index )
