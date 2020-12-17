@@ -32,6 +32,8 @@
 
 #pragma once
 
+#include "../utils/index_list.hpp"
+
 #include <kitty/kitty.hpp>
 
 #include <vector>
@@ -259,7 +261,7 @@ public:
     }
   }
 
-  std::optional<std::vector<uint32_t>> compute_function( uint32_t num_inserts )
+  std::optional<mig_index_list> compute_function( uint32_t num_inserts )
   {
     for ( auto i = 0u; i < divisors.size(); ++i )
     {
@@ -267,7 +269,9 @@ public:
       if ( kitty::is_const0( ~divisors.at( i ) ) )
       {
         /* 0-resub (including constants) */
-        return std::vector<uint32_t>( {i} );
+        mig_index_list index_list( divisors.size() );
+        index_list.add_output( i );
+        return index_list;
       }
     }
 
@@ -281,7 +285,7 @@ public:
   }
 
 private:
-  std::optional<std::vector<uint32_t>> top_down_approach()
+  std::optional<mig_index_list> top_down_approach()
   {
     maj_nodes.reserve( size_limit );
     /* topmost node: care is const1 */
@@ -292,19 +296,29 @@ private:
     if ( top_node_choices.size() == 1u && kitty::is_const0( ~top_node_choices[0].function ) )
     {
       /* 1-resub */
-      std::vector<uint32_t> index_list;
-      index_list.emplace_back( top_node_choices[0].fanins.at( 0u ) );
-      index_list.emplace_back( top_node_choices[0].fanins.at( 1u ) );
-      index_list.emplace_back( top_node_choices[0].fanins.at( 2u ) );
-      index_list.emplace_back( divisors.size() );
+      mig_index_list index_list( divisors.size() );
+      index_list.add_maj( top_node_choices[0].fanins[0], top_node_choices[0].fanins[1], top_node_choices[0].fanins[2] );
+      index_list.add_output( divisors.size() );
       return index_list;
+    }
+    for ( simple_maj& top_node : top_node_choices )
+    {
+      if ( easy_refine( top_node, 0 ) || easy_refine( top_node, 1 ) )
+      {
+        /* 1-resub */
+        mig_index_list index_list( divisors.size() );
+        index_list.add_maj( top_node.fanins[0], top_node.fanins[1], top_node.fanins[2] );
+        index_list.add_output( divisors.size() );
+        return index_list;
+      }
+      if (p) { std::cout<<"<"<<top_node.fanins[0]<<", "<<top_node.fanins[1]<<", "<<top_node.fanins[2]<<"> = "; kitty::print_binary(top_node.function); std::cout<<"\n"; }
     }
     if ( size_limit == 1u )
     {
       return std::nullopt;
     }
 
-    std::vector<maj_node> copy;
+    std::vector<maj_node> maj_nodes_best;
     for ( simple_maj const& top_node : top_node_choices )
     {
       if (p) { std::cout<<"===== try with top node <"<<top_node.fanins[0]<<", "<<top_node.fanins[1]<<", "<<top_node.fanins[2]<<"> =====\n"; }
@@ -325,8 +339,8 @@ private:
         if ( evaluate_one( care, divisors.at( top_node.fanins[i] ), expansion_position{0, i} ) )
         {
           /* 2-resub */
-          copy = maj_nodes;
-          break;
+          maj_nodes_best = maj_nodes;
+          return translate( maj_nodes_best );
         }
 
         if ( !refine() )
@@ -334,39 +348,18 @@ private:
           continue;
         }
 
-        if ( copy.size() == 0u || maj_nodes.size() < copy.size() )
+        if ( maj_nodes_best.size() == 0u || maj_nodes.size() < maj_nodes_best.size() )
         {
-          copy = maj_nodes;
+          maj_nodes_best = maj_nodes;
         }
       }
     }
 
-    if ( copy.size() == 0u )
+    if ( maj_nodes_best.size() == 0u )
     {
       return std::nullopt;
     }
-    std::vector<uint32_t> index_list;
-    std::unordered_map<uint32_t, uint32_t> id_map;
-    for ( auto i = 0u; i < copy.size(); ++i )
-    {
-      auto& n = copy.at( copy.size() - i - 1u );
-      for ( auto j = 0u; j < 3u; ++j )
-      {
-        if ( n.fanins.at( j ) < divisors.size() )
-        {
-          index_list.emplace_back( n.fanins.at( j ) );
-        }
-        else
-        {
-          auto mapped = id_map.find( n.fanins.at( j ) );
-          assert( mapped != id_map.end() );
-          index_list.emplace_back( mapped->second );
-        }
-        id_map[n.id] = divisors.size() + i * 2;
-      }
-    }
-    index_list.emplace_back( ( id_map.find( copy.at( 0u ).id ) )->second );
-    return index_list;
+    return translate( maj_nodes_best );
   }
 
   bool refine()
@@ -526,6 +519,8 @@ private:
         }
         return true;
       }
+      // TODO: add all the fulfilled nodes (trace upwards) to the divisor list, determining their indices in topological order
+      // This also has to be taken care of in the different runs.
     }
     else
     {
@@ -641,7 +636,7 @@ private:
     }
     for ( auto j = 0u; j < divisors.size(); ++j )
     {
-      if ( scores.at( j ) == max_score )
+      if ( scores.at( j ) == max_score && !same_divisor( j, max_i ) )
       {
         if ( construct_top( max_i, j, res ) )
         {
@@ -670,10 +665,9 @@ private:
 
     for ( auto k = 0u; k < divisors.size(); ++k )
     {
-      if ( scores.at( k ) == max_score )
+      if ( scores.at( k ) == max_score && !same_divisor( k, max_i ) && !same_divisor( k, max_j ) )
       {
         TT const func = kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( k ) );
-        if (p) { std::cout<<"<"<<max_i<<", "<<max_j<<", "<<k<<"> = "; kitty::print_binary(func); std::cout<<"\n"; }
         if ( kitty::is_const0( ~func ) )
         {
           res.clear();
@@ -684,6 +678,66 @@ private:
       }
     }
     return false;
+  }
+
+  /* try to replace the first (fi=0) or the second (fi=1) fanin with another divisor to improve coverage */
+  bool easy_refine( simple_maj& n, uint32_t fi )
+  {
+    uint64_t const original_coverage = kitty::count_ones( n.function );
+    uint64_t current_coverage = original_coverage;
+    auto const& tt1 = divisors.at( n.fanins[fi ? 0 : 1] );
+    auto const& tt2 = divisors.at( n.fanins[fi < 2 ? 2 : 1] );
+    for ( auto i = 0u; i < divisors.size(); ++i )
+    {
+      if ( same_divisor( i, n.fanins[0] ) || same_divisor( i, n.fanins[1] ) || same_divisor( i, n.fanins[2] ) )
+      {
+        continue;
+      }
+      auto const& tti = divisors.at( i );
+      uint64_t coverage = kitty::count_ones( kitty::ternary_majority( tti, tt1, tt2 ) );
+      if ( coverage > current_coverage )
+      {
+        current_coverage = coverage;
+        n.fanins[fi] = i;
+      }
+    }
+    if ( current_coverage > original_coverage )
+    {
+      n.function = kitty::ternary_majority( divisors.at( n.fanins[0] ), divisors.at( n.fanins[1] ), divisors.at( n.fanins[2] ) );
+      if ( current_coverage == num_bits )
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  mig_index_list translate( std::vector<maj_node> const& maj_nodes_best ) const
+  {
+    mig_index_list index_list;
+    std::unordered_map<uint32_t, uint32_t> id_map;
+    for ( auto i = 0u; i < maj_nodes_best.size(); ++i )
+    {
+      auto& n = maj_nodes_best.at( maj_nodes_best.size() - i - 1u );
+      uint32_t lits[3];
+      for ( auto j = 0u; j < 3u; ++j )
+      {
+        if ( n.fanins[j] < divisors.size() )
+        {
+          lits[j] = n.fanins[j];
+        }
+        else
+        {
+          auto mapped = id_map.find( n.fanins[j] );
+          assert( mapped != id_map.end() );
+          lits[j] = mapped->second;
+        }
+      }
+      id_map[n.id] = divisors.size() + i * 2;
+      index_list.add_maj( lits[0], lits[1], lits[2] );
+    }
+    index_list.add_output( ( id_map.find( maj_nodes_best.at( 0u ).id ) )->second );
+    return index_list;
   }
 
 private:
@@ -710,13 +764,14 @@ private:
   void update_fanin( maj_node& parent_node, uint32_t const fi, uint32_t const new_id, TT const& new_function )
   {
     parent_node.fanins.at( fi ) = new_id;
+    TT const old_function = parent_node.fanin_functions.at( fi );
     parent_node.fanin_functions.at( fi ) = new_function;
 
     TT const& sibling_func1 = sibling_func( parent_node, fi, 1 );
     TT const& sibling_func2 = sibling_func( parent_node, fi, 2 );
 
-    update_sibling( parent_node, fi, 1, new_function, sibling_func2 );
-    update_sibling( parent_node, fi, 2, new_function, sibling_func1 );
+    update_sibling( parent_node, fi, 1, old_function, new_function, sibling_func1, sibling_func2 );
+    update_sibling( parent_node, fi, 2, old_function, new_function, sibling_func2, sibling_func1 );
 
     /* update grandparents */
     if ( parent_node.parent.parent_position != -1 ) /* not the topmost node */
@@ -725,32 +780,83 @@ private:
     }
   }
 
-  void update_sibling( maj_node const& parent_node, uint32_t const fi, uint32_t const sibling_num, TT const& new_function, TT const& sibling_func )
+  /* Deal with the affects on siblings due to a change in one fanin function
+   * \param parent_node The node one of whose fanin functions is changed.
+   * \param fi The index of the changed fanin. (0 <= fi <= 2)
+   * \param sibling_num Which sibling we are updating. (1 or 2)
+   * \param old_function The original function of the changed fanin.
+   * \param new_function The new function of the changed fanin.
+   * \param sibling_func The function of the sibling being updated.
+   * \param other_sibling_func The function of the other sibling.
+   */
+  void update_sibling( maj_node const& parent_node, uint32_t const fi, uint32_t const sibling_num, TT const& old_function, TT const& new_function, TT const& sibling_func, TT const& other_sibling_func )
   {
     uint32_t index = sibling_index( fi, sibling_num );
     uint32_t id = parent_node.fanins.at( index );
-    /* update the `care`s of the siblings (if they are not divisors) */
-    if ( id >= divisors.size() )
+    TT const old_care = care( parent_node.care, old_function, other_sibling_func );
+    TT const new_care = care( parent_node.care, new_function, other_sibling_func );
+
+    if ( old_care != new_care )
     {
-      id_to_node( id ).care = parent_node.care & ~( new_function & sibling_func );
-    }
-    else /* or add these positions back to the expansion queue */
-    {
-      expansion_position new_pos{int32_t( id_to_pos( parent_node.id ) ), int32_t( index )};
-      bool added = false;
-      for ( auto& l : leaves )
+      /* update care of the sibling (if it is not a divisor) */
+      if ( id >= divisors.size() )
       {
-        if ( l == new_pos )
+        update_node_care( id_to_node( id ), sibling_func, old_care, new_care );
+      }
+      else /* add the position back to queue because there may be new opportunities */
+      {
+        add_position( expansion_position( {int32_t( id_to_pos( parent_node.id ) ), int32_t( index )} ) );
+      }
+    }
+  }
+
+  void update_node_care( maj_node& node, TT const& func, TT const& old_care, TT const& new_care )
+  {
+    assert( node.care == old_care );
+    /* check if it was fulfilled but becomes unfulfilled */
+    if ( fulfilled( func, old_care ) && !fulfilled( func, new_care ) )
+    {
+      /* add the fanin positions back to queue */
+      for ( auto fi = 0; fi < 3; ++fi )
+      {
+        if ( node.fanins.at( fi ) < divisors.size() )
         {
-          added = true;
-          break;
+          add_position( expansion_position( {int32_t( id_to_pos( node.id ) ), int32_t( fi )} ) );
         }
       }
-      if ( !added )
+    }
+    node.care = new_care;
+
+    /* the update may propagate to its children */
+    for ( auto fi = 0; fi < 3; ++fi )
+    {
+      if ( node.fanins.at( fi ) >= divisors.size() )
       {
-        leaves.emplace_back( new_pos );
+        TT const old_child_care = care( old_care, sibling_func( node, fi, 1 ), sibling_func( node, fi, 2 ) );
+        TT const new_child_care = care( new_care, sibling_func( node, fi, 1 ), sibling_func( node, fi, 2 ) );
+        if ( old_child_care != new_child_care )
+        {
+          update_node_care( id_to_node( node.fanins.at( fi ) ), node.fanin_functions.at( fi ), old_child_care, new_child_care );
+        }
       }
     }
+  }
+
+  void add_position( expansion_position const& pos )
+  {
+    for ( auto& l : leaves )
+    {
+      if ( l == pos )
+      {
+        return;
+      }
+    }
+    leaves.emplace_back( pos );
+  }
+
+  TT care( TT const& parent_care, TT const& sibling_func1, TT const& sibling_func2 )
+  {
+    return parent_care & ~( sibling_func1 & sibling_func2 );
   }
 
   inline maj_node& grandparent( maj_node const& parent_node )
