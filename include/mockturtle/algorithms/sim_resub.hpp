@@ -121,7 +121,7 @@ class sim_aig_resub_functor
 {
 public:
   using stats = sim_aig_resub_functor_stats;
-  using TT = typename kitty::partial_truth_table;
+  using TT = kitty::partial_truth_table;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using vgate = typename validator_t::gate;
@@ -734,7 +734,7 @@ public:
 
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-  using TT = typename kitty::partial_truth_table;
+  using TT = kitty::partial_truth_table;
   using gtype = typename validator_t::gate_type;
   using circuit = imaginary_circuit<Ntk, validator_t>;
 
