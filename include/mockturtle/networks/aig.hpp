@@ -531,11 +531,11 @@ public:
     }
   }
 
-  void delete_node( node const& n )
+  bool delete_node( node const& n )
   {
     /* we cannot delete CIs, constants, or already dead nodes */
     if ( n == 0 || is_ci( n ) || is_dead( n ) )
-      return;
+      return false;
 
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
@@ -545,6 +545,8 @@ public:
     {
       fn( n );
     }
+
+    return true;
   }
 
   void take_out_node( node const& n )
@@ -553,6 +555,7 @@ public:
     if ( n == 0 || is_ci( n ) || is_dead( n ) )
       return;
 
+    /* delete the node (ignoring it's current fanout_size) */
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
     _storage->hash.erase( nobj );
@@ -562,6 +565,8 @@ public:
       fn( n );
     }
 
+    /* if the node has been deleted, then deref fanout_size of
+       fanins and try to take them out if their fanout_size become 0 */
     for ( auto i = 0u; i < 2u; ++i )
     {
       if ( fanout_size( nobj.children[i].index ) == 0 )
@@ -577,19 +582,21 @@ public:
 
   void deref_and_delete_if_unused( node const& n )
   {
-    if ( !is_dead( n ) )
+    if ( is_dead( n ) )
+      return;
+
+    /* deref fanout_size of the current node and delete the node if
+       it's fanout_size becomes 0 */
+    if ( fanout_size( n ) > 0 )
     {
-      if ( fanout_size( n ) > 0 )
-      {
-        decr_fanout_size( n );
-      }
-      if ( fanout_size( n ) == 0 )
-      {
-        delete_node( n );
-        foreach_fanin( n, [&]( signal const& fi ){
-          deref_and_delete_if_unused( get_node( fi ) );
-        });
-      }
+      decr_fanout_size( n );
+    }
+    if ( fanout_size( n ) == 0 )
+    {
+      delete_node( n );
+      foreach_fanin( n, [&]( signal const& fi ){
+        deref_and_delete_if_unused( get_node( fi ) );
+      });
     }
   }
 
@@ -674,98 +681,15 @@ public:
           continue;
 
         /* replace in node */
+        if ( const auto repl = replace_in_node( index, old_node, new_signal ); repl )
         {
-          auto _new = new_signal;
-          auto& node = _storage->nodes[index];
-
-          uint32_t fanin = 0u;
-          if ( node.children[0].index == old_node )
-          {
-            fanin = 0u;
-            _new.complement ^= node.children[0].weight;
-          }
-          else if ( node.children[1].index == old_node )
-          {
-            fanin = 1u;
-            _new.complement ^= node.children[1].weight;
-          }
-          else
-          {
-            continue;
-          }
-
-          /* determine potential new children of node n */
-          signal child1 = _new;
-          signal child0 = node.children[fanin ^ 1];
-
-          if ( child0.index > child1.index )
-          {
-            std::swap( child0, child1 );
-          }
-
-          /* trivial cases */
-          if ( child0.index == child1.index )
-          {
-            bool const diff_pol = child0.complement != child1.complement;
-            auto s = diff_pol ? get_constant( false ) : child1;
-            incr_fanout_size( get_node( s ) );
-            substitutions.emplace_back( index, s );
-            continue;
-          }
-          else if ( child0.index == 0 ) /* constant child */
-          {
-            auto s = child0.complement ? child1 : get_constant( false );
-            incr_fanout_size( get_node( s ) );
-            substitutions.emplace_back( index, s );
-            continue;
-          }
-
-          /* node already in hash table */
-          storage::element_type::node_type _hash_obj;
-          _hash_obj.children[0] = child0;
-          _hash_obj.children[1] = child1;
-          if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() && it->second != old_node )
-            {
-            auto s = signal( it->second, 0 );
-            incr_fanout_size( get_node( s ) );
-            substitutions.emplace_back( index, s );
-            continue;
-          }
-
-          /* remember before */
-          auto const old_child0 = signal{node.children[0]};
-          auto const old_child1 = signal{node.children[1]};
-
-          /* erase old node in hash table */
-          _storage->hash.erase( node );
-
-          /* insert updated node into hash table */
-          node.children[0] = child0;
-          node.children[1] = child1;
-          _storage->hash[node] = index;
-
-          incr_fanout_size( get_node( _new ) );
-          deref_and_delete_if_unused( old_node );
-
-          for ( auto const& fn : _events->on_modified )
-          {
-            fn( index, {old_child0, old_child1} );
-          }
+          incr_fanout_size( get_node( repl->second ) );
+          substitutions.emplace_back( *repl );
         }
       }
 
       /* replace in outputs */
-      for ( auto& output : _storage->outputs )
-      {
-        if ( output.index == old_node )
-        {
-          output.index = new_signal.index;
-          output.weight ^= new_signal.complement;
-
-          incr_fanout_size( get_node( new_signal ) );
-          deref_and_delete_if_unused( old_node );
-        }
-      }
+      replace_in_outputs( old_node, new_signal );
 
       /* replace in substitutions */
       for ( auto& s : substitutions )
@@ -774,9 +698,15 @@ public:
         {
           s.second = is_complemented( s.second ) ? !new_signal : new_signal;
           incr_fanout_size( get_node( new_signal ) );
-          deref_and_delete_if_unused( old_node );
         }
       }
+
+      /* finally remove the node: note that we never decrement the
+         fanout_size of the old_node. instead, we remove the node and
+         reset its fanout_size to 0 knowing that it must be 0 after
+         substituting all references. */
+      assert( !is_dead( old_node ) );
+      take_out_node( old_node );
 
       /* decrement fanout_size when released from substitution list */
       decr_fanout_size( get_node( new_signal ) );
