@@ -896,6 +896,11 @@ TEST_CASE( "substitute multiple nodes", "[aig]" )
       {aig.get_node( n9 ), n4}
     } );
 
+  CHECK( !aig.is_dead( aig.get_node( aig.get_constant( false ) ) ) );
+  CHECK( !aig.is_dead( aig.get_node( x1 ) ) );
+  CHECK( !aig.is_dead( aig.get_node( x2 ) ) );
+  CHECK( !aig.is_dead( aig.get_node( x3 ) ) );
+  CHECK( !aig.is_dead( aig.get_node( n4 ) ) );
   CHECK( aig.is_dead( aig.get_node( n5 ) ) );
   CHECK( aig.is_dead( aig.get_node( n6 ) ) );
   CHECK( aig.is_dead( aig.get_node( n7 ) ) );
