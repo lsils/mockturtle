@@ -7,6 +7,7 @@ v0.2 (not yet released)
 * Network interface:
     - `is_function` `#148 <https://github.com/lsils/mockturtle/pull/148>`_
     - `is_nary_and`, `is_nary_or`, `is_nary_xor` `#304 <https://github.com/lsils/mockturtle/pull/304>`_
+    - `substitute_nodes` `#412 <https://github.com/lsils/mockturtle/pull/412>`_
 * Framework for performing quality and performance experiments `#140 <https://github.com/lsils/mockturtle/pull/140>`_
 * Algorithms:
     - CNF generation (`generate_cnf`) `#145 <https://github.com/lsils/mockturtle/pull/145>`_
