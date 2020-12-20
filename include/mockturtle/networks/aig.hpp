@@ -531,24 +531,6 @@ public:
     }
   }
 
-  bool delete_node( node const& n )
-  {
-    /* we cannot delete CIs, constants, or already dead nodes */
-    if ( n == 0 || is_ci( n ) || is_dead( n ) )
-      return false;
-
-    auto& nobj = _storage->nodes[n];
-    nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
-    _storage->hash.erase( nobj );
-
-    for ( auto const& fn : _events->on_delete )
-    {
-      fn( n );
-    }
-
-    return true;
-  }
-
   void take_out_node( node const& n )
   {
     /* we cannot delete CIs, constants, or already dead nodes */
@@ -577,26 +559,6 @@ public:
       {
         take_out_node( nobj.children[i].index );
       }
-    }
-  }
-
-  void deref_and_delete_if_unused( node const& n )
-  {
-    if ( is_dead( n ) )
-      return;
-
-    /* deref fanout_size of the current node and delete the node if
-       it's fanout_size becomes 0 */
-    if ( fanout_size( n ) > 0 )
-    {
-      decr_fanout_size( n );
-    }
-    if ( fanout_size( n ) == 0 )
-    {
-      delete_node( n );
-      foreach_fanin( n, [&]( signal const& fi ){
-        deref_and_delete_if_unused( get_node( fi ) );
-      });
     }
   }
 
@@ -645,8 +607,22 @@ public:
                                            [&]( auto const& s ){
                                              if ( s.first == n )
                                              {
-                                               deref_and_delete_if_unused( get_node( s.second ) );
-                                               return true; /* remove substitution from list */
+                                               node const nn = get_node( s.second );
+                                               if ( is_dead( nn ) )
+                                                 return true;
+
+                                               /* deref fanout_size of the node */
+                                               if ( fanout_size( nn ) > 0 )
+                                               {
+                                                 decr_fanout_size( nn );
+                                               }
+                                               /* remove the node if it's fanout_size becomes 0 */
+                                               if ( fanout_size( nn ) == 0 )
+                                               {
+                                                 take_out_node( nn );
+                                               }
+                                               /* remove substitution from list */
+                                               return true;
                                              }
                                              return false; /* keep */
                                            } ),

@@ -624,21 +624,6 @@ template<class Ntk>
 inline constexpr bool has_take_out_node_v = has_take_out_node<Ntk>::value;
 #pragma endregion
 
-#pragma region has_delete_node
-template<class Ntk, class = void>
-struct has_delete_node : std::false_type
-{
-};
-
-template<class Ntk>
-struct has_delete_node<Ntk, std::void_t<decltype( std::declval<Ntk>().delete_node( std::declval<node<Ntk>>() ) )>> : std::true_type
-{
-};
-
-template<class Ntk>
-inline constexpr bool has_delete_node_v = has_delete_node<Ntk>::value;
-#pragma endregion
-
 #pragma region is_dead
 template<class Ntk, class = void>
 struct has_is_dead : std::false_type
