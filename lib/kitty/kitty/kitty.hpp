@@ -34,6 +34,7 @@
 
 #include "static_truth_table.hpp"
 #include "dynamic_truth_table.hpp"
+#include "partial_truth_table.hpp"
 
 #include "affine.hpp"
 #include "algorithm.hpp"

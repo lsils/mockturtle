@@ -251,7 +251,7 @@ struct static_truth_table<NumVars, false>
   template<class TT, typename = std::enable_if_t<is_truth_table<TT>::value>>
   static_truth_table<NumVars>& operator=( const TT& other )
   {
-    if ( other.num_vars() == num_vars() )
+    if ( other.num_bits() == num_bits() )
     {
       std::copy( other.begin(), other.end(), begin() );
     }

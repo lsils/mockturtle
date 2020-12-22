@@ -133,7 +133,7 @@ struct dynamic_truth_table
   /*! \brief Assign other truth table.
 
     This replaces the current truth table with another truth table.  The truth
-    table type is arbitrary.  The vector of bits is resized accordingly.
+    table type has to be complete.  The vector of bits is resized accordingly.
 
     \param other Other truth table
   */
