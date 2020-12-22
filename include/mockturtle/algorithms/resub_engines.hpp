@@ -269,7 +269,7 @@ public:
       if ( kitty::is_const0( ~divisors.at( i ) ) )
       {
         /* 0-resub (including constants) */
-        mig_index_list index_list( divisors.size() );
+        mig_index_list index_list( divisors.size() / 2 - 1 );
         index_list.add_output( i );
         return index_list;
       }
@@ -296,7 +296,7 @@ private:
     if ( top_node_choices.size() == 1u && kitty::is_const0( ~top_node_choices[0].function ) )
     {
       /* 1-resub */
-      mig_index_list index_list( divisors.size() );
+      mig_index_list index_list( divisors.size() / 2 - 1 );
       index_list.add_maj( top_node_choices[0].fanins[0], top_node_choices[0].fanins[1], top_node_choices[0].fanins[2] );
       index_list.add_output( divisors.size() );
       return index_list;
@@ -306,7 +306,7 @@ private:
       if ( easy_refine( top_node, 0 ) || easy_refine( top_node, 1 ) )
       {
         /* 1-resub */
-        mig_index_list index_list( divisors.size() );
+        mig_index_list index_list( divisors.size() / 2 - 1 );
         index_list.add_maj( top_node.fanins[0], top_node.fanins[1], top_node.fanins[2] );
         index_list.add_output( divisors.size() );
         return index_list;
@@ -714,7 +714,7 @@ private:
 
   mig_index_list translate( std::vector<maj_node> const& maj_nodes_best ) const
   {
-    mig_index_list index_list;
+    mig_index_list index_list( divisors.size() / 2 - 1 );
     std::unordered_map<uint32_t, uint32_t> id_map;
     for ( auto i = 0u; i < maj_nodes_best.size(); ++i )
     {
@@ -905,4 +905,364 @@ private:
   bool first_round = true;
 }; /* mig_resub_engine */
 
+class mig_resub_engine_akers
+{
+  bool p = 0; // verbose printing
+
+public:
+  explicit mig_resub_engine_akers( kitty::partial_truth_table const& target )
+    : divisors( { ~target, target } ), id_to_lit( { 0, 1 } )
+                /* const0, const1 */
+  { }
+
+  template<class node_type, class truth_table_storage_type>
+  void add_divisor( node_type const& node, truth_table_storage_type const& tts )
+  {
+    assert( tts[node].num_bits() == divisors[0].num_bits() );
+    id_to_lit.emplace_back( divisors.size() );
+    divisors.emplace_back( tts[node] ^ divisors.at( 0u ) ); // XNOR target = XOR ~target
+    id_to_lit.emplace_back( divisors.size() );
+    divisors.emplace_back( ~tts[node] ^ divisors.at( 0u ) );
+    index_list.add_inputs();
+  }
+
+  template<class iterator_type, class truth_table_storage_type>
+  void add_divisors( iterator_type begin, iterator_type end, truth_table_storage_type const& tts )
+  { 
+    while ( begin != end )
+    {
+      add_divisor( *begin, tts );
+      ++begin;
+    }
+  }
+
+  std::optional<mig_index_list> compute_function( uint32_t num_inserts )
+  {
+    if ( !is_feasible() )
+    {
+      return std::nullopt;
+    }
+
+    /* search for 0-resub (including constants) */
+    for ( auto i = 0u; i < divisors.size(); ++i )
+    {
+      if ( kitty::is_const0( ~divisors[i] ) )
+      {
+        index_list.add_output( id_to_lit[i] );
+        return index_list;
+      }
+    }
+
+    reduce();
+    if (p) print_table();
+
+    while ( divisors.size() > 1 )
+    {
+      if ( index_list.num_gates() >= num_inserts )
+      {
+        return std::nullopt;
+      }
+      find_gate();
+      add_gate();
+      reduce();
+    }
+
+    index_list.add_output( id_to_lit[0] );
+    return index_list;
+  }
+
+private:
+  void reduce()
+  {
+    uint32_t num_bits_before = 0u;
+    uint32_t num_divs_before = 0u;
+    while ( num_bits_before != divisors[0].num_bits() || num_divs_before != divisors.size() )
+    {
+      num_bits_before = divisors[0].num_bits();
+      num_divs_before = divisors.size();
+      eliminate_divs(); /* reduce column */
+      eliminate_bits(); /* reduce row */
+    }
+  }
+
+  void eliminate_divs()
+  {
+    for ( int32_t x = 0; x < (int32_t)divisors.size(); ++x ) /* try to remove divisors[x] */
+    {
+      if ( is_feasible( x ) )
+      {
+        divisors.erase( divisors.begin() + x );
+        id_to_lit.erase( id_to_lit.begin() + x );
+        --x;
+      }
+    }
+  }
+
+  void eliminate_bits()
+  {
+    /* for each pair of bits, check if we can remove i or j */
+    for ( int32_t i = 0; i < (int32_t)divisors[0].num_bits() - 1; ++i )
+    {
+      for ( int32_t j = i + 1; j < (int32_t)divisors[0].num_bits(); ++j )
+      {
+        bool can_remove_i = true, can_remove_j = true;
+        for ( auto x = 0u; x < divisors.size(); ++x )
+        {
+          if ( !kitty::get_bit( divisors[x], i ) && kitty::get_bit( divisors[x], j ) )
+          {
+            can_remove_i = false;
+          }
+          if ( kitty::get_bit( divisors[x], i ) && !kitty::get_bit( divisors[x], j ) )
+          {
+            can_remove_j = false;
+          }
+          if ( !can_remove_i && !can_remove_j )
+          {
+            break;
+          }
+        }
+
+        if ( can_remove_i )
+        {
+          for ( auto& d : divisors )
+          {
+            d.erase_bit_swap( i );
+          }
+          --i;
+          break; /* break loop j */
+        }
+        else if ( can_remove_j )
+        {
+          for ( auto& d : divisors )
+          {
+            d.erase_bit_swap( j );
+          }
+          --j;
+        }
+      }
+    }
+  }
+
+  void find_gate()
+  {
+    /* 1. Try if there are some gates that can eliminate some columns */
+    uint32_t best_num_eliminates = 0u;
+    /* for each column, find candidate gates that eliminates it */
+    for ( auto i = 0u; i < divisors.size(); ++i )
+    {
+      find_gate_to_eliminate( i, best_num_eliminates );
+      if ( best_num_eliminates == 3 )
+      {
+        /* cannot be better */
+        break;
+      }
+    }
+    if ( best_num_eliminates > 0 )
+    {
+      return;
+    }
+
+    /* 2. No gate can eliminate any column. Choose a gate that misses the least essentials */
+    uint32_t least_missed_essentials = divisors[0].num_bits() + 1;
+    /* for all possible gates (input combinations) */
+    assert( divisors.size() >= 3 );
+    for ( auto i = 0u; i < divisors.size() - 2; ++i )
+    {
+      for ( auto j = i + 1; j < divisors.size() - 1; ++j )
+      {
+        for ( auto k = j + 1; k < divisors.size(); ++k )
+        {
+          kitty::partial_truth_table const gate_function = kitty::ternary_majority( divisors[i], divisors[j], divisors[k] );
+          uint32_t missed_essentials = 0u;
+          /* for each bit */
+          for ( auto b = 0u; b < gate_function.num_bits(); ++b )
+          {
+            if ( kitty::get_bit( gate_function, b ) ) continue;
+            if ( is_essential( i, b ) )
+            {
+              ++missed_essentials;
+            }
+            else if ( is_essential( j, b ) )
+            {
+              ++missed_essentials;
+            }
+            else if ( is_essential( k, b ) )
+            {
+              ++missed_essentials;
+            }
+          }
+          
+          if ( missed_essentials < least_missed_essentials )
+          {
+            fanins[0] = i; fanins[1] = j; fanins[2] = k;
+            least_missed_essentials = missed_essentials;
+          }
+        }
+      }
+    }
+  }
+
+  void find_gate_to_eliminate( uint32_t column, uint32_t& best_num_eliminates )
+  {
+    std::vector<std::vector<uint32_t>> candidates;
+    /* for each of its essential bits */
+    for ( auto b = 0u; b < divisors[0].num_bits(); ++b )
+    {
+      if ( !is_essential( column, b ) ) continue;
+      candidates.emplace_back();
+      for ( auto j = 0u; j < divisors.size(); ++j )
+      {
+        if ( column != j && kitty::get_bit( divisors[j], b ) )
+        {
+          candidates.back().emplace_back( j );
+        }
+      }
+      if ( candidates.back().size() == 0u )
+      {
+        /* impossible to eliminate this column */
+        return;
+      }
+    }
+
+    assert( candidates.size() >= 2 ); // why must be? but what if not?
+    /* try all combinations of size 2 */
+    for ( auto const& j : candidates[0] )
+    {
+      for ( auto const& k : candidates[1] )
+      {
+        if ( j == k ) continue;
+        /* check if either j or k appears in all other sets */
+        bool all_satisfied = true;
+        for ( auto s = 2u; s < candidates.size(); ++s )
+        {
+          bool is_in_set = false;
+          for ( auto const& ele : candidates[s] )
+          {
+            if ( ele == j || ele == k )
+            {
+              is_in_set = true;
+              break;
+            }
+          }
+          if ( !is_in_set )
+          {
+            all_satisfied = false;
+            break;
+          }
+        }
+        if ( all_satisfied )
+        {
+          /* this gate <column, j, k> eliminates column */
+          uint32_t num_eliminates = 1u;
+          /* see if it also eliminates j and/or k */
+          kitty::partial_truth_table const gate_function = kitty::ternary_majority( divisors[column], divisors[j], divisors[k] );
+          if ( eliminates( gate_function, j ) )
+          {
+            ++num_eliminates;
+          }
+          if ( eliminates( gate_function, k ) )
+          {
+            ++num_eliminates;
+          }
+          if ( num_eliminates > best_num_eliminates )
+          {
+            fanins[0] = column; fanins[1] = j; fanins[2] = k;
+            best_num_eliminates = num_eliminates;
+            if ( num_eliminates == 3 )
+            {
+              /* cannot be better */
+              return;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void add_gate()
+  {
+    index_list.add_maj( id_to_lit[fanins[0]], id_to_lit[fanins[1]], id_to_lit[fanins[2]] );
+    id_to_lit.emplace_back( ( index_list.num_pis() + index_list.num_gates() ) * 2 );
+    divisors.emplace_back( kitty::ternary_majority( divisors[fanins[0]], divisors[fanins[1]], divisors[fanins[2]] ) );
+  }
+
+private:
+  /* whether the table is feasible (lpsd) if divisors[x] is deleted */
+  bool is_feasible( int32_t x = -1 ) const
+  {
+    /* for every pair of rows _bits[i], _bits[j] */
+    for ( auto i = 0u; i < divisors[0].num_bits() - 1; ++i )
+    {
+      for ( auto j = i + 1; j < divisors[0].num_bits(); ++j )
+      {
+        /* check if there is another divisors[y] having both bits 1 */
+        bool found = false;
+        for ( int32_t y = 0; y < (int32_t)divisors.size(); ++y )
+        {
+          if ( y == x ) continue;
+          if ( kitty::get_bit( divisors[y], i ) && kitty::get_bit( divisors[y], j ) )
+          {
+            found = true;
+            break;
+          }
+        }
+        if ( !found )
+        {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /* whether divisors[x]._bits[i] is essential */
+  bool is_essential( uint32_t x, uint32_t i ) const
+  {
+    if ( !kitty::get_bit( divisors[x], i ) )
+    {
+      return false;
+    }
+
+    kitty::partial_truth_table tt( divisors[0].num_bits() );
+    for ( auto y = 0u; y < divisors.size(); ++y )
+    {
+      if ( x == y ) continue;
+      if ( !kitty::get_bit( divisors[y], i ) ) continue;
+      tt |= divisors[y];
+    }
+
+    return !kitty::is_const0( ~tt );
+  }
+
+  /* whether the gate eliminates a given column */
+  bool eliminates( kitty::partial_truth_table const& gate_function, uint32_t column ) const
+  {
+    /* for each of its essential bits */
+    for ( auto b = 0u; b < gate_function.num_bits(); ++b )
+    {
+      if ( !kitty::get_bit( gate_function, b ) && is_essential( column, b ) )
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+
+private:
+  void print_table() const
+  {
+    for ( auto i = 0u; i < divisors.size(); ++i )
+    {
+      std::cout << "[" << std::setw( 2 ) << id_to_lit[i] << "] ";
+      kitty::print_binary( divisors[i] );
+      std::cout << "\n";
+    }
+  }
+
+private:
+  std::vector<kitty::partial_truth_table> divisors;
+  std::vector<uint32_t> id_to_lit;
+  mig_index_list index_list;
+  uint32_t fanins[3];
+};
 } /* namespace mockturtle */
