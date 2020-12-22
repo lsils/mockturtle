@@ -230,30 +230,22 @@ class mig_resub_engine
   };
 
 public:
-  explicit mig_resub_engine( uint64_t num_divisors, uint64_t max_num_divisors = 50ul )
-    : max_num_divisors( max_num_divisors ), counter( 2u ), divisors( ( num_divisors + 1 ) * 2 ), scores( ( num_divisors + 1 ) * 2 )
+  explicit mig_resub_engine( TT const& target )
+    : num_bits( target.num_bits() ), divisors( { ~target, target } )
   { }
-
-  template<class node_type, class truth_table_storage_type>
-  void add_root( node_type const& node, truth_table_storage_type const& tts )
-  {
-    divisors.at( 0u ) = ~tts[node]; // const 0 XNOR target = ~target
-    divisors.at( 1u ) = tts[node]; // const 1 XNOR target = target
-    num_bits = tts[node].num_bits();
-  }
 
   template<class node_type, class truth_table_storage_type>
   void add_divisor( node_type const& node, truth_table_storage_type const& tts )
   {
     assert( tts[node].num_bits() == num_bits );
-    divisors.at( counter++ ) = tts[node] ^ divisors.at( 0u ); // XNOR target = XOR ~target
-    divisors.at( counter++ ) = ~tts[node] ^ divisors.at( 0u );
+    divisors.emplace_back( tts[node] ^ divisors.at( 0u ) ); // XNOR target = XOR ~target
+    divisors.emplace_back( ~tts[node] ^ divisors.at( 0u ) );
+    scores.resize( divisors.size() );
   }
 
   template<class iterator_type, class truth_table_storage_type>
   void add_divisors( iterator_type begin, iterator_type end, truth_table_storage_type const& tts )
   { 
-    assert( counter == 2u );
     while ( begin != end )
     {
       add_divisor( *begin, tts );
@@ -891,8 +883,6 @@ private:
   }
 
 private:
-  uint64_t max_num_divisors;
-  uint64_t counter;
   uint32_t size_limit;
   uint32_t num_bits;
 

@@ -233,14 +233,12 @@ public:
       } );
     if ( g )
     {
-      /*mig_resub_engine<typename Simulator::truthtable_t> engine( num_divs );
+      /*mig_resub_engine<typename Simulator::truthtable_t> engine( sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) ) );
       unordered_node_map<typename Simulator::truthtable_t, Ntk> tts( ntk );
-      tts[root] = sim.get_tt( ntk.make_signal( root ) );
       for ( auto const& d : divs )
       {
-        tts[d] = sim.get_tt( ntk.make_signal( d ) ); //phase may be wrong?
+        tts[d] = sim.get_tt( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
       }
-      engine.add_root( root, tts );
       engine.add_divisors( divs.begin(), divs.end(), tts );
       if ( !engine.compute_function( 1 ) )
       {
@@ -672,7 +670,6 @@ public:
     : ntk( ntk )
     , sim( sim )
     , tts( ntk )
-    , engine( divs.size() )
     , divs( divs )
     , st( st )
   {
@@ -683,13 +680,15 @@ public:
   std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t potential_gain, uint32_t& real_gain )
   {
     (void)care; (void)required;
-    tts[root] = sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) );
+    kitty::partial_truth_table root_tt;
+    root_tt = sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) );
+    //mig_resub_engine<kitty::partial_truth_table> engine( root_tt );
+    mig_resub_engine_akers engine( root_tt );
     for ( auto const& d : divs )
     {
       div_signals.emplace_back( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
       tts[d] = sim.get_tt( div_signals.back() );
     }
-    engine.add_root( root, tts );
     engine.add_divisors( divs.begin(), divs.end(), tts );
 
     auto const res = engine.compute_function( std::min( potential_gain - 1, max_inserts ) );
@@ -709,8 +708,7 @@ public:
 private:
   Ntk& ntk;
   Simulator const& sim;
-  unordered_node_map<typename Simulator::truthtable_t, Ntk> tts;
-  mig_resub_engine<typename Simulator::truthtable_t> engine;
+  unordered_node_map<kitty::partial_truth_table, Ntk> tts;
   std::vector<node> const& divs;
   std::vector<signal> div_signals;
   stats& st;

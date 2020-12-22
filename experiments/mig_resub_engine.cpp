@@ -31,6 +31,7 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/partial_truth_table.hpp>
 #include <kitty/operations.hpp>
 
 #include <mockturtle/algorithms/resub_engines.hpp>
@@ -46,7 +47,7 @@ int main()
   using namespace mockturtle;
   auto n = 3u;
 
-  std::vector<kitty::dynamic_truth_table> tts( n + 1, kitty::dynamic_truth_table( n ) );
+  std::vector<kitty::partial_truth_table> tts( n + 1, kitty::partial_truth_table( 1 << n ) );
 
   for ( auto i = 0u; i < n; ++i )
   {
@@ -54,10 +55,9 @@ int main()
   }
 
 #if 0
-  kitty::create_from_hex_string( tts[0], "17ac" ); // target
+  kitty::create_from_hex_string( tts[0], "0001" ); // target
 
-  mig_resub_engine<kitty::dynamic_truth_table> engine( n );
-  engine.add_root( 0, tts );
+  mig_resub_engine engine( tts[0] );
   for ( auto i = 0u; i < n; ++i )
   {
     engine.add_divisor( i+1, tts );
@@ -69,7 +69,7 @@ int main()
   }
   else
   {
-    std::cout << "found solution of size " << ( (*res).size() - 1 ) / 3 << "\n";
+    std::cout << "found solution of size " << (*res).num_gates() << "\n";
   }
 
 #else
@@ -89,10 +89,9 @@ int main()
   uint64_t total_size = 0u, failed = 0u;
   for ( auto const& func : classes )
   {
-    tts[0] = func;
+    tts[0] = func; // assign dynamic_truth_table to partial_truth_table
     std::cout << "function: "; kitty::print_hex( tts[0] );
-    mig_resub_engine<kitty::dynamic_truth_table> engine( n );
-    engine.add_root( 0, tts );
+    mig_resub_engine engine( tts[0] );
     for ( auto i = 0u; i < n; ++i )
     {
       engine.add_divisor( i+1, tts );
@@ -105,9 +104,17 @@ int main()
     }
     else
     {
-      assert( ( (*res).size() - 1 ) % 3 == 0 );
-      std::cout << " found solution of size " << ( (*res).size() - 1 ) / 3 << "\n";
-      total_size += ( (*res).size() - 1 ) / 3;
+      std::cout << " found solution of size " << (*res).num_gates() << "\n";
+      total_size += (*res).num_gates();
+      mig_network sol;
+      decode( sol, *res );
+      default_simulator<kitty::dynamic_truth_table> sim( n );
+      const auto sol_tt = simulate<kitty::dynamic_truth_table>( sol, sim )[0];
+      if ( sol_tt != func )
+      {
+        std::cout << "[error] generated network is not equivalent!\n";
+        break;
+      }
     }
   }
 
