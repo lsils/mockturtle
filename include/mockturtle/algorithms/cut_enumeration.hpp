@@ -296,6 +296,7 @@ public:
         st( st ),
         cuts( cuts )
   {
+    assert( ps.cut_limit < cuts.max_cut_num && "cut_limit exceeds the compile-time limit for the maximum number of cuts" );
   }
 
 public:

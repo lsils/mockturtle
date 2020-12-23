@@ -37,8 +37,9 @@
 #include <type_traits>
 #include <vector>
 
+#include <parallel_hashmap/phmap.h>
+
 #include "../networks/detail/foreach.hpp"
-#include "../utils/include/spp.hpp"
 #include "../traits.hpp"
 #include "immutable_view.hpp"
 
@@ -216,7 +217,7 @@ public:
   unsigned _num_constants{1};
   unsigned _num_leaves{0};
   std::vector<node> _nodes;
-  spp::sparse_hash_map<node, uint32_t> _node_to_index;
+  phmap::flat_hash_map<node, uint32_t> _node_to_index;
   signal _root;
 };
 

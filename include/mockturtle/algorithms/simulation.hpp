@@ -192,10 +192,9 @@ public:
     }
   }
 
-  /* copy constructor */
-  partial_simulator( partial_simulator const& sim )
-    : patterns( sim.patterns ), num_patterns( sim.num_patterns )
-  { }
+  /* copy constructors */
+  partial_simulator( partial_simulator const& sim ) = default;
+  partial_simulator& operator=( partial_simulator const& sim ) = default;
 
   /*! \brief Create a `partial_simulator` with given simulation patterns.
    *
@@ -309,10 +308,9 @@ public:
     fill_cares( num_pis );
   }
 
-  /* copy constructor */
-  bit_packed_simulator( bit_packed_simulator const& sim )
-    : partial_simulator( sim ), care( sim.care ), packed_patterns( sim.packed_patterns )
-  { }
+  /* copy constructors */
+  bit_packed_simulator( bit_packed_simulator const& sim ) = default;
+  bit_packed_simulator& operator=( bit_packed_simulator const& sim ) = default;
 
   /* copy constructor from `partial_simulator` */
   bit_packed_simulator( partial_simulator const& sim )
@@ -361,9 +359,9 @@ public:
     if ( num_patterns == packed_patterns ) { return false; }
     assert( num_patterns > packed_patterns );
 
-    std::vector<uint32_t> empty_slots;
+    std::vector<int64_t> empty_slots;
     /* for each unpacked pattern (at `p`), try to pack it into one of the patterns before it (at `pos` in block `block`). */
-    for ( int p = num_patterns - 1; p >= (int)packed_patterns; --p )
+    for ( int64_t p = num_patterns - 1; p >= (int64_t)packed_patterns; --p )
     {
       for ( auto block = p < 1024 ? 0 : std::rand() % ( p >> 6 ); block <= ( p >> 6 ); ++block )
       {
@@ -388,14 +386,14 @@ public:
     {
       /* fill the empty slots (from smaller values; `empty_slots` should be reversely sorted) */
       /* `empty_slots[j]` is the smallest position where larger positions are all empty */
-      int j = 0;
-      for ( int i = empty_slots.size() - 1; i >= 0; --i )
+      int64_t j = 0;
+      for ( int64_t i = empty_slots.size() - 1; i >= 0; --i )
       {
         while ( empty_slots[j] >= num_patterns - 1 && j <= i )
         {
           if ( empty_slots[j] == num_patterns - 1 ) { --num_patterns; }
           ++j;
-          if ( j == (int)empty_slots.size() ) { break; }
+          if ( j == (int64_t)empty_slots.size() ) { break; }
         }
         if ( j > i ) { break; }
         move_pattern( num_patterns - 1, empty_slots[i] );
@@ -419,14 +417,14 @@ public:
     for ( auto i = 0u; i < patterns.size(); ++i )
     {
       kitty::partial_truth_table tt( num_patterns );
-      kitty::create_random( tt, seed + patterns.size() + i );
+      kitty::create_random( tt, std::default_random_engine::result_type( seed + patterns.size() + i ) );
       patterns.at( i ) = ( patterns.at( i ) & care.at( i ) ) | ( tt & ~care.at( i ) );
     }
   }
 
 private:
   /* all bits in patterns generated before construction are care bits */
-  void fill_cares( uint32_t const num_pis )
+  void fill_cares( uint64_t const num_pis )
   {
     for ( auto i = 0u; i < num_pis; ++i )
     {
@@ -436,7 +434,7 @@ private:
   }
 
   /* move the pattern at position `from` to position `to`. */
-  void move_pattern( uint32_t const from, uint32_t const to )
+  void move_pattern( uint64_t const from, uint64_t const to )
   {
     for ( auto i = 0u; i < patterns.size(); ++i )
     {
@@ -610,6 +608,8 @@ void simulate_nodes( Ntk const& ntk, unordered_node_map<SimulationType, Ntk>& no
 
 namespace detail
 {
+/* Forward declaration */
+template<class Ntk, class Simulator> void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim );
 
 template<class Ntk, class Simulator>
 void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim )
@@ -620,7 +620,10 @@ void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered
     {
       simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
     }
-    else assert( node_to_value[ntk.get_node( f )].num_bits() == sim.num_bits() );
+    else if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
+    {
+      re_simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
+    }
     fanin_values[i] = node_to_value[ntk.get_node( f )];
   } );
   node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
@@ -631,8 +634,11 @@ void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unorde
 {
   std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
   ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
-    assert( node_to_value.has( ntk.get_node( f ) ) );
-    if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
+    if ( !node_to_value.has( ntk.get_node( f ) ) )
+    {
+      simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
+    }
+    else if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
     {
       re_simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
     }
@@ -687,19 +693,7 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
     
   if ( !node_to_value.has( n ) )
   {
-    std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
-    ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      if ( !node_to_value.has( ntk.get_node( f ) ) )
-      {
-        simulate_node( ntk, ntk.get_node( f ), node_to_value, sim );
-      }
-      else if ( node_to_value[ntk.get_node( f )].num_bits() != sim.num_bits() )
-      {
-        detail::re_simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
-      }
-      fanin_values[i] = node_to_value[ntk.get_node( f )];
-    } );
-    node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
+    detail::simulate_fanin_cone( ntk, n, node_to_value, sim );
   }
   else if ( node_to_value[n].num_bits() != sim.num_bits() )
   {

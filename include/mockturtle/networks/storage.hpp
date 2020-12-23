@@ -38,7 +38,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../utils/include/spp.hpp"
+#include <parallel_hashmap/phmap.h>
 
 namespace mockturtle
 {
@@ -194,7 +194,6 @@ struct storage
   {
     nodes.reserve( 10000u );
     hash.reserve( 10000u );
-    hash.set_resizing_parameters( .4f, .95f );
 
     /* we generally reserve the first node for a constant */
     nodes.emplace_back();
@@ -207,7 +206,7 @@ struct storage
   std::vector<typename node_type::pointer_type> outputs;
   std::unordered_map<uint64_t, latch_info> latch_information;
 
-  spp::sparse_hash_map<node_type, uint64_t, NodeHasher> hash;
+  phmap::flat_hash_map<node_type, uint64_t, NodeHasher> hash;
 
   T data;
 };
