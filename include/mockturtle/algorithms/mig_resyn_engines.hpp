@@ -180,7 +180,6 @@ private:
 template<class TT>
 class mig_resyn_engine
 {
-  bool p = 0; // verbose printing
   /*! \brief Internal data structure */
   struct expansion_position
   {
@@ -237,7 +236,6 @@ public:
   {
     for ( auto i = 0u; i < divisors.size(); ++i )
     {
-      if (p) { std::cout<<"["<<i<<"] "; kitty::print_binary( divisors.at( i ) ); std::cout << "\n"; }
       if ( kitty::is_const0( ~divisors.at( i ) ) )
       {
         /* 0-resub (including constants) */
@@ -262,7 +260,6 @@ private:
     maj_nodes.reserve( size_limit );
     /* topmost node: care is const1 */
     TT const const1 = divisors.at( 0u ) | divisors.at( 1u );
-    //simple_maj const top_node = expand_one( const1 );
     std::vector<simple_maj> top_node_choices = construct_top();
     
     if ( top_node_choices.size() == 1u && kitty::is_const0( ~top_node_choices[0].function ) )
@@ -283,7 +280,6 @@ private:
         index_list.add_output( divisors.size() );
         return index_list;
       }
-      if (p) { std::cout<<"<"<<top_node.fanins[0]<<", "<<top_node.fanins[1]<<", "<<top_node.fanins[2]<<"> = "; kitty::print_binary(top_node.function); std::cout<<"\n"; }
     }
     if ( size_limit == 1u )
     {
@@ -293,10 +289,8 @@ private:
     std::vector<maj_node> maj_nodes_best;
     for ( simple_maj const& top_node : top_node_choices )
     {
-      if (p) { std::cout<<"===== try with top node <"<<top_node.fanins[0]<<", "<<top_node.fanins[1]<<", "<<top_node.fanins[2]<<"> =====\n"; }
       for ( int32_t i = 0; i < 3; ++i )
       {
-        if (p) { std::cout<<"=== try expand "<<i<<" first ===\n"; }
         maj_nodes.clear();
         maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), top_node.fanins, {divisors.at( top_node.fanins[0] ), divisors.at( top_node.fanins[1] ), divisors.at( top_node.fanins[2] )}, const1} );
 
@@ -338,11 +332,6 @@ private:
   {
     while ( ( leaves.size() != 0u || improve_in_parent.size() != 0u || shuffle.size() != 0u ) && maj_nodes.size() < size_limit )
     {
-      if (p) {
-        std::cout<<"leaves: "; for(auto l : leaves) std::cout<<"("<<l.parent_position<<", "<<l.fanin_num<<") "; std::cout<<"\n";
-        std::cout<<"improve_in_parent: "; for(auto l : improve_in_parent) std::cout<<"("<<l.parent_position<<", "<<l.fanin_num<<") "; std::cout<<"\n";
-        std::cout<<"shuffle: "; for(auto l : shuffle) std::cout<<"("<<l.parent_position<<", "<<l.fanin_num<<") "; std::cout<<"\n";
-      }
       if ( leaves.size() == 0u )
       {
         if ( improve_in_parent.size() != 0u )
@@ -415,21 +404,18 @@ private:
     maj_node& parent_node = maj_nodes.at( node_position.parent_position );
     uint32_t const& fi = node_position.fanin_num;
 
-    simple_maj const new_node = expand_one( care, node_position );
+    simple_maj const new_node = expand_one( care );
     uint64_t const original_score = score( original_function, care );
     uint64_t const new_score = score( new_node.function, care );
     if ( new_score < original_score )
     {
-      if (p) { std::cout << "get worse. (" << new_score << ")\n"; }
       return false;
     }
 
     if ( new_score == original_score )
     {
-      if (p) { std::cout<<"score stays the same.\n"; }
       if ( kitty::count_ones( new_node.function & parent_node.care ) > kitty::count_ones( original_function & parent_node.care ) )
       {
-        if (p) { std::cout<<"...but covers more care bits of parent node.\n"; }
         if ( first_round )
         {
           /* We put it into a back-up queue for now */
@@ -444,7 +430,6 @@ private:
       }
       else if ( kitty::count_ones( new_node.function & parent_node.care ) == kitty::count_ones( original_function & parent_node.care ) && new_node.function != original_function )
       {
-        if (p) { std::cout<<"...and also covers the same # of care bits of parent node, but the function is different.\n"; }
         if ( first_round )
         {
           /* We put it into a back-up queue for now */
@@ -470,25 +455,8 @@ private:
 
     if ( kitty::is_const0( ~new_node.function & care ) )
     {
-      if (p) { std::cout<<"care bits all fulfilled.\n"; }
       if ( node_fulfilled( maj_nodes.at( 0u ) ) )
       {
-        if (p) {
-          std::cout<<"\n======== solution found =========\n";
-          for ( auto i = 0u; i < maj_nodes.size(); ++i )
-          {
-            std::cout<<"[node "<<i<<"] id = " <<maj_nodes[i].id<< "\n";
-            for ( auto j = 0u; j < 3u; ++j )
-            {
-              std::cout<<"["<<std::setw(3)<<maj_nodes[i].fanins[j]<<"] ";
-              kitty::print_binary(maj_nodes[i].fanin_functions[j]);
-              std::cout<<"\n";
-            }
-            std::cout<<"      --------\n      ";
-            kitty::print_binary(kitty::ternary_majority(maj_nodes[i].fanin_functions[0], maj_nodes[i].fanin_functions[1], maj_nodes[i].fanin_functions[2]));
-            std::cout<<"\n\n";
-          }
-        }
         return true;
       }
       // TODO: add all the fulfilled nodes (trace upwards) to the divisor list, determining their indices in topological order
@@ -496,7 +464,6 @@ private:
     }
     else
     {
-      if (p) { std::cout<<"improved but still not fulfilling all care bits, add children to queue.\n"; }
       leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 0} );
       leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 1} );
       leaves.emplace_back( expansion_position{int32_t( maj_nodes.size() - 1 ), 2} );
@@ -504,10 +471,8 @@ private:
     return false;
   }
   
-  simple_maj expand_one( TT const& care, expansion_position const& node_position = {} )
+  simple_maj expand_one( TT const& care )
   {
-    if (p) { std::cout << "\n\nexpanding node " << node_position.parent_position << " at fanin " << node_position.fanin_num << ".\ncare = "; kitty::print_binary( care ); std::cout<<"\n"; }
-
     /* look up in computed_table */
     auto computed = computed_table.find( care );
     if ( computed != computed_table.end() )
@@ -559,14 +524,12 @@ private:
       }
     }
 
-    if (p) { std::cout<<"resulting function: <"<<max_i<<", "<<max_j<<", "<<max_k<<"> = "; kitty::print_binary(kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k ) )); std::cout<<"\n"; }
     computed_table[care] = simple_maj( {{max_i, max_j, max_k}, kitty::ternary_majority( divisors.at( max_i ), divisors.at( max_j ), divisors.at( max_k ) )} );
     return computed_table[care];
   }
 
   std::vector<simple_maj> construct_top()
   {
-    if (p) { std::cout << "constructing topmost node\n"; }
     std::vector<simple_maj> res;
 
     /* the first fanin: cover most bits */
@@ -841,11 +804,6 @@ private:
     return ( my_index + sibling_num ) % 3;
   }
 
-  //inline uint32_t sibling_id( maj_node const& parent_node, uint32_t const my_index, uint32_t const sibling_num )
-  //{
-  //  return parent_node.fanins.at( sibling_index( my_index, sibling_num ) );
-  //}
-
   inline TT const& sibling_func( maj_node const& parent_node, uint32_t const my_index, uint32_t const sibling_num )
   {
     return parent_node.fanin_functions.at( sibling_index( my_index, sibling_num ) );
@@ -877,8 +835,6 @@ private:
 
 class mig_resyn_engine_akers
 {
-  bool p = 0; // verbose printing
-
 public:
   explicit mig_resyn_engine_akers( kitty::partial_truth_table const& target )
     : divisors( { ~target, target } ), id_to_lit( { 0, 1 } )
@@ -924,7 +880,6 @@ public:
     }
 
     reduce();
-    if (p) print_table();
 
     while ( divisors.size() > 1 )
     {
