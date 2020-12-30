@@ -2,10 +2,11 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/partial_truth_table.hpp>
 #include <kitty/operations.hpp>
 
 #include <mockturtle/networks/mig.hpp>
-#include <mockturtle/algorithms/resub_engines.hpp>
+#include <mockturtle/algorithms/mig_resyn_engines.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 
 using namespace mockturtle;

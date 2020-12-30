@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file resub_engines.hpp
-  \brief Implements generalized resubstitution engine(s).
+  \file mig_resyn_engines.hpp
+  \brief Implements resynthesis methods for MIGs.
 
   \author Siang-Yun Lee
 */
