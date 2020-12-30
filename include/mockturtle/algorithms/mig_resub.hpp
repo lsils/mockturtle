@@ -233,18 +233,6 @@ public:
       } );
     if ( g )
     {
-      /*mig_resub_engine<typename Simulator::truthtable_t> engine( sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) ) );
-      unordered_node_map<typename Simulator::truthtable_t, Ntk> tts( ntk );
-      for ( auto const& d : divs )
-      {
-        tts[d] = sim.get_tt( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
-      }
-      engine.add_divisors( divs.begin(), divs.end(), tts );
-      if ( !engine.compute_function( 1 ) )
-      {
-        std::cout << "engine didn't find 1-resub for root "<<root<<"\n";
-      }*/
-
       ++st.num_div1_accepts;
       last_gain = num_mffc - 1;
       return g; /* accepted resub */
@@ -657,7 +645,7 @@ private:
   binate_divisors bdivs;
 }; /* mig_resub_functor */
 
-template<typename Ntk, typename Simulator, typename TTcare, typename Engine = mig_resub_engine<kitty::partial_truth_table>>
+template<typename Ntk, typename Simulator, typename TTcare, typename Engine = mig_resyn_engine<kitty::partial_truth_table>>
 struct mig_resub_functor_new
 {
 public:

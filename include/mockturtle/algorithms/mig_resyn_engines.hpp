@@ -43,10 +43,10 @@ namespace mockturtle
 {
 
 template<class TT>
-class mig_resub_engine_bottom_up
+class mig_resyn_engine_bottom_up
 {
 public:
-  explicit mig_resub_engine_bottom_up( TT const& target )
+  explicit mig_resyn_engine_bottom_up( TT const& target )
     : num_bits( target.num_bits() ), divisors( { ~target, target } )
   { }
 
@@ -175,10 +175,10 @@ private:
 
   std::vector<TT> divisors;
   mig_index_list index_list;
-}; /* mig_resub_engine_bottom_up */
+}; /* mig_resyn_engine_bottom_up */
 
 template<class TT>
-class mig_resub_engine
+class mig_resyn_engine
 {
   bool p = 0; // verbose printing
   /*! \brief Internal data structure */
@@ -210,7 +210,7 @@ class mig_resub_engine
   };
 
 public:
-  explicit mig_resub_engine( TT const& target )
+  explicit mig_resyn_engine( TT const& target )
     : num_bits( target.num_bits() ), divisors( { ~target, target } )
   { }
 
@@ -873,14 +873,14 @@ private:
 
   std::vector<expansion_position> leaves, improve_in_parent, shuffle;
   bool first_round = true;
-}; /* mig_resub_engine */
+}; /* mig_resyn_engine */
 
-class mig_resub_engine_akers
+class mig_resyn_engine_akers
 {
   bool p = 0; // verbose printing
 
 public:
-  explicit mig_resub_engine_akers( kitty::partial_truth_table const& target )
+  explicit mig_resyn_engine_akers( kitty::partial_truth_table const& target )
     : divisors( { ~target, target } ), id_to_lit( { 0, 1 } )
                 /* const0, const1 */
   { }

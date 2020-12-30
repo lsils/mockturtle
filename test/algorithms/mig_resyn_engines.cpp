@@ -11,16 +11,17 @@
 
 using namespace mockturtle;
 
-TEST_CASE( "MIG resub engine (bottom-up) -- 0-resub", "[resub_engines]" )
+template<class Engine>
+void test_0resub()
 {
-  std::vector<kitty::dynamic_truth_table> tts( 4, kitty::dynamic_truth_table( 3 ) );
+  std::vector<kitty::partial_truth_table> tts( 4, kitty::partial_truth_table( 8 ) );
 
   kitty::create_from_binary_string( tts[0], "00110110" );
   kitty::create_from_binary_string( tts[1], "11111100" );
   kitty::create_from_binary_string( tts[2], "10000001" );
   kitty::create_from_binary_string( tts[3], "11001001" );
 
-  mig_resub_engine_bottom_up<kitty::dynamic_truth_table> engine( tts[0] );
+  Engine engine( tts[0] );
   engine.add_divisor( 1, tts );
   engine.add_divisor( 2, tts );
   engine.add_divisor( 3, tts );
@@ -31,7 +32,8 @@ TEST_CASE( "MIG resub engine (bottom-up) -- 0-resub", "[resub_engines]" )
   CHECK( (*res).raw()[1] == 7u );
 }
 
-TEST_CASE( "MIG resub engine (bottom-up) -- 1-resub", "[resub_engines]" )
+template<class Engine>
+void test_1resub()
 {
   std::vector<kitty::partial_truth_table> tts( 3, kitty::partial_truth_table( 8 ) );
   kitty::partial_truth_table target( 8 );
@@ -41,7 +43,7 @@ TEST_CASE( "MIG resub engine (bottom-up) -- 1-resub", "[resub_engines]" )
   kitty::create_from_binary_string( tts[1], "11001001" );
   kitty::create_from_binary_string( tts[2], "01000111" );
 
-  mig_resub_engine_bottom_up<kitty::partial_truth_table> engine( target );
+  Engine engine( target );
   for ( auto i = 0u; i < tts.size(); ++i )
   {
     engine.add_divisor( i, tts );
@@ -59,7 +61,8 @@ TEST_CASE( "MIG resub engine (bottom-up) -- 1-resub", "[resub_engines]" )
   CHECK( target == ans );
 }
 
-TEST_CASE( "MIG resub engine (bottom-up) -- 2-resub", "[resub_engines]" )
+template<class Engine>
+void test_2resub()
 {
   std::vector<kitty::partial_truth_table> tts( 4, kitty::partial_truth_table( 8 ) );
   kitty::partial_truth_table target( 8 );
@@ -70,7 +73,7 @@ TEST_CASE( "MIG resub engine (bottom-up) -- 2-resub", "[resub_engines]" )
   kitty::create_from_binary_string( tts[2], "10011110" );
   kitty::create_from_binary_string( tts[3], "01011111" );
 
-  mig_resub_engine_bottom_up<kitty::partial_truth_table> engine( target );
+  Engine engine( target );
   for ( auto i = 0u; i < tts.size(); ++i )
   {
     engine.add_divisor( i, tts );
@@ -86,4 +89,25 @@ TEST_CASE( "MIG resub engine (bottom-up) -- 2-resub", "[resub_engines]" )
   partial_simulator sim( tts );
   const auto ans = simulate<kitty::partial_truth_table, mig_network, partial_simulator>( mig, sim )[0];
   CHECK( target == ans );
+}
+
+TEST_CASE( "MIG resynthesis engines -- 0-resub", "[mig_resyn]" )
+{
+  test_0resub<mig_resyn_engine_bottom_up<kitty::partial_truth_table>>();
+  test_0resub<mig_resyn_engine<kitty::partial_truth_table>>();
+  test_0resub<mig_resyn_engine_akers>();
+}
+
+TEST_CASE( "MIG resynthesis engines -- 1-resub", "[mig_resyn]" )
+{
+  test_1resub<mig_resyn_engine_bottom_up<kitty::partial_truth_table>>();
+  test_1resub<mig_resyn_engine<kitty::partial_truth_table>>();
+  test_1resub<mig_resyn_engine_akers>();
+}
+
+TEST_CASE( "MIG resynthesis engines -- 2-resub", "[mig_resyn]" )
+{
+  test_2resub<mig_resyn_engine_bottom_up<kitty::partial_truth_table>>();
+  test_2resub<mig_resyn_engine<kitty::partial_truth_table>>();
+  test_2resub<mig_resyn_engine_akers>();
 }
