@@ -45,37 +45,23 @@ namespace mockturtle
 template<class TT>
 class mig_resub_engine_bottom_up
 {
-  struct maj_node
-  {
-    uint32_t id; /* ( id - divisors.size() ) / 2 = its position in maj_nodes */
-    std::vector<uint32_t> fanins; /* ids of its three fanins */
-  };
-
 public:
-  explicit mig_resub_engine_bottom_up( uint64_t num_divisors, uint64_t max_num_divisors = 50ul )
-    : max_num_divisors( max_num_divisors ), counter( 2u ), divisors( ( num_divisors + 1 ) * 2 ), scores( ( num_divisors + 1 ) * 2 )
+  explicit mig_resub_engine_bottom_up( TT const& target )
+    : num_bits( target.num_bits() ), divisors( { ~target, target } )
   { }
-
-  template<class node_type, class truth_table_storage_type>
-  void add_root( node_type const& node, truth_table_storage_type const& tts )
-  {
-    divisors.at( 0u ) = ~tts[node]; // const 0 XNOR target = ~target
-    divisors.at( 1u ) = tts[node]; // const 1 XNOR target = target
-    num_bits = tts[node].num_bits();
-  }
 
   template<class node_type, class truth_table_storage_type>
   void add_divisor( node_type const& node, truth_table_storage_type const& tts )
   {
     assert( tts[node].num_bits() == num_bits );
-    divisors.at( counter++ ) = tts[node] ^ divisors.at( 0u ); // XNOR target = XOR ~target
-    divisors.at( counter++ ) = ~tts[node] ^ divisors.at( 0u );
+    divisors.emplace_back( tts[node] ^ divisors.at( 0u ) ); // XNOR target = XOR ~target
+    divisors.emplace_back( ~tts[node] ^ divisors.at( 0u ) );
+    index_list.add_inputs();
   }
 
   template<class iterator_type, class truth_table_storage_type>
   void add_divisors( iterator_type begin, iterator_type end, truth_table_storage_type const& tts )
   { 
-    assert( counter == 2u );
     while ( begin != end )
     {
       add_divisor( *begin, tts );
@@ -83,16 +69,16 @@ public:
     }
   }
 
-  std::optional<std::vector<uint32_t>> compute_function( uint32_t num_inserts )
+  std::optional<mig_index_list> compute_function( uint32_t num_inserts )
   {
     uint64_t max_score = 0u;
     max_i = 0u;
     for ( auto i = 0u; i < divisors.size(); ++i )
     {
-      scores.at( i ) = kitty::count_ones( divisors.at( i ) );
-      if ( scores.at( i ) > max_score )
+      uint32_t score = kitty::count_ones( divisors.at( i ) );
+      if ( score > max_score )
       {
-        max_score = scores.at( i );
+        max_score = score;
         max_i = i;
         if ( max_score == num_bits )
         {
@@ -103,28 +89,29 @@ public:
     /* 0-resub (including constants) */
     if ( max_score == num_bits )
     {
-      return std::vector<uint32_t>( {max_i} );
+      index_list.add_output( max_i );
+      return index_list;
     }
 
     if ( num_inserts == 0u )
     {
       return std::nullopt;
     }
-    size_limit = num_inserts;
+    size_limit = divisors.size() + num_inserts * 2;
 
     return bottom_up_approach();
   }
 
 private:
-  std::optional<std::vector<uint32_t>> bottom_up_approach()
+  std::optional<mig_index_list> bottom_up_approach()
   {
-    maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), {max_i}} );
+    //maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), {max_i}} );
     TT const& function_i = divisors.at( max_i );
-    max_i = divisors.size();
+    current_lit = divisors.size();
     return bottom_up_approach_rec( function_i );
   }
 
-  std::optional<std::vector<uint32_t>> bottom_up_approach_rec( TT const& function_i )
+  std::optional<mig_index_list> bottom_up_approach_rec( TT const& function_i )
   {
     /* THINK: Should we consider reusing newly-built nodes (nodes in maj_nodes) in addition to divisors? */
 
@@ -135,14 +122,14 @@ private:
     for ( auto j = 0u; j < divisors.size(); ++j )
     {
       auto const covered_by_j = divisors.at( j );
-      scores.at( j ) = kitty::count_ones( covered_by_j ) + kitty::count_ones( not_covered_by_i & covered_by_j );
-      if ( scores.at( j ) > max_score && (j >> 1) != (max_i >> 1) )
+      uint32_t score = kitty::count_ones( covered_by_j ) + kitty::count_ones( not_covered_by_i & covered_by_j );
+      if ( score > max_score && (j >> 1) != (max_i >> 1) )
       {
-        max_score = scores.at( j );
+        max_score = score;
         max_j = j;
       }
     }
-    maj_nodes.back().fanins.emplace_back( max_j );
+    //maj_nodes.back().fanins.emplace_back( max_j );
 
     /* the third fanin: only care about the disagreed bits */
     max_score = 0u;
@@ -150,31 +137,27 @@ private:
     auto const disagree_in_ij = function_i ^ divisors.at( max_j );
     for ( auto k = 0u; k < divisors.size(); ++k )
     {      
-      scores.at( k ) = kitty::count_ones( divisors.at( k ) & disagree_in_ij );
-      if ( scores.at( k ) > max_score && (k >> 1) != (max_i >> 1) && (k >> 1) != (max_j >> 1) )
+      uint32_t score = kitty::count_ones( divisors.at( k ) & disagree_in_ij );
+      if ( score > max_score && (k >> 1) != (max_i >> 1) && (k >> 1) != (max_j >> 1) )
       {
-        max_score = scores.at( k );
+        max_score = score;
         max_k = k;
       }
     }
-    maj_nodes.back().fanins.emplace_back( max_k );
+    //maj_nodes.back().fanins.emplace_back( max_k );
+    index_list.add_maj( max_i, max_j, max_k );
 
     auto const current_function = kitty::ternary_majority( function_i, divisors.at( max_j ), divisors.at( max_k ) );
     if ( kitty::is_const0( ~current_function ) )
     {
-      std::vector<uint32_t> index_list;
-      for ( auto& n : maj_nodes )
-      {
-        index_list.emplace_back( n.fanins.at( 0u ) );
-        index_list.emplace_back( n.fanins.at( 1u ) );
-        index_list.emplace_back( n.fanins.at( 2u ) );
-      }
-      index_list.emplace_back( maj_nodes.back().id );
+      index_list.add_output( current_lit );
       return index_list;
     }
-    else if ( maj_nodes.size() < size_limit )
+    else if ( current_lit + 2 < size_limit )
     {
-      maj_nodes.emplace_back( maj_node{maj_nodes.back().id + 2u, {maj_nodes.back().id}} );
+      //maj_nodes.emplace_back( maj_node{maj_nodes.back().id + 2u, {maj_nodes.back().id}} );
+      max_i = current_lit;
+      current_lit += 2;
       return bottom_up_approach_rec( current_function );
     }
     else
@@ -184,17 +167,14 @@ private:
   }
 
 private:
-  uint64_t max_num_divisors;
-  uint64_t counter;
   uint32_t size_limit;
   uint32_t num_bits;
+  uint32_t current_lit; /* literal of the current topmost node */
 
   uint32_t max_i, max_j, max_k;
 
   std::vector<TT> divisors;
-  std::vector<uint64_t> scores;
-  std::vector<maj_node> maj_nodes;
-
+  mig_index_list index_list;
 }; /* mig_resub_engine_bottom_up */
 
 template<class TT>

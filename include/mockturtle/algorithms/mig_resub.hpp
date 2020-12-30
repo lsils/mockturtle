@@ -657,7 +657,7 @@ private:
   binate_divisors bdivs;
 }; /* mig_resub_functor */
 
-template<typename Ntk, typename Simulator, typename TT>
+template<typename Ntk, typename Simulator, typename TTcare, typename Engine = mig_resub_engine<kitty::partial_truth_table>>
 struct mig_resub_functor_new
 {
 public:
@@ -677,13 +677,12 @@ public:
     div_signals.reserve( divs.size() );
   }
 
-  std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t potential_gain, uint32_t& real_gain )
+  std::optional<signal> operator()( node const& root, TTcare care, uint32_t required, uint32_t max_inserts, uint32_t potential_gain, uint32_t& real_gain )
   {
     (void)care; (void)required;
     kitty::partial_truth_table root_tt;
     root_tt = sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) );
-    //mig_resub_engine<kitty::partial_truth_table> engine( root_tt );
-    mig_resub_engine_akers engine( root_tt );
+    Engine engine( root_tt );
     for ( auto const& d : divs )
     {
       div_signals.emplace_back( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
@@ -803,7 +802,7 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   {
     using truthtable_t = kitty::dynamic_truth_table;
     using truthtable_dc_t = kitty::dynamic_truth_table;
-    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, mig_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>>>;
+    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, mig_resub_functor_new<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>>>;
 
     resubstitution_stats st;
     typename resub_impl_t::engine_st_t engine_st;
