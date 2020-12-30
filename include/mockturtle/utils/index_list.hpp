@@ -349,7 +349,7 @@ inline std::string to_index_list_string( abc_index_list const& indices )
  *
  * Example: The following index list creates the output function
  * `<<x1, x2, x3>, x2, x4>` with 4 inputs, 1 output, and 3 gates:
- * `{4 | 1 << 8 | 2 << 16, 2, 4, 6, 4, 8, 10, 12}`
+ * `{4 | 1 << 8 | 3 << 16, 2, 4, 6, 4, 8, 10, 12}`
  */
 struct mig_index_list
 {
