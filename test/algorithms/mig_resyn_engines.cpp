@@ -30,7 +30,6 @@ void test_0resub()
   CHECK( res );
   CHECK( (*res).num_gates() == 0u );
   CHECK( (*res).raw()[1] == 7u );
-  std::cout<<"test_0resub finished\n";
 }
 
 template<class Engine>
@@ -60,7 +59,6 @@ void test_1resub()
   partial_simulator sim( tts );
   const auto ans = simulate<kitty::partial_truth_table, mig_network, partial_simulator>( mig, sim )[0];
   CHECK( target == ans );
-  std::cout<<"test_1resub finished\n";
 }
 
 template<class Engine>
@@ -91,7 +89,6 @@ void test_2resub()
   partial_simulator sim( tts );
   const auto ans = simulate<kitty::partial_truth_table, mig_network, partial_simulator>( mig, sim )[0];
   CHECK( target == ans );
-  std::cout<<"test_2resub finished\n";
 }
 
 TEST_CASE( "MIG resynthesis engines -- 0-resub", "[mig_resyn]" )

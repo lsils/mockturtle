@@ -889,17 +889,20 @@ public:
       }
       find_gate();
       add_gate();
+      if ( kitty::is_const0( ~divisors.back() ) )
+      {
+        break;
+      }
       reduce();
     }
 
-    index_list.add_output( id_to_lit[0] );
+    index_list.add_output( id_to_lit.back() );
     return index_list;
   }
 
 private:
   void reduce()
   {
-    std::cout << "calling reduce with " << divisors.size() << " columns and " << divisors[0].num_bits() << " bits\n";
     uint32_t num_bits_before = 0u;
     uint32_t num_divs_before = 0u;
     while ( num_bits_before != divisors[0].num_bits() || num_divs_before != divisors.size() )
@@ -907,9 +910,7 @@ private:
       num_bits_before = divisors[0].num_bits();
       num_divs_before = divisors.size();
       eliminate_divs(); /* reduce column */
-      std::cout << "...eliminates to " << divisors.size() << " columns\n";
       eliminate_bits(); /* reduce row */
-      std::cout << "...eliminates to " << divisors[0].num_bits() << " bits\n";
     }
   }
 
@@ -1118,6 +1119,12 @@ private:
   /* whether the table is feasible (lpsd) if divisors[x] is deleted */
   bool is_feasible( int32_t x = -1 ) const
   {
+    if ( divisors.size() == 1 && x == 0 )
+    {
+      /* x is the only remaining column */
+      return false;
+    }
+
     /* for every pair of rows _bits[i], _bits[j] */
     for ( auto i = 0u; i < divisors[0].num_bits() - 1; ++i )
     {
