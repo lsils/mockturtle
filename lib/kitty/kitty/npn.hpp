@@ -409,6 +409,7 @@ void sifting_npn_canonization_loop( TT& npn, uint32_t& phase, std::vector<uint8_
 template<typename TT>
 void sifting_p_canonization_loop( TT& p, uint32_t& phase, std::vector<uint8_t>& perm )
 {
+  (void)phase;
   auto improvement = true;
   auto forward = true;
 
