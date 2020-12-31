@@ -899,6 +899,7 @@ public:
 private:
   void reduce()
   {
+    std::cout << "calling reduce with " << divisors.size() << " columns and " << divisors[0].num_bits() << " bits\n";
     uint32_t num_bits_before = 0u;
     uint32_t num_divs_before = 0u;
     while ( num_bits_before != divisors[0].num_bits() || num_divs_before != divisors.size() )
