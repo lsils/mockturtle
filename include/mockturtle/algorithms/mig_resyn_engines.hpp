@@ -907,7 +907,9 @@ private:
       num_bits_before = divisors[0].num_bits();
       num_divs_before = divisors.size();
       eliminate_divs(); /* reduce column */
+      std::cout << "...eliminates to " << divisors.size() << " columns\n";
       eliminate_bits(); /* reduce row */
+      std::cout << "...eliminates to " << divisors[0].num_bits() << " bits\n";
     }
   }
 
