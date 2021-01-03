@@ -45,8 +45,26 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
-  build-clang9:
-    name: Clang 9
+  build-gcc10:
+    name: GNU GCC 10
+    runs-on: macOS-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_CXX_COMPILER=/usr/local/opt/gcc@10/bin/g++-10 -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests "~[quality]"
+  build-clang:
+    name: Clang 12
     runs-on: macOS-latest
 
     steps:

@@ -34,6 +34,8 @@
 
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/algorithms/mig_resyn_engines.hpp>
+#include <mockturtle/utils/index_list.hpp>
 
 namespace kitty
 {
@@ -643,6 +645,62 @@ private:
   binate_divisors bdivs;
 }; /* mig_resub_functor */
 
+template<typename Ntk, typename Simulator, typename TTcare, typename Engine = mig_resyn_engine<kitty::partial_truth_table>>
+struct mig_resub_functor_new
+{
+public:
+  using node = mig_network::node;
+  using signal = mig_network::signal;
+  using stats = mig_resub_stats;
+
+public:
+  explicit mig_resub_functor_new( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
+    : ntk( ntk )
+    , sim( sim )
+    , tts( ntk )
+    , divs( divs )
+    , st( st )
+  {
+    assert( divs.size() == num_divs ); (void)num_divs;
+    div_signals.reserve( divs.size() );
+  }
+
+  std::optional<signal> operator()( node const& root, TTcare care, uint32_t required, uint32_t max_inserts, uint32_t potential_gain, uint32_t& real_gain )
+  {
+    (void)care; (void)required;
+    kitty::partial_truth_table root_tt;
+    root_tt = sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) );
+    Engine engine( root_tt );
+    for ( auto const& d : divs )
+    {
+      div_signals.emplace_back( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
+      tts[d] = sim.get_tt( div_signals.back() );
+    }
+    engine.add_divisors( divs.begin(), divs.end(), tts );
+
+    auto const res = engine.compute_function( std::min( potential_gain - 1, max_inserts ) );
+    if ( res )
+    {
+      signal ret;
+      real_gain = potential_gain - (*res).num_gates();
+      insert( ntk, div_signals.begin(), div_signals.end(), *res, [&]( signal const& s ){ ret = s; } );
+      return ret;
+    }
+    else
+    {
+      return std::nullopt;
+    }
+  }
+
+private:
+  Ntk& ntk;
+  Simulator const& sim;
+  unordered_node_map<kitty::partial_truth_table, Ntk> tts;
+  std::vector<node> const& divs;
+  std::vector<signal> div_signals;
+  stats& st;
+};
+
 /*! \brief MIG-specific resubstitution algorithm.
  *
  * This algorithms iterates over each node, creates a
@@ -707,7 +765,7 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   {
     using truthtable_t = kitty::static_truth_table<8u>;
     using truthtable_dc_t = kitty::dynamic_truth_table;
-    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, mig_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>>>;
+    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, mig_resub_functor_new<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>>>;
 
     resubstitution_stats st;
     typename resub_impl_t::engine_st_t engine_st;
@@ -732,7 +790,7 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   {
     using truthtable_t = kitty::dynamic_truth_table;
     using truthtable_dc_t = kitty::dynamic_truth_table;
-    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, mig_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>>>;
+    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, mig_resub_functor_new<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>>>;
 
     resubstitution_stats st;
     typename resub_impl_t::engine_st_t engine_st;
