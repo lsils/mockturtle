@@ -500,6 +500,7 @@ public:
 
           auto const& tt_s2 = sim.get_tt( s2 );
 
+          /* Note: the implication relation is actually not necessary for majority; this is an over-filtering */
           if ( kitty::implies( kitty::ternary_majority( tt_s0, tt_s1, tt_s2 ), tt ) )
           {
             bdivs.b0.emplace_back(  s0 );
@@ -571,8 +572,7 @@ public:
   std::optional<signal> resub_div2( node const& root, uint32_t required )
   {
     (void)required;
-    auto const s = ntk.make_signal( root );
-    auto const& tt = sim.get_tt( s );
+    auto const& tt = sim.get_tt( ntk.make_signal( root ) );
 
     for ( auto i = 0u; i < udivs.u0.size(); ++i )
     {
@@ -622,25 +622,23 @@ private:
 
 struct mig_resyn_stats
 {
-  
+  /*! \brief Time for finding dependency function. */
+  stopwatch<>::duration time_compute_function{0};
+
+  /*! \brief Number of found solutions. */
+  uint32_t num_success{0};
+
+  /*! \brief Number of times that no solution can be found. */
+  uint32_t num_fail{0};
 
   void report() const
   {
-    std::cout << "[i] kernel: mig_resyn_functor\n";
-    /*std::cout << fmt::format( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
-                              num_const_accepts, to_seconds( time_resubC ) );
-    std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
-                              num_div0_accepts, to_seconds( time_resub0 ) );
-    std::cout << fmt::format( "[i]            collect unate divisors                           ({:>5.2f} secs)\n", to_seconds( time_collect_unate_divisors ) );
-    std::cout << fmt::format( "[i]            R-resub {:6d}                                   ({:>5.2f} secs)\n",
-                              num_divR_accepts, to_seconds( time_resubR ) );
-    std::cout << fmt::format( "[i]            1-resub {:6d} = {:6d} MAJ                      ({:>5.2f} secs)\n",
-                              num_div1_accepts, num_div1_accepts, to_seconds( time_resub1 ) );
-    std::cout << fmt::format( "[i]            collect binate divisors                          ({:>5.2f} secs)\n", to_seconds( time_collect_binate_divisors ) );
-    std::cout << fmt::format( "[i]            2-resub {:6d} = {:6d} 2MAJ                     ({:>5.2f} secs)\n",
-                               num_div2_accepts, num_div2_accepts, to_seconds( time_resub2 ) );
-    std::cout << fmt::format( "[i]            total   {:6d}\n",
-                              (num_const_accepts + num_div0_accepts + num_divR_accepts + num_div1_accepts + num_div2_accepts) );*/
+    // clang-format off
+    std::cout <<              "[i]     <ResubFn: abc_resub_functor>\n";
+    std::cout << fmt::format( "[i]         #solution = {:6d}\n", num_success );
+    std::cout << fmt::format( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
+    std::cout << fmt::format( "[i]         engine time: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
+    // clang-format on
   }
 }; /* mig_resyn_stats */
 
@@ -659,7 +657,6 @@ public:
     , tts( ntk )
     , divs( divs )
     , st( st )
-    , exh( ntk, sim, divs, num_divs, st2 )
   {
     assert( divs.size() == num_divs ); (void)num_divs;
     div_signals.reserve( divs.size() );
@@ -678,18 +675,12 @@ public:
     }
     engine.add_divisors( divs.begin(), divs.end(), tts );
 
-    auto const res = engine.compute_function( std::min( potential_gain - 1, max_inserts ) );
+    auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
+      return engine.compute_function( std::min( potential_gain - 1, max_inserts ) );
+    });
     if ( res )
     {
-      //if ( root == 152 )
-      {
-        auto const res2 = exh( root, care, required, max_inserts, potential_gain, real_gain );
-        if ( !res2 )
-        {
-          std::cout << "exhaustive resub didn't find solution for root " << root << ": " << to_index_list_string( *res ) << "\n";
-          std::cout << "divisors:"; for ( auto d : divs ) std::cout << " " << d; std::cout << "\n";
-        }
-      }
+      ++st.num_success;
       signal ret;
       real_gain = potential_gain - (*res).num_gates();
       insert( ntk, div_signals.begin(), div_signals.end(), *res, [&]( signal const& s ){ ret = s; } );
@@ -697,6 +688,7 @@ public:
     }
     else
     {
+      ++st.num_fail;
       return std::nullopt;
     }
   }
@@ -708,9 +700,6 @@ private:
   std::vector<node> const& divs;
   std::vector<signal> div_signals;
   stats& st;
-
-  mig_enumerative_resub_stats st2;
-  mig_enumerative_resub_functor<Ntk, Simulator, TTcare> exh;
 }; /* mig_resyn_functor */
 
 /*! \brief MIG-specific resubstitution algorithm.
@@ -777,8 +766,7 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   {
     using truthtable_t = kitty::static_truth_table<8u>;
     using truthtable_dc_t = kitty::dynamic_truth_table;
-    //using functor_t = mig_resyn_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
-    using functor_t = mig_enumerative_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
+    using functor_t = mig_resyn_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
     using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, functor_t>>;
 
     resubstitution_stats st;
