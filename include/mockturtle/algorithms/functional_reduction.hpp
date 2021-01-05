@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2020  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -180,11 +180,6 @@ private:
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
       pbar( i, i, candidates );
 
-      if ( ntk.is_dead( n ) )
-      {
-        return true; /* next */
-      }
-
       check_tts( n );
       bool const_value;
       if ( tts[n] == zero )
@@ -233,11 +228,6 @@ private:
     progress_bar pbar{ntk.size(), "FR-equ |{0}| node = {1:>4}   cand = {2:>4}", ps.progress};
     ntk.foreach_gate( [&]( auto const& root, auto i ) {
       pbar( i, i, candidates );
-
-      if ( ntk.is_dead( root ) )
-      {
-        return true; /* next */
-      }
 
       check_tts( root );
       auto tt = tts[root];
