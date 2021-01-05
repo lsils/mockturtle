@@ -28,6 +28,7 @@
   \brief Majority-specific resustitution rules
 
   \author Heinz Riener
+  \author Siang-Yun Lee
 */
 
 #pragma once
@@ -58,7 +59,7 @@ inline bool relevance( const static_truth_table<NumVars>& tt0, const static_trut
 namespace mockturtle
 {
 
-struct mig_exhaustive_resub_stats
+struct mig_enumerative_resub_stats
 {
   /*! \brief Accumulated runtime for const-resub */
   stopwatch<>::duration time_resubC{0};
@@ -98,7 +99,7 @@ struct mig_exhaustive_resub_stats
 
   void report() const
   {
-    std::cout << "[i] kernel: mig_exhaustive_resub_functor\n";
+    std::cout << "[i] kernel: mig_enumerative_resub_functor\n";
     std::cout << fmt::format( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
                               num_const_accepts, to_seconds( time_resubC ) );
     std::cout << fmt::format( "[i]            0-resub {:6d}                                   ({:>5.2f} secs)\n",
@@ -114,15 +115,15 @@ struct mig_exhaustive_resub_stats
     std::cout << fmt::format( "[i]            total   {:6d}\n",
                               (num_const_accepts + num_div0_accepts + num_divR_accepts + num_div1_accepts + num_div2_accepts) );
   }
-}; /* mig_exhaustive_resub_stats */
+}; /* mig_enumerative_resub_stats */
 
 template<typename Ntk, typename Simulator, typename TT, bool use_constant = true>
-struct mig_exhaustive_resub_functor
+struct mig_enumerative_resub_functor
 {
 public:
   using node = mig_network::node;
   using signal = mig_network::signal;
-  using stats = mig_exhaustive_resub_stats;
+  using stats = mig_enumerative_resub_stats;
 
   struct unate_divisors
   {
@@ -140,26 +141,20 @@ public:
 
   struct binate_divisors
   {
-    std::vector<signal> positive_divisors0;
-    std::vector<signal> positive_divisors1;
-    std::vector<signal> positive_divisors2;
-    std::vector<signal> negative_divisors0;
-    std::vector<signal> negative_divisors1;
-    std::vector<signal> negative_divisors2;
+    std::vector<signal> b0;
+    std::vector<signal> b1;
+    std::vector<signal> b2;
 
     void clear()
     {
-      positive_divisors0.clear();
-      positive_divisors1.clear();
-      positive_divisors2.clear();
-      negative_divisors0.clear();
-      negative_divisors1.clear();
-      negative_divisors2.clear();
+      b0.clear();
+      b1.clear();
+      b2.clear();
     }
   };
 
 public:
-  explicit mig_exhaustive_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
+  explicit mig_enumerative_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
     : ntk( ntk )
     , sim( sim )
     , divs( divs )
@@ -507,33 +502,65 @@ public:
 
           if ( kitty::implies( kitty::ternary_majority( tt_s0, tt_s1, tt_s2 ), tt ) )
           {
-            bdivs.positive_divisors0.emplace_back(  s0 );
-            bdivs.positive_divisors1.emplace_back(  s1 );
-            bdivs.positive_divisors2.emplace_back(  s2 );
+            bdivs.b0.emplace_back(  s0 );
+            bdivs.b1.emplace_back(  s1 );
+            bdivs.b2.emplace_back(  s2 );
             continue;
           }
 
           if ( kitty::implies( kitty::ternary_majority( ~tt_s0, tt_s1, tt_s2 ), tt ) )
           {
-            bdivs.positive_divisors0.emplace_back( !s0 );
-            bdivs.positive_divisors1.emplace_back(  s1 );
-            bdivs.positive_divisors2.emplace_back(  s2 );
+            bdivs.b0.emplace_back( !s0 );
+            bdivs.b1.emplace_back(  s1 );
+            bdivs.b2.emplace_back(  s2 );
             continue;
           }
 
-          if ( kitty::implies( tt, kitty::ternary_majority( tt_s0, tt_s1, tt_s2 ) ) )
+          if ( kitty::implies( kitty::ternary_majority( tt_s0, ~tt_s1, tt_s2 ), tt ) )
           {
-            bdivs.negative_divisors0.emplace_back(  s0 );
-            bdivs.negative_divisors1.emplace_back(  s1 );
-            bdivs.negative_divisors2.emplace_back(  s2 );
+            bdivs.b0.emplace_back(  s0 );
+            bdivs.b1.emplace_back( !s1 );
+            bdivs.b2.emplace_back(  s2 );
             continue;
           }
 
-          if ( kitty::implies( tt, kitty::ternary_majority( ~tt_s0, tt_s1, tt_s2 ) ) )
+          if ( kitty::implies( kitty::ternary_majority( tt_s0, tt_s1, ~tt_s2 ), tt ) )
           {
-            bdivs.negative_divisors0.emplace_back( !s0 );
-            bdivs.negative_divisors1.emplace_back(  s1 );
-            bdivs.negative_divisors2.emplace_back(  s2 );
+            bdivs.b0.emplace_back(  s0 );
+            bdivs.b1.emplace_back(  s1 );
+            bdivs.b2.emplace_back( !s2 );
+            continue;
+          }
+
+          if ( kitty::implies( kitty::ternary_majority( ~tt_s0, ~tt_s1, tt_s2 ), tt ) )
+          {
+            bdivs.b0.emplace_back( !s0 );
+            bdivs.b1.emplace_back( !s1 );
+            bdivs.b2.emplace_back(  s2 );
+            continue;
+          }
+
+          if ( kitty::implies( kitty::ternary_majority( tt_s0, ~tt_s1, ~tt_s2 ), tt ) )
+          {
+            bdivs.b0.emplace_back(  s0 );
+            bdivs.b1.emplace_back( !s1 );
+            bdivs.b2.emplace_back( !s2 );
+            continue;
+          }
+
+          if ( kitty::implies( kitty::ternary_majority( ~tt_s0, tt_s1, ~tt_s2 ), tt ) )
+          {
+            bdivs.b0.emplace_back( !s0 );
+            bdivs.b1.emplace_back(  s1 );
+            bdivs.b2.emplace_back( !s2 );
+            continue;
+          }
+
+          if ( kitty::implies( kitty::ternary_majority( ~tt_s0, ~tt_s1, ~tt_s2 ), tt ) )
+          {
+            bdivs.b0.emplace_back( !s0 );
+            bdivs.b1.emplace_back( !s1 );
+            bdivs.b2.emplace_back( !s2 );
             continue;
           }
         }
@@ -547,23 +574,22 @@ public:
     auto const s = ntk.make_signal( root );
     auto const& tt = sim.get_tt( s );
 
-    /* check positive unate divisors */
     for ( auto i = 0u; i < udivs.u0.size(); ++i )
     {
       auto const& s0 = udivs.u0.at( i );
       auto const& s1 = udivs.u1.at( i );
 
-      for ( auto j = 0u; j < bdivs.positive_divisors0.size(); ++j )
+      for ( auto j = 0u; j < bdivs.b0.size(); ++j )
       {
-        auto const& s2 = bdivs.positive_divisors0.at( j );
-        auto const& s3 = bdivs.positive_divisors1.at( j );
-        auto const& s4 = bdivs.positive_divisors2.at( j );
+        auto const& s2 = bdivs.b0.at( j );
+        auto const& s3 = bdivs.b1.at( j );
+        auto const& s4 = bdivs.b2.at( j );
 
         auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
         auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
-        auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s1 : s2;
-        auto const d = sim.get_phase( ntk.get_node( s3 ) ) ? !s2 : s3;
-        auto const e = sim.get_phase( ntk.get_node( s4 ) ) ? !s3 : s4;
+        auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s2 : s2;
+        auto const d = sim.get_phase( ntk.get_node( s3 ) ) ? !s3 : s3;
+        auto const e = sim.get_phase( ntk.get_node( s4 ) ) ? !s4 : s4;
 
         auto const& tt_s0 = sim.get_tt( s0 );
         auto const& tt_s1 = sim.get_tt( s1 );
@@ -571,40 +597,7 @@ public:
         auto const& tt_s3 = sim.get_tt( s3 );
         auto const& tt_s4 = sim.get_tt( s4 );
 
-        if ( kitty::ternary_majority( kitty::ternary_majority( tt_s0, tt_s1, tt_s2 ), tt_s3, tt_s4 ) == tt )
-        {
-          return sim.get_phase( root ) ?
-            !ntk.create_maj( a, b, ntk.create_maj( c, d, e ) ) :
-             ntk.create_maj( a, b, ntk.create_maj( c, d, e ) );
-        }
-      }
-    }
-
-    /* check negative unate divisors */
-    for ( auto i = 0u; i < udivs.u0.size(); ++i )
-    {
-      auto const& s0 = udivs.u0.at( i );
-      auto const& s1 = udivs.u1.at( i );
-
-      for ( auto j = 0u; j < bdivs.negative_divisors0.size(); ++j )
-      {
-        auto const& s2 = bdivs.negative_divisors0.at( j );
-        auto const& s3 = bdivs.negative_divisors1.at( j );
-        auto const& s4 = bdivs.negative_divisors2.at( j );
-
-        auto const a = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
-        auto const b = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
-        auto const c = sim.get_phase( ntk.get_node( s2 ) ) ? !s1 : s2;
-        auto const d = sim.get_phase( ntk.get_node( s3 ) ) ? !s2 : s3;
-        auto const e = sim.get_phase( ntk.get_node( s4 ) ) ? !s3 : s4;
-
-        auto const& tt_s0 = sim.get_tt( s0 );
-        auto const& tt_s1 = sim.get_tt( s1 );
-        auto const& tt_s2 = sim.get_tt( s2 );
-        auto const& tt_s3 = sim.get_tt( s3 );
-        auto const& tt_s4 = sim.get_tt( s4 );
-
-        if ( kitty::ternary_majority( ~kitty::ternary_majority( tt_s0, tt_s1, tt_s2 ), tt_s3, tt_s4 ) == tt )
+        if ( kitty::ternary_majority( tt_s0, tt_s1, kitty::ternary_majority( tt_s2, tt_s3, tt_s4 ) ) == tt )
         {
           return sim.get_phase( root ) ?
             !ntk.create_maj( a, b, ntk.create_maj( c, d, e ) ) :
@@ -625,7 +618,7 @@ private:
 
   unate_divisors udivs;
   binate_divisors bdivs;
-}; /* mig_exhaustive_resub_functor */
+}; /* mig_enumerative_resub_functor */
 
 struct mig_resyn_stats
 {
@@ -688,6 +681,15 @@ public:
     auto const res = engine.compute_function( std::min( potential_gain - 1, max_inserts ) );
     if ( res )
     {
+      //if ( root == 152 )
+      {
+        auto const res2 = exh( root, care, required, max_inserts, potential_gain, real_gain );
+        if ( !res2 )
+        {
+          std::cout << "exhaustive resub didn't find solution for root " << root << ": " << to_index_list_string( *res ) << "\n";
+          std::cout << "divisors:"; for ( auto d : divs ) std::cout << " " << d; std::cout << "\n";
+        }
+      }
       signal ret;
       real_gain = potential_gain - (*res).num_gates();
       insert( ntk, div_signals.begin(), div_signals.end(), *res, [&]( signal const& s ){ ret = s; } );
@@ -707,8 +709,8 @@ private:
   std::vector<signal> div_signals;
   stats& st;
 
-  mig_exhaustive_resub_stats st2;
-  mig_exhaustive_resub_functor<Ntk, Simulator, TTcare> exh;
+  mig_enumerative_resub_stats st2;
+  mig_enumerative_resub_functor<Ntk, Simulator, TTcare> exh;
 }; /* mig_resyn_functor */
 
 /*! \brief MIG-specific resubstitution algorithm.
@@ -776,7 +778,7 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
     using truthtable_t = kitty::static_truth_table<8u>;
     using truthtable_dc_t = kitty::dynamic_truth_table;
     //using functor_t = mig_resyn_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
-    using functor_t = mig_exhaustive_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
+    using functor_t = mig_enumerative_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
     using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, functor_t>>;
 
     resubstitution_stats st;
