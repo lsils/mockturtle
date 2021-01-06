@@ -651,6 +651,7 @@ struct sim_resub_stats
 
   /*! \brief Time for SAT solving. */
   stopwatch<>::duration time_sat{0};
+  stopwatch<>::duration time_sat_restart{0};
 
   /*! \brief Time for computing ODCs. */
   stopwatch<>::duration time_odc{0};
@@ -687,7 +688,8 @@ struct sim_resub_stats
     std::cout <<              "[i]     ======== Runtime ========\n";
     std::cout << fmt::format( "[i]     generate pattern: {:>5.2f} secs\n", to_seconds( time_patgen ) );
     std::cout << fmt::format( "[i]     simulation:       {:>5.2f} secs\n", to_seconds( time_sim ) );
-    std::cout << fmt::format( "[i]     SAT:              {:>5.2f} secs\n", to_seconds( time_sat ) );
+    std::cout << fmt::format( "[i]     SAT solve:        {:>5.2f} secs\n", to_seconds( time_sat ) );
+    std::cout << fmt::format( "[i]     SAT restart:      {:>5.2f} secs\n", to_seconds( time_sat_restart ) );
     std::cout << fmt::format( "[i]     compute ODCs:     {:>5.2f} secs\n", to_seconds( time_odc ) );
     std::cout << fmt::format( "[i]     compute function: {:>5.2f} secs\n", to_seconds( time_functor ) );
     std::cout << fmt::format( "[i]     interfacing:      {:>5.2f} secs\n", to_seconds( time_interface ) );
@@ -826,7 +828,9 @@ public:
               last_gain = potential_gain;
               if constexpr ( validator_t::use_odc_ )
               {
-                validator.update();
+                call_with_stopwatch( st.time_sat_restart, [&]() {
+                  validator.update();
+                });
               }
               return g;
             }
@@ -855,7 +859,9 @@ public:
               last_gain = potential_gain - size;
               if constexpr ( validator_t::use_odc_ )
               {
-                validator.update();
+                call_with_stopwatch( st.time_sat_restart, [&]() {
+                  validator.update();
+                });
               }
               return translate( c, c.divs );
             }
@@ -882,7 +888,9 @@ public:
   void found_cex()
   {
     ++st.num_cex;
-    sim.add_pattern( validator.cex );
+    call_with_stopwatch( st.time_sim, [&]() {
+      sim.add_pattern( validator.cex );
+    });
 
     /* re-simulate the whole circuit (for the last block) when a block is full */
     if ( sim.num_bits() % 64 == 0 )
