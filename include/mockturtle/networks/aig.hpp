@@ -33,20 +33,21 @@
 
 #pragma once
 
-#include <memory>
-#include <optional>
-#include <stack>
-#include <string>
-
-#include <kitty/dynamic_truth_table.hpp>
-#include <kitty/partial_truth_table.hpp>
-#include <kitty/operators.hpp>
-
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
 #include "detail/foreach.hpp"
 #include "events.hpp"
 #include "storage.hpp"
+
+#include <kitty/dynamic_truth_table.hpp>
+#include <kitty/partial_truth_table.hpp>
+#include <kitty/operators.hpp>
+
+#include <list>
+#include <memory>
+#include <optional>
+#include <stack>
+#include <string>
 
 namespace mockturtle
 {
@@ -232,7 +233,6 @@ public:
     _storage->outputs.emplace_back( f.index, f.complement );
     _storage->data.latches.emplace_back( reset );
     return static_cast<uint32_t>( ri_index );
-
   }
 
   int8_t latch_reset( uint32_t index ) const
@@ -313,6 +313,7 @@ public:
     const auto it = _storage->hash.find( node );
     if ( it != _storage->hash.end() )
     {
+      assert( !is_dead( it->second ) );
       return {it->second, 0};
     }
 
@@ -481,7 +482,7 @@ public:
     storage::element_type::node_type _hash_obj;
     _hash_obj.children[0] = child0;
     _hash_obj.children[1] = child1;
-    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() )
+    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() && it->second != old_node )
     {
       return std::make_pair( n, signal( it->second, 0 ) );
     }
@@ -511,6 +512,9 @@ public:
 
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
+    if ( is_dead( old_node ) )
+      return;
+
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -518,18 +522,22 @@ public:
         output.index = new_signal.index;
         output.weight ^= new_signal.complement;
 
-        // increment fan-in of new node
-        _storage->nodes[new_signal.index].data[0].h1++;
+        if ( old_node != new_signal.index )
+        {
+          /* increment fan-in of new node */
+          _storage->nodes[new_signal.index].data[0].h1++;
+        }
       }
     }
   }
 
   void take_out_node( node const& n )
   {
-    /* we cannot delete CIs or constants */
-    if ( n == 0 || is_ci( n ) )
+    /* we cannot delete CIs, constants, or already dead nodes */
+    if ( n == 0 || is_ci( n ) || is_dead( n ) )
       return;
 
+    /* delete the node (ignoring it's current fanout_size) */
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
     _storage->hash.erase( nobj );
@@ -539,6 +547,8 @@ public:
       fn( n );
     }
 
+    /* if the node has been deleted, then deref fanout_size of
+       fanins and try to take them out if their fanout_size become 0 */
     for ( auto i = 0u; i < 2u; ++i )
     {
       if ( fanout_size( nobj.children[i].index ) == 0 )
@@ -569,7 +579,7 @@ public:
 
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
-        if ( is_ci( idx ) )
+        if ( is_ci( idx ) || is_dead( idx ) )
           continue; /* ignore CIs */
 
         if ( const auto repl = replace_in_node( idx, _old, _new ); repl )
@@ -581,9 +591,104 @@ public:
       /* check outputs */
       replace_in_outputs( _old, _new );
 
-      // reset fan-in of old node
-      take_out_node( _old );
+      /* recursively reset old node */
+      if ( _old != _new.index )
+      {
+        take_out_node( _old );
+      }
     }
+  }
+
+  void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
+  {
+    auto clean_substitutions = [&]( node const& n )
+    {
+      substitutions.erase( std::remove_if( std::begin( substitutions ), std::end( substitutions ),
+                                           [&]( auto const& s ){
+                                             if ( s.first == n )
+                                             {
+                                               node const nn = get_node( s.second );
+                                               if ( is_dead( nn ) )
+                                                 return true;
+
+                                               /* deref fanout_size of the node */
+                                               if ( fanout_size( nn ) > 0 )
+                                               {
+                                                 decr_fanout_size( nn );
+                                               }
+                                               /* remove the node if it's fanout_size becomes 0 */
+                                               if ( fanout_size( nn ) == 0 )
+                                               {
+                                                 take_out_node( nn );
+                                               }
+                                               /* remove substitution from list */
+                                               return true;
+                                             }
+                                             return false; /* keep */
+                                           } ),
+                           std::end( substitutions ) );
+    };
+
+    /* register event to delete substitutions if their right-hand side
+       nodes get deleted */
+    _events->on_delete.push_back( clean_substitutions );
+
+    /* increment fanout_size of all signals to be used in
+       substitutions to ensure that they will not be deleted */
+    for ( const auto& s : substitutions )
+    {
+      incr_fanout_size( get_node( s.second ) );
+    }
+
+    while ( !substitutions.empty() )
+    {
+      auto const [old_node, new_signal] = substitutions.front();
+      substitutions.pop_front();
+
+      for ( auto index = 1u; index < _storage->nodes.size(); ++index )
+      {
+        /* skip CIs and dead nodes */
+        if ( is_ci( index ) || is_dead( index ) )
+          continue;
+
+        /* skip nodes that will be deleted */
+        if ( std::find_if( std::begin( substitutions ), std::end( substitutions ),
+                           [&index]( auto s ){ return s.first == index; } ) != std::end( substitutions ) )
+          continue;
+
+        /* replace in node */
+        if ( const auto repl = replace_in_node( index, old_node, new_signal ); repl )
+        {
+          incr_fanout_size( get_node( repl->second ) );
+          substitutions.emplace_back( *repl );
+        }
+      }
+
+      /* replace in outputs */
+      replace_in_outputs( old_node, new_signal );
+
+      /* replace in substitutions */
+      for ( auto& s : substitutions )
+      {
+        if ( get_node( s.second ) == old_node )
+        {
+          s.second = is_complemented( s.second ) ? !new_signal : new_signal;
+          incr_fanout_size( get_node( new_signal ) );
+        }
+      }
+
+      /* finally remove the node: note that we never decrement the
+         fanout_size of the old_node. instead, we remove the node and
+         reset its fanout_size to 0 knowing that it must be 0 after
+         substituting all references. */
+      assert( !is_dead( old_node ) );
+      take_out_node( old_node );
+
+      /* decrement fanout_size when released from substitution list */
+      decr_fanout_size( get_node( new_signal ) );
+    }
+
+    _events->on_delete.pop_back();
   }
 #pragma endregion
 
@@ -1024,12 +1129,13 @@ public:
     return ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
   }
 
+  /*! \brief Re-compute the last block. */
   template<typename Iterator>
   void compute( node const& n, kitty::partial_truth_table& result, Iterator begin, Iterator end ) const
   {
-    (void)end;
-    /* TODO: assert type of *begin is partial_truth_table */
+    static_assert( iterates_over_v<Iterator, kitty::partial_truth_table>, "begin and end have to iterate over partial_truth_tables" );
 
+    (void)end;
     assert( n != 0 && !is_ci( n ) );
 
     auto const& c1 = _storage->nodes[n].children[0];
@@ -1038,17 +1144,14 @@ public:
     auto tt1 = *begin++;
     auto tt2 = *begin++;
 
+    assert( tt1.num_bits() > 0 && "truth tables must not be empty" );
     assert( tt1.num_bits() == tt2.num_bits() );
     assert( tt1.num_bits() >= result.num_bits() );
-    if ( result.num_bits() == 0 )
-    {
-      result = ( c1.weight ? ~tt1 : tt1 ) & ( c2.weight ? ~tt2 : tt2 );
-    }
-    else
-    {
-      result.resize( tt1.num_bits() );
-      result._bits.back() = ( c1.weight ? ~(tt1._bits.back()) : tt1._bits.back() ) & ( c2.weight ? ~(tt2._bits.back()) : tt2._bits.back() );
-    }
+    assert( result.num_blocks() == tt1.num_blocks() || ( result.num_blocks() == tt1.num_blocks() - 1 && result.num_bits() % 64 == 0 ) );
+
+    result.resize( tt1.num_bits() );
+    result._bits.back() = ( c1.weight ? ~(tt1._bits.back()) : tt1._bits.back() ) & ( c2.weight ? ~(tt2._bits.back()) : tt2._bits.back() );
+    result.mask_bits();
   }
 #pragma endregion
 

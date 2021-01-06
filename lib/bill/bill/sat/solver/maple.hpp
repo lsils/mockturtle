@@ -5832,3 +5832,11 @@ inline void SimpSolver::garbageCollect()
     to.moveTo(ca);
 }
 }
+
+#undef ANTI_EXPLORATION
+#undef BIN_DRUP
+#undef INT_QUEUE_AVG
+#undef LOOSE_PROP_STAT
+#undef LOCAL
+#undef TIER2
+#undef COR

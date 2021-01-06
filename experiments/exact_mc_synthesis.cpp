@@ -23,8 +23,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <cstdint>
-#include <string>
+#if defined(BILL_HAS_Z3)
+
+#include "experiments.hpp"
 
 #include <bill/sat/interface/abc_bsat2.hpp>
 #include <bill/sat/interface/z3.hpp>
@@ -40,7 +41,8 @@
 #include <mockturtle/properties/mccost.hpp>
 #include <mockturtle/utils/progress_bar.hpp>
 
-#include <experiments.hpp>
+#include <cstdint>
+#include <string>
 
 int main()
 {
@@ -292,3 +294,15 @@ int main()
   exp.save();
   exp.table();
 }
+
+#else
+
+#include <iostream>
+
+int main()
+{
+  std::cout << "requires Z3" << std::endl;
+  return 0;
+}
+
+#endif

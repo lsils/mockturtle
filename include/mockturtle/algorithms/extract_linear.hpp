@@ -98,6 +98,7 @@ extract_linear_circuit( xag_network const& xag )
   } );
   for ( auto const& [a, b, _] : and_tuples )
   {
+    (void)_;
     dest.create_po( a );
     dest.create_po( b );
   }

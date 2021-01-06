@@ -272,7 +272,7 @@ private:
 
     load_optimal_xmgs( 1 ); //size optimization
 
-    for ( const auto e : opt_xmgs )
+    for ( const auto& e : opt_xmgs )
     {
       class2signal.insert( std::make_pair( e.first, create_xmg_from_str( e.second, signals ) ) );
     }

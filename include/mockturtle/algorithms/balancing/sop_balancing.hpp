@@ -49,21 +49,10 @@
 #include "../../traits.hpp"
 #include "../../utils/stopwatch.hpp"
 #include "../balancing.hpp"
+#include "utils.hpp"
 
 namespace mockturtle
 {
-
-template<class Ntk>
-struct arrival_time_compare
-{
-  bool operator()( arrival_time_pair<Ntk> const& p1, arrival_time_pair<Ntk> const& p2 ) const
-  {
-    return p1.level > p2.level;
-  }
-};
-
-template<class Ntk>
-using arrival_time_queue = std::priority_queue<arrival_time_pair<Ntk>, std::vector<arrival_time_pair<Ntk>>, arrival_time_compare<Ntk>>;
 
 /*! \brief SOP rebalancing function
  *

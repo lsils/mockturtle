@@ -71,12 +71,10 @@ TEST_CASE( "Validating with non-existing circuit", "[validator]" )
 
   circuit_validator v( aig );
 
-  circuit_validator<aig_network>::gate::fanin fi1;
-  fi1.idx = 0; fi1.inv = true;
-  circuit_validator<aig_network>::gate::fanin fi2;
-  fi2.idx = 1; fi2.inv = true;
-  circuit_validator<aig_network>::gate g;
-  g.fanins = {fi1, fi2};
+  circuit_validator<aig_network>::gate::fanin gi1{0, true};
+  circuit_validator<aig_network>::gate::fanin gi2{1, true};
+  circuit_validator<aig_network>::gate g{{gi1, gi2}, circuit_validator<aig_network>::gate_type::AND};
+
   CHECK( *( v.validate( f3, {aig.get_node( f1 ), aig.get_node( f2 )}, {g}, true ) ) == true );
   CHECK( *( v.validate( aig.get_node( f3 ), {aig.get_node( f1 ), aig.get_node( f2 )}, {g}, false ) ) == true );
 }
@@ -93,13 +91,9 @@ TEST_CASE( "Validating after circuit update", "[validator]" )
 
   circuit_validator v( aig );
 
-  /* new nodes created after construction of `circuit_validator` have to be added to it manually with `add_node` */
   auto const g1 = aig.create_and( a, b );
   auto const g2 = aig.create_and( !a, !b );
   auto const g3 = aig.create_or( g1, g2 );
-  v.add_node( aig.get_node( g1 ) );
-  v.add_node( aig.get_node( g2 ) );
-  v.add_node( aig.get_node( g3 ) );
 
   CHECK( *( v.validate( aig.get_node( f3 ), g3 ) ) == true );
 }
@@ -122,10 +116,41 @@ TEST_CASE( "Validating const nodes", "[validator]" )
 
   circuit_validator v( aig );
 
+  /* several APIs are available */
   CHECK( *( v.validate( aig.get_node( h ), false ) ) == true );
+  CHECK( *( v.validate( h, false ) ) == true );
+  CHECK( *( v.validate( aig.get_constant( false ), h ) ) == true );
+
   CHECK( *( v.validate( f1, false ) ) == false );
   CHECK( v.cex[0] == false );
   CHECK( v.cex[1] == true );
+}
+
+TEST_CASE( "Generate multiple patterns", "[validator]" )
+{
+  /* original circuit */
+  aig_network aig;
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const c = aig.create_pi();
+  auto const f1 = aig.create_xor( a, b );
+  auto const f2 = aig.create_xor( f1, c ); // a ^ b ^ c
+
+  circuit_validator<aig_network, bill::solvers::bsat2, true, false, false> v( aig );
+
+  CHECK( *( v.validate( f2, false ) ) == false ); /* f2 is not a constant 0 */
+  std::vector<std::vector<bool>> block_pattern( {v.cex} );
+  auto const patterns = v.generate_pattern( f2, true, block_pattern, 10 ); /* generate patterns making f2 = 1 */
+  CHECK( patterns.size() == 3u );
+  for ( auto const& pattern : patterns )
+  {
+    CHECK( ( pattern[0] ^ pattern[1] ^ pattern[2] ) == true );
+    CHECK( pattern != block_pattern[0] );
+  }
+
+  /* blocking patterns should not affect later validations */
+  CHECK( *( v.validate( f1, false ) ) == false ); /* f1 is not a constant 0 */
+  CHECK( ( v.cex[0] ^ v.cex[1] ) == true );
 }
 
 TEST_CASE( "Validating with ODC", "[validator]" )
