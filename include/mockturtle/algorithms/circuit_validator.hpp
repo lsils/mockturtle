@@ -95,7 +95,7 @@ public:
   };
 
   explicit circuit_validator( Ntk const& ntk, validator_params const& ps = {} )
-      : ntk( ntk ), ps( ps ), literals( ntk ), num_invoke( 0u ), cex( ntk.num_pis() )
+      : ntk( ntk ), ps( ps ), literals( ntk ), constructed( ntk ), num_invoke( 0u ), cex( ntk.num_pis() )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
@@ -135,13 +135,30 @@ public:
       static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
     }
 
+    ntk._events->on_add.emplace_back( [&]( const auto& n ) {
+      (void)n;
+      literals.resize();
+    });
+
+    /* constants are mapped to var 0 */
+    literals[ntk.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
+    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+    {
+      literals[ntk.get_constant( true )] = bill::lit_type( 0, bill::lit_type::polarities::negative );
+    }
+
+    /* first indexes (starting from 1) are for PIs */
+    ntk.foreach_pi( [&]( auto const& n, auto i ) {
+      literals[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive );
+    } );
+
     restart();
   }
 
   /*! \brief Validate functional equivalence of signals `f` and `d`. */
   std::optional<bool> validate( signal const& f, signal const& d )
   {
-    if ( !literals.has( d ) )
+    if ( !constructed.has( d ) && !ntk.is_pi( ntk.get_node( d ) ) && !ntk.is_constant( ntk.get_node( d ) ) )
     {
       construct( ntk.get_node( d ) );
     }
@@ -156,7 +173,7 @@ public:
   /*! \brief Validate functional equivalence of node `root` and signal `d`. */
   std::optional<bool> validate( node const& root, signal const& d )
   {
-    if ( !literals.has( d ) )
+    if ( !constructed.has( d ) && !ntk.is_pi( ntk.get_node( d ) ) && !ntk.is_constant( ntk.get_node( d ) ) )
     {
       construct( ntk.get_node( d ) );
     }
@@ -198,7 +215,7 @@ public:
   template<class iterator_type>
   std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& circuit, bool output_negation = false )
   {
-    if ( !literals.has( root ) )
+    if ( !constructed.has( root ) && !ntk.is_pi( root ) && !ntk.is_constant( root ) )
     {
       construct( root );
     }
@@ -206,7 +223,7 @@ public:
     std::vector<bill::lit_type> lits;
     while ( divs_begin != divs_end )
     {
-      if ( !literals.has( *divs_begin ) )
+      if ( !constructed.has( *divs_begin ) && !ntk.is_pi( *divs_begin ) && !ntk.is_constant( *divs_begin ) )
       {
         construct( *divs_begin );
       }
@@ -248,7 +265,7 @@ public:
   /*! \brief Validate whether node `root` is a constant of `value`. */
   std::optional<bool> validate( node const& root, bool value )
   {
-    if ( !literals.has( root ) )
+    if ( !constructed.has( root ) && !ntk.is_pi( root ) && !ntk.is_constant( root ) )
     {
       construct( root );
     }
@@ -306,7 +323,7 @@ public:
   template<bool enabled = use_pushpop, typename = std::enable_if_t<enabled>>
   std::vector<std::vector<bool>> generate_pattern( node const& root, bool value, std::vector<std::vector<bool>> const& block_patterns = {}, uint32_t num_patterns = 1u )
   {
-    if ( !literals.has( root ) )
+    if ( !constructed.has( root ) && !ntk.is_pi( root ) && !ntk.is_constant( root ) )
     {
       construct( root );
     }
@@ -372,18 +389,7 @@ private:
       solver.set_random_phase( ps.random_seed );
     }
 
-    literals.reset();
-    /* constants are mapped to var 0 */
-    literals[ntk.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
-    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
-    {
-      literals[ntk.get_constant( true )] = bill::lit_type( 0, bill::lit_type::polarities::negative );
-    }
-
-    /* first indexes (starting from 1) are for PIs */
-    ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      literals[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive );
-    } );
+    constructed.reset();
 
     solver.add_variables( ntk.num_pis() + 1 );
     solver.add_clause( {~literals[ntk.get_constant( false )]} );
@@ -391,7 +397,7 @@ private:
 
   void construct( node const& n )
   {
-    assert( !literals.has( n ) );
+    assert( !constructed.has( n ) && !ntk.is_pi( n ) && !ntk.is_constant( n ) );
     if constexpr ( use_pushpop )
     {
       if ( between_push_pop )
@@ -402,13 +408,14 @@ private:
 
     std::vector<bill::lit_type> child_lits;
     ntk.foreach_fanin( n, [&]( auto const& f ) {
-      if ( !literals.has( f ) )
+      if ( !constructed.has( f ) && !ntk.is_pi( ntk.get_node( f ) ) && !ntk.is_constant( ntk.get_node( f ) ) )
       {
         construct( ntk.get_node( f ) );
       }
       child_lits.push_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
     } );
     bill::lit_type node_lit = literals[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+    constructed[n] = true;
 
     if ( ntk.is_and( n ) )
     {
@@ -448,7 +455,7 @@ private:
     solver.pop();
     for ( auto& n : tmp )
     {
-      literals.erase( n );
+      constructed.erase( n );
     }
     between_push_pop = false;
   }
@@ -538,7 +545,7 @@ private:
 
   std::optional<bool> validate( node const& root, bill::lit_type const& lit )
   {
-    if ( !literals.has( root ) )
+    if ( !constructed.has( root ) && !ntk.is_pi( root ) && !ntk.is_constant( root ) )
     {
       construct( root );
     }
@@ -627,7 +634,7 @@ private:
 
       std::vector<bill::lit_type> l_fi;
       ntk.foreach_fanin( fo, [&]( auto const& fi ) {
-        if ( !literals.has( fi ) )
+        if ( !constructed.has( fi ) && !ntk.is_pi( ntk.get_node( fi ) ) && !ntk.is_constant( ntk.get_node( fi ) ) )
         {
           construct( ntk.get_node( fi ) );
         }
@@ -661,7 +668,7 @@ private:
         return true; /* skip */
       ntk.set_visited( fo, ntk.trav_id() );
 
-      if ( !literals.has( fo ) )
+      if ( !constructed.has( fo ) )
       {
         construct( fo );
       }
@@ -682,7 +689,7 @@ private:
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   void add_miter_clauses( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, std::vector<bill::lit_type>& miter )
   {
-    assert( literals.has( n ) && literals[n] != literals[ntk.get_constant( false )] );
+    assert( constructed.has( n ) && literals[n] != literals[ntk.get_constant( false )] );
     miter.emplace_back( add_clauses_for_2input_gate( literals[n], lits[n], std::nullopt, XOR ) );
   }
 
@@ -691,7 +698,8 @@ private:
 
   validator_params const& ps;
 
-  unordered_node_map<bill::lit_type, Ntk> literals;
+  node_map<bill::lit_type, Ntk> literals;
+  unordered_node_map<bool, Ntk> constructed;
   bill::solver<Solver> solver;
 
   static const uint32_t MIN_NUM_INVOKE = 20u;

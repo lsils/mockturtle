@@ -246,7 +246,7 @@ public:
     }
   }
 
-  /* Make a deep copy */
+  /*! \brief Make a deep copy */
   node_map<T, Ntk, std::unordered_map<typename Ntk::node, T>> copy() const
   {
     node_map<T, Ntk, std::unordered_map<typename Ntk::node, T>> copy(ntk);
@@ -290,10 +290,9 @@ public:
     return (*data)[ntk.node_to_index( ntk.get_node( f ) )];
   }
 
-  /*! \brief Resets the size of the map.
+  /*! \brief Clear all entries of the map.
    *
-   * This function should be called, if the network changed in size.  Then, the
-   * map is cleared, and resized to the current network's size.
+   * All data in the map is cleared.
    */
   void reset()
   {
