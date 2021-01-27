@@ -37,6 +37,7 @@
 #include <vector>
 
 #include "../traits.hpp"
+#include "../utils/event_crtp.hpp"
 
 namespace mockturtle
 {
@@ -51,17 +52,75 @@ template<class Ntk>
 struct network_events
 {
   /*! \brief Event when node `n` is added. */
-  std::vector<std::function<void( node<Ntk> const& n )>> on_add;
+  event_handlers_t<node<Ntk> const& /* n */> on_add;
 
   /*! \brief Event when `n` is modified.
    *
    * The event also informs about the previous children.  Note that the new
    * children are already available at the time the event is triggered.
    */
-  std::vector<std::function<void( node<Ntk> const& n, std::vector<signal<Ntk>> const& previous_children )>> on_modified;
+  event_handlers_t<node<Ntk> const& /* n */, std::vector<signal<Ntk>> const& /* previous_children */> on_modified;
 
   /*! \brief Event when `n` is deleted. */
-  std::vector<std::function<void( node<Ntk> const& n )>> on_delete;
+  event_handlers_t<node<Ntk> const& /* n */> on_delete;
+
+
+  /*! \brief To be used as tparam Accessor in EventCRTP.
+   *
+   * Note that the Derived class shall declare this class as a friend if
+   * the Derived class composes, rather than inherits, an Ntk.
+   */
+  struct add_accessor
+  {
+    template<class Derived>
+    auto &operator()(Derived &owner) {
+      if constexpr (std::is_base_of<Ntk, Derived>{})
+        return static_cast<Ntk &>(owner).events().on_add;
+      else
+        return owner.ntk.events().on_add;
+    }
+  };
+
+  /*! \brief To be used as tparam Accessor in EventCRTP.
+   *
+   * Note that the Derived class shall declare this class as a friend if
+   * the Derived class composes, rather than inherits, an Ntk.
+   */
+  struct modified_accessor
+  {
+    template<class Derived>
+    auto &operator()(Derived &owner) {
+      if constexpr (std::is_base_of<Ntk, Derived>{})
+        return static_cast<Ntk &>(owner).events().on_modified;
+      else
+        return owner.ntk.events().on_modified;
+    }
+  };
+
+  /*! \brief To be used as tparam Accessor in EventCRTP.
+   *
+   * Note that the Derived class shall declare this class as a friend if
+   * the Derived class composes, rather than inherits, an Ntk.
+   */
+  struct delete_accessor
+  {
+    template<class Derived>
+    auto &operator()(Derived &owner) {
+      if constexpr (std::is_base_of<Ntk, Derived>{})
+        return static_cast<Ntk &>(owner).events().on_delete;
+      else
+        return owner.ntk.events().on_delete;
+    }
+  };
 };
+
+template<class Ntk, class Derived>
+using event_add_crtp = event_crtp<Derived, typename network_events<Ntk>::add_accessor>;
+
+template<class Ntk, class Derived>
+using event_modified_crtp = event_crtp<Derived, typename network_events<Ntk>::modified_accessor>;
+
+template<class Ntk, class Derived>
+using event_delete_crtp = event_crtp<Derived, typename network_events<Ntk>::delete_accessor>;
 
 } // namespace mockturtle

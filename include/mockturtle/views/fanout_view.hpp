@@ -38,6 +38,7 @@
 #include <vector>
 
 #include "../traits.hpp"
+#include "../networks/events.hpp"
 #include "../networks/detail/foreach.hpp"
 #include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
@@ -80,7 +81,10 @@ public:
 };
 
 template<typename Ntk>
-class fanout_view<Ntk, false> : public Ntk
+class fanout_view<Ntk, false> : public Ntk,
+      public event_add_crtp<Ntk, fanout_view<Ntk>>,
+      public event_modified_crtp<Ntk, fanout_view<Ntk>>,
+      public event_delete_crtp<Ntk, fanout_view<Ntk>>
 {
 public:
   using storage = typename Ntk::storage;
@@ -100,33 +104,36 @@ public:
 
     if ( _ps.update_on_add )
     {
-      Ntk::events().on_add.push_back( [this]( auto const& n ) {
-        _fanout.resize();
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].push_back( n );
+      Ntk::events().on_add.emplace_back( event_add_crtp<Ntk, fanout_view>::wp(), []( void *wp, auto const& n ) {
+        auto self = reinterpret_cast<fanout_view *>(wp);
+        self->_fanout.resize();
+        self->Ntk::foreach_fanin( n, [&, self]( auto const& f ) {
+          self->_fanout[f].push_back( n );
         } );
       } );
     }
 
     if ( _ps.update_on_modified )
     {
-      Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
+      Ntk::events().on_modified.emplace_back( event_modified_crtp<Ntk, fanout_view>::wp(), []( void *wp, auto const& n, auto const& previous ) {
         (void)previous;
+        auto self = reinterpret_cast<fanout_view *>(wp);
         for ( auto const& f : previous ) {
-          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+          self->_fanout[f].erase( std::remove( self->_fanout[f].begin(), self->_fanout[f].end(), n ), self->_fanout[f].end() );
         }
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].push_back( n );
+        self->Ntk::foreach_fanin( n, [&, self]( auto const& f ) {
+          self->_fanout[f].push_back( n );
         } );
       } );
     }
 
     if ( _ps.update_on_delete )
     {
-      Ntk::events().on_delete.push_back( [this]( auto const& n ) {
-        _fanout[n].clear();
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+      Ntk::events().on_delete.emplace_back( event_delete_crtp<Ntk, fanout_view>::wp(), []( void *wp, auto const& n ) {
+        auto self = reinterpret_cast<fanout_view *>(wp);
+        self->_fanout[n].clear();
+        self->Ntk::foreach_fanin( n, [&, self]( auto const& f ) {
+          self->_fanout[f].erase( std::remove( self->_fanout[f].begin(), self->_fanout[f].end(), n ), self->_fanout[f].end() );
         } );
       } );
     }
@@ -145,33 +152,36 @@ public:
 
     if ( _ps.update_on_add )
     {
-      Ntk::events().on_add.push_back( [this]( auto const& n ) {
-        _fanout.resize();
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].push_back( n );
+      Ntk::events().on_add.emplace_back( event_add_crtp<Ntk, fanout_view>::wp(), []( void *wp, auto const& n ) {
+        auto self = reinterpret_cast<fanout_view *>(wp);
+        self->_fanout.resize();
+        self->Ntk::foreach_fanin( n, [&, self]( auto const& f ) {
+          self->_fanout[f].push_back( n );
         } );
       } );
     }
 
     if ( _ps.update_on_modified )
     {
-      Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
+      Ntk::events().on_modified.emplace_back( event_modified_crtp<Ntk, fanout_view>::wp(), []( void *wp, auto const& n, auto const& previous ) {
         (void)previous;
+        auto self = reinterpret_cast<fanout_view *>(wp);
         for ( auto const& f : previous ) {
-          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+          self->_fanout[f].erase( std::remove( self->_fanout[f].begin(), self->_fanout[f].end(), n ), self->_fanout[f].end() );
         }
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].push_back( n );
+        self->Ntk::foreach_fanin( n, [&, self]( auto const& f ) {
+          self->_fanout[f].push_back( n );
         } );
       } );
     }
 
     if ( _ps.update_on_delete )
     {
-      Ntk::events().on_delete.push_back( [this]( auto const& n ) {
-        _fanout[n].clear();
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+      Ntk::events().on_delete.emplace_back( event_delete_crtp<Ntk, fanout_view>::wp(), []( void *wp, auto const& n ) {
+        auto self = reinterpret_cast<fanout_view *>(wp);
+        self->_fanout[n].clear();
+        self->Ntk::foreach_fanin( n, [&, self]( auto const& f ) {
+          self->_fanout[f].erase( std::remove( self->_fanout[f].begin(), self->_fanout[f].end(), n ), self->_fanout[f].end() );
         } );
       } );
     }

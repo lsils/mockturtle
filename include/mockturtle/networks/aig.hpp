@@ -344,10 +344,7 @@ public:
     _storage->nodes[a.index].data[0].h1++;
     _storage->nodes[b.index].data[0].h1++;
 
-    for ( auto const& fn : _events->on_add )
-    {
-      fn( index );
-    }
+    _events->on_add( index );
 
     return {index, 0};
   }
@@ -513,10 +510,7 @@ public:
     // update the reference counter of the new signal
     _storage->nodes[new_signal.index].data[0].h1++;
 
-    for ( auto const& fn : _events->on_modified )
-    {
-      fn( n, {old_child0, old_child1} );
-    }
+    _events->on_modified( n, {old_child0, old_child1} );
 
     return std::nullopt;
   }
@@ -553,10 +547,7 @@ public:
     nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
     _storage->hash.erase( nobj );
 
-    for ( auto const& fn : _events->on_delete )
-    {
-      fn( n );
-    }
+    _events->on_delete( n );
 
     /* if the node has been deleted, then deref fanout_size of
        fanins and try to take them out if their fanout_size become 0 */
@@ -612,7 +603,7 @@ public:
 
   void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
   {
-    auto clean_substitutions = [&]( node const& n )
+    auto clean_substitutions = [&]( void *, node const& n )
     {
       substitutions.erase( std::remove_if( std::begin( substitutions ), std::end( substitutions ),
                                            [&]( auto const& s ){
@@ -640,9 +631,11 @@ public:
                            std::end( substitutions ) );
     };
 
+    auto fake_wp = std::make_shared<int>();
+
     /* register event to delete substitutions if their right-hand side
        nodes get deleted */
-    _events->on_delete.push_back( clean_substitutions );
+    _events->on_delete.emplace_back( fake_wp, clean_substitutions );
 
     /* increment fanout_size of all signals to be used in
        substitutions to ensure that they will not be deleted */
@@ -699,6 +692,7 @@ public:
       decr_fanout_size( get_node( new_signal ) );
     }
 
+    assert( _events->on_delete.back().ptr.lock() == fake_wp );
     _events->on_delete.pop_back();
   }
 #pragma endregion

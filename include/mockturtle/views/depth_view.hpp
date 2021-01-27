@@ -36,6 +36,7 @@
 #include <cstdint>
 #include <vector>
 
+#include "../networks/events.hpp"
 #include "../traits.hpp"
 #include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
@@ -106,7 +107,8 @@ public:
 };
 
 template<class Ntk, class NodeCostFn>
-class depth_view<Ntk, NodeCostFn, false> : public Ntk
+class depth_view<Ntk, NodeCostFn, false> : public Ntk,
+      public event_add_crtp<Ntk, depth_view<Ntk, NodeCostFn, false>>
 {
 public:
   using storage = typename Ntk::storage;
@@ -129,7 +131,10 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
+    Ntk::events().on_add.emplace_back( event_add_crtp<Ntk, depth_view>::wp(), []( void *wp, auto const& n ) {
+      auto self = reinterpret_cast<depth_view *>(wp);
+      self->on_add( n );
+    } );
   }
 
   /*! \brief Standard constructor.
@@ -155,12 +160,11 @@ public:
 
     update_levels();
 
-    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
+    Ntk::events().on_add.emplace_back( event_add_crtp<Ntk, depth_view>::wp(), []( void *wp, auto const& n ) {
+      auto self = reinterpret_cast<depth_view *>(wp);
+      self->on_add( n );
+    } );
   }
-
-  // We should add these or make sure that members are properly copied
-  //depth_view( depth_view<Ntk> const& ) = delete;
-  //depth_view<Ntk> operator=( depth_view<Ntk> const& ) = delete;
 
   uint32_t depth() const
   {

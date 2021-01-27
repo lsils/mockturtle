@@ -384,10 +384,7 @@ signal create_maj( signal a, signal b, signal c )
 
     set_value( index, 0 );
 
-    for ( auto const& fn : _events->on_add )
-    {
-      fn( index );
-    }
+    _events->on_add( index );
 
     return index;
   }
@@ -428,10 +425,7 @@ signal create_maj( signal a, signal b, signal c )
           // increment fan-out of new node
           _storage->nodes[new_signal].data[0].h1++;
 
-          for ( auto const& fn : _events->on_modified )
-          {
-            fn( i, old_children );
-          }
+          _events->on_modified( i, old_children );
         }
       }
     }
