@@ -35,6 +35,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "diagnostics.hpp"
 #include "detail/utils.hpp"
 
 #include <algorithm>
@@ -168,8 +169,13 @@ private:
  *
  * A callback method of the reader visitor is invoked for each
  * primitive object matched in the specification.
+ *
+ * \param in Input stream
+ * \param reader A BRISTOL reader with callback methods invoked for parsed primitives
+ * \param diag An optional diagnostic engine with callback methods for parse errors
+ * \return Success if parsing has been successful, or parse error if parsing has failed
  */
-inline return_code read_bristol( std::istream& is, bristol_reader const& reader )
+inline return_code read_bristol( std::istream& is, bristol_reader const& reader, diagnostic_engine* diag = nullptr )
 {
   return bristol_parser( is, reader ).run();
 }
@@ -178,11 +184,30 @@ inline return_code read_bristol( std::istream& is, bristol_reader const& reader 
  *
  * A callback method of the reader visitor is invoked for each
  * primitive object matched in the specification.
+ *
+ * \param filename Name of the file
+ * \param reader A BRISTOL reader with callback methods invoked for parsed primitives
+ * \param diag An optional diagnostic engine with callback methods for parse errors
+ * \return Success if parsing has been successful, or parse error if parsing has failed
  */
-inline return_code read_bristol( std::string const& filename, bristol_reader const& reader )
+inline return_code read_bristol( std::string const& filename, bristol_reader const& reader, diagnostic_engine* diag = nullptr )
 {
-  std::ifstream is( filename, std::ifstream::in );
-  return read_bristol( is, reader );
+  std::ifstream in( filename, std::ifstream::in );
+  if ( !in.is_open() )
+  {
+    if ( diag )
+    {
+      diag->report( diagnostic_level::fatal,
+                    fmt::format( "could not open file `{0}`", filename ) );
+    }    
+    return return_code::parse_error;
+  }
+  else
+  {
+    auto const ret = read_bristol( in, reader );
+    in.close();
+    return ret;
+  }
 }
 
 } // namespace lorina
