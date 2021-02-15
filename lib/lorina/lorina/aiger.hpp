@@ -32,9 +32,9 @@
 
 #pragma once
 
-#include <lorina/common.hpp>
-#include <lorina/diagnostics.hpp>
-#include <lorina/detail/utils.hpp>
+#include "common.hpp"
+#include "diagnostics.hpp"
+#include "detail/utils.hpp"
 #include <fstream>
 #include <iostream>
 #include <regex>
@@ -444,7 +444,7 @@ static std::regex fairness( R"(^f(\d+) (.*)$)" );
  * \param in Input stream
  * \param reader An AIGER reader with callback methods invoked for parsed primitives
  * \param diag An optional diagnostic engine with callback methods for parse errors
- * \return Success if parsing have been successful, or parse error if parsing have failed
+ * \return Success if parsing has been successful, or parse error if parsing has failed
  */
 inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reader, diagnostic_engine* diag = nullptr )
 {
@@ -666,12 +666,26 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
  * \param filename Name of the file
  * \param reader An AIGER reader with callback methods invoked for parsed primitives
  * \param diag An optional diagnostic engine with callback methods for parse errors
- * \return Success if parsing have been successful, or parse error if parsing have failed
+ * \return Success if parsing has been successful, or parse error if parsing has failed
  */
 inline return_code read_ascii_aiger( const std::string& filename, const aiger_reader& reader, diagnostic_engine* diag = nullptr )
 {
   std::ifstream in( detail::word_exp_filename( filename ), std::ifstream::in );
-  return read_ascii_aiger( in, reader, diag );
+  if ( !in.is_open() )
+  {
+    if ( diag )
+    {
+      diag->report( diagnostic_level::fatal,
+                    fmt::format( "could not open file `{0}`", filename ) );
+    }
+    return return_code::parse_error;
+  }
+  else
+  {
+    auto const ret = read_ascii_aiger( in, reader, diag );
+    in.close();
+    return ret;
+  }
 }
 
 /*! \brief Reader function for binary AIGER format.
@@ -682,7 +696,7 @@ inline return_code read_ascii_aiger( const std::string& filename, const aiger_re
  * \param in Input stream
  * \param reader An AIGER reader with callback methods invoked for parsed primitives
  * \param diag An optional diagnostic engine with callback methods for parse errors
- * \return Success if parsing have been successful, or parse error if parsing have failed
+ * \return Success if parsing has been successful, or parse error if parsing has failed
  */
 inline return_code read_aiger( std::istream& in, const aiger_reader& reader, diagnostic_engine* diag = nullptr )
 {
@@ -887,12 +901,26 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
  * \param filename Name of the file
  * \param reader An AIGER reader with callback methods invoked for parsed primitives
  * \param diag An optional diagnostic engine with callback methods for parse errors
- * \return Success if parsing have been successful, or parse error if parsing have failed
+ * \return Success if parsing has been successful, or parse error if parsing has failed
  */
 inline return_code read_aiger( const std::string& filename, const aiger_reader& reader, diagnostic_engine* diag = nullptr )
 {
   std::ifstream in( detail::word_exp_filename( filename ), std::ifstream::binary );
-  return read_aiger( in, reader, diag );
+  if ( !in.is_open() )
+  {
+    if ( diag )
+    {
+      diag->report( diagnostic_level::fatal,
+                    fmt::format( "could not open file `{0}`", filename ) );
+    }
+    return return_code::parse_error;
+  }
+  else
+  {
+    auto const ret = read_aiger( in, reader, diag );
+    in.close();
+    return ret;
+  }
 }
 
 } // namespace lorina
