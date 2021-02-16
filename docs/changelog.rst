@@ -1,8 +1,11 @@
 Change Log
 ==========
 
-v0.2 (not yet released)
+v0.3 (not yet released)
 -----------------------
+
+v0.2 (February 16, 2021)
+------------------------
 
 * Network interface:
     - `is_function` `#148 <https://github.com/lsils/mockturtle/pull/148>`_
