@@ -1,5 +1,5 @@
 /* lorina: C++ parsing library
- * Copyright (C) 2018  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -99,23 +99,23 @@ public:
 
   /*! \brief Callback method for parsed input.
    *
-   * \param index Index of the input
+   * \param pos Position in input list
    * \param lit Assigned literal
    */
-  virtual void on_input( uint32_t index, uint32_t lit ) const
+  virtual void on_input( uint32_t pos, uint32_t lit ) const
   {
-    (void)index;
+    (void)pos;
     (void)lit;
   }
 
   /*! \brief Callback method for parsed output.
    *
-   * \param index Index of the output
+   * \param pos Position in output list
    * \param lit Assigned literal
    */
-  virtual void on_output( uint32_t index, uint32_t lit ) const
+  virtual void on_output( uint32_t pos, uint32_t lit ) const
   {
-    (void)index;
+    (void)pos;
     (void)lit;
   }
 
@@ -147,133 +147,133 @@ public:
 
   /*! \brief Callback method for parsed bad state property.
    *
-   * \param index Index of the bad state property
+   * \param index Position in the list of bad state property
    * \param lit Assigned literal
    */
-  virtual void on_bad_state( uint32_t index, uint32_t lit ) const
+  virtual void on_bad_state( uint32_t pos, uint32_t lit ) const
   {
-    (void)index;
+    (void)pos;
     (void)lit;
   }
 
   /*! \brief Callback method for parsed constraint.
    *
-   * \param index Index of the constraint
+   * \param index Position in the list of constraint
    * \param lit Assigned literal
    */
-  virtual void on_constraint( uint32_t index, uint32_t lit ) const
+  virtual void on_constraint( uint32_t pos, uint32_t lit ) const
   {
-    (void)index;
+    (void)pos;
     (void)lit;
   }
 
   /*! \brief Callback method for parsed fairness constraints.
    *
-   * \param index Index of the fairness constraint
+   * \param index Position in the list of fairness constraint
    * \param lit Assigned literal
    */
-  virtual void on_fairness( uint32_t index, uint32_t lit ) const
+  virtual void on_fairness( uint32_t pos, uint32_t lit ) const
   {
-    (void)index;
+    (void)pos;
     (void)lit;
   }
 
   /*! \brief Callback method for parsed header of justice property.
    *
-   * \param index Index of the justice property
+   * \param index Position in the list of the justice property
    * \param size Number of assigned literals
    */
-  virtual void on_justice_header( uint32_t index, uint64_t size ) const
+  virtual void on_justice_header( uint32_t pos, uint64_t size ) const
   {
-    (void)index;
+    (void)pos;
     (void)size;
   }
 
   /*! \brief Callback method for parsed justice property.
    *
-   * \param index Index of the justice property
+   * \param index Position in the list of the justice property
    * \param lits Assigned literals
    */
-  virtual void on_justice( uint32_t index, const std::vector<uint32_t>& lits ) const
+  virtual void on_justice( uint32_t pos, const std::vector<uint32_t>& lits ) const
   {
-    (void)index;
+    (void)pos;
     (void)lits;
   }
 
   /*! \brief Callback method for parsed input name.
    *
-   * \param index Index of the input
+   * \param pos Position in input list
    * \param name Input name
    */
-  virtual void on_input_name( uint32_t index, const std::string& name ) const
+  virtual void on_input_name( uint32_t pos, const std::string& name ) const
   {
-    (void)index;
+    (void)pos;
     (void)name;
   }
 
   /*! \brief Callback method for parsed latch name.
    *
-   * \param index Index of the latch
+   * \param pos Position in latch list
    * \param name Latch name
    */
-  virtual void on_latch_name( uint32_t index, const std::string& name ) const
+  virtual void on_latch_name( uint32_t pos, const std::string& name ) const
   {
-    (void)index;
+    (void)pos;
     (void)name;
   }
 
   /*! \brief Callback method for parsed output name.
    *
-   * \param index Index of the output
+   * \param pos Position in output list
    * \param name Output name
    */
-  virtual void on_output_name( uint32_t index, const std::string& name ) const
+  virtual void on_output_name( uint32_t pos, const std::string& name ) const
   {
-    (void)index;
+    (void)pos;
     (void)name;
   }
 
   /*! \brief Callback method for a parsed name of a bad state property.
    *
-   * \param index Index of the bad state property
+   * \param pos Position in list of bad state property
    * \param name Name of the bad state property
    */
-  virtual void on_bad_state_name( uint32_t index, const std::string& name ) const
+  virtual void on_bad_state_name( uint32_t pos, const std::string& name ) const
   {
-    (void)index;
+    (void)pos;
     (void)name;
   }
 
   /*! \brief Callback method for a parsed name of an invariant constraint.
    *
-   * \param index Index of the constraint
+   * \param pos Position in constraint list
    * \param name Constraint name
    */
-  virtual void on_constraint_name( uint32_t index, const std::string& name ) const
+  virtual void on_constraint_name( uint32_t pos, const std::string& name ) const
   {
-    (void)index;
+    (void)pos;
     (void)name;
   }
 
   /*! \brief Callback method for a parsed name of a justice property.
    *
-   * \param index Index of the justice property
+   * \param pos Position in the list of justice property
    * \param name Name of the fairness constraint
    */
-  virtual void on_justice_name( uint32_t index, const std::string& name ) const
+  virtual void on_justice_name( uint32_t pos, const std::string& name ) const
   {
-    (void)index;
+    (void)pos;
     (void)name;
   }
 
   /*! \brief Callback method for a parsed name of a fairness constraint.
    *
-   * \param index Index of the fairness constraint
+   * \param pos Position in list of fairness constraint
    * \param name Name of the fairness constraint
    */
-  virtual void on_fairness_name( uint32_t index, const std::string& name ) const
+  virtual void on_fairness_name( uint32_t pos, const std::string& name ) const
   {
-    (void)index;
+    (void)pos;
     (void)name;
   }
 
@@ -379,39 +379,39 @@ public:
     _os << lit << std::endl;
   }
 
-  void on_input_name( uint32_t index, const std::string& name ) const override
+  void on_input_name( uint32_t pos, const std::string& name ) const override
   {
-    _os << "i" << index << ' ' << name << std::endl;
+    _os << "i" << pos << ' ' << name << std::endl;
   }
 
-  void on_latch_name( uint32_t index, const std::string& name ) const override
+  void on_latch_name( uint32_t pos, const std::string& name ) const override
   {
-    _os << "l" << index << ' ' << name << std::endl;
+    _os << "l" << pos << ' ' << name << std::endl;
   }
 
-  void on_output_name( uint32_t index, const std::string& name ) const override
+  void on_output_name( uint32_t pos, const std::string& name ) const override
   {
-    _os << "o" << index << ' ' << name << std::endl;
+    _os << "o" << pos << ' ' << name << std::endl;
   }
 
-  void on_bad_state_name( uint32_t index, const std::string& name ) const override
+  void on_bad_state_name( uint32_t pos, const std::string& name ) const override
   {
-    _os << "b" << index << ' ' << name << std::endl;
+    _os << "b" << pos << ' ' << name << std::endl;
   }
 
-  void on_constraint_name( uint32_t index, const std::string& name ) const override
+  void on_constraint_name( uint32_t pos, const std::string& name ) const override
   {
-    _os << "c" << index << ' ' << name << std::endl;
+    _os << "c" << pos << ' ' << name << std::endl;
   }
 
-  void on_justice_name( uint32_t index, const std::string& name ) const override
+  void on_justice_name( uint32_t pos, const std::string& name ) const override
   {
-    _os << "j" << index << ' ' << name << std::endl;
+    _os << "j" << pos << ' ' << name << std::endl;
   }
 
-  void on_fairness_name( uint32_t index, const std::string& name ) const override
+  void on_fairness_name( uint32_t pos, const std::string& name ) const override
   {
-    _os << "f" << index << ' ' << name << std::endl;
+    _os << "f" << pos << ' ' << name << std::endl;
   }
 
   void on_comment( const std::string& comment ) const override
@@ -452,7 +452,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
 
   std::smatch m;
   std::string header_line;
-  std::getline( in, header_line );
+  detail::getline( in, header_line );
 
   uint64_t _m, _i, _l, _o, _a, _b, _c, _j, _f;
 
@@ -496,7 +496,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   /* inputs */
   for ( auto i = 0ul; i < _i; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto index = std::atol( line.c_str() );
     reader.on_input( i, index );
   }
@@ -504,7 +504,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   /* latches */
   for ( auto i = 0ul; i < _l; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto tokens = detail::split( line,  " " );
 
     if ( !(tokens.size() <= 3u) )
@@ -539,7 +539,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   /* outputs */
   for ( auto i = 0ul; i < _o; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto lit = std::atol( line.c_str() );
     reader.on_output( i, lit );
   }
@@ -547,7 +547,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   /* bad state properties */
   for ( auto i = 0ul; i < _b; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto lit = std::atol( line.c_str() );
     reader.on_bad_state( i, lit );
   }
@@ -555,7 +555,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   /* constraints */
   for ( auto i = 0ul; i < _c; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto lit = std::atol( line.c_str() );
     reader.on_constraint( i, lit );
   }
@@ -564,7 +564,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   std::vector<uint64_t> justice_sizes;
   for ( auto i = 0ul; i < _j; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto justice_size = std::atol( line.c_str() );
     justice_sizes.emplace_back( justice_size );
     reader.on_justice_header( i, justice_size );
@@ -575,7 +575,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
     std::vector<uint32_t> lits;
     for ( auto j = 0ul; j < justice_sizes[i]; ++j )
     {
-      std::getline( in, line );
+      detail::getline( in, line );
       const auto lit = std::atol( line.c_str() );
       lits.emplace_back( lit );
     }
@@ -585,7 +585,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   /* fairness */
   for ( auto i = 0ul; i < _f; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto lit = std::atol( line.c_str() );
     reader.on_fairness( i, lit );
   }
@@ -593,7 +593,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   /* ands */
   for ( auto i = 0ul; i < _a; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto tokens = detail::split( line, " " );
 
     if ( !(tokens.size() == 3u) )
@@ -613,7 +613,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
   }
 
   /* parse names and comments */
-  while ( std::getline( in, line ) )
+  while ( detail::getline( in, line ) )
   {
     if ( std::regex_search( line, m, aig_regex::input ) )
     {
@@ -646,7 +646,7 @@ inline return_code read_ascii_aiger( std::istream& in, const aiger_reader& reade
     else if ( line == "c" )
     {
       std::string comment = "";
-      while ( std::getline( in, line ) )
+      while ( detail::getline( in, line ) )
       {
         comment += line;
       }
@@ -704,7 +704,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
 
   std::smatch m;
   std::string header_line;
-  std::getline( in, header_line );
+  detail::getline( in, header_line );
 
   uint32_t _m, _i, _l, _o, _a, _b, _c, _j, _f;
 
@@ -754,7 +754,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
   /* latches */
   for ( auto i = 0u; i < _l; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto tokens = detail::split( line, " " );
     const auto next = std::atoi( tokens[0u].c_str() );
     aiger_reader::latch_init_value init_value = aiger_reader::latch_init_value::NONDETERMINISTIC;
@@ -775,21 +775,21 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
 
   for ( auto i = 0u; i < _o; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     reader.on_output( i, std::atol( line.c_str() ) );
   }
 
   /* bad state properties */
   for ( auto i = 0u; i < _b; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     reader.on_bad_state( i, std::atol( line.c_str() ) );
   }
 
   /* constraints */
   for ( auto i = 0u; i < _c; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     reader.on_constraint( i, std::atol( line.c_str() ) );
   }
 
@@ -797,7 +797,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
   std::vector<uint64_t> justice_sizes;
   for ( auto i = 0u; i < _j; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     const auto justice_size = std::atol( line.c_str() );
     justice_sizes.emplace_back( justice_size );
     reader.on_justice_header( i, justice_size );
@@ -808,7 +808,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
     std::vector<uint32_t> lits;
     for ( auto j = 0u; j < justice_sizes[i]; ++j )
     {
-      std::getline( in, line );
+      detail::getline( in, line );
       const auto lit = std::atol( line.c_str() );
       lits.emplace_back( lit );
     }
@@ -818,7 +818,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
   /* fairness */
   for ( auto i = 0u; i < _f; ++i )
   {
-    std::getline( in, line );
+    detail::getline( in, line );
     reader.on_fairness( i, std::atol( line.c_str() ) );
   }
 
@@ -848,7 +848,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
   }
 
   /* parse names and comments */
-  while ( std::getline( in, line ) )
+  while ( detail::getline( in, line ) )
   {
     if ( std::regex_search( line, m, aig_regex::input ) )
     {
@@ -881,7 +881,7 @@ inline return_code read_aiger( std::istream& in, const aiger_reader& reader, dia
     else if ( line == "c" )
     {
       std::string comment = "";
-      while ( std::getline( in, line ) )
+      while ( detail::getline( in, line ) )
       {
         comment += line;
       }
