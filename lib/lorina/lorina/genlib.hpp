@@ -36,10 +36,11 @@
 #include "common.hpp"
 #include "detail/utils.hpp"
 #include "diagnostics.hpp"
-#include <istream>
 #include <fstream>
-#include <string>
+#include <istream>
 #include <optional>
+#include <sstream>
+#include <string>
 
 namespace lorina
 {
