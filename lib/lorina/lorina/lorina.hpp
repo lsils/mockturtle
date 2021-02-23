@@ -36,6 +36,6 @@
 #include "bench.hpp"
 #include "blif.hpp"
 #include "bristol.hpp"
-#include "diamcs.hpp"
+#include "dimacs.hpp"
 #include "pla.hpp"
 #include "verilog.hpp"
