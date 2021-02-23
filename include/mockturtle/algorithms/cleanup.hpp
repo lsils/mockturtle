@@ -277,6 +277,36 @@ NtkDest cleanup_dangling( NtkSrc const& ntk )
   return dest;
 }
 
+template<class NtkSrc, class NtkDest>
+void cleanup_dangling( NtkSrc const& ntk, NtkDest& dest )
+{
+  static_assert( is_network_type_v<NtkSrc>, "NtkSrc is not a network type" );
+  static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
+  static_assert( has_get_node_v<NtkSrc>, "NtkSrc does not implement the get_node method" );
+  static_assert( has_node_to_index_v<NtkSrc>, "NtkSrc does not implement the node_to_index method" );
+  static_assert( has_get_constant_v<NtkSrc>, "NtkSrc does not implement the get_constant method" );
+  static_assert( has_foreach_node_v<NtkSrc>, "NtkSrc does not implement the foreach_node method" );
+  static_assert( has_foreach_pi_v<NtkSrc>, "NtkSrc does not implement the foreach_pi method" );
+  static_assert( has_foreach_po_v<NtkSrc>, "NtkSrc does not implement the foreach_po method" );
+  static_assert( has_is_pi_v<NtkSrc>, "NtkSrc does not implement the is_pi method" );
+  static_assert( has_is_constant_v<NtkSrc>, "NtkSrc does not implement the is_constant method" );
+  static_assert( has_clone_node_v<NtkDest>, "NtkDest does not implement the clone_node method" );
+  static_assert( has_create_pi_v<NtkDest>, "NtkDest does not implement the create_pi method" );
+  static_assert( has_create_po_v<NtkDest>, "NtkDest does not implement the create_po method" );
+  static_assert( has_create_not_v<NtkDest>, "NtkDest does not implement the create_not method" );
+  static_assert( has_is_complemented_v<NtkSrc>, "NtkDest does not implement the is_complemented method" );
+
+  std::vector<signal<NtkDest>> pis;
+  ntk.foreach_pi( [&]( auto ) {
+    pis.push_back( dest.create_pi() );
+  } );
+
+  for ( auto f : cleanup_dangling( ntk, dest, pis.begin(), pis.end() ) )
+  {
+    dest.create_po( f );
+  }
+}
+
 /*! \brief Cleans up LUT nodes.
  *
  * This method reconstructs a LUT network and optimizes LUTs when they do not
