@@ -150,6 +150,13 @@ public:
     {
       return {index, complement};
     }
+
+#if __cplusplus > 201703L
+    bool operator==( mig_storage::node_type::pointer_type const& other ) const
+    {
+      return data == other.data;
+    }
+#endif
   };
 
   mig_network()
