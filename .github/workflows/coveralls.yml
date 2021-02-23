@@ -9,9 +9,9 @@ on:
     - master
 
 jobs:
-  build-gcc7-coveralls:
+  build-gcc9-coveralls:
     runs-on: ubuntu-latest
-    name: GNU GCC 7 and run coveralls
+    name: GNU GCC 9 and run coveralls
     
     steps:
     - uses: actions/checkout@v1
@@ -21,7 +21,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-7 -DMOCKTURTLE_TEST=ON -DENABLE_COVERAGE=ON ..
+        cmake -DCMAKE_CXX_COMPILER=g++-9 -DMOCKTURTLE_TEST=ON -DENABLE_COVERAGE=ON ..
         make run_tests
     - name: Run tests
       run: |
