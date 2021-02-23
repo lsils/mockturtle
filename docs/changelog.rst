@@ -4,6 +4,9 @@ Change Log
 v0.3 (not yet released)
 -----------------------
 
+* I/O:
+    - Read GENLIB files using *lorina* (`genlib_reader`) `#421 <https://github.com/lsils/mockturtle/pull/167>`_
+
 v0.2 (February 16, 2021)
 ------------------------
 
