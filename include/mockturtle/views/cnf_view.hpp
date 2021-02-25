@@ -30,7 +30,6 @@
   \author Heinz Riener
   \author Mathias Soeken
   \author Siang-Yun (Sonia) Lee
-  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
