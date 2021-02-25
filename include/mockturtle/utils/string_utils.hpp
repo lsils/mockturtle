@@ -27,6 +27,7 @@
   \file string_utils.hpp
   \brief String utils
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

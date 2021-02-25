@@ -27,6 +27,7 @@
   \file majority.hpp
   \brief Generate majority-n networks
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

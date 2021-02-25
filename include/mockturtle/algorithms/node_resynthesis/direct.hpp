@@ -24,9 +24,10 @@
  */
 
 /*!
-  \file akers.hpp
+  \file direct.hpp
   \brief Resynthesis by trying to directly add gates
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

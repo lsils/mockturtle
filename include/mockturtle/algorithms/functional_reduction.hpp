@@ -27,7 +27,7 @@
   \file functional_reduction.hpp
   \brief Functional reduction for any network type
 
-  \author Siang-Yun Lee
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

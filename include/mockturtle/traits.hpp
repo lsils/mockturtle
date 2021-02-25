@@ -27,7 +27,9 @@
   \file traits.hpp
   \brief Type traits and checkers for the network interface
 
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Max Austin
 */
 
 #pragma once

@@ -27,6 +27,7 @@
   \file mig_algebraic_rewriting.hpp
   \brief MIG algebraric rewriting
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

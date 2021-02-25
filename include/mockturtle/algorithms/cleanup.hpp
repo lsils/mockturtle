@@ -27,6 +27,7 @@
   \file cleanup.hpp
   \brief Cleans up networks
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

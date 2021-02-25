@@ -28,6 +28,8 @@
   \brief Write networks to BLIF format
 
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Max Austin
 */
 
 #pragma once

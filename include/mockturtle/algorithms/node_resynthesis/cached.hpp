@@ -27,6 +27,7 @@
   \file cached.hpp
   \brief Generic resynthesis with a cache
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

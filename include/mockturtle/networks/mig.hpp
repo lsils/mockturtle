@@ -28,6 +28,11 @@
   \brief MIG logic network implementation
 
   \author Eleonora Testa
+  \author Heinz Riener
+  \author Jinzheng Tu
+  \author Mathias Soeken
+  \author Max Austin
+  \author Walter Lau Neto
 */
 
 #pragma once

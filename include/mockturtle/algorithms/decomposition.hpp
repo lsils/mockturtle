@@ -27,6 +27,7 @@
   \file decomposition.hpp
   \brief Shannon and Davio decomposition
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

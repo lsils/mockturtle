@@ -27,6 +27,7 @@
   \file davio.hpp
   \brief Use Davio decomposition for resynthesis
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

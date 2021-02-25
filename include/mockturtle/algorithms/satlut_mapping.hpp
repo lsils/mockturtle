@@ -27,6 +27,7 @@
   \file satlut_mapping.hpp
   \brief SAT LUT mapping
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

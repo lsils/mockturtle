@@ -27,7 +27,9 @@
   \file bi_decomposition.hpp
   \brief BI decomposition
 
-  \author Eleonora Testa 
+  \author Eleonora Testa
+  \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

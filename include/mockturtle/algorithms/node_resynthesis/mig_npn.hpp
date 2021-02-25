@@ -27,6 +27,7 @@
   \file mig_npn.hpp
   \brief Replace with size-optimum MIGs from NPN
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

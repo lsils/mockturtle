@@ -27,6 +27,7 @@
   \file aiger_reader.hpp
   \brief Lorina reader for AIGER files
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

@@ -27,6 +27,7 @@
   \file dsd.hpp
   \brief Use DSD as pre-process to resynthesis
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

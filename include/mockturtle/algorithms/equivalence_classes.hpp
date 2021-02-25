@@ -27,6 +27,7 @@
   \file equivalence_classes.hpp
   \brief Synthesis routines based on equivalence classes
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

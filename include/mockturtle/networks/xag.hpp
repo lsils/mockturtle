@@ -28,6 +28,12 @@
   \brief Xor-And Graph (XAG) logic network implementation
 
   \author Eleonora Testa
+  \author Heinz Riener
+  \author Jinzheng Tu
+  \author Mathias Soeken
+  \author Max Austin
+  \author Siang-Yun (Sonia) Lee
+  \author Walter Lau Neto
 */
 
 #pragma once

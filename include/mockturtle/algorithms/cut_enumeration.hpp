@@ -27,7 +27,9 @@
   \file cut_enumeration.hpp
   \brief Cut enumeration
 
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Sahand Kashani-Akhavan
 */
 
 #pragma once

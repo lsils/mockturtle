@@ -27,8 +27,9 @@
   \file refactoring.hpp
   \brief Refactoring
 
+  \author Eleonora Testa
+  \author Heinz Riener
   \author Mathias Soeken
-  \author Eleonora Testa 
 */
 #pragma once
 

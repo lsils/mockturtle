@@ -27,7 +27,8 @@
   \file aqfp_view.hpp
   \brief Constraints for AQFP technology
 
-  \author Siang-Yun Lee
+  \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

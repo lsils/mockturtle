@@ -27,7 +27,9 @@
   \file cnf.hpp
   \brief CNF generation methods
 
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

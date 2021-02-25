@@ -27,6 +27,7 @@
   \file collapse_mapped.hpp
   \brief Collapses mapped network into k-LUT network
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

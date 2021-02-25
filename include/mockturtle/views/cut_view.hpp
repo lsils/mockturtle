@@ -27,6 +27,8 @@
   \file cut_view.hpp
   \brief Implements an isolated view on a single cut in a network
 
+  \author Bruno Schmitt
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

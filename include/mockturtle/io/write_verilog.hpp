@@ -51,6 +51,7 @@
   \file write_verilog.hpp
   \brief Write networks to structural Verilog format
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

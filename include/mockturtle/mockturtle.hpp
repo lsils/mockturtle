@@ -27,8 +27,10 @@
   \file mockturtle.hpp
   \brief Main header file for mockturtle
 
-  \author Mathias Soeken
+  \author Eleonora Testa
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

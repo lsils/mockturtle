@@ -27,6 +27,8 @@
   \file arithmetic.hpp
   \brief Generate arithmetic logic networks
 
+  \author Heinz Riener
+  \author Jovan Blanuša
   \author Mathias Soeken
 */
 

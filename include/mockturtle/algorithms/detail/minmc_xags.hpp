@@ -27,6 +27,7 @@
   \file minmc_xags.hpp
   \brief Optimum MC XAGs up to 5 variables
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

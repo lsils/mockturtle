@@ -24,9 +24,10 @@
  */
 
 /*!
-  \file traits.hpp
+  \file composed.hpp
   \brief Traits for additional node_resynthesis methods
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

@@ -27,6 +27,7 @@
   \file gia_cut.hpp
   \brief Cut enumeration as in giaCut.c
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

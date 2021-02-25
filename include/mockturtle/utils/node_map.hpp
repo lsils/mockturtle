@@ -27,8 +27,9 @@
   \file node_map.hpp
   \brief Map indexed by network nodes
 
-  \author Mathias Soeken
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

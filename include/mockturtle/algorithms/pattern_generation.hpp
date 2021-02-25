@@ -27,7 +27,8 @@
   \file pattern_generation.hpp
   \brief Expressive Simulation Pattern Generation
 
-  \author Siang-Yun Lee
+  \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

@@ -27,6 +27,7 @@
   \file percy.hpp
   \brief Include percy, disable warnings for Windows
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

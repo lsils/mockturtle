@@ -27,6 +27,7 @@
   \file exact.hpp
   \brief Replace with exact synthesis result
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

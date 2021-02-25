@@ -27,6 +27,7 @@
   \file json_utils.hpp
   \brief JSON utils
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

@@ -28,6 +28,7 @@
   \brief Implements methods to declare names for network signals
 
   \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once

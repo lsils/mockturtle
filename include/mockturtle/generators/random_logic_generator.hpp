@@ -28,6 +28,7 @@
   \brief Generate random logic networks
 
   \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once

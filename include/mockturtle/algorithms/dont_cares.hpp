@@ -27,7 +27,10 @@
   \file dont_cares.hpp
   \brief Compute don't cares
 
+  \author Eleonora Testa
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

@@ -27,7 +27,9 @@
   \file xag_npn.hpp
   \brief Replace with size-optimum XAGs and AIGs from NPN (from ABC rewrite)
 
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
