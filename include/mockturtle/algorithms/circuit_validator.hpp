@@ -27,7 +27,8 @@
   \file circuit_validator.hpp
   \brief Validate potential circuit optimization choices with SAT.
 
-  \author Siang-Yun Lee
+  \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

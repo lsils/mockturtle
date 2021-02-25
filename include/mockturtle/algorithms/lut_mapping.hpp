@@ -27,6 +27,7 @@
   \file lut_mapping.hpp
   \brief LUT mapping
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

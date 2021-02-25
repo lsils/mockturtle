@@ -27,6 +27,7 @@
   \file cut_rewriting.hpp
   \brief Cut rewriting
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

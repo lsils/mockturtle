@@ -27,6 +27,7 @@
   \file mixed_radix.hpp
   \brief Mixed radix loop
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

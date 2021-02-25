@@ -27,7 +27,8 @@
   \file sim_resub.hpp
   \brief Simulation-Guided Resubstitution
 
-  \author Siang-Yun Lee
+  \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

@@ -27,6 +27,7 @@
   \file foreach.hpp
   \brief For each functor utilities
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

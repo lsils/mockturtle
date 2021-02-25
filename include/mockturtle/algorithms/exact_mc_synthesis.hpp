@@ -27,6 +27,7 @@
   \file exact_mc_synthesis.hpp
   \brief SAT-based XAG synthesis based on MC
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

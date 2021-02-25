@@ -27,6 +27,7 @@
   \file gates_to_nodes.hpp
   \brief Convert gate-based network into node-based network
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

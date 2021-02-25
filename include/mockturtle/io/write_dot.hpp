@@ -27,6 +27,7 @@
   \file write_dot.hpp
   \brief Write graphical representation of networks to DOT format
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

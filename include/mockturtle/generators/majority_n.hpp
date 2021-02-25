@@ -23,11 +23,13 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 /*!
- \file majority_n.hpp
- \brief Generate majority-n networks using BDD and sorter network based methods
- 
- \author Dewmini Sudara
- */
+  \file majority_n.hpp
+  \brief Generate majority-n networks using BDD and sorter network based methods
+
+  \author Dewmini Sudara
+  \author Heinz Riener
+  \author Mathias Soeken
+*/
 
 #include <array>
 #include <vector>

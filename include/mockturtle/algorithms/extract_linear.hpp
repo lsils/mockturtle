@@ -27,6 +27,7 @@
   \file extract_linear.hpp
   \brief Extract linear subcircuit in XAGs
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

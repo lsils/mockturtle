@@ -27,6 +27,7 @@
   \file shannon.hpp
   \brief Use Shannon decomposition for resynthesis
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

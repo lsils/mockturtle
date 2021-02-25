@@ -27,6 +27,7 @@
   \file null.hpp
   \brief No resynthesis (as default synthesis engine)
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

@@ -27,8 +27,9 @@
   \file klut.hpp
   \brief k-LUT logic network implementation
 
-  \author Mathias Soeken
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Max Austin
 */
 
 #pragma once

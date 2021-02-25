@@ -27,8 +27,9 @@
   \file simulation.hpp
   \brief Simulate networks
 
+  \author Heinz Riener
   \author Mathias Soeken
-  \author Siang-Yun Lee (partial simulation)
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

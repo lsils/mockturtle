@@ -27,6 +27,8 @@
   \file algorithm.hpp
   \brief STL-like algorithm extensions
 
+  \author Heinz Riener
+  \author Marcel Walter
   \author Mathias Soeken
 */
 

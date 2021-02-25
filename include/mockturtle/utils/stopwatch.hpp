@@ -27,6 +27,7 @@
   \file stopwatch.hpp
   \brief Stopwatch
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

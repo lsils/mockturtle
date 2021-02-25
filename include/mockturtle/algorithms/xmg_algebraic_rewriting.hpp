@@ -27,6 +27,8 @@
   \file xmg_algebraic_rewriting.hpp
   \brief xmg algebraric rewriting
 
+  \author Heinz Riener
+  \author Mathias Soeken
   \author Zhufei Chu
 */
 

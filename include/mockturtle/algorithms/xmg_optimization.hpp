@@ -28,6 +28,7 @@
   \brief Rewriting MAJ to XNORs.
 
   \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once

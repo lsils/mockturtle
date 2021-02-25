@@ -27,6 +27,7 @@
   \file migcost.hpp
   \brief Cost functions for majority-based technologies
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

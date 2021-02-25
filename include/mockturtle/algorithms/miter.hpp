@@ -27,6 +27,7 @@
   \file miter.hpp
   \brief Generate miter from two networks
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

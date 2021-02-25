@@ -27,6 +27,8 @@
   \file cell_window.hpp
   \brief Windowing in mapped network
 
+  \author Bruno Schmitt
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

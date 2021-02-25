@@ -27,6 +27,7 @@
   \file exorcism.hpp
   \brief Wrapper for ABC's exorcism
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

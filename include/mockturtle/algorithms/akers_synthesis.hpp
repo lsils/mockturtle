@@ -27,7 +27,12 @@
   \file akers_synthesis.hpp
   \brief Akers synthesis
 
+  \author Alessandro Tempia Calvino
   \author Eleonora Testa
+  \author Heinz Riener
+  \author Marcel Walter
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

@@ -27,6 +27,7 @@
   \file cuts.hpp
   \brief Data structure for cuts
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

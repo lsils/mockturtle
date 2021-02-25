@@ -27,6 +27,7 @@
   \file cnf_cut.hpp
   \brief Cut enumeration for CNF mapping
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

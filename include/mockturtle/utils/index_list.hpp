@@ -28,7 +28,7 @@
   \brief List of indices to represent small networks.
 
   \author Heinz Riener
-  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

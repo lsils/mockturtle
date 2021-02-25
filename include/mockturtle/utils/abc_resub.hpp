@@ -28,6 +28,7 @@
   \brief Interface to `abc_resub`.
 
   \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

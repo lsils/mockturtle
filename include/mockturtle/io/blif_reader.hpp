@@ -26,7 +26,10 @@
 /*!
   \file blif_reader.hpp
   \brief Lorina reader for BLIF files
+
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Max Austin
 */
 
 #pragma once

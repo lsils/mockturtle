@@ -27,7 +27,7 @@
   \file xag_minmc2.hpp
   \brief XAG resynthesis
 
-  \author Eleonora Testa
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

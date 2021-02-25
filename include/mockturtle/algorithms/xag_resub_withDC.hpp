@@ -24,10 +24,12 @@
  */
 
 /*!
-  \file  xag_resub_withDC.hpp
+  \file xag_resub_withDC.hpp
   \brief Resubstitution with free xor (works for XAGs, XOR gates are considered for free)
 
-  \author Eleonora Testa (inspired by aig_resub.hpp from Heinz Riener)
+  \author Eleonora Testa
+  \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

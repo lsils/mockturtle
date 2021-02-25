@@ -28,6 +28,9 @@
   \brief Resubstitution
 
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Shubham Rai
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

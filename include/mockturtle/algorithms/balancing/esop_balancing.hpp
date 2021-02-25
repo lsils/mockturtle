@@ -27,6 +27,7 @@
   \file esop_balancing.hpp
   \brief ESOP-based balancing engine for `balancing` algorithm
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

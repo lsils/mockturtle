@@ -27,7 +27,10 @@
   \file aig_resub.hpp
   \brief Resubstitution
 
+  \author Eleonora Testa
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

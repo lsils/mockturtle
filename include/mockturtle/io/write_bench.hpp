@@ -27,6 +27,7 @@
   \file write_bench.hpp
   \brief Write networks to BENCH format
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

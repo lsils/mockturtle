@@ -26,6 +26,8 @@
 /*!
   \file bristol_reader.hpp
   \brief Lorina reader for Bristol files
+
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

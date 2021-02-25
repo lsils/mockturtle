@@ -28,6 +28,7 @@
   \brief Implements fanout for a network
 
   \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once
