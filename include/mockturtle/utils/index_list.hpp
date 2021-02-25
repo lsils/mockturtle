@@ -666,16 +666,16 @@ public:
   {
     assert( num_gates() + 1u <= 0xffff );
     values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
-    values.push_back( lit0 );
-    values.push_back( lit1 );
+    values.push_back( lit0 < lit1 ? lit0 : lit1 );
+    values.push_back( lit0 < lit1 ? lit1 : lit0 );
   }
 
   void add_xor( element_type lit0, element_type lit1 )
   {
     assert( num_gates() + 1u <= 0xffff );
     values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
-    values.push_back( lit0 );
-    values.push_back( lit1 );
+    values.push_back( lit0 > lit1 ? lit0 : lit1 );
+    values.push_back( lit0 > lit1 ? lit1 : lit0 );
   }
 
   void add_output( element_type lit )
@@ -683,6 +683,11 @@ public:
     assert( num_pos() + 1 <= 0xff );
     values.at( 0u ) = ( num_pos() + 1 ) << 8 | ( values.at( 0u ) & 0xffff00ff );
     values.push_back( lit );
+  }
+
+  element_type literal_of_last_gate() const
+  {
+    return ( num_gates() + num_pis() ) << 1;
   }
 
 private:
