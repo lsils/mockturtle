@@ -24,32 +24,34 @@
  */
 
 /*!
-  \file akers.hpp
-  \brief Resynthesis with Akers synthesis
+  \file genlib_reader.hpp
+  \brief Reader visitor for GENLIB files
 
   \author Heinz Riener
-  \author Mathias Soeken
 */
 
 #pragma once
 
-#include <iostream>
-#include <sstream>
-#include <unordered_map>
-#include <vector>
+#include "../traits.hpp"
 
-#include <kitty/dynamic_truth_table.hpp>
-#include <kitty/operators.hpp>
-
-#include "../../algorithms/akers_synthesis.hpp"
+#include <kitty/constructors.hpp>
+#include <lorina/genlib.hpp>
+#include <fmt/format.h>
 
 namespace mockturtle
 {
 
-/*! \brief Resynthesis function based on Akers synthesis.
- *
- * This resynthesis function can be passed to ``node_resynthesis``,
- * ``cut_rewriting``, and ``refactoring``.
+struct gate
+{
+  std::string name;
+  std::string expression;
+  uint32_t num_vars;
+  kitty::dynamic_truth_table function;
+  double area;
+  double delay;
+}; /* gate */
+
+/*! \brief lorina callbacks for GENLIB files.
  *
    \verbatim embed:rst
 
@@ -57,20 +59,41 @@ namespace mockturtle
 
    .. code-block:: c++
 
-      const klut_network klut = ...;
-      akers_resynthesis<mig_network> resyn;
-      const auto mig = node_resynthesis<mig_network>( klut, resyn );
+      std::vector<gate> gates;
+      lorina::read_genlib( "file.lib", genlib_reader( gates ) );
    \endverbatim
  */
-template<class Ntk>
-class akers_resynthesis
+class genlib_reader : public lorina::genlib_reader
 {
 public:
-  template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
+  explicit genlib_reader( std::vector<gate>& gates )
+    : gates( gates )
+  {}
+
+  virtual void on_gate( std::string const& name, std::string const& expression, double area, std::optional<double> delay ) const override
   {
-    fn( akers_synthesis<Ntk>( ntk, function, ~function.construct(), begin, end ) );
+    uint32_t num_vars{0};
+    for ( const auto& c : expression )
+    {
+      if ( c >= 'a' && c <= 'z' )
+      {
+        uint32_t const var = 1 + ( c - 'a' );
+        if ( var > num_vars )
+        {
+          num_vars = var;
+        }
+      }
+    }
+
+    kitty::dynamic_truth_table tt{num_vars};
+    create_from_expression( tt, expression );
+
+    gates.emplace_back( gate{name, expression, num_vars, tt,
+                             area, delay ? *delay : 1.0} );
   }
-};
+
+protected:
+  std::vector<gate>& gates;
+}; /* genlib_reader */
 
 } /* namespace mockturtle */

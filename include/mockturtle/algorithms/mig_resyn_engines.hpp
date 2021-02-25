@@ -27,7 +27,7 @@
   \file mig_resyn_engines.hpp
   \brief Implements resynthesis methods for MIGs.
 
-  \author Siang-Yun Lee
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

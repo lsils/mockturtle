@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2020  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,6 +27,7 @@
   \file serialize.hpp
   \brief Serialize network into a file
 
+  \author Bruno Schmitt
   \author Heinz Riener
 
   This file implements functions to serialize a (combinational)

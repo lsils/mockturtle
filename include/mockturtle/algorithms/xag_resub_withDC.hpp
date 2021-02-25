@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,10 +24,12 @@
  */
 
 /*!
-  \file  xag_resub_withDC.hpp
+  \file xag_resub_withDC.hpp
   \brief Resubstitution with free xor (works for XAGs, XOR gates are considered for free)
 
-  \author Eleonora Testa (inspired by aig_resub.hpp from Heinz Riener)
+  \author Eleonora Testa
+  \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
