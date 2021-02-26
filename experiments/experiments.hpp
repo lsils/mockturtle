@@ -529,10 +529,10 @@ std::string benchmark_aqfp_path( std::string const& benchmark_name )
 }
 
 template<class Ntk>
-bool abc_cec( Ntk const& ntk, std::string const& benchmark )
+inline bool abc_cec_impl( Ntk const& ntk, std::string const& benchmark_fullpath )
 {
   mockturtle::write_bench( ntk, "/tmp/test.bench" );
-  std::string command = fmt::format( "abc -q \"cec -n {} /tmp/test.bench\"", benchmark_path( benchmark ) );
+  std::string command = fmt::format( "abc -q \"cec -n {} /tmp/test.bench\"", benchmark_fullpath );
 
   std::array<char, 128> buffer;
   std::string result;
@@ -561,24 +561,15 @@ bool abc_cec( Ntk const& ntk, std::string const& benchmark )
 }
 
 template<class Ntk>
-bool abc_cec_aqfp( Ntk const& ntk, std::string const& benchmark )
+inline bool abc_cec( Ntk const& ntk, std::string const& benchmark )
 {
-  mockturtle::write_bench( ntk, "/tmp/test.bench" );
-  std::string command = fmt::format( "../../abc -q \"cec -n {} /tmp/test.bench\"", benchmark_aqfp_path( benchmark ) );
+  return abc_cec_impl( ntk, benchmark_path( benchmark ) );
+}
 
-  std::array<char, 128> buffer;
-  std::string result;
-  std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
-  if ( !pipe )
-  {
-    throw std::runtime_error( "popen() failed" );
-  }
-  while ( fgets( buffer.data(), buffer.size(), pipe.get() ) != nullptr )
-  {
-    result += buffer.data();
-  }
-
-  return result.size() >= 23 && result.substr( 0u, 23u ) == "Networks are equivalent";
+template<class Ntk>
+inline bool abc_cec_aqfp( Ntk const& ntk, std::string const& benchmark )
+{
+  return abc_cec_impl( ntk, benchmark_aqfp_path( benchmark ) );
 }
 
 } // namespace experiments
