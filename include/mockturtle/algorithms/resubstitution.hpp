@@ -84,8 +84,11 @@ struct resubstitution_params
   /*! \brief Use don't cares for optimization. Only used by window-based resub engine. */
   bool use_dont_cares{false};
 
-  /* \brief Window size for don't cares calculation. Only used by window-based resub engine. */
+  /*! \brief Window size for don't cares calculation. Only used by window-based resub engine. */
   uint32_t window_size{12u};
+
+  /*! \brief Whether to prevent from increasing depth. Currently only used by window-based resub engine. */
+  bool preserve_depth{false};
 
   /****** simulation-based resub engine ******/
 
@@ -516,7 +519,12 @@ public:
 
     ResubFn resub_fn( ntk, sim, divs, divs.size(), st.functor_st );
     auto res = call_with_stopwatch( st.time_compute_function, [&]() {
-      return resub_fn( n, care, std::numeric_limits<uint32_t>::max(), ps.max_inserts, potential_gain, last_gain );
+      auto max_depth = std::numeric_limits<uint32_t>::max(); // Note: also called `required` in other code
+      if ( ps.preserve_depth )
+      {
+        max_depth = ntk.level( n ) - 1;
+      }
+      return resub_fn( n, care, max_depth, ps.max_inserts, potential_gain, last_gain );
     });
     if ( res )
     {
