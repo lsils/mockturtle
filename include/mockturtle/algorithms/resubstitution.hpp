@@ -298,6 +298,11 @@ private:
 
   bool collect_divisors( node const& root )
   {
+    auto max_depth = std::numeric_limits<uint32_t>::max();
+    if ( ps.preserve_depth )
+    {
+      max_depth = ntk.level( root ) - 1;
+    }
     /* add the leaves of the cuts to the divisors */
     divs.clear();
 
@@ -349,7 +354,7 @@ private:
 
       /* if the fanout has all fanins in the set, add it */
       ntk.foreach_fanout( d, [&]( node const& p ) {
-        if ( ntk.visited( p ) == ntk.trav_id() )
+        if ( ntk.visited( p ) == ntk.trav_id() || ntk.level( p ) > max_depth )
         {
           return true; /* next fanout */
         }
@@ -519,7 +524,7 @@ public:
 
     ResubFn resub_fn( ntk, sim, divs, divs.size(), st.functor_st );
     auto res = call_with_stopwatch( st.time_compute_function, [&]() {
-      auto max_depth = std::numeric_limits<uint32_t>::max(); // Note: also called `required` in other code
+      auto max_depth = std::numeric_limits<uint32_t>::max();
       if ( ps.preserve_depth )
       {
         max_depth = ntk.level( n ) - 1;
