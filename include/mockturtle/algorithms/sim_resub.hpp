@@ -48,6 +48,7 @@
 #include <mockturtle/algorithms/circuit_validator.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/algorithms/pattern_generation.hpp>
+#include <mockturtle/algorithms/xag_resyn_engines.hpp>
 #include <mockturtle/io/write_patterns.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/xag.hpp>
@@ -538,9 +539,7 @@ public:
 
   explicit abc_resub_functor( Ntk const& ntk, resubstitution_params const& ps, stats& st, unordered_node_map<TT, Ntk> const& tts, node const& root, std::vector<node> const& divs, uint32_t const num_inserts )
       : ntk( ntk ), ps( ps ), st( st ), tts( tts ), root( root ), divs( divs ), num_inserts( num_inserts ), num_blocks( 0 )
-  {
-    //std::cout<<"[i] resubing " << root<<"\n";
-  }
+  { }
 
   ~abc_resub_functor()
   {
@@ -584,6 +583,96 @@ public:
     {
       ++st.num_success;
       auto const& index_list = *res;
+      if ( index_list.size() == 1u ) /* div0 or constant */
+      {
+        if ( index_list[0] < 2 )
+        {
+          return result_t( ntk.get_constant( bool( index_list[0] ) ) );
+        }
+        assert( index_list[0] >= 4 );
+        return result_t( bool( index_list[0] % 2 ) ? !ntk.make_signal( divs[( index_list[0] >> 1u ) - 2u] ) : ntk.make_signal( divs[( index_list[0] >> 1u ) - 2u] ) );
+      }
+
+      uint64_t const num_gates = ( index_list.size() - 1u ) / 2u;
+      std::vector<vgate> gates;
+      gates.reserve( num_gates );
+      size = 0u;
+
+      call_with_stopwatch( st.time_interface, [&]() {
+        for ( auto i = 0u; i < num_gates; ++i )
+        {
+          fanin f0{uint32_t( ( index_list[2 * i] >> 1u ) - 2u ), bool( index_list[2 * i] % 2 )};
+          fanin f1{uint32_t( ( index_list[2 * i + 1u] >> 1u ) - 2u ), bool( index_list[2 * i + 1u] % 2 )};
+          gates.emplace_back( vgate{{f0, f1}, f0.index < f1.index ? gtype::AND : gtype::XOR} );
+
+          if constexpr ( std::is_same<typename Ntk::base_type, xag_network>::value )
+          {
+            ++size;
+          }
+          else
+          {
+            size += ( gates[i].type == gtype::AND ) ? 1u : 3u;
+          }
+        }
+      });
+      bool const out_neg = bool( index_list.back() % 2 );
+      assert( size <= num_inserts );
+      return result_t( circuit{divs, gates, out_neg} );
+    }
+    else /* loop until no result can be found by the engine */
+    {
+      ++st.num_fail;
+      return std::nullopt;
+    }
+  }
+
+private:
+  Ntk const& ntk;
+  resubstitution_params const& ps;
+  stats& st;
+
+  unordered_node_map<TT, Ntk> const& tts;
+  node const& root;
+  std::vector<node> const& divs;
+
+  uint32_t const num_inserts;
+  uint32_t num_blocks;
+};
+
+template<typename Ntk, typename validator_t>
+class k_resub_functor
+{
+public:
+  using stats = abc_resub_functor_stats;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+  using TT = kitty::partial_truth_table;
+  using vgate = typename validator_t::gate;
+  using fanin = typename vgate::fanin;
+  using gtype = typename validator_t::gate_type;
+  using circuit = imaginary_circuit<Ntk, validator_t>;
+  using result_t = typename std::variant<signal, circuit>;
+
+  explicit k_resub_functor( Ntk const& ntk, resubstitution_params const& ps, stats& st, unordered_node_map<TT, Ntk> const& tts, node const& root, std::vector<node> const& divs, uint32_t const num_inserts )
+      : ntk( ntk ), ps( ps ), st( st ), tts( tts ), root( root ), divs( divs ), num_inserts( num_inserts )
+  { }
+
+  std::optional<result_t> operator()( uint32_t& size, TT const& care )
+  {
+    xag_resyn_engine<TT, std::is_same<typename Ntk::base_type, xag_network>::value> engine( tts[root], care, ps.max_divisors_k );
+    call_with_stopwatch( st.time_interface, [&]() {
+      engine.add_divisors( std::begin( divs ), std::end( divs ), tts );
+    });
+
+    auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
+      return engine.compute_function( num_inserts );
+    } );
+
+    if ( res )
+    {
+      ++st.num_success;
+      auto index_list = res->raw();
+      index_list.erase( index_list.begin() );
       if ( index_list.size() == 1u ) /* div0 or constant */
       {
         if ( index_list[0] < 2 )
@@ -726,7 +815,7 @@ struct sim_resub_stats
  * \param ResubFn Resubstitution functor to compute the resubstitution.
  * \param MffcRes Typename of `potential_gain` needed by the resubstitution functor.
  */
-template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = abc_resub_functor<Ntk, validator_t>, typename MffcRes = uint32_t>
+template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = k_resub_functor<Ntk, validator_t>, typename MffcRes = uint32_t>
 class simulation_based_resub_engine
 {
 public:
