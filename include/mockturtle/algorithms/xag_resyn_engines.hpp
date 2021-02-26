@@ -69,8 +69,8 @@ struct pair_hash
 };
 
 public:
-  explicit xag_resyn_engine( TT const& target, TT const& care )
-    : divisors( { ~target & care, target & care } )
+  explicit xag_resyn_engine( TT const& target, TT const& care, uint32_t max_binates = 50u )
+    : divisors( { ~target & care, target & care } ), max_binates( max_binates )
   { }
 
   template<class node_type, class truth_table_storage_type>
@@ -130,7 +130,12 @@ private:
     {
       return *res1and;
     }
-    // shrink binate_divs here
+    
+    if ( binate_divs.size() > max_binates )
+    {
+      binate_divs.resize( max_binates );
+    }
+    
     if constexpr ( use_xor )
     {
       auto const res1xor = find_xor();
@@ -207,7 +212,7 @@ private:
       /* if using pos_lit (on_off_div = 1), modify on-set and use an OR gate on top;
          if using neg_lit (on_off_div = 0), modify off-set and use an AND gate on top
        */
-      uint32_t const& lit = on_off_div ? pos_unate_lits[0] : neg_unate_lits[0];
+      uint32_t const lit = on_off_div ? pos_unate_lits[0] : neg_unate_lits[0];
       divisors[on_off_div] &= lit & 0x1 ? divisors[lit >> 1] : ~divisors[lit >> 1];
 
       auto const res_remain_div = compute_function_rec( num_inserts - 1 );
@@ -219,8 +224,8 @@ private:
     }
     else if ( score_pair > 0 ) /* divide with a pair */
     {
-      and_pair const& pair = on_off_pair ? pos_unate_pairs[0] : neg_unate_pairs[0];
-      divisors[on_off_div] &= ( pair.lit1 & 0x1 ? divisors[pair.lit1 >> 1] : ~divisors[pair.lit1 >> 1] )
+      and_pair const pair = on_off_pair ? pos_unate_pairs[0] : neg_unate_pairs[0];
+      divisors[on_off_pair] &= ( pair.lit1 & 0x1 ? divisors[pair.lit1 >> 1] : ~divisors[pair.lit1 >> 1] )
                             | ( pair.lit2 & 0x1 ? divisors[pair.lit2 >> 1] : ~divisors[pair.lit2 >> 1] );
 
       auto const res_remain_pair = compute_function_rec( num_inserts - 2 );
@@ -470,7 +475,9 @@ private:
   std::vector<TT> divisors;
   xag_index_list index_list;
 
-  uint32_t num_bits[2];
+  uint32_t num_bits[2]; /* number of bits in on-set and off-set */
+  uint32_t max_binates; /* maximum number of binate divisors to be considered */
+
   /* positive unate: not overlapping with off-set
      negative unate: not overlapping with on-set */
   std::vector<uint32_t> pos_unate_lits, neg_unate_lits, binate_divs;
