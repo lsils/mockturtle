@@ -35,28 +35,11 @@
 
 #pragma once
 
+#include <kitty/kitty.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/algorithms/mig_resyn_engines.hpp>
 #include <mockturtle/utils/index_list.hpp>
-
-namespace kitty
-{
-
-/*! \brief Relevance */
-inline bool relevance( const dynamic_truth_table& tt0, const dynamic_truth_table& tt1, const dynamic_truth_table& tt2, const dynamic_truth_table& tt )
-{
-  return is_const0( ( ( tt0 ^ tt ) & ( tt1 ^ tt2 ) ) );
-}
-
-/*! \brief Relevance */
-template<uint32_t NumVars>
-inline bool relevance( const static_truth_table<NumVars>& tt0, const static_truth_table<NumVars>& tt1, const static_truth_table<NumVars>& tt2, const static_truth_table<NumVars>& tt )
-{
-  return is_const0( ( ( tt0 ^ tt ) & ( tt1 ^ tt2 ) ) );
-}
-
-} /* namespace kitty */
 
 namespace mockturtle
 {
