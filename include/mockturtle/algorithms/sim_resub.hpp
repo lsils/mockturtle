@@ -639,11 +639,41 @@ private:
   uint32_t num_blocks;
 };
 
+template<class EngineStat>
+struct k_resub_functor_stats
+{
+  /*! \brief Time for finding dependency function. */
+  stopwatch<>::duration time_compute_function{0};
+
+  /*! \brief Time for interfacing with ABC. */
+  stopwatch<>::duration time_interface{0};
+
+  /*! \brief Number of found solutions. */
+  uint32_t num_success{0};
+
+  /*! \brief Number of times that no solution can be found. */
+  uint32_t num_fail{0};
+
+  EngineStat engine_st;
+
+  void report() const
+  {
+    // clang-format off
+    std::cout <<              "[i]     <ResubFn: k_resub_functor>\n";
+    std::cout << fmt::format( "[i]         #solution = {:6d}\n", num_success );
+    std::cout << fmt::format( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
+    std::cout << fmt::format( "[i]         engine time:{:>5.2f} secs\n", to_seconds( time_compute_function ) );
+    std::cout << fmt::format( "[i]         interface:  {:>5.2f} secs\n", to_seconds( time_interface ) );
+    engine_st.report();
+    // clang-format on
+  }
+};
+
 template<typename Ntk, typename validator_t>
 class k_resub_functor
 {
 public:
-  using stats = abc_resub_functor_stats;
+  using stats = k_resub_functor_stats<xag_resyn_engine_stats>;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using TT = kitty::partial_truth_table;
@@ -659,7 +689,7 @@ public:
 
   std::optional<result_t> operator()( uint32_t& size, TT const& care )
   {
-    xag_resyn_engine<TT, std::is_same<typename Ntk::base_type, xag_network>::value> engine( tts[root], care, ps.max_divisors_k );
+    xag_resyn_engine<TT, std::is_same<typename Ntk::base_type, xag_network>::value> engine( tts[root], care, st.engine_st, ps.max_divisors_k );
     call_with_stopwatch( st.time_interface, [&]() {
       engine.add_divisors( std::begin( divs ), std::end( divs ), tts );
     });

@@ -44,6 +44,39 @@
 namespace mockturtle
 {
 
+struct xag_resyn_engine_stats
+{
+  /*! \brief Time for finding 0-resub and collecting unate literals. */
+  stopwatch<>::duration time_unate{0};
+
+  /*! \brief Time for finding 1-resub. */
+  stopwatch<>::duration time_resub1{0};
+
+  /*! \brief Time for finding 2-resub. */
+  stopwatch<>::duration time_resub2{0};
+
+  /*! \brief Time for finding 3-resub. */
+  stopwatch<>::duration time_resub3{0};
+
+  /*! \brief Time for sorting unate literals and unate pairs. */
+  stopwatch<>::duration time_sort{0};
+
+  /*! \brief Time for collecting unate pairs. */
+  stopwatch<>::duration time_collect_pairs{0};
+
+  void report() const
+  {
+    // clang-format off
+    std::cout << fmt::format( "[i]         0-resub      :{:>5.2f} secs\n", to_seconds( time_unate ) );
+    std::cout << fmt::format( "[i]         1-resub      :{:>5.2f} secs\n", to_seconds( time_resub1 ) );
+    std::cout << fmt::format( "[i]         2-resub      :{:>5.2f} secs\n", to_seconds( time_resub2 ) );
+    std::cout << fmt::format( "[i]         3-resub      :{:>5.2f} secs\n", to_seconds( time_resub3 ) );
+    std::cout << fmt::format( "[i]         sort         :{:>5.2f} secs\n", to_seconds( time_sort ) );
+    std::cout << fmt::format( "[i]         collect pairs:{:>5.2f} secs\n", to_seconds( time_collect_pairs ) );
+    // clang-format on
+  }
+};
+
 template<class TT, bool use_xor = false>
 class xag_resyn_engine
 {
@@ -69,8 +102,8 @@ struct pair_hash
 };
 
 public:
-  explicit xag_resyn_engine( TT const& target, TT const& care, uint32_t max_binates = 50u )
-    : divisors( { ~target & care, target & care } ), max_binates( max_binates )
+  explicit xag_resyn_engine( TT const& target, TT const& care, xag_resyn_engine_stats& st, uint32_t max_binates = 50u )
+    : divisors( { ~target & care, target & care } ), max_binates( max_binates ), st( st )
   { }
 
   template<class node_type, class truth_table_storage_type>
@@ -107,7 +140,9 @@ private:
   std::optional<uint32_t> compute_function_rec( uint32_t num_inserts )
   {
     /* try 0-resub and collect unate literals */
-    auto const res0 = find_one_unate();
+    auto const res0 = call_with_stopwatch( st.time_unate, [&]() {
+      return find_one_unate();
+    });
     if ( res0 )
     {
       return *res0;
@@ -118,14 +153,20 @@ private:
     }
 
     /* sort unate literals and try 1-resub */
-    sort_unate_lits( pos_unate_lits, pos_lit_scores, 1 );
-    sort_unate_lits( neg_unate_lits, neg_lit_scores, 0 );
-    auto const res1or = find_div_div( pos_unate_lits, pos_lit_scores, 1 );
+    call_with_stopwatch( st.time_sort, [&]() {
+      sort_unate_lits( pos_unate_lits, pos_lit_scores, 1 );
+      sort_unate_lits( neg_unate_lits, neg_lit_scores, 0 );
+    });
+    auto const res1or = call_with_stopwatch( st.time_resub1, [&]() {
+      return find_div_div( pos_unate_lits, pos_lit_scores, 1 );
+    });
     if ( res1or )
     {
       return *res1or;
     }
-    auto const res1and = find_div_div( neg_unate_lits, neg_lit_scores, 0 );
+    auto const res1and = call_with_stopwatch( st.time_resub1, [&]() {
+      return find_div_div( neg_unate_lits, neg_lit_scores, 0 );
+    });
     if ( res1and )
     {
       return *res1and;
@@ -150,37 +191,44 @@ private:
     }
 
     /* collect and sort unate pairs, then try 2- and 3-resub */
-    collect_unate_pairs();
-    sort_unate_pairs( pos_unate_pairs, pos_pair_scores, 1 );
-    sort_unate_pairs( neg_unate_pairs, neg_pair_scores, 0 );
-    auto const res2or = find_div_pair( pos_unate_lits, pos_unate_pairs, pos_lit_scores, pos_pair_scores, 1 );
+    call_with_stopwatch( st.time_collect_pairs, [&]() {
+      collect_unate_pairs();
+    });
+    call_with_stopwatch( st.time_sort, [&]() {
+      sort_unate_pairs( pos_unate_pairs, pos_pair_scores, 1 );
+      sort_unate_pairs( neg_unate_pairs, neg_pair_scores, 0 );
+    });
+    auto const res2or = call_with_stopwatch( st.time_resub2, [&]() {
+      return find_div_pair( pos_unate_lits, pos_unate_pairs, pos_lit_scores, pos_pair_scores, 1 );
+    });
     if ( res2or )
     {
       return *res2or;
     }
-    auto const res2and = find_div_pair( neg_unate_lits, neg_unate_pairs, neg_lit_scores, neg_pair_scores, 0 );
+    auto const res2and = call_with_stopwatch( st.time_resub2, [&]() {
+      return find_div_pair( neg_unate_lits, neg_unate_pairs, neg_lit_scores, neg_pair_scores, 0 );
+    });
     if ( res2and )
     {
       return *res2and;
     }
-    if ( num_inserts == 2u )
-    {
-      return std::nullopt;
-    }
 
-    auto const res3or = find_pair_pair( pos_unate_pairs, pos_pair_scores, 1 );
-    if ( res3or )
+    if ( num_inserts >= 3u )
     {
-      return *res3or;
-    }
-    auto const res3and = find_pair_pair( neg_unate_pairs, neg_pair_scores, 0 );
-    if ( res3and )
-    {
-      return *res3and;
-    }
-    if ( num_inserts == 3u )
-    {
-      return std::nullopt;
+      auto const res3or = call_with_stopwatch( st.time_resub3, [&]() {
+        return find_pair_pair( pos_unate_pairs, pos_pair_scores, 1 );
+      });
+      if ( res3or )
+      {
+        return *res3or;
+      }
+      auto const res3and = call_with_stopwatch( st.time_resub3, [&]() {
+        return find_pair_pair( neg_unate_pairs, neg_pair_scores, 0 );
+      });
+      if ( res3and )
+      {
+        return *res3and;
+      }
     }
 
     /* choose something to divide and recursive call on the remainder */
@@ -196,11 +244,25 @@ private:
         score_div = neg_lit_scores[neg_unate_lits[0]];
       }
     }
-    if ( pos_unate_pairs.size() > 0 )
+    else if ( neg_unate_lits.size() > 0 )
     {
-      on_off_pair = 1; /* use pos_pair */
-      score_pair = pos_pair_scores[pos_unate_pairs[0]];
-      if ( neg_unate_pairs.size() > 0 && neg_pair_scores[neg_unate_pairs[0]] > pos_pair_scores[pos_unate_pairs[0]] )
+      on_off_div = 0; /* use neg_lit */
+      score_div = neg_lit_scores[neg_unate_lits[0]];
+    }
+
+    if ( num_inserts >= 3u )
+    {
+      if ( pos_unate_pairs.size() > 0 )
+      {
+        on_off_pair = 1; /* use pos_pair */
+        score_pair = pos_pair_scores[pos_unate_pairs[0]];
+        if ( neg_unate_pairs.size() > 0 && neg_pair_scores[neg_unate_pairs[0]] > pos_pair_scores[pos_unate_pairs[0]] )
+        {
+          on_off_pair = 0; /* use neg_pair */
+          score_pair = neg_pair_scores[neg_unate_pairs[0]];
+        }
+      }
+      else if ( neg_unate_pairs.size() > 0 )
       {
         on_off_pair = 0; /* use neg_pair */
         score_pair = neg_pair_scores[neg_unate_pairs[0]];
@@ -218,7 +280,7 @@ private:
       auto const res_remain_div = compute_function_rec( num_inserts - 1 );
       if ( res_remain_div )
       {
-        index_list.add_and( lit ^ 0x1, *res_remain_div ^ 0x1 );
+        index_list.add_and( lit ^ 0x1, *res_remain_div ^ on_off_div );
         return index_list.literal_of_last_gate() + on_off_div;
       }
     }
@@ -232,7 +294,7 @@ private:
       if ( res_remain_pair )
       {
         index_list.add_and( pair.lit1, pair.lit2 );
-        index_list.add_and( index_list.literal_of_last_gate() ^ 0x1, *res_remain_pair ^ 0x1 );
+        index_list.add_and( index_list.literal_of_last_gate() ^ 0x1, *res_remain_pair ^ on_off_pair );
         return index_list.literal_of_last_gate() + on_off_pair;
       }
     }
@@ -522,6 +584,8 @@ private:
   std::unordered_map<uint32_t, uint32_t> pos_lit_scores, neg_lit_scores;
   std::vector<and_pair> pos_unate_pairs, neg_unate_pairs;
   std::unordered_map<and_pair, uint32_t, pair_hash> pos_pair_scores, neg_pair_scores;
+
+  xag_resyn_engine_stats& st;
 }; /* xag_resyn_engine */
 
 } /* namespace mockturtle */
