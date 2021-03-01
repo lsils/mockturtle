@@ -114,5 +114,23 @@ TEST_CASE( "AIG resynthesis -- 1 <= k <= 3", "[xag_resyn]" )
 
 TEST_CASE( "AIG resynthesis -- recursive", "[xag_resyn]" )
 {
+  std::vector<kitty::partial_truth_table> tts( 6, kitty::partial_truth_table( 16 ) );
 
+  kitty::create_from_binary_string( tts[0], "1111000011111111" ); // target
+  kitty::create_from_binary_string( tts[1], "0111001000000000" ); // binate
+  kitty::create_from_binary_string( tts[2], "0011001100000000" ); // binate
+  kitty::create_from_binary_string( tts[3], "1000001100000000" ); // binate
+  kitty::create_from_binary_string( tts[4], "1100101100000000" ); // binate
+  kitty::create_from_binary_string( tts[5], "0000000011111111" ); // unate
+  test_aig_kresub( tts, 4 ); // 5 | ( ~(2 & 4) & (1 | 3) )
+
+  tts.emplace_back( 16 );
+  kitty::create_from_binary_string( tts[0], "1111000011111100" ); // target
+  kitty::create_from_binary_string( tts[1], "0111001000000000" ); // binate
+  kitty::create_from_binary_string( tts[2], "0011001100000000" ); // binate
+  kitty::create_from_binary_string( tts[3], "1000001100000000" ); // binate
+  kitty::create_from_binary_string( tts[4], "1100101100000000" ); // binate
+  kitty::create_from_binary_string( tts[5], "0000000011111110" ); // binate
+  kitty::create_from_binary_string( tts[6], "0000000011111101" ); // binate
+  test_aig_kresub( tts, 5 ); // (5 & 6) | ( ~(2 & 4) & (1 | 3) )
 }
