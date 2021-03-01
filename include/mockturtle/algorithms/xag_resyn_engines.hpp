@@ -130,12 +130,12 @@ private:
     {
       return *res1and;
     }
-    
+
     if ( binate_divs.size() > max_binates )
     {
       binate_divs.resize( max_binates );
     }
-    
+
     if constexpr ( use_xor )
     {
       auto const res1xor = find_xor();
@@ -148,7 +148,7 @@ private:
     {
       return std::nullopt;
     }
-    
+
     /* collect and sort unate pairs, then try 2- and 3-resub */
     collect_unate_pairs();
     sort_unate_pairs( pos_unate_pairs, pos_pair_scores, 1 );
@@ -206,7 +206,7 @@ private:
         score_pair = neg_pair_scores[neg_unate_pairs[0]];
       }
     }
-    
+
     if ( score_div > score_pair / 2 ) /* divide with a divisor */
     {
       /* if using pos_lit (on_off_div = 1), modify on-set and use an OR gate on top;
@@ -236,7 +236,7 @@ private:
         return index_list.literal_of_last_gate() + on_off_pair;
       }
     }
-    
+
     return std::nullopt;
   }
 
@@ -265,24 +265,24 @@ private:
     {
       bool unateness[4] = {false, false, false, false};
       /* check intersection with off-set */
-      if ( kitty::is_const0( divisors[v] & divisors[0] ) )
+      if ( intersection_is_empty( divisors[v], divisors[0] ) )
       {
         pos_unate_lits.emplace_back( v << 1 );
         unateness[0] = true;
       }
-      else if ( kitty::is_const0( ~divisors[v] & divisors[0] ) )
+      else if ( intersection_is_empty_neg( divisors[v], divisors[0] ) )
       {
         pos_unate_lits.emplace_back( v << 1 | 0x1 );
         unateness[1] = true;
       }
 
       /* check intersection with on-set */
-      if ( kitty::is_const0( divisors[v] & divisors[1] ) )
+      if ( intersection_is_empty( divisors[v], divisors[1] ) )
       {
         neg_unate_lits.emplace_back( v << 1 );
         unateness[2] = true;
       }
-      else if ( kitty::is_const0( ~divisors[v] & divisors[1] ) )
+      else if ( intersection_is_empty_neg( divisors[v], divisors[1] ) )
       {
         neg_unate_lits.emplace_back( v << 1 | 0x1 );
         unateness[3] = true;
@@ -363,7 +363,7 @@ private:
         }
         auto const ntt1 = lit1 & 0x1 ? divisors[lit1 >> 1] : ~divisors[lit1 >> 1];
         auto const ntt2 = lit2 & 0x1 ? divisors[lit2 >> 1] : ~divisors[lit2 >> 1];
-        if ( kitty::is_const0( ntt1 & ntt2 & divisors[on_off] ) )
+        if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
           index_list.add_and( lit1 ^ 0x1, lit2 ^ 0x1 );
           return index_list.literal_of_last_gate() + on_off;
@@ -388,7 +388,7 @@ private:
         auto const ntt1 = lit1 & 0x1 ? divisors[lit1 >> 1] : ~divisors[lit1 >> 1];
         auto const ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
                         | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
-        if ( kitty::is_const0( ntt1 & ntt2 & divisors[on_off] ) )
+        if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
           index_list.add_and( pair2.lit1, pair2.lit2 );
           index_list.add_and( lit1 ^ 0x1, index_list.literal_of_last_gate() ^ 0x1 );
@@ -419,7 +419,7 @@ private:
                         | ( pair1.lit2 & 0x1 ? divisors[pair1.lit2 >> 1] : ~divisors[pair1.lit2 >> 1] );
         auto const ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
                         | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
-        if ( kitty::is_const0( ntt1 & ntt2 & divisors[on_off] ) )
+        if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
           index_list.add_and( pair1.lit1, pair1.lit2 );
           uint32_t const fanin_lit1 = index_list.literal_of_last_gate();
@@ -460,15 +460,53 @@ private:
     auto const tt2 = neg2 ? ~divisors[div2] : divisors[div2];
 
     /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
-    if ( kitty::is_const0( tt1 & tt2 & divisors[0] ) && !kitty::is_const0( tt1 & tt2 & divisors[1] ) )
+    if ( intersection_is_empty( tt1, tt2, divisors[0] ) && !intersection_is_empty( tt1, tt2, divisors[1] ) )
     {
       pos_unate_pairs.emplace_back( ( div1 << 1 ) + neg1, ( div2 << 1 ) + neg2 );
     }
     /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
-    else if ( kitty::is_const0( tt1 & tt2 & divisors[1] ) && !kitty::is_const0( tt1 & tt2 & divisors[0] ) )
+    else if ( intersection_is_empty( tt1, tt2, divisors[1] ) && !intersection_is_empty( tt1, tt2, divisors[0] ) )
     {
       neg_unate_pairs.emplace_back( ( div1 << 1 ) + neg1, ( div2 << 1 ) + neg2 );
     }
+  }
+
+private:
+  /* equivalent to kitty::is_const0( tt1 & tt2 ), but faster when num_blocks is a lot */
+  bool intersection_is_empty( TT const& tt1, TT const& tt2 )
+  {
+    for ( auto i = 0u; i < tt1.num_blocks(); ++i )
+    {
+      if ( ( tt1._bits[i] & tt2._bits[i] ) != 0 )
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+  /* equivalent to kitty::is_const0( ~tt1 & tt2 ), but faster when num_blocks is a lot */
+  bool intersection_is_empty_neg( TT const& tt1, TT const& tt2 )
+  {
+    for ( auto i = 0u; i < tt1.num_blocks(); ++i )
+    {
+      if ( ( ~(tt1._bits[i]) & tt2._bits[i] ) != 0 )
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+  /* equivalent to kitty::is_const0( tt1 & tt2 & tt3 ), but faster when num_blocks is a lot */
+  bool intersection_is_empty( TT const& tt1, TT const& tt2, TT const& tt3 )
+  {
+    for ( auto i = 0u; i < tt1.num_blocks(); ++i )
+    {
+      if ( ( tt1._bits[i] & tt2._bits[i] & tt3._bits[i] ) != 0 )
+      {
+        return false;
+      }
+    }
+    return true;
   }
 
 private:
