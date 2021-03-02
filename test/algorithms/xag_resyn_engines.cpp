@@ -12,7 +12,8 @@ using namespace mockturtle;
 
 void test_aig_kresub( std::vector<kitty::partial_truth_table> const& tts, uint32_t num_inserts )
 {
-  xag_resyn_engine<kitty::partial_truth_table> engine( tts[0], ~tts[0].construct() );
+  xag_resyn_engine_stats st;
+  xag_resyn_engine<kitty::partial_truth_table> engine( tts[0], ~tts[0].construct(), st );
   for ( auto i = 1u; i < tts.size(); ++i )
   {
     engine.add_divisor( i, tts );
@@ -30,7 +31,8 @@ void test_aig_kresub( std::vector<kitty::partial_truth_table> const& tts, uint32
 
 void test_xag_kresub( std::vector<kitty::partial_truth_table> const& tts, uint32_t num_inserts )
 {
-  xag_resyn_engine<kitty::partial_truth_table, true> engine( tts[0], ~tts[0].construct() );
+  xag_resyn_engine_stats st;
+  xag_resyn_engine<kitty::partial_truth_table, true> engine( tts[0], ~tts[0].construct(), st );
   for ( auto i = 1u; i < tts.size(); ++i )
   {
     engine.add_divisor( i, tts );
@@ -51,11 +53,12 @@ TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
   std::vector<kitty::partial_truth_table> tts( 1, kitty::partial_truth_table( 8 ) );
   kitty::partial_truth_table target( 8 );
   kitty::partial_truth_table care( 8 );
+  xag_resyn_engine_stats st;
 
   /* const */
   kitty::create_from_binary_string( target, "00110011" );
   kitty::create_from_binary_string(   care, "11001100" );
-  xag_resyn_engine<kitty::partial_truth_table> engine1( target, care );
+  xag_resyn_engine<kitty::partial_truth_table> engine1( target, care, st );
   const auto res1 = engine1.compute_function( 0 );
   CHECK( res1 );
   CHECK( to_index_list_string( *res1 ) == "{1 | 1 << 8 | 0 << 16, 0}" );
@@ -64,7 +67,7 @@ TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
   kitty::create_from_binary_string( target, "00110011" );
   kitty::create_from_binary_string(   care, "00111100" );
   kitty::create_from_binary_string( tts[0], "11110000" );
-  xag_resyn_engine<kitty::partial_truth_table> engine2( target, care );
+  xag_resyn_engine<kitty::partial_truth_table> engine2( target, care, st );
   engine2.add_divisor( 0, tts );
   const auto res2 = engine2.compute_function( 0 );
   CHECK( res2 );
@@ -74,7 +77,7 @@ TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
   kitty::create_from_binary_string( target, "00110011" );
   kitty::create_from_binary_string(   care, "00110110" );
   kitty::create_from_binary_string( tts[0], "00000101" );
-  xag_resyn_engine<kitty::partial_truth_table> engine3( target, care );
+  xag_resyn_engine<kitty::partial_truth_table> engine3( target, care, st );
   engine3.add_divisor( 0, tts );
   const auto res3 = engine3.compute_function( 0 );
   CHECK( res3 );
