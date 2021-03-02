@@ -34,6 +34,7 @@
 #pragma once
 
 #include "../utils/index_list.hpp"
+#include "../utils/stopwatch.hpp"
 
 #include <kitty/kitty.hpp>
 
