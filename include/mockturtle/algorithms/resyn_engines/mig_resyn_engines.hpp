@@ -35,6 +35,7 @@
 #include "../utils/index_list.hpp"
 
 #include <kitty/kitty.hpp>
+#include <fmt/format.h>
 
 #include <vector>
 #include <unordered_map>

@@ -37,6 +37,7 @@
 #include "../utils/stopwatch.hpp"
 
 #include <kitty/kitty.hpp>
+#include <fmt/format.h>
 
 #include <vector>
 #include <algorithm>
@@ -67,14 +68,12 @@ struct xag_resyn_engine_stats
 
   void report() const
   {
-    // clang-format off
-    std::cout << fmt::format( "[i]         0-resub      :{:>5.2f} secs\n", to_seconds( time_unate ) );
-    std::cout << fmt::format( "[i]         1-resub      :{:>5.2f} secs\n", to_seconds( time_resub1 ) );
-    std::cout << fmt::format( "[i]         2-resub      :{:>5.2f} secs\n", to_seconds( time_resub2 ) );
-    std::cout << fmt::format( "[i]         3-resub      :{:>5.2f} secs\n", to_seconds( time_resub3 ) );
-    std::cout << fmt::format( "[i]         sort         :{:>5.2f} secs\n", to_seconds( time_sort ) );
-    std::cout << fmt::format( "[i]         collect pairs:{:>5.2f} secs\n", to_seconds( time_collect_pairs ) );
-    // clang-format on
+    fmt::print( "[i]         0-resub      :{:>5.2f} secs\n", to_seconds( time_unate ) );
+    fmt::print( "[i]         1-resub      :{:>5.2f} secs\n", to_seconds( time_resub1 ) );
+    fmt::print( "[i]         2-resub      :{:>5.2f} secs\n", to_seconds( time_resub2 ) );
+    fmt::print( "[i]         3-resub      :{:>5.2f} secs\n", to_seconds( time_resub3 ) );
+    fmt::print( "[i]         sort         :{:>5.2f} secs\n", to_seconds( time_sort ) );
+    fmt::print( "[i]         collect pairs:{:>5.2f} secs\n", to_seconds( time_collect_pairs ) );
   }
 };
 

@@ -32,26 +32,24 @@
 
 #pragma once
 
-#include <variant>
-#include <algorithm>
-
+#include "resubstitution.hpp"
+#include "circuit_validator.hpp"
+#include "simulation.hpp"
+#include "pattern_generation.hpp"
+#include "resyn_engines/xag_resyn_engines.hpp"
+#include "../io/write_patterns.hpp"
+#include "../networks/aig.hpp"
+#include "../networks/xag.hpp"
 #include "../utils/abc_resub.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
-#include "../utils/abc_resub.hpp"
 
-#include <bill/sat/interface/abc_bsat2.hpp>
-#include <bill/sat/interface/z3.hpp>
-#include <kitty/partial_truth_table.hpp>
+#include <bill/bill.hpp>
+#include <kitty/kitty.hpp>
+#include <fmt/format.h>
 
-#include <mockturtle/algorithms/resubstitution.hpp>
-#include <mockturtle/algorithms/circuit_validator.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/algorithms/pattern_generation.hpp>
-#include <mockturtle/algorithms/xag_resyn_engines.hpp>
-#include <mockturtle/io/write_patterns.hpp>
-#include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/xag.hpp>
+#include <variant>
+#include <algorithm>
 
 namespace mockturtle
 {
@@ -71,432 +69,6 @@ struct imaginary_circuit
   bool const out_neg;
 };
 
-struct sim_aig_resub_functor_stats
-{
-  /*! \brief Accumulated runtime for const-resub */
-  stopwatch<>::duration time_resubC{0};
-
-  /*! \brief Accumulated runtime for zero-resub */
-  stopwatch<>::duration time_resub0{0};
-
-  /*! \brief Accumulated runtime for collecting unate divisors. */
-  stopwatch<>::duration time_collect_unate_divisors{0};
-
-  /*! \brief Accumulated runtime for one-resub */
-  stopwatch<>::duration time_resub1{0};
-
-  /*! \brief Number of accepted constant resubsitutions */
-  uint32_t num_const_accepts{0};
-
-  /*! \brief Number of accepted zero resubsitutions */
-  uint32_t num_div0_accepts{0};
-
-  /*! \brief Total number of unate divisors  */
-  uint64_t num_unate_divisors{0};
-
-  /*! \brief Number of accepted one resubsitutions */
-  uint64_t num_div1_accepts{0};
-
-  /*! \brief Number of accepted single AND-resubsitutions */
-  uint64_t num_div1_and_accepts{0};
-
-  /*! \brief Number of accepted single OR-resubsitutions */
-  uint64_t num_div1_or_accepts{0};
-
-  void report() const
-  {
-    // clang-format off
-    std::cout <<              "[i]     <ResubFn: sim_aig_resub_functor_stats>\n";
-    std::cout << fmt::format( "[i]         #const = {:6d}   ({:>5.2f} secs)\n", num_const_accepts, to_seconds( time_resubC ) );
-    std::cout << fmt::format( "[i]         #div0  = {:6d}   ({:>5.2f} secs)\n", num_div0_accepts, to_seconds( time_resub0 ) );
-    std::cout << fmt::format( "[i]        >#udivs = {:6d}   ({:>5.2f} secs)\n", num_unate_divisors, to_seconds( time_collect_unate_divisors ) );
-    std::cout << fmt::format( "[i]         #div1  = {:6d}   ({:>5.2f} secs)\n", num_div1_accepts, to_seconds( time_resub1 ) );
-    std::cout << fmt::format( "[i]             #div1-AND = {:6d}\n", num_div1_and_accepts );
-    std::cout << fmt::format( "[i]             #div1-OR  = {:6d}\n", num_div1_or_accepts );
-    // clang-format on
-  }
-};
-
-template<typename Ntk, typename validator_t>
-class sim_aig_resub_functor
-{
-public:
-  using stats = sim_aig_resub_functor_stats;
-  using TT = kitty::partial_truth_table;
-  using node = typename Ntk::node;
-  using signal = typename Ntk::signal;
-  using vgate = typename validator_t::gate;
-  using fanin = typename vgate::fanin;
-  using gtype = typename validator_t::gate_type;
-  using circuit = imaginary_circuit<Ntk, validator_t>;
-  using result_t = typename std::variant<signal, circuit>;
-
-  struct unate_divisors
-  {
-    using signal = typename Ntk::signal;
-
-    std::vector<std::pair<signal, uint32_t>> positive_divisors;
-    std::vector<std::pair<signal, uint32_t>> negative_divisors;
-
-    void clear()
-    {
-      positive_divisors.clear();
-      negative_divisors.clear();
-    }
-
-    void sort()
-    {
-      std::sort(positive_divisors.begin(), positive_divisors.end(), [](std::pair<signal, uint32_t> a, std::pair<signal, uint32_t> b) {
-          return a.second > b.second;   
-      });
-      std::sort(negative_divisors.begin(), negative_divisors.end(), [](std::pair<signal, uint32_t> a, std::pair<signal, uint32_t> b) {
-          return a.second > b.second;   
-      });
-    }
-  };
-
-  explicit sim_aig_resub_functor( Ntk const& ntk, resubstitution_params const& ps, stats& st, unordered_node_map<TT, Ntk> const& tts, node const& root, std::vector<node> const& divs, uint32_t const num_inserts )
-      : ntk( ntk ), ps( ps ), st( st ), tts( tts ), root( root ), divs( divs ), num_inserts( num_inserts ), step( 0 ), i( 0 ), j( 0 )
-  {
-  }
-
-  std::optional<result_t> operator()( uint32_t& size, TT const& care_ )
-  {
-    care = care_;
-    tt = tts[root] & care;
-    ntt = ~tts[root] & care;
-
-    while ( true )
-    {
-      switch ( step )
-      {
-        case 0u:
-        {
-          auto const& res = call_with_stopwatch( st.time_resubC, [&]() {
-            return resub_const();
-          });
-          if ( res )
-          {
-            ++st.num_const_accepts;
-            size = 0;
-            return res;
-          }
-          else
-          {
-            ++step;
-            continue;
-          }
-        }
-        case 1u:
-        {
-          if ( i == divs.size() )
-          {
-            if ( num_inserts == 0 )
-            {
-              return std::nullopt;
-            }
-            call_with_stopwatch( st.time_collect_unate_divisors, [&]() {
-              collect_unate_divisors();
-            });
-            st.num_unate_divisors += udivs.positive_divisors.size() + udivs.negative_divisors.size();
-            w = kitty::count_ones( tt );
-            nw = tt.num_bits() - w;
-            i = 0; j = 1;
-            ++step;
-            if ( udivs.positive_divisors.size() < 2 )
-            {
-              ++step;
-              if ( udivs.negative_divisors.size() < 2 )
-              {
-                ++step;
-              }
-            }
-            continue;
-          }
-
-          auto const& res = call_with_stopwatch( st.time_resub0, [&]() {
-            return resub_div0();
-          });
-          ++i;
-          if ( res )
-          {
-            ++st.num_div0_accepts;
-            size = 0;
-            return res;
-          }
-          else
-          {
-            continue;
-          }
-        }
-        case 2u:
-        {
-          if ( j == udivs.positive_divisors.size() )
-          {
-            break_div1_pos_inner();
-            continue;
-          }
-
-          auto const& res = call_with_stopwatch( st.time_resub1, [&]() {
-            return resub_div1_pos();
-          });
-          ++j; 
-          if ( res )
-          {
-            ++st.num_div1_accepts;
-            ++st.num_div1_or_accepts;
-            size = 1;
-            return res;
-          }
-          else
-          {
-            continue;
-          }
-        }
-        case 3u:
-        {
-          if ( j == udivs.negative_divisors.size() )
-          {
-            break_div1_neg_inner();
-            continue;
-          }
-
-          auto const& res = call_with_stopwatch( st.time_resub1, [&]() {
-            return resub_div1_neg();
-          });
-          ++j;
-          if ( res )
-          {
-            ++st.num_div1_accepts;
-            ++st.num_div1_and_accepts;
-            size = 1;
-            return res;
-          }
-          else
-          {
-            continue;
-          }
-        }
-        default:
-        {
-          return std::nullopt;
-        }
-      }
-    }
-  }
-
-private:
-  TT get_tt( node const& n, bool inverse = false )
-  {
-    return ( inverse? ~tts[n]: tts[n] ) & care;
-  }
-
-  void collect_unate_divisors()
-  {
-    udivs.clear();
-
-    for ( auto const& d : divs )
-    {
-      auto const tt_d = get_tt( d );
-      auto const ntt_d = get_tt( d, true );
-
-      /* check positive containment */
-      if ( kitty::implies( tt_d, tt ) )
-      {
-        udivs.positive_divisors.emplace_back( std::make_pair( ntk.make_signal( d ), kitty::count_ones( tt_d & tt ) ) );
-        continue;
-      }
-      if ( kitty::implies( ntt_d, tt ) )
-      {
-        udivs.positive_divisors.emplace_back( std::make_pair( !ntk.make_signal( d ), kitty::count_ones( ntt_d & tt ) ) );
-        continue;
-      }
-
-      /* check negative containment */
-      if ( kitty::implies( tt, tt_d ) )
-      {
-        udivs.negative_divisors.emplace_back( std::make_pair( ntk.make_signal( d ), kitty::count_zeros( tt_d & tt ) ) );
-        continue;
-      }
-      if ( kitty::implies( tt, ntt_d ) )
-      {
-        udivs.negative_divisors.emplace_back( std::make_pair( !ntk.make_signal( d ), kitty::count_zeros( ntt_d & tt ) ) );
-        continue;
-      }
-    }
-
-    udivs.sort();
-  }
-
-  std::optional<result_t> resub_const() 
-  {
-    auto const& zero = tts[ntk.get_constant( false )];
-
-    if ( tt == zero )
-    {
-      return result_t( ntk.get_constant( false ) );
-    }
-    else if ( ntt == zero )
-    {
-      return result_t( ntk.get_constant( true ) );
-    }
-
-    return std::nullopt;
-  }
-
-  std::optional<result_t> resub_div0() 
-  {
-    auto const& d = divs.at( i );
-    auto const tt_d = get_tt( d );
-
-    if ( tt == tt_d )
-    {
-      return result_t( ntk.make_signal( d ) );
-    }
-    else if ( ntt == tt_d )
-    {
-      return result_t( !ntk.make_signal( d ) );
-    }
-
-    return std::nullopt;
-  }
-
-  std::optional<result_t> resub_div1_pos()
-  {
-    auto const& s0 = udivs.positive_divisors.at( i ).first;
-    auto const& tt_s0 = get_tt( ntk.get_node( s0 ), ntk.is_complemented( s0 ) );
-    auto const& w_s0 = udivs.positive_divisors.at( i ).second;
-    if ( w_s0 < uint32_t( w / 2 ) ) /* break div1_pos */
-    {
-      break_div1_pos();
-      return std::nullopt;
-    }
-
-    if ( w_s0 + udivs.positive_divisors.at( j ).second < w ) /* break inner loop */
-    {
-      break_div1_pos_inner();
-      return std::nullopt;
-    }
-
-    auto const& s1 = udivs.positive_divisors.at( j ).first;
-    auto const& tt_s1 = get_tt( ntk.get_node( s1 ), ntk.is_complemented( s1 ) );
-
-    for ( auto b = 0u; b < tt.num_blocks(); ++b )
-    {
-      if ( ( tt_s0._bits[b] | tt_s1._bits[b] ) != tt._bits[b] )
-      {
-        return std::nullopt;
-      }
-    }
-    assert( tt == ( tt_s0 | tt_s1 ) );
-    fanin fi1{0, !ntk.is_complemented( s0 )};
-    fanin fi2{1, !ntk.is_complemented( s1 )};
-    vgate gate{{fi1, fi2}, gtype::AND};
-    tmp.resize( 2 ); tmp[0] = ntk.get_node( s0 ); tmp[1] = ntk.get_node( s1 );
-
-    return result_t( circuit{tmp, {gate}, true} );
-  }
-
-  std::optional<result_t> resub_div1_neg()
-  {
-    auto const& s0 = udivs.negative_divisors.at( i ).first;
-    auto const& tt_s0 = get_tt( ntk.get_node( s0 ), ntk.is_complemented( s0 ) );
-    auto const& w_s0 = udivs.negative_divisors.at( i ).second;
-    if ( w_s0 < uint32_t( nw / 2 ) ) /* break div1_neg */
-    {
-      break_div1_neg();
-      return std::nullopt;
-    }
-
-    if ( w_s0 + udivs.negative_divisors.at( j ).second < nw ) /* break inner loop */
-    {
-      break_div1_neg_inner();
-      return std::nullopt;
-    }
-
-    auto const& s1 = udivs.negative_divisors.at( j ).first;
-    auto const& tt_s1 = get_tt( ntk.get_node( s1 ), ntk.is_complemented( s1 ) );
-
-    for ( auto b = 0u; b < tt.num_blocks(); ++b )
-    {
-      if ( ( tt_s0._bits[b] & tt_s1._bits[b] ) != tt._bits[b] )
-      {
-        return std::nullopt;
-      }
-    }
-    assert( tt == ( tt_s0 & tt_s1 ) );
-    fanin fi1{0, ntk.is_complemented( s0 )};
-    fanin fi2{1, ntk.is_complemented( s1 )};
-    vgate gate{{fi1, fi2}, gtype::AND};
-    tmp.resize( 2 ); tmp[0] = ntk.get_node( s0 ); tmp[1] = ntk.get_node( s1 );
-
-    return result_t( circuit{tmp, {gate}, false} );
-  }
-
-private:
-  void break_div1_pos()
-  {
-    i = 0; j = 1;
-    ++step;
-    if ( udivs.negative_divisors.size() < 2 )
-    {
-      ++step;
-    }
-  }
-
-  void break_div1_pos_inner()
-  {
-    if ( ++i == udivs.positive_divisors.size() - 1 )
-    {
-      break_div1_pos();
-    }
-    else
-    {
-      j = i + 1;
-    }
-  }
-
-  void break_div1_neg()
-  {
-    i = 0; j = 1;
-    ++step;
-  }
-
-  void break_div1_neg_inner()
-  {
-    if ( ++i == udivs.negative_divisors.size() - 1 )
-    {
-      break_div1_neg();
-    }
-    else
-    {
-      j = i + 1;
-    }
-  }
-
-private:
-  Ntk const& ntk;
-  resubstitution_params const& ps;
-  stats& st;
-
-  unordered_node_map<TT, Ntk> const& tts;
-  TT tt;
-  TT ntt;
-  TT care;
-  node const& root;
-  std::vector<node> const& divs;
-  unate_divisors udivs;
-  std::vector<node> tmp;
-
-  uint32_t const num_inserts;
-  uint32_t step;
-  uint32_t i;
-  uint32_t j;
-
-  uint32_t w;
-  uint32_t nw;
-};
-
 struct abc_resub_functor_stats
 {
   /*! \brief Time for finding dependency function. */
@@ -513,13 +85,11 @@ struct abc_resub_functor_stats
 
   void report() const
   {
-    // clang-format off
-    std::cout <<              "[i]     <ResubFn: abc_resub_functor>\n";
-    std::cout << fmt::format( "[i]         #solution = {:6d}\n", num_success );
-    std::cout << fmt::format( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
-    std::cout << fmt::format( "[i]         ABC time:   {:>5.2f} secs\n", to_seconds( time_compute_function ) );
-    std::cout << fmt::format( "[i]         interface:  {:>5.2f} secs\n", to_seconds( time_interface ) );
-    // clang-format on
+    fmt::print( "[i]     <ResubFn: abc_resub_functor>\n" );
+    fmt::print( "[i]         #solution = {:6d}\n", num_success );
+    fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
+    fmt::print( "[i]         ABC time:   {:>5.2f} secs\n", to_seconds( time_compute_function ) );
+    fmt::print( "[i]         interface:  {:>5.2f} secs\n", to_seconds( time_interface ) );
   }
 };
 
@@ -658,14 +228,12 @@ struct k_resub_functor_stats
 
   void report() const
   {
-    // clang-format off
-    std::cout <<              "[i]     <ResubFn: k_resub_functor>\n";
-    std::cout << fmt::format( "[i]         #solution = {:6d}\n", num_success );
-    std::cout << fmt::format( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
-    std::cout << fmt::format( "[i]         engine time:{:>5.2f} secs\n", to_seconds( time_compute_function ) );
-    std::cout << fmt::format( "[i]         interface:  {:>5.2f} secs\n", to_seconds( time_interface ) );
+    fmt::print( "[i]     <ResubFn: k_resub_functor>\n" );
+    fmt::print( "[i]         #solution = {:6d}\n", num_success );
+    fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
+    fmt::print( "[i]         engine time:{:>5.2f} secs\n", to_seconds( time_compute_function ) );
+    fmt::print( "[i]         interface:  {:>5.2f} secs\n", to_seconds( time_interface ) );
     engine_st.report();
-    // clang-format on
   }
 };
 
@@ -797,25 +365,23 @@ struct sim_resub_stats
 
   void report() const
   {
-    // clang-format off
-    std::cout <<              "[i] <ResubEngine: simulation_based_resub_engine>\n";
-    std::cout <<              "[i]     ========  Stats  ========\n";
-    std::cout << fmt::format( "[i]     #pat     = {:6d}\n", num_pats );
-    std::cout << fmt::format( "[i]     #resub   = {:6d}\n", num_resub );
-    std::cout << fmt::format( "[i]     #CEX     = {:6d}\n", num_cex );
-    std::cout << fmt::format( "[i]     #timeout = {:6d}\n", num_timeout );
-    std::cout <<              "[i]     ======== Runtime ========\n";
-    std::cout << fmt::format( "[i]     generate pattern: {:>5.2f} secs\n", to_seconds( time_patgen ) );
-    std::cout << fmt::format( "[i]     simulation:       {:>5.2f} secs\n", to_seconds( time_sim ) );
-    std::cout << fmt::format( "[i]     SAT solve:        {:>5.2f} secs\n", to_seconds( time_sat ) );
-    std::cout << fmt::format( "[i]     SAT restart:      {:>5.2f} secs\n", to_seconds( time_sat_restart ) );
-    std::cout << fmt::format( "[i]     compute ODCs:     {:>5.2f} secs\n", to_seconds( time_odc ) );
-    std::cout << fmt::format( "[i]     compute function: {:>5.2f} secs\n", to_seconds( time_functor ) );
-    std::cout << fmt::format( "[i]     interfacing:      {:>5.2f} secs\n", to_seconds( time_interface ) );
-    std::cout <<              "[i]     ======== Details ========\n";
+    fmt::print( "[i] <ResubEngine: simulation_based_resub_engine>\n" );
+    fmt::print( "[i]     ========  Stats  ========\n" );
+    fmt::print( "[i]     #pat     = {:6d}\n", num_pats );
+    fmt::print( "[i]     #resub   = {:6d}\n", num_resub );
+    fmt::print( "[i]     #CEX     = {:6d}\n", num_cex );
+    fmt::print( "[i]     #timeout = {:6d}\n", num_timeout );
+    fmt::print( "[i]     ======== Runtime ========\n" );
+    fmt::print( "[i]     generate pattern: {:>5.2f} secs\n", to_seconds( time_patgen ) );
+    fmt::print( "[i]     simulation:       {:>5.2f} secs\n", to_seconds( time_sim ) );
+    fmt::print( "[i]     SAT solve:        {:>5.2f} secs\n", to_seconds( time_sat ) );
+    fmt::print( "[i]     SAT restart:      {:>5.2f} secs\n", to_seconds( time_sat_restart ) );
+    fmt::print( "[i]     compute ODCs:     {:>5.2f} secs\n", to_seconds( time_odc ) );
+    fmt::print( "[i]     compute function: {:>5.2f} secs\n", to_seconds( time_functor ) );
+    fmt::print( "[i]     interfacing:      {:>5.2f} secs\n", to_seconds( time_interface ) );
+    fmt::print( "[i]     ======== Details ========\n" );
     functor_st.report();
-    std::cout <<              "[i]     =========================\n\n";
-    // clang-format on
+    fmt::print( "[i]     =========================\n\n" );
   }
 };
 
@@ -838,8 +404,8 @@ struct sim_resub_stats
  * - A public `operator()`: `std::optional<signal> operator()( uint32_t& size )`
  *
  * Compatible resubstitution functors implemented:
- * - `sim_aig_resub_functor`: compute div0 and div1 resub by truth table comparison
- * - `abc_resub_functor`: dependency function computation engine ported from ABC
+ * - `abc_resub_functor`: interfacing functor with `abcresub`, ported from ABC (deprecated).
+ * - `resyn_functor`: interfacing functor with various resynthesis engines defined in `resyn_engines`.
  *
  * \param validator_t Specialization of `circuit_validator`.
  * \param ResubFn Resubstitution functor to compute the resubstitution.

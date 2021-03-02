@@ -33,10 +33,10 @@
 
 #pragma once
 
-#include <mockturtle/algorithms/resubstitution.hpp>
-#include <mockturtle/networks/mig.hpp>
-#include <mockturtle/algorithms/resyn_engines/mig_resyn_engines.hpp>
-#include <mockturtle/utils/index_list.hpp>
+#include "resubstitution.hpp"
+#include "resyn_engines/mig_resyn_engines.hpp"
+#include "../networks/mig.hpp"
+#include "../utils/index_list.hpp"
 
 namespace kitty
 {
