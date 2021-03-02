@@ -348,8 +348,8 @@ inline std::string to_index_list_string( abc_index_list const& indices )
  * represented as a list of literals.
  *
  * Example: The following index list creates the output function
- * `<<x1, x2, x3>, x2, x4>` with 4 inputs, 1 output, and 3 gates:
- * `{4 | 1 << 8 | 3 << 16, 2, 4, 6, 4, 8, 10, 12}`
+ * `<<x1, x2, x3>, x2, x4>` with 4 inputs, 1 output, and 2 gates:
+ * `{4 | 1 << 8 | 2 << 16, 2, 4, 6, 4, 8, 10, 12}`
  */
 struct mig_index_list
 {
@@ -416,13 +416,14 @@ public:
     values.at( 0u ) += n;
   }
 
-  void add_maj( element_type lit0, element_type lit1, element_type lit2 )
+  element_type add_maj( element_type lit0, element_type lit1, element_type lit2 )
   {
     assert( num_gates() + 1u <= 0xffff );
     values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
     values.push_back( lit0 );
     values.push_back( lit1 );
     values.push_back( lit2 );
+    return ( num_gates() + num_pis() ) << 1;
   }
 
   void add_output( element_type lit )
@@ -662,20 +663,22 @@ public:
     values.at( 0u ) += n;
   }
 
-  void add_and( element_type lit0, element_type lit1 )
+  element_type add_and( element_type lit0, element_type lit1 )
   {
     assert( num_gates() + 1u <= 0xffff );
     values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
     values.push_back( lit0 < lit1 ? lit0 : lit1 );
     values.push_back( lit0 < lit1 ? lit1 : lit0 );
+    return ( num_gates() + num_pis() ) << 1;
   }
 
-  void add_xor( element_type lit0, element_type lit1 )
+  element_type add_xor( element_type lit0, element_type lit1 )
   {
     assert( num_gates() + 1u <= 0xffff );
     values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
     values.push_back( lit0 > lit1 ? lit0 : lit1 );
     values.push_back( lit0 > lit1 ? lit1 : lit0 );
+    return ( num_gates() + num_pis() ) << 1;
   }
 
   void add_output( element_type lit )
@@ -683,11 +686,6 @@ public:
     assert( num_pos() + 1 <= 0xff );
     values.at( 0u ) = ( num_pos() + 1 ) << 8 | ( values.at( 0u ) & 0xffff00ff );
     values.push_back( lit );
-  }
-
-  element_type literal_of_last_gate() const
-  {
-    return ( num_gates() + num_pis() ) << 1;
   }
 
 private:

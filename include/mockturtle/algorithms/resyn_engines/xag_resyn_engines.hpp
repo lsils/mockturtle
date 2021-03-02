@@ -297,8 +297,8 @@ private:
       auto const res_remain_div = compute_function_rec( num_inserts - 1 );
       if ( res_remain_div )
       {
-        index_list.add_and( lit ^ 0x1, *res_remain_div ^ on_off_div );
-        return index_list.literal_of_last_gate() + on_off_div;
+        auto const new_lit = index_list.add_and( lit ^ 0x1, *res_remain_div ^ on_off_div );
+        return new_lit + on_off_div;
       }
     }
     else if ( score_pair > 0 ) /* divide with a pair */
@@ -310,9 +310,9 @@ private:
       auto const res_remain_pair = compute_function_rec( num_inserts - 2 );
       if ( res_remain_pair )
       {
-        index_list.add_and( pair.lit1, pair.lit2 );
-        index_list.add_and( index_list.literal_of_last_gate() ^ 0x1, *res_remain_pair ^ on_off_pair );
-        return index_list.literal_of_last_gate() + on_off_pair;
+        auto const new_lit1 = index_list.add_and( pair.lit1, pair.lit2 );
+        auto const new_lit2 = index_list.add_and( new_lit1 ^ 0x1, *res_remain_pair ^ on_off_pair );
+        return new_lit2 + on_off_pair;
       }
     }
 
@@ -444,8 +444,8 @@ private:
         auto const ntt2 = lit2 & 0x1 ? divisors[lit2 >> 1] : ~divisors[lit2 >> 1];
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
-          index_list.add_and( lit1 ^ 0x1, lit2 ^ 0x1 );
-          return index_list.literal_of_last_gate() + on_off;
+          auto const new_lit = index_list.add_and( lit1 ^ 0x1, lit2 ^ 0x1 );
+          return new_lit + on_off;
         }
       }
     }
@@ -469,9 +469,9 @@ private:
                         | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
-          index_list.add_and( pair2.lit1, pair2.lit2 );
-          index_list.add_and( lit1 ^ 0x1, index_list.literal_of_last_gate() ^ 0x1 );
-          return index_list.literal_of_last_gate() + on_off;
+          auto const new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
+          auto const new_lit2 = index_list.add_and( lit1 ^ 0x1, new_lit1 ^ 0x1 );
+          return new_lit2 + on_off;
         }
       }
     }
@@ -500,12 +500,10 @@ private:
                         | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
-          index_list.add_and( pair1.lit1, pair1.lit2 );
-          uint32_t const fanin_lit1 = index_list.literal_of_last_gate();
-          index_list.add_and( pair2.lit1, pair2.lit2 );
-          uint32_t const fanin_lit2 = index_list.literal_of_last_gate();
-          index_list.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
-          return index_list.literal_of_last_gate() + on_off;
+          uint32_t const fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
+          uint32_t const fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+          uint32_t const output_lit = index_list.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
+          return output_lit + on_off;
         }
       }
     }
