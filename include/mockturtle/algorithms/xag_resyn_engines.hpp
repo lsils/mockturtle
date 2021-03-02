@@ -77,6 +77,23 @@ struct xag_resyn_engine_stats
   }
 };
 
+/*! \brief Logic resynthesis engine for AIGs or XAGs.
+ *
+ * The algorithm is based on ABC's implementation in `giaResub.c` by Alan Mishchenko.
+ *
+ * Divisors are classified as positive unate (not overlapping with target offset),
+ * negative unate (not overlapping with target onset), or binate (overlapping with
+ * both onset and offset). Furthermore, pairs of binate divisors are combined with
+ * an AND operation and considering all possible input polarities and again classified
+ * as positive unate, negative unate or binate. Simple solutions of zero cost 
+ * (one unate divisor), one node (two unate divisors), two nodes (one unate divisor + 
+ * one unate pair), and three nodes (two unate pairs) are exhaustively examined.
+ * When no simple solutions can be found, the algorithm heuristically chooses an unate
+ * divisor or an unate pair to divide the target function with and recursively calls
+ * itself to decompose the remainder function.
+ *
+ * \param use_xor Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs).
+ */
 template<class TT, bool use_xor = false>
 class xag_resyn_engine
 {

@@ -42,6 +42,14 @@
 namespace mockturtle
 {
 
+/*! \brief Logic resynthesis engine for MIGs with a bottom-up approach.
+ *
+ * This algorithm resynthesizes the target function with divisor functions
+ * by building a chain of majority gates from bottom to top. Divisors are
+ * chosen as side fanins based on some scoring functions aiming at covering
+ * more uncovered bits.
+ * 
+ */
 template<class TT>
 class mig_resyn_engine_bottom_up
 {
@@ -177,6 +185,15 @@ private:
   mig_index_list index_list;
 }; /* mig_resyn_engine_bottom_up */
 
+/*! \brief Logic resynthesis engine for MIGs with top-down decomposition.
+ *
+ * This algorithm resynthesizes the target function with divisor functions
+ * by first building the topmost node, and then iteratively refining its
+ * output function by expanding a leaf with a new node. The three fanins
+ * of the newly-created node are chosen from the divisors based on some
+ * scoring functions aiming at covering more *care* bits.
+ * 
+ */
 template<class TT>
 class mig_resyn_engine
 {
@@ -833,6 +850,15 @@ private:
   bool first_round = true;
 }; /* mig_resyn_engine */
 
+/*! \brief Logic resynthesis engine for MIGs by Akers' majority synthesis algorithm.
+ *
+ * This engine is a re-implementation of Akers' algorithm based on the following paper:
+ *
+ * Akers, S. B. (1962, October). Synthesis of combinational logic using 
+ * three-input majority gates. In 3rd Annual Symposium on Switching Circuit Theory
+ * and Logical Design (SWCT 1962) (pp. 149-158). IEEE.
+ * 
+ */
 class mig_resyn_engine_akers
 {
 public:
