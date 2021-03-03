@@ -46,6 +46,15 @@
 namespace mockturtle
 {
 
+struct xag_resyn_engine_params
+{
+  /*! \brief Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs). */
+  bool use_xor{false};
+
+  /*! \brief Maximum number of binate divisors to be considered. */
+  uint32_t max_binates{50u};
+};
+
 struct xag_resyn_engine_stats
 {
   /*! \brief Time for finding 0-resub and collecting unate literals. */
@@ -91,12 +100,16 @@ struct xag_resyn_engine_stats
  * When no simple solutions can be found, the algorithm heuristically chooses an unate
  * divisor or an unate pair to divide the target function with and recursively calls
  * itself to decompose the remainder function.
- *
- * \param use_xor Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs).
  */
-template<class TT, bool use_xor = false>
+template<class TT>
 class xag_resyn_engine
 {
+public:
+  using stats = xag_resyn_engine_stats;
+  using params = xag_resyn_engine_params;
+  using index_list_t = xag_index_list;
+
+private:
 struct and_pair
 {
   and_pair( uint32_t l1, uint32_t l2 )
@@ -119,8 +132,8 @@ struct pair_hash
 };
 
 public:
-  explicit xag_resyn_engine( TT const& target, TT const& care, xag_resyn_engine_stats& st, uint32_t max_binates = 50u )
-    : divisors( { ~target & care, target & care } ), max_binates( max_binates ), st( st )
+  explicit xag_resyn_engine( TT const& target, TT const& care, stats& st, params const& ps = {} )
+    : divisors( { ~target & care, target & care } ), st( st ), ps( ps )
   { }
 
   template<class node_type, class truth_table_storage_type>
@@ -143,7 +156,7 @@ public:
 
   std::optional<xag_index_list> compute_function( uint32_t num_inserts )
   {
-    index_list.add_inputs( divisors.size() - 1 ); // one redundant input: literal of the first divisor is 4, not 2
+    index_list.add_inputs( divisors.size() - 2 );
     auto const lit = compute_function_rec( num_inserts );
     if ( lit )
     {
@@ -189,12 +202,12 @@ private:
       return *res1and;
     }
 
-    if ( binate_divs.size() > max_binates )
+    if ( binate_divs.size() > ps.max_binates )
     {
-      binate_divs.resize( max_binates );
+      binate_divs.resize( ps.max_binates );
     }
 
-    if constexpr ( use_xor )
+    if constexpr ( ps.use_xor )
     {
       auto const res1xor = find_xor();
       if ( res1xor )
@@ -297,7 +310,7 @@ private:
       auto const res_remain_div = compute_function_rec( num_inserts - 1 );
       if ( res_remain_div )
       {
-        auto const new_lit = index_list.add_and( lit ^ 0x1, *res_remain_div ^ on_off_div );
+        auto const new_lit = index_list.add_and( lit ^ 0x1 - 2, *res_remain_div ^ on_off_div );
         return new_lit + on_off_div;
       }
     }
@@ -310,7 +323,7 @@ private:
       auto const res_remain_pair = compute_function_rec( num_inserts - 2 );
       if ( res_remain_pair )
       {
-        auto const new_lit1 = index_list.add_and( pair.lit1, pair.lit2 );
+        auto const new_lit1 = index_list.add_and( pair.lit1 - 2, pair.lit2 - 2 );
         auto const new_lit2 = index_list.add_and( new_lit1 ^ 0x1, *res_remain_pair ^ on_off_pair );
         return new_lit2 + on_off_pair;
       }
@@ -370,11 +383,11 @@ private:
       /* 0-resub */
       if ( unateness[0] && unateness[3] )
       {
-        return v << 1;
+        return v << 1 - 2;
       }
       if ( unateness[1] && unateness[2] )
       {
-        return v << 1 | 0x1;
+        return v << 1 - 1;
       }
       /* useless unate literal */
       if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
@@ -444,7 +457,7 @@ private:
         auto const ntt2 = lit2 & 0x1 ? divisors[lit2 >> 1] : ~divisors[lit2 >> 1];
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
-          auto const new_lit = index_list.add_and( lit1 ^ 0x1, lit2 ^ 0x1 );
+          auto const new_lit = index_list.add_and( lit1 ^ 0x1 - 2, lit2 ^ 0x1 - 2 );
           return new_lit + on_off;
         }
       }
@@ -469,8 +482,8 @@ private:
                         | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
-          auto const new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
-          auto const new_lit2 = index_list.add_and( lit1 ^ 0x1, new_lit1 ^ 0x1 );
+          auto const new_lit1 = index_list.add_and( pair2.lit1 - 2, pair2.lit2 - 2 );
+          auto const new_lit2 = index_list.add_and( lit1 ^ 0x1 - 2, new_lit1 ^ 0x1 );
           return new_lit2 + on_off;
         }
       }
@@ -500,8 +513,8 @@ private:
                         | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
-          uint32_t const fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
-          uint32_t const fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+          uint32_t const fanin_lit1 = index_list.add_and( pair1.lit1 - 2, pair1.lit2 - 2 );
+          uint32_t const fanin_lit2 = index_list.add_and( pair2.lit1 - 2, pair2.lit2 - 2 );
           uint32_t const output_lit = index_list.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
           return output_lit + on_off;
         }
@@ -591,7 +604,6 @@ private:
   xag_index_list index_list;
 
   uint32_t num_bits[2]; /* number of bits in on-set and off-set */
-  uint32_t max_binates; /* maximum number of binate divisors to be considered */
 
   /* positive unate: not overlapping with off-set
      negative unate: not overlapping with on-set */
@@ -601,6 +613,7 @@ private:
   std::unordered_map<and_pair, uint32_t, pair_hash> pos_pair_scores, neg_pair_scores;
 
   xag_resyn_engine_stats& st;
+  xag_resyn_engine_params const& ps;
 }; /* xag_resyn_engine */
 
 } /* namespace mockturtle */

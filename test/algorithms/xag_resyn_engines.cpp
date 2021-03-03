@@ -10,11 +10,11 @@
 
 using namespace mockturtle;
 
-void test_aig_kresub( std::vector<kitty::partial_truth_table> const& tts, uint32_t num_inserts )
+void test_aig_kresub( kitty::partial_truth_table const& target, std::vector<kitty::partial_truth_table> const& tts, uint32_t num_inserts )
 {
   xag_resyn_engine_stats st;
-  xag_resyn_engine<kitty::partial_truth_table> engine( tts[0], ~tts[0].construct(), st );
-  for ( auto i = 1u; i < tts.size(); ++i )
+  xag_resyn_engine<kitty::partial_truth_table> engine( target, ~target.construct(), st );
+  for ( auto i = 0u; i < tts.size(); ++i )
   {
     engine.add_divisor( i, tts );
   }
@@ -24,28 +24,9 @@ void test_aig_kresub( std::vector<kitty::partial_truth_table> const& tts, uint32
 
   aig_network aig;
   decode( aig, *res );
-  partial_simulator sim( tts ); // tts[0] is the redundant input that should never be used
+  partial_simulator sim( tts );
   const auto ans = simulate<kitty::partial_truth_table, aig_network, partial_simulator>( aig, sim )[0];
-  CHECK( tts[0] == ans );
-}
-
-void test_xag_kresub( std::vector<kitty::partial_truth_table> const& tts, uint32_t num_inserts )
-{
-  xag_resyn_engine_stats st;
-  xag_resyn_engine<kitty::partial_truth_table, true> engine( tts[0], ~tts[0].construct(), st );
-  for ( auto i = 1u; i < tts.size(); ++i )
-  {
-    engine.add_divisor( i, tts );
-  }
-  const auto res = engine.compute_function( num_inserts );
-  CHECK( res );
-  CHECK( (*res).num_gates() == num_inserts );
-
-  xag_network xag;
-  decode( xag, *res );
-  partial_simulator sim( tts ); // tts[0] is the redundant input that should never be used
-  const auto ans = simulate<kitty::partial_truth_table, xag_network, partial_simulator>( xag, sim )[0];
-  CHECK( tts[0] == ans );
+  CHECK( target == ans );
 }
 
 TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
@@ -87,53 +68,55 @@ TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
 TEST_CASE( "AIG resynthesis -- 1 <= k <= 3", "[xag_resyn]" )
 {
   std::vector<kitty::partial_truth_table> tts( 4, kitty::partial_truth_table( 8 ) );
+  kitty::partial_truth_table target( 8 );
 
-  kitty::create_from_binary_string( tts[0], "11110000" ); // target
-  kitty::create_from_binary_string( tts[1], "11000000" );
-  kitty::create_from_binary_string( tts[2], "00110000" );
-  kitty::create_from_binary_string( tts[3], "01011111" ); // binate
-  test_aig_kresub( tts, 1 ); // 1 | 2
+  kitty::create_from_binary_string( target, "11110000" ); // target
+  kitty::create_from_binary_string( tts[0], "11000000" );
+  kitty::create_from_binary_string( tts[1], "00110000" );
+  kitty::create_from_binary_string( tts[2], "01011111" ); // binate
+  test_aig_kresub( target, tts, 1 ); // 1 | 2
 
-  kitty::create_from_binary_string( tts[0], "11110000" ); // target
-  kitty::create_from_binary_string( tts[1], "11001100" ); // binate
-  kitty::create_from_binary_string( tts[2], "11111100" );
-  kitty::create_from_binary_string( tts[3], "00001100" );
-  test_aig_kresub( tts, 1 ); // 2 & ~3
+  kitty::create_from_binary_string( target, "11110000" ); // target
+  kitty::create_from_binary_string( tts[0], "11001100" ); // binate
+  kitty::create_from_binary_string( tts[1], "11111100" );
+  kitty::create_from_binary_string( tts[2], "00001100" );
+  test_aig_kresub( target, tts, 1 ); // 2 & ~3
 
-  kitty::create_from_binary_string( tts[0], "11110000" ); // target
-  kitty::create_from_binary_string( tts[1], "01110010" ); // binate
-  kitty::create_from_binary_string( tts[2], "11111100" ); 
-  kitty::create_from_binary_string( tts[3], "10000011" ); // binate
-  test_aig_kresub( tts, 2 ); // 2 & (1 | 3)
+  kitty::create_from_binary_string( target, "11110000" ); // target
+  kitty::create_from_binary_string( tts[0], "01110010" ); // binate
+  kitty::create_from_binary_string( tts[1], "11111100" ); 
+  kitty::create_from_binary_string( tts[2], "10000011" ); // binate
+  test_aig_kresub( target, tts, 2 ); // 2 & (1 | 3)
 
   tts.emplace_back( 8 );
-  kitty::create_from_binary_string( tts[0], "11110000" ); // target
-  kitty::create_from_binary_string( tts[1], "01110010" ); // binate
-  kitty::create_from_binary_string( tts[2], "00110011" ); // binate
-  kitty::create_from_binary_string( tts[3], "10000011" ); // binate
-  kitty::create_from_binary_string( tts[4], "11001011" ); // binate
-  test_aig_kresub( tts, 3 ); // ~(2 & 4) & (1 | 3)
+  kitty::create_from_binary_string( target, "11110000" ); // target
+  kitty::create_from_binary_string( tts[0], "01110010" ); // binate
+  kitty::create_from_binary_string( tts[1], "00110011" ); // binate
+  kitty::create_from_binary_string( tts[2], "10000011" ); // binate
+  kitty::create_from_binary_string( tts[3], "11001011" ); // binate
+  test_aig_kresub( target, tts, 3 ); // ~(2 & 4) & (1 | 3)
 }
 
 TEST_CASE( "AIG resynthesis -- recursive", "[xag_resyn]" )
 {
   std::vector<kitty::partial_truth_table> tts( 6, kitty::partial_truth_table( 16 ) );
+  kitty::partial_truth_table target( 16 );
 
-  kitty::create_from_binary_string( tts[0], "1111000011111111" ); // target
-  kitty::create_from_binary_string( tts[1], "0111001000000000" ); // binate
-  kitty::create_from_binary_string( tts[2], "0011001100000000" ); // binate
-  kitty::create_from_binary_string( tts[3], "1000001100000000" ); // binate
-  kitty::create_from_binary_string( tts[4], "1100101100000000" ); // binate
-  kitty::create_from_binary_string( tts[5], "0000000011111111" ); // unate
-  test_aig_kresub( tts, 4 ); // 5 | ( ~(2 & 4) & (1 | 3) )
+  kitty::create_from_binary_string( target, "1111000011111111" ); // target
+  kitty::create_from_binary_string( tts[0], "0111001000000000" ); // binate
+  kitty::create_from_binary_string( tts[1], "0011001100000000" ); // binate
+  kitty::create_from_binary_string( tts[2], "1000001100000000" ); // binate
+  kitty::create_from_binary_string( tts[3], "1100101100000000" ); // binate
+  kitty::create_from_binary_string( tts[4], "0000000011111111" ); // unate
+  test_aig_kresub( target, tts, 4 ); // 5 | ( ~(2 & 4) & (1 | 3) )
 
   tts.emplace_back( 16 );
-  kitty::create_from_binary_string( tts[0], "1111000011111100" ); // target
-  kitty::create_from_binary_string( tts[1], "0111001000000000" ); // binate
-  kitty::create_from_binary_string( tts[2], "0011001100000000" ); // binate
-  kitty::create_from_binary_string( tts[3], "1000001100000000" ); // binate
-  kitty::create_from_binary_string( tts[4], "1100101100000000" ); // binate
-  kitty::create_from_binary_string( tts[5], "0000000011111110" ); // binate
-  kitty::create_from_binary_string( tts[6], "0000000011111101" ); // binate
-  test_aig_kresub( tts, 5 ); // (5 & 6) | ( ~(2 & 4) & (1 | 3) )
+  kitty::create_from_binary_string( target, "1111000011111100" ); // target
+  kitty::create_from_binary_string( tts[0], "0111001000000000" ); // binate
+  kitty::create_from_binary_string( tts[1], "0011001100000000" ); // binate
+  kitty::create_from_binary_string( tts[2], "1000001100000000" ); // binate
+  kitty::create_from_binary_string( tts[3], "1100101100000000" ); // binate
+  kitty::create_from_binary_string( tts[4], "0000000011111110" ); // binate
+  kitty::create_from_binary_string( tts[5], "0000000011111101" ); // binate
+  test_aig_kresub( target, tts, 5 ); // (5 & 6) | ( ~(2 & 4) & (1 | 3) )
 }
