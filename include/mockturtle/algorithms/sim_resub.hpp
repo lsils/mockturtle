@@ -185,6 +185,16 @@ struct resyn_functor_stats
   }
 };
 
+/*! \brief Interfacing resubstitution functor with various resynthesis engines for `simulation_based_resub_engine`.
+ * 
+ * The resynthesis engine `ResynEngine` should provide the following interfaces:
+ * - Constructor: `ResynEngine( kitty::partial_truth_table const& target,`
+ * `kitty::partial_truth_table const& care, ResynEngine::stats& st, ResynEngine::params const& ps )`
+ * - `std::optional<ResynEngine::index_list_t> operator()( std::vector<Ntk::node>::iterator begin,`
+ * `std::vector<Ntk::node>::iterator end, unordered_node_map<kitty::partial_truth_table, Ntk> const& tts )`
+ * - `ResynEngine::params` should have at least one member `uint32_t max_size` defining
+ * the maximum size of the dependency circuit.
+ */
 template<typename Ntk, typename ResynEngine>
 class resyn_functor
 {

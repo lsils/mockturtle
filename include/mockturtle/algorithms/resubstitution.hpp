@@ -473,6 +473,7 @@ struct window_resub_stats
  * - `mig_resub_functor`
  * - `xmg_resub_functor`
  * - `xag_resub_functor`
+ * - `mig_resyn_functor`
  *
  * \param TTsim Truth table type for simulation.
  * \param TTdc Truth table type for don't-care computation.

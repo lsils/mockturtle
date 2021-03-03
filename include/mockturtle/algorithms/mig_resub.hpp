@@ -635,22 +635,33 @@ struct mig_resyn_stats
 
   void report() const
   {
-    // clang-format off
-    std::cout <<              "[i]     <ResubFn: abc_resub_functor>\n";
-    std::cout << fmt::format( "[i]         #solution = {:6d}\n", num_success );
-    std::cout << fmt::format( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
-    std::cout << fmt::format( "[i]         engine time: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
-    // clang-format on
+    fmt::print( "[i]     <ResubFn: mig_resyn_functor>\n" );
+    fmt::print( "[i]         #solution = {:6d}\n", num_success );
+    fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
+    fmt::print( "[i]         engine time: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
   }
 }; /* mig_resyn_stats */
 
-template<typename Ntk, typename Simulator, typename TTcare, typename Engine = mig_resyn_engine<kitty::partial_truth_table>>
+/*! \brief Interfacing resubstitution functor with MIG resynthesis engines for `window_based_resub_engine`.
+ * 
+ * The resynthesis engine `ResynEngine` should provide the following interfaces:
+ * - Constructor: `ResynEngine( Simulator::truthtable_t const& target,`
+ * `TTcare const& care, ResynEngine::stats& st, ResynEngine::params const& ps )`
+ * - `std::optional<ResynEngine::index_list_t> operator()( std::vector<Ntk::node>::iterator begin,`
+ * `std::vector<Ntk::node>::iterator end, unordered_node_map<Simulator::truthtable_t, Ntk> const& tts )`
+ * - `ResynEngine::params` should have at least one member `uint32_t max_size` defining
+ * the maximum size of the dependency circuit.
+ */
+template<typename Ntk, typename Simulator, typename TTcare, typename ResynEngine = mig_resyn_engine<typename Simulator::truthtable_t>>
 struct mig_resyn_functor
 {
 public:
   using node = mig_network::node;
   using signal = mig_network::signal;
   using stats = mig_resyn_stats;
+  using TT = typename ResynEngine::truth_table_t;
+
+  static_assert( std::is_same_v<TT, typename Simulator::truthtable_t>, "truth table type of the simulator does not match" );
 
 public:
   explicit mig_resyn_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
@@ -666,19 +677,23 @@ public:
 
   std::optional<signal> operator()( node const& root, TTcare care, uint32_t required, uint32_t max_inserts, uint32_t potential_gain, uint32_t& real_gain )
   {
-    (void)care; (void)required;
-    kitty::partial_truth_table root_tt;
-    root_tt = sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) );
-    Engine engine( root_tt );
+    (void)required;
+    TT target = sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) );
+    TT care_transformed = target.construct();
+    care_transformed = care;
+
+    typename ResynEngine::params ps;
+    ps.max_size = std::min( potential_gain - 1, max_inserts );
+    typename ResynEngine::stats st_eng;
+    ResynEngine engine( target, care_transformed, st_eng, ps );
     for ( auto const& d : divs )
     {
       div_signals.emplace_back( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
       tts[d] = sim.get_tt( div_signals.back() );
     }
-    engine.add_divisors( divs.begin(), divs.end(), tts );
 
     auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
-      return engine.compute_function( std::min( potential_gain - 1, max_inserts ) );
+      return engine( divs.begin(), divs.end(), tts );
     });
     if ( res )
     {
@@ -698,7 +713,7 @@ public:
 private:
   Ntk& ntk;
   Simulator const& sim;
-  unordered_node_map<kitty::partial_truth_table, Ntk> tts;
+  unordered_node_map<TT, Ntk> tts;
   std::vector<node> const& divs;
   std::vector<signal> div_signals;
   stats& st;

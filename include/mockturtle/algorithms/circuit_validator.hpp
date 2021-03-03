@@ -170,7 +170,7 @@ public:
    *
    * \param id_list The index_list representing a circuit.
    * \param divs Existing nodes in the network, serving as PIs of `id_list`.
-   * \param inverted Whether to validate equivalence or complementation.
+   * \param inverted Whether to validate equivalence or inverse equivalence.
    */
   template<class index_list_type>
   std::optional<bool> validate( signal const& f, std::vector<node> const& divs, index_list_type const& id_list, bool inverted = false )
