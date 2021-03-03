@@ -18,7 +18,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 **************************************************************************************************/
 
 #pragma once
-#if !defined(BILL_WINDOWS_PLATFORM)
 
 #ifndef Minisat_IntTypes_h
 #define Minisat_IntTypes_h
@@ -5843,4 +5842,3 @@ inline void SimpSolver::garbageCollect()
 #undef LOCAL
 #undef TIER2
 #undef COR
-#endif
