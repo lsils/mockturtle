@@ -27,6 +27,7 @@
   \file control.hpp
   \brief Generate control logic networks
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

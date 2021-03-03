@@ -27,7 +27,10 @@
   \file linear_resynthesis.hpp
   \brief Resynthesize linear circuit
 
+  \author Eleonora Testa
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

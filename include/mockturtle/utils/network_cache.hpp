@@ -27,6 +27,7 @@
   \file network_cache.hpp
   \brief Network cache
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

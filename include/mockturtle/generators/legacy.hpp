@@ -27,6 +27,7 @@
   \file legacy.hpp
   \brief Some older not used routines
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

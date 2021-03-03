@@ -27,6 +27,7 @@
   \file pla_reader.hpp
   \brief Lorina reader for PLA files
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

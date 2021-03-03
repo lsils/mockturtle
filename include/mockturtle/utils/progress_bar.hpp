@@ -27,6 +27,7 @@
   \file progress_bar.hpp
   \brief Progress bar
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

@@ -27,6 +27,7 @@
   \file mapping_view.hpp
   \brief Implements mapping methods to create mapped networks
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

@@ -27,7 +27,12 @@
   \file xmg.hpp
   \brief XMG logic network implementation
 
+  \author Heinz Riener
+  \author Jinzheng Tu
   \author Mathias Soeken
+  \author Max Austin
+  \author Siang-Yun (Sonia) Lee
+  \author Walter Lau Neto
 */
 
 #pragma once
@@ -149,6 +154,13 @@ public:
     {
       return {index, complement};
     }
+
+#if __cplusplus > 201703L
+    bool operator==( xmg_storage::node_type::pointer_type const& other ) const
+    {
+      return data == other.data;
+    }
+#endif
   };
 
   xmg_network()

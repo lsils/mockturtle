@@ -27,8 +27,8 @@
   \file akers.hpp
   \brief Resynthesis with Akers synthesis
 
+  \author Heinz Riener
   \author Mathias Soeken
-  \author Eleonora Testa
 */
 
 #pragma once

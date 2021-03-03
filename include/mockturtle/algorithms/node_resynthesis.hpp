@@ -27,7 +27,9 @@
   \file node_resynthesis.hpp
   \brief Node resynthesis
 
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Max Austin
 */
 
 #pragma once

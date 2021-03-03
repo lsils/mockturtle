@@ -28,6 +28,7 @@
   \brief Implements an isolated view on a window in a network
 
   \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once

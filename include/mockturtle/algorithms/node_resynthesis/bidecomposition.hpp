@@ -28,6 +28,8 @@
   \brief Resynthesis with bi_decomposition
 
   \author Eleonora Testa
+  \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once

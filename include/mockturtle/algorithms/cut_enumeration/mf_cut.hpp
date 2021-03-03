@@ -27,6 +27,7 @@
   \file mf_cut.hpp
   \brief Cut enumeration for MF mapping (see giaMf.c)
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

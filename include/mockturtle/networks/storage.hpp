@@ -27,8 +27,10 @@
   \file storage.hpp
   \brief Configurable storage container
 
-  \author Mathias Soeken
+  \author Bruno Schmitt
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Max Austin
 */
 
 #pragma once

@@ -27,7 +27,9 @@
   \file dsd_decomposition.hpp
   \brief DSD decomposition
 
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

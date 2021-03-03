@@ -27,6 +27,7 @@
   \file equivalence_checking.hpp
   \brief Combinational equivalence checking
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

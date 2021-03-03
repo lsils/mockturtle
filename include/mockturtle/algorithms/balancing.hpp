@@ -27,6 +27,7 @@
   \file balancing.hpp
   \brief Cut-based depth-optimization
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

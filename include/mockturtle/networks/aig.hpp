@@ -27,8 +27,12 @@
   \file aig.hpp
   \brief AIG logic network implementation
 
-  \author Mathias Soeken
   \author Heinz Riener
+  \author Jinzheng Tu
+  \author Mathias Soeken
+  \author Max Austin
+  \author Siang-Yun (Sonia) Lee
+  \author Walter Lau Neto
 */
 
 #pragma once
@@ -167,6 +171,13 @@ public:
     {
       return {index, complement};
     }
+
+#if __cplusplus > 201703L
+    bool operator==( aig_storage::node_type::pointer_type const& other ) const
+    {
+      return data == other.data;
+    }
+#endif
   };
 
   aig_network()

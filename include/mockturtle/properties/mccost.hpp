@@ -27,6 +27,7 @@
   \file mccost.hpp
   \brief Cost functions based on multiplicative-complexity
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

@@ -51,6 +51,7 @@
   \file write_dimacs.hpp
   \brief Write networks CNF encoding to DIMACS format
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

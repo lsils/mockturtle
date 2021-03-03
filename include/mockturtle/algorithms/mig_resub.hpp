@@ -27,8 +27,10 @@
   \file mig_resub.hpp
   \brief Majority-specific resustitution rules
 
+  \author Eleonora Testa
   \author Heinz Riener
-  \author Siang-Yun Lee
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

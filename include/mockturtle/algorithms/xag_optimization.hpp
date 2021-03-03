@@ -27,7 +27,10 @@
   \file xag_optimization.hpp
   \brief Various XAG optimization algorithms
 
+  \author Bruno Schmitt
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Zhufei Chu
 */
 
 #pragma once

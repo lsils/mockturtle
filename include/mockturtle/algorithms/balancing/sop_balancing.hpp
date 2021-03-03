@@ -27,6 +27,7 @@
   \file sop_balancing.hpp
   \brief SOP-based balancing engine for `balancing` algorithm
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

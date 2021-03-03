@@ -27,6 +27,7 @@
   \file modular_arithmetic.hpp
   \brief Generate modular arithmetic logic networks
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

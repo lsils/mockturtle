@@ -27,6 +27,7 @@
   \file sorting.hpp
   \brief Generate sorting networks
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

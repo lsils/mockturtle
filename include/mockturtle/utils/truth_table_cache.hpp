@@ -27,6 +27,7 @@
   \file truth_table_cache.hpp
   \brief Truth table cache
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

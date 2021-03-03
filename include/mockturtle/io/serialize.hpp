@@ -27,6 +27,7 @@
   \file serialize.hpp
   \brief Serialize network into a file
 
+  \author Bruno Schmitt
   \author Heinz Riener
 
   This file implements functions to serialize a (combinational)

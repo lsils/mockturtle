@@ -27,8 +27,11 @@
   \file resubstitution.hpp
   \brief Generic resubstitution framework
 
+  \author Eleonora Testa
   \author Heinz Riener
-  \author Siang-Yun Lee
+  \author Mathias Soeken
+  \author Shubham Rai
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

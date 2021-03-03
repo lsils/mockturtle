@@ -27,7 +27,10 @@
   \file xmg3_npn.hpp
   \brief Replace with size-optimum xmg3s and AIGs from NPN (from ABC rewrite)
 
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Shubham Rai
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

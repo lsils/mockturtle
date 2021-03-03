@@ -28,6 +28,7 @@
   \brief Self-dualize a logic network
 
   \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #include "../networks/aig.hpp"

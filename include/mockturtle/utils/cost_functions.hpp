@@ -27,6 +27,7 @@
   \file cost_functions.hpp
   \brief Various cost functions for (optimization) algorithms
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

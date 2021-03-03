@@ -27,6 +27,9 @@
   \file xmg_npn.hpp
   \brief Replace with size-optimum XMGs from NPN
 
+  \author Heinz Riener
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
   \author Zhufei Chu
 */
 

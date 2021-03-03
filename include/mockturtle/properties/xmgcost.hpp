@@ -24,10 +24,11 @@
  */
 
 /*!
-  \file migcost.hpp
+  \file xmgcost.hpp
   \brief Cost functions for xmg-based networks 
 
-  \author Shubham Rai  
+  \author Heinz Riener
+  \author Shubham Rai
 */
 
 #pragma once

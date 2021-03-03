@@ -27,8 +27,9 @@
   \file cnf_view.hpp
   \brief Creates a CNF while creating a network
 
+  \author Heinz Riener
   \author Mathias Soeken
-  \author Lee Siang-Yun
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

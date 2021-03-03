@@ -26,6 +26,8 @@
 /*!
   \file events.hpp
   \brief Event API for updating a logic network.
+
+  \author Heinz Riener
   \author Mathias Soeken
 */
 

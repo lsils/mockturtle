@@ -28,6 +28,8 @@
   \brief Cut enumeration based on spectral properties of a function
 
   \author Giulia Meuli
+  \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once
