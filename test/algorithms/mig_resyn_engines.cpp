@@ -14,6 +14,9 @@ using namespace mockturtle;
 template<class Engine>
 void test_0resub()
 {
+  mig_resyn_engine_stats st;
+  mig_resyn_engine_params ps;
+  ps.max_size = 0;
   std::vector<kitty::partial_truth_table> tts( 4, kitty::partial_truth_table( 8 ) );
 
   kitty::create_from_binary_string( tts[0], "00110110" );
@@ -21,12 +24,12 @@ void test_0resub()
   kitty::create_from_binary_string( tts[2], "10000001" );
   kitty::create_from_binary_string( tts[3], "11001001" );
 
-  Engine engine( tts[0] );
+  Engine engine( tts[0], ~tts[0].construct(), st, ps );
   engine.add_divisor( 1, tts );
   engine.add_divisor( 2, tts );
   engine.add_divisor( 3, tts );
 
-  const auto res = engine.compute_function( 0u );
+  const auto res = engine();
   CHECK( res );
   CHECK( (*res).num_gates() == 0u );
   CHECK( (*res).raw()[1] == 7u );
@@ -35,6 +38,9 @@ void test_0resub()
 template<class Engine>
 void test_1resub()
 {
+  mig_resyn_engine_stats st;
+  mig_resyn_engine_params ps;
+  ps.max_size = 1;
   std::vector<kitty::partial_truth_table> tts( 3, kitty::partial_truth_table( 8 ) );
   kitty::partial_truth_table target( 8 );
 
@@ -43,14 +49,14 @@ void test_1resub()
   kitty::create_from_binary_string( tts[1], "11001001" );
   kitty::create_from_binary_string( tts[2], "01000111" );
 
-  Engine engine( target );
+  Engine engine( target, ~target.construct(), st, ps );
   for ( auto i = 0u; i < tts.size(); ++i )
   {
     engine.add_divisor( i, tts );
   }
   // target = <1,~2,3>
 
-  const auto res = engine.compute_function( 1u );
+  const auto res = engine();
   CHECK( res );
   CHECK( (*res).num_gates() == 1u );
 
@@ -64,6 +70,9 @@ void test_1resub()
 template<class Engine>
 void test_2resub()
 {
+  mig_resyn_engine_stats st;
+  mig_resyn_engine_params ps;
+  ps.max_size = 2;
   std::vector<kitty::partial_truth_table> tts( 4, kitty::partial_truth_table( 8 ) );
   kitty::partial_truth_table target( 8 );
 
@@ -73,14 +82,14 @@ void test_2resub()
   kitty::create_from_binary_string( tts[2], "10011110" );
   kitty::create_from_binary_string( tts[3], "01011111" );
 
-  Engine engine( target );
+  Engine engine( target, ~target.construct(), st, ps );
   for ( auto i = 0u; i < tts.size(); ++i )
   {
     engine.add_divisor( i, tts );
   }
   // target = <<1,2,3>,2,4>
 
-  const auto res = engine.compute_function( 2u );
+  const auto res = engine();
   CHECK( res );
   CHECK( (*res).num_gates() == 2u );
 

@@ -33,6 +33,7 @@
 #pragma once
 
 #include "../utils/node_map.hpp"
+#include "../utils/index_list.hpp"
 #include "cnf.hpp"
 #include <bill/sat/interface/abc_bsat2.hpp>
 #include <bill/sat/interface/common.hpp>
@@ -71,27 +72,6 @@ public:
     AND,
     XOR,
     MAJ
-  };
-
-  struct gate
-  {
-    struct fanin
-    {
-      /*! \brief Index in the concatenated list of `divs` and `circuit`. */
-      uint32_t index;
-
-      /*! \brief Input negation. */
-      bool inverted{false};
-    };
-
-    /*! \brief Fanins of the gate. */
-    std::vector<fanin> fanins;
-
-    /*! \brief Type of the gate. 
-     *
-     * Supported types include AND, XOR, and MAJ.
-     */
-    gate_type type{AND};
   };
 
   explicit circuit_validator( Ntk const& ntk, validator_params const& ps = {} )
@@ -185,50 +165,55 @@ public:
     return res;
   }
 
-  /*! \brief Validate functional equivalence of signal `f` with a circuit.
-   * 
-   * The circuit `circuit` uses `divs` as inputs, which are existing nodes in the network.
+  /*! \brief Validate functional equivalence of signal `f` with a circuit represented by an index_list.
    *
-   * \param divs Existing nodes in the network, serving as PIs of `circuit`.
-   * \param circuit Circuit built with `divs` as inputs. Please see the documentation of `circuit_validator::gate` for its data structure.
-   * \param output_negation Output negation of the topmost gate of the circuit.
+   * \param id_list The index_list representing a circuit.
+   * \param divs Existing nodes in the network, serving as PIs of `id_list`.
+   * \param inverted Whether to validate equivalence or complementation.
    */
-  std::optional<bool> validate( signal const& f, std::vector<node> const& divs, std::vector<gate> const& circuit, bool output_negation = false )
+  template<class index_list_type>
+  std::optional<bool> validate( signal const& f, std::vector<node> const& divs, index_list_type const& id_list, bool inverted = false )
   {
-    return validate( ntk.get_node( f ), divs.begin(), divs.end(), circuit, output_negation ^ ntk.is_complemented( f ) );
+    return validate( ntk.get_node( f ), divs.begin(), divs.end(), id_list, inverted ^ ntk.is_complemented( f ) );
   }
 
-  /*! \brief Validate functional equivalence of node `root` with a circuit. */
-  std::optional<bool> validate( node const& root, std::vector<node> const& divs, std::vector<gate> const& circuit, bool output_negation = false )
+  /*! \brief Validate functional equivalence of node `root` with an index_list. */
+  template<class index_list_type>
+  std::optional<bool> validate( node const& root, std::vector<node> const& divs, index_list_type const& id_list, bool inverted = false )
   {
-    return validate( root, divs.begin(), divs.end(), circuit, output_negation );
+    return validate( root, divs.begin(), divs.end(), id_list, inverted );
   }
 
-  /*! \brief Validate functional equivalence of signal `f` with a circuit. */
-  template<class iterator_type>
-  std::optional<bool> validate( signal const& f, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& circuit, bool output_negation = false )
+  /*! \brief Validate functional equivalence of signal `f` with an index_list. */
+  template<class iterator_type, class index_list_type>
+  std::optional<bool> validate( signal const& f, iterator_type divs_begin, iterator_type divs_end, index_list_type const& id_list, bool inverted = false )
   {
-    return validate( ntk.get_node( f ), divs_begin, divs_end, circuit, output_negation ^ ntk.is_complemented( f ) );
+    return validate( ntk.get_node( f ), divs_begin, divs_end, id_list, inverted ^ ntk.is_complemented( f ) );
   }
 
-  /*! \brief Validate functional equivalence of node `root` with a circuit. */
-  template<class iterator_type>
-  std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, std::vector<gate> const& circuit, bool output_negation = false )
+  /*! \brief Validate functional equivalence of node `root` with an index_list. */
+  template<class iterator_type, class index_list_type>
+  std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, index_list_type const& id_list, bool inverted = false )
   {
+    static_assert( std::is_same_v<index_list_type, abc_index_list> || std::is_same_v<index_list_type, mig_index_list> || std::is_same_v<index_list_type, xag_index_list>, "Unknown type of index list" );
+    assert( uint64_t( std::distance( divs_begin, divs_end ) ) == id_list.num_pis() && "Size of the provided divisor list does not match number of PIs of the index list" );
+    assert( id_list.num_pos() == 1u && "Index list must have exactly one PO" );
+
     if ( !constructed.has( root ) && !ntk.is_pi( root ) && !ntk.is_constant( root ) )
     {
       construct( root );
     }
 
     std::vector<bill::lit_type> lits;
-    while ( divs_begin != divs_end )
+    lits.reserve( id_list.num_pis() + id_list.num_gates() + 1 );
+    lits.emplace_back( literals[ntk.get_constant( false )] );
+    for ( auto it = divs_begin; it != divs_end; ++it )
     {
-      if ( !constructed.has( *divs_begin ) && !ntk.is_pi( *divs_begin ) && !ntk.is_constant( *divs_begin ) )
+      if ( !constructed.has( *it ) && !ntk.is_pi( *it ) && !ntk.is_constant( *it ) )
       {
-        construct( *divs_begin );
+        construct( *it );
       }
-      lits.emplace_back( literals[*divs_begin] );
-      divs_begin++;
+      lits.emplace_back( literals[*it] );
     }
 
     if constexpr ( use_pushpop )
@@ -236,12 +221,35 @@ public:
       push();
     }
 
-    for ( auto g : circuit )
+    if constexpr ( std::is_same_v<index_list_type, abc_index_list> || std::is_same_v<index_list_type, xag_index_list> )
     {
-      lits.emplace_back( add_tmp_gate( lits, g ) );
+      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1 ){
+        uint32_t const node_pos0 = id_lit0 >> 1;
+        uint32_t const node_pos1 = id_lit1 >> 1;
+        assert( node_pos0 < lits.size() );
+        assert( node_pos1 < lits.size() );
+        lits.emplace_back( add_clauses_for_2input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), std::nullopt, id_lit0 < id_lit1 ? AND : XOR ) );
+      });
+    }
+    else // mig_index_list
+    {
+      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1, uint32_t id_lit2 ){
+        uint32_t const node_pos0 = id_lit0 >> 1;
+        uint32_t const node_pos1 = id_lit1 >> 1;
+        uint32_t const node_pos2 = id_lit2 >> 1;
+        assert( node_pos0 < lits.size() );
+        assert( node_pos1 < lits.size() );
+        assert( node_pos2 < lits.size() );
+        lits.emplace_back( add_clauses_for_3input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), lit_not_cond( lits[node_pos2], id_lit2 & 0x1 ), std::nullopt, MAJ ) );
+      });
     }
 
-    auto const res = validate( root, lit_not_cond( lits.back(), output_negation ) );
+    bill::lit_type lit_out;
+    id_list.foreach_po( [&]( uint32_t id_lit ){
+      lit_out = lit_not_cond( lits[id_lit >> 1], ( id_lit & 0x1 ) ^ inverted );
+    });
+
+    auto const res = validate( root, lit_out );
 
     if constexpr ( use_pushpop )
     {
@@ -395,7 +403,7 @@ private:
     solver.add_clause( {~literals[ntk.get_constant( false )]} );
   }
 
-  void construct( node const& n )
+  bill::lit_type construct( node const& n )
   {
     assert( !constructed.has( n ) && !ntk.is_pi( n ) && !ntk.is_constant( n ) );
     if constexpr ( use_pushpop )
@@ -441,6 +449,7 @@ private:
         solver.add_clause( clause );
       } );
     }
+    return node_lit;
   }
 
   void push()
@@ -500,26 +509,6 @@ private:
     }
 
     return nlit;
-  }
-
-  bill::lit_type add_tmp_gate( std::vector<bill::lit_type> const& lits, gate const& g )
-  {
-    /* currently supports AND2, XOR2, XOR3, MAJ3 */
-    assert( g.fanins.size() == 2u || g.fanins.size() == 3u );
-
-    if ( g.fanins.size() == 2u )
-    {
-      assert( g.fanins[0].index < lits.size() );
-      assert( g.fanins[1].index < lits.size() );
-      return add_clauses_for_2input_gate( lit_not_cond( lits[g.fanins[0].index], g.fanins[0].inverted ), lit_not_cond( lits[g.fanins[1].index], g.fanins[1].inverted ), std::nullopt, g.type );
-    }
-    else
-    {
-      assert( g.fanins[0].index < lits.size() );
-      assert( g.fanins[1].index < lits.size() );
-      assert( g.fanins[2].index < lits.size() );
-      return add_clauses_for_3input_gate( lit_not_cond( lits[g.fanins[0].index], g.fanins[0].inverted ), lit_not_cond( lits[g.fanins[1].index], g.fanins[1].inverted ), lit_not_cond( lits[g.fanins[2].index], g.fanins[2].inverted ), std::nullopt, g.type );
-    }
   }
 
   std::optional<bool> solve( std::vector<bill::lit_type> assumptions )

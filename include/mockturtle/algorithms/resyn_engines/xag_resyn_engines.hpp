@@ -33,8 +33,8 @@
 
 #pragma once
 
-#include "../utils/index_list.hpp"
-#include "../utils/stopwatch.hpp"
+#include "../../utils/index_list.hpp"
+#include "../../utils/stopwatch.hpp"
 
 #include <kitty/kitty.hpp>
 #include <fmt/format.h>
@@ -48,6 +48,9 @@ namespace mockturtle
 
 struct xag_resyn_engine_params
 {
+  /*! \brief Maximum size (number of gates) of the dependency circuit. */
+  uint32_t max_size{0u};
+
   /*! \brief Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs). */
   bool use_xor{false};
 
@@ -108,40 +111,45 @@ public:
   using stats = xag_resyn_engine_stats;
   using params = xag_resyn_engine_params;
   using index_list_t = xag_index_list;
+  using truth_table_t = TT;
 
 private:
-struct and_pair
-{
-  and_pair( uint32_t l1, uint32_t l2 )
-    : lit1( l1 < l2 ? l1 : l2 ), lit2( l1 < l2 ? l2 : l1 )
-  { }
-  bool operator==( and_pair const& other ) const
+  struct and_pair
   {
-    return lit1 == other.lit1 && lit2 == other.lit2;
-  }
+    and_pair( uint32_t l1, uint32_t l2 )
+      : lit1( l1 < l2 ? l1 : l2 ), lit2( l1 < l2 ? l2 : l1 )
+    { }
+    bool operator==( and_pair const& other ) const
+    {
+      return lit1 == other.lit1 && lit2 == other.lit2;
+    }
 
-  uint32_t lit1, lit2;
-};
+    uint32_t lit1, lit2;
+  };
 
-struct pair_hash
-{
-  std::size_t operator()( and_pair const& p ) const
+  struct pair_hash
   {
-    return std::hash<uint64_t>{}( (uint64_t)p.lit1 << 32 | (uint64_t)p.lit2 );
-  }
-};
+    std::size_t operator()( and_pair const& p ) const
+    {
+      return std::hash<uint64_t>{}( (uint64_t)p.lit1 << 32 | (uint64_t)p.lit2 );
+    }
+  };
 
 public:
   explicit xag_resyn_engine( TT const& target, TT const& care, stats& st, params const& ps = {} )
     : divisors( { ~target & care, target & care } ), st( st ), ps( ps )
   { }
 
+  void add_divisor( TT const& tt )
+  {
+    assert( tt.num_bits() == divisors[0].num_bits() );
+    divisors.emplace_back( tt );
+  }
+
   template<class node_type, class truth_table_storage_type>
   void add_divisor( node_type const& node, truth_table_storage_type const& tts )
   {
-    assert( tts[node].num_bits() == divisors[0].num_bits() );
-    divisors.emplace_back( tts[node] );
-    // 0: off-set, 1: on-set, 2: first div (lit 4 5), 3: second div(lit 6 7)
+    add_divisor( tts[node] );
   }
 
   template<class iterator_type, class truth_table_storage_type>
@@ -149,24 +157,37 @@ public:
   { 
     while ( begin != end )
     {
-      add_divisor( *begin, tts );
+      add_divisor( tts[*begin] );
       ++begin;
     }
   }
 
-  std::optional<xag_index_list> compute_function( uint32_t num_inserts )
+  std::optional<index_list_t> operator()()
+  {
+    return compute_function();
+  }
+
+  template<class iterator_type, class truth_table_storage_type>
+  std::optional<index_list_t> operator()( iterator_type begin, iterator_type end, truth_table_storage_type const& tts )
+  {
+    add_divisors( begin, end, tts );
+    return compute_function();
+  }
+
+private:
+  std::optional<index_list_t> compute_function()
   {
     index_list.add_inputs( divisors.size() - 2 );
-    auto const lit = compute_function_rec( num_inserts );
+    auto const lit = compute_function_rec( ps.max_size );
     if ( lit )
     {
+      assert( index_list.num_gates() <= ps.max_size );
       index_list.add_output( *lit );
       return index_list;
     }
     return std::nullopt;
   }
 
-private:
   std::optional<uint32_t> compute_function_rec( uint32_t num_inserts )
   {
     /* try 0-resub and collect unate literals */
@@ -207,7 +228,7 @@ private:
       binate_divs.resize( ps.max_binates );
     }
 
-    if constexpr ( ps.use_xor )
+    if ( ps.use_xor )
     {
       auto const res1xor = find_xor();
       if ( res1xor )
@@ -310,7 +331,7 @@ private:
       auto const res_remain_div = compute_function_rec( num_inserts - 1 );
       if ( res_remain_div )
       {
-        auto const new_lit = index_list.add_and( lit ^ 0x1 - 2, *res_remain_div ^ on_off_div );
+        auto const new_lit = index_list.add_and( ( lit ^ 0x1 ) - 2, *res_remain_div ^ on_off_div );
         return new_lit + on_off_div;
       }
     }
@@ -383,11 +404,11 @@ private:
       /* 0-resub */
       if ( unateness[0] && unateness[3] )
       {
-        return v << 1 - 2;
+        return ( v << 1 ) - 2;
       }
       if ( unateness[1] && unateness[2] )
       {
-        return v << 1 - 1;
+        return ( v << 1 ) - 1;
       }
       /* useless unate literal */
       if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
@@ -457,7 +478,7 @@ private:
         auto const ntt2 = lit2 & 0x1 ? divisors[lit2 >> 1] : ~divisors[lit2 >> 1];
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
-          auto const new_lit = index_list.add_and( lit1 ^ 0x1 - 2, lit2 ^ 0x1 - 2 );
+          auto const new_lit = index_list.add_and( ( lit1 ^ 0x1 ) - 2, ( lit2 ^ 0x1 ) - 2 );
           return new_lit + on_off;
         }
       }
@@ -483,7 +504,7 @@ private:
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
           auto const new_lit1 = index_list.add_and( pair2.lit1 - 2, pair2.lit2 - 2 );
-          auto const new_lit2 = index_list.add_and( lit1 ^ 0x1 - 2, new_lit1 ^ 0x1 );
+          auto const new_lit2 = index_list.add_and( ( lit1 ^ 0x1 ) - 2, new_lit1 ^ 0x1 );
           return new_lit2 + on_off;
         }
       }
@@ -601,7 +622,7 @@ private:
 
 private:
   std::vector<TT> divisors;
-  xag_index_list index_list;
+  index_list_t index_list;
 
   uint32_t num_bits[2]; /* number of bits in on-set and off-set */
 
@@ -612,8 +633,8 @@ private:
   std::vector<and_pair> pos_unate_pairs, neg_unate_pairs;
   std::unordered_map<and_pair, uint32_t, pair_hash> pos_pair_scores, neg_pair_scores;
 
-  xag_resyn_engine_stats& st;
-  xag_resyn_engine_params const& ps;
+  stats& st;
+  params const& ps;
 }; /* xag_resyn_engine */
 
 } /* namespace mockturtle */

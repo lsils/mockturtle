@@ -459,10 +459,10 @@ struct window_resub_stats
  *
  * Required interfaces of the resubstitution functor:
  * - Constructor: `resub_fn( Ntk const& ntk, Simulator const& sim,`
- * `std::vector<node> const& divs, uint32_t num_divs, default_resub_functor_stats& st )`
+ * `std::vector<node> const& divs, uint32_t num_divs, ResubFnSt& st )`
  * - A public `operator()`: `std::optional<signal> operator()`
  * `( node const& root, TTdc care, uint32_t required, uint32_t max_inserts,`
- * `uint32_t potential_gain, uint32_t& last_gain ) const`
+ * `MffcRes potential_gain, uint32_t& last_gain ) const`
  *
  * Compatible resubstitution functors implemented:
  * - `default_resub_functor`
