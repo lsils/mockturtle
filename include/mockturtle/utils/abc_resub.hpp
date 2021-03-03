@@ -108,7 +108,7 @@ public:
         else
           xag_list.add_xor( raw_list[i] - 2, raw_list[i+1] - 2 );
       }
-      xag_list.add_output( raw_list[size - 1] - 2 );
+      xag_list.add_output( raw_list[size - 1] < 2 ? raw_list[size - 1] : raw_list[size - 1] - 2 );
       return xag_list;
     }
 

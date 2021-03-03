@@ -319,7 +319,6 @@ struct sim_resub_stats
  * \param MffcRes Typename of `potential_gain` needed by the resubstitution functor.
  */
 template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = resyn_functor<Ntk, xag_resyn_engine<kitty::partial_truth_table>>, typename MffcRes = uint32_t>
-//template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = abc_resub_functor<Ntk>, typename MffcRes = uint32_t>
 class simulation_based_resub_engine
 {
 public:
