@@ -28,6 +28,8 @@
   \brief Implements Aiger parser
 
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
