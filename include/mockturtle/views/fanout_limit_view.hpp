@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2020  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -39,9 +39,6 @@ namespace mockturtle
 
 struct fanout_limit_view_params
 {
-  //fanout_limit_view_params()
-    //: fanout_limit( 16 )
- // {}
   uint64_t fanout_limit{16};
 };
 
@@ -55,9 +52,8 @@ public:
   using signal  = typename Ntk::signal;
 
 public:
-  fanout_limit_view( Ntk& ntk, fanout_limit_view_params const ps = {} )
-    : Ntk( ntk )
-    , replicas( ntk )
+  fanout_limit_view( fanout_limit_view_params const ps = {} )
+    : replicas( *this )
     , ps( ps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -290,7 +286,7 @@ protected:
 
 protected:
   uint32_t count_hash_overwrites{0};
-  unordered_node_map<node,Ntk> replicas;
+  unordered_node_map<node, Ntk> replicas;
   fanout_limit_view_params const ps;
 };
 
