@@ -35,8 +35,8 @@
 
 #include <kitty/kitty.hpp>
 
-#include <mockturtle/algorithms/resubstitution.hpp>
-#include <mockturtle/networks/mig.hpp>
+#include "../resubstitution.hpp"
+#include "../../networks/mig.hpp"
 
 namespace mockturtle
 {

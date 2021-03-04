@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,18 +24,19 @@
  */
 
 /*!
-  \file mig_algebraic_rewriting.hpp
-  \brief MIG algebraric rewriting
+  \file mig_algebraic_rewriting_splitters.hpp
+  \brief MIG algebraric rewriting with fanout size limitation
 
   \author Mathias Soeken
+  \author Eleonora Testa
 */
 
 #pragma once
 
-#include "../utils/stopwatch.hpp"
-#include "../views/fanout_view.hpp"
-#include "../views/topo_view.hpp"
-#include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
+#include "../../utils/stopwatch.hpp"
+#include "../../views/fanout_view.hpp"
+#include "../../views/topo_view.hpp"
+#include "../mig_algebraic_rewriting.hpp"
 
 #include <iostream>
 #include <optional>
