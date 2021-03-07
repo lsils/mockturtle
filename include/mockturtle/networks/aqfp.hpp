@@ -284,7 +284,6 @@ public:
 #pragma region Create binary / ternary functions
   signal create_maj( signal a, signal b, signal c )
   {
-    return create_maj( { a, b, c } );
     /* order inputs */
     if ( a.index > b.index )
     {
