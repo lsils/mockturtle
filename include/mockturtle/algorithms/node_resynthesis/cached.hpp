@@ -163,6 +163,9 @@ public:
   template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
+    //std::cout << "cached: ";
+    //kitty::print_binary(function);
+    //std::cout << std::endl;
     if ( auto const key = std::make_pair( function, _existing_functions );
          _cache.has( key ) )
     {
@@ -180,7 +183,7 @@ public:
     else
     {
       bool found_one = false;
-      auto on_signal = [&]( signal<Ntk> const& f ) {
+      auto on_signal = [&]( signal<Ntk> const& f ) -> bool { 
         if ( !found_one )
         {
           ++_cache_misses;
@@ -192,6 +195,7 @@ public:
           std::copy( _existing_signals.begin(), _existing_signals.end(), signals.begin() + _initial_size );
           fn( cleanup_dangling( _cache.get_view( key ), ntk, signals.begin(), signals.end() ).front() );
         }
+        return false;
       };
 
       _resyn_fn( _cache.network(), function, _cache.pis().begin(), _cache.pis().begin() + function.num_vars(), on_signal );
