@@ -175,7 +175,7 @@ public:
     else if ( is_blacklisted( function ) )
     {
       ++_cache_hits;
-      return;
+      return; /* do nothing */
     }
     else
     {
