@@ -163,9 +163,6 @@ public:
   template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
   {
-    //std::cout << "cached: ";
-    //kitty::print_binary(function);
-    //std::cout << std::endl;
     if ( auto const key = std::make_pair( function, _existing_functions );
          _cache.has( key ) )
     {
@@ -178,7 +175,6 @@ public:
     else if ( is_blacklisted( function ) )
     {
       ++_cache_hits;
-      return; /* do nothing */
     }
     else
     {

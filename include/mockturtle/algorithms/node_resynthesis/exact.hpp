@@ -399,7 +399,7 @@ struct exact_xmg_resynthesis_params
 {
   uint32_t num_candidates{10u};
   bool use_only_self_dual_gates{false};
-  bool use_xor3{false};
+  bool use_xor3{true};
   int conflict_limit{0};
 };
 
