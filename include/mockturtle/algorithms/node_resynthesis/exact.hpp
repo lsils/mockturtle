@@ -450,6 +450,7 @@ public:
     percy::spec spec;
     spec.verbosity = 0;
     spec.fanin = 3;
+    spec.conflict_limit = ps.conflict_limit;
 
     /* specify local normalized gate primitives */
     kitty::dynamic_truth_table const0{3};
