@@ -371,17 +371,4 @@ bool is_covered_with_divisors( TT const& target, std::vector<TT> const& divisors
   return true;
 }
 
-/*! \brief Relevance */
-inline bool relevance( const dynamic_truth_table& tt0, const dynamic_truth_table& tt1, const dynamic_truth_table& tt2, const dynamic_truth_table& tt )
-{
-  return is_const0( ( ( tt0 ^ tt ) & ( tt1 ^ tt2 ) ) );
-}
-
-/*! \brief Relevance */
-template<uint32_t NumVars>
-inline bool relevance( const static_truth_table<NumVars>& tt0, const static_truth_table<NumVars>& tt1, const static_truth_table<NumVars>& tt2, const static_truth_table<NumVars>& tt )
-{
-  return is_const0( ( ( tt0 ^ tt ) & ( tt1 ^ tt2 ) ) );
-}
-
 } // namespace kitty

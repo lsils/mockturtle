@@ -39,6 +39,7 @@
 #include "resyn_engines/mig_resyn_engines.hpp"
 #include "../networks/mig.hpp"
 #include "../utils/index_list.hpp"
+#include "../utils/truth_table_utils.hpp"
 
 #include <kitty/kitty.hpp>
 
@@ -277,7 +278,7 @@ public:
       auto const tt1 = sim.get_tt( fs[1] );
       auto const tt2 = sim.get_tt( fs[2] );
 
-      if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && relevance( tt0, tt1, tt2, tt ) )
+      if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && can_replace_majority_fanin( tt0, tt1, tt2, tt ) )
       {
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
@@ -286,7 +287,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, b, c ) :
            ntk.create_maj( sim.get_phase( d0 ) ? !s : s, b, c );
       }
-      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && relevance( tt1, tt0, tt2, tt ) )
+      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && can_replace_majority_fanin( tt1, tt0, tt2, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
@@ -295,7 +296,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, c ) :
            ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, c );
       }
-      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && relevance( tt2, tt0, tt1, tt ) )
+      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && can_replace_majority_fanin( tt2, tt0, tt1, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
@@ -304,7 +305,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, b ) :
           ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, b );
       }
-      else if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && relevance( ~tt0, tt1, tt2, tt ) )
+      else if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && can_replace_majority_fanin( ~tt0, tt1, tt2, tt ) )
       {
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
@@ -313,7 +314,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, b, c ) :
            ntk.create_maj( sim.get_phase( d0 ) ? s : !s, b, c );
       }
-      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && relevance( ~tt1, tt0, tt2, tt ) )
+      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && can_replace_majority_fanin( ~tt1, tt0, tt2, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
@@ -322,7 +323,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, c ) :
            ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, c );
       }
-      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && relevance( ~tt2, tt0, tt1, tt ) )
+      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && can_replace_majority_fanin( ~tt2, tt0, tt1, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
