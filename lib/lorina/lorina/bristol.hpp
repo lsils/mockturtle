@@ -27,9 +27,11 @@
   \file bristol.hpp
   \brief Implements a parser for Bristol fashion
 
-  \author Heinz Riener
-
   Reference: https://homes.esat.kuleuven.be/~nsmart/MPC/
+
+  \author Heinz Riener
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -118,6 +120,7 @@ public:
 
       assert( tokens.size() == num_input_wires + num_output_wires + 3u );
       assert( num_output_wires == 1u );
+      (void)num_output_wires;
 
       std::vector<uint32_t> inputs;
       for ( uint32_t i = 0; i < num_input_wires; ++i )
@@ -177,6 +180,7 @@ private:
  */
 inline return_code read_bristol( std::istream& is, bristol_reader const& reader, diagnostic_engine* diag = nullptr )
 {
+  (void)diag;
   return bristol_parser( is, reader ).run();
 }
 
