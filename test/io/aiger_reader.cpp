@@ -1,18 +1,20 @@
 #include <catch.hpp>
 
-#include <sstream>
-#include <string>
-
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/views/names_view.hpp>
 
 #include <lorina/aiger.hpp>
+
+#include <sstream>
+#include <string>
 
 using namespace mockturtle;
 
 TEST_CASE( "read and write names", "[aiger_reader]" )
 {
   aig_network aig;
+  names_view<aig_network> named_aig{aig};
 
   std::string file{"aag 7 2 1 2 4\n"
   "2\n"
@@ -31,28 +33,21 @@ TEST_CASE( "read and write names", "[aiger_reader]" )
   "o1 y1\n"};
 
   std::istringstream in( file );
-  auto const result = lorina::read_ascii_aiger( in, aiger_reader( aig ) );
+  auto const result = lorina::read_ascii_aiger( in, aiger_reader( named_aig ) );
   CHECK( result == lorina::return_code::success );
 
-  NameMap<aig_network,std::map<aig_network::signal,std::vector<std::string>>> names;
-  names.insert( aig.make_signal( aig.pi_at( 0 ) ), "x0" );
-  names.insert( aig.make_signal( aig.pi_at( 1 ) ), "x1" );
-  names.insert( aig.make_signal( aig.ro_at( 0 ) ), "s0" );
-  names.insert( aig.ri_at( 0 ), "s0_next" );
-  names.insert( aig.po_at( 0 ), "y0" );
-  names.insert( aig.po_at( 1 ), "y1" );
-
-  CHECK( names.has_name( aig.make_signal( aig.pi_at( 0 ) ), "x0" ) );
-  CHECK( names.has_name( aig.make_signal( aig.pi_at( 1 ) ), "x1" ) );
-  CHECK( names.has_name( aig.po_at( 0 ), "y0" ) );
-  CHECK( names.has_name( aig.po_at( 1 ), "y1" ) );
-  CHECK( names.has_name( aig.make_signal( aig.ro_at( 0 ) ), "s0" ) );
-  CHECK( names.has_name( aig.ri_at( 0 ), "s0_next" ) );
+  CHECK( named_aig.get_name( aig.make_signal( aig.pi_at( 0 ) ) ) == "x0" );
+  CHECK( named_aig.get_name( aig.make_signal( aig.pi_at( 1 ) ) ) == "x1" );
+  CHECK( named_aig.get_name( aig.make_signal( aig.ro_at( 0 ) ) ) == "s0" );
+  CHECK( named_aig.get_name( aig.ri_at( 0 ) ) == "s0_next" );
+  CHECK( named_aig.get_output_name( 0 ) == "y0" );
+  CHECK( named_aig.get_output_name( 1 ) == "y1" );
 }
 
 TEST_CASE( "read an ASCII Aiger file into an AIG network and store input-output names", "[aiger_reader]" )
 {
   aig_network aig;
+  names_view<aig_network> named_aig{aig};
 
   std::string file{"aag 6 2 0 1 4\n"
   "2\n"
@@ -66,23 +61,23 @@ TEST_CASE( "read an ASCII Aiger file into an AIG network and store input-output 
   "i1 bar\n"
   "o0 foobar\n"};
 
-  NameMap<aig_network> names;
   std::istringstream in( file );
-  auto const result = lorina::read_ascii_aiger( in, aiger_reader( aig, &names ) );
+  auto const result = lorina::read_ascii_aiger( in, aiger_reader( named_aig ) );
   CHECK( result == lorina::return_code::success );
-  CHECK( aig.size() == 7 );
-  CHECK( aig.num_pis() == 2 );
-  CHECK( aig.num_pos() == 1 );
-  CHECK( aig.num_gates() == 4 );
+  CHECK( named_aig.size() == 7 );
+  CHECK( named_aig.num_pis() == 2 );
+  CHECK( named_aig.num_pos() == 1 );
+  CHECK( named_aig.num_gates() == 4 );
 
-  CHECK( names.has_name( aig.make_signal( aig.pi_at( 0 ) ), "foo" ) );
-  CHECK( names.has_name( aig.make_signal( aig.pi_at( 1 ) ), "bar" ) );
-  CHECK( names.has_name( aig.po_at( 0 ), "foobar" ) );
+  CHECK( named_aig.get_name( aig.make_signal( aig.pi_at( 0 ) ) ) == "foo" );
+  CHECK( named_aig.get_name( aig.make_signal( aig.pi_at( 1 ) ) ) == "bar" );
+  CHECK( named_aig.get_output_name( 0 ) == "foobar" );
 }
 
 TEST_CASE( "read a sequential ASCII Aiger file into an AIG network", "[aiger_reader]" )
 {
   aig_network aig;
+  names_view<aig_network> named_aig{aig};
 
   std::string file{"aag 7 2 1 2 4\n"
   "2\n"
@@ -100,23 +95,22 @@ TEST_CASE( "read a sequential ASCII Aiger file into an AIG network", "[aiger_rea
   "o0 foobar\n"
   "o1 barbar\n"};
 
-  NameMap<aig_network> names;
   lorina::diagnostic_engine diag;
   std::istringstream in( file );
-  auto const result = lorina::read_ascii_aiger( in, aiger_reader( aig, &names ), &diag );
+  auto const result = lorina::read_ascii_aiger( in, aiger_reader( named_aig ), &diag );
   CHECK( result == lorina::return_code::success );
-  CHECK( aig.size() == 8 );
-  CHECK( aig.num_cis() == 3 );
-  CHECK( aig.num_cos() == 3 );
-  CHECK( aig.num_pis() == 2 );
-  CHECK( aig.num_pos() == 2 );
-  CHECK( aig.num_gates() == 4 );
-  CHECK( aig.num_registers() == 1 );
+  CHECK( named_aig.size() == 8 );
+  CHECK( named_aig.num_cis() == 3 );
+  CHECK( named_aig.num_cos() == 3 );
+  CHECK( named_aig.num_pis() == 2 );
+  CHECK( named_aig.num_pos() == 2 );
+  CHECK( named_aig.num_gates() == 4 );
+  CHECK( named_aig.num_registers() == 1 );
 
-  CHECK( names.has_name( aig.make_signal( aig.pi_at( 0 ) ), "foo" ) );
-  CHECK( names.has_name( aig.make_signal( aig.pi_at( 1 ) ), "bar" ) );
-  CHECK( names.has_name( aig.make_signal( aig.ro_at( 0 ) ), "barfoo" ) );
-  CHECK( names.has_name( aig.ri_at( 0 ), "barfoo_next" ) );
-  CHECK( names.has_name( aig.po_at( 0 ), "foobar" ) );
-  CHECK( names.has_name( aig.po_at( 1 ), "barbar" ) );
+  CHECK( named_aig.get_name( aig.make_signal( aig.pi_at( 0 ) ) ) == "foo" );
+  CHECK( named_aig.get_name( aig.make_signal( aig.pi_at( 1 ) ) ) == "bar" );
+  CHECK( named_aig.get_name( aig.make_signal( aig.ro_at( 0 ) ) ) == "barfoo" );
+  CHECK( named_aig.get_name( aig.ri_at( 0 ) ) == "barfoo_next" );
+  CHECK( named_aig.get_output_name( 0 ) == "foobar" );
+  CHECK( named_aig.get_output_name( 1 ) == "barbar" );
 }
