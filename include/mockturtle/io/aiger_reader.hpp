@@ -40,72 +40,6 @@
 namespace mockturtle
 {
 
-template<typename Ntk, typename StorageContainerMap = std::unordered_map<signal<Ntk>, std::vector<std::string>>, typename StorageContainerReverseMap = std::unordered_map<std::string, signal<Ntk>>>
-class NameMap
-{
-public:
-  using signal = typename Ntk::signal;
-
-public:
-  NameMap() = default;
-
-  void insert( signal const& s, std::string const& name )
-  {
-    /* update direct map */
-    auto const it = _names.find( s );
-    if ( it == _names.end() )
-    {
-      _names[s] = {name};
-    }
-    else
-    {
-      it->second.push_back( name );
-    }
-
-    /* update reverse map */
-    auto const rev_it = _rev_names.find( name );
-    if ( rev_it != _rev_names.end() )
-    {
-      std::cout << "[w] signal name `" << name << "` is used twice" << std::endl;
-    }
-    _rev_names.insert( std::make_pair( name, s ) );
-  }
-
-  std::vector<std::string> operator[]( signal const& s )
-  {
-    return _names[s];
-  }
-
-  std::vector<std::string> operator[]( signal const& s ) const
-  {
-    return _names.at( s );
-  }
-
-  std::vector<std::string> get_name( signal const& s ) const
-  {
-    return _names.at( s );
-  }
-
-  bool has_name( signal const& s, std::string const& name ) const
-  {
-    auto const it = _names.find( s );
-    if ( it == _names.end() )
-    {
-      return false;
-    }
-    return ( std::find( it->second.begin(), it->second.end(), name ) != it->second.end() );
-  }
-
-  StorageContainerReverseMap get_name_to_signal_mapping() const
-  {
-    return _rev_names;
-  }
-
-protected:
-  StorageContainerMap _names;
-  StorageContainerReverseMap _rev_names;
-}; // NameMap
-
 /*! \brief Lorina reader callback for Aiger files.
  *
  * **Required network functions:**
@@ -136,7 +70,7 @@ template<typename Ntk>
 class aiger_reader : public lorina::aiger_reader
 {
 public:
-  explicit aiger_reader( Ntk& ntk, NameMap<Ntk>* names = nullptr ) : _ntk( ntk ), _names( names )
+  explicit aiger_reader( Ntk& ntk ) : _ntk( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
@@ -148,6 +82,7 @@ public:
 
   ~aiger_reader()
   {
+    uint32_t output_id{0};
     for ( auto out : outputs )
     {
       auto const lit = std::get<0>( out );
@@ -156,8 +91,10 @@ public:
       {
         signal = _ntk.create_not( signal );
       }
-      if ( _names )
-        _names->insert( signal, std::get<1>( out ) );
+      if constexpr ( has_set_output_name_v<Ntk> )
+      {
+        _ntk.set_output_name( output_id++, std::get<1>( out ) );
+      }
       _ntk.create_po( signal );
     }
 
@@ -174,8 +111,11 @@ public:
           signal = _ntk.create_not( signal );
         }
 
-        if ( _names )
-          _names->insert( signal, std::get<2>( latch ) + "_next" );
+        if constexpr ( has_set_name_v<Ntk> )
+        {
+          _ntk.set_name( signal, std::get<2>( latch ) + "_next" );
+        }
+
         _ntk.create_ri( signal, reset );
       }
     }
@@ -212,9 +152,9 @@ public:
 
   void on_input_name( unsigned index, const std::string& name ) const override
   {
-    if ( _names )
+    if constexpr ( has_set_name_v<Ntk> )
     {
-      _names->insert( signals[1 + index], name );
+      _ntk.set_name( signals[1 + index], name );
     }
   }
 
@@ -227,9 +167,9 @@ public:
   {
     if constexpr ( has_create_ri_v<Ntk> && has_create_ro_v<Ntk> )
     {
-      if ( _names )
+      if constexpr( has_set_name_v<Ntk> )
       {
-        _names->insert( signals[1 + _num_inputs + index], name );
+        _ntk.set_name( signals[1 + _num_inputs + index], name );
       }
       std::get<2>( latches[index] ) = name;
     }
@@ -275,11 +215,10 @@ public:
 private:
   Ntk& _ntk;
 
-  mutable uint32_t _num_inputs = 0;
+  mutable uint32_t _num_inputs{0};
   mutable std::vector<std::tuple<unsigned, std::string>> outputs;
   mutable std::vector<typename Ntk::signal> signals;
   mutable std::vector<std::tuple<unsigned, int8_t, std::string>> latches;
-  mutable NameMap<Ntk>* _names;
 };
 
 } /* namespace mockturtle */
