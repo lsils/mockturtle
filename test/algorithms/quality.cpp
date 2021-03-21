@@ -14,6 +14,7 @@
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
+#include <mockturtle/algorithms/node_resynthesis/composed.hpp>
 #include <mockturtle/algorithms/node_resynthesis/exact.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
@@ -286,6 +287,46 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis"
   } );
 
   CHECK( v == std::vector<uint32_t>{{0, 17, 4, 9, 60, 16, 113, 93, 250, 17, 21}} );
+}
+
+TEST_CASE( "Test quality improvement of cut rewriting with AIG exact synthesis", "[quality]" )
+{
+  return; /* disable, because slow */
+
+  /* applies exact synthesis to 4-feasible cuts, uses a cache to store (function, network)-pairs */
+  exact_resynthesis_params ps;
+  ps.cache = std::make_shared<exact_resynthesis_params::cache_map_t>();
+  exact_aig_resynthesis<aig_network> exact_resyn( false, ps );
+  std::vector<uint32_t> const v = foreach_benchmark<aig_network>( [&]( auto& ntk, auto ) {
+    uint32_t const before{ntk.num_gates()};
+    cut_rewriting_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    ps.min_cand_cut_size = 2;
+    ps.min_cand_cut_size_override = 3;
+    ntk = cut_rewriting( ntk, exact_resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 30, 4, 6, 108, 11, 75, 43, 171, 450, 5}} );
+}
+
+TEST_CASE( "Test quality improvement of cut rewriting with AIG cached-exact synthesis", "[quality]" )
+{
+  /* applies exact synthesis to 4-feasible cuts, uses a cache to store/load (function, network)-pairs from a file */
+  auto resyn = cached_exact_xag_resynthesis<aig_network>( fmt::format( "{}/{}", BENCHMARKS_PATH, "mockturtle-aig4-cache.db" ), 4u );
+  std::vector<uint32_t> const v = foreach_benchmark<aig_network>( [&]( auto& ntk, auto ) {
+    uint32_t const before{ntk.num_gates()};
+    cut_rewriting_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    ps.min_cand_cut_size = 2;
+    ps.min_cand_cut_size_override = 3;
+    ntk = cut_rewriting( ntk, resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 30, 4, 6, 108, 11, 75, 43, 171, 450, 5}} );
 }
 
 TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis", "[quality]" )
