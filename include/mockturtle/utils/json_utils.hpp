@@ -39,12 +39,12 @@
 namespace kitty
 {
 
-void to_json( nlohmann::json& j, const dynamic_truth_table& tt )
+inline void to_json( nlohmann::json& j, const dynamic_truth_table& tt )
 {
   j = nlohmann::json{{"_bits", tt._bits}, {"_num_vars", tt._num_vars}};
 }
 
-void from_json( const nlohmann::json& j, dynamic_truth_table& tt )
+inline void from_json( const nlohmann::json& j, dynamic_truth_table& tt )
 {
   j.at( "_bits" ).get_to( tt._bits );
   j.at( "_num_vars" ).get_to( tt._num_vars );

@@ -63,13 +63,13 @@ struct no_blacklist_cache_info
   }
 };
 
-void to_json( nlohmann::json& j, no_blacklist_cache_info const& info )
+inline void to_json( nlohmann::json& j, no_blacklist_cache_info const& info )
 {
   (void)info;
   j = nullptr;
 }
 
-void from_json( nlohmann::json const& j, no_blacklist_cache_info& info )
+inline void from_json( nlohmann::json const& j, no_blacklist_cache_info& info )
 {
   (void)j;
   (void)info;
@@ -137,7 +137,7 @@ private:
     }
   };
 
-  bool is_blacklisted( kitty::dynamic_truth_table const& tt )
+  bool is_blacklisted( kitty::dynamic_truth_table const& tt ) const
   {
     auto it = _blacklist_cache.find( {tt, _blacklist_cache_info} );
 
@@ -161,7 +161,7 @@ private:
 
 public:
   template<typename LeavesIterator, typename Fn>
-  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn )
+  void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
     if ( auto const key = std::make_pair( function, _existing_functions );
          _cache.has( key ) )
@@ -295,8 +295,8 @@ private:
 
 private:
   ResynthesisFn _resyn_fn;
-  network_cache<Ntk, cache_key_t, cache_hash> _cache;
-  std::unordered_set<blacklist_cache_key_t, blacklist_cache_hash, blacklist_cache_equal> _blacklist_cache;
+  mutable network_cache<Ntk, cache_key_t, cache_hash> _cache;
+  mutable std::unordered_set<blacklist_cache_key_t, blacklist_cache_hash, blacklist_cache_equal> _blacklist_cache;
   std::string _cache_filename;
   BlacklistCacheInfo _blacklist_cache_info;
   uint32_t _initial_size{};
@@ -305,7 +305,7 @@ private:
   std::vector<signal<Ntk>> _existing_signals;
 
   /* statistics */
-  uint32_t _cache_hits{};
-  uint32_t _cache_misses{};
+  mutable uint32_t _cache_hits{};
+  mutable uint32_t _cache_misses{};
 };
 } /* namespace mockturtle */
