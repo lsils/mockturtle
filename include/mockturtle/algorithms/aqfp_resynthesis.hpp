@@ -58,8 +58,6 @@ namespace mockturtle
 struct aqfp_resynthesis_params
 {
   bool verbose{ false };
-  std::unordered_map<uint32_t, double> gate_costs;
-  std::unordered_map<uint32_t, double> splitters;
 };
 
 /*! \brief Statistics of aqfp_resynthesis.
@@ -118,7 +116,7 @@ public:
     node_map<signal<NtkDest>, NtkSrc> node2new( ntk_src );
     node_map<uint32_t, NtkSrc> level_of_src_node( ntk_src );
 
-    std::unordered_map<node<NtkDest>, uint32_t> level_of_node;
+    std::unordered_map<node<NtkDest>, uint32_t> level_of_node;  
     std::map<std::pair<node<NtkSrc>, node<NtkSrc>>, uint32_t> level_for_fanout;
     uint32_t critical_po_level = 0;
 
@@ -167,13 +165,13 @@ public:
 
     /* map nodes */
     ntk_topo.foreach_node( [&]( auto n ) {
-      if ( ntk_src.is_constant( n ) || ntk_src.is_ci( n ) )
+      if ( ntk_topo.is_constant( n ) || ntk_topo.is_ci( n ) )
         return;
 
       /* synthesize node `n` */
       std::vector<std::pair<signal<NtkDest>, uint32_t>> children;
-      ntk_src.foreach_fanin( n, [&]( auto const& f ) {
-        children.push_back( { ntk_src.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f], level_for_fanout[{ ntk_src.get_node( f ), n }] } );
+      ntk_topo.foreach_fanin( n, [&]( auto const& f ) {
+        children.push_back( { ntk_topo.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f], level_for_fanout[{ ntk_topo.get_node( f ), n }] } );
       } );
 
       auto performed_resyn = false;
@@ -193,18 +191,18 @@ public:
 
             if constexpr ( has_has_name_v<NtkSrc> && has_get_name_v<NtkSrc> && has_set_name_v<NtkDest> )
             {
-              if ( ntk_src.has_name( ntk_src.make_signal( n ) ) )
-                ntk_dest.set_name( f, ntk_src.get_name( ntk_src.make_signal( n ) ) );
+              if ( ntk_topo.has_name( ntk_topo.make_signal( n ) ) )
+                ntk_dest.set_name( f, ntk_topo.get_name( ntk_topo.make_signal( n ) ) );
             }
 
             performed_resyn = true;
           };
 
-      node_resyn_fn( ntk_dest, ntk_src.node_function( n ), children.begin(), children.end(), level_update_callback, resyn_performed_callback );
+      node_resyn_fn( ntk_dest, ntk_topo.node_function( n ), children.begin(), children.end(), level_update_callback, resyn_performed_callback );
 
       if ( !performed_resyn )
       {
-        fmt::print( "[e] could not perform resynthesis for node {} in node_resynthesis\n", ntk_src.node_to_index( n ) );
+        fmt::print( "[e] could not perform resynthesis for node {} in node_resynthesis\n", ntk_topo.node_to_index( n ) );
         std::abort();
       }
 
@@ -273,7 +271,7 @@ aqfp_resynthesis_result<NtkDest> aqfp_resynthesis(
     NtkSrc const& ntk_src,
     NodeResynFn&& node_resyn_fn,
     FanoutResynFn&& fanout_resyn_fn,
-    aqfp_resynthesis_params const& ps = { false, { { 3u, 6.0 }, { 5u, 10.0 } }, { { 1u, 2.0 }, { 4u, 2.0 } } },
+    aqfp_resynthesis_params const& ps = { false },
     aqfp_resynthesis_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<NtkSrc>, "NtkSrc is not a network type" );

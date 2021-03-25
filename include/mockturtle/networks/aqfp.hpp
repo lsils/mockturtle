@@ -27,7 +27,7 @@
   \file aqfp.hpp
   \brief AQFP network implementation
 
-  \author Dewmini Sudara
+  \author Dewmini Marakkalage
 */
 
 #pragma once
