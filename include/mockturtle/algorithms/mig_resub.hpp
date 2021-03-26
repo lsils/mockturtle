@@ -27,34 +27,21 @@
   \file mig_resub.hpp
   \brief Majority-specific resustitution rules
 
+  \author Eleonora Testa
   \author Heinz Riener
-  \author Siang-Yun Lee
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
 
-#include <mockturtle/algorithms/resubstitution.hpp>
-#include <mockturtle/networks/mig.hpp>
-#include <mockturtle/algorithms/mig_resyn_engines.hpp>
-#include <mockturtle/utils/index_list.hpp>
+#include "resubstitution.hpp"
+#include "resyn_engines/mig_resyn_engines.hpp"
+#include "../networks/mig.hpp"
+#include "../utils/index_list.hpp"
+#include "../utils/truth_table_utils.hpp"
 
-namespace kitty
-{
-
-/*! \brief Relevance */
-inline bool relevance( const dynamic_truth_table& tt0, const dynamic_truth_table& tt1, const dynamic_truth_table& tt2, const dynamic_truth_table& tt )
-{
-  return is_const0( ( ( tt0 ^ tt ) & ( tt1 ^ tt2 ) ) );
-}
-
-/*! \brief Relevance */
-template<uint32_t NumVars>
-inline bool relevance( const static_truth_table<NumVars>& tt0, const static_truth_table<NumVars>& tt1, const static_truth_table<NumVars>& tt2, const static_truth_table<NumVars>& tt )
-{
-  return is_const0( ( ( tt0 ^ tt ) & ( tt1 ^ tt2 ) ) );
-}
-
-} /* namespace kitty */
+#include <kitty/kitty.hpp>
 
 namespace mockturtle
 {
@@ -291,7 +278,7 @@ public:
       auto const tt1 = sim.get_tt( fs[1] );
       auto const tt2 = sim.get_tt( fs[2] );
 
-      if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && relevance( tt0, tt1, tt2, tt ) )
+      if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && can_replace_majority_fanin( tt0, tt1, tt2, tt ) )
       {
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
@@ -300,7 +287,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, b, c ) :
            ntk.create_maj( sim.get_phase( d0 ) ? !s : s, b, c );
       }
-      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && relevance( tt1, tt0, tt2, tt ) )
+      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && can_replace_majority_fanin( tt1, tt0, tt2, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
@@ -309,7 +296,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, c ) :
            ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, c );
       }
-      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && relevance( tt2, tt0, tt1, tt ) )
+      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && can_replace_majority_fanin( tt2, tt0, tt1, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
@@ -318,7 +305,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, b ) :
           ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, b );
       }
-      else if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && relevance( ~tt0, tt1, tt2, tt ) )
+      else if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && can_replace_majority_fanin( ~tt0, tt1, tt2, tt ) )
       {
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
@@ -327,7 +314,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, b, c ) :
            ntk.create_maj( sim.get_phase( d0 ) ? s : !s, b, c );
       }
-      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && relevance( ~tt1, tt0, tt2, tt ) )
+      else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && can_replace_majority_fanin( ~tt1, tt0, tt2, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
@@ -336,7 +323,7 @@ public:
           !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, c ) :
            ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, c );
       }
-      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && relevance( ~tt2, tt0, tt1, tt ) )
+      else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && can_replace_majority_fanin( ~tt2, tt0, tt1, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
@@ -633,22 +620,33 @@ struct mig_resyn_stats
 
   void report() const
   {
-    // clang-format off
-    std::cout <<              "[i]     <ResubFn: abc_resub_functor>\n";
-    std::cout << fmt::format( "[i]         #solution = {:6d}\n", num_success );
-    std::cout << fmt::format( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
-    std::cout << fmt::format( "[i]         engine time: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
-    // clang-format on
+    fmt::print( "[i]     <ResubFn: mig_resyn_functor>\n" );
+    fmt::print( "[i]         #solution = {:6d}\n", num_success );
+    fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
+    fmt::print( "[i]         engine time: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
   }
 }; /* mig_resyn_stats */
 
-template<typename Ntk, typename Simulator, typename TTcare, typename Engine = mig_resyn_engine<kitty::partial_truth_table>>
+/*! \brief Interfacing resubstitution functor with MIG resynthesis engines for `window_based_resub_engine`.
+ * 
+ * The resynthesis engine `ResynEngine` should provide the following interfaces:
+ * - Constructor: `ResynEngine( Simulator::truthtable_t const& target,`
+ * `TTcare const& care, ResynEngine::stats& st, ResynEngine::params const& ps )`
+ * - `std::optional<ResynEngine::index_list_t> operator()( std::vector<Ntk::node>::iterator begin,`
+ * `std::vector<Ntk::node>::iterator end, unordered_node_map<Simulator::truthtable_t, Ntk> const& tts )`
+ * - `ResynEngine::params` should have at least one member `uint32_t max_size` defining
+ * the maximum size of the dependency circuit.
+ */
+template<typename Ntk, typename Simulator, typename TTcare, typename ResynEngine = mig_resyn_engine<typename Simulator::truthtable_t>>
 struct mig_resyn_functor
 {
 public:
   using node = mig_network::node;
   using signal = mig_network::signal;
   using stats = mig_resyn_stats;
+  using TT = typename ResynEngine::truth_table_t;
+
+  static_assert( std::is_same_v<TT, typename Simulator::truthtable_t>, "truth table type of the simulator does not match" );
 
 public:
   explicit mig_resyn_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
@@ -664,19 +662,23 @@ public:
 
   std::optional<signal> operator()( node const& root, TTcare care, uint32_t required, uint32_t max_inserts, uint32_t potential_gain, uint32_t& real_gain )
   {
-    (void)care; (void)required;
-    kitty::partial_truth_table root_tt;
-    root_tt = sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) );
-    Engine engine( root_tt );
+    (void)required;
+    TT target = sim.get_tt( sim.get_phase( root ) ? !ntk.make_signal( root ) : ntk.make_signal( root ) );
+    TT care_transformed = target.construct();
+    care_transformed = care;
+
+    typename ResynEngine::params ps;
+    ps.max_size = std::min( potential_gain - 1, max_inserts );
+    typename ResynEngine::stats st_eng;
+    ResynEngine engine( target, care_transformed, st_eng, ps );
     for ( auto const& d : divs )
     {
       div_signals.emplace_back( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
       tts[d] = sim.get_tt( div_signals.back() );
     }
-    engine.add_divisors( divs.begin(), divs.end(), tts );
 
     auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
-      return engine.compute_function( std::min( potential_gain - 1, max_inserts ) );
+      return engine( divs.begin(), divs.end(), tts );
     });
     if ( res )
     {
@@ -696,7 +698,7 @@ public:
 private:
   Ntk& ntk;
   Simulator const& sim;
-  unordered_node_map<kitty::partial_truth_table, Ntk> tts;
+  unordered_node_map<TT, Ntk> tts;
   std::vector<node> const& divs;
   std::vector<signal> div_signals;
   stats& st;

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -506,10 +506,10 @@ std::string benchmark_path( std::string const& benchmark_name )
 }
 
 template<class Ntk>
-bool abc_cec( Ntk const& ntk, std::string const& benchmark )
+inline bool abc_cec_impl( Ntk const& ntk, std::string const& benchmark_fullpath )
 {
   mockturtle::write_bench( ntk, "/tmp/test.bench" );
-  std::string command = fmt::format( "abc -q \"cec -n {} /tmp/test.bench\"", benchmark_path( benchmark ) );
+  std::string command = fmt::format( "abc -q \"cec -n {} /tmp/test.bench\"", benchmark_fullpath );
 
   std::array<char, 128> buffer;
   std::string result;
@@ -535,6 +535,12 @@ bool abc_cec( Ntk const& ntk, std::string const& benchmark )
   }
 
   return false;
+}
+
+template<class Ntk>
+inline bool abc_cec( Ntk const& ntk, std::string const& benchmark )
+{
+  return abc_cec_impl( ntk, benchmark_path( benchmark ) );
 }
 
 } // namespace experiments

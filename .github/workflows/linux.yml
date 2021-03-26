@@ -81,6 +81,24 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  build-gcc10-cpp20:
+    runs-on: ubuntu-latest
+    name: GNU GCC 10 (c++20)
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DMOCKTURTLE_CXX_STANDARD=20 -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests "~[quality]"
   build-clang8:
     runs-on: ubuntu-latest
     name: Clang 8
