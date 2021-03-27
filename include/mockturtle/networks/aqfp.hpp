@@ -1108,6 +1108,55 @@ public:
   }
 #pragma endregion
 
+  template<typename Iterator>
+  iterates_over_t<Iterator, bool>
+  compute_majority_n_with_bool( Iterator begin, Iterator end ) const
+  {
+    std::vector<std::vector<typename Iterator::value_type>> dp;
+    std::vector<typename Iterator::value_type> v( begin, end );
+
+    const auto n = v.size();
+    typename Iterator::value_type one = true;
+
+    for ( auto i = 0u; i <= n; i++ )
+    {
+      dp.push_back( { one } );
+      if ( i == 0u )
+        continue;
+      auto ith_var = v[i - 1];
+      for ( auto j = 1u; j <= i && j <= ( n / 2 ) + 1; j++ )
+      {
+        dp[i].push_back( ( j < i ) ? ( ith_var & dp[i - 1][j - 1] ) || dp[i - 1][j] : ( ith_var && dp[i - 1][j - 1] ) );
+      }
+    }
+
+    return ( dp[n][( n / 2 ) + 1] );
+  }
+
+  template<typename Iterator>
+  auto compute_majority_n( Iterator begin, Iterator end ) const
+  {
+    std::vector<std::vector<typename Iterator::value_type>> dp;
+    std::vector<typename Iterator::value_type> v( begin, end );
+
+    const auto n = v.size();
+    typename Iterator::value_type one = ~( v[0] ^ v[0] );
+
+    for ( auto i = 0u; i <= n; i++ )
+    {
+      dp.push_back( { one } );
+      if ( i == 0u )
+        continue;
+      auto ith_var = v[i - 1];
+      for ( auto j = 1u; j <= i && j <= ( n / 2 ) + 1; j++ )
+      {
+        dp[i].push_back( ( j < i ) ? ( ith_var & dp[i - 1][j - 1] ) | dp[i - 1][j] : ( ith_var & dp[i - 1][j - 1] ) );
+      }
+    }
+
+    return ( dp[n][( n / 2 ) + 1] );
+  }
+
 #pragma region Value simulation
   template<typename Iterator>
   iterates_over_t<Iterator, bool>
@@ -1117,18 +1166,13 @@ public:
 
     assert( n != 0 && !is_ci( n ) );
 
-    assert( _storage->nodes[n].children.size() == 3u );
-    /* TODO: support majorities with more than 3 fanins */
-
-    auto const& c1 = _storage->nodes[n].children[0];
-    auto const& c2 = _storage->nodes[n].children[1];
-    auto const& c3 = _storage->nodes[n].children[2];
-
-    auto v1 = *begin++;
-    auto v2 = *begin++;
-    auto v3 = *begin++;
-
-    return ( ( v1 ^ c1.weight ) && ( v2 ^ c2.weight ) ) || ( ( v3 ^ c3.weight ) && ( v1 ^ c1.weight ) ) || ( ( v3 ^ c3.weight ) && ( v2 ^ c2.weight ) );
+    std::vector<typename Iterator::value_type> v;
+    auto i = 0u;
+    for ( auto it = begin; it != end; it++, i++ )
+    {
+      v.push_back( ( *it ) ^ _storage->nodes[n].children[i].weight );
+    }
+    return compute_majority_n_with_bool( v.begin(), v.end() );
   }
 
   template<typename Iterator>
@@ -1139,18 +1183,14 @@ public:
 
     assert( n != 0 && !is_ci( n ) );
 
-    assert( _storage->nodes[n].children.size() == 3u );
-    /* TODO: support majorities with more than 3 fanins */
+    std::vector<typename Iterator::value_type> v;
+    auto i = 0u;
+    for ( auto it = begin; it != end; it++, i++ )
+    {
+      v.push_back( _storage->nodes[n].children[i].weight ? ~( *it ) : ( *it ) );
+    }
 
-    auto const& c1 = _storage->nodes[n].children[0];
-    auto const& c2 = _storage->nodes[n].children[1];
-    auto const& c3 = _storage->nodes[n].children[2];
-
-    auto tt1 = *begin++;
-    auto tt2 = *begin++;
-    auto tt3 = *begin++;
-
-    return kitty::ternary_majority( c1.weight ? ~tt1 : tt1, c2.weight ? ~tt2 : tt2, c3.weight ? ~tt3 : tt3 );
+    return compute_majority_n( v.begin(), v.end() );
   }
 
   /*! \brief Re-compute the last block. */
@@ -1162,28 +1202,25 @@ public:
     (void)end;
     assert( n != 0 && !is_ci( n ) );
 
-    assert( _storage->nodes[n].children.size() == 3u );
-    /* TODO: support majorities with more than 3 fanins */
+    assert( begin->num_bits() > 0 && "truth tables must not be empty" );
+    for ( auto it = begin; it != end; it++ )
+    {
+      assert( begin->num_bits() == it->num_bits() );
+    }
+    assert( begin->num_bits() >= result.num_bits() );
+    assert( result.num_blocks() == begin->num_blocks() || ( result.num_blocks() == begin->num_blocks() - 1 && result.num_bits() % 64 == 0 ) );
 
-    auto const& c1 = _storage->nodes[n].children[0];
-    auto const& c2 = _storage->nodes[n].children[1];
-    auto const& c3 = _storage->nodes[n].children[2];
+    result.resize( begin->num_bits() );
 
-    auto tt1 = *begin++;
-    auto tt2 = *begin++;
-    auto tt3 = *begin++;
+    std::vector<uint64_t> v;
+    auto i = 0u;
+    for ( auto it = begin; it != end; it++, i++ )
+    {
+      v.push_back( _storage->nodes[n].children[i].weight ? ~( it->_bits.back() ) : ( it->_bits.back() ) );
+    }
 
-    assert( tt1.num_bits() > 0 && "truth tables must not be empty" );
-    assert( tt1.num_bits() == tt2.num_bits() );
-    assert( tt1.num_bits() == tt3.num_bits() );
-    assert( tt1.num_bits() >= result.num_bits() );
-    assert( result.num_blocks() == tt1.num_blocks() || ( result.num_blocks() == tt1.num_blocks() - 1 && result.num_bits() % 64 == 0 ) );
+    result._bits.back() = compute_majority_n( v.begin(), v.end() );
 
-    result.resize( tt1.num_bits() );
-    result._bits.back() =
-        ( ( c1.weight ? ~tt1._bits.back() : tt1._bits.back() ) & ( c2.weight ? ~tt2._bits.back() : tt2._bits.back() ) ) |
-        ( ( c1.weight ? ~tt1._bits.back() : tt1._bits.back() ) & ( c3.weight ? ~tt3._bits.back() : tt3._bits.back() ) ) |
-        ( ( c2.weight ? ~tt2._bits.back() : tt2._bits.back() ) & ( c3.weight ? ~tt3._bits.back() : tt3._bits.back() ) );
     result.mask_bits();
   }
 #pragma endregion
