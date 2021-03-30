@@ -25,6 +25,7 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( result == lorina::return_code::success );
 
   CHECK( gates.size() == 5u );
+  CHECK( gates[0u].id == 0u );
   CHECK( gates[0u].name == "zero" );
   CHECK( gates[0u].expression == "0" );
   CHECK( gates[0u].function._bits[0] == 0 );
@@ -32,6 +33,7 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[0u].area == 0.0 );
   CHECK( gates[0u].pins.empty() );
 
+  CHECK( gates[1u].id == 1u );
   CHECK( gates[1u].name == "one" );
   CHECK( gates[1u].expression == "1" );
   CHECK( gates[1u].function._bits[0] == 1 );
@@ -39,6 +41,7 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[1u].area == 0.0 );
   CHECK( gates[1u].pins.empty() );
 
+  CHECK( gates[2u].id == 2u );
   CHECK( gates[2u].name == "inverter" );
   CHECK( gates[2u].expression == "!a" );
   CHECK( gates[2u].function._bits[0] == 1 );
@@ -54,6 +57,7 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[2u].pins[0u].rise_block_delay == 1.0 );
   CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
 
+  CHECK( gates[3u].id == 3u );
   CHECK( gates[3u].name == "buffer" );
   CHECK( gates[3u].expression == "a" );
   CHECK( gates[3u].function._bits[0] == 2 );
@@ -70,6 +74,7 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[2u].pins[0u].rise_block_delay == 1.0 );
   CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
 
+  CHECK( gates[4u].id == 4u );
   CHECK( gates[4u].name == "and" );
   CHECK( gates[4u].expression == "(ab)" );
   CHECK( gates[4u].function._bits[0] == 8 );
