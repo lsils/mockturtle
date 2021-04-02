@@ -241,35 +241,22 @@ private:
       const auto index = ntk.node_to_index( n );
       auto& node_data = node_match[index];
 
+      node_data.est_refs[0] = node_data.est_refs[1] = node_data.est_refs[2] = static_cast<float>( ntk.fanout_size( n ) );
+
       if ( ntk.is_constant( n ) )
       {
         /* all terminals have flow 1.0 */
-        node_data.est_refs[0] = node_data.est_refs[1] = node_data.est_refs[2] = 1.0f;
+        node_data.flows[0] = node_data.flows[1] = node_data.flows[2] = 0.0f;
         node_data.arrival[0] = node_data.arrival[1] = 0.0f;
         match_constants( index );
       }
       else if ( ntk.is_pi( n ) )
       {
         /* all terminals have flow 1.0 */
-        node_data.est_refs[0] = node_data.est_refs[1] = node_data.est_refs[2] = 1.0f;
+        node_data.flows[0] = node_data.flows[1] = node_data.flows[2] = 0.0f;
         node_data.arrival[0] = 0.0f;
         /* PIs have the negative phase implemented with an inverter */
         node_data.arrival[1] = lib_inv_delay;
-      }
-      else
-      {
-        node_data.est_refs[0] = node_data.est_refs[1] = 0.0f;
-        node_data.est_refs[2] = static_cast<float>( ntk.fanout_size( n ) );
-        ntk.foreach_fanin( n, [&]( auto const& s ) {
-          if ( !ntk.is_pi( ntk.get_node( s ) ) )
-          {
-            const auto c_index = ntk.node_to_index( ntk.get_node( s ) );
-            if ( ntk.is_complemented( s ) )
-              node_match[c_index].est_refs[1] += 1.0f;
-            else
-              node_match[c_index].est_refs[0] += 1.0f;
-          }
-        } );
       }
     } );
   }
@@ -286,7 +273,8 @@ private:
       auto i = 0u;
       for ( auto& cut : cuts.cuts( index ) )
       {
-        if ( cut->size() == 1 )
+        /* ignore unit cut */
+        if ( cut->size() == 1 && *cut->begin() == index )
         {
           ( *cut )->data.ignore = true;
           continue;
@@ -325,7 +313,9 @@ private:
     for ( auto const& n : top_order )
     {
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      {
         continue;
+      }
 
       /* match positive phase */
       match_phase<DO_AREA>( n, 0u );
@@ -900,8 +890,8 @@ private:
       use_one = worst_arrival_npos < ( node_data.required[0] + epsilon - required_margin_factor * lib_inv_delay );
     }
 
-    /* condition on not used phases, evaluate a substitution */
-    if constexpr ( DO_AREA )
+    /* condition on not used phases, evaluate a substitution during exact area recovery */
+    if constexpr ( ELA )
     {
       if ( iteration != 0 )
       {
@@ -927,10 +917,8 @@ private:
           {
             auto size_phase = cuts.cuts( index )[node_data.best_cut[phase]].size();
             auto size_nphase = cuts.cuts( index )[node_data.best_cut[nphase]].size();
-            auto inverter_cost = 0;
-            if ( ELA )
-              inverter_cost = lib_inv_area;
-            if ( compare_map<DO_AREA>( node_data.arrival[nphase] + lib_inv_delay, node_data.arrival[phase],  node_data.flows[nphase] + inverter_cost, node_data.flows[phase], size_nphase, size_phase ) )
+
+            if ( compare_map<DO_AREA>( node_data.arrival[nphase] + lib_inv_delay, node_data.arrival[phase],  node_data.flows[nphase] + lib_inv_area, node_data.flows[phase], size_nphase, size_phase ) )
             {
               /* invert the choice */
               use_zero = !use_zero;
@@ -1623,12 +1611,14 @@ private:
       {
         /* all terminals have flow 1.0 */
         node_data.est_refs[0] = node_data.est_refs[1] = node_data.est_refs[2] = 1.0f;
+        node_data.flows[0] = node_data.flows[1] = node_data.flows[2] = 1.0f;
         node_data.arrival[0] = node_data.arrival[1] = 0.0f;
       }
       else if ( ntk.is_pi( n ) )
       {
         /* all terminals have flow 1.0 */
         node_data.est_refs[0] = node_data.est_refs[1] = node_data.est_refs[2] = 1.0f;
+        node_data.flows[0] = node_data.flows[1] = node_data.flows[2] = 1.0f;
         node_data.arrival[0] = 0.0f;
         node_data.arrival[1] = lib_inv_delay;
       }
@@ -1662,7 +1652,8 @@ private:
       auto i = 0u;
       for ( auto& cut : cuts.cuts( index ) )
       {
-        if ( cut->size() == 1 )
+        /* ignore unit cut */
+        if ( cut->size() == 1 && *cut->begin() == index )
         {
           ( *cut )->data.ignore = true;
           continue;
