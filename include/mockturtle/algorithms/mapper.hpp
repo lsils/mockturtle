@@ -124,7 +124,8 @@ struct map_stats
     std::cout << fmt::format( "[i] Area = {:>5.2f}; Delay = {:>5.2f}\n", area, delay );
     std::cout << fmt::format( "[i] Mapping runtime = {:>5.2f} secs\n", to_seconds( time_mapping ) );
     std::cout << fmt::format( "[i] Total runtime   = {:>5.2f} secs\n", to_seconds( time_total ) );
-    std::cout << "[i] Gates usage report:\n" << gates_usage;
+    if ( !gates_usage.empty() )
+      std::cout << "[i] Gates usage report:\n" << gates_usage;
   }
 };
 
@@ -1714,7 +1715,29 @@ private:
       /* try to drop one phase */
       match_drop_phase<DO_AREA, false>( n, 0u );
     }
+
+    double area_old = area;
     set_mapping_refs<false>();
+
+    /* round stats */
+    if ( ps.verbose )
+    {
+      std::stringstream stats{};
+      float area_gain = 0.0f;
+
+      if ( iteration != 1 )
+        area_gain = float( ( area_old - area ) / area_old * 100 );
+
+      if constexpr ( DO_AREA )
+      {
+        stats << fmt::format( "[i] AreaFlow : Delay = {:>12.2f}  Area = {:>12.2f}  {:>5.2f} %\n", delay, area, area_gain );
+      }
+      else
+      {
+        stats << fmt::format( "[i] Delay    : Delay = {:>12.2f}  Area = {:>12.2f}  {:>5.2f} %\n", delay, area, area_gain );
+      }
+      st.round_stats.push_back( stats.str() );
+    }
   }
 
 
@@ -1747,7 +1770,18 @@ private:
       /* try to drop one phase */
       match_drop_phase<true, true>( n, 0u );
     }
-    set_mapping_refs<true>();
+
+    double area_old = area;
+    set_mapping_refs<false>();
+
+    /* round stats */
+    if ( ps.verbose )
+    {
+      float area_gain = float( ( area_old - area ) / area_old * 100 );
+      std::stringstream stats{};
+      stats << fmt::format( "[i] Area     : Delay = {:>12.2f}  Area = {:>12.2f}  {:>5.2f} %\n", delay, area, area_gain );
+      st.round_stats.push_back( stats.str() );
+    }
   }
 
 

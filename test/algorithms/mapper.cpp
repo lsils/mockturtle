@@ -3,14 +3,19 @@
 #include <cstdint>
 #include <vector>
 
-#include <lorina/genlib.hpp>
+#include <mockturtle/algorithms/mapper.hpp>
+#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
+#include <mockturtle/algorithms/node_resynthesis/xmg_npn.hpp>
+#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xmg.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/klut.hpp>
-#include <mockturtle/algorithms/mapper.hpp>
-#include <mockturtle/generators/arithmetic.hpp>
+#include <lorina/genlib.hpp>
 
 
 
@@ -21,20 +26,21 @@ std::string const test_library =  "GATE   inv1    1	O=!a;     PIN * INV 1 999 0.
                                   "GATE   nand2	  2	O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
                                   "GATE   xor2	  5	O=[ab];   PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
                                   "GATE   mig3    3	O=<abc>;  PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
+                                  "GATE   buf    	2	O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
                                   "GATE   zero	  0	O=0;\n"
                                   "GATE   one		  0	O=1;";
 
 
 TEST_CASE( "Map of MAJ3", "[mapper]" )
 {
-  std::vector<mockturtle::gate> gates;
+  std::vector<gate> gates;
 
   std::istringstream in( test_library );
-  auto result = lorina::read_genlib( in, mockturtle::genlib_reader( gates ) );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
   
   CHECK( result == lorina::return_code::success );
 
-  mockturtle::tech_library<3> lib( gates );
+  tech_library<3> lib( gates );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -58,14 +64,14 @@ TEST_CASE( "Map of MAJ3", "[mapper]" )
 
 TEST_CASE( "Map of bad MAJ3 and constant output", "[mapper]" )
 {
-  std::vector<mockturtle::gate> gates;
+  std::vector<gate> gates;
 
   std::istringstream in( test_library );
-  auto result = lorina::read_genlib( in, mockturtle::genlib_reader( gates ) );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
   
   CHECK( result == lorina::return_code::success );
 
-  mockturtle::tech_library<3> lib( gates );
+  tech_library<3> lib( gates );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -90,14 +96,14 @@ TEST_CASE( "Map of bad MAJ3 and constant output", "[mapper]" )
 
 TEST_CASE( "Map of full adder", "[mapper]" )
 {
-  std::vector<mockturtle::gate> gates;
+  std::vector<gate> gates;
 
   std::istringstream in( test_library );
-  auto result = lorina::read_genlib( in, mockturtle::genlib_reader( gates ) );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
   
   CHECK( result == lorina::return_code::success );
 
-  mockturtle::tech_library<3> lib( gates );
+  tech_library<3> lib( gates );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -126,14 +132,14 @@ TEST_CASE( "Map of full adder", "[mapper]" )
 
 TEST_CASE( "Map with inverters", "[mapper]" )
 {
-  std::vector<mockturtle::gate> gates;
+  std::vector<gate> gates;
 
   std::istringstream in( test_library );
-  auto result = lorina::read_genlib( in, mockturtle::genlib_reader( gates ) );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
   
   CHECK( result == lorina::return_code::success );
 
-  mockturtle::tech_library<3> lib( gates );
+  tech_library<3> lib( gates );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -163,14 +169,14 @@ TEST_CASE( "Map with inverters", "[mapper]" )
 
 TEST_CASE( "Map for inverters minimization", "[mapper]" )
 {
-  std::vector<mockturtle::gate> gates;
+  std::vector<gate> gates;
 
   std::istringstream in( test_library );
-  auto result = lorina::read_genlib( in, mockturtle::genlib_reader( gates ) );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
   
   CHECK( result == lorina::return_code::success );
 
-  mockturtle::tech_library<3> lib( gates );
+  tech_library<3> lib( gates );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -194,4 +200,145 @@ TEST_CASE( "Map for inverters minimization", "[mapper]" )
   CHECK( st.area < 4.0f + eps );
   CHECK( st.delay > 2.9f - eps );
   CHECK( st.delay < 2.9f + eps );
+}
+
+TEST_CASE( "Map of buffer and constant outputs", "[mapper]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3> lib( gates );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+  const auto d = aig.create_pi();
+
+  const auto n5 = aig.create_and( a, d );
+  const auto n6 = aig.create_and( a, !c );
+  const auto n7 = aig.create_and( !c, n5 );
+  const auto n8 = aig.create_and( c, n6 );
+  const auto n9 = aig.create_and( !n6, n7 );
+  const auto n10 = aig.create_and( n7, n8 );
+  const auto n11 = aig.create_and( a, n10 );
+  const auto n12 = aig.create_and( !d, n11 );
+  const auto n13 = aig.create_and( !d, !n7 );
+  const auto n14 = aig.create_and( !n6, !n7 );
+
+  aig.create_po( aig.get_constant( true ) );
+  aig.create_po( b );
+  aig.create_po( n9 );
+  aig.create_po( n12 );
+  aig.create_po( !n13 );
+  aig.create_po( n14 );
+
+  map_params ps;
+  map_stats st;
+  klut_network luts = tech_map( aig, lib, ps, &st );
+
+  const float eps{0.005f};
+
+  CHECK( luts.size() == 9u );
+  CHECK( luts.num_pis() == 4u );
+  CHECK( luts.num_pos() == 6u );
+  CHECK( luts.num_gates() == 3u );
+  CHECK( st.area > 5.0f - eps );
+  CHECK( st.area < 5.0f + eps );
+  CHECK( st.delay > 1.9f - eps );
+  CHECK( st.delay < 1.9f + eps );
+}
+
+TEST_CASE( "Exact map of bad MAJ3 and constant output", "[mapper]" )
+{
+  mig_npn_resynthesis resyn{true};
+
+  exact_library<mig_network, mig_npn_resynthesis>  lib( resyn );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto f = aig.create_maj( a, aig.create_maj( a, b, c ), c );
+  aig.create_po( f );
+  aig.create_po( aig.get_constant( true ) );
+
+  map_params ps;
+  map_stats st;
+  mig_network mig = exact_map( aig, lib, ps, &st );
+
+  CHECK( mig.size() == 5u );
+  CHECK( mig.num_pis() == 3u );
+  CHECK( mig.num_pos() == 2u );
+  CHECK( mig.num_gates() == 1u );
+  CHECK( st.area == 1.0f );
+  CHECK( st.delay == 1.0f );
+}
+
+TEST_CASE( "Exact map of full adder", "[mapper]" )
+{
+  xmg_npn_resynthesis resyn;
+
+  exact_library<xmg_network, xmg_npn_resynthesis>  lib( resyn );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto [sum, carry] = full_adder( aig, a, b, c );
+  aig.create_po( sum );
+  aig.create_po( carry );
+
+  map_params ps;
+  map_stats st;
+  xmg_network xmg = exact_map( aig, lib, ps, &st );
+
+  CHECK( xmg.size() == 7u );
+  CHECK( xmg.num_pis() == 3u );
+  CHECK( xmg.num_pos() == 2u );
+  CHECK( xmg.num_gates() == 3u );
+  CHECK( st.area == 3.0f );
+  CHECK( st.delay == 2.0f );
+}
+
+TEST_CASE( "Exact map should avoid cycles", "[mapping]" )
+{
+  using resyn_fn = xag_npn_resynthesis<aig_network>;
+
+  resyn_fn resyn;
+
+  exact_library<aig_network, resyn_fn>  lib( resyn );
+
+  aig_network aig;
+  const auto x0 = aig.create_pi();
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+
+  const auto n0 = aig.create_and( x1, !x2 );
+  const auto n1 = aig.create_and( !x0, n0 );
+  const auto n2 = aig.create_and( x0, !n0 );
+  const auto n3 = aig.create_and( !n1, !n2 );
+  const auto n4 = aig.create_and( x1, x2 );
+  const auto n5 = aig.create_and( x0, !n4 );
+  const auto n6 = aig.create_and( !x0, n4 );
+  const auto n7 = aig.create_and( !n5, !n6 );
+  aig.create_po( n3 );
+  aig.create_po( n7 );
+  
+  map_params ps;
+  map_stats st;
+  aig_network res = exact_map( aig, lib, ps, &st );
+  
+  CHECK( res.size() == 12 );
+  CHECK( res.num_pis() == 3 );
+  CHECK( res.num_pos() == 2 );
+  CHECK( res.num_gates() == 8 );
+  CHECK( st.area == 8.0f );
+  CHECK( st.delay == 3.0f );
 }

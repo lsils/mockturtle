@@ -372,7 +372,7 @@ struct exact_library_params
       mockturtle::exact_library<mockturtle::mig_network, mockturtle::mig_npn_resynthesis, 4> lib( mig_resyn );
    \endverbatim
  */
-template<typename Ntk, class RewritingFn, unsigned NInputs>
+template<typename Ntk, class RewritingFn, unsigned NInputs = 4u>
 class exact_library
 {
   using supergates_list_t = std::vector<exact_supergate<Ntk, NInputs>>;
@@ -499,6 +499,7 @@ private:
       if ( sg.tdelay[i] != 0.0f )
         sg.n_inputs++;
     }
+    sg.worstDelay *= -1;
   }
 
 
