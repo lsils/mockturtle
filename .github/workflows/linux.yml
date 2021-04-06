@@ -99,24 +99,6 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
-  build-clang8:
-    runs-on: ubuntu-18.04
-    name: Clang 8
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-8 -DMOCKTURTLE_TEST=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests "~[quality]"
   build-clang9:
     runs-on: ubuntu-latest
     name: Clang 9
