@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-gcc7:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: GNU GCC 7
     
     steps:
@@ -100,7 +100,7 @@ jobs:
         cd build
         ./test/run_tests "~[quality]"
   build-clang8:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: Clang 8
     
     steps:
