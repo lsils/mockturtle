@@ -57,6 +57,64 @@ TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 1 );
 }
 
+TEST_CASE( "Test resubstitution of 3-input AIG", "[resubstitution]" )
+{
+  /* !( x0 * x2 ) * ( !x1 * !x2 ) ==> ( !x0 * !x1 ) * !x2 */
+  aig_network aig;
+  auto x0 = aig.create_pi();
+  auto x1 = aig.create_pi();
+  auto x2 = aig.create_pi();
+  auto n0 = aig.create_and(  x0, !x2 );
+  auto n1 = aig.create_and( !x1, !x2 );
+  auto n2 = aig.create_and( !n0,  n1 );
+  aig.create_po( n2 );
+
+  const auto tt = simulate<kitty::static_truth_table<3u>>( aig )[0];
+  CHECK( tt._bits == 0x1 );
+  CHECK( aig.num_gates() == 3u );
+
+  using view_t = depth_view<fanout_view<aig_network>>;
+  fanout_view<aig_network> fanout_view{aig};
+  view_t resub_view{fanout_view};
+
+  aig_resubstitution( resub_view );
+  aig = cleanup_dangling( aig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<3u>>( aig )[0];
+  CHECK( tt_opt._bits == tt._bits );
+  CHECK( aig.num_gates() == 2u );
+}
+
+TEST_CASE( "Test resubstitution of 3-input AIG 2", "[resubstitution]" )
+{
+  /* ( !( !x0 * x1 ) * !x2 ) * !x2 ==> !( !x0 * x1 ) * !x2 */
+  aig_network aig;
+  auto x0 = aig.create_pi();
+  auto x1 = aig.create_pi();
+  auto x2 = aig.create_pi();
+  auto n0 = aig.create_and( !x0,  x1 );
+  auto n1 = aig.create_and( !x2, !n0 );
+  auto n2 = aig.create_and( !x2,  n1 );
+  aig.create_po( n2 );
+
+  const auto tt = simulate<kitty::static_truth_table<3u>>( aig )[0];
+  CHECK( tt._bits == 0xb );
+  CHECK( aig.num_gates() == 3u );
+
+  using view_t = depth_view<fanout_view<aig_network>>;
+  fanout_view<aig_network> fanout_view{aig};
+  view_t resub_view{fanout_view};
+
+  aig_resubstitution( resub_view );
+  aig = cleanup_dangling( aig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<3u>>( aig )[0];
+  CHECK( tt_opt._bits == tt._bits );
+  CHECK( aig.num_gates() == 2u );
+}
+
 TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
 {
   mig_network mig;
