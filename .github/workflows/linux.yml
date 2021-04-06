@@ -27,24 +27,6 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
-  build-gcc8:
-    runs-on: ubuntu-18.04
-    name: GNU GCC 8
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-8 -DMOCKTURTLE_TEST=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests "~[quality]"
   build-gcc9:
     runs-on: ubuntu-latest
     name: GNU GCC 9
