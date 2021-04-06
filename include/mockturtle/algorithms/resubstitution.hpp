@@ -84,8 +84,11 @@ struct resubstitution_params
   /*! \brief Use don't cares for optimization. Only used by window-based resub engine. */
   bool use_dont_cares{false};
 
-  /* \brief Window size for don't cares calculation. Only used by window-based resub engine. */
+  /*! \brief Window size for don't cares calculation. Only used by window-based resub engine. */
   uint32_t window_size{12u};
+
+  /*! \brief Whether to prevent from increasing depth. Currently only used by window-based resub engine. */
+  bool preserve_depth{false};
 
   /****** simulation-based resub engine ******/
 
@@ -295,6 +298,11 @@ private:
 
   bool collect_divisors( node const& root )
   {
+    auto max_depth = std::numeric_limits<uint32_t>::max();
+    if ( ps.preserve_depth )
+    {
+      max_depth = ntk.level( root ) - 1;
+    }
     /* add the leaves of the cuts to the divisors */
     divs.clear();
 
@@ -346,7 +354,7 @@ private:
 
       /* if the fanout has all fanins in the set, add it */
       ntk.foreach_fanout( d, [&]( node const& p ) {
-        if ( ntk.visited( p ) == ntk.trav_id() )
+        if ( ntk.visited( p ) == ntk.trav_id() || ntk.level( p ) > max_depth )
         {
           return true; /* next fanout */
         }
@@ -462,10 +470,10 @@ struct window_resub_stats
  *
  * Required interfaces of the resubstitution functor:
  * - Constructor: `resub_fn( Ntk const& ntk, Simulator const& sim,`
- * `std::vector<node> const& divs, uint32_t num_divs, default_resub_functor_stats& st )`
+ * `std::vector<node> const& divs, uint32_t num_divs, ResubFnSt& st )`
  * - A public `operator()`: `std::optional<signal> operator()`
  * `( node const& root, TTdc care, uint32_t required, uint32_t max_inserts,`
- * `uint32_t potential_gain, uint32_t& last_gain ) const`
+ * `MffcRes potential_gain, uint32_t& last_gain ) const`
  *
  * Compatible resubstitution functors implemented:
  * - `default_resub_functor`
@@ -473,6 +481,7 @@ struct window_resub_stats
  * - `mig_resub_functor`
  * - `xmg_resub_functor`
  * - `xag_resub_functor`
+ * - `mig_resyn_functor`
  *
  * \param TTsim Truth table type for simulation.
  * \param TTdc Truth table type for don't-care computation.
@@ -516,7 +525,12 @@ public:
 
     ResubFn resub_fn( ntk, sim, divs, divs.size(), st.functor_st );
     auto res = call_with_stopwatch( st.time_compute_function, [&]() {
-      return resub_fn( n, care, std::numeric_limits<uint32_t>::max(), ps.max_inserts, potential_gain, last_gain );
+      auto max_depth = std::numeric_limits<uint32_t>::max();
+      if ( ps.preserve_depth )
+      {
+        max_depth = ntk.level( n ) - 1;
+      }
+      return resub_fn( n, care, max_depth, ps.max_inserts, potential_gain, last_gain );
     });
     if ( res )
     {

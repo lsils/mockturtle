@@ -41,6 +41,25 @@
 namespace mockturtle
 {
 
+enum class phase_type : uint8_t
+{
+  INV = 0,
+  NONINV = 1,
+  UNKNOWN = 2,
+};
+
+struct pin
+{
+  std::string name;
+  phase_type phase;
+  double input_load;
+  double max_load;
+  double rise_block_delay;
+  double rise_fanout_delay;
+  double fall_block_delay;
+  double fall_fanout_delay;
+}; /* pin */
+
 struct gate
 {
   std::string name;
@@ -48,7 +67,7 @@ struct gate
   uint32_t num_vars;
   kitty::dynamic_truth_table function;
   double area;
-  double delay;
+  std::vector<pin> pins;
 }; /* gate */
 
 /*! \brief lorina callbacks for GENLIB files.
@@ -70,7 +89,7 @@ public:
     : gates( gates )
   {}
 
-  virtual void on_gate( std::string const& name, std::string const& expression, double area, std::optional<double> delay ) const override
+  virtual void on_gate( std::string const& name, std::string const& expression, double area, std::vector<lorina::pin_spec> const& ps ) const override
   {
     uint32_t num_vars{0};
     for ( const auto& c : expression )
@@ -88,8 +107,15 @@ public:
     kitty::dynamic_truth_table tt{num_vars};
     create_from_expression( tt, expression );
 
-    gates.emplace_back( gate{name, expression, num_vars, tt,
-                             area, delay ? *delay : 1.0} );
+    std::vector<pin> pp;
+    for ( const auto& p : ps )
+    {
+      pp.emplace_back( pin{p.name,
+                           phase_type( static_cast<uint8_t>( p.phase ) ),
+                           p.input_load, p.max_load,
+                           p.rise_block_delay, p.rise_fanout_delay, p.fall_block_delay, p.fall_fanout_delay} );
+    }
+    gates.emplace_back( gate{name, expression, num_vars, tt, area, pp} );
   }
 
 protected:

@@ -28,6 +28,8 @@
   \brief Implements simplistic Verilog parser
 
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

@@ -28,6 +28,7 @@
   \brief Implements pla parser
 
   \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

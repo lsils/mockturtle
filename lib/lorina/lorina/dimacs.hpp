@@ -28,6 +28,8 @@
   \brief Implements DIMACS parser
 
   \author Bruno Schmitt
+  \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

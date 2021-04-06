@@ -399,6 +399,8 @@ struct exact_xmg_resynthesis_params
 {
   uint32_t num_candidates{10u};
   bool use_only_self_dual_gates{false};
+  bool use_xor3{true};
+  int conflict_limit{0};
 };
 
 /*! \brief Resynthesis function based on exact synthesis for XMGs.
@@ -448,6 +450,7 @@ public:
     percy::spec spec;
     spec.verbosity = 0;
     spec.fanin = 3;
+    spec.conflict_limit = ps.conflict_limit;
 
     /* specify local normalized gate primitives */
     kitty::dynamic_truth_table const0{3};
@@ -471,7 +474,10 @@ public:
     spec.add_primitive( a ^ b ); // 66
     spec.add_primitive( a ^ c ); // 3c
     spec.add_primitive( b ^ c ); // 5a
-    spec.add_primitive( a ^ b ^ c ); // 96
+    if ( ps.use_xor3 )
+    {
+        spec.add_primitive( a ^ b ^ c ); // 96
+    }
 
     /* add non-self dual gate functions */
     if ( !ps.use_only_self_dual_gates )

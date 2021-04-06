@@ -32,9 +32,10 @@
 
 #pragma once
 
-#include "../utils/index_list.hpp"
+#include "../../utils/index_list.hpp"
 
 #include <kitty/kitty.hpp>
+#include <fmt/format.h>
 
 #include <vector>
 #include <unordered_map>
@@ -42,21 +43,51 @@
 namespace mockturtle
 {
 
+struct mig_resyn_engine_params
+{
+  /*! \brief Maximum size (number of gates) of the dependency circuit. */
+  uint32_t max_size{0u};
+};
+
+struct mig_resyn_engine_stats
+{
+};
+
+/*! \brief Logic resynthesis engine for MIGs with a bottom-up approach.
+ *
+ * This algorithm resynthesizes the target function with divisor functions
+ * by building a chain of majority gates from bottom to top. Divisors are
+ * chosen as side fanins based on some scoring functions aiming at covering
+ * more uncovered bits.
+ * 
+ */
 template<class TT>
 class mig_resyn_engine_bottom_up
 {
 public:
-  explicit mig_resyn_engine_bottom_up( TT const& target )
-    : num_bits( target.num_bits() ), divisors( { ~target, target } )
-  { }
+  using stats = mig_resyn_engine_stats;
+  using params = mig_resyn_engine_params;
+  using index_list_t = mig_index_list;
+  using truth_table_t = TT;
+
+  explicit mig_resyn_engine_bottom_up( TT const& target, TT const& care, stats& st, params const& ps = {} )
+    : num_bits( target.num_bits() ), divisors( { ~target, target } ), st( st ), ps( ps )
+  {
+    (void)care;
+  }
+
+  void add_divisor( TT const& tt )
+  {
+    assert( tt.num_bits() == num_bits );
+    divisors.emplace_back( tt ^ divisors.at( 0u ) ); // XNOR target = XOR ~target
+    divisors.emplace_back( ~tt ^ divisors.at( 0u ) );
+    index_list.add_inputs();
+  }
 
   template<class node_type, class truth_table_storage_type>
   void add_divisor( node_type const& node, truth_table_storage_type const& tts )
   {
-    assert( tts[node].num_bits() == num_bits );
-    divisors.emplace_back( tts[node] ^ divisors.at( 0u ) ); // XNOR target = XOR ~target
-    divisors.emplace_back( ~tts[node] ^ divisors.at( 0u ) );
-    index_list.add_inputs();
+    add_divisor( tts[node] );
   }
 
   template<class iterator_type, class truth_table_storage_type>
@@ -69,7 +100,20 @@ public:
     }
   }
 
-  std::optional<mig_index_list> compute_function( uint32_t num_inserts )
+  std::optional<index_list_t> operator()()
+  {
+    return compute_function( ps.max_size );
+  }
+
+  template<class iterator_type, class truth_table_storage_type>
+  std::optional<index_list_t> operator()( iterator_type begin, iterator_type end, truth_table_storage_type const& tts )
+  {
+    add_divisors( begin, end, tts );
+    return compute_function( ps.max_size );
+  }
+
+private:
+  std::optional<index_list_t> compute_function( uint32_t num_inserts )
   {
     uint64_t max_score = 0u;
     max_i = 0u;
@@ -102,7 +146,6 @@ public:
     return bottom_up_approach();
   }
 
-private:
   std::optional<mig_index_list> bottom_up_approach()
   {
     //maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), {max_i}} );
@@ -174,12 +217,31 @@ private:
   uint32_t max_i, max_j, max_k;
 
   std::vector<TT> divisors;
-  mig_index_list index_list;
+  index_list_t index_list;
+
+  stats& st;
+  params const& ps;
 }; /* mig_resyn_engine_bottom_up */
 
+/*! \brief Logic resynthesis engine for MIGs with top-down decomposition.
+ *
+ * This algorithm resynthesizes the target function with divisor functions
+ * by first building the topmost node, and then iteratively refining its
+ * output function by expanding a leaf with a new node. The three fanins
+ * of the newly-created node are chosen from the divisors based on some
+ * scoring functions aiming at covering more *care* bits.
+ * 
+ */
 template<class TT>
 class mig_resyn_engine
 {
+public:
+  using stats = mig_resyn_engine_stats;
+  using params = mig_resyn_engine_params;
+  using index_list_t = mig_index_list;
+  using truth_table_t = TT;
+
+private:
   /*! \brief Internal data structure */
   struct expansion_position
   {
@@ -209,17 +271,24 @@ class mig_resyn_engine
   };
 
 public:
-  explicit mig_resyn_engine( TT const& target )
-    : num_bits( target.num_bits() ), divisors( { ~target, target } )
-  { }
+  explicit mig_resyn_engine( TT const& target, TT const& care, stats& st, params const& ps = {} )
+    : num_bits( target.num_bits() ), divisors( { ~target, target } ), st( st ), ps( ps )
+  {
+    (void)care;
+  }
+
+  void add_divisor( TT const& tt )
+  {
+    assert( tt.num_bits() == num_bits );
+    divisors.emplace_back( tt ^ divisors.at( 0u ) ); // XNOR target = XOR ~target
+    divisors.emplace_back( ~tt ^ divisors.at( 0u ) );
+    scores.resize( divisors.size() );
+  }
 
   template<class node_type, class truth_table_storage_type>
   void add_divisor( node_type const& node, truth_table_storage_type const& tts )
   {
-    assert( tts[node].num_bits() == num_bits );
-    divisors.emplace_back( tts[node] ^ divisors.at( 0u ) ); // XNOR target = XOR ~target
-    divisors.emplace_back( ~tts[node] ^ divisors.at( 0u ) );
-    scores.resize( divisors.size() );
+    add_divisor( tts[node] );
   }
 
   template<class iterator_type, class truth_table_storage_type>
@@ -232,7 +301,20 @@ public:
     }
   }
 
-  std::optional<mig_index_list> compute_function( uint32_t num_inserts )
+  std::optional<index_list_t> operator()()
+  {
+    return compute_function( ps.max_size );
+  }
+
+  template<class iterator_type, class truth_table_storage_type>
+  std::optional<index_list_t> operator()( iterator_type begin, iterator_type end, truth_table_storage_type const& tts )
+  {
+    add_divisors( begin, end, tts );
+    return compute_function( ps.max_size );
+  }
+
+private:
+  std::optional<index_list_t> compute_function( uint32_t num_inserts )
   {
     for ( auto i = 0u; i < divisors.size(); ++i )
     {
@@ -254,8 +336,7 @@ public:
     return top_down_approach();
   }
 
-private:
-  std::optional<mig_index_list> top_down_approach()
+  std::optional<index_list_t> top_down_approach()
   {
     maj_nodes.reserve( size_limit );
     /* topmost node: care is const1 */
@@ -831,25 +912,50 @@ private:
 
   std::vector<expansion_position> leaves, improve_in_parent, shuffle;
   bool first_round = true;
+
+  stats& st;
+  params const& ps;
 }; /* mig_resyn_engine */
 
+/*! \brief Logic resynthesis engine for MIGs by Akers' majority synthesis algorithm.
+ *
+ * This engine is a re-implementation of Akers' algorithm based on the following paper:
+ *
+ * Akers, S. B. (1962, October). Synthesis of combinational logic using 
+ * three-input majority gates. In 3rd Annual Symposium on Switching Circuit Theory
+ * and Logical Design (SWCT 1962) (pp. 149-158). IEEE.
+ * 
+ */
 class mig_resyn_engine_akers
 {
 public:
-  explicit mig_resyn_engine_akers( kitty::partial_truth_table const& target )
-    : divisors( { ~target, target } ), id_to_lit( { 0, 1 } )
+  using stats = mig_resyn_engine_stats;
+  using params = mig_resyn_engine_params;
+  using index_list_t = mig_index_list;
+  using TT = kitty::partial_truth_table;
+  using truth_table_t = TT;
+
+  explicit mig_resyn_engine_akers( TT const& target, TT const& care, stats& st, params const& ps = {} )
+    : divisors( { ~target, target } ), id_to_lit( { 0, 1 } ), st( st ), ps( ps )
                 /* const0, const1 */
-  { }
+  {
+    (void)care;
+  }
+
+  void add_divisor( TT const& tt )
+  {
+    assert( tt.num_bits() == divisors[0].num_bits() );
+    id_to_lit.emplace_back( divisors.size() );
+    divisors.emplace_back( tt ^ divisors.at( 0u ) ); // XNOR target = XOR ~target
+    id_to_lit.emplace_back( divisors.size() );
+    divisors.emplace_back( ~tt ^ divisors.at( 0u ) );
+    index_list.add_inputs();
+  }
 
   template<class node_type, class truth_table_storage_type>
   void add_divisor( node_type const& node, truth_table_storage_type const& tts )
   {
-    assert( tts[node].num_bits() == divisors[0].num_bits() );
-    id_to_lit.emplace_back( divisors.size() );
-    divisors.emplace_back( tts[node] ^ divisors.at( 0u ) ); // XNOR target = XOR ~target
-    id_to_lit.emplace_back( divisors.size() );
-    divisors.emplace_back( ~tts[node] ^ divisors.at( 0u ) );
-    index_list.add_inputs();
+    add_divisor( tts[node] );
   }
 
   template<class iterator_type, class truth_table_storage_type>
@@ -862,8 +968,22 @@ public:
     }
   }
 
-  std::optional<mig_index_list> compute_function( uint32_t num_inserts )
+  std::optional<index_list_t> operator()()
   {
+    return compute_function( ps.max_size );
+  }
+
+  template<class iterator_type, class truth_table_storage_type>
+  std::optional<index_list_t> operator()( iterator_type begin, iterator_type end, truth_table_storage_type const& tts )
+  {
+    add_divisors( begin, end, tts );
+    return compute_function( ps.max_size );
+  }
+
+private:
+  std::optional<index_list_t> compute_function( uint32_t num_inserts )
+  {
+    (void)st;
     if ( !is_feasible() )
     {
       return std::nullopt;
@@ -900,7 +1020,6 @@ public:
     return index_list;
   }
 
-private:
   void reduce()
   {
     uint32_t num_bits_before = 0u;
@@ -1197,7 +1316,10 @@ private:
 private:
   std::vector<kitty::partial_truth_table> divisors;
   std::vector<uint32_t> id_to_lit;
-  mig_index_list index_list;
+  index_list_t index_list;
   uint32_t fanins[3];
+
+  stats& st;
+  params const& ps;
 };
 } /* namespace mockturtle */

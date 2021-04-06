@@ -28,6 +28,7 @@
   \brief Regular expressions used by the Verilog parser.
 
   \author Heinz Riener
+  \author Mathias Soeken
 */
 
 #pragma once

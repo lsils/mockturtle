@@ -8,6 +8,8 @@
 
 TEST_CASE( "read genlib file", "[genlib_reader]" )
 {
+  using mockturtle::phase_type;
+
   std::vector<mockturtle::gate> gates;
 
   std::string const file{
@@ -28,33 +30,59 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[0u].function._bits[0] == 0 );
   CHECK( gates[0u].num_vars == 0 );
   CHECK( gates[0u].area == 0.0 );
-  CHECK( gates[0u].delay == 1.0 );
+  CHECK( gates[0u].pins.empty() );
 
   CHECK( gates[1u].name == "one" );
   CHECK( gates[1u].expression == "1" );
   CHECK( gates[1u].function._bits[0] == 1 );
   CHECK( gates[1u].num_vars == 0 );
   CHECK( gates[1u].area == 0.0 );
-  CHECK( gates[1u].delay == 1.0 );
+  CHECK( gates[1u].pins.empty() );
 
   CHECK( gates[2u].name == "inverter" );
   CHECK( gates[2u].expression == "!a" );
   CHECK( gates[2u].function._bits[0] == 1 );
   CHECK( gates[2u].num_vars == 1 );
   CHECK( gates[2u].area == 1.0 );
-  CHECK( gates[2u].delay == 1.0 );
+  CHECK( gates[2u].pins.size() == 1 );
+  CHECK( gates[2u].pins[0u].name == "*" );
+  CHECK( gates[2u].pins[0u].phase == phase_type::INV );
+  CHECK( gates[2u].pins[0u].input_load == 1.0 );
+  CHECK( gates[2u].pins[0u].max_load == 999.0 );
+  CHECK( gates[2u].pins[0u].rise_block_delay == 1.0 );
+  CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
+  CHECK( gates[2u].pins[0u].rise_block_delay == 1.0 );
+  CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
 
   CHECK( gates[3u].name == "buffer" );
   CHECK( gates[3u].expression == "a" );
   CHECK( gates[3u].function._bits[0] == 2 );
   CHECK( gates[3u].num_vars == 1 );
   CHECK( gates[3u].area == 2.0 );
-  CHECK( gates[3u].delay == 1.0 );
+  CHECK( gates[3u].pins.size() == 1 );
+  CHECK( gates[3u].pins[0u].name == "*" );
+  CHECK( gates[3u].pins[0u].phase == phase_type::NONINV );
+  CHECK( gates[2u].pins[0u].phase == phase_type::INV );
+  CHECK( gates[2u].pins[0u].input_load == 1.0 );
+  CHECK( gates[2u].pins[0u].max_load == 999.0 );
+  CHECK( gates[2u].pins[0u].rise_block_delay == 1.0 );
+  CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
+  CHECK( gates[2u].pins[0u].rise_block_delay == 1.0 );
+  CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
 
   CHECK( gates[4u].name == "and" );
   CHECK( gates[4u].expression == "(ab)" );
   CHECK( gates[4u].function._bits[0] == 8 );
   CHECK( gates[4u].num_vars == 2 );
   CHECK( gates[4u].area == 5.0 );
-  CHECK( gates[4u].delay == 1.0 );
+  CHECK( gates[4u].pins.size() == 1 );
+  CHECK( gates[4u].pins[0u].name == "*" );
+  CHECK( gates[4u].pins[0u].phase == phase_type::NONINV );
+  CHECK( gates[2u].pins[0u].phase == phase_type::INV );
+  CHECK( gates[2u].pins[0u].input_load == 1.0 );
+  CHECK( gates[2u].pins[0u].max_load == 999.0 );
+  CHECK( gates[2u].pins[0u].rise_block_delay == 1.0 );
+  CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
+  CHECK( gates[2u].pins[0u].rise_block_delay == 1.0 );
+  CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
 }
