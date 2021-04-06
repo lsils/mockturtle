@@ -28,7 +28,7 @@ jobs:
         cd build
         ./test/run_tests "~[quality]"
   build-gcc8:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: GNU GCC 8
     
     steps:
