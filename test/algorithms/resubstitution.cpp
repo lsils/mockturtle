@@ -21,8 +21,6 @@
 
 using namespace mockturtle;
 
-TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
-{
 TEST_CASE( "Replace with constant in AIG", "[resubstitution]" )
 {
   /* x1 * ( !x0 * !x1 ) ==> 0 */
