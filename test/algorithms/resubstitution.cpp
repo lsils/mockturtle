@@ -23,43 +23,144 @@ using namespace mockturtle;
 
 TEST_CASE( "Resubstitution of AIG", "[resubstitution]" )
 {
+TEST_CASE( "Replace with constant in AIG", "[resubstitution]" )
+{
+  /* x1 * ( !x0 * !x1 ) ==> 0 */
   aig_network aig;
-
-  const auto a = aig.create_pi();
-  const auto b = aig.create_pi();
-
-  const auto f = aig.create_and( a, aig.create_and( b, a ) );
-  aig.create_po( f );
-
-  CHECK( aig.size() == 5 );
-  CHECK( aig.num_pis() == 2 );
-  CHECK( aig.num_pos() == 1 );
-  CHECK( aig.num_gates() == 2 );
+  auto x0 = aig.create_pi();
+  auto x1 = aig.create_pi();
+  auto n0 = aig.create_and( !x0, !x1 );
+  auto n1 = aig.create_and( x1, n0 );
+  aig.create_po( n1 );
 
   const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
-  CHECK( tt._bits == 0x8 );
+  CHECK( tt._bits == 0x0 );
+  CHECK( aig.num_gates() == 2u );
 
   using view_t = depth_view<fanout_view<aig_network>>;
   fanout_view<aig_network> fanout_view{aig};
   view_t resub_view{fanout_view};
 
   aig_resubstitution( resub_view );
-
   aig = cleanup_dangling( aig );
 
   /* check equivalence */
   const auto tt_opt = simulate<kitty::static_truth_table<2u>>( aig )[0];
   CHECK( tt_opt._bits == tt._bits );
-
-  CHECK( aig.size() == 4 );
-  CHECK( aig.num_pis() == 2 );
-  CHECK( aig.num_pos() == 1 );
-  CHECK( aig.num_gates() == 1 );
+  CHECK( aig.num_gates() == 0u );
 }
 
-TEST_CASE( "Test resubstitution of 3-input AIG", "[resubstitution]" )
+TEST_CASE( "Merge equivalent nodes in AIG", "[resubstitution]" )
 {
-  /* !( x0 * x2 ) * ( !x1 * !x2 ) ==> ( !x0 * !x1 ) * !x2 */
+  /* x0 * !( !x0 * !x1 ) ==> x0 */
+  aig_network aig;
+  auto x0 = aig.create_pi();
+  auto x1 = aig.create_pi();
+  auto n0 = aig.create_and( !x0, !x1 );
+  auto n1 = aig.create_and(  x0, !n0 );
+  aig.create_po( n1 );
+
+  const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
+  CHECK( tt._bits == 10 );
+  CHECK( aig.num_gates() == 2u );
+
+  using view_t = depth_view<fanout_view<aig_network>>;
+  fanout_view<aig_network> fanout_view{aig};
+  view_t resub_view{fanout_view};
+
+  aig_resubstitution( resub_view );
+  aig = cleanup_dangling( aig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<2u>>( aig )[0];
+  CHECK( tt_opt._bits == tt._bits );
+  CHECK( aig.num_gates() == 0u );
+}
+
+TEST_CASE( "Substitute AND with positive divisor in AIG", "[resubstitution]" )
+{
+  /* x1 * ( x0 * x1 ) ==> x0 * x1 */
+  aig_network aig;
+  auto x0 = aig.create_pi();
+  auto x1 = aig.create_pi();
+  auto n0 = aig.create_and( x0, x1 );
+  auto n1 = aig.create_and( x1, n0 );
+  aig.create_po( n1 );
+
+  const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
+  CHECK( tt._bits == 0x8 );
+  CHECK( aig.num_gates() == 2u );
+
+  using view_t = depth_view<fanout_view<aig_network>>;
+  fanout_view<aig_network> fanout_view{aig};
+  view_t resub_view{fanout_view};
+
+  aig_resubstitution( resub_view );
+  aig = cleanup_dangling( aig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<2u>>( aig )[0];
+  CHECK( tt_opt._bits == tt._bits );
+  CHECK( aig.num_gates() == 1u );
+}
+
+TEST_CASE( "Substitute AND with negative divisor in AIG", "[resubstitution]" )
+{
+  /* !x0 * !( !x0 * !x1 ) ==> !x0 * x1 */
+  aig_network aig;
+  auto x0 = aig.create_pi();
+  auto x1 = aig.create_pi();
+  auto n0 = aig.create_and( !x0, !x1 );
+  auto n1 = aig.create_and( !x0, !n0 );
+  aig.create_po( n1 );
+
+  const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
+  CHECK( tt._bits == 0x4 );
+  CHECK( aig.num_gates() == 2u );
+
+  using view_t = depth_view<fanout_view<aig_network>>;
+  fanout_view<aig_network> fanout_view{aig};
+  view_t resub_view{fanout_view};
+
+  aig_resubstitution( resub_view );
+  aig = cleanup_dangling( aig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<2u>>( aig )[0];
+  CHECK( tt_opt._bits == tt._bits );
+  CHECK( aig.num_gates() == 1u );
+}
+
+TEST_CASE( "Substitute OR with positive divisors in AIG", "[resubstitution]" )
+{
+  /* !x1 * !( x0 * !x1 ) ==> ( !x0 * !x1 ) */
+  aig_network aig;
+  auto x0 = aig.create_pi();
+  auto x1 = aig.create_pi();
+  auto n0 = aig.create_and(  x0, !x1 );
+  auto n1 = aig.create_and( !x1, !n0 );
+  aig.create_po( n1 );
+
+  const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
+  CHECK( tt._bits == 0x1 );
+  CHECK( aig.num_gates() == 2u );
+
+  using view_t = depth_view<fanout_view<aig_network>>;
+  fanout_view<aig_network> fanout_view{aig};
+  view_t resub_view{fanout_view};
+
+  aig_resubstitution( resub_view );
+  aig = cleanup_dangling( aig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<2u>>( aig )[0];
+  CHECK( tt_opt._bits == tt._bits );
+  CHECK( aig.num_gates() == 1u );
+}
+
+TEST_CASE( "Substitute OR-OR in AIG", "[resubstitution]" )
+{
+  /* !( x0 * !x2 ) * ( !x1 * !x2 ) ==> ( !x0 * !x1 ) * !x2 */
   aig_network aig;
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
@@ -86,9 +187,9 @@ TEST_CASE( "Test resubstitution of 3-input AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 2u );
 }
 
-TEST_CASE( "Test resubstitution of 3-input AIG 2", "[resubstitution]" )
+TEST_CASE( "Substitute OR-AND in AIG", "[resubstitution]" )
 {
-  /* ( !( !x0 * x1 ) * !x2 ) * !x2 ==> !( !x0 * x1 ) * !x2 */
+  /* !x2 * ( !x2 * !( !x0 * x1 ) ) ==> !( !x0 * x1 ) * !x2 */
   aig_network aig;
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
