@@ -941,6 +941,36 @@ template<class Ntk>
 inline constexpr bool has_is_on_critical_path_v = has_is_on_critical_path<Ntk>::value;
 #pragma endregion
 
+#pragma region has_is_buf
+template<class Ntk, class = void>
+struct has_is_buf : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_buf<Ntk, std::void_t<decltype( std::declval<Ntk>().is_buf( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_buf_v = has_is_buf<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_not
+template<class Ntk, class = void>
+struct has_is_not : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_not<Ntk, std::void_t<decltype( std::declval<Ntk>().is_not( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_not_v = has_is_not<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_and
 template<class Ntk, class = void>
 struct has_is_and : std::false_type
@@ -954,6 +984,21 @@ struct has_is_and<Ntk, std::void_t<decltype( std::declval<Ntk>().is_and( std::de
 
 template<class Ntk>
 inline constexpr bool has_is_and_v = has_is_and<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_nand
+template<class Ntk, class = void>
+struct has_is_nand : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_nand<Ntk, std::void_t<decltype( std::declval<Ntk>().is_nand( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_nand_v = has_is_nand<Ntk>::value;
 #pragma endregion
 
 #pragma region has_is_or
@@ -971,6 +1016,81 @@ template<class Ntk>
 inline constexpr bool has_is_or_v = has_is_or<Ntk>::value;
 #pragma endregion
 
+#pragma region has_is_nor
+template<class Ntk, class = void>
+struct has_is_nor : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_nor<Ntk, std::void_t<decltype( std::declval<Ntk>().is_nor( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_nor_v = has_is_nor<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_lt
+template<class Ntk, class = void>
+struct has_is_lt : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_lt<Ntk, std::void_t<decltype( std::declval<Ntk>().is_lt( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_lt_v = has_is_lt<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_le
+template<class Ntk, class = void>
+struct has_is_le : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_le<Ntk, std::void_t<decltype( std::declval<Ntk>().is_le( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_le_v = has_is_le<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_gt
+template<class Ntk, class = void>
+struct has_is_gt : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_gt<Ntk, std::void_t<decltype( std::declval<Ntk>().is_gt( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_gt_v = has_is_gt<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_ge
+template<class Ntk, class = void>
+struct has_is_ge : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_ge<Ntk, std::void_t<decltype( std::declval<Ntk>().is_ge( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_ge_v = has_is_ge<Ntk>::value;
+#pragma endregion
+
 #pragma region has_is_xor
 template<class Ntk, class = void>
 struct has_is_xor : std::false_type
@@ -984,6 +1104,21 @@ struct has_is_xor<Ntk, std::void_t<decltype( std::declval<Ntk>().is_xor( std::de
 
 template<class Ntk>
 inline constexpr bool has_is_xor_v = has_is_xor<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_xnor
+template<class Ntk, class = void>
+struct has_is_xnor : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_xnor<Ntk, std::void_t<decltype( std::declval<Ntk>().is_xnor( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_xnor_v = has_is_xnor<Ntk>::value;
 #pragma endregion
 
 #pragma region has_is_maj

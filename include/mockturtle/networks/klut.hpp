@@ -509,6 +509,99 @@ signal create_maj( signal a, signal b, signal c )
   {
     return n > 1 && !is_ci( n );
   }
+
+  bool is_buf( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 2 );
+  }
+
+  bool is_not( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 3 );
+  }
+
+  bool is_and( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 4 );
+  }
+
+  bool is_nand( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 5 );
+  }
+
+  bool is_or( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 6 );
+  }
+
+  bool is_nor( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 7 );
+  }
+
+  bool is_lt( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 8 );
+  }
+
+  bool is_ge( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 9 );
+  }
+
+  bool is_gt( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 10 );
+  }
+
+  bool is_le( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 11 );
+  }
+
+  bool is_xor( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 12 );
+  }
+
+  bool is_xnor( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 13 );
+  }
+
+  bool is_maj( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 14 );
+  }
+
+  bool is_ite( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 16 );
+  }
+
+  bool is_xor3( node const& n ) const
+  {
+    return n > 0 && !is_ci( n ) && ( _storage->nodes[n].data[1].h1 == 18 );
+  }
+
+  bool is_nary_and( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_nary_or( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_nary_xor( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
 #pragma endregion
 
 #pragma region Functional properties
