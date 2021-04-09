@@ -877,9 +877,9 @@ void decode( Ntk& ntk, IndexList const& indices )
 
 /*! \brief Enumerate structured index_lists
  *
- * Enumerate concrete `xag_index_list`s from an abstract index lists
+ * Enumerate concrete `xag_index_list`s from an abstract index list
  * specification.  The specifiation is provided in an extended index
- * list format, where a -1 indicates a unspecified input.
+ * list format, where a `-1` indicates an unspecified input.
  *
  * The algorithm concretizes unspecified inputs and negates nodes.
  *
@@ -892,7 +892,7 @@ void decode( Ntk& ntk, IndexList const& indices )
  *    {2 | 1 << 8 | 1 << 16, 3, 5, 7}
  *    {2 | 1 << 8 | 1 << 16, 2, 5, 6}
  *    {2 | 1 << 8 | 1 << 16, 2, 5, 7}
- * from the abstract index list specification { -1, -1, 6 }.
+ * from the abstract index list specification `{ -1, -1, 6 }`.
  *
  * Example
  *
@@ -901,9 +901,9 @@ void decode( Ntk& ntk, IndexList const& indices )
    .. code-bock:: c++
 
       aig_index_list_enumerator e( { -1, -1, -1, 6, 8 }, 2u, 2u, 1u );
-      e.run( [&]( std::vector<uint32_t> const& values ) {
+      e.run( [&]( xag_index_list const& il ) {
         aig_network aig;
-        decode( aig, values );
+        decode( aig, il );
       } );
    \endverbatim
  */
