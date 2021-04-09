@@ -875,4 +875,152 @@ void decode( Ntk& ntk, IndexList const& indices )
           [&]( signal const& s ){ ntk.create_po( s ); });
 }
 
+/*! \brief Enumerate structured index_lists
+ *
+ * Enumerate concrete `xag_index_list`s from an abstract index lists
+ * specification.  The specifiation is provided in an extended index
+ * list format, where a -1 indicates a unspecified input.
+ *
+ * The algorithm concretizes unspecified inputs and negates nodes.
+ *
+ * The enumerator generates the following concrete index lists
+ *    {2 | 1 << 8 | 1 << 16, 2, 4, 6}
+ *    {2 | 1 << 8 | 1 << 16, 2, 4, 7}
+ *    {2 | 1 << 8 | 1 << 16, 3, 4, 6}
+ *    {2 | 1 << 8 | 1 << 16, 3, 4, 7}
+ *    {2 | 1 << 8 | 1 << 16, 3, 5, 6}
+ *    {2 | 1 << 8 | 1 << 16, 3, 5, 7}
+ *    {2 | 1 << 8 | 1 << 16, 2, 5, 6}
+ *    {2 | 1 << 8 | 1 << 16, 2, 5, 7}
+ * from the abstract index list specification { -1, -1, 6 }.
+ *
+ * Example
+ *
+   \verbatim embed:rst
+
+   .. code-bock:: c++
+
+      aig_index_list_enumerator e( { -1, -1, -1, 6, 8 }, 2u, 2u, 1u );
+      e.run( [&]( std::vector<uint32_t> const& values ) {
+        aig_network aig;
+        decode( aig, values );
+      } );
+   \endverbatim
+ */
+class aig_index_list_enumerator
+{
+public:
+  explicit aig_index_list_enumerator( std::vector<int32_t> const& values, uint32_t num_pis, uint32_t num_gates, uint32_t num_pos )
+    : values_( values )
+    , num_pis( num_pis )
+    , num_gates( num_gates )
+    , num_pos( num_pos )
+  {}
+
+  template<typename Fn>
+  void run( Fn&& fn )
+  {
+    recurse( values_, 0u, fn );
+  }
+
+protected:
+  template<typename Fn>
+  void recurse( std::vector<int32_t> values, uint32_t pos, Fn&& fn )
+  {
+    /* process gate */
+    if ( pos < 2*num_gates )
+    {
+      auto& a = values.at( pos );
+      auto& b = values.at( pos + 1 );
+      if ( a == -1 && b == -1 )
+      {
+        for ( uint32_t i = 0u; i < num_pis; ++i )
+        {
+          a = ( i + 1 ) << 1;
+          for ( uint32_t j = i + 1; j < num_pis; ++j )
+          {
+            b = ( j + 1 ) << 1;
+            recurse( values, pos + 2, fn );
+            a = a ^ 1;
+            recurse( values, pos + 2, fn );
+            b = b ^ 1;
+            recurse( values, pos + 2, fn );
+            a = a ^ 1;
+            recurse( values, pos + 2, fn );
+            b = b ^ 1;
+          }
+        }
+        return;
+      }
+      else if ( a == -1 )
+      {
+        for ( uint32_t i = 0u; i < num_pis; ++i )
+        {
+          a = ( i + 1 ) << 1;
+          recurse( values, pos + 2, fn );
+          a = a ^ 1;
+          recurse( values, pos + 2, fn );
+          b = b ^ 1;
+          recurse( values, pos + 2, fn );
+          a = a ^ 1;
+          recurse( values, pos + 2, fn );
+          b = b ^ 1;
+        }
+        return;
+      }
+      else if ( b == -1 )
+      {
+        for ( uint32_t i = 0u; i < num_pis; ++i )
+        {
+          b = ( i + 1 ) << 1;
+          recurse( values, pos + 2, fn );
+          a = a ^ 1;
+          recurse( values, pos + 2, fn );
+          b = b ^ 1;
+          recurse( values, pos + 2, fn );
+          a = a ^ 1;
+          recurse( values, pos + 2, fn );
+          b = b ^ 1;
+        }
+        return;
+      }
+
+      recurse( values, pos + 2, fn );
+      a = a ^ 1;
+      recurse( values, pos + 2, fn );
+      b = b ^ 1;
+      recurse( values, pos + 2, fn );
+      a = a ^ 1;
+      recurse( values, pos + 2, fn );
+      b = b ^ 1;
+      return;
+    }
+
+    /* process output */
+    if ( pos < values.size() )
+    {
+      auto& o = values.at( pos );
+      recurse( values, pos + 1u, fn );
+      o = o ^ 1;
+      recurse( values, pos + 1u, fn );
+      return;
+    }
+
+    /* finished processing values */
+    std::vector<uint32_t> index_list;
+    index_list.emplace_back( num_pis | ( num_pos << 8 ) | ( num_gates << 16 ) );
+    for ( int32_t const& v : values )
+    {
+      index_list.emplace_back( v );
+    }
+    fn( xag_index_list( index_list ) );
+  }
+
+protected:
+  std::vector<int32_t> values_;
+  uint32_t num_pis;
+  uint32_t num_gates;
+  uint32_t num_pos;
+};
+
 } /* mockturtle */
