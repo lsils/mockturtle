@@ -60,7 +60,7 @@ public:
 private:
   double buffer_cost;
   std::unordered_map<uint32_t, double> splitters;
-  std::unordered_map<std::vector<uint32_t>, double> cache;
+  std::unordered_map<std::vector<uint32_t>, double, hash<std::vector<uint32_t>>> cache;
 
   static std::unordered_map<uint32_t, double> remove_buffer( std::unordered_map<uint32_t, double> splitters )
   {

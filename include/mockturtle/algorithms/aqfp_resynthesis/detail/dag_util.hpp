@@ -64,10 +64,10 @@ class partition_generator
   using partition_set = std::set<partition>;
 
   using inner_cache_key_t = std::vector<ElemT>;
-  using inner_cache_t = std::unordered_map<inner_cache_key_t, partition_set>;
+  using inner_cache_t = std::unordered_map<inner_cache_key_t, partition_set, hash<inner_cache_key_t>>;
 
   using outer_cache_key_t = std::tuple<std::vector<uint32_t>, uint32_t, uint32_t>;
-  using outer_cache_t = std::unordered_map<outer_cache_key_t, inner_cache_t>;
+  using outer_cache_t = std::unordered_map<outer_cache_key_t, inner_cache_t, hash<outer_cache_key_t>>;
 
 public:
   /*! \brief Computes and returns a set of partitions for a given list of elements
@@ -166,7 +166,7 @@ class partition_extender
   using partition_set = std::set<partition>;
 
   using inner_cache_key_t = std::vector<ElemT>;
-  using inner_cache_t = std::unordered_map<inner_cache_key_t, partition_set>;
+  using inner_cache_t = std::unordered_map<inner_cache_key_t, partition_set, hash<inner_cache_key_t>>;
 
   using outer_cache_key_t = std::tuple<partition, std::vector<uint32_t>, uint32_t>;
   using outer_cache_t = std::map<outer_cache_key_t, inner_cache_t>;
@@ -264,7 +264,7 @@ public:
   }
 
 private:
-  std::unordered_map<sub_list_cache_key_t, std::set<std::vector<ElemT>>> sub_list_cache;
+  std::unordered_map<sub_list_cache_key_t, std::set<std::vector<ElemT>>, hash<sub_list_cache_key_t>> sub_list_cache;
   std::map<ElemT, uint32_t> elem_counts;
 
   std::set<std::vector<ElemT>> get_sub_lists_recur()

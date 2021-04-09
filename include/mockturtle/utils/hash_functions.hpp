@@ -25,7 +25,7 @@
 
 /*!
   \file hash_functions.hpp
-  \brief std::hash specializations for collections.
+  \brief hash specializations for collections.
 
   \author Dewmini Marakkalage 
 */
@@ -35,11 +35,18 @@
 #include <functional>
 #include <map>
 #include <set>
-#include <vector>
 #include <tuple>
+#include <vector>
 
-namespace std
+namespace mockturtle
 {
+
+template<typename T>
+struct hash
+{
+  std::hash<T> h;
+  size_t operator()( const T& t ) const { return h( t ); }
+};
 
 template<typename A, typename B, typename C>
 struct hash<std::tuple<A, B, C>>;
@@ -66,9 +73,9 @@ public:
   }
 
 private:
-  std::hash<A> ha;
-  std::hash<B> hb;
-  std::hash<C> hc;
+  hash<A> ha;
+  hash<B> hb;
+  hash<C> hc;
 };
 
 template<typename A>
@@ -86,7 +93,7 @@ public:
   }
 
 private:
-  std::hash<A> ha;
+  hash<A> ha;
 };
 
 template<typename A>
@@ -104,7 +111,7 @@ public:
   }
 
 private:
-  std::hash<A> ha;
+  hash<A> ha;
 };
 
 template<typename A, typename B>
@@ -123,8 +130,8 @@ public:
   }
 
 private:
-  std::hash<A> ha;
-  std::hash<B> hb;
+  hash<A> ha;
+  hash<B> hb;
 };
 
-} // namespace std
+} // namespace mockturtle
