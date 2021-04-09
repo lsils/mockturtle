@@ -155,7 +155,7 @@ public:
   {
     assert( num_inputs > 0 );
     assert( num_outputs > 0 );
-    assert( num_gates_per_level.size() >= 0 );
+    assert( num_gates_per_level.size() >= 0u );
 
     uint64_t const num_levels{num_gates_per_level.size() + 2u};
     std::vector<std::vector<signal>> levels( num_levels );
