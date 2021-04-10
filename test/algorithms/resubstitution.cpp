@@ -22,7 +22,7 @@
 using namespace mockturtle;
 
 
-TEST_CASE( "AIG resubstitution", "[resubstitution]" )
+TEST_CASE( "Resubstitution of AIGs", "[resubstitution]" )
 {
   /* The test cases are (a,b)-pairs, where a is an index_list and b is
      the expected improvement after resubstitution. */
@@ -38,7 +38,8 @@ TEST_CASE( "AIG resubstitution", "[resubstitution]" )
 
     uint64_t const size_before{aig.size()};
 
-    auto const tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
+    default_simulator<kitty::dynamic_truth_table> sim( aig.num_pis() );
+    auto const tt = simulate<kitty::dynamic_truth_table>( aig, sim )[0];
     using view_t = depth_view<fanout_view<aig_network>>;
     fanout_view<aig_network> fanout_view{aig};
     view_t resub_view{fanout_view};
@@ -46,7 +47,7 @@ TEST_CASE( "AIG resubstitution", "[resubstitution]" )
     aig_resubstitution( resub_view );
     aig = cleanup_dangling( aig );
 
-    auto const tt_prime = simulate<kitty::static_truth_table<2u>>( aig )[0];
+    auto const tt_prime = simulate<kitty::dynamic_truth_table>( aig, sim )[0];
 
     CHECK( size_before - aig.size() == tc.second );
     CHECK( tt == tt_prime );
