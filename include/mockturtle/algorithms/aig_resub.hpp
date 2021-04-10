@@ -330,11 +330,12 @@ public:
 
       if ( true ) // ( ps.fix_bug )
       {
-        if ( kitty::implies( ~tt_d, tt ) )
-        {
-          udivs.positive_divisors.emplace_back( !ntk.make_signal( d ) );
-          continue;
-        }
+        /* unreachable case */
+        // if ( kitty::implies( ~tt_d, tt ) )
+        // {
+        //   udivs.positive_divisors.emplace_back( !ntk.make_signal( d ) );
+        //   continue;
+        // }
         if ( kitty::implies( tt, ~tt_d ) )
         {
           udivs.negative_divisors.emplace_back( !ntk.make_signal( d ) );
