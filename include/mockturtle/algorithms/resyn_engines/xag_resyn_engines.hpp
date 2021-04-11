@@ -60,6 +60,9 @@ struct xag_resyn_engine_params
 
 struct xag_resyn_engine_stats
 {
+  /*! \brief Time for adding divisor truth tables. */
+  stopwatch<>::duration time_add_divisor{0};
+
   /*! \brief Time for finding 0-resub and collecting unate literals. */
   stopwatch<>::duration time_unate{0};
 
@@ -78,14 +81,20 @@ struct xag_resyn_engine_stats
   /*! \brief Time for collecting unate pairs. */
   stopwatch<>::duration time_collect_pairs{0};
 
+  /*! \brief Time for dividing the target and recursive call. */
+  stopwatch<>::duration time_divide{0};
+
   void report() const
   {
-    fmt::print( "[i]         0-resub      :{:>5.2f} secs\n", to_seconds( time_unate ) );
-    fmt::print( "[i]         1-resub      :{:>5.2f} secs\n", to_seconds( time_resub1 ) );
-    fmt::print( "[i]         2-resub      :{:>5.2f} secs\n", to_seconds( time_resub2 ) );
-    fmt::print( "[i]         3-resub      :{:>5.2f} secs\n", to_seconds( time_resub3 ) );
-    fmt::print( "[i]         sort         :{:>5.2f} secs\n", to_seconds( time_sort ) );
-    fmt::print( "[i]         collect pairs:{:>5.2f} secs\n", to_seconds( time_collect_pairs ) );
+    fmt::print( "[i]         <xag_resyn_engine>\n" );
+    fmt::print( "[i]             add divisors : {:>5.2f} secs\n", to_seconds( time_add_divisor ) );
+    fmt::print( "[i]             0-resub      : {:>5.2f} secs\n", to_seconds( time_unate ) );
+    fmt::print( "[i]             1-resub      : {:>5.2f} secs\n", to_seconds( time_resub1 ) );
+    fmt::print( "[i]             2-resub      : {:>5.2f} secs\n", to_seconds( time_resub2 ) );
+    fmt::print( "[i]             3-resub      : {:>5.2f} secs\n", to_seconds( time_resub3 ) );
+    fmt::print( "[i]             sort         : {:>5.2f} secs\n", to_seconds( time_sort ) );
+    fmt::print( "[i]             collect pairs: {:>5.2f} secs\n", to_seconds( time_collect_pairs ) );
+    fmt::print( "[i]             dividing     : {:>5.2f} secs\n", to_seconds( time_divide ) );
   }
 };
 
@@ -143,7 +152,9 @@ public:
   void add_divisor( TT const& tt )
   {
     assert( tt.num_bits() == divisors[0].num_bits() );
-    divisors.emplace_back( tt );
+    call_with_stopwatch( st.time_add_divisor, [&]() {
+      divisors.emplace_back( tt );
+    });
   }
 
   template<class node_type, class truth_table_storage_type>
@@ -285,40 +296,43 @@ private:
     /* choose something to divide and recursive call on the remainder */
     uint32_t on_off_div, on_off_pair;
     uint32_t score_div = 0, score_pair = 0;
-    if ( pos_unate_lits.size() > 0 )
-    {
-      on_off_div = 1; /* use pos_lit */
-      score_div = pos_lit_scores[pos_unate_lits[0]];
-      if ( neg_unate_lits.size() > 0 && neg_lit_scores[neg_unate_lits[0]] > pos_lit_scores[pos_unate_lits[0]] )
+
+    call_with_stopwatch( st.time_divide, [&]() {
+      if ( pos_unate_lits.size() > 0 )
+      {
+        on_off_div = 1; /* use pos_lit */
+        score_div = pos_lit_scores[pos_unate_lits[0]];
+        if ( neg_unate_lits.size() > 0 && neg_lit_scores[neg_unate_lits[0]] > pos_lit_scores[pos_unate_lits[0]] )
+        {
+          on_off_div = 0; /* use neg_lit */
+          score_div = neg_lit_scores[neg_unate_lits[0]];
+        }
+      }
+      else if ( neg_unate_lits.size() > 0 )
       {
         on_off_div = 0; /* use neg_lit */
         score_div = neg_lit_scores[neg_unate_lits[0]];
       }
-    }
-    else if ( neg_unate_lits.size() > 0 )
-    {
-      on_off_div = 0; /* use neg_lit */
-      score_div = neg_lit_scores[neg_unate_lits[0]];
-    }
 
-    if ( num_inserts >= 3u )
-    {
-      if ( pos_unate_pairs.size() > 0 )
+      if ( num_inserts >= 3u )
       {
-        on_off_pair = 1; /* use pos_pair */
-        score_pair = pos_pair_scores[pos_unate_pairs[0]];
-        if ( neg_unate_pairs.size() > 0 && neg_pair_scores[neg_unate_pairs[0]] > pos_pair_scores[pos_unate_pairs[0]] )
+        if ( pos_unate_pairs.size() > 0 )
+        {
+          on_off_pair = 1; /* use pos_pair */
+          score_pair = pos_pair_scores[pos_unate_pairs[0]];
+          if ( neg_unate_pairs.size() > 0 && neg_pair_scores[neg_unate_pairs[0]] > pos_pair_scores[pos_unate_pairs[0]] )
+          {
+            on_off_pair = 0; /* use neg_pair */
+            score_pair = neg_pair_scores[neg_unate_pairs[0]];
+          }
+        }
+        else if ( neg_unate_pairs.size() > 0 )
         {
           on_off_pair = 0; /* use neg_pair */
           score_pair = neg_pair_scores[neg_unate_pairs[0]];
         }
       }
-      else if ( neg_unate_pairs.size() > 0 )
-      {
-        on_off_pair = 0; /* use neg_pair */
-        score_pair = neg_pair_scores[neg_unate_pairs[0]];
-      }
-    }
+    });
 
     if ( score_div > score_pair / 2 ) /* divide with a divisor */
     {
@@ -326,7 +340,9 @@ private:
          if using neg_lit (on_off_div = 0), modify off-set and use an AND gate on top
        */
       uint32_t const lit = on_off_div ? pos_unate_lits[0] : neg_unate_lits[0];
-      divisors[on_off_div] &= lit & 0x1 ? divisors[lit >> 1] : ~divisors[lit >> 1];
+      call_with_stopwatch( st.time_divide, [&]() {
+        divisors[on_off_div] &= lit & 0x1 ? divisors[lit >> 1] : ~divisors[lit >> 1];
+      });
 
       auto const res_remain_div = compute_function_rec( num_inserts - 1 );
       if ( res_remain_div )
@@ -338,8 +354,10 @@ private:
     else if ( score_pair > 0 ) /* divide with a pair */
     {
       and_pair const pair = on_off_pair ? pos_unate_pairs[0] : neg_unate_pairs[0];
-      divisors[on_off_pair] &= ( pair.lit1 & 0x1 ? divisors[pair.lit1 >> 1] : ~divisors[pair.lit1 >> 1] )
-                            | ( pair.lit2 & 0x1 ? divisors[pair.lit2 >> 1] : ~divisors[pair.lit2 >> 1] );
+      call_with_stopwatch( st.time_divide, [&]() {
+        divisors[on_off_pair] &= ( pair.lit1 & 0x1 ? divisors[pair.lit1 >> 1] : ~divisors[pair.lit1 >> 1] )
+                              | ( pair.lit2 & 0x1 ? divisors[pair.lit2 >> 1] : ~divisors[pair.lit2 >> 1] );
+      });
 
       auto const res_remain_pair = compute_function_rec( num_inserts - 2 );
       if ( res_remain_pair )
