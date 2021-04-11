@@ -116,6 +116,7 @@ public:
       static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
     }
 
+    event_ptr = ntk._events->on_add.size();
     ntk._events->on_add.emplace_back( [&]( const auto& n ) {
       (void)n;
       literals.resize();
@@ -134,6 +135,11 @@ public:
     } );
 
     restart();
+  }
+
+  ~circuit_validator()
+  {
+    ntk._events->on_add.erase( ntk._events->on_add.begin() + event_ptr );
   }
 
   /*! \brief Validate functional equivalence of signals `f` and `d`. */
@@ -697,6 +703,8 @@ private:
 
   bool between_push_pop = false;
   std::vector<node> tmp;
+
+  uint32_t event_ptr;
 
 public:
   std::vector<bool> cex;
