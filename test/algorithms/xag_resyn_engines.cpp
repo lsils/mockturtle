@@ -46,7 +46,7 @@ TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
   xag_resyn_engine<kitty::partial_truth_table> engine1( target, care, st, ps );
   const auto res1 = engine1();
   CHECK( res1 );
-  CHECK( to_index_list_string( *res1 ) == "{0 | 1 << 8 | 0 << 16, 0}" );
+  CHECK( to_index_list_string( *res1 ) == "{0, 1, 0, 0}" );
 
   /* buffer */
   kitty::create_from_binary_string( target, "00110011" );
@@ -56,7 +56,7 @@ TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
   engine2.add_divisor( tts[0] );
   const auto res2 = engine2();
   CHECK( res2 );
-  CHECK( to_index_list_string( *res2 ) == "{1 | 1 << 8 | 0 << 16, 2}" );
+  CHECK( to_index_list_string( *res2 ) == "{1, 1, 0, 2}" );
 
   /* inverter */
   kitty::create_from_binary_string( target, "00110011" );
@@ -66,7 +66,7 @@ TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
   engine3.add_divisor( tts[0] );
   const auto res3 = engine3();
   CHECK( res3 );
-  CHECK( to_index_list_string( *res3 ) == "{1 | 1 << 8 | 0 << 16, 3}" );
+  CHECK( to_index_list_string( *res3 ) == "{1, 1, 0, 3}" );
 }
 
 TEST_CASE( "AIG resynthesis -- 1 <= k <= 3", "[xag_resyn]" )

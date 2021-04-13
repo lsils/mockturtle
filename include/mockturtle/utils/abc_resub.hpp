@@ -93,14 +93,14 @@ public:
     }
   }
 
-  std::optional<xag_index_list> compute_function( uint32_t num_inserts, bool useXOR = false )
+  std::optional<xag_index_list<true>> compute_function( uint32_t num_inserts, bool useXOR = false )
   {
     int * raw_list;
     int size = abcresub::Abc_ResubComputeFunction( (void **)Vec_PtrArray( abc_divs ), Vec_PtrSize( abc_divs ), num_blocks_per_truth_table, num_inserts, /* nDivsMax */max_num_divisors, /* nChoice = */0, int(useXOR), /* debug = */0, /* verbose = */0, &raw_list );
 
     if ( size )
     {
-      xag_index_list xag_list;
+      xag_index_list<true> xag_list;
       xag_list.add_inputs( num_divisors - 2 );
       for ( int i = 0; i < size - 1; i += 2 )
       {
