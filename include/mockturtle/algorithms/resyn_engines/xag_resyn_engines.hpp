@@ -38,10 +38,10 @@
 
 #include <kitty/kitty.hpp>
 #include <fmt/format.h>
+#include <parallel_hashmap/phmap.h>
 
 #include <vector>
 #include <algorithm>
-#include <unordered_map>
 
 namespace mockturtle
 {
@@ -51,11 +51,11 @@ struct xag_resyn_engine_params
   /*! \brief Maximum size (number of gates) of the dependency circuit. */
   uint32_t max_size{0u};
 
-  /*! \brief Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs). */
-  bool use_xor{false};
-
   /*! \brief Maximum number of binate divisors to be considered. */
   uint32_t max_binates{50u};
+
+  /*! \brief Reserved capacity for divisor truth tables (number of divisors). */
+  uint32_t reserve{200u};
 };
 
 struct xag_resyn_engine_stats
@@ -112,23 +112,30 @@ struct xag_resyn_engine_stats
  * When no simple solutions can be found, the algorithm heuristically chooses an unate
  * divisor or an unate pair to divide the target function with and recursively calls
  * itself to decompose the remainder function.
+ *
+ * \param use_xor Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs).
  */
-template<class TT>
+template<class TT, bool use_xor = false>
 class xag_resyn_engine
 {
 public:
   using stats = xag_resyn_engine_stats;
   using params = xag_resyn_engine_params;
-  using index_list_t = xag_index_list;
+  using index_list_t = xag_index_list<true>;
   using truth_table_t = TT;
 
 private:
-  struct and_pair
+  struct fanin_pair
   {
-    and_pair( uint32_t l1, uint32_t l2 )
+    fanin_pair( uint32_t l1, uint32_t l2 )
       : lit1( l1 < l2 ? l1 : l2 ), lit2( l1 < l2 ? l2 : l1 )
     { }
-    bool operator==( and_pair const& other ) const
+
+    fanin_pair( uint32_t l1, uint32_t l2, bool is_xor )
+      : lit1( l1 > l2 ? l1 : l2 ), lit2( l1 > l2 ? l2 : l1 )
+    { (void)is_xor; }
+
+    bool operator==( fanin_pair const& other ) const
     {
       return lit1 == other.lit1 && lit2 == other.lit2;
     }
@@ -138,16 +145,19 @@ private:
 
   struct pair_hash
   {
-    std::size_t operator()( and_pair const& p ) const
+    std::size_t operator()( fanin_pair const& p ) const
     {
-      return std::hash<uint64_t>{}( (uint64_t)p.lit1 << 32 | (uint64_t)p.lit2 );
+      size_t res = p.lit1 + 0x9e3779b9;
+      return res ^ (p.lit2 + 0x9e3779b9 + (res << 6) + (res >> 2));
     }
   };
 
 public:
   explicit xag_resyn_engine( TT const& target, TT const& care, stats& st, params const& ps = {} )
     : divisors( { ~target & care, target & care } ), st( st ), ps( ps )
-  { }
+  {
+    divisors.reserve( ps.reserve + 2 );
+  }
 
   void add_divisor( TT const& tt )
   {
@@ -239,8 +249,9 @@ private:
       binate_divs.resize( ps.max_binates );
     }
 
-    if ( ps.use_xor )
+    if constexpr ( use_xor )
     {
+      /* collect XOR-type unate pairs and try 1-resub with XOR */
       auto const res1xor = find_xor();
       if ( res1xor )
       {
@@ -252,7 +263,7 @@ private:
       return std::nullopt;
     }
 
-    /* collect and sort unate pairs, then try 2- and 3-resub */
+    /* collect AND-type unate pairs and sort (both types), then try 2- and 3-resub */
     call_with_stopwatch( st.time_collect_pairs, [&]() {
       collect_unate_pairs();
     });
@@ -294,6 +305,8 @@ private:
     }
 
     /* choose something to divide and recursive call on the remainder */
+    /* Note: dividing = AND the on-set (if using positive unate) or the off-set (if using negative unate)
+                        with the *negation* of the divisor/pair (subtracting) */
     uint32_t on_off_div, on_off_pair;
     uint32_t score_div = 0, score_pair = 0;
 
@@ -353,10 +366,26 @@ private:
     }
     else if ( score_pair > 0 ) /* divide with a pair */
     {
-      and_pair const pair = on_off_pair ? pos_unate_pairs[0] : neg_unate_pairs[0];
+      fanin_pair const pair = on_off_pair ? pos_unate_pairs[0] : neg_unate_pairs[0];
       call_with_stopwatch( st.time_divide, [&]() {
-        divisors[on_off_pair] &= ( pair.lit1 & 0x1 ? divisors[pair.lit1 >> 1] : ~divisors[pair.lit1 >> 1] )
-                              | ( pair.lit2 & 0x1 ? divisors[pair.lit2 >> 1] : ~divisors[pair.lit2 >> 1] );
+        if constexpr ( use_xor )
+        {
+          if ( pair.lit1 > pair.lit2 ) /* XOR pair: ~(lit1 ^ lit2) = ~lit1 ^ lit2 */
+          {
+            divisors[on_off_pair] &= ( pair.lit1 & 0x1 ? divisors[pair.lit1 >> 1] : ~divisors[pair.lit1 >> 1] )
+                                  ^ ( pair.lit2 & 0x1 ? ~divisors[pair.lit2 >> 1] : divisors[pair.lit2 >> 1] );
+          }
+          else /* AND pair: ~(lit1 & lit2) = ~lit1 | ~lit2 */
+          {
+            divisors[on_off_pair] &= ( pair.lit1 & 0x1 ? divisors[pair.lit1 >> 1] : ~divisors[pair.lit1 >> 1] )
+                                  | ( pair.lit2 & 0x1 ? divisors[pair.lit2 >> 1] : ~divisors[pair.lit2 >> 1] );
+          }
+        }
+        else /* AND pair: ~(lit1 & lit2) = ~lit1 | ~lit2 */
+        {
+          divisors[on_off_pair] &= ( pair.lit1 & 0x1 ? divisors[pair.lit1 >> 1] : ~divisors[pair.lit1 >> 1] )
+                                | ( pair.lit2 & 0x1 ? divisors[pair.lit2 >> 1] : ~divisors[pair.lit2 >> 1] );
+        }
       });
 
       auto const res_remain_pair = compute_function_rec( num_inserts - 2 );
@@ -447,7 +476,7 @@ private:
      - For `pos_unate_lits`, `on_off` = 1, sort by intersection with on-set;
      - For `neg_unate_lits`, `on_off` = 0, sort by intersection with off-set
    */
-  void sort_unate_lits( std::vector<uint32_t>& unate_lits, std::unordered_map<uint32_t, uint32_t>& scores, uint32_t on_off )
+  void sort_unate_lits( std::vector<uint32_t>& unate_lits, phmap::flat_hash_map<uint32_t, uint32_t>& scores, uint32_t on_off )
   {
     scores.clear();
     for ( auto const& lit : unate_lits )
@@ -458,7 +487,7 @@ private:
         return scores[lit1] > scores[lit2]; // descending order
     });
   }
-  void sort_unate_pairs( std::vector<and_pair>& unate_pairs, std::unordered_map<and_pair, uint32_t, pair_hash>& scores, uint32_t on_off )
+  void sort_unate_pairs( std::vector<fanin_pair>& unate_pairs, phmap::flat_hash_map<fanin_pair, uint32_t, pair_hash>& scores, uint32_t on_off )
   {
     scores.clear();
     for ( auto const& p : unate_pairs )
@@ -467,7 +496,7 @@ private:
                                    & ( p.lit2 & 0x1 ? ~divisors[p.lit2 >> 1] : divisors[p.lit2 >> 1] )
                                    & divisors[on_off] );
     }
-    std::sort( unate_pairs.begin(), unate_pairs.end(), [&]( and_pair const& p1, and_pair const& p2 ) {
+    std::sort( unate_pairs.begin(), unate_pairs.end(), [&]( fanin_pair const& p1, fanin_pair const& p2 ) {
         return scores[p1] > scores[p2]; // descending order
     });
   }
@@ -476,7 +505,7 @@ private:
      - For `pos_unate_lits`, `on_off` = 1, try covering all on-set bits by combining two with an OR gate;
      - For `neg_unate_lits`, `on_off` = 0, try covering all off-set bits by combining two with an AND gate
    */
-  std::optional<uint32_t> find_div_div( std::vector<uint32_t>& unate_lits, std::unordered_map<uint32_t, uint32_t>& scores, uint32_t on_off )
+  std::optional<uint32_t> find_div_div( std::vector<uint32_t>& unate_lits, phmap::flat_hash_map<uint32_t, uint32_t>& scores, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_lits.size(); ++i )
     {
@@ -504,24 +533,57 @@ private:
     return std::nullopt;
   }
 
-  std::optional<uint32_t> find_div_pair( std::vector<uint32_t>& unate_lits, std::vector<and_pair>& unate_pairs, std::unordered_map<uint32_t, uint32_t>& lit_scores, std::unordered_map<and_pair, uint32_t, pair_hash>& pair_scores, uint32_t on_off )
+  std::optional<uint32_t> find_div_pair( std::vector<uint32_t>& unate_lits, std::vector<fanin_pair>& unate_pairs, phmap::flat_hash_map<uint32_t, uint32_t>& lit_scores, phmap::flat_hash_map<fanin_pair, uint32_t, pair_hash>& pair_scores, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_lits.size(); ++i )
     {
       uint32_t const& lit1 = unate_lits[i];
       for ( auto j = 0u; j < unate_pairs.size(); ++j )
       {
-        and_pair const& pair2 = unate_pairs[j];
+        fanin_pair const& pair2 = unate_pairs[j];
         if ( lit_scores[lit1] + pair_scores[pair2] < num_bits[on_off] )
         {
           break;
         }
         auto const ntt1 = lit1 & 0x1 ? divisors[lit1 >> 1] : ~divisors[lit1 >> 1];
-        auto const ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
-                        | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
+        TT ntt2;
+        if constexpr ( use_xor )
+        {
+          if ( pair2.lit1 > pair2.lit2 )
+          {
+            ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
+                 ^ ( pair2.lit2 & 0x1 ? ~divisors[pair2.lit2 >> 1] : divisors[pair2.lit2 >> 1] );
+          }
+          else
+          {
+            ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
+                 | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
+          }
+        }
+        else
+        {
+          ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
+               | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
+        }
+        
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
-          auto const new_lit1 = index_list.add_and( pair2.lit1 - 2, pair2.lit2 - 2 );
+          uint32_t new_lit1;
+          if constexpr ( use_xor )
+          {
+            if ( pair2.lit1 > pair2.lit2 )
+            {
+              new_lit1 = index_list.add_xor( pair2.lit1 - 2, pair2.lit2 - 2 );
+            }
+            else
+            {
+              new_lit1 = index_list.add_and( pair2.lit1 - 2, pair2.lit2 - 2 );
+            }
+          }
+          else
+          {
+            new_lit1 = index_list.add_and( pair2.lit1 - 2, pair2.lit2 - 2 );
+          }
           auto const new_lit2 = index_list.add_and( ( lit1 ^ 0x1 ) - 2, new_lit1 ^ 0x1 );
           return new_lit2 + on_off;
         }
@@ -530,30 +592,81 @@ private:
     return std::nullopt;
   }
 
-  std::optional<uint32_t> find_pair_pair( std::vector<and_pair>& unate_pairs, std::unordered_map<and_pair, uint32_t, pair_hash>& scores, uint32_t on_off )
+  std::optional<uint32_t> find_pair_pair( std::vector<fanin_pair>& unate_pairs, phmap::flat_hash_map<fanin_pair, uint32_t, pair_hash>& scores, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_pairs.size(); ++i )
     {
-      and_pair const& pair1 = unate_pairs[i];
+      fanin_pair const& pair1 = unate_pairs[i];
       if ( scores[pair1] * 2 < num_bits[on_off] )
       {
         break;
       }
       for ( auto j = i + 1; j < unate_pairs.size(); ++j )
       {
-        and_pair const& pair2 = unate_pairs[j];
+        fanin_pair const& pair2 = unate_pairs[j];
         if ( scores[pair1] + scores[pair2] < num_bits[on_off] )
         {
           break;
         }
-        auto const ntt1 = ( pair1.lit1 & 0x1 ? divisors[pair1.lit1 >> 1] : ~divisors[pair1.lit1 >> 1] )
-                        | ( pair1.lit2 & 0x1 ? divisors[pair1.lit2 >> 1] : ~divisors[pair1.lit2 >> 1] );
-        auto const ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
-                        | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
+        TT ntt1, ntt2;
+        if constexpr ( use_xor )
+        {
+          if ( pair1.lit1 > pair1.lit2 )
+          {
+            ntt1 = ( pair1.lit1 & 0x1 ? divisors[pair1.lit1 >> 1] : ~divisors[pair1.lit1 >> 1] )
+                 ^ ( pair1.lit2 & 0x1 ? ~divisors[pair1.lit2 >> 1] : divisors[pair1.lit2 >> 1] );
+          }
+          else
+          {
+            ntt1 = ( pair1.lit1 & 0x1 ? divisors[pair1.lit1 >> 1] : ~divisors[pair1.lit1 >> 1] )
+                 | ( pair1.lit2 & 0x1 ? divisors[pair1.lit2 >> 1] : ~divisors[pair1.lit2 >> 1] );
+          }
+          if ( pair2.lit1 > pair2.lit2 )
+          {
+            ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
+                 ^ ( pair2.lit2 & 0x1 ? ~divisors[pair2.lit2 >> 1] : divisors[pair2.lit2 >> 1] );
+          }
+          else
+          {
+            ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
+                 | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
+          }
+        }
+        else
+        {
+          ntt1 = ( pair1.lit1 & 0x1 ? divisors[pair1.lit1 >> 1] : ~divisors[pair1.lit1 >> 1] )
+               | ( pair1.lit2 & 0x1 ? divisors[pair1.lit2 >> 1] : ~divisors[pair1.lit2 >> 1] );
+          ntt2 = ( pair2.lit1 & 0x1 ? divisors[pair2.lit1 >> 1] : ~divisors[pair2.lit1 >> 1] )
+               | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
+        }
+
         if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
         {
-          uint32_t const fanin_lit1 = index_list.add_and( pair1.lit1 - 2, pair1.lit2 - 2 );
-          uint32_t const fanin_lit2 = index_list.add_and( pair2.lit1 - 2, pair2.lit2 - 2 );
+          uint32_t fanin_lit1, fanin_lit2;
+          if constexpr ( use_xor )
+          {
+            if ( pair1.lit1 > pair1.lit2 )
+            {
+              fanin_lit1 = index_list.add_xor( pair1.lit1 - 2, pair1.lit2 - 2 );
+            }
+            else
+            {
+              fanin_lit1 = index_list.add_and( pair1.lit1 - 2, pair1.lit2 - 2 );
+            }
+            if ( pair2.lit1 > pair2.lit2 )
+            {
+              fanin_lit2 = index_list.add_xor( pair2.lit1 - 2, pair2.lit2 - 2 );
+            }
+            else
+            {
+              fanin_lit2 = index_list.add_and( pair2.lit1 - 2, pair2.lit2 - 2 );
+            }
+          }
+          else
+          {
+            fanin_lit1 = index_list.add_and( pair1.lit1 - 2, pair1.lit2 - 2 );
+            fanin_lit2 = index_list.add_and( pair2.lit1 - 2, pair2.lit2 - 2 );
+          }
           uint32_t const output_lit = index_list.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
           return output_lit + on_off;
         }
@@ -564,11 +677,52 @@ private:
 
   std::optional<uint32_t> find_xor()
   {
-    /* collect xor_pairs (d1 ^ d2) & off = 0 and ~(d1 ^ d2) & on = 0, selecting d1, d2 from binate_divs */
+    /* collect XOR-type pairs (d1 ^ d2) & off = 0 or ~(d1 ^ d2) & on = 0, selecting d1, d2 from binate_divs */
+    for ( auto i = 0u; i < binate_divs.size(); ++i )
+    {
+      for ( auto j = i + 1; j < binate_divs.size(); ++j )
+      {
+        auto const tt_xor = divisors[binate_divs[i]] ^ divisors[binate_divs[j]];
+        bool unateness[4] = {false, false, false, false};
+        /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
+        if ( intersection_is_empty( tt_xor, divisors[0] ) && !intersection_is_empty( tt_xor, divisors[1] ) )
+        {
+          pos_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
+          unateness[0] = true;
+        }
+        if ( intersection_is_empty_neg( tt_xor, divisors[0] ) && !intersection_is_empty_neg( tt_xor, divisors[1] ) )
+        {
+          pos_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
+          unateness[1] = true;
+        }
+
+        /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
+        if ( intersection_is_empty( tt_xor, divisors[1] ) && !intersection_is_empty( tt_xor, divisors[0] ) )
+        {
+          neg_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
+          unateness[2] = true;
+        }
+        if ( intersection_is_empty( tt_xor, divisors[1] ) && !intersection_is_empty( tt_xor, divisors[0] ) )
+        {
+          neg_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
+          unateness[3] = true;
+        }
+
+        if ( unateness[0] && unateness[2] )
+        {
+          return index_list.add_xor( ( binate_divs[i] << 1 ) - 2, ( binate_divs[j] << 1 ) - 2 );
+        }
+        if ( unateness[1] && unateness[3] )
+        {
+          return index_list.add_xor( ( binate_divs[i] << 1 ) - 1, ( binate_divs[j] << 1 ) - 2 );
+        }
+      }
+    }
+
     return std::nullopt;
   }
 
-  /* collect and_pairs (d1 & d2) & off = 0 and ~(d1 & d2) & on = 0, selecting d1, d2 from binate_divs */
+  /* collect AND-type pairs (d1 & d2) & off = 0 or ~(d1 & d2) & on = 0, selecting d1, d2 from binate_divs */
   void collect_unate_pairs()
   {
     for ( auto i = 0u; i < binate_divs.size(); ++i )
@@ -647,9 +801,9 @@ private:
   /* positive unate: not overlapping with off-set
      negative unate: not overlapping with on-set */
   std::vector<uint32_t> pos_unate_lits, neg_unate_lits, binate_divs;
-  std::unordered_map<uint32_t, uint32_t> pos_lit_scores, neg_lit_scores;
-  std::vector<and_pair> pos_unate_pairs, neg_unate_pairs;
-  std::unordered_map<and_pair, uint32_t, pair_hash> pos_pair_scores, neg_pair_scores;
+  phmap::flat_hash_map<uint32_t, uint32_t> pos_lit_scores, neg_lit_scores;
+  std::vector<fanin_pair> pos_unate_pairs, neg_unate_pairs;
+  phmap::flat_hash_map<fanin_pair, uint32_t, pair_hash> pos_pair_scores, neg_pair_scores;
 
   stats& st;
   params const& ps;

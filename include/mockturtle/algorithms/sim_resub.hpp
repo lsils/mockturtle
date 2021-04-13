@@ -91,7 +91,7 @@ class abc_resub_functor
 {
 public:
   using stats = abc_resub_functor_stats;
-  using index_list_t = xag_index_list;
+  using index_list_t = xag_index_list<true>;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using TT = kitty::partial_truth_table;
@@ -214,12 +214,12 @@ public:
   {
     typename ResynEngine::params ps_resyn;
     ps_resyn.max_size = std::min( potential_gain - 1, ps.max_inserts );
-    ps_resyn.max_binates = ps.max_divisors_k;
-    if constexpr ( std::is_same_v<ResynEngine, xag_resyn_engine<TT>> )
-    {
-      ps_resyn.use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
-    }
+    ps_resyn.reserve = divs.size();
 
+    if constexpr ( std::is_same_v<ResynEngine, xag_resyn_engine<TT, true>> || std::is_same_v<ResynEngine, xag_resyn_engine<TT, false>> )
+    {
+      ps_resyn.max_binates = ps.max_divisors_k;
+    }
     ResynEngine engine( tts[root], care, st.engine_st, ps_resyn );
     auto const res = engine( std::begin( divs ), std::end( divs ), tts );
 
@@ -335,7 +335,7 @@ struct sim_resub_stats
  * \param ResubFn Resubstitution functor to compute the resubstitution.
  * \param MffcRes Typename of `potential_gain` needed by the resubstitution functor.
  */
-template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = resyn_functor<Ntk, xag_resyn_engine<kitty::partial_truth_table>>, typename MffcRes = uint32_t>
+template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = resyn_functor<Ntk, xag_resyn_engine<kitty::partial_truth_table, false>>, typename MffcRes = uint32_t>
 class simulation_based_resub_engine
 {
 public:
