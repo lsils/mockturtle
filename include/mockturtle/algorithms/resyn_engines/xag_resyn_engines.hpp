@@ -125,6 +125,21 @@ public:
   using truth_table_t = TT;
 
 private:
+  struct unate_lit
+  {
+    unate_lit( uint32_t l )
+      : lit( l )
+    { }
+
+    bool operator==( unate_lit const& other ) const
+    {
+      return lit == other.lit;
+    }
+
+    uint32_t lit;
+    uint32_t score{0};
+  };
+
   struct fanin_pair
   {
     fanin_pair( uint32_t l1, uint32_t l2 )
@@ -141,15 +156,7 @@ private:
     }
 
     uint32_t lit1, lit2;
-  };
-
-  struct pair_hash
-  {
-    std::size_t operator()( fanin_pair const& p ) const
-    {
-      size_t res = p.lit1 + 0x9e3779b9;
-      return res ^ (p.lit2 + 0x9e3779b9 + (res << 6) + (res >> 2));
-    }
+    uint32_t score{0};
   };
 
 public:
@@ -211,6 +218,12 @@ private:
 
   std::optional<uint32_t> compute_function_rec( uint32_t num_inserts )
   {
+    pos_unate_lits.clear();
+    neg_unate_lits.clear();
+    binate_divs.clear();
+    pos_unate_pairs.clear();
+    neg_unate_pairs.clear();
+
     /* try 0-resub and collect unate literals */
     auto const res0 = call_with_stopwatch( st.time_unate, [&]() {
       return find_one_unate();
@@ -226,18 +239,18 @@ private:
 
     /* sort unate literals and try 1-resub */
     call_with_stopwatch( st.time_sort, [&]() {
-      sort_unate_lits( pos_unate_lits, pos_lit_scores, 1 );
-      sort_unate_lits( neg_unate_lits, neg_lit_scores, 0 );
+      sort_unate_lits( pos_unate_lits, 1 );
+      sort_unate_lits( neg_unate_lits, 0 );
     });
     auto const res1or = call_with_stopwatch( st.time_resub1, [&]() {
-      return find_div_div( pos_unate_lits, pos_lit_scores, 1 );
+      return find_div_div( pos_unate_lits, 1 );
     });
     if ( res1or )
     {
       return *res1or;
     }
     auto const res1and = call_with_stopwatch( st.time_resub1, [&]() {
-      return find_div_div( neg_unate_lits, neg_lit_scores, 0 );
+      return find_div_div( neg_unate_lits, 0 );
     });
     if ( res1and )
     {
@@ -268,18 +281,18 @@ private:
       collect_unate_pairs();
     });
     call_with_stopwatch( st.time_sort, [&]() {
-      sort_unate_pairs( pos_unate_pairs, pos_pair_scores, 1 );
-      sort_unate_pairs( neg_unate_pairs, neg_pair_scores, 0 );
+      sort_unate_pairs( pos_unate_pairs, 1 );
+      sort_unate_pairs( neg_unate_pairs, 0 );
     });
     auto const res2or = call_with_stopwatch( st.time_resub2, [&]() {
-      return find_div_pair( pos_unate_lits, pos_unate_pairs, pos_lit_scores, pos_pair_scores, 1 );
+      return find_div_pair( pos_unate_lits, pos_unate_pairs, 1 );
     });
     if ( res2or )
     {
       return *res2or;
     }
     auto const res2and = call_with_stopwatch( st.time_resub2, [&]() {
-      return find_div_pair( neg_unate_lits, neg_unate_pairs, neg_lit_scores, neg_pair_scores, 0 );
+      return find_div_pair( neg_unate_lits, neg_unate_pairs, 0 );
     });
     if ( res2and )
     {
@@ -289,14 +302,14 @@ private:
     if ( num_inserts >= 3u )
     {
       auto const res3or = call_with_stopwatch( st.time_resub3, [&]() {
-        return find_pair_pair( pos_unate_pairs, pos_pair_scores, 1 );
+        return find_pair_pair( pos_unate_pairs, 1 );
       });
       if ( res3or )
       {
         return *res3or;
       }
       auto const res3and = call_with_stopwatch( st.time_resub3, [&]() {
-        return find_pair_pair( neg_unate_pairs, neg_pair_scores, 0 );
+        return find_pair_pair( neg_unate_pairs, 0 );
       });
       if ( res3and )
       {
@@ -314,17 +327,17 @@ private:
       if ( pos_unate_lits.size() > 0 )
       {
         on_off_div = 1; /* use pos_lit */
-        score_div = pos_lit_scores[pos_unate_lits[0]];
-        if ( neg_unate_lits.size() > 0 && neg_lit_scores[neg_unate_lits[0]] > pos_lit_scores[pos_unate_lits[0]] )
+        score_div = pos_unate_lits[0].score;
+        if ( neg_unate_lits.size() > 0 && neg_unate_lits[0].score > pos_unate_lits[0].score )
         {
           on_off_div = 0; /* use neg_lit */
-          score_div = neg_lit_scores[neg_unate_lits[0]];
+          score_div = neg_unate_lits[0].score;
         }
       }
       else if ( neg_unate_lits.size() > 0 )
       {
         on_off_div = 0; /* use neg_lit */
-        score_div = neg_lit_scores[neg_unate_lits[0]];
+        score_div = neg_unate_lits[0].score;
       }
 
       if ( num_inserts >= 3u )
@@ -332,17 +345,17 @@ private:
         if ( pos_unate_pairs.size() > 0 )
         {
           on_off_pair = 1; /* use pos_pair */
-          score_pair = pos_pair_scores[pos_unate_pairs[0]];
-          if ( neg_unate_pairs.size() > 0 && neg_pair_scores[neg_unate_pairs[0]] > pos_pair_scores[pos_unate_pairs[0]] )
+          score_pair = pos_unate_pairs[0].score;
+          if ( neg_unate_pairs.size() > 0 && neg_unate_pairs[0].score > pos_unate_pairs[0].score )
           {
             on_off_pair = 0; /* use neg_pair */
-            score_pair = neg_pair_scores[neg_unate_pairs[0]];
+            score_pair = neg_unate_pairs[0].score;
           }
         }
         else if ( neg_unate_pairs.size() > 0 )
         {
           on_off_pair = 0; /* use neg_pair */
-          score_pair = neg_pair_scores[neg_unate_pairs[0]];
+          score_pair = neg_unate_pairs[0].score;
         }
       }
     });
@@ -352,7 +365,7 @@ private:
       /* if using pos_lit (on_off_div = 1), modify on-set and use an OR gate on top;
          if using neg_lit (on_off_div = 0), modify off-set and use an AND gate on top
        */
-      uint32_t const lit = on_off_div ? pos_unate_lits[0] : neg_unate_lits[0];
+      uint32_t const lit = on_off_div ? pos_unate_lits[0].lit : neg_unate_lits[0].lit;
       call_with_stopwatch( st.time_divide, [&]() {
         divisors[on_off_div] &= lit & 0x1 ? divisors[lit >> 1] : ~divisors[lit >> 1];
       });
@@ -418,31 +431,28 @@ private:
       return 0;
     }
 
-    pos_unate_lits.clear();
-    neg_unate_lits.clear();
-    binate_divs.clear();
     for ( auto v = 2u; v < divisors.size(); ++v )
     {
       bool unateness[4] = {false, false, false, false};
       /* check intersection with off-set */
-      if ( intersection_is_empty( divisors[v], divisors[0] ) )
+      if ( intersection_is_empty<false, false>( divisors[v], divisors[0] ) )
       {
         pos_unate_lits.emplace_back( v << 1 );
         unateness[0] = true;
       }
-      else if ( intersection_is_empty_neg( divisors[v], divisors[0] ) )
+      else if ( intersection_is_empty<true, false>( divisors[v], divisors[0] ) )
       {
         pos_unate_lits.emplace_back( v << 1 | 0x1 );
         unateness[1] = true;
       }
 
       /* check intersection with on-set */
-      if ( intersection_is_empty( divisors[v], divisors[1] ) )
+      if ( intersection_is_empty<false, false>( divisors[v], divisors[1] ) )
       {
         neg_unate_lits.emplace_back( v << 1 );
         unateness[2] = true;
       }
-      else if ( intersection_is_empty_neg( divisors[v], divisors[1] ) )
+      else if ( intersection_is_empty<true, false>( divisors[v], divisors[1] ) )
       {
         neg_unate_lits.emplace_back( v << 1 | 0x1 );
         unateness[3] = true;
@@ -476,28 +486,51 @@ private:
      - For `pos_unate_lits`, `on_off` = 1, sort by intersection with on-set;
      - For `neg_unate_lits`, `on_off` = 0, sort by intersection with off-set
    */
-  void sort_unate_lits( std::vector<uint32_t>& unate_lits, phmap::flat_hash_map<uint32_t, uint32_t>& scores, uint32_t on_off )
+  void sort_unate_lits( std::vector<unate_lit>& unate_lits, uint32_t on_off )
   {
-    scores.clear();
-    for ( auto const& lit : unate_lits )
+    for ( auto& l : unate_lits )
     {
-      scores[lit] = kitty::count_ones( ( lit & 0x1 ? ~divisors[lit >> 1] : divisors[lit >> 1] ) & divisors[on_off] );
+      l.score = kitty::count_ones( ( l.lit & 0x1 ? ~divisors[l.lit >> 1] : divisors[l.lit >> 1] ) & divisors[on_off] );
     }
-    std::sort( unate_lits.begin(), unate_lits.end(), [&]( uint32_t lit1, uint32_t lit2 ) {
-        return scores[lit1] > scores[lit2]; // descending order
+    std::sort( unate_lits.begin(), unate_lits.end(), [&]( unate_lit const& l1, unate_lit const& l2 ) {
+        return l1.score > l2.score; // descending order
     });
   }
-  void sort_unate_pairs( std::vector<fanin_pair>& unate_pairs, phmap::flat_hash_map<fanin_pair, uint32_t, pair_hash>& scores, uint32_t on_off )
+
+  void sort_unate_pairs( std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
   {
-    scores.clear();
-    for ( auto const& p : unate_pairs )
+    for ( auto& p : unate_pairs )
     {
-      scores[p] = kitty::count_ones( ( p.lit1 & 0x1 ? ~divisors[p.lit1 >> 1] : divisors[p.lit1 >> 1] )
+      if constexpr ( use_xor )
+      {
+        p.score = ( p.lit1 > p.lit2 ) ?
+                    kitty::count_ones( ( ( p.lit1 & 0x1 ? ~divisors[p.lit1 >> 1] : divisors[p.lit1 >> 1] )
+                                     ^ ( p.lit2 & 0x1 ? ~divisors[p.lit2 >> 1] : divisors[p.lit2 >> 1] ) )
+                                     & divisors[on_off] )
+                  : kitty::count_ones( ( p.lit1 & 0x1 ? ~divisors[p.lit1 >> 1] : divisors[p.lit1 >> 1] )
+                                     & ( p.lit2 & 0x1 ? ~divisors[p.lit2 >> 1] : divisors[p.lit2 >> 1] )
+                                     & divisors[on_off] );
+      }
+      else
+      {
+        p.score = kitty::count_ones( ( p.lit1 & 0x1 ? ~divisors[p.lit1 >> 1] : divisors[p.lit1 >> 1] )
                                    & ( p.lit2 & 0x1 ? ~divisors[p.lit2 >> 1] : divisors[p.lit2 >> 1] )
                                    & divisors[on_off] );
+      }
     }
+/*
+    for ( int i = 0; i < unate_pairs.size(); ++i )
+    {
+      if ( unate_pairs[i].score == 0u )
+      {
+        unate_pairs[i] = unate_pairs.back();
+        unate_pairs.pop_back();
+        --i;
+      }
+    }
+*/
     std::sort( unate_pairs.begin(), unate_pairs.end(), [&]( fanin_pair const& p1, fanin_pair const& p2 ) {
-        return scores[p1] > scores[p2]; // descending order
+        return p1.score > p2.score; // descending order
     });
   }
 
@@ -505,25 +538,25 @@ private:
      - For `pos_unate_lits`, `on_off` = 1, try covering all on-set bits by combining two with an OR gate;
      - For `neg_unate_lits`, `on_off` = 0, try covering all off-set bits by combining two with an AND gate
    */
-  std::optional<uint32_t> find_div_div( std::vector<uint32_t>& unate_lits, phmap::flat_hash_map<uint32_t, uint32_t>& scores, uint32_t on_off )
+  std::optional<uint32_t> find_div_div( std::vector<unate_lit>& unate_lits, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_lits.size(); ++i )
     {
-      uint32_t const& lit1 = unate_lits[i];
-      if ( scores[lit1] * 2 < num_bits[on_off] )
+      uint32_t const& lit1 = unate_lits[i].lit;
+      if ( unate_lits[i].score * 2 < num_bits[on_off] )
       {
         break;
       }
       for ( auto j = i + 1; j < unate_lits.size(); ++j )
       {
-        uint32_t const& lit2 = unate_lits[j];
-        if ( scores[lit1] + scores[lit2] < num_bits[on_off] )
+        uint32_t const& lit2 = unate_lits[j].lit;
+        if ( unate_lits[i].score + unate_lits[j].score < num_bits[on_off] )
         {
           break;
         }
         auto const ntt1 = lit1 & 0x1 ? divisors[lit1 >> 1] : ~divisors[lit1 >> 1];
         auto const ntt2 = lit2 & 0x1 ? divisors[lit2 >> 1] : ~divisors[lit2 >> 1];
-        if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
+        if ( intersection_is_empty<false, false>( ntt1, ntt2, divisors[on_off] ) )
         {
           auto const new_lit = index_list.add_and( ( lit1 ^ 0x1 ) - 2, ( lit2 ^ 0x1 ) - 2 );
           return new_lit + on_off;
@@ -533,15 +566,15 @@ private:
     return std::nullopt;
   }
 
-  std::optional<uint32_t> find_div_pair( std::vector<uint32_t>& unate_lits, std::vector<fanin_pair>& unate_pairs, phmap::flat_hash_map<uint32_t, uint32_t>& lit_scores, phmap::flat_hash_map<fanin_pair, uint32_t, pair_hash>& pair_scores, uint32_t on_off )
+  std::optional<uint32_t> find_div_pair( std::vector<unate_lit>& unate_lits, std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_lits.size(); ++i )
     {
-      uint32_t const& lit1 = unate_lits[i];
+      uint32_t const& lit1 = unate_lits[i].lit;
       for ( auto j = 0u; j < unate_pairs.size(); ++j )
       {
         fanin_pair const& pair2 = unate_pairs[j];
-        if ( lit_scores[lit1] + pair_scores[pair2] < num_bits[on_off] )
+        if ( unate_lits[i].score + pair2.score < num_bits[on_off] )
         {
           break;
         }
@@ -566,7 +599,7 @@ private:
                | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
         }
         
-        if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
+        if ( intersection_is_empty<false, false>( ntt1, ntt2, divisors[on_off] ) )
         {
           uint32_t new_lit1;
           if constexpr ( use_xor )
@@ -592,19 +625,19 @@ private:
     return std::nullopt;
   }
 
-  std::optional<uint32_t> find_pair_pair( std::vector<fanin_pair>& unate_pairs, phmap::flat_hash_map<fanin_pair, uint32_t, pair_hash>& scores, uint32_t on_off )
+  std::optional<uint32_t> find_pair_pair( std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_pairs.size(); ++i )
     {
       fanin_pair const& pair1 = unate_pairs[i];
-      if ( scores[pair1] * 2 < num_bits[on_off] )
+      if ( pair1.score * 2 < num_bits[on_off] )
       {
         break;
       }
       for ( auto j = i + 1; j < unate_pairs.size(); ++j )
       {
         fanin_pair const& pair2 = unate_pairs[j];
-        if ( scores[pair1] + scores[pair2] < num_bits[on_off] )
+        if ( pair1.score + pair2.score < num_bits[on_off] )
         {
           break;
         }
@@ -640,7 +673,7 @@ private:
                | ( pair2.lit2 & 0x1 ? divisors[pair2.lit2 >> 1] : ~divisors[pair2.lit2 >> 1] );
         }
 
-        if ( intersection_is_empty( ntt1, ntt2, divisors[on_off] ) )
+        if ( intersection_is_empty<false, false>( ntt1, ntt2, divisors[on_off] ) )
         {
           uint32_t fanin_lit1, fanin_lit2;
           if constexpr ( use_xor )
@@ -685,24 +718,24 @@ private:
         auto const tt_xor = divisors[binate_divs[i]] ^ divisors[binate_divs[j]];
         bool unateness[4] = {false, false, false, false};
         /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
-        if ( intersection_is_empty( tt_xor, divisors[0] ) && !intersection_is_empty( tt_xor, divisors[1] ) )
+        if ( intersection_is_empty<false, false>( tt_xor, divisors[0] ) && !intersection_is_empty<false, false>( tt_xor, divisors[1] ) )
         {
           pos_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
           unateness[0] = true;
         }
-        if ( intersection_is_empty_neg( tt_xor, divisors[0] ) && !intersection_is_empty_neg( tt_xor, divisors[1] ) )
+        if ( intersection_is_empty<true, false>( tt_xor, divisors[0] ) && !intersection_is_empty<true, false>( tt_xor, divisors[1] ) )
         {
           pos_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
           unateness[1] = true;
         }
 
         /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
-        if ( intersection_is_empty( tt_xor, divisors[1] ) && !intersection_is_empty( tt_xor, divisors[0] ) )
+        if ( intersection_is_empty<false, false>( tt_xor, divisors[1] ) && !intersection_is_empty<false, false>( tt_xor, divisors[0] ) )
         {
           neg_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
           unateness[2] = true;
         }
-        if ( intersection_is_empty( tt_xor, divisors[1] ) && !intersection_is_empty( tt_xor, divisors[0] ) )
+        if ( intersection_is_empty<true, false>( tt_xor, divisors[1] ) && !intersection_is_empty<true, false>( tt_xor, divisors[0] ) )
         {
           neg_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
           unateness[3] = true;
@@ -729,64 +762,118 @@ private:
     {
       for ( auto j = i + 1; j < binate_divs.size(); ++j )
       {
-        collect_unate_pairs_detail( binate_divs[i], 0, binate_divs[j], 0 );
-        collect_unate_pairs_detail( binate_divs[i], 0, binate_divs[j], 1 );
-        collect_unate_pairs_detail( binate_divs[i], 1, binate_divs[j], 0 );
-        collect_unate_pairs_detail( binate_divs[i], 1, binate_divs[j], 1 );
+        collect_unate_pairs_detail<false, false>( binate_divs[i], binate_divs[j] );
+        collect_unate_pairs_detail<false, true>( binate_divs[i], binate_divs[j] );
+        collect_unate_pairs_detail<true, false>( binate_divs[i], binate_divs[j] );
+        collect_unate_pairs_detail<true, true>( binate_divs[i], binate_divs[j] );
       }
     }
   }
 
-  void collect_unate_pairs_detail( uint32_t div1, uint32_t neg1, uint32_t div2, uint32_t neg2 )
+  template<bool neg1 = false, bool neg2 = false>
+  void collect_unate_pairs_detail( uint32_t div1, uint32_t div2 )
   {
-    auto const tt1 = neg1 ? ~divisors[div1] : divisors[div1];
-    auto const tt2 = neg2 ? ~divisors[div2] : divisors[div2];
-
     /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
-    if ( intersection_is_empty( tt1, tt2, divisors[0] ) && !intersection_is_empty( tt1, tt2, divisors[1] ) )
+    if ( intersection_is_empty<neg1, neg2>( divisors[div1], divisors[div2], divisors[0] ) && !intersection_is_empty<neg1, neg2>( divisors[div1], divisors[div2], divisors[1] ) )
     {
-      pos_unate_pairs.emplace_back( ( div1 << 1 ) + neg1, ( div2 << 1 ) + neg2 );
+      pos_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)neg1, ( div2 << 1 ) + (uint32_t)neg2 );
     }
     /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
-    else if ( intersection_is_empty( tt1, tt2, divisors[1] ) && !intersection_is_empty( tt1, tt2, divisors[0] ) )
+    else if ( intersection_is_empty<neg1, neg2>( divisors[div1], divisors[div2], divisors[1] ) && !intersection_is_empty<neg1, neg2>( divisors[div1], divisors[div2], divisors[0] ) )
     {
-      neg_unate_pairs.emplace_back( ( div1 << 1 ) + neg1, ( div2 << 1 ) + neg2 );
+      neg_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)neg1, ( div2 << 1 ) + (uint32_t)neg2 );
     }
   }
 
 private:
   /* equivalent to kitty::is_const0( tt1 & tt2 ), but faster when num_blocks is a lot */
+  template<bool neg1 = false, bool neg2 = false>
   bool intersection_is_empty( TT const& tt1, TT const& tt2 )
   {
-    for ( auto i = 0u; i < tt1.num_blocks(); ++i )
+    if constexpr ( !neg1 && !neg2 )
     {
-      if ( ( tt1._bits[i] & tt2._bits[i] ) != 0 )
-      {
-        return false;
-      }
+      return kitty::binary_predicate( tt1, tt2, []( auto a, auto b ) { return !(a & b); } );
     }
-    return true;
-  }
-  /* equivalent to kitty::is_const0( ~tt1 & tt2 ), but faster when num_blocks is a lot */
-  bool intersection_is_empty_neg( TT const& tt1, TT const& tt2 )
-  {
-    for ( auto i = 0u; i < tt1.num_blocks(); ++i )
+    else if constexpr ( neg1 && !neg2 )
     {
-      if ( ( ~(tt1._bits[i]) & tt2._bits[i] ) != 0 )
-      {
-        return false;
-      }
+      return kitty::binary_predicate( tt1, tt2, []( auto a, auto b ) { return !(~a & b); } );
     }
-    return true;
+    else if constexpr ( !neg1 && neg2 )
+    {
+      return kitty::binary_predicate( tt1, tt2, []( auto a, auto b ) { return !(a & ~b); } );
+    }
+    else // ( neg1 && neg2 )
+    {
+      return kitty::binary_predicate( tt1, tt2, []( auto a, auto b ) { return !(~a & ~b); } );
+    }
+
+    //for ( auto i = 0u; i < tt1.num_blocks(); ++i )
+    //{
+    //  if constexpr ( !neg1 && !neg2 )
+    //  {
+    //    if ( ( tt1._bits[i] & tt2._bits[i] ) != 0 )
+    //    {
+    //      return false;
+    //    }
+    //  }
+    //  else if constexpr ( neg1 && !neg2 )
+    //  {
+    //    if ( ( ~tt1._bits[i] & tt2._bits[i] ) != 0 )
+    //    {
+    //      return false;
+    //    }
+    //  }
+    //  else if constexpr ( !neg1 && neg2 )
+    //  {
+    //    if ( ( tt1._bits[i] & ~tt2._bits[i] ) != 0 )
+    //    {
+    //      return false;
+    //    }
+    //  }
+    //  else // ( neg1 && neg2 )
+    //  {
+    //    if ( ( ~tt1._bits[i] & ~tt2._bits[i] ) != 0 )
+    //    {
+    //      return false;
+    //    }
+    //  }
+    //}
+    //return true;
   }
+  
   /* equivalent to kitty::is_const0( tt1 & tt2 & tt3 ), but faster when num_blocks is a lot */
+  template<bool neg1 = false, bool neg2 = false>
   bool intersection_is_empty( TT const& tt1, TT const& tt2, TT const& tt3 )
   {
     for ( auto i = 0u; i < tt1.num_blocks(); ++i )
     {
-      if ( ( tt1._bits[i] & tt2._bits[i] & tt3._bits[i] ) != 0 )
+      if constexpr ( !neg1 && !neg2 )
       {
-        return false;
+        if ( ( tt1._bits[i] & tt2._bits[i] & tt3._bits[i] ) != 0 )
+        {
+          return false;
+        }
+      }
+      else if constexpr ( neg1 && !neg2 )
+      {
+        if ( ( ~tt1._bits[i] & tt2._bits[i] & tt3._bits[i] ) != 0 )
+        {
+          return false;
+        }
+      }
+      else if constexpr ( !neg1 && neg2 )
+      {
+        if ( ( tt1._bits[i] & ~tt2._bits[i] & tt3._bits[i] ) != 0 )
+        {
+          return false;
+        }
+      }
+      else // ( neg1 && neg2 )
+      {
+        if ( ( ~tt1._bits[i] & ~tt2._bits[i] & tt3._bits[i] ) != 0 )
+        {
+          return false;
+        }
       }
     }
     return true;
@@ -800,10 +887,11 @@ private:
 
   /* positive unate: not overlapping with off-set
      negative unate: not overlapping with on-set */
-  std::vector<uint32_t> pos_unate_lits, neg_unate_lits, binate_divs;
-  phmap::flat_hash_map<uint32_t, uint32_t> pos_lit_scores, neg_lit_scores;
+  std::vector<unate_lit> pos_unate_lits, neg_unate_lits;
+  std::vector<uint32_t> binate_divs;
+  //phmap::flat_hash_map<uint32_t, uint32_t> pos_lit_scores, neg_lit_scores;
   std::vector<fanin_pair> pos_unate_pairs, neg_unate_pairs;
-  phmap::flat_hash_map<fanin_pair, uint32_t, pair_hash> pos_pair_scores, neg_pair_scores;
+  //phmap::flat_hash_map<fanin_pair, uint32_t, pair_hash> pos_pair_scores, neg_pair_scores;
 
   stats& st;
   params const& ps;
