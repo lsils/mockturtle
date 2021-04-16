@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,13 +27,16 @@
   \file traits.hpp
   \brief Type traits and checkers for the network interface
 
+  \author Heinz Riener
   \author Mathias Soeken
+  \author Max Austin
 */
 
 #pragma once
 
 #include <string>
 #include <type_traits>
+#include <list>
 #include <map>
 
 #include <kitty/dynamic_truth_table.hpp>
@@ -563,6 +566,21 @@ template<class Ntk>
 inline constexpr bool has_substitute_node_v = has_substitute_node<Ntk>::value;
 #pragma endregion
 
+#pragma region has_substitute_nodes
+template<class Ntk, class = void>
+struct has_substitute_nodes : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_substitute_nodes<Ntk, std::void_t<decltype( std::declval<Ntk>().substitute_nodes( std::declval<std::list<std::pair<node<Ntk>, signal<Ntk>>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_substitute_nodes_v = has_substitute_nodes<Ntk>::value;
+#pragma endregion
+
 #pragma region has_replace_in_node
 template<class Ntk, class = void>
 struct has_replace_in_node : std::false_type
@@ -600,7 +618,7 @@ struct has_take_out_node : std::false_type
 };
 
 template<class Ntk>
-struct has_take_out_node<Ntk, std::void_t<decltype( std::declval<Ntk>().take_out_node( std::declval<signal<Ntk>>() ) )>> : std::true_type
+struct has_take_out_node<Ntk, std::void_t<decltype( std::declval<Ntk>().take_out_node( std::declval<node<Ntk>>() ) )>> : std::true_type
 {
 };
 

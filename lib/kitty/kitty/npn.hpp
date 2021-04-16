@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2020  EPFL
+ * Copyright (C) 2017-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -409,6 +409,7 @@ void sifting_npn_canonization_loop( TT& npn, uint32_t& phase, std::vector<uint8_
 template<typename TT>
 void sifting_p_canonization_loop( TT& p, uint32_t& phase, std::vector<uint8_t>& perm )
 {
+  (void)phase;
   auto improvement = true;
   auto forward = true;
 

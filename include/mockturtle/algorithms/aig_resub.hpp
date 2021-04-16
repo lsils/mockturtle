@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,10 @@
   \file aig_resub.hpp
   \brief Resubstitution
 
+  \author Eleonora Testa
   \author Heinz Riener
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -183,7 +186,7 @@ public:
   std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
     (void)care;
-    assert(is_const0(~care));
+    assert( is_const0( ~care ) );
     
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
@@ -327,11 +330,12 @@ public:
 
       if ( true ) // ( ps.fix_bug )
       {
-        if ( kitty::implies( ~tt_d, tt ) )
-        {
-          udivs.positive_divisors.emplace_back( !ntk.make_signal( d ) );
-          continue;
-        }
+        /* unreachable case */
+        // if ( kitty::implies( ~tt_d, tt ) )
+        // {
+        //   udivs.positive_divisors.emplace_back( !ntk.make_signal( d ) );
+        //   continue;
+        // }
         if ( kitty::implies( tt, ~tt_d ) )
         {
           udivs.negative_divisors.emplace_back( !ntk.make_signal( d ) );

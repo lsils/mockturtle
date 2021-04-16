@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-gcc7:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     name: GNU GCC 7
     
     steps:
@@ -22,24 +22,6 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_CXX_COMPILER=g++-7 -DMOCKTURTLE_TEST=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests "~[quality]"
-  build-gcc8:
-    runs-on: ubuntu-latest
-    name: GNU GCC 8
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-8 -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |
@@ -63,9 +45,9 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
-  build-clang8:
+  build-gcc10:
     runs-on: ubuntu-latest
-    name: Clang 8
+    name: GNU GCC 10
     
     steps:
     - uses: actions/checkout@v1
@@ -75,7 +57,25 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-8 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests "~[quality]"
+  build-gcc10-cpp20:
+    runs-on: ubuntu-latest
+    name: GNU GCC 10 (c++20)
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DMOCKTURTLE_CXX_STANDARD=20 -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |

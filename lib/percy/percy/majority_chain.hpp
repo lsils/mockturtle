@@ -81,6 +81,23 @@ public:
     return steps.size();
   }
 
+  step const& get_step( uint32_t index ) const
+  {
+    assert( index < steps.size() );
+    return steps[index];
+  }
+
+  uint32_t get_operator( uint32_t index ) const
+  {
+    assert( index < operators.size() );
+    return operators.at( index );
+  }
+
+  int32_t get_output( uint32_t index ) const
+  {
+    return outputs.at( index );
+  }
+
   /* setter */
   void set_step( int32_t index, int32_t fanin1, int32_t fanin2, int32_t fanin3, int32_t op )
   {

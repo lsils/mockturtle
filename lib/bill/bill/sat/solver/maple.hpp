@@ -17,6 +17,8 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **************************************************************************************************/
 
+#pragma once
+
 #ifndef Minisat_IntTypes_h
 #define Minisat_IntTypes_h
 
@@ -1434,10 +1436,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #ifndef Minisat_System_h
 #define Minisat_System_h
-
-#if defined(__linux__)
-#include <fpu_control.h>
-#endif
 
 
 

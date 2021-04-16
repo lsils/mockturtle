@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2020  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,34 +28,18 @@
   \brief Interface to `abc_resub`.
 
   \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
+
+#include "index_list.hpp"
 
 #include <kitty/kitty.hpp>
 #include <abcresub/abcresub.hpp>
 
 namespace mockturtle
 {
-#if 0
-enum gate_type
-{
-  AND,
-  XOR,
-};
-
-struct gate
-{
-  struct fanin
-  {
-    uint32_t idx;
-    bool inv{false};
-  };
-
-  std::vector<fanin> fanins;
-  gate_type type{AND};
-};
-#endif
 
 class abc_resub
 {
@@ -74,21 +58,20 @@ public:
     release();
   }
 
-  template<class node_type, class truth_table_storage_type>
-  void add_root( node_type const& node, truth_table_storage_type const& tts )
+  template<class truth_table_type>
+  void add_root( truth_table_type const& tt, truth_table_type const& care )
   {
-    add_divisor( node, tts, true ); /* off-set */
-    add_divisor( node, tts, false ); /* on-set */
+    add_divisor( ~tt & care ); /* off-set */
+    add_divisor( tt & care ); /* on-set */
   }
 
-  template<class node_type, class truth_table_storage_type>
-  void add_divisor( node_type const& node, truth_table_storage_type const& tts, bool complement = false )
+  template<class truth_table_type>
+  void add_divisor( truth_table_type const& tt )
   {
     assert( abc_tts != nullptr && "assume that memory for truth tables has been allocated" );
     assert( abc_divs != nullptr && "assume that memory for divisors has been allocated" );
 
-    assert( tts[node].num_blocks() == num_blocks_per_truth_table );
-    auto const tt = complement ? ~tts[node] : tts[node];
+    assert( tt.num_blocks() == num_blocks_per_truth_table );
     for ( uint64_t i = 0ul; i < num_blocks_per_truth_table; ++i )
     {
       Vec_WrdPush( abc_tts, tt._bits[i] );
@@ -105,56 +88,33 @@ public:
 
     while ( begin != end )
     {
-      add_divisor( *begin, tts );
+      add_divisor( tts[*begin] );
       ++begin;
     }
   }
 
-  std::optional<std::vector<uint32_t>> compute_function( uint32_t num_inserts, bool useXOR = false )
+  std::optional<xag_index_list> compute_function( uint32_t num_inserts, bool useXOR = false )
   {
-    int index_list_size;
-    int * index_list;
-    index_list_size = abcresub::Abc_ResubComputeFunction( (void **)Vec_PtrArray( abc_divs ), Vec_PtrSize( abc_divs ), num_blocks_per_truth_table, num_inserts, /* nDivsMax */max_num_divisors, /* nChoice = */0, int(useXOR), /* debug = */0, /* verbose = */0, &index_list );
+    int * raw_list;
+    int size = abcresub::Abc_ResubComputeFunction( (void **)Vec_PtrArray( abc_divs ), Vec_PtrSize( abc_divs ), num_blocks_per_truth_table, num_inserts, /* nDivsMax */max_num_divisors, /* nChoice = */0, int(useXOR), /* debug = */0, /* verbose = */0, &raw_list );
 
-    if ( index_list_size )
+    if ( size )
     {
-      std::vector<uint32_t> vec( index_list_size );
-      for ( auto i = 0; i < index_list_size; ++i ) // probably could be smarter
+      xag_index_list xag_list;
+      xag_list.add_inputs( num_divisors - 2 );
+      for ( int i = 0; i < size - 1; i += 2 )
       {
-        vec[i] = index_list[i];
+        if ( raw_list[i] < raw_list[i+1] )
+          xag_list.add_and( raw_list[i] - 2, raw_list[i+1] - 2 );
+        else
+          xag_list.add_xor( raw_list[i] - 2, raw_list[i+1] - 2 );
       }
-      return vec;
+      xag_list.add_output( raw_list[size - 1] < 2 ? raw_list[size - 1] : raw_list[size - 1] - 2 );
+      return xag_list;
     }
 
     return std::nullopt;
   }
-
-#if 0 /* not used */
-  std::optional<std::vector<gate>> compute_function( bool& output_negation, uint32_t num_inserts, bool useXOR = false )
-  {
-    int index_list_size;
-    int * index_list;
-    index_list_size = abcresub::Abc_ResubComputeFunction( (void **)Vec_PtrArray( abc_divs ),  Vec_PtrSize( abc_divs ), num_blocks_per_truth_table, num_inserts, /* nDivsMax */max_num_divisors, /* nChoice = */0, int(useXOR), /* debug = */0, /* verbose = */0, &index_list );
-
-    if ( index_list_size )
-    {
-      uint64_t const num_gates = ( index_list_size - 1u ) / 2u;
-      std::vector<gate> gates( num_gates );
-      for ( auto i = 0u; i < num_gates; ++i )
-      {
-        gate::fanin f0{uint32_t( ( index_list[2*i] >> 1u ) - 2u ), bool( index_list[2*i] % 2 )};
-        gate::fanin f1{uint32_t( ( index_list[2*i + 1u] >> 1u ) - 2u ), bool( index_list[2*i + 1u] % 2 )};
-        gates[i].fanins = { f0, f1 };
-
-        gates[i].type = f0.idx < f1.idx ? gate_type::AND : gate_type::XOR;
-      }
-      output_negation = index_list[index_list_size - 1u] % 2;
-      return gates;
-    }
-
-    return std::nullopt;
-  }
-#endif
 
   void dump( std::string const file = "dump.txt" ) const
   {

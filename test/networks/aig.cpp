@@ -1,14 +1,13 @@
 #include <catch.hpp>
 
+#include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
+#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/traits.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
-#include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/xmg.hpp>
-#include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
 
@@ -810,4 +809,126 @@ TEST_CASE( "invoke take_out_node two times on the same node", "[aig]" )
   CHECK( aig.is_dead( aig.get_node( f1 ) ) );
   CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1u );
   CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1u );
+}
+
+TEST_CASE( "substitute node and restrash", "[aig]" )
+{
+  aig_network aig;
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+
+  auto const f1 = aig.create_and( x1, x2 );
+  auto const f2 = aig.create_and( f1, x2 );
+  aig.create_po( f2 );
+
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 2 );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x8 );
+
+  /* substitute f1 with x1
+   *
+   * this is a very interesting test case because replacing f1 with x1
+   * in f2 makes f2 and f1 equal.  a correct implementation will
+   * create a new entry in the hash, although (x1, x2) is already
+   * there, because (x1, x2) will be deleted in the next step.
+   */
+  aig.substitute_node( aig.get_node( f1 ), x1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x8 );
+
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 0 );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
+}
+
+TEST_CASE( "substitute node with complemented node", "[aig]" )
+{
+  aig_network aig;
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+
+  auto const f1 = aig.create_and( x1, x2 );
+  auto const f2 = aig.create_and( x1, f1 );
+  aig.create_po( f2 );
+
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 2 );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x8 );
+
+  aig.substitute_node( aig.get_node( f2 ), !f2 );
+
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 2 );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f1 ) ) == 1 );
+  CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x7 );
+}
+
+TEST_CASE( "substitute multiple nodes", "[aig]" )
+{
+  using node = aig_network::node;
+  using signal = aig_network::signal;
+
+  aig_network aig;
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+  auto const x3 = aig.create_pi();
+
+  auto const n4 = aig.create_and( !x1, x2 );
+  auto const n5 = aig.create_and( x1, n4 );
+  auto const n6 = aig.create_and( x3, n5 );
+  auto const n7 = aig.create_and( n4, x2 );
+  auto const n8 = aig.create_and( !n5, !n7 );
+  auto const n9 = aig.create_and( !n8, n4 );
+
+  aig.create_po( n6 );
+  aig.create_po( n9 );
+
+  aig.substitute_nodes( std::list<std::pair<node, signal>>{
+      {aig.get_node( n5 ), aig.get_constant( false )},
+      {aig.get_node( n9 ), n4}
+    } );
+
+  CHECK( !aig.is_dead( aig.get_node( aig.get_constant( false ) ) ) );
+  CHECK( !aig.is_dead( aig.get_node( x1 ) ) );
+  CHECK( !aig.is_dead( aig.get_node( x2 ) ) );
+  CHECK( !aig.is_dead( aig.get_node( x3 ) ) );
+  CHECK( !aig.is_dead( aig.get_node( n4 ) ) );
+  CHECK( aig.is_dead( aig.get_node( n5 ) ) );
+  CHECK( aig.is_dead( aig.get_node( n6 ) ) );
+  CHECK( aig.is_dead( aig.get_node( n7 ) ) );
+  CHECK( aig.is_dead( aig.get_node( n8 ) ) );
+  CHECK( aig.is_dead( aig.get_node( n9 ) ) );
+
+  CHECK( aig.fanout_size( aig.get_node( aig.get_constant( false ) ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( x1 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( x2 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( x3 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( n4 ) ) == 1u );
+  CHECK( aig.fanout_size( aig.get_node( n5 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( n6 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( n7 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( n8 ) ) == 0u );
+  CHECK( aig.fanout_size( aig.get_node( n9 ) ) == 0u );
+
+  aig.foreach_po( [&]( signal const o, uint32_t index ){
+    switch ( index )
+    {
+    case 0:
+      CHECK( o == aig.get_constant( false ) );
+      break;
+    case 1:
+      CHECK( o == n4 );
+      break;
+    default:
+      CHECK( false );
+    }
+  });
 }

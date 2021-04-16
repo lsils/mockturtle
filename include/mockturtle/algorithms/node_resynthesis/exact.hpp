@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2021  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,6 +27,7 @@
   \file exact.hpp
   \brief Replace with exact synthesis result
 
+  \author Heinz Riener
   \author Mathias Soeken
 */
 
@@ -175,10 +176,10 @@ public:
           return it->second;
         }
       }
-      else if ( !with_dont_cares && _ps.blacklist_cache )
+      if ( !with_dont_cares && _ps.blacklist_cache )
       {
         const auto it = _ps.blacklist_cache->find( function );
-        if ( it != _ps.blacklist_cache->end() && _ps.conflict_limit >= it->second )
+        if ( it != _ps.blacklist_cache->end() && ( it->second == 0 || _ps.conflict_limit <= it->second ) )
         {
           return std::nullopt;
         }
@@ -190,7 +191,7 @@ public:
                                              _ps.synthesis_method );
            result != percy::success )
       {
-        if ( _ps.blacklist_cache )
+        if ( !with_dont_cares && _ps.blacklist_cache )
         {
           ( *_ps.blacklist_cache )[function] = result == percy::timeout ? _ps.conflict_limit : 0;
         }
@@ -275,10 +276,23 @@ template<class Ntk = aig_network>
 class exact_aig_resynthesis
 {
 public:
+  using signal = typename Ntk::signal;
+
+public:
   explicit exact_aig_resynthesis( bool _allow_xor = false, exact_resynthesis_params const& ps = {} )
       : _allow_xor( _allow_xor ),
         _ps( ps )
   {
+  }
+
+  void clear_functions()
+  {
+    existing_functions.clear();
+  }
+
+  void add_function( signal const& s, kitty::dynamic_truth_table const& tt )
+  {
+    existing_functions.emplace_back( s, tt );
   }
 
   template<typename LeavesIterator, typename Fn>
@@ -318,6 +332,12 @@ public:
       with_dont_cares = true;
     }
 
+    /* add existing functions */
+    for ( const auto& f : existing_functions )
+    {
+      spec.add_function( f.second );
+    }
+
     auto c = [&]() -> std::optional<percy::chain> {
       if ( !with_dont_cares && _ps.cache )
       {
@@ -327,6 +347,14 @@ public:
           return it->second;
         }
       }
+      if ( !with_dont_cares && _ps.blacklist_cache )
+      {
+        const auto it = _ps.blacklist_cache->find( function );
+        if ( it != _ps.blacklist_cache->end() && ( it->second == 0 || _ps.conflict_limit <= it->second ) )
+        {
+          return std::nullopt;
+        }
+      }
 
       percy::chain c;
       if ( const auto result = percy::synthesize( spec, c, _ps.solver_type,
@@ -334,8 +362,15 @@ public:
                                                   _ps.synthesis_method );
            result != percy::success )
       {
+        if ( !with_dont_cares && _ps.blacklist_cache )
+        {
+          ( *_ps.blacklist_cache )[function] = (result == percy::timeout) ? _ps.conflict_limit : 0;
+        }
         return std::nullopt;
       }
+
+      assert( kitty::to_hex( c.simulate()[0u] ) == kitty::to_hex( function ) );
+
       if ( !with_dont_cares && _ps.cache )
       {
         ( *_ps.cache )[function] = c;
@@ -348,11 +383,17 @@ public:
       return;
     }
 
-    std::vector<signal<Ntk>> signals( begin, end );
+    std::vector<signal> signals( begin, end );
+    for ( const auto& f : existing_functions )
+    {
+      signals.emplace_back( f.first );
+    }
+
     for ( auto i = 0; i < c->get_nr_steps(); ++i )
     {
-      auto c1 = signals[c->get_step( i )[0]];
-      auto c2 = signals[c->get_step( i )[1]];
+      auto const c1 = signals[c->get_step( i )[0]];
+      auto const c2 = signals[c->get_step( i )[1]];
+
       switch ( c->get_operator( i )._bits[0] )
       {
       default:
@@ -390,6 +431,8 @@ private:
   bool _allow_xor = false;
   exact_resynthesis_params _ps;
 
+  std::vector<std::pair<signal, kitty::dynamic_truth_table>> existing_functions;
+
   std::optional<uint32_t> _lower_bound;
   std::optional<uint32_t> _upper_bound;
 };
@@ -398,6 +441,8 @@ struct exact_xmg_resynthesis_params
 {
   uint32_t num_candidates{10u};
   bool use_only_self_dual_gates{false};
+  bool use_xor3{true};
+  int conflict_limit{0};
 };
 
 /*! \brief Resynthesis function based on exact synthesis for XMGs.
@@ -447,6 +492,7 @@ public:
     percy::spec spec;
     spec.verbosity = 0;
     spec.fanin = 3;
+    spec.conflict_limit = ps.conflict_limit;
 
     /* specify local normalized gate primitives */
     kitty::dynamic_truth_table const0{3};
@@ -470,7 +516,10 @@ public:
     spec.add_primitive( a ^ b ); // 66
     spec.add_primitive( a ^ c ); // 3c
     spec.add_primitive( b ^ c ); // 5a
-    spec.add_primitive( a ^ b ^ c ); // 96
+    if ( ps.use_xor3 )
+    {
+        spec.add_primitive( a ^ b ^ c ); // 96
+    }
 
     /* add non-self dual gate functions */
     if ( !ps.use_only_self_dual_gates )
