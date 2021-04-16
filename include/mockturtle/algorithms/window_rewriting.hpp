@@ -192,7 +192,7 @@ public:
     stopwatch t( st.time_total );
 
     create_window_impl windowing( ntk );
-    uint32_t const size = 3*ntk.size();
+    uint32_t const size = ntk.size();
     for ( uint32_t n = 0u; n < std::min( size, ntk.size() ); ++n )
     {
       if ( ntk.is_constant( n ) || ntk.is_ci( n ) || ntk.is_dead( n ) )
@@ -279,6 +279,7 @@ public:
       }
     }
 
+    /* ensure that no dead nodes are reachable */
     assert( count_reachable_dead_nodes( ntk ) == 0u );
   }
 
@@ -393,7 +394,7 @@ private:
   /* recursively update the node levels and the depth of the critical path */
   void update_node_level( node const& n, bool top_most = true )
   {
-    uint32_t curr_level = ntk.level( n );
+    uint32_t const curr_level = ntk.level( n );
 
     uint32_t max_level = 0;
     ntk.foreach_fanin( n, [&]( const auto& f ) {
@@ -406,17 +407,18 @@ private:
     } );
     ++max_level;
 
+    if ( ntk.depth() < max_level )
+    {
+      ntk.set_depth( max_level );
+    }
+
     if ( curr_level != max_level )
     {
       ntk.set_level( n, max_level );
 
-      /* update only one more level */
-      if ( top_most )
-      {
-        ntk.foreach_fanout( n, [&]( const auto& p ) {
-          update_node_level( p, false );
-        } );
-      }
+      ntk.foreach_fanout( n, [&]( const auto& p ) {
+        update_node_level( p, false );
+      } );
     }
   }
 
