@@ -202,6 +202,57 @@ bool network_is_acylic( Ntk const& ntk )
   return result;
 }
 
+template<typename Ntk>
+bool check_network_levels( Ntk const& ntk )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size function" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant function" );
+  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci function" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node function" );
+  // static_assert( has_is_dead_v<Ntk>, "Ntk does not implement the is_dead function" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin function" );
+  static_assert( has_level_v<Ntk>, "Ntk does not implement the level function" );
+  static_assert( has_depth_v<Ntk>, "Ntk does not implement the depth function" );
+
+  using signal = typename Ntk::signal;
+
+  uint32_t max = 0;
+  for ( uint32_t i = 0u; i < ntk.size(); ++i )
+  {
+    if ( ntk.is_constant( i ) || ntk.is_ci( i ) || ntk.is_dead( i ) )
+    {
+      continue;
+    }
+
+    uint32_t max_fanin_level = 0;
+    ntk.foreach_fanin( i, [&]( signal fi ){
+      if ( ntk.level( ntk.get_node( fi ) ) > max_fanin_level )
+      {
+        max_fanin_level = ntk.level( ntk.get_node( fi ) );
+      }
+    });
+
+    /* the node's level has not been correctly computed */
+    if ( ntk.level( i ) != max_fanin_level + 1 )
+    {
+      return false;
+    } 
+      
+    if ( ntk.level( i ) > max )
+    {
+      max = ntk.level( i );
+    }
+  }
+
+  /* the network's depth has not been correctly computed */
+  if ( ntk.depth() != max )
+  {
+    return false;
+  }
+
+  return true;
+}
 
 template<typename Ntk>
 bool check_fanouts( Ntk const& ntk )
@@ -252,7 +303,7 @@ bool check_fanouts( Ntk const& ntk )
       return false;
     }
 
-    /* update the fanout counter by considering outputs */
+     /* update the fanout counter by considering outputs */
     ntk.foreach_co( [&]( signal f ){
       if ( ntk.get_node( f ) == i )
       {
@@ -268,6 +319,7 @@ bool check_fanouts( Ntk const& ntk )
   }
 
   return true;
-}
+}   
 
 } /* namespace mockturtle */
+

@@ -50,6 +50,8 @@ struct window_rewriting_params
 {
   uint64_t cut_size{6};
   uint64_t num_levels{5};
+
+  bool filter_cyclic_substitutions{false};
 }; /* window_rewriting_params */
 
 struct window_rewriting_stats
@@ -57,9 +59,97 @@ struct window_rewriting_stats
   /*! \brief Total runtime. */
   stopwatch<>::duration time_total{0};
 
+  /*! \brief Time for constructing windows. */
+  stopwatch<>::duration time_window{0};
+
+  /*! \brief Time for optimizing windows. */
+  stopwatch<>::duration time_optimize{0};
+
+  /*! \brief Time for substituting. */
+  stopwatch<>::duration time_substitute{0};
+
+  /*! \brief Time for updating level information. */
+  stopwatch<>::duration time_levels{0};
+
+  /*! \brief Time for updating window outputs. */
+  stopwatch<>::duration time_update_vector{0};
+
+  /*! \brief Time for topological sorting. */
+  stopwatch<>::duration time_topo_sort{0};
+
+  /*! \brief Time for encoding index_list. */
+  stopwatch<>::duration time_encode{0};
+
   /*! \brief Total number of calls to the resub. engine. */
   uint64_t num_substitutions{0};
+  uint64_t num_restrashes{0};
+  uint64_t num_windows{0};
+  uint64_t gain{0};
+
+  void report() const
+  {
+    stopwatch<>::duration time_other =
+      time_total - time_window - time_topo_sort - time_optimize - time_substitute - time_levels - time_update_vector;
+
+    fmt::print( "===========================================================================\n" );
+    fmt::print( "[i] Windowing =  {:7.2f} ({:5.2f}%) (#win = {})\n",
+                to_seconds( time_window ), to_seconds( time_window ) / to_seconds( time_total ) * 100, num_windows );
+    fmt::print( "[i] Top.sort =   {:7.2f} ({:5.2f}%)\n", to_seconds( time_topo_sort ), to_seconds( time_topo_sort ) / to_seconds( time_total ) * 100 );
+    fmt::print( "[i] Enc.list =   {:7.2f} ({:5.2f}%)\n", to_seconds( time_encode ), to_seconds( time_encode ) / to_seconds( time_total ) * 100 );
+    fmt::print( "[i] Optimize =   {:7.2f} ({:5.2f}%) (#resubs = {}, est. gain = {})\n",
+                to_seconds( time_optimize ), to_seconds( time_optimize ) / to_seconds( time_total ) * 100, num_substitutions, gain );
+    fmt::print( "[i] Substitute = {:7.2f} ({:5.2f}%) (#hash upd. = {})\n",
+                to_seconds( time_substitute ),
+                to_seconds( time_substitute ) / to_seconds( time_total ) * 100,
+                num_restrashes );
+    fmt::print( "[i] Upd.levels = {:7.2f} ({:5.2f}%)\n", to_seconds( time_levels ), to_seconds( time_levels ) / to_seconds( time_total ) * 100 );
+    fmt::print( "[i] Upd.win =    {:7.2f} ({:5.2f}%)\n", to_seconds( time_update_vector ), to_seconds( time_update_vector ) / to_seconds( time_total ) * 100 );
+    fmt::print( "[i] Other =      {:7.2f} ({:5.2f}%)\n", to_seconds( time_other ), to_seconds( time_other ) / to_seconds( time_total ) * 100 );
+    fmt::print( "---------------------------------------------------------------------------\n" );
+    fmt::print( "[i] TOTAL =      {:7.2f}\n", to_seconds( time_total ) );
+    fmt::print( "===========================================================================\n" );
+  }
 }; /* window_rewriting_stats */
+
+namespace detail
+{
+
+template<typename Ntk>
+bool is_contained_in_tfi_recursive( Ntk const& ntk, typename Ntk::node const& node, typename Ntk::node const& n )
+{
+  if ( ntk.color( node ) == ntk.current_color() )
+  {
+    return false;
+  }
+  ntk.paint( node );
+
+  if ( n == node )
+  {
+    return true;
+  }
+
+  bool found = false;
+  ntk.foreach_fanin( node, [&]( typename Ntk::signal const& fi ){
+    if ( is_contained_in_tfi_recursive( ntk, ntk.get_node( fi ), n ) )
+    {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+
+  return found;
+}
+
+} /* namespace detail */
+
+template<typename Ntk>
+bool is_contained_in_tfi( Ntk const& ntk, typename Ntk::node const& node, typename Ntk::node const& n )
+{
+  /* do not even build the TFI, but just search for the node */
+  ntk.new_color();
+  return detail::is_contained_in_tfi_recursive( ntk, node, n );
+}
 
 namespace detail
 {
@@ -103,7 +193,7 @@ public:
     stopwatch t( st.time_total );
 
     create_window_impl windowing( ntk );
-    uint32_t const size = 3*ntk.size();
+    uint32_t const size = ntk.size();
     for ( uint32_t n = 0u; n < std::min( size, ntk.size() ); ++n )
     {
       if ( ntk.is_constant( n ) || ntk.is_ci( n ) || ntk.is_dead( n ) )
@@ -111,13 +201,20 @@ public:
         continue;
       }
 
-      if ( const auto w = windowing.run( n, ps.cut_size, ps.num_levels ) )
+      if ( const auto w = call_with_stopwatch( st.time_window, [&]() { return windowing.run( n, ps.cut_size, ps.num_levels ); } ) )
       {
-        window_view win( ntk, w->inputs, w->outputs, w->nodes );
-        topo_view topo_win{win};
+        ++st.num_windows;
+
+        auto topo_win = call_with_stopwatch( st.time_topo_sort, ( [&](){
+          window_view win( ntk, w->inputs, w->outputs, w->nodes );
+          topo_view topo_win{win};
+          return topo_win;
+        }) );
 
         abc_index_list il;
-        encode( il, topo_win );
+        call_with_stopwatch( st.time_encode, [&]() {
+          encode( il, topo_win );
+        } );
 
         auto il_opt = optimize( il );
         if ( !il_opt )
@@ -138,46 +235,52 @@ public:
 
         std::vector<signal> new_outputs;
         uint32_t counter{0};
-        bool substitution_failure = false;
 
         ++st.num_substitutions;
         insert( ntk, std::begin( signals ), std::end( signals ), *il_opt,
                 [&]( signal const& _new )
                 {
                   auto const _old = outputs.at( counter++ );
-                  if ( substitution_failure )
-                  {
-                    if ( ntk.fanout_size( ntk.get_node( _new ) ) == 0 )
-                    {
-                      ntk.take_out_node( ntk.get_node( _new ) );
-                    }
-                    return true;
-                  }
                   if ( _old == _new )
                   {
                     return true;
                   }
-                  else if ( ntk.level( ntk.get_node( _old ) ) >= ntk.level( ntk.get_node( _new ) ) )
+
+                  /* ensure that _old is not in the TFI of _new */
+                  // assert( !is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) );
+                  if ( ps.filter_cyclic_substitutions && is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) )
                   {
-                    auto const updates = substitute_node( ntk.get_node( _old ), topo_win.is_complemented( _old ) ? !_new : _new );
-                    update_vector( outputs, updates );
-                  }
-                  else
-                  {
-                    if ( ntk.fanout_size( ntk.get_node( _new ) ) == 0 )
+                    std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
+                    if ( ntk.fanout_size( ntk.get_node( _new ) ) == 0u )
                     {
                       ntk.take_out_node( ntk.get_node( _new ) );
                     }
-                    substitution_failure = true;
+                    return false;
                   }
+
+                  auto const updates = substitute_node( ntk.get_node( _old ), topo_win.is_complemented( _old ) ? !_new : _new );
+                  update_vector( outputs, updates );
                   return true;
                 });
+
+        /* recompute levels and depth */
+        call_with_stopwatch( st.time_levels, [&]() { ntk.update_levels(); } );
+
+        /* ensure that no dead nodes are reachable */
+        assert( count_reachable_dead_nodes( ntk ) == 0u );
+
+        /* ensure that the network structure is still acyclic */
+        assert( network_is_acylic( ntk ) );
+
+        /* ensure that the levels and depth is correct */
+        assert( check_network_levels( ntk ) );
 
         /* update internal data structures in windowing */
         windowing.resize( ntk.size() );
       }
     }
 
+    /* ensure that no dead nodes are reachable */
     assert( count_reachable_dead_nodes( ntk ) == 0u );
   }
 
@@ -185,6 +288,8 @@ private:
   /* optimize an index_list and return the new list */
   std::optional<abc_index_list> optimize( abc_index_list const& il, bool verbose = false )
   {
+    stopwatch t( st.time_optimize );
+
     int *raw = ABC_CALLOC( int, il.size() + 1u );
     uint64_t i = 0;
     for ( auto const& v : il.raw() )
@@ -204,6 +309,7 @@ private:
       fmt::print( "Performed resub {} times.  Reduced {} nodes.\n",
                   num_resubs, new_entries > 0 ? ( ( il.size() / 2u ) - new_entries ) : 0 );
     }
+    st.gain += new_entries > 0 ? ( ( il.size() / 2u ) - new_entries ) : 0;
 
     if ( raw )
     {
@@ -234,6 +340,8 @@ private:
   /* substitute the node with a signal and return all strashing updates */
   std::vector<std::pair<node, signal>> substitute_node( node const& old_node, signal const& new_signal )
   {
+    stopwatch t( st.time_substitute );
+
     std::vector<std::pair<node, signal>> updates;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( {old_node, new_signal} );
@@ -248,14 +356,13 @@ private:
         updates.push_back( p );
       }
 
-      for ( auto idx = 1u; idx < ntk._storage->nodes.size(); ++idx )
+      const auto parents = ntk.fanout( _old );
+      for ( auto n : parents )
       {
-        if ( ntk.is_ci( idx ) || ntk.is_dead( idx ) )
-          continue; /* ignore CIs */
-
-        if ( const auto repl = ntk.replace_in_node( idx, _old, _new ); repl )
+        if ( const auto repl = ntk.replace_in_node( n, _old, _new ); repl )
         {
           to_substitute.push( *repl );
+          ++st.num_restrashes;
         }
       }
 
@@ -271,6 +378,8 @@ private:
 
   void update_vector( std::vector<signal>& vs, std::vector<std::pair<node, signal>> const& updates )
   {
+    stopwatch t( st.time_update_vector );
+
     for ( auto it = std::begin( vs ); it != std::end( vs ); ++it )
     {
       for ( auto it2 = std::begin( updates ); it2 != std::end( updates ); ++it2 )
@@ -286,7 +395,7 @@ private:
   /* recursively update the node levels and the depth of the critical path */
   void update_node_level( node const& n, bool top_most = true )
   {
-    uint32_t curr_level = ntk.level( n );
+    uint32_t const curr_level = ntk.level( n );
 
     uint32_t max_level = 0;
     ntk.foreach_fanin( n, [&]( const auto& f ) {
@@ -299,21 +408,18 @@ private:
     } );
     ++max_level;
 
+    if ( ntk.depth() < max_level )
+    {
+      ntk.set_depth( max_level );
+    }
+
     if ( curr_level != max_level )
     {
       ntk.set_level( n, max_level );
-      if ( max_level >= ntk.depth() )
-      {
-        ntk.set_depth( max_level + 1 );
-      }
 
-      /* update only one more level */
-      if ( top_most )
-      {
-        ntk.foreach_fanout( n, [&]( const auto& p ) {
-          update_node_level( p, false );
-        } );
-      }
+      ntk.foreach_fanout( n, [&]( const auto& p ) {
+        update_node_level( p, false );
+      } );
     }
   }
 

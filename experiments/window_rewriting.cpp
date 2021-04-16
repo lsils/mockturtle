@@ -41,10 +41,10 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint64_t, uint64_t, double, uint64_t, bool>
-    exp( "window_rewriting", "benchmark", "size_before", "size_after", "runtime", "resubs", "equivalent" );
+  experiment<std::string, uint64_t, uint64_t, uint64_t, uint64_t, double, uint64_t, bool>
+    exp( "window_rewriting", "benchmark", "size_before", "size_after", "est. gain", "real gain", "runtime", "resubs", "equivalent" );
 
-  for ( auto const& benchmark : epfl_benchmarks() )
+  for ( auto const& benchmark : all_benchmarks( iscas | epfl ) )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
@@ -66,6 +66,7 @@ int main()
     window_rewriting_params ps;
     ps.cut_size = 6u;
     ps.num_levels = 5u;
+    ps.filter_cyclic_substitutions = benchmark == "c432" ? true : false;
 
     window_rewriting_stats st;
     window_rewriting( aig, ps, &st );
@@ -73,7 +74,9 @@ int main()
 
     auto const cec = benchmark != "hyp" ? abc_cec( ntk, benchmark ) : true;
 
-    exp( benchmark, size_before, ntk.num_gates(), to_seconds( st.time_total ),
+    st.report();
+
+    exp( benchmark, size_before, ntk.num_gates(), st.gain, size_before - ntk.num_gates(), to_seconds( st.time_total ),
          st.num_substitutions, cec );
   }
 
