@@ -86,6 +86,22 @@ struct window_rewriting_stats
   uint64_t num_windows{0};
   uint64_t gain{0};
 
+  window_rewriting_stats operator+=( window_rewriting_stats const& other )
+  {
+    time_total += other.time_total;
+    time_window += other.time_window;
+    time_optimize += other.time_optimize;
+    time_substitute += other.time_substitute;
+    time_levels += other.time_levels;
+    time_update_vector += other.time_update_vector;
+    time_topo_sort += other.time_topo_sort;
+    time_encode += other.time_encode;
+    num_substitutions += other.num_substitutions;
+    num_windows += other.num_windows;
+    gain += other.gain;
+    return *this;
+  }
+
   void report() const
   {
     stopwatch<>::duration time_other =
@@ -264,7 +280,7 @@ public:
                 });
 
         /* recompute levels and depth */
-        call_with_stopwatch( st.time_levels, [&]() { ntk.update_levels(); } );
+        // call_with_stopwatch( st.time_levels, [&]() { ntk.update_levels(); } );
 
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
@@ -393,7 +409,7 @@ private:
   }
 
   /* recursively update the node levels and the depth of the critical path */
-  void update_node_level( node const& n, bool top_most = true )
+  void update_node_level( node const& n )
   {
     uint32_t const curr_level = ntk.level( n );
 
@@ -418,7 +434,7 @@ private:
       ntk.set_level( n, max_level );
 
       ntk.foreach_fanout( n, [&]( const auto& p ) {
-        update_node_level( p, false );
+        update_node_level( p );
       } );
     }
   }
