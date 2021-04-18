@@ -574,9 +574,17 @@ private:
     stopwatch t( st.time_optimize );
     auto const size_before = win.num_gates();
 
-    default_simulator<TT> sim( ps.cut_size );
+    default_simulator<TT> *sim;
+    if constexpr ( std::is_same_v<TT, kitty::dynamic_truth_table> )
+    {
+      sim = new default_simulator<TT>( ps.cut_size );
+    }
+    else
+    {
+      sim = new default_simulator<TT>();
+    }
     unordered_node_map<TT, NtkWin> tts( win );
-    simulate_nodes<TT, NtkWin>( win, tts, sim );
+    simulate_nodes<TT, NtkWin>( win, tts, *sim );
     fanout_view<NtkWin> fanout_win{win};
 
     // TODO: Alan uses reversed order
@@ -619,9 +627,10 @@ private:
         });
 
         /* re-simulate for new nodes */
-        simulate_nodes<TT, NtkWin>( win, tts, sim );
+        simulate_nodes<TT, NtkWin>( win, tts, *sim );
       }
     });
+    delete sim;
 
     if ( win.num_gates() >= size_before )
     {
@@ -745,7 +754,7 @@ void window_rewriting( Ntk& ntk, window_rewriting_params const& ps = {}, window_
   #else
   using NtkWin = typename Ntk::base_type;
   using TT = kitty::static_truth_table<6>;
-  detail::window_rewriting_impl2<Ntk, NtkWin>( ntk, ps, st ).run();
+  detail::window_rewriting_impl2<Ntk, NtkWin, TT>( ntk, ps, st ).run();
   #endif
   if ( pst )
   {

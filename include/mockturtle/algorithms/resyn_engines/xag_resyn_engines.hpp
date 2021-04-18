@@ -806,77 +806,28 @@ private:
     {
       return kitty::binary_predicate( tt1, tt2, []( auto a, auto b ) { return !(~a & ~b); } );
     }
-
-    //for ( auto i = 0u; i < tt1.num_blocks(); ++i )
-    //{
-    //  if constexpr ( !neg1 && !neg2 )
-    //  {
-    //    if ( ( tt1._bits[i] & tt2._bits[i] ) != 0 )
-    //    {
-    //      return false;
-    //    }
-    //  }
-    //  else if constexpr ( neg1 && !neg2 )
-    //  {
-    //    if ( ( ~tt1._bits[i] & tt2._bits[i] ) != 0 )
-    //    {
-    //      return false;
-    //    }
-    //  }
-    //  else if constexpr ( !neg1 && neg2 )
-    //  {
-    //    if ( ( tt1._bits[i] & ~tt2._bits[i] ) != 0 )
-    //    {
-    //      return false;
-    //    }
-    //  }
-    //  else // ( neg1 && neg2 )
-    //  {
-    //    if ( ( ~tt1._bits[i] & ~tt2._bits[i] ) != 0 )
-    //    {
-    //      return false;
-    //    }
-    //  }
-    //}
-    //return true;
   }
   
   /* equivalent to kitty::is_const0( tt1 & tt2 & tt3 ), but faster when num_blocks is a lot */
   template<bool neg1 = false, bool neg2 = false>
   bool intersection_is_empty( TT const& tt1, TT const& tt2, TT const& tt3 )
   {
-    for ( auto i = 0u; i < tt1.num_blocks(); ++i )
+    if constexpr ( !neg1 && !neg2 )
     {
-      if constexpr ( !neg1 && !neg2 )
-      {
-        if ( ( tt1._bits[i] & tt2._bits[i] & tt3._bits[i] ) != 0 )
-        {
-          return false;
-        }
-      }
-      else if constexpr ( neg1 && !neg2 )
-      {
-        if ( ( ~tt1._bits[i] & tt2._bits[i] & tt3._bits[i] ) != 0 )
-        {
-          return false;
-        }
-      }
-      else if constexpr ( !neg1 && neg2 )
-      {
-        if ( ( tt1._bits[i] & ~tt2._bits[i] & tt3._bits[i] ) != 0 )
-        {
-          return false;
-        }
-      }
-      else // ( neg1 && neg2 )
-      {
-        if ( ( ~tt1._bits[i] & ~tt2._bits[i] & tt3._bits[i] ) != 0 )
-        {
-          return false;
-        }
-      }
+      return kitty::ternary_predicate( tt1, tt2, tt3, []( auto a, auto b, auto c ) { return !(a & b & c); } );
     }
-    return true;
+    else if constexpr ( neg1 && !neg2 )
+    {
+      return kitty::ternary_predicate( tt1, tt2, tt3, []( auto a, auto b, auto c ) { return !(~a & b & c); } );
+    }
+    else if constexpr ( !neg1 && neg2 )
+    {
+      return kitty::ternary_predicate( tt1, tt2, tt3, []( auto a, auto b, auto c ) { return !(a & ~b & c); } );
+    }
+    else // ( neg1 && neg2 )
+    {
+      return kitty::ternary_predicate( tt1, tt2, tt3, []( auto a, auto b, auto c ) { return !(~a & ~b & c); } );
+    }
   }
 
 private:

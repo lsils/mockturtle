@@ -251,6 +251,42 @@ bool binary_predicate( const partial_truth_table& first, const partial_truth_tab
 }
 /*! \endcond */
 
+/*! \brief Computes a predicate based on three truth tables
+
+  The dimensions of `first`, `second` and `third` must match.  This is ensured
+  at compile-time for static truth tables, but at run-time for dynamic
+  truth tables.
+
+  \param first First truth table
+  \param second Second truth table
+  \param third Third truth table
+  \param op Ternary operation that takes as input three words (`uint64_t`) and returns a Boolean
+
+  \return true or false based on the predicate
+ */
+template<typename TT, typename Fn>
+bool ternary_predicate( const TT& first, const TT& second, const TT& third, Fn&& op )
+{
+  assert( first.num_blocks() == second.num_blocks() );
+
+  for ( auto i = 0u; i < first.num_blocks(); ++i )
+  {
+    if ( !op( first._bits[i], second._bits[i], third._bits[i] ) )
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+/*! \cond PRIVATE */
+template<uint32_t NumVars, typename Fn>
+bool ternary_predicate( const static_truth_table<NumVars, true>& first, const static_truth_table<NumVars, true>& second, const static_truth_table<NumVars, true>& third, Fn&& op )
+{
+  return op( first._bits, second._bits, third._bits );
+}
+/*! \endcond */
+
 /*! \brief Assign computed values to bits
 
   The functor `op` computes bits which are assigned to the bits of the
