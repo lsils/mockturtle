@@ -35,7 +35,13 @@
 #include "../utils/window_utils.hpp"
 #include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
+#include "../views/fanout_view.hpp"
 #include "../utils/debugging_utils.hpp"
+#include "../utils/network_utils.hpp"
+#include "../utils/node_map.hpp"
+#include "simulation.hpp"
+#include "detail/resub_utils.hpp"
+#include "resyn_engines/xag_resyn_engines.hpp"
 
 #include <abcresub/abcresub2.hpp>
 #include <fmt/format.h>
@@ -445,13 +451,302 @@ private:
   window_rewriting_stats& st;
 }; /* window_rewriting_impl */
 
+template<class Ntk, typename NtkWin = Ntk, typename TT = kitty::dynamic_truth_table, typename ResynEngine = xag_resyn_engine<TT>>
+class window_rewriting_impl2
+{
+public:
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+public:
+  explicit window_rewriting_impl2( Ntk& ntk, window_rewriting_params const& ps, window_rewriting_stats& st )
+    : ntk( ntk )
+    , ps( ps )
+    , st( st )
+  {
+    auto const update_level_of_new_node = [&]( const auto& n ) {
+      ntk.resize_levels();
+      update_node_level( n );
+    };
+
+    auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
+      (void)old_children;
+      ntk.resize_levels();
+      update_node_level( n );
+    };
+
+    auto const update_level_of_deleted_node = [&]( node const& n ) {
+      assert( ntk.fanout_size( n ) == 0u );
+      ntk.set_level( n, -1 );
+    };
+
+    ntk._events->on_add.emplace_back( update_level_of_new_node );
+    ntk._events->on_modified.emplace_back( update_level_of_existing_node );
+    ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
+  }
+
+  void run()
+  {
+    stopwatch t( st.time_total );
+
+    create_window_impl windowing( ntk );
+    uint32_t const size = ntk.size();
+    for ( uint32_t n = 0u; n < std::min( size, ntk.size() ); ++n )
+    {
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) || ntk.is_dead( n ) )
+      {
+        continue;
+      }
+
+      if ( auto w = call_with_stopwatch( st.time_window, [&]() { return windowing.run( n, ps.cut_size, ps.num_levels ); } ) )
+      {
+        ++st.num_windows;
+
+        NtkWin win;
+        call_with_stopwatch( st.time_encode, [&]() {
+          clone_subnetwork( ntk, w->inputs, w->outputs, w->nodes, win );
+        } );
+
+        if ( !optimize( win ) )
+        {
+          continue;
+        }
+
+        std::vector<signal> signals;
+        for ( auto const& i : w->inputs )
+        {
+          signals.push_back( ntk.make_signal( i ) );
+        }
+
+        uint32_t counter{0};
+
+        ++st.num_substitutions;
+        insert_ntk( ntk, std::begin( signals ), std::end( signals ), win,
+                [&]( signal const& _new )
+                {
+                  auto const _old = w->outputs.at( counter++ );
+                  if ( _old == _new )
+                  {
+                    return true;
+                  }
+
+                  /* ensure that _old is not in the TFI of _new */
+                  // assert( !is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) );
+                  if ( ps.filter_cyclic_substitutions && is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) )
+                  {
+                    std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
+                    if ( ntk.fanout_size( ntk.get_node( _new ) ) == 0u )
+                    {
+                      ntk.take_out_node( ntk.get_node( _new ) );
+                    }
+                    return false;
+                  }
+
+                  auto const updates = substitute_node( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new );
+                  update_vector( w->outputs, updates );
+                  return true;
+                });
+
+        /* recompute levels and depth */
+        // call_with_stopwatch( st.time_levels, [&]() { ntk.update_levels(); } );
+
+        /* ensure that no dead nodes are reachable */
+        assert( count_reachable_dead_nodes( ntk ) == 0u );
+
+        /* ensure that the network structure is still acyclic */
+        assert( network_is_acylic( ntk ) );
+
+        /* ensure that the levels and depth is correct */
+        assert( check_network_levels( ntk ) );
+
+        /* update internal data structures in windowing */
+        windowing.resize( ntk.size() );
+      }
+    }
+
+    /* ensure that no dead nodes are reachable */
+    assert( count_reachable_dead_nodes( ntk ) == 0u );
+  }
+
+private:
+  bool optimize( NtkWin& win )
+  {
+    stopwatch t( st.time_optimize );
+    auto const size_before = win.num_gates();
+
+    default_simulator<TT> sim( ps.cut_size );
+    unordered_node_map<TT, NtkWin> tts( win );
+    simulate_nodes<TT, NtkWin>( win, tts, sim );
+    fanout_view<NtkWin> fanout_win{win};
+
+    // TODO: Alan uses reversed order
+    win.foreach_gate( [&]( auto const& root ){
+      /* initialize resynthesis engine */
+      // TODO: compute ODC/SDC
+      typename ResynEngine::stats st;
+      typename ResynEngine::params ps;
+      ResynEngine engine( tts[root], ~tts[win.get_constant( false )], st, ps );
+
+      /* mark MFFC */
+      std::vector<typename NtkWin::node> mffc;
+      node_mffc_inside<NtkWin> mffc_mgr( win );
+      auto mffc_size = mffc_mgr.run( root, {}, mffc );
+      win.incr_trav_id();
+      for ( auto const& n : mffc )
+      {
+        win.set_visited( n, win.trav_id() );
+      }
+      /* mark TFO */
+      mark_tfo( fanout_win, root );
+
+      /* add divisors (all nodes in the window except TFO and MFFC) */
+      std::vector<typename NtkWin::signal> divs_sig;
+      win.foreach_node( [&]( auto const& n ){
+        if ( win.visited( n ) != win.trav_id() )
+        {
+          engine.add_divisor( tts[n] );
+          divs_sig.emplace_back( win.make_signal( n ) );
+        }
+      });
+
+      /* run resynthesis */
+      ps.max_size = mffc_size - 1;
+      auto const il = engine();
+      if ( il )
+      {
+        insert( win, divs_sig.begin(), divs_sig.end(), *il, [&]( auto const& s ){
+          win.substitute_node( root, s );
+        });
+
+        /* re-simulate for new nodes */
+        simulate_nodes<TT, NtkWin>( win, tts, sim );
+      }
+    });
+
+    if ( win.num_gates() >= size_before )
+    {
+      return false;
+    }
+    st.gain += size_before - win.num_gates();
+    return true;
+  }
+
+  void mark_tfo( fanout_view<NtkWin>& fanout_win, typename NtkWin::node const& n )
+  {
+    fanout_win.set_visited( n, fanout_win.trav_id() );
+    fanout_win.foreach_fanout( n, [&]( auto const& fo ){
+      if ( fanout_win.visited( fo ) != fanout_win.trav_id() )
+      {
+        mark_tfo( fanout_win, fo );
+      }
+    });
+  }
+
+  /* substitute the node with a signal and return all strashing updates */
+  std::vector<std::pair<node, signal>> substitute_node( node const& old_node, signal const& new_signal )
+  {
+    stopwatch t( st.time_substitute );
+
+    std::vector<std::pair<node, signal>> updates;
+    std::stack<std::pair<node, signal>> to_substitute;
+    to_substitute.push( {old_node, new_signal} );
+    while ( !to_substitute.empty() )
+    {
+      const auto [_old, _new] = to_substitute.top();
+      to_substitute.pop();
+
+      auto const p = std::make_pair( _old, _new );
+      if ( std::find( std::begin( updates ), std::end( updates ), p ) == std::end( updates ) )
+      {
+        updates.push_back( p );
+      }
+
+      const auto parents = ntk.fanout( _old );
+      for ( auto n : parents )
+      {
+        if ( const auto repl = ntk.replace_in_node( n, _old, _new ); repl )
+        {
+          to_substitute.push( *repl );
+          ++st.num_restrashes;
+        }
+      }
+
+      /* check outputs */
+      ntk.replace_in_outputs( _old, _new );
+
+      /* reset fan-in of old node */
+      ntk.take_out_node( _old );
+    }
+
+    return updates;
+  }
+
+  void update_vector( std::vector<signal>& vs, std::vector<std::pair<node, signal>> const& updates )
+  {
+    stopwatch t( st.time_update_vector );
+
+    for ( auto it = std::begin( vs ); it != std::end( vs ); ++it )
+    {
+      for ( auto it2 = std::begin( updates ); it2 != std::end( updates ); ++it2 )
+      {
+        if ( ntk.get_node( *it ) == it2->first )
+        {
+          *it = ntk.is_complemented( *it ) ? !it2->second : it2->second;
+        }
+      }
+    }
+  }
+
+  /* recursively update the node levels and the depth of the critical path */
+  void update_node_level( node const& n )
+  {
+    uint32_t const curr_level = ntk.level( n );
+
+    uint32_t max_level = 0;
+    ntk.foreach_fanin( n, [&]( const auto& f ) {
+      auto const p = ntk.get_node( f );
+      auto const fanin_level = ntk.level( p );
+      if ( fanin_level > max_level )
+      {
+        max_level = fanin_level;
+      }
+    } );
+    ++max_level;
+
+    if ( ntk.depth() < max_level )
+    {
+      ntk.set_depth( max_level );
+    }
+
+    if ( curr_level != max_level )
+    {
+      ntk.set_level( n, max_level );
+
+      ntk.foreach_fanout( n, [&]( const auto& p ) {
+        update_node_level( p );
+      } );
+    }
+  }
+
+private:
+  Ntk& ntk;
+  window_rewriting_params ps;
+  window_rewriting_stats& st;
+}; /* window_rewriting_impl2 */
+
 } /* detail */
 
 template<class Ntk>
 void window_rewriting( Ntk& ntk, window_rewriting_params const& ps = {}, window_rewriting_stats* pst = nullptr )
 {
   window_rewriting_stats st;
+  #if 0
   detail::window_rewriting_impl<Ntk>( ntk, ps, st ).run();
+  #else
+  using NtkWin = typename Ntk::base_type;
+  using TT = kitty::static_truth_table<6>;
+  detail::window_rewriting_impl2<Ntk, NtkWin>( ntk, ps, st ).run();
+  #endif
   if ( pst )
   {
     *pst = st;
