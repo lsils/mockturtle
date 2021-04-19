@@ -613,11 +613,12 @@ public:
         }
 
         uint32_t counter{0};
-
         ++st.num_substitutions;
+        std::list<std::pair<node, signal>> substitutions;
         insert_ntk( ntk, std::begin( signals ), std::end( signals ), win,
                 [&]( signal const& _new )
                 {
+                  assert( !ntk.is_dead( ntk.get_node( _new ) ) );
                   auto const _old = w->outputs.at( counter++ );
                   if ( _old == _new )
                   {
@@ -636,13 +637,15 @@ public:
                     return false;
                   }
 
-                  auto const updates = substitute_node( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new );
-                  update_vector( w->outputs, updates );
+                  substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
                   return true;
                 });
 
+        substitute_nodes( substitutions );
+
         /* recompute levels and depth */
         // call_with_stopwatch( st.time_levels, [&]() { ntk.update_levels(); } );
+        update_depth();
 
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
@@ -751,59 +754,100 @@ private:
     });
   }
 
-  /* substitute the node with a signal and return all strashing updates */
-  std::vector<std::pair<node, signal>> substitute_node( node const& old_node, signal const& new_signal )
+  void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
   {
     stopwatch t( st.time_substitute );
 
-    std::vector<std::pair<node, signal>> updates;
-    std::stack<std::pair<node, signal>> to_substitute;
-    to_substitute.push( {old_node, new_signal} );
-    while ( !to_substitute.empty() )
+    auto clean_substitutions = [&]( node const& n )
     {
-      const auto [_old, _new] = to_substitute.top();
-      to_substitute.pop();
+      substitutions.erase( std::remove_if( std::begin( substitutions ), std::end( substitutions ),
+                                           [&]( auto const& s ){
+                                             if ( s.first == n )
+                                             {
+                                               node const nn = ntk.get_node( s.second );
+                                               if ( ntk.is_dead( nn ) )
+                                                 return true;
 
-      auto const p = std::make_pair( _old, _new );
-      if ( std::find( std::begin( updates ), std::end( updates ), p ) == std::end( updates ) )
-      {
-        updates.push_back( p );
-      }
+                                               /* deref fanout_size of the node */
+                                               if ( ntk.fanout_size( nn ) > 0 )
+                                               {
+                                                 ntk.decr_fanout_size( nn );
+                                               }
+                                               /* remove the node if it's fanout_size becomes 0 */
+                                               if ( ntk.fanout_size( nn ) == 0 )
+                                               {
+                                                 ntk.take_out_node( nn );
+                                               }
+                                               /* remove substitution from list */
+                                               return true;
+                                             }
+                                             return false; /* keep */
+                                           } ),
+                           std::end( substitutions ) );
+    };
 
-      const auto parents = ntk.fanout( _old );
-      for ( auto n : parents )
+    /* register event to delete substitutions if their right-hand side
+       nodes get deleted */
+    ntk._events->on_delete.push_back( clean_substitutions );
+
+    /* increment fanout_size of all signals to be used in
+       substitutions to ensure that they will not be deleted */
+    for ( const auto& s : substitutions )
+    {
+      ntk.incr_fanout_size( ntk.get_node( s.second ) );
+    }
+
+    while ( !substitutions.empty() )
+    {
+      auto const [old_node, new_signal] = substitutions.front();
+      substitutions.pop_front();
+
+      // for ( auto index = 1u; index < _storage->nodes.size(); ++index )
+      const auto parents = ntk.fanout( old_node );
+      for ( auto index : parents )
       {
-        if ( const auto repl = ntk.replace_in_node( n, _old, _new ); repl )
+        /* skip CIs and dead nodes */
+        if ( ntk.is_dead( index ) )
+          continue;
+
+        /* skip nodes that will be deleted */
+        if ( std::find_if( std::begin( substitutions ), std::end( substitutions ),
+                           [&index]( auto s ){ return s.first == index; } ) != std::end( substitutions ) )
+          continue;
+
+        /* replace in node */
+        if ( const auto repl = ntk.replace_in_node( index, old_node, new_signal ); repl )
         {
-          to_substitute.push( *repl );
-          ++st.num_restrashes;
+          ntk.incr_fanout_size( ntk.get_node( repl->second ) );
+          substitutions.emplace_back( *repl );
         }
       }
 
-      /* check outputs */
-      ntk.replace_in_outputs( _old, _new );
+      /* replace in outputs */
+      ntk.replace_in_outputs( old_node, new_signal );
 
-      /* reset fan-in of old node */
-      ntk.take_out_node( _old );
-    }
-
-    return updates;
-  }
-
-  void update_vector( std::vector<signal>& vs, std::vector<std::pair<node, signal>> const& updates )
-  {
-    stopwatch t( st.time_update_vector );
-
-    for ( auto it = std::begin( vs ); it != std::end( vs ); ++it )
-    {
-      for ( auto it2 = std::begin( updates ); it2 != std::end( updates ); ++it2 )
+      /* replace in substitutions */
+      for ( auto& s : substitutions )
       {
-        if ( ntk.get_node( *it ) == it2->first )
+        if ( ntk.get_node( s.second ) == old_node )
         {
-          *it = ntk.is_complemented( *it ) ? !it2->second : it2->second;
+          s.second = ntk.is_complemented( s.second ) ? !new_signal : new_signal;
+          ntk.incr_fanout_size( ntk.get_node( new_signal ) );
         }
       }
+
+      /* finally remove the node: note that we never decrement the
+         fanout_size of the old_node. instead, we remove the node and
+         reset its fanout_size to 0 knowing that it must be 0 after
+         substituting all references. */
+      assert( !ntk.is_dead( old_node ) );
+      ntk.take_out_node( old_node );
+
+      /* decrement fanout_size when released from substitution list */
+      ntk.decr_fanout_size( ntk.get_node( new_signal ) );
     }
+
+    ntk._events->on_delete.pop_back();
   }
 
   /* recursively update the node levels and the depth of the critical path */
@@ -822,18 +866,32 @@ private:
     } );
     ++max_level;
 
-    if ( ntk.depth() < max_level )
-    {
-      ntk.set_depth( max_level );
-    }
-
     if ( curr_level != max_level )
     {
       ntk.set_level( n, max_level );
-
       ntk.foreach_fanout( n, [&]( const auto& p ) {
-        update_node_level( p );
+        if ( !ntk.is_dead( p ) )
+        {
+          update_node_level( p );
+        }
       } );
+    }
+  }
+
+  void update_depth()
+  {
+    uint32_t max_level{0};
+    ntk.foreach_co( [&]( signal s ){
+      assert( !ntk.is_dead( ntk.get_node( s ) ) );
+      if ( ntk.level( ntk.get_node( s ) ) > max_level )
+      {
+        max_level = ntk.level( ntk.get_node( s ) );
+      }
+    });
+
+    if ( ntk.depth() != max_level )
+    {
+      ntk.set_depth( max_level );
     }
   }
 
