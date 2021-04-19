@@ -1232,6 +1232,146 @@ public:
   std::shared_ptr<network_events<base_type>> _events;
 };
 
+class unhashed_aig_network : public aig_network
+{
+public:
+  signal create_and( signal a, signal b )
+  {
+    /* order inputs */
+    if ( a.index > b.index )
+    {
+      std::swap( a, b );
+    }
+
+    /* trivial cases */
+    if ( a.index == b.index )
+    {
+      return ( a.complement == b.complement ) ? a : get_constant( false );
+    }
+    else if ( a.index == 0 )
+    {
+      return a.complement ? b : get_constant( false );
+    }
+
+    storage::element_type::node_type node;
+    node.children[0] = a;
+    node.children[1] = b;
+
+    const auto index = _storage->nodes.size();
+
+    if ( index >= .9 * _storage->nodes.capacity() )
+    {
+      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415f * index ) );
+    }
+
+    _storage->nodes.push_back( node );
+
+    /* increase ref-count to children */
+    _storage->nodes[a.index].data[0].h1++;
+    _storage->nodes[b.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_add )
+    {
+      fn( index );
+    }
+
+    return {index, 0};
+  }
+
+  std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal )
+  {
+    auto& node = _storage->nodes[n];
+
+    uint32_t fanin = 0u;
+    if ( node.children[0].index == old_node )
+    {
+      fanin = 0u;
+      new_signal.complement ^= node.children[0].weight;
+    }
+    else if ( node.children[1].index == old_node )
+    {
+      fanin = 1u;
+      new_signal.complement ^= node.children[1].weight;
+    }
+    else
+    {
+      return std::nullopt;
+    }
+
+    // determine potential new children of node n
+    signal child1 = new_signal;
+    signal child0 = node.children[fanin ^ 1];
+
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+
+    // check for trivial cases?
+    if ( child0.index == child1.index )
+    {
+      const auto diff_pol = child0.complement != child1.complement;
+      return std::make_pair( n, diff_pol ? get_constant( false ) : child1 );
+    }
+    else if ( child0.index == 0 ) /* constant child */
+    {
+      return std::make_pair( n, child0.complement ? child1 : get_constant( false ) );
+    }
+
+    // remember before
+    const auto old_child0 = signal{node.children[0]};
+    const auto old_child1 = signal{node.children[1]};
+
+    node.children[0] = child0;
+    node.children[1] = child1;
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_modified )
+    {
+      fn( n, {old_child0, old_child1} );
+    }
+
+    return std::nullopt;
+  }
+
+  void take_out_node( node const& n )
+  {
+    /* we cannot delete CIs, constants, or already dead nodes */
+    if ( n == 0 || is_ci( n ) || is_dead( n ) )
+      return;
+
+    /* delete the node (ignoring it's current fanout_size) */
+    auto& nobj = _storage->nodes[n];
+    nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
+
+    for ( auto const& fn : _events->on_delete )
+    {
+      fn( n );
+    }
+
+    /* if the node has been deleted, then deref fanout_size of
+       fanins and try to take them out if their fanout_size become 0 */
+    for ( auto i = 0u; i < 2u; ++i )
+    {
+      if ( fanout_size( nobj.children[i].index ) == 0 )
+      {
+        continue;
+      }
+      if ( decr_fanout_size( nobj.children[i].index ) == 0 )
+      {
+        take_out_node( nobj.children[i].index );
+      }
+    }
+  }
+
+  auto num_gates() const
+  {
+    return static_cast<uint32_t>( _storage->nodes.size() );
+  }
+};
+
 } // namespace mockturtle
 
 namespace std
