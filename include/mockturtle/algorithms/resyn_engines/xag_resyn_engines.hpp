@@ -41,6 +41,7 @@
 
 #include <vector>
 #include <algorithm>
+#include <type_traits>
 
 namespace mockturtle
 {
@@ -834,11 +835,7 @@ private:
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
   truth_table_storage_type const& tts;
-#if copy_tts
-    std::vector<TT> divisors;
-#else
-    std::vector<node_type> divisors;
-#endif
+  std::vector<std::conditional_t<copy_tts, TT, node_type>> divisors;
 
   index_list_t index_list;
 
