@@ -42,7 +42,9 @@
 #include "simulation.hpp"
 #include "detail/resub_utils.hpp"
 #include "resyn_engines/xag_resyn_engines.hpp"
+#include "../networks/aig.hpp"
 
+#include <kitty/kitty.hpp>
 #include <abcresub/abcresub2.hpp>
 #include <fmt/format.h>
 #include <stack>
@@ -86,6 +88,24 @@ struct window_rewriting_stats
   /*! \brief Time for encoding index_list. */
   stopwatch<>::duration time_encode{0};
 
+  /*! \brief Time for computing dependency circuit. */
+  stopwatch<>::duration time_resyn{0};
+
+  /*! \brief Time for simulation. */
+  stopwatch<>::duration time_simulate{0};
+
+  /*! \brief Time for marking TFO and MFFC. */
+  stopwatch<>::duration time_mark{0};
+
+  /*! \brief Time for adding divisor truth tables. */
+  stopwatch<>::duration time_add_divisor{0};
+
+  /*! \brief Time for substitution within windows. */
+  stopwatch<>::duration time_window_substitute{0};
+
+  /*! \brief Time for constructing fanout_view within windows. */
+  stopwatch<>::duration time_fanout_view{0};
+
   /*! \brief Total number of calls to the resub. engine. */
   uint64_t num_substitutions{0};
   uint64_t num_restrashes{0};
@@ -102,6 +122,12 @@ struct window_rewriting_stats
     time_update_vector += other.time_update_vector;
     time_topo_sort += other.time_topo_sort;
     time_encode += other.time_encode;
+    time_resyn += other.time_resyn;
+    time_simulate += other.time_simulate;
+    time_mark += other.time_mark;
+    time_add_divisor += other.time_add_divisor;
+    time_window_substitute += other.time_window_substitute;
+    time_fanout_view += other.time_fanout_view;
     num_substitutions += other.num_substitutions;
     num_windows += other.num_windows;
     gain += other.gain;
@@ -120,6 +146,12 @@ struct window_rewriting_stats
     fmt::print( "[i] Enc.list =   {:7.2f} ({:5.2f}%)\n", to_seconds( time_encode ), to_seconds( time_encode ) / to_seconds( time_total ) * 100 );
     fmt::print( "[i] Optimize =   {:7.2f} ({:5.2f}%) (#resubs = {}, est. gain = {})\n",
                 to_seconds( time_optimize ), to_seconds( time_optimize ) / to_seconds( time_total ) * 100, num_substitutions, gain );
+    fmt::print( "[i] >> resynthesis = {:7.2f} ({:5.2f}%)\n", to_seconds( time_resyn ), to_seconds( time_resyn ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> simulate =    {:7.2f} ({:5.2f}%)\n", to_seconds( time_simulate ), to_seconds( time_simulate ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> marking =     {:7.2f} ({:5.2f}%)\n", to_seconds( time_mark ), to_seconds( time_mark ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> add div. =    {:7.2f} ({:5.2f}%)\n", to_seconds( time_add_divisor ), to_seconds( time_add_divisor ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> substitute =  {:7.2f} ({:5.2f}%)\n", to_seconds( time_window_substitute ), to_seconds( time_window_substitute ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> fanout_view = {:7.2f} ({:5.2f}%)\n", to_seconds( time_fanout_view ), to_seconds( time_fanout_view ) / to_seconds( time_optimize ) * 100 );
     fmt::print( "[i] Substitute = {:7.2f} ({:5.2f}%) (#hash upd. = {})\n",
                 to_seconds( time_substitute ),
                 to_seconds( time_substitute ) / to_seconds( time_total ) * 100,
@@ -451,7 +483,7 @@ private:
   window_rewriting_stats& st;
 }; /* window_rewriting_impl */
 
-template<class Ntk, typename NtkWin = Ntk, typename TT = kitty::dynamic_truth_table, typename ResynEngine = xag_resyn_engine<TT>>
+template<class Ntk, typename NtkWin = Ntk, typename TT = kitty::dynamic_truth_table, typename ResynEngine = xag_resyn_engine<TT, typename NtkWin::node, node_map<TT, NtkWin>, false>>
 class window_rewriting_impl2
 {
 public:
@@ -488,6 +520,15 @@ public:
   void run()
   {
     stopwatch t( st.time_total );
+
+    if constexpr ( std::is_same_v<TT, kitty::dynamic_truth_table> )
+    {
+      sim = new default_simulator<TT>( ps.cut_size );
+    }
+    else
+    {
+      sim = new default_simulator<TT>();
+    }
 
     create_window_impl windowing( ntk );
     uint32_t const size = ntk.size();
@@ -566,78 +607,84 @@ public:
 
     /* ensure that no dead nodes are reachable */
     assert( count_reachable_dead_nodes( ntk ) == 0u );
+
+    delete sim;
   }
 
 private:
   bool optimize( NtkWin& win )
   {
     stopwatch t( st.time_optimize );
-    auto const size_before = win.num_gates();
-
-    default_simulator<TT> *sim;
-    if constexpr ( std::is_same_v<TT, kitty::dynamic_truth_table> )
-    {
-      sim = new default_simulator<TT>( ps.cut_size );
-    }
-    else
-    {
-      sim = new default_simulator<TT>();
-    }
-    unordered_node_map<TT, NtkWin> tts( win );
-    simulate_nodes<TT, NtkWin>( win, tts, *sim );
-    fanout_view<NtkWin> fanout_win{win};
+    bool changed = false;
+    
+    node_map<TT, NtkWin> tts = call_with_stopwatch( st.time_simulate, [&]() {
+      return simulate_nodes<TT, NtkWin>( win, *sim );
+    });
+    win.events().on_add.emplace_back( [&]( auto const& n ){
+      call_with_stopwatch( st.time_simulate, [&]() {
+        tts.resize();
+        std::vector<TT> fanin_values( win.fanin_size( n ) );
+        win.foreach_fanin( n, [&]( auto const& f, auto i ) {
+          fanin_values[i] = tts[f];
+        } );
+        tts[n] = win.compute( n, fanin_values.begin(), fanin_values.end() );
+      });
+    });
+    fanout_view<NtkWin> fanout_win = make_with_stopwatch<fanout_view<NtkWin>, NtkWin&>( st.time_fanout_view, win );
+    //fanout_view<NtkWin> fanout_win{win};
 
     // TODO: Alan uses reversed order
-    win.foreach_gate( [&]( auto const& root ){
+    auto const size = win.size();
+    win.foreach_gate( [&]( auto const& root, auto i ){
+      if ( i >= size ) return false;
       /* initialize resynthesis engine */
       // TODO: compute ODC/SDC
-      typename ResynEngine::stats st;
-      typename ResynEngine::params ps;
-      ResynEngine engine( tts[root], ~tts[win.get_constant( false )], st, ps );
+      ResynEngine engine( tts[root], ~tts[win.get_constant( false )], tts, engine_st, engine_ps );
 
-      /* mark MFFC */
-      std::vector<typename NtkWin::node> mffc;
-      node_mffc_inside<NtkWin> mffc_mgr( win );
-      auto mffc_size = mffc_mgr.run( root, {}, mffc );
-      win.incr_trav_id();
-      for ( auto const& n : mffc )
-      {
-        win.set_visited( n, win.trav_id() );
-      }
-      /* mark TFO */
-      mark_tfo( fanout_win, root );
+      auto mffc_size = call_with_stopwatch( st.time_mark, [&]() {
+        /* mark MFFC */
+        std::vector<typename NtkWin::node> mffc;
+        node_mffc_inside<NtkWin> mffc_mgr( win );
+        auto mffc_size = mffc_mgr.run( root, {}, mffc );
+        win.incr_trav_id();
+        for ( auto const& n : mffc )
+        {
+          win.set_visited( n, win.trav_id() );
+        }
+        /* mark TFO */
+        mark_tfo( fanout_win, root );
+        return mffc_size;
+      });
 
       /* add divisors (all nodes in the window except TFO and MFFC) */
       std::vector<typename NtkWin::signal> divs_sig;
-      win.foreach_node( [&]( auto const& n ){
-        if ( win.visited( n ) != win.trav_id() )
-        {
-          engine.add_divisor( tts[n] );
-          divs_sig.emplace_back( win.make_signal( n ) );
-        }
+      call_with_stopwatch( st.time_add_divisor, [&]() {
+        win.foreach_node( [&]( auto const& n ){
+          if ( win.visited( n ) != win.trav_id() )
+          {
+            engine.add_divisor( n );
+            divs_sig.emplace_back( win.make_signal( n ) );
+          }
+        });
       });
 
       /* run resynthesis */
-      ps.max_size = mffc_size - 1;
-      auto const il = engine();
+      engine_ps.max_size = mffc_size - 1;
+      auto const il = call_with_stopwatch( st.time_resyn, [&]() { return engine(); } );
       if ( il )
       {
-        insert( win, divs_sig.begin(), divs_sig.end(), *il, [&]( auto const& s ){
-          win.substitute_node( root, s );
+        changed = true;
+        st.gain += mffc_size - il->num_gates();
+        call_with_stopwatch( st.time_window_substitute, [&]() {
+          insert( win, divs_sig.begin(), divs_sig.end(), *il, [&]( auto const& s ){
+            win.substitute_node( root, s );
+          });
         });
-
-        /* re-simulate for new nodes */
-        simulate_nodes<TT, NtkWin>( win, tts, *sim );
       }
+      return true;
     });
-    delete sim;
 
-    if ( win.num_gates() >= size_before )
-    {
-      return false;
-    }
-    st.gain += size_before - win.num_gates();
-    return true;
+    return changed;
   }
 
   void mark_tfo( fanout_view<NtkWin>& fanout_win, typename NtkWin::node const& n )
@@ -741,6 +788,10 @@ private:
   Ntk& ntk;
   window_rewriting_params ps;
   window_rewriting_stats& st;
+
+  default_simulator<TT> *sim;
+  typename ResynEngine::stats engine_st;
+  typename ResynEngine::params engine_ps;
 }; /* window_rewriting_impl2 */
 
 } /* detail */
@@ -752,7 +803,8 @@ void window_rewriting( Ntk& ntk, window_rewriting_params const& ps = {}, window_
   #if 0
   detail::window_rewriting_impl<Ntk>( ntk, ps, st ).run();
   #else
-  using NtkWin = typename Ntk::base_type;
+  //using NtkWin = typename Ntk::base_type;
+  using NtkWin = unhashed_aig_network;
   using TT = kitty::static_truth_table<6>;
   detail::window_rewriting_impl2<Ntk, NtkWin, TT>( ntk, ps, st ).run();
   #endif
