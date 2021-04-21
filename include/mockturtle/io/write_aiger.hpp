@@ -49,7 +49,7 @@ namespace mockturtle
 namespace detail
 {
 
-void encode( std::vector<unsigned char>& buffer, uint32_t lit )
+inline void encode( std::vector<unsigned char>& buffer, uint32_t lit )
 {
   unsigned char ch;
   while ( lit & ~0x7f )
@@ -78,7 +78,7 @@ void encode( std::vector<unsigned char>& buffer, uint32_t lit )
  * \param aig Combinational AIG network
  * \param os Output stream
  */
-void write_aiger( aig_network const& aig, std::ostream& os )
+inline void write_aiger( aig_network const& aig, std::ostream& os )
 {
   static_assert( is_network_type_v<aig_network>, "Ntk is not a network type" );
   static_assert( has_num_cis_v<aig_network>, "Ntk does not implement the num_cis method" );
@@ -153,7 +153,7 @@ void write_aiger( aig_network const& aig, std::ostream& os )
  * \param aig Combinational AIG network
  * \param filename Filename
  */
-void write_aiger( aig_network const& aig, std::string const& filename )
+inline void write_aiger( aig_network const& aig, std::string const& filename )
 {
   std::ofstream os( filename.c_str(), std::ofstream::out );
   write_aiger( aig, os );
