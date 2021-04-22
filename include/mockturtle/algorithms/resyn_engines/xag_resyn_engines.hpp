@@ -339,7 +339,7 @@ private:
         score_div = neg_unate_lits[0].score;
       }
 
-      if ( num_inserts >= 3u )
+      if ( num_inserts > 3u )
       {
         if ( pos_unate_pairs.size() > 0 )
         {
