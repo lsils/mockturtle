@@ -32,6 +32,11 @@
 
 #pragma once
 
+#include "../algorithms/simulation.hpp"
+#include "../views/topo_view.hpp"
+
+#include <kitty/kitty.hpp>
+
 #include <algorithm>
 #include <vector>
 
@@ -456,7 +461,29 @@ bool check_fanouts( Ntk const& ntk )
   }
 
   return true;
-}   
+}
+
+template<typename Ntk, typename NtkWin>
+bool check_window_equivalence( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::signal> const& outputs, std::vector<typename Ntk::node> const& gates, NtkWin const& win_opt )
+{
+  NtkWin win;
+  clone_subnetwork( ntk, inputs, outputs, gates, win );
+  topo_view topo_win{win_opt};
+  assert( win.num_pis() == win_opt.num_pis() );
+  assert( win.num_pos() == win_opt.num_pos() );
+
+  default_simulator<kitty::dynamic_truth_table> sim( inputs.size() );
+  auto const tts1 = simulate<kitty::dynamic_truth_table, NtkWin>( win, sim );
+  auto const tts2 = simulate<kitty::dynamic_truth_table, topo_view<NtkWin>>( topo_win, sim );
+  for ( auto i = 0u; i < tts1.size(); ++i )
+  {
+    if ( tts1[i] != tts2[i] )
+    {
+      return false;
+    }
+  }
+  return true;
+}
 
 } /* namespace mockturtle */
 
