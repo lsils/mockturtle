@@ -222,6 +222,7 @@ void count_nodes_with_dead_fanins_recur( Ntk const& ntk, typename Ntk::node cons
   {
     return;
   }
+  ntk.paint( n );
 
   ntk.foreach_fanin( n, [&]( signal const& s ){
     if ( ntk.is_dead( ntk.get_node( s ) ) )
@@ -233,16 +234,15 @@ void count_nodes_with_dead_fanins_recur( Ntk const& ntk, typename Ntk::node cons
     }
   });
 
-  ntk.paint( n );
   ntk.foreach_fanout( n, [&]( node const& fo ){
-    count_reachable_dead_nodes_from_node_recur( ntk, fo, nodes );
+    count_nodes_with_dead_fanins_recur( ntk, fo, nodes );
   });
 }
 
 } /* namespace detail */
 
 template<typename Ntk>
-inline uint64_t count_nodes_with_dead_fanins( Ntk const& ntk, typename Ntk::node const& n )
+uint64_t count_nodes_with_dead_fanins( Ntk const& ntk, typename Ntk::node const& n )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_color_v<Ntk>, "Ntk does not implement the color function" );
@@ -255,7 +255,6 @@ inline uint64_t count_nodes_with_dead_fanins( Ntk const& ntk, typename Ntk::node
   static_assert( has_paint_v<Ntk>, "Ntk does not implement the paint function" );
 
   using node = typename Ntk::node;
-  using signal = typename Ntk::signal;
 
   ntk.new_color();
 

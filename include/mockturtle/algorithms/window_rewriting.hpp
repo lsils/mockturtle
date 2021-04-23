@@ -509,14 +509,10 @@ private:
     ntk.resize_levels();
     if ( ps.level_update_strategy == window_rewriting_params::precise )
     {
-      assert( count_reachable_dead_nodes_from_node( ntk, n ) == 0u );
-      assert( count_nodes_with_dead_fanins( ntk, n ) == 0u );
       call_with_stopwatch( st.time_levels, [&]() { update_node_level_precise( n ); } );
     }
     else if ( ps.level_update_strategy == window_rewriting_params::eager )
     {
-      assert( count_reachable_dead_nodes_from_node( ntk, n ) == 0u );
-      assert( count_nodes_with_dead_fanins( ntk, n ) == 0u );
       call_with_stopwatch( st.time_levels, [&]() { update_node_level_eager( n ); } );
     }
 
@@ -527,6 +523,9 @@ private:
   /* precisely update node levels using an iterative topological sorting approach */
   void update_node_level_precise( node const& n )
   {
+    assert( count_reachable_dead_nodes_from_node( ntk, n ) == 0u );
+    // assert( count_nodes_with_dead_fanins( ntk, n ) == 0u );
+
     /* compute level of current node */
     uint32_t level_offset{0};
     ntk.foreach_fanin( n, [&]( signal const& fi ){
@@ -535,6 +534,10 @@ private:
     ++level_offset;
 
     /* add node into levels */
+    if ( levels.size() < 1u )
+    {
+      levels.resize( 1u );
+    }
     levels[0].emplace_back( n );
 
     for ( uint32_t level_index = 0u; level_index < levels.size(); ++level_index )
@@ -549,9 +552,14 @@ private:
         /* recompute level of this node */
         uint32_t lvl{0};
         ntk.foreach_fanin( p, [&]( signal const& fi ){
+          if ( ntk.is_dead( ntk.get_node( fi ) ) )
+            return;
+
           lvl = std::max( ntk.level( ntk.get_node( fi ) ), lvl );
+          return;
         });
         ++lvl;
+        assert( lvl > 0 );
 
         /* update level and add fanouts to levels[.] if the recomputed
            level is different from the current level */
@@ -576,7 +584,6 @@ private:
       levels[level_index].clear();
     }
     levels.clear();
-    levels.resize( ntk.depth() );
   }
 
   /* eagerly update the node levels without topologically sorting (may
