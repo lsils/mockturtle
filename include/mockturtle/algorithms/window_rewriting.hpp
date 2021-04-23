@@ -690,20 +690,24 @@ public:
     : ntk( ntk )
     , ps( ps )
     , st( st )
+    /* initialize levels to network depth */
+    , levels( ntk.depth() )
   {
     auto const update_level_of_new_node = [&]( const auto& n ) {
-      ntk.resize_levels();
-      update_node_level( n );
+      stopwatch t( st.time_total );
+      update_levels( n );
     };
 
     auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
       (void)old_children;
-      ntk.resize_levels();
-      update_node_level( n );
+      stopwatch t( st.time_total );
+      update_levels( n );
     };
 
     auto const update_level_of_deleted_node = [&]( node const& n ) {
+      stopwatch t( st.time_total );
       assert( ntk.fanout_size( n ) == 0u );
+      assert( ntk.is_dead( n ) );
       ntk.set_level( n, -1 );
     };
 
@@ -727,7 +731,7 @@ public:
 
     create_window_impl windowing( ntk );
     uint32_t const size = ntk.size();
-    for ( uint32_t n = 0u; n < std::min( size, ntk.size() ); ++n )
+    for ( uint32_t n = 0u; n < size; ++n )
     {
       if ( ntk.is_constant( n ) || ntk.is_ci( n ) || ntk.is_dead( n ) )
       {
@@ -756,6 +760,9 @@ public:
 
         uint32_t counter{0};
         ++st.num_substitutions;
+        /* ensure that no dead nodes are reachable */
+        assert( count_reachable_dead_nodes( ntk ) == 0u );
+
         std::list<std::pair<node, signal>> substitutions;
         insert_ntk( ntk, std::begin( signals ), std::end( signals ), win,
                 [&]( signal const& _new )
@@ -769,13 +776,19 @@ public:
 
                   /* ensure that _old is not in the TFI of _new */
                   // assert( !is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) );
-                  if ( ps.filter_cyclic_substitutions && is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) )
+                  if ( ps.filter_cyclic_substitutions &&
+                       call_with_stopwatch( st.time_window, [&](){ return is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ); }) )
                   {
                     std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
-                    if ( ntk.fanout_size( ntk.get_node( _new ) ) == 0u )
+                    substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );                    
+                    for ( auto it = std::rbegin( substitutions ); it != std::rend( substitutions ); ++it )
                     {
-                      ntk.take_out_node( ntk.get_node( _new ) );
+                      if ( ntk.fanout_size( ntk.get_node( it->second ) ) == 0u )
+                      {
+                        ntk.take_out_node( ntk.get_node( it->second ) );
+                      }
                     }
+                    substitutions.clear();
                     return false;
                   }
 
@@ -783,11 +796,19 @@ public:
                   return true;
                 });
 
+        /* ensure that no dead nodes are reachable */
+        assert( count_reachable_dead_nodes( ntk ) == 0u );
         substitute_nodes( substitutions );
 
         /* recompute levels and depth */
-        // call_with_stopwatch( st.time_levels, [&]() { ntk.update_levels(); } );
-        update_depth();
+        if ( ps.level_update_strategy == window_rewriting_params::recompute )
+        {
+          call_with_stopwatch( st.time_levels, [&]() { ntk.update_levels(); } );
+        }
+        if ( ps.level_update_strategy != window_rewriting_params::dont_update )
+        {
+          update_depth();
+        }
 
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
@@ -795,8 +816,12 @@ public:
         /* ensure that the network structure is still acyclic */
         assert( network_is_acylic( ntk ) );
 
-        /* ensure that the levels and depth is correct */
-        assert( check_network_levels( ntk ) );
+        if ( ps.level_update_strategy == window_rewriting_params::precise ||
+             ps.level_update_strategy == window_rewriting_params::recompute )
+        {
+          /* ensure that the levels and depth is correct */
+          assert( check_network_levels( ntk ) );
+        }
 
         /* update internal data structures in windowing */
         windowing.resize( ntk.size() );
@@ -915,7 +940,7 @@ private:
                                                {
                                                  ntk.decr_fanout_size( nn );
                                                }
-                                               /* remove the node if it's fanout_size becomes 0 */
+                                               /* remove the node if its fanout_size becomes 0 */
                                                if ( ntk.fanout_size( nn ) == 0 )
                                                {
                                                  ntk.take_out_node( nn );
@@ -944,24 +969,27 @@ private:
       auto const [old_node, new_signal] = substitutions.front();
       substitutions.pop_front();
 
-      // for ( auto index = 1u; index < _storage->nodes.size(); ++index )
-      const auto parents = ntk.fanout( old_node );
-      for ( auto index : parents )
+      for ( auto index : ntk.fanout( old_node ) )
       {
         /* skip CIs and dead nodes */
         if ( ntk.is_dead( index ) )
+        {
           continue;
+        }
 
         /* skip nodes that will be deleted */
         if ( std::find_if( std::begin( substitutions ), std::end( substitutions ),
                            [&index]( auto s ){ return s.first == index; } ) != std::end( substitutions ) )
+        {
           continue;
+        }
 
         /* replace in node */
         if ( const auto repl = ntk.replace_in_node( index, old_node, new_signal ); repl )
         {
           ntk.incr_fanout_size( ntk.get_node( repl->second ) );
           substitutions.emplace_back( *repl );
+          ++st.num_restrashes;
         }
       }
 
@@ -987,16 +1015,102 @@ private:
 
       /* decrement fanout_size when released from substitution list */
       ntk.decr_fanout_size( ntk.get_node( new_signal ) );
+      if ( ntk.fanout_size( ntk.get_node( new_signal ) ) == 0 )
+      {
+        ntk.take_out_node( ntk.get_node( new_signal ) );
+      }
     }
 
     ntk._events->on_delete.pop_back();
   }
 
-  /* recursively update the node levels and the depth of the critical path */
-  void update_node_level( node const& n )
+  void update_levels( node const& n )
+  {
+    ntk.resize_levels();
+    if ( ps.level_update_strategy == window_rewriting_params::precise )
+    {
+      call_with_stopwatch( st.time_levels, [&]() { update_node_level_precise( n ); } );
+    }
+    else if ( ps.level_update_strategy == window_rewriting_params::eager )
+    {
+      call_with_stopwatch( st.time_levels, [&]() { update_node_level_eager( n ); } );
+    }
+
+    /* levels can be wrong until substitute_nodes has finished */
+    // assert( check_network_levels( ntk ) );
+  }
+
+  /* precisely update node levels using an iterative topological sorting approach */
+  void update_node_level_precise( node const& n )
+  {
+    assert( count_reachable_dead_nodes_from_node( ntk, n ) == 0u );
+    // assert( count_nodes_with_dead_fanins( ntk, n ) == 0u );
+
+    /* compute level of current node */
+    uint32_t level_offset{0};
+    ntk.foreach_fanin( n, [&]( signal const& fi ){
+      level_offset = std::max( ntk.level( ntk.get_node( fi ) ), level_offset );
+    });
+    ++level_offset;
+
+    /* add node into levels */
+    if ( levels.size() < 1u )
+    {
+      levels.resize( 1u );
+    }
+    levels[0].emplace_back( n );
+
+    for ( uint32_t level_index = 0u; level_index < levels.size(); ++level_index )
+    {
+      if ( levels[level_index].empty() )
+        continue;
+
+      for ( uint32_t node_index = 0u; node_index < levels[level_index].size(); ++node_index )
+      {
+        node const p = levels[level_index][node_index];
+
+        /* recompute level of this node */
+        uint32_t lvl{0};
+        ntk.foreach_fanin( p, [&]( signal const& fi ){
+          if ( ntk.is_dead( ntk.get_node( fi ) ) )
+            return;
+
+          lvl = std::max( ntk.level( ntk.get_node( fi ) ), lvl );
+          return;
+        });
+        ++lvl;
+        assert( lvl > 0 );
+
+        /* update level and add fanouts to levels[.] if the recomputed
+           level is different from the current level */
+        if ( lvl != ntk.level( p ) )
+        {
+          ntk.set_level( p, lvl );
+          ntk.foreach_fanout( p, [&]( node const& fo ){
+            assert( std::max( ntk.level( fo ), lvl + 1 ) >= level_offset );
+            uint32_t const pos = std::max( ntk.level( fo ), lvl + 1 ) - level_offset;
+            assert( pos >= 0u );
+            assert( pos >= level_index );
+            if ( levels.size() <= pos )
+            {
+              levels.resize( std::max( uint32_t( levels.size() << 1 ), pos + 1 ) );
+            }
+            levels[pos].emplace_back( fo );
+          });
+        }
+      }
+
+      /* clean the level */
+      levels[level_index].clear();
+    }
+    levels.clear();
+  }
+
+  /* eagerly update the node levels without topologically sorting (may
+     stack-overflow if the network is deep)*/
+  void update_node_level_eager( node const& n )
   {
     uint32_t const curr_level = ntk.level( n );
-
     uint32_t max_level = 0;
     ntk.foreach_fanin( n, [&]( const auto& f ) {
       auto const p = ntk.get_node( f );
@@ -1014,21 +1128,21 @@ private:
       ntk.foreach_fanout( n, [&]( const auto& p ) {
         if ( !ntk.is_dead( p ) )
         {
-          update_node_level( p );
+          update_node_level_eager( p );
         }
       } );
     }
   }
 
+  /* update network depth (needs level information!) */
   void update_depth()
   {
+    stopwatch t( st.time_levels );
+
     uint32_t max_level{0};
-    ntk.foreach_co( [&]( signal s ){
+    ntk.foreach_co( [&]( signal const& s ){
       assert( !ntk.is_dead( ntk.get_node( s ) ) );
-      if ( ntk.level( ntk.get_node( s ) ) > max_level )
-      {
-        max_level = ntk.level( ntk.get_node( s ) );
-      }
+      max_level = std::max( ntk.level( ntk.get_node( s ) ), max_level );
     });
 
     if ( ntk.depth() != max_level )
@@ -1041,6 +1155,8 @@ private:
   Ntk& ntk;
   window_rewriting_params ps;
   window_rewriting_stats& st;
+
+  std::vector<std::vector<node>> levels;
 
   default_simulator<TT> *sim;
   typename ResynEngine::stats engine_st;
