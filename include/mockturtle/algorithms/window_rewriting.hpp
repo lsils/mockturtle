@@ -427,6 +427,7 @@ private:
         {
           ntk.incr_fanout_size( ntk.get_node( repl->second ) );
           substitutions.emplace_back( *repl );
+          ++st.num_restrashes;
         }
       }
 
