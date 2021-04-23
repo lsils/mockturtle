@@ -664,7 +664,7 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
 namespace detail
 {
 
-template<typename Ntk>
+template<typename Ntk, bool auto_resize = true>
 void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes,
                                    std::vector<std::vector<typename Ntk::node>>& levels )
 {
@@ -685,6 +685,13 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   {
     uint32_t const node_level = ntk.level( i );
     ntk.paint( i );
+    if constexpr ( auto_resize )
+    {
+      if ( levels.size() <= node_level )
+      {
+        levels.resize( std::max( uint32_t( 2*levels.size() ), node_level ) );
+      }
+    }
     levels.at( node_level ).push_back( i );
     if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
     {
@@ -697,6 +704,13 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   {
     uint32_t const node_level = ntk.level( n );
     ntk.paint( n );
+    if constexpr ( auto_resize )
+    {
+      if ( levels.size() <= node_level )
+      {
+        levels.resize( std::max( uint32_t( 2 * levels.size() ), node_level ) );
+      }
+    }
     levels.at( node_level ).push_back( n );
     if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
     {
@@ -733,6 +747,13 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
           /* update data structured */
           uint32_t const node_level = ntk.level( fo );
           ntk.paint( fo );
+          if constexpr ( auto_resize )
+          {
+            if ( levels.size() <= node_level )
+            {
+              levels.resize( std::max( uint32_t( 2*levels.size() ), node_level ) );
+            }
+          }
           levels.at( node_level ).push_back( fo );
           if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
           {
@@ -777,11 +798,11 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
  * - `new_color`
  * - `paint`
  */
-template<typename Ntk>
+template<typename Ntk, bool auto_resize = true>
 void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
 {
   std::vector<std::vector<typename Ntk::node>> levels;
-  detail::levelized_expand_towards_tfo( ntk, inputs, nodes, levels );
+  detail::levelized_expand_towards_tfo<Ntk, auto_resize>( ntk, inputs, nodes, levels );
 }
 
 namespace detail

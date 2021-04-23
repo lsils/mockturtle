@@ -55,6 +55,15 @@ struct aqfp_view_params
   bool update_on_modified{true};
   bool update_on_delete{true};
 
+  /*! \brief Whether PIs need to be branched with splitters */
+  bool branch_pis{false};
+
+  /*! \brief Whether PIs need to be path-balanced */
+  bool balance_pis{false};
+
+  /*! \brief Whether POs need to be path-balanced */
+  bool balance_pos{true};
+
   uint32_t splitter_capacity{4u};
   uint32_t max_splitter_levels{2u};
 };
@@ -75,9 +84,9 @@ struct aqfp_view_params
  * fanin path is shorter, buffers have to be inserted to balance it. 
  * Buffers and splitters are essentially the same component in this technology.
  *
- * Some assumptions are made: (1) PIs do not need to be balanced (they are 
- * always available). (2) POs count toward the fanout sizes and have to be
- * balanced.
+ * POs count toward the fanout sizes and always have to be branched. The assumptions
+ * on whether PIs should be branched and whether PIs and POs have to be balanced 
+ * can be set in the parameters.
  *
  * The number of fanouts of each buffer is restricted to `splitter_capacity`.
  * The additional depth of a node introduced by splitters is limited to at
@@ -125,7 +134,7 @@ public:
   };
 
   aqfp_view( Ntk const& ntk, aqfp_view_params const& ps = {} )
-   : Ntk( ntk ), _fanout( ntk ), _external_ref_count( ntk ), _ps( ps ), _max_fanout( std::pow( ps.splitter_capacity, ps.max_splitter_levels ) ), _node_depth( this ), _depth_view( ntk, _node_depth )
+   : Ntk( ntk ), _fanout( ntk ), _external_ref_count( ntk ), _ps( ps ), _max_fanout( std::pow( ps.splitter_capacity, ps.max_splitter_levels ) ), _node_depth( this ), _depth_view( ntk, _node_depth, {/*count_complements*/false, /*pi_cost*/ps.branch_pis} )
   {
     static_assert( !has_foreach_fanout_v<Ntk> && "Ntk already has fanout interfaces" );
     static_assert( !has_depth_v<Ntk> && !has_level_v<Ntk> && !has_update_levels_v<Ntk>, "Ntk already has depth interfaces" );
@@ -211,6 +220,12 @@ public:
   uint32_t num_buffers() const
   {
     uint32_t count = 0u;
+    if ( _ps.branch_pis )
+    {
+      this->foreach_pi( [&]( auto const& n ){
+        count += num_buffers( n );
+      });
+    }
     this->foreach_gate( [&]( auto const& n ){
       count += num_buffers( n );
     });
@@ -226,7 +241,26 @@ public:
       if ( fanout_size( n ) > 0u )
       {
         assert( fanout_size( n ) == 1u );
-        return _external_ref_count[n] > 0u ? depth() - level( n ) : level( _fanout[n][0] ) - level( n ) - 1u;
+        if ( this->is_pi( n ) )
+        {
+          assert( level( n ) == 0u );
+          if ( _external_ref_count[n] > 0u ) /* PI -- PO */
+          {
+            return _ps.balance_pis && _ps.balance_pos ? depth() : 0u;
+          }
+          else /* PI -- gate */
+          {
+            return _ps.balance_pis ? level( _fanout[n][0] ) - 1u : 0u;
+          } 
+        }
+        else if ( _external_ref_count[n] > 0u ) /* gate -- PO */
+        {
+          return _ps.balance_pos ? depth() - level( n ) : 0u;
+        }
+        else /* gate -- gate */
+        {
+          return level( _fanout[n][0] ) - level( n ) - 1u;
+        }
       }
       /* dangling */
       return 0u;
@@ -251,10 +285,21 @@ public:
     }
     if ( _external_ref_count[n] > 0u )
     {
-      fanout_sizes.emplace_back( std::make_pair( depth() + 1u, _external_ref_count[n] ) );
+      if ( _ps.balance_pos )
+      {
+        fanout_sizes.emplace_back( std::make_pair( depth() + 1u, _external_ref_count[n] ) );
+      }
+      else /* don't balance POs, just need enough signals */
+      {
+        if ( _fanout[n].size() == 0u ) /* multiple PO refs but no gate fanout */
+        {
+          return std::ceil( float( _external_ref_count[n] - 1 ) / float( _ps.splitter_capacity - 1 ) );
+        }
+        /* else: check there are enough slots for POs later */
+      }
     }
     assert( fanout_sizes.size() > 1u );
-    assert( fanout_sizes[0].second == 0u );
+    assert( fanout_sizes[0].second == 0u ); // the first element should be (level(n)+1, 0)
 
     /* count buffers from the highest level */
     uint32_t count = 0u;
@@ -283,7 +328,23 @@ public:
         }
       }
     }
-    assert( fanout_sizes[0].second == 1 );
+    assert( fanout_sizes[0].second == 1 ); // the first element should be (level(n)+1, 1)
+
+    if ( !_ps.balance_pis && this->is_pi( n ) ) /* only branch PIs, but don't balance them */
+    {
+      /* remove the lowest balancing buffers, if any */
+      count -= fanout_sizes[1].first - fanout_sizes[0].first - 1;
+    }
+
+    if ( !_ps.balance_pos && _external_ref_count[n] > 0u )
+    {
+      auto slots = count * ( _ps.splitter_capacity - 1 ) + 1;
+      int32_t needed = fanout_size( n ) - slots;
+      if ( needed > 0 )
+      {
+        count += std::ceil( float( needed ) / float( _ps.splitter_capacity - 1 ) );
+      }
+    }
 
     return count;
   }
