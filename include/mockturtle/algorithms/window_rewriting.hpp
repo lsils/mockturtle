@@ -411,7 +411,6 @@ private:
       auto const [old_node, new_signal] = substitutions.front();
       substitutions.pop_front();
 
-      // for ( auto index = 1u; index < _storage->nodes.size(); ++index )
       for ( auto index : ntk.fanout( old_node ) )
       {
         /* skip CIs and dead nodes */

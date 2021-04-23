@@ -2547,7 +2547,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include <math.h>
 #include <algorithm>
-#include <signal.h>
+#include <csignal>
 // #include <unistd.h>
 
 
@@ -4578,7 +4578,7 @@ static void SIGALRM_switch(int signum) { switch_mode = true; }
 // NOTE: assumptions passed in member-variable 'assumptions'.
 inline lbool Solver::solve_()
 {
-    signal(SIGALRM, SIGALRM_switch);
+    std::signal(SIGALRM, SIGALRM_switch);
     alarm(2500);
 
     model.clear();
