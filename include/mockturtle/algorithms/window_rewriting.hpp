@@ -452,6 +452,10 @@ private:
 
       /* decrement fanout_size when released from substitution list */
       ntk.decr_fanout_size( ntk.get_node( new_signal ) );
+      if ( ntk.fanout_size( ntk.get_node( new_signal ) ) == 0 )
+      {
+        ntk.take_out_node( ntk.get_node( new_signal ) );
+      }
     }
 
     ntk._events->on_delete.pop_back();
