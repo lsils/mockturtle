@@ -269,10 +269,15 @@ public:
                   if ( ps.filter_cyclic_substitutions && is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) )
                   {
                     std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
-                    if ( ntk.fanout_size( ntk.get_node( _new ) ) == 0u )
+                    substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );                    
+                    for ( auto it = std::rbegin( substitutions ); it != std::rend( substitutions ); ++it )
                     {
-                      ntk.take_out_node( ntk.get_node( _new ) );
+                      if ( ntk.fanout_size( ntk.get_node( it->second ) ) == 0u )
+                      {
+                        ntk.take_out_node( ntk.get_node( it->second ) );
+                      }
                     }
+                    substitutions.clear();
                     return false;
                   }
 
