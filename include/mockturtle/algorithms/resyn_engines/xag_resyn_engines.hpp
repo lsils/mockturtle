@@ -35,6 +35,7 @@
 
 #include "../../utils/index_list.hpp"
 #include "../../utils/stopwatch.hpp"
+#include "../../utils/node_map.hpp"
 
 #include <kitty/kitty.hpp>
 #include <fmt/format.h>
@@ -115,7 +116,7 @@ struct xag_resyn_engine_stats
  *
  * \param use_xor Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs).
  */
-template<class TT, typename node_type, typename truth_table_storage_type, bool copy_tts = true, bool use_xor = false>
+template<class TT, typename Ntk, typename node_type = typename Ntk::node, typename truth_table_storage_type = unordered_node_map<TT, Ntk>, bool copy_tts = true, bool use_xor = false>
 class xag_resyn_engine
 {
 public:
