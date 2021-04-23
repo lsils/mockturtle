@@ -571,8 +571,12 @@ private:
           });
         }
       }
+
+      /* clean the level */
+      levels[level_index].clear();
     }
     levels.clear();
+    levels.resize( ntk.depth() );
   }
 
   /* eagerly update the node levels without topologically sorting (may
