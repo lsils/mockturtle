@@ -48,6 +48,9 @@ struct depth_view_params
 {
   /*! \brief Take complemented edges into account for depth computation. */
   bool count_complements{false};
+
+  /*! \brief Whether PIs have costs. */
+  bool pi_cost{false};
 };
 
 /*! \brief Implements `depth` and `level` methods for networks.
@@ -213,9 +216,14 @@ private:
     }
     this->set_visited( n, this->trav_id() );
 
-    if ( this->is_constant( n ) || this->is_pi( n ) )
+    if ( this->is_constant( n ) )
     {
       return _levels[n] = 0;
+    }
+    if ( this->is_pi( n ) )
+    {
+      assert( !_ps.pi_cost || _cost_fn( *this, n ) >= 1 );
+      return _levels[n] = _ps.pi_cost ? _cost_fn( *this, n ) - 1 : 0;
     }
 
     uint32_t level{0};
@@ -255,7 +263,7 @@ private:
   void set_critical_path( node const& n )
   {
     _crit_path[n] = true;
-    if ( !this->is_constant( n ) && !this->is_pi( n ) )
+    if ( !this->is_constant( n ) && !( _ps.pi_cost && this->is_pi( n ) ) )
     {
       const auto lvl = _levels[n];
       this->foreach_fanin( n, [&]( auto const& f ) {
