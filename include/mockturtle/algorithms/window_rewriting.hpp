@@ -376,7 +376,7 @@ private:
                                                {
                                                  ntk.decr_fanout_size( nn );
                                                }
-                                               /* remove the node if it's fanout_size becomes 0 */
+                                               /* remove the node if its fanout_size becomes 0 */
                                                if ( ntk.fanout_size( nn ) == 0 )
                                                {
                                                  ntk.take_out_node( nn );
@@ -406,8 +406,7 @@ private:
       substitutions.pop_front();
 
       // for ( auto index = 1u; index < _storage->nodes.size(); ++index )
-      const auto parents = ntk.fanout( old_node );
-      for ( auto index : parents )
+      for ( auto index : ntk.fanout( old_node ) )
       {
         /* skip CIs and dead nodes */
         if ( ntk.is_dead( index ) )
