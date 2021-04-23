@@ -93,6 +93,7 @@ struct window_rewriting_stats
     time_topo_sort += other.time_topo_sort;
     time_encode += other.time_encode;
     num_substitutions += other.num_substitutions;
+    num_restrashes += other.num_restrashes;
     num_windows += other.num_windows;
     gain += other.gain;
     return *this;
