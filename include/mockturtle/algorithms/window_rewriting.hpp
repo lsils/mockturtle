@@ -179,17 +179,23 @@ public:
     , st( st )
   {
     auto const update_level_of_new_node = [&]( const auto& n ) {
+      stopwatch t( st.time_total );
+
       ntk.resize_levels();
       update_node_level( n );
     };
 
     auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
+      stopwatch t( st.time_total );
+
       (void)old_children;
       ntk.resize_levels();
       update_node_level( n );
     };
 
     auto const update_level_of_deleted_node = [&]( node const& n ) {
+      stopwatch t( st.time_total );
+
       assert( ntk.fanout_size( n ) == 0u );
       ntk.set_level( n, -1 );
     };
