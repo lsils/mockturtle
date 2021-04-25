@@ -8,6 +8,8 @@ v0.3 (not yet released)
     - Read GENLIB files using *lorina* (`genlib_reader`) `#421 <https://github.com/lsils/mockturtle/pull/421>`_
 * Algorithms:
     - Logic resynthesis engines for MIGs (`mig_resyn_engines` `#414 <https://github.com/lsils/mockturtle/pull/414>`_) and AIGs/XAGs (`xag_resyn_engines` `#425 <https://github.com/lsils/mockturtle/pull/425>`_)
+* Utils
+    - Manipulate windows with network data types (`clone_subnetwork` and `insert_ntk`) `#451 <https://github.com/lsils/mockturtle/pull/451>`_
 
 v0.2 (February 16, 2021)
 ------------------------
