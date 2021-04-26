@@ -122,7 +122,7 @@ class xag_resyn_engine
 public:
   using stats = xag_resyn_engine_stats;
   using params = xag_resyn_engine_params;
-  using index_list_t = xag_index_list<true>;
+  using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
 
 private:

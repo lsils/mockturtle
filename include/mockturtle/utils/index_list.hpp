@@ -751,6 +751,8 @@ private:
   std::vector<element_type> values;
 };
 
+using large_xag_index_list = xag_index_list<true>;
+
 /*! \brief Generates a xag_index_list from a network
  *
  * The function requires `ntk` to consist of XOR and AND gates.

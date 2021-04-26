@@ -91,7 +91,7 @@ class abc_resub_functor
 {
 public:
   using stats = abc_resub_functor_stats;
-  using index_list_t = xag_index_list<true>;
+  using index_list_t = large_xag_index_list;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using TT = kitty::partial_truth_table;
