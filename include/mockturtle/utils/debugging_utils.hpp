@@ -486,4 +486,3 @@ bool check_window_equivalence( Ntk const& ntk, std::vector<typename Ntk::node> c
 }
 
 } /* namespace mockturtle */
-
