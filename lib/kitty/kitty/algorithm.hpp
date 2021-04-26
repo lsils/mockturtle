@@ -267,7 +267,7 @@ bool binary_predicate( const partial_truth_table& first, const partial_truth_tab
 template<typename TT, typename Fn>
 bool ternary_predicate( const TT& first, const TT& second, const TT& third, Fn&& op )
 {
-  assert( first.num_blocks() == second.num_blocks() );
+  assert( first.num_blocks() == second.num_blocks() && first.num_blocks() == third.num_blocks() );
 
   for ( auto i = 0u; i < first.num_blocks(); ++i )
   {
