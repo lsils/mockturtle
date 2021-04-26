@@ -64,7 +64,10 @@ struct abc_resub_functor_stats
   stopwatch<>::duration time_compute_function{0};
 
   /*! \brief Time for interfacing with ABC. */
-  stopwatch<>::duration time_interface{0};
+  stopwatch<>::duration time_add_divisor{0};
+
+  /*! \brief Time for clearing ABC-allocated memory. */
+  stopwatch<>::duration time_free{0};
 
   /*! \brief Number of found solutions. */
   uint32_t num_success{0};
@@ -77,8 +80,9 @@ struct abc_resub_functor_stats
     fmt::print( "[i]     <ResubFn: abc_resub_functor>\n" );
     fmt::print( "[i]         #solution = {:6d}\n", num_success );
     fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
-    fmt::print( "[i]         ABC time:   {:>5.2f} secs\n", to_seconds( time_compute_function ) );
-    fmt::print( "[i]         interface:  {:>5.2f} secs\n", to_seconds( time_interface ) );
+    fmt::print( "[i]         ABC time    : {:>5.2f} secs\n", to_seconds( time_compute_function ) );
+    fmt::print( "[i]         add divisors: {:>5.2f} secs\n", to_seconds( time_add_divisor ) );
+    fmt::print( "[i]         free memory : {:>5.2f} secs\n", to_seconds( time_free ) );
   }
 };
 
@@ -87,7 +91,7 @@ class abc_resub_functor
 {
 public:
   using stats = abc_resub_functor_stats;
-  using index_list_t = xag_index_list;
+  using index_list_t = large_xag_index_list;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using TT = kitty::partial_truth_table;
@@ -98,7 +102,7 @@ public:
 
   ~abc_resub_functor()
   {
-    call_with_stopwatch( st.time_interface, [&]() {
+    call_with_stopwatch( st.time_free, [&]() {
       abcresub::Abc_ResubPrepareManager( 0 );
     } );
   }
@@ -108,7 +112,7 @@ public:
     if ( tts[ntk.get_constant( false )].num_blocks() != num_blocks )
     {
       num_blocks = tts[ntk.get_constant( false )].num_blocks();
-      call_with_stopwatch( st.time_interface, [&]() {
+      call_with_stopwatch( st.time_add_divisor, [&]() {
         abcresub::Abc_ResubPrepareManager( num_blocks );
       });
     }
@@ -119,7 +123,7 @@ public:
     auto const num_inserts = std::min( potential_gain - 1, ps.max_inserts );
     check_num_blocks();
     abc_resub rs( 2ul + divs.size(), num_blocks, ps.max_divisors_k );
-    call_with_stopwatch( st.time_interface, [&]() {
+    call_with_stopwatch( st.time_add_divisor, [&]() {
       rs.add_root( tts[root], care );
       rs.add_divisors( std::begin( divs ), std::end( divs ), tts );
     });
@@ -164,9 +168,6 @@ private:
 template<class EngineStat>
 struct resyn_functor_stats
 {
-  /*! \brief Time for finding dependency function. */
-  stopwatch<>::duration time_compute_function{0};
-
   /*! \brief Number of found solutions. */
   uint32_t num_success{0};
 
@@ -180,7 +181,6 @@ struct resyn_functor_stats
     fmt::print( "[i]     <ResubFn: resyn_functor>\n" );
     fmt::print( "[i]         #solution = {:6d}\n", num_success );
     fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
-    fmt::print( "[i]         engine time:{:>5.2f} secs\n", to_seconds( time_compute_function ) );
     engine_st.report();
   }
 };
@@ -214,16 +214,14 @@ public:
   {
     typename ResynEngine::params ps_resyn;
     ps_resyn.max_size = std::min( potential_gain - 1, ps.max_inserts );
-    if ( std::is_same_v<ResynEngine, xag_resyn_engine<TT>> )
+    ps_resyn.reserve = divs.size();
+
+    if constexpr ( std::is_same_v<typename ResynEngine::params, xag_resyn_engine_params> )
     {
-      ps_resyn.use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
       ps_resyn.max_binates = ps.max_divisors_k;
     }
-    ResynEngine engine( tts[root], care, st.engine_st, ps_resyn );
-
-    auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
-      return engine( std::begin( divs ), std::end( divs ), tts );
-    } );
+    ResynEngine engine( tts[root], care, tts, st.engine_st, ps_resyn );
+    auto const res = engine( std::begin( divs ), std::end( divs ) );
 
     if ( res )
     {
@@ -254,6 +252,9 @@ struct sim_resub_stats
   /*! \brief Time for pattern generation. */
   stopwatch<>::duration time_patgen{0};
 
+  /*! \brief Time for saving patterns. */
+  stopwatch<>::duration time_patsave{0};
+
   /*! \brief Time for simulation. */
   stopwatch<>::duration time_sim{0};
 
@@ -266,6 +267,9 @@ struct sim_resub_stats
 
   /*! \brief Time for finding dependency function. */
   stopwatch<>::duration time_functor{0};
+
+  /*! \brief Time for translating from index lists to network signals. */
+  stopwatch<>::duration time_interface{0};
 
   /*! \brief Number of patterns used. */
   uint32_t num_pats{0};
@@ -290,11 +294,13 @@ struct sim_resub_stats
     fmt::print( "[i]     #CEX     = {:6d}\n", num_cex );
     fmt::print( "[i]     #timeout = {:6d}\n", num_timeout );
     fmt::print( "[i]     ======== Runtime ========\n" );
-    fmt::print( "[i]     generate pattern: {:>5.2f} secs\n", to_seconds( time_patgen ) );
-    fmt::print( "[i]     simulation:       {:>5.2f} secs\n", to_seconds( time_sim ) );
-    fmt::print( "[i]     SAT solve:        {:>5.2f} secs\n", to_seconds( time_sat ) );
-    fmt::print( "[i]     SAT restart:      {:>5.2f} secs\n", to_seconds( time_sat_restart ) );
-    fmt::print( "[i]     compute ODCs:     {:>5.2f} secs\n", to_seconds( time_odc ) );
+    fmt::print( "[i]     generate pattern: {:>5.2f} secs [excluded]\n", to_seconds( time_patgen ) );
+    fmt::print( "[i]     save pattern    : {:>5.2f} secs [excluded]\n", to_seconds( time_patsave ) );
+    fmt::print( "[i]     simulation      : {:>5.2f} secs\n", to_seconds( time_sim ) );
+    fmt::print( "[i]     SAT solve       : {:>5.2f} secs\n", to_seconds( time_sat ) );
+    fmt::print( "[i]     SAT restart     : {:>5.2f} secs\n", to_seconds( time_sat_restart ) );
+    fmt::print( "[i]     compute ODCs    : {:>5.2f} secs\n", to_seconds( time_odc ) );
+    fmt::print( "[i]     interfacing     : {:>5.2f} secs\n", to_seconds( time_interface ) );
     fmt::print( "[i]     compute function: {:>5.2f} secs\n", to_seconds( time_functor ) );
     fmt::print( "[i]     ======== Details ========\n" );
     functor_st.report();
@@ -329,7 +335,7 @@ struct sim_resub_stats
  * \param ResubFn Resubstitution functor to compute the resubstitution.
  * \param MffcRes Typename of `potential_gain` needed by the resubstitution functor.
  */
-template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = resyn_functor<Ntk, xag_resyn_engine<kitty::partial_truth_table>>, typename MffcRes = uint32_t>
+template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = resyn_functor<Ntk, xag_resyn_engine<kitty::partial_truth_table, Ntk>>, typename MffcRes = uint32_t>
 class simulation_based_resub_engine
 {
 public:
@@ -361,7 +367,20 @@ public:
         simulate_node<Ntk>( ntk, n, tts, sim );
       });
     } );
+  }
 
+  ~simulation_based_resub_engine()
+  {
+    if ( ps.save_patterns )
+    {
+      call_with_stopwatch( st.time_patsave, [&]() {
+        write_patterns( sim, *ps.save_patterns );
+      });
+    }
+  }
+
+  void init()
+  {
     /* prepare simulation patterns */
     call_with_stopwatch( st.time_patgen, [&]() {
       if ( ps.pattern_filename )
@@ -380,14 +399,6 @@ public:
     call_with_stopwatch( st.time_sim, [&]() {
       simulate_nodes<Ntk>( ntk, tts, sim, true );
     });
-  }
-
-  ~simulation_based_resub_engine()
-  {
-    if ( ps.save_patterns )
-    {
-      write_patterns( sim, *ps.save_patterns );
-    }
   }
 
   std::optional<signal> run( node const& n, std::vector<node> const& divs, mffc_result_t potential_gain, uint32_t& last_gain )
@@ -420,12 +431,14 @@ public:
           {
             ++st.num_resub;
             signal out_sig;
-            std::vector<signal> divs_sig( divs.size() );
-            std::transform( divs.begin(), divs.end(), divs_sig.begin(), [&]( const node n ){
-              return ntk.make_signal( n );
-            });
-            insert( ntk, divs_sig.begin(), divs_sig.end(), id_list, [&]( signal const& s ){
-              out_sig = s;
+            call_with_stopwatch( st.time_interface, [&]() {
+              std::vector<signal> divs_sig( divs.size() );
+              std::transform( divs.begin(), divs.end(), divs_sig.begin(), [&]( const node n ){
+                return ntk.make_signal( n );
+              });
+              insert( ntk, divs_sig.begin(), divs_sig.end(), id_list, [&]( signal const& s ){
+                out_sig = s;
+              });
             });
             if constexpr ( validator_t::use_odc_ )
             {
@@ -514,6 +527,8 @@ void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
 
     resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
     p.run();
+    st.time_resub -= engine_st.time_patgen;
+    st.time_total -= engine_st.time_patgen + engine_st.time_patsave;
 
     if ( ps.verbose )
     {
@@ -537,6 +552,8 @@ void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
 
     resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
     p.run();
+    st.time_resub -= engine_st.time_patgen;
+    st.time_total -= engine_st.time_patgen + engine_st.time_patsave;
 
     if ( ps.verbose )
     {

@@ -459,4 +459,3 @@ bool check_fanouts( Ntk const& ntk )
 }   
 
 } /* namespace mockturtle */
-

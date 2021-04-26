@@ -47,6 +47,9 @@ struct mig_resyn_engine_params
 {
   /*! \brief Maximum size (number of gates) of the dependency circuit. */
   uint32_t max_size{0u};
+
+  /*! \brief Reserved capacity for divisor truth tables (number of divisors). */
+  uint32_t reserve{200u};
 };
 
 struct mig_resyn_engine_stats
@@ -74,6 +77,7 @@ public:
     : num_bits( target.num_bits() ), divisors( { ~target, target } ), st( st ), ps( ps )
   {
     (void)care;
+    divisors.reserve( ps.reserve + 2 );
   }
 
   void add_divisor( TT const& tt )
@@ -275,6 +279,7 @@ public:
     : num_bits( target.num_bits() ), divisors( { ~target, target } ), st( st ), ps( ps )
   {
     (void)care;
+    divisors.reserve( ps.reserve + 2 );
   }
 
   void add_divisor( TT const& tt )
@@ -940,6 +945,7 @@ public:
                 /* const0, const1 */
   {
     (void)care;
+    divisors.reserve( ps.reserve + 2 );
   }
 
   void add_divisor( TT const& tt )
