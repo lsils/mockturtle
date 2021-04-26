@@ -435,24 +435,24 @@ private:
     {
       bool unateness[4] = {false, false, false, false};
       /* check intersection with off-set */
-      if ( intersection_is_empty<false, false>( get_div(v), on_off_sets[0] ) )
+      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[0] ) )
       {
         pos_unate_lits.emplace_back( v << 1 );
         unateness[0] = true;
       }
-      else if ( intersection_is_empty<true, false>( get_div(v), on_off_sets[0] ) )
+      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[0] ) )
       {
         pos_unate_lits.emplace_back( v << 1 | 0x1 );
         unateness[1] = true;
       }
 
       /* check intersection with on-set */
-      if ( intersection_is_empty<false, false>( get_div(v), on_off_sets[1] ) )
+      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[1] ) )
       {
         neg_unate_lits.emplace_back( v << 1 );
         unateness[2] = true;
       }
-      else if ( intersection_is_empty<true, false>( get_div(v), on_off_sets[1] ) )
+      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[1] ) )
       {
         neg_unate_lits.emplace_back( v << 1 | 0x1 );
         unateness[3] = true;
@@ -545,7 +545,7 @@ private:
         }
         auto const ntt1 = lit1 & 0x1 ? get_div( lit1 >> 1 ) : ~get_div( lit1 >> 1 );
         auto const ntt2 = lit2 & 0x1 ? get_div( lit2 >> 1 ) : ~get_div( lit2 >> 1 );
-        if ( intersection_is_empty<false, false>( ntt1, ntt2, on_off_sets[on_off] ) )
+        if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
           auto const new_lit = index_list.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
           return new_lit + on_off;
@@ -588,7 +588,7 @@ private:
                | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
         }
         
-        if ( intersection_is_empty<false, false>( ntt1, ntt2, on_off_sets[on_off] ) )
+        if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
           uint32_t new_lit1;
           if constexpr ( use_xor )
@@ -662,7 +662,7 @@ private:
                | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
         }
 
-        if ( intersection_is_empty<false, false>( ntt1, ntt2, on_off_sets[on_off] ) )
+        if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
           uint32_t fanin_lit1, fanin_lit2;
           if constexpr ( use_xor )
@@ -707,24 +707,24 @@ private:
         auto const tt_xor = get_div( binate_divs[i] ) ^ get_div( binate_divs[j] );
         bool unateness[4] = {false, false, false, false};
         /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
-        if ( intersection_is_empty<false, false>( tt_xor, on_off_sets[0] ) && !intersection_is_empty<false, false>( tt_xor, on_off_sets[1] ) )
+        if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<false, false>( tt_xor, on_off_sets[1] ) )
         {
           pos_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
           unateness[0] = true;
         }
-        if ( intersection_is_empty<true, false>( tt_xor, on_off_sets[0] ) && !intersection_is_empty<true, false>( tt_xor, on_off_sets[1] ) )
+        if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<true, false>( tt_xor, on_off_sets[1] ) )
         {
           pos_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
           unateness[1] = true;
         }
 
         /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
-        if ( intersection_is_empty<false, false>( tt_xor, on_off_sets[1] ) && !intersection_is_empty<false, false>( tt_xor, on_off_sets[0] ) )
+        if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<false, false>( tt_xor, on_off_sets[0] ) )
         {
           neg_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
           unateness[2] = true;
         }
-        if ( intersection_is_empty<true, false>( tt_xor, on_off_sets[1] ) && !intersection_is_empty<true, false>( tt_xor, on_off_sets[0] ) )
+        if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<true, false>( tt_xor, on_off_sets[0] ) )
         {
           neg_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
           unateness[3] = true;
@@ -751,71 +751,26 @@ private:
     {
       for ( auto j = i + 1; j < binate_divs.size(); ++j )
       {
-        collect_unate_pairs_detail<false, false>( binate_divs[i], binate_divs[j] );
-        collect_unate_pairs_detail<false, true>( binate_divs[i], binate_divs[j] );
-        collect_unate_pairs_detail<true, false>( binate_divs[i], binate_divs[j] );
-        collect_unate_pairs_detail<true, true>( binate_divs[i], binate_divs[j] );
+        collect_unate_pairs_detail<1, 1>( binate_divs[i], binate_divs[j] );
+        collect_unate_pairs_detail<0, 1>( binate_divs[i], binate_divs[j] );
+        collect_unate_pairs_detail<1, 0>( binate_divs[i], binate_divs[j] );
+        collect_unate_pairs_detail<0, 0>( binate_divs[i], binate_divs[j] );
       }
     }
   }
 
-  template<bool neg1 = false, bool neg2 = false>
+  template<bool pol1, bool pol2>
   void collect_unate_pairs_detail( uint32_t div1, uint32_t div2 )
   {
     /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
-    if ( intersection_is_empty<neg1, neg2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) && !intersection_is_empty<neg1, neg2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) )
+    if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) )
     {
-      pos_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)neg1, ( div2 << 1 ) + (uint32_t)neg2 );
+      pos_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)(!pol1), ( div2 << 1 ) + (uint32_t)(!pol2) );
     }
     /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
-    else if ( intersection_is_empty<neg1, neg2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) && !intersection_is_empty<neg1, neg2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) )
+    else if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) )
     {
-      neg_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)neg1, ( div2 << 1 ) + (uint32_t)neg2 );
-    }
-  }
-
-private:
-  /* equivalent to kitty::is_const0( tt1 & tt2 ), but faster when num_blocks is a lot */
-  template<bool neg1 = false, bool neg2 = false>
-  bool intersection_is_empty( TT const& tt1, TT const& tt2 )
-  {
-    if constexpr ( !neg1 && !neg2 )
-    {
-      return kitty::binary_predicate( tt1, tt2, []( auto a, auto b ) { return !(a & b); } );
-    }
-    else if constexpr ( neg1 && !neg2 )
-    {
-      return kitty::binary_predicate( tt1, tt2, []( auto a, auto b ) { return !(~a & b); } );
-    }
-    else if constexpr ( !neg1 && neg2 )
-    {
-      return kitty::binary_predicate( tt1, tt2, []( auto a, auto b ) { return !(a & ~b); } );
-    }
-    else // ( neg1 && neg2 )
-    {
-      return kitty::binary_predicate( tt1, tt2, []( auto a, auto b ) { return !(~a & ~b); } );
-    }
-  }
-  
-  /* equivalent to kitty::is_const0( tt1 & tt2 & tt3 ), but faster when num_blocks is a lot */
-  template<bool neg1 = false, bool neg2 = false>
-  bool intersection_is_empty( TT const& tt1, TT const& tt2, TT const& tt3 )
-  {
-    if constexpr ( !neg1 && !neg2 )
-    {
-      return kitty::ternary_predicate( tt1, tt2, tt3, []( auto a, auto b, auto c ) { return !(a & b & c); } );
-    }
-    else if constexpr ( neg1 && !neg2 )
-    {
-      return kitty::ternary_predicate( tt1, tt2, tt3, []( auto a, auto b, auto c ) { return !(~a & b & c); } );
-    }
-    else if constexpr ( !neg1 && neg2 )
-    {
-      return kitty::ternary_predicate( tt1, tt2, tt3, []( auto a, auto b, auto c ) { return !(a & ~b & c); } );
-    }
-    else // ( neg1 && neg2 )
-    {
-      return kitty::ternary_predicate( tt1, tt2, tt3, []( auto a, auto b, auto c ) { return !(~a & ~b & c); } );
+      neg_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)(!pol1), ( div2 << 1 ) + (uint32_t)(!pol2) );
     }
   }
 
