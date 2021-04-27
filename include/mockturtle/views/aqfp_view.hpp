@@ -226,6 +226,11 @@ public:
         count += num_buffers( n );
       });
     }
+    else
+    {
+      assert( !_ps.balance_pis && "Does not make sense to balance but not branch PIs" );
+    }
+
     this->foreach_gate( [&]( auto const& n ){
       count += num_buffers( n );
     });
@@ -420,6 +425,13 @@ private:
     this->foreach_gate( [&]( auto const& n ){
         on_update( n );
       });
+
+    if ( _ps.branch_pis )
+    {
+      this->foreach_pi( [&]( auto const& n ){
+        on_update( n );
+      });
+    }
   }
 
   void on_update( node const& n )
