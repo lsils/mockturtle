@@ -707,24 +707,24 @@ private:
         auto const tt_xor = get_div( binate_divs[i] ) ^ get_div( binate_divs[j] );
         bool unateness[4] = {false, false, false, false};
         /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
-        if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<false, false>( tt_xor, on_off_sets[1] ) )
+        if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<TT, false, false>( tt_xor, on_off_sets[1] ) )
         {
           pos_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
           unateness[0] = true;
         }
-        if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<true, false>( tt_xor, on_off_sets[1] ) )
+        if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<TT, true, false>( tt_xor, on_off_sets[1] ) )
         {
           pos_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
           unateness[1] = true;
         }
 
         /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
-        if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<false, false>( tt_xor, on_off_sets[0] ) )
+        if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<TT, false, false>( tt_xor, on_off_sets[0] ) )
         {
           neg_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
           unateness[2] = true;
         }
-        if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<true, false>( tt_xor, on_off_sets[0] ) )
+        if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<TT, true, false>( tt_xor, on_off_sets[0] ) )
         {
           neg_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
           unateness[3] = true;
