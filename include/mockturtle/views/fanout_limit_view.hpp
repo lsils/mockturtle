@@ -39,9 +39,7 @@ namespace mockturtle
 
 struct fanout_limit_view_params
 {
-  uint64_t fanout_limit{16u};
-
-  bool duplicate_pis{false};
+  uint64_t fanout_limit{16};
 };
 
 
@@ -59,14 +57,12 @@ public:
     , ps( ps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-    static_assert( std::is_same_v<typename Ntk::base_type, mig_network>, "base type of Ntk is not mig_network" );
     assert( ps.fanout_limit > 0u );
   }
 
   uint32_t create_po( signal const& f, std::string const& name = std::string() )
   {
-    if ( ( Ntk::is_maj( Ntk::get_node( f ) ) || ( ps.duplicate_pis && Ntk::is_pi( Ntk::get_node( f ) ) ) )
-          && Ntk::fanout_size( Ntk::get_node( f ) ) + 1 > ps.fanout_limit )
+    if ( Ntk::is_maj( Ntk::get_node( f ) ) && Ntk::fanout_size( Ntk::get_node( f ) ) + 1 > ps.fanout_limit )
     {
       return Ntk::create_po( replicate_node( f ), name );
     }
@@ -79,12 +75,9 @@ public:
   signal create_maj( signal const& a, signal const& b, signal const& c )
   {
     std::array<signal,3u> fanins;
-    fanins[0u] = ( ( Ntk::is_maj( Ntk::get_node( a ) ) || ( ps.duplicate_pis && Ntk::is_pi( Ntk::get_node( a ) ) ) ) 
-                  && Ntk::fanout_size( Ntk::get_node( a ) ) > ps.fanout_limit - 1 ) ? replicate_node( a ) : a;
-    fanins[1u] = ( ( Ntk::is_maj( Ntk::get_node( b ) ) || ( ps.duplicate_pis && Ntk::is_pi( Ntk::get_node( b ) ) ) ) 
-                  && Ntk::fanout_size( Ntk::get_node( b ) ) > ps.fanout_limit - 1 ) ? replicate_node( b ) : b;
-    fanins[2u] = ( ( Ntk::is_maj( Ntk::get_node( c ) ) || ( ps.duplicate_pis && Ntk::is_pi( Ntk::get_node( c ) ) ) ) 
-                  && Ntk::fanout_size( Ntk::get_node( c ) ) > ps.fanout_limit - 1 ) ? replicate_node( c ) : c;
+    fanins[0u] = ( Ntk::is_maj( Ntk::get_node( a ) ) && Ntk::fanout_size( Ntk::get_node( a ) ) > ps.fanout_limit - 1 ) ? replicate_node( a ) : a;
+    fanins[1u] = ( Ntk::is_maj( Ntk::get_node( b ) ) && Ntk::fanout_size( Ntk::get_node( b ) ) > ps.fanout_limit - 1 ) ? replicate_node( b ) : b;
+    fanins[2u] = ( Ntk::is_maj( Ntk::get_node( c ) ) && Ntk::fanout_size( Ntk::get_node( c ) ) > ps.fanout_limit - 1 ) ? replicate_node( c ) : c;
     return Ntk::create_maj( fanins[0u], fanins[1u], fanins[2u] );
   }
 
@@ -193,17 +186,6 @@ public:
       {
         return Ntk::make_signal( replica );
       }
-    }
-
-    if ( Ntk::is_pi( n ) )
-    {
-      assert( ps.duplicate_pis );
-      const auto index = Ntk::_storage->nodes.size();
-      auto& node = Ntk::_storage->nodes.emplace_back();
-      node.children[0].data = node.children[1].data = node.children[2].data = ~static_cast<uint64_t>( 0 );
-      Ntk::_storage->inputs.emplace_back( index );
-      replicas[n] = index;
-      return {index, 0};
     }
 
     std::array<signal,3u> fanins;
