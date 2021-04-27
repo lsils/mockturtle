@@ -33,14 +33,14 @@
 #pragma once
 
 #include <cassert>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/static_truth_table.hpp>
 #include <kitty/npn.hpp>
 #include <kitty/print.hpp>
+#include <kitty/static_truth_table.hpp>
 
 #include "../io/genlib_reader.hpp"
 
@@ -48,40 +48,39 @@ namespace mockturtle
 {
 
 /*
-std::string const mcnc_library =  "GATE   inv1    1	O=!a;		        PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
-                                  "GATE   inv2	  2	O=!a;		        PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                  "GATE   inv3	  3	O=!a;		        PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
-                                  "GATE   inv4	  4	O=!a;		        PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
-                                  "GATE   nand2	  2	O=!(ab);		    PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                  "GATE   nand3	  3	O=!(abc);	      PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
-                                  "GATE   nand4   4	O=!(abcd);	    PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
-                                  "GATE   nor2	  2	O=!{ab};		    PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
-                                  "GATE   nor3	  3	O=!{abc};	      PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
-                                  "GATE   nor4	  4	O=!{abcd};	    PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
-                                  "GATE   and2	  3	O=(ab);		      PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
-                                  "GATE   or2		  3	O={ab};		      PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
-                                  "GATE   xor2a	  5	O=[ab];     	  PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "#GATE  xor2b	  5	O=[ab];     	  PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "GATE   xnor2a	5	O=![ab];		    PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
-                                  "#GATE  xnor2b	5	O=![ab];		    PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
-                                  "GATE   aoi21	  3	O=!{(ab)c};	    PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   aoi22	  4	O=!{(ab)(cd)};	PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   oai21	  3	O=!({ab}c);	    PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   oai22	  4	O=!({ab}{cd});	PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   buf    	2	O=a;        	  PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                  "GATE   zero	  0	O=0;\n"
-                                  "GATE   one		  0	O=1;";
+std::string const mcnc_library =  "GATE   inv1    1 O=!a;           PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                  "GATE   inv2    2 O=!a;           PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                  "GATE   inv3    3 O=!a;           PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
+                                  "GATE   inv4    4 O=!a;           PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
+                                  "GATE   nand2   2 O=!(ab);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                  "GATE   nand3   3 O=!(abc);	      PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
+                                  "GATE   nand4   4 O=!(abcd);      PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
+                                  "GATE   nor2    2 O=!{ab};        PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
+                                  "GATE   nor3    3 O=!{abc};       PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
+                                  "GATE   nor4    4 O=!{abcd};      PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
+                                  "GATE   and2    3 O=(ab);         PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
+                                  "GATE   or2     3 O={ab};         PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
+                                  "GATE   xor2a   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                  "#GATE  xor2b   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                  "GATE   xnor2a  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                  "#GATE  xnor2b  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                  "GATE   aoi21   3 O=!{(ab)c};     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                  "GATE   aoi22   4 O=!{(ab)(cd)};  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                  "GATE   oai21   3 O=!({ab}c);     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                  "GATE   oai22   4 O=!({ab}{cd});  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                  "GATE   buf     2 O=a;            PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                  "GATE   zero    0 O=0;\n"
+                                  "GATE   one     0 O=1;";
 */
 
 struct tech_library_params
 {
   /*! \brief reports np enumerations */
-  bool verbose{false};
+  bool verbose{ false };
 
   /*! \brief reports all the entries in the library */
-  bool very_verbose{false};
+  bool very_verbose{ false };
 };
-
 
 template<unsigned NInputs>
 struct supergate
@@ -89,9 +88,9 @@ struct supergate
   struct gate const* root{};
 
   /* area */
-  float area{0};
+  float area{ 0 };
   /* worst delay */
-  float worstDelay{0};
+  float worstDelay{ 0 };
   /* pin-to-pin delay */
   std::array<float, NInputs> tdelay{};
 
@@ -99,7 +98,7 @@ struct supergate
   std::vector<uint8_t> permutation{};
 
   /* pin negations */
-  uint8_t polarity{0};
+  uint8_t polarity{ 0 };
 };
 
 /*! \brief Library of np-enumerated gates
@@ -127,10 +126,10 @@ class tech_library
   using lib_t = std::unordered_map<kitty::static_truth_table<NInputs>, supergates_list_t, tt_hash>;
 
 public:
-  tech_library( std::vector<gate> const gates, tech_library_params const ps = {} )
-    : _gates( gates ),
-      _ps ( ps ),
-      _super_lib()
+  tech_library( std::vector<gate> const& gates, tech_library_params const ps = {} )
+      : _gates( gates ),
+        _ps( ps ),
+        _super_lib()
   {
     generate_library();
   }
@@ -155,7 +154,7 @@ public:
 
   const std::vector<gate> get_gates() const
   {
-      return _gates;
+    return _gates;
   }
 
 private:
@@ -203,7 +202,7 @@ private:
 
         for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
         {
-          sg.tdelay[i] = worst_delay;  /* if pin-to-pin delay change to: gate.delay[perm[i]] */
+          sg.tdelay[i] = worst_delay;                     /* if pin-to-pin delay change to: gate.delay[perm[i]] */
           sg.polarity |= ( ( neg >> perm[i] ) & 1 ) << i; /* permutate input negation to match the right pin */
         }
         for ( auto i = perm.size(); i < NInputs; ++i )
@@ -303,18 +302,16 @@ private:
 
 private:
   /* inverter info */
-  float _inv_area{0.0};
-  float _inv_delay{0.0};
-  uint32_t _inv_id{UINT32_MAX};
+  float _inv_area{ 0.0 };
+  float _inv_delay{ 0.0 };
+  uint32_t _inv_id{ UINT32_MAX };
 
-  unsigned _max_size{0}; /* max #fanins of the gates in the library */
+  unsigned _max_size{ 0 }; /* max #fanins of the gates in the library */
 
   std::vector<gate> const _gates; /* collection of gates */
   tech_library_params const _ps;
   lib_t _super_lib; /* library of enumerated gates */
 };
-
-
 
 template<typename Ntk, unsigned NInputs>
 struct exact_supergate
@@ -322,36 +319,36 @@ struct exact_supergate
   signal<Ntk> const root;
 
   /* number of inputs of the supergate */
-  uint8_t n_inputs{0};
+  uint8_t n_inputs{ 0 };
   /* saved polarities for inputs and/or outputs */
-  uint8_t polarity{0};
-  
+  uint8_t polarity{ 0 };
+
   /* area */
-  float area{0};
+  float area{ 0 };
   /* worst delay */
-  float worstDelay{0};
+  float worstDelay{ 0 };
   /* pin-to-pin delay */
-  std::array<float, NInputs> tdelay{0};
+  std::array<float, NInputs> tdelay{ 0 };
 
   exact_supergate( signal<Ntk> const root )
-    : root( root ) {}
+      : root( root ) {}
 };
 
 struct exact_library_params
 {
   /* area of a gate */
-  float area_gate{1.0f};
+  float area_gate{ 1.0f };
   /* area of an inverter */
-  float area_inverter{0.0f};
+  float area_inverter{ 0.0f };
   /* delay of a gate */
-  float delay_gate{1.0f};
+  float delay_gate{ 1.0f };
   /* delay of an inverter */
-  float delay_inverter{0.0f};
+  float delay_inverter{ 0.0f };
 
   /* classify in NP instead of NPN */
-  bool np_classification{true};
+  bool np_classification{ true };
   /* verbose */
-  bool verbose{false};
+  bool verbose{ false };
 };
 
 /*! \brief Library of exact synthesis supergates
@@ -381,10 +378,10 @@ class exact_library
 
 public:
   exact_library( RewritingFn const& rewriting_fn, exact_library_params const& ps = {} )
-  : _database(),
-    _rewriting_fn( rewriting_fn ),
-    _ps( ps ),
-    _super_lib()
+      : _database(),
+        _rewriting_fn( rewriting_fn ),
+        _ps( ps ),
+        _super_lib()
   {
     generate_library();
   }
@@ -397,7 +394,7 @@ public:
     return nullptr;
   }
 
-  const Ntk &get_database() const
+  const Ntk& get_database() const
   {
     return _database;
   }
@@ -427,7 +424,7 @@ private:
     } while ( !kitty::is_const0( tt ) );
 
     /* Constuct supergates */
-    for ( auto const &entry : classes )
+    for ( auto const& entry : classes )
     {
       supergates_list_t supergates_pos;
       supergates_list_t supergates_neg;
@@ -436,7 +433,8 @@ private:
       const auto add_supergate = [&]( auto const& f_new ) {
         bool complemented = _database.is_complemented( f_new );
         auto f = f_new;
-        if ( _ps.np_classification && complemented ) {
+        if ( _ps.np_classification && complemented )
+        {
           f = !f;
         }
         exact_supergate<Ntk, NInputs> sg( f );
@@ -456,20 +454,20 @@ private:
       kitty::dynamic_truth_table function = kitty::extend_to( entry, NInputs );
       _rewriting_fn( _database, function, pis.begin(), pis.end(), add_supergate );
       if ( supergates_pos.size() > 0 )
-        _super_lib.insert( {entry, supergates_pos} );
+        _super_lib.insert( { entry, supergates_pos } );
       if ( _ps.np_classification && supergates_neg.size() > 0 )
-        _super_lib.insert( {not_entry, supergates_neg} );
+        _super_lib.insert( { not_entry, supergates_neg } );
     }
 
     if ( _ps.verbose )
     {
       std::cout << "Classified in " << _super_lib.size() << " entries" << std::endl;
-      for ( auto const &pair : _super_lib )
+      for ( auto const& pair : _super_lib )
       {
         kitty::print_hex( pair.first );
         std::cout << ": ";
 
-        for ( auto const&  gate : pair.second )
+        for ( auto const& gate : pair.second )
         {
           printf( "%.2f,%.2f,%d,%d,:", gate.worstDelay, gate.area, gate.polarity, gate.n_inputs );
           for ( auto j = 0u; j < NInputs; ++j )
@@ -482,7 +480,7 @@ private:
   }
 
   /* Computes delay and area info */
-  void compute_info( exact_supergate<Ntk, NInputs> &sg )
+  void compute_info( exact_supergate<Ntk, NInputs>& sg )
   {
     _database.incr_trav_id();
     /* info does not consider input and output inverters */
@@ -493,17 +491,16 @@ private:
     /* output polarity */
     sg.polarity |= ( unsigned( compl_root ) ) << NInputs;
     /* number of inputs */
-    for( auto i = 0u; i < NInputs; ++i )
+    for ( auto i = 0u; i < NInputs; ++i )
     {
-      sg.tdelay[i] *= -1;   /* invert to positive value */
+      sg.tdelay[i] *= -1; /* invert to positive value */
       if ( sg.tdelay[i] != 0.0f )
         sg.n_inputs++;
     }
     sg.worstDelay *= -1;
   }
 
-
-  float compute_info_rec( exact_supergate<Ntk, NInputs> &sg, signal<Ntk> const& root, float delay )
+  float compute_info_rec( exact_supergate<Ntk, NInputs>& sg, signal<Ntk> const& root, float delay )
   {
     auto n = _database.get_node( root );
 
@@ -515,8 +512,8 @@ private:
 
     if ( _database.is_pi( n ) )
     {
-      sg.tdelay[_database.index_to_node( n ) - 1u] = std::min(sg.tdelay[_database.index_to_node( n ) - 1u], tdelay);
-      sg.worstDelay = std::min(sg.worstDelay, tdelay);
+      sg.tdelay[_database.index_to_node( n ) - 1u] = std::min( sg.tdelay[_database.index_to_node( n ) - 1u], tdelay );
+      sg.worstDelay = std::min( sg.worstDelay, tdelay );
       sg.polarity |= ( unsigned( _database.is_complemented( root ) ) ) << ( _database.index_to_node( n ) - 1u );
       return area;
     }
@@ -556,4 +553,4 @@ private:
   lib_t _super_lib;
 };
 
-}
+} // namespace mockturtle

@@ -14,32 +14,33 @@
 
 using namespace mockturtle;
 
-std::string const simple_test_library = "GATE   inv1    1	O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
-                                        "GATE   inv2	  2	O=!a;		  PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                        "GATE   nand2	  2	O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
+std::string const simple_test_library = "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                        "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                        "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
 
-std::string const test_library =  "GATE   inv1    3	O=!a;		        PIN * INV 1 999 1.1 0.09 1.1 0.09\n"
-                                  "GATE   inv2	  2	O=!a;		        PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                  "GATE   inv3	  1	O=!a;		        PIN * INV 3 999 0.9 0.3 0.9 0.3\n"
-                                  "GATE   inv4	  4	O=!a;		        PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
-                                  "GATE   nand2	  2	O=!(ab);		    PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                  "GATE   nand3	  3	O=!(abc);	      PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
-                                  "GATE   nand4   4	O=!(abcd);	    PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
-                                  "GATE   nor2	  2	O=!{ab};		    PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
-                                  "GATE   nor3	  3	O=!{abc};	      PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
-                                  "GATE   nor4	  4	O=!{abcd};	    PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
-                                  "GATE   and2	  3	O=(ab);		      PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
-                                  "GATE   or2		  3	O={ab};		      PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
-                                  "GATE   xor2a	  5	O=[ab];     	  PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "GATE   xnor2a	5	O=![ab];		    PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
-                                  "GATE   aoi21	  3	O=!{(ab)c};	    PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   aoi22	  4	O=!{(ab)(cd)};	PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   oai21	  3	O=!({ab}c);	    PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   oai22	  4	O=!({ab}{cd});	PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   buf    	2	O=a;        	  PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                  "GATE   zero	  0	O=0;\n"
-                                  "GATE   one		  0	O=1;";
-
+std::string const test_library =  "GATE   inv1    3 O=!a;           PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
+                                  "GATE   inv2    2 O=!a;           PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                  "GATE   inv3    1 O=!a;           PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                  "GATE   inv4    4 O=!a;           PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
+                                  "GATE   nand2   2 O=!(ab);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                  "GATE   nand3   3 O=!(abc);	      PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
+                                  "GATE   nand4   4 O=!(abcd);      PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
+                                  "GATE   nor2    2 O=!{ab};        PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
+                                  "GATE   nor3    3 O=!{abc};       PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
+                                  "GATE   nor4    4 O=!{abcd};      PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
+                                  "GATE   and2    3 O=(ab);         PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
+                                  "GATE   or2     3 O={ab};         PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
+                                  "GATE   xor2a   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                  "#GATE  xor2b   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                  "GATE   xnor2a  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                  "#GATE  xnor2b  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                  "GATE   aoi21   3 O=!{(ab)c};     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                  "GATE   aoi22   4 O=!{(ab)(cd)};  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                  "GATE   oai21   3 O=!({ab}c);     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                  "GATE   oai22   4 O=!({ab}{cd});  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                  "GATE   buf     2 O=a;            PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                  "GATE   zero    0 O=0;\n"
+                                  "GATE   one     0 O=1;";
 
 TEST_CASE( "Simple library generation", "[tech_library]" )
 {
@@ -122,12 +123,9 @@ TEST_CASE( "Complete library generation", "[tech_library]" )
   std::vector<gate> gates;
 
   std::istringstream in( test_library );
-  if ( lorina::read_genlib( in, genlib_reader( gates ) ) != lorina::return_code::success )
-  {
-    std::cout << "ERROR IN" << std::endl;
-    std::abort();
-    return;
-  }
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  
+  CHECK( result == lorina::return_code::success );
 
   tech_library<4> lib( gates );
 

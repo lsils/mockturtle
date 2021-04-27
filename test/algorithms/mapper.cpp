@@ -21,14 +21,14 @@
 
 using namespace mockturtle;
 
-std::string const test_library =  "GATE   inv1    1	O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
-                                  "GATE   inv2	  2	O=!a;		  PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                  "GATE   nand2	  2	O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                  "GATE   xor2	  5	O=[ab];   PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "GATE   mig3    3	O=<abc>;  PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
-                                  "GATE   buf    	2	O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                  "GATE   zero	  0	O=0;\n"
-                                  "GATE   one		  0	O=1;";
+std::string const test_library =  "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                  "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                  "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                  "GATE   xor2    5 O=[ab];   PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                  "GATE   mig3    3 O=<abc>;  PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
+                                  "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                  "GATE   zero    0 O=0;\n"
+                                  "GATE   one     0 O=1;";
 
 
 TEST_CASE( "Map of MAJ3", "[mapper]" )

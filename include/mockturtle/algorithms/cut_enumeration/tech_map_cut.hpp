@@ -33,10 +33,10 @@
 #pragma once
 
 #include <algorithm>
-#include <vector>
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
+#include <vector>
 
 #include "../cut_enumeration.hpp"
 
@@ -45,16 +45,16 @@ namespace mockturtle
 
 struct cut_enumeration_tech_map_cut
 {
-  uint32_t delay{0};
-  float flow{0};
-  uint8_t match_index{0};
-  bool ignore{false};
+  uint32_t delay{ 0 };
+  float flow{ 0 };
+  uint8_t match_index{ 0 };
+  bool ignore{ false };
 };
 
 template<bool ComputeTruth>
 bool operator<( cut_type<ComputeTruth, cut_enumeration_tech_map_cut> const& c1, cut_type<ComputeTruth, cut_enumeration_tech_map_cut> const& c2 )
 {
-  constexpr auto eps{0.005f};
+  constexpr auto eps{ 0.005f };
   if ( c1.size() < c2.size() )
     return true;
   if ( c1.size() > c2.size() )
@@ -72,7 +72,7 @@ struct cut_enumeration_update_cut<cut_enumeration_tech_map_cut>
   template<typename Cut, typename NetworkCuts, typename Ntk>
   static void apply( Cut& cut, NetworkCuts const& cuts, Ntk const& ntk, node<Ntk> const& n )
   {
-    uint32_t delay{0};
+    uint32_t delay{ 0 };
     float flow = 1.0f;
 
     for ( auto leaf : cut )
