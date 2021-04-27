@@ -62,6 +62,7 @@ struct pin
 
 struct gate
 {
+  unsigned int id;
   std::string name;
   std::string expression;
   uint32_t num_vars;
@@ -115,7 +116,8 @@ public:
                            p.input_load, p.max_load,
                            p.rise_block_delay, p.rise_fanout_delay, p.fall_block_delay, p.fall_fanout_delay} );
     }
-    gates.emplace_back( gate{name, expression, num_vars, tt, area, pp} );
+    gates.emplace_back( gate{static_cast<unsigned int>( gates.size() ), name,
+                             expression, num_vars, tt, area, pp} );
   }
 
 protected:
