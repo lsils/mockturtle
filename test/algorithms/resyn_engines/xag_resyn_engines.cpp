@@ -179,7 +179,7 @@ TEST_CASE( "Synthesize AIGs for all 3-input functions", "[xag_resyn]" )
   uint32_t failed_counter{0};
   do
   {
-    xag_resyn_engine<truth_table_type, aig_network, uint32_t, std::vector<truth_table_type>, true, true>
+    xag_resyn_engine<truth_table_type, aig_network, uint32_t, std::vector<truth_table_type>, true, false>
       engine( target, care, divisor_functions, st, ps );
     for ( auto i = 0u; i < divisor_functions.size(); ++i )
     {
@@ -209,4 +209,60 @@ TEST_CASE( "Synthesize AIGs for all 3-input functions", "[xag_resyn]" )
 
   CHECK( success_counter == 254 );
   CHECK( failed_counter == 2 );
+}
+
+TEST_CASE( "Synthesize XAGs for all 4-input functions", "[xag_resyn]" )
+{
+  constexpr uint32_t const num_vars = 4u;
+  using truth_table_type = kitty::static_truth_table<num_vars>;
+
+  xag_resyn_engine_stats st;
+  xag_resyn_engine_params ps;
+  ps.max_size = std::numeric_limits<uint32_t>::max();
+
+  std::vector<truth_table_type> divisor_functions;
+  truth_table_type x;
+  for ( uint32_t i = 0; i < num_vars; ++i )
+  {
+    kitty::create_nth_var( x, i );
+    divisor_functions.emplace_back( x );
+  }
+
+  truth_table_type target, care;
+  care = ~target.construct();
+
+  uint32_t success_counter{0};
+  uint32_t failed_counter{0};
+  do
+  {
+    xag_resyn_engine<truth_table_type, xag_network, uint32_t, std::vector<truth_table_type>, true, true>
+      engine( target, care, divisor_functions, st, ps );
+    for ( auto i = 0u; i < divisor_functions.size(); ++i )
+    {
+      engine.add_divisor( i );
+    }
+
+    auto const index_list = engine();
+    if ( index_list )
+    {
+      ++success_counter;
+
+      /* verify index_list using simulation */
+      xag_network xag;
+      decode( xag, *index_list );
+
+      simulator<num_vars> sim( divisor_functions );
+      auto const tts = simulate<truth_table_type, xag_network>( xag, sim );
+      CHECK( target == tts[0] );
+    }
+    else
+    {
+      ++failed_counter;
+    }
+
+    kitty::next_inplace( target );
+  } while ( !kitty::is_const0( target ) );
+
+  CHECK( success_counter == 54622 );
+  CHECK( failed_counter == 10914 );
 }
