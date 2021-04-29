@@ -48,7 +48,7 @@ public:
     : num_divisors( num_divisors )
     , num_blocks_per_truth_table( num_blocks_per_truth_table )
     , max_num_divisors( max_num_divisors )
-    , counter(0)
+    , counter( 0 )
   {
     alloc();
   }
