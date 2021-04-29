@@ -835,7 +835,14 @@ void encode( xag_index_list<separate_header>& indices, Ntk const& ntk )
     indices.add_output( 2*ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
   });
 
-  assert( indices.size() == 1u + 2u*ntk.num_gates() + ntk.num_pos() );
+  if constexpr ( separate_header )
+  {
+    assert( indices.size() == 3u + 2u*ntk.num_gates() + ntk.num_pos() );
+  }
+  else
+  {
+    assert( indices.size() == 1u + 2u*ntk.num_gates() + ntk.num_pos() );
+  }
 }
 
 /*! \brief Inserts a xag_index_list into an existing network
