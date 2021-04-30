@@ -3,33 +3,30 @@
 #include <cstdint>
 #include <vector>
 
+#include <lorina/genlib.hpp>
 #include <mockturtle/algorithms/mapper.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xmg_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <mockturtle/algorithms/node_resynthesis/xmg_npn.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
-#include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/mig.hpp>
-#include <mockturtle/networks/xmg.hpp>
-#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/klut.hpp>
-#include <lorina/genlib.hpp>
-
-
+#include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xag.hpp>
+#include <mockturtle/networks/xmg.hpp>
+#include <mockturtle/utils/tech_library.hpp>
 
 using namespace mockturtle;
 
-std::string const test_library =  "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
-                                  "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                  "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                  "GATE   xor2    5 O=[ab];   PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "GATE   mig3    3 O=<abc>;  PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
-                                  "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                  "GATE   zero    0 O=0;\n"
-                                  "GATE   one     0 O=1;";
-
+std::string const test_library = "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                 "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                 "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                 "GATE   xor2    5 O=[ab];   PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                 "GATE   mig3    3 O=<abc>;  PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
+                                 "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                 "GATE   zero    0 O=0;\n"
+                                 "GATE   one     0 O=1;";
 
 TEST_CASE( "Map of MAJ3", "[mapper]" )
 {
@@ -37,7 +34,7 @@ TEST_CASE( "Map of MAJ3", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -68,7 +65,7 @@ TEST_CASE( "Map of bad MAJ3 and constant output", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -100,7 +97,7 @@ TEST_CASE( "Map of full adder", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -118,7 +115,7 @@ TEST_CASE( "Map of full adder", "[mapper]" )
   map_stats st;
   klut_network luts = map( aig, lib, ps, &st );
 
-  const float eps{0.005f};
+  const float eps{ 0.005f };
 
   CHECK( luts.size() == 8u );
   CHECK( luts.num_pis() == 3u );
@@ -136,7 +133,7 @@ TEST_CASE( "Map with inverters", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -155,7 +152,7 @@ TEST_CASE( "Map with inverters", "[mapper]" )
   map_stats st;
   klut_network luts = map( aig, lib, ps, &st );
 
-  const float eps{0.005f};
+  const float eps{ 0.005f };
 
   CHECK( luts.size() == 11u );
   CHECK( luts.num_pis() == 3u );
@@ -173,7 +170,7 @@ TEST_CASE( "Map for inverters minimization", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -190,7 +187,7 @@ TEST_CASE( "Map for inverters minimization", "[mapper]" )
   map_stats st;
   klut_network luts = map( aig, lib, ps, &st );
 
-  const float eps{0.005f};
+  const float eps{ 0.005f };
 
   CHECK( luts.size() == 7u );
   CHECK( luts.num_pis() == 3u );
@@ -208,7 +205,7 @@ TEST_CASE( "Map of buffer and constant outputs", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -241,7 +238,7 @@ TEST_CASE( "Map of buffer and constant outputs", "[mapper]" )
   map_stats st;
   klut_network luts = map( aig, lib, ps, &st );
 
-  const float eps{0.005f};
+  const float eps{ 0.005f };
 
   CHECK( luts.size() == 9u );
   CHECK( luts.num_pis() == 4u );
@@ -255,9 +252,9 @@ TEST_CASE( "Map of buffer and constant outputs", "[mapper]" )
 
 TEST_CASE( "Exact map of bad MAJ3 and constant output", "[mapper]" )
 {
-  mig_npn_resynthesis resyn{true};
+  mig_npn_resynthesis resyn{ true };
 
-  exact_library<mig_network, mig_npn_resynthesis>  lib( resyn );
+  exact_library<mig_network, mig_npn_resynthesis> lib( resyn );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -284,7 +281,7 @@ TEST_CASE( "Exact map of full adder", "[mapper]" )
 {
   xmg_npn_resynthesis resyn;
 
-  exact_library<xmg_network, xmg_npn_resynthesis>  lib( resyn );
+  exact_library<xmg_network, xmg_npn_resynthesis> lib( resyn );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -313,7 +310,7 @@ TEST_CASE( "Exact map should avoid cycles", "[mapping]" )
 
   resyn_fn resyn;
 
-  exact_library<aig_network, resyn_fn>  lib( resyn );
+  exact_library<aig_network, resyn_fn> lib( resyn );
 
   aig_network aig;
   const auto x0 = aig.create_pi();
@@ -330,11 +327,11 @@ TEST_CASE( "Exact map should avoid cycles", "[mapping]" )
   const auto n7 = aig.create_and( !n5, !n6 );
   aig.create_po( n3 );
   aig.create_po( n7 );
-  
+
   map_params ps;
   map_stats st;
   aig_network res = map( aig, lib, ps, &st );
-  
+
   CHECK( res.size() == 12 );
   CHECK( res.num_pis() == 3 );
   CHECK( res.num_pos() == 2 );
@@ -349,7 +346,7 @@ TEST_CASE( "Exact map with logic sharing", "[mapping]" )
 
   resyn_fn resyn;
 
-  exact_library<aig_network, resyn_fn>  lib( resyn );
+  exact_library<aig_network, resyn_fn> lib( resyn );
 
   aig_network aig;
   const auto x0 = aig.create_pi();
@@ -364,12 +361,12 @@ TEST_CASE( "Exact map with logic sharing", "[mapping]" )
   const auto n4 = aig.create_and( n2, x3 );
   aig.create_po( !n3 );
   aig.create_po( !n4 );
-  
+
   map_params ps;
   ps.enable_logic_sharing = true;
   map_stats st;
   aig_network res = map( aig, lib, ps, &st );
-  
+
   CHECK( res.size() == 9 );
   CHECK( res.num_pis() == 4 );
   CHECK( res.num_pos() == 2 );
