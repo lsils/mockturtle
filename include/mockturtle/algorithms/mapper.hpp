@@ -41,10 +41,12 @@
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/tech_library.hpp"
+#include "../views/depth_view.hpp"
 #include "../views/topo_view.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/exact_map_cut.hpp"
 #include "cut_enumeration/tech_map_cut.hpp"
+#include "detail/mffc_utils.hpp"
 #include "detail/switching_activity.hpp"
 
 namespace mockturtle
@@ -85,10 +87,13 @@ struct map_params
   uint32_t eswp_rounds{ 0u };
 
   /*! \brief Number of patterns for switching activity computation. */
-  uint32_t switching_activity_patterns{ 2048 };
+  uint32_t switching_activity_patterns{ 2048u };
 
-  /*! \brief Use structural choices. */
-  bool choices{ false };
+  /*! \brief Exploit logic sharing in exact area optimization. */
+  bool enable_logic_sharing{ false };
+
+  /*! \brief Maximum number of cuts evaluated for logic sharing. */
+  uint32_t logic_sharing_cut_limit{ 8u };
 
   /*! \brief Be verbose. */
   bool verbose{ false };
@@ -1585,7 +1590,7 @@ private:
  * mapping command ``map`` in ABC.
  */
 template<class Ntk, unsigned CutSize = 5u, typename CutData = cut_enumeration_tech_map_cut, unsigned NInputs>
-klut_network tech_map( Ntk const& ntk, tech_library<NInputs> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
+klut_network map( Ntk const& ntk, tech_library<NInputs> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -1669,6 +1674,7 @@ public:
         library( library ),
         ps( ps ),
         st( st ),
+        lib_database( library.get_database() ),
         node_match( ntk.size() ),
         matches(),
         cuts( fast_cut_enumeration<Ntk, CutSize, true, CutData>( ntk, ps.cut_enumeration_ps ) )
@@ -1711,13 +1717,19 @@ public:
     while ( iteration < ps.ela_rounds + ps.area_flow_rounds + 1 )
     {
       compute_required_time();
-      compute_exact_area();
+      if ( ps.enable_logic_sharing && iteration == ps.ela_rounds + ps.area_flow_rounds )
+        compute_exact_area_aggressive( res, old2new );
+      else
+        compute_exact_area();
     }
 
     /* generate the output network using the computed mapping */
     finalize_cover( res, old2new );
 
-    return res;
+    if ( ps.enable_logic_sharing )
+      return cleanup_dangling( res );
+    else
+      return res;
   }
 
 private:
@@ -1896,43 +1908,46 @@ private:
 
   void finalize_cover( NtkDest& res, node_map<signal<NtkDest>, Ntk>& old2new )
   {
-    auto const& db = library.get_database();
+    if ( !ps.enable_logic_sharing || iteration == ps.area_flow_rounds + 1 )
+    {
+      auto const& db = library.get_database();
 
-    ntk.foreach_node( [&]( auto const& n ) {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
-        return true;
-      auto index = ntk.node_to_index( n );
-      if ( node_match[index].map_refs[2] == 0u )
-        return true;
+      ntk.foreach_node( [&]( auto const& n ) {
+        if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+          return true;
+        auto index = ntk.node_to_index( n );
+        if ( node_match[index].map_refs[2] == 0u )
+          return true;
 
-      /* get the implemented phase and map the best cut */
-      unsigned phase = ( node_match[index].best_supergate[0] != nullptr ) ? 0 : 1;
-      auto& best_cut = cuts.cuts( index )[node_match[index].best_cut[phase]];
+        /* get the implemented phase and map the best cut */
+        unsigned phase = ( node_match[index].best_supergate[0] != nullptr ) ? 0 : 1;
+        auto& best_cut = cuts.cuts( index )[node_match[index].best_cut[phase]];
 
-      std::vector<signal<NtkDest>> children( NInputs, res.get_constant( false ) );
-      auto const& match = matches[index][best_cut->data.match_index];
-      auto const& supergate = node_match[index].best_supergate[phase];
-      auto ctr = 0u;
-      for ( auto l : best_cut )
-      {
-        children[match.permutation[ctr++]] = old2new[ntk.index_to_node( l )];
-      }
-      for ( auto i = 0u; i < NInputs; ++i )
-      {
-        if ( ( match.negation >> i ) & 1 )
+        std::vector<signal<NtkDest>> children( NInputs, res.get_constant( false ) );
+        auto const& match = matches[index][best_cut->data.match_index];
+        auto const& supergate = node_match[index].best_supergate[phase];
+        auto ctr = 0u;
+        for ( auto l : best_cut )
         {
-          children[i] = !children[i];
+          children[match.permutation[ctr++]] = old2new[ntk.index_to_node( l )];
         }
-      }
-      topo_view topo{ db, supergate->root };
-      auto f = cleanup_dangling( topo, res, children.begin(), children.end() ).front();
+        for ( auto i = 0u; i < NInputs; ++i )
+        {
+          if ( ( match.negation >> i ) & 1 )
+          {
+            children[i] = !children[i];
+          }
+        }
+        topo_view topo{ db, supergate->root };
+        auto f = cleanup_dangling( topo, res, children.begin(), children.end() ).front();
 
-      if ( phase == 1 )
-        f = !f;
+        if ( phase == 1 )
+          f = !f;
 
-      old2new[n] = f;
-      return true;
-    } );
+        old2new[n] = f;
+        return true;
+      } );
+    }
 
     /* create POs */
     ntk.foreach_po( [&]( auto const& f ) {
@@ -2385,6 +2400,267 @@ private:
     }
   }
 
+  void compute_exact_area_aggressive( NtkDest& res, node_map<signal<NtkDest>, Ntk>& old2new )
+  {
+    depth_view<NtkDest> res_d{ res };
+
+    for ( auto const& n : top_order )
+    {
+      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+        continue;
+
+      auto index = ntk.node_to_index( n );
+      auto& node_data = node_match[index];
+
+      /* recursively deselect the best cut shared between
+       * the two phases if in use in the cover */
+      if ( node_data.same_match && node_data.map_refs[2] != 0 )
+      {
+        if ( node_data.best_supergate[0] != nullptr )
+          cut_deref( cuts.cuts( index )[node_data.best_cut[0]], n, 0u );
+        else
+          cut_deref( cuts.cuts( index )[node_data.best_cut[1]], n, 1u );
+      }
+
+      /* match positive phase */
+      auto sig0 = match_phase_exact_aggressive( res_d, old2new, n, 0u );
+
+      /* match negative phase */
+      auto sig1 = match_phase_exact_aggressive( res_d, old2new, n, 1u );
+
+      /* try to drop one phase */
+      float worst_arrival_npos = node_data.arrival[1] + lib_inv_delay;
+      float worst_arrival_nneg = node_data.arrival[0] + lib_inv_delay;
+      bool use_zero = false;
+      bool use_one = false;
+      if ( node_data.best_supergate[0] == nullptr )
+      {
+        set_match_complemented_phase( index, 1, worst_arrival_npos );
+        if ( node_data.map_refs[2] )
+        {
+          cut_ref( cuts.cuts( index )[node_data.best_cut[1]], n, 1 );
+          recursive_ref<NtkDest>( res, res.get_node( sig1 ) );
+        }
+        old2new[n] = sig1;
+        continue;
+      }
+      else if ( node_data.best_supergate[1] == nullptr )
+      {
+        set_match_complemented_phase( index, 0, worst_arrival_nneg );
+        if ( node_data.map_refs[2] )
+        {
+          cut_ref( cuts.cuts( index )[node_data.best_cut[0]], n, 0 );
+          recursive_ref<NtkDest>( res, res.get_node( sig0 ) );
+        }
+        old2new[n] = sig0;
+        continue;
+      }
+      use_zero = worst_arrival_nneg < node_data.required[1] + epsilon;
+      use_one = worst_arrival_npos < node_data.required[0] + epsilon;
+
+      if ( use_zero && use_one )
+      {
+        auto size_zero = cuts.cuts( index )[node_data.best_cut[0]].size();
+        auto size_one = cuts.cuts( index )[node_data.best_cut[1]].size();
+        if ( compare_map<true>( worst_arrival_nneg, worst_arrival_npos, node_data.flows[0], node_data.flows[1], size_zero, size_one ) )
+          use_one = false;
+        else
+          use_zero = false;
+      }
+
+      if ( use_zero )
+      {
+        if ( node_data.map_refs[2] )
+        {
+          cut_ref( cuts.cuts( index )[node_data.best_cut[0]], n, 0 );
+          recursive_ref<NtkDest>( res, res.get_node( sig0 ) );
+        }
+        set_match_complemented_phase( index, 0, worst_arrival_nneg );
+        old2new[n] = sig0;
+      }
+      else
+      {
+        if ( node_data.map_refs[2] )
+        {
+          cut_ref( cuts.cuts( index )[node_data.best_cut[1]], n, 1 );
+          recursive_ref<NtkDest>( res, res.get_node( sig1 ) );
+        }
+        set_match_complemented_phase( index, 1, worst_arrival_npos );
+        old2new[n] = sig1;
+      }
+    }
+    
+    double area_old = area;
+    set_mapping_refs<true>();
+
+    /* round stats */
+    if ( ps.verbose )
+    {
+      float area_gain = float( ( area_old - area ) / area_old * 100 );
+      std::stringstream stats{};
+      stats << fmt::format( "[i] Area RW  : Delay = {:>12.2f}  Area = {:>12.2f}  {:>5.2f} %\n", delay, area, area_gain );
+      st.round_stats.push_back( stats.str() );
+    }
+  }
+
+  signal<NtkDest> match_phase_exact_aggressive( depth_view<NtkDest>& res, node_map<signal<NtkDest>, Ntk>& old2new, node<Ntk> const& n, uint8_t phase )
+  {
+    signal<NtkDest> best_signal = res.get_constant( false );
+
+    float best_arrival = std::numeric_limits<float>::max();
+    float best_exact_area = std::numeric_limits<float>::max();
+    float best_area = std::numeric_limits<float>::max();
+    uint32_t best_size = UINT32_MAX;
+    uint8_t best_cut = 0u;
+    uint8_t best_phase = 0u;
+    uint8_t cut_index = 0u;
+    auto index = ntk.node_to_index( n );
+
+    auto& node_data = node_match[index];
+    auto& cut_matches = matches[index];
+    exact_supergate<NtkDest, NInputs> const* best_supergate = node_data.best_supergate[phase];
+
+    /* create best match info */
+    if ( best_supergate != nullptr )
+    {
+      auto const& cut = cuts.cuts( index )[node_data.best_cut[phase]];
+      auto const& supergates = cut_matches[( cut )->data.match_index];
+
+      /* permutate the children to the NPN-represenentative configuration */
+      std::vector<signal<NtkDest>> children( NInputs, res.get_constant( false ) );
+      auto ctr = 0u;
+
+      for ( auto l : cut )
+      {
+        children[supergates.permutation[ctr++]] = old2new[ntk.index_to_node( l )];
+      }
+
+      best_phase = supergates.negation;
+      best_cut = node_data.best_cut[phase];
+      best_size = cut.size();
+      for ( auto i = 0u; i < NInputs; ++i )
+      {
+        if ( ( best_phase >> i ) & 1 )
+        {
+          children[i] = !children[i];
+        }
+      }
+      topo_view topo{ lib_database, best_supergate->root };
+      auto f = cleanup_dangling( topo, res, children.begin(), children.end() ).front();
+
+      if ( phase == 1 )
+        f = !f;
+
+      best_signal = f;
+
+      best_arrival = res.level( res.get_node( f ) );
+
+      /* if cut is implemented, remove it from the cover */
+      if ( !node_data.same_match && node_data.map_refs[phase] )
+      {
+        best_area = recursive_ref<NtkDest>( res, res.get_node( f ) );
+        recursive_deref<NtkDest>( res, res.get_node( f ) );
+        best_exact_area = cut_deref( cuts.cuts( index )[best_cut], n, phase );
+      }
+      else
+      {
+        best_area = recursive_ref<NtkDest>( res, res.get_node( f ) );
+        recursive_deref<NtkDest>( res, res.get_node( f ) );
+        best_exact_area = cut_ref( cuts.cuts( index )[best_cut], n, phase );
+        cut_deref( cuts.cuts( index )[best_cut], n, phase );
+      }
+    }
+
+    /* foreach cut */
+    unsigned int rewrite_count = 1u;
+    for ( auto& cut : cuts.cuts( index ) )
+    {
+      /* trivial cuts, not matched cuts, or rewriting limit reached */
+      if ( ( *cut )->data.ignore || ( rewrite_count > ps.logic_sharing_cut_limit && cut_index != best_cut ) )
+      {
+        ++cut_index;
+        continue;
+      }
+
+      auto const& supergates = cut_matches[( *cut )->data.match_index];
+
+      if ( supergates.supergates[phase] == nullptr )
+      {
+        ++cut_index;
+        continue;
+      }
+
+      ++rewrite_count;
+
+      std::vector<signal<NtkDest>> children( NInputs, res.get_constant( false ) );
+
+      auto ctr = 0u;
+      for ( auto l : *cut )
+      {
+        children[supergates.permutation[ctr++]] = old2new[ntk.index_to_node( l )];
+      }
+
+      /* match each gate and take the best one */
+      for ( auto const& gate : *supergates.supergates[phase] )
+      {
+        uint8_t complement = supergates.negation;
+        node_data.phase[phase] = complement;
+
+        /* rewrite each structure and measure the logic sharing */
+        std::vector<signal<NtkDest>> children_loc( NInputs );
+
+        for ( auto ctr = 0u; ctr < NInputs; ++ctr )
+        {
+          children_loc[ctr] = children[ctr] ^ ( ( ( complement >> ctr ) & 1 ) == 1 );
+        }
+        topo_view topo{ lib_database, gate.root };
+        auto f = cleanup_dangling( topo, res, children_loc.begin(), children_loc.end() ).front();
+
+        if ( phase == 1 )
+          f = !f;
+
+        float worst_arrival = res.level( res.get_node( f ) );
+
+        float area_hashed = recursive_ref<NtkDest>( res, res.get_node( f ) );
+        node_data.area[phase] = area_hashed;
+        recursive_deref<NtkDest>( res, res.get_node( f ) );
+        auto area_exact = cut_ref( *cut, n, phase );
+        cut_deref( *cut, n, phase );
+
+        if ( worst_arrival > node_data.required[phase] + epsilon )
+          continue;
+
+        if ( compare_map<true>( worst_arrival, best_arrival, area_exact, best_exact_area, cut->size(), best_size ) )
+        {
+          best_arrival = worst_arrival;
+          best_exact_area = area_exact;
+          best_area = area_hashed;
+          best_size = cut->size();
+          best_cut = cut_index;
+          best_phase = complement;
+          best_supergate = &gate;
+          best_signal = f;
+        }
+      }
+
+      ++cut_index;
+    }
+    old2new[n] = best_signal;
+    node_data.flows[phase] = best_exact_area;
+    node_data.arrival[phase] = best_arrival;
+    node_data.area[phase] = best_area;
+    node_data.best_cut[phase] = best_cut;
+    node_data.phase[phase] = best_phase;
+    node_data.best_supergate[phase] = best_supergate;
+
+    if ( !node_data.same_match && node_data.map_refs[phase] )
+    {
+      recursive_ref<NtkDest>( res, res.get_node( best_signal ) );
+      best_exact_area = cut_ref( cuts.cuts( index )[best_cut], n, phase );
+    }
+    return best_signal;
+  }
+
   template<bool DO_AREA, bool ELA>
   void match_drop_phase( node<Ntk> const& n, unsigned area_margin_factor )
   {
@@ -2699,6 +2975,8 @@ private:
   float lib_inv_area;
   float lib_inv_delay;
 
+  NtkDest const& lib_database;
+
   std::vector<node<Ntk>> top_order;
   std::vector<node_match_t<NtkDest, NInputs>> node_match;
   std::unordered_map<uint32_t, std::vector<cut_match_t<NtkDest, NInputs>>> matches;
@@ -2709,7 +2987,7 @@ private:
 
 /*! \brief Exact mapping.
  *
- * This function implements a mapping algorithm using an exact synthesis database.
+ * This function implements a mapping algorithm using a database of structures.
  * It is controlled by a template argument `CutData` (defaulted to
  * `cut_enumeration_exact_map_cut`). The argument is similar to the `CutData` argument
  * in `cut_enumeration`, which can specialize the cost function to select priority
@@ -2746,7 +3024,7 @@ private:
  * \param pst Mapping statistics
  */
 template<class Ntk, unsigned CutSize = 4u, typename CutData = cut_enumeration_exact_map_cut, class NtkDest, class RewritingFn, unsigned NInputs>
-NtkDest exact_map( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
+NtkDest map( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );

@@ -34,7 +34,6 @@
 
 #include <vector>
 
-// #include "../../utils/node_map.hpp"
 #include "../simulation.hpp"
 
 #include <kitty/bit_operations.hpp>

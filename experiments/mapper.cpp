@@ -29,7 +29,6 @@
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
 #include <lorina/genlib.hpp>
-#include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/algorithms/mapper.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
@@ -37,51 +36,58 @@
 #include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
+#include <mockturtle/networks/mig.hpp>
+#include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/depth_view.hpp>
-
 
 #include <experiments.hpp>
 
-std::string const mcnc_library =  "GATE   inv1    1 O=!a;           PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
-                                  "GATE   inv2    2 O=!a;           PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                  "GATE   inv3    3 O=!a;           PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
-                                  "GATE   inv4    4 O=!a;           PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
-                                  "GATE   nand2   2 O=!(ab);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                  "GATE   nand3   3 O=!(abc);	      PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
-                                  "GATE   nand4   4 O=!(abcd);      PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
-                                  "GATE   nor2    2 O=!{ab};        PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
-                                  "GATE   nor3    3 O=!{abc};       PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
-                                  "GATE   nor4    4 O=!{abcd};      PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
-                                  "GATE   and2    3 O=(ab);         PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
-                                  "GATE   or2     3 O={ab};         PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
-                                  "GATE   xor2a   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "#GATE  xor2b   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "GATE   xnor2a  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
-                                  "#GATE  xnor2b  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
-                                  "GATE   aoi21   3 O=!{(ab)c};     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   aoi22   4 O=!{(ab)(cd)};  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   oai21   3 O=!({ab}c);     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   oai22   4 O=!({ab}{cd});  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   buf     2 O=a;            PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                  "GATE   zero    0 O=0;\n"
-                                  "GATE   one     0 O=1;";
+std::string const mcnc_library = "GATE   inv1    1 O=!a;           PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                 "GATE   inv2    2 O=!a;           PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                 "GATE   inv3    3 O=!a;           PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
+                                 "GATE   inv4    4 O=!a;           PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
+                                 "GATE   nand2   2 O=!(ab);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                 "GATE   nand3   3 O=!(abc);	      PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
+                                 "GATE   nand4   4 O=!(abcd);      PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
+                                 "GATE   nor2    2 O=!{ab};        PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
+                                 "GATE   nor3    3 O=!{abc};       PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
+                                 "GATE   nor4    4 O=!{abcd};      PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
+                                 "GATE   and2    3 O=(ab);         PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
+                                 "GATE   or2     3 O={ab};         PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
+                                 "GATE   xor2a   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                 "#GATE  xor2b   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                 "GATE   xnor2a  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                 "#GATE  xnor2b  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                 "GATE   aoi21   3 O=!{(ab)c};     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                 "GATE   aoi22   4 O=!{(ab)(cd)};  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                 "GATE   oai21   3 O=!({ab}c);     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                 "GATE   oai22   4 O=!({ab}{cd});  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                 "GATE   buf     2 O=a;            PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                 "GATE   zero    0 O=0;\n"
+                                 "GATE   one     0 O=1;";
 
 int main()
 {
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, double, uint32_t, float, float, bool> exp( "mapper", "benchmark", "size", "area_after", "depth", "delay_after", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, double, uint32_t, uint32_t, double, float, float, bool, bool> exp(
+      "mapper", "benchmark", "size", "size_mig", "area_after", "depth", "depth_mig", "delay_after", "runtime1", "runtime2", "equivalent1", "equivalent2" );
 
   fmt::print( "[i] processing technology library\n" );
 
-  std::vector<gate> gates;
+  /* library to map to MIGs */
+  mig_npn_resynthesis resyn{ true };
+  exact_library_params eps;
+  exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn, eps );
 
+  /* library to map to technology */
+  std::vector<gate> gates;
   std::istringstream in( mcnc_library );
   lorina::read_genlib( in, genlib_reader( gates ) );
 
   tech_library_params tps;
-  tech_library<5> lib( gates, tps );
+  tech_library tech_lib( gates, tps );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -92,15 +98,24 @@ int main()
     const uint32_t size_before = aig.num_gates();
     const uint32_t depth_before = depth_view( aig ).depth();
 
-    map_params ps;
-    ps.cut_enumeration_ps.cut_size = 5;
-    map_stats st;
+    map_params ps1;
+    ps1.skip_delay_round = true;
+    ps1.required_time = std::numeric_limits<float>::max();
+    map_stats st1;
 
-    auto res = tech_map( aig, lib, ps, &st );
+    mig_network res1 = map( aig, exact_lib, ps1, &st1 );
 
-    const auto cec = benchmark == "hyp" ? true : abc_cec( res, benchmark );
+    map_params ps2;
+    map_stats st2;
 
-    exp( benchmark, size_before, st.area, depth_before, st.delay, to_seconds( st.time_total ), cec );
+    klut_network res2 = map( aig, tech_lib, ps2, &st2 );
+
+    const auto cec1 = benchmark == "hyp" ? true : abc_cec( res1, benchmark );
+    const auto cec2 = benchmark == "hyp" ? true : abc_cec( res2, benchmark );
+
+    const uint32_t depth_mig = depth_view( res1 ).depth();
+
+    exp( benchmark, size_before, res1.num_gates(), st2.area, depth_before, depth_mig, st2.delay, to_seconds( st1.time_total ), to_seconds( st2.time_total ), cec1, cec2 );
   }
 
   exp.save();

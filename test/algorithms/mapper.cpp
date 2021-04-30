@@ -52,7 +52,7 @@ TEST_CASE( "Map of MAJ3", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = tech_map( aig, lib, ps, &st );
+  klut_network luts = map( aig, lib, ps, &st );
 
   CHECK( luts.size() == 6u );
   CHECK( luts.num_pis() == 3u );
@@ -84,7 +84,7 @@ TEST_CASE( "Map of bad MAJ3 and constant output", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = tech_map( aig, lib, ps, &st );
+  klut_network luts = map( aig, lib, ps, &st );
 
   CHECK( luts.size() == 6u );
   CHECK( luts.num_pis() == 3u );
@@ -116,7 +116,7 @@ TEST_CASE( "Map of full adder", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = tech_map( aig, lib, ps, &st );
+  klut_network luts = map( aig, lib, ps, &st );
 
   const float eps{0.005f};
 
@@ -153,7 +153,7 @@ TEST_CASE( "Map with inverters", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = tech_map( aig, lib, ps, &st );
+  klut_network luts = map( aig, lib, ps, &st );
 
   const float eps{0.005f};
 
@@ -188,7 +188,7 @@ TEST_CASE( "Map for inverters minimization", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = tech_map( aig, lib, ps, &st );
+  klut_network luts = map( aig, lib, ps, &st );
 
   const float eps{0.005f};
 
@@ -239,7 +239,7 @@ TEST_CASE( "Map of buffer and constant outputs", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = tech_map( aig, lib, ps, &st );
+  klut_network luts = map( aig, lib, ps, &st );
 
   const float eps{0.005f};
 
@@ -270,7 +270,7 @@ TEST_CASE( "Exact map of bad MAJ3 and constant output", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  mig_network mig = exact_map( aig, lib, ps, &st );
+  mig_network mig = map( aig, lib, ps, &st );
 
   CHECK( mig.size() == 5u );
   CHECK( mig.num_pis() == 3u );
@@ -297,7 +297,7 @@ TEST_CASE( "Exact map of full adder", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  xmg_network xmg = exact_map( aig, lib, ps, &st );
+  xmg_network xmg = map( aig, lib, ps, &st );
 
   CHECK( xmg.size() == 7u );
   CHECK( xmg.num_pis() == 3u );
@@ -333,7 +333,7 @@ TEST_CASE( "Exact map should avoid cycles", "[mapping]" )
   
   map_params ps;
   map_stats st;
-  aig_network res = exact_map( aig, lib, ps, &st );
+  aig_network res = map( aig, lib, ps, &st );
   
   CHECK( res.size() == 12 );
   CHECK( res.num_pis() == 3 );
@@ -341,4 +341,37 @@ TEST_CASE( "Exact map should avoid cycles", "[mapping]" )
   CHECK( res.num_gates() == 8 );
   CHECK( st.area == 8.0f );
   CHECK( st.delay == 3.0f );
+}
+
+TEST_CASE( "Exact map with logic sharing", "[mapping]" )
+{
+  using resyn_fn = xag_npn_resynthesis<aig_network>;
+
+  resyn_fn resyn;
+
+  exact_library<aig_network, resyn_fn>  lib( resyn );
+
+  aig_network aig;
+  const auto x0 = aig.create_pi();
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+  const auto x3 = aig.create_pi();
+
+  const auto n0 = aig.create_and( x0, !x1 );
+  const auto n1 = aig.create_and( x2, x3 );
+  const auto n2 = aig.create_and( x1, x2 );
+  const auto n3 = aig.create_and( n0, n1 );
+  const auto n4 = aig.create_and( n2, x3 );
+  aig.create_po( !n3 );
+  aig.create_po( !n4 );
+  
+  map_params ps;
+  ps.enable_logic_sharing = true;
+  map_stats st;
+  aig_network res = map( aig, lib, ps, &st );
+  
+  CHECK( res.size() == 9 );
+  CHECK( res.num_pis() == 4 );
+  CHECK( res.num_pos() == 2 );
+  CHECK( res.num_gates() == 4 );
 }
