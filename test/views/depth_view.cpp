@@ -136,3 +136,74 @@ TEST_CASE( "compute levels during node construction with cost function", "[depth
   CHECK( dxag.depth() == 1u );
 }
 
+TEST_CASE( "compute levels during node construction after copy ctor", "[depth_view]" )
+{
+  xag_network xag{};
+  auto tmp = new depth_view<xag_network>{xag};
+  depth_view<xag_network> dxag{ *tmp }; // copy ctor
+  delete tmp;
+
+  const auto a = dxag.create_pi();
+  const auto b = dxag.create_pi();
+  const auto c = dxag.create_pi();
+
+  dxag.create_po( dxag.create_xor( b, dxag.create_and( dxag.create_xor( a, b ), dxag.create_xor( b, c ) ) ) );
+
+  CHECK( dxag.depth() == 3u );
+}
+
+TEST_CASE( "compute levels during node construction after move ctor", "[depth_view]" )
+{
+  xag_network xag{};
+  auto tmp = new depth_view<xag_network>{xag};
+  depth_view<xag_network> dxag{ std::move(*tmp) }; // move ctor
+  delete tmp;
+
+  const auto a = dxag.create_pi();
+  const auto b = dxag.create_pi();
+  const auto c = dxag.create_pi();
+
+  dxag.create_po( dxag.create_xor( b, dxag.create_and( dxag.create_xor( a, b ), dxag.create_xor( b, c ) ) ) );
+
+  CHECK( dxag.depth() == 3u );
+}
+
+
+TEST_CASE( "compute levels during node construction after copy assignment", "[depth_view]" )
+{
+  xag_network xag{};
+  depth_view<xag_network> dxag;
+  {
+    auto tmp = new depth_view<xag_network>{xag};
+    dxag = *tmp; // copy assignment
+    delete tmp;
+  }
+
+  const auto a = dxag.create_pi();
+  const auto b = dxag.create_pi();
+  const auto c = dxag.create_pi();
+
+  dxag.create_po( dxag.create_xor( b, dxag.create_and( dxag.create_xor( a, b ), dxag.create_xor( b, c ) ) ) );
+
+  CHECK( dxag.depth() == 3u );
+}
+
+TEST_CASE( "compute levels during node construction after move assignment", "[depth_view]" )
+{
+  xag_network xag{};
+  depth_view<xag_network> dxag;
+  {
+    auto tmp = new depth_view<xag_network>{xag};
+    dxag = std::move(*tmp); // move assignment
+    delete tmp;
+  }
+
+  const auto a = dxag.create_pi();
+  const auto b = dxag.create_pi();
+  const auto c = dxag.create_pi();
+
+  dxag.create_po( dxag.create_xor( b, dxag.create_and( dxag.create_xor( a, b ), dxag.create_xor( b, c ) ) ) );
+
+  CHECK( dxag.depth() == 3u );
+}
+

@@ -33,6 +33,7 @@
 
 #pragma once
 
+#include "../networks/events.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/index_list.hpp"
 #include "cnf.hpp"
@@ -60,13 +61,16 @@ struct validator_params
 };
 
 template<class Ntk, bill::solvers Solver = bill::solvers::glucose_41, bool use_pushpop = false, bool randomize = false, bool use_odc = false>
-class circuit_validator
+class circuit_validator :
+  public event_add_crtp<Ntk, circuit_validator<Ntk, Solver, use_pushpop, randomize, use_odc>>
 {
 public:
   static constexpr bool use_odc_ = use_odc;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using add_clause_fn_t = std::function<void( std::vector<bill::lit_type> const& )>;
+
+  friend class network_events<Ntk>::add_accessor;
 
   enum gate_type
   {
@@ -116,10 +120,10 @@ public:
       static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
     }
 
-    event_ptr = ntk._events->on_add.size();
-    ntk._events->on_add.emplace_back( [&]( const auto& n ) {
+    ntk._events->on_add.emplace_back( event_add_crtp<Ntk, circuit_validator>::wp(), []( void *wp, const auto& n ) {
       (void)n;
-      literals.resize();
+      auto self = reinterpret_cast<circuit_validator *>(wp);
+      self->literals.resize();
     });
 
     /* constants are mapped to var 0 */
@@ -135,11 +139,6 @@ public:
     } );
 
     restart();
-  }
-
-  ~circuit_validator()
-  {
-    ntk._events->on_add.erase( ntk._events->on_add.begin() + event_ptr );
   }
 
   /*! \brief Validate functional equivalence of signals `f` and `d`. */
@@ -703,8 +702,6 @@ private:
 
   bool between_push_pop = false;
   std::vector<node> tmp;
-
-  uint32_t event_ptr;
 
 public:
   std::vector<bool> cex;

@@ -36,6 +36,7 @@
 
 #pragma once
 
+#include "../networks/events.hpp"
 #include "../traits.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
@@ -601,7 +602,10 @@ private:
  * only `divs` is needed.
  */
 template<class Ntk, class ResubEngine = window_based_resub_engine<Ntk, kitty::dynamic_truth_table>, class DivCollector = default_divisor_collector<Ntk>>
-class resubstitution_impl
+class resubstitution_impl :
+  public event_add_crtp<Ntk, resubstitution_impl<Ntk, ResubEngine, DivCollector>>,
+  public event_modified_crtp<Ntk, resubstitution_impl<Ntk, ResubEngine, DivCollector>>,
+  public event_delete_crtp<Ntk, resubstitution_impl<Ntk, ResubEngine, DivCollector>>
 {
 public:
   using engine_st_t = typename ResubEngine::stats;
@@ -610,6 +614,10 @@ public:
   using signal = typename Ntk::signal;
   using resub_callback_t = std::function<bool( Ntk&, node const&, signal const& )>;
   using mffc_result_t = typename ResubEngine::mffc_result_t;
+
+  friend class network_events<Ntk>::add_accessor;
+  friend class network_events<Ntk>::modified_accessor;
+  friend class network_events<Ntk>::delete_accessor;
 
   /*! \brief Constructor of the top-level resubstitution framework.
    *
@@ -627,26 +635,32 @@ public:
 
     st.initial_size = ntk.num_gates();
 
-    auto const update_level_of_new_node = [&]( const auto& n ) {
-      ntk.resize_levels();
-      update_node_level( n );
+    auto const update_level_of_new_node = []( void *wp, const auto& n ) {
+      auto self = reinterpret_cast<resubstitution_impl *>(wp);
+      self->ntk.resize_levels();
+      self->update_node_level( n );
     };
 
-    auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
+    auto const update_level_of_existing_node = []( void *wp, node const& n, const auto& old_children ) {
       (void)old_children;
-      ntk.resize_levels();
-      update_node_level( n );
+      auto self = reinterpret_cast<resubstitution_impl *>(wp);
+      self->ntk.resize_levels();
+      self->update_node_level( n );
     };
 
-    auto const update_level_of_deleted_node = [&]( const auto& n ) {
-      ntk.set_level( n, -1 );
+    auto const update_level_of_deleted_node = []( void *wp, const auto& n ) {
+      auto self = reinterpret_cast<resubstitution_impl *>(wp);
+      self->ntk.set_level( n, -1 );
     };
 
-    ntk._events->on_add.emplace_back( update_level_of_new_node );
+    ntk._events->on_add.emplace_back( event_add_crtp<Ntk, resubstitution_impl>::wp(),
+        update_level_of_new_node );
 
-    ntk._events->on_modified.emplace_back( update_level_of_existing_node );
+    ntk._events->on_modified.emplace_back( event_modified_crtp<Ntk, resubstitution_impl>::wp(),
+        update_level_of_existing_node );
 
-    ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
+    ntk._events->on_delete.emplace_back( event_delete_crtp<Ntk, resubstitution_impl>::wp(),
+        update_level_of_deleted_node );
   }
 
   void run( resub_callback_t const& callback = substitute_fn<Ntk> )

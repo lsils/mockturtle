@@ -352,10 +352,7 @@ public:
     _storage->nodes[b.index].data[0].h1++;
     _storage->nodes[c.index].data[0].h1++;
 
-    for ( auto const& fn : _events->on_add )
-    {
-      fn( index );
-    }
+    _events->on_add( index );
 
     return {index, node_complement};
   }
@@ -532,10 +529,7 @@ public:
     // update the reference counter of the new signal
     _storage->nodes[new_signal.index].data[0].h1++;
 
-    for ( auto const& fn : _events->on_modified )
-    {
-      fn( n, {old_child0, old_child1, old_child2} );
-    }
+    _events->on_modified( n, {old_child0, old_child1, old_child2} );
 
     return std::nullopt;
   }
@@ -565,10 +559,7 @@ public:
     nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
     _storage->hash.erase( nobj );
 
-    for ( auto const& fn : _events->on_delete )
-    {
-      fn( n );
-    }
+    _events->on_delete( n );
 
     for ( auto i = 0u; i < 3u; ++i )
     {

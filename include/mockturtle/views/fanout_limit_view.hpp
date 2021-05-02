@@ -276,10 +276,7 @@ protected:
     Ntk::_storage->nodes[b.index].data[0].h1++;
     Ntk::_storage->nodes[c.index].data[0].h1++;
 
-    for ( auto const& fn : Ntk::_events->on_add )
-    {
-      fn( index );
-    }
+    Ntk::_events->on_add( index );
 
     return {index, node_complement};
   }

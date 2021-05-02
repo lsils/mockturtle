@@ -41,6 +41,7 @@
 #include <vector>
 
 #include "../algorithms/cnf.hpp"
+#include "../networks/events.hpp"
 #include "../utils/include/percy.hpp"
 #include "../traits.hpp"
 
@@ -92,13 +93,6 @@ public:
   {
   }
 
-  ~cnf_view_impl()
-  {
-    Ntk::events().on_add.erase( Ntk::events().on_add.begin() + event_ptr_[0] );
-    Ntk::events().on_modified.erase( Ntk::events().on_modified.begin() + event_ptr_[1] );
-    Ntk::events().on_delete.erase( Ntk::events().on_delete.begin() + event_ptr_[2] );
-  }
-
   void init()
   {
     cnf_view_.solver_.add_variables( Ntk::size() );
@@ -121,10 +115,6 @@ public:
       literals_[n] = bill::lit_type( ++v, bill::lit_type::polarities::positive );
       cnf_view_.on_add( n, false );
     } );
-
-    event_ptr_[0] = Ntk::events().on_add.size();
-    event_ptr_[1] = Ntk::events().on_modified.size();
-    event_ptr_[2] = Ntk::events().on_delete.size();
   }
 
   inline bill::var_type add_var()
@@ -183,8 +173,6 @@ private:
 
   node_map<bill::lit_type, Ntk> literals_;
   std::vector<bill::lit_type> switches_;
-
-  std::size_t event_ptr_[3];
 };
 
 } /* namespace detail */
@@ -207,7 +195,10 @@ private:
  * and clause size.
  */
 template<typename Ntk, bool AllowModify, bill::solvers Solver>
-class cnf_view : public detail::cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>
+class cnf_view : public detail::cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>,
+      public event_add_crtp<Ntk, cnf_view<Ntk, AllowModify, Solver>>,
+      public event_modified_crtp<Ntk, cnf_view<Ntk, AllowModify, Solver>>,
+      public event_delete_crtp<Ntk, cnf_view<Ntk, AllowModify, Solver>>
 {
   friend class detail::cnf_view_impl<cnf_view<Ntk, AllowModify, Solver>, Ntk, AllowModify, Solver>;
 
@@ -491,35 +482,38 @@ public:
 private:
   void register_events()
   {
-    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
-    Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
+    Ntk::events().on_add.emplace_back( event_add_crtp<Ntk, cnf_view>::wp(), []( void *wp, auto const& n ) {
+      auto self = reinterpret_cast<cnf_view *>(wp);
+      self->on_add( n );
+    } );
+    Ntk::events().on_modified.emplace_back( event_modified_crtp<Ntk, cnf_view>::wp(), []( void *wp, auto const& n, auto const& previous ) {
       (void)previous;
+      auto self = reinterpret_cast<cnf_view *>(wp);
       if constexpr ( AllowModify )
       {
-        if ( ps_.auto_update )
+        if ( self->ps_.auto_update )
         {
-          cnf_view_impl_t::on_modified( n );
+          self->cnf_view_impl_t::on_modified( n );
         }
         return;
       }
 
       (void)n;
-      (void)this;
       assert( false && "nodes should not be modified in cnf_view" );
       std::abort();
     } );
-    Ntk::events().on_delete.push_back( [this]( auto const& n ) {
+    Ntk::events().on_delete.emplace_back( event_delete_crtp<Ntk, cnf_view>::wp(), []( void *wp, auto const& n ) {
+      auto self = reinterpret_cast<cnf_view *>(wp);
       if constexpr ( AllowModify )
       {
-        if ( ps_.auto_update )
+        if ( self->ps_.auto_update )
         {
-          cnf_view_impl_t::on_delete( n );
+          self->cnf_view_impl_t::on_delete( n );
         }
         return;
       }
 
       (void)n;
-      (void)this;
       assert( false && "nodes should not be deleted in cnf_view" );
       std::abort();
     } );
