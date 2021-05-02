@@ -337,10 +337,7 @@ public:
     _storage->nodes[b.index].data[0].h1++;
     _storage->nodes[c.index].data[0].h1++;
 
-    for ( auto const& fn : _events->on_add )
-    {
-      fn( index );
-    }
+    _events->on_add( index );
 
     return { index, node_complement };
   }
@@ -415,10 +412,7 @@ public:
       _storage->nodes[c.index].data[0].h1++;
     }
 
-    for ( auto const& fn : _events->on_add )
-    {
-      fn( index );
-    }
+    _events->on_add( index );
 
     return { index, node_complement };
   }
@@ -539,10 +533,7 @@ public:
 
     /* TODO: Do the simplifications if possible */
 
-    for ( auto const& fn : _events->on_modified )
-    {
-      fn( n, old_children );
-    }
+    _events->on_modified( n, old_children );
 
     return std::nullopt;
   }
@@ -571,10 +562,7 @@ public:
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
 
-    for ( auto const& fn : _events->on_delete )
-    {
-      fn( n );
-    }
+    _events->on_delete( n );
 
     for ( auto i = 0u; i < nobj.children.size(); ++i )
     {
