@@ -212,4 +212,3 @@ TEST_CASE( "Move construction", "[node_map]" )
   test_move_ctor<xmg_network, std::unordered_map<node<xmg_network>, uint32_t>>();
   test_move_ctor<klut_network, std::unordered_map<node<klut_network>, uint32_t>>();
 }
-}
