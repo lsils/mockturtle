@@ -289,6 +289,24 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis"
   CHECK( v == std::vector<uint32_t>{{0, 17, 4, 9, 60, 16, 113, 93, 250, 17, 21}} );
 }
 
+TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis using a complete AIG database", "[quality]" )
+{
+  xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
+
+  const auto v = foreach_benchmark<aig_network>( [&]( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    cut_rewriting_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    ps.min_cand_cut_size = 2;
+    ps.min_cand_cut_size_override = 3;
+    cut_rewriting_with_compatibility_graph( ntk, resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 17, 6, 9, 62, 16, 113, 90, 270, 281, 23}} );
+}
+
 TEST_CASE( "Test quality improvement of cut rewriting with AIG exact synthesis", "[quality]" )
 {
   return; /* disable, because slow */
@@ -345,6 +363,24 @@ TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis"
   } );
 
   CHECK( v == std::vector<uint32_t>{{0, 31, 152, 50, 176, 79, 215, 134, 411, 869, 293}} );
+}
+
+TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis using a complete XAG database", "[quality]" )
+{
+  xag_npn_resynthesis<xag_network, xag_network, xag_npn_db_kind::xag_complete> resyn;
+
+  const auto v = foreach_benchmark<xag_network>( [&]( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    cut_rewriting_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    ps.min_cand_cut_size = 2;
+    ps.min_cand_cut_size_override = 3;
+    cut_rewriting_with_compatibility_graph( ntk, resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 31, 152, 49, 176, 88, 216, 135, 423, 789, 279}} );
 }
 
 TEST_CASE( "Test quality improvement for XMG3 rewriting with 4-input NPN database", "[quality]" )
