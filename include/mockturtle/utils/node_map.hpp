@@ -95,13 +95,15 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  using reference = typename std::vector<T>::reference;
-  using const_reference = typename std::vector<T>::const_reference;
+  using container_type = std::vector<T>;
+  using reference = typename container_type::reference;
+  using const_reference = typename container_type::const_reference;
+
 public:
   /*! \brief Default constructor. */
   explicit node_map( Ntk const& ntk )
       : ntk( ntk ),
-        data( std::make_shared<std::vector<T>>( ntk.size() ) )
+        data( std::make_shared<container_type>( ntk.size() ) )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -115,12 +117,19 @@ public:
    */
   node_map( Ntk const& ntk, T const& init_value )
       : ntk( ntk ),
-        data( std::make_shared<std::vector<T>>( ntk.size(), init_value ) )
+        data( std::make_shared<container_type>( ntk.size(), init_value ) )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
     static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  }
+
+
+  /*! \brief Number of keys stored in the data structure. */
+  auto size() const
+  {
+    return data->size();
   }
 
   /*! \brief Mutable access to value by node. */
@@ -192,7 +201,7 @@ public:
 
 private:
   Ntk const& ntk;
-  std::shared_ptr<std::vector<T>> data;
+  std::shared_ptr<container_type> data;
 };
 
 /*! \brief Unordered node map
@@ -217,14 +226,31 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
+  using container_type = std::unordered_map<node, T>;
   using reference = T&;
   using const_reference = const T&;
 
 public:
+  /*! \brief Default constructor. */
   explicit node_map( Ntk const& ntk )
     : ntk( ntk ),
-      data( std::make_shared<std::unordered_map<typename Ntk::node, T>>() )
+      data( std::make_shared<container_type>() )
   {
+  }
+
+
+  /*! \brief Number of keys stored in the data structure. */
+  auto size() const
+  {
+    return data->size();
+  }
+
+  /*! \brief Deep copy. */
+  node_map<T, Ntk, container_type> copy() const
+  {
+    node_map<T, Ntk, container_type> copy( ntk );
+    *( copy.data ) = *data;
+    return copy;
   }
 
   /*! \brief Check if a key is already defined. */
@@ -234,25 +260,19 @@ public:
   }
 
   /*! \brief Check if a key is already defined. */
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   bool has( signal const& f ) const
   {
     return data->find( ntk.node_to_index( ntk.get_node( f ) ) ) != data->end();
   }
 
+  /*! \brief Erase a key (if it exists). */
   void erase( node const& n )
   {
     if ( has( n ) )
     {
       data->erase( ntk.node_to_index( n ) );
     }
-  }
-
-  /*! \brief Make a deep copy */
-  node_map<T, Ntk, std::unordered_map<typename Ntk::node, T>> copy() const
-  {
-    node_map<T, Ntk, std::unordered_map<typename Ntk::node, T>> copy(ntk);
-    *(copy.data) = *data;
-    return copy;
   }
 
   /*! \brief Mutable access to value by node. */
@@ -302,7 +322,7 @@ public:
 
 protected:
   Ntk const& ntk;
-  std::shared_ptr<std::unordered_map<node, T>> data;
+  std::shared_ptr<container_type> data;
 };
 
 /*! \brief Template alias `unordered_node_map` */
