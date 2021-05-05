@@ -112,10 +112,10 @@ inline void write_aiger( aig_network const& aig, std::ostream& os )
   std::vector<unsigned char> buffer;
   aig.foreach_gate( [&]( node const& n ){
     std::vector<uint32_t> lits;
-    lits.push_back( 2*n );
+    lits.push_back( 2*aig.node_to_index( n ) );
 
     aig.foreach_fanin( n, [&]( signal const& fi ){
-      lits.push_back( 2*aig.get_node( fi ) + aig.is_complemented( fi ) );
+      lits.push_back( 2*aig.node_to_index( aig.get_node( fi ) ) + aig.is_complemented( fi ) );
     });
 
     if ( lits[1] > lits[2] )
