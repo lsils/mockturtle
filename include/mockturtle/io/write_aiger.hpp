@@ -66,6 +66,9 @@ inline void encode( std::vector<unsigned char>& buffer, uint32_t lit )
 
 /*! \brief Writes a combinational AIG network in binary AIGER format into a file
  *
+ * This function should be only called on "clean" aig_networks, e.g.,
+ * immediately after `cleanup_dangling`.
+ *
  * **Required network functions:**
  * - `num_cis`
  * - `num_cos`
@@ -74,6 +77,7 @@ inline void encode( std::vector<unsigned char>& buffer, uint32_t lit )
  * - `foreach_po`
  * - `get_node`
  * - `is_complemented`
+ * - `node_to_index`
  *
  * \param aig Combinational AIG network
  * \param os Output stream
@@ -104,7 +108,7 @@ inline void write_aiger( aig_network const& aig, std::ostream& os )
 
   /* POs */
   aig.foreach_po( [&]( signal const& f ){
-    sprintf( string_buffer, "%u\n", uint32_t(2*aig.get_node( f ) + aig.is_complemented( f )) );
+    sprintf( string_buffer, "%u\n", uint32_t(2*aig.node_to_index( aig.get_node( f ) ) + aig.is_complemented( f )) );
     os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) );
   });
 
@@ -112,10 +116,10 @@ inline void write_aiger( aig_network const& aig, std::ostream& os )
   std::vector<unsigned char> buffer;
   aig.foreach_gate( [&]( node const& n ){
     std::vector<uint32_t> lits;
-    lits.push_back( 2*n );
+    lits.push_back( 2*aig.node_to_index( n ) );
 
     aig.foreach_fanin( n, [&]( signal const& fi ){
-      lits.push_back( 2*aig.get_node( fi ) + aig.is_complemented( fi ) );
+      lits.push_back( 2*aig.node_to_index( aig.get_node( fi ) ) + aig.is_complemented( fi ) );
     });
 
     if ( lits[1] > lits[2] )
@@ -141,6 +145,9 @@ inline void write_aiger( aig_network const& aig, std::ostream& os )
 
 /*! \brief Writes a combinational AIG network in binary AIGER format into a file
  *
+ * This function should be only called on "clean" aig_networks, e.g.,
+ * immediately after `cleanup_dangling`.
+ *
  * **Required network functions:**
  * - `num_cis`
  * - `num_cos`
@@ -149,6 +156,7 @@ inline void write_aiger( aig_network const& aig, std::ostream& os )
  * - `foreach_po`
  * - `get_node`
  * - `is_complemented`
+ * - `node_to_index`
  *
  * \param aig Combinational AIG network
  * \param filename Filename

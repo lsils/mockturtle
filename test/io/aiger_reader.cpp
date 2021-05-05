@@ -95,7 +95,8 @@ TEST_CASE( "read a sequential ASCII Aiger file into an AIG network", "[aiger_rea
   "o0 foobar\n"
   "o1 barbar\n"};
 
-  lorina::diagnostic_engine diag;
+  lorina::text_diagnostics consumer;
+  lorina::diagnostic_engine diag( &consumer );
   std::istringstream in( file );
   auto const result = lorina::read_ascii_aiger( in, aiger_reader( named_aig ), &diag );
   CHECK( result == lorina::return_code::success );
