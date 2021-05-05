@@ -30,6 +30,7 @@
 #include <fmt/format.h>
 
 #include <algorithm>
+#include <cassert>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -117,7 +118,7 @@ template<typename... Args>
 class call_in_topological_order
 {
 public:
-  call_in_topological_order( std::function<void(Args...)> f )
+  explicit call_in_topological_order( std::function<void(Args...)> f )
     : f( f )
   {
   }

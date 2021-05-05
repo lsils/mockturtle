@@ -274,7 +274,7 @@ static std::regex end( R"(.end)" );
  * \param diag An optional diagnostic engine with callback methods for parse errors
  * \return Success if parsing has been successful, or parse error if parsing has failed
  */
-inline return_code read_blif( std::istream& in, const blif_reader& reader, diagnostic_engine* diag = nullptr )
+[[nodiscard]] inline return_code read_blif( std::istream& in, const blif_reader& reader, diagnostic_engine* diag = nullptr )
 {
   return_code result = return_code::success;
 
@@ -399,8 +399,7 @@ inline return_code read_blif( std::istream& in, const blif_reader& reader, diagn
           return true;
         }
 
-        diag->report( diagnostic_level::error,
-                      fmt::format( "latch format not supported `{0}`", line ) );
+        diag->report( diag_id::ERR_BLIF_LATCH_FORMAT ).add_argument( line );
 
         result = return_code::parse_error;
       }
@@ -425,8 +424,7 @@ inline return_code read_blif( std::istream& in, const blif_reader& reader, diagn
 
       if ( diag )
       {
-        diag->report( diagnostic_level::error,
-                      fmt::format( "cannot parse line `{0}`", line ) );
+        diag->report( diag_id::ERR_PARSE_LINE ).add_argument( line );
       }
 
       result = return_code::parse_error;
@@ -442,8 +440,9 @@ inline return_code read_blif( std::istream& in, const blif_reader& reader, diagn
   {
     if ( diag )
     {
-      diag->report( diagnostic_level::warning,
-                    fmt::format( "unresolved dependencies: `{0}` requires `{1}`",  r.first, r.second ) );
+      diag->report( diag_id::WRN_UNRESOLVED_DEPENDENCY )
+        .add_argument( r.first )
+        .add_argument( r.second );
     }
   }
 
@@ -460,15 +459,14 @@ inline return_code read_blif( std::istream& in, const blif_reader& reader, diagn
  * \param diag An optional diagnostic engine with callback methods for parse errors
  * \return Success if parsing has been successful, or parse error if parsing has failed
  */
-inline return_code read_blif( const std::string& filename, const blif_reader& reader, diagnostic_engine* diag = nullptr )
+[[nodiscard]] inline return_code read_blif( const std::string& filename, const blif_reader& reader, diagnostic_engine* diag = nullptr )
 {
   std::ifstream in( detail::word_exp_filename( filename ), std::ifstream::in );
   if ( !in.is_open() )
   {
     if ( diag )
     {
-      diag->report( diagnostic_level::fatal,
-                    fmt::format( "could not open file `{0}`", filename ) );
+      diag->report( diag_id::ERR_FILE_OPEN ).add_argument( filename );
     }
     return return_code::parse_error;
   }
