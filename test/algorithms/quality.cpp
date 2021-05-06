@@ -111,7 +111,7 @@ TEST_CASE( "Test quality of node resynthesis with NPN4 resynthesis", "[quality]"
   CHECK( v == std::vector<uint32_t>{{7, 176, 316, 300, 316, 299, 502, 929, 1319, 1061, 1418}} );
 }
 
-TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[quality]" )
+TEST_CASE( "Test quality improvement of MIG cut rewriting with compatibility graph and NPN4 resynthesis", "[quality]" )
 {
   // without zero gain
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
@@ -124,7 +124,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 20, 80, 49, 160, 79, 195, 131, 506, 2, 258}} );
+  CHECK( v == std::vector<uint32_t>{{0, 20, 80, 49, 160, 79, 193, 131, 506, 2, 255}} );
 
   // with zero gain
   const auto v2 = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
@@ -138,7 +138,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[
     return before - ntk.num_gates();
   } );
 
-  CHECK( v2 == std::vector<uint32_t>{{0, 20, 78, 49, 158, 79, 196, 132, 525, 2, 255}} );
+  CHECK( v2 == std::vector<uint32_t>{{0, 20, 78, 49, 158, 79, 194, 132, 525, 2, 252}} );
 }
 
 TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis", "[quality]" )
@@ -290,7 +290,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis"
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 17, 4, 9, 60, 16, 113, 93, 250, 17, 21}} );
+  CHECK( v == std::vector<uint32_t>{{0, 11, 2, 9, 10, 16, 81, 91, 189, 17, 21}} );
 }
 
 TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis using a complete AIG database", "[quality]" )
@@ -308,7 +308,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis 
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 17, 6, 9, 62, 16, 113, 90, 270, 281, 23}} );
+  CHECK( v == std::vector<uint32_t>{{0, 11, 3, 9, 60, 16, 88, 90, 238, 278, 23}} );
 }
 
 TEST_CASE( "Test quality improvement of cut rewriting with AIG exact synthesis", "[quality]" )
@@ -366,7 +366,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis"
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 31, 152, 50, 176, 79, 215, 134, 411, 869, 293}} );
+  CHECK( v == std::vector<uint32_t>{{0, 23, 150, 50, 150, 68, 176, 120, 348, 869, 276}} );
 }
 
 TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis using a complete XAG database", "[quality]" )
@@ -384,7 +384,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis 
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{0, 31, 152, 49, 176, 88, 216, 135, 423, 789, 279}} );
+  CHECK( v == std::vector<uint32_t>{{0, 23, 150, 49, 174, 80, 188, 130, 377, 789, 271}} );
 }
 
 TEST_CASE( "Test quality improvement for XMG3 rewriting with 4-input NPN database", "[quality]" )
@@ -400,7 +400,7 @@ TEST_CASE( "Test quality improvement for XMG3 rewriting with 4-input NPN databas
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{1, 27, 224, 70, 272, 151, 280, 195, 659, 464, 503}} );
+  CHECK( v == std::vector<uint32_t>{{1, 27, 224, 70, 272, 151, 280, 195, 657, 464, 503}} );
 }
 
 TEST_CASE( "Test quality improvement for XMG3 Resubstitution", "[quality]" )
