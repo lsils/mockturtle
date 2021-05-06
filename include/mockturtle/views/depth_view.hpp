@@ -115,11 +115,11 @@ public:
   using signal = typename Ntk::signal;
 
   explicit depth_view( NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
-      : Ntk(),
-        _ps( ps ),
-        _levels( *this ),
-        _crit_path( *this ),
-        _cost_fn( cost_fn )
+    : Ntk()
+    , _ps( ps )
+    , _levels( *this )
+    , _crit_path( *this )
+    , _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -130,7 +130,7 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-     add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   /*! \brief Standard constructor.
@@ -139,11 +139,11 @@ public:
    * \param count_complements Count inverters as 1
    */
   explicit depth_view( Ntk const& ntk, NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
-      : Ntk( ntk ),
-        _ps( ps ),
-        _levels( ntk ),
-        _crit_path( ntk ),
-        _cost_fn( cost_fn )
+    : Ntk( ntk )
+    , _ps( ps )
+    , _levels( ntk )
+    , _crit_path( ntk )
+    , _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -156,7 +156,17 @@ public:
 
     update_levels();
 
-     add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
+  }
+
+  depth_view( depth_view<Ntk, NodeCostFn, false> const& other )
+    : Ntk( other )
+    , _ps( other._ps )
+    , _levels( other._levels )
+    , _crit_path( other._crit_path )
+    , _cost_fn( other._cost_fn )
+  {
+    add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   virtual ~depth_view()
@@ -165,7 +175,6 @@ public:
   }
 
   // We should add these or make sure that members are properly copied
-  //depth_view( depth_view<Ntk> const& ) = delete;
   //depth_view<Ntk> operator=( depth_view<Ntk> const& ) = delete;
 
   uint32_t depth() const

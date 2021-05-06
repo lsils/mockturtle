@@ -136,3 +136,69 @@ TEST_CASE( "compute levels during node construction with cost function", "[depth
   CHECK( dxag.depth() == 1u );
 }
 
+TEST_CASE( "compute levels during node construction after copy ctor", "[depth_view]" )
+{
+  xag_network xag{};
+  {
+    auto tmp = new depth_view<xag_network>{xag};
+    CHECK( xag.events().on_add.size() == 1u );
+
+    depth_view<xag_network> dxag{ *tmp }; // copy ctor
+    CHECK( xag.events().on_add.size() == 2u );
+
+    delete tmp;
+    CHECK( xag.events().on_add.size() == 1u );
+
+    const auto a = dxag.create_pi();
+    const auto b = dxag.create_pi();
+    const auto c = dxag.create_pi();
+    auto const t0 = dxag.create_xor( a, b );
+    auto const t1 = dxag.create_xor( b, c );
+    auto const t2 = dxag.create_and( t0, t1 );
+    auto const t3 = dxag.create_xor( b, t2 );
+    dxag.create_po( t3 );
+    CHECK( dxag.depth() == 3u );
+
+    const auto t4 = dxag.create_and( t3, t1 );
+    dxag.create_po( t4 );
+    CHECK( dxag.depth() == 4u );
+
+    CHECK( xag.events().on_add.size() == 1u );
+  }
+
+  CHECK( xag.events().on_add.size() == 0u );
+}
+
+TEST_CASE( "compute levels during node construction after move ctor", "[depth_view]" )
+{
+  xag_network xag{};
+  {
+    auto tmp = new depth_view<xag_network>{xag};
+    CHECK( xag.events().on_add.size() == 1u );
+
+    depth_view<xag_network> dxag{ std::move(*tmp) }; // move ctor
+    CHECK( xag.events().on_add.size() == 2u );
+
+    delete tmp;
+    CHECK( xag.events().on_add.size() == 1u );
+
+    const auto a = dxag.create_pi();
+    const auto b = dxag.create_pi();
+    const auto c = dxag.create_pi();
+    auto const t0 = dxag.create_xor( a, b );
+    auto const t1 = dxag.create_xor( b, c );
+    auto const t2 = dxag.create_and( t0, t1 );
+    auto const t3 = dxag.create_xor( b, t2 );
+    dxag.create_po( t3 );
+    CHECK( dxag.depth() == 3u );
+
+    const auto t4 = dxag.create_and( t3, t1 );
+    dxag.create_po( t4 );
+    CHECK( dxag.depth() == 4u );
+
+    CHECK( xag.events().on_add.size() == 1u );
+  }
+
+  CHECK( xag.events().on_add.size() == 0u );
+}
+
