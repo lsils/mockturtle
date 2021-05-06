@@ -33,13 +33,14 @@
 
 #pragma once
 
-#include <cstdint>
-#include <vector>
-
 #include "../traits.hpp"
 #include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
+#include "../networks/events.hpp"
 #include "immutable_view.hpp"
+
+#include <cstdint>
+#include <vector>
 
 namespace mockturtle
 {
@@ -129,7 +130,7 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
+     add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   /*! \brief Standard constructor.
@@ -155,7 +156,12 @@ public:
 
     update_levels();
 
-    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
+     add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
+  }
+
+  virtual ~depth_view()
+  {
+    Ntk::events().remove_add_event( add_event );
   }
 
   // We should add these or make sure that members are properly copied
@@ -303,6 +309,8 @@ private:
   node_map<uint32_t, Ntk> _crit_path;
   uint32_t _depth{};
   NodeCostFn _cost_fn;
+
+  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
 };
 
 template<class T>

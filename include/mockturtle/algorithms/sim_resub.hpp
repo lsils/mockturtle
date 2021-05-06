@@ -98,7 +98,7 @@ public:
 
   explicit abc_resub_functor( Ntk const& ntk, resubstitution_params const& ps, stats& st, unordered_node_map<TT, Ntk> const& tts, node const& root, std::vector<node> const& divs )
       : ntk( ntk ), ps( ps ), st( st ), tts( tts ), root( root ), divs( divs ), num_blocks( 0 )
-  { }
+  {}
 
   ~abc_resub_functor()
   {
@@ -186,7 +186,7 @@ struct resyn_functor_stats
 };
 
 /*! \brief Interfacing resubstitution functor with various resynthesis engines for `simulation_based_resub_engine`.
- * 
+ *
  * The resynthesis engine `ResynEngine` should provide the following interfaces:
  * - Constructor: `ResynEngine( kitty::partial_truth_table const& target,`
  * `kitty::partial_truth_table const& care, ResynEngine::stats& st, ResynEngine::params const& ps )`
@@ -309,7 +309,7 @@ struct sim_resub_stats
 };
 
 /*! \brief Simulation-based resubstitution engine.
- * 
+ *
  * This engine simulates in the whole network and uses partial truth tables
  * to find potential resubstitutions. It then formally verifies the resubstitution
  * candidates given by the resubstitution functor. If the validation fails,
@@ -362,7 +362,7 @@ public:
     vps.conflict_limit = ps.conflict_limit;
     vps.random_seed = ps.random_seed;
 
-    ntk._events->on_add.emplace_back( [&]( const auto& n ) {
+    add_event = ntk.events().create_add_event( [&]( const auto& n ) {
       call_with_stopwatch( st.time_sim, [&]() {
         simulate_node<Ntk>( ntk, n, tts, sim );
       });
@@ -376,6 +376,11 @@ public:
       call_with_stopwatch( st.time_patsave, [&]() {
         write_patterns( sim, *ps.save_patterns );
       });
+    }
+
+    if ( add_event )
+    {
+      ntk.events().remove_add_event( add_event );
     }
   }
 
@@ -503,6 +508,9 @@ private:
 
   validator_params vps;
   validator_t validator;
+
+  /* events */
+  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
 }; /* simulation_based_resub_engine */
 
 } /* namespace detail */

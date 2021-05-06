@@ -352,7 +352,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      fn( index );
+      (*fn)( index );
     }
 
     return {index, node_complement};
@@ -419,7 +419,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      fn( index );
+      (*fn)( index );
     }
 
     return {index, fcompl};
@@ -658,7 +658,7 @@ public:
 
     for ( auto const& fn : _events->on_modified )
     {
-      fn( n, {old_child0, old_child1, old_child2} );
+      (*fn)( n, {old_child0, old_child1, old_child2} );
     }
 
     return std::nullopt;
@@ -691,7 +691,7 @@ public:
 
     for ( auto const& fn : _events->on_delete )
     {
-      fn( n );
+      (*fn)( n );
     }
 
     for ( auto i = 0u; i < 3u; ++i )

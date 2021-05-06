@@ -33,14 +33,15 @@
 
 #pragma once
 
-#include <cstdint>
-#include <stack>
-#include <vector>
-
 #include "../traits.hpp"
+#include "../networks/events.hpp"
 #include "../networks/detail/foreach.hpp"
 #include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
+
+#include <cstdint>
+#include <stack>
+#include <vector>
 
 namespace mockturtle
 {
@@ -100,7 +101,7 @@ public:
 
     if ( _ps.update_on_add )
     {
-      Ntk::events().on_add.push_back( [this]( auto const& n ) {
+      add_event = Ntk::events().create_add_event( [this]( auto const& n ) {
         _fanout.resize();
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].push_back( n );
@@ -110,7 +111,7 @@ public:
 
     if ( _ps.update_on_modified )
     {
-      Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
+      modified_event = Ntk::events().create_modified_event( [this]( auto const& n, auto const& previous ) {
         (void)previous;
         for ( auto const& f : previous ) {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
@@ -123,7 +124,7 @@ public:
 
     if ( _ps.update_on_delete )
     {
-      Ntk::events().on_delete.push_back( [this]( auto const& n ) {
+      delete_event = Ntk::events().create_delete_event( [this]( auto const& n ) {
         _fanout[n].clear();
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
@@ -145,7 +146,7 @@ public:
 
     if ( _ps.update_on_add )
     {
-      Ntk::events().on_add.push_back( [this]( auto const& n ) {
+      add_event = Ntk::events().create_add_event( [this]( auto const& n ) {
         _fanout.resize();
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].push_back( n );
@@ -155,7 +156,7 @@ public:
 
     if ( _ps.update_on_modified )
     {
-      Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
+      modified_event = Ntk::events().create_modified_event( [this]( auto const& n, auto const& previous ) {
         (void)previous;
         for ( auto const& f : previous ) {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
@@ -168,12 +169,30 @@ public:
 
     if ( _ps.update_on_delete )
     {
-      Ntk::events().on_delete.push_back( [this]( auto const& n ) {
+      delete_event = Ntk::events().create_delete_event( [this]( auto const& n ) {
         _fanout[n].clear();
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
         } );
       } );
+    }
+  }
+
+  virtual ~fanout_view()
+  {
+    if ( add_event )
+    {
+      Ntk::events().remove_add_event( add_event );
+    }
+
+    if ( modified_event )
+    {
+      Ntk::events().remove_modified_event( modified_event );
+    }
+
+    if ( delete_event )
+    {
+      Ntk::events().remove_delete_event( delete_event );
     }
   }
 
@@ -239,6 +258,10 @@ private:
 
   node_map<std::vector<node>, Ntk> _fanout;
   fanout_view_params _ps;
+
+  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
+  std::shared_ptr<typename network_events<Ntk>::modified_event_type> modified_event;
+  std::shared_ptr<typename network_events<Ntk>::delete_event_type> delete_event;
 };
 
 template<class T>
