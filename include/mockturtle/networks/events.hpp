@@ -82,8 +82,8 @@ public:
   void remove_add_event( std::shared_ptr<add_event_type> const& fn )
   {
     on_add.erase( std::remove_if( std::begin( on_add ), std::end( on_add ),
-                                  [&]( auto event ){
-                                    return event == fn; } ),
+                                  [&]( auto&& event ){
+                                    return event == fn && event.use_count() <= 2u; } ),
                   std::end( on_add ) );
   }
 
@@ -91,7 +91,7 @@ public:
   {
     on_modified.erase( std::remove_if( std::begin( on_modified ), std::end( on_modified ),
                                   [&]( auto event ){
-                                    return event == fn; } ),
+                                    return event == fn && event.use_count() <= 2u; } ),
                        std::end( on_modified ) );
   }
 
@@ -99,7 +99,7 @@ public:
   {
     on_delete.erase( std::remove_if( std::begin( on_delete ), std::end( on_delete ),
                                   [&]( auto event ){
-                                    return event == fn; } ),
+                                    return event == fn && event.use_count() <= 2u; } ),
                        std::end( on_delete ) );
   }
 
