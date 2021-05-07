@@ -147,6 +147,51 @@ public:
     release_events();
   }
 
+  template<typename Fn>
+  void foreach_fanout( node const& n, Fn&& fn ) const
+  {
+    assert( n < this->size() );
+    detail::foreach_element( _fanout[n].begin(), _fanout[n].end(), fn );
+  }
+
+  void update_fanout()
+  {
+    compute_fanout();
+  }
+
+  std::vector<node> fanout( node const& n ) const /* deprecated */
+  {
+    return _fanout[n];
+  }
+
+  void substitute_node( node const& old_node, signal const& new_signal )
+  {
+    std::stack<std::pair<node, signal>> to_substitute;
+    to_substitute.push( {old_node, new_signal} );
+
+    while ( !to_substitute.empty() )
+    {
+      const auto [_old, _new] = to_substitute.top();
+      to_substitute.pop();
+
+      const auto parents = _fanout[_old];
+      for ( auto n : parents )
+      {
+        if ( const auto repl = Ntk::replace_in_node( n, _old, _new ); repl )
+        {
+          to_substitute.push( *repl );
+        }
+      }
+
+      /* check outputs */
+      Ntk::replace_in_outputs( _old, _new );
+
+      /* reset fan-in of old node */
+      Ntk::take_out_node( _old );
+    }
+  }
+
+private:
   void register_events()
   {
     if ( _ps.update_on_add )
@@ -201,51 +246,6 @@ public:
     }
   }
 
-  template<typename Fn>
-  void foreach_fanout( node const& n, Fn&& fn ) const
-  {
-    assert( n < this->size() );
-    detail::foreach_element( _fanout[n].begin(), _fanout[n].end(), fn );
-  }
-
-  void update_fanout()
-  {
-    compute_fanout();
-  }
-
-  std::vector<node> fanout( node const& n ) const /* deprecated */
-  {
-    return _fanout[n];
-  }
-
-  void substitute_node( node const& old_node, signal const& new_signal )
-  {
-    std::stack<std::pair<node, signal>> to_substitute;
-    to_substitute.push( {old_node, new_signal} );
-
-    while ( !to_substitute.empty() )
-    {
-      const auto [_old, _new] = to_substitute.top();
-      to_substitute.pop();
-
-      const auto parents = _fanout[_old];
-      for ( auto n : parents )
-      {
-        if ( const auto repl = Ntk::replace_in_node( n, _old, _new ); repl )
-        {
-          to_substitute.push( *repl );
-        }
-      }
-
-      /* check outputs */
-      Ntk::replace_in_outputs( _old, _new );
-
-      /* reset fan-in of old node */
-      Ntk::take_out_node( _old );
-    }
-  }
-
-private:
   void compute_fanout()
   {
     _fanout.reset();
