@@ -362,7 +362,7 @@ public:
     vps.conflict_limit = ps.conflict_limit;
     vps.random_seed = ps.random_seed;
 
-    add_event = ntk.events().create_add_event( [&]( const auto& n ) {
+    add_event = ntk.events().register_add_event( [&]( const auto& n ) {
       call_with_stopwatch( st.time_sim, [&]() {
         simulate_node<Ntk>( ntk, n, tts, sim );
       });
@@ -380,7 +380,7 @@ public:
 
     if ( add_event )
     {
-      ntk.events().remove_add_event( add_event );
+      ntk.events().release_add_event( add_event );
     }
   }
 

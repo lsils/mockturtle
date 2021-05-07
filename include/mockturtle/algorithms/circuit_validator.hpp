@@ -118,7 +118,7 @@ public:
       static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
     }
 
-    add_event = ntk.events().create_add_event( [&]( node const& n ) {
+    add_event = ntk.events().register_add_event( [&]( node const& n ) {
       (void)n;
       literals.resize();
     } );
@@ -140,7 +140,7 @@ public:
 
   ~circuit_validator()
   {
-    ntk.events().remove_add_event( add_event );
+    ntk.events().release_add_event( add_event );
   }
 
   /*! \brief Validate functional equivalence of signals `f` and `d`. */

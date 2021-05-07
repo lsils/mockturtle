@@ -632,9 +632,9 @@ public:
 
   ~resubstitution_impl()
   {
-    ntk.events().remove_add_event( add_event );
-    ntk.events().remove_modified_event( modified_event );
-    ntk.events().remove_delete_event( delete_event );
+    ntk.events().release_add_event( add_event );
+    ntk.events().release_modified_event( modified_event );
+    ntk.events().release_delete_event( delete_event );
   }
 
   void run( resub_callback_t const& callback = substitute_fn<Ntk> )
@@ -720,9 +720,9 @@ private:
       ntk.set_level( n, -1 );
     };
 
-    add_event = ntk.events().create_add_event( update_level_of_new_node );
-    modified_event = ntk.events().create_modified_event( update_level_of_existing_node );
-    delete_event = ntk.events().create_delete_event( update_level_of_deleted_node );
+    add_event = ntk.events().register_add_event( update_level_of_new_node );
+    modified_event = ntk.events().register_modified_event( update_level_of_existing_node );
+    delete_event = ntk.events().register_delete_event( update_level_of_deleted_node );
   }
 
   /* maybe should move to depth_view */

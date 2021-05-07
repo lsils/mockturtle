@@ -175,7 +175,7 @@ TEST_CASE( "destructor", "[cnf_view]" )
 
   {
     cnf_view view( mig );
-    auto add_event = mig.events().create_add_event( []( auto const& n ) { (void)n; } );
+    auto add_event = mig.events().register_add_event( []( auto const& n ) { (void)n; } );
   }
   
   CHECK( mig.events().on_add.size() == 1 );

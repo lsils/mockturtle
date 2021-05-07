@@ -272,15 +272,15 @@ public:
   {
     if ( add_event )
     {
-      Ntk::events().remove_add_event( add_event );
+      Ntk::events().release_add_event( add_event );
     }
     if ( modified_event )
     {
-      Ntk::events().remove_modified_event( modified_event );
+      Ntk::events().release_modified_event( modified_event );
     }
     if ( delete_event )
     {
-      Ntk::events().remove_delete_event( delete_event );
+      Ntk::events().release_delete_event( delete_event );
     }
   }
 
@@ -502,8 +502,8 @@ public:
 private:
   void register_events()
   {
-    add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
-    modified_event = Ntk::events().create_modified_event( [this]( auto const& n, auto const& previous ) {
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+    modified_event = Ntk::events().register_modified_event( [this]( auto const& n, auto const& previous ) {
       (void)previous;
       if constexpr ( AllowModify )
       {
@@ -519,7 +519,7 @@ private:
       assert( false && "nodes should not be modified in cnf_view" );
       std::abort();
     } );
-    delete_event = Ntk::events().create_delete_event( [this]( auto const& n ) {
+    delete_event = Ntk::events().register_delete_event( [this]( auto const& n ) {
       if constexpr ( AllowModify )
       {
         if ( ps_.auto_update )
@@ -644,7 +644,7 @@ private:
     {
       if ( Ntk::is_nary_and( n ) )
       {
-        fmt::print( "[e] nary-AND not yet supported in generate_cnf" );
+        fmt::print( stderr, "[e] nary-AND not yet supported in generate_cnf" );
         std::abort();
         return;
       }
@@ -654,7 +654,7 @@ private:
     {
       if ( Ntk::is_nary_or( n ) )
       {
-        fmt::print( "[e] nary-OR not yet supported in generate_cnf" );
+        fmt::print( stderr, "[e] nary-OR not yet supported in generate_cnf" );
         std::abort();
         return;
       }
@@ -664,7 +664,7 @@ private:
     {
       if ( Ntk::is_nary_xor( n ) )
       {
-        fmt::print( "[e] nary-XOR not yet supported in generate_cnf" );
+        fmt::print( stderr, "[e] nary-XOR not yet supported in generate_cnf" );
         std::abort();
         return;
       }
