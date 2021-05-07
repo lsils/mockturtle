@@ -693,7 +693,7 @@ private:
 private:
   Ntk const& ntk;
 
-  validator_params const& ps;
+  validator_params const ps;
 
   node_map<bill::lit_type, Ntk> literals;
   unordered_node_map<bool, Ntk> constructed;
