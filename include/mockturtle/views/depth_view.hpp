@@ -170,7 +170,7 @@ public:
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  depth_view<Ntk, NodeCostFn, false> operator=( depth_view<Ntk, NodeCostFn, false> const& other )
+  depth_view<Ntk, NodeCostFn, false>& operator=( depth_view<Ntk, NodeCostFn, false> const& other )
   {
     /* delete the event of this network */
     Ntk::events().release_add_event( add_event );

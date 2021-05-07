@@ -125,7 +125,7 @@ public:
     register_events();
   }
 
-  fanout_view<Ntk, false> operator=( fanout_view<Ntk, false> const& other )
+  fanout_view<Ntk, false>& operator=( fanout_view<Ntk, false> const& other )
   {
     release_events();
 
