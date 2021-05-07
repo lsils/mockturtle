@@ -7,6 +7,12 @@
 namespace mockturtle
 {
 
+template<typename T>
+inline uint16_t ptr_cast( T *ptr )
+{
+  return uint64_t( ptr ) & 0xffff;
+}
+
 template<typename Ntk>
 class test_view : public Ntk
 {
@@ -15,26 +21,26 @@ public:
     : Ntk()
   {
     fmt::print( "[i] construct test_view 0x...{:x} without network\n",
-                uint64_t( this ) & 0xffff );
+                ptr_cast( this ) );
   }
 
   explicit test_view( Ntk const& ntk )
     : Ntk( ntk )
   {
     fmt::print( "[i] construct test_view 0x...{:x} from network 0x...{:x}\n",
-                uint64_t( this ) & 0xffff, uint64_t( &ntk ) & 0xffff );
+                ptr_cast( this ), ptr_cast( &ntk ) );
   }
 
   explicit test_view( test_view<Ntk> const& other )
     : Ntk( other )
   {
     fmt::print( "[i] copy-construct test_view 0x...{:x} from 0x...{:x}\n",
-                uint64_t( this ) & 0xffff, uint64_t( &other ) & 0xffff );
+                ptr_cast( this ), ptr_cast( &other ) );
   }
 
   ~test_view()
   {
-    fmt::print( "[i] destory test_view 0x...{:x}\n", uint64_t( this ) & 0xffff );
+    fmt::print( "[i] destory test_view 0x...{:x}\n", ptr_cast( this ) );
   }
 };
 
@@ -47,7 +53,7 @@ public:
     , map_( *this )
   {
     fmt::print( "[i] construct test_view2 0x...{:x} without network\n",
-                uint64_t( this ) & 0xffff );
+                ptr_cast( this ) );
   }
 
   explicit test_view2( Ntk const& ntk )
@@ -55,7 +61,7 @@ public:
     , map_( ntk )
   {
     fmt::print( "[i] construct test_view2 0x...{:x} from network 0x...{:x}\n",
-                uint64_t( this ) & 0xffff, uint64_t( &ntk ) & 0xffff );
+                ptr_cast( this ), ptr_cast( &ntk ) );
   }
 
   explicit test_view2( test_view2<Ntk> const& other )
@@ -63,12 +69,12 @@ public:
     , map_( other.map_ )
   {
     fmt::print( "[i] copy-construct test_view2 0x...{:x} from 0x...{:x}\n",
-                uint64_t( this ) & 0xffff, uint64_t( &other ) & 0xffff );
+                ptr_cast( this ), ptr_cast( &other ) );
   }
 
   ~test_view2()
   {
-    fmt::print( "[i] destory test_view2 0x...{:x}\n", uint64_t( this ) & 0xffff );
+    fmt::print( "[i] destory test_view2 0x...{:x}\n", ptr_cast( this ) );
   }
 
 public:
@@ -84,7 +90,7 @@ public:
     , map_( *this )
   {
     fmt::print( "[i] construct test_view3 0x...{:x} without network\n",
-                uint64_t( this ) & 0xffff );
+                ptr_cast( this ) );
     auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
     event = this->events().create_add_event( fn );
   }
@@ -94,7 +100,7 @@ public:
     , map_( ntk )
   {
     fmt::print( "[i] construct test_view3 0x...{:x} from network 0x...{:x}\n",
-                uint64_t( this ) & 0xffff, uint64_t( &ntk ) & 0xffff );
+                ptr_cast( this ), ptr_cast( &ntk ) );
     auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
     event = ntk.events().create_add_event( fn );
   }
@@ -104,7 +110,7 @@ public:
     , map_( other.map_ )
   {
     fmt::print( "[i] copy-construct test_view3 0x...{:x} from 0x...{:x}\n",
-                uint64_t( this ) & 0xffff, uint64_t( &other ) & 0xffff );
+                ptr_cast( this ), ptr_cast( &other ) );
     auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
     event = this->events().create_add_event( fn );
   }
@@ -112,7 +118,7 @@ public:
   test_view3<Ntk>& operator=( test_view3<Ntk> const& other )
   {
     fmt::print( "[i] copy-assign to test_view3 0x...{:x} from test_view3 0x...{:x}\n",
-                uint64_t( this ) & 0xffff, uint64_t( &other ) & 0xffff );
+                ptr_cast( this ), ptr_cast( &other ) );
 
     /* delete the event of this network */
     this->events().remove_add_event( event );
@@ -132,13 +138,14 @@ public:
 
   ~test_view3()
   {
-    fmt::print( "[i] destory test_view3 0x...{:x}\n", uint64_t( this ) & 0xffff );
+    fmt::print( "[i] destory test_view3 0x...{:x}\n", ptr_cast( this ) );
     this->events().remove_add_event( event );
   }
 
   void on_add( node<Ntk> const& n )
   {
-    fmt::print( "[i] test_view3 0x...{:x}: invoke on_add {}\n", uint64_t( this ) & 0xffff, n );
+    fmt::print( "[i] test_view3 0x...{:x}: invoke on_add {}\n",
+                ptr_cast( this ), n );
     map_.resize();
   }
 
@@ -394,18 +401,22 @@ TEST_CASE( "test_view3 move assignment", "[test_view3]" )
 TEST_CASE( "test_view3 interesting", "[depth_view]" )
 {
   fmt::print( "---------------------------------------------------------------------------\n" );
-  xag_network xag{};
-  {
-    test_view3<xag_network> txag_one{};
-    test_view3<xag_network> txag_two{};
+  xag_network xag_one{};
+  xag_network xag_two{};
 
-    auto tmp_one = new test_view3<xag_network>{xag};
+  {
+    test_view3<xag_network> txag_one{xag_one};
+    test_view3<xag_network> txag_two{xag_two};
+
+    auto tmp_one = new test_view3<xag_network>{xag_one};
     txag_one = *tmp_one;
     delete tmp_one;
 
-    auto tmp_two = new test_view3<xag_network>{xag};
+    auto tmp_two = new test_view3<xag_network>{xag_two};
     txag_two = *tmp_two;
     delete tmp_two;
   }
-  CHECK( xag.events().on_add.size() == 0 );
+
+  CHECK( xag_one.events().on_add.size() == 0 );
+  CHECK( xag_two.events().on_add.size() == 0 );
 }
