@@ -142,7 +142,7 @@ public:
     return *this;
   }
 
-  virtual ~fanout_view()
+  ~fanout_view()
   {
     release_events();
   }

@@ -191,7 +191,7 @@ public:
     return *this;
   }
 
-  virtual ~depth_view()
+  ~depth_view()
   {
     Ntk::events().release_add_event( add_event );
   }
