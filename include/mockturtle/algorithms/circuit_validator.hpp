@@ -143,6 +143,12 @@ public:
     ntk.events().release_add_event( add_event );
   }
 
+  /*! \brief Set ODC levels */
+  void set_odc_levels( uint32_t odc_levels )
+  {
+    ps.odc_levels = odc_levels;
+  }
+
   /*! \brief Validate functional equivalence of signals `f` and `d`. */
   std::optional<bool> validate( signal const& f, signal const& d )
   {
@@ -693,7 +699,7 @@ private:
 private:
   Ntk const& ntk;
 
-  validator_params const ps;
+  validator_params ps;
 
   node_map<bill::lit_type, Ntk> literals;
   unordered_node_map<bool, Ntk> constructed;
