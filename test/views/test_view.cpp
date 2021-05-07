@@ -92,7 +92,7 @@ public:
     fmt::print( "[i] construct test_view3 0x...{:x} without network\n",
                 ptr_cast( this ) );
     auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
-    event = this->events().create_add_event( fn );
+    event = this->events().register_add_event( fn );
   }
 
   explicit test_view3( Ntk const& ntk )
@@ -102,7 +102,7 @@ public:
     fmt::print( "[i] construct test_view3 0x...{:x} from network 0x...{:x}\n",
                 ptr_cast( this ), ptr_cast( &ntk ) );
     auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
-    event = ntk.events().create_add_event( fn );
+    event = ntk.events().register_add_event( fn );
   }
 
   explicit test_view3( test_view3<Ntk> const& other )
@@ -112,7 +112,7 @@ public:
     fmt::print( "[i] copy-construct test_view3 0x...{:x} from 0x...{:x}\n",
                 ptr_cast( this ), ptr_cast( &other ) );
     auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
-    event = this->events().create_add_event( fn );
+    event = this->events().register_add_event( fn );
   }
 
   test_view3<Ntk>& operator=( test_view3<Ntk> const& other )
@@ -121,7 +121,7 @@ public:
                 ptr_cast( this ), ptr_cast( &other ) );
 
     /* delete the event of this network */
-    this->events().remove_add_event( event );
+    this->events().release_add_event( event );
 
     /* update the base class */
     this->_storage = other._storage;
@@ -131,7 +131,7 @@ public:
 
     /* register new event in the other network */
     auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
-    event = this->events().create_add_event( fn );
+    event = this->events().register_add_event( fn );
 
     return *this;
   }
@@ -139,7 +139,7 @@ public:
   ~test_view3()
   {
     fmt::print( "[i] destory test_view3 0x...{:x}\n", ptr_cast( this ) );
-    this->events().remove_add_event( event );
+    this->events().release_add_event( event );
   }
 
   void on_add( node<Ntk> const& n )

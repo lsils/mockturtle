@@ -99,38 +99,7 @@ public:
 
     update_fanout();
 
-    if ( _ps.update_on_add )
-    {
-      add_event = Ntk::events().create_add_event( [this]( auto const& n ) {
-        _fanout.resize();
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].push_back( n );
-        } );
-      } );
-    }
-
-    if ( _ps.update_on_modified )
-    {
-      modified_event = Ntk::events().create_modified_event( [this]( auto const& n, auto const& previous ) {
-        (void)previous;
-        for ( auto const& f : previous ) {
-          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
-        }
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].push_back( n );
-        } );
-      } );
-    }
-
-    if ( _ps.update_on_delete )
-    {
-      delete_event = Ntk::events().create_delete_event( [this]( auto const& n ) {
-        _fanout[n].clear();
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
-        } );
-      } );
-    }
+    register_events();
   }
 
   explicit fanout_view( Ntk const& ntk, fanout_view_params const& ps = {} )
@@ -144,9 +113,45 @@ public:
 
     update_fanout();
 
+    register_events();
+  }
+
+  /*! \brief Copy constructor. */
+  fanout_view( fanout_view<Ntk, false> const& other )
+    : Ntk( other )
+    , _fanout( other._fanout )
+    , _ps( other._ps )
+  {
+    register_events();
+  }
+
+  fanout_view<Ntk, false> operator=( fanout_view<Ntk, false> const& other )
+  {
+    release_events();
+
+    /* update the base class */
+    this->_storage = other._storage;
+    this->_events = other._events;
+
+    /* copy */
+    _ps = other._ps;
+    _fanout = other._fanout;
+
+    register_events();
+
+    return *this;
+  }
+
+  virtual ~fanout_view()
+  {
+    release_events();
+  }
+
+  void register_events()
+  {
     if ( _ps.update_on_add )
     {
-      add_event = Ntk::events().create_add_event( [this]( auto const& n ) {
+      add_event = Ntk::events().register_add_event( [this]( auto const& n ) {
         _fanout.resize();
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].push_back( n );
@@ -156,7 +161,7 @@ public:
 
     if ( _ps.update_on_modified )
     {
-      modified_event = Ntk::events().create_modified_event( [this]( auto const& n, auto const& previous ) {
+      modified_event = Ntk::events().register_modified_event( [this]( auto const& n, auto const& previous ) {
         (void)previous;
         for ( auto const& f : previous ) {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
@@ -169,7 +174,7 @@ public:
 
     if ( _ps.update_on_delete )
     {
-      delete_event = Ntk::events().create_delete_event( [this]( auto const& n ) {
+      delete_event = Ntk::events().register_delete_event( [this]( auto const& n ) {
         _fanout[n].clear();
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
@@ -178,21 +183,21 @@ public:
     }
   }
 
-  virtual ~fanout_view()
+  void release_events()
   {
     if ( add_event )
     {
-      Ntk::events().remove_add_event( add_event );
+      Ntk::events().release_add_event( add_event );
     }
 
     if ( modified_event )
     {
-      Ntk::events().remove_modified_event( modified_event );
+      Ntk::events().release_modified_event( modified_event );
     }
 
     if ( delete_event )
     {
-      Ntk::events().remove_delete_event( delete_event );
+      Ntk::events().release_delete_event( delete_event );
     }
   }
 

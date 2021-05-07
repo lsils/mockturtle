@@ -642,7 +642,7 @@ public:
 
     /* register event to delete substitutions if their right-hand side
        nodes get deleted */
-    auto clean_sub_event = _events->create_delete_event( clean_substitutions );
+    auto clean_sub_event = _events->register_delete_event( clean_substitutions );
 
     /* increment fanout_size of all signals to be used in
        substitutions to ensure that they will not be deleted */
@@ -699,7 +699,7 @@ public:
       decr_fanout_size( get_node( new_signal ) );
     }
 
-    _events->remove_delete_event( clean_sub_event );
+    _events->release_delete_event( clean_sub_event );
   }
 #pragma endregion
 

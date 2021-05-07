@@ -130,13 +130,12 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   /*! \brief Standard constructor.
    *
    * \param ntk Base network
-   * \param count_complements Count inverters as 1
    */
   explicit depth_view( Ntk const& ntk, NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
     : Ntk( ntk )
@@ -156,9 +155,10 @@ public:
 
     update_levels();
 
-    add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
+  /*! \brief Copy constructor. */
   depth_view( depth_view<Ntk, NodeCostFn, false> const& other )
     : Ntk( other )
     , _ps( other._ps )
@@ -166,16 +166,35 @@ public:
     , _crit_path( other._crit_path )
     , _cost_fn( other._cost_fn )
   {
-    add_event = Ntk::events().create_add_event( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+  }
+
+  depth_view<Ntk, NodeCostFn, false> operator=( depth_view<Ntk, NodeCostFn, false> const& other )
+  {
+    /* delete the event of this network */
+    Ntk::events().release_add_event( add_event );
+
+    /* update the base class */
+    this->_storage = other._storage;
+    this->_events = other._events;
+
+    /* copy */
+    _ps = other._ps;
+    _levels = other._levels;
+    _crit_path = other._crit_path;
+    _depth = other._depth;
+    _cost_fn = other._cost_fn;
+
+    /* register new event in the other network */
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+
+    return *this;
   }
 
   virtual ~depth_view()
   {
-    Ntk::events().remove_add_event( add_event );
+    Ntk::events().release_add_event( add_event );
   }
-
-  // We should add these or make sure that members are properly copied
-  //depth_view<Ntk> operator=( depth_view<Ntk> const& ) = delete;
 
   uint32_t depth() const
   {

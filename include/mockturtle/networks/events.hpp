@@ -58,48 +58,63 @@ public:
   using delete_event_type = std::function<void( node<Ntk> const& n )>;
 
 public:
-  std::shared_ptr<add_event_type> create_add_event( add_event_type const& fn )
+  std::shared_ptr<add_event_type> register_add_event( add_event_type const& fn )
   {
     auto pfn = std::make_shared<add_event_type>( fn );
     on_add.emplace_back( pfn );
     return pfn;
   }
 
-  std::shared_ptr<modified_event_type> create_modified_event( modified_event_type const& fn )
+  std::shared_ptr<modified_event_type> register_modified_event( modified_event_type const& fn )
   {
     auto pfn = std::make_shared<modified_event_type>( fn );
     on_modified.emplace_back( pfn );
     return pfn;
   }
 
-  std::shared_ptr<delete_event_type> create_delete_event( delete_event_type const& fn )
+  std::shared_ptr<delete_event_type> register_delete_event( delete_event_type const& fn )
   {
     auto pfn = std::make_shared<delete_event_type>( fn );
     on_delete.emplace_back( pfn );
     return pfn;
   }
 
-  void remove_add_event( std::shared_ptr<add_event_type> const& fn )
+  void release_add_event( std::shared_ptr<add_event_type>& fn )
   {
+    /* first decrement the reference counter of the event */
+    auto fn_ptr = fn.get();
+    fn = nullptr;
+
+    /* erase the event if the only instance remains in the vector */
     on_add.erase( std::remove_if( std::begin( on_add ), std::end( on_add ),
                                   [&]( auto&& event ){
-                                    return event == fn && event.use_count() <= 2u; } ),
+                                    return event.get() == fn_ptr && event.use_count() <= 1u; } ),
                   std::end( on_add ) );
   }
 
-  void remove_modified_event( std::shared_ptr<modified_event_type> const& fn )
+  void release_modified_event( std::shared_ptr<modified_event_type>& fn )
   {
+    /* first decrement the reference counter of the event */
+    auto fn_ptr = fn.get();
+    fn = nullptr;
+
+    /* erase the event if the only instance remains in the vector */
     on_modified.erase( std::remove_if( std::begin( on_modified ), std::end( on_modified ),
                                   [&]( auto event ){
-                                    return event == fn && event.use_count() <= 2u; } ),
+                                    return event.get() == fn_ptr && event.use_count() <= 1u; } ),
                        std::end( on_modified ) );
   }
 
-  void remove_delete_event( std::shared_ptr<delete_event_type> const& fn )
+  void release_delete_event( std::shared_ptr<delete_event_type>& fn )
   {
+    /* first decrement the reference counter of the event */
+    auto fn_ptr = fn.get();
+    fn = nullptr;
+
+    /* erase the event if the only instance remains in the vector */
     on_delete.erase( std::remove_if( std::begin( on_delete ), std::end( on_delete ),
                                   [&]( auto event ){
-                                    return event == fn && event.use_count() <= 2u; } ),
+                                    return event.get() == fn_ptr && event.use_count() <= 1u; } ),
                        std::end( on_delete ) );
   }
 
