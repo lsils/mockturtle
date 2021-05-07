@@ -85,13 +85,16 @@ template<typename Ntk>
 class test_view3 : public Ntk
 {
 public:
+  using node = typename Ntk::node;
+
+public:
   explicit test_view3()
     : Ntk()
     , map_( *this )
   {
     fmt::print( "[i] construct test_view3 0x...{:x} without network\n",
                 ptr_cast( this ) );
-    auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
+    auto fn = [&]( node const& n ){ on_add( n ); };
     event = this->events().register_add_event( fn );
   }
 
@@ -101,7 +104,7 @@ public:
   {
     fmt::print( "[i] construct test_view3 0x...{:x} from network 0x...{:x}\n",
                 ptr_cast( this ), ptr_cast( &ntk ) );
-    auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
+    auto fn = [&]( node const& n ){ on_add( n ); };
     event = ntk.events().register_add_event( fn );
   }
 
@@ -111,7 +114,7 @@ public:
   {
     fmt::print( "[i] copy-construct test_view3 0x...{:x} from 0x...{:x}\n",
                 ptr_cast( this ), ptr_cast( &other ) );
-    auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
+    auto fn = [&]( node const& n ){ on_add( n ); };
     event = this->events().register_add_event( fn );
   }
 
@@ -130,7 +133,7 @@ public:
     map_ = other.map_;
 
     /* register new event in the other network */
-    auto fn = [&]( node<Ntk> const& n ){ on_add( n ); };
+    auto fn = [&]( node const& n ){ on_add( n ); };
     event = this->events().register_add_event( fn );
 
     return *this;
@@ -142,7 +145,7 @@ public:
     this->events().release_add_event( event );
   }
 
-  void on_add( node<Ntk> const& n )
+  void on_add( node const& n )
   {
     fmt::print( "[i] test_view3 0x...{:x}: invoke on_add {}\n",
                 ptr_cast( this ), n );
