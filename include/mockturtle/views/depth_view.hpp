@@ -159,11 +159,12 @@ public:
   }
 
   /*! \brief Copy constructor. */
-  depth_view( depth_view<Ntk, NodeCostFn, false> const& other )
+  explicit depth_view( depth_view<Ntk, NodeCostFn, false> const& other )
     : Ntk( other )
     , _ps( other._ps )
     , _levels( other._levels )
     , _crit_path( other._crit_path )
+    , _depth( other._depth )
     , _cost_fn( other._cost_fn )
   {
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
