@@ -100,6 +100,9 @@ struct resubstitution_params
   /*! \brief Whether to save the appended patterns (with CEXs) into file. Only used by simulation-based resub engine. */
   std::optional<std::string> save_patterns{};
 
+  /*! \brief Maximum number of clauses of the SAT solver. Only used by simulation-based resub engine. */
+  uint32_t max_clauses{1000};
+
   /*! \brief Conflict limit for the SAT solver. Only used by simulation-based resub engine. */
   uint32_t conflict_limit{1000};
 

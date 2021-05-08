@@ -348,19 +348,12 @@ public:
   using TT = kitty::partial_truth_table;
 
   explicit simulation_based_resub_engine( Ntk& ntk, resubstitution_params const& ps, stats& st )
-      : ntk( ntk ), ps( ps ), st( st ), tts( ntk ), validator( ntk, vps )
+      : ntk( ntk ), ps( ps ), st( st ), tts( ntk ), validator( ntk, {ps.max_clauses, ps.odc_levels, ps.conflict_limit, ps.random_seed} )
   {
     if constexpr ( !validator_t::use_odc_ )
     {
       assert( ps.odc_levels == 0 && "to consider ODCs, circuit_validator::use_odc (the last template parameter) has to be turned on" );
     }
-    else
-    {
-      vps.odc_levels = ps.odc_levels;
-    }
-
-    vps.conflict_limit = ps.conflict_limit;
-    vps.random_seed = ps.random_seed;
 
     add_event = ntk.events().register_add_event( [&]( const auto& n ) {
       call_with_stopwatch( st.time_sim, [&]() {
@@ -506,7 +499,6 @@ private:
   unordered_node_map<TT, Ntk> tts;
   partial_simulator sim;
 
-  validator_params vps;
   validator_t validator;
 
   /* events */
