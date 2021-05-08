@@ -173,7 +173,9 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
     depth_view depth_ntk{ntk};
     const auto before = depth_ntk.depth();
-    mig_algebraic_depth_rewriting( depth_ntk );
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::dfs;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
     ntk = cleanup_dangling( ntk );
     depth_view depth_ntk2( ntk );
     return before - depth_ntk2.depth();
@@ -189,6 +191,7 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase"
     const auto size_before = ntk.num_gates();
     const auto before = depth_ntk.depth();
     mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::dfs;
     ps.allow_area_increase = false;
     mig_algebraic_depth_rewriting( depth_ntk, ps );
     ntk = cleanup_dangling( ntk );
@@ -198,6 +201,76 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase"
   } );
 
   CHECK( v == std::vector<uint32_t>{{0, 1, 0, 5, 0, 0, 2, 6, 3, 0, 6}} );
+}
+
+TEST_CASE( "Test quality of selective MIG algebraic depth rewriting", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::selective;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
+    ntk = cleanup_dangling( ntk );
+    depth_view depth_ntk2( ntk );
+    return before - depth_ntk2.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 4, 3, 11, 4, 3, 2, 12, 8, 38, 7}} );
+}
+
+TEST_CASE( "Test quality of selective MIG algebraic depth rewriting without area increase", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto size_before = ntk.num_gates();
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::selective;
+    ps.allow_area_increase = false;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
+    ntk = cleanup_dangling( ntk );
+    depth_view depth_ntk2( ntk );
+    CHECK( ntk.num_gates() <= size_before );
+    return before - depth_ntk2.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 1, 0, 5, 0, 0, 2, 6, 5, 0, 6}} );
+}
+
+TEST_CASE( "Test quality of aggressive MIG algebraic depth rewriting", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::aggressive;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
+    ntk = cleanup_dangling( ntk );
+    depth_view depth_ntk2( ntk );
+    return before - depth_ntk2.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 4, 3, 10, 4, 4, 3, 12, 9, 44, 8}} );
+}
+
+TEST_CASE( "Test quality of aggressive MIG algebraic depth rewriting without area increase", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto size_before = ntk.num_gates();
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::aggressive;
+    ps.allow_area_increase = false;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
+    ntk = cleanup_dangling( ntk );
+    depth_view depth_ntk2( ntk );
+    CHECK( ntk.num_gates() <= size_before );
+    return before - depth_ntk2.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 1, 0, 5, 0, 0, 2, 6, 5, 0, 6}} );
 }
 
 TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[quality]" )

@@ -81,3 +81,61 @@ TEST_CASE( "MIG depth optimization with distributivity", "[mig_algebraic_rewriti
 
   CHECK( depth_mig.depth() == 2 );
 }
+
+TEST_CASE( "MIG selective depth optimization", "[mig_algebraic_rewriting]" )
+{
+  mig_network mig;
+
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto c = mig.create_pi();
+  const auto d = mig.create_pi();
+  const auto e = mig.create_pi();
+  const auto f = mig.create_pi();
+  const auto g = mig.create_pi();
+
+  const auto f1 = mig.create_maj( e, f, g );
+  const auto f2 = mig.create_maj( c, d, f1 );
+  const auto f3 = mig.create_maj( a, b, f2 );
+
+  mig.create_po( f3 );
+
+  depth_view depth_mig{mig};
+  mig_algebraic_depth_rewriting_params ps;
+  ps.strategy = mig_algebraic_depth_rewriting_params::selective;
+
+  CHECK( depth_mig.depth() == 3 );
+
+  mig_algebraic_depth_rewriting( depth_mig, ps );
+
+  CHECK( depth_mig.depth() == 2 );
+}
+
+TEST_CASE( "MIG aggressive depth optimization", "[mig_algebraic_rewriting]" )
+{
+  mig_network mig;
+
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto c = mig.create_pi();
+  const auto d = mig.create_pi();
+  const auto e = mig.create_pi();
+  const auto f = mig.create_pi();
+  const auto g = mig.create_pi();
+
+  const auto f1 = mig.create_maj( e, f, g );
+  const auto f2 = mig.create_maj( c, d, f1 );
+  const auto f3 = mig.create_maj( a, b, f2 );
+
+  mig.create_po( f3 );
+
+  depth_view depth_mig{mig};
+  mig_algebraic_depth_rewriting_params ps;
+  ps.strategy = mig_algebraic_depth_rewriting_params::aggressive;
+
+  CHECK( depth_mig.depth() == 3 );
+
+  mig_algebraic_depth_rewriting( depth_mig, ps );
+
+  CHECK( depth_mig.depth() == 2 );
+}
