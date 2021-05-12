@@ -9,6 +9,42 @@ on:
     - master
 
 jobs:
+  build-clang8:
+    runs-on: ubuntu-latest
+    name: Clang 8
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_CXX_COMPILER=clang++-8 -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests -s "~[quality]"
+  build-clang8-memtest:
+    runs-on: ubuntu-latest
+    name: Clang 8 (AddressSanitizer)
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_CXX_FLAGS_DEBUG="-g -fsanitize=address -fno-omit-frame-pointer" -DCMAKE_CXX_COMPILER=clang++-8 -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests -s "~[quality]"
   build-clang9:
     runs-on: ubuntu-latest
     name: Clang 9
@@ -26,10 +62,10 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/run_tests "~[quality]"
+        ./test/run_tests -s "~[quality]"
   build-clang9-memtest:
     runs-on: ubuntu-latest
-    name: Clang 9
+    name: Clang 9 (AddressSanitizer)
 
     steps:
     - uses: actions/checkout@v1
@@ -44,4 +80,40 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/run_tests "~[quality]"
+        ./test/run_tests -s "~[quality]"
+  build-clang10:
+    runs-on: ubuntu-latest
+    name: Clang 10
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_CXX_COMPILER=clang++-10 -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests -s "~[quality]"
+  build-clang10-memtest:
+    runs-on: ubuntu-latest
+    name: Clang 10 (AddressSanitizer)
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_CXX_FLAGS_DEBUG="-g -fsanitize=address -fno-omit-frame-pointer" -DCMAKE_CXX_COMPILER=clang++-10 -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests -s "~[quality]"
