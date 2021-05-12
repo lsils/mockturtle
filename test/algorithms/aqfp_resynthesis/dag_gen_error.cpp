@@ -18,6 +18,10 @@ void f1()
 
 TEST_CASE( "join a threads (without lambda)", "[thread]" )
 {
+  std::cout << __clang__ << std::endl;
+  std::cout << __clang_major__ << std::endl;
+  std::cout << __clang_minor__ << std::endl;
+  
   std::thread thread( f1 );
   if ( thread.joinable() )
   {
