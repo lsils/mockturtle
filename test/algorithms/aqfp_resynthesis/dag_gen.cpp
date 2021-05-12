@@ -199,7 +199,6 @@ TEST_CASE( "Sublist generation", "[aqfp_resyn]" )
   CHECK( t5 == s5 );
 }
 
-#if 0
 TEST_CASE( "DAG generation", "[aqfp_resyn]" )
 {
   using Ntk = mockturtle::aqfp_dag<>;
@@ -222,4 +221,3 @@ TEST_CASE( "DAG generation", "[aqfp_resyn]" )
 
   CHECK( generated_dags.size() == 3018u );
 }
-#endif
