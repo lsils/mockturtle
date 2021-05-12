@@ -25,6 +25,8 @@ TEST_CASE( "DAG generation", "[aqfp_resyn]" )
   params.allowed_num_fanins = { 3u, 5u };
   params.max_gates_of_fanin = { { 3u, 3u }, { 5u, 1u } };
 
+  params.verbose = true;
+
   std::vector<Ntk> generated_dags;
 
   mockturtle::dag_generator<> gen( params, 1u );
