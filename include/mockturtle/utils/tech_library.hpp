@@ -549,7 +549,7 @@ private:
 private:
   Ntk _database;
   RewritingFn const& _rewriting_fn;
-  exact_library_params const& _ps;
+  exact_library_params const _ps;
   lib_t _super_lib;
 };
 

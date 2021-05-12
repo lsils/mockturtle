@@ -646,7 +646,7 @@ public:
   }
 
 protected:
-  exact_xmg_resynthesis_params const& ps;
+  exact_xmg_resynthesis_params const ps;
 }; /* exact_xmg_resynthesis */
 
 } /* namespace mockturtle */

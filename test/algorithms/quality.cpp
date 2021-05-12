@@ -111,7 +111,7 @@ TEST_CASE( "Test quality of node resynthesis with NPN4 resynthesis", "[quality]"
   CHECK( v == std::vector<uint32_t>{{7, 176, 316, 300, 316, 299, 502, 929, 1319, 1061, 1418}} );
 }
 
-TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[quality]" )
+TEST_CASE( "Test quality improvement of MIG cut rewriting with compatibility graph and NPN4 resynthesis", "[quality]" )
 {
   // without zero gain
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {

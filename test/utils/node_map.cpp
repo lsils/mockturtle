@@ -165,6 +165,130 @@ void test_move_ctor()
   } );
 }
 
+template<typename Ntk>
+void test_copy_assign_vector()
+{
+  Ntk ntk;
+
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+
+  const auto [sum, carry] = full_adder( ntk, a, b, c );
+
+  ntk.create_po( sum );
+  ntk.create_po( carry );
+
+  node_map<uint32_t, Ntk, std::vector<uint32_t>> map{ntk};
+  CHECK( map.size() == ntk.size() );
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    map[n] = 42;
+  });
+
+  node_map<uint32_t, Ntk, std::vector<uint32_t>> another_map{ntk};
+  CHECK( another_map.size() == ntk.size() );
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    CHECK( another_map[n] == 0 );
+  });
+
+  another_map = map;
+
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    CHECK( another_map[n] == map[n] );
+  });
+}
+
+template<typename Ntk>
+void test_copy_assign_hash_map()
+{
+  Ntk ntk;
+
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+
+  const auto [sum, carry] = full_adder( ntk, a, b, c );
+
+  ntk.create_po( sum );
+  ntk.create_po( carry );
+
+  node_map<uint32_t, Ntk, std::unordered_map<node<Ntk>, uint32_t>> map{ntk};
+  CHECK( map.size() == 0 );
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    map[n] = 42;
+  });
+
+  node_map<uint32_t, Ntk, std::unordered_map<node<Ntk>, uint32_t>> another_map{ntk};
+  CHECK( another_map.size() == 0 );
+  another_map = map;
+
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    CHECK( another_map[n] == map[n] );
+  });
+}
+
+template<typename Ntk>
+void test_move_assign_vector()
+{
+  Ntk ntk;
+
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+
+  const auto [sum, carry] = full_adder( ntk, a, b, c );
+
+  ntk.create_po( sum );
+  ntk.create_po( carry );
+
+  node_map<uint32_t, Ntk, std::vector<uint32_t>> map{ntk};
+  CHECK( map.size() == ntk.size() );
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    map[n] = 42;
+  });
+
+  node_map<uint32_t, Ntk, std::vector<uint32_t>> another_map{ntk};
+  CHECK( another_map.size() == ntk.size() );
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    CHECK( another_map[n] == 0 );
+  });
+
+  another_map = std::move( map );
+
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    CHECK( another_map[n] == 42 );
+  });
+}
+
+template<typename Ntk>
+void test_move_assign_hash_map()
+{
+  Ntk ntk;
+
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+
+  const auto [sum, carry] = full_adder( ntk, a, b, c );
+
+  ntk.create_po( sum );
+  ntk.create_po( carry );
+
+  node_map<uint32_t, Ntk, std::unordered_map<node<Ntk>, uint32_t>> map{ntk};
+  CHECK( map.size() == 0 );
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    map[n] = 42;
+  });
+
+  node_map<uint32_t, Ntk, std::unordered_map<node<Ntk>, uint32_t>> another_map{ntk};
+  CHECK( another_map.size() == 0 );
+  another_map = std::move( map );
+
+  ntk.foreach_node( [&]( node<Ntk> const& n ){
+    CHECK( another_map[n] == 42 );
+  });
+}
+
 TEST_CASE( "create vector node map for full adder", "[node_map]" )
 {
   test_vector_node_map<aig_network>();
@@ -211,4 +335,34 @@ TEST_CASE( "Move construction", "[node_map]" )
   test_move_ctor<xag_network, std::unordered_map<node<xag_network>, uint32_t>>();
   test_move_ctor<xmg_network, std::unordered_map<node<xmg_network>, uint32_t>>();
   test_move_ctor<klut_network, std::unordered_map<node<klut_network>, uint32_t>>();
+}
+
+TEST_CASE( "Copy assignment", "[node_map]" )
+{
+  test_copy_assign_vector<aig_network>();
+  test_copy_assign_vector<mig_network>();
+  test_copy_assign_vector<xag_network>();
+  test_copy_assign_vector<xmg_network>();
+  test_copy_assign_vector<klut_network>();
+
+  test_copy_assign_hash_map<aig_network>();
+  test_copy_assign_hash_map<mig_network>();
+  test_copy_assign_hash_map<xag_network>();
+  test_copy_assign_hash_map<xmg_network>();
+  test_copy_assign_hash_map<klut_network>();
+}
+
+TEST_CASE( "Move assignment", "[node_map]" )
+{
+  test_move_assign_vector<aig_network>();
+  test_move_assign_vector<mig_network>();
+  test_move_assign_vector<xag_network>();
+  test_move_assign_vector<xmg_network>();
+  test_move_assign_vector<klut_network>();
+
+  test_move_assign_hash_map<aig_network>();
+  test_move_assign_hash_map<mig_network>();
+  test_move_assign_hash_map<xag_network>();
+  test_move_assign_hash_map<xmg_network>();
+  test_move_assign_hash_map<klut_network>();
 }
