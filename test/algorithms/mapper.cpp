@@ -34,7 +34,6 @@ TEST_CASE( "Map of MAJ3", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -65,7 +64,6 @@ TEST_CASE( "Map of bad MAJ3 and constant output", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -97,7 +95,6 @@ TEST_CASE( "Map of full adder", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -133,7 +130,6 @@ TEST_CASE( "Map with inverters", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -170,7 +166,6 @@ TEST_CASE( "Map for inverters minimization", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );
@@ -205,7 +200,6 @@ TEST_CASE( "Map of buffer and constant outputs", "[mapper]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-
   CHECK( result == lorina::return_code::success );
 
   tech_library<3> lib( gates );

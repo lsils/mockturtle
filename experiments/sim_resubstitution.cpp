@@ -46,7 +46,10 @@ int main()
   {
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
-    lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
+    {
+      continue;
+    }
 
     resubstitution_params ps;
     resubstitution_stats st;

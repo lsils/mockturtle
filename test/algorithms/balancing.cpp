@@ -44,3 +44,43 @@ TEST_CASE( "Rebalance XAG adder using ESOP balancing", "[balancing]" )
   xag = balancing( xag, {esop_rebalancing<xag_network>{}} );
   CHECK( depth_view{xag}.depth() == 22u );
 }
+
+TEST_CASE( "Rebalance XAG adder using ESOP balancing with SPP optimization", "[balancing]" )
+{
+  xag_network xag;
+  std::vector<xag_network::signal> as( 8u ), bs( 8u );
+  std::generate( as.begin(), as.end(), [&]() { return xag.create_pi(); });
+  std::generate( bs.begin(), bs.end(), [&]() { return xag.create_pi(); });
+  auto carry = xag.get_constant( false );
+  carry_ripple_adder_inplace( xag, as, bs, carry );
+  std::for_each( as.begin(), as.end(), [&]( auto const& f ) { xag.create_po( f ); });
+
+  CHECK( depth_view{xag}.depth() == 22u );
+
+  esop_rebalancing<xag_network> esop{};
+  esop.spp_optimization = true;
+
+  rebalancing_function_t<xag_network> balancing_fn{esop};
+  xag = balancing( xag, balancing_fn );
+  CHECK( depth_view{xag}.depth() == 22u );
+}
+
+TEST_CASE( "Rebalance XAG adder using ESOP balancing with MUX optimization", "[balancing]" )
+{
+  xag_network xag;
+  std::vector<xag_network::signal> as( 8u ), bs( 8u );
+  std::generate( as.begin(), as.end(), [&]() { return xag.create_pi(); });
+  std::generate( bs.begin(), bs.end(), [&]() { return xag.create_pi(); });
+  auto carry = xag.get_constant( false );
+  carry_ripple_adder_inplace( xag, as, bs, carry );
+  std::for_each( as.begin(), as.end(), [&]( auto const& f ) { xag.create_po( f ); });
+
+  CHECK( depth_view{xag}.depth() == 22u );
+
+  esop_rebalancing<xag_network> esop{};
+  esop.mux_optimization = true;
+
+  rebalancing_function_t<xag_network> balancing_fn{esop};
+  xag = balancing( xag, balancing_fn );
+  CHECK( depth_view{xag}.depth() == 28u );
+}

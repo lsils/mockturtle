@@ -147,16 +147,18 @@ private:
     if ( tokens.size() < 4u )
     {
       if ( diag )
-        diag->report( diagnostic_level::error, fmt::format( "line `{}` has unexpected structure (expected `GATE <name> <area> <expression>;`)`",
-                                                            line ) );
+      {
+        diag->report( diag_id::ERR_GENLIB_UNEXPECTED_STRUCTURE ).add_argument( line );
+      }
       return false;
     }
 
     if ( tokens[0] != "GATE" )
     {
       if ( diag )
-        diag->report( diagnostic_level::error, fmt::format( "line `{}` does not start with keyword `GATE`",
-                                                            line ) );
+      {
+        diag->report( diag_id::ERR_GENLIB_GATE ).add_argument( line );
+      }
       return false;
     }
     auto const beg = tokens[3].find_first_of( "=" );
@@ -164,8 +166,9 @@ private:
     if ( beg == std::string::npos || end == std::string::npos )
     {
       if ( diag )
-        diag->report( diagnostic_level::error, fmt::format( "expression `{}` is not immediately terminated with `;``",
-                                                            tokens[3] ) );
+      {
+        diag->report( diag_id::ERR_GENLIB_EXPRESSION ).add_argument( tokens[3] );
+      }
       return false;
     }
 
@@ -182,8 +185,9 @@ private:
       if ( tokens[i] != "PIN" )
       {
         if ( diag )
-          diag->report( diagnostic_level::error, fmt::format( "unexpected `{}` token (expected `PIN`)",
-                                                              tokens[i] ) );
+        {
+          diag->report( diag_id::ERR_GENLIB_PIN ).add_argument( tokens[i] );
+        }
         return false;
       }
 
@@ -202,8 +206,9 @@ private:
         if ( tokens[i+2] != "UNKNOWN" )
         {
           if ( diag )
-            diag->report( diagnostic_level::warning, fmt::format( "unknown PIN phase type `{}` (expected `INV`, `NONINV`, or `UNKNOWN`)",
-                                                                  tokens[i+1] ) );
+          {
+            diag->report( diag_id::ERR_GENLIB_PIN_PHASE ).add_argument( tokens[i+1] );
+          }
         }
       }
 
@@ -220,8 +225,9 @@ private:
     if ( i != tokens.size() )
     {
       if ( diag )
-        diag->report( diagnostic_level::error, fmt::format( "parsing failed at token `{}`",
-                                                            tokens[i] ) );
+      {
+        diag->report( diag_id::ERR_GENLIB_FAILED ).add_argument( tokens[i] );
+      }
       return false;
     }
 
@@ -246,7 +252,7 @@ protected:
  * \param diag An optional diagnostic engine with callback methods for parse errors
  * \return Success if parsing has been successful, or parse error if parsing has failed
  */
-inline return_code read_genlib( std::istream& in, const genlib_reader& reader, diagnostic_engine* diag = nullptr )
+[[nodiscard]] inline return_code read_genlib( std::istream& in, const genlib_reader& reader, diagnostic_engine* diag = nullptr )
 {
   genlib_parser parser( in, reader, diag );
   auto result = parser.run();
@@ -270,15 +276,14 @@ inline return_code read_genlib( std::istream& in, const genlib_reader& reader, d
  * \param diag An optional diagnostic engine with callback methods for parse errors
  * \return Success if parsing has been successful, or parse error if parsing has failed
  */
-inline return_code read_genlib( const std::string& filename, const genlib_reader& reader, diagnostic_engine* diag = nullptr )
+[[nodiscard]] inline return_code read_genlib( const std::string& filename, const genlib_reader& reader, diagnostic_engine* diag = nullptr )
 {
   std::ifstream in( detail::word_exp_filename( filename ), std::ifstream::in );
   if ( !in.is_open() )
   {
     if ( diag )
     {
-      diag->report( diagnostic_level::fatal,
-                    fmt::format( "could not open file `{0}`", filename ) );
+      diag->report( diag_id::ERR_FILE_OPEN ).add_argument( filename );
     }
     return return_code::parse_error;
   }

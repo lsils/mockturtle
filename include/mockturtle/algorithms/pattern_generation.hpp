@@ -199,7 +199,7 @@ private:
         bool value = ( tts[n] == zero ); /* wanted value of n */
 
         const auto res = call_with_stopwatch( st.time_sat, [&]() {
-          vps.odc_levels = 0;
+          validator.set_odc_levels( 0 );
           return validator.validate( n, !value );
         } );
         if ( !res )
@@ -222,7 +222,7 @@ private:
               }
 
               const auto res2 = call_with_stopwatch( st.time_sat, [&]() {
-                vps.odc_levels = ps.odc_levels;
+                validator.set_odc_levels( ps.odc_levels );
                 return validator.validate( n, !value );
               } );
               if ( res2 )
@@ -253,7 +253,7 @@ private:
           if ( ps.num_stuck_at > 1 )
           {
             auto generated = call_with_stopwatch( st.time_sat, [&]() {
-              vps.odc_levels = ps.odc_levels;
+              validator.set_odc_levels( ps.odc_levels );
               return validator.generate_pattern( n, value, {validator.cex}, ps.num_stuck_at - 1 );
             } );
             for ( auto& pattern : generated )
@@ -326,7 +326,7 @@ private:
         }
 
         const auto res = call_with_stopwatch( st.time_sat, [&]() {
-          vps.odc_levels = ps.odc_levels;
+          validator.set_odc_levels( ps.odc_levels );
           return validator.validate( n, false );
         } );
         if ( res )
@@ -363,7 +363,7 @@ private:
         }
 
         const auto res = call_with_stopwatch( st.time_sat, [&]() {
-          vps.odc_levels = ps.odc_levels;
+          validator.set_odc_levels( ps.odc_levels );
           return validator.validate( n, true );
         } );
         if ( res )
@@ -437,7 +437,7 @@ private:
     }
 
     auto generated = call_with_stopwatch( st.time_sat, [&]() {
-      vps.odc_levels = ps.odc_levels;
+      validator.set_odc_levels( ps.odc_levels );
       return validator.generate_pattern( n, value, patterns, ps.num_stuck_at - patterns.size() );
     } );
     for ( auto& pattern : generated )

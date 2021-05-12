@@ -151,8 +151,8 @@ public:
 
   void on_assign( const std::string& lhs, const std::pair<std::string, bool>& rhs ) const override
   {
-    if ( signals_.find( rhs.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", rhs.first ) << std::endl;
+    if ( signals_.find( rhs.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", rhs.first );
 
     auto r = signals_[rhs.first];
     signals_[lhs] = rhs.second ? ntk_.create_not( r ) : r;
@@ -160,10 +160,10 @@ public:
 
   void on_nand( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
-    if ( signals_.find( op1.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op1.first ) << std::endl;
-    if ( signals_.find( op2.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op2.first ) << std::endl;
+    if ( signals_.find( op1.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
+    if ( signals_.find( op2.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op2.first );
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
@@ -172,10 +172,10 @@ public:
 
   void on_and( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
-    if ( signals_.find( op1.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op1.first ) << std::endl;
-    if ( signals_.find( op2.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op2.first ) << std::endl;
+    if ( signals_.find( op1.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
+    if ( signals_.find( op2.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op2.first );
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
@@ -184,10 +184,10 @@ public:
 
   void on_or( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
-    if ( signals_.find( op1.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op1.first ) << std::endl;
-    if ( signals_.find( op2.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op2.first ) << std::endl;
+    if ( signals_.find( op1.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
+    if ( signals_.find( op2.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op2.first );
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
@@ -196,10 +196,10 @@ public:
 
   void on_xor( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
-    if ( signals_.find( op1.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op1.first ) << std::endl;
-    if ( signals_.find( op2.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op2.first ) << std::endl;
+    if ( signals_.find( op1.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
+    if ( signals_.find( op2.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op2.first );
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
@@ -209,11 +209,11 @@ public:
   void on_xor3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
   {
     if ( signals_.find( op1.first ) == signals_.end() )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op1.first ) << std::endl;
-    if ( signals_.find( op2.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op2.first ) << std::endl;
-    if ( signals_.find( op3.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op3.first ) << std::endl;
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
+    if ( signals_.find( op2.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op2.first );
+    if ( signals_.find( op3.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op3.first );
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
@@ -232,11 +232,11 @@ public:
   void on_maj3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
   {
     if ( signals_.find( op1.first ) == signals_.end() )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op1.first ) << std::endl;
-    if ( signals_.find( op2.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op2.first ) << std::endl;
-    if ( signals_.find( op3.first ) == signals_.end()  )
-      std::cerr << fmt::format( "[w] undefined signal {} assigned 0", op3.first ) << std::endl;
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
+    if ( signals_.find( op2.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op2.first );
+    if ( signals_.find( op3.first ) == signals_.end() )
+      fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op3.first );
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
@@ -254,7 +254,7 @@ public:
     const auto num_args_equals = [&]( uint32_t expected_count ) {
       if ( args.size() != expected_count )
       {
-        std::cerr << fmt::format( "[e] {} module expects {} arguments\n", module_name, expected_count );
+        fmt::print( stderr, "[e] {} module expects {} arguments\n", module_name, expected_count );
         return false;
       }
       return true;
@@ -263,7 +263,7 @@ public:
     const auto num_params_equals = [&]( uint32_t expected_count ) {
       if ( params.size() != expected_count )
       {
-        std::cerr << fmt::format( "[e] {} module expects {} parameters\n", module_name, expected_count );
+        fmt::print( stderr, "[e] {} module expects {} parameters\n", module_name, expected_count );
         return false;
       }
       return true;
@@ -272,7 +272,7 @@ public:
     const auto register_exists = [&]( std::string const& name ) {
       if ( registers_.find( name ) == registers_.end() )
       {
-        std::cerr << fmt::format( "[e] register {} does not exist\n", name );
+        fmt::print( stderr, "[e] register {} does not exist\n", name );
         return false;
       }
       return true;
@@ -281,7 +281,7 @@ public:
     const auto register_has_size = [&]( std::string const& name, uint32_t size ) {
       if ( !register_exists( name ) || registers_[name].size() != size )
       {
-        std::cerr << fmt::format( "[e] register {} must have size {}\n", name, size );
+        fmt::print( stderr, "[e] register {} must have size {}\n", name, size );
         return false;
       }
       return true;
@@ -328,7 +328,7 @@ public:
     }
     else
     {
-      std::cout << fmt::format( "[e] unknown module name {}\n", module_name );
+      fmt::print( stderr, "[e] unknown module name {}\n", module_name );
     }
   }
 
@@ -374,7 +374,7 @@ private:
     }
     else
     {
-      fmt::print( "[e] cannot parse number '{}'\n", value );
+      fmt::print( stderr, "[e] cannot parse number '{}'\n", value );
     }
     assert( false );
     return {};

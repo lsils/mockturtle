@@ -115,6 +115,7 @@
 #include "mockturtle/networks/mig.hpp"
 #include "mockturtle/properties/migcost.hpp"
 #include "mockturtle/properties/mccost.hpp"
+#include "mockturtle/properties/xmgcost.hpp"
 #include "mockturtle/mockturtle.hpp"
 #include "mockturtle/generators/sorting.hpp"
 #include "mockturtle/generators/arithmetic.hpp"

@@ -32,11 +32,45 @@
 
 #pragma once
 
+#include "../algorithms/simulation.hpp"
+#include "../views/topo_view.hpp"
+
+#include <kitty/kitty.hpp>
+
 #include <algorithm>
 #include <vector>
 
 namespace mockturtle
 {
+
+template<typename Ntk>
+inline void print( Ntk const& ntk )
+{
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  for ( uint32_t n = 0; n < ntk.size(); ++n )
+  {
+    std::cout << n;
+
+    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+    {
+      std::cout << std::endl;
+      continue;
+    }
+
+    std::cout << " = ";
+
+    ntk.foreach_fanin( n, [&]( signal const& fi ){
+      std::cout << ( ntk.is_complemented( fi ) ? "~" : "" ) << ntk.get_node( fi ) << " ";
+    });
+    std::cout << " ; [level = " << int32_t( ntk.level( n ) ) << "]" << " [dead = " << ntk.is_dead( n ) << "]" << " [ref = " << ntk.fanout_size( n ) << "]" << std::endl;
+  }
+
+  ntk.foreach_co( [&]( signal const& s ){
+    std::cout << "o " << ( ntk.is_complemented( s ) ? "~" : "" ) << ntk.get_node( s ) << std::endl;
+  });
+}
 
 template<typename Ntk>
 inline uint64_t count_dead_nodes( Ntk const& ntk )
@@ -131,6 +165,114 @@ namespace detail
 {
 
 template<typename Ntk>
+void count_reachable_dead_nodes_from_node_recur( Ntk const& ntk, typename Ntk::node const& n, std::vector<typename Ntk::node>& nodes )
+{
+  using node = typename Ntk::node;
+
+  if ( ntk.current_color() == ntk.color( n ) )
+  {
+    return;
+  }
+
+  if ( ntk.is_dead( n ) )
+  {
+    if ( std::find( std::begin( nodes ), std::end( nodes ), n ) == std::end( nodes ) )
+    {
+      nodes.push_back( n );
+    }
+  }
+
+  ntk.paint( n );
+  ntk.foreach_fanout( n, [&]( node const& fo ){
+    count_reachable_dead_nodes_from_node_recur( ntk, fo, nodes );
+  });
+}
+
+} /* namespace detail */
+
+template<typename Ntk>
+inline uint64_t count_reachable_dead_nodes_from_node( Ntk const& ntk, typename Ntk::node const& n )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_color_v<Ntk>, "Ntk does not implement the color function" );
+  static_assert( has_current_color_v<Ntk>, "Ntk does not implement the current_color function" );
+  static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co function" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin function" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node function" );
+  // static_assert( has_is_dead_v<Ntk>, "Ntk does not implement the is_dead function" );
+  static_assert( has_new_color_v<Ntk>, "Ntk does not implement the new_color function" );
+  static_assert( has_paint_v<Ntk>, "Ntk does not implement the paint function" );
+
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  ntk.new_color();
+
+  std::vector<node> dead_nodes;
+  detail::count_reachable_dead_nodes_from_node_recur( ntk, n, dead_nodes );
+
+  return dead_nodes.size();
+}
+
+namespace detail
+{
+
+template<typename Ntk>
+void count_nodes_with_dead_fanins_recur( Ntk const& ntk, typename Ntk::node const& n, std::vector<typename Ntk::node>& nodes )
+{
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  if ( ntk.current_color() == ntk.color( n ) )
+  {
+    return;
+  }
+  ntk.paint( n );
+
+  ntk.foreach_fanin( n, [&]( signal const& s ){
+    if ( ntk.is_dead( ntk.get_node( s ) ) )
+    {
+      if ( std::find( std::begin( nodes ), std::end( nodes ), n ) == std::end( nodes ) )
+      {
+        nodes.push_back( n );
+      }
+    }
+  });
+
+  ntk.foreach_fanout( n, [&]( node const& fo ){
+    count_nodes_with_dead_fanins_recur( ntk, fo, nodes );
+  });
+}
+
+} /* namespace detail */
+
+template<typename Ntk>
+uint64_t count_nodes_with_dead_fanins( Ntk const& ntk, typename Ntk::node const& n )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_color_v<Ntk>, "Ntk does not implement the color function" );
+  static_assert( has_current_color_v<Ntk>, "Ntk does not implement the current_color function" );
+  static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co function" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin function" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node function" );
+  // static_assert( has_is_dead_v<Ntk>, "Ntk does not implement the is_dead function" );
+  static_assert( has_new_color_v<Ntk>, "Ntk does not implement the new_color function" );
+  static_assert( has_paint_v<Ntk>, "Ntk does not implement the paint function" );
+
+  using node = typename Ntk::node;
+
+  ntk.new_color();
+
+  std::vector<node> nodes_with_dead_fanins;
+  detail::count_nodes_with_dead_fanins_recur( ntk, n, nodes_with_dead_fanins );
+
+  return nodes_with_dead_fanins.size();
+}
+
+namespace detail
+{
+
+template<typename Ntk>
 bool network_is_acylic_recur( Ntk const& ntk, typename Ntk::node const& n )
 {
   using signal = typename Ntk::signal;
@@ -202,6 +344,57 @@ bool network_is_acylic( Ntk const& ntk )
   return result;
 }
 
+template<typename Ntk>
+bool check_network_levels( Ntk const& ntk )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size function" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant function" );
+  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci function" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node function" );
+  // static_assert( has_is_dead_v<Ntk>, "Ntk does not implement the is_dead function" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin function" );
+  static_assert( has_level_v<Ntk>, "Ntk does not implement the level function" );
+  static_assert( has_depth_v<Ntk>, "Ntk does not implement the depth function" );
+
+  using signal = typename Ntk::signal;
+
+  uint32_t max = 0;
+  for ( uint32_t i = 0u; i < ntk.size(); ++i )
+  {
+    if ( ntk.is_constant( i ) || ntk.is_ci( i ) || ntk.is_dead( i ) )
+    {
+      continue;
+    }
+
+    uint32_t max_fanin_level = 0;
+    ntk.foreach_fanin( i, [&]( signal fi ){
+      if ( ntk.level( ntk.get_node( fi ) ) > max_fanin_level )
+      {
+        max_fanin_level = ntk.level( ntk.get_node( fi ) );
+      }
+    });
+
+    /* the node's level has not been correctly computed */
+    if ( ntk.level( i ) != max_fanin_level + 1 )
+    {
+      return false;
+    } 
+      
+    if ( ntk.level( i ) > max )
+    {
+      max = ntk.level( i );
+    }
+  }
+
+  /* the network's depth has not been correctly computed */
+  if ( ntk.depth() != max )
+  {
+    return false;
+  }
+
+  return true;
+}
 
 template<typename Ntk>
 bool check_fanouts( Ntk const& ntk )
@@ -252,7 +445,7 @@ bool check_fanouts( Ntk const& ntk )
       return false;
     }
 
-    /* update the fanout counter by considering outputs */
+     /* update the fanout counter by considering outputs */
     ntk.foreach_co( [&]( signal f ){
       if ( ntk.get_node( f ) == i )
       {
@@ -267,6 +460,28 @@ bool check_fanouts( Ntk const& ntk )
     }
   }
 
+  return true;
+}
+
+template<typename Ntk, typename NtkWin>
+bool check_window_equivalence( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::signal> const& outputs, std::vector<typename Ntk::node> const& gates, NtkWin const& win_opt )
+{
+  NtkWin win;
+  clone_subnetwork( ntk, inputs, outputs, gates, win );
+  topo_view topo_win{win_opt};
+  assert( win.num_pis() == win_opt.num_pis() );
+  assert( win.num_pos() == win_opt.num_pos() );
+
+  default_simulator<kitty::dynamic_truth_table> sim( inputs.size() );
+  auto const tts1 = simulate<kitty::dynamic_truth_table, NtkWin>( win, sim );
+  auto const tts2 = simulate<kitty::dynamic_truth_table, topo_view<NtkWin>>( topo_win, sim );
+  for ( auto i = 0u; i < tts1.size(); ++i )
+  {
+    if ( tts1[i] != tts2[i] )
+    {
+      return false;
+    }
+  }
   return true;
 }
 

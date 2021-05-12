@@ -108,7 +108,7 @@ public:
     }
   }
 
-  template<typename Fn, typename Ntk>
+  template<typename Ntk, typename Fn>
   void rerun_on_benchmark( Fn&& fn )
   {
     /* read benchmark from a file */

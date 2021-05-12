@@ -346,7 +346,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      fn( index );
+      (*fn)( index );
     }
 
     return {index, 0};
@@ -515,7 +515,7 @@ public:
 
     for ( auto const& fn : _events->on_modified )
     {
-      fn( n, {old_child0, old_child1} );
+      (*fn)( n, {old_child0, old_child1} );
     }
 
     return std::nullopt;
@@ -555,7 +555,7 @@ public:
 
     for ( auto const& fn : _events->on_delete )
     {
-      fn( n );
+      (*fn)( n );
     }
 
     /* if the node has been deleted, then deref fanout_size of
@@ -642,7 +642,7 @@ public:
 
     /* register event to delete substitutions if their right-hand side
        nodes get deleted */
-    _events->on_delete.push_back( clean_substitutions );
+    auto clean_sub_event = _events->register_delete_event( clean_substitutions );
 
     /* increment fanout_size of all signals to be used in
        substitutions to ensure that they will not be deleted */
@@ -699,7 +699,7 @@ public:
       decr_fanout_size( get_node( new_signal ) );
     }
 
-    _events->on_delete.pop_back();
+    _events->release_delete_event( clean_sub_event );
   }
 #pragma endregion
 

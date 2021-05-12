@@ -84,7 +84,11 @@ int main()
   /* library to map to technology */
   std::vector<gate> gates;
   std::istringstream in( mcnc_library );
-  lorina::read_genlib( in, genlib_reader( gates ) );
+
+  if ( lorina::read_genlib( in, genlib_reader( gates ) ) != lorina::return_code::success )
+  {
+    return 1;
+  }
 
   tech_library_params tps;
   tech_library tech_lib( gates, tps );
@@ -93,7 +97,10 @@ int main()
   {
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
-    lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
+    {
+      continue;
+    }
 
     const uint32_t size_before = aig.num_gates();
     const uint32_t depth_before = depth_view( aig ).depth();

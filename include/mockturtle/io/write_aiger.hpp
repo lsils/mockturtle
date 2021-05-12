@@ -49,7 +49,7 @@ namespace mockturtle
 namespace detail
 {
 
-void encode( std::vector<unsigned char>& buffer, uint32_t lit )
+inline void encode( std::vector<unsigned char>& buffer, uint32_t lit )
 {
   unsigned char ch;
   while ( lit & ~0x7f )
@@ -66,6 +66,9 @@ void encode( std::vector<unsigned char>& buffer, uint32_t lit )
 
 /*! \brief Writes a combinational AIG network in binary AIGER format into a file
  *
+ * This function should be only called on "clean" aig_networks, e.g.,
+ * immediately after `cleanup_dangling`.
+ *
  * **Required network functions:**
  * - `num_cis`
  * - `num_cos`
@@ -74,11 +77,12 @@ void encode( std::vector<unsigned char>& buffer, uint32_t lit )
  * - `foreach_po`
  * - `get_node`
  * - `is_complemented`
+ * - `node_to_index`
  *
  * \param aig Combinational AIG network
  * \param os Output stream
  */
-void write_aiger( aig_network const& aig, std::ostream& os )
+inline void write_aiger( aig_network const& aig, std::ostream& os )
 {
   static_assert( is_network_type_v<aig_network>, "Ntk is not a network type" );
   static_assert( has_num_cis_v<aig_network>, "Ntk does not implement the num_cis method" );
@@ -104,7 +108,7 @@ void write_aiger( aig_network const& aig, std::ostream& os )
 
   /* POs */
   aig.foreach_po( [&]( signal const& f ){
-    sprintf( string_buffer, "%u\n", uint32_t(2*aig.get_node( f ) + aig.is_complemented( f )) );
+    sprintf( string_buffer, "%u\n", uint32_t(2*aig.node_to_index( aig.get_node( f ) ) + aig.is_complemented( f )) );
     os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) );
   });
 
@@ -112,10 +116,10 @@ void write_aiger( aig_network const& aig, std::ostream& os )
   std::vector<unsigned char> buffer;
   aig.foreach_gate( [&]( node const& n ){
     std::vector<uint32_t> lits;
-    lits.push_back( 2*n );
+    lits.push_back( 2*aig.node_to_index( n ) );
 
     aig.foreach_fanin( n, [&]( signal const& fi ){
-      lits.push_back( 2*aig.get_node( fi ) + aig.is_complemented( fi ) );
+      lits.push_back( 2*aig.node_to_index( aig.get_node( fi ) ) + aig.is_complemented( fi ) );
     });
 
     if ( lits[1] > lits[2] )
@@ -141,6 +145,9 @@ void write_aiger( aig_network const& aig, std::ostream& os )
 
 /*! \brief Writes a combinational AIG network in binary AIGER format into a file
  *
+ * This function should be only called on "clean" aig_networks, e.g.,
+ * immediately after `cleanup_dangling`.
+ *
  * **Required network functions:**
  * - `num_cis`
  * - `num_cos`
@@ -149,11 +156,12 @@ void write_aiger( aig_network const& aig, std::ostream& os )
  * - `foreach_po`
  * - `get_node`
  * - `is_complemented`
+ * - `node_to_index`
  *
  * \param aig Combinational AIG network
  * \param filename Filename
  */
-void write_aiger( aig_network const& aig, std::string const& filename )
+inline void write_aiger( aig_network const& aig, std::string const& filename )
 {
   std::ofstream os( filename.c_str(), std::ofstream::out );
   write_aiger( aig, os );

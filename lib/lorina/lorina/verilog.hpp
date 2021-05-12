@@ -508,7 +508,7 @@ public:
    *
    * \param os Output stream
    */
-  verilog_writer( std::ostream& os )
+  explicit verilog_writer( std::ostream& os )
     : _os( os )
   {}
 
@@ -868,7 +868,7 @@ public:
     {
       if ( diag )
       {
-        diag->report( diagnostic_level::error, "cannot parse module header" );
+        diag->report( diag_id::ERR_VERILOG_MODULE_HEADER );
       }
       return false;
     }
@@ -885,7 +885,7 @@ public:
         {
           if ( diag )
           {
-            diag->report( diagnostic_level::error, "cannot parse input declaration" );
+            diag->report( diag_id::ERR_VERILOG_INPUT_DECLARATION );
           }
           return false;
         }
@@ -897,7 +897,7 @@ public:
         {
           if ( diag )
           {
-            diag->report( diagnostic_level::error, "cannot parse output declaration" );
+            diag->report( diag_id::ERR_VERILOG_OUTPUT_DECLARATION );
           }
           return false;
         }
@@ -909,7 +909,7 @@ public:
         {
           if ( diag )
           {
-            diag->report( diagnostic_level::error, "cannot parse wire declaration" );
+            diag->report( diag_id::ERR_VERILOG_WIRE_DECLARATION );
           }
           return false;
         }
@@ -921,7 +921,7 @@ public:
         {
           if ( diag )
           {
-            diag->report( diagnostic_level::error, "cannot parse wire declaration" );
+            diag->report( diag_id::ERR_VERILOG_WIRE_DECLARATION );
           }
           return false;
         }
@@ -941,7 +941,7 @@ public:
         {
           if ( diag )
           {
-            diag->report( diagnostic_level::error, "cannot parse assign statement" );
+            diag->report( diag_id::ERR_VERILOG_ASSIGNMENT );
           }
           return false;
         }
@@ -956,7 +956,7 @@ public:
         {
           if ( diag )
           {
-            diag->report( diagnostic_level::error, "cannot parse module instantiation statement" );
+            diag->report( diag_id::ERR_VERILOG_MODULE_INSTANTIATION_STATEMENT );
           }
           return false;
         }
@@ -976,8 +976,9 @@ public:
     {
       if ( diag )
       {
-        diag->report( diagnostic_level::warning,
-                      fmt::format( "unresolved dependencies: `{0}` requires `{1}`",  r.first, r.second ) );
+        diag->report( diag_id::WRN_UNRESOLVED_DEPENDENCY )
+          .add_argument( r.first )
+          .add_argument( r.second );
       }
     }
 
@@ -1212,8 +1213,8 @@ public:
     {
       if ( diag )
       {
-        diag->report( diagnostic_level::error,
-                      fmt::format( "cannot parse expression on right-hand side of assign `{0}`", lhs ) );
+        diag->report( diag_id::ERR_VERILOG_ASSIGNMENT_RHS )
+          .add_argument( lhs );
       }
       return false;
     }
@@ -1434,7 +1435,7 @@ private:
  * \param diag An optional diagnostic engine with callback methods for parse errors
  * \return Success if parsing has been successful, or parse error if parsing has failed
  */
-inline return_code read_verilog( std::istream& in, const verilog_reader& reader, diagnostic_engine* diag = nullptr )
+[[nodiscard]] inline return_code read_verilog( std::istream& in, const verilog_reader& reader, diagnostic_engine* diag = nullptr )
 {
   verilog_parser parser( in, reader, diag );
   auto result = parser.parse_module();
@@ -1458,15 +1459,14 @@ inline return_code read_verilog( std::istream& in, const verilog_reader& reader,
  * \param diag An optional diagnostic engine with callback methods for parse errors
  * \return Success if parsing has been successful, or parse error if parsing has failed
  */
-inline return_code read_verilog( const std::string& filename, const verilog_reader& reader, diagnostic_engine* diag = nullptr )
+[[nodiscard]] inline return_code read_verilog( const std::string& filename, const verilog_reader& reader, diagnostic_engine* diag = nullptr )
 {
   std::ifstream in( detail::word_exp_filename( filename ), std::ifstream::in );
   if ( !in.is_open() )
   {
     if ( diag )
     {
-      diag->report( diagnostic_level::fatal,
-                    fmt::format( "could not open file `{0}`", filename ) );
+      diag->report( diag_id::ERR_FILE_OPEN ).add_argument( filename );
     }
     return return_code::parse_error;
   }

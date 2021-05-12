@@ -278,7 +278,7 @@ protected:
 
     for ( auto const& fn : Ntk::_events->on_add )
     {
-      fn( index );
+      (*fn)( index );
     }
 
     return {index, node_complement};

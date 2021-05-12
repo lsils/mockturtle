@@ -100,6 +100,9 @@ struct resubstitution_params
   /*! \brief Whether to save the appended patterns (with CEXs) into file. Only used by simulation-based resub engine. */
   std::optional<std::string> save_patterns{};
 
+  /*! \brief Maximum number of clauses of the SAT solver. Only used by simulation-based resub engine. */
+  uint32_t max_clauses{1000};
+
   /*! \brief Conflict limit for the SAT solver. Only used by simulation-based resub engine. */
   uint32_t conflict_limit{1000};
 
@@ -148,16 +151,16 @@ struct resubstitution_stats
   void report() const
   {
     // clang-format off
-    std::cout <<              "[i] <Top level>\n";
-    std::cout <<              "[i]     ========  Stats  ========\n";
-    std::cout << fmt::format( "[i]     #divisors = {:8d}\n", num_total_divisors );
-    std::cout << fmt::format( "[i]     est. gain = {:8d} ({:>5.2f}%)\n", estimated_gain, ( 100.0 * estimated_gain ) / initial_size );
-    std::cout <<              "[i]     ======== Runtime ========\n";
-    std::cout << fmt::format( "[i]     total         : {:>5.2f} secs\n", to_seconds( time_total ) );
-    std::cout << fmt::format( "[i]       DivCollector: {:>5.2f} secs\n", to_seconds( time_divs ) );
-    std::cout << fmt::format( "[i]       ResubEngine : {:>5.2f} secs\n", to_seconds( time_resub ) );
-    std::cout << fmt::format( "[i]       callback    : {:>5.2f} secs\n", to_seconds( time_callback ) );
-    std::cout <<              "[i]     =========================\n\n";
+    fmt::print( "[i] <Top level>\n" );
+    fmt::print( "[i]     ========  Stats  ========\n" );
+    fmt::print( "[i]     #divisors = {:8d}\n", num_total_divisors );
+    fmt::print( "[i]     est. gain = {:8d} ({:>5.2f}%)\n", estimated_gain, ( 100.0 * estimated_gain ) / initial_size );
+    fmt::print( "[i]     ======== Runtime ========\n" );
+    fmt::print( "[i]     total         : {:>5.2f} secs\n", to_seconds( time_total ) );
+    fmt::print( "[i]       DivCollector: {:>5.2f} secs\n", to_seconds( time_divs ) );
+    fmt::print( "[i]       ResubEngine : {:>5.2f} secs\n", to_seconds( time_resub ) );
+    fmt::print( "[i]       callback    : {:>5.2f} secs\n", to_seconds( time_callback ) );
+    fmt::print( "[i]     =========================\n\n" );
     // clang-format on
   }
 };
@@ -197,13 +200,13 @@ struct default_collector_stats
   void report() const
   {
     // clang-format off
-    std::cout <<              "[i] <DivCollector: default_divisor_collector>\n";
-    std::cout << fmt::format( "[i]     #leaves = {:6d}\n", num_total_leaves );
-    std::cout <<              "[i]     ======== Runtime ========\n";
-    std::cout << fmt::format( "[i]     reconv. cut : {:>5.2f} secs\n", to_seconds( time_cuts ) );
-    std::cout << fmt::format( "[i]     MFFC        : {:>5.2f} secs\n", to_seconds( time_mffc ) );
-    std::cout << fmt::format( "[i]     divs collect: {:>5.2f} secs\n", to_seconds( time_divs ) );
-    std::cout <<              "[i]     =========================\n\n";
+    fmt::print( "[i] <DivCollector: default_divisor_collector>\n" );
+    fmt::print( "[i]     #leaves = {:6d}\n", num_total_leaves );
+    fmt::print( "[i]     ======== Runtime ========\n" );
+    fmt::print( "[i]     reconv. cut : {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    fmt::print( "[i]     MFFC        : {:>5.2f} secs\n", to_seconds( time_mffc ) );
+    fmt::print( "[i]     divs collect: {:>5.2f} secs\n", to_seconds( time_divs ) );
+    fmt::print( "[i]     =========================\n\n" );
     // clang-format on
   }
 };
@@ -448,15 +451,15 @@ struct window_resub_stats
   void report() const
   {
     // clang-format off
-    std::cout <<              "[i] <ResubEngine: window_based_resub_engine>\n";
-    std::cout << fmt::format( "[i]     #resub = {:6d}\n", num_resub );
-    std::cout <<              "[i]     ======== Runtime ========\n";
-    std::cout << fmt::format( "[i]     simulation: {:>5.2f} secs\n", to_seconds( time_sim ) );
-    std::cout << fmt::format( "[i]     don't care: {:>5.2f} secs\n", to_seconds( time_dont_care ) );
-    std::cout << fmt::format( "[i]     functor   : {:>5.2f} secs\n", to_seconds( time_compute_function ) );
-    std::cout <<              "[i]     ======== Details ========\n";
+    fmt::print( "[i] <ResubEngine: window_based_resub_engine>\n" );
+    fmt::print( "[i]     #resub = {:6d}\n", num_resub );
+    fmt::print( "[i]     ======== Runtime ========\n" );
+    fmt::print( "[i]     simulation: {:>5.2f} secs\n", to_seconds( time_sim ) );
+    fmt::print( "[i]     don't care: {:>5.2f} secs\n", to_seconds( time_dont_care ) );
+    fmt::print( "[i]     functor   : {:>5.2f} secs\n", to_seconds( time_compute_function ) );
+    fmt::print( "[i]     ======== Details ========\n" );
     functor_st.report();
-    std::cout <<              "[i]     =========================\n\n";
+    fmt::print( "[i]     =========================\n\n" );
     // clang-format on
   }
 };
@@ -503,6 +506,8 @@ public:
       : ntk( ntk ), ps( ps ), st( st ), sim( ntk, ps.max_divisors, ps.max_pis )
   {
   }
+
+  void init() {}
 
   std::optional<signal> run( node const& n, std::vector<node> const& leaves, std::vector<node> const& divs, std::vector<node> const& mffc, mffc_result_t potential_gain, uint32_t& last_gain )
   {
@@ -625,26 +630,14 @@ public:
 
     st.initial_size = ntk.num_gates();
 
-    auto const update_level_of_new_node = [&]( const auto& n ) {
-      ntk.resize_levels();
-      update_node_level( n );
-    };
+    register_events();
+  }
 
-    auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
-      (void)old_children;
-      ntk.resize_levels();
-      update_node_level( n );
-    };
-
-    auto const update_level_of_deleted_node = [&]( const auto& n ) {
-      ntk.set_level( n, -1 );
-    };
-
-    ntk._events->on_add.emplace_back( update_level_of_new_node );
-
-    ntk._events->on_modified.emplace_back( update_level_of_existing_node );
-
-    ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
+  ~resubstitution_impl()
+  {
+    ntk.events().release_add_event( add_event );
+    ntk.events().release_modified_event( modified_event );
+    ntk.events().release_delete_event( delete_event );
   }
 
   void run( resub_callback_t const& callback = substitute_fn<Ntk> )
@@ -654,6 +647,9 @@ public:
     /* start the managers */
     DivCollector collector( ntk, ps, collector_st );
     ResubEngine resub_engine( ntk, ps, engine_st );
+    call_with_stopwatch( st.time_resub, [&]() {
+      resub_engine.init();
+    });
 
     progress_bar pbar{ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
 
@@ -710,6 +706,28 @@ public:
   }
 
 private:
+  void register_events()
+  {
+    auto const update_level_of_new_node = [&]( const auto& n ) {
+      ntk.resize_levels();
+      update_node_level( n );
+    };
+
+    auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
+      (void)old_children;
+      ntk.resize_levels();
+      update_node_level( n );
+    };
+
+    auto const update_level_of_deleted_node = [&]( const auto& n ) {
+      ntk.set_level( n, -1 );
+    };
+
+    add_event = ntk.events().register_add_event( update_level_of_new_node );
+    modified_event = ntk.events().register_modified_event( update_level_of_existing_node );
+    delete_event = ntk.events().register_delete_event( update_level_of_deleted_node );
+  }
+
   /* maybe should move to depth_view */
   void update_node_level( node const& n, bool top_most = true )
   {
@@ -751,6 +769,11 @@ private:
   /* temporary statistics for progress bar */
   uint32_t candidates{0};
   uint32_t last_gain{0};
+
+  /* events */
+  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
+  std::shared_ptr<typename network_events<Ntk>::modified_event_type> modified_event;
+  std::shared_ptr<typename network_events<Ntk>::delete_event_type> delete_event;
 };
 
 } /* namespace detail */
