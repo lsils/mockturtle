@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#if 0
 #include <optional>
 #include <set>
 
@@ -221,3 +222,4 @@ TEST_CASE( "DAG generation", "[aqfp_resyn]" )
 
   CHECK( generated_dags.size() == 3018u );
 }
+#endif
