@@ -153,54 +153,21 @@ public:
   template<typename Fn>
   void for_each_dag( Fn&& callback )
   {
-    if ( params.verbose > 0u )
-    {
-      std::cerr << fmt::format( "Generating partial dags.\n" );
-    }
-
-    generate_all_partial_dags();
-
-    if ( params.verbose > 0u )
-    {
-      std::cerr << fmt::format( "Generated {} partial dags.\n", partial_dags.size() );
-      std::cerr << fmt::format( "Generating dags in {} threads...\n", num_threads );
-    }
-
     std::vector<std::thread> threads;
-    std::mutex mu;
     for ( auto i = 0u; i < num_threads; i++ )
     {
       std::cout << "emplace thread " << i << std::endl;
-      threads.emplace_back(
-          [&]( auto id ) {
-#if 0
-            dags_from_partial_dag<NodeT> dag_from_pdag( params.max_num_in, params.max_num_fanout );
-            while ( true )
-            {
-              mu.lock();
-              if ( partial_dags.empty() )
-              {
-                mu.unlock();
-                return;
-              }
-              auto p = partial_dags.front();
-              partial_dags.pop();
-              mu.unlock();
-              auto dags = dag_from_pdag( p );
-              for ( const auto& dag : dags )
-              {
-                callback( dag, id );
-              }
-            }
-#endif
-          },
-          i );
+      threads.emplace_back( []( auto id ) {}, i );
       std::cout << "finished emplacing thread " << i << std::endl;
     }
 
     for ( auto i = 0u; i < num_threads; i++ )
     {
       std::cout << "join thread " << i << std::endl;
+      if ( threads[i].joinable() )
+      {
+        std::cout << "thread i is joinable" << std::endl;
+      }
       try
       {
         threads[i].join();

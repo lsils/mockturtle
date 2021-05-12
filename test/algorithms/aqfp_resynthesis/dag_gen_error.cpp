@@ -10,6 +10,58 @@
 
 using namespace mockturtle;
 
+TEST_CASE( "join a threads", "[thread]" )
+{
+  std::thread thread( []( auto ) {}, 0 );
+
+  if ( thread.joinable() )
+  {
+    std::cout << "thread is joinable" << std::endl;
+  }
+
+  std::cout << "try to join" << std::endl;  
+  thread.join();
+  std::cout << "finished joining" << std::endl;
+}
+
+TEST_CASE( "join on threads in vector", "[thread]" )
+{
+  uint32_t const num_threads{1};
+
+  std::vector<std::thread> threads;
+  for ( auto i = 0u; i < num_threads; i++ )
+  {
+    std::cout << "emplace thread " << i << std::endl;
+    threads.emplace_back( []( auto id ) {}, i );
+    std::cout << "finished emplacing thread " << i << std::endl;
+  }
+
+  for ( auto i = 0u; i < num_threads; i++ )
+  {
+    if ( threads[i].joinable() )
+    {
+      std::cout << "thread " << i << " is joinable" << std::endl;
+    }
+
+    
+    std::cout << "join thread " << i << std::endl;
+    try
+    {
+      threads[i].join();
+    }
+    catch ( const std::system_error& e )
+    {
+      std::cout << e.what() << '\n';
+      std::cout << e.code() << '\n';
+    }
+    catch ( const std::exception& e )
+    {
+      std::cout << e.what() << '\n';
+    }
+    std::cout << "finished joining thread " << i << std::endl;
+  }
+}  
+
 TEST_CASE( "DAG generation", "[aqfp_resyn]" )
 {
   using Ntk = mockturtle::aqfp_dag<>;
