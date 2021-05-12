@@ -328,7 +328,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      fn( index );
     }
 
     return {index, 0};
@@ -555,7 +555,7 @@ public:
 
     for ( auto const& fn : _events->on_modified )
     {
-      (*fn)( n, {old_child0, old_child1} );
+      fn( n, {old_child0, old_child1} );
     }
 
     return std::nullopt;
@@ -588,7 +588,7 @@ public:
 
     for ( auto const& fn : _events->on_delete )
     {
-      (*fn)( n );
+      fn( n );
     }
 
     for ( auto i = 0u; i < 2u; ++i )

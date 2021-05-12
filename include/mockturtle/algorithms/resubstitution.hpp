@@ -100,9 +100,6 @@ struct resubstitution_params
   /*! \brief Whether to save the appended patterns (with CEXs) into file. Only used by simulation-based resub engine. */
   std::optional<std::string> save_patterns{};
 
-  /*! \brief Maximum number of clauses of the SAT solver. Only used by simulation-based resub engine. */
-  uint32_t max_clauses{1000};
-
   /*! \brief Conflict limit for the SAT solver. Only used by simulation-based resub engine. */
   uint32_t conflict_limit{1000};
 
@@ -630,14 +627,26 @@ public:
 
     st.initial_size = ntk.num_gates();
 
-    register_events();
-  }
+    auto const update_level_of_new_node = [&]( const auto& n ) {
+      ntk.resize_levels();
+      update_node_level( n );
+    };
 
-  ~resubstitution_impl()
-  {
-    ntk.events().release_add_event( add_event );
-    ntk.events().release_modified_event( modified_event );
-    ntk.events().release_delete_event( delete_event );
+    auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
+      (void)old_children;
+      ntk.resize_levels();
+      update_node_level( n );
+    };
+
+    auto const update_level_of_deleted_node = [&]( const auto& n ) {
+      ntk.set_level( n, -1 );
+    };
+
+    ntk._events->on_add.emplace_back( update_level_of_new_node );
+
+    ntk._events->on_modified.emplace_back( update_level_of_existing_node );
+
+    ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
   }
 
   void run( resub_callback_t const& callback = substitute_fn<Ntk> )
@@ -706,28 +715,6 @@ public:
   }
 
 private:
-  void register_events()
-  {
-    auto const update_level_of_new_node = [&]( const auto& n ) {
-      ntk.resize_levels();
-      update_node_level( n );
-    };
-
-    auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
-      (void)old_children;
-      ntk.resize_levels();
-      update_node_level( n );
-    };
-
-    auto const update_level_of_deleted_node = [&]( const auto& n ) {
-      ntk.set_level( n, -1 );
-    };
-
-    add_event = ntk.events().register_add_event( update_level_of_new_node );
-    modified_event = ntk.events().register_modified_event( update_level_of_existing_node );
-    delete_event = ntk.events().register_delete_event( update_level_of_deleted_node );
-  }
-
   /* maybe should move to depth_view */
   void update_node_level( node const& n, bool top_most = true )
   {
@@ -769,11 +756,6 @@ private:
   /* temporary statistics for progress bar */
   uint32_t candidates{0};
   uint32_t last_gain{0};
-
-  /* events */
-  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
-  std::shared_ptr<typename network_events<Ntk>::modified_event_type> modified_event;
-  std::shared_ptr<typename network_events<Ntk>::delete_event_type> delete_event;
 };
 
 } /* namespace detail */

@@ -30,13 +30,12 @@
   \author Heinz Riener
 */
 
-#include "../networks/events.hpp"
-#include "../utils/debugging_utils.hpp"
 #include "../utils/index_list.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/window_utils.hpp"
 #include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
+#include "../utils/debugging_utils.hpp"
 
 #include <abcresub/abcresub2.hpp>
 #include <fmt/format.h>
@@ -206,14 +205,27 @@ public:
     /* initialize levels to network depth */
     , levels( ntk.depth() )
   {
-    register_events();
-  }
+    auto const update_level_of_new_node = [&]( const auto& n ) {
+      stopwatch t( st.time_total );
+      update_levels( n );
+    };
 
-  ~window_rewriting_impl()
-  {
-    ntk.events().release_add_event( add_event );
-    ntk.events().release_modified_event( modified_event );
-    ntk.events().release_delete_event( delete_event );
+    auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
+      (void)old_children;
+      stopwatch t( st.time_total );
+      update_levels( n );
+    };
+
+    auto const update_level_of_deleted_node = [&]( node const& n ) {
+      stopwatch t( st.time_total );
+      assert( ntk.fanout_size( n ) == 0u );
+      assert( ntk.is_dead( n ) );
+      ntk.set_level( n, -1 );
+    };
+
+    ntk._events->on_add.emplace_back( update_level_of_new_node );
+    ntk._events->on_modified.emplace_back( update_level_of_existing_node );
+    ntk._events->on_delete.emplace_back( update_level_of_deleted_node );
   }
 
   void run()
@@ -337,31 +349,6 @@ public:
   }
 
 private:
-  void register_events()
-  {
-    auto const update_level_of_new_node = [&]( const auto& n ) {
-      stopwatch t( st.time_total );
-      update_levels( n );
-    };
-
-    auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
-      (void)old_children;
-      stopwatch t( st.time_total );
-      update_levels( n );
-    };
-
-    auto const update_level_of_deleted_node = [&]( node const& n ) {
-      stopwatch t( st.time_total );
-      assert( ntk.fanout_size( n ) == 0u );
-      assert( ntk.is_dead( n ) );
-      ntk.set_level( n, -1 );
-    };
-
-    add_event = ntk.events().register_add_event( update_level_of_new_node );
-    modified_event = ntk.events().register_modified_event( update_level_of_existing_node );
-    delete_event = ntk.events().register_delete_event( update_level_of_deleted_node );
-  }
-
   /* optimize an index_list and return the new list */
   std::optional<abc_index_list> optimize( abc_index_list const& il, bool verbose = false )
   {
@@ -448,7 +435,7 @@ private:
 
     /* register event to delete substitutions if their right-hand side
        nodes get deleted */
-    auto clean_subs_event = ntk.events().register_delete_event( clean_substitutions );
+    ntk._events->on_delete.push_back( clean_substitutions );
 
     /* increment fanout_size of all signals to be used in
        substitutions to ensure that they will not be deleted */
@@ -514,7 +501,7 @@ private:
       }
     }
 
-    ntk.events().release_delete_event( clean_subs_event );
+    ntk._events->on_delete.pop_back();
   }
 
   void update_levels( node const& n )
@@ -650,11 +637,6 @@ private:
   window_rewriting_stats& st;
 
   std::vector<std::vector<node>> levels;
-
-  /* events */
-  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
-  std::shared_ptr<typename network_events<Ntk>::modified_event_type> modified_event;
-  std::shared_ptr<typename network_events<Ntk>::delete_event_type> delete_event;
 };
 
 } /* namespace detail */

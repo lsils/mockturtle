@@ -33,15 +33,14 @@
 
 #pragma once
 
-#include "../traits.hpp"
-#include "../networks/events.hpp"
-#include "../networks/detail/foreach.hpp"
-#include "../utils/node_map.hpp"
-#include "immutable_view.hpp"
-
 #include <cstdint>
 #include <stack>
 #include <vector>
+
+#include "../traits.hpp"
+#include "../networks/detail/foreach.hpp"
+#include "../utils/node_map.hpp"
+#include "immutable_view.hpp"
 
 namespace mockturtle
 {
@@ -99,7 +98,38 @@ public:
 
     update_fanout();
 
-    register_events();
+    if ( _ps.update_on_add )
+    {
+      Ntk::events().on_add.push_back( [this]( auto const& n ) {
+        _fanout.resize();
+        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
+          _fanout[f].push_back( n );
+        } );
+      } );
+    }
+
+    if ( _ps.update_on_modified )
+    {
+      Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
+        (void)previous;
+        for ( auto const& f : previous ) {
+          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+        }
+        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
+          _fanout[f].push_back( n );
+        } );
+      } );
+    }
+
+    if ( _ps.update_on_delete )
+    {
+      Ntk::events().on_delete.push_back( [this]( auto const& n ) {
+        _fanout[n].clear();
+        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
+          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+        } );
+      } );
+    }
   }
 
   explicit fanout_view( Ntk const& ntk, fanout_view_params const& ps = {} )
@@ -113,38 +143,38 @@ public:
 
     update_fanout();
 
-    register_events();
-  }
+    if ( _ps.update_on_add )
+    {
+      Ntk::events().on_add.push_back( [this]( auto const& n ) {
+        _fanout.resize();
+        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
+          _fanout[f].push_back( n );
+        } );
+      } );
+    }
 
-  /*! \brief Copy constructor. */
-  fanout_view( fanout_view<Ntk, false> const& other )
-    : Ntk( other )
-    , _fanout( other._fanout )
-    , _ps( other._ps )
-  {
-    register_events();
-  }
+    if ( _ps.update_on_modified )
+    {
+      Ntk::events().on_modified.push_back( [this]( auto const& n, auto const& previous ) {
+        (void)previous;
+        for ( auto const& f : previous ) {
+          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+        }
+        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
+          _fanout[f].push_back( n );
+        } );
+      } );
+    }
 
-  fanout_view<Ntk, false>& operator=( fanout_view<Ntk, false> const& other )
-  {
-    release_events();
-
-    /* update the base class */
-    this->_storage = other._storage;
-    this->_events = other._events;
-
-    /* copy */
-    _ps = other._ps;
-    _fanout = other._fanout;
-
-    register_events();
-
-    return *this;
-  }
-
-  ~fanout_view()
-  {
-    release_events();
+    if ( _ps.update_on_delete )
+    {
+      Ntk::events().on_delete.push_back( [this]( auto const& n ) {
+        _fanout[n].clear();
+        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
+          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
+        } );
+      } );
+    }
   }
 
   template<typename Fn>
@@ -192,60 +222,6 @@ public:
   }
 
 private:
-  void register_events()
-  {
-    if ( _ps.update_on_add )
-    {
-      add_event = Ntk::events().register_add_event( [this]( auto const& n ) {
-        _fanout.resize();
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].push_back( n );
-        } );
-      } );
-    }
-
-    if ( _ps.update_on_modified )
-    {
-      modified_event = Ntk::events().register_modified_event( [this]( auto const& n, auto const& previous ) {
-        (void)previous;
-        for ( auto const& f : previous ) {
-          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
-        }
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].push_back( n );
-        } );
-      } );
-    }
-
-    if ( _ps.update_on_delete )
-    {
-      delete_event = Ntk::events().register_delete_event( [this]( auto const& n ) {
-        _fanout[n].clear();
-        Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
-          _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
-        } );
-      } );
-    }
-  }
-
-  void release_events()
-  {
-    if ( add_event )
-    {
-      Ntk::events().release_add_event( add_event );
-    }
-
-    if ( modified_event )
-    {
-      Ntk::events().release_modified_event( modified_event );
-    }
-
-    if ( delete_event )
-    {
-      Ntk::events().release_delete_event( delete_event );
-    }
-  }
-
   void compute_fanout()
   {
     _fanout.reset();
@@ -263,10 +239,6 @@ private:
 
   node_map<std::vector<node>, Ntk> _fanout;
   fanout_view_params _ps;
-
-  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
-  std::shared_ptr<typename network_events<Ntk>::modified_event_type> modified_event;
-  std::shared_ptr<typename network_events<Ntk>::delete_event_type> delete_event;
 };
 
 template<class T>

@@ -339,7 +339,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      fn( index );
     }
 
     return { index, node_complement };
@@ -417,7 +417,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      fn( index );
     }
 
     return { index, node_complement };
@@ -541,7 +541,7 @@ public:
 
     for ( auto const& fn : _events->on_modified )
     {
-      (*fn)( n, old_children );
+      fn( n, old_children );
     }
 
     return std::nullopt;
@@ -573,7 +573,7 @@ public:
 
     for ( auto const& fn : _events->on_delete )
     {
-      (*fn)( n );
+      fn( n );
     }
 
     for ( auto i = 0u; i < nobj.children.size(); ++i )
