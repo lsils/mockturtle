@@ -22,7 +22,7 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_CXX_COMPILER=clang++-9 -DMOCKTURTLE_TEST=ON ..
-        make VERBOSE=1 error2
+        make error2
     - name: Run tests
       run: |
         cd build
