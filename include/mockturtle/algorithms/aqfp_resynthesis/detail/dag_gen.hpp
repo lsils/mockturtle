@@ -170,6 +170,7 @@ public:
     std::mutex mu;
     for ( auto i = 0u; i < num_threads; i++ )
     {
+      std::cout << "emplace thread " << i << std::endl;
       threads.emplace_back(
           [&]( auto id ) {
             dags_from_partial_dag<NodeT> dag_from_pdag( params.max_num_in, params.max_num_fanout );
@@ -192,11 +193,26 @@ public:
             }
           },
           i );
+      std::cout << "finished emplacing thread " << i << std::endl;
     }
 
     for ( auto i = 0u; i < num_threads; i++ )
     {
-      threads[i].join();
+      std::cout << "join thread " << i << std::endl;
+      try
+      {
+        threads[i].join();
+      }
+      catch ( const std::system_error& e )
+      {
+        std::cout << e.what() << '\n';
+        std::cout << e.code() << '\n';
+      }
+      catch ( const std::exception& e )
+      {
+        std::cout << e.what() << '\n';
+      }
+      std::cout << "finished joining thread " << i << std::endl;
     }
   }
 
