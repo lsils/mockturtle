@@ -148,7 +148,10 @@ class dag_generator
   using PartialNtk = aqfp_partial_dag<NodeT>;
 
 public:
-  dag_generator( const dag_generator_params& params, uint32_t num_threads = 1u ) : params( params ), num_threads( num_threads ) {}
+  dag_generator( const dag_generator_params& params, uint32_t num_threads = 1u ) : params( params ), num_threads( num_threads )
+  {
+    static_assert( !__clang__ || __clang_major__ > 9 && "requires CLANG 10 or later" );
+  }
 
   template<typename Fn>
   void for_each_dag( Fn&& callback )

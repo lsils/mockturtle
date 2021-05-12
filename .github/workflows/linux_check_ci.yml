@@ -21,12 +21,8 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_FLAGS="-stdlib=libstdc++" -DCMAKE_CXX_COMPILER=clang++-9 -DMOCKTURTLE_TEST=ON ..
-        make VERBOSE=1 error1 error2
-    - name: Run tests
-      run: |
-        cd build
-        ./test/error1 -s
+        cmake -DCMAKE_CXX_COMPILER=clang++-9 -DMOCKTURTLE_TEST=ON ..
+        make VERBOSE=1 error2
     - name: Run tests
       run: |
         cd build
@@ -44,11 +40,7 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_CXX_FLAGS_DEBUG="-g -fsanitize=address -fno-omit-frame-pointer" -DCMAKE_CXX_COMPILER=clang++-9 -DMOCKTURTLE_TEST=ON ..
-        make error1 error2
-    - name: Run tests
-      run: |
-        cd build
-        ./test/error1 -s
+        make error2
     - name: Run tests
       run: |
         cd build
@@ -66,11 +58,7 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_CXX_COMPILER=clang++-10 -DMOCKTURTLE_TEST=ON ..
-        make error1 error2
-    - name: Run tests
-      run: |
-        cd build
-        ./test/error1 -s
+        make error2
     - name: Run tests
       run: |
         cd build
@@ -88,11 +76,7 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_CXX_FLAGS_DEBUG="-g -fsanitize=address -fno-omit-frame-pointer" -DCMAKE_CXX_COMPILER=clang++-10 -DMOCKTURTLE_TEST=ON ..
-        make error1 error2
-    - name: Run tests
-      run: |
-        cd build
-        ./test/error1 -s
+        make error2
     - name: Run tests
       run: |
         cd build
@@ -110,11 +94,7 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_CXX_COMPILER=clang++-11 -DMOCKTURTLE_TEST=ON ..
-        make error1 error2
-    - name: Run tests
-      run: |
-        cd build
-        ./test/error1 -s
+        make error2
     - name: Run tests
       run: |
         cd build
@@ -132,11 +112,7 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_CXX_FLAGS_DEBUG="-g -fsanitize=address -fno-omit-frame-pointer" -DCMAKE_CXX_COMPILER=clang++-11 -DMOCKTURTLE_TEST=ON ..
-        make error1 error2
-    - name: Run tests
-      run: |
-        cd build
-        ./test/error1 -s
+        make error2
     - name: Run tests
       run: |
         cd build
