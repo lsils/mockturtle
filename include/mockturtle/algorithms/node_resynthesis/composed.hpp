@@ -33,7 +33,7 @@
 
 #pragma once
 
-#if !__clang__ || __clang_major > 9__
+#if !__clang__ || __clang_major__ > 9
 
 #include <cstdint>
 #include <string>
