@@ -141,6 +141,8 @@ private:
   }
 };
 
+#if !__clang__ || __clang_major > 9__
+
 /*! \brief Generate all DAGs satisfying the parameters. */
 template<typename NodeT = int>
 class dag_generator
@@ -381,5 +383,7 @@ private:
     return res;
   }
 };
+
+#endif
 
 } // namespace mockturtle

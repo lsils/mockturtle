@@ -9,6 +9,7 @@
 
 using namespace mockturtle;
 
+#if !__clang__ || __clang_major__ > 9
 TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
 {
 #if __GNUC__ == 7
@@ -50,3 +51,4 @@ TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
   CHECK( !fs::exists( "mockturtle-test-cache.db.bak" ) );
   fs::remove( "mockturtle-test-cache.db" );
 }
+#endif
