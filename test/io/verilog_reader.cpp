@@ -6,6 +6,7 @@
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
+#include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 
@@ -29,24 +30,73 @@ TEST_CASE( "read a VERILOG file into MIG network", "[verilog_reader]" )
     "  assign g2 = g0 & g1 ;\n"
     "  assign g3 = a | g2 ;\n"
     "  assign g4 = ( ~a & b ) | ( ~a & c ) | ( b & c ) ;\n"
+    "  assign g5 = g2 ^ g3 ^ g4;\n"
+    "  assign g6 = ~( g4 & g5 );\n"
     "  assign y1 = g3 ;\n"
     "  assign y2 = g4 ;\n"
       "endmodule\n"};
 
   std::istringstream in( file );
-  auto result = lorina::read_verilog( in, verilog_reader( mig ) );
+  auto const result = lorina::read_verilog( in, verilog_reader( mig ) );
 
   /* structural checks */
   CHECK( result == lorina::return_code::success );
-  CHECK( mig.size() == 7 );
+  CHECK( mig.size() == 11 );
   CHECK( mig.num_pis() == 3 );
   CHECK( mig.num_pos() == 2 );
-  CHECK( mig.num_gates() == 3 );
+  CHECK( mig.num_gates() == 7 );
 
   /* functional checks */
   default_simulator<kitty::dynamic_truth_table> sim( mig.num_pis() );
   const auto tts = simulate<kitty::dynamic_truth_table>( mig, sim );
   mig.foreach_po( [&]( auto const&, auto i ) {
+    switch ( i )
+    {
+    case 0:
+      CHECK( kitty::to_hex( tts[i] ) == "aa" );
+      break;
+    case 1:
+      CHECK( kitty::to_hex( tts[i] ) == "d4" );
+      break;
+    }
+    } );
+}
+
+TEST_CASE( "read a VERILOG file into XMG network", "[verilog_reader]" )
+{
+  xmg_network xmg;
+
+  std::string file{
+    "module top( y1, y2, a, b, c ) ;\n"
+    "  input a , b , c ;\n"
+    "  output y1 , y2 ;\n"
+    "  wire zero, g0, g1 , g2 , g3 , g4 ;\n"
+    "  assign zero = 0 ;\n"
+    "  assign g0 = a ;\n"
+    "  assign g1 = ~c ;\n"
+    "  assign g2 = g0 & g1 ;\n"
+    "  assign g3 = a | g2 ;\n"
+    "  assign g4 = ( ~a & b ) | ( ~a & c ) | ( b & c ) ;\n"
+    "  assign g5 = g2 ^ g3 ^ g4;\n"
+    "  assign g6 = ~( g4 & g5 );\n"
+    "  assign y1 = g3 ;\n"
+    "  assign y2 = g4 ;\n"
+      "endmodule\n"};
+
+  std::istringstream in( file );
+  auto const result = lorina::read_verilog( in, verilog_reader( xmg ) );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+  CHECK( xmg.size() == 9 );
+  CHECK( xmg.num_pis() == 3 );
+  CHECK( xmg.num_pos() == 2 );
+  CHECK( xmg.num_gates() == 5 );
+
+  /* functional checks */
+  default_simulator<kitty::dynamic_truth_table> sim( xmg.num_pis() );
+  const auto tts = simulate<kitty::dynamic_truth_table>( xmg, sim );
+  xmg.foreach_po( [&]( auto const&, auto i ) {
     switch ( i )
     {
     case 0:
