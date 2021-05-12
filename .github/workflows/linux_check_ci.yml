@@ -26,8 +26,10 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/error1 -s | true
-        ./test/error2 -s | true
+        ./test/error1 -s
+    - name: Run tests
+      run: |
+        ./test/error2 -s
   build-clang9-memtest:
     runs-on: ubuntu-latest
     name: Clang 9 (AddressSanitizer)
@@ -45,8 +47,10 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/error1 -s | true
-        ./test/error2 -s | true
+        ./test/error1 -s
+    - name: Run tests
+      run: |
+        ./test/error2 -s
   build-clang10:
     runs-on: ubuntu-latest
     name: Clang 10
@@ -64,8 +68,10 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/error1 -s | true
-        ./test/error2 -s | true
+        ./test/error1 -s
+    - name: Run tests
+      run: |
+        ./test/error2 -s
   build-clang10-memtest:
     runs-on: ubuntu-latest
     name: Clang 10 (AddressSanitizer)
@@ -83,8 +89,10 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/error1 -s | true
-        ./test/error2 -s | true
+        ./test/error1 -s
+    - name: Run tests
+      run: |
+        ./test/error2 -s
   build-clang11:
     runs-on: ubuntu-latest
     name: Clang 11
@@ -102,8 +110,10 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/error1 -s | true
-        ./test/error2 -s | true
+        ./test/error1 -s
+    - name: Run tests
+      run: |
+        ./test/error2 -s
   build-clang11-memtest:
     runs-on: ubuntu-latest
     name: Clang 11 (AddressSanitizer)
@@ -121,5 +131,7 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/error1 -s | true
-        ./test/error2 -s | true
+        ./test/error1 -s
+    - name: Run tests
+      run: |
+        ./test/error2 -s
