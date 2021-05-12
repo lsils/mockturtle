@@ -86,6 +86,8 @@ public:
       _blacklist_cache_info( blacklist_cache_info ),
       _initial_size( max_pis )
   {
+    static_assert( !__clang__ || __clang_major__ > 9 && "requires CLANG 10 or later" );
+
     if ( !_cache_filename.empty() )
     {
       load();

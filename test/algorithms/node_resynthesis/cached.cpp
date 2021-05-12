@@ -9,36 +9,7 @@
 
 using namespace mockturtle;
 
-TEST_CASE( "File exists", "[cached]" )
-{
-#if __GNUC__ == 7
-    namespace fs = std::experimental::filesystem::v1;
-#else
-    namespace fs = std::filesystem;
-#endif
-  
-  if ( fs::exists( "mockturtle-test-cache.db" ) )
-  {
-    std::cout << "file exists" << std::endl;
-  }
-  else
-  {
-    std::cout << "file does not exist" << std::endl;
-  }
-}
-
-TEST_CASE( "Destroy exact_aig_resynthesis", "[cached]" )
-{
-  exact_aig_resynthesis<xag_network> exact_resyn;
-}
-
-TEST_CASE( "Destroy cache", "[cached]" )
-{
-  exact_aig_resynthesis<xag_network> exact_resyn;
-  cached_resynthesis<xag_network, decltype( exact_resyn )> resyn( exact_resyn, 6u, "mockturtle-test-cache.db" );
-
-}
-
+#if !__clang__ || __clang_major__ > 9
 TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
 {
 #if __GNUC__ == 7
@@ -80,3 +51,4 @@ TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
   CHECK( !fs::exists( "mockturtle-test-cache.db.bak" ) );
   fs::remove( "mockturtle-test-cache.db" );
 }
+#endif
