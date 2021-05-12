@@ -1,6 +1,5 @@
 #include <catch.hpp>
 
-#if 0
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 
@@ -51,4 +50,3 @@ TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
   CHECK( !fs::exists( "mockturtle-test-cache.db.bak" ) );
   fs::remove( "mockturtle-test-cache.db" );
 }
-#endif
