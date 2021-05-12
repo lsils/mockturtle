@@ -173,6 +173,7 @@ public:
       std::cout << "emplace thread " << i << std::endl;
       threads.emplace_back(
           [&]( auto id ) {
+#if 0
             dags_from_partial_dag<NodeT> dag_from_pdag( params.max_num_in, params.max_num_fanout );
             while ( true )
             {
@@ -191,6 +192,7 @@ public:
                 callback( dag, id );
               }
             }
+#endif
           },
           i );
       std::cout << "finished emplacing thread " << i << std::endl;
