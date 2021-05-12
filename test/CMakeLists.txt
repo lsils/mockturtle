@@ -10,8 +10,5 @@ file(GLOB_RECURSE FILENAMES *.cpp)
 # target_compile_definitions(run_tests PUBLIC BENCHMARKS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../experiments/benchmarks")
 # target_compile_definitions(run_tests PUBLIC CATCH_CONFIG_CONSOLE_WIDTH=300)
 
-add_executable(error1 test.cpp algorithms/aqfp_resynthesis/dag_gen_error.cpp)
-target_link_libraries(error1 PUBLIC mockturtle)
-
 add_executable(error2 test.cpp algorithms/node_resynthesis/cached.cpp)
 target_link_libraries(error2 PUBLIC mockturtle)
