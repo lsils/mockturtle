@@ -406,6 +406,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG exact synthesis",
   CHECK( v == std::vector<uint32_t>{{0, 30, 4, 6, 108, 11, 75, 43, 171, 450, 5}} );
 }
 
+#if !__clang__ || __clang_major__ > 9
 TEST_CASE( "Test quality improvement of cut rewriting with AIG cached-exact synthesis", "[quality]" )
 {
   /* applies exact synthesis to 4-feasible cuts, uses a cache to store/load (function, network)-pairs from a file */
@@ -423,6 +424,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG cached-exact synt
 
   CHECK( v == std::vector<uint32_t>{{0, 30, 4, 6, 108, 11, 75, 43, 171, 450, 5}} );
 }
+#endif
 
 TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis", "[quality]" )
 {
