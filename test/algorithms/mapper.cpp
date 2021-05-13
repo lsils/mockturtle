@@ -257,7 +257,7 @@ TEST_CASE( "Exact map of bad MAJ3 and constant output", "[mapper]" )
 {
   mig_npn_resynthesis resyn{true};
 
-  exact_library<mig_network, mig_npn_resynthesis>  lib( resyn );
+  exact_library<mig_network, mig_npn_resynthesis> lib( resyn );
 
   aig_network aig;
   const auto a = aig.create_pi();
