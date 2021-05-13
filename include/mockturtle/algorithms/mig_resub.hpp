@@ -818,4 +818,90 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   }
 }
 
+/*! \brief MIG-specific resubstitution algorithm.
+ *
+ * This algorithms iterates over each node, creates a
+ * reconvergence-driven cut, and attempts to re-express the node's
+ * function using existing nodes from the cut.  Node which are no
+ * longer used (including nodes in their transitive fanins) can then
+ * be removed.  The objective is to reduce the size of the network as
+ * much as possible while maintaing the global input-output
+ * functionality.
+ *
+ * **Required network functions:**
+ *
+ * - `clear_values`
+ * - `fanout_size`
+ * - `foreach_fanin`
+ * - `foreach_fanout`
+ * - `foreach_gate`
+ * - `foreach_node`
+ * - `get_constant`
+ * - `get_node`
+ * - `is_complemented`
+ * - `is_pi`
+ * - `level`
+ * - `make_signal`
+ * - `set_value`
+ * - `set_visited`
+ * - `size`
+ * - `substitute_node`
+ * - `value`
+ * - `visited`
+ *
+ * \param ntk A network type derived from mig_network
+ * \param ps Resubstitution parameters
+ * \param pst Resubstitution statistics
+ */
+template<class Ntk>
+void mig_resubstitution2( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( std::is_same_v<typename Ntk::base_type, mig_network>, "Network type is not mig_network" );
+
+  static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+  static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+  static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the has_size method" );
+  static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the has substitute_node method" );
+  static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
+  static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
+  static_assert( has_level_v<Ntk>, "Ntk does not implement the level method" );
+  static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
+
+  using truthtable_t = kitty::dynamic_truth_table;
+  using truthtable_dc_t = kitty::dynamic_truth_table;
+  using functor_t = mig_resyn_functor<Ntk, detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
+
+  using resub_impl_t = detail::resubstitution_impl<Ntk, detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, functor_t>>;
+
+  resubstitution_stats st;
+  typename resub_impl_t::engine_st_t engine_st;
+  typename resub_impl_t::collector_st_t collector_st;
+
+  resub_impl_t p( ntk, ps, st, engine_st, collector_st );
+  p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+    collector_st.report();
+    engine_st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
+
 } /* namespace mockturtle */

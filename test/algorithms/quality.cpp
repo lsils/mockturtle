@@ -199,6 +199,20 @@ TEST_CASE( "Test quality improvement of MIG resubstitution", "[quality]" )
   CHECK( v == std::vector<uint32_t>{{1, 58, 6, 18, 6, 20, 102, 88, 165, 466, 63}} );
 }
 
+TEST_CASE( "Test quality improvement of MIG k-resubstitution", "[quality]" )
+{
+  auto const v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    uint32_t const before = ntk.num_gates();
+    depth_view dntk{ntk};
+    fanout_view fntk{dntk};
+    mig_resubstitution2( fntk );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{1, 59, 3, 16, 3, 25, 107, 108, 183, 438, 74}} );
+}
+
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
 {
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
