@@ -22,7 +22,7 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   partial_simulator sim( tts );
 
   xag_resyn_engine<TT, std::vector<TT>, false, true> engine_copy( st );
-  const auto res = engine_copy( target, care, tts, divs.begin(), divs.end(), num_inserts );
+  const auto res = engine_copy( target, care, divs.begin(), divs.end(), tts, num_inserts );
   CHECK( res );
   CHECK( (*res).num_gates() == num_inserts );
   aig_network aig;
@@ -32,7 +32,7 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   CHECK( kitty::implies( ~target & care, ~ans ) );
 
   xag_resyn_engine<TT, std::vector<TT>, false, false, uint32_t> engine_no_copy( st );
-  const auto res2 = engine_no_copy( target, care, tts, divs.begin(), divs.end(), num_inserts );
+  const auto res2 = engine_no_copy( target, care, divs.begin(), divs.end(), tts, num_inserts );
   CHECK( res2 );
   CHECK( (*res2).num_gates() == num_inserts );
   aig_network aig2;
@@ -177,7 +177,7 @@ void test_xag_n_input_functions( uint32_t& success_counter, uint32_t& failed_cou
     xag_resyn_engine<truth_table_type, std::vector<truth_table_type>, true, false, uint32_t>
       engine( st );
 
-    auto const index_list = engine( target, care, divisor_functions, divisors.begin(), divisors.end(), std::numeric_limits<uint32_t>::max() );
+    auto const index_list = engine( target, care, divisors.begin(), divisors.end(), divisor_functions, std::numeric_limits<uint32_t>::max() );
     if ( index_list )
     {
       ++success_counter;

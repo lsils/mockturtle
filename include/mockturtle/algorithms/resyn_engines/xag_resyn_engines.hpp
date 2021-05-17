@@ -172,13 +172,13 @@ public:
    *
    * \param target Truth table of the target function.
    * \param care Truth table of the care set.
-   * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
    * \param begin Begin iterator to divisor nodes.
    * \param end End iterator to divisor nodes.
+   * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
   template<class iterator_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, truth_table_storage_type const& tts, iterator_type begin, iterator_type end, uint32_t max_size )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size )
   {
     ptts = &tts;
     on_off_sets[0] = ~target & care;

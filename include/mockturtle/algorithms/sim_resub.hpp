@@ -220,7 +220,7 @@ public:
       ps_resyn.max_binates = ps.max_divisors_k;
     }
     ResynEngine engine( st.engine_st, ps_resyn );
-    auto const res = engine( tts[root], care, tts, std::begin( divs ), std::end( divs ), std::min( potential_gain - 1, ps.max_inserts ) );
+    auto const res = engine( tts[root], care, std::begin( divs ), std::end( divs ), tts, std::min( potential_gain - 1, ps.max_inserts ) );
 
     if ( res )
     {

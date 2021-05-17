@@ -667,10 +667,8 @@ public:
     TT care_transformed = target.construct();
     care_transformed = care;
 
-    typename ResynEngine::params ps;
-    ps.max_size = std::min( potential_gain - 1, max_inserts );
     typename ResynEngine::stats st_eng;
-    ResynEngine engine( target, care_transformed, st_eng, ps );
+    ResynEngine engine( st_eng );
     for ( auto const& d : divs )
     {
       div_signals.emplace_back( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
@@ -678,7 +676,7 @@ public:
     }
 
     auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
-      return engine( divs.begin(), divs.end(), tts );
+      return engine( target, care_transformed, divs.begin(), divs.end(), tts, std::min( potential_gain - 1, max_inserts ) );
     });
     if ( res )
     {
