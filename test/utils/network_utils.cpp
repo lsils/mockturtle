@@ -44,7 +44,7 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
   
   /* optimize the window */
   using TT = kitty::static_truth_table<2>;
-  using ResynEngine = xag_resyn_engine<TT, aig_network, node, node_map<TT, aig_network>>;
+  using ResynEngine = xag_resyn_engine<TT, node_map<TT, aig_network>>;
   typename ResynEngine::stats engine_st;
   typename ResynEngine::params engine_ps;
 
@@ -54,10 +54,8 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
     if ( i == 0 ) // try only the first PO
     {
       auto const root = win.get_node( f );
+      std::vector<node> divs;
       std::vector<signal> div_signals;
-
-      engine_ps.max_size = 2u;
-      ResynEngine engine( tts[root], ~tts[win.get_constant( false )], tts, engine_st, engine_ps );
 
       win.incr_trav_id();
       win.set_visited( root, win.trav_id() ); // exclude root
@@ -67,12 +65,13 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
       win.foreach_node( [&]( auto const& n ){
         if ( win.visited( n ) != win.trav_id() )
         {
-          engine.add_divisor( n );
+          divs.emplace_back( n );
           div_signals.emplace_back( win.make_signal( n ) );
         }
       });
 
-      auto const il = engine();
+      ResynEngine engine( engine_st, engine_ps );
+      auto const il = engine( tts[root], ~tts[win.get_constant( false )], &tts, divs.begin(), divs.end(), 2 );
       if ( il )
       {
         insert( win, div_signals.begin(), div_signals.end(), *il, [&]( auto const& s ){

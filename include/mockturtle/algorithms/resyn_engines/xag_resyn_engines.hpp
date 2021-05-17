@@ -35,7 +35,6 @@
 
 #include "../../utils/index_list.hpp"
 #include "../../utils/stopwatch.hpp"
-#include "../../utils/node_map.hpp"
 
 #include <kitty/kitty.hpp>
 #include <fmt/format.h>
@@ -49,9 +48,6 @@ namespace mockturtle
 
 struct xag_resyn_engine_params
 {
-  /*! \brief Maximum size (number of gates) of the dependency circuit. */
-  uint32_t max_size{0u};
-
   /*! \brief Maximum number of binate divisors to be considered. */
   uint32_t max_binates{50u};
 
@@ -115,8 +111,9 @@ struct xag_resyn_engine_stats
  * itself to decompose the remainder function.
  *
  * \param use_xor Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs).
+ * \param copy_tts Whether to copy truth tables.
  */
-template<class TT, typename Ntk, typename node_type = typename Ntk::node, typename truth_table_storage_type = unordered_node_map<TT, Ntk>, bool copy_tts = true, bool use_xor = false>
+template<class TT, class truth_table_storage_type, bool use_xor = false, bool copy_tts = true, typename node_type = uint32_t>
 class xag_resyn_engine
 {
 public:
@@ -161,55 +158,56 @@ private:
   };
 
 public:
-  explicit xag_resyn_engine( TT const& target, TT const& care, truth_table_storage_type const& tts, stats& st, params const& ps = {} )
-    : on_off_sets( { ~target & care, target & care } ), tts( tts ), st( st ), ps( ps )
+  explicit xag_resyn_engine( stats& st, params const& ps = {} ) noexcept
+    : st( st ), ps( ps )
   {
     divisors.reserve( ps.reserve );
     divisors.resize( 1 ); // reserve 1 dummy node for constant
   }
 
-  void add_divisor( node_type const& n )
-  {
-    if constexpr ( copy_tts )
-    {
-      divisors.emplace_back( tts[n] );
-    }
-    else
-    {
-      divisors.emplace_back( n );
-    }
-  }
-
+  /*! \brief Perform XAG resynthesis.
+   *
+   * `*pTTs[*begin]` must be of type `TT`.
+   * Moreover, if `copy_tts = false`, `*begin` must be of type `node_type`.
+   *
+   * \param target Truth table of the target function.
+   * \param care Truth table of the care set.
+   * \param pTTs Pointer to a data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
+   * \param begin Begin iterator to divisor nodes.
+   * \param end End iterator to divisor nodes.
+   * \param max_size Maximum number of nodes allowed in the dependency circuit.
+   */
   template<class iterator_type>
-  void add_divisors( iterator_type begin, iterator_type end )
-  { 
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, truth_table_storage_type* pTTs, iterator_type begin, iterator_type end, uint32_t max_size )
+  {
+    tts = pTTs;
+    on_off_sets[0] = ~target & care;
+    on_off_sets[1] = target & care;
+
     while ( begin != end )
     {
-      add_divisor( *begin );
+      if constexpr ( copy_tts )
+      {
+        divisors.emplace_back( (*tts)[*begin] );
+      }
+      else
+      {
+        divisors.emplace_back( *begin );
+      }
       ++begin;
     }
-  }
 
-  std::optional<index_list_t> operator()()
-  {
-    return compute_function();
-  }
-
-  template<class iterator_type>
-  std::optional<index_list_t> operator()( iterator_type begin, iterator_type end )
-  {
-    add_divisors( begin, end );
-    return compute_function();
+    return compute_function( max_size );
   }
 
 private:
-  std::optional<index_list_t> compute_function()
+  std::optional<index_list_t> compute_function( uint32_t num_inserts )
   {
     index_list.add_inputs( divisors.size() - 1 );
-    auto const lit = compute_function_rec( ps.max_size );
+    auto const lit = compute_function_rec( num_inserts );
     if ( lit )
     {
-      assert( index_list.num_gates() <= ps.max_size );
+      assert( index_list.num_gates() <= num_inserts );
       index_list.add_output( *lit );
       return index_list;
     }
@@ -790,7 +788,7 @@ private:
     }
     else
     {
-      return tts[divisors[idx]];
+      return (*tts)[divisors[idx]];
     }
   }
 
@@ -798,7 +796,7 @@ private:
   std::array<TT, 2> on_off_sets;
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
-  truth_table_storage_type const& tts;
+  truth_table_storage_type* tts;
   std::vector<std::conditional_t<copy_tts, TT, node_type>> divisors;
 
   index_list_t index_list;
@@ -810,7 +808,7 @@ private:
   std::vector<fanin_pair> pos_unate_pairs, neg_unate_pairs;
 
   stats& st;
-  params const& ps;
+  params const ps;
 }; /* xag_resyn_engine */
 
 } /* namespace mockturtle */
