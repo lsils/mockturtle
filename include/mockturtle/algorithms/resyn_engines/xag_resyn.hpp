@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file xag_resyn_engines.hpp
+  \file xag_resyn.hpp
   \brief Resynthesis by recursive decomposition for AIGs or XAGs.
   (based on ABC's implementation in `giaResub.c` by Alan Mishchenko)
 
@@ -46,7 +46,7 @@
 namespace mockturtle
 {
 
-struct xag_resyn_engine_params
+struct xag_resyn_params
 {
   /*! \brief Maximum number of binate divisors to be considered. */
   uint32_t max_binates{50u};
@@ -55,7 +55,7 @@ struct xag_resyn_engine_params
   uint32_t reserve{200u};
 };
 
-struct xag_resyn_engine_stats
+struct xag_resyn_stats
 {
   /*! \brief Time for adding divisor truth tables. */
   //stopwatch<>::duration time_add_divisor{0};
@@ -83,7 +83,7 @@ struct xag_resyn_engine_stats
 
   void report() const
   {
-    fmt::print( "[i]         <xag_resyn_engine>\n" );
+    fmt::print( "[i]         <xag_resyn_decompose>\n" );
     //fmt::print( "[i]             add divisors : {:>5.2f} secs\n", to_seconds( time_add_divisor ) );
     fmt::print( "[i]             0-resub      : {:>5.2f} secs\n", to_seconds( time_unate ) );
     fmt::print( "[i]             1-resub      : {:>5.2f} secs\n", to_seconds( time_resub1 ) );
@@ -114,11 +114,11 @@ struct xag_resyn_engine_stats
  * \param copy_tts Whether to copy truth tables.
  */
 template<class TT, class truth_table_storage_type, bool use_xor = false, bool copy_tts = true, typename node_type = uint32_t>
-class xag_resyn_engine
+class xag_resyn_decompose
 {
 public:
-  using stats = xag_resyn_engine_stats;
-  using params = xag_resyn_engine_params;
+  using stats = xag_resyn_stats;
+  using params = xag_resyn_params;
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
 
@@ -158,7 +158,7 @@ private:
   };
 
 public:
-  explicit xag_resyn_engine( stats& st, params const& ps = {} ) noexcept
+  explicit xag_resyn_decompose( stats& st, params const& ps = {} ) noexcept
     : st( st ), ps( ps )
   {
     divisors.reserve( ps.reserve );
@@ -809,6 +809,6 @@ private:
 
   stats& st;
   params const ps;
-}; /* xag_resyn_engine */
+}; /* xag_resyn_decompose */
 
 } /* namespace mockturtle */

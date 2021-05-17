@@ -5,7 +5,7 @@
 #include <mockturtle/utils/debugging_utils.hpp>
 #include <mockturtle/utils/index_list.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/algorithms/resyn_engines/xag_resyn_engines.hpp>
+#include <mockturtle/algorithms/resyn_engines/xag_resyn.hpp>
 #include <kitty/static_truth_table.hpp>
 
 using namespace mockturtle;
@@ -44,7 +44,7 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
   
   /* optimize the window */
   using TT = kitty::static_truth_table<2>;
-  using ResynEngine = xag_resyn_engine<TT, node_map<TT, aig_network>>;
+  using ResynEngine = xag_resyn_decompose<TT, node_map<TT, aig_network>>;
   typename ResynEngine::stats engine_st;
   typename ResynEngine::params engine_ps;
 

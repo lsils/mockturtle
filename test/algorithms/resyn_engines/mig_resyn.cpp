@@ -6,7 +6,7 @@
 #include <kitty/operations.hpp>
 
 #include <mockturtle/networks/mig.hpp>
-#include <mockturtle/algorithms/resyn_engines/mig_resyn_engines.hpp>
+#include <mockturtle/algorithms/resyn_engines/mig_resyn.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 
 using namespace mockturtle;
@@ -14,7 +14,7 @@ using namespace mockturtle;
 template<class Engine>
 void test_0resub()
 {
-  mig_resyn_engine_stats st;
+  mig_resyn_stats st;
   std::vector<kitty::partial_truth_table> tts( 4, kitty::partial_truth_table( 8 ) );
   std::vector<uint32_t> divs = {1,2,3};
 
@@ -33,7 +33,7 @@ void test_0resub()
 template<class Engine>
 void test_1resub()
 {
-  mig_resyn_engine_stats st;
+  mig_resyn_stats st;
   std::vector<kitty::partial_truth_table> tts( 3, kitty::partial_truth_table( 8 ) );
   kitty::partial_truth_table target( 8 );
   std::vector<uint32_t> divs = {0,1,2};
@@ -58,7 +58,7 @@ void test_1resub()
 template<class Engine>
 void test_2resub()
 {
-  mig_resyn_engine_stats st;
+  mig_resyn_stats st;
   std::vector<kitty::partial_truth_table> tts( 4, kitty::partial_truth_table( 8 ) );
   kitty::partial_truth_table target( 8 );
   std::vector<uint32_t> divs = {0,1,2,3};
@@ -83,21 +83,21 @@ void test_2resub()
 
 TEST_CASE( "MIG resynthesis engines -- 0-resub", "[mig_resyn]" )
 {
-  test_0resub<mig_resyn_engine_bottom_up<kitty::partial_truth_table>>();
-  test_0resub<mig_resyn_engine<kitty::partial_truth_table>>();
-  test_0resub<mig_resyn_engine_akers>();
+  test_0resub<mig_resyn_bottomup<kitty::partial_truth_table>>();
+  test_0resub<mig_resyn_topdown<kitty::partial_truth_table>>();
+  test_0resub<mig_resyn_akers>();
 }
 
 TEST_CASE( "MIG resynthesis engines -- 1-resub", "[mig_resyn]" )
 {
-  test_1resub<mig_resyn_engine_bottom_up<kitty::partial_truth_table>>();
-  test_1resub<mig_resyn_engine<kitty::partial_truth_table>>();
-  test_1resub<mig_resyn_engine_akers>();
+  test_1resub<mig_resyn_bottomup<kitty::partial_truth_table>>();
+  test_1resub<mig_resyn_topdown<kitty::partial_truth_table>>();
+  test_1resub<mig_resyn_akers>();
 }
 
 TEST_CASE( "MIG resynthesis engines -- 2-resub", "[mig_resyn]" )
 {
-  test_2resub<mig_resyn_engine_bottom_up<kitty::partial_truth_table>>();
-  test_2resub<mig_resyn_engine<kitty::partial_truth_table>>();
-  test_2resub<mig_resyn_engine_akers>();
+  test_2resub<mig_resyn_bottomup<kitty::partial_truth_table>>();
+  test_2resub<mig_resyn_topdown<kitty::partial_truth_table>>();
+  test_2resub<mig_resyn_akers>();
 }

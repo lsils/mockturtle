@@ -37,7 +37,7 @@
 #include "circuit_validator.hpp"
 #include "simulation.hpp"
 #include "pattern_generation.hpp"
-#include "resyn_engines/xag_resyn_engines.hpp"
+#include "resyn_engines/xag_resyn.hpp"
 #include "../io/write_patterns.hpp"
 #include "../networks/aig.hpp"
 #include "../networks/xag.hpp"
@@ -215,7 +215,7 @@ public:
     typename ResynEngine::params ps_resyn;
     ps_resyn.reserve = divs.size();
 
-    if constexpr ( std::is_same_v<typename ResynEngine::params, xag_resyn_engine_params> )
+    if constexpr ( std::is_same_v<typename ResynEngine::params, xag_resyn_params> )
     {
       ps_resyn.max_binates = ps.max_divisors_k;
     }
@@ -334,7 +334,7 @@ struct sim_resub_stats
  * \param ResubFn Resubstitution functor to compute the resubstitution.
  * \param MffcRes Typename of `potential_gain` needed by the resubstitution functor.
  */
-template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = resyn_functor<Ntk, xag_resyn_engine<kitty::partial_truth_table, unordered_node_map<kitty::partial_truth_table, Ntk>>>, typename MffcRes = uint32_t>
+template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResubFn = resyn_functor<Ntk, xag_resyn_decompose<kitty::partial_truth_table, unordered_node_map<kitty::partial_truth_table, Ntk>>>, typename MffcRes = uint32_t>
 class simulation_based_resub_engine
 {
 public:

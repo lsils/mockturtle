@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file mig_resyn_engines.hpp
+  \file mig_resyn.hpp
   \brief Implements resynthesis methods for MIGs.
 
   \author Siang-Yun (Sonia) Lee
@@ -43,13 +43,13 @@
 namespace mockturtle
 {
 
-struct mig_resyn_engine_params
+struct mig_resyn_params
 {
   /*! \brief Reserved capacity for divisor truth tables (number of divisors). */
   uint32_t reserve{200u};
 };
 
-struct mig_resyn_engine_stats
+struct mig_resyn_stats
 {
 };
 
@@ -62,15 +62,15 @@ struct mig_resyn_engine_stats
  * 
  */
 template<class TT>
-class mig_resyn_engine_bottom_up
+class mig_resyn_bottomup
 {
 public:
-  using stats = mig_resyn_engine_stats;
-  using params = mig_resyn_engine_params;
+  using stats = mig_resyn_stats;
+  using params = mig_resyn_params;
   using index_list_t = mig_index_list;
   using truth_table_t = TT;
 
-  explicit mig_resyn_engine_bottom_up( stats& st, params const& ps = {} )
+  explicit mig_resyn_bottomup( stats& st, params const& ps = {} )
     : st( st ), ps( ps )
   {
     divisors.reserve( ps.reserve + 2 );
@@ -206,7 +206,7 @@ private:
 
   stats& st;
   params const ps;
-}; /* mig_resyn_engine_bottom_up */
+}; /* mig_resyn_bottomup */
 
 /*! \brief Logic resynthesis engine for MIGs with top-down decomposition.
  *
@@ -218,11 +218,11 @@ private:
  * 
  */
 template<class TT>
-class mig_resyn_engine
+class mig_resyn_topdown
 {
 public:
-  using stats = mig_resyn_engine_stats;
-  using params = mig_resyn_engine_params;
+  using stats = mig_resyn_stats;
+  using params = mig_resyn_params;
   using index_list_t = mig_index_list;
   using truth_table_t = TT;
 
@@ -256,7 +256,7 @@ private:
   };
 
 public:
-  explicit mig_resyn_engine( stats& st, params const& ps = {} )
+  explicit mig_resyn_topdown( stats& st, params const& ps = {} )
     : st( st ), ps( ps )
   {
     divisors.reserve( ps.reserve + 2 );
@@ -882,7 +882,7 @@ private:
 
   stats& st;
   params const ps;
-}; /* mig_resyn_engine */
+}; /* mig_resyn_topdown */
 
 /*! \brief Logic resynthesis engine for MIGs by Akers' majority synthesis algorithm.
  *
@@ -893,16 +893,16 @@ private:
  * and Logical Design (SWCT 1962) (pp. 149-158). IEEE.
  * 
  */
-class mig_resyn_engine_akers
+class mig_resyn_akers
 {
 public:
-  using stats = mig_resyn_engine_stats;
-  using params = mig_resyn_engine_params;
+  using stats = mig_resyn_stats;
+  using params = mig_resyn_params;
   using index_list_t = mig_index_list;
   using TT = kitty::partial_truth_table;
   using truth_table_t = TT;
 
-  explicit mig_resyn_engine_akers( stats& st, params const& ps = {} )
+  explicit mig_resyn_akers( stats& st, params const& ps = {} )
     : id_to_lit( { 0, 1 } ), st( st ), ps( ps )
   {
     divisors.reserve( ps.reserve + 2 );
@@ -1271,5 +1271,5 @@ private:
 
   stats& st;
   params const ps;
-};
+}; /* mig_resyn_akers */
 } /* namespace mockturtle */

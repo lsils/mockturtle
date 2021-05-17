@@ -5,7 +5,7 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/index_list.hpp>
-#include <mockturtle/algorithms/resyn_engines/xag_resyn_engines.hpp>
+#include <mockturtle/algorithms/resyn_engines/xag_resyn.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 
 using namespace mockturtle;
@@ -13,7 +13,7 @@ using namespace mockturtle;
 template<class TT = kitty::partial_truth_table>
 void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& tts, uint32_t num_inserts )
 {
-  xag_resyn_engine_stats st;
+  xag_resyn_stats st;
   std::vector<uint32_t> divs;
   for ( auto i = 0u; i < tts.size(); ++i )
   {
@@ -21,7 +21,7 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   }
   partial_simulator sim( tts );
 
-  xag_resyn_engine<TT, std::vector<TT>, false, true> engine_copy( st );
+  xag_resyn_decompose<TT, std::vector<TT>, false, true> engine_copy( st );
   const auto res = engine_copy( target, care, divs.begin(), divs.end(), tts, num_inserts );
   CHECK( res );
   CHECK( (*res).num_gates() == num_inserts );
@@ -31,7 +31,7 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   CHECK( kitty::implies( target & care, ans ) );
   CHECK( kitty::implies( ~target & care, ~ans ) );
 
-  xag_resyn_engine<TT, std::vector<TT>, false, false, uint32_t> engine_no_copy( st );
+  xag_resyn_decompose<TT, std::vector<TT>, false, false, uint32_t> engine_no_copy( st );
   const auto res2 = engine_no_copy( target, care, divs.begin(), divs.end(), tts, num_inserts );
   CHECK( res2 );
   CHECK( (*res2).num_gates() == num_inserts );
@@ -158,7 +158,7 @@ void test_xag_n_input_functions( uint32_t& success_counter, uint32_t& failed_cou
 {
   using truth_table_type = kitty::static_truth_table<num_vars>;
 
-  xag_resyn_engine_stats st;
+  xag_resyn_stats st;
   std::vector<truth_table_type> divisor_functions;
   std::vector<uint32_t> divisors;
   truth_table_type x;
@@ -174,7 +174,7 @@ void test_xag_n_input_functions( uint32_t& success_counter, uint32_t& failed_cou
 
   do
   {
-    xag_resyn_engine<truth_table_type, std::vector<truth_table_type>, true, false, uint32_t>
+    xag_resyn_decompose<truth_table_type, std::vector<truth_table_type>, true, false, uint32_t>
       engine( st );
 
     auto const index_list = engine( target, care, divisors.begin(), divisors.end(), divisor_functions, std::numeric_limits<uint32_t>::max() );

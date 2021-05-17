@@ -36,7 +36,7 @@
 #pragma once
 
 #include "resubstitution.hpp"
-#include "resyn_engines/mig_resyn_engines.hpp"
+#include "resyn_engines/mig_resyn.hpp"
 #include "../networks/mig.hpp"
 #include "../utils/index_list.hpp"
 #include "../utils/truth_table_utils.hpp"
@@ -637,7 +637,7 @@ struct mig_resyn_stats
  * - `ResynEngine::params` should have at least one member `uint32_t max_size` defining
  * the maximum size of the dependency circuit.
  */
-template<typename Ntk, typename Simulator, typename TTcare, typename ResynEngine = mig_resyn_engine<typename Simulator::truthtable_t>>
+template<typename Ntk, typename Simulator, typename TTcare, typename ResynEngine = mig_resyn_topdown<typename Simulator::truthtable_t>>
 struct mig_resyn_functor
 {
 public:
