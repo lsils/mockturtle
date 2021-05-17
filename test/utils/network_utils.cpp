@@ -71,7 +71,7 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
       });
 
       ResynEngine engine( engine_st, engine_ps );
-      auto const il = engine( tts[root], ~tts[win.get_constant( false )], &tts, divs.begin(), divs.end(), 2 );
+      auto const il = engine( tts[root], ~tts[win.get_constant( false )], tts, divs.begin(), divs.end(), 2 );
       if ( il )
       {
         insert( win, div_signals.begin(), div_signals.end(), *il, [&]( auto const& s ){

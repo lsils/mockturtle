@@ -22,27 +22,29 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   partial_simulator sim( tts );
 
   xag_resyn_engine<TT, std::vector<TT>, false, true> engine_copy( st );
-  const auto res = engine_copy( target, care, &tts, divs.begin(), divs.end(), num_inserts );
+  const auto res = engine_copy( target, care, tts, divs.begin(), divs.end(), num_inserts );
   CHECK( res );
   CHECK( (*res).num_gates() == num_inserts );
   aig_network aig;
   decode( aig, *res );
   const auto ans = simulate<TT, aig_network, partial_simulator>( aig, sim )[0];
-  CHECK( target == ans );
+  CHECK( kitty::implies( target & care, ans ) );
+  CHECK( kitty::implies( ~target & care, ~ans ) );
 
   xag_resyn_engine<TT, std::vector<TT>, false, false, uint32_t> engine_no_copy( st );
-  const auto res2 = engine_no_copy( target, care, &tts, divs.begin(), divs.end(), num_inserts );
+  const auto res2 = engine_no_copy( target, care, tts, divs.begin(), divs.end(), num_inserts );
   CHECK( res2 );
   CHECK( (*res2).num_gates() == num_inserts );
   aig_network aig2;
   decode( aig2, *res2 );
   const auto ans2 = simulate<TT, aig_network, partial_simulator>( aig2, sim )[0];
-  CHECK( target == ans2 );
+  CHECK( kitty::implies( target & care, ans2 ) );
+  CHECK( kitty::implies( ~target & care, ~ans2 ) );
 }
 
 TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
 {
-  std::vector<kitty::partial_truth_table> tts;
+  std::vector<kitty::partial_truth_table> tts( 1, kitty::partial_truth_table( 8 ) );
   kitty::partial_truth_table target( 8 );
   kitty::partial_truth_table care( 8 );
 
@@ -54,7 +56,6 @@ TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
   /* buffer */
   kitty::create_from_binary_string( target, "00110011" );
   kitty::create_from_binary_string(   care, "00111100" );
-  tts.emplace_back( 8 );
   kitty::create_from_binary_string( tts[0], "11110000" );
   test_aig_kresub( target, care, tts, 0 );
 
@@ -176,7 +177,7 @@ void test_xag_n_input_functions( uint32_t& success_counter, uint32_t& failed_cou
     xag_resyn_engine<truth_table_type, std::vector<truth_table_type>, true, false, uint32_t>
       engine( st );
 
-    auto const index_list = engine( target, care, &divisor_functions, divisors.begin(), divisors.end(), std::numeric_limits<uint32_t>::max() );
+    auto const index_list = engine( target, care, divisor_functions, divisors.begin(), divisors.end(), std::numeric_limits<uint32_t>::max() );
     if ( index_list )
     {
       ++success_counter;

@@ -172,15 +172,15 @@ public:
    *
    * \param target Truth table of the target function.
    * \param care Truth table of the care set.
-   * \param pTTs Pointer to a data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
+   * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
    * \param begin Begin iterator to divisor nodes.
    * \param end End iterator to divisor nodes.
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
   template<class iterator_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, truth_table_storage_type* pTTs, iterator_type begin, iterator_type end, uint32_t max_size )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, truth_table_storage_type const& tts, iterator_type begin, iterator_type end, uint32_t max_size )
   {
-    tts = pTTs;
+    ptts = &tts;
     on_off_sets[0] = ~target & care;
     on_off_sets[1] = target & care;
 
@@ -188,7 +188,7 @@ public:
     {
       if constexpr ( copy_tts )
       {
-        divisors.emplace_back( (*tts)[*begin] );
+        divisors.emplace_back( (*ptts)[*begin] );
       }
       else
       {
@@ -788,7 +788,7 @@ private:
     }
     else
     {
-      return (*tts)[divisors[idx]];
+      return (*ptts)[divisors[idx]];
     }
   }
 
@@ -796,7 +796,7 @@ private:
   std::array<TT, 2> on_off_sets;
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
-  truth_table_storage_type* tts;
+  const truth_table_storage_type* ptts;
   std::vector<std::conditional_t<copy_tts, TT, node_type>> divisors;
 
   index_list_t index_list;
