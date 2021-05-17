@@ -607,7 +607,7 @@ private:
   binate_divisors bdivs;
 }; /* mig_enumerative_resub_functor */
 
-struct mig_resyn_stats
+struct mig_resyn_resub_stats
 {
   /*! \brief Time for finding dependency function. */
   stopwatch<>::duration time_compute_function{0};
@@ -625,17 +625,9 @@ struct mig_resyn_stats
     fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
     fmt::print( "[i]         engine time: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
   }
-}; /* mig_resyn_stats */
+}; /* mig_resyn_resub_stats */
 
 /*! \brief Interfacing resubstitution functor with MIG resynthesis engines for `window_based_resub_engine`.
- * 
- * The resynthesis engine `ResynEngine` should provide the following interfaces:
- * - Constructor: `ResynEngine( Simulator::truthtable_t const& target,`
- * `TTcare const& care, ResynEngine::stats& st, ResynEngine::params const& ps )`
- * - `std::optional<ResynEngine::index_list_t> operator()( std::vector<Ntk::node>::iterator begin,`
- * `std::vector<Ntk::node>::iterator end, unordered_node_map<Simulator::truthtable_t, Ntk> const& tts )`
- * - `ResynEngine::params` should have at least one member `uint32_t max_size` defining
- * the maximum size of the dependency circuit.
  */
 template<typename Ntk, typename Simulator, typename TTcare, typename ResynEngine = mig_resyn_topdown<typename Simulator::truthtable_t>>
 struct mig_resyn_functor
@@ -643,7 +635,7 @@ struct mig_resyn_functor
 public:
   using node = mig_network::node;
   using signal = mig_network::signal;
-  using stats = mig_resyn_stats;
+  using stats = mig_resyn_resub_stats;
   using TT = typename ResynEngine::truth_table_t;
 
   static_assert( std::is_same_v<TT, typename Simulator::truthtable_t>, "truth table type of the simulator does not match" );

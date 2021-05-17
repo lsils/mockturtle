@@ -109,6 +109,20 @@ struct xag_resyn_stats
  * When no simple solutions can be found, the algorithm heuristically chooses an unate
  * divisor or an unate pair to divide the target function with and recursively calls
  * itself to decompose the remainder function.
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+      using TT = kitty::static_truth_table<6>;
+      const std::vector<aig_network::node> divisors = ...;
+      const node_map<TT, aig_network> tts = ...;
+      const TT target = ..., care = ...;
+      xag_resyn_stats st;
+      xag_resyn_decompose<TT, node_map<TT, aig_network>, false, false, aig_network::node> resyn( st );
+      auto result = resyn( target, care, divisors.begin(), divisors.end(), tts );
+   \endverbatim
  *
  * \param use_xor Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs).
  * \param copy_tts Whether to copy truth tables.
@@ -178,7 +192,7 @@ public:
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
   template<class iterator_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
     ptts = &tts;
     on_off_sets[0] = ~target & care;

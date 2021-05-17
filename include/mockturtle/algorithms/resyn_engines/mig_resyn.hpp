@@ -77,7 +77,7 @@ public:
   }
 
   template<class iterator_type, class truth_table_storage_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
     (void)care;
     num_bits = target.num_bits();
@@ -262,8 +262,19 @@ public:
     divisors.reserve( ps.reserve + 2 );
   }
 
+  /*! \brief Perform MIG resynthesis.
+   *
+   * `*pTTs[*begin]` must be of type `TT`.
+   *
+   * \param target Truth table of the target function.
+   * \param care Truth table of the care set.
+   * \param begin Begin iterator to divisor nodes.
+   * \param end End iterator to divisor nodes.
+   * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
+   * \param max_size Maximum number of nodes allowed in the dependency circuit.
+   */
   template<class iterator_type, class truth_table_storage_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
     divisors.emplace_back( ~target );
     divisors.emplace_back( target );
@@ -909,7 +920,7 @@ public:
   }
 
   template<class iterator_type, class truth_table_storage_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
     (void)care;
     divisors.emplace_back( ~target );
