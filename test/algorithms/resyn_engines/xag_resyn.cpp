@@ -153,12 +153,11 @@ private:
   std::vector<kitty::static_truth_table<num_vars>> const& input_values_;
 }; /* simulator */
 
-template<uint32_t num_vars>
+template<typename engine_type, uint32_t num_vars>
 void test_xag_n_input_functions( uint32_t& success_counter, uint32_t& failed_counter )
 {
-  using truth_table_type = kitty::static_truth_table<num_vars>;
-
-  xag_resyn_stats st;
+  using truth_table_type = typename engine_type::truth_table_t;
+  typename engine_type::stats st;
   std::vector<truth_table_type> divisor_functions;
   std::vector<uint32_t> divisors;
   truth_table_type x;
@@ -174,8 +173,7 @@ void test_xag_n_input_functions( uint32_t& success_counter, uint32_t& failed_cou
 
   do
   {
-    xag_resyn_decompose<truth_table_type, std::vector<truth_table_type>, true, false, uint32_t>
-      engine( st );
+    engine_type engine( st );
 
     auto const index_list = engine( target, care, divisors.begin(), divisors.end(), divisor_functions, std::numeric_limits<uint32_t>::max() );
     if ( index_list )
@@ -201,9 +199,19 @@ void test_xag_n_input_functions( uint32_t& success_counter, uint32_t& failed_cou
 
 TEST_CASE( "Synthesize XAGs for all 3-input functions", "[xag_resyn]" )
 {
+  using truth_table_type = kitty::static_truth_table<3>;
+  using engine_t = xag_resyn_decompose<truth_table_type, std::vector<truth_table_type>, true, false, uint32_t>;
   uint32_t success_counter{0};
   uint32_t failed_counter{0};
-  test_xag_n_input_functions<3>( success_counter, failed_counter );
+  test_xag_n_input_functions<engine_t, 3>( success_counter, failed_counter );
+
+  CHECK( success_counter == 254 );
+  CHECK( failed_counter == 2 );
+
+  using engine_abc_t = xag_resyn_abc<truth_table_type, true>;
+  success_counter = 0;
+  failed_counter = 0;
+  test_xag_n_input_functions<engine_abc_t, 3>( success_counter, failed_counter );
 
   CHECK( success_counter == 254 );
   CHECK( failed_counter == 2 );
@@ -211,9 +219,11 @@ TEST_CASE( "Synthesize XAGs for all 3-input functions", "[xag_resyn]" )
 
 TEST_CASE( "Synthesize XAGs for all 4-input functions", "[xag_resyn]" )
 {
+  using truth_table_type = kitty::static_truth_table<4>;
+  using engine_t = xag_resyn_decompose<truth_table_type, std::vector<truth_table_type>, true, false, uint32_t>;
   uint32_t success_counter{0};
   uint32_t failed_counter{0};
-  test_xag_n_input_functions<4>( success_counter, failed_counter );
+  test_xag_n_input_functions<engine_t, 4>( success_counter, failed_counter );
 
   CHECK( success_counter == 54622 );
   CHECK( failed_counter == 10914 );

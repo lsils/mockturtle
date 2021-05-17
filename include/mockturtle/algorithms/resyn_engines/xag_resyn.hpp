@@ -38,6 +38,7 @@
 
 #include <kitty/kitty.hpp>
 #include <fmt/format.h>
+#include <abcresub/abcresub.hpp>
 
 #include <vector>
 #include <algorithm>
@@ -824,5 +825,119 @@ private:
   stats& st;
   params const ps;
 }; /* xag_resyn_decompose */
+
+
+struct xag_resyn_abc_stats
+{};
+
+template<class TT, bool use_xor = false>
+class xag_resyn_abc
+{
+public:
+  using stats = xag_resyn_abc_stats;
+  using params = xag_resyn_params;
+  using index_list_t = large_xag_index_list;
+  using truth_table_t = TT;
+
+  explicit xag_resyn_abc( stats& st, params const& ps = {} ) noexcept
+    : st( st ), ps( ps ), counter( 0 )
+  { }
+
+  virtual ~xag_resyn_abc()
+  {
+    release();
+  }
+
+  template<class iterator_type, class truth_table_storage_type>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  {
+    num_divisors = std::distance( begin, end ) + 2;
+    num_blocks_per_truth_table = target.num_blocks();
+    alloc();
+
+    add_divisor( ~target & care ); /* off-set */
+    add_divisor( target & care ); /* on-set */
+
+    while ( begin != end )
+    {
+      add_divisor( tts[*begin] );
+      ++begin;
+    }
+
+    return compute_function( max_size );
+  }
+
+protected:
+  void add_divisor( TT const& tt )
+  {
+    assert( tt.num_blocks() == num_blocks_per_truth_table );
+    for ( uint64_t i = 0ul; i < num_blocks_per_truth_table; ++i )
+    {
+      if constexpr ( std::is_same_v<TT, kitty::partial_truth_table> || std::is_same_v<TT, kitty::dynamic_truth_table> )
+        Vec_WrdPush( abc_tts, tt._bits[i] );
+      else // static_truth_table
+        Vec_WrdPush( abc_tts, tt._bits );
+    }
+    Vec_PtrPush( abc_divs, Vec_WrdEntryP( abc_tts, counter * num_blocks_per_truth_table ) );
+    ++counter;
+  }
+
+  std::optional<index_list_t> compute_function( uint32_t num_inserts )
+  {
+    int * raw_list;
+    int size = abcresub::Abc_ResubComputeFunction( (void **)Vec_PtrArray( abc_divs ), Vec_PtrSize( abc_divs ), num_blocks_per_truth_table, num_inserts, /* nDivsMax */ps.max_binates, /* nChoice = */0, int(use_xor), /* debug = */0, /* verbose = */0, &raw_list );
+
+    if ( size )
+    {
+      index_list_t xag_list;
+      xag_list.add_inputs( num_divisors - 2 );
+      for ( int i = 0; i < size - 1; i += 2 )
+      {
+        if ( raw_list[i] < raw_list[i+1] )
+          xag_list.add_and( raw_list[i] - 2, raw_list[i+1] - 2 );
+        else
+          xag_list.add_xor( raw_list[i] - 2, raw_list[i+1] - 2 );
+      }
+      xag_list.add_output( raw_list[size - 1] < 2 ? raw_list[size - 1] : raw_list[size - 1] - 2 );
+      return xag_list;
+    }
+
+    return std::nullopt;
+  }
+
+  void dump( std::string const file = "dump.txt" ) const
+  {
+    abcresub::Abc_ResubDumpProblem( file.c_str(), (void **)Vec_PtrArray( abc_divs ),  Vec_PtrSize( abc_divs ), num_blocks_per_truth_table );
+  }
+
+  void alloc()
+  {
+    assert( abc_tts == nullptr );
+    assert( abc_divs == nullptr );
+    abc_tts = abcresub::Vec_WrdAlloc( num_divisors * num_blocks_per_truth_table );
+    abc_divs = abcresub::Vec_PtrAlloc( num_divisors );
+  }
+
+  void release()
+  {
+    assert( abc_divs != nullptr );
+    assert( abc_tts != nullptr );
+    Vec_PtrFree( abc_divs );
+    Vec_WrdFree( abc_tts );
+    abc_divs = nullptr;
+    abc_tts = nullptr;
+  }
+
+protected:
+  uint64_t num_divisors;
+  uint64_t num_blocks_per_truth_table;
+  uint64_t counter;
+
+  abcresub::Vec_Wrd_t * abc_tts{nullptr};
+  abcresub::Vec_Ptr_t * abc_divs{nullptr};
+
+  stats& st;
+  params const ps;
+}; /* xag_resyn_abc */
 
 } /* namespace mockturtle */
