@@ -3,6 +3,7 @@
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/xag.hpp>
+#include <mockturtle/networks/klut.hpp>
 
 #include <kitty/static_truth_table.hpp>
 
@@ -40,6 +41,23 @@ TEST_CASE( "Simulate XOR AIG circuit with static truth table", "[simulation]" )
 
   const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
   CHECK( tt._bits == 0x6 );
+}
+
+TEST_CASE( "Simulate kLUT network with dynamic truth table", "[simulation]" )
+{
+  klut_network klut;
+
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto f1 = klut.create_and( a, b );
+  const auto f2 = klut.create_and( a, f1 );
+  const auto f3 = klut.create_and( b, f1 );
+  const auto f4 = klut.create_and( f2, f3 );
+  klut.create_po( f4 );
+
+  default_simulator<kitty::dynamic_truth_table> sim( 2 );
+  const auto tt = simulate<kitty::dynamic_truth_table>( klut, sim )[0];
+  CHECK( tt._bits[0] == 0x8 );
 }
 
 
