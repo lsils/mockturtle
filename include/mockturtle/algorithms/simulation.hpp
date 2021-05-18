@@ -518,7 +518,7 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
   ntk.foreach_gate( [&]( auto const& n ) {
     std::vector<SimulationType> fanin_values( ntk.fanin_size( n ) );
     ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
-      fanin_values[i] = node_to_value[f];
+      fanin_values[i] = node_to_value[ntk.get_node(f)];
     } );
     node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
   } );
@@ -789,11 +789,11 @@ std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Sim
   ntk.foreach_po( [&]( auto const& f, auto i ) {
     if ( ntk.is_complemented( f ) )
     {
-      po_values[i] = sim.compute_not( node_to_value[f] );
+      po_values[i] = sim.compute_not( node_to_value[ntk.get_node(f)] );
     }
     else
     {
-      po_values[i] = node_to_value[f];
+      po_values[i] = node_to_value[ntk.get_node(f)];
     }
   } );
   return po_values;
