@@ -845,6 +845,7 @@ public:
 
   virtual ~xag_resyn_abc()
   {
+    abcresub::Abc_ResubPrepareManager( 0 );
     release();
   }
 
@@ -853,6 +854,7 @@ public:
   {
     num_divisors = std::distance( begin, end ) + 2;
     num_blocks_per_truth_table = target.num_blocks();
+    abcresub::Abc_ResubPrepareManager( num_blocks_per_truth_table );
     alloc();
 
     add_divisor( ~target & care ); /* off-set */
@@ -884,8 +886,16 @@ protected:
 
   std::optional<index_list_t> compute_function( uint32_t num_inserts )
   {
+    int nLimit = num_inserts > std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : num_inserts;
     int * raw_list;
-    int size = abcresub::Abc_ResubComputeFunction( (void **)Vec_PtrArray( abc_divs ), Vec_PtrSize( abc_divs ), num_blocks_per_truth_table, num_inserts, /* nDivsMax */ps.max_binates, /* nChoice = */0, int(use_xor), /* debug = */0, /* verbose = */0, &raw_list );
+    int size = abcresub::Abc_ResubComputeFunction( 
+               /* ppDivs */(void **)Vec_PtrArray( abc_divs ), 
+               /* nDivs */Vec_PtrSize( abc_divs ), 
+               /* nWords */num_blocks_per_truth_table, 
+               /* nLimit */nLimit, 
+               /* nDivsMax */ps.max_binates, 
+               /* iChoice */0, /* fUseXor */int(use_xor), /* fDebug */0, /* fVerbose */0, 
+               /* ppArray */&raw_list );
 
     if ( size )
     {
