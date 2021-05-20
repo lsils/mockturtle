@@ -33,6 +33,8 @@
 
 #pragma once
 
+#if !__clang__ || __clang_major__ > 9
+
 #include <cstdint>
 #include <string>
 
@@ -76,3 +78,5 @@ auto cached_exact_xag_resynthesis( std::string const& cache_filename, uint32_t i
 }
 
 } /* mockturtle */
+
+#endif

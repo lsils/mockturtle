@@ -21,7 +21,13 @@ TEST_CASE( "aqfp_view simple test", "[aqfp_view]" )
   auto const f4 = mig.create_maj( f1, f2, f3 );
   mig.create_po( f4 );
 
-  aqfp_view view{mig};
+  aqfp_view_params ps;
+  ps.branch_pis = false;
+  ps.balance_pis = false;
+  ps.balance_pos = true;
+  ps.splitter_capacity = 4u;
+  aqfp_view view( mig, ps );
+
   CHECK( view.level( view.get_node( f1 ) ) == 1u );
   CHECK( view.level( view.get_node( f2 ) ) == 3u );
   CHECK( view.level( view.get_node( f3 ) ) == 3u );
@@ -64,7 +70,13 @@ TEST_CASE( "two layers of splitters", "[aqfp_view]" )
   auto const f12 = mig.create_maj( f9, f10, f11 );
   mig.create_po( f12 );
 
-  aqfp_view view{mig};
+  aqfp_view_params ps;
+  ps.branch_pis = false;
+  ps.balance_pis = false;
+  ps.balance_pos = true;
+  ps.splitter_capacity = 4u;
+  aqfp_view view( mig, ps );
+
   CHECK( view.num_buffers( view.get_node( f2 ) ) == 4u );
   CHECK( view.num_buffers( view.get_node( f6 ) ) == 2u );
   CHECK( view.depth() == 7u );
@@ -87,7 +99,12 @@ TEST_CASE( "PO splitters and buffers", "[aqfp_view]" )
   mig.create_po( f2 );
   mig.create_po( !f2 );
 
-  aqfp_view view{mig};
+  aqfp_view_params ps;
+  ps.branch_pis = false;
+  ps.balance_pis = false;
+  ps.balance_pos = true;
+  ps.splitter_capacity = 4u;
+  aqfp_view view( mig, ps );
 
   CHECK( view.depth() == 4u );
 
@@ -128,8 +145,53 @@ TEST_CASE( "chain of fanouts", "[aqfp_view]" )
   mig.create_po( f8 );
   mig.create_po( f9 );
 
-  aqfp_view view{mig};
+  aqfp_view_params ps;
+  ps.branch_pis = false;
+  ps.balance_pis = false;
+  ps.balance_pos = true;
+  ps.splitter_capacity = 4u;
+  aqfp_view view( mig, ps );
+
   CHECK( view.num_buffers( view.get_node( f1 ) ) == 9u );
   CHECK( view.depth() == 8u );
   CHECK( view.num_buffers() == 11u );
+}
+
+TEST_CASE( "branch but not balance PIs", "[aqfp_view]" )
+{
+  mig_network mig;
+  auto const a = mig.create_pi();
+  auto const b = mig.create_pi(); // shared
+  auto const c = mig.create_pi(); // shared
+  auto const d = mig.create_pi();
+  auto const e = mig.create_pi(); // shared at higher level
+  auto const f = mig.create_pi(); // connects to two POs
+
+  auto const f1 = mig.create_maj( a, b, c );
+  auto const f2 = mig.create_maj( b, c, d );
+  auto const f3 = mig.create_and( f1, e );
+  auto const f4 = mig.create_and( f2, e );
+  mig.create_po( f3 );
+  mig.create_po( f4 );
+  mig.create_po( f );
+  mig.create_po( !f );
+
+  aqfp_view_params ps;
+  ps.branch_pis = true;
+  ps.balance_pis = false;
+  ps.balance_pos = true;
+  ps.splitter_capacity = 4u;
+  aqfp_view view( mig, ps );
+
+  CHECK( view.level( view.get_node( f1 ) ) == 2u );
+  CHECK( view.level( view.get_node( f2 ) ) == 2u );
+  CHECK( view.level( view.get_node( f3 ) ) == 3u );
+  CHECK( view.level( view.get_node( f4 ) ) == 3u );
+  CHECK( view.depth() == 3u );
+
+  CHECK( view.num_buffers( view.get_node( b ) ) == 1u );
+  CHECK( view.num_buffers( view.get_node( c ) ) == 1u );
+  CHECK( view.num_buffers( view.get_node( e ) ) == 1u );
+  CHECK( view.num_buffers( view.get_node( f ) ) == 1u );
+  CHECK( view.num_buffers() == 4u );
 }

@@ -86,6 +86,7 @@ Welcome to mockturtle's documentation!
    :caption: Utilities
 
    utils/util_data_structures
+   utils/util_functions
 
 Indices and tables
 ==================

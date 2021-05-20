@@ -24,7 +24,8 @@ TEST_CASE( "read a PLA file into an XAG", "[pla_reader]" )
                    ".e\n"};
 
   std::istringstream in( file );
-  lorina::read_pla( in, pla_reader( xag ) );
+  auto const result = lorina::read_pla( in, pla_reader( xag ) );
+  CHECK( result == lorina::return_code::success );
 
   CHECK( xag.size() == 9 );
   CHECK( xag.num_pis() == 3 );

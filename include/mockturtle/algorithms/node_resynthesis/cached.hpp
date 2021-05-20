@@ -33,6 +33,8 @@
 
 #pragma once
 
+#if !__clang__ || __clang_major__ > 9
+
 #include <cstdint>
 #if __GNUC__ == 7
 #include <experimental/filesystem>
@@ -309,3 +311,5 @@ private:
   mutable uint32_t _cache_misses{};
 };
 } /* namespace mockturtle */
+
+#endif

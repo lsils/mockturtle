@@ -661,35 +661,12 @@ void expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& 
   }
 }
 
-/*! \brief Performs in-place expansion of a set of nodes towards TFO
- *
- * Iteratively expands the inner nodes of the window with those
- * fanouts that are supported by the window.  Explores the fanouts
- * level by level.  Starting with those that are closest to the
- * inputs.
- *
- * Uses a new color.
- *
- * \param ntk A network
- * \param inputs Input nodes of a window
- * \param nodes Inner nodes of a window
- *
- * **Required network functions:**
- * - `current_color`
- * - `depth`
- * - `eval_color`
- * - `eval_fanins_color`
- * - `foreach_fanin`
- * - `foreach_fanout`
- * - `get_node`
- * - `is_ci`
- * - `is_constant`
- * - `level`
- * - `new_color`
- * - `paint`
- */
-template<typename Ntk>
-void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
+namespace detail
+{
+
+template<typename Ntk, bool auto_resize = true>
+void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes,
+                                   std::vector<std::vector<typename Ntk::node>>& levels )
 {
   using node = typename Ntk::node;
 
@@ -698,7 +675,6 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   ntk.new_color();
 
   /* mapping from level to nodes (which nodes are on a certain level?) */
-  std::vector<std::vector<node>> levels;
   levels.resize( ntk.depth() + 1 );
 
   /* list of indices of used levels (avoid iterating over all levels) */
@@ -709,6 +685,13 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   {
     uint32_t const node_level = ntk.level( i );
     ntk.paint( i );
+    if constexpr ( auto_resize )
+    {
+      if ( levels.size() <= node_level )
+      {
+        levels.resize( std::max( uint32_t( 2*levels.size() ), node_level ) );
+      }
+    }
     levels.at( node_level ).push_back( i );
     if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
     {
@@ -721,6 +704,13 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
   {
     uint32_t const node_level = ntk.level( n );
     ntk.paint( n );
+    if constexpr ( auto_resize )
+    {
+      if ( levels.size() <= node_level )
+      {
+        levels.resize( std::max( uint32_t( 2 * levels.size() ), node_level ) );
+      }
+    }
     levels.at( node_level ).push_back( n );
     if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
     {
@@ -757,6 +747,13 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
           /* update data structured */
           uint32_t const node_level = ntk.level( fo );
           ntk.paint( fo );
+          if constexpr ( auto_resize )
+          {
+            if ( levels.size() <= node_level )
+            {
+              levels.resize( std::max( uint32_t( 2*levels.size() ), node_level ) );
+            }
+          }
           levels.at( node_level ).push_back( fo );
           if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
           {
@@ -770,6 +767,42 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
     }
     level.clear();
   }
+}
+
+} /* detail */
+
+/*! \brief Performs in-place expansion of a set of nodes towards TFO
+ *
+ * Iteratively expands the inner nodes of the window with those
+ * fanouts that are supported by the window.  Explores the fanouts
+ * level by level.  Starting with those that are closest to the
+ * inputs.
+ *
+ * Uses a new color.
+ *
+ * \param ntk A network
+ * \param inputs Input nodes of a window
+ * \param nodes Inner nodes of a window
+ *
+ * **Required network functions:**
+ * - `current_color`
+ * - `depth`
+ * - `eval_color`
+ * - `eval_fanins_color`
+ * - `foreach_fanin`
+ * - `foreach_fanout`
+ * - `get_node`
+ * - `is_ci`
+ * - `is_constant`
+ * - `level`
+ * - `new_color`
+ * - `paint`
+ */
+template<typename Ntk, bool auto_resize = true>
+void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::node> const& inputs, std::vector<typename Ntk::node>& nodes )
+{
+  std::vector<std::vector<typename Ntk::node>> levels;
+  detail::levelized_expand_towards_tfo<Ntk, auto_resize>( ntk, inputs, nodes, levels );
 }
 
 namespace detail
@@ -890,7 +923,7 @@ public:
 
       /* expand the nodes towards the TFO */
       std::sort( std::begin( inputs ), std::end( inputs ) );
-      levelized_expand_towards_tfo( ntk, inputs, *nodes );
+      detail::levelized_expand_towards_tfo( ntk, inputs, *nodes, levels );
     }
 
     if ( inputs.size() > cut_size || nodes->empty() )
@@ -1006,6 +1039,7 @@ protected:
   std::vector<node> visited;
   std::vector<node> path;
   std::vector<uint32_t> refs;
+  std::vector<std::vector<node>> levels;
 }; /* create_window_impl */
 
 } /* namespace mockturtle */

@@ -33,13 +33,14 @@
 
 #pragma once
 
-#include <cstdint>
-#include <vector>
-
 #include "../traits.hpp"
 #include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
+#include "../networks/events.hpp"
 #include "immutable_view.hpp"
+
+#include <cstdint>
+#include <vector>
 
 namespace mockturtle
 {
@@ -48,6 +49,9 @@ struct depth_view_params
 {
   /*! \brief Take complemented edges into account for depth computation. */
   bool count_complements{false};
+
+  /*! \brief Whether PIs have costs. */
+  bool pi_cost{false};
 };
 
 /*! \brief Implements `depth` and `level` methods for networks.
@@ -111,11 +115,11 @@ public:
   using signal = typename Ntk::signal;
 
   explicit depth_view( NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
-      : Ntk(),
-        _ps( ps ),
-        _levels( *this ),
-        _crit_path( *this ),
-        _cost_fn( cost_fn )
+    : Ntk()
+    , _ps( ps )
+    , _levels( *this )
+    , _crit_path( *this )
+    , _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -126,20 +130,19 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   /*! \brief Standard constructor.
    *
    * \param ntk Base network
-   * \param count_complements Count inverters as 1
    */
   explicit depth_view( Ntk const& ntk, NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
-      : Ntk( ntk ),
-        _ps( ps ),
-        _levels( ntk ),
-        _crit_path( ntk ),
-        _cost_fn( cost_fn )
+    : Ntk( ntk )
+    , _ps( ps )
+    , _levels( ntk )
+    , _crit_path( ntk )
+    , _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -152,12 +155,47 @@ public:
 
     update_levels();
 
-    Ntk::events().on_add.push_back( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  // We should add these or make sure that members are properly copied
-  //depth_view( depth_view<Ntk> const& ) = delete;
-  //depth_view<Ntk> operator=( depth_view<Ntk> const& ) = delete;
+  /*! \brief Copy constructor. */
+  explicit depth_view( depth_view<Ntk, NodeCostFn, false> const& other )
+    : Ntk( other )
+    , _ps( other._ps )
+    , _levels( other._levels )
+    , _crit_path( other._crit_path )
+    , _depth( other._depth )
+    , _cost_fn( other._cost_fn )
+  {
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+  }
+
+  depth_view<Ntk, NodeCostFn, false>& operator=( depth_view<Ntk, NodeCostFn, false> const& other )
+  {
+    /* delete the event of this network */
+    Ntk::events().release_add_event( add_event );
+
+    /* update the base class */
+    this->_storage = other._storage;
+    this->_events = other._events;
+
+    /* copy */
+    _ps = other._ps;
+    _levels = other._levels;
+    _crit_path = other._crit_path;
+    _depth = other._depth;
+    _cost_fn = other._cost_fn;
+
+    /* register new event in the other network */
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+
+    return *this;
+  }
+
+  ~depth_view()
+  {
+    Ntk::events().release_add_event( add_event );
+  }
 
   uint32_t depth() const
   {
@@ -213,9 +251,14 @@ private:
     }
     this->set_visited( n, this->trav_id() );
 
-    if ( this->is_constant( n ) || this->is_pi( n ) )
+    if ( this->is_constant( n ) )
     {
       return _levels[n] = 0;
+    }
+    if ( this->is_pi( n ) )
+    {
+      assert( !_ps.pi_cost || _cost_fn( *this, n ) >= 1 );
+      return _levels[n] = _ps.pi_cost ? _cost_fn( *this, n ) - 1 : 0;
     }
 
     uint32_t level{0};
@@ -255,7 +298,7 @@ private:
   void set_critical_path( node const& n )
   {
     _crit_path[n] = true;
-    if ( !this->is_constant( n ) && !this->is_pi( n ) )
+    if ( !this->is_constant( n ) && !( _ps.pi_cost && this->is_pi( n ) ) )
     {
       const auto lvl = _levels[n];
       this->foreach_fanin( n, [&]( auto const& f ) {
@@ -295,6 +338,8 @@ private:
   node_map<uint32_t, Ntk> _crit_path;
   uint32_t _depth{};
   NodeCostFn _cost_fn;
+
+  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
 };
 
 template<class T>

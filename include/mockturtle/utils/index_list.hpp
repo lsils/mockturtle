@@ -597,7 +597,11 @@ inline std::string to_index_list_string( mig_index_list const& indices )
  * Example: The following index list creates the output function `(x1
  * AND x2) XOR (x3 AND x4)` with 4 inputs, 1 output, and 3 gates:
  * `{4 | 1 << 8 | 3 << 16, 2, 4, 6, 8, 12, 10, 14}`
+ *
+ * Note: if `separate_header = true`, the header will be split into 3 
+ * elements to support networks with larger number of PIs.
  */
+template<bool separate_header = false>
 struct xag_index_list
 {
 public:
@@ -607,6 +611,11 @@ public:
   explicit xag_index_list( uint32_t num_pis = 0 )
     : values( {num_pis} )
   {
+    if constexpr ( separate_header )
+    {
+      values.emplace_back( 0 );
+      values.emplace_back( 0 );
+    }
   }
 
   explicit xag_index_list( std::vector<element_type> const& values )
@@ -625,26 +634,49 @@ public:
 
   uint64_t num_gates() const
   {
+    if constexpr ( separate_header )
+    {
+      return values.at( 2 );
+    }
     return ( values.at( 0 ) >> 16 );
   }
 
   uint64_t num_pis() const
   {
+    if constexpr ( separate_header )
+    {
+      return values.at( 0 );
+    }
     return values.at( 0 ) & 0xff;
   }
 
   uint64_t num_pos() const
   {
+    if constexpr ( separate_header )
+    {
+      return values.at( 1 );
+    }
     return ( values.at( 0 ) >> 8 ) & 0xff;
   }
 
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
-    assert( ( values.size() - 1u - num_pos() ) % 2 == 0 );
-    for ( uint64_t i = 1u; i < values.size() - num_pos(); i += 2 )
+    if constexpr ( separate_header )
     {
-      fn( values.at( i ), values.at( i+1 ) );
+      assert( ( values.size() - 3u - num_pos() ) % 2 == 0 );
+      for ( uint64_t i = 3u; i < values.size() - num_pos(); i += 2 )
+      {
+        fn( values.at( i ), values.at( i+1 ) );
+      }
+    }
+    else
+    {
+      assert( ( values.size() - 1u - num_pos() ) % 2 == 0 );
+      for ( uint64_t i = 1u; i < values.size() - num_pos(); i += 2 )
+      {
+        fn( values.at( i ), values.at( i+1 ) );
+      }
     }
   }
 
@@ -659,14 +691,25 @@ public:
 
   void add_inputs( uint32_t n = 1u )
   {
-    assert( num_pis() + n <= 0xff );
+    if constexpr ( !separate_header )
+    {
+      assert( num_pis() + n <= 0xff );
+    }
     values.at( 0u ) += n;
   }
 
   element_type add_and( element_type lit0, element_type lit1 )
   {
-    assert( num_gates() + 1u <= 0xffff );
-    values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
+    if constexpr ( separate_header )
+    {
+      values.at( 2u ) += 1;
+    }
+    else
+    {
+      assert( num_gates() + 1u <= 0xffff );
+      values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
+    }
+    
     values.push_back( lit0 < lit1 ? lit0 : lit1 );
     values.push_back( lit0 < lit1 ? lit1 : lit0 );
     return ( num_gates() + num_pis() ) << 1;
@@ -674,8 +717,16 @@ public:
 
   element_type add_xor( element_type lit0, element_type lit1 )
   {
-    assert( num_gates() + 1u <= 0xffff );
-    values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
+    if constexpr ( separate_header )
+    {
+      values.at( 2u ) += 1;
+    }
+    else
+    {
+      assert( num_gates() + 1u <= 0xffff );
+      values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
+    }
+
     values.push_back( lit0 > lit1 ? lit0 : lit1 );
     values.push_back( lit0 > lit1 ? lit1 : lit0 );
     return ( num_gates() + num_pis() ) << 1;
@@ -683,14 +734,24 @@ public:
 
   void add_output( element_type lit )
   {
-    assert( num_pos() + 1 <= 0xff );
-    values.at( 0u ) = ( num_pos() + 1 ) << 8 | ( values.at( 0u ) & 0xffff00ff );
+    if constexpr ( separate_header )
+    {
+      values.at( 1u ) += 1;
+    }
+    else
+    {
+      assert( num_pos() + 1 <= 0xff );
+      values.at( 0u ) = ( num_pos() + 1 ) << 8 | ( values.at( 0u ) & 0xffff00ff );
+    }
+    
     values.push_back( lit );
   }
 
 private:
   std::vector<element_type> values;
 };
+
+using large_xag_index_list = xag_index_list<true>;
 
 /*! \brief Generates a xag_index_list from a network
  *
@@ -711,8 +772,8 @@ private:
  * \param indices An index list
  * \param ntk A logic network
  */
-template<typename Ntk>
-void encode( xag_index_list& indices, Ntk const& ntk )
+template<typename Ntk, bool separate_header = false>
+void encode( xag_index_list<separate_header>& indices, Ntk const& ntk )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
@@ -774,7 +835,14 @@ void encode( xag_index_list& indices, Ntk const& ntk )
     indices.add_output( 2*ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
   });
 
-  assert( indices.size() == 1u + 2u*ntk.num_gates() + ntk.num_pos() );
+  if constexpr ( separate_header )
+  {
+    assert( indices.size() == 3u + 2u*ntk.num_gates() + ntk.num_pos() );
+  }
+  else
+  {
+    assert( indices.size() == 1u + 2u*ntk.num_gates() + ntk.num_pos() );
+  }
 }
 
 /*! \brief Inserts a xag_index_list into an existing network
@@ -790,8 +858,8 @@ void encode( xag_index_list& indices, Ntk const& ntk )
  * \param indices An index list
  * \param fn Callback function
  */
-template<typename Ntk, typename BeginIter, typename EndIter, typename Fn>
-void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list const& indices, Fn&& fn )
+template<typename Ntk, typename BeginIter, typename EndIter, typename Fn, bool separate_header = false>
+void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list<separate_header> const& indices, Fn&& fn )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and method" );
@@ -832,9 +900,26 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list const& indic
  * \param indices An index list
  * \return A string representation of the index list
  */
-inline std::string to_index_list_string( xag_index_list const& indices )
+inline std::string to_index_list_string( xag_index_list<false> const& indices )
 {
   auto s = fmt::format( "{{{} | {} << 8 | {} << 16", indices.num_pis(), indices.num_pos(), indices.num_gates() );
+
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
+    s += fmt::format( ", {}, {}", lit0, lit1 );
+  });
+
+  indices.foreach_po( [&]( uint32_t lit ) {
+    s += fmt::format( ", {}", lit );
+  });
+
+  s += "}";
+
+  return s;
+}
+
+inline std::string to_index_list_string( xag_index_list<true> const& indices )
+{
+  auto s = fmt::format( "{{{}, {}, {}", indices.num_pis(), indices.num_pos(), indices.num_gates() );
 
   indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
     s += fmt::format( ", {}, {}", lit0, lit1 );
@@ -874,5 +959,153 @@ void decode( Ntk& ntk, IndexList const& indices )
   insert( ntk, std::begin( signals ), std::end( signals ), indices,
           [&]( signal const& s ){ ntk.create_po( s ); });
 }
+
+/*! \brief Enumerate structured index_lists
+ *
+ * Enumerate concrete `xag_index_list`s from an abstract index list
+ * specification.  The specifiation is provided in an extended index
+ * list format, where a `-1` indicates an unspecified input.
+ *
+ * The algorithm concretizes unspecified inputs and negates nodes.
+ *
+ * The enumerator generates the following concrete index lists
+ *    {2 | 1 << 8 | 1 << 16, 2, 4, 6}
+ *    {2 | 1 << 8 | 1 << 16, 2, 4, 7}
+ *    {2 | 1 << 8 | 1 << 16, 3, 4, 6}
+ *    {2 | 1 << 8 | 1 << 16, 3, 4, 7}
+ *    {2 | 1 << 8 | 1 << 16, 3, 5, 6}
+ *    {2 | 1 << 8 | 1 << 16, 3, 5, 7}
+ *    {2 | 1 << 8 | 1 << 16, 2, 5, 6}
+ *    {2 | 1 << 8 | 1 << 16, 2, 5, 7}
+ * from the abstract index list specification `{ -1, -1, 6 }`.
+ *
+ * Example
+ *
+   \verbatim embed:rst
+
+   .. code-bock:: c++
+
+      aig_index_list_enumerator e( { -1, -1, -1, 6, 8 }, 2u, 2u, 1u );
+      e.run( [&]( xag_index_list const& il ) {
+        aig_network aig;
+        decode( aig, il );
+      } );
+   \endverbatim
+ */
+class aig_index_list_enumerator
+{
+public:
+  explicit aig_index_list_enumerator( std::vector<int32_t> const& values, uint32_t num_pis, uint32_t num_gates, uint32_t num_pos )
+    : values_( values )
+    , num_pis( num_pis )
+    , num_gates( num_gates )
+    , num_pos( num_pos )
+  {}
+
+  template<typename Fn>
+  void run( Fn&& fn )
+  {
+    recurse( values_, 0u, fn );
+  }
+
+protected:
+  template<typename Fn>
+  void recurse( std::vector<int32_t> values, uint32_t pos, Fn&& fn )
+  {
+    /* process gate */
+    if ( pos < 2*num_gates )
+    {
+      auto& a = values.at( pos );
+      auto& b = values.at( pos + 1 );
+      if ( a == -1 && b == -1 )
+      {
+        for ( uint32_t i = 0u; i < num_pis; ++i )
+        {
+          a = ( i + 1 ) << 1;
+          for ( uint32_t j = i + 1; j < num_pis; ++j )
+          {
+            b = ( j + 1 ) << 1;
+            recurse( values, pos + 2, fn );
+            a = a ^ 1;
+            recurse( values, pos + 2, fn );
+            b = b ^ 1;
+            recurse( values, pos + 2, fn );
+            a = a ^ 1;
+            recurse( values, pos + 2, fn );
+            b = b ^ 1;
+          }
+        }
+        return;
+      }
+      else if ( a == -1 )
+      {
+        for ( uint32_t i = 0u; i < num_pis; ++i )
+        {
+          a = ( i + 1 ) << 1;
+          recurse( values, pos + 2, fn );
+          a = a ^ 1;
+          recurse( values, pos + 2, fn );
+          b = b ^ 1;
+          recurse( values, pos + 2, fn );
+          a = a ^ 1;
+          recurse( values, pos + 2, fn );
+          b = b ^ 1;
+        }
+        return;
+      }
+      else if ( b == -1 )
+      {
+        for ( uint32_t i = 0u; i < num_pis; ++i )
+        {
+          b = ( i + 1 ) << 1;
+          recurse( values, pos + 2, fn );
+          a = a ^ 1;
+          recurse( values, pos + 2, fn );
+          b = b ^ 1;
+          recurse( values, pos + 2, fn );
+          a = a ^ 1;
+          recurse( values, pos + 2, fn );
+          b = b ^ 1;
+        }
+        return;
+      }
+
+      recurse( values, pos + 2, fn );
+      a = a ^ 1;
+      recurse( values, pos + 2, fn );
+      b = b ^ 1;
+      recurse( values, pos + 2, fn );
+      a = a ^ 1;
+      recurse( values, pos + 2, fn );
+      b = b ^ 1;
+      return;
+    }
+
+    /* process output */
+    if ( pos < values.size() )
+    {
+      auto& o = values.at( pos );
+      recurse( values, pos + 1u, fn );
+      o = o ^ 1;
+      recurse( values, pos + 1u, fn );
+      return;
+    }
+
+    /* finished processing values */
+    std::vector<uint32_t> index_list;
+    index_list.emplace_back( num_pis | ( num_pos << 8 ) | ( num_gates << 16 ) );
+    for ( int32_t const& v : values )
+    {
+      index_list.emplace_back( v );
+    }
+    fn( xag_index_list( index_list ) );
+  }
+
+protected:
+  std::vector<int32_t> values_;
+  uint32_t num_pis;
+  uint32_t num_gates;
+  uint32_t num_pos;
+};
 
 } /* mockturtle */

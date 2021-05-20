@@ -10,6 +10,7 @@
 #include <mockturtle/algorithms/cut_enumeration.hpp>
 #include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/lut_mapping.hpp>
+#include <mockturtle/algorithms/mapper.hpp>
 #include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
@@ -45,7 +46,11 @@ std::vector<Ret> foreach_benchmark( Fn&& fn )
   for ( auto const& id : {17, 432, 499, 880, 1355, 1908, 2670, 3540, 5315, 6288, 7552} )
   {
     Ntk ntk;
-    lorina::read_aiger( fmt::format( "{}/c{}.aig", BENCHMARKS_PATH, id ), aiger_reader( ntk ) );
+    auto const result = lorina::read_aiger( fmt::format( "{}/c{}.aig", BENCHMARKS_PATH, id ), aiger_reader( ntk ) );
+    if ( result != lorina::return_code::success )
+    {
+      continue;
+    }
     v.emplace_back( fn( ntk, id ) );
   }
   return v;
@@ -107,7 +112,7 @@ TEST_CASE( "Test quality of node resynthesis with NPN4 resynthesis", "[quality]"
   CHECK( v == std::vector<uint32_t>{{7, 176, 316, 300, 316, 299, 502, 929, 1319, 1061, 1418}} );
 }
 
-TEST_CASE( "Test quality improvement of cut rewriting with NPN4 resynthesis", "[quality]" )
+TEST_CASE( "Test quality improvement of MIG cut rewriting with compatibility graph and NPN4 resynthesis", "[quality]" )
 {
   // without zero gain
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
@@ -164,12 +169,58 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
   CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 115, 55, 139, 107, 409, 449, 66}} );
 }
 
+TEST_CASE( "Test quality improvement of MIG mapping", "[quality]" )
+{
+  mig_npn_resynthesis resyn{true};
+  exact_library<mig_network, mig_npn_resynthesis> lib( resyn );
+  auto const v = foreach_benchmark<mig_network>( [&lib]( auto& ntk, auto ) {
+    uint32_t const before = ntk.num_gates();
+    map_params ps;
+    map_stats st;
+    mig_network mig = exact_map( ntk, lib, ps, &st );
+    mig = cleanup_dangling( mig );
+    return before - mig.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 34, 76, 39, 180, 78, 221, 159, 523, 1358, 258}} );
+}
+
+TEST_CASE( "Test quality improvement of MIG resubstitution", "[quality]" )
+{
+  auto const v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    uint32_t const before = ntk.num_gates();
+    depth_view dntk{ntk};
+    fanout_view fntk{dntk};
+    mig_resubstitution( fntk );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{1, 58, 6, 18, 6, 20, 102, 88, 165, 466, 63}} );
+}
+
+TEST_CASE( "Test quality improvement of MIG k-resubstitution", "[quality]" )
+{
+  auto const v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    uint32_t const before = ntk.num_gates();
+    depth_view dntk{ntk};
+    fanout_view fntk{dntk};
+    mig_resubstitution2( fntk );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{1, 59, 3, 16, 3, 25, 107, 108, 183, 438, 74}} );
+}
+
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
 {
   const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
     depth_view depth_ntk{ntk};
     const auto before = depth_ntk.depth();
-    mig_algebraic_depth_rewriting( depth_ntk );
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::dfs;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
     ntk = cleanup_dangling( ntk );
     depth_view depth_ntk2( ntk );
     return before - depth_ntk2.depth();
@@ -185,6 +236,7 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase"
     const auto size_before = ntk.num_gates();
     const auto before = depth_ntk.depth();
     mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::dfs;
     ps.allow_area_increase = false;
     mig_algebraic_depth_rewriting( depth_ntk, ps );
     ntk = cleanup_dangling( ntk );
@@ -194,6 +246,76 @@ TEST_CASE( "Test quality of MIG algebraic depth rewriting without area increase"
   } );
 
   CHECK( v == std::vector<uint32_t>{{0, 1, 0, 5, 0, 0, 2, 6, 3, 0, 6}} );
+}
+
+TEST_CASE( "Test quality of selective MIG algebraic depth rewriting", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::selective;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
+    ntk = cleanup_dangling( ntk );
+    depth_view depth_ntk2( ntk );
+    return before - depth_ntk2.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 4, 3, 11, 4, 3, 2, 12, 8, 38, 7}} );
+}
+
+TEST_CASE( "Test quality of selective MIG algebraic depth rewriting without area increase", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto size_before = ntk.num_gates();
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::selective;
+    ps.allow_area_increase = false;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
+    ntk = cleanup_dangling( ntk );
+    depth_view depth_ntk2( ntk );
+    CHECK( ntk.num_gates() <= size_before );
+    return before - depth_ntk2.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 1, 0, 5, 0, 0, 2, 6, 5, 0, 6}} );
+}
+
+TEST_CASE( "Test quality of aggressive MIG algebraic depth rewriting", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::aggressive;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
+    ntk = cleanup_dangling( ntk );
+    depth_view depth_ntk2( ntk );
+    return before - depth_ntk2.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 4, 3, 10, 4, 4, 3, 12, 9, 44, 8}} );
+}
+
+TEST_CASE( "Test quality of aggressive MIG algebraic depth rewriting without area increase", "[quality]" )
+{
+  const auto v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    depth_view depth_ntk{ntk};
+    const auto size_before = ntk.num_gates();
+    const auto before = depth_ntk.depth();
+    mig_algebraic_depth_rewriting_params ps;
+    ps.strategy = mig_algebraic_depth_rewriting_params::aggressive;
+    ps.allow_area_increase = false;
+    mig_algebraic_depth_rewriting( depth_ntk, ps );
+    ntk = cleanup_dangling( ntk );
+    depth_view depth_ntk2( ntk );
+    CHECK( ntk.num_gates() <= size_before );
+    return before - depth_ntk2.depth();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 1, 0, 5, 0, 0, 2, 6, 5, 0, 6}} );
 }
 
 TEST_CASE( "Test quality of node resynthesis with 2-LUT exact synthesis", "[quality]" )
@@ -289,6 +411,24 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis"
   CHECK( v == std::vector<uint32_t>{{0, 17, 4, 9, 60, 16, 113, 93, 250, 17, 21}} );
 }
 
+TEST_CASE( "Test quality improvement of cut rewriting with AIG NPN4 resynthesis using a complete AIG database", "[quality]" )
+{
+  xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
+
+  const auto v = foreach_benchmark<aig_network>( [&]( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    cut_rewriting_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    ps.min_cand_cut_size = 2;
+    ps.min_cand_cut_size_override = 3;
+    cut_rewriting_with_compatibility_graph( ntk, resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 17, 6, 9, 62, 16, 113, 90, 270, 281, 23}} );
+}
+
 TEST_CASE( "Test quality improvement of cut rewriting with AIG exact synthesis", "[quality]" )
 {
   return; /* disable, because slow */
@@ -311,6 +451,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG exact synthesis",
   CHECK( v == std::vector<uint32_t>{{0, 30, 4, 6, 108, 11, 75, 43, 171, 450, 5}} );
 }
 
+#if !__clang__ || __clang_major__ > 9
 TEST_CASE( "Test quality improvement of cut rewriting with AIG cached-exact synthesis", "[quality]" )
 {
   /* applies exact synthesis to 4-feasible cuts, uses a cache to store/load (function, network)-pairs from a file */
@@ -328,6 +469,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG cached-exact synt
 
   CHECK( v == std::vector<uint32_t>{{0, 30, 4, 6, 108, 11, 75, 43, 171, 450, 5}} );
 }
+#endif
 
 TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis", "[quality]" )
 {
@@ -345,6 +487,24 @@ TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis"
   } );
 
   CHECK( v == std::vector<uint32_t>{{0, 31, 152, 50, 176, 79, 215, 134, 411, 869, 293}} );
+}
+
+TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis using a complete XAG database", "[quality]" )
+{
+  xag_npn_resynthesis<xag_network, xag_network, xag_npn_db_kind::xag_complete> resyn;
+
+  const auto v = foreach_benchmark<xag_network>( [&]( auto& ntk, auto ) {
+    const auto before = ntk.num_gates();
+    cut_rewriting_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
+    ps.min_cand_cut_size = 2;
+    ps.min_cand_cut_size_override = 3;
+    cut_rewriting_with_compatibility_graph( ntk, resyn, ps );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 31, 152, 49, 176, 88, 216, 135, 423, 789, 279}} );
 }
 
 TEST_CASE( "Test quality improvement for XMG3 rewriting with 4-input NPN database", "[quality]" )

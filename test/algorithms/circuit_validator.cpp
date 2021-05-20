@@ -177,11 +177,11 @@ TEST_CASE( "Validating with ODC", "[validator]" )
   circuit_validator<fanout_view<aig_network>, bill::solvers::bsat2, false, false, true> v( view, ps );
 
   /* considering only 1 level, f1 can not be substituted with const 0 */
-  ps.odc_levels = 1;
+  v.set_odc_levels( 1 );
   CHECK( *( v.validate( aig.get_node( f1 ), false ) ) == false );
   
   /* considering 2 levels, f1 can be substituted with const 0 */
-  ps.odc_levels = 2;
+  v.set_odc_levels( 2 );
   CHECK( *( v.validate( f1, false ) ) == true );
   CHECK( *( v.validate( aig.get_node( f1 ), aig.get_constant( false ) ) ) == true );
 }

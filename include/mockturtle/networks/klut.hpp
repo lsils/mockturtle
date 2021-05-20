@@ -386,7 +386,7 @@ signal create_maj( signal a, signal b, signal c )
 
     for ( auto const& fn : _events->on_add )
     {
-      fn( index );
+      (*fn)( index );
     }
 
     return index;
@@ -430,7 +430,7 @@ signal create_maj( signal a, signal b, signal c )
 
           for ( auto const& fn : _events->on_modified )
           {
-            fn( i, old_children );
+            (*fn)( i, old_children );
           }
         }
       }

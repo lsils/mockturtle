@@ -36,7 +36,7 @@
 #pragma once
 
 #include "resubstitution.hpp"
-#include "resyn_engines/mig_resyn_engines.hpp"
+#include "resyn_engines/mig_resyn.hpp"
 #include "../networks/mig.hpp"
 #include "../utils/index_list.hpp"
 #include "../utils/truth_table_utils.hpp"
@@ -607,7 +607,7 @@ private:
   binate_divisors bdivs;
 }; /* mig_enumerative_resub_functor */
 
-struct mig_resyn_stats
+struct mig_resyn_resub_stats
 {
   /*! \brief Time for finding dependency function. */
   stopwatch<>::duration time_compute_function{0};
@@ -625,25 +625,17 @@ struct mig_resyn_stats
     fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
     fmt::print( "[i]         engine time: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
   }
-}; /* mig_resyn_stats */
+}; /* mig_resyn_resub_stats */
 
 /*! \brief Interfacing resubstitution functor with MIG resynthesis engines for `window_based_resub_engine`.
- * 
- * The resynthesis engine `ResynEngine` should provide the following interfaces:
- * - Constructor: `ResynEngine( Simulator::truthtable_t const& target,`
- * `TTcare const& care, ResynEngine::stats& st, ResynEngine::params const& ps )`
- * - `std::optional<ResynEngine::index_list_t> operator()( std::vector<Ntk::node>::iterator begin,`
- * `std::vector<Ntk::node>::iterator end, unordered_node_map<Simulator::truthtable_t, Ntk> const& tts )`
- * - `ResynEngine::params` should have at least one member `uint32_t max_size` defining
- * the maximum size of the dependency circuit.
  */
-template<typename Ntk, typename Simulator, typename TTcare, typename ResynEngine = mig_resyn_engine<typename Simulator::truthtable_t>>
+template<typename Ntk, typename Simulator, typename TTcare, typename ResynEngine = mig_resyn_topdown<typename Simulator::truthtable_t>>
 struct mig_resyn_functor
 {
 public:
   using node = mig_network::node;
   using signal = mig_network::signal;
-  using stats = mig_resyn_stats;
+  using stats = mig_resyn_resub_stats;
   using TT = typename ResynEngine::truth_table_t;
 
   static_assert( std::is_same_v<TT, typename Simulator::truthtable_t>, "truth table type of the simulator does not match" );
@@ -667,10 +659,8 @@ public:
     TT care_transformed = target.construct();
     care_transformed = care;
 
-    typename ResynEngine::params ps;
-    ps.max_size = std::min( potential_gain - 1, max_inserts );
     typename ResynEngine::stats st_eng;
-    ResynEngine engine( target, care_transformed, st_eng, ps );
+    ResynEngine engine( st_eng );
     for ( auto const& d : divs )
     {
       div_signals.emplace_back( sim.get_phase( d ) ? !ntk.make_signal( d ) : ntk.make_signal( d ) );
@@ -678,7 +668,7 @@ public:
     }
 
     auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
-      return engine( divs.begin(), divs.end(), tts );
+      return engine( target, care_transformed, divs.begin(), divs.end(), tts, std::min( potential_gain - 1, max_inserts ) );
     });
     if ( res )
     {
@@ -768,8 +758,8 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   {
     using truthtable_t = kitty::static_truth_table<8u>;
     using truthtable_dc_t = kitty::dynamic_truth_table;
-    using functor_t = mig_enumerative_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
-    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, functor_t>>;
+    using functor_t = mig_enumerative_resub_functor<Ntk, detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
+    using resub_impl_t = detail::resubstitution_impl<Ntk, detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, functor_t>>;
 
     resubstitution_stats st;
     typename resub_impl_t::engine_st_t engine_st;
@@ -794,8 +784,8 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   {
     using truthtable_t = kitty::dynamic_truth_table;
     using truthtable_dc_t = kitty::dynamic_truth_table;
-    using functor_t = mig_enumerative_resub_functor<Ntk, typename detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
-    using resub_impl_t = detail::resubstitution_impl<Ntk, typename detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, functor_t>>;
+    using functor_t = mig_enumerative_resub_functor<Ntk, detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
+    using resub_impl_t = detail::resubstitution_impl<Ntk, detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, functor_t>>;
 
     resubstitution_stats st;
     typename resub_impl_t::engine_st_t engine_st;
@@ -815,6 +805,92 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
     {
       *pst = st;
     }
+  }
+}
+
+/*! \brief MIG-specific resubstitution algorithm.
+ *
+ * This algorithms iterates over each node, creates a
+ * reconvergence-driven cut, and attempts to re-express the node's
+ * function using existing nodes from the cut.  Node which are no
+ * longer used (including nodes in their transitive fanins) can then
+ * be removed.  The objective is to reduce the size of the network as
+ * much as possible while maintaing the global input-output
+ * functionality.
+ *
+ * **Required network functions:**
+ *
+ * - `clear_values`
+ * - `fanout_size`
+ * - `foreach_fanin`
+ * - `foreach_fanout`
+ * - `foreach_gate`
+ * - `foreach_node`
+ * - `get_constant`
+ * - `get_node`
+ * - `is_complemented`
+ * - `is_pi`
+ * - `level`
+ * - `make_signal`
+ * - `set_value`
+ * - `set_visited`
+ * - `size`
+ * - `substitute_node`
+ * - `value`
+ * - `visited`
+ *
+ * \param ntk A network type derived from mig_network
+ * \param ps Resubstitution parameters
+ * \param pst Resubstitution statistics
+ */
+template<class Ntk>
+void mig_resubstitution2( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( std::is_same_v<typename Ntk::base_type, mig_network>, "Network type is not mig_network" );
+
+  static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+  static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+  static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the has_size method" );
+  static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the has substitute_node method" );
+  static_assert( has_value_v<Ntk>, "Ntk does not implement the has_value method" );
+  static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
+  static_assert( has_level_v<Ntk>, "Ntk does not implement the level method" );
+  static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
+
+  using truthtable_t = kitty::dynamic_truth_table;
+  using truthtable_dc_t = kitty::dynamic_truth_table;
+  using functor_t = mig_resyn_functor<Ntk, detail::window_simulator<Ntk, truthtable_t>, truthtable_dc_t>;
+
+  using resub_impl_t = detail::resubstitution_impl<Ntk, detail::window_based_resub_engine<Ntk, truthtable_t, truthtable_dc_t, functor_t>>;
+
+  resubstitution_stats st;
+  typename resub_impl_t::engine_st_t engine_st;
+  typename resub_impl_t::collector_st_t collector_st;
+
+  resub_impl_t p( ntk, ps, st, engine_st, collector_st );
+  p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+    collector_st.report();
+    engine_st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
   }
 }
 
