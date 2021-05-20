@@ -280,6 +280,11 @@ public:
     return _create_node( {a, b}, 4 );
   }
 
+  signal create_nand( signal a, signal b )
+  {
+    return _create_node( { a, b }, 5 );
+  }
+
   signal create_or( signal a, signal b )
   {
     return _create_node( {a, b}, 6 );
