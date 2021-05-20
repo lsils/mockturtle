@@ -39,6 +39,7 @@
 #include "../traits.hpp"
 
 #include <iostream>
+#include <memory>
 
 namespace mockturtle
 {
