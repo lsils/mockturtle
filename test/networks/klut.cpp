@@ -434,6 +434,44 @@ TEST_CASE( "structural properties of a k-LUT network", "[klut]" )
   CHECK( klut.fanout_size( klut.get_node( f2 ) ) == 1 );
 }
 
+TEST_CASE( "Node functions of a k-LUT network", "[klut]" )
+{
+  klut_network klut;
+
+  CHECK( has_is_and_v<klut_network> );
+  CHECK( has_is_or_v<klut_network> );
+  CHECK( has_is_or_v<klut_network> );
+  CHECK( has_is_xor_v<klut_network> );
+  CHECK( has_is_maj_v<klut_network> );
+  CHECK( has_is_ite_v<klut_network> );
+  CHECK( has_is_xor3_v<klut_network> );
+
+  const auto x1 = klut.create_pi();
+  const auto x2 = klut.create_pi();
+  const auto x3 = klut.create_pi();
+
+  const auto and_signal = klut.create_and( x1, x2 );
+  const auto or_signal = klut.create_or( x1, x2);
+  const auto xor2_signal = klut.create_xor( x1, x2);
+  const auto maj_signal = klut.create_maj( x1, x2, x3);
+  const auto ite_signal = klut.create_ite( x1, x2, x3);
+  const auto xor3_signal = klut.create_xor3( x1, x2, x3);
+
+  klut.create_po( and_signal );
+  klut.create_po( or_signal );
+  klut.create_po( xor2_signal );
+  klut.create_po( maj_signal );
+  klut.create_po( ite_signal );
+  klut.create_po( xor3_signal );
+
+  CHECK(klut.is_and(klut.get_node(and_signal)));
+  CHECK(klut.is_or(klut.get_node(or_signal)));
+  CHECK(klut.is_xor(klut.get_node(xor2_signal)));
+  CHECK(klut.is_maj(klut.get_node(maj_signal)));
+  CHECK(klut.is_ite(klut.get_node(ite_signal)));
+  CHECK(klut.is_xor3(klut.get_node(xor3_signal)));
+}
+
 TEST_CASE( "node and signal iteration in a k-LUT network", "[klut]" )
 {
   klut_network klut;

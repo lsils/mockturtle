@@ -44,6 +44,7 @@
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 
+#include <algorithm>
 #include <memory>
 
 namespace mockturtle
@@ -105,7 +106,7 @@ public:
     _init();
   }
 
-private:
+protected:
   inline void _init()
   {
     /* reserve the second node for constant 1 */
@@ -240,44 +241,19 @@ public:
 
   bool is_ci( node const& n ) const
   {
-    bool found = false;
-    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.end(), [&found,&n]( auto const& node ){
-        if ( node == n )
-        {
-          found = true;
-          return false;
-        }
-        return true;
-      } );
-    return found;
+    return std::find( _storage->inputs.begin(), _storage->inputs.end(), n ) != _storage->inputs.end();
   }
 
   bool is_pi( node const& n ) const
   {
-    bool found = false;
-    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.begin() + _storage->data.num_pis, [&found,&n]( auto const& node ){
-        if ( node == n )
-        {
-          found = true;
-          return false;
-        }
-        return true;
-      } );
-    return found;
+    const auto end = _storage->inputs.begin() + _storage->data.num_pis;
+
+    return std::find( _storage->inputs.begin(), end, n ) != end;
   }
 
   bool is_ro( node const& n ) const
   {
-    bool found = false;
-    detail::foreach_element( _storage->inputs.begin() + _storage->data.num_pis, _storage->inputs.end(), [&found,&n]( auto const& node ){
-        if ( node == n )
-        {
-          found = true;
-          return false;
-        }
-        return true;
-      } );
-    return found;
+    return std::find( _storage->inputs.begin() + _storage->data.num_pis, _storage->inputs.end(), n ) != _storage->inputs.end();
   }
 
   bool constant_value( node const& n ) const
@@ -508,6 +484,36 @@ signal create_maj( signal a, signal b, signal c )
   bool is_function( node const& n ) const
   {
     return n > 1 && !is_ci( n );
+  }
+
+  bool is_and( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 4;
+  }
+
+  bool is_or( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 6;
+  }
+
+  bool is_xor( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 12;
+  }
+
+  bool is_maj( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 14;
+  }
+
+  bool is_ite( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 16;
+  }
+
+  bool is_xor3( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 18;
   }
 #pragma endregion
 
