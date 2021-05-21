@@ -96,6 +96,11 @@ public:
 
   virtual void on_model( const std::string& model_name ) const override
   {
+    if constexpr ( has_set_network_name_v<Ntk> )
+    {
+      ntk_.set_network_name( model_name );
+    }
+
     (void)model_name;
   }
 
