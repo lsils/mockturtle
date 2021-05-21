@@ -98,6 +98,11 @@ public:
   void on_module_header( const std::string& module_name, const std::vector<std::string>& inouts ) const override
   {
     (void)inouts;
+    if constexpr ( has_set_network_name_v<Ntk> )
+    {
+      ntk_.set_network_name( module_name );
+    }
+
     name_ = module_name;
   }
 

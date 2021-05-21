@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file xag_resyn_engines.hpp
+  \file xag_resyn.hpp
   \brief Resynthesis by recursive decomposition for AIGs or XAGs.
   (based on ABC's implementation in `giaResub.c` by Alan Mishchenko)
 
@@ -35,10 +35,10 @@
 
 #include "../../utils/index_list.hpp"
 #include "../../utils/stopwatch.hpp"
-#include "../../utils/node_map.hpp"
 
 #include <kitty/kitty.hpp>
 #include <fmt/format.h>
+#include <abcresub/abcresub.hpp>
 
 #include <vector>
 #include <algorithm>
@@ -47,11 +47,8 @@
 namespace mockturtle
 {
 
-struct xag_resyn_engine_params
+struct xag_resyn_params
 {
-  /*! \brief Maximum size (number of gates) of the dependency circuit. */
-  uint32_t max_size{0u};
-
   /*! \brief Maximum number of binate divisors to be considered. */
   uint32_t max_binates{50u};
 
@@ -59,7 +56,7 @@ struct xag_resyn_engine_params
   uint32_t reserve{200u};
 };
 
-struct xag_resyn_engine_stats
+struct xag_resyn_stats
 {
   /*! \brief Time for adding divisor truth tables. */
   //stopwatch<>::duration time_add_divisor{0};
@@ -87,7 +84,7 @@ struct xag_resyn_engine_stats
 
   void report() const
   {
-    fmt::print( "[i]         <xag_resyn_engine>\n" );
+    fmt::print( "[i]         <xag_resyn_decompose>\n" );
     //fmt::print( "[i]             add divisors : {:>5.2f} secs\n", to_seconds( time_add_divisor ) );
     fmt::print( "[i]             0-resub      : {:>5.2f} secs\n", to_seconds( time_unate ) );
     fmt::print( "[i]             1-resub      : {:>5.2f} secs\n", to_seconds( time_resub1 ) );
@@ -113,15 +110,30 @@ struct xag_resyn_engine_stats
  * When no simple solutions can be found, the algorithm heuristically chooses an unate
  * divisor or an unate pair to divide the target function with and recursively calls
  * itself to decompose the remainder function.
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+      using TT = kitty::static_truth_table<6>;
+      const std::vector<aig_network::node> divisors = ...;
+      const node_map<TT, aig_network> tts = ...;
+      const TT target = ..., care = ...;
+      xag_resyn_stats st;
+      xag_resyn_decompose<TT, node_map<TT, aig_network>, false, false, aig_network::node> resyn( st );
+      auto result = resyn( target, care, divisors.begin(), divisors.end(), tts );
+   \endverbatim
  *
  * \param use_xor Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs).
+ * \param copy_tts Whether to copy truth tables.
  */
-template<class TT, typename Ntk, typename node_type = typename Ntk::node, typename truth_table_storage_type = unordered_node_map<TT, Ntk>, bool copy_tts = true, bool use_xor = false>
-class xag_resyn_engine
+template<class TT, class truth_table_storage_type, bool use_xor = false, bool copy_tts = true, typename node_type = uint32_t>
+class xag_resyn_decompose
 {
 public:
-  using stats = xag_resyn_engine_stats;
-  using params = xag_resyn_engine_params;
+  using stats = xag_resyn_stats;
+  using params = xag_resyn_params;
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
 
@@ -161,55 +173,56 @@ private:
   };
 
 public:
-  explicit xag_resyn_engine( TT const& target, TT const& care, truth_table_storage_type const& tts, stats& st, params const& ps = {} )
-    : on_off_sets( { ~target & care, target & care } ), tts( tts ), st( st ), ps( ps )
+  explicit xag_resyn_decompose( stats& st, params const& ps = {} ) noexcept
+    : st( st ), ps( ps )
   {
     divisors.reserve( ps.reserve );
     divisors.resize( 1 ); // reserve 1 dummy node for constant
   }
 
-  void add_divisor( node_type const& n )
-  {
-    if constexpr ( copy_tts )
-    {
-      divisors.emplace_back( tts[n] );
-    }
-    else
-    {
-      divisors.emplace_back( n );
-    }
-  }
-
+  /*! \brief Perform XAG resynthesis.
+   *
+   * `*pTTs[*begin]` must be of type `TT`.
+   * Moreover, if `copy_tts = false`, `*begin` must be of type `node_type`.
+   *
+   * \param target Truth table of the target function.
+   * \param care Truth table of the care set.
+   * \param begin Begin iterator to divisor nodes.
+   * \param end End iterator to divisor nodes.
+   * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
+   * \param max_size Maximum number of nodes allowed in the dependency circuit.
+   */
   template<class iterator_type>
-  void add_divisors( iterator_type begin, iterator_type end )
-  { 
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  {
+    ptts = &tts;
+    on_off_sets[0] = ~target & care;
+    on_off_sets[1] = target & care;
+
     while ( begin != end )
     {
-      add_divisor( *begin );
+      if constexpr ( copy_tts )
+      {
+        divisors.emplace_back( (*ptts)[*begin] );
+      }
+      else
+      {
+        divisors.emplace_back( *begin );
+      }
       ++begin;
     }
-  }
 
-  std::optional<index_list_t> operator()()
-  {
-    return compute_function();
-  }
-
-  template<class iterator_type>
-  std::optional<index_list_t> operator()( iterator_type begin, iterator_type end )
-  {
-    add_divisors( begin, end );
-    return compute_function();
+    return compute_function( max_size );
   }
 
 private:
-  std::optional<index_list_t> compute_function()
+  std::optional<index_list_t> compute_function( uint32_t num_inserts )
   {
     index_list.add_inputs( divisors.size() - 1 );
-    auto const lit = compute_function_rec( ps.max_size );
+    auto const lit = compute_function_rec( num_inserts );
     if ( lit )
     {
-      assert( index_list.num_gates() <= ps.max_size );
+      assert( index_list.num_gates() <= num_inserts );
       index_list.add_output( *lit );
       return index_list;
     }
@@ -790,7 +803,7 @@ private:
     }
     else
     {
-      return tts[divisors[idx]];
+      return (*ptts)[divisors[idx]];
     }
   }
 
@@ -798,7 +811,7 @@ private:
   std::array<TT, 2> on_off_sets;
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
-  truth_table_storage_type const& tts;
+  const truth_table_storage_type* ptts;
   std::vector<std::conditional_t<copy_tts, TT, node_type>> divisors;
 
   index_list_t index_list;
@@ -810,7 +823,131 @@ private:
   std::vector<fanin_pair> pos_unate_pairs, neg_unate_pairs;
 
   stats& st;
-  params const& ps;
-}; /* xag_resyn_engine */
+  params const ps;
+}; /* xag_resyn_decompose */
+
+
+struct xag_resyn_abc_stats
+{};
+
+template<class TT, bool use_xor = false>
+class xag_resyn_abc
+{
+public:
+  using stats = xag_resyn_abc_stats;
+  using params = xag_resyn_params;
+  using index_list_t = large_xag_index_list;
+  using truth_table_t = TT;
+
+  explicit xag_resyn_abc( stats& st, params const& ps = {} ) noexcept
+    : st( st ), ps( ps ), counter( 0 )
+  { }
+
+  virtual ~xag_resyn_abc()
+  {
+    abcresub::Abc_ResubPrepareManager( 0 );
+    release();
+  }
+
+  template<class iterator_type, class truth_table_storage_type>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  {
+    num_divisors = std::distance( begin, end ) + 2;
+    num_blocks_per_truth_table = target.num_blocks();
+    abcresub::Abc_ResubPrepareManager( num_blocks_per_truth_table );
+    alloc();
+
+    add_divisor( ~target & care ); /* off-set */
+    add_divisor( target & care ); /* on-set */
+
+    while ( begin != end )
+    {
+      add_divisor( tts[*begin] );
+      ++begin;
+    }
+
+    return compute_function( max_size );
+  }
+
+protected:
+  void add_divisor( TT const& tt )
+  {
+    assert( tt.num_blocks() == num_blocks_per_truth_table );
+    for ( uint64_t i = 0ul; i < num_blocks_per_truth_table; ++i )
+    {
+      if constexpr ( std::is_same_v<TT, kitty::partial_truth_table> || std::is_same_v<TT, kitty::dynamic_truth_table> )
+        Vec_WrdPush( abc_tts, tt._bits[i] );
+      else // static_truth_table
+        Vec_WrdPush( abc_tts, tt._bits );
+    }
+    Vec_PtrPush( abc_divs, Vec_WrdEntryP( abc_tts, counter * num_blocks_per_truth_table ) );
+    ++counter;
+  }
+
+  std::optional<index_list_t> compute_function( uint32_t num_inserts )
+  {
+    int nLimit = num_inserts > std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : num_inserts;
+    int * raw_list;
+    int size = abcresub::Abc_ResubComputeFunction( 
+               /* ppDivs */(void **)Vec_PtrArray( abc_divs ), 
+               /* nDivs */Vec_PtrSize( abc_divs ), 
+               /* nWords */num_blocks_per_truth_table, 
+               /* nLimit */nLimit, 
+               /* nDivsMax */ps.max_binates, 
+               /* iChoice */0, /* fUseXor */int(use_xor), /* fDebug */0, /* fVerbose */0, 
+               /* ppArray */&raw_list );
+
+    if ( size )
+    {
+      index_list_t xag_list;
+      xag_list.add_inputs( num_divisors - 2 );
+      for ( int i = 0; i < size - 1; i += 2 )
+      {
+        if ( raw_list[i] < raw_list[i+1] )
+          xag_list.add_and( raw_list[i] - 2, raw_list[i+1] - 2 );
+        else
+          xag_list.add_xor( raw_list[i] - 2, raw_list[i+1] - 2 );
+      }
+      xag_list.add_output( raw_list[size - 1] < 2 ? raw_list[size - 1] : raw_list[size - 1] - 2 );
+      return xag_list;
+    }
+
+    return std::nullopt;
+  }
+
+  void dump( std::string const file = "dump.txt" ) const
+  {
+    abcresub::Abc_ResubDumpProblem( file.c_str(), (void **)Vec_PtrArray( abc_divs ),  Vec_PtrSize( abc_divs ), num_blocks_per_truth_table );
+  }
+
+  void alloc()
+  {
+    assert( abc_tts == nullptr );
+    assert( abc_divs == nullptr );
+    abc_tts = abcresub::Vec_WrdAlloc( num_divisors * num_blocks_per_truth_table );
+    abc_divs = abcresub::Vec_PtrAlloc( num_divisors );
+  }
+
+  void release()
+  {
+    assert( abc_divs != nullptr );
+    assert( abc_tts != nullptr );
+    Vec_PtrFree( abc_divs );
+    Vec_WrdFree( abc_tts );
+    abc_divs = nullptr;
+    abc_tts = nullptr;
+  }
+
+protected:
+  uint64_t num_divisors;
+  uint64_t num_blocks_per_truth_table;
+  uint64_t counter;
+
+  abcresub::Vec_Wrd_t * abc_tts{nullptr};
+  abcresub::Vec_Ptr_t * abc_divs{nullptr};
+
+  stats& st;
+  params const ps;
+}; /* xag_resyn_abc */
 
 } /* namespace mockturtle */
