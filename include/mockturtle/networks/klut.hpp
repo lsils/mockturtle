@@ -490,36 +490,6 @@ signal create_maj( signal a, signal b, signal c )
   {
     return n > 1 && !is_ci( n );
   }
-
-  bool is_and( node const& n ) const
-  {
-    return _storage->nodes[n].data[1].h1 == 4;
-  }
-
-  bool is_or( node const& n ) const
-  {
-    return _storage->nodes[n].data[1].h1 == 6;
-  }
-
-  bool is_xor( node const& n ) const
-  {
-    return _storage->nodes[n].data[1].h1 == 12;
-  }
-
-  bool is_maj( node const& n ) const
-  {
-    return _storage->nodes[n].data[1].h1 == 14;
-  }
-
-  bool is_ite( node const& n ) const
-  {
-    return _storage->nodes[n].data[1].h1 == 16;
-  }
-
-  bool is_xor3( node const& n ) const
-  {
-    return _storage->nodes[n].data[1].h1 == 18;
-  }
 #pragma endregion
 
 #pragma region Functional properties
