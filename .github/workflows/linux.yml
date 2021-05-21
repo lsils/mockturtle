@@ -93,7 +93,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-9 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=clang++ -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |
