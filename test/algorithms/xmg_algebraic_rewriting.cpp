@@ -131,3 +131,61 @@ TEST_CASE( "xmg depth optimization with distributivity", "[xmg_algebraic_rewriti
 
   CHECK( depth_xmg.depth() == 2 );
 }
+
+TEST_CASE( "xmg selective depth optimization", "[xmg_algebraic_rewriting]" )
+{
+  xmg_network xmg;
+
+  const auto a = xmg.create_pi();
+  const auto b = xmg.create_pi();
+  const auto c = xmg.create_pi();
+  const auto d = xmg.create_pi();
+  const auto e = xmg.create_pi();
+  const auto f = xmg.create_pi();
+  const auto g = xmg.create_pi();
+
+  const auto f1 = xmg.create_maj( e, f, g );
+  const auto f2 = xmg.create_maj( c, d, f1 );
+  const auto f3 = xmg.create_maj( a, b, f2 );
+
+  xmg.create_po( f3 );
+
+  depth_view depth_xmg{xmg};
+  xmg_algebraic_depth_rewriting_params ps;
+  ps.strategy = xmg_algebraic_depth_rewriting_params::selective;
+
+  CHECK( depth_xmg.depth() == 3 );
+
+  xmg_algebraic_depth_rewriting( depth_xmg, ps );
+
+  CHECK( depth_xmg.depth() == 2 );
+}
+
+TEST_CASE( "xmg aggressive depth optimization", "[xmg_algebraic_rewriting]" )
+{
+  xmg_network xmg;
+
+  const auto a = xmg.create_pi();
+  const auto b = xmg.create_pi();
+  const auto c = xmg.create_pi();
+  const auto d = xmg.create_pi();
+  const auto e = xmg.create_pi();
+  const auto f = xmg.create_pi();
+  const auto g = xmg.create_pi();
+
+  const auto f1 = xmg.create_maj( e, f, g );
+  const auto f2 = xmg.create_maj( c, d, f1 );
+  const auto f3 = xmg.create_maj( a, b, f2 );
+
+  xmg.create_po( f3 );
+
+  depth_view depth_xmg{xmg};
+  xmg_algebraic_depth_rewriting_params ps;
+  ps.strategy = xmg_algebraic_depth_rewriting_params::aggressive;
+
+  CHECK( depth_xmg.depth() == 3 );
+
+  xmg_algebraic_depth_rewriting( depth_xmg, ps );
+
+  CHECK( depth_xmg.depth() == 2 );
+}

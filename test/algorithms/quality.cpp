@@ -10,6 +10,7 @@
 #include <mockturtle/algorithms/cut_enumeration.hpp>
 #include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/lut_mapping.hpp>
+#include <mockturtle/algorithms/mapper.hpp>
 #include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
@@ -166,6 +167,50 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
   } );
 
   CHECK( v2 == std::vector<uint32_t>{{0, 18, 34, 21, 115, 55, 139, 107, 409, 449, 66}} );
+}
+
+TEST_CASE( "Test quality improvement of MIG mapping", "[quality]" )
+{
+  mig_npn_resynthesis resyn{true};
+  exact_library<mig_network, mig_npn_resynthesis> lib( resyn );
+  auto const v = foreach_benchmark<mig_network>( [&lib]( auto& ntk, auto ) {
+    uint32_t const before = ntk.num_gates();
+    map_params ps;
+    map_stats st;
+    mig_network mig = exact_map( ntk, lib, ps, &st );
+    mig = cleanup_dangling( mig );
+    return before - mig.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{0, 34, 76, 39, 180, 78, 221, 159, 523, 1358, 258}} );
+}
+
+TEST_CASE( "Test quality improvement of MIG resubstitution", "[quality]" )
+{
+  auto const v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    uint32_t const before = ntk.num_gates();
+    depth_view dntk{ntk};
+    fanout_view fntk{dntk};
+    mig_resubstitution( fntk );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{1, 58, 6, 18, 6, 20, 102, 88, 165, 466, 63}} );
+}
+
+TEST_CASE( "Test quality improvement of MIG k-resubstitution", "[quality]" )
+{
+  auto const v = foreach_benchmark<mig_network>( []( auto& ntk, auto ) {
+    uint32_t const before = ntk.num_gates();
+    depth_view dntk{ntk};
+    fanout_view fntk{dntk};
+    mig_resubstitution2( fntk );
+    ntk = cleanup_dangling( ntk );
+    return before - ntk.num_gates();
+  } );
+
+  CHECK( v == std::vector<uint32_t>{{1, 59, 3, 16, 3, 25, 107, 108, 183, 438, 74}} );
 }
 
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
@@ -406,6 +451,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG exact synthesis",
   CHECK( v == std::vector<uint32_t>{{0, 30, 4, 6, 108, 11, 75, 43, 171, 450, 5}} );
 }
 
+#if !__clang__ || __clang_major__ > 9
 TEST_CASE( "Test quality improvement of cut rewriting with AIG cached-exact synthesis", "[quality]" )
 {
   /* applies exact synthesis to 4-feasible cuts, uses a cache to store/load (function, network)-pairs from a file */
@@ -423,6 +469,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG cached-exact synt
 
   CHECK( v == std::vector<uint32_t>{{0, 30, 4, 6, 108, 11, 75, 43, 171, 450, 5}} );
 }
+#endif
 
 TEST_CASE( "Test quality improvement of cut rewriting with XAG NPN4 resynthesis", "[quality]" )
 {

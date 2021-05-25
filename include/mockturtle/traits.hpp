@@ -1871,6 +1871,36 @@ template<class Ntk>
 inline constexpr bool has_incr_trav_id_v = has_incr_trav_id<Ntk>::value;
 #pragma endregion
 
+#pragma region has_get_network_name
+template<class Ntk, class = void>
+struct has_get_network_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_get_network_name<Ntk, std::void_t<decltype( std::declval<Ntk>().get_network_name() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_get_network_name_v = has_get_network_name<Ntk>::value;
+#pragma endregion
+
+#pragma region has_set_network_name
+template<class Ntk, class = void>
+struct has_set_network_name : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_set_network_name<Ntk, std::void_t<decltype( std::declval<Ntk>().set_network_name( std::string() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_set_network_name_v = has_set_network_name<Ntk>::value;
+#pragma endregion
+
 #pragma region has_get_name
 template<class Ntk, class = void>
 struct has_get_name : std::false_type

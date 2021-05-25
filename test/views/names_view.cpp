@@ -24,7 +24,22 @@ void test_create_names_view()
   auto const f = ntk.create_and( t1, t2 );
   ntk.create_po( f );
 
-  names_view<Ntk> named_ntk;
+  CHECK( has_get_network_name_v<names_view<Ntk>> );
+  CHECK( has_set_network_name_v<names_view<Ntk>> );
+  CHECK( has_has_name_v<names_view<Ntk>> );
+  CHECK( has_get_name_v<names_view<Ntk>> );
+  CHECK( has_set_name_v<names_view<Ntk>> );
+  CHECK( has_has_output_name_v<names_view<Ntk>> );
+  CHECK( has_get_output_name_v<names_view<Ntk>> );
+  CHECK( has_set_output_name_v<names_view<Ntk>> );
+
+  names_view<Ntk> named_ntk{ ntk, "network" };
+
+  CHECK( named_ntk.get_network_name() == "network" );
+
+  named_ntk.set_network_name( "named network" );
+
+  CHECK( named_ntk.get_network_name() == "named network" );
 
   CHECK( !named_ntk.has_name( a ) );
   CHECK( !named_ntk.has_name( b ) );
