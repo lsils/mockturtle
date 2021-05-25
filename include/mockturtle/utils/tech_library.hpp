@@ -118,7 +118,7 @@ struct supergate
       mockturtle::tech_library lib( gates );
    \endverbatim
  */
-template<unsigned NInputs = 5u>
+template<unsigned NInputs = 4u>
 class tech_library
 {
   using supergates_list_t = std::vector<supergate<NInputs>>;
@@ -126,7 +126,7 @@ class tech_library
   using lib_t = std::unordered_map<kitty::static_truth_table<NInputs>, supergates_list_t, tt_hash>;
 
 public:
-  tech_library( std::vector<gate> const& gates, tech_library_params const ps = {} )
+  explicit tech_library( std::vector<gate> const& gates, tech_library_params const ps = {} )
       : _gates( gates ),
         _ps( ps ),
         _super_lib()
@@ -377,7 +377,7 @@ class exact_library
   using lib_t = std::unordered_map<kitty::static_truth_table<NInputs>, supergates_list_t, tt_hash>;
 
 public:
-  exact_library( RewritingFn const& rewriting_fn, exact_library_params const& ps = {} )
+  explicit exact_library( RewritingFn const& rewriting_fn, exact_library_params const& ps = {} )
       : _database(),
         _rewriting_fn( rewriting_fn ),
         _ps( ps ),

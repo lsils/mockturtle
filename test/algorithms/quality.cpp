@@ -177,7 +177,7 @@ TEST_CASE( "Test quality improvement of MIG mapping", "[quality]" )
     uint32_t const before = ntk.num_gates();
     map_params ps;
     map_stats st;
-    mig_network mig = exact_map( ntk, lib, ps, &st );
+    mig_network mig = map( ntk, lib, ps, &st );
     mig = cleanup_dangling( mig );
     return before - mig.num_gates();
   } );
