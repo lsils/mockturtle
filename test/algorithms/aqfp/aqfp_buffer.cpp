@@ -2,11 +2,11 @@
 
 #include <mockturtle/traits.hpp>
 #include <mockturtle/networks/mig.hpp>
-#include <mockturtle/views/aqfp_view.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_buffer.hpp>
 
 using namespace mockturtle;
 
-TEST_CASE( "aqfp_view simple test", "[aqfp_view]" )
+TEST_CASE( "aqfp_buffer simple test", "[aqfp_buffer]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -21,27 +21,28 @@ TEST_CASE( "aqfp_view simple test", "[aqfp_view]" )
   auto const f4 = mig.create_maj( f1, f2, f3 );
   mig.create_po( f4 );
 
-  aqfp_view_params ps;
+  aqfp_buffer_params ps;
   ps.branch_pis = false;
   ps.balance_pis = false;
   ps.balance_pos = true;
   ps.splitter_capacity = 4u;
-  aqfp_view view( mig, ps );
+  aqfp_buffer bufcnt( mig, ps );
+  bufcnt.count_buffers();
 
-  CHECK( view.level( view.get_node( f1 ) ) == 1u );
-  CHECK( view.level( view.get_node( f2 ) ) == 3u );
-  CHECK( view.level( view.get_node( f3 ) ) == 3u );
-  CHECK( view.level( view.get_node( f4 ) ) == 4u );
-  CHECK( view.depth() == 4u );
+  CHECK( bufcnt.level( mig.get_node( f1 ) ) == 1u );
+  CHECK( bufcnt.level( mig.get_node( f2 ) ) == 3u );
+  CHECK( bufcnt.level( mig.get_node( f3 ) ) == 3u );
+  CHECK( bufcnt.level( mig.get_node( f4 ) ) == 4u );
+  CHECK( bufcnt.depth() == 4u );
 
-  CHECK( view.num_buffers( view.get_node( f1 ) ) == 2u );
-  CHECK( view.num_buffers( view.get_node( f2 ) ) == 0u );
-  CHECK( view.num_buffers( view.get_node( f3 ) ) == 0u );
-  CHECK( view.num_buffers( view.get_node( f4 ) ) == 0u );
-  CHECK( view.num_buffers() == 2u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f1 ) ) == 2u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f2 ) ) == 0u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f3 ) ) == 0u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f4 ) ) == 0u );
+  CHECK( bufcnt.num_buffers() == 2u );
 }
 
-TEST_CASE( "two layers of splitters", "[aqfp_view]" )
+TEST_CASE( "two layers of splitters", "[aqfp_buffer]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -70,20 +71,21 @@ TEST_CASE( "two layers of splitters", "[aqfp_view]" )
   auto const f12 = mig.create_maj( f9, f10, f11 );
   mig.create_po( f12 );
 
-  aqfp_view_params ps;
+  aqfp_buffer_params ps;
   ps.branch_pis = false;
   ps.balance_pis = false;
   ps.balance_pos = true;
   ps.splitter_capacity = 4u;
-  aqfp_view view( mig, ps );
+  aqfp_buffer bufcnt( mig, ps );
+  bufcnt.count_buffers();
 
-  CHECK( view.num_buffers( view.get_node( f2 ) ) == 4u );
-  CHECK( view.num_buffers( view.get_node( f6 ) ) == 2u );
-  CHECK( view.depth() == 7u );
-  CHECK( view.num_buffers() == 17u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f2 ) ) == 4u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f6 ) ) == 2u );
+  CHECK( bufcnt.depth() == 7u );
+  CHECK( bufcnt.num_buffers() == 17u );
 }
 
-TEST_CASE( "PO splitters and buffers", "[aqfp_view]" )
+TEST_CASE( "PO splitters and buffers", "[aqfp_buffer]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -99,22 +101,23 @@ TEST_CASE( "PO splitters and buffers", "[aqfp_view]" )
   mig.create_po( f2 );
   mig.create_po( !f2 );
 
-  aqfp_view_params ps;
+  aqfp_buffer_params ps;
   ps.branch_pis = false;
   ps.balance_pis = false;
   ps.balance_pos = true;
   ps.splitter_capacity = 4u;
-  aqfp_view view( mig, ps );
+  aqfp_buffer bufcnt( mig, ps );
+  bufcnt.count_buffers();
 
-  CHECK( view.depth() == 4u );
+  CHECK( bufcnt.depth() == 4u );
 
-  CHECK( view.num_buffers( view.get_node( f1 ) ) == 3u );
-  CHECK( view.num_buffers( view.get_node( f2 ) ) == 1u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f1 ) ) == 3u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f2 ) ) == 1u );
 
-  CHECK( view.num_buffers() == 4u );
+  CHECK( bufcnt.num_buffers() == 4u );
 }
 
-TEST_CASE( "chain of fanouts", "[aqfp_view]" )
+TEST_CASE( "chain of fanouts", "[aqfp_buffer]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -145,19 +148,20 @@ TEST_CASE( "chain of fanouts", "[aqfp_view]" )
   mig.create_po( f8 );
   mig.create_po( f9 );
 
-  aqfp_view_params ps;
+  aqfp_buffer_params ps;
   ps.branch_pis = false;
   ps.balance_pis = false;
   ps.balance_pos = true;
   ps.splitter_capacity = 4u;
-  aqfp_view view( mig, ps );
+  aqfp_buffer bufcnt( mig, ps );
+  bufcnt.count_buffers();
 
-  CHECK( view.num_buffers( view.get_node( f1 ) ) == 9u );
-  CHECK( view.depth() == 8u );
-  CHECK( view.num_buffers() == 11u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f1 ) ) == 9u );
+  CHECK( bufcnt.depth() == 8u );
+  CHECK( bufcnt.num_buffers() == 11u );
 }
 
-TEST_CASE( "branch but not balance PIs", "[aqfp_view]" )
+TEST_CASE( "branch but not balance PIs", "[aqfp_buffer]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -176,22 +180,23 @@ TEST_CASE( "branch but not balance PIs", "[aqfp_view]" )
   mig.create_po( f );
   mig.create_po( !f );
 
-  aqfp_view_params ps;
+  aqfp_buffer_params ps;
   ps.branch_pis = true;
   ps.balance_pis = false;
   ps.balance_pos = true;
   ps.splitter_capacity = 4u;
-  aqfp_view view( mig, ps );
+  aqfp_buffer bufcnt( mig, ps );
+  bufcnt.count_buffers();
 
-  CHECK( view.level( view.get_node( f1 ) ) == 2u );
-  CHECK( view.level( view.get_node( f2 ) ) == 2u );
-  CHECK( view.level( view.get_node( f3 ) ) == 3u );
-  CHECK( view.level( view.get_node( f4 ) ) == 3u );
-  CHECK( view.depth() == 3u );
+  CHECK( bufcnt.level( mig.get_node( f1 ) ) == 2u );
+  CHECK( bufcnt.level( mig.get_node( f2 ) ) == 2u );
+  CHECK( bufcnt.level( mig.get_node( f3 ) ) == 3u );
+  CHECK( bufcnt.level( mig.get_node( f4 ) ) == 3u );
+  CHECK( bufcnt.depth() == 3u );
 
-  CHECK( view.num_buffers( view.get_node( b ) ) == 1u );
-  CHECK( view.num_buffers( view.get_node( c ) ) == 1u );
-  CHECK( view.num_buffers( view.get_node( e ) ) == 1u );
-  CHECK( view.num_buffers( view.get_node( f ) ) == 1u );
-  CHECK( view.num_buffers() == 4u );
+  CHECK( bufcnt.num_buffers( mig.get_node( b ) ) == 1u );
+  CHECK( bufcnt.num_buffers( mig.get_node( c ) ) == 1u );
+  CHECK( bufcnt.num_buffers( mig.get_node( e ) ) == 1u );
+  CHECK( bufcnt.num_buffers( mig.get_node( f ) ) == 1u );
+  CHECK( bufcnt.num_buffers() == 4u );
 }
