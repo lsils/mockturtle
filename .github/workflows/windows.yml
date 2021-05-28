@@ -27,9 +27,14 @@ jobs:
         "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" -ds mockturtle.sln
       working-directory: ./build
       shell: cmd
+    - name: Cat
+      run: |
+        cat mockturtle.sln
+      working-directory: ./build
+      shell: cmd
     - name: Build mockturtle
       run: |
-        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln /t:run_tests
+        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln
       working-directory: ./build
       shell: cmd
     - name: Run tests
