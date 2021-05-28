@@ -31,11 +31,12 @@
   \author Mathias Soeken
 */
 
-#include <array>
-#include <vector>
+#pragma once
 
 #include "sorting.hpp"
 
+#include <array>
+#include <vector>
 
 namespace mockturtle
 {
