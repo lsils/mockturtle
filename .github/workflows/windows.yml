@@ -32,14 +32,9 @@ jobs:
         cat mockturtle.sln
       working-directory: ./build
       shell: cmd
-    - name: List targets
+    - name: Cat2
       run: |
-        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln -targets
-      working-directory: ./build
-      shell: cmd
-    - name: Build mockturtle
-      run: |
-        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln -t:run_tests
+        cat ALL_BUILD.vcxproj
       working-directory: ./build
       shell: cmd
     - name: Run tests
