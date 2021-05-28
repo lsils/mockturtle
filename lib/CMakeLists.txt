@@ -11,6 +11,8 @@ endif()
 
 if (NOT TARGET kitty)
   add_library(kitty INTERFACE) # v0.4
+  file(GLOB_RECURSE KITTY_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/kitty/*.hpp)
+  target_precompile_headers(kitty INTERFACE ${KITTY_HEADERS})
   target_include_directories(kitty SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/kitty)
 endif()
 

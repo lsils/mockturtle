@@ -32,6 +32,7 @@
 */
 
 #pragma once
+#if 0
 
 #include <cstdint>
 #include <optional>
@@ -1024,3 +1025,4 @@ public:
 };
 
 } /* namespace mockturtle */
+#endif
