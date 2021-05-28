@@ -22,9 +22,9 @@ jobs:
     - name: Run CMake
       run: cmake -G "Visual Studio 16 2019" -DMOCKTURTLE_TEST=ON ..
       working-directory: ./build
-    - name: Print
+    - name: ls
       run: |
-        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" -ds mockturtle.sln
+        ls
       working-directory: ./build
       shell: cmd
     - name: Cat
@@ -32,9 +32,14 @@ jobs:
         cat mockturtle.sln
       working-directory: ./build
       shell: cmd
+    - name: List targets
+      run: |
+        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln -targets
+      working-directory: ./build
+      shell: cmd
     - name: Build mockturtle
       run: |
-        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln
+        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln -t:run_tests
       working-directory: ./build
       shell: cmd
     - name: Run tests
