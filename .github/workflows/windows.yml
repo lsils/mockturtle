@@ -37,6 +37,11 @@ jobs:
         cat ALL_BUILD.vcxproj
       working-directory: ./build
       shell: cmd
+    - name: Build mockturtle
+      run: |
+        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln -t:run_tests
+      working-directory: ./build
+      shell: cmd
     - name: Run tests
       run: |
         cd build
