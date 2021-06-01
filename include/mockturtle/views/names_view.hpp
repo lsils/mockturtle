@@ -64,7 +64,7 @@ public:
   {
     std::map<signal, std::string> new_signal_names;
     std::vector<signal> current_pis;
-    Ntk::foreach_pi( [&]( auto const& n ) {
+    Ntk::foreach_pi( [this, &current_pis]( auto const& n ) {
       current_pis.emplace_back( Ntk::make_signal( n ) );
     } );
     named_ntk.foreach_pi( [&]( auto const& n, auto i ) {
@@ -74,6 +74,7 @@ public:
 
     Ntk::operator=( named_ntk );
     _signal_names = new_signal_names;
+    _network_name = named_ntk._network_name;
     return *this;
   }
 
