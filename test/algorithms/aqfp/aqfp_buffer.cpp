@@ -200,3 +200,36 @@ TEST_CASE( "branch but not balance PIs", "[aqfp_buffer]" )
   CHECK( bufcnt.num_buffers( mig.get_node( f ) ) == 1u );
   CHECK( bufcnt.num_buffers() == 4u );
 }
+
+TEST_CASE( "buffer optimization with ALAP and chunked movement", "[aqfp_buffer]" )
+{
+  mig_network mig;
+  auto const a = mig.create_pi();
+  auto const b = mig.create_pi();
+  auto const c = mig.create_pi();
+  auto const d = mig.create_pi();
+  auto const e = mig.create_pi();
+
+  auto const f1 = mig.create_maj( a, b, c );
+  auto const f2 = mig.create_maj( d, e, f1 );
+  auto const f3 = mig.create_maj( a, d, f1 );
+  auto const f4 = mig.create_maj( f1, f2, f3 );
+  mig.create_po( f4 );
+
+  aqfp_buffer_params ps;
+  ps.branch_pis = true;
+  ps.balance_pis = true;
+  ps.balance_pos = true;
+  ps.splitter_capacity = 2u;
+  aqfp_buffer bufcnt( mig, ps );
+  bufcnt.count_buffers();
+  std::cout << "initial: " << bufcnt.num_buffers() << "\n";
+
+  bufcnt.ALAP();
+  bufcnt.count_buffers();
+  std::cout << "ALAP: " << bufcnt.num_buffers() << "\n";
+
+  bufcnt.optimize();
+  bufcnt.count_buffers();
+  std::cout << "optimized: " << bufcnt.num_buffers() << "\n";
+}

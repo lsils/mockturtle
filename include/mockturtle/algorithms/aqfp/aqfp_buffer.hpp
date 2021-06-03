@@ -38,6 +38,7 @@
 
 #include <vector>
 #include <list>
+#include <set>
 #include <cmath> //std::pow, std::ceil
 #include <limits> //std::numeric_limits
 
@@ -221,7 +222,7 @@ public:
 private:
   uint32_t count_buffers( node const& n ) const
   {
-    assert( !outdated && "Please call `count_buffers()` first." );
+    assert( !outdated && "Please call `update_fanout_info()` first." );
     auto const& fo_infos = _fanouts[n];
 
     if ( num_splitter_levels( n ) == 0u )
@@ -232,7 +233,6 @@ private:
         assert( _ntk.fanout_size( n ) == 1u );
         if ( _ntk.is_pi( n ) )
         {
-          assert( _levels[n] == 0u );
           if ( _external_ref_count[n] > 0u ) /* PI -- PO */
           {
             return _ps.balance_pis && _ps.balance_pos ? _depth : 0u;
@@ -343,7 +343,7 @@ private:
 
   /* Update the fanout_information of a node */
   template<bool verify = false>
-  bool update_info( node const& n )
+  bool update_fanout_info( node const& n )
   {
     std::vector<node> fos;
     for ( auto it = _fanouts[n].begin(); it != _fanouts[n].end(); ++it )
@@ -460,7 +460,7 @@ public:
 
   /*! \brief ALAP scheduling.
    *
-   * ALAP should follow right after ASAP (i.e., initialization).
+   * ALAP should follow right after ASAP (i.e., initialization) without other optimization in between.
    */
   void ALAP()
   {
@@ -513,7 +513,7 @@ private:
 
     _ntk.foreach_fanin( n, [&]( auto const& fi ) {
       auto const ni = _ntk.get_node( fi );
-      if ( !_ps.branch_pis && _ntk.is_pi( ni ) )
+      if ( _ps.balance_pis && _ntk.is_pi( ni ) )
       {
         assert( _levels[n] > 0 );
         _levels[ni] = 0;
@@ -533,6 +533,510 @@ private:
 #pragma endregion
 
 private:
+#pragma region Chunked movement: data structures
+  enum mobility
+  {
+    FREE = 0,
+    UPPER_BOUNDED,
+    LOWER_BOUNDED,
+    FIXED,
+    IGNORED /* PIs and constant */
+  };
+
+  enum direction
+  {
+    ANY,
+    DOWN,
+    UP
+  };
+
+  struct interface
+  {
+    node c; // chunk node
+    node o; // outside node
+  };
+
+  struct chunk
+  {
+    direction purpose;
+    uint32_t id;
+    std::vector<node> members{};
+    std::vector<interface> input_interfaces{};
+    std::vector<interface> output_interfaces{};
+    int32_t slack{std::numeric_limits<int32_t>::max()};
+    int32_t benefits{0};
+  };
+#pragma endregion
+
+public:
+#pragma region Chunked movement: top level
+  bool optimize()
+  {
+    if ( outdated )
+    {
+      update_fanout_info();
+    }
+    mark_nodes();
+
+    bool updated = false;
+    start_id = _ntk.trav_id();
+
+    _ntk.foreach_node( [&]( auto const& n ){
+      if ( is_ignored( n ) || is_fixed( n ) || _ntk.visited( n ) > start_id /* belongs to a chunk */ )
+      {
+        return true;
+      }
+
+      _ntk.incr_trav_id();
+      chunk c{ANY, _ntk.trav_id()};
+      recruit( n, c );
+      cleanup_interfaces( c );
+
+      auto moved = analyze_chunk_down( c );
+      if ( !moved ) moved = analyze_chunk_up( c );
+      updated |= moved;
+      return true;
+    });
+     
+
+    if ( !updated )
+    {
+      std::set<uint32_t> chunk_ids;
+      uint32_t num_chunks = 0u;
+      _ntk.foreach_gate( [&]( auto const& n ){
+        if ( is_ignored( n ) || is_fixed( n ) )
+        {
+          return true;
+        }
+        assert( _ntk.visited( n ) > start_id && "node does not belong to any chunk" );
+        if ( chunk_ids.find( _ntk.visited( n ) ) == chunk_ids.end() )
+        {
+          chunk_ids.insert( _ntk.visited( n ) );
+          ++num_chunks;
+        }
+        return true;
+      });
+      std::cout << " > [i] #chunks = " << num_chunks << "\n";
+    }
+
+    return updated;
+  }
+#pragma endregion
+
+private:
+#pragma region Chunked movement: mark nodes
+  void mark_nodes()
+  {
+    /* reset values */
+    _ntk.foreach_node( [&]( auto const& n ){
+      _ntk.set_value( n, FREE );
+    });
+
+    /* PIs and constant */
+    _ntk.set_value( _ntk.get_node( _ntk.get_constant( false ) ), IGNORED );
+    if ( !_ps.branch_pis )
+    {
+      _ntk.foreach_pi( [&]( auto const& n ){
+        _ntk.set_value( n, IGNORED );
+      });
+
+      /* first layer nodes */
+      _ntk.foreach_gate( [&]( auto const& n ){
+        /* assume topological order */
+        bool to_mark = true;
+        _ntk.foreach_fanin( n, [&]( auto const& fi ) {
+          if ( _ntk.value( _ntk.get_node( fi ) ) != IGNORED )
+          {
+            to_mark = false;
+            return false;
+          }
+          return true;
+        });
+        if ( to_mark )
+        {
+          _ntk.set_value( n, FIXED );
+          mark_as_lower_bounded( n );
+        }
+      });
+    }
+
+    if ( _ps.balance_pos )
+    {
+      /* PO nodes */
+      _ntk.foreach_po( [&]( auto const& f ){
+        mark_as_upper_bounded( _ntk.get_node( f ) );
+      });
+    }
+  }
+
+  void mark_as_lower_bounded( node const& n )
+  {
+    if ( _ntk.value( n ) == FREE )
+    {
+      _ntk.set_value( n, LOWER_BOUNDED );
+    }
+    else if ( _ntk.value( n ) == UPPER_BOUNDED )
+    {
+      _ntk.set_value( n, FIXED );
+    }
+
+    auto const& fo_infos = _fanouts[n];
+    if ( fo_infos.size() == 1u )
+    {
+      if ( fo_infos.front().relative_depth == 1u && fo_infos.front().fanouts.size() )
+      {
+        mark_as_lower_bounded( fo_infos.front().fanouts.front() );
+      }
+      return;
+    }
+    auto it = fo_infos.begin();
+    ++it;
+    if ( it->relative_depth == 2u )
+    {
+      for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+      {
+        mark_as_lower_bounded( *it2 );
+      }
+    }
+  }
+
+  void mark_as_upper_bounded( node const& n )
+  {
+    if ( _ntk.value( n ) == FREE )
+    {
+      _ntk.set_value( n, UPPER_BOUNDED );
+    }
+    else if ( _ntk.value( n ) == LOWER_BOUNDED )
+    {
+      _ntk.set_value( n, FIXED );
+    }
+
+    _ntk.foreach_fanin( n, [&]( auto const& fi ) {
+      auto const ni = _ntk.get_node( fi );
+      if ( ( _ntk.fanout_size( ni ) == 1u && _levels[ni] == _levels[n] - 1 ) ||
+           ( _ntk.fanout_size( ni ) > 1u && _levels[ni] == _levels[n] - 2 ) )
+      {
+        mark_as_upper_bounded( ni );
+      }
+    });
+  }
+
+  bool is_upper_bounded( node const& n ) const
+  {
+    return _ntk.value( n ) == FIXED || _ntk.value( n ) == UPPER_BOUNDED;
+  }
+
+  bool is_lower_bounded( node const& n ) const
+  {
+    return _ntk.value( n ) == FIXED || _ntk.value( n ) == LOWER_BOUNDED;
+  }
+
+  bool is_ignored( node const& n ) const
+  {
+    return _ntk.value( n ) == IGNORED;
+  }
+
+  bool is_fixed( node const& n ) const
+  {
+    return _ntk.value( n ) == FIXED;
+  }
+#pragma endregion
+
+#pragma region Chunked movement: forming chunks
+  void recruit( node const& n, chunk& c )
+  {
+    if ( _ntk.visited( n ) == c.id )
+      return;
+
+    assert( _ntk.visited( n ) <= start_id );
+    assert( !is_fixed( n ) ); 
+    assert( !is_ignored( n ) );
+    
+    _ntk.set_visited( n, c.id );
+    c.members.emplace_back( n );
+    recruit_fanins( n, c );
+    recruit_fanouts( n, c );
+  }
+
+  void recruit_fanins( node const& n, chunk& c )
+  {
+    _ntk.foreach_fanin( n, [&]( auto const& fi ){
+      auto const ni = _ntk.get_node( fi );
+      if ( !is_ignored( ni ) && _ntk.visited( ni ) != c.id )
+      {
+        if ( is_fixed( ni ) )
+          c.input_interfaces.push_back( {n, ni} );
+        else if ( are_close( ni, n ) )
+          recruit( ni, c );
+        else
+          c.input_interfaces.push_back( {n, ni} );
+      }
+    });
+  }
+
+  void recruit_fanouts( node const& n, chunk& c )
+  {
+    auto const& fanout_info = _fanouts[n];
+    if ( fanout_info.size() == 0 )
+      return;
+
+    if ( _ntk.fanout_size( n ) == _external_ref_count[n] ) // only POs
+    {
+      c.output_interfaces.push_back( {n, n} ); // PO interface
+    }
+    else if ( fanout_info.size() == 1 ) // single gate fanout
+    {
+      auto const& no = fanout_info.front().fanouts.front();
+      if ( is_fixed( no ) )
+        c.output_interfaces.push_back( {n, no} );
+      else if ( fanout_info.front().relative_depth == 1 )
+        recruit( no, c );
+      else
+        c.output_interfaces.push_back( {n, no} );
+    }
+    else
+    {
+      for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
+      {
+        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+        {
+          if ( is_fixed( *it2 ) )
+            c.output_interfaces.push_back( {n, *it2} );
+
+          else if ( it->relative_depth == 2 )
+            recruit( *it2, c );
+          else if ( _ntk.visited( *it2 ) != c.id )
+            c.output_interfaces.push_back( {n, *it2} );
+        }
+      }
+    }
+  }
+
+  bool are_close( node const& ni, node const& n )
+  {
+    auto const& fanout_info = _fanouts[ni];
+    if ( fanout_info.size() == 1 && fanout_info.front().relative_depth == 1 )
+    {
+      assert( fanout_info.front().fanouts.front() == n );
+      return true;
+    }
+    if ( fanout_info.size() > 1 )
+    {
+      auto it = fanout_info.begin();
+      it++;
+      if ( it->relative_depth > 2 ) return false;
+      for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+      {
+        if ( *it2 == n )
+          return true;
+      }
+    }
+    return false;
+  }
+
+  void cleanup_interfaces( chunk& c )
+  {
+    for ( int i = 0; i < c.input_interfaces.size(); ++i )
+    {
+      if ( _ntk.visited( c.input_interfaces[i].o ) == c.id )
+      {
+        c.input_interfaces.erase( c.input_interfaces.begin() + i );
+        --i;
+      }
+    }
+    for ( int i = 0; i < c.output_interfaces.size(); ++i )
+    {
+      if ( _ntk.visited( c.output_interfaces[i].o ) == c.id && c.output_interfaces[i].o != c.output_interfaces[i].c )
+      {
+        c.output_interfaces.erase( c.output_interfaces.begin() + i );
+        --i;
+      }
+    }
+  }
+#pragma endregion
+
+#pragma region Chunked movement: analyze and move chunks
+  bool analyze_chunk_down( chunk c )
+  {
+    c.purpose = DOWN;
+    for ( auto m : c.members )
+    {
+      if ( is_lower_bounded( m ) )
+        return false;
+    }
+
+    std::set<node> marked_oi;
+    for ( auto oi : c.output_interfaces )
+    {
+      if ( marked_oi.find( oi.c ) == marked_oi.end() )
+      {
+        marked_oi.insert( oi.c );
+        --c.benefits;
+      }
+    }
+
+    for ( auto ii : c.input_interfaces )
+    {
+      auto const rd = _levels[ii.c] - _levels[ii.o];
+      auto const lowest = lowest_spot( ii.o );
+      if ( rd <= lowest )
+      {
+        c.slack = 0;
+        break;
+      }
+      c.slack = std::min( c.slack, int32_t(rd - lowest) );
+      if ( c.slack == rd - lowest )
+        mark_occupied( ii.o, lowest ); // TODO: may be inaccurate
+      if ( _fanouts[ii.o].back().relative_depth == rd && _fanouts[ii.o].back().num_edges == 1 ) // is the only highest fanout
+      {
+        ++c.benefits;
+      }
+    }
+
+    if ( c.benefits > 0 && c.slack > 0 )
+    {
+      bool legal = true;
+      auto buffers_before = num_buffers();
+      for ( auto m : c.members )
+        _levels[m] -= c.slack;
+      for ( auto m : c.members )
+        update_fanout_info( m );
+      for ( auto ii : c.input_interfaces )
+        legal &= update_fanout_info<true>( ii.o );
+      
+      if ( !legal || num_buffers() >= buffers_before )
+      {
+        /* UNDO */
+        for ( auto m : c.members )
+          _levels[m] += c.slack;
+        for ( auto m : c.members )
+          update_fanout_info( m );
+        for ( auto ii : c.input_interfaces )
+          update_fanout_info( ii.o );
+        return false;
+      }
+
+      mark_nodes();
+      start_id = _ntk.trav_id();
+
+      return true;
+    }
+    else
+    {
+      /* reset fanout_infos of input_interfaces because num_edges may be modified by mark_occupied */
+      for ( auto ii : c.input_interfaces )
+        update_fanout_info( ii.o );
+      return false;
+    }
+  }
+
+  /* relative_depth of the lowest available spot in the fanout tree of n */
+  uint32_t lowest_spot( node const& n ) const
+  {
+    auto const& fanout_info = _fanouts[n];
+    assert( fanout_info.size() );
+    assert( _ntk.fanout_size( n ) != _external_ref_count[n] );
+    if ( fanout_info.size() == 1 )
+    {
+      assert( fanout_info.front().fanouts.size() == 1 );
+      return 1;
+    }
+    auto it = fanout_info.begin(); ++it;
+    while ( it != fanout_info.end() && it->num_edges == _ps.splitter_capacity )
+      ++it;
+    if ( it == fanout_info.end() ) // full fanout tree
+      return fanout_info.back().relative_depth + 1;
+    --it; // the last full layer
+    return it->relative_depth + 1;
+  }
+
+  void mark_occupied( node const& n, uint32_t rd )
+  {
+    auto& fanout_info = _fanouts[n];
+    for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
+    {
+      if ( it->relative_depth == rd )
+      {
+        ++it->num_edges;
+        return;
+      }
+    }
+  }
+
+  bool analyze_chunk_up( chunk c )
+  {
+    c.purpose = UP;
+    for ( auto m : c.members )
+    {
+      if ( is_upper_bounded( m ) )
+        return false;
+    }
+
+    for ( auto ii : c.input_interfaces )
+    {
+      if ( _fanouts[ii.o].back().relative_depth == _levels[ii.c] - _levels[ii.o] ) // is highest fanout
+        --c.benefits;
+    }
+
+    std::set<node> marked_oi;
+    for ( auto oi : c.output_interfaces )
+    {
+      if ( marked_oi.find( oi.c ) == marked_oi.end() )
+      {
+        marked_oi.insert( oi.c );
+        ++c.benefits;
+      }
+      auto const& fanout_info = _fanouts[oi.c];
+      if ( _ntk.fanout_size( oi.c ) == _external_ref_count[oi.c] ) // only POs
+        c.slack = std::min( c.slack, int32_t(_depth - _levels[oi.c] - num_splitter_levels( oi.c )) );
+      else if ( fanout_info.size() == 1 ) // single fanout
+        c.slack = std::min( c.slack, int32_t(fanout_info.front().relative_depth - 1) );
+      else
+        c.slack = std::min( c.slack, int32_t(_levels[oi.o] - _levels[oi.c] - 2) );
+    }
+
+    if ( c.benefits > 0 && c.slack > 0 )
+    {
+      bool legal = true;
+      auto buffers_before = num_buffers();
+      for ( auto m : c.members )
+        _levels[m] += c.slack;
+      for ( auto m : c.members )
+      {
+        legal &= update_fanout_info<true>( m );
+        if (!legal) break;
+      }
+      if ( legal )
+      {
+        for ( auto ii : c.input_interfaces )
+          update_fanout_info( ii.o );
+      }
+      
+      if ( !legal || num_buffers() >= buffers_before )
+      {
+        /* UNDO */
+        for ( auto m : c.members )
+          _levels[m] -= c.slack;
+        for ( auto m : c.members )
+          update_fanout_info( m );
+        for ( auto ii : c.input_interfaces )
+          update_fanout_info( ii.o );
+        return false;
+      }
+
+      mark_nodes();
+      start_id = _ntk.trav_id();
+
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  }
+#pragma endregion
+
+private:
   struct fanout_information
   {
     uint32_t relative_depth{0u};
@@ -547,11 +1051,11 @@ private:
 
   node_map<uint32_t, Ntk> _levels;
   uint32_t _depth{0u};
-
   node_map<fanouts_by_level, Ntk> _fanouts;
   node_map<uint32_t, Ntk> _external_ref_count;
-
   node_map<uint32_t, Ntk> _buffers;
+
+  uint32_t start_id;
 }; /* aqfp_buffer */
 
 } // namespace mockturtle
