@@ -210,6 +210,7 @@ public:
     if ( _ps.branch_pis )
     {
       _ntk.foreach_pi( [&]( auto const& n ){
+        assert( !_ps.balance_pis || _levels[n] == 0 );
         _buffers[n] = count_buffers( n );
       });
     }
@@ -471,7 +472,7 @@ public:
       const auto n = _ntk.get_node( f );
       if ( !_ntk.is_constant( n ) && !_ntk.is_pi( n ) && _ntk.visited( n ) != _ntk.trav_id() )
       {
-        _levels[n] = _depth;
+        _levels[n] = _depth - num_splitter_levels( n );
         compute_levels_ALAP( n );
       }
     } );
@@ -496,12 +497,15 @@ private:
     uint32_t level{0};
     _ntk.foreach_fanin( n, [&]( auto const& fi ) {
       auto const ni = _ntk.get_node( fi );
-      auto fi_level = compute_levels_ASAP( ni );
-      if ( _ps.branch_pis || !_ntk.is_pi( ni ) )
+      if ( !_ntk.is_constant( ni ) )
       {
-        fi_level += num_splitter_levels( ni );
+        auto fi_level = compute_levels_ASAP( ni );
+        if ( _ps.branch_pis || !_ntk.is_pi( ni ) )
+        {
+          fi_level += num_splitter_levels( ni );
+        }
+        level = std::max( level, fi_level );
       }
-      level = std::max( level, fi_level );
     } );
 
     return _levels[n] = level + 1;
@@ -513,19 +517,22 @@ private:
 
     _ntk.foreach_fanin( n, [&]( auto const& fi ) {
       auto const ni = _ntk.get_node( fi );
-      if ( _ps.balance_pis && _ntk.is_pi( ni ) )
+      if ( !_ntk.is_constant( ni ) )
       {
-        assert( _levels[n] > 0 );
-        _levels[ni] = 0;
-      }
-      else
-      {
-        assert( _levels[n] > num_splitter_levels( ni ) );
-        auto fi_level = _levels[n] - num_splitter_levels( ni ) - 1;
-        if ( _ntk.visited( ni ) != _ntk.trav_id() || _levels[ni] > fi_level )
+        if ( _ps.balance_pis && _ntk.is_pi( ni ) )
         {
-          _levels[ni] = fi_level;
-          compute_levels_ALAP( ni );
+          assert( _levels[n] > 0 );
+          _levels[ni] = 0;
+        }
+        else if ( _ps.branch_pis || !_ntk.is_pi( ni ) )
+        {
+          assert( _levels[n] > num_splitter_levels( ni ) );
+          auto fi_level = _levels[n] - num_splitter_levels( ni ) - 1;
+          if ( _ntk.visited( ni ) != _ntk.trav_id() || _levels[ni] > fi_level )
+          {
+            _levels[ni] = fi_level;
+            compute_levels_ALAP( ni );
+          }
         }
       }
     } );
@@ -591,34 +598,16 @@ public:
       chunk c{ANY, _ntk.trav_id()};
       recruit( n, c );
       cleanup_interfaces( c );
+      //print_chunk( c );
 
       auto moved = analyze_chunk_down( c );
       if ( !moved ) moved = analyze_chunk_up( c );
       updated |= moved;
       return true;
     });
-     
 
-    if ( !updated )
-    {
-      std::set<uint32_t> chunk_ids;
-      uint32_t num_chunks = 0u;
-      _ntk.foreach_gate( [&]( auto const& n ){
-        if ( is_ignored( n ) || is_fixed( n ) )
-        {
-          return true;
-        }
-        assert( _ntk.visited( n ) > start_id && "node does not belong to any chunk" );
-        if ( chunk_ids.find( _ntk.visited( n ) ) == chunk_ids.end() )
-        {
-          chunk_ids.insert( _ntk.visited( n ) );
-          ++num_chunks;
-        }
-        return true;
-      });
-      std::cout << " > [i] #chunks = " << num_chunks << "\n";
-    }
-
+    count_buffers(); // just to be sure; shouldn't be needed in theory
+    std::cout << "[i] after one pass: " << num_buffers() << "\n";
     return updated;
   }
 #pragma endregion
@@ -634,7 +623,13 @@ private:
 
     /* PIs and constant */
     _ntk.set_value( _ntk.get_node( _ntk.get_constant( false ) ), IGNORED );
-    if ( !_ps.branch_pis )
+    if ( _ps.balance_pis ) // branch and balance
+    {
+      _ntk.foreach_pi( [&]( auto const& n ){
+        _ntk.set_value( n, FIXED );
+      });
+    }
+    else if ( !_ps.branch_pis ) // neither branch nor balance
     {
       _ntk.foreach_pi( [&]( auto const& n ){
         _ntk.set_value( n, IGNORED );
@@ -657,6 +652,12 @@ private:
           _ntk.set_value( n, FIXED );
           mark_as_lower_bounded( n );
         }
+      });
+    }
+    else // branch but not balance PI
+    {
+      _ntk.foreach_pi( [&]( auto const& n ){
+        mark_as_lower_bounded( n );
       });
     }
 
@@ -723,11 +724,13 @@ private:
 
   bool is_upper_bounded( node const& n ) const
   {
+    //return false;
     return _ntk.value( n ) == FIXED || _ntk.value( n ) == UPPER_BOUNDED;
   }
 
   bool is_lower_bounded( node const& n ) const
   {
+    //return false;
     return _ntk.value( n ) == FIXED || _ntk.value( n ) == LOWER_BOUNDED;
   }
 
@@ -738,6 +741,7 @@ private:
 
   bool is_fixed( node const& n ) const
   {
+    //return false;
     return _ntk.value( n ) == FIXED;
   }
 #pragma endregion
@@ -895,6 +899,7 @@ private:
 
     if ( c.benefits > 0 && c.slack > 0 )
     {
+      //std::cout << "This chunk seems to be good:\n"; print_chunk(c);
       bool legal = true;
       auto buffers_before = num_buffers();
       for ( auto m : c.members )
@@ -904,8 +909,11 @@ private:
       for ( auto ii : c.input_interfaces )
         legal &= update_fanout_info<true>( ii.o );
       
+      if ( legal ) count_buffers();
       if ( !legal || num_buffers() >= buffers_before )
       {
+        //if ( !legal ) std::cout << "...but it's not legal\n";
+        //else std::cout << "...but it results in more buffers\n";
         /* UNDO */
         for ( auto m : c.members )
           _levels[m] += c.slack;
@@ -913,6 +921,7 @@ private:
           update_fanout_info( m );
         for ( auto ii : c.input_interfaces )
           update_fanout_info( ii.o );
+        count_buffers();
         return false;
       }
 
@@ -1010,8 +1019,9 @@ private:
       {
         for ( auto ii : c.input_interfaces )
           update_fanout_info( ii.o );
+        count_buffers();
       }
-      
+
       if ( !legal || num_buffers() >= buffers_before )
       {
         /* UNDO */
@@ -1021,6 +1031,7 @@ private:
           update_fanout_info( m );
         for ( auto ii : c.input_interfaces )
           update_fanout_info( ii.o );
+        count_buffers();
         return false;
       }
 
@@ -1033,6 +1044,93 @@ private:
     {
       return false;
     }
+  }
+#pragma endregion
+
+public:
+#pragma region Printing methods
+  void print_graph() const
+  {
+    std::vector<std::vector<node>> nodes_by_level( _depth + 1 );
+    _ntk.foreach_node( [&]( auto const& n ){
+      nodes_by_level[_levels[n]].emplace_back( n );
+    });
+    for ( int l = _depth; l >= 0; --l )
+    {
+      std::cout << "level " << std::setw(2) << l << ": ";
+      for ( auto n : nodes_by_level[l] )
+        std::cout << n << ", ";
+      std::cout << "\n";
+    }
+    std::cout << "\n";
+  }
+
+  void print_fanout_infos( node const& n ) const
+  {
+    auto const& fo_infos = _fanouts[n];
+    for ( auto it = fo_infos.rbegin(); it != fo_infos.rend(); ++it )
+    {
+      std::cout << "rd " << it->relative_depth << ", gates = ";
+      if ( it->fanouts.size() )
+      {
+        std::cout << "{ ";
+        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+          std::cout << (*it2) << " ";
+        std::cout << "}";
+      }
+      else
+      {
+        std::cout << "{}";
+      }
+      std::cout << ", #edges = " << it->num_edges << "\n";
+    }
+    std::cout << "\n";
+  }
+
+  void print_chunk( chunk const& c ) const
+  {
+    std::cout << "===== chunk ID = " << c.id << " =====\n";
+    std::cout << "== purpose: " << (c.purpose == UP ? "UP" : "DOWN") << " ";
+    if ( c.benefits > 0 )
+      std::cout << "[GOOD! gain = " << c.slack << " * " << c.benefits << "]\n";
+    else
+      std::cout << "[BAD]\n";
+    std::cout << "== members: \n";
+    for ( auto const& n : c.members )
+    {
+      std::cout << "== " << node_info( n ) << ", fanins: ";
+      _ntk.foreach_fanin( n, [&]( auto const fi ){
+        std::cout << node_info( _ntk.get_node( fi ) ) << ", ";
+      });
+      std::cout << "\n"; 
+      //print_fanout_infos( n );
+    }
+    std::cout << "== IIs: ";
+    for ( auto const& ii : c.input_interfaces )
+      std::cout << "{" << ii.o << " -> " << ii.c << "} ";
+    std::cout << "\n== OIs: ";
+    for ( auto const& oi : c.output_interfaces )
+      std::cout << "{" << oi.c << " -> " << oi.o << "} ";
+    std::cout << "\n";
+    std::cout << "=========================\n";
+  }
+
+  std::string mobility_str( node const& n ) const
+  {
+    switch ( _ntk.value( n ) )
+    {
+      case FREE: return " FREE";
+      case UPPER_BOUNDED: return " UPPER_BOUNDED";
+      case LOWER_BOUNDED: return " LOWER_BOUNDED";
+      case FIXED: return " FIXED";
+      case IGNORED: return " PI/CONST";
+      default: return " UNKNOWN";
+    }
+  }
+
+  std::string node_info( node const& n ) const
+  {
+    return std::to_string( n ) + " @" + std::to_string( _levels[n] ) + mobility_str( n );
   }
 #pragma endregion
 
