@@ -1,7 +1,10 @@
 #include <catch.hpp>
 
+#include <lorina/lorina.hpp>
+#include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/traits.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_buffer.hpp>
 
 using namespace mockturtle;
@@ -201,35 +204,28 @@ TEST_CASE( "branch but not balance PIs", "[aqfp_buffer]" )
   CHECK( bufcnt.num_buffers() == 4u );
 }
 
-TEST_CASE( "buffer optimization with ALAP and chunked movement", "[aqfp_buffer]" )
+TEST_CASE( "buffer optimization (quality test)", "[aqfp_buffer]" )
 {
-  mig_network mig;
-  auto const a = mig.create_pi();
-  auto const b = mig.create_pi();
-  auto const c = mig.create_pi();
-  auto const d = mig.create_pi();
-  auto const e = mig.create_pi();
-
-  auto const f1 = mig.create_maj( a, b, c );
-  auto const f2 = mig.create_maj( d, e, f1 );
-  auto const f3 = mig.create_maj( a, d, f1 );
-  auto const f4 = mig.create_maj( f1, f2, f3 );
-  mig.create_po( f4 );
+  aig_network aig;
+  auto const result = lorina::read_aiger( std::string( BENCHMARKS_PATH ) + "/c880.aig", aiger_reader( aig ) );
+  CHECK( result == lorina::return_code::success );
 
   aqfp_buffer_params ps;
   ps.branch_pis = true;
   ps.balance_pis = true;
   ps.balance_pos = true;
   ps.splitter_capacity = 2u;
-  aqfp_buffer bufcnt( mig, ps );
-  bufcnt.count_buffers();
-  std::cout << "initial: " << bufcnt.num_buffers() << "\n";
+  aqfp_buffer bufcnt( aig, ps );
 
   bufcnt.ALAP();
   bufcnt.count_buffers();
-  std::cout << "ALAP: " << bufcnt.num_buffers() << "\n";
+  CHECK( bufcnt.num_buffers() == 3074 );
 
-  bufcnt.optimize();
+  bufcnt.ASAP();
   bufcnt.count_buffers();
-  std::cout << "optimized: " << bufcnt.num_buffers() << "\n";
+  CHECK( bufcnt.num_buffers() == 2401 );
+
+  while ( bufcnt.optimize() ) {}
+  bufcnt.count_buffers();
+  CHECK( bufcnt.num_buffers() == 2395 );
 }

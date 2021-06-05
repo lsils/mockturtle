@@ -34,7 +34,6 @@
 
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
-#include "mockturtle/networks/mig.hpp"
 
 #include <vector>
 #include <list>
@@ -139,11 +138,6 @@ public:
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
-
-    if constexpr ( !std::is_same<typename Ntk::base_type, mig_network>::value )
-    {
-      std::cerr << "[w] base_type of Ntk is not mig_network.\n";
-    }
 
     assert( !(_ps.balance_pis && !_ps.branch_pis) && "Does not make sense to balance but not branch PIs" );
 
@@ -606,8 +600,6 @@ public:
       return true;
     });
 
-    count_buffers(); // just to be sure; shouldn't be needed in theory
-    std::cout << "[i] after one pass: " << num_buffers() << "\n";
     return updated;
   }
 #pragma endregion
