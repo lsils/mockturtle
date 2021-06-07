@@ -153,7 +153,7 @@ TEST_CASE( "write buffered AIG into Verilog file", "[write_verilog]" )
   CHECK( out.str() == "module top( x0 , x1 , y0 );\n"
                       "  input x0 , x1 ;\n"
                       "  output y0 ;\n"
-                      "  wire n5 ;\n"
+                      "  wire n3 , n4 , n5 , n6 ;\n"
                       "  buffer  buf_n3( .i (x0), .o (n3) );\n"
                       "  buffer  buf_n4( .i (n3), .o (n4) );\n"
                       "  assign n5 = ~x1 & ~n4 ;\n"

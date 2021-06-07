@@ -171,9 +171,20 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   }
 
   std::vector<std::string> ws;
-  ntk.foreach_gate( [&]( auto const& n ) {
-    ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
-  } );
+
+  if constexpr ( has_is_buf_v<Ntk> )
+  {
+    ntk.foreach_node( [&]( auto const& n ) {
+      if ( ntk.fanin_size( n ) > 0 )
+        ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
+    } );
+  }
+  else
+  {
+    ntk.foreach_gate( [&]( auto const& n ) {
+      ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
+    } );
+  }
 
   lorina::verilog_writer writer( os );
   writer.on_module_begin( ps.module_name, inputs, outputs );

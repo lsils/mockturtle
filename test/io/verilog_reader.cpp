@@ -168,7 +168,7 @@ TEST_CASE( "read a VERILOG file with buffers", "[verilog_reader]" )
     "module top( x0 , x1 , y0 );\n"
     "  input x0 , x1 ;\n"
     "  output y0 ;\n"
-    "  wire n5 ;\n"
+    "  wire n3 , n4 , n5 , n6 ;\n"
     "  buffer #(0) buf_n3( .i (x0), .o (n3) );\n"
     "  buffer #(0) buf_n4( .i (n3), .o (n4) );\n"
     "  assign n5 = ~x1 & ~n4 ;\n"
@@ -177,9 +177,7 @@ TEST_CASE( "read a VERILOG file with buffers", "[verilog_reader]" )
     "endmodule\n"};
 
   std::istringstream in( file );
-  lorina::text_diagnostics client;
-  lorina::diagnostic_engine eng( &client );
-  const auto result = lorina::read_verilog( in, verilog_reader( mig ), &eng );
+  const auto result = lorina::read_verilog( in, verilog_reader( mig ) );
 
   /* structural checks */
   CHECK( result == lorina::return_code::success );
