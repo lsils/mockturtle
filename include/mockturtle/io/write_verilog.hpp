@@ -222,6 +222,29 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     /* assign a name */
     node_names[n] = fmt::format( "n{}", ntk.node_to_index( n ) );
 
+    if constexpr ( has_is_buf_v<Ntk> )
+    {
+      if ( ntk.is_buf( n ) )
+      {
+        auto const fanin = detail::format_fanin<Ntk>( ntk, n, node_names );
+        assert( fanin.size() == 1 );
+        std::vector<std::pair<std::string,std::string>> args;
+        if ( fanin[0].first ) /* input negated */
+        {
+          args.emplace_back( std::make_pair( "i", fanin[0].second ) );
+          args.emplace_back( std::make_pair( "o", node_names[n] ) );
+          writer.on_module_instantiation( "inverter", {}, "inv_" + node_names[n], args );
+        }
+        else
+        {
+          args.emplace_back( std::make_pair( "i", fanin[0].second ) );
+          args.emplace_back( std::make_pair( "o", node_names[n] ) );
+          writer.on_module_instantiation( "buffer", {}, "buf_" + node_names[n], args );
+        }
+        return true;
+      }
+    }
+
     if ( ntk.is_and( n ) )
     {
       writer.on_assign( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ), "&" );
