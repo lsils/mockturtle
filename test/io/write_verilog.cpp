@@ -150,7 +150,15 @@ TEST_CASE( "write buffered AIG into Verilog file", "[write_verilog]" )
   std::ostringstream out;
   write_verilog( aig, out );
 
-  CHECK( out.str() == "module top( x0 , x1 , y0 );\n"
+  CHECK( out.str() == "module buffer( i , o );\n"
+                      "  input i ;\n"
+                      "  output o ;\n"
+                      "endmodule\n"
+                      "module inverter( i , o );\n"
+                      "  input i ;\n"
+                      "  output o ;\n"
+                      "endmodule\n"
+                      "module top( x0 , x1 , y0 );\n"
                       "  input x0 , x1 ;\n"
                       "  output y0 ;\n"
                       "  wire n3 , n4 , n5 , n6 ;\n"
@@ -160,12 +168,4 @@ TEST_CASE( "write buffered AIG into Verilog file", "[write_verilog]" )
                       "  inverter  inv_n6( .i (n5), .o (n6) );\n"
                       "  assign y0 = n6 ;\n"
                       "endmodule\n" );
-/*
-module buffer( input i , output o );
-  assign o = i ;
-endmodule
-module inverter( input i , output o );
-  assign o = ~i ;
-endmodule
-*/
 }

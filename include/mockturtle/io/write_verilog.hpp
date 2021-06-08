@@ -120,6 +120,21 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
 
   assert( ntk.is_combinational() && "Network has to be combinational" );
 
+  lorina::verilog_writer writer( os );
+
+  if constexpr ( has_is_buf_v<Ntk> )
+  {
+    writer.on_module_begin( "buffer", {"i"}, {"o"} );
+    writer.on_input( "i" );
+    writer.on_output( "o" );
+    writer.on_module_end();
+
+    writer.on_module_begin( "inverter", {"i"}, {"o"} );
+    writer.on_input( "i" );
+    writer.on_output( "o" );
+    writer.on_module_end();
+  }
+
   std::vector<std::string> xs, inputs;
   if ( ps.input_names.empty() )
   {
@@ -186,7 +201,6 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     } );
   }
 
-  lorina::verilog_writer writer( os );
   writer.on_module_begin( ps.module_name, inputs, outputs );
   if ( ps.input_names.empty() )
   {

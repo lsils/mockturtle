@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun Lee
 */
 
 #pragma once
@@ -77,7 +78,7 @@ template<typename Ntk>
 class verilog_reader : public lorina::verilog_reader
 {
 public:
-  explicit verilog_reader( Ntk& ntk ) : ntk_( ntk )
+  explicit verilog_reader( Ntk& ntk, std::string const& top_module_name = "top" ) : ntk_( ntk ), top_module_name_( top_module_name )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
@@ -109,6 +110,8 @@ public:
   void on_inputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
     (void)size;
+    if ( name_ != top_module_name_ ) return;
+
     for ( const auto& name : names )
     {
       if ( size.empty() )
@@ -135,6 +138,8 @@ public:
   void on_outputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
     (void)size;
+    if ( name_ != top_module_name_ ) return;
+
     for ( const auto& name : names )
     {
       if ( size.empty() )
@@ -156,6 +161,8 @@ public:
 
   void on_assign( const std::string& lhs, const std::pair<std::string, bool>& rhs ) const override
   {
+    if ( name_ != top_module_name_ ) return;
+
     if ( signals_.find( rhs.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", rhs.first );
 
@@ -165,6 +172,8 @@ public:
 
   void on_nand( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
+    if ( name_ != top_module_name_ ) return;
+
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
     if ( signals_.find( op2.first ) == signals_.end() )
@@ -177,6 +186,8 @@ public:
 
   void on_and( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
+    if ( name_ != top_module_name_ ) return;
+
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
     if ( signals_.find( op2.first ) == signals_.end() )
@@ -189,6 +200,8 @@ public:
 
   void on_or( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
+    if ( name_ != top_module_name_ ) return;
+
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
     if ( signals_.find( op2.first ) == signals_.end() )
@@ -201,6 +214,8 @@ public:
 
   void on_xor( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
+    if ( name_ != top_module_name_ ) return;
+
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
     if ( signals_.find( op2.first ) == signals_.end() )
@@ -213,6 +228,8 @@ public:
 
   void on_xor3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
   {
+    if ( name_ != top_module_name_ ) return;
+
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
     if ( signals_.find( op2.first ) == signals_.end() )
@@ -236,6 +253,8 @@ public:
 
   void on_maj3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
   {
+    if ( name_ != top_module_name_ ) return;
+
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
     if ( signals_.find( op2.first ) == signals_.end() )
@@ -253,6 +272,7 @@ public:
                                 std::vector<std::pair<std::string, std::string>> const& args ) const override
   {
     (void)inst_name;
+    if ( name_ != top_module_name_ ) return;
 
     /* check routines */
     const auto num_args_equals = [&]( uint32_t expected_count ) {
@@ -360,6 +380,8 @@ public:
 
   void on_endmodule() const override
   {
+    if ( name_ != top_module_name_ ) return;
+
     for ( auto const& o : outputs_ )
     {
       ntk_.create_po( signals_[o], o );
@@ -429,6 +451,8 @@ private:
 
 private:
   Ntk& ntk_;
+
+  std::string const top_module_name_;
 
   mutable std::map<std::string, signal<Ntk>> signals_;
   mutable std::map<std::string, std::vector<signal<Ntk>>> registers_;
