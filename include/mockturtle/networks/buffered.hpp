@@ -68,6 +68,17 @@ public:
   }
 #pragma endregion
 
+#pragma region Create arbitrary functions
+  signal clone_node( aig_network const& other, node const& source, std::vector<signal> const& children )
+  {
+    (void)other;
+    (void)source;
+    assert( other.is_and( source ) );
+    assert( children.size() == 2u );
+    return create_and( children[0u], children[1u] );
+  }
+#pragma endregion
+
 #pragma region Restructuring
   // disable restructuring
   std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal ) = delete;
@@ -286,6 +297,17 @@ public:
     }
 
     return {index, 0};
+  }
+#pragma endregion
+
+#pragma region Create arbitrary functions
+  signal clone_node( mig_network const& other, node const& source, std::vector<signal> const& children )
+  {
+    (void)other;
+    (void)source;
+    assert( other.is_maj( source ) );
+    assert( children.size() == 3u );
+    return create_maj( children[0u], children[1u], children[2u] );
   }
 #pragma endregion
 

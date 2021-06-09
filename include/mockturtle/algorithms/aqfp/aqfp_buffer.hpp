@@ -34,6 +34,7 @@
 
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
+#include "../../views/depth_view.hpp"
 
 #include <vector>
 #include <list>
@@ -126,6 +127,7 @@ public:
   explicit aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps = {} )
    : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
   {
+    static_assert( !has_is_buf_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
@@ -220,45 +222,32 @@ private:
     assert( !outdated && "Please call `update_fanout_info()` first." );
     auto const& fo_infos = _fanouts[n];
 
-    if ( num_splitter_levels( n ) == 0u )
+    if ( _ntk.fanout_size( n ) == 0u ) /* dangling */
     {
-      /* single fanout */
-      if ( _ntk.fanout_size( n ) > 0u )
-      {
-        assert( _ntk.fanout_size( n ) == 1u );
-        if ( _ntk.is_pi( n ) )
-        {
-          if ( _external_ref_count[n] > 0u ) /* PI -- PO */
-          {
-            return _ps.balance_pis && _ps.balance_pos ? _depth : 0u;
-          }
-          else /* PI -- gate */
-          {
-            assert( fo_infos.size() == 1u );
-            return _ps.balance_pis ? fo_infos.front().relative_depth - 1u : 0u;
-          } 
-        }
-        else if ( _external_ref_count[n] > 0u ) /* gate -- PO */
-        {
-          return _ps.balance_pos ? _depth - _levels[n] : 0u;
-        }
-        else /* gate -- gate */
-        {
-          assert( fo_infos.size() == 1u );
-          return fo_infos.front().relative_depth - 1u;
-        }
-      }
-      /* dangling */
       return 0u;
     }
+    
+    if ( _ntk.fanout_size( n ) == 1u ) /* single fanout */
+    {
+      if ( _external_ref_count[n] > 0u ) /* -> PO */
+      {
+        return _ps.balance_pos ? _depth - _levels[n] : 0u;
+      }
+      else /* -> gate */
+      {
+        assert( fo_infos.size() == 1u );
+        return fo_infos.front().relative_depth - 1u;
+      }
+    }
 
+    /* special case: don't balance POs; multiple PO refs but no gate fanout */
     if ( fo_infos.size() == 0u )
     {
-      /* special case: don't balance POs; multiple PO refs but no gate fanout */
       assert( !_ps.balance_pos && _ntk.fanout_size( n ) == _external_ref_count[n] );
       return std::ceil( float( _external_ref_count[n] - 1 ) / float( _ps.splitter_capacity - 1 ) );
     }
 
+    /* main counting */
     auto it = fo_infos.begin();
     auto count = it->num_edges;
     auto rd = it->relative_depth;
@@ -268,16 +257,10 @@ private:
       rd = it->relative_depth;
     }
 
-    if ( !_ps.balance_pis && _ntk.is_pi( n ) ) /* only branch PIs, but don't balance them */
-    {
-      /* remove the lowest balancing buffers, if any */
-      it = fo_infos.begin();
-      ++it;
-      count -= it->relative_depth - fo_infos.front().relative_depth - 1;
-    }
-
+    /* multiple PO refs: need branching */
     if ( !_ps.balance_pos && _external_ref_count[n] > 0u )
     {
+      /* check if available slots are enough */
       auto slots = count * ( _ps.splitter_capacity - 1 ) + 1;
       int32_t needed = _ntk.fanout_size( n ) - slots;
       if ( needed > 0 )
@@ -287,6 +270,8 @@ private:
     }
     else
     {
+      /* if _external_ref_count[n] == 0 : does nothing
+         otherwise _ps.balance_pos == true : PO refs were added as num_edges and counted as buffers */
       count -= _external_ref_count[n];
     }
 
@@ -303,6 +288,14 @@ private:
 
 private:
 #pragma region Update fanout info
+  /* Guarantees on `_fanouts` (when not `outdated`):
+   * - If not `branch_pis`: `_fanouts[PI]` is empty.
+   * - If `balance_pos`: PO ref count is added to `num_edges` of the last element.
+   * - If having only one fanout: `_fanouts[n].size() == 1`.
+   * - If having multiple fanouts: `_fanouts[n]` must have at least two elements,
+   *   and the first element must have `relative_depth == 1` and `num_edges == 1`.
+   */
+
   /* Update fanout_information of all nodes */
   void update_fanout_info()
   {
@@ -389,7 +382,7 @@ private:
 
     if ( fo_infos.size() == 0u || ( fo_infos.size() == 1u && fo_infos.front().num_edges == 1u ) )
     {
-      return;
+      return true;
     }
     assert( fo_infos.front().relative_depth > 1u );
     fo_infos.push_front( {1u, {}, 0u} );
@@ -464,7 +457,7 @@ public:
 
     _ntk.foreach_po( [&]( auto const& f ) {
       const auto n = _ntk.get_node( f );
-      if ( !_ntk.is_constant( n ) && !_ntk.is_pi( n ) && _ntk.visited( n ) != _ntk.trav_id() )
+      if ( !_ntk.is_constant( n ) && _ntk.visited( n ) != _ntk.trav_id() && ( !_ps.balance_pis || !_ntk.is_pi( n ) ) )
       {
         _levels[n] = _depth - num_splitter_levels( n );
         compute_levels_ALAP( n );
@@ -1039,6 +1032,183 @@ private:
   }
 #pragma endregion
 
+#pragma region Dump buffered network
+public:
+  template<class BufNtk>
+  BufNtk dump_buffered_network() const
+  {
+    static_assert( has_is_buf_v<BufNtk>, "BufNtk is not a buffered network type" );
+    assert( !outdated && "Please call `count_buffers()` first." );
+
+    using fanout_tree = std::vector<std::list<typename BufNtk::signal>>;
+
+    BufNtk bufntk;
+    node_map<typename BufNtk::signal, Ntk> node_to_signal( _ntk );
+    node_map<fanout_tree, Ntk> buffers( _ntk );
+
+    /* constants */
+    node_to_signal[_ntk.get_constant( false )] = bufntk.get_constant( false );
+    buffers[_ntk.get_constant( false )].emplace_back( 1, bufntk.get_constant( false ) );
+    if ( _ntk.get_node( _ntk.get_constant( false ) ) != _ntk.get_node( _ntk.get_constant( true ) ) )
+    {
+      node_to_signal[_ntk.get_constant( true )] = bufntk.get_constant( true );
+      buffers[_ntk.get_constant( true )].emplace_back( 1, bufntk.get_constant( true ) );
+    }
+
+    /* PIs */
+    _ntk.foreach_pi( [&]( auto const& n ){
+      node_to_signal[n] = bufntk.create_pi();
+    });
+    if ( _ps.branch_pis )
+    {
+      _ntk.foreach_pi( [&]( auto const& n ){
+        create_buffer_chain( bufntk, buffers, n, node_to_signal[n] );
+      });
+    }
+    else
+    {
+      _ntk.foreach_pi( [&]( auto const& n ){
+        buffers[n].emplace_back( 1, node_to_signal[n] );
+      });
+    }
+
+    /* gates: assume topological order */
+    _ntk.foreach_gate( [&]( auto const& n ){
+      std::vector<typename BufNtk::signal> children;
+      _ntk.foreach_fanin( n, [&]( auto const& fi ){
+        auto ni = _ntk.get_node( fi );
+        typename BufNtk::signal s;
+        if ( _ntk.is_constant( ni ) || ( !_ps.branch_pis && _ntk.is_pi( ni ) ) )
+          s = node_to_signal[ni];
+        else
+          s = get_buffer_at_rd( bufntk, buffers[fi], _levels[n] - _levels[fi] - 1 );
+        children.push_back( _ntk.is_complemented( fi ) ? !s : s );
+      });
+      node_to_signal[n] = bufntk.clone_node( _ntk, n, children );
+      create_buffer_chain( bufntk, buffers, n, node_to_signal[n] );
+    });
+
+    /* POs */
+    if ( _ps.balance_pos )
+    {
+      _ntk.foreach_po( [&]( auto const& f ){
+        auto n = _ntk.get_node( f );
+        typename BufNtk::signal s;
+        if ( _ntk.is_constant( n ) || ( !_ps.branch_pis && _ntk.is_pi( n ) ) )
+          s = node_to_signal[n];
+        else
+          s = get_buffer_at_rd( bufntk, buffers[f], _depth - _levels[f] );
+        bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
+      });
+    }
+    else // !_ps.balance_pos
+    {
+      std::set<node> checked;
+      _ntk.foreach_po( [&]( auto const& f ){
+        auto n = _ntk.get_node( f );
+        if ( _ntk.is_constant( n ) || ( _ntk.is_pi( n ) && !_ps.branch_pis ) || _ntk.fanout_size( n ) == 1 )
+        {
+          bufntk.create_po( _ntk.is_complemented( f ) ? !node_to_signal[f] : node_to_signal[f] );
+        }
+        else
+        {
+          if ( checked.find( n ) == checked.end() )
+          {
+            checked.insert( n );
+            /* count available slots in buffers[n] */
+            uint32_t slots{0u};
+            for ( auto const& bufs : buffers[n] )
+            {
+              slots += _ps.splitter_capacity - bufntk.fanout_size( bufntk.get_node( bufs.back() ) );
+            }
+            slots -= _ps.splitter_capacity - 1; // buffers[n][0] is n itself
+
+            /* add enough buffers */
+            while ( slots < _external_ref_count[n] )
+            {
+              get_lowest_spot<true>( bufntk, buffers[n] );
+              slots += _ps.splitter_capacity - 1;
+            }
+          }
+          typename BufNtk::signal s = get_lowest_spot<false>( bufntk, buffers[n] );
+          bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
+        }
+      });
+    }
+
+    assert( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 == num_buffers() );
+    return bufntk;
+  }
+
+private:
+  template<class BufNtk, typename Buffers>
+  void create_buffer_chain( BufNtk& bufntk, Buffers& buffers, node const& n, typename BufNtk::signal const& s ) const
+  {
+    auto const& fanout_info = _fanouts[n];
+    if ( fanout_info.size() == 0u )
+    {
+      buffers[n].emplace_back( 1, s );
+      return;
+    }
+
+    buffers[n].resize( fanout_info.back().relative_depth );
+    auto& fot = buffers[n];
+
+    typename BufNtk::signal fi = s;
+    fot[0].push_back( fi );
+    for ( auto i = 1u; i < fot.size(); ++i )
+    {
+      fi = bufntk.create_buf( fi );
+      fot[i].push_back( fi );
+    }
+  }
+
+  template<class BufNtk, typename FOT>
+  typename BufNtk::signal get_buffer_at_rd( BufNtk& bufntk, FOT& fot, uint32_t rd ) const
+  {
+    typename BufNtk::signal b = fot[rd].back();
+    if ( bufntk.fanout_size( bufntk.get_node( b ) ) == _ps.splitter_capacity )
+    {
+      assert( rd > 0 );
+      typename BufNtk::signal b_lower = get_buffer_at_rd( bufntk, fot, rd - 1 );
+      b = bufntk.create_buf( b_lower );
+      fot[rd].push_back( b );
+    }
+    return b;
+  }
+
+  template<bool create, class BufNtk, typename FOT>
+  typename BufNtk::signal get_lowest_spot( BufNtk& bufntk, FOT& fot ) const
+  {
+    if ( fot.size() == 1 )
+    {
+      assert( create );
+      fot.emplace_back( 1, bufntk.create_buf( fot[0].back() ) );
+      return fot[1].back();
+    }
+
+    for ( auto rd = 1u; rd < fot.size(); ++rd )
+    {
+      for ( auto it = fot[rd].begin(); it != fot[rd].end(); ++it )
+      {
+        typename BufNtk::signal& b = *it;
+        if ( bufntk.fanout_size( bufntk.get_node( b ) ) < _ps.splitter_capacity )
+        {
+          if constexpr ( create )
+          {
+            if ( rd == fot.size() - 1 )
+              fot.emplace_back( 1, bufntk.create_buf( b ) );
+            else
+              fot[rd + 1].push_back( bufntk.create_buf( b ) );
+          }
+          return b;
+        }
+      }
+    }
+    assert( false );
+  }
+#pragma endregion
+
 public:
 #pragma region Printing methods
   void print_graph() const
@@ -1147,5 +1317,89 @@ private:
 
   uint32_t start_id;
 }; /* aqfp_buffer */
+
+namespace detail
+{
+
+template<class Ntk>
+void lift_fanin_buffers( Ntk& d, typename Ntk::node const& n )
+{
+  d.foreach_fanin( n, [&]( auto const& fi ){
+    auto ni = d.get_node( fi );
+    uint32_t diff = d.level( n ) - d.level( ni ) - 1;
+    if ( diff != 0 && ( d.is_buf( ni ) || d.is_pi( ni ) ) )
+    {
+      d.set_level( ni, d.level( ni ) + diff );
+      lift_fanin_buffers( d, ni );
+    }
+  });
+}
+
+} // namespace detail
+
+template<class Ntk>
+bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
+{
+  static_assert( has_is_buf_v<Ntk>, "Ntk is not a buffered network" );
+  bool legal = true;
+  
+  /* fanout branching */
+  ntk.foreach_node( [&]( auto const& n ){
+    if ( ntk.is_constant( n ) ) return true;
+    if ( !ps.branch_pis && ntk.is_pi( n ) ) return true;
+
+    if ( ntk.is_buf( n ) )
+      legal &= ( ntk.fanout_size( n ) <= ps.splitter_capacity );
+    else /* logic gate */
+      legal &= ( ntk.fanout_size( n ) <= 1 );
+    assert(legal);
+
+    return true;
+  });
+
+  /* compute levels */
+  depth_view d{ntk};
+
+  /* adjust PI and their buffers */
+  if ( !ps.balance_pis )
+  {
+    ntk.foreach_gate( [&]( auto const& n ){
+      detail::lift_fanin_buffers( d, n );
+    });
+    if ( ps.balance_pos )
+    {
+      ntk.foreach_po( [&]( auto const& f ){
+        auto n = ntk.get_node( f );
+        if ( ntk.is_buf( n ) && d.level( n ) != d.depth() )
+        {
+          d.set_level( n, d.depth() );
+          detail::lift_fanin_buffers( d, n );
+        }
+      });
+    }
+  }
+
+  /* path balancing */
+  ntk.foreach_node( [&]( auto const& n ){
+    ntk.foreach_fanin( n, [&]( auto const& fi ){
+      auto ni = ntk.get_node( fi );
+      if ( !ntk.is_constant( ni ) && ( ps.balance_pis || !ntk.is_pi( ni ) ) )
+        legal &= ( d.level( ni ) == d.level( n ) - 1 );
+      assert(legal);
+    });
+  });
+
+  if ( ps.balance_pos )
+  {
+    ntk.foreach_po( [&]( auto const& f ){
+      auto n = ntk.get_node( f );
+      if ( !ntk.is_constant( n ) && ( ps.balance_pis || !ntk.is_pi( n ) ) )
+        legal &= ( d.level( n ) == d.depth() );
+      assert(legal);
+    });
+  }
+
+  return legal;
+}
 
 } // namespace mockturtle
