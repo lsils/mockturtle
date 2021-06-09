@@ -340,32 +340,3 @@ TEST_CASE( "various assumptions", "[aqfp_buffer]" )
     CHECK( verify_aqfp_buffer( buffered, ps ) == true );
   }
 }
-
-TEST_CASE( "buffer optimization (quality test)", "[aqfp_buffer]" )
-{
-  aig_network aig;
-  auto const result = lorina::read_aiger( std::string( BENCHMARKS_PATH ) + "/c880.aig", aiger_reader( aig ) );
-  CHECK( result == lorina::return_code::success );
-
-  aqfp_buffer_params ps;
-  ps.branch_pis = true;
-  ps.balance_pis = true;
-  ps.balance_pos = true;
-  ps.splitter_capacity = 2u;
-  aqfp_buffer bufcnt( aig, ps );
-
-  bufcnt.ALAP();
-  bufcnt.count_buffers();
-  CHECK( bufcnt.num_buffers() == 3074 );
-
-  bufcnt.ASAP();
-  bufcnt.count_buffers();
-  CHECK( bufcnt.num_buffers() == 2401 );
-
-  while ( bufcnt.optimize() ) {}
-  bufcnt.count_buffers();
-  CHECK( bufcnt.num_buffers() == 2370 );
-
-  auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
-  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
-}
