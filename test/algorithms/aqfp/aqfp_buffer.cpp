@@ -5,6 +5,7 @@
 #include <mockturtle/traits.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_buffer.hpp>
 
 using namespace mockturtle;
@@ -43,6 +44,9 @@ TEST_CASE( "aqfp_buffer simple test", "[aqfp_buffer]" )
   CHECK( bufcnt.num_buffers( mig.get_node( f3 ) ) == 0u );
   CHECK( bufcnt.num_buffers( mig.get_node( f4 ) ) == 0u );
   CHECK( bufcnt.num_buffers() == 2u );
+
+  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
+  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
 }
 
 TEST_CASE( "two layers of splitters", "[aqfp_buffer]" )
@@ -86,6 +90,9 @@ TEST_CASE( "two layers of splitters", "[aqfp_buffer]" )
   CHECK( bufcnt.num_buffers( mig.get_node( f6 ) ) == 2u );
   CHECK( bufcnt.depth() == 7u );
   CHECK( bufcnt.num_buffers() == 17u );
+
+  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
+  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
 }
 
 TEST_CASE( "PO splitters and buffers", "[aqfp_buffer]" )
@@ -118,6 +125,9 @@ TEST_CASE( "PO splitters and buffers", "[aqfp_buffer]" )
   CHECK( bufcnt.num_buffers( mig.get_node( f2 ) ) == 1u );
 
   CHECK( bufcnt.num_buffers() == 4u );
+
+  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
+  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
 }
 
 TEST_CASE( "chain of fanouts", "[aqfp_buffer]" )
@@ -162,6 +172,9 @@ TEST_CASE( "chain of fanouts", "[aqfp_buffer]" )
   CHECK( bufcnt.num_buffers( mig.get_node( f1 ) ) == 9u );
   CHECK( bufcnt.depth() == 8u );
   CHECK( bufcnt.num_buffers() == 11u );
+
+  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
+  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
 }
 
 TEST_CASE( "branch but not balance PIs", "[aqfp_buffer]" )
@@ -189,19 +202,143 @@ TEST_CASE( "branch but not balance PIs", "[aqfp_buffer]" )
   ps.balance_pos = true;
   ps.splitter_capacity = 4u;
   aqfp_buffer bufcnt( mig, ps );
+  bufcnt.ALAP();
   bufcnt.count_buffers();
 
   CHECK( bufcnt.level( mig.get_node( f1 ) ) == 2u );
   CHECK( bufcnt.level( mig.get_node( f2 ) ) == 2u );
   CHECK( bufcnt.level( mig.get_node( f3 ) ) == 3u );
   CHECK( bufcnt.level( mig.get_node( f4 ) ) == 3u );
-  CHECK( bufcnt.depth() == 3u );
 
-  CHECK( bufcnt.num_buffers( mig.get_node( b ) ) == 1u );
-  CHECK( bufcnt.num_buffers( mig.get_node( c ) ) == 1u );
-  CHECK( bufcnt.num_buffers( mig.get_node( e ) ) == 1u );
-  CHECK( bufcnt.num_buffers( mig.get_node( f ) ) == 1u );
+  CHECK( bufcnt.level( mig.get_node( a ) ) == 1u );
+  CHECK( bufcnt.level( mig.get_node( b ) ) == 0u );
+  CHECK( bufcnt.level( mig.get_node( c ) ) == 0u );
+  CHECK( bufcnt.level( mig.get_node( d ) ) == 1u );
+  CHECK( bufcnt.level( mig.get_node( e ) ) == 1u );
+  CHECK( bufcnt.level( mig.get_node( f ) ) == 2u );
+
+  CHECK( bufcnt.depth() == 3u );
   CHECK( bufcnt.num_buffers() == 4u );
+
+  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
+  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+}
+
+TEST_CASE( "various assumptions", "[aqfp_buffer]" )
+{
+  aig_network aig;
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const c = aig.create_pi();
+  auto const d = aig.create_pi();
+  auto const e = aig.create_pi();
+
+  auto const f1 = aig.create_and( c, d );
+  auto const f2 = aig.create_or( c, d );
+  auto const f3 = aig.create_and( d, e );
+  auto const f4 = aig.create_and( f2, f3 );
+
+  aig.create_po( aig.get_constant( false ) ); // const -- PO
+  aig.create_po( a ); // PI -- PO
+  aig.create_po( b ); aig.create_po( b ); aig.create_po( b ); // PI -- buffer tree -- PO
+  aig.create_po( f1 );
+  aig.create_po( f3 );
+  aig.create_po( f4 );
+
+  aqfp_buffer_params ps;
+  ps.splitter_capacity = 2u;
+
+  /* branch PI, balance PI and PO */
+  ps.branch_pis = true;
+  ps.balance_pis = true;
+  ps.balance_pos = true;
+  {
+    aqfp_buffer bufcnt( aig, ps );
+    bufcnt.count_buffers();
+    CHECK( bufcnt.depth() == 5u );
+    CHECK( bufcnt.num_buffers() == 23u );
+    auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
+    CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+  }
+
+  /* branch PI, balance only PI */
+  ps.branch_pis = true;
+  ps.balance_pis = true;
+  ps.balance_pos = false;
+  {
+    aqfp_buffer bufcnt( aig, ps );
+    bufcnt.count_buffers();
+    CHECK( bufcnt.depth() == 5u );
+    CHECK( bufcnt.num_buffers() == 11u );
+    auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
+    CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+  }
+
+  /* branch PI, balance only PO */
+  ps.branch_pis = true;
+  ps.balance_pis = false;
+  ps.balance_pos = true;
+  {
+    aqfp_buffer bufcnt( aig, ps );
+    bufcnt.count_buffers();
+    CHECK( bufcnt.depth() == 5u );
+    CHECK( bufcnt.num_buffers() == 23u );
+    auto const buffered1 = bufcnt.dump_buffered_network<buffered_aig_network>();
+    CHECK( verify_aqfp_buffer( buffered1, ps ) == true );
+
+    bufcnt.ALAP();
+    bufcnt.count_buffers();
+    CHECK( bufcnt.depth() == 5u );
+    CHECK( bufcnt.num_buffers() == 11u );
+    auto const buffered2 = bufcnt.dump_buffered_network<buffered_aig_network>();
+    CHECK( verify_aqfp_buffer( buffered2, ps ) == true );
+  }
+
+  /* branch PI, balance neither */
+  ps.branch_pis = true;
+  ps.balance_pis = false;
+  ps.balance_pos = false;
+  {
+    aqfp_buffer bufcnt( aig, ps );
+    bufcnt.count_buffers();
+    CHECK( bufcnt.depth() == 5u );
+    CHECK( bufcnt.num_buffers() == 11u );
+    auto const buffered1 = bufcnt.dump_buffered_network<buffered_aig_network>();
+    CHECK( verify_aqfp_buffer( buffered1, ps ) == true );
+
+    bufcnt.ALAP();
+    bufcnt.count_buffers();
+    CHECK( bufcnt.depth() == 5u );
+    CHECK( bufcnt.num_buffers() == 9u );
+    auto const buffered2 = bufcnt.dump_buffered_network<buffered_aig_network>();
+    CHECK( verify_aqfp_buffer( buffered2, ps ) == true );
+  }
+
+  /* don't branch PI, balance PO */
+  ps.branch_pis = false;
+  ps.balance_pis = false;
+  ps.balance_pos = true;
+  {
+    aqfp_buffer bufcnt( aig, ps );
+    bufcnt.count_buffers();
+    CHECK( bufcnt.depth() == 3u );
+    CHECK( bufcnt.num_buffers() == 5u );
+    auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
+    CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+  }
+
+  /* don't branch PI, balance neither */
+  ps.branch_pis = false;
+  ps.balance_pis = false;
+  ps.balance_pos = false;
+  {
+    aqfp_buffer bufcnt( aig, ps );
+    bufcnt.count_buffers();
+    CHECK( bufcnt.depth() == 3u );
+    CHECK( bufcnt.num_buffers() == 2u );
+    auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
+    CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+  }
 }
 
 TEST_CASE( "buffer optimization (quality test)", "[aqfp_buffer]" )
@@ -227,5 +364,8 @@ TEST_CASE( "buffer optimization (quality test)", "[aqfp_buffer]" )
 
   while ( bufcnt.optimize() ) {}
   bufcnt.count_buffers();
-  CHECK( bufcnt.num_buffers() == 2395 );
+  CHECK( bufcnt.num_buffers() == 2370 );
+
+  auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
+  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
 }
