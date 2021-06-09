@@ -8,3 +8,5 @@ AQFP buffer optimization
 
 .. doxygenstruct:: mockturtle::aqfp_buffer_params
    :members:
+
+.. doxygenfunction:: mockturtle::verify_aqfp_buffer

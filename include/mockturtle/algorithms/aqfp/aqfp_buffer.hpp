@@ -87,7 +87,9 @@ struct aqfp_buffer_params
  * - query the current level assignment (`level`, `depth`)
  * - count irredundant buffers based on the current level assignment (`count_buffers`,
  * `num_buffers`)
- * - optimize buffer count by adjusting the level assignment (`ASAP`, `ALAP`...)
+ * - optimize buffer count by adjusting the level assignment (`ASAP`, `ALAP`, `optimize`)
+ * - dump the resulting network into a network type which provides representation for 
+ * buffers (`dump_buffered_network`)
  *
    \verbatim embed:rst
 
@@ -100,6 +102,7 @@ struct aqfp_buffer_params
       bufcnt.ALAP();
       bufcnt.count_buffers();
       std::cout << bufcnt.num_buffers() << std::endl;
+      bufcnt.dump_buffered_network<buffered_mig_network>();
    \endverbatim
  *
  * **Required network functions:**
@@ -1034,6 +1037,11 @@ private:
 
 #pragma region Dump buffered network
 public:
+  /*! \brief Dump buffered network
+   * 
+   * After level assignment, (optimization), and buffer counting, this method
+   * can be called to dump the resulting buffered network.
+   */
   template<class BufNtk>
   BufNtk dump_buffered_network() const
   {
@@ -1337,6 +1345,12 @@ void lift_fanin_buffers( Ntk& d, typename Ntk::node const& n )
 
 } // namespace detail
 
+/*! \brief Verify a buffered network according to AQFP assumptions.
+ * 
+ * \param ntk Buffered network
+ * \param ps AQFP constraints
+ * \return Whether `ntk` is path-balanced and properly-branched
+ */
 template<class Ntk>
 bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
 {
@@ -1352,7 +1366,6 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
       legal &= ( ntk.fanout_size( n ) <= ps.splitter_capacity );
     else /* logic gate */
       legal &= ( ntk.fanout_size( n ) <= 1 );
-    assert(legal);
 
     return true;
   });
@@ -1385,7 +1398,6 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
       auto ni = ntk.get_node( fi );
       if ( !ntk.is_constant( ni ) && ( ps.balance_pis || !ntk.is_pi( ni ) ) )
         legal &= ( d.level( ni ) == d.level( n ) - 1 );
-      assert(legal);
     });
   });
 
@@ -1395,7 +1407,6 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
       auto n = ntk.get_node( f );
       if ( !ntk.is_constant( n ) && ( ps.balance_pis || !ntk.is_pi( n ) ) )
         legal &= ( d.level( n ) == d.depth() );
-      assert(legal);
     });
   }
 
