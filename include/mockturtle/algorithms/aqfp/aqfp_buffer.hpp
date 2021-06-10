@@ -102,7 +102,8 @@ struct aqfp_buffer_params
       bufcnt.ALAP();
       bufcnt.count_buffers();
       std::cout << bufcnt.num_buffers() << std::endl;
-      bufcnt.dump_buffered_network<buffered_mig_network>();
+      auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
+      write_verilog( buffered, "buffered.v" );
    \endverbatim
  *
  * **Required network functions:**
