@@ -36,8 +36,8 @@
 #include "../../utils/node_map.hpp"
 #include "../../views/depth_view.hpp"
 
-#include <cmath>  //std::pow, std::ceil
-#include <limits> //std::numeric_limits
+#include <cmath>
+#include <limits>
 #include <list>
 #include <set>
 #include <vector>
@@ -45,50 +45,89 @@
 namespace mockturtle
 {
 
-/*! \brief Parameters for AQFP buffer counting.
+/*! \brief AQFP technology assumptions.
+ * 
+ * POs count toward the fanout sizes and always have to be branched.
+ * If PIs need to be balanced, then they must also need to be branched.
  */
-struct aqfp_buffer_params
+struct aqfp_assumptions
 {
-  /*! \brief Whether PIs need to be branched with splitters */
+  /*! \brief Whether PIs need to be branched with splitters. */
   bool branch_pis{false};
 
-  /*! \brief Whether PIs need to be path-balanced */
+  /*! \brief Whether PIs need to be path-balanced. */
   bool balance_pis{false};
 
-  /*! \brief Whether POs need to be path-balanced */
+  /*! \brief Whether POs need to be path-balanced. */
   bool balance_pos{true};
 
-  /*! \brief The maximum number of fanouts each splitter (buffer) can have */
+  /*! \brief The maximum number of fanouts each splitter (buffer) can have. */
   uint32_t splitter_capacity{3u};
 };
 
-/*! \brief Count and optimize buffers and splitters in AQFP technology.
+/*! \brief Parameters for (AQFP) buffer insertion.
+ */
+struct buffer_insertion_params
+{
+  /*! \brief Technology assumptions. */
+  aqfp_assumptions assume;
+
+  /*! \brief The scheduling strategy to get the initial depth assignment.
+   * - `provided` = An initial level assignment is given in the constructor, thus
+   * no scheduling is performed. It is the user's responsibility to ensure that
+   * the provided assignment is legal.
+   * - `ASAP` = Classical As-Soon-As-Possible scheduling 
+   * - `ALAP` = ASAP (to obtain depth) followed by As-Late-As-Possible scheduling
+   * - `better` = ASAP followed by ALAP, then count buffers for both assignments
+   * and choose the better one
+   */
+  enum
+  {
+    provided,
+    ASAP,
+    ALAP,
+    better
+  } scheduling = ASAP;
+
+  /*! \brief The level of chunked-movement-based optimization effort.
+   * - `none` = No optimization
+   * - `one_pass` = Try to form a chunk starting from each gate, once
+   * for all gates
+   * - `until_sat` = Iterate over all gates until no more beneficial
+   * chunk movement can be found
+   */
+  enum
+  {
+    none,
+    one_pass,
+    until_sat,
+  } optimization_effort = none;
+};
+
+/*! \brief Insert buffers and splitters for the AQFP technology.
  * 
- * In AQFP technology, (1) logic gates can only have one fanout. If more than one
+ * In the AQFP technology, (1) logic gates can only have one fanout. If more than one
  * fanout is needed, a splitter has to be inserted in between, which also 
  * takes one clocking phase (counted towards the network depth). (2) All fanins of
  * a logic gate have to arrive at the same time (be at the same level). If one
  * fanin path is shorter, buffers have to be inserted to balance it. 
  * Buffers and splitters are essentially the same component in this technology.
  *
- * POs count toward the fanout sizes and always have to be branched. The assumptions
- * on whether PIs should be branched and whether PIs and POs have to be balanced 
- * can be set in the parameters (`aqfp_buffer_params`).
- *
- * The network depth and the levels of each gate are initialized with ASAP
- * scheduling considering reserved levels for splitters assuming all fanouts are 
- * at the lowest possible level. Then, various optimization methods can be called,
- * which re-assign or adjust the level assignment. With a given level assignment,
- * the minimum number of buffers needed is determined, which is counted in a way 
- * that signals are only splitted before the level where they are needed (i.e., 
- * sharing of buffers among multiple fanouts is maximized).
- *
- * This class provides interfaces to:
- * - query the current level assignment (`level`, `depth`)
- * - count irredundant buffers based on the current level assignment (`count_buffers`,
+ * With a given level assignment to all gates in the network, the minimum number of
+ * buffers needed is determined. This class implements algorithms to count such
+ * "irredundant buffers" and to insert them to obtain a buffered network. Moreover,
+ * as buffer optimization is essentially a problem of obtaining a good level assignment,
+ * this class also implements algorithms to obtain an initial, legal assignment using
+ * scheduling algorithms and to further adjust and optimize it.
+ * 
+ * This class provides two easy-to-use top-level functions which wrap all the above steps
+ * together: `run` and `dry_run`. In addition, the following interfaces are kept for
+ * more fine-grained usage:
+ * - Query the current level assignment (`level`, `depth`)
+ * - Count irredundant buffers based on the current level assignment (`count_buffers`,
  * `num_buffers`)
- * - optimize buffer count by adjusting the level assignment (`ASAP`, `ALAP`)
- * - dump the resulting network into a network type which provides representation for 
+ * - Optimize buffer count by adjusting the level assignment (`ASAP`, `ALAP`)
+ * - Dump the resulting network into a network type which provides representation for 
  * buffers (`dump_buffered_network`)
  *
    \verbatim embed:rst
@@ -98,12 +137,21 @@ struct aqfp_buffer_params
    .. code-block:: c++
 
       mig_network mig = ...
-      aqfp_buffer bufcnt( mig );
-      bufcnt.ALAP();
-      bufcnt.count_buffers();
-      std::cout << bufcnt.num_buffers() << std::endl;
-      auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
-      write_verilog( buffered, "buffered.v" );
+      
+      buffer_insertion_params ps;
+      ps.assume.branch_pis = true;
+      ps.assume.balance_pis = false;
+      ps.assume.balance_pos = true;
+      ps.assume.splitter_capacity = 3u;
+      ps.scheduling = buffer_insertion_params::ALAP;
+      ps.optimization_effort = buffer_insertion_params::one_pass;
+
+      buffer_insertion buffering( mig, ps );
+      buffered_mig_network buffered_mig;
+      auto const num_buffers = buffering.run( buffered_mig );
+      
+      std::cout << num_buffers << std::endl;
+      write_verilog( buffered_mig, "buffered.v" );
    \endverbatim
  *
  * **Required network functions:**
@@ -122,13 +170,13 @@ struct aqfp_buffer_params
  *
  */
 template<typename Ntk>
-class aqfp_buffer
+class buffer_insertion
 {
 public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  explicit aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps = {} )
+  explicit buffer_insertion( Ntk const& ntk, buffer_insertion_params const& ps = {} )
       : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
@@ -145,9 +193,66 @@ public:
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
 
-    assert( !( _ps.balance_pis && !_ps.branch_pis ) && "Does not make sense to balance but not branch PIs" );
+    assert( !( _ps.assume.balance_pis && !_ps.assume.branch_pis ) && "Does not make sense to balance but not branch PIs" );
+    assert( _ps.scheduling != buffer_insertion_params::provided );
+  }
 
-    ASAP();
+  explicit buffer_insertion( Ntk const& ntk, node_map<uint32_t, Ntk> const& levels, buffer_insertion_params const& ps = {} )
+      : _ntk( ntk ), _ps( ps ), _levels( levels ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
+  {
+    static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
+    static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+    static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+    static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+    static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+    static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+    static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+    static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+
+    assert( !( _ps.assume.balance_pis && !_ps.assume.branch_pis ) && "Does not make sense to balance but not branch PIs" );
+    assert( _ps.scheduling == buffer_insertion_params::provided );
+  }
+
+  /*! \brief Insert buffers and obtain a buffered network.
+   * \param bufntk An empty network of an appropriate buffered network type to
+   * to store the buffer-insertion result
+   * \param pLevels A pointer to a node map which will store the resulting 
+   * level assignment
+   * \return The number of buffers in the resulting network
+   */
+  template<class BufNtk>
+  uint32_t run( BufNtk& bufntk, node_map<uint32_t, Ntk>* pLevels = nullptr )
+  {
+    dry_run( pLevels );
+    dump_buffered_network( bufntk );
+    return num_buffers();
+  }
+
+  /*! \brief Count the number of buffers without dumping the result into a buffered network.
+   * 
+   * This function saves some runtime for dumping the resulting network and
+   * allows users to experiment on the algorithms with new network types whose
+   * corresponding buffered_network are not implemented yet.
+   * 
+   * \param pLevels A pointer to a node map which will store the resulting 
+   * level assignment
+   * \return The number of buffers in the resulting network
+   */
+  uint32_t dry_run( node_map<uint32_t, Ntk>* pLevels = nullptr )
+  {
+    schedule();
+    optimize();
+    count_buffers();
+
+    if ( pLevels )
+      *pLevels = _levels;
+
+    return num_buffers();
   }
 
 #pragma region Query
@@ -171,7 +276,7 @@ public:
     assert( !outdated && "Please call `count_buffers()` first." );
 
     uint32_t count = 0u;
-    if ( _ps.branch_pis )
+    if ( _ps.assume.branch_pis )
     {
       _ntk.foreach_pi( [&]( auto const& n ) {
         count += num_buffers( n );
@@ -207,10 +312,10 @@ public:
       update_fanout_info();
     }
 
-    if ( _ps.branch_pis )
+    if ( _ps.assume.branch_pis )
     {
       _ntk.foreach_pi( [&]( auto const& n ) {
-        assert( !_ps.balance_pis || _levels[n] == 0 );
+        assert( !_ps.assume.balance_pis || _levels[n] == 0 );
         _buffers[n] = count_buffers( n );
       } );
     }
@@ -235,7 +340,7 @@ private:
     {
       if ( _external_ref_count[n] > 0u ) /* -> PO */
       {
-        return _ps.balance_pos ? _depth - _levels[n] : 0u;
+        return _ps.assume.balance_pos ? _depth - _levels[n] : 0u;
       }
       else /* -> gate */
       {
@@ -247,8 +352,8 @@ private:
     /* special case: don't balance POs; multiple PO refs but no gate fanout */
     if ( fo_infos.size() == 0u )
     {
-      assert( !_ps.balance_pos && _ntk.fanout_size( n ) == _external_ref_count[n] );
-      return std::ceil( float( _external_ref_count[n] - 1 ) / float( _ps.splitter_capacity - 1 ) );
+      assert( !_ps.assume.balance_pos && _ntk.fanout_size( n ) == _external_ref_count[n] );
+      return std::ceil( float( _external_ref_count[n] - 1 ) / float( _ps.assume.splitter_capacity - 1 ) );
     }
 
     /* main counting */
@@ -262,20 +367,20 @@ private:
     }
 
     /* multiple PO refs: need branching */
-    if ( !_ps.balance_pos && _external_ref_count[n] > 0u )
+    if ( !_ps.assume.balance_pos && _external_ref_count[n] > 0u )
     {
       /* check if available slots are enough */
-      auto slots = count * ( _ps.splitter_capacity - 1 ) + 1;
+      auto slots = count * ( _ps.assume.splitter_capacity - 1 ) + 1;
       int32_t needed = _ntk.fanout_size( n ) - slots;
       if ( needed > 0 )
       {
-        count += std::ceil( float( needed ) / float( _ps.splitter_capacity - 1 ) );
+        count += std::ceil( float( needed ) / float( _ps.assume.splitter_capacity - 1 ) );
       }
     }
     else
     {
       /* if _external_ref_count[n] == 0 : does nothing
-         otherwise _ps.balance_pos == true : PO refs were added as num_edges and counted as buffers */
+         otherwise _ps.assume.balance_pos == true : PO refs were added as num_edges and counted as buffers */
       count -= _external_ref_count[n];
     }
 
@@ -286,7 +391,7 @@ private:
   uint32_t num_splitter_levels( node const& n ) const
   {
     assert( n < _ntk.size() );
-    return std::ceil( std::log( _ntk.fanout_size( n ) ) / std::log( _ps.splitter_capacity ) );
+    return std::ceil( std::log( _ntk.fanout_size( n ) ) / std::log( _ps.assume.splitter_capacity ) );
   }
 #pragma endregion
 
@@ -323,7 +428,7 @@ private:
       count_edges( n );
     } );
 
-    if ( _ps.branch_pis )
+    if ( _ps.assume.branch_pis )
     {
       _ntk.foreach_pi( [&]( auto const& n ) {
         count_edges( n );
@@ -379,7 +484,7 @@ private:
   {
     auto& fo_infos = _fanouts[n];
 
-    if ( _external_ref_count[n] && _ps.balance_pos )
+    if ( _external_ref_count[n] && _ps.assume.balance_pos )
     {
       fo_infos.push_back( {_depth + 1 - _levels[n], {}, _external_ref_count[n]} );
     }
@@ -428,12 +533,43 @@ private:
   /* Return the number of splitters needed in one level lower */
   uint32_t num_splitters( uint32_t const& num_fanouts ) const
   {
-    return std::ceil( float( num_fanouts ) / float( _ps.splitter_capacity ) );
+    return std::ceil( float( num_fanouts ) / float( _ps.assume.splitter_capacity ) );
   }
 #pragma endregion
 
 #pragma region Level assignment
 public:
+  /*! \breif Obtain the initial level assignment using the specified scheduling policy */
+  void schedule()
+  {
+    if ( _ps.scheduling == buffer_insertion_params::provided )
+    {
+      _ntk.foreach_po( [&]( auto const& f ) {
+        _depth = std::max( _depth, _levels[f] + num_splitter_levels( _ntk.get_node( f ) ) );
+      } );
+    }
+    else
+    {
+      ASAP();
+    }
+
+    if ( _ps.scheduling == buffer_insertion_params::ALAP )
+    {
+      ALAP();
+    }
+    else if ( _ps.scheduling == buffer_insertion_params::better )
+    {
+      count_buffers();
+      auto num_buf_ASAP = num_buffers();
+      ALAP();
+      count_buffers();
+      if ( num_buffers() > num_buf_ASAP )
+      {
+        ASAP();
+      }
+    }
+  }
+
   /*! \brief ASAP scheduling */
   void ASAP()
   {
@@ -461,7 +597,7 @@ public:
 
     _ntk.foreach_po( [&]( auto const& f ) {
       const auto n = _ntk.get_node( f );
-      if ( !_ntk.is_constant( n ) && _ntk.visited( n ) != _ntk.trav_id() && ( !_ps.balance_pis || !_ntk.is_pi( n ) ) )
+      if ( !_ntk.is_constant( n ) && _ntk.visited( n ) != _ntk.trav_id() && ( !_ps.assume.balance_pis || !_ntk.is_pi( n ) ) )
       {
         _levels[n] = _depth - num_splitter_levels( n );
         compute_levels_ALAP( n );
@@ -491,7 +627,7 @@ private:
       if ( !_ntk.is_constant( ni ) )
       {
         auto fi_level = compute_levels_ASAP( ni );
-        if ( _ps.branch_pis || !_ntk.is_pi( ni ) )
+        if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
         {
           fi_level += num_splitter_levels( ni );
         }
@@ -510,12 +646,12 @@ private:
       auto const ni = _ntk.get_node( fi );
       if ( !_ntk.is_constant( ni ) )
       {
-        if ( _ps.balance_pis && _ntk.is_pi( ni ) )
+        if ( _ps.assume.balance_pis && _ntk.is_pi( ni ) )
         {
           assert( _levels[n] > 0 );
           _levels[ni] = 0;
         }
-        else if ( _ps.branch_pis || !_ntk.is_pi( ni ) )
+        else if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
         {
           assert( _levels[n] > num_splitter_levels( ni ) );
           auto fi_level = _levels[n] - num_splitter_levels( ni ) - 1;
@@ -538,7 +674,7 @@ public:
    * can be called to dump the resulting buffered network.
    */
   template<class BufNtk>
-  BufNtk dump_buffered_network() const
+  void dump_buffered_network( BufNtk& bufntk ) const
   {
     static_assert( is_buffered_network_type_v<BufNtk>, "BufNtk is not a buffered network type" );
     static_assert( has_is_buf_v<BufNtk>, "BufNtk does not implement the is_buf method" );
@@ -548,7 +684,6 @@ public:
     using buf_signal = typename BufNtk::signal;
     using fanout_tree = std::vector<std::list<buf_signal>>;
 
-    BufNtk bufntk;
     node_map<buf_signal, Ntk> node_to_signal( _ntk );
     node_map<fanout_tree, Ntk> buffers( _ntk );
 
@@ -565,7 +700,7 @@ public:
     _ntk.foreach_pi( [&]( auto const& n ) {
       node_to_signal[n] = bufntk.create_pi();
     } );
-    if ( _ps.branch_pis )
+    if ( _ps.assume.branch_pis )
     {
       _ntk.foreach_pi( [&]( auto const& n ) {
         create_buffer_chain( bufntk, buffers, n, node_to_signal[n] );
@@ -584,7 +719,7 @@ public:
       _ntk.foreach_fanin( n, [&]( auto const& fi ) {
         auto ni = _ntk.get_node( fi );
         buf_signal s;
-        if ( _ntk.is_constant( ni ) || ( !_ps.branch_pis && _ntk.is_pi( ni ) ) )
+        if ( _ntk.is_constant( ni ) || ( !_ps.assume.branch_pis && _ntk.is_pi( ni ) ) )
           s = node_to_signal[ni];
         else
           s = get_buffer_at_relative_depth( bufntk, buffers[fi], _levels[n] - _levels[fi] - 1 );
@@ -595,24 +730,24 @@ public:
     } );
 
     /* POs */
-    if ( _ps.balance_pos )
+    if ( _ps.assume.balance_pos )
     {
       _ntk.foreach_po( [&]( auto const& f ) {
         auto n = _ntk.get_node( f );
         buf_signal s;
-        if ( _ntk.is_constant( n ) || ( !_ps.branch_pis && _ntk.is_pi( n ) ) )
+        if ( _ntk.is_constant( n ) || ( !_ps.assume.branch_pis && _ntk.is_pi( n ) ) )
           s = node_to_signal[n];
         else
           s = get_buffer_at_relative_depth( bufntk, buffers[f], _depth - _levels[f] );
         bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
       } );
     }
-    else // !_ps.balance_pos
+    else // !_ps.assume.balance_pos
     {
       std::set<node> checked;
       _ntk.foreach_po( [&]( auto const& f ) {
         auto n = _ntk.get_node( f );
-        if ( _ntk.is_constant( n ) || ( _ntk.is_pi( n ) && !_ps.branch_pis ) || _ntk.fanout_size( n ) == 1 )
+        if ( _ntk.is_constant( n ) || ( _ntk.is_pi( n ) && !_ps.assume.branch_pis ) || _ntk.fanout_size( n ) == 1 )
         {
           bufntk.create_po( _ntk.is_complemented( f ) ? !node_to_signal[f] : node_to_signal[f] );
         }
@@ -625,15 +760,15 @@ public:
             uint32_t slots{0u};
             for ( auto const& bufs : buffers[n] )
             {
-              slots += _ps.splitter_capacity - bufntk.fanout_size( bufntk.get_node( bufs.back() ) );
+              slots += _ps.assume.splitter_capacity - bufntk.fanout_size( bufntk.get_node( bufs.back() ) );
             }
-            slots -= _ps.splitter_capacity - 1; // buffers[n][0] is n itself
+            slots -= _ps.assume.splitter_capacity - 1; // buffers[n][0] is n itself
 
             /* add enough buffers */
             while ( slots < _external_ref_count[n] )
             {
               get_lowest_spot<true>( bufntk, buffers[n] );
-              slots += _ps.splitter_capacity - 1;
+              slots += _ps.assume.splitter_capacity - 1;
             }
           }
           buf_signal s = get_lowest_spot<false>( bufntk, buffers[n] );
@@ -643,7 +778,6 @@ public:
     }
 
     assert( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 == num_buffers() );
-    return bufntk;
   }
 
 private:
@@ -673,7 +807,7 @@ private:
   typename BufNtk::signal get_buffer_at_relative_depth( BufNtk& bufntk, FOT& fot, uint32_t rd ) const
   {
     typename BufNtk::signal b = fot[rd].back();
-    if ( bufntk.fanout_size( bufntk.get_node( b ) ) == _ps.splitter_capacity )
+    if ( bufntk.fanout_size( bufntk.get_node( b ) ) == _ps.assume.splitter_capacity )
     {
       assert( rd > 0 );
       typename BufNtk::signal b_lower = get_buffer_at_relative_depth( bufntk, fot, rd - 1 );
@@ -698,7 +832,7 @@ private:
       for ( auto it = fot[rd].begin(); it != fot[rd].end(); ++it )
       {
         typename BufNtk::signal& b = *it;
-        if ( bufntk.fanout_size( bufntk.get_node( b ) ) < _ps.splitter_capacity )
+        if ( bufntk.fanout_size( bufntk.get_node( b ) ) < _ps.assume.splitter_capacity )
         {
           if constexpr ( create )
           {
@@ -715,6 +849,15 @@ private:
   }
 #pragma endregion
 
+#pragma region Chunked movement
+public:
+  /*! \brief Optimize with the specified optimization policy */
+  void optimize()
+  {
+    // code to be committed in another PR later...
+  }
+#pragma endregion
+
 private:
   struct fanout_information
   {
@@ -725,7 +868,7 @@ private:
   using fanouts_by_level = std::list<fanout_information>;
 
   Ntk const& _ntk;
-  aqfp_buffer_params const _ps;
+  buffer_insertion_params const _ps;
   bool outdated{true};
 
   node_map<uint32_t, Ntk> _levels;
@@ -733,7 +876,7 @@ private:
   node_map<fanouts_by_level, Ntk> _fanouts;
   node_map<uint32_t, Ntk> _external_ref_count;
   node_map<uint32_t, Ntk> _buffers;
-}; /* aqfp_buffer */
+}; /* buffer_insertion */
 
 namespace detail
 {
@@ -761,7 +904,7 @@ void lift_fanin_buffers( Ntk& d, typename Ntk::node const& n )
  * \return Whether `ntk` is path-balanced and properly-branched
  */
 template<class Ntk>
-bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
+bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions const& ps )
 {
   static_assert( is_buffered_network_type_v<Ntk>, "Ntk is not a buffered network" );
   static_assert( has_is_buf_v<Ntk>, "Ntk does not implement the is_buf method" );

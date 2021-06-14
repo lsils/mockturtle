@@ -1,18 +1,24 @@
-AQFP buffer optimization
-------------------------
+AQFP buffer insertion
+---------------------
 
 **Header:** ``mockturtle/algorithms/aqfp/aqfp_buffer.hpp``
 
 Technology assumptions
 ~~~~~~~~~~~~~~~~~~~~~~
 
-.. doxygenstruct:: mockturtle::aqfp_buffer_params
+.. doxygenstruct:: mockturtle::aqfp_assumptions
    :members:
 
-Buffer counting and optimization
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Buffer insertion algorithms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. doxygenclass:: mockturtle::aqfp_buffer
+.. doxygenclass:: mockturtle::buffer_insertion
+   :members:
+
+Parameters
+~~~~~~~~~~
+
+.. doxygenstruct:: mockturtle::buffer_insertion_params
    :members:
 
 Buffered network data structure

@@ -25,28 +25,27 @@ TEST_CASE( "aqfp_buffer simple test", "[aqfp_buffer]" )
   auto const f4 = mig.create_maj( f1, f2, f3 );
   mig.create_po( f4 );
 
-  aqfp_buffer_params ps;
-  ps.branch_pis = false;
-  ps.balance_pis = false;
-  ps.balance_pos = true;
-  ps.splitter_capacity = 4u;
-  aqfp_buffer bufcnt( mig, ps );
-  bufcnt.count_buffers();
+  buffer_insertion_params ps;
+  ps.assume.branch_pis = false;
+  ps.assume.balance_pis = false;
+  ps.assume.balance_pos = true;
+  ps.assume.splitter_capacity = 4u;
+  ps.scheduling = buffer_insertion_params::ASAP;
+  ps.optimization_effort = buffer_insertion_params::none;
 
-  CHECK( bufcnt.level( mig.get_node( f1 ) ) == 1u );
-  CHECK( bufcnt.level( mig.get_node( f2 ) ) == 3u );
-  CHECK( bufcnt.level( mig.get_node( f3 ) ) == 3u );
-  CHECK( bufcnt.level( mig.get_node( f4 ) ) == 4u );
-  CHECK( bufcnt.depth() == 4u );
+  buffer_insertion buffering( mig, ps );
+  node_map<uint32_t, mig_network> levels{mig};
+  CHECK( buffering.dry_run( &levels ) == 2u );
 
-  CHECK( bufcnt.num_buffers( mig.get_node( f1 ) ) == 2u );
-  CHECK( bufcnt.num_buffers( mig.get_node( f2 ) ) == 0u );
-  CHECK( bufcnt.num_buffers( mig.get_node( f3 ) ) == 0u );
-  CHECK( bufcnt.num_buffers( mig.get_node( f4 ) ) == 0u );
-  CHECK( bufcnt.num_buffers() == 2u );
-
-  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
-  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+  CHECK( levels[f1] == 1u );
+  CHECK( levels[f2] == 3u );
+  CHECK( levels[f3] == 3u );
+  CHECK( levels[f4] == 4u );
+  CHECK( buffering.depth() == 4u );
+  CHECK( buffering.num_buffers( mig.get_node( f1 ) ) == 2u );
+  CHECK( buffering.num_buffers( mig.get_node( f2 ) ) == 0u );
+  CHECK( buffering.num_buffers( mig.get_node( f3 ) ) == 0u );
+  CHECK( buffering.num_buffers( mig.get_node( f4 ) ) == 0u );
 }
 
 TEST_CASE( "two layers of splitters", "[aqfp_buffer]" )
@@ -78,21 +77,20 @@ TEST_CASE( "two layers of splitters", "[aqfp_buffer]" )
   auto const f12 = mig.create_maj( f9, f10, f11 );
   mig.create_po( f12 );
 
-  aqfp_buffer_params ps;
-  ps.branch_pis = false;
-  ps.balance_pis = false;
-  ps.balance_pos = true;
-  ps.splitter_capacity = 4u;
-  aqfp_buffer bufcnt( mig, ps );
-  bufcnt.count_buffers();
+  buffer_insertion_params ps;
+  ps.assume.branch_pis = false;
+  ps.assume.balance_pis = false;
+  ps.assume.balance_pos = true;
+  ps.assume.splitter_capacity = 4u;
+  ps.scheduling = buffer_insertion_params::ASAP;
+  ps.optimization_effort = buffer_insertion_params::none;
 
-  CHECK( bufcnt.num_buffers( mig.get_node( f2 ) ) == 4u );
-  CHECK( bufcnt.num_buffers( mig.get_node( f6 ) ) == 2u );
-  CHECK( bufcnt.depth() == 7u );
-  CHECK( bufcnt.num_buffers() == 17u );
+  buffer_insertion buffering( mig, ps );
+  CHECK( buffering.dry_run() == 17u );
 
-  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
-  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+  CHECK( buffering.num_buffers( mig.get_node( f2 ) ) == 4u );
+  CHECK( buffering.num_buffers( mig.get_node( f6 ) ) == 2u );
+  CHECK( buffering.depth() == 7u );
 }
 
 TEST_CASE( "PO splitters and buffers", "[aqfp_buffer]" )
@@ -111,23 +109,20 @@ TEST_CASE( "PO splitters and buffers", "[aqfp_buffer]" )
   mig.create_po( f2 );
   mig.create_po( !f2 );
 
-  aqfp_buffer_params ps;
-  ps.branch_pis = false;
-  ps.balance_pis = false;
-  ps.balance_pos = true;
-  ps.splitter_capacity = 4u;
-  aqfp_buffer bufcnt( mig, ps );
-  bufcnt.count_buffers();
+  buffer_insertion_params ps;
+  ps.assume.branch_pis = false;
+  ps.assume.balance_pis = false;
+  ps.assume.balance_pos = true;
+  ps.assume.splitter_capacity = 4u;
+  ps.scheduling = buffer_insertion_params::ASAP;
+  ps.optimization_effort = buffer_insertion_params::none;
 
-  CHECK( bufcnt.depth() == 4u );
+  buffer_insertion buffering( mig, ps );
+  CHECK( buffering.dry_run() == 4u );
 
-  CHECK( bufcnt.num_buffers( mig.get_node( f1 ) ) == 3u );
-  CHECK( bufcnt.num_buffers( mig.get_node( f2 ) ) == 1u );
-
-  CHECK( bufcnt.num_buffers() == 4u );
-
-  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
-  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+  CHECK( buffering.depth() == 4u );
+  CHECK( buffering.num_buffers( mig.get_node( f1 ) ) == 3u );
+  CHECK( buffering.num_buffers( mig.get_node( f2 ) ) == 1u );
 }
 
 TEST_CASE( "chain of fanouts", "[aqfp_buffer]" )
@@ -161,20 +156,19 @@ TEST_CASE( "chain of fanouts", "[aqfp_buffer]" )
   mig.create_po( f8 );
   mig.create_po( f9 );
 
-  aqfp_buffer_params ps;
-  ps.branch_pis = false;
-  ps.balance_pis = false;
-  ps.balance_pos = true;
-  ps.splitter_capacity = 4u;
-  aqfp_buffer bufcnt( mig, ps );
-  bufcnt.count_buffers();
+  buffer_insertion_params ps;
+  ps.assume.branch_pis = false;
+  ps.assume.balance_pis = false;
+  ps.assume.balance_pos = true;
+  ps.assume.splitter_capacity = 4u;
+  ps.scheduling = buffer_insertion_params::ASAP;
+  ps.optimization_effort = buffer_insertion_params::none;
 
-  CHECK( bufcnt.num_buffers( mig.get_node( f1 ) ) == 9u );
-  CHECK( bufcnt.depth() == 8u );
-  CHECK( bufcnt.num_buffers() == 11u );
+  buffer_insertion buffering( mig, ps );
+  CHECK( buffering.dry_run() == 11u );
 
-  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
-  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+  CHECK( buffering.num_buffers( mig.get_node( f1 ) ) == 9u );
+  CHECK( buffering.depth() == 8u );
 }
 
 TEST_CASE( "branch but not balance PIs", "[aqfp_buffer]" )
@@ -196,32 +190,31 @@ TEST_CASE( "branch but not balance PIs", "[aqfp_buffer]" )
   mig.create_po( f );
   mig.create_po( !f );
 
-  aqfp_buffer_params ps;
-  ps.branch_pis = true;
-  ps.balance_pis = false;
-  ps.balance_pos = true;
-  ps.splitter_capacity = 4u;
-  aqfp_buffer bufcnt( mig, ps );
-  bufcnt.ALAP();
-  bufcnt.count_buffers();
+  buffer_insertion_params ps;
+  ps.assume.branch_pis = true;
+  ps.assume.balance_pis = false;
+  ps.assume.balance_pos = true;
+  ps.assume.splitter_capacity = 4u;
+  ps.scheduling = buffer_insertion_params::ALAP;
+  ps.optimization_effort = buffer_insertion_params::none;
 
-  CHECK( bufcnt.level( mig.get_node( f1 ) ) == 2u );
-  CHECK( bufcnt.level( mig.get_node( f2 ) ) == 2u );
-  CHECK( bufcnt.level( mig.get_node( f3 ) ) == 3u );
-  CHECK( bufcnt.level( mig.get_node( f4 ) ) == 3u );
+  buffer_insertion buffering( mig, ps );
+  node_map<uint32_t, mig_network> levels{mig};
+  CHECK( buffering.dry_run( &levels ) == 4u );
 
-  CHECK( bufcnt.level( mig.get_node( a ) ) == 1u );
-  CHECK( bufcnt.level( mig.get_node( b ) ) == 0u );
-  CHECK( bufcnt.level( mig.get_node( c ) ) == 0u );
-  CHECK( bufcnt.level( mig.get_node( d ) ) == 1u );
-  CHECK( bufcnt.level( mig.get_node( e ) ) == 1u );
-  CHECK( bufcnt.level( mig.get_node( f ) ) == 2u );
+  CHECK( buffering.level( mig.get_node( f1 ) ) == 2u );
+  CHECK( buffering.level( mig.get_node( f2 ) ) == 2u );
+  CHECK( buffering.level( mig.get_node( f3 ) ) == 3u );
+  CHECK( buffering.level( mig.get_node( f4 ) ) == 3u );
 
-  CHECK( bufcnt.depth() == 3u );
-  CHECK( bufcnt.num_buffers() == 4u );
+  CHECK( buffering.level( mig.get_node( a ) ) == 1u );
+  CHECK( buffering.level( mig.get_node( b ) ) == 0u );
+  CHECK( buffering.level( mig.get_node( c ) ) == 0u );
+  CHECK( buffering.level( mig.get_node( d ) ) == 1u );
+  CHECK( buffering.level( mig.get_node( e ) ) == 1u );
+  CHECK( buffering.level( mig.get_node( f ) ) == 2u );
 
-  auto const buffered = bufcnt.dump_buffered_network<buffered_mig_network>();
-  CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+  CHECK( buffering.depth() == 3u );
 }
 
 TEST_CASE( "various assumptions", "[aqfp_buffer]" )
@@ -245,98 +238,98 @@ TEST_CASE( "various assumptions", "[aqfp_buffer]" )
   aig.create_po( f3 );
   aig.create_po( f4 );
 
-  aqfp_buffer_params ps;
-  ps.splitter_capacity = 2u;
+  aqfp_assumptions asp;
+  asp.splitter_capacity = 2u;
+
+  buffer_insertion_params ps;
+  ps.scheduling = buffer_insertion_params::ASAP;
+  ps.optimization_effort = buffer_insertion_params::none;
 
   /* branch PI, balance PI and PO */
-  ps.branch_pis = true;
-  ps.balance_pis = true;
-  ps.balance_pos = true;
+  asp.branch_pis = true;
+  asp.balance_pis = true;
+  asp.balance_pos = true;
+  ps.assume = asp;
   {
-    aqfp_buffer bufcnt( aig, ps );
-    bufcnt.count_buffers();
-    CHECK( bufcnt.depth() == 5u );
-    CHECK( bufcnt.num_buffers() == 23u );
-    auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
-    CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+    buffer_insertion buffering( aig, ps );
+    buffered_aig_network buffered;
+    CHECK( buffering.run( buffered ) == 23u );
+    CHECK( verify_aqfp_buffer( buffered, asp ) == true );
   }
 
   /* branch PI, balance only PI */
-  ps.branch_pis = true;
-  ps.balance_pis = true;
-  ps.balance_pos = false;
+  asp.branch_pis = true;
+  asp.balance_pis = true;
+  asp.balance_pos = false;
+  ps.assume = asp;
   {
-    aqfp_buffer bufcnt( aig, ps );
-    bufcnt.count_buffers();
-    CHECK( bufcnt.depth() == 5u );
-    CHECK( bufcnt.num_buffers() == 11u );
-    auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
-    CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+    buffer_insertion buffering( aig, ps );
+    buffered_aig_network buffered;
+    CHECK( buffering.run( buffered ) == 11u );
+    CHECK( verify_aqfp_buffer( buffered, asp ) == true );
   }
 
   /* branch PI, balance only PO */
-  ps.branch_pis = true;
-  ps.balance_pis = false;
-  ps.balance_pos = true;
+  asp.branch_pis = true;
+  asp.balance_pis = false;
+  asp.balance_pos = true;
+  ps.assume = asp;
   {
-    aqfp_buffer bufcnt( aig, ps );
-    bufcnt.count_buffers();
-    CHECK( bufcnt.depth() == 5u );
-    CHECK( bufcnt.num_buffers() == 23u );
-    auto const buffered1 = bufcnt.dump_buffered_network<buffered_aig_network>();
-    CHECK( verify_aqfp_buffer( buffered1, ps ) == true );
+    ps.scheduling = buffer_insertion_params::ASAP;
+    buffer_insertion buffering1( aig, ps );
+    buffered_aig_network buffered1;
+    CHECK( buffering1.run( buffered1 ) == 23u );
+    CHECK( verify_aqfp_buffer( buffered1, asp ) == true );
 
-    bufcnt.ALAP();
-    bufcnt.count_buffers();
-    CHECK( bufcnt.depth() == 5u );
-    CHECK( bufcnt.num_buffers() == 11u );
-    auto const buffered2 = bufcnt.dump_buffered_network<buffered_aig_network>();
-    CHECK( verify_aqfp_buffer( buffered2, ps ) == true );
+    ps.scheduling = buffer_insertion_params::ALAP;
+    buffer_insertion buffering2( aig, ps );
+    buffered_aig_network buffered2;
+    CHECK( buffering2.run( buffered2 ) == 11u );
+    CHECK( verify_aqfp_buffer( buffered2, asp ) == true );
   }
 
   /* branch PI, balance neither */
-  ps.branch_pis = true;
-  ps.balance_pis = false;
-  ps.balance_pos = false;
+  asp.branch_pis = true;
+  asp.balance_pis = false;
+  asp.balance_pos = false;
+  ps.assume = asp;
   {
-    aqfp_buffer bufcnt( aig, ps );
-    bufcnt.count_buffers();
-    CHECK( bufcnt.depth() == 5u );
-    CHECK( bufcnt.num_buffers() == 11u );
-    auto const buffered1 = bufcnt.dump_buffered_network<buffered_aig_network>();
-    CHECK( verify_aqfp_buffer( buffered1, ps ) == true );
+    ps.scheduling = buffer_insertion_params::ASAP;
+    buffer_insertion buffering1( aig, ps );
+    buffered_aig_network buffered1;
+    CHECK( buffering1.run( buffered1 ) == 11u );
+    CHECK( verify_aqfp_buffer( buffered1, asp ) == true );
 
-    bufcnt.ALAP();
-    bufcnt.count_buffers();
-    CHECK( bufcnt.depth() == 5u );
-    CHECK( bufcnt.num_buffers() == 9u );
-    auto const buffered2 = bufcnt.dump_buffered_network<buffered_aig_network>();
-    CHECK( verify_aqfp_buffer( buffered2, ps ) == true );
+    ps.scheduling = buffer_insertion_params::ALAP;
+    buffer_insertion buffering2( aig, ps );
+    buffered_aig_network buffered2;
+    CHECK( buffering2.run( buffered2 ) == 9u );
+    CHECK( verify_aqfp_buffer( buffered2, asp ) == true );
   }
 
   /* don't branch PI, balance PO */
-  ps.branch_pis = false;
-  ps.balance_pis = false;
-  ps.balance_pos = true;
+  asp.branch_pis = false;
+  asp.balance_pis = false;
+  asp.balance_pos = true;
+  ps.assume = asp;
   {
-    aqfp_buffer bufcnt( aig, ps );
-    bufcnt.count_buffers();
-    CHECK( bufcnt.depth() == 3u );
-    CHECK( bufcnt.num_buffers() == 5u );
-    auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
-    CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+    ps.scheduling = buffer_insertion_params::ASAP;
+    buffer_insertion buffering( aig, ps );
+    buffered_aig_network buffered;
+    CHECK( buffering.run( buffered ) == 5u );
+    CHECK( verify_aqfp_buffer( buffered, asp ) == true );
   }
 
   /* don't branch PI, balance neither */
-  ps.branch_pis = false;
-  ps.balance_pis = false;
-  ps.balance_pos = false;
+  asp.branch_pis = false;
+  asp.balance_pis = false;
+  asp.balance_pos = false;
+  ps.assume = asp;
   {
-    aqfp_buffer bufcnt( aig, ps );
-    bufcnt.count_buffers();
-    CHECK( bufcnt.depth() == 3u );
-    CHECK( bufcnt.num_buffers() == 2u );
-    auto const buffered = bufcnt.dump_buffered_network<buffered_aig_network>();
-    CHECK( verify_aqfp_buffer( buffered, ps ) == true );
+    ps.scheduling = buffer_insertion_params::ASAP;
+    buffer_insertion buffering( aig, ps );
+    buffered_aig_network buffered;
+    CHECK( buffering.run( buffered ) == 2u );
+    CHECK( verify_aqfp_buffer( buffered, asp ) == true );
   }
 }
