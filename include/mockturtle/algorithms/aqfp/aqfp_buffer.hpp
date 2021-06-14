@@ -36,11 +36,11 @@
 #include "../../utils/node_map.hpp"
 #include "../../views/depth_view.hpp"
 
-#include <vector>
+#include <cmath>  //std::pow, std::ceil
+#include <limits> //std::numeric_limits
 #include <list>
 #include <set>
-#include <cmath> //std::pow, std::ceil
-#include <limits> //std::numeric_limits
+#include <vector>
 
 namespace mockturtle
 {
@@ -125,11 +125,11 @@ template<typename Ntk>
 class aqfp_buffer
 {
 public:
-  using node    = typename Ntk::node;
-  using signal  = typename Ntk::signal;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
   explicit aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps = {} )
-   : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
   {
     static_assert( !has_is_buf_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -145,14 +145,14 @@ public:
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
 
-    assert( !(_ps.balance_pis && !_ps.branch_pis) && "Does not make sense to balance but not branch PIs" );
+    assert( !( _ps.balance_pis && !_ps.branch_pis ) && "Does not make sense to balance but not branch PIs" );
 
     ASAP();
   }
 
 #pragma region Query
   /*! \brief Level of node `n` considering buffer/splitter insertion. */
-  uint32_t level ( node const& n ) const
+  uint32_t level( node const& n ) const
   {
     assert( n < _ntk.size() );
     return _levels[n];
@@ -173,14 +173,14 @@ public:
     uint32_t count = 0u;
     if ( _ps.branch_pis )
     {
-      _ntk.foreach_pi( [&]( auto const& n ){
+      _ntk.foreach_pi( [&]( auto const& n ) {
         count += num_buffers( n );
-      });
+      } );
     }
 
-    _ntk.foreach_gate( [&]( auto const& n ){
+    _ntk.foreach_gate( [&]( auto const& n ) {
       count += num_buffers( n );
-    });
+    } );
     return count;
   }
 
@@ -209,15 +209,15 @@ public:
 
     if ( _ps.branch_pis )
     {
-      _ntk.foreach_pi( [&]( auto const& n ){
+      _ntk.foreach_pi( [&]( auto const& n ) {
         assert( !_ps.balance_pis || _levels[n] == 0 );
         _buffers[n] = count_buffers( n );
-      });
+      } );
     }
 
-    _ntk.foreach_gate( [&]( auto const& n ){
+    _ntk.foreach_gate( [&]( auto const& n ) {
       _buffers[n] = count_buffers( n );
-    });
+    } );
   }
 
 private:
@@ -230,7 +230,7 @@ private:
     {
       return 0u;
     }
-    
+
     if ( _ntk.fanout_size( n ) == 1u ) /* single fanout */
     {
       if ( _external_ref_count[n] > 0u ) /* -> PO */
@@ -283,7 +283,7 @@ private:
   }
 
   /* (Upper bound on) the additional depth caused by a balanced splitter tree at the output of node `n`. */
-  uint32_t num_splitter_levels ( node const& n ) const
+  uint32_t num_splitter_levels( node const& n ) const
   {
     assert( n < _ntk.size() );
     return std::ceil( std::log( _ntk.fanout_size( n ) ) / std::log( _ps.splitter_capacity ) );
@@ -304,30 +304,30 @@ private:
   void update_fanout_info()
   {
     _external_ref_count.reset( 0u );
-    _ntk.foreach_po( [&]( auto const& f ){
+    _ntk.foreach_po( [&]( auto const& f ) {
       _external_ref_count[f]++;
-    });
+    } );
 
     _fanouts.reset();
-    _ntk.foreach_gate( [&]( auto const& n ){
-      _ntk.foreach_fanin( n, [&]( auto const& fi ){
+    _ntk.foreach_gate( [&]( auto const& n ) {
+      _ntk.foreach_fanin( n, [&]( auto const& fi ) {
         auto const ni = _ntk.get_node( fi );
         if ( !_ntk.is_constant( ni ) )
         {
           insert_fanout( ni, n );
         }
-      });
-    });
+      } );
+    } );
 
-    _ntk.foreach_gate( [&]( auto const& n ){
+    _ntk.foreach_gate( [&]( auto const& n ) {
       count_edges( n );
-    });
+    } );
 
     if ( _ps.branch_pis )
     {
-      _ntk.foreach_pi( [&]( auto const& n ){
+      _ntk.foreach_pi( [&]( auto const& n ) {
         count_edges( n );
-      });
+      } );
     }
 
     outdated = false;
@@ -371,7 +371,7 @@ private:
         return;
       }
     }
-    fo_infos.push_back( { rd, {fanout}, 1u } );
+    fo_infos.push_back( {rd, {fanout}, 1u} );
   }
 
   template<bool verify = false>
@@ -404,7 +404,7 @@ private:
       }
       else if ( splitters == 1 )
       {
-        ++(it->num_edges);
+        ++( it->num_edges );
         ++it;
       }
       else
@@ -559,26 +559,26 @@ public:
     }
 
     /* PIs */
-    _ntk.foreach_pi( [&]( auto const& n ){
+    _ntk.foreach_pi( [&]( auto const& n ) {
       node_to_signal[n] = bufntk.create_pi();
-    });
+    } );
     if ( _ps.branch_pis )
     {
-      _ntk.foreach_pi( [&]( auto const& n ){
+      _ntk.foreach_pi( [&]( auto const& n ) {
         create_buffer_chain( bufntk, buffers, n, node_to_signal[n] );
-      });
+      } );
     }
     else
     {
-      _ntk.foreach_pi( [&]( auto const& n ){
+      _ntk.foreach_pi( [&]( auto const& n ) {
         buffers[n].emplace_back( 1, node_to_signal[n] );
-      });
+      } );
     }
 
     /* gates: assume topological order */
-    _ntk.foreach_gate( [&]( auto const& n ){
+    _ntk.foreach_gate( [&]( auto const& n ) {
       std::vector<typename BufNtk::signal> children;
-      _ntk.foreach_fanin( n, [&]( auto const& fi ){
+      _ntk.foreach_fanin( n, [&]( auto const& fi ) {
         auto ni = _ntk.get_node( fi );
         typename BufNtk::signal s;
         if ( _ntk.is_constant( ni ) || ( !_ps.branch_pis && _ntk.is_pi( ni ) ) )
@@ -586,15 +586,15 @@ public:
         else
           s = get_buffer_at_rd( bufntk, buffers[fi], _levels[n] - _levels[fi] - 1 );
         children.push_back( _ntk.is_complemented( fi ) ? !s : s );
-      });
+      } );
       node_to_signal[n] = bufntk.clone_node( _ntk, n, children );
       create_buffer_chain( bufntk, buffers, n, node_to_signal[n] );
-    });
+    } );
 
     /* POs */
     if ( _ps.balance_pos )
     {
-      _ntk.foreach_po( [&]( auto const& f ){
+      _ntk.foreach_po( [&]( auto const& f ) {
         auto n = _ntk.get_node( f );
         typename BufNtk::signal s;
         if ( _ntk.is_constant( n ) || ( !_ps.branch_pis && _ntk.is_pi( n ) ) )
@@ -602,12 +602,12 @@ public:
         else
           s = get_buffer_at_rd( bufntk, buffers[f], _depth - _levels[f] );
         bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
-      });
+      } );
     }
     else // !_ps.balance_pos
     {
       std::set<node> checked;
-      _ntk.foreach_po( [&]( auto const& f ){
+      _ntk.foreach_po( [&]( auto const& f ) {
         auto n = _ntk.get_node( f );
         if ( _ntk.is_constant( n ) || ( _ntk.is_pi( n ) && !_ps.branch_pis ) || _ntk.fanout_size( n ) == 1 )
         {
@@ -636,7 +636,7 @@ public:
           typename BufNtk::signal s = get_lowest_spot<false>( bufntk, buffers[n] );
           bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
         }
-      });
+      } );
     }
 
     assert( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 == num_buffers() );
@@ -720,7 +720,7 @@ private:
     uint32_t num_edges{0u};
   };
   using fanouts_by_level = std::list<fanout_information>;
-  
+
   Ntk const& _ntk;
   aqfp_buffer_params const _ps;
   bool outdated{true};
@@ -738,7 +738,7 @@ namespace detail
 template<class Ntk>
 void lift_fanin_buffers( Ntk& d, typename Ntk::node const& n )
 {
-  d.foreach_fanin( n, [&]( auto const& fi ){
+  d.foreach_fanin( n, [&]( auto const& fi ) {
     auto ni = d.get_node( fi );
     uint32_t diff = d.level( n ) - d.level( ni ) - 1;
     if ( diff != 0 && ( d.is_buf( ni ) || d.is_pi( ni ) ) )
@@ -746,7 +746,7 @@ void lift_fanin_buffers( Ntk& d, typename Ntk::node const& n )
       d.set_level( ni, d.level( ni ) + diff );
       lift_fanin_buffers( d, ni );
     }
-  });
+  } );
 }
 
 } // namespace detail
@@ -762,11 +762,13 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
 {
   static_assert( has_is_buf_v<Ntk>, "Ntk is not a buffered network" );
   bool legal = true;
-  
+
   /* fanout branching */
-  ntk.foreach_node( [&]( auto const& n ){
-    if ( ntk.is_constant( n ) ) return true;
-    if ( !ps.branch_pis && ntk.is_pi( n ) ) return true;
+  ntk.foreach_node( [&]( auto const& n ) {
+    if ( ntk.is_constant( n ) )
+      return true;
+    if ( !ps.branch_pis && ntk.is_pi( n ) )
+      return true;
 
     if ( ntk.is_buf( n ) )
       legal &= ( ntk.fanout_size( n ) <= ps.splitter_capacity );
@@ -774,7 +776,7 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
       legal &= ( ntk.fanout_size( n ) <= 1 );
 
     return true;
-  });
+  } );
 
   /* compute levels */
   depth_view d{ntk};
@@ -782,38 +784,38 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
   /* adjust PI and their buffers */
   if ( !ps.balance_pis )
   {
-    ntk.foreach_gate( [&]( auto const& n ){
+    ntk.foreach_gate( [&]( auto const& n ) {
       detail::lift_fanin_buffers( d, n );
-    });
+    } );
     if ( ps.balance_pos )
     {
-      ntk.foreach_po( [&]( auto const& f ){
+      ntk.foreach_po( [&]( auto const& f ) {
         auto n = ntk.get_node( f );
         if ( ntk.is_buf( n ) && d.level( n ) != d.depth() )
         {
           d.set_level( n, d.depth() );
           detail::lift_fanin_buffers( d, n );
         }
-      });
+      } );
     }
   }
 
   /* path balancing */
-  ntk.foreach_node( [&]( auto const& n ){
-    ntk.foreach_fanin( n, [&]( auto const& fi ){
+  ntk.foreach_node( [&]( auto const& n ) {
+    ntk.foreach_fanin( n, [&]( auto const& fi ) {
       auto ni = ntk.get_node( fi );
       if ( !ntk.is_constant( ni ) && ( ps.balance_pis || !ntk.is_pi( ni ) ) )
         legal &= ( d.level( ni ) == d.level( n ) - 1 );
-    });
-  });
+    } );
+  } );
 
   if ( ps.balance_pos )
   {
-    ntk.foreach_po( [&]( auto const& f ){
+    ntk.foreach_po( [&]( auto const& f ) {
       auto n = ntk.get_node( f );
       if ( !ntk.is_constant( n ) && ( ps.balance_pis || !ntk.is_pi( n ) ) )
         legal &= ( d.level( n ) == d.depth() );
-    });
+    } );
   }
 
   return legal;
