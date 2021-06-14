@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file aqfp_buffer.hpp
-  \brief Count and optimize buffers and splitters in AQFP technology
+  \file buffer_insertion.hpp
+  \brief Insert buffers and splitters for the AQFP technology
 
   \author Siang-Yun (Sonia) Lee
 */

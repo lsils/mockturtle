@@ -1,7 +1,7 @@
 AQFP buffer insertion
 ---------------------
 
-**Header:** ``mockturtle/algorithms/aqfp/aqfp_buffer.hpp``
+**Header:** ``mockturtle/algorithms/aqfp/buffer_insertion.hpp``
 
 Technology assumptions
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -33,7 +33,7 @@ They inherit from `aig_network` and `mig_network`, respectively, and are supplem
 Verification of buffered networks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Header:** ``mockturtle/algorithms/aqfp/aqfp_buffer.hpp``
+**Header:** ``mockturtle/algorithms/aqfp/buffer_insertion.hpp``
 
 .. doxygenfunction:: mockturtle::verify_aqfp_buffer
 

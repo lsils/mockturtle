@@ -6,11 +6,11 @@
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/buffered.hpp>
-#include <mockturtle/algorithms/aqfp/aqfp_buffer.hpp>
+#include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
 
 using namespace mockturtle;
 
-TEST_CASE( "aqfp_buffer simple test", "[aqfp_buffer]" )
+TEST_CASE( "buffer_insertion simple test", "[buffer_insertion]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -48,7 +48,7 @@ TEST_CASE( "aqfp_buffer simple test", "[aqfp_buffer]" )
   CHECK( buffering.num_buffers( mig.get_node( f4 ) ) == 0u );
 }
 
-TEST_CASE( "two layers of splitters", "[aqfp_buffer]" )
+TEST_CASE( "two layers of splitters", "[buffer_insertion]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -93,7 +93,7 @@ TEST_CASE( "two layers of splitters", "[aqfp_buffer]" )
   CHECK( buffering.depth() == 7u );
 }
 
-TEST_CASE( "PO splitters and buffers", "[aqfp_buffer]" )
+TEST_CASE( "PO splitters and buffers", "[buffer_insertion]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -125,7 +125,7 @@ TEST_CASE( "PO splitters and buffers", "[aqfp_buffer]" )
   CHECK( buffering.num_buffers( mig.get_node( f2 ) ) == 1u );
 }
 
-TEST_CASE( "chain of fanouts", "[aqfp_buffer]" )
+TEST_CASE( "chain of fanouts", "[buffer_insertion]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -171,7 +171,7 @@ TEST_CASE( "chain of fanouts", "[aqfp_buffer]" )
   CHECK( buffering.depth() == 8u );
 }
 
-TEST_CASE( "branch but not balance PIs", "[aqfp_buffer]" )
+TEST_CASE( "branch but not balance PIs", "[buffer_insertion]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -217,7 +217,7 @@ TEST_CASE( "branch but not balance PIs", "[aqfp_buffer]" )
   CHECK( buffering.depth() == 3u );
 }
 
-TEST_CASE( "various assumptions", "[aqfp_buffer]" )
+TEST_CASE( "various assumptions", "[buffer_insertion]" )
 {
   aig_network aig;
   auto const a = aig.create_pi();
