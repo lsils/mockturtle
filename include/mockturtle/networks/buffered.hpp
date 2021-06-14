@@ -518,4 +518,10 @@ public:
 #pragma endregion
 }; /* buffered_mig_network */
 
+template<>
+struct is_buffered_network_type<buffered_aig_network> : std::true_type {};
+
+template<>
+struct is_buffered_network_type<buffered_mig_network> : std::true_type {};
+
 } // namespace mockturtle

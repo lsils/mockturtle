@@ -131,7 +131,7 @@ public:
   explicit aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps = {} )
       : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
   {
-    static_assert( !has_is_buf_v<Ntk>, "Ntk is already buffered" );
+    static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
     static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
@@ -540,13 +540,16 @@ public:
   template<class BufNtk>
   BufNtk dump_buffered_network() const
   {
-    static_assert( has_is_buf_v<BufNtk>, "BufNtk is not a buffered network type" );
+    static_assert( is_buffered_network_type_v<BufNtk>, "BufNtk is not a buffered network type" );
+    static_assert( has_is_buf_v<BufNtk>, "BufNtk does not implement the is_buf method" );
+    static_assert( has_create_buf_v<BufNtk>, "BufNtk does not implement the create_buf method" );
     assert( !outdated && "Please call `count_buffers()` first." );
 
-    using fanout_tree = std::vector<std::list<typename BufNtk::signal>>;
+    using buf_signal = typename BufNtk::signal;
+    using fanout_tree = std::vector<std::list<buf_signal>>;
 
     BufNtk bufntk;
-    node_map<typename BufNtk::signal, Ntk> node_to_signal( _ntk );
+    node_map<buf_signal, Ntk> node_to_signal( _ntk );
     node_map<fanout_tree, Ntk> buffers( _ntk );
 
     /* constants */
@@ -577,14 +580,14 @@ public:
 
     /* gates: assume topological order */
     _ntk.foreach_gate( [&]( auto const& n ) {
-      std::vector<typename BufNtk::signal> children;
+      std::vector<buf_signal> children;
       _ntk.foreach_fanin( n, [&]( auto const& fi ) {
         auto ni = _ntk.get_node( fi );
-        typename BufNtk::signal s;
+        buf_signal s;
         if ( _ntk.is_constant( ni ) || ( !_ps.branch_pis && _ntk.is_pi( ni ) ) )
           s = node_to_signal[ni];
         else
-          s = get_buffer_at_rd( bufntk, buffers[fi], _levels[n] - _levels[fi] - 1 );
+          s = get_buffer_at_relative_depth( bufntk, buffers[fi], _levels[n] - _levels[fi] - 1 );
         children.push_back( _ntk.is_complemented( fi ) ? !s : s );
       } );
       node_to_signal[n] = bufntk.clone_node( _ntk, n, children );
@@ -596,11 +599,11 @@ public:
     {
       _ntk.foreach_po( [&]( auto const& f ) {
         auto n = _ntk.get_node( f );
-        typename BufNtk::signal s;
+        buf_signal s;
         if ( _ntk.is_constant( n ) || ( !_ps.branch_pis && _ntk.is_pi( n ) ) )
           s = node_to_signal[n];
         else
-          s = get_buffer_at_rd( bufntk, buffers[f], _depth - _levels[f] );
+          s = get_buffer_at_relative_depth( bufntk, buffers[f], _depth - _levels[f] );
         bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
       } );
     }
@@ -633,7 +636,7 @@ public:
               slots += _ps.splitter_capacity - 1;
             }
           }
-          typename BufNtk::signal s = get_lowest_spot<false>( bufntk, buffers[n] );
+          buf_signal s = get_lowest_spot<false>( bufntk, buffers[n] );
           bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
         }
       } );
@@ -667,13 +670,13 @@ private:
   }
 
   template<class BufNtk, typename FOT>
-  typename BufNtk::signal get_buffer_at_rd( BufNtk& bufntk, FOT& fot, uint32_t rd ) const
+  typename BufNtk::signal get_buffer_at_relative_depth( BufNtk& bufntk, FOT& fot, uint32_t rd ) const
   {
     typename BufNtk::signal b = fot[rd].back();
     if ( bufntk.fanout_size( bufntk.get_node( b ) ) == _ps.splitter_capacity )
     {
       assert( rd > 0 );
-      typename BufNtk::signal b_lower = get_buffer_at_rd( bufntk, fot, rd - 1 );
+      typename BufNtk::signal b_lower = get_buffer_at_relative_depth( bufntk, fot, rd - 1 );
       b = bufntk.create_buf( b_lower );
       fot[rd].push_back( b );
     }
@@ -760,7 +763,8 @@ void lift_fanin_buffers( Ntk& d, typename Ntk::node const& n )
 template<class Ntk>
 bool verify_aqfp_buffer( Ntk const& ntk, aqfp_buffer_params const& ps )
 {
-  static_assert( has_is_buf_v<Ntk>, "Ntk is not a buffered network" );
+  static_assert( is_buffered_network_type_v<Ntk>, "Ntk is not a buffered network" );
+  static_assert( has_is_buf_v<Ntk>, "Ntk does not implement the is_buf method" );
   bool legal = true;
 
   /* fanout branching */

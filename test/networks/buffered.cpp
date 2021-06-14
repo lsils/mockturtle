@@ -66,9 +66,17 @@ void test_buffered_network()
   CHECK( po_values[1]._bits == 8 );
 }
 
-
-TEST_CASE( "buffered netwroks", "[buffered]" )
+TEST_CASE( "buffered networks", "[buffered]" )
 {
   test_buffered_network<buffered_aig_network>();
   test_buffered_network<buffered_mig_network>();
+}
+
+TEST_CASE( "is_buffered_network_type", "[buffered]" )
+{
+  CHECK( is_buffered_network_type_v<buffered_aig_network> == true );
+  CHECK( is_buffered_network_type_v<buffered_mig_network> == true );
+
+  CHECK( is_buffered_network_type_v<aig_network> == false );
+  CHECK( is_buffered_network_type_v<mig_network> == false );
 }

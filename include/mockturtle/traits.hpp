@@ -71,6 +71,14 @@ struct is_network_type<Ntk, std::enable_if_t<
 template<class Ntk>
 inline constexpr bool is_network_type_v = is_network_type<Ntk>::value;
 
+template<class Ntk>
+struct is_buffered_network_type : std::false_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool is_buffered_network_type_v = is_buffered_network_type<Ntk>::value;
+
 #pragma region is_topologically_sorted
 template<class Ntk, class = void>
 struct is_topologically_sorted : std::false_type

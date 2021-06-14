@@ -122,7 +122,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
 
   lorina::verilog_writer writer( os );
 
-  if constexpr ( has_is_buf_v<Ntk> )
+  if constexpr ( is_buffered_network_type_v<Ntk> )
   {
     writer.on_module_begin( "buffer", {"i"}, {"o"} );
     writer.on_input( "i" );
@@ -187,8 +187,9 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
 
   std::vector<std::string> ws;
 
-  if constexpr ( has_is_buf_v<Ntk> )
+  if constexpr ( is_buffered_network_type_v<Ntk> )
   {
+    static_assert( has_is_buf_v<Ntk>, "Ntk does not implement the is_buf method" );
     ntk.foreach_node( [&]( auto const& n ) {
       if ( ntk.fanin_size( n ) > 0 )
         ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
