@@ -9,24 +9,6 @@ on:
     - master
 
 jobs:
-  build-gcc8:
-    name: GNU GCC 8
-    runs-on: macOS-latest
-
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=/usr/local/opt/gcc@8/bin/g++-8 -DMOCKTURTLE_TEST=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests "~[quality]"
   build-gcc9:
     name: GNU GCC 9
     runs-on: macOS-latest

@@ -71,6 +71,14 @@ struct is_network_type<Ntk, std::enable_if_t<
 template<class Ntk>
 inline constexpr bool is_network_type_v = is_network_type<Ntk>::value;
 
+template<class Ntk>
+struct is_buffered_network_type : std::false_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool is_buffered_network_type_v = is_buffered_network_type<Ntk>::value;
+
 #pragma region is_topologically_sorted
 template<class Ntk, class = void>
 struct is_topologically_sorted : std::false_type
@@ -939,6 +947,21 @@ struct has_is_on_critical_path<Ntk, std::void_t<decltype( std::declval<Ntk>().is
 
 template<class Ntk>
 inline constexpr bool has_is_on_critical_path_v = has_is_on_critical_path<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_buf
+template<class Ntk, class = void>
+struct has_is_buf : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_buf<Ntk, std::void_t<decltype( std::declval<Ntk>().is_buf( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_buf_v = has_is_buf<Ntk>::value;
 #pragma endregion
 
 #pragma region has_is_and

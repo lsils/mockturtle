@@ -9,6 +9,7 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/buffered.hpp>
 
 using namespace mockturtle;
 
@@ -129,5 +130,42 @@ TEST_CASE( "write Verilog with register names", "[write_verilog]" )
                       "  assign y[1] = n14 ;\n"
                       "  assign y[2] = n18 ;\n"
                       "  assign y[3] = n15 ;\n"
+                      "endmodule\n" );
+}
+
+TEST_CASE( "write buffered AIG into Verilog file", "[write_verilog]" )
+{
+  buffered_aig_network aig;
+
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+
+  const auto buf_a1 = aig.create_buf( a );
+  const auto buf_a2 = aig.create_buf( buf_a1 );
+
+  const auto f1 = aig.create_or( buf_a2, b );
+  const auto buf_f1 = aig.create_buf( f1 );
+  aig.create_po( buf_f1 );
+
+  std::ostringstream out;
+  write_verilog( aig, out );
+
+  CHECK( out.str() == "module buffer( i , o );\n"
+                      "  input i ;\n"
+                      "  output o ;\n"
+                      "endmodule\n"
+                      "module inverter( i , o );\n"
+                      "  input i ;\n"
+                      "  output o ;\n"
+                      "endmodule\n"
+                      "module top( x0 , x1 , y0 );\n"
+                      "  input x0 , x1 ;\n"
+                      "  output y0 ;\n"
+                      "  wire n3 , n4 , n5 , n6 ;\n"
+                      "  buffer  buf_n3( .i (x0), .o (n3) );\n"
+                      "  buffer  buf_n4( .i (n3), .o (n4) );\n"
+                      "  assign n5 = ~x1 & ~n4 ;\n"
+                      "  inverter  inv_n6( .i (n5), .o (n6) );\n"
+                      "  assign y0 = n6 ;\n"
                       "endmodule\n" );
 }

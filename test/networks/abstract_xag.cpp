@@ -87,7 +87,7 @@ TEST_CASE( "Parse GF(2^4) function", "[abstract_xag]" )
 
   std::stringstream str;
   str << verilog;
-  const auto result = lorina::read_verilog( str, verilog_reader( xag ) );
+  const auto result = lorina::read_verilog( str, verilog_reader( xag, "GF24Inversion" ) );
   CHECK( result == lorina::return_code::success );
   xag = cleanup_dangling( xag );
   CHECK( xag.num_pis() == 4u );

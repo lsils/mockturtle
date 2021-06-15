@@ -7,6 +7,7 @@
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/xmg.hpp>
+#include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 
@@ -114,6 +115,10 @@ TEST_CASE( "read a VERILOG file with instances", "[verilog_reader]" )
   mig_network mig;
 
   std::string file{
+    "module ripple_carry_adder( x1, x2, y );\n"
+    "  input x1, x2;\n"
+    "  output y;\n"
+    "endmodule\n"
     "module top( a, b, c );\n"
     "  input [7:0] a, b ;\n"
     "  output [8:0] c;\n"
@@ -136,6 +141,10 @@ TEST_CASE( "read a VERILOG file to create large Montgomery multiplier", "[verilo
   xag_network xag;
 
   std::string file{
+    "module montgomery_multiplier( x1, x2, y );\n"
+    "  input x1, x2;\n"
+    "  output y;\n"
+    "endmodule\n"
     "module top( a, b, c );\n"
     "  input [383:0] a, b;\n"
     "  output [383:0] c;\n"
@@ -157,4 +166,43 @@ TEST_CASE( "read a VERILOG file to create large Montgomery multiplier", "[verilo
   CHECK( reader.name() == "top" );
   CHECK( reader.input_names() == std::vector<std::pair<std::string, uint32_t>>{{{"a", 384}, {"b", 384}}} );
   CHECK( reader.output_names() == std::vector<std::pair<std::string, uint32_t>>{{{"c", 384}}} );
+}
+
+TEST_CASE( "read a VERILOG file with buffers", "[verilog_reader]" )
+{
+  buffered_mig_network mig;
+
+  std::string file{
+    "module buffer( i , o );\n"
+    "  input i ;\n"
+    "  output o ;\n"
+    "endmodule\n"
+    "module inverter( i , o );\n"
+    "  input i ;\n"
+    "  output o ;\n"
+    "endmodule\n"
+    "module top( x0 , x1 , y0 );\n"
+    "  input x0 , x1 ;\n"
+    "  output y0 ;\n"
+    "  wire n3 , n4 , n5 , n6 ;\n"
+    "  buffer  buf_n3( .i (x0), .o (n3) );\n"
+    "  buffer  buf_n4( .i (n3), .o (n4) );\n"
+    "  assign n5 = ~x1 & ~n4 ;\n"
+    "  inverter  inv_n6( .i (n5), .o (n6) );\n"
+    "  assign y0 = n6 ;\n"
+    "endmodule\n"};
+
+  std::istringstream in( file );
+  const auto result = lorina::read_verilog( in, verilog_reader( mig ) );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+  CHECK( mig.num_pis() == 2 );
+  CHECK( mig.num_pos() == 1 );
+  CHECK( mig.num_gates() == 1 );
+  CHECK( mig.size() == 7 ); // 1 constant, 2 PIs, 1 gate, 3 buffers
+
+  /* functional check */
+  auto const po_values = simulate_buffered<2> ( mig );
+  CHECK( po_values[0]._bits == 0xe ); // or
 }
