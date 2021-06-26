@@ -1,0 +1,79 @@
+---
+notifications:
+  email: false
+
+os: linux
+dist: focal
+
+jobs:
+  include:
+    - name: Build and run tests (amd64)
+      arch: amd64 
+      language: cpp 
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env: COMPILER=g++-8
+      script:
+        - mkdir -p build
+        - cd build
+        - cmake -DCMAKE_BUILD_TYPE=Release -DMOCKTURTLE_TEST=ON ..
+
+    - name: Build and run tests (arm64)
+      arch: arm64 
+      language: cpp 
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env: COMPILER=g++-8
+      script:
+        - mkdir -p build
+        - cd build
+        - cmake -DCMAKE_BUILD_TYPE=Release -DMOCKTURTLE_TEST=ON ..
+        - make -j2 run_tests
+        - ./test/run_tests "~[quality]"
+
+    - name: Build and run tests (ppc64le)
+      arch: ppc64le 
+      language: cpp 
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env: COMPILER=g++-8
+      script:
+        - mkdir -p build
+        - cd build
+        - cmake -DCMAKE_BUILD_TYPE=Release -DMOCKTURTLE_TEST=ON ..
+        - make -j2 run_tests
+        - ./test/run_tests "~[quality]"
+
+    - name: Build and run tests (s390x)
+      arch: s390x 
+      language: cpp 
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env: COMPILER=g++-8
+      script:
+        - mkdir -p build
+        - cd build
+        - cmake -DCMAKE_BUILD_TYPE=Release -DMOCKTURTLE_TEST=ON ..
+        - make -j2 run_tests
+        - ./test/run_tests "~[quality]"
+  
