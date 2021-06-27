@@ -516,7 +516,7 @@ public:
       simulate( leaves, divs, mffc );
     });
 
-    auto care = kitty::create<TTdc>( static_cast<unsigned int>( leaves.size() ) );
+    auto care = kitty::create<TTdc>( ps.max_pis );
     call_with_stopwatch( st.time_dont_care, [&]() {
       if ( ps.use_dont_cares )
       {
