@@ -26,6 +26,7 @@
 #include "experiments.hpp"
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
 
@@ -49,8 +50,8 @@ int main( int argc, char* argv[] )
     /*"5xp1",*/ "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
     "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn"};
 
-  std::string const benchmark( argv[1] ); //= "ctrl";// "int2float";
-  //for ( auto const& benchmark : benchmarks_aqfp )
+  //std::string const benchmark( argv[1] );
+  for ( auto const& benchmark : benchmarks_aqfp )
   {
     uint32_t b_start, b_ALAP, b_OPT;
     fmt::print( "[i] processing {}\n", benchmark );
@@ -63,7 +64,6 @@ int main( int argc, char* argv[] )
     ps.assume.branch_pis = true;
     ps.assume.balance_pis = false;
     ps.assume.balance_pos = true;
-    ps.assume.splitter_capacity = 3u;
     
     buffer_insertion aqfp( mig, ps );
 
@@ -85,17 +85,18 @@ int main( int argc, char* argv[] )
       aqfp.count_buffers();
     }
 
-    //aqfp.mark_nodes();
-    bool updated = true;
-    while ( updated )
-    {
-      updated = aqfp.find_chunks();
-    }
+    aqfp.optimize();
     //aqfp.adjust_depth();
     aqfp.count_buffers();
     b_OPT = aqfp.num_buffers();
     std::cout << " > OPT: buffers = " << b_OPT << "\n";
-    //aqfp.print_graph();
+    aqfp.print_graph();
+
+    buffered_mig_network bufntk;
+    aqfp.dump_buffered_network( bufntk );
+    depth_view d_buf{bufntk};
+    assert( verify_aqfp_buffer( bufntk, ps.assume ) );
+    assert( d_buf.depth() == aqfp.depth() );
 
     depth_view d{mig};
     exp( benchmark, mig.num_gates(), d.depth(), b_start, b_ALAP, b_OPT, aqfp.depth() );

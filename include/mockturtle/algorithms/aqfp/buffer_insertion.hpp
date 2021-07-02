@@ -854,7 +854,483 @@ public:
   /*! \brief Optimize with the specified optimization policy */
   void optimize()
   {
-    // code to be committed in another PR later...
+    bool updated = true;
+    while ( updated )
+    {
+      updated = find_chunks();
+    }
+  }
+
+  enum direction
+  {
+    ANY,
+    DOWN,
+    UP
+  };
+
+  struct interface
+  {
+    node c; // chunk node
+    node o; // outside node
+  };
+
+  struct chunk
+  {
+    direction purpose;
+    uint32_t id;
+    std::vector<node> members{};
+    std::vector<interface> input_interfaces{};
+    std::vector<interface> output_interfaces{};
+    int32_t slack{std::numeric_limits<int32_t>::max()};
+    int32_t benefits{0};
+  };
+
+  bool is_upper_bounded( node const& n ) const
+  {
+    (void)n;
+    return false;
+  }
+
+  bool is_lower_bounded( node const& n ) const
+  {
+    return _levels[n] == 0;
+  }
+
+  bool is_ignored( node const& n ) const
+  {
+    return _ntk.is_constant( n ) || ( !_ps.assume.branch_pis && _ntk.is_pi( n ) );
+  }
+
+  bool is_fixed( node const& n ) const
+  {
+    if ( _ps.assume.balance_pis ) return _ntk.is_pi( n );
+    return false;
+  }
+
+  bool find_chunks()
+  {
+    bool updated = false;
+    start_id = _ntk.trav_id();
+
+    _ntk.foreach_node( [&]( auto const& n ){
+      if ( is_ignored( n ) || is_fixed( n ) || _ntk.visited( n ) > start_id /* belongs to a chunk */ )
+      {
+        return true;
+      }
+
+      //std::cout << "[i] try forming a chunk from node " << node_info( n ) << "\n";
+      _ntk.incr_trav_id();
+      chunk c{ANY, _ntk.trav_id()};
+      recruit( n, c );
+      cleanup_interfaces( c );
+      //print_chunk( c );
+
+      auto moved = analyze_chunk_down( c );
+      if ( !moved ) moved = analyze_chunk_up( c );
+      updated |= moved;
+      return true;
+    });
+
+    if ( !updated )
+    {
+      std::set<uint32_t> chunk_ids;
+      uint32_t num_chunks = 0u;
+      _ntk.foreach_gate( [&]( auto const& n ){
+        if ( is_ignored( n ) || is_fixed( n ) )
+        {
+          return true;
+        }
+        if ( _ntk.visited( n ) <= start_id )
+        {
+          std::cout << "node " << node_info( n ) << " does not belong to any chunk\n";
+        }
+        if ( chunk_ids.find( _ntk.visited( n ) ) == chunk_ids.end() )
+        {
+          chunk_ids.insert( _ntk.visited( n ) );
+          ++num_chunks;
+        }
+        return true;
+      });
+      std::cout << " > [i] #chunks = " << num_chunks << "\n";
+    }
+
+    return updated;
+  }
+
+  void recruit( node const& n, chunk& c )
+  {
+    if ( _ntk.visited( n ) == c.id )
+      return;
+    //std::cout << "[i] recruit node " << node_info( n ) << "\n";
+
+    assert( _ntk.visited( n ) <= start_id );
+    assert( !is_fixed( n ) ); 
+    assert( !is_ignored( n ) );
+    
+    _ntk.set_visited( n, c.id );
+    c.members.emplace_back( n );
+    recruit_fanins( n, c );
+    recruit_fanouts( n, c );
+  }
+
+  void recruit_fanins( node const& n, chunk& c )
+  {
+    _ntk.foreach_fanin( n, [&]( auto const& fi ){
+      auto const ni = _ntk.get_node( fi );
+      if ( !is_ignored( ni ) && _ntk.visited( ni ) != c.id )
+      {
+        if ( is_fixed( ni ) )
+          c.input_interfaces.push_back( {n, ni} );
+        else if ( are_close( ni, n ) )
+          recruit( ni, c );
+        else
+          c.input_interfaces.push_back( {n, ni} );
+      }
+    });
+  }
+
+  void recruit_fanouts( node const& n, chunk& c )
+  {
+    auto const& fanout_info = _fanouts[n];
+    if ( fanout_info.size() == 0 )
+      return;
+
+    if ( _ntk.fanout_size( n ) == _external_ref_count[n] ) // only POs
+    {
+      c.output_interfaces.push_back( {n, n} ); // PO interface
+    }
+    else if ( fanout_info.size() == 1 ) // single gate fanout
+    {
+      auto const& no = fanout_info.front().fanouts.front();
+      if ( is_fixed( no ) )
+        c.output_interfaces.push_back( {n, no} );
+      else if ( fanout_info.front().relative_depth == 1 )
+        recruit( no, c );
+      else
+        c.output_interfaces.push_back( {n, no} );
+    }
+    else
+    {
+      for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
+      {
+        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+        {
+          if ( is_fixed( *it2 ) )
+            c.output_interfaces.push_back( {n, *it2} );
+
+          else if ( it->relative_depth == 2 )
+            recruit( *it2, c );
+          else if ( _ntk.visited( *it2 ) != c.id )
+            c.output_interfaces.push_back( {n, *it2} );
+        }
+      }
+    }
+  }
+
+  bool are_close( node const& ni, node const& n )
+  {
+    auto const& fanout_info = _fanouts[ni];
+    if ( fanout_info.size() == 1 && fanout_info.front().relative_depth == 1 )
+    {
+      assert( fanout_info.front().fanouts.front() == n );
+      return true;
+    }
+    if ( fanout_info.size() > 1 )
+    {
+      auto it = fanout_info.begin();
+      it++;
+      if ( it->relative_depth > 2 ) return false;
+      for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+      {
+        if ( *it2 == n )
+          return true;
+      }
+    }
+    return false;
+  }
+
+  void cleanup_interfaces( chunk& c )
+  {
+    for ( int i = 0; i < c.input_interfaces.size(); ++i )
+    {
+      if ( _ntk.visited( c.input_interfaces[i].o ) == c.id )
+      {
+        c.input_interfaces.erase( c.input_interfaces.begin() + i );
+        --i;
+      }
+    }
+    for ( int i = 0; i < c.output_interfaces.size(); ++i )
+    {
+      if ( _ntk.visited( c.output_interfaces[i].o ) == c.id && c.output_interfaces[i].o != c.output_interfaces[i].c )
+      {
+        c.output_interfaces.erase( c.output_interfaces.begin() + i );
+        --i;
+      }
+    }
+  }
+
+  bool analyze_chunk_down( chunk c )
+  {
+    //std::cout << "[i] analyze chunk " << c.id << "\n";
+    c.purpose = DOWN;
+    for ( auto m : c.members )
+    {
+      if ( is_lower_bounded( m ) )
+        return false;
+    }
+
+    std::set<node> marked_oi;
+    for ( auto oi : c.output_interfaces )
+    {
+      if ( marked_oi.find( oi.c ) == marked_oi.end() )
+      {
+        marked_oi.insert( oi.c );
+        --c.benefits;
+      }
+    }
+
+    for ( auto ii : c.input_interfaces )
+    {
+      auto const rd = _levels[ii.c] - _levels[ii.o];
+      auto const lowest = lowest_spot( ii.o );
+      if ( rd <= lowest )
+      {
+        c.slack = 0;
+        break;
+      }
+      c.slack = std::min( c.slack, int32_t(rd - lowest) );
+      if ( c.slack == rd - lowest )
+        mark_occupied( ii.o, lowest ); // TODO: may be inaccurate
+      if ( _fanouts[ii.o].back().relative_depth == rd && _fanouts[ii.o].back().num_edges == 1 ) // is the only highest fanout
+      {
+        ++c.benefits;
+      }
+    }
+
+    if ( c.benefits > 0 && c.slack > 0 )
+    {
+      count_buffers();
+      bool legal = true;
+      auto buffers_before = num_buffers();
+      //print_chunk( c );
+      for ( auto m : c.members )
+        _levels[m] -= c.slack;
+      for ( auto m : c.members )
+        update_fanout_info( m );
+      for ( auto ii : c.input_interfaces )
+        legal &= update_fanout_info<true>( ii.o );
+      
+      count_buffers();
+      if ( !legal || num_buffers() >= buffers_before )
+      {
+        /* UNDO */
+        for ( auto m : c.members )
+          _levels[m] += c.slack;
+        for ( auto m : c.members )
+          update_fanout_info( m );
+        for ( auto ii : c.input_interfaces )
+          update_fanout_info( ii.o );
+        return false;
+      }
+
+      //mark_nodes();
+      start_id = _ntk.trav_id();
+
+      //std::cout << "predicted gain = (interfaces)" << c.benefits << " * (slack)" << c.slack << "; after moving chunk, buffers = " << num_buffers() << "\n";
+      return true;
+    }
+    else
+    {
+      /* reset fanout_infos of input_interfaces because num_edges may be modified by mark_occupied */
+      for ( auto ii : c.input_interfaces )
+        update_fanout_info( ii.o );
+      return false;
+    }
+  }
+
+  /* relative_depth of the lowest available spot in the fanout tree of n */
+  uint32_t lowest_spot( node const& n ) const
+  {
+    auto const& fanout_info = _fanouts[n];
+    assert( fanout_info.size() );
+    assert( _ntk.fanout_size( n ) != _external_ref_count[n] );
+    if ( fanout_info.size() == 1 )
+    {
+      assert( fanout_info.front().fanouts.size() == 1 );
+      return 1;
+    }
+    auto it = fanout_info.begin(); ++it;
+    while ( it != fanout_info.end() && it->num_edges == _ps.assume.splitter_capacity )
+      ++it;
+    if ( it == fanout_info.end() ) // full fanout tree
+      return fanout_info.back().relative_depth + 1;
+    --it; // the last full layer
+    return it->relative_depth + 1;
+  }
+
+  void mark_occupied( node const& n, uint32_t rd )
+  {
+    auto& fanout_info = _fanouts[n];
+    for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
+    {
+      if ( it->relative_depth == rd )
+      {
+        ++it->num_edges;
+        return;
+      }
+    }
+  }
+
+  bool analyze_chunk_up( chunk c )
+  {
+    //std::cout << "[i] analyze chunk " << c.id << "\n";
+    c.purpose = UP;
+    for ( auto m : c.members )
+    {
+      if ( is_upper_bounded( m ) )
+        return false;
+    }
+
+    for ( auto ii : c.input_interfaces )
+    {
+      if ( _fanouts[ii.o].back().relative_depth == _levels[ii.c] - _levels[ii.o] ) // is highest fanout
+        --c.benefits;
+    }
+
+    std::set<node> marked_oi;
+    for ( auto oi : c.output_interfaces )
+    {
+      if ( marked_oi.find( oi.c ) == marked_oi.end() )
+      {
+        marked_oi.insert( oi.c );
+        ++c.benefits;
+        //std::cout << "[i] OI " << oi.c << " -> " <<  oi.o << "\n";
+        //print_fanout_infos( oi.c );
+      }
+      auto const& fanout_info = _fanouts[oi.c];
+      if ( _ntk.fanout_size( oi.c ) == _external_ref_count[oi.c] ) // only POs
+        c.slack = std::min( c.slack, int32_t(_depth - _levels[oi.c] - num_splitter_levels( oi.c )) );
+      else if ( fanout_info.size() == 1 ) // single fanout
+        c.slack = std::min( c.slack, int32_t(fanout_info.front().relative_depth - 1) );
+      else
+        c.slack = std::min( c.slack, int32_t(_levels[oi.o] - _levels[oi.c] - 2) );
+    }
+
+    if ( c.benefits > 0 && c.slack > 0 )
+    {
+      count_buffers();
+      bool legal = true;
+      auto buffers_before = num_buffers();
+      //print_chunk( c );
+      for ( auto m : c.members )
+        _levels[m] += c.slack;
+      for ( auto m : c.members )
+      {
+        legal &= update_fanout_info<true>( m );
+        if (!legal) break;
+      }
+      if ( legal )
+      {
+        for ( auto ii : c.input_interfaces )
+          update_fanout_info( ii.o );
+      }
+      
+      count_buffers();
+      if ( !legal || num_buffers() >= buffers_before )
+      {
+        /* UNDO */
+        for ( auto m : c.members )
+          _levels[m] -= c.slack;
+        for ( auto m : c.members )
+          update_fanout_info( m );
+        for ( auto ii : c.input_interfaces )
+          update_fanout_info( ii.o );
+        return false;
+      }
+
+      //mark_nodes();
+      start_id = _ntk.trav_id();
+
+      //std::cout << "predicted gain = (interfaces)" << c.benefits << " * (slack)" << c.slack << "; after moving chunk, buffers = " << num_buffers() << "\n";
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  }
+#pragma endregion
+
+#pragma region Printing
+  void print_graph() const
+  {
+    std::vector<std::vector<node>> nodes_by_level( depth() + 1 );
+    _ntk.foreach_gate( [&]( auto const& n ){
+      nodes_by_level[level(n)].emplace_back( n );
+    });
+    for ( auto l = depth(); l > 0; --l )
+    {
+      std::cout << "level " << std::setw(2) << l << ": ";
+      for ( auto n : nodes_by_level[l] )
+        std::cout << std::setw(3) << n << " ";
+      std::cout << "\n";
+    }
+    std::cout << "\n";
+  }
+
+  void print_fanout_infos( node const& n ) const
+  {
+    auto const& fo_infos = _fanouts[n];
+    for ( auto it = fo_infos.rbegin(); it != fo_infos.rend(); ++it )
+    {
+      std::cout << "rd " << it->relative_depth << ", gates = ";
+      if ( it->fanouts.size() )
+      {
+        std::cout << "{ ";
+        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+          std::cout << (*it2) << " ";
+        std::cout << "}";
+      }
+      else
+      {
+        std::cout << "{}";
+      }
+      std::cout << ", #edges = " << it->num_edges << "\n";
+    }
+    std::cout << "\n";
+  }
+
+  void print_chunk( chunk const& c ) const
+  {
+    std::cout << "===== chunk ID = " << c.id << " =====\n";
+    std::cout << "== purpose: " << (c.purpose == UP ? "UP" : "DOWN") << " ";
+    if ( c.benefits > 0 )
+      std::cout << "[GOOD! gain = " << c.slack << " * " << c.benefits << "]\n";
+    else
+      std::cout << "[BAD]\n";
+    std::cout << "== members: \n";
+    for ( auto const& n : c.members )
+    {
+      std::cout << "== " << node_info( n ) << ", fanins: ";
+      _ntk.foreach_fanin( n, [&]( auto const fi ){
+        std::cout << node_info( _ntk.get_node( fi ) ) << ", ";
+      });
+      std::cout << "\n"; 
+      //print_fanout_infos( n );
+    }
+    std::cout << "== IIs: ";
+    for ( auto const& ii : c.input_interfaces )
+      std::cout << "{" << ii.o << " -> " << ii.c << "} ";
+    std::cout << "\n== OIs: ";
+    for ( auto const& oi : c.output_interfaces )
+      std::cout << "{" << oi.c << " -> " << oi.o << "} ";
+    std::cout << "\n";
+    std::cout << "=========================\n";
+  }
+
+  std::string node_info( node const& n ) const
+  {
+    return std::to_string( n ) + " @" + std::to_string( _levels[n] );
   }
 #pragma endregion
 
@@ -876,6 +1352,8 @@ private:
   node_map<fanouts_by_level, Ntk> _fanouts;
   node_map<uint32_t, Ntk> _external_ref_count;
   node_map<uint32_t, Ntk> _buffers;
+
+  uint32_t start_id;
 }; /* buffer_insertion */
 
 namespace detail
