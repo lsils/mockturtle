@@ -7,6 +7,7 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
+#include <mockturtle/algorithms/aqfp/buffer_verification.hpp>
 
 using namespace mockturtle;
 

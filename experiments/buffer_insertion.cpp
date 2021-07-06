@@ -29,6 +29,7 @@
 #include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
+#include <mockturtle/algorithms/aqfp/buffer_verification.hpp>
 
 #include <lorina/lorina.hpp>
 #include <fmt/format.h>
@@ -60,10 +61,11 @@ int main( int argc, char* argv[] )
       return -1;
     
     buffer_insertion_params ps;
+    ps.optimization_effort = buffer_insertion_params::until_sat;
     ps.assume.splitter_capacity = 3u;
     ps.assume.branch_pis = true;
     ps.assume.balance_pis = false;
-    ps.assume.balance_pos = true;
+    ps.assume.balance_pos = false;
     
     buffer_insertion aqfp( mig, ps );
 
@@ -90,16 +92,16 @@ int main( int argc, char* argv[] )
     aqfp.count_buffers();
     b_OPT = aqfp.num_buffers();
     std::cout << " > OPT: buffers = " << b_OPT << "\n";
-    aqfp.print_graph();
+    //aqfp.print_graph();
 
     buffered_mig_network bufntk;
     aqfp.dump_buffered_network( bufntk );
     depth_view d_buf{bufntk};
     assert( verify_aqfp_buffer( bufntk, ps.assume ) );
-    assert( d_buf.depth() == aqfp.depth() );
+    //assert( d_buf.depth() == aqfp.depth() );
 
     depth_view d{mig};
-    exp( benchmark, mig.num_gates(), d.depth(), b_start, b_ALAP, b_OPT, aqfp.depth() );
+    exp( benchmark, mig.num_gates(), d.depth(), b_start, b_ALAP, b_OPT, d_buf.depth() );
   }
 
   exp.save();
