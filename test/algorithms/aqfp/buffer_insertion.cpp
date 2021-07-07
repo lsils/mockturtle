@@ -335,6 +335,7 @@ TEST_CASE( "various assumptions", "[buffer_insertion]" )
   }
 }
 
+#ifndef _MSC_VER
 TEST_CASE( "optimization with chunked movement", "[buffer_insertion]" )
 {
   aig_network aig_ntk;
@@ -355,3 +356,4 @@ TEST_CASE( "optimization with chunked movement", "[buffer_insertion]" )
   CHECK( verify_aqfp_buffer( buffered_ntk, ps.assume ) == true );
   CHECK( num_buf_opt < num_buf_asap );
 }
+#endif
