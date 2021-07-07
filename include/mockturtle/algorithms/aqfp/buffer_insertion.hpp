@@ -912,7 +912,7 @@ public:
   }
 
 private:
-  struct interface
+  struct io_interface
   {
     node c; // chunk node
     node o; // outside node
@@ -922,8 +922,8 @@ private:
   {
     uint32_t id;
     std::vector<node> members{};
-    std::vector<interface> input_interfaces{};
-    std::vector<interface> output_interfaces{};
+    std::vector<io_interface> input_interfaces{};
+    std::vector<io_interface> output_interfaces{};
     int32_t slack{std::numeric_limits<int32_t>::max()};
     int32_t benefits{0};
   };
