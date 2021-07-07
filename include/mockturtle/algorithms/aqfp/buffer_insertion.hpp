@@ -126,7 +126,8 @@ struct buffer_insertion_params
  * - Query the current level assignment (`level`, `depth`)
  * - Count irredundant buffers based on the current level assignment (`count_buffers`,
  * `num_buffers`)
- * - Optimize buffer count by adjusting the level assignment (`ASAP`, `ALAP`)
+ * - Optimize buffer count by scheduling (`schedule`, `ASAP`, `ALAP`) and by adjusting 
+ * the level assignment with chunked movement (`optimize`)
  * - Dump the resulting network into a network type which provides representation for 
  * buffers (`dump_buffered_network`)
  *
@@ -151,6 +152,7 @@ struct buffer_insertion_params
       auto const num_buffers = buffering.run( buffered_mig );
       
       std::cout << num_buffers << std::endl;
+      assert( verify_aqfp_buffer( buffered_mig, ps.assume ) );
       write_verilog( buffered_mig, "buffered.v" );
    \endverbatim
  *
@@ -883,7 +885,12 @@ private:
 
 #pragma region Chunked movement
 public:
-  /*! \brief Optimize with the specified optimization policy */
+  /*! \brief Optimize with chunked movement using the specified optimization policy.
+   * 
+   * For more information, please refer to [1].
+   * 
+   * [1] Irredundant Buffer and Splitter Insertion and Scheduling-Based Optimization for AQFP Circuits.
+   * Siang-Yun Lee et. al. IWLS 2021. */
   void optimize()
   {
     if ( _ps.optimization_effort == buffer_insertion_params::none )

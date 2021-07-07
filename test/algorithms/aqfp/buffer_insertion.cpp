@@ -334,3 +334,24 @@ TEST_CASE( "various assumptions", "[buffer_insertion]" )
     CHECK( verify_aqfp_buffer( buffered, asp ) == true );
   }
 }
+
+TEST_CASE( "optimization with chunked movement", "[buffer_insertion]" )
+{
+  aig_network aig_ntk;
+  buffered_aig_network buffered_ntk;
+  auto const read = lorina::read_aiger( fmt::format( "{}/c432.aig", BENCHMARKS_PATH ), aiger_reader( aig_ntk ) );
+  CHECK( read == lorina::return_code::success );
+
+  buffer_insertion_params ps;
+  ps.scheduling = buffer_insertion_params::better;
+  ps.optimization_effort = buffer_insertion_params::one_pass;
+  buffer_insertion buffering( aig_ntk, ps );
+  
+  buffering.ASAP();
+  buffering.count_buffers();
+  auto const num_buf_asap = buffering.num_buffers();
+  auto const num_buf_opt = buffering.run( buffered_ntk );
+
+  CHECK( verify_aqfp_buffer( buffered_ntk, ps.assume ) == true );
+  CHECK( num_buf_opt < num_buf_asap );
+}
