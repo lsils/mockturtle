@@ -295,17 +295,22 @@ TEST_CASE( "various assumptions", "[buffer_insertion]" )
   asp.balance_pos = false;
   ps.assume = asp;
   {
+    std::cout << "assumption: T/F/F\n"; std::cout.flush();
     ps.scheduling = buffer_insertion_params::ASAP;
     buffer_insertion buffering1( aig, ps );
     buffered_aig_network buffered1;
     CHECK( buffering1.run( buffered1 ) == 11u );
+    std::cout << "ASAP buffering done\n"; std::cout.flush();
     CHECK( verify_aqfp_buffer( buffered1, asp ) == true );
+    std::cout << "ASAP test done\n"; std::cout.flush();
 
     ps.scheduling = buffer_insertion_params::ALAP;
     buffer_insertion buffering2( aig, ps );
     buffered_aig_network buffered2;
     CHECK( buffering2.run( buffered2 ) == 9u );
+    std::cout << "ALAP buffering done\n"; std::cout.flush();
     CHECK( verify_aqfp_buffer( buffered2, asp ) == true );
+    std::cout << "ALAP test done\n"; std::cout.flush();
   }
 
   /* don't branch PI, balance PO */
