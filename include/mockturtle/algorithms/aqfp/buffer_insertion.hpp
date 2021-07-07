@@ -263,7 +263,14 @@ public:
     return _levels[n];
   }
 
-  /*! \brief Network depth considering AQFP buffers/splitters. */
+  /*! \brief Network depth considering AQFP buffers/splitters. 
+   * 
+   * Note that when neither PIs nor POs are balanced, there can be 
+   * different schedulings for the same buffered network (i.e. having
+   * the same number of buffers), thus this number may be different
+   * from the depth obtained by dumping the buffered network and wrapping
+   * depth_view around it.
+   */
   uint32_t depth() const
   {
     return _depth;
@@ -273,7 +280,7 @@ public:
    * level assignment. */
   uint32_t num_buffers() const
   {
-    assert( !outdated && "Please call `count_buffers()` first." );
+    assert( !_outdated && "Please call `count_buffers()` first." );
 
     uint32_t count = 0u;
     if ( _ps.assume.branch_pis )
@@ -293,7 +300,7 @@ public:
    * the current level assignment. */
   uint32_t num_buffers( node const& n ) const
   {
-    assert( !outdated && "Please call `count_buffers()` first." );
+    assert( !_outdated && "Please call `count_buffers()` first." );
     return _buffers[n];
   }
 #pragma endregion
@@ -307,7 +314,7 @@ public:
    */
   void count_buffers()
   {
-    if ( outdated )
+    if ( _outdated )
     {
       update_fanout_info();
     }
@@ -328,7 +335,7 @@ public:
 private:
   uint32_t count_buffers( node const& n )
   {
-    assert( !outdated && "Please call `update_fanout_info()` first." );
+    assert( !_outdated && "Please call `update_fanout_info()` first." );
     auto const& fo_infos = _fanouts[n];
 
     if ( _ntk.fanout_size( n ) == 0u ) /* dangling */
@@ -406,7 +413,7 @@ private:
 
 private:
 #pragma region Update fanout info
-  /* Guarantees on `_fanouts` (when not `outdated`):
+  /* Guarantees on `_fanouts` (when not `_outdated`):
    * - If not `branch_pis`: `_fanouts[PI]` is empty.
    * - PO ref count is added to `num_edges` of the last element.
    * - If having only one fanout: `_fanouts[n].size() == 1`.
@@ -449,7 +456,7 @@ private:
       } );
     }
 
-    outdated = false;
+    _outdated = false;
   }
 
   /* Update the fanout_information of a node */
@@ -596,7 +603,7 @@ public:
       _depth = std::max( _depth, clevel );
     } );
 
-    outdated = true;
+    _outdated = true;
   }
 
   /*! \brief ALAP scheduling.
@@ -617,7 +624,7 @@ public:
       }
     } );
 
-    outdated = true;
+    _outdated = true;
   }
 
 private:
@@ -692,7 +699,7 @@ public:
     static_assert( is_buffered_network_type_v<BufNtk>, "BufNtk is not a buffered network type" );
     static_assert( has_is_buf_v<BufNtk>, "BufNtk does not implement the is_buf method" );
     static_assert( has_create_buf_v<BufNtk>, "BufNtk does not implement the create_buf method" );
-    assert( !outdated && "Please call `count_buffers()` first." );
+    assert( !_outdated && "Please call `count_buffers()` first." );
 
     using buf_signal = typename BufNtk::signal;
     using fanout_tree = std::vector<std::list<buf_signal>>;
@@ -790,17 +797,6 @@ public:
       } );
     }
 
-    _ntk.foreach_node( [&]( auto n ){
-      uint32_t bufs{0};
-      for ( auto& l : buffers[n] )
-        bufs += l.size();
-      if ( bufs - 1 != num_buffers( n ) )
-      {
-        std::cout << "node " << n << ", bufs = " << bufs << " in " << buffers[n].size() << " levels, num_buffers = " << num_buffers( n ) << "\n";
-        print_fanout_infos( n );
-      }
-    });
-
     assert( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 == num_buffers() );
   }
 
@@ -890,28 +886,25 @@ public:
   /*! \brief Optimize with the specified optimization policy */
   void optimize()
   {
-    if ( _ps.optimization_effort == buffer_insertion_params::none ) return;
-    // TODO
+    if ( _ps.optimization_effort == buffer_insertion_params::none )
+    {
+      return;
+    }
     
-    if ( outdated )
+    if ( _outdated )
     {
       update_fanout_info();
     }
-    bool updated = true;
-    while ( updated )
-    {
-      updated = find_chunks();
-    }
+
+    bool updated;
+    do {
+      updated = find_and_move_chunks();
+    } while ( updated && _ps.optimization_effort == buffer_insertion_params::until_sat );
+
     adjust_depth();
   }
 
-  enum direction
-  {
-    ANY,
-    DOWN,
-    UP
-  };
-
+private:
   struct interface
   {
     node c; // chunk node
@@ -920,7 +913,6 @@ public:
 
   struct chunk
   {
-    direction purpose;
     uint32_t id;
     std::vector<node> members{};
     std::vector<interface> input_interfaces{};
@@ -928,17 +920,6 @@ public:
     int32_t slack{std::numeric_limits<int32_t>::max()};
     int32_t benefits{0};
   };
-
-  bool is_upper_bounded( node const& n ) const
-  {
-    (void)n;
-    return false;
-  }
-
-  bool is_lower_bounded( node const& n ) const
-  {
-    return _levels[n] == 0;
-  }
 
   bool is_ignored( node const& n ) const
   {
@@ -951,52 +932,27 @@ public:
     return false;
   }
 
-  bool find_chunks()
+  bool find_and_move_chunks()
   {
     bool updated = false;
-    start_id = _ntk.trav_id();
+    _start_id = _ntk.trav_id();
 
     _ntk.foreach_node( [&]( auto const& n ){
-      if ( is_ignored( n ) || is_fixed( n ) || _ntk.visited( n ) > start_id /* belongs to a chunk */ )
+      if ( is_ignored( n ) || is_fixed( n ) || _ntk.visited( n ) > _start_id /* belongs to a chunk */ )
       {
         return true;
       }
 
-      //std::cout << "[i] try forming a chunk from node " << node_info( n ) << "\n";
       _ntk.incr_trav_id();
-      chunk c{ANY, _ntk.trav_id()};
+      chunk c{_ntk.trav_id()};
       recruit( n, c );
       cleanup_interfaces( c );
-      //print_chunk( c );
 
       auto moved = analyze_chunk_down( c );
       if ( !moved ) moved = analyze_chunk_up( c );
       updated |= moved;
       return true;
     });
-
-    if ( !updated )
-    {
-      std::set<uint32_t> chunk_ids;
-      uint32_t num_chunks = 0u;
-      _ntk.foreach_gate( [&]( auto const& n ){
-        if ( is_ignored( n ) || is_fixed( n ) )
-        {
-          return true;
-        }
-        if ( _ntk.visited( n ) <= start_id )
-        {
-          std::cout << "node " << node_info( n ) << " does not belong to any chunk\n";
-        }
-        if ( chunk_ids.find( _ntk.visited( n ) ) == chunk_ids.end() )
-        {
-          chunk_ids.insert( _ntk.visited( n ) );
-          ++num_chunks;
-        }
-        return true;
-      });
-      std::cout << " > [i] #chunks = " << num_chunks << "\n";
-    }
 
     return updated;
   }
@@ -1005,9 +961,8 @@ public:
   {
     if ( _ntk.visited( n ) == c.id )
       return;
-    //std::cout << "[i] recruit node " << node_info( n ) << "\n";
 
-    assert( _ntk.visited( n ) <= start_id );
+    assert( _ntk.visited( n ) <= _start_id );
     assert( !is_fixed( n ) ); 
     assert( !is_ignored( n ) );
     
@@ -1115,14 +1070,6 @@ public:
 
   bool analyze_chunk_down( chunk c )
   {
-    //std::cout << "[i] analyze chunk " << c.id << "\n";
-    c.purpose = DOWN;
-    for ( auto m : c.members )
-    {
-      if ( is_lower_bounded( m ) )
-        return false;
-    }
-
     std::set<node> marked_oi;
     for ( auto oi : c.output_interfaces )
     {
@@ -1159,7 +1106,7 @@ public:
       count_buffers();
       bool legal = true;
       auto buffers_before = num_buffers();
-      //print_chunk( c );
+
       for ( auto m : c.members )
         _levels[m] -= c.slack;
       for ( auto m : c.members )
@@ -1167,7 +1114,7 @@ public:
       for ( auto ii : c.input_interfaces )
         legal &= update_fanout_info<true>( ii.o );
       
-      outdated = true;
+      _outdated = true;
       if ( legal ) count_buffers();
       if ( !legal || num_buffers() >= buffers_before )
       {
@@ -1181,10 +1128,7 @@ public:
         return false;
       }
 
-      //mark_nodes();
-      start_id = _ntk.trav_id();
-
-      //std::cout << "predicted gain = (interfaces)" << c.benefits << " * (slack)" << c.slack << "; after moving chunk, buffers = " << num_buffers() << "\n";
+      _start_id = _ntk.trav_id();
       return true;
     }
     else
@@ -1231,14 +1175,6 @@ public:
 
   bool analyze_chunk_up( chunk c )
   {
-    //std::cout << "[i] analyze chunk " << c.id << "\n";
-    c.purpose = UP;
-    for ( auto m : c.members )
-    {
-      if ( is_upper_bounded( m ) )
-        return false;
-    }
-
     for ( auto ii : c.input_interfaces )
     {
       if ( _fanouts[ii.o].back().relative_depth == _levels[ii.c] - _levels[ii.o] ) // is highest fanout
@@ -1252,8 +1188,6 @@ public:
       {
         marked_oi.insert( oi.c );
         ++c.benefits;
-        //std::cout << "[i] OI " << oi.c << " -> " <<  oi.o << "\n";
-        //print_fanout_infos( oi.c );
       }
       auto const& fanout_info = _fanouts[oi.c];
       if ( _ntk.fanout_size( oi.c ) == _external_ref_count[oi.c] ) // only POs
@@ -1269,7 +1203,7 @@ public:
       count_buffers();
       bool legal = true;
       auto buffers_before = num_buffers();
-      //print_chunk( c );
+
       for ( auto m : c.members )
         _levels[m] += c.slack;
       for ( auto m : c.members )
@@ -1283,7 +1217,7 @@ public:
           update_fanout_info( ii.o );
       }
       
-      outdated = true;
+      _outdated = true;
       if ( legal ) count_buffers();
       if ( !legal || num_buffers() >= buffers_before )
       {
@@ -1297,10 +1231,7 @@ public:
         return false;
       }
 
-      //mark_nodes();
-      start_id = _ntk.trav_id();
-
-      //std::cout << "predicted gain = (interfaces)" << c.benefits << " * (slack)" << c.slack << "; after moving chunk, buffers = " << num_buffers() << "\n";
+      _start_id = _ntk.trav_id();
       return true;
     }
     else
@@ -1348,80 +1279,7 @@ public:
       _depth = std::max( _depth, _levels[_ntk.get_node( f )] + num_splitter_levels( _ntk.get_node( f ) ) );
     });
 
-    outdated = true;
-  }
-#pragma endregion
-
-#pragma region Printing
-  void print_graph() const
-  {
-    std::vector<std::vector<node>> nodes_by_level( depth() + 1 );
-    _ntk.foreach_node( [&]( auto const& n ){
-      nodes_by_level[level(n)].emplace_back( n );
-    });
-    for ( int l = depth(); l >= 0; --l )
-    {
-      std::cout << "level " << std::setw(2) << l << ": ";
-      for ( auto n : nodes_by_level[l] )
-        std::cout << std::setw(3) << n << " ";
-      std::cout << "\n";
-    }
-    std::cout << "\n";
-  }
-
-  void print_fanout_infos( node const& n ) const
-  {
-    auto const& fo_infos = _fanouts[n];
-    for ( auto it = fo_infos.rbegin(); it != fo_infos.rend(); ++it )
-    {
-      std::cout << "rd " << it->relative_depth << ", gates = ";
-      if ( it->fanouts.size() )
-      {
-        std::cout << "{ ";
-        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
-          std::cout << (*it2) << " ";
-        std::cout << "}";
-      }
-      else
-      {
-        std::cout << "{}";
-      }
-      std::cout << ", #edges = " << it->num_edges << "\n";
-    }
-    std::cout << "\n";
-  }
-
-  void print_chunk( chunk const& c ) const
-  {
-    std::cout << "===== chunk ID = " << c.id << " =====\n";
-    std::cout << "== purpose: " << (c.purpose == UP ? "UP" : "DOWN") << " ";
-    if ( c.benefits > 0 )
-      std::cout << "[GOOD! gain = " << c.slack << " * " << c.benefits << "]\n";
-    else
-      std::cout << "[BAD]\n";
-    std::cout << "== members: \n";
-    for ( auto const& n : c.members )
-    {
-      std::cout << "== " << node_info( n ) << ", fanins: ";
-      _ntk.foreach_fanin( n, [&]( auto const fi ){
-        std::cout << node_info( _ntk.get_node( fi ) ) << ", ";
-      });
-      std::cout << "\n"; 
-      //print_fanout_infos( n );
-    }
-    std::cout << "== IIs: ";
-    for ( auto const& ii : c.input_interfaces )
-      std::cout << "{" << ii.o << " -> " << ii.c << "} ";
-    std::cout << "\n== OIs: ";
-    for ( auto const& oi : c.output_interfaces )
-      std::cout << "{" << oi.c << " -> " << oi.o << "} ";
-    std::cout << "\n";
-    std::cout << "=========================\n";
-  }
-
-  std::string node_info( node const& n ) const
-  {
-    return std::to_string( n ) + " @" + std::to_string( _levels[n] );
+    _outdated = true;
   }
 #pragma endregion
 
@@ -1436,7 +1294,7 @@ private:
 
   Ntk const& _ntk;
   buffer_insertion_params const _ps;
-  bool outdated{true};
+  bool _outdated{true};
 
   node_map<uint32_t, Ntk> _levels;
   uint32_t _depth{0u};
@@ -1444,7 +1302,7 @@ private:
   node_map<uint32_t, Ntk> _external_ref_count;
   node_map<uint32_t, Ntk> _buffers;
 
-  uint32_t start_id;
+  uint32_t _start_id;
 }; /* buffer_insertion */
 
 } // namespace mockturtle

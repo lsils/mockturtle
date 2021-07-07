@@ -38,9 +38,8 @@
 
 /* Note: Please download this repository: https://github.com/lsils/ASPDAC2021_exp 
    and copy the folder ASPDAC2021_exp/experiments/benchmarks_aqfp/ to the build path of mockturtle. */
-int main( int argc, char* argv[] )
+int main()
 {
-  (void)argc;
   using namespace experiments;
   using namespace mockturtle;
 
@@ -51,10 +50,9 @@ int main( int argc, char* argv[] )
     /*"5xp1",*/ "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
     "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn"};
 
-  //std::string const benchmark( argv[1] );
   for ( auto const& benchmark : benchmarks_aqfp )
   {
-    uint32_t b_start, b_ALAP, b_OPT;
+    uint32_t b_ASAP, b_ALAP, b_OPT;
     fmt::print( "[i] processing {}\n", benchmark );
     mig_network mig;
     if ( lorina::read_verilog( "benchmarks_aqfp/" + benchmark + ".v", verilog_reader( mig ) ) != lorina::return_code::success )
@@ -71,37 +69,29 @@ int main( int argc, char* argv[] )
 
     aqfp.ASAP();
     aqfp.count_buffers();
-    b_start = b_ALAP = aqfp.num_buffers();
-    std::cout << " > ASAP: buffers = " << b_start << "\n";
-    //aqfp.print_graph();
+    b_ASAP = aqfp.num_buffers();
     
     aqfp.ALAP();
     aqfp.count_buffers();
     b_ALAP = aqfp.num_buffers();
-    std::cout << " > ALAP: buffers = " << b_ALAP << "\n";
-    //aqfp.print_graph();
 
-    if ( b_ALAP > b_start )
+    if ( b_ALAP > b_ASAP )
     {
       aqfp.ASAP(); // UNDO ALAP
       aqfp.count_buffers();
     }
 
     aqfp.optimize();
-    //aqfp.adjust_depth();
     aqfp.count_buffers();
     b_OPT = aqfp.num_buffers();
-    std::cout << " > OPT: buffers = " << b_OPT << "\n";
-    //aqfp.print_graph();
 
     buffered_mig_network bufntk;
     aqfp.dump_buffered_network( bufntk );
     depth_view d_buf{bufntk};
     assert( verify_aqfp_buffer( bufntk, ps.assume ) );
-    //assert( d_buf.depth() == aqfp.depth() );
 
     depth_view d{mig};
-    exp( benchmark, mig.num_gates(), d.depth(), b_start, b_ALAP, b_OPT, d_buf.depth() );
+    exp( benchmark, mig.num_gates(), d.depth(), b_ASAP, b_ALAP, b_OPT, d_buf.depth() );
   }
 
   exp.save();

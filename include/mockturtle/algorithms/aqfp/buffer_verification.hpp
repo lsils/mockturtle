@@ -36,7 +36,6 @@
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
 #include "../../views/depth_view.hpp"
-#include "../../views/fanout_view.hpp"
 
 namespace mockturtle
 {
