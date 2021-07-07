@@ -45,6 +45,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
 
+#include "../endianness.hpp"
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
 #include "detail/foreach.hpp"
@@ -109,8 +110,13 @@ public:
     union {
       struct
       {
+#if MOCKTURTLE_ENDIAN == MOCKTURTLE_BIGENDIAN
+        std::size_t index : 63;
+        std::size_t complement : 1;
+#else
         std::size_t complement : 1;
         std::size_t index : 63;
+#endif
       };
       std::size_t data;
     };

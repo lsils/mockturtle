@@ -41,6 +41,7 @@
 #include <fmt/format.h>
 #include <kitty/kitty.hpp>
 
+#include "../endianness.hpp"
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
 #include "detail/foreach.hpp"
@@ -106,8 +107,13 @@ public:
     {
       struct
       {
+#if MOCKTURTLE_ENDIAN == MOCKTURTLE_BIGENDIAN
+        uint64_t index : 63;
+        uint64_t complement : 1;
+#else
         uint64_t complement : 1;
         uint64_t index : 63;
+#endif
       };
       uint64_t data;
     };

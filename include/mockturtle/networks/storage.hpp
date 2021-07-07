@@ -42,6 +42,8 @@
 
 #include <parallel_hashmap/phmap.h>
 
+#include "../endianness.hpp"
+
 namespace mockturtle
 {
 
@@ -58,8 +60,14 @@ public:
   union {
     struct
     {
+#if MOCKTURTLE_ENDIAN == MOCKTURTLE_BIGENDIAN
+      uint64_t index : _len - PointerFieldSize;
+      uint64_t weight : PointerFieldSize;
+#else
       uint64_t weight : PointerFieldSize;
       uint64_t index : _len - PointerFieldSize;
+#endif;
+
     };
     uint64_t data;
   };
@@ -92,15 +100,27 @@ union cauint64_t {
   uint64_t n{0};
   struct
   {
+#if MOCKTURTLE_ENDIAN == MOCKTURTLE_BIGENDIAN
+    uint64_t h2 : 32;
+    uint64_t h1 : 32;
+#else
     uint64_t h1 : 32;
     uint64_t h2 : 32;
+#endif;    
   };
   struct
   {
+#if MOCKTURTLE_ENDIAN == MOCKTURTLE_BIGENDIAN
+    uint64_t q4 : 16;
+    uint64_t q3 : 16;
+    uint64_t q2 : 16;
+    uint64_t q1 : 16;
+#else
     uint64_t q1 : 16;
     uint64_t q2 : 16;
     uint64_t q3 : 16;
     uint64_t q4 : 16;
+#endif; 
   };
 };
 
