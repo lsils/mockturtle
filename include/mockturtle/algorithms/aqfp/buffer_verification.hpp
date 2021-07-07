@@ -111,7 +111,6 @@ node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, aqfp_assumpti
 
       while ( pos.size() > 0 )
       {
-        std::cout << "verification: pos.size = " << pos.size() << "\n";
         /* choose the highest unscheduled PO */
         node n = pos.front();
         uint32_t max_level = dv.level( n );
@@ -228,7 +227,6 @@ template<class Ntk>
 bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions const& ps )
 {
   auto const levels = schedule_buffered_network( ntk, ps );
-  std::cout << "verification: schedule_buffered_network done\n"; std::cout.flush();
   return verify_aqfp_buffer( ntk, ps, levels );
 }
 
