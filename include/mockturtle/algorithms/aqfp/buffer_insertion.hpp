@@ -248,7 +248,9 @@ public:
   uint32_t dry_run( node_map<uint32_t, Ntk>* pLevels = nullptr )
   {
     schedule();
+    std::cout << "scheduling done\n"; std::cout.flush();
     optimize();
+    std::cout << "optimization done\n"; std::cout.flush();
     count_buffers();
 
     if ( pLevels )
@@ -906,6 +908,7 @@ public:
     bool updated;
     do {
       updated = find_and_move_chunks();
+      std::cout << "chunked movement one iteration\n"; std::cout.flush();
     } while ( updated && _ps.optimization_effort == buffer_insertion_params::until_sat );
 
     adjust_depth();

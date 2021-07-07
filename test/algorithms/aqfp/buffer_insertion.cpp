@@ -341,6 +341,7 @@ TEST_CASE( "optimization with chunked movement", "[buffer_insertion]" )
   buffered_aig_network buffered_ntk;
   auto const read = lorina::read_aiger( fmt::format( "{}/c432.aig", BENCHMARKS_PATH ), aiger_reader( aig_ntk ) );
   CHECK( read == lorina::return_code::success );
+  std::cout << "read aig\n"; std::cout.flush();
 
   buffer_insertion_params ps;
   ps.scheduling = buffer_insertion_params::better;
@@ -350,8 +351,10 @@ TEST_CASE( "optimization with chunked movement", "[buffer_insertion]" )
   buffering.ASAP();
   buffering.count_buffers();
   auto const num_buf_asap = buffering.num_buffers();
+  std::cout << "ASAP + count buffers\n"; std::cout.flush();
   auto const num_buf_opt = buffering.run( buffered_ntk );
 
+  std::cout << "to verify\n"; std::cout.flush();
   CHECK( verify_aqfp_buffer( buffered_ntk, ps.assume ) == true );
   CHECK( num_buf_opt < num_buf_asap );
 }
