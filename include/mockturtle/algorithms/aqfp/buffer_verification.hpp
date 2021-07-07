@@ -125,18 +125,18 @@ node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, aqfp_assumpti
 
         detail::schedule_fanin_cone( dv, n, max_level );
 
-        for ( auto it = pos.begin(); it != pos.end(); ++it )
+        for ( auto it = pos.begin(); it != pos.end(); )
         {
           /* remove all visited POs (there may be lower POs in the TFI of the processed PO) */
           if ( ntk.visited( *it ) == ntk.trav_id() )
           {
             it = pos.erase( it );
-            --it;
           }
           /* recompute levels because some of their TFI may have been lifted */
           else
           {
             detail::recompute_level( dv, *it );
+            ++it;
           }
         }
       }
