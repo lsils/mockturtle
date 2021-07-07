@@ -11,7 +11,7 @@ v0.3 (not yet released)
     - Buffered networks (`buffered_aig_network`, `buffered_mig_network`) `#478 <https://github.com/lsils/mockturtle/pull/478>`_
 * Algorithms:
     - Logic resynthesis engines for MIGs (`mig_resyn` `#414 <https://github.com/lsils/mockturtle/pull/414>`_) and AIGs/XAGs (`xag_resyn` `#425 <https://github.com/lsils/mockturtle/pull/425>`_)
-    - AQFP buffer insertion (`buffer_insertion`, which replaces `aqfp_view`) and verification (`verify_aqfp_buffer`) `#478 <https://github.com/lsils/mockturtle/pull/478>`_
+    - AQFP buffer insertion & optimization (`buffer_insertion`, which replaces `aqfp_view`) and verification (`buffer_verification`) `#478 <https://github.com/lsils/mockturtle/pull/478>`_ `#483 <https://github.com/lsils/mockturtle/pull/483>`_
 * Utils
     - Manipulate windows with network data types (`clone_subnetwork` and `insert_ntk`) `#451 <https://github.com/lsils/mockturtle/pull/451>`_
 

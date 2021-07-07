@@ -34,8 +34,8 @@
 
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
-#include "../../views/depth_view.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <list>
@@ -126,7 +126,8 @@ struct buffer_insertion_params
  * - Query the current level assignment (`level`, `depth`)
  * - Count irredundant buffers based on the current level assignment (`count_buffers`,
  * `num_buffers`)
- * - Optimize buffer count by adjusting the level assignment (`ASAP`, `ALAP`)
+ * - Optimize buffer count by scheduling (`schedule`, `ASAP`, `ALAP`) and by adjusting 
+ * the level assignment with chunked movement (`optimize`)
  * - Dump the resulting network into a network type which provides representation for 
  * buffers (`dump_buffered_network`)
  *
@@ -151,6 +152,7 @@ struct buffer_insertion_params
       auto const num_buffers = buffering.run( buffered_mig );
       
       std::cout << num_buffers << std::endl;
+      assert( verify_aqfp_buffer( buffered_mig, ps.assume ) );
       write_verilog( buffered_mig, "buffered.v" );
    \endverbatim
  *
@@ -263,7 +265,14 @@ public:
     return _levels[n];
   }
 
-  /*! \brief Network depth considering AQFP buffers/splitters. */
+  /*! \brief Network depth considering AQFP buffers/splitters. 
+   * 
+   * Note that when neither PIs nor POs are balanced, there can be 
+   * different schedulings for the same buffered network (i.e. having
+   * the same number of buffers), thus this number may be different
+   * from the depth obtained by dumping the buffered network and wrapping
+   * depth_view around it.
+   */
   uint32_t depth() const
   {
     return _depth;
@@ -273,7 +282,7 @@ public:
    * level assignment. */
   uint32_t num_buffers() const
   {
-    assert( !outdated && "Please call `count_buffers()` first." );
+    assert( !_outdated && "Please call `count_buffers()` first." );
 
     uint32_t count = 0u;
     if ( _ps.assume.branch_pis )
@@ -293,7 +302,7 @@ public:
    * the current level assignment. */
   uint32_t num_buffers( node const& n ) const
   {
-    assert( !outdated && "Please call `count_buffers()` first." );
+    assert( !_outdated && "Please call `count_buffers()` first." );
     return _buffers[n];
   }
 #pragma endregion
@@ -307,7 +316,7 @@ public:
    */
   void count_buffers()
   {
-    if ( outdated )
+    if ( _outdated )
     {
       update_fanout_info();
     }
@@ -326,9 +335,9 @@ public:
   }
 
 private:
-  uint32_t count_buffers( node const& n ) const
+  uint32_t count_buffers( node const& n )
   {
-    assert( !outdated && "Please call `update_fanout_info()` first." );
+    assert( !_outdated && "Please call `update_fanout_info()` first." );
     auto const& fo_infos = _fanouts[n];
 
     if ( _ntk.fanout_size( n ) == 0u ) /* dangling */
@@ -338,23 +347,19 @@ private:
 
     if ( _ntk.fanout_size( n ) == 1u ) /* single fanout */
     {
-      if ( _external_ref_count[n] > 0u ) /* -> PO */
-      {
-        return _ps.assume.balance_pos ? _depth - _levels[n] : 0u;
-      }
-      else /* -> gate */
-      {
-        assert( fo_infos.size() == 1u );
+      if ( _external_ref_count[n] == 1u && !_ps.assume.balance_pos )
+        return 0u;
+      else
         return fo_infos.front().relative_depth - 1u;
-      }
     }
 
     /* special case: don't balance POs; multiple PO refs but no gate fanout */
-    if ( fo_infos.size() == 0u )
+    if ( !_ps.assume.balance_pos && _ntk.fanout_size( n ) == _external_ref_count[n] )
     {
-      assert( !_ps.assume.balance_pos && _ntk.fanout_size( n ) == _external_ref_count[n] );
       return std::ceil( float( _external_ref_count[n] - 1 ) / float( _ps.assume.splitter_capacity - 1 ) );
     }
+
+    assert( fo_infos.size() > 1u );
 
     /* main counting */
     auto it = fo_infos.begin();
@@ -366,22 +371,35 @@ private:
       rd = it->relative_depth;
     }
 
-    /* multiple PO refs: need branching */
+    /* PO refs were added as num_edges and counted as buffers */
+    count -= _external_ref_count[n];
+
     if ( !_ps.assume.balance_pos && _external_ref_count[n] > 0u )
     {
-      /* check if available slots are enough */
+      /* remove the buffer tree higher than the highest gate-fanout */
+      auto rit = fo_infos.rbegin();
+      auto rd_last = rit->relative_depth;
+      while ( (++rit)->fanouts.size() == 0u )
+      {
+        count -= rit->num_edges;
+        rd_last = rit->relative_depth;
+      }
+      count -= rd_last - rit->relative_depth - 1;
+      auto to_remove = rit->num_edges - rit->fanouts.size();
+      while ( to_remove > 0 )
+      {
+        count -= to_remove;
+        to_remove = num_splitters( rit->num_edges ) - num_splitters( rit->num_edges - to_remove );
+        ++rit;
+      }
+
+      /* check if available slots in the remaining buffers are enough for POs */
       auto slots = count * ( _ps.assume.splitter_capacity - 1 ) + 1;
       int32_t needed = _ntk.fanout_size( n ) - slots;
       if ( needed > 0 )
       {
         count += std::ceil( float( needed ) / float( _ps.assume.splitter_capacity - 1 ) );
       }
-    }
-    else
-    {
-      /* if _external_ref_count[n] == 0 : does nothing
-         otherwise _ps.assume.balance_pos == true : PO refs were added as num_edges and counted as buffers */
-      count -= _external_ref_count[n];
     }
 
     return count;
@@ -397,9 +415,9 @@ private:
 
 private:
 #pragma region Update fanout info
-  /* Guarantees on `_fanouts` (when not `outdated`):
+  /* Guarantees on `_fanouts` (when not `_outdated`):
    * - If not `branch_pis`: `_fanouts[PI]` is empty.
-   * - If `balance_pos`: PO ref count is added to `num_edges` of the last element.
+   * - PO ref count is added to `num_edges` of the last element.
    * - If having only one fanout: `_fanouts[n].size() == 1`.
    * - If having multiple fanouts: `_fanouts[n]` must have at least two elements,
    *   and the first element must have `relative_depth == 1` and `num_edges == 1`.
@@ -424,6 +442,11 @@ private:
       } );
     } );
 
+    _ntk.foreach_node( [&]( auto const& n ) {
+      if ( _external_ref_count[n] > 0u )
+        _fanouts[n].push_back( {_depth + 1 - _levels[n], {}, _external_ref_count[n]} );
+    });
+
     _ntk.foreach_gate( [&]( auto const& n ) {
       count_edges( n );
     } );
@@ -435,7 +458,7 @@ private:
       } );
     }
 
-    outdated = false;
+    _outdated = false;
   }
 
   /* Update the fanout_information of a node */
@@ -455,6 +478,10 @@ private:
     _fanouts[n].clear();
     for ( auto& fo : fos )
       insert_fanout( n, fo );
+
+    if ( _external_ref_count[n] > 0u )
+      _fanouts[n].push_back( {_depth + 1 - _levels[n], {}, _external_ref_count[n]} );
+
     return count_edges<verify>( n );
   }
 
@@ -483,11 +510,6 @@ private:
   bool count_edges( node const& n )
   {
     auto& fo_infos = _fanouts[n];
-
-    if ( _external_ref_count[n] && _ps.assume.balance_pos )
-    {
-      fo_infos.push_back( {_depth + 1 - _levels[n], {}, _external_ref_count[n]} );
-    }
 
     if ( fo_infos.size() == 0u || ( fo_infos.size() == 1u && fo_infos.front().num_edges == 1u ) )
     {
@@ -583,7 +605,7 @@ public:
       _depth = std::max( _depth, clevel );
     } );
 
-    outdated = true;
+    _outdated = true;
   }
 
   /*! \brief ALAP scheduling.
@@ -604,7 +626,7 @@ public:
       }
     } );
 
-    outdated = true;
+    _outdated = true;
   }
 
 private:
@@ -679,7 +701,7 @@ public:
     static_assert( is_buffered_network_type_v<BufNtk>, "BufNtk is not a buffered network type" );
     static_assert( has_is_buf_v<BufNtk>, "BufNtk does not implement the is_buf method" );
     static_assert( has_create_buf_v<BufNtk>, "BufNtk does not implement the create_buf method" );
-    assert( !outdated && "Please call `count_buffers()` first." );
+    assert( !_outdated && "Please call `count_buffers()` first." );
 
     using buf_signal = typename BufNtk::signal;
     using fanout_tree = std::vector<std::list<buf_signal>>;
@@ -785,13 +807,25 @@ private:
   void create_buffer_chain( BufNtk& bufntk, Buffers& buffers, node const& n, typename BufNtk::signal const& s ) const
   {
     auto const& fanout_info = _fanouts[n];
-    if ( fanout_info.size() == 0u )
-    {
-      buffers[n].emplace_back( 1, s );
-      return;
-    }
+    assert( fanout_info.size() > 0u );
 
-    buffers[n].resize( fanout_info.back().relative_depth );
+    if ( _external_ref_count[n] > 0u && !_ps.assume.balance_pos )
+    {
+      if ( _ntk.fanout_size( n ) == _external_ref_count[n] )
+      {
+        buffers[n].resize( num_splitter_levels( n ) + 1 );
+      }
+      else
+      {
+        auto it = fanout_info.rbegin();
+        while ( it->fanouts.size() == 0u ) ++it;
+        buffers[n].resize( it->relative_depth );
+      }
+    }
+    else
+    {
+      buffers[n].resize( fanout_info.back().relative_depth );
+    }
     auto& fot = buffers[n];
 
     typename BufNtk::signal fi = s;
@@ -851,10 +885,408 @@ private:
 
 #pragma region Chunked movement
 public:
-  /*! \brief Optimize with the specified optimization policy */
+  /*! \brief Optimize with chunked movement using the specified optimization policy.
+   * 
+   * For more information, please refer to [1].
+   * 
+   * [1] Irredundant Buffer and Splitter Insertion and Scheduling-Based Optimization for AQFP Circuits.
+   * Siang-Yun Lee et. al. IWLS 2021. */
   void optimize()
   {
-    // code to be committed in another PR later...
+    if ( _ps.optimization_effort == buffer_insertion_params::none )
+    {
+      return;
+    }
+    
+    if ( _outdated )
+    {
+      update_fanout_info();
+    }
+
+    bool updated;
+    do {
+      updated = find_and_move_chunks();
+    } while ( updated && _ps.optimization_effort == buffer_insertion_params::until_sat );
+
+    adjust_depth();
+  }
+
+private:
+  struct io_interface
+  {
+    node c; // chunk node
+    node o; // outside node
+  };
+
+  struct chunk
+  {
+    uint32_t id;
+    std::vector<node> members{};
+    std::vector<io_interface> input_interfaces{};
+    std::vector<io_interface> output_interfaces{};
+    int32_t slack{std::numeric_limits<int32_t>::max()};
+    int32_t benefits{0};
+  };
+
+  bool is_ignored( node const& n ) const
+  {
+    return _ntk.is_constant( n ) || ( !_ps.assume.branch_pis && _ntk.is_pi( n ) );
+  }
+
+  bool is_fixed( node const& n ) const
+  {
+    if ( _ps.assume.balance_pis ) return _ntk.is_pi( n );
+    return false;
+  }
+
+  bool find_and_move_chunks()
+  {
+    bool updated = false;
+    _start_id = _ntk.trav_id();
+
+    _ntk.foreach_node( [&]( auto const& n ){
+      if ( is_ignored( n ) || is_fixed( n ) || _ntk.visited( n ) > _start_id /* belongs to a chunk */ )
+      {
+        return true;
+      }
+
+      _ntk.incr_trav_id();
+      chunk c{_ntk.trav_id()};
+      recruit( n, c );
+      cleanup_interfaces( c );
+
+      auto moved = analyze_chunk_down( c );
+      if ( !moved ) moved = analyze_chunk_up( c );
+      updated |= moved;
+      return true;
+    });
+
+    return updated;
+  }
+
+  void recruit( node const& n, chunk& c )
+  {
+    if ( _ntk.visited( n ) == c.id )
+      return;
+
+    assert( _ntk.visited( n ) <= _start_id );
+    assert( !is_fixed( n ) ); 
+    assert( !is_ignored( n ) );
+    
+    _ntk.set_visited( n, c.id );
+    c.members.emplace_back( n );
+    recruit_fanins( n, c );
+    recruit_fanouts( n, c );
+  }
+
+  void recruit_fanins( node const& n, chunk& c )
+  {
+    _ntk.foreach_fanin( n, [&]( auto const& fi ){
+      auto const ni = _ntk.get_node( fi );
+      if ( !is_ignored( ni ) && _ntk.visited( ni ) != c.id )
+      {
+        if ( is_fixed( ni ) )
+          c.input_interfaces.push_back( {n, ni} );
+        else if ( are_close( ni, n ) )
+          recruit( ni, c );
+        else
+          c.input_interfaces.push_back( {n, ni} );
+      }
+    });
+  }
+
+  void recruit_fanouts( node const& n, chunk& c )
+  {
+    auto const& fanout_info = _fanouts[n];
+    if ( fanout_info.size() == 0 )
+      return;
+
+    if ( _ntk.fanout_size( n ) == _external_ref_count[n] ) // only POs
+    {
+      c.output_interfaces.push_back( {n, n} ); // PO interface
+    }
+    else if ( fanout_info.size() == 1 ) // single gate fanout
+    {
+      auto const& no = fanout_info.front().fanouts.front();
+      if ( is_fixed( no ) )
+        c.output_interfaces.push_back( {n, no} );
+      else if ( fanout_info.front().relative_depth == 1 )
+        recruit( no, c );
+      else
+        c.output_interfaces.push_back( {n, no} );
+    }
+    else
+    {
+      for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
+      {
+        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+        {
+          if ( is_fixed( *it2 ) )
+            c.output_interfaces.push_back( {n, *it2} );
+
+          else if ( it->relative_depth == 2 )
+            recruit( *it2, c );
+          else if ( _ntk.visited( *it2 ) != c.id )
+            c.output_interfaces.push_back( {n, *it2} );
+        }
+      }
+    }
+  }
+
+  bool are_close( node const& ni, node const& n )
+  {
+    auto const& fanout_info = _fanouts[ni];
+    if ( fanout_info.size() == 1 && fanout_info.front().relative_depth == 1 )
+    {
+      assert( fanout_info.front().fanouts.front() == n );
+      return true;
+    }
+    if ( fanout_info.size() > 1 )
+    {
+      auto it = fanout_info.begin();
+      it++;
+      if ( it->relative_depth > 2 ) return false;
+      for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+      {
+        if ( *it2 == n )
+          return true;
+      }
+    }
+    return false;
+  }
+
+  void cleanup_interfaces( chunk& c )
+  {
+    for ( int i = 0; i < c.input_interfaces.size(); ++i )
+    {
+      if ( _ntk.visited( c.input_interfaces[i].o ) == c.id )
+      {
+        c.input_interfaces.erase( c.input_interfaces.begin() + i );
+        --i;
+      }
+    }
+    for ( int i = 0; i < c.output_interfaces.size(); ++i )
+    {
+      if ( _ntk.visited( c.output_interfaces[i].o ) == c.id && c.output_interfaces[i].o != c.output_interfaces[i].c )
+      {
+        c.output_interfaces.erase( c.output_interfaces.begin() + i );
+        --i;
+      }
+    }
+  }
+
+  bool analyze_chunk_down( chunk c )
+  {
+    std::set<node> marked_oi;
+    for ( auto oi : c.output_interfaces )
+    {
+      if ( marked_oi.find( oi.c ) == marked_oi.end() )
+      {
+        marked_oi.insert( oi.c );
+        --c.benefits;
+      }
+    }
+
+    for ( auto ii : c.input_interfaces )
+    {
+      auto const rd = _levels[ii.c] - _levels[ii.o];
+      auto const lowest = lowest_spot( ii.o );
+      if ( rd <= lowest )
+      {
+        c.slack = 0;
+        break;
+      }
+      c.slack = std::min( c.slack, int32_t(rd - lowest) );
+      if ( c.slack == rd - lowest )
+        mark_occupied( ii.o, lowest ); // TODO: may be inaccurate
+      if ( _fanouts[ii.o].back().relative_depth == rd && _fanouts[ii.o].back().num_edges == 1 ) // is the only highest fanout
+      {
+        ++c.benefits;
+      }
+    }
+
+    for ( auto m : c.members )
+      c.slack = std::min( c.slack, int32_t( _ntk.is_pi( m ) ? _levels[m] : _levels[m] - 1 ) );
+
+    if ( c.benefits > 0 && c.slack > 0 )
+    {
+      count_buffers();
+      bool legal = true;
+      auto buffers_before = num_buffers();
+
+      for ( auto m : c.members )
+        _levels[m] -= c.slack;
+      for ( auto m : c.members )
+        update_fanout_info( m );
+      for ( auto ii : c.input_interfaces )
+        legal &= update_fanout_info<true>( ii.o );
+      
+      _outdated = true;
+      if ( legal ) count_buffers();
+      if ( !legal || num_buffers() >= buffers_before )
+      {
+        /* UNDO */
+        for ( auto m : c.members )
+          _levels[m] += c.slack;
+        for ( auto m : c.members )
+          update_fanout_info( m );
+        for ( auto ii : c.input_interfaces )
+          update_fanout_info( ii.o );
+        return false;
+      }
+
+      _start_id = _ntk.trav_id();
+      return true;
+    }
+    else
+    {
+      /* reset fanout_infos of input_interfaces because num_edges may be modified by mark_occupied */
+      for ( auto ii : c.input_interfaces )
+        update_fanout_info( ii.o );
+      return false;
+    }
+  }
+
+  /* relative_depth of the lowest available spot in the fanout tree of n */
+  uint32_t lowest_spot( node const& n ) const
+  {
+    auto const& fanout_info = _fanouts[n];
+    assert( fanout_info.size() );
+    assert( _ntk.fanout_size( n ) != _external_ref_count[n] );
+    if ( fanout_info.size() == 1 )
+    {
+      assert( fanout_info.front().fanouts.size() == 1 );
+      return 1;
+    }
+    auto it = fanout_info.begin(); ++it;
+    while ( it != fanout_info.end() && it->num_edges == _ps.assume.splitter_capacity )
+      ++it;
+    if ( it == fanout_info.end() ) // full fanout tree
+      return fanout_info.back().relative_depth + 1;
+    --it; // the last full layer
+    return it->relative_depth + 1;
+  }
+
+  void mark_occupied( node const& n, uint32_t rd )
+  {
+    auto& fanout_info = _fanouts[n];
+    for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
+    {
+      if ( it->relative_depth == rd )
+      {
+        ++it->num_edges;
+        return;
+      }
+    }
+  }
+
+  bool analyze_chunk_up( chunk c )
+  {
+    for ( auto ii : c.input_interfaces )
+    {
+      if ( _fanouts[ii.o].back().relative_depth == _levels[ii.c] - _levels[ii.o] ) // is highest fanout
+        --c.benefits;
+    }
+
+    std::set<node> marked_oi;
+    for ( auto oi : c.output_interfaces )
+    {
+      if ( marked_oi.find( oi.c ) == marked_oi.end() )
+      {
+        marked_oi.insert( oi.c );
+        ++c.benefits;
+      }
+      auto const& fanout_info = _fanouts[oi.c];
+      if ( _ntk.fanout_size( oi.c ) == _external_ref_count[oi.c] ) // only POs
+        c.slack = std::min( c.slack, int32_t(_depth - _levels[oi.c] - num_splitter_levels( oi.c )) );
+      else if ( fanout_info.size() == 1 ) // single fanout
+        c.slack = std::min( c.slack, int32_t(fanout_info.front().relative_depth - 1) );
+      else
+        c.slack = std::min( c.slack, int32_t(_levels[oi.o] - _levels[oi.c] - 2) );
+    }
+
+    if ( c.benefits > 0 && c.slack > 0 )
+    {
+      count_buffers();
+      bool legal = true;
+      auto buffers_before = num_buffers();
+
+      for ( auto m : c.members )
+        _levels[m] += c.slack;
+      for ( auto m : c.members )
+      {
+        legal &= update_fanout_info<true>( m );
+        if (!legal) break;
+      }
+      if ( legal )
+      {
+        for ( auto ii : c.input_interfaces )
+          update_fanout_info( ii.o );
+      }
+      
+      _outdated = true;
+      if ( legal ) count_buffers();
+      if ( !legal || num_buffers() >= buffers_before )
+      {
+        /* UNDO */
+        for ( auto m : c.members )
+          _levels[m] -= c.slack;
+        for ( auto m : c.members )
+          update_fanout_info( m );
+        for ( auto ii : c.input_interfaces )
+          update_fanout_info( ii.o );
+        return false;
+      }
+
+      _start_id = _ntk.trav_id();
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  }
+
+  void adjust_depth()
+  {
+    if ( !_ps.assume.balance_pis )
+    {
+      auto min_level = std::numeric_limits<uint32_t>::max();
+      if ( _ps.assume.branch_pis )
+      {
+        _ntk.foreach_pi( [&]( auto n ){
+          min_level = std::min( min_level, _levels[n] );
+        });
+
+        if ( min_level != 0 )
+        {
+          _ntk.foreach_node( [&]( auto n ){
+            if ( !_ntk.is_constant( n ) )
+              _levels[n] -= min_level;
+          });
+        }
+      }
+      else
+      {
+        _ntk.foreach_gate( [&]( auto n ){
+          min_level = std::min( min_level, _levels[n] );
+        });
+
+        if ( min_level > 1 )
+        {
+          _ntk.foreach_gate( [&]( auto n ){
+            _levels[n] -= min_level - 1;
+          });
+        }
+      }
+    }
+
+    _depth = 0;
+    _ntk.foreach_po( [&]( auto f ){
+      _depth = std::max( _depth, _levels[_ntk.get_node( f )] + num_splitter_levels( _ntk.get_node( f ) ) );
+    });
+
+    _outdated = true;
   }
 #pragma endregion
 
@@ -869,103 +1301,15 @@ private:
 
   Ntk const& _ntk;
   buffer_insertion_params const _ps;
-  bool outdated{true};
+  bool _outdated{true};
 
   node_map<uint32_t, Ntk> _levels;
   uint32_t _depth{0u};
   node_map<fanouts_by_level, Ntk> _fanouts;
   node_map<uint32_t, Ntk> _external_ref_count;
   node_map<uint32_t, Ntk> _buffers;
+
+  uint32_t _start_id;
 }; /* buffer_insertion */
-
-namespace detail
-{
-
-template<class Ntk>
-void lift_fanin_buffers( Ntk& d, typename Ntk::node const& n )
-{
-  d.foreach_fanin( n, [&]( auto const& fi ) {
-    auto ni = d.get_node( fi );
-    uint32_t diff = d.level( n ) - d.level( ni ) - 1;
-    if ( diff != 0 && ( d.is_buf( ni ) || d.is_pi( ni ) ) )
-    {
-      d.set_level( ni, d.level( ni ) + diff );
-      lift_fanin_buffers( d, ni );
-    }
-  } );
-}
-
-} // namespace detail
-
-/*! \brief Verify a buffered network according to AQFP assumptions.
- * 
- * \param ntk Buffered network
- * \param ps AQFP constraints
- * \return Whether `ntk` is path-balanced and properly-branched
- */
-template<class Ntk>
-bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions const& ps )
-{
-  static_assert( is_buffered_network_type_v<Ntk>, "Ntk is not a buffered network" );
-  static_assert( has_is_buf_v<Ntk>, "Ntk does not implement the is_buf method" );
-  bool legal = true;
-
-  /* fanout branching */
-  ntk.foreach_node( [&]( auto const& n ) {
-    if ( ntk.is_constant( n ) )
-      return true;
-    if ( !ps.branch_pis && ntk.is_pi( n ) )
-      return true;
-
-    if ( ntk.is_buf( n ) )
-      legal &= ( ntk.fanout_size( n ) <= ps.splitter_capacity );
-    else /* logic gate */
-      legal &= ( ntk.fanout_size( n ) <= 1 );
-
-    return true;
-  } );
-
-  /* compute levels */
-  depth_view d{ntk};
-
-  /* adjust PI and their buffers */
-  if ( !ps.balance_pis )
-  {
-    ntk.foreach_gate( [&]( auto const& n ) {
-      detail::lift_fanin_buffers( d, n );
-    } );
-    if ( ps.balance_pos )
-    {
-      ntk.foreach_po( [&]( auto const& f ) {
-        auto n = ntk.get_node( f );
-        if ( ntk.is_buf( n ) && d.level( n ) != d.depth() )
-        {
-          d.set_level( n, d.depth() );
-          detail::lift_fanin_buffers( d, n );
-        }
-      } );
-    }
-  }
-
-  /* path balancing */
-  ntk.foreach_node( [&]( auto const& n ) {
-    ntk.foreach_fanin( n, [&]( auto const& fi ) {
-      auto ni = ntk.get_node( fi );
-      if ( !ntk.is_constant( ni ) && ( ps.balance_pis || !ntk.is_pi( ni ) ) )
-        legal &= ( d.level( ni ) == d.level( n ) - 1 );
-    } );
-  } );
-
-  if ( ps.balance_pos )
-  {
-    ntk.foreach_po( [&]( auto const& f ) {
-      auto n = ntk.get_node( f );
-      if ( !ntk.is_constant( n ) && ( ps.balance_pis || !ntk.is_pi( n ) ) )
-        legal &= ( d.level( n ) == d.depth() );
-    } );
-  }
-
-  return legal;
-}
 
 } // namespace mockturtle
