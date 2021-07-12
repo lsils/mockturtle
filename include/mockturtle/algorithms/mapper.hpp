@@ -2269,7 +2269,7 @@ private:
       /* match each gate and take the best one */
       for ( auto const& gate : *supergates.supergates[phase] )
       {
-        uint8_t complement = supergates.negation;
+        uint8_t complement = supergates.negation ^ gate.polarity;
         node_data.phase[phase] = complement;
         float area_local = gate.area + cut_leaves_flow( *cut, n, phase );
         float worst_arrival = 0.0f;
@@ -2337,7 +2337,7 @@ private:
         children[supergates.permutation[ctr++]] = l;
       }
 
-      best_phase = supergates.negation;
+      best_phase = node_data.phase[phase];
       best_arrival = 0.0f;
       best_area = best_supergate->area;
       best_cut = node_data.best_cut[phase];
@@ -2388,7 +2388,7 @@ private:
 
       for ( auto const& gate : *supergates.supergates[phase] )
       {
-        uint8_t complement = supergates.negation;
+        uint8_t complement = supergates.negation ^ gate.polarity;
         node_data.phase[phase] = complement;
         node_data.area[phase] = gate.area;
         auto area_exact = cut_ref( *cut, n, phase );
