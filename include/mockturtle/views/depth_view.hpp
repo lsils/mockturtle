@@ -236,9 +236,9 @@ public:
     _levels.resize();
   }
 
-  void create_po( signal const& f )
+  void create_po( signal const& f, std::string const& name = std::string() )
   {
-    Ntk::create_po( f );
+    Ntk::create_po( f, name );
     _depth = std::max( _depth, _levels[f] );
   }
 
