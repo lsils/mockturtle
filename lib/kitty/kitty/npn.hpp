@@ -262,6 +262,78 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_npn_canonization( const TT&
   return std::make_tuple( tmin, phase, perm );
 }
 
+/*! \brief Exact N canonization
+
+  Given a truth table, this function finds the lexicographically smallest truth
+  table in its N class, called N representative. Two functions are in the
+  same N class, if one can obtain one from the other by input negations.
+
+  The function can accept a callback as second parameter which is called for
+  every visited function when trying out all combinations.  This allows to
+  exhaustively visit the whole N class.
+
+  The function returns a N configuration which contains the necessary
+  transformations to obtain the representative.  It is a tuple of
+
+  - the N representative
+  - input negations that lead to the representative
+
+  \param tt The truth table
+  \param fn Callback for each visited truth table in the class (default does nothing)
+  \return N configurations
+*/
+template<typename TT, typename Callback = decltype( detail::exact_npn_canonization_null_callback<TT> )>
+std::tuple<TT, uint32_t> exact_n_canonization( const TT& tt, Callback&& fn = detail::exact_npn_canonization_null_callback<TT> )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  const auto num_vars = tt.num_vars();
+
+  /* Special case for n = 0 */
+  if ( num_vars == 0 )
+  {
+    return std::make_tuple( tt, 0 );
+  }
+
+  /* Special case for n = 1 */
+  if ( num_vars == 1 )
+  {
+    return std::make_tuple( tt, 0 );
+  }
+
+  assert( num_vars >= 2 && num_vars <= 6 );
+
+  auto t1 = tt;
+  auto tmin = t1;
+
+  fn( t1 );
+
+  const auto& flips = detail::flips[num_vars - 2u];
+  int best_flip = -1;
+
+  for ( std::size_t j = 0; j < flips.size(); ++j )
+  {
+    const auto pos = flips[j];
+    flip_inplace( t1, pos );
+
+    fn( t1 );
+
+    if ( t1 < tmin )
+    {
+      best_flip = static_cast<int>( j );
+      tmin = t1;
+    }
+  }
+
+  uint32_t phase = 0;
+  for ( auto i = 0; i <= best_flip; ++i )
+  {
+    phase ^= 1 << flips[i];
+  }
+
+  return std::make_tuple( tmin, phase );
+}
+
 /*! \brief Flip-swap NPN heuristic
 
   This algorithm will iteratively try to reduce the numeric value of the truth
@@ -623,6 +695,148 @@ void exact_np_enumeration( const TT& tt, Callback&& fn )
       fn( t1, phase, perm );
     }
   }
+}
+
+/*! \brief Exact P enumeration
+
+  Given a truth table, this function enumerates all the functions in its
+  P class. Two functions are in the same NP class, if one can be obtained
+  from the other by input negation and input permutation.
+
+  The function takes a callback as second parameter which is called for
+  every enumerated function. The callback should take as parameters:
+  - P-enumerated truth table
+  - input permutation to apply
+
+  \param tt Truth table
+  \param fn Callback for each enumerated truth table in the P class
+*/
+template<typename TT, typename Callback>
+void exact_p_enumeration( const TT& tt, Callback&& fn )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  const auto num_vars = tt.num_vars();
+
+  /* Special case for n = 0 */
+  if ( num_vars == 0 )
+  {
+    fn( tt, std::vector<uint8_t>{} );
+    return;
+  }
+
+  /* Special case for n = 1 */
+  if ( num_vars == 1 )
+  {
+    fn( tt, std::vector<uint8_t>{0} );
+    return;
+  }
+
+  assert( num_vars >= 2 && num_vars <= 6 );
+
+  auto t1 = tt;
+
+  std::vector<uint8_t> perm( num_vars );
+  std::iota( perm.begin(), perm.end(), 0u );
+
+  fn( t1, perm );
+
+  const auto& swaps = detail::swaps[num_vars - 2u];
+
+  for ( std::size_t i = 0; i < swaps.size(); ++i )
+  {
+    const auto pos = swaps[i];
+    swap_adjacent_inplace( t1, pos );
+
+    std::swap( perm[pos], perm[pos + 1] );
+
+    fn( t1, perm );
+  }
+}
+
+/*! \brief Exact N canonization complete
+
+  Given a truth table, this function finds the lexicographically smallest truth
+  table in its N class, called N representative. Two functions are in the
+  same N class, if one can obtain one from the other by input negations.
+
+  The function can accept a callback as second parameter which is called for
+  every visited function when trying out all combinations.  This allows to
+  exhaustively visit the whole N class.
+
+  The function returns all the N configurations which contains the necessary
+  transformations to obtain the representative.  It is a tuple of
+
+  - the N representative
+  - a vector of all input negations that lead to the representative
+
+  \param tt The truth table
+  \param fn Callback for each visited truth table in the class (default does nothing)
+  \return N configurations
+*/
+template<typename TT, typename Callback = decltype( detail::exact_npn_canonization_null_callback<TT> )>
+std::tuple<TT, std::vector<uint32_t>> exact_n_canonization_complete( const TT& tt, Callback&& fn = detail::exact_npn_canonization_null_callback<TT> )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  const auto num_vars = tt.num_vars();
+
+  /* Special case for n = 0 */
+  if ( num_vars == 0 )
+  {
+    return std::make_tuple( tt, std::vector<uint32_t>{0} );
+  }
+
+  /* Special case for n = 1 */
+  if ( num_vars == 1 )
+  {
+    return std::make_tuple( tt, std::vector<uint32_t>{0} );
+  }
+
+  assert( num_vars >= 2 && num_vars <= 6 );
+
+  auto t1 = tt;
+  auto tmin = t1;
+
+  fn( t1 );
+
+  const auto& flips = detail::flips[num_vars - 2u];
+
+  std::vector<int> best_flip {-1};
+
+  for ( std::size_t j = 0; j < flips.size(); ++j )
+  {
+    const auto pos = flips[j];
+    flip_inplace( t1, pos );
+
+    fn( t1 );
+
+    if ( t1 < tmin )
+    {
+      best_flip.erase( best_flip.begin() + 1, best_flip.end() );
+      best_flip[0] = static_cast<int>( j );
+      tmin = t1;
+    }
+    else if ( t1 == tmin )
+    {
+      best_flip.push_back( static_cast<int>( j ) );
+    }
+  }
+
+  std::vector<uint32_t> phases( best_flip.size() );
+  uint32_t phase = 0;
+  int cnt = 0;
+  for ( auto i = 0; i < best_flip.size(); ++i )
+  {
+    auto flip = best_flip[i];
+    for ( ; cnt <= flip; ++cnt )
+    {
+      phase ^= 1 << flips[cnt];
+    }
+    phases[i] = phase;
+  }
+
+  return std::make_tuple( tmin, phases );
 }
 
 /*! \brief Obtain truth table from NPN configuration

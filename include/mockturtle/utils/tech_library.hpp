@@ -73,6 +73,14 @@ std::string const mcnc_library =  "GATE   inv1    1 O=!a;           PIN * INV 1 
                                   "GATE   one     0 O=1;";
 */
 
+enum class classification_type : uint32_t
+{
+  /* generate the NP configurations (n! * 2^n) */
+  np_configurations = 0,
+  /* generate the P configurations (n!) and N-canonization */
+  p_configurations = 1,
+};
+
 struct tech_library_params
 {
   /*! \brief reports np enumerations */
@@ -118,7 +126,7 @@ struct supergate
       mockturtle::tech_library lib( gates );
    \endverbatim
  */
-template<unsigned NInputs = 4u>
+template<unsigned NInputs = 4u, classification_type Configuration = classification_type::np_configurations>
 class tech_library
 {
   using supergates_list_t = std::vector<supergate<NInputs>>;
@@ -252,14 +260,88 @@ private:
           v.insert( it, sg );
           ++np_count;
         }
-
-        /* check correct results */
-        // assert( gate.function == create_from_npn_config( std::make_tuple( tt, neg, sg.permutation ) ) );
       };
 
-      /* NP enumeration of the function */
-      const auto tt = gate.function;
-      kitty::exact_np_enumeration( tt, on_np );
+      const auto on_p = [&]( auto const& tt, auto const& perm ) {
+        /* get all the configurations that lead to the N-class representative */
+        auto [tt_canon, phases] = kitty::exact_n_canonization_complete( tt );
+
+        for( auto phase : phases )
+        {
+          supergate<NInputs> sg;
+          sg.root = &gate;
+          sg.area = gate.area;
+          sg.worstDelay = worst_delay;
+          sg.polarity = 0;
+          sg.permutation = perm;
+
+          for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
+          {
+            sg.tdelay[i] = worst_delay;   /* if pin-to-pin delay change to: gate.delay[perm[i]] */
+            sg.polarity |= phase;         /* permutate input negation to match the right pin */
+          }
+          for ( auto i = perm.size(); i < NInputs; ++i )
+          {
+            sg.tdelay[i] = 0; /* added for completeness but not necessary */
+          }
+
+          const auto static_tt = kitty::extend_to<NInputs>( tt_canon );
+
+          auto& v = _super_lib[static_tt];
+
+          /* ordered insert by ascending area and number of input pins */
+          auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 ) {
+            if ( s1.area < s2.area )
+              return true;
+            if ( s1.area > s2.area )
+              return false;
+            if ( s1.root->num_vars < s2.root->num_vars )
+              return true;
+            if ( s1.root->num_vars > s2.root->num_vars )
+              return true;
+            return s1.root->id < s2.root->id;
+          } );
+
+          bool to_add = true;
+          /* search for duplicated element due to symmetries */
+          while ( it != v.end() )
+          {
+            if ( sg.root->id == it->root->id )
+            {
+              /* if already in the library exit, else ignore permutations if with equal delay cost */
+              if ( sg.polarity == it->polarity && sg.tdelay == it->tdelay )
+              {
+                to_add = false;
+                break;
+              }
+            }
+            else
+            {
+              break;
+            }
+            ++it;
+          }
+
+          if ( to_add )
+          {
+            v.insert( it, sg );
+            ++np_count;
+          }
+        }
+      };
+
+      if constexpr ( Configuration == classification_type::np_configurations )
+      {
+        /* NP enumeration of the function */
+        const auto tt = gate.function;
+        kitty::exact_np_enumeration( tt, on_np );
+      }
+      else
+      {
+        /* P enumeration followed by N canonization of the function */
+        const auto tt = gate.function;
+        kitty::exact_p_enumeration( tt, on_p );
+      }
 
       if ( _ps.verbose )
       {
