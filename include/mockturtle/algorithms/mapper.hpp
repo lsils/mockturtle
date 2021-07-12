@@ -1072,7 +1072,6 @@ private:
     }
   }
 
-  __attribute__((always_inline))
   inline void set_match_complemented_phase( uint32_t index, uint8_t phase, double worst_arrival_n )
   {
     auto& node_data = node_match[index];
@@ -1132,7 +1131,6 @@ private:
     }
   }
 
-  __attribute__((always_inline))
   inline double cut_leaves_flow( cut_t const& cut, node<Ntk> const& n, uint8_t phase )
   {
     double flow{ 0.0f };
@@ -1389,7 +1387,6 @@ private:
   }
 
   template<bool DO_AREA>
-  __attribute__((always_inline))
   inline bool compare_map( double arrival, double best_arrival, double area_flow, double best_area_flow, uint32_t size, uint32_t best_size )
   {
     if constexpr ( DO_AREA )
@@ -2800,7 +2797,6 @@ private:
     }
   }
 
-  __attribute__((always_inline))
   inline void set_match_complemented_phase( uint32_t index, uint8_t phase, float worst_arrival_n )
   {
     auto& node_data = node_match[index];
@@ -2816,7 +2812,6 @@ private:
     node_data.flows[2] = node_data.flows[phase];
   }
 
-  __attribute__((always_inline))
   inline float cut_leaves_flow( cut_t const& cut, node<Ntk> const& n, uint8_t phase )
   {
     float flow{ 0.0f };
@@ -2946,7 +2941,6 @@ private:
   }
 
   template<bool DO_AREA>
-  __attribute__((always_inline))
   inline bool compare_map( float arrival, float best_arrival, float area_flow, float best_area_flow, uint32_t size, uint32_t best_size )
   {
     if constexpr ( DO_AREA )
