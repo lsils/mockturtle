@@ -799,4 +799,52 @@ std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Sim
   return po_values;
 }
 
+/*! \brief Simulates a buffered network
+ *
+ * The implementation is only slightly different from `simulate` by
+ * replacing `foreach_gate` with `foreach_node` and checking `fanin_size`
+ * because buffers are not counted as gates but still need to be simulated.
+ */
+template<uint32_t NumPIs, class Ntk>
+std::vector<kitty::static_truth_table<NumPIs>> simulate_buffered( Ntk const& ntk )
+{
+  static_assert( has_is_buf_v<Ntk>, "Ntk is not a buffered network type" );
+  static_assert( has_compute_v<Ntk, kitty::static_truth_table<NumPIs>>, "Ntk does not implement the compute function for static_truth_table" );
+  assert( ntk.num_pis() == NumPIs );
+
+  default_simulator<kitty::static_truth_table<NumPIs>> sim;
+  node_map<kitty::static_truth_table<NumPIs>, Ntk> node_to_value( ntk );
+  node_to_value[ntk.get_node( ntk.get_constant( false ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  {
+    node_to_value[ntk.get_node( ntk.get_constant( true ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( true ) ) ) );
+  }
+  ntk.foreach_pi( [&]( auto const& n, auto i ) {
+    node_to_value[n] = sim.compute_pi( i );
+  } );
+  ntk.foreach_node( [&]( auto const& n ) {
+    if ( ntk.fanin_size( n ) > 0 )
+    {
+      std::vector<kitty::static_truth_table<NumPIs>> fanin_values( ntk.fanin_size( n ) );
+      ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+        fanin_values[i] = node_to_value[f];
+      } );
+      node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
+    }
+  } );
+
+  std::vector<kitty::static_truth_table<NumPIs>> po_values( ntk.num_pos() );
+  ntk.foreach_po( [&]( auto const& f, auto i ) {
+    if ( ntk.is_complemented( f ) )
+    {
+      po_values[i] = sim.compute_not( node_to_value[f] );
+    }
+    else
+    {
+      po_values[i] = node_to_value[f];
+    }
+  } );
+  return po_values;
+}
+
 } // namespace mockturtle

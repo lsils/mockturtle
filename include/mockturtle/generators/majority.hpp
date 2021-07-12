@@ -31,6 +31,8 @@
   \author Mathias Soeken
 */
 
+#pragma once
+
 #include <algorithm>
 #include <array>
 

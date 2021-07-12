@@ -120,6 +120,21 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
 
   assert( ntk.is_combinational() && "Network has to be combinational" );
 
+  lorina::verilog_writer writer( os );
+
+  if constexpr ( is_buffered_network_type_v<Ntk> )
+  {
+    writer.on_module_begin( "buffer", {"i"}, {"o"} );
+    writer.on_input( "i" );
+    writer.on_output( "o" );
+    writer.on_module_end();
+
+    writer.on_module_begin( "inverter", {"i"}, {"o"} );
+    writer.on_input( "i" );
+    writer.on_output( "o" );
+    writer.on_module_end();
+  }
+
   std::vector<std::string> xs, inputs;
   if ( ps.input_names.empty() )
   {
@@ -171,11 +186,22 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   }
 
   std::vector<std::string> ws;
-  ntk.foreach_gate( [&]( auto const& n ) {
-    ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
-  } );
 
-  lorina::verilog_writer writer( os );
+  if constexpr ( is_buffered_network_type_v<Ntk> )
+  {
+    static_assert( has_is_buf_v<Ntk>, "Ntk does not implement the is_buf method" );
+    ntk.foreach_node( [&]( auto const& n ) {
+      if ( ntk.fanin_size( n ) > 0 )
+        ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
+    } );
+  }
+  else
+  {
+    ntk.foreach_gate( [&]( auto const& n ) {
+      ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
+    } );
+  }
+
   writer.on_module_begin( ps.module_name, inputs, outputs );
   if ( ps.input_names.empty() )
   {
@@ -221,6 +247,29 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
 
     /* assign a name */
     node_names[n] = fmt::format( "n{}", ntk.node_to_index( n ) );
+
+    if constexpr ( has_is_buf_v<Ntk> )
+    {
+      if ( ntk.is_buf( n ) )
+      {
+        auto const fanin = detail::format_fanin<Ntk>( ntk, n, node_names );
+        assert( fanin.size() == 1 );
+        std::vector<std::pair<std::string,std::string>> args;
+        if ( fanin[0].first ) /* input negated */
+        {
+          args.emplace_back( std::make_pair( "i", fanin[0].second ) );
+          args.emplace_back( std::make_pair( "o", node_names[n] ) );
+          writer.on_module_instantiation( "inverter", {}, "inv_" + node_names[n], args );
+        }
+        else
+        {
+          args.emplace_back( std::make_pair( "i", fanin[0].second ) );
+          args.emplace_back( std::make_pair( "o", node_names[n] ) );
+          writer.on_module_instantiation( "buffer", {}, "buf_" + node_names[n], args );
+        }
+        return true;
+      }
+    }
 
     if ( ntk.is_and( n ) )
     {

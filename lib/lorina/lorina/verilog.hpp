@@ -646,6 +646,39 @@ public:
     _os << "endmodule" << std::endl;
   }
 
+  /*! \brief Callback method for writing a module instantiation.
+   *
+   * \param module_name Module name
+   * \param params List of parameters
+   * \param inst_name Instance name
+   * \param args List of arguments (first: I/O pin name, second: wire name)
+   */
+  virtual void on_module_instantiation( std::string const& module_name, std::vector<std::string> const& params, std::string const& inst_name,
+                                        std::vector<std::pair<std::string,std::string>> const& args ) const
+  {
+    _os << fmt::format( "  {} ", module_name );
+    if ( params.size() > 0u )
+    {
+      _os << "#(";
+      for ( auto i = 0u; i < params.size(); ++i )
+      {
+        _os << params.at( i );
+        if ( i + 1 < params.size() )
+          _os << ", ";
+      }
+      _os << ")";
+    }
+
+    _os << fmt::format( " {}( ", inst_name );
+    for ( auto i = 0u; i < args.size(); ++i )
+    {
+      _os << fmt::format( ".{} ({})", args.at( i ).first, args.at( i ).second );
+      if ( i + 1 < args.size() )
+        _os << ", ";
+    }
+    _os << " );\n";
+  }
+
   /*! \brief Callback method for writing an assignment statement.
    *
    * \param out Output signal
@@ -714,6 +747,13 @@ protected:
  */
 class verilog_parser
 {
+public:
+  struct module_info
+  {
+    std::vector<std::string> inputs;
+    std::vector<std::string> outputs;
+  };
+
 public:
   /*! \brief Construct a VERILOG parser
    *
@@ -858,11 +898,25 @@ public:
     return true;
   }
 
+  bool parse_modules()
+  {
+    while ( get_token( token ) )
+    {
+      if ( token != "module" )
+      {
+        return false;
+      }
+
+      if ( !parse_module() )
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+
   bool parse_module()
   {
-    valid = get_token( token );
-    if ( !valid ) return false;
-
     bool success = parse_module_header();
     if ( !success )
     {
@@ -1005,7 +1059,7 @@ public:
     valid = get_token( token );
     if ( !valid ) return false;
 
-    std::string module_name = token;
+    module_name = token;
 
     valid = get_token( token );
     if ( !valid || token != "(" ) return false;
@@ -1069,6 +1123,7 @@ public:
 
     /* callback */
     reader.on_inputs( inputs, size );
+    modules[module_name].inputs = inputs;
 
     for ( const auto& i : inputs )
       on_action.declare_known( i );
@@ -1124,6 +1179,7 @@ public:
 
     /* callback */
     reader.on_outputs( outputs, size );
+    modules[module_name].outputs = outputs;
 
     return true;
   }
@@ -1203,7 +1259,6 @@ public:
       return false;
 
     const std::string lhs = token;
-
     valid = get_token( token );
     if ( !valid || token != "=" ) return false;
 
@@ -1220,13 +1275,28 @@ public:
     }
 
     if ( token != ";" ) return false;
-
     return true;
   }
 
   bool parse_module_instantiation()
   {
-    std::string const module_name = token; // name of module
+    bool success = true;
+    std::string const module_name{token}; // name of module
+
+    auto const it = modules.find( module_name );
+    if ( it == std::end( modules ) )
+    {
+      if ( diag )
+      {
+        diag->report( diag_id::ERR_VERILOG_MODULE_INSTANTIATION_UNDECLARED_MODULE )
+          .add_argument( module_name );
+      }
+      return false;
+    }
+
+    /* get module info */
+    auto const& info = modules[module_name];
+
     valid = get_token( token );
     if ( !valid ) return false;
 
@@ -1247,10 +1317,10 @@ public:
       } while ( valid && token == "," );
 
       if ( !valid || token != ")" ) return false;
-    }
 
-    valid = get_token( token );
-    if ( !valid ) return false;
+      valid = get_token( token );
+      if ( !valid ) return false;
+    }
 
     std::string const inst_name = token; // name of instantiation
 
@@ -1261,8 +1331,23 @@ public:
     do
     {
       valid = get_token( token );
-      if ( !valid ) return false; // referes to signal
-      auto const arg0 = token;
+
+      if ( !valid ) return false; // refers to signal
+      std::string const arg0{token};
+
+      /* check if a signal with this name exists in the module declaration */
+      if ( ( std::find( std::begin( info.inputs ), std::end( info.inputs ), arg0.substr( 1, arg0.size() ) ) == std::end( info.inputs ) ) &&
+           ( std::find( std::begin( info.outputs ), std::end( info.outputs ), arg0.substr( 1, arg0.size() ) ) == std::end( info.outputs ) ) )
+      {
+        if ( diag )
+        {
+          diag->report( diag_id::ERR_VERILOG_MODULE_INSTANTIATION_UNDECLARED_PIN )
+            .add_argument( arg0.substr( 1, arg0.size() ) )
+            .add_argument( module_name );
+        }
+
+        success = false;
+      }
 
       valid = get_token( token );
       if ( !valid || token != "(" ) return false; // (
@@ -1278,6 +1363,10 @@ public:
       if ( !valid ) return false;
 
       args.emplace_back( std::make_pair( arg0, arg1 ) );
+      if ( std::find( std::begin( info.outputs ), std::end( info.outputs ), arg0 ) == std::end( info.outputs ) )
+      {
+        on_action.declare_known( arg1 );
+      }
     } while ( token == "," );
 
     if ( !valid || token != ")" ) return false;
@@ -1288,7 +1377,7 @@ public:
     /* callback */
     reader.on_module_instantiation( module_name, params, inst_name, args );
 
-    return true;
+    return success;
   }
 
   bool parse_rhs_expression( const std::string& lhs )
@@ -1419,10 +1508,12 @@ private:
 
   std::string token;
   std::queue<std::string> tokens; /* lookahead */
+  std::string module_name;
 
   bool valid = false;
 
   detail::call_in_topological_order<std::vector<std::pair<std::string,bool>>, std::string, std::string> on_action;
+  std::unordered_map<std::string, module_info> modules;
 }; /* verilog_parser */
 
 /*! \brief Reader function for VERILOG format.
@@ -1438,7 +1529,7 @@ private:
 [[nodiscard]] inline return_code read_verilog( std::istream& in, const verilog_reader& reader, diagnostic_engine* diag = nullptr )
 {
   verilog_parser parser( in, reader, diag );
-  auto result = parser.parse_module();
+  auto result = parser.parse_modules();
   if ( !result )
   {
     return return_code::parse_error;
