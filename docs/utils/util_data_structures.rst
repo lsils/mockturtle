@@ -34,6 +34,37 @@ Node map
 
 .. doxygenfunction:: mockturtle::initialize_copy_network
 
+Tech Library
+~~~~~~~~~~~~
+
+**Header:** ``mockturtle/utils/tech_library.hpp``
+
+.. doc_overview_table:: classmockturtle_1_1tech__library
+   :column: Method
+
+   get_supergates
+   get_inverter_info
+   max_gate_size
+   get_gates
+
+.. doxygenclass:: mockturtle::tech_library
+   :members:
+
+Exact Library
+~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/utils/tech_library.hpp``
+
+.. doc_overview_table:: classmockturtle_1_1exact__library
+   :column: Method
+
+   get_supergates
+   get_database
+   get_inverter_info
+
+.. doxygenclass:: mockturtle::exact_library
+   :members:
+
 Cuts
 ~~~~
 

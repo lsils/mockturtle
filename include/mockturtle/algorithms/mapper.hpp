@@ -52,10 +52,10 @@
 namespace mockturtle
 {
 
-/*! \brief Parameters for lut_mapping.
+/*! \brief Parameters for map.
  *
- * The data structure `lut_mapping_params` holds configurable parameters
- * with default arguments for `lut_mapping`.
+ * The data structure `map_params` holds configurable parameters
+ * with default arguments for `map`.
  */
 struct map_params
 {
@@ -67,14 +67,15 @@ struct map_params
 
   /*! \brief Parameters for cut enumeration
    *
-   * The default cut size is 4, the default cut limit is 8.
+   * The default cut limit is 49. By default,
+   * truth table minimization is performed.
    */
   cut_enumeration_params cut_enumeration_ps{};
 
   /*! \brief Required time for delay optimization. */
   double required_time{ 0.0f };
 
-  /*! \brief Do area optimization. */
+  /*! \brief Skip delay round for area optimization. */
   bool skip_delay_round{ false };
 
   /*! \brief Number of rounds for area flow optimization. */
@@ -89,7 +90,7 @@ struct map_params
   /*! \brief Number of patterns for switching activity computation. */
   uint32_t switching_activity_patterns{ 2048u };
 
-  /*! \brief Exploit logic sharing in exact area optimization. */
+  /*! \brief Exploit logic sharing in exact area optimization of graph mapping. */
   bool enable_logic_sharing{ false };
 
   /*! \brief Maximum number of cuts evaluated for logic sharing. */
@@ -101,18 +102,21 @@ struct map_params
 
 /*! \brief Statistics for mapper.
  *
- * The data structure `mapper_stats` provides data collected by running
- * `mapper`.
+ * The data structure `map_stats` provides data collected by running
+ * `map`.
  */
 struct map_stats
 {
-  /*! \brief Area, delay, and power results. */
+  /*! \brief Area result. */
   double area{ 0 };
+  /*! \brief Worst delay result. */
   double delay{ 0 };
+  /*! \brief Power result. */
   double power{ 0 };
 
-  /*! \brief Runtime. */
+  /*! \brief Runtime for covering. */
   stopwatch<>::duration time_mapping{ 0 };
+  /*! \brief Total runtime. */
   stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Cut enumeration stats. */
@@ -268,7 +272,7 @@ public:
       }
     }
 
-    /* compute mapping using exact area */
+    /* compute mapping using exact switching activity estimation */
     while ( iteration < ps.eswp_rounds + ps.ela_rounds + ps.area_flow_rounds + 1 )
     {
       compute_required_time();
@@ -1595,6 +1599,8 @@ private:
  * See `include/mockturtle/algorithms/cut_enumeration/cut_enumeration_tech_map_cut.hpp`
  * for one example of a CutData type that implements the cost function that is used in
  * the technology mapper.
+ * 
+ * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
  *
@@ -3031,6 +3037,8 @@ private:
  * See `include/mockturtle/algorithms/cut_enumeration/cut_enumeration_exact_map_cut.hpp`
  * for one example of a CutData type that implements the cost function that is used in
  * the technology mapper.
+ * 
+ * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a mapped network representation generated using the exact
  * synthesis entries in the `exact_library`.
@@ -3064,6 +3072,8 @@ NtkDest map( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& libra
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_incr_value_v<NtkDest>, "Ntk does not implement the incr_value method" );
+  static_assert( has_decr_value_v<NtkDest>, "Ntk does not implement the decr_value method" );
 
   map_stats st;
   detail::exact_map_impl<NtkDest, CutSize, CutData, Ntk, RewritingFn, NInputs> p( ntk, library, ps, st );

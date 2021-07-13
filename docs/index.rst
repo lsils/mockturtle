@@ -27,6 +27,7 @@ Welcome to mockturtle's documentation!
    :maxdepth: 2
    :caption: Algorithms
 
+   algorithms/mapper
    algorithms/lut_mapping
    algorithms/collapse_mapped
    algorithms/node_resynthesis

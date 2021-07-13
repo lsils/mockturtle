@@ -107,7 +107,7 @@ int main()
 
     map_params ps1;
     ps1.skip_delay_round = true;
-    ps1.required_time = std::numeric_limits<float>::max();
+    ps1.required_time = std::numeric_limits<double>::max();
     map_stats st1;
 
     mig_network res1 = map( aig, exact_lib, ps1, &st1 );

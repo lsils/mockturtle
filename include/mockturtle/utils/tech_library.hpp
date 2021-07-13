@@ -109,11 +109,17 @@ struct supergate
   uint8_t polarity{ 0 };
 };
 
-/*! \brief Library of np-enumerated gates
+/*! \brief Library of gates for Boolean matching
  *
  * This class creates a technology library from a set
- * of input gates. Each NP-configuration of each gate
- * is enumerated and inserted in the library.
+ * of input gates. Each NP- or P-configuration of the gates
+ * are enumerated and inserted in the library.
+ * 
+ * The configuration is selected using the template
+ * parameter `Configuration`. P-configuration is suggested
+ * for libraries with more than 20 gates. The template parameter
+ * `NInputs` selects the maximum number of variables
+ * allowed for a gate in the library.
  *
    \verbatim embed:rst
 
@@ -142,6 +148,11 @@ public:
     generate_library();
   }
 
+  /*! \brief Get the gates matching the function.
+   *
+   * Returns a list of gates that match the function represented
+   * by the truth table.
+   */
   const supergates_list_t* get_supergates( kitty::static_truth_table<NInputs> const& tt ) const
   {
     auto match = _super_lib.find( tt );
@@ -150,16 +161,22 @@ public:
     return nullptr;
   }
 
+  /*! \brief Get inverter information.
+   *
+   * Returns area, delay, and ID of the smallest inverter.
+   */
   const std::tuple<float, float, uint32_t> get_inverter_info() const
   {
     return std::make_tuple( _inv_area, _inv_delay, _inv_id );
   }
 
+  /*! \brief Returns the maximum number of variables of the gates. */
   unsigned max_gate_size()
   {
     return _max_size;
   }
 
+  /*! \brief Returns the original gates. */
   const std::vector<gate> get_gates() const
   {
     return _gates;
@@ -433,12 +450,12 @@ struct exact_library_params
   bool verbose{ false };
 };
 
-/*! \brief Library of exact synthesis supergates
+/*! \brief Library of graph structures for Boolean matching
  *
- * This class creates a technology library from an exact
- * synthesis database. Each NPN-entry in the database is
- * stored in its NP class by removing the output inverter
- * if present. The class creates supergates from the
+ * This class creates a technology library from a database
+ * of structures classified in NPN classes. Each NPN-entry in
+ * the database is stored in its NP class by removing the output
+ * inverter if present. The class creates supergates from the
  * database computing area and delay information.
  *
    \verbatim embed:rst
@@ -448,7 +465,7 @@ struct exact_library_params
    .. code-block:: c++
 
       mockturtle::mig_npn_resynthesis mig_resyn{true};
-      mockturtle::exact_library<mockturtle::mig_network, mockturtle::mig_npn_resynthesis, 4> lib( mig_resyn );
+      mockturtle::exact_library<mockturtle::mig_network, mockturtle::mig_npn_resynthesis> lib( mig_resyn );
    \endverbatim
  */
 template<typename Ntk, class RewritingFn, unsigned NInputs = 4u>
@@ -468,6 +485,11 @@ public:
     generate_library();
   }
 
+  /*! \brief Get the structures matching the function.
+   *
+   * Returns a list of graph structures that match the function
+   * represented by the truth table.
+   */
   const supergates_list_t* get_supergates( kitty::static_truth_table<NInputs> const& tt ) const
   {
     auto match = _super_lib.find( tt );
@@ -476,11 +498,16 @@ public:
     return nullptr;
   }
 
+  /*! \brief Returns the NPN database of structures. */
   const Ntk& get_database() const
   {
     return _database;
   }
 
+  /*! \brief Get inverter information.
+   *
+   * Returns area, and delay cost of the inverter.
+   */
   const std::tuple<float, float> get_inverter_info() const
   {
     return std::make_pair( _ps.area_inverter, _ps.delay_inverter );
