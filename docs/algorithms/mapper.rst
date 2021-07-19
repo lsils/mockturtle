@@ -1,5 +1,5 @@
 Mapper
------------
+------
 
 **Header:** ``mockturtle/algorithms/mapper.hpp``
 
