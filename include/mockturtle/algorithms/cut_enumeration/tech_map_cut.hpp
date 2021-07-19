@@ -43,6 +43,7 @@
 namespace mockturtle
 {
 
+/*! \brief Cut implementation for technology mapping */
 struct cut_enumeration_tech_map_cut
 {
   uint32_t delay{ 0 };

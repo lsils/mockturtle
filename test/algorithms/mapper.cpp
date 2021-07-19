@@ -89,7 +89,7 @@ TEST_CASE( "Map of bad MAJ3 and constant output", "[mapper]" )
   CHECK( st.delay == 2.0f );
 }
 
-TEST_CASE( "Map of full adder", "[mapper]" )
+TEST_CASE( "Map of full adder 1", "[mapper]" )
 {
   std::vector<gate> gates;
 
@@ -109,6 +109,42 @@ TEST_CASE( "Map of full adder", "[mapper]" )
   aig.create_po( carry );
 
   map_params ps;
+  map_stats st;
+  klut_network luts = map( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( luts.size() == 8u );
+  CHECK( luts.num_pis() == 3u );
+  CHECK( luts.num_pos() == 2u );
+  CHECK( luts.num_gates() == 3u );
+  CHECK( st.area > 13.0f - eps );
+  CHECK( st.area < 13.0f + eps );
+  CHECK( st.delay > 3.8f - eps );
+  CHECK( st.delay < 3.8f + eps );
+}
+
+TEST_CASE( "Map of full adder 2", "[mapper]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3, classification_type::p_configurations> lib( gates );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto [sum, carry] = full_adder( aig, a, b, c );
+  aig.create_po( sum );
+  aig.create_po( carry );
+
+  map_params ps;
+  ps.cut_enumeration_ps.minimize_truth_table = false;
   map_stats st;
   klut_network luts = map( aig, lib, ps, &st );
 
@@ -202,7 +238,7 @@ TEST_CASE( "Map of buffer and constant outputs", "[mapper]" )
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
   CHECK( result == lorina::return_code::success );
 
-  tech_library<3> lib( gates );
+  tech_library<3, classification_type::np_configurations> lib( gates );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -298,7 +334,7 @@ TEST_CASE( "Exact map of full adder", "[mapper]" )
   CHECK( st.delay == 2.0f );
 }
 
-TEST_CASE( "Exact map should avoid cycles", "[mapping]" )
+TEST_CASE( "Exact map should avoid cycles", "[mapper]" )
 {
   using resyn_fn = xag_npn_resynthesis<aig_network>;
 
@@ -334,7 +370,7 @@ TEST_CASE( "Exact map should avoid cycles", "[mapping]" )
   CHECK( st.delay == 3.0f );
 }
 
-TEST_CASE( "Exact map with logic sharing", "[mapping]" )
+TEST_CASE( "Exact map with logic sharing", "[mapper]" )
 {
   using resyn_fn = xag_npn_resynthesis<aig_network>;
 

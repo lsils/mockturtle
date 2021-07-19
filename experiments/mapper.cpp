@@ -47,7 +47,7 @@ std::string const mcnc_library = "GATE   inv1    1 O=!a;           PIN * INV 1 9
                                  "GATE   inv3    3 O=!a;           PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
                                  "GATE   inv4    4 O=!a;           PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
                                  "GATE   nand2   2 O=!(ab);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                 "GATE   nand3   3 O=!(abc);	      PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
+                                 "GATE   nand3   3 O=!(abc);	     PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
                                  "GATE   nand4   4 O=!(abcd);      PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
                                  "GATE   nor2    2 O=!{ab};        PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
                                  "GATE   nor3    3 O=!{abc};       PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
@@ -91,7 +91,7 @@ int main()
   }
 
   tech_library_params tps;
-  tech_library tech_lib( gates, tps );
+  tech_library<5, classification_type::np_configurations> tech_lib( gates, tps );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -107,12 +107,13 @@ int main()
 
     map_params ps1;
     ps1.skip_delay_round = true;
-    ps1.required_time = std::numeric_limits<float>::max();
+    ps1.required_time = std::numeric_limits<double>::max();
     map_stats st1;
 
     mig_network res1 = map( aig, exact_lib, ps1, &st1 );
 
     map_params ps2;
+    ps2.cut_enumeration_ps.minimize_truth_table = false;
     map_stats st2;
 
     klut_network res2 = map( aig, tech_lib, ps2, &st2 );

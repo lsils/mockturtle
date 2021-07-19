@@ -73,6 +73,14 @@ std::string const mcnc_library =  "GATE   inv1    1 O=!a;           PIN * INV 1 
                                   "GATE   one     0 O=1;";
 */
 
+enum class classification_type : uint32_t
+{
+  /* generate the NP configurations (n! * 2^n) */
+  np_configurations = 0,
+  /* generate the P configurations (n!) and N-canonization */
+  p_configurations = 1,
+};
+
 struct tech_library_params
 {
   /*! \brief reports np enumerations */
@@ -101,11 +109,17 @@ struct supergate
   uint8_t polarity{ 0 };
 };
 
-/*! \brief Library of np-enumerated gates
+/*! \brief Library of gates for Boolean matching
  *
  * This class creates a technology library from a set
- * of input gates. Each NP-configuration of each gate
- * is enumerated and inserted in the library.
+ * of input gates. Each NP- or P-configuration of the gates
+ * are enumerated and inserted in the library.
+ * 
+ * The configuration is selected using the template
+ * parameter `Configuration`. P-configuration is suggested
+ * for libraries with more than 20 gates. The template parameter
+ * `NInputs` selects the maximum number of variables
+ * allowed for a gate in the library.
  *
    \verbatim embed:rst
 
@@ -118,7 +132,7 @@ struct supergate
       mockturtle::tech_library lib( gates );
    \endverbatim
  */
-template<unsigned NInputs = 4u>
+template<unsigned NInputs = 4u, classification_type Configuration = classification_type::np_configurations>
 class tech_library
 {
   using supergates_list_t = std::vector<supergate<NInputs>>;
@@ -134,6 +148,11 @@ public:
     generate_library();
   }
 
+  /*! \brief Get the gates matching the function.
+   *
+   * Returns a list of gates that match the function represented
+   * by the truth table.
+   */
   const supergates_list_t* get_supergates( kitty::static_truth_table<NInputs> const& tt ) const
   {
     auto match = _super_lib.find( tt );
@@ -142,16 +161,22 @@ public:
     return nullptr;
   }
 
+  /*! \brief Get inverter information.
+   *
+   * Returns area, delay, and ID of the smallest inverter.
+   */
   const std::tuple<float, float, uint32_t> get_inverter_info() const
   {
     return std::make_tuple( _inv_area, _inv_delay, _inv_id );
   }
 
+  /*! \brief Returns the maximum number of variables of the gates. */
   unsigned max_gate_size()
   {
     return _max_size;
   }
 
+  /*! \brief Returns the original gates. */
   const std::vector<gate> get_gates() const
   {
     return _gates;
@@ -252,14 +277,88 @@ private:
           v.insert( it, sg );
           ++np_count;
         }
-
-        /* check correct results */
-        // assert( gate.function == create_from_npn_config( std::make_tuple( tt, neg, sg.permutation ) ) );
       };
 
-      /* NP enumeration of the function */
-      const auto tt = gate.function;
-      kitty::exact_np_enumeration( tt, on_np );
+      const auto on_p = [&]( auto const& tt, auto const& perm ) {
+        /* get all the configurations that lead to the N-class representative */
+        auto [tt_canon, phases] = kitty::exact_n_canonization_complete( tt );
+
+        for( auto phase : phases )
+        {
+          supergate<NInputs> sg;
+          sg.root = &gate;
+          sg.area = gate.area;
+          sg.worstDelay = worst_delay;
+          sg.polarity = 0;
+          sg.permutation = perm;
+
+          for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
+          {
+            sg.tdelay[i] = worst_delay;   /* if pin-to-pin delay change to: gate.delay[perm[i]] */
+            sg.polarity |= phase;         /* permutate input negation to match the right pin */
+          }
+          for ( auto i = perm.size(); i < NInputs; ++i )
+          {
+            sg.tdelay[i] = 0; /* added for completeness but not necessary */
+          }
+
+          const auto static_tt = kitty::extend_to<NInputs>( tt_canon );
+
+          auto& v = _super_lib[static_tt];
+
+          /* ordered insert by ascending area and number of input pins */
+          auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 ) {
+            if ( s1.area < s2.area )
+              return true;
+            if ( s1.area > s2.area )
+              return false;
+            if ( s1.root->num_vars < s2.root->num_vars )
+              return true;
+            if ( s1.root->num_vars > s2.root->num_vars )
+              return true;
+            return s1.root->id < s2.root->id;
+          } );
+
+          bool to_add = true;
+          /* search for duplicated element due to symmetries */
+          while ( it != v.end() )
+          {
+            if ( sg.root->id == it->root->id )
+            {
+              /* if already in the library exit, else ignore permutations if with equal delay cost */
+              if ( sg.polarity == it->polarity && sg.tdelay == it->tdelay )
+              {
+                to_add = false;
+                break;
+              }
+            }
+            else
+            {
+              break;
+            }
+            ++it;
+          }
+
+          if ( to_add )
+          {
+            v.insert( it, sg );
+            ++np_count;
+          }
+        }
+      };
+
+      if constexpr ( Configuration == classification_type::np_configurations )
+      {
+        /* NP enumeration of the function */
+        const auto tt = gate.function;
+        kitty::exact_np_enumeration( tt, on_np );
+      }
+      else
+      {
+        /* P enumeration followed by N canonization of the function */
+        const auto tt = gate.function;
+        kitty::exact_p_enumeration( tt, on_p );
+      }
 
       if ( _ps.verbose )
       {
@@ -351,12 +450,12 @@ struct exact_library_params
   bool verbose{ false };
 };
 
-/*! \brief Library of exact synthesis supergates
+/*! \brief Library of graph structures for Boolean matching
  *
- * This class creates a technology library from an exact
- * synthesis database. Each NPN-entry in the database is
- * stored in its NP class by removing the output inverter
- * if present. The class creates supergates from the
+ * This class creates a technology library from a database
+ * of structures classified in NPN classes. Each NPN-entry in
+ * the database is stored in its NP class by removing the output
+ * inverter if present. The class creates supergates from the
  * database computing area and delay information.
  *
    \verbatim embed:rst
@@ -366,7 +465,7 @@ struct exact_library_params
    .. code-block:: c++
 
       mockturtle::mig_npn_resynthesis mig_resyn{true};
-      mockturtle::exact_library<mockturtle::mig_network, mockturtle::mig_npn_resynthesis, 4> lib( mig_resyn );
+      mockturtle::exact_library<mockturtle::mig_network, mockturtle::mig_npn_resynthesis> lib( mig_resyn );
    \endverbatim
  */
 template<typename Ntk, class RewritingFn, unsigned NInputs = 4u>
@@ -386,6 +485,11 @@ public:
     generate_library();
   }
 
+  /*! \brief Get the structures matching the function.
+   *
+   * Returns a list of graph structures that match the function
+   * represented by the truth table.
+   */
   const supergates_list_t* get_supergates( kitty::static_truth_table<NInputs> const& tt ) const
   {
     auto match = _super_lib.find( tt );
@@ -394,11 +498,16 @@ public:
     return nullptr;
   }
 
+  /*! \brief Returns the NPN database of structures. */
   const Ntk& get_database() const
   {
     return _database;
   }
 
+  /*! \brief Get inverter information.
+   *
+   * Returns area, and delay cost of the inverter.
+   */
   const std::tuple<float, float> get_inverter_info() const
   {
     return std::make_pair( _ps.area_inverter, _ps.delay_inverter );

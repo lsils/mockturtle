@@ -42,7 +42,7 @@ std::string const test_library =  "GATE   inv1    3 O=!a;           PIN * INV 3 
                                   "GATE   zero    0 O=0;\n"
                                   "GATE   one     0 O=1;";
 
-TEST_CASE( "Simple library generation", "[tech_library]" )
+TEST_CASE( "Simple library generation 1", "[tech_library]" )
 {
   std::vector<gate> gates;
 
@@ -51,7 +51,7 @@ TEST_CASE( "Simple library generation", "[tech_library]" )
   
   CHECK( result == lorina::return_code::success );
 
-  tech_library<2> lib( gates );
+  tech_library<2, classification_type::np_configurations> lib( gates );
 
   CHECK( lib.max_gate_size() == 2 );
   CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 0.9f, 0u ) );
@@ -118,6 +118,61 @@ TEST_CASE( "Simple library generation", "[tech_library]" )
   CHECK( ( *nand_e )[0].polarity == 3u );
 }
 
+TEST_CASE( "Simple library generation 2", "[tech_library]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( simple_test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<2, classification_type::p_configurations> lib( gates );
+
+  CHECK( lib.max_gate_size() == 2 );
+  CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 0.9f, 0u ) );
+
+  kitty::static_truth_table<2> tt;
+
+  kitty::create_from_hex_string( tt, "5" );
+  auto const inv = lib.get_supergates( tt );
+  CHECK( inv != nullptr );
+  CHECK( inv->size() == 2 );
+  CHECK( ( *inv )[0].root->name == "inv1" );
+  CHECK( ( *inv )[0].area == 1.0f );
+  CHECK( ( *inv )[0].worstDelay == 0.9f );
+  CHECK( ( *inv )[0].tdelay[0] == 0.9f );
+  CHECK( ( *inv )[0].polarity == 0u );
+  CHECK( ( *inv )[1].root->name == "inv2" );
+  CHECK( ( *inv )[1].area == 2.0f );
+  CHECK( ( *inv )[1].worstDelay == 1.0f );
+  CHECK( ( *inv )[1].tdelay[0] == 1.0f );
+  CHECK( ( *inv )[1].polarity == 0u );
+
+  kitty::create_from_hex_string( tt, "7" );
+  auto const nand_7 = lib.get_supergates( tt );
+  CHECK( nand_7 != nullptr );
+  CHECK( nand_7->size() == 1 );
+  CHECK( ( *nand_7 )[0].root->name == "nand2" );
+  CHECK( ( *nand_7 )[0].area == 2.0f );
+  CHECK( ( *nand_7 )[0].worstDelay == 1.0f );
+  CHECK( ( *nand_7 )[0].tdelay[0] == 1.0f );
+  CHECK( ( *nand_7 )[0].tdelay[1] == 1.0f );
+  CHECK( ( *nand_7 )[0].polarity == 0u );
+
+  kitty::create_from_hex_string( tt, "b" );
+  auto const nand_b = lib.get_supergates( tt );
+  CHECK( nand_b == nullptr );
+
+  kitty::create_from_hex_string( tt, "d" );
+  auto const nand_d = lib.get_supergates( tt );
+  CHECK( nand_d == nullptr );
+
+  kitty::create_from_hex_string( tt, "e" );
+  auto const nand_e = lib.get_supergates( tt );
+  CHECK( nand_e == nullptr );
+}
+
 TEST_CASE( "Complete library generation", "[tech_library]" )
 {
   std::vector<gate> gates;
@@ -127,7 +182,7 @@ TEST_CASE( "Complete library generation", "[tech_library]" )
   
   CHECK( result == lorina::return_code::success );
 
-  tech_library<4> lib( gates );
+  tech_library<4, classification_type::np_configurations> lib( gates );
 
   CHECK( lib.max_gate_size() == 4 );
   CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 0.9f, 2u ) );

@@ -641,7 +641,7 @@ template<typename Ntk, uint32_t NumVars, bool ComputeTruth, typename CutData>
 struct fast_network_cuts
 {
 public:
-  static constexpr uint32_t max_cut_num = 26;
+  static constexpr uint32_t max_cut_num = 50;
   using cut_t = cut_type<ComputeTruth, CutData>;
   using cut_set_t = cut_set<cut_t, max_cut_num>;
   static constexpr bool compute_truth = ComputeTruth;

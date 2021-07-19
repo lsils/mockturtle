@@ -52,29 +52,30 @@
 namespace mockturtle
 {
 
-/*! \brief Parameters for lut_mapping.
+/*! \brief Parameters for map.
  *
- * The data structure `lut_mapping_params` holds configurable parameters
- * with default arguments for `lut_mapping`.
+ * The data structure `map_params` holds configurable parameters
+ * with default arguments for `map`.
  */
 struct map_params
 {
   map_params()
   {
-    cut_enumeration_ps.cut_limit = 25;
+    cut_enumeration_ps.cut_limit = 49;
     cut_enumeration_ps.minimize_truth_table = true;
   }
 
   /*! \brief Parameters for cut enumeration
    *
-   * The default cut size is 4, the default cut limit is 8.
+   * The default cut limit is 49. By default,
+   * truth table minimization is performed.
    */
   cut_enumeration_params cut_enumeration_ps{};
 
   /*! \brief Required time for delay optimization. */
   double required_time{ 0.0f };
 
-  /*! \brief Do area optimization. */
+  /*! \brief Skip delay round for area optimization. */
   bool skip_delay_round{ false };
 
   /*! \brief Number of rounds for area flow optimization. */
@@ -89,7 +90,7 @@ struct map_params
   /*! \brief Number of patterns for switching activity computation. */
   uint32_t switching_activity_patterns{ 2048u };
 
-  /*! \brief Exploit logic sharing in exact area optimization. */
+  /*! \brief Exploit logic sharing in exact area optimization of graph mapping. */
   bool enable_logic_sharing{ false };
 
   /*! \brief Maximum number of cuts evaluated for logic sharing. */
@@ -101,18 +102,21 @@ struct map_params
 
 /*! \brief Statistics for mapper.
  *
- * The data structure `mapper_stats` provides data collected by running
- * `mapper`.
+ * The data structure `map_stats` provides data collected by running
+ * `map`.
  */
 struct map_stats
 {
-  /*! \brief Area, delay, and power results. */
+  /*! \brief Area result. */
   double area{ 0 };
+  /*! \brief Worst delay result. */
   double delay{ 0 };
+  /*! \brief Power result. */
   double power{ 0 };
 
-  /*! \brief Runtime. */
+  /*! \brief Runtime for covering. */
   stopwatch<>::duration time_mapping{ 0 };
+  /*! \brief Total runtime. */
   stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Cut enumeration stats. */
@@ -150,6 +154,15 @@ namespace detail
 {
 
 template<unsigned NInputs>
+struct cut_match_tech
+{
+  /* list of supergates matching the cut for positive and negative output phases */
+  std::array<std::vector<supergate<NInputs>> const*, 2> supergates = { nullptr, nullptr };
+  /* input negations, 0: pos, 1: neg */
+  std::array<uint8_t, 2> negations{ 0, 0 };
+};
+
+template<unsigned NInputs>
 struct node_match_tech
 {
   /* best gate match for positive and negative output phases */
@@ -176,17 +189,17 @@ struct node_match_tech
   float flows[3];
 };
 
-template<class Ntk, unsigned CutSize, typename CutData, unsigned NInputs>
+template<class Ntk, unsigned CutSize, typename CutData, unsigned NInputs, classification_type Configuration>
 class tech_map_impl
 {
 public:
   using network_cuts_t = fast_network_cuts<Ntk, CutSize, true, CutData>;
   using cut_t = typename network_cuts_t::cut_t;
-  using supergate_t = std::array<std::vector<supergate<NInputs>> const*, 2>;
+  using match_map = std::unordered_map<uint32_t, std::vector<cut_match_tech<NInputs>>>;
   using klut_map = std::unordered_map<uint32_t, std::array<signal<klut_network>, 2>>;
 
 public:
-  explicit tech_map_impl( Ntk const& ntk, tech_library<NInputs> const& library, map_params const& ps, map_stats& st )
+  explicit tech_map_impl( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, map_params const& ps, map_stats& st )
       : ntk( ntk ),
         library( library ),
         ps( ps ),
@@ -199,7 +212,7 @@ public:
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
   }
 
-  explicit tech_map_impl( Ntk const& ntk, tech_library<NInputs> const& library, std::vector<float> const& switch_activity, map_params const& ps, map_stats& st )
+  explicit tech_map_impl( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, std::vector<float> const& switch_activity, map_params const& ps, map_stats& st )
       : ntk( ntk ),
         library( library ),
         ps( ps ),
@@ -259,7 +272,7 @@ public:
       }
     }
 
-    /* compute mapping using exact area */
+    /* compute mapping using exact switching activity estimation */
     while ( iteration < ps.eswp_rounds + ps.ela_rounds + ps.area_flow_rounds + 1 )
     {
       compute_required_time();
@@ -308,7 +321,7 @@ private:
     ntk.foreach_gate( [&]( auto const& n ) {
       const auto index = ntk.node_to_index( n );
 
-      std::vector<supergate_t> node_matches;
+      std::vector<cut_match_tech<NInputs>> node_matches;
 
       auto i = 0u;
       for ( auto& cut : cuts.cuts( index ) )
@@ -327,11 +340,36 @@ private:
         }
         const auto tt = cuts.truth_table( *cut );
         const auto fe = kitty::shrink_to<NInputs>( tt );
-        auto const supergates_pos = library.get_supergates( fe );
-        auto const supergates_neg = library.get_supergates( ~fe );
+        auto fe_canon = fe;
+
+        uint8_t negations_pos = 0;
+        uint8_t negations_neg = 0;
+
+        /* match positive polarity */
+        if constexpr ( Configuration == classification_type::p_configurations )
+        {
+          auto canon = kitty::exact_n_canonization( fe );
+          fe_canon = std::get<0>( canon );
+          negations_pos = std::get<1>( canon );
+        }
+        auto const supergates_pos = library.get_supergates( fe_canon );
+
+        /* match negative polarity */
+        if constexpr ( Configuration == classification_type::p_configurations )
+        {
+          auto canon = kitty::exact_n_canonization( ~fe );
+          fe_canon = std::get<0>( canon );
+          negations_neg = std::get<1>( canon );
+        }
+        else
+        {
+          fe_canon = ~fe;
+        }
+        auto const supergates_neg = library.get_supergates( fe_canon );
+
         if ( supergates_pos != nullptr || supergates_neg != nullptr )
         {
-          supergate_t match{ supergates_pos, supergates_neg };
+          cut_match_tech<NInputs> match { { supergates_pos, supergates_neg }, {negations_pos, negations_neg} };
 
           node_matches.push_back( match );
           ( *cut )->data.match_index = i++;
@@ -715,7 +753,8 @@ private:
         continue;
       }
 
-      auto const& supergates = cut_matches[( *cut )->data.match_index];
+      auto const& supergates = cut_matches[( *cut )->data.match_index].supergates;
+      auto const negation = cut_matches[( *cut )->data.match_index].negations[phase];
 
       if ( supergates[phase] == nullptr )
       {
@@ -726,14 +765,15 @@ private:
       /* match each gate and take the best one */
       for ( auto const& gate : *supergates[phase] )
       {
-        node_data.phase[phase] = gate.polarity;
+        uint8_t gate_polarity = gate.polarity ^ negation;
+        node_data.phase[phase] = gate_polarity;
         double area_local = gate.area + cut_leaves_flow( *cut, n, phase );
         double worst_arrival = 0.0f;
 
         auto ctr = 0u;
         for ( auto l : *cut )
         {
-          double arrival_pin = node_match[l].arrival[( gate.polarity >> ctr ) & 1] + gate.tdelay[ctr];
+          double arrival_pin = node_match[l].arrival[( gate_polarity >> ctr ) & 1] + gate.tdelay[ctr];
           worst_arrival = std::max( worst_arrival, arrival_pin );
           ++ctr;
         }
@@ -751,7 +791,7 @@ private:
           best_size = cut->size();
           best_cut = cut_index;
           best_area = gate.area;
-          best_phase = gate.polarity;
+          best_phase = gate_polarity;
           best_supergate = &gate;
         }
       }
@@ -824,7 +864,8 @@ private:
         continue;
       }
 
-      auto const& supergates = cut_matches[( *cut )->data.match_index];
+      auto const& supergates = cut_matches[( *cut )->data.match_index].supergates;
+      auto const negation = cut_matches[( *cut )->data.match_index].negations[phase];
 
       if ( supergates[phase] == nullptr )
       {
@@ -835,7 +876,8 @@ private:
       /* match each gate and take the best one */
       for ( auto const& gate : *supergates[phase] )
       {
-        node_data.phase[phase] = gate.polarity;
+        uint8_t gate_polarity = gate.polarity ^ negation;
+        node_data.phase[phase] = gate_polarity;
         node_data.area[phase] = gate.area;
         float area_exact = cut_ref<SwitchActivity>( *cut, n, phase );
         cut_deref<SwitchActivity>( *cut, n, phase );
@@ -844,7 +886,7 @@ private:
         auto ctr = 0u;
         for ( auto l : *cut )
         {
-          double arrival_pin = node_match[l].arrival[( gate.polarity >> ctr ) & 1] + gate.tdelay[ctr];
+          double arrival_pin = node_match[l].arrival[( gate_polarity >> ctr ) & 1] + gate.tdelay[ctr];
           worst_arrival = std::max( worst_arrival, arrival_pin );
           ++ctr;
         }
@@ -859,7 +901,7 @@ private:
           best_area = gate.area;
           best_size = cut->size();
           best_cut = cut_index;
-          best_phase = gate.polarity;
+          best_phase = gate_polarity;
           best_supergate = &gate;
         }
       }
@@ -1328,29 +1370,19 @@ private:
     auto const& node_data = node_match[index];
     auto& best_cut = cuts.cuts( index )[node_data.best_cut[phase]];
     auto const gate = node_data.best_supergate[phase]->root;
-    // auto tt = cuts.truth_table( best_cut );
-
-    /* check correctness */
-    /* invert the truth table if using the negative phase */
-    // if ( phase == 1 )
-    //   tt = ~tt;
-    // uint32_t neg = 0;
-    // for ( auto i = 0u; i < best_cut.size(); ++i )
-    // {
-    //   neg |= ( ( node_data.phase[phase] >> i ) & 1 ) << node_data.best_supergate[phase]->permutation[i];
-    // }
-    // auto check_tt = kitty::create_from_npn_config( std::make_tuple( tt, neg, node_data.best_supergate[phase]->permutation ) );
-    // assert( gate->function == check_tt );
 
     /* permutate and negate to obtain the matched gate truth table */
-    std::vector<signal<klut_network>> children( best_cut.size() );
+    std::vector<signal<klut_network>> children( gate->num_vars );
 
     auto ctr = 0u;
     for ( auto l : best_cut )
     {
+      if ( ctr >= gate->num_vars)
+        break;
       children[node_data.best_supergate[phase]->permutation[ctr]] = old2new[l][( node_data.phase[phase] >> ctr ) & 1];
       ++ctr;
     }
+
     /* create the node */
     auto f = res.create_node( children, gate->function );
 
@@ -1526,7 +1558,7 @@ private:
 
 private:
   Ntk const& ntk;
-  tech_library<NInputs> const& library;
+  tech_library<NInputs, Configuration> const& library;
   map_params const& ps;
   map_stats& st;
 
@@ -1542,7 +1574,7 @@ private:
 
   std::vector<node<Ntk>> top_order;
   std::vector<node_match_tech<NInputs>> node_match;
-  std::unordered_map<uint32_t, std::vector<supergate_t>> matches;
+  match_map matches;
   std::vector<float> switch_activity;
   network_cuts_t cuts;
 };
@@ -1567,6 +1599,8 @@ private:
  * See `include/mockturtle/algorithms/cut_enumeration/cut_enumeration_tech_map_cut.hpp`
  * for one example of a CutData type that implements the cost function that is used in
  * the technology mapper.
+ * 
+ * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
  *
@@ -1589,8 +1623,8 @@ private:
  * The implementation of this algorithm was inspired by the
  * mapping command ``map`` in ABC.
  */
-template<class Ntk, unsigned CutSize = 5u, typename CutData = cut_enumeration_tech_map_cut, unsigned NInputs>
-klut_network map( Ntk const& ntk, tech_library<NInputs> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
+template<class Ntk, unsigned CutSize = 5u, typename CutData = cut_enumeration_tech_map_cut, unsigned NInputs, classification_type Configuration>
+klut_network map( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -1604,7 +1638,7 @@ klut_network map( Ntk const& ntk, tech_library<NInputs> const& library, map_para
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
 
   map_stats st;
-  detail::tech_map_impl<Ntk, CutSize, CutData, NInputs> p( ntk, library, ps, st );
+  detail::tech_map_impl<Ntk, CutSize, CutData, NInputs, Configuration> p( ntk, library, ps, st );
   auto res = p.run();
 
   st.time_total = st.time_mapping + st.cut_enumeration_st.time_total;
@@ -2238,7 +2272,7 @@ private:
       /* match each gate and take the best one */
       for ( auto const& gate : *supergates.supergates[phase] )
       {
-        uint8_t complement = supergates.negation;
+        uint8_t complement = supergates.negation ^ gate.polarity;
         node_data.phase[phase] = complement;
         float area_local = gate.area + cut_leaves_flow( *cut, n, phase );
         float worst_arrival = 0.0f;
@@ -2306,7 +2340,7 @@ private:
         children[supergates.permutation[ctr++]] = l;
       }
 
-      best_phase = supergates.negation;
+      best_phase = node_data.phase[phase];
       best_arrival = 0.0f;
       best_area = best_supergate->area;
       best_cut = node_data.best_cut[phase];
@@ -2357,7 +2391,7 @@ private:
 
       for ( auto const& gate : *supergates.supergates[phase] )
       {
-        uint8_t complement = supergates.negation;
+        uint8_t complement = supergates.negation ^ gate.polarity;
         node_data.phase[phase] = complement;
         node_data.area[phase] = gate.area;
         auto area_exact = cut_ref( *cut, n, phase );
@@ -3003,6 +3037,8 @@ private:
  * See `include/mockturtle/algorithms/cut_enumeration/cut_enumeration_exact_map_cut.hpp`
  * for one example of a CutData type that implements the cost function that is used in
  * the technology mapper.
+ * 
+ * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a mapped network representation generated using the exact
  * synthesis entries in the `exact_library`.
@@ -3036,6 +3072,8 @@ NtkDest map( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& libra
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_incr_value_v<NtkDest>, "Ntk does not implement the incr_value method" );
+  static_assert( has_decr_value_v<NtkDest>, "Ntk does not implement the decr_value method" );
 
   map_stats st;
   detail::exact_map_impl<NtkDest, CutSize, CutData, Ntk, RewritingFn, NInputs> p( ntk, library, ps, st );
