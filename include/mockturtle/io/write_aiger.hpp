@@ -82,21 +82,22 @@ inline void encode( std::vector<unsigned char>& buffer, uint32_t lit )
  * \param aig Combinational AIG network
  * \param os Output stream
  */
-inline void write_aiger( aig_network const& aig, std::ostream& os )
+template<typename Ntk>
+inline void write_aiger( Ntk const& aig, std::ostream& os )
 {
-  static_assert( is_network_type_v<aig_network>, "Ntk is not a network type" );
-  static_assert( has_num_cis_v<aig_network>, "Ntk does not implement the num_cis method" );
-  static_assert( has_num_cos_v<aig_network>, "Ntk does not implement the num_cos method" );
-  static_assert( has_foreach_gate_v<aig_network>, "Ntk does not implement the foreach_gate method" );
-  static_assert( has_foreach_fanin_v<aig_network>, "Ntk does not implement the foreach_fanin method" );
-  static_assert( has_foreach_po_v<aig_network>, "Ntk does not implement the foreach_po method" );
-  static_assert( has_get_node_v<aig_network>, "Ntk does not implement the get_node method" );
-  static_assert( has_is_complemented_v<aig_network>, "Ntk does not implement the is_complemented method" );
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_num_cis_v<Ntk>, "Ntk does not implement the num_cis method" );
+  static_assert( has_num_cos_v<Ntk>, "Ntk does not implement the num_cos method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
 
   assert( aig.is_combinational() && "Network has to be combinational" );
 
-  using node = aig_network::node;
-  using signal = aig_network::signal;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
   assert( aig.num_latches() == 0u );
   uint32_t const M = aig.num_cis() + aig.num_gates() + aig.num_latches();
@@ -139,6 +140,32 @@ inline void write_aiger( aig_network const& aig, std::ostream& os )
     os.put( b );
   }
 
+  /* symbol table */
+  if constexpr( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+  {
+    aig.foreach_pi( [&]( node const& i, uint32_t index ){
+      if ( !aig.has_name( aig.make_signal( i ) ) )
+        return;
+
+      sprintf( string_buffer, "i%u %s\n",
+               uint32_t( index ),
+               aig.get_name( aig.make_signal( i ) ).c_str() );
+      os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) );
+    } );
+  }
+  if constexpr( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
+  {
+    aig.foreach_po( [&]( signal const& f, uint32_t index ){
+      if ( !aig.has_output_name( index ) )
+        return;
+
+      sprintf( string_buffer, "o%u %s\n",
+               uint32_t( index ),
+               aig.get_output_name( index ).c_str() );
+      os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) );
+    } );
+  }
+
   /* COMMENT */
   os.put( 'c' );
 }
@@ -161,7 +188,8 @@ inline void write_aiger( aig_network const& aig, std::ostream& os )
  * \param aig Combinational AIG network
  * \param filename Filename
  */
-inline void write_aiger( aig_network const& aig, std::string const& filename )
+template<typename Ntk>
+inline void write_aiger( Ntk const& aig, std::string const& filename )
 {
   std::ofstream os( filename.c_str(), std::ofstream::out );
   write_aiger( aig, os );
