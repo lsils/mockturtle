@@ -41,6 +41,7 @@
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/tech_library.hpp"
+#include "../views/binding_view.hpp"
 #include "../views/depth_view.hpp"
 #include "../views/topo_view.hpp"
 #include "cut_enumeration.hpp"
@@ -225,7 +226,7 @@ public:
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
   }
 
-  klut_network run()
+  binding_view<klut_network> run()
   {
     stopwatch t( st.time_mapping );
 
@@ -1288,9 +1289,9 @@ private:
     return count;
   }
 
-  std::pair<klut_network, klut_map> initialize_map_network()
+  std::pair<binding_view<klut_network>, klut_map> initialize_map_network()
   {
-    klut_network dest;
+    binding_view<klut_network> dest( library.get_gates() );
     klut_map old2new;
 
     old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][0] = dest.get_constant( false );
@@ -1302,7 +1303,7 @@ private:
     return { dest, old2new };
   }
 
-  void finalize_cover( klut_network& res, klut_map& old2new )
+  void finalize_cover( binding_view<klut_network>& res, klut_map& old2new )
   {
     ntk.foreach_node( [&]( auto const& n ) {
       if ( ntk.is_constant( n ) )
@@ -1314,7 +1315,10 @@ private:
       if ( ntk.is_pi( n ) )
       {
         if ( node_match[index].map_refs[1] > 0 )
+        {
           old2new[index][1] = res.create_not( old2new[n][0] );
+          res.add_binding( res.get_node( old2new[index][1] ), lib_inv_id );
+        }
         return true;
       }
 
@@ -1329,10 +1333,14 @@ private:
       if ( node_data.same_match || node_data.map_refs[phase] > 0 )
       {
         create_lut_for_gate( res, old2new, index, phase );
+        res.add_binding( res.get_node( old2new[index][phase] ), node_match[index].best_supergate[phase]->root->id );
 
         /* add inverted version if used */
         if ( node_data.same_match && node_data.map_refs[phase ^ 1] > 0 )
+        {
           old2new[index][phase ^ 1] = res.create_not( old2new[index][phase] );
+          res.add_binding( res.get_node( old2new[index][phase ^ 1] ), lib_inv_id );
+        }
       }
 
       phase = phase ^ 1;
@@ -1340,6 +1348,7 @@ private:
       if ( !node_data.same_match && node_data.map_refs[phase] > 0 )
       {
         create_lut_for_gate( res, old2new, index, phase );
+        res.add_binding( res.get_node( old2new[index][phase] ), node_match[index].best_supergate[phase]->root->id );
       }
 
       return true;
@@ -1365,7 +1374,7 @@ private:
     compute_gates_usage();
   }
 
-  void create_lut_for_gate( klut_network& res, klut_map& old2new, uint32_t index, unsigned phase )
+  void create_lut_for_gate( binding_view<klut_network>& res, klut_map& old2new, uint32_t index, unsigned phase )
   {
     auto const& node_data = node_match[index];
     auto& best_cut = cuts.cuts( index )[node_data.best_cut[phase]];
@@ -1624,7 +1633,7 @@ private:
  * mapping command ``map`` in ABC.
  */
 template<class Ntk, unsigned CutSize = 5u, typename CutData = cut_enumeration_tech_map_cut, unsigned NInputs, classification_type Configuration>
-klut_network map( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
+binding_view<klut_network> map( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
