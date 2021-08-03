@@ -211,6 +211,7 @@ public:
         cuts( fast_cut_enumeration<Ntk, CutSize, true, CutData>( ntk, ps.cut_enumeration_ps, &st.cut_enumeration_st ) )
   {
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
+    std::tie( lib_buf_area, lib_buf_delay, lib_buf_id ) = library.get_buffer_info();
   }
 
   explicit tech_map_impl( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, std::vector<float> const& switch_activity, map_params const& ps, map_stats& st )
@@ -224,6 +225,7 @@ public:
         cuts( fast_cut_enumeration<Ntk, NInputs, true, CutData>( ntk, ps.cut_enumeration_ps, &st.cut_enumeration_st ) )
   {
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
+    std::tie( lib_buf_area, lib_buf_delay, lib_buf_id ) = library.get_buffer_info();
   }
 
   binding_view<klut_network> run()
@@ -282,6 +284,9 @@ public:
         return res;
       }
     }
+
+    /* insert buffers for POs driven by PIs */
+    insert_buffers();
 
     /* generate the output network */
     finalize_cover( res, old2new );
@@ -1289,6 +1294,37 @@ private:
     return count;
   }
 
+  void insert_buffers()
+  {
+    if ( lib_buf_id != UINT32_MAX )
+    {
+      double area_old = area;
+      bool buffers = false;
+
+      ntk.foreach_po( [&]( auto const& f ) {
+        auto const& n = ntk.get_node( f );
+        if ( !ntk.is_constant( n ) && ntk.is_pi( n ) && !ntk.is_complemented( f ) )
+        {
+          area += lib_buf_area;
+          delay = std::max( delay, node_match[ntk.node_to_index( n )].arrival[0] + lib_inv_delay );
+          buffers = true;
+        }
+      } );
+
+      /* round stats */
+      if ( ps.verbose && buffers )
+      {
+        std::stringstream stats{};
+        float area_gain = 0.0f;
+
+        area_gain = float( ( area_old - area ) / area_old * 100 );
+
+        stats << fmt::format( "[i] Buffering: Delay = {:>12.2f}  Area = {:>12.2f}  {:>5.2f} %\n", delay, area, area_gain );
+        st.round_stats.push_back( stats.str() );
+      }
+    }
+  }
+
   std::pair<binding_view<klut_network>, klut_map> initialize_map_network()
   {
     binding_view<klut_network> dest( library.get_gates() );
@@ -1306,15 +1342,18 @@ private:
   void finalize_cover( binding_view<klut_network>& res, klut_map& old2new )
   {
     ntk.foreach_node( [&]( auto const& n ) {
-      if ( ntk.is_constant( n ) )
-        return true;
-
       auto index = ntk.node_to_index( n );
+      auto const& node_data = node_match[index];
 
       /* add inverter at PI if needed */
-      if ( ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) )
       {
-        if ( node_match[index].map_refs[1] > 0 )
+        if ( node_data.best_supergate[0] == nullptr && node_data.best_supergate[1] == nullptr )
+          return true;
+      }
+      else if ( ntk.is_pi( n ) )
+      {
+        if ( node_data.map_refs[1] > 0 )
         {
           old2new[index][1] = res.create_not( old2new[n][0] );
           res.add_binding( res.get_node( old2new[index][1] ), lib_inv_id );
@@ -1323,10 +1362,9 @@ private:
       }
 
       /* continue if cut is not in the cover */
-      if ( node_match[index].map_refs[2] == 0u )
+      if ( node_data.map_refs[2] == 0u )
         return true;
 
-      auto const& node_data = node_match[index];
       unsigned phase = ( node_data.best_supergate[0] != nullptr ) ? 0 : 1;
 
       /* add used cut */
@@ -1359,6 +1397,16 @@ private:
       if ( ntk.is_complemented( f ) )
       {
         res.create_po( old2new[ntk.node_to_index( ntk.get_node( f ) )][1] );
+      }
+      else if ( !ntk.is_constant( ntk.get_node( f ) ) && ntk.is_pi( ntk.get_node( f ) ) && lib_buf_id != UINT32_MAX )
+      {
+        /* create buffers for POs */
+        static uint64_t _buf = 0x2;
+        kitty::dynamic_truth_table tt_buf( 1 );
+        kitty::create_from_words( tt_buf, &_buf, &_buf + 1 );
+        auto buf = res.create_node( { old2new[ntk.node_to_index( ntk.get_node( f ) )][0] }, tt_buf );
+        res.create_po( buf );
+        res.add_binding( buf, lib_buf_id );
       }
       else
       {
@@ -1493,6 +1541,17 @@ private:
       return true;
     } );
 
+    if ( lib_buf_id != UINT32_MAX )
+    {
+      ntk.foreach_po( [&]( auto const& f ) {
+        auto const& n = ntk.get_node( f );
+        if ( !ntk.is_constant( n ) && ntk.is_pi( n ) && !ntk.is_complemented( f ) )
+        {
+          ++gates_profile[lib_buf_id];
+        }
+      } );
+    }
+
     std::stringstream gates_usage;
     double tot_area = 0.0f;
     uint32_t tot_instances = 0u;
@@ -1580,6 +1639,11 @@ private:
   float lib_inv_area;
   float lib_inv_delay;
   uint32_t lib_inv_id;
+
+  /* lib buffer info */
+  float lib_buf_area;
+  float lib_buf_delay;
+  uint32_t lib_buf_id;
 
   std::vector<node<Ntk>> top_order;
   std::vector<node_match_tech<NInputs>> node_match;

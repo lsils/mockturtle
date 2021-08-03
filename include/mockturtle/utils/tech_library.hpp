@@ -170,6 +170,15 @@ public:
     return std::make_tuple( _inv_area, _inv_delay, _inv_id );
   }
 
+  /*! \brief Get buffer information.
+   *
+   * Returns area, delay, and ID of the smallest buffer.
+   */
+  const std::tuple<float, float, uint32_t> get_buffer_info() const
+  {
+    return std::make_tuple( _buf_area, _buf_delay, _buf_id );
+  }
+
   /*! \brief Returns the maximum number of variables of the gates. */
   unsigned max_gate_size()
   {
@@ -186,6 +195,7 @@ private:
   void generate_library()
   {
     bool inv = false;
+    bool buf = false;
 
     for ( auto& gate : _gates )
     {
@@ -209,6 +219,17 @@ private:
             _inv_delay = worst_delay;
             _inv_id = gate.id;
             inv = true;
+          }
+        }
+        else
+        {
+          /* get the smallest area buffer */
+          if ( !buf || gate.area < _buf_area )
+          {
+            _buf_area = gate.area;
+            _buf_delay = worst_delay;
+            _buf_id = gate.id;
+            buf = true;
           }
         }
       }
@@ -371,6 +392,11 @@ private:
       std::cerr << "[i] WARNING: inverter gate has not been detected in the library" << std::endl;
     }
 
+    if ( !buf )
+    {
+      std::cerr << "[i] WARNING: buffer gate has not been detected in the library" << std::endl;
+    }
+
     if ( _ps.very_verbose )
     {
       for ( auto const& entry : _super_lib )
@@ -404,6 +430,11 @@ private:
   float _inv_area{ 0.0 };
   float _inv_delay{ 0.0 };
   uint32_t _inv_id{ UINT32_MAX };
+
+  /* buffer info */
+  float _buf_area{ 0.0 };
+  float _buf_delay{ 0.0 };
+  uint32_t _buf_id{ UINT32_MAX };
 
   unsigned _max_size{ 0 }; /* max #fanins of the gates in the library */
 
