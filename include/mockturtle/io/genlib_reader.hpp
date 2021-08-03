@@ -28,6 +28,7 @@
   \brief Reader visitor for GENLIB files
 
   \author Heinz Riener
+  \author Alessandro Tempia Calvino
 */
 
 #pragma once
@@ -90,32 +91,36 @@ public:
     : gates( gates )
   {}
 
-  virtual void on_gate( std::string const& name, std::string const& expression, double area, std::vector<lorina::pin_spec> const& ps ) const override
+  virtual void on_gate( std::string const& name, std::string const& expression, uint32_t num_vars, double area, std::vector<lorina::pin_spec> const& ps ) const override
   {
-    uint32_t num_vars{0};
-    for ( const auto& c : expression )
-    {
-      if ( c >= 'a' && c <= 'z' )
-      {
-        uint32_t const var = 1 + ( c - 'a' );
-        if ( var > num_vars )
-        {
-          num_vars = var;
-        }
-      }
-    }
-
     kitty::dynamic_truth_table tt{num_vars};
     create_from_expression( tt, expression );
 
     std::vector<pin> pp;
-    for ( const auto& p : ps )
+
+    if ( ps.size() == 1 && ps[0].name == "*" )
     {
-      pp.emplace_back( pin{p.name,
-                           phase_type( static_cast<uint8_t>( p.phase ) ),
-                           p.input_load, p.max_load,
-                           p.rise_block_delay, p.rise_fanout_delay, p.fall_block_delay, p.fall_fanout_delay} );
+      char pin_name = 'a';
+      for ( auto i = 0; i < num_vars; ++i )
+      {
+        pp.emplace_back( pin{std::string( 1, pin_name ),
+                             phase_type( static_cast<uint8_t>( ps[0].phase ) ),
+                             ps[0].input_load, ps[0].max_load,
+                             ps[0].rise_block_delay, ps[0].rise_fanout_delay, ps[0].fall_block_delay, ps[0].fall_fanout_delay} );
+        ++pin_name;
+      }
     }
+    else
+    {
+      for ( const auto& p : ps )
+      {
+        pp.emplace_back( pin{p.name,
+                             phase_type( static_cast<uint8_t>( p.phase ) ),
+                             p.input_load, p.max_load,
+                             p.rise_block_delay, p.rise_fanout_delay, p.fall_block_delay, p.fall_fanout_delay} );
+      }
+    }
+
     gates.emplace_back( gate{static_cast<unsigned int>( gates.size() ), name,
                              expression, num_vars, tt, area, pp} );
   }

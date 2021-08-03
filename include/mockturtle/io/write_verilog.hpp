@@ -517,17 +517,17 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
 
     if ( ntk.has_binding( n ) )
     {
-      std::string name = gates[ntk.get_binding_index( n )].name;
+      auto const& gate = gates[ntk.get_binding_index( n )];
+      std::string name = gate.name;
 
       int digits = counter == 0 ? 0 : ( int ) std::floor( std::log10( counter ) );
       auto fanin_names = detail::format_fanin<binding_view<Ntk>>( ntk, n, node_names );
       std::vector<std::pair<std::string,std::string>> args;
 
-      char pin_name = 'a';
+      auto i = 0;
       for ( auto pair : fanin_names )
       {
-        args.emplace_back( std::make_pair( std::string( 1, pin_name ), pair.second ) );
-        ++pin_name;
+        args.emplace_back( std::make_pair( gate.pins[i++].name, pair.second ) );
       }
       args.emplace_back( std::make_pair( "O", node_names[n] ) );
 

@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Shubham Rai
+  \author Alessandro Tempia Calvino
 */
 
 #pragma once
@@ -72,10 +73,11 @@ struct pin_spec
 class genlib_reader
 {
 public:
-  virtual void on_gate( std::string const& name, std::string const& expression, double area, std::vector<pin_spec> const& pins ) const
+  virtual void on_gate( std::string const& name, std::string const& expression, uint32_t num_vars, double area, std::vector<pin_spec> const& pins ) const
   {
     (void)name;
     (void)expression;
+    (void)num_vars;
     (void)area;
     (void)pins;
   }
@@ -176,8 +178,22 @@ private:
     std::string const& expression = tokens[3].substr( beg + 1, end - beg - 1 );
     double const area = std::stod( tokens[2] );
 
+    uint32_t num_vars{0};
+    for ( const auto& c : expression )
+    {
+      if ( c >= 'a' && c <= 'z' )
+      {
+        uint32_t const var = 1 + ( c - 'a' );
+        if ( var > num_vars )
+        {
+          num_vars = var;
+        }
+      }
+    }
+
     std::vector<pin_spec> pins;
 
+    bool generic_pin{false};
     uint64_t i{4};
     for ( ; i+8 < tokens.size(); i += 9 )
     {
@@ -192,6 +208,10 @@ private:
       }
 
       std::string const& name = tokens[i+1];
+      if ( tokens[i+1] == "*" )
+      {
+        generic_pin = true;
+      }
       phase_type phase{phase_type::UNKNOWN};
       if ( tokens[i+2] == "INV" )
       {
@@ -222,6 +242,15 @@ private:
       pins.emplace_back( pin_spec{name,phase,input_load,max_load,rise_block_delay,rise_fanout_delay,fall_block_delay,fall_fanout_delay} );
     }
 
+    if ( pins.size() != num_vars && !( pins.size() == 1 && generic_pin ) )
+    {
+      if ( diag )
+      {
+        diag->report( diag_id::ERR_GENLIB_PIN ).add_argument( tokens[i] );
+      }
+      return false;
+    }
+
     if ( i != tokens.size() )
     {
       if ( diag )
@@ -231,7 +260,7 @@ private:
       return false;
     }
 
-    reader.on_gate( name, expression, area, pins );
+    reader.on_gate( name, expression, num_vars, area, pins );
     return true;
   }
 
