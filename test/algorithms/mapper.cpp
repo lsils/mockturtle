@@ -16,6 +16,7 @@
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/utils/tech_library.hpp>
+#include <mockturtle/views/binding_view.hpp>
 
 using namespace mockturtle;
 
@@ -48,7 +49,7 @@ TEST_CASE( "Map of MAJ3", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = map( aig, lib, ps, &st );
+  binding_view<klut_network> luts = map( aig, lib, ps, &st );
 
   CHECK( luts.size() == 6u );
   CHECK( luts.num_pis() == 3u );
@@ -79,7 +80,7 @@ TEST_CASE( "Map of bad MAJ3 and constant output", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = map( aig, lib, ps, &st );
+  binding_view<klut_network> luts = map( aig, lib, ps, &st );
 
   CHECK( luts.size() == 6u );
   CHECK( luts.num_pis() == 3u );
@@ -110,7 +111,7 @@ TEST_CASE( "Map of full adder 1", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = map( aig, lib, ps, &st );
+  binding_view<klut_network> luts = map( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -146,7 +147,7 @@ TEST_CASE( "Map of full adder 2", "[mapper]" )
   map_params ps;
   ps.cut_enumeration_ps.minimize_truth_table = false;
   map_stats st;
-  klut_network luts = map( aig, lib, ps, &st );
+  binding_view<klut_network> luts = map( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -182,7 +183,7 @@ TEST_CASE( "Map with inverters", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = map( aig, lib, ps, &st );
+  binding_view<klut_network> luts = map( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -216,7 +217,7 @@ TEST_CASE( "Map for inverters minimization", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = map( aig, lib, ps, &st );
+  binding_view<klut_network> luts = map( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -266,16 +267,16 @@ TEST_CASE( "Map of buffer and constant outputs", "[mapper]" )
 
   map_params ps;
   map_stats st;
-  klut_network luts = map( aig, lib, ps, &st );
+  binding_view<klut_network> luts = map( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 9u );
+  CHECK( luts.size() == 10u );
   CHECK( luts.num_pis() == 4u );
   CHECK( luts.num_pos() == 6u );
-  CHECK( luts.num_gates() == 3u );
-  CHECK( st.area > 5.0f - eps );
-  CHECK( st.area < 5.0f + eps );
+  CHECK( luts.num_gates() == 4u );
+  CHECK( st.area > 7.0f - eps );
+  CHECK( st.area < 7.0f + eps );
   CHECK( st.delay > 1.9f - eps );
   CHECK( st.delay < 1.9f + eps );
 }

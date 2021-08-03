@@ -1404,9 +1404,9 @@ private:
         static uint64_t _buf = 0x2;
         kitty::dynamic_truth_table tt_buf( 1 );
         kitty::create_from_words( tt_buf, &_buf, &_buf + 1 );
-        auto buf = res.create_node( { old2new[ntk.node_to_index( ntk.get_node( f ) )][0] }, tt_buf );
+        const auto buf = res.create_node( { old2new[ntk.node_to_index( ntk.get_node( f ) )][0] }, tt_buf );
         res.create_po( buf );
-        res.add_binding( buf, lib_buf_id );
+        res.add_binding( res.get_node( buf ), lib_buf_id );
       }
       else
       {

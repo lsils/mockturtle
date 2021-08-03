@@ -30,7 +30,6 @@
   \author Heinz Riener
   \author Mathias Soeken
   \author Siang-Yun (Sonia) Lee
-  \author Alessandro Tempia Calvino
 */
 
 #pragma once
@@ -735,41 +734,6 @@ public:
     _os << fmt::format( "  assign {} = {}{} ;\n",
                         out,
                         in.first ? "~" : "", in.second );
-  }
-
-  /*! \brief Callback method for writing a node such as a standard cell.
-   *
-   * \param node_name Node name
-   * \param inst_name Name of the instance
-   * \param ins Input signals
-   * \param outs Output signals
-   */
-  virtual void on_nodes( std::string const& node_name, std::string const& inst_name, std::vector<std::pair<bool,std::string>> const& ins, std::vector<std::string> const& outs )
-  {
-    _os << fmt::format( "  {} {}(", node_name, inst_name );
-
-    /* write inputs */
-    char pin_name = 'a';
-    for ( auto const& in : ins )
-    {
-      _os << fmt::format( ".{}({}), ", pin_name, in.second );
-      ++pin_name;
-    }
-
-    /* write_outputs */
-    if ( outs.size() == 1 )
-    {
-      _os << fmt::format( ".O({}));\n", outs[0] );
-    }
-    else
-    {
-      unsigned i;
-      for ( i = 0u; i < outs.size() - 1; ++i )
-      {
-        _os << fmt::format( ".O{}({}), ", i, outs[i] );
-      }
-      _os << fmt::format( ".O{}({}));\n", i, outs[i] );
-    }
   }
 
 protected:

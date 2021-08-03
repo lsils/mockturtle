@@ -10,6 +10,8 @@
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/buffered.hpp>
+#include <mockturtle/io/genlib_reader.hpp>
+#include <mockturtle/views/binding_view.hpp>
 
 using namespace mockturtle;
 
@@ -167,5 +169,53 @@ TEST_CASE( "write buffered AIG into Verilog file", "[write_verilog]" )
                       "  assign n5 = ~x1 & ~n4 ;\n"
                       "  inverter  inv_n6( .i (n5), .o (n6) );\n"
                       "  assign y0 = n6 ;\n"
+                      "endmodule\n" );
+}
+
+TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
+{
+  std::string const simple_test_library = "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                          "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                          "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                          "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
+
+  std::vector<gate> gates;
+  std::istringstream in( simple_test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+
+  CHECK( result == lorina::return_code::success );
+
+  binding_view<klut_network> klut( gates );
+
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto c = klut.create_pi();
+
+  /* create buffer */
+  uint64_t buf_func = 0x2;
+  kitty::dynamic_truth_table tt_buf( 1 );
+  kitty::create_from_words( tt_buf, &buf_func, &buf_func + 1 );
+  const auto buf = klut.create_node( { a }, tt_buf );
+  
+  const auto f1 = klut.create_nand( b, c );
+  const auto f2 = klut.create_not( f1 );
+
+  klut.create_po( buf );
+  klut.create_po( f1 );
+  klut.create_po( f2 );
+
+  klut.add_binding( klut.get_node( buf ), 2 );
+  klut.add_binding( klut.get_node( f1 ), 3 );
+  klut.add_binding( klut.get_node( f2 ), 1 );
+
+  std::ostringstream out;
+  write_verilog( klut, out );
+
+  CHECK( out.str() == "module top( x0 , x1 , x2 , y0 , y1 , y2 );\n"
+                      "  input x0 , x1 , x2 ;\n"
+                      "  output y0 , y1 , y2 ;\n"
+                      "  buf    g0( .a (x0), .O (y0) );\n"
+                      "  nand2  g1( .a (x1), .b (x2), .O (y1) );\n"
+                      "  inv2   g2( .a (y1), .O (y2) );\n"
                       "endmodule\n" );
 }

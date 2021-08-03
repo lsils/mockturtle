@@ -34,10 +34,12 @@
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/utils/tech_library.hpp>
+#include <mockturtle/views/binding_view.hpp>
 #include <mockturtle/views/depth_view.hpp>
 
 #include <experiments.hpp>
@@ -113,10 +115,11 @@ int main()
     mig_network res1 = map( aig, exact_lib, ps1, &st1 );
 
     map_params ps2;
-    ps2.cut_enumeration_ps.minimize_truth_table = false;
+    ps2.cut_enumeration_ps.minimize_truth_table = true;
+    ps2.cut_enumeration_ps.cut_limit = 24;
     map_stats st2;
 
-    klut_network res2 = map( aig, tech_lib, ps2, &st2 );
+    binding_view<klut_network> res2 = map( aig, tech_lib, ps2, &st2 );
 
     const auto cec1 = benchmark == "hyp" ? true : abc_cec( res1, benchmark );
     const auto cec2 = benchmark == "hyp" ? true : abc_cec( res2, benchmark );

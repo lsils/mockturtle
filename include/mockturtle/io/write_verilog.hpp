@@ -520,10 +520,21 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
       std::string name = gates[ntk.get_binding_index( n )].name;
 
       int digits = counter == 0 ? 0 : ( int ) std::floor( std::log10( counter ) );
-      writer.on_nodes( name.append( std::string( length - name.length(), ' ' ) ),
-                       std::string( "g" ) + std::string( nDigits - digits, '0' ) + std::to_string( counter ),
-                       detail::format_fanin<binding_view<Ntk>>( ntk, n, node_names ),
-                       { node_names[n] } );
+      auto fanin_names = detail::format_fanin<binding_view<Ntk>>( ntk, n, node_names );
+      std::vector<std::pair<std::string,std::string>> args;
+
+      char pin_name = 'a';
+      for ( auto pair : fanin_names )
+      {
+        args.emplace_back( std::make_pair( std::string( 1, pin_name ), pair.second ) );
+        ++pin_name;
+      }
+      args.emplace_back( std::make_pair( "O", node_names[n] ) );
+
+      writer.on_module_instantiation( name.append( std::string( length - name.length(), ' ' ) ),
+                                      {},
+                                      std::string( "g" ) + std::string( nDigits - digits, '0' ) + std::to_string( counter ),
+                                      args );
       ++counter;
 
       /* if node drives multiple POs, duplicate */
@@ -534,10 +545,12 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
         for ( auto i = 1u; i < po_list.size(); ++i )
         {
           digits = counter == 0 ? 0 : ( int ) std::floor( std::log10( counter ) );
-          writer.on_nodes( name.append( std::string( length - name.length(), ' ' ) ),
-                           std::string( "g" ) + std::string( nDigits - digits, '0' ) + std::to_string( counter ),
-                           detail::format_fanin<binding_view<Ntk>>( ntk, n, node_names ),
-                           { ys[po_list[i]] } );
+          args[args.size() - 1] = std::make_pair( "O", ys[po_list[i]] );
+
+          writer.on_module_instantiation( name.append( std::string( length - name.length(), ' ' ) ),
+                                          {},
+                                          std::string( "g" ) + std::string( nDigits - digits, '0' ) + std::to_string( counter ),
+                                          args );
           ++counter;
         }
       }

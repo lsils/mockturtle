@@ -16,6 +16,7 @@ using namespace mockturtle;
 
 std::string const simple_test_library = "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
                                         "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                        "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
                                         "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
 
 std::string const test_library =  "GATE   inv1    3 O=!a;           PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
