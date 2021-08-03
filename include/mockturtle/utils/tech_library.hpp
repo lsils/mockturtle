@@ -204,6 +204,11 @@ private:
         std::cerr << "[i] WARNING: gate " << gate.name << " IGNORED, too many variables for the library settings" << std::endl;
         continue;
       }
+      if ( gate.pins.size() != 1 && gate.pins.size() != gate.num_vars )
+      {
+        std::cerr << "[i] WARNING: gate " << gate.name << " IGNORED, pins mismatch" << std::endl;
+        continue;
+      }
 
       float worst_delay = compute_worst_delay( gate );
 
@@ -248,7 +253,11 @@ private:
 
         for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
         {
-          sg.tdelay[i] = worst_delay;                     /* if pin-to-pin delay change to: gate.delay[perm[i]] */
+          if ( gate.pins.size() == 1 )
+            sg.tdelay[i] = worst_delay;
+          else
+            sg.tdelay[i] = static_cast<float>( std::max( gate.pins[perm[i]].rise_block_delay, gate.pins[perm[i]].fall_block_delay ) );
+
           sg.polarity |= ( ( neg >> perm[i] ) & 1 ) << i; /* permutate input negation to match the right pin */
         }
         for ( auto i = perm.size(); i < NInputs; ++i )
@@ -315,8 +324,12 @@ private:
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
-            sg.tdelay[i] = worst_delay;   /* if pin-to-pin delay change to: gate.delay[perm[i]] */
-            sg.polarity |= phase;         /* permutate input negation to match the right pin */
+            if ( gate.pins.size() == 1 )
+              sg.tdelay[i] = worst_delay;
+            else
+              sg.tdelay[i] = static_cast<float>( std::max( gate.pins[perm[i]].rise_block_delay, gate.pins[perm[i]].fall_block_delay ) );
+
+            sg.polarity |= phase;
           }
           for ( auto i = perm.size(); i < NInputs; ++i )
           {

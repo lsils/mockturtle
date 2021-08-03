@@ -98,6 +98,12 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
+    mig_network mig;
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( mig ) ) != lorina::return_code::success )
+    {
+      continue;
+    }
+
     aig_network aig;
     if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
     {
@@ -112,7 +118,7 @@ int main()
     ps1.required_time = std::numeric_limits<double>::max();
     map_stats st1;
 
-    mig_network res1 = map( aig, exact_lib, ps1, &st1 );
+    mig_network res1 = map( mig, exact_lib, ps1, &st1 );
 
     map_params ps2;
     ps2.cut_enumeration_ps.minimize_truth_table = true;
