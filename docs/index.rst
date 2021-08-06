@@ -9,7 +9,7 @@ Welcome to mockturtle's documentation!
 .. toctree::
    :maxdepth: 2
 
-   installation
+   getting_started
    changelog
    acknowledgments
 
@@ -32,20 +32,17 @@ Welcome to mockturtle's documentation!
 
 .. toctree::
    :maxdepth: 2
+   :glob:
    :caption: Input/Output
 
-   io/lorina_readers
-   io/writers
-   io/other
+   io/*
 
 .. toctree::
    :maxdepth: 2
+   :glob:
    :caption: Generators
 
-   generators/arithmetic
-   generators/control
-   generators/modular_arithmetic
-   generators/majority
+   generators/*
 
 .. toctree::
    :maxdepth: 2
@@ -55,8 +52,8 @@ Welcome to mockturtle's documentation!
 
 .. toctree::
    :maxdepth: 2
+   :glob:
    :caption: Utilities
 
-   utils/util_data_structures
-   utils/util_functions
+   utils/*
 

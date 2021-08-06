@@ -81,7 +81,7 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
-  build-clang9:
+  build-clang11:
     runs-on: ubuntu-latest
     name: Clang 11
     

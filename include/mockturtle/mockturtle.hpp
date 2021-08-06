@@ -56,6 +56,7 @@
 #include "mockturtle/algorithms/extract_linear.hpp"
 #include "mockturtle/algorithms/lut_mapping.hpp"
 #include "mockturtle/algorithms/bi_decomposition.hpp"
+#include "mockturtle/algorithms/aqfp/buffer_insertion.hpp"
 #include "mockturtle/algorithms/cut_rewriting.hpp"
 #include "mockturtle/algorithms/cut_enumeration/spectr_cut.hpp"
 #include "mockturtle/algorithms/cut_enumeration/cnf_cut.hpp"
@@ -133,4 +134,3 @@
 #include "mockturtle/views/fanout_view.hpp"
 #include "mockturtle/views/cut_view.hpp"
 #include "mockturtle/views/depth_view.hpp"
-#include "mockturtle/views/aqfp_view.hpp"
