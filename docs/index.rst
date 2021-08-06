@@ -25,40 +25,10 @@ Welcome to mockturtle's documentation!
 
 .. toctree::
    :maxdepth: 2
+   :glob:
    :caption: Algorithms
 
-   algorithms/mapper
-   algorithms/lut_mapping
-   algorithms/collapse_mapped
-   algorithms/node_resynthesis
-   algorithms/dsd_decomposition
-   algorithms/decomposition
-   algorithms/bi_decomposition
-   algorithms/cut_rewriting
-   algorithms/refactoring
-   algorithms/balancing
-   algorithms/resubstitution
-   algorithms/resyn_engines
-   algorithms/functional_reduction
-   algorithms/mig_algebraic_rewriting
-   algorithms/akers_synthesis
-   algorithms/simulation
-   algorithms/equivalence_checking
-   algorithms/pattern_generation   
-   algorithms/circuit_validator
-   algorithms/cnf
-   algorithms/miter
-   algorithms/cleanup
-   algorithms/cut_enumeration
-   algorithms/reconv_cut
-   algorithms/dont_cares
-   algorithms/extract_linear
-   algorithms/linear_resynthesis
-   algorithms/gates_to_nodes
-   algorithms/xag_optimization
-   algorithms/xmg_optimization
-   algorithms/equivalence_classes
-   algorithms/buffer_insertion
+   algorithms/index_*
 
 .. toctree::
    :maxdepth: 2
@@ -90,8 +60,3 @@ Welcome to mockturtle's documentation!
    utils/util_data_structures
    utils/util_functions
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`search`
