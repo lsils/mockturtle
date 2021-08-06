@@ -55,6 +55,7 @@ template<unsigned NInputs>
 struct composed_gate
 {
   uint32_t id;
+  bool is_super{false};
   int32_t root_id{ -1 };
   kitty::dynamic_truth_table function;
   double area{ 0.0f };
@@ -101,6 +102,7 @@ public:
       }
 
       composed_gate<NInputs> s = {_supergates.size(),
+                                  false,
                                   g.id,
                                   g.function,
                                   g.area,
@@ -145,6 +147,7 @@ public:
       kitty::create_nth_var( tt, i );
 
       composed_gate<NInputs> s = {i,
+                                  false,
                                   -1,
                                   tt,
                                   0.0f,
@@ -154,6 +157,7 @@ public:
       _supergates.emplace_back( s );
     }
 
+    /* add supergates */
     for ( auto const g : _supergates_spec.supergates )
     {
       uint32_t root_match_id;
@@ -202,6 +206,7 @@ public:
       const auto tt = compute_truth_table( root_match_id, sub_gates );
 
       composed_gate<NInputs> s = {_supergates.size(),
+                                  g.is_super,
                                   root_match_id,
                                   tt,
                                   area,
@@ -211,6 +216,36 @@ public:
       compute_delay_parameters( s );
 
       _supergates.emplace_back( s );
+    }
+
+    /* add constants and single input gates which are not represented in SUPER */
+    for ( auto& gate : _gates )
+    {
+      if ( gate.function.num_vars() == 0 )
+      {
+        /* constants */
+        composed_gate<NInputs> s = {_supergates.size(),
+                                    false,
+                                    gate.id,
+                                    gate.function,
+                                    gate.area,
+                                    {},
+                                    {}};
+        _supergates.emplace_back( s );
+      }
+      else if ( gate.function.num_vars() == 1 )
+      {
+        /* inverter or buffer */
+        composed_gate<NInputs> s = {_supergates.size(),
+                                    false,
+                                    gate.id,
+                                    gate.function,
+                                    gate.area,
+                                    {},
+                                    {}};
+        s.tdelay[0] = std::max( gate.pins[0].rise_block_delay, gate.pins[0].fall_block_delay );
+        _supergates.emplace_back( s );
+      }
     }
   }
 

@@ -42,7 +42,9 @@
 #include <kitty/print.hpp>
 #include <kitty/static_truth_table.hpp>
 
+#include "super_utils.hpp"
 #include "../io/genlib_reader.hpp"
+#include "../io/super_reader.hpp"
 
 namespace mockturtle
 {
@@ -83,6 +85,9 @@ enum class classification_type : uint32_t
 
 struct tech_library_params
 {
+  /*! \brief use configurations from SUPER library */
+  bool use_supergates_configurations = false;
+
   /*! \brief reports np enumerations */
   bool verbose{ false };
 
@@ -140,9 +145,23 @@ class tech_library
   using lib_t = std::unordered_map<kitty::static_truth_table<NInputs>, supergates_list_t, tt_hash>;
 
 public:
-  explicit tech_library( std::vector<gate> const& gates, tech_library_params const ps = {} )
+  explicit tech_library( std::vector<gate> const& gates, tech_library_params const ps = {}, super_lib const& supergates_spec = {} )
       : _gates( gates ),
+        _supergates_spec( supergates_spec ),
         _ps( ps ),
+        _use_supergates( false ),
+        _supergates(),
+        _super_lib()
+  {
+    generate_library();
+  }
+
+  explicit tech_library( std::vector<gate> const& gates, super_lib const& supergates_spec, tech_library_params const ps = {} )
+      : _gates( gates ),
+        _supergates_spec( supergates_spec ),
+        _ps( ps ),
+        _use_supergates( true ),
+        _supergates(),
         _super_lib()
   {
     generate_library();
@@ -197,6 +216,9 @@ private:
     bool inv = false;
     bool buf = false;
 
+    supergate_utils<NInputs> super( _gates, _supergates_spec );
+    _supergates = super.get_super_library();
+
     for ( auto& gate : _gates )
     {
       if ( gate.function.num_vars() > NInputs )
@@ -209,7 +231,7 @@ private:
         std::cerr << "[i] WARNING: gate " << gate.name << " IGNORED, pins mismatch" << std::endl;
         continue;
       }
-
+      
       float worst_delay = compute_worst_delay( gate );
 
       if ( gate.function.num_vars() == 1 )
@@ -238,7 +260,10 @@ private:
           }
         }
       }
+    // }
 
+    // for ( auto const& gate : _supergates )
+    // {
       _max_size = std::max( _max_size, gate.num_vars );
 
       uint32_t np_count = 0;
@@ -253,11 +278,7 @@ private:
 
         for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
         {
-          if ( gate.pins.size() == 1 )
-            sg.tdelay[i] = worst_delay;
-          else
-            sg.tdelay[i] = static_cast<float>( std::max( gate.pins[perm[i]].rise_block_delay, gate.pins[perm[i]].fall_block_delay ) );
-
+          sg.tdelay[i] = static_cast<float>( std::max( gate.pins[perm[i]].rise_block_delay, gate.pins[perm[i]].fall_block_delay ) );
           sg.polarity |= ( ( neg >> perm[i] ) & 1 ) << i; /* permutate input negation to match the right pin */
         }
         for ( auto i = perm.size(); i < NInputs; ++i )
@@ -324,11 +345,7 @@ private:
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
-            if ( gate.pins.size() == 1 )
-              sg.tdelay[i] = worst_delay;
-            else
-              sg.tdelay[i] = static_cast<float>( std::max( gate.pins[perm[i]].rise_block_delay, gate.pins[perm[i]].fall_block_delay ) );
-
+            sg.tdelay[i] = static_cast<float>( std::max( gate.pins[perm[i]].rise_block_delay, gate.pins[perm[i]].fall_block_delay ) );
             sg.polarity |= phase;
           }
           for ( auto i = perm.size(); i < NInputs; ++i )
@@ -394,6 +411,21 @@ private:
         kitty::exact_p_enumeration( tt, on_p );
       }
 
+      /* supergates */
+      if ( _use_supergates )
+      {
+        for ( auto const& g : _supergates )
+        {
+          /* ignore simple gates */
+          if ( !g.is_super )
+          {
+            continue;
+          }
+
+          /* build supergate */
+        }
+      }
+
       if ( _ps.verbose )
       {
         std::cout << "Gate " << gate.name << ", num_vars = " << gate.num_vars << ", np entries = " << np_count << std::endl;
@@ -451,8 +483,12 @@ private:
 
   unsigned _max_size{ 0 }; /* max #fanins of the gates in the library */
 
+  bool _use_supergates; 
+
   std::vector<gate> const _gates; /* collection of gates */
+  super_lib const& _supergates_spec; /* collection of supergates declarations */
   tech_library_params const _ps;
+  std::vector<composed_gate<NInputs>> _supergates; /* collection of supergates */
   lib_t _super_lib; /* library of enumerated gates */
 };
 
