@@ -74,8 +74,8 @@ template<>
 struct node_pointer<0>
 {
 public:
-  node_pointer<0>() = default;
-  node_pointer<0>( uint64_t index ) : index( index ) {}
+  node_pointer() = default;
+  node_pointer( uint64_t index ) : index( index ) {}
 
   union {
     uint64_t index;
