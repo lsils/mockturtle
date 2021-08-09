@@ -262,14 +262,6 @@ public:
       auto tt_test = tt;
       std::vector<uint8_t> const& support = kitty::min_base_inplace( tt_test );
 
-      // if ( g.is_super && tt_test != tt )
-      // {
-      //   /* truth table has don't cares: it shouldn't. Gate is sub-optimal */
-      //   std::cerr << fmt::format( "WARNING: ignoring supergate {}, has internal don't cares.", g.id ) << std::endl;
-      //   std::cout << "Not minimized line: " << _supergates.size() - simple_gates_size - 5 + 23 << std::endl;
-      //   is_super_verified = false;
-      // }
-
       _supergates.emplace_back( composed_gate<NInputs>{_supergates.size(),
                                                        g.is_super,
                                                        &_gates[root_match_id],

@@ -36,6 +36,7 @@
 #include "../utils/node_map.hpp"
 
 #include <map>
+#include <iostream>
 
 namespace mockturtle
 {
@@ -114,6 +115,43 @@ public:
   const std::vector<gate>& get_library() const
   {
     return _library;
+  }
+
+  void compute_gates_usage( std::ostream& os )
+  {
+    std::vector<uint32_t> gates_profile( _library.size(), 0u );
+
+    double area = 0;
+    Ntk::foreach_node( [&]( auto const& n, auto ) {
+      if ( has_binding( n ) )
+      {
+        auto const& g = get_binding( n );
+        ++gates_profile[g.id];
+        area += g.area;
+      }
+    } );
+
+    os << "[i] Report gates usage\n";
+
+    uint32_t tot_instances = 0u;
+    for ( auto i = 0u; i < gates_profile.size(); ++i )
+    {
+      if ( gates_profile[i] > 0u )
+      {
+        float tot_gate_area = gates_profile[i] * _library[i].area;
+
+        os << fmt::format( "[i] {:<15}", _library[i].name )
+           << fmt::format( "\t Instance = {:>10d}", gates_profile[i] )
+           << fmt::format( "\t Area = {:>12.2f}", tot_gate_area )
+           << fmt::format( " {:>8.2f} %\n", tot_gate_area / area * 100 );
+
+        tot_instances += gates_profile[i];
+      }
+    }
+
+    os << fmt::format( "[i] {:<15}", "TOTAL" )
+       << fmt::format( "\t Instance = {:>10d}", tot_instances )
+       << fmt::format( "\t Area = {:>12.2f}   100.00 %\n", area );
   }
 
 private:

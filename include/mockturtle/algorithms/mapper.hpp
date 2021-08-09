@@ -126,9 +126,6 @@ struct map_stats
   /*! \brief Delay and area stats for each round. */
   std::vector<std::string> round_stats{};
 
-  /*! \brief Gates usage stats. */
-  std::string gates_usage{};
-
   /*! \brief Mapping error. */
   bool mapping_error{ false };
 
@@ -145,9 +142,6 @@ struct map_stats
       std::cout << "\n";
     std::cout << fmt::format( "[i] Mapping runtime = {:>5.2f} secs\n", to_seconds( time_mapping ) );
     std::cout << fmt::format( "[i] Total runtime   = {:>5.2f} secs\n", to_seconds( time_total ) );
-    if ( !gates_usage.empty() )
-      std::cout << "[i] Gates usage report:\n"
-                << gates_usage;
   }
 };
 
@@ -1417,7 +1411,6 @@ private:
     st.delay = delay;
     if ( ps.eswp_rounds )
       st.power = compute_switching_power();
-    // compute_gates_usage();
   }
 
   void create_lut_for_gate( binding_view<klut_network>& res, klut_map& old2new, uint32_t index, unsigned phase )
@@ -1527,89 +1520,6 @@ private:
       return true;
     }
     return false;
-  }
-
-  void compute_gates_usage()
-  {
-    auto const& gates = library.get_gates();
-    std::vector<uint32_t> gates_profile( gates.size(), 0u );
-
-    bool ignore_inv = lib_inv_id == UINT32_MAX;
-
-    ntk.foreach_node( [&]( auto const& n, auto ) {
-      const auto index = ntk.node_to_index( n );
-      auto& node_data = node_match[index];
-
-      if ( ntk.is_constant( n ) )
-      {
-        if ( node_data.best_supergate[0] == nullptr && node_data.best_supergate[1] == nullptr )
-          return true;
-      }
-      else if ( ntk.is_pi( n ) )
-      {
-        if ( !ignore_inv && node_data.map_refs[1] > 0 )
-          ++gates_profile[lib_inv_id];
-        return true;
-      }
-
-      /* continue if cut is not in the cover */
-      if ( node_match[index].map_refs[2] == 0u )
-        return true;
-
-      unsigned phase = ( node_data.best_supergate[0] != nullptr ) ? 0 : 1;
-
-      if ( node_data.same_match || node_data.map_refs[phase] > 0 )
-      {
-        ++gates_profile[node_data.best_supergate[phase]->root->id];
-
-        if ( !ignore_inv && node_data.same_match && node_data.map_refs[phase ^ 1] > 0 )
-          ++gates_profile[lib_inv_id];
-      }
-
-      phase = phase ^ 1;
-      if ( !node_data.same_match && node_data.map_refs[phase] > 0 )
-      {
-        ++gates_profile[node_data.best_supergate[phase]->root->id];
-      }
-
-      return true;
-    } );
-
-    if ( lib_buf_id != UINT32_MAX )
-    {
-      ntk.foreach_po( [&]( auto const& f ) {
-        auto const& n = ntk.get_node( f );
-        if ( !ntk.is_constant( n ) && ntk.is_pi( n ) && !ntk.is_complemented( f ) )
-        {
-          ++gates_profile[lib_buf_id];
-        }
-      } );
-    }
-
-    std::stringstream gates_usage;
-    double tot_area = 0.0f;
-    uint32_t tot_instances = 0u;
-    for ( auto i = 0u; i < gates_profile.size(); ++i )
-    {
-      if ( gates_profile[i] > 0u )
-      {
-        auto tot_gate_area = gates_profile[i] * gates[i].area;
-
-        gates_usage << fmt::format( "[i] {:<15}", gates[i].name )
-                    << fmt::format( "\t Instance = {:>10d}", gates_profile[i] )
-                    << fmt::format( "\t Area = {:>12.2f}", tot_gate_area )
-                    << fmt::format( " {:>8.2f} %\n", tot_gate_area / area * 100 );
-
-        tot_instances += gates_profile[i];
-        tot_area += tot_gate_area;
-      }
-    }
-
-    gates_usage << fmt::format( "[i] {:<15}", "TOTAL" )
-                << fmt::format( "\t Instance = {:>10d}", tot_instances )
-                << fmt::format( "\t Area = {:>12.2f}   100.00 %\n", tot_area );
-
-    st.gates_usage = gates_usage.str();
   }
 
   double compute_switching_power()
