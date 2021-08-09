@@ -33,6 +33,7 @@
 #pragma once
 
 #include "../io/genlib_reader.hpp"
+#include "../views/topo_view.hpp"
 #include "../utils/node_map.hpp"
 
 #include <map>
@@ -117,7 +118,54 @@ public:
     return _library;
   }
 
-  void compute_gates_usage( std::ostream& os )
+  double compute_area() const
+  {
+    double area = 0;
+    Ntk::foreach_node( [&]( auto const& n, auto ) {
+      if ( has_binding( n ) )
+      {
+        area += get_binding( n ).area;
+      }
+    } );
+
+    return area;
+  }
+
+  double compute_worst_delay() const
+  {
+    topo_view ntk_topo{*this};
+    node_map<double, Ntk> delays( *this );
+    double worst_delay = 0;
+
+    ntk_topo.foreach_node( [&]( auto const& n, auto ) {
+      if ( Ntk::is_constant( n ) || Ntk::is_pi( n ) )
+      {
+        delays[n] = 0;
+        return true;
+      }
+
+      if ( has_binding( n ) )
+      {
+        auto const& g = get_binding( n );
+        double gate_delay = 0;
+        Ntk::foreach_fanin( n, [&]( auto const& f, auto i ) {
+          gate_delay = std::max( gate_delay, (double) ( delays[f] + std::max( g.pins[i].rise_block_delay, g.pins[i].fall_block_delay ) ) );
+        } );
+        delays[n] = gate_delay;
+        worst_delay = std::max( worst_delay, gate_delay );
+      }
+      return true;
+    } );
+
+    return worst_delay;
+  }
+
+  void report_stats( std::ostream& os = std::cout ) const
+  {
+    os << fmt::format( "[i] Report stats: area = {:>5.2f}; delay = {:>5.2f};\n", compute_area(), compute_worst_delay() );
+  }
+
+  void report_gates_usage( std::ostream& os = std::cout ) const
   {
     std::vector<uint32_t> gates_profile( _library.size(), 0u );
 
@@ -131,7 +179,7 @@ public:
       }
     } );
 
-    os << "[i] Report gates usage\n";
+    os << "[i] Report gates usage:\n";
 
     uint32_t tot_instances = 0u;
     for ( auto i = 0u; i < gates_profile.size(); ++i )
