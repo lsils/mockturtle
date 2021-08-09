@@ -63,14 +63,12 @@ TEST_CASE( "Simple library generation 1", "[tech_library]" )
   auto const inv = lib.get_supergates( tt );
   CHECK( inv != nullptr );
   CHECK( inv->size() == 2 );
-  CHECK( ( *inv )[0].root->name == "inv1" );
+  CHECK( ( *inv )[0].root->root->name == "inv1" );
   CHECK( ( *inv )[0].area == 1.0f );
-  CHECK( ( *inv )[0].worstDelay == 0.9f );
   CHECK( ( *inv )[0].tdelay[0] == 0.9f );
   CHECK( ( *inv )[0].polarity == 0u );
-  CHECK( ( *inv )[1].root->name == "inv2" );
+  CHECK( ( *inv )[1].root->root->name == "inv2" );
   CHECK( ( *inv )[1].area == 2.0f );
-  CHECK( ( *inv )[1].worstDelay == 1.0f );
   CHECK( ( *inv )[1].tdelay[0] == 1.0f );
   CHECK( ( *inv )[1].polarity == 0u );
 
@@ -78,9 +76,8 @@ TEST_CASE( "Simple library generation 1", "[tech_library]" )
   auto const nand_7 = lib.get_supergates( tt );
   CHECK( nand_7 != nullptr );
   CHECK( nand_7->size() == 1 );
-  CHECK( ( *nand_7 )[0].root->name == "nand2" );
+  CHECK( ( *nand_7 )[0].root->root->name == "nand2" );
   CHECK( ( *nand_7 )[0].area == 2.0f );
-  CHECK( ( *nand_7 )[0].worstDelay == 1.0f );
   CHECK( ( *nand_7 )[0].tdelay[0] == 1.0f );
   CHECK( ( *nand_7 )[0].tdelay[1] == 1.0f );
   CHECK( ( *nand_7 )[0].polarity == 0u );
@@ -89,9 +86,8 @@ TEST_CASE( "Simple library generation 1", "[tech_library]" )
   auto const nand_b = lib.get_supergates( tt );
   CHECK( nand_b != nullptr );
   CHECK( nand_b->size() == 1 );
-  CHECK( ( *nand_b )[0].root->name == "nand2" );
+  CHECK( ( *nand_b )[0].root->root->name == "nand2" );
   CHECK( ( *nand_b )[0].area == 2.0f );
-  CHECK( ( *nand_b )[0].worstDelay == 1.0f );
   CHECK( ( *nand_b )[0].tdelay[0] == 1.0f );
   CHECK( ( *nand_b )[0].tdelay[1] == 1.0f );
   CHECK( ( *nand_b )[0].polarity == 1u );
@@ -100,9 +96,8 @@ TEST_CASE( "Simple library generation 1", "[tech_library]" )
   auto const nand_d = lib.get_supergates( tt );
   CHECK( nand_d != nullptr );
   CHECK( nand_d->size() == 1 );
-  CHECK( ( *nand_d )[0].root->name == "nand2" );
+  CHECK( ( *nand_d )[0].root->root->name == "nand2" );
   CHECK( ( *nand_d )[0].area == 2.0f );
-  CHECK( ( *nand_d )[0].worstDelay == 1.0f );
   CHECK( ( *nand_d )[0].tdelay[0] == 1.0f );
   CHECK( ( *nand_d )[0].tdelay[1] == 1.0f );
   CHECK( ( *nand_d )[0].polarity == 2u );
@@ -111,9 +106,8 @@ TEST_CASE( "Simple library generation 1", "[tech_library]" )
   auto const nand_e = lib.get_supergates( tt );
   CHECK( nand_e != nullptr );
   CHECK( nand_e->size() == 1 );
-  CHECK( ( *nand_e )[0].root->name == "nand2" );
+  CHECK( ( *nand_e )[0].root->root->name == "nand2" );
   CHECK( ( *nand_e )[0].area == 2.0f );
-  CHECK( ( *nand_e )[0].worstDelay == 1.0f );
   CHECK( ( *nand_e )[0].tdelay[0] == 1.0f );
   CHECK( ( *nand_e )[0].tdelay[1] == 1.0f );
   CHECK( ( *nand_e )[0].polarity == 3u );
@@ -139,14 +133,12 @@ TEST_CASE( "Simple library generation 2", "[tech_library]" )
   auto const inv = lib.get_supergates( tt );
   CHECK( inv != nullptr );
   CHECK( inv->size() == 2 );
-  CHECK( ( *inv )[0].root->name == "inv1" );
+  CHECK( ( *inv )[0].root->root->name == "inv1" );
   CHECK( ( *inv )[0].area == 1.0f );
-  CHECK( ( *inv )[0].worstDelay == 0.9f );
   CHECK( ( *inv )[0].tdelay[0] == 0.9f );
   CHECK( ( *inv )[0].polarity == 0u );
-  CHECK( ( *inv )[1].root->name == "inv2" );
+  CHECK( ( *inv )[1].root->root->name == "inv2" );
   CHECK( ( *inv )[1].area == 2.0f );
-  CHECK( ( *inv )[1].worstDelay == 1.0f );
   CHECK( ( *inv )[1].tdelay[0] == 1.0f );
   CHECK( ( *inv )[1].polarity == 0u );
 
@@ -154,9 +146,8 @@ TEST_CASE( "Simple library generation 2", "[tech_library]" )
   auto const nand_7 = lib.get_supergates( tt );
   CHECK( nand_7 != nullptr );
   CHECK( nand_7->size() == 1 );
-  CHECK( ( *nand_7 )[0].root->name == "nand2" );
+  CHECK( ( *nand_7 )[0].root->root->name == "nand2" );
   CHECK( ( *nand_7 )[0].area == 2.0f );
-  CHECK( ( *nand_7 )[0].worstDelay == 1.0f );
   CHECK( ( *nand_7 )[0].tdelay[0] == 1.0f );
   CHECK( ( *nand_7 )[0].tdelay[1] == 1.0f );
   CHECK( ( *nand_7 )[0].polarity == 0u );
