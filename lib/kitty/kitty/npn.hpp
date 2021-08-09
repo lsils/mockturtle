@@ -28,6 +28,7 @@
   \brief Implements NPN canonization algorithms
 
   \author Mathias Soeken
+  \author Alessandro Tempia Calvino
 */
 
 #pragma once
@@ -700,8 +701,8 @@ void exact_np_enumeration( const TT& tt, Callback&& fn )
 /*! \brief Exact P enumeration
 
   Given a truth table, this function enumerates all the functions in its
-  P class. Two functions are in the same NP class, if one can be obtained
-  from the other by input negation and input permutation.
+  P class. Two functions are in the same P class, if one can be obtained
+  from the other by input permutation.
 
   The function takes a callback as second parameter which is called for
   every enumerated function. The callback should take as parameters:
@@ -751,6 +752,60 @@ void exact_p_enumeration( const TT& tt, Callback&& fn )
     std::swap( perm[pos], perm[pos + 1] );
 
     fn( t1, perm );
+  }
+}
+
+/*! \brief Exact N enumeration
+
+  Given a truth table, this function enumerates all the functions in its
+  N class. Two functions are in the same N class, if one can be obtained
+  from the other by input negation.
+
+  The function takes a callback as second parameter which is called for
+  every enumerated function. The callback should take as parameters:
+  - N-enumerated truth table
+  - input negation to apply
+
+  \param tt Truth table
+  \param fn Callback for each enumerated truth table in the N class
+*/
+template<typename TT, typename Callback>
+void exact_n_enumeration( const TT& tt, Callback&& fn )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  const auto num_vars = tt.num_vars();
+
+  /* Special case for n = 0 */
+  if ( num_vars == 0 )
+  {
+    fn( tt, 0 );
+    return;
+  }
+
+  /* Special case for n = 1 */
+  if ( num_vars == 1 )
+  {
+    fn( tt, 0 );
+    return;
+  }
+
+  assert( num_vars >= 2 && num_vars <= 6 );
+
+  auto t1 = tt;
+  fn( t1, 0 );
+
+  const auto& flips = detail::flips[num_vars - 2u];
+  uint32_t phase = 0;
+
+  for ( std::size_t j = 0; j < flips.size(); ++j )
+  {
+    const auto pos = flips[j];
+    flip_inplace( t1, pos );
+
+    phase ^= 1 << pos;
+
+    fn( t1, phase );
   }
 }
 

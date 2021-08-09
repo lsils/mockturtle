@@ -4,12 +4,14 @@
 #include <vector>
 
 #include <lorina/genlib.hpp>
+#include <lorina/super.hpp>
 #include <mockturtle/algorithms/mapper.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xmg_npn.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
+#include <mockturtle/io/super_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -28,6 +30,15 @@ std::string const test_library = "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9
                                  "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
                                  "GATE   zero    0 O=0;\n"
                                  "GATE   one     0 O=1;";
+
+std::string const super_library = "test.genlib\n"
+                                  "3\n"
+                                  "2\n"
+                                  "6\n"       
+                                  "* nand2 1 0\n"
+                                  "inv1 3\n"
+                                  "* nand2 2 4\n"
+                                  "\0";
 
 TEST_CASE( "Map of MAJ3", "[mapper]" )
 {
@@ -279,6 +290,46 @@ TEST_CASE( "Map of buffer and constant outputs", "[mapper]" )
   CHECK( st.area < 7.0f + eps );
   CHECK( st.delay > 1.9f - eps );
   CHECK( st.delay < 1.9f + eps );
+}
+
+TEST_CASE( "Map with supergates", "[mapper]" )
+{
+  std::vector<gate> gates;
+  super_lib super_data;
+
+  std::istringstream in_lib( test_library );
+  auto result = lorina::read_genlib( in_lib, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  std::istringstream in_super( super_library );
+  result = lorina::read_super( in_super, super_reader( super_data ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3, classification_type::p_configurations> lib( gates, super_data );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto n4 = aig.create_and( a, b );
+  const auto n5 = aig.create_and( b, c );
+  const auto f = aig.create_and( n4, n5 );
+  aig.create_po( f );
+
+  map_params ps;
+  map_stats st;
+  binding_view<klut_network> luts = map( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( luts.size() == 9u );
+  CHECK( luts.num_pis() == 3u );
+  CHECK( luts.num_pos() == 1u );
+  CHECK( luts.num_gates() == 4u );
+  CHECK( st.area == 6.0f );
+  CHECK( st.delay > 3.8f - eps );
+  CHECK( st.delay < 3.8f + eps );
 }
 
 TEST_CASE( "Exact map of bad MAJ3 and constant output", "[mapper]" )

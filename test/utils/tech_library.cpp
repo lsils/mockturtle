@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <lorina/genlib.hpp>
+#include <lorina/super.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/io/super_reader.hpp>
 #include <mockturtle/utils/super_utils.hpp>

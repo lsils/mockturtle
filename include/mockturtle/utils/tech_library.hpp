@@ -42,6 +42,8 @@
 #include <kitty/print.hpp>
 #include <kitty/static_truth_table.hpp>
 
+#include <parallel_hashmap/phmap.h>
+
 #include "super_utils.hpp"
 #include "../io/genlib_reader.hpp"
 #include "../io/super_reader.hpp"
@@ -139,7 +141,7 @@ class tech_library
 {
   using supergates_list_t = std::vector<supergate<NInputs>>;
   using tt_hash = kitty::hash<kitty::static_truth_table<NInputs>>;
-  using lib_t = std::unordered_map<kitty::static_truth_table<NInputs>, supergates_list_t, tt_hash>;
+  using lib_t = phmap::flat_hash_map<kitty::static_truth_table<NInputs>, supergates_list_t, tt_hash>;
 
 public:
   explicit tech_library( std::vector<gate> const& gates, tech_library_params const ps = {}, super_lib const& supergates_spec = {} )
@@ -330,12 +332,11 @@ private:
                                     gate.area,
                                     {},
                                     perm,
-                                    0};
+                                    phase};
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
               sg.tdelay[i] = gate.tdelay[perm[i]];
-              sg.polarity |= phase;
             }
 
             const auto static_tt = kitty::extend_to<NInputs>( tt_canon );
@@ -399,33 +400,28 @@ private:
       else
       {
         /* process the supergates */
-
         if ( !gate.is_super )
         {
           /* ignore simple gates */
           continue;
         }
 
-        /* canonize supergates */
-        auto [tt_canon, phases] = kitty::exact_n_canonization_complete( gate.function );
-        std::vector<uint8_t> perm( gate.num_vars );
-        std::iota( perm.begin(), perm.end(), 0u );
+        const auto on_np = [&]( auto const& tt, auto neg ) {
+          std::vector<uint8_t> perm( gate.num_vars );
+          std::iota( perm.begin(), perm.end(), 0u );
 
-        for( auto phase : phases )
-        {
           supergate<NInputs> sg = {&gate,
                                   gate.area,
                                   {},
                                   perm,
-                                  0};
+                                  neg};
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
             sg.tdelay[i] = gate.tdelay[perm[i]];
-            sg.polarity |= phase;
           }
 
-          const auto static_tt = kitty::extend_to<NInputs>( tt_canon );
+          const auto static_tt = kitty::extend_to<NInputs>( tt );
 
           auto& v = _super_lib[static_tt];
 
@@ -467,6 +463,82 @@ private:
             v.insert( it, sg );
             ++np_count;
           }
+        };
+
+        const auto on_p = [&]() {
+          auto [tt_canon, phases] = kitty::exact_n_canonization_complete( gate.function );
+          std::vector<uint8_t> perm( gate.num_vars );
+          std::iota( perm.begin(), perm.end(), 0u );
+
+          for( auto phase : phases )
+          {
+            supergate<NInputs> sg = {&gate,
+                                    gate.area,
+                                    {},
+                                    perm,
+                                    phase};
+
+            for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
+            {
+              sg.tdelay[i] = gate.tdelay[perm[i]];
+            }
+
+            const auto static_tt = kitty::extend_to<NInputs>( tt_canon );
+
+            auto& v = _super_lib[static_tt];
+
+            /* ordered insert by ascending area and number of input pins */
+            auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 ) {
+              if ( s1.area < s2.area )
+                return true;
+              if ( s1.area > s2.area )
+                return false;
+              if ( s1.root->num_vars < s2.root->num_vars )
+                return true;
+              if ( s1.root->num_vars > s2.root->num_vars )
+                return true;
+              return s1.root->id < s2.root->id;
+            } );
+
+            bool to_add = true;
+            /* search for duplicated element due to symmetries */
+            while ( it != v.end() )
+            {
+              if ( sg.root->id == it->root->id )
+              {
+                /* if already in the library exit, else ignore permutations if with equal delay cost */
+                if ( sg.polarity == it->polarity && sg.tdelay == it->tdelay )
+                {
+                  to_add = false;
+                  break;
+                }
+              }
+              else
+              {
+                break;
+              }
+              ++it;
+            }
+
+            if ( to_add )
+            {
+              v.insert( it, sg );
+              ++np_count;
+            }
+          }
+        };
+
+        if constexpr ( Configuration == classification_type::np_configurations )
+        {
+          /* N enumeration of the function */
+          const auto tt = gate.function;
+          kitty::exact_n_enumeration( tt, on_np );
+        }
+        else
+        {
+          /* N canonization of the function */
+          const auto tt = gate.function;
+          on_p();
         }
       }
 
