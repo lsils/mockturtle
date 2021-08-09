@@ -259,10 +259,10 @@ private:
         continue;
       }
 
+      _max_size = std::max( _max_size, gate.num_vars );
+
       if ( i++ < standard_gate_size )
       {
-        _max_size = std::max( _max_size, gate.root->num_vars );
-
         const auto on_np = [&]( auto const& tt, auto neg, auto const& perm ) {
           supergate<NInputs> sg = {&gate,
                                   gate.area,

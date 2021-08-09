@@ -5,6 +5,8 @@
 
 #include <lorina/genlib.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
+#include <mockturtle/io/super_reader.hpp>
+#include <mockturtle/utils/super_utils.hpp>
 #include <mockturtle/utils/tech_library.hpp>
 
 #include <kitty/constructors.hpp>
@@ -18,6 +20,29 @@ std::string const simple_test_library = "GATE   inv1    1 O=!a;     PIN * INV 1 
                                         "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
                                         "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
                                         "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
+
+std::string const simple_library = "GATE zero 0 O=0;\n"
+                                   "GATE one 0 O=1;\n"
+                                   "GATE inverter 1 O=!a; PIN * INV 1 999 1.0 1.0 1.0 1.0\n"
+                                   "GATE buffer 2 O=a; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+                                   "GATE and 5 O=(ab); PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+                                   "GATE or 5 O={ab}; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
+
+std::string const super_library = "simple.genlib\n"
+                                  "3\n"
+                                  "7\n"
+                                  "13\n"       
+                                  "* and 1 0\n"
+                                  "* and 2 3\n"
+                                  "and 2 0\n"
+                                  "* and 1 5\n"
+                                  "or 2 1\n"
+                                  "* and 0 7\n"
+                                  "* or 1 0\n"
+                                  "or 2 0\n"
+                                  "* and 1 10\n"
+                                  "* and 2 9\n"
+                                  "\0";
 
 std::string const test_library =  "GATE   inv1    3 O=!a;           PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
                                   "GATE   inv2    2 O=!a;           PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
@@ -43,7 +68,7 @@ std::string const test_library =  "GATE   inv1    3 O=!a;           PIN * INV 3 
                                   "GATE   zero    0 O=0;\n"
                                   "GATE   one     0 O=1;";
 
-TEST_CASE( "Simple library generation 1", "[tech_library]" )
+TEST_CASE( "Simple test library generation 1", "[tech_library]" )
 {
   std::vector<gate> gates;
 
@@ -56,6 +81,7 @@ TEST_CASE( "Simple library generation 1", "[tech_library]" )
 
   CHECK( lib.max_gate_size() == 2 );
   CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 0.9f, 0u ) );
+  CHECK( lib.get_buffer_info() == std::make_tuple( 2.0f, 1.0f, 2u ) );
 
   kitty::static_truth_table<2> tt;
 
@@ -113,7 +139,7 @@ TEST_CASE( "Simple library generation 1", "[tech_library]" )
   CHECK( ( *nand_e )[0].polarity == 3u );
 }
 
-TEST_CASE( "Simple library generation 2", "[tech_library]" )
+TEST_CASE( "Simple test library generation 2", "[tech_library]" )
 {
   std::vector<gate> gates;
 
@@ -126,6 +152,7 @@ TEST_CASE( "Simple library generation 2", "[tech_library]" )
 
   CHECK( lib.max_gate_size() == 2 );
   CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 0.9f, 0u ) );
+  CHECK( lib.get_buffer_info() == std::make_tuple( 2.0f, 1.0f, 2u ) );
 
   kitty::static_truth_table<2> tt;
 
@@ -163,6 +190,94 @@ TEST_CASE( "Simple library generation 2", "[tech_library]" )
   kitty::create_from_hex_string( tt, "e" );
   auto const nand_e = lib.get_supergates( tt );
   CHECK( nand_e == nullptr );
+}
+
+TEST_CASE( "Supergate library generation", "[tech_library]" )
+{
+  std::vector<gate> gates;
+  super_lib super_data;
+
+  std::istringstream in_genlib( simple_library );
+  auto result = lorina::read_genlib( in_genlib, genlib_reader( gates ) );
+  
+  CHECK( result == lorina::return_code::success );
+
+  std::istringstream in_super( super_library );
+  result = lorina::read_super( in_super, mockturtle::super_reader( super_data ) );
+
+  CHECK( result == lorina::return_code::success );
+
+  tech_library_params ps;
+  ps.verbose = true;
+  ps.very_verbose = true;
+  tech_library<3, classification_type::p_configurations> lib( gates, super_data );
+  fflush( stdout );
+
+  CHECK( lib.max_gate_size() == 3 );
+  CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 1.0f, 2u ) );
+  CHECK( lib.get_buffer_info() == std::make_tuple( 2.0f, 1.0f, 3u ) );
+
+  kitty::static_truth_table<3> tt;
+
+  kitty::create_from_hex_string( tt, "55" );
+  auto const inv = lib.get_supergates( tt );
+  CHECK( inv != nullptr );
+  CHECK( inv->size() == 1 );
+  CHECK( ( *inv )[0].root->root->name == "inverter" );
+  CHECK( ( *inv )[0].area == 1.0f );
+  CHECK( ( *inv )[0].tdelay[0] == 1.0f );
+  CHECK( ( *inv )[0].polarity == 0u );
+  
+
+  kitty::create_from_hex_string( tt, "11" );
+  auto const and_1 = lib.get_supergates( tt );
+  CHECK( and_1 != nullptr );
+  CHECK( and_1->size() == 1 );
+  CHECK( ( *and_1 )[0].root->root->name == "and" );
+  CHECK( ( *and_1 )[0].area == 5.0f );
+  CHECK( ( *and_1 )[0].tdelay[0] == 1.0f );
+  CHECK( ( *and_1 )[0].tdelay[1] == 1.0f );
+  CHECK( ( *and_1 )[0].polarity == 3u );
+
+  kitty::create_from_hex_string( tt, "22" );
+  auto const and_8 = lib.get_supergates( tt );
+  CHECK( and_8 == nullptr );
+
+  kitty::create_from_hex_string( tt, "44" );
+  auto const nand_d = lib.get_supergates( tt );
+  CHECK( nand_d == nullptr );
+
+  kitty::create_from_hex_string( tt, "88" );
+  auto const nand_e = lib.get_supergates( tt );
+  CHECK( nand_e == nullptr );
+
+  kitty::create_from_hex_string( tt, "07" );
+  auto const andor_07 = lib.get_supergates( tt );
+  CHECK( andor_07 != nullptr );
+  CHECK( andor_07->size() == 1 );
+  CHECK( ( *andor_07 )[0].root->root->name == "and" );
+  CHECK( ( *andor_07 )[0].area == 10.0f );
+  CHECK( ( *andor_07 )[0].tdelay[0] == 2.0f );
+  CHECK( ( *andor_07 )[0].tdelay[1] == 2.0f );
+  CHECK( ( *andor_07 )[0].tdelay[2] == 1.0f );
+  CHECK( ( *andor_07 )[0].polarity == 7u );
+
+  kitty::create_from_hex_string( tt, "01" );
+  auto const and_01 = lib.get_supergates( tt );
+  CHECK( and_01 != nullptr );
+  CHECK( and_01->size() == 2 );
+  CHECK( ( *and_01 )[0].root->root->name == "and" );
+  CHECK( ( *and_01 )[0].area == 10.0f );
+  CHECK( ( *and_01 )[0].tdelay[0] == 2.0f );
+  CHECK( ( *and_01 )[0].tdelay[1] == 2.0f );
+  CHECK( ( *and_01 )[0].tdelay[2] == 1.0f );
+  CHECK( ( *and_01 )[0].polarity == 7u );
+  CHECK( ( *and_01 )[1].root->root->name == "and" );
+  CHECK( ( *and_01 )[1].area == 10.0f );
+  CHECK( ( *and_01 )[1].tdelay[0] == 2.0f );
+  CHECK( ( *and_01 )[1].tdelay[1] == 1.0f );
+  CHECK( ( *and_01 )[1].tdelay[2] == 2.0f );
+  CHECK( ( *and_01 )[1].polarity == 7u );
 }
 
 TEST_CASE( "Complete library generation", "[tech_library]" )

@@ -47,14 +47,14 @@ struct supergate_spec
   unsigned int id;
   std::string name{};
   bool is_super{ false };
-  std::vector<uint32_t> fanins_id;
+  std::vector<uint32_t> fanin_id;
 };
 
 struct super_lib
 {
   std::string genlib_name{};
   uint32_t max_num_vars{ 0u };
-  uint32_t num_superGates{ 0u };
+  uint32_t num_supergates{ 0u };
   uint32_t num_lines{ 0 };
   std::vector<supergate_spec> supergates{};
 };
@@ -83,7 +83,7 @@ public:
   {
     lib.genlib_name = genlib_name;
     lib.max_num_vars = max_num_vars;
-    lib.num_superGates = max_superGates; 
+    lib.num_supergates = max_superGates; 
     lib.num_lines = num_lines;
   }
 

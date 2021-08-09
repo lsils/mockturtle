@@ -183,6 +183,7 @@ public:
       }
     }
 
+
     /* creating input variables */
     for ( uint8_t i = 0; i < _supergates_spec.max_num_vars; ++i )
     {
@@ -219,7 +220,7 @@ public:
 
       uint32_t num_vars = _gates[root_match_id].num_vars;
 
-      if ( num_vars != g.fanins_id.size() )
+      if ( num_vars != g.fanin_id.size() )
       {
         std::cerr << fmt::format( "WARNING: ignoring supergate {}, wrong number of fanins.", g.id ) << std::endl;
         continue;
@@ -233,7 +234,8 @@ public:
       std::vector<composed_gate<NInputs>*> sub_gates;
 
       bool error = false;
-      for ( uint32_t f : g.fanins_id )
+      bool simple_gate = true;
+      for ( uint32_t f : g.fanin_id )
       {
         if ( f >= g.id + _supergates_spec.max_num_vars )
         {
@@ -247,12 +249,24 @@ public:
         else
         {
           sub_gates.emplace_back( &_supergates[f + simple_gates_size] );
+          simple_gate = false;
         }
       }
 
       if ( error )
       {
         continue;
+      }
+
+      /* force at `is_super = false` simple gates considered as supergates.
+       * This is necessary to not have duplicates since tech_library
+       * computes indipendently the permutations for simple gates.
+       * Moreover simple gates permutations could be are incomplete in SUPER
+       * libraries constrained by number of gates. */
+      bool is_super_verified = g.is_super;
+      if ( simple_gate )
+      {
+        is_super_verified = false;
       }
 
       float area = compute_area( root_match_id, sub_gates );
@@ -263,7 +277,7 @@ public:
       std::vector<uint8_t> const& support = kitty::min_base_inplace( tt_test );
 
       _supergates.emplace_back( composed_gate<NInputs>{_supergates.size(),
-                                                       g.is_super,
+                                                       is_super_verified,
                                                        &_gates[root_match_id],
                                                        0,
                                                        tt,
