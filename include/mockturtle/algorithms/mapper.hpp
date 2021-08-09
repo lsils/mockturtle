@@ -1114,14 +1114,14 @@ private:
     if ( supergates_zero != nullptr )
     {
       node_data.best_supergate[0] = &( ( *supergates_zero )[0] );
-      node_data.arrival[0] = node_data.best_supergate[0]->worstDelay;
+      node_data.arrival[0] = node_data.best_supergate[0]->tdelay[0];
       node_data.area[0] = node_data.best_supergate[0]->area;
       node_data.phase[0] = 0;
     }
     if ( supergates_one != nullptr )
     {
       node_data.best_supergate[1] = &( ( *supergates_one )[0] );
-      node_data.arrival[1] = node_data.best_supergate[1]->worstDelay;
+      node_data.arrival[1] = node_data.best_supergate[1]->tdelay[0];
       node_data.area[1] = node_data.best_supergate[1]->area;
       node_data.phase[1] = 0;
     }
@@ -1371,7 +1371,6 @@ private:
       if ( node_data.same_match || node_data.map_refs[phase] > 0 )
       {
         create_lut_for_gate( res, old2new, index, phase );
-        res.add_binding( res.get_node( old2new[index][phase] ), node_match[index].best_supergate[phase]->root->id );
 
         /* add inverted version if used */
         if ( node_data.same_match && node_data.map_refs[phase ^ 1] > 0 )
@@ -1386,7 +1385,6 @@ private:
       if ( !node_data.same_match && node_data.map_refs[phase] > 0 )
       {
         create_lut_for_gate( res, old2new, index, phase );
-        res.add_binding( res.get_node( old2new[index][phase] ), node_match[index].best_supergate[phase]->root->id );
       }
 
       return true;
@@ -1419,14 +1417,14 @@ private:
     st.delay = delay;
     if ( ps.eswp_rounds )
       st.power = compute_switching_power();
-    compute_gates_usage();
+    // compute_gates_usage();
   }
 
   void create_lut_for_gate( binding_view<klut_network>& res, klut_map& old2new, uint32_t index, unsigned phase )
   {
     auto const& node_data = node_match[index];
     auto& best_cut = cuts.cuts( index )[node_data.best_cut[phase]];
-    auto const gate = node_data.best_supergate[phase]->root;
+    auto const& gate = node_data.best_supergate[phase]->root;
 
     /* permutate and negate to obtain the matched gate truth table */
     std::vector<signal<klut_network>> children( gate->num_vars );
@@ -1440,11 +1438,47 @@ private:
       ++ctr;
     }
 
-    /* create the node */
-    auto f = res.create_node( children, gate->function );
+    if ( !gate->is_super )
+    {
+      /* create the node */
+      auto f = res.create_node( children, gate->function );
+      res.add_binding( res.get_node( f ), gate->root->id );
 
-    /* add the node in the data structure */
-    old2new[index][phase] = f;
+      /* add the node in the data structure */
+      old2new[index][phase] = f;
+    }
+    else
+    {
+      /* supergate, create sub-gates */
+      auto f = create_lut_for_gate_rec( res, *gate, children );
+
+      /* add the node in the data structure */
+      old2new[index][phase] = f;
+    }
+  }
+
+  signal<klut_network> create_lut_for_gate_rec( binding_view<klut_network>& res, composed_gate<NInputs> const& gate, std::vector<signal<klut_network>> const& children )
+  {
+    std::vector<signal<klut_network>> children_local( gate.fanin.size() );
+
+    auto i = 0u;
+    for ( auto const fanin : gate.fanin )
+    {
+      if ( fanin->root == nullptr )
+      {
+        /* terminal condition */
+        children_local[i] = children[fanin->id];
+      }
+      else
+      {
+        children_local[i] = create_lut_for_gate_rec( res, *fanin, children );
+      }
+      ++i;
+    }
+
+    auto f = res.create_node( children_local, gate.root->function );
+    res.add_binding( res.get_node( f ), gate.root->id );
+    return f;
   }
 
   template<bool DO_AREA>

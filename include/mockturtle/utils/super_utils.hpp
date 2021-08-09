@@ -35,6 +35,7 @@
 #include <cassert>
 #include <unordered_map>
 #include <vector>
+#include <deque>
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -51,30 +52,53 @@
 namespace mockturtle
 {
 
+struct super_utils_params
+{
+  /*! \brief reports loaded supergates */
+  bool verbose{ false };
+};
+
 template<unsigned NInputs>
 struct composed_gate
 {
+  /* unique ID */
   uint32_t id;
+
+  /* gate is a supergate */
   bool is_super{false};
-  int32_t root_id{ -1 };
+
+  /* pointer to the root library gate */
+  gate const* root{ nullptr };
+
+  /* support of the composed gate */
+  uint32_t num_vars{0};
+
+  /* function */
   kitty::dynamic_truth_table function;
+
+  /* area */
   double area{ 0.0f };
+
+  /* pin-to-pin delays */
   std::array<float, NInputs> tdelay{};
-  std::vector<uint32_t> fanin{};
+
+  /* fanin gates */
+  std::vector<composed_gate<NInputs>*> fanin{};
 };
 
 template<unsigned NInputs = 5u>
-class supergate_utils
+class super_utils
 {
 public:
-  explicit supergate_utils( std::vector<gate> const& gates, super_lib const& supergates_spec = {} )
+  explicit super_utils( std::vector<gate> const& gates, super_lib const& supergates_spec = {}, super_utils_params const ps = {} )
       : _gates( gates ),
         _supergates_spec( supergates_spec ),
+        _ps( ps ),
         _supergates()
   {
     if ( _supergates_spec.supergates.size() == 0 )
     {
-      compute_library_with_genlib();
+      generate_library_with_genlib();
     }
     else
     {
@@ -82,34 +106,53 @@ public:
     }
   }
 
-  const std::vector<composed_gate<NInputs>>& get_super_library() const
+  const std::deque<composed_gate<NInputs>>& get_super_library() const
   {
     return _supergates;
   }
 
-public:
-  void compute_library_with_genlib()
+  const uint32_t get_standard_library_size() const
   {
+    return simple_gates_size;
+  }
+
+public:
+  void generate_library_with_genlib()
+  {
+    uint32_t initial_size = _supergates.size();
+
     for ( const auto& g : _gates )
     {
       std::array<float, NInputs> pin_to_pin_delays{};
+
+      if ( g.function.num_vars() > NInputs )
+      {
+        std::cerr << "[i] WARNING: gate " << g.name << " IGNORED, too many variables for the library settings" << std::endl;
+        continue;
+      }
 
       auto i = 0u;
       for ( auto const& pin : g.pins )
       {
         /* use worst pin delay */
-        pin_to_pin_delays[i] = std::max( pin.rise_block_delay, pin.fall_block_delay );
+        pin_to_pin_delays[i++] = std::max( pin.rise_block_delay, pin.fall_block_delay );
       }
 
-      composed_gate<NInputs> s = {_supergates.size(),
-                                  false,
-                                  g.id,
-                                  g.function,
-                                  g.area,
-                                  pin_to_pin_delays,
-                                  {}};
+      _supergates.emplace_back( composed_gate<NInputs>{_supergates.size(),
+                                                       false,
+                                                       &g,
+                                                       g.num_vars,
+                                                       g.function,
+                                                       g.area,
+                                                       pin_to_pin_delays,
+                                                       {}} );
+    }
 
-      _supergates.emplace_back( s );
+    simple_gates_size = _supergates.size() - initial_size;
+
+    if ( _ps.verbose )
+    {
+      std::cout << fmt::format( "[i] Loaded {} simple gates in the library\n", simple_gates_size );
     }
   }
 
@@ -121,7 +164,7 @@ public:
         "ERROR: NInputs ({}) should be greater or equal than the max number of variables ({}) in the super file.\n", NInputs, _supergates_spec.max_num_vars
         );
       std::cerr << "WARNING: ignoring supergates, proceeding with standard library." << std::endl;
-      compute_library_with_genlib();
+      generate_library_with_genlib();
       return;
     }
 
@@ -146,19 +189,22 @@ public:
       kitty::dynamic_truth_table tt{ NInputs };
       kitty::create_nth_var( tt, i );
 
-      composed_gate<NInputs> s = {i,
-                                  false,
-                                  -1,
-                                  tt,
-                                  0.0f,
-                                  {},
-                                  {}};
-
-      _supergates.emplace_back( s );
+      _supergates.emplace_back( composed_gate<NInputs>{i,
+                                                       false,
+                                                       nullptr,
+                                                       0,
+                                                       tt,
+                                                       0.0f,
+                                                       {},
+                                                       {}} );
     }
 
+    generate_library_with_genlib();
+
+    uint32_t super_count = 0;
+
     /* add supergates */
-    for ( auto const g : _supergates_spec.supergates )
+    for ( auto const& g : _supergates_spec.supergates )
     {
       uint32_t root_match_id;
       if ( auto it = gates_map.find( g.name ); it != gates_map.end() )
@@ -184,7 +230,7 @@ public:
         continue;
       }
 
-      std::vector<uint32_t> sub_gates;
+      std::vector<composed_gate<NInputs>*> sub_gates;
 
       bool error = false;
       for ( uint32_t f : g.fanins_id )
@@ -194,7 +240,14 @@ public:
           error = true;
           std::cerr << fmt::format( "WARNING: ignoring supergate {}, wrong fanins.", g.id ) << std::endl;
         }
-        sub_gates.emplace_back( _supergates[f].id );
+        if ( f < _supergates_spec.max_num_vars )
+        {
+          sub_gates.emplace_back( &_supergates[f] );
+        }
+        else
+        {
+          sub_gates.emplace_back( &_supergates[f + simple_gates_size] );
+        }
       }
 
       if ( error )
@@ -203,71 +256,101 @@ public:
       }
 
       float area = compute_area( root_match_id, sub_gates );
-      const auto tt = compute_truth_table( root_match_id, sub_gates );
+      const kitty::dynamic_truth_table tt = compute_truth_table( root_match_id, sub_gates );
 
-      composed_gate<NInputs> s = {_supergates.size(),
-                                  g.is_super,
-                                  root_match_id,
-                                  tt,
-                                  area,
-                                  {},
-                                  sub_gates};
+      /* try truth table minimization */
+      auto tt_test = tt;
+      std::vector<uint8_t> const& support = kitty::min_base_inplace( tt_test );
 
+      // if ( g.is_super && tt_test != tt )
+      // {
+      //   /* truth table has don't cares: it shouldn't. Gate is sub-optimal */
+      //   std::cerr << fmt::format( "WARNING: ignoring supergate {}, has internal don't cares.", g.id ) << std::endl;
+      //   std::cout << "Not minimized line: " << _supergates.size() - simple_gates_size - 5 + 23 << std::endl;
+      //   is_super_verified = false;
+      // }
+
+      _supergates.emplace_back( composed_gate<NInputs>{_supergates.size(),
+                                                       g.is_super,
+                                                       &_gates[root_match_id],
+                                                       0,
+                                                       tt,
+                                                       area,
+                                                       {},
+                                                       sub_gates} );
+
+      if ( g.is_super )
+      {
+        ++super_count;
+      }
+
+      auto& s = _supergates[_supergates.size() - 1];
+      s.num_vars = compute_support( s );
       compute_delay_parameters( s );
-
-      _supergates.emplace_back( s );
     }
 
-    /* add constants and single input gates which are not represented in SUPER */
-    for ( auto& gate : _gates )
+    /* minimize supergates */
+    for ( auto& g : _supergates )
     {
-      if ( gate.function.num_vars() == 0 )
+      if ( g.is_super )
       {
-        /* constants */
-        composed_gate<NInputs> s = {_supergates.size(),
-                                    false,
-                                    gate.id,
-                                    gate.function,
-                                    gate.area,
-                                    {},
-                                    {}};
-        _supergates.emplace_back( s );
+        g.function = shrink_to( g.function, static_cast<unsigned>( g.num_vars ) );
       }
-      else if ( gate.function.num_vars() == 1 )
-      {
-        /* inverter or buffer */
-        composed_gate<NInputs> s = {_supergates.size(),
-                                    false,
-                                    gate.id,
-                                    gate.function,
-                                    gate.area,
-                                    {},
-                                    {}};
-        s.tdelay[0] = std::max( gate.pins[0].rise_block_delay, gate.pins[0].fall_block_delay );
-        _supergates.emplace_back( s );
-      }
+    }
+
+    if ( _ps.verbose )
+    {
+      std::cout << fmt::format( "[i] Loaded {} supergates in the library\n", super_count );
     }
   }
 
 private:
-  inline float compute_area( uint32_t root_id, std::vector<uint32_t> const& sub_gates )
+  inline float compute_area( uint32_t root_id, std::vector<composed_gate<NInputs>*> const& sub_gates )
   {
     float area = _gates[root_id].area;
-    for ( auto const& id : sub_gates )
+    for ( auto const f : sub_gates )
     {
-      area += _supergates[id].area;
+      area += f->area;
     }
 
     return area;
   }
 
-  inline kitty::dynamic_truth_table compute_truth_table( uint32_t root_id, std::vector<uint32_t> const& sub_gates )
+  inline uint32_t compute_support( composed_gate<NInputs>& s )
+  {
+    std::array<uint8_t, NInputs> used_pins{};
+    uint32_t support = 0;
+
+    return compute_support_rec( s, used_pins );
+  }
+
+  uint32_t compute_support_rec( composed_gate<NInputs>& s, std::array<uint8_t, NInputs>& used_pins )
+  {
+    /* termination: input variable */
+    if ( s.root == nullptr )
+    {
+      if ( used_pins[s.id]++ == 0u )
+      {
+        return 1;
+      }
+      return 0;
+    }
+
+    uint32_t support = 0;
+    for ( auto const pin : s.fanin )
+    {
+      support += compute_support_rec( *pin, used_pins );
+    }
+    return support;
+  }
+
+  inline kitty::dynamic_truth_table compute_truth_table( uint32_t root_id, std::vector<composed_gate<NInputs>*> const& sub_gates )
   {
     std::vector<kitty::dynamic_truth_table> ttv;
 
-    for ( auto const& id : sub_gates )
+    for ( auto const f : sub_gates )
     {
-      ttv.emplace_back( _supergates[id].function );
+      ttv.emplace_back( f->function );
     }
 
     return kitty::compose_truth_table( _gates[root_id].function, ttv );
@@ -275,39 +358,42 @@ private:
 
   inline void compute_delay_parameters( composed_gate<NInputs>& s )
   {
-    const auto& root = _gates[s.root_id];
+    const auto& root = *( s.root );
 
     auto i = 0u;
     for ( auto const& pin : root.pins )
     {
       float worst_delay = std::max( pin.rise_block_delay, pin.fall_block_delay );
 
-      compute_delay_pin_rec( s, _supergates[s.fanin[i++]], worst_delay );
+      compute_delay_pin_rec( s, *( s.fanin[i++] ), worst_delay );
     }
   }
 
   void compute_delay_pin_rec( composed_gate<NInputs>& root, composed_gate<NInputs>& s, float delay )
   {
     /* termination: input variable */
-    if ( s.root_id == -1 )
+    if ( s.root == nullptr )
     {
       root.tdelay[s.id] = std::max( root.tdelay[s.id], delay );
       return;
     }
 
     auto i = 0u;
-    for ( auto const& pin : _gates[s.root_id].pins )
+    for ( auto const& pin : s.root->pins )
     {
       float worst_delay = delay + std::max( pin.rise_block_delay, pin.fall_block_delay );
 
-      compute_delay_pin_rec( root, _supergates[s.fanin[i++]], worst_delay );
+      compute_delay_pin_rec( root, *( s.fanin[i++] ), worst_delay );
     }
   }
 
 protected:
+  uint32_t simple_gates_size{ 0 };
+
   std::vector<gate> const& _gates;
   super_lib const& _supergates_spec;
-  std::vector<composed_gate<NInputs>> _supergates;
-}; /* Class supergate_utils */
+  super_utils_params const _ps;
+  std::deque<composed_gate<NInputs>> _supergates;
+}; /* class super_utils */
 
 } /* namespace mockturtle */

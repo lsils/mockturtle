@@ -504,7 +504,6 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
 
   topo_view ntk_topo{ntk};
 
-  /* if node drives multiple POs, dupplicate */
   ntk_topo.foreach_node( [&]( auto const& n ) {
     if ( po_nodes.has( n ) )
     {
