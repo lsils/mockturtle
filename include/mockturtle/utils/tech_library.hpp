@@ -121,8 +121,8 @@ struct supergate
  * 
  * The configuration is selected using the template
  * parameter `Configuration`. P-configuration is suggested
- * for libraries with more than 20 gates. The template parameter
- * `NInputs` selects the maximum number of variables
+ * for big libraries with few symmetric gates. The template
+ * parameter `NInputs` selects the maximum number of variables
  * allowed for a gate in the library.
  *
    \verbatim embed:rst
