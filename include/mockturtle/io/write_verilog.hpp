@@ -494,12 +494,12 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
   auto const& gates = ntk.get_library();
 
   int nDigits = ( int ) std::floor( std::log10( ntk.num_gates() ) );
-  unsigned long length = 0;
+  unsigned int length = 0;
   unsigned counter = 0;
 
   for ( auto const& gate : gates )
   {
-    length = std::max( length, gate.name.length() );
+    length = std::max( length, static_cast<unsigned int>( gate.name.length() ) );
   }
 
   topo_view ntk_topo{ntk};

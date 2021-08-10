@@ -90,7 +90,7 @@ public:
   virtual void on_supergate( std::string const& name, bool const& is_super, std::vector<uint32_t> const& fanins_id ) const override
   {
 
-    lib.supergates.emplace_back( supergate_spec{ lib.supergates.size(),
+    lib.supergates.emplace_back( supergate_spec{ static_cast<unsigned int>( lib.supergates.size() ),
                                                  name,
                                                  is_super,
                                                  fanins_id } );
