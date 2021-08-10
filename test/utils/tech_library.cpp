@@ -193,7 +193,7 @@ TEST_CASE( "Simple test library generation 2", "[tech_library]" )
   CHECK( nand_e == nullptr );
 }
 
-TEST_CASE( "Supergate library generation", "[tech_library]" )
+TEST_CASE( "Supergate library generation P", "[tech_library]" )
 {
   std::vector<gate> gates;
   super_lib super_data;
@@ -281,6 +281,96 @@ TEST_CASE( "Supergate library generation", "[tech_library]" )
   CHECK( ( *and_01 )[1].polarity == 7u );
 }
 
+TEST_CASE( "Supergate library generation NP", "[tech_library]" )
+{
+  std::vector<gate> gates;
+  super_lib super_data;
+
+  std::istringstream in_genlib( simple_library );
+  auto result = lorina::read_genlib( in_genlib, genlib_reader( gates ) );
+  
+  CHECK( result == lorina::return_code::success );
+
+  std::istringstream in_super( super_library );
+  result = lorina::read_super( in_super, mockturtle::super_reader( super_data ) );
+
+  CHECK( result == lorina::return_code::success );
+
+  tech_library_params ps;
+  ps.verbose = true;
+  ps.very_verbose = true;
+  tech_library<3, classification_type::np_configurations> lib( gates, super_data );
+  fflush( stdout );
+
+  CHECK( lib.max_gate_size() == 3 );
+  CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 1.0f, 2u ) );
+  CHECK( lib.get_buffer_info() == std::make_tuple( 2.0f, 1.0f, 3u ) );
+
+  kitty::static_truth_table<3> tt;
+
+  kitty::create_from_hex_string( tt, "11" );
+  auto const and_1 = lib.get_supergates( tt );
+  CHECK( and_1 != nullptr );
+  CHECK( and_1->size() == 1 );
+  CHECK( ( *and_1 )[0].root->root->name == "and" );
+  CHECK( ( *and_1 )[0].area == 5.0f );
+  CHECK( ( *and_1 )[0].tdelay[0] == 1.0f );
+  CHECK( ( *and_1 )[0].tdelay[1] == 1.0f );
+  CHECK( ( *and_1 )[0].polarity == 3u );
+
+  kitty::create_from_hex_string( tt, "22" );
+  auto const and_2 = lib.get_supergates( tt );
+  CHECK( and_2 != nullptr );
+  CHECK( and_2->size() == 1 );
+  CHECK( ( *and_2 )[0].root->root->name == "and" );
+  CHECK( ( *and_2 )[0].area == 5.0f );
+  CHECK( ( *and_2 )[0].tdelay[0] == 1.0f );
+  CHECK( ( *and_2 )[0].tdelay[1] == 1.0f );
+  CHECK( ( *and_2 )[0].polarity == 2u );
+
+  kitty::create_from_hex_string( tt, "44" );
+  auto const and_4 = lib.get_supergates( tt );
+  CHECK( and_4 != nullptr );
+  CHECK( and_4->size() == 1 );
+  CHECK( ( *and_4 )[0].root->root->name == "and" );
+  CHECK( ( *and_4 )[0].area == 5.0f );
+  CHECK( ( *and_4 )[0].tdelay[0] == 1.0f );
+  CHECK( ( *and_4 )[0].tdelay[1] == 1.0f );
+  CHECK( ( *and_4 )[0].polarity == 1u );
+
+  kitty::create_from_hex_string( tt, "88" );
+  auto const and_8 = lib.get_supergates( tt );
+  CHECK( and_8 != nullptr );
+  CHECK( and_8->size() == 1 );
+  CHECK( ( *and_8 )[0].root->root->name == "and" );
+  CHECK( ( *and_8 )[0].area == 5.0f );
+  CHECK( ( *and_8 )[0].tdelay[0] == 1.0f );
+  CHECK( ( *and_8 )[0].tdelay[1] == 1.0f );
+  CHECK( ( *and_8 )[0].polarity == 0u );
+
+  kitty::create_from_hex_string( tt, "07" );
+  auto const andor_07 = lib.get_supergates( tt );
+  CHECK( andor_07 != nullptr );
+  CHECK( andor_07->size() == 1 );
+  CHECK( ( *andor_07 )[0].root->root->name == "and" );
+  CHECK( ( *andor_07 )[0].area == 10.0f );
+  CHECK( ( *andor_07 )[0].tdelay[0] == 2.0f );
+  CHECK( ( *andor_07 )[0].tdelay[1] == 2.0f );
+  CHECK( ( *andor_07 )[0].tdelay[2] == 1.0f );
+  CHECK( ( *andor_07 )[0].polarity == 7u );
+
+  kitty::create_from_hex_string( tt, "e0" );
+  auto const andor_e0 = lib.get_supergates( tt );
+  CHECK( andor_e0 != nullptr );
+  CHECK( andor_e0->size() == 1 );
+  CHECK( ( *andor_e0 )[0].root->root->name == "and" );
+  CHECK( ( *andor_e0 )[0].area == 10.0f );
+  CHECK( ( *andor_e0 )[0].tdelay[0] == 2.0f );
+  CHECK( ( *andor_e0 )[0].tdelay[1] == 2.0f );
+  CHECK( ( *andor_e0 )[0].tdelay[2] == 1.0f );
+  CHECK( ( *andor_e0 )[0].polarity == 0u );
+}
+
 TEST_CASE( "Complete library generation", "[tech_library]" )
 {
   std::vector<gate> gates;
@@ -321,5 +411,4 @@ TEST_CASE( "Complete library generation", "[tech_library]" )
 
     kitty::exact_np_enumeration( tt, test_enumeration );
   }
-  
 }
