@@ -39,15 +39,9 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/npn.hpp>
-#include <kitty/print.hpp>
-#include <kitty/static_truth_table.hpp>
-#include <lorina/lorina.hpp>
 
 #include "../io/genlib_reader.hpp"
 #include "../io/super_reader.hpp"
-#include "../traits.hpp"
-#include "../utils/truth_table_cache.hpp"
 
 namespace mockturtle
 {
