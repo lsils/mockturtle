@@ -57,26 +57,32 @@ struct fuzz_tester_params
  * file.  If a segmentation fault occurs, the file can be used to
  * reproduce and debug the problem.
  *
- * Usage:
- *  #include <mockturtle/algorithms/aig_resub.hpp>
- *  #include <mockturtle/algorithms/cleanup.hpp>
- *  #include <mockturtle/algorithms/network_fuzz_tester.hpp>
- *  #include <mockturtle/algorithms/resubstitution.hpp>
- *  #include <mockturtle/generators/random_logic_generator.hpp>
- *
- *  auto opt = [&]( aig_network aig ) -> bool {
- *    resubstitution_params ps;
- *    resubstitution_stats st;
- *    aig_resubstitution( aig, ps, &st );
- *    aig = cleanup_dangling( aig );
- *    return true;
- *  };
- *
- *  fuzz_tester_params ps;
- *  ps.num_iterations = 100;
- *  auto gen = default_random_aig_generator();
- *  network_fuzz_tester fuzzer( gen, ps );
- *  fuzzer.run( opt );
+  \verbatim embed:rst
+
+   Usage
+
+   .. code-block:: c++
+
+     #include <mockturtle/algorithms/aig_resub.hpp>
+     #include <mockturtle/algorithms/cleanup.hpp>
+     #include <mockturtle/algorithms/network_fuzz_tester.hpp>
+     #include <mockturtle/algorithms/resubstitution.hpp>
+     #include <mockturtle/generators/random_logic_generator.hpp>
+
+     auto opt = [&]( aig_network aig ) -> bool {
+       resubstitution_params ps;
+       resubstitution_stats st;
+       aig_resubstitution( aig, ps, &st );
+       aig = cleanup_dangling( aig );
+       return true;
+     };
+
+     fuzz_tester_params ps;
+     ps.num_iterations = 100;
+     auto gen = default_random_aig_generator();
+     network_fuzz_tester fuzzer( gen, ps );
+     fuzzer.run( opt );
+   \endverbatim
 */
 template<class NetworkGenerator>
 class network_fuzz_tester

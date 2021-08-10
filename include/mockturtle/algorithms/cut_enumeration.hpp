@@ -1130,13 +1130,14 @@ fast_network_cuts<Ntk, NumVars, ComputeTruth, CutData> fast_cut_enumeration( Ntk
  * However, since we cannot know the size of a graph at compile-time, this
  * function returns the results wrapped in an std::optional.
  *
- * \verbatim embed:rst
- *
- * .. warning::
- *
- *    This algorithm expects the nodes in the network to be in topological
- *    order.  If the network does not guarantee a topological order of nodes one
- *    can wrap the network parameter in a ``topo_view`` view.
+   \verbatim embed:rst
+
+   .. warning::
+
+      This algorithm expects the nodes in the network to be in topological
+      order.  If the network does not guarantee a topological order of nodes one
+      can wrap the network parameter in a ``topo_view`` view.
+   \endverbatim
  */
 template<typename Ntk>
 std::optional<std::vector<std::vector<uint64_t>>>

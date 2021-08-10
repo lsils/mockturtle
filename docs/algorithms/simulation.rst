@@ -94,9 +94,9 @@ Note that currently only AIG and XAG are supported.
 
 .. doxygenfunction:: mockturtle::partial_simulator::add_pattern( std::vector<bool> const& )
 
-.. doxygenfunction:: mockturtle::partial_simulator::num_bits()
+.. doxygenfunction:: mockturtle::partial_simulator::num_bits
 
-.. doxygenfunction:: mockturtle::partial_simulator::get_patterns()
+.. doxygenfunction:: mockturtle::partial_simulator::get_patterns
 
 **Simulation**
 
@@ -112,4 +112,4 @@ To reduce the size of simulation pattern set during pattern generation, ``bit_pa
 
 .. doxygenfunction:: mockturtle::bit_packed_simulator::add_pattern( std::vector<bool> const&, std::vector<bool> const& )
 
-.. doxygenfunction:: mockturtle::bit_packed_simulator::pack_bits()
+.. doxygenfunction:: mockturtle::bit_packed_simulator::pack_bits

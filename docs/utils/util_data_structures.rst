@@ -112,6 +112,31 @@ Cut sets
 .. doxygenclass:: mockturtle::cut_set
    :members:
 
+.. _index_list:
+
+Index List
+~~~~~~~~~~
+
+**Header:** ``mockturtle/utils/index_list.hpp``
+
+.. doxygenstruct:: mockturtle::abc_index_list
+.. doxygenfunction:: mockturtle::encode( abc_index_list&, Ntk const& )
+.. doxygenfunction:: mockturtle::insert( Ntk&, BeginIter, EndIter, abc_index_list const&, Fn&& )
+.. doxygenfunction:: mockturtle::to_index_list_string( abc_index_list const& )
+
+.. doxygenstruct:: mockturtle::mig_index_list
+.. doxygenfunction:: mockturtle::encode( mig_index_list&, Ntk const& )
+.. doxygenfunction:: mockturtle::insert( Ntk&, BeginIter, EndIter, mig_index_list const&, Fn&& )
+.. doxygenfunction:: mockturtle::to_index_list_string( mig_index_list const& )
+
+.. doxygenstruct:: mockturtle::xag_index_list
+.. doxygenfunction:: mockturtle::encode( xag_index_list<separate_header>&, Ntk const& )
+.. doxygenfunction:: mockturtle::insert( Ntk&, BeginIter, EndIter, xag_index_list<separate_header> const&, Fn&& )
+.. doxygenfunction:: mockturtle::to_index_list_string( xag_index_list<true> const& )
+
+.. doxygenfunction:: mockturtle::decode( Ntk&, IndexList const& )
+.. doxygenclass:: mockturtle::aig_index_list_enumerator
+
 Stopwatch
 ~~~~~~~~~
 

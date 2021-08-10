@@ -978,12 +978,11 @@ void decode( Ntk& ntk, IndexList const& indices )
  *    {2 | 1 << 8 | 1 << 16, 2, 5, 6}
  *    {2 | 1 << 8 | 1 << 16, 2, 5, 7}
  * from the abstract index list specification `{ -1, -1, 6 }`.
- *
- * Example
- *
    \verbatim embed:rst
 
-   .. code-bock:: c++
+   Example
+
+   .. code-block:: c++
 
       aig_index_list_enumerator e( { -1, -1, -1, 6, 8 }, 2u, 2u, 1u );
       e.run( [&]( xag_index_list const& il ) {
