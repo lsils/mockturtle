@@ -138,7 +138,7 @@ public:
         pin_to_pin_delays[i++] = std::max( pin.rise_block_delay, pin.fall_block_delay );
       }
 
-      _supergates.emplace_back( composed_gate<NInputs>{_supergates.size(),
+      _supergates.emplace_back( composed_gate<NInputs>{static_cast<unsigned int>( _supergates.size() ),
                                                        false,
                                                        &g,
                                                        g.num_vars,
@@ -190,7 +190,7 @@ public:
       kitty::dynamic_truth_table tt{ NInputs };
       kitty::create_nth_var( tt, i );
 
-      _supergates.emplace_back( composed_gate<NInputs>{i,
+      _supergates.emplace_back( composed_gate<NInputs>{static_cast<unsigned int>( i ),
                                                        false,
                                                        nullptr,
                                                        0,
@@ -276,7 +276,7 @@ public:
       auto tt_test = tt;
       std::vector<uint8_t> const& support = kitty::min_base_inplace( tt_test );
 
-      _supergates.emplace_back( composed_gate<NInputs>{_supergates.size(),
+      _supergates.emplace_back( composed_gate<NInputs>{static_cast<unsigned int>( _supergates.size() ),
                                                        is_super_verified,
                                                        &_gates[root_match_id],
                                                        0,
