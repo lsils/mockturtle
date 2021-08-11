@@ -654,17 +654,17 @@ private:
     } );
 
     /* propagate required time to the PIs */
-    auto i = ntk.size();
-    while ( i-- > 0u )
+    for ( auto it = top_order.rbegin(); it != top_order.rend(); ++it )
     {
-      const auto n = ntk.index_to_node( i );
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+      if ( ntk.is_pi( *it ) || ntk.is_constant( *it ) )
         break;
 
-      if ( node_match[i].map_refs[2] == 0 )
+      const auto index = ntk.node_to_index( *it );
+
+      if ( node_match[index].map_refs[2] == 0 )
         continue;
 
-      auto& node_data = node_match[i];
+      auto& node_data = node_match[index];
 
       unsigned use_phase = node_data.best_supergate[0] == nullptr ? 1u : 0u;
       unsigned other_phase = use_phase ^ 1;
@@ -681,7 +681,7 @@ private:
       if ( node_data.same_match || node_data.map_refs[use_phase] > 0 )
       {
         auto ctr = 0u;
-        auto best_cut = cuts.cuts( i )[node_data.best_cut[use_phase]];
+        auto best_cut = cuts.cuts( index )[node_data.best_cut[use_phase]];
         auto const& supergate = node_data.best_supergate[use_phase];
         for ( auto leaf : best_cut )
         {
@@ -694,7 +694,7 @@ private:
       if ( !node_data.same_match && node_data.map_refs[other_phase] > 0 )
       {
         auto ctr = 0u;
-        auto best_cut = cuts.cuts( i )[node_data.best_cut[other_phase]];
+        auto best_cut = cuts.cuts( index )[node_data.best_cut[other_phase]];
         auto const& supergate = node_data.best_supergate[other_phase];
         for ( auto leaf : best_cut )
         {
@@ -1335,7 +1335,8 @@ private:
 
   void finalize_cover( binding_view<klut_network>& res, klut_map& old2new )
   {
-    ntk.foreach_node( [&]( auto const& n ) {
+    for ( auto const& n : top_order )
+    {
       auto index = ntk.node_to_index( n );
       auto const& node_data = node_match[index];
 
@@ -1343,7 +1344,7 @@ private:
       if ( ntk.is_constant( n ) )
       {
         if ( node_data.best_supergate[0] == nullptr && node_data.best_supergate[1] == nullptr )
-          return true;
+          continue;
       }
       else if ( ntk.is_pi( n ) )
       {
@@ -1352,12 +1353,12 @@ private:
           old2new[index][1] = res.create_not( old2new[n][0] );
           res.add_binding( res.get_node( old2new[index][1] ), lib_inv_id );
         }
-        return true;
+        continue;
       }
 
       /* continue if cut is not in the cover */
       if ( node_data.map_refs[2] == 0u )
-        return true;
+        continue;
 
       unsigned phase = ( node_data.best_supergate[0] != nullptr ) ? 0 : 1;
 
@@ -1380,9 +1381,7 @@ private:
       {
         create_lut_for_gate( res, old2new, index, phase );
       }
-
-      return true;
-    } );
+    }
 
     /* create POs */
     ntk.foreach_po( [&]( auto const& f ) {
@@ -1526,25 +1525,26 @@ private:
   {
     double power = 0.0f;
 
-    ntk.foreach_node( [&]( auto const& n ) {
+    for ( auto const& n : top_order )
+    {
       const auto index = ntk.node_to_index( n );
       auto& node_data = node_match[index];
 
       if ( ntk.is_constant( n ) )
       {
         if ( node_data.best_supergate[0] == nullptr && node_data.best_supergate[1] == nullptr )
-          return true;
+          continue;
       }
       else if ( ntk.is_pi( n ) )
       {
         if ( node_data.map_refs[1] > 0 )
           power += switch_activity[ntk.node_to_index( n )];
-        return true;
+        continue;
       }
 
       /* continue if cut is not in the cover */
       if ( node_match[index].map_refs[2] == 0u )
-        return true;
+        continue;
 
       unsigned phase = ( node_data.best_supergate[0] != nullptr ) ? 0 : 1;
 
@@ -1561,9 +1561,7 @@ private:
       {
         power += switch_activity[ntk.node_to_index( n )];
       }
-
-      return true;
-    } );
+    }
 
     return power;
   }

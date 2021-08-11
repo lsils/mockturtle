@@ -266,10 +266,6 @@ public:
       float area = compute_area( root_match_id, sub_gates );
       const kitty::dynamic_truth_table tt = compute_truth_table( root_match_id, sub_gates );
 
-      /* try truth table minimization */
-      auto tt_test = tt;
-      std::vector<uint8_t> const& support = kitty::min_base_inplace( tt_test );
-
       _supergates.emplace_back( composed_gate<NInputs>{static_cast<unsigned int>( _supergates.size() ),
                                                        is_super_verified,
                                                        &_gates[root_match_id],

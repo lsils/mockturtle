@@ -445,6 +445,36 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
   } );
 
   std::vector<std::string> ws;
+  node_map<std::string, binding_view<Ntk>> node_names( ntk );
+
+  /* constants */
+  if ( ntk.has_binding( ntk.get_constant( false ) ) )
+  {
+    node_names[ntk.get_constant( false )] = fmt::format("n{}", ntk.node_to_index( ntk.get_constant( false ) ) );
+    if ( !po_nodes.has( ntk.get_constant( false ) ) )
+    {
+      ws.emplace_back( node_names[ntk.get_constant( false )] );
+    }
+  }
+  else
+  {
+    node_names[ntk.get_constant( false )] = "1'b0";
+  }
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  {
+    if ( ntk.has_binding( ntk.get_constant( true ) ) )
+    {
+      node_names[ntk.get_constant( true )] = fmt::format("n{}", ntk.node_to_index( ntk.get_constant( true ) ) );
+      if ( !po_nodes.has( ntk.get_constant( true ) ) )
+      {
+        ws.emplace_back( node_names[ntk.get_constant( true )] );
+      }
+    }
+    else
+    {
+      node_names[ntk.get_constant( true )] = "1'b1";
+    }
+  }
 
   /* add wires */
   ntk.foreach_gate( [&]( auto const& n ) {
@@ -481,11 +511,6 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
   {
     writer.on_wire( ws );
   }
-
-  node_map<std::string, binding_view<Ntk>> node_names( ntk );
-  node_names[ntk.get_constant( false )] = "1'b0";
-  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
-    node_names[ntk.get_constant( true )] = "1'b1";
 
   ntk.foreach_pi( [&]( auto const& n, auto i ) {
     node_names[n] = xs[i];
@@ -539,7 +564,7 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
       /* if node drives multiple POs, duplicate */
       if ( po_nodes.has( n ) && po_nodes[n].size() > 1 )
       {
-        std::cout << "[i] node " << n << " driving multiple POs has been duplicated.\n";
+        std::cerr << "[i] node " << n << " driving multiple POs has been duplicated.\n";
         auto const& po_list = po_nodes[n];
         for ( auto i = 1u; i < po_list.size(); ++i )
         {

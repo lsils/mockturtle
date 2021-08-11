@@ -174,7 +174,8 @@ TEST_CASE( "write buffered AIG into Verilog file", "[write_verilog]" )
 
 TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
 {
-  std::string const simple_test_library = "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+  std::string const simple_test_library = "GATE   zero    0 O=0;\n"
+                                          "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
                                           "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
                                           "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
                                           "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
@@ -200,23 +201,26 @@ TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
   const auto f1 = klut.create_nand( b, c );
   const auto f2 = klut.create_not( f1 );
 
+  klut.create_po( klut.get_constant( false ) );
   klut.create_po( buf );
   klut.create_po( f1 );
   klut.create_po( f2 );
 
-  klut.add_binding( klut.get_node( buf ), 2 );
-  klut.add_binding( klut.get_node( f1 ), 3 );
-  klut.add_binding( klut.get_node( f2 ), 1 );
+  klut.add_binding( klut.get_node( klut.get_constant( false ) ), 0 );
+  klut.add_binding( klut.get_node( buf ), 3 );
+  klut.add_binding( klut.get_node( f1 ), 4 );
+  klut.add_binding( klut.get_node( f2 ), 2 );
 
   std::ostringstream out;
   write_verilog( klut, out );
 
-  CHECK( out.str() == "module top( x0 , x1 , x2 , y0 , y1 , y2 );\n"
+  CHECK( out.str() == "module top( x0 , x1 , x2 , y0 , y1 , y2 , y3 );\n"
                       "  input x0 , x1 , x2 ;\n"
-                      "  output y0 , y1 , y2 ;\n"
-                      "  buf    g0( .a (x0), .O (y0) );\n"
-                      "  nand2  g1( .a (x1), .b (x2), .O (y1) );\n"
-                      "  inv2   g2( .a (y1), .O (y2) );\n"
+                      "  output y0 , y1 , y2 , y3 ;\n"
+                      "  zero   g0( .O (y0) );\n"
+                      "  buf    g1( .a (x0), .O (y1) );\n"
+                      "  nand2  g2( .a (x1), .b (x2), .O (y2) );\n"
+                      "  inv2   g3( .a (y2), .O (y3) );\n"
                       "endmodule\n" );
 }
 
