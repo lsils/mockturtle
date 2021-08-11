@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Alessandro Tempia Calvino
 */
 
 #pragma once
@@ -44,6 +45,7 @@
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/string_utils.hpp"
+#include "../views/binding_view.hpp"
 #include "../views/topo_view.hpp"
 
 namespace mockturtle
@@ -344,6 +346,220 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
 
   ntk.foreach_po( [&]( auto const& f, auto i ) {
     writer.on_assign_po( ys[i], std::make_pair( ntk.is_complemented( f ), node_names[f] ) );
+  } );
+
+  writer.on_module_end();
+}
+
+/*! \brief Writes mapped network in structural Verilog format into output stream
+ *
+ * **Required network functions:**
+ * - `num_pis`
+ * - `num_pos`
+ * - `foreach_pi`
+ * - `foreach_node`
+ * - `foreach_fanin`
+ * - `get_node`
+ * - `get_constant`
+ * - `is_constant`
+ * - `is_pi`
+ * - `node_to_index`
+ * 
+ * \param ntk Mapped network
+ * \param os Output stream
+ * \param ps Verilog parameters
+ */
+template<class Ntk>
+void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilog_params const& ps = {} )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
+  static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+
+  assert( ntk.is_combinational() && "Network has to be combinational" );
+
+  lorina::verilog_writer writer( os );
+
+  std::vector<std::string> xs, inputs;
+  if ( ps.input_names.empty() )
+  {
+    for ( auto i = 0u; i < ntk.num_pis(); ++i )
+      xs.emplace_back( fmt::format( "x{}", i ) );
+    inputs = xs;
+  }
+  else
+  {
+    uint32_t ctr{0u};
+    for ( auto const& [name, width] : ps.input_names )
+    {
+      inputs.emplace_back( name );
+      ctr += width;
+      for ( auto i = 0u; i < width; ++i )
+      {
+        xs.emplace_back( fmt::format( "{}[{}]", name, i ) );
+      }
+    }
+    if ( ctr != ntk.num_pis() )
+    {
+      std::cerr << "[e] input names do not partition all inputs\n";
+    }
+  }
+
+  std::vector<std::string> ys, outputs;
+  if ( ps.output_names.empty() )
+  {
+    for ( auto i = 0u; i < ntk.num_pos(); ++i )
+      ys.emplace_back( fmt::format( "y{}", i ) );
+    outputs = ys;
+  }
+  else
+  {
+    uint32_t ctr{0u};
+    for ( auto const& [name, width] : ps.output_names )
+    {
+      outputs.emplace_back( name );
+      ctr += width;
+      for ( auto i = 0u; i < width; ++i )
+      {
+        ys.emplace_back( fmt::format( "{}[{}]", name, i ) );
+      }
+    }
+    if ( ctr != ntk.num_pos() )
+    {
+      std::cerr << "[e] output names do not partition all outputs\n";
+    }
+  }
+
+  /* compute which nodes are POs and register index */
+  node_map<std::vector<uint32_t>, binding_view<Ntk>, std::unordered_map<typename Ntk::node, std::vector<uint32_t>>> po_nodes( ntk );
+  ntk.foreach_po( [&]( auto const& f, auto i ) {
+    po_nodes[f].push_back( i );
+  } );
+
+  std::vector<std::string> ws;
+
+  /* add wires */
+  ntk.foreach_gate( [&]( auto const& n ) {
+    if ( !po_nodes.has( n ) )
+    {
+      ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
+    }
+  } );
+
+  writer.on_module_begin( ps.module_name, inputs, outputs );
+  if ( ps.input_names.empty() )
+  {
+    writer.on_input( xs );
+  }
+  else
+  {
+    for ( auto const& [name, width] : ps.input_names )
+    {
+      writer.on_input( width, name );
+    }
+  }
+  if ( ps.output_names.empty() )
+  {
+    writer.on_output( ys );
+  }
+  else
+  {
+    for ( auto const& [name, width] : ps.output_names )
+    {
+      writer.on_output( width, name );
+    }
+  }
+  if ( !ws.empty() )
+  {
+    writer.on_wire( ws );
+  }
+
+  node_map<std::string, binding_view<Ntk>> node_names( ntk );
+  node_names[ntk.get_constant( false )] = "1'b0";
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+    node_names[ntk.get_constant( true )] = "1'b1";
+
+  ntk.foreach_pi( [&]( auto const& n, auto i ) {
+    node_names[n] = xs[i];
+  } );
+
+  auto const& gates = ntk.get_library();
+
+  int nDigits = ( int ) std::floor( std::log10( ntk.num_gates() ) );
+  unsigned int length = 0;
+  unsigned counter = 0;
+
+  for ( auto const& gate : gates )
+  {
+    length = std::max( length, static_cast<unsigned int>( gate.name.length() ) );
+  }
+
+  topo_view ntk_topo{ntk};
+
+  ntk_topo.foreach_node( [&]( auto const& n ) {
+    if ( po_nodes.has( n ) )
+    {
+      node_names[n] = ys[po_nodes[n][0]];
+    }
+    else if ( !ntk.is_constant( n ) && !ntk.is_pi( n ) )
+    {
+      node_names[n] = fmt::format( "n{}", ntk.node_to_index( n ) );
+    }
+
+    if ( ntk.has_binding( n ) )
+    {
+      auto const& gate = gates[ntk.get_binding_index( n )];
+      std::string name = gate.name;
+
+      int digits = counter == 0 ? 0 : ( int ) std::floor( std::log10( counter ) );
+      auto fanin_names = detail::format_fanin<binding_view<Ntk>>( ntk, n, node_names );
+      std::vector<std::pair<std::string,std::string>> args;
+
+      auto i = 0;
+      for ( auto pair : fanin_names )
+      {
+        args.emplace_back( std::make_pair( gate.pins[i++].name, pair.second ) );
+      }
+      args.emplace_back( std::make_pair( "O", node_names[n] ) );
+
+      writer.on_module_instantiation( name.append( std::string( length - name.length(), ' ' ) ),
+                                      {},
+                                      std::string( "g" ) + std::string( nDigits - digits, '0' ) + std::to_string( counter ),
+                                      args );
+      ++counter;
+
+      /* if node drives multiple POs, duplicate */
+      if ( po_nodes.has( n ) && po_nodes[n].size() > 1 )
+      {
+        std::cout << "[i] node " << n << " driving multiple POs has been duplicated.\n";
+        auto const& po_list = po_nodes[n];
+        for ( auto i = 1u; i < po_list.size(); ++i )
+        {
+          digits = counter == 0 ? 0 : ( int ) std::floor( std::log10( counter ) );
+          args[args.size() - 1] = std::make_pair( "O", ys[po_list[i]] );
+
+          writer.on_module_instantiation( name.append( std::string( length - name.length(), ' ' ) ),
+                                          {},
+                                          std::string( "g" ) + std::string( nDigits - digits, '0' ) + std::to_string( counter ),
+                                          args );
+          ++counter;
+        }
+      }
+    }
+    else if ( !ntk.is_constant( n ) && !ntk.is_pi( n ) )
+    {
+      std::cerr << "[e] internal node " << n << " is not mapped.\n";
+    }
+
+    return true;
   } );
 
   writer.on_module_end();

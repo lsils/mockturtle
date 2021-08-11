@@ -37,6 +37,11 @@ enum class diag_id
   ERR_GENLIB_PIN_PHASE,
   ERR_GENLIB_FAILED,
 
+  /* SUPER */
+  ERR_SUPER_INFO,
+  ERR_SUPER_UNEXPECTED_STRUCTURE,
+  ERR_SUPER_GATE,
+
   /* sentinel element to mark the end */
   NUM_STATIC_ERROR_IDS,
 };

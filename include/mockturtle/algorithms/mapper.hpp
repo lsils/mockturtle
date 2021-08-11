@@ -41,6 +41,7 @@
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/tech_library.hpp"
+#include "../views/binding_view.hpp"
 #include "../views/depth_view.hpp"
 #include "../views/topo_view.hpp"
 #include "cut_enumeration.hpp"
@@ -125,9 +126,6 @@ struct map_stats
   /*! \brief Delay and area stats for each round. */
   std::vector<std::string> round_stats{};
 
-  /*! \brief Gates usage stats. */
-  std::string gates_usage{};
-
   /*! \brief Mapping error. */
   bool mapping_error{ false };
 
@@ -144,9 +142,6 @@ struct map_stats
       std::cout << "\n";
     std::cout << fmt::format( "[i] Mapping runtime = {:>5.2f} secs\n", to_seconds( time_mapping ) );
     std::cout << fmt::format( "[i] Total runtime   = {:>5.2f} secs\n", to_seconds( time_total ) );
-    if ( !gates_usage.empty() )
-      std::cout << "[i] Gates usage report:\n"
-                << gates_usage;
   }
 };
 
@@ -210,6 +205,7 @@ public:
         cuts( fast_cut_enumeration<Ntk, CutSize, true, CutData>( ntk, ps.cut_enumeration_ps, &st.cut_enumeration_st ) )
   {
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
+    std::tie( lib_buf_area, lib_buf_delay, lib_buf_id ) = library.get_buffer_info();
   }
 
   explicit tech_map_impl( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, std::vector<float> const& switch_activity, map_params const& ps, map_stats& st )
@@ -223,9 +219,10 @@ public:
         cuts( fast_cut_enumeration<Ntk, NInputs, true, CutData>( ntk, ps.cut_enumeration_ps, &st.cut_enumeration_st ) )
   {
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
+    std::tie( lib_buf_area, lib_buf_delay, lib_buf_id ) = library.get_buffer_info();
   }
 
-  klut_network run()
+  binding_view<klut_network> run()
   {
     stopwatch t( st.time_mapping );
 
@@ -281,6 +278,9 @@ public:
         return res;
       }
     }
+
+    /* insert buffers for POs driven by PIs */
+    insert_buffers();
 
     /* generate the output network */
     finalize_cover( res, old2new );
@@ -1108,14 +1108,14 @@ private:
     if ( supergates_zero != nullptr )
     {
       node_data.best_supergate[0] = &( ( *supergates_zero )[0] );
-      node_data.arrival[0] = node_data.best_supergate[0]->worstDelay;
+      node_data.arrival[0] = node_data.best_supergate[0]->tdelay[0];
       node_data.area[0] = node_data.best_supergate[0]->area;
       node_data.phase[0] = 0;
     }
     if ( supergates_one != nullptr )
     {
       node_data.best_supergate[1] = &( ( *supergates_one )[0] );
-      node_data.arrival[1] = node_data.best_supergate[1]->worstDelay;
+      node_data.arrival[1] = node_data.best_supergate[1]->tdelay[0];
       node_data.area[1] = node_data.best_supergate[1]->area;
       node_data.phase[1] = 0;
     }
@@ -1288,9 +1288,40 @@ private:
     return count;
   }
 
-  std::pair<klut_network, klut_map> initialize_map_network()
+  void insert_buffers()
   {
-    klut_network dest;
+    if ( lib_buf_id != UINT32_MAX )
+    {
+      double area_old = area;
+      bool buffers = false;
+
+      ntk.foreach_po( [&]( auto const& f ) {
+        auto const& n = ntk.get_node( f );
+        if ( !ntk.is_constant( n ) && ntk.is_pi( n ) && !ntk.is_complemented( f ) )
+        {
+          area += lib_buf_area;
+          delay = std::max( delay, node_match[ntk.node_to_index( n )].arrival[0] + lib_inv_delay );
+          buffers = true;
+        }
+      } );
+
+      /* round stats */
+      if ( ps.verbose && buffers )
+      {
+        std::stringstream stats{};
+        float area_gain = 0.0f;
+
+        area_gain = float( ( area_old - area ) / area_old * 100 );
+
+        stats << fmt::format( "[i] Buffering: Delay = {:>12.2f}  Area = {:>12.2f}  {:>5.2f} %\n", delay, area, area_gain );
+        st.round_stats.push_back( stats.str() );
+      }
+    }
+  }
+
+  std::pair<binding_view<klut_network>, klut_map> initialize_map_network()
+  {
+    binding_view<klut_network> dest( library.get_gates() );
     klut_map old2new;
 
     old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][0] = dest.get_constant( false );
@@ -1302,27 +1333,32 @@ private:
     return { dest, old2new };
   }
 
-  void finalize_cover( klut_network& res, klut_map& old2new )
+  void finalize_cover( binding_view<klut_network>& res, klut_map& old2new )
   {
     ntk.foreach_node( [&]( auto const& n ) {
-      if ( ntk.is_constant( n ) )
-        return true;
-
       auto index = ntk.node_to_index( n );
+      auto const& node_data = node_match[index];
 
       /* add inverter at PI if needed */
-      if ( ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) )
       {
-        if ( node_match[index].map_refs[1] > 0 )
+        if ( node_data.best_supergate[0] == nullptr && node_data.best_supergate[1] == nullptr )
+          return true;
+      }
+      else if ( ntk.is_pi( n ) )
+      {
+        if ( node_data.map_refs[1] > 0 )
+        {
           old2new[index][1] = res.create_not( old2new[n][0] );
+          res.add_binding( res.get_node( old2new[index][1] ), lib_inv_id );
+        }
         return true;
       }
 
       /* continue if cut is not in the cover */
-      if ( node_match[index].map_refs[2] == 0u )
+      if ( node_data.map_refs[2] == 0u )
         return true;
 
-      auto const& node_data = node_match[index];
       unsigned phase = ( node_data.best_supergate[0] != nullptr ) ? 0 : 1;
 
       /* add used cut */
@@ -1332,7 +1368,10 @@ private:
 
         /* add inverted version if used */
         if ( node_data.same_match && node_data.map_refs[phase ^ 1] > 0 )
+        {
           old2new[index][phase ^ 1] = res.create_not( old2new[index][phase] );
+          res.add_binding( res.get_node( old2new[index][phase ^ 1] ), lib_inv_id );
+        }
       }
 
       phase = phase ^ 1;
@@ -1351,6 +1390,16 @@ private:
       {
         res.create_po( old2new[ntk.node_to_index( ntk.get_node( f ) )][1] );
       }
+      else if ( !ntk.is_constant( ntk.get_node( f ) ) && ntk.is_pi( ntk.get_node( f ) ) && lib_buf_id != UINT32_MAX )
+      {
+        /* create buffers for POs */
+        static uint64_t _buf = 0x2;
+        kitty::dynamic_truth_table tt_buf( 1 );
+        kitty::create_from_words( tt_buf, &_buf, &_buf + 1 );
+        const auto buf = res.create_node( { old2new[ntk.node_to_index( ntk.get_node( f ) )][0] }, tt_buf );
+        res.create_po( buf );
+        res.add_binding( res.get_node( buf ), lib_buf_id );
+      }
       else
       {
         res.create_po( old2new[ntk.node_to_index( ntk.get_node( f ) )][0] );
@@ -1362,14 +1411,13 @@ private:
     st.delay = delay;
     if ( ps.eswp_rounds )
       st.power = compute_switching_power();
-    compute_gates_usage();
   }
 
-  void create_lut_for_gate( klut_network& res, klut_map& old2new, uint32_t index, unsigned phase )
+  void create_lut_for_gate( binding_view<klut_network>& res, klut_map& old2new, uint32_t index, unsigned phase )
   {
     auto const& node_data = node_match[index];
     auto& best_cut = cuts.cuts( index )[node_data.best_cut[phase]];
-    auto const gate = node_data.best_supergate[phase]->root;
+    auto const& gate = node_data.best_supergate[phase]->root;
 
     /* permutate and negate to obtain the matched gate truth table */
     std::vector<signal<klut_network>> children( gate->num_vars );
@@ -1383,11 +1431,47 @@ private:
       ++ctr;
     }
 
-    /* create the node */
-    auto f = res.create_node( children, gate->function );
+    if ( !gate->is_super )
+    {
+      /* create the node */
+      auto f = res.create_node( children, gate->function );
+      res.add_binding( res.get_node( f ), gate->root->id );
 
-    /* add the node in the data structure */
-    old2new[index][phase] = f;
+      /* add the node in the data structure */
+      old2new[index][phase] = f;
+    }
+    else
+    {
+      /* supergate, create sub-gates */
+      auto f = create_lut_for_gate_rec( res, *gate, children );
+
+      /* add the node in the data structure */
+      old2new[index][phase] = f;
+    }
+  }
+
+  signal<klut_network> create_lut_for_gate_rec( binding_view<klut_network>& res, composed_gate<NInputs> const& gate, std::vector<signal<klut_network>> const& children )
+  {
+    std::vector<signal<klut_network>> children_local( gate.fanin.size() );
+
+    auto i = 0u;
+    for ( auto const fanin : gate.fanin )
+    {
+      if ( fanin->root == nullptr )
+      {
+        /* terminal condition */
+        children_local[i] = children[fanin->id];
+      }
+      else
+      {
+        children_local[i] = create_lut_for_gate_rec( res, *fanin, children );
+      }
+      ++i;
+    }
+
+    auto f = res.create_node( children_local, gate.root->function );
+    res.add_binding( res.get_node( f ), gate.root->id );
+    return f;
   }
 
   template<bool DO_AREA>
@@ -1436,78 +1520,6 @@ private:
       return true;
     }
     return false;
-  }
-
-  void compute_gates_usage()
-  {
-    auto const& gates = library.get_gates();
-    std::vector<uint32_t> gates_profile( gates.size(), 0u );
-
-    bool ignore_inv = lib_inv_id == UINT32_MAX;
-
-    ntk.foreach_node( [&]( auto const& n, auto ) {
-      const auto index = ntk.node_to_index( n );
-      auto& node_data = node_match[index];
-
-      if ( ntk.is_constant( n ) )
-      {
-        if ( node_data.best_supergate[0] == nullptr && node_data.best_supergate[1] == nullptr )
-          return true;
-      }
-      else if ( ntk.is_pi( n ) )
-      {
-        if ( !ignore_inv && node_data.map_refs[1] > 0 )
-          ++gates_profile[lib_inv_id];
-        return true;
-      }
-
-      /* continue if cut is not in the cover */
-      if ( node_match[index].map_refs[2] == 0u )
-        return true;
-
-      unsigned phase = ( node_data.best_supergate[0] != nullptr ) ? 0 : 1;
-
-      if ( node_data.same_match || node_data.map_refs[phase] > 0 )
-      {
-        ++gates_profile[node_data.best_supergate[phase]->root->id];
-
-        if ( !ignore_inv && node_data.same_match && node_data.map_refs[phase ^ 1] > 0 )
-          ++gates_profile[lib_inv_id];
-      }
-
-      phase = phase ^ 1;
-      if ( !node_data.same_match && node_data.map_refs[phase] > 0 )
-      {
-        ++gates_profile[node_data.best_supergate[phase]->root->id];
-      }
-
-      return true;
-    } );
-
-    std::stringstream gates_usage;
-    double tot_area = 0.0f;
-    uint32_t tot_instances = 0u;
-    for ( auto i = 0u; i < gates_profile.size(); ++i )
-    {
-      if ( gates_profile[i] > 0u )
-      {
-        auto tot_gate_area = gates_profile[i] * gates[i].area;
-
-        gates_usage << fmt::format( "[i] {:<15}", gates[i].name )
-                    << fmt::format( "\t Instance = {:>10d}", gates_profile[i] )
-                    << fmt::format( "\t Area = {:>12.2f}", tot_gate_area )
-                    << fmt::format( " {:>8.2f} %\n", tot_gate_area / area * 100 );
-
-        tot_instances += gates_profile[i];
-        tot_area += tot_gate_area;
-      }
-    }
-
-    gates_usage << fmt::format( "[i] {:<15}", "TOTAL" )
-                << fmt::format( "\t Instance = {:>10d}", tot_instances )
-                << fmt::format( "\t Area = {:>12.2f}   100.00 %\n", tot_area );
-
-    st.gates_usage = gates_usage.str();
   }
 
   double compute_switching_power()
@@ -1572,6 +1584,11 @@ private:
   float lib_inv_delay;
   uint32_t lib_inv_id;
 
+  /* lib buffer info */
+  float lib_buf_area;
+  float lib_buf_delay;
+  uint32_t lib_buf_id;
+
   std::vector<node<Ntk>> top_order;
   std::vector<node_match_tech<NInputs>> node_match;
   match_map matches;
@@ -1624,7 +1641,7 @@ private:
  * mapping command ``map`` in ABC.
  */
 template<class Ntk, unsigned CutSize = 5u, typename CutData = cut_enumeration_tech_map_cut, unsigned NInputs, classification_type Configuration>
-klut_network map( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
+binding_view<klut_network> map( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
