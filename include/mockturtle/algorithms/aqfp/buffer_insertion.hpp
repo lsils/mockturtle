@@ -561,7 +561,7 @@ private:
 
 #pragma region Level assignment
 public:
-  /*! \breif Obtain the initial level assignment using the specified scheduling policy */
+  /*! \brief Obtain the initial level assignment using the specified scheduling policy */
   void schedule()
   {
     if ( _ps.scheduling == buffer_insertion_params::provided )

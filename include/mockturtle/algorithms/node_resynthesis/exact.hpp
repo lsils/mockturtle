@@ -465,7 +465,8 @@ struct exact_xmg_resynthesis_params
  *
  *
    The underlying engine for this resynthesis function is percy_.
-
+   \verbatim embed:rst
+   
    .. _percy: https://github.com/lsils/percy
    \endverbatim
  *
