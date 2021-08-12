@@ -80,6 +80,15 @@ struct composed_gate
   std::vector<composed_gate<NInputs>*> fanin{};
 };
 
+/*! \brief Utilities to generate supergates
+ *
+ * This class creates supergates starting from supergates
+ * specifications contained in `supergates_spec` extracted
+ * from a SUPER file.
+ * 
+ * This utility is called by `tech_library` to construct
+ * the library for technology mapping.
+ */
 template<unsigned NInputs = 5u>
 class super_utils
 {
@@ -100,11 +109,21 @@ public:
     }
   }
 
+  /*! \brief Get the all the supergates.
+   *
+   * Returns a list of supergates created accordingly to
+   * the standard library and the supergates specifications.
+   */
   const std::deque<composed_gate<NInputs>>& get_super_library() const
   {
     return _supergates;
   }
 
+  /*! \brief Get the number of standard gates.
+   *
+   * Returns the number of standard gates contained in the
+   * supergate library.
+   */
   const uint32_t get_standard_library_size() const
   {
     return simple_gates_size;
@@ -255,8 +274,8 @@ public:
       /* force at `is_super = false` simple gates considered as supergates.
        * This is necessary to not have duplicates since tech_library
        * computes indipendently the permutations for simple gates.
-       * Moreover simple gates permutations could be are incomplete in SUPER
-       * libraries constrained by number of gates. */
+       * Moreover simple gates permutations could be incomplete in SUPER
+       * libraries which are constrained by the number of gates. */
       bool is_super_verified = g.is_super;
       if ( simple_gate )
       {

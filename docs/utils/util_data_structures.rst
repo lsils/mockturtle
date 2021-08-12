@@ -65,6 +65,20 @@ Exact Library
 .. doxygenclass:: mockturtle::exact_library
    :members:
 
+Super Utils
+~~~~~~~~~~~
+
+**Header:** ``mockturtle/utils/super_utils.hpp``
+
+.. doc_overview_table:: classmockturtle_1_1super__utils
+   :column: Method
+
+   get_super_library
+   get_standard_library_size
+
+.. doxygenclass:: mockturtle::super_utils
+   :members:
+
 Cuts
 ~~~~
 

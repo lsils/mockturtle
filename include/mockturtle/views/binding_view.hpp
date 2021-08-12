@@ -25,7 +25,7 @@
 
 /*!
   \file binding_view.hpp
-  \brief Implements methods to bind the network to a standard cells library
+  \brief Implements methods to bind the network to a standard cell library
 
   \author Alessandro Tempia Calvino
 */
@@ -42,6 +42,49 @@
 namespace mockturtle
 {
 
+/*! \brief Adds bindings to a technology library and mapping API methods.
+ *
+ * This view adds methods to create and manage a mapped network that
+ * implements gates contained in a technology library. This view
+ * is returned by the technology mapping command `map`. It can be used
+ * to report statistics about the network and write the network into
+ * a verilog file. It always adds the functions `has_binding`,
+ * `remove_binding`, `add_binding`, `add_binding_with_check`, `get_binding`,
+ * `get_binding_index`, `get_library`, `compute_area`, `compute_worst_delay`,
+ * `report_stats`, and `report_gates_usage`.
+ *
+ * **Required network functions:**
+ * - `size`
+ * - `foreach_node`
+ * - `foreach_fanin`
+ * - `is_constant`
+ * - `is_pi`
+ *
+ * Example
+ *
+   \verbatim embed:rst
+
+   .. code-block:: c++
+
+      // create network somehow
+      aig_network aig = ...;
+
+      // read cell library in genlib format
+      std::vector<gate> gates;
+      lorina::read_genlib( "file.genlib", genlib_reader( gates ) )
+      tech_library tech_lib( gates );
+
+      // call technology mapping to obtain the view
+      binding_view<klut_network> res = map( aig, tech_lib );
+
+      // prints stats and gates usage
+      res.report_stats();
+      res.report_gates_usage();
+
+      // write the mapped network in verilog
+      write_verilog( res, "file.v" );
+   \endverbatim
+ */
 template<class Ntk>
 class binding_view : public Ntk
 {
@@ -55,6 +98,10 @@ public:
       , _bindings( *this )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+    static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   }
 
   explicit binding_view( Ntk const& ntk, std::vector<gate> const& library )
@@ -63,6 +110,10 @@ public:
       , _bindings( *this )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+    static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   }
 
   binding_view<Ntk>& operator=( binding_view<Ntk> const& binding_ntk )
