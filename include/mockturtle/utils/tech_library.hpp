@@ -101,7 +101,7 @@ struct supergate
   composed_gate<NInputs> const* root{};
 
   /* area */
-  float area{ 0 };
+  double area{ 0.0 };
 
   /* pin-to-pin delay */
   std::array<float, NInputs> tdelay{};
@@ -422,7 +422,7 @@ private:
                                   gate.area,
                                   {},
                                   perm,
-                                  neg};
+                                  static_cast<uint8_t>(neg)};
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
@@ -484,7 +484,7 @@ private:
                                     gate.area,
                                     {},
                                     perm,
-                                    phase};
+                                    static_cast<uint8_t>(phase)};
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
