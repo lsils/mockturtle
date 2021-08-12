@@ -124,6 +124,8 @@ struct supergate
  * for big libraries with few symmetric gates. The template
  * parameter `NInputs` selects the maximum number of variables
  * allowed for a gate in the library.
+ * 
+ * The library can be generated also using supergates definitions.
  *
    \verbatim embed:rst
 
@@ -132,8 +134,14 @@ struct supergate
    .. code-block:: c++
 
       std::vector<gate> gates;
-      lorina::read_genlib( "file.lib", genlib_reader( gates ) );
+      lorina::read_genlib( "file.genlib", genlib_reader( gates ) );
+      // standard library
       mockturtle::tech_library lib( gates );
+
+      super_lib supergates_spec;
+      lorina::read_super( "file.super", super_reader( supergates_spec ) );
+      // library with supergates
+      mockturtle::tech_library lib_super( gates, supergates_spec );
    \endverbatim
  */
 template<unsigned NInputs = 4u, classification_type Configuration = classification_type::np_configurations>

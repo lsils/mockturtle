@@ -1,25 +1,26 @@
-Mapper
-------
+Technology mapping and network conversion
+-----------------------------------------
 
 **Header:** ``mockturtle/algorithms/mapper.hpp``
 
-A versatile mapper that supports technology mapping and graph mapping.
-The mapper is independent of the underlying graph representation. Hence,
-it supports generic subject graph representations (e.g., AIG, and MIG)
-and a generic target representation (e.g. cell library, XMG).
-The mapper aims at finding a good mapping with respect to delay, area,
-and switching power.
+A versatile mapper that supports technology mapping and graph mapping
+(optimized network conversion). The mapper is independent of the
+underlying graph representation. Hence, it supports generic subject
+graph representations (e.g., AIG, and MIG) and a generic target
+representation (e.g. cell library, XMG). The mapper aims at finding a
+good mapping with respect to delay, area, and switching power.
 
 The mapper uses a library (hash table) to facilitate Boolean matching.
 For technology mapping, it needs `tech_library` while for graph mapping
 it needs `exact_library`. For technology mapping, the generation of both NP- and
 P-configurations of gates are supported. Generally, it is convenient to use
-NP-configurations for small cell libraries (<20 gates). For bigger libraries,
-P-configurations perform better. For graph mapping, NPN classification is used
-instead.
+NP-configurations for small or medium size cell libraries. For bigger libraries,
+P-configurations should perform better. You can test both the configurations to
+see which one has the best run time. For graph mapping, NPN classification
+is used instead.
 
 The following example shows how to perform delay-oriented technology mapping
-from an And-inverter graph using the default settings:
+from an and-inverter graph using the default settings:
 
 .. code-block:: c++
 
@@ -32,10 +33,10 @@ from an And-inverter graph using the default settings:
    tech_library tech_lib( gates );
 
    /* perform technology mapping */
-   klut_network res = map( aig, tech_lib );
+   binding_view<klut_network> res = map( aig, tech_lib );
 
-The mapped network is returned as a k-LUT network in which each k-LUT
-abstracts a cell.
+The mapped network is returned as a `binding_view` that extends a k-LUT network.
+Each k-LUT abstracts a cell and the view contains the binding information.
 
 The next example performs area-oriented graph mapping from AIG to MIG
 using a NPN resynthesis database of structures:
@@ -59,8 +60,9 @@ target graph representation if possible (e.g. read an AIG as a MIG)
 since the mapping often leads to better results in this setting.
 
 As a default setting, cut enumeration minimizes the truth tables.
-This helps improving the results but slows down the computation. For
-a faster mapping set the truth table minimization parameter to false.
+This helps improving the results but slows down the computation.
+We suggest to keep it always true. Anyhow, for a faster mapping,
+set the truth table minimization parameter to false.
 The maximum number of cuts stored for each node is limited to 49.
 To increase this limit, change `max_cut_num` in `fast_network_cuts`.
 

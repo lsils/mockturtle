@@ -73,7 +73,11 @@ struct gate
 }; /* gate */
 
 /*! \brief lorina callbacks for GENLIB files.
- *
+ * 
+ * Note that the currently supported syntax for functions is
+ * different from the genlib standard. For more info,
+ * look into `kitty::create_from_expression`.
+ * 
    \verbatim embed:rst
 
    Example
@@ -81,7 +85,7 @@ struct gate
    .. code-block:: c++
 
       std::vector<gate> gates;
-      lorina::read_genlib( "file.lib", genlib_reader( gates ) );
+      lorina::read_genlib( "file.genlib", genlib_reader( gates ) );
    \endverbatim
  */
 class genlib_reader : public lorina::genlib_reader
