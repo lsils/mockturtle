@@ -65,8 +65,8 @@ Exact Library
 .. doxygenclass:: mockturtle::exact_library
    :members:
 
-Super Utils
-~~~~~~~~~~~
+Supergates utils
+~~~~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/utils/super_utils.hpp``
 

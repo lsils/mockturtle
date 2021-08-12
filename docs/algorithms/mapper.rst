@@ -1,14 +1,14 @@
-Mapper
-------
+Technology mapping and network conversion
+-----------------------------------------
 
 **Header:** ``mockturtle/algorithms/mapper.hpp``
 
-A versatile mapper that supports technology mapping and graph mapping.
-The mapper is independent of the underlying graph representation. Hence,
-it supports generic subject graph representations (e.g., AIG, and MIG)
-and a generic target representation (e.g. cell library, XMG).
-The mapper aims at finding a good mapping with respect to delay, area,
-and switching power.
+A versatile mapper that supports technology mapping and graph mapping
+(optimized network conversion). The mapper is independent of the
+underlying graph representation. Hence, it supports generic subject
+graph representations (e.g., AIG, and MIG) and a generic target
+representation (e.g. cell library, XMG). The mapper aims at finding a
+good mapping with respect to delay, area, and switching power.
 
 The mapper uses a library (hash table) to facilitate Boolean matching.
 For technology mapping, it needs `tech_library` while for graph mapping
