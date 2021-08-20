@@ -281,6 +281,34 @@ public:
     return patterns;
   }
 
+  template<class Ntk>
+  void remove_CDC_patterns( Ntk const& ntk )
+  {
+    static_assert( has_pattern_is_EXCDC_v<Ntk>, "Ntk does not have EXCDC interface" );
+
+    std::vector<bool> pattern( patterns.size() );
+    for ( int i = 0; i < (int)num_patterns; ++i )
+    {
+      for ( auto j = 0u; j < patterns.size(); ++j )
+      {
+        pattern[j] = kitty::get_bit( patterns[j], i );
+      }
+      if ( ntk.pattern_is_EXCDC( pattern ) )
+      {
+        for ( auto j = 0u; j < patterns.size(); ++j )
+        {
+          kitty::copy_bit( patterns[j], num_patterns - 1, patterns[j], i );
+        }
+        --num_patterns;
+        --i;
+      }
+    }
+    for ( auto j = 0u; j < patterns.size(); ++j )
+    {
+      patterns[j].resize( num_patterns );
+    }
+  }
+
 private:
   std::vector<kitty::partial_truth_table> patterns;
   uint32_t num_patterns;
@@ -441,14 +469,7 @@ private:
     {
       if ( !kitty::get_bit( care[i], from ) ) { continue; }
       assert( !kitty::get_bit( care[i], to ) );
-      if ( kitty::get_bit( patterns[i], from ) )
-      {
-        kitty::set_bit( patterns[i], to );
-      }
-      else
-      {
-        kitty::clear_bit( patterns[i], to );
-      }
+      kitty::copy_bit( patterns[i], from, patterns[i], to );
       kitty::set_bit( care[i], to );
       kitty::clear_bit( care[i], from );
     }

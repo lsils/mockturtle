@@ -103,6 +103,19 @@ void clear_bit( static_truth_table<NumVars, true>& tt, uint64_t index )
 }
 /*! \endcond */
 
+template<typename TT>
+void copy_bit( TT& tt_from, uint64_t index_from, TT& tt_to, uint64_t index_to )
+{
+  if ( get_bit( tt_from, index_from ) )
+  {
+    set_bit( tt_to, index_to );
+  }
+  else
+  {
+    clear_bit( tt_to, index_to );
+  }
+}
+
 /*! \brief Flip bit at index
 
   \param tt Truth table

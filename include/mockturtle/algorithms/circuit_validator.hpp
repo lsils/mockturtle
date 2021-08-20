@@ -527,9 +527,9 @@ private:
 
   std::optional<bool> solve( std::vector<bill::lit_type> assumptions )
   {
+    ++num_invoke;
     while ( true )
     {
-      ++num_invoke;
       auto const res = solver.solve( assumptions, ps.conflict_limit );
 
       if ( res == bill::result::states::satisfiable )
@@ -540,7 +540,7 @@ private:
           cex.at( i ) = model.at( i + 1 ) == bill::lbool_type::true_;
         }
 
-        if constexpr ( has_pattern_is_EXCDC<Ntk> )
+        if constexpr ( has_pattern_is_EXCDC_v<Ntk> )
         {
           if ( ntk.pattern_is_EXCDC( cex ) )
           {
