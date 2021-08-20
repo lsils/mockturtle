@@ -527,23 +527,40 @@ private:
 
   std::optional<bool> solve( std::vector<bill::lit_type> assumptions )
   {
-    ++num_invoke;
-    auto const res = solver.solve( assumptions, ps.conflict_limit );
+    while ( true )
+    {
+      ++num_invoke;
+      auto const res = solver.solve( assumptions, ps.conflict_limit );
 
-    if ( res == bill::result::states::satisfiable )
-    {
-      auto model = solver.get_model().model();
-      for ( auto i = 0u; i < ntk.num_pis(); ++i )
+      if ( res == bill::result::states::satisfiable )
       {
-        cex.at( i ) = model.at( i + 1 ) == bill::lbool_type::true_;
+        auto model = solver.get_model().model();
+        for ( auto i = 0u; i < ntk.num_pis(); ++i )
+        {
+          cex.at( i ) = model.at( i + 1 ) == bill::lbool_type::true_;
+        }
+
+        if constexpr ( has_pattern_is_EXCDC<Ntk> )
+        {
+          if ( ntk.pattern_is_EXCDC( cex ) )
+          {
+            block_pattern( cex );
+            continue;
+          }
+        }
+        
+        return false;
       }
-      return false;
+      else if ( res == bill::result::states::unsatisfiable )
+      {
+        return true;
+      }
+      else
+      {
+        return std::nullopt; /* timeout or something wrong */
+      }
     }
-    else if ( res == bill::result::states::unsatisfiable )
-    {
-      return true;
-    }
-    return std::nullopt; /* timeout or something wrong */
+    return std::nullopt;
   }
 
   std::optional<bool> validate( node const& root, bill::lit_type const& lit )

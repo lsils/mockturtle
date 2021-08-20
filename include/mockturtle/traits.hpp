@@ -2119,6 +2119,21 @@ template<class Ntk>
 inline constexpr bool has_eval_fanins_color_v = has_eval_fanins_color<Ntk>::value;
 #pragma endregion
 
+#pragma region has_pattern_is_EXCDC
+template<class Ntk, class = void>
+struct has_pattern_is_EXCDC : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_pattern_is_EXCDC<Ntk, std::void_t<decltype( std::declval<Ntk>().pattern_is_EXCDC( std::declval<std::vector<bool>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_pattern_is_EXCDC_v = has_pattern_is_EXCDC<Ntk>::value;
+#pragma endregion
+
 /*! \brief SFINAE based on iterator type (for compute functions).
  */
 template<typename Iterator, typename T>

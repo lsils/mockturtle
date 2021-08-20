@@ -35,6 +35,9 @@ void test_create_dont_care_view()
 
   dont_care_view<Ntk> dc_ntk( ntk, dc );
 
+  CHECK( has_pattern_is_EXCDC_v<Ntk> == false );
+  CHECK( has_pattern_is_EXCDC_v<dont_care_view<Ntk>> == true );
+
   CHECK( dc_ntk.pattern_is_EXCDC( pat1 ) );
   CHECK( !dc_ntk.pattern_is_EXCDC( pat2 ) );
 }
