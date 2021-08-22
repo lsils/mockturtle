@@ -51,7 +51,7 @@ int main()
   resubstitution_params ps;
   ps.max_inserts = 20;
   ps.odc_levels = 10;
-  ps.use_external_CDC = true;
+  //ps.use_external_CDC = true;
 
   for ( auto i = 0u; i < 1; ++i )
   {

@@ -415,6 +415,11 @@ private:
 
     solver.add_variables( ntk.num_pis() + 1 );
     solver.add_clause( {~literals[ntk.get_constant( false )]} );
+
+    if constexpr ( has_pattern_is_EXCDC_v<Ntk> )
+    {
+      ntk.add_EXCDC_clauses( solver );
+    }
   }
 
   bill::lit_type construct( node const& n )

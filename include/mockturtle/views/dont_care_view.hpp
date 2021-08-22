@@ -34,6 +34,10 @@
 
 #include "../traits.hpp"
 #include "../algorithms/simulation.hpp"
+#include "../algorithms/cnf.hpp"
+#include "../utils/node_map.hpp"
+
+#include <bill/sat/interface/common.hpp>
 
 #include <vector>
 
@@ -75,6 +79,59 @@ public:
     default_simulator<bool> sim( pattern );
     auto const vals = simulate<bool>( _excdc, sim );
     return vals[0];
+  }
+
+  template<typename solver_t>
+  void add_EXCDC_clauses( solver_t& solver ) const
+  {
+    using add_clause_fn_t = std::function<void( std::vector<bill::lit_type> const& )>;
+
+    // topological order of the gates in _excdc is assumed
+    node_map<bill::lit_type, Ntk> cdc_lits( _excdc );
+    cdc_lits[_excdc.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
+    if ( _excdc.get_node( _excdc.get_constant( false ) ) != _excdc.get_node( _excdc.get_constant( true ) ) )
+    {
+      cdc_lits[_excdc.get_constant( true )] = bill::lit_type( 0, bill::lit_type::polarities::negative );
+    }
+    _excdc.foreach_pi( [&]( auto const& n, auto i ) {
+      cdc_lits[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive );
+    } );
+
+    _excdc.foreach_gate( [&]( auto const& n ){
+      std::vector<bill::lit_type> child_lits;
+      _excdc.foreach_fanin( n, [&]( auto const& f ) {
+        child_lits.push_back( lit_not_cond( cdc_lits[f], _excdc.is_complemented( f ) ) );
+      } );
+      bill::lit_type node_lit = cdc_lits[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+      if ( _excdc.is_and( n ) )
+      {
+        detail::on_and<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
+          solver.add_clause( clause );
+        } );
+      }
+      else if ( _excdc.is_xor( n ) )
+      {
+        detail::on_xor<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
+          solver.add_clause( clause );
+        } );
+      }
+      else if ( _excdc.is_xor3( n ) )
+      {
+        detail::on_xor3<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
+          solver.add_clause( clause );
+        } );
+      }
+      else if ( _excdc.is_maj( n ) )
+      {
+        detail::on_maj<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
+          solver.add_clause( clause );
+        } );
+      }
+    } );
+
+    _excdc.foreach_po( [&]( auto const& f ){
+      solver.add_clause( {lit_not_cond( cdc_lits[f], !_excdc.is_complemented( f ) )} );
+    } );
   }
 
 private:
