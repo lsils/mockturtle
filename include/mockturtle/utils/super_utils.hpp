@@ -71,7 +71,7 @@ struct composed_gate
   kitty::dynamic_truth_table function;
 
   /* area */
-  double area{ 0.0f };
+  double area{ 0.0 };
 
   /* pin-to-pin delays */
   std::array<float, NInputs> tdelay{};
@@ -208,7 +208,7 @@ public:
                                                        nullptr,
                                                        0,
                                                        tt,
-                                                       0.0f,
+                                                       0.0,
                                                        {},
                                                        {}} );
     }
