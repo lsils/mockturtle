@@ -44,6 +44,7 @@
 #include "../views/binding_view.hpp"
 #include "../views/depth_view.hpp"
 #include "../views/topo_view.hpp"
+#include "cleanup.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/exact_map_cut.hpp"
 #include "cut_enumeration/tech_map_cut.hpp"
@@ -1752,14 +1753,20 @@ public:
     /* compute mapping delay */
     if ( !ps.skip_delay_round )
     {
-      compute_mapping<false>();
+      if ( !compute_mapping<false>() )
+      {
+        return res;
+      }
     }
 
     /* compute mapping using global area flow */
     while ( iteration < ps.area_flow_rounds + 1 )
     {
       compute_required_time();
-      compute_mapping<true>();
+      if ( !compute_mapping<true>() )
+      {
+        return res;
+      }
     }
 
     /* compute mapping using exact area */
@@ -1767,9 +1774,19 @@ public:
     {
       compute_required_time();
       if ( ps.enable_logic_sharing && iteration == ps.ela_rounds + ps.area_flow_rounds )
-        compute_exact_area_aggressive( res, old2new );
+      {
+        if ( !compute_exact_area_aggressive( res, old2new ) )
+        {
+          return res;
+        }
+      }
       else
-        compute_exact_area();
+      {
+        if ( !compute_exact_area() )
+        {
+          return res;
+        }
+      }
     }
 
     /* generate the output network using the computed mapping */
@@ -1871,7 +1888,7 @@ private:
   }
 
   template<bool DO_AREA>
-  void compute_mapping()
+  bool compute_mapping()
   {
     for ( auto const& n : top_order )
     {
@@ -1889,7 +1906,7 @@ private:
     }
 
     double area_old = area;
-    set_mapping_refs<false>();
+    bool success = set_mapping_refs<false>();
 
     /* round stats */
     if ( ps.verbose )
@@ -1910,9 +1927,11 @@ private:
       }
       st.round_stats.push_back( stats.str() );
     }
+
+    return success;
   }
 
-  void compute_exact_area()
+  bool compute_exact_area()
   {
     for ( auto const& n : top_order )
     {
@@ -1943,7 +1962,7 @@ private:
     }
 
     double area_old = area;
-    set_mapping_refs<true>();
+    bool success = set_mapping_refs<true>();
 
     /* round stats */
     if ( ps.verbose )
@@ -1953,6 +1972,8 @@ private:
       stats << fmt::format( "[i] Area     : Delay = {:>12.2f}  Area = {:>12.2f}  {:>5.2f} %\n", delay, area, area_gain );
       st.round_stats.push_back( stats.str() );
     }
+
+    return success;
   }
 
   void finalize_cover( NtkDest& res, node_map<signal<NtkDest>, Ntk>& old2new )
@@ -2009,7 +2030,7 @@ private:
   }
 
   template<bool ELA>
-  void set_mapping_refs()
+  bool set_mapping_refs()
   {
     const auto coef = 1.0f / ( 2.0f + ( iteration + 1 ) * ( iteration + 1 ) );
 
@@ -2046,7 +2067,11 @@ private:
     {
       const auto index = ntk.node_to_index( *it );
       /* skip constants and PIs */
-      if ( ntk.is_pi( *it ) )
+      if ( ntk.is_constant( *it ) )
+      {
+        continue;
+      }
+      else if ( ntk.is_pi( *it ) )
       {
         if ( node_match[index].map_refs[1] > 0u )
         {
@@ -2055,16 +2080,20 @@ private:
         }
         continue;
       }
-      else if ( ntk.is_constant( *it ) )
-      {
-        continue;
-      }
 
       if ( node_match[index].map_refs[2] == 0u )
         continue;
 
       auto& node_data = node_match[index];
       unsigned use_phase = node_data.best_supergate[0] == nullptr ? 1u : 0u;
+
+      if ( node_data.best_supergate[use_phase] == nullptr )
+      {
+        /* Library is not complete, mapping is not possible */
+        std::cerr << "[i] MAP ERROR: library is not complete, impossible to perform mapping" << std::endl;
+        st.mapping_error = true;
+        return false;
+      }
 
       if ( node_data.same_match || node_data.map_refs[use_phase] > 0 )
       {
@@ -2122,6 +2151,7 @@ private:
     }
 
     ++iteration;
+    return true;
   }
 
   void compute_required_time()
@@ -2449,7 +2479,7 @@ private:
     }
   }
 
-  void compute_exact_area_aggressive( NtkDest& res, node_map<signal<NtkDest>, Ntk>& old2new )
+  bool compute_exact_area_aggressive( NtkDest& res, node_map<signal<NtkDest>, Ntk>& old2new )
   {
     depth_view<NtkDest> res_d{ res };
 
@@ -2540,7 +2570,7 @@ private:
     }
     
     double area_old = area;
-    set_mapping_refs<true>();
+    bool success = set_mapping_refs<true>();
 
     /* round stats */
     if ( ps.verbose )
@@ -2550,6 +2580,8 @@ private:
       stats << fmt::format( "[i] Area RW  : Delay = {:>12.2f}  Area = {:>12.2f}  {:>5.2f} %\n", delay, area, area_gain );
       st.round_stats.push_back( stats.str() );
     }
+
+    return success;
   }
 
   signal<NtkDest> match_phase_exact_aggressive( depth_view<NtkDest>& res, node_map<signal<NtkDest>, Ntk>& old2new, node<Ntk> const& n, uint8_t phase )
