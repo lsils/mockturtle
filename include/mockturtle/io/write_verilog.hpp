@@ -140,8 +140,17 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   std::vector<std::string> xs, inputs;
   if ( ps.input_names.empty() )
   {
-    for ( auto i = 0u; i < ntk.num_pis(); ++i )
-      xs.emplace_back( fmt::format( "x{}", i ) );
+    ntk.foreach_pi( [&]( auto const& n, auto i ){
+      if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+      {
+        signal<Ntk> const s = ntk.make_signal( n );
+        xs.emplace_back( ntk.has_name( s ) ? ntk.get_name( s ) : fmt::format( "x{}", i ) );
+      }
+      else
+      {
+        xs.emplace_back( fmt::format( "x{}", i ) );
+      }
+    });
     inputs = xs;
   }
   else
@@ -166,7 +175,16 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   if ( ps.output_names.empty() )
   {
     for ( auto i = 0u; i < ntk.num_pos(); ++i )
-      ys.emplace_back( fmt::format( "y{}", i ) );
+    {
+      if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
+      {
+        ys.emplace_back( ntk.has_output_name( i ) ? ntk.get_output_name( i ) : fmt::format( "y{}", i ) );
+      }
+      else
+      {
+        ys.emplace_back( fmt::format( "y{}", i ) );
+      }
+    }
     outputs = ys;
   }
   else

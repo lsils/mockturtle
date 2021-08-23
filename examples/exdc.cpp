@@ -5,6 +5,7 @@
 #include <mockturtle/views/names_view.hpp>
 #include <mockturtle/io/blif_reader.hpp>
 #include <mockturtle/io/write_blif.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/exact.hpp>
@@ -79,6 +80,7 @@ int main()
     named_ntk.set_output_name( i, klut_ntk.get_output_name( i ) );
 
   write_blif( named_ntk, "testOPT.blif" );
+  write_verilog( named_ntk, "testOPT.v" );
 
   return 0;
 }
