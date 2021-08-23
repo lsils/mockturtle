@@ -39,12 +39,13 @@ int main()
   }
 
   /* transform k-LUTs into AIGs */
-  xag_npn_resynthesis<aig_network> fallback;
-  dsd_resynthesis<aig_network, decltype( fallback )> resyn( fallback );
-  shannon_resynthesis<aig_network> resyn2;
-  aig_network ntk = node_resynthesis<aig_network>( klut_ntk, resyn );
-  aig_network dc = node_resynthesis<aig_network>( klut_dc, resyn2 );
-  aig_network ntk_ori = cleanup_dangling( ntk );
+  using ntk_t = aig_network;
+  xag_npn_resynthesis<ntk_t> fallback;
+  dsd_resynthesis<ntk_t, decltype( fallback )> resyn( fallback );
+  shannon_resynthesis<ntk_t> resyn2;
+  ntk_t ntk = node_resynthesis<ntk_t>( klut_ntk, resyn );
+  ntk_t dc = node_resynthesis<ntk_t>( klut_dc, resyn2 );
+  ntk_t ntk_ori = cleanup_dangling( ntk );
 
   std::cout << "main network has " << ntk.num_gates() << " gates\n";
   std::cout << "DC network has " << dc.num_gates() << " gates\n";
@@ -61,6 +62,7 @@ int main()
   resubstitution_params ps;
   ps.max_inserts = 20;
   ps.odc_levels = 10;
+  ps.save_patterns = "exdc.pat";
 
   for ( auto i = 0u; i < 1; ++i )
   {
@@ -71,14 +73,41 @@ int main()
   std::cout << "original network has " << ntk_ori.num_gates() << " gates\n";
   std::cout << "optimized network has " << dc_view.num_gates() << " gates\n";
 
+  /* check if POs connected to PIs can be substituted with constant */
+  partial_simulator sim = partial_simulator( *ps.save_patterns );
+  sim.remove_CDC_patterns( dc_view );
+  circuit_validator<dont_care_view<ntk_t>, bill::solvers::bsat2> validator( dc_view );
+  ntk.foreach_po( [&]( auto const& f ) {
+    auto const n = ntk.get_node( f );
+    if ( ntk.is_pi( n ) && !ntk.is_constant( n ) )
+    {
+      if ( kitty::is_const0( sim.compute_pi( ntk.node_to_index( n ) - 1 ) ) )
+      {
+        auto valid = validator.validate( n, 0 );
+        if ( valid && *valid )
+        {
+          ntk.substitute_node( n, ntk.get_constant( false ) );
+        }
+      }
+      else if ( kitty::is_const0( ~sim.compute_pi( ntk.node_to_index( n ) - 1 ) ) )
+      {
+        auto valid = validator.validate( n, 1 );
+        if ( valid && *valid )
+        {
+          ntk.substitute_node( n, ntk.get_constant( true ) );
+        }
+      }
+    }
+  } );
+
   /* equivalence checking */
-  aig_network miter_aig = *miter<aig_network>( ntk, ntk_ori );
+  ntk_t miter_aig = *miter<ntk_t>( ntk, ntk_ori );
   dont_care_view miter_with_DC( miter_aig, dc );
   auto cec = equivalence_checking_bill( miter_with_DC );
   std::cout << "optimized network " << ( *cec ? "is" : "is NOT" ) << " equivalent to the original network\n";
 
   /* match I/O names and write out optimized network */
-  names_view<aig_network> named_ntk( ntk );
+  names_view<ntk_t> named_ntk( ntk );
   std::vector<std::string> pi_names;
 
   klut_ntk.foreach_pi( [&]( auto const& n ) {
