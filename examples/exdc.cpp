@@ -1,14 +1,14 @@
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/xag.hpp>
+//#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/views/dont_care_view.hpp>
 #include <mockturtle/views/names_view.hpp>
 #include <mockturtle/io/blif_reader.hpp>
 #include <mockturtle/io/write_blif.hpp>
-#include <mockturtle/io/write_verilog.hpp>
+//#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
-#include <mockturtle/algorithms/node_resynthesis/exact.hpp>
+//#include <mockturtle/algorithms/node_resynthesis/exact.hpp>
 #include <mockturtle/algorithms/node_resynthesis/dsd.hpp>
 #include <mockturtle/algorithms/node_resynthesis/shannon.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
@@ -21,20 +21,26 @@
 #include <iostream>
 #include <vector>
 
-int main()
+int main( int argc, char* argv[] )
 {
   using namespace mockturtle;
 
+  std::string testcase;
+  if ( argc == 2 )
+    testcase = argv[1];
+  else
+    testcase = "test";
+
   /* read BLIF files as k-LUTs */
   names_view<klut_network> klut_ntk, klut_dc;
-  if ( lorina::read_blif( "test.blif", blif_reader( klut_ntk ) ) != lorina::return_code::success )
+  if ( lorina::read_blif( testcase + ".blif", blif_reader( klut_ntk ) ) != lorina::return_code::success )
   {
-    std::cout << "read test.blif failed!\n";
+    std::cout << "read <testcase>.blif failed!\n";
     return -1;
   }
-  if ( lorina::read_blif( "testDC.blif", blif_reader( klut_dc ) ) != lorina::return_code::success )
+  if ( lorina::read_blif( testcase + "DC.blif", blif_reader( klut_dc ) ) != lorina::return_code::success )
   {
-    std::cout << "read testDC.blif failed!\n";
+    std::cout << "read <testcase>DC.blif failed!\n";
     return -1;
   }
 
@@ -43,23 +49,24 @@ int main()
   xag_npn_resynthesis<ntk_t> fallback;
   dsd_resynthesis<ntk_t, decltype( fallback )> resyn( fallback );
   shannon_resynthesis<ntk_t> resyn2;
-  ntk_t ntk = node_resynthesis<ntk_t>( klut_ntk, resyn );
-  ntk_t dc = node_resynthesis<ntk_t>( klut_dc, resyn2 );
+  ntk_t ntk = node_resynthesis<ntk_t>( klut_ntk, resyn ); // dsd + npn
+  ntk_t dc = node_resynthesis<ntk_t>( klut_dc, resyn2 ); // shannon
+
+  /* cleanup networks and save a copy for CEC */
+  ntk = cleanup_dangling( ntk );
+  dc = cleanup_dangling( dc );
   ntk_t ntk_ori = cleanup_dangling( ntk );
 
-  std::cout << "main network has " << ntk.num_gates() << " gates\n";
-  std::cout << "DC network has " << dc.num_gates() << " gates\n";
+  /* optimize DC network */
+  sim_resubstitution( dc );
+  dc = cleanup_dangling( dc );
   
-  /* wrap with don't care view and simple tests on CDC patterns */
-  dont_care_view dc_view( ntk, dc );
-  std::vector<bool> pat0{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-  std::vector<bool> pat1{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
-
-  std::cout << "all-zero pattern " << ( dc_view.pattern_is_EXCDC( pat0 ) ? "is" : "is not" ) << " EXCDC\n";
-  std::cout << "all-one pattern " << ( dc_view.pattern_is_EXCDC( pat1 ) ? "is" : "is not" ) << " EXCDC\n";
-
   /* simulation-guided resubstitution */
+  dont_care_view dc_view( ntk, dc );
+
   resubstitution_params ps;
+  ps.max_pis = ntk.num_pis();
+  ps.max_divisors = 1000;
   ps.max_inserts = 20;
   ps.odc_levels = 10;
   ps.save_patterns = "exdc.pat";
@@ -70,8 +77,9 @@ int main()
     ntk = cleanup_dangling( ntk );
   }
 
-  std::cout << "original network has " << ntk_ori.num_gates() << " gates\n";
-  std::cout << "optimized network has " << dc_view.num_gates() << " gates\n";
+  std::cout << "original network has " << klut_ntk.num_gates() << " LUTs and " << ntk_ori.num_gates() << " AND gates after node_resynthesis + cleanup_dangling\n";
+  std::cout << "don't-care network has " << klut_dc.num_gates() << " LUTs and " << dc.num_gates() << " AND gates after node_resynthesis + simple sim_resub + cleanup_dangling\n";
+  std::cout << "optimized network has " << dc_view.num_gates() << " AND gates\n";
 
   /* check if POs connected to PIs can be substituted with constant */
   partial_simulator sim = partial_simulator( *ps.save_patterns );
@@ -122,8 +130,8 @@ int main()
   for ( auto i = 0u; i < klut_ntk.num_pos(); ++i )
     named_ntk.set_output_name( i, klut_ntk.get_output_name( i ) );
 
-  write_blif( named_ntk, "testOPT.blif" );
-  write_verilog( named_ntk, "testOPT.v" );
+  write_blif( named_ntk, testcase + "OPT.blif" );
+  //write_verilog( named_ntk, "testOPT.v" );
 
   return 0;
 }
