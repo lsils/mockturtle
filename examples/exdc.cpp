@@ -13,6 +13,7 @@
 #include <mockturtle/algorithms/node_resynthesis/shannon.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/sim_resub.hpp>
+//#include <mockturtle/algorithms/window_rewriting.hpp>
 #include <mockturtle/algorithms/equivalence_checking.hpp>
 #include <mockturtle/algorithms/miter.hpp>
 #include <mockturtle/utils/stopwatch.hpp>
@@ -91,10 +92,12 @@ int main( int argc, char* argv[] )
   ps.save_patterns = "exdc.pat";
 
   call_with_stopwatch( st.time_sim_resub, [&]() {
-    for ( auto i = 0u; i < 1; ++i )
+    for ( auto i = 0u; i < 2; ++i )
     {
       sim_resubstitution( dc_view, ps );
       ntk = cleanup_dangling( ntk );
+      //window_rewriting( ntk );
+      //ntk = cleanup_dangling( ntk );
     }
   });
 
