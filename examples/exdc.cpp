@@ -15,15 +15,32 @@
 #include <mockturtle/algorithms/sim_resub.hpp>
 #include <mockturtle/algorithms/equivalence_checking.hpp>
 #include <mockturtle/algorithms/miter.hpp>
+#include <mockturtle/utils/stopwatch.hpp>
 
 #include <lorina/lorina.hpp>
 
 #include <iostream>
 #include <vector>
 
+namespace mockturtle
+{
+struct stats
+{
+  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_resyn_main{0};
+  stopwatch<>::duration time_resyn_dc{0};
+  stopwatch<>::duration time_parse_dc{0};
+  stopwatch<>::duration time_sim_resub{0};
+  stopwatch<>::duration time_cec{0};
+};
+}
+
 int main( int argc, char* argv[] )
 {
   using namespace mockturtle;
+
+  stats st;
+  stopwatch t( st.time_total );
 
   std::string testcase;
   if ( argc == 2 )
@@ -38,31 +55,33 @@ int main( int argc, char* argv[] )
     std::cout << "read <testcase>.blif failed!\n";
     return -1;
   }
-  if ( lorina::read_blif( testcase + "DC.blif", blif_reader( klut_dc ) ) != lorina::return_code::success )
-  {
-    std::cout << "read <testcase>DC.blif failed!\n";
-    return -1;
-  }
+  //if ( lorina::read_blif( testcase + "DC.blif", blif_reader( klut_dc ) ) != lorina::return_code::success )
+  //{
+  //  std::cout << "read <testcase>DC.blif failed!\n";
+  //  return -1;
+  //}
 
   /* transform k-LUTs into AIGs */
   using ntk_t = aig_network;
   xag_npn_resynthesis<ntk_t> fallback;
   dsd_resynthesis<ntk_t, decltype( fallback )> resyn( fallback );
   shannon_resynthesis<ntk_t> resyn2;
-  ntk_t ntk = node_resynthesis<ntk_t>( klut_ntk, resyn ); // dsd + npn
-  ntk_t dc = node_resynthesis<ntk_t>( klut_dc, resyn2 ); // shannon
+  
+  ntk_t ntk = call_with_stopwatch( st.time_resyn_main, [&]() { return node_resynthesis<ntk_t>( klut_ntk, resyn ); }); // dsd + npn
+  //ntk_t dc = call_with_stopwatch( st.time_resyn_dc, [&]() { return node_resynthesis<ntk_t>( klut_dc, resyn2 ); }); // shannon
 
   /* cleanup networks and save a copy for CEC */
   ntk = cleanup_dangling( ntk );
-  dc = cleanup_dangling( dc );
+  //dc = cleanup_dangling( dc );
   ntk_t ntk_ori = cleanup_dangling( ntk );
 
   /* optimize DC network */
-  sim_resubstitution( dc );
-  dc = cleanup_dangling( dc );
+  //sim_resubstitution( dc );
+  //dc = cleanup_dangling( dc );
   
   /* simulation-guided resubstitution */
-  dont_care_view dc_view( ntk, dc );
+  //dont_care_view dc_view( ntk, dc );
+  auto dc_view = make_with_stopwatch<dont_care_view<ntk_t>>( st.time_parse_dc, ntk, testcase + "DC.blif" );
 
   resubstitution_params ps;
   ps.max_pis = ntk.num_pis();
@@ -71,14 +90,16 @@ int main( int argc, char* argv[] )
   ps.odc_levels = 10;
   ps.save_patterns = "exdc.pat";
 
-  for ( auto i = 0u; i < 1; ++i )
-  {
-    sim_resubstitution( dc_view, ps );
-    ntk = cleanup_dangling( ntk );
-  }
+  call_with_stopwatch( st.time_sim_resub, [&]() {
+    for ( auto i = 0u; i < 1; ++i )
+    {
+      sim_resubstitution( dc_view, ps );
+      ntk = cleanup_dangling( ntk );
+    }
+  });
 
   std::cout << "original network has " << klut_ntk.num_gates() << " LUTs and " << ntk_ori.num_gates() << " AND gates after node_resynthesis + cleanup_dangling\n";
-  std::cout << "don't-care network has " << klut_dc.num_gates() << " LUTs and " << dc.num_gates() << " AND gates after node_resynthesis + simple sim_resub + cleanup_dangling\n";
+  //std::cout << "don't-care network has " << klut_dc.num_gates() << " LUTs and " << dc.num_gates() << " AND gates after node_resynthesis + simple sim_resub + cleanup_dangling\n";
   std::cout << "optimized network has " << dc_view.num_gates() << " AND gates\n";
 
   /* check if POs connected to PIs can be substituted with constant */
@@ -109,10 +130,14 @@ int main( int argc, char* argv[] )
   } );
 
   /* equivalence checking */
-  ntk_t miter_aig = *miter<ntk_t>( ntk, ntk_ori );
-  dont_care_view miter_with_DC( miter_aig, dc );
-  auto cec = equivalence_checking_bill( miter_with_DC );
-  std::cout << "optimized network " << ( *cec ? "is" : "is NOT" ) << " equivalent to the original network\n";
+  call_with_stopwatch( st.time_cec, [&]()
+  {
+    ntk_t miter_aig = *miter<ntk_t>( ntk, ntk_ori );
+    //dont_care_view miter_with_DC( miter_aig, dc );
+    dont_care_view miter_with_DC( miter_aig, testcase + "DC.blif" );
+    auto cec = equivalence_checking_bill( miter_with_DC );
+    std::cout << "optimized network " << ( *cec ? "is" : "is NOT" ) << " equivalent to the original network\n";
+  });
 
   /* match I/O names and write out optimized network */
   names_view<ntk_t> named_ntk( ntk );
@@ -132,6 +157,14 @@ int main( int argc, char* argv[] )
 
   write_blif( named_ntk, testcase + "OPT.blif" );
   //write_verilog( named_ntk, "testOPT.v" );
+
+  t.~stopwatch();
+  std::cout << "total time = " << to_seconds( st.time_total ) 
+            << ", resyn main = " << to_seconds( st.time_resyn_main ) 
+            << ", resyn dc = " << to_seconds( st.time_resyn_dc )
+            << ", parse dc = " << to_seconds( st.time_parse_dc ) 
+            << ", sim_resub = " << to_seconds( st.time_sim_resub ) 
+            << ", cec = " << to_seconds( st.time_cec ) << "\n";
 
   return 0;
 }
