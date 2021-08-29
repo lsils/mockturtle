@@ -275,7 +275,7 @@ private:
       {
         const auto on_np = [&]( auto const& tt, auto neg, auto const& perm ) {
           supergate<NInputs> sg = {&gate,
-                                  gate.area,
+                                  static_cast<float>( gate.area ),
                                   {},
                                   perm,
                                   0};
@@ -419,10 +419,10 @@ private:
           std::iota( perm.begin(), perm.end(), 0u );
 
           supergate<NInputs> sg = {&gate,
-                                  gate.area,
+                                  static_cast<float>( gate.area ),
                                   {},
                                   perm,
-                                  neg};
+                                  static_cast<uint8_t>( neg )};
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
@@ -481,10 +481,10 @@ private:
           for( auto phase : phases )
           {
             supergate<NInputs> sg = {&gate,
-                                    gate.area,
+                                    static_cast<float>( gate.area ),
                                     {},
                                     perm,
-                                    phase};
+                                    static_cast<uint8_t>( phase )};
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
@@ -782,7 +782,7 @@ private:
 
         for ( auto const& gate : pair.second )
         {
-          printf( "%.2f,%.2f,%d,%d,:", gate.worstDelay, gate.area, gate.polarity, gate.n_inputs );
+          printf( "%.2f,%.2f,%x,%d,:", gate.worstDelay, gate.area, gate.polarity, gate.n_inputs );
           for ( auto j = 0u; j < NInputs; ++j )
             printf( "%.2f/", gate.tdelay[j] );
           std::cout << " ";
