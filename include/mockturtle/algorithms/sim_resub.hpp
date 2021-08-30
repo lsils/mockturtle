@@ -202,15 +202,11 @@ public:
       }
       else
       {
-        sim = partial_simulator( ntk.num_pis(), 4096 );
+        sim = partial_simulator( ntk.num_pis(), 1024 );
         pattern_generation( ntk, sim );
       }
     });
 
-    if constexpr ( has_pattern_is_EXCDC_v<Ntk> )
-    {
-      sim.remove_CDC_patterns( ntk );
-    }
     st.num_pats = sim.num_bits();
     assert( sim.num_bits() > 0 );
 

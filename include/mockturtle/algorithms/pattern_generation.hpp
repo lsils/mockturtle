@@ -130,6 +130,11 @@ public:
   {
     stopwatch t( st.time_total );
 
+    if constexpr ( has_pattern_is_EXCDC_v<Ntk> )
+    {
+      sim.remove_CDC_patterns( ntk );
+    }
+
     call_with_stopwatch( st.time_sim, [&]() {
       simulate_nodes<Ntk>( ntk, tts, sim, true );
     } );
@@ -408,6 +413,11 @@ private:
     {
       (void)n;
       sim.add_pattern( pattern );
+    }
+
+    if constexpr ( has_pattern_is_EXCDC_v<Ntk> )
+    {
+      assert( !ntk.pattern_is_EXCDC( cex ) );
     }
     
     ++st.num_generated_patterns;
