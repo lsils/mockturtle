@@ -417,7 +417,7 @@ private:
 
     if constexpr ( has_pattern_is_EXCDC_v<Ntk> )
     {
-      assert( !ntk.pattern_is_EXCDC( cex ) );
+      assert( !ntk.pattern_is_EXCDC( pattern ) );
     }
     
     ++st.num_generated_patterns;
