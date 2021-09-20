@@ -93,7 +93,10 @@ public:
       }
       if constexpr ( has_set_output_name_v<Ntk> )
       {
-        _ntk.set_output_name( output_id++, std::get<1>( out ) );
+        if ( !std::get<1>( out ).empty() )
+        {
+          _ntk.set_output_name( output_id++, std::get<1>( out ) );
+        }
       }
       _ntk.create_po( signal );
     }

@@ -37,6 +37,9 @@
 #include "../utils/window_utils.hpp"
 #include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
+#include "../views/fanout_view.hpp"
+#include "../views/depth_view.hpp"
+#include "../views/color_view.hpp"
 
 #include <abcresub/abcresub2.hpp>
 #include <fmt/format.h>
@@ -662,8 +665,12 @@ private:
 template<class Ntk>
 void window_rewriting( Ntk& ntk, window_rewriting_params const& ps = {}, window_rewriting_stats* pst = nullptr )
 {
+  fanout_view fntk{ntk};
+  depth_view dntk{fntk};
+  color_view cntk{dntk};
+
   window_rewriting_stats st;
-  detail::window_rewriting_impl<Ntk>( ntk, ps, st ).run();
+  detail::window_rewriting_impl( cntk, ps, st ).run();
   if ( pst )
   {
     *pst = st;
