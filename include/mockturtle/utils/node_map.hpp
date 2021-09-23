@@ -317,6 +317,10 @@ public:
     data->clear();
   }
 
+  void resize()
+  {
+  }
+
 protected:
   Ntk const *ntk;
   std::shared_ptr<container_type> data;
@@ -479,14 +483,12 @@ public:
    *
    * This function should be called, if the node_map's size needs to
    * be changed without clearing its data.
-   *
-   * \param init_value Initialization value after resize
    */
-  void resize( T const& init_value = {} )
+  void resize()
   {
     if ( ntk->size() > data->size() )
     {
-      data->resize( ntk->size(), init_value );
+      data->resize( ntk->size() );
     }
   }
 
