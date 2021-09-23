@@ -263,6 +263,15 @@ public:
     }
   }
 
+  /*! \brief Erase a key (if it exists). */
+  void erase( signal const& f )
+  {
+    if ( has( ntk->get_node( f ) ) )
+    {
+      data->erase( ntk->node_to_index( ntk->get_node( f ) ) );
+    }
+  }
+
   /*! \brief Mutable access to value by node. */
   reference operator[]( node const& n )
   {
@@ -394,14 +403,24 @@ public:
   /*! \brief Erase a key (if it exists). */
   void erase( node const& n )
   {
-    (*data)[ntk->node_to_index( n )].emplace<0>( {} );
+    (*data)[ntk->node_to_index( n )] = std::monostate();
+  }
+
+  /*! \brief Erase a key (if it exists). */
+  void erase( signal const& f )
+  {
+    (*data)[ntk->node_to_index( ntk->get_node( f ) )] = std::monostate();
   }
 
   /*! \brief Mutable access to value by node. */
-  void set( node const& n, T const& val )
+  T& operator[]( node const& n )
   {
     assert( ntk->node_to_index( n ) < data->size() && "index out of bounds" );
-    (*data)[ntk->node_to_index( n )] = val;
+    if ( !has( n ) )
+    {
+      (*data)[ntk->node_to_index( n )] = T();
+    }
+    return std::get<T>( (*data)[ntk->node_to_index( n )] );
   }
 
   /*! \brief Constant access to value by node. */
@@ -418,10 +437,15 @@ public:
    * are the same in the network implementation, this method is disabled.
    */
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
-  void set( signal const& f, T const& val )
+  T& operator[]( signal const& f )
   {
-    assert( ntk->node_to_index( ntk->get_node( f ) ) < data->size() && "index out of bounds" );
-    (*data)[ntk->node_to_index( ntk->get_node( f ) )] = val;
+    auto n = ntk->get_node( f );
+    assert( ntk->node_to_index( n ) < data->size() && "index out of bounds" );
+    if ( !has( n ) )
+    {
+      (*data)[ntk->node_to_index( n )] = T();
+    }
+    return std::get<T>( (*data)[ntk->node_to_index( n )] );
   }
 
   /*! \brief Constant access to value by signal.

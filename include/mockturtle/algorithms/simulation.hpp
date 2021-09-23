@@ -558,8 +558,8 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
  * \param node_to_value A map from nodes to values
  * \param sim Simulator, which implements the simulator interface
  */
-template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
-void simulate_nodes( Ntk const& ntk, unordered_node_map<SimulationType, Ntk>& node_to_value, Simulator const& sim = Simulator() )
+template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>, class Container = unordered_node_map<SimulationType, Ntk>>
+void simulate_nodes( Ntk const& ntk, Container& node_to_value, Simulator const& sim = Simulator() )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
@@ -610,10 +610,10 @@ void simulate_nodes( Ntk const& ntk, unordered_node_map<SimulationType, Ntk>& no
 namespace detail
 {
 /* Forward declaration */
-template<class Ntk, class Simulator> void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim );
+template<class Ntk, class Simulator, class Container> void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim );
 
-template<class Ntk, class Simulator>
-void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim )
+template<class Ntk, class Simulator, class Container>
+void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim )
 {
   std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
   ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
@@ -630,8 +630,8 @@ void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered
   node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
 }
 
-template<class Ntk, class Simulator>
-void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim )
+template<class Ntk, class Simulator, class Container>
+void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim )
 {
   std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
   ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
@@ -648,14 +648,14 @@ void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, unorde
   ntk.compute( n, node_to_value[n], fanin_values.begin(), fanin_values.end() );
 }
 
-template<class Ntk, class Simulator>
-void update_const_pi( Ntk const& ntk, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim )
+template<class Ntk, class Simulator, class Container>
+void update_const_pi( Ntk const& ntk, Container& node_to_value, Simulator const& sim )
 {
   /* constants */
-  node_to_value[ntk.get_node( ntk.get_constant( false ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
+  node_to_value[ntk.get_constant( false )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
   if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
   {
-    node_to_value[ntk.get_node( ntk.get_constant( true ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( true ) ) ) );
+    node_to_value[ntk.get_constant( true )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( true ) ) ) );
   }
 
   /* pis */
@@ -674,8 +674,8 @@ void update_const_pi( Ntk const& ntk, unordered_node_map<kitty::partial_truth_ta
  * whenever `sim.num_bits() % 64 == 0`.
  * 
  */
-template<class Ntk, class Simulator = partial_simulator>
-void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim )
+template<class Ntk, class Simulator = partial_simulator, class Container = unordered_node_map<kitty::partial_truth_table, Ntk>>
+void simulate_node( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
@@ -711,8 +711,8 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, unordered_node_
  * In contrast, when this parameter is false, only the last block of `partial_truth_table` will be re-computed,
  * and it is assumed that `node_to_value.has( n )` is true for every node.
  */
-template<class Ntk, class Simulator = partial_simulator>
-void simulate_nodes( Ntk const& ntk, unordered_node_map<kitty::partial_truth_table, Ntk>& node_to_value, Simulator const& sim, bool simulate_whole_tt )
+template<class Ntk, class Simulator = partial_simulator, class Container = unordered_node_map<kitty::partial_truth_table, Ntk>>
+void simulate_nodes( Ntk const& ntk, Container& node_to_value, Simulator const& sim, bool simulate_whole_tt )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
