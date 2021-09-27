@@ -526,40 +526,11 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
   return node_to_value;
 }
 
-/*! \brief Simulates a network with a generic simulator.
- *
- * This is a generic simulation algorithm that can simulate arbitrary values.
- * In order to that, the network needs to implement the `compute` method for
- * `SimulationType` and one must pass an instance of a `Simulator` that
- * implements the three methods:
- * - `SimulationType compute_constant(bool)`
- * - `SimulationType compute_pi(index)`
- * - `SimulationType compute_not(SimulationType const&)`
- *
- * The method `compute_constant` returns a simulation value for a constant
- * value.  The method `compute_pi` returns a simulation value for a primary
- * input based on its index, and `compute_not` to invert a simulation value.
- *
- * This method returns a map that maps each node to its computed simulation
- * value.
- *
- * **Required network functions:**
- * - `foreach_po`
- * - `get_constant`
- * - `constant_value`
- * - `get_node`
- * - `foreach_pi`
- * - `foreach_gate`
- * - `fanin_size`
- * - `num_pos`
- * - `compute<SimulationType>`
- *
- * \param ntk Network
- * \param node_to_value A map from nodes to values
- * \param sim Simulator, which implements the simulator interface
- */
-template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>, class Container = unordered_node_map<SimulationType, Ntk>>
-void simulate_nodes( Ntk const& ntk, Container& node_to_value, Simulator const& sim = Simulator() )
+namespace detail
+{
+
+template<class SimulationType, class Ntk, class Simulator, class Container>
+void simulate_nodes_with_node_map( Ntk const& ntk, Container& node_to_value, Simulator const& sim )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
@@ -605,6 +576,52 @@ void simulate_nodes( Ntk const& ntk, Container& node_to_value, Simulator const& 
       node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
     }
   } );
+}
+
+} // namespace detail
+
+/*! \brief Simulates a network with a generic simulator.
+ *
+ * This is a generic simulation algorithm that can simulate arbitrary values.
+ * In order to that, the network needs to implement the `compute` method for
+ * `SimulationType` and one must pass an instance of a `Simulator` that
+ * implements the three methods:
+ * - `SimulationType compute_constant(bool)`
+ * - `SimulationType compute_pi(index)`
+ * - `SimulationType compute_not(SimulationType const&)`
+ *
+ * The method `compute_constant` returns a simulation value for a constant
+ * value.  The method `compute_pi` returns a simulation value for a primary
+ * input based on its index, and `compute_not` to invert a simulation value.
+ *
+ * This method returns a map that maps each node to its computed simulation
+ * value.
+ *
+ * **Required network functions:**
+ * - `foreach_po`
+ * - `get_constant`
+ * - `constant_value`
+ * - `get_node`
+ * - `foreach_pi`
+ * - `foreach_gate`
+ * - `fanin_size`
+ * - `num_pos`
+ * - `compute<SimulationType>`
+ *
+ * \param ntk Network
+ * \param node_to_value A map from nodes to values
+ * \param sim Simulator, which implements the simulator interface
+ */
+template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
+void simulate_nodes( Ntk const& ntk, unordered_node_map<SimulationType, Ntk>& node_to_value, Simulator const& sim = Simulator() )
+{
+  detail::simulate_nodes_with_node_map<SimulationType, Ntk, Simulator, unordered_node_map<SimulationType, Ntk>>( ntk, node_to_value, sim );
+}
+
+template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
+void simulate_nodes( Ntk const& ntk, incomplete_node_map<SimulationType, Ntk>& node_to_value, Simulator const& sim = Simulator() )
+{
+  detail::simulate_nodes_with_node_map<SimulationType, Ntk, Simulator, incomplete_node_map<SimulationType, Ntk>>( ntk, node_to_value, sim );
 }
 
 namespace detail

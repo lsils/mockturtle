@@ -264,6 +264,7 @@ public:
   }
 
   /*! \brief Erase a key (if it exists). */
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   void erase( signal const& f )
   {
     if ( has( ntk->get_node( f ) ) )
@@ -411,6 +412,7 @@ public:
   }
 
   /*! \brief Erase a key (if it exists). */
+  template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   void erase( signal const& f )
   {
     (*data)[ntk->node_to_index( ntk->get_node( f ) )] = std::monostate();
@@ -469,11 +471,23 @@ public:
    *
    * This function should be called, if the network changed in size.  Then, the
    * map is cleared, and resized to the current network's size.  All values are
+   * initialized with the place holder (empty) element.
+   */
+  void reset()
+  {
+    data->clear();
+    data->resize( ntk->size() );
+  }
+
+  /*! \brief Resets the size of the map.
+   *
+   * This function should be called, if the network changed in size.  Then, the
+   * map is cleared, and resized to the current network's size.  All values are
    * initialized with `init_value`.
    *
    * \param init_value Initialization value after resize
    */
-  void reset( T const& init_value = {} )
+  void reset( T const& init_value )
   {
     data->clear();
     data->resize( ntk->size(), init_value );
