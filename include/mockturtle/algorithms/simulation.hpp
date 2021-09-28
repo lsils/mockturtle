@@ -181,7 +181,7 @@ public:
    * \param num_pis Number of primary inputs, which is the same as the length of a simulation pattern.
    * \param num_patterns Number of initial random simulation patterns.
    */
-  partial_simulator( unsigned num_pis, unsigned num_patterns, std::default_random_engine::result_type seed = 1 )
+  partial_simulator( uint32_t num_pis, uint32_t num_patterns, std::default_random_engine::result_type seed = 1 )
     : num_patterns( num_patterns )
   {
     assert( num_pis > 0u );
@@ -303,7 +303,7 @@ public:
 
   bit_packed_simulator() {}
 
-  bit_packed_simulator( unsigned num_pis, unsigned num_patterns, std::default_random_engine::result_type seed = 1 )
+  bit_packed_simulator( uint32_t num_pis, uint32_t num_patterns, std::default_random_engine::result_type seed = 1 )
     : partial_simulator( num_pis, num_patterns, seed ), packed_patterns( num_patterns )
   {
     fill_cares( num_pis );
@@ -685,7 +685,7 @@ void update_const_pi( Ntk const& ntk, Container& node_to_value, Simulator const&
 
 /*! \brief (Re-)simulate `n` and its transitive fanin cone.
  * 
- * Note that re-simulation (when `node_to_value.has( n ) == false`) is only done
+ * Note that re-simulation (when `node_to_value.has( n ) == true`) is only done
  * for the last block, no matter how many bits are used in this block.
  * Hence, it is advised to call `simulate_nodes` with `simulate_whole_tt = false`
  * whenever `sim.num_bits() % 64 == 0`.
