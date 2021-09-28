@@ -134,7 +134,7 @@ struct sim_resub_stats
  *
  * Please refer to the following paper for further details.
  *
- * [1] Simulation-Guided Boolean Resubstitution. IWLS 2020 (arXiv:2007.02579).
+ * [1] A Simulation-Guided Paradigm for Logic Synthesis and Verification. TCAD, 2021.
  *
  * Interfaces of the resubstitution functor:
  * - Constructor: `resub_fn( Ntk const& ntk, resubstitution_params const& ps, ResubFnSt& st,`
@@ -150,7 +150,7 @@ struct sim_resub_stats
  * \param ResubFn Resubstitution functor to compute the resubstitution.
  * \param MffcRes Typename of `potential_gain` needed by the resubstitution functor.
  */
-template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResynEngine = xag_resyn_decompose<kitty::partial_truth_table, unordered_node_map<kitty::partial_truth_table, Ntk>>, typename MffcRes = uint32_t>
+template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResynEngine = xag_resyn_decompose<kitty::partial_truth_table, incomplete_node_map<kitty::partial_truth_table, Ntk>>, typename MffcRes = uint32_t>
 class simulation_based_resub_engine
 {
 public:
@@ -171,6 +171,7 @@ public:
     }
 
     add_event = ntk.events().register_add_event( [&]( const auto& n ) {
+      tts.resize();
       call_with_stopwatch( st.time_sim, [&]() {
         simulate_node<Ntk>( ntk, n, tts, sim );
       });
@@ -322,7 +323,7 @@ private:
   resubstitution_params const& ps;
   stats& st;
 
-  unordered_node_map<TT, Ntk> tts;
+  incomplete_node_map<TT, Ntk> tts;
   partial_simulator sim;
 
   validator_t validator;
