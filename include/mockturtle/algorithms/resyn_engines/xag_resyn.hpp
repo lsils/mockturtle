@@ -43,6 +43,7 @@
 #include <vector>
 #include <algorithm>
 #include <type_traits>
+#include <optional>
 
 namespace mockturtle
 {

@@ -118,7 +118,7 @@ class patgen_impl
 public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-  using TT = unordered_node_map<kitty::partial_truth_table, Ntk>;
+  using TT = incomplete_node_map<kitty::partial_truth_table, Ntk>;
 
   explicit patgen_impl( Ntk& ntk, Simulator& sim, pattern_generation_params const& ps, validator_params& vps, pattern_generation_stats& st )
       : ntk( ntk ), ps( ps ), st( st ), vps( vps ), validator( ntk, vps ),
