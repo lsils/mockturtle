@@ -141,8 +141,8 @@ kitty::dynamic_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
 
 namespace detail {
 
-template<class Ntk, class TT>
-void clearTFO_rec( Ntk const& ntk, unordered_node_map<TT, Ntk>& tts, node<Ntk> const& n, std::set<node<Ntk>>& roots, int level )
+template<class Ntk, class Container>
+void clearTFO_rec( Ntk const& ntk, Container& tts, node<Ntk> const& n, std::set<node<Ntk>>& roots, int level )
 {
   if ( ntk.visited( n ) == ntk.trav_id() ) /* visited */
   {
@@ -163,8 +163,8 @@ void clearTFO_rec( Ntk const& ntk, unordered_node_map<TT, Ntk>& tts, node<Ntk> c
   });
 }
 
-template<class Ntk>
-void simulate_TFO_rec( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, unordered_node_map<kitty::partial_truth_table, Ntk>& tts, int level )
+template<class Ntk, class Container>
+void simulate_TFO_rec( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, Container& tts, int level )
 {
   if ( ntk.visited( n ) == ntk.trav_id() ) /* visited */
   {
@@ -206,8 +206,8 @@ void simulate_TFO_rec( Ntk const& ntk, node<Ntk> const& n, partial_simulator con
  * \param tts Stores the simulation signatures of each node. Can be empty or incomplete.
  * \param levels Level of tansitive fanout to consider. -1 = consider until PO.
  */
-template<class Ntk>
-kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, unordered_node_map<kitty::partial_truth_table, Ntk>& tts, int levels = -1 )
+template<class Ntk, class Container = unordered_node_map<kitty::partial_truth_table, Ntk>>
+kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, Container& tts, int levels = -1 )
 {
   std::set<node<Ntk>> roots;
   unordered_node_map<kitty::partial_truth_table, Ntk> tts_roots( ntk );
