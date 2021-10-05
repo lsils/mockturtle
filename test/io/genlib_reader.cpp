@@ -13,12 +13,12 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   std::vector<mockturtle::gate> gates;
 
   std::string const file{
-    "GATE zero 0 O=0;\n"
-    "GATE one 0 O=1;\n"
+    "GATE zero 0 O=CONST0;\n"
+    "GATE one 0 O=CONST1;\n"
     "GATE inverter 1 O=!a; PIN * INV 1 999 1.0 1.0 1.0 1.0\n"
     "GATE buffer 2 O=a; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
-    "GATE and 5 O=(ab); PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
-    "GATE or 5 O={ab}; PIN n1 NONINV 1 999 1.0 1.0 1.0 1.0; PIN n2 NONINV 1 999 0.98 1.0 0.98 1.0\n"
+    "GATE and 5 Y=a*b; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+    "GATE or 5 Y=n1+n2; PIN n1 NONINV 1 999 1.0 1.0 1.0 1.0; PIN n2 NONINV 1 999 0.98 1.0 0.98 1.0\n"
   };
 
   std::istringstream in( file );
@@ -28,19 +28,21 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates.size() == 6u );
   CHECK( gates[0u].id == 0u );
   CHECK( gates[0u].name == "zero" );
-  CHECK( gates[0u].expression == "0" );
+  CHECK( gates[0u].expression == "CONST0" );
   CHECK( gates[0u].function._bits[0] == 0 );
   CHECK( gates[0u].num_vars == 0 );
   CHECK( gates[0u].area == 0.0 );
   CHECK( gates[0u].pins.empty() );
+  CHECK( gates[0u].output_name == "O" );
 
   CHECK( gates[1u].id == 1u );
   CHECK( gates[1u].name == "one" );
-  CHECK( gates[1u].expression == "1" );
+  CHECK( gates[1u].expression == "CONST1" );
   CHECK( gates[1u].function._bits[0] == 1 );
   CHECK( gates[1u].num_vars == 0 );
   CHECK( gates[1u].area == 0.0 );
   CHECK( gates[1u].pins.empty() );
+  CHECK( gates[1u].output_name == "O" );
 
   CHECK( gates[2u].id == 2u );
   CHECK( gates[2u].name == "inverter" );
@@ -57,6 +59,7 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
   CHECK( gates[2u].pins[0u].rise_block_delay == 1.0 );
   CHECK( gates[2u].pins[0u].rise_fanout_delay == 1.0 );
+  CHECK( gates[2u].output_name == "O" );
 
   CHECK( gates[3u].id == 3u );
   CHECK( gates[3u].name == "buffer" );
@@ -73,10 +76,11 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[3u].pins[0u].rise_fanout_delay == 1.0 );
   CHECK( gates[3u].pins[0u].rise_block_delay == 1.0 );
   CHECK( gates[3u].pins[0u].rise_fanout_delay == 1.0 );
+  CHECK( gates[3u].output_name == "O" );
 
   CHECK( gates[4u].id == 4u );
   CHECK( gates[4u].name == "and" );
-  CHECK( gates[4u].expression == "(ab)" );
+  CHECK( gates[4u].expression == "a*b" );
   CHECK( gates[4u].function._bits[0] == 8 );
   CHECK( gates[4u].num_vars == 2 );
   CHECK( gates[4u].area == 5.0 );
@@ -97,10 +101,11 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[4u].pins[1u].rise_fanout_delay == 1.0 );
   CHECK( gates[4u].pins[1u].rise_block_delay == 1.0 );
   CHECK( gates[4u].pins[1u].rise_fanout_delay == 1.0 );
+  CHECK( gates[4u].output_name == "Y" );
 
   CHECK( gates[5u].id == 5u );
   CHECK( gates[5u].name == "or" );
-  CHECK( gates[5u].expression == "{ab}" );
+  CHECK( gates[5u].expression == "n1+n2" );
   CHECK( gates[5u].function._bits[0] == 0xe );
   CHECK( gates[5u].num_vars == 2 );
   CHECK( gates[5u].area == 5.0 );
@@ -121,4 +126,5 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[5u].pins[1u].rise_fanout_delay == 1.0 );
   CHECK( gates[5u].pins[1u].rise_block_delay == 0.98 );
   CHECK( gates[5u].pins[1u].rise_fanout_delay == 1.0 );
+  CHECK( gates[5u].output_name == "Y" );
 }

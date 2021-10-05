@@ -178,7 +178,7 @@ TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
                                           "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
                                           "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
                                           "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                          "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
+                                          "GATE   nand2   2 O=!(a*b); PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
 
   std::vector<gate> gates;
   std::istringstream in( simple_test_library );
@@ -226,10 +226,10 @@ TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
 
 TEST_CASE( "write mapped network with multiple driven POs and register names into Verilog file", "[write_verilog]" )
 {
-  std::string const simple_test_library = "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
-                                          "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                          "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                          "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
+  std::string const simple_test_library = "GATE   inv1    1 Y=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                          "GATE   inv2    2 Y=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                          "GATE   buf     2 Y=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                          "GATE   nand2   2 Y=!(a*b); PIN * INV 1 999 1.0 0.2 1.0 0.2\n";
 
   std::vector<gate> gates;
   std::istringstream in( simple_test_library );
@@ -271,9 +271,9 @@ TEST_CASE( "write mapped network with multiple driven POs and register names int
                       "  input [0:0] ref ;\n"
                       "  input [1:0] data ;\n"
                       "  output [3:0] y ;\n"
-                      "  buf    g0( .a (ref[0]), .O (y[0]) );\n"
-                      "  nand2  g1( .a (data[0]), .b (data[1]), .O (y[1]) );\n"
-                      "  nand2  g2( .a (data[0]), .b (data[1]), .O (y[2]) );\n"
-                      "  inv2   g3( .a (y[1]), .O (y[3]) );\n"
+                      "  buf    g0( .a (ref[0]), .Y (y[0]) );\n"
+                      "  nand2  g1( .a (data[0]), .b (data[1]), .Y (y[1]) );\n"
+                      "  nand2  g2( .a (data[0]), .b (data[1]), .Y (y[2]) );\n"
+                      "  inv2   g3( .a (y[1]), .Y (y[3]) );\n"
                       "endmodule\n" );
 }

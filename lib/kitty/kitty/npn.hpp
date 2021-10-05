@@ -28,7 +28,6 @@
   \brief Implements NPN canonization algorithms
 
   \author Mathias Soeken
-  \author Alessandro Tempia Calvino
 */
 
 #pragma once
@@ -881,7 +880,7 @@ std::tuple<TT, std::vector<uint32_t>> exact_n_canonization_complete( const TT& t
   std::vector<uint32_t> phases( best_flip.size() );
   uint32_t phase = 0;
   int cnt = 0;
-  for ( auto i = 0; i < best_flip.size(); ++i )
+  for ( auto i = 0u; i < best_flip.size(); ++i )
   {
     auto flip = best_flip[i];
     for ( ; cnt <= flip; ++cnt )

@@ -22,14 +22,14 @@
 
 using namespace mockturtle;
 
-std::string const test_library = "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
-                                 "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                 "GATE   nand2   2 O=!(ab);  PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                 "GATE   xor2    5 O=[ab];   PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                 "GATE   mig3    3 O=<abc>;  PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
-                                 "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                 "GATE   zero    0 O=0;\n"
-                                 "GATE   one     0 O=1;";
+std::string const test_library = "GATE   inv1    1 O=!a;            PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                 "GATE   inv2    2 O=!a;            PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                 "GATE   nand2   2 O=!(a*b);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                 "GATE   xor2    5 O=a^b;           PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                 "GATE   mig3    3 O=a*b+a*c+b*c;   PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
+                                 "GATE   buf     2 O=a;             PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                 "GATE   zero    0 O=CONST0;\n"
+                                 "GATE   one     0 O=CONST1;";
 
 std::string const super_library = "test.genlib\n"
                                   "3\n"
@@ -346,6 +346,7 @@ TEST_CASE( "Exact map of bad MAJ3 and constant output", "[mapper]" )
   const auto f = aig.create_maj( a, aig.create_maj( a, b, c ), c );
   aig.create_po( f );
   aig.create_po( aig.get_constant( true ) );
+  aig.create_po( a );
 
   map_params ps;
   map_stats st;
@@ -353,7 +354,7 @@ TEST_CASE( "Exact map of bad MAJ3 and constant output", "[mapper]" )
 
   CHECK( mig.size() == 5u );
   CHECK( mig.num_pis() == 3u );
-  CHECK( mig.num_pos() == 2u );
+  CHECK( mig.num_pos() == 3u );
   CHECK( mig.num_gates() == 1u );
   CHECK( st.area == 1.0f );
   CHECK( st.delay == 1.0f );
