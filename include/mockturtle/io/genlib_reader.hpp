@@ -36,6 +36,7 @@
 #include "../traits.hpp"
 
 #include <kitty/constructors.hpp>
+#include <kitty/dynamic_truth_table.hpp>
 #include <lorina/genlib.hpp>
 #include <fmt/format.h>
 
@@ -154,7 +155,12 @@ public:
     uint32_t num_vars = pin_names.size();
 
     kitty::dynamic_truth_table tt{num_vars};
-    kitty::create_from_formula( tt, formula, pin_names );
+
+    if ( !kitty::create_from_formula( tt, formula, pin_names ) )
+    {
+      /* formula error, skip gate */
+      return;
+    }
 
     gates.emplace_back( gate{static_cast<unsigned int>( gates.size() ), name,
                              expression, num_vars, tt, area, pp, output_pin} );
