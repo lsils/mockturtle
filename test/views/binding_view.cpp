@@ -9,12 +9,12 @@
 
 using namespace mockturtle;
 
-std::string const simple_library = "GATE zero 0 O=0;\n"
-                                   "GATE one 0 O=1;\n"
+std::string const simple_library = "GATE zero 0 O=CONST0;\n"
+                                   "GATE one 0 O=CONST1;\n"
                                    "GATE inverter 1 O=!a; PIN * INV 1 999 1.0 1.0 1.0 1.0\n"
                                    "GATE buffer 2 O=a; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
-                                   "GATE and 5 O=(ab); PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
-                                   "GATE or 5 O={ab}; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
+                                   "GATE and 5 O=a*b; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+                                   "GATE or 5 O=a+b; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
 
 TEST_CASE( "Create binding view", "[binding_view]" )
 {

@@ -1172,7 +1172,7 @@ bool create_from_expression( TT& tt, const std::string& expression )
 
 namespace detail
 {
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 bool formula_execute_operation( std::stack<TT>& truth_tables, unsigned const op )
 {
   auto fn1 = truth_tables.top();
@@ -1214,7 +1214,7 @@ bool formula_execute_operation( std::stack<TT>& truth_tables, unsigned const op 
   \param from Expression as string
   \param input_tts Variable names
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 bool create_from_formula( TT& tt, const std::string& expression, const std::vector<std::string>& var_names )
 {
   enum stack_symbols
