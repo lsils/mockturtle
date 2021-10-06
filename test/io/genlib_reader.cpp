@@ -128,3 +128,17 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   CHECK( gates[5u].pins[1u].rise_fanout_delay == 1.0 );
   CHECK( gates[5u].output_name == "Y" );
 }
+
+TEST_CASE( "skip gate with invalid formula", "[genlib_reader]" )
+{
+  std::vector<mockturtle::gate> gates;
+  std::string const file{
+    "GATE or 5 Y=(n1+n2; PIN n1 NONINV 1 999 1.0 1.0 1.0 1.0; PIN n2 NONINV 1 999 0.98 1.0 0.98 1.0\n"
+  };
+
+  std::istringstream in( file );
+  auto const result = lorina::read_genlib( in, mockturtle::genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  CHECK( gates.size() == 0u );
+}

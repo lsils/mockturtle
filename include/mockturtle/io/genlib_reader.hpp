@@ -76,10 +76,6 @@ struct gate
 
 /*! \brief lorina callbacks for GENLIB files.
  * 
- * Note that the currently supported syntax for functions is
- * different from the genlib standard. For more info,
- * look into `kitty::create_from_expression`.
- * 
    \verbatim embed:rst
 
    Example
