@@ -101,12 +101,6 @@ public:
         continue;
       }
 
-      /* end of file char */
-      if ( line[0] == '\0' )
-      {
-        return true;
-      }
-
       if ( info_lines < 4 )
       {
         if ( !parse_file_info( line, info_vec ) )
@@ -127,6 +121,7 @@ public:
         }
       }
     }
+
     return true;
   }
 
@@ -134,18 +129,17 @@ private:
   bool parse_file_info( std::string const& line, std::vector<std::string>& info_vec )
   {
     std::stringstream ss( line );
-    std::string const deliminators{ " \t\r\n" };
     std::string token;
 
     std::vector<std::string> tokens;
 
-    while ( std::getline( ss, token, '\n' ) )
+    while ( std::getline( ss, token ) )
     {
       tokens.emplace_back( token );
       info_vec.emplace_back( token );
     }
 
-    if ( tokens.size() > 2 )
+    if ( line.find_first_of( " " ) != std::string::npos )
     {
       if ( diag )
       {

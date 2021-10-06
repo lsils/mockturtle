@@ -553,7 +553,7 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
       {
         args.emplace_back( std::make_pair( gate.pins[i++].name, pair.second ) );
       }
-      args.emplace_back( std::make_pair( "O", node_names[n] ) );
+      args.emplace_back( std::make_pair( gate.output_name, node_names[n] ) );
 
       writer.on_module_instantiation( name.append( std::string( length - name.length(), ' ' ) ),
                                       {},
@@ -569,7 +569,7 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
         for ( auto i = 1u; i < po_list.size(); ++i )
         {
           digits = counter == 0 ? 0 : ( int ) std::floor( std::log10( counter ) );
-          args[args.size() - 1] = std::make_pair( "O", ys[po_list[i]] );
+          args[args.size() - 1] = std::make_pair( gate.output_name, ys[po_list[i]] );
 
           writer.on_module_instantiation( name.append( std::string( length - name.length(), ' ' ) ),
                                           {},
