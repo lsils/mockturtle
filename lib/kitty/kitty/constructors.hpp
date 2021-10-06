@@ -1231,7 +1231,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
     START,
     VAR,
     OPER,
-    ERROR
+    F_ERROR
   };
 
   /* create input truth tables */
@@ -1283,7 +1283,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       if ( flag == VAR )
       {
         std::cerr << "[e] symbol before constant.\n";
-        flag = ERROR;
+        flag = F_ERROR;
         break;
       }
       truth_tables.push( tt.construct() );
@@ -1294,7 +1294,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       if ( flag == VAR )
       {
         std::cerr << "[e] symbol before constant.\n";
-        flag = ERROR;
+        flag = F_ERROR;
         break;
       }
       truth_tables.push( ~tt.construct() );
@@ -1315,7 +1315,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       if ( flag != VAR )
       {
         std::cerr << "[e] no variable specified before negation.\n";
-        flag = ERROR;
+        flag = F_ERROR;
         break;
       }
       temp_tt = truth_tables.top();
@@ -1328,7 +1328,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       if ( flag != VAR )
       {
         std::cerr << "[e] no variable specified before binary operation.\n";
-        flag = ERROR;
+        flag = F_ERROR;
         break;
       }
       symbols.push( AND );
@@ -1340,7 +1340,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       if ( flag != VAR )
       {
         std::cerr << "[e] no variable specified before binary operation.\n";
-        flag = ERROR;
+        flag = F_ERROR;
         break;
       }
       symbols.push( OR );
@@ -1351,7 +1351,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       if ( flag != VAR )
       {
         std::cerr << "[e] no variable specified before binary operation.\n";
-        flag = ERROR;
+        flag = F_ERROR;
         break;
       }
       symbols.push( XOR );
@@ -1381,12 +1381,12 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
           if ( !detail::formula_execute_operation( truth_tables, oper ) )
           {
             std::cerr << "[e] unknown operation.\n";
-            flag = ERROR;
+            flag = F_ERROR;
             break;
           }
         }
       }
-      if ( flag != ERROR )
+      if ( flag != F_ERROR )
       {
         flag = VAR;
       }
@@ -1404,7 +1404,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
         if ( expression[i + j] == '!' || expression[i + j] == '(' )
         {
           std::cerr << "[e] negation sign or open bracket inside variable name.\n";
-          flag = ERROR;
+          flag = F_ERROR;
           break;
         }
         ++j;
@@ -1425,7 +1425,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       if ( !match )
       {
         std::cerr << "[e] cannot find variable " << expression.substr( i, j ) << " in variables list.\n";
-        flag = ERROR;
+        flag = F_ERROR;
         break;
       }
 
@@ -1443,7 +1443,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       break;
     }
 
-    if ( flag == ERROR )
+    if ( flag == F_ERROR )
     {
       break;
     }
@@ -1493,7 +1493,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
           if ( !detail::formula_execute_operation( truth_tables, op2 ) )
           {
             std::cerr << "[e] unknown operation.\n";
-            flag = ERROR;
+            flag = F_ERROR;
             break;
           }
           symbols.push( op1 );
@@ -1508,7 +1508,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
     }
   }
 
-  if ( flag != ERROR )
+  if ( flag != F_ERROR )
   {
     /* last operation if present */
     while ( symbols.size() > 0 )
@@ -1516,7 +1516,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       if ( !detail::formula_execute_operation( truth_tables, symbols.top() ) )
       {
         std::cerr << "[e] unknown operation.\n";
-        flag = ERROR;
+        flag = F_ERROR;
         break;
       }
       symbols.pop();
