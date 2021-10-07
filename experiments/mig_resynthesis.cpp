@@ -61,7 +61,7 @@ int main()
 
 #if 0
     /* read in as AIG */
-    aig_network aig;
+    mig_network aig;
     if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
     {
       continue;
