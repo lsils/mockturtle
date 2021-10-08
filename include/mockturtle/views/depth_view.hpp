@@ -342,6 +342,78 @@ private:
   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
 };
 
+template<class Ntk>
+struct lazy_level_update_events
+{
+  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
+  std::shared_ptr<typename network_events<Ntk>::modified_event_type> modified_event;
+  std::shared_ptr<typename network_events<Ntk>::delete_event_type> delete_event;
+};
+
+template<class Ntk>
+auto register_lazy_level_update_events( Ntk& ntk )
+{
+  static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not have fanout interface." );
+  using node = typename Ntk::node;
+
+  auto const update_node_level = [&]( node const& n, bool first_node ) {
+    uint32_t curr_level = ntk.level( n );
+
+    uint32_t max_level = 0;
+    ntk.foreach_fanin( n, [&]( const auto& f ) {
+      auto const p = ntk.get_node( f );
+      auto const fanin_level = ntk.level( p );
+      if ( fanin_level > max_level )
+      {
+        max_level = fanin_level;
+      }
+    } );
+    ++max_level;
+
+    if ( curr_level != max_level )
+    {
+      ntk.set_level( n, max_level );
+
+      /* update only one more level */
+      if ( first_node )
+      {
+        ntk.foreach_fanout( n, [&]( const auto& p ) {
+          update_node_level( p, false );
+        } );
+      }
+    }
+  };
+
+  auto const update_level_of_new_node = [&]( const auto& n ) {
+    ntk.resize_levels();
+    update_node_level( n, true );
+  };
+
+  auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
+    (void)old_children;
+    ntk.resize_levels();
+    update_node_level( n, true );
+  };
+
+  auto const update_level_of_deleted_node = [&]( const auto& n ) {
+    ntk.set_level( n, -1 );
+  };
+
+  add_event = ntk.events().register_add_event( update_level_of_new_node );
+  modified_event = ntk.events().register_modified_event( update_level_of_existing_node );
+  delete_event = ntk.events().register_delete_event( update_level_of_deleted_node );
+
+  return lazy_level_update_events{add_event, modified_event, delete_event};
+}
+
+template<class Ntk>
+void release_lazy_level_update_events( Ntk& ntk, lazy_level_update_events& events )
+{
+  ntk.events().release_add_event( events.add_event );
+  ntk.events().release_modified_event( events.modified_event );
+  ntk.events().release_delete_event( events.delete_event );
+}
+
 template<class T>
 depth_view( T const& )->depth_view<T>;
 

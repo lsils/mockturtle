@@ -44,6 +44,20 @@
 namespace mockturtle::detail
 {
 
+template<typename Ntk>
+bool substitute_fn( Ntk& ntk, typename Ntk::node const& n, typename Ntk::signal const& g )
+{
+  ntk.substitute_node( n, g );
+  return true;
+}
+
+template<typename Ntk>
+bool report_fn( Ntk& ntk, typename Ntk::node const& n, typename Ntk::signal const& g )
+{
+  fmt::print( "[i] Substitute node {} with signal {}{}\n", n, ntk.is_complemented( g ) ? "!" : "", ntk.get_node( g ) );
+  return false;
+}
+
 /* based on abcRefs.c */
 template<typename Ntk>
 class node_mffc_inside

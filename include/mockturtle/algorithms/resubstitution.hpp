@@ -165,24 +165,6 @@ struct resubstitution_stats
   }
 };
 
-namespace detail
-{
-
-template<typename Ntk>
-bool substitute_fn( Ntk& ntk, typename Ntk::node const& n, typename Ntk::signal const& g )
-{
-  ntk.substitute_node( n, g );
-  return true;
-};
-
-template<typename Ntk>
-bool report_fn( Ntk& ntk, typename Ntk::node const& n, typename Ntk::signal const& g )
-{
-  (void)ntk;
-  std::cout << "substitute node " << unsigned( n ) << " with node " << unsigned( ntk.get_node( g ) ) << std::endl;
-  return false;
-};
-
 struct default_collector_stats
 {
   /*! \brief Total number of leaves. */
