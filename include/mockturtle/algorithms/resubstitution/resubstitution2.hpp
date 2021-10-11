@@ -137,7 +137,7 @@ public:
     st.initial_size = ntk.num_gates();
     if ( ps.update_levels_lazily )
     {
-      events = register_lazy_level_update_events( ntk );
+      lazy_update_event = register_lazy_level_update_events( ntk );
     }
     divs.reserve( ps.max_divisors );
     tts.reserve( ps.max_divisors + ps.max_pis );
@@ -147,7 +147,7 @@ public:
   {
     if ( ps.update_levels_lazily )
     {
-      release_lazy_level_update_events( ntk, *events );
+      release_lazy_level_update_events( ntk, lazy_update_event );
     }
   }
 
@@ -247,7 +247,7 @@ private:
   callback_t& callback;
 
   /* events */
-  std::optional<lazy_level_update_events<Ntk>> events;
+  std::shared_ptr<typename network_events<Ntk>::modified_event_type> lazy_update_event;
 };
 
 } /* namespace mockturtle::experimental */

@@ -165,6 +165,9 @@ struct resubstitution_stats
   }
 };
 
+namespace detail
+{
+
 struct default_collector_stats
 {
   /*! \brief Total number of leaves. */

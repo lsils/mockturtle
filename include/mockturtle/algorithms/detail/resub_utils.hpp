@@ -377,4 +377,65 @@ private:
   stats& st;
 }; /* default_resub_functor */
 
+/*! \brief Register an `on_modified` event that lazily updates node levels.
+ * 
+ * This is a trick learnt from ABC's implementation and is used in
+ * enumeration-based resubstitution algorithms. It only updates the level of
+ * the modified node and its fanout nodes. The update is not propagated to
+ * the fanouts' fanouts, thus being fast but inaccurate.
+ * 
+ * This method can be called in the constructor of an algorithm's implementation
+ * class. Note that its return value should be stored and
+ * `release_lazy_level_update_events` should then be called in the destructor 
+ * of the class.
+ */
+template<class Ntk, typename event_t = std::shared_ptr<typename network_events<Ntk>::modified_event_type>>
+event_t register_lazy_level_update_events( Ntk& ntk )
+{
+  static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not have fanout interface." );
+  using node = typename Ntk::node;
+
+  auto const update_node_level = [&]( node const& n, bool first_node ) {
+    uint32_t curr_level = ntk.level( n );
+
+    uint32_t max_level = 0;
+    ntk.foreach_fanin( n, [&]( const auto& f ) {
+      auto const p = ntk.get_node( f );
+      auto const fanin_level = ntk.level( p );
+      if ( fanin_level > max_level )
+      {
+        max_level = fanin_level;
+      }
+    } );
+    ++max_level;
+
+    if ( curr_level != max_level )
+    {
+      ntk.set_level( n, max_level );
+
+      /* update only one more level */
+      if ( first_node )
+      {
+        ntk.foreach_fanout( n, [&]( const auto& p ) {
+          update_node_level( p, false );
+        } );
+      }
+    }
+  };
+
+  auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
+    (void)old_children;
+    ntk.resize_levels();
+    update_node_level( n, true );
+  };
+
+  return ntk.events().register_modified_event( update_level_of_existing_node );
+}
+
+template<class Ntk, typename event_t = std::shared_ptr<typename network_events<Ntk>::modified_event_type>>
+void release_lazy_level_update_events( Ntk& ntk, event_t const& event )
+{
+  ntk.events().release_modified_event( event );
+}
+
 } /* namespace mockturtle::detail */
