@@ -1,5 +1,5 @@
 #include "experiments.hpp"
-#include <mockturtle/algorithms/resubstitution/boolean_optimization.hpp>
+#include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <lorina/aiger.hpp>
