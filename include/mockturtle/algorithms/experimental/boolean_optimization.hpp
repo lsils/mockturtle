@@ -112,6 +112,10 @@ public:
   explicit boolean_optimization_impl( Ntk& ntk, boolean_optimization_params const& ps, boolean_optimization_stats& st )
       : ntk( ntk ), ps( ps ), st( st ), windowing( ntk ), resyn( ntk )
   {
+    static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+    static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
+    static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+    static_assert( has_num_gates_v<Ntk>, "Ntk does not implement the num_gates method" );
     static_assert( std::is_same_v<problem_t, typename ResynSolver::problem_t>, "Types of resynthesis problem of Windowing and ResynSolver do not match" );
     static_assert( std::is_same_v<res_t, typename ResynSolver::res_t>, "Types of resynthesis solution of Windowing and ResynSolver do not match" );
   }
@@ -262,7 +266,7 @@ private:
   Ntk const& ntk;
 };
 
-} // namespace detail
+} /* namespace detail */
 
 template<class Ntk>
 void null_optimization( Ntk& ntk, boolean_optimization_params const& ps = {}, boolean_optimization_stats* pst = nullptr )
