@@ -194,8 +194,9 @@ public:
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
   template<class iterator_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_level = std::numeric_limits<uint32_t>::max() )
   {
+    (void)max_level;
     ptts = &tts;
     on_off_sets[0] = ~target & care;
     on_off_sets[1] = target & care;
@@ -851,8 +852,9 @@ public:
   }
 
   template<class iterator_type, class truth_table_storage_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_level = std::numeric_limits<uint32_t>::max() )
   {
+    (void)max_level;
     num_divisors = std::distance( begin, end ) + 2;
     num_blocks_per_truth_table = target.num_blocks();
     abcresub::Abc_ResubPrepareManager( num_blocks_per_truth_table );
