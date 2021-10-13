@@ -81,6 +81,30 @@ struct complete_tt_windowing_params
   bool preserve_depth{false};
 };
 
+struct complete_tt_windowing_stats
+{
+  /*! \brief Total number of leaves. */
+  uint64_t num_leaves{0u};
+
+  /*! \brief Total number of divisors. */
+  uint64_t num_divisors{0u};
+
+  /*! \brief Number of constructed windows. */
+  uint32_t num_windows{0u};
+
+  /*! \brief Total number of MFFC nodes. */
+  uint64_t sum_mffc_size{0u};
+
+  void report() const
+  {
+    // clang-format off
+    fmt::print( "[i] complete_tt_windowing report\n" );
+    fmt::print( "    tot. #leaves = {:5d}, tot. #divs = {:5d}, sum  |MFFC| = {:5d}\n", num_leaves, num_divisors, sum_mffc_size );
+    fmt::print( "    avg. #leaves = {:>5.2f}, avg. #divs = {:>5.2f}, avg. |MFFC| = {:>5.2f}\n", float( num_leaves ) / float( num_windows ), float( num_divisors ) / float( num_windows ), float( sum_mffc_size ) / float( num_windows ) );
+    // clang-format on
+  }
+};
+
 namespace detail
 {
 
@@ -104,12 +128,13 @@ class complete_tt_windowing
 public:
   using problem_t = small_window<Ntk, TT>;
   using params_t = complete_tt_windowing_params;
+  using stats_t = complete_tt_windowing_stats;
 
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  explicit complete_tt_windowing( Ntk& ntk, params_t const& ps = {} )
-    : ntk( ntk ), ps( ps ), cps( {ps.max_pis} ), mffc_mgr( ntk )
+  explicit complete_tt_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
+    : ntk( ntk ), ps( ps ), st( st ), cps( {ps.max_pis} ), mffc_mgr( ntk )
   {
     static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
     static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method (please wrap with fanout_view)" );
@@ -183,6 +208,11 @@ public:
 
     win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
 
+    st.num_windows++;
+    st.num_leaves += leaves.size();
+    st.num_divisors += win.divs.size();
+    st.sum_mffc_size += win.mffc_size;
+
     return win;
   }
 
@@ -201,6 +231,16 @@ public:
     insert<false>( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){
       ntk.substitute_node( prob.root, g );
     } );
+    return true; /* continue optimization */
+  }
+
+  template<typename res_t>
+  bool report( problem_t const& prob, res_t const& res )
+  {
+    // assert that res_t is some index_list type
+    assert( res.num_pos() == 1 );
+    //insert<false>( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){} );
+    fmt::print( "[i] found solution {} for root node {}\n", to_index_list_string( res ), prob.root );
     return true;
   }
 
@@ -224,6 +264,63 @@ private:
       supported.emplace_back( n );
     }
   }
+
+  void collect_wings( node const& n, std::vector<node>& supported )
+  {
+    if ( ntk.fanout_size( n ) > ps.skip_fanout_limit_for_divisors )
+    {
+      return;
+    }
+
+    /* if the fanout has all fanins in the set, add it */
+    ntk.foreach_fanout( n, [&]( node const& p ) {
+      if ( ntk.visited( p ) == ntk.trav_id() || ntk.level( p ) > win.max_level )
+      {
+        return true; /* next fanout */
+      }
+
+      bool all_fanins_visited = true;
+      ntk.foreach_fanin( p, [&]( const auto& g ) {
+        if ( ntk.visited( ntk.get_node( g ) ) != ntk.trav_id() )
+        {
+          all_fanins_visited = false;
+          return false; /* terminate fanin-loop */
+        }
+        return true; /* next fanin */
+      } );
+
+      if ( !all_fanins_visited )
+      {
+        return true; /* next fanout */
+      }
+
+      bool has_root_as_child = false;
+      ntk.foreach_fanin( p, [&]( const auto& g ) {
+        if ( ntk.get_node( g ) == win.root )
+        {
+          has_root_as_child = true;
+          return false; /* terminate fanin-loop */
+        }
+        return true; /* next fanin */
+      } );
+
+      if ( has_root_as_child )
+      {
+        return true; /* next fanout */
+      }
+
+      supported.emplace_back( p );
+      ntk.set_visited( p, ntk.trav_id() );
+
+      /* quit collecting if there are too many of them */
+      if ( supported.size() > ps.max_divisors )
+      {
+        return false; /* terminate fanout-loop */
+      }
+
+      return true; /* next fanout */
+    } );
+  }
   
   bool collect_supported_nodes( std::vector<node> const& leaves, std::vector<node>& supported )
   {
@@ -242,67 +339,20 @@ private:
     }
 
     /* collect "wings" */
+    for ( auto const& l : leaves )
+    {
+      collect_wings( l, supported );
+      if ( supported.size() > ps.max_divisors )
+      {
+        break;
+      }
+    }
+
+    /* note: we cannot use range-based loop here because we push to the vector in the loop */
     for ( auto i = 0u; i < supported.size(); ++i )
     {
-      /* note: we cannot use range-based loop because we push to the vector in the loop */
-      auto const n = supported.at( i );
-      if ( ntk.fanout_size( n ) > ps.skip_fanout_limit_for_divisors )
-      {
-        continue;
-      }
-
-      bool quit = false;
-      /* if the fanout has all fanins in the set, add it */
-      ntk.foreach_fanout( n, [&]( node const& p ) {
-        if ( ntk.visited( p ) == ntk.trav_id() || ntk.level( p ) > win.max_level )
-        {
-          return true; /* next fanout */
-        }
-
-        bool all_fanins_visited = true;
-        ntk.foreach_fanin( p, [&]( const auto& g ) {
-          if ( ntk.visited( ntk.get_node( g ) ) != ntk.trav_id() )
-          {
-            all_fanins_visited = false;
-            return false; /* terminate fanin-loop */
-          }
-          return true; /* next fanin */
-        } );
-
-        if ( !all_fanins_visited )
-        {
-          return true; /* next fanout */
-        }
-
-        bool has_root_as_child = false;
-        ntk.foreach_fanin( p, [&]( const auto& g ) {
-          if ( ntk.get_node( g ) == win.root )
-          {
-            has_root_as_child = true;
-            return false; /* terminate fanin-loop */
-          }
-          return true; /* next fanin */
-        } );
-
-        if ( has_root_as_child )
-        {
-          return true; /* next fanout */
-        }
-
-        supported.emplace_back( p );
-        ntk.set_visited( p, ntk.trav_id() );
-
-        /* quit collecting if there are too many of them */
-        if ( supported.size() > ps.max_divisors )
-        {
-          quit = true;
-          return false; /* terminate fanout-loop */
-        }
-
-        return true; /* next fanout */
-      } );
-
-      if ( quit )
+      collect_wings( supported.at( i ), supported );
+      if ( supported.size() > ps.max_divisors )
       {
         break;
       }
@@ -345,6 +395,7 @@ private:
   Ntk& ntk;
   problem_t win;
   params_t const& ps;
+  stats_t& st;
   reconvergence_driven_cut_parameters const cps;
   typename mockturtle::detail::node_mffc_inside<Ntk> mffc_mgr; // TODO: namespaces can be removed when we move out of experimental::
   uint32_t mffc_marker{0u};
@@ -358,8 +409,9 @@ public:
   using problem_t = small_window<Ntk, TT>;
   using res_t = typename ResynEngine::index_list_t;
   using params_t = null_params;
+  using stats_t = null_stats;
 
-  explicit complete_tt_resynthesis( Ntk const& ntk, params_t const& ps = {} )
+  explicit complete_tt_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
     : ntk( ntk )
   { }
 
@@ -380,8 +432,8 @@ private:
 
 } /* namespace detail */
 
-template<class Ntk, typename params_t = boolean_optimization_params<complete_tt_windowing_params, null_params>>
-void window_xag_heuristic_resub( Ntk& ntk, params_t const& ps = {}, boolean_optimization_stats* pst = nullptr )
+template<class Ntk, typename params_t = boolean_optimization_params<complete_tt_windowing_params, null_params>, typename stats_t = boolean_optimization_stats<complete_tt_windowing_stats, null_stats>>
+void window_xag_heuristic_resub( Ntk& ntk, params_t const& ps = {}, stats_t* pst = nullptr )
 {
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
@@ -394,7 +446,7 @@ void window_xag_heuristic_resub( Ntk& ntk, params_t const& ps = {}, boolean_opti
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  boolean_optimization_stats st;
+  stats_t st;
   opt_t p( viewed, ps, st );
   p.run();
 

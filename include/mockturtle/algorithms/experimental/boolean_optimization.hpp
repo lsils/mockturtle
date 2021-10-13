@@ -42,6 +42,7 @@ namespace mockturtle::experimental
 {
 
 struct null_params {};
+struct null_stats { void report() const {} };
 
 template<class WinParams = null_params, class ResynParams = null_params>
 struct boolean_optimization_params
@@ -55,6 +56,12 @@ struct boolean_optimization_params
   /*! \brief Whether to use new nodes as pivots. */
   bool optimize_new_nodes{false};
 
+  /*! \brief Whether to run in dry-run mode (call `report` instead of `update_ntk`). */
+  bool dry_run{false};
+
+  /*! \brief Whether to print verbosely in dry-run mode. Ignored if `dry_run` is `false`. */
+  bool dry_run_verbose{true};
+
   /*! \brief Parameter object for the windowing engine. */
   WinParams wps;
 
@@ -62,6 +69,7 @@ struct boolean_optimization_params
   ResynParams rps;
 };
 
+template<class WinStats = null_stats, class ResynStats = null_stats>
 struct boolean_optimization_stats
 {
   /*! \brief Total runtime. */
@@ -82,16 +90,33 @@ struct boolean_optimization_stats
   /*! \brief Initial network size (before resubstitution). */
   uint64_t initial_size{0};
 
+  /*! \brief Number of constructed resynthesis problems. */
+  uint32_t num_problems{0u};
+
+  /*! \brief Number of solutions found. */
+  uint32_t num_solutions{0u};
+
+  /*! \brief Statistics object for the windowing engine. */
+  WinStats wst;
+
+  /*! \brief Statistics object for the resynthesis engine. */
+  ResynStats rst;
+
   void report() const
   {
     // clang-format off
     fmt::print( "[i] Boolean optimization top-level report\n" );
-    fmt::print( "Estimated gain: {:8d} ({:>5.2f}%)\n", estimated_gain, ( 100.0 * estimated_gain ) / initial_size );
+    fmt::print( "Estimated gain: {:8d} ({:.2f}%)\n", estimated_gain, ( 100.0 * estimated_gain ) / initial_size );
+    fmt::print( "#problems = {}, #solutions = {} ({:.2f}%)\n", num_problems, num_solutions, float( num_solutions ) / float( num_problems ) );
     fmt::print( "======== Runtime Breakdown ========\n" );
     fmt::print( "Total         : {:>5.2f} secs\n", to_seconds( time_total ) );
     fmt::print( "  Windowing   : {:>5.2f} secs\n", to_seconds( time_windowing ) );
     fmt::print( "  Resynthesis : {:>5.2f} secs\n", to_seconds( time_resynthesis ) );
     fmt::print( "  Update ntk  : {:>5.2f} secs\n", to_seconds( time_update ) );
+    fmt::print( "========= Windowing Stats =========\n" );
+    wst.report();
+    fmt::print( "======== Resynthesis Stats ========\n" );
+    rst.report();
     fmt::print( "===================================\n\n" );
     // clang-format on
   }
@@ -118,9 +143,10 @@ public:
   using problem_t = typename Windowing::problem_t;
   using res_t = typename ResynSolver::res_t;
   using params_t = boolean_optimization_params<typename Windowing::params_t, typename ResynSolver::params_t>;
+  using stats_t = boolean_optimization_stats<typename Windowing::stats_t, typename ResynSolver::stats_t>;
 
-  explicit boolean_optimization_impl( Ntk& ntk, params_t const& ps, boolean_optimization_stats& st )
-      : ntk( ntk ), ps( ps ), st( st ), windowing( ntk, ps.wps ), resyn( ntk, ps.rps )
+  explicit boolean_optimization_impl( Ntk& ntk, params_t const& ps, stats_t& st )
+      : ntk( ntk ), ps( ps ), st( st ), windowing( ntk, ps.wps, st.wst ), resyn( ntk, ps.rps, st.rst )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
@@ -162,6 +188,7 @@ public:
       {
         return true; /* next */
       }
+      ++st.num_problems;
 
       /* solve the resynthesis problem; usually by finding a (re)substitution */
       auto res = call_with_stopwatch( st.time_resynthesis, [&]() {
@@ -171,15 +198,24 @@ public:
       {
         return true; /* next */
       }
+      ++st.num_solutions;
 
       /* update progress bar */
       candidates++;
       st.estimated_gain += windowing.gain( *prob, *res );
 
-      /* update network */
-      auto cont = call_with_stopwatch( st.time_update, [&]() {
-        return windowing.update_ntk( *prob, *res );
-      });
+      /* update network or report choice */
+      bool cont = true;
+      if ( !ps.dry_run )
+      {
+        cont = call_with_stopwatch( st.time_update, [&]() {
+          return windowing.update_ntk( *prob, *res );
+        });
+      }
+      else if ( ps.dry_run_verbose )
+      {
+        cont = windowing.report( *prob, *res );
+      }
 
       return cont;
     } );
@@ -189,7 +225,7 @@ private:
   Ntk& ntk;
 
   params_t const& ps;
-  boolean_optimization_stats& st;
+  stats_t& st;
 
   Windowing windowing;
   ResynSolver resyn;
@@ -218,11 +254,12 @@ public:
   using problem_t = null_problem<Ntk>;
   using res_t = typename Ntk::signal;
   using params_t = null_params;
+  using stats_t = null_stats;
   using node = typename Ntk::node;
 
-  explicit null_windowing( Ntk& ntk, params_t const& ps )
+  explicit null_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
     : ntk( ntk )
-  { (void)ps; }
+  { (void)ps; (void)st; }
 
   void init()
   { }
@@ -244,6 +281,12 @@ public:
     return true;
   }
 
+  bool report( problem_t const& prob, res_t const& res )
+  {
+    fmt::print( "[i] substitute node {} with signal {}{}\n", prob.pivot, ntk.is_complemented( res ) ? "!" : "", ntk.get_node( res ) );
+    return true;
+  }
+
 private:
   Ntk& ntk;
 };
@@ -261,10 +304,11 @@ public:
   using problem_t = null_problem<Ntk>;
   using res_t = typename Ntk::signal;
   using params_t = null_params;
+  using stats_t = null_stats;
 
-  explicit null_resynthesis( Ntk const& ntk, params_t const& ps )
+  explicit null_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
     : ntk( ntk )
-  { (void)ps; }
+  { (void)ps; (void)st; }
 
   void init()
   { }
@@ -280,10 +324,10 @@ private:
 
 } /* namespace detail */
 
-template<class Ntk, typename params_t = boolean_optimization_params<null_params, null_params>>
-void null_optimization( Ntk& ntk, params_t const& ps = {}, boolean_optimization_stats* pst = nullptr )
+template<class Ntk, typename params_t = boolean_optimization_params<null_params, null_params>, typename stats_t = boolean_optimization_stats<null_stats, null_stats>>
+void null_optimization( Ntk& ntk, params_t const& ps = {}, stats_t* pst = nullptr )
 {
-  boolean_optimization_stats st;
+  stats_t st;
 
   using windowing_t = typename detail::null_windowing<Ntk>;
   using resyn_t = typename detail::null_resynthesis<Ntk>; 
