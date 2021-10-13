@@ -41,6 +41,9 @@
 namespace mockturtle::experimental
 {
 
+struct null_params {};
+
+template<class WinParams = null_params, class ResynParams = null_params>
 struct boolean_optimization_params
 {
   /*! \brief Show progress. */
@@ -51,6 +54,12 @@ struct boolean_optimization_params
 
   /*! \brief Whether to use new nodes as pivots. */
   bool optimize_new_nodes{false};
+
+  /*! \brief Parameter object for the windowing engine. */
+  WinParams wps;
+
+  /*! \brief Parameter object for the resynthesis engine. */
+  ResynParams rps;
 };
 
 struct boolean_optimization_stats
@@ -107,17 +116,18 @@ public:
   using signal = typename Ntk::signal;
 
   using problem_t = typename Windowing::problem_t;
-  using res_t = typename Windowing::res_t;
+  using res_t = typename ResynSolver::res_t;
+  using params_t = boolean_optimization_params<typename Windowing::params_t, typename ResynSolver::params_t>;
 
-  explicit boolean_optimization_impl( Ntk& ntk, boolean_optimization_params const& ps, boolean_optimization_stats& st )
-      : ntk( ntk ), ps( ps ), st( st ), windowing( ntk ), resyn( ntk )
+  explicit boolean_optimization_impl( Ntk& ntk, params_t const& ps, boolean_optimization_stats& st )
+      : ntk( ntk ), ps( ps ), st( st ), windowing( ntk, ps.wps ), resyn( ntk, ps.rps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_num_gates_v<Ntk>, "Ntk does not implement the num_gates method" );
     static_assert( std::is_same_v<problem_t, typename ResynSolver::problem_t>, "Types of resynthesis problem of Windowing and ResynSolver do not match" );
-    static_assert( std::is_same_v<res_t, typename ResynSolver::res_t>, "Types of resynthesis solution of Windowing and ResynSolver do not match" );
+    //TODO: assert that Windowing::gain and Windowing::update_ntk are callable on res_t
   }
 
   ~boolean_optimization_impl()
@@ -178,7 +188,7 @@ public:
 private:
   Ntk& ntk;
 
-  boolean_optimization_params const& ps;
+  params_t const& ps;
   boolean_optimization_stats& st;
 
   Windowing windowing;
@@ -207,11 +217,12 @@ class null_windowing
 public:
   using problem_t = null_problem<Ntk>;
   using res_t = typename Ntk::signal;
+  using params_t = null_params;
   using node = typename Ntk::node;
 
-  explicit null_windowing( Ntk& ntk )
+  explicit null_windowing( Ntk& ntk, params_t const& ps )
     : ntk( ntk )
-  { }
+  { (void)ps; }
 
   void init()
   { }
@@ -249,10 +260,11 @@ class null_resynthesis
 public:
   using problem_t = null_problem<Ntk>;
   using res_t = typename Ntk::signal;
+  using params_t = null_params;
 
-  explicit null_resynthesis( Ntk const& ntk )
+  explicit null_resynthesis( Ntk const& ntk, params_t const& ps )
     : ntk( ntk )
-  { }
+  { (void)ps; }
 
   void init()
   { }
@@ -268,8 +280,8 @@ private:
 
 } /* namespace detail */
 
-template<class Ntk>
-void null_optimization( Ntk& ntk, boolean_optimization_params const& ps = {}, boolean_optimization_stats* pst = nullptr )
+template<class Ntk, typename params_t = boolean_optimization_params<null_params, null_params>>
+void null_optimization( Ntk& ntk, params_t const& ps = {}, boolean_optimization_stats* pst = nullptr )
 {
   boolean_optimization_stats st;
 

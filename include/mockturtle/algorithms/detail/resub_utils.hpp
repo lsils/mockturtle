@@ -71,7 +71,8 @@ public:
   {
   }
 
-  int32_t run( node const& n, std::vector<node> const& leaves, std::vector<node>& inside )
+  template<typename Fn>
+  int32_t call_on_mffc_and_count( node const& n, std::vector<node> const& leaves, Fn&& fn )
   {
     /* increment the fanout counters for the leaves */
     for ( const auto& l : leaves )
@@ -80,8 +81,9 @@ public:
     /* dereference the node */
     auto count1 = node_deref_rec( n );
 
-    /* collect the nodes inside the MFFC */
-    node_mffc_cone( n, inside );
+    /* call `fn` on MFFC nodes */
+    ntk.incr_trav_id();
+    node_mffc_cone_rec( n, true, fn );
 
     /* reference it back */
     auto count2 = node_ref_rec( n );
@@ -92,6 +94,12 @@ public:
       ntk.decr_fanout_size( l );
 
     return count1;
+  }
+
+  int32_t run( node const& n, std::vector<node> const& leaves, std::vector<node>& inside )
+  {
+    inside.clear();
+    return call_on_mffc_and_count( n, leaves, [&inside]( node const& m ){ inside.emplace_back( m ); } );
   }
 
 private:
@@ -136,7 +144,8 @@ private:
     return counter;
   }
 
-  void node_mffc_cone_rec( node const& n, std::vector<node>& cone, bool top_most )
+  template<typename Fn>
+  void node_mffc_cone_rec( node const& n, bool top_most, Fn&& fn )
   {
     /* skip visited nodes */
     if ( ntk.visited( n ) == ntk.trav_id() )
@@ -152,18 +161,11 @@ private:
 
     /* recurse on children */
     ntk.foreach_fanin( n, [&]( const auto& f ) {
-      node_mffc_cone_rec( ntk.get_node( f ), cone, false );
+      node_mffc_cone_rec( ntk.get_node( f ), false, fn );
     } );
 
     /* collect the internal nodes */
-    cone.emplace_back( n );
-  }
-
-  void node_mffc_cone( node const& n, std::vector<node>& cone )
-  {
-    cone.clear();
-    ntk.incr_trav_id();
-    node_mffc_cone_rec( n, cone, true );
+    fn( n );
   }
 
 private:
@@ -377,6 +379,36 @@ private:
   stats& st;
 }; /* default_resub_functor */
 
+template<typename Ntk, typename node>
+void update_node_level_once( Ntk& ntk, node const& n, bool first_node )
+{
+  uint32_t curr_level = ntk.level( n );
+
+  uint32_t max_level = 0;
+  ntk.foreach_fanin( n, [&]( const auto& f ) {
+    auto const p = ntk.get_node( f );
+    auto const fanin_level = ntk.level( p );
+    if ( fanin_level > max_level )
+    {
+      max_level = fanin_level;
+    }
+  } );
+  ++max_level;
+
+  if ( curr_level != max_level )
+  {
+    ntk.set_level( n, max_level );
+
+    /* update only one more level */
+    if ( first_node )
+    {
+      ntk.foreach_fanout( n, [&]( const auto& p ) {
+        update_node_level_once( ntk, p, false );
+      } );
+    }
+  }
+}
+
 /*! \brief Register an `on_modified` event that lazily updates node levels.
  * 
  * This is a trick learnt from ABC's implementation and is used in
@@ -395,45 +427,17 @@ event_t register_lazy_level_update_events( Ntk& ntk )
   static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not have fanout interface." );
   using node = typename Ntk::node;
 
-  auto const update_node_level = [&]( node const& n, bool first_node ) {
-    uint32_t curr_level = ntk.level( n );
-
-    uint32_t max_level = 0;
-    ntk.foreach_fanin( n, [&]( const auto& f ) {
-      auto const p = ntk.get_node( f );
-      auto const fanin_level = ntk.level( p );
-      if ( fanin_level > max_level )
-      {
-        max_level = fanin_level;
-      }
-    } );
-    ++max_level;
-
-    if ( curr_level != max_level )
-    {
-      ntk.set_level( n, max_level );
-
-      /* update only one more level */
-      if ( first_node )
-      {
-        ntk.foreach_fanout( n, [&]( const auto& p ) {
-          update_node_level( p, false );
-        } );
-      }
-    }
-  };
-
   auto const update_level_of_existing_node = [&]( node const& n, const auto& old_children ) {
     (void)old_children;
     ntk.resize_levels();
-    update_node_level( n, true );
+    update_node_level_once( ntk, n, true );
   };
 
   return ntk.events().register_modified_event( update_level_of_existing_node );
 }
 
 template<class Ntk, typename event_t = std::shared_ptr<typename network_events<Ntk>::modified_event_type>>
-void release_lazy_level_update_events( Ntk& ntk, event_t const& event )
+void release_lazy_level_update_events( Ntk& ntk, event_t& event )
 {
   ntk.events().release_modified_event( event );
 }

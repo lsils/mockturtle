@@ -526,6 +526,79 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
   return node_to_value;
 }
 
+/*! \brief Simulates a window in a network.
+ * 
+ * Every node in `nodes` must have all of its fanins either in `leaves`, or in
+ * `nodes` and precedes it (i.e., supported and in a topological order).
+ *
+ * \param ntk Network
+ * \param leaves Network nodes as window inputs
+ * \param nodes Network nodes as inner nodes of the window, supported by `leaves`
+ * \param node_to_value A vector to store `SimulationType`s corresponding to 
+ * nodes in the following order: constant(s), nodes in `leaves`, nodes in `nodes`
+ * \param sim Simulator, which implements the simulator interface
+ */
+template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
+void simulate_window( Ntk const& ntk, std::vector<node<Ntk>> const& leaves, std::vector<node<Ntk>> const& nodes, std::vector<SimulationType>& node_to_value, Simulator const& sim = Simulator() )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+  static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
+  static_assert( has_compute_v<Ntk, SimulationType>, "Ntk does not implement the compute method for SimulationType" );
+
+  node_to_value.clear();
+  unordered_node_map<uint32_t, Ntk> node_to_id( ntk );
+  node_to_value.reserve( leaves.size() + nodes.size() + 1 );
+
+  node_to_id[ntk.get_constant( false )] = node_to_value.size();
+  node_to_value.emplace_back( sim.compute_constant( false ) );
+  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  {
+    node_to_id[ntk.get_constant( true )] = node_to_value.size();
+    node_to_value.emplace_back( sim.compute_constant( true ) );
+  }
+  
+  for ( auto i = 0u; i < leaves.size(); ++i )
+  {
+    node_to_id[leaves[i]] = node_to_value.size();
+    node_to_value.emplace_back( sim.compute_pi( i ) );
+  }
+
+  std::vector<SimulationType> fanin_values;
+  for ( auto const& n : nodes )
+  {
+    fanin_values.resize( ntk.fanin_size( n ) );
+    ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+      assert( node_to_id.has( f ) && "some node in `nodes` has a fanin outside of `nodes` and `leaves`, or `nodes` is not in a topological order" );
+      fanin_values[i] = node_to_value[node_to_id[f]];
+    } );
+    node_to_id[n] = node_to_value.size();
+    node_to_value.emplace_back( ntk.compute( n, fanin_values.begin(), fanin_values.end() ) );
+  };
+}
+
+/*! \brief Simulates a window in a network.
+ * 
+ * Every node in `nodes` must have all of its fanins either in `leaves`, or in
+ * `nodes` and precedes it (i.e., supported and in a topological order).
+ *
+ * \param ntk Network
+ * \param leaves Network nodes as window inputs
+ * \param nodes Network nodes as inner nodes of the window, supported by `leaves`
+ * \param sim Simulator, which implements the simulator interface
+ * \return A vector of `SimulationType` corresponding to nodes in the following order:
+ * constant(s), nodes in `leaves`, nodes in `nodes`
+ */
+template<class SimulationType, class Ntk, class Simulator = default_simulator<SimulationType>>
+std::vector<SimulationType> simulate_window( Ntk const& ntk, std::vector<node<Ntk>> const& leaves, std::vector<node<Ntk>> const& nodes, Simulator const& sim = Simulator() )
+{
+  std::vector<SimulationType> node_to_value;
+  simulate_window( ntk, leaves, nodes, node_to_value, sim );
+  return node_to_value;
+}
+
 namespace detail
 {
 

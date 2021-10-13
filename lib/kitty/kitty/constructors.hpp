@@ -80,6 +80,14 @@ inline dynamic_truth_table create<dynamic_truth_table>( unsigned num_vars )
 }
 /*! \endcond */
 
+/*! \cond PRIVATE */
+template<>
+inline partial_truth_table create<partial_truth_table>( unsigned num_vars )
+{
+  return partial_truth_table( 1 << num_vars );
+}
+/*! \endcond */
+
 /*! \brief Constructs projections (single-variable functions)
 
   \param tt Truth table

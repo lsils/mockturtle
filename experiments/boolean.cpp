@@ -1,5 +1,6 @@
 #include "experiments.hpp"
 #include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
+#include <mockturtle/algorithms/experimental/window_resub.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <lorina/aiger.hpp>
@@ -13,13 +14,18 @@ int main()
   aig_network aig;
   std::string benchmark = "adder";
   auto const result = lorina::read_aiger( experiments::benchmark_path( benchmark ), aiger_reader( aig ) );
-  assert( result == lorina::return_code::success );
+  assert( result == lorina::return_code::success ); (void)result;
 
-  experimental::boolean_optimization_params ps;
+  using wps_t = typename experimental::complete_tt_windowing_params;
+  using ps_t = typename experimental::boolean_optimization_params<wps_t>;
+  ps_t ps;
   ps.verbose = true;
-  experimental::null_optimization( aig, ps );
+  ps.wps.max_pis = 6;
+
+  window_xag_heuristic_resub( aig, ps );
+
   const auto cec = experiments::abc_cec( aig, benchmark );
-  assert( cec );
+  assert( cec ); (void)cec;
 
   return 0;
 }
