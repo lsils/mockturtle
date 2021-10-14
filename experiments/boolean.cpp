@@ -35,7 +35,7 @@ int main()
     st_t st;
 
     const uint32_t size_before = aig.num_gates();
-    window_xag_heuristic_resub( aig, ps, &st );
+    window_aig_enumerative_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
     const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );

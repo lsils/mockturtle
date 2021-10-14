@@ -39,6 +39,7 @@
 #include "../../networks/xag.hpp"
 #include "../detail/resub_utils.hpp"
 #include "../resyn_engines/xag_resyn.hpp"
+#include "../resyn_engines/aig_enumerative.hpp"
 #include "../simulation.hpp"
 #include "../dont_cares.hpp"
 #include "../reconv_cut.hpp"
@@ -402,7 +403,7 @@ private:
   std::shared_ptr<typename network_events<Ntk>::modified_event_type> lazy_update_event;
 };
 
-template<class Ntk, class TT, class ResynEngine>
+template<class Ntk, class TT, class ResynEngine, bool preserve_depth = false>
 class complete_tt_resynthesis
 {
 public:
@@ -421,7 +422,14 @@ public:
   std::optional<res_t> operator()( problem_t& prob )
   {
     ResynEngine engine( rst, rps );
-    return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size, prob.max_level );
+    if constexpr ( preserve_depth ) // TODO: maybe separate via different problem type
+    {
+      return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size, prob.max_level );
+    }
+    else
+    {
+      return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size );
+    }
   }
 
 private:
@@ -443,6 +451,35 @@ void window_xag_heuristic_resub( Ntk& ntk, params_t const& ps = {}, stats_t* pst
   using TT = typename kitty::dynamic_truth_table;
   using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
   using engine_t = xag_resyn_decompose<TT, std::vector<TT>, use_xor, /*copy_tts*/false, /*node_type*/uint32_t>;
+  using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
+  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+  stats_t st;
+  opt_t p( viewed, ps, st );
+  p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
+
+template<class Ntk, typename params_t = boolean_optimization_params<complete_tt_windowing_params, null_params>, typename stats_t = boolean_optimization_stats<complete_tt_windowing_stats, null_stats>>
+void window_aig_enumerative_resub( Ntk& ntk, params_t const& ps = {}, stats_t* pst = nullptr )
+{
+  using ViewedNtk = depth_view<fanout_view<Ntk>>;
+  fanout_view<Ntk> fntk( ntk );
+  ViewedNtk viewed( fntk );
+
+  constexpr bool use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
+  using TT = typename kitty::dynamic_truth_table;
+  using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
+  using engine_t = aig_enumerative_resyn<TT>;
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
