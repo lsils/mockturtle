@@ -40,6 +40,8 @@
 #include "../detail/resub_utils.hpp"
 #include "../resyn_engines/xag_resyn.hpp"
 #include "../resyn_engines/aig_enumerative.hpp"
+#include "../resyn_engines/mig_resyn.hpp"
+#include "../resyn_engines/mig_enumerative.hpp"
 #include "../simulation.hpp"
 #include "../dont_cares.hpp"
 #include "../reconv_cut.hpp"
@@ -440,8 +442,11 @@ private:
 
 } /* namespace detail */
 
-template<class Ntk, typename params_t = boolean_optimization_params<complete_tt_windowing_params, null_params>, typename stats_t = boolean_optimization_stats<complete_tt_windowing_stats, null_stats>>
-void window_xag_heuristic_resub( Ntk& ntk, params_t const& ps = {}, stats_t* pst = nullptr )
+using window_resub_params = boolean_optimization_params<complete_tt_windowing_params, null_params>;
+using window_resub_stats = boolean_optimization_stats<complete_tt_windowing_stats, null_stats>;
+
+template<class Ntk>
+void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
 {
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
@@ -454,7 +459,7 @@ void window_xag_heuristic_resub( Ntk& ntk, params_t const& ps = {}, stats_t* pst
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  stats_t st;
+  window_resub_stats st;
   opt_t p( viewed, ps, st );
   p.run();
 
@@ -469,21 +474,76 @@ void window_xag_heuristic_resub( Ntk& ntk, params_t const& ps = {}, stats_t* pst
   }
 }
 
-template<class Ntk, typename params_t = boolean_optimization_params<complete_tt_windowing_params, null_params>, typename stats_t = boolean_optimization_stats<complete_tt_windowing_stats, null_stats>>
-void window_aig_enumerative_resub( Ntk& ntk, params_t const& ps = {}, stats_t* pst = nullptr )
+template<class Ntk>
+void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
 {
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
 
-  constexpr bool use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
   using TT = typename kitty::dynamic_truth_table;
   using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
   using engine_t = aig_enumerative_resyn<TT>;
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  stats_t st;
+  window_resub_stats st;
+  opt_t p( viewed, ps, st );
+  p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
+
+template<class Ntk>
+void window_mig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+{
+  using ViewedNtk = depth_view<fanout_view<Ntk>>;
+  fanout_view<Ntk> fntk( ntk );
+  ViewedNtk viewed( fntk );
+
+  using TT = typename kitty::dynamic_truth_table;
+  using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
+  using engine_t = mig_resyn_bottomup<TT>;
+  using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
+  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+  window_resub_stats st;
+  opt_t p( viewed, ps, st );
+  p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
+
+template<class Ntk>
+void window_mig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+{
+  using ViewedNtk = depth_view<fanout_view<Ntk>>;
+  fanout_view<Ntk> fntk( ntk );
+  ViewedNtk viewed( fntk );
+
+  using TT = typename kitty::dynamic_truth_table;
+  using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
+  using engine_t = mig_enumerative_resyn<TT>;
+  using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
+  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+  window_resub_stats st;
   opt_t p( viewed, ps, st );
   p.run();
 

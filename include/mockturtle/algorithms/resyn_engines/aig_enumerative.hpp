@@ -35,9 +35,11 @@
 
 #pragma once
 
-#include "../../networks/aig.hpp"
 #include "../experimental/boolean_optimization.hpp"
+#include "../../utils/index_list.hpp"
 #include <kitty/kitty.hpp>
+#include <vector>
+#include <optional>
 
 namespace mockturtle::experimental
 {
@@ -163,7 +165,7 @@ public:
       il.add_output( 0 );
       return il;
     }
-    if ( kitty::is_const0( ntarget ) )
+    if ( kitty::is_const0( ntarget ) ) // unreachable if normalized
     {
       il.add_output( 1 );
       return il;
@@ -177,7 +179,7 @@ public:
         il.add_output( make_lit( i ) );
         return il;
       }
-      if ( ntarget == tts[*it] )
+      if ( ntarget == tts[*it] ) // unreachable if normalized
       {
         il.add_output( make_lit( i, true ) );
         return il;

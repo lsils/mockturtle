@@ -23,9 +23,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
+#include <mockturtle/algorithms/experimental/window_resub.hpp>
 #include <mockturtle/algorithms/resyn_engines/mig_resyn.hpp>
-#include <mockturtle/algorithms/sim_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/mapper.hpp>
@@ -47,9 +47,10 @@ int main()
 {
   using namespace experiments;
   using namespace mockturtle;
+  using namespace mockturtle::experimental;
 
   experiment<std::string, uint32_t, uint32_t, float, bool>
-    exp( "mig_resubstitution", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
+    exp( "mig_resyn", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
 
   /* load the npn database in the library (for AIG-MIG mapping) */
   mig_npn_resynthesis resyn{ true };
@@ -86,31 +87,18 @@ int main()
     uint32_t const size_mapped_mig = mig.num_gates();
 #endif
 
-    /* resubstitution using heuristic MIG resynthesis */
-    resubstitution_params ps;
-    resubstitution_stats st;
-    ps.max_pis = 8u;
-    ps.max_inserts = 1u;
-    ps.pattern_filename = "patterns/" + benchmark + ".pat";
-    ps.save_patterns = "patterns/" + benchmark + ".pat";
+    window_resub_params ps;
+    ps.verbose = true;
+    //ps.dry_run = true;
+    ps.wps.max_inserts = 1;
 
-    depth_view depth_mig{mig};
-    fanout_view fanout_mig{depth_mig};
+    window_resub_stats st;
 
-    using resub_view_t = fanout_view<depth_view<mig_network>>;
-    using truthtable_t = kitty::partial_truth_table;
-    using functor_t = mig_resyn_topdown<truthtable_t>;
-    using validator_t = circuit_validator<resub_view_t, bill::solvers::bsat2, false, true, false>;
-    using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t, validator_t, functor_t>>;
-    typename resub_impl_t::engine_st_t engine_st;
-    typename resub_impl_t::collector_st_t collector_st;
-
-    resub_impl_t p( fanout_mig, ps, st, engine_st, collector_st );
-    p.run();
-
+    //window_mig_heuristic_resub( mig, ps, &st );
+    window_mig_enumerative_resub( mig, ps, &st );
     mig = cleanup_dangling( mig );
 
-    bool const cec = benchmark == "hyp" ? true : abc_cec( fanout_mig, benchmark );
+    bool const cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( mig, benchmark );
     exp( benchmark, size_mapped_mig, mig.num_gates(), to_seconds( st.time_total ), cec );
   }
 

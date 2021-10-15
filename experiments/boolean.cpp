@@ -11,6 +11,7 @@
 int main()
 {
   using namespace mockturtle;
+  using namespace mockturtle::experimental;
   using namespace experiments;
 
   experiment<std::string, uint32_t, uint32_t, float, bool> exp( "new_resub", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
@@ -23,22 +24,18 @@ int main()
     auto const result = lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
     assert( result == lorina::return_code::success ); (void)result;
 
-    using wps_t = typename experimental::complete_tt_windowing_params;
-    using ps_t = typename experimental::boolean_optimization_params<wps_t>;
-    ps_t ps;
+    window_resub_params ps;
     ps.verbose = true;
     //ps.dry_run = true;
     ps.wps.max_inserts = 1;
 
-    using wst_t = typename experimental::complete_tt_windowing_stats;
-    using st_t = typename experimental::boolean_optimization_stats<wst_t>;
-    st_t st;
+    window_resub_stats st;
 
     const uint32_t size_before = aig.num_gates();
     window_aig_enumerative_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
-    const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
+    const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( aig, benchmark );
     exp( benchmark, size_before, aig.num_gates(), to_seconds( st.time_total ), cec );
   }
 
