@@ -82,6 +82,21 @@ struct complete_tt_windowing_params
 
   /*! \brief Whether to prevent from increasing depth. */
   bool preserve_depth{false};
+
+  /*! \brief Whether to normalize the truth tables.
+   * 
+   * For some enumerative resynthesis engines, if the truth tables
+   * are normalized, some cases can be eliminated and thus improves
+   * efficiency. When this option is turned off, be sure to use an
+   * implementation of resynthesis that does not make this assumption;
+   * otherwise, quality degradation may be observed.
+   * 
+   * Normalization is typically only useful for enumerative methods
+   * and for smaller solutions (i.e. when `max_inserts` < 2). Turning
+   * on normalization may result in larger runtime overhead when there
+   * are many divisors or when the truth tables are long.
+   */
+  bool normalize{false};
 };
 
 struct complete_tt_windowing_stats
@@ -115,8 +130,10 @@ template<class Ntk, class TT>
 struct small_window
 {
   using node = typename Ntk::node;
-  node root;
-  std::vector<node> divs;
+  using signal = typename Ntk::signal;
+
+  signal root;
+  std::vector<signal> divs;
   std::vector<uint32_t> div_ids; /* positions of divisor truth tables in `tts` */
   std::vector<TT> tts;
   TT care;
@@ -167,7 +184,6 @@ public:
       return std::nullopt; /* skip nodes with too many fanouts */
     }
 
-    win.root = n;
     if ( ps.preserve_depth )
     {
       win.max_level = ntk.level( n ) - 1;
@@ -176,7 +192,7 @@ public:
     /* compute a cut and collect supported nodes */
     std::vector<node> leaves = reconvergence_driven_cut( ntk, {n}, cps ).first;
     std::vector<node> supported;
-    if ( !collect_supported_nodes( leaves, supported ) )
+    if ( !collect_supported_nodes( n, leaves, supported ) )
     {
       return std::nullopt; /* skip too large window */
     }
@@ -190,6 +206,16 @@ public:
     else
     {
       simulate_window<TT>( ntk, leaves, supported, win.tts );
+    }
+
+    /* normalize */
+    if ( ps.normalize )
+    {
+      win.root = normalize_truth_tables( n ) ? !ntk.make_signal( n ) : ntk.make_signal( n );
+    }
+    else
+    {
+      win.root = ntk.make_signal( n );
     }
 
     /* mark MFFC nodes and collect divisors */
@@ -222,17 +248,17 @@ public:
   template<typename res_t>
   uint32_t gain( problem_t const& prob, res_t const& res ) const
   {
-    // assert that res_t is some index_list type
+    // TODO: assert that res_t is some index_list type
     return prob.mffc_size - res.num_gates();
   }
 
   template<typename res_t>
   bool update_ntk( problem_t const& prob, res_t const& res )
   {
-    // assert that res_t is some index_list type
+    // TODO: assert that res_t is some index_list type
     assert( res.num_pos() == 1 );
-    insert<false>( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){
-      ntk.substitute_node( prob.root, g );
+    insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){
+      ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !g : g );
     } );
     return true; /* continue optimization */
   }
@@ -240,10 +266,10 @@ public:
   template<typename res_t>
   bool report( problem_t const& prob, res_t const& res )
   {
-    // assert that res_t is some index_list type
+    // TODO: assert that res_t is some index_list type
     assert( res.num_pos() == 1 );
-    //insert<false>( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){} );
-    fmt::print( "[i] found solution {} for root node {}\n", to_index_list_string( res ), prob.root );
+    //insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){} );
+    fmt::print( "[i] found solution {} for root signal {}{}\n", to_index_list_string( res ), ntk.is_complemented( prob.root ) ? "!" : "", ntk.get_node( prob.root ) );
     return true;
   }
 
@@ -268,7 +294,7 @@ private:
     }
   }
 
-  void collect_wings( node const& n, std::vector<node>& supported )
+  void collect_wings( node const& root, node const& n, std::vector<node>& supported )
   {
     if ( ntk.fanout_size( n ) > ps.skip_fanout_limit_for_divisors )
     {
@@ -299,7 +325,7 @@ private:
 
       bool has_root_as_child = false;
       ntk.foreach_fanin( p, [&]( const auto& g ) {
-        if ( ntk.get_node( g ) == win.root )
+        if ( ntk.get_node( g ) == root )
         {
           has_root_as_child = true;
           return false; /* terminate fanin-loop */
@@ -325,7 +351,7 @@ private:
     } );
   }
   
-  bool collect_supported_nodes( std::vector<node> const& leaves, std::vector<node>& supported )
+  bool collect_supported_nodes( node const& root, std::vector<node> const& leaves, std::vector<node>& supported )
   {
     /* collect TFI nodes until (excluding) leaves */
     ntk.incr_trav_id();
@@ -333,7 +359,7 @@ private:
     {
       ntk.set_visited( l, ntk.trav_id() );
     }
-    collect_tfi_rec( win.root, supported );
+    collect_tfi_rec( root, supported );
     supported.pop_back(); /* remove `root` */
 
     if ( supported.size() > ps.max_divisors )
@@ -344,7 +370,7 @@ private:
     /* collect "wings" */
     for ( auto const& l : leaves )
     {
-      collect_wings( l, supported );
+      collect_wings( root, l, supported );
       if ( supported.size() > ps.max_divisors )
       {
         break;
@@ -354,14 +380,14 @@ private:
     /* note: we cannot use range-based loop here because we push to the vector in the loop */
     for ( auto i = 0u; i < supported.size(); ++i )
     {
-      collect_wings( supported.at( i ), supported );
+      collect_wings( root, supported.at( i ), supported );
       if ( supported.size() > ps.max_divisors )
       {
         break;
       }
     }
 
-    supported.emplace_back( win.root );
+    supported.emplace_back( root );
     return true;
   }
 
@@ -379,7 +405,7 @@ private:
     for ( auto const& l : leaves )
     {
       win.div_ids.emplace_back( i++ );
-      win.divs.emplace_back( l );
+      win.divs.emplace_back( ntk.make_signal( l ) );
     }
 
     for ( auto const& n : supported )
@@ -387,11 +413,16 @@ private:
       if ( ntk.value( n ) != mffc_marker ) /* not in MFFC, not root */
       {
         win.div_ids.emplace_back( i );
-        win.divs.emplace_back( n );
+        win.divs.emplace_back( ntk.make_signal( n ) );
       }
       ++i;
     }
     assert( i == win.tts.size() );
+  }
+
+  bool normalize_truth_tables( node const& root )
+  {
+
   }
 
 private:
