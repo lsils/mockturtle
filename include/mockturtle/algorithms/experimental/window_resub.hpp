@@ -179,26 +179,37 @@ public:
   using signal = typename Ntk::signal;
 
   explicit complete_tt_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), ps( ps ), st( st ), cps( {ps.max_pis} ), mffc_mgr( ntk )
+    : ntk( ntk ), ps( ps ), st( st ), cps( {ps.max_pis} ), mffc_mgr( ntk ), divs_mgr( ntk, ps.max_divisors, ps.skip_fanout_limit_for_divisors ), sim( ntk, win.tts, ps.max_pis )
   {
     static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
     static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method (please wrap with fanout_view)" );
-    // TODO: static asserts, e.g. for depth interface, when needed
+    //TODO: more asserts
+    if constexpr ( !has_level_v<Ntk> )
+    {
+      assert( !ps.preserve_depth && "Ntk does not have depth interface" );
+      assert( !ps.update_levels_lazily && "Ntk does not have depth interface" );
+    }
   }
 
   ~complete_tt_windowing()
   {
-    if ( lazy_update_event )
+    if constexpr ( has_level_v<Ntk> )
     {
-      mockturtle::detail::release_lazy_level_update_events( ntk, lazy_update_event );
+      if ( lazy_update_event )
+      {
+        mockturtle::detail::release_lazy_level_update_events( ntk, lazy_update_event );
+      }
     }
   }
 
   void init()
   {
-    if ( ps.update_levels_lazily )
+    if constexpr ( has_level_v<Ntk> )
     {
-      lazy_update_event = mockturtle::detail::register_lazy_level_update_events( ntk );
+      if ( ps.update_levels_lazily )
+      {
+        lazy_update_event = mockturtle::detail::register_lazy_level_update_events( ntk );
+      }
     }
   }
 
@@ -210,18 +221,21 @@ public:
       return std::nullopt; /* skip nodes with too many fanouts */
     }
 
-    if ( ps.preserve_depth )
+    if constexpr ( has_level_v<Ntk> )
     {
-      win.max_level = ntk.level( n ) - 1;
+      if ( ps.preserve_depth )
+      {
+        win.max_level = ntk.level( n ) - 1;
+      }
     }
 
     /* compute a cut and collect supported nodes */
     std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
-      return reconvergence_driven_cut( ntk, {n}, cps ).first;
+      return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, {n}, cps ).first;
     });
     std::vector<node> supported;
     bool cont = call_with_stopwatch( st.time_divs, [&]() {
-      return collect_supported_nodes( n, leaves, supported );
+      return divs_mgr.collect_supported_nodes( n, leaves, supported, win.max_level );
     });
     if ( !cont )
     {
@@ -230,15 +244,7 @@ public:
 
     /* simulate */
     call_with_stopwatch( st.time_sim, [&]() {
-      if constexpr ( std::is_same_v<TT, kitty::dynamic_truth_table> )
-      {
-        default_simulator<kitty::dynamic_truth_table> sim( ps.max_pis );
-        simulate_window<TT>( ntk, leaves, supported, win.tts, sim );
-      }
-      else
-      {
-        simulate_window<TT>( ntk, leaves, supported, win.tts );
-      }
+      sim.simulate( leaves, supported );
     });
 
     /* mark MFFC nodes and collect divisors */
@@ -315,140 +321,19 @@ public:
   }
 
 private:
-  void collect_tfi_rec( node const& n, std::vector<node>& supported )
-  {
-    /* collect until leaves and skip visited nodes */
-    if ( ntk.visited( n ) == ntk.trav_id() )
-    {
-      return;
-    }
-    ntk.set_visited( n, ntk.trav_id() );
-
-    /* collect in topological order -- lower nodes first */
-    ntk.foreach_fanin( n, [&]( const auto& f ) {
-      collect_tfi_rec( ntk.get_node( f ), supported );
-    } );
-
-    if ( !ntk.is_constant( n ) )
-    {
-      supported.emplace_back( n );
-    }
-  }
-
-  void collect_wings( node const& root, node const& n, std::vector<node>& supported )
-  {
-    if ( ntk.fanout_size( n ) > ps.skip_fanout_limit_for_divisors )
-    {
-      return;
-    }
-
-    /* if the fanout has all fanins in the set, add it */
-    ntk.foreach_fanout( n, [&]( node const& p ) {
-      if ( ntk.visited( p ) == ntk.trav_id() || ntk.level( p ) > win.max_level )
-      {
-        return true; /* next fanout */
-      }
-
-      bool all_fanins_visited = true;
-      ntk.foreach_fanin( p, [&]( const auto& g ) {
-        if ( ntk.visited( ntk.get_node( g ) ) != ntk.trav_id() )
-        {
-          all_fanins_visited = false;
-          return false; /* terminate fanin-loop */
-        }
-        return true; /* next fanin */
-      } );
-
-      if ( !all_fanins_visited )
-      {
-        return true; /* next fanout */
-      }
-
-      bool has_root_as_child = false;
-      ntk.foreach_fanin( p, [&]( const auto& g ) {
-        if ( ntk.get_node( g ) == root )
-        {
-          has_root_as_child = true;
-          return false; /* terminate fanin-loop */
-        }
-        return true; /* next fanin */
-      } );
-
-      if ( has_root_as_child )
-      {
-        return true; /* next fanout */
-      }
-
-      supported.emplace_back( p );
-      ntk.set_visited( p, ntk.trav_id() );
-
-      /* quit collecting if there are too many of them */
-      if ( supported.size() > ps.max_divisors )
-      {
-        return false; /* terminate fanout-loop */
-      }
-
-      return true; /* next fanout */
-    } );
-  }
-  
-  bool collect_supported_nodes( node const& root, std::vector<node> const& leaves, std::vector<node>& supported )
-  {
-    /* collect TFI nodes until (excluding) leaves */
-    ntk.incr_trav_id();
-    for ( const auto& l : leaves )
-    {
-      ntk.set_visited( l, ntk.trav_id() );
-    }
-    collect_tfi_rec( root, supported );
-    supported.pop_back(); /* remove `root` */
-
-    if ( supported.size() > ps.max_divisors )
-    {
-      return false;
-    }
-
-    /* collect "wings" */
-    for ( auto const& l : leaves )
-    {
-      collect_wings( root, l, supported );
-      if ( supported.size() > ps.max_divisors )
-      {
-        break;
-      }
-    }
-
-    /* note: we cannot use range-based loop here because we push to the vector in the loop */
-    for ( auto i = 0u; i < supported.size(); ++i )
-    {
-      collect_wings( root, supported.at( i ), supported );
-      if ( supported.size() > ps.max_divisors )
-      {
-        break;
-      }
-    }
-
-    supported.emplace_back( root );
-    return true;
-  }
-
   void collect_divisors( std::vector<node> const& leaves, std::vector<node> const& supported )
   {
     win.divs.clear();
     win.div_ids.clear();
 
     uint32_t i{1};
-    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
-    {
-      ++i;
-    }
-
     for ( auto const& l : leaves )
     {
       win.div_ids.emplace_back( i++ );
       win.divs.emplace_back( ntk.make_signal( l ) );
     }
 
+    i = ps.max_pis + 1;
     for ( auto const& n : supported )
     {
       if ( ntk.value( n ) != mffc_marker ) /* not in MFFC, not root */
@@ -491,6 +376,8 @@ private:
   stats_t& st;
   reconvergence_driven_cut_parameters const cps;
   typename mockturtle::detail::node_mffc_inside<Ntk> mffc_mgr; // TODO: namespaces can be removed when we move out of experimental::
+  divisor_collector<Ntk> divs_mgr;
+  window_simulator<Ntk, TT> sim;
   uint32_t mffc_marker{0u};
   std::shared_ptr<typename network_events<Ntk>::modified_event_type> lazy_update_event;
 };
@@ -505,7 +392,7 @@ public:
   using stats_t = null_stats;
 
   explicit complete_tt_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk )
+    : ntk( ntk ), engine( rst, rps )
   { }
 
   void init()
@@ -513,7 +400,6 @@ public:
 
   std::optional<res_t> operator()( problem_t& prob )
   {
-    ResynEngine engine( rst, rps );
     if constexpr ( preserve_depth ) // TODO: maybe separate via different problem type
     {
       return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size, prob.max_level );
@@ -528,6 +414,7 @@ private:
   Ntk const& ntk;
   typename ResynEngine::params rps;
   typename ResynEngine::stats rst;
+  ResynEngine engine;
 };
 
 } /* namespace detail */
@@ -567,6 +454,8 @@ void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
 template<class Ntk>
 void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
 {
+  //using ViewedNtk = fanout_view<Ntk>;
+  //ViewedNtk viewed( ntk );
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );

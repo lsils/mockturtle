@@ -2122,12 +2122,12 @@ inline constexpr bool has_eval_fanins_color_v = has_eval_fanins_color<Ntk>::valu
 /*! \brief SFINAE based on iterator type (for compute functions).
  */
 template<typename Iterator, typename T>
-using iterates_over_t = std::enable_if_t<std::is_same_v<typename Iterator::value_type, T>, T>;
+using iterates_over_t = std::enable_if_t<std::is_same_v<typename std::iterator_traits<Iterator>::value_type, T>, T>;
 
 /*! \brief SFINAE based on iterator type for truth tables (for compute functions).
  */
 template<typename Iterator>
-using iterates_over_truth_table_t = std::enable_if_t<kitty::is_truth_table<typename Iterator::value_type>::value, typename Iterator::value_type>;
+using iterates_over_truth_table_t = std::enable_if_t<kitty::is_truth_table<typename std::iterator_traits<Iterator>::value_type>::value, typename std::iterator_traits<Iterator>::value_type>;
 
 template<class Iterator, typename T>
 inline constexpr bool iterates_over_v = std::is_same_v<typename Iterator::value_type, T>;
