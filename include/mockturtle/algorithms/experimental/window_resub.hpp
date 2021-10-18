@@ -101,6 +101,24 @@ struct complete_tt_windowing_params
 
 struct complete_tt_windowing_stats
 {
+  /*! \brief Total runtime. */
+  stopwatch<>::duration time_total{0};
+
+  /*! \brief Accumulated runtime for cut computation. */
+  stopwatch<>::duration time_cuts{0};
+
+  /*! \brief Accumulated runtime for mffc computation. */
+  stopwatch<>::duration time_mffc{0};
+
+  /*! \brief Accumulated runtime for divisor collection. */
+  stopwatch<>::duration time_divs{0};
+
+  /*! \brief Accumulated runtime for simulation. */
+  stopwatch<>::duration time_sim{0};
+
+  /*! \brief Accumulated runtime for don't care computation. */
+  stopwatch<>::duration time_dont_care{0};
+
   /*! \brief Total number of leaves. */
   uint64_t num_leaves{0u};
 
@@ -119,6 +137,13 @@ struct complete_tt_windowing_stats
     fmt::print( "[i] complete_tt_windowing report\n" );
     fmt::print( "    tot. #leaves = {:5d}, tot. #divs = {:5d}, sum  |MFFC| = {:5d}\n", num_leaves, num_divisors, sum_mffc_size );
     fmt::print( "    avg. #leaves = {:>5.2f}, avg. #divs = {:>5.2f}, avg. |MFFC| = {:>5.2f}\n", float( num_leaves ) / float( num_windows ), float( num_divisors ) / float( num_windows ), float( sum_mffc_size ) / float( num_windows ) );
+    fmt::print( "    ===== Runtime Breakdown =====\n" );
+    fmt::print( "    Total       : {:>5.2f} secs\n", to_seconds( time_total ) );
+    fmt::print( "      Cut       : {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    fmt::print( "      MFFC      : {:>5.2f} secs\n", to_seconds( time_mffc ) );
+    fmt::print( "      Divs      : {:>5.2f} secs\n", to_seconds( time_divs ) );
+    fmt::print( "      Simulation: {:>5.2f} secs\n", to_seconds( time_sim ) );
+    fmt::print( "      Dont cares: {:>5.2f} secs\n", to_seconds( time_dont_care ) );
     // clang-format on
   }
 };
@@ -179,6 +204,7 @@ public:
 
   std::optional<std::reference_wrapper<problem_t>> operator()( node const& n )
   {
+    stopwatch t( st.time_total );
     if ( ntk.fanout_size( n ) > ps.skip_fanout_limit_for_roots )
     {
       return std::nullopt; /* skip nodes with too many fanouts */
@@ -190,50 +216,65 @@ public:
     }
 
     /* compute a cut and collect supported nodes */
-    std::vector<node> leaves = reconvergence_driven_cut( ntk, {n}, cps ).first;
+    std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
+      return reconvergence_driven_cut( ntk, {n}, cps ).first;
+    });
     std::vector<node> supported;
-    if ( !collect_supported_nodes( n, leaves, supported ) )
+    bool cont = call_with_stopwatch( st.time_divs, [&]() {
+      return collect_supported_nodes( n, leaves, supported );
+    });
+    if ( !cont )
     {
       return std::nullopt; /* skip too large window */
     }
 
     /* simulate */
-    if constexpr ( std::is_same_v<TT, kitty::dynamic_truth_table> )
-    {
-      default_simulator<kitty::dynamic_truth_table> sim( ps.max_pis );
-      simulate_window<TT>( ntk, leaves, supported, win.tts, sim );
-    }
-    else
-    {
-      simulate_window<TT>( ntk, leaves, supported, win.tts );
-    }
-
-    /* normalize */
-    if ( ps.normalize )
-    {
-      win.root = normalize_truth_tables( n ) ? !ntk.make_signal( n ) : ntk.make_signal( n );
-    }
-    else
-    {
-      win.root = ntk.make_signal( n );
-    }
+    call_with_stopwatch( st.time_sim, [&]() {
+      if constexpr ( std::is_same_v<TT, kitty::dynamic_truth_table> )
+      {
+        default_simulator<kitty::dynamic_truth_table> sim( ps.max_pis );
+        simulate_window<TT>( ntk, leaves, supported, win.tts, sim );
+      }
+      else
+      {
+        simulate_window<TT>( ntk, leaves, supported, win.tts );
+      }
+    });
 
     /* mark MFFC nodes and collect divisors */
     ++mffc_marker;
-    win.mffc_size = mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n ){
-      ntk.set_value( n, mffc_marker );
+    win.mffc_size = call_with_stopwatch( st.time_mffc, [&]() {
+      return mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n ){
+        ntk.set_value( n, mffc_marker );
+      });
     });
-    collect_divisors( leaves, supported );
+    call_with_stopwatch( st.time_divs, [&]() {
+      collect_divisors( leaves, supported );
+    });
+
+    /* normalize */
+    call_with_stopwatch( st.time_sim, [&]() {
+      if ( ps.normalize )
+      {
+        win.root = normalize_truth_tables() ? !ntk.make_signal( n ) : ntk.make_signal( n );
+      }
+      else
+      {
+        win.root = ntk.make_signal( n );
+      }
+    });
 
     /* compute don't cares */
-    if ( ps.use_dont_cares )
-    {
-      win.care = ~satisfiability_dont_cares( ntk, leaves, ps.window_size );
-    }
-    else
-    {
-      win.care = ~kitty::create<TT>( ps.max_pis );
-    }
+    call_with_stopwatch( st.time_dont_care, [&]() {
+      if ( ps.use_dont_cares )
+      {
+        win.care = ~satisfiability_dont_cares( ntk, leaves, ps.window_size );
+      }
+      else
+      {
+        win.care = ~kitty::create<TT>( ps.max_pis );
+      }
+    });
 
     win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
 
@@ -420,9 +461,27 @@ private:
     assert( i == win.tts.size() );
   }
 
-  bool normalize_truth_tables( node const& root )
+  bool normalize_truth_tables()
   {
+    assert( win.divs.size() == win.div_ids.size() );
+    for ( auto i = 0u; i < win.divs.size(); ++i )
+    {
+      if ( kitty::get_bit( win.tts.at( win.div_ids.at( i ) ), 0 ) )
+      {
+        win.tts.at( win.div_ids.at( i ) ) = ~win.tts.at( win.div_ids.at( i ) );
+        win.divs.at( i ) = !win.divs.at( i );
+      }
+    }
 
+    if ( kitty::get_bit( win.tts.back(), 0 ) )
+    {
+      win.tts.back() = ~win.tts.back();
+      return true;
+    }
+    else
+    {
+      return false;
+    }
   }
 
 private:
@@ -512,15 +571,28 @@ void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {},
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
 
-  using TT = typename kitty::dynamic_truth_table;
-  using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
-  using engine_t = aig_enumerative_resyn<TT>;
-  using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
-  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
-
   window_resub_stats st;
-  opt_t p( viewed, ps, st );
-  p.run();
+
+  using TT = typename kitty::static_truth_table<8>;
+  using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
+  if ( ps.wps.normalize )
+  {
+    using engine_t = aig_enumerative_resyn<TT, true>;
+    using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
+    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+    
+    opt_t p( viewed, ps, st );
+    p.run();
+  }
+  else
+  {
+    using engine_t = aig_enumerative_resyn<TT>;
+    using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
+    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+    
+    opt_t p( viewed, ps, st );
+    p.run();
+  }
 
   if ( ps.verbose )
   {

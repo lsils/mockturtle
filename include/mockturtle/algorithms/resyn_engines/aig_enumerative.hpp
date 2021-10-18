@@ -134,7 +134,7 @@ struct aig_enumerative_resyn_stats
   }
 }; /* aig_enumerative_resyn_stats */
 
-template<typename TT>
+template<typename TT, bool normalized = false>
 struct aig_enumerative_resyn
 {
 public:
@@ -165,10 +165,13 @@ public:
       il.add_output( 0 );
       return il;
     }
-    if ( kitty::is_const0( ntarget ) ) // unreachable if normalized
+    if constexpr ( !normalized )
     {
-      il.add_output( 1 );
-      return il;
+      if ( kitty::is_const0( ntarget ) )
+      {
+        il.add_output( 1 );
+        return il;
+      }
     }
 
     /* 0-resub */
@@ -179,10 +182,14 @@ public:
         il.add_output( make_lit( i ) );
         return il;
       }
-      if ( ntarget == tts[*it] ) // unreachable if normalized
+      if constexpr ( !normalized )
       {
-        il.add_output( make_lit( i, true ) );
-        return il;
+        if ( ntarget == tts[*it] )
+        {
+          assert( !normalized );
+          il.add_output( make_lit( i, true ) );
+          return il;
+        }
       }
     }
 
@@ -203,17 +210,27 @@ public:
       {
         neg_unate.emplace_back( make_lit( i ) );
       }
-      else if ( kitty::implies( ~tts[*it], target ) ) // still unreachable?
-      {
-        pos_unate.emplace_back( make_lit( i, true ) );
-      }
       else if ( kitty::implies( target, ~tts[*it] ) )
       {
         neg_unate.emplace_back( make_lit( i, true ) );
       }
       else
       {
-        binate.emplace_back( i );
+        if constexpr ( !normalized )
+        {
+          if ( kitty::implies( ~tts[*it], target ) )
+          {
+            pos_unate.emplace_back( make_lit( i, true ) );
+          }
+          else
+          {
+            binate.emplace_back( i );
+          }
+        }
+        else
+        {
+          binate.emplace_back( i );
+        }
       }
     }
 

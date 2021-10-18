@@ -548,22 +548,46 @@ void simulate_window( Ntk const& ntk, std::vector<node<Ntk>> const& leaves, std:
   static_assert( has_fanin_size_v<Ntk>, "Ntk does not implement the fanin_size method" );
   static_assert( has_compute_v<Ntk, SimulationType>, "Ntk does not implement the compute method for SimulationType" );
 
-  node_to_value.clear();
   unordered_node_map<uint32_t, Ntk> node_to_id( ntk );
   node_to_value.reserve( leaves.size() + nodes.size() + 1 );
 
-  node_to_id[ntk.get_constant( false )] = node_to_value.size();
-  node_to_value.emplace_back( sim.compute_constant( false ) );
-  if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+  if ( node_to_value.size() != 0 )
   {
-    node_to_id[ntk.get_constant( true )] = node_to_value.size();
-    node_to_value.emplace_back( sim.compute_constant( true ) );
+    uint32_t offset = 1;
+    node_to_id[ntk.get_constant( false )] = node_to_value.size();
+    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+    {
+      assert( node_to_value.size() >= leaves.size() + 2 );
+      node_to_id[ntk.get_constant( true )] = node_to_value.size();
+      offset = 2;
+      node_to_value.resize( leaves.size() + 2 );
+    }
+    else
+    {
+      assert( node_to_value.size() >= leaves.size() + 1 );
+      node_to_value.resize( leaves.size() + 1 );
+    }
+
+    for ( auto i = 0u; i < leaves.size(); ++i )
+    {
+      node_to_id[leaves[i]] = i + offset;
+    }
   }
-  
-  for ( auto i = 0u; i < leaves.size(); ++i )
+  else
   {
-    node_to_id[leaves[i]] = node_to_value.size();
-    node_to_value.emplace_back( sim.compute_pi( i ) );
+    node_to_id[ntk.get_constant( false )] = node_to_value.size();
+    node_to_value.emplace_back( sim.compute_constant( false ) );
+    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+    {
+      node_to_id[ntk.get_constant( true )] = node_to_value.size();
+      node_to_value.emplace_back( sim.compute_constant( true ) );
+    }
+    
+    for ( auto i = 0u; i < leaves.size(); ++i )
+    {
+      node_to_id[leaves[i]] = node_to_value.size();
+      node_to_value.emplace_back( sim.compute_pi( i ) );
+    }
   }
 
   std::vector<SimulationType> fanin_values;

@@ -85,10 +85,10 @@ struct boolean_optimization_stats
   stopwatch<>::duration time_update{0};
 
   /*! \brief Total number of gain. */
-  uint64_t estimated_gain{0};
+  uint32_t estimated_gain{0};
 
   /*! \brief Initial network size (before resubstitution). */
-  uint64_t initial_size{0};
+  uint32_t initial_size{0};
 
   /*! \brief Number of constructed resynthesis problems. */
   uint32_t num_problems{0u};
