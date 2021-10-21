@@ -76,6 +76,13 @@ public:
     : ntk( ntk ), ps( ps )
   {
     static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method (please wrap with fanout_view)" );
+    static_assert( has_incr_trav_id_v<Ntk>, "Ntk does not implement the incr_trav_id method" );
+    static_assert( has_trav_id_v<Ntk>, "Ntk does not implement the trav_id method" );
+    static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+    static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
     assert( ps.max_num_collect >= ps.max_num_tfi );
   }
 
