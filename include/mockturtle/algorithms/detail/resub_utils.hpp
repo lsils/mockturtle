@@ -39,11 +39,32 @@
 #include <vector>
 #include <optional>
 #include <iostream>
+#include <algorithm>
 
 #include <kitty/constructors.hpp>
 
 namespace mockturtle::experimental::detail
 {
+
+struct divisor_collector_params
+{
+  /*! \brief Maximum number of nodes to be collected in the transitive fanin cone. */
+  uint32_t max_num_tfi{std::numeric_limits<uint32_t>::max()};
+
+  /*! \brief Maximum number of nodes to collect (in total). */
+  uint32_t max_num_collect{std::numeric_limits<uint32_t>::max()};
+
+  /*! \brief Maximum fanout size when considering a node in the "wings". */
+  uint32_t max_fanouts{std::numeric_limits<uint32_t>::max()};
+
+  /*! \brief Maximum level when considering a node in the "wings". 
+   * 
+   * The network should be wrapped with `depth_view` for this parameter 
+   * to be in effect.
+   */
+  uint32_t max_level{std::numeric_limits<uint32_t>::max()};
+};
+
 /*! \brief Implements helper functions for collecting divisors/supported nodes. */
 template<typename Ntk>
 class divisor_collector
@@ -51,20 +72,19 @@ class divisor_collector
 public:
   using node = typename Ntk::node;
 
-  /*! \brief Constructor.
-   * 
-   * \param ntk The network
-   * \param max_num_nodes An upper limit on the number of collected nodes;
-   * the function `collect_supported_nodes` quits earlier if the limit is 
-   * exceeded and returns false (not used in `collect_tfi`)
-   * \param max_fanouts When collecting "wings", skip a node (and its TFO)
-   * if it has more fanouts than this limit (not used in `collect_tfi`)
-   */
-  divisor_collector( Ntk const& ntk, uint32_t max_num_nodes = std::numeric_limits<uint32_t>::max(), uint32_t max_fanouts = std::numeric_limits<uint32_t>::max() )
-    : ntk( ntk ), _max_num_nodes( max_num_nodes ), _max_fanouts( max_fanouts )
-  {}
+  divisor_collector( Ntk const& ntk, divisor_collector_params ps = {} )
+    : ntk( ntk ), ps( ps )
+  {
+    assert( ps.max_num_collect >= ps.max_num_tfi );
+  }
+
+  void set_max_level( uint32_t max_level )
+  {
+    ps.max_level = max_level;
+  }
 
   /*! \brief Collect nodes in the transitive fanin cone of root until leaves in a topological order. 
+   * 
    * `root` itself is included and will be the last element.
    * Constant node(s) is not collected.
    * Leaves are not collected.
@@ -83,6 +103,37 @@ public:
     collect_tfi_rec( root, tfi );
   }
 
+  /*! \brief Collect nodes in the TFI (BFS) and wings.
+   * 
+   * Constant node(s) is not collected.
+   * Any node in the TFO of root is not collected.
+   * Collects TFI nodes with breadth-first search until PIs (unbounded) 
+   * or until the limit on `max_num_tfi` exceeds, and then collects "wings" 
+   * nodes until the limit on `max_num_collect` exceeds.
+   * Collected nodes are in a topological order, with `root` itself being the last element.
+   * 
+   * \param root The root node
+   * \param collected The container where TFI and "wings" nodes are collected
+   */
+  void collect_tfi_and_wings( node const& root, std::vector<node>& collected )
+  {
+    collect_tfi_bfs( root, collected );
+    std::reverse( collected.begin(), collected.end() ); /* now in topo order */
+    collected.pop_back(); /* remove `root` */
+
+    /* note: we cannot use range-based loop here because we push to the vector in the loop */
+    for ( auto i = 0u; i < collected.size(); ++i )
+    {
+      if ( !collect_wings( root, collected.at( i ), collected ) )
+      {
+        break;
+      }
+    }
+
+    collected.emplace_back( root );
+    return;
+  }
+
   /*! \brief Collect all nodes that are supported by the leaves until the root (TFI + wings).
    * 
    * Constant node(s) is not collected.
@@ -93,46 +144,39 @@ public:
    * \param root The root node
    * \param leaves The leaf nodes forming a cut supporting the root node
    * \param supported The container where supported nodes are collected
-   * \param max_level When collecting "wings", skip a node (and its TFO)
-   * if its level is higher than this limit. The network should be wrapped
-   * with `depth_view` for this parameter to be in effect.
-   * \return Whether the limit of `max_num_nodes` has exceeded
    */
-  bool collect_supported_nodes( node const& root, std::vector<node> const& leaves, std::vector<node>& supported, uint32_t max_level = std::numeric_limits<uint32_t>::max() )
+  void collect_supported_nodes( node const& root, std::vector<node> const& leaves, std::vector<node>& supported )
   {
-    _max_level = max_level;
-
     /* collect TFI nodes until (excluding) leaves */
     collect_tfi( root, leaves, supported );
     supported.pop_back(); /* remove `root` */
 
-    if ( supported.size() > _max_num_nodes )
+    if ( supported.size() > ps.max_num_tfi )
     {
-      return false;
+      return;
     }
 
     /* collect "wings" */
     for ( auto const& l : leaves )
     {
-      collect_wings( root, l, supported );
-      if ( supported.size() > _max_num_nodes )
+      if ( !collect_wings( root, l, supported ) )
       {
-        return false;
+        supported.emplace_back( root );
+        return;
       }
     }
 
     /* note: we cannot use range-based loop here because we push to the vector in the loop */
     for ( auto i = 0u; i < supported.size(); ++i )
     {
-      collect_wings( root, supported.at( i ), supported );
-      if ( supported.size() > _max_num_nodes )
+      if ( !collect_wings( root, supported.at( i ), supported ) )
       {
-        return false;
+        break;
       }
     }
 
     supported.emplace_back( root );
-    return true;
+    return;
   }
 
 private:
@@ -156,11 +200,45 @@ private:
     }
   }
 
-  void collect_wings( node const& root, node const& n, std::vector<node>& supported )
+  /*! \brief Collect nodes in the transitive fanin cone of root with breadth-first search. 
+   * 
+   * `root` itself is included and will be the first element.
+   * Constant node(s) is not collected.
+   * Collects until PIs (unbounded) or until the limit on `max_num_tfi` exceeds.
+   * Collected nodes are NOT in a topological order.
+   * 
+   * \param root The root node
+   * \param tfi The container where TFI nodes are collected 
+   */
+  void collect_tfi_bfs( node const& root, std::vector<node>& tfi )
   {
-    if ( ntk.fanout_size( n ) > _max_fanouts )
+    ntk.incr_trav_id();
+    assert( tfi.size() == 0 );
+    tfi.reserve( ps.max_num_tfi );
+    tfi.emplace_back( root );
+    ntk.set_visited( root, ntk.trav_id() );
+    ntk.set_visited( ntk.get_node( ntk.get_constant( false ) ), ntk.trav_id() ); /* don't collect constant node */
+    uint32_t i{0};
+    while ( i < tfi.size() && tfi.size() < ps.max_num_tfi )
     {
-      return;
+      node const& n = tfi.at( i++ );
+      ntk.foreach_fanin( n, [&]( const auto& f ){
+        node const& ni = ntk.get_node( f );
+        if ( ntk.visited( ni ) != ntk.trav_id() )
+        {
+          tfi.emplace_back( ni );
+          ntk.set_visited( ni, ntk.trav_id() );
+        }
+      });
+    }
+  }
+
+  /*\return Whether to continue collecting */
+  bool collect_wings( node const& root, node const& n, std::vector<node>& supported )
+  {
+    if ( ntk.fanout_size( n ) > ps.max_fanouts )
+    {
+      return true;
     }
 
     /* if the fanout has all fanins in the set, add it */
@@ -172,9 +250,9 @@ private:
 
       if constexpr ( has_level_v<Ntk> )
       {
-        if ( ntk.level( p ) > _max_level )
+        if ( ntk.level( p ) > ps.max_level )
         {
-          return true;
+          return true; /* next fanout */
         }
       }
 
@@ -211,19 +289,15 @@ private:
       supported.emplace_back( p );
       ntk.set_visited( p, ntk.trav_id() );
 
-      /* quit collecting if there are too many of them */
-      if ( supported.size() > _max_num_nodes )
-      {
-        return false; /* terminate fanout-loop */
-      }
-
-      return true; /* next fanout */
+      /* quit fanout-loop if there are too many nodes collected */
+      return supported.size() < ps.max_num_collect;
     } );
+    return supported.size() < ps.max_num_collect;
   }
 
 private:
   Ntk const& ntk;
-  uint32_t _max_num_nodes, _max_fanouts, _max_level;
+  divisor_collector_params ps;
 }; /* divisor_collector */
 
 template<typename Ntk, typename TT>

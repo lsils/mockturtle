@@ -179,7 +179,9 @@ public:
   using signal = typename Ntk::signal;
 
   explicit complete_tt_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), ps( ps ), st( st ), cps( {ps.max_pis} ), mffc_mgr( ntk ), divs_mgr( ntk, ps.max_divisors, ps.skip_fanout_limit_for_divisors ), sim( ntk, win.tts, ps.max_pis )
+    : ntk( ntk ), ps( ps ), st( st ), cps( {ps.max_pis} ), mffc_mgr( ntk ), 
+      divs_mgr( ntk, divisor_collector_params( {ps.max_divisors, ps.max_divisors, ps.skip_fanout_limit_for_divisors} ) ),
+      sim( ntk, win.tts, ps.max_pis )
   {
     static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
     static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method (please wrap with fanout_view)" );
@@ -226,6 +228,7 @@ public:
       if ( ps.preserve_depth )
       {
         win.max_level = ntk.level( n ) - 1;
+        divs_mgr.set_max_level( win.max_level );
       }
     }
 
@@ -234,13 +237,9 @@ public:
       return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, {n}, cps ).first;
     });
     std::vector<node> supported;
-    bool cont = call_with_stopwatch( st.time_divs, [&]() {
-      return divs_mgr.collect_supported_nodes( n, leaves, supported, win.max_level );
+    call_with_stopwatch( st.time_divs, [&]() {
+      divs_mgr.collect_supported_nodes( n, leaves, supported );
     });
-    if ( !cont )
-    {
-      return std::nullopt; /* skip too large window */
-    }
 
     /* simulate */
     call_with_stopwatch( st.time_sim, [&]() {
@@ -380,7 +379,7 @@ private:
   window_simulator<Ntk, TT> sim;
   uint32_t mffc_marker{0u};
   std::shared_ptr<typename network_events<Ntk>::modified_event_type> lazy_update_event;
-};
+}; /* complete_tt_windowing */
 
 template<class Ntk, class TT, class ResynEngine, bool preserve_depth = false>
 class complete_tt_resynthesis
@@ -415,7 +414,7 @@ private:
   typename ResynEngine::params rps;
   typename ResynEngine::stats rst;
   ResynEngine engine;
-};
+}; /* complete_tt_resynthesis */
 
 } /* namespace detail */
 

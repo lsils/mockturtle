@@ -140,6 +140,11 @@ public:
     }
   }
 
+  void clear()
+  {
+    values.resize( 2 );
+  }
+
   void add_inputs( uint32_t num_pis = 1u )
   {
     _num_pis += num_pis;
@@ -427,6 +432,12 @@ public:
     {
       fn( values.at( i ) );
     }
+  }
+
+  void clear()
+  {
+    values.clear();
+    values.emplace_back( 0 );
   }
 
   void add_inputs( uint32_t n = 1u )
@@ -723,6 +734,17 @@ public:
     for ( uint64_t i = values.size() - num_pos(); i < values.size(); ++i )
     {
       fn( values.at( i ) );
+    }
+  }
+
+  void clear()
+  {
+    values.clear();
+    values.emplace_back( 0 );
+    if constexpr ( separate_header )
+    {
+      values.emplace_back( 0 );
+      values.emplace_back( 0 );
     }
   }
 

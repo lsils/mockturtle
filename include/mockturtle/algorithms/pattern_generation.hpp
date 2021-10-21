@@ -49,9 +49,6 @@ namespace mockturtle
 
 struct pattern_generation_params
 {
-  /*! \brief Whether to remove constant nodes. Requires `substitute_node`. */
-  bool substitute_const{false};
-
   /*! \brief Number of patterns each node should have for both values. 
    * 
    * When this parameter is set to greater than 1, and if the network has more
@@ -112,7 +109,7 @@ struct pattern_generation_stats
 namespace detail
 {
 
-template<class Ntk, class Simulator, bool use_odc = false>
+template<class Ntk, class Simulator, bool use_odc = false, bool substitute_const = false>
 class patgen_impl
 {
 public:
@@ -145,7 +142,7 @@ public:
           simulate_nodes<Ntk>( ntk, tts, sim, true );
         } );
       }
-      if ( ps.substitute_const )
+      if constexpr ( substitute_const )
       {
         for ( auto n : const_nodes )
         {

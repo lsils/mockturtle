@@ -178,7 +178,6 @@ public:
     : st( st ), ps( ps )
   {
     divisors.reserve( ps.reserve );
-    divisors.resize( 1 ); // reserve 1 dummy node for constant
   }
 
   /*! \brief Perform XAG resynthesis.
@@ -201,6 +200,7 @@ public:
     on_off_sets[0] = ~target & care;
     on_off_sets[1] = target & care;
 
+    divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
     while ( begin != end )
     {
       if constexpr ( copy_tts )
@@ -220,6 +220,7 @@ public:
 private:
   std::optional<index_list_t> compute_function( uint32_t num_inserts )
   {
+    index_list.clear();
     index_list.add_inputs( divisors.size() - 1 );
     auto const lit = compute_function_rec( num_inserts );
     if ( lit )
