@@ -62,7 +62,7 @@ struct breadth_first_windowing_params
   uint32_t max_divisors{50};
 
   /*! \brief Maximum number of TFI nodes to collect. */
-  uint32_t max_tfi{uint32_t(max_divisors * 0.5)};
+  uint32_t max_tfi{max_divisors * 0.5};
 
   /*! \brief Maximum number of nodes added by resubstitution. */
   uint32_t max_inserts{std::numeric_limits<uint32_t>::max()};
@@ -226,8 +226,9 @@ public:
       divs_mgr( ntk, divisor_collector_params( {ps.max_tfi, ps.max_divisors, ps.skip_fanout_limit_for_divisors} ) )
   {
     static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
-    static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method (please wrap with fanout_view)" );
-    // TODO: static asserts, e.g. for depth interface, when needed
+    static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+    static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
+    static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
   }
 
   void init()
@@ -284,14 +285,14 @@ public:
   template<typename res_t>
   uint32_t gain( problem_t const& prob, res_t const& res ) const
   {
-    // TODO: assert that res_t is some index_list type
+    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     return prob.mffc_size - res.num_gates();
   }
 
   template<typename res_t>
   bool update_ntk( problem_t const& prob, res_t const& res )
   {
-    // TODO: assert that res_t is some index_list type
+    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     assert( res.num_pos() == 1 );
     insert<false>( ntk, prob.divs.begin(), prob.divs.end(), res, [&]( signal const& g ){
       ntk.substitute_node( prob.root, g );
@@ -302,9 +303,8 @@ public:
   template<typename res_t>
   bool report( problem_t const& prob, res_t const& res )
   {
-    // TODO: assert that res_t is some index_list type
+    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     assert( res.num_pos() == 1 );
-    //insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){} );
     fmt::print( "[i] found solution {} for root node {}\n", to_index_list_string( res ), prob.root );
     return true;
   }

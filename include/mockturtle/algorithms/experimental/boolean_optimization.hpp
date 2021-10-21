@@ -153,7 +153,6 @@ public:
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
     static_assert( has_num_gates_v<Ntk>, "Ntk does not implement the num_gates method" );
     static_assert( std::is_same_v<problem_t, typename ResynSolver::problem_t>, "Types of resynthesis problem of Windowing and ResynSolver do not match" );
-    //TODO: assert that Windowing::gain and Windowing::update_ntk are callable on res_t
   }
 
   ~boolean_optimization_impl()

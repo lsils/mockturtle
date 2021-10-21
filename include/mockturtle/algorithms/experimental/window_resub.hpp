@@ -184,8 +184,12 @@ public:
       sim( ntk, win.tts, ps.max_pis )
   {
     static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
-    static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method (please wrap with fanout_view)" );
-    //TODO: more asserts
+    static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
+    static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_make_signal_v<Ntk>, "Ntk does not implement the make_signal method" );
+    static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+    static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
     if constexpr ( !has_level_v<Ntk> )
     {
       assert( !ps.preserve_depth && "Ntk does not have depth interface" );
@@ -294,14 +298,14 @@ public:
   template<typename res_t>
   uint32_t gain( problem_t const& prob, res_t const& res ) const
   {
-    // TODO: assert that res_t is some index_list type
+    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     return prob.mffc_size - res.num_gates();
   }
 
   template<typename res_t>
   bool update_ntk( problem_t const& prob, res_t const& res )
   {
-    // TODO: assert that res_t is some index_list type
+    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     assert( res.num_pos() == 1 );
     insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){
       ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !g : g );
@@ -312,9 +316,8 @@ public:
   template<typename res_t>
   bool report( problem_t const& prob, res_t const& res )
   {
-    // TODO: assert that res_t is some index_list type
+    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     assert( res.num_pos() == 1 );
-    //insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){} );
     fmt::print( "[i] found solution {} for root signal {}{}\n", to_index_list_string( res ), ntk.is_complemented( prob.root ) ? "!" : "", ntk.get_node( prob.root ) );
     return true;
   }

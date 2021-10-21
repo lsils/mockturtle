@@ -1182,4 +1182,22 @@ protected:
   uint32_t num_pos;
 };
 
+template<class T>
+struct is_index_list : std::false_type {};
+
+template<>
+struct is_index_list<abc_index_list> : std::true_type {};
+
+template<>
+struct is_index_list<xag_index_list<true>> : std::true_type {};
+
+template<>
+struct is_index_list<xag_index_list<false>> : std::true_type {};
+
+template<>
+struct is_index_list<mig_index_list> : std::true_type {};
+
+template<class T>
+inline constexpr bool is_index_list_v = is_index_list<T>::value;
+
 } /* mockturtle */

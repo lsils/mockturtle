@@ -75,6 +75,7 @@ public:
   divisor_collector( Ntk const& ntk, divisor_collector_params ps = {} )
     : ntk( ntk ), ps( ps )
   {
+    static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method (please wrap with fanout_view)" );
     assert( ps.max_num_collect >= ps.max_num_tfi );
   }
 
@@ -388,6 +389,16 @@ public:
   explicit node_mffc_inside( Ntk const& ntk )
       : ntk( ntk )
   {
+    static_assert( has_incr_fanout_size_v<Ntk>, "Ntk does not implement the incr_fanout_size method" );
+    static_assert( has_decr_fanout_size_v<Ntk>, "Ntk does not implement the decr_fanout_size method" );
+    static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+    static_assert( has_incr_trav_id_v<Ntk>, "Ntk does not implement the incr_trav_id method" );
+    static_assert( has_trav_id_v<Ntk>, "Ntk does not implement the trav_id method" );
+    static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
+    static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
+    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+    static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   }
 
   template<typename Fn>
