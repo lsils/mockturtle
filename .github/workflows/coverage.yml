@@ -34,5 +34,6 @@ jobs:
         lcov -e lcov.info "*mockturtle/include*" -o lcov_filtered.info
         lcov -l lcov_filtered.info
     - name: CodeCov
-      run: |
-        bash <(curl -s https://codecov.io/bash) -f lcov_filtered.info || echo "Codecov did not collect coverage reports"
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./lcov_filtered.info
