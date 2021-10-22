@@ -1,6 +1,7 @@
 #include "experiments.hpp"
 #include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
 #include <mockturtle/algorithms/experimental/window_resub.hpp>
+#include <mockturtle/algorithms/experimental/sim_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
@@ -14,7 +15,7 @@ int main()
   using namespace mockturtle::experimental;
   using namespace experiments;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "new_resub", "benchmark", "size", "gain", "est. gain", "#sols", "runtime", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "experimental", "benchmark", "size", "gain", "est. gain", "#sols", "runtime", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -25,13 +26,10 @@ int main()
     assert( result == lorina::return_code::success ); (void)result;
 
     window_resub_params ps;
+    window_resub_stats st;
     ps.verbose = true;
-    //ps.dry_run = true;
-    ps.dry_run_verbose = false;
-    //ps.wps.normalize = true;
     ps.wps.max_inserts = 1;
 
-    window_resub_stats st;
     window_aig_enumerative_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
