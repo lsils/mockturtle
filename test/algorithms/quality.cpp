@@ -210,7 +210,7 @@ TEST_CASE( "Test quality improvement of MIG k-resubstitution", "[quality]" )
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{1, 59, 3, 16, 3, 25, 107, 108, 183, 438, 74}} );
+  CHECK( v == std::vector<uint32_t>{{1, 48, 2, 18, 2, 17, 101, 97, 169, 437, 64}} );
 }
 
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
