@@ -140,6 +140,11 @@ public:
     }
   }
 
+  void clear()
+  {
+    values.resize( 2 );
+  }
+
   void add_inputs( uint32_t num_pis = 1u )
   {
     _num_pis += num_pis;
@@ -281,7 +286,7 @@ void encode( abc_index_list& indices, Ntk const& ntk )
  * \param indices An index list
  * \param fn Callback function
  */
-template<typename Ntk, typename BeginIter, typename EndIter, typename Fn>
+template<bool useSignal = true, typename Ntk, typename BeginIter, typename EndIter, typename Fn>
 void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indices, Fn&& fn )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -289,16 +294,35 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
   static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor method" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
 
-  static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, signal<Ntk>>, "BeginIter value_type must be Ntk signal type" );
-  static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, signal<Ntk>>, "EndIter value_type must be Ntk signal type" );
-
+  using node = typename Ntk::node;
   using signal = typename Ntk::signal;
+
+  if constexpr ( useSignal )
+  {
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, signal>, "BeginIter value_type must be Ntk signal type" );
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, signal>, "EndIter value_type must be Ntk signal type" );
+  }
+  else
+  {
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, node>, "BeginIter value_type must be Ntk node type" );
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, node>, "EndIter value_type must be Ntk node type" );
+  }
+
+  assert( uint64_t( std::distance( begin, end ) ) == indices.num_pis() );
+  
 
   std::vector<signal> signals;
   signals.emplace_back( ntk.get_constant( false ) );
   for ( auto it = begin; it != end; ++it )
   {
-    signals.push_back( *it );
+    if constexpr ( useSignal )
+    {
+      signals.push_back( *it );
+    }
+    else
+    {
+      signals.emplace_back( ntk.make_signal( *it ) );
+    }
   }
 
   indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
@@ -408,6 +432,12 @@ public:
     {
       fn( values.at( i ) );
     }
+  }
+
+  void clear()
+  {
+    values.clear();
+    values.emplace_back( 0 );
   }
 
   void add_inputs( uint32_t n = 1u )
@@ -524,23 +554,41 @@ void encode( mig_index_list& indices, Ntk const& ntk )
  * \param indices An index list
  * \param fn Callback function
  */
-template<typename Ntk, typename BeginIter, typename EndIter, typename Fn>
+template<bool useSignal = true, typename Ntk, typename BeginIter, typename EndIter, typename Fn>
 void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indices, Fn&& fn )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_create_maj_v<Ntk>, "Ntk does not implement the create_maj method" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
 
-  static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, signal<Ntk>>, "BeginIter value_type must be Ntk signal type" );
-  static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, signal<Ntk>>, "EndIter value_type must be Ntk signal type" );
-
+  using node = typename Ntk::node;
   using signal = typename Ntk::signal;
+
+  if constexpr ( useSignal )
+  {
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, signal>, "BeginIter value_type must be Ntk signal type" );
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, signal>, "EndIter value_type must be Ntk signal type" );
+  }
+  else
+  {
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, node>, "BeginIter value_type must be Ntk node type" );
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, node>, "EndIter value_type must be Ntk node type" );
+  }
+
+  assert( uint64_t( std::distance( begin, end ) ) == indices.num_pis() );
 
   std::vector<signal> signals;
   signals.emplace_back( ntk.get_constant( false ) );
   for ( auto it = begin; it != end; ++it )
   {
-    signals.push_back( *it );
+    if constexpr ( useSignal )
+    {
+      signals.push_back( *it );
+    }
+    else
+    {
+      signals.emplace_back( ntk.make_signal( *it ) );
+    }
   }
 
   indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
@@ -686,6 +734,17 @@ public:
     for ( uint64_t i = values.size() - num_pos(); i < values.size(); ++i )
     {
       fn( values.at( i ) );
+    }
+  }
+
+  void clear()
+  {
+    values.clear();
+    values.emplace_back( 0 );
+    if constexpr ( separate_header )
+    {
+      values.emplace_back( 0 );
+      values.emplace_back( 0 );
     }
   }
 
@@ -858,7 +917,7 @@ void encode( xag_index_list<separate_header>& indices, Ntk const& ntk )
  * \param indices An index list
  * \param fn Callback function
  */
-template<typename Ntk, typename BeginIter, typename EndIter, typename Fn, bool separate_header = false>
+template<bool useSignal = true, typename Ntk, typename BeginIter, typename EndIter, typename Fn, bool separate_header = false>
 void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list<separate_header> const& indices, Fn&& fn )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -866,18 +925,34 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list<separate_hea
   static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor method" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
 
-  static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, signal<Ntk>>, "BeginIter value_type must be Ntk signal type" );
-  static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, signal<Ntk>>, "EndIter value_type must be Ntk signal type" );
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  if constexpr ( useSignal )
+  {
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, signal>, "BeginIter value_type must be Ntk signal type" );
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, signal>, "EndIter value_type must be Ntk signal type" );
+  }
+  else
+  {
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, node>, "BeginIter value_type must be Ntk node type" );
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, node>, "EndIter value_type must be Ntk node type" );
+  }
 
   assert( uint64_t( std::distance( begin, end ) ) == indices.num_pis() );
-
-  using signal = typename Ntk::signal;
 
   std::vector<signal> signals;
   signals.emplace_back( ntk.get_constant( false ) );
   for ( auto it = begin; it != end; ++it )
   {
-    signals.push_back( *it );
+    if constexpr ( useSignal )
+    {
+      signals.push_back( *it );
+    }
+    else
+    {
+      signals.emplace_back( ntk.make_signal( *it ) );
+    }
   }
 
   indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
@@ -1106,5 +1181,23 @@ protected:
   uint32_t num_gates;
   uint32_t num_pos;
 };
+
+template<class T>
+struct is_index_list : std::false_type {};
+
+template<>
+struct is_index_list<abc_index_list> : std::true_type {};
+
+template<>
+struct is_index_list<xag_index_list<true>> : std::true_type {};
+
+template<>
+struct is_index_list<xag_index_list<false>> : std::true_type {};
+
+template<>
+struct is_index_list<mig_index_list> : std::true_type {};
+
+template<class T>
+inline constexpr bool is_index_list_v = is_index_list<T>::value;
 
 } /* mockturtle */
