@@ -7,25 +7,25 @@
         "cec": true,
         "est. gain": 128,
         "gain": 128,
-        "runtime": 0.07553534209728241,
+        "runtime": 0.07561235129833221,
         "size": 1020
       },
       {
-        "#sols": 132,
+        "#sols": 133,
         "benchmark": "bar",
         "cec": true,
-        "est. gain": 195,
-        "gain": 195,
-        "runtime": 0.40144553780555725,
+        "est. gain": 199,
+        "gain": 199,
+        "runtime": 1.6572643518447876,
         "size": 3336
       },
       {
-        "#sols": 8783,
+        "#sols": 8958,
         "benchmark": "div",
         "cec": true,
-        "est. gain": 12265,
-        "gain": 12274,
-        "runtime": 5.754528522491455,
+        "est. gain": 12440,
+        "gain": 12449,
+        "runtime": 5.618214130401611,
         "size": 57247
       },
       {
@@ -34,7 +34,7 @@
         "cec": true,
         "est. gain": 7236,
         "gain": 7238,
-        "runtime": 11.203655242919922,
+        "runtime": 21.302663803100586,
         "size": 214335
       },
       {
@@ -43,7 +43,7 @@
         "cec": true,
         "est. gain": 1522,
         "gain": 1522,
-        "runtime": 4.0871100425720215,
+        "runtime": 7.140984058380127,
         "size": 32060
       },
       {
@@ -52,7 +52,7 @@
         "cec": true,
         "est. gain": 0,
         "gain": 0,
-        "runtime": 0.17232783138751984,
+        "runtime": 0.18092088401317596,
         "size": 2865
       },
       {
@@ -61,7 +61,7 @@
         "cec": true,
         "est. gain": 1123,
         "gain": 1123,
-        "runtime": 3.4983413219451904,
+        "runtime": 13.051502227783203,
         "size": 27062
       },
       {
@@ -70,7 +70,7 @@
         "cec": true,
         "est. gain": 195,
         "gain": 197,
-        "runtime": 0.8641534447669983,
+        "runtime": 2.791358232498169,
         "size": 5416
       },
       {
@@ -79,16 +79,16 @@
         "cec": true,
         "est. gain": 4036,
         "gain": 4245,
-        "runtime": 2.0929946899414063,
+        "runtime": 3.966357946395874,
         "size": 24618
       },
       {
-        "#sols": 1588,
+        "#sols": 1589,
         "benchmark": "square",
         "cec": true,
-        "est. gain": 1683,
-        "gain": 1683,
-        "runtime": 1.9136658906936646,
+        "est. gain": 1684,
+        "gain": 1684,
+        "runtime": 2.1022040843963623,
         "size": 18484
       },
       {
@@ -97,25 +97,25 @@
         "cec": true,
         "est. gain": 0,
         "gain": 0,
-        "runtime": 0.9928708076477051,
+        "runtime": 0.9523971080780029,
         "size": 11839
       },
       {
-        "#sols": 38,
+        "#sols": 42,
         "benchmark": "cavlc",
         "cec": true,
-        "est. gain": 42,
-        "gain": 42,
-        "runtime": 0.8653596043586731,
+        "est. gain": 46,
+        "gain": 46,
+        "runtime": 7.123810768127441,
         "size": 693
       },
       {
         "#sols": 67,
         "benchmark": "ctrl",
         "cec": true,
-        "est. gain": 74,
-        "gain": 74,
-        "runtime": 0.08911710232496262,
+        "est. gain": 75,
+        "gain": 75,
+        "runtime": 0.3900867998600006,
         "size": 174
       },
       {
@@ -124,34 +124,34 @@
         "cec": true,
         "est. gain": 0,
         "gain": 0,
-        "runtime": 0.04154697433114052,
+        "runtime": 0.0403304286301136,
         "size": 304
       },
       {
-        "#sols": 102,
+        "#sols": 111,
         "benchmark": "i2c",
         "cec": true,
-        "est. gain": 115,
-        "gain": 115,
-        "runtime": 0.17374266684055328,
+        "est. gain": 124,
+        "gain": 124,
+        "runtime": 0.6965552568435669,
         "size": 1342
       },
       {
-        "#sols": 28,
+        "#sols": 30,
         "benchmark": "int2float",
         "cec": true,
-        "est. gain": 30,
-        "gain": 30,
-        "runtime": 0.13052129745483398,
+        "est. gain": 32,
+        "gain": 32,
+        "runtime": 1.277939796447754,
         "size": 260
       },
       {
-        "#sols": 342,
+        "#sols": 486,
         "benchmark": "mem_ctrl",
         "cec": true,
-        "est. gain": 559,
-        "gain": 561,
-        "runtime": 4.5652875900268555,
+        "est. gain": 811,
+        "gain": 813,
+        "runtime": 9.812023162841797,
         "size": 46836
       },
       {
@@ -160,7 +160,7 @@
         "cec": true,
         "est. gain": 409,
         "gain": 409,
-        "runtime": 0.06533627957105637,
+        "runtime": 0.06725240498781204,
         "size": 978
       },
       {
@@ -169,16 +169,16 @@
         "cec": true,
         "est. gain": 13,
         "gain": 13,
-        "runtime": 0.018540408462285995,
+        "runtime": 0.019821276888251305,
         "size": 257
       },
       {
-        "#sols": 3794,
+        "#sols": 3849,
         "benchmark": "voter",
         "cec": true,
-        "est. gain": 4599,
-        "gain": 4605,
-        "runtime": 1.2387036085128784,
+        "est. gain": 4657,
+        "gain": 4663,
+        "runtime": 2.5188426971435547,
         "size": 13758
       }
     ],

@@ -156,7 +156,7 @@ public:
 
     index_list_t il( std::distance( begin, end ) );
     const TT ntarget = ~target;
-    uint32_t i, j, k;
+    uint32_t i, j, k, l;
     iterator_type it = begin;
 
     /* C-resub */
@@ -382,6 +382,78 @@ public:
     }
 
     if ( max_size == 2 ) 
+    {
+      return std::nullopt;
+    }
+
+    /* 3-resub */
+    for ( i = 0u; i < neg_binates.size(); ++i ) 
+    {
+      auto tt_binate = get_tt_from_lit( neg_binates[i].first, tts, begin ) | get_tt_from_lit( neg_binates[i].second, tts, begin );
+      for ( j = i + 1; j < neg_binates.size(); ++j )
+      {
+        if ( target == ( ( get_tt_from_lit( neg_binates[j].first, tts, begin ) | get_tt_from_lit( neg_binates[j].second, tts, begin ) ) & tt_binate ) )
+        {
+          il.add_output( il.add_and( il.add_and( neg_binates[i].first ^ 0x1, neg_binates[i].second ^ 0x1 ) ^ 0x1, il.add_and( neg_binates[j].first ^ 0x1, neg_binates[j].second ^ 0x1 ) ^ 0x1 ) ); // AND-2OR
+          return il;
+        }
+      }
+    }
+    for ( i = 0u; i < pos_binates.size(); ++i ) 
+    {
+      auto tt_binate = get_tt_from_lit( pos_binates[i].first, tts, begin ) & get_tt_from_lit( pos_binates[i].second, tts, begin );
+      for ( j = i + 1; j < pos_binates.size(); ++j )
+      {
+        if ( target == ( ( get_tt_from_lit( pos_binates[j].first, tts, begin ) & get_tt_from_lit( pos_binates[j].second, tts, begin ) ) | tt_binate ) )
+        {
+          il.add_output( il.add_and( il.add_and( pos_binates[i].first, pos_binates[i].second ) ^ 0x1, il.add_and( pos_binates[j].first, pos_binates[j].second ) ^ 0x1 ) ^ 0x1 ); // OR-2AND
+          return il;
+        }
+      }
+    }
+
+    /* 3-AND 3-OR does not occur in our test cases */
+    for ( i = 0u; i < pos_unate.size(); ++i )
+    {
+      for ( j = i + 1; j < pos_unate.size(); ++j ) 
+      {
+        for ( k = j + 1; k < pos_unate.size(); ++k )
+        {
+          for ( l = k + 1; l < pos_unate.size(); ++l )
+          {
+            if ( target == ( get_tt_from_lit( pos_unate[i], tts, begin ) | get_tt_from_lit( pos_unate[j], tts, begin ) | get_tt_from_lit( pos_unate[k], tts, begin ) | get_tt_from_lit( pos_unate[l], tts, begin ) ) )
+            {
+              il.add_output( il.add_and( il.add_and( pos_unate[i] ^ 0x1, pos_unate[j] ^ 0x1 ), il.add_and( pos_unate[k] ^ 0x1, pos_unate[l] ^ 0x1 ) ) ^ 0x1 ); // OR-2OR
+
+              // TODO: OR balance
+              return il;
+            }
+          }
+        }
+      }
+    }
+
+    for ( i = 0u; i < neg_unate.size(); ++i )
+    {
+      for ( j = i + 1; j < neg_unate.size(); ++j ) 
+      {
+        for ( k = j + 1; k < neg_unate.size(); ++k )
+        {
+          for ( l = k + 1; l < neg_unate.size(); ++l )
+          {
+            if ( target == ( get_tt_from_lit( neg_unate[i], tts, begin ) & get_tt_from_lit( neg_unate[j], tts, begin ) & get_tt_from_lit( neg_unate[k], tts, begin ) & get_tt_from_lit( neg_unate[l], tts, begin ) ) )
+            {
+              il.add_output( il.add_and( il.add_and( neg_unate[i], neg_unate[j] ), il.add_and( neg_unate[k], neg_unate[l] ) ) ); // AND-2AND
+
+              // TODO: OR balance
+              return il;
+            }
+          }
+        }
+      }
+    }
+
+    if ( max_size == 3 ) 
     {
       return std::nullopt;
     }
