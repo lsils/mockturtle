@@ -224,12 +224,12 @@ public:
           }
           else
           {
-            binate.emplace_back( i );
+            binate.emplace_back( make_lit( i ) );
           }
         }
         else
         {
-          binate.emplace_back( i );
+          binate.emplace_back( make_lit( i ) );
         }
       }
     }
@@ -274,7 +274,7 @@ public:
         {
           if ( target == ( get_tt_from_lit( pos_unate[i], tts, begin ) | get_tt_from_lit( pos_unate[j], tts, begin ) | get_tt_from_lit( pos_unate[k], tts, begin ) ) )
           {
-            il.add_output( il.add_and( il.add_and( pos_unate[i] ^ 0x1, pos_unate[j] ^ 0x1 ), pos_unate[k] ^ 0x1 ) ^ 0x1 ); // OR
+            il.add_output( il.add_and( il.add_and( pos_unate[i] ^ 0x1, pos_unate[j] ^ 0x1 ), pos_unate[k] ^ 0x1 ) ^ 0x1 ); // OR-OR
             return il;
           }
         }
@@ -289,7 +289,7 @@ public:
         {
           if ( target == ( get_tt_from_lit( neg_unate[i], tts, begin ) & get_tt_from_lit( neg_unate[j], tts, begin ) & get_tt_from_lit( neg_unate[k], tts, begin ) ) )
           {
-            il.add_output( il.add_and( il.add_and( neg_unate[i], neg_unate[j] ), neg_unate[k] ) ); // AND
+            il.add_output( il.add_and( il.add_and( neg_unate[i], neg_unate[j] ), neg_unate[k] ) ); // AND-AND
             return il;
           }
         }
@@ -308,7 +308,8 @@ public:
       {
         auto tt_s0 = get_tt_from_lit( binate[i], tts, begin );
         auto tt_s1 = get_tt_from_lit( binate[j], tts, begin );
-        if ( pos_binates.size() < 500 ) {
+        if ( pos_binates.size() < 500 )
+        {
           if ( kitty::implies( tt_s0 & tt_s1, target ) )
           {
             pos_binates.emplace_back( std::make_pair( binate[i], binate[j] ) );
@@ -328,25 +329,50 @@ public:
             pos_binates.emplace_back( std::make_pair( binate[i] ^ 0x1, binate[j] ^ 0x1 ) );
           }
         }
-        if ( neg_binates.size() < 500 ) {
-          if ( kitty::implies( target, tt_s0 & tt_s1 ) )
+        if ( neg_binates.size() < 500 )
+        {
+          if ( kitty::implies( target, tt_s0 | tt_s1 ) )
           {
-            pos_binates.emplace_back( std::make_pair( binate[i], binate[j] ) );
+            neg_binates.emplace_back( std::make_pair( binate[i], binate[j] ) );
           }
-          if ( kitty::implies( target, ~tt_s0 & tt_s1 ) )
+          if ( kitty::implies( target, ~tt_s0 | tt_s1 ) )
           {
-            pos_binates.emplace_back( std::make_pair( binate[i] ^ 0x1, binate[j] ) );
-          }
-
-          if ( kitty::implies( target, tt_s0 & ~tt_s1 ) )
-          {
-            pos_binates.emplace_back( std::make_pair( binate[i], binate[j] ^ 0x1 ) );
+            neg_binates.emplace_back( std::make_pair( binate[i] ^ 0x1, binate[j] ) );
           }
 
-          if ( kitty::implies( target, ~tt_s0 & ~tt_s1 ) )
+          if ( kitty::implies( target, tt_s0 | ~tt_s1 ) )
           {
-            pos_binates.emplace_back( std::make_pair( binate[i] ^ 0x1, binate[j] ^ 0x1 ) );
+            neg_binates.emplace_back( std::make_pair( binate[i], binate[j] ^ 0x1 ) );
           }
+
+          if ( kitty::implies( target, ~tt_s0 | ~tt_s1 ) )
+          {
+            neg_binates.emplace_back( std::make_pair( binate[i] ^ 0x1, binate[j] ^ 0x1 ) );
+          }
+        }
+      }
+    }
+    for ( i = 0u; i < pos_binates.size(); ++i ) 
+    {
+      auto tt_binate = get_tt_from_lit( pos_binates[i].first, tts, begin ) & get_tt_from_lit( pos_binates[i].second, tts, begin );
+      for ( j = 0u; j < pos_unate.size(); ++j )
+      {
+        if ( target == ( get_tt_from_lit( pos_unate[j], tts, begin ) | tt_binate ) )
+        {
+          il.add_output( il.add_and( il.add_and( pos_binates[i].first, pos_binates[i].second) ^ 0x1, pos_unate[j] ^ 0x1 ) ^ 0x1 ); // AND-OR
+          return il;
+        }
+      }
+    }
+    for ( i = 0u; i < neg_binates.size(); ++i ) 
+    {
+      auto tt_binate = get_tt_from_lit( neg_binates[i].first, tts, begin ) | get_tt_from_lit( neg_binates[i].second, tts, begin );
+      for ( j = 0u; j < neg_unate.size(); ++j )
+      {
+        if ( target == ( get_tt_from_lit( neg_unate[j], tts, begin ) & tt_binate ) )
+        {
+          il.add_output( il.add_and( il.add_and( neg_binates[i].first ^ 0x1, neg_binates[i].second ^ 0x1 ) ^ 0x1, neg_unate[j] ) ); // OR-AND
+          return il;
         }
       }
     }
