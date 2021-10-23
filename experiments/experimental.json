@@ -1,0 +1,187 @@
+[
+  {
+    "entries": [
+      {
+        "#sols": 127,
+        "benchmark": "adder",
+        "cec": true,
+        "est. gain": 127,
+        "gain": 127,
+        "runtime": 0.0740741416811943,
+        "size": 1020
+      },
+      {
+        "#sols": 0,
+        "benchmark": "bar",
+        "cec": true,
+        "est. gain": 0,
+        "gain": 0,
+        "runtime": 0.36338165402412415,
+        "size": 3336
+      },
+      {
+        "#sols": 4937,
+        "benchmark": "div",
+        "cec": true,
+        "est. gain": 5115,
+        "gain": 5124,
+        "runtime": 5.472750663757324,
+        "size": 57247
+      },
+      {
+        "#sols": 5998,
+        "benchmark": "hyp",
+        "cec": true,
+        "est. gain": 6066,
+        "gain": 6068,
+        "runtime": 11.155725479125977,
+        "size": 214335
+      },
+      {
+        "#sols": 45,
+        "benchmark": "log2",
+        "cec": true,
+        "est. gain": 50,
+        "gain": 50,
+        "runtime": 3.7435662746429443,
+        "size": 32060
+      },
+      {
+        "#sols": 0,
+        "benchmark": "max",
+        "cec": true,
+        "est. gain": 0,
+        "gain": 0,
+        "runtime": 0.16151556372642517,
+        "size": 2865
+      },
+      {
+        "#sols": 90,
+        "benchmark": "multiplier",
+        "cec": true,
+        "est. gain": 91,
+        "gain": 91,
+        "runtime": 3.091322183609009,
+        "size": 27062
+      },
+      {
+        "#sols": 30,
+        "benchmark": "sin",
+        "cec": true,
+        "est. gain": 39,
+        "gain": 41,
+        "runtime": 0.753707230091095,
+        "size": 5416
+      },
+      {
+        "#sols": 4029,
+        "benchmark": "sqrt",
+        "cec": true,
+        "est. gain": 4036,
+        "gain": 4245,
+        "runtime": 1.9337517023086548,
+        "size": 24618
+      },
+      {
+        "#sols": 884,
+        "benchmark": "square",
+        "cec": true,
+        "est. gain": 979,
+        "gain": 979,
+        "runtime": 1.744065284729004,
+        "size": 18484
+      },
+      {
+        "#sols": 0,
+        "benchmark": "arbiter",
+        "cec": true,
+        "est. gain": 0,
+        "gain": 0,
+        "runtime": 0.9650728702545166,
+        "size": 11839
+      },
+      {
+        "#sols": 32,
+        "benchmark": "cavlc",
+        "cec": true,
+        "est. gain": 36,
+        "gain": 36,
+        "runtime": 0.8191836476325989,
+        "size": 693
+      },
+      {
+        "#sols": 61,
+        "benchmark": "ctrl",
+        "cec": true,
+        "est. gain": 72,
+        "gain": 72,
+        "runtime": 0.07900344580411911,
+        "size": 174
+      },
+      {
+        "#sols": 0,
+        "benchmark": "dec",
+        "cec": true,
+        "est. gain": 0,
+        "gain": 0,
+        "runtime": 0.042502615600824356,
+        "size": 304
+      },
+      {
+        "#sols": 102,
+        "benchmark": "i2c",
+        "cec": true,
+        "est. gain": 114,
+        "gain": 114,
+        "runtime": 0.13464796543121338,
+        "size": 1342
+      },
+      {
+        "#sols": 26,
+        "benchmark": "int2float",
+        "cec": true,
+        "est. gain": 28,
+        "gain": 28,
+        "runtime": 0.0926063135266304,
+        "size": 260
+      },
+      {
+        "#sols": 228,
+        "benchmark": "mem_ctrl",
+        "cec": true,
+        "est. gain": 442,
+        "gain": 444,
+        "runtime": 4.276956081390381,
+        "size": 46836
+      },
+      {
+        "#sols": 96,
+        "benchmark": "priority",
+        "cec": true,
+        "est. gain": 139,
+        "gain": 139,
+        "runtime": 0.10275401175022125,
+        "size": 978
+      },
+      {
+        "#sols": 1,
+        "benchmark": "router",
+        "cec": true,
+        "est. gain": 3,
+        "gain": 3,
+        "runtime": 0.017945801839232445,
+        "size": 257
+      },
+      {
+        "#sols": 2477,
+        "benchmark": "voter",
+        "cec": true,
+        "est. gain": 3219,
+        "gain": 3225,
+        "runtime": 1.1207497119903564,
+        "size": 13758
+      }
+    ],
+    "version": "57d114e"
+  }
+]

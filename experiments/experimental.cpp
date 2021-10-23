@@ -28,7 +28,7 @@ int main()
     window_resub_params ps;
     window_resub_stats st;
     ps.verbose = true;
-    ps.wps.max_inserts = 1;
+    ps.wps.max_inserts = 2;
 
     window_aig_enumerative_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );

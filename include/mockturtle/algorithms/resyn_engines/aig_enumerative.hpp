@@ -156,7 +156,7 @@ public:
 
     index_list_t il( std::distance( begin, end ) );
     const TT ntarget = ~target;
-    uint32_t i, j;
+    uint32_t i, j, k;
     iterator_type it = begin;
 
     /* C-resub */
@@ -259,6 +259,99 @@ public:
     }
 
     if ( max_size == 1 )
+    {
+      return std::nullopt;
+    }
+
+    /* 2-resub */
+
+    /* unate-only */
+    for ( i = 0u; i < pos_unate.size(); ++i )
+    {
+      for ( j = i + 1; j < pos_unate.size(); ++j ) 
+      {
+        for ( k = j + 1; k < pos_unate.size(); ++k )
+        {
+          if ( target == ( get_tt_from_lit( pos_unate[i], tts, begin ) | get_tt_from_lit( pos_unate[j], tts, begin ) | get_tt_from_lit( pos_unate[k], tts, begin ) ) )
+          {
+            il.add_output( il.add_and( il.add_and( pos_unate[i] ^ 0x1, pos_unate[j] ^ 0x1 ), pos_unate[k] ^ 0x1 ) ^ 0x1 ); // OR
+            return il;
+          }
+        }
+      }
+    }
+
+    for ( i = 0u; i < neg_unate.size(); ++i )
+    {
+      for ( j = i + 1; j < neg_unate.size(); ++j ) 
+      {
+        for ( k = j + 1; k < neg_unate.size(); ++k )
+        {
+          if ( target == ( get_tt_from_lit( neg_unate[i], tts, begin ) & get_tt_from_lit( neg_unate[j], tts, begin ) & get_tt_from_lit( neg_unate[k], tts, begin ) ) )
+          {
+            il.add_output( il.add_and( il.add_and( neg_unate[i], neg_unate[j] ), neg_unate[k] ) ); // AND
+            return il;
+          }
+        }
+      }
+    }
+
+    std::vector<std::pair<uint32_t, uint32_t> > neg_binates, pos_binates;
+
+    for ( i = 0u; i < binate.size(); ++i )
+    {
+      if ( neg_binates.size() >= 500 && pos_binates.size() >= 500 )
+      {
+        break;
+      }
+      for ( j = i + 1; j < binate.size(); ++j )
+      {
+        auto tt_s0 = get_tt_from_lit( binate[i], tts, begin );
+        auto tt_s1 = get_tt_from_lit( binate[j], tts, begin );
+        if ( pos_binates.size() < 500 ) {
+          if ( kitty::implies( tt_s0 & tt_s1, target ) )
+          {
+            pos_binates.emplace_back( std::make_pair( binate[i], binate[j] ) );
+          }
+          if ( kitty::implies( ~tt_s0 & tt_s1, target ) )
+          {
+            pos_binates.emplace_back( std::make_pair( binate[i] ^ 0x1, binate[j] ) );
+          }
+
+          if ( kitty::implies( tt_s0 & ~tt_s1, target ) )
+          {
+            pos_binates.emplace_back( std::make_pair( binate[i], binate[j] ^ 0x1 ) );
+          }
+
+          if ( kitty::implies( ~tt_s0 & ~tt_s1, target ) )
+          {
+            pos_binates.emplace_back( std::make_pair( binate[i] ^ 0x1, binate[j] ^ 0x1 ) );
+          }
+        }
+        if ( neg_binates.size() < 500 ) {
+          if ( kitty::implies( target, tt_s0 & tt_s1 ) )
+          {
+            pos_binates.emplace_back( std::make_pair( binate[i], binate[j] ) );
+          }
+          if ( kitty::implies( target, ~tt_s0 & tt_s1 ) )
+          {
+            pos_binates.emplace_back( std::make_pair( binate[i] ^ 0x1, binate[j] ) );
+          }
+
+          if ( kitty::implies( target, tt_s0 & ~tt_s1 ) )
+          {
+            pos_binates.emplace_back( std::make_pair( binate[i], binate[j] ^ 0x1 ) );
+          }
+
+          if ( kitty::implies( target, ~tt_s0 & ~tt_s1 ) )
+          {
+            pos_binates.emplace_back( std::make_pair( binate[i] ^ 0x1, binate[j] ^ 0x1 ) );
+          }
+        }
+      }
+    }
+
+    if ( max_size == 2 ) 
     {
       return std::nullopt;
     }
