@@ -56,7 +56,7 @@ int main()
     resubstitution_stats st;
 
     ps.max_pis = 8u;
-    ps.max_inserts = 2u;
+    ps.max_inserts = 1u;
     ps.progress = false;
 
     const uint32_t size_before = aig.num_gates();
@@ -66,11 +66,11 @@ int main()
 
     const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
 
-    exp( benchmark, size_before, size_before-aig.num_gates(), to_seconds( st.time_total ), cec );
+    exp( benchmark, size_before, aig.num_gates(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();
-  exp.table();
+  exp.compare();
 
   return 0;
 }
