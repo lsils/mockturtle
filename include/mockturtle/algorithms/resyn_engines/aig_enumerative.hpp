@@ -310,8 +310,8 @@ public:
       }
       for ( j = i + 1; j < binate.size(); ++j )
       {
-        auto tt_s0 = get_tt_from_lit( binate[i], tts, begin );
-        auto tt_s1 = get_tt_from_lit( binate[j], tts, begin );
+        auto const& tt_s0 = get_tt_from_lit( binate[i], tts, begin );
+        auto const& tt_s1 = get_tt_from_lit( binate[j], tts, begin );
         if ( pos_binates.size() < 500 )
         {
           if ( kitty::implies( tt_s0 & tt_s1, target ) )
@@ -358,7 +358,7 @@ public:
     }
     for ( i = 0u; i < pos_binates.size(); ++i ) 
     {
-      auto tt_binate = get_tt_from_lit( pos_binates[i].first, tts, begin ) & get_tt_from_lit( pos_binates[i].second, tts, begin );
+      auto const& tt_binate = get_tt_from_lit( pos_binates[i].first, tts, begin ) & get_tt_from_lit( pos_binates[i].second, tts, begin );
       for ( j = 0u; j < pos_unate.size(); ++j )
       {
         if ( target == ( get_tt_from_lit( pos_unate[j], tts, begin ) | tt_binate ) )
@@ -370,7 +370,7 @@ public:
     }
     for ( i = 0u; i < neg_binates.size(); ++i ) 
     {
-      auto tt_binate = get_tt_from_lit( neg_binates[i].first, tts, begin ) | get_tt_from_lit( neg_binates[i].second, tts, begin );
+      auto const& tt_binate = get_tt_from_lit( neg_binates[i].first, tts, begin ) | get_tt_from_lit( neg_binates[i].second, tts, begin );
       for ( j = 0u; j < neg_unate.size(); ++j )
       {
         if ( target == ( get_tt_from_lit( neg_unate[j], tts, begin ) & tt_binate ) )
@@ -389,7 +389,7 @@ public:
     /* 3-resub */
     for ( i = 0u; i < neg_binates.size(); ++i ) 
     {
-      auto tt_binate = get_tt_from_lit( neg_binates[i].first, tts, begin ) | get_tt_from_lit( neg_binates[i].second, tts, begin );
+      auto const& tt_binate = get_tt_from_lit( neg_binates[i].first, tts, begin ) | get_tt_from_lit( neg_binates[i].second, tts, begin );
       for ( j = i + 1; j < neg_binates.size(); ++j )
       {
         if ( target == ( ( get_tt_from_lit( neg_binates[j].first, tts, begin ) | get_tt_from_lit( neg_binates[j].second, tts, begin ) ) & tt_binate ) )
@@ -401,7 +401,7 @@ public:
     }
     for ( i = 0u; i < pos_binates.size(); ++i ) 
     {
-      auto tt_binate = get_tt_from_lit( pos_binates[i].first, tts, begin ) & get_tt_from_lit( pos_binates[i].second, tts, begin );
+      auto const& tt_binate = get_tt_from_lit( pos_binates[i].first, tts, begin ) & get_tt_from_lit( pos_binates[i].second, tts, begin );
       for ( j = i + 1; j < pos_binates.size(); ++j )
       {
         if ( target == ( ( get_tt_from_lit( pos_binates[j].first, tts, begin ) & get_tt_from_lit( pos_binates[j].second, tts, begin ) ) | tt_binate ) )
