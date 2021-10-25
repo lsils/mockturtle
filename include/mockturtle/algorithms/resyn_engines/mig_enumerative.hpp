@@ -235,7 +235,7 @@ public:
       return std::nullopt;
     }
 
-    /* 2 resub */
+    /* 2-resub */
     for ( i = 0u; i < binate.size(); ++i )
     {
       auto const& x = get_tt_from_lit( binate[i], tts, begin );

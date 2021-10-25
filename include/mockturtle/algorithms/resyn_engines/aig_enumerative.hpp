@@ -264,8 +264,6 @@ public:
     }
 
     /* 2-resub */
-
-    /* unate-only */
     for ( i = 0u; i < pos_unate.size(); ++i )
     {
       for ( j = i + 1; j < pos_unate.size(); ++j ) 
@@ -275,8 +273,6 @@ public:
           if ( target == ( get_tt_from_lit( pos_unate[i], tts, begin ) | get_tt_from_lit( pos_unate[j], tts, begin ) | get_tt_from_lit( pos_unate[k], tts, begin ) ) )
           {
             il.add_output( il.add_and( il.add_and( pos_unate[i] ^ 0x1, pos_unate[j] ^ 0x1 ), pos_unate[k] ^ 0x1 ) ^ 0x1 ); // OR-OR
-
-            // TODO: OR balance
             return il;
           }
         }
@@ -292,14 +288,13 @@ public:
           if ( target == ( get_tt_from_lit( neg_unate[i], tts, begin ) & get_tt_from_lit( neg_unate[j], tts, begin ) & get_tt_from_lit( neg_unate[k], tts, begin ) ) )
           {
             il.add_output( il.add_and( il.add_and( neg_unate[i], neg_unate[j] ), neg_unate[k] ) ); // AND-AND
-
-            // TODO: AND balance
             return il;
           }
         }
       }
     }
 
+    /* collect binate divisors */
     std::vector<std::pair<uint32_t, uint32_t> > neg_binates, pos_binates;
 
     for ( i = 0u; i < binate.size(); ++i )
@@ -412,7 +407,6 @@ public:
       }
     }
 
-    /* 3-AND 3-OR does not occur in our test cases */
     for ( i = 0u; i < pos_unate.size(); ++i )
     {
       for ( j = i + 1; j < pos_unate.size(); ++j ) 
@@ -424,8 +418,6 @@ public:
             if ( target == ( get_tt_from_lit( pos_unate[i], tts, begin ) | get_tt_from_lit( pos_unate[j], tts, begin ) | get_tt_from_lit( pos_unate[k], tts, begin ) | get_tt_from_lit( pos_unate[l], tts, begin ) ) )
             {
               il.add_output( il.add_and( il.add_and( pos_unate[i] ^ 0x1, pos_unate[j] ^ 0x1 ), il.add_and( pos_unate[k] ^ 0x1, pos_unate[l] ^ 0x1 ) ) ^ 0x1 ); // OR-2OR
-
-              // TODO: OR balance
               return il;
             }
           }
@@ -444,8 +436,6 @@ public:
             if ( target == ( get_tt_from_lit( neg_unate[i], tts, begin ) & get_tt_from_lit( neg_unate[j], tts, begin ) & get_tt_from_lit( neg_unate[k], tts, begin ) & get_tt_from_lit( neg_unate[l], tts, begin ) ) )
             {
               il.add_output( il.add_and( il.add_and( neg_unate[i], neg_unate[j] ), il.add_and( neg_unate[k], neg_unate[l] ) ) ); // AND-2AND
-
-              // TODO: OR balance
               return il;
             }
           }
