@@ -20,11 +20,9 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    if ( benchmark == "hyp" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
-    /* aig_network aig; */
-    mig_network aig; /* mig testing */
+    aig_network aig;
 
     auto const result = lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
     assert( result == lorina::return_code::success ); (void)result;

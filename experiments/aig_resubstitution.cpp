@@ -56,7 +56,7 @@ int main()
     resubstitution_stats st;
 
     ps.max_pis = 8u;
-    ps.max_inserts = 3u;
+    ps.max_inserts = 2u;
     ps.progress = false;
 
     const uint32_t size_before = aig.num_gates();

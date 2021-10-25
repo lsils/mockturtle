@@ -45,7 +45,6 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    if ( benchmark == "hyp" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     mig_network mig;
