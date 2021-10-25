@@ -4,6 +4,7 @@
 #include <mockturtle/algorithms/experimental/sim_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/mig.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <lorina/aiger.hpp>
 #include <iostream>
@@ -19,9 +20,12 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
+    if ( benchmark == "hyp" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
-    aig_network aig;
+    /* aig_network aig; */
+    mig_network aig; /* mig testing */
+
     auto const result = lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
     assert( result == lorina::return_code::success ); (void)result;
 
@@ -30,7 +34,8 @@ int main()
     ps.verbose = true;
     ps.wps.max_inserts = 3;
 
-    window_aig_enumerative_resub( aig, ps, &st );
+    // window_aig_enumerative_resub( aig, ps, &st );
+    window_mig_enumerative_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( aig, benchmark );

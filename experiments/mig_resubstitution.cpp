@@ -45,6 +45,7 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
+    if ( benchmark == "hyp" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     mig_network mig;
@@ -67,7 +68,7 @@ int main()
     mig = cleanup_dangling( mig );
 
     bool const cec = benchmark == "hyp" ? true : abc_cec( fanout_mig, benchmark );
-    exp( benchmark, size_before, mig.num_gates(), to_seconds( st.time_total ), cec );
+    exp( benchmark, size_before, size_before-mig.num_gates(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();
