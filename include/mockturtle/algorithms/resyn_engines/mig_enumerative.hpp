@@ -134,6 +134,11 @@ public:
         {
           maj1pairs.emplace_back( make_lit( i, true ), make_lit( j, true ) );
         }
+        else if ( std::find( binate.begin(), binate.end(), make_lit( i ) ) == binate.end())
+        {
+          binate.emplace_back(  make_lit( i ) );
+          binate.emplace_back(  make_lit( i, true ) ); /* 2x redundant memory*/
+        }
       }
       if ( kitty::implies( tts[*it], target ) )
       {
@@ -151,7 +156,7 @@ public:
       {
         maj1pairs.emplace_back( make_lit( i, true ), 0 );
       }
-      else
+      else if ( std::find( binate.begin(), binate.end(), make_lit( i ) ) == binate.end())
       {
         binate.emplace_back(  make_lit( i ) );
         binate.emplace_back(  make_lit( i, true ) ); /* 2x redundant memory*/

@@ -32,7 +32,7 @@ int main()
     window_resub_params ps;
     window_resub_stats st;
     ps.verbose = true;
-    ps.wps.max_inserts = 1u;
+    ps.wps.max_inserts = 2u;
 
     // window_aig_enumerative_resub( aig, ps, &st );
     window_mig_enumerative_resub( aig, ps, &st );
