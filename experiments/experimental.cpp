@@ -23,17 +23,15 @@ int main()
     fmt::print( "[i] processing {}\n", benchmark );
 
     aig_network aig;
-
     auto const result = lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
     assert( result == lorina::return_code::success ); (void)result;
 
     window_resub_params ps;
     window_resub_stats st;
     ps.verbose = true;
-    ps.wps.max_inserts = 2u;
+    ps.wps.max_inserts = 1;
 
-    // window_aig_enumerative_resub( aig, ps, &st );
-    window_mig_enumerative_resub( aig, ps, &st );
+    window_aig_enumerative_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( aig, benchmark );
