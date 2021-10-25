@@ -74,7 +74,7 @@ public:
 
     index_list_t il( std::distance( begin, end ) );
     const TT ntarget = ~target;
-    uint32_t i, j;
+    uint32_t i, j, k, l;
     iterator_type it = begin, jt = begin;
 
     /* C-resub */
@@ -113,6 +113,7 @@ public:
 
     /* collect candidate pairs using MAJ filtering rule */
     std::vector<std::pair<uint32_t, uint32_t>> maj1pairs;
+    std::vector<uint32_t> binate;
     for ( it = begin, i = 0u; it != end; ++it, ++i )
     {
       for ( jt = it + 1, j = i + 1; jt != end; ++jt, ++j )
@@ -149,6 +150,11 @@ public:
       else if ( kitty::implies( target, ~tts[*it] ) )
       {
         maj1pairs.emplace_back( make_lit( i, true ), 0 );
+      }
+      else
+      {
+        binate.emplace_back(  make_lit( i ) );
+        binate.emplace_back(  make_lit( i, true ) ); /* 2x redundant memory*/
       }
     }
 
@@ -220,6 +226,39 @@ public:
     }
 
     if ( max_size == 1 )
+    {
+      return std::nullopt;
+    }
+
+    /* 2 resub */
+    for ( i = 0u; i < binate.size(); ++i )
+    {
+      auto const& x = get_tt_from_lit( binate[i], tts, begin );
+      for ( j = i + 2u; j < binate.size(); ++j )
+      {
+        auto const& y = get_tt_from_lit( binate[j], tts, begin );
+        for ( k = j + 2u; k < binate.size(); ++k )
+        {
+          auto const& z = get_tt_from_lit( binate[k], tts, begin );
+          auto tt_binate = kitty::ternary_majority( x, y, z );
+          if ( kitty::implies( tt_binate, target ) ) /* Boolean Over-Filtering */
+          {
+            for ( l = 0u; l < maj1pairs.size(); ++l ) 
+            {
+              auto const & a = get_tt_from_lit( maj1pairs[l].first, tts, begin );
+              auto tt = maj1pairs[l].second >= 2? kitty::ternary_majority( a, get_tt_from_lit( maj1pairs[l].second, tts, begin ), tt_binate ) : maj1pairs[l].second? a | tt_binate : a & tt_binate; 
+              if ( tt == target )
+              {
+                il.add_output( il.add_maj( maj1pairs[l].first, maj1pairs[l].second, il.add_maj( binate[i], binate[j], binate[k] ) ) );
+                return il;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if ( max_size == 2 )
     {
       return std::nullopt;
     }

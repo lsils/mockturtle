@@ -149,133 +149,133 @@
       {
         "benchmark": "adder",
         "equivalent": true,
-        "runtime": 0.058699507266283035,
+        "runtime": 0.05711500346660614,
         "size_after": 127,
         "size_before": 1020
       },
       {
         "benchmark": "bar",
         "equivalent": true,
-        "runtime": 0.24649374186992645,
+        "runtime": 0.23502324521541595,
         "size_after": 392,
         "size_before": 3336
       },
       {
         "benchmark": "div",
         "equivalent": true,
-        "runtime": 15.591236114501953,
+        "runtime": 15.386982917785645,
         "size_after": 5333,
         "size_before": 57247
       },
       {
         "benchmark": "log2",
         "equivalent": true,
-        "runtime": 3.3055105209350586,
+        "runtime": 3.2589783668518066,
         "size_after": 62,
         "size_before": 32060
       },
       {
         "benchmark": "max",
         "equivalent": true,
-        "runtime": 0.14647041261196136,
+        "runtime": 0.1418764740228653,
         "size_after": 25,
         "size_before": 2865
       },
       {
         "benchmark": "multiplier",
         "equivalent": true,
-        "runtime": 3.478447675704956,
+        "runtime": 3.4373116493225098,
         "size_after": 266,
         "size_before": 27062
       },
       {
         "benchmark": "sin",
         "equivalent": true,
-        "runtime": 1.2198528051376343,
+        "runtime": 1.1883594989776611,
         "size_after": 99,
         "size_before": 5416
       },
       {
         "benchmark": "sqrt",
         "equivalent": true,
-        "runtime": 5.577962875366211,
+        "runtime": 5.579047679901123,
         "size_after": 4208,
         "size_before": 24618
       },
       {
         "benchmark": "square",
         "equivalent": true,
-        "runtime": 2.4228920936584473,
+        "runtime": 2.421178102493286,
         "size_after": 424,
         "size_before": 18484
       },
       {
         "benchmark": "arbiter",
         "equivalent": true,
-        "runtime": 1.0558325052261353,
+        "runtime": 1.080256462097168,
         "size_after": 128,
         "size_before": 11839
       },
       {
         "benchmark": "cavlc",
         "equivalent": true,
-        "runtime": 1.4469391107559204,
+        "runtime": 1.4023396968841553,
         "size_after": 78,
         "size_before": 693
       },
       {
         "benchmark": "ctrl",
         "equivalent": true,
-        "runtime": 1.1144806146621704,
+        "runtime": 1.0727145671844482,
         "size_after": 88,
         "size_before": 174
       },
       {
         "benchmark": "dec",
         "equivalent": true,
-        "runtime": 0.054652705788612366,
+        "runtime": 0.05523228645324707,
         "size_after": 0,
         "size_before": 304
       },
       {
         "benchmark": "i2c",
         "equivalent": true,
-        "runtime": 0.23990686237812042,
+        "runtime": 0.23924486339092255,
         "size_after": 97,
         "size_before": 1342
       },
       {
         "benchmark": "int2float",
         "equivalent": true,
-        "runtime": 0.09892971068620682,
+        "runtime": 0.0964779257774353,
         "size_after": 38,
         "size_before": 260
       },
       {
         "benchmark": "mem_ctrl",
         "equivalent": true,
-        "runtime": 8.472455978393555,
+        "runtime": 8.47114372253418,
         "size_after": 3389,
         "size_before": 46836
       },
       {
         "benchmark": "priority",
         "equivalent": true,
-        "runtime": 0.08676858991384506,
+        "runtime": 0.08516175299882889,
         "size_after": 310,
         "size_before": 978
       },
       {
         "benchmark": "router",
         "equivalent": true,
-        "runtime": 0.02195744588971138,
+        "runtime": 0.022299129515886307,
         "size_after": 0,
         "size_before": 257
       },
       {
         "benchmark": "voter",
         "equivalent": true,
-        "runtime": 2.7313835620880127,
+        "runtime": 2.655459403991699,
         "size_after": 3296,
         "size_before": 13758
       }
