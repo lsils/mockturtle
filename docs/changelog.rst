@@ -16,7 +16,7 @@ v0.3 (not yet released)
     - AQFP buffer insertion & optimization (`buffer_insertion`, which replaces `aqfp_view`) and verification (`buffer_verification`) `#478 <https://github.com/lsils/mockturtle/pull/478>`_ `#483 <https://github.com/lsils/mockturtle/pull/483>`_
     - Technology mapping and optimized network conversion (`map`) `#484 <https://github.com/lsils/mockturtle/pull/484>`_
     - Fast cut enumeration based on static truth tables (`fast_cut_enumeration`) `#474 <https://github.com/lsils/mockturtle/pull/474>`_
-    - Resynthesis of a k-LUT network into a graph (`klut_to_graph`) `#503 <https://github.com/lsils/mockturtle/pull/503>`_
+    - Resynthesis of a k-LUT network into a graph (`klut_to_graph`) `#502 <https://github.com/lsils/mockturtle/pull/502>`_
 * Views:
     - Add bindings to a standard library (`binding_view`) `#489 <https://github.com/lsils/mockturtle/pull/489>`_
 * Utils:
