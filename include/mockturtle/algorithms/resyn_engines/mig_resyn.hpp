@@ -290,7 +290,7 @@ public:
    * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
-  template<class iterator_type, class truth_table_storage_type, typename = std::enable_if_t<static_params::uniform_div_cost && !static_params::preserve_depth>>
+  template<class iterator_type, class truth_table_storage_type, bool enabled = static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
     divisors.emplace_back( ~target );
@@ -311,11 +311,13 @@ public:
     return compute_function( care );
   }
 
-  template<class iterator_type, class truth_table_storage_type, class Fn, typename = std::enable_if_t<!static_params::uniform_div_cost && !static_params::preserve_depth>>
+  template<class iterator_type, class truth_table_storage_type, class Fn, bool enabled = !static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, Fn&& size_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
-  {}
+  {
+    static_assert( !static_params::uniform_div_cost && !static_params::preserve_depth, "" );
+  }
 
-  template<class iterator_type, class truth_table_storage_type, class Fn, typename = std::enable_if_t<!static_params::uniform_div_cost && static_params::preserve_depth>>
+  template<class iterator_type, class truth_table_storage_type, class Fn, bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
   {}
 

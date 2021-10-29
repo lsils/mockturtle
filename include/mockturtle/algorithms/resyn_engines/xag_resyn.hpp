@@ -35,6 +35,7 @@
 
 #include "../../utils/index_list.hpp"
 #include "../../utils/stopwatch.hpp"
+#include "../../utils/node_map.hpp"
 
 #include <kitty/kitty.hpp>
 #include <fmt/format.h>
@@ -229,7 +230,8 @@ public:
    * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
-  template<class iterator_type, typename = std::enable_if_t<static_params::uniform_div_cost && !static_params::preserve_depth>>
+  template<class iterator_type, 
+           bool enabled = static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
@@ -255,11 +257,13 @@ public:
     return compute_function( max_size );
   }
 
-  template<class iterator_type, class Fn, typename = std::enable_if_t<!static_params::uniform_div_cost && !static_params::preserve_depth>>
+  template<class iterator_type, class Fn, 
+           bool enabled = !static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {}
 
-  template<class iterator_type, class Fn, typename = std::enable_if_t<!static_params::uniform_div_cost && static_params::preserve_depth>>
+  template<class iterator_type, class Fn, 
+           bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
   {}
 
@@ -860,7 +864,7 @@ private:
   std::array<TT, 2> on_off_sets;
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
-  const static_params::truth_table_storage_type* ptts;
+  const typename static_params::truth_table_storage_type* ptts;
   std::vector<std::conditional_t<static_params::copy_tts, TT, typename static_params::node_type>> divisors;
 
   index_list_t index_list;
