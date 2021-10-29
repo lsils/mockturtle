@@ -48,20 +48,60 @@
 namespace mockturtle
 {
 
-struct xag_resyn_params
+struct xag_resyn_static_params
 {
+  using base_type = xag_resyn_static_params;
+
   /*! \brief Maximum number of binate divisors to be considered. */
-  uint32_t max_binates{50u};
+  static constexpr uint32_t max_binates{50u};
 
   /*! \brief Reserved capacity for divisor truth tables (number of divisors). */
-  uint32_t reserve{200u};
+  static constexpr uint32_t reserve{200u};
+
+  /*! \brief Whether to consider single XOR gates (i.e., using XAGs instead of AIGs). */
+  static constexpr bool use_xor{true};
+
+  /*! \brief Whether to copy truth tables. */
+  static constexpr bool copy_tts{false};
+
+  /*! \brief Whether to preserve depth. */
+  static constexpr bool preserve_depth{false};
+
+  /*! \brief Whether the divisors have uniform costs (size and depth, whenever relevant). */
+  static constexpr bool uniform_div_cost{true};
+
+  /*! \brief Size cost of each AND gate. */
+  static constexpr uint32_t size_cost_of_and{1u};
+
+  /*! \brief Size cost of each XOR gate (only relevant when `use_xor = true`). */
+  static constexpr uint32_t size_cost_of_xor{1u};
+
+  /*! \brief Depth cost of each AND gate (only relevant when `preserve_depth = true`). */
+  static constexpr uint32_t depth_cost_of_and{1u};
+
+  /*! \brief Depth cost of each XOR gate (only relevant when `preserve_depth = true` and `use_xor = true`). */
+  static constexpr uint32_t depth_cost_of_xor{1u};
+
+  using truth_table_storage_type = void;
+  using node_type = void;
+};
+
+template<class TT>
+struct xag_resyn_static_params_default : public xag_resyn_static_params
+{
+  using truth_table_storage_type = std::vector<TT>;
+  using node_type = uint32_t;
+};
+
+template<class Ntk>
+struct xag_resyn_static_params_for_sim_resub : public xag_resyn_static_params
+{
+  using truth_table_storage_type = incomplete_node_map<kitty::partial_truth_table, Ntk>;
+  using node_type = typename Ntk::node;
 };
 
 struct xag_resyn_stats
 {
-  /*! \brief Time for adding divisor truth tables. */
-  //stopwatch<>::duration time_add_divisor{0};
-
   /*! \brief Time for finding 0-resub and collecting unate literals. */
   stopwatch<>::duration time_unate{0};
 
@@ -86,7 +126,6 @@ struct xag_resyn_stats
   void report() const
   {
     fmt::print( "[i]         <xag_resyn_decompose>\n" );
-    //fmt::print( "[i]             add divisors : {:>5.2f} secs\n", to_seconds( time_add_divisor ) );
     fmt::print( "[i]             0-resub      : {:>5.2f} secs\n", to_seconds( time_unate ) );
     fmt::print( "[i]             1-resub      : {:>5.2f} secs\n", to_seconds( time_resub1 ) );
     fmt::print( "[i]             2-resub      : {:>5.2f} secs\n", to_seconds( time_resub2 ) );
@@ -125,16 +164,12 @@ struct xag_resyn_stats
       xag_resyn_decompose<TT, node_map<TT, aig_network>, false, false, aig_network::node> resyn( st );
       auto result = resyn( target, care, divisors.begin(), divisors.end(), tts );
    \endverbatim
- *
- * \param use_xor Whether to consider XOR gates as having the same cost as AND gates (i.e., using XAGs).
- * \param copy_tts Whether to copy truth tables.
  */
-template<class TT, class truth_table_storage_type, bool use_xor = false, bool copy_tts = true, typename node_type = uint32_t>
+template<class TT, class static_params = xag_resyn_static_params_default<TT>>
 class xag_resyn_decompose
 {
 public:
   using stats = xag_resyn_stats;
-  using params = xag_resyn_params;
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
 
@@ -174,16 +209,18 @@ private:
   };
 
 public:
-  explicit xag_resyn_decompose( stats& st, params const& ps = {} ) noexcept
-    : st( st ), ps( ps )
+  explicit xag_resyn_decompose( stats& st ) noexcept
+    : st( st )
   {
-    divisors.reserve( ps.reserve );
+    static_assert( std::is_same_v<typename static_params::base_type, xag_resyn_static_params>, "Invalid static_params type" );
+    static_assert( !( static_params::uniform_div_cost && static_params::preserve_depth ), "If depth is to be preserved, divisor depth cost must be provided (usually not uniform)" );
+    divisors.reserve( static_params::reserve );
   }
 
   /*! \brief Perform XAG resynthesis.
    *
-   * `*pTTs[*begin]` must be of type `TT`.
-   * Moreover, if `copy_tts = false`, `*begin` must be of type `node_type`.
+   * `tts[*begin]` must be of type `TT`.
+   * Moreover, if `static_params::copy_tts = false`, `*begin` must be of type `static_params::node_type`.
    *
    * \param target Truth table of the target function.
    * \param care Truth table of the care set.
@@ -192,10 +229,11 @@ public:
    * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
-  template<class iterator_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_level = std::numeric_limits<uint32_t>::max() )
+  template<class iterator_type, typename = std::enable_if_t<static_params::uniform_div_cost && !static_params::preserve_depth>>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
-    (void)max_level;
+    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
+
     ptts = &tts;
     on_off_sets[0] = ~target & care;
     on_off_sets[1] = target & care;
@@ -203,7 +241,7 @@ public:
     divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
     while ( begin != end )
     {
-      if constexpr ( copy_tts )
+      if constexpr ( static_params::copy_tts )
       {
         divisors.emplace_back( (*ptts)[*begin] );
       }
@@ -216,6 +254,14 @@ public:
 
     return compute_function( max_size );
   }
+
+  template<class iterator_type, class Fn, typename = std::enable_if_t<!static_params::uniform_div_cost && !static_params::preserve_depth>>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  {}
+
+  template<class iterator_type, class Fn, typename = std::enable_if_t<!static_params::uniform_div_cost && static_params::preserve_depth>>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
+  {}
 
 private:
   std::optional<index_list_t> compute_function( uint32_t num_inserts )
@@ -273,12 +319,12 @@ private:
       return *res1and;
     }
 
-    if ( binate_divs.size() > ps.max_binates )
+    if ( binate_divs.size() > static_params::max_binates )
     {
-      binate_divs.resize( ps.max_binates );
+      binate_divs.resize( static_params::max_binates );
     }
 
-    if constexpr ( use_xor )
+    if constexpr ( static_params::use_xor )
     {
       /* collect XOR-type unate pairs and try 1-resub with XOR */
       auto const res1xor = find_xor();
@@ -397,7 +443,7 @@ private:
     {
       fanin_pair const pair = on_off_pair ? pos_unate_pairs[0] : neg_unate_pairs[0];
       call_with_stopwatch( st.time_divide, [&]() {
-        if constexpr ( use_xor )
+        if constexpr ( static_params::use_xor )
         {
           if ( pair.lit1 > pair.lit2 ) /* XOR pair: ~(lit1 ^ lit2) = ~lit1 ^ lit2 */
           {
@@ -421,7 +467,7 @@ private:
       if ( res_remain_pair )
       {
         uint32_t new_lit1;
-        if constexpr ( use_xor )
+        if constexpr ( static_params::use_xor )
         {
           new_lit1 = ( pair.lit1 > pair.lit2 ) ? index_list.add_xor( pair.lit1, pair.lit2 ) : index_list.add_and( pair.lit1, pair.lit2 );
         }
@@ -525,7 +571,7 @@ private:
   {
     for ( auto& p : unate_pairs )
     {
-      if constexpr ( use_xor )
+      if constexpr ( static_params::use_xor )
       {
         p.score = ( p.lit1 > p.lit2 ) ?
                     kitty::count_ones( ( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) )
@@ -593,7 +639,7 @@ private:
         }
         auto const ntt1 = lit1 & 0x1 ? get_div( lit1 >> 1 ) : ~get_div( lit1 >> 1 );
         TT ntt2;
-        if constexpr ( use_xor )
+        if constexpr ( static_params::use_xor )
         {
           if ( pair2.lit1 > pair2.lit2 )
           {
@@ -615,7 +661,7 @@ private:
         if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
           uint32_t new_lit1;
-          if constexpr ( use_xor )
+          if constexpr ( static_params::use_xor )
           {
             if ( pair2.lit1 > pair2.lit2 )
             {
@@ -655,7 +701,7 @@ private:
           break;
         }
         TT ntt1, ntt2;
-        if constexpr ( use_xor )
+        if constexpr ( static_params::use_xor )
         {
           if ( pair1.lit1 > pair1.lit2 )
           {
@@ -689,7 +735,7 @@ private:
         if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
           uint32_t fanin_lit1, fanin_lit2;
-          if constexpr ( use_xor )
+          if constexpr ( static_params::use_xor )
           {
             if ( pair1.lit1 > pair1.lit2 )
             {
@@ -800,7 +846,7 @@ private:
 
   inline TT const& get_div( uint32_t idx ) const
   {
-    if constexpr ( copy_tts )
+    if constexpr ( static_params::copy_tts )
     {
       return divisors[idx];
     }
@@ -814,8 +860,8 @@ private:
   std::array<TT, 2> on_off_sets;
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
-  const truth_table_storage_type* ptts;
-  std::vector<std::conditional_t<copy_tts, TT, node_type>> divisors;
+  const static_params::truth_table_storage_type* ptts;
+  std::vector<std::conditional_t<static_params::copy_tts, TT, typename static_params::node_type>> divisors;
 
   index_list_t index_list;
 
@@ -826,25 +872,26 @@ private:
   std::vector<fanin_pair> pos_unate_pairs, neg_unate_pairs;
 
   stats& st;
-  params const ps;
 }; /* xag_resyn_decompose */
 
 
 struct xag_resyn_abc_stats
 {};
 
-template<class TT, bool use_xor = false>
+template<class TT, class static_params = xag_resyn_static_params_default<TT>>
 class xag_resyn_abc
 {
 public:
   using stats = xag_resyn_abc_stats;
-  using params = xag_resyn_params;
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
 
-  explicit xag_resyn_abc( stats& st, params const& ps = {} ) noexcept
-    : st( st ), ps( ps ), counter( 0 )
-  { }
+  explicit xag_resyn_abc( stats& st) noexcept
+    : st( st ), counter( 0 )
+  {
+    static_assert( std::is_same_v<typename static_params::base_type, xag_resyn_static_params>, "Invalid static_params type" );
+    static_assert( !static_params::preserve_depth && static_params::uniform_div_cost, "Advanced resynthesis is not implemented for this solver" );
+  }
 
   virtual ~xag_resyn_abc()
   {
@@ -897,8 +944,8 @@ protected:
                /* nDivs */Vec_PtrSize( abc_divs ), 
                /* nWords */num_blocks_per_truth_table, 
                /* nLimit */nLimit, 
-               /* nDivsMax */ps.max_binates, 
-               /* iChoice */0, /* fUseXor */int(use_xor), /* fDebug */0, /* fVerbose */0, 
+               /* nDivsMax */static_params::max_binates, 
+               /* iChoice */0, /* fUseXor */int(static_params::use_xor), /* fDebug */0, /* fVerbose */0, 
                /* ppArray */&raw_list );
 
     if ( size )
@@ -951,7 +998,6 @@ protected:
   abcresub::Vec_Ptr_t * abc_divs{nullptr};
 
   stats& st;
-  params const ps;
 }; /* xag_resyn_abc */
 
 } /* namespace mockturtle */

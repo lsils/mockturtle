@@ -43,10 +43,26 @@
 namespace mockturtle
 {
 
-struct mig_resyn_params
+struct mig_resyn_static_params
 {
+  using base_type = mig_resyn_static_params;
+
   /*! \brief Reserved capacity for divisor truth tables (number of divisors). */
-  uint32_t reserve{200u};
+  static constexpr uint32_t reserve{200u};
+
+  /*! \brief Whether to preserve depth. */
+  static constexpr bool preserve_depth{false};
+
+  /*! \brief Whether the divisors have uniform costs (size and depth, whenever relevant). */
+  static constexpr bool uniform_div_cost{true};
+
+  /*! \brief Size cost of each MAJ gate. */
+  static constexpr uint32_t size_cost_of_maj{1u};
+
+  /*! \brief Depth cost of each MAJ gate (only relevant when `preserve_depth = true`). */
+  static constexpr uint32_t depth_cost_of_maj{1u};
+
+  // Future work: Consider cost for inverter / MAJ with constant input; Add XOR support (XMG)
 };
 
 struct mig_resyn_stats
@@ -61,19 +77,20 @@ struct mig_resyn_stats
  * more uncovered bits.
  * 
  */
-template<class TT>
+template<class TT, class static_params = mig_resyn_static_params>
 class mig_resyn_bottomup
 {
 public:
   using stats = mig_resyn_stats;
-  using params = mig_resyn_params;
   using index_list_t = mig_index_list;
   using truth_table_t = TT;
 
-  explicit mig_resyn_bottomup( stats& st, params const& ps = {} )
-    : st( st ), ps( ps )
+  explicit mig_resyn_bottomup( stats& st )
+    : st( st )
   {
-    divisors.reserve( ps.reserve + 2 );
+    static_assert( std::is_same_v<typename static_params::base_type, mig_resyn_static_params>, "Invalid static_params type" );
+    static_assert( !static_params::preserve_depth && static_params::uniform_div_cost, "Advanced resynthesis is not implemented for this solver" );
+    divisors.reserve( static_params::reserve );
   }
 
   template<class iterator_type, class truth_table_storage_type>
@@ -205,7 +222,6 @@ private:
   index_list_t index_list;
 
   stats& st;
-  params const ps;
 }; /* mig_resyn_bottomup */
 
 /*! \brief Logic resynthesis engine for MIGs with top-down decomposition.
@@ -217,12 +233,11 @@ private:
  * scoring functions aiming at covering more *care* bits.
  * 
  */
-template<class TT>
+template<class TT, class static_params = mig_resyn_static_params>
 class mig_resyn_topdown
 {
 public:
   using stats = mig_resyn_stats;
-  using params = mig_resyn_params;
   using index_list_t = mig_index_list;
   using truth_table_t = TT;
 
@@ -256,10 +271,12 @@ private:
   };
 
 public:
-  explicit mig_resyn_topdown( stats& st, params const& ps = {} )
-    : st( st ), ps( ps )
+  explicit mig_resyn_topdown( stats& st )
+    : st( st )
   {
-    divisors.reserve( ps.reserve + 2 );
+    static_assert( std::is_same_v<typename static_params::base_type, mig_resyn_static_params>, "Invalid static_params type" );
+    static_assert( !( static_params::uniform_div_cost && static_params::preserve_depth ), "If depth is to be preserved, divisor depth cost must be provided (usually not uniform)" );
+    divisors.reserve( static_params::reserve );
   }
 
   /*! \brief Perform MIG resynthesis.
@@ -273,10 +290,9 @@ public:
    * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
-  template<class iterator_type, class truth_table_storage_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_level = std::numeric_limits<uint32_t>::max() )
+  template<class iterator_type, class truth_table_storage_type, typename = std::enable_if_t<static_params::uniform_div_cost && !static_params::preserve_depth>>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
-    (void)max_level;
     divisors.emplace_back( ~target );
     divisors.emplace_back( target );
     
@@ -294,6 +310,14 @@ public:
 
     return compute_function( care );
   }
+
+  template<class iterator_type, class truth_table_storage_type, class Fn, typename = std::enable_if_t<!static_params::uniform_div_cost && !static_params::preserve_depth>>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, Fn&& size_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  {}
+
+  template<class iterator_type, class truth_table_storage_type, class Fn, typename = std::enable_if_t<!static_params::uniform_div_cost && static_params::preserve_depth>>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
+  {}
 
 private:
   std::optional<index_list_t> compute_function( TT const& care )
@@ -897,7 +921,6 @@ private:
   //bool first_round = true;
 
   stats& st;
-  params const ps;
 }; /* mig_resyn_topdown */
 
 /*! \brief Logic resynthesis engine for MIGs by Akers' majority synthesis algorithm.
@@ -909,19 +932,21 @@ private:
  * and Logical Design (SWCT 1962) (pp. 149-158). IEEE.
  * 
  */
+template<class static_params = mig_resyn_static_params>
 class mig_resyn_akers
 {
 public:
   using stats = mig_resyn_stats;
-  using params = mig_resyn_params;
   using index_list_t = mig_index_list;
   using TT = kitty::partial_truth_table;
   using truth_table_t = TT;
 
-  explicit mig_resyn_akers( stats& st, params const& ps = {} )
-    : id_to_lit( { 0, 1 } ), st( st ), ps( ps )
+  explicit mig_resyn_akers( stats& st )
+    : id_to_lit( { 0, 1 } ), st( st )
   {
-    divisors.reserve( ps.reserve + 2 );
+    static_assert( std::is_same_v<typename static_params::base_type, mig_resyn_static_params>, "Invalid static_params type" );
+    static_assert( !static_params::preserve_depth && static_params::uniform_div_cost, "Advanced resynthesis is not implemented for this solver" );
+    divisors.reserve( static_params::reserve );
   }
 
   template<class iterator_type, class truth_table_storage_type>
@@ -1286,6 +1311,5 @@ private:
   uint32_t fanins[3];
 
   stats& st;
-  params const ps;
 }; /* mig_resyn_akers */
 } /* namespace mockturtle */
