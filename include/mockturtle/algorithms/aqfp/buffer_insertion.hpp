@@ -1306,6 +1306,7 @@ private:
 #pragma region Global optimal by SMT
   void dump_smt_model( std::ostream& os = std::cout )
   {
+    os << "(set-logic QF_LIA)\n";
     /* hard assumptions to bound the number of variables */
     uint32_t const max_depth = depth() + 3;
     uint32_t const max_relative_depth = max_depth;
@@ -1473,7 +1474,7 @@ private:
       foreach_fanout( n, [&]( auto const& no ){
         os << fmt::format( " (ite (= (- l{} l{}) {}) 1 0)", no, n, l );
       });
-      os << ")))\n";
+      os << fmt::format( " g{}b{})))\n", n, l );
     }
 
     /* end of loop */
