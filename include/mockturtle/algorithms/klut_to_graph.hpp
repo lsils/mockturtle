@@ -29,51 +29,51 @@
   \author Andrea Costamagna
 */
 
-# pragma once
+#pragma once
 
 #include "../networks/aig.hpp"
-#include "../networks/xag.hpp"
-#include "../networks/mig.hpp"
-#include "../networks/mag.hpp"
 #include "../networks/klut.hpp"
+#include "../networks/mag.hpp"
+#include "../networks/mig.hpp"
+#include "../networks/xag.hpp"
 #include "node_resynthesis.hpp"
-#include "node_resynthesis/xag_npn.hpp"
 #include "node_resynthesis/dsd.hpp"
-#include "node_resynthesis/shannon.hpp"
 #include "node_resynthesis/mig_npn.hpp"
-#include "node_resynthesis/xmg_npn.hpp"
 #include "node_resynthesis/null.hpp"
+#include "node_resynthesis/shannon.hpp"
+#include "node_resynthesis/xag_npn.hpp"
+#include "node_resynthesis/xmg_npn.hpp"
 
 #include <typeinfo>
 
 namespace mockturtle
 {
-  namespace detail{
+namespace detail
+{
 
-  template<class NtkDest>
-  const auto set_npn_resynthesis_fn()
-  // declare the npn-resynthesis function to be used depending on the desired network type.
-  {
-    using aig_npn_type  = xag_npn_resynthesis<aig_network,xag_network,xag_npn_db_kind::aig_complete>;
-    using xag_npn_type  = xag_npn_resynthesis<xag_network,xag_network,xag_npn_db_kind::xag_complete>;
-    using mig_npn_type  = mig_npn_resynthesis;
-    using xmg_npn_type  = xmg_npn_resynthesis;
-    using null_npn_type = null_resynthesis<aig_network>;
+template<class NtkDest>
+const auto set_npn_resynthesis_fn()
+// declare the npn-resynthesis function to be used depending on the desired network type.
+{
+  using aig_npn_type = xag_npn_resynthesis<aig_network, xag_network, xag_npn_db_kind::aig_complete>;
+  using xag_npn_type = xag_npn_resynthesis<xag_network, xag_network, xag_npn_db_kind::xag_complete>;
+  using mig_npn_type = mig_npn_resynthesis;
+  using xmg_npn_type = xmg_npn_resynthesis;
+  using null_npn_type = null_resynthesis<aig_network>;
 
-    if constexpr ( std::is_same<typename NtkDest::base_type, aig_network>::value )
-      return aig_npn_type{};
-    else if constexpr (std::is_same<typename NtkDest::base_type, xag_network>::value )
-      return xag_npn_type{};
-    else if constexpr (std::is_same<typename NtkDest::base_type, mig_network>::value)
-      return mig_npn_type{};
-    else if constexpr (std::is_same<typename NtkDest::base_type, xmg_network>::value)
-      return xmg_npn_type{};
-    else 
-      static_assert( false, "NtkDest is not aig, xag, xmg nor mig" );
-  }
+  if constexpr ( std::is_same<typename NtkDest::base_type, aig_network>::value )
+    return aig_npn_type{};
+  else if constexpr ( std::is_same<typename NtkDest::base_type, xag_network>::value )
+    return xag_npn_type{};
+  else if constexpr ( std::is_same<typename NtkDest::base_type, mig_network>::value )
+    return mig_npn_type{};
+  else if constexpr ( std::is_same<typename NtkDest::base_type, xmg_network>::value )
+    return xmg_npn_type{};
+  else
+    static_assert( false, "NtkDest is not aig, xag, xmg nor mig" );
+}
 
-
-  } // namespace detail
+} // namespace detail
 
 /*! \brief Convert a k-LUT network into AIG, XAG, MIG or XMG (out-of-place)
  *
@@ -93,16 +93,16 @@ namespace mockturtle
  * \return An equivalent AIG, XAG, MIG or XMG network
  */
 
-  template<class NtkDest, class NtkSrc>
-  NtkDest convert_klut_to_graph( NtkSrc const& ntk_src )
-  {
-    static_assert( std::is_same<typename NtkSrc::base_type, klut_network>::value, "NtkSrc is not klut_network" );
-    uint32_t threshold {4}; 
-    auto fallback_npn = detail::set_npn_resynthesis_fn<NtkDest>();
-    shannon_resynthesis<NtkDest,decltype(fallback_npn)> fallback_shannon(threshold ,&fallback_npn);
-    dsd_resynthesis<NtkDest, decltype( fallback_shannon )> resyn( fallback_shannon );
-    return node_resynthesis<NtkDest>( ntk_src, resyn );
-  }
+template<class NtkDest, class NtkSrc>
+NtkDest convert_klut_to_graph( NtkSrc const& ntk_src )
+{
+  static_assert( std::is_same<typename NtkSrc::base_type, klut_network>::value, "NtkSrc is not klut_network" );
+  uint32_t threshold{4};
+  auto fallback_npn = detail::set_npn_resynthesis_fn<NtkDest>();
+  shannon_resynthesis<NtkDest, decltype( fallback_npn )> fallback_shannon( threshold, &fallback_npn );
+  dsd_resynthesis<NtkDest, decltype( fallback_shannon )> resyn( fallback_shannon );
+  return node_resynthesis<NtkDest>( ntk_src, resyn );
+}
 
 /*! \brief Convert a k-LUT network into AIG, XAG, MIG or XMG (in-place)
  *
@@ -113,15 +113,15 @@ namespace mockturtle
  * \param ntk_dest An empty AIG, XAG, MIG or XMG network to be constructed in-place
  * \param ntk_src Input k-lut network
  */
-  template<class NtkDest, class NtkSrc>
-  void convert_klut_to_graph(NtkDest& ntk_dest, NtkSrc const& ntk_src )
-  {
-    static_assert( std::is_same<typename NtkSrc::base_type, klut_network>::value, "NtkSrc is not klut_network" );
-    uint32_t threshold {4}; 
-    auto fallback_npn = detail::set_npn_resynthesis_fn<NtkDest>();
-    shannon_resynthesis<NtkDest,decltype(fallback_npn)> fallback_shannon(threshold ,&fallback_npn);
-    dsd_resynthesis<NtkDest, decltype( fallback_shannon )> resyn( fallback_shannon );
-    node_resynthesis<NtkDest>(ntk_dest, ntk_src, resyn );
-  }
+template<class NtkDest, class NtkSrc>
+void convert_klut_to_graph( NtkDest& ntk_dest, NtkSrc const& ntk_src )
+{
+  static_assert( std::is_same<typename NtkSrc::base_type, klut_network>::value, "NtkSrc is not klut_network" );
+  uint32_t threshold{4};
+  auto fallback_npn = detail::set_npn_resynthesis_fn<NtkDest>();
+  shannon_resynthesis<NtkDest, decltype( fallback_npn )> fallback_shannon( threshold, &fallback_npn );
+  dsd_resynthesis<NtkDest, decltype( fallback_shannon )> resyn( fallback_shannon );
+  node_resynthesis<NtkDest>( ntk_dest, ntk_src, resyn );
+}
 
 } // namespace mockturtle

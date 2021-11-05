@@ -54,7 +54,7 @@ TEST_CASE( "AIG, XAG, MIG, XMG: DSD-R only ", "[klut_to_graph]" )
 TEST_CASE( "AIG, XAG, MIG, XMG: DSD-R -fallback-> NPN-R", "[klut_to_graph]" )
 {
   kitty::dynamic_truth_table table( 6u );
-  kitty::create_from_expression( table, "((ab){((cd)(ef))((!c!d)(!e!f))})");
+  kitty::create_from_expression( table, "((ab){((cd)(ef))((!c!d)(!e!f))})" );
 
   klut_network kLUT_ntk;
   aig_network aig;
@@ -104,7 +104,6 @@ TEST_CASE( "AIG, XAG, MIG, XMG: SD-R -fallback-> NPN-R", "[klut_to_graph]" )
   const auto x3 = kLUT_ntk.create_pi();
   const auto x4 = kLUT_ntk.create_pi();
   const auto x5 = kLUT_ntk.create_pi();
-  
 
   auto fn = [&]( kitty::dynamic_truth_table const& remainder, std::vector<klut_network::signal> const& children ) {
     return kLUT_ntk.create_node( children, remainder );
@@ -121,14 +120,13 @@ TEST_CASE( "AIG, XAG, MIG, XMG: SD-R -fallback-> NPN-R", "[klut_to_graph]" )
   CHECK( simulate<kitty::dynamic_truth_table>( aig, sim )[0] == table );
   CHECK( simulate<kitty::dynamic_truth_table>( xag, sim )[0] == table );
   CHECK( simulate<kitty::dynamic_truth_table>( mig, sim )[0] == table );
-  CHECK( simulate<kitty::dynamic_truth_table>( xmg, sim )[0] == table ); 
+  CHECK( simulate<kitty::dynamic_truth_table>( xmg, sim )[0] == table );
 }
-
 
 // Combine all of the three resynthesis functions
 TEST_CASE( "AIG, XAG, MIG, XMG: DSD-R -fallback-> SD-R -fallback-> NPN-R", "[klut_to_graph]" )
 {
-  
+
   kitty::dynamic_truth_table table( 6u );
   kitty::create_from_expression( table, "({(a((bc)(de)))(!a((!b!c)(!d!e)))}f)" );
 
@@ -163,11 +161,10 @@ TEST_CASE( "AIG, XAG, MIG, XMG: DSD-R -fallback-> SD-R -fallback-> NPN-R", "[klu
   CHECK( simulate<kitty::dynamic_truth_table>( xmg, sim )[0] == table );
 }
 
-
 // Random 10 inputs LUT
 TEST_CASE( "AIG,XAG,MIG,XMG: Random 10-LUT ", "[klut_to_graph]" )
 {
-  
+
   kitty::dynamic_truth_table table( 10u );
   kitty::create_random( table, 112358 );
 
@@ -207,11 +204,10 @@ TEST_CASE( "AIG,XAG,MIG,XMG: Random 10-LUT ", "[klut_to_graph]" )
   CHECK( simulate<kitty::dynamic_truth_table>( xmg, sim )[0] == table );
 }
 
-
 // additional test for XAG explicitely presenting a XAG
 TEST_CASE( "XAG: DSD-R -fallback-> NPN-R", "[klut_to_graph]" )
 {
-  
+
   kitty::dynamic_truth_table table( 6u );
   kitty::create_from_expression( table, "((ab){{(ef)(cd)}([cd](!e!f))})" );
 
