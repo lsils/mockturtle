@@ -33,7 +33,7 @@
 
 #include "../networks/aig.hpp"
 #include "../networks/klut.hpp"
-#include "../networks/mag.hpp"
+#include "../networks/xmg.hpp"
 #include "../networks/mig.hpp"
 #include "../networks/xag.hpp"
 #include "node_resynthesis.hpp"
