@@ -1,7 +1,7 @@
 k-LUT to graph conversion
 -------------------------
 
-**Header:** ``mockturtle/algorithms/node_resynthesis/klut_to_graph.hpp``
+**Header:** ``mockturtle/algorithms/klut_to_graph.hpp``
 
 This header file implements utility functions to convert a :math:`k`-LUT network into a
 homogeneous graph network, such as AIG, XAG, MIG or XMG. It wraps around three node resynthesis strategies for the user.

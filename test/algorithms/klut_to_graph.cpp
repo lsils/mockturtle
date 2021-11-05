@@ -1,6 +1,6 @@
 #include <catch.hpp>
 #include <iostream>
-#include <mockturtle/algorithms/node_resynthesis/klut_to_graph.hpp>
+#include <mockturtle/algorithms/klut_to_graph.hpp>
 using namespace mockturtle;
 
 /* NOTATION
