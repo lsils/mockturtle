@@ -35,11 +35,11 @@
 
 #pragma once
 
-#include "../experimental/boolean_optimization.hpp"
 #include "../../utils/index_list.hpp"
+#include "../experimental/boolean_optimization.hpp"
 #include <kitty/kitty.hpp>
-#include <vector>
 #include <optional>
+#include <vector>
 
 namespace mockturtle::experimental
 {
@@ -114,6 +114,7 @@ struct aig_enumerative_resyn_stats
 
   void report() const
   {
+    // clang-format off
     fmt::print( "[i] aig_enumerative_resyn_stats\n" );
     fmt::print( "[i]     constant-resub {:6d}                                   ({:>5.2f} secs)\n",
                               num_const_accepts, to_seconds( time_resubC ) );
@@ -131,6 +132,7 @@ struct aig_enumerative_resyn_stats
                               num_div3_accepts, num_div3_and_2or_accepts, num_div3_or_2and_accepts, to_seconds( time_resub3 ) );
     fmt::print( "[i] total   {:6d}\n",
                               (num_const_accepts + num_div0_accepts + num_div1_accepts + num_div12_accepts + num_div2_accepts + num_div3_accepts) );
+    // clang-format on
   }
 }; /* aig_enumerative_resyn_stats */
 
@@ -145,8 +147,10 @@ public:
 
 public:
   explicit aig_enumerative_resyn( stats& st, params const& ps = {} ) noexcept
-    : st( st )
-  { (void)ps; }
+      : st( st )
+  {
+    (void)ps;
+  }
 
   template<class iterator_type, class truth_table_storage_type>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
@@ -266,7 +270,7 @@ public:
     /* 2-resub */
     for ( i = 0u; i < pos_unate.size(); ++i )
     {
-      for ( j = i + 1; j < pos_unate.size(); ++j ) 
+      for ( j = i + 1; j < pos_unate.size(); ++j )
       {
         for ( k = j + 1; k < pos_unate.size(); ++k )
         {
@@ -281,7 +285,7 @@ public:
 
     for ( i = 0u; i < neg_unate.size(); ++i )
     {
-      for ( j = i + 1; j < neg_unate.size(); ++j ) 
+      for ( j = i + 1; j < neg_unate.size(); ++j )
       {
         for ( k = j + 1; k < neg_unate.size(); ++k )
         {
@@ -295,7 +299,7 @@ public:
     }
 
     /* collect binate divisors */
-    std::vector<std::pair<uint32_t, uint32_t> > neg_binates, pos_binates;
+    std::vector<std::pair<uint32_t, uint32_t>> neg_binates, pos_binates;
 
     for ( i = 0u; i < binate.size(); ++i )
     {
@@ -351,19 +355,19 @@ public:
         }
       }
     }
-    for ( i = 0u; i < pos_binates.size(); ++i ) 
+    for ( i = 0u; i < pos_binates.size(); ++i )
     {
       auto const& tt_binate = get_tt_from_lit( pos_binates[i].first, tts, begin ) & get_tt_from_lit( pos_binates[i].second, tts, begin );
       for ( j = 0u; j < pos_unate.size(); ++j )
       {
         if ( target == ( get_tt_from_lit( pos_unate[j], tts, begin ) | tt_binate ) )
         {
-          il.add_output( il.add_and( il.add_and( pos_binates[i].first, pos_binates[i].second) ^ 0x1, pos_unate[j] ^ 0x1 ) ^ 0x1 ); // AND-OR
+          il.add_output( il.add_and( il.add_and( pos_binates[i].first, pos_binates[i].second ) ^ 0x1, pos_unate[j] ^ 0x1 ) ^ 0x1 ); // AND-OR
           return il;
         }
       }
     }
-    for ( i = 0u; i < neg_binates.size(); ++i ) 
+    for ( i = 0u; i < neg_binates.size(); ++i )
     {
       auto const& tt_binate = get_tt_from_lit( neg_binates[i].first, tts, begin ) | get_tt_from_lit( neg_binates[i].second, tts, begin );
       for ( j = 0u; j < neg_unate.size(); ++j )
@@ -376,13 +380,13 @@ public:
       }
     }
 
-    if ( max_size == 2 ) 
+    if ( max_size == 2 )
     {
       return std::nullopt;
     }
 
     /* 3-resub */
-    for ( i = 0u; i < neg_binates.size(); ++i ) 
+    for ( i = 0u; i < neg_binates.size(); ++i )
     {
       auto const& tt_binate = get_tt_from_lit( neg_binates[i].first, tts, begin ) | get_tt_from_lit( neg_binates[i].second, tts, begin );
       for ( j = i + 1; j < neg_binates.size(); ++j )
@@ -394,7 +398,7 @@ public:
         }
       }
     }
-    for ( i = 0u; i < pos_binates.size(); ++i ) 
+    for ( i = 0u; i < pos_binates.size(); ++i )
     {
       auto const& tt_binate = get_tt_from_lit( pos_binates[i].first, tts, begin ) & get_tt_from_lit( pos_binates[i].second, tts, begin );
       for ( j = i + 1; j < pos_binates.size(); ++j )
@@ -409,7 +413,7 @@ public:
 
     for ( i = 0u; i < pos_unate.size(); ++i )
     {
-      for ( j = i + 1; j < pos_unate.size(); ++j ) 
+      for ( j = i + 1; j < pos_unate.size(); ++j )
       {
         for ( k = j + 1; k < pos_unate.size(); ++k )
         {
@@ -427,7 +431,7 @@ public:
 
     for ( i = 0u; i < neg_unate.size(); ++i )
     {
-      for ( j = i + 1; j < neg_unate.size(); ++j ) 
+      for ( j = i + 1; j < neg_unate.size(); ++j )
       {
         for ( k = j + 1; k < neg_unate.size(); ++k )
         {
@@ -443,7 +447,7 @@ public:
       }
     }
 
-    if ( max_size == 3 ) 
+    if ( max_size == 3 )
     {
       return std::nullopt;
     }
@@ -454,18 +458,17 @@ public:
 private:
   uint32_t make_lit( uint32_t const& var, bool const& inv = false )
   {
-    return (var + 1) * 2 + (uint32_t)inv;
+    return ( var + 1 ) * 2 + (uint32_t)inv;
   }
 
   template<class truth_table_storage_type, class iterator_type>
   TT get_tt_from_lit( uint32_t const& lit, truth_table_storage_type const& tts, iterator_type const& begin )
   {
-    return (lit % 2) ? ~tts[*(begin + (lit / 2) - 1)] : tts[*(begin + (lit / 2) - 1)];
+    return ( lit % 2 ) ? ~tts[*( begin + ( lit / 2 ) - 1 )] : tts[*( begin + ( lit / 2 ) - 1 )];
   }
 
 private:
   stats& st;
 }; /* aig_enumerative_resyn */
 
-
-} /* namespace mockturtle */
+} // namespace mockturtle::experimental

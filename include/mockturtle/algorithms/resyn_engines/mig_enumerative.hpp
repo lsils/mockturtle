@@ -35,11 +35,11 @@
 
 #pragma once
 
-#include "../experimental/boolean_optimization.hpp"
 #include "../../utils/index_list.hpp"
+#include "../experimental/boolean_optimization.hpp"
 #include <kitty/kitty.hpp>
-#include <vector>
 #include <optional>
+#include <vector>
 
 namespace mockturtle::experimental
 {
@@ -63,8 +63,10 @@ public:
 
 public:
   explicit mig_enumerative_resyn( stats& st, params const& ps = {} ) noexcept
-    : st( st )
-  { (void)ps; }
+      : st( st )
+  {
+    (void)ps;
+  }
 
   template<class iterator_type, class truth_table_storage_type>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
@@ -134,10 +136,10 @@ public:
         {
           maj1pairs.emplace_back( make_lit( i, true ), make_lit( j, true ) );
         }
-        else if ( std::find( binate.begin(), binate.end(), make_lit( i ) ) == binate.end())
+        else if ( std::find( binate.begin(), binate.end(), make_lit( i ) ) == binate.end() )
         {
-          binate.emplace_back(  make_lit( i ) );
-          binate.emplace_back(  make_lit( i, true ) ); /* 2x redundant memory*/
+          binate.emplace_back( make_lit( i ) );
+          binate.emplace_back( make_lit( i, true ) ); /* 2x redundant memory*/
         }
       }
       if ( kitty::implies( tts[*it], target ) )
@@ -156,10 +158,10 @@ public:
       {
         maj1pairs.emplace_back( make_lit( i, true ), 0 );
       }
-      else if ( std::find( binate.begin(), binate.end(), make_lit( i ) ) == binate.end())
+      else if ( std::find( binate.begin(), binate.end(), make_lit( i ) ) == binate.end() )
       {
-        binate.emplace_back(  make_lit( i ) );
-        binate.emplace_back(  make_lit( i, true ) ); /* 2x redundant memory*/
+        binate.emplace_back( make_lit( i ) );
+        binate.emplace_back( make_lit( i, true ) ); /* 2x redundant memory*/
       }
     }
 
@@ -248,10 +250,10 @@ public:
           auto tt_binate = kitty::ternary_majority( x, y, z );
           if ( kitty::implies( tt_binate, target ) ) /* Boolean Over-Filtering */
           {
-            for ( l = 0u; l < maj1pairs.size(); ++l ) 
+            for ( l = 0u; l < maj1pairs.size(); ++l )
             {
-              auto const & a = get_tt_from_lit( maj1pairs[l].first, tts, begin );
-              auto tt = maj1pairs[l].second >= 2? kitty::ternary_majority( a, get_tt_from_lit( maj1pairs[l].second, tts, begin ), tt_binate ) : maj1pairs[l].second? a | tt_binate : a & tt_binate; 
+              auto const& a = get_tt_from_lit( maj1pairs[l].first, tts, begin );
+              auto tt = maj1pairs[l].second >= 2 ? kitty::ternary_majority( a, get_tt_from_lit( maj1pairs[l].second, tts, begin ), tt_binate ) : maj1pairs[l].second ? a | tt_binate : a & tt_binate;
               if ( tt == target )
               {
                 il.add_output( il.add_maj( maj1pairs[l].first, maj1pairs[l].second, il.add_maj( binate[i], binate[j], binate[k] ) ) );
@@ -274,17 +276,17 @@ public:
 private:
   uint32_t make_lit( uint32_t const& var, bool const& inv = false )
   {
-    return (var + 1) * 2 + (uint32_t)inv;
+    return ( var + 1 ) * 2 + (uint32_t)inv;
   }
 
   template<class truth_table_storage_type, class iterator_type>
   TT get_tt_from_lit( uint32_t const& lit, truth_table_storage_type const& tts, iterator_type const& begin )
   {
-    return (lit % 2) ? ~tts[*(begin + (lit / 2) - 1)] : tts[*(begin + (lit / 2) - 1)];
+    return ( lit % 2 ) ? ~tts[*( begin + ( lit / 2 ) - 1 )] : tts[*( begin + ( lit / 2 ) - 1 )];
   }
 
 private:
   stats& st;
 }; /* mig_enumerative_resyn */
 
-} /* namespace mockturtle */
+} // namespace mockturtle::experimental
