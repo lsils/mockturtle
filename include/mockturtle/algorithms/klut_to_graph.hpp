@@ -30,24 +30,25 @@
 */
 
 # pragma once
-#include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/xag.hpp>
-#include <mockturtle/networks/klut.hpp>
-#include <mockturtle/algorithms/node_resynthesis.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
-#include <mockturtle/algorithms/node_resynthesis/dsd.hpp>
-#include <mockturtle/algorithms/node_resynthesis/shannon.hpp>
-#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xmg_npn.hpp>
-#include "null.hpp"
+
+#include "../networks/aig.hpp"
+#include "../networks/xag.hpp"
+#include "../networks/mig.hpp"
+#include "../networks/mag.hpp"
+#include "../networks/klut.hpp"
+#include "node_resynthesis.hpp"
+#include "node_resynthesis/xag_npn.hpp"
+#include "node_resynthesis/dsd.hpp"
+#include "node_resynthesis/shannon.hpp"
+#include "node_resynthesis/mig_npn.hpp"
+#include "node_resynthesis/xmg_npn.hpp"
+#include "node_resynthesis/null.hpp"
+
 #include <typeinfo>
 
 namespace mockturtle
 {
   namespace detail{
-
-  template <class T>
-  constexpr bool always_false = false;
 
   template<class NtkDest>
   const auto set_npn_resynthesis_fn()
@@ -68,7 +69,7 @@ namespace mockturtle
     else if constexpr (std::is_same<typename NtkDest::base_type, xmg_network>::value)
       return xmg_npn_type{};
     else 
-      static_assert( always_false<NtkDest>, "NtkDest is not aig, xag, xmg nor mig" );
+      static_assert( false, "NtkDest is not aig, xag, xmg nor mig" );
   }
 
 
@@ -93,14 +94,14 @@ namespace mockturtle
  */
 
   template<class NtkDest, class NtkSrc>
-  NtkDest convert_klut_to_graph( NtkSrc const& ntk_src, node_resynthesis_params const& ps = {}, node_resynthesis_stats* pst = nullptr )
+  NtkDest convert_klut_to_graph( NtkSrc const& ntk_src )
   {
     static_assert( std::is_same<typename NtkSrc::base_type, klut_network>::value, "NtkSrc is not klut_network" );
     uint32_t threshold {4}; 
     auto fallback_npn = detail::set_npn_resynthesis_fn<NtkDest>();
     shannon_resynthesis<NtkDest,decltype(fallback_npn)> fallback_shannon(threshold ,&fallback_npn);
     dsd_resynthesis<NtkDest, decltype( fallback_shannon )> resyn( fallback_shannon );
-    return node_resynthesis<NtkDest>( ntk_src, resyn, ps, pst );
+    return node_resynthesis<NtkDest>( ntk_src, resyn );
   }
 
 /*! \brief Convert a k-LUT network into AIG, XAG, MIG or XMG (in-place)
@@ -113,14 +114,14 @@ namespace mockturtle
  * \param ntk_src Input k-lut network
  */
   template<class NtkDest, class NtkSrc>
-  void convert_klut_to_graph(NtkDest& ntk_dest, NtkSrc const& ntk_src, node_resynthesis_params const& ps = {}, node_resynthesis_stats* pst = nullptr )
+  void convert_klut_to_graph(NtkDest& ntk_dest, NtkSrc const& ntk_src )
   {
     static_assert( std::is_same<typename NtkSrc::base_type, klut_network>::value, "NtkSrc is not klut_network" );
     uint32_t threshold {4}; 
     auto fallback_npn = detail::set_npn_resynthesis_fn<NtkDest>();
     shannon_resynthesis<NtkDest,decltype(fallback_npn)> fallback_shannon(threshold ,&fallback_npn);
     dsd_resynthesis<NtkDest, decltype( fallback_shannon )> resyn( fallback_shannon );
-    node_resynthesis<NtkDest>(ntk_dest, ntk_src, resyn, ps, pst );
+    node_resynthesis<NtkDest>(ntk_dest, ntk_src, resyn );
   }
 
 } // namespace mockturtle

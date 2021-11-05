@@ -28,13 +28,13 @@ The following example shows how to convert a :math:`k`-LUT network into an AIG, 
    /* in-place version */
    mig_network mig;
    xmg_network xmg;
-   mig = convert_klut_to_graph<mig_network>( klut );
-   xmg = convert_klut_to_graph<xmg_network>( klut );
+   convert_klut_to_graph<mig_network>( mig, klut );
+   convert_klut_to_graph<xmg_network>( xmg, klut );
 
 Algorithm
 ~~~~~~~~~
 
-.. doxygenfunction:: mockturtle::convert_klut_to_graph( NtkSrc const&, node_resynthesis_params const&, node_resynthesis_stats* pst )
+.. doxygenfunction:: mockturtle::convert_klut_to_graph( NtkSrc const& )
 
-.. doxygenfunction:: mockturtle::convert_klut_to_graph(NtkDest&, NtkSrc const&, node_resynthesis_params const& ps, node_resynthesis_stats* pst )
+.. doxygenfunction:: mockturtle::convert_klut_to_graph( NtkDest&, NtkSrc const& )
 
