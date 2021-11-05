@@ -25,7 +25,7 @@
 
 /*!
   \file klut_to_graph.hpp
-  \brief Wrapper of the node_resynthesis function. Resynthesis of a k-LUT network into a graph (AIG, XAG, MIG or XMG).
+  \brief Convert a k-LUT network into AIG, XAG, MIG or XMG.
   \author Andrea Costamagna
 */
 
@@ -74,7 +74,7 @@ namespace mockturtle
 
   } // namespace detail
 
-/*! \brief convert_klut_to_graph function
+/*! \brief Convert a k-LUT network into AIG, XAG, MIG or XMG (out-of-place)
  *
  * This function is a wrapper function for resynthesizing a k-LUT network (type `NtkSrc`) into a
  * new graph (of type `NtkDest`). The new data structure can be of type AIG, XAG, MIG or XMG.
@@ -86,28 +86,10 @@ namespace mockturtle
  * the network in further subnetworks with reduced support.
  * Finally, once the threshold value of 4 is reached, the NPN mapping completes the graph definition.
  *
- * \param ntk_src Input network of type `NtkSource`. This must be either 'klut_network' or a wrapped version of it.  
- * \return An equivalent network of type `NtkDest`. This is either AIG, XAG xor MIG
- * 
-  \verbatim embed:rst
-
-  Example
-
-  .. code-block:: c++
-
-    const klut_network klut = ...;
-
-    aig_network aig;
-    xag_network xag;
-    mig_network mig;
-    xmg_network xmg;
-
-    aig = convert_klut_to_graph( klut_ntk );
-    xag = convert_klut_to_graph( klut_ntk ); 
-    mig = convert_klut_to_graph( klut_ntk );
-    xmg = convert_klut_to_graph( klut_ntk );
-
-  \endverbatim
+ * \tparam NtkDest Type of the destination network. Its base type should be either `aig_network`, `xag_network`, `mig_network`, or `xmg_network`.
+ * \tparam NtkSrc Type of the source network. Its base type should be `klut_network`.
+ * \param ntk_src Input k-lut network
+ * \return An equivalent AIG, XAG, MIG or XMG network
  */
 
   template<class NtkDest, class NtkSrc>
@@ -121,39 +103,14 @@ namespace mockturtle
     return node_resynthesis<NtkDest>( ntk_src, resyn, ps, pst );
   }
 
-/*! \brief Inline convert_klut_to_graph function
+/*! \brief Convert a k-LUT network into AIG, XAG, MIG or XMG (in-place)
  *
- * This function is a wrapper function for resynthesizing a k-LUT network (type `NtkSrc`) into a
- * new graph (of type `NtkDest`). The new data structure can be of type AIG, XAG, MIG or XMG.
- * First the function attempts a Disjoint Support Decomposition (DSD), branching the network into subnetworks. 
- * As soon as DSD can no longer be done, there are two possibilities depending on the dimensionality of the 
- * subnetwork to be resynthesized. On the one hand, if the size of the associated support is lower or equal 
- * than 4, the solution can be recovered by exploiting the mapping of the subnetwork to its NPN-class.
- * On the other hand, if the support size is higher than 4, A Shannon decomposition is performed, branching 
- * the network in further subnetworks with reduced support.
- * Finally, once the threshold value of 4 is reached, the NPN mapping completes the graph definition. 
+ * The algorithmic details are the same as the out-of-place version.
  *
- * \param ntk_src Input network of type `NtkSource`. This must be either 'klut_network' or a wrapped version of it.  
- * \param ntk_dest Output network of type `NtkDest`. This is either AIG, XAG xor MIG
-  \verbatim embed:rst
-
-  Example
-
-  .. code-block:: c++
-
-    const klut_network klut = ...;
-
-    aig_network aig;
-    xag_network xag;
-    mig_network mig;
-    xmg_network xmg;
-
-    convert_klut_to_graph( aig, klut_ntk );
-    convert_klut_to_graph( xag, klut_ntk ); 
-    convert_klut_to_graph( mig, klut_ntk );
-    convert_klut_to_graph( xmg, klut_ntk );
-
-  \endverbatim
+ * \tparam NtkDest Type of the destination network. Its base type should be either `aig_network`, `xag_network`, `mig_network`, or `xmg_network`.
+ * \tparam NtkSrc Type of the source network. Its base type should be `klut_network`.
+ * \param ntk_dest An empty AIG, XAG, MIG or XMG network to be constructed in-place
+ * \param ntk_src Input k-lut network
  */
   template<class NtkDest, class NtkSrc>
   void convert_klut_to_graph(NtkDest& ntk_dest, NtkSrc const& ntk_src, node_resynthesis_params const& ps = {}, node_resynthesis_stats* pst = nullptr )
