@@ -175,7 +175,7 @@ TEST_CASE( "Incremental simulation with partial_simulator", "[simulation]" )
   unordered_node_map<kitty::partial_truth_table, aig_network> node_to_value( aig );
   simulate_nodes( aig, node_to_value, sim );
   CHECK( ( aig.is_complemented( f2 ) ? ~node_to_value[f2] : node_to_value[f2] )._bits[0] == 0 );
-  CHECK( ( aig.is_complemented( f4 ) ? ~node_to_value[f4] : node_to_value[f4] )._bits[0] == ~0 );
+  CHECK( ( aig.is_complemented( f4 ) ? ~node_to_value[f4] : node_to_value[f4] )._bits[0] == ~uint64_t( 0 ) );
 
   std::vector<bool> pattern( 3 );
   pattern[0] = 0; pattern[1] = 1; pattern[2] = 0;

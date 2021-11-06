@@ -37,6 +37,7 @@
 #include "../../views/fanout_view.hpp"
 #include "../../utils/index_list.hpp"
 #include "../../networks/xag.hpp"
+#include "../../networks/aig.hpp"
 #include "../detail/resub_utils.hpp"
 #include "../resyn_engines/xag_resyn.hpp"
 #include "../resyn_engines/aig_enumerative.hpp"
@@ -486,17 +487,14 @@ using sim_resub_stats = boolean_optimization_stats<breadth_first_windowing_stats
 template<class Ntk>
 void simulation_xag_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, sim_resub_stats* pst = nullptr )
 {
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk::base_type is not xag_network" );
+
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
 
-  struct resyn_sparams : public xag_resyn_static_params_for_sim_resub<ViewedNtk>
-  {
-    constexpr bool use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
-  };
-
   using windowing_t = typename detail::breadth_first_windowing<ViewedNtk>;
-  using engine_t = xag_resyn_decompose<kitty::partial_truth_table, resyn_sparams>;
+  using engine_t = xag_resyn_decompose<kitty::partial_truth_table, xag_resyn_static_params_for_sim_resub<ViewedNtk>>;
   using resyn_t = typename detail::simulation_guided_resynthesis<ViewedNtk, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
@@ -514,5 +512,35 @@ void simulation_xag_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, 
     *pst = st;
   }
 }
+
+template<class Ntk>
+void simulation_aig_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, sim_resub_stats* pst = nullptr )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, aig_network>, "Ntk::base_type is not aig_network" );
+
+  using ViewedNtk = depth_view<fanout_view<Ntk>>;
+  fanout_view<Ntk> fntk( ntk );
+  ViewedNtk viewed( fntk );
+
+  using windowing_t = typename detail::breadth_first_windowing<ViewedNtk>;
+  using engine_t = xag_resyn_decompose<kitty::partial_truth_table, aig_resyn_static_params_for_sim_resub<ViewedNtk>>;
+  using resyn_t = typename detail::simulation_guided_resynthesis<ViewedNtk, engine_t>; 
+  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+  sim_resub_stats st;
+  opt_t p( viewed, ps, st );
+  p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
+
 
 } /* namespace mockturtle::experimental */

@@ -94,11 +94,23 @@ struct xag_resyn_static_params_default : public xag_resyn_static_params
   using node_type = uint32_t;
 };
 
+template<class TT>
+struct aig_resyn_static_params_default : public xag_resyn_static_params_default<TT>
+{
+  static constexpr bool use_xor = false;
+};
+
 template<class Ntk>
 struct xag_resyn_static_params_for_sim_resub : public xag_resyn_static_params
 {
   using truth_table_storage_type = incomplete_node_map<kitty::partial_truth_table, Ntk>;
   using node_type = typename Ntk::node;
+};
+
+template<class Ntk>
+struct aig_resyn_static_params_for_sim_resub : public xag_resyn_static_params_for_sim_resub<Ntk>
+{
+  static constexpr bool use_xor = false;
 };
 
 struct xag_resyn_stats
