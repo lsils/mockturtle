@@ -62,7 +62,7 @@ struct breadth_first_windowing_params
   uint32_t max_divisors{50};
 
   /*! \brief Maximum number of TFI nodes to collect. */
-  uint32_t max_tfi{max_divisors * 0.5};
+  uint32_t max_tfi{uint32_t(max_divisors * 0.5)};
 
   /*! \brief Maximum number of nodes added by resubstitution. */
   uint32_t max_inserts{std::numeric_limits<uint32_t>::max()};
