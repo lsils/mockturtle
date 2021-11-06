@@ -394,7 +394,7 @@ public:
   using stats_t = null_stats;
 
   explicit complete_tt_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), engine( rst, rps )
+    : ntk( ntk ), engine( rst )
   { }
 
   void init()
@@ -414,7 +414,6 @@ public:
 
 private:
   Ntk const& ntk;
-  typename ResynEngine::params rps;
   typename ResynEngine::stats rst;
   ResynEngine engine;
 }; /* complete_tt_resynthesis */
@@ -431,10 +430,14 @@ void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
 
-  constexpr bool use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
   using TT = typename kitty::dynamic_truth_table;
+  struct resyn_sparams : public xag_resyn_static_params_default<TT>
+  {
+    constexpr bool use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
+  };
+  
   using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
-  using engine_t = xag_resyn_decompose<TT, std::vector<TT>, use_xor, /*copy_tts*/false, /*node_type*/uint32_t>;
+  using engine_t = xag_resyn_decompose<TT, resyn_sparams>;
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
@@ -505,7 +508,7 @@ void window_mig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
 
   using TT = typename kitty::dynamic_truth_table;
   using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
-  using engine_t = mig_resyn_bottomup<TT>;
+  using engine_t = mig_resyn_topdown<TT>;
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 

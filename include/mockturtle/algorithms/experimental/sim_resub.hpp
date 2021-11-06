@@ -335,7 +335,7 @@ public:
   using validator_t = circuit_validator<Ntk, Solver, /*use_pushpop*/false, /*randomize*/true, /*use_odc*/UseODC>;
 
   explicit simulation_guided_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), ps( ps ), st( st ), engine( rst, rps ), 
+    : ntk( ntk ), ps( ps ), st( st ), engine( rst ), 
       validator( ntk, {ps.max_clauses, ps.odc_levels, ps.conflict_limit, ps.random_seed} ), tts( ntk )
   { }
 
@@ -469,7 +469,6 @@ private:
   Ntk const& ntk;
   params_t const& ps;
   stats_t& st;
-  typename ResynEngine::params rps;
   typename ResynEngine::stats rst;
   ResynEngine engine;
   partial_simulator sim;
@@ -491,10 +490,13 @@ void simulation_xag_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, 
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
 
-  constexpr bool use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
-  using TT = typename kitty::partial_truth_table;
+  struct resyn_sparams : public xag_resyn_static_params_for_sim_resub<ViewedNtk>
+  {
+    constexpr bool use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
+  };
+
   using windowing_t = typename detail::breadth_first_windowing<ViewedNtk>;
-  using engine_t = xag_resyn_decompose<TT, incomplete_node_map<TT, ViewedNtk>, use_xor, /*copy_tts*/false, /*node_type*/typename ViewedNtk::node>;
+  using engine_t = xag_resyn_decompose<kitty::partial_truth_table, resyn_sparams>;
   using resyn_t = typename detail::simulation_guided_resynthesis<ViewedNtk, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 

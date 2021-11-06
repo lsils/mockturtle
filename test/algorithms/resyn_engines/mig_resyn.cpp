@@ -83,21 +83,21 @@ void test_2resub()
 
 TEST_CASE( "MIG resynthesis engines -- 0-resub", "[mig_resyn]" )
 {
-  test_0resub<mig_resyn_bottomup<kitty::partial_truth_table>>();
-  test_0resub<mig_resyn_topdown<kitty::partial_truth_table>>();
-  test_0resub<mig_resyn_akers>();
+  test_0resub<mig_resyn_bottomup<kitty::partial_truth_table, mig_resyn_static_params>>();
+  test_0resub<mig_resyn_topdown<kitty::partial_truth_table, mig_resyn_static_params>>();
+  test_0resub<mig_resyn_akers<mig_resyn_static_params>>();
 }
 
 TEST_CASE( "MIG resynthesis engines -- 1-resub", "[mig_resyn]" )
 {
-  test_1resub<mig_resyn_bottomup<kitty::partial_truth_table>>();
-  test_1resub<mig_resyn_topdown<kitty::partial_truth_table>>();
-  test_1resub<mig_resyn_akers>();
+  test_1resub<mig_resyn_bottomup<kitty::partial_truth_table, mig_resyn_static_params>>();
+  test_1resub<mig_resyn_topdown<kitty::partial_truth_table, mig_resyn_static_params>>();
+  test_1resub<mig_resyn_akers<mig_resyn_static_params>>();
 }
 
 TEST_CASE( "MIG resynthesis engines -- 2-resub", "[mig_resyn]" )
 {
-  test_2resub<mig_resyn_bottomup<kitty::partial_truth_table>>();
-  test_2resub<mig_resyn_topdown<kitty::partial_truth_table>>();
-  test_2resub<mig_resyn_akers>();
+  test_2resub<mig_resyn_bottomup<kitty::partial_truth_table, mig_resyn_static_params>>();
+  test_2resub<mig_resyn_topdown<kitty::partial_truth_table, mig_resyn_static_params>>();
+  test_2resub<mig_resyn_akers<mig_resyn_static_params>>();
 }
