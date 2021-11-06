@@ -37,6 +37,7 @@
 #include "../../views/fanout_view.hpp"
 #include "../../utils/index_list.hpp"
 #include "../../networks/xag.hpp"
+#include "../../networks/aig.hpp"
 #include "../detail/resub_utils.hpp"
 #include "../resyn_engines/xag_resyn.hpp"
 #include "../resyn_engines/aig_enumerative.hpp"
@@ -426,18 +427,45 @@ using window_resub_stats = boolean_optimization_stats<complete_tt_windowing_stat
 template<class Ntk>
 void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
 {
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk::base_type is not xag_network" );
+
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
 
-  using TT = typename kitty::dynamic_truth_table;
-  struct resyn_sparams : public xag_resyn_static_params_default<TT>
-  {
-    constexpr bool use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
-  };
-  
+  using TT = typename kitty::dynamic_truth_table;  
   using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
-  using engine_t = xag_resyn_decompose<TT, resyn_sparams>;
+  using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_default<TT>>;
+  using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
+  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+  window_resub_stats st;
+  opt_t p( viewed, ps, st );
+  p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
+
+template<class Ntk>
+void window_aig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, aig_network>, "Ntk::base_type is not aig_network" );
+
+  using ViewedNtk = depth_view<fanout_view<Ntk>>;
+  fanout_view<Ntk> fntk( ntk );
+  ViewedNtk viewed( fntk );
+
+  using TT = typename kitty::dynamic_truth_table;  
+  using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
+  using engine_t = xag_resyn_decompose<TT, aig_resyn_static_params_default<TT>>;
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
