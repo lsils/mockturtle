@@ -433,7 +433,8 @@ private:
   {
     _external_ref_count.reset( 0u );
     _ntk.foreach_po( [&]( auto const& f ) {
-      _external_ref_count[f]++;
+      if ( !_ntk.is_constant( _ntk.get_node( f ) ) )
+        _external_ref_count[f]++;
     } );
 
     _fanouts.reset();
@@ -451,6 +452,26 @@ private:
       if ( _external_ref_count[n] > 0u )
         _fanouts[n].push_back( {_depth + 1 - _levels[n], {}, _external_ref_count[n]} );
     });
+
+    /* //debugging checks
+    if ( !_ps.assume.branch_pis )
+    {
+      _ntk.foreach_pi( [&]( auto const& n ) { assert( _fanouts[n].size() == 0 ); });
+      _ntk.foreach_gate( [&]( auto const& n ) {
+        if ( _ntk.fanout_size( n ) == 1 ) assert( _fanouts[n].size() == 1 );
+        else assert( _fanouts[n].front().relative_depth > 1 );
+      });
+    }
+    else
+    {
+      _ntk.foreach_node( [&]( auto const& n ) {
+        if ( _ntk.is_constant( n ) || _ntk.fanout_size( n ) == 0 ) return true;
+        if ( _ntk.fanout_size( n ) == 1 ) assert( _fanouts[n].size() == 1 );
+        else assert( _fanouts[n].front().relative_depth > 1 );
+        return true;
+      });
+    }
+    */
 
     _ntk.foreach_gate( [&]( auto const& n ) {
       count_edges( n );
@@ -493,6 +514,7 @@ private:
   void insert_fanout( node const& n, node const& fanout )
   {
     auto const rd = _levels[fanout] - _levels[n];
+    assert( rd > 0 );
     auto& fo_infos = _fanouts[n];
     for ( auto it = fo_infos.begin(); it != fo_infos.end(); ++it )
     {
@@ -811,6 +833,8 @@ private:
   template<class BufNtk, typename Buffers>
   void create_buffer_chain( BufNtk& bufntk, Buffers& buffers, node const& n, typename BufNtk::signal const& s ) const
   {
+    if ( _ntk.fanout_size( n ) == 0 ) return; /* dangling */
+
     auto const& fanout_info = _fanouts[n];
     assert( fanout_info.size() > 0u );
 
@@ -903,10 +927,11 @@ public:
     }
     else if ( _ps.optimization_effort == buffer_insertion_params::optimal )
     {
-      std::string filename = "model.txt";
+      std::string filename = "model.smt";
       std::ofstream os( filename.c_str(), std::ofstream::out );
       dump_smt_model( os );
       os.close();
+      std::system( "z3 model.smt" );
       return;
     }
     
