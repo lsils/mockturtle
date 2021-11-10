@@ -9,6 +9,7 @@
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_verification.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/utils/name_utils.hpp>
 #include <lorina/verilog.hpp>
 #include <lorina/aiger.hpp>
 #include <lorina/diagnostics.hpp>
@@ -55,7 +56,9 @@ int main()
     buffered_mig_network bufntk;
     uint32_t num_buffers = aqfp.run( bufntk );
     bool verified = verify_aqfp_buffer( bufntk, ps.assume );
-    write_verilog( bufntk, "testcase_iscas85/mockturtle/" + benchmark + "_buffered.v" );
+    names_view named_bufntk{bufntk};
+    restore_pio_names_by_order( ntk, named_bufntk );
+    write_verilog( named_bufntk, "testcase_iscas85/mockturtle/" + benchmark + "_buffered.v" );
 
     depth_view d{ntk};
     depth_view d_buf{bufntk};
