@@ -1,97 +1,71 @@
-/* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
-
-#include "experiments.hpp"
-#include <mockturtle/io/verilog_reader.hpp>
+#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/buffered.hpp>
+#include <mockturtle/io/verilog_reader.hpp>
+#include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/io/write_verilog.hpp>
+#include <mockturtle/views/names_view.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_verification.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
+#include <lorina/verilog.hpp>
+#include <lorina/aiger.hpp>
+#include <lorina/diagnostics.hpp>
+#include "experiments.hpp"
 
-#include <lorina/lorina.hpp>
-#include <fmt/format.h>
-#include <string>
-#include <algorithm>
+#include <iostream>
 
-/* Note: Please download this repository: https://github.com/lsils/ASPDAC2021_exp 
-   and copy the folder ASPDAC2021_exp/experiments/benchmarks_aqfp/ to the build path of mockturtle. */
 int main()
 {
-  using namespace experiments;
   using namespace mockturtle;
+  using namespace experiments;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t>
-    exp( "buffer_insertion", "benchmark", "#gates", "depth", "ASAP", "ALAP", "opt", "depth_JJ" );
+  std::vector<std::string> benchmarks( 
+    {"adder1", "adder8", "mult8", "counter16", "counter32", "counter64", "counter128",
+     "c17", "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552",
+     "sorter32", "sorter48", "alu32"} );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool>
+    exp( "buffer_insertion", "benchmark", "#gates", "depth", "#buffers", "ori. #JJs", "opt. #JJs", "depth_JJ", "verified" );
 
-  static const std::string benchmarks_aqfp[] = {
-    /*"5xp1",*/ "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
-    "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn"};
-
-  for ( auto const& benchmark : benchmarks_aqfp )
+  for ( auto benchmark : benchmarks )
   {
-    uint32_t b_ASAP, b_ALAP, b_OPT;
-    fmt::print( "[i] processing {}\n", benchmark );
-    mig_network mig;
-    if ( lorina::read_verilog( "benchmarks_aqfp/" + benchmark + ".v", verilog_reader( mig ) ) != lorina::return_code::success )
-      return -1;
-    
-    buffer_insertion_params ps;
-    ps.optimization_effort = buffer_insertion_params::until_sat;
-    ps.assume.splitter_capacity = 3u;
-    ps.assume.branch_pis = true;
-    ps.assume.balance_pis = false;
-    ps.assume.balance_pos = false;
-    
-    buffer_insertion aqfp( mig, ps );
-
-    aqfp.ASAP();
-    aqfp.count_buffers();
-    b_ASAP = aqfp.num_buffers();
-    
-    aqfp.ALAP();
-    aqfp.count_buffers();
-    b_ALAP = aqfp.num_buffers();
-
-    if ( b_ALAP > b_ASAP )
+    std::cout << "\n[i] processing " << benchmark << "\n";
+    names_view<mig_network> ntk;
+    lorina::text_diagnostics td;
+    lorina::diagnostic_engine diag( &td );
+    auto res = lorina::read_verilog( "testcase_iscas85/" + benchmark + ".v", verilog_reader( ntk ), &diag );
+    if ( res != lorina::return_code::success )
     {
-      aqfp.ASAP(); // UNDO ALAP
-      aqfp.count_buffers();
+      std::cout << "read failed\n";
+      continue;
     }
+    ntk = cleanup_dangling( ntk );
+    write_verilog( ntk, "testcase_iscas85/mockturtle/" + benchmark + ".v" );
 
-    aqfp.optimize();
-    aqfp.count_buffers();
-    b_OPT = aqfp.num_buffers();
-
+    buffer_insertion_params ps;
+    ps.scheduling = buffer_insertion_params::better;
+    ps.optimization_effort = buffer_insertion_params::until_sat;
+    ps.assume.splitter_capacity = 4u;
+    ps.assume.branch_pis = true;
+    ps.assume.balance_pis = true;
+    ps.assume.balance_pos = true;
+    
+    buffer_insertion aqfp( ntk, ps );
     buffered_mig_network bufntk;
-    aqfp.dump_buffered_network( bufntk );
-    depth_view d_buf{bufntk};
-    assert( verify_aqfp_buffer( bufntk, ps.assume ) );
+    uint32_t num_buffers = aqfp.run( bufntk );
+    bool verified = verify_aqfp_buffer( bufntk, ps.assume );
+    write_verilog( bufntk, "testcase_iscas85/mockturtle/" + benchmark + "_buffered.v" );
 
-    depth_view d{mig};
-    exp( benchmark, mig.num_gates(), d.depth(), b_ASAP, b_ALAP, b_OPT, d_buf.depth() );
+    depth_view d{ntk};
+    depth_view d_buf{bufntk};
+
+    ntk.foreach_po( [&](auto f){
+      if ( ntk.fanout_size( ntk.get_node( f ) ) > 1 && !ntk.is_pi( ntk.get_node( f ) ) && d_buf.is_on_critical_path( ntk.get_node( f ) ) )
+        std::cout << "[i] multi-fanout PO " << ntk.get_node( f ) << " on critical path (#FO = " << ntk.fanout_size( ntk.get_node( f ) ) << ")\n";
+    });
+
+    exp( benchmark, ntk.num_gates(), d.depth(), num_buffers, ntk.num_gates() * 6, ntk.num_gates() * 6 + num_buffers * 2, d_buf.depth(), verified );
   }
 
   exp.save();
