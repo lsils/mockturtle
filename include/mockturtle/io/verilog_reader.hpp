@@ -118,6 +118,10 @@ public:
       {
         signals_[name] = ntk_.create_pi( name );
         input_names_.emplace_back( name, 1u );
+        if constexpr ( has_set_name_v<Ntk> )
+        {
+          ntk_.set_name( signals_[name], name );
+        }
       }
       else
       {
@@ -128,6 +132,10 @@ public:
           const auto sname = fmt::format( "{}[{}]", name, i );
           word.push_back( ntk_.create_pi( sname ) );
           signals_[sname] = word.back();
+          if constexpr ( has_set_name_v<Ntk> )
+          {
+            ntk_.set_name( signals_[sname], sname );
+          }
         }
         registers_[name] = word;
         input_names_.emplace_back( name, length );
@@ -350,6 +358,93 @@ public:
 
       add_register( args[2].second, montgomery_multiplication( ntk_, registers_[args[0].second], registers_[args[1].second], N, NN ) );
     }
+    else if ( module_name == "or_bi" || module_name == "or_bb" || module_name == "or_ii" )
+    {
+      signal<Ntk> fi1, fi2;
+      std::string lhs;
+      for ( auto const& arg : args )
+      {
+        if ( arg.first == ".a" )
+          fi1 = signals_[arg.second];
+        else if ( arg.first == ".b" )
+          fi2 = signals_[arg.second];
+        else if ( arg.first == ".c" )
+          lhs = arg.second;
+        else
+          fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
+      }
+      if ( module_name == "or_bi" )
+        signals_[lhs] = ntk_.create_or( fi1, !fi2 );
+      else if ( module_name == "or_ii" )
+        signals_[lhs] = ntk_.create_or( !fi1, !fi2 );
+      else
+        signals_[lhs] = ntk_.create_or( fi1, fi2 );
+      return;
+    }
+    else if ( module_name == "and_bi" || module_name == "and_bb" || module_name == "and_ii" )
+    {
+      signal<Ntk> fi1, fi2;
+      std::string lhs;
+      for ( auto const& arg : args )
+      {
+        if ( arg.first == ".a" )
+          fi1 = signals_[arg.second];
+        else if ( arg.first == ".b" )
+          fi2 = signals_[arg.second];
+        else if ( arg.first == ".c" )
+          lhs = arg.second;
+        else
+          fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
+      }
+      if ( module_name == "and_bi" )
+        signals_[lhs] = ntk_.create_and( fi1, !fi2 );
+      else if ( module_name == "and_ii" )
+        signals_[lhs] = ntk_.create_and( !fi1, !fi2 );
+      else
+        signals_[lhs] = ntk_.create_and( fi1, fi2 );
+      return;
+    }
+    else if ( module_name == "maj_bbb" || module_name == "maj_bbi" || module_name == "maj_bii" )
+    {
+      signal<Ntk> fi1, fi2, fi3;
+      std::string lhs;
+      for ( auto const& arg : args )
+      {
+        if ( arg.first == ".a" )
+          fi1 = signals_[arg.second];
+        else if ( arg.first == ".b" )
+          fi2 = signals_[arg.second];
+        else if ( arg.first == ".c" )
+          fi3 = signals_[arg.second];
+        else if ( arg.first == ".d" )
+          lhs = arg.second;
+        else
+          fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
+      }
+      if ( module_name == "maj_bbb" )
+        signals_[lhs] = ntk_.create_maj( fi1, fi2, fi3 );
+      else if ( module_name == "maj_bbi" )
+        signals_[lhs] = ntk_.create_maj( fi1, fi2, !fi3 );
+      else
+        signals_[lhs] = ntk_.create_maj( fi1, !fi2, !fi3 );
+      return;
+    }
+    else if ( module_name == "inv" )
+    {
+      signal<Ntk> fi;
+      std::string lhs;
+      for ( auto const& arg : args )
+      {
+        if ( arg.first == ".din" )
+          fi = signals_[arg.second];
+        else if ( arg.first == ".dout" )
+          lhs = arg.second;
+        else
+          fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
+      }
+      signals_[lhs] = ntk_.create_not( fi );
+      return;
+    }
     else
     {
       if constexpr( is_buffered_network_type_v<Ntk> )
@@ -390,6 +485,26 @@ public:
     for ( auto const& o : outputs_ )
     {
       ntk_.create_po( signals_[o], o );
+    }
+
+    if constexpr ( has_set_output_name_v<Ntk> )
+    {
+      uint32_t ctr{0u};
+      for ( auto const& output_name : output_names_ )
+      {
+        if ( output_name.second == 1u )
+        {
+          ntk_.set_output_name( ctr++, output_name.first );
+        }
+        else
+        {
+          for ( auto i = 0u; i < output_name.second; ++i )
+          {
+            ntk_.set_output_name( ctr++, fmt::format( "{}[{}]", output_name.first, i ) );
+          }
+        }
+      }
+      assert( ctr == ntk_.num_pos() );
     }
   }
 
