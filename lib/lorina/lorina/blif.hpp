@@ -328,7 +328,7 @@ static std::regex end( R"(.end)" );
           return false;
         } );
 
-        on_action.call_deferred( args, output, args, output, tt );
+        on_action.call_deferred( args, { output }, args, output, tt );
 
         if ( in.eof() )
         {
@@ -394,7 +394,7 @@ static std::regex end( R"(.end)" );
 
           on_action.declare_known( output );
           reader.on_latch( input, output, type, control, init_value );
-          on_action.compute_dependencies( output );
+          on_action.compute_dependencies( { output } );
 
           return true;
         }

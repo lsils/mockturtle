@@ -226,7 +226,7 @@ static std::regex gate_asgn( R"((.*)\s+=\s+(.*))" );
       const auto type = detail::trim_copy( m[2] );
       const auto args = detail::trim_copy( m[3] );
       const auto inputs = detail::split( args, "," );
-      on_action.call_deferred( inputs, output, inputs, output, type );
+      on_action.call_deferred( inputs, { output }, inputs, output, type );
       return true;
     }
 
@@ -237,7 +237,7 @@ static std::regex gate_asgn( R"((.*)\s+=\s+(.*))" );
       const auto arg = detail::trim_copy( m[2] );
       reader.on_dff_input( output );
       on_action.declare_known( output );
-      on_action.call_deferred( { arg }, output, { arg }, output, "DFF" );
+      on_action.call_deferred( { arg }, { output }, { arg }, output, "DFF" );
       return true;
     }
 
@@ -248,7 +248,7 @@ static std::regex gate_asgn( R"((.*)\s+=\s+(.*))" );
       const auto type = detail::trim_copy( m[2] );
       const auto args = detail::trim_copy( m[3] );
       const auto inputs = detail::split( args, "," );
-      on_action.call_deferred( inputs, output, inputs, output, type );
+      on_action.call_deferred( inputs, { output }, inputs, output, type );
       return true;
     }
 
@@ -257,7 +257,7 @@ static std::regex gate_asgn( R"((.*)\s+=\s+(.*))" );
     {
       const auto output = detail::trim_copy( m[1] );
       const auto input = detail::trim_copy( m[2] );
-      on_action.call_deferred( { input }, output, { input }, output, "" );
+      on_action.call_deferred( { input }, { output }, { input }, output, "" );
       return true;
     }
 
