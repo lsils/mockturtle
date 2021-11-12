@@ -360,14 +360,24 @@ public:
     }
     else if ( module_name == "or_bi" || module_name == "or_bb" || module_name == "or_ii" )
     {
-      signal<Ntk> fi1, fi2;
+      signal<Ntk> fi1 = ntk_.get_constant( false ), fi2 = ntk_.get_constant( false );
       std::string lhs;
       for ( auto const& arg : args )
       {
         if ( arg.first == ".a" )
-          fi1 = signals_[arg.second];
+        {
+          if ( signals_.find( arg.second ) == signals_.end() )
+            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+          else
+            fi1 = signals_[arg.second];
+        }
         else if ( arg.first == ".b" )
-          fi2 = signals_[arg.second];
+        {
+          if ( signals_.find( arg.second ) == signals_.end() )
+            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+          else
+            fi2 = signals_[arg.second];
+        }
         else if ( arg.first == ".c" )
           lhs = arg.second;
         else
@@ -383,14 +393,24 @@ public:
     }
     else if ( module_name == "and_bi" || module_name == "and_bb" || module_name == "and_ii" )
     {
-      signal<Ntk> fi1, fi2;
+      signal<Ntk> fi1 = ntk_.get_constant( false ), fi2 = ntk_.get_constant( false );
       std::string lhs;
       for ( auto const& arg : args )
       {
         if ( arg.first == ".a" )
-          fi1 = signals_[arg.second];
+        {
+          if ( signals_.find( arg.second ) == signals_.end() )
+            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+          else
+            fi1 = signals_[arg.second];
+        }
         else if ( arg.first == ".b" )
-          fi2 = signals_[arg.second];
+        {
+          if ( signals_.find( arg.second ) == signals_.end() )
+            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+          else
+            fi2 = signals_[arg.second];
+        }
         else if ( arg.first == ".c" )
           lhs = arg.second;
         else
@@ -406,16 +426,31 @@ public:
     }
     else if ( module_name == "maj_bbb" || module_name == "maj_bbi" || module_name == "maj_bii" )
     {
-      signal<Ntk> fi1, fi2, fi3;
+      signal<Ntk> fi1 = ntk_.get_constant( false ), fi2 = ntk_.get_constant( false ), fi3 = ntk_.get_constant( false );
       std::string lhs;
       for ( auto const& arg : args )
       {
         if ( arg.first == ".a" )
-          fi1 = signals_[arg.second];
+        {
+          if ( signals_.find( arg.second ) == signals_.end() )
+            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+          else
+            fi1 = signals_[arg.second];
+        }
         else if ( arg.first == ".b" )
-          fi2 = signals_[arg.second];
+        {
+          if ( signals_.find( arg.second ) == signals_.end() )
+            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+          else
+            fi2 = signals_[arg.second];
+        }
         else if ( arg.first == ".c" )
-          fi3 = signals_[arg.second];
+        {
+          if ( signals_.find( arg.second ) == signals_.end() )
+            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+          else
+            fi3 = signals_[arg.second];
+        }
         else if ( arg.first == ".d" )
           lhs = arg.second;
         else
@@ -431,12 +466,17 @@ public:
     }
     else if ( module_name == "inv" )
     {
-      signal<Ntk> fi;
+      signal<Ntk> fi = ntk_.get_constant( false );
       std::string lhs;
       for ( auto const& arg : args )
       {
         if ( arg.first == ".din" )
-          fi = signals_[arg.second];
+        {
+          if ( signals_.find( arg.second ) == signals_.end() )
+            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+          else
+            fi = signals_[arg.second];
+        }
         else if ( arg.first == ".dout" )
           lhs = arg.second;
         else
@@ -456,12 +496,17 @@ public:
           if ( !num_args_equals( 2u ) )
             fmt::print( stderr, "[e] number of arguments of a `{}` instance is not 2\n", module_name );
           
-          signal<Ntk> fi;
+          signal<Ntk> fi = ntk_.get_constant( false );
           std::string lhs;
           for ( auto const& arg : args )
           {
             if ( arg.first == ".i" )
-              fi = signals_[arg.second];
+            {
+              if ( signals_.find( arg.second ) == signals_.end() )
+                fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+              else
+                fi = signals_[arg.second];
+            }
             else if ( arg.first == ".o" )
               lhs = arg.second;
             else
