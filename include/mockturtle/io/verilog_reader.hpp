@@ -358,167 +358,37 @@ public:
 
       add_register( args[2].second, montgomery_multiplication( ntk_, registers_[args[0].second], registers_[args[1].second], N, NN ) );
     }
-    else if ( module_name == "or_bi" || module_name == "or_bb" || module_name == "or_ii" )
-    {
-      signal<Ntk> fi1 = ntk_.get_constant( false ), fi2 = ntk_.get_constant( false );
-      std::string lhs;
-      for ( auto const& arg : args )
-      {
-        if ( arg.first == ".a" )
-        {
-          if ( signals_.find( arg.second ) == signals_.end() )
-            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
-          else
-            fi1 = signals_[arg.second];
-        }
-        else if ( arg.first == ".b" )
-        {
-          if ( signals_.find( arg.second ) == signals_.end() )
-            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
-          else
-            fi2 = signals_[arg.second];
-        }
-        else if ( arg.first == ".c" )
-          lhs = arg.second;
-        else
-          fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
-      }
-      if ( module_name == "or_bi" )
-        signals_[lhs] = ntk_.create_or( fi1, !fi2 );
-      else if ( module_name == "or_ii" )
-        signals_[lhs] = ntk_.create_or( !fi1, !fi2 );
-      else
-        signals_[lhs] = ntk_.create_or( fi1, fi2 );
-      return;
-    }
-    else if ( module_name == "and_bi" || module_name == "and_bb" || module_name == "and_ii" )
-    {
-      signal<Ntk> fi1 = ntk_.get_constant( false ), fi2 = ntk_.get_constant( false );
-      std::string lhs;
-      for ( auto const& arg : args )
-      {
-        if ( arg.first == ".a" )
-        {
-          if ( signals_.find( arg.second ) == signals_.end() )
-            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
-          else
-            fi1 = signals_[arg.second];
-        }
-        else if ( arg.first == ".b" )
-        {
-          if ( signals_.find( arg.second ) == signals_.end() )
-            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
-          else
-            fi2 = signals_[arg.second];
-        }
-        else if ( arg.first == ".c" )
-          lhs = arg.second;
-        else
-          fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
-      }
-      if ( module_name == "and_bi" )
-        signals_[lhs] = ntk_.create_and( fi1, !fi2 );
-      else if ( module_name == "and_ii" )
-        signals_[lhs] = ntk_.create_and( !fi1, !fi2 );
-      else
-        signals_[lhs] = ntk_.create_and( fi1, fi2 );
-      return;
-    }
-    else if ( module_name == "maj_bbb" || module_name == "maj_bbi" || module_name == "maj_bii" )
-    {
-      signal<Ntk> fi1 = ntk_.get_constant( false ), fi2 = ntk_.get_constant( false ), fi3 = ntk_.get_constant( false );
-      std::string lhs;
-      for ( auto const& arg : args )
-      {
-        if ( arg.first == ".a" )
-        {
-          if ( signals_.find( arg.second ) == signals_.end() )
-            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
-          else
-            fi1 = signals_[arg.second];
-        }
-        else if ( arg.first == ".b" )
-        {
-          if ( signals_.find( arg.second ) == signals_.end() )
-            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
-          else
-            fi2 = signals_[arg.second];
-        }
-        else if ( arg.first == ".c" )
-        {
-          if ( signals_.find( arg.second ) == signals_.end() )
-            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
-          else
-            fi3 = signals_[arg.second];
-        }
-        else if ( arg.first == ".d" )
-          lhs = arg.second;
-        else
-          fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
-      }
-      if ( module_name == "maj_bbb" )
-        signals_[lhs] = ntk_.create_maj( fi1, fi2, fi3 );
-      else if ( module_name == "maj_bbi" )
-        signals_[lhs] = ntk_.create_maj( fi1, fi2, !fi3 );
-      else
-        signals_[lhs] = ntk_.create_maj( fi1, !fi2, !fi3 );
-      return;
-    }
-    else if ( module_name == "inv" )
-    {
-      signal<Ntk> fi = ntk_.get_constant( false );
-      std::string lhs;
-      for ( auto const& arg : args )
-      {
-        if ( arg.first == ".din" )
-        {
-          if ( signals_.find( arg.second ) == signals_.end() )
-            fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
-          else
-            fi = signals_[arg.second];
-        }
-        else if ( arg.first == ".dout" )
-          lhs = arg.second;
-        else
-          fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
-      }
-      signals_[lhs] = ntk_.create_not( fi );
-      return;
-    }
-    else
+    else if ( module_name == "buffer" || module_name == "inverter" )
     {
       if constexpr( is_buffered_network_type_v<Ntk> )
       {
         static_assert( has_create_buf_v<Ntk>, "Ntk does not implement the create_buf method" );
-
-        if ( module_name == "buffer" || module_name == "inverter" )
+        if ( !num_args_equals( 2u ) )
+          fmt::print( stderr, "[e] number of arguments of a `{}` instance is not 2\n", module_name );
+        
+        signal<Ntk> fi = ntk_.get_constant( false );
+        std::string lhs;
+        for ( auto const& arg : args )
         {
-          if ( !num_args_equals( 2u ) )
-            fmt::print( stderr, "[e] number of arguments of a `{}` instance is not 2\n", module_name );
-          
-          signal<Ntk> fi = ntk_.get_constant( false );
-          std::string lhs;
-          for ( auto const& arg : args )
+          if ( arg.first == ".i" )
           {
-            if ( arg.first == ".i" )
-            {
-              if ( signals_.find( arg.second ) == signals_.end() )
-                fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
-              else
-                fi = signals_[arg.second];
-            }
-            else if ( arg.first == ".o" )
-              lhs = arg.second;
+            if ( signals_.find( arg.second ) == signals_.end() )
+              fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
             else
-              fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
+              fi = signals_[arg.second];
           }
-          if ( module_name == "inverter" )
-            fi = ntk_.create_not( fi );
-          signals_[lhs] = ntk_.create_buf( fi );
-          return;
+          else if ( arg.first == ".o" )
+            lhs = arg.second;
+          else
+            fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
         }
+        if ( module_name == "inverter" )
+          fi = ntk_.create_not( fi );
+        signals_[lhs] = ntk_.create_buf( fi );
       }
-      
+    }
+    else
+    {
       fmt::print( stderr, "[e] unknown module name {}\n", module_name );
     }
   }
