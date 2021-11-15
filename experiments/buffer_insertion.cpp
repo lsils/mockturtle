@@ -21,8 +21,15 @@ int main()
 {
   using namespace mockturtle;
   using namespace experiments;
+  /* NOTE 1: To run the "optimal" insertion, please clone and build Z3: https://github.com/Z3Prover/z3
+   * And have `z3` available as a system call
+   */
 
-  std::vector<std::string> benchmarks( 
+  /* NOTE 2: Please clone this repository: https://github.com/lsils/SCE-benchmarks
+   * And put in the following string the relative path from your build path to SCE-benchmarks/ISCAS/strashed/
+   */
+  std::string benchmark_path = "../../SCE-benchmarks/ISCAS/strashed/";
+  std::vector<std::string> benchmarks(
     {"adder1", "adder8", "mult8", "counter16", "counter32", "counter64", "counter128",
      "c17", "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552",
      "sorter32", "sorter48", "alu32"} );
@@ -31,12 +38,12 @@ int main()
 
   for ( auto benchmark : benchmarks )
   {
-    if ( benchmark != "c432" ) continue;
+    //if ( benchmark != "c432" ) continue;
     std::cout << "\n[i] processing " << benchmark << "\n";
     names_view<mig_network> ntk;
     lorina::text_diagnostics td;
     lorina::diagnostic_engine diag( &td );
-    auto res = lorina::read_verilog( "iscas/mockturtle/" + benchmark + ".v", verilog_reader( ntk ), &diag );
+    auto res = lorina::read_verilog( benchmark_path + benchmark + ".v", verilog_reader( ntk ), &diag );
     if ( res != lorina::return_code::success )
     {
       std::cout << "read failed\n";
