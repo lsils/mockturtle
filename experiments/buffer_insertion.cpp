@@ -31,22 +31,21 @@ int main()
 
   for ( auto benchmark : benchmarks )
   {
+    if ( benchmark != "c432" ) continue;
     std::cout << "\n[i] processing " << benchmark << "\n";
     names_view<mig_network> ntk;
     lorina::text_diagnostics td;
     lorina::diagnostic_engine diag( &td );
-    auto res = lorina::read_verilog( "testcase_iscas85/" + benchmark + ".v", verilog_reader( ntk ), &diag );
+    auto res = lorina::read_verilog( "iscas/mockturtle/" + benchmark + ".v", verilog_reader( ntk ), &diag );
     if ( res != lorina::return_code::success )
     {
       std::cout << "read failed\n";
       continue;
     }
-    ntk = cleanup_dangling( ntk );
-    write_verilog( ntk, "testcase_iscas85/mockturtle/" + benchmark + ".v" );
 
     buffer_insertion_params ps;
     ps.scheduling = buffer_insertion_params::better;
-    ps.optimization_effort = buffer_insertion_params::until_sat;
+    ps.optimization_effort = buffer_insertion_params::optimal;
     ps.assume.splitter_capacity = 4u;
     ps.assume.branch_pis = true;
     ps.assume.balance_pis = true;
@@ -56,17 +55,14 @@ int main()
     buffered_mig_network bufntk;
     uint32_t num_buffers = aqfp.run( bufntk );
     bool verified = verify_aqfp_buffer( bufntk, ps.assume );
-    names_view named_bufntk{bufntk};
-    restore_pio_names_by_order( ntk, named_bufntk );
-    write_verilog( named_bufntk, "testcase_iscas85/mockturtle/" + benchmark + "_buffered.v" );
 
     depth_view d{ntk};
     depth_view d_buf{bufntk};
 
-    ntk.foreach_po( [&](auto f){
-      if ( ntk.fanout_size( ntk.get_node( f ) ) > 1 && !ntk.is_pi( ntk.get_node( f ) ) && d_buf.is_on_critical_path( ntk.get_node( f ) ) )
-        std::cout << "[i] multi-fanout PO " << ntk.get_node( f ) << " on critical path (#FO = " << ntk.fanout_size( ntk.get_node( f ) ) << ")\n";
-    });
+    //ntk.foreach_po( [&](auto f){
+    //  if ( ntk.fanout_size( ntk.get_node( f ) ) > 1 && !ntk.is_pi( ntk.get_node( f ) ) && d_buf.is_on_critical_path( ntk.get_node( f ) ) )
+    //    std::cout << "[i] multi-fanout PO " << ntk.get_node( f ) << " on critical path (#FO = " << ntk.fanout_size( ntk.get_node( f ) ) << ")\n";
+    //});
 
     exp( benchmark, ntk.num_gates(), d.depth(), num_buffers, ntk.num_gates() * 6, ntk.num_gates() * 6 + num_buffers * 2, d_buf.depth(), verified );
   }
