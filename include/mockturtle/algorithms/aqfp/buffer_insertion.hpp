@@ -928,6 +928,7 @@ public:
     else if ( _ps.optimization_effort == buffer_insertion_params::optimal )
     {
       optimize_with_smt();
+      return;
     }
     
     if ( _outdated )

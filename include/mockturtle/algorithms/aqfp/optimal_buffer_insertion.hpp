@@ -35,15 +35,15 @@
 
 void optimize_with_smt()
 {
-  std::string filename = "model.smt";
-  std::ofstream os( filename.c_str(), std::ofstream::out );
+  std::ofstream os( "model.smt", std::ofstream::out );
   dump_smt_model( os );
   os.close();
-  std::system( "z3 model.smt" );
+  std::system( "z3 model.smt | tee sol.txt" );
+  parse_z3_result();
   return;
 }
 
-#if 0 // ILP formulation
+#if 1 // ILP formulation
 void dump_smt_model( std::ostream& os = std::cout )
 {
   os << "(set-logic QF_LIA)\n";
@@ -53,12 +53,7 @@ void dump_smt_model( std::ostream& os = std::cout )
   count_buffers();
   uint32_t const upper_bound = num_buffers();
 
-  /* declare variables for the level of each node */
-  _ntk.foreach_node( [&]( auto const& n ){
-    os << fmt::format( "(declare-const l{} Int)\n", uint32_t( n ) );
-  });
-
-  /* range constraints */
+  /* depth */
   std::string depth;
   if ( _ps.assume.balance_pos ) /* depth is a variable */
   {
@@ -70,49 +65,191 @@ void dump_smt_model( std::ostream& os = std::cout )
   {
     depth = fmt::format( "{}", max_depth );
   }
+
+  /* declare variables for the level of each node */
+  std::vector<std::string> level_vars;
+  if ( _ps.assume.branch_pis && !_ps.assume.balance_pis )
+  {
+    /* Only if we branch but not balance PIs, they are free variables as gates */
+    _ntk.foreach_pi( [&]( auto const& n ){
+      level_vars.emplace_back( fmt::format( "l{}", n ) );
+      os << fmt::format( "(declare-const l{} Int)\n", n );
+      os << fmt::format( "(assert (<= l{} {}))\n", n, depth );
+      os << fmt::format( "(assert (>= l{} 0))\n", n );
+    });
+  }
+
   _ntk.foreach_gate( [&]( auto const& n ){
-    os << fmt::format( "(assert (<= l{} {}))\n", uint32_t( n ), depth );
-    os << fmt::format( "(assert (>= l{} 0))\n", uint32_t( n ) );
+    level_vars.emplace_back( fmt::format( "l{}", n ) );
+    os << fmt::format( "(declare-const l{} Int)\n", n );
+    os << fmt::format( "(assert (<= l{} {}))\n", n, depth );
+    os << fmt::format( "(assert (>= l{} 1))\n", n );
   });
-  /* constant node is always at level 0 */
-  os << fmt::format( "(assert (= l{} 0))\n", _ntk.get_node( _ntk.get_constant( false ) ) );
-  if ( _ps.assume.balance_pis ) /* PIs are at level 0 */
-  {
-    _ntk.foreach_pi( [&]( auto const& n ){
-      os << fmt::format( "(assert (= l{} 0))\n", n );
-    });
-  }
-  else /* PIs are free (but still has to be within the range) */
-  {
-    _ntk.foreach_pi( [&]( auto const& n ){
-      os << fmt::format( "(assert (<= l{} {}))\n", uint32_t( n ), depth );
-      os << fmt::format( "(assert (>= l{} 0))\n", uint32_t( n ) );
-    });
-  }
 
   /* constraints for each gate's fanout */
   std::vector<std::string> bufs;
   if ( _ps.assume.branch_pis )
   {
-    _ntk.foreach_pi( [&]( auto const& n ){
-      smt_constraints( os, n, max_relative_depth );
-      bufs.emplace_back( fmt::format( "bufs{}", n ) );
-    });
+    /* If PIs are balanced, they are always at level 0 so we don't have variables for them */
+    if ( _ps.assume.balance_pis )
+    {
+      _ntk.foreach_pi( [&]( auto const& n ){
+        smt_constraints_balanced_pis( os, n, max_depth, max_relative_depth );
+        bufs.emplace_back( fmt::format( "bufs{}", n ) );
+      });
+    }
+    else
+    {
+      _ntk.foreach_pi( [&]( auto const& n ){
+        smt_constraints( os, n, max_depth, max_relative_depth );
+        bufs.emplace_back( fmt::format( "bufs{}", n ) );
+      });
+    }
   }
   _ntk.foreach_gate( [&]( auto const& n ){
-    smt_constraints( os, n, max_relative_depth );
+    smt_constraints( os, n, max_depth, max_relative_depth );
     bufs.emplace_back( fmt::format( "bufs{}", n ) );
   });
-
-  // NOTE: the depth variable does not take into account the PO branching buffers
 
   os << "\n(declare-const total Int)\n";
   os << fmt::format( "(assert (= total (+ {})))\n", fmt::join( bufs, " " ) );
   os << fmt::format( "(assert (<= total {}))\n", upper_bound );
-  os << "(check-sat)\n(get-value (total))\n(exit)\n";
+  os << "(minimize total)\n(check-sat)\n(get-value (total depth))\n";
+  os << fmt::format( "(get-value ({}))\n(exit)\n", fmt::join( level_vars, " " ) );
 }
 
-void smt_constraints( std::ostream& os, node const& n, uint32_t const& max_relative_depth )
+void smt_constraints_balanced_pis( std::ostream& os, node const& n, uint32_t const& max_depth, uint32_t const& max_relative_depth )
+{
+  os << fmt::format( "\n;constraints for node {}\n", n );
+  os << fmt::format( "(declare-const bufs{} Int)\n", n );
+  /* special cases */
+  if ( _ntk.fanout_size( n ) == 0 ) /* dangling */
+  {
+    os << fmt::format( "(assert (= bufs{} 0))\n", n );
+    return;
+  }
+  else if ( _ntk.fanout_size( n ) == 1 )
+  {
+    /* single fanout: only sequencing constraint */
+    if ( _external_ref_count[n] > 0 )
+    {
+      if ( _ps.assume.balance_pos )
+      {
+        os << fmt::format( "(assert (= bufs{} depth))\n", n );
+      }
+      else
+      {
+        os << fmt::format( "(assert (= bufs{} 0))\n", n );
+      }
+    }
+    else
+    {
+      node const& no = _fanouts[n].front().fanouts.front();
+      os << fmt::format( "(assert (= bufs{} (- l{} 1)))\n", n, no );
+    }
+    return;
+  }
+  else if ( _ntk.fanout_size( n ) <= _ps.assume.splitter_capacity )
+  {
+    /* only one splitter is needed */
+
+    /* sequencing */
+    std::vector<node> fos;
+    foreach_fanout( n, [&]( auto const& no ){ 
+      os << fmt::format( "(assert (>= l{} 2))\n", no );
+      fos.emplace_back( no );
+    });
+
+    if ( _external_ref_count[n] > 0 && _ps.assume.balance_pos )
+    {
+      os << fmt::format( "(assert (= bufs{} depth))\n", n );
+    }      
+    else
+    {
+      if ( fos.size() == 0 ) /* not balance PO; have multiple PO refs */
+      {
+        os << fmt::format( "(assert (= bufs{} 1))\n", n );
+      }
+      else if ( fos.size() == 1 ) /* not balance PO; have one gate fanout and PO ref(s) */
+      {
+        os << fmt::format( "(assert (= bufs{} (- l{} 1)))\n", n, fos[0] );
+      }
+      else if ( fos.size() >= 2 )
+      {
+        os << fmt::format( "(declare-const g{}maxfo Int)\n", n );/* the max level of fanouts */
+
+        /* bound it -- just to hint the solver; should not matter if we have optimization objective */
+        if ( _ps.assume.balance_pos )
+          os << fmt::format( "(assert (<= g{}maxfo depth))\n", n );
+        else
+          os << fmt::format( "(assert (<= g{}maxfo {}))\n", n, max_depth );
+
+        /* taking the max (lower bounded by the max) */
+        for ( auto const& no : fos )
+          os << fmt::format( "(assert (>= g{}maxfo l{}))\n", n, no );
+
+        os << fmt::format( "(assert (= bufs{} (- g{}maxfo 1)))\n", n, n );
+      }
+    }
+    return;
+  }
+
+  /* sequencing & range constraints */
+  foreach_fanout( n, [&]( auto const& no ){
+    os << fmt::format( "(assert (>= l{} 2))\n", no );
+  });
+
+  /* PO branching */
+  if ( _external_ref_count[n] > 0 )
+  {
+    os << fmt::format( "(assert (>= depth {}))\n", num_splitter_levels( n ) );
+  }
+
+  uint32_t l = max_relative_depth;
+  bool add_po_refs = false;
+  if ( _external_ref_count[n] > 0 && _ps.assume.balance_pos )
+  {
+    add_po_refs = true;
+    os << fmt::format( "(assert (<= depth {}))\n", l-1 );
+  }
+
+  /* initial case */
+  os << fmt::format( "(declare-const g{}e{} Int)\n", n, l ); // edges at relative depth l
+  os << fmt::format( "(assert (= g{}e{} (+", n, l );
+  foreach_fanout( n, [&]( auto const& no ){
+    os << fmt::format( " (ite (= l{} {}) 1 0)", no, l );
+  });
+  if ( add_po_refs ) os << fmt::format( " (ite (= depth {}) {} 0)", l-1, _external_ref_count[n] );
+  os << ")))\n";
+
+  /* general case */
+  for ( --l; l > 0; --l )
+  {
+    os << fmt::format( "(declare-const g{}b{} Int)\n", n, l ); // buffers at relative depth l
+    /* g{n}b{l} = ceil( g{n}e{l+1} / s_b ) --> s_b * ( g{n}b{l} - 1 ) < g{n}e{l+1} <= s_b * g{n}b{l} */
+    os << fmt::format( "(assert (< (* {} (- g{}b{} 1)) g{}e{}))\n", _ps.assume.splitter_capacity, n, l, n, l+1 );
+    os << fmt::format( "(assert (<= g{}e{} (* {} g{}b{})))\n", n, l+1, _ps.assume.splitter_capacity, n, l );
+    
+    os << fmt::format( "(declare-const g{}e{} Int)\n", n, l ); // edges at relative depth l
+    os << fmt::format( "(assert (= g{}e{} (+", n, l ); 
+    foreach_fanout( n, [&]( auto const& no ){
+      os << fmt::format( " (ite (= l{} {}) 1 0)", no, l );
+    });
+    if ( add_po_refs ) os << fmt::format( " (ite (= depth {}) {} 0)", l-1, _external_ref_count[n] );
+    os << fmt::format( " g{}b{})))\n", n, l );
+  }
+
+  /* end of loop */
+  os << fmt::format( "(assert (= g{}e1 1))\n", n ); // legal
+  os << fmt::format( "(assert (= bufs{} (+", n );
+  for ( l = max_relative_depth - 1; l > 0; --l )
+  {
+    os << fmt::format( " g{}b{}", n, l );
+  }
+  os << ")));\n";
+}
+
+void smt_constraints( std::ostream& os, node const& n, uint32_t const& max_depth, uint32_t const& max_relative_depth )
 {
   os << fmt::format( "\n;constraints for node {}\n", n );
   os << fmt::format( "(declare-const bufs{} Int)\n", n );
@@ -147,21 +284,23 @@ void smt_constraints( std::ostream& os, node const& n, uint32_t const& max_relat
   else if ( _ntk.fanout_size( n ) <= _ps.assume.splitter_capacity )
   {
     /* only one splitter is needed */
+
+    /* sequencing */
+    std::vector<node> fos;
+    foreach_fanout( n, [&]( auto const& no ){ 
+      os << fmt::format( "(assert (>= l{} (+ l{} 2)))\n", no, n );
+      fos.emplace_back( no );
+    });
+
     if ( _external_ref_count[n] > 0 && _ps.assume.balance_pos )
     {
       os << fmt::format( "(assert (> depth l{}))\n", n );
       os << fmt::format( "(assert (= bufs{} (- depth l{})))\n", n, n );
     }      
-    std::vector<node> fos;
-    foreach_fanout( n, [&]( auto const& no ){ 
-      os << fmt::format( "(assert (> l{} (+ l{} 1)))\n", no, n );
-      fos.emplace_back( no );
-    });
-    if ( !( _external_ref_count[n] > 0 && _ps.assume.balance_pos ) )
+    else
     {
       if ( fos.size() == 0 ) /* not balance PO; have multiple PO refs */
       {
-        os << fmt::format( "(assert (> depth l{}))\n", n );
         os << fmt::format( "(assert (= bufs{} 1))\n", n );
       }
       else if ( fos.size() == 1 ) /* not balance PO; have one gate fanout and PO ref(s) */
@@ -170,50 +309,67 @@ void smt_constraints( std::ostream& os, node const& n, uint32_t const& max_relat
       }
       else if ( fos.size() >= 2 )
       {
-        /* take the max level of fanouts */
-        std::string m = fmt::format( "g{}max01", n );
-        os << fmt::format( "(declare-const {} Int)\n", m );
-        os << fmt::format( "(assert (= {} (ite (> l{} l{}) l{} l{})))\n", m, fos[0], fos[1], fos[0], fos[1] );
-        for ( auto i = 2; i < fos.size(); ++i )
-        {
-          os << fmt::format( "(declare-const {}{} Int)\n", m, i );
-          os << fmt::format( "(assert (= {}{} (ite (> {} l{}) {} l{})))\n", m, i, m, fos[i], m, fos[i] );
-          m = fmt::format( "{}{}", m, i );
-        }
-        os << fmt::format( "(assert (= bufs{} (- {} l{} 1)))\n", n, m, n );
+        os << fmt::format( "(declare-const g{}maxfo Int)\n", n );/* the max level of fanouts */
+
+        /* bound it -- just to hint the solver; should not matter if we have optimization objective */
+        if ( _ps.assume.balance_pos )
+          os << fmt::format( "(assert (<= g{}maxfo depth))\n", n );
+        else
+          os << fmt::format( "(assert (<= g{}maxfo {}))\n", n, max_depth );
+
+        /* taking the max (lower bounded by the max) */
+        for ( auto const& no : fos )
+          os << fmt::format( "(assert (>= g{}maxfo l{}))\n", n, no );
+
+        os << fmt::format( "(assert (= bufs{} (- g{}maxfo l{} 1)))\n", n, n, n );
       }
     }
     return;
   }
 
-  /* range constraints */
+  /* sequencing & range constraints */
   foreach_fanout( n, [&]( auto const& no ){
     os << fmt::format( "(assert (<= l{} (+ l{} {})))\n", no, n, max_relative_depth );
-    os << fmt::format( "(assert (> l{} l{}))\n", no, n );
+    os << fmt::format( "(assert (>= l{} (+ l{} 2)))\n", no, n );
   });
 
-  // TODO: PO branching, PO balancing
+  /* PO branching */
+  if ( _external_ref_count[n] > 0 )
+  {
+    os << fmt::format( "(assert (>= depth (+ l{} {})))\n", n, num_splitter_levels( n ) );
+  }
+
   uint32_t l = max_relative_depth;
+  bool add_po_refs = false;
+  if ( _external_ref_count[n] > 0 && _ps.assume.balance_pos )
+  {
+    add_po_refs = true;
+    os << fmt::format( "(assert (<= depth (+ l{} {})))\n", n, l-1 );
+  }
+
   /* initial case */
-  os << fmt::format( "(declare-const g{}e{} Int)\n", n, l );
-  os << fmt::format( "(assert (= g{}e{} (+", n, l ); // edges at level l
+  os << fmt::format( "(declare-const g{}e{} Int)\n", n, l ); // edges at relative depth l
+  os << fmt::format( "(assert (= g{}e{} (+", n, l );
   foreach_fanout( n, [&]( auto const& no ){
     os << fmt::format( " (ite (= (- l{} l{}) {}) 1 0)", no, n, l );
   });
+  if ( add_po_refs ) os << fmt::format( " (ite (= (+ l{} {}) depth) {} 0)", n, l-1, _external_ref_count[n] );
   os << ")))\n";
 
   /* general case */
   for ( --l; l > 0; --l )
   {
-    os << fmt::format( "(declare-const g{}b{} Int)\n", n, l ); // buffers at level l
+    os << fmt::format( "(declare-const g{}b{} Int)\n", n, l ); // buffers at relative depth l
     /* g{n}b{l} = ceil( g{n}e{l+1} / s_b ) --> s_b * ( g{n}b{l} - 1 ) < g{n}e{l+1} <= s_b * g{n}b{l} */
     os << fmt::format( "(assert (< (* {} (- g{}b{} 1)) g{}e{}))\n", _ps.assume.splitter_capacity, n, l, n, l+1 );
     os << fmt::format( "(assert (<= g{}e{} (* {} g{}b{})))\n", n, l+1, _ps.assume.splitter_capacity, n, l );
-    os << fmt::format( "(declare-const g{}e{} Int)\n", n, l ); // edges at level l
+    
+    os << fmt::format( "(declare-const g{}e{} Int)\n", n, l ); // edges at relative depth l
     os << fmt::format( "(assert (= g{}e{} (+", n, l ); 
     foreach_fanout( n, [&]( auto const& no ){
       os << fmt::format( " (ite (= (- l{} l{}) {}) 1 0)", no, n, l );
     });
+    if ( add_po_refs ) os << fmt::format( " (ite (= (+ l{} {}) depth) {} 0)", n, l-1, _external_ref_count[n] );
     os << fmt::format( " g{}b{})))\n", n, l );
   }
 
@@ -663,5 +819,28 @@ void foreach_fanout( node const& n, Fn&& fn )
     {
       fn( *it2 );
     }
+  }
+}
+
+void parse_z3_result()
+{
+  std::ifstream fin( "sol.txt", std::ifstream::in );
+  assert( fin.is_open() );
+
+  /* parsing */
+  std::string line;
+  std::getline( fin, line ); /* first line: "sat" */
+  assert( line == "sat" );
+  std::getline( fin, line ); /* second line: "((total <>)" */
+  uint32_t total = std::stoi( line.substr( 8, line.find_first_of( ')' ) - 8 ) );
+  std::getline( fin, line ); /* third line: " (depth <>))" */
+  uint32_t depth = std::stoi( line.substr( 8, line.find_first_of( ')' ) - 8 ) );
+
+  while ( std::getline( fin, line ) ) /* remaining lines: "((l<> <>)" or " (l<> <>)" or " (l<> <>))" */
+  {
+    line = line.substr( line.find( 'l' ) + 1 );
+    uint32_t n = std::stoi( line.substr( 0, line.find( ' ' ) ) );
+    line = line.substr( line.find( ' ' ) + 1 );
+    _levels[n] = std::stoi( line.substr( 0, line.find_first_of( ')' ) ) );
   }
 }
