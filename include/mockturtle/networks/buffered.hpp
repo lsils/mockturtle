@@ -35,6 +35,7 @@
 #include "../traits.hpp"
 #include "aig.hpp"
 #include "mig.hpp"
+#include "../views/names_view.hpp"
 
 namespace mockturtle
 {
@@ -65,6 +66,45 @@ public:
     }
 
     return {index, 0};
+  }
+
+  signal create_not( signal const& a )
+  {
+    const auto index = _storage->nodes.size();
+    auto& node = _storage->nodes.emplace_back();
+    node.children[0] = !a;
+    node.children[1] = a;
+    
+    if ( index >= .9 * _storage->nodes.capacity() )
+    {
+      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415f * index ) );
+    }
+
+    /* increase ref-count to children */
+    _storage->nodes[a.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_add )
+    {
+      (*fn)( index );
+    }
+
+    return {index, 0};
+  }
+
+  signal buf_to_inv( signal const& a )
+  {
+    const node n = get_node( a );
+    assert( is_buf( n ) );
+    if ( is_complemented( _storage->nodes[n].children[0] ) ) /* already inverted */
+      return a;
+
+    //assert( fanout_size( n ) == 0 );
+    if ( fanout_size( n ) != 0 )
+      std::cout << "[w] " << fanout_size( n ) << " fanout(s) of buffer " << n << " need to be negated\n";
+    signal fi = _storage->nodes[n].children[0];
+    _storage->nodes[n].children[0] = !fi;
+    _storage->nodes[n].children[1] = fi;
+    return a;
   }
 #pragma endregion
 
@@ -298,6 +338,45 @@ public:
 
     return {index, 0};
   }
+
+  signal create_not( signal const& a )
+  {
+    const auto index = _storage->nodes.size();
+    auto& node = _storage->nodes.emplace_back();
+    node.children[0] = !a;
+    node.children[1] = a;
+    
+    if ( index >= .9 * _storage->nodes.capacity() )
+    {
+      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415f * index ) );
+    }
+
+    /* increase ref-count to children */
+    _storage->nodes[a.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_add )
+    {
+      (*fn)( index );
+    }
+
+    return {index, 0};
+  }
+
+  signal buf_to_inv( signal const& a )
+  {
+    const node n = get_node( a );
+    assert( is_buf( n ) );
+    if ( is_complemented( _storage->nodes[n].children[0] ) ) /* already inverted */
+      return a;
+
+    //assert( fanout_size( n ) == 0 );
+    if ( fanout_size( n ) != 0 )
+      std::cout << "[w] " << fanout_size( n ) << " fanout(s) of buffer " << n << " need to be negated\n";
+    signal fi = _storage->nodes[n].children[0];
+    _storage->nodes[n].children[0] = !fi;
+    _storage->nodes[n].children[1] = fi;
+    return a;
+  }
 #pragma endregion
 
 #pragma region Create arbitrary functions
@@ -522,6 +601,12 @@ template<>
 struct is_buffered_network_type<buffered_aig_network> : std::true_type {};
 
 template<>
+struct is_buffered_network_type<names_view<buffered_aig_network>> : std::true_type {};
+
+template<>
 struct is_buffered_network_type<buffered_mig_network> : std::true_type {};
+
+template<>
+struct is_buffered_network_type<names_view<buffered_mig_network>> : std::true_type {};
 
 } // namespace mockturtle

@@ -756,12 +756,23 @@ public:
     {
       _ntk.foreach_po( [&]( auto const& f ) {
         auto n = _ntk.get_node( f );
-        buf_signal s;
         if ( _ntk.is_constant( n ) || ( !_ps.assume.branch_pis && _ntk.is_pi( n ) ) )
-          s = node_to_signal[n];
+        {
+          bufntk.create_po( _ntk.is_complemented( f ) ? bufntk.create_not( node_to_signal[f] ) : node_to_signal[f] );
+        }
         else
-          s = get_buffer_at_relative_depth( bufntk, buffers[f], _depth - _levels[f] );
-        bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
+        {
+          buf_signal s = get_buffer_at_relative_depth( bufntk, buffers[f], _depth - _levels[f] );
+          if ( s == buffers[f][0].front() )
+          {
+            assert( _ntk.fanout_size( n ) == 1 ); // output negation of a gate can always be pushed to inputs
+            bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
+          }
+          else
+          {
+            bufntk.create_po( _ntk.is_complemented( f ) ? bufntk.buf_to_inv( s ) : s );
+          }
+        }
       } );
     }
     else // !_ps.assume.balance_pos
@@ -771,7 +782,7 @@ public:
         auto n = _ntk.get_node( f );
         if ( _ntk.is_constant( n ) || ( _ntk.is_pi( n ) && !_ps.assume.branch_pis ) || _ntk.fanout_size( n ) == 1 )
         {
-          bufntk.create_po( _ntk.is_complemented( f ) ? !node_to_signal[f] : node_to_signal[f] );
+          bufntk.create_po( _ntk.is_complemented( f ) ? bufntk.create_not( node_to_signal[f] ) : node_to_signal[f] );
         }
         else
         {
@@ -794,12 +805,19 @@ public:
             }
           }
           buf_signal s = get_lowest_spot<false>( bufntk, buffers[n] );
-          bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
+          if ( s == buffers[f][0].front() )
+            bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
+          else
+            bufntk.create_po( _ntk.is_complemented( f ) ? bufntk.buf_to_inv( s ) : s );
         }
       } );
     }
 
-    assert( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 == num_buffers() );
+    //assert( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 == num_buffers() );
+    if ( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 != num_buffers() )
+    {
+      std::cout << "[w] actual #bufs = " << ( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 ) << ", counted = " << num_buffers() << "\n";
+    }
   }
 
 private:
