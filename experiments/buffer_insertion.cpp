@@ -17,8 +17,12 @@
 
 #include <iostream>
 
-int main()
+int main( int argc, char* argv[] )
 {
+  std::string run_only_one = "";
+  if ( argc == 2 )
+    run_only_one = std::string( argv[1] );
+
   using namespace mockturtle;
   using namespace experiments;
   /* NOTE 1: To run the "optimal" insertion, please clone and build Z3: https://github.com/Z3Prover/z3
@@ -38,7 +42,7 @@ int main()
 
   for ( auto benchmark : benchmarks )
   {
-    //if ( benchmark != "c432" ) continue;
+    if ( run_only_one != "" && benchmark != run_only_one ) continue;
     std::cout << "\n[i] processing " << benchmark << "\n";
     names_view<mig_network> ntk;
     lorina::text_diagnostics td;
@@ -63,13 +67,12 @@ int main()
     uint32_t num_buffers = aqfp.run( bufntk );
     bool verified = verify_aqfp_buffer( bufntk, ps.assume );
 
+    names_view named_bufntk{bufntk};
+    restore_pio_names_by_order( ntk, named_bufntk );
+    write_verilog( named_bufntk, benchmark + "_buffered.v" );    
+
     depth_view d{ntk};
     depth_view d_buf{bufntk};
-
-    //ntk.foreach_po( [&](auto f){
-    //  if ( ntk.fanout_size( ntk.get_node( f ) ) > 1 && !ntk.is_pi( ntk.get_node( f ) ) && d_buf.is_on_critical_path( ntk.get_node( f ) ) )
-    //    std::cout << "[i] multi-fanout PO " << ntk.get_node( f ) << " on critical path (#FO = " << ntk.fanout_size( ntk.get_node( f ) ) << ")\n";
-    //});
 
     exp( benchmark, ntk.num_gates(), d.depth(), num_buffers, ntk.num_gates() * 6, ntk.num_gates() * 6 + num_buffers * 2, d_buf.depth(), verified );
   }

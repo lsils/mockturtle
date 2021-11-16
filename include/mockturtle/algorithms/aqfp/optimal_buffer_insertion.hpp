@@ -38,7 +38,7 @@ void optimize_with_smt()
   std::ofstream os( "model.smt", std::ofstream::out );
   dump_smt_model( os );
   os.close();
-  std::system( "z3 model.smt | tee sol.txt" );
+  std::system( "z3 model.smt > sol.txt" );
   parse_z3_result();
   return;
 }
@@ -835,6 +835,7 @@ void parse_z3_result()
   uint32_t total = std::stoi( line.substr( 8, line.find_first_of( ')' ) - 8 ) );
   std::getline( fin, line ); /* third line: " (depth <>))" */
   uint32_t depth = std::stoi( line.substr( 8, line.find_first_of( ')' ) - 8 ) );
+  std::cout << "[i] total = " << total << ", depth = " << depth << "\n";
 
   while ( std::getline( fin, line ) ) /* remaining lines: "((l<> <>)" or " (l<> <>)" or " (l<> <>))" */
   {
@@ -843,4 +844,5 @@ void parse_z3_result()
     line = line.substr( line.find( ' ' ) + 1 );
     _levels[n] = std::stoi( line.substr( 0, line.find_first_of( ')' ) ) );
   }
+  _outdated = true;
 }
