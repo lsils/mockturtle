@@ -10,6 +10,14 @@
 
 using namespace mockturtle;
 
+template<class TT>
+struct aig_resyn_sparams_node_map : public xag_resyn_static_params
+{
+  using truth_table_storage_type = node_map<TT, aig_network>;
+  using node_type = typename aig_network::node;
+  static constexpr bool use_xor = false;
+};
+
 TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" )
 {
   using node = aig_network::node;
@@ -44,9 +52,8 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
   
   /* optimize the window */
   using TT = kitty::static_truth_table<2>;
-  using ResynEngine = xag_resyn_decompose<TT, node_map<TT, aig_network>>;
+  using ResynEngine = xag_resyn_decompose<TT, aig_resyn_sparams_node_map<TT>>;
   typename ResynEngine::stats engine_st;
-  typename ResynEngine::params engine_ps;
 
   default_simulator<TT> sim;
   auto tts = simulate_nodes<TT, aig_network>( win, sim );
@@ -70,7 +77,7 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
         }
       });
 
-      ResynEngine engine( engine_st, engine_ps );
+      ResynEngine engine( engine_st );
       auto const il = engine( tts[root], ~tts[win.get_constant( false )], divs.begin(), divs.end(), tts, 2 );
       if ( il )
       {

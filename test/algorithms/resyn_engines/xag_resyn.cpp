@@ -10,6 +10,20 @@
 
 using namespace mockturtle;
 
+template<class TT>
+struct aig_resyn_sparams_copy : public xag_resyn_static_params_default<TT>
+{
+  static constexpr bool use_xor = false;
+  static constexpr bool copy_tts = true;
+};
+
+template<class TT>
+struct aig_resyn_sparams_no_copy : public xag_resyn_static_params_default<TT>
+{
+  static constexpr bool use_xor = false;
+  static constexpr bool copy_tts = false;
+};
+
 template<class TT = kitty::partial_truth_table>
 void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& tts, uint32_t num_inserts )
 {
@@ -21,7 +35,7 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   }
   partial_simulator sim( tts );
 
-  xag_resyn_decompose<TT, std::vector<TT>, false, true> engine_copy( st );
+  xag_resyn_decompose<TT, aig_resyn_sparams_copy<TT>> engine_copy( st );
   const auto res = engine_copy( target, care, divs.begin(), divs.end(), tts, num_inserts );
   CHECK( res );
   CHECK( (*res).num_gates() == num_inserts );
@@ -31,7 +45,7 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   CHECK( kitty::implies( target & care, ans ) );
   CHECK( kitty::implies( ~target & care, ~ans ) );
 
-  xag_resyn_decompose<TT, std::vector<TT>, false, false, uint32_t> engine_no_copy( st );
+  xag_resyn_decompose<TT, aig_resyn_sparams_no_copy<TT>> engine_no_copy( st );
   const auto res2 = engine_no_copy( target, care, divs.begin(), divs.end(), tts, num_inserts );
   CHECK( res2 );
   CHECK( (*res2).num_gates() == num_inserts );
@@ -200,7 +214,7 @@ void test_xag_n_input_functions( uint32_t& success_counter, uint32_t& failed_cou
 TEST_CASE( "Synthesize XAGs for all 3-input functions", "[xag_resyn]" )
 {
   using truth_table_type = kitty::static_truth_table<3>;
-  using engine_t = xag_resyn_decompose<truth_table_type, std::vector<truth_table_type>, true, false, uint32_t>;
+  using engine_t = xag_resyn_decompose<truth_table_type>;
   uint32_t success_counter{0};
   uint32_t failed_counter{0};
   test_xag_n_input_functions<engine_t, 3>( success_counter, failed_counter );
@@ -208,7 +222,7 @@ TEST_CASE( "Synthesize XAGs for all 3-input functions", "[xag_resyn]" )
   CHECK( success_counter == 254 );
   CHECK( failed_counter == 2 );
 
-  using engine_abc_t = xag_resyn_abc<truth_table_type, true>;
+  using engine_abc_t = xag_resyn_abc<truth_table_type>;
   success_counter = 0;
   failed_counter = 0;
   test_xag_n_input_functions<engine_abc_t, 3>( success_counter, failed_counter );
@@ -220,7 +234,7 @@ TEST_CASE( "Synthesize XAGs for all 3-input functions", "[xag_resyn]" )
 TEST_CASE( "Synthesize XAGs for all 4-input functions", "[xag_resyn]" )
 {
   using truth_table_type = kitty::static_truth_table<4>;
-  using engine_t = xag_resyn_decompose<truth_table_type, std::vector<truth_table_type>, true, false, uint32_t>;
+  using engine_t = xag_resyn_decompose<truth_table_type>;
   uint32_t success_counter{0};
   uint32_t failed_counter{0};
   test_xag_n_input_functions<engine_t, 4>( success_counter, failed_counter );

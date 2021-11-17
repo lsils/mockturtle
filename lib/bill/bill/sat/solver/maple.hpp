@@ -1438,7 +1438,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #define Minisat_System_h
 
 
-
 //-------------------------------------------------------------------------------------------------
 
 namespace Maple {
@@ -4578,7 +4577,7 @@ static void SIGALRM_switch(int signum) { switch_mode = true; }
 // NOTE: assumptions passed in member-variable 'assumptions'.
 inline lbool Solver::solve_()
 {
-    std::signal(SIGALRM, SIGALRM_switch);
+    ::signal(SIGALRM, SIGALRM_switch);
     alarm(2500);
 
     model.clear();

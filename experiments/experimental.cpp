@@ -4,6 +4,7 @@
 #include <mockturtle/algorithms/experimental/sim_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/mig.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <lorina/aiger.hpp>
 #include <iostream>
