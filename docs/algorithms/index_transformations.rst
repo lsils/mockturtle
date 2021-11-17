@@ -8,6 +8,7 @@ Network transformation and mapping
    lut_mapping
    collapse_mapped
    node_resynthesis
+   klut_to_graph
    gates_to_nodes
    cleanup
    equivalence_classes

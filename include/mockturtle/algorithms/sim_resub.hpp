@@ -150,7 +150,7 @@ struct sim_resub_stats
  * \param ResubFn Resubstitution functor to compute the resubstitution.
  * \param MffcRes Typename of `potential_gain` needed by the resubstitution functor.
  */
-template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResynEngine = xag_resyn_decompose<kitty::partial_truth_table, incomplete_node_map<kitty::partial_truth_table, Ntk>>, typename MffcRes = uint32_t>
+template<class Ntk, typename validator_t = circuit_validator<Ntk, bill::solvers::bsat2, false, true, false>, class ResynEngine = xag_resyn_decompose<kitty::partial_truth_table, xag_resyn_static_params_for_sim_resub<Ntk>>, typename MffcRes = uint32_t>
 class simulation_based_resub_engine
 {
 public:
@@ -217,13 +217,6 @@ public:
 
   std::optional<signal> run( node const& n, std::vector<node> const& divs, mffc_result_t potential_gain, uint32_t& last_gain )
   {
-    typename ResynEngine::params ps_resyn;
-    ps_resyn.reserve = divs.size() + 2;
-    if constexpr ( std::is_same_v<typename ResynEngine::params, xag_resyn_params> )
-    {
-      ps_resyn.max_binates = ps.max_divisors_k;
-    }
-
     for ( auto j = 0u; j < ps.max_trials; ++j )
     {
       check_tts( n );
@@ -238,7 +231,7 @@ public:
 
       const auto res = call_with_stopwatch( st.time_resyn, [&]() {
         ++st.num_resyn;
-        ResynEngine engine( st.resyn_st, ps_resyn );
+        ResynEngine engine( st.resyn_st );
         return engine( tts[n], care, std::begin( divs ), std::end( divs ), tts, std::min( potential_gain - 1, ps.max_inserts ) );
       });
 
