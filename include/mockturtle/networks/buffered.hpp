@@ -522,6 +522,12 @@ template<>
 struct is_buffered_network_type<buffered_aig_network> : std::true_type {};
 
 template<>
+struct is_buffered_network_type<names_view<buffered_aig_network>> : std::true_type {};
+
+template<>
 struct is_buffered_network_type<buffered_mig_network> : std::true_type {};
+
+template<>
+struct is_buffered_network_type<names_view<buffered_mig_network>> : std::true_type {};
 
 } // namespace mockturtle
