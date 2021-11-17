@@ -35,6 +35,7 @@
 #include "../traits.hpp"
 #include "aig.hpp"
 #include "mig.hpp"
+#include "../views/names_view.hpp"
 
 namespace mockturtle
 {
