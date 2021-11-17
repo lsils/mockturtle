@@ -184,7 +184,7 @@ public:
   using signal = typename Ntk::signal;
 
   explicit buffer_insertion( Ntk const& ntk, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -205,7 +205,7 @@ public:
   }
 
   explicit buffer_insertion( Ntk const& ntk, node_map<uint32_t, Ntk> const& levels, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( levels ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( levels ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -714,6 +714,91 @@ private:
     } );
   }
 #pragma endregion
+
+#pragma region Compute timeframe
+  /*! \brief Compute the earilest and latest possible timeframe by eager ASAP and ALAP */
+  uint32_t compute_timeframe( uint32_t max_depth )
+  {
+    _timeframes.reset( std::make_pair( 0, 0 ) );
+    uint32_t min_depth{0};
+
+    _ntk.incr_trav_id();
+    _ntk.foreach_po( [&]( auto const& f ) {
+      auto const no = _ntk.get_node( f );
+      auto clevel = compute_levels_ASAP_eager( no ) + ( _ntk.fanout_size( no ) > 1 ? 1 : 0 );
+      min_depth = std::max( min_depth, clevel );
+    } );
+
+    _ntk.incr_trav_id();
+    _ntk.foreach_po( [&]( auto const& f ) {
+      const auto n = _ntk.get_node( f );
+      if ( !_ntk.is_constant( n ) && _ntk.visited( n ) != _ntk.trav_id() && ( !_ps.assume.balance_pis || !_ntk.is_pi( n ) ) )
+      {
+        _timeframes[n].second = max_depth - ( _ntk.fanout_size( n ) > 1 ? 1 : 0 );
+        compute_levels_ALAP_eager( n );
+      }
+    } );
+
+    return min_depth;
+  }
+
+  uint32_t compute_levels_ASAP_eager( node const& n )
+  {
+    if ( _ntk.visited( n ) == _ntk.trav_id() )
+    {
+      return _timeframes[n].first;
+    }
+    _ntk.set_visited( n, _ntk.trav_id() );
+
+    if ( _ntk.is_constant( n ) || _ntk.is_pi( n ) )
+    {
+      return _timeframes[n].first = 0;
+    }
+
+    uint32_t level{0};
+    _ntk.foreach_fanin( n, [&]( auto const& fi ) {
+      auto const ni = _ntk.get_node( fi );
+      if ( !_ntk.is_constant( ni ) )
+      {
+        auto fi_level = compute_levels_ASAP_eager( ni );
+        if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
+        {
+          fi_level += _ntk.fanout_size( ni ) > 1 ? 1 : 0;
+        }
+        level = std::max( level, fi_level );
+      }
+    } );
+
+    return _timeframes[n].first = level + 1;
+  }
+
+  void compute_levels_ALAP_eager( node const& n )
+  {
+    _ntk.set_visited( n, _ntk.trav_id() );
+
+    _ntk.foreach_fanin( n, [&]( auto const& fi ) {
+      auto const ni = _ntk.get_node( fi );
+      if ( !_ntk.is_constant( ni ) )
+      {
+        if ( _ps.assume.balance_pis && _ntk.is_pi( ni ) )
+        {
+          assert( _timeframes[n].second > 0 );
+          _timeframes[ni].second = 0;
+        }
+        else if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
+        {
+          assert( _timeframes[n].second > num_splitter_levels( ni ) );
+          auto fi_level = _timeframes[n].second - ( _ntk.fanout_size( ni ) > 1 ? 2 : 1 );
+          if ( _ntk.visited( ni ) != _ntk.trav_id() || _timeframes[ni].second > fi_level )
+          {
+            _timeframes[ni].second = fi_level;
+            compute_levels_ALAP_eager( ni );
+          }
+        }
+      }
+    } );
+  }
+#pragma
 
 #pragma region Dump buffered network
 public:
@@ -1343,6 +1428,7 @@ private:
   bool _outdated{true};
 
   node_map<uint32_t, Ntk> _levels;
+  node_map<std::pair<uint32_t, uint32_t>, Ntk> _timeframes;
   uint32_t _depth{0u};
   node_map<fanouts_by_level, Ntk> _fanouts;
   node_map<uint32_t, Ntk> _external_ref_count;

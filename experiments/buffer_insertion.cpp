@@ -53,6 +53,7 @@ int main( int argc, char* argv[] )
       std::cout << "read failed\n";
       continue;
     }
+    ntk.set_network_name( benchmark );
 
     buffer_insertion_params ps;
     ps.scheduling = buffer_insertion_params::better;
@@ -69,7 +70,7 @@ int main( int argc, char* argv[] )
 
     names_view named_bufntk{bufntk};
     restore_pio_names_by_order( ntk, named_bufntk );
-    write_verilog( named_bufntk, benchmark + "_buffered.v" );    
+    write_verilog( named_bufntk, "../../SCE-benchmarks/ISCAS/best_insertion/" + benchmark + "_buffered.v" );    
 
     depth_view d{ntk};
     depth_view d_buf{bufntk};

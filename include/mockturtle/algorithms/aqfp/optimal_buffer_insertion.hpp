@@ -53,18 +53,15 @@ void dump_smt_model( std::ostream& os = std::cout )
   uint32_t const max_relative_depth = max_depth;
   count_buffers();
   uint32_t const upper_bound = num_buffers();
+  uint32_t const min_depth = compute_timeframe( max_depth );
 
-  /* depth */
-  std::string depth;
+  /* depth variable */
   if ( _ps.assume.balance_pos ) /* depth is a variable */
   {
     os << fmt::format( "(declare-const depth Int)\n" );
+    assert( min_depth <= max_depth );
     os << fmt::format( "(assert (<= depth {}))\n", max_depth );
-    depth = "depth";
-  }
-  else
-  {
-    depth = fmt::format( "{}", max_depth );
+    os << fmt::format( "(assert (>= depth {}))\n", min_depth );
   }
 
   /* declare variables for the level of each node */
@@ -75,7 +72,10 @@ void dump_smt_model( std::ostream& os = std::cout )
     _ntk.foreach_pi( [&]( auto const& n ){
       level_vars.emplace_back( fmt::format( "l{}", n ) );
       os << fmt::format( "(declare-const l{} Int)\n", n );
-      os << fmt::format( "(assert (<= l{} {}))\n", n, depth );
+      if ( _ps.assume.balance_pos )
+        os << fmt::format( "(assert (<= l{} depth))\n", n );
+      assert( _timeframes[n].second <= max_depth );
+      os << fmt::format( "(assert (<= l{} {}))\n", n, _timeframes[n].second );
       os << fmt::format( "(assert (>= l{} 0))\n", n );
     });
   }
@@ -83,8 +83,11 @@ void dump_smt_model( std::ostream& os = std::cout )
   _ntk.foreach_gate( [&]( auto const& n ){
     level_vars.emplace_back( fmt::format( "l{}", n ) );
     os << fmt::format( "(declare-const l{} Int)\n", n );
-    os << fmt::format( "(assert (<= l{} {}))\n", n, depth );
-    os << fmt::format( "(assert (>= l{} 1))\n", n );
+    if ( _ps.assume.balance_pos )
+      os << fmt::format( "(assert (<= l{} depth))\n", n );
+    assert( _timeframes[n].first >= 1 && _timeframes[n].second <= max_depth && _timeframes[n].first <= _timeframes[n].second );
+    os << fmt::format( "(assert (>= l{} {}))\n", n, _timeframes[n].first );
+    os << fmt::format( "(assert (<= l{} {}))\n", n, _timeframes[n].second );
   });
 
   /* constraints for each gate's fanout */
