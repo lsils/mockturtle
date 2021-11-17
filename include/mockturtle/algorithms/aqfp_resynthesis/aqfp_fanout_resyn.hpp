@@ -42,7 +42,7 @@ namespace mockturtle
 
 struct aqfp_fanout_resyn
 {
-  aqfp_fanout_resyn( uint32_t branching_factor ) : branching_factor( branching_factor ) {}
+  aqfp_fanout_resyn( uint32_t splitter_capacity, bool branch_pis = false ) : splitter_capacity( splitter_capacity ), branch_pis( branch_pis ) {}
 
   /*! \brief Determines the relative levels of fanouts of a node assuming a nearly balanced splitter tree. */
   template<typename NtkSrc, typename NtkDest, typename FanoutNodeCallback, typename FanoutPoCallback>
@@ -53,6 +53,9 @@ struct aqfp_fanout_resyn
     static_assert( std::is_invocable_v<FanoutNodeCallback, node<NtkSrc>, uint32_t>, "FanoutNodeCallback is not callable with arguments (node, level)" );
     static_assert( std::is_invocable_v<FanoutPoCallback, uint32_t, uint32_t>, "FanoutNodeCallback is not callable with arguments (index, level)" );
 
+    if ( ntk_src.fanout_size( n ) == 0)
+      return;
+
     auto offsets = balanced_splitter_tree_offsets( ntk_src.fanout_size( n ) );
 
     std::vector<node<NtkSrc>> fanouts;
@@ -62,7 +65,7 @@ struct aqfp_fanout_resyn
     } );
 
     auto n_dest = ntk_dest.get_node( f );
-    auto no_splitters = ntk_dest.is_constant( n_dest ) || ntk_dest.is_ci( n_dest );
+    auto no_splitters = ntk_dest.is_constant( n_dest ) || ( !branch_pis && ntk_dest.is_ci( n_dest ) );
 
     uint32_t foind = 0u;
     for ( auto fo : fanouts )
@@ -70,7 +73,7 @@ struct aqfp_fanout_resyn
       fanout_node_fn( fo, no_splitters ? level_f : level_f + offsets[foind++] );
     }
 
-    // remaining fanouts are either combinational outputs (primary outputs for register inputs)
+    // remaining fanouts are either combinational outputs (primary outputs or register inputs)
     for ( auto i = foind; i < ntk_src.fanout_size( n ); i++ )
     {
       auto co_index = i - foind;
@@ -79,7 +82,8 @@ struct aqfp_fanout_resyn
   }
 
 private:
-  uint32_t branching_factor;
+  uint32_t splitter_capacity;
+  bool branch_pis;
 
   /*! \brief Determines the relative levels of the fanouts of a balanced splitter tree with `num_fanouts` many fanouts. */
   std::vector<uint32_t> balanced_splitter_tree_offsets( uint32_t num_fanouts )
@@ -93,22 +97,22 @@ private:
 
     uint32_t num_splitters = 1u;
     uint32_t num_levels = 1u;
-    uint32_t num_leaves = branching_factor;
+    uint32_t num_leaves = splitter_capacity;
 
     while ( num_leaves < num_fanouts )
     {
       num_splitters += num_leaves;
-      num_leaves *= branching_factor;
+      num_leaves *= splitter_capacity;
       num_levels += 1u;
     }
 
     // we need at least `num_levels` levels, but we might not need all
     std::vector<uint32_t> result( num_fanouts, num_levels );
     uint32_t i = 0u;
-    while ( num_leaves >= num_fanouts + ( branching_factor - 1 ) )
+    while ( num_leaves >= num_fanouts + ( splitter_capacity - 1 ) )
     {
       num_splitters--;
-      num_leaves -= ( branching_factor - 1 );
+      num_leaves -= ( splitter_capacity - 1 );
       result[i++]--;
     }
 
