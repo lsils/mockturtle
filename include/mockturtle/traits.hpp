@@ -41,6 +41,7 @@
 #include <map>
 
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/cube.hpp>
 #include <kitty/traits.hpp>
 
 namespace mockturtle
@@ -543,6 +544,21 @@ struct has_create_node<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nod
 
 template<class Ntk>
 inline constexpr bool has_create_node_v = has_create_node<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_node_from_cover
+template<class Ntk, class = void>
+struct has_create_node_from_cover : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_node_from_cover<Ntk, std::void_t<decltype( std::declval<Ntk>().create_node( std::declval<std::vector<signal<Ntk>>>(), std::declval<std::pair<std::vector<kitty::cube>,bool>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_node_from_cover_v = has_create_node_from_cover<Ntk>::value;
 #pragma endregion
 
 #pragma region has_clone_node
@@ -1593,6 +1609,21 @@ struct has_compute<Ntk, T, std::void_t<decltype( std::declval<Ntk>().compute( st
 
 template<class Ntk, typename T>
 inline constexpr bool has_compute_v = has_compute<Ntk, T>::value;
+#pragma endregion
+
+#pragma region has_compute_from_cover
+template<class Ntk, class = void>
+struct has_compute_on_node : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_compute_on_node<Ntk, std::void_t<decltype( std::declval<Ntk>().compute_on_node( std::declval<node<Ntk>>(), std::declval<std::vector<kitty::cube>>() ) ) >> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_compute_on_node_v = has_compute_on_node<Ntk>::value;
 #pragma endregion
 
 #pragma region has_compute_inplace
