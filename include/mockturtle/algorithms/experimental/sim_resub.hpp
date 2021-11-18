@@ -37,6 +37,7 @@
 #include "../../views/fanout_view.hpp"
 #include "../../utils/index_list.hpp"
 #include "../../networks/xag.hpp"
+#include "../../networks/aig.hpp"
 #include "../detail/resub_utils.hpp"
 #include "../resyn_engines/xag_resyn.hpp"
 #include "../resyn_engines/aig_enumerative.hpp"
@@ -62,7 +63,7 @@ struct breadth_first_windowing_params
   uint32_t max_divisors{50};
 
   /*! \brief Maximum number of TFI nodes to collect. */
-  uint32_t max_tfi{max_divisors * 0.5};
+  uint32_t max_tfi{uint32_t(max_divisors * 0.5)};
 
   /*! \brief Maximum number of nodes added by resubstitution. */
   uint32_t max_inserts{std::numeric_limits<uint32_t>::max()};
@@ -335,7 +336,7 @@ public:
   using validator_t = circuit_validator<Ntk, Solver, /*use_pushpop*/false, /*randomize*/true, /*use_odc*/UseODC>;
 
   explicit simulation_guided_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), ps( ps ), st( st ), engine( rst, rps ), 
+    : ntk( ntk ), ps( ps ), st( st ), engine( rst ), 
       validator( ntk, {ps.max_clauses, ps.odc_levels, ps.conflict_limit, ps.random_seed} ), tts( ntk )
   { }
 
@@ -469,7 +470,6 @@ private:
   Ntk const& ntk;
   params_t const& ps;
   stats_t& st;
-  typename ResynEngine::params rps;
   typename ResynEngine::stats rst;
   ResynEngine engine;
   partial_simulator sim;
@@ -487,14 +487,14 @@ using sim_resub_stats = boolean_optimization_stats<breadth_first_windowing_stats
 template<class Ntk>
 void simulation_xag_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, sim_resub_stats* pst = nullptr )
 {
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk::base_type is not xag_network" );
+
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
 
-  constexpr bool use_xor = std::is_same_v<typename Ntk::base_type, xag_network>;
-  using TT = typename kitty::partial_truth_table;
   using windowing_t = typename detail::breadth_first_windowing<ViewedNtk>;
-  using engine_t = xag_resyn_decompose<TT, incomplete_node_map<TT, ViewedNtk>, use_xor, /*copy_tts*/false, /*node_type*/typename ViewedNtk::node>;
+  using engine_t = xag_resyn_decompose<kitty::partial_truth_table, xag_resyn_static_params_for_sim_resub<ViewedNtk>>;
   using resyn_t = typename detail::simulation_guided_resynthesis<ViewedNtk, engine_t>; 
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
@@ -512,5 +512,35 @@ void simulation_xag_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, 
     *pst = st;
   }
 }
+
+template<class Ntk>
+void simulation_aig_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, sim_resub_stats* pst = nullptr )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, aig_network>, "Ntk::base_type is not aig_network" );
+
+  using ViewedNtk = depth_view<fanout_view<Ntk>>;
+  fanout_view<Ntk> fntk( ntk );
+  ViewedNtk viewed( fntk );
+
+  using windowing_t = typename detail::breadth_first_windowing<ViewedNtk>;
+  using engine_t = xag_resyn_decompose<kitty::partial_truth_table, aig_resyn_static_params_for_sim_resub<ViewedNtk>>;
+  using resyn_t = typename detail::simulation_guided_resynthesis<ViewedNtk, engine_t>; 
+  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+  sim_resub_stats st;
+  opt_t p( viewed, ps, st );
+  p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
+
 
 } /* namespace mockturtle::experimental */
