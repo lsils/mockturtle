@@ -239,7 +239,7 @@ private:
   \endverbatim
  */
 template<class Ntk>
-convert_covers_to_graph( cover_network& cover_ntk, Ntk& ntk )
+void convert_covers_to_graph( cover_network& cover_ntk, Ntk& ntk )
 {
   static_assert( has_create_and_v<Ntk>, "NtkDest does not implement the create_not method" );
   static_assert( has_create_or_v<Ntk>, "NtkDest does not implement the create_po method" );
