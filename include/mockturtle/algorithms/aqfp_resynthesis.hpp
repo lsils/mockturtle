@@ -42,7 +42,6 @@
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/depth_view.hpp"
-#include "../views/fanout_view.hpp"
 #include "../views/topo_view.hpp"
 
 #include <fmt/format.h>
@@ -126,8 +125,14 @@ public:
     std::unordered_map<node<NtkDest>, uint32_t> po_level_of_node;
     std::map<std::pair<node<NtkSrc>, node<NtkSrc>>, uint32_t> level_for_fanout;
 
-    fanout_view ntk_fanout{ ntk_src };
-    depth_view ntk_depth{ ntk_fanout };
+    std::unordered_map<node<NtkSrc>, std::vector<node<NtkSrc>>> fanouts;
+    ntk_src.foreach_gate( [&]( auto n ) {
+      ntk_src.foreach_fanin(n, [&](auto fi){
+        fanouts[ntk_src.get_node(fi)].push_back(n);
+      });
+    } );
+
+    depth_view ntk_depth{ ntk_src };
     topo_view ntk_topo{ ntk_depth };
 
     /* map constants */
@@ -165,7 +170,7 @@ public:
         po_level_of_node[node] = std::max(po_level_of_node[node], level);
       };
 
-      fanout_resyn_fn( ntk_topo, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
+      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
     } );
 
     /* map register outputs */
@@ -191,7 +196,7 @@ public:
         po_level_of_node[node] = std::max(po_level_of_node[node], level);
       };
 
-      fanout_resyn_fn( ntk_topo, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
+      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
     } );
 
     /* map nodes */
@@ -249,7 +254,7 @@ public:
         // critical_po_level = std::max( critical_po_level, level );
       };
 
-      fanout_resyn_fn( ntk_topo, n, ntk_dest, node2new[n], level_of_src_node[n], fanout_node_callback, fanout_po_callback );
+      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], level_of_src_node[n], fanout_node_callback, fanout_po_callback );
     } );
 
     /* map primary outputs */
