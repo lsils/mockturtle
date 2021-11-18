@@ -118,6 +118,10 @@ public:
       {
         signals_[name] = ntk_.create_pi( name );
         input_names_.emplace_back( name, 1u );
+        if constexpr ( has_set_name_v<Ntk> )
+        {
+          ntk_.set_name( signals_[name], name );
+        }
       }
       else
       {
@@ -128,6 +132,10 @@ public:
           const auto sname = fmt::format( "{}[{}]", name, i );
           word.push_back( ntk_.create_pi( sname ) );
           signals_[sname] = word.back();
+          if constexpr ( has_set_name_v<Ntk> )
+          {
+            ntk_.set_name( signals_[sname], sname );
+          }
         }
         registers_[name] = word;
         input_names_.emplace_back( name, length );
@@ -350,35 +358,37 @@ public:
 
       add_register( args[2].second, montgomery_multiplication( ntk_, registers_[args[0].second], registers_[args[1].second], N, NN ) );
     }
-    else
+    else if ( module_name == "buffer" || module_name == "inverter" )
     {
       if constexpr( is_buffered_network_type_v<Ntk> )
       {
         static_assert( has_create_buf_v<Ntk>, "Ntk does not implement the create_buf method" );
-
-        if ( module_name == "buffer" || module_name == "inverter" )
+        if ( !num_args_equals( 2u ) )
+          fmt::print( stderr, "[e] number of arguments of a `{}` instance is not 2\n", module_name );
+        
+        signal<Ntk> fi = ntk_.get_constant( false );
+        std::string lhs;
+        for ( auto const& arg : args )
         {
-          if ( !num_args_equals( 2u ) )
-            fmt::print( stderr, "[e] number of arguments of a `{}` instance is not 2\n", module_name );
-          
-          signal<Ntk> fi;
-          std::string lhs;
-          for ( auto const& arg : args )
+          if ( arg.first == ".i" )
           {
-            if ( arg.first == ".i" )
-              fi = signals_[arg.second];
-            else if ( arg.first == ".o" )
-              lhs = arg.second;
+            if ( signals_.find( arg.second ) == signals_.end() )
+              fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
             else
-              fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
+              fi = signals_[arg.second];
           }
-          if ( module_name == "inverter" )
-            fi = ntk_.create_not( fi );
-          signals_[lhs] = ntk_.create_buf( fi );
-          return;
+          else if ( arg.first == ".o" )
+            lhs = arg.second;
+          else
+            fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
         }
+        if ( module_name == "inverter" )
+          fi = ntk_.create_not( fi );
+        signals_[lhs] = ntk_.create_buf( fi );
       }
-      
+    }
+    else
+    {
       fmt::print( stderr, "[e] unknown module name {}\n", module_name );
     }
   }
@@ -390,6 +400,26 @@ public:
     for ( auto const& o : outputs_ )
     {
       ntk_.create_po( signals_[o], o );
+    }
+
+    if constexpr ( has_set_output_name_v<Ntk> )
+    {
+      uint32_t ctr{0u};
+      for ( auto const& output_name : output_names_ )
+      {
+        if ( output_name.second == 1u )
+        {
+          ntk_.set_output_name( ctr++, output_name.first );
+        }
+        else
+        {
+          for ( auto i = 0u; i < output_name.second; ++i )
+          {
+            ntk_.set_output_name( ctr++, fmt::format( "{}[{}]", output_name.first, i ) );
+          }
+        }
+      }
+      assert( ctr == ntk_.num_pos() );
     }
   }
 

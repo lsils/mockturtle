@@ -28,6 +28,7 @@
  \brief Utility functions to restore network names after optimization.
 
  \author Marcel Walter
+ \author Siang-Yun Lee
 */
 
 #pragma once
@@ -104,6 +105,58 @@ void restore_names( const NtkSrc& ntk_src, NtkDest& ntk_dest, node_map<signal<Nt
 
     ntk_src.foreach_po( restore_output_name );
   }
+}
+
+/*! \brief Restore PI and PO names, matching by order.
+ *
+ * **Required network functions for NtkSrc:**
+ * - `foreach_pi`
+ * - `foreach_po`
+ * - `num_pis`
+ * - `num_pos`
+ * - `has_name`
+ * - `get_name`
+ * - `make_signal`
+ * - `has_output_name`
+ * - `get_output_name`
+ * 
+ * **Required network functions for NtkDest:**
+ * - `foreach_pi`
+ * - `num_pis`
+ * - `num_pos`
+ * - `set_name`
+ * - `make_signal`
+ * - `set_output_name`
+ *
+ * \param ntk_src The source logic network, which potentially has named signals
+ * \param ntk_dest The destination logic network, whose names are to be restored
+ */
+template<typename NtkSrc, typename NtkDest>
+void restore_pio_names_by_order( const NtkSrc& ntk_src, NtkDest& ntk_dest )
+{
+  static_assert( is_network_type_v<NtkSrc>, "NtkSrc is not a network type" );
+  static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
+  static_assert( has_has_name_v<NtkSrc> && has_get_name_v<NtkSrc>, "NtkSrc does not implement the has_name and/or get_name functions" );
+  static_assert( has_has_output_name_v<NtkSrc> && has_get_output_name_v<NtkSrc>, "NtkSrc does not implement the has_output_name and/or get_output_name functions" );
+  static_assert( has_set_name_v<NtkDest> && has_set_output_name_v<NtkDest>, "NtkDest does not implement the set_name and/or set_output_name functions" );
+
+  assert( ntk_src.num_pis() == ntk_dest.num_pis() );
+  assert( ntk_src.num_pos() == ntk_dest.num_pos() );
+
+  std::vector<std::string> pi_names( ntk_src.num_pis(), "" );
+  ntk_src.foreach_pi( [&]( auto const& n, auto i ){
+    if ( ntk_src.has_name( ntk_src.make_signal( n ) ) )
+      pi_names[i] = ntk_src.get_name( ntk_src.make_signal( n ) );
+  });
+  ntk_dest.foreach_pi( [&]( auto const& n, auto i ){
+    if ( pi_names[i] != "" )
+      ntk_dest.set_name( ntk_dest.make_signal( n ), pi_names[i] );
+  });
+
+  ntk_src.foreach_po( [&]( auto const& f, auto i ){
+    if ( ntk_src.has_output_name( i ) )
+      ntk_dest.set_output_name( i, ntk_src.get_output_name( i ) );
+  });
 }
 
 } // namespace mockturtle

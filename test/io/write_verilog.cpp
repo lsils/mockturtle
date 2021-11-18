@@ -164,10 +164,10 @@ TEST_CASE( "write buffered AIG into Verilog file", "[write_verilog]" )
                       "  input x0 , x1 ;\n"
                       "  output y0 ;\n"
                       "  wire n3 , n4 , n5 , n6 ;\n"
-                      "  buffer  buf_n3( .i (x0), .o (n3) );\n"
-                      "  buffer  buf_n4( .i (n3), .o (n4) );\n"
+                      "  buffer buf_n3( .i (x0), .o (n3) );\n"
+                      "  buffer buf_n4( .i (n3), .o (n4) );\n"
                       "  assign n5 = ~x1 & ~n4 ;\n"
-                      "  inverter  inv_n6( .i (n5), .o (n6) );\n"
+                      "  inverter inv_n6( .i (n5), .o (n6) );\n"
                       "  assign y0 = n6 ;\n"
                       "endmodule\n" );
 }
@@ -217,10 +217,10 @@ TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
   CHECK( out.str() == "module top( x0 , x1 , x2 , y0 , y1 , y2 , y3 );\n"
                       "  input x0 , x1 , x2 ;\n"
                       "  output y0 , y1 , y2 , y3 ;\n"
-                      "  zero   g0( .O (y0) );\n"
-                      "  buf    g1( .a (x0), .O (y1) );\n"
-                      "  nand2  g2( .a (x1), .b (x2), .O (y2) );\n"
-                      "  inv2   g3( .a (y2), .O (y3) );\n"
+                      "  zero  g0( .O (y0) );\n"
+                      "  buf   g1( .a (x0), .O (y1) );\n"
+                      "  nand2 g2( .a (x1), .b (x2), .O (y2) );\n"
+                      "  inv2  g3( .a (y2), .O (y3) );\n"
                       "endmodule\n" );
 }
 
@@ -271,9 +271,9 @@ TEST_CASE( "write mapped network with multiple driven POs and register names int
                       "  input [0:0] ref ;\n"
                       "  input [1:0] data ;\n"
                       "  output [3:0] y ;\n"
-                      "  buf    g0( .a (ref[0]), .Y (y[0]) );\n"
-                      "  nand2  g1( .a (data[0]), .b (data[1]), .Y (y[1]) );\n"
-                      "  nand2  g2( .a (data[0]), .b (data[1]), .Y (y[2]) );\n"
-                      "  inv2   g3( .a (y[1]), .Y (y[3]) );\n"
+                      "  buf   g0( .a (ref[0]), .Y (y[0]) );\n"
+                      "  nand2 g1( .a (data[0]), .b (data[1]), .Y (y[1]) );\n"
+                      "  nand2 g2( .a (data[0]), .b (data[1]), .Y (y[2]) );\n"
+                      "  inv2  g3( .a (y[1]), .Y (y[3]) );\n"
                       "endmodule\n" );
 }

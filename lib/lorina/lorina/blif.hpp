@@ -278,7 +278,32 @@ static std::regex end( R"(.end)" );
 {
   return_code result = return_code::success;
 
-  const auto dispatch_function = [&]( std::vector<std::string> inputs, std::string output, std::vector<std::pair<std::string, std::string>> tt )
+  /* Function signature */
+  using GateFn = detail::Func<
+                   std::vector<std::string>,
+                   std::string,
+                   std::vector<std::pair<std::string, std::string>>
+                 >;
+
+  /* Parameter maps */
+  using GateParamMap = detail::ParamPackMap<
+                         /* Key */
+                         std::string,
+                         /* Params */
+                         std::vector<std::string>,
+                         std::string,
+                         std::vector<std::pair<std::string, std::string>>
+                       >;
+
+  constexpr static const int GATE_FN{0};
+
+  using ParamMaps = detail::ParamPackMapN<GateParamMap>;
+  using PackedFns = detail::FuncPackN<GateFn>;
+
+  detail::call_in_topological_order<PackedFns, ParamMaps>
+    on_action( PackedFns( GateFn( [&]( std::vector<std::string> inputs,
+				       std::string output,
+				       std::vector<std::pair<std::string, std::string>> tt )
     {
       /* ignore latches */
       if ( output == "" )
@@ -288,9 +313,7 @@ static std::regex end( R"(.end)" );
       }
 
       reader.on_gate( inputs, output, tt );
-    };
-
-  detail::call_in_topological_order<std::vector<std::string>, std::string, std::vector<std::pair<std::string, std::string>>> on_action( dispatch_function );
+    } ) ) );
 
   std::smatch m;
   detail::foreach_line_in_file_escape( in, [&]( std::string line ) {
@@ -328,7 +351,7 @@ static std::regex end( R"(.end)" );
           return false;
         } );
 
-        on_action.call_deferred( args, output, args, output, tt );
+        on_action.call_deferred<GATE_FN>( args, { output }, std::tuple( args, output, tt ) );
 
         if ( in.eof() )
         {
@@ -394,7 +417,7 @@ static std::regex end( R"(.end)" );
 
           on_action.declare_known( output );
           reader.on_latch( input, output, type, control, init_value );
-          on_action.compute_dependencies( output );
+          on_action.compute_dependencies<GATE_FN>( { output } );
 
           return true;
         }
