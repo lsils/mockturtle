@@ -129,14 +129,14 @@ public:
 #pragma endregion
 
 #pragma region converter functions
-  signal<Ntk> convert_cube_to_graph( auto& cube_children, const kitty::cube& cb, const bool& is_sop )
+  signal<Ntk> convert_cube_to_graph( const mockturtle::cover_storage_node& Nde, const kitty::cube& cb, const bool& is_sop )//auto& cube_children, const kitty::cube& cb, const bool& is_sop )
   {
     std::vector<signal<Ntk>> signals;
 
-    for ( auto j = 0u; j < cube_children.size(); j++ )
+    for ( auto j = 0u; j < Nde.children.size(); j++ )
     {
       if ( cb.get_mask( j ) == 1 )
-        signals.emplace_back( ( cb.get_bit( j ) == 1 ) ? _connector.signals[cube_children[j].index] : !_connector.signals[cube_children[j].index] );
+        signals.emplace_back( ( cb.get_bit( j ) == 1 ) ? _connector.signals[Nde.children[j].index] : !_connector.signals[Nde.children[j].index] );
     }
     return ( is_sop ? recursive_and( signals ) : recursive_or( signals ) );
   }
@@ -161,7 +161,7 @@ public:
       }
       else
       {
-        signals_internal.emplace_back( convert_cube_to_graph( Nde.children, cb, is_sop ) );
+        signals_internal.emplace_back( convert_cube_to_graph( Nde, cb, is_sop ) );
       }
     }
     if ( signals_internal.size() == 1 )
