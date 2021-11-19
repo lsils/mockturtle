@@ -35,21 +35,23 @@
 
 void optimize_with_smt( std::string name = "" )
 {
-  std::ofstream os( "model_" + name + ".smt", std::ofstream::out );
+  /*
+  std::ofstream os( "model_" + name + ".smt2", std::ofstream::out );
   dump_smt_model( os );
   os.close();
-  std::string command = "z3 -v:1 opt.dump_models=true model_" + name + ".smt > sol_" + name + ".txt";
+  std::string command = "z3 -v:1 opt.dump_models=true model_" + name + ".smt2 &> sol_" + name + ".txt";
   std::system( command.c_str() );
+  */
   parse_z3_result( "sol_" + name + ".txt" );
   return;
 }
 
-#if 1 // ILP formulation
+// ILP formulation
 void dump_smt_model( std::ostream& os = std::cout )
 {
   os << "(set-logic QF_LIA)\n";
   /* hard assumptions to bound the number of variables */
-  uint32_t const max_depth = depth() + 3;
+  uint32_t const max_depth = depth(); // + 3;
   uint32_t const max_relative_depth = max_depth;
   count_buffers();
   uint32_t const upper_bound = num_buffers();
@@ -98,20 +100,20 @@ void dump_smt_model( std::ostream& os = std::cout )
     if ( _ps.assume.balance_pis )
     {
       _ntk.foreach_pi( [&]( auto const& n ){
-        smt_constraints_balanced_pis( os, n, max_depth, max_relative_depth );
+        smt_constraints_balanced_pis( os, n, max_depth );
         bufs.emplace_back( fmt::format( "bufs{}", n ) );
       });
     }
     else
     {
       _ntk.foreach_pi( [&]( auto const& n ){
-        smt_constraints( os, n, max_depth, max_relative_depth );
+        smt_constraints( os, n, max_depth );
         bufs.emplace_back( fmt::format( "bufs{}", n ) );
       });
     }
   }
   _ntk.foreach_gate( [&]( auto const& n ){
-    smt_constraints( os, n, max_depth, max_relative_depth );
+    smt_constraints( os, n, max_depth );
     bufs.emplace_back( fmt::format( "bufs{}", n ) );
   });
 
@@ -122,7 +124,7 @@ void dump_smt_model( std::ostream& os = std::cout )
   os << fmt::format( "(get-value ({}))\n(exit)\n", fmt::join( level_vars, " " ) );
 }
 
-void smt_constraints_balanced_pis( std::ostream& os, node const& n, uint32_t const& max_depth, uint32_t const& max_relative_depth )
+void smt_constraints_balanced_pis( std::ostream& os, node const& n, uint32_t const& max_depth )
 {
   os << fmt::format( "\n;constraints for node {}\n", n );
   os << fmt::format( "(declare-const bufs{} Int)\n", n );
@@ -209,6 +211,20 @@ void smt_constraints_balanced_pis( std::ostream& os, node const& n, uint32_t con
     os << fmt::format( "(assert (>= depth {}))\n", num_splitter_levels( n ) );
   }
 
+  /* max possible relative depth */
+  uint32_t highest_fanout = 0;
+  if ( _external_ref_count[n] > 0 && _ps.assume.balance_pos )
+  {
+    highest_fanout = max_depth + 1;
+  }
+  else
+  {
+    foreach_fanout( n, [&]( auto const& no ){
+      highest_fanout = std::max( highest_fanout, _timeframes[no].second );
+    });
+  }
+  uint32_t max_relative_depth = highest_fanout;
+
   uint32_t l = max_relative_depth;
   bool add_po_refs = false;
   if ( _external_ref_count[n] > 0 && _ps.assume.balance_pos )
@@ -250,10 +266,10 @@ void smt_constraints_balanced_pis( std::ostream& os, node const& n, uint32_t con
   {
     os << fmt::format( " g{}b{}", n, l );
   }
-  os << ")));\n";
+  os << ")))\n";
 }
 
-void smt_constraints( std::ostream& os, node const& n, uint32_t const& max_depth, uint32_t const& max_relative_depth )
+void smt_constraints( std::ostream& os, node const& n, uint32_t const& max_depth )
 {
   os << fmt::format( "\n;constraints for node {}\n", n );
   os << fmt::format( "(declare-const bufs{} Int)\n", n );
@@ -331,6 +347,20 @@ void smt_constraints( std::ostream& os, node const& n, uint32_t const& max_depth
     return;
   }
 
+  /* max possible relative depth */
+  uint32_t highest_fanout = 0;
+  if ( _external_ref_count[n] > 0 && _ps.assume.balance_pos )
+  {
+    highest_fanout = max_depth + 1;
+  }
+  else
+  {
+    foreach_fanout( n, [&]( auto const& no ){
+      highest_fanout = std::max( highest_fanout, _timeframes[no].second );
+    });
+  }
+  uint32_t max_relative_depth = highest_fanout - _timeframes[n].first;
+
   /* sequencing & range constraints */
   foreach_fanout( n, [&]( auto const& no ){
     os << fmt::format( "(assert (<= l{} (+ l{} {})))\n", no, n, max_relative_depth );
@@ -384,10 +414,9 @@ void smt_constraints( std::ostream& os, node const& n, uint32_t const& max_depth
   {
     os << fmt::format( " g{}b{}", n, l );
   }
-  os << ")));\n";
+  os << ")))\n";
 }
 
-#endif
 
 template<class Fn>
 void foreach_fanout( node const& n, Fn&& fn )
