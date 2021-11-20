@@ -35,13 +35,11 @@
 
 void optimize_with_smt( std::string name = "" )
 {
-  /*
   std::ofstream os( "model_" + name + ".smt2", std::ofstream::out );
   dump_smt_model( os );
   os.close();
-  std::string command = "z3 -v:1 opt.dump_models=true model_" + name + ".smt2 &> sol_" + name + ".txt";
+  std::string command = "z3 -v:1 model_" + name + ".smt2 &> sol_" + name + ".txt";
   std::system( command.c_str() );
-  */
   parse_z3_result( "sol_" + name + ".txt" );
   return;
 }
@@ -120,7 +118,9 @@ void dump_smt_model( std::ostream& os = std::cout )
   os << "\n(declare-const total Int)\n";
   os << fmt::format( "(assert (= total (+ {})))\n", fmt::join( bufs, " " ) );
   os << fmt::format( "(assert (<= total {}))\n", upper_bound );
-  os << "(minimize total)\n(check-sat)\n(get-value (total depth))\n";
+  os << "(minimize total)\n(check-sat)\n";
+  if ( _ps.assume.balance_pos ) os << "(get-value (total depth))\n";
+  else os << "(get-value (total))\n";
   os << fmt::format( "(get-value ({}))\n(exit)\n", fmt::join( level_vars, " " ) );
 }
 
@@ -368,7 +368,7 @@ void smt_constraints( std::ostream& os, node const& n, uint32_t const& max_depth
   });
 
   /* PO branching */
-  if ( _external_ref_count[n] > 0 )
+  if ( _external_ref_count[n] > 0 && _ps.assume.balance_pos )
   {
     os << fmt::format( "(assert (>= depth (+ l{} {})))\n", n, num_splitter_levels( n ) );
   }
@@ -444,9 +444,14 @@ void parse_z3_result( std::string filename )
   assert( line == "sat" );
   std::getline( fin, line ); /* second line: "((total <>)" */
   uint32_t total = std::stoi( line.substr( 8, line.find_first_of( ')' ) - 8 ) );
-  std::getline( fin, line ); /* third line: " (depth <>))" */
-  uint32_t depth = std::stoi( line.substr( 8, line.find_first_of( ')' ) - 8 ) );
-  std::cout << "[i] total = " << total << ", depth = " << depth << "\n";
+  std::cout << "[i] total = " << total;
+  if ( _ps.assume.balance_pos )
+  {
+    std::getline( fin, line ); /* third line: " (depth <>))" */
+    uint32_t depth = std::stoi( line.substr( 8, line.find_first_of( ')' ) - 8 ) );
+    std::cout << ", depth = " << depth;
+  }
+  std::cout << "\n";
 
   while ( std::getline( fin, line ) ) /* remaining lines: "((l<> <>)" or " (l<> <>)" or " (l<> <>))" */
   {

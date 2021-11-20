@@ -107,6 +107,9 @@ struct buffer_insertion_params
     until_sat,
     optimal
   } optimization_effort = none;
+
+  /*! \brief The maximum size of a chunk. */
+  uint32_t max_chunk_size{100u};
 };
 
 /*! \brief Insert buffers and splitters for the AQFP technology.
@@ -449,8 +452,10 @@ private:
     } );
 
     _ntk.foreach_node( [&]( auto const& n ) {
+      if ( !_ps.assume.branch_pis && _ntk.is_pi( n ) ) return true;
       if ( _external_ref_count[n] > 0u )
         _fanouts[n].push_back( {_depth + 1 - _levels[n], {}, _external_ref_count[n]} );
+      return true;
     });
 
     /* //debugging checks
@@ -513,6 +518,7 @@ private:
 
   void insert_fanout( node const& n, node const& fanout )
   {
+    if ( !_ps.assume.branch_pis && _ntk.is_pi( n ) ) return;
     auto const rd = _levels[fanout] - _levels[n];
     assert( rd > 0 );
     auto& fo_infos = _fanouts[n];
@@ -1072,6 +1078,10 @@ private:
       _ntk.incr_trav_id();
       chunk c{_ntk.trav_id()};
       recruit( n, c );
+      if ( c.members.size() > _ps.max_chunk_size )
+      {
+        return true;
+      }
       cleanup_interfaces( c );
 
       auto moved = analyze_chunk_down( c );
