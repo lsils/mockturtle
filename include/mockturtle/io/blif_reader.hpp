@@ -234,13 +234,11 @@ public:
     assert( cover.at( 0u ).second.size() == 1 );
     auto const first_output_value = cover.at( 0u ).second.at( 0u );
 
-    std::vector<kitty::cube> minterms;
-    std::vector<kitty::cube> maxterms;
-
-    assert( minterms.size() == 0u || maxterms.size() == 0u );
 
     if constexpr ( std::is_same<typename Ntk::base_type, cover_network>::value )
     {
+      std::vector<kitty::cube> cubes;
+      bool is_sop =  ( first_output_value == '1' );
       for ( const auto& c : cover )
       {
         assert( c.second.size() == 1 );
@@ -250,14 +248,7 @@ public:
         assert( output == first_output_value );
         (void)first_output_value;
 
-        if ( output == '1' )
-        {
-          minterms.emplace_back( kitty::cube( c.first ) );
-        }
-        else if ( output == '0' )
-        {
-          maxterms.emplace_back( kitty::cube( c.first ) );
-        }
+        cubes.emplace_back( kitty::cube( c.first ) );
       }
 
       std::vector<signal<Ntk>> input_signals;
@@ -266,17 +257,15 @@ public:
         assert( signals.find( i ) != signals.end() );
         input_signals.push_back( signals.at( i ) );
       }
-      if ( minterms.size() != 0 )
+      if ( cubes.size() != 0 )
       {
-        signals[output] = ntk_.create_node( input_signals, std::make_pair( minterms, true ) );
-      }
-      else if ( maxterms.size() != 0 )
-      {
-        signals[output] = ntk_.create_node( input_signals, std::make_pair( maxterms, false ) );
+        signals[output] = ntk_.create_node( input_signals, std::make_pair( cubes, is_sop ) );
       }
     }
     else
     {
+      std::vector<kitty::cube> minterms;
+      std::vector<kitty::cube> maxterms;
       for ( const auto& c : cover )
       {
         assert( c.second.size() == 1 );
@@ -295,6 +284,8 @@ public:
           maxterms.emplace_back( ~kitty::cube( c.first ) );
         }
       }
+      assert( minterms.size() == 0u || maxterms.size() == 0u );
+
       kitty::dynamic_truth_table tt( int( inputs.size() ) );
       if ( minterms.size() != 0 )
       {

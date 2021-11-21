@@ -42,9 +42,7 @@ namespace mockturtle
 
 namespace detail
 {
-/*! \brief signals_connector
- * This struct allows to map any signal in the new network to the output of a node in the old one.
- */
+
 template<class Ntk>
 struct signals_connector
 {
@@ -61,7 +59,9 @@ struct signals_connector
 };
 
 
-
+/*! \brief cover_to_graph_converter
+ * This data type is equipped with the main operations involved in the cover to graph conversion.
+ */
 template<class Ntk>
 class cover_to_graph_converter
 {
@@ -78,6 +78,7 @@ public:
 #pragma region recursive functions
   signal<Ntk> recursive_or( const std::vector<signal<Ntk>>& signals )
   {
+    
     if ( signals.size() == 1 )
     {
       return signals[0];
@@ -93,17 +94,13 @@ public:
       std::vector<signal<Ntk>> vector_l( signals.begin(), signals.begin() + half_size );
       std::vector<signal<Ntk>> vector_r( signals.begin() + half_size, signals.end() );
 
-      signal<Ntk> signal_l = recursive_or( vector_l );
-      signal<Ntk> signal_r = recursive_or( vector_r );
-      signal<Ntk> signal_out = _ntk.create_or( signal_l, signal_r );
+      return _ntk.create_or( recursive_or( vector_l ), recursive_or( vector_r ) );
 
-      return signal_out;
     }
   }
 
-  signal<Ntk> recursive_and( const std::vector<signal<Ntk>>& signals )
+  signal<Ntk> recursive_and( std::vector<signal<Ntk>> const& signals )
   {
-
     if ( signals.size() == 1 )
     {
       return signals[0];
@@ -118,12 +115,8 @@ public:
       std::size_t const half_size = signals.size() / 2;
       std::vector<signal<Ntk>> vector_l( signals.begin(), signals.begin() + half_size );
       std::vector<signal<Ntk>> vector_r( signals.begin() + half_size, signals.end() );
-
-      signal<Ntk> signal_l = recursive_and( vector_l );
-      signal<Ntk> signal_r = recursive_and( vector_r );
-      signal<Ntk> signal_out = _ntk.create_and( signal_l, signal_r );
-
-      return signal_out;
+      
+      return _ntk.create_and( recursive_and( vector_l ), recursive_and( vector_r ) );
     }
   }
 #pragma endregion
@@ -136,42 +129,35 @@ public:
     for ( auto j = 0u; j < Nde.children.size(); j++ )
     {
       if ( cb.get_mask( j ) == 1 )
-        signals.emplace_back( ( cb.get_bit( j ) == 1 ) ? _connector.signals[Nde.children[j].index] : !_connector.signals[Nde.children[j].index] );
+      {
+        if ( cb.get_bit( j ) == 1 )
+        {
+          signals.emplace_back( ( is_sop ) ? _connector.signals[Nde.children[j].index] : !_connector.signals[Nde.children[j].index] );
+        }
+        else
+        {
+          signals.emplace_back( ( is_sop ) ? !_connector.signals[Nde.children[j].index] : _connector.signals[Nde.children[j].index] );
+        }
+      }
     }
-    return ( is_sop ? recursive_and( signals ) : recursive_or( signals ) );
+
+    return is_sop ? recursive_and( signals ) : recursive_or( signals );
   }
 
   signal<Ntk> convert_cover_to_graph( const mockturtle::cover_storage_node& Nde )
   {
+    
+    auto& cbs = _cover_ntk._storage->data.covers[Nde.data[1].h1].first;
+  
     std::vector<signal<Ntk>> signals_internal;
-
     bool is_sop = _cover_ntk._storage->data.covers[Nde.data[1].h1].second;
-    auto cbs = _cover_ntk._storage->data.covers[Nde.data[1].h1].first;
 
     for ( auto const& cb : cbs )
     {
-      if ( cb.num_literals() == 1 && Nde.children.size() == 1 )
-      {
-        if ( cb.get_bit( 0 ) == 1 )
-          return _ntk.create_buf( _connector.signals[Nde.children[0].index] );
-        else if ( cb.get_bit( 0 ) == 0 )
-          return _ntk.create_not( _connector.signals[Nde.children[0].index] );
-        else
-          std::cerr << "something wrong in your 1 literal node";
-      }
-      else
-      {
-        signals_internal.emplace_back( convert_cube_to_graph( Nde, cb, is_sop ) );
-      }
+      signals_internal.emplace_back( convert_cube_to_graph( Nde, cb, is_sop ) );
     }
-    if ( signals_internal.size() == 1 )
-    {
-      return signals_internal.at( 0 );
-    }
-    else
-    {
-      return ( is_sop ? recursive_or( signals_internal ) : recursive_and( signals_internal ) );
-    }
+
+    return ( is_sop ? recursive_or( signals_internal ) : recursive_and( signals_internal ) );
   }
 
   void run()
@@ -187,16 +173,24 @@ public:
       bool condition1 = ( std::find( _cover_ntk._storage->inputs.begin(), _cover_ntk._storage->inputs.end(), index ) != _cover_ntk._storage->inputs.end() );
       bool condition2 = nde.data[1].h1 == 0 || nde.data[1].h1 == 1;
 
+
       if ( !condition1 && !condition2 )
       {
         _connector.insert( convert_cover_to_graph( nde ), _cover_ntk._storage->hash[nde] );
       }
+      else if ( nde.data[1].h1 == 0 )
+      {
+        _connector.insert( _ntk.get_constant( false ), _cover_ntk._storage->hash[nde]  );
+      }
+      else if ( nde.data[1].h1 == 1 )
+      {
+        _connector.insert( _ntk.get_constant( true ), _cover_ntk._storage->hash[nde]  );
+      }
     }
 
-    for ( auto const& outpt : _cover_ntk._storage->outputs )
+    for ( const auto& outpt : _cover_ntk._storage->outputs )
     {
-      const auto o = _connector.signals[outpt.index];
-      _ntk.create_po( o );
+      _ntk.create_po( _connector.signals[outpt.index] );
     }
   }
 
@@ -243,6 +237,8 @@ void convert_covers_to_graph( cover_network& cover_ntk, Ntk& ntk )
 {
   static_assert( has_create_and_v<Ntk>, "NtkDest does not implement the create_not method" );
   static_assert( has_create_or_v<Ntk>, "NtkDest does not implement the create_po method" );
+  static_assert( has_create_buf_v<Ntk>, "NtkDest does not implement the create_not method" );
+  static_assert( has_create_not_v<Ntk>, "NtkDest does not implement the create_not method" );
 
   detail::cover_to_graph_converter<Ntk> converter( ntk, cover_ntk );
   converter.run();
@@ -283,6 +279,8 @@ Ntk convert_covers_to_graph( cover_network& cover_ntk )
 
   static_assert( has_create_and_v<Ntk>, "NtkDest does not implement the create_not method" );
   static_assert( has_create_or_v<Ntk>, "NtkDest does not implement the create_po method" );
+  static_assert( has_create_buf_v<Ntk>, "NtkDest does not implement the create_not method" );
+  static_assert( has_create_not_v<Ntk>, "NtkDest does not implement the create_not method" );
 
   Ntk ntk;
   detail::cover_to_graph_converter<Ntk> converter( ntk, cover_ntk );

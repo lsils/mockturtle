@@ -6,6 +6,7 @@
 
 #include <mockturtle/io/cover_to_graph.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
+#include <mockturtle/networks/cover.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -370,4 +371,283 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig"
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig_cp )[0]._bits == sim_reference );
+}
+
+TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: No don't cares", "[cover_to_graph]" )
+{
+  cover_network cover;
+
+  std::string file{
+    ".model top\n"
+      ".inputs a1 a2 \n"
+      ".outputs y\n"
+      ".names a1 a2 i0\n"
+      "11 1\n"
+      ".names a1 i1\n"
+      "0 1\n"
+      ".names a2 i2\n"
+      "0 1\n"
+      ".names i1 i2 i3\n"
+      "11 1\n"
+      ".names i0 i3 y\n"
+      "00 1\n"      
+      ".end\n"
+      };
+
+  std::istringstream in( file );
+  auto result = lorina::read_blif( in, blif_reader( cover ) );
+
+  aig_network aig_cp;
+  convert_covers_to_graph( cover, aig_cp );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+
+  aig_network aig;
+  auto b1 = aig.create_pi();
+  auto b2 = aig.create_pi();
+
+  auto n0 = aig.create_and( b1, b2 );
+  auto n1 = aig.create_not( b1 );
+  auto n2 = aig.create_not( b2 );
+  auto n3 = aig.create_and( n1, n2 );
+  auto z = aig.create_and( !n0, !n3 );
+
+  aig.create_po( z );
+
+  auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
+}
+
+TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: No don't cares and some OFF set", "[cover_to_graph]" )
+{
+  cover_network cover;
+
+  std::string file{
+    ".model top\n"
+      ".inputs a1 a2 \n"
+      ".outputs y\n"
+      ".names a1 a2 i0\n"
+      "11 1\n"
+      ".names a1 i1\n"
+      "1 0\n"
+      ".names a2 i2\n"
+      "1 0\n"
+      ".names i1 i2 i3\n"
+      "11 1\n"
+      ".names i0 i3 y\n"
+      "00 1\n"      
+      ".end\n"
+      };
+
+  std::istringstream in( file );
+  auto result = lorina::read_blif( in, blif_reader( cover ) );
+
+  aig_network aig_cp;
+  convert_covers_to_graph( cover, aig_cp );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+
+  aig_network aig;
+  auto b1 = aig.create_pi();
+  auto b2 = aig.create_pi();
+
+  auto n0 = aig.create_and( b1, b2 );
+  auto n1 = aig.create_not( b1 );
+  auto n2 = aig.create_not( b2 );
+  auto n3 = aig.create_and( n1, n2 );
+  auto z = aig.create_and( !n0, !n3 );
+
+  aig.create_po( z );
+
+  auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
+}
+
+
+TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: some don't cares", "[cover_to_graph]" )
+{
+  cover_network cover;
+
+  std::string file{
+    ".model top\n"
+      ".inputs a1 a2 \n"
+      ".outputs y\n"
+      ".names a1 a2 i0\n"
+      "11 1\n"
+      ".names a1 i1\n"
+      "0 1\n"
+      ".names a2 i2\n"
+      "0 1\n"
+      ".names i1 i2 i3\n"
+      "11 1\n"
+      ".names i0 i3 y\n"
+      "1- 1\n"
+      "-1 1\n"
+      ".end\n"
+      };
+
+  std::istringstream in( file );
+  auto result = lorina::read_blif( in, blif_reader( cover ) );
+
+  aig_network aig_cp;
+  convert_covers_to_graph( cover, aig_cp );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+
+  aig_network aig;
+  auto b1 = aig.create_pi();
+  auto b2 = aig.create_pi();
+
+  auto n0 = aig.create_and( b1, b2 );
+  auto n1 = aig.create_not( b1 );
+  auto n2 = aig.create_not( b2 );
+  auto n3 = aig.create_and( n1, n2 );
+
+  auto y = aig.create_or( n0, n3 );
+
+  aig.create_po( y );
+
+  auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
+}
+
+TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: some don't cares and some OFF-sets", "[cover_to_graph]" )
+{
+  cover_network cover;
+
+  std::string file{
+    ".model top\n"
+      ".inputs a1 a2 \n"
+      ".outputs y\n"
+      ".names a1 a2 i0\n"
+      "11 1\n"
+      ".names a1 i1\n"
+      "0 1\n"
+      ".names a2 i2\n"
+      "0 1\n"
+      ".names i1 i2 i3\n"
+      "11 0\n"
+      ".names i0 i3 y\n"
+      "1- 0\n"
+      "-1 0\n"
+      ".end\n"
+      };
+
+  std::istringstream in( file );
+  auto result = lorina::read_blif( in, blif_reader( cover ) );
+
+  aig_network aig_cp;
+  convert_covers_to_graph( cover, aig_cp );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+
+  aig_network aig;
+  auto b1 = aig.create_pi();
+  auto b2 = aig.create_pi();
+
+  auto n0 = aig.create_and( b1, b2 );
+  auto n1 = aig.create_not( b1 );
+  auto n2 = aig.create_not( b2 );
+  auto n3 = aig.create_nand( n1, n2 );
+
+  auto y = aig.create_and( !n0, !n3 );
+
+  aig.create_po( y );
+
+  auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
+}
+
+
+TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: 3D cubes", "[cover_to_graph]" )
+{
+  cover_network cover;
+
+  std::string file{
+    ".model monitorBLIF\n"
+    ".inputs a b c d e\n"
+    ".outputs t1\n"
+    ".names a b c internal1\n"
+    "101 1\n"
+    "011 1\n"
+    ".names internal1 d internal2\n"
+    "11 1\n"
+    ".names internal2 e t1\n"
+    "01 1\n"
+    ".end\n"
+    };
+
+  std::istringstream in( file );
+  auto result = lorina::read_blif( in, blif_reader( cover ) );
+
+  aig_network aig_cp;
+  convert_covers_to_graph( cover, aig_cp );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+
+  aig_network aig;
+  auto a = aig.create_pi();
+  auto b = aig.create_pi();
+  auto c = aig.create_pi();
+  auto d = aig.create_pi();
+  auto e = aig.create_pi();
+
+  auto n1 = aig.create_and( a, c );
+  auto n2 = aig.create_and( n1, !b );
+  auto n3 = aig.create_and( b, c );
+  auto n4 = aig.create_and( !a, n3 );
+  auto i1 = aig.create_or( n4, n2 );
+
+  auto i2 = aig.create_and( i1, d );
+  auto y = aig.create_and( !i2, e );
+
+
+  aig.create_po( y );
+
+  auto const sim_reference = ( simulate<kitty::static_truth_table<5u>>( aig )[0]._bits );
+  CHECK( simulate<kitty::static_truth_table<5u>>( aig_cp )[0]._bits == sim_reference );
+}
+
+TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: constants", "[cover_to_graph]" )
+{
+  cover_network cover;
+  std::string file{
+    ".model monitorBLIF\n"
+    ".inputs a b \n"
+    ".outputs y\n"
+    ".names i1\n"
+    "1\n"
+    ".names a i1 i2\n"
+    "11 1\n"
+    ".names i2 b y\n"
+    "11 1\n"
+    ".end\n"
+    };
+
+  std::istringstream in( file );
+  auto result = lorina::read_blif( in, blif_reader( cover ) );
+
+  aig_network aig_cp;
+  convert_covers_to_graph( cover, aig_cp );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+
+  aig_network aig;
+  auto a = aig.create_pi();
+  auto b = aig.create_pi();
+  auto i1 = aig.get_constant(true);
+  auto i2 = aig.create_and( a, i1 );
+  auto y = aig.create_and( i2, b );
+
+
+  aig.create_po( y );
+
+  auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
 }
