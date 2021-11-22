@@ -194,7 +194,6 @@ public:
     std::string line;
 
     std::getline( is, line );
-    fmt::print("line [{}]\n", line);
     uint32_t num_func = std::stoul( line );
 
     for ( auto func = 0u; func < num_func; func++ )
