@@ -372,7 +372,7 @@ TEST_CASE( "create nodes and compute a function in a cover network", "[cover]" )
 {
   cover_network cover;
 
-  CHECK( has_create_node_from_cover_v<cover_network> );
+  CHECK( has_create_cover_node_v<cover_network> );
   CHECK( has_compute_on_node_v<cover_network> );
 
   const auto a = cover.create_pi();

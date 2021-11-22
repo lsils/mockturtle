@@ -35,13 +35,13 @@
 
 #pragma once
 
-#include <string>
-#include <type_traits>
 #include <list>
 #include <map>
+#include <string>
+#include <type_traits>
 
-#include <kitty/dynamic_truth_table.hpp>
 #include <kitty/cube.hpp>
+#include <kitty/dynamic_truth_table.hpp>
 #include <kitty/traits.hpp>
 
 namespace mockturtle
@@ -546,19 +546,19 @@ template<class Ntk>
 inline constexpr bool has_create_node_v = has_create_node<Ntk>::value;
 #pragma endregion
 
-#pragma region has_create_node_from_cover
+#pragma region has_create_cover_node
 template<class Ntk, class = void>
-struct has_create_node_from_cover : std::false_type
+struct has_create_cover_node : std::false_type
 {
 };
 
 template<class Ntk>
-struct has_create_node_from_cover<Ntk, std::void_t<decltype( std::declval<Ntk>().create_node( std::declval<std::vector<signal<Ntk>>>(), std::declval<std::pair<std::vector<kitty::cube>,bool>>() ) )>> : std::true_type
+struct has_create_cover_node<Ntk, std::void_t<decltype( std::declval<Ntk>().create_node( std::declval<std::vector<signal<Ntk>>>(), std::declval<std::pair<std::vector<kitty::cube>, bool>>() ) )>> : std::true_type
 {
 };
 
 template<class Ntk>
-inline constexpr bool has_create_node_from_cover_v = has_create_node_from_cover<Ntk>::value;
+inline constexpr bool has_create_cover_node_v = has_create_cover_node<Ntk>::value;
 #pragma endregion
 
 #pragma region has_clone_node
@@ -1558,7 +1558,7 @@ struct has_foreach_register : std::false_type
 };
 
 template<class Ntk>
-struct has_foreach_register<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_register( std::declval<void( std::pair<node<Ntk>,signal<Ntk>>, uint32_t )>() ) )>> : std::true_type
+struct has_foreach_register<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_register( std::declval<void( std::pair<node<Ntk>, signal<Ntk>>, uint32_t )>() ) )>> : std::true_type
 {
 };
 
@@ -1618,7 +1618,7 @@ struct has_compute_on_node : std::false_type
 };
 
 template<class Ntk>
-struct has_compute_on_node<Ntk, std::void_t<decltype( std::declval<Ntk>().compute_on_node( std::declval<node<Ntk>>(), std::declval<std::vector<kitty::cube>>() ) ) >> : std::true_type
+struct has_compute_on_node<Ntk, std::void_t<decltype( std::declval<Ntk>().compute_on_node( std::declval<node<Ntk>>(), std::declval<std::vector<kitty::cube>>() ) )>> : std::true_type
 {
 };
 
