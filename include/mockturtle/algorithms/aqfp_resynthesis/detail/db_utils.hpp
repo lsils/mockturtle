@@ -35,6 +35,7 @@
 #include <atomic>
 #include <iostream>
 #include <thread>
+#include <atomic>
 
 #include <kitty/kitty.hpp>
 

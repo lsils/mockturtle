@@ -77,7 +77,7 @@ class aqfp_network
 public:
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 3u;
-  static constexpr auto max_fanin_size = std::numeric_limits<uint32_t>::max();
+  static constexpr auto max_fanin_size = 5u;
 
   using base_type = aqfp_network;
   using storage = std::shared_ptr<aqfp_storage>;

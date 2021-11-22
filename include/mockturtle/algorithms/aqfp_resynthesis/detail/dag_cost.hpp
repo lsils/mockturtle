@@ -126,7 +126,7 @@ public:
 
 protected:
   dag_gate_cost<Ntk> simp_cc;
-  balanced_fanout_net_cost fanout_cc;
+  fanout_net_cost fanout_cc;
 
   Ntk net;
   std::vector<std::vector<typename Ntk::node_type>> fanout;
