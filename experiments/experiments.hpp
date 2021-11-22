@@ -445,7 +445,7 @@ static const char* benchmarks[] = {
     "c17", "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552"};
 
 static const char* benchmarks_aqfp[] = {
-    /*"5xp1",*/ "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
+    "5xp1", "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
     "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn"};
 
 std::vector<std::string> epfl_benchmarks( uint64_t selection = epfl )
