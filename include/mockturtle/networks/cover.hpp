@@ -45,6 +45,7 @@
 
 #include <algorithm>
 
+
 namespace mockturtle
 {
 /*! \brief cover storage data
@@ -68,6 +69,7 @@ struct cover_storage_data
 {
   uint64_t insert( std::pair<std::vector<kitty::cube>, bool> cover )
   {
+
     const auto index = covers.size();
     covers.emplace_back( cover );
     return index;
@@ -240,6 +242,7 @@ public:
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
     _storage->nodes[index].data[1].h1 = index;
+
     return index;
   }
 
@@ -432,6 +435,7 @@ public:
   {
     assert( !children.empty() );
     cover_type cb = other._storage->data.covers[other._storage->nodes[source].data[1].h1];
+    
     return create_node( children, cb );
   }
 #pragma endregion
@@ -810,6 +814,7 @@ public:
     for ( kitty::cube const& domain_cube : domain_cubes )
     {
       const auto index = result.size();
+
       if ( is_sop )
         result.emplace_back( false );
       else

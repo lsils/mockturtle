@@ -234,7 +234,6 @@ public:
     assert( cover.at( 0u ).second.size() == 1 );
     auto const first_output_value = cover.at( 0u ).second.at( 0u );
 
-
     if constexpr ( std::is_same<typename Ntk::base_type, cover_network>::value )
     {
       std::vector<kitty::cube> cubes;
@@ -299,6 +298,7 @@ public:
       {
         kitty::create_from_clauses( tt, maxterms, false );
       }
+
       std::vector<signal<Ntk>> input_signals;
       for ( const auto& i : inputs )
       {

@@ -12,7 +12,7 @@ using namespace mockturtle;
 
 TEST_CASE( "create and use constants in a cover network", "[cover]" )
 {
-  std::cout << "begin cover" ;
+
   cover_network cover;
 
   CHECK( has_size_v<cover_network> );
@@ -681,5 +681,4 @@ TEST_CASE( "visited values in cover networks", "[cover]" )
   cover.foreach_node( [&]( auto n ) {
     CHECK( cover.visited( n ) == 0 );
   } );
-  std::cout << "end cover\n  " ;
 }

@@ -42,6 +42,7 @@
 
 #include <kitty/cube.hpp>
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/cube.hpp>
 #include <kitty/traits.hpp>
 
 namespace mockturtle
@@ -553,6 +554,7 @@ struct has_create_cover_node : std::false_type
 };
 
 template<class Ntk>
+
 struct has_create_cover_node<Ntk, std::void_t<decltype( std::declval<Ntk>().create_node( std::declval<std::vector<signal<Ntk>>>(), std::declval<std::pair<std::vector<kitty::cube>, bool>>() ) )>> : std::true_type
 {
 };

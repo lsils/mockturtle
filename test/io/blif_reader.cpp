@@ -301,8 +301,48 @@ TEST_CASE( "read a combinational BLIF file into cover network", "[blif_reader]" 
   CHECK( cover.num_pis() == 3 );
   CHECK( cover.num_pos() == 2 );
   CHECK( cover.num_gates() == 4 );
-  std::cout << "end blif reader  \n" ;
 }
 
+TEST_CASE( "cover network, read a BLIF file containing latch declaration bug that requires updated 'split' function", "[blif_reader]" )
+{
+  cover_network cover;
+
+  std::string file{
+      ".model top\n"
+      ".inputs clock a b c d\n"
+      ".outputs f\n"
+      ".latch     lo0_in        lo0  1\n"
+      ".latch     lo1_in        lo1  1\n"
+      ".latch     lo2_in        lo2  1\n"
+      ".names a lo1 new_n16_\n"
+      "01 1\n"
+      ".names d new_n16_ new_n17_\n"
+      "00 1\n"
+      ".names b lo2 new_n18_\n"
+      "00 1\n"
+      ".names new_n16_ new_n18_ new_n19_\n"
+      "00 1\n"
+      ".names new_n17_ new_n19_ new_n20_\n"
+      "00 1\n"
+      ".names lo0 new_n20_ lo1_in\n"
+      "01 1\n"
+      ".names a lo1_in lo0_in\n"
+      "10 1\n"
+      ".names c new_n18_ lo2_in\n"
+      "00 1\n"
+      ".names lo1_in f\n"
+      "0 1\n"
+      ".end\n" };
+
+  std::istringstream in( file );
+  const auto result = lorina::read_blif( in, blif_reader( cover ) );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+  CHECK( cover.num_pis() == 5 );
+  CHECK( cover.num_pos() == 1 );
+  CHECK( cover.num_latches() == 3 );
+  CHECK( cover.num_gates() == 9 );
+}
 
 // missing write blif from cover network
