@@ -4,7 +4,7 @@
 
 #include <mockturtle/views/names_view.hpp>
 
-#include <mockturtle/io/cover_to_graph.hpp>
+#include <mockturtle/algorithms/cover_to_graph.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/cover.hpp>
 #include <mockturtle/networks/aig.hpp>
@@ -26,6 +26,7 @@ using namespace mockturtle;
 
 TEST_CASE( "Creation of a simple three node aig network: only and nodes", "[cover_to_graph]" )
 {
+  std::cout << "begin cover to graph test  " ;
   cover_network cover;
   aig_network aig;
 
@@ -51,13 +52,17 @@ TEST_CASE( "Creation of a simple three node aig network: only and nodes", "[cove
   cover.create_po( c4 );
   aig.create_po( a4 );
 
-  aig_network aig_cp1, aig_cp2;
-  names_view<aig_network> aig_cp3, aig_cp4;
+  aig_network aig_cp1;
+  convert_cover_to_graph( aig_cp1, cover );
 
-  convert_covers_to_graph( cover, aig_cp1 );
-  aig_cp2 = convert_covers_to_graph<aig_network>( cover );
-  convert_covers_to_graph( cover, aig_cp3 );
-  aig_cp4 = convert_covers_to_graph<aig_network>( cover );
+  aig_network aig_cp2;
+  aig_cp2 = convert_cover_to_graph<aig_network>( cover );
+
+
+  names_view<aig_network> aig_cp3;
+  convert_cover_to_graph( aig_cp3, cover );
+
+  names_view<aig_network> aig_cp4{ convert_cover_to_graph<aig_network>( cover ) };
 
   CHECK( aig.num_gates() == 3u );
   CHECK( aig_cp1.num_gates() == 3u );
@@ -99,13 +104,17 @@ TEST_CASE( "Creation of a simple three node aig network: mixed gates", "[cover_t
   cover.create_po( c4 );
   aig.create_po( a4 );
 
-  aig_network aig_cp1, aig_cp2;
-  names_view<aig_network> aig_cp3, aig_cp4;
+  aig_network aig_cp1;
+  convert_cover_to_graph( aig_cp1, cover );
 
-  convert_covers_to_graph( cover, aig_cp1 );
-  aig_cp2 = convert_covers_to_graph<aig_network>( cover );
-  convert_covers_to_graph( cover, aig_cp3 );
-  aig_cp4 = convert_covers_to_graph<aig_network>( cover );
+  aig_network aig_cp2;
+  aig_cp2 = convert_cover_to_graph<aig_network>( cover );
+
+
+  names_view<aig_network> aig_cp3;
+  convert_cover_to_graph( aig_cp3, cover );
+  
+  names_view<aig_network> aig_cp4{ convert_cover_to_graph<aig_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits );
 
@@ -143,13 +152,17 @@ TEST_CASE( "Creation of a simple three node xag network: mixed gates", "[cover_t
   cover.create_po( c4 );
   xag.create_po( a4 );
 
-  xag_network xag_cp1, xag_cp2;
-  names_view<xag_network> xag_cp3, xag_cp4;
+  xag_network xag_cp1;
+  convert_cover_to_graph( xag_cp1, cover );
 
-  convert_covers_to_graph( cover, xag_cp1 );
-  xag_cp2 = convert_covers_to_graph<xag_network>( cover );
-  convert_covers_to_graph( cover, xag_cp3 );
-  xag_cp4 = convert_covers_to_graph<xag_network>( cover );
+  xag_network xag_cp2;
+  xag_cp2 = convert_cover_to_graph<xag_network>( cover );
+
+
+  names_view<xag_network> xag_cp3;
+  convert_cover_to_graph( xag_cp3, cover );
+  
+  names_view<xag_network> xag_cp4{ convert_cover_to_graph<xag_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( xag )[0]._bits );
 
@@ -187,13 +200,17 @@ TEST_CASE( "Creation of a simple three node mig network: mixed gates", "[cover_t
   cover.create_po( c4 );
   mig.create_po( a4 );
 
-  mig_network mig_cp1, mig_cp2;
-  names_view<mig_network> mig_cp3, mig_cp4;
+  mig_network mig_cp1;
+  convert_cover_to_graph( mig_cp1, cover );
 
-  convert_covers_to_graph( cover, mig_cp1 );
-  mig_cp2 = convert_covers_to_graph<mig_network>( cover );
-  convert_covers_to_graph( cover, mig_cp3 );
-  mig_cp4 = convert_covers_to_graph<mig_network>( cover );
+  mig_network mig_cp2;
+  mig_cp2 = convert_cover_to_graph<mig_network>( cover );
+
+
+  names_view<mig_network> mig_cp3;
+  convert_cover_to_graph( mig_cp3, cover );
+  
+  names_view<mig_network> mig_cp4{ convert_cover_to_graph<mig_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( mig )[0]._bits );
 
@@ -231,13 +248,17 @@ TEST_CASE( "Creation of a simple three node xmg network: mixed gates", "[cover_t
   cover.create_po( c4 );
   xmg.create_po( a4 );
 
-  xmg_network xmg_cp1, xmg_cp2;
-  names_view<xmg_network> xmg_cp3, xmg_cp4;
+  xmg_network xmg_cp1;
+  convert_cover_to_graph( xmg_cp1, cover );
 
-  convert_covers_to_graph( cover, xmg_cp1 );
-  xmg_cp2 = convert_covers_to_graph<xmg_network>( cover );
-  convert_covers_to_graph( cover, xmg_cp3 );
-  xmg_cp4 = convert_covers_to_graph<xmg_network>( cover );
+  xmg_network xmg_cp2;
+  xmg_cp2 = convert_cover_to_graph<xmg_network>( cover );
+
+
+  names_view<xmg_network> xmg_cp3;
+  convert_cover_to_graph( xmg_cp3, cover );
+  
+  names_view<xmg_network> xmg_cp4{ convert_cover_to_graph<xmg_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( xmg )[0]._bits );
 
@@ -310,13 +331,17 @@ TEST_CASE( "Creation of an aig network containing all the features of the conver
 
   aig.create_po( ao );
 
-  aig_network aig_cp1, aig_cp2;
-  names_view<aig_network> aig_cp3, aig_cp4;
+  aig_network aig_cp1;
+  convert_cover_to_graph( aig_cp1, cover );
 
-  convert_covers_to_graph( cover, aig_cp1 );
-  aig_cp2 = convert_covers_to_graph<aig_network>( cover );
-  convert_covers_to_graph( cover, aig_cp3 );
-  aig_cp4 = convert_covers_to_graph<aig_network>( cover );
+  aig_network aig_cp2;
+  aig_cp2 = convert_cover_to_graph<aig_network>( cover );
+
+
+  names_view<aig_network> aig_cp3;
+  convert_cover_to_graph( aig_cp3, cover );
+  
+  names_view<aig_network> aig_cp4{ convert_cover_to_graph<aig_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits );
 
@@ -350,7 +375,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig"
   auto result = lorina::read_blif( in, blif_reader( cover ) );
 
   aig_network aig_cp;
-  convert_covers_to_graph( cover, aig_cp );
+  convert_cover_to_graph( aig_cp, cover );
 
   /* structural checks */
   CHECK( result == lorina::return_code::success );
@@ -398,7 +423,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   auto result = lorina::read_blif( in, blif_reader( cover ) );
 
   aig_network aig_cp;
-  convert_covers_to_graph( cover, aig_cp );
+  convert_cover_to_graph( aig_cp, cover );
 
   /* structural checks */
   CHECK( result == lorina::return_code::success );
@@ -444,7 +469,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   auto result = lorina::read_blif( in, blif_reader( cover ) );
 
   aig_network aig_cp;
-  convert_covers_to_graph( cover, aig_cp );
+  convert_cover_to_graph( aig_cp, cover );
 
   /* structural checks */
   CHECK( result == lorina::return_code::success );
@@ -492,7 +517,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   auto result = lorina::read_blif( in, blif_reader( cover ) );
 
   aig_network aig_cp;
-  convert_covers_to_graph( cover, aig_cp );
+  convert_cover_to_graph( aig_cp, cover );
 
   /* structural checks */
   CHECK( result == lorina::return_code::success );
@@ -540,7 +565,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   auto result = lorina::read_blif( in, blif_reader( cover ) );
 
   aig_network aig_cp;
-  convert_covers_to_graph( cover, aig_cp );
+  convert_cover_to_graph( aig_cp, cover );
 
   /* structural checks */
   CHECK( result == lorina::return_code::success );
@@ -585,7 +610,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   auto result = lorina::read_blif( in, blif_reader( cover ) );
 
   aig_network aig_cp;
-  convert_covers_to_graph( cover, aig_cp );
+  convert_cover_to_graph( aig_cp, cover );
 
   /* structural checks */
   CHECK( result == lorina::return_code::success );
@@ -633,7 +658,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   auto result = lorina::read_blif( in, blif_reader( cover ) );
 
   aig_network aig_cp;
-  convert_covers_to_graph( cover, aig_cp );
+  convert_cover_to_graph( aig_cp, cover );
 
   /* structural checks */
   CHECK( result == lorina::return_code::success );
@@ -650,4 +675,5 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
   CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
+  std::cout << "end cover to graph test \n " ;
 }

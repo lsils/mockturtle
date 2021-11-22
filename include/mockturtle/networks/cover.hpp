@@ -41,12 +41,9 @@
 #include "events.hpp"
 #include "storage.hpp"
 
-//#include <kitty/constructors.hpp>
-
 #include <kitty/cube.hpp>
 
 #include <algorithm>
-//#include <memory>
 
 namespace mockturtle
 {
@@ -71,7 +68,7 @@ struct cover_storage_data
 {
   uint64_t insert( std::pair<std::vector<kitty::cube>, bool> cover )
   {
-    uint64_t index = covers.size();
+    const auto index = covers.size();
     covers.emplace_back( cover );
     return index;
   }
@@ -153,6 +150,7 @@ public:
   static constexpr auto max_fanin_size = 32;
 
   using base_type = cover_network;
+  using cover_type = std::pair<std::vector<kitty::cube>, bool>;
   using storage = std::shared_ptr<cover_storage>;
   using node = uint64_t;
   using signal = uint64_t;
@@ -181,14 +179,14 @@ protected:
     /* first node reserved for constant 0 */
     index = _storage->data.insert( std::make_pair( cube_dc, false ) );
     cover_storage_node& node_0 = _storage->nodes[0];
-    node_0.data[1].h1 = 0;
+    node_0.data[1].h1 = index;
     _storage->hash[node_0] = 0;
 
     /* reserve the second node for constant 1 */
     _storage->nodes.emplace_back();
     index = _storage->data.insert( std::make_pair( cube_dc, true ) );
     cover_storage_node& node_1 = _storage->nodes[1];
-    node_1.data[1].h1 = 1;
+    node_1.data[1].h1 = index;
     _storage->hash[node_1] = 1;
 
     /* reserve the third node for the identity (inputs)*/
@@ -206,9 +204,9 @@ public:
   {
     (void)name;
 
-    const uint64_t index_node = _storage->nodes.size();
+    const auto index_node = _storage->nodes.size();
     std::vector<kitty::cube> cube_I{ kitty::cube( "1" ) };
-    const uint64_t index_covers = _storage->data.insert( std::make_pair( cube_I, true ) );
+    const auto index_covers = _storage->data.insert( std::make_pair( cube_I, true ) );
 
     _storage->nodes.emplace_back();
     cover_storage_node& node_in = _storage->nodes[index_node];
@@ -241,7 +239,7 @@ public:
     auto const index = static_cast<uint32_t>( _storage->nodes.size() );
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
-    _storage->nodes[index].data[1].h1 = 2;
+    _storage->nodes[index].data[1].h1 = index;
     return index;
   }
 
@@ -324,14 +322,14 @@ public:
 
   signal create_nand( signal a, signal b )
   {
-    std::vector<kitty::cube> _nand{ _00, _01, _10 };
-    return _create_node( { a, b }, std::make_pair( _nand, true ) );
+    std::vector<kitty::cube> _nand{ _11 };
+    return _create_node( { a, b }, std::make_pair( _nand, false ) );
   }
 
   signal create_or( signal a, signal b )
   {
-    std::vector<kitty::cube> _or{ _11, _01, _10 };
-    return _create_node( { a, b }, std::make_pair( _or, true ) );
+    std::vector<kitty::cube> _or{ _00 };
+    return _create_node( { a, b }, std::make_pair( _or, false ) );
   }
 
   signal create_lt( signal a, signal b )
@@ -342,8 +340,8 @@ public:
 
   signal create_le( signal a, signal b )
   {
-    std::vector<kitty::cube> _le{ _00, _01, _11 };
-    return _create_node( { a, b }, std::make_pair( _le, true ) );
+    std::vector<kitty::cube> _le{ _10 };
+    return _create_node( { a, b }, std::make_pair( _le, false ) );
   }
 
   signal create_xor( signal a, signal b )
@@ -386,10 +384,10 @@ public:
 #pragma endregion
 
 #pragma region Create arbitrary functions
-  signal _create_node( std::vector<signal> const& children, std::pair<std::vector<kitty::cube>, bool> new_cube )
+  signal _create_node( std::vector<signal> const& children, cover_type new_cover )
   {
 
-    uint64_t literal = _storage->data.insert( new_cube );
+    uint64_t literal = _storage->data.insert( new_cover );
     storage::element_type::node_type node;
     std::copy( children.begin(), children.end(), std::back_inserter( node.children ) );
     node.data[1].h1 = literal;
@@ -420,20 +418,20 @@ public:
     return index;
   }
 
-  signal create_node( std::vector<signal> const& children, std::pair<std::vector<kitty::cube>, bool> new_cube )
+  signal create_node( std::vector<signal> const& children, cover_type new_cover )
   {
     if ( children.size() == 0u )
     {
-      return get_constant( new_cube.second );
+      return get_constant( new_cover.second );
     }
 
-    return _create_node( children, new_cube );
+    return _create_node( children, new_cover );
   }
 
   signal clone_node( cover_network const& other, node const& source, std::vector<signal> const& children )
   {
     assert( !children.empty() );
-    std::pair<std::vector<kitty::cube>, bool> cb = other._storage->data.covers[other._storage->nodes[source].data[1].h1];
+    cover_type cb = other._storage->data.covers[other._storage->nodes[source].data[1].h1];
     return create_node( children, cb );
   }
 #pragma endregion
@@ -540,7 +538,7 @@ public:
 #pragma endregion
 
 #pragma region Functional properties
-  std::pair<std::vector<kitty::cube>, bool> node_cover( const node& n ) const
+  cover_type node_cover( const node& n ) const
   {
     return _storage->data.covers[_storage->nodes[n].data[1].h1];
   }
@@ -805,13 +803,13 @@ public:
 #pragma region Simulate values
   std::vector<bool> compute_on_node( node const& n, std::vector<kitty::cube> const& domain_cubes ) const
   {
-    std::pair<std::vector<kitty::cube>, bool>& cubes_cover = _storage->data.covers[_storage->nodes[n].data[1].h1];
+    cover_type& cubes_cover = _storage->data.covers[_storage->nodes[n].data[1].h1];
     bool is_sop = cubes_cover.second;
     std::vector<bool> result;
     uint32_t cb1_prj, cb0_prj, X0, X1;
     for ( kitty::cube const& domain_cube : domain_cubes )
     {
-      uint32_t index = result.size();
+      const auto index = result.size();
       if ( is_sop )
         result.emplace_back( false );
       else

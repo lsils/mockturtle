@@ -53,7 +53,7 @@ namespace mockturtle
  * **Required network functions:**
  * - `create_pi`
  * - `create_po`
- * - `create_node` or `create_node_from_cover` 
+ * - `create_node` or `create_cover_node` 
  * - `get_constant`
  *
    \verbatim embed:rst
@@ -76,7 +76,7 @@ public:
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
     static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po function" );
-    static_assert( has_create_node_v<Ntk> || has_create_node_from_cover_v<Ntk>, "Ntk does not implement the create_node function or the create_node_from_cover function" );
+    static_assert( has_create_node_v<Ntk> || has_create_cover_node_v<Ntk>, "Ntk does not implement the create_node function or the create_cover_node function" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant function" );
   }
 
@@ -257,6 +257,7 @@ public:
         assert( signals.find( i ) != signals.end() );
         input_signals.push_back( signals.at( i ) );
       }
+
       if ( cubes.size() != 0 )
       {
         signals[output] = ntk_.create_node( input_signals, std::make_pair( cubes, is_sop ) );
@@ -264,8 +265,10 @@ public:
     }
     else
     {
+
       std::vector<kitty::cube> minterms;
       std::vector<kitty::cube> maxterms;
+
       for ( const auto& c : cover )
       {
         assert( c.second.size() == 1 );
@@ -284,6 +287,7 @@ public:
           maxterms.emplace_back( ~kitty::cube( c.first ) );
         }
       }
+
       assert( minterms.size() == 0u || maxterms.size() == 0u );
 
       kitty::dynamic_truth_table tt( int( inputs.size() ) );
@@ -295,7 +299,6 @@ public:
       {
         kitty::create_from_clauses( tt, maxterms, false );
       }
-
       std::vector<signal<Ntk>> input_signals;
       for ( const auto& i : inputs )
       {

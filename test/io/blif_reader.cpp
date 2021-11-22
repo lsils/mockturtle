@@ -4,7 +4,6 @@
 #include <string>
 
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/io/cover_to_graph.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
@@ -21,6 +20,7 @@ using namespace mockturtle;
 
 TEST_CASE( "read a combinational BLIF file into KLUT network", "[blif_reader]" )
 {
+  std::cout << "begin blif reader  " ;
   klut_network klut;
 
   std::string file{
@@ -301,6 +301,7 @@ TEST_CASE( "read a combinational BLIF file into cover network", "[blif_reader]" 
   CHECK( cover.num_pis() == 3 );
   CHECK( cover.num_pos() == 2 );
   CHECK( cover.num_gates() == 4 );
+  std::cout << "end blif reader  \n" ;
 }
 
 

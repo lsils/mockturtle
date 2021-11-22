@@ -31,11 +31,13 @@
 
 #pragma once
 
+#include "../networks/cover.hpp"
+
 #include <iostream>
-#include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/cover.hpp>
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include <iterator>
 
 namespace mockturtle
 {
@@ -61,6 +63,9 @@ struct signals_connector
 
 /*! \brief cover_to_graph_converter
  * This data type is equipped with the main operations involved in the cover to graph conversion.
+ * Given a cover network its features are mapped into the corresponding ones of a graph using the 
+ * signals_connector for storing the signal of the new network associated to the node index in the cover one.
+ * The mapping is performed by the convert method, which must be called explicitly to perform the mapping. 
  */
 template<class Ntk>
 class cover_to_graph_converter
@@ -69,21 +74,33 @@ class cover_to_graph_converter
   using type_cover_signals = std::vector<uint64_t>;
 
 public:
-  cover_to_graph_converter( Ntk& ntk, cover_network& cover_ntk )
+  cover_to_graph_converter( Ntk& ntk, const cover_network& cover_ntk )
       : _ntk( ntk ),
         _cover_ntk( cover_ntk )
   {
   }
 
 #pragma region recursive functions
+  /*! \brief recursive_or
+   * If only one signal is presented the function returns the signal itself.
+   * If two signals are presented the function returns their disjunction.
+   * In all other cases recursively split the input signals into two subsets of size differing by at most one.
+   * These two will give rise to a unique output, which is the OR of two signals coming from the two subgraphs.
+   * The problem of finding the network of each subgraph presents the same structure as the original problem.
+   * Therefore, recursion can be performed. 
+  */
   signal<Ntk> recursive_or( const std::vector<signal<Ntk>>& signals )
   {
-    
-    if ( signals.size() == 1 )
+    if ( signals.size() == 0u )
+    {
+      std::cerr << "signals size is zero in recursive or\n";
+      return _ntk.get_constant(0);
+    }
+    else if ( signals.size() == 1u )
     {
       return signals[0];
     }
-    else if ( signals.size() == 2 )
+    else if ( signals.size() == 2u )
     {
       signal<Ntk> signal_out = _ntk.create_or( signals[0], signals[1] );
       return signal_out;
@@ -99,13 +116,26 @@ public:
     }
   }
 
+  /*! \brief recursive_and
+   * If only one signal is presented the function returns the signal itself.
+   * If two signals are presented the function returns their conjunction.
+   * In all other cases recursively split the input signals into two subsets of size differing by at most one.
+   * These two will give rise to a unique output, which is the AND of two signals coming from the two subgraphs.
+   * The problem of finding the network of each subgraph presents the same structure as the original problem.
+   * Therefore, recursion can be performed. 
+  */
   signal<Ntk> recursive_and( std::vector<signal<Ntk>> const& signals )
   {
-    if ( signals.size() == 1 )
+    if ( signals.size() == 0u )
+    {
+      std::cerr << "signals size is zero in recursive and\n";
+      return _ntk.get_constant(0);
+    }
+    else if ( signals.size() == 1u )
     {
       return signals[0];
     }
-    else if ( signals.size() == 2 )
+    else if ( signals.size() == 2u )
     {
       signal<Ntk> signal_out = _ntk.create_and( signals[0], signals[1] );
       return signal_out;
@@ -121,6 +151,12 @@ public:
   }
 #pragma endregion
 
+  /*! \brief convert_cube_to_graph
+   * Given a node, a cube stored into it and the boolean type associated to the SOP/POS, all children are scanned.
+   * Unless the cube is independent of the value of the children ( don't care ), the signal is stored in a vector.
+   * Finally, depending on the bit value of the cube, the signal influencing the cover or their negation are used 
+   * to create the subgraph. This create the products/sums in the SOP/POS. 
+  */
 #pragma region converter functions
   signal<Ntk> convert_cube_to_graph( const mockturtle::cover_storage_node& Nde, const kitty::cube& cb, const bool& is_sop )
   {
@@ -144,9 +180,16 @@ public:
     return is_sop ? recursive_and( signals ) : recursive_or( signals );
   }
 
-  signal<Ntk> convert_cover_to_graph( const mockturtle::cover_storage_node& Nde )
+  /*! \brief convert_node_to_graph
+   * This helper function receives as input a node, storing the cover information.
+   * This information corresponds to a vactor of cubes and to a boolean determining whether 
+   * the cubes represent the ON set or the OFF set.
+   * Each cube is mapped into a subgraph and the output signals are collected in a vector, corresponding to the
+   * products/sums of the SOP/POS.
+   * Depending on the boolean, the SOP/POS is finally performed using the recursive OR/AND.   
+  */
+  signal<Ntk> convert_node_to_graph( const mockturtle::cover_storage_node& Nde )
   {
-    
     auto& cbs = _cover_ntk._storage->data.covers[Nde.data[1].h1].first;
   
     std::vector<signal<Ntk>> signals_internal;
@@ -160,51 +203,60 @@ public:
     return ( is_sop ? recursive_or( signals_internal ) : recursive_and( signals_internal ) );
   }
 
+  Ntk get_network()
+  {
+    return _ntk;
+  }
+
+  /*! \brief convert
+   * This method combines the helper functions and performs the mapping of a cover network into the desired graph. 
+  */
   void run()
   {
+    /* convert the pi */
     for ( auto const& inpt : _cover_ntk._storage->inputs )
     {
       _connector.insert( _ntk.create_pi(), inpt );
     }
 
+    /* convert the nodes */
     for ( auto const& nde : _cover_ntk._storage->nodes )
     {
       uint64_t index = _cover_ntk._storage->hash[nde];
       bool condition1 = ( std::find( _cover_ntk._storage->inputs.begin(), _cover_ntk._storage->inputs.end(), index ) != _cover_ntk._storage->inputs.end() );
       bool condition2 = nde.data[1].h1 == 0 || nde.data[1].h1 == 1;
 
-
+      /* convert only the nodes that are neither inputs nor constants */
       if ( !condition1 && !condition2 )
       {
-        _connector.insert( convert_cover_to_graph( nde ), _cover_ntk._storage->hash[nde] );
-      }
+        _connector.insert( convert_node_to_graph( nde ), _cover_ntk._storage->hash[nde] );
+      } /* convert separately the constant 0 */
       else if ( nde.data[1].h1 == 0 )
       {
         _connector.insert( _ntk.get_constant( false ), _cover_ntk._storage->hash[nde]  );
-      }
+      } /* convert separately the constant 1 */
       else if ( nde.data[1].h1 == 1 )
       {
         _connector.insert( _ntk.get_constant( true ), _cover_ntk._storage->hash[nde]  );
       }
     }
 
+    /* convert the outputs */
     for ( const auto& outpt : _cover_ntk._storage->outputs )
     {
       _ntk.create_po( _connector.signals[outpt.index] );
     }
   }
 
-public:
-  Ntk& _ntk;
-
 private:
+  Ntk& _ntk;
+  cover_network const& _cover_ntk;
   signals_connector<Ntk> _connector;
-  cover_network& _cover_ntk;
 };
 
 } /* namespace detail */
 
-/*! \brief convert_covers_to_graph function
+/*! \brief convert_cover_to_graph function
  *
  * This function verifies if the destination network has the basic requirements for the creation of a SOP or a POS, i.e. the 
  * create_and and the create_or functions. Afterward, it initializes the cover_network_to_graph_converter and it performs the conversion.
@@ -225,15 +277,15 @@ private:
     mig_network mig;
     xmg_network xmg;
 
-    convert_covers_to_graph( cover_ntk, aig );
-    convert_covers_to_graph( cover_ntk, xag ); 
-    convert_covers_to_graph( cover_ntk, mig );
-    convert_covers_to_graph( cover_ntk, xmg );
+    convert_cover_to_graph( aig, cover_ntk );
+    convert_cover_to_graph( xag, cover_ntk ); 
+    convert_cover_to_graph( mig, cover_ntk );
+    convert_cover_to_graph( xmg, cover_ntk );
 
   \endverbatim
  */
 template<class Ntk>
-void convert_covers_to_graph( cover_network& cover_ntk, Ntk& ntk )
+void convert_cover_to_graph( Ntk& ntk, const cover_network& cover_ntk )
 {
   static_assert( has_create_and_v<Ntk>, "NtkDest does not implement the create_not method" );
   static_assert( has_create_or_v<Ntk>, "NtkDest does not implement the create_po method" );
@@ -244,7 +296,7 @@ void convert_covers_to_graph( cover_network& cover_ntk, Ntk& ntk )
   converter.run();
 }
 
-/*! \brief convert_covers_to_graph function
+/*! \brief convert_cover_to_graph function
  *
  * This function verifies if the destination network has the basic requirements for the creation of a SOP or a POS, i.e. the 
  * create_and and the create_or functions. Afterward, it initializes the cover_network_to_graph_converter and it performs the conversion.
@@ -258,23 +310,23 @@ void convert_covers_to_graph( cover_network& cover_ntk, Ntk& ntk )
 
   .. code-block:: c++
 
-    const klut_network klut = ...;
+    const cover_network cover = ...;
 
     aig_network aig;
     xag_network xag;
     mig_network mig;
     xmg_network xmg;
 
-    aig = convert_covers_to_graph( klut_ntk );
-    xag = convert_covers_to_graph( klut_ntk ); 
-    mig = convert_covers_to_graph( klut_ntk );
-    xmg = convert_covers_to_graph( klut_ntk );
+    aig = convert_cover_to_graph( cover_ntk );
+    xag = convert_cover_to_graph( cover_ntk ); 
+    mig = convert_cover_to_graph( cover_ntk );
+    xmg = convert_cover_to_graph( cover_ntk );
 
   \endverbatim
  */
 
 template<class Ntk>
-Ntk convert_covers_to_graph( cover_network& cover_ntk )
+Ntk convert_cover_to_graph( const cover_network& cover_ntk )
 {
 
   static_assert( has_create_and_v<Ntk>, "NtkDest does not implement the create_not method" );
@@ -285,7 +337,7 @@ Ntk convert_covers_to_graph( cover_network& cover_ntk )
   Ntk ntk;
   detail::cover_to_graph_converter<Ntk> converter( ntk, cover_ntk );
   converter.run();
-  return converter._ntk;
+  return converter.get_network();
 }
 
 } /* namespace mockturtle */

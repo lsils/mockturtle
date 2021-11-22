@@ -12,6 +12,7 @@ using namespace mockturtle;
 
 TEST_CASE( "create and use constants in a cover network", "[cover]" )
 {
+  std::cout << "begin cover" ;
   cover_network cover;
 
   CHECK( has_size_v<cover_network> );
@@ -372,7 +373,7 @@ TEST_CASE( "create nodes and compute a function in a cover network", "[cover]" )
 {
   cover_network cover;
 
-  CHECK( has_create_node_from_cover_v<cover_network> );
+  CHECK( has_create_cover_node_v<cover_network> );
   CHECK( has_compute_on_node_v<cover_network> );
 
   const auto a = cover.create_pi();
@@ -680,4 +681,5 @@ TEST_CASE( "visited values in cover networks", "[cover]" )
   cover.foreach_node( [&]( auto n ) {
     CHECK( cover.visited( n ) == 0 );
   } );
+  std::cout << "end cover\n  " ;
 }
