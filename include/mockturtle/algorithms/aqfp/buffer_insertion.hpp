@@ -1068,6 +1068,7 @@ private:
   {
     bool updated = false;
     _start_id = _ntk.trav_id();
+    uint32_t num_chunks{0};
 
     _ntk.foreach_node( [&]( auto const& n ){
       if ( is_ignored( n ) || is_fixed( n ) || _ntk.visited( n ) > _start_id /* belongs to a chunk */ )
@@ -1080,15 +1081,17 @@ private:
       recruit( n, c );
       if ( c.members.size() > _ps.max_chunk_size )
       {
-        return true;
+        return true; /* skip */
       }
       cleanup_interfaces( c );
+      ++num_chunks;
 
       auto moved = analyze_chunk_down( c );
       if ( !moved ) moved = analyze_chunk_up( c );
       updated |= moved;
       return true;
     });
+    //std::cout << "num chunks = " << num_chunks << "\n";
 
     return updated;
   }
@@ -1096,6 +1099,8 @@ private:
   void recruit( node const& n, chunk& c )
   {
     if ( _ntk.visited( n ) == c.id )
+      return;
+    if ( c.members.size() > _ps.max_chunk_size )
       return;
 
     assert( _ntk.visited( n ) <= _start_id );

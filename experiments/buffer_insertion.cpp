@@ -14,6 +14,9 @@
 #include <lorina/aiger.hpp>
 #include <lorina/diagnostics.hpp>
 #include "experiments.hpp"
+#include <mockturtle/utils/stopwatch.hpp>
+#include <mockturtle/algorithms/mapper.hpp>
+#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 
 #include <iostream>
 
@@ -33,17 +36,43 @@ int main( int argc, char* argv[] )
    * And put in the following string the relative path from your build path to SCE-benchmarks/ISCAS/strashed/
    */
   std::string benchmark_path = "../../SCE-benchmarks/ISCAS/strashed/";
-  std::vector<std::string> benchmarks(
-    {"adder1", "adder8", "mult8", "counter16", "counter32", "counter64", "counter128",
-     "c17", "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552",
-     "sorter32", "sorter48", "alu32"} );
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool>
-    exp( "buffer_insertion", "benchmark", "#gates", "depth", "#buffers", "ori. #JJs", "opt. #JJs", "depth_JJ", "verified" );
+  //std::string benchmark_path = "../../SCE-benchmarks/MCNC/original/";
+  //std::string benchmark_path = "../../SCE-benchmarks/EPFL/MIGs/";
+  static const std::string benchmarks_iscas[] = {
+    "adder1", "adder8", "mult8", "counter16", "counter32", "counter64", "counter128",
+    "c17", "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552",
+    "sorter32", "sorter48", "alu32"};
+  static const std::string benchmarks_mcnc[] = {
+    /*"5xp1",*/ "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
+    "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn"};
+  const auto benchmarks_epfl = experiments::epfl_benchmarks();
 
-  for ( auto benchmark : benchmarks )
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
+    exp( "buffer_insertion", "benchmark", "#gates", "depth", "#buffers", "max FO", "opt. #JJs", "depth_JJ", "runtime", "verified" );
+
+  buffer_insertion_params ps;
+  ps.scheduling = buffer_insertion_params::better;
+  ps.optimization_effort = buffer_insertion_params::until_sat;
+  ps.assume.splitter_capacity = 4u;
+  ps.assume.branch_pis = true;
+  ps.assume.balance_pis = true;
+  ps.assume.balance_pos = true;
+
+  if ( argc == 3 )
+  {
+    ps.assume.splitter_capacity = std::stoi( argv[1] );
+    uint32_t arg = std::stoi( argv[2] );
+    ps.assume.branch_pis = arg >= 100;
+    ps.assume.balance_pis = ( arg % 100 ) >= 10;
+    ps.assume.balance_pos = arg % 10;
+  }
+
+  uint32_t total_buffers{0}, total_depth{0};
+  for ( auto benchmark : benchmarks_iscas )
   {
     if ( run_only_one != "" && benchmark != run_only_one ) continue;
-    std::cout << "\n[i] processing " << benchmark << "\n";
+    if ( benchmark == "hyp" && run_only_one != "hyp" ) continue;
+    //std::cout << "\n[i] processing " << benchmark << "\n";
     names_view<mig_network> ntk;
     lorina::text_diagnostics td;
     lorina::diagnostic_engine diag( &td );
@@ -55,31 +84,38 @@ int main( int argc, char* argv[] )
     }
     ntk.set_network_name( benchmark );
 
-    buffer_insertion_params ps;
-    ps.scheduling = buffer_insertion_params::better;
-    ps.optimization_effort = buffer_insertion_params::optimal;
-    ps.assume.splitter_capacity = 4u;
-    ps.assume.branch_pis = true;
-    ps.assume.balance_pis = true;
-    ps.assume.balance_pos = true;
-    
+    stopwatch<>::duration t{0};    
     buffer_insertion aqfp( ntk, ps );
     buffered_mig_network bufntk;
-    uint32_t num_buffers = aqfp.run( bufntk );
+    uint32_t num_buffers = call_with_stopwatch( t, [&]() {
+      return aqfp.dry_run();
+    });
+    aqfp.dump_buffered_network( bufntk );
     bool verified = verify_aqfp_buffer( bufntk, ps.assume );
 
-    names_view named_bufntk{bufntk};
-    restore_pio_names_by_order( ntk, named_bufntk );
-    write_verilog( named_bufntk, "../../SCE-benchmarks/ISCAS/best_insertion/" + benchmark + "_buffered.v" );    
-
+    //names_view named_bufntk{bufntk};
+    //restore_pio_names_by_order( ntk, named_bufntk );
+    //write_verilog( named_bufntk, benchmark_path + "../best_insertion/" + benchmark + "_buffered.v" ); 
+    
     depth_view d{ntk};
     depth_view d_buf{bufntk};
 
-    exp( benchmark, ntk.num_gates(), d.depth(), num_buffers, ntk.num_gates() * 6, ntk.num_gates() * 6 + num_buffers * 2, d_buf.depth(), verified );
+    total_buffers += num_buffers;
+    total_depth += d_buf.depth();
+
+    uint32_t max_fanout{0};
+    ntk.foreach_node( [&]( auto const& n ){
+      if ( !ntk.is_constant( n ) )
+      max_fanout = std::max( max_fanout, ntk.fanout_size( n ) );
+    });
+
+    exp( benchmark, ntk.num_gates(), d.depth(), num_buffers, max_fanout, ntk.num_gates() * 6 + num_buffers * 2, d_buf.depth(), to_seconds( t ), verified );
   }
 
   exp.save();
-  exp.table();
+  //exp.table();
+
+  std::cout << "[i] total buffers = " << total_buffers << ", total depth = " << total_depth << "\n";
 
   return 0;
 }
