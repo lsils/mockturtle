@@ -42,7 +42,6 @@
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/depth_view.hpp"
-#include "../views/fanout_view.hpp"
 #include "../views/topo_view.hpp"
 
 #include <fmt/format.h>
@@ -83,7 +82,13 @@ template<typename NtkDest>
 struct aqfp_resynthesis_result
 {
   std::unordered_map<node<NtkDest>, uint32_t> node_level;
-  uint32_t po_level = 0u;
+  std::unordered_map<node<NtkDest>, uint32_t> po_level;
+
+  uint32_t critical_po_level() {
+    return max_element(po_level.begin(), po_level.end(), [&](auto n1, auto n2) {
+      return n1.second < n2.second;
+    })->second;
+  }
 };
 
 namespace detail
@@ -117,8 +122,18 @@ public:
     node_map<uint32_t, NtkSrc> level_of_src_node( ntk_src );
 
     std::unordered_map<node<NtkDest>, uint32_t> level_of_node;  
+    std::unordered_map<node<NtkDest>, uint32_t> po_level_of_node;
     std::map<std::pair<node<NtkSrc>, node<NtkSrc>>, uint32_t> level_for_fanout;
-    uint32_t critical_po_level = 0;
+
+    std::unordered_map<node<NtkSrc>, std::vector<node<NtkSrc>>> fanouts;
+    ntk_src.foreach_gate( [&]( auto n ) {
+      ntk_src.foreach_fanin(n, [&](auto fi){
+        fanouts[ntk_src.get_node(fi)].push_back(n);
+      });
+    } );
+
+    depth_view ntk_depth{ ntk_src };
+    topo_view ntk_topo{ ntk_depth };
 
     /* map constants */
     auto c0 = ntk_dest.get_constant( false );
@@ -143,6 +158,19 @@ public:
         if ( ntk_src.has_name( ntk_src.make_signal( n ) ) )
           ntk_dest.set_name( node2new[n], ntk_src.get_name( ntk_src.make_signal( n ) ) );
       }
+
+      /* synthesize fanout net of `n`*/
+      auto fanout_node_callback = [&]( const auto& f, const auto& level ) {
+        level_for_fanout[{ n, f }] = level;
+      };
+
+      auto fanout_po_callback = [&]( const auto& index, const auto& level ) {
+        (void)index;
+        auto node = ntk_dest.get_node(node2new[n]);
+        po_level_of_node[node] = std::max(po_level_of_node[node], level);
+      };
+
+      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
     } );
 
     /* map register outputs */
@@ -157,11 +185,19 @@ public:
         if ( ntk_src.has_name( ntk_src.make_signal( n ) ) )
           ntk_dest.set_name( node2new[n], ntk_src.get_name( ntk_src.make_signal( n ) ) );
       }
-    } );
 
-    fanout_view ntk_fanout{ ntk_src };
-    depth_view ntk_depth{ ntk_fanout };
-    topo_view ntk_topo{ ntk_depth };
+      auto fanout_node_callback = [&]( const auto& f, const auto& level ) {
+        level_for_fanout[{ n, f }] = level;
+      };
+
+      auto fanout_po_callback = [&]( const auto& index, const auto& level ) {
+        (void)index;
+        auto node = ntk_dest.get_node(node2new[n]);
+        po_level_of_node[node] = std::max(po_level_of_node[node], level);
+      };
+
+      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
+    } );
 
     /* map nodes */
     ntk_topo.foreach_node( [&]( auto n ) {
@@ -208,23 +244,28 @@ public:
 
       /* synthesize fanout net of `n`*/
       auto fanout_node_callback = [&]( const auto& f, const auto& level ) {
-        level_for_fanout[{ n, f }] = level;
+        level_for_fanout[{ n, f }] = std::max(level_for_fanout[{n, f}], level);
       };
 
       auto fanout_po_callback = [&]( const auto& index, const auto& level ) {
         (void)index;
-        critical_po_level = std::max( critical_po_level, level );
+        auto node = ntk_dest.get_node(node2new[n]);
+        po_level_of_node[node] = std::max(po_level_of_node[node], level);
+        // critical_po_level = std::max( critical_po_level, level );
       };
 
-      fanout_resyn_fn( ntk_topo, n, ntk_dest, node2new[n], level_of_src_node[n], fanout_node_callback, fanout_po_callback );
+      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], level_of_src_node[n], fanout_node_callback, fanout_po_callback );
     } );
 
     /* map primary outputs */
     ntk_src.foreach_po( [&]( auto const& f, auto index ) {
       (void)index;
 
-      auto const o = ntk_src.is_complemented( f ) ? !node2new[f] : node2new[f];
+      auto const o = ntk_src.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
       ntk_dest.create_po( o );
+
+      assert(ntk_dest.is_constant(ntk_dest.get_node(o)) || po_level_of_node.count(ntk_dest.get_node(o)) > 0);
+      assert(ntk_dest.is_constant(ntk_dest.get_node(o)) || po_level_of_node.at(ntk_dest.get_node(o)) >= level_of_node.at(ntk_dest.get_node(o)));
 
       if constexpr ( has_has_output_name_v<NtkSrc> && has_get_output_name_v<NtkSrc> && has_set_output_name_v<NtkDest> )
       {
@@ -235,6 +276,7 @@ public:
       }
     } );
 
+    /* map register inputs */
     ntk_src.foreach_ri( [&]( auto const& f, auto index ) {
       (void)index;
 
@@ -250,7 +292,7 @@ public:
       }
     } );
 
-    return { level_of_node, critical_po_level };
+    return { level_of_node, po_level_of_node };
   }
 
 private:

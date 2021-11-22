@@ -49,10 +49,10 @@
 namespace mockturtle
 {
 
-template<typename Ntk = aqfp_dag<>, int N = 4>
+template<typename Ntk = aqfp_dag<>>
 class aqfp_db_builder
 {
-  using db_type = aqfp_db<Ntk, N>;
+  using db_type = aqfp_db<Ntk>;
   using replacement = typename db_type::replacement;
 
 public:
@@ -67,7 +67,7 @@ public:
   }
 
   /*! \brief Update the database with a rusult for network `net`. */
-  void update( const Ntk& ntk, const std::unordered_map<uint64_t, double>& cost_config )
+  void update( const Ntk& ntk, const std::unordered_map<uint64_t, double>& cost_config, uint32_t N = 4u )
   {
     std::vector<uint64_t> input_tt = { 0x0000UL, 0xaaaaUL, 0xccccUL, 0xf0f0UL, 0xff00UL };
     auto fs = all_functions_from_dag( input_tt, ntk );
@@ -123,6 +123,9 @@ public:
       for ( auto it = configs.begin(); it != configs.end(); it++ )
       {
         bool ok = true;
+
+        uint32_t N = it->second.input_levels.size();
+
         for ( auto jt = configs.begin(); jt != configs.end(); jt++ )
         {
           if ( jt->first == it->first )
@@ -227,7 +230,7 @@ public:
   /*! \brief Load database from input stream `is`. */
   void load_db_from_file( std::istream& is )
   {
-    aqfp_db<Ntk,N>::load_db_from_file(is, db);
+    aqfp_db<Ntk>::load_db_from_file(is, db);
   }
 
 
@@ -237,12 +240,12 @@ private:
   std::unordered_map<uint32_t, double> splitters;
   std::unordered_map<uint64_t, std::map<uint64_t, replacement>> db;
   dag_aqfp_cost_and_depths<Ntk> cc;
-  npn_cache<N> npndb;
+  npn_cache npndb;
 
   /*! \brief Compute all functions synthesizable from `net` if input slots are assigned the truthtables in `input_tt`. */
   std::unordered_set<uint64_t> all_functions_from_dag( const std::vector<uint64_t>& input_tt, const Ntk& net )
   {
-    static_assert( N == 4u, "Template parameter N must be equal to 4 in the current implementation" );
+    // static_assert( N == 4u, "Template parameter N must be equal to 4 in the current implementation" );
 
     uint32_t num_inputs = net.input_slots.size();
     if ( net.zero_input != 0 )
