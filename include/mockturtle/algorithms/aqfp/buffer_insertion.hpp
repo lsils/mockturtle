@@ -999,7 +999,10 @@ public:
     }
     else if ( _ps.optimization_effort == buffer_insertion_params::optimal )
     {
-      optimize_with_smt( _ntk.get_network_name() );
+      if constexpr ( has_get_network_name_v<Ntk> )
+        optimize_with_smt( _ntk.get_network_name() );
+      else
+        optimize_with_smt( "" );
       return;
     }
     
