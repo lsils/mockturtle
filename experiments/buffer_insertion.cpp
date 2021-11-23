@@ -48,7 +48,7 @@ int main( int argc, char* argv[] )
   const auto benchmarks_epfl = experiments::epfl_benchmarks();
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
-    exp( "buffer_insertion", "benchmark", "#gates", "depth", "#buffers", "max FO", "opt. #JJs", "depth_JJ", "runtime", "verified" );
+    exp( "buffer_insertion", "benchmark", "#gates", "depth", "max FO", "#buffers", "opt. #JJs", "depth_JJ", "runtime", "verified" );
 
   buffer_insertion_params ps;
   ps.scheduling = buffer_insertion_params::better;
@@ -58,7 +58,7 @@ int main( int argc, char* argv[] )
   ps.assume.balance_pis = true;
   ps.assume.balance_pos = true;
 
-  if ( argc == 3 )
+  if ( argc == 3 ) // example syntax: ./buffer_insertion 4 111
   {
     ps.assume.splitter_capacity = std::stoi( argv[1] );
     uint32_t arg = std::stoi( argv[2] );
@@ -72,7 +72,8 @@ int main( int argc, char* argv[] )
   {
     if ( run_only_one != "" && benchmark != run_only_one ) continue;
     if ( benchmark == "hyp" && run_only_one != "hyp" ) continue;
-    //std::cout << "\n[i] processing " << benchmark << "\n";
+    std::cout << "\n[i] processing " << benchmark << "\n";
+    
     names_view<mig_network> ntk;
     lorina::text_diagnostics td;
     lorina::diagnostic_engine diag( &td );
@@ -109,11 +110,11 @@ int main( int argc, char* argv[] )
       max_fanout = std::max( max_fanout, ntk.fanout_size( n ) );
     });
 
-    exp( benchmark, ntk.num_gates(), d.depth(), num_buffers, max_fanout, ntk.num_gates() * 6 + num_buffers * 2, d_buf.depth(), to_seconds( t ), verified );
+    exp( benchmark, ntk.num_gates(), d.depth(), max_fanout, num_buffers, ntk.num_gates() * 6 + num_buffers * 2, d_buf.depth(), to_seconds( t ), verified );
   }
 
   exp.save();
-  //exp.table();
+  exp.table();
 
   std::cout << "[i] total buffers = " << total_buffers << ", total depth = " << total_depth << "\n";
 
