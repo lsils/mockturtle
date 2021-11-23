@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include "aqfp_assumptions.hpp"
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
 
@@ -47,26 +48,6 @@
 
 namespace mockturtle
 {
-
-/*! \brief AQFP technology assumptions.
- * 
- * POs count toward the fanout sizes and always have to be branched.
- * If PIs need to be balanced, then they must also need to be branched.
- */
-struct aqfp_assumptions
-{
-  /*! \brief Whether PIs need to be branched with splitters. */
-  bool branch_pis{false};
-
-  /*! \brief Whether PIs need to be path-balanced. */
-  bool balance_pis{false};
-
-  /*! \brief Whether POs need to be path-balanced. */
-  bool balance_pos{true};
-
-  /*! \brief The maximum number of fanouts each splitter (buffer) can have. */
-  uint32_t splitter_capacity{3u};
-};
 
 /*! \brief Parameters for (AQFP) buffer insertion.
  */
@@ -1068,7 +1049,6 @@ private:
   {
     bool updated = false;
     _start_id = _ntk.trav_id();
-    uint32_t num_chunks{0};
 
     _ntk.foreach_node( [&]( auto const& n ){
       if ( is_ignored( n ) || is_fixed( n ) || _ntk.visited( n ) > _start_id /* belongs to a chunk */ )
@@ -1084,14 +1064,12 @@ private:
         return true; /* skip */
       }
       cleanup_interfaces( c );
-      ++num_chunks;
 
       auto moved = analyze_chunk_down( c );
       if ( !moved ) moved = analyze_chunk_up( c );
       updated |= moved;
       return true;
     });
-    //std::cout << "num chunks = " << num_chunks << "\n";
 
     return updated;
   }

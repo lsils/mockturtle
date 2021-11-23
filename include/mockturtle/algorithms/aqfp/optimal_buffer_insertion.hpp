@@ -35,11 +35,11 @@
 
 void optimize_with_smt( std::string name = "" )
 {
-  //std::ofstream os( "model_" + name + ".smt2", std::ofstream::out );
-  //dump_smt_model( os );
-  //os.close();
-  //std::string command = "z3 -v:1 model_" + name + ".smt2 &> sol_" + name + ".txt";
-  //std::system( command.c_str() );
+  std::ofstream os( "model_" + name + ".smt2", std::ofstream::out );
+  dump_smt_model( os );
+  os.close();
+  std::string command = "z3 -v:1 model_" + name + ".smt2 &> sol_" + name + ".txt";
+  std::system( command.c_str() );
   parse_z3_result( "sol_" + name + ".txt" );
   return;
 }
