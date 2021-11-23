@@ -54,3 +54,6 @@ struct aqfp_assumptions
   /*! \brief The maximum number of fanouts each splitter (buffer) can have. */
   uint32_t splitter_capacity{3u};
 };
+
+} // namespace mockturtle
+
