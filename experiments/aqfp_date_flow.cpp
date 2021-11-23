@@ -48,6 +48,7 @@
 #include <mockturtle/algorithms/aqfp_resynthesis/aqfp_node_resyn.hpp>
 #include <mockturtle/algorithms/aqfp_resynthesis/detail/db_string.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
 
 #include <mockturtle/networks/aqfp.hpp>
 #include <mockturtle/networks/klut.hpp>
@@ -327,7 +328,7 @@ int main( int argc, char** argv )
   opt_params.db_last.load_db_from_file( db5_str );
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
-      "aqfp", "benchmark", "init_size", "init_depth", "size_after_remapping", "depth_after_remapping", "maj3_after_exact", "maj5_after_exact", "JJ_after_exact", "JJ_level_after_exact", "final_JJ", "final_JJ_level", "equivalent" );
+      "aqfp", "bench", "size_init", "dep_init", "size_remap", "dep_remap", "maj3_exact", "maj5_exact", "JJ_exact", "JJ_dep_exact", "JJ_fin", "JJ_dep_fin", "cec" );
 
   for ( auto const& benchmark : aqfp_benchmarks() )
   {
@@ -357,11 +358,25 @@ int main( int argc, char** argv )
       // mig = cleanup_dangling( mig_opt );
     }
 
+    /* buffer insertion */
+    buffer_insertion_params buf_ps;
+    buf_ps.scheduling = buffer_insertion_params::better;
+    buf_ps.optimization_effort = buffer_insertion_params::until_sat;
+    buf_ps.assume.splitter_capacity = 4u;
+    buf_ps.assume.branch_pis = false;
+    buf_ps.assume.balance_pis = false;
+    buf_ps.assume.balance_pos = true;
+    buffer_insertion buf_inst( aqfp, buf_ps );
+    uint32_t num_bufs = buf_inst.dry_run();
+    uint32_t num_jjs = opt_stats.maj3_after_exact * 6 + opt_stats.maj5_after_exact * 10 + num_bufs * 2;
+    uint32_t jj_depth = buf_inst.depth();
+
     const auto cec = abc_cec_aqfp( aqfp, benchmark );
 
     exp( benchmark, size_before, depth_before,
          opt_stats.maj3_after_remapping, opt_stats.level_after_remapping,
-         opt_stats.maj3_after_exact, opt_stats.maj5_after_exact, opt_stats.jj_after_exact, opt_stats.jj_level_after_exact, 0, 0, cec );
+         opt_stats.maj3_after_exact, opt_stats.maj5_after_exact, opt_stats.jj_after_exact, opt_stats.jj_level_after_exact, 
+         num_jjs, jj_depth, cec );
   }
 
   exp.save();
