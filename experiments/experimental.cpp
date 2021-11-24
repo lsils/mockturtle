@@ -1,7 +1,6 @@
 #include "experiments.hpp"
 #include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
-#include <mockturtle/algorithms/experimental/window_resub.hpp>
-#include <mockturtle/algorithms/experimental/sim_resub.hpp>
+#include <mockturtle/algorithms/experimental/costfn_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -26,14 +25,14 @@ int main()
     auto const result = lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
     assert( result == lorina::return_code::success ); (void)result;
 
-    window_resub_params ps;
-    window_resub_stats st;
+    costfn_resub_params ps;
+    costfn_resub_stats st;
     ps.verbose = true;
     ps.wps.max_inserts = 1;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
 
-    window_aig_heuristic_resub( aig, ps, &st );
+    costfn_aig_heuristic_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( aig, benchmark );
