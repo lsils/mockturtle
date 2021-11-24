@@ -30,8 +30,10 @@ int main()
     window_resub_stats st;
     ps.verbose = true;
     ps.wps.max_inserts = 1;
+    ps.wps.preserve_depth = true;
+    ps.wps.update_levels_lazily = true;
 
-    window_aig_enumerative_resub( aig, ps, &st );
+    window_aig_heuristic_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( aig, benchmark );

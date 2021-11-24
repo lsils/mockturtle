@@ -100,6 +100,14 @@ struct aig_resyn_static_params_default : public xag_resyn_static_params_default<
   static constexpr bool use_xor = false;
 };
 
+template<class TT>
+struct aig_resyn_static_params_preserve_depth : public xag_resyn_static_params_default<TT>
+{
+  static constexpr bool use_xor = false;
+  static constexpr bool preserve_depth = true;
+  static constexpr bool uniform_div_cost = false;
+};
+
 template<class Ntk>
 struct xag_resyn_static_params_for_sim_resub : public xag_resyn_static_params
 {
@@ -277,7 +285,16 @@ public:
   template<class iterator_type, class Fn, 
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
-  {}
+  {
+    while ( begin != end )
+    {
+      std::cout << "divisor ID " << *begin << ", tts = ";
+      kitty::print_hex( tts[*begin] );
+      std::cout << ", depth cost = " << depth_cost( *begin ) << "\n";
+      ++begin;
+    }
+    return std::nullopt;
+  }
 
 private:
   std::optional<index_list_t> compute_function( uint32_t num_inserts )
