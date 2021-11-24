@@ -31,7 +31,6 @@ int main()
     ps.wps.max_inserts = 1;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
-
     costfn_aig_heuristic_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 

@@ -154,7 +154,8 @@ template<typename Ntk>
 struct costfn_params
 {
   /*! \brief Cost function for resub */
-  int (*costfn)(const typename Ntk::node & x){};
+  std::function<uint32_t(uint32_t)> size_cost_fn;
+  std::function<uint32_t(uint32_t)> depth_cost_fn;
 };
 using costfn_resub_params = boolean_optimization_params<costfn_windowing_params, costfn_params<aig_network>>;
 using costfn_resub_stats = boolean_optimization_stats<costfn_windowing_stats, null_stats>;
@@ -453,7 +454,7 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
 
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
-    using engine_t = xag_resyn_decompose<TT, aig_resyn_static_params_default<TT>>;
+    using engine_t = xag_resyn_decompose<TT, aig_resyn_static_params_default<TT>>; // engine
     using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t>;
     using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
