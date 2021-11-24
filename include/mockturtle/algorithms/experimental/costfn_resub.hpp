@@ -428,7 +428,9 @@ public:
     if constexpr ( preserve_depth )
     {
       std::function<uint32_t(uint32_t)> const size_cost_fn = [&]( uint32_t idx ){ return 0u; };
-      std::function<uint32_t(uint32_t)> const depth_cost_fn = [&]( uint32_t idx ){ return ntk.level( prob.div_id_to_node[idx] ); };
+      std::function<uint32_t(uint32_t)> const depth_cost_fn = [&]( uint32_t idx ){ 
+        assert(idx<prob.div_id_to_node.size()); //TODO: remove this after debug finished
+        return ntk.level( prob.div_id_to_node[idx] ); };
 
       return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts,
         size_cost_fn, depth_cost_fn, prob.max_size, prob.max_level );

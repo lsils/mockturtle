@@ -299,6 +299,9 @@ public:
     //   std::cout << ", depth cost = " << depth_cost( *begin ) << "\n";
     //   ++begin;
     // }
+
+    // return std::nullopt;
+
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
 
     ptts = &tts;
@@ -323,6 +326,43 @@ public:
   }
 
 private:
+  std::optional<uint32_t> check_equal(uint32_t v) {
+    bool unateness[4] = {false, false, false, false};
+    /* check intersection with off-set */
+    if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[0] ) )
+    {
+      pos_unate_lits.emplace_back( v << 1 );
+      unateness[0] = true;
+    }
+    else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[0] ) )
+    {
+      pos_unate_lits.emplace_back( v << 1 | 0x1 );
+      unateness[1] = true;
+    }
+
+    /* check intersection with on-set */
+    if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[1] ) )
+    {
+      neg_unate_lits.emplace_back( v << 1 );
+      unateness[2] = true;
+    }
+    else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[1] ) )
+    {
+      neg_unate_lits.emplace_back( v << 1 | 0x1 );
+      unateness[3] = true;
+    }
+
+    /* 0-resub */
+    if ( unateness[0] && unateness[3] )
+    {
+      return ( v << 1 );
+    }
+    if ( unateness[1] && unateness[2] )
+    {
+      return ( v << 1 ) + 1;
+    }
+    return std::nullopt;
+  };
   template<class Fn>
   std::optional<index_list_t> compute_function( uint32_t num_inserts, Fn && size_cost, Fn && depth_cost )
   {
@@ -348,30 +388,35 @@ private:
       index_list.add_output(0); // const 0
       return index_list;
     }
-
+    using node =  typename static_params::node_type; 
+    
     /* initialize a priority queue */
-    typedef std::tuple<int, uint32_t> state;
+    typedef std::tuple<int, node> state;
     std::priority_queue<state> q;
+    std::unordered_map<node, std::tuple<node, node> > childs;
 
     if constexpr (static_params::copy_tts) {
-      /* this case div is of type uint32_t */
-      for ( auto div : divisors) {
-        q.push({size_cost(div)+depth_cost(div), div});
-      }
+      /* not implement yet, will leave queue empty and return */
+      std::cerr << "should not print this" << std::endl;
     }
     else {
-
+      for ( auto v = 1u; v < divisors.size(); ++v ) {
+        q.push({size_cost(v)+depth_cost(v), v});
+      }
     }
-    // check the history
-    std::unordered_map<uint32_t, std::tuple<uint32_t, uint32_t> > childs;
-
 
     // main loop of A* search
     while (!q.empty()) {
-      auto s = q.top();
+      auto [cost, v] = q.top();
       q.pop();
+      auto res = check_equal(v);
+      if (res) {
+        index_list.add_output(*res);
+        return index_list;
+      }
     }
 
+    /* no solution found */
     return std::nullopt;
   }
 

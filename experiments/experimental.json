@@ -6,7 +6,7 @@
         "cec": true,
         "level": 255,
         "level gain": 0,
-        "runtime": 0.03887609764933586,
+        "runtime": 0.05777924880385399,
         "size": 1020,
         "size gain": 0
       },
@@ -15,7 +15,7 @@
         "cec": true,
         "level": 12,
         "level gain": 0,
-        "runtime": 0.14712798595428467,
+        "runtime": 0.21715927124023438,
         "size": 3336,
         "size gain": 0
       },
@@ -24,34 +24,34 @@
         "cec": true,
         "level": 4372,
         "level gain": 0,
-        "runtime": 3.7083077430725098,
+        "runtime": 5.242574214935303,
         "size": 57247,
-        "size gain": 10
+        "size gain": 12
       },
       {
         "benchmark": "hyp",
         "cec": true,
         "level": 24801,
         "level gain": 1,
-        "runtime": 9.605693817138672,
+        "runtime": 14.418752670288086,
         "size": 214335,
-        "size gain": 4
+        "size gain": 6
       },
       {
         "benchmark": "log2",
         "cec": true,
         "level": 444,
         "level gain": 0,
-        "runtime": 2.0233685970306396,
+        "runtime": 2.964667558670044,
         "size": 32060,
-        "size gain": 0
+        "size gain": 4
       },
       {
         "benchmark": "max",
         "cec": true,
         "level": 287,
         "level gain": 0,
-        "runtime": 0.08643387258052826,
+        "runtime": 0.12660109996795654,
         "size": 2865,
         "size gain": 0
       },
@@ -60,43 +60,43 @@
         "cec": true,
         "level": 274,
         "level gain": 0,
-        "runtime": 1.7903937101364136,
+        "runtime": 2.5180211067199707,
         "size": 27062,
-        "size gain": 0
+        "size gain": 2
       },
       {
         "benchmark": "sin",
         "cec": true,
         "level": 225,
         "level gain": 0,
-        "runtime": 0.35882288217544556,
+        "runtime": 0.5273072123527527,
         "size": 5416,
-        "size gain": 3
+        "size gain": 5
       },
       {
         "benchmark": "sqrt",
         "cec": true,
         "level": 5058,
-        "level gain": 0,
-        "runtime": 1.4353622198104858,
+        "level gain": 1,
+        "runtime": 2.126530647277832,
         "size": 24618,
-        "size gain": 0
+        "size gain": 7
       },
       {
         "benchmark": "square",
         "cec": true,
         "level": 250,
         "level gain": 0,
-        "runtime": 1.1885175704956055,
+        "runtime": 1.6243419647216797,
         "size": 18484,
-        "size gain": 0
+        "size gain": 1
       },
       {
         "benchmark": "arbiter",
         "cec": true,
         "level": 87,
         "level gain": 0,
-        "runtime": 0.6122015118598938,
+        "runtime": 0.7246696949005127,
         "size": 11839,
         "size gain": 0
       },
@@ -105,7 +105,7 @@
         "cec": true,
         "level": 16,
         "level gain": 0,
-        "runtime": 0.07734346389770508,
+        "runtime": 0.11655675619840622,
         "size": 693,
         "size gain": 0
       },
@@ -114,16 +114,16 @@
         "cec": true,
         "level": 10,
         "level gain": 0,
-        "runtime": 0.019982123747467995,
+        "runtime": 0.03037789836525917,
         "size": 174,
-        "size gain": 0
+        "size gain": 5
       },
       {
         "benchmark": "dec",
         "cec": true,
         "level": 3,
         "level gain": 0,
-        "runtime": 0.03212299570441246,
+        "runtime": 0.052235476672649384,
         "size": 304,
         "size gain": 0
       },
@@ -132,7 +132,7 @@
         "cec": true,
         "level": 20,
         "level gain": 0,
-        "runtime": 0.05214866250753403,
+        "runtime": 0.07247508317232132,
         "size": 1342,
         "size gain": 0
       },
@@ -141,7 +141,7 @@
         "cec": true,
         "level": 16,
         "level gain": 0,
-        "runtime": 0.014904466457664967,
+        "runtime": 0.021677033975720406,
         "size": 260,
         "size gain": 0
       },
@@ -150,16 +150,16 @@
         "cec": true,
         "level": 114,
         "level gain": 0,
-        "runtime": 2.5064384937286377,
+        "runtime": 3.5076003074645996,
         "size": 46836,
-        "size gain": 0
+        "size gain": 9
       },
       {
         "benchmark": "priority",
         "cec": true,
         "level": 250,
         "level gain": 0,
-        "runtime": 0.0507965162396431,
+        "runtime": 0.07448656111955643,
         "size": 978,
         "size gain": 0
       },
@@ -168,7 +168,7 @@
         "cec": true,
         "level": 54,
         "level gain": 0,
-        "runtime": 0.010094039142131805,
+        "runtime": 0.015319338999688625,
         "size": 257,
         "size gain": 0
       },
@@ -176,10 +176,10 @@
         "benchmark": "voter",
         "cec": true,
         "level": 70,
-        "level gain": 0,
-        "runtime": 0.7006018757820129,
+        "level gain": 1,
+        "runtime": 1.0249121189117432,
         "size": 13758,
-        "size gain": 0
+        "size gain": 752
       }
     ],
     "version": "8c4e8f9"
