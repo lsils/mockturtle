@@ -153,12 +153,20 @@ struct costfn_windowing_stats
 template<typename Ntk>
 struct costfn_params
 {
-  /*! \brief Cost function for resub */
+  /*! \brief size Cost function for resub */
   std::function<uint32_t(uint32_t)> size_cost_fn;
+
+  /*! \brief depth Cost function for resub */
   std::function<uint32_t(uint32_t)> depth_cost_fn;
 };
+struct costfn_stats
+{
+  int initial_level{0};
+
+  void report() const {}
+};
 using costfn_resub_params = boolean_optimization_params<costfn_windowing_params, costfn_params<aig_network>>;
-using costfn_resub_stats = boolean_optimization_stats<costfn_windowing_stats, null_stats>;
+using costfn_resub_stats = boolean_optimization_stats<costfn_windowing_stats, costfn_stats>;
 namespace detail
 {
 
@@ -406,7 +414,7 @@ public:
   using problem_t = costfn_small_window<Ntk, TT>;
   using res_t = typename ResynEngine::index_list_t;
   using params_t = costfn_params<aig_network>;
-  using stats_t = null_stats;
+  using stats_t = costfn_stats;
 
   explicit costfn_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
     : ntk( ntk ), engine( rst )
@@ -467,6 +475,7 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
     fanout_view<Ntk> fntk( ntk );
     ViewedNtk viewed( fntk );
 
+
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
     using engine_t = xag_resyn_decompose<TT, aig_resyn_static_params_preserve_depth<TT>>;
@@ -474,6 +483,7 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
     using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
     opt_t p( viewed, ps, st );
+    st.rst.initial_level = viewed.depth();
     p.run();
   }
 

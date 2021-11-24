@@ -46,6 +46,10 @@
 #include <type_traits>
 #include <optional>
 
+#include <queue>
+#include <tuple>
+#include <unordered_map>
+
 namespace mockturtle
 {
 
@@ -281,24 +285,96 @@ public:
            bool enabled = !static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
-    
+
   }
 
   template<class iterator_type, class Fn, 
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
   {
+    // while ( begin != end )
+    // {
+    //   std::cout << "divisor ID " << *begin << ", tts = ";
+    //   kitty::print_hex( tts[*begin] );
+    //   std::cout << ", depth cost = " << depth_cost( *begin ) << "\n";
+    //   ++begin;
+    // }
+    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
+
+    ptts = &tts;
+    on_off_sets[0] = ~target & care;
+    on_off_sets[1] = target & care;
+
+    divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
     while ( begin != end )
     {
-      std::cout << "divisor ID " << *begin << ", tts = ";
-      kitty::print_hex( tts[*begin] );
-      std::cout << ", depth cost = " << depth_cost( *begin ) << "\n";
+      if constexpr ( static_params::copy_tts )
+      {
+        divisors.emplace_back( (*ptts)[*begin] );
+      }
+      else
+      {
+        divisors.emplace_back( *begin );
+      }
       ++begin;
     }
-    return std::nullopt;
+
+    return compute_function( max_size, size_cost, depth_cost );
   }
 
 private:
+  template<class Fn>
+  std::optional<index_list_t> compute_function( uint32_t num_inserts, Fn && size_cost, Fn && depth_cost )
+  {
+    index_list.clear();
+    index_list.add_inputs( divisors.size() - 1 );
+
+    pos_unate_lits.clear();
+    neg_unate_lits.clear();
+    binate_divs.clear();
+    pos_unate_pairs.clear();
+    neg_unate_pairs.clear();
+
+    /* constant is always the best */
+    num_bits[0] = kitty::count_ones( on_off_sets[0] ); /* off-set */
+    num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
+    if ( num_bits[0] == 0 )
+    {
+      index_list.add_output(1); // const 1
+      return index_list;
+    }
+    if ( num_bits[1] == 0 )
+    {
+      index_list.add_output(0); // const 0
+      return index_list;
+    }
+
+    /* initialize a priority queue */
+    typedef std::tuple<int, uint32_t> state;
+    std::priority_queue<state> q;
+
+    if constexpr (static_params::copy_tts) {
+      /* this case div is of type uint32_t */
+      for ( auto div : divisors) {
+        q.push({size_cost(div)+depth_cost(div), div});
+      }
+    }
+    else {
+
+    }
+    // check the history
+    std::unordered_map<uint32_t, std::tuple<uint32_t, uint32_t> > childs;
+
+
+    // main loop of A* search
+    while (!q.empty()) {
+      auto s = q.top();
+      q.pop();
+    }
+
+    return std::nullopt;
+  }
+
   std::optional<index_list_t> compute_function( uint32_t num_inserts )
   {
     index_list.clear();

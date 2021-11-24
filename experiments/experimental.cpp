@@ -15,10 +15,11 @@ int main()
   using namespace mockturtle::experimental;
   using namespace experiments;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "experimental", "benchmark", "size", "gain", "est. gain", "#sols", "runtime", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "experimental", "benchmark", "size", "size gain", "level", "level gain", "runtime", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
+    // if (benchmark != "ctrl") continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     aig_network aig;
@@ -27,15 +28,16 @@ int main()
 
     costfn_resub_params ps;
     costfn_resub_stats st;
-    ps.verbose = true;
+    // ps.verbose = true;
     ps.wps.max_inserts = 1;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
     costfn_aig_heuristic_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
+    depth_view d{aig};
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( aig, benchmark );
-    exp( benchmark, st.initial_size, st.initial_size - aig.num_gates(), st.estimated_gain, st.num_solutions, to_seconds( st.time_total ), cec );
+    exp( benchmark, st.initial_size, st.initial_size - aig.num_gates(), st.rst.initial_level, st.rst.initial_level - d.depth(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();
