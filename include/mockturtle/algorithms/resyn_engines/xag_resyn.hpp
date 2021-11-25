@@ -288,9 +288,9 @@ public:
 
   }
 
-  template<class iterator_type, class Fn, 
+  template<class iterator_type, class LeafFn, class NodeFn,  
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& leaf_cost_fn, NodeFn&& node_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
   {
     // while ( begin != end )
     // {
@@ -322,43 +322,36 @@ public:
       ++begin;
     }
 
-    return compute_function( max_size, size_cost, depth_cost );
+    return compute_function( max_size, leaf_cost_fn, node_cost_fn );
+    // return compute_function( max_size );
   }
 
 private:
-  template<class Fn>
-  std::optional<index_list_t> compute_function( uint32_t num_inserts, Fn && size_cost, Fn && depth_cost )
+  template<class LeafFn, class NodeFn>
+  std::optional<index_list_t> compute_function( uint32_t num_inserts, LeafFn && leaf_cost_fn, NodeFn && node_cost_fn )
   {
+
+    using cost_t = typename std::pair<uint32_t, uint32_t>;
+    auto cost = [] (cost_t x) 
+    {
+      return x.first + x.second;
+    };
+
     index_list.clear();
     index_list.add_inputs( divisors.size() - 1 );
-
+    
     pos_unate_lits.clear();
     neg_unate_lits.clear();
     binate_divs.clear();
     pos_unate_pairs.clear();
     neg_unate_pairs.clear();
 
-    /* constant is always the best */
-    num_bits[0] = kitty::count_ones( on_off_sets[0] ); /* off-set */
-    num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
-    if ( num_bits[0] == 0 )
-    {
-      index_list.add_output(1); // const 1
-      return index_list;
-    }
-    if ( num_bits[1] == 0 )
-    {
-      index_list.add_output(0); // const 0
-      return index_list;
-    }
     using node =  typename static_params::node_type; 
     
     /* initialize a priority queue */
-    typedef std::tuple<int, node> state;
+    typedef std::tuple<uint32_t, node> state;
     std::priority_queue<state> q;
     std::unordered_map<node, std::tuple<node, node> > childs;
-
-    auto costfn = [&](node x) {return size_cost(x) + depth_cost(x);};
 
     if constexpr (static_params::copy_tts) {
       /* not implement yet, will leave queue empty and return */
@@ -366,7 +359,6 @@ private:
     }
     else {
       /* sort divisors */
-      std::sort(divisors.begin()+1, divisors.end(), [&](node x, node y){return costfn(x) < costfn(y);});
       auto const res = find_one_unate();
       if (res) {
         index_list.add_output(*res);
@@ -378,13 +370,43 @@ private:
     {
       return std::nullopt;
     }
-    // main loop of A* search
-    while (!q.empty()) {
-      auto [cost, v] = q.top(); q.pop();
-      
-    }
-    
+    sort_unate_lits( pos_unate_lits, 1 );
+    sort_unate_lits( neg_unate_lits, 0 );
 
+    auto const res1or = find_div_div( pos_unate_lits, 1 );
+    if ( res1or ) {
+      index_list.add_output(*res1or);
+        return index_list;
+    }
+    auto const res1and = find_div_div( neg_unate_lits, 0 );
+    if ( res1or ) {
+      index_list.add_output(*res1and);
+        return index_list;
+    }
+    collect_unate_pairs();
+    sort_unate_pairs( pos_unate_pairs, 1 );
+    sort_unate_pairs( neg_unate_pairs, 0 );
+
+    auto const res2or = find_div_pair( pos_unate_lits, pos_unate_pairs, 1 );
+    if ( res2or ) {
+      index_list.add_output(*res2or);
+        return index_list;
+    }
+    auto const res2and = find_div_pair( neg_unate_lits, neg_unate_pairs, 0 );
+    if ( res2or ) {
+      index_list.add_output(*res2and);
+        return index_list;
+    }
+    auto const res3or = find_pair_pair( pos_unate_pairs, 1 );
+    if ( res3or ) {
+      index_list.add_output(*res3or);
+        return index_list;
+    }
+    auto const res3and = find_pair_pair( neg_unate_pairs, 0 );
+    if ( res3and ) {
+      index_list.add_output(*res3and);
+        return index_list;
+    }
     /* no solution found */
     return std::nullopt;
   }

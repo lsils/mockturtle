@@ -33,6 +33,15 @@ int main()
     ps.wps.max_inserts = 3;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
+
+    using cost_t = typename std::pair<uint32_t, uint32_t>;
+
+    ps.rps.node_cost_fn = [&](cost_t x, cost_t y) {
+      auto [size_x, depth_x] = x;
+      auto [size_y, depth_y] = y;
+      return std::pair(size_x + size_y + 1, std::max(depth_x, depth_y + 1));
+    };
+    
     costfn_aig_heuristic_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 

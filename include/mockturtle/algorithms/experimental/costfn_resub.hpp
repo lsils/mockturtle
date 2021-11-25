@@ -150,14 +150,17 @@ struct costfn_windowing_stats
   }
 };
 
-template<typename Ntk>
+template<class Ntk>
 struct costfn_params
 {
-  /*! \brief size Cost function for resub */
-  std::function<uint32_t(uint32_t)> size_cost_fn;
 
-  /*! \brief depth Cost function for resub */
-  std::function<uint32_t(uint32_t)> depth_cost_fn;
+  using cost_t = typename std::pair<uint32_t, uint32_t>;
+
+  /*! \brief leaf Cost function for resub */
+  std::function<cost_t(uint32_t)> leaf_cost_fn;
+
+  /*! \brief node Cost function for resub */
+  std::function<cost_t(cost_t, cost_t)> node_cost_fn;
 };
 struct costfn_stats
 {
@@ -177,6 +180,7 @@ struct costfn_small_window
 {
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
+  using cost_t = typename std::pair<uint32_t, uint32_t>;
 
   signal root;
   std::vector<signal> divs;
@@ -184,6 +188,7 @@ struct costfn_small_window
   std::vector<node> div_id_to_node; /* maps IDs in `div_ids` to the corresponding node */
   std::vector<TT> tts;
   TT care;
+
   uint32_t mffc_size;
   uint32_t max_size{std::numeric_limits<uint32_t>::max()};
   uint32_t max_level{std::numeric_limits<uint32_t>::max()};
@@ -417,9 +422,9 @@ public:
   using res_t = typename ResynEngine::index_list_t;
   using params_t = costfn_params<aig_network>;
   using stats_t = costfn_stats;
-
+  using cost_t = typename std::pair<uint32_t, uint32_t>;
   explicit costfn_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), engine( rst )
+    : ntk( ntk ), engine( rst ), ps( ps )
   { }
 
   void init()
@@ -429,13 +434,12 @@ public:
   {
     if constexpr ( preserve_depth )
     {
-      std::function<uint32_t(uint32_t)> const size_cost_fn = [&]( uint32_t idx ){ return 0u; };
-      std::function<uint32_t(uint32_t)> const depth_cost_fn = [&]( uint32_t idx ){ 
+      std::function<cost_t(uint32_t)> const leaf_cost_fn = [&]( uint32_t idx ){ 
         assert(idx<prob.div_id_to_node.size()); //TODO: remove this after debug finished
-        return ntk.level( prob.div_id_to_node[idx] ); };
-
+        return std::pair(0, ntk.level( prob.div_id_to_node[idx] )); 
+      };
       return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts,
-        size_cost_fn, depth_cost_fn, prob.max_size, prob.max_level );
+        leaf_cost_fn, ps.node_cost_fn, prob.max_size, prob.max_level );
     }
     else
     {
@@ -445,6 +449,7 @@ public:
 
 private:
   Ntk const& ntk;
+  params_t const& ps;
   typename ResynEngine::stats rst;
   ResynEngine engine;
 }; /* costfn_resynthesis */
