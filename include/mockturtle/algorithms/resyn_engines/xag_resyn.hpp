@@ -326,43 +326,6 @@ public:
   }
 
 private:
-  std::optional<uint32_t> check_equal(uint32_t v) {
-    bool unateness[4] = {false, false, false, false};
-    /* check intersection with off-set */
-    if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[0] ) )
-    {
-      pos_unate_lits.emplace_back( v << 1 );
-      unateness[0] = true;
-    }
-    else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[0] ) )
-    {
-      pos_unate_lits.emplace_back( v << 1 | 0x1 );
-      unateness[1] = true;
-    }
-
-    /* check intersection with on-set */
-    if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[1] ) )
-    {
-      neg_unate_lits.emplace_back( v << 1 );
-      unateness[2] = true;
-    }
-    else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[1] ) )
-    {
-      neg_unate_lits.emplace_back( v << 1 | 0x1 );
-      unateness[3] = true;
-    }
-
-    /* 0-resub */
-    if ( unateness[0] && unateness[3] )
-    {
-      return ( v << 1 );
-    }
-    if ( unateness[1] && unateness[2] )
-    {
-      return ( v << 1 ) + 1;
-    }
-    return std::nullopt;
-  };
   template<class Fn>
   std::optional<index_list_t> compute_function( uint32_t num_inserts, Fn && size_cost, Fn && depth_cost )
   {
@@ -395,26 +358,32 @@ private:
     std::priority_queue<state> q;
     std::unordered_map<node, std::tuple<node, node> > childs;
 
+    auto costfn = [&](node x) {return size_cost(x) + depth_cost(x);};
+
     if constexpr (static_params::copy_tts) {
       /* not implement yet, will leave queue empty and return */
       std::cerr << "should not print this" << std::endl;
     }
     else {
-      for ( auto v = 1u; v < divisors.size(); ++v ) {
-        q.push({size_cost(v)+depth_cost(v), v});
-      }
-    }
-
-    // main loop of A* search
-    while (!q.empty()) {
-      auto [cost, v] = q.top();
-      q.pop();
-      auto res = check_equal(v);
+      /* sort divisors */
+      std::sort(divisors.begin()+1, divisors.end(), [&](node x, node y){return costfn(x) < costfn(y);});
+      auto const res = find_one_unate();
       if (res) {
         index_list.add_output(*res);
         return index_list;
       }
     }
+
+    if ( num_inserts == 0u )
+    {
+      return std::nullopt;
+    }
+    // main loop of A* search
+    while (!q.empty()) {
+      auto [cost, v] = q.top(); q.pop();
+      
+    }
+    
 
     /* no solution found */
     return std::nullopt;

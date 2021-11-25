@@ -161,7 +161,9 @@ struct costfn_params
 };
 struct costfn_stats
 {
-  int initial_level{0};
+  uint32_t initial_level{0u};
+
+  uint32_t total_enqueued{0u};
 
   void report() const {}
 };
