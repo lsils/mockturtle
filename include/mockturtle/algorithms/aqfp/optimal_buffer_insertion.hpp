@@ -33,6 +33,13 @@
 // NOTE: This file is included inside the class `mockturtle::buffer_insertion`
 // It should not be included anywhere else.
 
+#if __GNUC__ == 7
+
+void optimize_with_smt( std::string name = "" )
+{}
+
+#else
+
 void optimize_with_smt( std::string name = "" )
 {
   std::ofstream os( "model_" + name + ".smt2", std::ofstream::out );
@@ -462,3 +469,5 @@ void parse_z3_result( std::string filename )
   }
   adjust_depth();
 }
+
+#endif
