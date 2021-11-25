@@ -20,7 +20,7 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     // if (benchmark != "ctrl") continue;
-    // if (benchmark != "div") continue;
+    if (benchmark != "div") continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     aig_network aig;
@@ -30,7 +30,7 @@ int main()
     costfn_resub_params ps;
     costfn_resub_stats st;
     // ps.verbose = true;
-    ps.wps.max_inserts = 3;
+    ps.wps.max_inserts = 1;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
 

@@ -197,6 +197,7 @@ public:
   using stats = xag_resyn_stats;
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
+  using cost_t = typename std::pair<uint32_t, uint32_t>;
 
 private:
   struct unate_lit
@@ -290,7 +291,7 @@ public:
 
   template<class iterator_type, class LeafFn, class NodeFn,  
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& leaf_cost_fn, NodeFn&& node_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
   {
     // while ( begin != end )
     // {
@@ -308,7 +309,16 @@ public:
     on_off_sets[0] = ~target & care;
     on_off_sets[1] = target & care;
 
+    node_cost_fn = _node_cost_fn;
+    leaf_cost_fn = _leaf_cost_fn;
+
+    sol_q = std::priority_queue<std::pair<uint32_t, uint32_t>>();
+    sol_info.clear();
+    collect_sol = true;
+
     divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
+    sol_info.emplace_back(std::tuple(std::pair(0,0), 0, 0));
+
     while ( begin != end )
     {
       if constexpr ( static_params::copy_tts )
@@ -318,97 +328,60 @@ public:
       else
       {
         divisors.emplace_back( *begin );
+        sol_info.emplace_back(std::tuple(std::pair(leaf_cost_fn(*begin)), 0, 0));
       }
       ++begin;
     }
 
-    return compute_function( max_size, leaf_cost_fn, node_cost_fn );
-    // return compute_function( max_size );
+    return compute_function( max_size );
   }
 
 private:
-  template<class LeafFn, class NodeFn>
-  std::optional<index_list_t> compute_function( uint32_t num_inserts, LeafFn && leaf_cost_fn, NodeFn && node_cost_fn )
-  {
-
-    using cost_t = typename std::pair<uint32_t, uint32_t>;
-    auto cost = [] (cost_t x) 
+  auto get_solution_rec (uint32_t x) {
+    if ( (x>>1) < divisors.size() ) 
     {
-      return x.first + x.second;
-    };
-
-    index_list.clear();
-    index_list.add_inputs( divisors.size() - 1 );
-    
-    pos_unate_lits.clear();
-    neg_unate_lits.clear();
-    binate_divs.clear();
-    pos_unate_pairs.clear();
-    neg_unate_pairs.clear();
-
-    using node =  typename static_params::node_type; 
-    
-    /* initialize a priority queue */
-    typedef std::tuple<uint32_t, node> state;
-    std::priority_queue<state> q;
-    std::unordered_map<node, std::tuple<node, node> > childs;
-
-    if constexpr (static_params::copy_tts) {
-      /* not implement yet, will leave queue empty and return */
-      std::cerr << "should not print this" << std::endl;
+      /* reach the input */
+      return x;
     }
-    else {
-      /* sort divisors */
-      auto const res = find_one_unate();
-      if (res) {
-        index_list.add_output(*res);
-        return index_list;
-      }
-    }
-
-    if ( num_inserts == 0u )
-    {
+    /* back trace and find the whole structure */
+    auto [cost, left, right] = sol_info[(x>>1)];
+    auto idx_left = get_solution_rec(left);
+    auto idx_right = get_solution_rec(right);
+    auto idx_ret = index_list.add_and(idx_left, idx_right);
+    return idx_ret + (x & 01);
+  }
+  std::optional<uint32_t> get_solution() {
+    if (sol_q.empty()) {
       return std::nullopt;
     }
-    sort_unate_lits( pos_unate_lits, 1 );
-    sort_unate_lits( neg_unate_lits, 0 );
-
-    auto const res1or = find_div_div( pos_unate_lits, 1 );
-    if ( res1or ) {
-      index_list.add_output(*res1or);
-        return index_list;
+    else
+    {
+      auto [cost ,res] = sol_q.top();
+      auto idx_out = get_solution_rec(res);
+      return idx_out;
     }
-    auto const res1and = find_div_div( neg_unate_lits, 0 );
-    if ( res1or ) {
-      index_list.add_output(*res1and);
-        return index_list;
+  }
+  uint32_t add_sol(uint32_t x, uint32_t y = 0, uint32_t z = 0, bool is_root = true) 
+  {
+    if ( y==0 )
+    {
+      auto leaf_cost = std::get<0>(sol_info[(x>>1)]);
+      if (is_root)
+      {
+        sol_q.push(std::pair(leaf_cost.first + leaf_cost.second, x)); /* cost of leaf node */
+      }
+      return x;
     }
-    collect_unate_pairs();
-    sort_unate_pairs( pos_unate_pairs, 1 );
-    sort_unate_pairs( neg_unate_pairs, 0 );
-
-    auto const res2or = find_div_pair( pos_unate_lits, pos_unate_pairs, 1 );
-    if ( res2or ) {
-      index_list.add_output(*res2or);
-        return index_list;
+    else /* add node */ 
+    {
+      auto node_cost = node_cost_fn(std::get<0>(sol_info[(y>>1)]), std::get<0>(sol_info[(z>>1)]));
+      sol_info.emplace_back(std::tuple(node_cost, y, z));
+      if (is_root)
+      {
+        sol_q.push(std::pair(node_cost.first + node_cost.second, ((sol_info.size()-1)<<1) + x));
+      }
+      return ((sol_info.size()-1)<<1) + x;
     }
-    auto const res2and = find_div_pair( neg_unate_lits, neg_unate_pairs, 0 );
-    if ( res2or ) {
-      index_list.add_output(*res2and);
-        return index_list;
-    }
-    auto const res3or = find_pair_pair( pos_unate_pairs, 1 );
-    if ( res3or ) {
-      index_list.add_output(*res3or);
-        return index_list;
-    }
-    auto const res3and = find_pair_pair( neg_unate_pairs, 0 );
-    if ( res3and ) {
-      index_list.add_output(*res3and);
-        return index_list;
-    }
-    /* no solution found */
-    return std::nullopt;
   }
 
   std::optional<index_list_t> compute_function( uint32_t num_inserts )
@@ -443,7 +416,7 @@ private:
     }
     if ( num_inserts == 0u )
     {
-      return std::nullopt;
+      return get_solution();
     }
 
     /* sort unate literals and try 1-resub */
@@ -482,7 +455,7 @@ private:
     }
     if ( num_inserts == 1u )
     {
-      return std::nullopt;
+      return get_solution();
     }
 
     /* collect AND-type unate pairs and sort (both types), then try 2- and 3-resub */
@@ -508,6 +481,11 @@ private:
       return *res2and;
     }
 
+    if ( num_inserts == 2u ) 
+    {
+      return get_solution();
+    } 
+
     if ( num_inserts >= 3u )
     {
       auto const res3or = call_with_stopwatch( st.time_resub3, [&]() {
@@ -525,6 +503,8 @@ private:
         return *res3and;
       }
     }
+
+    return std::nullopt;
 
     /* choose something to divide and recursive call on the remainder */
     /* Note: dividing = AND the on-set (if using positive unate) or the off-set (if using negative unate)
@@ -744,7 +724,7 @@ private:
      - For `pos_unate_lits`, `on_off` = 1, try covering all on-set bits by combining two with an OR gate;
      - For `neg_unate_lits`, `on_off` = 0, try covering all off-set bits by combining two with an AND gate
    */
-  std::optional<uint32_t> find_div_div( std::vector<unate_lit>& unate_lits, uint32_t on_off )
+  std::optional<uint32_t> find_div_div( std::vector<unate_lit>& unate_lits, uint32_t on_off, bool collect_sol = false )
   {
     for ( auto i = 0u; i < unate_lits.size(); ++i )
     {
@@ -764,8 +744,14 @@ private:
         auto const ntt2 = lit2 & 0x1 ? get_div( lit2 >> 1 ) : ~get_div( lit2 >> 1 );
         if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
-          auto const new_lit = index_list.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
-          return new_lit + on_off;
+          if ( collect_sol ) 
+          { // TODO: move this to compile time using constexpr
+            add_sol( 1, ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ));
+          }
+          else {
+            auto const new_lit = index_list.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
+            return new_lit + on_off;
+          }
         }
       }
     }
@@ -816,15 +802,36 @@ private:
             }
             else
             {
-              new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
+              if (collect_sol)
+              {
+                new_lit1 = add_sol(0, pair2.lit1, pair2.lit2, false );
+              }
+              else 
+              {
+                new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
+              }
             }
           }
           else
           {
-            new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
+            if (collect_sol)
+            {
+              new_lit1 = add_sol(0, pair2.lit1, pair2.lit2, false );
+            }
+            else 
+            {
+              new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
+            }
           }
-          auto const new_lit2 = index_list.add_and( ( lit1 ^ 0x1 ), new_lit1 ^ 0x1 );
-          return new_lit2 + on_off;
+          if (collect_sol) 
+          {
+            add_sol( on_off, lit1 ^ 0x1, new_lit1 ^ 0x1 );
+          }
+          else
+          {
+            auto const new_lit2 = index_list.add_and( ( lit1 ^ 0x1 ), new_lit1 ^ 0x1 );
+            return new_lit2 + on_off;
+          }
         }
       }
     }
@@ -1017,6 +1024,15 @@ private:
   std::vector<unate_lit> pos_unate_lits, neg_unate_lits;
   std::vector<uint32_t> binate_divs;
   std::vector<fanin_pair> pos_unate_pairs, neg_unate_pairs;
+
+  /* sol_q: maintain the solutions ordered by cost function
+     sol_info: maintain the topo structure of each solution */
+  std::priority_queue<std::pair<uint32_t, uint32_t>> sol_q;
+  std::vector<std::tuple<cost_t, uint32_t, uint32_t>> sol_info;
+  bool collect_sol{false};
+
+  std::function<cost_t(cost_t, cost_t)> node_cost_fn;
+  std::function<cost_t(uint32_t)> leaf_cost_fn;
 
   stats& st;
 }; /* xag_resyn_decompose */
