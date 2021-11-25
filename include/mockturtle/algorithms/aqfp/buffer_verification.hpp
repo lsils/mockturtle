@@ -32,7 +32,7 @@
 
 #pragma once
 
-#include "buffer_insertion.hpp"
+#include "aqfp_assumptions.hpp"
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
 #include "../../views/depth_view.hpp"
