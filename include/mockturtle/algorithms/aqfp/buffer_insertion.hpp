@@ -32,6 +32,7 @@
 
 #pragma once
 
+#include "aqfp_assumptions.hpp"
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
 
@@ -41,29 +42,12 @@
 #include <list>
 #include <set>
 #include <vector>
+#include <fstream>
+#include <iostream>
+#include <string>
 
 namespace mockturtle
 {
-
-/*! \brief AQFP technology assumptions.
- * 
- * POs count toward the fanout sizes and always have to be branched.
- * If PIs need to be balanced, then they must also need to be branched.
- */
-struct aqfp_assumptions
-{
-  /*! \brief Whether PIs need to be branched with splitters. */
-  bool branch_pis{false};
-
-  /*! \brief Whether PIs need to be path-balanced. */
-  bool balance_pis{false};
-
-  /*! \brief Whether POs need to be path-balanced. */
-  bool balance_pos{true};
-
-  /*! \brief The maximum number of fanouts each splitter (buffer) can have. */
-  uint32_t splitter_capacity{3u};
-};
 
 /*! \brief Parameters for (AQFP) buffer insertion.
  */
@@ -89,19 +73,24 @@ struct buffer_insertion_params
     better
   } scheduling = ASAP;
 
-  /*! \brief The level of chunked-movement-based optimization effort.
+  /*! \brief The level of optimization effort.
    * - `none` = No optimization
    * - `one_pass` = Try to form a chunk starting from each gate, once
    * for all gates
    * - `until_sat` = Iterate over all gates until no more beneficial
    * chunk movement can be found
+   * - `optimal` = Use an SMT solver to find the global optimal
    */
   enum
   {
     none,
     one_pass,
     until_sat,
+    optimal
   } optimization_effort = none;
+
+  /*! \brief The maximum size of a chunk. */
+  uint32_t max_chunk_size{100u};
 };
 
 /*! \brief Insert buffers and splitters for the AQFP technology.
@@ -179,7 +168,7 @@ public:
   using signal = typename Ntk::signal;
 
   explicit buffer_insertion( Ntk const& ntk, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -200,7 +189,7 @@ public:
   }
 
   explicit buffer_insertion( Ntk const& ntk, node_map<uint32_t, Ntk> const& levels, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( levels ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( levels ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _buffers( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -428,7 +417,8 @@ private:
   {
     _external_ref_count.reset( 0u );
     _ntk.foreach_po( [&]( auto const& f ) {
-      _external_ref_count[f]++;
+      if ( !_ntk.is_constant( _ntk.get_node( f ) ) )
+        _external_ref_count[f]++;
     } );
 
     _fanouts.reset();
@@ -443,9 +433,31 @@ private:
     } );
 
     _ntk.foreach_node( [&]( auto const& n ) {
+      if ( !_ps.assume.branch_pis && _ntk.is_pi( n ) ) return true;
       if ( _external_ref_count[n] > 0u )
         _fanouts[n].push_back( {_depth + 1 - _levels[n], {}, _external_ref_count[n]} );
+      return true;
     });
+
+    /* //debugging checks
+    if ( !_ps.assume.branch_pis )
+    {
+      _ntk.foreach_pi( [&]( auto const& n ) { assert( _fanouts[n].size() == 0 ); });
+      _ntk.foreach_gate( [&]( auto const& n ) {
+        if ( _ntk.fanout_size( n ) == 1 ) assert( _fanouts[n].size() == 1 );
+        else assert( _fanouts[n].front().relative_depth > 1 );
+      });
+    }
+    else
+    {
+      _ntk.foreach_node( [&]( auto const& n ) {
+        if ( _ntk.is_constant( n ) || _ntk.fanout_size( n ) == 0 ) return true;
+        if ( _ntk.fanout_size( n ) == 1 ) assert( _fanouts[n].size() == 1 );
+        else assert( _fanouts[n].front().relative_depth > 1 );
+        return true;
+      });
+    }
+    */
 
     _ntk.foreach_gate( [&]( auto const& n ) {
       count_edges( n );
@@ -487,7 +499,9 @@ private:
 
   void insert_fanout( node const& n, node const& fanout )
   {
+    if ( !_ps.assume.branch_pis && _ntk.is_pi( n ) ) return;
     auto const rd = _levels[fanout] - _levels[n];
+    assert( rd > 0 );
     auto& fo_infos = _fanouts[n];
     for ( auto it = fo_infos.begin(); it != fo_infos.end(); ++it )
     {
@@ -688,6 +702,91 @@ private:
   }
 #pragma endregion
 
+#pragma region Compute timeframe
+  /*! \brief Compute the earilest and latest possible timeframe by eager ASAP and ALAP */
+  uint32_t compute_timeframe( uint32_t max_depth )
+  {
+    _timeframes.reset( std::make_pair( 0, 0 ) );
+    uint32_t min_depth{0};
+
+    _ntk.incr_trav_id();
+    _ntk.foreach_po( [&]( auto const& f ) {
+      auto const no = _ntk.get_node( f );
+      auto clevel = compute_levels_ASAP_eager( no ) + ( _ntk.fanout_size( no ) > 1 ? 1 : 0 );
+      min_depth = std::max( min_depth, clevel );
+    } );
+
+    _ntk.incr_trav_id();
+    _ntk.foreach_po( [&]( auto const& f ) {
+      const auto n = _ntk.get_node( f );
+      if ( !_ntk.is_constant( n ) && _ntk.visited( n ) != _ntk.trav_id() && ( !_ps.assume.balance_pis || !_ntk.is_pi( n ) ) )
+      {
+        _timeframes[n].second = max_depth - ( _ntk.fanout_size( n ) > 1 ? 1 : 0 );
+        compute_levels_ALAP_eager( n );
+      }
+    } );
+
+    return min_depth;
+  }
+
+  uint32_t compute_levels_ASAP_eager( node const& n )
+  {
+    if ( _ntk.visited( n ) == _ntk.trav_id() )
+    {
+      return _timeframes[n].first;
+    }
+    _ntk.set_visited( n, _ntk.trav_id() );
+
+    if ( _ntk.is_constant( n ) || _ntk.is_pi( n ) )
+    {
+      return _timeframes[n].first = 0;
+    }
+
+    uint32_t level{0};
+    _ntk.foreach_fanin( n, [&]( auto const& fi ) {
+      auto const ni = _ntk.get_node( fi );
+      if ( !_ntk.is_constant( ni ) )
+      {
+        auto fi_level = compute_levels_ASAP_eager( ni );
+        if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
+        {
+          fi_level += _ntk.fanout_size( ni ) > 1 ? 1 : 0;
+        }
+        level = std::max( level, fi_level );
+      }
+    } );
+
+    return _timeframes[n].first = level + 1;
+  }
+
+  void compute_levels_ALAP_eager( node const& n )
+  {
+    _ntk.set_visited( n, _ntk.trav_id() );
+
+    _ntk.foreach_fanin( n, [&]( auto const& fi ) {
+      auto const ni = _ntk.get_node( fi );
+      if ( !_ntk.is_constant( ni ) )
+      {
+        if ( _ps.assume.balance_pis && _ntk.is_pi( ni ) )
+        {
+          assert( _timeframes[n].second > 0 );
+          _timeframes[ni].second = 0;
+        }
+        else if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
+        {
+          assert( _timeframes[n].second > num_splitter_levels( ni ) );
+          auto fi_level = _timeframes[n].second - ( _ntk.fanout_size( ni ) > 1 ? 2 : 1 );
+          if ( _ntk.visited( ni ) != _ntk.trav_id() || _timeframes[ni].second > fi_level )
+          {
+            _timeframes[ni].second = fi_level;
+            compute_levels_ALAP_eager( ni );
+          }
+        }
+      }
+    } );
+  }
+#pragma
+
 #pragma region Dump buffered network
 public:
   /*! \brief Dump buffered network
@@ -806,6 +905,8 @@ private:
   template<class BufNtk, typename Buffers>
   void create_buffer_chain( BufNtk& bufntk, Buffers& buffers, node const& n, typename BufNtk::signal const& s ) const
   {
+    if ( _ntk.fanout_size( n ) == 0 ) return; /* dangling */
+
     auto const& fanout_info = _fanouts[n];
     assert( fanout_info.size() > 0u );
 
@@ -883,7 +984,6 @@ private:
   }
 #pragma endregion
 
-#pragma region Chunked movement
 public:
   /*! \brief Optimize with chunked movement using the specified optimization policy.
    * 
@@ -895,6 +995,14 @@ public:
   {
     if ( _ps.optimization_effort == buffer_insertion_params::none )
     {
+      return;
+    }
+    else if ( _ps.optimization_effort == buffer_insertion_params::optimal )
+    {
+      if constexpr ( has_get_network_name_v<Ntk> )
+        optimize_with_smt( _ntk.get_network_name() );
+      else
+        optimize_with_smt( "" );
       return;
     }
     
@@ -911,6 +1019,7 @@ public:
     adjust_depth();
   }
 
+#pragma region Chunked movement
 private:
   struct io_interface
   {
@@ -953,6 +1062,10 @@ private:
       _ntk.incr_trav_id();
       chunk c{_ntk.trav_id()};
       recruit( n, c );
+      if ( c.members.size() > _ps.max_chunk_size )
+      {
+        return true; /* skip */
+      }
       cleanup_interfaces( c );
 
       auto moved = analyze_chunk_down( c );
@@ -967,6 +1080,8 @@ private:
   void recruit( node const& n, chunk& c )
   {
     if ( _ntk.visited( n ) == c.id )
+      return;
+    if ( c.members.size() > _ps.max_chunk_size )
       return;
 
     assert( _ntk.visited( n ) <= _start_id );
@@ -1290,6 +1405,11 @@ private:
   }
 #pragma endregion
 
+#pragma region Global optimal by SMT
+private:
+#include "optimal_buffer_insertion.hpp"
+#pragma endregion
+
 private:
   struct fanout_information
   {
@@ -1304,6 +1424,7 @@ private:
   bool _outdated{true};
 
   node_map<uint32_t, Ntk> _levels;
+  node_map<std::pair<uint32_t, uint32_t>, Ntk> _timeframes;
   uint32_t _depth{0u};
   node_map<fanouts_by_level, Ntk> _fanouts;
   node_map<uint32_t, Ntk> _external_ref_count;
