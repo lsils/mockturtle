@@ -357,9 +357,15 @@ private:
     else
     {
       auto [cost ,res] = sol_q.top();
+      std::cerr << sol_q.size() << std::endl;
       auto idx_out = get_solution_rec(res);
       return idx_out;
     }
+  }
+  uint32_t to_cost(cost_t x)
+  {
+    auto [size_cost, depth_cost] = x;
+    return depth_cost;
   }
   uint32_t add_sol(uint32_t x, uint32_t y = 0, uint32_t z = 0, bool is_root = true) 
   {
@@ -368,7 +374,7 @@ private:
       auto leaf_cost = std::get<0>(sol_info[(x>>1)]);
       if (is_root)
       {
-        sol_q.push(std::pair(leaf_cost.first + leaf_cost.second, x)); /* cost of leaf node */
+        sol_q.push(std::pair(to_cost(leaf_cost), x)); /* cost of leaf node */
       }
       return x;
     }
@@ -378,7 +384,7 @@ private:
       sol_info.emplace_back(std::tuple(node_cost, y, z));
       if (is_root)
       {
-        sol_q.push(std::pair(node_cost.first + node_cost.second, ((sol_info.size()-1)<<1) + x));
+        sol_q.push(std::pair(to_cost(node_cost), ((sol_info.size()-1)<<1) + x));
       }
       return ((sol_info.size()-1)<<1) + x;
     }
@@ -621,11 +627,25 @@ private:
     num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
     if ( num_bits[0] == 0 )
     {
-      return 1;
+      if (collect_sol) 
+      {
+        add_sol(1);
+      }
+      else
+      {
+        return 1;
+      }
     }
     if ( num_bits[1] == 0 )
     {
-      return 0;
+      if (collect_sol) 
+      {
+        add_sol(0);
+      }
+      else
+      {
+        return 0;
+      }
     }
 
     for ( auto v = 1u; v < divisors.size(); ++v )
@@ -658,11 +678,25 @@ private:
       /* 0-resub */
       if ( unateness[0] && unateness[3] )
       {
-        return ( v << 1 );
+        if (collect_sol) 
+        {
+          add_sol(( v << 1 ));
+        }
+        else
+        {
+          return ( v << 1 );
+        }
       }
       if ( unateness[1] && unateness[2] )
       {
-        return ( v << 1 ) + 1;
+        if (collect_sol) 
+        {
+          add_sol(( v << 1 ) + 1);
+        }
+        else
+        {
+          return ( v << 1 ) + 1;
+        }
       }
       /* useless unate literal */
       if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )

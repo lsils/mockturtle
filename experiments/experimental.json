@@ -187,13 +187,184 @@
   {
     "entries": [
       {
+        "benchmark": "adder",
+        "cec": true,
+        "level": 255,
+        "level gain": 0,
+        "runtime": 0.05887385085225105,
+        "size": 1020,
+        "size gain": 127
+      },
+      {
+        "benchmark": "bar",
+        "cec": true,
+        "level": 12,
+        "level gain": 0,
+        "runtime": 0.28367185592651367,
+        "size": 3336,
+        "size gain": 195
+      },
+      {
         "benchmark": "div",
         "cec": true,
         "level": 4372,
-        "level gain": 0,
-        "runtime": 4.2725510597229,
+        "level gain": 4294967280,
+        "runtime": 5.97668981552124,
         "size": 57247,
-        "size gain": 246
+        "size gain": 11682
+      },
+      {
+        "benchmark": "hyp",
+        "cec": true,
+        "level": 24801,
+        "level gain": 0,
+        "runtime": 12.822286605834961,
+        "size": 214335,
+        "size gain": 1856
+      },
+      {
+        "benchmark": "log2",
+        "cec": true,
+        "level": 444,
+        "level gain": 20,
+        "runtime": 3.137228488922119,
+        "size": 32060,
+        "size gain": 1520
+      },
+      {
+        "benchmark": "max",
+        "cec": true,
+        "level": 287,
+        "level gain": 0,
+        "runtime": 0.13751843571662903,
+        "size": 2865,
+        "size gain": 0
+      },
+      {
+        "benchmark": "multiplier",
+        "cec": true,
+        "level": 274,
+        "level gain": 2,
+        "runtime": 2.7471468448638916,
+        "size": 27062,
+        "size gain": 1122
+      },
+      {
+        "benchmark": "sin",
+        "cec": true,
+        "level": 225,
+        "level gain": 1,
+        "runtime": 0.5979189872741699,
+        "size": 5416,
+        "size gain": 193
+      },
+      {
+        "benchmark": "sqrt",
+        "cec": true,
+        "level": 5058,
+        "level gain": 4294967280,
+        "runtime": 1.838833212852478,
+        "size": 24618,
+        "size gain": 1835
+      },
+      {
+        "benchmark": "square",
+        "cec": true,
+        "level": 250,
+        "level gain": 1,
+        "runtime": 1.7485089302062988,
+        "size": 18484,
+        "size gain": 1022
+      },
+      {
+        "benchmark": "arbiter",
+        "cec": true,
+        "level": 87,
+        "level gain": 0,
+        "runtime": 0.7636194229125977,
+        "size": 11839,
+        "size gain": 0
+      },
+      {
+        "benchmark": "cavlc",
+        "cec": true,
+        "level": 16,
+        "level gain": 0,
+        "runtime": 0.29573872685432434,
+        "size": 693,
+        "size gain": 22
+      },
+      {
+        "benchmark": "ctrl",
+        "cec": true,
+        "level": 10,
+        "level gain": 0,
+        "runtime": 0.05272173881530762,
+        "size": 174,
+        "size gain": 65
+      },
+      {
+        "benchmark": "dec",
+        "cec": true,
+        "level": 3,
+        "level gain": 0,
+        "runtime": 0.037500977516174316,
+        "size": 304,
+        "size gain": 0
+      },
+      {
+        "benchmark": "i2c",
+        "cec": true,
+        "level": 20,
+        "level gain": 0,
+        "runtime": 0.10354763269424438,
+        "size": 1342,
+        "size gain": 68
+      },
+      {
+        "benchmark": "int2float",
+        "cec": true,
+        "level": 16,
+        "level gain": 0,
+        "runtime": 0.057774368673563004,
+        "size": 260,
+        "size gain": 23
+      },
+      {
+        "benchmark": "mem_ctrl",
+        "cec": true,
+        "level": 114,
+        "level gain": 1,
+        "runtime": 3.8501029014587402,
+        "size": 46836,
+        "size gain": 454
+      },
+      {
+        "benchmark": "priority",
+        "cec": true,
+        "level": 250,
+        "level gain": 183,
+        "runtime": 0.08575840294361115,
+        "size": 978,
+        "size gain": 318
+      },
+      {
+        "benchmark": "router",
+        "cec": true,
+        "level": 54,
+        "level gain": 0,
+        "runtime": 0.015822120010852814,
+        "size": 257,
+        "size gain": 11
+      },
+      {
+        "benchmark": "voter",
+        "cec": true,
+        "level": 70,
+        "level gain": 0,
+        "runtime": 1.3229883909225464,
+        "size": 13758,
+        "size gain": 3966
       }
     ],
     "version": "f8a73f5"

@@ -20,7 +20,7 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     // if (benchmark != "ctrl") continue;
-    if (benchmark != "div") continue;
+    // if (benchmark != "div") continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     aig_network aig;
@@ -30,15 +30,15 @@ int main()
     costfn_resub_params ps;
     costfn_resub_stats st;
     // ps.verbose = true;
-    ps.wps.max_inserts = 1;
+    ps.wps.max_inserts = 2;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
 
     using cost_t = typename std::pair<uint32_t, uint32_t>;
 
-    ps.rps.node_cost_fn = [&](cost_t x, cost_t y) {
-      auto [size_x, depth_x] = x;
-      auto [size_y, depth_y] = y;
+    ps.rps.node_cost_fn = [&](cost_t fanin_x, cost_t fanin_y) {
+      auto [size_x, depth_x] = fanin_x;
+      auto [size_y, depth_y] = fanin_y;
       return std::pair(size_x + size_y + 1, std::max(depth_x, depth_y + 1));
     };
     
