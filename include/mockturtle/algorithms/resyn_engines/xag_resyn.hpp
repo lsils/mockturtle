@@ -293,19 +293,11 @@ public:
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
   {
-    // while ( begin != end )
-    // {
-    //   std::cout << "divisor ID " << *begin << ", tts = ";
-    //   kitty::print_hex( tts[*begin] );
-    //   std::cout << ", depth cost = " << depth_cost( *begin ) << "\n";
-    //   ++begin;
-    // }
-
 
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
 
     (void) _max_depth;
-    max_cost = _max_depth;
+    max_cost = _max_depth; /* preserve depth */
 
     ptts = &tts;
     on_off_sets[0] = ~target & care;
@@ -330,8 +322,8 @@ public:
       else
       {
         divisors.emplace_back( *begin );
-        sol_info.emplace_back(std::tuple(std::pair(leaf_cost_fn(*begin)), 0, 0));
       }
+      sol_info.emplace_back(std::tuple(std::pair(leaf_cost_fn(*begin)), 0, 0));
       ++begin;
     }
 
@@ -339,18 +331,18 @@ public:
   }
 
 private:
-  auto get_solution_rec (uint32_t x) {
-    if ( (x>>1) < divisors.size() ) 
+  auto get_solution_rec (uint32_t root_lit) {
+    if ( (root_lit>>1) < divisors.size() ) 
     {
-      /* reach the input */
-      return x;
+      /* reach the input, where root_lit == div_id */
+      return root_lit;
     }
     /* back trace and find the whole structure */
-    auto [cost, left, right] = sol_info[(x>>1)];
+    auto [cost, left, right] = sol_info[(root_lit>>1)];
     auto idx_left = get_solution_rec(left);
     auto idx_right = get_solution_rec(right);
     auto idx_ret = index_list.add_and(idx_left, idx_right);
-    return idx_ret + (x & 01);
+    return idx_ret + (root_lit & 01);
   }
   std::optional<uint32_t> get_solution() {
     if (sol_q.empty()) {
@@ -359,11 +351,11 @@ private:
     else
     {
       auto [cost ,res] = sol_q.top();
-      auto idx_out = get_solution_rec(res);
-      return idx_out;
+      auto root_lit = get_solution_rec(res);
+      return root_lit;
     }
   }
-  uint32_t to_cost(cost_t x)
+  uint32_t to_val(cost_t x)
   {
     auto [size_cost, depth_cost] = x;
     return depth_cost;
@@ -375,8 +367,8 @@ private:
       auto leaf_cost = std::get<0>(sol_info[(x>>1)]);
       if (is_root)
       {
-        if (to_cost(leaf_cost) <= max_cost)
-          sol_q.push(std::pair(to_cost(leaf_cost), x)); /* cost of leaf node */
+        if (to_val(leaf_cost) <= max_cost)
+          sol_q.push(std::pair(to_val(leaf_cost), x)); /* cost of leaf node */
       }
       return x;
     }
@@ -386,8 +378,8 @@ private:
       sol_info.emplace_back(std::tuple(node_cost, y, z));
       if (is_root)
       {
-        if (to_cost(node_cost) <= max_cost)
-        sol_q.push(std::pair(to_cost(node_cost), ((sol_info.size()-1)<<1) + x));
+        if (to_val(node_cost) <= max_cost)
+        sol_q.push(std::pair(to_val(node_cost), ((sol_info.size()-1)<<1) + x));
       }
       return ((sol_info.size()-1)<<1) + x;
     }
