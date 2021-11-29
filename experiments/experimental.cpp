@@ -30,7 +30,7 @@ int main()
     costfn_resub_params ps;
     costfn_resub_stats st;
     // ps.verbose = true;
-    ps.wps.max_inserts = 2;
+    ps.wps.max_inserts = 3;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
 

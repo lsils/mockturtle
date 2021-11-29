@@ -493,24 +493,25 @@ private:
       return get_solution();
     } 
 
-    if ( num_inserts >= 3u )
+    auto const res3or = call_with_stopwatch( st.time_resub3, [&]() {
+      return find_pair_pair( pos_unate_pairs, 1 );
+    });
+    if ( res3or )
     {
-      auto const res3or = call_with_stopwatch( st.time_resub3, [&]() {
-        return find_pair_pair( pos_unate_pairs, 1 );
-      });
-      if ( res3or )
-      {
-        return *res3or;
-      }
-      auto const res3and = call_with_stopwatch( st.time_resub3, [&]() {
-        return find_pair_pair( neg_unate_pairs, 0 );
-      });
-      if ( res3and )
-      {
-        return *res3and;
-      }
+      return *res3or;
+    }
+    auto const res3and = call_with_stopwatch( st.time_resub3, [&]() {
+      return find_pair_pair( neg_unate_pairs, 0 );
+    });
+    if ( res3and )
+    {
+      return *res3and;
     }
 
+    if ( num_inserts == 3u ) 
+    {
+      return get_solution();
+    }
     return std::nullopt;
 
     /* choose something to divide and recursive call on the remainder */
@@ -833,7 +834,12 @@ private:
           {
             if ( pair2.lit1 > pair2.lit2 )
             {
-              new_lit1 = index_list.add_xor( pair2.lit1, pair2.lit2 );
+              if ( collect_sol ) {
+                new_lit1 = add_solution(0, pair2.lit1, pair2.lit2, false, true);
+              }
+              else {
+                new_lit1 = index_list.add_xor( pair2.lit1, pair2.lit2 );
+              }
             }
             else
             {
@@ -928,28 +934,59 @@ private:
           {
             if ( pair1.lit1 > pair1.lit2 )
             {
-              fanin_lit1 = index_list.add_xor( pair1.lit1, pair1.lit2 );
+              if ( collect_sol ) {
+                fanin_lit1 = add_solution( 0, pair1.lit1, pair1.lit2, false, true );
+              }
+              else {
+                fanin_lit1 = index_list.add_xor( pair1.lit1, pair1.lit2 );
+              }
             }
             else
             {
-              fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
+              if ( collect_sol ) {
+                fanin_lit1 = add_solution( 0, pair1.lit1, pair1.lit2, false);
+              }
+              else {
+                fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
+              }
             }
             if ( pair2.lit1 > pair2.lit2 )
             {
-              fanin_lit2 = index_list.add_xor( pair2.lit1, pair2.lit2 );
+              if ( collect_sol ) {
+                fanin_lit2 = add_solution( 0, pair2.lit1, pair2.lit2, false, true );
+              }
+              else {
+                fanin_lit2 = index_list.add_xor( pair2.lit1, pair2.lit2 );
+              }
             }
             else
             {
-              fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+              if ( collect_sol ) {
+                fanin_lit2 = add_solution( 0, pair2.lit1, pair2.lit2, false);
+              }
+              else {
+                fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+              }
             }
           }
           else
           {
-            fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
-            fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+            if (collect_sol) {
+              fanin_lit1 = add_solution( 0, pair1.lit1, pair1.lit2, false );
+              fanin_lit2 = add_solution( 0, pair2.lit1, pair2.lit2, false );
+            }
+            else {
+              fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
+              fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+            }
           }
-          uint32_t const output_lit = index_list.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
-          return output_lit + on_off;
+          if (collect_sol) {
+            add_solution(on_off, fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1);
+          }
+          else {
+            uint32_t const output_lit = index_list.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
+            return output_lit + on_off;
+          }
         }
       }
     }
@@ -991,11 +1028,21 @@ private:
 
         if ( unateness[0] && unateness[2] )
         {
-          return index_list.add_xor( ( binate_divs[i] << 1 ), ( binate_divs[j] << 1 ) );
+          if ( collect_sol ) {
+            add_solution( (binate_divs[i] << 1 ), (binate_divs[j] << 1), true, true );
+          }
+          else {
+            return index_list.add_xor( ( binate_divs[i] << 1 ), ( binate_divs[j] << 1 ) );
+          }
         }
         if ( unateness[1] && unateness[3] )
         {
-          return index_list.add_xor( ( binate_divs[i] << 1 ) + 1, ( binate_divs[j] << 1 ) );
+          if ( collect_sol ) {
+            add_solution( ( binate_divs[i] << 1 ) | 0x1, ( binate_divs[j] << 1) ); 
+          }
+          else {
+            return index_list.add_xor( ( binate_divs[i] << 1 ) + 1, ( binate_divs[j] << 1 ) );
+          }
         }
       }
     }
