@@ -341,7 +341,9 @@ private:
     auto [cost, left, right] = sol_info[(root_lit>>1)];
     auto idx_left = get_solution_rec(left);
     auto idx_right = get_solution_rec(right);
-    auto idx_ret = index_list.add_and(idx_left, idx_right);
+
+    auto idx_ret = (left < right)? index_list.add_and(idx_left, idx_right)
+                                 : index_list.add_xor(idx_left, idx_right);
     return idx_ret + (root_lit & 01);
   }
   std::optional<uint32_t> get_solution() {
@@ -355,33 +357,37 @@ private:
       return root_lit;
     }
   }
-  uint32_t to_val(cost_t x)
+  uint32_t to_val(cost_t cost_vec)
   {
-    auto [size_cost, depth_cost] = x;
+    auto [size_cost, depth_cost] = cost_vec;
     return depth_cost;
   }
-  uint32_t add_sol(uint32_t x, uint32_t y = 0, uint32_t z = 0, bool is_root = true) 
+  uint32_t add_solution(uint32_t lit0, uint32_t lit1 = 0, uint32_t lit2 = 0, bool is_root = true, bool is_xor = false) 
   {
-    if ( y==0 ) /* add leaf */
+    if ( lit1==0 ) /* add leaf */
     {
-      auto leaf_cost = std::get<0>(sol_info[(x>>1)]);
+      auto leaf_cost = std::get<0>(sol_info[(lit0>>1)]);
       if (is_root)
       {
         if (to_val(leaf_cost) <= max_cost)
-          sol_q.push(std::pair(to_val(leaf_cost), x)); /* cost of leaf node */
+          sol_q.push(std::pair(to_val(leaf_cost), lit0)); /* cost of leaf node */
       }
-      return x;
+      return lit0;
     }
     else /* add node */ 
     {
-      auto node_cost = node_cost_fn(std::get<0>(sol_info[(y>>1)]), std::get<0>(sol_info[(z>>1)]));
-      sol_info.emplace_back(std::tuple(node_cost, y, z));
+      uint32_t on_off = (lit0 & 01);
+      auto node_cost = node_cost_fn(std::get<0>(sol_info[(lit1>>1)]), std::get<0>(sol_info[(lit2>>1)]));
+      assert((lit1>>1)!=(lit2>>1)); /* two fanin should not be the same */
+      /* lit1 < lit2 : AND; lit1 > lit2: XOR */
+      sol_info.emplace_back((is_xor ^ (lit1<lit2))? std::tuple(node_cost, lit1, lit2)
+                                                  : std::tuple(node_cost, lit2, lit1));
       if (is_root)
       {
         if (to_val(node_cost) <= max_cost)
-        sol_q.push(std::pair(to_val(node_cost), ((sol_info.size()-1)<<1) + x));
+        sol_q.push(std::pair(to_val(node_cost), ((sol_info.size()-1)<<1) | on_off));
       }
-      return ((sol_info.size()-1)<<1) + x;
+      return ((sol_info.size()-1)<<1) | on_off;
     }
   }
 
@@ -624,7 +630,7 @@ private:
     {
       if (collect_sol) 
       {
-        add_sol(1);
+        add_solution(1);
       }
       else
       {
@@ -635,7 +641,7 @@ private:
     {
       if (collect_sol) 
       {
-        add_sol(0);
+        add_solution(0);
       }
       else
       {
@@ -675,7 +681,7 @@ private:
       {
         if (collect_sol) 
         {
-          add_sol(( v << 1 ));
+          add_solution(( v << 1 ));
         }
         else
         {
@@ -686,7 +692,7 @@ private:
       {
         if (collect_sol) 
         {
-          add_sol(( v << 1 ) + 1);
+          add_solution(( v << 1 ) + 1);
         }
         else
         {
@@ -775,7 +781,7 @@ private:
         {
           if ( collect_sol ) 
           { // TODO: move this to compile time using constexpr
-            add_sol( 1, ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ));
+            add_solution( 1, ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ));
           }
           else {
             auto const new_lit = index_list.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
@@ -833,7 +839,7 @@ private:
             {
               if (collect_sol)
               {
-                new_lit1 = add_sol(0, pair2.lit1, pair2.lit2, false );
+                new_lit1 = add_solution(0, pair2.lit1, pair2.lit2, false );
               }
               else 
               {
@@ -845,7 +851,7 @@ private:
           {
             if (collect_sol)
             {
-              new_lit1 = add_sol(0, pair2.lit1, pair2.lit2, false );
+              new_lit1 = add_solution(0, pair2.lit1, pair2.lit2, false );
             }
             else 
             {
@@ -854,7 +860,7 @@ private:
           }
           if (collect_sol) 
           {
-            add_sol( on_off, lit1 ^ 0x1, new_lit1 ^ 0x1 );
+            add_solution( on_off, lit1 ^ 0x1, new_lit1 ^ 0x1 );
           }
           else
           {
