@@ -368,5 +368,19 @@
       }
     ],
     "version": "f8a73f5"
+  },
+  {
+    "entries": [
+      {
+        "benchmark": "div",
+        "cec": true,
+        "level": 4372,
+        "level gain": 0,
+        "runtime": 9.135954856872559,
+        "size": 57247,
+        "size gain": 259
+      }
+    ],
+    "version": "e7253ff"
   }
 ]

@@ -20,7 +20,7 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     // if (benchmark != "ctrl") continue;
-    // if (benchmark != "div") continue;
+    if (benchmark != "div") continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     aig_network aig;

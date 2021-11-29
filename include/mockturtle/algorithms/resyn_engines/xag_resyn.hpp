@@ -291,7 +291,7 @@ public:
 
   template<class iterator_type, class LeafFn, class NodeFn,  
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
   {
     // while ( begin != end )
     // {
@@ -301,9 +301,11 @@ public:
     //   ++begin;
     // }
 
-    // return std::nullopt;
 
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
+
+    (void) _max_depth;
+    max_cost = _max_depth;
 
     ptts = &tts;
     on_off_sets[0] = ~target & care;
@@ -357,7 +359,6 @@ private:
     else
     {
       auto [cost ,res] = sol_q.top();
-      std::cerr << sol_q.size() << std::endl;
       auto idx_out = get_solution_rec(res);
       return idx_out;
     }
@@ -369,12 +370,13 @@ private:
   }
   uint32_t add_sol(uint32_t x, uint32_t y = 0, uint32_t z = 0, bool is_root = true) 
   {
-    if ( y==0 )
+    if ( y==0 ) /* add leaf */
     {
       auto leaf_cost = std::get<0>(sol_info[(x>>1)]);
       if (is_root)
       {
-        sol_q.push(std::pair(to_cost(leaf_cost), x)); /* cost of leaf node */
+        if (to_cost(leaf_cost) <= max_cost)
+          sol_q.push(std::pair(to_cost(leaf_cost), x)); /* cost of leaf node */
       }
       return x;
     }
@@ -384,6 +386,7 @@ private:
       sol_info.emplace_back(std::tuple(node_cost, y, z));
       if (is_root)
       {
+        if (to_cost(node_cost) <= max_cost)
         sol_q.push(std::pair(to_cost(node_cost), ((sol_info.size()-1)<<1) + x));
       }
       return ((sol_info.size()-1)<<1) + x;
@@ -1067,6 +1070,8 @@ private:
 
   std::function<cost_t(cost_t, cost_t)> node_cost_fn;
   std::function<cost_t(uint32_t)> leaf_cost_fn;
+
+  uint32_t max_cost{};
 
   stats& st;
 }; /* xag_resyn_decompose */
