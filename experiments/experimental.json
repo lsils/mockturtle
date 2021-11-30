@@ -375,10 +375,10 @@
         "benchmark": "div",
         "cec": true,
         "level": 4372,
-        "level gain": 0,
-        "runtime": 9.298672676086426,
+        "level gain": 4294967262,
+        "runtime": 8.381394386291504,
         "size": 57247,
-        "size gain": 257
+        "size gain": 14392
       }
     ],
     "version": "e7253ff"
