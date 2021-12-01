@@ -87,6 +87,9 @@ struct xag_resyn_static_params
   /*! \brief Depth cost of each XOR gate (only relevant when `preserve_depth = true` and `use_xor = true`). */
   static constexpr uint32_t depth_cost_of_xor{ 1u };
 
+  /*! \brief Whether collect multiple solutions and choose the best */
+  static constexpr bool collect_sols{ false };
+
   using truth_table_storage_type = void;
   using node_type = void;
 };
@@ -105,18 +108,17 @@ struct aig_resyn_static_params_default : public xag_resyn_static_params_default<
 };
 
 template<class TT>
-struct aig_resyn_static_params_preserve_depth : public xag_resyn_static_params_default<TT>
-{
-  static constexpr bool use_xor = false;
-  static constexpr bool preserve_depth = true;
-  static constexpr bool uniform_div_cost = false;
-};
-
-template<class TT>
 struct xag_resyn_static_params_preserve_depth : public xag_resyn_static_params_default<TT>
 {
   static constexpr bool preserve_depth = true;
   static constexpr bool uniform_div_cost = false;
+  static constexpr bool collect_sols = true;
+};
+
+template<class TT>
+struct aig_resyn_static_params_preserve_depth : public xag_resyn_static_params_preserve_depth<TT>
+{
+  static constexpr bool use_xor = false;
 };
 
 template<class Ntk>
@@ -324,7 +326,6 @@ public:
 
     root_sols = std::priority_queue<std::pair<uint32_t, uint32_t>>();
     forest_sols.clear();
-    collect_sols = true;
 
     divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
     forest_sols.emplace_back( std::tuple( std::pair( 0, 0 ), 0, 0 ) );
@@ -647,7 +648,7 @@ private:
     num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
     if ( num_bits[0] == 0 )
     {
-      if ( collect_sols )
+      if constexpr ( static_params::collect_sols )
       {
         add_solution( 1 );
       }
@@ -658,7 +659,7 @@ private:
     }
     if ( num_bits[1] == 0 )
     {
-      if ( collect_sols )
+      if constexpr ( static_params::collect_sols )
       {
         add_solution( 0 );
       }
@@ -698,7 +699,7 @@ private:
       /* 0-resub */
       if ( unateness[0] && unateness[3] )
       {
-        if ( collect_sols )
+        if constexpr ( static_params::collect_sols )
         {
           add_solution( ( v << 1 ) );
         }
@@ -709,7 +710,7 @@ private:
       }
       if ( unateness[1] && unateness[2] )
       {
-        if ( collect_sols )
+        if constexpr ( static_params::collect_sols )
         {
           add_solution( ( v << 1 ) + 1 );
         }
@@ -771,7 +772,7 @@ private:
      - For `pos_unate_lits`, `on_off` = 1, try covering all on-set bits by combining two with an OR gate;
      - For `neg_unate_lits`, `on_off` = 0, try covering all off-set bits by combining two with an AND gate
    */
-  std::optional<uint32_t> find_div_div( std::vector<unate_lit>& unate_lits, uint32_t on_off, bool collect_sols = false )
+  std::optional<uint32_t> find_div_div( std::vector<unate_lit>& unate_lits, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_lits.size(); ++i )
     {
@@ -791,9 +792,9 @@ private:
         auto const ntt2 = lit2 & 0x1 ? get_div( lit2 >> 1 ) : ~get_div( lit2 >> 1 );
         if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
-          if ( collect_sols )
-          { // TODO: move this to compile time using constexpr
-            add_solution( 1, ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
+          if constexpr ( static_params::collect_sols )
+          {
+            add_solution( on_off, ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
           }
           else
           {
@@ -843,7 +844,7 @@ private:
           {
             if ( pair2.lit1 > pair2.lit2 )
             {
-              if ( collect_sols )
+              if constexpr ( static_params::collect_sols )
               {
                 new_lit1 = add_solution( 0, pair2.lit1, pair2.lit2, false, true );
               }
@@ -854,7 +855,7 @@ private:
             }
             else
             {
-              if ( collect_sols )
+              if constexpr ( static_params::collect_sols )
               {
                 new_lit1 = add_solution( 0, pair2.lit1, pair2.lit2, false );
               }
@@ -866,7 +867,7 @@ private:
           }
           else
           {
-            if ( collect_sols )
+            if constexpr ( static_params::collect_sols )
             {
               new_lit1 = add_solution( 0, pair2.lit1, pair2.lit2, false );
             }
@@ -875,7 +876,7 @@ private:
               new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
             }
           }
-          if ( collect_sols )
+          if constexpr ( static_params::collect_sols )
           {
             add_solution( on_off, lit1 ^ 0x1, new_lit1 ^ 0x1 );
           }
@@ -939,7 +940,7 @@ private:
           {
             if ( pair1.lit1 > pair1.lit2 )
             {
-              if ( collect_sols )
+              if constexpr ( static_params::collect_sols )
               {
                 fanin_lit1 = add_solution( 0, pair1.lit1, pair1.lit2, false, true );
               }
@@ -950,7 +951,7 @@ private:
             }
             else
             {
-              if ( collect_sols )
+              if constexpr ( static_params::collect_sols )
               {
                 fanin_lit1 = add_solution( 0, pair1.lit1, pair1.lit2, false );
               }
@@ -961,7 +962,7 @@ private:
             }
             if ( pair2.lit1 > pair2.lit2 )
             {
-              if ( collect_sols )
+              if constexpr ( static_params::collect_sols )
               {
                 fanin_lit2 = add_solution( 0, pair2.lit1, pair2.lit2, false, true );
               }
@@ -972,7 +973,7 @@ private:
             }
             else
             {
-              if ( collect_sols )
+              if constexpr ( static_params::collect_sols )
               {
                 fanin_lit2 = add_solution( 0, pair2.lit1, pair2.lit2, false );
               }
@@ -984,7 +985,7 @@ private:
           }
           else
           {
-            if ( collect_sols )
+            if constexpr ( static_params::collect_sols )
             {
               fanin_lit1 = add_solution( 0, pair1.lit1, pair1.lit2, false );
               fanin_lit2 = add_solution( 0, pair2.lit1, pair2.lit2, false );
@@ -995,7 +996,7 @@ private:
               fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
             }
           }
-          if ( collect_sols )
+          if constexpr ( static_params::collect_sols )
           {
             add_solution( on_off, fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
           }
@@ -1045,7 +1046,7 @@ private:
 
         if ( unateness[0] && unateness[2] )
         {
-          if ( collect_sols )
+          if constexpr ( static_params::collect_sols )
           {
             add_solution( ( binate_divs[i] << 1 ), ( binate_divs[j] << 1 ), true, true );
           }
@@ -1056,7 +1057,7 @@ private:
         }
         if ( unateness[1] && unateness[3] )
         {
-          if ( collect_sols )
+          if constexpr ( static_params::collect_sols )
           {
             add_solution( ( binate_divs[i] << 1 ) | 0x1, ( binate_divs[j] << 1 ) );
           }
@@ -1132,7 +1133,6 @@ private:
      forest_sols: maintain the topo structure of each solution */
   std::priority_queue<std::pair<uint32_t, uint32_t>> root_sols;
   std::vector<std::tuple<cost_t, uint32_t, uint32_t>> forest_sols;
-  bool collect_sols{ false };
 
   std::function<cost_t( cost_t, cost_t )> node_cost_fn;
   std::function<cost_t( uint32_t )> leaf_cost_fn;

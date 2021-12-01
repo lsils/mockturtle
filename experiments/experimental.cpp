@@ -38,8 +38,7 @@ int main()
     ps.wps.max_inserts = 3;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
-    // ps.wps.max_pis = 8;
-    // ps.wps.max_divisors = 1000;
+
     // ps.wps.use_dont_cares = true; // TODO: fix the bug here
 
     using cost_t = typename std::pair<uint32_t, uint32_t>;

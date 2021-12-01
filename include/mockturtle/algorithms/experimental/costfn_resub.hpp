@@ -445,11 +445,12 @@ public:
   void report()
   {
     for (int i=0;i<4;i++) {
-      fmt::print( "# problems with {:5d} solutions : {:5d}\n", i, rst.num_sols[i] );
+      fmt::print( "{:5d},", rst.num_sols[i] );
     }
     for (int i=0;i<4;i++) {
-      fmt::print( "# problems with {:5d} mffc nodes : {:5d}\n", i, rst.num_mffc[i] );
+      fmt::print( "{:5d},", rst.num_mffc[i] );
     }
+    fmt::print("\n");
   }
 
   std::optional<res_t> operator()( problem_t& prob )
