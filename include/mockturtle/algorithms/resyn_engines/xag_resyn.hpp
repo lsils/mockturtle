@@ -343,7 +343,7 @@ public:
       forest_sols.emplace_back( std::tuple( std::pair( leaf_cost_fn( *begin ) ), 0, 0 ) );
       ++begin;
     }
-    st.num_mffc[max_size>3? 3:max_size]++;
+    st.num_mffc[max_size > 3 ? 3 : max_size]++;
     return compute_function( max_size );
   }
 
@@ -373,7 +373,7 @@ private:
     }
     else
     {
-      st.num_sols[root_sols.size()>3? 3:root_sols.size()]++;
+      st.num_sols[root_sols.size() > 3 ? 3 : root_sols.size()]++;
       auto [cost, res] = root_sols.top();
       auto root_lit = get_solution_rec( res );
       return root_lit;

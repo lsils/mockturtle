@@ -160,7 +160,6 @@ struct costfn_params
 
   /*! \brief node Cost function for resub */
   std::function<cost_t( cost_t, cost_t )> node_cost_fn;
-
 };
 struct costfn_stats
 {
@@ -169,8 +168,8 @@ struct costfn_stats
 
   uint32_t total_enqueued{ 0u };
 
-  void report() const {
-
+  void report() const
+  {
   }
 };
 using costfn_resub_params = boolean_optimization_params<costfn_windowing_params, costfn_params>;
@@ -438,19 +437,21 @@ public:
 
   void init()
   {
-    rst.num_sols.fill(0);
-    rst.num_mffc.fill(0);
+    rst.num_sols.fill( 0 );
+    rst.num_mffc.fill( 0 );
   }
 
   void report()
   {
-    for (int i=0;i<4;i++) {
+    for ( int i = 0; i < 4; i++ )
+    {
       fmt::print( "{:5d},", rst.num_sols[i] );
     }
-    for (int i=0;i<4;i++) {
+    for ( int i = 0; i < 4; i++ )
+    {
       fmt::print( "{:5d},", rst.num_mffc[i] );
     }
-    fmt::print("\n");
+    fmt::print( "\n" );
   }
 
   std::optional<res_t> operator()( problem_t& prob )
