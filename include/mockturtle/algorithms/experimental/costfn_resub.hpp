@@ -150,7 +150,6 @@ struct costfn_windowing_stats
   }
 };
 
-template<class Ntk>
 struct costfn_params
 {
 
@@ -161,16 +160,20 @@ struct costfn_params
 
   /*! \brief node Cost function for resub */
   std::function<cost_t( cost_t, cost_t )> node_cost_fn;
+
 };
 struct costfn_stats
 {
+
   uint32_t initial_level{ 0u };
 
   uint32_t total_enqueued{ 0u };
 
-  void report() const {}
+  void report() const {
+
+  }
 };
-using costfn_resub_params = boolean_optimization_params<costfn_windowing_params, costfn_params<aig_network>>;
+using costfn_resub_params = boolean_optimization_params<costfn_windowing_params, costfn_params>;
 using costfn_resub_stats = boolean_optimization_stats<costfn_windowing_stats, costfn_stats>;
 namespace detail
 {
@@ -425,7 +428,7 @@ class costfn_resynthesis
 public:
   using problem_t = costfn_small_window<Ntk, TT>;
   using res_t = typename ResynEngine::index_list_t;
-  using params_t = costfn_params<aig_network>;
+  using params_t = costfn_params;
   using stats_t = costfn_stats;
   using cost_t = typename std::pair<uint32_t, uint32_t>;
   explicit costfn_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
@@ -435,6 +438,18 @@ public:
 
   void init()
   {
+    rst.num_sols.fill(0);
+    rst.num_mffc.fill(0);
+  }
+
+  void report()
+  {
+    for (int i=0;i<4;i++) {
+      fmt::print( "# problems with {:5d} solutions : {:5d}\n", i, rst.num_sols[i] );
+    }
+    for (int i=0;i<4;i++) {
+      fmt::print( "# problems with {:5d} mffc nodes : {:5d}\n", i, rst.num_mffc[i] );
+    }
   }
 
   std::optional<res_t> operator()( problem_t& prob )
@@ -512,4 +527,52 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
   }
 }
 
+template<class Ntk>
+void costfn_xag_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, costfn_resub_stats* pst = nullptr )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk::base_type is not xag_network" );
+
+  costfn_resub_stats st;
+
+  if ( !ps.wps.preserve_depth )
+  {
+    using ViewedNtk = fanout_view<Ntk>;
+    ViewedNtk viewed( ntk );
+
+    using TT = typename kitty::dynamic_truth_table;
+    using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
+    using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_default<TT>>; // engine
+    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t>;
+    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+    opt_t p( viewed, ps, st );
+    p.run();
+  }
+  else
+  {
+    using ViewedNtk = depth_view<fanout_view<Ntk>>;
+    fanout_view<Ntk> fntk( ntk );
+    ViewedNtk viewed( fntk );
+
+    using TT = typename kitty::dynamic_truth_table;
+    using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
+    using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_preserve_depth<TT>>;
+    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t, /* preserve_depth */ true>;
+    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+    opt_t p( viewed, ps, st );
+    st.rst.initial_level = viewed.depth();
+    p.run();
+  }
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
 } /* namespace mockturtle::experimental */

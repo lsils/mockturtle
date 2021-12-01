@@ -112,6 +112,13 @@ struct aig_resyn_static_params_preserve_depth : public xag_resyn_static_params_d
   static constexpr bool uniform_div_cost = false;
 };
 
+template<class TT>
+struct xag_resyn_static_params_preserve_depth : public xag_resyn_static_params_default<TT>
+{
+  static constexpr bool preserve_depth = true;
+  static constexpr bool uniform_div_cost = false;
+};
+
 template<class Ntk>
 struct xag_resyn_static_params_for_sim_resub : public xag_resyn_static_params
 {
@@ -147,6 +154,12 @@ struct xag_resyn_stats
 
   /*! \brief Time for dividing the target and recursive call. */
   stopwatch<>::duration time_divide{ 0 };
+
+  /*! \brief Number of solutions */
+  std::array<uint32_t, 4> num_sols;
+
+  /*! \brief Size of MFFC */
+  std::array<uint32_t, 4> num_mffc;
 
   void report() const
   {
@@ -329,7 +342,7 @@ public:
       forest_sols.emplace_back( std::tuple( std::pair( leaf_cost_fn( *begin ) ), 0, 0 ) );
       ++begin;
     }
-
+    st.num_mffc[max_size>3? 3:max_size]++;
     return compute_function( max_size );
   }
 
@@ -354,10 +367,12 @@ private:
   {
     if ( root_sols.empty() )
     {
+      st.num_sols[0]++;
       return std::nullopt;
     }
     else
     {
+      st.num_sols[root_sols.size()>3? 3:root_sols.size()]++;
       auto [cost, res] = root_sols.top();
       auto root_lit = get_solution_rec( res );
       return root_lit;
