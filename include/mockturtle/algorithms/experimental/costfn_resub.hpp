@@ -260,6 +260,8 @@ public:
       {
         win.max_level = ntk.level( n ) - 1;
         divs_mgr.set_max_level( win.max_level );
+        // if ( ntk.is_on_critical_path( n ) )
+        //   win.max_level = std::numeric_limits<uint32_t>::max();
       }
     }
 
