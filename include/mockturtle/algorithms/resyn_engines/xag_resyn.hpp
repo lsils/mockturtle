@@ -307,9 +307,9 @@ public:
   {
   }
 
-  template<class iterator_type, class LeafFn, class NodeFn,
+  template<class iterator_type, class LeafFn, class NodeFn, class CmpFn, 
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, CmpFn && _cmp_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
   {
 
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
@@ -324,7 +324,9 @@ public:
     node_cost_fn = _node_cost_fn;
     leaf_cost_fn = _leaf_cost_fn;
 
-    root_sols = std::priority_queue<std::pair<uint32_t, uint32_t>>();
+    using cost_t = std::pair<uint32_t, uint32_t>;
+
+    root_sols = std::priority_queue<cost_t, std::vector<cost_t>, std::function<bool(cost_t, cost_t)> >(_cmp_cost_fn);
     forest_sols.clear();
 
     divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
@@ -1131,7 +1133,7 @@ private:
 
   /* root_sols: maintain the solutions ordered by cost function
      forest_sols: maintain the topo structure of each solution */
-  std::priority_queue<std::pair<uint32_t, uint32_t>> root_sols;
+  std::priority_queue<cost_t, std::vector<cost_t>, std::function<bool(cost_t, cost_t)> > root_sols;
   std::vector<std::tuple<cost_t, uint32_t, uint32_t>> forest_sols;
 
   std::function<cost_t( cost_t, cost_t )> node_cost_fn;

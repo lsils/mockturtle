@@ -49,6 +49,18 @@ int main()
       return std::pair( size_x + size_y + 1, std::max( depth_x, depth_y ) + 1 );
     };
 
+    /**
+     * @brief 
+     * For each problem, all possible solutions will be collected
+     * Resyn solver will find the best solution according to the 
+     * compare function
+     */
+    ps.rps.compare_cost_fn = [&]( cost_t fanin_x, cost_t fanin_y )  {
+      auto [size_x, depth_x] = fanin_x;
+      auto [size_y, depth_y] = fanin_y;
+      return depth_x < depth_y;
+    };
+
     costfn_xag_heuristic_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 

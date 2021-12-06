@@ -152,7 +152,6 @@ struct costfn_windowing_stats
 
 struct costfn_params
 {
-
   using cost_t = typename std::pair<uint32_t, uint32_t>;
 
   /*! \brief leaf Cost function for resub */
@@ -160,6 +159,10 @@ struct costfn_params
 
   /*! \brief node Cost function for resub */
   std::function<cost_t( cost_t, cost_t )> node_cost_fn;
+
+  /*! \brief node Cost function for resub */
+  std::function<bool( cost_t, cost_t )> compare_cost_fn;
+
 };
 struct costfn_stats
 {
@@ -463,7 +466,7 @@ public:
         return std::pair( 0, ntk.level( prob.div_id_to_node[idx] ) );
       };
       return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts,
-                     leaf_cost_fn, ps.node_cost_fn, prob.max_size, prob.max_level );
+                     leaf_cost_fn, ps.node_cost_fn, ps.compare_cost_fn, prob.max_size, prob.max_level );
     }
     else
     {
@@ -503,9 +506,9 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
   }
   else
   {
-    using ViewedNtk = depth_view<fanout_view<Ntk>>;
-    fanout_view<Ntk> fntk( ntk );
-    ViewedNtk viewed( fntk );
+    using ViewedNtk = fanout_view<depth_view<Ntk>>;
+    depth_view dntk ( ntk );
+    ViewedNtk viewed( dntk );
 
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
@@ -552,9 +555,9 @@ void costfn_xag_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
   }
   else
   {
-    using ViewedNtk = depth_view<fanout_view<Ntk>>;
-    fanout_view<Ntk> fntk( ntk );
-    ViewedNtk viewed( fntk );
+    using ViewedNtk = fanout_view<depth_view<Ntk>>;
+    depth_view dntk ( ntk );
+    ViewedNtk viewed( dntk );
 
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
