@@ -213,6 +213,7 @@ public:
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
   using cost_t = typename std::pair<uint32_t, uint32_t>;
+  using sol_t = std::pair<cost_t, uint32_t>;
 
 private:
   struct unate_lit
@@ -315,7 +316,7 @@ public:
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
 
     (void)_max_depth;
-    max_cost = _max_depth + 1; /* preserve depth */
+    max_depth = _max_depth + 1; /* preserve depth */
 
     ptts = &tts;
     on_off_sets[0] = ~target & care;
@@ -324,9 +325,9 @@ public:
     node_cost_fn = _node_cost_fn;
     leaf_cost_fn = _leaf_cost_fn;
 
-    using cost_t = std::pair<uint32_t, uint32_t>;
+    auto cmp = [&](sol_t x, sol_t y){return _cmp_cost_fn(x.first, y.first);};
 
-    root_sols = std::priority_queue<cost_t, std::vector<cost_t>, std::function<bool(cost_t, cost_t)> >(_cmp_cost_fn);
+    root_sols = std::priority_queue<sol_t, std::vector<sol_t>, std::function<bool(sol_t, sol_t)> >(cmp);
     forest_sols.clear();
 
     divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
@@ -381,11 +382,6 @@ private:
       return root_lit;
     }
   }
-  uint32_t to_val( cost_t cost_vec )
-  {
-    auto [size_cost, depth_cost] = cost_vec;
-    return depth_cost;
-  }
   uint32_t add_solution( uint32_t lit0, uint32_t lit1 = 0, uint32_t lit2 = 0, bool is_root = true, bool is_xor = false )
   {
     if ( lit1 == 0 ) /* add leaf */
@@ -393,23 +389,23 @@ private:
       auto leaf_cost = std::get<0>( forest_sols[( lit0 >> 1 )] );
       if ( is_root )
       {
-        if ( to_val( leaf_cost ) <= max_cost )
-          root_sols.push( std::pair( to_val( leaf_cost ), lit0 ) ); /* cost of leaf node */
+        if ( leaf_cost.second <= max_depth )
+          root_sols.push( std::pair( leaf_cost, lit0 ) ); /* cost of leaf node */
       }
       return lit0;
     }
     else /* add node */
     {
       uint32_t on_off = ( lit0 & 01 );
-      auto node_cost = node_cost_fn( std::get<0>( forest_sols[( lit1 >> 1 )] ), std::get<0>( forest_sols[( lit2 >> 1 )] ) );
+      auto node_cost = node_cost_fn( std::get<0>( forest_sols[( lit1 >> 1 )] ), std::get<0>( forest_sols[( lit2 >> 1 )] ), is_xor );
       assert( ( lit1 >> 1 ) != ( lit2 >> 1 ) ); /* two fanin should not be the same */
       /* lit1 < lit2 : AND; lit1 > lit2: XOR */
       forest_sols.emplace_back( ( is_xor ^ ( lit1 < lit2 ) ) ? std::tuple( node_cost, lit1, lit2 )
                                                              : std::tuple( node_cost, lit2, lit1 ) );
       if ( is_root )
       {
-        if ( to_val( node_cost ) <= max_cost )
-          root_sols.push( std::pair( to_val( node_cost ), ( ( forest_sols.size() - 1 ) << 1 ) | on_off ) );
+        if ( node_cost.second <= max_depth )
+          root_sols.push( std::pair( node_cost, ( ( forest_sols.size() - 1 ) << 1 ) | on_off ) );
       }
       return ( ( forest_sols.size() - 1 ) << 1 ) | on_off;
     }
@@ -1133,13 +1129,13 @@ private:
 
   /* root_sols: maintain the solutions ordered by cost function
      forest_sols: maintain the topo structure of each solution */
-  std::priority_queue<cost_t, std::vector<cost_t>, std::function<bool(cost_t, cost_t)> > root_sols;
+  std::priority_queue<sol_t, std::vector<sol_t>, std::function<bool(sol_t, sol_t)> > root_sols;
   std::vector<std::tuple<cost_t, uint32_t, uint32_t>> forest_sols;
 
-  std::function<cost_t( cost_t, cost_t )> node_cost_fn;
+  std::function<cost_t( cost_t, cost_t, bool )> node_cost_fn;
   std::function<cost_t( uint32_t )> leaf_cost_fn;
 
-  uint32_t max_cost{};
+  uint32_t max_depth{};
 
   stats& st;
 }; /* xag_resyn_decompose */

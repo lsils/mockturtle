@@ -158,7 +158,7 @@ struct costfn_params
   std::function<cost_t( uint32_t )> leaf_cost_fn;
 
   /*! \brief node Cost function for resub */
-  std::function<cost_t( cost_t, cost_t )> node_cost_fn;
+  std::function<cost_t( cost_t, cost_t, bool )> node_cost_fn;
 
   /*! \brief node Cost function for resub */
   std::function<bool( cost_t, cost_t )> compare_cost_fn;
@@ -555,8 +555,9 @@ void costfn_xag_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
   }
   else
   {
-    using ViewedNtk = fanout_view<depth_view<Ntk>>;
-    depth_view dntk ( ntk );
+    depth_view dntk( ntk, [](xag_network& _ntk, uint32_t n){return _ntk.is_and(n)? 1u: 0u;}, depth_view_params() );
+    using ViewedNtk = fanout_view<decltype(dntk)>;
+    // depth_view dntk( ntk );
     ViewedNtk viewed( dntk );
 
     using TT = typename kitty::dynamic_truth_table;

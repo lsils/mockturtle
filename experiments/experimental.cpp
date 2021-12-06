@@ -20,7 +20,7 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
 
-    // if (benchmark != "log2") continue;
+    // if (benchmark != "voter") continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     // aig_network aig;
@@ -29,24 +29,27 @@ int main()
     assert( result == lorina::return_code::success );
     (void)result;
 
-    depth_view d0{ aig };
+    depth_view d0( aig, [](xag_network& ntk, uint32_t n){return ntk.is_and(n)? 1u: 0u;}, depth_view_params() );
     uint32_t initial_level = d0.depth();
 
     costfn_resub_params ps;
     costfn_resub_stats st;
     // ps.verbose = true;
     ps.wps.max_inserts = 3;
-    ps.wps.preserve_depth = true;
-    ps.wps.update_levels_lazily = true;
-
-    // ps.wps.use_dont_cares = true; // TODO: fix the bug here
+    // ps.wps.preserve_depth = true;
+    // ps.wps.update_levels_lazily = true;
 
     using cost_t = typename std::pair<uint32_t, uint32_t>;
 
-    ps.rps.node_cost_fn = [&]( cost_t fanin_x, cost_t fanin_y ) {
+    /**
+     * @brief 
+     * The cost of each new node is calculated by node_cost_fn()
+     * given the 2 fanins (for aig).
+     */
+    ps.rps.node_cost_fn = []( cost_t fanin_x, cost_t fanin_y, bool is_xor = false ) {
       auto [size_x, depth_x] = fanin_x;
       auto [size_y, depth_y] = fanin_y;
-      return std::pair( size_x + size_y + 1, std::max( depth_x, depth_y ) + 1 );
+      return std::pair( size_x + size_y + (is_xor? 0 : 1), std::max( depth_x, depth_y ) + (is_xor? 0 : 1) );
     };
 
     /**
@@ -55,16 +58,17 @@ int main()
      * Resyn solver will find the best solution according to the 
      * compare function
      */
-    ps.rps.compare_cost_fn = [&]( cost_t fanin_x, cost_t fanin_y )  {
+    ps.rps.compare_cost_fn = []( cost_t fanin_x, cost_t fanin_y )  {
       auto [size_x, depth_x] = fanin_x;
       auto [size_y, depth_y] = fanin_y;
-      return depth_x < depth_y;
+      return size_x > size_y || ( size_x == size_y && depth_x > depth_y );
+      // return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
     };
 
     costfn_xag_heuristic_resub( aig, ps, &st );
     aig = cleanup_dangling( aig );
 
-    depth_view d1{ aig };
+    depth_view d1( aig, [](xag_network& ntk, uint32_t n){return ntk.is_and(n)? 1u: 0u;}, depth_view_params() );
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( aig, benchmark );
     exp( benchmark, st.initial_size, st.initial_size - aig.num_gates(), initial_level, initial_level - d1.depth(), to_seconds( st.time_total ), cec );
   }

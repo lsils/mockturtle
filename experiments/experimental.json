@@ -560,8 +560,8 @@
         "benchmark": "adder",
         "cec": true,
         "level": 255,
-        "level gain": 4294967295,
-        "runtime": 0.08837495744228363,
+        "level gain": 0,
+        "runtime": 0.08898380398750305,
         "size": 1020,
         "size gain": 128
       },
@@ -570,7 +570,7 @@
         "cec": true,
         "level": 12,
         "level gain": 0,
-        "runtime": 0.3997841477394104,
+        "runtime": 0.4131459891796112,
         "size": 3336,
         "size gain": 199
       },
@@ -579,7 +579,7 @@
         "cec": true,
         "level": 4372,
         "level gain": 4294967262,
-        "runtime": 5.715063571929932,
+        "runtime": 5.530651569366455,
         "size": 57247,
         "size gain": 19963
       },
@@ -588,7 +588,7 @@
         "cec": true,
         "level": 24801,
         "level gain": 4294967295,
-        "runtime": 14.010427474975586,
+        "runtime": 14.157149314880371,
         "size": 214335,
         "size gain": 8193
       },
@@ -596,8 +596,8 @@
         "benchmark": "log2",
         "cec": true,
         "level": 444,
-        "level gain": 21,
-        "runtime": 3.8670668601989746,
+        "level gain": 23,
+        "runtime": 3.8724300861358643,
         "size": 32060,
         "size gain": 1279
       },
@@ -606,7 +606,7 @@
         "cec": true,
         "level": 287,
         "level gain": 0,
-        "runtime": 0.20826062560081482,
+        "runtime": 0.20810061693191528,
         "size": 2865,
         "size gain": 2
       },
@@ -615,7 +615,7 @@
         "cec": true,
         "level": 274,
         "level gain": 2,
-        "runtime": 3.3226466178894043,
+        "runtime": 3.361250400543213,
         "size": 27062,
         "size gain": 1150
       },
@@ -623,8 +623,8 @@
         "benchmark": "sin",
         "cec": true,
         "level": 225,
-        "level gain": 11,
-        "runtime": 1.0134257078170776,
+        "level gain": 13,
+        "runtime": 1.0034780502319336,
         "size": 5416,
         "size gain": 274
       },
@@ -633,7 +633,7 @@
         "cec": true,
         "level": 5058,
         "level gain": 4294966305,
-        "runtime": 2.1022682189941406,
+        "runtime": 2.135317802429199,
         "size": 24618,
         "size gain": 6260
       },
@@ -641,8 +641,8 @@
         "benchmark": "square",
         "cec": true,
         "level": 250,
-        "level gain": 4294967295,
-        "runtime": 2.3792662620544434,
+        "level gain": 0,
+        "runtime": 2.4279141426086426,
         "size": 18484,
         "size gain": 1200
       },
@@ -651,7 +651,7 @@
         "cec": true,
         "level": 87,
         "level gain": 0,
-        "runtime": 1.7104548215866089,
+        "runtime": 1.682753324508667,
         "size": 11839,
         "size gain": 0
       },
@@ -660,7 +660,7 @@
         "cec": true,
         "level": 16,
         "level gain": 0,
-        "runtime": 0.6606104373931885,
+        "runtime": 0.6603025794029236,
         "size": 693,
         "size gain": 55
       },
@@ -669,7 +669,7 @@
         "cec": true,
         "level": 10,
         "level gain": 4294967295,
-        "runtime": 0.09489309787750244,
+        "runtime": 0.09581901878118515,
         "size": 174,
         "size gain": 72
       },
@@ -678,7 +678,7 @@
         "cec": true,
         "level": 3,
         "level gain": 0,
-        "runtime": 0.07807007431983948,
+        "runtime": 0.07932358980178833,
         "size": 304,
         "size gain": 0
       },
@@ -687,7 +687,7 @@
         "cec": true,
         "level": 20,
         "level gain": 0,
-        "runtime": 0.18714898824691772,
+        "runtime": 0.1877165287733078,
         "size": 1342,
         "size gain": 106
       },
@@ -696,7 +696,7 @@
         "cec": true,
         "level": 16,
         "level gain": 0,
-        "runtime": 0.5375850796699524,
+        "runtime": 0.5330448746681213,
         "size": 260,
         "size gain": 30
       },
@@ -705,7 +705,7 @@
         "cec": true,
         "level": 114,
         "level gain": 4294967292,
-        "runtime": 6.21229362487793,
+        "runtime": 6.257810115814209,
         "size": 46836,
         "size gain": 1782
       },
@@ -714,7 +714,7 @@
         "cec": true,
         "level": 250,
         "level gain": 183,
-        "runtime": 0.09164729714393616,
+        "runtime": 0.09169590473175049,
         "size": 978,
         "size gain": 364
       },
@@ -722,8 +722,8 @@
         "benchmark": "router",
         "cec": true,
         "level": 54,
-        "level gain": 1,
-        "runtime": 0.03133508563041687,
+        "level gain": 2,
+        "runtime": 0.031716737896203995,
         "size": 257,
         "size gain": 12
       },
@@ -731,8 +731,8 @@
         "benchmark": "voter",
         "cec": true,
         "level": 70,
-        "level gain": 1,
-        "runtime": 1.3385326862335205,
+        "level gain": 2,
+        "runtime": 1.3814833164215088,
         "size": 13758,
         "size gain": 4997
       }
