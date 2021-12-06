@@ -32,26 +32,26 @@
 
 #pragma once
 
+#include "../../io/write_patterns.hpp"
+#include "../../networks/aig.hpp"
+#include "../../networks/xag.hpp"
 #include "../../traits.hpp"
+#include "../../utils/index_list.hpp"
 #include "../../views/depth_view.hpp"
 #include "../../views/fanout_view.hpp"
-#include "../../utils/index_list.hpp"
-#include "../../networks/xag.hpp"
-#include "../../networks/aig.hpp"
-#include "../detail/resub_utils.hpp"
-#include "../resyn_engines/xag_resyn.hpp"
-#include "../resyn_engines/aig_enumerative.hpp"
-#include "../resyn_engines/mig_resyn.hpp"
-#include "../resyn_engines/mig_enumerative.hpp"
-#include "../simulation.hpp"
-#include "../dont_cares.hpp"
 #include "../circuit_validator.hpp"
+#include "../detail/resub_utils.hpp"
+#include "../dont_cares.hpp"
 #include "../pattern_generation.hpp"
-#include "../../io/write_patterns.hpp"
+#include "../resyn_engines/aig_enumerative.hpp"
+#include "../resyn_engines/mig_enumerative.hpp"
+#include "../resyn_engines/mig_resyn.hpp"
+#include "../resyn_engines/xag_resyn.hpp"
+#include "../simulation.hpp"
 #include <kitty/kitty.hpp>
 
-#include <optional>
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace mockturtle::experimental
@@ -59,31 +59,31 @@ namespace mockturtle::experimental
 struct costfn_windowing_params
 {
   /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
-  uint32_t max_pis{8};
+  uint32_t max_pis{ 8 };
 
   /*! \brief Maximum number of divisors to consider. */
-  uint32_t max_divisors{150};
+  uint32_t max_divisors{ 150 };
 
   /*! \brief Maximum number of nodes added by resubstitution. */
-  uint32_t max_inserts{2};
+  uint32_t max_inserts{ 2 };
 
   /*! \brief Maximum fanout of a node to be considered as root. */
-  uint32_t skip_fanout_limit_for_roots{1000};
+  uint32_t skip_fanout_limit_for_roots{ 1000 };
 
   /*! \brief Maximum fanout of a node to be considered as divisor. */
-  uint32_t skip_fanout_limit_for_divisors{100};
+  uint32_t skip_fanout_limit_for_divisors{ 100 };
 
   /*! \brief Use don't cares for optimization. */
-  bool use_dont_cares{false};
+  bool use_dont_cares{ false };
 
   /*! \brief Window size for don't cares calculation. */
-  uint32_t window_size{12u};
+  uint32_t window_size{ 12u };
 
   /*! \brief Whether to update node levels lazily. */
-  bool update_levels_lazily{false};
+  bool update_levels_lazily{ false };
 
   /*! \brief Whether to prevent from increasing depth. */
-  bool preserve_depth{false};
+  bool preserve_depth{ false };
 
   /*! \brief Whether to normalize the truth tables.
    * 
@@ -98,40 +98,40 @@ struct costfn_windowing_params
    * on normalization may result in larger runtime overhead when there
    * are many divisors or when the truth tables are long.
    */
-  bool normalize{false};
+  bool normalize{ false };
 };
 
 struct costfn_windowing_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Accumulated runtime for cut computation. */
-  stopwatch<>::duration time_cuts{0};
+  stopwatch<>::duration time_cuts{ 0 };
 
   /*! \brief Accumulated runtime for mffc computation. */
-  stopwatch<>::duration time_mffc{0};
+  stopwatch<>::duration time_mffc{ 0 };
 
   /*! \brief Accumulated runtime for divisor collection. */
-  stopwatch<>::duration time_divs{0};
+  stopwatch<>::duration time_divs{ 0 };
 
   /*! \brief Accumulated runtime for simulation. */
-  stopwatch<>::duration time_sim{0};
+  stopwatch<>::duration time_sim{ 0 };
 
   /*! \brief Accumulated runtime for don't care computation. */
-  stopwatch<>::duration time_dont_care{0};
+  stopwatch<>::duration time_dont_care{ 0 };
 
   /*! \brief Total number of leaves. */
-  uint64_t num_leaves{0u};
+  uint64_t num_leaves{ 0u };
 
   /*! \brief Total number of divisors. */
-  uint64_t num_divisors{0u};
+  uint64_t num_divisors{ 0u };
 
   /*! \brief Number of constructed windows. */
-  uint32_t num_windows{0u};
+  uint32_t num_windows{ 0u };
 
   /*! \brief Total number of MFFC nodes. */
-  uint64_t sum_mffc_size{0u};
+  uint64_t sum_mffc_size{ 0u };
 
   void report() const
   {
@@ -150,27 +150,29 @@ struct costfn_windowing_stats
   }
 };
 
-template<class Ntk>
 struct costfn_params
 {
 
   using cost_t = typename std::pair<uint32_t, uint32_t>;
 
   /*! \brief leaf Cost function for resub */
-  std::function<cost_t(uint32_t)> leaf_cost_fn;
+  std::function<cost_t( uint32_t )> leaf_cost_fn;
 
   /*! \brief node Cost function for resub */
-  std::function<cost_t(cost_t, cost_t)> node_cost_fn;
+  std::function<cost_t( cost_t, cost_t )> node_cost_fn;
 };
 struct costfn_stats
 {
-  uint32_t initial_level{0u};
 
-  uint32_t total_enqueued{0u};
+  uint32_t initial_level{ 0u };
 
-  void report() const {}
+  uint32_t total_enqueued{ 0u };
+
+  void report() const
+  {
+  }
 };
-using costfn_resub_params = boolean_optimization_params<costfn_windowing_params, costfn_params<aig_network>>;
+using costfn_resub_params = boolean_optimization_params<costfn_windowing_params, costfn_params>;
 using costfn_resub_stats = boolean_optimization_stats<costfn_windowing_stats, costfn_stats>;
 namespace detail
 {
@@ -184,14 +186,14 @@ struct costfn_small_window
 
   signal root;
   std::vector<signal> divs;
-  std::vector<uint32_t> div_ids; /* positions of divisor truth tables in `tts` */
+  std::vector<uint32_t> div_ids;    /* positions of divisor truth tables in `tts` */
   std::vector<node> div_id_to_node; /* maps IDs in `div_ids` to the corresponding node */
   std::vector<TT> tts;
   TT care;
 
   uint32_t mffc_size;
-  uint32_t max_size{std::numeric_limits<uint32_t>::max()};
-  uint32_t max_level{std::numeric_limits<uint32_t>::max()};
+  uint32_t max_size{ std::numeric_limits<uint32_t>::max() };
+  uint32_t max_level{ std::numeric_limits<uint32_t>::max() };
 };
 
 template<class Ntk, class TT = kitty::dynamic_truth_table>
@@ -206,9 +208,9 @@ public:
   using signal = typename Ntk::signal;
 
   explicit costfn_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), ps( ps ), st( st ), cps( {ps.max_pis} ), mffc_mgr( ntk ), 
-      divs_mgr( ntk, divisor_collector_params( {ps.max_divisors, ps.max_divisors, ps.skip_fanout_limit_for_divisors} ) ),
-      sim( ntk, win.tts, ps.max_pis )
+      : ntk( ntk ), ps( ps ), st( st ), cps( { ps.max_pis } ), mffc_mgr( ntk ),
+        divs_mgr( ntk, divisor_collector_params( { ps.max_divisors, ps.max_divisors, ps.skip_fanout_limit_for_divisors } ) ),
+        sim( ntk, win.tts, ps.max_pis )
   {
     static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
@@ -260,33 +262,35 @@ public:
       {
         win.max_level = ntk.level( n ) - 1;
         divs_mgr.set_max_level( win.max_level );
+        // if ( ntk.is_on_critical_path( n ) )
+        //   win.max_level = std::numeric_limits<uint32_t>::max();
       }
     }
 
     /* compute a cut and collect supported nodes */
     std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
-      return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, {n}, cps ).first;
-    });
+      return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, { n }, cps ).first;
+    } );
     std::vector<node> supported;
     call_with_stopwatch( st.time_divs, [&]() {
       divs_mgr.collect_supported_nodes( n, leaves, supported );
-    });
+    } );
 
     /* simulate */
     call_with_stopwatch( st.time_sim, [&]() {
       sim.simulate( leaves, supported );
-    });
+    } );
 
     /* mark MFFC nodes and collect divisors */
     ++mffc_marker;
     win.mffc_size = call_with_stopwatch( st.time_mffc, [&]() {
-      return mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n ){
+      return mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n ) {
         ntk.set_value( n, mffc_marker );
-      });
-    });
+      } );
+    } );
     call_with_stopwatch( st.time_divs, [&]() {
       collect_divisors( leaves, supported );
-    });
+    } );
 
     /* normalize */
     call_with_stopwatch( st.time_sim, [&]() {
@@ -298,7 +302,7 @@ public:
       {
         win.root = ntk.make_signal( n );
       }
-    });
+    } );
 
     /* compute don't cares */
     call_with_stopwatch( st.time_dont_care, [&]() {
@@ -310,7 +314,7 @@ public:
       {
         win.care = ~kitty::create<TT>( ps.max_pis );
       }
-    });
+    } );
 
     win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
 
@@ -334,7 +338,7 @@ public:
   {
     static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     assert( res.num_pos() == 1 );
-    insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ){
+    insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ) {
       ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !g : g );
     } );
     return true; /* continue optimization */
@@ -354,14 +358,16 @@ private:
   {
     win.divs.clear();
     win.div_ids.clear();
-    if ( ps.preserve_depth ) win.div_id_to_node.resize( win.tts.size() );
+    if ( ps.preserve_depth )
+      win.div_id_to_node.resize( win.tts.size() );
 
-    uint32_t i{1};
+    uint32_t i{ 1 };
     for ( auto const& l : leaves )
     {
       win.div_ids.emplace_back( i++ );
       win.divs.emplace_back( ntk.make_signal( l ) );
-      if ( ps.preserve_depth ) win.div_id_to_node[win.div_ids.back()] = l;
+      if ( ps.preserve_depth )
+        win.div_id_to_node[win.div_ids.back()] = l;
     }
 
     i = ps.max_pis + 1;
@@ -371,7 +377,8 @@ private:
       {
         win.div_ids.emplace_back( i );
         win.divs.emplace_back( ntk.make_signal( n ) );
-        if ( ps.preserve_depth ) win.div_id_to_node[i] = n;
+        if ( ps.preserve_depth )
+          win.div_id_to_node[i] = n;
       }
       ++i;
     }
@@ -410,7 +417,7 @@ private:
   typename mockturtle::detail::node_mffc_inside<Ntk> mffc_mgr; // TODO: namespaces can be removed when we move out of experimental::
   divisor_collector<Ntk> divs_mgr;
   window_simulator<Ntk, TT> sim;
-  uint32_t mffc_marker{0u};
+  uint32_t mffc_marker{ 0u };
   std::shared_ptr<typename network_events<Ntk>::modified_event_type> lazy_update_event;
 }; /* costfn_windowing */
 
@@ -420,26 +427,43 @@ class costfn_resynthesis
 public:
   using problem_t = costfn_small_window<Ntk, TT>;
   using res_t = typename ResynEngine::index_list_t;
-  using params_t = costfn_params<aig_network>;
+  using params_t = costfn_params;
   using stats_t = costfn_stats;
   using cost_t = typename std::pair<uint32_t, uint32_t>;
   explicit costfn_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), engine( rst ), ps( ps )
-  { }
+      : ntk( ntk ), engine( rst ), ps( ps )
+  {
+  }
 
   void init()
-  { }
+  {
+    rst.num_sols.fill( 0 );
+    rst.num_mffc.fill( 0 );
+  }
+
+  void report()
+  {
+    for ( int i = 0; i < 4; i++ )
+    {
+      fmt::print( "{:5d},", rst.num_sols[i] );
+    }
+    for ( int i = 0; i < 4; i++ )
+    {
+      fmt::print( "{:5d},", rst.num_mffc[i] );
+    }
+    fmt::print( "\n" );
+  }
 
   std::optional<res_t> operator()( problem_t& prob )
   {
     if constexpr ( preserve_depth )
     {
-      std::function<cost_t(uint32_t)> const leaf_cost_fn = [&]( uint32_t idx ){ 
-        assert(idx<prob.div_id_to_node.size()); //TODO: remove this after debug finished
-        return std::pair(0, ntk.level( prob.div_id_to_node[idx] )); 
+      std::function<cost_t( uint32_t )> const leaf_cost_fn = [&]( uint32_t idx ) {
+        assert( idx < prob.div_id_to_node.size() ); //TODO: remove this after debug finished
+        return std::pair( 0, ntk.level( prob.div_id_to_node[idx] ) );
       };
       return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts,
-        leaf_cost_fn, ps.node_cost_fn, prob.max_size, prob.max_level );
+                     leaf_cost_fn, ps.node_cost_fn, prob.max_size, prob.max_level );
     }
     else
     {
@@ -455,7 +479,6 @@ private:
 }; /* costfn_resynthesis */
 
 } /* namespace detail */
-
 
 template<class Ntk>
 void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, costfn_resub_stats* pst = nullptr )
@@ -484,11 +507,10 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
     fanout_view<Ntk> fntk( ntk );
     ViewedNtk viewed( fntk );
 
-
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
     using engine_t = xag_resyn_decompose<TT, aig_resyn_static_params_preserve_depth<TT>>;
-    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t, /* preserve_depth */true>;
+    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t, /* preserve_depth */ true>;
     using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
     opt_t p( viewed, ps, st );
@@ -507,4 +529,52 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
   }
 }
 
+template<class Ntk>
+void costfn_xag_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, costfn_resub_stats* pst = nullptr )
+{
+  static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk::base_type is not xag_network" );
+
+  costfn_resub_stats st;
+
+  if ( !ps.wps.preserve_depth )
+  {
+    using ViewedNtk = fanout_view<Ntk>;
+    ViewedNtk viewed( ntk );
+
+    using TT = typename kitty::dynamic_truth_table;
+    using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
+    using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_default<TT>>; // engine
+    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t>;
+    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+    opt_t p( viewed, ps, st );
+    p.run();
+  }
+  else
+  {
+    using ViewedNtk = depth_view<fanout_view<Ntk>>;
+    fanout_view<Ntk> fntk( ntk );
+    ViewedNtk viewed( fntk );
+
+    using TT = typename kitty::dynamic_truth_table;
+    using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
+    using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_preserve_depth<TT>>;
+    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t, /* preserve_depth */ true>;
+    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+    opt_t p( viewed, ps, st );
+    st.rst.initial_level = viewed.depth();
+    p.run();
+  }
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
 } /* namespace mockturtle::experimental */
