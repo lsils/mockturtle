@@ -33,7 +33,7 @@
 
 #pragma once
 
-#if !__clang__ || __clang_major__ > 9
+#if !__clang__ || __clang_major__ > 10
 
 #include <cstdint>
 #if __GNUC__ == 7
