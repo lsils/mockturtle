@@ -503,7 +503,7 @@ std::vector<std::string> all_benchmarks( uint64_t selection = all )
 std::vector<std::string> aqfp_benchmarks( )
 {
   std::vector<std::string> result;
-  for ( uint32_t i = 0u; i < 17u; ++i )
+  for ( uint32_t i = 0u; i < 18u; ++i )
   {
       result.push_back( benchmarks_aqfp[i] );
   }
