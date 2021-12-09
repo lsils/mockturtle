@@ -52,14 +52,15 @@ struct aqfp_fanout_resyn
     static_assert( std::is_invocable_v<FanoutNodeCallback, node<NtkSrc>, uint32_t>, "FanoutNodeCallback is not callable with arguments (node, level)" );
     static_assert( std::is_invocable_v<FanoutPoCallback, uint32_t, uint32_t>, "FanoutNodeCallback is not callable with arguments (index, level)" );
 
-    if ( ntk_src.fanout_size( n ) == 0)
+    if ( ntk_src.fanout_size( n ) == 0 )
       return;
 
     auto offsets = balanced_splitter_tree_offsets( ntk_src.fanout_size( n ) );
 
     auto fanouts_n = fanouts[n];
     std::sort( fanouts_n.begin(), fanouts_n.end(), [&]( auto f1, auto f2 ) {
-      return ( ntk_src.depth() - ntk_src.level( f1 ) ) > ( ntk_src.depth() - ntk_src.level( f2 ) );
+      return ( ntk_src.depth() - ntk_src.level( f1 ) ) > ( ntk_src.depth() - ntk_src.level( f2 ) ) ||
+             ( ( ntk_src.depth() - ntk_src.level( f1 ) ) == ( ntk_src.depth() - ntk_src.level( f2 ) ) && ( f1 < f2 ) );
     } );
 
     auto n_dest = ntk_dest.get_node( f );
