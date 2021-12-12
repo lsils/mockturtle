@@ -362,6 +362,7 @@ int main( int argc, char** argv )
     buffer_insertion_params buf_ps;
     buf_ps.scheduling = buffer_insertion_params::better;
     buf_ps.optimization_effort = buffer_insertion_params::until_sat;
+    buf_ps.max_chunk_size = std::numeric_limits<uint32_t>::max();
     buf_ps.assume.splitter_capacity = 4u;
     buf_ps.assume.branch_pis = false;
     buf_ps.assume.balance_pis = false;
