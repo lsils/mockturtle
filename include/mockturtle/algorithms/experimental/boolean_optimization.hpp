@@ -218,10 +218,6 @@ public:
 
       return cont;
     } );
-
-    /* report */
-    if ( true ) // TODO: add optional condition
-      resyn.report();
   }
 
 private:
