@@ -308,9 +308,9 @@ public:
   {
   }
 
-  template<class iterator_type, class LeafFn, class NodeFn, class CmpFn, 
+  template<class iterator_type, class LeafFn, class NodeFn, class CmpFn,
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, CmpFn && _cmp_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, CmpFn&& _cmp_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
   {
 
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
@@ -325,9 +325,9 @@ public:
     node_cost_fn = _node_cost_fn;
     leaf_cost_fn = _leaf_cost_fn;
 
-    auto cmp = [&](sol_t x, sol_t y){return _cmp_cost_fn(x.first, y.first);};
+    auto cmp = [&]( sol_t x, sol_t y ) { return _cmp_cost_fn( x.first, y.first ); };
 
-    root_sols = std::priority_queue<sol_t, std::vector<sol_t>, std::function<bool(sol_t, sol_t)> >(cmp);
+    root_sols = std::priority_queue<sol_t, std::vector<sol_t>, std::function<bool( sol_t, sol_t )>>( cmp );
     forest_sols.clear();
 
     divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
@@ -1129,7 +1129,7 @@ private:
 
   /* root_sols: maintain the solutions ordered by cost function
      forest_sols: maintain the topo structure of each solution */
-  std::priority_queue<sol_t, std::vector<sol_t>, std::function<bool(sol_t, sol_t)> > root_sols;
+  std::priority_queue<sol_t, std::vector<sol_t>, std::function<bool( sol_t, sol_t )>> root_sols;
   std::vector<std::tuple<cost_t, uint32_t, uint32_t>> forest_sols;
 
   std::function<cost_t( cost_t, cost_t, bool )> node_cost_fn;
