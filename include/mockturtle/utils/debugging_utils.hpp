@@ -34,6 +34,7 @@
 
 #include "../algorithms/simulation.hpp"
 #include "../views/topo_view.hpp"
+#include "../views/color_view.hpp"
 
 #include <kitty/kitty.hpp>
 
@@ -310,30 +311,28 @@ template<typename Ntk>
 bool network_is_acylic( Ntk const& ntk )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-  static_assert( has_color_v<Ntk>, "Ntk does not implement the color function" );
-  static_assert( has_current_color_v<Ntk>, "Ntk does not implement the current_color function" );
   static_assert( has_foreach_ci_v<Ntk>, "Ntk does not implement the foreach_ci function" );
   static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co function" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin function" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant function" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node function" );
-  static_assert( has_new_color_v<Ntk>, "Ntk does not implement the new_color function" );
-  static_assert( has_paint_v<Ntk>, "Ntk does not implement the paint function" );
 
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  ntk.new_color();
-  ntk.new_color();
+  color_view cntk( ntk );
 
-  ntk.paint( ntk.get_node( ntk.get_constant( false ) ) );
+  cntk.new_color();
+  cntk.new_color();
+
+  cntk.paint( ntk.get_node( ntk.get_constant( false ) ) );
   ntk.foreach_ci( [&]( node const& n ){
-    ntk.paint( n );
+    cntk.paint( n );
   });
 
   bool result{true};
   ntk.foreach_co( [&]( signal const& o ){
-    if ( !detail::network_is_acylic_recur( ntk, ntk.get_node( o ) ) )
+    if ( !detail::network_is_acylic_recur( cntk, ntk.get_node( o ) ) )
     {
       result = false;
       return false;
