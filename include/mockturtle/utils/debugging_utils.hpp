@@ -65,7 +65,15 @@ inline void print( Ntk const& ntk )
     ntk.foreach_fanin( n, [&]( signal const& fi ){
       std::cout << ( ntk.is_complemented( fi ) ? "~" : "" ) << ntk.get_node( fi ) << " ";
     });
-    std::cout << " ; [level = " << int32_t( ntk.level( n ) ) << "]" << " [dead = " << ntk.is_dead( n ) << "]" << " [ref = " << ntk.fanout_size( n ) << "]" << std::endl;
+    std::cout << " ;";
+    if constexpr ( has_level_v<Ntk> )
+    {
+      std::cout << " [level = " << int32_t( ntk.level( n ) ) << "]";
+    }
+    std::cout << " [dead = " << ntk.is_dead( n ) << "]";
+    std::cout << " [ref = " << ntk.fanout_size( n ) << "]";
+    std::cout << " [value = " << ntk.value( n ) << "]";
+    std::cout << std::endl;
   }
 
   ntk.foreach_co( [&]( signal const& s ){
