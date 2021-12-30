@@ -37,7 +37,6 @@
 #include "mockturtle/algorithms/aqfp/buffer_verification.hpp"
 #include "mockturtle/algorithms/aqfp/mig_algebraic_rewriting_splitters.hpp"
 #include "mockturtle/algorithms/aqfp/mig_resub_splitters.hpp"
-#include "mockturtle/algorithms/aqfp/optimal_buffer_insertion.hpp"
 #include "mockturtle/algorithms/aqfp_resynthesis.hpp"
 #include "mockturtle/algorithms/aqfp_resynthesis/aqfp_db.hpp"
 #include "mockturtle/algorithms/aqfp_resynthesis/aqfp_fanout_resyn.hpp"
