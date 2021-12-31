@@ -341,3 +341,4 @@ Ntk convert_cover_to_graph( const cover_network& cover_ntk )
 }
 
 } /* namespace mockturtle */
+
