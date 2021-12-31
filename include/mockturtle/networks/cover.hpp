@@ -67,7 +67,7 @@ namespace mockturtle
  */
 struct cover_storage_data
 {
-  uint64_t insert( std::pair<std::vector<kitty::cube>, bool> cover )
+  uint64_t insert( std::pair<std::vector<kitty::cube>, bool> const& cover )
   {
 
     const auto index = covers.size();
@@ -312,82 +312,75 @@ public:
 #pragma endregion
 
 #pragma region Create binary functions
-  kitty::cube _00 = kitty::cube( "00" );
-  kitty::cube _01 = kitty::cube( "01" );
-  kitty::cube _10 = kitty::cube( "10" );
-  kitty::cube _11 = kitty::cube( "11" );
 
   signal create_and( signal a, signal b )
   {
-    std::vector<kitty::cube> _and{ _11 };
+    std::vector<kitty::cube> _and{ kitty::cube( "11" ) };
     return _create_node( { a, b }, std::make_pair( _and, true ) );
   }
 
   signal create_nand( signal a, signal b )
   {
-    std::vector<kitty::cube> _nand{ _11 };
+    std::vector<kitty::cube> _nand{ kitty::cube( "11" ) };
     return _create_node( { a, b }, std::make_pair( _nand, false ) );
   }
 
   signal create_or( signal a, signal b )
   {
-    std::vector<kitty::cube> _or{ _00 };
+    std::vector<kitty::cube> _or{ kitty::cube( "00" ) };
     return _create_node( { a, b }, std::make_pair( _or, false ) );
   }
 
   signal create_lt( signal a, signal b )
   {
-    std::vector<kitty::cube> _lt{ _01 };
+    std::vector<kitty::cube> _lt{ kitty::cube( "01" ) };
     return _create_node( { a, b }, std::make_pair( _lt, true ) );
   }
 
   signal create_le( signal a, signal b )
   {
-    std::vector<kitty::cube> _le{ _10 };
+    std::vector<kitty::cube> _le{ kitty::cube( "10" ) };
     return _create_node( { a, b }, std::make_pair( _le, false ) );
   }
 
   signal create_xor( signal a, signal b )
   {
-    std::vector<kitty::cube> _xor{ _01, _10 };
+    std::vector<kitty::cube> _xor{ kitty::cube( "01" ), 
+                                   kitty::cube( "10" ) };
     return _create_node( { a, b }, std::make_pair( _xor, true ) );
   }
 #pragma endregion
 
 #pragma region Create ternary functions
-  kitty::cube _001 = kitty::cube( "001" );
-  kitty::cube _010 = kitty::cube( "010" );
-  kitty::cube _100 = kitty::cube( "100" );
-
-  kitty::cube _011 = kitty::cube( "011" );
-  kitty::cube _101 = kitty::cube( "101" );
-  kitty::cube _110 = kitty::cube( "110" );
-  kitty::cube _111 = kitty::cube( "111" );
-
-  kitty::cube _11X = kitty::cube( "11-" );
-  kitty::cube _0X1 = kitty::cube( "0-1" );
 
   signal create_maj( signal a, signal b, signal c )
   {
-    std::vector<kitty::cube> _maj{ _011, _101, _110, _111 };
+    std::vector<kitty::cube> _maj{ kitty::cube( "011" ), 
+                                   kitty::cube( "101" ), 
+                                   kitty::cube( "110" ), 
+                                   kitty::cube( "111" ) };
     return _create_node( { a, b, c }, std::make_pair( _maj, true ) );
   }
 
   signal create_ite( signal a, signal b, signal c )
   {
-    std::vector<kitty::cube> _ite{ _11X, _0X1 };
+    std::vector<kitty::cube> _ite{ kitty::cube( "11-" ), 
+                                   kitty::cube( "0-1" ) };
     return _create_node( { a, b, c }, std::make_pair( _ite, true ) );
   }
 
   signal create_xor3( signal a, signal b, signal c )
   {
-    std::vector<kitty::cube> _xor3{ _001, _010, _100, _111 };
+    std::vector<kitty::cube> _xor3{ kitty::cube( "001" ), 
+                                    kitty::cube( "010" ), 
+                                    kitty::cube( "100" ),
+                                    kitty::cube( "111" ) };
     return _create_node( { a, b, c }, std::make_pair( _xor3, true ) );
   }
 #pragma endregion
 
 #pragma region Create arbitrary functions
-  signal _create_node( std::vector<signal> const& children, cover_type new_cover )
+  signal _create_node( std::vector<signal> const& children, cover_type const& new_cover )
   {
 
     uint64_t literal = _storage->data.insert( new_cover );

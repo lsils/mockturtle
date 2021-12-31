@@ -20,7 +20,6 @@ using namespace mockturtle;
 
 TEST_CASE( "read a combinational BLIF file into KLUT network", "[blif_reader]" )
 {
-  std::cout << "begin blif reader  " ;
   klut_network klut;
 
   std::string file{
@@ -344,5 +343,3 @@ TEST_CASE( "cover network, read a BLIF file containing latch declaration bug tha
   CHECK( cover.num_latches() == 3 );
   CHECK( cover.num_gates() == 9 );
 }
-
-// missing write blif from cover network

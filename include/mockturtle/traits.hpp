@@ -1613,7 +1613,7 @@ template<class Ntk, typename T>
 inline constexpr bool has_compute_v = has_compute<Ntk, T>::value;
 #pragma endregion
 
-#pragma region has_compute_from_cover
+#pragma region has_compute_on_node
 template<class Ntk, class = void>
 struct has_compute_on_node : std::false_type
 {

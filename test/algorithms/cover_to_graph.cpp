@@ -26,7 +26,6 @@ using namespace mockturtle;
 
 TEST_CASE( "Creation of a simple three node aig network: only and nodes", "[cover_to_graph]" )
 {
-  std::cout << "begin cover to graph test  " ;
   cover_network cover;
   aig_network aig;
 
@@ -675,5 +674,4 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
   CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
-  std::cout << "end cover to graph test \n " ;
 }
