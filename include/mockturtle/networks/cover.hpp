@@ -26,9 +26,6 @@
 /*!
   \file cover.hpp
   \brief single output cover logic network implementation
-  \author Heinz Riener
-  \author Mathias Soeken
-  \author Max Austin
   \author Andrea Costamagna
 */
 
