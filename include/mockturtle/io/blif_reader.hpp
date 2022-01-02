@@ -298,7 +298,6 @@ public:
       {
         kitty::create_from_clauses( tt, maxterms, false );
       }
-
       std::vector<signal<Ntk>> input_signals;
       for ( const auto& i : inputs )
       {
