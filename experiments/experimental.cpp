@@ -22,7 +22,7 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
 
-    // if (benchmark != "voter") continue;
+    // if (benchmark != "sqrt") continue; // faster experiment
     fmt::print( "[i] processing {}\n", benchmark );
 
     // aig_network xag;
@@ -31,9 +31,6 @@ int main()
     assert( result == lorina::return_code::success );
     (void)result;
 
-    depth_view d0(
-        xag, []( xag_network& ntk, uint32_t n ) { return ntk.is_and( n ) ? 1u : 0u; }, depth_view_params() );
-    uint32_t initial_level = d0.depth();
     costfn_resub_params ps;
     costfn_resub_stats st;
     // ps.verbose = true;
@@ -49,9 +46,10 @@ int main()
      * given the 2 fanins (for xag).
      */
     ps.rps.node_cost_fn = []( cost_t fanin_x, cost_t fanin_y, bool is_xor = false ) {
+      (void) is_xor;
       auto [size_x, depth_x] = fanin_x;
       auto [size_y, depth_y] = fanin_y;
-      return std::pair( size_x + size_y + 1, std::max( depth_x, depth_y ) + ( is_xor ? 0 : 1 ) );
+      return std::pair( size_x + size_y + 1, std::max( depth_x, depth_y ) + 1 );
     };
 
     /**
@@ -64,18 +62,15 @@ int main()
       auto [size_x, depth_x] = fanin_x;
       auto [size_y, depth_y] = fanin_y;
       return size_x > size_y || ( size_x == size_y && depth_x > depth_y );
-      // return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
     };
 
     costfn_xag_heuristic_resub( xag, ps, &st );
     xag = cleanup_dangling( xag );
 
-    // xag = balancing( xag, {esop_rebalancing<xag_network>{}} );
+    depth_view dntk( xag );
 
-    depth_view d1(
-        xag, []( xag_network& ntk, uint32_t n ) { return ntk.is_and( n ) ? 1u : 0u; }, depth_view_params() );
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( xag, benchmark );
-    exp( benchmark, st.initial_size, st.initial_size - xag.num_gates(), initial_level, d1.depth(), to_seconds( st.time_total ), cec );
+    exp( benchmark, st.initial_size, st.initial_size - xag.num_gates(), st.rst.initial_level, dntk.depth(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();

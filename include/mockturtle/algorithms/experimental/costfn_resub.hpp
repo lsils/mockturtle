@@ -38,6 +38,7 @@
 #include "../../traits.hpp"
 #include "../../utils/index_list.hpp"
 #include "../../views/depth_view.hpp"
+#include "../../views/slack_view.hpp"
 #include "../../views/fanout_view.hpp"
 #include "../circuit_validator.hpp"
 #include "../detail/resub_utils.hpp"
