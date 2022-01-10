@@ -34,7 +34,6 @@ int main()
     depth_view d0(
         xag, []( xag_network& ntk, uint32_t n ) { return ntk.is_and( n ) ? 1u : 0u; }, depth_view_params() );
     uint32_t initial_level = d0.depth();
-
     costfn_resub_params ps;
     costfn_resub_stats st;
     // ps.verbose = true;
