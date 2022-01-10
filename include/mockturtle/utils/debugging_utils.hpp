@@ -34,6 +34,7 @@
 
 #include "../algorithms/simulation.hpp"
 #include "../views/topo_view.hpp"
+#include "../views/color_view.hpp"
 
 #include <kitty/kitty.hpp>
 
@@ -64,7 +65,15 @@ inline void print( Ntk const& ntk )
     ntk.foreach_fanin( n, [&]( signal const& fi ){
       std::cout << ( ntk.is_complemented( fi ) ? "~" : "" ) << ntk.get_node( fi ) << " ";
     });
-    std::cout << " ; [level = " << int32_t( ntk.level( n ) ) << "]" << " [dead = " << ntk.is_dead( n ) << "]" << " [ref = " << ntk.fanout_size( n ) << "]" << std::endl;
+    std::cout << " ;";
+    if constexpr ( has_level_v<Ntk> )
+    {
+      std::cout << " [level = " << int32_t( ntk.level( n ) ) << "]";
+    }
+    std::cout << " [dead = " << ntk.is_dead( n ) << "]";
+    std::cout << " [ref = " << ntk.fanout_size( n ) << "]";
+    std::cout << " [value = " << ntk.value( n ) << "]";
+    std::cout << std::endl;
   }
 
   ntk.foreach_co( [&]( signal const& s ){
@@ -310,30 +319,28 @@ template<typename Ntk>
 bool network_is_acylic( Ntk const& ntk )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-  static_assert( has_color_v<Ntk>, "Ntk does not implement the color function" );
-  static_assert( has_current_color_v<Ntk>, "Ntk does not implement the current_color function" );
   static_assert( has_foreach_ci_v<Ntk>, "Ntk does not implement the foreach_ci function" );
   static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co function" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin function" );
   static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant function" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node function" );
-  static_assert( has_new_color_v<Ntk>, "Ntk does not implement the new_color function" );
-  static_assert( has_paint_v<Ntk>, "Ntk does not implement the paint function" );
 
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  ntk.new_color();
-  ntk.new_color();
+  color_view cntk( ntk );
 
-  ntk.paint( ntk.get_node( ntk.get_constant( false ) ) );
+  cntk.new_color();
+  cntk.new_color();
+
+  cntk.paint( ntk.get_node( ntk.get_constant( false ) ) );
   ntk.foreach_ci( [&]( node const& n ){
-    ntk.paint( n );
+    cntk.paint( n );
   });
 
   bool result{true};
   ntk.foreach_co( [&]( signal const& o ){
-    if ( !detail::network_is_acylic_recur( ntk, ntk.get_node( o ) ) )
+    if ( !detail::network_is_acylic_recur( cntk, ntk.get_node( o ) ) )
     {
       result = false;
       return false;
