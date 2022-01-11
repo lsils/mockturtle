@@ -70,7 +70,7 @@ int main()
     depth_view dntk( xag );
 
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( xag, benchmark );
-    exp( benchmark, st.initial_size, st.initial_size - xag.num_gates(), st.rst.initial_level, dntk.depth(), to_seconds( st.time_total ), cec );
+    exp( benchmark, st.initial_size, st.initial_size - xag.num_gates(), st.rst.initial_level,  st.rst.initial_level - dntk.depth(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();

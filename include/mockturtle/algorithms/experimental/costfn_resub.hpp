@@ -555,11 +555,11 @@ void costfn_xag_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
   }
   else
   {
-    depth_view dntk(
-        ntk, []( xag_network& _ntk, uint32_t n ) { return _ntk.is_and( n ) ? 1u : 0u; }, depth_view_params() );
-    using ViewedNtk = fanout_view<decltype( dntk )>;
-    // depth_view dntk( ntk );
-    ViewedNtk viewed( dntk );
+    depth_view dntk( ntk );
+    fanout_view fntk( dntk ); // dependencies
+    slack_view viewed( fntk );
+
+    using ViewedNtk = decltype( viewed );
 
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;

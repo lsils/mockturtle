@@ -119,6 +119,7 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
   }
 
   /*! \brief Standard constructor.
@@ -140,6 +141,7 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
+    static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
 
     update_requires();
   }
@@ -148,7 +150,7 @@ public:
   explicit slack_view( slack_view<Ntk, NodeCostFn, false> const& other )
     : Ntk( other )
     , _ps( other._ps )
-    , _required( other._levels )
+    , _required( other._required )
     , _cost_fn( other._cost_fn )
   {
   }
@@ -201,7 +203,7 @@ private:
     {
       return _required[n] = 0;
     }
-    if ( this->is_po( n ) )
+    if ( this->is_pi( n ) )
     {
       assert( !_ps.po_cost || _cost_fn( *this, n ) >= 1 );
       return _required[n] = _ps.po_cost ? _cost_fn( *this, n ) : 1;
@@ -209,20 +211,17 @@ private:
 
     uint32_t require{0};
     this->foreach_fanout( n, [&]( auto const& f ) {
-      auto crequire = compute_levels( this->get_node( f ) ) + _cost_fn( *this, f );
+      auto crequire = compute_requires( f ) + _cost_fn( *this, f );
       require = std::max( require, crequire );
     } );
-    if ( _ps.count_complements && this->is_complemented( n ) )
-    {
-      require++;
-    }
+
     return _required[n] = require;
   }
 
   void compute_requires()
   {
     this->foreach_pi( [&]( auto const& f ) {
-        compute_requires( this->get_node( f ) );
+        compute_requires( f );
     } );
   }
 
