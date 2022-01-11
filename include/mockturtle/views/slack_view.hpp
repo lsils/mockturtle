@@ -168,9 +168,9 @@ public:
     return *this;
   }
 
-  uint32_t required() const
+  uint32_t required( node const& n ) const
   {
-    return _required;
+    return _required[n];
   }
 
   void set_required( node const& n, uint32_t required )
@@ -203,10 +203,9 @@ private:
     {
       return _required[n] = 0;
     }
-    if ( this->is_pi( n ) )
+    if ( this->fanout( n ).size() == 0 )
     {
-      assert( !_ps.po_cost || _cost_fn( *this, n ) >= 1 );
-      return _required[n] = _ps.po_cost ? _cost_fn( *this, n ) : 1;
+      return _required[n] = 0;
     }
 
     uint32_t require{0};

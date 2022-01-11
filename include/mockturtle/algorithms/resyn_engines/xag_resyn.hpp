@@ -316,7 +316,7 @@ public:
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
 
     (void)_max_depth;
-    max_depth = _max_depth + 1; /* preserve depth */
+    max_depth = _max_depth; /* preserve depth */
 
     ptts = &tts;
     on_off_sets[0] = ~target & care;

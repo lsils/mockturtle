@@ -263,8 +263,9 @@ public:
     {
       if ( ps.preserve_depth )
       {
-        win.max_level = ntk.level( n ) - 1;
-        divs_mgr.set_max_level( win.max_level );
+        // win.max_level = ntk.level( n );
+        win.max_level = ntk.depth() - ntk.required( n );
+        divs_mgr.set_max_level( ntk.level( n ) - 1 );
         // if ( ntk.is_on_critical_path( n ) )
         //   win.max_level = std::numeric_limits<uint32_t>::max();
       }
