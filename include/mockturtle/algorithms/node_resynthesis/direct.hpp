@@ -251,6 +251,8 @@ private:
         }
       }
       break;
+    default:
+      std::cout << "[w] failed to synthesize function " << kitty::to_hex( function ) << "\n";
     }
   }
 
