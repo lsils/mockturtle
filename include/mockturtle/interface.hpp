@@ -957,7 +957,7 @@ public:
   void incr_trav_id() const;
 #pragma endregion
 
-#pragma beginregion Color values
+#pragma region Color values
   /* Color values offer a more recent and flexible mechanism to manage
      and manipulate traversal ids. */
 
