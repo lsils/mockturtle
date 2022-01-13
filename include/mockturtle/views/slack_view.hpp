@@ -25,7 +25,7 @@
 
 /*!
   \file slack_view.hpp
-  \brief Implements require time for a network
+  \brief Implements require_time for a network
 
   \author Hanyu
   \author Mathias Soeken
@@ -208,13 +208,13 @@ private:
       return _required[n] = 0;
     }
 
-    uint32_t require{0};
+    uint32_t require_time{0};
     this->foreach_fanout( n, [&]( auto const& f ) {
-      auto crequire = compute_requires( f ) + _cost_fn( *this, f );
-      require = std::max( require, crequire );
+      auto crequire_time = compute_requires( f ) + _cost_fn( *this, f );
+      require_time = std::max( require_time, crequire_time );
     } );
 
-    return _required[n] = require;
+    return _required[n] = require_time;
   }
 
   void compute_requires()
