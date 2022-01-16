@@ -17,7 +17,7 @@ int main()
   using namespace mockturtle::experimental;
   using namespace experiments;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "experimental", "benchmark", "size", "size gain", "level", "level after", "runtime", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "experimental", "benchmark", "size", "size gain", "depth", "depth gain", "runtime", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -58,9 +58,13 @@ int main()
      * Resyn solver will find the best solution according to the 
      * compare function
      */
-    ps.rps.compare_cost_fn = []( cost_t fanin_x, cost_t fanin_y ) {
+    ps.rps.compare_cost_fn = []( cost_t fanin_x, cost_t fanin_y, bool is_critical = false ) {
       auto [size_x, depth_x] = fanin_x;
       auto [size_y, depth_y] = fanin_y;
+      if ( is_critical )
+      {
+        return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
+      }
       return size_x > size_y || ( size_x == size_y && depth_x > depth_y );
     };
 

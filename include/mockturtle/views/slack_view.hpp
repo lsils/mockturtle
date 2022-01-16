@@ -27,8 +27,7 @@
   \file slack_view.hpp
   \brief Implements require_time for a network
 
-  \author Hanyu
-  \author Mathias Soeken
+  \author Hanyu Wang
 */
 
 #pragma once
@@ -54,7 +53,7 @@ struct slack_view_params
   bool po_cost{false};
 };
 
-/*! \brief Implements `slack` and `required` methods for networks.
+/*! \brief Implements `required` methods for networks.
 
  * **Required network functions:**
  * - `size`
@@ -112,13 +111,10 @@ public:
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
-    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
     static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
-    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
-    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
     static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
   }
 
@@ -134,13 +130,10 @@ public:
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
-    static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
     static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
-    static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
-    static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
     static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
 
     update_requires();

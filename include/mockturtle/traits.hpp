@@ -852,7 +852,7 @@ struct has_slack : std::false_type
 };
 
 template<class Ntk>
-struct has_slack<Ntk, std::void_t<decltype( std::declval<Ntk>().slack() )>> : std::true_type
+struct has_slack<Ntk, std::void_t<decltype( std::declval<Ntk>().required( std::declval<node<Ntk>>() ) )>> : std::true_type
 {
 };
 
