@@ -107,7 +107,7 @@ struct boolean_optimization_stats
     // clang-format off
     fmt::print( "[i] Boolean optimization top-level report\n" );
     fmt::print( "Estimated gain: {:8d} ({:.2f}%)\n", estimated_gain, ( 100.0 * estimated_gain ) / initial_size );
-    fmt::print( "#problems = {}, #solutions = {} ({:.2f}%)\n", num_problems, num_solutions, float( num_solutions ) / float( num_problems ) );
+    fmt::print( "#problems = {}, #solutions = {} ({:.2f}%)\n", num_problems, num_solutions, 100.0 * float( num_solutions ) / float( num_problems ) );
     fmt::print( "======== Runtime Breakdown ========\n" );
     fmt::print( "Total         : {:>5.2f} secs\n", to_seconds( time_total ) );
     fmt::print( "  Windowing   : {:>5.2f} secs\n", to_seconds( time_windowing ) );

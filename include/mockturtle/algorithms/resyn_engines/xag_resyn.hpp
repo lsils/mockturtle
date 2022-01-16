@@ -532,7 +532,6 @@ private:
     {
       return get_solution();
     }
-    return std::nullopt;
 
     /* choose something to divide and recursive call on the remainder */
     /* Note: dividing = AND the on-set (if using positive unate) or the off-set (if using negative unate)
