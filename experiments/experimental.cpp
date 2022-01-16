@@ -3,6 +3,7 @@
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/balancing.hpp>
 #include <mockturtle/algorithms/balancing/esop_balancing.hpp>
+#include <mockturtle/algorithms/balancing/sop_balancing.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
 #include <mockturtle/algorithms/experimental/costfn_resub.hpp>
@@ -22,7 +23,7 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
 
-    // if (benchmark != "sqrt") continue; // faster experiment
+    if (benchmark != "sqrt") continue; // faster experiment
     fmt::print( "[i] processing {}\n", benchmark );
 
     // aig_network xag;
@@ -33,7 +34,7 @@ int main()
 
     costfn_resub_params ps;
     costfn_resub_stats st;
-    // ps.verbose = true;
+    ps.verbose = true;
     ps.wps.max_inserts = 3;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
@@ -65,16 +66,23 @@ int main()
       {
         return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
       }
-      return size_x > size_y || ( size_x == size_y && depth_x > depth_y );
+      return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
+      // return size_x > size_y || ( size_x == size_y && depth_x > depth_y );
     };
+
+    depth_view _dntk( xag );
+    uint32_t initial_size = _dntk.size();
+    uint32_t initial_depth = _dntk.depth();
 
     costfn_xag_heuristic_resub( xag, ps, &st );
     xag = cleanup_dangling( xag );
 
+    // xag = balancing( xag, {sop_rebalancing<xag_network>{}} );
+    
     depth_view dntk( xag );
 
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( xag, benchmark );
-    exp( benchmark, st.initial_size, st.initial_size - xag.num_gates(), st.rst.initial_level,  st.rst.initial_level - dntk.depth(), to_seconds( st.time_total ), cec );
+    exp( benchmark, initial_size, initial_size - xag.num_gates(), initial_depth, initial_depth - dntk.depth(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();

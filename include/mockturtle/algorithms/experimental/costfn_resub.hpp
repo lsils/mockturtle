@@ -317,8 +317,7 @@ public:
       }
     } );
 
-    // win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
-    win.max_size = 3;
+    win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
 
     st.num_windows++;
     st.num_leaves += leaves.size();
