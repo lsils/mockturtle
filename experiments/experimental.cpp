@@ -23,7 +23,8 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
 
-    if (benchmark != "sqrt") continue; // faster experiment
+    if ( benchmark != "sqrt" )
+      continue; // faster experiment
     fmt::print( "[i] processing {}\n", benchmark );
 
     // aig_network xag;
@@ -47,7 +48,7 @@ int main()
      * given the 2 fanins (for xag).
      */
     ps.rps.node_cost_fn = []( cost_t fanin_x, cost_t fanin_y, bool is_xor = false ) {
-      (void) is_xor;
+      (void)is_xor;
       auto [size_x, depth_x] = fanin_x;
       auto [size_y, depth_y] = fanin_y;
       return std::pair( size_x + size_y + 1, std::max( depth_x, depth_y ) + 1 );
