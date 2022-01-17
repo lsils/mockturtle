@@ -7,6 +7,7 @@
 #include <mockturtle/utils/index_list.hpp>
 #include <mockturtle/algorithms/resyn_engines/xag_resyn.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
+#include <mockturtle/views/depth_view.hpp>
 
 using namespace mockturtle;
 
@@ -30,8 +31,8 @@ struct aig_resyn_sparams_no_copy : public xag_resyn_static_params_default<TT>
   static constexpr bool copy_tts = false;
 };
 
-template<class TT = kitty::partial_truth_table>
-void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& tts, uint32_t num_inserts )
+template<class TT = kitty::partial_truth_table, class LeafFn, class NodeFn, class CmpFn>
+void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& tts, LeafFn && lf, NodeFn && nf, CmpFn && cmp, uint32_t num_inserts, uint32_t num_depth )
 {
   xag_resyn_stats st;
   std::vector<uint32_t> divs;
@@ -39,114 +40,74 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   {
     divs.emplace_back( i );
   }
+
+//   uint32_t max_inserts = std::numeric_limits<uint32_t>::max(); // TODO: auto set limit
+  uint32_t max_inserts = 3;
+  uint32_t max_depth = std::numeric_limits<uint32_t>::max();
+  (void) num_inserts;
+  (void) num_depth;
+
   partial_simulator sim( tts );
-  using cost_t = std::pair<uint32_t, uint32_t>;
-  xag_resyn_decompose<TT, aig_resyn_sparams_copy<TT>> engine_copy( st );
-  const auto res = engine_copy( target, care, divs.begin(), divs.end(), tts, 
-    [](auto n) {return std::pair(0,0);},
-    [](cost_t x, cost_t y, bool is_xor=false) {return std::pair(0,0);},
-    [](cost_t x, cost_t y) {return false;},
-    num_inserts, std::numeric_limits<uint32_t>::max() );
+  xag_resyn_decompose<TT, aig_resyn_sparams_no_copy<TT>> engine( st );
+  const auto res = engine(
+      target, care, divs.begin(), divs.end(), tts,
+      lf, nf, cmp, max_inserts, max_depth
+  );
+
   CHECK( res );
+//   std::cout << to_index_list_string( *res ) << "\n";
   CHECK( (*res).num_gates() == num_inserts );
   aig_network aig;
   decode( aig, *res );
   const auto ans = simulate<TT, aig_network, partial_simulator>( aig, sim )[0];
   CHECK( kitty::implies( target & care, ans ) );
   CHECK( kitty::implies( ~target & care, ~ans ) );
-
-  xag_resyn_decompose<TT, aig_resyn_sparams_no_copy<TT>> engine_no_copy( st );
-  const auto res2 = engine_copy( target, care, divs.begin(), divs.end(), tts, 
-    [](auto n) {return std::pair(0,0);},
-    [](cost_t x, cost_t y, bool is_xor=false) {return std::pair(0,0);},
-    [](cost_t x, cost_t y) {return false;},
-    num_inserts, std::numeric_limits<uint32_t>::max() );  CHECK( res2 );
-  CHECK( (*res2).num_gates() == num_inserts );
-  aig_network aig2;
-  decode( aig2, *res2 );
-  const auto ans2 = simulate<TT, aig_network, partial_simulator>( aig2, sim )[0];
-  CHECK( kitty::implies( target & care, ans2 ) );
-  CHECK( kitty::implies( ~target & care, ~ans2 ) );
 }
 
-TEST_CASE( "AIG/XAG costfn resynthesis -- 0-resub with don't care", "[costfn_resyn]" )
+TEST_CASE( "AIG costfn resynthesis -- area opt", "[costfn_resyn]" )
 {
-  std::vector<kitty::partial_truth_table> tts( 1, kitty::partial_truth_table( 8 ) );
-  kitty::partial_truth_table target( 8 );
-  kitty::partial_truth_table care( 8 );
 
-  /* const */
-  kitty::create_from_binary_string( target, "00110011" );
-  kitty::create_from_binary_string(   care, "11001100" );
-  test_aig_kresub( target, care, tts, 0 );
-
-  /* buffer */
-  kitty::create_from_binary_string( target, "00110011" );
-  kitty::create_from_binary_string(   care, "00111100" );
-  kitty::create_from_binary_string( tts[0], "11110000" );
-  test_aig_kresub( target, care, tts, 0 );
-
-  /* inverter */
-  kitty::create_from_binary_string( target, "00110011" );
-  kitty::create_from_binary_string(   care, "00110110" );
-  kitty::create_from_binary_string( tts[0], "00000101" );
-  test_aig_kresub( target, care, tts, 0 );
-}
-
-TEST_CASE( "AIG costfn resynthesis -- 1 <= k <= 3", "[costfn_resyn]" )
-{
-  std::vector<kitty::partial_truth_table> tts( 4, kitty::partial_truth_table( 8 ) );
-  kitty::partial_truth_table target( 8 );
+  uint32_t num_var = 2;
+  std::vector<kitty::partial_truth_table> tts( 3, kitty::partial_truth_table( 1 << num_var ) );
+  kitty::partial_truth_table target( 1 << num_var );
   kitty::partial_truth_table care = ~target.construct();
 
-  kitty::create_from_binary_string( target, "11110000" ); // target
-  kitty::create_from_binary_string( tts[0], "11000000" );
-  kitty::create_from_binary_string( tts[1], "00110000" );
-  kitty::create_from_binary_string( tts[2], "01011111" ); // binate
-  test_aig_kresub( target, care, tts, 1 ); // 1 | 2
+  kitty::create_from_binary_string( target, "1000" ); // target
+  kitty::create_from_binary_string( tts[0], "1000" ); // area-opt
+  kitty::create_from_binary_string( tts[1], "1100" ); // depth-opt
+  kitty::create_from_binary_string( tts[2], "1010" ); // depth-opt
 
-  kitty::create_from_binary_string( target, "11110000" ); // target
-  kitty::create_from_binary_string( tts[0], "11001100" ); // binate
-  kitty::create_from_binary_string( tts[1], "11111100" );
-  kitty::create_from_binary_string( tts[2], "00001100" );
-  test_aig_kresub( target, care, tts, 1 ); // 2 & ~3
-
-  kitty::create_from_binary_string( target, "11110000" ); // target
-  kitty::create_from_binary_string( tts[0], "01110010" ); // binate
-  kitty::create_from_binary_string( tts[1], "11111100" ); 
-  kitty::create_from_binary_string( tts[2], "10000011" ); // binate
-  test_aig_kresub( target, care, tts, 2 ); // 2 & (1 | 3)
-
-  tts.emplace_back( 8 );
-  kitty::create_from_binary_string( target, "11110000" ); // target
-  kitty::create_from_binary_string( tts[0], "01110010" ); // binate
-  kitty::create_from_binary_string( tts[1], "00110011" ); // binate
-  kitty::create_from_binary_string( tts[2], "10000011" ); // binate
-  kitty::create_from_binary_string( tts[3], "11001011" ); // binate
-  test_aig_kresub( target, care, tts, 3 ); // ~(2 & 4) & (1 | 3)
+  std::vector<uint32_t> levels = {2, 0, 0};
+  using cost_t = std::pair<uint32_t, uint32_t>;
+  test_aig_kresub( 
+    target, care, tts, 
+    [&](auto n) {return std::pair(0,levels[n]);},
+    [](cost_t x, cost_t y, bool is_xor=false) {(void) is_xor; return std::pair(x.first + y.first + 1, std::max(x.second, y.second) + 1);},
+    [](cost_t x, cost_t y) {return x > y;}, // area opt
+    0, 2
+  ); // area opt: (0, 2)
 }
 
-TEST_CASE( "AIG costfn resynthesis -- recursive", "[costfn_resyn]" )
+TEST_CASE( "AIG costfn resynthesis -- depth opt", "[costfn_resyn]" )
 {
-  std::vector<kitty::partial_truth_table> tts( 6, kitty::partial_truth_table( 16 ) );
-  kitty::partial_truth_table target( 16 );
+
+  uint32_t num_var = 2;
+  std::vector<kitty::partial_truth_table> tts( 3, kitty::partial_truth_table( 1 << num_var ) );
+  kitty::partial_truth_table target( 1 << num_var );
   kitty::partial_truth_table care = ~target.construct();
 
-  kitty::create_from_binary_string( target, "1111000011111111" ); // target
-  kitty::create_from_binary_string( tts[0], "0111001000000000" ); // binate
-  kitty::create_from_binary_string( tts[1], "0011001100000000" ); // binate
-  kitty::create_from_binary_string( tts[2], "1000001100000000" ); // binate
-  kitty::create_from_binary_string( tts[3], "1100101100000000" ); // binate
-  kitty::create_from_binary_string( tts[4], "0000000011111111" ); // unate
-  test_aig_kresub( target, care, tts, 4 ); // 5 | ( ~(2 & 4) & (1 | 3) )
+  kitty::create_from_binary_string( target, "1000" ); // target
+  kitty::create_from_binary_string( tts[0], "1000" ); // area-opt
+  kitty::create_from_binary_string( tts[1], "1100" ); // depth-opt
+  kitty::create_from_binary_string( tts[2], "1010" ); // depth-opt
 
-  tts.emplace_back( 16 );
-  kitty::create_from_binary_string( target, "1111000011111100" ); // target
-  kitty::create_from_binary_string( tts[0], "0111001000000000" ); // binate
-  kitty::create_from_binary_string( tts[1], "0011001100000000" ); // binate
-  kitty::create_from_binary_string( tts[2], "1000001100000000" ); // binate
-  kitty::create_from_binary_string( tts[3], "1100101100000000" ); // binate
-  kitty::create_from_binary_string( tts[4], "0000000011111110" ); // binate
-  kitty::create_from_binary_string( tts[5], "0000000011111101" ); // binate
-  test_aig_kresub( target, care, tts, 5 ); // (5 & 6) | ( ~(2 & 4) & (1 | 3) )
+  std::vector<uint32_t> levels = {2, 0, 0};
+  using cost_t = std::pair<uint32_t, uint32_t>;
+  test_aig_kresub( 
+    target, care, tts, 
+    [&](auto n) {return std::pair(0,levels[n]);},
+    [](cost_t x, cost_t y, bool is_xor=false) {(void) is_xor; return std::pair(x.first + y.first + 1, std::max(x.second, y.second) + 1);},
+    [](cost_t x, cost_t y) {return x.second > y.second;}, // depth opt
+    1, 1
+  ); // depth opt: (1, 1)
 }
