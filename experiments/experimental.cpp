@@ -36,8 +36,8 @@ int main()
     costfn_resub_stats st;
     ps.verbose = true;
     ps.wps.max_inserts = 3;
-    ps.wps.preserve_depth = true;
-    ps.wps.update_levels_lazily = true;
+    // ps.wps.preserve_depth = true;
+    // ps.wps.update_levels_lazily = true;
 
     using cost_t = typename std::pair<uint32_t, uint32_t>;
 
@@ -71,14 +71,14 @@ int main()
     };
 
     depth_view _dntk( xag );
-    uint32_t initial_size = _dntk.size();
+    uint32_t initial_size = _dntk.num_gates();
     uint32_t initial_depth = _dntk.depth();
 
     costfn_xag_heuristic_resub( xag, ps, &st );
     xag = cleanup_dangling( xag );
 
     // xag = balancing( xag, {sop_rebalancing<xag_network>{}} );
-    
+
     depth_view dntk( xag );
 
     const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( xag, benchmark );
