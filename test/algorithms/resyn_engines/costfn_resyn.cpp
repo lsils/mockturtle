@@ -7,22 +7,11 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/index_list.hpp>
-#include <mockturtle/views/depth_view.hpp>
 
 using namespace mockturtle;
 
 template<class TT>
-struct aig_resyn_sparams_copy : public xag_resyn_static_params_default<TT>
-{
-  static constexpr bool preserve_depth = true;
-  static constexpr bool uniform_div_cost = false;
-  static constexpr bool collect_sols = true;
-  static constexpr bool use_xor = false;
-  static constexpr bool copy_tts = true;
-};
-
-template<class TT>
-struct aig_resyn_sparams_no_copy : public xag_resyn_static_params_default<TT>
+struct aig_resyn_sparams_costfn : public xag_resyn_static_params_default<TT>
 {
   static constexpr bool preserve_depth = true;
   static constexpr bool uniform_div_cost = false;
@@ -32,7 +21,7 @@ struct aig_resyn_sparams_no_copy : public xag_resyn_static_params_default<TT>
 };
 
 template<class TT = kitty::partial_truth_table, class LeafFn, class NodeFn, class CmpFn>
-void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& tts, LeafFn&& lf, NodeFn&& nf, CmpFn&& cmp, uint32_t num_inserts, uint32_t num_depth )
+void test_aig_costfn_kresub( TT const& target, TT const& care, std::vector<TT> const& tts, LeafFn&& lf, NodeFn&& nf, CmpFn&& cmp, uint32_t num_inserts, uint32_t num_depth )
 {
   xag_resyn_stats st;
   std::vector<uint32_t> divs;
@@ -48,7 +37,7 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   (void)num_depth;
 
   partial_simulator sim( tts );
-  xag_resyn_decompose<TT, aig_resyn_sparams_no_copy<TT>> engine( st );
+  xag_resyn_decompose<TT, aig_resyn_sparams_costfn<TT>> engine( st );
   const auto res = engine(
       target, care, divs.begin(), divs.end(), tts,
       lf, nf, cmp, max_inserts, max_depth );
@@ -78,7 +67,7 @@ TEST_CASE( "AIG costfn resynthesis -- area opt", "[costfn_resyn]" )
 
   std::vector<uint32_t> levels = { 2, 0, 0 };
   using cost_t = std::pair<uint32_t, uint32_t>;
-  test_aig_kresub(
+  test_aig_costfn_kresub(
       target, care, tts,
       [&]( auto n ) { return std::pair( 0, levels[n] ); },
       []( cost_t x, cost_t y, bool is_xor = false ) {(void) is_xor; return std::pair(x.first + y.first + 1, std::max(x.second, y.second) + 1); },
@@ -101,7 +90,7 @@ TEST_CASE( "AIG costfn resynthesis -- depth opt", "[costfn_resyn]" )
 
   std::vector<uint32_t> levels = { 2, 0, 0 };
   using cost_t = std::pair<uint32_t, uint32_t>;
-  test_aig_kresub(
+  test_aig_costfn_kresub(
       target, care, tts,
       [&]( auto n ) { return std::pair( 0, levels[n] ); },
       []( cost_t x, cost_t y, bool is_xor = false ) {(void) is_xor; return std::pair(x.first + y.first + 1, std::max(x.second, y.second) + 1); },
