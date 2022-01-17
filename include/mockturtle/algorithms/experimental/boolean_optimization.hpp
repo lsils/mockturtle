@@ -35,6 +35,7 @@
 #include "../../traits.hpp"
 #include "../../utils/progress_bar.hpp"
 #include "../../utils/stopwatch.hpp"
+#include "../../views/topo_view.hpp"
 
 #include <optional>
 
@@ -178,7 +179,8 @@ public:
     } );
 
     st.initial_size = ntk.num_gates();
-    ntk.foreach_gate( [&]( auto const n, auto i ) { // TODO: maybe problematic
+    topo_view<Ntk>{ntk}.foreach_gate( [&]( auto const n, auto i ) {
+    // ntk.foreach_gate( [&]( auto const n, auto i ) { // TODO: maybe problematic
       if ( !ps.optimize_new_nodes && i >= st.initial_size )
       {
         return false; /* terminate */
@@ -221,7 +223,6 @@ public:
       {
         cont = windowing.report( *prob, *res );
       }
-
       return cont;
     } );
   }

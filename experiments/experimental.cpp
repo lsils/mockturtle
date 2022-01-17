@@ -35,10 +35,11 @@ int main()
 
     costfn_resub_params ps;
     costfn_resub_stats st;
+    // ps.dry_run = true;
     ps.verbose = true;
     ps.wps.max_inserts = 3;
-    // ps.wps.preserve_depth = true;
-    // ps.wps.update_levels_lazily = true;
+    ps.wps.preserve_depth = true;
+    ps.wps.update_levels_lazily = true;
 
     using cost_t = typename std::pair<uint32_t, uint32_t>;
 
@@ -67,8 +68,8 @@ int main()
       {
         return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
       }
-      return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
-      // return size_x > size_y || ( size_x == size_y && depth_x > depth_y );
+      // return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
+      return size_x > size_y || ( size_x == size_y && depth_x > depth_y );
     };
 
     depth_view _dntk( xag );

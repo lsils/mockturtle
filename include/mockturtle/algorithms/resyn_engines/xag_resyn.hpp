@@ -347,6 +347,7 @@ public:
       ++begin;
     }
     st.num_mffc[max_size > 3 ? 3 : max_size]++;
+    max_size = 3;
     return compute_function( max_size );
   }
 
