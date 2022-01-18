@@ -263,7 +263,8 @@ public:
     {
       if ( ps.preserve_depth )
       {
-        win.max_level = ntk.depth() - ntk.required( n );
+        // win.max_level = ntk.depth() - ntk.required( n ); // area optimization
+        win.max_level = ntk.level( n ); // depth optimization
         divs_mgr.set_max_level( ntk.level( n ) - 1 );
       }
     }
@@ -317,7 +318,7 @@ public:
       }
     } );
 
-    win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
+    win.max_size = win.mffc_size;
 
     st.num_windows++;
     st.num_leaves += leaves.size();

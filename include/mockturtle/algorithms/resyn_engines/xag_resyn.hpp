@@ -310,13 +310,14 @@ public:
 
   template<class iterator_type, class LeafFn, class NodeFn, class CmpFn,
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, CmpFn&& _cmp_cost_fn, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, CmpFn&& _cmp_cost_fn, uint32_t _max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
   {
 
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
 
     (void)_max_depth;
     max_depth = _max_depth; /* preserve depth */
+    max_size = _max_size; /* preserve area */
 
     ptts = &tts;
     on_off_sets[0] = ~target & care;
@@ -324,8 +325,10 @@ public:
 
     node_cost_fn = _node_cost_fn;
     leaf_cost_fn = _leaf_cost_fn;
+    cmp_fn = _cmp_cost_fn;
 
-    auto cmp = [&]( sol_t x, sol_t y ) { return _cmp_cost_fn( x.first, y.first ); };
+    // priority queue is from large to small
+    auto cmp = [&]( sol_t x, sol_t y ) { return !_cmp_cost_fn( x.first, y.first ); };
 
     root_sols = std::priority_queue<sol_t, std::vector<sol_t>, std::function<bool( sol_t, sol_t )>>( cmp );
     forest_sols.clear();
@@ -347,8 +350,7 @@ public:
       ++begin;
     }
     st.num_mffc[max_size > 3 ? 3 : max_size]++;
-    max_size = 3;
-    return compute_function( max_size );
+    return compute_function( 10 );
   }
 
 private:
@@ -379,6 +381,13 @@ private:
     {
       st.num_sols[root_sols.size() > 3 ? 3 : root_sols.size()]++;
       auto [cost, res] = root_sols.top();
+      if (!cmp_fn(cost, std::pair(max_size, max_depth))) return std::nullopt;
+      std::cout << "[" << max_size << " " << max_depth << "]\t";
+      while(root_sols.empty() == false) {
+        auto [_cost, _res] = root_sols.top(); root_sols.pop();
+        std::cout << _cost.first << " " << _cost.second << "\t";
+      }
+      std::cout << "\n";
       auto root_lit = get_solution_rec( res );
       return root_lit;
     }
@@ -390,8 +399,7 @@ private:
       auto leaf_cost = std::get<0>( forest_sols[( lit0 >> 1 )] );
       if ( is_root )
       {
-        if ( leaf_cost.second <= max_depth )
-          root_sols.push( std::pair( leaf_cost, lit0 ) ); /* cost of leaf node */
+        root_sols.push( std::pair( leaf_cost, lit0 ) ); /* cost of leaf node */
       }
       return lit0;
     }
@@ -405,8 +413,7 @@ private:
                                                              : std::tuple( node_cost, lit2, lit1 ) );
       if ( is_root )
       {
-        if ( node_cost.second <= max_depth )
-          root_sols.push( std::pair( node_cost, ( ( forest_sols.size() - 1 ) << 1 ) | on_off ) );
+        root_sols.push( std::pair( node_cost, ( ( forest_sols.size() - 1 ) << 1 ) | on_off ) );
       }
       return ( ( forest_sols.size() - 1 ) << 1 ) | on_off;
     }
@@ -586,8 +593,8 @@ private:
       call_with_stopwatch( st.time_divide, [&]() {
         on_off_sets[on_off_div] &= lit & 0x1 ? get_div( lit >> 1 ) : ~get_div( lit >> 1 );
       } );
-
-      auto const res_remain_div = compute_function_rec( num_inserts - 1 );
+      auto const res_remai
+      n_div = compute_function_rec( num_inserts - 1 );
       if ( res_remain_div )
       {
         auto const new_lit = index_list.add_and( ( lit ^ 0x1 ), *res_remain_div ^ on_off_div );
@@ -614,7 +621,6 @@ private:
           on_off_sets[on_off_pair] &= ( pair.lit1 & 0x1 ? get_div( pair.lit1 >> 1 ) : ~get_div( pair.lit1 >> 1 ) ) | ( pair.lit2 & 0x1 ? get_div( pair.lit2 >> 1 ) : ~get_div( pair.lit2 >> 1 ) );
         }
       } );
-
       auto const res_remain_pair = compute_function_rec( num_inserts - 2 );
       if ( res_remain_pair )
       {
@@ -1134,8 +1140,10 @@ private:
 
   std::function<cost_t( cost_t, cost_t, bool )> node_cost_fn;
   std::function<cost_t( uint32_t )> leaf_cost_fn;
+  std::function<bool( cost_t, cost_t )> cmp_fn;
 
   uint32_t max_depth{};
+  uint32_t max_size{};
 
   stats& st;
 }; /* xag_resyn_decompose */

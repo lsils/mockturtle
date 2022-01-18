@@ -61,15 +61,11 @@ int main()
      * Resyn solver will find the best solution according to the 
      * compare function
      */
-    ps.rps.compare_cost_fn = []( cost_t fanin_x, cost_t fanin_y, bool is_critical = false ) {
+    ps.rps.compare_cost_fn = []( cost_t fanin_x, cost_t fanin_y ) {
       auto [size_x, depth_x] = fanin_x;
       auto [size_y, depth_y] = fanin_y;
-      if ( is_critical )
-      {
-        return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
-      }
-      // return depth_x > depth_y || ( depth_x == depth_y && size_x > size_y );
-      return size_x > size_y || ( size_x == size_y && depth_x > depth_y );
+      return depth_x < depth_y;
+      // return size_x < size_y || ( size_x == size_y && depth_x < depth_y );
     };
 
     depth_view _dntk( xag );
