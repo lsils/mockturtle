@@ -382,12 +382,12 @@ private:
       st.num_sols[root_sols.size() > 3 ? 3 : root_sols.size()]++;
       auto [cost, res] = root_sols.top();
       if (!cmp_fn(cost, std::pair(max_size, max_depth))) return std::nullopt;
-      std::cout << "[" << max_size << " " << max_depth << "]\t";
+      // std::cout << "[" << max_size << " " << max_depth << "]\t";
       while(root_sols.empty() == false) {
         auto [_cost, _res] = root_sols.top(); root_sols.pop();
-        std::cout << _cost.first << " " << _cost.second << "\t";
+        // std::cout << _cost.first << " " << _cost.second << "\t";
       }
-      std::cout << "\n";
+      // std::cout << "\n";
       auto root_lit = get_solution_rec( res );
       return root_lit;
     }
@@ -593,8 +593,7 @@ private:
       call_with_stopwatch( st.time_divide, [&]() {
         on_off_sets[on_off_div] &= lit & 0x1 ? get_div( lit >> 1 ) : ~get_div( lit >> 1 );
       } );
-      auto const res_remai
-      n_div = compute_function_rec( num_inserts - 1 );
+      auto const res_remain_div = compute_function_rec( num_inserts - 1 );
       if ( res_remain_div )
       {
         auto const new_lit = index_list.add_and( ( lit ^ 0x1 ), *res_remain_div ^ on_off_div );
