@@ -9,6 +9,8 @@ v0.3 (not yet released)
     - Read SUPER files using *lorina* (`super_reader`) `#489 <https://github.com/lsils/mockturtle/pull/489>`_
     - Read and write Verilog with submodules (for buffered networks) `#478 <https://github.com/lsils/mockturtle/pull/478>`_
     - Write Verilog for mapped netlists `#489 <https://github.com/lsils/mockturtle/pull/489>`_
+* Network interface:
+    - `clone` `#522 <https://github.com/lsils/mockturtle/pull/522>`_
 * Network implementations:
     - Buffered networks (`buffered_aig_network`, `buffered_mig_network`) `#478 <https://github.com/lsils/mockturtle/pull/478>`_
 * Algorithms:
