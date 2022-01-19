@@ -265,6 +265,29 @@ TEST_CASE( "hash nodes in AIG network", "[aig]" )
   CHECK( aig.get_node( f ) == aig.get_node( g ) );
 }
 
+TEST_CASE( "clone a AIG network", "[aig]" )
+{
+  CHECK( is_clonable_v<aig_network> );
+
+  aig_network aig0;
+  auto a = aig0.create_pi();
+  auto b = aig0.create_pi();
+  auto f0 = aig0.create_and( a, b );
+  CHECK( aig0.size() == 4 );
+  CHECK( aig0.num_gates() == 1 );
+
+  auto aig1 = aig0;
+  auto aig_clone = aig0.clone();
+
+  auto c = aig1.create_pi();
+  aig1.create_and( f0, c );
+  CHECK( aig0.size() == 6 );
+  CHECK( aig0.num_gates() == 2 );
+
+  CHECK( aig_clone.size() == 4 );
+  CHECK( aig_clone.num_gates() == 1 );
+}
+
 TEST_CASE( "clone a node in AIG network", "[aig]" )
 {
   aig_network aig1, aig2;

@@ -368,6 +368,29 @@ TEST_CASE( "hash nodes in xag network", "[xag]" )
   CHECK( xag.get_node( f ) == xag.get_node( g ) );
 }
 
+TEST_CASE( "clone a XAG network", "[xag]" )
+{
+  CHECK( is_clonable_v<xag_network> );
+
+  xag_network xag0;
+  auto a = xag0.create_pi();
+  auto b = xag0.create_pi();
+  auto f0 = xag0.create_and( a, b );
+  CHECK( xag0.size() == 4 );
+  CHECK( xag0.num_gates() == 1 );
+
+  auto xag1 = xag0;
+  auto xag_clone = xag0.clone();
+
+  auto c = xag1.create_pi();
+  xag1.create_xor( f0, c );
+  CHECK( xag0.size() == 6 );
+  CHECK( xag0.num_gates() == 2 );
+
+  CHECK( xag_clone.size() == 4 );
+  CHECK( xag_clone.num_gates() == 1 );
+}
+
 TEST_CASE( "clone a node in xag network", "[xag]" )
 {
   xag_network xag1, xag2;
