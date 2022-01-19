@@ -54,7 +54,7 @@ TEST_CASE( "create and use primary inputs in an AIG", "[aig]" )
   auto a = aig.create_pi();
   auto b = aig.create_pi();
 
-  CHECK( aig.size() == 3 ); // constate + two primary inputs
+  CHECK( aig.size() == 3 ); // constant + two primary inputs
   CHECK( aig.num_pis() == 2 );
   CHECK( aig.num_gates() == 0 );
   CHECK( aig.is_pi( aig.get_node( a ) ) );

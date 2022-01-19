@@ -55,7 +55,7 @@ TEST_CASE( "create and use primary inputs in an xmg", "[xmg]" )
   auto a = xmg.create_pi();
   auto b = xmg.create_pi();
 
-  CHECK( xmg.size() == 3 ); // constate + two primary inputs
+  CHECK( xmg.size() == 3 ); // constant + two primary inputs
   CHECK( xmg.num_pis() == 2 );
   CHECK( xmg.num_gates() == 0 );
   CHECK( xmg.is_pi( xmg.get_node( a ) ) );

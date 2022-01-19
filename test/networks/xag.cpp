@@ -94,7 +94,7 @@ TEST_CASE( "create and use primary inputs in an xag", "[xag]" )
   auto a = xag.create_pi();
   auto b = xag.create_pi();
 
-  CHECK( xag.size() == 3 ); // constate + two primary inputs
+  CHECK( xag.size() == 3 ); // constant + two primary inputs
   CHECK( xag.num_pis() == 2 );
   CHECK( xag.num_gates() == 0 );
   CHECK( xag.is_pi( xag.get_node( a ) ) );

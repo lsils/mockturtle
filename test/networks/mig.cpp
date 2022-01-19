@@ -52,7 +52,7 @@ TEST_CASE( "create and use primary inputs in an MIG", "[mig]" )
   auto a = mig.create_pi();
   auto b = mig.create_pi();
 
-  CHECK( mig.size() == 3 ); // constate + two primary inputs
+  CHECK( mig.size() == 3 ); // constant + two primary inputs
   CHECK( mig.num_pis() == 2 );
   CHECK( mig.num_gates() == 0 );
   CHECK( mig.is_pi( mig.get_node( a ) ) );
