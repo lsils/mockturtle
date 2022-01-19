@@ -630,7 +630,7 @@ TEST_CASE( "simulate some special functions in AIGs", "[aig]" )
   CHECK( result[1]._bits[0] == 0xd8u );
 }
 
-TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
+TEST_CASE( "substitute nodes with propagation in AIGs (test case 1)", "[aig]" )
 {
   CHECK( has_substitute_node_v<aig_network> );
   CHECK( has_replace_in_node_v<aig_network> );
@@ -683,7 +683,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
   CHECK( aig.num_gates() == 4u );
 }
 
-TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[aig]" )
+TEST_CASE( "substitute nodes with propagation in AIGs (test case 2)", "[aig]" )
 {
   aig_network aig;
   const auto x1 = aig.create_pi();
