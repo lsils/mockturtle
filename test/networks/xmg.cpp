@@ -53,10 +53,15 @@ TEST_CASE( "create and use primary inputs in an xmg", "[xmg]" )
   CHECK( has_create_pi_v<xmg_network> );
 
   auto a = xmg.create_pi();
+  auto b = xmg.create_pi();
 
-  CHECK( xmg.size() == 2 );
-  CHECK( xmg.num_pis() == 1 );
+  CHECK( xmg.size() == 3 ); // constate + two primary inputs
+  CHECK( xmg.num_pis() == 2 );
   CHECK( xmg.num_gates() == 0 );
+  CHECK( xmg.is_pi( xmg.get_node( a ) ) );
+  CHECK( xmg.is_pi( xmg.get_node( b ) ) );
+  CHECK( xmg.pi_index( xmg.get_node( a ) ) == 0 );
+  CHECK( xmg.pi_index( xmg.get_node( b ) ) == 1 );
 
   CHECK( std::is_same_v<std::decay_t<decltype( a )>, xmg_network::signal> );
 

@@ -50,10 +50,15 @@ TEST_CASE( "create and use primary inputs in an MIG", "[mig]" )
   CHECK( has_create_pi_v<mig_network> );
 
   auto a = mig.create_pi();
+  auto b = mig.create_pi();
 
-  CHECK( mig.size() == 2 );
-  CHECK( mig.num_pis() == 1 );
+  CHECK( mig.size() == 3 ); // constate + two primary inputs
+  CHECK( mig.num_pis() == 2 );
   CHECK( mig.num_gates() == 0 );
+  CHECK( mig.is_pi( mig.get_node( a ) ) );
+  CHECK( mig.is_pi( mig.get_node( b ) ) );
+  CHECK( mig.pi_index( mig.get_node( a ) ) == 0 );
+  CHECK( mig.pi_index( mig.get_node( b ) ) == 1 );
 
   CHECK( std::is_same_v<std::decay_t<decltype( a )>, mig_network::signal> );
 

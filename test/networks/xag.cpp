@@ -92,9 +92,15 @@ TEST_CASE( "create and use primary inputs in an xag", "[xag]" )
   CHECK( has_create_pi_v<xag_network> );
 
   auto a = xag.create_pi();
+  auto b = xag.create_pi();
 
-  CHECK( xag.size() == 2 );
-  CHECK( xag.num_pis() == 1 );
+  CHECK( xag.size() == 3 ); // constate + two primary inputs
+  CHECK( xag.num_pis() == 2 );
+  CHECK( xag.num_gates() == 0 );
+  CHECK( xag.is_pi( xag.get_node( a ) ) );
+  CHECK( xag.is_pi( xag.get_node( b ) ) );
+  CHECK( xag.pi_index( xag.get_node( a ) ) == 0 );
+  CHECK( xag.pi_index( xag.get_node( b ) ) == 1 );
 
   CHECK( std::is_same_v<std::decay_t<decltype( a )>, xag_network::signal> );
 

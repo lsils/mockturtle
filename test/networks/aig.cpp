@@ -52,9 +52,15 @@ TEST_CASE( "create and use primary inputs in an AIG", "[aig]" )
   CHECK( has_create_pi_v<aig_network> );
 
   auto a = aig.create_pi();
+  auto b = aig.create_pi();
 
-  CHECK( aig.size() == 2 );
-  CHECK( aig.num_pis() == 1 );
+  CHECK( aig.size() == 3 ); // constate + two primary inputs
+  CHECK( aig.num_pis() == 2 );
+  CHECK( aig.num_gates() == 0 );
+  CHECK( aig.is_pi( aig.get_node( a ) ) );
+  CHECK( aig.is_pi( aig.get_node( b ) ) );
+  CHECK( aig.pi_index( aig.get_node( a ) ) == 0 );
+  CHECK( aig.pi_index( aig.get_node( b ) ) == 1 );
 
   CHECK( std::is_same_v<std::decay_t<decltype( a )>, aig_network::signal> );
 
