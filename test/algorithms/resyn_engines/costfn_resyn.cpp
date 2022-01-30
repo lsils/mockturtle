@@ -60,19 +60,26 @@ TEST_CASE( "AIG costfn resynthesis -- area opt", "[costfn_resyn]" )
   kitty::partial_truth_table target( 1 << num_var );
   kitty::partial_truth_table care = ~target.construct();
 
-  kitty::create_from_binary_string( target, "1000" ); // target
-  kitty::create_from_binary_string( tts[0], "1000" ); // area-opt
-  kitty::create_from_binary_string( tts[1], "1100" ); // depth-opt
-  kitty::create_from_binary_string( tts[2], "1010" ); // depth-opt
+  kitty::create_from_binary_string( target, "1000" ); // target = a || target = bc
+  kitty::create_from_binary_string( tts[0], "1000" ); // a
+  kitty::create_from_binary_string( tts[1], "1100" ); // b
+  kitty::create_from_binary_string( tts[2], "1010" ); // c
 
   std::vector<uint32_t> levels = { 2, 0, 0 };
   using cost_t = std::pair<uint32_t, uint32_t>;
-  test_aig_costfn_kresub(
-      target, care, tts,
-      [&]( auto n ) { return std::pair( 0, levels[n] ); },
-      []( cost_t x, cost_t y, bool is_xor = false ) {(void) is_xor; return std::pair(x.first + y.first + 1, std::max(x.second, y.second) + 1); },
-      []( cost_t x, cost_t y ) { return x > y; }, // area opt
-      0, 2 );                                     // area opt: (0, 2)
+  test_aig_costfn_kresub( target, care, tts,
+
+      [&]( auto n ) { return std::pair( 0, levels[n] ); },   // leaf cost function
+
+      []( cost_t x, cost_t y, bool is_xor = false ) {        // node cost function
+        (void) is_xor; 
+        return std::pair(
+          x.first + y.first + 1, 
+          std::max(x.second, y.second) + 1);
+      },
+
+      []( cost_t x, cost_t y ) { return x.first > y.first; }, // area optimization
+      0, 2 );                                                 // area optimum: (0, 2)
 }
 
 TEST_CASE( "AIG costfn resynthesis -- depth opt", "[costfn_resyn]" )
@@ -90,10 +97,17 @@ TEST_CASE( "AIG costfn resynthesis -- depth opt", "[costfn_resyn]" )
 
   std::vector<uint32_t> levels = { 2, 0, 0 };
   using cost_t = std::pair<uint32_t, uint32_t>;
-  test_aig_costfn_kresub(
-      target, care, tts,
-      [&]( auto n ) { return std::pair( 0, levels[n] ); },
-      []( cost_t x, cost_t y, bool is_xor = false ) {(void) is_xor; return std::pair(x.first + y.first + 1, std::max(x.second, y.second) + 1); },
-      []( cost_t x, cost_t y ) { return x.second > y.second; }, // depth opt
+  test_aig_costfn_kresub( target, care, tts,
+
+      [&]( auto n ) { return std::pair( 0, levels[n] ); },   // leaf cost function
+
+      []( cost_t x, cost_t y, bool is_xor = false ) {        // node cost function
+        (void) is_xor; 
+        return std::pair(
+          x.first + y.first + 1, 
+          std::max(x.second, y.second) + 1);
+      },
+
+      []( cost_t x, cost_t y ) { return x.second > y.second; }, // depth optimization
       1, 1 );                                                   // depth opt: (1, 1)
 }
