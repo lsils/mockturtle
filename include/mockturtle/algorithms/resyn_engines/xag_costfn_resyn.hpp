@@ -86,9 +86,6 @@ struct xag_costfn_resyn_static_params
   /*! \brief Depth cost of each XOR gate (only relevant when `preserve_depth = true` and `use_xor = true`). */
   static constexpr uint32_t depth_cost_of_xor{ 1u };
 
-  /*! \brief Whether collect multiple solutions and choose the best */
-  static constexpr bool collect_sols{ false };
-
   using truth_table_storage_type = void;
   using node_type = void;
 };
@@ -177,18 +174,9 @@ struct xag_costfn_resyn_stats
 
 /*! \brief Logic resynthesis engine for AIGs or XAGs.
  *
- * The algorithm is based on ABC's implementation in `giaResub.c` by Alan Mishchenko.
+ * The algorithm find the solution based on the given cost function
  *
- * Divisors are classified as positive unate (not overlapping with target offset),
- * negative unate (not overlapping with target onset), or binate (overlapping with
- * both onset and offset). Furthermore, pairs of binate divisors are combined with
- * an AND operation and considering all possible input polarities and again classified
- * as positive unate, negative unate or binate. Simple solutions of zero cost 
- * (one unate divisor), one node (two unate divisors), two nodes (one unate divisor + 
- * one unate pair), and three nodes (two unate pairs) are exhaustively examined.
- * When no simple solutions can be found, the algorithm heuristically chooses an unate
- * divisor or an unate pair to divide the target function with and recursively calls
- * itself to decompose the remainder function.
+ * 
    \verbatim embed:rst
 
    Example
@@ -272,51 +260,17 @@ public:
    * \param begin Begin iterator to divisor nodes.
    * \param end End iterator to divisor nodes.
    * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
-   * \param max_size Maximum number of nodes allowed in the dependency circuit.
+   * \param _leaf_cost_fn The Cost Function of the leave node (existing nodes)
+   * \param _node_cost_fn The Cost Function of the fanout node (nodes added)
+   * \param _cmp_cost_fn The compare function to compare solutions
+   * \param _max_cost Initial Cost
    */
-  template<class iterator_type,
-           bool enabled = static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
-  {
-    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
-
-    ptts = &tts;
-    on_off_sets[0] = ~target & care;
-    on_off_sets[1] = target & care;
-
-    divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
-    while ( begin != end )
-    {
-      if constexpr ( static_params::copy_tts )
-      {
-        divisors.emplace_back( ( *ptts )[*begin] );
-      }
-      else
-      {
-        divisors.emplace_back( *begin );
-      }
-      ++begin;
-    }
-
-    return compute_function( max_size );
-  }
-
-  template<class iterator_type, class Fn,
-           bool enabled = !static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
-  {
-  }
-
-  template<class iterator_type, class LeafFn, class NodeFn, class CmpFn,
+  template<class iterator_type, class LeafFn, class NodeFn, class CmpFn, class cost_type,
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, CmpFn&& _cmp_cost_fn, uint32_t _max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, CmpFn&& _cmp_cost_fn, cost_type _initial_cost )
   {
 
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
-
-    (void)_max_depth;
-    max_depth = _max_depth; /* preserve depth */
-    max_size = _max_size; /* preserve area */
 
     ptts = &tts;
     on_off_sets[0] = ~target & care;
@@ -325,6 +279,7 @@ public:
     node_cost_fn = _node_cost_fn;
     leaf_cost_fn = _leaf_cost_fn;
     cmp_fn = _cmp_cost_fn;
+    initial_cost = _initial_cost;
 
     // priority queue is from large to small
     auto cmp = [&]( sol_t x, sol_t y ) { return !_cmp_cost_fn( x.first, y.first ); };
@@ -348,8 +303,8 @@ public:
       forest_sols.emplace_back( std::tuple( std::pair( leaf_cost_fn( *begin ) ), 0, 0 ) );
       ++begin;
     }
-    st.num_mffc[max_size > 3 ? 3 : max_size]++;
-    return compute_function( max_size );
+    st.num_mffc[initial_cost.first > 3 ? 3 : initial_cost.first]++;
+    return compute_function( initial_cost.first ); // TODO: fix this
   }
 
 private:
@@ -380,13 +335,10 @@ private:
     {
       st.num_sols[root_sols.size() > 3 ? 3 : root_sols.size()]++;
       auto [cost, res] = root_sols.top();
-      if (!cmp_fn(cost, std::pair(max_size, max_depth))) return std::nullopt;
-      // std::cout << "[" << max_size << " " << max_depth << "]\t";
+      if (!cmp_fn(cost, initial_cost)) return std::nullopt;
       while(root_sols.empty() == false) {
         auto [_cost, _res] = root_sols.top(); root_sols.pop();
-        // std::cout << _cost.first << " " << _cost.second << "\t";
       }
-      // std::cout << "\n";
       auto root_lit = get_solution_rec( res );
       return root_lit;
     }
@@ -1140,8 +1092,7 @@ private:
   std::function<cost_t( uint32_t )> leaf_cost_fn;
   std::function<bool( cost_t, cost_t )> cmp_fn;
 
-  uint32_t max_depth{};
-  uint32_t max_size{};
+  cost_t initial_cost;
 
   stats& st;
 }; /* xag_costfn_resyn_solver */

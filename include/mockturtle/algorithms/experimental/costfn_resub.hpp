@@ -423,7 +423,7 @@ private:
   std::shared_ptr<typename network_events<Ntk>::modified_event_type> lazy_update_event;
 }; /* costfn_windowing */
 
-template<class Ntk, class TT, class ResynEngine, bool preserve_depth = false>
+template<class Ntk, class TT, class ResynEngine>
 class costfn_resynthesis
 {
 public:
@@ -458,19 +458,12 @@ public:
 
   std::optional<res_t> operator()( problem_t& prob )
   {
-    if constexpr ( preserve_depth )
-    {
-      std::function<cost_t( uint32_t )> const leaf_cost_fn = [&]( uint32_t idx ) {
-        assert( idx < prob.div_id_to_node.size() ); //TODO: remove this after debug finished
-        return std::pair( 0, ntk.level( prob.div_id_to_node[idx] ) );
-      };
-      return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts,
-                     leaf_cost_fn, ps.node_cost_fn, ps.compare_cost_fn, prob.max_size, prob.max_level );
-    }
-    else
-    {
-      return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size );
-    }
+    std::function<cost_t( uint32_t )> const leaf_cost_fn = [&]( uint32_t idx ) {
+      assert( idx < prob.div_id_to_node.size() ); //TODO: remove this after debug finished
+      return std::pair( 0, ntk.level( prob.div_id_to_node[idx] ) );
+    };
+    return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts,
+                    leaf_cost_fn, ps.node_cost_fn, ps.compare_cost_fn, std::pair(prob.max_size, prob.max_level) );
   }
 
 private:
@@ -489,36 +482,19 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
 
   costfn_resub_stats st;
 
-  if ( !ps.wps.preserve_depth )
-  {
-    using ViewedNtk = fanout_view<Ntk>;
-    ViewedNtk viewed( ntk );
+  using ViewedNtk = fanout_view<depth_view<Ntk>>;
+  depth_view dntk( ntk );
+  ViewedNtk viewed( dntk );
 
-    using TT = typename kitty::dynamic_truth_table;
-    using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
-    using engine_t = xag_costfn_resyn_solver<TT, aig_costfn_resyn_static_params_default<TT>>; // engine
-    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t>;
-    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+  using TT = typename kitty::dynamic_truth_table;
+  using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
+  using engine_t = xag_costfn_resyn_solver<TT, aig_costfn_resyn_static_params_preserve_depth<TT>>;
+  using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t>;
+  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-    opt_t p( viewed, ps, st );
-    p.run();
-  }
-  else
-  {
-    using ViewedNtk = fanout_view<depth_view<Ntk>>;
-    depth_view dntk( ntk );
-    ViewedNtk viewed( dntk );
-
-    using TT = typename kitty::dynamic_truth_table;
-    using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
-    using engine_t = xag_costfn_resyn_solver<TT, aig_costfn_resyn_static_params_preserve_depth<TT>>;
-    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t, /* preserve_depth */ true>;
-    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
-
-    opt_t p( viewed, ps, st );
-    st.rst.initial_level = viewed.depth();
-    p.run();
-  }
+  opt_t p( viewed, ps, st );
+  st.rst.initial_level = viewed.depth();
+  p.run();
 
   if ( ps.verbose )
   {
@@ -538,38 +514,21 @@ void costfn_xag_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
 
   costfn_resub_stats st;
 
-  if ( !ps.wps.preserve_depth )
-  {
-    using ViewedNtk = fanout_view<Ntk>;
-    ViewedNtk viewed( ntk );
+  depth_view dntk( ntk );
+  fanout_view fntk( dntk ); // dependencies
+  slack_view viewed( fntk );
 
-    using TT = typename kitty::dynamic_truth_table;
-    using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
-    using engine_t = xag_costfn_resyn_solver<TT, xag_costfn_resyn_static_params_default<TT>>; // engine
-    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t>;
-    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+  using ViewedNtk = decltype( viewed );
 
-    opt_t p( viewed, ps, st );
-    p.run();
-  }
-  else
-  {
-    depth_view dntk( ntk );
-    fanout_view fntk( dntk ); // dependencies
-    slack_view viewed( fntk );
+  using TT = typename kitty::dynamic_truth_table;
+  using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
+  using engine_t = xag_costfn_resyn_solver<TT, xag_costfn_resyn_static_params_preserve_depth<TT>>;
+  using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t>;
+  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-    using ViewedNtk = decltype( viewed );
-
-    using TT = typename kitty::dynamic_truth_table;
-    using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
-    using engine_t = xag_costfn_resyn_solver<TT, xag_costfn_resyn_static_params_preserve_depth<TT>>;
-    using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t, /* preserve_depth */ true>;
-    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
-
-    opt_t p( viewed, ps, st );
-    st.rst.initial_level = viewed.depth();
-    p.run();
-  }
+  opt_t p( viewed, ps, st );
+  st.rst.initial_level = viewed.depth();
+  p.run();
 
   if ( ps.verbose )
   {

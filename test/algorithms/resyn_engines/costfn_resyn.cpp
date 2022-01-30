@@ -30,9 +30,6 @@ void test_aig_costfn_kresub( TT const& target, TT const& care, std::vector<TT> c
     divs.emplace_back( i );
   }
 
-  //   uint32_t max_inserts = std::numeric_limits<uint32_t>::max(); // TODO: auto set limit
-  uint32_t max_inserts = 3;
-  uint32_t max_depth = std::numeric_limits<uint32_t>::max();
   (void)num_inserts;
   (void)num_depth;
 
@@ -40,7 +37,7 @@ void test_aig_costfn_kresub( TT const& target, TT const& care, std::vector<TT> c
   xag_costfn_resyn_solver<TT, aig_costfn_resyn_sparams_costfn<TT>> engine( st );
   const auto res = engine(
       target, care, divs.begin(), divs.end(), tts,
-      lf, nf, cmp, max_inserts, max_depth );
+      lf, nf, cmp, std::pair(std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max()) );
 
   CHECK( res );
   //   std::cout << to_index_list_string( *res ) << "\n";
