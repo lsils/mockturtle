@@ -304,7 +304,7 @@ public:
       ++begin;
     }
     st.num_mffc[initial_cost.first > 3 ? 3 : initial_cost.first]++;
-    return compute_function( initial_cost.first ); // TODO: fix this
+    return compute_function( 3 ); // TODO: fix this
   }
 
 private:
