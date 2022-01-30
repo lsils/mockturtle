@@ -24,121 +24,147 @@
  */
 
 /*!
-  \file xag_resyn.hpp
-  \brief Resynthesis by recursive decomposition for AIGs or XAGs.
-  (based on ABC's implementation in `giaResub.c` by Alan Mishchenko)
+  \file xag_costfn_resyn.hpp
+  \brief Resynthesis by cost-aware synthesis for XAGs.
 
-  \author Siang-Yun Lee
+  \author Hanyu Wang
 */
 
 #pragma once
 
 #include "../../utils/index_list.hpp"
-#include "../../utils/stopwatch.hpp"
 #include "../../utils/node_map.hpp"
+#include "../../utils/stopwatch.hpp"
 
-#include <kitty/kitty.hpp>
-#include <fmt/format.h>
 #include <abcresub/abcresub.hpp>
+#include <fmt/format.h>
+#include <kitty/kitty.hpp>
 
-#include <vector>
 #include <algorithm>
-#include <type_traits>
 #include <optional>
+#include <type_traits>
+#include <vector>
+
+#include <queue>
+#include <tuple>
+#include <unordered_map>
 
 namespace mockturtle
 {
 
-struct xag_resyn_static_params
+struct xag_costfn_resyn_static_params
 {
-  using base_type = xag_resyn_static_params;
+  using base_type = xag_costfn_resyn_static_params;
 
   /*! \brief Maximum number of binate divisors to be considered. */
-  static constexpr uint32_t max_binates{50u};
+  static constexpr uint32_t max_binates{ 50u };
 
   /*! \brief Reserved capacity for divisor truth tables (number of divisors). */
-  static constexpr uint32_t reserve{200u};
+  static constexpr uint32_t reserve{ 200u };
 
   /*! \brief Whether to consider single XOR gates (i.e., using XAGs instead of AIGs). */
-  static constexpr bool use_xor{true};
+  static constexpr bool use_xor{ true };
 
   /*! \brief Whether to copy truth tables. */
-  static constexpr bool copy_tts{false};
+  static constexpr bool copy_tts{ false };
 
   /*! \brief Whether to preserve depth. */
-  static constexpr bool preserve_depth{false};
+  static constexpr bool preserve_depth{ false };
 
   /*! \brief Whether the divisors have uniform costs (size and depth, whenever relevant). */
-  static constexpr bool uniform_div_cost{true};
+  static constexpr bool uniform_div_cost{ true };
 
   /*! \brief Size cost of each AND gate. */
-  static constexpr uint32_t size_cost_of_and{1u};
+  static constexpr uint32_t size_cost_of_and{ 1u };
 
   /*! \brief Size cost of each XOR gate (only relevant when `use_xor = true`). */
-  static constexpr uint32_t size_cost_of_xor{1u};
+  static constexpr uint32_t size_cost_of_xor{ 1u };
 
   /*! \brief Depth cost of each AND gate (only relevant when `preserve_depth = true`). */
-  static constexpr uint32_t depth_cost_of_and{1u};
+  static constexpr uint32_t depth_cost_of_and{ 1u };
 
   /*! \brief Depth cost of each XOR gate (only relevant when `preserve_depth = true` and `use_xor = true`). */
-  static constexpr uint32_t depth_cost_of_xor{1u};
+  static constexpr uint32_t depth_cost_of_xor{ 1u };
+
+  /*! \brief Whether collect multiple solutions and choose the best */
+  static constexpr bool collect_sols{ false };
 
   using truth_table_storage_type = void;
   using node_type = void;
 };
 
 template<class TT>
-struct xag_resyn_static_params_default : public xag_resyn_static_params
+struct xag_costfn_resyn_static_params_default : public xag_costfn_resyn_static_params
 {
   using truth_table_storage_type = std::vector<TT>;
   using node_type = uint32_t;
 };
 
 template<class TT>
-struct aig_resyn_static_params_default : public xag_resyn_static_params_default<TT>
+struct aig_costfn_resyn_static_params_default : public xag_costfn_resyn_static_params_default<TT>
+{
+  static constexpr bool use_xor = false;
+};
+
+template<class TT>
+struct xag_costfn_resyn_static_params_preserve_depth : public xag_costfn_resyn_static_params_default<TT>
+{
+  static constexpr bool preserve_depth = true;
+  static constexpr bool uniform_div_cost = false;
+  static constexpr bool collect_sols = true;
+};
+
+template<class TT>
+struct aig_costfn_resyn_static_params_preserve_depth : public xag_costfn_resyn_static_params_preserve_depth<TT>
 {
   static constexpr bool use_xor = false;
 };
 
 template<class Ntk>
-struct xag_resyn_static_params_for_sim_resub : public xag_resyn_static_params
+struct xag_costfn_resyn_static_params_for_sim_resub : public xag_costfn_resyn_static_params
 {
   using truth_table_storage_type = incomplete_node_map<kitty::partial_truth_table, Ntk>;
   using node_type = typename Ntk::node;
 };
 
 template<class Ntk>
-struct aig_resyn_static_params_for_sim_resub : public xag_resyn_static_params_for_sim_resub<Ntk>
+struct aig_costfn_resyn_static_params_for_sim_resub : public xag_costfn_resyn_static_params_for_sim_resub<Ntk>
 {
   static constexpr bool use_xor = false;
 };
 
-struct xag_resyn_stats
+struct xag_costfn_resyn_stats
 {
   /*! \brief Time for finding 0-resub and collecting unate literals. */
-  stopwatch<>::duration time_unate{0};
+  stopwatch<>::duration time_unate{ 0 };
 
   /*! \brief Time for finding 1-resub. */
-  stopwatch<>::duration time_resub1{0};
+  stopwatch<>::duration time_resub1{ 0 };
 
   /*! \brief Time for finding 2-resub. */
-  stopwatch<>::duration time_resub2{0};
+  stopwatch<>::duration time_resub2{ 0 };
 
   /*! \brief Time for finding 3-resub. */
-  stopwatch<>::duration time_resub3{0};
+  stopwatch<>::duration time_resub3{ 0 };
 
   /*! \brief Time for sorting unate literals and unate pairs. */
-  stopwatch<>::duration time_sort{0};
+  stopwatch<>::duration time_sort{ 0 };
 
   /*! \brief Time for collecting unate pairs. */
-  stopwatch<>::duration time_collect_pairs{0};
+  stopwatch<>::duration time_collect_pairs{ 0 };
 
   /*! \brief Time for dividing the target and recursive call. */
-  stopwatch<>::duration time_divide{0};
+  stopwatch<>::duration time_divide{ 0 };
+
+  /*! \brief Number of solutions */
+  std::array<uint32_t, 4> num_sols;
+
+  /*! \brief Size of MFFC */
+  std::array<uint32_t, 4> num_mffc;
 
   void report() const
   {
-    fmt::print( "[i]         <xag_resyn_decompose>\n" );
+    fmt::print( "[i]         <xag_costfn_resyn_solver>\n" );
     fmt::print( "[i]             0-resub      : {:>5.2f} secs\n", to_seconds( time_unate ) );
     fmt::print( "[i]             1-resub      : {:>5.2f} secs\n", to_seconds( time_resub1 ) );
     fmt::print( "[i]             2-resub      : {:>5.2f} secs\n", to_seconds( time_resub2 ) );
@@ -173,25 +199,28 @@ struct xag_resyn_stats
       const std::vector<aig_network::node> divisors = ...;
       const node_map<TT, aig_network> tts = ...;
       const TT target = ..., care = ...;
-      xag_resyn_stats st;
-      xag_resyn_decompose<TT, node_map<TT, aig_network>, false, false, aig_network::node> resyn( st );
+      xag_costfn_resyn_stats st;
+      xag_costfn_resyn_solver<TT, node_map<TT, aig_network>, false, false, aig_network::node> resyn( st );
       auto result = resyn( target, care, divisors.begin(), divisors.end(), tts );
    \endverbatim
  */
-template<class TT, class static_params = xag_resyn_static_params_default<TT>>
-class xag_resyn_decompose
+template<class TT, class static_params = xag_costfn_resyn_static_params_default<TT>>
+class xag_costfn_resyn_solver
 {
 public:
-  using stats = xag_resyn_stats;
+  using stats = xag_costfn_resyn_stats;
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
+  using cost_t = typename std::pair<uint32_t, uint32_t>;
+  using sol_t = std::pair<cost_t, uint32_t>;
 
 private:
   struct unate_lit
   {
     unate_lit( uint32_t l )
-      : lit( l )
-    { }
+        : lit( l )
+    {
+    }
 
     bool operator==( unate_lit const& other ) const
     {
@@ -199,18 +228,21 @@ private:
     }
 
     uint32_t lit;
-    uint32_t score{0};
+    uint32_t score{ 0 };
   };
 
   struct fanin_pair
   {
     fanin_pair( uint32_t l1, uint32_t l2 )
-      : lit1( l1 < l2 ? l1 : l2 ), lit2( l1 < l2 ? l2 : l1 )
-    { }
+        : lit1( l1 < l2 ? l1 : l2 ), lit2( l1 < l2 ? l2 : l1 )
+    {
+    }
 
     fanin_pair( uint32_t l1, uint32_t l2, bool is_xor )
-      : lit1( l1 > l2 ? l1 : l2 ), lit2( l1 > l2 ? l2 : l1 )
-    { (void)is_xor; }
+        : lit1( l1 > l2 ? l1 : l2 ), lit2( l1 > l2 ? l2 : l1 )
+    {
+      (void)is_xor;
+    }
 
     bool operator==( fanin_pair const& other ) const
     {
@@ -218,14 +250,14 @@ private:
     }
 
     uint32_t lit1, lit2;
-    uint32_t score{0};
+    uint32_t score{ 0 };
   };
 
 public:
-  explicit xag_resyn_decompose( stats& st ) noexcept
-    : st( st )
+  explicit xag_costfn_resyn_solver( stats& st ) noexcept
+      : st( st )
   {
-    static_assert( std::is_same_v<typename static_params::base_type, xag_resyn_static_params>, "Invalid static_params type" );
+    static_assert( std::is_same_v<typename static_params::base_type, xag_costfn_resyn_static_params>, "Invalid static_params type" );
     static_assert( !( static_params::uniform_div_cost && static_params::preserve_depth ), "If depth is to be preserved, divisor depth cost must be provided (usually not uniform)" );
     divisors.reserve( static_params::reserve );
   }
@@ -242,7 +274,7 @@ public:
    * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
-  template<class iterator_type, 
+  template<class iterator_type,
            bool enabled = static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
@@ -257,7 +289,7 @@ public:
     {
       if constexpr ( static_params::copy_tts )
       {
-        divisors.emplace_back( (*ptts)[*begin] );
+        divisors.emplace_back( ( *ptts )[*begin] );
       }
       else
       {
@@ -269,17 +301,123 @@ public:
     return compute_function( max_size );
   }
 
-  template<class iterator_type, class Fn, 
+  template<class iterator_type, class Fn,
            bool enabled = !static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
-  {}
+  {
+  }
 
-  template<class iterator_type, class Fn, 
+  template<class iterator_type, class LeafFn, class NodeFn, class CmpFn,
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
-  {}
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, LeafFn&& _leaf_cost_fn, NodeFn&& _node_cost_fn, CmpFn&& _cmp_cost_fn, uint32_t _max_size = std::numeric_limits<uint32_t>::max(), uint32_t _max_depth = std::numeric_limits<uint32_t>::max() )
+  {
+
+    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
+
+    (void)_max_depth;
+    max_depth = _max_depth; /* preserve depth */
+    max_size = _max_size; /* preserve area */
+
+    ptts = &tts;
+    on_off_sets[0] = ~target & care;
+    on_off_sets[1] = target & care;
+
+    node_cost_fn = _node_cost_fn;
+    leaf_cost_fn = _leaf_cost_fn;
+    cmp_fn = _cmp_cost_fn;
+
+    // priority queue is from large to small
+    auto cmp = [&]( sol_t x, sol_t y ) { return !_cmp_cost_fn( x.first, y.first ); };
+
+    root_sols = std::priority_queue<sol_t, std::vector<sol_t>, std::function<bool( sol_t, sol_t )>>( cmp );
+    forest_sols.clear();
+
+    divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
+    forest_sols.emplace_back( std::tuple( std::pair( 0, 0 ), 0, 0 ) );
+
+    while ( begin != end )
+    {
+      if constexpr ( static_params::copy_tts )
+      {
+        divisors.emplace_back( ( *ptts )[*begin] );
+      }
+      else
+      {
+        divisors.emplace_back( *begin );
+      }
+      forest_sols.emplace_back( std::tuple( std::pair( leaf_cost_fn( *begin ) ), 0, 0 ) );
+      ++begin;
+    }
+    st.num_mffc[max_size > 3 ? 3 : max_size]++;
+    return compute_function( max_size );
+  }
 
 private:
+  auto get_solution_rec( uint32_t root_lit )
+  {
+    if ( ( root_lit >> 1 ) < divisors.size() )
+    {
+      /* reach the input, where root_lit == div_id */
+      return root_lit;
+    }
+    /* back trace and find the whole structure */
+    auto [cost, left, right] = forest_sols[( root_lit >> 1 )];
+    auto idx_left = get_solution_rec( left );
+    auto idx_right = get_solution_rec( right );
+
+    auto idx_ret = ( left < right ) ? index_list.add_and( idx_left, idx_right )
+                                    : index_list.add_xor( idx_left, idx_right );
+    return idx_ret + ( root_lit & 01 );
+  }
+  std::optional<uint32_t> get_solution()
+  {
+    if ( root_sols.empty() )
+    {
+      st.num_sols[0]++;
+      return std::nullopt;
+    }
+    else
+    {
+      st.num_sols[root_sols.size() > 3 ? 3 : root_sols.size()]++;
+      auto [cost, res] = root_sols.top();
+      if (!cmp_fn(cost, std::pair(max_size, max_depth))) return std::nullopt;
+      // std::cout << "[" << max_size << " " << max_depth << "]\t";
+      while(root_sols.empty() == false) {
+        auto [_cost, _res] = root_sols.top(); root_sols.pop();
+        // std::cout << _cost.first << " " << _cost.second << "\t";
+      }
+      // std::cout << "\n";
+      auto root_lit = get_solution_rec( res );
+      return root_lit;
+    }
+  }
+  uint32_t add_solution( uint32_t lit0, uint32_t lit1 = 0, uint32_t lit2 = 0, bool is_root = true, bool is_xor = false )
+  {
+    if ( lit1 == 0 ) /* add leaf */
+    {
+      auto leaf_cost = std::get<0>( forest_sols[( lit0 >> 1 )] );
+      if ( is_root )
+      {
+        root_sols.push( std::pair( leaf_cost, lit0 ) ); /* cost of leaf node */
+      }
+      return lit0;
+    }
+    else /* add node */
+    {
+      uint32_t on_off = ( lit0 & 01 );
+      auto node_cost = node_cost_fn( std::get<0>( forest_sols[( lit1 >> 1 )] ), std::get<0>( forest_sols[( lit2 >> 1 )] ), is_xor );
+      assert( ( lit1 >> 1 ) != ( lit2 >> 1 ) ); /* two fanin should not be the same */
+      /* lit1 < lit2 : AND; lit1 > lit2: XOR */
+      forest_sols.emplace_back( ( is_xor ^ ( lit1 < lit2 ) ) ? std::tuple( node_cost, lit1, lit2 )
+                                                             : std::tuple( node_cost, lit2, lit1 ) );
+      if ( is_root )
+      {
+        root_sols.push( std::pair( node_cost, ( ( forest_sols.size() - 1 ) << 1 ) | on_off ) );
+      }
+      return ( ( forest_sols.size() - 1 ) << 1 ) | on_off;
+    }
+  }
+
   std::optional<index_list_t> compute_function( uint32_t num_inserts )
   {
     index_list.clear();
@@ -305,31 +443,31 @@ private:
     /* try 0-resub and collect unate literals */
     auto const res0 = call_with_stopwatch( st.time_unate, [&]() {
       return find_one_unate();
-    });
+    } );
     if ( res0 )
     {
       return *res0;
     }
     if ( num_inserts == 0u )
     {
-      return std::nullopt;
+      return get_solution();
     }
 
     /* sort unate literals and try 1-resub */
     call_with_stopwatch( st.time_sort, [&]() {
       sort_unate_lits( pos_unate_lits, 1 );
       sort_unate_lits( neg_unate_lits, 0 );
-    });
+    } );
     auto const res1or = call_with_stopwatch( st.time_resub1, [&]() {
       return find_div_div( pos_unate_lits, 1 );
-    });
+    } );
     if ( res1or )
     {
       return *res1or;
     }
     auto const res1and = call_with_stopwatch( st.time_resub1, [&]() {
       return find_div_div( neg_unate_lits, 0 );
-    });
+    } );
     if ( res1and )
     {
       return *res1and;
@@ -351,48 +489,55 @@ private:
     }
     if ( num_inserts == 1u )
     {
-      return std::nullopt;
+      return get_solution();
     }
 
     /* collect AND-type unate pairs and sort (both types), then try 2- and 3-resub */
     call_with_stopwatch( st.time_collect_pairs, [&]() {
       collect_unate_pairs();
-    });
+    } );
     call_with_stopwatch( st.time_sort, [&]() {
       sort_unate_pairs( pos_unate_pairs, 1 );
       sort_unate_pairs( neg_unate_pairs, 0 );
-    });
+    } );
     auto const res2or = call_with_stopwatch( st.time_resub2, [&]() {
       return find_div_pair( pos_unate_lits, pos_unate_pairs, 1 );
-    });
+    } );
     if ( res2or )
     {
       return *res2or;
     }
     auto const res2and = call_with_stopwatch( st.time_resub2, [&]() {
       return find_div_pair( neg_unate_lits, neg_unate_pairs, 0 );
-    });
+    } );
     if ( res2and )
     {
       return *res2and;
     }
 
-    if ( num_inserts >= 3u )
+    if ( num_inserts == 2u )
     {
-      auto const res3or = call_with_stopwatch( st.time_resub3, [&]() {
-        return find_pair_pair( pos_unate_pairs, 1 );
-      });
-      if ( res3or )
-      {
-        return *res3or;
-      }
-      auto const res3and = call_with_stopwatch( st.time_resub3, [&]() {
-        return find_pair_pair( neg_unate_pairs, 0 );
-      });
-      if ( res3and )
-      {
-        return *res3and;
-      }
+      return get_solution();
+    }
+
+    auto const res3or = call_with_stopwatch( st.time_resub3, [&]() {
+      return find_pair_pair( pos_unate_pairs, 1 );
+    } );
+    if ( res3or )
+    {
+      return *res3or;
+    }
+    auto const res3and = call_with_stopwatch( st.time_resub3, [&]() {
+      return find_pair_pair( neg_unate_pairs, 0 );
+    } );
+    if ( res3and )
+    {
+      return *res3and;
+    }
+
+    if ( num_inserts == 3u )
+    {
+      return get_solution();
     }
 
     /* choose something to divide and recursive call on the remainder */
@@ -436,7 +581,7 @@ private:
           score_pair = neg_unate_pairs[0].score;
         }
       }
-    });
+    } );
 
     if ( score_div > score_pair / 2 ) /* divide with a divisor */
     {
@@ -446,8 +591,7 @@ private:
       uint32_t const lit = on_off_div ? pos_unate_lits[0].lit : neg_unate_lits[0].lit;
       call_with_stopwatch( st.time_divide, [&]() {
         on_off_sets[on_off_div] &= lit & 0x1 ? get_div( lit >> 1 ) : ~get_div( lit >> 1 );
-      });
-
+      } );
       auto const res_remain_div = compute_function_rec( num_inserts - 1 );
       if ( res_remain_div )
       {
@@ -463,22 +607,18 @@ private:
         {
           if ( pair.lit1 > pair.lit2 ) /* XOR pair: ~(lit1 ^ lit2) = ~lit1 ^ lit2 */
           {
-            on_off_sets[on_off_pair] &= ( pair.lit1 & 0x1 ? get_div( pair.lit1 >> 1 ) : ~get_div( pair.lit1 >> 1 ) )
-                                  ^ ( pair.lit2 & 0x1 ? ~get_div( pair.lit2 >> 1 ) : get_div( pair.lit2 >> 1 ) );
+            on_off_sets[on_off_pair] &= ( pair.lit1 & 0x1 ? get_div( pair.lit1 >> 1 ) : ~get_div( pair.lit1 >> 1 ) ) ^ ( pair.lit2 & 0x1 ? ~get_div( pair.lit2 >> 1 ) : get_div( pair.lit2 >> 1 ) );
           }
           else /* AND pair: ~(lit1 & lit2) = ~lit1 | ~lit2 */
           {
-            on_off_sets[on_off_pair] &= ( pair.lit1 & 0x1 ? get_div( pair.lit1 >> 1 ) : ~get_div( pair.lit1 >> 1 ) )
-                                  | ( pair.lit2 & 0x1 ? get_div( pair.lit2 >> 1 ) : ~get_div( pair.lit2 >> 1 ) );
+            on_off_sets[on_off_pair] &= ( pair.lit1 & 0x1 ? get_div( pair.lit1 >> 1 ) : ~get_div( pair.lit1 >> 1 ) ) | ( pair.lit2 & 0x1 ? get_div( pair.lit2 >> 1 ) : ~get_div( pair.lit2 >> 1 ) );
           }
         }
         else /* AND pair: ~(lit1 & lit2) = ~lit1 | ~lit2 */
         {
-          on_off_sets[on_off_pair] &= ( pair.lit1 & 0x1 ? get_div( pair.lit1 >> 1 ) : ~get_div( pair.lit1 >> 1 ) )
-                                | ( pair.lit2 & 0x1 ? get_div( pair.lit2 >> 1 ) : ~get_div( pair.lit2 >> 1 ) );
+          on_off_sets[on_off_pair] &= ( pair.lit1 & 0x1 ? get_div( pair.lit1 >> 1 ) : ~get_div( pair.lit1 >> 1 ) ) | ( pair.lit2 & 0x1 ? get_div( pair.lit2 >> 1 ) : ~get_div( pair.lit2 >> 1 ) );
         }
-      });
-
+      } );
       auto const res_remain_pair = compute_function_rec( num_inserts - 2 );
       if ( res_remain_pair )
       {
@@ -510,35 +650,49 @@ private:
     num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
     if ( num_bits[0] == 0 )
     {
-      return 1;
+      if constexpr ( static_params::collect_sols )
+      {
+        add_solution( 1 );
+      }
+      else
+      {
+        return 1;
+      }
     }
     if ( num_bits[1] == 0 )
     {
-      return 0;
+      if constexpr ( static_params::collect_sols )
+      {
+        add_solution( 0 );
+      }
+      else
+      {
+        return 0;
+      }
     }
 
     for ( auto v = 1u; v < divisors.size(); ++v )
     {
-      bool unateness[4] = {false, false, false, false};
+      bool unateness[4] = { false, false, false, false };
       /* check intersection with off-set */
-      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[0] ) )
+      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div( v ), on_off_sets[0] ) )
       {
         pos_unate_lits.emplace_back( v << 1 );
         unateness[0] = true;
       }
-      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[0] ) )
+      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div( v ), on_off_sets[0] ) )
       {
         pos_unate_lits.emplace_back( v << 1 | 0x1 );
         unateness[1] = true;
       }
 
       /* check intersection with on-set */
-      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[1] ) )
+      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div( v ), on_off_sets[1] ) )
       {
         neg_unate_lits.emplace_back( v << 1 );
         unateness[2] = true;
       }
-      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[1] ) )
+      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div( v ), on_off_sets[1] ) )
       {
         neg_unate_lits.emplace_back( v << 1 | 0x1 );
         unateness[3] = true;
@@ -547,11 +701,25 @@ private:
       /* 0-resub */
       if ( unateness[0] && unateness[3] )
       {
-        return ( v << 1 );
+        if constexpr ( static_params::collect_sols )
+        {
+          add_solution( ( v << 1 ) );
+        }
+        else
+        {
+          return ( v << 1 );
+        }
       }
       if ( unateness[1] && unateness[2] )
       {
-        return ( v << 1 ) + 1;
+        if constexpr ( static_params::collect_sols )
+        {
+          add_solution( ( v << 1 ) + 1 );
+        }
+        else
+        {
+          return ( v << 1 ) + 1;
+        }
       }
       /* useless unate literal */
       if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
@@ -579,8 +747,8 @@ private:
       l.score = kitty::count_ones( ( l.lit & 0x1 ? ~get_div( l.lit >> 1 ) : get_div( l.lit >> 1 ) ) & on_off_sets[on_off] );
     }
     std::sort( unate_lits.begin(), unate_lits.end(), [&]( unate_lit const& l1, unate_lit const& l2 ) {
-        return l1.score > l2.score; // descending order
-    });
+      return l1.score > l2.score; // descending order
+    } );
   }
 
   void sort_unate_pairs( std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
@@ -589,24 +757,17 @@ private:
     {
       if constexpr ( static_params::use_xor )
       {
-        p.score = ( p.lit1 > p.lit2 ) ?
-                    kitty::count_ones( ( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) )
-                                     ^ ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) ) )
-                                     & on_off_sets[on_off] )
-                  : kitty::count_ones( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) )
-                                     & ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) )
-                                     & on_off_sets[on_off] );
+        p.score = ( p.lit1 > p.lit2 ) ? kitty::count_ones( ( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) ) ^ ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) ) ) & on_off_sets[on_off] )
+                                      : kitty::count_ones( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) ) & ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) ) & on_off_sets[on_off] );
       }
       else
       {
-        p.score = kitty::count_ones( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) )
-                                   & ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) )
-                                   & on_off_sets[on_off] );
+        p.score = kitty::count_ones( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) ) & ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) ) & on_off_sets[on_off] );
       }
     }
     std::sort( unate_pairs.begin(), unate_pairs.end(), [&]( fanin_pair const& p1, fanin_pair const& p2 ) {
-        return p1.score > p2.score; // descending order
-    });
+      return p1.score > p2.score; // descending order
+    } );
   }
 
   /* See if there are two unate divisors covering all on-set bits or all off-set bits.
@@ -633,8 +794,15 @@ private:
         auto const ntt2 = lit2 & 0x1 ? get_div( lit2 >> 1 ) : ~get_div( lit2 >> 1 );
         if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
-          auto const new_lit = index_list.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
-          return new_lit + on_off;
+          if constexpr ( static_params::collect_sols )
+          {
+            add_solution( on_off, ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
+          }
+          else
+          {
+            auto const new_lit = index_list.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
+            return new_lit + on_off;
+          }
         }
       }
     }
@@ -659,21 +827,18 @@ private:
         {
           if ( pair2.lit1 > pair2.lit2 )
           {
-            ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-                 ^ ( pair2.lit2 & 0x1 ? ~get_div( pair2.lit2 >> 1 ) : get_div( pair2.lit2 >> 1 ) );
+            ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) ) ^ ( pair2.lit2 & 0x1 ? ~get_div( pair2.lit2 >> 1 ) : get_div( pair2.lit2 >> 1 ) );
           }
           else
           {
-            ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-                 | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
+            ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) ) | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
           }
         }
         else
         {
-          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-               | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
+          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) ) | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
         }
-        
+
         if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
           uint32_t new_lit1;
@@ -681,19 +846,47 @@ private:
           {
             if ( pair2.lit1 > pair2.lit2 )
             {
-              new_lit1 = index_list.add_xor( pair2.lit1, pair2.lit2 );
+              if constexpr ( static_params::collect_sols )
+              {
+                new_lit1 = add_solution( 0, pair2.lit1, pair2.lit2, false, true );
+              }
+              else
+              {
+                new_lit1 = index_list.add_xor( pair2.lit1, pair2.lit2 );
+              }
+            }
+            else
+            {
+              if constexpr ( static_params::collect_sols )
+              {
+                new_lit1 = add_solution( 0, pair2.lit1, pair2.lit2, false );
+              }
+              else
+              {
+                new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
+              }
+            }
+          }
+          else
+          {
+            if constexpr ( static_params::collect_sols )
+            {
+              new_lit1 = add_solution( 0, pair2.lit1, pair2.lit2, false );
             }
             else
             {
               new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
             }
           }
+          if constexpr ( static_params::collect_sols )
+          {
+            add_solution( on_off, lit1 ^ 0x1, new_lit1 ^ 0x1 );
+          }
           else
           {
-            new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
+            auto const new_lit2 = index_list.add_and( ( lit1 ^ 0x1 ), new_lit1 ^ 0x1 );
+            return new_lit2 + on_off;
           }
-          auto const new_lit2 = index_list.add_and( ( lit1 ^ 0x1 ), new_lit1 ^ 0x1 );
-          return new_lit2 + on_off;
         }
       }
     }
@@ -721,31 +914,25 @@ private:
         {
           if ( pair1.lit1 > pair1.lit2 )
           {
-            ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) )
-                 ^ ( pair1.lit2 & 0x1 ? ~get_div( pair1.lit2 >> 1 ) : get_div( pair1.lit2 >> 1 ) );
+            ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) ) ^ ( pair1.lit2 & 0x1 ? ~get_div( pair1.lit2 >> 1 ) : get_div( pair1.lit2 >> 1 ) );
           }
           else
           {
-            ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) )
-                 | ( pair1.lit2 & 0x1 ? get_div( pair1.lit2 >> 1 ) : ~get_div( pair1.lit2 >> 1 ) );
+            ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) ) | ( pair1.lit2 & 0x1 ? get_div( pair1.lit2 >> 1 ) : ~get_div( pair1.lit2 >> 1 ) );
           }
           if ( pair2.lit1 > pair2.lit2 )
           {
-            ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-                 ^ ( pair2.lit2 & 0x1 ? ~get_div( pair2.lit2 >> 1 ) : get_div( pair2.lit2 >> 1 ) );
+            ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) ) ^ ( pair2.lit2 & 0x1 ? ~get_div( pair2.lit2 >> 1 ) : get_div( pair2.lit2 >> 1 ) );
           }
           else
           {
-            ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-                 | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
+            ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) ) | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
           }
         }
         else
         {
-          ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) )
-               | ( pair1.lit2 & 0x1 ? get_div( pair1.lit2 >> 1 ) : ~get_div( pair1.lit2 >> 1 ) );
-          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-               | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
+          ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) ) | ( pair1.lit2 & 0x1 ? get_div( pair1.lit2 >> 1 ) : ~get_div( pair1.lit2 >> 1 ) );
+          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) ) | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
         }
 
         if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
@@ -755,28 +942,71 @@ private:
           {
             if ( pair1.lit1 > pair1.lit2 )
             {
-              fanin_lit1 = index_list.add_xor( pair1.lit1, pair1.lit2 );
+              if constexpr ( static_params::collect_sols )
+              {
+                fanin_lit1 = add_solution( 0, pair1.lit1, pair1.lit2, false, true );
+              }
+              else
+              {
+                fanin_lit1 = index_list.add_xor( pair1.lit1, pair1.lit2 );
+              }
             }
             else
             {
-              fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
+              if constexpr ( static_params::collect_sols )
+              {
+                fanin_lit1 = add_solution( 0, pair1.lit1, pair1.lit2, false );
+              }
+              else
+              {
+                fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
+              }
             }
             if ( pair2.lit1 > pair2.lit2 )
             {
-              fanin_lit2 = index_list.add_xor( pair2.lit1, pair2.lit2 );
+              if constexpr ( static_params::collect_sols )
+              {
+                fanin_lit2 = add_solution( 0, pair2.lit1, pair2.lit2, false, true );
+              }
+              else
+              {
+                fanin_lit2 = index_list.add_xor( pair2.lit1, pair2.lit2 );
+              }
             }
             else
             {
-              fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+              if constexpr ( static_params::collect_sols )
+              {
+                fanin_lit2 = add_solution( 0, pair2.lit1, pair2.lit2, false );
+              }
+              else
+              {
+                fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+              }
             }
           }
           else
           {
-            fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
-            fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+            if constexpr ( static_params::collect_sols )
+            {
+              fanin_lit1 = add_solution( 0, pair1.lit1, pair1.lit2, false );
+              fanin_lit2 = add_solution( 0, pair2.lit1, pair2.lit2, false );
+            }
+            else
+            {
+              fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
+              fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
+            }
           }
-          uint32_t const output_lit = index_list.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
-          return output_lit + on_off;
+          if constexpr ( static_params::collect_sols )
+          {
+            add_solution( on_off, fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
+          }
+          else
+          {
+            uint32_t const output_lit = index_list.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
+            return output_lit + on_off;
+          }
         }
       }
     }
@@ -791,7 +1021,7 @@ private:
       for ( auto j = i + 1; j < binate_divs.size(); ++j )
       {
         auto const tt_xor = get_div( binate_divs[i] ) ^ get_div( binate_divs[j] );
-        bool unateness[4] = {false, false, false, false};
+        bool unateness[4] = { false, false, false, false };
         /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
         if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[1] ) )
         {
@@ -818,11 +1048,25 @@ private:
 
         if ( unateness[0] && unateness[2] )
         {
-          return index_list.add_xor( ( binate_divs[i] << 1 ), ( binate_divs[j] << 1 ) );
+          if constexpr ( static_params::collect_sols )
+          {
+            add_solution( ( binate_divs[i] << 1 ), ( binate_divs[j] << 1 ), true, true );
+          }
+          else
+          {
+            return index_list.add_xor( ( binate_divs[i] << 1 ), ( binate_divs[j] << 1 ) );
+          }
         }
         if ( unateness[1] && unateness[3] )
         {
-          return index_list.add_xor( ( binate_divs[i] << 1 ) + 1, ( binate_divs[j] << 1 ) );
+          if constexpr ( static_params::collect_sols )
+          {
+            add_solution( ( binate_divs[i] << 1 ) | 0x1, ( binate_divs[j] << 1 ) );
+          }
+          else
+          {
+            return index_list.add_xor( ( binate_divs[i] << 1 ) + 1, ( binate_divs[j] << 1 ) );
+          }
         }
       }
     }
@@ -851,12 +1095,12 @@ private:
     /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
     if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) )
     {
-      pos_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)(!pol1), ( div2 << 1 ) + (uint32_t)(!pol2) );
+      pos_unate_pairs.emplace_back( ( div1 << 1 ) + ( uint32_t )( !pol1 ), ( div2 << 1 ) + ( uint32_t )( !pol2 ) );
     }
     /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
     else if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) )
     {
-      neg_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)(!pol1), ( div2 << 1 ) + (uint32_t)(!pol2) );
+      neg_unate_pairs.emplace_back( ( div1 << 1 ) + ( uint32_t )( !pol1 ), ( div2 << 1 ) + ( uint32_t )( !pol2 ) );
     }
   }
 
@@ -868,7 +1112,7 @@ private:
     }
     else
     {
-      return (*ptts)[divisors[idx]];
+      return ( *ptts )[divisors[idx]];
     }
   }
 
@@ -887,133 +1131,20 @@ private:
   std::vector<uint32_t> binate_divs;
   std::vector<fanin_pair> pos_unate_pairs, neg_unate_pairs;
 
-  stats& st;
-}; /* xag_resyn_decompose */
+  /* root_sols: maintain the solutions ordered by cost function
+     forest_sols: maintain the topo structure of each solution */
+  std::priority_queue<sol_t, std::vector<sol_t>, std::function<bool( sol_t, sol_t )>> root_sols;
+  std::vector<std::tuple<cost_t, uint32_t, uint32_t>> forest_sols;
 
+  std::function<cost_t( cost_t, cost_t, bool )> node_cost_fn;
+  std::function<cost_t( uint32_t )> leaf_cost_fn;
+  std::function<bool( cost_t, cost_t )> cmp_fn;
 
-struct xag_resyn_abc_stats
-{};
-
-template<class TT, class static_params = xag_resyn_static_params_default<TT>>
-class xag_resyn_abc
-{
-public:
-  using stats = xag_resyn_abc_stats;
-  using index_list_t = large_xag_index_list;
-  using truth_table_t = TT;
-
-  explicit xag_resyn_abc( stats& st) noexcept
-    : st( st ), counter( 0 )
-  {
-    static_assert( std::is_same_v<typename static_params::base_type, xag_resyn_static_params>, "Invalid static_params type" );
-    static_assert( !static_params::preserve_depth && static_params::uniform_div_cost, "Advanced resynthesis is not implemented for this solver" );
-  }
-
-  virtual ~xag_resyn_abc()
-  {
-    abcresub::Abc_ResubPrepareManager( 0 );
-    release();
-  }
-
-  template<class iterator_type, class truth_table_storage_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_level = std::numeric_limits<uint32_t>::max() )
-  {
-    (void)max_level;
-    num_divisors = std::distance( begin, end ) + 2;
-    num_blocks_per_truth_table = target.num_blocks();
-    abcresub::Abc_ResubPrepareManager( num_blocks_per_truth_table );
-    alloc();
-
-    add_divisor( ~target & care ); /* off-set */
-    add_divisor( target & care ); /* on-set */
-
-    while ( begin != end )
-    {
-      add_divisor( tts[*begin] );
-      ++begin;
-    }
-
-    return compute_function( max_size );
-  }
-
-protected:
-  void add_divisor( TT const& tt )
-  {
-    assert( tt.num_blocks() == num_blocks_per_truth_table );
-    for ( uint64_t i = 0ul; i < num_blocks_per_truth_table; ++i )
-    {
-      if constexpr ( std::is_same_v<TT, kitty::partial_truth_table> || std::is_same_v<TT, kitty::dynamic_truth_table> )
-        Vec_WrdPush( abc_tts, tt._bits[i] );
-      else // static_truth_table
-        Vec_WrdPush( abc_tts, tt._bits );
-    }
-    Vec_PtrPush( abc_divs, Vec_WrdEntryP( abc_tts, counter * num_blocks_per_truth_table ) );
-    ++counter;
-  }
-
-  std::optional<index_list_t> compute_function( uint32_t num_inserts )
-  {
-    int nLimit = num_inserts > std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : num_inserts;
-    int * raw_list;
-    int size = abcresub::Abc_ResubComputeFunction( 
-               /* ppDivs */(void **)Vec_PtrArray( abc_divs ), 
-               /* nDivs */Vec_PtrSize( abc_divs ), 
-               /* nWords */num_blocks_per_truth_table, 
-               /* nLimit */nLimit, 
-               /* nDivsMax */static_params::max_binates, 
-               /* iChoice */0, /* fUseXor */int(static_params::use_xor), /* fDebug */0, /* fVerbose */0, 
-               /* ppArray */&raw_list );
-
-    if ( size )
-    {
-      index_list_t xag_list;
-      xag_list.add_inputs( num_divisors - 2 );
-      for ( int i = 0; i < size - 1; i += 2 )
-      {
-        if ( raw_list[i] < raw_list[i+1] )
-          xag_list.add_and( raw_list[i] - 2, raw_list[i+1] - 2 );
-        else
-          xag_list.add_xor( raw_list[i] - 2, raw_list[i+1] - 2 );
-      }
-      xag_list.add_output( raw_list[size - 1] < 2 ? raw_list[size - 1] : raw_list[size - 1] - 2 );
-      return xag_list;
-    }
-
-    return std::nullopt;
-  }
-
-  void dump( std::string const file = "dump.txt" ) const
-  {
-    abcresub::Abc_ResubDumpProblem( file.c_str(), (void **)Vec_PtrArray( abc_divs ),  Vec_PtrSize( abc_divs ), num_blocks_per_truth_table );
-  }
-
-  void alloc()
-  {
-    assert( abc_tts == nullptr );
-    assert( abc_divs == nullptr );
-    abc_tts = abcresub::Vec_WrdAlloc( num_divisors * num_blocks_per_truth_table );
-    abc_divs = abcresub::Vec_PtrAlloc( num_divisors );
-  }
-
-  void release()
-  {
-    assert( abc_divs != nullptr );
-    assert( abc_tts != nullptr );
-    Vec_PtrFree( abc_divs );
-    Vec_WrdFree( abc_tts );
-    abc_divs = nullptr;
-    abc_tts = nullptr;
-  }
-
-protected:
-  uint64_t num_divisors;
-  uint64_t num_blocks_per_truth_table;
-  uint64_t counter;
-
-  abcresub::Vec_Wrd_t * abc_tts{nullptr};
-  abcresub::Vec_Ptr_t * abc_divs{nullptr};
+  uint32_t max_depth{};
+  uint32_t max_size{};
 
   stats& st;
-}; /* xag_resyn_abc */
+}; /* xag_costfn_resyn_solver */
+
 
 } /* namespace mockturtle */

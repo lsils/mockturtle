@@ -47,7 +47,7 @@
 #include "../resyn_engines/aig_enumerative.hpp"
 #include "../resyn_engines/mig_enumerative.hpp"
 #include "../resyn_engines/mig_resyn.hpp"
-#include "../resyn_engines/xag_resyn.hpp"
+#include "../resyn_engines/xag_costfn_resyn.hpp"
 #include "../simulation.hpp"
 #include <kitty/kitty.hpp>
 
@@ -496,7 +496,7 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
 
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
-    using engine_t = xag_resyn_decompose<TT, aig_resyn_static_params_default<TT>>; // engine
+    using engine_t = xag_costfn_resyn_solver<TT, aig_costfn_resyn_static_params_default<TT>>; // engine
     using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t>;
     using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
@@ -511,7 +511,7 @@ void costfn_aig_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
 
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
-    using engine_t = xag_resyn_decompose<TT, aig_resyn_static_params_preserve_depth<TT>>;
+    using engine_t = xag_costfn_resyn_solver<TT, aig_costfn_resyn_static_params_preserve_depth<TT>>;
     using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t, /* preserve_depth */ true>;
     using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
@@ -545,7 +545,7 @@ void costfn_xag_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
 
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
-    using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_default<TT>>; // engine
+    using engine_t = xag_costfn_resyn_solver<TT, xag_costfn_resyn_static_params_default<TT>>; // engine
     using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t>;
     using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
@@ -562,7 +562,7 @@ void costfn_xag_heuristic_resub( Ntk& ntk, costfn_resub_params const& ps = {}, c
 
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::costfn_windowing<ViewedNtk, TT>;
-    using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_preserve_depth<TT>>;
+    using engine_t = xag_costfn_resyn_solver<TT, xag_costfn_resyn_static_params_preserve_depth<TT>>;
     using resyn_t = typename detail::costfn_resynthesis<ViewedNtk, TT, engine_t, /* preserve_depth */ true>;
     using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
