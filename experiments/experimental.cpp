@@ -23,8 +23,6 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
 
-    if ( benchmark != "sqrt" )
-      continue; // faster experiment
     fmt::print( "[i] processing {}\n", benchmark );
 
     // aig_network xag;
@@ -65,6 +63,7 @@ int main()
       auto [size_x, depth_x] = fanin_x;
       auto [size_y, depth_y] = fanin_y;
       return depth_x < depth_y;
+      // return size_x < size_y;
       // return size_x < size_y || ( size_x == size_y && depth_x < depth_y );
     };
 

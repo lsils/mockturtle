@@ -21,7 +21,7 @@ struct aig_costfn_resyn_sparams_costfn : public xag_costfn_resyn_static_params_d
 };
 
 template<class TT = kitty::partial_truth_table, class LeafFn, class NodeFn, class CmpFn>
-void test_aig_costfn_kresub( TT const& target, TT const& care, std::vector<TT> const& tts, LeafFn&& lf, NodeFn&& nf, CmpFn&& cmp, uint32_t num_inserts, uint32_t num_depth )
+void test_aig_costfn_kresub( TT const& target, TT const& care, std::vector<TT> const& tts, LeafFn&& lf, NodeFn&& nf, CmpFn&& cmp, uint32_t correct_size, uint32_t correct_depth )
 {
   xag_costfn_resyn_stats st;
   std::vector<uint32_t> divs;
@@ -30,8 +30,8 @@ void test_aig_costfn_kresub( TT const& target, TT const& care, std::vector<TT> c
     divs.emplace_back( i );
   }
 
-  (void)num_inserts;
-  (void)num_depth;
+  (void)correct_size;
+  (void)correct_depth;
 
   partial_simulator sim( tts );
   xag_costfn_resyn_solver<TT, aig_costfn_resyn_sparams_costfn<TT>> engine( st );
@@ -41,7 +41,7 @@ void test_aig_costfn_kresub( TT const& target, TT const& care, std::vector<TT> c
 
   CHECK( res );
   //   std::cout << to_index_list_string( *res ) << "\n";
-  CHECK( ( *res ).num_gates() == num_inserts );
+  CHECK( ( *res ).num_gates() == correct_size );
   aig_network aig;
   decode( aig, *res );
   const auto ans = simulate<TT, aig_network, partial_simulator>( aig, sim )[0];
@@ -49,7 +49,31 @@ void test_aig_costfn_kresub( TT const& target, TT const& care, std::vector<TT> c
   CHECK( kitty::implies( ~target & care, ~ans ) );
 }
 
-TEST_CASE( "AIG costfn resynthesis -- area opt", "[costfn_resyn]" )
+TEST_CASE( "AIG costfn resynthesis -- area optimization for wire", "[costfn_resyn]" )
+{
+
+  uint32_t num_var = 2;
+  std::vector<kitty::partial_truth_table> tts( 1, kitty::partial_truth_table( 1 << num_var ) );
+  kitty::partial_truth_table target( 1 << num_var );
+  kitty::partial_truth_table care = ~target.construct();
+
+  kitty::create_from_binary_string( target, "1000" ); // target = a
+  kitty::create_from_binary_string( tts[0], "1000" ); // a
+
+  using cost_t = std::pair<uint32_t, uint32_t>;
+  test_aig_costfn_kresub( target, care, tts,
+      [&]( auto n ) { (void)n; return std::pair( 0, 0 ); },
+      []( cost_t x, cost_t y, bool is_xor = false ) {
+        (void) is_xor; 
+        return std::pair(
+          x.first + y.first + 1, 
+          std::max(x.second, y.second) + 1);
+      },
+      []( cost_t x, cost_t y ) { return x.first < y.first; },
+      0, 0 ); 
+}
+
+TEST_CASE( "AIG costfn resynthesis -- area optimization for small circuit", "[costfn_resyn]" )
 {
 
   uint32_t num_var = 2;
@@ -76,7 +100,7 @@ TEST_CASE( "AIG costfn resynthesis -- area opt", "[costfn_resyn]" )
       0, 2 ); 
 }
 
-TEST_CASE( "AIG costfn resynthesis -- depth opt", "[costfn_resyn]" )
+TEST_CASE( "AIG costfn resynthesis -- depth optimization for small circuit", "[costfn_resyn]" )
 {
 
   uint32_t num_var = 2;
@@ -100,4 +124,66 @@ TEST_CASE( "AIG costfn resynthesis -- depth opt", "[costfn_resyn]" )
       },
       []( cost_t x, cost_t y ) { return x.second < y.second; },
       1, 1 );
+}
+
+TEST_CASE( "AIG costfn resynthesis -- area optimization with small binate divisors", "[costfn_resyn]" )
+{
+
+  uint32_t num_var = 3;
+  std::vector<kitty::partial_truth_table> tts( 3, kitty::partial_truth_table( 1 << num_var ) );
+  kitty::partial_truth_table target( 1 << num_var );
+  kitty::partial_truth_table care = ~target.construct();
+
+  kitty::create_from_binary_string( target, "11100010" ); // target = ab + (~b)c
+  kitty::create_from_binary_string( tts[0], "11110000" ); // a
+  kitty::create_from_binary_string( tts[1], "11001100" ); // b
+  kitty::create_from_binary_string( tts[2], "10101010" ); // c
+
+  std::vector<uint32_t> levels = { 0, 0, 0 };
+  using cost_t = std::pair<uint32_t, uint32_t>;
+  test_aig_costfn_kresub( target, care, tts,
+      [&]( auto n ) { return std::pair( 0, levels[n] ); },
+      []( cost_t x, cost_t y, bool is_xor = false ) {
+        (void) is_xor; 
+        return std::pair(
+          x.first + y.first + 1, 
+          std::max(x.second, y.second) + 1);
+      },
+      []( cost_t x, cost_t y ) { return x.first < y.first; },
+      3, 2 ); 
+}
+
+TEST_CASE( "AIG costfn resynthesis -- area optimization with binate divisors", "[costfn_resyn]" )
+{
+
+  uint32_t num_var = 3;
+  std::vector<kitty::partial_truth_table> tts( 3, kitty::partial_truth_table( 1 << num_var ) );
+  kitty::partial_truth_table target( 1 << num_var );
+  kitty::partial_truth_table care = ~target.construct();
+
+  /*
+    target = ab+ac+bc (MAJ)
+        ab+c(a+b)
+                c(a+b)
+      ab  a+b
+    a         b       c
+    requires 4 new nodes, with depth 3.
+   */
+  kitty::create_from_binary_string( target, "11101000" ); 
+  kitty::create_from_binary_string( tts[0], "11110000" ); // a
+  kitty::create_from_binary_string( tts[1], "11001100" ); // b
+  kitty::create_from_binary_string( tts[2], "10101010" ); // c
+
+  std::vector<uint32_t> levels = { 0, 0, 0 };
+  using cost_t = std::pair<uint32_t, uint32_t>;
+  test_aig_costfn_kresub( target, care, tts,
+      [&]( auto n ) { return std::pair( 0, levels[n] ); },
+      []( cost_t x, cost_t y, bool is_xor = false ) {
+        (void) is_xor; 
+        return std::pair(
+          x.first + y.first + 1, 
+          std::max(x.second, y.second) + 1);
+      },
+      []( cost_t x, cost_t y ) { return x.first < y.first; },
+      4, 3 ); 
 }
