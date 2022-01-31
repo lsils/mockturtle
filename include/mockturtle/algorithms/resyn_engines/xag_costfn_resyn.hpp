@@ -941,8 +941,8 @@ private:
 
   /* root_sols: maintain the solutions ordered by cost function
      forest_sols: maintain the topo structure of each solution */
-  uint32_t max_rec_depth{1u};
-  std::array<std::vector<sol_t>, 2> root_sols;
+  uint32_t max_rec_depth{6u};
+  std::array<std::vector<sol_t>, 7> root_sols;
   uint32_t rec_depth{0u};
 
   std::vector<std::tuple<cost_t, uint32_t, uint32_t>> forest_sols;
