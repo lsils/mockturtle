@@ -303,7 +303,10 @@ public:
       ++begin;
     }
     st.num_mffc[initial_cost.first > 3 ? 3 : initial_cost.first]++;
-    search_solutions();
+
+    rec_depth = 0u;    
+    search_solutions_rec();
+
     return get_solution();
   }
 
@@ -377,12 +380,44 @@ private:
     }
   }
 
+  /*
+  search solutions using BFS algorithm on a Tree:
 
-  void search_solutions()
+  We maintain a priority queue consists of tree nodes (start from root).
+
+  The queue has a compare function based on the cost function. (not precise)
+
+    at each Tree node (queue.top() ):
+    1. consider if this node has trivial solutions that garantee to have lowest cost:
+      such as: constant 0 / 1
+    2. consider the node as a 0-resub using wires such as single divisors. But this node may not be the best solution (e.g. depth)
+    3. add a node at this point, there are several possible cases:
+      a. pos unate AND <?>
+      b. neg unate OR <?>
+      c. binate XOR <?>
+      d. unate pair AND <?>
+      e. unate pair OR <?>
+      f. binate pair XOR <?> (this case is too time-consuming)
+
+      for each case, we first estimate the best cost of it. 
+        1) calculate the "leaf cost" of chosen divisor(s) 
+        2) calculate the "node cost" of chosen node (AND / OR / XOR)
+        3) the "node cost" takes the input of the result of 1) and:
+          (i) zero cost : BFS
+          (ii) estimation based on the remaining problem : A *  
+      
+      if it is worse than the current best, we prone this branch.
+    4. then recursively process <?>
+
+  Because the recursive manner, the solution is always skewed (if not optimized).
+  We store all the successful resub and compare their actual cost (after balancing / additional optimization)
+
+  this is because we cannot garantee that the first-found solution is the best because of the non-monotonic behavior
+  */
+  void search_solutions_bfs()
   {
-    rec_depth = 0u;
-    /* collect all to temp_sols */
-    search_solutions_rec();
+    // TODO: implement this
+
   }
 
   void search_solutions_rec()
@@ -508,6 +543,7 @@ private:
           {}
           else if ( (sol.second >> 1) == 0 ) // filter X = 1 AND X
           {}
+          // TODO: perform a balance here
           else add_solution( on_off_div, lit ^ 0x1, sol.second ^ on_off_div );
         }
       }
@@ -549,6 +585,7 @@ private:
         {
           if ( (sol.second >> 1) == 0 ) // filter X = 1 AND X
           {}
+          // TODO: perform a balance here
           else add_solution( on_off_pair, new_lit1 ^ 0x1, sol.second ^ on_off_pair );
         }
       }
