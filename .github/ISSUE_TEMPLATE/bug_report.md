@@ -12,10 +12,10 @@ What went wrong? (e.g. the optimized circuit was not equivalent to the original 
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Which version of the code (commit or PR number) are you using? (Preferably the latest, unless there are special reasons.)
-2. A complete snippet of your code (usually a cpp file including `main`.)
-3. The benchmark circuit for which the error occurs. (Preferably smaller circuits, if it is possible to minimize it first.)
-4. Error messages or print-outs you see (if any). (Preferably copy-pasted as-is.)
+1. Which version of `mockturtle` (commit or PR number) are you using? (Preferably the latest, unless there are special reasons.)
+2. A complete snippet of your code (usually a cpp file including `main`).
+3. The benchmark circuit for which the error occurs (preferably smaller circuits, if it is possible to minimize it first).
+4. Error messages or print-outs you see (if any) (preferably copy-pasted as-is).
 
 **Environment**
  - OS: [e.g. Linux]
