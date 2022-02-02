@@ -47,7 +47,7 @@
 namespace mockturtle
 {
 
-void generate_aqfp_dags( const mockturtle::dag_generator_params& params, const std::string& file_prefix, uint32_t num_threads )
+inline void generate_aqfp_dags( const mockturtle::dag_generator_params& params, const std::string& file_prefix, uint32_t num_threads )
 {
   auto t0 = std::chrono::high_resolution_clock::now();
 
@@ -90,8 +90,8 @@ void generate_aqfp_dags( const mockturtle::dag_generator_params& params, const s
   std::cerr << fmt::format( "Number of DAGs of different input counts: [3 -> {},  4 -> {}, 5 -> {}]\n", counts_inp[3u], counts_inp[4u], counts_inp[5u] );
 }
 
-void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters,
-                             const std::string& dag_file_prefix, const std::string& cost_file_prefix, uint32_t num_threads )
+inline void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters,
+                                    const std::string& dag_file_prefix, const std::string& cost_file_prefix, uint32_t num_threads )
 {
   auto t0 = std::chrono::high_resolution_clock::now();
 
@@ -150,8 +150,8 @@ void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& gate_co
   std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime elapsed in seconds {:9.3f}\n", count, d2.count() / 1000.0 );
 }
 
-void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters,
-                       const std::string& dag_file_prefix, const std::string& cost_file_prefix, const std::string& db_file_prefix, uint32_t num_threads )
+inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters,
+                              const std::string& dag_file_prefix, const std::string& cost_file_prefix, const std::string& db_file_prefix, uint32_t num_threads )
 {
   auto t0 = std::chrono::high_resolution_clock::now();
 
@@ -255,7 +255,7 @@ void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_costs, c
   std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime elapsed in seconds {:9.3f}\n", count, d2.count() / 1000.0 );
 }
 
-void generate_aqfp_db(
+inline void generate_aqfp_db(
     const mockturtle::dag_generator_params& params,
     const std::unordered_map<uint32_t, double>& gate_costs,
     const std::unordered_map<uint32_t, double>& splitters,

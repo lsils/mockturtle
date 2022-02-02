@@ -53,7 +53,7 @@ namespace mockturtle
  *   = (x0 * fi(x1, ..., xn)) + (!x0 * !fi(!x1, ..., !xn)).
  *
  */
-aig_network self_dualize_aig( aig_network const& src_aig )
+inline aig_network self_dualize_aig( aig_network const& src_aig )
 {
   using node = node<aig_network>;
   using signal = signal<aig_network>;
