@@ -233,8 +233,8 @@ public:
     {
       if ( ps.preserve_depth )
       {
-        win.max_level = ntk.level( n ) - 1;
-        divs_mgr.set_max_level( win.max_level );
+        win.max_level = ntk.level( n );
+        divs_mgr.set_max_level( ntk.level( n ) - 1 );
       }
     }
 
@@ -287,7 +287,14 @@ public:
       }
     });
 
-    win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
+    if ( ps.preserve_depth )
+    {
+      win.max_size = win.mffc_size;
+    }
+    else
+    {
+      win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
+    }
 
     st.num_windows++;
     st.num_leaves += leaves.size();
@@ -437,19 +444,37 @@ void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk::base_type is not xag_network" );
 
-  using ViewedNtk = depth_view<fanout_view<Ntk>>;
-  fanout_view<Ntk> fntk( ntk );
-  ViewedNtk viewed( fntk );
-
-  using TT = typename kitty::dynamic_truth_table;  
-  using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
-  using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_default<TT>>;
-  using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>; 
-  using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
-
   window_resub_stats st;
-  opt_t p( viewed, ps, st );
-  p.run();
+
+  if ( !ps.wps.preserve_depth )
+  {
+    using ViewedNtk = fanout_view<Ntk>;
+    ViewedNtk viewed( ntk );
+
+    using TT = typename kitty::dynamic_truth_table;
+    using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
+    using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_default<TT>>;
+    using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>;
+    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+    opt_t p( viewed, ps, st );
+    p.run();
+  }
+  else
+  {
+    using ViewedNtk = depth_view<fanout_view<Ntk>>;
+    fanout_view<Ntk> fntk( ntk );
+    ViewedNtk viewed( fntk );
+
+    using TT = typename kitty::dynamic_truth_table;
+    using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
+    using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_preserve_depth<TT>>;
+    using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t, /* preserve_depth */true>;
+    using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
+
+    opt_t p( viewed, ps, st );
+    p.run();
+  }
 
   if ( ps.verbose )
   {

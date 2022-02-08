@@ -16,14 +16,14 @@ int main()
   using namespace mockturtle::experimental;
   using namespace experiments;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "experimental", "benchmark", "size", "gain", "est. gain", "#sols", "runtime", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "experimental", "benchmark", "size", "size gain", "depth", "depth gain", "runtime", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
-    aig_network aig;
-    auto const result = lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
+    xag_network xag;
+    auto const result = lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( xag ) );
     assert( result == lorina::return_code::success ); (void)result;
 
     window_resub_params ps;
@@ -33,11 +33,17 @@ int main()
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
 
-    window_aig_heuristic_resub( aig, ps, &st );
-    aig = cleanup_dangling( aig );
+    depth_view _dntk( xag );
+    uint32_t initial_size = _dntk.num_gates();
+    uint32_t initial_depth = _dntk.depth();
 
-    const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( aig, benchmark );
-    exp( benchmark, st.initial_size, st.initial_size - aig.num_gates(), st.estimated_gain, st.num_solutions, to_seconds( st.time_total ), cec );
+    window_xag_heuristic_resub( xag, ps, &st );
+    xag = cleanup_dangling( xag );
+
+    depth_view dntk( xag );
+
+    const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( xag, benchmark );
+    exp( benchmark, initial_size, initial_size - xag.num_gates(), initial_depth, initial_depth - dntk.depth(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();
