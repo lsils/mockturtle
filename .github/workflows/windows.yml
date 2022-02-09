@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2022
+    runs-on: windows-2019
     name: Visual Studio
 
     steps:
@@ -20,11 +20,11 @@ jobs:
     - name: Create build directory
       run: mkdir build
     - name: Run CMake
-      run: cmake -G "Visual Studio 17 2022" -DMOCKTURTLE_TEST=ON ..
+      run: cmake -G "Visual Studio 16 2019" -DMOCKTURTLE_TEST=ON ..
       working-directory: ./build
     - name: Build mockturtle
       run: |
-        "C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln
+        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln
       working-directory: ./build
       shell: cmd
     - name: Run tests
