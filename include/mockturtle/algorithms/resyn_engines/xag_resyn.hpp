@@ -315,7 +315,9 @@ public:
       }
       ++begin;
     }
-    return compute_function_bfs( max_depth, depth_cost );
+    depth_fn = depth_cost;
+    upper_bound = max_size;
+    return area_optimization( max_size );
     // return compute_function( max_size );
   }
 
@@ -326,74 +328,74 @@ private:
   {
     uint32_t prev; /* the last node (2 ~ 2*divisors.size() is leaf) */
     uint32_t lit;
-    uint32_t cost;
+    std::pair<uint32_t, uint32_t> cost;
     node_type ntype;
-    state(): cost(0), lit(0), prev(0), ntype(NONE) {}
+    state(): cost(std::pair(0u,0u)), lit(0), prev(0), ntype(NONE) {}
   };
 
-  /* task */
+  /* the list of temp nodes */
+  std::vector<state> state_list;
+
+  /* the depth cost function */
+  std::function<uint32_t(uint32_t)> depth_fn;
+
+  /* cost upper bound */
+  uint32_t upper_bound;
+
   struct task 
   {
     std::array<TT, 2> sets; /* the on-off set of each task (could be optimized) */
     std::array<uint32_t, 2> num_bits;
-
-    uint32_t cost; /* the lower bound of the cost */
+    std::pair<uint32_t, uint32_t> cost; /* the lower bound of the cost */
     uint32_t sid; /* state id */
-
     bool done;
-
-    const bool operator > ( const task s ) const
+    const bool operator > ( const task & t ) const
     {
-      if ( cost != s.cost )
+      if ( cost.first != t.cost.first ) /* area */
       {
-        return cost > s.cost;
+        return cost.first > t.cost.first;
       }
       /* the most likely first */
-      return num_bits[0] + num_bits[1] > s.num_bits[0] + s.num_bits[1];
+      return num_bits[0] + num_bits[1] > t.num_bits[0] + t.num_bits[1];
     }
-    task(): done(false), cost(0), sid(0) {}
+    task(): done(false), cost(std::pair(0u, 0u)), sid(0) {}
   };
   using cand_t = std::pair<uint32_t, uint32_t>;
-
-  template<class Fn>
-  cand_t back_trace( const std::vector<state> & vec, Fn&& cost_fn, uint32_t sid )
+  cand_t back_trace( uint32_t sid, bool update = true )
   {
-    assert( sid != 0  && "result should not be empty" );
-    assert( vec[sid].ntype == NONE && "this is not a result" );
-
     std::priority_queue<cand_t, std::vector<cand_t>, std::greater<>> cand_q;
-    auto _s = vec[ sid ];
-    cand_q.push( std::pair( cost_fn( _s.lit >> 1 ), _s.lit ) );
+    auto _s = state_list[ sid ];
+    cand_q.push( std::pair( depth_fn( _s.lit >> 1 ), _s.lit ) );
     while ( _s.prev != 0 )
     {
       assert( cand_q.size() == 1 && "wrong initial size" );
-      for ( _s = vec[ _s.prev ]; ; _s = vec[_s.prev] ) /* get all with the same node type to the queue */
+      for ( _s = state_list[ _s.prev ]; ; _s = state_list[_s.prev] ) /* get all with the same node type to the queue */
       {
-        cand_q.push( std::pair( cost_fn( _s.lit >> 1 ), _s.lit ) );
-        if ( _s.ntype != vec[_s.prev].ntype ) break;
+        cand_q.push( std::pair( depth_fn( _s.lit >> 1 ), _s.lit ) );
+        if ( _s.ntype != state_list[_s.prev].ntype ) break;
       }
       /* add the nodes */
       while ( cand_q.size() > 1 )
       {
         auto fanin1 = cand_q.top(); cand_q.pop();
         auto fanin2 = cand_q.top(); cand_q.pop();
-        uint32_t new_lit;
-        switch ( _s.ntype )
+        uint32_t new_lit = 0u;
+        if ( update == true ) /* add node while tracing */
         {
-        case AND:
-          new_lit = index_list.add_and( fanin1.second, fanin2.second );
-          if ( false ) std::cout << new_lit << "=" << fanin1.second << " & " << fanin2.second << "\n";
-          break;
-        case OR:
-          new_lit = index_list.add_and( fanin1.second ^ 0x1, fanin2.second ^ 0x1) ^ 0x1;
-          if ( false ) std::cout << new_lit << "=" << fanin1.second << " | " << fanin2.second << "\n";
-          break;
-        case XOR:
-          new_lit = index_list.add_xor( fanin1.second, fanin2.second );
-          if ( false ) std::cout << new_lit << "=" << fanin1.second << " ^ " << fanin2.second << "\n";
-          break;
-        default:
-          break;
+          switch ( _s.ntype )
+          {
+          case AND:
+            new_lit = index_list.add_and( fanin1.second, fanin2.second );
+            break;
+          case OR:
+            new_lit = index_list.add_and( fanin1.second ^ 0x1, fanin2.second ^ 0x1) ^ 0x1;
+            break;
+          case XOR:
+            new_lit = index_list.add_xor( fanin1.second, fanin2.second );
+            break;
+          default:
+            break;
+          }          
         }
         auto new_cost = fanin2.first + 1; // TODO: change this "1" to cost
         cand_q.push( std::pair( new_cost, new_lit ) );
@@ -401,13 +403,136 @@ private:
     }
     return cand_q.top();
   }
-  std::optional<index_list_t> compute_function_dfs( uint32_t max_depth )
-  {
 
+  std::optional<state> find_unate_substate( uint32_t sid, uint32_t lit, node_type _ntype, bool balancing = false )
+  {
+    state s;
+    s.ntype = _ntype;
+    s.prev = sid;
+    s.lit = lit;
+
+    if ( balancing ) /* a better estimation of depth cost */
+    {
+      std::unordered_set<uint32_t> lit_set;
+      std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<>> cost_q;
+      /* prepare the cluster */
+      auto _s = s;
+      cost_q.push( depth_fn( _s.lit>>1 ) );
+      lit_set.insert( _s.lit>>1 );
+      while ( _s.prev != 0 )
+      {
+        assert( cost_q.size() == 1 && "wrong initial size" );
+        for ( _s = state_list[ _s.prev ]; ; _s = state_list[_s.prev] ) /* get all the same node type */
+        {
+          cost_q.push( depth_fn( _s.lit >> 1 ) );
+          if ( lit_set.find( _s.lit>>1 ) != lit_set.end() ) return std::nullopt; /* a literal occur twice in the chain */
+          lit_set.insert( _s.lit>>1 );
+          if ( _s.ntype != state_list[_s.prev].ntype ) break;
+        }
+        while ( cost_q.size() > 1 ) /* add node while maintaining the depth order */
+        {
+          cost_q.pop();
+          cost_q.push( cost_q.top() + 1);
+          cost_q.pop();
+        }
+        lit_set.clear();
+      }
+      s.cost.first = state_list[sid].cost.first + 1; // TODO: size cost is not uniform
+      s.cost.second = cost_q.top();
+    }
+    else
+    {
+      s.cost.first = state_list[sid].cost.first + 1;
+      s.cost.second = std::max(  state_list[sid].cost.second, (uint32_t)depth_fn( lit>>1 ) ) + 1;
+    }
+    return s;
+  };
+
+  std::optional<task> find_unate_subtask ( const task & _t, uint32_t v )
+  {
+    auto const & tt = get_div(v);
+    /* unateness based pruning (also necessary) */
+    bool unateness[4] = {
+      kitty::intersection_is_empty<TT, 1, 1>( tt, _t.sets[0] ),
+      kitty::intersection_is_empty<TT, 0, 1>( tt, _t.sets[0] ),
+      kitty::intersection_is_empty<TT, 1, 1>( tt, _t.sets[1] ),
+      kitty::intersection_is_empty<TT, 0, 1>( tt, _t.sets[1] ),
+    };
+    task t;
+    std::optional<state> s;
+    node_type _ntype = NONE;
+    /* all in don't care */
+    if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
+    {
+      return std::nullopt; /* wrong lit */
+    }
+    /* done by positive */
+    if ( unateness[0] && unateness[3] )
+    {
+      t.done = true;
+      s = find_unate_substate( _t.sid, v<<1, NONE );
+    }
+    /* done by negative */
+    if ( unateness[1] && unateness[2] )
+    {
+      t.done = true;
+      s = find_unate_substate( _t.sid, (v<<1) ^ 0x1, NONE );
+    }
+    /* not done, find the correct node to add */
+    if ( t.done == false )
+    {
+      if ( unateness[0] ) 
+      {
+        _ntype = OR;
+        t.sets[0] = _t.sets[0];
+        t.sets[1] = ~tt & _t.sets[1];
+        s = find_unate_substate( _t.sid, (v<<1), _ntype );
+      }
+      else if ( unateness[1] )
+      {
+        _ntype = OR;
+        t.sets[0] = _t.sets[0];
+        t.sets[1] = tt & _t.sets[1];
+        s = find_unate_substate( _t.sid, (v<<1) ^ 0x1, _ntype );
+      }
+      else if ( unateness[2] )
+      {
+        _ntype = AND;
+        t.sets[0] = ~tt & _t.sets[0];
+        t.sets[1] = _t.sets[1];
+        s = find_unate_substate( _t.sid, (v<<1) ^ 0x1, _ntype );
+      }
+      else if ( unateness[3] )
+      {
+        _ntype = AND;
+        t.sets[0] = tt & _t.sets[0];
+        t.sets[1] = _t.sets[1];
+        s = find_unate_substate( _t.sid, (v<<1), _ntype );
+      }
+      else /* binate divisors */
+      {
+        return std::nullopt; /* xor is too time-consuming */
+        _ntype = XOR;
+        t.sets[0] = ( ~tt & _t.sets[0] ) | ( tt & _t.sets[1] );        
+        t.sets[1] = ( ~tt & _t.sets[1] ) | ( tt & _t.sets[0] );
+        s = find_unate_substate( _t.sid, v<<1, _ntype );
+      }
+    }
+    if ( !s || (*s).cost.first >= upper_bound )
+    {
+      return std::nullopt; /* task is pruned */
+    }
+    t.sid = state_list.size();
+    state_list.emplace_back( *s );
+    t.cost = (*s).cost;
+    t.num_bits[0] = kitty::count_ones( t.sets[0] );
+    t.num_bits[1] = kitty::count_ones( t.sets[1] );
+    return t;
   }
   
-  template<class Fn>
-  std::optional<index_list_t> compute_function_bfs( uint32_t max_depth, Fn && cost_fn )
+  /* the BFS version of the area optimization algorithm
+  */
+  std::optional<index_list_t> area_optimization ( uint32_t max_size )
   {
     index_list.clear();
     index_list.add_inputs( divisors.size() - 1 );
@@ -421,11 +546,9 @@ private:
     }
 
     std::priority_queue<task, std::vector<task>, std::greater<>> q;
-    std::vector<state> state_list;
-
     /* add the const node */
+    state_list.clear();
     state_list.emplace_back( state() );
-
     /* prepare the initial task */
     task init_task;
     init_task.sets[0] = on_off_sets[0]; 
@@ -437,223 +560,37 @@ private:
     uint32_t cnt_enq = 0u;
     uint32_t cnt_deq = 0u;
 
-    uint32_t upper_bound = max_depth - 1; //TODO: fit other cost 
-
-    /*
-     calculate the cost of the node
-      state[sid] ( _ntype ) lit
-     */
-    auto add_state = [&] ( uint32_t sid, uint32_t lit, node_type _ntype )
-    {
-      state s;
-      s.ntype = _ntype;
-      s.prev = sid;
-      s.lit = lit;
-
-      std::unordered_set<uint32_t> lit_set;
-      std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<>> cost_q;
-      /* prepare the cluster */
-      auto _s = s;
-      cost_q.push( cost_fn( _s.lit>>1 ) );
-      lit_set.insert( _s.lit>>1 );
-      while ( _s.prev != 0 )
-      {
-        assert( cost_q.size() == 1 && "wrong initial size" );
-        for ( _s = state_list[ _s.prev ]; ; _s = state_list[_s.prev] ) /* get all the same node type */
-        {
-          cost_q.push( cost_fn( _s.lit >> 1 ) );
-          if ( lit_set.find( _s.lit>>1 ) != lit_set.end() ) return 0u;
-          lit_set.insert( _s.lit>>1 );
-          if ( _s.ntype != state_list[_s.prev].ntype ) break;
-        }
-        /* add node */
-        while ( cost_q.size() > 1 )
-        {
-          cost_q.pop();
-          cost_q.push( cost_q.top() + 1);
-          cost_q.pop();
-        }
-        lit_set.clear();
-      }
-      s.cost = cost_q.top();
-      if ( s.cost >= upper_bound )
-      {
-        if ( false ) std::cout << "[i]pruned because of upper bound\n";
-        return 0u;
-      }
-
-      if ( false ) /* debug */
-      {
-        std::string node_type_str[4] = {" AND ", " OR ", " XOR ", " NONE "};
-        std::cout << "\t add state: S" << state_list.size();
-        std::cout << "= S" << sid << node_type_str[state_list[sid].ntype] << "( ";
-        std::cout << ( lit & 0x1 ? "~" : " " ) << "Lit" << (lit>>1);
-        std::cout << node_type_str[_ntype] << "<?> )" << std::endl;
-      }
-
-      state_list.emplace_back( s );
-      return (uint32_t)(state_list.size() - 1u);
-    };
-
-    /* Divide the task to:
-      t = _t ( _ntype ) lit
-    */
-    auto add_node = [&] ( task _t, uint32_t v )
-    {
-      auto const & tt = get_div(v);
-      /* unateness based pruning (also necessary) */
-      bool unateness[4] = {
-        kitty::intersection_is_empty<TT, 1, 1>( tt, _t.sets[0] ),
-        kitty::intersection_is_empty<TT, 0, 1>( tt, _t.sets[0] ),
-        kitty::intersection_is_empty<TT, 1, 1>( tt, _t.sets[1] ),
-        kitty::intersection_is_empty<TT, 0, 1>( tt, _t.sets[1] ),
-      };
-      task t;
-      node_type _ntype = NONE;
-      /* all in don't care */
-      if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
-      {
-        return false;
-      }
-      /* done by positive */
-      if ( unateness[0] && unateness[3] )
-      {
-        t.done = true;
-        t.sid = add_state( _t.sid, v<<1, NONE );
-      }
-      /* done by negative */
-      if ( unateness[1] && unateness[2] )
-      {
-        t.done = true;
-        t.sid = add_state( _t.sid, (v<<1) ^ 0x1, NONE );
-      }
-      /* not done, find the correct node to add */
-      if ( t.done == false )
-      {
-        if ( unateness[0] ) 
-        {
-          _ntype = OR;
-          t.sets[0] = _t.sets[0];
-          t.sets[1] = ~tt & _t.sets[1];
-          t.sid = add_state( _t.sid, (v<<1), _ntype );
-        }
-        else if ( unateness[1] )
-        {
-          _ntype = OR;
-          t.sets[0] = _t.sets[0];
-          t.sets[1] = tt & _t.sets[1];
-          t.sid = add_state( _t.sid, (v<<1) ^ 0x1, _ntype );
-        }
-        else if ( unateness[2] )
-        {
-          _ntype = AND;
-          t.sets[0] = ~tt & _t.sets[0];
-          t.sets[1] = _t.sets[1];
-          t.sid = add_state( _t.sid, (v<<1) ^ 0x1, _ntype );
-        }
-        else if ( unateness[3] )
-        {
-          _ntype = AND;
-          t.sets[0] = tt & _t.sets[0];
-          t.sets[1] = _t.sets[1];
-          t.sid = add_state( _t.sid, (v<<1), _ntype );
-        }
-        else /* binate divisors */
-        {
-          _ntype = XOR;
-          t.sets[0] = ( ~tt & _t.sets[0] ) | ( tt & _t.sets[1] );        
-          t.sets[1] = ( ~tt & _t.sets[1] ) | ( tt & _t.sets[0] );
-          t.sid = add_state( _t.sid, v<<1, _ntype );
-        }
-      }
-      /* count the new score */
-      if ( t.done == false )
-      {
-        t.num_bits[0] = kitty::count_ones( t.sets[0] );
-        t.num_bits[1] = kitty::count_ones( t.sets[1] );
-        assert( t.num_bits[0] != 0 && t.num_bits[1] != 0 && "t is already done" );
-      }
-      /* check if the state is bad */
-      if ( t.sid == 0 )
-      {
-        return false;
-      }
-      t.cost = state_list[ t.sid ].cost;
-      if ( t.done )
-      {
-        upper_bound = t.cost;
-      }
-      if ( false ) /* print info to debug */
-      {
-        std::cout << "\nUnateness: ";
-        for ( int i=0;i<4;i++ )
-        {
-          std::cout << (unateness[i]? "T" : "F" ) << " ;";
-        }
-        std::cout << "\n";
-        std::string node_type_str[4] = {" AND ", " OR ", " XOR ", " NONE "};
-        std::cout << "\t add task: " << node_type_str[_ntype];
-        kitty::print_binary( tt );
-        std::cout << " on set =0b";
-        kitty::print_binary( t.sets[1] );
-        std::cout << " off set =0b";
-        kitty::print_binary( t.sets[0] );
-        std::cout << std::endl;        
-      }
-      q.push( t );
-      cnt_enq += 1u;
-      return true;
-    };
-
-    /* find all the "neighbours" / "sub-tasks" to solve
-      number of task is: |unate| + |binate| = ( |divisors| - |useless / careless| )
-      roughly O(n^depth) : need to be bounded
-      */
-    auto explore = [&]( const task & t )
-    {
-      for ( auto v = 1u; v < divisors.size(); ++v )
-      {
-        /* avoid X*X = X */
-        add_node( t, v );
-      }
-    };
+    uint32_t upper_bound = max_size - 1; //TODO: fit other cost 
 
     while ( !q.empty() ) 
     {
       /* get the current lower bound */
       auto t = q.top(); q.pop(); cnt_deq += 1u;
-
-      if ( false ) /* debug */
-      {
-        std::cout << "S" << t.sid << " cost =" << t.cost << ", on=0b";
-        kitty::print_binary(t.sets[1]);
-        std::cout << ", off=0b";
-        kitty::print_binary(t.sets[0]);
-        std::cout << " done = " << (t.done? "T" : "F") << std::endl;
-      }
-
       /* back trace succeed tasks */
       if ( t.done == true )
       {
-        auto output = back_trace( state_list, cost_fn, t.sid );
-        assert( output.first == t.cost && "estimation is not accurate" );
+        auto output = back_trace( t.sid );
         index_list.add_output( output.second );
-        state_list.clear();
         return index_list;
       }
       /* lower bound > upper bound */
-      if ( t.cost > upper_bound )
+      if ( t.cost.first > upper_bound )
       {
-        // std::cout << "[i]pruned because of upper bound\n";
         break;
       }
       /* limit the time */
       if ( cnt_enq >= 1000 )
       {
-        // std::cout << "[i]pruned because of timeup\n";
         break;
       }
-      explore( t );
+      for ( auto v = 1u; v < divisors.size(); ++v )
+      {
+        auto task = find_unate_subtask( t, v );
+        if ( task )
+        {
+          q.push( *task );
+        }
+      }
     }
     return std::nullopt;
   }

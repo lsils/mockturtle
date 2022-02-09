@@ -20,6 +20,7 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
+    if ( benchmark != "div" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     xag_network xag;
