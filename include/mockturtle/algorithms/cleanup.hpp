@@ -246,7 +246,7 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
  * - `is_constant`
  */
 template<class NtkSrc, class NtkDest = NtkSrc>
-NtkDest cleanup_dangling( NtkSrc const& ntk )
+[[nodiscard]] NtkDest cleanup_dangling( NtkSrc const& ntk )
 {
   static_assert( is_network_type_v<NtkSrc>, "NtkSrc is not a network type" );
   static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
@@ -310,7 +310,7 @@ NtkDest cleanup_dangling( NtkSrc const& ntk )
  * - `node_function`
  */
 template<class Ntk>
-Ntk cleanup_luts( Ntk const& ntk )
+[[nodiscard]] Ntk cleanup_luts( Ntk const& ntk )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
