@@ -29,7 +29,7 @@ int main()
     window_resub_params ps;
     window_resub_stats st;
     ps.verbose = true;
-    ps.wps.max_inserts = 1;
+    ps.wps.max_inserts = 3;
     ps.wps.preserve_depth = true;
     ps.wps.update_levels_lazily = true;
 

@@ -511,7 +511,7 @@ private:
       }
       else /* binate divisors */
       {
-        return std::nullopt; /* xor is too time-consuming */
+        // return std::nullopt; /* xor is too time-consuming */
         _ntype = XOR;
         t.sets[0] = ( ~tt & _t.sets[0] ) | ( tt & _t.sets[1] );        
         t.sets[1] = ( ~tt & _t.sets[1] ) | ( tt & _t.sets[0] );
@@ -537,11 +537,18 @@ private:
     index_list.clear();
     index_list.add_inputs( divisors.size() - 1 );
 
+    num_bits[0] = kitty::count_ones( on_off_sets[0] );
+    num_bits[1] = kitty::count_ones( on_off_sets[1] );
+
     /* check trivial solution */
-    auto const res = find_const();
-    if ( res )
+    if ( num_bits[0] == 0 )
     {
-      index_list.add_output( *res );
+      index_list.add_output( 1 );
+      return index_list;
+    }
+    if ( num_bits[0] == 1 )
+    {
+      index_list.add_output( 0 );
       return index_list;
     }
 
@@ -588,7 +595,14 @@ private:
         auto task = find_unate_subtask( t, v );
         if ( task )
         {
-          q.push( *task );
+          if ( (*task).done )
+          {
+            /* this only for area */
+            auto output = back_trace( (*task).sid );
+            index_list.add_output( output.second );
+            return index_list;            
+          }
+          q.push( *task ); cnt_enq++;
         }
       }
     }
@@ -814,19 +828,6 @@ private:
     return std::nullopt;
   }
 
-  std::optional<uint32_t> find_const()
-  {
-    if ( num_bits[0] == 0 )
-    {
-      return 1;
-    }
-    if ( num_bits[1] == 0 )
-    {
-      return 0;
-    }
-    return std::nullopt;
-  }
-
   /* See if there is a constant or divisor covering all on-set bits or all off-set bits.
      1. Check constant-resub
      2. Collect unate literals
@@ -834,10 +835,15 @@ private:
    */
   std::optional<uint32_t> find_one_unate()
   {
-    auto const res = find_const();
-    if ( res )
+    num_bits[0] = kitty::count_ones( on_off_sets[0] ); /* off-set */
+    num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
+    if ( num_bits[0] == 0 )
     {
-      return *res;
+      return 1;
+    }
+    if ( num_bits[1] == 0 )
+    {
+      return 0;
     }
 
     for ( auto v = 1u; v < divisors.size(); ++v )

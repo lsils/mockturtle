@@ -234,7 +234,7 @@ public:
       if ( ps.preserve_depth )
       {
         win.max_level = ntk.level( n );
-        divs_mgr.set_max_level( ntk.level( n ) - 1 );
+        // divs_mgr.set_max_level( ntk.level( n ) - 1 );
       }
     }
 
