@@ -3,31 +3,38 @@ name: Windows CI
 on:
   push:
     branches:
-    - master
+      - master
   pull_request:
     branches:
-    - master
+      - master
 
 jobs:
   build:
-    runs-on: windows-latest
-    name: Visual Studio
+    strategy:
+      matrix:
+        os: [ windows-2019 ]
+        toolset: [ v142, ClangCL ]
+        include:
+          - os: windows-2019
+            env: "Visual Studio 16 2019"
+
+    name: ${{matrix.os}} with ${{matrix.env}} and ${{matrix.toolset}} toolset
+    runs-on: ${{matrix.os}}
 
     steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Create build directory
-      run: mkdir build
-    - name: Run CMake
-      run: cmake -G "Visual Studio 16 2019" -DMOCKTURTLE_TEST=ON ..
-      working-directory: ./build
-    - name: Build mockturtle
-      run: |
-        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe" mockturtle.sln
-      working-directory: ./build
-      shell: cmd
-    - name: Run tests
-      run: |
-        cd build
-        .\test\Debug\run_tests "~[quality]"
+      - uses: actions/checkout@v1
+        with:
+          submodules: true
+      - name: Create build directory
+        run: cmake -E make_directory ${{github.workspace}}\build
+      - name: Run CMake
+        run: cmake ${{github.workspace}} -G "${{matrix.env}}" -A x64 -T ${{matrix.toolset}} -DMOCKTURTLE_TEST=ON
+        working-directory: ${{github.workspace}}\build
+      - name: Build mockturtle
+        run: cmake --build . --config ${{matrix.build_type}} -j2
+        working-directory: ${{github.workspace}}\build
+        shell: cmd
+      - name: Run tests
+        run: |
+          cd build
+          .\test\Debug\run_tests "~[quality]"
