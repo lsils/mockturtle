@@ -29,10 +29,6 @@
 #include <mockturtle/algorithms/window_rewriting.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/views/color_view.hpp>
-#include <mockturtle/views/depth_view.hpp>
-#include <mockturtle/views/fanout_view.hpp>
-#include <mockturtle/views/names_view.hpp>
 #include <lorina/aiger.hpp>
 
 #include <fmt/format.h>
@@ -48,12 +44,9 @@ struct stats
   stopwatch<>::duration time_total{0};
 };
 
-aig_network optimize( names_view<aig_network> const& aig, window_rewriting_params const& ps, window_rewriting_stats& st )
+aig_network optimize( aig_network const& aig, window_rewriting_params const& ps, window_rewriting_stats& st )
 {
-  fanout_view faig{aig};
-  depth_view daig{faig};
-  color_view caig{daig};
-  window_rewriting( caig, ps, &st );
+  window_rewriting( aig, ps, &st );
   return cleanup_dangling( aig );
 }
 
@@ -69,8 +62,7 @@ int main()
 
     /* read the benchmark */
     aig_network aig;
-    names_view<aig_network> named_aig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( named_aig ) ) != lorina::return_code::success )
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
     {
       fmt::print( "[e] could not read {}\n", benchmark );
       continue;
@@ -84,28 +76,28 @@ int main()
     stats st{};
 
     /* optimize benchmark until convergence */
-    uint64_t const size_before{named_aig.num_gates()};
+    uint64_t const size_before{aig.num_gates()};
     uint64_t size_current{};
     do
     {
-      size_current = named_aig.num_gates();
+      size_current = aig.num_gates();
 
       window_rewriting_stats win_st;
-      named_aig = optimize( named_aig, ps, win_st );
+      aig = optimize( aig, ps, win_st );
 
       /* add up statistics from each iteration */
-      st.real_gain += size_before - named_aig.num_gates();
+      st.real_gain += size_before - aig.num_gates();
       st.estimated_gain += win_st.gain;
       st.num_substitutions += win_st.num_substitutions;
       ++st.num_iterations;
       st.time_total += win_st.time_total;
 
       // st.report();
-    } while( named_aig.num_gates() < size_current );
+    } while( aig.num_gates() < size_current );
 
-    auto const cec = benchmark != "hyp" ? abc_cec( named_aig, benchmark ) : true;
+    auto const cec = benchmark != "hyp" ? abc_cec( aig, benchmark ) : true;
 
-    exp( benchmark, size_before, named_aig.num_gates(),
+    exp( benchmark, size_before, aig.num_gates(),
          st.estimated_gain, st.real_gain, st.num_substitutions, st.num_iterations,
          to_seconds( st.time_total ), cec );
   }
