@@ -31,7 +31,7 @@ jobs:
         run: cmake ${{github.workspace}} -G "${{matrix.env}}" -A x64 -T ${{matrix.toolset}} -DMOCKTURTLE_TEST=ON
         working-directory: ${{github.workspace}}\build
       - name: Build mockturtle
-        run: cmake --build . --config ${{matrix.build_type}} -j2
+        run: cmake --build . -j2
         working-directory: ${{github.workspace}}\build
         shell: cmd
       - name: Run tests
