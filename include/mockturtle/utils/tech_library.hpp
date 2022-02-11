@@ -340,7 +340,7 @@ private:
                                     static_cast<float>(gate.area),
                                     {},
                                     perm,
-                                    phase};
+                                    static_cast<uint8_t>(phase)};
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
