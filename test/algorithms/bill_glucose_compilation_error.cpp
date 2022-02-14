@@ -9,7 +9,7 @@
 
 TEST_CASE( "Glucose compilation problem", "[glucose]" )
 {
-  bill::solver<bill::solvers::ghack> solver{}; // not actually using Glucose
+  bill::solver<bill::solvers::glucose_41> solver{};
 
   // example from bill's README
   auto const a = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
