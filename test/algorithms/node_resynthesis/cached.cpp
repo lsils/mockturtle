@@ -9,7 +9,7 @@
 
 using namespace mockturtle;
 
-#if !__clang__ || __clang_major__ > 9
+#if !__clang__ || __clang_major__ > 10
 TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
 {
 #if __GNUC__ == 7

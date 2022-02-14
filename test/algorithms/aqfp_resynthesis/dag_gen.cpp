@@ -199,7 +199,7 @@ TEST_CASE( "Sublist generation", "[aqfp_resyn]" )
   CHECK( t5 == s5 );
 }
 
-#if !__clang__ || __clang_major__ > 9
+#if !__clang__ || __clang_major__ > 10
 TEST_CASE( "DAG generation", "[aqfp_resyn]" )
 {
   using Ntk = mockturtle::aqfp_dag<>;

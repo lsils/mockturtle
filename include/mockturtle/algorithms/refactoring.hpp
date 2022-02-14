@@ -174,6 +174,7 @@ public:
                                            [&]() { return simulate<kitty::dynamic_truth_table>( mffc, sim )[0]; } );
 
       signal<Ntk> new_f;
+      bool resynthesized{false};
       {
         if ( ps.use_dont_cares )
         {
@@ -186,22 +187,22 @@ public:
             }
             stopwatch t( st.time_refactoring );
 
-            refactoring_fn( ntk, tt, satisfiability_dont_cares( ntk, pivots, 16u ), leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+            refactoring_fn( ntk, tt, satisfiability_dont_cares( ntk, pivots, 16u ), leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; resynthesized = true; return false; } );
           }
           else
           {
             stopwatch t( st.time_refactoring );
-            refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+            refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; resynthesized = true; return false; } );
           }
         }
         else
         {
           stopwatch t( st.time_refactoring );
-          refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; return false; } );
+          refactoring_fn( ntk, tt, leaves.begin(), leaves.end(), [&]( auto const& f ) { new_f = f; resynthesized = true; return false; } );
         }
       }
 
-      if ( n == ntk.get_node( new_f ) )
+      if ( !resynthesized || n == ntk.get_node( new_f ) )
       {
         return true;
       }
