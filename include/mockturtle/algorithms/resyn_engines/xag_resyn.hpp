@@ -344,11 +344,6 @@ public:
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::gate_type>, "iterator_type does not dereference to static_params::gate_type" );
 
     ptts = &tts;
-    on_off_sets[0] = ~target & care;
-    on_off_sets[1] = target & care;
-
-    num_bits[0] = kitty::count_ones( on_off_sets[0] ); /* off-set */
-    num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
 
     divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
     while ( begin != end )
@@ -365,8 +360,77 @@ public:
     }
     depth_fn = depth_cost;
     upper_bound = max_size;
-    return compute_function_bfs( max_size );
-    // return compute_function( max_size );
+    
+    index_list.clear();
+    index_list.add_inputs( divisors.size() - 1 );
+
+
+    task init_task( false, 0, 0, NONE, std::pair(0,0) );
+    /* check trivial solution */
+    if ( init_task.num_bits[0] == 0 )
+    {
+      index_list.add_output( 1 );
+      return index_list;
+    }
+    if ( init_task.num_bits[1] == 0 )
+    {
+      index_list.add_output( 0 );
+      return index_list;
+    }
+
+    mem.clear();
+    std::priority_queue<task, std::vector<task>, std::greater<>> q;
+    /* prepare the initial task */
+    init_task.add_sets( ~target & care, target & care );
+    q.push( init_task );
+
+    st.num_enqueue_curr = 1u; /* including the initial task */
+    st.num_dequeue_curr = 0u;
+
+    while ( !q.empty() ) 
+    {
+      /* get the current lower bound */
+      auto t = q.top(); q.pop(); 
+      st.num_dequeue_curr += 1u;
+      st.num_dequeue_total += 1u;
+      mem.emplace_back( t );
+      /* back trace succeed tasks */
+      if ( t.done == true )
+      {
+        auto output = back_trace( mem.size() - 1 );
+        index_list.add_output( output.second );
+        return index_list;
+      }
+      /* lower bound > upper bound */
+      if ( t.cost.first > upper_bound )
+      {
+        break;
+      }
+      /* limit the time */
+      if ( st.num_enqueue_curr >= 1000 )
+      {
+        break;
+      }
+      for ( auto v = 1u; v < divisors.size(); ++v )
+      {
+        auto _t = find_unate_subtask( t, v );
+        if ( _t ) /* prune dont cares */
+        {
+          if ( (*_t).done )
+          {
+            /* this only for area, otherwise update the upper bound and continue */
+            mem.emplace_back( (*_t) );
+            auto output = back_trace( mem.size() - 1 );
+            index_list.add_output( output.second );
+            return index_list;            
+          }
+          q.push( *_t ); 
+          st.num_enqueue_curr++;
+          st.num_enqueue_total++;
+        }
+      }
+    }
+    return std::nullopt;
   }
 
 private:
@@ -531,8 +595,10 @@ private:
     switch ( ltype )
     {
     case DONT_CARE:
+      break;
     case EQUAL:
     case EQUAL_INV:
+      t.num_bits[0] = t.num_bits[1] = 0; break;
       break;
     case POS_UNATE:
       t.add_sets( _t.sets[0], ~tt & _t.sets[1] ); break;
@@ -548,86 +614,6 @@ private:
         ( ~tt & _t.sets[1] ) | ( tt & _t.sets[0] ) ); break;
     }
     return t;
-  }
-  
-  /* the BFS version of the area optimization algorithm
-  */
-  std::optional<index_list_t> compute_function_bfs ( uint32_t max_size )
-  {
-    index_list.clear();
-    index_list.add_inputs( divisors.size() - 1 );
-
-    num_bits[0] = kitty::count_ones( on_off_sets[0] );
-    num_bits[1] = kitty::count_ones( on_off_sets[1] );
-
-    /* check trivial solution */
-    if ( num_bits[0] == 0 )
-    {
-      index_list.add_output( 1 );
-      return index_list;
-    }
-    if ( num_bits[0] == 1 )
-    {
-      index_list.add_output( 0 );
-      return index_list;
-    }
-
-    mem.clear();
-    std::priority_queue<task, std::vector<task>, std::greater<>> q;
-    /* prepare the initial task */
-    task init_task( false, 0, 0, NONE, std::pair(0,0) );
-    init_task.add_sets( on_off_sets[0], on_off_sets[1] );
-    q.push( init_task );
-
-    st.num_enqueue_curr = 1u; /* including the initial task */
-    st.num_dequeue_curr = 0u;
-
-    uint32_t upper_bound = max_size - 1; //TODO: fit other cost 
-
-    while ( !q.empty() ) 
-    {
-      /* get the current lower bound */
-      auto t = q.top(); q.pop(); 
-      st.num_dequeue_curr += 1u;
-      st.num_dequeue_total += 1u;
-      mem.emplace_back( t );
-      /* back trace succeed tasks */
-      if ( t.done == true )
-      {
-        auto output = back_trace( mem.size() - 1 );
-        index_list.add_output( output.second );
-        return index_list;
-      }
-      /* lower bound > upper bound */
-      if ( t.cost.first > upper_bound )
-      {
-        break;
-      }
-      /* limit the time */
-      if ( st.num_enqueue_curr >= 1000 )
-      {
-        break;
-      }
-      for ( auto v = 1u; v < divisors.size(); ++v )
-      {
-        auto task = find_unate_subtask( t, v );
-        if ( task ) /* prune dont cares */
-        {
-          if ( (*task).done )
-          {
-            /* this only for area, otherwise update the upper bound and continue */
-            mem.emplace_back( (*task) );
-            auto output = back_trace( mem.size() - 1 );
-            index_list.add_output( output.second );
-            return index_list;            
-          }
-          q.push( *task ); 
-          st.num_enqueue_curr++;
-          st.num_enqueue_total++;
-        }
-      }
-    }
-    return std::nullopt;
   }
 
   std::optional<index_list_t> compute_function( uint32_t num_inserts )
