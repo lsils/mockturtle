@@ -31,18 +31,19 @@ int main()
     ps.verbose = true;
     ps.wps.max_inserts = 3;
     ps.wps.preserve_depth = true;
-    ps.wps.update_levels_lazily = true;
+    ps.wps.update_levels_lazily = ps.wps.preserve_depth;
 
     depth_view _dntk( xag );
     uint32_t initial_size = _dntk.num_gates();
     uint32_t initial_depth = _dntk.depth();
 
     window_xag_heuristic_resub( xag, ps, &st );
+
     xag = cleanup_dangling( xag );
 
     depth_view dntk( xag );
 
-    const auto cec = ps.dry_run || benchmark == "hyp" ? true : abc_cec( xag, benchmark );
+    const auto cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
     exp( benchmark, initial_size, initial_size - xag.num_gates(), initial_depth, initial_depth - dntk.depth(), to_seconds( st.time_total ), cec );
   }
 

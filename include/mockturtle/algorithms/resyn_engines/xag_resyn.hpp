@@ -86,14 +86,14 @@ struct xag_resyn_static_params
   static constexpr uint32_t depth_cost_of_xor{1u};
 
   using truth_table_storage_type = void;
-  using node_type = void;
+  using gate_type = void;
 };
 
 template<class TT>
 struct xag_resyn_static_params_default : public xag_resyn_static_params
 {
   using truth_table_storage_type = std::vector<TT>;
-  using node_type = uint32_t;
+  using gate_type = uint32_t;
 };
 
 template<class TT>
@@ -119,7 +119,7 @@ template<class Ntk>
 struct xag_resyn_static_params_for_sim_resub : public xag_resyn_static_params
 {
   using truth_table_storage_type = incomplete_node_map<kitty::partial_truth_table, Ntk>;
-  using node_type = typename Ntk::node;
+  using gate_type = typename Ntk::node;
 };
 
 template<class Ntk>
@@ -151,6 +151,21 @@ struct xag_resyn_stats
   /*! \brief Time for dividing the target and recursive call. */
   stopwatch<>::duration time_divide{0};
 
+  /*! \brief Time for checking unateness of literals. */
+  stopwatch<>::duration time_check_unateness{0};
+
+  /*! \brief Count the number of Enqueued Element */
+  uint32_t num_enqueue_total{0};
+  uint32_t num_enqueue_curr{0};
+
+  /*! \brief Count the number of Dequeued Element */
+  uint32_t num_dequeue_total{0};
+  uint32_t num_dequeue_curr{0};
+
+  /*! \brief Count the number of Dequeued Element */
+  uint32_t num_state_total{0};
+  uint32_t num_state_curr{0};
+
   void report() const
   {
     fmt::print( "[i]         <xag_resyn_decompose>\n" );
@@ -161,6 +176,9 @@ struct xag_resyn_stats
     fmt::print( "[i]             sort         : {:>5.2f} secs\n", to_seconds( time_sort ) );
     fmt::print( "[i]             collect pairs: {:>5.2f} secs\n", to_seconds( time_collect_pairs ) );
     fmt::print( "[i]             dividing     : {:>5.2f} secs\n", to_seconds( time_divide ) );
+    fmt::print( "[i]             total dequeue: {:>d} tasks\n", num_dequeue_total );
+    fmt::print( "[i]             total enqueue: {:>d} tasks\n", num_enqueue_total );
+    fmt::print( "[i]             total states: {:>d}\n", num_state_total );
   }
 };
 
@@ -236,6 +254,43 @@ private:
     uint32_t score{0};
   };
 
+  enum gate_type {AND, OR, XOR, NONE};
+  enum lit_type {EQUAL, EQUAL_INV, POS_UNATE, NEG_UNATE, POS_UNATE_INV, NEG_UNATE_INV, BINATE, DONT_CARE};
+
+  /* state is to memorize the formala */
+  struct state
+  {
+    uint32_t prev; /* the last node (2 ~ 2*divisors.size() is leaf) */
+    uint32_t lit;
+    std::pair<uint32_t, uint32_t> cost;
+    gate_type ntype;
+    state(auto _c, auto _l, auto _p, auto _t): cost(_c), lit(_l), prev(_p), ntype(_t) {}
+  };
+
+  struct task 
+  {
+    std::array<TT, 2> sets; /* the on-off set of each task (could be optimized) */
+    std::array<uint32_t, 2> num_bits;
+    std::pair<uint32_t, uint32_t> cost; /* the lower bound of the cost */
+    uint32_t sid; /* state id */
+    bool done;
+    const bool operator > ( const task & t ) const
+    {
+      if ( cost.first != t.cost.first ) /* area */
+      {
+        return cost.first > t.cost.first;
+      }
+      /* the most likely first */
+      return num_bits[0] + num_bits[1] > t.num_bits[0] + t.num_bits[1];
+    }
+    void add_sets( TT off, TT on )
+    {
+      sets[0] = off; num_bits[0] = kitty::count_ones( sets[0] );
+      sets[1] = on;  num_bits[1] = kitty::count_ones( sets[1] );
+    }
+    task( auto _done, auto _sid, auto _cost ): done(_done), sid(_sid), cost(_cost) {}
+  };
+
 public:
   explicit xag_resyn_decompose( stats& st ) noexcept
     : st( st )
@@ -248,7 +303,7 @@ public:
   /*! \brief Perform XAG resynthesis.
    *
    * `tts[*begin]` must be of type `TT`.
-   * Moreover, if `static_params::copy_tts = false`, `*begin` must be of type `static_params::node_type`.
+   * Moreover, if `static_params::copy_tts = false`, `*begin` must be of type `static_params::gate_type`.
    *
    * \param target Truth table of the target function.
    * \param care Truth table of the care set.
@@ -261,7 +316,7 @@ public:
            bool enabled = static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
-    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
+    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::gate_type>, "iterator_type does not dereference to static_params::gate_type" );
 
     ptts = &tts;
     on_off_sets[0] = ~target & care;
@@ -293,7 +348,7 @@ public:
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
   {
-    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
+    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::gate_type>, "iterator_type does not dereference to static_params::gate_type" );
 
     ptts = &tts;
     on_off_sets[0] = ~target & care;
@@ -317,21 +372,13 @@ public:
     }
     depth_fn = depth_cost;
     upper_bound = max_size;
-    return area_optimization( max_size );
+    return compute_function_bfs( max_size );
     // return compute_function( max_size );
   }
 
 private:
-  enum node_type {AND, OR, XOR, NONE};
-  /* state is to memorize the formala */
-  struct state
-  {
-    uint32_t prev; /* the last node (2 ~ 2*divisors.size() is leaf) */
-    uint32_t lit;
-    std::pair<uint32_t, uint32_t> cost;
-    node_type ntype;
-    state(): cost(std::pair(0u,0u)), lit(0), prev(0), ntype(NONE) {}
-  };
+  /* store the unateness of the literals */
+  std::vector<lit_type> lit_types;
 
   /* the list of temp nodes */
   std::vector<state> state_list;
@@ -342,24 +389,6 @@ private:
   /* cost upper bound */
   uint32_t upper_bound;
 
-  struct task 
-  {
-    std::array<TT, 2> sets; /* the on-off set of each task (could be optimized) */
-    std::array<uint32_t, 2> num_bits;
-    std::pair<uint32_t, uint32_t> cost; /* the lower bound of the cost */
-    uint32_t sid; /* state id */
-    bool done;
-    const bool operator > ( const task & t ) const
-    {
-      if ( cost.first != t.cost.first ) /* area */
-      {
-        return cost.first > t.cost.first;
-      }
-      /* the most likely first */
-      return num_bits[0] + num_bits[1] > t.num_bits[0] + t.num_bits[1];
-    }
-    task(): done(false), cost(std::pair(0u, 0u)), sid(0) {}
-  };
   using cand_t = std::pair<uint32_t, uint32_t>;
   cand_t back_trace( uint32_t sid, bool update = true )
   {
@@ -369,7 +398,7 @@ private:
     while ( _s.prev != 0 )
     {
       assert( cand_q.size() == 1 && "wrong initial size" );
-      for ( _s = state_list[ _s.prev ]; ; _s = state_list[_s.prev] ) /* get all with the same node type to the queue */
+      for ( _s = state_list[ _s.prev ]; ; _s = state_list[_s.prev] )
       {
         cand_q.push( std::pair( depth_fn( _s.lit >> 1 ), _s.lit ) );
         if ( _s.ntype != state_list[_s.prev].ntype ) break;
@@ -404,12 +433,9 @@ private:
     return cand_q.top();
   }
 
-  std::optional<state> find_unate_substate( uint32_t sid, uint32_t lit, node_type _ntype, bool balancing = false )
+  std::optional<state> find_unate_substate( uint32_t sid, uint32_t lit, gate_type _ntype, bool balancing = false )
   {
-    state s;
-    s.ntype = _ntype;
-    s.prev = sid;
-    s.lit = lit;
+    state s ( std::pair(0,0), lit, sid, _ntype );
 
     if ( balancing ) /* a better estimation of depth cost */
     {
@@ -443,96 +469,111 @@ private:
     else
     {
       s.cost.first = state_list[sid].cost.first + 1;
-      s.cost.second = std::max(  state_list[sid].cost.second, (uint32_t)depth_fn( lit>>1 ) ) + 1;
+      s.cost.second = std::max( state_list[sid].cost.second, (uint32_t)depth_fn( lit>>1 ) ) + 1;
     }
     return s;
   };
+
+  lit_type check_unateness ( const TT & off_set, const TT & on_set, const TT & tt )
+  {
+    bool unateness[4] = {
+      kitty::intersection_is_empty<TT, 1, 1>( tt, off_set ),
+      kitty::intersection_is_empty<TT, 0, 1>( tt, off_set ),
+      kitty::intersection_is_empty<TT, 1, 1>( tt, on_set ),
+      kitty::intersection_is_empty<TT, 0, 1>( tt, on_set ),
+    };
+    if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
+    {
+      return DONT_CARE;
+    }
+    /* done by positive */
+    if ( unateness[0] && unateness[3] )
+    {
+      return EQUAL;
+    }
+    /* done by negative */
+    if ( unateness[1] && unateness[2] )
+    {
+      return EQUAL_INV;
+    }
+    if ( unateness[0] )
+    {
+      return POS_UNATE;
+    }
+    if ( unateness[1] )
+    {
+      return POS_UNATE_INV;
+    }
+    if ( unateness[2] )
+    {
+      return NEG_UNATE_INV;
+    }
+    if ( unateness[3] )
+    {
+      return NEG_UNATE;
+    }
+    return BINATE;
+  }
 
   std::optional<task> find_unate_subtask ( const task & _t, uint32_t v )
   {
     auto const & tt = get_div(v);
     /* unateness based pruning (also necessary) */
-    bool unateness[4] = {
-      kitty::intersection_is_empty<TT, 1, 1>( tt, _t.sets[0] ),
-      kitty::intersection_is_empty<TT, 0, 1>( tt, _t.sets[0] ),
-      kitty::intersection_is_empty<TT, 1, 1>( tt, _t.sets[1] ),
-      kitty::intersection_is_empty<TT, 0, 1>( tt, _t.sets[1] ),
-    };
-    task t;
-    std::optional<state> s;
-    node_type _ntype = NONE;
-    /* all in don't care */
-    if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
+    lit_type ltype = check_unateness( _t.sets[0], _t.sets[1], tt );
+    gate_type _ntype = NONE;
+    bool done = false;
+    uint32_t lit = (v<<1);
+    switch ( ltype )
     {
-      return std::nullopt; /* wrong lit */
+    case DONT_CARE:
+      return std::nullopt;
+    case EQUAL:
+      done = true; _ntype = NONE; break;
+    case EQUAL_INV:
+      done = true; _ntype = NONE; lit++ ; break;
+    case POS_UNATE:
+      _ntype = OR; break;
+    case POS_UNATE_INV:
+      _ntype = OR; lit++; break;
+    case NEG_UNATE:
+      _ntype = AND; break;
+    case NEG_UNATE_INV:
+      _ntype = AND; lit++; break;
+    case BINATE:
+      _ntype = XOR; break;
     }
-    /* done by positive */
-    if ( unateness[0] && unateness[3] )
-    {
-      t.done = true;
-      s = find_unate_substate( _t.sid, v<<1, NONE );
-    }
-    /* done by negative */
-    if ( unateness[1] && unateness[2] )
-    {
-      t.done = true;
-      s = find_unate_substate( _t.sid, (v<<1) ^ 0x1, NONE );
-    }
-    /* not done, find the correct node to add */
-    if ( t.done == false )
-    {
-      if ( unateness[0] ) 
-      {
-        _ntype = OR;
-        t.sets[0] = _t.sets[0];
-        t.sets[1] = ~tt & _t.sets[1];
-        s = find_unate_substate( _t.sid, (v<<1), _ntype );
-      }
-      else if ( unateness[1] )
-      {
-        _ntype = OR;
-        t.sets[0] = _t.sets[0];
-        t.sets[1] = tt & _t.sets[1];
-        s = find_unate_substate( _t.sid, (v<<1) ^ 0x1, _ntype );
-      }
-      else if ( unateness[2] )
-      {
-        _ntype = AND;
-        t.sets[0] = ~tt & _t.sets[0];
-        t.sets[1] = _t.sets[1];
-        s = find_unate_substate( _t.sid, (v<<1) ^ 0x1, _ntype );
-      }
-      else if ( unateness[3] )
-      {
-        _ntype = AND;
-        t.sets[0] = tt & _t.sets[0];
-        t.sets[1] = _t.sets[1];
-        s = find_unate_substate( _t.sid, (v<<1), _ntype );
-      }
-      else /* binate divisors */
-      {
-        // return std::nullopt; /* xor is too time-consuming */
-        _ntype = XOR;
-        t.sets[0] = ( ~tt & _t.sets[0] ) | ( tt & _t.sets[1] );        
-        t.sets[1] = ( ~tt & _t.sets[1] ) | ( tt & _t.sets[0] );
-        s = find_unate_substate( _t.sid, v<<1, _ntype );
-      }
-    }
+    auto s = find_unate_substate( _t.sid, lit, _ntype );
     if ( !s || (*s).cost.first >= upper_bound )
     {
       return std::nullopt; /* task is pruned */
     }
-    t.sid = state_list.size();
+    task t( done, state_list.size(), (*s).cost );
     state_list.emplace_back( *s );
-    t.cost = (*s).cost;
-    t.num_bits[0] = kitty::count_ones( t.sets[0] );
-    t.num_bits[1] = kitty::count_ones( t.sets[1] );
+    switch ( ltype )
+    {
+    case DONT_CARE:
+    case EQUAL:
+    case EQUAL_INV:
+      break;
+    case POS_UNATE:
+      t.add_sets( _t.sets[0], ~tt & _t.sets[1] ); break;
+    case POS_UNATE_INV:
+      t.add_sets( _t.sets[0], tt & _t.sets[1] ); break;
+    case NEG_UNATE:
+      t.add_sets( tt & _t.sets[0], _t.sets[1] ); break;
+    case NEG_UNATE_INV:
+      t.add_sets( ~tt & _t.sets[0], _t.sets[1] ); break;
+    case BINATE:
+      t.add_sets( 
+        ( ~tt & _t.sets[0] ) | ( tt & _t.sets[1] ), 
+        ( ~tt & _t.sets[1] ) | ( tt & _t.sets[0] ) ); break;
+    }
     return t;
   }
   
   /* the BFS version of the area optimization algorithm
   */
-  std::optional<index_list_t> area_optimization ( uint32_t max_size )
+  std::optional<index_list_t> compute_function_bfs ( uint32_t max_size )
   {
     index_list.clear();
     index_list.add_inputs( divisors.size() - 1 );
@@ -555,24 +596,24 @@ private:
     std::priority_queue<task, std::vector<task>, std::greater<>> q;
     /* add the const node */
     state_list.clear();
-    state_list.emplace_back( state() );
+    state_list.emplace_back( state( std::pair(0,0), 0, 0, NONE ) );
     /* prepare the initial task */
-    task init_task;
-    init_task.sets[0] = on_off_sets[0]; 
-    init_task.sets[1] = on_off_sets[1];
-    init_task.num_bits[0] = num_bits[0];
-    init_task.num_bits[1] = num_bits[1];
+    task init_task( false, 0, std::pair(0,0) );
+    init_task.add_sets( on_off_sets[0], on_off_sets[1] );
     q.push( init_task );
 
-    uint32_t cnt_enq = 0u;
-    uint32_t cnt_deq = 0u;
+    st.num_enqueue_curr = 1u; /* including the initial task */
+    st.num_dequeue_curr = 0u;
+    st.num_state_curr = 0u;
 
     uint32_t upper_bound = max_size - 1; //TODO: fit other cost 
 
     while ( !q.empty() ) 
     {
       /* get the current lower bound */
-      auto t = q.top(); q.pop(); cnt_deq += 1u;
+      auto t = q.top(); q.pop(); 
+      st.num_dequeue_curr += 1u;
+      st.num_dequeue_total += 1u;
       /* back trace succeed tasks */
       if ( t.done == true )
       {
@@ -586,7 +627,7 @@ private:
         break;
       }
       /* limit the time */
-      if ( cnt_enq >= 1000 )
+      if ( st.num_enqueue_curr >= 1000 )
       {
         break;
       }
@@ -602,7 +643,9 @@ private:
             index_list.add_output( output.second );
             return index_list;            
           }
-          q.push( *task ); cnt_enq++;
+          q.push( *task ); 
+          st.num_enqueue_curr++;
+          st.num_enqueue_total++;
         }
       }
     }
@@ -1206,7 +1249,7 @@ private:
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
   const typename static_params::truth_table_storage_type* ptts;
-  std::vector<std::conditional_t<static_params::copy_tts, TT, typename static_params::node_type>> divisors;
+  std::vector<std::conditional_t<static_params::copy_tts, TT, typename static_params::gate_type>> divisors;
 
   index_list_t index_list;
 

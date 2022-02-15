@@ -403,10 +403,10 @@ public:
   using problem_t = small_window<Ntk, TT>;
   using res_t = typename ResynEngine::index_list_t;
   using params_t = null_params;
-  using stats_t = null_stats;
+  using stats_t = xag_resyn_stats;
 
   explicit complete_tt_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), engine( rst )
+    : ntk( ntk ), engine( st )
   { }
 
   void init()
@@ -437,7 +437,7 @@ private:
 } /* namespace detail */
 
 using window_resub_params = boolean_optimization_params<complete_tt_windowing_params, null_params>;
-using window_resub_stats = boolean_optimization_stats<complete_tt_windowing_stats, null_stats>;
+using window_resub_stats = boolean_optimization_stats<complete_tt_windowing_stats, xag_resyn_stats>;
 
 template<class Ntk>
 void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
