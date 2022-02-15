@@ -257,23 +257,15 @@ private:
   enum gate_type {AND, OR, XOR, NONE};
   enum lit_type {EQUAL, EQUAL_INV, POS_UNATE, NEG_UNATE, POS_UNATE_INV, NEG_UNATE_INV, BINATE, DONT_CARE};
 
-  /* state is to memorize the formala */
-  struct state
-  {
-    uint32_t prev; /* the last node (2 ~ 2*divisors.size() is leaf) */
-    uint32_t lit;
-    std::pair<uint32_t, uint32_t> cost;
-    gate_type ntype;
-    state(auto _c, auto _l, auto _p, auto _t): cost(_c), lit(_l), prev(_p), ntype(_t) {}
-  };
-
   struct task 
   {
     std::array<TT, 2> sets; /* the on-off set of each task (could be optimized) */
     std::array<uint32_t, 2> num_bits;
     std::pair<uint32_t, uint32_t> cost; /* the lower bound of the cost */
-    uint32_t sid; /* state id */
+    std::size_t prev;
     bool done;
+    gate_type ntype;
+    uint32_t lit;
     const bool operator > ( const task & t ) const
     {
       if ( cost.first != t.cost.first ) /* area */
@@ -288,7 +280,8 @@ private:
       sets[0] = off; num_bits[0] = kitty::count_ones( sets[0] );
       sets[1] = on;  num_bits[1] = kitty::count_ones( sets[1] );
     }
-    task( auto _done, auto _sid, auto _cost ): done(_done), sid(_sid), cost(_cost) {}
+    task( auto _done, auto _prev, auto _lit, auto _ntype, auto _cost ): 
+          done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost) {}
   };
 
 public:
@@ -377,11 +370,8 @@ public:
   }
 
 private:
-  /* store the unateness of the literals */
-  std::vector<lit_type> lit_types;
-
   /* the list of temp nodes */
-  std::vector<state> state_list;
+  std::vector<task> mem;
 
   /* the depth cost function */
   std::function<uint32_t(uint32_t)> depth_fn;
@@ -390,18 +380,17 @@ private:
   uint32_t upper_bound;
 
   using cand_t = std::pair<uint32_t, uint32_t>;
-  cand_t back_trace( uint32_t sid, bool update = true )
+  cand_t back_trace( size_t pos )
   {
+    size_t p = pos;
     std::priority_queue<cand_t, std::vector<cand_t>, std::greater<>> cand_q;
-    auto _s = state_list[ sid ];
-    cand_q.push( std::pair( depth_fn( _s.lit >> 1 ), _s.lit ) );
-    while ( _s.prev != 0 )
+    cand_q.push( std::pair( depth_fn( mem[p].lit >> 1 ), mem[p].lit ) );
+    while ( mem[p].prev != 0 )
     {
-      assert( cand_q.size() == 1 && "wrong initial size" );
-      for ( _s = state_list[ _s.prev ]; ; _s = state_list[_s.prev] )
+      for ( p=mem[p].prev ; ; p=mem[p].prev )
       {
-        cand_q.push( std::pair( depth_fn( _s.lit >> 1 ), _s.lit ) );
-        if ( _s.ntype != state_list[_s.prev].ntype ) break;
+        cand_q.push( std::pair( depth_fn( mem[p].lit >> 1 ), mem[p].lit ) );
+        if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
       }
       /* add the nodes */
       while ( cand_q.size() > 1 )
@@ -409,23 +398,20 @@ private:
         auto fanin1 = cand_q.top(); cand_q.pop();
         auto fanin2 = cand_q.top(); cand_q.pop();
         uint32_t new_lit = 0u;
-        if ( update == true ) /* add node while tracing */
+        switch ( mem[p].ntype )
         {
-          switch ( _s.ntype )
-          {
-          case AND:
-            new_lit = index_list.add_and( fanin1.second, fanin2.second );
-            break;
-          case OR:
-            new_lit = index_list.add_and( fanin1.second ^ 0x1, fanin2.second ^ 0x1) ^ 0x1;
-            break;
-          case XOR:
-            new_lit = index_list.add_xor( fanin1.second, fanin2.second );
-            break;
-          default:
-            break;
-          }          
-        }
+        case AND:
+          new_lit = index_list.add_and( fanin1.second, fanin2.second );
+          break;
+        case OR:
+          new_lit = index_list.add_and( fanin1.second ^ 0x1, fanin2.second ^ 0x1) ^ 0x1;
+          break;
+        case XOR:
+          new_lit = index_list.add_xor( fanin1.second, fanin2.second );
+          break;
+        default:
+          break;
+        }          
         auto new_cost = fanin2.first + 1; // TODO: change this "1" to cost
         cand_q.push( std::pair( new_cost, new_lit ) );
       }
@@ -433,27 +419,24 @@ private:
     return cand_q.top();
   }
 
-  std::optional<state> find_unate_substate( uint32_t sid, uint32_t lit, gate_type _ntype, bool balancing = false )
+  std::optional<std::pair<uint32_t, uint32_t>> get_cost( size_t pos, uint32_t lit, gate_type _ntype, bool balancing = false ) const 
   {
-    state s ( std::pair(0,0), lit, sid, _ntype );
-
+    uint32_t size_cost, depth_cost;
+    size_cost = mem[pos].cost.first + 1; // TODO: size cost is not uniform
     if ( balancing ) /* a better estimation of depth cost */
     {
       std::unordered_set<uint32_t> lit_set;
       std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<>> cost_q;
-      /* prepare the cluster */
-      auto _s = s;
-      cost_q.push( depth_fn( _s.lit>>1 ) );
-      lit_set.insert( _s.lit>>1 );
-      while ( _s.prev != 0 )
+      auto p = pos;
+      cost_q.push( depth_fn( mem[p].lit>>1 ) ); lit_set.insert( mem[p].lit>>1 );
+      while ( mem[p].prev != 0 )
       {
-        assert( cost_q.size() == 1 && "wrong initial size" );
-        for ( _s = state_list[ _s.prev ]; ; _s = state_list[_s.prev] ) /* get all the same node type */
+        for ( p = mem[p].prev; ; p = mem[p].prev ) /* get all the same node type */
         {
-          cost_q.push( depth_fn( _s.lit >> 1 ) );
-          if ( lit_set.find( _s.lit>>1 ) != lit_set.end() ) return std::nullopt; /* a literal occur twice in the chain */
-          lit_set.insert( _s.lit>>1 );
-          if ( _s.ntype != state_list[_s.prev].ntype ) break;
+          cost_q.push( depth_fn( mem[p].lit >> 1 ) );
+          if ( lit_set.find( mem[p].lit>>1 ) != lit_set.end() ) return std::nullopt; /* a literal occur twice in the chain */
+          lit_set.insert( mem[p].lit>>1 );
+          if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
         }
         while ( cost_q.size() > 1 ) /* add node while maintaining the depth order */
         {
@@ -463,15 +446,13 @@ private:
         }
         lit_set.clear();
       }
-      s.cost.first = state_list[sid].cost.first + 1; // TODO: size cost is not uniform
-      s.cost.second = cost_q.top();
+      depth_cost = cost_q.top();
     }
     else
     {
-      s.cost.first = state_list[sid].cost.first + 1;
-      s.cost.second = std::max( state_list[sid].cost.second, (uint32_t)depth_fn( lit>>1 ) ) + 1;
+      depth_cost = std::max( mem[pos].cost.second, (uint32_t)depth_fn( lit>>1 ) ) + 1;
     }
-    return s;
+    return std::pair( size_cost, depth_cost );
   };
 
   lit_type check_unateness ( const TT & off_set, const TT & on_set, const TT & tt )
@@ -518,7 +499,6 @@ private:
   std::optional<task> find_unate_subtask ( const task & _t, uint32_t v )
   {
     auto const & tt = get_div(v);
-    /* unateness based pruning (also necessary) */
     lit_type ltype = check_unateness( _t.sets[0], _t.sets[1], tt );
     gate_type _ntype = NONE;
     bool done = false;
@@ -542,13 +522,12 @@ private:
     case BINATE:
       _ntype = XOR; break;
     }
-    auto s = find_unate_substate( _t.sid, lit, _ntype );
-    if ( !s || (*s).cost.first >= upper_bound )
+    auto cost = get_cost( mem.size() - 1, lit, _ntype ); // TODO: assume prev task always at back()
+    if ( !cost || (*cost).first >= upper_bound )
     {
       return std::nullopt; /* task is pruned */
     }
-    task t( done, state_list.size(), (*s).cost );
-    state_list.emplace_back( *s );
+    task t( done, mem.size() - 1, lit, _ntype, *cost );
     switch ( ltype )
     {
     case DONT_CARE:
@@ -593,18 +572,15 @@ private:
       return index_list;
     }
 
+    mem.clear();
     std::priority_queue<task, std::vector<task>, std::greater<>> q;
-    /* add the const node */
-    state_list.clear();
-    state_list.emplace_back( state( std::pair(0,0), 0, 0, NONE ) );
     /* prepare the initial task */
-    task init_task( false, 0, std::pair(0,0) );
+    task init_task( false, 0, 0, NONE, std::pair(0,0) );
     init_task.add_sets( on_off_sets[0], on_off_sets[1] );
     q.push( init_task );
 
     st.num_enqueue_curr = 1u; /* including the initial task */
     st.num_dequeue_curr = 0u;
-    st.num_state_curr = 0u;
 
     uint32_t upper_bound = max_size - 1; //TODO: fit other cost 
 
@@ -614,10 +590,11 @@ private:
       auto t = q.top(); q.pop(); 
       st.num_dequeue_curr += 1u;
       st.num_dequeue_total += 1u;
+      mem.emplace_back( t );
       /* back trace succeed tasks */
       if ( t.done == true )
       {
-        auto output = back_trace( t.sid );
+        auto output = back_trace( mem.size() - 1 );
         index_list.add_output( output.second );
         return index_list;
       }
@@ -634,12 +611,13 @@ private:
       for ( auto v = 1u; v < divisors.size(); ++v )
       {
         auto task = find_unate_subtask( t, v );
-        if ( task )
+        if ( task ) /* prune dont cares */
         {
           if ( (*task).done )
           {
-            /* this only for area */
-            auto output = back_trace( (*task).sid );
+            /* this only for area, otherwise update the upper bound and continue */
+            mem.emplace_back( (*task) );
+            auto output = back_trace( mem.size() - 1 );
             index_list.add_output( output.second );
             return index_list;            
           }
