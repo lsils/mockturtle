@@ -257,11 +257,58 @@ private:
   enum gate_type {AND, OR, XOR, NONE};
   enum lit_type {EQUAL, EQUAL_INV, POS_UNATE, NEG_UNATE, POS_UNATE_INV, NEG_UNATE_INV, BINATE, DONT_CARE};
 
+  std::unordered_map<TT, uint32_t, kitty::hash<TT>> tt_to_id;
+  std::vector<TT> id_to_tt;
+  std::vector<uint32_t> id_to_num;
+  
+  uint32_t to_id ( const TT & tt )
+  {
+    if ( tt_to_id.find( tt ) != tt_to_id.end() ) return tt_to_id[tt];
+    tt_to_id[tt] = id_to_tt.size();
+    id_to_tt.emplace_back( tt );
+    id_to_num.emplace_back( kitty::count_ones( tt ) );
+    return tt_to_id[tt];
+  }
+
+  const auto & to_tt ( uint32_t id )
+  {
+    assert( id < id_to_tt.size() );
+    return id_to_tt[id];
+  }
+
+  const uint32_t to_num ( uint32_t id )
+  {
+    assert( id < id_to_num.size() );
+    return id_to_num[id];
+  }
+
+  std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t>> best_cost;
+  bool check_cost ( uint32_t x, uint32_t y, uint32_t cost )
+  {
+    bool ret = false; /* if best is updated */
+    if ( best_cost.find( x ) == best_cost.end() )
+    {
+      ret = true;
+      best_cost[x] = std::unordered_map<uint32_t, uint32_t>();
+    }
+    if ( best_cost[ x ].find( y ) == best_cost[x].end() )
+    {
+      ret = true;
+      best_cost[x][y] = cost;
+    }
+    if ( best_cost[ x ][ y ] > cost )
+    {
+      ret = true;
+      best_cost[x][y] = cost;
+    }
+    return ret;
+  }
+
   struct task 
   {
-    std::array<TT, 2> sets; /* the on-off set of each task (could be optimized) */
-    std::array<uint32_t, 2> num_bits;
+    std::array<uint32_t, 2> sets; /* the on-off set of each task (could be optimized) */
     std::pair<uint32_t, uint32_t> cost; /* the lower bound of the cost */
+    uint32_t score;
     std::size_t prev;
     bool done;
     gate_type ntype;
@@ -273,15 +320,19 @@ private:
         return cost.first > t.cost.first;
       }
       /* the most likely first */
-      return num_bits[0] + num_bits[1] > t.num_bits[0] + t.num_bits[1];
+      return score > t.score;
     }
-    void add_sets( TT off, TT on )
-    {
-      sets[0] = off; num_bits[0] = kitty::count_ones( sets[0] );
-      sets[1] = on;  num_bits[1] = kitty::count_ones( sets[1] );
-    }
-    task( auto _done, auto _prev, auto _lit, auto _ntype, auto _cost ): 
-          done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost) {}
+
+    task( auto _done, auto _prev, auto _lit, auto _ntype, auto _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost) {}
+  };
+
+  struct deq_task
+  {
+    std::pair<uint32_t, uint32_t> cost; /* the lower bound of the cost */
+    std::size_t prev;
+    gate_type ntype;
+    uint32_t lit;
+    deq_task( const task & t ): prev( t.prev ), ntype( t.ntype ), lit( t.lit ), cost( t.cost ) {}
   };
 
 public:
@@ -343,6 +394,7 @@ public:
   {
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::gate_type>, "iterator_type does not dereference to static_params::gate_type" );
 
+
     ptts = &tts;
 
     divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
@@ -358,30 +410,38 @@ public:
       }
       ++begin;
     }
-    depth_fn = depth_cost;
-    upper_bound = max_size;
-    
+
     index_list.clear();
     index_list.add_inputs( divisors.size() - 1 );
 
-
-    task init_task( false, 0, 0, NONE, std::pair(0,0) );
     /* check trivial solution */
-    if ( init_task.num_bits[0] == 0 )
+    if ( kitty::count_ones( ~target & care ) == 0 )
     {
       index_list.add_output( 1 );
       return index_list;
     }
-    if ( init_task.num_bits[1] == 0 )
+    if ( kitty::count_ones( target & care ) == 0 )
     {
       index_list.add_output( 0 );
       return index_list;
     }
 
+    depth_fn = depth_cost;
+    upper_bound = max_size;
+
     mem.clear();
+    id_to_num.clear();
+    id_to_tt.clear();
+    tt_to_id.clear();
+
+    best_cost.clear();
+
+    task init_task( false, 0, 0, NONE, std::pair(0,0) );
+    init_task.sets[0] = to_id( ~target & care );
+    init_task.sets[1] = to_id( target & care );
+
     std::priority_queue<task, std::vector<task>, std::greater<>> q;
     /* prepare the initial task */
-    init_task.add_sets( ~target & care, target & care );
     q.push( init_task );
 
     st.num_enqueue_curr = 1u; /* including the initial task */
@@ -393,7 +453,7 @@ public:
       auto t = q.top(); q.pop(); 
       st.num_dequeue_curr += 1u;
       st.num_dequeue_total += 1u;
-      mem.emplace_back( t );
+      mem.emplace_back( deq_task( t ) );
       /* back trace succeed tasks */
       if ( t.done == true )
       {
@@ -407,7 +467,7 @@ public:
         break;
       }
       /* limit the time */
-      if ( st.num_enqueue_curr >= 1000 )
+      if ( st.num_enqueue_curr >= 400 )
       {
         break;
       }
@@ -435,13 +495,37 @@ public:
 
 private:
   /* the list of temp nodes */
-  std::vector<task> mem;
+  std::vector<deq_task> mem;
 
   /* the depth cost function */
   std::function<uint32_t(uint32_t)> depth_fn;
 
   /* cost upper bound */
   uint32_t upper_bound;
+
+  /* */
+  auto tt_move ( uint32_t off, uint32_t on, uint32_t lit, gate_type ntype )
+  {
+    const auto & tt = lit & 0x1? ~get_div( lit>>1 ) : get_div( lit>>1 ) ;
+    uint32_t _off = 0u;
+    uint32_t _on  = 0u;
+    switch ( ntype )
+    {
+    case OR:
+      _off = off;
+      _on = to_id( ~tt & to_tt( on ) );
+      break;
+    case AND:
+      _off = to_id( tt & to_tt( off ) );
+      _on = on;
+      break;
+    case XOR:
+      _off = to_id( ( ~tt & to_tt( off ) ) | ( tt & to_tt( on ) ) );
+      _on = to_id( ( ~tt & to_tt( on ) ) | ( tt & to_tt( off ) ) );
+      break;
+    }
+    return std::make_tuple( _off, _on );
+  }
 
   using cand_t = std::pair<uint32_t, uint32_t>;
   cand_t back_trace( size_t pos )
@@ -451,7 +535,7 @@ private:
     cand_q.push( std::pair( depth_fn( mem[p].lit >> 1 ), mem[p].lit ) );
     while ( mem[p].prev != 0 )
     {
-      for ( p=mem[p].prev ; ; p=mem[p].prev )
+      for ( p=mem[p].prev; ; p=mem[p].prev )
       {
         cand_q.push( std::pair( depth_fn( mem[p].lit >> 1 ), mem[p].lit ) );
         if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
@@ -563,7 +647,9 @@ private:
   std::optional<task> find_unate_subtask ( const task & _t, uint32_t v )
   {
     auto const & tt = get_div(v);
-    lit_type ltype = check_unateness( _t.sets[0], _t.sets[1], tt );
+    auto off = _t.sets[0];
+    auto on  = _t.sets[1];
+    lit_type ltype = check_unateness( to_tt( off ), to_tt( on ), tt );
     gate_type _ntype = NONE;
     bool done = false;
     uint32_t lit = (v<<1);
@@ -586,32 +672,23 @@ private:
     case BINATE:
       _ntype = XOR; break;
     }
-    auto cost = get_cost( mem.size() - 1, lit, _ntype ); // TODO: assume prev task always at back()
+    auto cost = get_cost( mem.size() - 1, lit, _ntype, true ); // TODO: assume prev task always at back()
     if ( !cost || (*cost).first >= upper_bound )
     {
       return std::nullopt; /* task is pruned */
     }
     task t( done, mem.size() - 1, lit, _ntype, *cost );
-    switch ( ltype )
+    t.score = 0;
+    if ( done == false )
     {
-    case DONT_CARE:
-      break;
-    case EQUAL:
-    case EQUAL_INV:
-      t.num_bits[0] = t.num_bits[1] = 0; break;
-      break;
-    case POS_UNATE:
-      t.add_sets( _t.sets[0], ~tt & _t.sets[1] ); break;
-    case POS_UNATE_INV:
-      t.add_sets( _t.sets[0], tt & _t.sets[1] ); break;
-    case NEG_UNATE:
-      t.add_sets( tt & _t.sets[0], _t.sets[1] ); break;
-    case NEG_UNATE_INV:
-      t.add_sets( ~tt & _t.sets[0], _t.sets[1] ); break;
-    case BINATE:
-      t.add_sets( 
-        ( ~tt & _t.sets[0] ) | ( tt & _t.sets[1] ), 
-        ( ~tt & _t.sets[1] ) | ( tt & _t.sets[0] ) ); break;
+      auto [ _off, _on ] = tt_move( off, on, lit, _ntype );
+      if ( check_cost( _off, _on, (*cost).first ) == false )
+      {
+        return std::nullopt;
+      }
+      t.sets[0] = _off;
+      t.sets[1] = _on;
+      t.score = to_num( _off ) + to_num( _on );
     }
     return t;
   }
