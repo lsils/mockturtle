@@ -68,43 +68,12 @@ public:
     return {index, 0};
   }
 
-  signal create_not( signal const& a )
+  void invert( node const& n )
   {
-    const auto index = _storage->nodes.size();
-    auto& node = _storage->nodes.emplace_back();
-    node.children[0] = !a;
-    node.children[1] = a;
-    
-    if ( index >= .9 * _storage->nodes.capacity() )
-    {
-      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415f * index ) );
-    }
-
-    /* increase ref-count to children */
-    _storage->nodes[a.index].data[0].h1++;
-
-    for ( auto const& fn : _events->on_add )
-    {
-      (*fn)( index );
-    }
-
-    return {index, 0};
-  }
-
-  signal buf_to_inv( signal const& a )
-  {
-    const node n = get_node( a );
-    assert( is_buf( n ) );
-    if ( is_complemented( _storage->nodes[n].children[0] ) ) /* already inverted */
-      return a;
-
-    //assert( fanout_size( n ) == 0 );
-    if ( fanout_size( n ) != 0 )
-      std::cout << "[w] " << fanout_size( n ) << " fanout(s) of buffer " << n << " need to be negated\n";
-    signal fi = _storage->nodes[n].children[0];
-    _storage->nodes[n].children[0] = !fi;
-    _storage->nodes[n].children[1] = fi;
-    return a;
+    assert( !is_constant( n ) && !is_pi( n ) );
+    assert( fanout_size( n ) == 0 );
+    _storage->nodes[n].children[0].weight ^= 1;
+    _storage->nodes[n].children[1].weight ^= 1;
   }
 #pragma endregion
 
@@ -139,9 +108,15 @@ public:
       return 2;
   }
 
+  // including buffers, splitters, and inverters
   bool is_buf( node const& n ) const
   {
     return _storage->nodes[n].children[0].index == _storage->nodes[n].children[1].index && _storage->nodes[n].children[0].weight != _storage->nodes[n].children[1].weight;
+  }
+
+  bool is_not( node const& n ) const
+  {
+    return _storage->nodes[n].children[0].weight;
   }
 
   bool is_and( node const& n ) const
@@ -321,7 +296,7 @@ public:
     auto& node = _storage->nodes.emplace_back();
     node.children[0] = a;
     node.children[1] = !a;
-    //node.children[2] = !a; // not used
+    //node.children[2] = a; // not used
     
     if ( index >= .9 * _storage->nodes.capacity() )
     {
@@ -339,43 +314,13 @@ public:
     return {index, 0};
   }
 
-  signal create_not( signal const& a )
+  void invert( node const& n )
   {
-    const auto index = _storage->nodes.size();
-    auto& node = _storage->nodes.emplace_back();
-    node.children[0] = !a;
-    node.children[1] = a;
-    
-    if ( index >= .9 * _storage->nodes.capacity() )
-    {
-      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415f * index ) );
-    }
-
-    /* increase ref-count to children */
-    _storage->nodes[a.index].data[0].h1++;
-
-    for ( auto const& fn : _events->on_add )
-    {
-      (*fn)( index );
-    }
-
-    return {index, 0};
-  }
-
-  signal buf_to_inv( signal const& a )
-  {
-    const node n = get_node( a );
-    assert( is_buf( n ) );
-    if ( is_complemented( _storage->nodes[n].children[0] ) ) /* already inverted */
-      return a;
-
-    //assert( fanout_size( n ) == 0 );
-    if ( fanout_size( n ) != 0 )
-      std::cout << "[w] " << fanout_size( n ) << " fanout(s) of buffer " << n << " need to be negated\n";
-    signal fi = _storage->nodes[n].children[0];
-    _storage->nodes[n].children[0] = !fi;
-    _storage->nodes[n].children[1] = fi;
-    return a;
+    assert( !is_constant( n ) && !is_pi( n ) );
+    assert( fanout_size( n ) == 0 );
+    _storage->nodes[n].children[0].weight ^= 1;
+    _storage->nodes[n].children[1].weight ^= 1;
+    _storage->nodes[n].children[2].weight ^= 1;
   }
 #pragma endregion
 
@@ -410,9 +355,15 @@ public:
       return 3;
   }
 
+  // including buffers, splitters, and inverters
   bool is_buf( node const& n ) const
   {
     return _storage->nodes[n].children[0].index == _storage->nodes[n].children[1].index && _storage->nodes[n].children[0].weight != _storage->nodes[n].children[1].weight;
+  }
+
+  bool is_not( node const& n ) const
+  {
+    return _storage->nodes[n].children[0].weight;
   }
 
   bool is_maj( node const& n ) const
