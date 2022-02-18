@@ -462,7 +462,7 @@ public:
         return index_list;
       }
       /* lower bound > upper bound */
-      if ( t.cost.first > upper_bound )
+      if ( t.cost.first >= upper_bound )
       {
         break;
       }
@@ -480,6 +480,8 @@ public:
           {
             /* this only for area, otherwise update the upper bound and continue */
             mem.emplace_back( (*_t) );
+            // std::cout << "\t" << divisors.size() << " divs, " << st.num_dequeue_curr << " dequeued, ";
+            // std::cout << (*_t).cost.first << " nodes " << std::endl;
             auto output = back_trace( mem.size() - 1 );
             index_list.add_output( output.second );
             return index_list;            
@@ -570,7 +572,11 @@ private:
   std::optional<std::pair<uint32_t, uint32_t>> get_cost( size_t pos, uint32_t lit, gate_type _ntype, bool balancing = false ) const 
   {
     uint32_t size_cost, depth_cost;
-    size_cost = mem[pos].cost.first + 1; // TODO: size cost is not uniform
+    size_cost = mem[pos].cost.first; 
+    if ( mem[pos].ntype != NONE) // TODO: size cost is not uniform
+    {
+      size_cost ++;
+    }
     if ( balancing ) /* a better estimation of depth cost */
     {
       std::unordered_set<uint32_t> lit_set;
@@ -672,7 +678,7 @@ private:
     case BINATE:
       _ntype = XOR; break;
     }
-    auto cost = get_cost( mem.size() - 1, lit, _ntype, true ); // TODO: assume prev task always at back()
+    auto cost = get_cost( mem.size() - 1, lit, _ntype, false ); // TODO: assume prev task always at back()
     if ( !cost || (*cost).first >= upper_bound )
     {
       return std::nullopt; /* task is pruned */
