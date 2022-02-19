@@ -39,10 +39,10 @@
 
 #include <kitty/kitty.hpp>
 
-#include "./dag.hpp"
-#include "./dag_cost.hpp"
-#include "./dag_gen.hpp"
-#include "./db_builder.hpp"
+#include "dag.hpp"
+#include "dag_cost.hpp"
+#include "dag_gen.hpp"
+#include "db_builder.hpp"
 
 namespace mockturtle
 {
@@ -234,7 +234,7 @@ inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_c
   {
     std::ifstream is( fmt::format( "{}_{:02d}.txt", db_file_prefix, i ) );
     assert( is.is_open() );
-    db.load_db_from_file( is );
+    db.load_db( is );
     is.close();
   }
 

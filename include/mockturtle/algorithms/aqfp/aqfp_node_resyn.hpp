@@ -32,13 +32,13 @@
 
 #pragma once
 
-#include "../../traits.hpp"
-
-#include "./aqfp_db.hpp"
-
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+
+#include <mockturtle/traits.hpp>
+
+#include "aqfp_db.hpp"
 
 namespace mockturtle
 {

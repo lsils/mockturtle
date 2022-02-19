@@ -32,11 +32,10 @@
 
 #pragma once
 
-#include "../../traits.hpp"
-
 #include <type_traits>
 #include <vector>
 
+#include "../../traits.hpp"
 namespace mockturtle
 {
 
