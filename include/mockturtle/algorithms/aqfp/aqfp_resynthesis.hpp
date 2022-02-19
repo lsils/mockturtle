@@ -38,6 +38,15 @@
 #include <iostream>
 #include <unordered_map>
 
+<<<<<<< HEAD:include/mockturtle/algorithms/aqfp/aqfp_resynthesis.hpp
+=======
+#include <mockturtle/traits.hpp>
+#include <mockturtle/utils/node_map.hpp>
+#include <mockturtle/utils/stopwatch.hpp>
+#include <mockturtle/views/depth_view.hpp>
+#include <mockturtle/views/topo_view.hpp>
+
+>>>>>>> cc7ba59 (Merge all AQFP related algorithms into one directory and refactor tests related to AQFP exact database generation.):include/mockturtle/algorithms/aqfp_resynthesis.hpp
 #include <fmt/format.h>
 
 #include <mockturtle/traits.hpp>
