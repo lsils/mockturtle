@@ -5,13 +5,12 @@
 
 #include <fmt/format.h>
 
+#include <mockturtle/networks/aqfp.hpp>
+#include <mockturtle/networks/klut.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_db.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_fanout_resyn.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_node_resyn.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_resynthesis.hpp>
-
-#include <mockturtle/networks/aqfp.hpp>
-#include <mockturtle/networks/klut.hpp>
 
 #include <kitty/kitty.hpp>
 
