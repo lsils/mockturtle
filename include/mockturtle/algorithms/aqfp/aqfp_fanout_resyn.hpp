@@ -71,14 +71,16 @@ struct aqfp_fanout_resyn
     uint32_t foind = 0u;
     for ( auto fo : fanouts_n )
     {
-      fanout_node_fn( fo, no_splitters ? level_f : level_f + offsets[foind++] );
+      fanout_node_fn( fo, no_splitters ? level_f : level_f + offsets[foind] );
+      foind++;
     }
 
     // remaining fanouts are either combinational outputs (primary outputs or register inputs)
     for ( auto i = foind; i < ntk_src.fanout_size( n ); i++ )
     {
       auto co_index = i - foind;
-      fanout_co_fn( co_index, no_splitters ? level_f : level_f + offsets[foind++] );
+      fanout_co_fn( co_index, no_splitters ? level_f : level_f + offsets[foind] );
+      foind++;
     }
   }
 
