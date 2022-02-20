@@ -41,15 +41,57 @@
 namespace mockturtle
 {
 
+/*! \brief A callback function to determine the fanout levels.
+ *
+ * This is intended to be used with AQFP or similar pipelined networks.
+ * Levels are determined assuming that a nearly-balanced splitter tree
+ * is used for each the considered fanout net.
+ *
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+     klut_network klut = ...;
+     aqfp_assumptions assume = ...;
+
+     aqfp_node_resyn node_resyn = ...;
+     afp_fanout_resyn fanout_resyn{ assume };
+
+     aqfp_network aqfp;
+     auto res = mockturtle::aqfp_resynthesis( aqfp, klut, node_resyn, fanout_resyn );
+
+   \endverbatim
+ */
 struct aqfp_fanout_resyn
 {
-  aqfp_fanout_resyn( const aqfp_assumptions& assume ) : splitter_capacity{ assume.splitter_capacity }, branch_pis{ assume.branch_pis } {}
+  /*! \brief Default constructor.
+   *
+   * \param assume AQFP synthesis assumptions (only the fields `splitter_capacity` and `branc_pis` will be used)
+   */
+  aqfp_fanout_resyn( const aqfp_assumptions& assume )
+      : splitter_capacity{ assume.splitter_capacity }, branch_pis{ assume.branch_pis } {}
 
-  /*! \brief Determines the relative levels of fanouts of a node assuming a nearly balanced splitter tree. */
-  template<typename NtkSrc, typename FOuts, typename NtkDest, typename FanoutNodeCallback, typename FanoutPoCallback>
-  void operator()( const NtkSrc& ntk_src, FOuts& fanouts, node<NtkSrc> n, const NtkDest& ntk_dest, signal<NtkDest> f, uint32_t level_f,
+  /*! \brief Determines the relative levels of fanouts of a node assuming a nearly balanced splitter tree.
+   *
+   * \param ntk_src Source network with `depth()` and `level()` member functions.
+   * \param n Node in `ntk_src` for which the fanout levels are to be determined.
+   * \param fanouts_n Fanout nodes of `n` in `ntk_dest`.
+   * \param ntk_dest Destination network which is being synthesized as a pipelined network.
+   * \param f The signal in `ntk_dest` that correspond to source node `n`.
+   * \param level_f The level of `f` in `ntk_dest`.
+   * \param fanout_node_fn Callback with arguments (source network node, level in destination network).
+   * \param fanout_co_fn Callback with arguments (index of the combinational output, level in destination network).
+   */
+  template<typename NtkSrc, typename FOutsSrc, typename NtkDest, typename FanoutNodeCallback, typename FanoutPoCallback>
+  void operator()( const NtkSrc& ntk_src, node<NtkSrc> n, FOutsSrc& fanouts_n, const NtkDest& ntk_dest, signal<NtkDest> f, uint32_t level_f,
                    FanoutNodeCallback&& fanout_node_fn, FanoutPoCallback&& fanout_co_fn )
   {
+    static_assert( has_depth_v<NtkSrc>,
+                   "The source network does not provide a method named depth()." );
+    static_assert( has_level_v<NtkSrc>,
+                   "The source network does not provide a method named level(node)." );
     static_assert( std::is_invocable_v<FanoutNodeCallback, node<NtkSrc>, uint32_t>,
                    "FanoutNodeCallback is not callable with arguments (node, level)" );
     static_assert( std::is_invocable_v<FanoutPoCallback, uint32_t, uint32_t>,
@@ -60,7 +102,6 @@ struct aqfp_fanout_resyn
 
     auto offsets = balanced_splitter_tree_offsets( ntk_src.fanout_size( n ) );
 
-    auto fanouts_n = fanouts[n];
     std::sort( fanouts_n.begin(), fanouts_n.end(), [&]( auto f1, auto f2 )
                { return ( ntk_src.depth() - ntk_src.level( f1 ) ) > ( ntk_src.depth() - ntk_src.level( f2 ) ) ||
                         ( ( ntk_src.depth() - ntk_src.level( f1 ) ) == ( ntk_src.depth() - ntk_src.level( f2 ) ) && ( f1 < f2 ) ); } );

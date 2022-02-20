@@ -170,7 +170,7 @@ public:
         po_level_of_node[node] = std::max(po_level_of_node[node], level);
       };
 
-      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
+      fanout_resyn_fn( ntk_topo, n, fanouts[n], ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
     } );
 
     /* map register outputs */
@@ -196,7 +196,7 @@ public:
         po_level_of_node[node] = std::max(po_level_of_node[node], level);
       };
 
-      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
+      fanout_resyn_fn( ntk_topo, n, fanouts[n], ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
     } );
 
     /* map nodes */
@@ -254,7 +254,7 @@ public:
         // critical_po_level = std::max( critical_po_level, level );
       };
 
-      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], level_of_src_node[n], fanout_node_callback, fanout_po_callback );
+      fanout_resyn_fn( ntk_topo, n, fanouts[n], ntk_dest, node2new[n], level_of_src_node[n], fanout_node_callback, fanout_po_callback );
     } );
 
     /* map primary outputs */
