@@ -5,12 +5,12 @@
 
 #include <fmt/format.h>
 
-#include <mockturtle/networks/aqfp.hpp>
-#include <mockturtle/networks/klut.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_db.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_fanout_resyn.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_node_resyn.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_resynthesis.hpp>
+#include <mockturtle/networks/aqfp.hpp>
+#include <mockturtle/networks/klut.hpp>
 
 #include <kitty/kitty.hpp>
 
@@ -81,9 +81,9 @@ TEST_CASE( "AQFP area-oriented resynthesis", "[aqfp_resyn]" )
   std::stringstream ss( get_database() );
   db.load_db( ss );
 
-  mockturtle::aqfp_node_resyn_param ps{ assume, splitters, mockturtle::aqfp_node_resyn_strategy::cost_based };
-  mockturtle::aqfp_node_resyn node_resyn( db, ps );
+  mockturtle::aqfp_node_resyn_param ps{ assume, splitters, mockturtle::aqfp_node_resyn_strategy::area };
   mockturtle::aqfp_fanout_resyn fanout_resyn( assume );
+  mockturtle::aqfp_node_resyn node_resyn( db, ps );
 
   mockturtle::aqfp_network aqfp;
   auto res = mockturtle::aqfp_resynthesis( aqfp, klut, node_resyn, fanout_resyn );
@@ -139,7 +139,7 @@ TEST_CASE( "AQFP delay-oriented resynthesis", "[aqfp_resyn]" )
   std::stringstream ss( get_database() );
   db.load_db( ss );
 
-  mockturtle::aqfp_node_resyn_param ps{ assume, splitters, mockturtle::aqfp_node_resyn_strategy::level_based };
+  mockturtle::aqfp_node_resyn_param ps{ assume, splitters, mockturtle::aqfp_node_resyn_strategy::delay };
   mockturtle::aqfp_node_resyn node_resyn( db, ps );
   mockturtle::aqfp_fanout_resyn fanout_resyn( assume );
 

@@ -27,7 +27,7 @@
   \file aqfp_node_resyn.hpp
   \brief AQFP node resynthesis strategy
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -46,26 +46,59 @@ namespace mockturtle
 
 /*! \brief Strategy for resynthesizing a node.
  *
- * cost_based  - choose the database entry that gives the minimum cost and break ties uing the level
- * level_based - choose the database entry that gives the minimum level and break ties uing the cost
+ * area  - choose the database entry that gives the minimum area and break ties uing the delay
+ * delay - choose the database entry that gives the minimum delay and break ties uing the cost
  */
 enum class aqfp_node_resyn_strategy
 {
-  cost_based,
-  level_based
+  area,
+  delay
 };
 
-/*! \brief Parameters for aqfp_node_resyn. */
+/*! \brief AQFP node re-synthesis parameters. */
 struct aqfp_node_resyn_param
 {
-  aqfp_assumptions assume;
-  std::unordered_map<uint32_t, double> splitters;
-  aqfp_node_resyn_strategy strategy = aqfp_node_resyn_strategy::cost_based;
+  aqfp_assumptions assume = { false, false, true, 4u };
+  std::unordered_map<uint32_t, double> splitters = { { 1u, 2.0 }, { 4u, 2.0 } };
+  aqfp_node_resyn_strategy strategy = aqfp_node_resyn_strategy::area;
 };
 
-/*! \brief This datastructure can be passed to `aqfp_resynthesis` as the node resynthesis algorithm. */
+/*! \brief A callback to re-synthesize a node in an AQFP network.
+ *
+ * A suitable AQFP sub-graph structure for a given node will be chosen from
+ * a database of AQFP structures.
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+     aqfp_assumptions assume = { false, false, true, 4u };
+     aqfp_fanout_resyn fanout_resyn{ assume };
+
+     std::unordered_map<uint32_t, double> gate_costs = { { 3u, 6.0 }, { 5u, 10.0 } };
+     std::unordered_map<uint32_t, double> splitters = { { 1u, 2.0 }, { assume.splitter_capacity, 2.0 } };
+     aqfp_node_resyn_param ps{ assume, splitters, aqfp_node_resyn_strategy::delay };
+
+     aqfp_db<> db( gate_costs, splitters );
+     db.load_db( ... ); // from an input-stream (e.g., std::ifstream or std::stringstream)
+
+     aqfp_node_resyn node_resyn( db, ps );
+
+     klut_network src_ntk = ...;
+     aqfp_network dst_ntk;
+     auto res = aqfp_resynthesis( dst_ntk, src_ntk, node_resyn, fanout_resyn );
+
+   \endverbatim
+ */
 struct aqfp_node_resyn
 {
+
+  /*! \brief Default constructor.
+   *
+   * \param db AQFP database.
+   * \param ps AQFP note re-synthesis parameters.
+   */
   aqfp_node_resyn( aqfp_db<>& db, const aqfp_node_resyn_param& ps ) : params( ps ), db( db )
   {
     /*! must provid the cost of a simple buffer with one output */
@@ -74,6 +107,15 @@ struct aqfp_node_resyn
     assert( ps.splitters.count( ps.assume.splitter_capacity ) > 0 );
   }
 
+  /*! Re-synthesize a given node as a sub-graph in an AQFP network.
+   *
+   * \param ntk_dest AQFP network that is being synthesized.
+   * \param f Function computed by the source node that is being re-synthesized.
+   * \param leaves_begin Iterator (begin) for the leaves of the source node.
+   * \param leaves_end Iterator (end) for the leaves of the source node.
+   * \param level_update_callback Callback with parameters (new node, level of the new node).
+   * \param rewyn_performed_callback Callback with the signal that correspond to the source node and its level.
+   */
   template<typename NtkDest, typename TruthTable, typename LeavesIterator, typename LevelUpdateCallback, typename ResynPerformedCallback>
   void operator()( NtkDest& ntk_dest, const TruthTable& f, LeavesIterator leaves_begin, LeavesIterator leaves_end,
                    LevelUpdateCallback&& level_update_callback, ResynPerformedCallback&& resyn_performed_callback )
@@ -156,12 +198,13 @@ struct aqfp_node_resyn
           tt._bits[0], leaf_levels, leaf_no_splitters,
           [&]( const std::pair<double, uint32_t>& f, const std::pair<double, uint32_t>& s )
           {
-            if ( params.strategy == aqfp_node_resyn_strategy::cost_based )
+            if ( params.strategy == aqfp_node_resyn_strategy::area )
             {
               return ( f.first < s.first || ( f.first == s.first && f.second < s.second ) );
             }
             else
             {
+              assert( params.strategy == aqfp_node_resyn_strategy::delay );
               return ( f.second < s.second || ( f.second == s.second && f.first < s.first ) );
             }
           } );
