@@ -20,31 +20,41 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
+    // if ( benchmark != "priority" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     xag_network xag;
     auto const result = lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( xag ) );
     assert( result == lorina::return_code::success ); (void)result;
 
-    window_resub_params ps;
-    window_resub_stats st;
-    ps.verbose = true;
-    ps.wps.max_inserts = 3;
-    ps.wps.preserve_depth = true;
-    ps.wps.update_levels_lazily = ps.wps.preserve_depth;
-
     depth_view _dntk( xag );
     uint32_t initial_size = _dntk.num_gates();
     uint32_t initial_depth = _dntk.depth();
 
-    window_xag_heuristic_resub( xag, ps, &st );
+    float run_time = 0;
 
-    xag = cleanup_dangling( xag );
+    while ( true )
+    {
+      window_resub_params ps;
+      window_resub_stats st;
+      ps.verbose = true;
+      ps.wps.max_inserts = 3;
+      ps.wps.preserve_depth = false;
+      ps.wps.update_levels_lazily = ps.wps.preserve_depth;
+      uint32_t curr_size = xag.num_gates();
+      window_xag_heuristic_resub( xag, ps, &st );
+      xag = cleanup_dangling( xag );
+      run_time += to_seconds( st.time_total );
+      if ( xag.num_gates() == curr_size )
+      {
+        break;
+      }
+    }
 
     depth_view dntk( xag );
 
     const auto cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
-    exp( benchmark, initial_size, initial_size - xag.num_gates(), initial_depth, initial_depth - dntk.depth(), to_seconds( st.time_total ), cec );
+    exp( benchmark, initial_size, initial_size - xag.num_gates(), initial_depth, initial_depth - dntk.depth(), run_time, cec );
   }
 
   exp.save();

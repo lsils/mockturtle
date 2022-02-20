@@ -277,23 +277,26 @@ private:
   }
 
   std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t>> best_cost;
+
   bool check_cost ( uint32_t x, uint32_t y, uint32_t cost )
   {
+    uint32_t _x = std::min( x, y );
+    uint32_t _y = std::max( x, y );
     bool ret = false; /* if best is updated */
-    if ( best_cost.find( x ) == best_cost.end() )
+    if ( best_cost.find( _x ) == best_cost.end() )
     {
       ret = true;
-      best_cost[x] = std::unordered_map<uint32_t, uint32_t>();
+      best_cost[ _x ] = std::unordered_map<uint32_t, uint32_t>();
     }
-    if ( best_cost[ x ].find( y ) == best_cost[x].end() )
+    if ( best_cost[ _x ].find( _y ) == best_cost[ _x ].end() )
     {
       ret = true;
-      best_cost[x][y] = cost;
+      best_cost[ _x ][ _y ] = cost;
     }
-    if ( best_cost[ x ][ y ] > cost )
+    if ( best_cost[ _x ][ _y ] > cost )
     {
       ret = true;
-      best_cost[x][y] = cost;
+      best_cost[ _x ][ _y ] = cost;
     }
     return ret;
   }
@@ -307,6 +310,7 @@ private:
     bool done;
     gate_type ntype;
     uint32_t lit;
+    uint32_t num_xor;
     const bool operator > ( const task & t ) const
     {
       if ( cost.first != t.cost.first ) /* area */
@@ -317,7 +321,7 @@ private:
       return score > t.score;
     }
 
-    task( auto _done, auto _prev, auto _lit, auto _ntype, auto _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost), score(0) {}
+    task( auto _done, auto _prev, auto _lit, auto _ntype, auto _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost), score(0), num_xor(0) {}
   };
 
   struct deq_task
@@ -456,6 +460,11 @@ public:
       {
         break;
       }
+      if ( q.size() >= 1000 )
+      {
+        // std::cout << divisors.size() << "; max insert = " << upper_bound << std::endl;
+        break;
+      }
       for ( auto v = 1u; v < divisors.size(); ++v )
       {
         auto _t = call_with_stopwatch( st.time_tt_calculation, [&]() {
@@ -463,13 +472,9 @@ public:
         } );
         if ( _t ) /* prune dont cares */
         {
-          if ( (*_t).done == true )
+          if ( _t->done == true )
           {
-            /* this only for area, otherwise update the upper bound and continue */
-            mem.emplace_back( (*_t) );
-            auto output = back_trace( mem.size() - 1 );
-            index_list.add_output( output.second );
-            return index_list;            
+            upper_bound = (_t->cost).first;
           }
           call_with_stopwatch( st.time_enqueue, [&]() {
             q.push( *_t );
@@ -533,20 +538,9 @@ private:
         auto fanin1 = cand_q.top(); cand_q.pop();
         auto fanin2 = cand_q.top(); cand_q.pop();
         uint32_t new_lit = 0u;
-        switch ( mem[p].ntype )
-        {
-        case AND:
-          new_lit = index_list.add_and( fanin1.second, fanin2.second );
-          break;
-        case OR:
-          new_lit = index_list.add_and( fanin1.second ^ 0x1, fanin2.second ^ 0x1) ^ 0x1;
-          break;
-        case XOR:
-          new_lit = index_list.add_xor( fanin1.second, fanin2.second );
-          break;
-        default:
-          break;
-        }          
+        if ( mem[p].ntype == AND ) new_lit = index_list.add_and( fanin1.second, fanin2.second );
+        else if ( mem[p].ntype == OR ) new_lit = index_list.add_and( fanin1.second ^ 0x1, fanin2.second ^ 0x1) ^ 0x1;
+        else if ( mem[p].ntype == XOR ) new_lit = index_list.add_xor( fanin1.second, fanin2.second );
         auto new_cost = fanin2.first + 1; // TODO: change this "1" to cost
         cand_q.push( std::pair( new_cost, new_lit ) );
       }
@@ -564,26 +558,22 @@ private:
     }
     if ( balancing ) /* a better estimation of depth cost */
     {
-      std::unordered_set<uint32_t> lit_set;
       std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<>> cost_q;
       auto p = pos;
-      cost_q.push( depth_fn( mem[p].lit>>1 ) ); lit_set.insert( mem[p].lit>>1 );
+      cost_q.push( depth_fn( mem[p].lit>>1 ) );
       while ( mem[p].prev != 0 )
       {
         for ( p = mem[p].prev; ; p = mem[p].prev ) /* get all the same node type */
         {
           cost_q.push( depth_fn( mem[p].lit >> 1 ) );
-          if ( lit_set.find( mem[p].lit>>1 ) != lit_set.end() ) return std::nullopt; /* a literal occur twice in the chain */
-          lit_set.insert( mem[p].lit>>1 );
           if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
         }
         while ( cost_q.size() > 1 ) /* add node while maintaining the depth order */
         {
           cost_q.pop();
-          cost_q.push( cost_q.top() + 1);
+          cost_q.push( cost_q.top() + 1 );
           cost_q.pop();
         }
-        lit_set.clear();
       }
       depth_cost = cost_q.top();
     }
@@ -621,7 +611,7 @@ private:
     } );
     gate_type _ntype = NONE;
     bool done = false;
-    uint32_t lit = (v<<1);
+    uint32_t lit = v << 1;
     switch ( ltype )
     {
     case DONT_CARE: return std::nullopt;
@@ -633,12 +623,22 @@ private:
     case NEG_UNATE_INV:          _ntype = AND;  lit++;  break;
     case BINATE:                 _ntype = XOR;          break;
     }
+
+    if ( _ntype != NONE && _ntype == _t.ntype && ( lit >> 1 ) <= ( _t.lit >> 1 ) ) 
+    {
+      return std::nullopt; /* commutativity */
+    } 
     auto cost = get_cost( mem.size() - 1, lit, _ntype, false ); // TODO: assume prev task always at back()
     if ( !cost || (*cost).first >= upper_bound )
     {
       return std::nullopt; /* task is pruned */
     }
     task t( done, mem.size() - 1, lit, _ntype, *cost );
+    if ( _ntype == XOR ) 
+    {
+      if ( _t.num_xor > 0 ) return std::nullopt;
+      t.num_xor = _t.num_xor + 1;
+    }
     if ( done == false )
     {
       auto [ _off, _on ] = call_with_stopwatch( st.time_move_tt, [&] () {

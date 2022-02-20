@@ -1,0 +1,187 @@
+[
+  {
+    "entries": [
+      {
+        "benchmark": "adder",
+        "cec": true,
+        "depth": 255,
+        "depth gain": 4294967295,
+        "runtime": 0.18319685757160187,
+        "size": 1020,
+        "size gain": 128
+      },
+      {
+        "benchmark": "bar",
+        "cec": true,
+        "depth": 12,
+        "depth gain": 0,
+        "runtime": 1.3522529602050781,
+        "size": 3336,
+        "size gain": 203
+      },
+      {
+        "benchmark": "div",
+        "cec": true,
+        "depth": 4372,
+        "depth gain": 4294967244,
+        "runtime": 22.7183837890625,
+        "size": 57247,
+        "size gain": 20491
+      },
+      {
+        "benchmark": "hyp",
+        "cec": true,
+        "depth": 24801,
+        "depth gain": 4294967295,
+        "runtime": 42.88798141479492,
+        "size": 214335,
+        "size gain": 8521
+      },
+      {
+        "benchmark": "log2",
+        "cec": true,
+        "depth": 444,
+        "depth gain": 21,
+        "runtime": 13.971196174621582,
+        "size": 32060,
+        "size gain": 1964
+      },
+      {
+        "benchmark": "max",
+        "cec": true,
+        "depth": 287,
+        "depth gain": 0,
+        "runtime": 0.4928922951221466,
+        "size": 2865,
+        "size gain": 2
+      },
+      {
+        "benchmark": "multiplier",
+        "cec": true,
+        "depth": 274,
+        "depth gain": 2,
+        "runtime": 16.20891761779785,
+        "size": 27062,
+        "size gain": 1460
+      },
+      {
+        "benchmark": "sin",
+        "cec": true,
+        "depth": 225,
+        "depth gain": 14,
+        "runtime": 4.851939678192139,
+        "size": 5416,
+        "size gain": 374
+      },
+      {
+        "benchmark": "sqrt",
+        "cec": true,
+        "depth": 5058,
+        "depth gain": 4294966305,
+        "runtime": 7.54840087890625,
+        "size": 24618,
+        "size gain": 6276
+      },
+      {
+        "benchmark": "square",
+        "cec": true,
+        "depth": 250,
+        "depth gain": 4294967295,
+        "runtime": 8.287708282470703,
+        "size": 18484,
+        "size gain": 2083
+      },
+      {
+        "benchmark": "arbiter",
+        "cec": true,
+        "depth": 87,
+        "depth gain": 0,
+        "runtime": 2.2117362022399902,
+        "size": 11839,
+        "size gain": 0
+      },
+      {
+        "benchmark": "cavlc",
+        "cec": true,
+        "depth": 16,
+        "depth gain": 4294967295,
+        "runtime": 3.112665891647339,
+        "size": 693,
+        "size gain": 78
+      },
+      {
+        "benchmark": "ctrl",
+        "cec": true,
+        "depth": 10,
+        "depth gain": 4294967293,
+        "runtime": 0.1969338059425354,
+        "size": 174,
+        "size gain": 79
+      },
+      {
+        "benchmark": "dec",
+        "cec": true,
+        "depth": 3,
+        "depth gain": 0,
+        "runtime": 0.08282703906297684,
+        "size": 304,
+        "size gain": 0
+      },
+      {
+        "benchmark": "i2c",
+        "cec": true,
+        "depth": 20,
+        "depth gain": 0,
+        "runtime": 1.2374366521835327,
+        "size": 1342,
+        "size gain": 162
+      },
+      {
+        "benchmark": "int2float",
+        "cec": true,
+        "depth": 16,
+        "depth gain": 0,
+        "runtime": 1.0607028007507324,
+        "size": 260,
+        "size gain": 40
+      },
+      {
+        "benchmark": "mem_ctrl",
+        "cec": true,
+        "depth": 114,
+        "depth gain": 4294967291,
+        "runtime": 39.989105224609375,
+        "size": 46836,
+        "size gain": 2492
+      },
+      {
+        "benchmark": "priority",
+        "cec": true,
+        "depth": 250,
+        "depth gain": 183,
+        "runtime": 0.1605328768491745,
+        "size": 978,
+        "size gain": 425
+      },
+      {
+        "benchmark": "router",
+        "cec": true,
+        "depth": 54,
+        "depth gain": 2,
+        "runtime": 0.07880224287509918,
+        "size": 257,
+        "size gain": 18
+      },
+      {
+        "benchmark": "voter",
+        "cec": true,
+        "depth": 70,
+        "depth gain": 3,
+        "runtime": 3.577575206756592,
+        "size": 13758,
+        "size gain": 6026
+      }
+    ],
+    "version": "90ec30a"
+  }
+]
