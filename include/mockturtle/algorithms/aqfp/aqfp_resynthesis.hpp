@@ -305,31 +305,33 @@ private:
 
 } /* namespace detail */
 
-/*! \brief Path balanced resynthesis algorithm.
+/*! \brief Re-synthesize a given source network as a path-balanced AQFP network.
+ *
+ * The algorithm outputs an AQFP network with level assignments to its nodes and combinational outputs.
+ *
+   \verbatim embed:rst
+
    Example
 
    .. code-block:: c++
 
      aqfp_assumptions assume = { false, false, true, 4u };
+     aqfp_fanout_resyn fanout_resyn{ assume };
+
      std::unordered_map<uint32_t, double> gate_costs = { { 3u, 6.0 }, { 5u, 10.0 } };
      std::unordered_map<uint32_t, double> splitters = { { 1u, 2.0 }, { assume.splitter_capacity, 2.0 } };
+     aqfp_node_resyn_param ps{ assume, splitters, aqfp_node_resyn_strategy::delay };
 
      aqfp_db<> db( gate_costs, splitters );
-     std::istream& ss = ...; // load from a file (std::ifstream) or a string (std::stringstream)
-     db.load_db( ss );
+     db.load_db( ... ); // from an input-stream (e.g., std::ifstream or std::stringstream)
 
-     aqfp_node_resyn_param ps{ assume, splitters, aqfp_node_resyn_strategy::delay };
      aqfp_node_resyn node_resyn( db, ps );
-     aqfp_fanout_resyn fanout_resyn( assume );
 
      klut_network src_ntk = ...;
      aqfp_network dst_ntk;
-
-     aqfp_r res = aqfp_resynthesis( dst_ntk, src_ntk, node_resyn, fanout_resyn );
+     auto res = aqfp_resynthesis( dst_ntk, src_ntk, node_resyn, fanout_resyn );
 
    \endverbatim
-
-
  */
 template<class NtkDest, class NtkSrc, class NodeResynFn, class FanoutResynFn>
 aqfp_resynthesis_result<NtkDest> aqfp_resynthesis(
