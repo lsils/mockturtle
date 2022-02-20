@@ -27,7 +27,7 @@
   \file aqfp_fanout_resyn.hpp
   \brief AQFP fanout resynthesis strategy
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -41,11 +41,10 @@
 namespace mockturtle
 {
 
-/*! \brief A callback function to determine the fanout levels.
+/*! \brief A callback to determine the fanout levels.
  *
- * This is intended to be used with AQFP or similar pipelined networks.
- * Levels are determined assuming that a nearly-balanced splitter tree
- * is used for each the considered fanout net.
+ * This is intended to be used with AQFP networks. Levels are determined assuming that
+ * a nearly-balanced splitter tree is used for each the considered fanout net.
  *
    \verbatim embed:rst
 
@@ -53,14 +52,21 @@ namespace mockturtle
 
    .. code-block:: c++
 
-     klut_network klut = ...;
-     aqfp_assumptions assume = ...;
+     aqfp_assumptions assume = { false, false, true, 4u };
+     aqfp_fanout_resyn fanout_resyn{ assume };
 
-     aqfp_node_resyn node_resyn = ...;
-     afp_fanout_resyn fanout_resyn{ assume };
+     std::unordered_map<uint32_t, double> gate_costs = { { 3u, 6.0 }, { 5u, 10.0 } };
+     std::unordered_map<uint32_t, double> splitters = { { 1u, 2.0 }, { assume.splitter_capacity, 2.0 } };
+     aqfp_node_resyn_param ps{ assume, splitters, aqfp_node_resyn_strategy::delay };
 
-     aqfp_network aqfp;
-     auto res = mockturtle::aqfp_resynthesis( aqfp, klut, node_resyn, fanout_resyn );
+     aqfp_db<> db( gate_costs, splitters );
+     db.load_db( ... ); // from an input-stream (e.g., std::ifstream or std::stringstream)
+
+     aqfp_node_resyn node_resyn( db, ps );
+
+     klut_network src_ntk = ...;
+     aqfp_network dst_ntk;
+     auto res = aqfp_resynthesis( dst_ntk, src_ntk, node_resyn, fanout_resyn );
 
    \endverbatim
  */
@@ -68,17 +74,17 @@ struct aqfp_fanout_resyn
 {
   /*! \brief Default constructor.
    *
-   * \param assume AQFP synthesis assumptions (only the fields `splitter_capacity` and `branc_pis` will be used)
+   * \param assume AQFP synthesis assumptions (only the fields `splitter_capacity` and `branch_pis` will be used)
    */
   aqfp_fanout_resyn( const aqfp_assumptions& assume )
       : splitter_capacity{ assume.splitter_capacity }, branch_pis{ assume.branch_pis } {}
 
-  /*! \brief Determines the relative levels of fanouts of a node assuming a nearly balanced splitter tree.
+  /*! \brief Determine the relative levels of fanouts of a node assuming a nearly balanced splitter tree.
    *
    * \param ntk_src Source network with `depth()` and `level()` member functions.
    * \param n Node in `ntk_src` for which the fanout levels are to be determined.
    * \param fanouts_n Fanout nodes of `n` in `ntk_dest`.
-   * \param ntk_dest Destination network which is being synthesized as a pipelined network.
+   * \param ntk_dest Destination network which is being synthesized as an AQFP network.
    * \param f The signal in `ntk_dest` that correspond to source node `n`.
    * \param level_f The level of `f` in `ntk_dest`.
    * \param fanout_node_fn Callback with arguments (source network node, level in destination network).
