@@ -154,17 +154,10 @@ struct xag_resyn_stats
   /*! \brief Time for checking unateness of literals. */
   stopwatch<>::duration time_check_unateness{0};
 
-  /*! \brief Count the number of Enqueued Element */
-  uint32_t num_enqueue_total{0};
-  uint32_t num_enqueue_curr{0};
-
-  /*! \brief Count the number of Dequeued Element */
-  uint32_t num_dequeue_total{0};
-  uint32_t num_dequeue_curr{0};
-
-  /*! \brief Count the number of Dequeued Element */
-  uint32_t num_state_total{0};
-  uint32_t num_state_curr{0};
+  stopwatch<>::duration time_enqueue{0};
+  stopwatch<>::duration time_tt_calculation{0};
+  stopwatch<>::duration time_check_unate{0};
+  stopwatch<>::duration time_move_tt{0};
 
   void report() const
   {
@@ -176,9 +169,10 @@ struct xag_resyn_stats
     fmt::print( "[i]             sort         : {:>5.2f} secs\n", to_seconds( time_sort ) );
     fmt::print( "[i]             collect pairs: {:>5.2f} secs\n", to_seconds( time_collect_pairs ) );
     fmt::print( "[i]             dividing     : {:>5.2f} secs\n", to_seconds( time_divide ) );
-    fmt::print( "[i]             total dequeue: {:>d} tasks\n", num_dequeue_total );
-    fmt::print( "[i]             total enqueue: {:>d} tasks\n", num_enqueue_total );
-    fmt::print( "[i]             total states: {:>d}\n", num_state_total );
+    fmt::print( "[i]             enqueue      : {:>5.2f} secs\n", to_seconds( time_enqueue ) );
+    fmt::print( "[i]             tt calc      : {:>5.2f} secs\n", to_seconds( time_tt_calculation ) );
+    fmt::print( "[i]             check unate  : {:>5.2f} secs\n", to_seconds( time_check_unate ) );
+    fmt::print( "[i]             tt move      : {:>5.2f} secs\n", to_seconds( time_move_tt ) );
   }
 };
 
@@ -323,7 +317,7 @@ private:
       return score > t.score;
     }
 
-    task( auto _done, auto _prev, auto _lit, auto _ntype, auto _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost) {}
+    task( auto _done, auto _prev, auto _lit, auto _ntype, auto _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost), score(0) {}
   };
 
   struct deq_task
@@ -394,7 +388,6 @@ public:
   {
     static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::gate_type>, "iterator_type does not dereference to static_params::gate_type" );
 
-
     ptts = &tts;
 
     divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
@@ -442,17 +435,14 @@ public:
 
     std::priority_queue<task, std::vector<task>, std::greater<>> q;
     /* prepare the initial task */
-    q.push( init_task );
-
-    st.num_enqueue_curr = 1u; /* including the initial task */
-    st.num_dequeue_curr = 0u;
+    call_with_stopwatch( st.time_enqueue, [&]() {
+      q.push( init_task );
+    } );
 
     while ( !q.empty() ) 
     {
       /* get the current lower bound */
       auto t = q.top(); q.pop(); 
-      st.num_dequeue_curr += 1u;
-      st.num_dequeue_total += 1u;
       mem.emplace_back( deq_task( t ) );
       /* back trace succeed tasks */
       if ( t.done == true )
@@ -466,29 +456,24 @@ public:
       {
         break;
       }
-      /* limit the time */
-      if ( st.num_enqueue_curr >= 400 )
-      {
-        break;
-      }
       for ( auto v = 1u; v < divisors.size(); ++v )
       {
-        auto _t = find_unate_subtask( t, v );
+        auto _t = call_with_stopwatch( st.time_tt_calculation, [&]() {
+          return find_unate_subtask( t, v );
+        } );
         if ( _t ) /* prune dont cares */
         {
-          if ( (*_t).done )
+          if ( (*_t).done == true )
           {
             /* this only for area, otherwise update the upper bound and continue */
             mem.emplace_back( (*_t) );
-            // std::cout << "\t" << divisors.size() << " divs, " << st.num_dequeue_curr << " dequeued, ";
-            // std::cout << (*_t).cost.first << " nodes " << std::endl;
             auto output = back_trace( mem.size() - 1 );
             index_list.add_output( output.second );
             return index_list;            
           }
-          q.push( *_t ); 
-          st.num_enqueue_curr++;
-          st.num_enqueue_total++;
+          call_with_stopwatch( st.time_enqueue, [&]() {
+            q.push( *_t );
+          } );
         }
       }
     }
@@ -617,66 +602,36 @@ private:
       kitty::intersection_is_empty<TT, 1, 1>( tt, on_set ),
       kitty::intersection_is_empty<TT, 0, 1>( tt, on_set ),
     };
-    if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
-    {
-      return DONT_CARE;
-    }
-    /* done by positive */
-    if ( unateness[0] && unateness[3] )
-    {
-      return EQUAL;
-    }
-    /* done by negative */
-    if ( unateness[1] && unateness[2] )
-    {
-      return EQUAL_INV;
-    }
-    if ( unateness[0] )
-    {
-      return POS_UNATE;
-    }
-    if ( unateness[1] )
-    {
-      return POS_UNATE_INV;
-    }
-    if ( unateness[2] )
-    {
-      return NEG_UNATE_INV;
-    }
-    if ( unateness[3] )
-    {
-      return NEG_UNATE;
-    }
+    if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) ) return DONT_CARE;
+    if ( unateness[0] && unateness[3] ) return EQUAL;
+    if ( unateness[1] && unateness[2] ) return EQUAL_INV;
+    if ( unateness[0] ) return POS_UNATE;
+    if ( unateness[1] ) return POS_UNATE_INV;
+    if ( unateness[2] ) return NEG_UNATE_INV;
+    if ( unateness[3] ) return NEG_UNATE;
     return BINATE;
   }
-
   std::optional<task> find_unate_subtask ( const task & _t, uint32_t v )
   {
     auto const & tt = get_div(v);
     auto off = _t.sets[0];
     auto on  = _t.sets[1];
-    lit_type ltype = check_unateness( to_tt( off ), to_tt( on ), tt );
+    auto ltype = call_with_stopwatch( st.time_check_unate, [&] () {
+      return check_unateness( to_tt( off ), to_tt( on ), tt );
+    } );
     gate_type _ntype = NONE;
     bool done = false;
     uint32_t lit = (v<<1);
     switch ( ltype )
     {
-    case DONT_CARE:
-      return std::nullopt;
-    case EQUAL:
-      done = true; _ntype = NONE; break;
-    case EQUAL_INV:
-      done = true; _ntype = NONE; lit++ ; break;
-    case POS_UNATE:
-      _ntype = OR; break;
-    case POS_UNATE_INV:
-      _ntype = OR; lit++; break;
-    case NEG_UNATE:
-      _ntype = AND; break;
-    case NEG_UNATE_INV:
-      _ntype = AND; lit++; break;
-    case BINATE:
-      _ntype = XOR; break;
+    case DONT_CARE: return std::nullopt;
+    case EQUAL:     done = true; _ntype = NONE;         break;
+    case EQUAL_INV: done = true; _ntype = NONE; lit++ ; break;
+    case POS_UNATE:              _ntype = OR;           break;
+    case POS_UNATE_INV:          _ntype = OR;   lit++;  break;
+    case NEG_UNATE:              _ntype = AND;          break;
+    case NEG_UNATE_INV:          _ntype = AND;  lit++;  break;
+    case BINATE:                 _ntype = XOR;          break;
     }
     auto cost = get_cost( mem.size() - 1, lit, _ntype, false ); // TODO: assume prev task always at back()
     if ( !cost || (*cost).first >= upper_bound )
@@ -684,10 +639,11 @@ private:
       return std::nullopt; /* task is pruned */
     }
     task t( done, mem.size() - 1, lit, _ntype, *cost );
-    t.score = 0;
     if ( done == false )
     {
-      auto [ _off, _on ] = tt_move( off, on, lit, _ntype );
+      auto [ _off, _on ] = call_with_stopwatch( st.time_move_tt, [&] () {
+        return tt_move( off, on, lit, _ntype );
+      } );
       if ( check_cost( _off, _on, (*cost).first ) == false )
       {
         return std::nullopt;
