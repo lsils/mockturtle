@@ -27,13 +27,13 @@
   \file db_builder.hpp
   \brief Builder class for AQFP DAG database
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <unordered_map>
 #include <vector>
@@ -48,6 +48,7 @@
 namespace mockturtle
 {
 
+/*! \brief A class to help the generation of AQFP database in an incremental manner. */
 template<typename Ntk = aqfp_dag<>>
 class aqfp_db_builder
 {
@@ -229,10 +230,8 @@ public:
   /*! \brief Load database from input stream `is`. */
   void load_db( std::istream& is )
   {
-    aqfp_db<Ntk>::load_db(is, db);
+    aqfp_db<Ntk>::load_db( is, db );
   }
-
-
 
 private:
   std::unordered_map<uint32_t, double> gate_costs;
