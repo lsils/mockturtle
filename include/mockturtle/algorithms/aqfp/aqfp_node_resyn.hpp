@@ -44,15 +44,11 @@
 namespace mockturtle
 {
 
-/*! \brief Strategy for resynthesizing a node.
- *
- * area  - choose the database entry that gives the minimum area and break ties uing the delay
- * delay - choose the database entry that gives the minimum delay and break ties uing the cost
- */
+/*! \brief Strategy for resynthesizing a node. */
 enum class aqfp_node_resyn_strategy
 {
-  area,
-  delay
+  area, /*!< choose the database entry that gives the minimum area and break ties uing the delay */ 
+  delay /*!< choose the database entry that gives the minimum delay and break ties uing the cost */
 };
 
 /*! \brief AQFP node re-synthesis parameters. */
