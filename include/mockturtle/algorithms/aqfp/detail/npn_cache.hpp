@@ -32,10 +32,10 @@
 
 #pragma once
 
-#include <kitty/kitty.hpp>
-
 #include <tuple>
 #include <vector>
+
+#include <kitty/kitty.hpp>
 
 namespace mockturtle
 {

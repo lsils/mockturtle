@@ -38,9 +38,9 @@
 
 #include <kitty/kitty.hpp>
 
-#include "./detail/dag.hpp"
-#include "./detail/dag_cost.hpp"
-#include "./detail/npn_cache.hpp"
+#include "detail/dag.hpp"
+#include "detail/dag_cost.hpp"
+#include "detail/npn_cache.hpp"
 
 namespace mockturtle
 {
@@ -182,14 +182,14 @@ public:
   }
 
   /*! \brief Load database from input stream `is`. */
-  void load_db_from_file( std::istream& is, uint32_t version = 1u )
+  void load_db( std::istream& is, uint32_t version = 1u )
   {
-    load_db_from_file(is, db, version);
+    load_db(is, db, version);
   }
 
     /*! \brief Load database from input stream `is`. */
   template <typename T>
-  static void load_db_from_file( std::istream& is, T& db, uint32_t version = 1u )
+  static void load_db( std::istream& is, T& db, uint32_t version = 1u )
   {
     std::string line;
 
