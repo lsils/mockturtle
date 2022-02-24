@@ -85,15 +85,21 @@ struct xag_resyn_static_params
   /*! \brief Depth cost of each XOR gate (only relevant when `preserve_depth = true` and `use_xor = true`). */
   static constexpr uint32_t depth_cost_of_xor{1u};
 
+  static constexpr uint32_t max_enqueue{1000u};
+
+  static constexpr uint32_t max_xor{1u};
+
+  static constexpr uint32_t max_neighbors{10u};
+
   using truth_table_storage_type = void;
-  using gate_type = void;
+  using node_type = void;
 };
 
 template<class TT>
 struct xag_resyn_static_params_default : public xag_resyn_static_params
 {
   using truth_table_storage_type = std::vector<TT>;
-  using gate_type = uint32_t;
+  using node_type = uint32_t;
 };
 
 template<class TT>
@@ -119,7 +125,7 @@ template<class Ntk>
 struct xag_resyn_static_params_for_sim_resub : public xag_resyn_static_params
 {
   using truth_table_storage_type = incomplete_node_map<kitty::partial_truth_table, Ntk>;
-  using gate_type = typename Ntk::node;
+  using node_type = typename Ntk::node;
 };
 
 template<class Ntk>
@@ -345,7 +351,7 @@ public:
   /*! \brief Perform XAG resynthesis.
    *
    * `tts[*begin]` must be of type `TT`.
-   * Moreover, if `static_params::copy_tts = false`, `*begin` must be of type `static_params::gate_type`.
+   * Moreover, if `static_params::copy_tts = false`, `*begin` must be of type `static_params::node_type`.
    *
    * \param target Truth table of the target function.
    * \param care Truth table of the care set.
@@ -358,7 +364,7 @@ public:
            bool enabled = static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
-    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::gate_type>, "iterator_type does not dereference to static_params::gate_type" );
+    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
 
     ptts = &tts;
     on_off_sets[0] = ~target & care;
@@ -390,7 +396,7 @@ public:
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
   {
-    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::gate_type>, "iterator_type does not dereference to static_params::gate_type" );
+    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
 
     ptts = &tts;
 
@@ -455,32 +461,10 @@ public:
         index_list.add_output( output.second );
         return index_list;
       }
-      /* lower bound > upper bound */
-      if ( t.cost.first >= upper_bound )
-      {
-        break;
-      }
-      if ( q.size() >= 1000 )
-      {
-        // std::cout << divisors.size() << "; max insert = " << upper_bound << std::endl;
-        break;
-      }
-      for ( auto v = 1u; v < divisors.size(); ++v )
-      {
-        auto _t = call_with_stopwatch( st.time_tt_calculation, [&]() {
-          return find_unate_subtask( t, v );
-        } );
-        if ( _t ) /* prune dont cares */
-        {
-          if ( _t->done == true )
-          {
-            upper_bound = (_t->cost).first;
-          }
-          call_with_stopwatch( st.time_enqueue, [&]() {
-            q.push( *_t );
-          } );
-        }
-      }
+      if ( t.cost.first >= upper_bound ) break;
+      if ( q.size() >= static_params::max_enqueue ) break;
+
+      add_neighbors ( t, q );
     }
     return std::nullopt;
   }
@@ -494,6 +478,27 @@ private:
 
   /* cost upper bound */
   uint32_t upper_bound;
+
+  template<class Q>
+  auto add_neighbors ( const task & t, Q & q )
+  {
+    for ( auto v = 1u; v < divisors.size(); ++v )
+    {
+      auto _t = call_with_stopwatch( st.time_tt_calculation, [&]() {
+        return find_unate_subtask( t, v );
+      } );
+      if ( _t ) /* prune dont cares */
+      {
+        if ( _t->done == true )
+        {
+          upper_bound = (_t->cost).first;
+        }
+        call_with_stopwatch( st.time_enqueue, [&]() {
+          q.push( *_t );
+        } );
+      }
+    }
+  }
 
   /* */
   auto tt_move ( uint32_t off, uint32_t on, uint32_t lit, gate_type ntype )
@@ -624,6 +629,11 @@ private:
     case BINATE:                 _ntype = XOR;          break;
     }
 
+    if constexpr ( static_params::use_xor == false )
+    {
+      if ( _ntype == XOR ) return std::nullopt;
+    }
+
     if ( _ntype != NONE && _ntype == _t.ntype && ( lit >> 1 ) <= ( _t.lit >> 1 ) ) 
     {
       return std::nullopt; /* commutativity */
@@ -636,7 +646,7 @@ private:
     task t( done, mem.size() - 1, lit, _ntype, *cost );
     if ( _ntype == XOR ) 
     {
-      if ( _t.num_xor > 0 ) return std::nullopt;
+      if ( _t.num_xor >= static_params::max_xor ) return std::nullopt;
       t.num_xor = _t.num_xor + 1;
     }
     if ( done == false )
@@ -1252,7 +1262,7 @@ private:
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
   const typename static_params::truth_table_storage_type* ptts;
-  std::vector<std::conditional_t<static_params::copy_tts, TT, typename static_params::gate_type>> divisors;
+  std::vector<std::conditional_t<static_params::copy_tts, TT, typename static_params::node_type>> divisors;
 
   index_list_t index_list;
 

@@ -39,13 +39,13 @@ int main()
       window_resub_stats st;
       ps.verbose = true;
       ps.wps.max_inserts = 3;
-      ps.wps.preserve_depth = false;
+      ps.wps.preserve_depth = true;
       ps.wps.update_levels_lazily = ps.wps.preserve_depth;
       uint32_t curr_size = xag.num_gates();
       window_xag_heuristic_resub( xag, ps, &st );
       xag = cleanup_dangling( xag );
       run_time += to_seconds( st.time_total );
-      if ( xag.num_gates() == curr_size )
+      if ( ps.wps.preserve_depth == true || xag.num_gates() == curr_size )
       {
         break;
       }

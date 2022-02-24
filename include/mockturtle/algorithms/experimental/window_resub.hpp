@@ -406,7 +406,7 @@ public:
   using stats_t = xag_resyn_stats;
 
   explicit complete_tt_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), engine( st )
+    : ntk( ntk ), engine( rst )
   { }
 
   void init()
