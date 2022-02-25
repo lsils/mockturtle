@@ -91,6 +91,7 @@ TEST_CASE( "Synthesize XAGs using BFS for all 3-input functions", "[bfs_resyn]" 
   uint32_t success_counter{0};
   uint32_t failed_counter{0};
   test_xag_n_input_functions<engine_t, 3>( success_counter, failed_counter );
+  std::cout << success_counter << " / 256 \n";
 }
 
 TEST_CASE( "Synthesize XAGs using BFS for all 4-input functions", "[bfs_resyn]" )
@@ -100,5 +101,6 @@ TEST_CASE( "Synthesize XAGs using BFS for all 4-input functions", "[bfs_resyn]" 
   uint32_t success_counter{0};
   uint32_t failed_counter{0};
   test_xag_n_input_functions<engine_t, 4>( success_counter, failed_counter );
+  std::cout << success_counter << " / 65536 \n";
 }
 

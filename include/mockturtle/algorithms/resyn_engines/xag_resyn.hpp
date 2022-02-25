@@ -307,6 +307,21 @@ private:
     return ret;
   }
 
+  /* return if the cost is acceptable */
+  bool compare_cost ( auto cost, auto upper )
+  {
+    /* for depth cost */
+    if ( cost.second != upper.second )
+    {
+      return cost.second < upper.second;
+    }
+    if ( cost.first != upper.first )
+    {
+      return cost.first < upper.first;
+    }
+    return false;
+  }
+
   struct task 
   {
     std::array<uint32_t, 2> sets; /* the on-off set of each task (could be optimized) */
@@ -319,7 +334,11 @@ private:
     uint32_t num_xor;
     const bool operator > ( const task & t ) const
     {
-      if ( cost.first != t.cost.first ) /* area */
+      if ( cost.second != t.cost.second ) /* area */
+      {
+        return cost.second > t.cost.second;
+      }
+      if ( cost.first != t.cost.first )
       {
         return cost.first > t.cost.first;
       }
@@ -430,7 +449,7 @@ public:
     }
 
     depth_fn = depth_cost;
-    upper_bound = max_size;
+    upper_bound = std::pair( max_size, max_depth );
 
     mem.clear();
     id_to_num.clear();
@@ -461,7 +480,7 @@ public:
         index_list.add_output( output.second );
         return index_list;
       }
-      if ( t.cost.first >= upper_bound ) break;
+      if ( compare_cost( t.cost, upper_bound ) == false ) break;
       if ( q.size() >= static_params::max_enqueue ) break;
 
       add_neighbors ( t, q );
@@ -477,7 +496,7 @@ private:
   std::function<uint32_t(uint32_t)> depth_fn;
 
   /* cost upper bound */
-  uint32_t upper_bound;
+  std::pair< uint32_t, uint32_t > upper_bound;
 
   template<class Q>
   auto add_neighbors ( const task & t, Q & q )
@@ -491,7 +510,7 @@ private:
       {
         if ( _t->done == true )
         {
-          upper_bound = (_t->cost).first;
+          upper_bound = (_t->cost);
         }
         call_with_stopwatch( st.time_enqueue, [&]() {
           q.push( *_t );
@@ -638,8 +657,8 @@ private:
     {
       return std::nullopt; /* commutativity */
     } 
-    auto cost = get_cost( mem.size() - 1, lit, _ntype, false ); // TODO: assume prev task always at back()
-    if ( !cost || (*cost).first >= upper_bound )
+    auto cost = get_cost( mem.size() - 1, lit, _ntype, true ); // TODO: assume prev task always at back()
+    if ( !cost || compare_cost( *cost, upper_bound ) == false )
     {
       return std::nullopt; /* task is pruned */
     }

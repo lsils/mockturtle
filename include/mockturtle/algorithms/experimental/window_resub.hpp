@@ -35,6 +35,8 @@
 #include "../../traits.hpp"
 #include "../../views/depth_view.hpp"
 #include "../../views/fanout_view.hpp"
+#include "../../views/slack_view.hpp"
+#include "../../views/topo_view.hpp"
 #include "../../utils/index_list.hpp"
 #include "../../networks/xag.hpp"
 #include "../../networks/aig.hpp"
@@ -229,11 +231,11 @@ public:
       return std::nullopt; /* skip nodes with too many fanouts */
     }
 
-    if constexpr ( has_level_v<Ntk> )
+    if constexpr ( has_slack_v<Ntk> )
     {
       if ( ps.preserve_depth )
       {
-        win.max_level = ntk.level( n );
+        win.max_level = ntk.depth() - ntk.required( n );
         // divs_mgr.set_max_level( ntk.level( n ) - 1 );
       }
     }
@@ -462,9 +464,10 @@ void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
   }
   else
   {
-    using ViewedNtk = depth_view<fanout_view<Ntk>>;
     fanout_view<Ntk> fntk( ntk );
-    ViewedNtk viewed( fntk );
+    depth_view< decltype(fntk) > dntk( fntk );
+    slack_view< decltype(dntk) > viewed( dntk );
+    using ViewedNtk = decltype( viewed );
 
     using TT = typename kitty::dynamic_truth_table;
     using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
