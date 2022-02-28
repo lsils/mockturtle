@@ -36,7 +36,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <mockturtle/properties/aqfpcost.hpp>
+#include "../../../properties/aqfpcost.hpp"
 
 namespace mockturtle
 {

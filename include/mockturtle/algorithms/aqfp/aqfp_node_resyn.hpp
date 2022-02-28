@@ -36,8 +36,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <mockturtle/traits.hpp>
-
+#include "../../traits.hpp"
 #include "aqfp_assumptions.hpp"
 #include "aqfp_db.hpp"
 
