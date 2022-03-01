@@ -69,6 +69,7 @@ TEST_CASE( "Creation of a simple three node aig network: only and nodes", "[cove
   CHECK( aig_cp3.num_gates() == 3u );
   CHECK( aig_cp4.num_gates() == 3u );
 
+  CHECK( simulate<kitty::static_truth_table<4u>>( cover )[0]._bits == 0x8000 );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits == 0x8000 );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig_cp1 )[0]._bits == 0x8000 );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig_cp2 )[0]._bits == 0x8000 );
@@ -117,6 +118,7 @@ TEST_CASE( "Creation of a simple three node aig network: mixed gates", "[cover_t
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits );
 
+  CHECK( simulate<kitty::static_truth_table<4u>>( cover )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig_cp1 )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig_cp2 )[0]._bits == sim_reference );
@@ -165,6 +167,7 @@ TEST_CASE( "Creation of a simple three node xag network: mixed gates", "[cover_t
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( xag )[0]._bits );
 
+  CHECK( simulate<kitty::static_truth_table<4u>>( cover )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( xag )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( xag_cp1 )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( xag_cp2 )[0]._bits == sim_reference );
@@ -213,6 +216,7 @@ TEST_CASE( "Creation of a simple three node mig network: mixed gates", "[cover_t
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( mig )[0]._bits );
 
+  CHECK( simulate<kitty::static_truth_table<4u>>( cover )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( mig )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( mig_cp1 )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( mig_cp2 )[0]._bits == sim_reference );
@@ -261,6 +265,7 @@ TEST_CASE( "Creation of a simple three node xmg network: mixed gates", "[cover_t
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( xmg )[0]._bits );
 
+  CHECK( simulate<kitty::static_truth_table<4u>>( cover )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( xmg )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( xmg_cp1 )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( xmg_cp2 )[0]._bits == sim_reference );
@@ -344,6 +349,7 @@ TEST_CASE( "Creation of an aig network containing all the features of the conver
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits );
 
+  CHECK( simulate<kitty::static_truth_table<4u>>( cover )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig_cp1 )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig_cp2 )[0]._bits == sim_reference );
@@ -395,6 +401,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig"
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig_cp )[0]._bits == sim_reference );
+  CHECK( simulate<kitty::static_truth_table<4u>>( cover )[0]._bits == sim_reference );
 }
 
 TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: No don't cares", "[cover_to_graph]" )
@@ -441,6 +448,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
   CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
+  CHECK( simulate<kitty::static_truth_table<2u>>( cover )[0]._bits == sim_reference );
 }
 
 TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: No don't cares and some OFF set", "[cover_to_graph]" )
@@ -487,6 +495,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
   CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
+  CHECK( simulate<kitty::static_truth_table<2u>>( cover )[0]._bits == sim_reference );
 }
 
 
@@ -674,4 +683,32 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits );
   CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
+}
+
+TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: many don't cares", "[cover_to_graph]" )
+{
+  cover_network cover;
+  std::string file{
+    ".model monitorBLIF\n"
+    ".inputs a1 a2 a3 a4 a5 \n"
+    ".outputs y\n"
+    ".names a1 a2 a3 a4 a5 y\n"
+    "1---- 1\n"
+    "-1--- 1\n"
+    "--1-- 1\n"
+    "---1- 1\n"
+    "----1 1\n"
+    ".end\n"
+    };
+
+  std::istringstream in( file );
+  auto result = lorina::read_blif( in, blif_reader( cover ) );
+
+  aig_network aig_cp;
+  convert_cover_to_graph( aig_cp, cover );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+
+  CHECK( simulate<kitty::static_truth_table<5u>>( aig_cp )[0]._bits == simulate<kitty::static_truth_table<5u>>( cover )[0]._bits );
 }

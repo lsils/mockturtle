@@ -1611,20 +1611,6 @@ template<class Ntk, typename T>
 inline constexpr bool has_compute_v = has_compute<Ntk, T>::value;
 #pragma endregion
 
-#pragma region has_compute_on_node
-template<class Ntk, class = void>
-struct has_compute_on_node : std::false_type
-{
-};
-
-template<class Ntk>
-struct has_compute_on_node<Ntk, std::void_t<decltype( std::declval<Ntk>().compute_on_node( std::declval<node<Ntk>>(), std::declval<std::vector<kitty::cube>>() ) )>> : std::true_type
-{
-};
-
-template<class Ntk>
-inline constexpr bool has_compute_on_node_v = has_compute_on_node<Ntk>::value;
-#pragma endregion
 
 #pragma region has_compute_inplace
 template<class Ntk, typename T, class = void>

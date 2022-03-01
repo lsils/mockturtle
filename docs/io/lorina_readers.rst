@@ -11,6 +11,8 @@ implements the reader callback ``<format>_reader``.
 
 .. doxygenclass:: mockturtle::bench_reader
 
+.. doxygenclass:: mockturtle::blif_reader
+
 .. doxygenclass:: mockturtle::pla_reader
 
 .. doxygenclass:: mockturtle::verilog_reader

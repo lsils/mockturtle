@@ -258,6 +258,7 @@ TEST_CASE( "clone a node in a k-LUT network", "[klut]" )
   } );
 }
 
+
 TEST_CASE( "compute functions from AND and NOT gates in k-LUT networks", "[klut]" )
 {
   klut_network klut;

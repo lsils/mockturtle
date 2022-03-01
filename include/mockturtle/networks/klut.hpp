@@ -43,6 +43,7 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/print.hpp>
 
 #include <algorithm>
 #include <memory>
@@ -764,6 +765,7 @@ signal create_maj( signal a, signal b, signal c )
   compute( node const& n, Iterator begin, Iterator end ) const
   {
     const auto nfanin = _storage->nodes[n].children.size();
+
     std::vector<typename Iterator::value_type> tts( begin, end );
 
     assert( nfanin != 0 );

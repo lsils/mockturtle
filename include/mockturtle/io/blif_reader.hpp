@@ -30,6 +30,7 @@
   \author Heinz Riener
   \author Mathias Soeken
   \author Max Austin
+  \author Andrea Costamagna
 */
 
 #pragma once
