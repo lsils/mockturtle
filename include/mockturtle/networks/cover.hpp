@@ -39,7 +39,6 @@
 #include "storage.hpp"
 
 #include <kitty/cube.hpp>
-#include <kitty/print.hpp>
 
 #include <algorithm>
 
@@ -238,7 +237,6 @@ public:
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
     _storage->nodes[index].data[1].h1 = index;
-
     return index;
   }
 
@@ -308,7 +306,6 @@ public:
 #pragma endregion
 
 #pragma region Create binary functions
-
   signal create_and( signal a, signal b )
   {
     std::vector<kitty::cube> _and{ kitty::cube( "11" ) };
@@ -491,7 +488,6 @@ public:
   {
     assert( !children.empty() );
     cover_type cb = other._storage->data.covers[other._storage->nodes[source].data[1].h1];
-
     return create_node( children, cb );
   }
 #pragma endregion
@@ -870,7 +866,6 @@ public:
     for ( kitty::cube const& domain_cube : domain_cubes )
     {
       const auto index = result.size();
-
       if ( is_sop )
         result.emplace_back( false );
       else

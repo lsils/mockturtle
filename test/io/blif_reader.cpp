@@ -20,6 +20,7 @@ using namespace mockturtle;
 
 TEST_CASE( "read a combinational BLIF file into KLUT network", "[blif_reader]" )
 {
+  std::cout << "begin blif reader  " ;
   klut_network klut;
 
   std::string file{

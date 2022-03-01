@@ -143,7 +143,6 @@ public:
       std::size_t const half_size = signals.size() / 2;
       std::vector<signal<Ntk>> vector_l( signals.begin(), signals.begin() + half_size );
       std::vector<signal<Ntk>> vector_r( signals.begin() + half_size, signals.end() );
-
       return _ntk.create_and( recursive_and( vector_l ), recursive_and( vector_r ) );
     }
   }
