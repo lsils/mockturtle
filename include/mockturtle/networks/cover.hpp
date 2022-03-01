@@ -38,7 +38,9 @@
 #include "events.hpp"
 #include "storage.hpp"
 
-#include <kitty/cube.hpp>
+#include <kitty/constructors.hpp>
+#include <kitty/dynamic_truth_table.hpp>
+#include <kitty/print.hpp>
 
 #include <algorithm>
 
