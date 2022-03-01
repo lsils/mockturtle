@@ -333,7 +333,8 @@ private:
 
     if ( _ntk.fanout_size( n ) == 0u ) /* dangling */
     {
-      std::cerr << "[w] node " << n << " is dangling.\n";
+      if ( !_ntk.is_pi( n ) )
+        std::cerr << "[w] node " << n << " (which is not a PI) is dangling.\n";
       return 0u;
     }
 
@@ -357,52 +358,30 @@ private:
     }
 
     assert( fo_infos.size() > 1u );
-
-    /* main counting */
-    auto it = fo_infos.begin();
-    auto count = it->num_edges;
-    auto rd = it->relative_depth;
-    for ( ++it; it != fo_infos.end(); ++it )
-    {
-      count += it->num_edges - it->fanouts.size() + it->relative_depth - rd - 1;
-      rd = it->relative_depth;
-    }
-
-    /* PO refs were added as num_edges and counted as buffers */
-    count -= _external_ref_count[n];
+    uint32_t count{0u};
 
     /* special case: don't balance POs; have both gate fanout(s) and PO ref(s) */
     if ( !_ps.assume.balance_pos && _external_ref_count[n] > 0u )
     {
-      auto rit = fo_infos.rbegin();
-      auto rd_last = rit->relative_depth;
-
-      /* simple cases */
-      if ( _external_ref_count[n] == 1 )
-      {
-        count -= rd_last - (++rit)->relative_depth;
-        if ( _external_ref_count_neg[n] > 0 ) ++count;
-        return count;
-      }
-
-      /* hacky (rare?) general case */
-      fmt::print( "[w] hacky case: node {} has {} fanouts, including {} gates, {} positive PO refs and {} negative PO refs.\n",
+      /* hacky (rare?) case */
+      /*fmt::print( "[w] hacky case: node {} has {} fanouts, including {} gates, {} positive PO refs and {} negative PO refs.\n",
                   n, _ntk.fanout_size( n ), _ntk.fanout_size( n ) - _external_ref_count[n],
-                  _external_ref_count[n] - _external_ref_count_neg[n], _external_ref_count_neg[n] );
-      /* remove the buffer tree higher than the highest gate fanout */
-      while ( (++rit)->fanouts.size() == 0u )
+                  _external_ref_count[n] - _external_ref_count_neg[n], _external_ref_count_neg[n] );*/
+
+      /* count ignoring POs */
+      auto rit = fo_infos.rbegin();
+      assert( rit->fanouts.size() == 0 );
+      while ( rit->fanouts.size() == 0 ) ++rit;
+      auto nedges = rit->fanouts.size();
+      auto prev_rd = rit->relative_depth;
+      for ( ++rit; rit != fo_infos.rend(); ++rit )
       {
-        count -= rit->num_edges;
-        rd_last = rit->relative_depth;
+        nedges = num_splitters( nedges );
+        count += nedges + prev_rd - rit->relative_depth - 1;
+        nedges += rit->fanouts.size();
+        prev_rd = rit->relative_depth;
       }
-      count -= rd_last - rit->relative_depth - 1;
-      auto to_remove = rit->num_edges - rit->fanouts.size();
-      while ( to_remove > 0 )
-      {
-        count -= to_remove;
-        to_remove = num_splitters( rit->num_edges ) - num_splitters( rit->num_edges - to_remove );
-        ++rit;
-      }
+      assert( nedges == 1 );
 
       /* check if available slots in the remaining buffers are enough for POs */
       auto slots = count * ( _ps.assume.splitter_capacity - 1 ) + 1;
@@ -414,10 +393,24 @@ private:
       }
       if ( _external_ref_count_neg[n] > 0 )
       {
-        count += std::ceil( float( _external_ref_count_neg[n] ) / float( _ps.assume.splitter_capacity - 1 ) );
+        count += std::max<uint32_t>( std::ceil( float( _external_ref_count_neg[n] - 1 ) / float( _ps.assume.splitter_capacity - 1 ) ), 1 );
       }
+
+      return count;
     }
 
+    /* main counting */
+    auto it = fo_infos.begin();
+    count = it->num_edges;
+    auto rd = it->relative_depth;
+    for ( ++it; it != fo_infos.end(); ++it )
+    {
+      count += it->num_edges - it->fanouts.size() + it->relative_depth - rd - 1;
+      rd = it->relative_depth;
+    }
+
+    /* PO refs were added as num_edges and counted as buffers */
+    count -= _external_ref_count[n];
     return count;
   }
 
@@ -960,7 +953,18 @@ public:
             if ( _external_ref_count_neg[n] > 0 )
             {
               auto p = get_lowest_spot( bufntk, buffers[n] );
-              inverted_buffers[n].push_back( bufntk.create_buf( !p.first ) );
+              buf_signal const& s = p.first;
+              uint32_t const& rd = p.second;
+              if ( _external_ref_count_neg[n] == _ntk.fanout_size( n ) )
+              {
+                bufntk.invert( bufntk.get_node( s ) );
+                buffers[n][rd].remove( s );
+                inverted_buffers[n].push_back( s );
+              }
+              else
+              {
+                inverted_buffers[n].push_back( bufntk.create_buf( !s ) );
+              }
               uint32_t inverted_slots{_ps.assume.splitter_capacity};
               while ( inverted_slots < _external_ref_count_neg[n] )
               {
@@ -969,6 +973,12 @@ public:
                 inverted_slots += _ps.assume.splitter_capacity - 1;
               }
             }
+
+            /* check */
+            uint32_t nbufs = 0;
+            for ( auto l : buffers[n] )
+              nbufs += l.size();
+            assert( nbufs - 1 + inverted_buffers[n].size() == _num_buffers[n] );
           }
         }
       });
@@ -1016,7 +1026,10 @@ private:
     {
       if ( _ntk.fanout_size( n ) == _external_ref_count[n] )
       {
-        buffers[n].resize( num_splitter_levels( n ) + 1 );
+        if ( _external_ref_count[n] > _external_ref_count_neg[n] )
+          buffers[n].resize( std::ceil( std::log( _external_ref_count[n] - _external_ref_count_neg[n] ) / std::log( _ps.assume.splitter_capacity ) ) + 1 );
+        else
+          buffers[n].resize( _external_ref_count_neg[n] > 1 ? 2 : 1 );
       }
       else
       {
@@ -1216,8 +1229,8 @@ private:
   {
     if ( _ntk.visited( n ) == c.id )
       return;
-    if ( c.members.size() > _ps.max_chunk_size )
-      return;
+    //if ( c.members.size() > _ps.max_chunk_size ) // TODO: Directly returning might be problematic
+    //  return;
 
     assert( _ntk.visited( n ) <= _start_id );
     assert( !is_fixed( n ) ); 
@@ -1273,7 +1286,6 @@ private:
         {
           if ( is_fixed( *it2 ) )
             c.output_interfaces.push_back( {n, *it2} );
-
           else if ( it->relative_depth == 2 )
             recruit( *it2, c );
           else if ( _ntk.visited( *it2 ) != c.id )
