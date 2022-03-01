@@ -94,7 +94,7 @@ TEST_CASE( "two layers of splitters", "[buffer_insertion]" )
   CHECK( buffering.depth() == 7u );
 }
 
-TEST_CASE( "PO splitters and buffers", "[buffer_insertion]" )
+TEST_CASE( "PO splitters, buffers and inverters", "[buffer_insertion]" )
 {
   mig_network mig;
   auto const a = mig.create_pi();
@@ -119,11 +119,15 @@ TEST_CASE( "PO splitters and buffers", "[buffer_insertion]" )
   ps.optimization_effort = buffer_insertion_params::none;
 
   buffer_insertion buffering( mig, ps );
-  CHECK( buffering.dry_run() == 4u );
+  CHECK( buffering.dry_run() == 8u );
 
-  CHECK( buffering.depth() == 4u );
-  CHECK( buffering.num_buffers( mig.get_node( f1 ) ) == 3u );
-  CHECK( buffering.num_buffers( mig.get_node( f2 ) ) == 1u );
+  CHECK( buffering.depth() == 5u );
+  CHECK( buffering.num_buffers( mig.get_node( f1 ) ) == 5u );
+  CHECK( buffering.num_buffers( mig.get_node( f2 ) ) == 3u );
+
+  buffered_mig_network bufntk;
+  buffering.dump_buffered_network( bufntk );
+  CHECK( verify_aqfp_buffer( bufntk, ps.assume ) == true );
 }
 
 TEST_CASE( "chain of fanouts", "[buffer_insertion]" )
@@ -189,7 +193,7 @@ TEST_CASE( "branch but not balance PIs", "[buffer_insertion]" )
   mig.create_po( f3 );
   mig.create_po( f4 );
   mig.create_po( f );
-  mig.create_po( !f );
+  mig.create_po( f );
 
   buffer_insertion_params ps;
   ps.assume.branch_pis = true;
