@@ -5,8 +5,10 @@
 
 #include <fmt/format.h>
 
-#include <mockturtle/algorithms/aqfp_resynthesis/detail/dag_util.hpp>
-#include <mockturtle/algorithms/aqfp_resynthesis/detail/dag_gen.hpp>
+#include <mockturtle/algorithms/aqfp/detail/dag.hpp>
+#include <mockturtle/algorithms/aqfp/detail/dag_cost.hpp>
+#include <mockturtle/algorithms/aqfp/detail/dag_gen.hpp>
+#include <mockturtle/algorithms/aqfp/detail/dag_util.hpp>
 
 using namespace mockturtle;
 
@@ -199,7 +201,7 @@ TEST_CASE( "Sublist generation", "[aqfp_resyn]" )
   CHECK( t5 == s5 );
 }
 
-#if !__clang__ || __clang_major__ > 9
+#if !__clang__ || __clang_major__ > 10
 TEST_CASE( "DAG generation", "[aqfp_resyn]" )
 {
   using Ntk = mockturtle::aqfp_dag<>;
@@ -218,8 +220,31 @@ TEST_CASE( "DAG generation", "[aqfp_resyn]" )
   std::vector<Ntk> generated_dags;
 
   mockturtle::dag_generator<> gen( params, 1u );
-  gen.for_each_dag( [&]( const auto& dag, auto thread_id ) { (void)thread_id; generated_dags.push_back( dag ); } );
+  gen.for_each_dag( [&]( const auto& dag, auto thread_id )
+                    { (void)thread_id; generated_dags.push_back( dag ); } );
 
   CHECK( generated_dags.size() == 3018u );
 }
 #endif
+
+TEST_CASE( "Computing gate cost", "[aqfp_resyn]" )
+{
+  mockturtle::dag_gate_cost<mockturtle::aqfp_dag<>> gate_cc( { { 3u, 6.0 }, { 5u, 10.0 } } );
+
+  mockturtle::aqfp_dag<> net1 = { { { 1, 4, 5 }, { 2, 4, 5 }, { 3, 5, 6 }, { 5, 7, 8 }, {}, {}, {}, {}, {} }, { 4, 5, 6, 7, 8 }, 5u };
+  mockturtle::aqfp_dag<> net2 = { { { 1, 2, 6 }, { 4, 5, 6 }, { 3, 6, 7 }, { 6, 8, 9 }, { 6, 7, 10 }, { 6, 8, 9 }, {}, {}, {}, {}, {} }, { 6, 7, 8, 9, 10 }, 0u };
+
+  CHECK( gate_cc( net1 ) == 24.0 );
+  CHECK( gate_cc( net2 ) == 36.0 );
+}
+
+TEST_CASE( "Computing AQFP cost", "[aqfp_resyn]" )
+{
+  mockturtle::dag_aqfp_cost<mockturtle::aqfp_dag<>> aqfp_cc( { { 3u, 3.0 }, { 5u, 5.0 } }, { { 1u, 1.0 }, { 3u, 3.0 } } );
+
+  mockturtle::aqfp_dag<> net1 = { { { 1, 4, 5 }, { 2, 4, 5 }, { 3, 5, 6 }, { 5, 7, 8 }, {}, {}, {}, {}, {} }, { 4, 5, 6, 7, 8 }, 5u };
+  mockturtle::aqfp_dag<> net2 = { { { 1, 2, 6 }, { 4, 5, 6 }, { 3, 6, 7 }, { 6, 8, 9 }, { 6, 7, 10 }, { 6, 8, 9 }, {}, {}, {}, {}, {} }, { 6, 7, 8, 9, 10 }, 0u };
+
+  CHECK( aqfp_cc( net1 ) == 18.0 );
+  CHECK( aqfp_cc( net2 ) == 42.0 );
+}

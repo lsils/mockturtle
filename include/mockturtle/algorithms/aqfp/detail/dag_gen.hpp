@@ -44,9 +44,9 @@
 
 #include <fmt/format.h>
 
-#include "./dag.hpp"
-#include "./partial_dag.hpp"
-#include "./dag_util.hpp"
+#include "dag.hpp"
+#include "dag_util.hpp"
+#include "partial_dag.hpp"
 
 namespace mockturtle
 {
@@ -141,7 +141,7 @@ private:
   }
 };
 
-#if !__clang__ || __clang_major__ > 9
+#if !__clang__ || __clang_major__ > 10
 
 /*! \brief Generate all DAGs satisfying the parameters. */
 template<typename NodeT = int>
