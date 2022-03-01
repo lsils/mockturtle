@@ -32,13 +32,14 @@
 
 #pragma once
 
-#include "../../traits.hpp"
-
-#include "./aqfp_db.hpp"
-
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+
+#include <mockturtle/traits.hpp>
+
+#include "aqfp_assumptions.hpp"
+#include "aqfp_db.hpp"
 
 namespace mockturtle
 {
@@ -57,6 +58,7 @@ enum class aqfp_node_resyn_strategy
 /*! \brief Parameters for aqfp_node_resyn. */
 struct aqfp_node_resyn_param
 {
+  aqfp_assumptions assume;
   std::unordered_map<uint32_t, double> splitters;
   aqfp_node_resyn_strategy strategy = aqfp_node_resyn_strategy::cost_based;
 };
@@ -66,6 +68,10 @@ struct aqfp_node_resyn
 {
   aqfp_node_resyn( aqfp_db<>& db, const aqfp_node_resyn_param& ps ) : params( ps ), db( db )
   {
+    /*! must provid the cost of a simple buffer with one output */
+    assert( ps.splitters.count( 1u ) > 0 );
+    /*! must provid the cost of a splitter with the maximum capacity */
+    assert( ps.splitters.count( ps.assume.splitter_capacity ) > 0 );
   }
 
   template<typename NtkDest, typename TruthTable, typename LeavesIterator, typename LevelUpdateCallback, typename ResynPerformedCallback>
@@ -87,7 +93,7 @@ struct aqfp_node_resyn
 
       leaves.push_back( leaf );
       leaf_levels.push_back( leaf_level );
-      leaf_no_splitters.push_back( ntk_dest.is_constant( ntk_dest.get_node( leaf ) ) || ntk_dest.is_ci( ntk_dest.get_node( leaf ) ) );
+      leaf_no_splitters.push_back( ntk_dest.is_constant( ntk_dest.get_node( leaf ) ) || ( ntk_dest.is_ci( ntk_dest.get_node( leaf ) ) && !params.assume.branch_pis ) );
     }
 
     // should not have more than 4 fanin nodes
@@ -148,7 +154,8 @@ struct aqfp_node_resyn
     default:
       auto [mig, depths, output_inv] = db.get_best_replacement(
           tt._bits[0], leaf_levels, leaf_no_splitters,
-          [&]( const std::pair<double, uint32_t>& f, const std::pair<double, uint32_t>& s ) {
+          [&]( const std::pair<double, uint32_t>& f, const std::pair<double, uint32_t>& s )
+          {
             if ( params.strategy == aqfp_node_resyn_strategy::cost_based )
             {
               return ( f.first < s.first || ( f.first == s.first && f.second < s.second ) );
@@ -203,7 +210,7 @@ struct aqfp_node_resyn
 
 private:
   aqfp_node_resyn_param params;
-  aqfp_db<> db;
+  aqfp_db<>& db;
 };
 
 } // namespace mockturtle

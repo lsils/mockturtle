@@ -37,7 +37,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../../../utils/hash_functions.hpp"
+#include <mockturtle/utils/hash_functions.hpp>
 
 namespace mockturtle
 {

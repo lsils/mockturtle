@@ -670,7 +670,8 @@ void window_rewriting( Ntk& ntk, window_rewriting_params const& ps = {}, window_
   color_view cntk{dntk};
 
   window_rewriting_stats st;
-  detail::window_rewriting_impl( cntk, ps, st ).run();
+  detail::window_rewriting_impl p( cntk, ps, st );
+  p.run();
   if ( pst )
   {
     *pst = st;
