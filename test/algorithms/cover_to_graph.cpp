@@ -6,8 +6,8 @@
 
 #include <mockturtle/algorithms/cover_to_graph.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/networks/cover.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/cover.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
@@ -56,7 +56,6 @@ TEST_CASE( "Creation of a simple three node aig network: only and nodes", "[cove
 
   aig_network aig_cp2;
   aig_cp2 = convert_cover_to_graph<aig_network>( cover );
-
 
   names_view<aig_network> aig_cp3;
   convert_cover_to_graph( aig_cp3, cover );
@@ -110,10 +109,9 @@ TEST_CASE( "Creation of a simple three node aig network: mixed gates", "[cover_t
   aig_network aig_cp2;
   aig_cp2 = convert_cover_to_graph<aig_network>( cover );
 
-
   names_view<aig_network> aig_cp3;
   convert_cover_to_graph( aig_cp3, cover );
-  
+
   names_view<aig_network> aig_cp4{ convert_cover_to_graph<aig_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits );
@@ -159,10 +157,9 @@ TEST_CASE( "Creation of a simple three node xag network: mixed gates", "[cover_t
   xag_network xag_cp2;
   xag_cp2 = convert_cover_to_graph<xag_network>( cover );
 
-
   names_view<xag_network> xag_cp3;
   convert_cover_to_graph( xag_cp3, cover );
-  
+
   names_view<xag_network> xag_cp4{ convert_cover_to_graph<xag_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( xag )[0]._bits );
@@ -208,10 +205,9 @@ TEST_CASE( "Creation of a simple three node mig network: mixed gates", "[cover_t
   mig_network mig_cp2;
   mig_cp2 = convert_cover_to_graph<mig_network>( cover );
 
-
   names_view<mig_network> mig_cp3;
   convert_cover_to_graph( mig_cp3, cover );
-  
+
   names_view<mig_network> mig_cp4{ convert_cover_to_graph<mig_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( mig )[0]._bits );
@@ -257,10 +253,9 @@ TEST_CASE( "Creation of a simple three node xmg network: mixed gates", "[cover_t
   xmg_network xmg_cp2;
   xmg_cp2 = convert_cover_to_graph<xmg_network>( cover );
 
-
   names_view<xmg_network> xmg_cp3;
   convert_cover_to_graph( xmg_cp3, cover );
-  
+
   names_view<xmg_network> xmg_cp4{ convert_cover_to_graph<xmg_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( xmg )[0]._bits );
@@ -341,10 +336,9 @@ TEST_CASE( "Creation of an aig network containing all the features of the conver
   aig_network aig_cp2;
   aig_cp2 = convert_cover_to_graph<aig_network>( cover );
 
-
   names_view<aig_network> aig_cp3;
   convert_cover_to_graph( aig_cp3, cover );
-  
+
   names_view<aig_network> aig_cp4{ convert_cover_to_graph<aig_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits );
@@ -409,7 +403,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   cover_network cover;
 
   std::string file{
-    ".model top\n"
+      ".model top\n"
       ".inputs a1 a2 \n"
       ".outputs y\n"
       ".names a1 a2 i0\n"
@@ -421,9 +415,8 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
       ".names i1 i2 i3\n"
       "11 1\n"
       ".names i0 i3 y\n"
-      "00 1\n"      
-      ".end\n"
-      };
+      "00 1\n"
+      ".end\n" };
 
   std::istringstream in( file );
   auto result = lorina::read_blif( in, blif_reader( cover ) );
@@ -456,7 +449,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   cover_network cover;
 
   std::string file{
-    ".model top\n"
+      ".model top\n"
       ".inputs a1 a2 \n"
       ".outputs y\n"
       ".names a1 a2 i0\n"
@@ -468,9 +461,8 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
       ".names i1 i2 i3\n"
       "11 1\n"
       ".names i0 i3 y\n"
-      "00 1\n"      
-      ".end\n"
-      };
+      "00 1\n"
+      ".end\n" };
 
   std::istringstream in( file );
   auto result = lorina::read_blif( in, blif_reader( cover ) );
@@ -498,13 +490,12 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   CHECK( simulate<kitty::static_truth_table<2u>>( cover )[0]._bits == sim_reference );
 }
 
-
 TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: some don't cares", "[cover_to_graph]" )
 {
   cover_network cover;
 
   std::string file{
-    ".model top\n"
+      ".model top\n"
       ".inputs a1 a2 \n"
       ".outputs y\n"
       ".names a1 a2 i0\n"
@@ -518,8 +509,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
       ".names i0 i3 y\n"
       "1- 1\n"
       "-1 1\n"
-      ".end\n"
-      };
+      ".end\n" };
 
   std::istringstream in( file );
   auto result = lorina::read_blif( in, blif_reader( cover ) );
@@ -552,7 +542,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   cover_network cover;
 
   std::string file{
-    ".model top\n"
+      ".model top\n"
       ".inputs a1 a2 \n"
       ".outputs y\n"
       ".names a1 a2 i0\n"
@@ -566,8 +556,7 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
       ".names i0 i3 y\n"
       "1- 0\n"
       "-1 0\n"
-      ".end\n"
-      };
+      ".end\n" };
 
   std::istringstream in( file );
   auto result = lorina::read_blif( in, blif_reader( cover ) );
@@ -595,24 +584,22 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   CHECK( simulate<kitty::static_truth_table<2u>>( aig_cp )[0]._bits == sim_reference );
 }
 
-
 TEST_CASE( "read a combinational BLIF file into cover network and map it to aig: 3D cubes", "[cover_to_graph]" )
 {
   cover_network cover;
 
   std::string file{
-    ".model monitorBLIF\n"
-    ".inputs a b c d e\n"
-    ".outputs t1\n"
-    ".names a b c internal1\n"
-    "101 1\n"
-    "011 1\n"
-    ".names internal1 d internal2\n"
-    "11 1\n"
-    ".names internal2 e t1\n"
-    "01 1\n"
-    ".end\n"
-    };
+      ".model monitorBLIF\n"
+      ".inputs a b c d e\n"
+      ".outputs t1\n"
+      ".names a b c internal1\n"
+      "101 1\n"
+      "011 1\n"
+      ".names internal1 d internal2\n"
+      "11 1\n"
+      ".names internal2 e t1\n"
+      "01 1\n"
+      ".end\n" };
 
   std::istringstream in( file );
   auto result = lorina::read_blif( in, blif_reader( cover ) );
@@ -639,7 +626,6 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   auto i2 = aig.create_and( i1, d );
   auto y = aig.create_and( !i2, e );
 
-
   aig.create_po( y );
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<5u>>( aig )[0]._bits );
@@ -650,17 +636,16 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
 {
   cover_network cover;
   std::string file{
-    ".model monitorBLIF\n"
-    ".inputs a b \n"
-    ".outputs y\n"
-    ".names i1\n"
-    "1\n"
-    ".names a i1 i2\n"
-    "11 1\n"
-    ".names i2 b y\n"
-    "11 1\n"
-    ".end\n"
-    };
+      ".model monitorBLIF\n"
+      ".inputs a b \n"
+      ".outputs y\n"
+      ".names i1\n"
+      "1\n"
+      ".names a i1 i2\n"
+      "11 1\n"
+      ".names i2 b y\n"
+      "11 1\n"
+      ".end\n" };
 
   std::istringstream in( file );
   auto result = lorina::read_blif( in, blif_reader( cover ) );
@@ -674,10 +659,9 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
   aig_network aig;
   auto a = aig.create_pi();
   auto b = aig.create_pi();
-  auto i1 = aig.get_constant(true);
+  auto i1 = aig.get_constant( true );
   auto i2 = aig.create_and( a, i1 );
   auto y = aig.create_and( i2, b );
-
 
   aig.create_po( y );
 
@@ -689,17 +673,16 @@ TEST_CASE( "read a combinational BLIF file into cover network and map it to aig:
 {
   cover_network cover;
   std::string file{
-    ".model monitorBLIF\n"
-    ".inputs a1 a2 a3 a4 a5 \n"
-    ".outputs y\n"
-    ".names a1 a2 a3 a4 a5 y\n"
-    "1---- 1\n"
-    "-1--- 1\n"
-    "--1-- 1\n"
-    "---1- 1\n"
-    "----1 1\n"
-    ".end\n"
-    };
+      ".model monitorBLIF\n"
+      ".inputs a1 a2 a3 a4 a5 \n"
+      ".outputs y\n"
+      ".names a1 a2 a3 a4 a5 y\n"
+      "1---- 1\n"
+      "-1--- 1\n"
+      "--1-- 1\n"
+      "---1- 1\n"
+      "----1 1\n"
+      ".end\n" };
 
   std::istringstream in( file );
   auto result = lorina::read_blif( in, blif_reader( cover ) );

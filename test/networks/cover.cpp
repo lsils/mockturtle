@@ -303,8 +303,8 @@ TEST_CASE( "create nodes and compute a function in a cover network from truth ta
   CHECK( _const0 == cover.get_constant( false ) );
   CHECK( _const1 == cover.get_constant( true ) );
 
-  const auto _maj = cover.create_node( {a, b, c}, tt_maj );
-  const auto _xor = cover.create_node( {a, b, c}, tt_xor );
+  const auto _maj = cover.create_node( { a, b, c }, tt_maj );
+  const auto _xor = cover.create_node( { a, b, c }, tt_xor );
 
   CHECK( cover.size() == 7 );
 
@@ -361,7 +361,7 @@ TEST_CASE( "create nodes and compute a function in a cover network", "[cover]" )
   const auto _maj = cover.create_node( { a, b, c }, cover_maj3 );
 
   const auto sim_maj = cover.compute( cover.get_node( _maj ), xs.begin(), xs.end() );
-  kitty::dynamic_truth_table answer(2u);
+  kitty::dynamic_truth_table answer( 2u );
   kitty::create_nth_var( answer, 1 );
 
   CHECK( sim_maj == answer );
