@@ -859,7 +859,6 @@ public:
 #pragma endregion
 
 #pragma region Simulate values
-
   template<typename Iterator>
   iterates_over_t<Iterator, bool>
   compute( node const& n, Iterator begin, Iterator end ) const
@@ -916,13 +915,13 @@ public:
           is_found = true;
           if ( cubes_cover.second == 1 )
           {
-            kitty::set_bit( result, i ); //
+            kitty::set_bit( result, i );
           }
           break;
         }
       }
       if ( !is_found && ( cubes_cover.second == 0 ) )
-        kitty::set_bit( result, i ); //
+        kitty::set_bit( result, i );
     }
 
     return result;
