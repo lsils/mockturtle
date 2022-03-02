@@ -859,40 +859,6 @@ public:
 #pragma endregion
 
 #pragma region Simulate values
-  std::vector<bool> compute_on_node( node const& n, std::vector<kitty::cube> const& domain_cubes ) const
-  {
-    cover_type& cubes_cover = _storage->data.covers[_storage->nodes[n].data[1].h1];
-    bool is_sop = cubes_cover.second;
-    std::vector<bool> result;
-    uint32_t cb1_prj, cb0_prj, X0, X1;
-    for ( kitty::cube const& domain_cube : domain_cubes )
-    {
-      const auto index = result.size();
-      if ( is_sop )
-        result.emplace_back( false );
-      else
-        result.emplace_back( true );
-
-      for ( auto cb : cubes_cover.first )
-      {
-        cb1_prj = cb._bits & cb._mask;
-        cb0_prj = ~cb._bits & cb._mask;
-
-        X1 = cb1_prj & domain_cube._bits;
-        X0 = cb0_prj & ( ~domain_cube._bits );
-        if ( is_sop )
-        {
-          result[index] = result[index] || ( ( X1 == cb1_prj ) && ( X0 == cb0_prj ) );
-        }
-        else
-        {
-          result[index] = result[index] && ( ( X1 != cb1_prj ) || ( X0 != cb0_prj ) );
-        }
-      }
-    }
-    return result;
-  }
-
   template<typename Iterator>
   iterates_over_t<Iterator, bool>
   compute( node const& n, Iterator begin, Iterator end ) const
@@ -949,12 +915,13 @@ public:
           is_found = true;
           if ( cubes_cover.second == 1 )
           {
-            kitty::set_bit( result, i ); //
+            kitty::set_bit( result, i );
           }
+          break;
         }
       }
       if ( !is_found && ( cubes_cover.second == 0 ) )
-        kitty::set_bit( result, i ); //
+        kitty::set_bit( result, i );
     }
 
     return result;
