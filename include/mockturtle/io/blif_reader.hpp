@@ -30,6 +30,7 @@
   \author Heinz Riener
   \author Mathias Soeken
   \author Max Austin
+  \author Andrea Costamagna
 */
 
 #pragma once
@@ -233,7 +234,6 @@ public:
     assert( cover.size() > 0u );
     assert( cover.at( 0u ).second.size() == 1 );
     auto const first_output_value = cover.at( 0u ).second.at( 0u );
-
 
     if constexpr ( std::is_same<typename Ntk::base_type, cover_network>::value )
     {

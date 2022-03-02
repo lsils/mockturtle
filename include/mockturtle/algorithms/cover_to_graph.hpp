@@ -34,10 +34,10 @@
 #include "../networks/cover.hpp"
 
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <iterator>
 
 namespace mockturtle
 {
@@ -59,7 +59,6 @@ struct signals_connector
 
   std::unordered_map<uint64_t, signal<Ntk>> signals;
 };
-
 
 /*! \brief cover_to_graph_converter
  * This data type is equipped with the main operations involved in the cover to graph conversion.
@@ -94,7 +93,7 @@ public:
     if ( signals.size() == 0u )
     {
       std::cerr << "signals size is zero in recursive or\n";
-      return _ntk.get_constant(0);
+      return _ntk.get_constant( 0 );
     }
     else if ( signals.size() == 1u )
     {
@@ -112,7 +111,6 @@ public:
       std::vector<signal<Ntk>> vector_r( signals.begin() + half_size, signals.end() );
 
       return _ntk.create_or( recursive_or( vector_l ), recursive_or( vector_r ) );
-
     }
   }
 
@@ -129,7 +127,7 @@ public:
     if ( signals.size() == 0u )
     {
       std::cerr << "signals size is zero in recursive and\n";
-      return _ntk.get_constant(0);
+      return _ntk.get_constant( 0 );
     }
     else if ( signals.size() == 1u )
     {
@@ -145,7 +143,6 @@ public:
       std::size_t const half_size = signals.size() / 2;
       std::vector<signal<Ntk>> vector_l( signals.begin(), signals.begin() + half_size );
       std::vector<signal<Ntk>> vector_r( signals.begin() + half_size, signals.end() );
-      
       return _ntk.create_and( recursive_and( vector_l ), recursive_and( vector_r ) );
     }
   }
@@ -191,7 +188,7 @@ public:
   signal<Ntk> convert_node_to_graph( const mockturtle::cover_storage_node& Nde )
   {
     auto& cbs = _cover_ntk._storage->data.covers[Nde.data[1].h1].first;
-  
+
     std::vector<signal<Ntk>> signals_internal;
     bool is_sop = _cover_ntk._storage->data.covers[Nde.data[1].h1].second;
 
@@ -233,11 +230,11 @@ public:
       } /* convert separately the constant 0 */
       else if ( nde.data[1].h1 == 0 )
       {
-        _connector.insert( _ntk.get_constant( false ), _cover_ntk._storage->hash[nde]  );
+        _connector.insert( _ntk.get_constant( false ), _cover_ntk._storage->hash[nde] );
       } /* convert separately the constant 1 */
       else if ( nde.data[1].h1 == 1 )
       {
-        _connector.insert( _ntk.get_constant( true ), _cover_ntk._storage->hash[nde]  );
+        _connector.insert( _ntk.get_constant( true ), _cover_ntk._storage->hash[nde] );
       }
     }
 

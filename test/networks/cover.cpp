@@ -261,111 +261,65 @@ TEST_CASE( "compute functions from AND and NOT gates in cover networks", "[cover
 {
   cover_network cover;
 
-  kitty::cube _0 = kitty::cube( "0" );
-  kitty::cube _1 = kitty::cube( "1" );
   const auto a = cover.create_pi();
   const auto b = cover.create_pi();
 
   const auto f1 = cover.create_not( a );
-  std::vector<bool> answer = { true, false };
-  const auto sim_f1 = cover.compute_on_node( cover.get_node( f1 ), { _0, _1 } );
-  CHECK( sim_f1 == answer );
+  const auto f2 = cover.create_and( a, b );
 
-  kitty::cube _00 = kitty::cube( "00" );
-  kitty::cube _01 = kitty::cube( "01" );
-  kitty::cube _10 = kitty::cube( "10" );
-  kitty::cube _11 = kitty::cube( "11" );
-  std::vector<kitty::cube> domain_2d = { _11, _10, _01, _00 };
-  /* and function */
-  const auto f2_and = cover.create_and( a, b );
-  answer = { true, false, false, false };
-  const auto sim_f2_and = cover.compute_on_node( cover.get_node( f2_and ), domain_2d );
-  CHECK( sim_f2_and == answer );
+  std::vector<kitty::dynamic_truth_table> xs;
+  xs.emplace_back( 3u );
+  xs.emplace_back( 3u );
+  kitty::create_nth_var( xs[0], 0 );
+  kitty::create_nth_var( xs[1], 1 );
 
-  const auto f2_or = cover.create_or( a, b );
-  answer = { true, true, true, false };
-  const auto sim_f2_or = cover.compute_on_node( cover.get_node( f2_or ), domain_2d );
-  CHECK( sim_f2_or == answer );
+  const auto sim_f1 = cover.compute( cover.get_node( f1 ), xs.begin(), xs.begin() + 1 );
+  const auto sim_f2 = cover.compute( cover.get_node( f2 ), xs.begin(), xs.end() );
 
-  const auto f2_nand = cover.create_nand( a, b );
-  answer = { false, true, true, true };
-  const auto sim_f2_nand = cover.compute_on_node( cover.get_node( f2_nand ), domain_2d );
-  CHECK( sim_f2_nand == answer );
-
-  const auto f2_lt = cover.create_lt( a, b );
-  answer = { false, false, true, false };
-  const auto sim_f2_lt = cover.compute_on_node( cover.get_node( f2_lt ), domain_2d );
-  CHECK( sim_f2_lt == answer );
-
-  const auto f2_le = cover.create_le( a, b );
-  answer = { true, false, true, true };
-  const auto sim_f2_le = cover.compute_on_node( cover.get_node( f2_le ), domain_2d );
-  CHECK( sim_f2_le == answer );
-
-  const auto f2_xor = cover.create_xor( a, b );
-  answer = { false, true, true, false };
-  const auto sim_f2_xor = cover.compute_on_node( cover.get_node( f2_xor ), domain_2d );
-  CHECK( sim_f2_xor == answer );
+  CHECK( sim_f1 == ~xs[0] );
+  CHECK( sim_f2 == ( xs[0] & xs[1] ) );
 }
 
-TEST_CASE( "compute with clauses and with cubes", "[cover]" )
+TEST_CASE( "create nodes and compute a function in a cover network from truth tables", "[cover]" )
 {
   cover_network cover;
+
+  CHECK( has_create_node_v<cover_network> );
+  CHECK( has_compute_v<cover_network, kitty::dynamic_truth_table> );
 
   const auto a = cover.create_pi();
   const auto b = cover.create_pi();
   const auto c = cover.create_pi();
 
-  kitty::cube _X11 = kitty::cube( "-11" );
-  kitty::cube _1X1 = kitty::cube( "1-1" );
-  kitty::cube _11X = kitty::cube( "11-" );
-  kitty::cube _X00 = kitty::cube( "-00" );
-  kitty::cube _0X0 = kitty::cube( "0-0" );
-  kitty::cube _00X = kitty::cube( "00-" );
-  kitty::cube _XX0 = kitty::cube( "--0" );
-  kitty::cube _X0X = kitty::cube( "-0-" );
-  kitty::cube _0XX = kitty::cube( "0--" );
+  kitty::dynamic_truth_table tt_maj( 3u ), tt_xor( 3u ), tt_const0( 0u );
+  kitty::create_from_hex_string( tt_maj, "e8" );
+  kitty::create_from_hex_string( tt_xor, "96" );
 
-  kitty::cube _000 = kitty::cube( "000" );
-  kitty::cube _100 = kitty::cube( "100" );
-  kitty::cube _101 = kitty::cube( "101" );
-  kitty::cube _010 = kitty::cube( "010" );
-  kitty::cube _001 = kitty::cube( "001" );
-  kitty::cube _111 = kitty::cube( "111" );
+  CHECK( cover.size() == 5 );
 
-  std::vector<kitty::cube> domain_3d = { _000, _010, _001, _100, _101, _111 };
+  const auto _const0 = cover.create_node( {}, tt_const0 );
+  const auto _const1 = cover.create_node( {}, ~tt_const0 );
+  CHECK( _const0 == cover.get_constant( false ) );
+  CHECK( _const1 == cover.get_constant( true ) );
 
-  std::vector<kitty::cube> cubes_maj_1 = { _X11, _1X1, _11X };
-  std::pair<std::vector<kitty::cube>, bool> cover_maj_1 = std::make_pair( cubes_maj_1, true );
+  const auto _maj = cover.create_node( { a, b, c }, tt_maj );
+  const auto _xor = cover.create_node( { a, b, c }, tt_xor );
 
-  std::vector<kitty::cube> cubes_maj_0 = { _X00, _0X0, _00X };
-  std::pair<std::vector<kitty::cube>, bool> cover_maj_0 = std::make_pair( cubes_maj_0, false );
+  CHECK( cover.size() == 7 );
 
-  std::vector<bool> answer = { false, false, false, false, true, true };
+  std::vector<kitty::dynamic_truth_table> xs;
+  xs.emplace_back( 3u );
+  xs.emplace_back( 3u );
+  xs.emplace_back( 3u );
+  kitty::create_nth_var( xs[0], 0 );
+  kitty::create_nth_var( xs[1], 1 );
+  kitty::create_nth_var( xs[2], 2 );
 
-  const auto f1 = cover.create_node( { a, b, c }, cover_maj_1 );
-  const auto sim_f1 = cover.compute_on_node( cover.get_node( f1 ), domain_3d );
-  CHECK( sim_f1 == answer );
+  const auto sim_maj = cover.compute( cover.get_node( _maj ), xs.begin(), xs.end() );
+  const auto sim_xor = cover.compute( cover.get_node( _xor ), xs.begin(), xs.end() );
 
-  const auto f0 = cover.create_node( { a, b, c }, cover_maj_0 );
-  const auto sim_f0 = cover.compute_on_node( cover.get_node( f0 ), domain_3d );
-  CHECK( sim_f0 == answer );
-
-  std::vector<kitty::cube> cubes_and_1 = { _111 };
-  std::pair<std::vector<kitty::cube>, bool> cover_and_1 = std::make_pair( cubes_and_1, true );
-
-  std::vector<kitty::cube> cubes_and_0 = { _XX0, _0XX, _X0X };
-  std::pair<std::vector<kitty::cube>, bool> cover_and_0 = std::make_pair( cubes_and_0, false );
-
-  answer = { false, false, false, false, false, true };
-
-  const auto f1_and = cover.create_node( { a, b, c }, cover_and_1 );
-  const auto sim_f1_and = cover.compute_on_node( cover.get_node( f1_and ), domain_3d );
-  CHECK( sim_f1_and == answer );
-
-  const auto f0_and = cover.create_node( { a, b, c }, cover_and_0 );
-  const auto sim_f0_and = cover.compute_on_node( cover.get_node( f0_and ), domain_3d );
-  CHECK( sim_f0_and == answer );
+  CHECK( sim_maj == kitty::ternary_majority( xs[0], xs[1], xs[2] ) );
+  CHECK( sim_xor == ( xs[0] ^ xs[1] ^ xs[2] ) );
 }
 
 TEST_CASE( "create nodes and compute a function in a cover network", "[cover]" )
@@ -373,7 +327,6 @@ TEST_CASE( "create nodes and compute a function in a cover network", "[cover]" )
   cover_network cover;
 
   CHECK( has_create_cover_node_v<cover_network> );
-  CHECK( has_compute_on_node_v<cover_network> );
 
   const auto a = cover.create_pi();
   const auto b = cover.create_pi();
@@ -394,18 +347,22 @@ TEST_CASE( "create nodes and compute a function in a cover network", "[cover]" )
   kitty::cube _1X1 = kitty::cube( "1-1" );
   kitty::cube _11X = kitty::cube( "11-" );
 
-  kitty::cube _000 = kitty::cube( "000" );
-  kitty::cube _010 = kitty::cube( "010" );
-  kitty::cube _101 = kitty::cube( "101" );
-  kitty::cube _111 = kitty::cube( "111" );
-  std::vector<kitty::cube> domain_3d = { _000, _010, _101, _111 };
+  std::vector<kitty::dynamic_truth_table> xs;
+  xs.emplace_back( 2u );
+  xs.emplace_back( 2u );
+  xs.emplace_back( 2u );
+  kitty::create_nth_var( xs[0], 1 ); // 1100
+  kitty::create_nth_var( xs[1], 0 ); // 1010
+  kitty::create_nth_var( xs[2], 1 ); // 1100
 
   std::vector<kitty::cube> cubes_maj = { _X11, _1X1, _11X };
   std::pair<std::vector<kitty::cube>, bool> cover_maj3 = std::make_pair( cubes_maj, true );
   const auto _maj = cover.create_node( { a, b, c }, cover_maj3 );
 
-  const auto sim_maj = cover.compute_on_node( cover.get_node( _maj ), domain_3d );
-  std::vector<bool> answer = { false, false, true, true };
+  const auto sim_maj = cover.compute( cover.get_node( _maj ), xs.begin(), xs.end() );
+  kitty::dynamic_truth_table answer( 2u );
+  kitty::create_nth_var( answer, 1 );
+
   CHECK( sim_maj == answer );
 }
 

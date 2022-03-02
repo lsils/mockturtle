@@ -26,9 +26,6 @@
 /*!
   \file cover.hpp
   \brief single output cover logic network implementation
-  \author Heinz Riener
-  \author Mathias Soeken
-  \author Max Austin
   \author Andrea Costamagna
 */
 
@@ -41,7 +38,9 @@
 #include "events.hpp"
 #include "storage.hpp"
 
-#include <kitty/cube.hpp>
+#include <kitty/constructors.hpp>
+#include <kitty/dynamic_truth_table.hpp>
+#include <kitty/print.hpp>
 
 #include <algorithm>
 
@@ -66,7 +65,7 @@ namespace mockturtle
  */
 struct cover_storage_data
 {
-  uint64_t insert( std::pair<std::vector<kitty::cube>, bool> cover )
+  uint64_t insert( std::pair<std::vector<kitty::cube>, bool> const& cover )
   {
     const auto index = covers.size();
     covers.emplace_back( cover );
@@ -309,82 +308,116 @@ public:
 #pragma endregion
 
 #pragma region Create binary functions
-  kitty::cube _00 = kitty::cube( "00" );
-  kitty::cube _01 = kitty::cube( "01" );
-  kitty::cube _10 = kitty::cube( "10" );
-  kitty::cube _11 = kitty::cube( "11" );
-
   signal create_and( signal a, signal b )
   {
-    std::vector<kitty::cube> _and{ _11 };
+    std::vector<kitty::cube> _and{ kitty::cube( "11" ) };
     return _create_node( { a, b }, std::make_pair( _and, true ) );
   }
 
   signal create_nand( signal a, signal b )
   {
-    std::vector<kitty::cube> _nand{ _11 };
+    std::vector<kitty::cube> _nand{ kitty::cube( "11" ) };
     return _create_node( { a, b }, std::make_pair( _nand, false ) );
   }
 
   signal create_or( signal a, signal b )
   {
-    std::vector<kitty::cube> _or{ _00 };
+    std::vector<kitty::cube> _or{ kitty::cube( "00" ) };
     return _create_node( { a, b }, std::make_pair( _or, false ) );
+  }
+
+  signal create_nor( signal a, signal b )
+  {
+    std::vector<kitty::cube> _nor{ kitty::cube( "00" ) };
+    return _create_node( { a, b }, std::make_pair( _nor, true ) );
   }
 
   signal create_lt( signal a, signal b )
   {
-    std::vector<kitty::cube> _lt{ _01 };
+    std::vector<kitty::cube> _lt{ kitty::cube( "01" ) };
     return _create_node( { a, b }, std::make_pair( _lt, true ) );
   }
 
   signal create_le( signal a, signal b )
   {
-    std::vector<kitty::cube> _le{ _10 };
+    std::vector<kitty::cube> _le{ kitty::cube( "10" ) };
     return _create_node( { a, b }, std::make_pair( _le, false ) );
+  }
+
+  signal create_gt( signal a, signal b )
+  {
+    std::vector<kitty::cube> _gt{ kitty::cube( "10" ) };
+    return _create_node( { a, b }, std::make_pair( _gt, true ) );
+  }
+
+  signal create_ge( signal a, signal b )
+  {
+    std::vector<kitty::cube> _ge{ kitty::cube( "01" ) };
+    return _create_node( { a, b }, std::make_pair( _ge, false ) );
   }
 
   signal create_xor( signal a, signal b )
   {
-    std::vector<kitty::cube> _xor{ _01, _10 };
+    std::vector<kitty::cube> _xor{ kitty::cube( "01" ),
+                                   kitty::cube( "10" ) };
     return _create_node( { a, b }, std::make_pair( _xor, true ) );
+  }
+
+  signal create_xnor( signal a, signal b )
+  {
+    std::vector<kitty::cube> _xnor{ kitty::cube( "00" ),
+                                    kitty::cube( "11" ) };
+    return _create_node( { a, b }, std::make_pair( _xnor, true ) );
   }
 #pragma endregion
 
 #pragma region Create ternary functions
-  kitty::cube _001 = kitty::cube( "001" );
-  kitty::cube _010 = kitty::cube( "010" );
-  kitty::cube _100 = kitty::cube( "100" );
-
-  kitty::cube _011 = kitty::cube( "011" );
-  kitty::cube _101 = kitty::cube( "101" );
-  kitty::cube _110 = kitty::cube( "110" );
-  kitty::cube _111 = kitty::cube( "111" );
-
-  kitty::cube _11X = kitty::cube( "11-" );
-  kitty::cube _0X1 = kitty::cube( "0-1" );
 
   signal create_maj( signal a, signal b, signal c )
   {
-    std::vector<kitty::cube> _maj{ _011, _101, _110, _111 };
+    std::vector<kitty::cube> _maj{ kitty::cube( "011" ),
+                                   kitty::cube( "101" ),
+                                   kitty::cube( "110" ),
+                                   kitty::cube( "111" ) };
     return _create_node( { a, b, c }, std::make_pair( _maj, true ) );
   }
 
   signal create_ite( signal a, signal b, signal c )
   {
-    std::vector<kitty::cube> _ite{ _11X, _0X1 };
+    std::vector<kitty::cube> _ite{ kitty::cube( "11-" ),
+                                   kitty::cube( "0-1" ) };
     return _create_node( { a, b, c }, std::make_pair( _ite, true ) );
   }
 
   signal create_xor3( signal a, signal b, signal c )
   {
-    std::vector<kitty::cube> _xor3{ _001, _010, _100, _111 };
+    std::vector<kitty::cube> _xor3{ kitty::cube( "001" ),
+                                    kitty::cube( "010" ),
+                                    kitty::cube( "100" ),
+                                    kitty::cube( "111" ) };
     return _create_node( { a, b, c }, std::make_pair( _xor3, true ) );
   }
 #pragma endregion
 
+#pragma region Create nary functions
+  signal create_nary_and( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
+  }
+
+  signal create_nary_or( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
+  }
+
+  signal create_nary_xor( std::vector<signal> const& fs )
+  {
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_xor( a, b ); } );
+  }
+#pragma endregion
+
 #pragma region Create arbitrary functions
-  signal _create_node( std::vector<signal> const& children, cover_type new_cover )
+  signal _create_node( std::vector<signal> const& children, cover_type const& new_cover )
   {
 
     uint64_t literal = _storage->data.insert( new_cover );
@@ -423,6 +456,31 @@ public:
     if ( children.size() == 0u )
     {
       return get_constant( new_cover.second );
+    }
+
+    return _create_node( children, new_cover );
+  }
+
+  signal create_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
+  {
+    if ( children.size() == 0u )
+    {
+      return get_constant( !kitty::is_const0( function ) );
+    }
+
+    cover_type new_cover;
+    bool is_sop = ( kitty::count_ones( function ) <= kitty::count_zeros( function ) );
+    new_cover.second = is_sop;
+    uint32_t mask = 1u;
+    for ( uint32_t i{ 1 }; i < children.size(); ++i )
+      mask |= mask << 1;
+    for ( uint32_t i{ 0 }; i < pow( 2, children.size() ); ++i )
+    {
+      if ( kitty::get_bit( function, i ) == is_sop )
+      {
+        auto cb = kitty::cube( i, mask );
+        new_cover.first.push_back( cb );
+      }
     }
 
     return _create_node( children, new_cover );
@@ -834,6 +892,74 @@ public:
     }
     return result;
   }
+
+  template<typename Iterator>
+  iterates_over_t<Iterator, bool>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    uint32_t index{ 0 };
+    uint32_t mask{ 0 };
+    while ( begin != end )
+    {
+      mask = ( mask << 1 ) | 1u;
+      index <<= 1;
+      index ^= *begin++ ? 1 : 0;
+    }
+    auto cb_input = kitty::cube( index, mask );
+    cover_type& cubes_cover = _storage->data.covers[_storage->nodes[n].data[1].h1];
+    for ( auto cb : cubes_cover.first )
+    {
+      if ( ( cb._bits & cb._mask ) == ( cb_input._bits & cb._mask ) )
+        return ( cubes_cover.second == 1 );
+    }
+
+    return ( cubes_cover.second == 0 );
+  }
+
+  template<typename Iterator>
+  iterates_over_truth_table_t<Iterator>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    const auto nfanin = _storage->nodes[n].children.size();
+
+    std::vector<typename Iterator::value_type> tts( begin, end );
+
+    assert( nfanin != 0 );
+    assert( tts.size() == nfanin );
+
+    /* resulting truth table has the same size as any of the children */
+    auto result = tts.front().construct();
+    cover_type& cubes_cover = _storage->data.covers[_storage->nodes[n].data[1].h1];
+    bool is_found = false;
+    for ( uint32_t i = 0u; i < static_cast<uint32_t>( result.num_bits() ); ++i )
+    {
+      is_found = false;
+      uint32_t pattern = 0u;
+      uint32_t mask = 0u;
+      for ( auto j = 0u; j < nfanin; ++j )
+      {
+        pattern |= kitty::get_bit( tts[j], i ) << j;
+        mask |= 1u << j;
+      }
+      auto cb_input = kitty::cube( pattern, mask );
+      for ( auto cb : cubes_cover.first )
+      {
+        if ( ( cb._bits & cb._mask ) == ( cb_input._bits & cb._mask ) )
+        {
+          is_found = true;
+          if ( cubes_cover.second == 1 )
+          {
+            kitty::set_bit( result, i ); //
+          }
+        }
+      }
+      if ( !is_found && ( cubes_cover.second == 0 ) )
+        kitty::set_bit( result, i ); //
+    }
+
+    return result;
+  }
+
 #pragma endregion
 
 #pragma region Custom node values
