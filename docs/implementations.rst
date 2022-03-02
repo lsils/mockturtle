@@ -1,5 +1,5 @@
-Network implementations
-=======================
+Networks Implementations
+========================
 
 All network implementations are located in `mockturtle/networks/`:
 
@@ -302,3 +302,5 @@ All network implementations are located in `mockturtle/networks/`:
 +--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
 | ``eval_fanins_color``          |             |             |             |             |                 |             |
 +--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
+
+.. doxygenfunction:: mockturtle::cover
