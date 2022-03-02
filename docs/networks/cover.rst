@@ -1,38 +1,76 @@
-cover network
+Cover Network
 -------------
 
 **Header:** ``mockturtle/networks/cover.hpp``
 This header file defines a data structure of type `cover_network`. 
-This data structure can be used to store the information contained in a `.blif` file, before to convert it into another type of graph.
-Any node in the network corresponds to a boolean function and the number of input signals to each node is variable.
-Each node function is expressed in the `.blif` formalism, which allows to represent any function either in terms of its ON set or in terms of its OFF set.
-In both the cases, the information stored inside a node appears as a vector of cubes, where a bit set to (0) 1 indicates that the literal (doesn't) have 
-to be negated while defining the OFF set or the ON set.  
+This data structure stores the information contained in a `.blif` file before converting it into another type of graph.
+Any node in the network corresponds to a boolean function, and the number of input signals to each node is variable.
+Each node stores a function in the `.blif` formalism, i.e., either in terms of its onset or its offset.
+In both cases, the information stored inside a node appears as a vector of cubes, where a bit set to (0) 1 indicates that the literal (does not) have 
+to be negated while defining the offset or the onset. 
 
-The following example shows how to resynthesize a `k`-LUT network into an AIG, a XAG, a MIG and a XMG.
+The following example shows how to store a 5-inputs OR in a cover network and to map it into an AIG.
 
 .. code-block:: c++
 
-   /* derive some cover network */
-    const cover_network cover = ...;
+    std::string file{
+      ".model monitorBLIF\n"
+      ".inputs a1 a2 a3 a4 a5 \n"
+      ".outputs y\n"
+      ".names a1 a2 a3 a4 a5 y\n"
+      "1---- 1\n"
+      "-1--- 1\n"
+      "--1-- 1\n"
+      "---1- 1\n"
+      "----1 1\n"
+      ".end\n" };
 
-   /* define the destination networks */
+    std::istringstream in( file );
+    auto result = lorina::read_blif( in, blif_reader( cover ) );
+
+    cover_network cover;
     aig_network aig;
-    xag_network xag;
-    mig_network mig;
-    xmg_network xmg;
+    convert_cover_to_graph( aig, cover );
 
-    /* inline conversion of the cover network into the desired data structure */
-    convert_covers_to_graph( cover_ntk, aig );
-    convert_covers_to_graph( cover_ntk, xag ); 
+    auto const sim_aig = ( simulate<kitty::static_truth_table<5u>>( aig )[0]._bits ); 
+    auto const sim_aig = ( simulate<kitty::static_truth_table<5u>>( cover )[0]._bits );
 
-    /* out of line conversion of the cover network into the desired data structure */
-    mig = convert_covers_to_graph<mig_network>( cover_ntk );
-    xmg = convert_covers_to_graph<xmg_network>( cover_ntk );
+The last two simulations yield the same result.
 
-It is worth pointing out that the latches-manipulation has been implemented by adapting the `k-LUT` implementation.
-The tests performed on the current version are not sufficient to guarantee its stability and the interested user should 
-be aware of the fact that this data structure is stable only for tasks involving the mapping of cominatorial logic from `.blif` format to 
-a network type such as AIG, XAG, MIG or XMG.
-Furthermore, the tests have been performed by verifying the proper functioning of the mapped network with respect to a graph implementing the same
-boolean function. A direct symulation method of the `cover_network` type is missing in the current implementation.
+This data structure allows for a custom node definition. 
+There are three ways of doing it:
+
+* Define the cubes ( clauses ) of the onset ( offset ).
+* Use a truth table.
+* Use the available nodes creation functions.
+The following code shows three ways of creating a majority node. 
+
+.. code-block:: c++
+
+    cover_network cover;
+
+    const auto a = cover.create_pi();
+    const auto b = cover.create_pi();
+    const auto c = cover.create_pi();
+
+    kitty::cube _X00 = kitty::cube( "-00" );
+    kitty::cube _0X0 = kitty::cube( "0-0" );
+    kitty::cube _00X = kitty::cube( "00-" );
+
+    std::vector<kitty::cube> maj_offset = { _X00, _0X0, _00X };
+    std::pair<std::vector<kitty::cube>, bool> cover_maj = std::make_pair( maj_offset, false );
+
+    const auto f1 = cover.create_node( { a, b, c }, cover_maj );
+
+    kitty::dynamic_truth_table tt_maj( 3u );
+    kitty::create_from_hex_string( tt_maj, "e8" );
+    const auto f2 = cover.create_node( { a, b, c }, tt_maj );
+
+    const auto f3 = cover.create_maj( a, b, c );
+Creating the node by specifying the cover requires the introduction of a vector of cubes and a boolean.
+If the boolean is true, the cover is related to the onset. Otherwise, it specifies the offset.
+
+It is worth pointing out that the latches-manipulation is a direct adaptation of the `k-LUT` implementation.
+The tests performed on the current version are not sufficient to guarantee its stability.
+Hence, the interested user should be aware that, in the current state, this data structure primarily aims at tasks involving the mapping of combinatorial logic from `.blif` format to a network type such as AIG, XAG, MIG, or XMG.
+
