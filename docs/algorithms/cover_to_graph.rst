@@ -1,5 +1,5 @@
 COVER to graph conversion
-----------------
+-------------------------
 
 **Header:** ``mockturtle/io/cover_to_graph.hpp``
 This header file defines a function to convert a network of type `cover_network` into a
