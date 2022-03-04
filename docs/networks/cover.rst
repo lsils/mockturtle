@@ -60,11 +60,11 @@ The following code shows three ways of creating a majority node.
     std::vector<kitty::cube> maj_offset = { _X00, _0X0, _00X };
     std::pair<std::vector<kitty::cube>, bool> cover_maj = std::make_pair( maj_offset, false );
 
-    const auto f1 = cover.create_node( { a, b, c }, cover_maj );
+    const auto f1 = cover.create_cover_node( { a, b, c }, cover_maj );
 
     kitty::dynamic_truth_table tt_maj( 3u );
     kitty::create_from_hex_string( tt_maj, "e8" );
-    const auto f2 = cover.create_node( { a, b, c }, tt_maj );
+    const auto f2 = cover.create_cover_node( { a, b, c }, tt_maj );
 
     const auto f3 = cover.create_maj( a, b, c );
 Creating the node by specifying the cover requires the introduction of a vector of cubes and a boolean.

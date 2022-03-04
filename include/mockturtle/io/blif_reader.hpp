@@ -37,13 +37,13 @@
 
 #include <kitty/kitty.hpp>
 #include <lorina/blif.hpp>
-#include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/cover.hpp>
 
 #include <map>
 #include <string>
 #include <vector>
 
+#include "../networks/aig.hpp"
+#include "../networks/cover.hpp"
 #include "../traits.hpp"
 
 namespace mockturtle
@@ -260,7 +260,7 @@ public:
 
       if ( cubes.size() != 0 )
       {
-        signals[output] = ntk_.create_node( input_signals, std::make_pair( cubes, is_sop ) );
+        signals[output] = ntk_.create_cover_node( input_signals, std::make_pair( cubes, is_sop ) );
       }
     }
     else

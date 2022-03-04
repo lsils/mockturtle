@@ -306,10 +306,10 @@ TEST_CASE( "Creation of an aig network containing all the features of the conver
   std::vector<kitty::cube> cubes_xor = { _001, _010, _100, _111 };
   std::pair<std::vector<kitty::cube>, bool> cover_xor = std::make_pair( cubes_xor, true );
 
-  auto c21 = cover.create_node( { c11, c12, c13 }, cover_maj1 );
-  auto c22 = cover.create_node( { c11, c12, c13 }, cover_xor );
-  auto c23 = cover.create_node( { c14, c15, c16 }, cover_xor );
-  auto c24 = cover.create_node( { c14, c15, c16 }, cover_maj0 );
+  auto c21 = cover.create_cover_node( { c11, c12, c13 }, cover_maj1 );
+  auto c22 = cover.create_cover_node( { c11, c12, c13 }, cover_xor );
+  auto c23 = cover.create_cover_node( { c14, c15, c16 }, cover_xor );
+  auto c24 = cover.create_cover_node( { c14, c15, c16 }, cover_maj0 );
 
   auto c31 = cover.create_and( c21, c22 );
   auto c32 = cover.create_or( c23, c24 );

@@ -1,7 +1,7 @@
 COVER to graph conversion
 -------------------------
 
-**Header:** ``mockturtle/io/cover_to_graph.hpp``
+**Header:** ``mockturtle/algorithms/cover_to_graph.hpp``
 This header file defines a function to convert a network of type `cover_network` into a
 new graph, of type `Ntk`. The new data structure can be one of the following: AIG, XAG, MIG or XMG.
 Any node of the cover network is a function defined by specifying either its onset or its offset.
