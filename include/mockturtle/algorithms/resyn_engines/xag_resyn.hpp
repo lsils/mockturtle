@@ -87,7 +87,7 @@ struct xag_resyn_static_params
 
   static constexpr uint32_t max_enqueue{1000u};
 
-  static constexpr uint32_t max_xor{1u};
+  static constexpr uint32_t max_xor{0u};
 
   static constexpr uint32_t max_neighbors{10u};
 
@@ -311,14 +311,8 @@ private:
   bool compare_cost ( auto cost, auto upper )
   {
     /* for depth cost */
-    if ( cost.second != upper.second )
-    {
-      return cost.second < upper.second;
-    }
-    if ( cost.first != upper.first )
-    {
-      return cost.first < upper.first;
-    }
+    if( cost.second != upper.second ) return cost.second < upper.second;
+    if( cost.first != upper.first ) return cost.first < upper.first;
     return false;
   }
 
@@ -477,12 +471,12 @@ public:
       if ( t.done == true )
       {
         auto output = back_trace( mem.size() - 1 );
+        assert( t.cost.second == output.first );
         index_list.add_output( output.second );
         return index_list;
       }
       if ( compare_cost( t.cost, upper_bound ) == false ) break;
       if ( q.size() >= static_params::max_enqueue ) break;
-
       add_neighbors ( t, q );
     }
     return std::nullopt;
@@ -576,30 +570,43 @@ private:
   {
     uint32_t size_cost, depth_cost;
     size_cost = mem[pos].cost.first; 
-    if ( mem[pos].ntype != NONE) // TODO: size cost is not uniform
+    if ( mem[pos].ntype != NONE ) // TODO: size cost is not uniform
     {
       size_cost ++;
     }
     if ( balancing ) /* a better estimation of depth cost */
     {
-      std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<>> cost_q;
-      auto p = pos;
-      cost_q.push( depth_fn( mem[p].lit>>1 ) );
-      while ( mem[p].prev != 0 )
+      if ( pos == 0 ) /* only one lit */
       {
-        for ( p = mem[p].prev; ; p = mem[p].prev ) /* get all the same node type */
+        depth_cost = depth_fn( lit >> 1 );
+      }
+      else
+      {
+        std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<>> cost_q;
+        cost_q.push( depth_fn( lit >> 1 ) );
+        int p = -1;
+        while ( p == -1 || mem[p].prev != 0 )
         {
-          cost_q.push( depth_fn( mem[p].lit >> 1 ) );
-          if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
+          for ( p = ( p==-1? pos : mem[p].prev ); ; p = mem[p].prev ) /* get all the same node type */
+          {
+            cost_q.push( depth_fn( mem[p].lit >> 1 ) );
+            if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
+          }
+          while ( cost_q.size() > 1 ) /* add node while maintaining the depth order */
+          {
+            cost_q.pop();
+            cost_q.push( cost_q.top() + 1 );
+            cost_q.pop();
+          }
         }
         while ( cost_q.size() > 1 ) /* add node while maintaining the depth order */
         {
           cost_q.pop();
           cost_q.push( cost_q.top() + 1 );
           cost_q.pop();
-        }
+        }    
+        depth_cost = cost_q.top();
       }
-      depth_cost = cost_q.top();
     }
     else
     {
