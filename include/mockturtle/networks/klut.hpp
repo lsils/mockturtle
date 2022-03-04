@@ -43,7 +43,6 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/print.hpp>
 
 #include <algorithm>
 #include <memory>

@@ -133,7 +133,7 @@ using cover_storage = storage<cover_storage_node, cover_storage_data>;
     kitty::cube _11 = kitty::cube("11");
 
     std::vector<kitty::cube> nand_from_offset { _11 }; 
-    const auto n1 = cover.create_node( {a, b}, std::make_pair( nand_from_offset, false ) );
+    const auto n1 = cover.create_cover_node( {a, b}, std::make_pair( nand_from_offset, false ) );
 
     const auto y1 = cover.create_and( n1, c );
     cover.create_po( y1 );
@@ -303,7 +303,7 @@ public:
   signal create_not( signal const& a )
   {
     std::vector<kitty::cube> _not{ kitty::cube( "0" ) };
-    return _create_node( { a }, std::make_pair( _not, true ) );
+    return _create_cover_node( { a }, std::make_pair( _not, true ) );
   }
 #pragma endregion
 
@@ -311,63 +311,63 @@ public:
   signal create_and( signal a, signal b )
   {
     std::vector<kitty::cube> _and{ kitty::cube( "11" ) };
-    return _create_node( { a, b }, std::make_pair( _and, true ) );
+    return _create_cover_node( { a, b }, std::make_pair( _and, true ) );
   }
 
   signal create_nand( signal a, signal b )
   {
     std::vector<kitty::cube> _nand{ kitty::cube( "11" ) };
-    return _create_node( { a, b }, std::make_pair( _nand, false ) );
+    return _create_cover_node( { a, b }, std::make_pair( _nand, false ) );
   }
 
   signal create_or( signal a, signal b )
   {
     std::vector<kitty::cube> _or{ kitty::cube( "00" ) };
-    return _create_node( { a, b }, std::make_pair( _or, false ) );
+    return _create_cover_node( { a, b }, std::make_pair( _or, false ) );
   }
 
   signal create_nor( signal a, signal b )
   {
     std::vector<kitty::cube> _nor{ kitty::cube( "00" ) };
-    return _create_node( { a, b }, std::make_pair( _nor, true ) );
+    return _create_cover_node( { a, b }, std::make_pair( _nor, true ) );
   }
 
   signal create_lt( signal a, signal b )
   {
     std::vector<kitty::cube> _lt{ kitty::cube( "01" ) };
-    return _create_node( { a, b }, std::make_pair( _lt, true ) );
+    return _create_cover_node( { a, b }, std::make_pair( _lt, true ) );
   }
 
   signal create_le( signal a, signal b )
   {
     std::vector<kitty::cube> _le{ kitty::cube( "10" ) };
-    return _create_node( { a, b }, std::make_pair( _le, false ) );
+    return _create_cover_node( { a, b }, std::make_pair( _le, false ) );
   }
 
   signal create_gt( signal a, signal b )
   {
     std::vector<kitty::cube> _gt{ kitty::cube( "10" ) };
-    return _create_node( { a, b }, std::make_pair( _gt, true ) );
+    return _create_cover_node( { a, b }, std::make_pair( _gt, true ) );
   }
 
   signal create_ge( signal a, signal b )
   {
     std::vector<kitty::cube> _ge{ kitty::cube( "01" ) };
-    return _create_node( { a, b }, std::make_pair( _ge, false ) );
+    return _create_cover_node( { a, b }, std::make_pair( _ge, false ) );
   }
 
   signal create_xor( signal a, signal b )
   {
     std::vector<kitty::cube> _xor{ kitty::cube( "01" ),
                                    kitty::cube( "10" ) };
-    return _create_node( { a, b }, std::make_pair( _xor, true ) );
+    return _create_cover_node( { a, b }, std::make_pair( _xor, true ) );
   }
 
   signal create_xnor( signal a, signal b )
   {
     std::vector<kitty::cube> _xnor{ kitty::cube( "00" ),
                                     kitty::cube( "11" ) };
-    return _create_node( { a, b }, std::make_pair( _xnor, true ) );
+    return _create_cover_node( { a, b }, std::make_pair( _xnor, true ) );
   }
 #pragma endregion
 
@@ -379,14 +379,14 @@ public:
                                    kitty::cube( "101" ),
                                    kitty::cube( "110" ),
                                    kitty::cube( "111" ) };
-    return _create_node( { a, b, c }, std::make_pair( _maj, true ) );
+    return _create_cover_node( { a, b, c }, std::make_pair( _maj, true ) );
   }
 
   signal create_ite( signal a, signal b, signal c )
   {
     std::vector<kitty::cube> _ite{ kitty::cube( "11-" ),
                                    kitty::cube( "0-1" ) };
-    return _create_node( { a, b, c }, std::make_pair( _ite, true ) );
+    return _create_cover_node( { a, b, c }, std::make_pair( _ite, true ) );
   }
 
   signal create_xor3( signal a, signal b, signal c )
@@ -395,7 +395,7 @@ public:
                                     kitty::cube( "010" ),
                                     kitty::cube( "100" ),
                                     kitty::cube( "111" ) };
-    return _create_node( { a, b, c }, std::make_pair( _xor3, true ) );
+    return _create_cover_node( { a, b, c }, std::make_pair( _xor3, true ) );
   }
 #pragma endregion
 
@@ -417,7 +417,7 @@ public:
 #pragma endregion
 
 #pragma region Create arbitrary functions
-  signal _create_node( std::vector<signal> const& children, cover_type const& new_cover )
+  signal _create_cover_node( std::vector<signal> const& children, cover_type const& new_cover )
   {
 
     uint64_t literal = _storage->data.insert( new_cover );
@@ -451,17 +451,17 @@ public:
     return index;
   }
 
-  signal create_node( std::vector<signal> const& children, cover_type new_cover )
+  signal create_cover_node( std::vector<signal> const& children, cover_type new_cover )
   {
     if ( children.size() == 0u )
     {
       return get_constant( new_cover.second );
     }
 
-    return _create_node( children, new_cover );
+    return _create_cover_node( children, new_cover );
   }
 
-  signal create_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
+  signal create_cover_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
   {
     if ( children.size() == 0u )
     {
@@ -483,14 +483,14 @@ public:
       }
     }
 
-    return _create_node( children, new_cover );
+    return _create_cover_node( children, new_cover );
   }
 
   signal clone_node( cover_network const& other, node const& source, std::vector<signal> const& children )
   {
     assert( !children.empty() );
     cover_type cb = other._storage->data.covers[other._storage->nodes[source].data[1].h1];
-    return create_node( children, cb );
+    return create_cover_node( children, cb );
   }
 #pragma endregion
 

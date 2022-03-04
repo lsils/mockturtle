@@ -284,7 +284,7 @@ TEST_CASE( "create nodes and compute a function in a cover network from truth ta
 {
   cover_network cover;
 
-  CHECK( has_create_node_v<cover_network> );
+  CHECK( has_create_cover_node_v<cover_network> );
   CHECK( has_compute_v<cover_network, kitty::dynamic_truth_table> );
 
   const auto a = cover.create_pi();
@@ -297,13 +297,13 @@ TEST_CASE( "create nodes and compute a function in a cover network from truth ta
 
   CHECK( cover.size() == 5 );
 
-  const auto _const0 = cover.create_node( {}, tt_const0 );
-  const auto _const1 = cover.create_node( {}, ~tt_const0 );
+  const auto _const0 = cover.create_cover_node( {}, tt_const0 );
+  const auto _const1 = cover.create_cover_node( {}, ~tt_const0 );
   CHECK( _const0 == cover.get_constant( false ) );
   CHECK( _const1 == cover.get_constant( true ) );
 
-  const auto _maj = cover.create_node( { a, b, c }, tt_maj );
-  const auto _xor = cover.create_node( { a, b, c }, tt_xor );
+  const auto _maj = cover.create_cover_node( { a, b, c }, tt_maj );
+  const auto _xor = cover.create_cover_node( { a, b, c }, tt_xor );
 
   CHECK( cover.size() == 7 );
 
@@ -338,8 +338,8 @@ TEST_CASE( "create nodes and compute a function in a cover network", "[cover]" )
 
   CHECK( cover.size() == 5 );
 
-  const auto _const0 = cover.create_node( {}, cb_const0 );
-  const auto _const1 = cover.create_node( {}, cb_const1 );
+  const auto _const0 = cover.create_cover_node( {}, cb_const0 );
+  const auto _const1 = cover.create_cover_node( {}, cb_const1 );
   CHECK( _const0 == cover.get_constant( false ) );
   CHECK( _const1 == cover.get_constant( true ) );
 
@@ -357,7 +357,7 @@ TEST_CASE( "create nodes and compute a function in a cover network", "[cover]" )
 
   std::vector<kitty::cube> cubes_maj = { _X11, _1X1, _11X };
   std::pair<std::vector<kitty::cube>, bool> cover_maj3 = std::make_pair( cubes_maj, true );
-  const auto _maj = cover.create_node( { a, b, c }, cover_maj3 );
+  const auto _maj = cover.create_cover_node( { a, b, c }, cover_maj3 );
 
   const auto sim_maj = cover.compute( cover.get_node( _maj ), xs.begin(), xs.end() );
   kitty::dynamic_truth_table answer( 2u );
@@ -395,13 +395,13 @@ TEST_CASE( "hash nodes in cover network", "[cover]" )
   std::vector<kitty::cube> cubes_xor = { _001, _010, _100, _111 };
   std::pair<std::vector<kitty::cube>, bool> cover_xor = std::make_pair( cubes_xor, true );
 
-  cover.create_node( { a, b, c }, cover_maj_pos );
-  cover.create_node( { a, b, c }, cover_maj );
-  cover.create_node( { a, b, c }, cover_xor );
+  cover.create_cover_node( { a, b, c }, cover_maj_pos );
+  cover.create_cover_node( { a, b, c }, cover_maj );
+  cover.create_cover_node( { a, b, c }, cover_xor );
 
   CHECK( cover.size() == 8 );
 
-  cover.create_node( { a, b, c }, cover_maj );
+  cover.create_cover_node( { a, b, c }, cover_maj );
 
   CHECK( cover.size() == 9 );
 }
@@ -426,10 +426,10 @@ TEST_CASE( "subsitute cover node by another", "[cover]" )
   std::vector<kitty::cube> _or{ _10, _01, _11 };
 
   // XOR with NAND
-  const auto n1 = cover.create_node( { a, b }, std::make_pair( _nand, true ) );
-  const auto n2 = cover.create_node( { a, n1 }, std::make_pair( _nand, true ) );
-  const auto n3 = cover.create_node( { b, n1 }, std::make_pair( _nand, true ) );
-  const auto n4 = cover.create_node( { n2, n3 }, std::make_pair( _nand, true ) );
+  const auto n1 = cover.create_cover_node( { a, b }, std::make_pair( _nand, true ) );
+  const auto n2 = cover.create_cover_node( { a, n1 }, std::make_pair( _nand, true ) );
+  const auto n3 = cover.create_cover_node( { b, n1 }, std::make_pair( _nand, true ) );
+  const auto n4 = cover.create_cover_node( { n2, n3 }, std::make_pair( _nand, true ) );
   cover.create_po( n4 );
 
   std::vector<node<cover_network>> nodes;
@@ -443,9 +443,9 @@ TEST_CASE( "subsitute cover node by another", "[cover]" )
   } );
 
   // XOR with AND and OR
-  const auto n5 = cover.create_node( { a, b }, std::make_pair( _le, true ) );
-  const auto n6 = cover.create_node( { a, b }, std::make_pair( _ge, true ) );
-  const auto n7 = cover.create_node( { n5, n6 }, std::make_pair( _or, true ) );
+  const auto n5 = cover.create_cover_node( { a, b }, std::make_pair( _le, true ) );
+  const auto n6 = cover.create_cover_node( { a, b }, std::make_pair( _ge, true ) );
+  const auto n7 = cover.create_cover_node( { n5, n6 }, std::make_pair( _or, true ) );
 
   nodes.clear();
   cover.foreach_node( [&]( auto node ) { nodes.push_back( node ); } );
