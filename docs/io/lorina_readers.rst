@@ -20,3 +20,5 @@ implements the reader callback ``<format>_reader``.
 .. doxygenclass:: mockturtle::genlib_reader
 
 .. doxygenclass:: mockturtle::super_reader
+
+.. doxygenclass:: mockturtle::truth_reader
