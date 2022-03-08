@@ -3,15 +3,9 @@
 #include <sstream>
 #include <string>
 
-#include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/node_resynthesis.hpp>
-#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/io/truth_reader.hpp>
-#include <mockturtle/io/write_blif.hpp>
-#include <mockturtle/networks/cover.hpp>
 #include <mockturtle/networks/klut.hpp>
-#include <mockturtle/networks/mig.hpp>
 
 #include <kitty/kitty.hpp>
 #include <lorina/truth.hpp>

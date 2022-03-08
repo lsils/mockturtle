@@ -35,11 +35,9 @@
 #include <kitty/kitty.hpp>
 #include <lorina/truth.hpp>
 
-#include <map>
 #include <string>
 #include <vector>
 
-#include "../networks/aig.hpp"
 #include "../networks/klut.hpp"
 #include "../traits.hpp"
 
@@ -80,7 +78,7 @@ public:
 
   ~truth_reader()
   {
-    for ( auto const o : outputs )
+    for ( auto const& o : outputs )
     {
       ntk_.create_po( o );
     }
@@ -91,11 +89,11 @@ public:
     inputs.push_back( ntk_.create_pi() );
   }
 
-  virtual void on_output( const std::string& truth_string ) const override
+  virtual void on_output( const std::string& tt_binary_string ) const override
   {
-    auto n = log2( truth_string.size() );
-    kitty::dynamic_truth_table tt( n );
-    kitty::create_from_binary_string( tt, truth_string );
+    auto num_inputs = log2( tt_binary_string.size() );
+    kitty::dynamic_truth_table tt( num_inputs );
+    kitty::create_from_binary_string( tt, tt_binary_string );
     outputs.emplace_back( ntk_.create_node( inputs, tt ) );
   }
 

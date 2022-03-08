@@ -37,7 +37,6 @@
 #include "diagnostics.hpp"
 #include <iostream>
 #include <optional>
-#include <regex>
 
 namespace lorina
 {
@@ -62,9 +61,9 @@ public:
    *
    * \param name Output name
    */
-  virtual void on_output( const std::string& klut_string ) const
+  virtual void on_output( const std::string& tt_binary_string ) const
   {
-    (void)klut_string;
+    (void)tt_binary_string;
   }
 };
 
@@ -83,35 +82,34 @@ public:
 {
   return_code result = return_code::success;
   std::vector<uint64_t> sizes;
-  std::vector<std::string> kluts;
+  std::vector<std::string> tt_binary_strings;
   detail::foreach_line_in_file_escape( in, [&]( std::string line ) {
     redo:
       sizes.push_back( line.size() );
-      kluts.push_back( line );
+      tt_binary_strings.push_back( line );
       return true;
   } );
 
-  float n = log2( kluts[0].size() );
-  auto length = kluts[0].size();
+  float num_inputs = log2( tt_binary_strings[0].size() );
 
-  if ( ceil( n ) != floor( n ) )
+  if ( ceil( num_inputs ) != floor( num_inputs ) )
     return return_code::parse_error;
 
-  if ( kluts.size() > 1 ) /* check that all kluts have the same size */
+  if ( tt_binary_strings.size() > 1 ) /* check that all kluts have the same size */
   {
-    for ( uint64_t k{ 1 }; k < kluts.size(); ++k )
+    for ( auto i = 1u; i < tt_binary_strings.size(); ++i )
     {
-      if ( length != kluts[k].size() )
+      if ( sizes[0] != sizes[i] )
         return return_code::parse_error;
       else
         result = return_code::success;
     }
   }
-  for ( uint64_t i{ 0 }; i < n; ++i )
+  for ( uint64_t i{ 0 }; i < num_inputs; ++i )
     reader.on_input();
 
-  for ( uint64_t i{ 0 }; i < kluts.size(); ++i )
-    reader.on_output( kluts[i] );
+  for ( uint64_t i{ 0 }; i < tt_binary_strings.size(); ++i )
+    reader.on_output( tt_binary_strings[i] );
 
   return result;
 }
