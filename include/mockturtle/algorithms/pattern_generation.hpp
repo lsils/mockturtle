@@ -49,9 +49,6 @@ namespace mockturtle
 
 struct pattern_generation_params
 {
-  /*! \brief Whether to remove constant nodes. Requires `substitute_node`. */
-  bool substitute_const{false};
-
   /*! \brief Number of patterns each node should have for both values. 
    * 
    * When this parameter is set to greater than 1, and if the network has more
@@ -112,7 +109,7 @@ struct pattern_generation_stats
 namespace detail
 {
 
-template<class Ntk, class Simulator, bool use_odc = false>
+template<class Ntk, class Simulator, bool use_odc = false, bool substitute_const = false>
 class patgen_impl
 {
 public:
@@ -137,7 +134,7 @@ public:
     if ( ps.num_stuck_at > 0 )
     {
       stuck_at_check();
-      if constexpr( std::is_same_v<Simulator, bit_packed_simulator> )
+      if constexpr ( std::is_same_v<Simulator, bit_packed_simulator> )
       {
         sim.pack_bits();
         call_with_stopwatch( st.time_sim, [&]() {
@@ -145,7 +142,7 @@ public:
           simulate_nodes<Ntk>( ntk, tts, sim, true );
         } );
       }
-      if ( ps.substitute_const )
+      if constexpr ( substitute_const )
       {
         for ( auto n : const_nodes )
         {
@@ -548,7 +545,7 @@ private:
  * patterns can then be written out with `write_patterns`
  * or directly be used by passing the simulator to another algorithm.
  */
-template<class Ntk, class Simulator>
+template<bool substitute_const = false, class Ntk, class Simulator>
 void pattern_generation( Ntk& ntk, Simulator& sim, pattern_generation_params const& ps = {}, pattern_generation_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -569,12 +566,12 @@ void pattern_generation( Ntk& ntk, Simulator& sim, pattern_generation_params con
     using fanout_view_t = fanout_view<Ntk>;
     fanout_view_t fanout_view{ntk};
 
-    detail::patgen_impl<fanout_view_t, Simulator, true> p( fanout_view, sim, ps, vps, st );
+    detail::patgen_impl<fanout_view_t, Simulator, /*use_odc*/true, substitute_const> p( fanout_view, sim, ps, vps, st );
     p.run();
   }
   else
   {
-    detail::patgen_impl p( ntk, sim, ps, vps, st );
+    detail::patgen_impl<Ntk, Simulator, /*use_odc*/false, substitute_const> p( ntk, sim, ps, vps, st );
     p.run();
   }
 

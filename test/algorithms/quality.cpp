@@ -210,7 +210,7 @@ TEST_CASE( "Test quality improvement of MIG k-resubstitution", "[quality]" )
     return before - ntk.num_gates();
   } );
 
-  CHECK( v == std::vector<uint32_t>{{1, 59, 3, 16, 3, 25, 107, 108, 183, 438, 74}} );
+  CHECK( v == std::vector<uint32_t>{{1, 48, 2, 18, 2, 17, 101, 97, 169, 437, 64}} );
 }
 
 TEST_CASE( "Test quality of MIG algebraic depth rewriting", "[quality]" )
@@ -451,7 +451,7 @@ TEST_CASE( "Test quality improvement of cut rewriting with AIG exact synthesis",
   CHECK( v == std::vector<uint32_t>{{0, 30, 4, 6, 108, 11, 75, 43, 171, 450, 5}} );
 }
 
-#if !__clang__ || __clang_major__ > 9
+#if !__clang__ || __clang_major__ > 10
 TEST_CASE( "Test quality improvement of cut rewriting with AIG cached-exact synthesis", "[quality]" )
 {
   /* applies exact synthesis to 4-feasible cuts, uses a cache to store/load (function, network)-pairs from a file */

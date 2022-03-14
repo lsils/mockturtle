@@ -43,10 +43,26 @@
 namespace mockturtle
 {
 
-struct mig_resyn_params
+struct mig_resyn_static_params
 {
+  using base_type = mig_resyn_static_params;
+
   /*! \brief Reserved capacity for divisor truth tables (number of divisors). */
-  uint32_t reserve{200u};
+  static constexpr uint32_t reserve{200u};
+
+  /*! \brief Whether to preserve depth. */
+  static constexpr bool preserve_depth{false};
+
+  /*! \brief Whether the divisors have uniform costs (size and depth, whenever relevant). */
+  static constexpr bool uniform_div_cost{true};
+
+  /*! \brief Size cost of each MAJ gate. */
+  static constexpr uint32_t size_cost_of_maj{1u};
+
+  /*! \brief Depth cost of each MAJ gate (only relevant when `preserve_depth = true`). */
+  static constexpr uint32_t depth_cost_of_maj{1u};
+
+  // Future work: Consider cost for inverter / MAJ with constant input; Add XOR support (XMG)
 };
 
 struct mig_resyn_stats
@@ -61,25 +77,26 @@ struct mig_resyn_stats
  * more uncovered bits.
  * 
  */
-template<class TT>
+template<class TT, class static_params = mig_resyn_static_params>
 class mig_resyn_bottomup
 {
 public:
   using stats = mig_resyn_stats;
-  using params = mig_resyn_params;
   using index_list_t = mig_index_list;
   using truth_table_t = TT;
 
-  explicit mig_resyn_bottomup( stats& st, params const& ps = {} )
-    : st( st ), ps( ps )
+  explicit mig_resyn_bottomup( stats& st )
+    : st( st )
   {
-    divisors.reserve( ps.reserve + 2 );
+    static_assert( std::is_same_v<typename static_params::base_type, mig_resyn_static_params>, "Invalid static_params type" );
+    static_assert( !static_params::preserve_depth && static_params::uniform_div_cost, "Advanced resynthesis is not implemented for this solver" );
+    divisors.reserve( static_params::reserve );
   }
 
   template<class iterator_type, class truth_table_storage_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_level = std::numeric_limits<uint32_t>::max() )
   {
-    (void)care;
+    (void)care; (void)max_level;
     num_bits = target.num_bits();
     divisors.emplace_back( ~target );
     divisors.emplace_back( target );
@@ -205,7 +222,6 @@ private:
   index_list_t index_list;
 
   stats& st;
-  params const ps;
 }; /* mig_resyn_bottomup */
 
 /*! \brief Logic resynthesis engine for MIGs with top-down decomposition.
@@ -217,12 +233,11 @@ private:
  * scoring functions aiming at covering more *care* bits.
  * 
  */
-template<class TT>
+template<class TT, class static_params = mig_resyn_static_params>
 class mig_resyn_topdown
 {
 public:
   using stats = mig_resyn_stats;
-  using params = mig_resyn_params;
   using index_list_t = mig_index_list;
   using truth_table_t = TT;
 
@@ -256,10 +271,12 @@ private:
   };
 
 public:
-  explicit mig_resyn_topdown( stats& st, params const& ps = {} )
-    : st( st ), ps( ps )
+  explicit mig_resyn_topdown( stats& st )
+    : st( st )
   {
-    divisors.reserve( ps.reserve + 2 );
+    static_assert( std::is_same_v<typename static_params::base_type, mig_resyn_static_params>, "Invalid static_params type" );
+    static_assert( !( static_params::uniform_div_cost && static_params::preserve_depth ), "If depth is to be preserved, divisor depth cost must be provided (usually not uniform)" );
+    divisors.reserve( static_params::reserve );
   }
 
   /*! \brief Perform MIG resynthesis.
@@ -273,7 +290,7 @@ public:
    * \param tts A data structure (e.g. std::vector<TT>) that stores the truth tables of the divisor functions.
    * \param max_size Maximum number of nodes allowed in the dependency circuit.
    */
-  template<class iterator_type, class truth_table_storage_type>
+  template<class iterator_type, class truth_table_storage_type, bool enabled = static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
     divisors.emplace_back( ~target );
@@ -293,6 +310,16 @@ public:
 
     return compute_function( care );
   }
+
+  template<class iterator_type, class truth_table_storage_type, class Fn, bool enabled = !static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, Fn&& size_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  {
+    static_assert( !static_params::uniform_div_cost && !static_params::preserve_depth, "" );
+  }
+
+  template<class iterator_type, class truth_table_storage_type, class Fn, bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
+  {}
 
 private:
   std::optional<index_list_t> compute_function( TT const& care )
@@ -329,17 +356,17 @@ private:
       index_list.add_output( divisors.size() );
       return index_list;
     }
-    for ( simple_maj& top_node : top_node_choices )
-    {
-      if ( easy_refine( top_node, top_care, 0 ) || easy_refine( top_node, top_care, 1 ) )
-      {
-        /* 1-resub */
-        mig_index_list index_list( divisors.size() / 2 - 1 );
-        index_list.add_maj( top_node.fanins[0], top_node.fanins[1], top_node.fanins[2] );
-        index_list.add_output( divisors.size() );
-        return index_list;
-      }
-    }
+    //for ( simple_maj& top_node : top_node_choices )
+    //{
+    //  if ( easy_refine( top_node, top_care, 0 ) || easy_refine( top_node, top_care, 1 ) )
+    //  {
+    //    /* 1-resub */
+    //    mig_index_list index_list( divisors.size() / 2 - 1 );
+    //    index_list.add_maj( top_node.fanins[0], top_node.fanins[1], top_node.fanins[2] );
+    //    index_list.add_output( divisors.size() );
+    //    return index_list;
+    //  }
+    //}
     if ( size_limit == 1u )
     {
       return std::nullopt;
@@ -348,25 +375,28 @@ private:
     std::vector<maj_node> maj_nodes_best;
     for ( simple_maj const& top_node : top_node_choices )
     {
-      for ( int32_t i = 0; i < 3; ++i )
+      //for ( int32_t i = 0; i < 3; ++i )
       {
         maj_nodes.clear();
         maj_nodes.emplace_back( maj_node{uint32_t( divisors.size() ), top_node.fanins, {divisors.at( top_node.fanins[0] ), divisors.at( top_node.fanins[1] ), divisors.at( top_node.fanins[2] )}, top_care} );
 
         leaves.clear();
-        improve_in_parent.clear();
-        shuffle.clear();
-        first_round = true;
-        leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 1 )} );
-        leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 2 )} );
+        //improve_in_parent.clear();
+        //shuffle.clear();
+        //first_round = true;
+        //leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 1 )} );
+        //leaves.emplace_back( expansion_position{0, (int32_t)sibling_index( i, 2 )} );
+        leaves.emplace_back( expansion_position{0, 0} );
+        leaves.emplace_back( expansion_position{0, 1} );
+        leaves.emplace_back( expansion_position{0, 2} );
 
-        TT const care = top_care & ~( divisors.at( top_node.fanins[sibling_index( i, 1 )] ) & divisors.at( top_node.fanins[sibling_index( i, 2 )] ) );
-        if ( evaluate_one( care, divisors.at( top_node.fanins[i] ), expansion_position{0, i} ) )
-        {
-          /* 2-resub */
-          maj_nodes_best = maj_nodes;
-          return translate( maj_nodes_best );
-        }
+        //TT const care = top_care & ~( divisors.at( top_node.fanins[sibling_index( i, 1 )] ) & divisors.at( top_node.fanins[sibling_index( i, 2 )] ) );
+        //if ( evaluate_one( care, divisors.at( top_node.fanins[i] ), expansion_position{0, i} ) )
+        //{
+        //  /* 2-resub */
+        //  maj_nodes_best = maj_nodes;
+        //  return translate( maj_nodes_best );
+        //}
 
         if ( !refine() )
         {
@@ -389,22 +419,23 @@ private:
 
   bool refine()
   {
-    while ( ( leaves.size() != 0u || improve_in_parent.size() != 0u || shuffle.size() != 0u ) && maj_nodes.size() < size_limit )
+    //while ( ( leaves.size() != 0u || improve_in_parent.size() != 0u || shuffle.size() != 0u ) && maj_nodes.size() < size_limit )
+    while ( leaves.size() != 0u && maj_nodes.size() < size_limit )
     {
-      if ( leaves.size() == 0u )
-      {
-        if ( improve_in_parent.size() != 0u )
-        {
-          leaves = improve_in_parent;
-          improve_in_parent.clear();
-        }
-        else
-        {
-          leaves = shuffle;
-          shuffle.clear();
-        }
-        first_round = false;
-      }
+      //if ( leaves.size() == 0u )
+      //{
+      //  if ( improve_in_parent.size() != 0u )
+      //  {
+      //    leaves = improve_in_parent;
+      //    improve_in_parent.clear();
+      //  }
+      //  else
+      //  {
+      //    leaves = shuffle;
+      //    shuffle.clear();
+      //  }
+      //  first_round = false;
+      //}
 
       uint32_t min_mismatch = num_bits + 1;
       uint32_t pos = 0u;
@@ -466,46 +497,46 @@ private:
     simple_maj const new_node = expand_one( care );
     uint64_t const original_score = score( original_function, care );
     uint64_t const new_score = score( new_node.function, care );
-    if ( new_score < original_score )
+    if ( new_score <= original_score )
     {
       return false;
     }
 
-    if ( new_score == original_score )
-    {
-      if ( kitty::count_ones( new_node.function & parent_node.care ) > kitty::count_ones( original_function & parent_node.care ) )
-      {
-        if ( first_round )
-        {
-          /* We put it into a back-up queue for now */
-          improve_in_parent.emplace_back( node_position );
-          return false;
-        }
-        else
-        {
-          /* When there is no other possibilities, we try one in the back-up queues, and go back to the stricter state */
-          first_round = true;
-        }
-      }
-      else if ( kitty::count_ones( new_node.function & parent_node.care ) == kitty::count_ones( original_function & parent_node.care ) && new_node.function != original_function )
-      {
-        if ( first_round )
-        {
-          /* We put it into a back-up queue for now */
-          shuffle.emplace_back( node_position );
-          return false;
-        }
-        else
-        {
-          /* When there is no other possibilities, we try one in the back-up queues, and go back to the stricter state */
-          first_round = true;
-        }
-      }
-      else
-      {
-        return false;
-      }
-    }
+    //if ( new_score == original_score )
+    //{
+    //  if ( kitty::count_ones( new_node.function & parent_node.care ) > kitty::count_ones( original_function & parent_node.care ) )
+    //  {
+    //    if ( first_round )
+    //    {
+    //      /* We put it into a back-up queue for now */
+    //      improve_in_parent.emplace_back( node_position );
+    //      return false;
+    //    }
+    //    else
+    //    {
+    //      /* When there is no other possibilities, we try one in the back-up queues, and go back to the stricter state */
+    //      first_round = true;
+    //    }
+    //  }
+    //  else if ( kitty::count_ones( new_node.function & parent_node.care ) == kitty::count_ones( original_function & parent_node.care ) && new_node.function != original_function )
+    //  {
+    //    if ( first_round )
+    //    {
+    //      /* We put it into a back-up queue for now */
+    //      shuffle.emplace_back( node_position );
+    //      return false;
+    //    }
+    //    else
+    //    {
+    //      /* When there is no other possibilities, we try one in the back-up queues, and go back to the stricter state */
+    //      first_round = true;
+    //    }
+    //  }
+    //  else
+    //  {
+    //    return false;
+    //  }
+    //}
 
     /* construct the new node */
     uint32_t const new_id = maj_nodes.size() + divisors.size();
@@ -675,36 +706,36 @@ private:
   }
 
   /* try to replace the first (fi=0) or the second (fi=1) fanin with another divisor to improve coverage */
-  bool easy_refine( simple_maj& n, TT const& care, uint32_t fi )
-  {
-    uint64_t const original_coverage = kitty::count_ones( n.function & care );
-    uint64_t current_coverage = original_coverage;
-    auto const& tt1 = divisors.at( n.fanins[fi ? 0 : 1] );
-    auto const& tt2 = divisors.at( n.fanins[fi < 2 ? 2 : 1] );
-    for ( auto i = 0u; i < divisors.size(); ++i )
-    {
-      if ( same_divisor( i, n.fanins[0] ) || same_divisor( i, n.fanins[1] ) || same_divisor( i, n.fanins[2] ) )
-      {
-        continue;
-      }
-      auto const& tti = divisors.at( i );
-      uint64_t coverage = kitty::count_ones( kitty::ternary_majority( tti, tt1, tt2 ) & care );
-      if ( coverage > current_coverage )
-      {
-        current_coverage = coverage;
-        n.fanins[fi] = i;
-      }
-    }
-    if ( current_coverage > original_coverage )
-    {
-      n.function = kitty::ternary_majority( divisors.at( n.fanins[0] ), divisors.at( n.fanins[1] ), divisors.at( n.fanins[2] ) );
-      if ( current_coverage == num_bits )
-      {
-        return true;
-      }
-    }
-    return false;
-  }
+  //bool easy_refine( simple_maj& n, TT const& care, uint32_t fi )
+  //{
+  //  uint64_t const original_coverage = kitty::count_ones( n.function & care );
+  //  uint64_t current_coverage = original_coverage;
+  //  auto const& tt1 = divisors.at( n.fanins[fi ? 0 : 1] );
+  //  auto const& tt2 = divisors.at( n.fanins[fi < 2 ? 2 : 1] );
+  //  for ( auto i = 0u; i < divisors.size(); ++i )
+  //  {
+  //    if ( same_divisor( i, n.fanins[0] ) || same_divisor( i, n.fanins[1] ) || same_divisor( i, n.fanins[2] ) )
+  //    {
+  //      continue;
+  //    }
+  //    auto const& tti = divisors.at( i );
+  //    uint64_t coverage = kitty::count_ones( kitty::ternary_majority( tti, tt1, tt2 ) & care );
+  //    if ( coverage > current_coverage )
+  //    {
+  //      current_coverage = coverage;
+  //      n.fanins[fi] = i;
+  //    }
+  //  }
+  //  if ( current_coverage > original_coverage )
+  //  {
+  //    n.function = kitty::ternary_majority( divisors.at( n.fanins[0] ), divisors.at( n.fanins[1] ), divisors.at( n.fanins[2] ) );
+  //    if ( current_coverage == num_bits )
+  //    {
+  //      return true;
+  //    }
+  //  }
+  //  return false;
+  //}
 
   mig_index_list translate( std::vector<maj_node> const& maj_nodes_best ) const
   {
@@ -888,11 +919,10 @@ private:
   std::vector<maj_node> maj_nodes; /* the really used nodes */
   std::unordered_map<TT, simple_maj, kitty::hash<TT>> computed_table; /* map from care to a simple_maj with divisors as fanins */
 
-  std::vector<expansion_position> leaves, improve_in_parent, shuffle;
-  bool first_round = true;
+  std::vector<expansion_position> leaves;//, improve_in_parent, shuffle;
+  //bool first_round = true;
 
   stats& st;
-  params const ps;
 }; /* mig_resyn_topdown */
 
 /*! \brief Logic resynthesis engine for MIGs by Akers' majority synthesis algorithm.
@@ -904,25 +934,27 @@ private:
  * and Logical Design (SWCT 1962) (pp. 149-158). IEEE.
  * 
  */
+template<class static_params = mig_resyn_static_params>
 class mig_resyn_akers
 {
 public:
   using stats = mig_resyn_stats;
-  using params = mig_resyn_params;
   using index_list_t = mig_index_list;
   using TT = kitty::partial_truth_table;
   using truth_table_t = TT;
 
-  explicit mig_resyn_akers( stats& st, params const& ps = {} )
-    : id_to_lit( { 0, 1 } ), st( st ), ps( ps )
+  explicit mig_resyn_akers( stats& st )
+    : id_to_lit( { 0, 1 } ), st( st )
   {
-    divisors.reserve( ps.reserve + 2 );
+    static_assert( std::is_same_v<typename static_params::base_type, mig_resyn_static_params>, "Invalid static_params type" );
+    static_assert( !static_params::preserve_depth && static_params::uniform_div_cost, "Advanced resynthesis is not implemented for this solver" );
+    divisors.reserve( static_params::reserve );
   }
 
   template<class iterator_type, class truth_table_storage_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
+  std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_level = std::numeric_limits<uint32_t>::max() )
   {
-    (void)care;
+    (void)care; (void)max_level;
     divisors.emplace_back( ~target );
     divisors.emplace_back( target );
 
@@ -1281,6 +1313,5 @@ private:
   uint32_t fanins[3];
 
   stats& st;
-  params const ps;
 }; /* mig_resyn_akers */
 } /* namespace mockturtle */

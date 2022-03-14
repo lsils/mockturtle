@@ -37,7 +37,7 @@
 
 #include <fmt/format.h>
 
-#include "./dag.hpp"
+#include "dag.hpp"
 
 namespace mockturtle
 {
