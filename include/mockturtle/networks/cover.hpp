@@ -24,82 +24,144 @@
  */
 
 /*!
-  \file klut.hpp
-  \brief k-LUT logic network implementation
-
-  \author Heinz Riener
-  \author Mathias Soeken
-  \author Max Austin
+  \file cover.hpp
+  \brief single output cover logic network implementation
+  \author Andrea Costamagna
 */
 
 #pragma once
 
 #include "../traits.hpp"
 #include "../utils/algorithm.hpp"
-#include "../utils/truth_table_cache.hpp"
+
 #include "detail/foreach.hpp"
 #include "events.hpp"
 #include "storage.hpp"
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/print.hpp>
 
 #include <algorithm>
-#include <memory>
 
 namespace mockturtle
 {
-
-struct klut_storage_data
+/*! \brief cover storage data
+ * 
+ * This struct contains the constituents of the network and its main features.
+ * For what concerns the features, these include:  
+ * `num_pis`          : Number of primary inputs
+ * `num_pos`          : Number of primary outputs
+ * 
+ * On the other hand, the constituents of the network are the covers representing the boolean functions stored in each node.
+ * These are stored in a vector of pairs. Each element is the cover of a function and a boolean value indicating whether the 
+ * cover indicates the ON-set or the OFF set. More precisely:
+ * `covers`           : Vector of pairs for covers storage
+ * `covers[i].first`  : Cubes i-th cover
+ * `covers[i].second` : Boolean true (false) if ON set (OFF set)
+ * This data structure directly originates from the k-LUT one and, for this reason, it inherits from it the vast majority of the features. 
+ * The main difference is the way the nodes are stored and future improvements could include the substitution of the current covers storage with 
+ * a cache, to avoid the redundant storage of some recurrent boolean functions. 
+ */
+struct cover_storage_data
 {
-  truth_table_cache<kitty::dynamic_truth_table> cache;
+  uint64_t insert( std::pair<std::vector<kitty::cube>, bool> const& cover )
+  {
+    const auto index = covers.size();
+    covers.emplace_back( cover );
+    return index;
+  }
+
+  std::vector<std::pair<std::vector<kitty::cube>, bool>> covers;
   uint32_t num_pis = 0u;
   uint32_t num_pos = 0u;
   std::vector<int8_t> latches;
   uint32_t trav_id = 0u;
 };
 
-/*! \brief k-LUT node
+/*! \brief cover node
  *
+ * The cover node is a mixed fanin node with the following attributes:
+ * `children`  : vector of pointers to children
  * `data[0].h1`: Fan-out size
  * `data[0].h2`: Application-specific value
- * `data[1].h1`: Function literal in truth table cache
- * `data[2].h2`: Visited flags
+ * `data[1].h1`: Index of the cover of the node in the covers container
+ * `data[1].h2`: Visited flags
  */
-struct klut_storage_node : mixed_fanin_node<2>
+struct cover_storage_node : mixed_fanin_node<2>
 {
-  bool operator==( klut_storage_node const& other ) const
+  bool operator==( cover_storage_node const& other ) const
   {
     return data[1].h1 == other.data[1].h1 && children == other.children;
   }
 };
 
-/*! \brief k-LUT storage container
+/*! \brief cover storage container
+ *
+ * The network as a storage entity is defined by combining the node structure with the cover_storage structure.
+ * The attributes of this storage unit are listed in the following:
+ * `nodes`            : Vector of cover storage nodes
+ * `inputs`           : Vector of indeces to inputs nodes
+ * `outputs`          : Vector of pointers to node types
+ * `hash`             : maps a node to its index in the nodes vector
+ * `data`             : cover storage data
+ */
+using cover_storage = storage<cover_storage_node, cover_storage_data>;
 
-  ...
-*/
-using klut_storage = storage<klut_storage_node, klut_storage_data>;
+/*! \brief cover_network
+ *
+ * This class implements a data structure for a cover based network. 
+ * In this representation, each node is represented by specifying its ON set or its OFF set, that in both cases are stored as a vector of cubes.
+ * The information related to the set to which the node refers to is contained in a boolean variable, that is true (false) if the
+ * ON set (OFF set) is considered. All the basic network methods are implemented and tested but one should note the following things:
+ * - Contrarily to the AIG network, and similarly to the k-LUT network, it is not yet implemented the possibility to negate signals while defining a gate;
+ * - The methods relative to the latches manipulation need a more extensive testing before being safely used.
+ * This data structure is primarily meant to be used for reading .blif files in which the number of variables would make it unfeasible the reading via a k-LUT network.
+ * 
+  \verbatim embed:rst
 
-class klut_network
+  Example
+
+  .. code-block:: c++
+
+    cover_network cover;
+
+    const auto a = cover.create_pi();
+    const auto b = cover.create_pi();
+    const auto c = cover.create_pi();
+
+    kitty::cube _11 = kitty::cube("11");
+
+    std::vector<kitty::cube> nand_from_offset { _11 }; 
+    const auto n1 = cover.create_cover_node( {a, b}, std::make_pair( nand_from_offset, false ) );
+
+    const auto y1 = cover.create_and( n1, c );
+    cover.create_po( y1 );
+
+  \endverbatim
+ */
+
+class cover_network
 {
 public:
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 1;
   static constexpr auto max_fanin_size = 32;
 
-  using base_type = klut_network;
-  using storage = std::shared_ptr<klut_storage>;
+  using base_type = cover_network;
+  using cover_type = std::pair<std::vector<kitty::cube>, bool>;
+  using storage = std::shared_ptr<cover_storage>;
   using node = uint64_t;
   using signal = uint64_t;
 
-  klut_network()
-      : _storage( std::make_shared<klut_storage>() ),
+  cover_network()
+      : _storage( std::make_shared<cover_storage>() ),
         _events( std::make_shared<decltype( _events )::element_type>() )
   {
     _init();
   }
 
-  klut_network( std::shared_ptr<klut_storage> storage )
+  cover_network( std::shared_ptr<cover_storage> storage )
       : _storage( storage ),
         _events( std::make_shared<decltype( _events )::element_type>() )
   {
@@ -109,61 +171,24 @@ public:
 protected:
   inline void _init()
   {
+    uint64_t index;
+
+    std::vector<kitty::cube> cube_dc = { kitty::cube() };
+
+    /* first node reserved for constant 0 */
+    index = _storage->data.insert( std::make_pair( cube_dc, false ) );
+    cover_storage_node& node_0 = _storage->nodes[0];
+    node_0.data[1].h1 = index;
+    _storage->hash[node_0] = 0;
+
     /* reserve the second node for constant 1 */
     _storage->nodes.emplace_back();
+    index = _storage->data.insert( std::make_pair( cube_dc, true ) );
+    cover_storage_node& node_1 = _storage->nodes[1];
+    node_1.data[1].h1 = index;
+    _storage->hash[node_1] = 1;
 
-    /* reserve some truth tables for nodes */
-    kitty::dynamic_truth_table tt_zero( 0 );
-    _storage->data.cache.insert( tt_zero );
-
-    static uint64_t _not = 0x1;
-    kitty::dynamic_truth_table tt_not( 1 );
-    kitty::create_from_words( tt_not, &_not, &_not + 1 );
-    _storage->data.cache.insert( tt_not );
-
-    static uint64_t _and = 0x8;
-    kitty::dynamic_truth_table tt_and( 2 );
-    kitty::create_from_words( tt_and, &_and, &_and + 1 );
-    _storage->data.cache.insert( tt_and );
-
-    static uint64_t _or = 0xe;
-    kitty::dynamic_truth_table tt_or( 2 );
-    kitty::create_from_words( tt_or, &_or, &_or + 1 );
-    _storage->data.cache.insert( tt_or );
-
-    static uint64_t _lt = 0x4;
-    kitty::dynamic_truth_table tt_lt( 2 );
-    kitty::create_from_words( tt_lt, &_lt, &_lt + 1 );
-    _storage->data.cache.insert( tt_lt );
-
-    static uint64_t _le = 0xd;
-    kitty::dynamic_truth_table tt_le( 2 );
-    kitty::create_from_words( tt_le, &_le, &_le + 1 );
-    _storage->data.cache.insert( tt_le );
-
-    static uint64_t _xor = 0x6;
-    kitty::dynamic_truth_table tt_xor( 2 );
-    kitty::create_from_words( tt_xor, &_xor, &_xor + 1 );
-    _storage->data.cache.insert( tt_xor );
-
-    static uint64_t _maj = 0xe8;
-    kitty::dynamic_truth_table tt_maj( 3 );
-    kitty::create_from_words( tt_maj, &_maj, &_maj + 1 );
-    _storage->data.cache.insert( tt_maj );
-
-    static uint64_t _ite = 0xd8;
-    kitty::dynamic_truth_table tt_ite( 3 );
-    kitty::create_from_words( tt_ite, &_ite, &_ite + 1 );
-    _storage->data.cache.insert( tt_ite );
-
-    static uint64_t _xor3 = 0x96;
-    kitty::dynamic_truth_table tt_xor3( 3 );
-    kitty::create_from_words( tt_xor3, &_xor3, &_xor3 + 1 );
-    _storage->data.cache.insert( tt_xor3 );
-
-    /* truth tables for constants */
-    _storage->nodes[0].data[1].h1 = 0;
-    _storage->nodes[1].data[1].h1 = 1;
+    /* reserve the third node for the identity (inputs)*/
   }
 #pragma endregion
 
@@ -178,12 +203,19 @@ public:
   {
     (void)name;
 
-    const auto index = _storage->nodes.size();
+    const auto index_node = _storage->nodes.size();
+    std::vector<kitty::cube> cube_I{ kitty::cube( "1" ) };
+    const auto index_covers = _storage->data.insert( std::make_pair( cube_I, true ) );
+
     _storage->nodes.emplace_back();
-    _storage->inputs.emplace_back( index );
-    _storage->nodes[index].data[1].h1 = 2;
+    cover_storage_node& node_in = _storage->nodes[index_node];
+    node_in.data[1].h1 = index_node;
+    _storage->hash[node_in] = index_node;
+    _storage->inputs.emplace_back( index_node );
+
     ++_storage->data.num_pis;
-    return index;
+
+    return index_node;
   }
 
   uint32_t create_po( signal const& f, std::string const& name = std::string() )
@@ -196,9 +228,9 @@ public:
     auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
     _storage->outputs.emplace_back( f );
     ++_storage->data.num_pos;
+
     return po_index;
   }
-
   signal create_ro( std::string const& name = std::string() )
   {
     (void)name;
@@ -206,7 +238,7 @@ public:
     auto const index = static_cast<uint32_t>( _storage->nodes.size() );
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
-    _storage->nodes[index].data[1].h1 = 2;
+    _storage->nodes[index].data[1].h1 = index;
     return index;
   }
 
@@ -270,56 +302,100 @@ public:
 
   signal create_not( signal const& a )
   {
-    return _create_node( {a}, 3 );
+    std::vector<kitty::cube> _not{ kitty::cube( "0" ) };
+    return _create_cover_node( { a }, std::make_pair( _not, true ) );
   }
 #pragma endregion
 
 #pragma region Create binary functions
   signal create_and( signal a, signal b )
   {
-    return _create_node( {a, b}, 4 );
+    std::vector<kitty::cube> _and{ kitty::cube( "11" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _and, true ) );
   }
 
   signal create_nand( signal a, signal b )
   {
-    return _create_node( { a, b }, 5 );
+    std::vector<kitty::cube> _nand{ kitty::cube( "11" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _nand, false ) );
   }
 
   signal create_or( signal a, signal b )
   {
-    return _create_node( {a, b}, 6 );
+    std::vector<kitty::cube> _or{ kitty::cube( "00" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _or, false ) );
+  }
+
+  signal create_nor( signal a, signal b )
+  {
+    std::vector<kitty::cube> _nor{ kitty::cube( "00" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _nor, true ) );
   }
 
   signal create_lt( signal a, signal b )
   {
-    return _create_node( {a, b}, 8 );
+    std::vector<kitty::cube> _lt{ kitty::cube( "01" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _lt, true ) );
   }
 
   signal create_le( signal a, signal b )
   {
-    return _create_node( {a, b}, 11 );
+    std::vector<kitty::cube> _le{ kitty::cube( "10" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _le, false ) );
+  }
+
+  signal create_gt( signal a, signal b )
+  {
+    std::vector<kitty::cube> _gt{ kitty::cube( "10" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _gt, true ) );
+  }
+
+  signal create_ge( signal a, signal b )
+  {
+    std::vector<kitty::cube> _ge{ kitty::cube( "01" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _ge, false ) );
   }
 
   signal create_xor( signal a, signal b )
   {
-    return _create_node( {a, b}, 12 );
+    std::vector<kitty::cube> _xor{ kitty::cube( "01" ),
+                                   kitty::cube( "10" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _xor, true ) );
+  }
+
+  signal create_xnor( signal a, signal b )
+  {
+    std::vector<kitty::cube> _xnor{ kitty::cube( "00" ),
+                                    kitty::cube( "11" ) };
+    return _create_cover_node( { a, b }, std::make_pair( _xnor, true ) );
   }
 #pragma endregion
 
 #pragma region Create ternary functions
-signal create_maj( signal a, signal b, signal c )
+
+  signal create_maj( signal a, signal b, signal c )
   {
-    return _create_node( {a, b, c}, 14 );
+    std::vector<kitty::cube> _maj{ kitty::cube( "011" ),
+                                   kitty::cube( "101" ),
+                                   kitty::cube( "110" ),
+                                   kitty::cube( "111" ) };
+    return _create_cover_node( { a, b, c }, std::make_pair( _maj, true ) );
   }
 
   signal create_ite( signal a, signal b, signal c )
   {
-    return _create_node( {a, b, c}, 16 );
+    std::vector<kitty::cube> _ite{ kitty::cube( "11-" ),
+                                   kitty::cube( "0-1" ) };
+    return _create_cover_node( { a, b, c }, std::make_pair( _ite, true ) );
   }
 
   signal create_xor3( signal a, signal b, signal c )
   {
-    return _create_node( {a, b, c}, 18 );
+    std::vector<kitty::cube> _xor3{ kitty::cube( "001" ),
+                                    kitty::cube( "010" ),
+                                    kitty::cube( "100" ),
+                                    kitty::cube( "111" ) };
+    return _create_cover_node( { a, b, c }, std::make_pair( _xor3, true ) );
   }
 #pragma endregion
 
@@ -341,8 +417,10 @@ signal create_maj( signal a, signal b, signal c )
 #pragma endregion
 
 #pragma region Create arbitrary functions
-  signal _create_node( std::vector<signal> const& children, uint32_t literal )
+  signal _create_cover_node( std::vector<signal> const& children, cover_type const& new_cover )
   {
+
+    uint64_t literal = _storage->data.insert( new_cover );
     storage::element_type::node_type node;
     std::copy( children.begin(), children.end(), std::back_inserter( node.children ) );
     node.data[1].h1 = literal;
@@ -354,7 +432,7 @@ signal create_maj( signal a, signal b, signal c )
     }
 
     const auto index = _storage->nodes.size();
-    _storage->nodes.push_back( node );
+    _storage->nodes.emplace_back( node );
     _storage->hash[node] = index;
 
     /* increase ref-count to children */
@@ -367,27 +445,52 @@ signal create_maj( signal a, signal b, signal c )
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      ( *fn )( index );
     }
 
     return index;
   }
 
-  signal create_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
+  signal create_cover_node( std::vector<signal> const& children, cover_type new_cover )
   {
     if ( children.size() == 0u )
     {
-      assert( function.num_vars() == 0u );
-      return get_constant( !kitty::is_const0( function ) );
+      return get_constant( new_cover.second );
     }
-    return _create_node( children, _storage->data.cache.insert( function ) );
+
+    return _create_cover_node( children, new_cover );
   }
 
-  signal clone_node( klut_network const& other, node const& source, std::vector<signal> const& children )
+  signal create_cover_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
+  {
+    if ( children.size() == 0u )
+    {
+      return get_constant( !kitty::is_const0( function ) );
+    }
+
+    cover_type new_cover;
+    bool is_sop = ( kitty::count_ones( function ) <= kitty::count_zeros( function ) );
+    new_cover.second = is_sop;
+    uint32_t mask = 1u;
+    for ( uint32_t i{ 1 }; i < children.size(); ++i )
+      mask |= mask << 1;
+    for ( uint32_t i{ 0 }; i < pow( 2, children.size() ); ++i )
+    {
+      if ( kitty::get_bit( function, i ) == is_sop )
+      {
+        auto cb = kitty::cube( i, mask );
+        new_cover.first.push_back( cb );
+      }
+    }
+
+    return _create_cover_node( children, new_cover );
+  }
+
+  signal clone_node( cover_network const& other, node const& source, std::vector<signal> const& children )
   {
     assert( !children.empty() );
-    const auto tt = other._storage->data.cache[other._storage->nodes[source].data[1].h1];
-    return create_node( children, tt );
+    cover_type cb = other._storage->data.covers[other._storage->nodes[source].data[1].h1];
+    return create_cover_node( children, cb );
   }
 #pragma endregion
 
@@ -411,7 +514,7 @@ signal create_maj( signal a, signal b, signal c )
 
           for ( auto const& fn : _events->on_modified )
           {
-            (*fn)( i, old_children );
+            ( *fn )( i, old_children );
           }
         }
       }
@@ -452,7 +555,7 @@ signal create_maj( signal a, signal b, signal c )
 
   uint32_t num_latches() const
   {
-      return static_cast<uint32_t>( _storage->data.latches.size() );
+    return static_cast<uint32_t>( _storage->data.latches.size() );
   }
 
   auto num_pis() const
@@ -473,7 +576,7 @@ signal create_maj( signal a, signal b, signal c )
 
   auto num_gates() const
   {
-    return static_cast<uint32_t>(_storage->nodes.size() - _storage->inputs.size() - 2 );
+    return static_cast<uint32_t>( _storage->nodes.size() - _storage->inputs.size() - 2 );
   }
 
   uint32_t fanin_size( node const& n ) const
@@ -493,9 +596,9 @@ signal create_maj( signal a, signal b, signal c )
 #pragma endregion
 
 #pragma region Functional properties
-  kitty::dynamic_truth_table node_function( const node& n ) const
+  cover_type node_cover( const node& n ) const
   {
-    return _storage->data.cache[_storage->nodes[n].data[1].h1];
+    return _storage->data.covers[_storage->nodes[n].data[1].h1];
   }
 #pragma endregion
 
@@ -529,37 +632,37 @@ signal create_maj( signal a, signal b, signal c )
   node ci_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() );
-    return *(_storage->inputs.begin() + index);
+    return *( _storage->inputs.begin() + index );
   }
 
   signal co_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() );
-    return (_storage->outputs.begin() + index)->index;
+    return ( _storage->outputs.begin() + index )->index;
   }
 
   node pi_at( uint32_t index ) const
   {
     assert( index < _storage->data.num_pis );
-    return *(_storage->inputs.begin() + index);
+    return *( _storage->inputs.begin() + index );
   }
 
   signal po_at( uint32_t index ) const
   {
     assert( index < _storage->data.num_pos );
-    return (_storage->outputs.begin() + index)->index;
+    return ( _storage->outputs.begin() + index )->index;
   }
 
   node ro_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() - _storage->data.num_pis );
-    return *(_storage->inputs.begin() + _storage->data.num_pis + index);
+    return *( _storage->inputs.begin() + _storage->data.num_pis + index );
   }
 
   signal ri_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() - _storage->data.num_pos );
-    return (_storage->outputs.begin() + _storage->data.num_pos + index)->index;
+    return ( _storage->outputs.begin() + _storage->data.num_pos + index )->index;
   }
 
   uint32_t ci_index( node const& n ) const
@@ -571,14 +674,14 @@ signal create_maj( signal a, signal b, signal c )
   uint32_t co_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_co( [&]( const auto& x, auto index ){
-        if ( x == s )
-        {
-          i = index;
-          return false;
-        }
-        return true;
-      });
+    foreach_co( [&]( const auto& x, auto index ) {
+      if ( x == s )
+      {
+        i = index;
+        return false;
+      }
+      return true;
+    } );
     return i;
   }
 
@@ -591,14 +694,14 @@ signal create_maj( signal a, signal b, signal c )
   uint32_t po_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_po( [&]( const auto& x, auto index ){
-        if ( x == s )
-        {
-          i = index;
-          return false;
-        }
-        return true;
-      });
+    foreach_po( [&]( const auto& x, auto index ) {
+      if ( x == s )
+      {
+        i = index;
+        return false;
+      }
+      return true;
+    } );
     return i;
   }
 
@@ -611,14 +714,14 @@ signal create_maj( signal a, signal b, signal c )
   uint32_t ri_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_ri( [&]( const auto& x, auto index ){
-        if ( x == s )
-        {
-          i = index;
-          return false;
-        }
-        return true;
-      });
+    foreach_ri( [&]( const auto& x, auto index ) {
+      if ( x == s )
+      {
+        i = index;
+        return false;
+      }
+      return true;
+    } );
     return i;
   }
 
@@ -651,7 +754,9 @@ signal create_maj( signal a, signal b, signal c )
   void foreach_co( Fn&& fn ) const
   {
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>(
+        _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; },
+        fn );
   }
 
   template<typename Fn>
@@ -664,7 +769,9 @@ signal create_maj( signal a, signal b, signal c )
   void foreach_po( Fn&& fn ) const
   {
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->outputs.begin(), _storage->outputs.begin() + _storage->data.num_pos, []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>(
+        _storage->outputs.begin(), _storage->outputs.begin() + _storage->data.num_pos, []( auto o ) { return o.index; },
+        fn );
   }
 
   template<typename Fn>
@@ -677,21 +784,23 @@ signal create_maj( signal a, signal b, signal c )
   void foreach_ri( Fn&& fn ) const
   {
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->outputs.begin() + _storage->data.num_pos, _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>(
+        _storage->outputs.begin() + _storage->data.num_pos, _storage->outputs.end(), []( auto o ) { return o.index; },
+        fn );
   }
 
   template<typename Fn>
   void foreach_register( Fn&& fn ) const
   {
-    static_assert( detail::is_callable_with_index_v<Fn, std::pair<signal,node>, void> ||
-                   detail::is_callable_without_index_v<Fn, std::pair<signal,node>, void> ||
-                   detail::is_callable_with_index_v<Fn, std::pair<signal,node>, bool> ||
-                   detail::is_callable_without_index_v<Fn, std::pair<signal,node>, bool> );
+    static_assert( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> ||
+                   detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> ||
+                   detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> ||
+                   detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> );
 
     assert( _storage->inputs.size() - _storage->data.num_pis == _storage->outputs.size() - _storage->data.num_pos );
     auto ro = _storage->inputs.begin() + _storage->data.num_pis;
     auto ri = _storage->outputs.begin() + _storage->data.num_pos;
-    if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal,node>, bool> )
+    if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> )
     {
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
@@ -699,25 +808,25 @@ signal create_maj( signal a, signal b, signal c )
           return;
       }
     }
-    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal,node>, bool> )
+    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> )
     {
-      uint32_t index{0};
+      uint32_t index{ 0 };
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
         if ( !fn( std::make_pair( ( ri++ )->index, ro++ ), index++ ) )
           return;
       }
     }
-    else if constexpr( detail::is_callable_without_index_v<Fn, std::pair<signal,node>, void> )
+    else if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> )
     {
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
         fn( std::make_pair( ( ri++ )->index, *ro++ ) );
       }
     }
-    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal,node>, void> )
+    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> )
     {
-      uint32_t index{0};
+      uint32_t index{ 0 };
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
       {
         fn( std::make_pair( ( ri++ )->index, *ro++ ), index++ );
@@ -729,9 +838,10 @@ signal create_maj( signal a, signal b, signal c )
   void foreach_gate( Fn&& fn ) const
   {
     auto r = range<uint64_t>( 2u, _storage->nodes.size() ); /* start from 2 to avoid constants */
-    detail::foreach_element_if( r.begin(), r.end(),
-                                [this]( auto n ) { return !is_ci( n ); },
-                                fn );
+    detail::foreach_element_if(
+        r.begin(), r.end(),
+        [this]( auto n ) { return !is_ci( n ); },
+        fn );
   }
 
   template<typename Fn>
@@ -741,8 +851,11 @@ signal create_maj( signal a, signal b, signal c )
       return;
 
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f ) { return f.index; }, fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>(
+        _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f ) { return f.index; },
+        fn );
   }
+
 #pragma endregion
 
 #pragma region Simulate values
@@ -750,13 +863,23 @@ signal create_maj( signal a, signal b, signal c )
   iterates_over_t<Iterator, bool>
   compute( node const& n, Iterator begin, Iterator end ) const
   {
-    uint32_t index{0};
+    uint32_t index{ 0 };
+    uint32_t mask{ 0 };
     while ( begin != end )
     {
+      mask = ( mask << 1 ) | 1u;
       index <<= 1;
       index ^= *begin++ ? 1 : 0;
     }
-    return kitty::get_bit( _storage->data.cache[_storage->nodes[n].data[1].h1], index );
+    auto cb_input = kitty::cube( index, mask );
+    cover_type& cubes_cover = _storage->data.covers[_storage->nodes[n].data[1].h1];
+    for ( auto cb : cubes_cover.first )
+    {
+      if ( ( cb._bits & cb._mask ) == ( cb_input._bits & cb._mask ) )
+        return ( cubes_cover.second == 1 );
+    }
+
+    return ( cubes_cover.second == 0 );
   }
 
   template<typename Iterator>
@@ -772,23 +895,38 @@ signal create_maj( signal a, signal b, signal c )
 
     /* resulting truth table has the same size as any of the children */
     auto result = tts.front().construct();
-    const auto gate_tt = _storage->data.cache[_storage->nodes[n].data[1].h1];
-
+    cover_type& cubes_cover = _storage->data.covers[_storage->nodes[n].data[1].h1];
+    bool is_found = false;
     for ( uint32_t i = 0u; i < static_cast<uint32_t>( result.num_bits() ); ++i )
     {
+      is_found = false;
       uint32_t pattern = 0u;
+      uint32_t mask = 0u;
       for ( auto j = 0u; j < nfanin; ++j )
       {
         pattern |= kitty::get_bit( tts[j], i ) << j;
+        mask |= 1u << j;
       }
-      if ( kitty::get_bit( gate_tt, pattern ) )
+      auto cb_input = kitty::cube( pattern, mask );
+      for ( auto cb : cubes_cover.first )
       {
-        kitty::set_bit( result, i );
+        if ( ( cb._bits & cb._mask ) == ( cb_input._bits & cb._mask ) )
+        {
+          is_found = true;
+          if ( cubes_cover.second == 1 )
+          {
+            kitty::set_bit( result, i );
+          }
+          break;
+        }
       }
+      if ( !is_found && ( cubes_cover.second == 0 ) )
+        kitty::set_bit( result, i );
     }
 
     return result;
   }
+
 #pragma endregion
 
 #pragma region Custom node values
@@ -853,7 +991,7 @@ signal create_maj( signal a, signal b, signal c )
 #pragma endregion
 
 public:
-  std::shared_ptr<klut_storage> _storage;
+  std::shared_ptr<cover_storage> _storage;
   std::shared_ptr<network_events<base_type>> _events;
 };
 

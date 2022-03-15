@@ -30,11 +30,10 @@
   \author Heinz Riener
   \author Mathias Soeken
   \author Max Austin
+  \author Andrea Costamagna
 */
 
 #pragma once
-
-#include <mockturtle/networks/aig.hpp>
 
 #include <kitty/kitty.hpp>
 #include <lorina/blif.hpp>
@@ -43,6 +42,8 @@
 #include <string>
 #include <vector>
 
+#include "../networks/aig.hpp"
+#include "../networks/cover.hpp"
 #include "../traits.hpp"
 
 namespace mockturtle
@@ -53,7 +54,7 @@ namespace mockturtle
  * **Required network functions:**
  * - `create_pi`
  * - `create_po`
- * - `create_node`
+ * - `create_node` or `create_cover_node` 
  * - `get_constant`
  *
    \verbatim embed:rst
@@ -61,6 +62,9 @@ namespace mockturtle
    .. code-block:: c++
       klut_network klut;
       lorina::read_blif( "file.blif", blif_reader( klut ) );
+      
+      cover_network cover;
+      lorina::read_blif( "file.blif", blif_reader( cover ) );
    \endverbatim
  */
 template<typename Ntk>
@@ -68,12 +72,12 @@ class blif_reader : public lorina::blif_reader
 {
 public:
   explicit blif_reader( Ntk& ntk )
-    : ntk_( ntk )
+      : ntk_( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi function" );
     static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po function" );
-    static_assert( has_create_node_v<Ntk>, "Ntk does not implement the create_node function" );
+    static_assert( has_create_node_v<Ntk> || has_create_cover_node_v<Ntk>, "Ntk does not implement the create_node function or the create_cover_node function" );
     static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant function" );
   }
 
@@ -132,40 +136,40 @@ public:
     }
 
     std::string type = "re";
-    if( l_type )
+    if ( l_type )
     {
       switch ( *l_type )
       {
       case latch_type::FALLING:
-        {
-          type = "fe";
-        }
-        break;
+      {
+        type = "fe";
+      }
+      break;
       case latch_type::RISING:
-        {
-          type = "re";
-        }
-        break;
+      {
+        type = "re";
+      }
+      break;
       case latch_type::ACTIVE_HIGH:
-        {
-          type = "ah";
-        }
-        break;
+      {
+        type = "ah";
+      }
+      break;
       case latch_type::ACTIVE_LOW:
-        {
-          type = "al";
-        }
-        break;
+      {
+        type = "al";
+      }
+      break;
       case latch_type::ASYNC:
-        {
-          type = "as";
-        }
-        break;
+      {
+        type = "as";
+      }
+      break;
       default:
-        {
-          type = "";
-        }
-        break;
+      {
+        type = "";
+      }
+      break;
       }
     }
 
@@ -175,20 +179,20 @@ public:
       switch ( *reset )
       {
       case latch_init_value::NONDETERMINISTIC:
-        {
-          r = 2;
-        }
-        break;
+      {
+        r = 2;
+      }
+      break;
       case latch_init_value::ONE:
-        {
-          r = 1;
-        }
-        break;
+      {
+        r = 1;
+      }
+      break;
       case latch_init_value::ZERO:
-        {
-          r = 0;
-        }
-        break;
+      {
+        r = 0;
+      }
+      break;
       default:
         break;
       }
@@ -231,47 +235,78 @@ public:
     assert( cover.at( 0u ).second.size() == 1 );
     auto const first_output_value = cover.at( 0u ).second.at( 0u );
 
-    std::vector<kitty::cube> minterms;
-    std::vector<kitty::cube> maxterms;
-    for ( const auto& c : cover )
+    if constexpr ( std::is_same<typename Ntk::base_type, cover_network>::value )
     {
-      assert( c.second.size() == 1 );
-
-      auto const output = c.second[0u];
-      assert( output == '0' || output == '1' );
-      assert( output == first_output_value );
-      (void)first_output_value;
-
-      if ( output == '1' )
+      std::vector<kitty::cube> cubes;
+      bool is_sop =  ( first_output_value == '1' );
+      for ( const auto& c : cover )
       {
-        minterms.emplace_back( kitty::cube( c.first ) );
+        assert( c.second.size() == 1 );
+
+        auto const output = c.second[0u];
+        assert( output == '0' || output == '1' );
+        assert( output == first_output_value );
+        (void)first_output_value;
+
+        cubes.emplace_back( kitty::cube( c.first ) );
       }
-      else if ( output == '0' )
+
+      std::vector<signal<Ntk>> input_signals;
+      for ( const auto& i : inputs )
       {
-        maxterms.emplace_back( ~kitty::cube( c.first ) );
+        assert( signals.find( i ) != signals.end() );
+        input_signals.push_back( signals.at( i ) );
+      }
+
+      if ( cubes.size() != 0 )
+      {
+        signals[output] = ntk_.create_cover_node( input_signals, std::make_pair( cubes, is_sop ) );
       }
     }
-
-    assert( minterms.size() == 0u || maxterms.size() == 0u );
-
-    kitty::dynamic_truth_table tt( int( inputs.size() ) );
-    if ( minterms.size() != 0 )
+    else
     {
-      kitty::create_from_cubes( tt, minterms, false );
-    }
-    else if ( maxterms.size() != 0 )
-    {
-      kitty::create_from_clauses( tt, maxterms, false );
-    }
 
-    std::vector<signal<Ntk>> input_signals;
-    for ( const auto& i : inputs )
-    {
-      assert( signals.find( i ) != signals.end() );
-      input_signals.push_back( signals.at( i ) );
-    }
+      std::vector<kitty::cube> minterms;
+      std::vector<kitty::cube> maxterms;
 
-    signals[output] = ntk_.create_node( input_signals, tt );
+      for ( const auto& c : cover )
+      {
+        assert( c.second.size() == 1 );
+
+        auto const output = c.second[0u];
+        assert( output == '0' || output == '1' );
+        assert( output == first_output_value );
+        (void)first_output_value;
+
+        if ( output == '1' )
+        {
+          minterms.emplace_back( kitty::cube( c.first ) );
+        }
+        else if ( output == '0' )
+        {
+          maxterms.emplace_back( ~kitty::cube( c.first ) );
+        }
+      }
+
+      assert( minterms.size() == 0u || maxterms.size() == 0u );
+
+      kitty::dynamic_truth_table tt( int( inputs.size() ) );
+      if ( minterms.size() != 0 )
+      {
+        kitty::create_from_cubes( tt, minterms, false );
+      }
+      else if ( maxterms.size() != 0 )
+      {
+        kitty::create_from_clauses( tt, maxterms, false );
+      }
+      std::vector<signal<Ntk>> input_signals;
+      for ( const auto& i : inputs )
+      {
+        assert( signals.find( i ) != signals.end() );
+        input_signals.push_back( signals.at( i ) );
+      }
+      signals[output] = ntk_.create_node( input_signals, tt );
+    }
   }
 
   virtual void on_end() const override {}

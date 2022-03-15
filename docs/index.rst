@@ -26,6 +26,13 @@ Welcome to mockturtle's documentation!
 .. toctree::
    :maxdepth: 2
    :glob:
+   :caption: Networks
+
+   cover
+
+.. toctree::
+   :maxdepth: 2
+   :glob:
    :caption: Algorithms
 
    algorithms/index_*
