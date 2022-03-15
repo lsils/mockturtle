@@ -522,32 +522,27 @@ public:
 
     std::vector<signal> old_children;
 
-    size_t i;
-    for ( i = 0u; i <= node.children.size(); ++i )
+    bool replacement = false;
+    for ( size_t i = 0u; i < node.children.size(); ++i )
     {
-      if ( i == node.children.size() )
-      {
-        return std::nullopt;
-      }
-
       old_children.push_back( signal{ node.children[i] } );
 
       if ( node.children[i].index == old_node )
       {
         node.children[i] = node.children[i].weight ? !new_signal : new_signal;
-        break;
+        replacement = true;
+
+        // update the reference counter of the new signal
+        _storage->nodes[new_signal.index].data[0].h1++;
       }
     }
 
-    while ( ++i < node.children.size() )
+    if ( !replacement )
     {
-      old_children.push_back( signal{ node.children[i] } );
+      return std::nullopt;
     }
 
     /* TODO: Do the simplifications if possible and ordering */
-
-    // update the reference counter of the new signal
-    _storage->nodes[new_signal.index].data[0].h1++;
 
     for ( auto const& fn : _events->on_modified )
     {
