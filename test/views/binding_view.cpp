@@ -80,11 +80,11 @@ TEST_CASE( "Create binding view", "[binding_view]" )
   std::stringstream report_gates;
   ntk.report_gates_usage( report_gates );
   CHECK( report_gates.str() == "[i] Report gates usage:\n"
-                               "[i] zero           \t Instance =          1\t Area =         0.00     0.00 %\n"
-                               "[i] inverter       \t Instance =          1\t Area =         1.00     6.25 %\n"
-                               "[i] and            \t Instance =          2\t Area =        10.00    62.50 %\n"
-                               "[i] or             \t Instance =          1\t Area =         5.00    31.25 %\n"
-                               "[i] TOTAL          \t Instance =          5\t Area =        16.00   100.00 %\n" );
+                               "[i] zero                     \t Instance =          1\t Area =         0.00     0.00 %\n"
+                               "[i] inverter                 \t Instance =          1\t Area =         1.00     6.25 %\n"
+                               "[i] and                      \t Instance =          2\t Area =        10.00    62.50 %\n"
+                               "[i] or                       \t Instance =          1\t Area =         5.00    31.25 %\n"
+                               "[i] TOTAL                    \t Instance =          5\t Area =        16.00   100.00 %\n" );
 }
 
 TEST_CASE( "Binding view on copy", "[binding_view]" )
