@@ -109,7 +109,7 @@ struct aqfp_node_resyn
    * \param leaves_begin Iterator (begin) for the leaves of the source node.
    * \param leaves_end Iterator (end) for the leaves of the source node.
    * \param level_update_callback Callback with parameters (new node, level of the new node).
-   * \param rewyn_performed_callback Callback with the signal that correspond to the source node and its level.
+   * \param resyn_performed_callback Callback with the signal that correspond to the source node and its level.
    */
   template<typename NtkDest, typename TruthTable, typename LeavesIterator, typename LevelUpdateCallback, typename ResynPerformedCallback>
   void operator()( NtkDest& ntk_dest, const TruthTable& f, LeavesIterator leaves_begin, LeavesIterator leaves_end,
