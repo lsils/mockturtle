@@ -32,6 +32,9 @@
 
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
+#include <mockturtle/io/write_aiger.hpp>
+#include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/networks/aig.hpp>
 #include <lorina/lorina.hpp>
 #include <fmt/format.h>
 #include <optional>
@@ -41,6 +44,12 @@ namespace mockturtle
 
 struct testcase_minimizer_params
 {
+  enum 
+  {
+    verilog,
+    aiger
+  } file_format = verilog;
+
   /*! \brief Path to find the initial test case and to store the minmized test case. */
   std::string path{"."};
 
@@ -67,10 +76,14 @@ struct testcase_minimizer_params
  * PIs) after each modification. Only changes after which the bug
  * is still triggered are kept; otherwise, the change is reverted.
  * 
- * The script of algorithm(s) to be run should be provided as a
+ * The script of algorithm(s) to be run can be provided as (1) a
  * lambda function taking a network as input and returning a Boolean,
  * which is true if the bug is triggered and is false otherwise
- * (i.e. the buggy behavior is not observed).
+ * (i.e. the buggy behavior is not observed); or (2) a lambda function
+ * making a command string to be called, taking a filename string as
+ * input. The command should return 1 if the buggy behavior is observed
+ * and 0 otherwise. In this case, if the command segfaults, it is counted
+ * as a buggy behavior.
  * 
  * The initial test case should be provided as a Verilog file.
  *
@@ -101,14 +114,30 @@ class testcase_minimizer
 public:
   explicit testcase_minimizer( testcase_minimizer_params const ps = {} )
     : ps( ps )
-  {}
+  {
+    //assert( ps.file_format != testcase_minimizer_params::aiger || std::is_same_v<typename Ntk::base_type, aig_network> );
+  }
 
   void run( std::function<bool(Ntk)> const& fn )
   {
-    if ( lorina::read_verilog( ps.path + "/" + ps.init_case, verilog_reader( ntk ) ) != lorina::return_code::success )
+    switch ( ps.file_format )
     {
-      fmt::print( "[e] Could not read test case `{}`\n", ps.init_case );
-      return;
+      case testcase_minimizer_params::verilog:
+        if ( lorina::read_verilog( ps.path + "/" + ps.init_case, verilog_reader( ntk ) ) != lorina::return_code::success )
+        {
+          fmt::print( "[e] Could not read test case `{}`\n", ps.init_case );
+          return;
+        }
+        break;
+      case testcase_minimizer_params::aiger:
+        if ( lorina::read_aiger( ps.path + "/" + ps.init_case, aiger_reader( ntk ) ) != lorina::return_code::success )
+        {
+          fmt::print( "[e] Could not read test case `{}`\n", ps.init_case );
+          return;
+        }
+        break;
+      default:
+        fmt::print( "[e] Unsupported format\n" );
     }
 
     if ( !test( fn ) )
@@ -125,7 +154,97 @@ public:
 
       if ( test( fn ) )
       {
-        write_verilog( ntk, ps.path + "/" + ps.minimized_case );
+        fmt::print( "[i] Testcase with I/O = {}/{} gates = {} triggers the buggy behavior\n", ntk.num_pis(), ntk.num_pos(), ntk.num_gates() );
+        switch ( ps.file_format )
+        {
+          case testcase_minimizer_params::verilog:
+            write_verilog( ntk, ps.path + "/" + ps.minimized_case );
+            break;
+          case testcase_minimizer_params::aiger:
+            write_aiger( ntk, ps.path + "/" + ps.minimized_case );
+            break;
+          default:
+            fmt::print( "[e] Unsupported format\n" );
+        }
+        
+        if ( ntk.size() <= ps.max_size )
+        {
+          break;
+        }
+      }
+      else
+      {
+        ntk = ntk_backup2;
+      }
+    }
+  }
+
+  void run( std::function<std::string(std::string const&)> const& make_command )
+  {
+    if ( !test( make_command, ps.init_case ) )
+    {
+      fmt::print( "[e] The initial test case does not trigger the buggy behavior\n" );
+      return;
+    }
+
+    switch ( ps.file_format )
+    {
+      case testcase_minimizer_params::verilog:
+        if ( lorina::read_verilog( ps.path + "/" + ps.init_case, verilog_reader( ntk ) ) != lorina::return_code::success )
+        {
+          fmt::print( "[e] Could not read test case `{}`\n", ps.init_case );
+          return;
+        }
+        break;
+      case testcase_minimizer_params::aiger:
+        if ( lorina::read_aiger( ps.path + "/" + ps.init_case, aiger_reader( ntk ) ) != lorina::return_code::success )
+        {
+          fmt::print( "[e] Could not read test case `{}`\n", ps.init_case );
+          return;
+        }
+        break;
+      default:
+        fmt::print( "[e] Unsupported format\n" );
+    }
+
+    uint32_t counter{0};
+    while ( !ps.num_iterations || counter++ < ps.num_iterations )
+    {
+      ntk_backup2 = cleanup_dangling( ntk );
+      reduce();
+      if ( ntk.num_gates() == 0 )
+      {
+        ntk = ntk_backup2;
+        continue;
+      }
+
+      switch ( ps.file_format )
+      {
+        case testcase_minimizer_params::verilog:
+          write_verilog( ntk, ps.path + "/" + "tmp.v" );
+          break;
+        case testcase_minimizer_params::aiger:
+          write_aiger( ntk, ps.path + "/" + "tmp.aig" );
+          break;
+        default:
+          fmt::print( "[e] Unsupported format\n" );
+      }
+
+      if ( test( make_command, "tmp.aig" ) )
+      {
+        fmt::print( "[i] Testcase with I/O = {}/{} gates = {} triggers the buggy behavior\n", ntk.num_pis(), ntk.num_pos(), ntk.num_gates() );
+        switch ( ps.file_format )
+        {
+          case testcase_minimizer_params::verilog:
+            write_verilog( ntk, ps.path + "/" + ps.minimized_case );
+            break;
+          case testcase_minimizer_params::aiger:
+            write_aiger( ntk, ps.path + "/" + ps.minimized_case );
+            break;
+          default:
+            fmt::print( "[e] Unsupported format\n" );
+        }
+        
         if ( ntk.size() <= ps.max_size )
         {
           break;
@@ -147,19 +266,52 @@ private:
     return res;
   }
 
+  bool test( std::function<std::string(std::string const&)> const& make_command, std::string const& filename )
+  {
+    std::string const command = make_command( ps.path + "/" + filename );
+    int status = std::system( command.c_str() );
+    if ( status < 0 )
+    {
+      std::cout << "[e] Unexpected error when calling command: " << strerror( errno ) << '\n';
+      return false;
+    }
+    else
+    {
+      if ( WIFEXITED( status ) )
+      {
+        if ( WEXITSTATUS( status ) == 0 ) // normal
+          return false;
+        else if ( WEXITSTATUS( status ) == 1 ) // buggy
+          return true;
+        else
+        {
+          std::cout << "[e] Unexpected return value: " << WEXITSTATUS( status ) << '\n';
+          return false;
+        }
+      }
+      else // segfault
+      {
+        return true;
+      }
+    }
+  }
+
   void reduce()
   {
-    if ( po_counter < ntk.num_pos() )
+    if ( po_counter < ntk.num_pos() - 1 )
     {
       std::cout << "[i] substitute PO " << ntk.get_node( ntk.po_at( po_counter ) ) << "\n";
       ntk.substitute_node( ntk.get_node( ntk.po_at( po_counter ) ), ntk.get_constant( false ) );
       ++po_counter;
+      ntk = cleanup_dangling( ntk, true, true );
     }
     else
     {
-      ntk.substitute_node( get_random_gate(), ntk.get_constant( false ) );
+      auto const& n = get_random_gate();
+      std::cout << "[i] substitute node " << n << "\n";
+      ntk.substitute_node( n, ntk.get_constant( false ) );
+      ntk = cleanup_dangling( ntk );
     }
-    ntk = cleanup_dangling( ntk );
   }
 
   node get_random_gate()
@@ -169,7 +321,6 @@ private:
       node n = ntk.index_to_node( ( std::rand() % ( ntk.size() - ntk.num_pis() - 1 ) ) + ntk.num_pis() + 1 );
       if ( !ntk.is_dead( n ) && !ntk.is_pi( n ) )
       {
-        std::cout << "[i] substitute node " << n << "\n";
         return n;
       }
     }
