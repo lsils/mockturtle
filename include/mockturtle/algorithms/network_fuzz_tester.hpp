@@ -32,6 +32,7 @@
 
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
+#include <mockturtle/io/aiger_reader.hpp>
 #include <lorina/lorina.hpp>
 #include <fmt/format.h>
 #include <optional>
@@ -43,10 +44,21 @@ struct fuzz_tester_params
 {
   uint64_t num_pis{4u};
   uint64_t num_gates{10u};
+  enum 
+  {
+    verilog,
+    aiger
+  } file_format = verilog;
   std::string filename{"fuzz_test.v"};
 
   /* number of networks to test: nullopt means infinity */
   std::optional<uint64_t> num_iterations{std::nullopt};
+
+  uint64_t num_pis_step{1u};
+  uint64_t num_gates_step{10u};
+  uint64_t num_pis_max{10u};
+  uint64_t num_gates_max{100u};
+  uint64_t num_iterations_step{100u};
 }; /* fuzz_tester_params */
 
 /*! \brief Network fuzz tester
@@ -94,6 +106,52 @@ public:
   {}
 
   template<typename Fn>
+  void run_incremental( Fn&& fn )
+  {
+    uint64_t counter{0};
+    uint64_t num_pis = ps.num_pis;
+    uint64_t num_gates = ps.num_gates;
+    uint64_t counter_step{0};
+    while ( ( !ps.num_iterations || counter < ps.num_iterations ) && num_pis <= ps.num_pis_max && num_gates <= ps.num_gates_max )
+    {
+      auto ntk = gen.generate( num_pis, num_gates, std::random_device{}() );
+      fmt::print( "[i] create network #{}: I/O = {}/{} gates = {} nodes = {}\n",
+                  counter++, ntk.num_pis(), ntk.num_pos(), ntk.num_gates(), ntk.size() );
+
+      fmt::print( "[i] write network `{}`\n", ps.filename );
+
+      switch ( ps.file_format )
+      {
+        case fuzz_tester_params::verilog:
+          write_verilog( ntk, ps.filename );
+          break;
+        case fuzz_tester_params::aiger:
+          write_aiger( ntk, ps.filename );
+          break;
+        default:
+          fmt::print( "[w] unsupported format\n" );
+      }
+
+      /* run optimization algorithm */
+      if ( !fn( ntk ) )
+      {
+        return;
+      }
+
+      if ( ++counter_step >= ps.num_iterations_step )
+      {
+        counter_step = 0;
+        num_gates += ps.num_gates_step;
+        if ( num_gates > ps.num_gates_max )
+        {
+          num_gates = ps.num_gates;
+          num_pis += ps.num_pis_step;
+        }
+      }
+    }
+  }
+
+  template<typename Fn>
   void run( Fn&& fn )
   {
     uint64_t counter{0};
@@ -104,7 +162,18 @@ public:
                   counter++, ntk.num_pis(), ntk.num_pos(), ntk.num_gates(), ntk.size() );
 
       fmt::print( "[i] write network `{}`\n", ps.filename );
-      write_verilog( ntk, ps.filename );
+
+      switch ( ps.file_format )
+      {
+        case fuzz_tester_params::verilog:
+          write_verilog( ntk, ps.filename );
+          break;
+        case fuzz_tester_params::aiger:
+          write_aiger( ntk, ps.filename );
+          break;
+        default:
+          fmt::print( "[w] unsupported format\n" );
+      }
 
       /* run optimization algorithm */
       if ( !fn( ntk ) )
