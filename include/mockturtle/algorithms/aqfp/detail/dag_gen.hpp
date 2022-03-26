@@ -44,9 +44,9 @@
 
 #include <fmt/format.h>
 
-#include "./dag.hpp"
-#include "./partial_dag.hpp"
-#include "./dag_util.hpp"
+#include "dag.hpp"
+#include "dag_util.hpp"
+#include "partial_dag.hpp"
 
 namespace mockturtle
 {
