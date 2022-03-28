@@ -94,6 +94,27 @@ public:
 
   explicit network( storage s );
 
+  /*! \brief Explicitly duplicate a network.
+   *
+   * Most (if not all) networks implemented in `mockturtle` use shared pointers
+   * to store the internal data.  When dealing with them, the default behavior 
+   * is to share this storage them during assignments or function calls. For
+   * example:
+    \verbatim embed:rst
+
+    .. code-block:: c++
+
+        // create network somehow
+        network ntk0 = ...;
+        // create a new pointer to ntk1
+        network ntk1 = ntk;
+    \endverbatim
+   * 
+   * Changing `ntk1` will also change `ntk0`.  However, sometimes we need to make 
+   * a copy of the network as well.  This method must do exactly this.
+   */
+  network clone();
+
 #pragma region Primary I / O and constants
   /*! \brief Gets constant value represented by network.
    *
@@ -936,7 +957,7 @@ public:
   void incr_trav_id() const;
 #pragma endregion
 
-#pragma beginregion Color values
+#pragma region Color values
   /* Color values offer a more recent and flexible mechanism to manage
      and manipulate traversal ids. */
 
