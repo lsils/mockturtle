@@ -38,13 +38,13 @@
 #include <iostream>
 #include <unordered_map>
 
-#include "../traits.hpp"
-#include "../utils/node_map.hpp"
-#include "../utils/stopwatch.hpp"
-#include "../views/depth_view.hpp"
-#include "../views/topo_view.hpp"
-
 #include <fmt/format.h>
+
+#include <mockturtle/traits.hpp>
+#include <mockturtle/utils/node_map.hpp>
+#include <mockturtle/utils/stopwatch.hpp>
+#include <mockturtle/views/depth_view.hpp>
+#include <mockturtle/views/topo_view.hpp>
 
 namespace mockturtle
 {

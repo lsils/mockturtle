@@ -35,11 +35,12 @@
 
 #pragma once
 
-#include <string>
-#include <type_traits>
 #include <list>
 #include <map>
+#include <string>
+#include <type_traits>
 
+#include <kitty/cube.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/traits.hpp>
 
@@ -558,6 +559,21 @@ struct has_create_node<Ntk, std::void_t<decltype( std::declval<Ntk>().create_nod
 
 template<class Ntk>
 inline constexpr bool has_create_node_v = has_create_node<Ntk>::value;
+#pragma endregion
+
+#pragma region has_create_cover_node
+template<class Ntk, class = void>
+struct has_create_cover_node : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_cover_node<Ntk, std::void_t<decltype( std::declval<Ntk>().create_cover_node( std::declval<std::vector<signal<Ntk>>>(), std::declval<std::pair<std::vector<kitty::cube>, bool>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_cover_node_v = has_create_cover_node<Ntk>::value;
 #pragma endregion
 
 #pragma region has_clone_node
@@ -1557,7 +1573,7 @@ struct has_foreach_register : std::false_type
 };
 
 template<class Ntk>
-struct has_foreach_register<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_register( std::declval<void( std::pair<node<Ntk>,signal<Ntk>>, uint32_t )>() ) )>> : std::true_type
+struct has_foreach_register<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_register( std::declval<void( std::pair<node<Ntk>, signal<Ntk>>, uint32_t )>() ) )>> : std::true_type
 {
 };
 
@@ -1609,6 +1625,7 @@ struct has_compute<Ntk, T, std::void_t<decltype( std::declval<Ntk>().compute( st
 template<class Ntk, typename T>
 inline constexpr bool has_compute_v = has_compute<Ntk, T>::value;
 #pragma endregion
+
 
 #pragma region has_compute_inplace
 template<class Ntk, typename T, class = void>

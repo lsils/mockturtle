@@ -32,25 +32,28 @@
 
 #pragma once
 
-#include "../../traits.hpp"
-
 #include <type_traits>
 #include <vector>
+
+#include "../../traits.hpp"
+#include "aqfp_assumptions.hpp"
 
 namespace mockturtle
 {
 
 struct aqfp_fanout_resyn
 {
-  aqfp_fanout_resyn( uint32_t splitter_capacity, bool branch_pis = false ) : splitter_capacity( splitter_capacity ), branch_pis( branch_pis ) {}
+  aqfp_fanout_resyn( const aqfp_assumptions& assume ) : splitter_capacity{ assume.splitter_capacity }, branch_pis{ assume.branch_pis } {}
 
   /*! \brief Determines the relative levels of fanouts of a node assuming a nearly balanced splitter tree. */
   template<typename NtkSrc, typename FOuts, typename NtkDest, typename FanoutNodeCallback, typename FanoutPoCallback>
   void operator()( const NtkSrc& ntk_src, FOuts& fanouts, node<NtkSrc> n, const NtkDest& ntk_dest, signal<NtkDest> f, uint32_t level_f,
                    FanoutNodeCallback&& fanout_node_fn, FanoutPoCallback&& fanout_co_fn )
   {
-    static_assert( std::is_invocable_v<FanoutNodeCallback, node<NtkSrc>, uint32_t>, "FanoutNodeCallback is not callable with arguments (node, level)" );
-    static_assert( std::is_invocable_v<FanoutPoCallback, uint32_t, uint32_t>, "FanoutNodeCallback is not callable with arguments (index, level)" );
+    static_assert( std::is_invocable_v<FanoutNodeCallback, node<NtkSrc>, uint32_t>,
+                   "FanoutNodeCallback is not callable with arguments (node, level)" );
+    static_assert( std::is_invocable_v<FanoutPoCallback, uint32_t, uint32_t>,
+                   "FanoutNodeCallback is not callable with arguments (index, level)" );
 
     if ( ntk_src.fanout_size( n ) == 0 )
       return;
@@ -58,10 +61,9 @@ struct aqfp_fanout_resyn
     auto offsets = balanced_splitter_tree_offsets( ntk_src.fanout_size( n ) );
 
     auto fanouts_n = fanouts[n];
-    std::sort( fanouts_n.begin(), fanouts_n.end(), [&]( auto f1, auto f2 ) {
-      return ( ntk_src.depth() - ntk_src.level( f1 ) ) > ( ntk_src.depth() - ntk_src.level( f2 ) ) ||
-             ( ( ntk_src.depth() - ntk_src.level( f1 ) ) == ( ntk_src.depth() - ntk_src.level( f2 ) ) && ( f1 < f2 ) );
-    } );
+    std::sort( fanouts_n.begin(), fanouts_n.end(), [&]( auto f1, auto f2 )
+               { return ( ntk_src.depth() - ntk_src.level( f1 ) ) > ( ntk_src.depth() - ntk_src.level( f2 ) ) ||
+                        ( ( ntk_src.depth() - ntk_src.level( f1 ) ) == ( ntk_src.depth() - ntk_src.level( f2 ) ) && ( f1 < f2 ) ); } );
 
     auto n_dest = ntk_dest.get_node( f );
     auto no_splitters = ntk_dest.is_constant( n_dest ) || ( !branch_pis && ntk_dest.is_ci( n_dest ) );

@@ -41,6 +41,8 @@
 #include "../utils/hash_functions.hpp"
 #include "../views/fanout_view.hpp"
 
+#include <mockturtle/algorithms/aqfp/aqfp_assumptions.hpp>
+
 namespace mockturtle
 {
 
@@ -142,9 +144,8 @@ struct aqfp_network_cost
 {
   static constexpr double IMPOSSIBLE = std::numeric_limits<double>::infinity();
 
-  aqfp_network_cost( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters,
-                     bool balance_pis = false, bool branch_pis = false, bool balance_pos = true )
-      : gate_costs( gate_costs ), fanout_cc( splitters ), balance_pis( balance_pis ), branch_pis( branch_pis ), balance_pos( balance_pos ) {}
+  aqfp_network_cost( const aqfp_assumptions& assume, const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters)
+      : assume(assume), gate_costs( gate_costs ), fanout_cc( splitters ) {}
 
   template<typename Ntk, typename LevelMap, typename PoLevelMap>
   double operator()( const Ntk& ntk, const LevelMap& level_of_node, const PoLevelMap& po_level_of_node )
@@ -162,7 +163,7 @@ struct aqfp_network_cost
     auto fanout_net_cost = 0.0;
 
     std::vector<node<Ntk>> nodes;
-    if ( branch_pis )
+    if ( assume.branch_pis )
     {
       ntk.foreach_ci( [&]( auto n ) { nodes.push_back( n ); } );
     }
@@ -196,7 +197,7 @@ struct aqfp_network_cost
       while ( rellev.size() < ntk.fanout_size( n ) )
       {
         pos++;
-        if ( balance_pos )
+        if ( assume.balance_pos )
         {
           rellev.push_back( critical_po_level + 1 - level_of_node.at( n ) );
         }
@@ -209,7 +210,7 @@ struct aqfp_network_cost
       if ( rellev.size() > 1u || ( rellev.size() == 1u && rellev[0] > 0 ) )
       {
         std::sort( rellev.begin(), rellev.end() );
-        auto net_cost = fanout_cc( rellev, ntk.is_ci( n ) && !balance_pis );
+        auto net_cost = fanout_cc( rellev, ntk.is_ci( n ) && !assume.balance_pis );
         if (net_cost == std::numeric_limits<double>::infinity()) {
           std::cerr << fmt::format("[e] impossible to synthesize fanout net of node {} for relative levels [{}]\n", n, fmt::join(rellev, " "));
           std::abort();
@@ -225,9 +226,9 @@ struct aqfp_network_cost
   }
 
 private:
+  aqfp_assumptions assume;
   std::unordered_map<uint32_t, double> gate_costs;
   fanout_net_cost fanout_cc;
-  bool balance_pis, branch_pis, balance_pos;
 };
 
 } // namespace mockturtle

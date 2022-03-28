@@ -40,11 +40,10 @@
 
 #include <kitty/kitty.hpp>
 
-#include "./dag.hpp"
-#include "./dag_cost.hpp"
-#include "./npn_cache.hpp"
-
 #include "../aqfp_db.hpp"
+#include "dag.hpp"
+#include "dag_cost.hpp"
+#include "npn_cache.hpp"
 
 namespace mockturtle
 {
@@ -228,9 +227,9 @@ public:
   }
 
   /*! \brief Load database from input stream `is`. */
-  void load_db_from_file( std::istream& is )
+  void load_db( std::istream& is )
   {
-    aqfp_db<Ntk>::load_db_from_file(is, db);
+    aqfp_db<Ntk>::load_db(is, db);
   }
 
 
