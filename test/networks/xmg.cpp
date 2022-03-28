@@ -359,7 +359,7 @@ TEST_CASE( "hash nodes in xmg network", "[xmg]" )
 
 TEST_CASE( "clone a XMG network", "[xmg]" )
 {
-  CHECK( is_clonable_v<xmg_network> );
+  CHECK( has_clone_v<xmg_network> );
 
   xmg_network xmg0;
   auto a = xmg0.create_pi();
