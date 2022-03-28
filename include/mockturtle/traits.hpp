@@ -92,7 +92,7 @@ struct has_clone<Ntk, std::void_t<decltype( std::declval<Ntk>().clone() )>> : st
 };
 
 template<class Ntk>
-inline constexpr bool is_clonable_v = has_clone<Ntk>::value;
+inline constexpr bool has_clone_v = has_clone<Ntk>::value;
 #pragma endregion
 
 #pragma region is_topologically_sorted
