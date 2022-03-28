@@ -292,7 +292,7 @@ TEST_CASE( "hash nodes in MIG network", "[mig]" )
 
 TEST_CASE( "clone a MIG network", "[mig]" )
 {
-  CHECK( is_clonable_v<mig_network> );
+  CHECK( has_clone_v<mig_network> );
 
   mig_network mig0;
   auto a = mig0.create_pi();
