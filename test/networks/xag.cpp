@@ -370,7 +370,7 @@ TEST_CASE( "hash nodes in xag network", "[xag]" )
 
 TEST_CASE( "clone a XAG network", "[xag]" )
 {
-  CHECK( is_clonable_v<xag_network> );
+  CHECK( has_clone_v<xag_network> );
 
   xag_network xag0;
   auto a = xag0.create_pi();
