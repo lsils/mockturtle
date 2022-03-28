@@ -267,7 +267,7 @@ TEST_CASE( "hash nodes in AIG network", "[aig]" )
 
 TEST_CASE( "clone a AIG network", "[aig]" )
 {
-  CHECK( is_clonable_v<aig_network> );
+  CHECK( has_clone_v<aig_network> );
 
   aig_network aig0;
   auto a = aig0.create_pi();
