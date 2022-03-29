@@ -42,6 +42,7 @@
 namespace mockturtle
 {
 
+/*! \brief Parameters for testcase_minimizer. */
 struct testcase_minimizer_params
 {
   enum 

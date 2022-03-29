@@ -81,3 +81,53 @@ in CMake::
   cmake -DMOCKTURTLE_TEST=ON ..
   make run_tests
   ./test/run_tests
+
+Debugging toolset
+-----------------
+
+When encountering bugs --- either a segmentation fault, or some algorithm does not
+operate as expected --- some of the tools described in this section might be helpful
+in figuring out the source of error.
+
+Testcase minimizer
+~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/algorithms/testcase_minimizer.hpp``
+
+Often, the testcase that triggers the bug is big. The testcase minimizer helps reducing
+the size of the testcase as much as possible, while keeping the buggy behavior triggered.
+A minimized testcase not only facilitates debugging, but also enhances communication
+between developers if the original testcase cannot be disclosed.
+
+.. doxygenstruct:: mockturtle::testcase_minimizer_params
+   :members:
+
+.. doxygenclass:: mockturtle::testcase_minimizer
+
+Fuzz testing
+~~~~~~~~~~~~
+
+**Header:** ``mockturtle/algorithms/network_fuzz_tester.hpp``
+
+If minimizing the testcase is not successful, is too slow, or there is not an initial
+testcase to start with, fuzz testing can help generating small testcases that triggers
+unwanted behaviors.
+
+.. doxygenstruct:: mockturtle::fuzz_tester_params
+   :members:
+
+.. doxygenclass:: mockturtle::network_fuzz_tester
+
+Visualization
+~~~~~~~~~~~~~
+
+When the testcase is small enough, it becomes possible to visualize the network.
+mockturtle supports writing out a network into the DOT format, which can then be
+visualized using Graphviz. (:ref:`write_dot`)
+
+Time machine
+~~~~~~~~~~~~
+
+Coming soon...
+
+

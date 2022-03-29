@@ -63,7 +63,7 @@ struct fuzz_tester_params
 
 /*! \brief Network fuzz tester
  *
- * Runs an algorithm on many small ramdon logic networks.  Fuzz
+ * Runs an algorithm on many small random logic networks.  Fuzz
  * testing is often useful to detect potential segmentation faults in
  * new implementations.  The generated benchmarks are saved first in a
  * file.  If a segmentation fault occurs, the file can be used to
