@@ -47,12 +47,12 @@ network type:
      static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
    }
 
-Constructors
-------------
+Constructors and copy assignment
+--------------------------------
 
-.. code-block:: c++
-
-   network( storage& storage );
+.. doxygenclass:: mockturtle::network
+   :members: network, network(storage), operator=
+   :no-link:
 
 Methods
 -------
@@ -70,6 +70,13 @@ can be added to the beginning of an algorithm:
 
    // variant 2
    static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+
+Duplicate network
+~~~~~~~~~~~~~~~~~
+
+.. doxygenclass:: mockturtle::network
+   :members: clone
+   :no-link:
 
 Primary I/O and constants
 ~~~~~~~~~~~~~~~~~~~~~~~~~
