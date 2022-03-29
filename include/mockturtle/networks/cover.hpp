@@ -451,17 +451,26 @@ public:
     return index;
   }
 
-  signal create_cover_node( std::vector<signal> const& children, cover_type new_cover )
+  /*! \brief Creates node with arbitrary cover (SOP or POS).
+   *
+   * `cover_type` is `std::pair<std::vector<kitty::cube>, bool>`, where the first element defines
+   * the cubes (clauses) of the onset (offset) and the second element selects between the onset
+   * mode (true) or offset mode (false).
+   *
+   * \param children Fanin signals
+   * \param cover Cover for node function
+   */
+  signal create_cover_node( std::vector<signal> const& children, cover_type cover )
   {
     if ( children.size() == 0u )
     {
-      return get_constant( new_cover.second );
+      return get_constant( cover.second );
     }
 
-    return _create_cover_node( children, new_cover );
+    return _create_cover_node( children, cover );
   }
 
-  signal create_cover_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
+  signal create_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
   {
     if ( children.size() == 0u )
     {

@@ -91,8 +91,13 @@ public:
   {
   };
 
+  /*! \brief Default constructor.
+   *
+   * Constructs an empty network.
+   */
   network();
 
+  /*! \brief Constructor taking a storage. */
   explicit network( storage s );
   
   /*! \brief Default copy assignment operator.

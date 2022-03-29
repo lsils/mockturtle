@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -253,33 +253,16 @@ private:
 
 } /* namespace detail */
 
-/*! \brief convert_cover_to_graph function
+/*! \brief Inline convert a `cover_network` into another network type.
  *
- * This function verifies if the destination network has the basic requirements for the creation of a SOP or a POS, i.e. the 
- * create_and and the create_or functions. Afterward, it initializes the cover_network_to_graph_converter and it performs the conversion.
+ * **Required network functions:**
+ * - `create_and`
+ * - `create_or`
+ * - `create_buf`
+ * - `create_not`
  *
- * \param cover_ntk Input network of type `cover_network`. 
- * \param ntk Output network of type `Ntk`.  
- * 
-  \verbatim embed:rst
-
-  Example
-
-  .. code-block:: c++
-
-    const cover_network cover = ...;
-
-    aig_network aig;
-    xag_network xag;
-    mig_network mig;
-    xmg_network xmg;
-
-    convert_cover_to_graph( aig, cover_ntk );
-    convert_cover_to_graph( xag, cover_ntk ); 
-    convert_cover_to_graph( mig, cover_ntk );
-    convert_cover_to_graph( xmg, cover_ntk );
-
-  \endverbatim
+ * \param cover_ntk Input network of type `cover_network`.
+ * \param ntk Output network of type `Ntk`.
  */
 template<class Ntk>
 void convert_cover_to_graph( Ntk& ntk, const cover_network& cover_ntk )
@@ -293,39 +276,20 @@ void convert_cover_to_graph( Ntk& ntk, const cover_network& cover_ntk )
   converter.run();
 }
 
-/*! \brief convert_cover_to_graph function
+/*! \brief Out-of-place convert a `cover_network` into another network type.
  *
- * This function verifies if the destination network has the basic requirements for the creation of a SOP or a POS, i.e. the 
- * create_and and the create_or functions. Afterward, it initializes the cover_network_to_graph_converter and it performs the conversion.
+ * **Required network functions:**
+ * - `create_and`
+ * - `create_or`
+ * - `create_buf`
+ * - `create_not`
  *
- * \param cover_ntk Input network of type `cover_network`. 
- * \return ntk Output network of type `Ntk`.  
- * 
-  \verbatim embed:rst
-
-  Example
-
-  .. code-block:: c++
-
-    const cover_network cover = ...;
-
-    aig_network aig;
-    xag_network xag;
-    mig_network mig;
-    xmg_network xmg;
-
-    aig = convert_cover_to_graph( cover_ntk );
-    xag = convert_cover_to_graph( cover_ntk ); 
-    mig = convert_cover_to_graph( cover_ntk );
-    xmg = convert_cover_to_graph( cover_ntk );
-
-  \endverbatim
+ * \param cover_ntk Input network of type `cover_network`.
+ * \return ntk Output network of type `Ntk`.
  */
-
 template<class Ntk>
 Ntk convert_cover_to_graph( const cover_network& cover_ntk )
 {
-
   static_assert( has_create_and_v<Ntk>, "NtkDest does not implement the create_not method" );
   static_assert( has_create_or_v<Ntk>, "NtkDest does not implement the create_po method" );
   static_assert( has_create_buf_v<Ntk>, "NtkDest does not implement the create_not method" );
