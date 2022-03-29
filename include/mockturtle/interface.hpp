@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun Lee
 */
 
 #pragma once
@@ -81,7 +82,7 @@ public:
   /*! \brief Type representing the storage.
    *
    * A ``storage`` is some container that can contain all data necessary to
-   * store the logic network.  It can constructed outside of the logic network
+   * store the logic network.  It can be constructed outside of the logic network
    * and passed as a reference to the constructor.  It may be shared among
    * several logic networks.  A `std::shared_ptr<T>` is a convenient data
    * structure to hold a storage in a logic network.
@@ -93,25 +94,21 @@ public:
   network();
 
   explicit network( storage s );
+  
+  /*! \brief Default copy assignment operator.
+   *
+   * Currently, most network implementations in mockturtle use `std::shared_ptr<storage>`
+   * to hold and share the storage. Thus, the default behavior of copy-assigning
+   * a network only copies the pointer, but not really duplicating the contents
+   * in the storage data structure. In other words, it makes a shallow copy
+   * by default.
+   */
+  network& operator=( const network& other ) = default;
 
   /*! \brief Explicitly duplicate a network.
    *
-   * Most (if not all) networks implemented in `mockturtle` use shared pointers
-   * to store the internal data.  When dealing with them, the default behavior 
-   * is to share this storage them during assignments or function calls. For
-   * example:
-    \verbatim embed:rst
-
-    .. code-block:: c++
-
-        // create network somehow
-        network ntk0 = ...;
-        // create a new pointer to ntk1
-        network ntk1 = ntk;
-    \endverbatim
-   * 
-   * Changing `ntk1` will also change `ntk0`.  However, sometimes we need to make 
-   * a copy of the network as well.  This method must do exactly this.
+   * Deep copy a network by duplicating the storage. Note that this method
+   * does not duplicate the network events.
    */
   network clone();
 
