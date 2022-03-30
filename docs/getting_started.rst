@@ -118,6 +118,15 @@ unwanted behaviors.
 
 .. doxygenclass:: mockturtle::network_fuzz_tester
 
+Debugging utilities
+~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/utils/debugging_utils.hpp``
+
+Some utility functions are provided in this header file. They can be added as
+assertions in algorithms to identify abnormal network operations, or be used
+as the checks in testcase minimizer or fuzz testing.
+
 Visualization
 ~~~~~~~~~~~~~
 
