@@ -347,6 +347,10 @@ private:
       {
         continue;
       }
+      if ( divs.size() >= limit )
+      {
+        break;
+      }
 
       /* if the fanout has all fanins in the set, add it */
       ntk.foreach_fanout( d, [&]( node const& p ) {
