@@ -321,7 +321,7 @@ public:
         assert( count_reachable_dead_nodes( ntk ) == 0u );
 
         /* ensure that the network structure is still acyclic */
-        assert( network_is_acylic( ntk ) );
+        assert( network_is_acyclic( ntk ) );
 
         if ( ps.level_update_strategy == window_rewriting_params::precise ||
              ps.level_update_strategy == window_rewriting_params::recompute )

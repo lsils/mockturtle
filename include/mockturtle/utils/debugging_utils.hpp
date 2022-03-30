@@ -282,7 +282,7 @@ namespace detail
 {
 
 template<typename Ntk>
-bool network_is_acylic_recur( Ntk const& ntk, typename Ntk::node const& n )
+bool network_is_acyclic_recur( Ntk const& ntk, typename Ntk::node const& n )
 {
   using signal = typename Ntk::signal;
 
@@ -301,7 +301,7 @@ bool network_is_acylic_recur( Ntk const& ntk, typename Ntk::node const& n )
 
   bool result{true};
   ntk.foreach_fanin( n, [&]( signal const& fi ) {
-    if ( !network_is_acylic_recur( ntk, ntk.get_node( fi ) ) )
+    if ( !network_is_acyclic_recur( ntk, ntk.get_node( fi ) ) )
     {
       result = false;
       return false;
@@ -316,7 +316,7 @@ bool network_is_acylic_recur( Ntk const& ntk, typename Ntk::node const& n )
 } /* namespace detail */
 
 template<typename Ntk>
-bool network_is_acylic( Ntk const& ntk )
+bool network_is_acyclic( Ntk const& ntk )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_foreach_ci_v<Ntk>, "Ntk does not implement the foreach_ci function" );
@@ -340,7 +340,7 @@ bool network_is_acylic( Ntk const& ntk )
 
   bool result{true};
   ntk.foreach_co( [&]( signal const& o ){
-    if ( !detail::network_is_acylic_recur( cntk, ntk.get_node( o ) ) )
+    if ( !detail::network_is_acyclic_recur( cntk, ntk.get_node( o ) ) )
     {
       result = false;
       return false;
