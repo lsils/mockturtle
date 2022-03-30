@@ -30,9 +30,10 @@
   \author Heinz Riener
 */
 
-#include <mockturtle/io/write_verilog.hpp>
-#include <mockturtle/io/verilog_reader.hpp>
-#include <mockturtle/io/aiger_reader.hpp>
+#include "../io/write_verilog.hpp"
+#include "../io/verilog_reader.hpp"
+#include "../io/aiger_reader.hpp"
+
 #include <lorina/lorina.hpp>
 #include <fmt/format.h>
 #include <optional>
