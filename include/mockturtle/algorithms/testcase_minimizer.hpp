@@ -81,11 +81,10 @@ struct testcase_minimizer_params
  *
  * Given a (sequence of) algorithm(s) and a testcase that is
  * known to trigger a bug in the algorithm(s), this utility
- * minimizes the testcase by trying to (1) remove POs, 
- * (2) replace nodes with constants, (3) replace a gate with
- * one of its fanins, and also removing dangling nodes (including
- * PIs) after each modification. Only changes after which the bug
- * is still triggered are kept; otherwise, the change is reverted.
+ * minimizes the testcase by trying to remove parts of the network
+ * with an increasing granularity in each stage. Only changes after 
+ * which the bug is still triggered are kept; otherwise, the change
+ * is reverted.
  *
  * The script of algorithm(s) to be run can be provided as (1) a
  * lambda function taking a network as input and returning a Boolean,
@@ -109,11 +108,15 @@ struct testcase_minimizer_params
        return !network_is_acyclic( ntk );
      };
 
+     auto make_command = []( std::string const& filename ) -> std::string {
+       return "./abc -c \"read " + filename + "; drw\"";
+     };
+
      testcase_minimizer_params ps;
      ps.path = "."; // current directory
-     ps.init_case = "acyclic";
      testcase_minimizer<mig_network> minimizer( ps );
-     minimizer.run( opt );
+     minimizer.run( opt ); // debug algorithms implemented in mockturtle
+     minimizer.run( make_command ); // debug external scripts
    \endverbatim
 */
 template<typename Ntk>

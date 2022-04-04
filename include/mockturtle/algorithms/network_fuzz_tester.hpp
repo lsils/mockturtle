@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,6 +28,7 @@
   \brief Network fuzz tester
 
   \author Heinz Riener
+  \author Siang-Yun Lee
 */
 
 #include "../io/write_verilog.hpp"
@@ -41,25 +42,40 @@
 namespace mockturtle
 {
 
+/*! \brief Parameters for testcase_minimizer. */
 struct fuzz_tester_params
 {
-  uint64_t num_pis{4u};
-  uint64_t num_gates{10u};
-  enum 
+  /*! \brief File format to be generated. */
+  enum
   {
     verilog,
     aiger
   } file_format = verilog;
   std::string filename{"fuzz_test.v"};
 
-  /* number of networks to test: nullopt means infinity */
+  /*! \brief Max number of networks to test: nullopt means infinity. */
   std::optional<uint64_t> num_iterations{std::nullopt};
 
-  uint64_t num_pis_step{1u};
-  uint64_t num_gates_step{10u};
-  uint64_t num_pis_max{10u};
-  uint64_t num_gates_max{100u};
+  /*! \brief Number of networks to test before increasing size. */
   uint64_t num_iterations_step{100u};
+
+  /*! \brief Number of PIs to start with. */
+  uint64_t num_pis{4u};
+
+  /*! \brief Number of gates to start with. */
+  uint64_t num_gates{10u};
+
+  /*! \brief Number of PIs to increment at each step. */
+  uint64_t num_pis_step{1u};
+
+  /*! \brief Number of gates to increment at each step. */
+  uint64_t num_gates_step{10u};
+
+  /*! \brief Max number of PIs. */
+  uint64_t num_pis_max{10u};
+
+  /*! \brief Max number of gates. */
+  uint64_t num_gates_max{100u};
 }; /* fuzz_tester_params */
 
 /*! \brief Network fuzz tester
