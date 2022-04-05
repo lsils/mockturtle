@@ -21,6 +21,7 @@ v0.3 (not yet released)
     - Fast cut enumeration based on static truth tables (`fast_cut_enumeration`) `#474 <https://github.com/lsils/mockturtle/pull/474>`_
     - Resynthesis of a k-LUT network into a graph (`klut_to_graph`) `#502 <https://github.com/lsils/mockturtle/pull/502>`_
     - Conversion of a cover network into a graph (`cover_to_graph`) `#512 <https://github.com/lsils/mockturtle/pull/512>`_
+    - Minimize debugging testcase (`testcase_minimizer`) `#542 <https://github.com/lsils/mockturtle/pull/542>`_
 * Views:
     - Add bindings to a standard library (`binding_view`) `#489 <https://github.com/lsils/mockturtle/pull/489>`_
 * Utils:
