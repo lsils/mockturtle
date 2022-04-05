@@ -89,6 +89,8 @@ TEST_CASE( "Check Akers for MAJ-5 in XMG", "[akers_synthesis]" )
 
 TEST_CASE( "Check Akers for random - 4 inputs", "[akers_synthesis]" )
 {
+  std::array<std::string, 5> tts = { "d5d0", "fe52", "ad1b", "401a", "79e2" };
+
   for ( auto y = 0; y < 5; y++ )
   {
     std::vector<kitty::dynamic_truth_table> xs{6, kitty::dynamic_truth_table( 4 )};
@@ -97,7 +99,7 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[akers_synthesis]" )
     kitty::create_nth_var( xs[4], 2 );
     kitty::create_nth_var( xs[5], 3 );
 
-    create_random( xs[0] );
+    create_from_hex_string( xs[0], tts[y] );
 
     for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
     {
@@ -134,6 +136,8 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[akers_synthesis]" )
 
 TEST_CASE( "Check Akers for random - 5 inputs", "[akers_synthesis]" )
 {
+  std::array<std::string, 5> tts = { "e3cee67b", "bb5bee39", "b220ff4c", "fa43751f", "9ec83bf4" };
+
   for ( auto y = 0; y < 5; y++ )
   {
     std::vector<kitty::dynamic_truth_table> xs{7, kitty::dynamic_truth_table( 5 )};
@@ -143,7 +147,7 @@ TEST_CASE( "Check Akers for random - 5 inputs", "[akers_synthesis]" )
     kitty::create_nth_var( xs[5], 3 );
     kitty::create_nth_var( xs[6], 4 );
 
-    create_random( xs[0] );
+    create_from_hex_string( xs[0], tts[y] );
 
     for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
     {
@@ -190,7 +194,7 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[akers_synthesis]" )
     kitty::create_nth_var( xs[6], 4 );
     kitty::create_nth_var( xs[7], 5 );
 
-    create_random( xs[0] );
+    create_from_hex_string( xs[0], "32b43db39dde2b16" );
 
     for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
     {
