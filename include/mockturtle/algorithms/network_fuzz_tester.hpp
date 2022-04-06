@@ -32,6 +32,7 @@
 */
 
 #include "../io/write_verilog.hpp"
+#include "../io/write_aiger.hpp"
 #include "../io/verilog_reader.hpp"
 #include "../io/aiger_reader.hpp"
 
@@ -51,7 +52,12 @@ struct fuzz_tester_params
     verilog,
     aiger
   } file_format = verilog;
+
+  /*! \brief Name of the generated testcase file. */
   std::string filename{"fuzz_test.v"};
+
+  /*! \brief Filename written out by the command (to do CEC with the input testcase). */
+  std::optional<std::string> outputfile{std::nullopt};
 
   /*! \brief Max number of networks to test: nullopt means infinity. */
   std::optional<uint64_t> num_iterations{std::nullopt};
@@ -84,7 +90,9 @@ struct fuzz_tester_params
  * testing is often useful to detect potential segmentation faults in
  * new implementations.  The generated benchmarks are saved first in a
  * file.  If a segmentation fault occurs, the file can be used to
- * reproduce and debug the problem.
+ * reproduce and debug the problem. If the callback function returns
+ * false, e.g. when the optimized result is incorrect, the fuzz tester
+ * will also stop.
  *
   \verbatim embed:rst
 
@@ -113,7 +121,7 @@ struct fuzz_tester_params
      fuzzer.run( opt );
    \endverbatim
 */
-template<class NetworkGenerator>
+template<typename Ntk, class NetworkGenerator>
 class network_fuzz_tester
 {
 public:
@@ -122,8 +130,17 @@ public:
     , ps( ps )
   {}
 
-  template<typename Fn>
-  void run_incremental( Fn&& fn )
+  void run_incremental( std::function<std::string(std::string const&)>&& make_command )
+  {
+    run_incremental( make_callback( make_command ) );
+  }
+
+  void run( std::function<std::string(std::string const&)>&& make_command )
+  {
+    run( make_callback( make_command ) );
+  }
+
+  void run_incremental( std::function<bool(Ntk)>&& fn )
   {
     uint64_t counter{0};
     uint64_t num_pis = ps.num_pis;
@@ -168,8 +185,7 @@ public:
     }
   }
 
-  template<typename Fn>
-  void run( Fn&& fn )
+  void run( std::function<bool(Ntk)>&& fn )
   {
     uint64_t counter{0};
     while ( !ps.num_iterations || counter < ps.num_iterations )
@@ -200,7 +216,7 @@ public:
     }
   }
 
-  template<typename Ntk, typename Fn>
+  template<typename Fn>
   void rerun_on_benchmark( Fn&& fn )
   {
     /* read benchmark from a file */
@@ -217,6 +233,75 @@ public:
 
     /* run optimization algorithm */
     fn( ntk );
+  }
+
+private:
+  inline std::function<bool(Ntk)> make_callback( std::function<std::string(std::string const&)>& make_command )
+  {
+    std::function<bool(Ntk)> fn = [&]( Ntk ntk ) -> bool {
+      (void) ntk;
+      int status = std::system( make_command( ps.filename ).c_str() );
+      if ( status < 0 )
+      {
+        std::cout << "[e] Unexpected error when calling command: " << strerror( errno ) << '\n';
+        return false;
+      }
+      else
+      {
+        if ( WIFEXITED( status ) )
+        {
+          if ( WEXITSTATUS( status ) == 0 ) // normal
+          {
+            if ( ps.outputfile )
+              return abc_cec();
+            return true;
+          }
+          else if ( WEXITSTATUS( status ) == 1 ) // buggy
+            return false;
+          else
+          {
+            std::cout << "[e] Unexpected return value: " << WEXITSTATUS( status ) << '\n';
+            return false;
+          }
+        }
+        else // segfault
+        {
+          return false;
+        }
+      }
+    };
+    return fn;
+  }
+
+  inline bool abc_cec()
+  {
+    std::string command = fmt::format( "abc -q \"cec -n {} {}\"", ps.filename, *ps.outputfile );
+
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
+    if ( !pipe )
+    {
+      throw std::runtime_error( "popen() failed" );
+    }
+    while ( fgets( buffer.data(), buffer.size(), pipe.get() ) != nullptr )
+    {
+      result += buffer.data();
+    }
+
+    /* search for one line which says "Networks are equivalent" and ignore all other debug output from ABC */
+    std::stringstream ss( result );
+    std::string line;
+    while ( std::getline( ss, line, '\n' ) )
+    {
+      if ( line.size() >= 23u && line.substr( 0u, 23u ) == "Networks are equivalent" )
+      {
+        return true;
+      }
+    }
+
+    fmt::print( "[e] Files are not equivalent\n" );
+    return false;
   }
 
 private:

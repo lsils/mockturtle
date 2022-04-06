@@ -55,7 +55,7 @@ struct testcase_minimizer_params
     aiger
   } file_format = verilog;
 
-  /*! \brief Path to find the initial test case and to store the minmized test case. */
+  /*! \brief Path to find the initial test case and to store the minimized test case. */
   std::string path{"."};
 
   /*! \brief File name of the initial test case (excluding extension). */
