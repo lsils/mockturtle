@@ -90,9 +90,17 @@ struct fuzz_tester_params
  * testing is often useful to detect potential segmentation faults in
  * new implementations.  The generated benchmarks are saved first in a
  * file.  If a segmentation fault occurs, the file can be used to
- * reproduce and debug the problem. If the callback function returns
- * false, e.g. when the optimized result is incorrect, the fuzz tester
- * will also stop.
+ * reproduce and debug the problem.
+ *
+ * The entry function `run` generates different networks with the same
+ * number of PIs and gates. The function `run_incremental`, on the other
+ * hand, generates networks of increasing sizes.
+ *
+ * The script of algorithm(s) to be tested can be provided as (1) a
+ * lambda function taking a network as input and returning a Boolean,
+ * which is true if the algorithm behaves as expected; or (2) a lambda
+ * function making a command string to be called, taking a filename string
+ * as input.
  *
   \verbatim embed:rst
 
@@ -172,6 +180,12 @@ public:
         return;
       }
 
+      if ( ps.outputfile )
+      {
+        if ( !abc_cec() )
+          return;
+      }
+
       if ( ++counter_step >= ps.num_iterations_step )
       {
         counter_step = 0;
@@ -212,6 +226,12 @@ public:
       if ( !fn( ntk ) )
       {
         return;
+      }
+
+      if ( ps.outputfile )
+      {
+        if ( !abc_cec() )
+          return;
       }
     }
   }
