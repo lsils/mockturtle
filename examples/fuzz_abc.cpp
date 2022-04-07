@@ -1,7 +1,6 @@
 /* This example code demonstrates how to use mockturtle's
  * fuzz tester to test ABC commands.
  */
-#ifndef _MSC_VER
 
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/algorithms/network_fuzz_tester.hpp>
@@ -11,6 +10,7 @@ using namespace mockturtle;
 
 int main( int argc, char* argv[] )
 {
+#ifndef _MSC_VER
   if( argc != 2 )
   {
     std::cout << "Please give exactly one argument, which is the optimization command(s) to test in ABC\n";
@@ -33,7 +33,7 @@ int main( int argc, char* argv[] )
   auto gen = default_random_aig_generator();
   network_fuzz_tester<aig_network, decltype(gen)> fuzzer( gen, ps );
   fuzzer.run_incremental( fn );
+#endif
 
   return 0;
 }
-#endif

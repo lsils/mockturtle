@@ -39,6 +39,8 @@
 #include <lorina/lorina.hpp>
 #include <fmt/format.h>
 #include <optional>
+#include <array>
+#include <cstdio>
 
 namespace mockturtle
 {
