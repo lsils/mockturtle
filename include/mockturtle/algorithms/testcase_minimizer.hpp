@@ -36,6 +36,8 @@
 #include "../io/aiger_reader.hpp"
 #include "../utils/debugging_utils.hpp"
 #include "../networks/aig.hpp"
+#include "../views/color_view.hpp"
+#include "cleanup.hpp"
 
 #include <lorina/lorina.hpp>
 #include <fmt/format.h>
@@ -55,7 +57,7 @@ struct testcase_minimizer_params
     aiger
   } file_format = verilog;
 
-  /*! \brief Path to find the initial test case and to store the minmized test case. */
+  /*! \brief Path to find the initial test case and to store the minimized test case. */
   std::string path{"."};
 
   /*! \brief File name of the initial test case (excluding extension). */
@@ -93,7 +95,7 @@ struct testcase_minimizer_params
  * making a command string to be called, taking a filename string as
  * input. The command should return 1 if the buggy behavior is observed
  * and 0 otherwise. In this case, if the command segfaults, it is counted
- * as a buggy behavior.
+ * as a buggy behavior. (The second case is not supported on Windows platform.)
  *
  *
   \verbatim embed:rst
@@ -190,6 +192,7 @@ public:
     }
   }
 
+#ifndef _MSC_VER
   void run( std::function<std::string(std::string const&)> const& make_command )
   {
     if ( !read_initial_testcase() )
@@ -197,7 +200,7 @@ public:
       return;
     }
 
-    if ( !test( make_command, ps.path + "/" + ps.init_case + file_extension ) )
+    if ( !test( make_command, ps.init_case ) )
     {
       fmt::print( "[e] The initial test case does not trigger the buggy behavior\n" );
       return;
@@ -220,7 +223,7 @@ public:
 
       write_testcase( "tmp" );
 
-      if ( test( make_command, ps.path + "/tmp" + file_extension ) )
+      if ( test( make_command, "tmp" ) )
       {
         fmt::print( "[i] Testcase with I/O = {}/{} gates = {} triggers the buggy behavior\n", ntk.num_pis(), ntk.num_pos(), ntk.num_gates() );
         write_testcase( ps.minimized_case );
@@ -238,6 +241,7 @@ public:
       }
     }
   }
+#endif
 
 private:
   bool read_initial_testcase()
@@ -288,9 +292,10 @@ private:
     return res;
   }
 
+#ifndef _MSC_VER
   bool test( std::function<std::string(std::string const&)> const& make_command, std::string const& filename )
   {
-    std::string const command = make_command( ps.path + "/" + filename );
+    std::string const command = make_command( ps.path + "/" + filename + file_extension );
     int status = std::system( command.c_str() );
     if ( status < 0 )
     {
@@ -317,6 +322,7 @@ private:
       }
     }
   }
+#endif
 
   bool reduce()
   {
@@ -374,7 +380,7 @@ private:
         if ( ps.verbose )
           fmt::print( "[i] Substitute gate {} with its {}-th fanin {}{}\n", n, ith_fanin, ntk.is_complemented( fi ) ? "!" : "", ntk.get_node( fi ) );
         ntk.substitute_node( n, fi );
-        assert( network_is_acyclic( ntk ) );
+        assert( network_is_acyclic( color_view{ntk} ) );
         break;
       }
       default:
