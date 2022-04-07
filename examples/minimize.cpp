@@ -3,13 +3,10 @@
  */
 
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/io/write_aiger.hpp>
-#include <mockturtle/io/aiger_reader.hpp>
-#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/sim_resub.hpp>
 #include <mockturtle/algorithms/testcase_minimizer.hpp>
 #include <mockturtle/utils/debugging_utils.hpp>
-#include <lorina/aiger.hpp>
+#include <mockturtle/views/color_view.hpp>
 
 using namespace mockturtle;
 
@@ -24,18 +21,17 @@ int main( int argc, char* argv[] )
 
   /* Use this lambda function for debugging mockturtle algorithms */
   auto opt = []( aig_network aig ) -> bool {
-    if ( !network_is_acyclic( aig ) ) return true;
     resubstitution_params ps;
     ps.max_pis = 100;
     ps.max_inserts = 20u;
 
     sim_resubstitution( aig, ps );
-    return !network_is_acyclic( aig );
+    return !network_is_acyclic( color_view{aig} ); // return true if buggy
   };
 
   /* Use this lambda function for debugging external tools or algorithms that segfaults */
   auto make_command = []( std::string const& filename ) -> std::string {
-    return "./examples/simresub " + filename;
+    return "abc -c \"read " + filename + "; rewrite\"";
   };
 
   testcase_minimizer_params ps;
