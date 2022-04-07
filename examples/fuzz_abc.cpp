@@ -1,6 +1,7 @@
 /* This example code demonstrates how to use mockturtle's
  * fuzz tester to test ABC commands.
  */
+#ifndef _MSC_VER
 
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/algorithms/network_fuzz_tester.hpp>
@@ -35,3 +36,4 @@ int main( int argc, char* argv[] )
 
   return 0;
 }
+#endif

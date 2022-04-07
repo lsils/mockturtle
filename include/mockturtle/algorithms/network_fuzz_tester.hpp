@@ -100,7 +100,7 @@ struct fuzz_tester_params
  * lambda function taking a network as input and returning a Boolean,
  * which is true if the algorithm behaves as expected; or (2) a lambda
  * function making a command string to be called, taking a filename string
- * as input.
+ * as input (not supported on Windows platform).
  *
   \verbatim embed:rst
 
@@ -138,6 +138,7 @@ public:
     , ps( ps )
   {}
 
+#ifndef _MSC_VER
   void run_incremental( std::function<std::string(std::string const&)>&& make_command )
   {
     run_incremental( make_callback( make_command ) );
@@ -147,6 +148,7 @@ public:
   {
     run( make_callback( make_command ) );
   }
+#endif
 
   void run_incremental( std::function<bool(Ntk)>&& fn )
   {
@@ -256,6 +258,7 @@ public:
   }
 
 private:
+#ifndef _MSC_VER
   inline std::function<bool(Ntk)> make_callback( std::function<std::string(std::string const&)>& make_command )
   {
     std::function<bool(Ntk)> fn = [&]( Ntk ntk ) -> bool {
@@ -292,6 +295,7 @@ private:
     };
     return fn;
   }
+#endif
 
   inline bool abc_cec()
   {

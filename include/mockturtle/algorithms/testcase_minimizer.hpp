@@ -95,7 +95,7 @@ struct testcase_minimizer_params
  * making a command string to be called, taking a filename string as
  * input. The command should return 1 if the buggy behavior is observed
  * and 0 otherwise. In this case, if the command segfaults, it is counted
- * as a buggy behavior.
+ * as a buggy behavior. (The second case is not supported on Windows platform.)
  *
  *
   \verbatim embed:rst
@@ -192,6 +192,7 @@ public:
     }
   }
 
+#ifndef _MSC_VER
   void run( std::function<std::string(std::string const&)> const& make_command )
   {
     if ( !read_initial_testcase() )
@@ -240,6 +241,7 @@ public:
       }
     }
   }
+#endif
 
 private:
   bool read_initial_testcase()
@@ -290,6 +292,7 @@ private:
     return res;
   }
 
+#ifndef _MSC_VER
   bool test( std::function<std::string(std::string const&)> const& make_command, std::string const& filename )
   {
     std::string const command = make_command( ps.path + "/" + filename + file_extension );
@@ -319,6 +322,7 @@ private:
       }
     }
   }
+#endif
 
   bool reduce()
   {
