@@ -81,6 +81,21 @@ struct is_buffered_network_type : std::false_type
 template<class Ntk>
 inline constexpr bool is_buffered_network_type_v = is_buffered_network_type<Ntk>::value;
 
+#pragma region has_clone
+template<class Ntk, class = void>
+struct has_clone : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_clone<Ntk, std::void_t<decltype( std::declval<Ntk>().clone() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_clone_v = has_clone<Ntk>::value;
+#pragma endregion
+
 #pragma region is_topologically_sorted
 template<class Ntk, class = void>
 struct is_topologically_sorted : std::false_type

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -331,27 +331,25 @@ private:
     }
 
     /* check if the number of divisors is not exceeded */
-    if ( divs.size() - leaves.size() + mffc.size() >= ps.max_divisors - ps.max_pis )
+    if ( divs.size() + mffc.size() - leaves.size() > ps.max_divisors - ps.max_pis )
     {
       return false;
     }
-
-    /* get the number of divisors to collect */
-    int32_t limit = ps.max_divisors - ps.max_pis - ( uint32_t( divs.size() ) + 1 - uint32_t( leaves.size() ) + uint32_t( mffc.size() ) );
+    uint32_t limit = ps.max_divisors - ps.max_pis - mffc.size() + leaves.size();
 
     /* explore the fanouts, which are not in the MFFC */
-    int32_t counter = 0;
     bool quit = false;
-
-    /* note: this is tricky and cannot be converted to a range-based loop */
-    auto size = divs.size();
-    for ( auto i = 0u; i < size; ++i )
+    for ( auto i = 0u; i < divs.size(); ++i )
     {
       auto const d = divs.at( i );
 
       if ( ntk.fanout_size( d ) > ps.skip_fanout_limit_for_divisors )
       {
         continue;
+      }
+      if ( divs.size() >= limit )
+      {
+        break;
       }
 
       /* if the fanout has all fanins in the set, add it */
@@ -390,11 +388,10 @@ private:
         }
 
         divs.emplace_back( p );
-        ++size;
         ntk.set_visited( p, ntk.trav_id() );
 
         /* quit computing divisors if there are too many of them */
-        if ( ++counter == limit )
+        if ( divs.size() >= limit )
         {
           quit = true;
           return false; /* terminate fanout-loop */
@@ -411,6 +408,7 @@ private:
 
     /* note: different from the previous version, now we do not add MFFC nodes into divs */
     assert( root == mffc.at( mffc.size() - 1u ) );
+    /* note: this assertion makes sure window_simulator does not go out of bounds */
     assert( divs.size() + mffc.size() - leaves.size() <= ps.max_divisors - ps.max_pis );
 
     return true;
