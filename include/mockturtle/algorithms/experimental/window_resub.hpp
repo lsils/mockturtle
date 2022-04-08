@@ -231,19 +231,20 @@ public:
       return std::nullopt; /* skip nodes with too many fanouts */
     }
 
-    if constexpr ( has_slack_v<Ntk> )
+    if constexpr ( has_level_v<Ntk> )
     {
       if ( ps.preserve_depth )
       {
         // win.max_level = ntk.depth() - ntk.required( n );
-        win.max_level = ntk.level( n );
-        divs_mgr.set_max_level( ntk.level( n ) - 1 );
+        // win.max_level = ntk.level( n );
+        // divs_mgr.set_max_level( ntk.level( n ) - 1 );
       }
     }
 
     /* compute a cut and collect supported nodes */
     std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
-      return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, {n}, cps ).first;
+      // return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, {n}, cps ).first;
+      return reconvergence_driven_cut<Ntk, false, false>( ntk, {n}, cps ).first;
     });
     std::vector<node> supported;
     call_with_stopwatch( st.time_divs, [&]() {
@@ -257,9 +258,11 @@ public:
 
     /* mark MFFC nodes and collect divisors */
     ++mffc_marker;
+    uint32_t and_size = 0u; // only for cost aware MC synthesis
     win.mffc_size = call_with_stopwatch( st.time_mffc, [&]() {
       return mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n ){
         ntk.set_value( n, mffc_marker );
+        and_size += ntk.is_and( n ); // only for cost aware MC synthesis
       });
     });
     call_with_stopwatch( st.time_divs, [&]() {
@@ -296,7 +299,8 @@ public:
     }
     else
     {
-      win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
+      // win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
+      win.max_size = std::min( and_size - 1, ps.max_inserts );
     }
 
     st.num_windows++;
@@ -409,7 +413,7 @@ public:
   using stats_t = xag_resyn_stats;
 
   explicit complete_tt_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), engine( rst )
+    : ntk( ntk ), engine( st )
   { }
 
   void init()
@@ -466,8 +470,7 @@ void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
   else
   {
     fanout_view<Ntk> fntk( ntk );
-    depth_view< decltype(fntk) > dntk( fntk );
-    slack_view< decltype(dntk) > viewed( dntk );
+    depth_view< decltype(fntk) > viewed( fntk );
     using ViewedNtk = decltype( viewed );
 
     using TT = typename kitty::dynamic_truth_table;

@@ -183,5 +183,21 @@
       }
     ],
     "version": "90ec30a"
+  },
+  {
+    "entries": [
+      {
+        "#AND": 255,
+        "#Gate": 1020,
+        "#Gate'": 637,
+        "benchmark": "adder",
+        "cec": true,
+        "depth": 255,
+        "depth gain": 4294967169,
+        "runtime": 0.6366086006164551,
+        "size": 1020
+      }
+    ],
+    "version": "645e8ca"
   }
 ]
