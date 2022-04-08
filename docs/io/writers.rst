@@ -48,6 +48,8 @@ Write into DIMACS files (CNF)
 
 .. doxygenfunction:: mockturtle::write_dimacs(Ntk const&, std::ostream&)
 
+.. _write_dot:
+
 Write into DOT files (Graphviz)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

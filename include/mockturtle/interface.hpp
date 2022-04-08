@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun Lee
 */
 
 #pragma once
@@ -81,7 +82,7 @@ public:
   /*! \brief Type representing the storage.
    *
    * A ``storage`` is some container that can contain all data necessary to
-   * store the logic network.  It can constructed outside of the logic network
+   * store the logic network.  It can be constructed outside of the logic network
    * and passed as a reference to the constructor.  It may be shared among
    * several logic networks.  A `std::shared_ptr<T>` is a convenient data
    * structure to hold a storage in a logic network.
@@ -90,9 +91,31 @@ public:
   {
   };
 
+  /*! \brief Default constructor.
+   *
+   * Constructs an empty network.
+   */
   network();
 
+  /*! \brief Constructor taking a storage. */
   explicit network( storage s );
+  
+  /*! \brief Default copy assignment operator.
+   *
+   * Currently, most network implementations in mockturtle use `std::shared_ptr<storage>`
+   * to hold and share the storage. Thus, the default behavior of copy-assigning
+   * a network only copies the pointer, but not really duplicating the contents
+   * in the storage data structure. In other words, it makes a shallow copy
+   * by default.
+   */
+  network& operator=( const network& other ) = default;
+
+  /*! \brief Explicitly duplicate a network.
+   *
+   * Deep copy a network by duplicating the storage. Note that this method
+   * does not duplicate the network events.
+   */
+  network clone();
 
 #pragma region Primary I / O and constants
   /*! \brief Gets constant value represented by network.
@@ -936,7 +959,7 @@ public:
   void incr_trav_id() const;
 #pragma endregion
 
-#pragma beginregion Color values
+#pragma region Color values
   /* Color values offer a more recent and flexible mechanism to manage
      and manipulate traversal ids. */
 

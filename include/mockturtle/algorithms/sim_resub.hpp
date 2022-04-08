@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -325,66 +325,74 @@ private:
   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
 }; /* simulation_based_resub_engine */
 
+template<class Ntk, typename resub_impl_t>
+void sim_resubstitution_run( Ntk& ntk, resubstitution_params const& ps, resubstitution_stats* pst )
+{
+  resubstitution_stats st;
+  typename resub_impl_t::engine_st_t engine_st;
+  typename resub_impl_t::collector_st_t collector_st;
+
+  resub_impl_t p( ntk, ps, st, engine_st, collector_st );
+  p.run();
+  st.time_resub -= engine_st.time_patgen;
+  st.time_total -= engine_st.time_patgen + engine_st.time_patsave;
+
+  if ( ps.verbose )
+  {
+    st.report();
+    collector_st.report();
+    engine_st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+}
+
 } /* namespace detail */
 
 template<class Ntk>
 void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
-  static_assert( std::is_same<typename Ntk::base_type, aig_network>::value || std::is_same<typename Ntk::base_type, xag_network>::value, "Currently only supports AIG and XAG" );
+  static_assert( std::is_same_v<typename Ntk::base_type, aig_network> || std::is_same_v<typename Ntk::base_type, xag_network>, "Currently only supports AIG and XAG" );
 
   using resub_view_t = fanout_view<depth_view<Ntk>>;
   depth_view<Ntk> depth_view{ntk};
   resub_view_t resub_view{depth_view};
 
-  if ( ps.odc_levels != 0 )
+  if constexpr ( std::is_same_v<typename Ntk::base_type, aig_network> )
   {
-    using validator_t = circuit_validator<resub_view_t, bill::solvers::bsat2, false, true, true>;
-    using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t, validator_t>>;
+    using resyn_engine_t = xag_resyn_decompose<kitty::partial_truth_table, aig_resyn_static_params_for_sim_resub<resub_view_t>>;
 
-    resubstitution_stats st;
-    typename resub_impl_t::engine_st_t engine_st;
-    typename resub_impl_t::collector_st_t collector_st;
-
-    resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
-    p.run();
-    st.time_resub -= engine_st.time_patgen;
-    st.time_total -= engine_st.time_patgen + engine_st.time_patsave;
-
-    if ( ps.verbose )
+    if ( ps.odc_levels != 0 )
     {
-      st.report();
-      collector_st.report();
-      engine_st.report();
+      using validator_t = circuit_validator<resub_view_t, bill::solvers::bsat2, false, true, true>;
+      using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t, validator_t, resyn_engine_t>>;
+      detail::sim_resubstitution_run<resub_view_t, resub_impl_t>( resub_view, ps, pst );
     }
-
-    if ( pst )
+    else
     {
-      *pst = st;
+      using validator_t = circuit_validator<resub_view_t, bill::solvers::bsat2, false, true, false>;
+      using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t, validator_t, resyn_engine_t>>;
+      detail::sim_resubstitution_run<resub_view_t, resub_impl_t>( resub_view, ps, pst );
     }
   }
   else
   {
-    using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t>>;
+    using resyn_engine_t = xag_resyn_decompose<kitty::partial_truth_table, xag_resyn_static_params_for_sim_resub<resub_view_t>>;
 
-    resubstitution_stats st;
-    typename resub_impl_t::engine_st_t engine_st;
-    typename resub_impl_t::collector_st_t collector_st;
-
-    resub_impl_t p( resub_view, ps, st, engine_st, collector_st );
-    p.run();
-    st.time_resub -= engine_st.time_patgen;
-    st.time_total -= engine_st.time_patgen + engine_st.time_patsave;
-
-    if ( ps.verbose )
+    if ( ps.odc_levels != 0 )
     {
-      st.report();
-      collector_st.report();
-      engine_st.report();
+      using validator_t = circuit_validator<resub_view_t, bill::solvers::bsat2, false, true, true>;
+      using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t, validator_t, resyn_engine_t>>;
+      detail::sim_resubstitution_run<resub_view_t, resub_impl_t>( resub_view, ps, pst );
     }
-
-    if ( pst )
+    else
     {
-      *pst = st;
+      using validator_t = circuit_validator<resub_view_t, bill::solvers::bsat2, false, true, false>;
+      using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t, validator_t, resyn_engine_t>>;
+      detail::sim_resubstitution_run<resub_view_t, resub_impl_t>( resub_view, ps, pst );
     }
   }
 }
