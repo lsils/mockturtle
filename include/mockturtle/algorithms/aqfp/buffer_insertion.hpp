@@ -1199,6 +1199,8 @@ private:
   bool find_and_move_chunks()
   {
     bool updated = false;
+    count_buffers();
+    uint32_t num_buffers_before = num_buffers();
     _start_id = _ntk.trav_id();
 
     _ntk.foreach_node( [&]( auto const& n ){
@@ -1222,7 +1224,9 @@ private:
       return true;
     });
 
-    return updated;
+    count_buffers();
+    assert( num_buffers() <= num_buffers_before );
+    return updated && num_buffers() < num_buffers_before;
   }
 
   void recruit( node const& n, chunk& c )
@@ -1394,6 +1398,7 @@ private:
           update_fanout_info( m );
         for ( auto ii : c.input_interfaces )
           update_fanout_info( ii.o );
+        _outdated = true;
         return false;
       }
 
@@ -1497,6 +1502,7 @@ private:
           update_fanout_info( m );
         for ( auto ii : c.input_interfaces )
           update_fanout_info( ii.o );
+        _outdated = true;
         return false;
       }
 
