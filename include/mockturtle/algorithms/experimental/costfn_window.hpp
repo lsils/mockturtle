@@ -41,7 +41,7 @@
 #include "../../networks/xag.hpp"
 #include "../../networks/aig.hpp"
 #include "boolean_optimization.hpp"
-#include "../resyn_engines/xag_resyn.hpp"
+#include "costfn_resyn.hpp"
 #include "../detail/resub_utils.hpp"
 #include "../simulation.hpp"
 #include "../dont_cares.hpp"
@@ -214,8 +214,7 @@ public:
 
     /* compute a cut and collect supported nodes */
     std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
-      // return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, {n}, cps ).first;
-      return reconvergence_driven_cut<Ntk, false, false>( ntk, {n}, cps ).first;
+      return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, {n}, cps ).first;
     });
     std::vector<node> supported;
     call_with_stopwatch( st.time_divs, [&]() {
@@ -229,11 +228,9 @@ public:
 
     /* mark MFFC nodes and collect divisors */
     ++mffc_marker;
-    uint32_t and_size = 0u; // only for cost aware MC synthesis
     win.mffc_size = call_with_stopwatch( st.time_mffc, [&]() {
       return mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n ){
         ntk.set_value( n, mffc_marker );
-        and_size += ntk.is_and( n ); // only for cost aware MC synthesis
       });
     });
     call_with_stopwatch( st.time_divs, [&]() {
@@ -264,8 +261,8 @@ public:
       }
     });
 
-    // win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
-    win.max_cost = std::min( and_size - 1, ps.max_inserts );
+    win.max_cost = ntk.get_cost( n, win.divs );
+    assert( win.max_cost == win.mffc_size );
 
     st.num_windows++;
     st.num_leaves += leaves.size();
@@ -385,6 +382,7 @@ public:
 
   std::optional<res_t> operator()( problem_t& prob )
   {
+    return std::nullopt; /* for debug */
     return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_cost );
   }
 
@@ -397,7 +395,7 @@ private:
 } /* namespace detail */
 
 using cost_aware_params = boolean_optimization_params<costfn_windowing_params, null_params>;
-using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, xag_resyn_stats>;
+using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, xag_costfn_resyn_stats>;
 
 template<class Ntk, class CostFn>
 void cost_aware_optimization( Ntk& ntk, CostFn cost_fn, cost_aware_params const& ps, cost_aware_stats* pst = nullptr )
@@ -406,7 +404,7 @@ void cost_aware_optimization( Ntk& ntk, CostFn cost_fn, cost_aware_params const&
   using Viewed = decltype( viewed );
   using TT = typename kitty::dynamic_truth_table;
   using windowing_t = typename detail::costfn_windowing<Viewed, TT>;
-  using engine_t = xag_resyn_decompose<TT, xag_resyn_static_params_default<TT>>;
+  using engine_t = cost_aware_engine<TT, CostFn, xag_cost_aware_resyn_static_params<TT>>;
   using resyn_t = typename detail::costfn_resynthesis<Viewed, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<Viewed, windowing_t, resyn_t>;
 

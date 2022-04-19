@@ -133,12 +133,12 @@ public:
   }
 
   /**
-   * @brief Get the dissipate cost of a single node
+   * @brief Get the accumulate cost of a single node
    * 
    * @param n 
    * @return cost_t 
    */
-  cost_t get_dissipate_cost( node const& n ) const
+  cost_t get_accumulate_cost( node const& n ) const
   {
     return _cost_val[n];
   }
@@ -153,7 +153,37 @@ public:
     return _cost;
   }
 
-  uint32_t get_accumulate_cost( node const& n ) const
+  /**
+   * @brief Get the cost of one single node
+   * 
+   * @return cost_t 
+   */
+  uint32_t get_cost( node const& n ) const
+  {
+    uint32_t _c = 0u;
+    this->incr_trav_id();
+    compute_cost( n, _c );
+    return _c;
+  }
+
+  /**
+   * @brief Get the cost of one single node starting from divisors
+   * 
+   * @return cost_t 
+   */
+  uint32_t get_cost( node const& n, std::vector<signal> const& divs )
+  {
+    uint32_t _c = 0u;
+    this->incr_trav_id();
+    for ( signal s : divs )
+    {
+      this->set_visited( this->get_node( s ), this->trav_id() );
+    }
+    compute_cost( n, _c );
+    return _c;
+  }
+
+  uint32_t get_dissipate_cost( node const& n ) const
   {
     uint32_t tmp_cost{};
     _cost_fn( *this, n, tmp_cost );
@@ -181,7 +211,7 @@ public:
     Ntk::create_po( f, name );
   }
 private:
-  cost_t compute_cost( node const& n )
+  cost_t compute_cost( node const& n, uint32_t& _c )
   {
     if ( this->visited( n ) == this->trav_id() )
     {
@@ -197,16 +227,15 @@ private:
       return _cost_val[n] = _cost_fn( *this, n, _cost );
     }
     this->foreach_fanin( n, [&]( auto const& f ) {
-      compute_cost( this->get_node( f ) );
+      compute_cost( this->get_node( f ), _c );
     } );
-    return _cost_val[n] = _cost_fn( *this, n, _cost );
+    return _cost_val[n] = _cost_fn( *this, n, _c );
   }
-
   void compute_cost()
   {
-    _cost = cost_t{}; /* must define the zero initialization */
+    _cost = 0u; /* must define the zero initialization */
     this->foreach_po( [&]( auto const& f ) {
-      compute_cost( this->get_node( f ) );
+      compute_cost( this->get_node( f ), _cost );
     } );
   }
 

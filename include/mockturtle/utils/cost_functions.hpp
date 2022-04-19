@@ -45,7 +45,7 @@ struct and_cost
 {
 public:
   using cost = uint32_t;
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost )  const
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost ) const
   {
     /* dissipate cost */
     if( ntk.is_and( n ) ) tot_cost += 1; /* add dissipate cost */
