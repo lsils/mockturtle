@@ -91,18 +91,24 @@ struct fuzz_tester_params
  * Runs an algorithm on many small random logic networks.  Fuzz
  * testing is often useful to detect potential segmentation faults in
  * new implementations.  The generated benchmarks are saved first in a
- * file.  If a segmentation fault occurs, the file can be used to
- * reproduce and debug the problem.
+ * file.  If a segmentation fault or unexpected behavior occurs, the
+ * file can be used to reproduce and debug the problem.
  *
  * The entry function `run` generates different networks with the same
  * number of PIs and gates. The function `run_incremental`, on the other
- * hand, generates networks of increasing sizes.
+ * hand, generates networks of increasing sizes. These functions return
+ * true if it was terminated by an unexpected behavior, or return false
+ * if it terminates normally after the specified number of iterations
+ * without observing any defect.
  *
  * The script of algorithm(s) to be tested can be provided as (1) a
  * lambda function taking a network as input and returning a Boolean,
  * which is true if the algorithm behaves as expected; or (2) a lambda
  * function making a command string to be called, taking a filename string
- * as input (not supported on Windows platform).
+ * as input (not supported on Windows platform). If the command exits
+ * normally (with return value 0), CEC will be performed on the output
+ * file; otherwise (segfault, assertion fail, or return value is not 0),
+ * the fuzzer is terminated.
  *
   \verbatim embed:rst
 
@@ -141,18 +147,18 @@ public:
   {}
 
 #ifndef _MSC_VER
-  void run_incremental( std::function<std::string(std::string const&)>&& make_command )
+  bool run_incremental( std::function<std::string(std::string const&)>&& make_command )
   {
-    run_incremental( make_callback( make_command ) );
+    return run_incremental( make_callback( make_command ) );
   }
 
-  void run( std::function<std::string(std::string const&)>&& make_command )
+  bool run( std::function<std::string(std::string const&)>&& make_command )
   {
-    run( make_callback( make_command ) );
+    return run( make_callback( make_command ) );
   }
 #endif
 
-  void run_incremental( std::function<bool(Ntk)>&& fn )
+  bool run_incremental( std::function<bool(Ntk)>&& fn )
   {
     uint64_t counter{0};
     uint64_t num_pis = ps.num_pis;
@@ -181,13 +187,13 @@ public:
       /* run optimization algorithm */
       if ( !fn( ntk ) )
       {
-        return;
+        return true;
       }
 
       if ( ps.outputfile )
       {
         if ( !abc_cec() )
-          return;
+          return true;
       }
 
       if ( ++counter_step >= ps.num_iterations_step )
@@ -201,9 +207,10 @@ public:
         }
       }
     }
+    return false;
   }
 
-  void run( std::function<bool(Ntk)>&& fn )
+  bool run( std::function<bool(Ntk)>&& fn )
   {
     uint64_t counter{0};
     while ( !ps.num_iterations || counter < ps.num_iterations )
@@ -229,15 +236,16 @@ public:
       /* run optimization algorithm */
       if ( !fn( ntk ) )
       {
-        return;
+        return true;
       }
 
       if ( ps.outputfile )
       {
         if ( !abc_cec() )
-          return;
+          return true;
       }
     }
+    return false;
   }
 
   template<typename Fn>
@@ -281,8 +289,10 @@ private:
               return abc_cec();
             return true;
           }
-          else if ( WEXITSTATUS( status ) == 1 ) // buggy
+          else if ( WEXITSTATUS( status ) == 1 || WEXITSTATUS( status ) == 134 ) // buggy or assertion fail
+          {
             return false;
+          }
           else
           {
             std::cout << "[e] Unexpected return value: " << WEXITSTATUS( status ) << '\n';

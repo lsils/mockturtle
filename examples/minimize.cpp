@@ -26,7 +26,7 @@ int main( int argc, char* argv[] )
     ps.max_inserts = 20u;
 
     sim_resubstitution( aig, ps );
-    return !network_is_acyclic( color_view{aig} ); // return true if buggy
+    return network_is_acyclic( color_view{aig} ); // true: normal (or not the expected bug); false: buggy
   };
 
   /* Use this lambda function for debugging external tools or algorithms that segfaults */

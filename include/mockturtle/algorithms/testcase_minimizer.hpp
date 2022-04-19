@@ -66,9 +66,6 @@ struct testcase_minimizer_params
   /*! \brief File name of the minimized test case (excluding extension). */
   std::string minimized_case{"minimized"};
 
-  /*! \brief Target maximum size of the test case. */
-  uint32_t max_size{20u};
-
   /*! \brief Maximum number of iterations in total. nullopt = infinity */
   std::optional<uint32_t> num_iterations{std::nullopt};
 
@@ -90,12 +87,16 @@ struct testcase_minimizer_params
  *
  * The script of algorithm(s) to be run can be provided as (1) a
  * lambda function taking a network as input and returning a Boolean,
- * which is true if the bug is triggered and is false otherwise
- * (i.e. the buggy behavior is not observed); or (2) a lambda function
- * making a command string to be called, taking a filename string as
- * input. The command should return 1 if the buggy behavior is observed
- * and 0 otherwise. In this case, if the command segfaults, it is counted
- * as a buggy behavior. (The second case is not supported on Windows platform.)
+ * which is true if the script runs normally and is false otherwise
+ * (i.e. the buggy behavior is observed); or (2) (not supported on
+ * Windows platform) a lambda function making a command string to be
+ * called, taking a filename string as input. The command should return
+ * 0 if the program runs normally, return 1 if the concerned buggy
+ * behavior is observed, and return other values if the input network
+ * is not valid (thus the latest change will not be kept). If the
+ * command segfaults or an assertion fails, it is treated as observing
+ * the buggy behavior.
+ *
  *
  *
   \verbatim embed:rst
@@ -107,7 +108,7 @@ struct testcase_minimizer_params
      auto opt = []( mig_network ntk ) -> bool {
        direct_resynthesis<mig_network> resyn;
        refactoring( ntk, resyn );
-       return !network_is_acyclic( ntk );
+       return network_is_acyclic( ntk );
      };
 
      auto make_command = []( std::string const& filename ) -> std::string {
@@ -177,18 +178,22 @@ public:
       {
         fmt::print( "[i] Testcase with I/O = {}/{} gates = {} triggers the buggy behavior\n", ntk.num_pis(), ntk.num_pos(), ntk.num_gates() );
         write_testcase( ps.minimized_case );
+        min_PIs = ntk.num_pis();
+        min_POs = ntk.num_pos();
+        min_gates = ntk.num_gates();
         stage_counter = 0;
-        
-        if ( ntk.size() <= ps.max_size )
-        {
-          break;
-        }
       }
       else
       {
         ++stage_counter;
         ntk = ntk_backup2;
       }
+    }
+
+    if ( init_PIs != min_PIs || init_POs != min_POs || init_gates != min_gates )
+    {
+      fmt::print( "[i] Minimized the testcase from I/O = {}/{} gates = {}\n", init_PIs, init_POs, init_gates );
+      fmt::print( "                             to I/O = {}/{} gates = {}\n", min_PIs, min_POs, min_gates );
     }
   }
 
@@ -227,18 +232,22 @@ public:
       {
         fmt::print( "[i] Testcase with I/O = {}/{} gates = {} triggers the buggy behavior\n", ntk.num_pis(), ntk.num_pos(), ntk.num_gates() );
         write_testcase( ps.minimized_case );
+        min_PIs = ntk.num_pis();
+        min_POs = ntk.num_pos();
+        min_gates = ntk.num_gates();
         stage_counter = 0;
-        
-        if ( ntk.size() <= ps.max_size )
-        {
-          break;
-        }
       }
       else
       {
         ++stage_counter;
         ntk = ntk_backup2;
       }
+    }
+
+    if ( init_PIs != min_PIs || init_POs != min_POs || init_gates != min_gates )
+    {
+      fmt::print( "[i] Minimized the testcase from I/O = {}/{} gates = {}\n", init_PIs, init_POs, init_gates );
+      fmt::print( "                             to I/O = {}/{} gates = {}\n", min_PIs, min_POs, min_gates );
     }
   }
 #endif
@@ -251,14 +260,14 @@ private:
       case testcase_minimizer_params::verilog:
         if ( lorina::read_verilog( ps.path + "/" + ps.init_case + file_extension, verilog_reader( ntk ) ) != lorina::return_code::success )
         {
-          fmt::print( "[e] Could not read test case `{}{}`\n", ps.init_case, file_extension );
+          fmt::print( "[e] Could not read test case `{}`\n", ps.path + "/" + ps.init_case + file_extension );
           return false;
         }
         break;
       case testcase_minimizer_params::aiger:
         if ( lorina::read_aiger( ps.path + "/" + ps.init_case + file_extension, aiger_reader( ntk ) ) != lorina::return_code::success )
         {
-          fmt::print( "[e] Could not read test case `{}{}`\n", ps.init_case, file_extension );
+          fmt::print( "[e] Could not read test case `{}`\n", ps.path + "/" + ps.init_case + file_extension );
           return false;
         }
         break;
@@ -266,6 +275,9 @@ private:
         fmt::print( "[e] Unsupported format\n" );
         return false;
     }
+    init_PIs = ntk.num_pis();
+    init_POs = ntk.num_pos();
+    init_gates = ntk.num_gates();
     return true;
   }
 
@@ -289,7 +301,7 @@ private:
     ntk_backup = cleanup_dangling( ntk );
     bool res = fn( ntk );
     ntk = ntk_backup;
-    return res;
+    return !res;
   }
 
 #ifndef _MSC_VER
@@ -309,6 +321,8 @@ private:
         if ( WEXITSTATUS( status ) == 0 ) // normal
           return false;
         else if ( WEXITSTATUS( status ) == 1 ) // buggy
+          return true;
+        else if ( WEXITSTATUS( status ) == 134 ) // assertion fail
           return true;
         else
         {
@@ -439,6 +453,9 @@ private:
     fanin // substitute a node with its first fanin
   } reducing_stage{po};
   uint32_t stage_counter{0u};
+
+  uint32_t init_PIs, init_POs, init_gates;
+  uint32_t min_PIs{0u}, min_POs{0u}, min_gates{0u};
 }; /* testcase_minimizer */
 
 } /* namespace mockturtle */
