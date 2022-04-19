@@ -41,6 +41,27 @@ namespace mockturtle
 {
 
 template<class Ntk>
+struct and_cost
+{
+public:
+  using cost = uint32_t;
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost )  const
+  {
+    /* dissipate cost */
+    if( ntk.is_and( n ) ) tot_cost += 1; /* add dissipate cost */
+    /* accumulate cost */
+    return 0; /* return accumulate cost */
+  }
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t>& fanin_cost ) const
+  {
+    /* dissipate cost */
+    if( ntk.is_and( n ) ) tot_cost += 1; /* add dissipate cost */
+    /* accumulate cost */
+    return 0; /* return accumulate cost */
+  }
+};
+
+template<class Ntk>
 struct unit_cost
 {
   uint32_t operator()( Ntk const& ntk, node<Ntk> const& node ) const
