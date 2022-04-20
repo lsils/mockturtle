@@ -240,7 +240,74 @@ private:
     }
     return std::nullopt;
   }
-
+  template<bool left_xor=false, bool right_xor=false>
+  std::optional<index_list_t> find_and_and_and_helper( std::vector<fanin_pair>& unate_pairs_1, std::vector<fanin_pair>& unate_pairs_2, uint32_t on_off )
+  {
+    for ( auto i = 0u; i < unate_pairs_1.size(); ++i )
+    {
+      fanin_pair const& pair1 = unate_pairs_1[i];
+      if ( pair1.score * 2 < num_bits[on_off] )
+      {
+        break;
+      }
+      for ( auto j = i + 1; j < unate_pairs_2.size(); ++j )
+      {
+        fanin_pair const& pair2 = unate_pairs_2[j];
+        if ( pair1.score + pair2.score < num_bits[on_off] )
+        {
+          break;
+        }
+        TT ntt1, ntt2;
+        if constexpr ( left_xor )
+        {
+          ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) )
+               ^ ( pair1.lit2 & 0x1 ? ~get_div( pair1.lit2 >> 1 ) : get_div( pair1.lit2 >> 1 ) );
+        }
+        else
+        {
+          ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) )
+               | ( pair1.lit2 & 0x1 ? get_div( pair1.lit2 >> 1 ) : ~get_div( pair1.lit2 >> 1 ) );
+        }
+        if constexpr ( right_xor )
+        {
+          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
+                ^ ( pair2.lit2 & 0x1 ? ~get_div( pair2.lit2 >> 1 ) : get_div( pair2.lit2 >> 1 ) );
+        }
+        else
+        {
+          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
+                | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
+        }
+        if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
+        {
+          index_list_t il;
+          il.clear();
+          il.add_inputs( divisors.size() - 1 );
+          uint32_t fanin_lit1, fanin_lit2;
+          if constexpr ( left_xor )
+          {
+            fanin_lit1 = il.add_xor( pair1.lit1, pair1.lit2 );
+          }
+          else
+          {
+            fanin_lit1 = il.add_and( pair1.lit1, pair1.lit2 );
+          }
+          if constexpr ( right_xor )
+          {
+            fanin_lit2 = il.add_xor( pair2.lit1, pair2.lit2 );
+          }
+          else
+          {
+            fanin_lit2 = il.add_and( pair2.lit1, pair2.lit2 );
+          }
+          uint32_t const output_lit = il.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
+          il.add_output( output_lit + on_off );
+          return il;
+        }
+      }
+    }
+    return std::nullopt;
+  }
   void prepare_clear()
   {
     pos_unate_lits.clear();
@@ -563,6 +630,163 @@ private:
     }
     return std::nullopt;
   }
+  std::optional<index_list_t> find_xor_xor_xor()
+  {
+    if ( has_xor_xor == false )
+    {
+      prepare_xor_xor();
+    }
+    for ( auto i = 1u; i < divisors.size(); i++ )
+    {
+      for ( auto j = i+1; j < divisors.size(); j++ )
+      {
+        auto const tt = get_div( i ) ^ get_div( j );
+        if ( mem_xor_xor.find( tt ) != mem_xor_xor.end() )
+        {
+          index_list_t il;
+          il.clear();
+          il.add_inputs( divisors.size() - 1 );
+          auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
+          auto new_lit2 = il.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
+          auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
+          il.add_output( new_lit3 );
+          return il;
+        }
+        if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
+        {
+          index_list_t il;
+          il.clear();
+          il.add_inputs( divisors.size() - 1 );
+          auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
+          auto new_lit2 = il.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
+          auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
+          il.add_output( new_lit3 );
+          return il;
+        }
+      }
+    }
+    return std::nullopt;
+  }
+  std::optional<index_list_t> find_xor_xor_and()
+  {
+    if ( has_xor_xor == false )
+    {
+      prepare_xor_xor();
+    }
+    for ( auto i = 1u; i < divisors.size(); i++ )
+    {
+      for ( auto j = i+1; j < divisors.size(); j++ )
+      {
+        for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
+        {
+          for ( auto on_off_2 = 0u; on_off_2 < 2; on_off_2++ )
+          {
+            auto const tt = ( on_off_1? ~get_div( i ) : get_div( i ) ) & ( on_off_2? ~get_div( j ) : get_div( j ) );
+            if ( mem_xor_xor.find( tt ) != mem_xor_xor.end() )
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto new_lit1 = il.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
+              auto new_lit2 = il.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
+              auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
+              il.add_output( new_lit3 );
+              return il;
+            }
+            if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto new_lit1 = il.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
+              auto new_lit2 = il.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
+              auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
+              il.add_output( new_lit3 );
+              return il;
+            }
+          }
+        }
+      }
+    }
+    return std::nullopt;
+  }
+  std::optional<index_list_t> find_xor_and_and()
+  {
+    if ( has_xor_and == false )
+    {
+      prepare_xor_and();
+    }
+    for ( auto i = 1u; i < divisors.size(); i++ )
+    {
+      for ( auto j = i+1; j < divisors.size(); j++ )
+      {
+        for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
+        {
+          for ( auto on_off_2 = 0u; on_off_2 < 2; on_off_2++ )
+          {
+            auto const tt = ( on_off_1? ~get_div( i ) : get_div( i ) ) & ( on_off_2? ~get_div( j ) : get_div( j ) );
+            if ( mem_xor_and.find( tt ) != mem_xor_and.end() )
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto new_lit1 = il.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2 );
+              auto new_lit2 = il.add_and( mem_xor_and[ tt ] % ( 2 * divisors.size() ), mem_xor_and[ tt ] / ( 2 * divisors.size() ) );
+              auto new_lit3 = il.add_xor( new_lit1, new_lit2 );
+              il.add_output( new_lit3 );
+              return il;
+            }
+            if ( mem_xor_and.find( ~tt ) != mem_xor_and.end() )
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto new_lit1 = il.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2 );
+              auto new_lit2 = il.add_and( mem_xor_and[ ~tt ] % ( 2 * divisors.size() ), mem_xor_and[ ~tt ] / ( 2 * divisors.size() ) );
+              auto new_lit3 = il.add_xor( new_lit1 ^ 0x1, new_lit2 );
+              il.add_output( new_lit3 );
+              return il;
+            }
+          }
+        }
+      }
+    }
+    return std::nullopt;
+  }
+  std::optional<index_list_t> find_and_and_and()
+  {
+    if ( has_and_pairs == false )
+    {
+      prepare_and_pairs();
+    }
+    auto ret = find_and_and_and_helper( pos_unate_pairs, pos_unate_pairs, 1 );
+    if ( !ret ) ret = find_and_and_and_helper( neg_unate_pairs, neg_unate_pairs, 0 );
+    return ret;
+  }
+  std::optional<index_list_t> find_and_and_xor()
+  {
+    if ( has_and_pairs == false )
+    {
+      prepare_and_pairs();
+    }
+    if ( has_xor_pairs == false )
+    {
+      prepare_xor_pairs();
+    }
+    auto ret = find_and_and_and_helper<true>( pos_unate_xor_pairs, pos_unate_pairs,  1 );
+    if ( !ret ) ret = find_and_and_and_helper<true>( neg_unate_xor_pairs, neg_unate_pairs,  0 );
+    return ret;
+  }
+  std::optional<index_list_t> find_and_xor_xor()
+  {
+    if ( has_xor_pairs == false )
+    {
+      prepare_xor_pairs();
+    }
+    auto ret = find_and_and_and_helper<true, true>( pos_unate_xor_pairs, pos_unate_xor_pairs, 1 );
+    if ( !ret ) ret = find_and_and_and_helper<true, true>( neg_unate_xor_pairs, neg_unate_xor_pairs, 0 );
+    return ret;
+  }
 public:
   explicit search_core( Ntk const& ntk, stats& st ) noexcept
     : ntk( ntk ), st( st )
@@ -587,13 +811,16 @@ public:
     prepare_clear();
 
     std::optional<index_list_t> il = find_wire(); if ( il ) return( *il ); /* searching constant is useless and cause error */
-    update_result( find_or()        );
-    update_result( find_and()       );
-    update_result( find_xor()       );
-    // update_result( find_and_and()   );
-    // update_result( find_or_and()    );
-    // update_result( find_and_xor()   );
-    // update_result( find_xor_xor()   );
+    update_result( find_or()          );
+    update_result( find_and()         );
+    update_result( find_xor()         );
+    update_result( find_and_and()     );
+    update_result( find_or_and()      );
+    update_result( find_and_xor()     );
+    update_result( find_xor_xor()     );
+    update_result( find_xor_xor_xor() );
+    update_result( find_xor_xor_and()   );
+    update_result( find_xor_and_and()   );
 
     return index_list;
   }

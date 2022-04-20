@@ -3,93 +3,93 @@
     "entries": [
       {
         "#Gate": 1020,
-        "#Gate'": 764,
+        "#Gate'": 637,
         "benchmark": "adder",
         "cec": true,
         "cost": 1020,
-        "cost'": 382,
-        "runtime": 0.498233824968338
+        "cost'": 255,
+        "runtime": 1.9912633895874023
       },
       {
         "#Gate": 3336,
-        "#Gate'": 3083,
+        "#Gate'": 3595,
         "benchmark": "bar",
         "cec": true,
         "cost": 3336,
-        "cost'": 2467,
-        "runtime": 2.030759334564209
+        "cost'": 1578,
+        "runtime": 10.323092460632324
       },
       {
         "#Gate": 57247,
-        "#Gate'": 40582,
+        "#Gate'": 40880,
         "benchmark": "div",
         "cec": true,
         "cost": 57247,
-        "cost'": 17861,
-        "runtime": 35.120338439941406
+        "cost'": 17604,
+        "runtime": 153.049560546875
       },
       {
         "#Gate": 214335,
-        "#Gate'": 205873,
+        "#Gate'": 187006,
         "benchmark": "hyp",
         "cec": true,
         "cost": 214335,
-        "cost'": 110221,
-        "runtime": 101.16807556152344
+        "cost'": 74996,
+        "runtime": 449.4901428222656
       },
       {
         "#Gate": 32060,
-        "#Gate'": 28712,
+        "#Gate'": 28983,
         "benchmark": "log2",
-        "cec": true,
+        "cec": false,
         "cost": 32060,
-        "cost'": 21608,
-        "runtime": 24.89898681640625
+        "cost'": 19352,
+        "runtime": 136.18223571777344
       },
       {
         "#Gate": 2865,
-        "#Gate'": 3207,
+        "#Gate'": 3259,
         "benchmark": "max",
         "cec": true,
         "cost": 2865,
-        "cost'": 2523,
-        "runtime": 1.0446869134902954
+        "cost'": 1775,
+        "runtime": 5.324706077575684
       },
       {
         "#Gate": 27062,
-        "#Gate'": 23523,
+        "#Gate'": 22638,
         "benchmark": "multiplier",
         "cec": true,
         "cost": 27062,
-        "cost'": 16684,
-        "runtime": 16.777294158935547
+        "cost'": 13836,
+        "runtime": 92.35803985595703
       },
       {
         "#Gate": 5416,
-        "#Gate'": 4979,
+        "#Gate'": 4850,
         "benchmark": "sin",
         "cec": false,
         "cost": 5416,
-        "cost'": 3631,
-        "runtime": 7.752805709838867
+        "cost'": 3221,
+        "runtime": 36.429813385009766
       },
       {
         "#Gate": 24618,
-        "#Gate'": 18152,
+        "#Gate'": 17051,
         "benchmark": "sqrt",
         "cec": true,
         "cost": 24618,
-        "cost'": 9079,
-        "runtime": 13.72708797454834
+        "cost'": 7042,
+        "runtime": 62.48662567138672
       },
       {
         "#Gate": 18484,
-        "#Gate'": 15424,
+        "#Gate'": 14142,
         "benchmark": "square",
         "cec": true,
         "cost": 18484,
-        "cost'": 8977,
-        "runtime": 10.365826606750488
+        "cost'": 6846,
+        "runtime": 45.92184066772461
       },
       {
         "#Gate": 11839,
@@ -98,88 +98,88 @@
         "cec": true,
         "cost": 11839,
         "cost'": 11839,
-        "runtime": 3.8894593715667725
+        "runtime": 30.122533798217773
       },
       {
         "#Gate": 693,
-        "#Gate'": 682,
+        "#Gate'": 730,
         "benchmark": "cavlc",
         "cec": true,
         "cost": 693,
-        "cost'": 501,
-        "runtime": 2.3529956340789795
+        "cost'": 461,
+        "runtime": 13.767563819885254
       },
       {
         "#Gate": 174,
-        "#Gate'": 121,
+        "#Gate'": 119,
         "benchmark": "ctrl",
         "cec": true,
         "cost": 174,
-        "cost'": 57,
-        "runtime": 0.6053758263587952
+        "cost'": 50,
+        "runtime": 3.117511510848999
       },
       {
         "#Gate": 304,
-        "#Gate'": 304,
+        "#Gate'": 332,
         "benchmark": "dec",
         "cec": true,
         "cost": 304,
-        "cost'": 292,
-        "runtime": 2.936858892440796
+        "cost'": 278,
+        "runtime": 19.641191482543945
       },
       {
         "#Gate": 1342,
-        "#Gate'": 1263,
+        "#Gate'": 1265,
         "benchmark": "i2c",
         "cec": true,
         "cost": 1342,
-        "cost'": 1172,
-        "runtime": 0.4347544312477112
+        "cost'": 1078,
+        "runtime": 2.661472797393799
       },
       {
         "#Gate": 260,
-        "#Gate'": 247,
+        "#Gate'": 251,
         "benchmark": "int2float",
         "cec": true,
         "cost": 260,
-        "cost'": 196,
-        "runtime": 0.23468390107154846
+        "cost'": 183,
+        "runtime": 1.7316811084747314
       },
       {
         "#Gate": 46836,
-        "#Gate'": 45485,
+        "#Gate'": 45891,
         "benchmark": "mem_ctrl",
         "cec": true,
         "cost": 46836,
-        "cost'": 40420,
-        "runtime": 25.25750732421875
+        "cost'": 37085,
+        "runtime": 127.72382354736328
       },
       {
         "#Gate": 978,
-        "#Gate'": 760,
+        "#Gate'": 866,
         "benchmark": "priority",
         "cec": true,
         "cost": 978,
-        "cost'": 753,
-        "runtime": 0.5365738868713379
+        "cost'": 639,
+        "runtime": 2.4143006801605225
       },
       {
         "#Gate": 257,
-        "#Gate'": 245,
+        "#Gate'": 246,
         "benchmark": "router",
         "cec": true,
         "cost": 257,
-        "cost'": 166,
-        "runtime": 0.09611600637435913
+        "cost'": 165,
+        "runtime": 0.5392935276031494
       },
       {
         "#Gate": 13758,
-        "#Gate'": 8115,
+        "#Gate'": 7489,
         "benchmark": "voter",
-        "cec": true,
+        "cec": false,
         "cost": 13758,
-        "cost'": 3797,
-        "runtime": 8.446742057800293
+        "cost'": 3125,
+        "runtime": 37.87561798095703
       }
     ],
     "version": "e8009a0"
