@@ -1,12 +1,12 @@
 #include <catch.hpp>
 
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/generators/random_logic_generator.hpp>
+#include <mockturtle/generators/random_network.hpp>
 #include <mockturtle/io/write_verilog.hpp>
 
 using namespace mockturtle;
 
-TEST_CASE( "create random aig_network", "[random_logic_generator]" )
+TEST_CASE( "create random aig_network", "[random_network_generator]" )
 {
   uint64_t const num_pis{4u};
   uint64_t const num_gates{100u};
@@ -18,7 +18,7 @@ TEST_CASE( "create random aig_network", "[random_logic_generator]" )
   CHECK( aig.num_gates() == num_gates );
 }
 
-TEST_CASE( "create random aig_network2", "[random_logic_generator]" )
+TEST_CASE( "create random aig_network2", "[random_network_generator]" )
 {
   uint64_t const num_pis{4u};
   uint64_t const num_pos{3u};
@@ -34,7 +34,7 @@ TEST_CASE( "create random aig_network2", "[random_logic_generator]" )
   CHECK( aig2.num_pos() == num_pos );
 }
 
-TEST_CASE( "create random mig_network", "[random_logic_generator]" )
+TEST_CASE( "create random mig_network", "[random_network_generator]" )
 {
   uint64_t const num_pis{4u};
   uint64_t const num_gates{100u};
@@ -46,7 +46,7 @@ TEST_CASE( "create random mig_network", "[random_logic_generator]" )
   CHECK( mig.num_gates() == 100u );
 }
 
-TEST_CASE( "create random mig_network with un-real majority nodes", "[random_logic_generator]" )
+TEST_CASE( "create random mig_network with un-real majority nodes", "[random_network_generator]" )
 {
   uint64_t const num_pis{4u};
   uint64_t const num_gates{100u};
