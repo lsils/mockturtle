@@ -40,6 +40,9 @@
 namespace mockturtle
 {
 
+template<typename CostFn>
+using cost = typename CostFn::cost;
+
 template<class Ntk>
 struct and_cost
 {

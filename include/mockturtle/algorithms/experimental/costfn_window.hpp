@@ -42,6 +42,7 @@
 #include "../../networks/aig.hpp"
 #include "boolean_optimization.hpp"
 #include "costfn_resyn.hpp"
+#include "search_core.hpp"
 #include "../detail/resub_utils.hpp"
 #include "../simulation.hpp"
 #include "../dont_cares.hpp"
@@ -261,8 +262,8 @@ public:
       }
     });
 
+    /* compute cost */
     win.max_cost = ntk.get_cost( n, win.divs );
-    assert( win.max_cost == win.mffc_size );
 
     st.num_windows++;
     st.num_leaves += leaves.size();
@@ -372,7 +373,7 @@ public:
   using stats_t = typename ResynEngine::stats;
 
   explicit costfn_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), engine( st )
+    : ntk( ntk ), engine( ntk, st )
   {
     static_assert( has_cost_v<Ntk>, "Ntk does not implement the get_cost method" );
   }
@@ -382,8 +383,7 @@ public:
 
   std::optional<res_t> operator()( problem_t& prob )
   {
-    return std::nullopt; /* for debug */
-    return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_cost );
+    return engine( prob.tts.back(), prob.care, prob.divs, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_cost );
   }
 
 private:
@@ -395,7 +395,7 @@ private:
 } /* namespace detail */
 
 using cost_aware_params = boolean_optimization_params<costfn_windowing_params, null_params>;
-using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, xag_costfn_resyn_stats>;
+using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, search_core_stats>;
 
 template<class Ntk, class CostFn>
 void cost_aware_optimization( Ntk& ntk, CostFn cost_fn, cost_aware_params const& ps, cost_aware_stats* pst = nullptr )
@@ -404,7 +404,7 @@ void cost_aware_optimization( Ntk& ntk, CostFn cost_fn, cost_aware_params const&
   using Viewed = decltype( viewed );
   using TT = typename kitty::dynamic_truth_table;
   using windowing_t = typename detail::costfn_windowing<Viewed, TT>;
-  using engine_t = cost_aware_engine<TT, CostFn, xag_cost_aware_resyn_static_params<TT>>;
+  using engine_t = search_core<Viewed, TT>;
   using resyn_t = typename detail::costfn_resynthesis<Viewed, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<Viewed, windowing_t, resyn_t>;
 

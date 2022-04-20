@@ -53,9 +53,6 @@ using signal = typename Ntk::signal;
 template<typename Ntk>
 using node = typename Ntk::node;
 
-template<typename CostFn>
-using cost = typename CostFn::cost;
-
 template<class Ntk, class = void>
 struct is_network_type : std::false_type
 {

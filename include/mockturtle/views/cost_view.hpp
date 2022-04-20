@@ -52,7 +52,7 @@ struct cost_view_params
 
 /*! \brief Implements `get_cost` methods for networks.
  */
-template<class Ntk, class NodeCostFn, class cost_t, bool has_cost_interface = has_cost_v<Ntk>>
+template<class Ntk, class NodeCostFn = and_cost<Ntk>, class cost_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
 class cost_view
 {
 };
@@ -74,6 +74,7 @@ public:
   using storage = typename Ntk::storage;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
+  using costfn_t = NodeCostFn;
 
   explicit cost_view( NodeCostFn const& cost_fn = {}, cost_view_params const& ps = {} )
     : Ntk()
@@ -87,6 +88,8 @@ public:
     static_assert( has_visited_v<Ntk>, "Ntk does not implement the visited method" );
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   /*! \brief Standard constructor.
@@ -107,6 +110,7 @@ public:
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
 
     update_cost();
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   /*! \brief Copy constructor. */
@@ -116,10 +120,14 @@ public:
     , _cost_val( other._cost_val )
     , _cost_fn( other._cost_fn )
   {
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   cost_view<Ntk, NodeCostFn, cost_t, false>& operator=( cost_view<Ntk, NodeCostFn, cost_t, false> const& other )
   {
+    /* delete the event of this network */
+    Ntk::events().release_add_event( add_event );
+
     /* update the base class */
     this->_storage = other._storage;
     this->_events = other._events;
@@ -129,7 +137,14 @@ public:
     _cost_val = other._cost_val;
     _cost_fn = other._cost_fn;
 
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+
     return *this;
+  }
+
+  ~cost_view()
+  {
+    Ntk::events().release_add_event( add_event );
   }
 
   /**
@@ -138,7 +153,7 @@ public:
    * @param n 
    * @return cost_t 
    */
-  cost_t get_accumulate_cost( node const& n ) const
+  cost_t get_cost_val( node const& n ) const
   {
     return _cost_val[n];
   }
@@ -190,7 +205,7 @@ public:
     return tmp_cost;
   }
 
-  void set_cost_val( node const& n, uint32_t cost_val )
+  void set_cost_val( node const& n, cost_t cost_val )
   {
     _cost_val[n] = cost_val;
   }
@@ -200,6 +215,39 @@ public:
     _cost_val.reset( 0 );
     this->incr_trav_id();
     compute_cost();
+  }
+
+  void on_add( node const& n )
+  {
+    _cost_val.resize();
+
+    uint32_t level{0};
+    this->foreach_fanin( n, [&]( auto const& f ) {
+      // not implemented
+    } );
+
+    _cost_val[n] = _cost_fn( *this, n, _cost );
+  }
+  signal create_pi( cost_t pi_cost )
+  {
+    signal s = Ntk::create_pi();
+    _cost_val.resize();
+    set_cost_val( this->get_node( s ), pi_cost );
+    return s;
+  }
+
+  /**
+   * @brief Create a pi
+   * this is required by the cleanup_dangling method
+   * @return signal 
+   */
+  signal create_pi()
+  {
+    return Ntk::create_pi();
+  }
+  signal create_pi( std::string name )
+  {
+    return Ntk::create_pi( name );
   }
 
   void create_po( signal const& f )
@@ -243,10 +291,13 @@ private:
   node_map<cost_t, Ntk> _cost_val;
   uint32_t _cost;
   NodeCostFn _cost_fn;
+
+  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
+
 };
 
-// template<class T>
-// cost_view( T const& )->cost_view<T>;
+template<class T, class NodeCostFn>
+cost_view( T const& )->cost_view<T, NodeCostFn>;
 
 template<class T, class NodeCostFn>
 cost_view( T const&, NodeCostFn const& )->cost_view<T, NodeCostFn, cost<NodeCostFn>>;
