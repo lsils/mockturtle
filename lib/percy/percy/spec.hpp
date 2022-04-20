@@ -372,14 +372,7 @@ namespace percy
 
             void add_primitive( kitty::dynamic_truth_table const& tt )
             {
-              if ( kitty::is_normal( tt ) )
-              {
-                compiled_primitives.push_back( tt );
-              }
-              else
-              {
-                compiled_primitives.push_back( ~tt ); 
-              }
+              compiled_primitives.push_back( tt );
             }
 
             bool is_primitive_set() const
