@@ -91,7 +91,7 @@ public:
     {
       _cost = std::max( _cost, fanin_cost );
     }
-    _cost += ntk.is_and( n );
+    _cost += ntk.is_and( n ); // and depth
 
     /* dissipate cost */
     if( ntk.fanout( n ).size() == 0 ) tot_cost = std::max( tot_cost, _cost ); /* update dissipate cost */
@@ -115,7 +115,7 @@ public:
     _cost += ntk.is_and( n );
 
     /* dissipate cost */
-    if( ntk.fanout( n ).size() == 0 ) tot_cost += _cost; /* update dissipate cost */
+    if( ntk.is_and( n ) ) tot_cost += _cost; /* update dissipate cost */
     return _cost; /* return accumulate cost */
   }
 };

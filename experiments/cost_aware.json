@@ -3,113 +3,113 @@
     "entries": [
       {
         "#Gate": 1020,
-        "#Gate'": 763,
+        "#Gate'": 637,
         "Depth": 255,
-        "Depth'": 256,
+        "Depth'": 382,
         "benchmark": "adder",
         "cec": true,
-        "cost": 16641,
-        "cost'": 16130,
-        "runtime": 2.3659636974334717
+        "cost": 1020,
+        "cost'": 255,
+        "runtime": 2.2158377170562744
       },
       {
         "#Gate": 3336,
-        "#Gate'": 3272,
+        "#Gate'": 3595,
         "Depth": 12,
-        "Depth'": 13,
+        "Depth'": 20,
         "benchmark": "bar",
         "cec": true,
-        "cost": 1536,
-        "cost'": 704,
-        "runtime": 10.553009033203125
+        "cost": 3336,
+        "cost'": 1578,
+        "runtime": 10.990804672241211
       },
       {
         "#Gate": 57247,
-        "#Gate'": 57216,
+        "#Gate'": 40882,
         "Depth": 4372,
-        "Depth'": 4372,
+        "Depth'": 6368,
         "benchmark": "div",
         "cec": true,
-        "cost": 282443,
-        "cost'": 282438,
-        "runtime": 135.8080291748047
+        "cost": 57247,
+        "cost'": 17603,
+        "runtime": 167.9237060546875
       },
       {
         "#Gate": 214335,
-        "#Gate'": 214329,
+        "#Gate'": 177388,
         "Depth": 24801,
-        "Depth'": 24800,
+        "Depth'": 29405,
         "benchmark": "hyp",
         "cec": true,
-        "cost": 24801,
-        "cost'": 24800,
-        "runtime": 443.9416198730469
+        "cost": 214335,
+        "cost'": 74994,
+        "runtime": 486.0387268066406
       },
       {
         "#Gate": 32060,
-        "#Gate'": 32049,
+        "#Gate'": 28969,
         "Depth": 444,
-        "Depth'": 445,
+        "Depth'": 557,
         "benchmark": "log2",
         "cec": true,
-        "cost": 13059,
-        "cost'": 12995,
-        "runtime": 135.2647705078125
+        "cost": 32060,
+        "cost'": 19357,
+        "runtime": 147.81385803222656
       },
       {
         "#Gate": 2865,
-        "#Gate'": 2866,
+        "#Gate'": 3259,
         "Depth": 287,
-        "Depth'": 287,
+        "Depth'": 306,
         "benchmark": "max",
         "cec": true,
-        "cost": 37022,
-        "cost'": 36893,
-        "runtime": 4.560802936553955
+        "cost": 2865,
+        "cost'": 1775,
+        "runtime": 5.746312618255615
       },
       {
         "#Gate": 27062,
-        "#Gate'": 27026,
+        "#Gate'": 22638,
         "Depth": 274,
-        "Depth'": 274,
+        "Depth'": 389,
         "benchmark": "multiplier",
         "cec": true,
-        "cost": 18445,
-        "cost'": 18093,
-        "runtime": 73.37117767333984
+        "cost": 27062,
+        "cost'": 13836,
+        "runtime": 98.8019790649414
       },
       {
         "#Gate": 5416,
-        "#Gate'": 5391,
+        "#Gate'": 4824,
         "Depth": 225,
-        "Depth'": 225,
+        "Depth'": 265,
         "benchmark": "sin",
         "cec": true,
-        "cost": 4930,
-        "cost'": 4886,
-        "runtime": 42.06809997558594
+        "cost": 5416,
+        "cost'": 3221,
+        "runtime": 39.04021453857422
       },
       {
         "#Gate": 24618,
-        "#Gate'": 24609,
+        "#Gate'": 17051,
         "Depth": 5058,
-        "Depth'": 5057,
+        "Depth'": 6212,
         "benchmark": "sqrt",
         "cec": true,
-        "cost": 5058,
-        "cost'": 5057,
-        "runtime": 55.23855972290039
+        "cost": 24618,
+        "cost'": 7042,
+        "runtime": 68.66506958007813
       },
       {
         "#Gate": 18484,
-        "#Gate'": 18235,
+        "#Gate'": 14142,
         "Depth": 250,
-        "Depth'": 250,
+        "Depth'": 368,
         "benchmark": "square",
         "cec": true,
-        "cost": 16032,
-        "cost'": 15740,
-        "runtime": 45.63660430908203
+        "cost": 18484,
+        "cost'": 6846,
+        "runtime": 51.851566314697266
       },
       {
         "#Gate": 11839,
@@ -118,108 +118,108 @@
         "Depth'": 87,
         "benchmark": "arbiter",
         "cec": true,
-        "cost": 11143,
-        "cost'": 11143,
-        "runtime": 29.72673797607422
+        "cost": 11839,
+        "cost'": 11839,
+        "runtime": 31.376680374145508
       },
       {
         "#Gate": 693,
-        "#Gate'": 691,
+        "#Gate'": 724,
         "Depth": 16,
-        "Depth'": 16,
+        "Depth'": 22,
         "benchmark": "cavlc",
         "cec": true,
-        "cost": 142,
-        "cost'": 142,
-        "runtime": 22.79218292236328
+        "cost": 693,
+        "cost'": 453,
+        "runtime": 14.989338874816895
       },
       {
         "#Gate": 174,
-        "#Gate'": 128,
+        "#Gate'": 119,
         "Depth": 10,
-        "Depth'": 10,
+        "Depth'": 17,
         "benchmark": "ctrl",
         "cec": true,
-        "cost": 188,
-        "cost'": 129,
-        "runtime": 3.124588966369629
+        "cost": 174,
+        "cost'": 50,
+        "runtime": 3.7402408123016357
       },
       {
         "#Gate": 304,
-        "#Gate'": 304,
+        "#Gate'": 332,
         "Depth": 3,
-        "Depth'": 3,
+        "Depth'": 10,
         "benchmark": "dec",
         "cec": true,
-        "cost": 768,
-        "cost'": 768,
-        "runtime": 23.350736618041992
+        "cost": 304,
+        "cost'": 278,
+        "runtime": 20.7202091217041
       },
       {
         "#Gate": 1342,
-        "#Gate'": 1338,
+        "#Gate'": 1265,
         "Depth": 20,
         "Depth'": 20,
         "benchmark": "i2c",
         "cec": true,
-        "cost": 934,
-        "cost'": 934,
-        "runtime": 2.708674192428589
+        "cost": 1342,
+        "cost'": 1078,
+        "runtime": 2.8601019382476807
       },
       {
         "#Gate": 260,
-        "#Gate'": 259,
+        "#Gate'": 251,
         "Depth": 16,
-        "Depth'": 16,
+        "Depth'": 17,
         "benchmark": "int2float",
         "cec": true,
-        "cost": 74,
-        "cost'": 74,
-        "runtime": 1.894058108329773
+        "cost": 260,
+        "cost'": 183,
+        "runtime": 2.470900535583496
       },
       {
         "#Gate": 46836,
-        "#Gate'": 46814,
+        "#Gate'": 45853,
         "Depth": 114,
-        "Depth'": 114,
+        "Depth'": 183,
         "benchmark": "mem_ctrl",
         "cec": true,
-        "cost": 22315,
-        "cost'": 21854,
-        "runtime": 120.04859161376953
+        "cost": 46836,
+        "cost'": 37001,
+        "runtime": 139.7954559326172
       },
       {
         "#Gate": 978,
-        "#Gate'": 979,
+        "#Gate'": 866,
         "Depth": 250,
-        "Depth'": 250,
+        "Depth'": 247,
         "benchmark": "priority",
         "cec": true,
-        "cost": 564,
-        "cost'": 563,
-        "runtime": 2.579982280731201
+        "cost": 978,
+        "cost'": 639,
+        "runtime": 2.8553898334503174
       },
       {
         "#Gate": 257,
-        "#Gate'": 257,
+        "#Gate'": 246,
         "Depth": 54,
-        "Depth'": 54,
+        "Depth'": 73,
         "benchmark": "router",
         "cec": true,
-        "cost": 107,
-        "cost'": 107,
-        "runtime": 0.6821959018707275
+        "cost": 257,
+        "cost'": 165,
+        "runtime": 0.5650122165679932
       },
       {
         "#Gate": 13758,
-        "#Gate'": 12770,
+        "#Gate'": 7435,
         "Depth": 70,
-        "Depth'": 69,
+        "Depth'": 74,
         "benchmark": "voter",
         "cec": true,
-        "cost": 70,
-        "cost'": 69,
-        "runtime": 40.47576141357422
+        "cost": 13758,
+        "cost'": 3125,
+        "runtime": 41.914615631103516
       }
     ],
     "version": "e8009a0"

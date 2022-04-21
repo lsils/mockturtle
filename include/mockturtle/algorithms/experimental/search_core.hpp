@@ -115,8 +115,8 @@ private:
     if ( curr_cost < best_cost )
     {
       best_cost = curr_cost;
-      index_list = il;
-      return false;
+      index_list = *il;
+      return true;
     }
     return false;
   }
@@ -165,7 +165,7 @@ private:
     });
   }
 
-  std::optional<index_list_t> find_and_detail( std::vector<unate_lit>& unate_lits, uint32_t on_off )
+  std::optional<index_list_t> find_and_detail( std::vector<unate_lit> const& unate_lits, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_lits.size(); ++i )
     {
@@ -352,25 +352,25 @@ private:
     {
       bool unateness[4] = {false, false, false, false};
       /* check intersection with off-set */
-      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[0] ) )
+      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div( v ), on_off_sets[0] ) )
       {
         pos_unate_lits.emplace_back( v << 1 );
         unateness[0] = true;
       }
-      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[0] ) )
+      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div( v ), on_off_sets[0] ) )
       {
-        pos_unate_lits.emplace_back( v << 1 | 0x1 );
+        pos_unate_lits.emplace_back( ( v << 1 ) | 0x1 );
         unateness[1] = true;
       }
       /* check intersection with on-set */
-      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[1] ) )
+      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div( v ), on_off_sets[1] ) )
       {
         neg_unate_lits.emplace_back( v << 1 );
         unateness[2] = true;
       }
-      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[1] ) )
+      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div( v ), on_off_sets[1] ) )
       {
-        neg_unate_lits.emplace_back( v << 1 | 0x1 );
+        neg_unate_lits.emplace_back( ( v << 1 ) | 0x1 );
         unateness[3] = true;
       }
       /* useless unate literal */
@@ -829,6 +829,9 @@ public:
     update_result( find_xor_xor_xor()   );
     update_result( find_xor_xor_and()   );
     update_result( find_xor_and_and()   );
+    update_result( find_and_and_and()   );
+    update_result( find_and_and_xor()   );
+    update_result( find_and_xor_xor()   );
 
     return index_list;
   }

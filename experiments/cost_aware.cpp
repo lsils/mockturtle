@@ -3,6 +3,7 @@
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/algorithms/experimental/costfn_window.hpp>
 #include <mockturtle/algorithms/experimental/costfn_resyn.hpp>
+#include <mockturtle/algorithms/experimental/window_resub.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/testcase_minimizer.hpp>
@@ -29,17 +30,16 @@ int main()
     assert( result == lorina::return_code::success ); (void)result;
 
     fanout_view ntk( xag );
-    auto costfn = and_adp<decltype( ntk )>();
-
+    auto costfn = and_cost<decltype( ntk )>();
     ngate = ntk.num_gates();
     cost = cost_view( ntk, costfn ).get_cost();
     depth = depth_view( ntk ).depth();
 
     cost_aware_params ps;
     cost_aware_stats st;
-
+    // window_xag_heuristic_resub( xag );
     cost_aware_optimization( ntk, costfn, ps, &st );
-    ntk = cleanup_dangling( ntk );
+    xag = cleanup_dangling( xag );    
 
     run_time = to_seconds( st.time_total );
 
