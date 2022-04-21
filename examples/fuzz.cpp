@@ -5,16 +5,15 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/views/color_view.hpp>
+#include <mockturtle/utils/debugging_utils.hpp>
 
 // algorithm under test
 #include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 
 // fuzzer
-#include <mockturtle/utils/debugging_utils.hpp>
 #include <mockturtle/algorithms/network_fuzz_tester.hpp>
-#include <mockturtle/generators/random_logic_generator.hpp>
-#include <lorina/lorina.hpp>
+#include <mockturtle/generators/random_network.hpp>
 
 // cec
 #include <mockturtle/algorithms/equivalence_checking.hpp>
@@ -30,25 +29,30 @@ int main()
 
     cut_rewriting_params ps;
     ps.cut_enumeration_ps.cut_size = 4;
-    aig = cut_rewriting( aig, resyn, ps );
+    cut_rewriting_with_compatibility_graph( aig, resyn, ps );
 
-    color_view caig{aig};
-    if ( !network_is_acyclic( caig ) )
+    if ( !network_is_acyclic( color_view{aig} ) )
+    {
       return false;
+    }
+    aig = cleanup_dangling( aig );
 
     return *equivalence_checking( *miter<aig_network>( aig_copy, aig ) );
   };
 
-  fuzz_tester_params ps;
-  ps.num_iterations_step = 1000;
-  ps.num_pis_max = 100;
-  ps.num_gates_max = 1000;
-  ps.file_format = fuzz_tester_params::aiger;
-  ps.filename = "fuzz.aig";
+  random_network_generator_params_composed ps_gen;
+  ps_gen.num_networks_per_configuration = 100000;
+  ps_gen.min_num_gates_component = 4u;
+  ps_gen.max_num_gates_component = 4u;
+  ps_gen.num_pis = 3u;
+  auto gen = random_aig_generator( ps_gen );
 
-  auto gen = default_random_aig_generator();
-  network_fuzz_tester<aig_network, decltype(gen)> fuzzer( gen, ps );
-  fuzzer.run_incremental( opt );
+  fuzz_tester_params ps_fuzz;
+  ps_fuzz.file_format = fuzz_tester_params::aiger;
+  ps_fuzz.filename = "fuzz_crw_cg.aig";
+
+  network_fuzz_tester<aig_network, decltype(gen)> fuzzer( gen, ps_fuzz );
+  fuzzer.run( opt );
 
   return 0;
 }
