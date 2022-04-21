@@ -180,7 +180,8 @@ struct random_network_generator_params_topology
  * or nodes in the previous components.
  *
  * After generating `num_networks_per_configuration` networks,
- * `num_components` is increased by 1.
+ * `num_components` is increased by `num_components_increment`
+ * and `num_pis` is increased by `num_pis_increment`.
  */
 struct random_network_generator_params_composed
 {
@@ -199,13 +200,14 @@ struct random_network_generator_params_composed
   /*! \brief Number of components to start with. */
   uint32_t num_components{2u};
 
-  /*! \brief Minimum ratio of (#PIs/#inputs of the first DAG).
-   * Lower ratio makes more reconvergences. */
-  float min_PI_ratio{0.5};
+  /*! \brief Number of PIs to start with. */
+  uint32_t num_pis{4u};
 
-  /*! \brief Maximum ratio of (#PIs/#inputs of the first DAG).
-   * Higher ratio makes it more likely to have independent sub-graphs. */
-  float max_PI_ratio{1.0};
+  /*! \brief Number of components to increment at each step. */
+  uint32_t num_components_increment{1u};
+
+  /*! \brief Number of PIs to increment at each step. */
+  uint32_t num_pis_increment{2u};
 }; /* random_network_generator_params_composed */
 
 namespace detail
@@ -575,6 +577,148 @@ private:
   uint32_t _ith_dag;
   std::uniform_int_distribution<uint32_t> _num_pis_dist, _rule_dist;
 }; /* random_network_generator<Ntk, random_network_generator_params_topology> */
+
+template<typename Ntk>
+class random_network_generator<Ntk, random_network_generator_params_composed>
+{
+public:
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+  using rand_engine_t = std::mt19937;
+  using rules_t = std::vector<typename detail::create_gate_rule<Ntk>>;
+  using params_t = random_network_generator_params_composed;
+
+private: /* common data members */
+  rules_t const _gens;
+  params_t const _ps;
+  rand_engine_t _rng;
+
+public:
+  explicit random_network_generator( rules_t const &gens, params_t ps = {} )
+    : _gens( gens ), _ps( ps ), _rng( static_cast<rand_engine_t::result_type>( ps.seed ) ),
+      _counter( 0u ), _num_components( ps.num_components ), _num_pis( ps.num_pis ),
+      _rule_dist( 0, _gens.size() - 1u )
+  {
+    prepare_partial_dags();
+    _dag_dist = std::uniform_int_distribution<uint32_t>( 0, _dags.size() - 1u );
+  }
+
+  Ntk generate()
+  {
+    std::vector<signal> fs;
+    Ntk ntk;
+
+    /* generate constant */
+    fs.emplace_back( ntk.get_constant( false ) );
+
+    /* generate pis */
+    for ( auto i = 0u; i < _num_pis; ++i )
+    {
+      fs.emplace_back( ntk.create_pi() );
+    }
+
+    /* generate gates */
+    for ( auto i = 0u; i < _num_components; ++i )
+    {
+      concretize( ntk, _dags.at( _dag_dist( _rng ) ), fs );
+      //concretize( ntk, _dags.at( 3 ), fs ); // [3] in 4-gate topologies: diamond
+    }
+
+    /* generate pos */
+    ntk.foreach_gate( [&]( auto const& n ){
+      if ( ntk.fanout_size( n ) == 0u )
+      {
+        ntk.create_po( ntk.make_signal( n ) );
+      }
+    });
+    
+    if ( ++_counter >= _ps.num_networks_per_configuration )
+    {
+      _counter = 0;
+      _num_components += _ps.num_components_increment;
+      _num_pis += _ps.num_pis_increment;
+    }
+
+    return ntk;
+  }
+
+private:
+  void concretize( Ntk& ntk, percy::partial_dag& pd, std::vector<signal>& fs )
+  {
+    uint32_t num_existing = ntk.size() - 1u;
+    std::uniform_int_distribution<uint32_t> dist( 1u, num_existing );
+    //std::uniform_int_distribution<uint32_t> dist( 1u, _num_pis );
+
+    pd.foreach_vertex( [&]( auto const& v, auto i ){
+      uint32_t size_before = ntk.num_gates();
+      signal g;
+
+      do
+      {
+        auto const r = _gens.at( _rule_dist( _rng ) );
+        std::vector<signal> args;
+
+        for ( auto fi : v )
+        {
+          bool const inv = _rng() & 1;
+          if ( fi == percy::FANIN_PI )
+          {
+            auto const& a = fs.at( dist( _rng ) );
+            args.emplace_back( inv ? !a : a );
+          }
+          else
+          {
+            assert( fi >= 1 && num_existing + fi < fs.size() );
+            auto const& a = fs.at( num_existing + fi );
+            args.emplace_back( inv ? !a : a );
+          }
+        }
+
+        g = r.func( ntk, args );
+      } while ( ntk.num_gates() == size_before );
+
+      fs.emplace_back( g );
+      assert( ntk.size() == fs.size() );
+    });
+  }
+
+  void prepare_partial_dags()
+  {
+    for ( auto num = _ps.min_num_gates_component; num <= _ps.max_num_gates_component; ++num )
+    {
+      prepare_partial_dags( num );
+    }
+  }
+
+  void prepare_partial_dags( uint32_t num_gates )
+  {
+    using namespace percy;
+    
+    partial_dag g;
+    partial_dag_generator gen(num_gates);
+    std::set<std::vector<graph>> can_reprs;
+    pd_iso_checker checker(num_gates);
+
+    gen.set_callback([&](partial_dag_generator* gen) {
+        for (int i = 0; i < gen->nr_vertices(); i++) {
+            g.set_vertex(i, gen->_js[i], gen->_ks[i]);
+        }
+        const auto can_repr = checker.crepr(g);
+        const auto res = can_reprs.insert(can_repr);
+        if (res.second)
+            _dags.push_back(g);
+    });
+    gen.gen_type(partial_gen_type::GEN_COLEX);
+    g.reset(2, num_gates);
+    gen.count_dags();
+  }
+
+private:
+  uint32_t _counter;
+  uint32_t _num_components, _num_pis;
+  std::vector<percy::partial_dag> _dags;
+  std::uniform_int_distribution<uint32_t> _rule_dist, _dag_dist;
+}; /* random_network_generator<Ntk, random_network_generator_params_composed> */
 
 /*! \brief Generates a random AIG network */
 template<typename GenParams = random_network_generator_params_size>
