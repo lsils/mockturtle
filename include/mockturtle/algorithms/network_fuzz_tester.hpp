@@ -126,13 +126,13 @@ public:
   {}
 
 #ifndef _MSC_VER
-  bool run( std::function<std::string(std::string const&)>&& make_command )
+  uint64_t run( std::function<std::string(std::string const&)>&& make_command )
   {
     return run( make_callback( make_command ) );
   }
 #endif
 
-  bool run( std::function<bool(Ntk)>&& fn )
+  uint64_t run( std::function<bool(Ntk)>&& fn )
   {
     uint64_t counter{0};
     while ( !ps.num_iterations || counter < ps.num_iterations )
@@ -151,22 +151,22 @@ public:
           break;
         default:
           fmt::print( "[w] unsupported format\n" );
-          return false;
+          return 0;
       }
 
       /* run optimization algorithm */
       if ( !fn( ntk ) )
       {
-        return true;
+        return counter;
       }
 
       if ( ps.outputfile )
       {
         if ( !abc_cec() )
-          return true;
+          return counter;
       }
     }
-    return false;
+    return 0;
   }
 
 private:
