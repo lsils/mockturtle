@@ -4,7 +4,7 @@
 
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/algorithms/network_fuzz_tester.hpp>
-#include <mockturtle/generators/random_logic_generator.hpp>
+#include <mockturtle/generators/random_network.hpp>
 
 using namespace mockturtle;
 
@@ -20,19 +20,21 @@ int main( int argc, char* argv[] )
     return -1;
   }
 
+  std::string commands( argv[1] );
   auto fn = [&]( std::string const& filename ) -> std::string {
-    return "abc -c \"read " + filename + "; " + std::string( argv[1] ) + "; write fuzz_opt.aig\"";
+    return "abc -c \"read " + filename + "; " + commands + "; write fuzz_opt.aig\"";
   };
 
-  fuzz_tester_params ps;
-  ps.num_gates_max = 500;
-  ps.file_format = fuzz_tester_params::aiger;
-  ps.filename = "fuzz.aig";
-  ps.outputfile = "fuzz_opt.aig";
+  random_network_generator_params_composed ps_gen;
+  auto gen = random_aig_generator( ps_gen );
 
-  auto gen = default_random_aig_generator();
-  network_fuzz_tester<aig_network, decltype(gen)> fuzzer( gen, ps );
-  fuzzer.run_incremental( fn );
+  fuzz_tester_params ps_fuzz;
+  ps_fuzz.file_format = fuzz_tester_params::aiger;
+  ps_fuzz.filename = "fuzz.aig";
+  ps_fuzz.outputfile = "fuzz_opt.aig";
+
+  network_fuzz_tester<aig_network, decltype(gen)> fuzzer( gen, ps_fuzz );
+  fuzzer.run( fn );
 #endif
 
   return 0;
