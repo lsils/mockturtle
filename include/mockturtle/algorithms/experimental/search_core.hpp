@@ -102,8 +102,11 @@ private:
   {
     Ntk tmp;
     decode( tmp, il );
-    tmp.update_cost();
-    return tmp.get_cost(); // the cost of the whole network
+    tmp.incr_trav_id();
+    tmp.foreach_pi( [&]( auto const& n, auto i ){
+      tmp.set_cost_val( n, div_costs[i] );
+    } );
+    return tmp.get_tmp_cost(); // the cost of the whole network
   }
   bool update_result( std::optional<index_list_t> il )
   {
@@ -806,19 +809,24 @@ public:
       divisors.emplace_back( *begin );
       ++begin;
     }
+    div_costs.clear();
+    for( signal div : divs )
+    {
+      div_costs.emplace_back( ntk.get_cost_val( ntk.get_node( div ) ) );
+    }
 
     best_cost = max_cost; // upper bound
     prepare_clear();
 
     std::optional<index_list_t> il = find_wire(); if ( il ) return( *il ); /* searching constant is useless and cause error */
-    update_result( find_or()          );
-    update_result( find_and()         );
-    update_result( find_xor()         );
-    update_result( find_and_and()     );
-    update_result( find_or_and()      );
-    update_result( find_and_xor()     );
-    update_result( find_xor_xor()     );
-    update_result( find_xor_xor_xor() );
+    update_result( find_or()            );
+    update_result( find_and()           );
+    update_result( find_xor()           );
+    update_result( find_and_and()       );
+    update_result( find_or_and()        );
+    update_result( find_and_xor()       );
+    update_result( find_xor_xor()       );
+    update_result( find_xor_xor_xor()   );
     update_result( find_xor_xor_and()   );
     update_result( find_xor_and_and()   );
 
@@ -827,9 +835,10 @@ public:
 private:
   std::array<TT, 2> on_off_sets;
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
+
   const std::vector<TT>* ptts;
   std::vector<uint32_t> divisors;
-
+  std::vector<cost_t> div_costs;
   std::array<TT, 0x100u> tts_xors;
   std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor;
   std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor_xor;

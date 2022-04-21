@@ -48,19 +48,97 @@ struct and_cost
 {
 public:
   using cost = uint32_t;
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost ) const
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
   {
     /* dissipate cost */
     if( ntk.is_and( n ) ) tot_cost += 1; /* add dissipate cost */
     /* accumulate cost */
     return 0; /* return accumulate cost */
   }
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t>& fanin_cost ) const
+};
+
+template<class Ntk>
+struct level_cost
+{
+public:
+  using cost = uint32_t;
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
   {
-    /* dissipate cost */
-    if( ntk.is_and( n ) ) tot_cost += 1; /* add dissipate cost */
     /* accumulate cost */
-    return 0; /* return accumulate cost */
+    uint32_t _cost = 0u;
+    for ( uint32_t fanin_cost : fanin_costs )
+    {
+      _cost = std::max( _cost, fanin_cost );
+    }
+    if( !ntk.is_pi( n ) ) _cost += 1; // for both AND and XOR
+
+    /* dissipate cost */
+    if( ntk.fanout( n ).size() == 0 ) tot_cost = std::max( tot_cost, _cost ); /* update dissipate cost */
+    return _cost; /* return accumulate cost */
+  }
+};
+
+template<class Ntk>
+struct t_depth
+{
+public:
+  using cost = uint32_t;
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
+  {
+    /* accumulate cost */
+    uint32_t _cost = 0u;
+    for ( uint32_t fanin_cost : fanin_costs )
+    {
+      _cost = std::max( _cost, fanin_cost );
+    }
+    _cost += ntk.is_and( n );
+
+    /* dissipate cost */
+    if( ntk.fanout( n ).size() == 0 ) tot_cost = std::max( tot_cost, _cost ); /* update dissipate cost */
+    return _cost; /* return accumulate cost */
+  }
+};
+
+template<class Ntk>
+struct and_adp
+{
+public:
+  using cost = uint32_t;
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
+  {
+    /* accumulate cost */
+    uint32_t _cost = 0u;
+    for ( uint32_t fanin_cost : fanin_costs )
+    {
+      _cost = std::max( _cost, fanin_cost );
+    }
+    _cost += ntk.is_and( n );
+
+    /* dissipate cost */
+    if( ntk.fanout( n ).size() == 0 ) tot_cost += _cost; /* update dissipate cost */
+    return _cost; /* return accumulate cost */
+  }
+};
+
+
+template<class Ntk>
+struct adp_cost
+{
+public:
+  using cost = uint32_t;
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
+  {
+    /* accumulate cost */
+    uint32_t _cost = 0u;
+    for ( uint32_t fanin_cost : fanin_costs )
+    {
+      _cost = std::max( _cost, fanin_cost );
+    }
+    _cost += 1; // for both AND and XOR
+
+    /* dissipate cost */
+    if( ntk.is_and( n ) || ntk.is_xor( n ) )  tot_cost += _cost; /* sum of level over each node */
+    return _cost; /* return accumulate cost */
   }
 };
 

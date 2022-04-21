@@ -169,6 +169,20 @@ public:
   }
 
   /**
+   * @brief Get the cost of the whole network
+   * 
+   * @return cost_t 
+   */
+  uint32_t get_tmp_cost()
+  {
+    uint32_t _tmp_cost = 0u; /* must define the zero initialization */
+    this->foreach_po( [&]( auto const& f ) {
+      compute_cost( this->get_node( f ), _tmp_cost );
+    } );
+    return _tmp_cost;
+  }
+
+  /**
    * @brief Get the cost of one single node
    * 
    * @return cost_t 
@@ -208,6 +222,7 @@ public:
   void set_cost_val( node const& n, cost_t cost_val )
   {
     _cost_val[n] = cost_val;
+    this->set_visited( n, this->trav_id() );
   }
 
   void update_cost()
@@ -222,11 +237,11 @@ public:
     _cost_val.resize();
 
     uint32_t level{0};
+    std::vector<cost_t> fanin_costs;
     this->foreach_fanin( n, [&]( auto const& f ) {
-      // not implemented
+      fanin_costs.emplace_back( _cost_val[this->get_node( f )] );
     } );
-
-    _cost_val[n] = _cost_fn( *this, n, _cost );
+    _cost_val[n] = _cost_fn( *this, n, _cost, fanin_costs );
   }
   signal create_pi( cost_t pi_cost )
   {
@@ -274,10 +289,11 @@ private:
     {
       return _cost_val[n] = _cost_fn( *this, n, _cost );
     }
+    std::vector<cost_t> fanin_costs;
     this->foreach_fanin( n, [&]( auto const& f ) {
-      compute_cost( this->get_node( f ), _c );
+      fanin_costs.emplace_back( compute_cost( this->get_node( f ), _c ) );
     } );
-    return _cost_val[n] = _cost_fn( *this, n, _c );
+    return _cost_val[n] = _cost_fn( *this, n, _c, fanin_costs );
   }
   void compute_cost()
   {
