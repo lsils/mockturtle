@@ -74,6 +74,9 @@ struct testcase_minimizer_params
 
   /*! \brief Be verbose. */
   bool verbose{false};
+
+  /*! \brief Seed of the random generator. */
+  uint64_t seed{0xcafeaffe};
 }; /* testcase_minimizer_params */
 
 /*! \brief Debugging testcase minimizer
@@ -144,6 +147,7 @@ public:
       default:
         fmt::print( "[e] Unsupported format\n" );
     }
+    std::srand( ps.seed );
   }
 
   void run( std::function<bool(Ntk)> const& fn )
@@ -165,6 +169,7 @@ public:
       ntk_backup2 = cleanup_dangling( ntk );
       if ( !reduce() )
       {
+        write_testcase( ps.minimized_case );
         break;
       }
       if ( ntk.num_gates() == 0 )
@@ -178,10 +183,8 @@ public:
       {
         fmt::print( "[i] Testcase with I/O = {}/{} gates = {} triggers the buggy behavior\n", ntk.num_pis(), ntk.num_pos(), ntk.num_gates() );
         write_testcase( ps.minimized_case );
-        min_PIs = ntk.num_pis();
-        min_POs = ntk.num_pos();
-        min_gates = ntk.num_gates();
         stage_counter = 0;
+        sampled.clear();
       }
       else
       {
@@ -190,10 +193,10 @@ public:
       }
     }
 
-    if ( init_PIs != min_PIs || init_POs != min_POs || init_gates != min_gates )
+    if ( init_PIs != ntk.num_pis() || init_POs != ntk.num_pos() || init_gates != ntk.num_gates() )
     {
       fmt::print( "[i] Minimized the testcase from I/O = {}/{} gates = {}\n", init_PIs, init_POs, init_gates );
-      fmt::print( "                             to I/O = {}/{} gates = {}\n", min_PIs, min_POs, min_gates );
+      fmt::print( "                             to I/O = {}/{} gates = {}\n", ntk.num_pis(), ntk.num_pos(), ntk.num_gates() );
     }
   }
 
@@ -217,6 +220,7 @@ public:
       ntk_backup2 = cleanup_dangling( ntk );
       if ( !reduce() )
       {
+        write_testcase( ps.minimized_case );
         break;
       }
       if ( ntk.num_gates() == 0 )
@@ -232,10 +236,8 @@ public:
       {
         fmt::print( "[i] Testcase with I/O = {}/{} gates = {} triggers the buggy behavior\n", ntk.num_pis(), ntk.num_pos(), ntk.num_gates() );
         write_testcase( ps.minimized_case );
-        min_PIs = ntk.num_pis();
-        min_POs = ntk.num_pos();
-        min_gates = ntk.num_gates();
         stage_counter = 0;
+        sampled.clear();
       }
       else
       {
@@ -244,10 +246,10 @@ public:
       }
     }
 
-    if ( init_PIs != min_PIs || init_POs != min_POs || init_gates != min_gates )
+    if ( init_PIs != ntk.num_pis() || init_POs != ntk.num_pos() || init_gates != ntk.num_gates() )
     {
       fmt::print( "[i] Minimized the testcase from I/O = {}/{} gates = {}\n", init_PIs, init_POs, init_gates );
-      fmt::print( "                             to I/O = {}/{} gates = {}\n", min_PIs, min_POs, min_gates );
+      fmt::print( "                             to I/O = {}/{} gates = {}\n", ntk.num_pis(), ntk.num_pos(), ntk.num_gates() );
     }
   }
 #endif
@@ -340,18 +342,24 @@ private:
 
   bool reduce()
   {
-    if ( stage_counter >= ps.num_iterations_stage || ( reducing_stage == po && ntk.num_pos() == 1 ) )
+    if ( stage_counter >= ps.num_iterations_stage ||
+         ( reducing_stage == po && ntk.num_pos() == 1 ) ||
+         ( reducing_stage == po && sampled.size() == ntk.num_pos() ) ||
+         ( reducing_stage == pi && sampled.size() == ntk.num_pis() ) ||
+         ( reducing_stage == gate && sampled.size() == ntk.num_gates() ) ||
+         ( reducing_stage == fanin && sampled.size() == ntk.num_gates() ) ||
+         ( reducing_stage == fanout && sampled.size() == ntk.num_gates() ) )
     {
       reducing_stage = static_cast<stages>( static_cast<int>( reducing_stage ) + 1 );
       stage_counter = 0;
+      sampled.clear();
     }
 
     switch ( reducing_stage )
     {
       case po:
       {
-        uint32_t const ith_po = std::rand() % ntk.num_pos();
-        const node n = ntk.get_node( ntk.po_at( ith_po ) );
+        auto const& [ith_po, n] = get_random_po();
         if ( ps.verbose )
           fmt::print( "[i] Remove {}-th PO (node {})\n", ith_po, n );
         ntk.substitute_node( n, ntk.get_constant( false ) );
@@ -359,7 +367,7 @@ private:
       }
       case pi:
       {
-        const node n = ntk.index_to_node( std::rand() % ntk.num_pis() + 1 );
+        const node n = get_random_pi();
         if ( ps.verbose )
           fmt::print( "[i] Remove PI {}\n", n );
         ntk.substitute_node( n, ntk.get_constant( false ) );
@@ -398,20 +406,53 @@ private:
         break;
       }
       default:
+      {
+        ntk = cleanup_dangling( ntk, true, true );
         return false; // all stages done, nothing to reduce
+      }
     }
 
     ntk = cleanup_dangling( ntk, true, true );
     return true;
   }
 
+  std::pair<uint32_t, node> get_random_po()
+  {
+    while ( true )
+    {
+      uint32_t const ith_po = std::rand() % ntk.num_pos();
+      const node n = ntk.get_node( ntk.po_at( ith_po ) );
+      if ( sampled.find( ith_po ) == sampled.end() )
+      {
+        sampled.insert( ith_po );
+        return std::make_pair( ith_po, n );
+      }
+    }
+  }
+
+  node get_random_pi()
+  {
+    while ( true )
+    {
+      uint32_t const ith_pi = std::rand() % ntk.num_pis() + 1;
+      if ( sampled.find( ith_pi ) == sampled.end() )
+      {
+        sampled.insert( ith_pi );
+        return ntk.index_to_node( ith_pi );
+      }
+    }
+  }
+
   node get_random_gate()
   {
     while ( true )
     {
-      node n = ntk.index_to_node( ( std::rand() % ( ntk.size() - ntk.num_pis() - 1 ) ) + ntk.num_pis() + 1 );
-      if ( !ntk.is_dead( n ) && !ntk.is_pi( n ) )
+      uint32_t const node_index = ( std::rand() % ntk.num_gates() ) + ntk.num_pis() + 1;
+      node n = ntk.index_to_node( node_index );
+      if ( sampled.find( node_index ) == sampled.end() )
       {
+        sampled.insert( node_index );
+        assert( !ntk.is_dead( n ) && !ntk.is_pi( n ) );
         return n;
       }
     }
@@ -446,16 +487,16 @@ private:
   Ntk ntk, ntk_backup, ntk_backup2;
 
   enum stages : int {
-    po = 1, // remove a PO (substitute with const0)
-    pi, // remove a PI (substitute with const0)
+    pi = 1, // remove a PI (substitute with const0)
+    po, // remove a PO (substitute with const0)
     gate, // remove a gate (substitute with const0)
     fanout, // remove TFO of a gate (create PO at a non-PI fanin, then substitute with const0)
     fanin // substitute a node with its first fanin
   } reducing_stage{po};
   uint32_t stage_counter{0u};
+  std::set<uint32_t> sampled;
 
   uint32_t init_PIs, init_POs, init_gates;
-  uint32_t min_PIs{0u}, min_POs{0u}, min_gates{0u};
 }; /* testcase_minimizer */
 
 } /* namespace mockturtle */
