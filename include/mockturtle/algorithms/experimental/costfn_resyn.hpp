@@ -178,7 +178,7 @@ private:
       return score > t.score;
     }
 
-    task( auto _done, auto _prev, auto _lit, auto _ntype, auto _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), c(_cost), score(0), num_xor(0) {}
+    task( bool _done, std::size_t _prev, uint32_t _lit, gate_type _ntype, uint32_t _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), c(_cost), score(0), num_xor(0) {}
   };
 
   struct deq_task

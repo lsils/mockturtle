@@ -21,6 +21,7 @@ int main()
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "cost_aware", "benchmark", "#Gate", "Depth", "cost", "#Gate\'", "Depth\'", "cost\'", "runtime", "cec" );
   for ( auto const& benchmark : epfl_benchmarks() )
   {
+    if ( benchmark != "ctrl" ) continue;
     uint32_t ngate = 0, cost = 0, depth = 0, _ngate = 0, _cost = 0, _depth = 0;
     float run_time = 0;
 
@@ -30,22 +31,23 @@ int main()
     assert( result == lorina::return_code::success ); (void)result;
 
     fanout_view ntk( xag );
-    auto costfn = and_cost<decltype( ntk )>();
+    auto costfn = supp_cost<decltype( ntk )>();
+    auto evalfn = supp_cost<decltype( ntk )>();
     ngate = ntk.num_gates();
-    cost = cost_view( ntk, costfn ).get_cost();
+    cost = cost_view( ntk, evalfn ).get_cost();
     depth = depth_view( ntk ).depth();
 
     cost_aware_params ps;
     cost_aware_stats st;
-    // window_xag_heuristic_resub( xag );
     cost_aware_optimization( ntk, costfn, ps, &st );
     xag = cleanup_dangling( xag );    
 
     run_time = to_seconds( st.time_total );
 
-    _ngate = ntk.num_gates();
-    _cost = cost_view( ntk, costfn ).get_cost();
-    _depth = depth_view( ntk ).depth();
+    fanout_view _ntk( xag );
+    _ngate = _ntk.num_gates();
+    _cost = cost_view( _ntk, evalfn ).get_cost();
+    _depth = depth_view( _ntk ).depth();
 
     const auto cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
     exp( benchmark, ngate, depth, cost, _ngate, _depth, _cost, run_time, cec );

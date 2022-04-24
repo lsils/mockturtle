@@ -104,6 +104,9 @@ private:
     decode( tmp, il );
     tmp.incr_trav_id();
     tmp.foreach_pi( [&]( auto const& n, auto i ){
+                      for ( auto j = 0u; j < div_costs[i].size(); j++ )
+                        std::cout << div_costs[i][j] << " ";
+                      std::cout << std::endl;
       tmp.set_cost_val( n, div_costs[i] );
     } );
     return tmp.get_tmp_cost(); // the cost of the whole network

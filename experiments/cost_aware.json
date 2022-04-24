@@ -223,5 +223,21 @@
       }
     ],
     "version": "e8009a0"
+  },
+  {
+    "entries": [
+      {
+        "#Gate": 174,
+        "#Gate'": 174,
+        "Depth": 10,
+        "Depth'": 10,
+        "benchmark": "ctrl",
+        "cec": true,
+        "cost": 681,
+        "cost'": 681,
+        "runtime": 0.027736583724617958
+      }
+    ],
+    "version": "e201c88"
   }
 ]

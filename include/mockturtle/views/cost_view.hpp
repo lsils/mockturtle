@@ -227,7 +227,7 @@ public:
 
   void update_cost()
   {
-    _cost_val.reset( 0 );
+    _cost_val.reset( cost_t{} );
     this->incr_trav_id();
     compute_cost();
   }
@@ -236,7 +236,6 @@ public:
   {
     _cost_val.resize();
 
-    uint32_t level{0};
     std::vector<cost_t> fanin_costs;
     this->foreach_fanin( n, [&]( auto const& f ) {
       fanin_costs.emplace_back( _cost_val[this->get_node( f )] );
@@ -258,11 +257,15 @@ public:
    */
   signal create_pi()
   {
-    return Ntk::create_pi();
+    signal s = Ntk::create_pi();
+    _cost_val.resize();
+    return s;
   }
   signal create_pi( std::string name )
   {
-    return Ntk::create_pi( name );
+    signal s = Ntk::create_pi( name );
+    _cost_val.resize();
+    return s;
   }
 
   void create_po( signal const& f )
@@ -283,7 +286,7 @@ private:
     this->set_visited( n, this->trav_id() );
     if ( this->is_constant( n ) )
     {
-      return _cost_val[n] = 0;
+      return _cost_val[n] = cost_t{};
     }
     if ( this->is_pi( n ) )
     {
@@ -312,8 +315,8 @@ private:
 
 };
 
-template<class T, class NodeCostFn>
-cost_view( T const& )->cost_view<T, NodeCostFn>;
+// template<class T, class NodeCostFn>
+// cost_view( T const& )->cost_view<T, NodeCostFn>;
 
 template<class T, class NodeCostFn>
 cost_view( T const&, NodeCostFn const& )->cost_view<T, NodeCostFn, cost<NodeCostFn>>;

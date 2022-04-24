@@ -58,6 +58,58 @@ public:
 };
 
 template<class Ntk>
+struct fanout_cost
+{
+public:
+  using cost = uint32_t;
+  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
+  {
+    /* dissipate cost */
+    if ( ntk.is_pi( n ) == false ) tot_cost += ntk.fanout( n ).size(); /* add dissipate cost */
+    /* accumulate cost */
+    return 0; /* return accumulate cost */
+  }
+};
+
+template<class Ntk>
+struct supp_cost
+{
+public:
+  using cost = std::vector<bool>;
+  cost operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<cost> const& fanin_costs = {} ) const
+  {
+    /* accumulate cost */
+    if ( ntk.is_pi( n ) == true )
+    {
+      cost _c = std::vector<bool>();
+      uint32_t pi_cost = 0u;
+      ntk.foreach_pi( [&]( node<Ntk> const& _n, uint32_t i ){
+                        _c.emplace_back( ntk.make_signal( _n ) == ntk.make_signal( n ) );
+                        pi_cost += ntk.make_signal( _n ) == ntk.make_signal( n ) ;
+                      } );
+      assert( pi_cost == 1 ); // each PI is support only by itself
+      assert( _c.size() == ntk.num_pis() );
+      return _c;
+    }
+    /* dissipate cost */
+    std::vector<bool> _c( fanin_costs[0].size(), false );
+    for ( auto j = 0u; j < fanin_costs.size(); j++ )
+    {
+      std::vector<bool> fanin_cost = fanin_costs[j];
+      for ( auto i = 0u; i < fanin_cost.size(); i++ )
+      {
+        _c[i] = _c[i] || fanin_cost[i];
+      }
+    }
+    for ( auto i = 0u; i < ntk.num_pis(); i++ )
+    {
+      tot_cost += _c[i]; /* add dissipate cost */
+    }
+    return _c; /* return accumulate cost */
+  }
+};
+
+template<class Ntk>
 struct level_cost
 {
 public:

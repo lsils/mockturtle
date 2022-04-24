@@ -322,7 +322,7 @@ private:
   }
 
   /* return if the cost is acceptable */
-  bool compare_cost ( auto cost, auto upper )
+  bool compare_cost ( std::pair<uint32_t, uint32_t> cost, std::pair<uint32_t, uint32_t> upper )
   {
     /* for depth cost */
     if( cost.first != upper.first ) return cost.first < upper.first;
@@ -348,7 +348,7 @@ private:
       return score > t.score;
     }
 
-    task( auto _done, auto _prev, auto _lit, auto _ntype, auto _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost), score(0), num_xor(0) {}
+    task( bool _done, std::size_t _prev, uint32_t _lit, gate_type _ntype, std::pair<uint32_t, uint32_t> _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost), score(0), num_xor(0) {}
   };
 
   struct deq_task
