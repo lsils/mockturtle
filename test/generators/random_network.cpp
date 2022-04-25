@@ -8,52 +8,39 @@ using namespace mockturtle;
 
 TEST_CASE( "create random aig_network", "[random_network_generator]" )
 {
-  uint64_t const num_pis{4u};
-  uint64_t const num_gates{100u};
+  random_network_generator_params_size ps;
+  ps.num_pis = 4u;
+  ps.num_gates = 100u;
 
-  auto const gen = default_random_aig_generator();
-  auto const aig = gen.generate( num_pis, num_gates );
+  auto const gen = default_random_aig_generator( ps );
+  auto const aig = gen.generate();
 
-  CHECK( aig.num_pis() == num_pis );
-  CHECK( aig.num_gates() == num_gates );
-}
-
-TEST_CASE( "create random aig_network2", "[random_network_generator]" )
-{
-  uint64_t const num_pis{4u};
-  uint64_t const num_pos{3u};
-
-  auto const gen = default_random_aig_generator();
-  std::vector<uint32_t> structure{ 16, 16, 16, 8 };
-  auto const aig = gen.generate2( num_pis, num_pos, structure );
-  CHECK( aig.num_pis() == num_pis );
-  CHECK( aig.num_pos() == num_pos );
-
-  auto const aig2 = cleanup_dangling( aig );
-  CHECK( aig2.num_pis() == num_pis );
-  CHECK( aig2.num_pos() == num_pos );
+  CHECK( aig.num_pis() == ps.num_pis );
+  CHECK( aig.num_gates() == ps.num_gates );
 }
 
 TEST_CASE( "create random mig_network", "[random_network_generator]" )
 {
-  uint64_t const num_pis{4u};
-  uint64_t const num_gates{100u};
+  random_network_generator_params_size ps;
+  ps.num_pis = 4u;
+  ps.num_gates = 100u;
 
-  auto const gen = default_random_mig_generator();
-  auto const mig = gen.generate( num_pis, num_gates );
+  auto const gen = default_random_mig_generator( ps );
+  auto const aig = gen.generate();
 
-  CHECK( mig.num_pis() == 4u );
-  CHECK( mig.num_gates() == 100u );
+  CHECK( aig.num_pis() == ps.num_pis );
+  CHECK( aig.num_gates() == ps.num_gates );
 }
 
 TEST_CASE( "create random mig_network with un-real majority nodes", "[random_network_generator]" )
 {
-  uint64_t const num_pis{4u};
-  uint64_t const num_gates{100u};
+  random_network_generator_params_size ps;
+  ps.num_pis = 4u;
+  ps.num_gates = 100u;
 
-  auto const gen = mixed_random_mig_generator();
-  auto const mig = gen.generate( num_pis, num_gates );
+  auto const gen = mixed_random_mig_generator( ps );
+  auto const aig = gen.generate();
 
-  CHECK( mig.num_pis() == num_pis );
-  CHECK( mig.num_gates() == num_gates );
+  CHECK( aig.num_pis() == ps.num_pis );
+  CHECK( aig.num_gates() == ps.num_gates );
 }
