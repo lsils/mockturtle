@@ -63,6 +63,9 @@ struct fuzz_tester_params
 
   /*! \brief Max number of networks to test: nullopt means infinity. */
   std::optional<uint64_t> num_iterations{std::nullopt};
+
+  /*! \brief Timeout in seconds: nullopt means infinity. */
+  std::optional<uint64_t> timeout{std::nullopt};
 }; /* fuzz_tester_params */
 
 /*! \brief Network fuzz tester
@@ -135,8 +138,11 @@ public:
   uint64_t run( std::function<bool(Ntk)>&& fn )
   {
     uint64_t counter{0};
-    while ( !ps.num_iterations || counter < ps.num_iterations )
+    stopwatch<>::duration time{0};
+    while ( ( !ps.num_iterations || counter < ps.num_iterations ) && 
+            ( !ps.timeout || to_seconds( time ) < ps.timeout ) )
     {
+      stopwatch t( time );
       auto ntk = gen.generate();
       fmt::print( "[i] create network #{}: I/O = {}/{} gates = {} nodes = {}, write into `{}`\n",
                   ++counter, ntk.num_pis(), ntk.num_pos(), ntk.num_gates(), ntk.size(), ps.filename );
