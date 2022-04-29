@@ -47,9 +47,19 @@ namespace mockturtle::experimental
 
 struct search_core_stats
 {
+  /* time for cost view the solution network */
+  stopwatch<>::duration time_eval{0};
+
+  /* time for searching the equivalent network */
+  stopwatch<>::duration time_search{0};
+
   /* data */
   void report() const
-  { }
+  { 
+    fmt::print( "[i]         <xag_resyn_decompose>\n" );
+    fmt::print( "[i]             Evalutation      : {:>5.2f} secs\n", to_seconds( time_eval ) );
+    fmt::print( "[i]             Searching        : {:>5.2f} secs\n", to_seconds( time_search ) );
+  }
 };
 
 template<class Ntk, class TT>
@@ -819,19 +829,19 @@ public:
     prepare_clear();
 
     std::optional<index_list_t> il = find_wire(); if ( il ) return( *il ); /* searching constant is useless and cause error */
-    update_result( find_or()            );
-    update_result( find_and()           );
-    update_result( find_xor()           );
-    update_result( find_and_and()       );
-    update_result( find_or_and()        );
-    update_result( find_and_xor()       );
-    update_result( find_xor_xor()       );
-    update_result( find_xor_xor_xor()   );
-    update_result( find_xor_xor_and()   );
-    update_result( find_xor_and_and()   );
-    update_result( find_and_and_and()   );
-    update_result( find_and_and_xor()   );
-    update_result( find_and_xor_xor()   );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_or()          ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and()         ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor()         ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and()     ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_or_and()      ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor()     ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor()     ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_xor() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_and() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_and_and() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_and() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_xor() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor_xor() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
 
     return index_list;
   }
