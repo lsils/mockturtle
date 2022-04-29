@@ -53,12 +53,23 @@ struct search_core_stats
   /* time for searching the equivalent network */
   stopwatch<>::duration time_search{0};
 
+  uint32_t num_solutions{0};
+  uint32_t num_problems{0};
+
+  uint32_t size_forest{0};
+
+  uint32_t num_roots{0};
+
+
   /* data */
   void report() const
   { 
-    fmt::print( "[i]         <xag_resyn_decompose>\n" );
+    fmt::print( "[i]         <search_core>\n" );
     fmt::print( "[i]             Evalutation      : {:>5.2f} secs\n", to_seconds( time_eval ) );
     fmt::print( "[i]             Searching        : {:>5.2f} secs\n", to_seconds( time_search ) );
+    fmt::print( "[i]             Avg. forest size : {:>5.2f}\n", (float)size_forest/num_solutions );
+    fmt::print( "[i]             Avg. num solution: {:>5.2f}\n", (float)num_roots/num_problems );
+    fmt::print( "[i]             Opt. ratio       : {:>5.2f}%\n", (float)num_solutions/num_problems*100 );
   }
 };
 
@@ -124,14 +135,14 @@ private:
 
     return eval; // the cost of the whole network
   }
-  bool update_result( Ntk & forest, std::optional<index_list_t> il )
+  bool update_result( Ntk & forest, index_list_t const& il )
   {
-    if ( !il ) return false;
-    uint32_t curr_cost = eval_result( forest, *il );
+    st.num_roots += 1u;
+    uint32_t curr_cost = eval_result( forest, il );
     if ( curr_cost < best_cost )
     {
       best_cost = curr_cost;
-      index_list = *il;
+      index_list = il;
       return true;
     }
     return false;
@@ -206,7 +217,7 @@ private:
           il.add_inputs( divisors.size() - 1 );
           auto const new_lit = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
           il.add_output( new_lit + on_off );
-          return il;
+          ils.emplace_back( il );
         }
       }
     }
@@ -253,7 +264,7 @@ private:
           }
           auto const new_lit2 = il.add_and( ( lit1 ^ 0x1 ), new_lit1 ^ 0x1 );
           il.add_output( new_lit2 + on_off );
-          return il;
+          ils.emplace_back( il );
         }
       }
     }
@@ -321,7 +332,7 @@ private:
           }
           uint32_t const output_lit = il.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
           il.add_output( output_lit + on_off );
-          return il;
+          ils.emplace_back( il );
         }
       }
     }
@@ -513,7 +524,7 @@ private:
       il.clear();
       il.add_inputs( divisors.size() - 1 );
       il.add_output( 1 );
-      return il;
+      ils.emplace_back( il );
     }
     if ( num_bits[1] == 0 )
     {
@@ -521,7 +532,7 @@ private:
       il.clear();
       il.add_inputs( divisors.size() - 1 );
       il.add_output( 0 );
-      return il;
+      ils.emplace_back( il );
     }
     for ( auto v = 1u; v < divisors.size(); ++v )
     {
@@ -531,7 +542,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() - 1 );
         il.add_output( v << 1 );
-        return il;
+        ils.emplace_back( il );
       }
       if ( get_div( v ) == on_off_sets[0] )
       {
@@ -539,7 +550,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() - 1 );
         il.add_output( ( v << 1 ) + 1 );
-        return il;
+        ils.emplace_back( il );
       }
     }
     return std::nullopt;
@@ -575,7 +586,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() -1 );
         il.add_output( il.add_xor( ( i << 1 ), mem_xor[ tt ] << 1 ) );
-        return il;
+        ils.emplace_back( il );
       }
       if ( mem_xor.find( ~tt ) != mem_xor.end() )
       {
@@ -583,7 +594,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() -1 );
         il.add_output( il.add_xor( ( i << 1 ) + 1, mem_xor[ ~tt ] << 1 ) );
-        return il;
+        ils.emplace_back( il );
       }
     }
     return std::nullopt;
@@ -633,7 +644,7 @@ private:
           auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
           auto new_lit2 = il.add_xor( new_lit1, mem_xor[ tt ] << 1 );
           il.add_output( new_lit2 );
-          return il;
+          ils.emplace_back( il );
         }
         if ( mem_xor.find( ~tt ) != mem_xor.end() )
         {
@@ -643,7 +654,7 @@ private:
           auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
           auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, mem_xor[ ~tt ] << 1 );
           il.add_output( new_lit2 );
-          return il;
+          ils.emplace_back( il );
         }
       }
     }
@@ -669,7 +680,7 @@ private:
           auto new_lit2 = il.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
           auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
           il.add_output( new_lit3 );
-          return il;
+          ils.emplace_back( il );
         }
         if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
         {
@@ -680,7 +691,7 @@ private:
           auto new_lit2 = il.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
           auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
           il.add_output( new_lit3 );
-          return il;
+          ils.emplace_back( il );
         }
       }
     }
@@ -710,7 +721,7 @@ private:
               auto new_lit2 = il.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
               auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
               il.add_output( new_lit3 );
-              return il;
+              ils.emplace_back( il );
             }
             if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
             {
@@ -721,7 +732,7 @@ private:
               auto new_lit2 = il.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
               auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
               il.add_output( new_lit3 );
-              return il;
+              ils.emplace_back( il );
             }
           }
         }
@@ -753,7 +764,7 @@ private:
               auto new_lit2 = il.add_and( mem_xor_and[ tt ] % ( 2 * divisors.size() ), mem_xor_and[ tt ] / ( 2 * divisors.size() ) );
               auto new_lit3 = il.add_xor( new_lit1, new_lit2 );
               il.add_output( new_lit3 );
-              return il;
+              ils.emplace_back( il );
             }
             if ( mem_xor_and.find( ~tt ) != mem_xor_and.end() )
             {
@@ -764,7 +775,7 @@ private:
               auto new_lit2 = il.add_and( mem_xor_and[ ~tt ] % ( 2 * divisors.size() ), mem_xor_and[ ~tt ] / ( 2 * divisors.size() ) );
               auto new_lit3 = il.add_xor( new_lit1 ^ 0x1, new_lit2 );
               il.add_output( new_lit3 );
-              return il;
+              ils.emplace_back( il );
             }
           }
         }
@@ -829,6 +840,7 @@ public:
     // prepare solution forest
     Ntk forest; // create an empty network
     forest_leaves.clear();
+    candidates.clear();
     forest_root = std::nullopt;
     div_costs.clear();
     
@@ -846,21 +858,57 @@ public:
     prepare_clear();
 
     bool done = false;
+    ils.clear();
 
-    std::optional<index_list_t> il = find_wire(); if ( il ) return( *il ); /* searching constant is useless and cause error */
-    il = call_with_stopwatch( st.time_search, [&](){ return find_or()          ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and()         ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor()         ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_or_and()      ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_and_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // std::optional<index_list_t> il = find_wire(); if ( il ) return( *il ); /* searching constant is useless and cause error */
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_or()          ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_and()         ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor()         ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_and()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_or_and()      ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor_and_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+
+    call_with_stopwatch( st.time_search, [&](){ find_wire()        ;}   );
+    if ( ils.size() )
+    {
+      for( index_list_t const& il : ils )
+      {
+        update_result( forest, il );
+      }
+      return index_list;
+    }
+    call_with_stopwatch( st.time_search, [&](){ find_or()          ;}   ); 
+    call_with_stopwatch( st.time_search, [&](){ find_and()         ;}   ); 
+    call_with_stopwatch( st.time_search, [&](){ find_xor()         ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_and_and()     ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_or_and()      ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_and_xor()     ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_xor_xor()     ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_xor_xor_xor() ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_xor_xor_and() ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_xor_and_and() ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_and_and_and() ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_and_and_xor() ;}   ); 
+    // call_with_stopwatch( st.time_search, [&](){ find_and_xor_xor() ;}   ); 
+
+    for( index_list_t const& il : ils )
+    {
+      update_result( forest, il );
+    }
+
+    st.num_problems += 1u;
+    if ( index_list )
+    {
+      st.num_solutions += 1u;
+      st.size_forest += forest.num_gates();
+    }
 
     return index_list;
   }
@@ -892,10 +940,12 @@ private:
 
   Ntk const& ntk;
   std::vector<signal> forest_leaves;
+  std::vector<signal> candidates; // the output signals with correct functionality
   std::optional<signal> forest_root;
   stats& st;
 
   std::optional<index_list_t> index_list;
+  std::vector<index_list_t> ils;
   uint32_t best_cost;
 };
 
