@@ -68,6 +68,7 @@ class search_core
 public:
   using stats = search_core_stats;
   using signal = typename Ntk::signal;
+  using node = typename Ntk::node;
   using cost_t = cost<typename Ntk::costfn_t>;
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
@@ -108,7 +109,11 @@ private:
   {
     return (*ptts)[divisors[idx]];
   }
-  uint32_t eval_result( index_list_t const& il )
+
+/**
+ * Cost Evaluation Functions
+ */
+  uint32_t eval_result( Ntk & forest, index_list_t const& il )
   {
     Ntk tmp;
     decode( tmp, il );
@@ -116,12 +121,30 @@ private:
     tmp.foreach_pi( [&]( auto const& n, auto i ){
       tmp.set_cost_val( n, div_costs[i] );
     } );
-    return tmp.get_tmp_cost(); // the cost of the whole network
+    uint32_t eval_1 = tmp.get_tmp_cost(); 
+
+    uint32_t eval_2 = 0u;
+    // insert il to forest
+    insert( forest, std::begin( forest_leaves ), std::end( forest_leaves ), il, [&]( signal const& g ){
+      forest.incr_trav_id();
+      eval_2 = forest.get_cost( forest.get_node( g ), forest_leaves );
+    } );
+
+    // assert( forest.num_pos() == 1 );
+
+    if( eval_1 != eval_2 )
+    {
+      std::cout << eval_1 << "->" << eval_2 << std::endl;
+      std::cout << to_index_list_string( il ) << std::endl;
+      assert(false);
+    }
+
+    return eval_1; // the cost of the whole network
   }
-  bool update_result( std::optional<index_list_t> il )
+  bool update_result( Ntk & forest, std::optional<index_list_t> il )
   {
     if ( !il ) return false;
-    uint32_t curr_cost = eval_result( *il );
+    uint32_t curr_cost = eval_result( forest, *il );
     if ( curr_cost < best_cost )
     {
       best_cost = curr_cost;
@@ -819,29 +842,42 @@ public:
       divisors.emplace_back( *begin );
       ++begin;
     }
+
+    // prepare solution forest
+    Ntk forest; // create an empty network
+    forest_leaves.clear();
+    forest_root = std::nullopt;
     div_costs.clear();
+    
     for( signal div : divs )
     {
-      div_costs.emplace_back( ntk.get_cost_val( ntk.get_node( div ) ) );
+      signal const& s = forest.create_pi(); 
+      node n = forest.get_node( s );
+      forest_leaves.emplace_back( s );
+      cost_t div_cost = ntk.get_cost_val( ntk.get_node( div ) );
+      forest.set_cost_val( n, div_cost );
+      div_costs.emplace_back( div_cost );
     }
 
     best_cost = max_cost; // upper bound
     prepare_clear();
 
+    bool done = false;
+
     std::optional<index_list_t> il = find_wire(); if ( il ) return( *il ); /* searching constant is useless and cause error */
-    il = call_with_stopwatch( st.time_search, [&](){ return find_or()          ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and()         ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor()         ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and()     ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_or_and()      ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor()     ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor()     ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_xor() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_and() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_and_and() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_and() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_xor() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
-    il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor_xor() ;}   ); call_with_stopwatch( st.time_eval, [&](){ update_result( il ); } );
+    il = call_with_stopwatch( st.time_search, [&](){ return find_or()          ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and()         ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor()         ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_or_and()      ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_xor_and_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
+    il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
 
     return index_list;
   }
@@ -872,6 +908,8 @@ private:
   std::vector<fanin_pair> pos_unate_xor_pairs, neg_unate_xor_pairs;
 
   Ntk const& ntk;
+  std::vector<signal> forest_leaves;
+  std::optional<signal> forest_root;
   stats& st;
 
   std::optional<index_list_t> index_list;

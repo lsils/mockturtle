@@ -187,7 +187,7 @@ public:
    * 
    * @return cost_t 
    */
-  uint32_t get_cost( node const& n ) const
+  uint32_t get_cost( node const& n )
   {
     uint32_t _c = 0u;
     this->incr_trav_id();
