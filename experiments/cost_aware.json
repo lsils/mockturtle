@@ -255,7 +255,7 @@
         "C5'": 394096,
         "benchmark": "voter",
         "cec": true,
-        "runtime": 38.676780700683594
+        "runtime": 32.278289794921875
       }
     ],
     "version": "e8009a0"

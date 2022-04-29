@@ -115,31 +115,14 @@ private:
  */
   uint32_t eval_result( Ntk & forest, index_list_t const& il )
   {
-    Ntk tmp;
-    decode( tmp, il );
-    tmp.incr_trav_id();
-    tmp.foreach_pi( [&]( auto const& n, auto i ){
-      tmp.set_cost_val( n, div_costs[i] );
-    } );
-    uint32_t eval_1 = tmp.get_tmp_cost(); 
-
-    uint32_t eval_2 = 0u;
+    uint32_t eval = 0u;
     // insert il to forest
     insert( forest, std::begin( forest_leaves ), std::end( forest_leaves ), il, [&]( signal const& g ){
       forest.incr_trav_id();
-      eval_2 = forest.get_cost( forest.get_node( g ), forest_leaves );
+      eval = forest.get_cost( forest.get_node( g ), forest_leaves );
     } );
 
-    // assert( forest.num_pos() == 1 );
-
-    if( eval_1 != eval_2 )
-    {
-      std::cout << eval_1 << "->" << eval_2 << std::endl;
-      std::cout << to_index_list_string( il ) << std::endl;
-      assert(false);
-    }
-
-    return eval_1; // the cost of the whole network
+    return eval; // the cost of the whole network
   }
   bool update_result( Ntk & forest, std::optional<index_list_t> il )
   {
