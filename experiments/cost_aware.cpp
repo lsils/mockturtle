@@ -21,7 +21,7 @@ int main()
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "cost_aware", "benchmark", "C1", "C1\'", "C2", "C2\'", "C3", "C3\'", "C4", "C4\'", "C5", "C5\'", "runtime", "cec" );
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    // if ( benchmark != "adder" ) continue;
+    // if ( benchmark != "voter" ) continue;
     float run_time = 0;
 
     fmt::print( "[i] processing {}\n", benchmark );

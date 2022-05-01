@@ -56,9 +56,12 @@ struct search_core_stats
   uint32_t num_solutions{0};
   uint32_t num_problems{0};
 
+  uint32_t num_resub[4]{0};
+
   uint32_t size_forest{0};
 
   uint32_t num_roots{0};
+  uint32_t num_gain{0};
 
 
   /* data */
@@ -67,9 +70,16 @@ struct search_core_stats
     fmt::print( "[i]         <search_core>\n" );
     fmt::print( "[i]             Evalutation      : {:>5.2f} secs\n", to_seconds( time_eval ) );
     fmt::print( "[i]             Searching        : {:>5.2f} secs\n", to_seconds( time_search ) );
-    fmt::print( "[i]             Avg. forest size : {:>5.2f}\n", (float)size_forest/num_solutions );
+    fmt::print( "[i]             Avg. forest size : {:>5.2f}\n", (float)size_forest/num_problems );
     fmt::print( "[i]             Avg. num solution: {:>5.2f}\n", (float)num_roots/num_problems );
     fmt::print( "[i]             Opt. ratio       : {:>5.2f}%\n", (float)num_solutions/num_problems*100 );
+    fmt::print( "[i]             # Problem        : {:>5.2f}\n", (float)num_problems );
+    fmt::print( "[i]             Gain             : {:>5.2f}\n", (float)num_gain/num_problems );
+    fmt::print( "[i]             0 - resub        : {:>5.2f}\n", (float)num_resub[0]/num_problems );
+    fmt::print( "[i]             1 - resub        : {:>5.2f}\n", (float)num_resub[1]/num_problems );
+    fmt::print( "[i]             2 - resub        : {:>5.2f}\n", (float)num_resub[2]/num_problems );
+    fmt::print( "[i]             3 - resub        : {:>5.2f}\n", (float)num_resub[3]/num_problems );
+
   }
 };
 
@@ -147,6 +157,10 @@ private:
     }
     return false;
   }
+  bool push_solution( index_list_t const& il )
+  {
+    ils.emplace_back( il );
+  }
   template<bool pol1, bool pol2>
   void collect_unate_pairs_detail( uint32_t div1, uint32_t div2 )
   {
@@ -165,13 +179,13 @@ private:
      - For `pos_unate_lits`, `on_off` = 1, sort by intersection with on-set;
      - For `neg_unate_lits`, `on_off` = 0, sort by intersection with off-set
    */
-  void sort_unate_lits( std::vector<unate_lit>& unate_lits, uint32_t on_off )
+  void sort_unate_lits( std::vector<unate_lit>& pos_unate_lits, uint32_t on_off )
   {
-    for ( auto& l : unate_lits )
+    for ( auto& l : pos_unate_lits )
     {
       l.score = kitty::count_ones( ( l.lit & 0x1 ? ~get_div( l.lit >> 1 ) : get_div( l.lit >> 1 ) ) & on_off_sets[on_off] );
     }
-    std::sort( unate_lits.begin(), unate_lits.end(), [&]( unate_lit const& l1, unate_lit const& l2 ) {
+    std::sort( pos_unate_lits.begin(), pos_unate_lits.end(), [&]( unate_lit const& l1, unate_lit const& l2 ) {
         return l1.score > l2.score; // descending order
     });
   }
@@ -192,19 +206,19 @@ private:
     });
   }
 
-  std::optional<index_list_t> find_and_detail( std::vector<unate_lit> const& unate_lits, uint32_t on_off )
+  std::optional<index_list_t> find_and_detail( std::vector<unate_lit> const& pos_unate_lits, uint32_t on_off )
   {
-    for ( auto i = 0u; i < unate_lits.size(); ++i )
+    for ( auto i = 0u; i < pos_unate_lits.size(); ++i )
     {
-      uint32_t const& lit1 = unate_lits[i].lit;
-      if ( unate_lits[i].score * 2 < num_bits[on_off] )
+      uint32_t const& lit1 = pos_unate_lits[i].lit;
+      if ( pos_unate_lits[i].score * 2 < num_bits[on_off] )
       {
         break;
       }
-      for ( auto j = i + 1; j < unate_lits.size(); ++j )
+      for ( auto j = i + 1; j < pos_unate_lits.size(); ++j )
       {
-        uint32_t const& lit2 = unate_lits[j].lit;
-        if ( unate_lits[i].score + unate_lits[j].score < num_bits[on_off] )
+        uint32_t const& lit2 = pos_unate_lits[j].lit;
+        if ( pos_unate_lits[i].score + pos_unate_lits[j].score < num_bits[on_off] )
         {
           break;
         }
@@ -217,22 +231,22 @@ private:
           il.add_inputs( divisors.size() - 1 );
           auto const new_lit = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
           il.add_output( new_lit + on_off );
-          ils.emplace_back( il );
+          push_solution( il );
         }
       }
     }
     return std::nullopt;
   }
   template<bool is_xor=false>
-  std::optional<index_list_t> find_and_and_helper( std::vector<unate_lit>& unate_lits, std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
+  std::optional<index_list_t> find_and_and_helper( std::vector<unate_lit>& pos_unate_lits, std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
   {
-    for ( auto i = 0u; i < unate_lits.size(); ++i )
+    for ( auto i = 0u; i < pos_unate_lits.size(); ++i )
     {
-      uint32_t const& lit1 = unate_lits[i].lit;
+      uint32_t const& lit1 = pos_unate_lits[i].lit;
       for ( auto j = 0u; j < unate_pairs.size(); ++j )
       {
         fanin_pair const& pair2 = unate_pairs[j];
-        if ( unate_lits[i].score + pair2.score < num_bits[on_off] )
+        if ( pos_unate_lits[i].score + pair2.score < num_bits[on_off] )
         {
           break;
         }
@@ -264,7 +278,7 @@ private:
           }
           auto const new_lit2 = il.add_and( ( lit1 ^ 0x1 ), new_lit1 ^ 0x1 );
           il.add_output( new_lit2 + on_off );
-          ils.emplace_back( il );
+          push_solution( il );
         }
       }
     }
@@ -332,7 +346,7 @@ private:
           }
           uint32_t const output_lit = il.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
           il.add_output( output_lit + on_off );
-          ils.emplace_back( il );
+          push_solution( il );
         }
       }
     }
@@ -360,6 +374,11 @@ private:
     has_init = false;
 
     index_list = std::nullopt;
+    forest_leaves.clear();
+    candidates.clear();
+    forest_root = std::nullopt;
+    div_costs.clear();
+    isConst = false;
   }
   void prepare_task()
   {
@@ -524,7 +543,8 @@ private:
       il.clear();
       il.add_inputs( divisors.size() - 1 );
       il.add_output( 1 );
-      ils.emplace_back( il );
+      push_solution( il );
+      isConst = true;
     }
     if ( num_bits[1] == 0 )
     {
@@ -532,7 +552,8 @@ private:
       il.clear();
       il.add_inputs( divisors.size() - 1 );
       il.add_output( 0 );
-      ils.emplace_back( il );
+      push_solution( il );
+      isConst = true;
     }
     for ( auto v = 1u; v < divisors.size(); ++v )
     {
@@ -542,7 +563,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() - 1 );
         il.add_output( v << 1 );
-        ils.emplace_back( il );
+        push_solution( il );
       }
       if ( get_div( v ) == on_off_sets[0] )
       {
@@ -550,7 +571,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() - 1 );
         il.add_output( ( v << 1 ) + 1 );
-        ils.emplace_back( il );
+        push_solution( il );
       }
     }
     return std::nullopt;
@@ -586,7 +607,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() -1 );
         il.add_output( il.add_xor( ( i << 1 ), mem_xor[ tt ] << 1 ) );
-        ils.emplace_back( il );
+        push_solution( il );
       }
       if ( mem_xor.find( ~tt ) != mem_xor.end() )
       {
@@ -594,7 +615,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() -1 );
         il.add_output( il.add_xor( ( i << 1 ) + 1, mem_xor[ ~tt ] << 1 ) );
-        ils.emplace_back( il );
+        push_solution( il );
       }
     }
     return std::nullopt;
@@ -607,13 +628,146 @@ private:
     }
     return find_and_and_helper( pos_unate_lits, pos_unate_pairs, 1 );
   }
-  std::optional<index_list_t> find_and_and()
+  std::optional<index_list_t> find_and_or()
   {
     if ( has_and_pairs == false )
     {
       prepare_and_pairs();
     }
     return find_and_and_helper( neg_unate_lits, neg_unate_pairs, 0 );
+  }
+  std::optional<index_list_t> find_and_and()
+  {
+    if ( has_unateness == false )
+    {
+      prepare_unateness();
+    }
+    for ( auto i = 0u; i < pos_unate_lits.size(); ++i )
+    {
+      if ( pos_unate_lits[i].score * 3 < num_bits[1] )
+      {
+        break;
+      }
+      uint32_t const& lit1 = pos_unate_lits[i].lit;
+      for ( auto j = i + 1u; j < pos_unate_lits.size(); ++j )
+      {
+        if ( pos_unate_lits[i].score + pos_unate_lits[j].score * 2 < num_bits[1] )
+        {
+          break;
+        }
+        uint32_t const& lit2 = pos_unate_lits[j].lit;
+        auto const ntt1 = lit1 & 0x1 ? ~get_div( lit1 >> 1 ) : get_div( lit1 >> 1 );
+        auto const ntt2 = lit2 & 0x1 ? ~get_div( lit2 >> 1 ) : get_div( lit2 >> 1 );
+        TT const tt = ntt1 | ntt2;
+        for ( auto k = j + 1u; k < pos_unate_lits.size(); ++k )
+        {
+          uint32_t const& lit3 = pos_unate_lits[k].lit;
+          if ( pos_unate_lits[i].score + pos_unate_lits[j].score + pos_unate_lits[k].score < num_bits[1] )
+          {
+            break;
+          }
+          auto const ntt3 = lit3 & 0x1 ? ~get_div( lit3 >> 1 ) : get_div( lit3 >> 1 );
+          if ( ( tt | ntt3 ) == on_off_sets[1] )
+          {
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
+              auto const new_lit2 = il.add_and( ( lit3 ^ 0x1 ), new_lit1 );
+              il.add_output( new_lit2 + 1 );
+              push_solution( il );
+            }
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit3 ^ 0x1 ) );
+              auto const new_lit2 = il.add_and( ( lit2 ^ 0x1 ), new_lit1 );
+              il.add_output( new_lit2 + 1 );
+              push_solution( il );
+            }
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto const new_lit1 = il.add_and( ( lit2 ^ 0x1 ), ( lit3 ^ 0x1 ) );
+              auto const new_lit2 = il.add_and( ( lit1 ^ 0x1 ), new_lit1 );
+              il.add_output( new_lit2 + 1 );
+              push_solution( il );
+            }
+          }
+        }
+      }
+    }
+    return std::nullopt;
+  }
+  std::optional<index_list_t> find_or_or()
+  {
+    if ( has_unateness == false )
+    {
+      prepare_unateness();
+    }
+    for ( auto i = 0u; i < neg_unate_lits.size(); ++i )
+    {
+      if ( neg_unate_lits[i].score * 3 < num_bits[0] )
+      {
+        break;
+      }
+      uint32_t const& lit1 = neg_unate_lits[i].lit;
+      for ( auto j = i + 1u; j < neg_unate_lits.size(); ++j )
+      {
+        if ( neg_unate_lits[i].score + neg_unate_lits[j].score * 2 < num_bits[0] )
+        {
+          break;
+        }
+        uint32_t const& lit2 = neg_unate_lits[j].lit;
+        auto const ntt1 = lit1 & 0x1 ? ~get_div( lit1 >> 1 ) : get_div( lit1 >> 1 );
+        auto const ntt2 = lit2 & 0x1 ? ~get_div( lit2 >> 1 ) : get_div( lit2 >> 1 );
+        TT const tt = ntt1 | ntt2;
+        for ( auto k = j + 1u; k < neg_unate_lits.size(); ++k )
+        {
+          uint32_t const& lit3 = neg_unate_lits[k].lit;
+          if ( neg_unate_lits[i].score + neg_unate_lits[j].score + neg_unate_lits[k].score < num_bits[0] )
+          {
+            break;
+          }
+
+          auto const ntt3 = lit3 & 0x1 ? ~get_div( lit3 >> 1 ) : get_div( lit3 >> 1 );
+          if ( ( tt | ntt3 ) == on_off_sets[0] )
+          {
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
+              auto const new_lit2 = il.add_and( ( lit3 ^ 0x1 ), new_lit1 );
+              il.add_output( new_lit2 );
+              push_solution( il );
+            }
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit3 ^ 0x1 ) );
+              auto const new_lit2 = il.add_and( ( lit2 ^ 0x1 ), new_lit1 );
+              il.add_output( new_lit2 );
+              push_solution( il );
+            }
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto const new_lit1 = il.add_and( ( lit2 ^ 0x1 ), ( lit3 ^ 0x1 ) );
+              auto const new_lit2 = il.add_and( ( lit1 ^ 0x1 ), new_lit1 );
+              il.add_output( new_lit2 );
+              push_solution( il );
+            }
+          }
+        }
+      }
+    }
+    return std::nullopt;
   }
   std::optional<index_list_t> find_and_xor()
   {
@@ -638,23 +792,71 @@ private:
         auto const tt = get_div( i ) ^ get_div( j );
         if ( mem_xor.find( tt ) != mem_xor.end() )
         {
+          if ( mem_xor[ tt ] == i ) continue;
+          if ( mem_xor[ tt ] == j ) continue;
           index_list_t il;
-          il.clear();
-          il.add_inputs( divisors.size() - 1 );
-          auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
-          auto new_lit2 = il.add_xor( new_lit1, mem_xor[ tt ] << 1 );
-          il.add_output( new_lit2 );
-          ils.emplace_back( il );
+          {
+            il.clear();
+            il.add_inputs( divisors.size() - 1 );
+            auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
+            auto new_lit2 = il.add_xor( new_lit1, mem_xor[ tt ] << 1 );
+            il.add_output( new_lit2 );
+            push_solution( il );
+          }
+
+          // commutative
+          {
+            il.clear();
+            il.add_inputs( divisors.size() - 1 );
+            auto new_lit1 = il.add_xor( (i << 1), (mem_xor[ tt ] << 1 ) );
+            auto new_lit2 = il.add_xor( new_lit1, j << 1 );
+            il.add_output( new_lit2 );
+            push_solution( il );
+          }
+
+          // commutative
+          {
+            il.clear();
+            il.add_inputs( divisors.size() - 1 );
+            auto new_lit1 = il.add_xor( (j << 1), (mem_xor[ tt ] << 1 ) );
+            auto new_lit2 = il.add_xor( new_lit1, i << 1 );
+            il.add_output( new_lit2 );
+            push_solution( il );
+          }
         }
         if ( mem_xor.find( ~tt ) != mem_xor.end() )
         {
+          if ( mem_xor[ ~tt ] == i ) continue;
+          if ( mem_xor[ ~tt ] == j ) continue;
           index_list_t il;
-          il.clear();
-          il.add_inputs( divisors.size() - 1 );
-          auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
-          auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, mem_xor[ ~tt ] << 1 );
-          il.add_output( new_lit2 );
-          ils.emplace_back( il );
+          {
+            il.clear();
+            il.add_inputs( divisors.size() - 1 );
+            auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
+            auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, mem_xor[ ~tt ] << 1 );
+            il.add_output( new_lit2 );
+            push_solution( il );
+          }
+          
+          // commutative
+          {
+            il.clear();
+            il.add_inputs( divisors.size() - 1 );
+            auto new_lit1 = il.add_xor( (i << 1), (mem_xor[ ~tt ] << 1) );
+            auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, j << 1 );
+            il.add_output( new_lit2 );
+            push_solution( il );
+          }
+                    
+          // commutative
+          {
+            il.clear();
+            il.add_inputs( divisors.size() - 1 );
+            auto new_lit1 = il.add_xor( (j << 1), (mem_xor[ ~tt ] << 1) );
+            auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, i << 1 );
+            il.add_output( new_lit2 );
+            push_solution( il );
+          }
         }
       }
     }
@@ -680,7 +882,7 @@ private:
           auto new_lit2 = il.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
           auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
           il.add_output( new_lit3 );
-          ils.emplace_back( il );
+          push_solution( il );
         }
         if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
         {
@@ -691,7 +893,7 @@ private:
           auto new_lit2 = il.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
           auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
           il.add_output( new_lit3 );
-          ils.emplace_back( il );
+          push_solution( il );
         }
       }
     }
@@ -721,7 +923,7 @@ private:
               auto new_lit2 = il.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
               auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
               il.add_output( new_lit3 );
-              ils.emplace_back( il );
+              push_solution( il );
             }
             if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
             {
@@ -732,7 +934,48 @@ private:
               auto new_lit2 = il.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
               auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
               il.add_output( new_lit3 );
-              ils.emplace_back( il );
+              push_solution( il );
+            }
+          }
+        }
+      }
+    }
+    return std::nullopt;
+  }
+  std::optional<index_list_t> find_xor_and()
+  {
+    if ( has_xor == false )
+    {
+      prepare_xor();
+    }
+    for ( auto i = 1u; i < divisors.size(); i++ )
+    {
+      for ( auto j = i+1; j < divisors.size(); j++ )
+      {
+        for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
+        {
+          for ( auto on_off_2 = 0u; on_off_2 < 2; on_off_2++ )
+          {
+            auto const tt = ( on_off_1? ~get_div( i ) : get_div( i ) ) & ( on_off_2? ~get_div( j ) : get_div( j ) );
+            if ( mem_xor.find( tt ) != mem_xor.end() )
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto new_lit1 = il.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
+              auto new_lit2 = il.add_xor( new_lit1, mem_xor[ tt ] << 1 );
+              il.add_output( new_lit2 );
+              push_solution( il );
+            }
+            if ( mem_xor.find( ~tt ) != mem_xor.end() )
+            {
+              index_list_t il;
+              il.clear();
+              il.add_inputs( divisors.size() - 1 );
+              auto new_lit1 = il.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
+              auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, mem_xor[ ~tt ] << 1 );
+              il.add_output( new_lit2 );
+              push_solution( il );
             }
           }
         }
@@ -764,7 +1007,7 @@ private:
               auto new_lit2 = il.add_and( mem_xor_and[ tt ] % ( 2 * divisors.size() ), mem_xor_and[ tt ] / ( 2 * divisors.size() ) );
               auto new_lit3 = il.add_xor( new_lit1, new_lit2 );
               il.add_output( new_lit3 );
-              ils.emplace_back( il );
+              push_solution( il );
             }
             if ( mem_xor_and.find( ~tt ) != mem_xor_and.end() )
             {
@@ -775,7 +1018,7 @@ private:
               auto new_lit2 = il.add_and( mem_xor_and[ ~tt ] % ( 2 * divisors.size() ), mem_xor_and[ ~tt ] / ( 2 * divisors.size() ) );
               auto new_lit3 = il.add_xor( new_lit1 ^ 0x1, new_lit2 );
               il.add_output( new_lit3 );
-              ils.emplace_back( il );
+              push_solution( il );
             }
           }
         }
@@ -817,10 +1060,58 @@ private:
     if ( !ret ) ret = find_and_and_and_helper<true, true>( neg_unate_xor_pairs, neg_unate_xor_pairs, 0 );
     return ret;
   }
+  struct core_func_t 
+  {
+    std::function<void(search_core*)> func;
+    uint32_t effort;
+    core_func_t( std::function<void(search_core*)> func, uint32_t effort): func( func ), effort( effort )
+    { }
+    void operator () ( search_core * pcore )
+    {
+      func( pcore );
+    }
+  };
+  void sorted_core( Ntk& forest )
+  {
+    for ( core_func_t & fn : fns )
+    {
+      uint32_t nbefore = ils.size();
+      call_with_stopwatch( st.time_search, [&](){ fn( this );} );
+      st.num_resub[ fn.effort ] += ils.size() - nbefore;
+      if ( isConst ) break;
+    }
+    st.num_roots += ils.size();
+    uint32_t ngain = 0u;
+    for( index_list_t const& il : ils )
+    {
+      if ( best_cost > eval_result( forest, il ) ) ngain = std::max( best_cost - eval_result( forest, il ), ngain );
+      call_with_stopwatch( st.time_eval, [&](){ update_result( forest, il ); } );
+    }
+    st.num_gain += ngain;
+  }
+
 public:
   explicit search_core( Ntk const& ntk, stats& st ) noexcept
     : ntk( ntk ), st( st )
   {
+    fns.clear();
+    fns.emplace_back( [](search_core* _core ) { _core->find_wire         (); }, 0 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor          (); }, 1 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor      (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor_xor  (); }, 3 ); // bad
+    fns.emplace_back( [](search_core* _core ) { _core->find_and          (); }, 1 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_or           (); }, 1 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_and      (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor_and  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor      (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor_xor  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_or       (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_and      (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_or_or        (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_or_and       (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_and_and  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_and_xor  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_and_and  (); }, 3 );
     divisors.reserve( 200u );
   }
   template<class iterator_type, class truth_table_storage_type>
@@ -839,10 +1130,6 @@ public:
 
     // prepare solution forest
     Ntk forest; // create an empty network
-    forest_leaves.clear();
-    candidates.clear();
-    forest_root = std::nullopt;
-    div_costs.clear();
     
     for( signal div : divs )
     {
@@ -854,54 +1141,11 @@ public:
       div_costs.emplace_back( div_cost );
     }
 
-    best_cost = max_cost; // upper bound
-    prepare_clear();
 
     bool done = false;
     ils.clear();
 
-    // std::optional<index_list_t> il = find_wire(); if ( il ) return( *il ); /* searching constant is useless and cause error */
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_or()          ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_and()         ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor()         ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_and()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_or_and()      ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor()     ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor_xor_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_xor_and_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_and() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_and_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-    // il = call_with_stopwatch( st.time_search, [&](){ return find_and_xor_xor() ;}   ); done = call_with_stopwatch( st.time_eval, [&](){ return update_result( forest, il ); } );// if (done) return index_list;
-
-    call_with_stopwatch( st.time_search, [&](){ find_wire()        ;}   );
-    if ( ils.size() )
-    {
-      for( index_list_t const& il : ils )
-      {
-        update_result( forest, il );
-      }
-      return index_list;
-    }
-    call_with_stopwatch( st.time_search, [&](){ find_or()          ;}   ); 
-    call_with_stopwatch( st.time_search, [&](){ find_and()         ;}   ); 
-    call_with_stopwatch( st.time_search, [&](){ find_xor()         ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_and_and()     ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_or_and()      ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_and_xor()     ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_xor_xor()     ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_xor_xor_xor() ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_xor_xor_and() ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_xor_and_and() ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_and_and_and() ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_and_and_xor() ;}   ); 
-    // call_with_stopwatch( st.time_search, [&](){ find_and_xor_xor() ;}   ); 
-
-    for( index_list_t const& il : ils )
-    {
-      update_result( forest, il );
-    }
+    sorted_core( forest );
 
     st.num_problems += 1u;
     if ( index_list )
@@ -943,10 +1187,13 @@ private:
   std::vector<signal> candidates; // the output signals with correct functionality
   std::optional<signal> forest_root;
   stats& st;
-
+  
   std::optional<index_list_t> index_list;
   std::vector<index_list_t> ils;
   uint32_t best_cost;
+
+  std::vector<core_func_t> fns;
+  bool isConst;
 };
 
 }
