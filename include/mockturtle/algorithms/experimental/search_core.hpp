@@ -159,6 +159,9 @@ private:
   }
   bool push_solution( index_list_t const& il )
   {
+    // only for paper
+    clock curr_time = std::chrono::high_resolution_clock::now();
+    efforts.emplace_back( std::chrono::duration<double>( curr_time - timer_start ).count() );
     ils.emplace_back( il );
   }
   template<bool pol1, bool pol2>
@@ -379,6 +382,8 @@ private:
     forest_root = std::nullopt;
     div_costs.clear();
     isConst = false;
+
+    ils.clear();
   }
   void prepare_task()
   {
@@ -1073,6 +1078,10 @@ private:
   };
   void sorted_core( Ntk& forest )
   {
+    // only for paper 
+    efforts.clear();
+    timer_start = std::chrono::high_resolution_clock::now();
+
     for ( core_func_t & fn : fns )
     {
       uint32_t nbefore = ils.size();
@@ -1082,11 +1091,22 @@ private:
     }
     st.num_roots += ils.size();
     uint32_t ngain = 0u;
-    for( index_list_t const& il : ils )
+
+    // only for paper
+    assert( efforts.size() == ils.size() );
+    for ( uint32_t i = 0u; i < ils.size(); i++ )
     {
-      if ( best_cost > eval_result( forest, il ) ) ngain = std::max( best_cost - eval_result( forest, il ), ngain );
-      call_with_stopwatch( st.time_eval, [&](){ update_result( forest, il ); } );
+      uint32_t c = eval_result( forest, ils[i] );
+      double e = efforts[i];
+      std::cerr << i << "," << e << "," << (int)(best_cost - c) << std::endl;
+      best_cost = std::min(best_cost, c);
     }
+
+    // for( index_list_t const& il : ils )
+    // {
+      // if ( best_cost > eval_result( forest, il ) ) ngain = std::max( best_cost - eval_result( forest, il ), ngain );
+      // call_with_stopwatch( st.time_eval, [&](){ update_result( forest, il ); } );
+    // }
     st.num_gain += ngain;
   }
 
@@ -1096,22 +1116,22 @@ public:
   {
     fns.clear();
     fns.emplace_back( [](search_core* _core ) { _core->find_wire         (); }, 0 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_xor          (); }, 1 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor      (); }, 2 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor_xor  (); }, 3 ); // bad
-    fns.emplace_back( [](search_core* _core ) { _core->find_and          (); }, 1 );
     fns.emplace_back( [](search_core* _core ) { _core->find_or           (); }, 1 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_xor_and      (); }, 2 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor_and  (); }, 3 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor      (); }, 2 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor_xor  (); }, 3 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_and_or       (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and          (); }, 1 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor          (); }, 1 );
     fns.emplace_back( [](search_core* _core ) { _core->find_and_and      (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_or       (); }, 2 );
     fns.emplace_back( [](search_core* _core ) { _core->find_or_or        (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor      (); }, 2 );
     fns.emplace_back( [](search_core* _core ) { _core->find_or_and       (); }, 2 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_xor_and_and  (); }, 3 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_and_and_xor  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor      (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_and      (); }, 2 );
     fns.emplace_back( [](search_core* _core ) { _core->find_and_and_and  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_and_xor  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor_and  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor_xor  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_and_and  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor_xor  (); }, 3 ); // bad
     divisors.reserve( 200u );
   }
   template<class iterator_type, class truth_table_storage_type>
@@ -1128,6 +1148,9 @@ public:
       ++begin;
     }
 
+    best_cost = max_cost;
+    prepare_clear();
+
     // prepare solution forest
     Ntk forest; // create an empty network
     
@@ -1141,10 +1164,6 @@ public:
       div_costs.emplace_back( div_cost );
     }
 
-
-    bool done = false;
-    ils.clear();
-
     sorted_core( forest );
 
     st.num_problems += 1u;
@@ -1154,7 +1173,7 @@ public:
       st.size_forest += forest.num_gates();
     }
 
-    return index_list;
+    return std::nullopt;
   }
 private:
   std::array<TT, 2> on_off_sets;
@@ -1194,6 +1213,12 @@ private:
 
   std::vector<core_func_t> fns;
   bool isConst;
+
+  // only for paper
+  using clock = typename std::chrono::time_point<std::chrono::high_resolution_clock>;
+  clock timer_start;
+  std::vector<double> efforts;
+
 };
 
 }
