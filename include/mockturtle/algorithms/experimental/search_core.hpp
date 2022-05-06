@@ -163,6 +163,7 @@ private:
     clock curr_time = std::chrono::high_resolution_clock::now();
     efforts.emplace_back( std::chrono::duration<double>( curr_time - timer_start ).count() );
     ils.emplace_back( il );
+    return false; // if continue searching
   }
   template<bool pol1, bool pol2>
   void collect_unate_pairs_detail( uint32_t div1, uint32_t div2 )
@@ -234,7 +235,7 @@ private:
           il.add_inputs( divisors.size() - 1 );
           auto const new_lit = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
           il.add_output( new_lit + on_off );
-          push_solution( il );
+          if ( !push_solution( il ) ) return std::nullopt;
         }
       }
     }
@@ -281,7 +282,7 @@ private:
           }
           auto const new_lit2 = il.add_and( ( lit1 ^ 0x1 ), new_lit1 ^ 0x1 );
           il.add_output( new_lit2 + on_off );
-          push_solution( il );
+          if ( !push_solution( il ) ) return std::nullopt;
         }
       }
     }
@@ -349,7 +350,7 @@ private:
           }
           uint32_t const output_lit = il.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
           il.add_output( output_lit + on_off );
-          push_solution( il );
+          if ( !push_solution( il ) ) return std::nullopt;
         }
       }
     }
@@ -548,7 +549,7 @@ private:
       il.clear();
       il.add_inputs( divisors.size() - 1 );
       il.add_output( 1 );
-      push_solution( il );
+      if ( !push_solution( il ) ) return std::nullopt;
       isConst = true;
     }
     if ( num_bits[1] == 0 )
@@ -557,7 +558,7 @@ private:
       il.clear();
       il.add_inputs( divisors.size() - 1 );
       il.add_output( 0 );
-      push_solution( il );
+      if ( !push_solution( il ) ) return std::nullopt;
       isConst = true;
     }
     for ( auto v = 1u; v < divisors.size(); ++v )
@@ -568,7 +569,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() - 1 );
         il.add_output( v << 1 );
-        push_solution( il );
+        if ( !push_solution( il ) ) return std::nullopt;
       }
       if ( get_div( v ) == on_off_sets[0] )
       {
@@ -576,7 +577,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() - 1 );
         il.add_output( ( v << 1 ) + 1 );
-        push_solution( il );
+        if ( !push_solution( il ) ) return std::nullopt;
       }
     }
     return std::nullopt;
@@ -612,7 +613,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() -1 );
         il.add_output( il.add_xor( ( i << 1 ), mem_xor[ tt ] << 1 ) );
-        push_solution( il );
+        if ( !push_solution( il ) ) return std::nullopt;
       }
       if ( mem_xor.find( ~tt ) != mem_xor.end() )
       {
@@ -620,7 +621,7 @@ private:
         il.clear();
         il.add_inputs( divisors.size() -1 );
         il.add_output( il.add_xor( ( i << 1 ) + 1, mem_xor[ ~tt ] << 1 ) );
-        push_solution( il );
+        if ( !push_solution( il ) ) return std::nullopt;
       }
     }
     return std::nullopt;
@@ -681,7 +682,7 @@ private:
               auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit3 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 + 1 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
             {
               index_list_t il;
@@ -690,7 +691,7 @@ private:
               auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit3 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit2 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 + 1 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
             {
               index_list_t il;
@@ -699,7 +700,7 @@ private:
               auto const new_lit1 = il.add_and( ( lit2 ^ 0x1 ), ( lit3 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit1 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 + 1 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
           }
         }
@@ -748,7 +749,7 @@ private:
               auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit3 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
             {
               index_list_t il;
@@ -757,7 +758,7 @@ private:
               auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit3 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit2 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
             {
               index_list_t il;
@@ -766,7 +767,7 @@ private:
               auto const new_lit1 = il.add_and( ( lit2 ^ 0x1 ), ( lit3 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit1 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
           }
         }
@@ -806,7 +807,7 @@ private:
             auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
             auto new_lit2 = il.add_xor( new_lit1, mem_xor[ tt ] << 1 );
             il.add_output( new_lit2 );
-            push_solution( il );
+            if ( !push_solution( il ) ) return std::nullopt;
           }
 
           // commutative
@@ -816,7 +817,7 @@ private:
             auto new_lit1 = il.add_xor( (i << 1), (mem_xor[ tt ] << 1 ) );
             auto new_lit2 = il.add_xor( new_lit1, j << 1 );
             il.add_output( new_lit2 );
-            push_solution( il );
+            if ( !push_solution( il ) ) return std::nullopt;
           }
 
           // commutative
@@ -826,7 +827,7 @@ private:
             auto new_lit1 = il.add_xor( (j << 1), (mem_xor[ tt ] << 1 ) );
             auto new_lit2 = il.add_xor( new_lit1, i << 1 );
             il.add_output( new_lit2 );
-            push_solution( il );
+            if ( !push_solution( il ) ) return std::nullopt;
           }
         }
         if ( mem_xor.find( ~tt ) != mem_xor.end() )
@@ -840,7 +841,7 @@ private:
             auto new_lit1 = il.add_xor( (i << 1), (j << 1) );
             auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, mem_xor[ ~tt ] << 1 );
             il.add_output( new_lit2 );
-            push_solution( il );
+            if ( !push_solution( il ) ) return std::nullopt;
           }
           
           // commutative
@@ -850,7 +851,7 @@ private:
             auto new_lit1 = il.add_xor( (i << 1), (mem_xor[ ~tt ] << 1) );
             auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, j << 1 );
             il.add_output( new_lit2 );
-            push_solution( il );
+            if ( !push_solution( il ) ) return std::nullopt;
           }
                     
           // commutative
@@ -860,7 +861,7 @@ private:
             auto new_lit1 = il.add_xor( (j << 1), (mem_xor[ ~tt ] << 1) );
             auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, i << 1 );
             il.add_output( new_lit2 );
-            push_solution( il );
+            if ( !push_solution( il ) ) return std::nullopt;
           }
         }
       }
@@ -887,7 +888,7 @@ private:
           auto new_lit2 = il.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
           auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
           il.add_output( new_lit3 );
-          push_solution( il );
+          if ( !push_solution( il ) ) return std::nullopt;
         }
         if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
         {
@@ -898,7 +899,7 @@ private:
           auto new_lit2 = il.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
           auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
           il.add_output( new_lit3 );
-          push_solution( il );
+          if ( !push_solution( il ) ) return std::nullopt;
         }
       }
     }
@@ -928,7 +929,7 @@ private:
               auto new_lit2 = il.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
               auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
               il.add_output( new_lit3 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
             if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
             {
@@ -939,7 +940,7 @@ private:
               auto new_lit2 = il.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
               auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
               il.add_output( new_lit3 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
           }
         }
@@ -970,7 +971,7 @@ private:
               auto new_lit1 = il.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
               auto new_lit2 = il.add_xor( new_lit1, mem_xor[ tt ] << 1 );
               il.add_output( new_lit2 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
             if ( mem_xor.find( ~tt ) != mem_xor.end() )
             {
@@ -980,7 +981,7 @@ private:
               auto new_lit1 = il.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
               auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, mem_xor[ ~tt ] << 1 );
               il.add_output( new_lit2 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
           }
         }
@@ -1012,7 +1013,7 @@ private:
               auto new_lit2 = il.add_and( mem_xor_and[ tt ] % ( 2 * divisors.size() ), mem_xor_and[ tt ] / ( 2 * divisors.size() ) );
               auto new_lit3 = il.add_xor( new_lit1, new_lit2 );
               il.add_output( new_lit3 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
             if ( mem_xor_and.find( ~tt ) != mem_xor_and.end() )
             {
@@ -1023,7 +1024,7 @@ private:
               auto new_lit2 = il.add_and( mem_xor_and[ ~tt ] % ( 2 * divisors.size() ), mem_xor_and[ ~tt ] / ( 2 * divisors.size() ) );
               auto new_lit3 = il.add_xor( new_lit1 ^ 0x1, new_lit2 );
               il.add_output( new_lit3 );
-              push_solution( il );
+              if ( !push_solution( il ) ) return std::nullopt;
             }
           }
         }
@@ -1069,6 +1070,7 @@ private:
   {
     std::function<void(search_core*)> func;
     uint32_t effort;
+    uint32_t score; // for sort each func
     core_func_t( std::function<void(search_core*)> func, uint32_t effort): func( func ), effort( effort )
     { }
     void operator () ( search_core * pcore )
@@ -1079,8 +1081,10 @@ private:
   void sorted_core( Ntk& forest )
   {
     // only for paper 
-    efforts.clear();
-    timer_start = std::chrono::high_resolution_clock::now();
+    // efforts.clear();
+    // timer_start = std::chrono::high_resolution_clock::now();
+
+    // std::random_shuffle( fns.begin() + 1, fns.end() ); // should search wire first
 
     for ( core_func_t & fn : fns )
     {
@@ -1088,24 +1092,30 @@ private:
       call_with_stopwatch( st.time_search, [&](){ fn( this );} );
       st.num_resub[ fn.effort ] += ils.size() - nbefore;
       if ( isConst ) break;
+      if ( ils.size() ) break;
     }
     st.num_roots += ils.size();
     uint32_t ngain = 0u;
 
     // only for paper
-    assert( efforts.size() == ils.size() );
-    for ( uint32_t i = 0u; i < ils.size(); i++ )
-    {
-      uint32_t c = eval_result( forest, ils[i] );
-      double e = efforts[i];
-      std::cerr << i << "," << e << "," << (int)(best_cost - c) << std::endl;
-      best_cost = std::min(best_cost, c);
-    }
+    // assert( efforts.size() == ils.size() );
+    // for ( uint32_t i = 0u; i < ils.size(); i++ )
+    // {
+    //   uint32_t c = eval_result( forest, ils[i] );
+    //   double e = efforts[i];
+    //   std::cerr << i << "," << e << "," << (int)(best_cost - c) << std::endl;
+    //   best_cost = std::min(best_cost, c);
+    // }
 
+    if ( ils.size() > 0 )
+    {
+      index_list = ils[0];
+    }
+    
     // for( index_list_t const& il : ils )
     // {
-      // if ( best_cost > eval_result( forest, il ) ) ngain = std::max( best_cost - eval_result( forest, il ), ngain );
-      // call_with_stopwatch( st.time_eval, [&](){ update_result( forest, il ); } );
+    //   if ( best_cost > eval_result( forest, il ) ) ngain = std::max( best_cost - eval_result( forest, il ), ngain );
+    //   call_with_stopwatch( st.time_eval, [&](){ update_result( forest, il ); } );
     // }
     st.num_gain += ngain;
   }
@@ -1116,22 +1126,22 @@ public:
   {
     fns.clear();
     fns.emplace_back( [](search_core* _core ) { _core->find_wire         (); }, 0 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_or           (); }, 1 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_and          (); }, 1 );
     fns.emplace_back( [](search_core* _core ) { _core->find_xor          (); }, 1 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and          (); }, 1 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_or           (); }, 1 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor      (); }, 2 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_and      (); }, 2 );
     fns.emplace_back( [](search_core* _core ) { _core->find_and_and      (); }, 2 );
     fns.emplace_back( [](search_core* _core ) { _core->find_and_or       (); }, 2 );
     fns.emplace_back( [](search_core* _core ) { _core->find_or_or        (); }, 2 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor      (); }, 2 );
     fns.emplace_back( [](search_core* _core ) { _core->find_or_and       (); }, 2 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor      (); }, 2 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_xor_and      (); }, 2 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_and_and_and  (); }, 3 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_and_and_xor  (); }, 3 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor_and  (); }, 3 );
-    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor_xor  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor      (); }, 2 );
     fns.emplace_back( [](search_core* _core ) { _core->find_xor_and_and  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor_and  (); }, 3 );
     fns.emplace_back( [](search_core* _core ) { _core->find_xor_xor_xor  (); }, 3 ); // bad
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_xor_xor  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_and_xor  (); }, 3 );
+    fns.emplace_back( [](search_core* _core ) { _core->find_and_and_and  (); }, 3 );
     divisors.reserve( 200u );
   }
   template<class iterator_type, class truth_table_storage_type>
@@ -1173,7 +1183,7 @@ public:
       st.size_forest += forest.num_gates();
     }
 
-    return std::nullopt;
+    return index_list;
   }
 private:
   std::array<TT, 2> on_off_sets;

@@ -21,7 +21,7 @@ int main()
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "cost_aware", "benchmark", "C1", "C1\'", "C2", "C2\'", "C3", "C3\'", "C4", "C4\'", "C5", "C5\'", "runtime", "cec" );
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    if ( benchmark != "voter" ) continue;
+    // if ( benchmark != "voter" ) continue;
     float run_time = 0;
 
     fmt::print( "[i] processing {}\n", benchmark );
@@ -35,7 +35,7 @@ int main()
     auto costfn4 = adp_cost<fanout_view<xag_network>>();
     auto costfn5 = supp_cost<fanout_view<xag_network>>();
 
-    auto resynfn = supp_cost<fanout_view<xag_network>>();
+    auto resynfn = and_cost<fanout_view<xag_network>>();
     auto c1 = cost_view( fanout_view( xag ), costfn1 ).get_cost();
     auto c2 = cost_view( fanout_view( xag ), costfn2 ).get_cost();
     auto c3 = cost_view( fanout_view( xag ), costfn3 ).get_cost();
