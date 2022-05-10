@@ -12,10 +12,11 @@ All network implementations are located in `mockturtle/networks/`:
 * *k*-LUT network: ``mockturtle/networks/klut.hpp``
 * COVER network: ``mockturtle/networks/cover.hpp``
 
-
 +--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
 | Interface method               | AIG         | MIG         | XAG         | XMG         | *k*-LUT         | COVER       |
 +================================+=============+=============+=============+=============+=================+=============+
+| ``clone``                      | ✓           | ✓           | ✓           | ✓           |                 |             |
++--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
 |                                | *Primary I/O and constants*                                                           |
 +--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
 | ``get_constant``               | ✓           | ✓           | ✓           | ✓           | ✓               | ✓           |
@@ -88,7 +89,7 @@ All network implementations are located in `mockturtle/networks/`:
 +--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
 |                                | *Create arbitrary functions*                                                          |
 +--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
-| ``create_node``                |             |             |             |             | ✓               |             |
+| ``create_node``                |             |             |             |             | ✓               | ✓           |
 +--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
 | ``create_cover_node``          |             |             |             |             |                 | ✓           |
 +--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
@@ -305,4 +306,13 @@ All network implementations are located in `mockturtle/networks/`:
 | ``eval_fanins_color``          |             |             |             |             |                 |             |
 +--------------------------------+-------------+-------------+-------------+-------------+-----------------+-------------+
 
-.. doxygenfunction:: mockturtle::cover
+**Cover Network**
+
+**Header:** ``mockturtle/networks/cover.hpp``
+
+This header file defines a data structure of type `cover_network`, which is primarily designed for
+reading in a `.blif` file and then converting it into other network types (:ref:`cover_to_graph`).
+This data structure provides an additional node creation function, `create_cover_node`.
+
+.. doxygenfunction:: mockturtle::cover_network::create_cover_node
+

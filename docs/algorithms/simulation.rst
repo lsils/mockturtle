@@ -84,7 +84,7 @@ Note that currently only AIG and XAG are supported.
 
 **Constructors**
 
-.. doxygenfunction:: mockturtle::partial_simulator::partial_simulator( unsigned, unsigned, std::default_random_engine::result_type )
+.. doxygenfunction:: mockturtle::partial_simulator::partial_simulator( uint32_t, uint32_t, std::default_random_engine::result_type )
 
 .. doxygenfunction:: mockturtle::partial_simulator::partial_simulator( std::vector<kitty::partial_truth_table> const& )
 
@@ -100,9 +100,9 @@ Note that currently only AIG and XAG are supported.
 
 **Simulation**
 
-.. doxygenfunction:: mockturtle::simulate_nodes( Ntk const&, unordered_node_map<kitty::partial_truth_table, Ntk>&, Simulator const&, bool )
+.. doxygenfunction:: mockturtle::simulate_nodes( Ntk const&, Container&, Simulator const&, bool )
 
-.. doxygenfunction:: mockturtle::simulate_node( Ntk const&, typename Ntk::node const&, unordered_node_map<kitty::partial_truth_table, Ntk>&, Simulator const& )
+.. doxygenfunction:: mockturtle::simulate_node( Ntk const&, typename Ntk::node const&, Container&, Simulator const& )
 
 **Bit Packing**
 

@@ -175,6 +175,11 @@ public:
         _events( std::make_shared<decltype( _events )::element_type>() )
   {
   }
+
+  mig_network clone() const 
+  {
+    return { std::make_shared<mig_storage>( *_storage ) };
+  }
 #pragma endregion
 
 #pragma region Primary I / O and constants

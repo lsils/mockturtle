@@ -10,6 +10,7 @@ Welcome to mockturtle's documentation!
    :maxdepth: 2
 
    getting_started
+   debugging
    changelog
    acknowledgments
 
@@ -22,13 +23,6 @@ Welcome to mockturtle's documentation!
    implementations
    views
    events
-
-.. toctree::
-   :maxdepth: 2
-   :glob:
-   :caption: Networks
-
-   cover
 
 .. toctree::
    :maxdepth: 2
