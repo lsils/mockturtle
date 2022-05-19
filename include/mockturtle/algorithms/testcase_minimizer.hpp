@@ -70,7 +70,7 @@ struct testcase_minimizer_params
   std::optional<uint32_t> num_iterations{std::nullopt};
 
   /*! \brief Step into the next stage if nothing works for this number of iterations. */
-  uint32_t num_iterations_stage{100u};
+  std::optional<uint32_t> num_iterations_stage{std::nullopt};
 
   /*! \brief Be verbose. */
   bool verbose{false};
@@ -220,7 +220,6 @@ public:
       ntk_backup2 = cleanup_dangling( ntk );
       if ( !reduce() )
       {
-        write_testcase( ps.minimized_case );
         break;
       }
       if ( ntk.num_gates() == 0 )
@@ -303,11 +302,18 @@ private:
     ntk_backup = cleanup_dangling( ntk );
     bool res = fn( ntk );
     ntk = ntk_backup;
-    return !res;
+    was_FIT = !res;
+    return was_FIT;
   }
 
 #ifndef _MSC_VER
   bool test( std::function<std::string(std::string const&)> const& make_command, std::string const& filename )
+  {
+    was_FIT = test_inner( make_command, filename );
+    return was_FIT;
+  }
+
+  bool test_inner( std::function<std::string(std::string const&)> const& make_command, std::string const& filename )
   {
     std::string const command = make_command( ps.path + "/" + filename + file_extension );
     int status = std::system( command.c_str() );
@@ -342,13 +348,20 @@ private:
 
   bool reduce()
   {
-    if ( stage_counter >= ps.num_iterations_stage ||
+    pos_to_remove = ntk.num_pos() >> 3; // 1/8
+
+    if ( ( ps.num_iterations_stage && stage_counter >= *ps.num_iterations_stage ) ||
+         ( reducing_stage == many_pos && pos_to_remove > ntk.num_pos() - sampled.size() ) ||
+         ( reducing_stage == many_pos && pos_to_remove < 2 ) ||
          ( reducing_stage == po && ntk.num_pos() == 1 ) ||
          ( reducing_stage == po && sampled.size() == ntk.num_pos() ) ||
+         ( reducing_stage == pi && ntk.num_pis() > ntk.num_pos() ) ||
          ( reducing_stage == pi && sampled.size() == ntk.num_pis() ) ||
-         ( reducing_stage == gate && sampled.size() == ntk.num_gates() ) ||
-         ( reducing_stage == fanin && sampled.size() == ntk.num_gates() ) ||
-         ( reducing_stage == fanout && sampled.size() == ntk.num_gates() ) )
+         ( reducing_stage == const_gate && sampled.size() == ntk.num_gates() ) ||
+         ( reducing_stage == mffc && sampled.size() == ntk.num_gates() ) ||
+         ( reducing_stage == half_mffc && sampled.size() == ntk.num_gates() ) ||
+         ( reducing_stage == simplify_tfo && sampled.size() == ntk.num_gates() ) ||
+         ( reducing_stage == single_gate && sampled.size() == ntk.num_gates() ) )
     {
       reducing_stage = static_cast<stages>( static_cast<int>( reducing_stage ) + 1 );
       stage_counter = 0;
@@ -357,6 +370,19 @@ private:
 
     switch ( reducing_stage )
     {
+      case many_pos:
+      {
+        assert( pos_to_remove <= ntk.num_pos() - sampled.size() );
+        if ( ps.verbose )
+          fmt::print( "[i] Remove {} POs\n", pos_to_remove);
+        for ( auto i = 0u; i < pos_to_remove; ++i )
+        {
+          auto const& [ith_po, n] = get_random_po();
+          if ( ntk.is_pi( n ) || ntk.is_constant( n ) ) continue;
+          ntk.substitute_node( n, ntk.get_constant( false ) );
+        }
+        break;
+      }
       case po:
       {
         auto const& [ith_po, n] = get_random_po();
@@ -373,7 +399,7 @@ private:
         ntk.substitute_node( n, ntk.get_constant( false ) );
         break;
       }
-      case testcase_minimizer::gate:
+      case const_gate:
       {
         node const& n = get_random_gate();
         if ( ps.verbose )
@@ -381,16 +407,16 @@ private:
         ntk.substitute_node( n, ntk.get_constant( false ) );
         break;
       }
-      case testcase_minimizer::fanout:
+      case mffc:
       {
-        auto const& [n, ni] = get_random_gate_with_gate_fanin();
+        node const& n = get_random_gate();
+        signal fi = ntk.create_pi();
         if ( ps.verbose )
-          fmt::print( "[i] Create PO at gate {} and substitute its fanout {} with const0\n", ni, n );
-        ntk.create_po( ntk.make_signal( ni ) );
-        ntk.substitute_node( n, ntk.get_constant( false ) );
+          fmt::print( "[i] Substitute gate {} with a new PI {}\n", n, ntk.get_node( fi ) );
+        ntk.substitute_node( n, fi );
         break;
       }
-      case testcase_minimizer::fanin:
+      case half_mffc:
       {
         node const& n = get_random_gate();
         signal fi;
@@ -403,6 +429,29 @@ private:
           fmt::print( "[i] Substitute gate {} with its {}-th fanin {}{}\n", n, ith_fanin, ntk.is_complemented( fi ) ? "!" : "", ntk.get_node( fi ) );
         ntk.substitute_node( n, fi );
         assert( network_is_acyclic( color_view{ntk} ) );
+        break;
+      }
+      case simplify_tfo:
+      {
+        node const& n = get_random_gate();
+        if ( ps.verbose )
+          fmt::print( "[i] Simplify TFO of gate {} with const0 but keep all its fanins\n", n );
+        ntk.foreach_fanin( n, [&]( auto f ){
+          ntk.create_po( f );
+        });
+        ntk.substitute_node( n, ntk.get_constant( false ) );
+        break;
+      }
+      case single_gate:
+      {
+        node const& n = get_random_gate();
+        if ( ps.verbose )
+          fmt::print( "[i] Remove a single gate {}\n", n );
+        ntk.foreach_fanin( n, [&]( auto f ){
+          ntk.create_po( f );
+        });
+        signal fi = ntk.create_pi();
+        ntk.substitute_node( n, fi );
         break;
       }
       default:
@@ -488,12 +537,17 @@ private:
 
   enum stages : int {
     pi = 1, // remove a PI (substitute with const0)
+    many_pos,
     po, // remove a PO (substitute with const0)
-    gate, // remove a gate (substitute with const0)
-    fanout, // remove TFO of a gate (create PO at a non-PI fanin, then substitute with const0)
-    fanin // substitute a node with its first fanin
-  } reducing_stage{po};
+    const_gate, // substitute a gate with const0
+    simplify_tfo, // create PO for all of a gate's fanins, then substitute it with const0
+    mffc, // substitute a gate with a new PI
+    half_mffc, // substitute a gate with one of its fanin
+    single_gate // remove a single gate by creating POs for its fanins and substitute it with a new PI
+  } reducing_stage{pi};
   uint32_t stage_counter{0u};
+  uint32_t pos_to_remove{1000};
+  bool was_FIT{true};
   std::set<uint32_t> sampled;
 
   uint32_t init_PIs, init_POs, init_gates;

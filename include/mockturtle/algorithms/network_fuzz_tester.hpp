@@ -35,6 +35,7 @@
 #include "../io/write_aiger.hpp"
 #include "../io/verilog_reader.hpp"
 #include "../io/aiger_reader.hpp"
+#include "../utils/stopwatch.hpp"
 
 #include <lorina/lorina.hpp>
 #include <fmt/format.h>
