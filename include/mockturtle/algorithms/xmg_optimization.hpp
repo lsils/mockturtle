@@ -52,23 +52,27 @@ namespace mockturtle
  * If a MAJ gate is satisfiability don't care for assignments 000 and 111, it can be
  * replaced by an XNOR gate.
  */
-inline xmg_network xmg_dont_cares_optimization( xmg_network const& xmg )
+    template <typename xmg_network_>
+inline xmg_network_ xmg_dont_cares_optimization( xmg_network_ const& xmg )
 {
-  node_map<xmg_network::signal, xmg_network> old_to_new( xmg );
+  node_map<typename xmg_network_::signal, xmg_network_> old_to_new( xmg );
 
-  xmg_network dest;
+  xmg_network_ dest;
+  dest.copy_network_metadata(xmg);
+
   old_to_new[xmg.get_constant( false )] = dest.get_constant( false );
 
   xmg.foreach_pi( [&]( auto const& n ) {
     old_to_new[n] = dest.create_pi();
+    dest.copy_signal_metadata( old_to_new[n], xmg, xmg.make_signal( n ) );
   } );
 
-  satisfiability_dont_cares_checker<xmg_network> checker( xmg );
+  satisfiability_dont_cares_checker<xmg_network_> checker( xmg );
 
-  topo_view<xmg_network>{xmg}.foreach_node( [&]( auto const& n ) {
+  topo_view<xmg_network_>{xmg}.foreach_node( [&]( auto const& n ) {
     if ( xmg.is_constant( n ) || xmg.is_pi( n ) ) return;
 
-    std::array<xmg_network::signal, 3> fanin;
+    std::array<typename xmg_network_::signal, 3> fanin;
     xmg.foreach_fanin( n, [&]( auto const& f, auto i ) {
       fanin[i] = old_to_new[f] ^ xmg.is_complemented( f );
     } );
@@ -90,8 +94,11 @@ inline xmg_network xmg_dont_cares_optimization( xmg_network const& xmg )
     }
   } );
 
-  xmg.foreach_po( [&]( auto const& f ) {
-    dest.create_po( old_to_new[f] ^ xmg.is_complemented( f ) );
+  xmg.foreach_po( [&]( auto const& f, auto i ) {
+    auto s = old_to_new[f] ^ xmg.is_complemented( f ) ;
+    dest.copy_signal_metadata(s, xmg, f);
+    auto po = dest.create_po( s );
+    dest.copy_output_metadata(po, xmg, i);
   });
 
   return dest;
