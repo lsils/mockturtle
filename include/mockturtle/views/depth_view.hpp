@@ -255,7 +255,7 @@ private:
     {
       return _levels[n] = 0;
     }
-    if ( this->is_pi( n ) )
+    if ( this->is_ci( n ) )
     {
       assert( !_ps.pi_cost || _cost_fn( *this, n ) >= 1 );
       return _levels[n] = _ps.pi_cost ? _cost_fn( *this, n ) - 1 : 0;
@@ -277,7 +277,7 @@ private:
   void compute_levels()
   {
     _depth = 0;
-    this->foreach_po( [&]( auto const& f ) {
+    this->foreach_co( [&]( auto const& f ) {
       auto clevel = compute_levels( this->get_node( f ) );
       if ( _ps.count_complements && this->is_complemented( f ) )
       {
@@ -286,7 +286,7 @@ private:
       _depth = std::max( _depth, clevel );
     } );
 
-    this->foreach_po( [&]( auto const& f ) {
+    this->foreach_co( [&]( auto const& f ) {
       const auto n = this->get_node( f );
       if ( _levels[n] == _depth )
       {
@@ -298,7 +298,7 @@ private:
   void set_critical_path( node const& n )
   {
     _crit_path[n] = true;
-    if ( !this->is_constant( n ) && !( _ps.pi_cost && this->is_pi( n ) ) )
+    if ( !this->is_constant( n ) && !( _ps.pi_cost && this->is_ci( n ) ) )
     {
       const auto lvl = _levels[n];
       this->foreach_fanin( n, [&]( auto const& f ) {
