@@ -692,6 +692,8 @@ struct cut_rewriting_impl
     /* initial node map */
     node_map<signal<Ntk>, Ntk> old2new( ntk_ );
     Ntk res;
+    res.copy_network_metadata(ntk_);
+
     old2new[ntk_.get_constant( false )] = res.get_constant( false );
     if ( ntk_.get_node( ntk_.get_constant( true ) ) != ntk_.get_node( ntk_.get_constant( false ) ) )
     {
@@ -699,6 +701,7 @@ struct cut_rewriting_impl
     }
     ntk_.foreach_pi( [&]( auto const& n ) {
       old2new[n] = res.create_pi();
+      res.copy_signal_metadata(old2new[n], ntk_, ntk_.make_signal( n ));
     } );
 
     /* enumerate cuts */
@@ -793,8 +796,10 @@ struct cut_rewriting_impl
     } );
 
     /* create POs */
-    ntk_.foreach_po( [&]( auto const& f ) {
-      res.create_po( ntk_.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] );
+    ntk_.foreach_po( [&]( auto const& f, auto i ) {
+      typename Ntk::signal s = ntk_.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f];
+      auto const po = res.create_po( s );
+      res.copy_output_metadata( po, ntk_, i );
     } );
 
     NtkDest ret = cleanup_dangling<NtkDest>( res );

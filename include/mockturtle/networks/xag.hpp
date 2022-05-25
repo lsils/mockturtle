@@ -1051,6 +1051,28 @@ public:
       fn( signal{_storage->nodes[n].children[1]}, 1 );
     }
   }
+
+  template<class Other>
+  void copy_network_metadata(Other &other) {
+  }
+
+  template<class Other>
+  void copy_node_metadata(node dest, Other &other, typename Other::node source) {
+  }
+
+  template<class Other>
+  void copy_signal_metadata(signal dest, Other &other, typename Other::signal source) {
+  }
+
+  template<class Other>
+  void copy_output_metadata(uint32_t dest, Other &other, uint32_t source) {
+  }
+
+  template<class Other>
+  void copy_latch_information(node dest, Other &other, typename Other::node source) {
+      _storage->latch_information[dest] = other._storage->latch_information[source];
+  }
+
 #pragma endregion
 
 #pragma region Value simulation

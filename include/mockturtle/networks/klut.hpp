@@ -743,6 +743,28 @@ signal create_maj( signal a, signal b, signal c )
     using IteratorType = decltype( _storage->outputs.begin() );
     detail::foreach_element_transform<IteratorType, uint32_t>( _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f ) { return f.index; }, fn );
   }
+
+  template<class Other>
+  void copy_network_metadata(Other &other) {
+  }
+
+  template<class Other>
+  void copy_node_metadata(node dest, Other &other, typename Other::node source) {
+  }
+
+  template<class Other>
+  void copy_signal_metadata(signal dest, Other &other, typename Other::signal source) {
+  }
+
+  template<class Other>
+  void copy_output_metadata(uint32_t dest, Other &other, uint32_t source) {
+  }
+
+  template<class Other>
+  void copy_latch_information(node dest, Other &other, typename Other::node source) {
+      _storage->latch_information[dest] = other._storage->latch_information[source];
+  }
+
 #pragma endregion
 
 #pragma region Simulate values

@@ -59,7 +59,20 @@ public:
 public: /* callbacks */
   virtual std::string node_label( Ntk const& ntk, node<Ntk> const& n ) const
   {
-    return std::to_string( ntk.node_to_index( n ) );
+      if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> && has_set_name_v<Ntk> )
+      {
+          signal<Ntk> s = ntk.make_signal( n );
+          if ( ntk.has_name( s ) ) {
+              return ntk.get_name( s );
+          }
+          if ( ntk.has_name( !s ) ) {
+              return ntk.get_name( !s );
+          }
+      }
+      if (ntk.is_constant(n)) {
+          return "constant";
+      }
+      return std::to_string( ntk.node_to_index( n ) );
   }
 
   virtual std::string node_shape( Ntk const& ntk, node<Ntk> const& n ) const

@@ -1015,6 +1015,23 @@ public:
   bool eval_fanins_color( node const& n, Pred&& pred ) const;
 #pragma endregion
 
+#pragma region Metadata copying
+  template<class Other>
+  void copy_network_metadata(Other &other) const;
+
+  template<class Other>
+  void copy_node_metadata(node dest, Other &other, typename Other::node source) const;
+
+  template<class Other>
+  void copy_signal_metadata(signal dest, Other &other, typename Other::signal source) const;
+
+  template<class Other>
+  void copy_output_metadata(uint32_t dest, Other &other, uint32_t source) const;
+
+  template<class Other>
+  void copy_latch_information(node dest, Other &other, typename Other::node source) const;
+#pragma endregion
+
 #pragma region Signal naming
   /*! \brief Checks if a signal has a name. */
   bool has_name( signal const& s ) const;

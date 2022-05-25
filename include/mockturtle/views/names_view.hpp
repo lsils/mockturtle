@@ -62,20 +62,13 @@ public:
 
   names_view<Ntk>& operator=( names_view<Ntk> const& named_ntk )
   {
-    std::map<signal, std::string> new_signal_names;
-    std::vector<signal> current_pis;
-    Ntk::foreach_pi( [this, &current_pis]( auto const& n ) {
-      current_pis.emplace_back( Ntk::make_signal( n ) );
-    } );
-    named_ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      if ( const auto it = _signal_names.find( current_pis[i] ); it != _signal_names.end() )
-        new_signal_names[named_ntk.make_signal( n )] = it->second;
-    } );
 
-    Ntk::operator=( named_ntk );
-    _signal_names = new_signal_names;
-    _network_name = named_ntk._network_name;
-    return *this;
+      Ntk::operator=(named_ntk);
+      _signal_names = named_ntk._signal_names;
+      _network_name = named_ntk._network_name;
+      _output_names = named_ntk._output_names;
+      return *this;
+
   }
 
   signal create_pi( std::string const& name = {} )
@@ -88,14 +81,98 @@ public:
     return s;
   }
 
-  void create_po( signal const& s, std::string const& name = {} )
+  uint32_t create_po( signal const& s, std::string const& name = {} )
   {
     const auto index = Ntk::num_pos();
-    Ntk::create_po( s, name );
+    auto id = Ntk::create_po( s, name );
     if ( !name.empty() )
     {
       set_output_name( index, name );
     }
+    return id;
+  }
+
+  signal create_ro( std::string const& name = std::string() )
+  {
+    const auto s = Ntk::create_ro( name );
+    if ( !name.empty() )
+    {
+      set_name( s, name );
+    }
+    return s;
+  }
+
+  uint32_t create_ri( signal const& f, int8_t reset = 0, std::string const& name = std::string() )
+  {
+    const auto index = Ntk::num_pos();
+    auto id = Ntk::create_po( s, name );
+    if ( !name.empty() )
+    {
+      set_output_name( index, name );
+    }
+    return id;
+  }
+
+  signal create_ro( std::string const& name = std::string() )
+  {
+    const auto s = Ntk::create_ro( name );
+    if ( !name.empty() )
+    {
+      set_name( s, name );
+    }
+    return s;
+  }
+
+  uint32_t create_ri( signal const& f, int8_t reset = 0, std::string const& name = std::string() )
+  {
+    const auto index = Ntk::num_pos();
+    auto id = Ntk::create_ri( f, reset, name );
+    if ( !name.empty() )
+    {
+      set_output_name( index, name );
+    }
+    return id;
+  }
+
+  template<class Other>
+  void copy_network_metadata(Other &other) {
+    if constexpr ( has_get_network_name_v<Other> && has_set_network_name_v<Other> ) {
+      set_network_name( other.get_network_name() );
+    }
+    Ntk::copy_network_metadata( other );
+  }
+
+  template<class Other>
+  void copy_node_metadata(node dest, Other &other, typename Other::node source) {
+    (void) dest;
+    (void) source;
+    Ntk::copy_node_metadata( dest, other, source );
+  }
+
+  template<class Other>
+  void copy_signal_metadata(signal dest, Other &other, typename Other::signal source) {
+    if constexpr ( has_has_name_v<Other> && has_get_name_v<Other>)
+    {
+      if ( other.has_name( source ) )
+      {
+        this->set_name( dest, other.get_name( source ));
+      }
+    }
+    Ntk::copy_signal_metadata( dest, other, source );
+  }
+
+  template<class Other>
+  void copy_output_metadata(uint32_t dest, Other &other, uint32_t source) {
+    if constexpr ( has_has_output_name_v<Other>
+                   && has_get_output_name_v<Other>
+                   && has_set_output_name_v<Other> )
+    {
+      if ( other.has_output_name( source ) )
+      {
+        set_output_name( dest, other.get_name( source ));
+      }
+    }
+    Ntk::copy_output_metadata( dest, other, source );
   }
 
   template<typename StrType = const char*>

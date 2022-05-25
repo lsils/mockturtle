@@ -133,6 +133,7 @@ struct balancing_impl
   Ntk run()
   {
     Ntk dest;
+    dest.copy_network_metadata(ntk_);
     node_map<arrival_time_pair<Ntk>, Ntk> old_to_new( ntk_ );
 
     /* input arrival times and mapping */
@@ -142,7 +143,9 @@ struct balancing_impl
       old_to_new[ntk_.get_constant( true )] = {dest.get_constant( true ), 0u};
     }
     ntk_.foreach_pi( [&]( auto const& n ) {
-      old_to_new[n] = {dest.create_pi(), 0u};
+      auto  pi = dest.create_pi();
+      old_to_new[n] = { pi, 0u };
+      dest.copy_signal_metadata( pi, ntk_, ntk_.make_signal( n ) );
     } );
 
     std::shared_ptr<depth_view<Ntk, CostFn>> depth_ntk;
@@ -200,9 +203,11 @@ struct balancing_impl
       current_level = std::max( current_level, best.level );
     } );
 
-    ntk_.foreach_po( [&]( auto const& f ) {
+    ntk_.foreach_po( [&]( auto const &f, auto i ) {
       const auto s = old_to_new[f].f;
-      dest.create_po( ntk_.is_complemented( f ) ? dest.create_not( s ) : s );
+      auto t = ntk_.is_complemented( f ) ? dest.create_not( s ) : s;
+      auto po = dest.create_po(t);
+      dest.copy_output_metadata(po, ntk_, i);
     } );
 
     return cleanup_dangling( dest );

@@ -157,11 +157,7 @@ public:
         break;
       }
 
-      if constexpr ( has_has_name_v<NtkSource> && has_get_name_v<NtkSource> && has_set_name_v<NtkDest> )
-      {
-        if ( ntk.has_name( ntk.make_signal( n ) ) )
-          dest.set_name( dest_signal, ntk.get_name( ntk.make_signal( n ) ) );
-      }
+      dest.copy_signal_metadata( dest_signal, ntk, ntk.make_signal( n ) );
     } );
 
     /* nodes */
@@ -196,25 +192,17 @@ public:
 
     /* outputs */
     ntk.foreach_po( [&]( auto const& f, auto index ) {
-      (void)index;
-
+      uint32_t po;
       if ( ntk.is_complemented( f ) && node_driver_type[f] == driver_type::mixed )
       {
-        dest.create_po( opposites[ntk.get_node( f )] );
+        po = dest.create_po( opposites[ntk.get_node( f )] );
       }
       else
       {
-        dest.create_po( node_to_signal[f] );
+        po = dest.create_po( node_to_signal[f] );
       }
-
-      if constexpr ( has_has_output_name_v<NtkSource> && has_get_output_name_v<NtkSource> && has_set_output_name_v<NtkDest> )
-      {
-        if ( ntk.has_output_name( index ) )
-        {
-          dest.set_output_name( index, ntk.get_output_name( index ) );
-        }
-      }
-      });
+      dest.copy_output_metadata(po, ntk, index);
+    });
   }
 
 private:

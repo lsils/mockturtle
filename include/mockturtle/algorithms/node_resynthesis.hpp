@@ -105,23 +105,14 @@ public:
     /* map primary inputs */
     ntk.foreach_pi( [&]( auto n ) {
       node2new[n] = ntk_dest.create_pi();
-
-      if constexpr ( has_has_name_v<NtkSource> && has_get_name_v<NtkSource> && has_set_name_v<NtkDest> )
-      {
-        if ( ntk.has_name( ntk.make_signal( n ) ) )
-          ntk_dest.set_name( node2new[n], ntk.get_name( ntk.make_signal( n ) ) );
-      }
-      } );
+      ntk_dest.copy_signal_metadata( node2new[n], ntk, ntk.make_signal( n ) );
+    } );
 
     ntk.foreach_ro( [&]( auto n ) {
       node2new[n] = ntk_dest.create_ro();
-      ntk_dest._storage->latch_information[ntk_dest.get_node(node2new[n])] = ntk._storage->latch_information[n];
-      if constexpr ( has_has_name_v<NtkSource> && has_get_name_v<NtkSource> && has_set_name_v<NtkDest> )
-      {
-        if ( ntk.has_name( ntk.make_signal( n ) ) )
-          ntk_dest.set_name( node2new[n], ntk.get_name( ntk.make_signal( n ) ) );
-      }
-      } );
+      ntk_dest.copy_latch_information( ntk_dest.get_node(node2new[n]), ntk, n );
+      ntk_dest.copy_signal_metadata( node2new[n], ntk, ntk.make_signal( n ) );
+    } );
 
     /* map nodes */
     topo_view ntk_topo{ntk};
@@ -137,12 +128,7 @@ public:
       bool performed_resyn = false;
       resynthesis_fn( ntk_dest, ntk.node_function( n ), children.begin(), children.end(), [&]( auto const& f ) {
         node2new[n] = f;
-
-        if constexpr ( has_has_name_v<NtkSource> && has_get_name_v<NtkSource> && has_set_name_v<NtkDest> )
-        {
-          if ( ntk.has_name( ntk.make_signal( n ) ) )
-            ntk_dest.set_name( f, ntk.get_name( ntk.make_signal( n ) ) );
-        }
+        ntk_dest.copy_signal_metadata( f, ntk, ntk.make_signal( n ) );
 
         performed_resyn = true;
         return false;
@@ -160,15 +146,8 @@ public:
         (void)index;
 
         auto const o = ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
-        ntk_dest.create_po( o );
-
-        if constexpr ( has_has_output_name_v<NtkSource> && has_get_output_name_v<NtkSource> && has_set_output_name_v<NtkDest> )
-        {
-          if ( ntk.has_output_name( index ) )
-          {
-            ntk_dest.set_output_name( index, ntk.get_output_name( index ) );
-          }
-        }
+        auto po = ntk_dest.create_po( o );
+        ntk_dest.copy_output_metadata( po, ntk, index );
       } );
 
     ntk.foreach_ri( [&]( auto const& f, auto index ) {
@@ -176,14 +155,7 @@ public:
 
         auto const o = ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
         ntk_dest.create_ri( o );
-
-        if constexpr ( has_has_output_name_v<NtkSource> && has_get_output_name_v<NtkSource> && has_set_output_name_v<NtkDest> )
-        {
-          if ( ntk.has_output_name( index ) )
-          {
-            ntk_dest.set_output_name( index + ntk.num_pos(), ntk.get_output_name( index + ntk.num_pos() ) );
-          }
-        }
+        ntk_dest.copy_output_metadata( index + ntk.num_pos(), ntk, index + ntk.num_pos() );
       } );
 
     return ntk_dest;

@@ -623,6 +623,22 @@ public:
     const auto& node = _storage->nodes[n];
     detail::foreach_element_transform<uint32_t*, signal>( node.fanin, node.fanin + node.fanin_size, []( auto c ) -> signal { return { c, false }; }, fn );
   }
+
+  template<class Other>
+  void copy_network_metadata(Other &other) {
+  }
+
+  template<class Other>
+  void copy_node_metadata(node dest, Other &other, typename Other::node source) {
+  }
+
+  template<class Other>
+  void copy_signal_metadata(signal dest, Other &other, typename Other::signal source) {
+  }
+
+  template<class Other>
+  void copy_output_metadata(uint32_t dest, Other &other, uint32_t source) {
+  }
 #pragma endregion
 
 #pragma region Structural properties
