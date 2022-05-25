@@ -585,6 +585,7 @@ public:
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    if ( get_node( new_signal ) == old_node) return;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( {old_node, new_signal} );
 

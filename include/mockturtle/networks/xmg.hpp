@@ -719,6 +719,7 @@ public:
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    if (get_node(new_signal) == old_node) return;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( {old_node, new_signal} );
 
@@ -729,7 +730,7 @@ public:
 
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
-        if ( is_ci( idx ) )
+        if ( is_ci( idx ) || is_dead( idx ) )
           continue; /* ignore CIs */
 
         if ( const auto repl = replace_in_node( idx, _old, _new ); repl )
@@ -741,9 +742,104 @@ public:
       /* check outputs */
       replace_in_outputs( _old, _new );
 
-      // reset fan-in of old node
-      take_out_node( _old );
+      /* recursively reset old node */
+      if ( _old != _new.index )
+      {
+        take_out_node( _old );
+      }
     }
+  }
+
+  void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
+  {
+    auto clean_substitutions = [&]( node const& n )
+    {
+      substitutions.erase( std::remove_if( std::begin( substitutions ), std::end( substitutions ),
+                                           [&]( auto const& s ){
+                                             if ( s.first == n )
+                                             {
+                                               node const nn = get_node( s.second );
+                                               if ( is_dead( nn ) )
+                                                 return true;
+
+                                               /* deref fanout_size of the node */
+                                               if ( fanout_size( nn ) > 0 )
+                                               {
+                                                 decr_fanout_size( nn );
+                                               }
+                                               /* remove the node if it's fanout_size becomes 0 */
+                                               if ( fanout_size( nn ) == 0 )
+                                               {
+                                                 take_out_node( nn );
+                                               }
+                                               /* remove substitution from list */
+                                               return true;
+                                             }
+                                             return false; /* keep */
+                                           } ),
+                           std::end( substitutions ) );
+    };
+
+    /* register event to delete substitutions if their right-hand side
+       nodes get deleted */
+    auto clean_sub_event = _events->register_delete_event( clean_substitutions );
+
+    /* increment fanout_size of all signals to be used in
+       substitutions to ensure that they will not be deleted */
+    for ( const auto& s : substitutions )
+    {
+      incr_fanout_size( get_node( s.second ) );
+    }
+
+    while ( !substitutions.empty() )
+    {
+      auto const [old_node, new_signal] = substitutions.front();
+      substitutions.pop_front();
+
+      for ( auto index = 1u; index < _storage->nodes.size(); ++index )
+      {
+        /* skip CIs and dead nodes */
+        if ( is_ci( index ) || is_dead( index ) )
+          continue;
+
+        /* skip nodes that will be deleted */
+        if ( std::find_if( std::begin( substitutions ), std::end( substitutions ),
+                           [&index]( auto s ){ return s.first == index; } ) != std::end( substitutions ) )
+          continue;
+
+        /* replace in node */
+        if ( const auto repl = replace_in_node( index, old_node, new_signal ); repl )
+        {
+          incr_fanout_size( get_node( repl->second ) );
+          substitutions.emplace_back( *repl );
+        }
+      }
+
+      /* replace in outputs */
+      replace_in_outputs( old_node, new_signal );
+
+      /* replace in substitutions */
+      for ( auto& s : substitutions )
+      {
+        if ( get_node( s.second ) == old_node )
+        {
+          s.second = is_complemented( s.second ) ? !new_signal : new_signal;
+          incr_fanout_size( get_node( new_signal ) );
+        }
+      }
+
+      /* finally remove the node: note that we never decrement the
+         fanout_size of the old_node. instead, we remove the node and
+         reset its fanout_size to 0 knowing that it must be 0 after
+         substituting all references. */
+      assert( !is_dead( old_node ) );
+      take_out_node( old_node );
+
+      /* decrement fanout_size when released from substitution list */
+      decr_fanout_size( get_node( new_signal ) );
+    }
+
+    _events->release_delete_event( clean_sub_event );
   }
 #pragma endregion
 
