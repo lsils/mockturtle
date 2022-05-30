@@ -37,6 +37,9 @@
 #include "../utils/window_utils.hpp"
 #include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
+#include "../views/fanout_view.hpp"
+#include "../views/depth_view.hpp"
+#include "../views/color_view.hpp"
 
 #include <abcresub/abcresub2.hpp>
 #include <fmt/format.h>
@@ -318,7 +321,7 @@ public:
         assert( count_reachable_dead_nodes( ntk ) == 0u );
 
         /* ensure that the network structure is still acyclic */
-        assert( network_is_acylic( ntk ) );
+        assert( network_is_acyclic( ntk ) );
 
         if ( ps.level_update_strategy == window_rewriting_params::precise ||
              ps.level_update_strategy == window_rewriting_params::recompute )
@@ -662,8 +665,13 @@ private:
 template<class Ntk>
 void window_rewriting( Ntk& ntk, window_rewriting_params const& ps = {}, window_rewriting_stats* pst = nullptr )
 {
+  fanout_view fntk{ntk};
+  depth_view dntk{fntk};
+  color_view cntk{dntk};
+
   window_rewriting_stats st;
-  detail::window_rewriting_impl<Ntk>( ntk, ps, st ).run();
+  detail::window_rewriting_impl p( cntk, ps, st );
+  p.run();
   if ( pst )
   {
     *pst = st;

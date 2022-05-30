@@ -175,6 +175,11 @@ public:
         _events( std::make_shared<decltype( _events )::element_type>() )
   {
   }
+
+  mig_network clone() const 
+  {
+    return { std::make_shared<mig_storage>( *_storage ) };
+  }
 #pragma endregion
 
 #pragma region Primary I / O and constants
@@ -189,7 +194,7 @@ public:
 
     const auto index = _storage->nodes.size();
     auto& node = _storage->nodes.emplace_back();
-    node.children[0].data = node.children[1].data = node.children[2].data = ~static_cast<uint64_t>( 0 );
+    node.children[0].data = node.children[1].data = node.children[2].data = _storage->inputs.size();
     _storage->inputs.emplace_back( index );
     ++_storage->data.num_pis;
     return {index, 0};
@@ -254,7 +259,7 @@ public:
 
   bool is_pi( node const& n ) const
   {
-    return _storage->nodes[n].children[0].data == ~static_cast<uint64_t>( 0 ) && _storage->nodes[n].children[1].data == ~static_cast<uint64_t>( 0 ) && _storage->nodes[n].children[2].data == ~static_cast<uint64_t>( 0 );
+    return _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data && _storage->nodes[n].children[0].data < static_cast<uint64_t>(_storage->data.num_pis);
   }
 
   bool is_ro( node const& n ) const

@@ -28,6 +28,7 @@
   \brief AQFP network implementation
 
   \author Dewmini Marakkalage
+  \author Alessandro Tempia Calvino
 */
 
 #pragma once
@@ -77,7 +78,7 @@ class aqfp_network
 public:
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 3u;
-  static constexpr auto max_fanin_size = std::numeric_limits<uint32_t>::max();
+  static constexpr auto max_fanin_size = 5u;
 
   using base_type = aqfp_network;
   using storage = std::shared_ptr<aqfp_storage>;
@@ -521,23 +522,27 @@ public:
 
     std::vector<signal> old_children;
 
-    for ( auto i = 0u; i <= node.children.size(); ++i )
+    bool replacement = false;
+    for ( size_t i = 0u; i < node.children.size(); ++i )
     {
-      if ( i == node.children.size() )
-      {
-        return std::nullopt;
-      }
-
       old_children.push_back( signal{ node.children[i] } );
 
       if ( node.children[i].index == old_node )
       {
         node.children[i] = node.children[i].weight ? !new_signal : new_signal;
-        new_signal.complement ^= node.children[i].weight;
+        replacement = true;
+
+        // update the reference counter of the new signal
+        _storage->nodes[new_signal.index].data[0].h1++;
       }
     }
 
-    /* TODO: Do the simplifications if possible */
+    if ( !replacement )
+    {
+      return std::nullopt;
+    }
+
+    /* TODO: Do the simplifications if possible and ordering */
 
     for ( auto const& fn : _events->on_modified )
     {

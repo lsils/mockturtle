@@ -140,17 +140,26 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   std::vector<std::string> xs, inputs;
   if ( ps.input_names.empty() )
   {
-    ntk.foreach_pi( [&]( auto const& n, auto i ){
-      if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
-      {
-        signal<Ntk> const s = ntk.make_signal( n );
-        xs.emplace_back( ntk.has_name( s ) ? ntk.get_name( s ) : fmt::format( "x{}", i ) );
-      }
-      else
+    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+    {
+      ntk.foreach_pi( [&]( auto const& i, uint32_t index ){
+        if ( ntk.has_name( ntk.make_signal( i ) ) )
+        {
+          xs.emplace_back( ntk.get_name( ntk.make_signal( i ) ) );
+        }
+        else
+        {
+          xs.emplace_back( fmt::format( "x{}", index ) );
+        }
+      });
+    }
+    else
+    {
+      for ( auto i = 0u; i < ntk.num_pis(); ++i )
       {
         xs.emplace_back( fmt::format( "x{}", i ) );
       }
-    });
+    }
     inputs = xs;
   }
   else
@@ -174,13 +183,22 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   std::vector<std::string> ys, outputs;
   if ( ps.output_names.empty() )
   {
-    for ( auto i = 0u; i < ntk.num_pos(); ++i )
+    if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
     {
-      if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
-      {
-        ys.emplace_back( ntk.has_output_name( i ) ? ntk.get_output_name( i ) : fmt::format( "y{}", i ) );
-      }
-      else
+      ntk.foreach_po( [&]( auto const& o, uint32_t index ){
+        if ( ntk.has_output_name( index ) )
+        {
+          ys.emplace_back( ntk.get_output_name( index ) );
+        }
+        else
+        {
+          ys.emplace_back( fmt::format( "y{}", index ) );
+        }
+      });
+    }
+    else
+    {
+      for ( auto i = 0u; i < ntk.num_pos(); ++i )
       {
         ys.emplace_back( fmt::format( "y{}", i ) );
       }
@@ -571,7 +589,7 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
       {
         args.emplace_back( std::make_pair( gate.pins[i++].name, pair.second ) );
       }
-      args.emplace_back( std::make_pair( "O", node_names[n] ) );
+      args.emplace_back( std::make_pair( gate.output_name, node_names[n] ) );
 
       writer.on_module_instantiation( name.append( std::string( length - name.length(), ' ' ) ),
                                       {},
@@ -587,7 +605,7 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
         for ( auto i = 1u; i < po_list.size(); ++i )
         {
           digits = counter == 0 ? 0 : ( int ) std::floor( std::log10( counter ) );
-          args[args.size() - 1] = std::make_pair( "O", ys[po_list[i]] );
+          args[args.size() - 1] = std::make_pair( gate.output_name, ys[po_list[i]] );
 
           writer.on_module_instantiation( name.append( std::string( length - name.length(), ' ' ) ),
                                           {},

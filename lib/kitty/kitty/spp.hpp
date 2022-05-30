@@ -53,7 +53,7 @@ namespace kitty
   \param esop ESOP form
   \param num_vars Number of variables in ESOP form
 */
-std::pair<std::vector<cube>, std::vector<uint64_t>> simple_spp( const std::vector<cube>& esop, uint32_t num_vars )
+inline std::pair<std::vector<cube>, std::vector<uint64_t>> simple_spp( const std::vector<cube>& esop, uint32_t num_vars )
 {
   auto next_free = num_vars;
   std::vector<uint64_t> sums;

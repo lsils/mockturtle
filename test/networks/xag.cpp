@@ -92,9 +92,15 @@ TEST_CASE( "create and use primary inputs in an xag", "[xag]" )
   CHECK( has_create_pi_v<xag_network> );
 
   auto a = xag.create_pi();
+  auto b = xag.create_pi();
 
-  CHECK( xag.size() == 2 );
-  CHECK( xag.num_pis() == 1 );
+  CHECK( xag.size() == 3 ); // constant + two primary inputs
+  CHECK( xag.num_pis() == 2 );
+  CHECK( xag.num_gates() == 0 );
+  CHECK( xag.is_pi( xag.get_node( a ) ) );
+  CHECK( xag.is_pi( xag.get_node( b ) ) );
+  CHECK( xag.pi_index( xag.get_node( a ) ) == 0 );
+  CHECK( xag.pi_index( xag.get_node( b ) ) == 1 );
 
   CHECK( std::is_same_v<std::decay_t<decltype( a )>, xag_network::signal> );
 
@@ -360,6 +366,29 @@ TEST_CASE( "hash nodes in xag network", "[xag]" )
   CHECK( xag.num_gates() == 1u );
 
   CHECK( xag.get_node( f ) == xag.get_node( g ) );
+}
+
+TEST_CASE( "clone a XAG network", "[xag]" )
+{
+  CHECK( has_clone_v<xag_network> );
+
+  xag_network xag0;
+  auto a = xag0.create_pi();
+  auto b = xag0.create_pi();
+  auto f0 = xag0.create_and( a, b );
+  CHECK( xag0.size() == 4 );
+  CHECK( xag0.num_gates() == 1 );
+
+  auto xag1 = xag0;
+  auto xag_clone = xag0.clone();
+
+  auto c = xag1.create_pi();
+  xag1.create_xor( f0, c );
+  CHECK( xag0.size() == 6 );
+  CHECK( xag0.num_gates() == 2 );
+
+  CHECK( xag_clone.size() == 4 );
+  CHECK( xag_clone.num_gates() == 1 );
 }
 
 TEST_CASE( "clone a node in xag network", "[xag]" )

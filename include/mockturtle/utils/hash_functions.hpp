@@ -51,6 +51,9 @@ struct hash
 template<typename A, typename B, typename C>
 struct hash<std::tuple<A, B, C>>;
 
+template<typename A, typename B>
+struct hash<std::tuple<A, B>>;
+
 template<typename A>
 struct hash<std::vector<A>>;
 
@@ -59,6 +62,23 @@ struct hash<std::multiset<A>>;
 
 template<typename A, typename B>
 struct hash<std::map<A, B>>;
+
+
+template<typename A, typename B>
+struct hash<std::tuple<A, B>>
+{
+public:
+  size_t operator()( const std::tuple<const A, const B>& key ) const
+  {
+    size_t seed = ha( std::get<0>( key ) );
+    seed ^= hb( std::get<1>( key ) ) + 0x9e3779b9 + ( seed << 6 ) + ( seed >> 2 );
+    return seed;
+  }
+
+private:
+  hash<A> ha;
+  hash<B> hb;
+};
 
 template<typename A, typename B, typename C>
 struct hash<std::tuple<A, B, C>>

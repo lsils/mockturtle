@@ -22,14 +22,34 @@ Node map
 
 **Header:** ``mockturtle/utils/node_map.hpp``
 
-.. doc_overview_table:: classmockturtle_1_1node__map
-   :column: Method
+This group of containers helps to store and access values associated to
+nodes in a network.
 
-   node_map
-   operator[]
-   reset
+Three implementations are provided, two using `std::vector` and one
+using `std::unordered_map` as internal storage.  Using `std::vector`,
+the default implementation of `node_map` pre-allocates memory for all
+nodes and provides a fast way to access the data. When only a subset of
+nodes are associated with values, both `unordered_node_map` and 
+`incomplete_node_map` provide interfaces to check whether a value
+is available. Using `std::unordered_map`, the former uses less memory
+but has a slower access speed; the latter uses `std::vector` together with
+validity tags to trade efficiency with memory.
+
+**Example**
+
+.. code-block:: c++
+
+   aig_network aig = ...
+   node_map<std::string, aig_network> node_names( aig );
+   aig.foreach_node( [&]( auto n ) {
+     node_names[n] = "some string";
+   } );
+
 
 .. doxygenclass:: mockturtle::node_map
+   :members:
+
+.. doxygenclass:: mockturtle::incomplete_node_map
    :members:
 
 .. doxygenfunction:: mockturtle::initialize_copy_network

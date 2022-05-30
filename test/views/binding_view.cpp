@@ -9,12 +9,12 @@
 
 using namespace mockturtle;
 
-std::string const simple_library = "GATE zero 0 O=0;\n"
-                                   "GATE one 0 O=1;\n"
+std::string const simple_library = "GATE zero 0 O=CONST0;\n"
+                                   "GATE one 0 O=CONST1;\n"
                                    "GATE inverter 1 O=!a; PIN * INV 1 999 1.0 1.0 1.0 1.0\n"
                                    "GATE buffer 2 O=a; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
-                                   "GATE and 5 O=(ab); PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
-                                   "GATE or 5 O={ab}; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
+                                   "GATE and 5 O=a*b; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+                                   "GATE or 5 O=a+b; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
 
 TEST_CASE( "Create binding view", "[binding_view]" )
 {
@@ -80,11 +80,11 @@ TEST_CASE( "Create binding view", "[binding_view]" )
   std::stringstream report_gates;
   ntk.report_gates_usage( report_gates );
   CHECK( report_gates.str() == "[i] Report gates usage:\n"
-                               "[i] zero           \t Instance =          1\t Area =         0.00     0.00 %\n"
-                               "[i] inverter       \t Instance =          1\t Area =         1.00     6.25 %\n"
-                               "[i] and            \t Instance =          2\t Area =        10.00    62.50 %\n"
-                               "[i] or             \t Instance =          1\t Area =         5.00    31.25 %\n"
-                               "[i] TOTAL          \t Instance =          5\t Area =        16.00   100.00 %\n" );
+                               "[i] zero                     \t Instance =          1\t Area =         0.00     0.00 %\n"
+                               "[i] inverter                 \t Instance =          1\t Area =         1.00     6.25 %\n"
+                               "[i] and                      \t Instance =          2\t Area =        10.00    62.50 %\n"
+                               "[i] or                       \t Instance =          1\t Area =         5.00    31.25 %\n"
+                               "[i] TOTAL                    \t Instance =          5\t Area =        16.00   100.00 %\n" );
 }
 
 TEST_CASE( "Binding view on copy", "[binding_view]" )

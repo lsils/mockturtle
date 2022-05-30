@@ -73,13 +73,13 @@ struct pin_spec
 class genlib_reader
 {
 public:
-  virtual void on_gate( std::string const& name, std::string const& expression, uint32_t num_vars, double area, std::vector<pin_spec> const& pins ) const
+  virtual void on_gate( std::string const& name, std::string const& expression, double area, std::vector<pin_spec> const& pins, std::string const& output_pin ) const
   {
     (void)name;
     (void)expression;
-    (void)num_vars;
     (void)area;
     (void)pins;
+    (void)output_pin;
   }
 }; /* genlib_reader */
 
@@ -99,8 +99,42 @@ public:
   bool run()
   {
     std::string line;
-    while ( std::getline( in, line ) )
+    std::string entry;
+    bool new_line;
+
+    while ( true )
     {
+      new_line = std::getline( in, line ) ? true : false;
+
+      if ( new_line == false )
+      {
+        break;
+      }
+
+      /* remove whitespaces */
+      detail::trim( line );
+
+      /* skip comments and empty lines */
+      if ( line[0] != '#' && !line.empty() )
+      {
+        entry = line + " ";
+        break;
+      }
+    }
+
+    while ( new_line )
+    {
+      new_line = std::getline( in, line ) ? true : false;
+
+      if ( new_line == false )
+      {
+        if ( !parse_gate_definition( entry ) )
+        {
+          return false;
+        }
+        break;
+      }
+
       /* remove whitespaces */
       detail::trim( line );
 
@@ -110,9 +144,17 @@ public:
         continue;
       }
 
-      if ( !parse_gate_definition( line ) )
+      if ( line.find( "GATE" ) != std::string::npos )
       {
-        return false;
+        if ( !parse_gate_definition( entry ) )
+        {
+          return false;
+        }
+        entry = line + " ";
+      }
+      else
+      {
+        entry.append( line + " " );
       }
     }
 
@@ -126,13 +168,39 @@ private:
     std::string const deliminators{" \t\r\n"};
 
     std::string token;
+    bool in_equation = false;
 
     std::vector<std::string> tokens;
     while ( std::getline( ss, token ) )
     {
-      std::size_t prev = 0, pos;
+      std::size_t prev = 0, pos, eq_pos;
       while ( ( pos = line.find_first_of( deliminators, prev ) ) != std::string::npos )
       {
+        /* equation */
+        if ( tokens.size() == 3 && !in_equation )
+        {
+          /* equation is not finished */
+          if ( token.substr( prev, pos - prev ).find_first_of( ";" ) == std::string::npos )
+          {
+            in_equation = true;
+            eq_pos = prev;
+            prev = pos + 1;
+            continue;
+          }
+        }
+        if ( in_equation )
+        {
+          if ( token.substr( prev, pos - prev ).find_first_of( ";" ) != std::string::npos )
+          {
+            in_equation = false;
+            prev = eq_pos;
+          }
+          else
+          {
+            prev = pos + 1;
+            continue;
+          }
+        }
         if ( pos > prev )
         {
           tokens.emplace_back( token.substr( prev, pos - prev ) );
@@ -176,20 +244,8 @@ private:
 
     std::string const& name = tokens[1];
     std::string const& expression = tokens[3].substr( beg + 1, end - beg - 1 );
+    std::string const& output_name = detail::trim_copy( tokens[3].substr( 0, beg ) );
     double const area = std::stod( tokens[2] );
-
-    uint32_t num_vars{0};
-    for ( const auto& c : expression )
-    {
-      if ( c >= 'a' && c <= 'z' )
-      {
-        uint32_t const var = 1 + ( c - 'a' );
-        if ( var > num_vars )
-        {
-          num_vars = var;
-        }
-      }
-    }
 
     std::vector<pin_spec> pins;
 
@@ -242,11 +298,11 @@ private:
       pins.emplace_back( pin_spec{name,phase,input_load,max_load,rise_block_delay,rise_fanout_delay,fall_block_delay,fall_fanout_delay} );
     }
 
-    if ( pins.size() != num_vars && !( pins.size() == 1 && generic_pin ) )
+    if ( pins.size() > 1 && generic_pin )
     {
       if ( diag )
       {
-        diag->report( diag_id::ERR_GENLIB_PIN ).add_argument( tokens[i] );
+        diag->report( diag_id::ERR_GENLIB_PIN ).add_argument( line );
       }
       return false;
     }
@@ -260,7 +316,7 @@ private:
       return false;
     }
 
-    reader.on_gate( name, expression, num_vars, area, pins );
+    reader.on_gate( name, expression, area, pins, output_name );
     return true;
   }
 

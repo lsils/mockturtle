@@ -52,29 +52,29 @@ namespace mockturtle
 {
 
 /*
-std::string const mcnc_library =  "GATE   inv1    1 O=!a;           PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
-                                  "GATE   inv2    2 O=!a;           PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                  "GATE   inv3    3 O=!a;           PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
-                                  "GATE   inv4    4 O=!a;           PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
-                                  "GATE   nand2   2 O=!(ab);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                  "GATE   nand3   3 O=!(abc);	      PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
-                                  "GATE   nand4   4 O=!(abcd);      PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
-                                  "GATE   nor2    2 O=!{ab};        PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
-                                  "GATE   nor3    3 O=!{abc};       PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
-                                  "GATE   nor4    4 O=!{abcd};      PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
-                                  "GATE   and2    3 O=(ab);         PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
-                                  "GATE   or2     3 O={ab};         PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
-                                  "GATE   xor2a   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "#GATE  xor2b   5 O=[ab];         PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "GATE   xnor2a  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
-                                  "#GATE  xnor2b  5 O=![ab];        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
-                                  "GATE   aoi21   3 O=!{(ab)c};     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   aoi22   4 O=!{(ab)(cd)};  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   oai21   3 O=!({ab}c);     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   oai22   4 O=!({ab}{cd});  PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   buf     2 O=a;            PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                  "GATE   zero    0 O=0;\n"
-                                  "GATE   one     0 O=1;";
+std::string const mcnc_library = "GATE   inv1    1  O=!a;             PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                 "GATE   inv2    2  O=!a;             PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                 "GATE   inv3    3  O=!a;             PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
+                                 "GATE   inv4    4  O=!a;             PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
+                                 "GATE   nand2   2  O=!(a*b);         PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                 "GATE   nand3   3  O=!(a*b*c);       PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
+                                 "GATE   nand4   4  O=!(a*b*c*d);     PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
+                                 "GATE   nor2    2  O=!(a+b);         PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
+                                 "GATE   nor3    3  O=!(a+b+c);       PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
+                                 "GATE   nor4    4  O=!(a+b+c+d);     PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
+                                 "GATE   and2    3  O=a*b;            PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
+                                 "GATE   or2     3  O=a+b;            PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
+                                 "GATE   xor2a   5  O=a*!b+!a*b;      PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                 "#GATE  xor2b   5  O=!(a*b+!a*!b);   PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                 "GATE   xnor2a  5  O=a*b+!a*!b;      PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                 "#GATE  xnor2b  5  O=!(a*!b+!a*b);   PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                 "GATE   aoi21   3  O=!(a*b+c);       PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                 "GATE   aoi22   4  O=!(a*b+c*d);     PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                 "GATE   oai21   3  O=!((a+b)*c);     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                 "GATE   oai22   4  O=!((a+b)*(c+d)); PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                 "GATE   buf     2  O=a;              PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                 "GATE   zero    0  O=CONST0;\n"
+                                 "GATE   one     0  O=CONST1;";
 */
 
 enum class classification_type : uint32_t
@@ -101,7 +101,7 @@ struct supergate
   composed_gate<NInputs> const* root{};
 
   /* area */
-  float area{ 0 };
+  float area{ 0.0 };
 
   /* pin-to-pin delay */
   std::array<float, NInputs> tdelay{};
@@ -118,13 +118,13 @@ struct supergate
  * This class creates a technology library from a set
  * of input gates. Each NP- or P-configuration of the gates
  * are enumerated and inserted in the library.
- * 
+ *
  * The configuration is selected using the template
  * parameter `Configuration`. P-configuration is suggested
  * for big libraries with few symmetric gates. The template
  * parameter `NInputs` selects the maximum number of variables
  * allowed for a gate in the library.
- * 
+ *
  * The library can be generated also using supergates definitions.
  *
    \verbatim embed:rst
@@ -275,7 +275,7 @@ private:
       {
         const auto on_np = [&]( auto const& tt, auto neg, auto const& perm ) {
           supergate<NInputs> sg = {&gate,
-                                  gate.area,
+                                  static_cast<float>( gate.area ),
                                   {},
                                   perm,
                                   0};
@@ -337,10 +337,10 @@ private:
           for( auto phase : phases )
           {
             supergate<NInputs> sg = {&gate,
-                                    gate.area,
+                                    static_cast<float>(gate.area),
                                     {},
                                     perm,
-                                    phase};
+                                    static_cast<uint8_t>(phase)};
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
@@ -419,10 +419,10 @@ private:
           std::iota( perm.begin(), perm.end(), 0u );
 
           supergate<NInputs> sg = {&gate,
-                                  gate.area,
+                                  static_cast<float>( gate.area ),
                                   {},
                                   perm,
-                                  neg};
+                                  static_cast<uint8_t>( neg )};
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
@@ -481,10 +481,10 @@ private:
           for( auto phase : phases )
           {
             supergate<NInputs> sg = {&gate,
-                                    gate.area,
+                                    static_cast<float>( gate.area ),
                                     {},
                                     perm,
-                                    phase};
+                                    static_cast<uint8_t>( phase )};
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
@@ -607,7 +607,7 @@ private:
 
   unsigned _max_size{ 0 }; /* max #fanins of the gates in the library */
 
-  bool _use_supergates; 
+  bool _use_supergates;
 
   std::vector<gate> const _gates; /* collection of gates */
   super_lib const& _supergates_spec; /* collection of supergates declarations */
@@ -782,7 +782,7 @@ private:
 
         for ( auto const& gate : pair.second )
         {
-          printf( "%.2f,%.2f,%d,%d,:", gate.worstDelay, gate.area, gate.polarity, gate.n_inputs );
+          printf( "%.2f,%.2f,%x,%d,:", gate.worstDelay, gate.area, gate.polarity, gate.n_inputs );
           for ( auto j = 0u; j < NInputs; ++j )
             printf( "%.2f/", gate.tdelay[j] );
           std::cout << " ";

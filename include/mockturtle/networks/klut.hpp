@@ -764,6 +764,7 @@ signal create_maj( signal a, signal b, signal c )
   compute( node const& n, Iterator begin, Iterator end ) const
   {
     const auto nfanin = _storage->nodes[n].children.size();
+
     std::vector<typename Iterator::value_type> tts( begin, end );
 
     assert( nfanin != 0 );

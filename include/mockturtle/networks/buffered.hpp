@@ -35,6 +35,7 @@
 #include "../traits.hpp"
 #include "aig.hpp"
 #include "mig.hpp"
+#include "../views/names_view.hpp"
 
 namespace mockturtle
 {
@@ -65,6 +66,14 @@ public:
     }
 
     return {index, 0};
+  }
+
+  void invert( node const& n )
+  {
+    assert( !is_constant( n ) && !is_pi( n ) );
+    assert( fanout_size( n ) == 0 );
+    _storage->nodes[n].children[0].weight ^= 1;
+    _storage->nodes[n].children[1].weight ^= 1;
   }
 #pragma endregion
 
@@ -99,9 +108,15 @@ public:
       return 2;
   }
 
+  // including buffers, splitters, and inverters
   bool is_buf( node const& n ) const
   {
     return _storage->nodes[n].children[0].index == _storage->nodes[n].children[1].index && _storage->nodes[n].children[0].weight != _storage->nodes[n].children[1].weight;
+  }
+
+  bool is_not( node const& n ) const
+  {
+    return _storage->nodes[n].children[0].weight;
   }
 
   bool is_and( node const& n ) const
@@ -281,7 +296,7 @@ public:
     auto& node = _storage->nodes.emplace_back();
     node.children[0] = a;
     node.children[1] = !a;
-    //node.children[2] = !a; // not used
+    //node.children[2] = a; // not used
     
     if ( index >= .9 * _storage->nodes.capacity() )
     {
@@ -297,6 +312,15 @@ public:
     }
 
     return {index, 0};
+  }
+
+  void invert( node const& n )
+  {
+    assert( !is_constant( n ) && !is_pi( n ) );
+    assert( fanout_size( n ) == 0 );
+    _storage->nodes[n].children[0].weight ^= 1;
+    _storage->nodes[n].children[1].weight ^= 1;
+    _storage->nodes[n].children[2].weight ^= 1;
   }
 #pragma endregion
 
@@ -331,9 +355,15 @@ public:
       return 3;
   }
 
+  // including buffers, splitters, and inverters
   bool is_buf( node const& n ) const
   {
     return _storage->nodes[n].children[0].index == _storage->nodes[n].children[1].index && _storage->nodes[n].children[0].weight != _storage->nodes[n].children[1].weight;
+  }
+
+  bool is_not( node const& n ) const
+  {
+    return _storage->nodes[n].children[0].weight;
   }
 
   bool is_maj( node const& n ) const
@@ -522,6 +552,12 @@ template<>
 struct is_buffered_network_type<buffered_aig_network> : std::true_type {};
 
 template<>
+struct is_buffered_network_type<names_view<buffered_aig_network>> : std::true_type {};
+
+template<>
 struct is_buffered_network_type<buffered_mig_network> : std::true_type {};
+
+template<>
+struct is_buffered_network_type<names_view<buffered_mig_network>> : std::true_type {};
 
 } // namespace mockturtle

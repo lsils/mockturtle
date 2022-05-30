@@ -190,6 +190,11 @@ public:
         _events( std::make_shared<decltype( _events )::element_type>() )
   {
   }
+
+  xag_network clone() const 
+  {
+    return { std::make_shared<xag_storage>( *_storage ) };
+  }
 #pragma endregion
 
 #pragma region Primary I / O and constants

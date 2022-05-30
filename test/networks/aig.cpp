@@ -52,9 +52,15 @@ TEST_CASE( "create and use primary inputs in an AIG", "[aig]" )
   CHECK( has_create_pi_v<aig_network> );
 
   auto a = aig.create_pi();
+  auto b = aig.create_pi();
 
-  CHECK( aig.size() == 2 );
-  CHECK( aig.num_pis() == 1 );
+  CHECK( aig.size() == 3 ); // constant + two primary inputs
+  CHECK( aig.num_pis() == 2 );
+  CHECK( aig.num_gates() == 0 );
+  CHECK( aig.is_pi( aig.get_node( a ) ) );
+  CHECK( aig.is_pi( aig.get_node( b ) ) );
+  CHECK( aig.pi_index( aig.get_node( a ) ) == 0 );
+  CHECK( aig.pi_index( aig.get_node( b ) ) == 1 );
 
   CHECK( std::is_same_v<std::decay_t<decltype( a )>, aig_network::signal> );
 
@@ -257,6 +263,29 @@ TEST_CASE( "hash nodes in AIG network", "[aig]" )
   CHECK( aig.num_gates() == 1u );
 
   CHECK( aig.get_node( f ) == aig.get_node( g ) );
+}
+
+TEST_CASE( "clone a AIG network", "[aig]" )
+{
+  CHECK( has_clone_v<aig_network> );
+
+  aig_network aig0;
+  auto a = aig0.create_pi();
+  auto b = aig0.create_pi();
+  auto f0 = aig0.create_and( a, b );
+  CHECK( aig0.size() == 4 );
+  CHECK( aig0.num_gates() == 1 );
+
+  auto aig1 = aig0;
+  auto aig_clone = aig0.clone();
+
+  auto c = aig1.create_pi();
+  aig1.create_and( f0, c );
+  CHECK( aig0.size() == 6 );
+  CHECK( aig0.num_gates() == 2 );
+
+  CHECK( aig_clone.size() == 4 );
+  CHECK( aig_clone.num_gates() == 1 );
 }
 
 TEST_CASE( "clone a node in AIG network", "[aig]" )
@@ -601,7 +630,7 @@ TEST_CASE( "simulate some special functions in AIGs", "[aig]" )
   CHECK( result[1]._bits[0] == 0xd8u );
 }
 
-TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
+TEST_CASE( "substitute nodes with propagation in AIGs (test case 1)", "[aig]" )
 {
   CHECK( has_substitute_node_v<aig_network> );
   CHECK( has_replace_in_node_v<aig_network> );
@@ -654,7 +683,7 @@ TEST_CASE( "substitude nodes with propagation in AIGs (test case 1)", "[aig]" )
   CHECK( aig.num_gates() == 4u );
 }
 
-TEST_CASE( "substitude nodes with propagation in AIGs (test case 2)", "[aig]" )
+TEST_CASE( "substitute nodes with propagation in AIGs (test case 2)", "[aig]" )
 {
   aig_network aig;
   const auto x1 = aig.create_pi();

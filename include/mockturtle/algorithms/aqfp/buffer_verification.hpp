@@ -32,7 +32,7 @@
 
 #pragma once
 
-#include "buffer_insertion.hpp"
+#include "aqfp_assumptions.hpp"
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
 #include "../../views/depth_view.hpp"
@@ -176,7 +176,6 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions const& ps, node_map<ui
     else /* logic gate */
       legal &= ( ntk.fanout_size( n ) <= 1 );
 
-    assert(legal);
     return true;
   } );
 
@@ -194,7 +193,6 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions const& ps, node_map<ui
   {
     ntk.foreach_pi( [&]( auto const& n ) {
       legal &= ( levels[n] == 0 );
-      assert(legal);
     } );
   }
 
@@ -210,7 +208,6 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions const& ps, node_map<ui
         else
           legal &= ( levels[n] == depth );
       }
-      assert(legal);
     } );
   }
 
