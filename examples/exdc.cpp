@@ -1,22 +1,22 @@
 #include <mockturtle/networks/aig.hpp>
-//#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/klut.hpp>
+#include <mockturtle/networks/cover.hpp>
+
 #include <mockturtle/views/dont_care_view.hpp>
 #include <mockturtle/views/names_view.hpp>
+
 #include <mockturtle/io/blif_reader.hpp>
 #include <mockturtle/io/write_blif.hpp>
-//#include <mockturtle/io/write_verilog.hpp>
-#include <mockturtle/algorithms/node_resynthesis.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
-//#include <mockturtle/algorithms/node_resynthesis/exact.hpp>
-#include <mockturtle/algorithms/node_resynthesis/dsd.hpp>
-#include <mockturtle/algorithms/node_resynthesis/shannon.hpp>
+
+#include <mockturtle/algorithms/cover_to_graph.hpp>
+#include <mockturtle/algorithms/klut_to_graph.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/sim_resub.hpp>
-//#include <mockturtle/algorithms/window_rewriting.hpp>
 #include <mockturtle/algorithms/equivalence_checking.hpp>
 #include <mockturtle/algorithms/miter.hpp>
+
 #include <mockturtle/utils/stopwatch.hpp>
+#include <mockturtle/utils/name_utils.hpp>
 
 #include <lorina/lorina.hpp>
 
@@ -30,7 +30,6 @@ struct stats
   stopwatch<>::duration time_total{0};
   stopwatch<>::duration time_resyn_main{0};
   stopwatch<>::duration time_resyn_dc{0};
-  stopwatch<>::duration time_parse_dc{0};
   stopwatch<>::duration time_sim_resub{0};
   stopwatch<>::duration time_cec{0};
 };
@@ -43,66 +42,57 @@ int main( int argc, char* argv[] )
   stats st;
   stopwatch t( st.time_total );
 
-  std::string testcase;
+  std::string testcase, path = "exdc_tests/";
   if ( argc == 2 )
     testcase = argv[1];
   else
     testcase = "test";
 
-  /* read BLIF files as k-LUTs */
-  names_view<klut_network> klut_ntk, klut_dc;
-  if ( lorina::read_blif( testcase + ".blif", blif_reader( klut_ntk ) ) != lorina::return_code::success )
+  /* main network: read BLIF as k-LUT */
+  names_view<klut_network> klut_ntk;
+  if ( lorina::read_blif( path + testcase + ".blif", blif_reader( klut_ntk ) ) != lorina::return_code::success )
   {
     std::cout << "read <testcase>.blif failed!\n";
     return -1;
   }
-  //if ( lorina::read_blif( testcase + "DC.blif", blif_reader( klut_dc ) ) != lorina::return_code::success )
-  //{
-  //  std::cout << "read <testcase>DC.blif failed!\n";
-  //  return -1;
-  //}
 
-  /* transform k-LUTs into AIGs */
+  /* DC network: read BLIF as COVER */
+  cover_network cover_dc;
+  if ( lorina::read_blif( path + testcase + "DC.blif", blif_reader( cover_dc ) ) != lorina::return_code::success )
+  {
+    std::cout << "read <testcase>DC.blif failed!\n";
+    return -1;
+  }
+
+  /* convert networks into AIG */
   using ntk_t = aig_network;
-  xag_npn_resynthesis<ntk_t> fallback;
-  dsd_resynthesis<ntk_t, decltype( fallback )> resyn( fallback );
-  shannon_resynthesis<ntk_t> resyn2;
-  
-  ntk_t ntk = call_with_stopwatch( st.time_resyn_main, [&]() { return node_resynthesis<ntk_t>( klut_ntk, resyn ); }); // dsd + npn
-  //ntk_t dc = call_with_stopwatch( st.time_resyn_dc, [&]() { return node_resynthesis<ntk_t>( klut_dc, resyn2 ); }); // shannon
+  ntk_t ntk = call_with_stopwatch( st.time_resyn_main, [&]() { return convert_klut_to_graph<ntk_t>( klut_ntk ); });
+  ntk_t dc = call_with_stopwatch( st.time_resyn_dc, [&]() { return convert_cover_to_graph<ntk_t>( cover_dc ); });
 
-  /* cleanup networks and save a copy for CEC */
-  ntk = cleanup_dangling( ntk );
-  //dc = cleanup_dangling( dc );
+  /* save a copy for CEC */
   ntk_t ntk_ori = cleanup_dangling( ntk );
 
-  /* optimize DC network */
-  //sim_resubstitution( dc );
-  //dc = cleanup_dangling( dc );
-  
-  /* simulation-guided resubstitution */
-  //dont_care_view dc_view( ntk, dc );
-  auto dc_view = make_with_stopwatch<dont_care_view<ntk_t>>( st.time_parse_dc, ntk, testcase + "DC.blif" );
+  /* create dont_care_view */
+  dont_care_view dc_view( ntk, dc );
+  //dont_care_view dc_view( ntk, path + testcase + "DC.blif" );
 
+  /* simulation-guided resubstitution */
   resubstitution_params ps;
   ps.max_pis = ntk.num_pis();
   ps.max_divisors = 1000;
   ps.max_inserts = 20;
   ps.odc_levels = 10;
-  ps.save_patterns = "exdc.pat";
-
-  call_with_stopwatch( st.time_sim_resub, [&]() {
+  ps.save_patterns = path + testcase + ".pat";
+  {
+    stopwatch tcec( st.time_sim_resub );
     for ( auto i = 0u; i < 2; ++i )
     {
       sim_resubstitution( dc_view, ps );
       ntk = cleanup_dangling( ntk );
-      //window_rewriting( ntk );
-      //ntk = cleanup_dangling( ntk );
     }
-  });
+  }
 
-  std::cout << "original network has " << klut_ntk.num_gates() << " LUTs and " << ntk_ori.num_gates() << " AND gates after node_resynthesis + cleanup_dangling\n";
-  //std::cout << "don't-care network has " << klut_dc.num_gates() << " LUTs and " << dc.num_gates() << " AND gates after node_resynthesis + simple sim_resub + cleanup_dangling\n";
+  std::cout << "original network has " << klut_ntk.num_gates() << " LUTs => " << ntk_ori.num_gates() << " AND gates\n";
   std::cout << "optimized network has " << dc_view.num_gates() << " AND gates\n";
 
   /* check if POs connected to PIs can be substituted with constant */
@@ -133,40 +123,25 @@ int main( int argc, char* argv[] )
   } );
 
   /* equivalence checking */
-  call_with_stopwatch( st.time_cec, [&]()
   {
+    stopwatch tcec( st.time_cec );
     ntk_t miter_aig = *miter<ntk_t>( ntk, ntk_ori );
-    //dont_care_view miter_with_DC( miter_aig, dc );
-    dont_care_view miter_with_DC( miter_aig, testcase + "DC.blif" );
+    dont_care_view miter_with_DC( miter_aig, dc );
+    //dont_care_view miter_with_DC( miter_aig, path + testcase + "DC.blif" );
     auto cec = equivalence_checking_bill( miter_with_DC );
     std::cout << "optimized network " << ( *cec ? "is" : "is NOT" ) << " equivalent to the original network\n";
-  });
+  }
 
   /* match I/O names and write out optimized network */
   names_view<ntk_t> named_ntk( ntk );
-  std::vector<std::string> pi_names;
-
-  klut_ntk.foreach_pi( [&]( auto const& n ) {
-    assert( klut_ntk.has_name( klut_ntk.make_signal( n ) ) );
-    pi_names.push_back( klut_ntk.get_name( klut_ntk.make_signal( n ) ) );
-  });
-
-  named_ntk.foreach_pi( [&]( auto const& n, auto i ) {
-    named_ntk.set_name( named_ntk.make_signal( n ), pi_names.at( i ) );
-  });
-
-  for ( auto i = 0u; i < klut_ntk.num_pos(); ++i )
-    named_ntk.set_output_name( i, klut_ntk.get_output_name( i ) );
-
-  write_blif( named_ntk, testcase + "OPT.blif" );
-  //write_verilog( named_ntk, "testOPT.v" );
+  restore_pio_names_by_order( klut_ntk, named_ntk );
+  write_blif( named_ntk, path + testcase + "OPT.blif" );
 
   t.~stopwatch();
-  std::cout << "total time = " << to_seconds( st.time_total ) 
-            << ", resyn main = " << to_seconds( st.time_resyn_main ) 
+  std::cout << "total time = " << to_seconds( st.time_total )
+            << ", resyn main = " << to_seconds( st.time_resyn_main )
             << ", resyn dc = " << to_seconds( st.time_resyn_dc )
-            << ", parse dc = " << to_seconds( st.time_parse_dc ) 
-            << ", sim_resub = " << to_seconds( st.time_sim_resub ) 
+            << ", sim_resub = " << to_seconds( st.time_sim_resub )
             << ", cec = " << to_seconds( st.time_cec ) << "\n";
 
   return 0;
