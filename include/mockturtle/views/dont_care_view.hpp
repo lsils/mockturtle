@@ -47,64 +47,6 @@
 namespace mockturtle
 {
 
-namespace detail
-{
-  template<class Ntk>
-  void parse_excdc( Ntk& ntk, std::string filename, uint32_t num_pis )
-  {
-    using signal = typename Ntk::signal;
-
-    std::vector<signal> pis;
-    for ( auto i = 0u; i < num_pis; ++i )
-      pis.emplace_back( ntk.create_pi() );
-
-    std::ifstream in( filename, std::ifstream::in );
-    std::string line, str;
-
-    // ignore 4 lines (file header)
-    std::getline( in, line ); std::getline( in, line ); std::getline( in, line ); std::getline( in, line );
-    
-    std::vector<signal> terms; // output signals of big ANDs
-    while ( std::getline( in, line ) && line.substr( 0, 4 ) != ".end" )
-    {
-      std::stringstream ss( line );
-      std::getline( ss, str, ' ' );
-      assert( str.length() == num_pis );
-
-      signal top; // top signal of the AND under construction
-      bool top_is_set = false;
-      for ( auto i = 0u; i < num_pis; ++i )
-      {
-        if ( str[i] == '0' )
-        {
-          top = top_is_set ? ntk.create_and( top, !pis[i] ) : !pis[i];
-          top_is_set = true;
-        }
-        else if ( str[i] == '1' )
-        {
-          top = top_is_set ? ntk.create_and( top, pis[i] ) : pis[i];
-          top_is_set = true;
-        }
-      }
-
-      if ( top_is_set )
-      {
-        terms.emplace_back( top );
-      }
-
-      std::getline( ss, str );
-      assert( str[0] == '0' ); // assuming the truth table gives only the offset cubes
-    }
-    assert( terms.size() > 0 );
-
-    signal top = terms[0]; // top signal of the OR under construction
-    for ( auto i = 1u; i < terms.size(); ++i )
-      top = ntk.create_or( top, terms[i] );
-
-    ntk.create_po( !top );
-  }
-} // namespace detail
-
 template<class Ntk>
 class dont_care_view : public Ntk
 {
@@ -119,12 +61,6 @@ public:
   {
     assert( ntk.num_pis() == cdc_ntk.num_pis() );
     assert( cdc_ntk.num_pos() == 1 );
-  }
-
-  dont_care_view( Ntk const& ntk, std::string dc_filename )
-    : Ntk( ntk )
-  {
-    detail::parse_excdc( _excdc, dc_filename, ntk.num_pis() );
   }
 
   dont_care_view( dont_care_view<Ntk> const& ntk )

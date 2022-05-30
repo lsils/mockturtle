@@ -74,7 +74,6 @@ int main( int argc, char* argv[] )
 
   /* create dont_care_view */
   dont_care_view dc_view( ntk, dc );
-  //dont_care_view dc_view( ntk, path + testcase + "DC.blif" );
 
   /* simulation-guided resubstitution */
   resubstitution_params ps;
@@ -127,7 +126,6 @@ int main( int argc, char* argv[] )
     stopwatch tcec( st.time_cec );
     ntk_t miter_aig = *miter<ntk_t>( ntk, ntk_ori );
     dont_care_view miter_with_DC( miter_aig, dc );
-    //dont_care_view miter_with_DC( miter_aig, path + testcase + "DC.blif" );
     auto cec = equivalence_checking_bill( miter_with_DC );
     std::cout << "optimized network " << ( *cec ? "is" : "is NOT" ) << " equivalent to the original network\n";
   }
