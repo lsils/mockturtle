@@ -45,17 +45,17 @@ void test_create_names_view()
   CHECK( !named_ntk.has_name( b ) );
   CHECK( !named_ntk.has_name( c ) );
   CHECK( !named_ntk.has_output_name( 0 ) );
-  
+
   named_ntk.set_name( a, "a" );
   named_ntk.set_name( b, "b" );
   named_ntk.set_name( c, "c" );
   named_ntk.set_output_name( 0, "f" );
-  
+
   CHECK( named_ntk.has_name( a ) );
   CHECK( named_ntk.has_name( b ) );
   CHECK( named_ntk.has_name( c ) );
   CHECK( named_ntk.has_output_name( 0 ) );
-  
+
   CHECK( named_ntk.get_name( a ) == "a" );
   CHECK( named_ntk.get_name( b ) == "b" );
   CHECK( named_ntk.get_name( c ) == "c" );
@@ -83,7 +83,7 @@ void test_copy_names_view()
   auto const f = ntk.create_and( t1, t2 );
   ntk.create_po( f );
 
-  names_view<Ntk> named_ntk;
+  names_view<Ntk> named_ntk(ntk);
   named_ntk.set_name( a, "a" );
   named_ntk.set_name( b, "b" );
   named_ntk.set_name( c, "c" );
@@ -113,4 +113,35 @@ TEST_CASE( "copy names", "[names_view]" )
   test_copy_names_view<xag_network>();
   test_copy_names_view<xmg_network>();
   test_copy_names_view<klut_network>();
+}
+
+TEST_CASE( "register names", "[names_view]" )
+{
+  names_view<aig_network> ntk;
+  ntk.set_network_name( "network" );
+  const auto pi = ntk.create_pi();
+  ntk.set_name(pi, "pi");
+  const auto ro = ntk.create_ro();
+  ntk.set_name(ro, "ro");
+  const auto gate = ntk.create_and( pi, ro );
+  ntk.set_name(gate, "gate");
+  const uint32_t ri = ntk.create_ri( gate, 1 );
+  ntk._storage->latch_information[ntk.get_node(ro)].control = "s";
+  ntk._storage->latch_information[ntk.get_node(ro)].init = 1;
+  ntk._storage->latch_information[ntk.get_node(ro)].type = "t";
+  ntk.set_output_name(ri, "ri");
+  const uint32_t po = ntk.create_po( ntk.create_not( gate ) );
+  ntk.set_output_name(po, "po");
+
+  CHECK( ntk.has_name( pi ) );
+  CHECK( ntk.get_name( pi ) == "pi" );
+  CHECK( ntk.has_name( ro ) );
+  CHECK( ntk.get_name( ro ) == "ro" );
+  CHECK( ntk.has_name( gate ) );
+  CHECK( ntk.get_name( gate ) == "gate" );
+  CHECK( ntk.get_network_name() == "network" );
+  CHECK( ntk.has_output_name( ri ) );
+  CHECK( ntk.get_output_name( ri ) == "ri" );
+  CHECK( ntk.has_output_name( po ) );
+  CHECK( ntk.get_output_name( po ) == "po" );
 }
