@@ -142,7 +142,6 @@ private:
       forest.incr_trav_id();
       eval = forest.get_cost( forest.get_node( g ), forest_leaves );
     } );
-
     return eval; // the cost of the whole network
   }
   bool update_result( Ntk & forest, index_list_t const& il )
@@ -159,11 +158,8 @@ private:
   }
   bool push_solution( index_list_t const& il )
   {
-    // only for paper
-    clock curr_time = std::chrono::high_resolution_clock::now();
-    efforts.emplace_back( std::chrono::duration<double>( curr_time - timer_start ).count() );
     ils.emplace_back( il );
-    return false; // if continue searching
+    return true;
   }
   template<bool pol1, bool pol2>
   void collect_unate_pairs_detail( uint32_t div1, uint32_t div2 )
@@ -1070,7 +1066,7 @@ private:
   {
     std::function<void(search_core*)> func;
     uint32_t effort;
-    uint32_t score; // for sort each func
+    uint32_t score;
     core_func_t( std::function<void(search_core*)> func, uint32_t effort): func( func ), effort( effort )
     { }
     void operator () ( search_core * pcore )
@@ -1080,43 +1076,21 @@ private:
   };
   void sorted_core( Ntk& forest )
   {
-    // only for paper 
-    // efforts.clear();
-    // timer_start = std::chrono::high_resolution_clock::now();
-
-    // std::random_shuffle( fns.begin() + 1, fns.end() ); // should search wire first
-
     for ( core_func_t & fn : fns )
     {
       uint32_t nbefore = ils.size();
       call_with_stopwatch( st.time_search, [&](){ fn( this );} );
       st.num_resub[ fn.effort ] += ils.size() - nbefore;
       if ( isConst ) break;
-      if ( ils.size() ) break;
     }
     st.num_roots += ils.size();
     uint32_t ngain = 0u;
 
-    // only for paper
-    // assert( efforts.size() == ils.size() );
-    // for ( uint32_t i = 0u; i < ils.size(); i++ )
-    // {
-    //   uint32_t c = eval_result( forest, ils[i] );
-    //   double e = efforts[i];
-    //   std::cerr << i << "," << e << "," << (int)(best_cost - c) << std::endl;
-    //   best_cost = std::min(best_cost, c);
-    // }
-
-    if ( ils.size() > 0 )
+    for( index_list_t const& il : ils )
     {
-      index_list = ils[0];
+      if ( best_cost > eval_result( forest, il ) ) ngain = std::max( best_cost - eval_result( forest, il ), ngain );
+      call_with_stopwatch( st.time_eval, [&](){ update_result( forest, il ); } );
     }
-    
-    // for( index_list_t const& il : ils )
-    // {
-    //   if ( best_cost > eval_result( forest, il ) ) ngain = std::max( best_cost - eval_result( forest, il ), ngain );
-    //   call_with_stopwatch( st.time_eval, [&](){ update_result( forest, il ); } );
-    // }
     st.num_gain += ngain;
   }
 
