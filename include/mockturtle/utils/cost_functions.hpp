@@ -25,7 +25,7 @@
 
 /*!
   \file cost_functions.hpp
-  \brief Various cost functions for (optimization) algorithms
+  \brief Various cost_t functions for (optimization) algorithms
 
   \author Heinz Riener
   \author Mathias Soeken
@@ -40,20 +40,17 @@
 namespace mockturtle
 {
 
-template<typename CostFn>
-using cost = typename CostFn::cost;
-
 template<class Ntk>
 struct and_cost
 {
 public:
-  using cost = uint32_t;
+  using cost_t = uint32_t;
   uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
   {
-    /* dissipate cost */
-    if( ntk.is_and( n ) ) tot_cost += 1; /* add dissipate cost */
-    /* accumulate cost */
-    return 0; /* return accumulate cost */
+    /* dissipate cost_t */
+    if( ntk.is_and( n ) ) tot_cost += 1; /* add dissipate cost_t */
+    /* accumulate cost_t */
+    return 0; /* return accumulate cost_t */
   }
 };
 
@@ -61,13 +58,13 @@ template<class Ntk>
 struct gate_cost
 {
 public:
-  using cost = uint32_t;
+  using cost_t = uint32_t;
   uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
   {
-    /* dissipate cost */
-    if( ntk.is_pi( n ) == false ) tot_cost += 1; /* add dissipate cost */
-    /* accumulate cost */
-    return 0; /* return accumulate cost */
+    /* dissipate cost_t */
+    if( ntk.is_pi( n ) == false ) tot_cost += 1; /* add dissipate cost_t */
+    /* accumulate cost_t */
+    return 0; /* return accumulate cost_t */
   }
 };
 
@@ -75,13 +72,13 @@ template<class Ntk>
 struct fanout_cost
 {
 public:
-  using cost = uint32_t;
+  using cost_t = uint32_t;
   uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
   {
-    /* dissipate cost */
-    if ( ntk.is_pi( n ) == false ) tot_cost += ntk.fanout( n ).size(); /* add dissipate cost */
-    /* accumulate cost */
-    return 0; /* return accumulate cost */
+    /* dissipate cost_t */
+    if ( ntk.is_pi( n ) == false ) tot_cost += ntk.fanout( n ).size(); /* add dissipate cost_t */
+    /* accumulate cost_t */
+    return 0; /* return accumulate cost_t */
   }
 };
 
@@ -89,13 +86,13 @@ template<class Ntk>
 struct supp_cost
 {
 public:
-  using cost = std::vector<bool>;
-  cost operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<cost> const& fanin_costs = {} ) const
+  using cost_t = std::vector<bool>;
+  cost_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<cost_t> const& fanin_costs = {} ) const
   {
-    /* accumulate cost */
+    /* accumulate cost_t */
     if ( ntk.is_pi( n ) == true )
     {
-      cost _c = std::vector<bool>();
+      cost_t _c = std::vector<bool>();
       uint32_t pi_cost = 0u;
       ntk.foreach_pi( [&]( node<Ntk> const& _n, uint32_t i ){
                         _c.emplace_back( ntk.make_signal( _n ) == ntk.make_signal( n ) );
@@ -105,7 +102,7 @@ public:
       assert( _c.size() == ntk.num_pis() );
       return _c;
     }
-    /* dissipate cost */
+    /* dissipate cost_t */
     std::vector<bool> _c( fanin_costs[0].size(), false );
     for ( auto j = 0u; j < fanin_costs.size(); j++ )
     {
@@ -117,9 +114,9 @@ public:
     }
     for ( auto i = 0u; i < fanin_costs[0].size(); i++ )
     {
-      tot_cost += _c[i]; /* add dissipate cost */
+      tot_cost += _c[i]; /* add dissipate cost_t */
     }
-    return _c; /* return accumulate cost */
+    return _c; /* return accumulate cost_t */
   }
 };
 
@@ -127,13 +124,13 @@ template<class Ntk>
 struct and_supp_cost
 {
 public:
-  using cost = std::vector<bool>;
-  cost operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<cost> const& fanin_costs = {} ) const
+  using cost_t = std::vector<bool>;
+  cost_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<cost_t> const& fanin_costs = {} ) const
   {
-    /* accumulate cost */
+    /* accumulate cost_t */
     if ( ntk.is_pi( n ) == true )
     {
-      cost _c = std::vector<bool>();
+      cost_t _c = std::vector<bool>();
       uint32_t pi_cost = 0u;
       ntk.foreach_pi( [&]( node<Ntk> const& _n, uint32_t i ){
                         _c.emplace_back( ntk.make_signal( _n ) == ntk.make_signal( n ) );
@@ -143,7 +140,7 @@ public:
       assert( _c.size() == ntk.num_pis() );
       return _c;
     }
-    /* dissipate cost */
+    /* dissipate cost_t */
     std::vector<bool> _c( fanin_costs[0].size(), false );
     for ( auto j = 0u; j < fanin_costs.size(); j++ )
     {
@@ -157,10 +154,10 @@ public:
     {
       for ( auto i = 0u; i < fanin_costs[0].size(); i++ )
       {
-        tot_cost += _c[i]; /* add dissipate cost */
+        tot_cost += _c[i]; /* add dissipate cost_t */
       }      
     }
-    return _c; /* return accumulate cost */
+    return _c; /* return accumulate cost_t */
   }
 };
 
@@ -168,10 +165,10 @@ template<class Ntk>
 struct level_cost
 {
 public:
-  using cost = uint32_t;
+  using cost_t = uint32_t;
   uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
   {
-    /* accumulate cost */
+    /* accumulate cost_t */
     uint32_t _cost = 0u;
     for ( uint32_t fanin_cost : fanin_costs )
     {
@@ -179,9 +176,9 @@ public:
     }
     if( !ntk.is_pi( n ) ) _cost += 1; // for both AND and XOR
 
-    /* dissipate cost */
-    tot_cost = std::max( tot_cost, _cost ); /* update dissipate cost */
-    return _cost; /* return accumulate cost */
+    /* dissipate cost_t */
+    tot_cost = std::max( tot_cost, _cost ); /* update dissipate cost_t */
+    return _cost; /* return accumulate cost_t */
   }
 };
 
@@ -189,10 +186,10 @@ template<class Ntk>
 struct t_depth
 {
 public:
-  using cost = uint32_t;
+  using cost_t = uint32_t;
   uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
   {
-    /* accumulate cost */
+    /* accumulate cost_t */
     uint32_t _cost = 0u;
     for ( uint32_t fanin_cost : fanin_costs )
     {
@@ -200,9 +197,9 @@ public:
     }
     _cost += ntk.is_and( n ); // and depth
 
-    /* dissipate cost */
-    if( ntk.fanout( n ).size() == 0 ) tot_cost = std::max( tot_cost, _cost ); /* update dissipate cost */
-    return _cost; /* return accumulate cost */
+    /* dissipate cost_t */
+    if( ntk.fanout( n ).size() == 0 ) tot_cost = std::max( tot_cost, _cost ); /* update dissipate cost_t */
+    return _cost; /* return accumulate cost_t */
   }
 };
 
@@ -210,10 +207,10 @@ template<class Ntk>
 struct and_adp
 {
 public:
-  using cost = uint32_t;
+  using cost_t = uint32_t;
   uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
   {
-    /* accumulate cost */
+    /* accumulate cost_t */
     uint32_t _cost = 0u;
     for ( uint32_t fanin_cost : fanin_costs )
     {
@@ -221,9 +218,9 @@ public:
     }
     _cost += ntk.is_and( n );
 
-    /* dissipate cost */
-    if( ntk.is_and( n ) ) tot_cost += _cost; /* update dissipate cost */
-    return _cost; /* return accumulate cost */
+    /* dissipate cost_t */
+    if( ntk.is_and( n ) ) tot_cost += _cost; /* update dissipate cost_t */
+    return _cost; /* return accumulate cost_t */
   }
 };
 
@@ -232,10 +229,10 @@ template<class Ntk>
 struct adp_cost
 {
 public:
-  using cost = uint32_t;
+  using cost_t = uint32_t;
   uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
   {
-    /* accumulate cost */
+    /* accumulate cost_t */
     uint32_t _cost = 0u;
     for ( uint32_t fanin_cost : fanin_costs )
     {
@@ -243,9 +240,9 @@ public:
     }
     _cost += 1; // for both AND and XOR
 
-    /* dissipate cost */
+    /* dissipate cost_t */
     if( ntk.is_and( n ) || ntk.is_xor( n ) )  tot_cost += _cost; /* sum of level over each node */
-    return _cost; /* return accumulate cost */
+    return _cost; /* return accumulate cost_t */
   }
 };
 

@@ -319,6 +319,6 @@ private:
 // cost_view( T const& )->cost_view<T, NodeCostFn>;
 
 template<class T, class NodeCostFn>
-cost_view( T const&, NodeCostFn const& )->cost_view<T, NodeCostFn, cost<NodeCostFn>>;
+cost_view( T const&, NodeCostFn const& )->cost_view<T, NodeCostFn, typename NodeCostFn::cost_t>;
 
 } // namespace mockturtle
