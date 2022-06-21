@@ -33,23 +33,22 @@
 
 #pragma once
 
-
 #pragma once
 
 #include "../../utils/index_list.hpp"
-#include "../../utils/stopwatch.hpp"
 #include "../../utils/node_map.hpp"
+#include "../../utils/stopwatch.hpp"
 
-#include <kitty/kitty.hpp>
-#include <fmt/format.h>
 #include <abcresub/abcresub.hpp>
+#include <fmt/format.h>
+#include <kitty/kitty.hpp>
 
-#include <vector>
 #include <algorithm>
-#include <type_traits>
 #include <optional>
 #include <queue>
+#include <type_traits>
 #include <unordered_set>
+#include <vector>
 
 namespace mockturtle
 {
@@ -58,22 +57,22 @@ template<class TT>
 struct xag_cost_aware_resyn_static_params
 {
   /*! \brief Maximum number of binate divisors to be considered. */
-  static constexpr uint32_t max_binates{50u};
+  static constexpr uint32_t max_binates{ 50u };
 
   /*! \brief Reserved capacity for divisor truth tables (number of divisors). */
-  static constexpr uint32_t reserve{200u};
+  static constexpr uint32_t reserve{ 200u };
 
   /*! \brief Whether to consider single XOR gates (i.e., using XAGs instead of AIGs). */
-  static constexpr bool use_xor{true};
+  static constexpr bool use_xor{ true };
 
   /*! \brief Whether to copy truth tables. */
-  static constexpr bool copy_tts{false};
+  static constexpr bool copy_tts{ false };
 
-  static constexpr uint32_t max_enqueue{1000u};
+  static constexpr uint32_t max_enqueue{ 1000u };
 
-  static constexpr uint32_t max_xor{1u};
+  static constexpr uint32_t max_xor{ 1u };
 
-  static constexpr uint32_t max_neighbors{10u};
+  static constexpr uint32_t max_neighbors{ 10u };
 
   using truth_table_storage_type = std::vector<TT>;
   using node_type = uint32_t;
@@ -81,13 +80,14 @@ struct xag_cost_aware_resyn_static_params
 
 struct xag_costfn_resyn_stats
 {
-  stopwatch<>::duration time_check_unateness{0};
-  stopwatch<>::duration time_enqueue{0};
-  stopwatch<>::duration time_tt_calculation{0};
-  stopwatch<>::duration time_check_unate{0};
-  stopwatch<>::duration time_move_tt{0};
+  stopwatch<>::duration time_check_unateness{ 0 };
+  stopwatch<>::duration time_enqueue{ 0 };
+  stopwatch<>::duration time_tt_calculation{ 0 };
+  stopwatch<>::duration time_check_unate{ 0 };
+  stopwatch<>::duration time_move_tt{ 0 };
   void report() const
-  { }
+  {
+  }
 };
 
 template<class TT, class CostFn, class static_params = xag_cost_aware_resyn_static_params<TT>>
@@ -100,30 +100,61 @@ public:
   using cost = typename CostFn::cost;
 
 private:
-  enum gate_type {AND, OR, XOR, NONE};
-  enum lit_type {EQUAL, EQUAL_INV, POS_UNATE, NEG_UNATE, POS_UNATE_INV, NEG_UNATE_INV, BINATE, DONT_CARE};
-  enum resub_type {WIRE_RS, XOR_RS, AND_RS, XOR_XOR_RS, AND_XOR_RS, XOR_AND_RS, XOR_XOR_AND_RS, AND_AND_RS, AND_AND_XOR_RS, AND_AND_AND_RS, AND_XOR_XOR_RS, NONE_RS};
+  enum gate_type
+  {
+    AND,
+    OR,
+    XOR,
+    NONE
+  };
+  enum lit_type
+  {
+    EQUAL,
+    EQUAL_INV,
+    POS_UNATE,
+    NEG_UNATE,
+    POS_UNATE_INV,
+    NEG_UNATE_INV,
+    BINATE,
+    DONT_CARE
+  };
+  enum resub_type
+  {
+    WIRE_RS,
+    XOR_RS,
+    AND_RS,
+    XOR_XOR_RS,
+    AND_XOR_RS,
+    XOR_AND_RS,
+    XOR_XOR_AND_RS,
+    AND_AND_RS,
+    AND_AND_XOR_RS,
+    AND_AND_AND_RS,
+    AND_XOR_XOR_RS,
+    NONE_RS
+  };
 
   std::unordered_map<TT, uint32_t, kitty::hash<TT>> tt_to_id;
   std::vector<TT> id_to_tt;
   std::vector<uint32_t> id_to_num;
-  
-  uint32_t to_id ( const TT & tt )
+
+  uint32_t to_id( const TT& tt )
   {
-    if ( tt_to_id.find( tt ) != tt_to_id.end() ) return tt_to_id[tt];
+    if ( tt_to_id.find( tt ) != tt_to_id.end() )
+      return tt_to_id[tt];
     tt_to_id[tt] = id_to_tt.size();
     id_to_tt.emplace_back( tt );
     id_to_num.emplace_back( kitty::count_ones( tt ) );
     return tt_to_id[tt];
   }
 
-  const auto & to_tt ( uint32_t id )
+  const auto& to_tt( uint32_t id )
   {
     assert( id < id_to_tt.size() );
     return id_to_tt[id];
   }
 
-  const uint32_t to_num ( uint32_t id )
+  const uint32_t to_num( uint32_t id )
   {
     assert( id < id_to_num.size() );
     return id_to_num[id];
@@ -163,24 +194,25 @@ private:
   //   return false;
   // }
 
-  struct task 
+  struct task
   {
     std::array<uint32_t, 2> sets; /* the on-off set of each task (could be optimized) */
-    uint32_t c; /* the lower bound of the cost */
+    uint32_t c;                   /* the lower bound of the cost */
     uint32_t score;
     std::size_t prev;
     bool done;
     gate_type ntype;
     uint32_t lit;
     uint32_t num_xor;
-    const bool operator > ( const task & t ) const
+    const bool operator>( const task& t ) const
     {
-      if ( c != t.c ) return c > t.c;
+      if ( c != t.c )
+        return c > t.c;
       /* the most likely first */
       return score > t.score;
     }
 
-    task( bool _done, std::size_t _prev, uint32_t _lit, gate_type _ntype, uint32_t _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), c(_cost), score(0), num_xor(0) {}
+    task( bool _done, std::size_t _prev, uint32_t _lit, gate_type _ntype, uint32_t _cost ) : done( _done ), prev( _prev ), lit( _lit ), ntype( _ntype ), c( _cost ), score( 0 ), num_xor( 0 ) {}
   };
 
   struct deq_task
@@ -189,7 +221,7 @@ private:
     std::size_t prev;
     gate_type ntype;
     uint32_t lit;
-    deq_task( const task & t ): prev( t.prev ), ntype( t.ntype ), lit( t.lit ), c( t.c ) {}
+    deq_task( const task& t ) : prev( t.prev ), ntype( t.ntype ), lit( t.lit ), c( t.c ) {}
   };
 
 private:
@@ -197,13 +229,13 @@ private:
   std::vector<deq_task> mem;
 
   /* the depth c function */
-  std::function<uint32_t(uint32_t)> depth_fn;
+  std::function<uint32_t( uint32_t )> depth_fn;
 
   /* cost upper bound */
   uint32_t upper_bound;
 
   template<class Q>
-  auto add_neighbors ( const task & t, Q & q )
+  auto add_neighbors( const task& t, Q& q )
   {
     for ( auto v = 1u; v < divisors.size(); ++v )
     {
@@ -214,7 +246,7 @@ private:
       {
         if ( _t->done == true )
         {
-          upper_bound = (_t->c);
+          upper_bound = ( _t->c );
         }
         call_with_stopwatch( st.time_enqueue, [&]() {
           q.push( *_t );
@@ -224,11 +256,11 @@ private:
   }
 
   /* */
-  auto tt_move ( uint32_t off, uint32_t on, uint32_t lit, gate_type ntype )
+  auto tt_move( uint32_t off, uint32_t on, uint32_t lit, gate_type ntype )
   {
-    const auto & tt = lit & 0x1? ~get_div( lit>>1 ) : get_div( lit>>1 ) ;
+    const auto& tt = lit & 0x1 ? ~get_div( lit >> 1 ) : get_div( lit >> 1 );
     uint32_t _off = 0u;
-    uint32_t _on  = 0u;
+    uint32_t _on = 0u;
     switch ( ntype )
     {
     case OR:
@@ -255,20 +287,26 @@ private:
     cand_q.push( std::pair( depth_fn( mem[p].lit >> 1 ), mem[p].lit ) );
     while ( mem[p].prev != 0 )
     {
-      for ( p=mem[p].prev; ; p=mem[p].prev )
+      for ( p = mem[p].prev;; p = mem[p].prev )
       {
         cand_q.push( std::pair( depth_fn( mem[p].lit >> 1 ), mem[p].lit ) );
-        if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
+        if ( mem[p].ntype != mem[mem[p].prev].ntype )
+          break;
       }
       /* add the nodes */
       while ( cand_q.size() > 1 )
       {
-        auto fanin1 = cand_q.top(); cand_q.pop();
-        auto fanin2 = cand_q.top(); cand_q.pop();
+        auto fanin1 = cand_q.top();
+        cand_q.pop();
+        auto fanin2 = cand_q.top();
+        cand_q.pop();
         uint32_t new_lit = 0u;
-        if ( mem[p].ntype == AND ) new_lit = index_list.add_and( fanin1.second, fanin2.second );
-        else if ( mem[p].ntype == OR ) new_lit = index_list.add_and( fanin1.second ^ 0x1, fanin2.second ^ 0x1) ^ 0x1;
-        else if ( mem[p].ntype == XOR ) new_lit = index_list.add_xor( fanin1.second, fanin2.second );
+        if ( mem[p].ntype == AND )
+          new_lit = index_list.add_and( fanin1.second, fanin2.second );
+        else if ( mem[p].ntype == OR )
+          new_lit = index_list.add_and( fanin1.second ^ 0x1, fanin2.second ^ 0x1 ) ^ 0x1;
+        else if ( mem[p].ntype == XOR )
+          new_lit = index_list.add_xor( fanin1.second, fanin2.second );
         auto new_cost = fanin2.first + 1; // TODO: change this "1" to c
         cand_q.push( std::pair( new_cost, new_lit ) );
       }
@@ -276,7 +314,7 @@ private:
     return cand_q.top();
   }
 
-  std::optional<uint32_t> get_cost( size_t pos, uint32_t lit, gate_type _ntype, bool balancing = false ) const 
+  std::optional<uint32_t> get_cost( size_t pos, uint32_t lit, gate_type _ntype, bool balancing = false ) const
   {
     uint32_t c;
 
@@ -293,10 +331,11 @@ private:
         int p = -1;
         while ( p == -1 || mem[p].prev != 0 )
         {
-          for ( p = ( p==-1? pos : mem[p].prev ); ; p = mem[p].prev ) /* get all the same node type */
+          for ( p = ( p == -1 ? pos : mem[p].prev );; p = mem[p].prev ) /* get all the same node type */
           {
             cost_q.push( depth_fn( mem[p].lit >> 1 ) );
-            if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
+            if ( mem[p].ntype != mem[mem[p].prev].ntype )
+              break;
           }
           while ( cost_q.size() > 1 ) /* add node while maintaining the depth order */
           {
@@ -310,7 +349,7 @@ private:
           cost_q.pop();
           cost_q.push( cost_q.top() + 1 );
           cost_q.pop();
-        }    
+        }
         // depth_cost = cost_q.top();
       }
     }
@@ -321,29 +360,36 @@ private:
     return 0;
   };
 
-  lit_type check_unateness ( const TT & off_set, const TT & on_set, const TT & tt )
+  lit_type check_unateness( const TT& off_set, const TT& on_set, const TT& tt )
   {
     bool unateness[4] = {
-      kitty::intersection_is_empty<TT, 1, 1>( tt, off_set ),
-      kitty::intersection_is_empty<TT, 0, 1>( tt, off_set ),
-      kitty::intersection_is_empty<TT, 1, 1>( tt, on_set ),
-      kitty::intersection_is_empty<TT, 0, 1>( tt, on_set ),
+        kitty::intersection_is_empty<TT, 1, 1>( tt, off_set ),
+        kitty::intersection_is_empty<TT, 0, 1>( tt, off_set ),
+        kitty::intersection_is_empty<TT, 1, 1>( tt, on_set ),
+        kitty::intersection_is_empty<TT, 0, 1>( tt, on_set ),
     };
-    if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) ) return DONT_CARE;
-    if ( unateness[0] && unateness[3] ) return EQUAL;
-    if ( unateness[1] && unateness[2] ) return EQUAL_INV;
-    if ( unateness[0] ) return POS_UNATE;
-    if ( unateness[1] ) return POS_UNATE_INV;
-    if ( unateness[2] ) return NEG_UNATE_INV;
-    if ( unateness[3] ) return NEG_UNATE;
+    if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
+      return DONT_CARE;
+    if ( unateness[0] && unateness[3] )
+      return EQUAL;
+    if ( unateness[1] && unateness[2] )
+      return EQUAL_INV;
+    if ( unateness[0] )
+      return POS_UNATE;
+    if ( unateness[1] )
+      return POS_UNATE_INV;
+    if ( unateness[2] )
+      return NEG_UNATE_INV;
+    if ( unateness[3] )
+      return NEG_UNATE;
     return BINATE;
   }
-  std::optional<task> find_unate_subtask ( const task & _t, uint32_t v )
+  std::optional<task> find_unate_subtask( const task& _t, uint32_t v )
   {
-    auto const & tt = get_div(v);
+    auto const& tt = get_div( v );
     auto off = _t.sets[0];
-    auto on  = _t.sets[1];
-    auto ltype = call_with_stopwatch( st.time_check_unate, [&] () {
+    auto on = _t.sets[1];
+    auto ltype = call_with_stopwatch( st.time_check_unate, [&]() {
       return check_unateness( to_tt( off ), to_tt( on ), tt );
     } );
     gate_type _ntype = NONE;
@@ -351,39 +397,61 @@ private:
     uint32_t lit = v << 1;
     switch ( ltype )
     {
-    case DONT_CARE: return std::nullopt;
-    case EQUAL:     done = true; _ntype = NONE;         break;
-    case EQUAL_INV: done = true; _ntype = NONE; lit++ ; break;
-    case POS_UNATE:              _ntype = OR;           break;
-    case POS_UNATE_INV:          _ntype = OR;   lit++;  break;
-    case NEG_UNATE:              _ntype = AND;          break;
-    case NEG_UNATE_INV:          _ntype = AND;  lit++;  break;
-    case BINATE:                 _ntype = XOR;          break;
+    case DONT_CARE:
+      return std::nullopt;
+    case EQUAL:
+      done = true;
+      _ntype = NONE;
+      break;
+    case EQUAL_INV:
+      done = true;
+      _ntype = NONE;
+      lit++;
+      break;
+    case POS_UNATE:
+      _ntype = OR;
+      break;
+    case POS_UNATE_INV:
+      _ntype = OR;
+      lit++;
+      break;
+    case NEG_UNATE:
+      _ntype = AND;
+      break;
+    case NEG_UNATE_INV:
+      _ntype = AND;
+      lit++;
+      break;
+    case BINATE:
+      _ntype = XOR;
+      break;
     }
 
     if constexpr ( static_params::use_xor == false )
     {
-      if ( _ntype == XOR ) return std::nullopt;
+      if ( _ntype == XOR )
+        return std::nullopt;
     }
 
-    if ( _ntype != NONE && _ntype == _t.ntype && ( lit >> 1 ) <= ( _t.lit >> 1 ) ) 
+    if ( _ntype != NONE && _ntype == _t.ntype && ( lit >> 1 ) <= ( _t.lit >> 1 ) )
     {
       return std::nullopt; /* commutativity */
-    } 
+    }
     auto c = get_cost( mem.size() - 1, lit, _ntype, false ); // TODO: assume prev task always at back()
     if ( !c || *c < upper_bound )
     {
       return std::nullopt; /* task is pruned */
     }
     task t( done, mem.size() - 1, lit, _ntype, *c );
-    if ( _ntype == XOR ) 
+    if ( _ntype == XOR )
     {
-      if ( _t.num_xor >= static_params::max_xor ) return std::nullopt;
+      if ( _t.num_xor >= static_params::max_xor )
+        return std::nullopt;
       t.num_xor = _t.num_xor + 1;
     }
     if ( done == false )
     {
-      auto [ _off, _on ] = call_with_stopwatch( st.time_move_tt, [&] () {
+      auto [_off, _on] = call_with_stopwatch( st.time_move_tt, [&]() {
         return tt_move( off, on, lit, _ntype );
       } );
       // if ( check_cost( _off, _on, (*c).first ) == false )
@@ -410,7 +478,7 @@ private:
 
 public:
   explicit cost_aware_engine( stats& st ) noexcept
-    : st( st )
+      : st( st )
   {
     divisors.reserve( static_params::reserve );
   }
@@ -429,7 +497,7 @@ public:
     {
       if constexpr ( static_params::copy_tts )
       {
-        divisors.emplace_back( (*ptts)[*begin] );
+        divisors.emplace_back( ( *ptts )[*begin] );
       }
       else
       {
@@ -454,7 +522,8 @@ public:
     while ( !q.empty() )
     {
       /* get the current lower bound */
-      auto t = q.top(); q.pop();
+      auto t = q.top();
+      q.pop();
       mem.emplace_back( deq_task( t ) );
       /* back trace succeed tasks */
       if ( t.done == true )
@@ -465,8 +534,9 @@ public:
         return index_list;
       }
       // if ( compare_cost( t.c, upper_bound ) == false ) break;
-      if ( q.size() >= static_params::max_enqueue ) break;
-      add_neighbors ( t, q );
+      if ( q.size() >= static_params::max_enqueue )
+        break;
+      add_neighbors( t, q );
     }
     return std::nullopt;
   }
@@ -479,7 +549,7 @@ public:
     }
     else
     {
-      return (*ptts)[divisors[idx]];
+      return ( *ptts )[divisors[idx]];
     }
   }
 
@@ -498,4 +568,4 @@ private:
 
   stats& st;
 }; /* cost_aware_engine */
-}
+} // namespace mockturtle
