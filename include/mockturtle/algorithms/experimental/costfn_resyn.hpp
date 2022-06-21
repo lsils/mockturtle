@@ -26,7 +26,9 @@
 /*!
   \file costfn_resyn.hpp
   \brief generic resynthesis algorithm with customized cost function
+
   \author Hanyu Wang
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -452,7 +454,7 @@ public:
     while ( !q.empty() )
     {
       /* get the current lower bound */
-      auto t = q.top(); q.pop(); 
+      auto t = q.top(); q.pop();
       mem.emplace_back( deq_task( t ) );
       /* back trace succeed tasks */
       if ( t.done == true )

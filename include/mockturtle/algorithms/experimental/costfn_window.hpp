@@ -26,6 +26,8 @@
 /*!
   \file costfn_window.hpp
   \brief generic widnowing algorithm with customized cost function
+
+  \author Siang-Yun (Sonia) Lee
   \author Hanyu Wang
 */
 

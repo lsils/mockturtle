@@ -45,8 +45,6 @@
 #include <algorithm>
 #include <type_traits>
 #include <optional>
-#include <queue>
-#include <unordered_set>
 
 namespace mockturtle
 {
@@ -85,14 +83,6 @@ struct xag_resyn_static_params
   /*! \brief Depth cost of each XOR gate (only relevant when `preserve_depth = true` and `use_xor = true`). */
   static constexpr uint32_t depth_cost_of_xor{1u};
 
-  static constexpr uint32_t max_enqueue{1000u};
-
-  static constexpr uint32_t max_xor{1u};
-
-  static constexpr uint32_t max_neighbors{10u};
-
-  static constexpr bool count_searching_stats{false};
-
   using truth_table_storage_type = void;
   using node_type = void;
 };
@@ -106,19 +96,6 @@ struct xag_resyn_static_params_default : public xag_resyn_static_params
 
 template<class TT>
 struct aig_resyn_static_params_default : public xag_resyn_static_params_default<TT>
-{
-  static constexpr bool use_xor = false;
-};
-
-template<class TT>
-struct xag_resyn_static_params_preserve_depth : public xag_resyn_static_params_default<TT>
-{
-  static constexpr bool preserve_depth = true;
-  static constexpr bool uniform_div_cost = false;
-};
-
-template<class TT>
-struct aig_resyn_static_params_preserve_depth : public xag_resyn_static_params_preserve_depth<TT>
 {
   static constexpr bool use_xor = false;
 };
@@ -159,24 +136,6 @@ struct xag_resyn_stats
   /*! \brief Time for dividing the target and recursive call. */
   stopwatch<>::duration time_divide{0};
 
-  /*! \brief Time for checking unateness of literals. */
-  stopwatch<>::duration time_check_unateness{0};
-
-  stopwatch<>::duration time_enqueue{0};
-  stopwatch<>::duration time_tt_calculation{0};
-  stopwatch<>::duration time_check_unate{0};
-  stopwatch<>::duration time_move_tt{0};
-
-  uint32_t number_problems{0u};
-  uint32_t searching_total{0u};
-  uint32_t searching_solution{0u};
-  uint32_t searching_wire{0u};
-  uint32_t searching_and{0u};
-  uint32_t searching_xor{0u};
-  uint32_t searching_and_and{0u};
-  uint32_t searching_and_xor{0u};
-  uint32_t searching_xor_and{0u};
-
   void report() const
   {
     fmt::print( "[i]         <xag_resyn_decompose>\n" );
@@ -187,11 +146,6 @@ struct xag_resyn_stats
     fmt::print( "[i]             sort         : {:>5.2f} secs\n", to_seconds( time_sort ) );
     fmt::print( "[i]             collect pairs: {:>5.2f} secs\n", to_seconds( time_collect_pairs ) );
     fmt::print( "[i]             dividing     : {:>5.2f} secs\n", to_seconds( time_divide ) );
-    fmt::print( "[i]             enqueue      : {:>5.2f} secs\n", to_seconds( time_enqueue ) );
-    fmt::print( "[i]             tt calc      : {:>5.2f} secs\n", to_seconds( time_tt_calculation ) );
-    fmt::print( "[i]             check unate  : {:>5.2f} secs\n", to_seconds( time_check_unate ) );
-    fmt::print( "[i]             tt move      : {:>5.2f} secs\n", to_seconds( time_move_tt ) );
-    fmt::print( "[i]             total search : {:>4d}\n"       , searching_total );
   }
 };
 
@@ -267,99 +221,6 @@ private:
     uint32_t score{0};
   };
 
-  enum gate_type {AND, OR, XOR, NONE};
-  enum lit_type {EQUAL, EQUAL_INV, POS_UNATE, NEG_UNATE, POS_UNATE_INV, NEG_UNATE_INV, BINATE, DONT_CARE};
-  enum resub_type {WIRE_RS, XOR_RS, AND_RS, XOR_XOR_RS, AND_XOR_RS, XOR_AND_RS, XOR_XOR_AND_RS, AND_AND_RS, AND_AND_XOR_RS, AND_AND_AND_RS, AND_XOR_XOR_RS, NONE_RS};
-
-  std::unordered_map<TT, uint32_t, kitty::hash<TT>> tt_to_id;
-  std::vector<TT> id_to_tt;
-  std::vector<uint32_t> id_to_num;
-  
-  uint32_t to_id ( const TT & tt )
-  {
-    if ( tt_to_id.find( tt ) != tt_to_id.end() ) return tt_to_id[tt];
-    tt_to_id[tt] = id_to_tt.size();
-    id_to_tt.emplace_back( tt );
-    id_to_num.emplace_back( kitty::count_ones( tt ) );
-    return tt_to_id[tt];
-  }
-
-  const auto & to_tt ( uint32_t id )
-  {
-    assert( id < id_to_tt.size() );
-    return id_to_tt[id];
-  }
-
-  const uint32_t to_num ( uint32_t id )
-  {
-    assert( id < id_to_num.size() );
-    return id_to_num[id];
-  }
-
-  std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t>> best_cost;
-
-  bool check_cost ( uint32_t x, uint32_t y, uint32_t cost )
-  {
-    uint32_t _x = std::min( x, y );
-    uint32_t _y = std::max( x, y );
-    bool ret = false; /* if best is updated */
-    if ( best_cost.find( _x ) == best_cost.end() )
-    {
-      ret = true;
-      best_cost[ _x ] = std::unordered_map<uint32_t, uint32_t>();
-    }
-    if ( best_cost[ _x ].find( _y ) == best_cost[ _x ].end() )
-    {
-      ret = true;
-      best_cost[ _x ][ _y ] = cost;
-    }
-    if ( best_cost[ _x ][ _y ] > cost )
-    {
-      ret = true;
-      best_cost[ _x ][ _y ] = cost;
-    }
-    return ret;
-  }
-
-  /* return if the cost is acceptable */
-  bool compare_cost ( std::pair<uint32_t, uint32_t> cost, std::pair<uint32_t, uint32_t> upper )
-  {
-    /* for depth cost */
-    if( cost.first != upper.first ) return cost.first < upper.first;
-    // if( cost.second != upper.second ) return cost.second < upper.second;
-    return false;
-  }
-
-  struct task 
-  {
-    std::array<uint32_t, 2> sets; /* the on-off set of each task (could be optimized) */
-    std::pair<uint32_t, uint32_t> cost; /* the lower bound of the cost */
-    uint32_t score;
-    std::size_t prev;
-    bool done;
-    gate_type ntype;
-    uint32_t lit;
-    uint32_t num_xor;
-    const bool operator > ( const task & t ) const
-    {
-      if ( cost.first != t.cost.first ) return cost.first > t.cost.first;
-      // if ( cost.second != t.cost.second ) return cost.second > t.cost.second;
-      /* the most likely first */
-      return score > t.score;
-    }
-
-    task( bool _done, std::size_t _prev, uint32_t _lit, gate_type _ntype, std::pair<uint32_t, uint32_t> _cost ): done(_done), prev(_prev), lit(_lit), ntype(_ntype), cost(_cost), score(0), num_xor(0) {}
-  };
-
-  struct deq_task
-  {
-    std::pair<uint32_t, uint32_t> cost; /* the lower bound of the cost */
-    std::size_t prev;
-    gate_type ntype;
-    uint32_t lit;
-    deq_task( const task & t ): prev( t.prev ), ntype( t.ntype ), lit( t.lit ), cost( t.cost ) {}
-  };
-
 public:
   explicit xag_resyn_decompose( stats& st ) noexcept
     : st( st )
@@ -404,7 +265,8 @@ public:
       }
       ++begin;
     }
-    return cost_first_search( max_size );
+
+    return compute_function( max_size );
   }
 
   template<class iterator_type, class Fn, 
@@ -415,498 +277,17 @@ public:
   template<class iterator_type, class Fn, 
            bool enabled = !static_params::uniform_div_cost && static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, typename static_params::truth_table_storage_type const& tts, Fn&& size_cost, Fn&& depth_cost, uint32_t max_size = std::numeric_limits<uint32_t>::max(), uint32_t max_depth = std::numeric_limits<uint32_t>::max() )
-  {
-    static_assert( static_params::copy_tts || std::is_same_v<typename std::iterator_traits<iterator_type>::value_type, typename static_params::node_type>, "iterator_type does not dereference to static_params::node_type" );
-
-    ptts = &tts;
-    on_off_sets[0] = ~target & care;
-    on_off_sets[1] = target & care;
-
-    divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
-    while ( begin != end )
-    {
-      if constexpr ( static_params::copy_tts )
-      {
-        divisors.emplace_back( (*ptts)[*begin] );
-      }
-      else
-      {
-        divisors.emplace_back( *begin );
-      }
-      ++begin;
-    }
-
-    index_list.clear();
-    index_list.add_inputs( divisors.size() - 1 );
-    upper_bound = std::pair( max_size, max_depth );
-
-    // auto const lit = compute_function_rec( max_size - 1 );
-    // if ( lit )
-    // {
-    //   index_list.add_output( *lit );
-    //   upper_bound.first = index_list.num_gates();
-    // }
-
-    depth_fn = depth_cost;
-
-    mem.clear();
-    id_to_num.clear();
-    id_to_tt.clear();
-    tt_to_id.clear();
-    best_cost.clear();
-
-    task init_task( false, 0, 0, NONE, std::pair(0,0) );
-    init_task.sets[0] = to_id( ~target & care );
-    init_task.sets[1] = to_id( target & care );
-
-    std::priority_queue<task, std::vector<task>, std::greater<>> q;
-    /* prepare the initial task */
-    call_with_stopwatch( st.time_enqueue, [&]() {
-      q.push( init_task );
-    } );
-
-    while ( !q.empty() )
-    {
-      /* get the current lower bound */
-      auto t = q.top(); q.pop(); 
-      mem.emplace_back( deq_task( t ) );
-      /* back trace succeed tasks */
-      if ( t.done == true )
-      {
-        index_list.clear();
-        index_list.add_inputs( divisors.size() - 1 );
-        index_list.add_output( back_trace( mem.size() - 1 ).second );
-        return index_list;
-      }
-      if ( compare_cost( t.cost, upper_bound ) == false ) break;
-      if ( q.size() >= static_params::max_enqueue ) break;
-      add_neighbors ( t, q );
-    }
-    auto const lit = compute_function_rec( max_size - 1 );
-    if ( lit )
-    {
-      index_list.add_output( *lit );
-      upper_bound.first = index_list.num_gates();
-    }
-    if ( index_list.num_pos() == 1 ) return index_list;
-    return std::nullopt;
-  }
+  {}
 
 private:
-  /* the list of temp nodes */
-  std::vector<deq_task> mem;
-
-  /* the depth cost function */
-  std::function<uint32_t(uint32_t)> depth_fn;
-
-  /* cost upper bound */
-  std::pair< uint32_t, uint32_t > upper_bound;
-
-  template<class Q>
-  auto add_neighbors ( const task & t, Q & q )
-  {
-    for ( auto v = 1u; v < divisors.size(); ++v )
-    {
-      auto _t = call_with_stopwatch( st.time_tt_calculation, [&]() {
-        return find_unate_subtask( t, v );
-      } );
-      if ( _t ) /* prune dont cares */
-      {
-        if ( _t->done == true )
-        {
-          upper_bound = (_t->cost);
-        }
-        call_with_stopwatch( st.time_enqueue, [&]() {
-          q.push( *_t );
-        } );
-      }
-    }
-  }
-
-  /* */
-  auto tt_move ( uint32_t off, uint32_t on, uint32_t lit, gate_type ntype )
-  {
-    const auto & tt = lit & 0x1? ~get_div( lit>>1 ) : get_div( lit>>1 ) ;
-    uint32_t _off = 0u;
-    uint32_t _on  = 0u;
-    switch ( ntype )
-    {
-    case OR:
-      _off = off;
-      _on = to_id( ~tt & to_tt( on ) );
-      break;
-    case AND:
-      _off = to_id( tt & to_tt( off ) );
-      _on = on;
-      break;
-    case XOR:
-      _off = to_id( ( ~tt & to_tt( off ) ) | ( tt & to_tt( on ) ) );
-      _on = to_id( ( ~tt & to_tt( on ) ) | ( tt & to_tt( off ) ) );
-      break;
-    }
-    return std::make_tuple( _off, _on );
-  }
-
-  using cand_t = std::pair<uint32_t, uint32_t>;
-  cand_t back_trace( size_t pos )
-  {
-    size_t p = pos;
-    std::priority_queue<cand_t, std::vector<cand_t>, std::greater<>> cand_q;
-    cand_q.push( std::pair( depth_fn( mem[p].lit >> 1 ), mem[p].lit ) );
-    while ( mem[p].prev != 0 )
-    {
-      for ( p=mem[p].prev; ; p=mem[p].prev )
-      {
-        cand_q.push( std::pair( depth_fn( mem[p].lit >> 1 ), mem[p].lit ) );
-        if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
-      }
-      /* add the nodes */
-      while ( cand_q.size() > 1 )
-      {
-        auto fanin1 = cand_q.top(); cand_q.pop();
-        auto fanin2 = cand_q.top(); cand_q.pop();
-        uint32_t new_lit = 0u;
-        if ( mem[p].ntype == AND ) new_lit = index_list.add_and( fanin1.second, fanin2.second );
-        else if ( mem[p].ntype == OR ) new_lit = index_list.add_and( fanin1.second ^ 0x1, fanin2.second ^ 0x1) ^ 0x1;
-        else if ( mem[p].ntype == XOR ) new_lit = index_list.add_xor( fanin1.second, fanin2.second );
-        auto new_cost = fanin2.first + 1; // TODO: change this "1" to cost
-        cand_q.push( std::pair( new_cost, new_lit ) );
-      }
-    }
-    return cand_q.top();
-  }
-
-  std::optional<std::pair<uint32_t, uint32_t>> get_cost( size_t pos, uint32_t lit, gate_type _ntype, bool balancing = false ) const 
-  {
-    uint32_t size_cost, depth_cost;
-    switch ( mem[pos].ntype )
-    {
-    case NONE:
-      size_cost = mem[pos].cost.first;
-      break;
-    case XOR:
-      size_cost = mem[pos].cost.first + static_params::size_cost_of_xor;
-    case AND:
-    case OR:
-      size_cost = mem[pos].cost.first + static_params::size_cost_of_and;
-    default:
-      break;
-    }
-
-    if ( balancing ) /* a better estimation of depth cost */
-    {
-      if ( pos == 0 ) /* only one lit */
-      {
-        depth_cost = depth_fn( lit >> 1 );
-      }
-      else
-      {
-        std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<>> cost_q;
-        cost_q.push( depth_fn( lit >> 1 ) );
-        int p = -1;
-        while ( p == -1 || mem[p].prev != 0 )
-        {
-          for ( p = ( p==-1? pos : mem[p].prev ); ; p = mem[p].prev ) /* get all the same node type */
-          {
-            cost_q.push( depth_fn( mem[p].lit >> 1 ) );
-            if ( mem[p].ntype != mem[mem[p].prev].ntype ) break;
-          }
-          while ( cost_q.size() > 1 ) /* add node while maintaining the depth order */
-          {
-            cost_q.pop();
-            cost_q.push( cost_q.top() + 1 );
-            cost_q.pop();
-          }
-        }
-        while ( cost_q.size() > 1 ) /* add node while maintaining the depth order */
-        {
-          cost_q.pop();
-          cost_q.push( cost_q.top() + 1 );
-          cost_q.pop();
-        }    
-        depth_cost = cost_q.top();
-      }
-    }
-    else
-    {
-      depth_cost = std::max( mem[pos].cost.second, (uint32_t)depth_fn( lit>>1 ) ) + 1;
-    }
-    return std::pair( size_cost, depth_cost );
-  };
-
-  lit_type check_unateness ( const TT & off_set, const TT & on_set, const TT & tt )
-  {
-    bool unateness[4] = {
-      kitty::intersection_is_empty<TT, 1, 1>( tt, off_set ),
-      kitty::intersection_is_empty<TT, 0, 1>( tt, off_set ),
-      kitty::intersection_is_empty<TT, 1, 1>( tt, on_set ),
-      kitty::intersection_is_empty<TT, 0, 1>( tt, on_set ),
-    };
-    if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) ) return DONT_CARE;
-    if ( unateness[0] && unateness[3] ) return EQUAL;
-    if ( unateness[1] && unateness[2] ) return EQUAL_INV;
-    if ( unateness[0] ) return POS_UNATE;
-    if ( unateness[1] ) return POS_UNATE_INV;
-    if ( unateness[2] ) return NEG_UNATE_INV;
-    if ( unateness[3] ) return NEG_UNATE;
-    return BINATE;
-  }
-  std::optional<task> find_unate_subtask ( const task & _t, uint32_t v )
-  {
-    auto const & tt = get_div(v);
-    auto off = _t.sets[0];
-    auto on  = _t.sets[1];
-    auto ltype = call_with_stopwatch( st.time_check_unate, [&] () {
-      return check_unateness( to_tt( off ), to_tt( on ), tt );
-    } );
-    gate_type _ntype = NONE;
-    bool done = false;
-    uint32_t lit = v << 1;
-    switch ( ltype )
-    {
-    case DONT_CARE: return std::nullopt;
-    case EQUAL:     done = true; _ntype = NONE;         break;
-    case EQUAL_INV: done = true; _ntype = NONE; lit++ ; break;
-    case POS_UNATE:              _ntype = OR;           break;
-    case POS_UNATE_INV:          _ntype = OR;   lit++;  break;
-    case NEG_UNATE:              _ntype = AND;          break;
-    case NEG_UNATE_INV:          _ntype = AND;  lit++;  break;
-    case BINATE:                 _ntype = XOR;          break;
-    }
-
-    if constexpr ( static_params::use_xor == false )
-    {
-      if ( _ntype == XOR ) return std::nullopt;
-    }
-
-    if ( _ntype != NONE && _ntype == _t.ntype && ( lit >> 1 ) <= ( _t.lit >> 1 ) ) 
-    {
-      return std::nullopt; /* commutativity */
-    } 
-    auto cost = get_cost( mem.size() - 1, lit, _ntype, false ); // TODO: assume prev task always at back()
-    if ( !cost || compare_cost( *cost, upper_bound ) == false )
-    {
-      return std::nullopt; /* task is pruned */
-    }
-    task t( done, mem.size() - 1, lit, _ntype, *cost );
-    if ( _ntype == XOR ) 
-    {
-      if ( _t.num_xor >= static_params::max_xor ) return std::nullopt;
-      t.num_xor = _t.num_xor + 1;
-    }
-    if ( done == false )
-    {
-      auto [ _off, _on ] = call_with_stopwatch( st.time_move_tt, [&] () {
-        return tt_move( off, on, lit, _ntype );
-      } );
-      if ( check_cost( _off, _on, (*cost).first ) == false )
-      {
-        return std::nullopt;
-      }
-      t.sets[0] = _off;
-      t.sets[1] = _on;
-      t.score = to_num( _off ) + to_num( _on );
-    }
-    return t;
-  }
-
-  std::optional<index_list_t> cost_first_search( uint32_t num_inserts )
-  {
-    index_list.clear();
-    index_list.add_inputs( divisors.size() - 1 );
-
-    prepare_clear();
-    auto const lit = cost_first_search_core( num_inserts );
-
-    if ( lit )
-    {
-      // assert( index_list.num_gates() <= num_inserts );
-      index_list.add_output( *lit );
-      return index_list;
-    }
-    return std::nullopt;
-  }
-  template<resub_type t>
-  std::optional<uint32_t> profiler_core( uint32_t max_size )
-  {
-    stopwatch<>::duration time_test{0};
-    uint32_t num_inserts;
-    std::optional<uint32_t> ret = std::nullopt;
-    if constexpr ( t == WIRE_RS )
-    {
-      num_inserts = 0;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_one_unate();
-        });
-      }
-    }
-    if constexpr ( t == AND_RS )
-    {
-      num_inserts = 1;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_and();
-        });
-      }
-    }
-    if constexpr ( t == XOR_RS )
-    {
-      num_inserts = 0;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_xor();
-        });
-      }
-    }
-    if constexpr ( t == XOR_XOR_RS )
-    {
-      num_inserts = 0;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_xor_xor();
-        });
-      }
-    }
-    if constexpr ( t == AND_XOR_RS )
-    {
-      num_inserts = 1;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_and_xor();
-        });
-      }
-    }
-    if constexpr ( t == XOR_AND_RS )
-    {
-      num_inserts = 1;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_xor_and();
-        });
-      }
-    }
-    if constexpr ( t == AND_AND_RS )
-    {
-      num_inserts = 2;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_and_and();
-        });
-      }
-    }
-    if constexpr ( t == AND_AND_AND_RS )
-    {
-      num_inserts = 3;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_and_and_and();
-        });
-      }
-    }
-    if constexpr ( t == AND_AND_XOR_RS )
-    {
-      num_inserts = 2;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_and_and_xor();
-        });
-      }
-    }
-    if constexpr ( t == AND_XOR_XOR_RS )
-    {
-      num_inserts = 1;
-      if ( num_inserts <= max_size )
-      {
-        ret = call_with_stopwatch( time_test, [&]() {
-          return find_and_xor_xor();
-        });
-      }
-    }
-    std::cerr << to_seconds( time_test ) << ",";
-    std::cerr << (ret ? max_size + 1 - num_inserts : 0) << std::endl;
-    return std::nullopt;
-  }
-  std::optional<uint32_t> area_opt_core( uint32_t max_size )
-  {
-    std::optional<uint32_t> ret = std::nullopt;
-    if ( !ret && max_size >= 0 ) ret = find_wire();
-    if ( !ret && max_size >= 1 ) ret = find_and();
-    if ( !ret && max_size >= 1 ) ret = find_xor();
-    if ( !ret && max_size >= 2 ) ret = find_and_xor();
-    if ( !ret && max_size >= 2 ) ret = find_and_and();
-    if ( !ret && max_size >= 2 ) ret = find_xor_and();
-    if ( !ret && max_size >= 2 ) ret = find_xor_xor();
-    if ( !ret && max_size >= 3 ) ret = find_and_and_and();
-    if ( !ret && max_size >= 3 ) ret = find_and_and_xor();
-    if ( !ret && max_size >= 3 ) ret = find_and_xor_xor();
-    if ( !ret && max_size >= 3 ) ret = find_xor_and_and();
-    if ( !ret && max_size >= 3 ) ret = find_xor_xor_and();
-    if ( !ret && max_size >= 3 ) ret = find_xor_xor_xor();
-    return ret;
-  }
-  std::optional<uint32_t> cost_first_search_core( uint32_t max_size )
-  {
-    std::optional<uint32_t> ret = std::nullopt;
-    if ( !ret && max_size >= 0 ) ret = find_wire();
-    if ( !ret && max_size >= 0 ) ret = find_xor();
-    if ( !ret && max_size >= 0 ) ret = find_xor_xor();
-    if ( !ret && max_size >= 0 ) ret = find_xor_xor_xor();
-    // if ( !ret && max_size >= 0 ) ret = find_xor_xor_xor_xor();
-    // if ( !ret && max_size >= 1 ) ret = find_xor_and_xor_xor();
-    if ( !ret && max_size >= 1 ) ret = find_and();
-    if ( !ret && max_size >= 1 ) ret = find_and_xor();
-    if ( !ret && max_size >= 1 ) ret = find_and_xor_xor();
-    if ( !ret && max_size >= 1 ) ret = find_xor_and();
-    if ( !ret && max_size >= 1 ) ret = find_xor_xor_and();
-    if ( !ret && max_size >= 2 ) ret = find_and_and();
-    if ( !ret && max_size >= 2 ) ret = find_and_and_xor();
-    if ( !ret && max_size >= 2 ) ret = find_xor_and_and();
-    if ( !ret && max_size >= 3 ) ret = find_and_and_and();
-    return ret;
-  }
-
   std::optional<index_list_t> compute_function( uint32_t num_inserts )
   {
     index_list.clear();
     index_list.add_inputs( divisors.size() - 1 );
-
-    /* reset all searching counters */
-    curr_rec = 0u;
-    if constexpr ( static_params::count_searching_stats )
-    {
-      st.searching_wire = 0u;
-      st.searching_and = 0u;
-      st.searching_xor = 0u;
-      st.searching_and_and = 0u;
-      st.searching_and_xor = 0u;
-      st.searching_xor_and = 0u;      
-    }
     auto const lit = compute_function_rec( num_inserts );
-    
-    /* print the searching stats */
-    if constexpr ( static_params::count_searching_stats )
-    {
-      std::cerr << divisors.size() << ",";
-      std::cerr << st.searching_wire << ",";
-      std::cerr << st.searching_and << ",";
-      std::cerr << st.searching_xor << ",";
-      std::cerr << st.searching_and_and << ",";
-      std::cerr << st.searching_and_xor << ",";
-      std::cerr << st.searching_xor_and << std::endl;      
-    }
     if ( lit )
     {
-      // assert( index_list.num_gates() <= num_inserts );
+      assert( index_list.num_gates() <= num_inserts );
       index_list.add_output( *lit );
       return index_list;
     }
@@ -962,7 +343,7 @@ private:
     if constexpr ( static_params::use_xor )
     {
       /* collect XOR-type unate pairs and try 1-resub with XOR */
-      auto const res1xor = find_xor_old();
+      auto const res1xor = find_xor();
       if ( res1xor )
       {
         return *res1xor;
@@ -1037,7 +418,7 @@ private:
         score_div = neg_unate_lits[0].score;
       }
 
-      if ( num_inserts > 3u ) // only consider pairs when insert > 3
+      if ( num_inserts > 3u )
       {
         if ( pos_unate_pairs.size() > 0 )
         {
@@ -1067,10 +448,7 @@ private:
         on_off_sets[on_off_div] &= lit & 0x1 ? get_div( lit >> 1 ) : ~get_div( lit >> 1 );
       });
 
-      curr_rec++;
       auto const res_remain_div = compute_function_rec( num_inserts - 1 );
-      curr_rec--;
-
       if ( res_remain_div )
       {
         auto const new_lit = index_list.add_and( ( lit ^ 0x1 ), *res_remain_div ^ on_off_div );
@@ -1101,10 +479,7 @@ private:
         }
       });
 
-      curr_rec++;
       auto const res_remain_pair = compute_function_rec( num_inserts - 2 );
-      curr_rec--;
-
       if ( res_remain_pair )
       {
         uint32_t new_lit1;
@@ -1123,170 +498,7 @@ private:
 
     return std::nullopt;
   }
-  void prepare_lit_xor()
-  {
-    assert( has_lit_xor == false );
-    if constexpr ( std::is_same<kitty::dynamic_truth_table, TT>::value )
-    {
-      num_vars = on_off_sets[0].num_vars();
-    }
-    else
-    {
-      num_vars = divisors.size() - 1;
-    }
-    num_vars = std::min( (uint32_t)divisors.size() - 1u, 8u );
-    for ( uint32_t i = 1u; i <= num_vars; i++ )
-    {
-      for ( uint32_t j = i+1; j <= num_vars; j++ )
-      {
-        tts_xors[ i * ( num_vars + 1 ) + j ] = get_div( i ) ^ get_div( j );
-      }
-    }
-    has_lit_xor = true;
-  }
-  void prepare_xor()
-  {
-    assert( has_xor == false );
-    for ( auto i = 1u; i < divisors.size(); i++ )
-    {
-      mem_xor[ on_off_sets[1] ^ get_div( i ) ] = i;
-    }
-    has_xor = true;
-  }
-  void prepare_xor_xor()
-  {
-    assert( has_xor_xor == false );
-    for ( auto i = 1u; i < divisors.size(); i++ )
-    {
-      for ( auto j = i+1; j < divisors.size(); j++ )
-      {
-        mem_xor_xor[ get_div( i ) ^ get_div( j ) ^ on_off_sets[1] ] = i * divisors.size() + j;
-      }
-    }
-    has_xor_xor = true;
-  }
-  void prepare_xor_and()
-  {
-    assert( has_xor_and == false );
-    for ( auto i = 1u; i < divisors.size(); i++ )
-    {
-      for ( auto j = i+1; j < divisors.size(); j++ )
-      {
-        for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
-        {
-          for ( auto on_off_2 = 0u; on_off_2 < 2; on_off_2++ )
-          {
-            auto const tt = ( on_off_1? ~get_div( i ) : get_div( i ) ) & ( on_off_2? ~get_div( j ) : get_div( j ) );
-            mem_xor_and[ tt ^ on_off_sets[1] ] = ( ( i << 1 ) + on_off_1 ) * 2 * divisors.size() + ( ( j << 1 ) + on_off_2 );
-          }
-        }
-      }
-    }
-    has_xor_and = true;
-  }
-  void prepare_task()
-  {
-    assert( has_init == false );
-    num_bits[0] = kitty::count_ones( on_off_sets[0] ); /* off-set */
-    num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
-    has_init = true;
-  }
-  void prepare_clear()
-  {
-    pos_unate_lits.clear();
-    neg_unate_lits.clear();
-    binate_divs.clear();
-    pos_unate_pairs.clear();
-    neg_unate_pairs.clear();
-    pos_unate_xor_pairs.clear();
-    neg_unate_xor_pairs.clear();
-    mem_xor.clear();
-    mem_xor_xor.clear();
-    mem_xor_and.clear();
-    has_xor_xor = false;
-    has_xor = false;
-    has_xor_and = false;
-    has_unateness = false;
-    has_and_pairs = false;
-    has_xor_pairs = false;
-    has_lit_xor = false;
-    has_init = false;
-  }
-  void prepare_unateness()
-  {
-    assert( has_unateness == false && "already have unateness" );
-    if ( has_init == false )
-    {
-      prepare_task();
-    }
-    for ( auto v = 1u; v < divisors.size(); ++v )
-    {
-      bool unateness[4] = {false, false, false, false};
-      /* check intersection with off-set */
-      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[0] ) )
-      {
-        pos_unate_lits.emplace_back( v << 1 );
-        unateness[0] = true;
-      }
-      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[0] ) )
-      {
-        pos_unate_lits.emplace_back( v << 1 | 0x1 );
-        unateness[1] = true;
-      }
-      /* check intersection with on-set */
-      if ( kitty::intersection_is_empty<TT, 1, 1>( get_div(v), on_off_sets[1] ) )
-      {
-        neg_unate_lits.emplace_back( v << 1 );
-        unateness[2] = true;
-      }
-      else if ( kitty::intersection_is_empty<TT, 0, 1>( get_div(v), on_off_sets[1] ) )
-      {
-        neg_unate_lits.emplace_back( v << 1 | 0x1 );
-        unateness[3] = true;
-      }
-      /* useless unate literal */
-      if ( ( unateness[0] && unateness[2] ) || ( unateness[1] && unateness[3] ) )
-      {
-        pos_unate_lits.pop_back();
-        neg_unate_lits.pop_back();
-      }
-      /* binate divisor */
-      else if ( !unateness[0] && !unateness[1] && !unateness[2] && !unateness[3] )
-      {
-        binate_divs.emplace_back( v );
-      }
-    }
-    sort_unate_lits( pos_unate_lits, 1 );
-    sort_unate_lits( neg_unate_lits, 0 );
-    has_unateness = true;
-  }
-  std::optional<uint32_t> find_wire()
-  {
-    if ( has_init == false )
-    {
-      prepare_task();
-    }
-    if ( num_bits[0] == 0 )
-    {
-      return 1;
-    }
-    if ( num_bits[1] == 0 )
-    {
-      return 0;
-    }
-    for ( auto v = 1u; v < divisors.size(); ++v )
-    {
-      if ( get_div( v ) == on_off_sets[1] )
-      {
-        return ( v << 1 );
-      }
-      if ( get_div( v ) == on_off_sets[0] )
-      {
-        return ( v << 1 ) + 1;
-      }
-    }
-    return std::nullopt;
-  }
+
   /* See if there is a constant or divisor covering all on-set bits or all off-set bits.
      1. Check constant-resub
      2. Collect unate literals
@@ -1296,15 +508,6 @@ private:
   {
     num_bits[0] = kitty::count_ones( on_off_sets[0] ); /* off-set */
     num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
-
-    if constexpr ( static_params::count_searching_stats )
-    {
-      if ( curr_rec == 0 || curr_rec == 1 ) // constant or divisor
-        st.searching_wire+=2;
-      else if ( curr_rec == 2 )
-        st.searching_and+=2;      
-    }
-
     if ( num_bits[0] == 0 )
     {
       return 1;
@@ -1313,6 +516,7 @@ private:
     {
       return 0;
     }
+
     for ( auto v = 1u; v < divisors.size(); ++v )
     {
       bool unateness[4] = {false, false, false, false};
@@ -1339,13 +543,7 @@ private:
         neg_unate_lits.emplace_back( v << 1 | 0x1 );
         unateness[3] = true;
       }
-      if constexpr ( static_params::count_searching_stats )
-      {
-        if ( curr_rec == 0 ) // divisor
-          st.searching_wire+=2;
-        else if ( curr_rec == 1 )
-          st.searching_and+=2;        
-      }
+
       /* 0-resub */
       if ( unateness[0] && unateness[3] )
       {
@@ -1433,13 +631,6 @@ private:
         }
         auto const ntt1 = lit1 & 0x1 ? get_div( lit1 >> 1 ) : ~get_div( lit1 >> 1 );
         auto const ntt2 = lit2 & 0x1 ? get_div( lit2 >> 1 ) : ~get_div( lit2 >> 1 );
-        if constexpr ( static_params::count_searching_stats )
-        {
-          if ( curr_rec == 0 )
-            st.searching_and ++;
-          else if ( curr_rec == 1)
-            st.searching_and_and ++;          
-        }
         if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
         {
           auto const new_lit = index_list.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
@@ -1449,366 +640,7 @@ private:
     }
     return std::nullopt;
   }
-  std::optional<uint32_t> find_xor_xor_xor()
-  {
-    if ( has_xor_xor == false )
-    {
-      prepare_xor_xor();
-    }
-    for ( auto i = 1u; i < divisors.size(); i++ )
-    {
-      for ( auto j = i+1; j < divisors.size(); j++ )
-      {
-        auto const tt = get_div( i ) ^ get_div( j );
-        if ( mem_xor_xor.find( tt ) != mem_xor_xor.end() )
-        {
-          auto new_lit1 = index_list.add_xor( (i << 1), (j << 1) );
-          auto new_lit2 = index_list.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
-          auto new_lit3 = index_list.add_xor( new_lit2, new_lit1 );
-          return new_lit3;
-        }
-        if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
-        {
-          auto new_lit1 = index_list.add_xor( (i << 1), (j << 1) );
-          auto new_lit2 = index_list.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
-          auto new_lit3 = index_list.add_xor( new_lit2 ^ 0x1, new_lit1 );
-          return new_lit3;
-        }
-      }
-    }
-    return std::nullopt;
-  }
-  std::optional<uint32_t> find_xor_xor()
-  {
-    if ( has_xor == false )
-    {
-      prepare_xor();
-    }
-    for ( auto i = 1u; i < divisors.size(); i++ )
-    {
-      for ( auto j = i+1; j < divisors.size(); j++ )
-      {
-        auto const tt = get_div( i ) ^ get_div( j );
-        if ( mem_xor.find( tt ) != mem_xor.end() )
-        {
-          auto new_lit1 = index_list.add_xor( (i << 1), (j << 1) );
-          auto new_lit2 = index_list.add_xor( new_lit1, mem_xor[ tt ] << 1 );
-          return new_lit2;
-        }
-        if ( mem_xor.find( ~tt ) != mem_xor.end() )
-        {
-          auto new_lit1 = index_list.add_xor( (i << 1), (j << 1) );
-          auto new_lit2 = index_list.add_xor( new_lit1 ^ 0x1, mem_xor[ ~tt ] << 1 );
-          return new_lit2;
-        }
-      }
-    }
-    return std::nullopt;
-  }
-  std::optional<uint32_t> find_xor_xor_and()
-  {
-    if ( has_xor_xor == false )
-    {
-      prepare_xor_xor();
-    }
-    for ( auto i = 1u; i < divisors.size(); i++ )
-    {
-      for ( auto j = i+1; j < divisors.size(); j++ )
-      {
-        for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
-        {
-          for ( auto on_off_2 = 0u; on_off_2 < 2; on_off_2++ )
-          {
-            auto const tt = ( on_off_1? ~get_div( i ) : get_div( i ) ) & ( on_off_2? ~get_div( j ) : get_div( j ) );
-            if ( mem_xor_xor.find( tt ) != mem_xor_xor.end() )
-            {
-              auto new_lit1 = index_list.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
-              auto new_lit2 = index_list.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
-              auto new_lit3 = index_list.add_xor( new_lit2, new_lit1 );
-              return new_lit3;
-            }
-            if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
-            {
-              auto new_lit1 = index_list.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
-              auto new_lit2 = index_list.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
-              auto new_lit3 = index_list.add_xor( new_lit2 ^ 0x1, new_lit1 );
-              return new_lit3;
-            }
-          }
-        }
-      }
-    }
-    return std::nullopt;
-  }
-  std::optional<uint32_t> find_xor_xor_xor_xor()
-  {
-    if ( has_xor_xor == false )
-    {
-      prepare_xor_xor();
-    }
-    if ( has_lit_xor == false )
-    {
-      prepare_lit_xor();
-    }
-    for ( auto i = 1u; i <= num_vars; i++ )
-    {
-      for ( auto j = i+1; j < num_vars; j++ )
-      {
-        auto const & tt = tts_xors[ i * ( num_vars + 1 ) + j ];
-        if ( mem_xor_xor.find( tt ) != mem_xor_xor.end() )
-        {
-          auto new_lit1 = index_list.add_xor( i << 1, j << 1 );
-          auto new_lit2 = index_list.add_xor( ( mem_xor_xor[ tt ] % divisors.size() ) << 1, ( mem_xor_xor[ tt ] / divisors.size() ) << 1 );
-          auto new_lit3 = index_list.add_xor( new_lit2, new_lit1 );
-          return new_lit3;
-        }
-        if ( mem_xor_xor.find( ~tt ) != mem_xor_xor.end() )
-        {
-          auto new_lit1 = index_list.add_xor( i << 1, j << 1 );
-          auto new_lit2 = index_list.add_xor( ( mem_xor_xor[ ~tt ] % divisors.size() ) << 1, ( mem_xor_xor[ ~tt ] / divisors.size() ) << 1 );
-          auto new_lit3 = index_list.add_xor( new_lit2 ^ 0x1, new_lit1 );
-          return new_lit3;
-        }
-      }
-    }
-    return std::nullopt;
-  }
-  std::optional<uint32_t> find_xor_and_xor_xor()
-  {
-    if ( has_xor == false )
-    {
-      prepare_xor();
-    }
-    if ( has_lit_xor == false )
-    {
-      prepare_lit_xor();
-    }
-    for ( auto i = 1u; i <= num_vars; i++ )
-    {
-      for ( auto j = i+1; j < num_vars; j++ )
-      {
-        auto const & tt1 = tts_xors[ i * ( num_vars + 1 ) + j ];
-        for ( auto ii = 1u; ii <= num_vars; ii++ )
-        {
-          for ( auto jj = ii+1; jj <= num_vars; jj++ )
-          {
-            auto const & tt2 = tts_xors[ ii * ( num_vars + 1 ) + jj ];
-            for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
-            {
-              for ( auto on_off_2 = 0u; on_off_2 < 2; on_off_2++ )
-              {
-                auto const tt = ( on_off_1? ~tt1 : tt1 ) & ( on_off_2? ~tt2 : tt2 );
-                if ( mem_xor.find( tt ) != mem_xor.end() )
-                {
-                  auto new_lit1 = index_list.add_xor( i << 1, j << 1 );
-                  auto new_lit2 = index_list.add_xor( ii << 1, jj << 1 );
-                  auto new_lit3 = index_list.add_and( new_lit1 + on_off_1, new_lit2 + on_off_2);
-                  auto new_lit4 = index_list.add_xor( new_lit3, mem_xor[tt] << 1 );
-                  return new_lit4;
-                }
-                if ( mem_xor.find( ~tt ) != mem_xor.end() )
-                {
-                  auto new_lit1 = index_list.add_xor( i << 1, j << 1 );
-                  auto new_lit2 = index_list.add_xor( ii << 1, jj << 1 );
-                  auto new_lit3 = index_list.add_and( new_lit1 + on_off_1, new_lit2 + on_off_2);
-                  auto new_lit4 = index_list.add_xor( new_lit3 ^ 0x1, mem_xor[~tt] << 1 );
-                  return new_lit4;
-                }
-              }
-            }            
-          }
-        }
-      }
-    }
-    return std::nullopt;
-  }
-  std::optional<uint32_t> find_xor_and()
-  {
-    if ( has_xor == false )
-    {
-      prepare_xor();
-    }
-    for ( auto i = 1u; i < divisors.size(); i++ )
-    {
-      for ( auto j = i+1; j < divisors.size(); j++ )
-      {
-        for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
-        {
-          for ( auto on_off_2 = 0u; on_off_2 < 2; on_off_2++ )
-          {
-            auto const tt = ( on_off_1? ~get_div( i ) : get_div( i ) ) & ( on_off_2? ~get_div( j ) : get_div( j ) );
-            if ( mem_xor.find( tt ) != mem_xor.end() )
-            {
-              auto new_lit1 = index_list.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
-              auto new_lit2 = index_list.add_xor( new_lit1, mem_xor[ tt ] << 1 );
-              return new_lit2;
-            }
-            if ( mem_xor.find( ~tt ) != mem_xor.end() )
-            {
-              auto new_lit1 = index_list.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2);
-              auto new_lit2 = index_list.add_xor( new_lit1 ^ 0x1, mem_xor[ ~tt ] << 1 );
-              return new_lit2;
-            }
-          }
-        }
-      }
-    }
-    return std::nullopt;
-  }
-  std::optional<uint32_t> find_xor_and_and()
-  {
-    if ( has_xor_and == false )
-    {
-      prepare_xor_and();
-    }
-    for ( auto i = 1u; i < divisors.size(); i++ )
-    {
-      for ( auto j = i+1; j < divisors.size(); j++ )
-      {
-        for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
-        {
-          for ( auto on_off_2 = 0u; on_off_2 < 2; on_off_2++ )
-          {
-            auto const tt = ( on_off_1? ~get_div( i ) : get_div( i ) ) & ( on_off_2? ~get_div( j ) : get_div( j ) );
-            if ( mem_xor_and.find( tt ) != mem_xor_and.end() )
-            {
-              auto new_lit1 = index_list.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2 );
-              auto new_lit2 = index_list.add_and( mem_xor_and[ tt ] % ( 2 * divisors.size() ), mem_xor_and[ tt ] / ( 2 * divisors.size() ) );
-              auto new_lit3 = index_list.add_xor( new_lit1, new_lit2 );
-              return new_lit3;
-            }
-            if ( mem_xor_and.find( ~tt ) != mem_xor_and.end() )
-            {
-              auto new_lit1 = index_list.add_and( (i << 1) + on_off_1, (j << 1) + on_off_2 );
-              auto new_lit2 = index_list.add_and( mem_xor_and[ ~tt ] % ( 2 * divisors.size() ), mem_xor_and[ ~tt ] / ( 2 * divisors.size() ) );
-              auto new_lit3 = index_list.add_xor( new_lit1 ^ 0x1, new_lit2 );
-              return new_lit3;
-            }
-          }
-        }
-      }
-    }
-    return std::nullopt;
-  }
-  void prepare_and_pairs()
-  {
-    if ( has_unateness == false )
-    {
-      prepare_unateness();
-    }
-    collect_unate_pairs();
-    sort_unate_pairs( pos_unate_pairs, 1 );
-    sort_unate_pairs( neg_unate_pairs, 0 );
-    has_and_pairs = true;
-  }
-  void prepare_xor_pairs()
-  {
-    if ( has_unateness == false )
-    {
-      prepare_unateness();
-    }
-    for ( auto i = 0u; i < binate_divs.size(); ++i )
-    {
-      for ( auto j = i + 1; j < binate_divs.size(); ++j )
-      {
-        auto const tt_xor = get_div( binate_divs[i] ) ^ get_div( binate_divs[j] );
-        /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
-        if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[1] ) )
-        {
-          pos_unate_xor_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
-        }
-        if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[1] ) )
-        {
-          pos_unate_xor_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
-        }
-        /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
-        if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[0] ) )
-        {
-          neg_unate_xor_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
-        }
-        if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[0] ) )
-        {
-          neg_unate_xor_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
-        }
-      }
-    }
-    sort_unate_pairs( pos_unate_xor_pairs, 1 );
-    sort_unate_pairs( neg_unate_xor_pairs, 0 );
-    has_xor_pairs = true;
-  }
-  std::optional<uint32_t> find_and()
-  {
-    if ( has_unateness == false )
-    {
-      prepare_unateness();
-    }
-    auto ret = find_div_div( pos_unate_lits, 1 );
-    if ( !ret ) ret = find_div_div( neg_unate_lits, 0 );
-    return ret;
-  }
-  std::optional<uint32_t> find_and_and()
-  {
-    if ( has_and_pairs == false )
-    {
-      prepare_and_pairs();
-    }
-    auto ret = find_and_and_helper( pos_unate_lits, pos_unate_pairs, 1 );
-    if ( !ret ) ret = find_and_and_helper( neg_unate_lits, neg_unate_pairs, 0 );
-    return ret;
-  }
-  std::optional<uint32_t> find_and_xor()
-  {
-    if ( has_xor_pairs == false )
-    {
-      prepare_xor_pairs();
-    }
-    auto ret = find_and_and_helper<true>( pos_unate_lits, pos_unate_xor_pairs, 1 );
-    if ( !ret ) ret = find_and_and_helper<true>( neg_unate_lits, neg_unate_xor_pairs, 0 );
-    return ret;
-  }
-  template<bool is_xor=false>
-  std::optional<uint32_t> find_and_and_helper( std::vector<unate_lit>& unate_lits, std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
-  {
-    for ( auto i = 0u; i < unate_lits.size(); ++i )
-    {
-      uint32_t const& lit1 = unate_lits[i].lit;
-      for ( auto j = 0u; j < unate_pairs.size(); ++j )
-      {
-        fanin_pair const& pair2 = unate_pairs[j];
-        if ( unate_lits[i].score + pair2.score < num_bits[on_off] )
-        {
-          break;
-        }
-        auto const ntt1 = lit1 & 0x1 ? get_div( lit1 >> 1 ) : ~get_div( lit1 >> 1 );
-        TT ntt2;
-        if constexpr ( is_xor )
-        {
-          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-                ^ ( pair2.lit2 & 0x1 ? ~get_div( pair2.lit2 >> 1 ) : get_div( pair2.lit2 >> 1 ) );
-        }
-        else
-        {
-          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-                | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
-        }
-        if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
-        {
-          uint32_t new_lit1;
-          if constexpr ( is_xor )
-          {
-            new_lit1 = index_list.add_xor( pair2.lit1, pair2.lit2 );
-          }
-          else
-          {
-            new_lit1 = index_list.add_and( pair2.lit1, pair2.lit2 );
-          }
-          auto const new_lit2 = index_list.add_and( ( lit1 ^ 0x1 ), new_lit1 ^ 0x1 );
-          return new_lit2 + on_off;
-        }
-      }
-    }
-    return std::nullopt;
-  }
+
   std::optional<uint32_t> find_div_pair( std::vector<unate_lit>& unate_lits, std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_lits.size(); ++i )
@@ -1827,20 +659,17 @@ private:
         {
           if ( pair2.lit1 > pair2.lit2 )
           {
-            if constexpr ( static_params::count_searching_stats ) st.searching_and_xor++;
             ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
                  ^ ( pair2.lit2 & 0x1 ? ~get_div( pair2.lit2 >> 1 ) : get_div( pair2.lit2 >> 1 ) );
           }
           else
           {
-            if constexpr ( static_params::count_searching_stats ) st.searching_and_and++;
             ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
                  | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
           }
         }
         else
         {
-          if constexpr ( static_params::count_searching_stats ) st.searching_and_and++;
           ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
                | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
         }
@@ -1870,104 +699,7 @@ private:
     }
     return std::nullopt;
   }
-  std::optional<uint32_t> find_and_and_and()
-  {
-    if ( has_and_pairs == false )
-    {
-      prepare_and_pairs();
-    }
-    auto ret = find_and_and_and_helper( pos_unate_pairs, pos_unate_pairs, 1 );
-    if ( !ret ) ret = find_and_and_and_helper( neg_unate_pairs, neg_unate_pairs, 0 );
-    return ret;
-  }
-  std::optional<uint32_t> find_and_and_xor()
-  {
-    if ( has_and_pairs == false )
-    {
-      prepare_and_pairs();
-    }
-    if ( has_xor_pairs == false )
-    {
-      prepare_xor_pairs();
-    }
-    auto ret = find_and_and_and_helper<true>( pos_unate_xor_pairs, pos_unate_pairs,  1 );
-    if ( !ret ) ret = find_and_and_and_helper<true>( neg_unate_xor_pairs, neg_unate_pairs,  0 );
-    return ret;
-  }
-  std::optional<uint32_t> find_and_xor_xor()
-  {
-    if ( has_xor_pairs == false )
-    {
-      prepare_xor_pairs();
-    }
-    auto ret = find_and_and_and_helper<true, true>( pos_unate_xor_pairs, pos_unate_xor_pairs, 1 );
-    if ( !ret ) ret = find_and_and_and_helper<true, true>( neg_unate_xor_pairs, neg_unate_xor_pairs, 0 );
-    return ret;
-  }
-  template<bool left_xor=false, bool right_xor=false>
-  std::optional<uint32_t> find_and_and_and_helper( std::vector<fanin_pair>& unate_pairs_1, std::vector<fanin_pair>& unate_pairs_2, uint32_t on_off )
-  {
-    for ( auto i = 0u; i < unate_pairs_1.size(); ++i )
-    {
-      fanin_pair const& pair1 = unate_pairs_1[i];
-      if ( pair1.score * 2 < num_bits[on_off] )
-      {
-        break;
-      }
-      for ( auto j = i + 1; j < unate_pairs_2.size(); ++j )
-      {
-        fanin_pair const& pair2 = unate_pairs_2[j];
-        if ( pair1.score + pair2.score < num_bits[on_off] )
-        {
-          break;
-        }
-        TT ntt1, ntt2;
-        if constexpr ( left_xor )
-        {
-          ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) )
-               ^ ( pair1.lit2 & 0x1 ? ~get_div( pair1.lit2 >> 1 ) : get_div( pair1.lit2 >> 1 ) );
-        }
-        else
-        {
-          ntt1 = ( pair1.lit1 & 0x1 ? get_div( pair1.lit1 >> 1 ) : ~get_div( pair1.lit1 >> 1 ) )
-               | ( pair1.lit2 & 0x1 ? get_div( pair1.lit2 >> 1 ) : ~get_div( pair1.lit2 >> 1 ) );
-        }
-        if constexpr ( right_xor )
-        {
-          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-                ^ ( pair2.lit2 & 0x1 ? ~get_div( pair2.lit2 >> 1 ) : get_div( pair2.lit2 >> 1 ) );
-        }
-        else
-        {
-          ntt2 = ( pair2.lit1 & 0x1 ? get_div( pair2.lit1 >> 1 ) : ~get_div( pair2.lit1 >> 1 ) )
-                | ( pair2.lit2 & 0x1 ? get_div( pair2.lit2 >> 1 ) : ~get_div( pair2.lit2 >> 1 ) );
-        }
-        if ( kitty::intersection_is_empty( ntt1, ntt2, on_off_sets[on_off] ) )
-        {
-          uint32_t fanin_lit1, fanin_lit2;
-          if constexpr ( left_xor )
-          {
-            fanin_lit1 = index_list.add_xor( pair1.lit1, pair1.lit2 );
-          }
-          else
-          {
-            fanin_lit1 = index_list.add_and( pair1.lit1, pair1.lit2 );
-          }
-          if constexpr ( right_xor )
-          {
-            fanin_lit2 = index_list.add_xor( pair2.lit1, pair2.lit2 );
-          }
-          else
-          {
-            fanin_lit2 = index_list.add_and( pair2.lit1, pair2.lit2 );
-          }
-          uint32_t const output_lit = index_list.add_and( fanin_lit1 ^ 0x1, fanin_lit2 ^ 0x1 );
-          return output_lit + on_off;
-        }
-      }
-    }
-    return std::nullopt;
-  }
+
   std::optional<uint32_t> find_pair_pair( std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
   {
     for ( auto i = 0u; i < unate_pairs.size(); ++i )
@@ -2050,28 +782,8 @@ private:
     }
     return std::nullopt;
   }
+
   std::optional<uint32_t> find_xor()
-  {
-    if ( has_xor == false )
-    {
-      prepare_xor();
-    }
-    for ( auto i = 1u; i < divisors.size(); ++i )
-    {
-      auto const tt = get_div( i );
-      if ( mem_xor.find( tt ) != mem_xor.end() )
-      {
-        return index_list.add_xor( ( i << 1 ), mem_xor[ tt ] << 1 );
-      }
-      if ( mem_xor.find( ~tt ) != mem_xor.end() )
-      {
-        return index_list.add_xor( ( i << 1 ) + 1, mem_xor[ ~tt ] << 1 );
-      }
-    }
-    return std::nullopt;
-  }
-  template<bool cost_aware=false>
-  std::optional<uint32_t> find_xor_old()
   {
     /* collect XOR-type pairs (d1 ^ d2) & off = 0 or ~(d1 ^ d2) & on = 0, selecting d1, d2 from binate_divs */
     for ( auto i = 0u; i < binate_divs.size(); ++i )
@@ -2080,41 +792,27 @@ private:
       {
         auto const tt_xor = get_div( binate_divs[i] ) ^ get_div( binate_divs[j] );
         bool unateness[4] = {false, false, false, false};
-
-        if constexpr ( static_params::count_searching_stats )
-        {
-          /* stats */
-          if ( curr_rec == 0 )
-            st.searching_xor+=2;
-          else if ( curr_rec == 1)
-            st.searching_and_xor+=2;          
-        }
-
         /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
         if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[1] ) )
         {
-          if constexpr ( cost_aware == true ) pos_unate_xor_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
-          if constexpr ( cost_aware == false ) pos_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
+          pos_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
           unateness[0] = true;
         }
         if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[0] ) && !kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[1] ) )
         {
-          if constexpr ( cost_aware == true ) pos_unate_xor_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
-          if constexpr ( cost_aware == false ) pos_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
+          pos_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
           unateness[1] = true;
         }
 
         /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
         if ( kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<TT, 1, 1>( tt_xor, on_off_sets[0] ) )
         {
-          if constexpr ( cost_aware == true ) neg_unate_xor_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
-          if constexpr ( cost_aware == false ) neg_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
+          neg_unate_pairs.emplace_back( binate_divs[i] << 1, binate_divs[j] << 1, true );
           unateness[2] = true;
         }
         if ( kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[1] ) && !kitty::intersection_is_empty<TT, 0, 1>( tt_xor, on_off_sets[0] ) )
         {
-          if constexpr ( cost_aware == true ) neg_unate_xor_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
-          if constexpr ( cost_aware == false ) neg_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
+          neg_unate_pairs.emplace_back( ( binate_divs[i] << 1 ) + 1, binate_divs[j] << 1, true );
           unateness[3] = true;
         }
 
@@ -2175,9 +873,6 @@ private:
   }
 
 private:
-  std::array<TT, 0x100u> tts_xors;
-  uint32_t num_vars;
-
   std::array<TT, 2> on_off_sets;
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
@@ -2186,25 +881,11 @@ private:
 
   index_list_t index_list;
 
-  uint32_t curr_rec;
-  std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor;
-  std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor_xor;
-  std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor_and;
-  bool has_xor;
-  bool has_xor_xor;
-  bool has_xor_and;
-  bool has_unateness;
-  bool has_and_pairs;
-  bool has_xor_pairs;
-  bool has_init;
-  bool has_lit_xor;
-
   /* positive unate: not overlapping with off-set
      negative unate: not overlapping with on-set */
   std::vector<unate_lit> pos_unate_lits, neg_unate_lits;
   std::vector<uint32_t> binate_divs;
   std::vector<fanin_pair> pos_unate_pairs, neg_unate_pairs;
-  std::vector<fanin_pair> pos_unate_xor_pairs, neg_unate_xor_pairs;
 
   stats& st;
 }; /* xag_resyn_decompose */
