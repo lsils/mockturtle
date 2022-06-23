@@ -33,6 +33,7 @@
 #include <mockturtle/algorithms/equivalence_checking.hpp>
 #include <mockturtle/algorithms/miter.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <mockturtle/algorithms/experimental/fast_cec.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 
@@ -66,10 +67,11 @@ int main()
     {"voter", 3.54}
   };
 
-  experiment<std::string, double, double, bool> exp( "equivalence_checking", "benchmark", "abc cec", "runtime", "equivalent" );
+  experiment<std::string, double, double, double, bool> exp( "equivalence_checking", "benchmark", "abc cec", "new cec", "old cec", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
+    if ( benchmark != "voter" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
     if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
@@ -90,7 +92,15 @@ int main()
     equivalence_checking_stats st;
     auto cec = *equivalence_checking( *miter<aig_network>( orig, aig ), {}, &st );
 
-    exp( benchmark, baseline[benchmark], to_seconds( st.time_total ), cec );
+    stopwatch<>::duration time_fast_cec{0};
+    fast_cec_stats cst;
+    call_with_stopwatch( time_fast_cec, [&](){  *fast_cec( *miter<aig_network>( orig, aig ), {}, &cst ); } );
+
+    stopwatch<>::duration time_abc{0};
+    call_with_stopwatch( time_abc, [&](){ (void)abc_cec( aig, benchmark ); } );
+    double abc_runtime = to_seconds( time_abc );
+
+    exp( benchmark, abc_runtime, to_seconds( time_fast_cec ), to_seconds( st.time_total ), cec );
   }
 
   exp.save();
