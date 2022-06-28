@@ -41,6 +41,8 @@
 #include "../../algorithms/cut_rewriting.hpp"
 #include "../../utils/stopwatch.hpp"
 #include "./func_reduction.hpp"
+#include "./window_resub.hpp"
+#include "./sim_resub.hpp"
 #include "../cnf.hpp"
 
 #include <fmt/format.h>
@@ -120,6 +122,8 @@ public:
       for ( uint32_t j = 0; j < 3; j++ )
       {
         miter_ = cut_rewriting( miter_, resyn, ps );
+        miter_ = cleanup_dangling( miter_ );
+        window_aig_enumerative_resub( miter_ );
         miter_ = cleanup_dangling( miter_ );
       }
       auto res = call_with_stopwatch( time_sat, [&]() { return try_sat_solver( scl <<= 1 ); } );
