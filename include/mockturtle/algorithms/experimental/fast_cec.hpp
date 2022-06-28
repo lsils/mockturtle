@@ -61,7 +61,7 @@ struct fast_cec_params
    * as a resource limit.
    */
   uint64_t sat_conflict_limit{5000u};
-  uint64_t resub_conflict_limit{2u};
+  uint64_t resub_conflict_limit{20u};
 
   uint32_t num_iterations{6u};
 
@@ -130,8 +130,9 @@ public:
       }
       // try FRAIG
       func_reduction_params fps;
+      func_reduction_stats fst;
       fps.conflict_limit = ( rcl <<= 3 );
-      call_with_stopwatch( time_resub, [&]() { func_reduction( miter_, fps ); } );
+      call_with_stopwatch( time_resub, [&]() { func_reduction( miter_, fps, &fst ); } );
       miter_ = cleanup_dangling( miter_ );
       if ( ps_.verbose )
       {

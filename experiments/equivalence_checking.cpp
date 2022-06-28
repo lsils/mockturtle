@@ -52,6 +52,7 @@ int main()
   {
     if ( benchmark == "hyp" ) continue;
     if ( benchmark == "div" ) continue;
+    // if ( benchmark != "log2" ) continue;
     
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;

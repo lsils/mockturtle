@@ -79,8 +79,27 @@ struct func_reduction_params
 
 struct func_reduction_stats
 {
+  /*! \brief Time for pattern generation. */
+  stopwatch<>::duration time_patgen{0};
+
+  /*! \brief Time for simulation. */
+  stopwatch<>::duration time_sim{0};
+
+  /*! \brief Time for SAT solving. */
+  stopwatch<>::duration time_sat{0};
+
+  uint32_t mistakes{0};
+
   void report() const
   {
+    // clang-format off
+    fmt::print( "[i] functional reduction report\n" );
+    fmt::print( "    ===== Runtime Breakdown =====\n" );
+    fmt::print( "      Pattern gen.: {:>5.2f} secs\n", to_seconds( time_patgen ) );
+    fmt::print( "      Simulation  : {:>5.2f} secs\n", to_seconds( time_sim ) );
+    fmt::print( "      SAT         : {:>5.2f} secs\n", to_seconds( time_sat ) );
+    fmt::print( "      Mistakes    : {} \n", mistakes);
+    // clang-format on
   }
 };
 
@@ -99,9 +118,9 @@ public:
       : ntk( ntk ), ps( ps ), st( st ), 
         validator( ntk, {ps.max_clauses, 0, ps.conflict_limit, ps.random_seed} ), tts( ntk )
   {
-    sim = partial_simulator( ntk.num_pis(), 1024 );
-    pattern_generation( ntk, sim );
-    simulate_nodes<Ntk>( ntk, tts, sim, true );
+    sim = partial_simulator( ntk.num_pis(), ( 1 << 11 ) );
+    // call_with_stopwatch( st.time_patgen, [&]() { pattern_generation( ntk, sim ); } );
+    call_with_stopwatch( st.time_sim, [&](){ simulate_nodes<Ntk>( ntk, tts, sim, true ); } );
   }
   ~func_reduction_impl()
   {
@@ -150,11 +169,12 @@ public:
       if ( mini_validate( n, res ) ) return res;
     }
     div_tts[ tt ] = n;
+    past.emplace_back( n );
     return std::nullopt;
   }
   bool mini_validate( node const n, signal const d )
   {
-    auto valid = validator.validate( n, d );
+    auto valid = call_with_stopwatch( st.time_sat, [&](){ return validator.validate( n, d ); } );
     if ( valid )
     {
       if ( *valid )
@@ -163,10 +183,30 @@ public:
       }
       else
       {
-        // sim.add_pattern( validator.cex );
+        sim.add_pattern( validator.cex );
+        call_with_stopwatch( st.time_sim, [&]() {
+          simulate_nodes<Ntk>( ntk, tts, sim, false );
+        } );
+        ++st.mistakes;
+        div_tts.clear();
+        for ( auto div : past ) // update history
+        {
+          div_tts[ tts[div] ] = div;
+        }
       }
     } 
     return false;
+  }
+
+private:
+  void check_tts( node const& n )
+  {
+    if ( tts[n].num_bits() != sim.num_bits() )
+    {
+      call_with_stopwatch( st.time_sim, [&]() {
+        simulate_node<Ntk>( ntk, n, tts, sim );
+      } );
+    }
   }
 private:
   Ntk& ntk;
@@ -178,6 +218,7 @@ private:
   validator_t validator;
   incomplete_node_map<TT, Ntk> tts;
   std::unordered_map<TT, node, kitty::hash<TT>> div_tts;
+  std::vector<node> past;
 };
 
 template<class Ntk>
