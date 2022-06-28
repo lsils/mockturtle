@@ -36,14 +36,15 @@
 #include <iostream>
 #include <vector>
 
+#include "../../algorithms/cut_rewriting.hpp"
+#include "../../algorithms/node_resynthesis/xag_npn.hpp"
 #include "../../traits.hpp"
 #include "../../utils/include/percy.hpp"
-#include "../../algorithms/cut_rewriting.hpp"
 #include "../../utils/stopwatch.hpp"
-#include "./func_reduction.hpp"
-#include "./window_resub.hpp"
-#include "./sim_resub.hpp"
 #include "../cnf.hpp"
+#include "./func_reduction.hpp"
+#include "./sim_resub.hpp"
+#include "./window_resub.hpp"
 
 #include <fmt/format.h>
 
@@ -58,17 +59,24 @@ namespace mockturtle::experimental
 struct fast_cec_params
 {
   /*! \brief Conflict limit for SAT solver.
-   *
-   * The default limit is 0, which means the number of conflicts is not used
-   * as a resource limit.
+   * 
+   * note that the limit will increase after each iteration
    */
-  uint64_t sat_conflict_limit{5000u};
-  uint64_t resub_conflict_limit{20u};
+  uint64_t sat_conflict_limit{ 5000u };
 
-  uint32_t num_iterations{6u};
+  /*! \brief Conflict limit for function reduction solver.
+   *
+   * note that the limit will increase after each iteration
+   */
+  uint64_t resub_conflict_limit{ 20u };
+
+  /*! \brief Number of iterations
+   *
+   */
+  uint32_t num_iterations{ 6u };
 
   /* \brief Be verbose. */
-  bool verbose{true};
+  bool verbose{ true };
 };
 
 /*! \brief Statistics for fast_cec.
@@ -107,18 +115,19 @@ public:
   std::optional<bool> run()
   {
     stopwatch<> t( st_.time_total );
-    
+
     uint64_t scl = ps_.sat_conflict_limit;
     uint64_t rcl = ps_.resub_conflict_limit;
+
+    xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
+    cut_rewriting_params ps;
+    ps.cut_enumeration_ps.cut_size = 4;
 
     for ( uint64_t i = 0; i < ps_.num_iterations; ++i )
     {
       stopwatch<>::duration time_sat{};
       stopwatch<>::duration time_resub{};
 
-      xag_npn_resynthesis<aig_network> resyn;
-      cut_rewriting_params ps;
-      ps.cut_enumeration_ps.cut_size = 4;
       for ( uint32_t j = 0; j < 3; j++ )
       {
         miter_ = cut_rewriting( miter_, resyn, ps );
@@ -127,7 +136,7 @@ public:
         miter_ = cleanup_dangling( miter_ );
       }
       auto res = call_with_stopwatch( time_sat, [&]() { return try_sat_solver( scl <<= 1 ); } );
-            
+
       if ( res )
       {
         return *res;
@@ -142,7 +151,6 @@ public:
       {
         fmt::print( "[i] iter = {}, sat: {:.2} sec, resub: {:.2} sec, #gate = {}\n", i, to_seconds( time_sat ), to_seconds( time_resub ), miter_.num_gates() );
       }
-
     }
 
     return try_sat_solver( 0 );
@@ -227,4 +235,4 @@ std::optional<bool> fast_cec( Ntk& miter, fast_cec_params const& ps = {}, fast_c
   return result;
 }
 
-} /* namespace mockturtle */
+} // namespace mockturtle::experimental

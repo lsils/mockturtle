@@ -31,9 +31,9 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/equivalence_checking.hpp>
+#include <mockturtle/algorithms/experimental/fast_cec.hpp>
 #include <mockturtle/algorithms/miter.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
-#include <mockturtle/algorithms/experimental/fast_cec.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/write_aiger.hpp>
 #include <mockturtle/networks/aig.hpp>
@@ -50,10 +50,12 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    if ( benchmark == "hyp" ) continue;
-    if ( benchmark == "div" ) continue;
+    if ( benchmark == "hyp" )
+      continue;
+    if ( benchmark == "div" )
+      continue;
     // if ( benchmark != "log2" ) continue;
-    
+
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
     if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
@@ -74,21 +76,21 @@ int main()
     aig_network miter_ = *miter<aig_network>( orig, aig );
     if ( false )
     {
-      write_aiger( miter_, "../experiments/miters/"+benchmark+"_miter.aig" );
+      write_aiger( miter_, "../experiments/miters/" + benchmark + "_miter.aig" );
     }
 
-    stopwatch<>::duration time_origin_cec{0};
+    stopwatch<>::duration time_origin_cec{ 0 };
     equivalence_checking_stats st;
     bool cec_orig = true; // *equivalence_checking( *miter<aig_network>( orig, aig ), {}, &st );
 
-    stopwatch<>::duration time_fast_cec{0};
+    stopwatch<>::duration time_fast_cec{ 0 };
     fast_cec_stats cst;
-    bool cec_fast = call_with_stopwatch( time_fast_cec, [&](){  return *fast_cec( miter_, {}, &cst ); } );
+    bool cec_fast = call_with_stopwatch( time_fast_cec, [&]() { return *fast_cec( miter_, {}, &cst ); } );
 
-    stopwatch<>::duration time_abc{0};
-    bool cec_abc = call_with_stopwatch( time_abc, [&](){ return abc_cec( aig, benchmark ); } );
+    stopwatch<>::duration time_abc{ 0 };
+    bool cec_abc = call_with_stopwatch( time_abc, [&]() { return abc_cec( aig, benchmark ); } );
 
-    exp( benchmark, to_seconds( time_abc ), to_seconds( time_fast_cec ), to_seconds( st.time_total ), ( cec_orig == cec_abc ) && ( cec_fast == cec_abc) );
+    exp( benchmark, to_seconds( time_abc ), to_seconds( time_fast_cec ), to_seconds( st.time_total ), ( cec_orig == cec_abc ) && ( cec_fast == cec_abc ) );
   }
 
   exp.save();
