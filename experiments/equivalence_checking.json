@@ -248,5 +248,148 @@
       }
     ],
     "version": "70ac8c4"
+  },
+  {
+    "entries": [
+      {
+        "abc cec": 1.103321213,
+        "benchmark": "voter",
+        "equivalent": true,
+        "new cec": 11.944324719,
+        "old cec": 0.0
+      }
+    ],
+    "version": "d822a70"
+  },
+  {
+    "entries": [
+      {
+        "abc cec": 0.051840276,
+        "benchmark": "adder",
+        "equivalent": true,
+        "new cec": 0.059789977,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.250269601,
+        "benchmark": "bar",
+        "equivalent": true,
+        "new cec": 0.102197401,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 5.011129329,
+        "benchmark": "log2",
+        "equivalent": true,
+        "new cec": 158.669825417,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.144035086,
+        "benchmark": "max",
+        "equivalent": true,
+        "new cec": 0.423778187,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 1.37096357,
+        "benchmark": "multiplier",
+        "equivalent": true,
+        "new cec": 16.808402044,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.689911463,
+        "benchmark": "sin",
+        "equivalent": true,
+        "new cec": 11.112472837,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 2.098264791,
+        "benchmark": "sqrt",
+        "equivalent": true,
+        "new cec": 20.216002735,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 1.647771986,
+        "benchmark": "square",
+        "equivalent": true,
+        "new cec": 37.224663856,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.07372631,
+        "benchmark": "arbiter",
+        "equivalent": true,
+        "new cec": 0.210123705,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.059793574,
+        "benchmark": "cavlc",
+        "equivalent": true,
+        "new cec": 0.055246356,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.055391052,
+        "benchmark": "ctrl",
+        "equivalent": true,
+        "new cec": 0.051676002,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.04944265,
+        "benchmark": "dec",
+        "equivalent": true,
+        "new cec": 0.05066352,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.066751067,
+        "benchmark": "i2c",
+        "equivalent": true,
+        "new cec": 0.06661658,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.051145435,
+        "benchmark": "int2float",
+        "equivalent": true,
+        "new cec": 0.05281499,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 1.333789264,
+        "benchmark": "mem_ctrl",
+        "equivalent": true,
+        "new cec": 0.746304959,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.081694257,
+        "benchmark": "priority",
+        "equivalent": true,
+        "new cec": 0.063954785,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 0.060063916,
+        "benchmark": "router",
+        "equivalent": true,
+        "new cec": 0.063062998,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 1.074001025,
+        "benchmark": "voter",
+        "equivalent": true,
+        "new cec": 2.453279466,
+        "old cec": 0.0
+      }
+    ],
+    "version": "79c3fd6"
   }
 ]
