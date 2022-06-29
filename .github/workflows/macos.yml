@@ -57,7 +57,8 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang++ -DMOCKTURTLE_TEST=ON ..
+        which clang++
+        cmake -DCMAKE_CXX_COMPILER=/usr/bin/clang++ -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |
