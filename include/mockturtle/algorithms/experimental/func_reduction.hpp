@@ -89,6 +89,7 @@ struct func_reduction_stats
   stopwatch<>::duration time_sat{0};
 
   uint32_t mistakes{0};
+  uint32_t time_out{0};
 
   void report() const
   {
@@ -99,6 +100,7 @@ struct func_reduction_stats
     fmt::print( "      Simulation  : {:>5.2f} secs\n", to_seconds( time_sim ) );
     fmt::print( "      SAT         : {:>5.2f} secs\n", to_seconds( time_sat ) );
     fmt::print( "      Mistakes    : {} \n", mistakes);
+    fmt::print( "      Time-outs   : {} \n", time_out);
     // clang-format on
   }
 };
@@ -118,7 +120,7 @@ public:
       : ntk( ntk ), ps( ps ), st( st ), 
         validator( ntk, {ps.max_clauses, 0, ps.conflict_limit, ps.random_seed} ), tts( ntk )
   {
-    sim = partial_simulator( ntk.num_pis(), ( 1 << 11 ) );
+    sim = partial_simulator( ntk.num_pis(), ( 1 << 10 ) );
     // call_with_stopwatch( st.time_patgen, [&]() { pattern_generation( ntk, sim ); } );
     call_with_stopwatch( st.time_sim, [&](){ simulate_nodes<Ntk>( ntk, tts, sim, true ); } );
   }
@@ -146,27 +148,20 @@ public:
   std::optional<signal> mini_solver( node const n )
   {
     signal res;
+    check_tts( n );
     TT const& tt = tts[n];
-    if ( kitty::count_ones( tt ) == 0 )
+    if ( ntk.fanout_size( n ) >= 2 )
     {
-      res = ntk.get_constant( 0 );
-      if ( mini_validate( n, res ) ) return res;
-    }
-    if ( kitty::count_zeros( tt ) == 0 )
-    {
-      res = ntk.get_constant( 1 );
-      if ( mini_validate( n, res ) ) return res;
-    }
-
-    if ( div_tts.find( tt ) != div_tts.end() )
-    {
-      res = ntk.make_signal( div_tts[tt] );
-      if ( mini_validate( n, res ) ) return res;
-    }
-    if ( div_tts.find( ~tt ) != div_tts.end() )
-    {
-      res = !ntk.make_signal( div_tts[tt] );
-      if ( mini_validate( n, res ) ) return res;
+      if ( div_tts.find( tt ) != div_tts.end() )
+      {
+        res = ntk.make_signal( div_tts[tt] );
+        if ( mini_validate( n, res ) ) return res;
+      }
+      if ( div_tts.find( ~tt ) != div_tts.end() )
+      {
+        res = !ntk.make_signal( div_tts[~tt] );
+        if ( mini_validate( n, res ) ) return res;
+      }      
     }
     div_tts[ tt ] = n;
     past.emplace_back( n );
@@ -191,10 +186,12 @@ public:
         div_tts.clear();
         for ( auto div : past ) // update history
         {
-          div_tts[ tts[div] ] = div;
+          if ( ntk.fanout_size( div ) >= 2 )
+            div_tts[ tts[div] ] = div;
         }
       }
-    } 
+    }
+    ++st.time_out;
     return false;
   }
 

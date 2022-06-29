@@ -264,129 +264,129 @@
   {
     "entries": [
       {
-        "abc cec": 0.052805808,
+        "abc cec": 0.057734415,
         "benchmark": "adder",
         "equivalent": true,
-        "new cec": 0.065061007,
+        "new cec": 0.058066107,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.241735263,
+        "abc cec": 0.250424758,
         "benchmark": "bar",
         "equivalent": true,
-        "new cec": 0.10862651,
+        "new cec": 0.087652632,
         "old cec": 0.0
       },
       {
-        "abc cec": 5.083687904,
+        "abc cec": 3.347238041,
+        "benchmark": "div",
+        "equivalent": true,
+        "new cec": 9.474370822,
+        "old cec": 0.0
+      },
+      {
+        "abc cec": 4.932958798,
         "benchmark": "log2",
         "equivalent": true,
-        "new cec": 34.687284719,
+        "new cec": 11.841978485,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.145024444,
+        "abc cec": 0.1617266,
         "benchmark": "max",
         "equivalent": true,
-        "new cec": 0.154482215,
+        "new cec": 0.138268141,
         "old cec": 0.0
       },
       {
-        "abc cec": 1.418862258,
+        "abc cec": 1.403722053,
         "benchmark": "multiplier",
         "equivalent": true,
-        "new cec": 1.023302956,
+        "new cec": 1.545340568,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.704011793,
-        "benchmark": "sin",
-        "equivalent": true,
-        "new cec": 2.195549736,
-        "old cec": 0.0
-      },
-      {
-        "abc cec": 2.144953084,
+        "abc cec": 2.075901962,
         "benchmark": "sqrt",
         "equivalent": true,
-        "new cec": 1.072107453,
+        "new cec": 0.760067319,
         "old cec": 0.0
       },
       {
-        "abc cec": 1.673625746,
+        "abc cec": 1.66325007,
         "benchmark": "square",
         "equivalent": true,
-        "new cec": 0.528306696,
+        "new cec": 0.319606338,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.075395209,
+        "abc cec": 0.079830063,
         "benchmark": "arbiter",
         "equivalent": true,
-        "new cec": 0.215503952,
+        "new cec": 0.188205675,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.06305044,
+        "abc cec": 0.065739242,
         "benchmark": "cavlc",
         "equivalent": true,
-        "new cec": 0.058007445,
+        "new cec": 0.066298418,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.055679303,
+        "abc cec": 0.057617381,
         "benchmark": "ctrl",
         "equivalent": true,
-        "new cec": 0.05622312,
+        "new cec": 0.051498764,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.051199653,
+        "abc cec": 0.052798224,
         "benchmark": "dec",
         "equivalent": true,
-        "new cec": 0.053407857,
+        "new cec": 0.050287061,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.067293978,
+        "abc cec": 0.06961078,
         "benchmark": "i2c",
         "equivalent": true,
-        "new cec": 0.06916532,
+        "new cec": 0.062832233,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.056510188,
+        "abc cec": 0.058280586,
         "benchmark": "int2float",
         "equivalent": true,
-        "new cec": 0.055633635,
+        "new cec": 0.052092557,
         "old cec": 0.0
       },
       {
-        "abc cec": 1.339268816,
+        "abc cec": 1.31105475,
         "benchmark": "mem_ctrl",
         "equivalent": true,
-        "new cec": 0.734701714,
+        "new cec": 1.058026039,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.082327348,
+        "abc cec": 0.083925599,
         "benchmark": "priority",
         "equivalent": true,
-        "new cec": 0.064422458,
+        "new cec": 0.059111272,
         "old cec": 0.0
       },
       {
-        "abc cec": 0.057980123,
+        "abc cec": 0.058658749,
         "benchmark": "router",
         "equivalent": true,
-        "new cec": 0.0688092,
+        "new cec": 0.057136343,
         "old cec": 0.0
       },
       {
-        "abc cec": 1.088963477,
+        "abc cec": 1.059477038,
         "benchmark": "voter",
         "equivalent": true,
-        "new cec": 0.42032689,
+        "new cec": 0.26698362,
         "old cec": 0.0
       }
     ],

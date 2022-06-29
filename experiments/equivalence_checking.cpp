@@ -52,7 +52,7 @@ int main()
   {
     if ( benchmark == "hyp" )
       continue;
-    if ( benchmark == "div" )
+    if ( benchmark == "sin" )
       continue;
     // if ( benchmark != "log2" ) continue;
 

@@ -68,7 +68,7 @@ struct fast_cec_params
    *
    * note that the limit will increase after each iteration
    */
-  uint64_t resub_conflict_limit{ 20u };
+  uint64_t resub_conflict_limit{ 40u };
 
   /*! \brief Number of iterations
    *
