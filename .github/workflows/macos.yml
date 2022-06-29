@@ -57,7 +57,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER='$(brew --prefix llvm@13)/bin/clang' -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm/bin/clang -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |
