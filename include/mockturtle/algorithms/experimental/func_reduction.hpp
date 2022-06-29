@@ -74,7 +74,7 @@ struct func_reduction_params
   int32_t odc_levels{0};
 
   /* \brief Be verbose. */
-  bool verbose{true};
+  bool verbose{false};
 };
 
 struct func_reduction_stats
@@ -150,6 +150,16 @@ public:
     signal res;
     check_tts( n );
     TT const& tt = tts[n];
+    if ( kitty::count_ones( tt ) == 0 )
+    {
+      res = ntk.get_constant( 0 );
+      if ( mini_validate( n, res ) ) return res;
+    }
+    if ( kitty::count_zeros( tt ) == 0 )
+    {
+      res = ntk.get_constant( 1 );
+      if ( mini_validate( n, res ) ) return res;
+    }
     if ( ntk.fanout_size( n ) >= 2 )
     {
       if ( div_tts.find( tt ) != div_tts.end() )

@@ -75,8 +75,12 @@ struct fast_cec_params
    */
   uint32_t num_iterations{ 6u };
 
+  bool use_rewriting{ true };
+
+  bool use_func_reduction{ true };
+
   /* \brief Be verbose. */
-  bool verbose{ true };
+  bool verbose{ false };
 };
 
 /*! \brief Statistics for fast_cec.
@@ -119,37 +123,45 @@ public:
     uint64_t scl = ps_.sat_conflict_limit;
     uint64_t rcl = ps_.resub_conflict_limit;
 
-    xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
-    cut_rewriting_params ps;
-    ps.cut_enumeration_ps.cut_size = 4;
+    if ( !ps_.use_rewriting && !ps_.use_func_reduction )
+    {
+      return try_sat_solver( 0 );
+    }
 
     for ( uint64_t i = 0; i < ps_.num_iterations; ++i )
     {
       stopwatch<>::duration time_sat{};
       stopwatch<>::duration time_resub{};
 
-      for ( uint32_t j = 0; j < 3; j++ )
+      if ( ps_.use_rewriting )
       {
-        miter_ = cut_rewriting( miter_, resyn, ps );
-        miter_ = cleanup_dangling( miter_ );
-        window_aig_enumerative_resub( miter_ );
+        xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
+        cut_rewriting_params ps;
+        ps.cut_enumeration_ps.cut_size = 4;
+        for ( uint32_t j = 0; j < 3; j++ )
+        {
+          miter_ = cut_rewriting( miter_, resyn, ps );
+          miter_ = cleanup_dangling( miter_ );
+          window_aig_enumerative_resub( miter_ );
+          miter_ = cleanup_dangling( miter_ );
+        }
+      }
+
+      // try FRAIG
+      if ( ps_.use_func_reduction )
+      {
+        func_reduction_params fps;
+        func_reduction_stats fst;
+        fps.conflict_limit = ( rcl <<= 3 );
+        call_with_stopwatch( time_resub, [&]() { func_reduction( miter_, fps, &fst ); } );
         miter_ = cleanup_dangling( miter_ );
       }
+
       auto res = call_with_stopwatch( time_sat, [&]() { return try_sat_solver( scl <<= 1 ); } );
 
       if ( res )
       {
         return *res;
-      }
-      // try FRAIG
-      func_reduction_params fps;
-      func_reduction_stats fst;
-      fps.conflict_limit = ( rcl <<= 3 );
-      call_with_stopwatch( time_resub, [&]() { func_reduction( miter_, fps, &fst ); } );
-      miter_ = cleanup_dangling( miter_ );
-      if ( ps_.verbose )
-      {
-        fmt::print( "[i] iter = {}, sat: {:.2} sec, resub: {:.2} sec, #gate = {}\n", i, to_seconds( time_sat ), to_seconds( time_resub ), miter_.num_gates() );
       }
     }
 

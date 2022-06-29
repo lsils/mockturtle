@@ -50,10 +50,8 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    if ( benchmark == "hyp" )
-      continue;
-    if ( benchmark == "sin" )
-      continue;
+    // if ( benchmark == "hyp" ) continue;
+    // if ( benchmark != "sin" ) continue;
     // if ( benchmark != "log2" ) continue;
 
     fmt::print( "[i] processing {}\n", benchmark );
