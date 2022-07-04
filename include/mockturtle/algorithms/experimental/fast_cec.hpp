@@ -38,6 +38,7 @@
 
 #include "../../algorithms/cut_rewriting.hpp"
 #include "../../algorithms/node_resynthesis/xag_npn.hpp"
+#include "../../algorithms/node_resynthesis/xag_minmc2.hpp"
 #include "../../traits.hpp"
 #include "../../utils/include/percy.hpp"
 #include "../../utils/stopwatch.hpp"
@@ -68,7 +69,7 @@ struct fast_cec_params
    *
    * note that the limit will increase after each iteration
    */
-  uint64_t resub_conflict_limit{ 40u };
+  uint64_t resub_conflict_limit{ 10u };
 
   /*! \brief Number of iterations
    *
@@ -130,8 +131,10 @@ public:
 
     for ( uint64_t i = 0; i < ps_.num_iterations; ++i )
     {
-      stopwatch<>::duration time_sat{};
-      stopwatch<>::duration time_resub{};
+      if ( ps_.verbose )
+      {
+        fmt::print( "Iteration #{}: miter size = {}\n", i+1, miter_.num_gates() );
+      }
 
       if ( ps_.use_rewriting )
       {
@@ -145,23 +148,35 @@ public:
           window_aig_enumerative_resub( miter_ );
           miter_ = cleanup_dangling( miter_ );
         }
+      
+        // xag_network xag = cleanup_dangling<aig_network, xag_network>( miter_ );
+        // future::xag_minmc_resynthesis resyn_mc;
+        // for ( uint32_t j = 0; j < 3; j++ )
+        // {
+        //   cut_rewriting( xag, resyn_mc, ps );
+        //   xag = cleanup_dangling( xag );
+        // }
+        // miter_ = cleanup_dangling<xag_network, aig_network>( xag );
+      }
+
+      stopwatch<>::duration time_sat{};
+      stopwatch<>::duration time_resub{};
+      auto res = call_with_stopwatch( time_sat, [&]() { 
+        return try_sat_solver( scl <<= 1 ); } );
+      if ( res )
+      {
+        return *res;
       }
 
       // try FRAIG
       if ( ps_.use_func_reduction )
       {
         func_reduction_params fps;
+        fps.verbose = ps_.verbose;
         func_reduction_stats fst;
         fps.conflict_limit = ( rcl <<= 3 );
-        call_with_stopwatch( time_resub, [&]() { func_reduction( miter_, fps, &fst ); } );
+        miter_ = call_with_stopwatch( time_resub, [&]() { return cleanup_func( miter_, rcl ); } );
         miter_ = cleanup_dangling( miter_ );
-      }
-
-      auto res = call_with_stopwatch( time_sat, [&]() { return try_sat_solver( scl <<= 1 ); } );
-
-      if ( res )
-      {
-        return *res;
       }
     }
 
@@ -223,6 +238,7 @@ std::optional<bool> fast_cec( Ntk& miter, fast_cec_params const& ps = {}, fast_c
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
   static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
+  static_assert( std::is_same_v<typename Ntk::base_type, aig_network>, "Ntk::base_type is not aig_network" );
 
   if ( miter.num_pos() != 1u )
   {

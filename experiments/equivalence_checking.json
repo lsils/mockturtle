@@ -264,144 +264,112 @@
   {
     "entries": [
       {
-        "abc cec": 0.052551114,
+        "abc cec": 0.060835994,
         "benchmark": "adder",
         "equivalent": true,
-        "new cec": 0.057093732,
-        "old cec": 0.0
+        "new cec": 0.062036309
       },
       {
-        "abc cec": 0.236878337,
+        "abc cec": 0.241829669,
         "benchmark": "bar",
         "equivalent": true,
-        "new cec": 0.08836669,
-        "old cec": 0.0
+        "new cec": 0.086534885
       },
       {
-        "abc cec": 3.342350168,
-        "benchmark": "div",
-        "equivalent": true,
-        "new cec": 8.256962722,
-        "old cec": 0.0
-      },
-      {
-        "abc cec": 17.713548537,
-        "benchmark": "hyp",
-        "equivalent": true,
-        "new cec": 2.737777806,
-        "old cec": 0.0
-      },
-      {
-        "abc cec": 5.066691368,
+        "abc cec": 5.396055518,
         "benchmark": "log2",
         "equivalent": true,
-        "new cec": 10.071239145,
-        "old cec": 0.0
+        "new cec": 166.913017081
       },
       {
-        "abc cec": 0.145650119,
+        "abc cec": 0.14597805,
         "benchmark": "max",
         "equivalent": true,
-        "new cec": 0.138301903,
-        "old cec": 0.0
+        "new cec": 0.136116564
       },
       {
-        "abc cec": 1.387245634,
+        "abc cec": 1.398253472,
         "benchmark": "multiplier",
         "equivalent": true,
-        "new cec": 1.394627812,
-        "old cec": 0.0
+        "new cec": 2.830963533
       },
       {
-        "abc cec": 0.69604552,
+        "abc cec": 0.73159698,
         "benchmark": "sin",
         "equivalent": true,
-        "new cec": 1.031137411,
-        "old cec": 0.0
+        "new cec": 3.361246786
       },
       {
-        "abc cec": 2.079696609,
+        "abc cec": 2.125208572,
         "benchmark": "sqrt",
         "equivalent": true,
-        "new cec": 0.735702588,
-        "old cec": 0.0
+        "new cec": 0.737257593
       },
       {
-        "abc cec": 1.64660893,
+        "abc cec": 1.676751126,
         "benchmark": "square",
         "equivalent": true,
-        "new cec": 0.323983171,
-        "old cec": 0.0
+        "new cec": 0.322797518
       },
       {
-        "abc cec": 0.077429091,
+        "abc cec": 0.0796164,
         "benchmark": "arbiter",
         "equivalent": true,
-        "new cec": 0.186815452,
-        "old cec": 0.0
+        "new cec": 0.182419171
       },
       {
-        "abc cec": 0.063018489,
+        "abc cec": 0.063021349,
         "benchmark": "cavlc",
         "equivalent": true,
-        "new cec": 0.058304232,
-        "old cec": 0.0
+        "new cec": 0.06669469
       },
       {
-        "abc cec": 0.054046446,
+        "abc cec": 0.055237319,
         "benchmark": "ctrl",
         "equivalent": true,
-        "new cec": 0.05280657,
-        "old cec": 0.0
+        "new cec": 0.051660011
       },
       {
-        "abc cec": 0.048380332,
+        "abc cec": 0.050254599,
         "benchmark": "dec",
         "equivalent": true,
-        "new cec": 0.051755704,
-        "old cec": 0.0
+        "new cec": 0.050738854
       },
       {
-        "abc cec": 0.064777205,
+        "abc cec": 0.068179844,
         "benchmark": "i2c",
         "equivalent": true,
-        "new cec": 0.076355983,
-        "old cec": 0.0
+        "new cec": 0.063178294
       },
       {
-        "abc cec": 0.056080748,
+        "abc cec": 0.055941573,
         "benchmark": "int2float",
         "equivalent": true,
-        "new cec": 0.053710023,
-        "old cec": 0.0
+        "new cec": 0.052316063
       },
       {
-        "abc cec": 1.352764668,
+        "abc cec": 1.352610509,
         "benchmark": "mem_ctrl",
         "equivalent": true,
-        "new cec": 1.21721697,
-        "old cec": 0.0
+        "new cec": 1.263331562
       },
       {
-        "abc cec": 0.083341304,
+        "abc cec": 0.082800091,
         "benchmark": "priority",
         "equivalent": true,
-        "new cec": 0.061872101,
-        "old cec": 0.0
+        "new cec": 0.07315301
       },
       {
-        "abc cec": 0.055383728,
+        "abc cec": 0.057898884,
         "benchmark": "router",
         "equivalent": true,
-        "new cec": 0.059409521,
-        "old cec": 0.0
+        "new cec": 0.064531245
       },
       {
-        "abc cec": 1.071425601,
+        "abc cec": 1.077400359,
         "benchmark": "voter",
         "equivalent": true,
-        "new cec": 0.26537733,
-        "old cec": 0.0
+        "new cec": 0.263010652
       }
     ],
     "version": "79c3fd6"
