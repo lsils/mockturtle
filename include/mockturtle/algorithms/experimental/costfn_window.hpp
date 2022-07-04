@@ -37,6 +37,7 @@
 #include "../../networks/xag.hpp"
 #include "../../traits.hpp"
 #include "../../utils/index_list.hpp"
+#include "../../utils/stopwatch.hpp"
 #include "../../views/cost_view.hpp"
 #include "../../views/depth_view.hpp"
 #include "../../views/fanout_view.hpp"
@@ -47,7 +48,6 @@
 #include "../reconv_cut.hpp"
 #include "../simulation.hpp"
 #include "boolean_optimization.hpp"
-#include "costfn_resyn.hpp"
 #include "search_core.hpp"
 #include <kitty/kitty.hpp>
 
@@ -400,7 +400,8 @@ using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, sear
 template<class Ntk, class CostFn>
 void cost_aware_optimization( Ntk& ntk, CostFn cost_fn, cost_aware_params const& ps, cost_aware_stats* pst = nullptr )
 {
-  cost_view viewed( ntk, cost_fn );
+  fanout_view fntk( ntk );
+  cost_view viewed( fntk, cost_fn );
   using Viewed = decltype( viewed );
   using TT = typename kitty::dynamic_truth_table;
   using windowing_t = typename detail::costfn_windowing<Viewed, TT>;

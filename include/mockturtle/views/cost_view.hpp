@@ -32,10 +32,10 @@
 
 #pragma once
 
+#include "../networks/events.hpp"
 #include "../traits.hpp"
 #include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
-#include "../networks/events.hpp"
 #include "immutable_view.hpp"
 
 #include <cstdint>
@@ -47,12 +47,12 @@ namespace mockturtle
 struct cost_view_params
 {
   /*! \brief Take complemented edges into account for depth computation. */
-  bool count_complements{false};
+  bool count_complements{ false };
 };
 
 /*! \brief Implements `get_cost` methods for networks.
  */
-template<class Ntk, class NodeCostFn = and_cost<Ntk>, class cost_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
+template<class Ntk, class NodeCostFn, class cost_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
 class cost_view
 {
 };
@@ -77,10 +77,7 @@ public:
   using costfn_t = NodeCostFn;
 
   explicit cost_view( NodeCostFn const& cost_fn = {}, cost_view_params const& ps = {} )
-    : Ntk()
-    , _ps( ps )
-    , _cost_val( *this )
-    , _cost_fn( cost_fn )
+      : Ntk(), _ps( ps ), _cost_val( *this ), _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -97,10 +94,7 @@ public:
    * \param ntk Base network
    */
   explicit cost_view( Ntk const& ntk, NodeCostFn const& cost_fn = {}, cost_view_params const& ps = {} )
-    : Ntk( ntk )
-    , _ps( ps )
-    , _cost_val( ntk )
-    , _cost_fn( cost_fn )
+      : Ntk( ntk ), _ps( ps ), _cost_val( ntk ), _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -115,10 +109,7 @@ public:
 
   /*! \brief Copy constructor. */
   explicit cost_view( cost_view<Ntk, NodeCostFn, cost_t, false> const& other )
-    : Ntk( other )
-    , _ps( other._ps )
-    , _cost_val( other._cost_val )
-    , _cost_fn( other._cost_fn )
+      : Ntk( other ), _ps( other._ps ), _cost_val( other._cost_val ), _cost_fn( other._cost_fn )
   {
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
@@ -276,6 +267,7 @@ public:
   {
     Ntk::create_po( f, name );
   }
+
 private:
   cost_t compute_cost( node const& n, uint32_t& _c )
   {
@@ -312,10 +304,9 @@ private:
   NodeCostFn _cost_fn;
 
   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
-
 };
 
 template<class T, class NodeCostFn>
-cost_view( T const&, NodeCostFn const& )->cost_view<T, NodeCostFn, typename NodeCostFn::cost_t>;
+cost_view( T const&, NodeCostFn const& ) -> cost_view<T, NodeCostFn, typename NodeCostFn::cost_t>;
 
 } // namespace mockturtle
