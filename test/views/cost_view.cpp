@@ -79,7 +79,29 @@ public:
   }
 };
 
-TEST_CASE( "compute depth cost for xag network", "[cost_view]" )
+template<typename Ntk>
+void test_cost_view()
+{
+  CHECK( is_network_type_v<Ntk> );
+  CHECK( !has_cost_v<Ntk> );
+
+  using cost_ntk = cost_view<Ntk, and_cost<Ntk>>;
+
+  CHECK( is_network_type_v<cost_ntk> );
+  CHECK( has_cost_v<cost_ntk> );
+
+  using cost_cost_ntk = cost_view<cost_ntk, and_cost<cost_ntk>>;
+
+  CHECK( is_network_type_v<cost_cost_ntk> );
+  CHECK( has_cost_v<cost_cost_ntk> );
+};
+
+TEST_CASE( "create different cost views", "[cost_view]" )
+{
+  test_cost_view<xag_network>();
+}
+
+TEST_CASE( "compute cost cost for xag network", "[cost_view]" )
 {
   xag_network xag;
   const auto a = xag.create_pi();
