@@ -58,6 +58,8 @@
 namespace mockturtle::experimental
 {
 
+/*! \brief Parameters for cost.
+ */
 struct costfn_windowing_params
 {
   /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
@@ -80,9 +82,6 @@ struct costfn_windowing_params
 
   /*! \brief Window size for don't cares calculation. */
   uint32_t window_size{ 12u };
-
-  /*! \brief Whether to update node levels lazily. */
-  bool update_levels_lazily{ false };
 
   /*! \brief Whether to normalize the truth tables.
    * 
@@ -471,6 +470,29 @@ public:
 using cost_aware_params = boolean_optimization_params<costfn_windowing_params, null_params>;
 using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, search_core_stats>;
 
+/*! \brief Generic resubstitution algorithm.
+ *
+ * This algorithm creates a reconvergence-driven window for each node in the 
+ * network, collects divisors, and builds the resynthesis problem. A search core
+ * then collects all the resubstitute candidates with the same functionality as 
+ * the target. The candidate with lowest cost will then replace the MFFC
+ * of the window. 
+ * 
+ * Example of cost function definitions can be found at:
+ * ``mockturtle/algorithms/experimental/cost_aware_optimization.hpp``
+ * 
+ * Basic cost functions include:
+ * - `and_cost`: number of AND nodes
+ * - `gate_cost`: number of AND / XOR nodes
+ * - `supp_cost`: sum of supports of each node
+ * - `level_cost`: depth
+ * - `adp_cost`: sum of level of each node
+ *
+ * \param ntk Network
+ * \param cost_fn Customized cost function
+ * \param ps Optimization params
+ * \param pst Optimization statistics
+ */
 template<class Ntk, class CostFn>
 void cost_aware_optimization( Ntk& ntk, CostFn cost_fn, cost_aware_params const& ps, cost_aware_stats* pst = nullptr )
 {

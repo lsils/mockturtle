@@ -1,7 +1,7 @@
 #include <experiments.hpp>
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/experimental/costfn_window.hpp>
+#include <mockturtle/algorithms/experimental/cost_aware_optimization.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
 #include <mockturtle/utils/stopwatch.hpp>
