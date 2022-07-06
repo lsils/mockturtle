@@ -393,80 +393,6 @@ private:
 
 } /* namespace detail */
 
-template<class Ntk>
-struct and_cost
-{
-public:
-  using cost_t = uint32_t;
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
-  {
-    (void)fanin_costs;
-    if ( ntk.is_and( n ) )
-      tot_cost += 1; /* add dissipate cost */
-    return 0;        /* return accumulate cost */
-  }
-};
-
-template<class Ntk>
-struct gate_cost
-{
-public:
-  using cost_t = uint32_t;
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
-  {
-    (void)fanin_costs;
-    if ( ntk.is_pi( n ) == false )
-      tot_cost += 1; /* add dissipate cost */
-    return 0;        /* return accumulate cost */
-  }
-};
-
-template<class Ntk>
-struct supp_cost
-{
-public:
-  using cost_t = kitty::partial_truth_table;
-  cost_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<cost_t> const& fanin_costs = {} ) const
-  {
-    cost_t _c( ntk.num_pis() );
-    if ( ntk.is_pi( n ) )
-    {
-      set_bit( _c, ntk.pi_index( n ) );
-    }
-    std::for_each( std::begin( fanin_costs ), std::end( fanin_costs ), [&_c]( cost_t c ) { _c |= c; } );
-    if ( !ntk.is_pi( n ) )
-      tot_cost += kitty::count_ones( _c );
-    return _c; /* return accumulate cost */
-  }
-};
-
-template<class Ntk>
-struct level_cost
-{
-public:
-  using cost_t = uint32_t;
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
-  {
-    uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_costs ), std::end( fanin_costs ) ) + 1;
-    tot_cost = std::max( tot_cost, _cost ); /* update dissipate cost */
-    return _cost;                           /* return accumulate cost */
-  }
-};
-
-template<class Ntk>
-struct adp_cost
-{
-public:
-  using cost_t = uint32_t;
-  uint32_t operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, std::vector<uint32_t> const& fanin_costs = {} ) const
-  {
-    uint32_t _cost = ntk.is_pi( n ) ? 1 : *std::max_element( std::begin( fanin_costs ), std::end( fanin_costs ) ) + 1;
-    if ( !ntk.is_pi( n ) )
-      tot_cost += _cost; /* sum of level over each node */
-    return _cost;        /* return accumulate cost */
-  }
-};
-
 using cost_aware_params = boolean_optimization_params<costfn_windowing_params, null_params>;
 using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, search_core_stats>;
 
@@ -474,12 +400,9 @@ using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, sear
  *
  * This algorithm creates a reconvergence-driven window for each node in the 
  * network, collects divisors, and builds the resynthesis problem. A search core
- * then collects all the resubstitute candidates with the same functionality as 
- * the target. The candidate with lowest cost will then replace the MFFC
+ * then collects all the resubstitution candidates with the same functionality as 
+ * the target. The candidate with the lowest cost will then replace the MFFC
  * of the window. 
- * 
- * Example of cost function definitions can be found at:
- * ``mockturtle/algorithms/experimental/cost_aware_optimization.hpp``
  * 
  * Basic cost functions include:
  * - `and_cost`: number of AND nodes

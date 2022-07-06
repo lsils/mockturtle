@@ -898,7 +898,7 @@ struct has_cost : std::false_type
 };
 
 template<class Ntk>
-struct has_cost<Ntk, std::void_t<decltype( std::declval<Ntk>().get_cost() )>> : std::true_type
+struct has_cost<Ntk, std::void_t<decltype( std::declval<Ntk>().get_cost(  std::declval<node<Ntk>>() ) )>> : std::true_type
 {
 };
 

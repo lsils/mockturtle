@@ -108,3 +108,11 @@ algorithm.  Several views are implemented in mockturtle.
 
 .. doxygenclass:: mockturtle::out_of_place_color_view
    :members:
+
+`cost_view`: Manages global cost and maintains context
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/cost_view.hpp``
+
+.. doxygenclass:: mockturtle::cost_view
+   :members:

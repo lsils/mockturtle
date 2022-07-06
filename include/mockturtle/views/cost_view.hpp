@@ -51,6 +51,40 @@ struct cost_view_params
 };
 
 /*! \brief Implements `get_cost` methods for networks.
+ *
+ * This view computes the cost of the entire network, a subnetwork, and 
+ * also fanin cone of a single node. It maintains the context of each 
+ * node, which is the aggregated variables that affect the cost a node. 
+ * 
+ * The `get_cost` method has 3 different usages:
+ * - `get_cost()` returns the cost of the entire network
+ * - `get_cost( node n )` returns the cost of the fanin cone of node `n`
+ * - `get_cost( node n, std::vector<signal> leaves )` returns the cost
+ * of a subnetwork from `leaves` to node `n`
+ * 
+ * **Required network functions:**
+ * - `size`
+ * - `get_node`
+ * - `visited`
+ * - `set_visited`
+ * - `foreach_fanin`
+ * - `foreach_po`
+ *
+ * Example
+ *
+   \verbatim embed:rst
+
+   .. code-block:: c++
+
+      // create network somehow
+      xag_network xag = ...;
+
+      // create a cost view on the network
+      auto viewed = cost_view( xag, supp_cost<xag_network>() );
+
+      // print sum of supports
+      std::cout << "Sum of supports: " << viewed.get_cost() << "\n";
+   \endverbatim
  */
 template<class Ntk, class NodeCostFn, class cost_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
 class cost_view
@@ -60,6 +94,9 @@ class cost_view
 template<class Ntk, class NodeCostFn, class cost_t>
 class cost_view<Ntk, NodeCostFn, cost_t, true> : public Ntk
 {
+public:
+  using costfn_t = NodeCostFn;
+
 public:
   cost_view( Ntk const& ntk, cost_view_params const& ps = {} ) : Ntk( ntk )
   {

@@ -9,7 +9,7 @@ This header file defines a function to optimize a network with a customized cost
 
 .. code-block:: c++
 
-   /* derive some MIG */
+   /* derive some XAG */
    xag_network xag = ...;
 
    cost_aware_params ps;
