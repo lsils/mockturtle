@@ -25,7 +25,7 @@
 
 /*!
   \file cost_functions.hpp
-  \brief Various cost_t functions for (optimization) algorithms
+  \brief Various cost functions for (optimization) algorithms
 
   \author Heinz Riener
   \author Mathias Soeken
@@ -115,11 +115,11 @@ uint32_t costs( Ntk const& ntk )
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
 
-  uint32_t total{ 0u };
+  uint32_t total{0u};
   NodeCostFn cost_fn{};
   ntk.foreach_gate( [&]( auto const& n ) {
     total += cost_fn( ntk, n );
-  } );
+  });
   return total;
 }
 
