@@ -437,6 +437,7 @@ public:
   }
 }; /* random_network_generator<Ntk, random_network_generator_params_levels> */
 
+#ifdef ENABLE_NAUTY
 template<typename Ntk>
 class random_network_generator<Ntk, random_network_generator_params_topology>
 {
@@ -719,6 +720,7 @@ private:
   std::vector<percy::partial_dag> _dags;
   std::uniform_int_distribution<uint32_t> _rule_dist, _dag_dist;
 }; /* random_network_generator<Ntk, random_network_generator_params_composed> */
+#endif
 
 /*! \brief Generates a random AIG network */
 template<typename GenParams = random_network_generator_params_size>

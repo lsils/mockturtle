@@ -40,11 +40,17 @@ int main()
     return *equivalence_checking( *miter<aig_network>( aig_copy, aig ) );
   };
 
+#ifdef ENABLE_NAUTY
   random_network_generator_params_composed ps_gen;
   ps_gen.num_networks_per_configuration = 100000;
   ps_gen.min_num_gates_component = 4u;
   ps_gen.max_num_gates_component = 4u;
   ps_gen.num_pis = 3u;
+  std::cout << "[i] fuzzer: using the \"composed topologies\" generator\n";
+#else
+  random_network_generator_params_size ps_gen;
+  std::cout << "[i] fuzzer: using the default (random) generator\n";
+#endif
   auto gen = random_aig_generator( ps_gen );
 
   fuzz_tester_params ps_fuzz;
