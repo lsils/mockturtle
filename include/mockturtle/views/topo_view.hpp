@@ -30,6 +30,7 @@
   \author Heinz Riener
   \author Mathias Soeken
   \author Max Austin
+  \author Alessandro Tempia Calvino
 */
 
 #pragma once
@@ -178,6 +179,15 @@ public:
                              fn );
   }
 
+  /*! \brief Implementation of `foreach_node` in reverse topological order. */
+  template<typename Fn>
+  void foreach_node_reverse( Fn&& fn ) const
+  {
+    detail::foreach_element( topo_order.rbegin(),
+                             topo_order.rend(),
+                             fn );
+  }
+
   /*! \brief Reimplementation of `foreach_gate`. */
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
@@ -185,6 +195,16 @@ public:
     uint32_t const offset = 1u + this->num_pis() + ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) ); 
     detail::foreach_element( topo_order.begin() + offset,
                              topo_order.end(),
+                             fn );
+  }
+
+  /*! \brief Implementation of `foreach_gate` in reverse topological order. */
+  template<typename Fn>
+  void foreach_gate_reverse( Fn&& fn ) const
+  {
+    uint32_t const offset = 1u + this->num_pis() + ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) ); 
+    detail::foreach_element( topo_order.rbegin(),
+                             topo_order.rend() - offset,
                              fn );
   }
 
