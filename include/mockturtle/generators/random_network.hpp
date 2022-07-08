@@ -626,7 +626,7 @@ auto random_xag_generator( GenParams ps = {} )
 
 /*! \brief Generates a random MIG network */
 template<typename GenParams = random_network_generator_params_size>
-auto default_random_mig_generator( GenParams ps = {} )
+auto random_mig_generator( GenParams ps = {} )
 {
   using gen_t = random_network_generator<mig_network, GenParams>;
   using rule_t = typename detail::create_gate_rule<mig_network>;
