@@ -12,7 +12,7 @@ TEST_CASE( "create random aig_network", "[random_network_generator]" )
   ps.num_pis = 4u;
   ps.num_gates = 100u;
 
-  auto const gen = random_aig_generator( ps );
+  auto gen = random_aig_generator( ps );
   auto const aig = gen.generate();
 
   CHECK( aig.num_pis() == ps.num_pis );
@@ -25,7 +25,7 @@ TEST_CASE( "create random mig_network", "[random_network_generator]" )
   ps.num_pis = 4u;
   ps.num_gates = 100u;
 
-  auto const gen = random_mig_generator( ps );
+  auto gen = random_mig_generator( ps );
   auto const aig = gen.generate();
 
   CHECK( aig.num_pis() == ps.num_pis );
@@ -38,7 +38,7 @@ TEST_CASE( "create random mig_network with un-real majority nodes", "[random_net
   ps.num_pis = 4u;
   ps.num_gates = 100u;
 
-  auto const gen = mixed_random_mig_generator( ps );
+  auto gen = mixed_random_mig_generator( ps );
   auto const aig = gen.generate();
 
   CHECK( aig.num_pis() == ps.num_pis );
