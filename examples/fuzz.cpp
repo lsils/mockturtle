@@ -8,8 +8,8 @@
 #include <mockturtle/utils/debugging_utils.hpp>
 
 // algorithm under test
-#include <mockturtle/algorithms/cut_rewriting.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/resubstitution.hpp>
 
 // fuzzer
 #include <mockturtle/algorithms/network_fuzz_tester.hpp>
@@ -23,39 +23,34 @@ using namespace mockturtle;
 
 int main()
 {
-  xag_npn_resynthesis<aig_network> resyn;
   auto opt = [&]( aig_network aig ) -> bool {
-    aig_network const aig_copy = cleanup_dangling( aig );
+    aig_network const aig_copy = aig.clone();
 
-    cut_rewriting_params ps;
-    ps.cut_enumeration_ps.cut_size = 4;
-    cut_rewriting_with_compatibility_graph( aig, resyn, ps );
-
-    if ( !network_is_acyclic( color_view{aig} ) )
-    {
-      return false;
-    }
+    resubstitution_params ps;
+    ps.max_pis = 8u;
+    ps.max_inserts = 5u;
+    aig_resubstitution( aig, ps );
     aig = cleanup_dangling( aig );
 
-    return *equivalence_checking( *miter<aig_network>( aig_copy, aig ) );
+    bool const cec = *equivalence_checking( *miter<aig_network>( aig_copy, aig ) );
+    if ( !cec )
+      std::cout << "Optimized network is not equivalent to the original one!\n";
+    return cec;
   };
 
 #ifdef ENABLE_NAUTY
   random_network_generator_params_composed ps_gen;
-  ps_gen.num_networks_per_configuration = 100000;
-  ps_gen.min_num_gates_component = 4u;
-  ps_gen.max_num_gates_component = 4u;
-  ps_gen.num_pis = 3u;
   std::cout << "[i] fuzzer: using the \"composed topologies\" generator\n";
 #else
   random_network_generator_params_size ps_gen;
+  ps_gen.num_gates = 30;
   std::cout << "[i] fuzzer: using the default (random) generator\n";
 #endif
   auto gen = random_aig_generator( ps_gen );
 
   fuzz_tester_params ps_fuzz;
   ps_fuzz.file_format = fuzz_tester_params::aiger;
-  ps_fuzz.filename = "fuzz_crw_cg.aig";
+  ps_fuzz.filename = "fuzz.aig";
 
   network_fuzz_tester<aig_network, decltype(gen)> fuzzer( gen, ps_fuzz );
   fuzzer.run( opt );

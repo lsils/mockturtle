@@ -25,7 +25,13 @@ int main( int argc, char* argv[] )
     return "abc -c \"read " + filename + "; " + commands + "; write fuzz_opt.aig\"";
   };
 
+#ifdef ENABLE_NAUTY
   random_network_generator_params_composed ps_gen;
+  std::cout << "[i] fuzzer: using the \"composed topologies\" generator\n";
+#else
+  random_network_generator_params_size ps_gen;
+  std::cout << "[i] fuzzer: using the default (random) generator\n";
+#endif
   auto gen = random_aig_generator( ps_gen );
 
   fuzz_tester_params ps_fuzz;
