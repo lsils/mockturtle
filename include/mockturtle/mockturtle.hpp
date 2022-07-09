@@ -134,7 +134,7 @@
 #include "mockturtle/generators/majority.hpp"
 #include "mockturtle/generators/majority_n.hpp"
 #include "mockturtle/generators/modular_arithmetic.hpp"
-#include "mockturtle/generators/random_logic_generator.hpp"
+#include "mockturtle/generators/random_network.hpp"
 #include "mockturtle/generators/self_dualize.hpp"
 #include "mockturtle/generators/sorting.hpp"
 #include "mockturtle/io/aiger_reader.hpp"

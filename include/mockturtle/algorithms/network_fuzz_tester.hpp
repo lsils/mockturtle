@@ -35,6 +35,7 @@
 #include "../io/write_aiger.hpp"
 #include "../io/verilog_reader.hpp"
 #include "../io/aiger_reader.hpp"
+#include "../utils/stopwatch.hpp"
 
 #include <lorina/lorina.hpp>
 #include <fmt/format.h>
@@ -64,26 +65,8 @@ struct fuzz_tester_params
   /*! \brief Max number of networks to test: nullopt means infinity. */
   std::optional<uint64_t> num_iterations{std::nullopt};
 
-  /*! \brief Number of networks to test before increasing size. */
-  uint64_t num_iterations_step{100u};
-
-  /*! \brief Number of PIs to start with. */
-  uint64_t num_pis{4u};
-
-  /*! \brief Number of gates to start with. */
-  uint64_t num_gates{10u};
-
-  /*! \brief Number of PIs to increment at each step. */
-  uint64_t num_pis_step{1u};
-
-  /*! \brief Number of gates to increment at each step. */
-  uint64_t num_gates_step{10u};
-
-  /*! \brief Max number of PIs. */
-  uint64_t num_pis_max{10u};
-
-  /*! \brief Max number of gates. */
-  uint64_t num_gates_max{100u};
+  /*! \brief Timeout in seconds: nullopt means infinity. */
+  std::optional<uint64_t> timeout{std::nullopt};
 }; /* fuzz_tester_params */
 
 /*! \brief Network fuzz tester
@@ -91,18 +74,24 @@ struct fuzz_tester_params
  * Runs an algorithm on many small random logic networks.  Fuzz
  * testing is often useful to detect potential segmentation faults in
  * new implementations.  The generated benchmarks are saved first in a
- * file.  If a segmentation fault occurs, the file can be used to
- * reproduce and debug the problem.
+ * file.  If a segmentation fault or unexpected behavior occurs, the
+ * file can be used to reproduce and debug the problem.
  *
  * The entry function `run` generates different networks with the same
  * number of PIs and gates. The function `run_incremental`, on the other
- * hand, generates networks of increasing sizes.
+ * hand, generates networks of increasing sizes. These functions return
+ * true if it was terminated by an unexpected behavior, or return false
+ * if it terminates normally after the specified number of iterations
+ * without observing any defect.
  *
  * The script of algorithm(s) to be tested can be provided as (1) a
  * lambda function taking a network as input and returning a Boolean,
  * which is true if the algorithm behaves as expected; or (2) a lambda
  * function making a command string to be called, taking a filename string
- * as input (not supported on Windows platform).
+ * as input (not supported on Windows platform). If the command exits
+ * normally (with return value 0), CEC will be performed on the output
+ * file; otherwise (segfault, assertion fail, or return value is not 0),
+ * the fuzzer is terminated.
  *
   \verbatim embed:rst
 
@@ -141,30 +130,23 @@ public:
   {}
 
 #ifndef _MSC_VER
-  void run_incremental( std::function<std::string(std::string const&)>&& make_command )
+  uint64_t run( std::function<std::string(std::string const&)>&& make_command )
   {
-    run_incremental( make_callback( make_command ) );
-  }
-
-  void run( std::function<std::string(std::string const&)>&& make_command )
-  {
-    run( make_callback( make_command ) );
+    return run( make_callback( make_command ) );
   }
 #endif
 
-  void run_incremental( std::function<bool(Ntk)>&& fn )
+  uint64_t run( std::function<bool(Ntk)>&& fn )
   {
     uint64_t counter{0};
-    uint64_t num_pis = ps.num_pis;
-    uint64_t num_gates = ps.num_gates;
-    uint64_t counter_step{0};
-    while ( ( !ps.num_iterations || counter < ps.num_iterations ) && num_pis <= ps.num_pis_max && num_gates <= ps.num_gates_max )
+    stopwatch<>::duration time{0};
+    while ( ( !ps.num_iterations || counter < ps.num_iterations ) && 
+            ( !ps.timeout || to_seconds( time ) < ps.timeout ) )
     {
-      auto ntk = gen.generate( num_pis, num_gates, std::random_device{}() );
-      fmt::print( "[i] create network #{}: I/O = {}/{} gates = {} nodes = {}\n",
-                  counter++, ntk.num_pis(), ntk.num_pos(), ntk.num_gates(), ntk.size() );
-
-      fmt::print( "[i] write network `{}`\n", ps.filename );
+      stopwatch t( time );
+      auto ntk = gen.generate();
+      fmt::print( "[i] create network #{}: I/O = {}/{} gates = {} nodes = {}, write into `{}`\n",
+                  ++counter, ntk.num_pis(), ntk.num_pos(), ntk.num_gates(), ntk.size(), ps.filename );
 
       switch ( ps.file_format )
       {
@@ -176,87 +158,22 @@ public:
           break;
         default:
           fmt::print( "[w] unsupported format\n" );
+          return 0;
       }
 
       /* run optimization algorithm */
       if ( !fn( ntk ) )
       {
-        return;
+        return counter;
       }
 
       if ( ps.outputfile )
       {
         if ( !abc_cec() )
-          return;
-      }
-
-      if ( ++counter_step >= ps.num_iterations_step )
-      {
-        counter_step = 0;
-        num_gates += ps.num_gates_step;
-        if ( num_gates > ps.num_gates_max )
-        {
-          num_gates = ps.num_gates;
-          num_pis += ps.num_pis_step;
-        }
+          return counter;
       }
     }
-  }
-
-  void run( std::function<bool(Ntk)>&& fn )
-  {
-    uint64_t counter{0};
-    while ( !ps.num_iterations || counter < ps.num_iterations )
-    {
-      auto ntk = gen.generate( ps.num_pis, ps.num_gates, std::random_device{}() );
-      fmt::print( "[i] create network #{}: I/O = {}/{} gates = {} nodes = {}\n",
-                  counter++, ntk.num_pis(), ntk.num_pos(), ntk.num_gates(), ntk.size() );
-
-      fmt::print( "[i] write network `{}`\n", ps.filename );
-
-      switch ( ps.file_format )
-      {
-        case fuzz_tester_params::verilog:
-          write_verilog( ntk, ps.filename );
-          break;
-        case fuzz_tester_params::aiger:
-          write_aiger( ntk, ps.filename );
-          break;
-        default:
-          fmt::print( "[w] unsupported format\n" );
-      }
-
-      /* run optimization algorithm */
-      if ( !fn( ntk ) )
-      {
-        return;
-      }
-
-      if ( ps.outputfile )
-      {
-        if ( !abc_cec() )
-          return;
-      }
-    }
-  }
-
-  template<typename Fn>
-  void rerun_on_benchmark( Fn&& fn )
-  {
-    /* read benchmark from a file */
-    Ntk ntk;
-    fmt::print( "[i] read network `{}`\n", ps.filename );
-    if ( lorina::read_verilog( ps.filename, verilog_reader( ntk ) ) != lorina::return_code::success )
-    {
-      fmt::print( "[e] could not read benchmark `{}`\n", ps.filename );
-      return;
-    }
-
-    fmt::print( "[i] network: I/O = {}/{} gates = {} nodes = {}\n",
-                ntk.num_pis(), ntk.num_pos(), ntk.num_gates(), ntk.size() );
-
-    /* run optimization algorithm */
-    fn( ntk );
+    return 0;
   }
 
 private:
@@ -281,8 +198,10 @@ private:
               return abc_cec();
             return true;
           }
-          else if ( WEXITSTATUS( status ) == 1 ) // buggy
+          else if ( WEXITSTATUS( status ) == 1 || WEXITSTATUS( status ) == 134 ) // buggy or assertion fail
+          {
             return false;
+          }
           else
           {
             std::cout << "[e] Unexpected return value: " << WEXITSTATUS( status ) << '\n';
