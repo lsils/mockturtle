@@ -3,10 +3,17 @@
  */
 
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/algorithms/sim_resub.hpp>
-#include <mockturtle/algorithms/testcase_minimizer.hpp>
 #include <mockturtle/utils/debugging_utils.hpp>
 #include <mockturtle/views/color_view.hpp>
+#include <mockturtle/algorithms/equivalence_checking.hpp>
+#include <mockturtle/algorithms/miter.hpp>
+
+// algorithm under test
+#include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/resubstitution.hpp>
+
+// minimizer
+#include <mockturtle/algorithms/testcase_minimizer.hpp>
 
 using namespace mockturtle;
 
@@ -20,13 +27,16 @@ int main( int argc, char* argv[] )
   }
 
   /* Use this lambda function for debugging mockturtle algorithms */
-  auto opt = []( aig_network aig ) -> bool {
-    resubstitution_params ps;
-    ps.max_pis = 100;
-    ps.max_inserts = 20u;
+  auto opt = [&]( aig_network aig ) -> bool {
+    aig_network const aig_copy = aig.clone();
 
-    sim_resubstitution( aig, ps );
-    return !network_is_acyclic( color_view{aig} ); // return true if buggy
+    resubstitution_params ps;
+    ps.max_pis = 8u;
+    ps.max_inserts = 5u;
+    aig_resubstitution( aig, ps );
+    aig = cleanup_dangling( aig );
+
+    return *equivalence_checking( *miter<aig_network>( aig_copy, aig ) ); // true: normal (or not the expected bug); false: buggy
   };
 
   /* Use this lambda function for debugging external tools or algorithms that segfaults */
@@ -40,7 +50,6 @@ int main( int argc, char* argv[] )
   ps.path = "."; // current directory
   ps.init_case = std::string( argv[1] );
   ps.minimized_case = ps.init_case + "_minimized";
-  ps.max_size = 0;
   ps.verbose = true;
   testcase_minimizer<aig_network> minimizer( ps );
   minimizer.run( opt );

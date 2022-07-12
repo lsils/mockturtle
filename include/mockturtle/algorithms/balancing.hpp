@@ -236,10 +236,10 @@ private:
 
       const auto aig = ...;
 
-      sop_balancing<aig_network> balance_fn;
-      balance_params ps;
+      sop_rebalancing<aig_network> balance_fn;
+      balancing_params ps;
       ps.cut_enumeration_ps.cut_size = 6u;
-      const auto balanced_aig = balance( aig, {balance_fn}, ps );
+      const auto balanced_aig = balancing( aig, {balance_fn}, ps );
    \endverbatim
  */
 template<class Ntk, class CostFn = unit_cost<Ntk>>
