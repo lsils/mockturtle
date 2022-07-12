@@ -303,5 +303,150 @@
       }
     ],
     "version": "d822a70"
+  },
+  {
+    "entries": [
+      {
+        "C1": 1020,
+        "C1'": 1020,
+        "benchmark": "adder",
+        "cec": true,
+        "runtime": 0.01247897557914257
+      },
+      {
+        "C1": 3336,
+        "C1'": 3336,
+        "benchmark": "bar",
+        "cec": true,
+        "runtime": 0.04228439927101135
+      },
+      {
+        "C1": 57247,
+        "C1'": 57222,
+        "benchmark": "div",
+        "cec": true,
+        "runtime": 2.681104898452759
+      },
+      {
+        "C1": 214335,
+        "C1'": 214329,
+        "benchmark": "hyp",
+        "cec": true,
+        "runtime": 28.62228012084961
+      },
+      {
+        "C1": 32060,
+        "C1'": 32056,
+        "benchmark": "log2",
+        "cec": true,
+        "runtime": 1.026280164718628
+      },
+      {
+        "C1": 2865,
+        "C1'": 2865,
+        "benchmark": "max",
+        "cec": true,
+        "runtime": 0.02886887639760971
+      },
+      {
+        "C1": 27062,
+        "C1'": 27060,
+        "benchmark": "multiplier",
+        "cec": true,
+        "runtime": 0.7433034777641296
+      },
+      {
+        "C1": 5416,
+        "C1'": 5413,
+        "benchmark": "sin",
+        "cec": true,
+        "runtime": 0.1061311587691307
+      },
+      {
+        "C1": 24618,
+        "C1'": 24609,
+        "benchmark": "sqrt",
+        "cec": true,
+        "runtime": 0.5837104916572571
+      },
+      {
+        "C1": 18484,
+        "C1'": 18483,
+        "benchmark": "square",
+        "cec": true,
+        "runtime": 0.40245577692985535
+      },
+      {
+        "C1": 11839,
+        "C1'": 11839,
+        "benchmark": "arbiter",
+        "cec": true,
+        "runtime": 0.18735899031162262
+      },
+      {
+        "C1": 693,
+        "C1'": 691,
+        "benchmark": "cavlc",
+        "cec": true,
+        "runtime": 0.022498037666082382
+      },
+      {
+        "C1": 174,
+        "C1'": 169,
+        "benchmark": "ctrl",
+        "cec": true,
+        "runtime": 0.006643789820373058
+      },
+      {
+        "C1": 304,
+        "C1'": 304,
+        "benchmark": "dec",
+        "cec": true,
+        "runtime": 0.020716195926070213
+      },
+      {
+        "C1": 1342,
+        "C1'": 1338,
+        "benchmark": "i2c",
+        "cec": true,
+        "runtime": 0.014144876040518284
+      },
+      {
+        "C1": 260,
+        "C1'": 259,
+        "benchmark": "int2float",
+        "cec": true,
+        "runtime": 0.004175188951194286
+      },
+      {
+        "C1": 46836,
+        "C1'": 46813,
+        "benchmark": "mem_ctrl",
+        "cec": true,
+        "runtime": 1.889402151107788
+      },
+      {
+        "C1": 978,
+        "C1'": 978,
+        "benchmark": "priority",
+        "cec": true,
+        "runtime": 0.010557147674262524
+      },
+      {
+        "C1": 257,
+        "C1'": 257,
+        "benchmark": "router",
+        "cec": true,
+        "runtime": 0.00318393693305552
+      },
+      {
+        "C1": 13758,
+        "C1'": 12687,
+        "benchmark": "voter",
+        "cec": true,
+        "runtime": 0.27603062987327576
+      }
+    ],
+    "version": "efd2fa9"
   }
 ]

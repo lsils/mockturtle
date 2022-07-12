@@ -1175,8 +1175,8 @@ public:
       signal const& s = forest.create_pi();
       node n = forest.get_node( s );
       forest_leaves.emplace_back( s );
-      cost_t div_cost = ntk.get_cost_val( ntk.get_node( div ) );
-      forest.set_cost_val( n, div_cost );
+      cost_t div_cost = ntk.get_context( ntk.get_node( div ) );
+      forest.set_context( n, div_cost );
       div_costs.emplace_back( div_cost );
     }
 

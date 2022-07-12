@@ -59,7 +59,7 @@ namespace mockturtle::experimental
 
 /*! \brief Parameters for cost.
  */
-struct costfn_windowing_params
+struct cost_generic_windowing_params
 {
   /*! \brief Maximum number of PIs of reconvergence-driven cuts. */
   uint32_t max_pis{ 8 };
@@ -98,7 +98,7 @@ struct costfn_windowing_params
   bool normalize{ false };
 };
 
-struct costfn_windowing_stats
+struct cost_generic_windowing_stats
 {
   /*! \brief Total runtime. */
   stopwatch<>::duration time_total{ 0 };
@@ -118,24 +118,10 @@ struct costfn_windowing_stats
   /*! \brief Accumulated runtime for don't care computation. */
   stopwatch<>::duration time_dont_care{ 0 };
 
-  /*! \brief Total number of leaves. */
-  uint64_t num_leaves{ 0u };
-
-  /*! \brief Total number of divisors. */
-  uint64_t num_divisors{ 0u };
-
-  /*! \brief Number of constructed windows. */
-  uint32_t num_windows{ 0u };
-
-  /*! \brief Total number of MFFC nodes. */
-  uint64_t sum_mffc_size{ 0u };
-
   void report() const
   {
     // clang-format off
-    fmt::print( "[i] costfn_windowing report\n" );
-    fmt::print( "    tot. #leaves = {:5d}, tot. #divs = {:5d}, sum  |MFFC| = {:5d}\n", num_leaves, num_divisors, sum_mffc_size );
-    fmt::print( "    avg. #leaves = {:>5.2f}, avg. #divs = {:>5.2f}, avg. |MFFC| = {:>5.2f}\n", float( num_leaves ) / float( num_windows ), float( num_divisors ) / float( num_windows ), float( sum_mffc_size ) / float( num_windows ) );
+    fmt::print( "[i] cost_generic_windowing report\n" );
     fmt::print( "    ===== Runtime Breakdown =====\n" );
     fmt::print( "    Total       : {:>5.2f} secs\n", to_seconds( time_total ) );
     fmt::print( "      Cut       : {:>5.2f} secs\n", to_seconds( time_cuts ) );
@@ -147,42 +133,48 @@ struct costfn_windowing_stats
   }
 };
 
+
+struct cost_generic_resynthesis_params
+{};
+struct cost_generic_resynthesis_stats
+{
+  void report() const {}
+};
+
+
 namespace detail
 {
 /**
  * @brief The problem we agree on for cost function aware algorithm 
  */
 template<class Ntk, class TT>
-struct cost_aware_problem
+struct cost_generic_problem
 {
-  using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-
-  signal root;
-  std::vector<signal> divs;
-  std::vector<uint32_t> div_ids;    /* positions of divisor truth tables in `tts` */
-  std::vector<node> div_id_to_node; /* maps IDs in `div_ids` to the corresponding node */
-  std::vector<TT> tts;
+  using node = typename Ntk::node;
+  signal po;
   TT care;
-  uint32_t mffc_size;
-  uint32_t max_cost{ std::numeric_limits<uint32_t>::max() };
+  std::vector<signal> pis;
+  std::vector<signal> divs;
+  Ntk window;
+  signal target;
+  uint32_t mffc;
 };
 
 template<class Ntk, class TT = kitty::dynamic_truth_table>
-class costfn_windowing
+class cost_generic_windowing
 {
 public:
-  using problem_t = cost_aware_problem<Ntk, TT>;
-  using params_t = costfn_windowing_params;
-  using stats_t = costfn_windowing_stats;
+  using problem_t = cost_generic_problem<Ntk, TT>;
+  using params_t = cost_generic_windowing_params;
+  using stats_t = cost_generic_windowing_stats;
 
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  explicit costfn_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
+  explicit cost_generic_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
       : ntk( ntk ), ps( ps ), st( st ), cps( { ps.max_pis } ), mffc_mgr( ntk ),
-        divs_mgr( ntk, divisor_collector_params( { ps.max_divisors, ps.max_divisors, ps.skip_fanout_limit_for_divisors } ) ),
-        sim( ntk, win.tts, ps.max_pis )
+        divs_mgr( ntk, divisor_collector_params( { ps.max_divisors, ps.max_divisors, ps.skip_fanout_limit_for_divisors } ) )
   {
     static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
@@ -217,17 +209,12 @@ public:
     } );
     std::vector<node> supported;
     call_with_stopwatch( st.time_divs, [&]() {
-      divs_mgr.collect_supported_nodes( n, leaves, supported );
-    } );
-
-    /* simulate */
-    call_with_stopwatch( st.time_sim, [&]() {
-      sim.simulate( leaves, supported );
+      divs_mgr.collect_supported_nodes( n, leaves, supported ); /* root will be the last */
     } );
 
     /* mark MFFC nodes and collect divisors */
     ++mffc_marker;
-    win.mffc_size = call_with_stopwatch( st.time_mffc, [&]() {
+    prob.mffc = call_with_stopwatch( st.time_mffc, [&]() {
       return mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n ) {
         ntk.set_value( n, mffc_marker );
       } );
@@ -236,141 +223,124 @@ public:
       collect_divisors( leaves, supported );
     } );
 
-    /* normalize */
-    call_with_stopwatch( st.time_sim, [&]() {
-      if ( ps.normalize )
-      {
-        win.root = normalize_truth_tables() ? !ntk.make_signal( n ) : ntk.make_signal( n );
-      }
-      else
-      {
-        win.root = ntk.make_signal( n );
-      }
-    } );
+    prob.po = ntk.make_signal( n );
 
     /* compute don't cares */
     call_with_stopwatch( st.time_dont_care, [&]() {
       if ( ps.use_dont_cares )
       {
-        win.care = ~satisfiability_dont_cares( ntk, leaves, ps.window_size );
+        prob.care = ~satisfiability_dont_cares( ntk, leaves, ps.window_size );
       }
       else
       {
-        win.care = ~kitty::create<TT>( ps.max_pis );
+        prob.care = ~kitty::create<TT>( ps.max_pis );
       }
     } );
-
-    /* compute cost */
-    win.max_cost = ntk.get_cost( n, win.divs );
-
-    st.num_windows++;
-    st.num_leaves += leaves.size();
-    st.num_divisors += win.divs.size();
-    st.sum_mffc_size += win.mffc_size;
-
-    return win;
+    return prob;
   }
 
   template<typename res_t>
-  uint32_t gain( problem_t const& prob, res_t const& res ) const
+  uint32_t gain( problem_t const& problem, res_t const& res ) const
   {
     static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     return 1;
   }
 
   template<typename res_t>
-  bool update_ntk( problem_t const& prob, res_t const& res )
+  bool update_ntk( problem_t const& problem, res_t const& res )
   {
     static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     assert( res.num_pos() == 1 );
-    insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ) {
-      ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !g : g );
+    insert( ntk, std::begin( problem.pis ), std::end( problem.pis ), res, [&]( signal const& g ) {
+      ntk.substitute_node( ntk.get_node( prob.po ), ntk.is_complemented( prob.po ) ? !g : g );
     } );
     return true; /* continue optimization */
   }
 
   template<typename res_t>
-  bool report( problem_t const& prob, res_t const& res )
+  bool report( problem_t const& problem, res_t const& res )
   {
     static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     assert( res.num_pos() == 1 );
-    fmt::print( "[i] found solution {} for root signal {}{}\n", to_index_list_string( res ), ntk.is_complemented( prob.root ) ? "!" : "", ntk.get_node( prob.root ) );
+    fmt::print( "[i] found solution {} for root signal {}{}\n", to_index_list_string( res ), ntk.is_complemented( problem.po ) ? "!" : "", ntk.get_node( problem.po ) );
     return true;
   }
 
 private:
   void collect_divisors( std::vector<node> const& leaves, std::vector<node> const& supported )
   {
-    win.divs.clear();
-    win.div_ids.clear();
-
-    uint32_t i{ 1 };
+    Ntk window;
+    prob.pis.clear();
+    prob.divs.clear();
+    node_map<signal, Ntk> old_to_new( ntk );
+    old_to_new[ntk.get_constant( false )] = window.get_constant( false );
+    if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
+    {
+      old_to_new[ntk.get_constant( true )] = window.get_constant( true );
+    }
+    window.incr_trav_id();
     for ( auto const& l : leaves )
     {
-      win.div_ids.emplace_back( i++ );
-      win.divs.emplace_back( ntk.make_signal( l ) );
+      prob.pis.emplace_back( ntk.make_signal( l ) );
+      signal s = window.create_pi();
+      old_to_new[ntk.make_signal( l )] = s;
+      window.set_context( window.get_node( s ), ntk.get_context( l ) );
     }
-
-    i = ps.max_pis + 1;
-    for ( auto const& n : supported )
+    for ( auto const& n : supported ) /* supported nodes are in topo order */
     {
+      /* collect children */
+      std::vector<signal> children;
+      ntk.foreach_fanin( n, [&]( auto child, auto ) {
+        const auto f = old_to_new[child];
+        if ( ntk.is_complemented( child ) )
+        {
+          children.push_back( window.create_not( f ) );
+        }
+        else
+        {
+          children.push_back( f );
+        }
+      } );
+      signal s = window.clone_node( ntk, n, children ); /* this will update cost automatically */
+      old_to_new[n] = s;
       if ( ntk.value( n ) != mffc_marker ) /* not in MFFC, not root */
       {
-        win.div_ids.emplace_back( i );
-        win.divs.emplace_back( ntk.make_signal( n ) );
-      }
-      ++i;
-    }
-    assert( i == win.tts.size() );
-  }
-
-  bool normalize_truth_tables()
-  {
-    assert( win.divs.size() == win.div_ids.size() );
-    for ( auto i = 0u; i < win.divs.size(); ++i )
-    {
-      if ( kitty::get_bit( win.tts.at( win.div_ids.at( i ) ), 0 ) )
-      {
-        win.tts.at( win.div_ids.at( i ) ) = ~win.tts.at( win.div_ids.at( i ) );
-        win.divs.at( i ) = !win.divs.at( i );
+        prob.divs.emplace_back( s );
       }
     }
 
-    if ( kitty::get_bit( win.tts.back(), 0 ) )
-    {
-      win.tts.back() = ~win.tts.back();
-      return true;
-    }
-    else
-    {
-      return false;
-    }
+    prob.target = old_to_new[supported.back()];
+    prob.window = window;
   }
 
 private:
   Ntk& ntk;
-  problem_t win;
+  problem_t prob;
   params_t const& ps;
   stats_t& st;
   reconvergence_driven_cut_parameters const cps;
   typename mockturtle::detail::node_mffc_inside<Ntk> mffc_mgr; // TODO: namespaces can be removed when we move out of experimental::
   divisor_collector<Ntk> divs_mgr;
-  window_simulator<Ntk, TT> sim;
   uint32_t mffc_marker{ 0u };
   std::shared_ptr<typename network_events<Ntk>::modified_event_type> lazy_update_event;
-}; /* costfn_windowing */
+}; /* cost_generic_windowing */
 
-template<class Ntk, class TT, class ResynEngine>
-class costfn_resynthesis
+template<class Ntk, class TT>
+class cost_generic_resynthesis
 {
 public:
-  using problem_t = cost_aware_problem<Ntk, TT>;
-  using res_t = typename ResynEngine::index_list_t;
-  using params_t = null_params;
-  using stats_t = typename ResynEngine::stats;
+  using problem_t = cost_generic_problem<Ntk, TT>;
+  using res_t = large_xag_index_list;
+  using index_list_t = large_xag_index_list;
+  using params_t = cost_generic_resynthesis_params;
+  using stats_t = cost_generic_resynthesis_stats;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+  using cost_t = typename Ntk::costfn_t::cost_t;
+  using p = std::pair<uint32_t, node>;
 
-  explicit costfn_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-      : ntk( ntk ), engine( ntk, st )
+  explicit cost_generic_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
+      : ntk( ntk )
   {
     static_assert( has_cost_v<Ntk>, "Ntk does not implement the get_cost method" );
   }
@@ -379,21 +349,72 @@ public:
   {
   }
 
+  /**
+   * @brief Solve the cost aware resynthesis problem with the 
+   * window and divisors with context
+   * 
+   * The input of this solver is the initial network
+   * 
+   * @param prob 
+   * @return std::optional<res_t> 
+   */
   std::optional<res_t> operator()( problem_t& prob )
   {
-    return engine( prob.tts.back(), prob.care, prob.divs, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_cost );
+    /* we will modify the network in the problem but not the original network */
+    default_simulator<kitty::dynamic_truth_table> sim( prob.window.num_pis() );
+    unordered_node_map<TT, Ntk> tts( prob.window );
+    simulate_nodes<TT>( prob.window, tts, sim );
+    std::priority_queue<p, std::vector<p>, std::greater<p>> q;
+    /* find target tt */
+    TT target = tts[prob.target]; /* assume target is not complement */
+    uint32_t max_cost = prob.window.get_cost( prob.window.get_node( prob.target ), prob.divs );
+    if (max_cost != prob.mffc) fmt::print("{} != {}\n",max_cost, prob.mffc);
+    /* insert all the nodes */
+    prob.window.foreach_node( [&]( node n ){
+      q.push( std::pair( prob.window.get_cost( n, prob.divs ), n ) );
+    } );
+    while( !q.empty() )
+    {
+      uint32_t cost = q.top().first;
+      if ( cost >= max_cost )
+      {
+        break;
+      }
+      node n = q.top().second;
+      if ( tts[n] == target )
+      {
+        return get_result( prob.window, prob.window.make_signal( n ) );
+      }
+      if ( ~tts[n] == target )
+      {
+        return get_result( prob.window, !prob.window.make_signal( n ) );
+      }
+      /* pop the node and make better guess */
+      q.pop();
+
+      TT const& tt = tts[n];
+    }
+    return std::nullopt;
   }
 
 private:
+  index_list_t get_result( auto& window, signal po ) 
+  {
+    window.create_po( po );
+    auto _ntk = cleanup_dangling<typename Ntk::base_type>( window ); /* only logic */
+    index_list_t res;
+    encode( res, _ntk );
+    return res;
+  }
+private:
   Ntk const& ntk;
-  typename ResynEngine::stats rst;
-  ResynEngine engine;
-}; /* costfn_resynthesis */
+  
+}; /* cost_generic_resynthesis */
 
 } /* namespace detail */
 
-using cost_aware_params = boolean_optimization_params<costfn_windowing_params, null_params>;
-using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, search_core_stats>;
+using cost_generic_params = boolean_optimization_params<cost_generic_windowing_params, cost_generic_resynthesis_params>;
+using cost_generic_stats = boolean_optimization_stats<cost_generic_windowing_stats, cost_generic_resynthesis_stats>;
 
 /*! \brief Generic resubstitution algorithm.
  *
@@ -416,18 +437,18 @@ using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, sear
  * \param pst Optimization statistics
  */
 template<class Ntk, class CostFn>
-void cost_aware_optimization( Ntk& ntk, CostFn cost_fn, cost_aware_params const& ps, cost_aware_stats* pst = nullptr )
+void cost_generic_optimization( Ntk& ntk, CostFn cost_fn, cost_generic_params const& ps, cost_generic_stats* pst = nullptr )
 {
   fanout_view fntk( ntk );
   cost_view viewed( fntk, cost_fn );
   using Viewed = decltype( viewed );
   using TT = typename kitty::dynamic_truth_table;
-  using windowing_t = typename detail::costfn_windowing<Viewed, TT>;
+  using windowing_t = typename detail::cost_generic_windowing<Viewed, TT>;
   using engine_t = search_core<Viewed, TT>;
-  using resyn_t = typename detail::costfn_resynthesis<Viewed, TT, engine_t>;
+  using resyn_t = typename detail::cost_generic_resynthesis<Viewed, TT>;
   using opt_t = typename detail::boolean_optimization_impl<Viewed, windowing_t, resyn_t>;
 
-  cost_aware_stats st;
+  cost_generic_stats st;
   opt_t p( viewed, ps, st );
   p.run();
   if ( ps.verbose )
