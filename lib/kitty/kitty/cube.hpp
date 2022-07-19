@@ -252,6 +252,38 @@ public:
     _mask ^= ( 1 << index );
   }
 
+  template<class Fn>
+  void foreach_minterm( uint8_t length, Fn&& fn ) const
+  {
+    foreach_minterm_rec( *this, length, fn );
+  }
+
+  template<class Fn>
+  bool foreach_minterm_rec( cube const& c, uint8_t prev_index, Fn&& fn ) const
+  {
+    if ( prev_index == 0 )
+    {
+      return fn( c );
+    }
+
+    uint8_t index = prev_index - 1;
+    if ( !get_mask( index ) )
+    {
+      cube c0 = c;
+      c0.set_mask( index );
+      if ( !foreach_minterm_rec( c0, index, fn ) )
+      {
+        return false;
+      }
+      c0.set_bit( index );
+      return foreach_minterm_rec( c0, index, fn );
+    }
+    else
+    {
+      return foreach_minterm_rec( c, index, fn );
+    }
+  }
+
   /* cube data */
   union {
     struct

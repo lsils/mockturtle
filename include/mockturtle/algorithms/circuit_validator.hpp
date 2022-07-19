@@ -420,6 +420,22 @@ private:
     {
       ntk.add_EXCDC_clauses( solver );
     }
+
+    if constexpr ( has_are_observability_equivalent_v<Ntk> )
+    {
+      if ( ps.odc_levels == -1 )
+      {
+        std::vector<bill::lit_type> po_lits;
+        ntk.foreach_po( [&]( auto const& f ) {
+          if ( !ntk.is_pi( ntk.get_node( f ) ) && !constructed.has( f ) )
+          {
+            construct( ntk.get_node( f ) );
+          }
+          po_lits.emplace_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
+        });
+        ntk.add_EXOEC_clauses( solver, po_lits );
+      }
+    }
   }
 
   bill::lit_type construct( node const& n )
@@ -623,6 +639,30 @@ private:
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   bill::lit_type build_odc_window( node const& root, bill::lit_type const& lit )
   {
+  if constexpr ( has_are_observability_equivalent_v<Ntk> )
+  {
+    assert( ps.odc_levels == -1 );
+
+    /* literals for the duplicated fanout cone */
+    unordered_node_map<bill::lit_type, Ntk> lits( ntk );
+    /* miter literals that should be empty */
+    std::vector<bill::lit_type> miter;
+
+    lits[root] = lit;
+    ntk.incr_trav_id();
+    make_lit_fanout_cone_rec( root, lits, miter, 1 );
+    ntk.incr_trav_id();
+    duplicate_fanout_cone_rec( root, lits, 1 );
+    assert( miter.size() == 0 );
+
+    std::vector<bill::lit_type> dup_po_lits;
+    ntk.foreach_po( [&]( auto const& f ) {
+      dup_po_lits.emplace_back( lit_not_cond( lits.has( ntk.get_node( f ) ) ? lits[f] : literals[f], ntk.is_complemented( f ) ) );
+    } );
+    return ntk.add_EXOEC_linking_clauses( solver, dup_po_lits );
+  }
+  else
+  {
     /* literals for the duplicated fanout cone */
     unordered_node_map<bill::lit_type, Ntk> lits( ntk );
     /* literals of XORs in the miter */
@@ -642,11 +682,12 @@ private:
       return true; /* next */
     } );
 
-    assert( miter.size() > 0 && "max fanout depth < odc_levels (-1 is infinity) and there is no PO in TFO cone" );
+    assert( miter.size() > 0 && "no fanout node at distance odc_levels and there is no PO in TFO cone (possibly due to a dangling cone)" );
     auto nlit2 = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
     miter.emplace_back( nlit2 );
     solver.add_clause( miter );
     return ~nlit2;
+  }
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>

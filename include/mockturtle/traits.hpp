@@ -2167,6 +2167,21 @@ template<class Ntk>
 inline constexpr bool has_pattern_is_EXCDC_v = has_pattern_is_EXCDC<Ntk>::value;
 #pragma endregion
 
+#pragma region has_are_observability_equivalent
+template<class Ntk, class = void>
+struct has_are_observability_equivalent : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_are_observability_equivalent<Ntk, std::void_t<decltype( std::declval<Ntk>().are_observability_equivalent( std::declval<kitty::cube>(), std::declval<kitty::cube>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_are_observability_equivalent_v = has_are_observability_equivalent<Ntk>::value;
+#pragma endregion
+
 /*! \brief SFINAE based on iterator type (for compute functions).
  */
 template<typename Iterator, typename T>
