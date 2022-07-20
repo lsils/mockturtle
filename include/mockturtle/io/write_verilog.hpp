@@ -34,19 +34,20 @@
 
 #pragma once
 
-#include <array>
-#include <fstream>
-#include <iostream>
-#include <string>
-
-#include <lorina/verilog.hpp>
-#include <fmt/format.h>
-
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/string_utils.hpp"
 #include "../views/binding_view.hpp"
 #include "../views/topo_view.hpp"
+
+#include <lorina/verilog.hpp>
+#include <fmt/format.h>
+
+#include <array>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <optional>
 
 namespace mockturtle
 {
@@ -71,7 +72,7 @@ format_fanin( Ntk const& ntk, node<Ntk> const& n, node_map<std::string, Ntk>& no
 
 struct write_verilog_params
 {
-  std::string module_name = "top";
+  std::optional<std::string> module_name{std::nullopt};
   std::vector<std::pair<std::string, uint32_t>> input_names;
   std::vector<std::pair<std::string, uint32_t>> output_names;
 };
@@ -240,7 +241,23 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     } );
   }
 
-  writer.on_module_begin( ps.module_name, inputs, outputs );
+  std::string module_name = "top";
+  if ( ps.module_name )
+  {
+    module_name = *ps.module_name;
+  }
+  else
+  {
+    if constexpr ( has_get_network_name_v<Ntk> )
+    {
+      if ( ntk.get_network_name().length() > 0 )
+      {
+        module_name = ntk.get_network_name();
+      }
+    }
+  }
+  writer.on_module_begin( module_name, inputs, outputs );
+  
   if ( ps.input_names.empty() )
   {
     writer.on_input( xs );
@@ -400,13 +417,15 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
  * - `is_constant`
  * - `is_pi`
  * - `node_to_index`
- * 
+ * - `has_binding`
+ * - `get_binding_index`
+ *
  * \param ntk Mapped network
  * \param os Output stream
  * \param ps Verilog parameters
  */
 template<class Ntk>
-void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilog_params const& ps = {} )
+void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog_params const& ps = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
@@ -419,6 +438,8 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_has_binding_v<Ntk>, "Ntk does not implement the has_binding method" );
+  static_assert( has_get_binding_index_v<Ntk>, "Ntk does not implement the get_binding_index method" );
 
   assert( ntk.is_combinational() && "Network has to be combinational" );
 
@@ -427,8 +448,26 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
   std::vector<std::string> xs, inputs;
   if ( ps.input_names.empty() )
   {
-    for ( auto i = 0u; i < ntk.num_pis(); ++i )
-      xs.emplace_back( fmt::format( "x{}", i ) );
+    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+    {
+      ntk.foreach_pi( [&]( auto const& i, uint32_t index ){
+        if ( ntk.has_name( ntk.make_signal( i ) ) )
+        {
+          xs.emplace_back( ntk.get_name( ntk.make_signal( i ) ) );
+        }
+        else
+        {
+          xs.emplace_back( fmt::format( "x{}", index ) );
+        }
+      });
+    }
+    else
+    {
+      for ( auto i = 0u; i < ntk.num_pis(); ++i )
+      {
+        xs.emplace_back( fmt::format( "x{}", i ) );
+      }
+    }
     inputs = xs;
   }
   else
@@ -452,8 +491,26 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
   std::vector<std::string> ys, outputs;
   if ( ps.output_names.empty() )
   {
-    for ( auto i = 0u; i < ntk.num_pos(); ++i )
-      ys.emplace_back( fmt::format( "y{}", i ) );
+    if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
+    {
+      ntk.foreach_po( [&]( auto const& o, uint32_t index ){
+        if ( ntk.has_output_name( index ) )
+        {
+          ys.emplace_back( ntk.get_output_name( index ) );
+        }
+        else
+        {
+          ys.emplace_back( fmt::format( "y{}", index ) );
+        }
+      });
+    }
+    else
+    {
+      for ( auto i = 0u; i < ntk.num_pos(); ++i )
+      {
+        ys.emplace_back( fmt::format( "y{}", i ) );
+      }
+    }
     outputs = ys;
   }
   else
@@ -475,13 +532,13 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
   }
 
   /* compute which nodes are POs and register index */
-  node_map<std::vector<uint32_t>, binding_view<Ntk>, std::unordered_map<typename Ntk::node, std::vector<uint32_t>>> po_nodes( ntk );
+  node_map<std::vector<uint32_t>, Ntk, std::unordered_map<typename Ntk::node, std::vector<uint32_t>>> po_nodes( ntk );
   ntk.foreach_po( [&]( auto const& f, auto i ) {
     po_nodes[f].push_back( i );
   } );
 
   std::vector<std::string> ws;
-  node_map<std::string, binding_view<Ntk>> node_names( ntk );
+  node_map<std::string, Ntk> node_names( ntk );
 
   /* constants */
   if ( ntk.has_binding( ntk.get_constant( false ) ) )
@@ -520,7 +577,22 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
     }
   } );
 
-  writer.on_module_begin( ps.module_name, inputs, outputs );
+  std::string module_name = "top";
+  if ( ps.module_name )
+  {
+    module_name = *ps.module_name;
+  }
+  else
+  {
+    if constexpr ( has_get_network_name_v<Ntk> )
+    {
+      if ( ntk.get_network_name().length() > 0 )
+      {
+        module_name = ntk.get_network_name();
+      }
+    }
+  }
+  writer.on_module_begin( module_name, inputs, outputs );
   if ( ps.input_names.empty() )
   {
     writer.on_input( xs );
@@ -581,7 +653,7 @@ void write_verilog( binding_view<Ntk> const& ntk, std::ostream& os, write_verilo
       std::string name = gate.name;
 
       int digits = counter == 0 ? 0 : ( int ) std::floor( std::log10( counter ) );
-      auto fanin_names = detail::format_fanin<binding_view<Ntk>>( ntk, n, node_names );
+      auto fanin_names = detail::format_fanin<Ntk>( ntk, n, node_names );
       std::vector<std::pair<std::string,std::string>> args;
 
       auto i = 0;
@@ -653,6 +725,33 @@ void write_verilog( Ntk const& ntk, std::string const& filename, write_verilog_p
 {
   std::ofstream os( filename.c_str(), std::ofstream::out );
   write_verilog( ntk, os, ps );
+  os.close();
+}
+
+/*! \brief Writes mapped network in structural Verilog format into a file
+ *
+ * **Required network functions:**
+ * - `num_pis`
+ * - `num_pos`
+ * - `foreach_pi`
+ * - `foreach_node`
+ * - `foreach_fanin`
+ * - `get_node`
+ * - `get_constant`
+ * - `is_constant`
+ * - `is_pi`
+ * - `node_to_index`
+ * - `has_binding`
+ * - `get_binding_index`
+ *
+ * \param ntk Network
+ * \param filename Filename
+ */
+template<class Ntk>
+void write_verilog_with_binding( Ntk const& ntk, std::string const& filename, write_verilog_params const& ps = {} )
+{
+  std::ofstream os( filename.c_str(), std::ofstream::out );
+  write_verilog_with_binding( ntk, os, ps );
   os.close();
 }
 
