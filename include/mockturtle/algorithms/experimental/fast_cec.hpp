@@ -37,6 +37,8 @@
 #include <vector>
 
 #include "../../algorithms/cut_rewriting.hpp"
+#include "../../algorithms/functional_reduction.hpp"
+#include "../../algorithms/cut_rewriting.hpp"
 #include "../../algorithms/node_resynthesis/xag_npn.hpp"
 #include "../../algorithms/node_resynthesis/xag_minmc2.hpp"
 #include "../../traits.hpp"
@@ -69,7 +71,7 @@ struct fast_cec_params
    *
    * note that the limit will increase after each iteration
    */
-  uint64_t resub_conflict_limit{ 10u };
+  uint64_t fr_conflict_limit{ 10u };
 
   /*! \brief Number of iterations
    *
@@ -122,13 +124,14 @@ public:
     stopwatch<> t( st_.time_total );
 
     uint64_t scl = ps_.sat_conflict_limit;
-    uint64_t rcl = ps_.resub_conflict_limit;
+    uint64_t rcl = ps_.fr_conflict_limit;
 
     if ( !ps_.use_rewriting && !ps_.use_func_reduction )
     {
       return try_sat_solver( 0 );
     }
 
+    xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
     for ( uint64_t i = 0; i < ps_.num_iterations; ++i )
     {
       if ( ps_.verbose )
@@ -138,29 +141,17 @@ public:
 
       if ( ps_.use_rewriting )
       {
-        xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
         cut_rewriting_params ps;
         ps.cut_enumeration_ps.cut_size = 4;
         for ( uint32_t j = 0; j < 3; j++ )
         {
           miter_ = cut_rewriting( miter_, resyn, ps );
           miter_ = cleanup_dangling( miter_ );
-          window_aig_enumerative_resub( miter_ );
-          miter_ = cleanup_dangling( miter_ );
         }
-      
-        // xag_network xag = cleanup_dangling<aig_network, xag_network>( miter_ );
-        // future::xag_minmc_resynthesis resyn_mc;
-        // for ( uint32_t j = 0; j < 3; j++ )
-        // {
-        //   cut_rewriting( xag, resyn_mc, ps );
-        //   xag = cleanup_dangling( xag );
-        // }
-        // miter_ = cleanup_dangling<xag_network, aig_network>( xag );
       }
 
       stopwatch<>::duration time_sat{};
-      stopwatch<>::duration time_resub{};
+      stopwatch<>::duration time_func_reduction{};
       auto res = call_with_stopwatch( time_sat, [&]() { 
         return try_sat_solver( scl <<= 1 ); } );
       if ( res )
@@ -175,7 +166,7 @@ public:
         fps.verbose = ps_.verbose;
         func_reduction_stats fst;
         fps.conflict_limit = ( rcl <<= 3 );
-        miter_ = call_with_stopwatch( time_resub, [&]() { return cleanup_func( miter_, rcl ); } );
+        miter_ = call_with_stopwatch( time_func_reduction, [&]() { return cleanup_func( miter_, rcl ); } );
         miter_ = cleanup_dangling( miter_ );
       }
     }
