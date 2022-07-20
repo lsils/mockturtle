@@ -1,11 +1,11 @@
 .. _cost_generic_resub:
 
-Optimization customized cost
+Cost-generic resubstitution algorithm
 -------------------------
 
 **Header:** ``mockturtle/algorithms/experimental/cost_generic_resub.hpp``
 
-This header file defines a function to optimize a network with a customized cost function. 
+This header file defines a resubstitution algorithm to optimize a network with a customized cost function. 
 
 .. code-block:: c++
 
