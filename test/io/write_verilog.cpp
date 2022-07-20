@@ -212,7 +212,7 @@ TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
   klut.add_binding( klut.get_node( f2 ), 2 );
 
   std::ostringstream out;
-  write_verilog( klut, out );
+  write_verilog_with_binding( klut, out );
 
   CHECK( out.str() == "module top( x0 , x1 , x2 , y0 , y1 , y2 , y3 );\n"
                       "  input x0 , x1 , x2 ;\n"
@@ -265,7 +265,7 @@ TEST_CASE( "write mapped network with multiple driven POs and register names int
   write_verilog_params ps;
   ps.input_names = {{"ref", 1u}, {"data", 2u}};
   ps.output_names = {{"y", 4u}};
-  write_verilog( klut, out, ps );
+  write_verilog_with_binding( klut, out, ps );
 
   CHECK( out.str() == "module top( ref , data , y );\n"
                       "  input [0:0] ref ;\n"
