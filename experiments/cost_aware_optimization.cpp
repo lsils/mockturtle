@@ -2,42 +2,11 @@
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/experimental/cost_aware_optimization.hpp>
-#include <mockturtle/algorithms/experimental/cost_generic_optimization.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
 #include <mockturtle/utils/stopwatch.hpp>
 
 using namespace mockturtle;
-
-template<class Ntk>
-struct level_cost
-{
-public:
-  using cost_t = uint32_t;
-  cost_t operator()( Ntk const& ntk, node<Ntk> const& n,  std::vector<uint32_t> const& fanin_costs = {} ) const
-  {
-    uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_costs ), std::end( fanin_costs ) ) + 1;
-    return _cost;
-  }
-  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, cost_t const context ) const
-  {
-    tot_cost = std::max( tot_cost, context );
-  }
-};
-template<class Ntk>
-struct and_cost
-{
-public:
-  using cost_t = uint32_t;
-  cost_t operator()( Ntk const& ntk, node<Ntk> const& n,  std::vector<uint32_t> const& fanin_costs = {} ) const
-  {
-    return 0;
-  }
-  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, cost_t const context ) const
-  {
-    tot_cost += ntk.is_and( n );
-  }
-};
 
 int main()
 {
@@ -57,16 +26,16 @@ int main()
     assert( result == lorina::return_code::success );
     (void)result;
 
-    // auto costfn = level_cost<xag_network>();
-    auto costfn = and_cost<xag_network>();
+    auto costfn = level_cost<xag_network>();
+    // auto costfn = and_cost<xag_network>();
 
     auto c1 = cost_view( xag, costfn ).get_cost();
 
-    cost_generic_params ps;
-    cost_generic_stats st;
+    cost_aware_params ps;
+    cost_aware_stats st;
     ps.verbose = true;
 
-    cost_generic_optimization( xag, costfn, ps, &st );
+    cost_aware_optimization( xag, costfn, ps, &st );
     xag = cleanup_dangling( xag );
 
     run_time = to_seconds( st.time_total );

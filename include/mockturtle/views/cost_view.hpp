@@ -34,7 +34,7 @@
 
 #include "../networks/events.hpp"
 #include "../traits.hpp"
-#include "../utils/cost_functions.hpp"
+#include "../utils/recursive_cost_functions.hpp"
 #include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
 
@@ -86,16 +86,16 @@ struct cost_view_params
       std::cout << "Sum of supports: " << viewed.get_cost() << "\n";
    \endverbatim
  */
-template<class Ntk, class NodeCostFn, class cost_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
+template<class Ntk, class RecCostFn = recursive_cost_functions<Ntk>, class cost_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
 class cost_view
 {
 };
 
-template<class Ntk, class NodeCostFn, class cost_t>
-class cost_view<Ntk, NodeCostFn, cost_t, true> : public Ntk
+template<class Ntk, class RecCostFn, class cost_t>
+class cost_view<Ntk, RecCostFn, cost_t, true> : public Ntk
 {
 public:
-  using costfn_t = NodeCostFn;
+  using costfn_t = RecCostFn;
 
 public:
   cost_view( Ntk const& ntk, cost_view_params const& ps = {} ) : Ntk( ntk )
@@ -104,16 +104,16 @@ public:
   }
 };
 
-template<class Ntk, class NodeCostFn, class cost_t>
-class cost_view<Ntk, NodeCostFn, cost_t, false> : public Ntk
+template<class Ntk, class RecCostFn, class cost_t>
+class cost_view<Ntk, RecCostFn, cost_t, false> : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-  using costfn_t = NodeCostFn;
+  using costfn_t = RecCostFn;
 
-  explicit cost_view( NodeCostFn const& cost_fn = {}, cost_view_params const& ps = {} )
+  explicit cost_view( RecCostFn const& cost_fn = {}, cost_view_params const& ps = {} )
       : Ntk(), _ps( ps ), context( *this ), _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -130,7 +130,7 @@ public:
    *
    * \param ntk Base network
    */
-  explicit cost_view( Ntk const& ntk, NodeCostFn const& cost_fn = {}, cost_view_params const& ps = {} )
+  explicit cost_view( Ntk const& ntk, RecCostFn const& cost_fn = {}, cost_view_params const& ps = {} )
       : Ntk( ntk ), _ps( ps ), context( ntk ), _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
@@ -145,13 +145,13 @@ public:
   }
 
   /*! \brief Copy constructor. */
-  explicit cost_view( cost_view<Ntk, NodeCostFn, cost_t, false> const& other )
+  explicit cost_view( cost_view<Ntk, RecCostFn, cost_t, false> const& other )
       : Ntk( other ), _ps( other._ps ), context( other.context ), _cost_fn( other._cost_fn )
   {
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  cost_view<Ntk, NodeCostFn, cost_t, false>& operator=( cost_view<Ntk, NodeCostFn, cost_t, false> const& other )
+  cost_view<Ntk, RecCostFn, cost_t, false>& operator=( cost_view<Ntk, RecCostFn, cost_t, false> const& other )
   {
     /* delete the event of this network */
     Ntk::events().release_add_event( add_event );
@@ -272,6 +272,7 @@ public:
     _cost_fn( *this, n, _cost, context[n] );
   }
 
+  /* Create a PI with context*/
   signal create_pi( cost_t pi_cost )
   {
     signal s = Ntk::create_pi();
@@ -291,6 +292,7 @@ public:
     context.resize();
     return s;
   }
+
   signal create_pi( std::string name )
   {
     signal s = Ntk::create_pi( name );
@@ -302,18 +304,19 @@ public:
   {
     Ntk::create_po( f );
   }
+
   void create_po( signal const& f, std::string name )
   {
     Ntk::create_po( f, name );
   }
-
 private:
   cost_t compute_cost( node const& n, uint32_t& _c )
   {
     cost_t _context{};
     if ( this->visited( n ) == this->trav_id() )
     {
-      _context = context[n];
+      _context = context[n]; // do not update context
+      _cost_fn( *this, n, _c, _context );
       return _context;
     }
     if ( this->is_constant( n ) )
@@ -332,8 +335,8 @@ private:
       } );
       _context = context[n] = _cost_fn( *this, n, fanin_costs );
     }
-    this->set_visited( n, this->trav_id() );
     _cost_fn( *this, n, _c, _context );
+    this->set_visited( n, this->trav_id() );
     return _context;
   }
   void compute_cost()
@@ -347,7 +350,7 @@ private:
   cost_view_params _ps;
   node_map<cost_t, Ntk> context;
   uint32_t _cost;
-  NodeCostFn _cost_fn;
+  RecCostFn _cost_fn;
 
   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
 };
@@ -355,7 +358,7 @@ private:
 template<class T>
 cost_view( T const& )->cost_view<T, typename T::costfn_t>;
 
-template<class T, class NodeCostFn>
-cost_view( T const&, NodeCostFn const& ) -> cost_view<T, NodeCostFn, typename NodeCostFn::cost_t>;
+template<class T, class RecCostFn>
+cost_view( T const&, RecCostFn const& ) -> cost_view<T, RecCostFn, typename RecCostFn::cost_t>;
 
 } // namespace mockturtle
