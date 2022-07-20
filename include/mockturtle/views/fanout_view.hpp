@@ -174,15 +174,31 @@ public:
       const auto [_old, _new] = to_substitute.top();
       to_substitute.pop();
 
+      // union find
+      std::unordered_map<node, signal> old_to_new;
       const auto parents = _fanout[_old];
       for ( auto n : parents )
       {
         if ( const auto repl = Ntk::replace_in_node( n, _old, _new ); repl )
         {
-          to_substitute.push( *repl );
+          old_to_new.insert( *repl );
         }
       }
 
+      for ( auto p : old_to_new )
+      {
+        bool inv = false;
+        node _p = p.first;
+        while ( old_to_new.find( _p ) != old_to_new.end() )
+        {
+          signal s = old_to_new[ _p ];
+          inv ^= this->is_complemented( s );
+          _p = this->get_node( s );
+        }
+
+        signal q = inv? this->create_not( this->make_signal( _p ) ) : this->make_signal( _p ); 
+        to_substitute.push( std::pair( p.first, q ) );
+      }
       /* check outputs */
       Ntk::replace_in_outputs( _old, _new );
 
