@@ -174,7 +174,6 @@ public:
 
     st.initial_size = ntk.num_gates();
     topo_view<Ntk>{ntk}.foreach_gate( [&]( auto const n, auto i ) { // TODO: maybe problematic
-    // ntk.foreach_gate( [&]( auto const n, auto i ) { // TODO: maybe problematic
       if ( !ps.optimize_new_nodes && i >= st.initial_size )
       {
         return false; /* terminate */

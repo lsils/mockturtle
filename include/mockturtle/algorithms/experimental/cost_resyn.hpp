@@ -1229,11 +1229,6 @@ private:
 
   std::vector<core_func_t> fns;
   bool isConst;
-
-  // only for paper
-  using clock = typename std::chrono::time_point<std::chrono::high_resolution_clock>;
-  clock timer_start;
-  std::vector<double> efforts;
 };
 
 } // namespace mockturtle::experimental

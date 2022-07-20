@@ -392,10 +392,10 @@ private:
 
 } /* namespace detail */
 
-using cost_aware_params = boolean_optimization_params<costfn_windowing_params, null_params>;
-using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, search_core_stats>;
+using cost_generic_resub_params = boolean_optimization_params<costfn_windowing_params, null_params>;
+using cost_generic_resub_stats = boolean_optimization_stats<costfn_windowing_stats, search_core_stats>;
 
-/*! \brief Generic resubstitution algorithm.
+/*! \brief Cost-generic resubstitution algorithm.
  *
  * This algorithm creates a reconvergence-driven window for each node in the 
  * network, collects divisors, and builds the resynthesis problem. A search core
@@ -409,7 +409,7 @@ using cost_aware_stats = boolean_optimization_stats<costfn_windowing_stats, sear
  * \param pst Optimization statistics
  */
 template<class Ntk, class CostFn>
-void cost_generic_resub( Ntk& ntk, CostFn cost_fn, cost_aware_params const& ps, cost_aware_stats* pst = nullptr )
+void cost_generic_resub( Ntk& ntk, CostFn cost_fn, cost_generic_resub_params const& ps, cost_generic_resub_stats* pst = nullptr )
 {
   fanout_view fntk( ntk );
   cost_view viewed( fntk, cost_fn );
@@ -420,7 +420,7 @@ void cost_generic_resub( Ntk& ntk, CostFn cost_fn, cost_aware_params const& ps, 
   using resyn_t = typename detail::costfn_resynthesis<Viewed, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<Viewed, windowing_t, resyn_t>;
 
-  cost_aware_stats st;
+  cost_generic_resub_stats st;
   opt_t p( viewed, ps, st );
   p.run();
   if ( ps.verbose )

@@ -25,7 +25,7 @@
 
 /*!
   \file cost_view.hpp
-  \brief Implements get_cost for a network
+  \brief Implements various cost estimation methods for a network
 
   \author Hanyu Wang
 */
@@ -79,11 +79,11 @@ struct cost_view_params
       // create network somehow
       xag_network xag = ...;
 
-      // create a cost view on the network
-      auto viewed = cost_view( xag, supp_cost<xag_network>() );
+      // create a cost view on the network, for example size cost
+      auto viewed = cost_view( xag, size_cost_function<xag_network>() );
 
-      // print sum of supports
-      std::cout << "Sum of supports: " << viewed.get_cost() << "\n";
+      // print size
+      std::cout << "size: " << viewed.get_cost() << "\n";
    \endverbatim
  */
 template<class Ntk, class RecCostFn = recursive_cost_functions<Ntk>, class context_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
@@ -236,13 +236,6 @@ public:
     }
     compute_cost( n, _c );
     return _c;
-  }
-
-  uint32_t get_dissipate_cost( node const& n ) const
-  {
-    uint32_t tmp_cost{};
-    _cost_fn( *this, n, tmp_cost );
-    return tmp_cost;
   }
 
   void update_cost()

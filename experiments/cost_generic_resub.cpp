@@ -30,8 +30,8 @@ int main()
 
     auto c1 = cost_view( xag, costfn ).get_cost();
 
-    cost_aware_params ps;
-    cost_aware_stats st;
+    cost_generic_resub_params ps;
+    cost_generic_resub_stats st;
     ps.verbose = true;
 
     cost_generic_resub( xag, costfn, ps, &st );
