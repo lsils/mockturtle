@@ -28,7 +28,7 @@ int main()
 
     auto costfn = t_depth_cost_function<xag_network>();
 
-    auto c1 = cost_view( xag, costfn ).get_cost();
+    auto cost_before = cost_view( xag, costfn ).get_cost();
 
     cost_generic_resub_params ps;
     cost_generic_resub_stats st;
@@ -39,10 +39,10 @@ int main()
 
     run_time = to_seconds( st.time_total );
 
-    auto _c1 = cost_view( xag, costfn ).get_cost();
+    auto cost_after = cost_view( xag, costfn ).get_cost();
 
     const auto cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
-    exp( benchmark, c1, _c1, run_time, cec );
+    exp( benchmark, cost_before, cost_after, run_time, cec );
   }
   exp.save();
   exp.table();
