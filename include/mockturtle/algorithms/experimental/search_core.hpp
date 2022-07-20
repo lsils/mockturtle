@@ -88,7 +88,7 @@ public:
   using stats = search_core_stats;
   using signal = typename Ntk::signal;
   using node = typename Ntk::node;
-  using cost_t = typename Ntk::costfn_t::cost_t;
+  using context_t = typename Ntk::costfn_t::context_t;
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
 
@@ -133,7 +133,6 @@ private:
   {
     return ( *ptts )[divisors[idx]];
   }
-
   /**
  * Cost Evaluation Functions
  */
@@ -1175,7 +1174,7 @@ public:
       signal const& s = forest.create_pi();
       node n = forest.get_node( s );
       forest_leaves.emplace_back( s );
-      cost_t div_cost = ntk.get_context( ntk.get_node( div ) );
+      context_t div_cost = ntk.get_context( ntk.get_node( div ) );
       forest.set_context( n, div_cost );
       div_costs.emplace_back( div_cost );
     }
@@ -1198,7 +1197,7 @@ private:
 
   const std::vector<TT>* ptts;
   std::vector<uint32_t> divisors;
-  std::vector<cost_t> div_costs;
+  std::vector<context_t> div_costs;
   std::array<TT, 0x100u> tts_xors;
   std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor;
   std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor_xor;

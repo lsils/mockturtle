@@ -26,8 +26,7 @@ int main()
     assert( result == lorina::return_code::success );
     (void)result;
 
-    auto costfn = level_cost<xag_network>();
-    // auto costfn = and_cost<xag_network>();
+    auto costfn = t_depth_cost_function<xag_network>();
 
     auto c1 = cost_view( xag, costfn ).get_cost();
 

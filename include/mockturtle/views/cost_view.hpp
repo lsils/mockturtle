@@ -86,13 +86,13 @@ struct cost_view_params
       std::cout << "Sum of supports: " << viewed.get_cost() << "\n";
    \endverbatim
  */
-template<class Ntk, class RecCostFn = recursive_cost_functions<Ntk>, class cost_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
+template<class Ntk, class RecCostFn = recursive_cost_functions<Ntk>, class context_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
 class cost_view
 {
 };
 
-template<class Ntk, class RecCostFn, class cost_t>
-class cost_view<Ntk, RecCostFn, cost_t, true> : public Ntk
+template<class Ntk, class RecCostFn, class context_t>
+class cost_view<Ntk, RecCostFn, context_t, true> : public Ntk
 {
 public:
   using costfn_t = RecCostFn;
@@ -104,8 +104,8 @@ public:
   }
 };
 
-template<class Ntk, class RecCostFn, class cost_t>
-class cost_view<Ntk, RecCostFn, cost_t, false> : public Ntk
+template<class Ntk, class RecCostFn, class context_t>
+class cost_view<Ntk, RecCostFn, context_t, false> : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
@@ -145,13 +145,13 @@ public:
   }
 
   /*! \brief Copy constructor. */
-  explicit cost_view( cost_view<Ntk, RecCostFn, cost_t, false> const& other )
+  explicit cost_view( cost_view<Ntk, RecCostFn, context_t, false> const& other )
       : Ntk( other ), _ps( other._ps ), context( other.context ), _cost_fn( other._cost_fn )
   {
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  cost_view<Ntk, RecCostFn, cost_t, false>& operator=( cost_view<Ntk, RecCostFn, cost_t, false> const& other )
+  cost_view<Ntk, RecCostFn, context_t, false>& operator=( cost_view<Ntk, RecCostFn, context_t, false> const& other )
   {
     /* delete the event of this network */
     Ntk::events().release_add_event( add_event );
@@ -176,20 +176,32 @@ public:
   }
 
   /**
-   * @brief Get the accumulate cost of a single node
+   * @brief Get the context of a node
    * 
    * @param n 
-   * @return cost_t 
+   * @return context_t context
    */
-  cost_t get_context( node const& n ) const
+  context_t get_context( node const& n ) const
   {
     return context[n];
   }
 
   /**
+   * @brief Set the context of a node
+   * 
+   * @param n 
+   * @param cost_val 
+   */
+  void set_context( node const& n, context_t cost_val )
+  {
+    context[n] = cost_val;
+    this->set_visited( n, this->trav_id() );
+  }
+
+  /**
    * @brief Get the cost of the whole network
    * 
-   * @return cost_t 
+   * @return context_t 
    */
   uint32_t get_cost() const
   {
@@ -197,23 +209,9 @@ public:
   }
 
   /**
-   * @brief Get the cost of the whole network
-   * 
-   * @return cost_t 
-   */
-  uint32_t get_tmp_cost()
-  {
-    uint32_t _tmp_cost = 0u; /* must define the zero initialization */
-    this->foreach_po( [&]( auto const& f ) {
-      compute_cost( this->get_node( f ), _tmp_cost );
-    } );
-    return _tmp_cost;
-  }
-
-  /**
    * @brief Get the cost of one single node
    * 
-   * @return cost_t 
+   * @return context_t 
    */
   uint32_t get_cost( node const& n )
   {
@@ -226,7 +224,7 @@ public:
   /**
    * @brief Get the cost of one single node starting from divisors
    * 
-   * @return cost_t 
+   * @return context_t 
    */
   uint32_t get_cost( node const& n, std::vector<signal> const& divs )
   {
@@ -247,15 +245,9 @@ public:
     return tmp_cost;
   }
 
-  void set_context( node const& n, cost_t cost_val )
-  {
-    context[n] = cost_val;
-    this->set_visited( n, this->trav_id() );
-  }
-
   void update_cost()
   {
-    context.reset( cost_t{} );
+    context.reset( context_t{} );
     this->incr_trav_id();
     compute_cost();
   }
@@ -264,7 +256,7 @@ public:
   {
     context.resize();
 
-    std::vector<cost_t> fanin_costs;
+    std::vector<context_t> fanin_costs;
     this->foreach_fanin( n, [&]( auto const& f ) {
       fanin_costs.emplace_back( context[this->get_node( f )] );
     } );
@@ -273,7 +265,7 @@ public:
   }
 
   /* Create a PI with context*/
-  signal create_pi( cost_t pi_cost )
+  signal create_pi( context_t pi_cost )
   {
     signal s = Ntk::create_pi();
     context.resize();
@@ -310,9 +302,9 @@ public:
     Ntk::create_po( f, name );
   }
 private:
-  cost_t compute_cost( node const& n, uint32_t& _c )
+  context_t compute_cost( node const& n, uint32_t& _c )
   {
-    cost_t _context{};
+    context_t _context{};
     if ( this->visited( n ) == this->trav_id() )
     {
       _context = context[n]; // do not update context
@@ -321,7 +313,7 @@ private:
     }
     if ( this->is_constant( n ) )
     {
-      _context = context[n] = cost_t{};
+      _context = context[n] = context_t{};
     }
     else if ( this->is_pi( n ) )
     {
@@ -329,7 +321,7 @@ private:
     }
     else
     {
-      std::vector<cost_t> fanin_costs;
+      std::vector<context_t> fanin_costs;
       this->foreach_fanin( n, [&]( auto const& f ) {
         fanin_costs.emplace_back( compute_cost( this->get_node( f ), _c ) );
       } );
@@ -348,7 +340,7 @@ private:
   }
 
   cost_view_params _ps;
-  node_map<cost_t, Ntk> context;
+  node_map<context_t, Ntk> context;
   uint32_t _cost;
   RecCostFn _cost_fn;
 
@@ -359,6 +351,6 @@ template<class T>
 cost_view( T const& )->cost_view<T, typename T::costfn_t>;
 
 template<class T, class RecCostFn>
-cost_view( T const&, RecCostFn const& ) -> cost_view<T, RecCostFn, typename RecCostFn::cost_t>;
+cost_view( T const&, RecCostFn const& ) -> cost_view<T, RecCostFn, typename RecCostFn::context_t>;
 
 } // namespace mockturtle

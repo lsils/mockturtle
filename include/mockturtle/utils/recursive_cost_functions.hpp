@@ -44,22 +44,38 @@ template<class Ntk>
 struct recursive_cost_functions
 {
   using base_type = recursive_cost_functions;
-  using cost_t = uint32_t;
-  virtual cost_t operator()( Ntk const& ntk, node<Ntk> const& n,  std::vector<cost_t> const& fanin_costs = {} ) const = 0;
-  virtual void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, cost_t const context ) const = 0;
+  using context_t = uint32_t;
+  virtual context_t operator()( Ntk const& ntk, node<Ntk> const& n,  std::vector<context_t> const& fanin_costs = {} ) const = 0;
+  virtual void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const = 0;
 };
 
 template<class Ntk>
 struct depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
-  using cost_t = uint32_t;
-  cost_t operator()( Ntk const& ntk, node<Ntk> const& n,  std::vector<cost_t> const& fanin_costs = {} ) const
+  using context_t = uint32_t;
+  context_t operator()( Ntk const& ntk, node<Ntk> const& n,  std::vector<context_t> const& fanin_costs = {} ) const
   {
     uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_costs ), std::end( fanin_costs ) ) + 1;
     return _cost;
   }
-  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, cost_t const context ) const
+  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const
+  {
+    tot_cost = std::max( tot_cost, context );
+  }
+};
+
+template<class Ntk>
+struct t_depth_cost_function : recursive_cost_functions<Ntk>
+{
+public:
+  using context_t = uint32_t;
+  context_t operator()( Ntk const& ntk, node<Ntk> const& n,  std::vector<context_t> const& fanin_costs = {} ) const
+  {
+    uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_costs ), std::end( fanin_costs ) ) + ntk.is_and( n );
+    return _cost;
+  }
+  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const
   {
     tot_cost = std::max( tot_cost, context );
   }
@@ -69,12 +85,12 @@ template<class Ntk>
 struct size_cost_function : recursive_cost_functions<Ntk>
 {
 public:
-  using cost_t = uint32_t;
-  cost_t operator()( Ntk const& ntk, node<Ntk> const& n,  std::vector<uint32_t> const& fanin_costs = {} ) const
+  using context_t = uint32_t;
+  context_t operator()( Ntk const& ntk, node<Ntk> const& n,  std::vector<uint32_t> const& fanin_costs = {} ) const
   {
     return 0;
   }
-  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, cost_t const context ) const
+  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const
   {
     tot_cost += ( !ntk.is_pi( n ) && ntk.visited( n ) != ntk.trav_id() )? 1:0;
   }
