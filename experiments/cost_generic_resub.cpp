@@ -1,7 +1,7 @@
 #include <experiments.hpp>
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/experimental/cost_aware_optimization.hpp>
+#include <mockturtle/algorithms/experimental/cost_generic_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
 #include <mockturtle/utils/stopwatch.hpp>
@@ -15,7 +15,7 @@ int main()
   using namespace experiments;
 
   /* run the actual experiments */
-  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "cost_aware_optimization", "benchmark", "C1", "C1\'", "runtime", "cec" );
+  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "cost_generic_resub", "benchmark", "cost before", "cost after", "runtime", "cec" );
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     float run_time = 0;
@@ -34,7 +34,7 @@ int main()
     cost_aware_stats st;
     ps.verbose = true;
 
-    cost_aware_optimization( xag, costfn, ps, &st );
+    cost_generic_resub( xag, costfn, ps, &st );
     xag = cleanup_dangling( xag );
 
     run_time = to_seconds( st.time_total );

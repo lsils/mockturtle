@@ -34,8 +34,8 @@
 
 #include "../networks/events.hpp"
 #include "../traits.hpp"
-#include "../utils/recursive_cost_functions.hpp"
 #include "../utils/node_map.hpp"
+#include "../utils/recursive_cost_functions.hpp"
 #include "immutable_view.hpp"
 
 #include <cstdint>
@@ -301,6 +301,7 @@ public:
   {
     Ntk::create_po( f, name );
   }
+
 private:
   context_t compute_cost( node const& n, uint32_t& _c )
   {
@@ -348,7 +349,7 @@ private:
 };
 
 template<class T>
-cost_view( T const& )->cost_view<T, typename T::costfn_t>;
+cost_view( T const& ) -> cost_view<T, typename T::costfn_t>;
 
 template<class T, class RecCostFn>
 cost_view( T const&, RecCostFn const& ) -> cost_view<T, RecCostFn, typename RecCostFn::context_t>;

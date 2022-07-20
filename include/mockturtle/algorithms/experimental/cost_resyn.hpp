@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file search_core.hpp
+  \file cost_resyn.hpp
   \brief the lower level searching core
 
   \author Hanyu Wang
@@ -66,7 +66,7 @@ struct search_core_stats
   /* data */
   void report() const
   {
-    fmt::print( "[i]         <search_core>\n" );
+    fmt::print( "[i]         <cost_resyn>\n" );
     fmt::print( "[i]             Evalutation      : {:>5.2f} secs\n", to_seconds( time_eval ) );
     fmt::print( "[i]             Searching        : {:>5.2f} secs\n", to_seconds( time_search ) );
     fmt::print( "[i]             Avg. forest size : {:>5.2f}\n", (float)size_forest / num_problems );
@@ -82,7 +82,7 @@ struct search_core_stats
 };
 
 template<class Ntk, class TT>
-class search_core
+class cost_resyn
 {
 public:
   using stats = search_core_stats;
@@ -1092,13 +1092,13 @@ private:
   }
   struct core_func_t
   {
-    std::function<void( search_core* )> func;
+    std::function<void( cost_resyn* )> func;
     uint32_t effort;
     uint32_t score;
-    core_func_t( std::function<void( search_core* )> func, uint32_t effort ) : func( func ), effort( effort )
+    core_func_t( std::function<void( cost_resyn* )> func, uint32_t effort ) : func( func ), effort( effort )
     {
     }
-    void operator()( search_core* pcore )
+    void operator()( cost_resyn* pcore )
     {
       func( pcore );
     }
@@ -1126,27 +1126,27 @@ private:
   }
 
 public:
-  explicit search_core( Ntk const& ntk, stats& st ) noexcept
+  explicit cost_resyn( Ntk const& ntk, stats& st ) noexcept
       : ntk( ntk ), st( st )
   {
     fns.clear();
-    fns.emplace_back( []( search_core* _core ) { _core->find_wire(); }, 0 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_xor(); }, 1 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_and(); }, 1 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_or(); }, 1 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_xor_xor(); }, 2 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_xor_and(); }, 2 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_and_and(); }, 2 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_and_or(); }, 2 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_or_or(); }, 2 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_or_and(); }, 2 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_and_xor(); }, 2 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_xor_and_and(); }, 3 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_xor_xor_and(); }, 3 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_xor_xor_xor(); }, 3 ); // bad
-    fns.emplace_back( []( search_core* _core ) { _core->find_and_xor_xor(); }, 3 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_and_and_xor(); }, 3 );
-    fns.emplace_back( []( search_core* _core ) { _core->find_and_and_and(); }, 3 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_wire(); }, 0 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor(); }, 1 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and(); }, 1 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_or(); }, 1 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_xor(); }, 2 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_and(); }, 2 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_and(); }, 2 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_or(); }, 2 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_or_or(); }, 2 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_or_and(); }, 2 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_xor(); }, 2 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_and_and(); }, 3 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_xor_and(); }, 3 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_xor_xor(); }, 3 ); // bad
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_xor_xor(); }, 3 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_and_xor(); }, 3 );
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_and_and(); }, 3 );
     divisors.reserve( 200u );
   }
   template<class iterator_type, class truth_table_storage_type>
