@@ -203,10 +203,8 @@ public:
     return {0, static_cast<uint64_t>( value ? 1 : 0 )};
   }
 
-  signal create_pi( std::string const& name = std::string() )
+  signal create_pi()
   {
-    (void)name;
-
     const auto index = _storage->nodes.size();
     auto& node = _storage->nodes.emplace_back();
     node.children[0].data = node.children[1].data = _storage->inputs.size();
@@ -215,10 +213,8 @@ public:
     return {index, 0};
   }
 
-  uint32_t create_po( signal const& f, std::string const& name = std::string() )
+  uint32_t create_po( signal const& f )
   {
-    (void)name;
-
     /* increase ref-count to children */
     _storage->nodes[f.index].data[0].h1++;
     auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
@@ -227,10 +223,8 @@ public:
     return po_index;
   }
 
-  signal create_ro( std::string const& name = std::string() )
+  signal create_ro()
   {
-    (void)name;
-
     auto const index = _storage->nodes.size();
     auto& node = _storage->nodes.emplace_back();
     node.children[0].data = node.children[1].data = _storage->inputs.size();
@@ -238,10 +232,8 @@ public:
     return {index, 0};
   }
 
-  uint32_t create_ri( signal const& f, int8_t reset = 0, std::string const& name = std::string() )
+  uint32_t create_ri( signal const& f, int8_t reset = 0 )
   {
-    (void)name;
-
     /* increase ref-count to children */
     _storage->nodes[f.index].data[0].h1++;
     auto const ri_index = static_cast<uint32_t>( _storage->outputs.size() );

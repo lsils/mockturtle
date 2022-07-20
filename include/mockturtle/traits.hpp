@@ -133,7 +133,7 @@ struct has_create_pi : std::false_type
 };
 
 template<class Ntk>
-struct has_create_pi<Ntk, std::void_t<decltype( std::declval<Ntk>().create_pi( std::string() ) )>> : std::true_type
+struct has_create_pi<Ntk, std::void_t<decltype( std::declval<Ntk>().create_pi() )>> : std::true_type
 {
 };
 
@@ -148,7 +148,7 @@ struct has_create_po : std::false_type
 };
 
 template<class Ntk>
-struct has_create_po<Ntk, std::void_t<decltype( std::declval<Ntk>().create_po( std::declval<signal<Ntk>>(), std::string() ) )>> : std::true_type
+struct has_create_po<Ntk, std::void_t<decltype( std::declval<Ntk>().create_po( std::declval<signal<Ntk>>() ) )>> : std::true_type
 {
 };
 
@@ -163,7 +163,7 @@ struct has_create_ro : std::false_type
 };
 
 template<class Ntk>
-struct has_create_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ro( std::string() ) )>> : std::true_type
+struct has_create_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ro() )>> : std::true_type
 {
 };
 
@@ -178,7 +178,7 @@ struct has_create_ri : std::false_type
 };
 
 template<class Ntk>
-struct has_create_ri<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ri( std::declval<signal<Ntk>>(), int8_t(), std::string() ) )>> : std::true_type
+struct has_create_ri<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ri( std::declval<signal<Ntk>>(), int8_t() ) )>> : std::true_type
 {
 };
 
