@@ -80,7 +80,7 @@ public:
 
   signal create_pi( std::string const& name = {} )
   {
-    const auto s = Ntk::create_pi( name );
+    const auto s = Ntk::create_pi();
     if ( !name.empty() )
     {
       set_name( s, name );
@@ -91,7 +91,7 @@ public:
   void create_po( signal const& s, std::string const& name = {} )
   {
     const auto index = Ntk::num_pos();
-    Ntk::create_po( s, name );
+    Ntk::create_po( s );
     if ( !name.empty() )
     {
       set_output_name( index, name );
