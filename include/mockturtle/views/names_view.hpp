@@ -94,6 +94,7 @@ public:
 
   /*! \brief Creates a primary output and set its name.
    *
+   * \param s Signal that drives the created primary output
    * \param name Name of the created primary output
    */
   void create_po( signal const& s, std::string const& name = {} )
@@ -117,6 +118,8 @@ public:
   }
 
   /*! \brief Gets network name.
+   *
+   * \return Network name
    */
   std::string get_network_name() const noexcept
   {
