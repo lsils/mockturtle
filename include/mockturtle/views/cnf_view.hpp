@@ -284,9 +284,9 @@ public:
     }
   }
 
-  signal create_pi( std::string const& name = std::string() )
+  signal create_pi()
   {
-    const auto f = Ntk::create_pi( name );
+    const auto f = Ntk::create_pi();
 
     const auto v = solver_.add_variable();
 
