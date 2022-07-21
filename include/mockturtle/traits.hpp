@@ -133,7 +133,7 @@ struct has_create_pi : std::false_type
 };
 
 template<class Ntk>
-struct has_create_pi<Ntk, std::void_t<decltype( std::declval<Ntk>().create_pi( std::string() ) )>> : std::true_type
+struct has_create_pi<Ntk, std::void_t<decltype( std::declval<Ntk>().create_pi() )>> : std::true_type
 {
 };
 
@@ -148,7 +148,7 @@ struct has_create_po : std::false_type
 };
 
 template<class Ntk>
-struct has_create_po<Ntk, std::void_t<decltype( std::declval<Ntk>().create_po( std::declval<signal<Ntk>>(), std::string() ) )>> : std::true_type
+struct has_create_po<Ntk, std::void_t<decltype( std::declval<Ntk>().create_po( std::declval<signal<Ntk>>() ) )>> : std::true_type
 {
 };
 
@@ -163,7 +163,7 @@ struct has_create_ro : std::false_type
 };
 
 template<class Ntk>
-struct has_create_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ro( std::string() ) )>> : std::true_type
+struct has_create_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ro() )>> : std::true_type
 {
 };
 
@@ -178,7 +178,7 @@ struct has_create_ri : std::false_type
 };
 
 template<class Ntk>
-struct has_create_ri<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ri( std::declval<signal<Ntk>>(), int8_t(), std::string() ) )>> : std::true_type
+struct has_create_ri<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ri( std::declval<signal<Ntk>>(), int8_t() ) )>> : std::true_type
 {
 };
 
@@ -1775,6 +1775,36 @@ struct has_foreach_cell_fanin<Ntk, std::void_t<decltype( std::declval<Ntk>().for
 
 template<class Ntk>
 inline constexpr bool has_foreach_cell_fanin_v = has_foreach_cell_fanin<Ntk>::value;
+#pragma endregion
+
+#pragma region has_has_binding
+template<class Ntk, class = void>
+struct has_has_binding : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_binding<Ntk, std::void_t<decltype( std::declval<Ntk>().has_binding( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_binding_v = has_has_binding<Ntk>::value;
+#pragma endregion
+
+#pragma region has_get_binding_index
+template<class Ntk, class = void>
+struct has_get_binding_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_get_binding_index<Ntk, std::void_t<decltype( std::declval<Ntk>().get_binding_index( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_get_binding_index_v = has_get_binding_index<Ntk>::value;
 #pragma endregion
 
 #pragma region has_clear_values

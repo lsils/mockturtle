@@ -85,7 +85,7 @@ public:
   {
     for ( auto const& o : outputs )
     {
-      ntk_.create_po( signals[o], o );
+      ntk_.create_po( signals[o] );
     }
 
     for ( auto const& latch : latches )
@@ -110,7 +110,7 @@ public:
 
   virtual void on_input( const std::string& name ) const override
   {
-    signals[name] = ntk_.create_pi( name );
+    signals[name] = ntk_.create_pi();
     if constexpr ( has_set_name_v<Ntk> )
     {
       ntk_.set_name( signals[name], name );
@@ -128,7 +128,7 @@ public:
 
   virtual void on_latch( const std::string& input, const std::string& output, const std::optional<latch_type>& l_type, const std::optional<std::string>& control, const std::optional<latch_init_value>& reset ) const override
   {
-    signals[output] = ntk_.create_ro( output );
+    signals[output] = ntk_.create_ro();
     if constexpr ( has_set_name_v<Ntk> && has_set_output_name_v<Ntk> )
     {
       ntk_.set_name( signals[output], output );

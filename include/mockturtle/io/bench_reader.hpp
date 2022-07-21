@@ -85,17 +85,25 @@ public:
   {
     for ( auto const& o : outputs )
     {
-      _ntk.create_po( signals.at( o ), o );
+      _ntk.create_po( signals[o] );
     }
   }
 
   void on_input( const std::string& name ) const override
   {
-    signals[name] = _ntk.create_pi( name );
+    signals[name] = _ntk.create_pi();
+    if constexpr ( has_set_name_v<Ntk> )
+    {
+      _ntk.set_name( signals[name], name );
+    }
   }
 
   void on_output( const std::string& name ) const override
   {
+    if constexpr ( has_set_output_name_v<Ntk> )
+    {
+      _ntk.set_output_name( outputs.size(), name );
+    }
     outputs.emplace_back( name );
   }
 
