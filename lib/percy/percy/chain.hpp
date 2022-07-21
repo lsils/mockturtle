@@ -31,17 +31,6 @@ namespace percy
             std::vector<int> outputs;
 
         public:
-
-          template <class B>
-          void serialize(B& buf) const {
-            buf << nr_in << fanin << op_tt_size << compiled_functions << steps << operators << outputs;
-          }
-
-          template <class B>
-          void parse(B& buf) {
-            buf >> nr_in >> fanin >> op_tt_size >> compiled_functions >> steps >> operators >> outputs;
-          }
-
             chain() 
             { 
                 reset(0, 0, 0, 0);
@@ -80,8 +69,6 @@ namespace percy
             int get_nr_steps() const { return steps.size(); }
             int get_nr_inputs() const { return nr_in; }
             int get_nr_outputs() const { return outputs.size(); }
-            int get_nr_compiled_functions() const { return compiled_functions.size(); }
-
             const std::vector<int>& get_step(int i) const { return steps[i]; }
             const std::vector<int>& get_outputs() const { return outputs; }
 

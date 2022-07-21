@@ -132,10 +132,8 @@ public:
    *
    * Each created primary input is stored in a node and contributes to the size
    * of the network.
-   *
-   * \param name Optional name for the input
    */
-  signal create_pi( std::string const& name = std::string() );
+  signal create_pi();
 
   /*! \brief Creates a primary output in the network.
    *
@@ -145,9 +143,8 @@ public:
    * point to the same signal.
    *
    * \param s Signal that drives the created primary output
-   * \param name Optional name for the output
    */
-  void create_po( signal const& s, std::string const& name = std::string() );
+  void create_po( signal const& s );
 
   /*! \brief Creates a register output in the network.
    *
@@ -162,10 +159,8 @@ public:
    * pairs; they are associated to each other by index, i.e., the
    * first created register output corresponds to the first created
    * register input, etc.
-   *
-   * \param name Optional name for the register output
    */
-  signal create_ro( std::string const& name = std::string() );
+  signal create_ro();
 
   /*! \brief Creates a register input in the network.
    *
@@ -184,10 +179,10 @@ public:
    * first created register output corresponds to the first created
    * register input, etc.
    *
-   * \param s Signal that drives the created primary output
-   * \param name Optional name for the output
+   * \param s Signal that drives the created register input
+   * \param reset Reset value
    */
-  void create_ri( signal const& s, std::string const& name = std::string() );
+  void create_ri( signal const& s, int8_t reset );
 
   /*! \brief Checks whether the network is combinational.
    *

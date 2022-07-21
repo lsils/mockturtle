@@ -82,7 +82,7 @@ namespace mockturtle
       res.report_gates_usage();
 
       // write the mapped network in verilog
-      write_verilog( res, "file.v" );
+      write_verilog_with_binding( res, "file.v" );
    \endverbatim
  */
 template<class Ntk>
@@ -149,17 +149,17 @@ public:
     _bindings.erase( n );
   }
 
-  const gate& get_binding( node const& n) const
+  const gate& get_binding( node const& n ) const
   {
     return _library[_bindings[n]];
   }
 
-  bool has_binding( node const& n) const
+  bool has_binding( node const& n ) const
   {
     return _bindings.has( n );
   }
 
-  unsigned int get_binding_index( node const& n) const
+  unsigned int get_binding_index( node const& n ) const
   {
     return _bindings[n];
   }
