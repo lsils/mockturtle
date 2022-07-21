@@ -199,3 +199,44 @@ TEST_CASE( "compute fanouts during node construction after move assignment", "[f
     CHECK( fanouts.size() + ( xag.get_node( f ) == n ) == xag.fanout_size( n ) );
   } );
 }
+
+
+TEST_CASE( "substitute node", "[fanout_view]" )
+{
+  aig_network aig{};
+  fanout_view faig(aig);
+
+  auto const a = faig.create_pi();
+  auto const b = faig.create_pi();
+  auto const c = faig.create_pi(); /* place holder */
+  auto const tmp = faig.create_and( b, c ); /* place holder */
+  auto const f1 = faig.create_and( a, b );
+  auto const f2 = faig.create_and( tmp, a );
+  auto const f3 = faig.create_and( f1, f2 );
+  faig.substitute_node( faig.get_node( tmp ), f1 );
+  faig.create_po( f3 );
+
+  /**
+   * issue #545
+   * 
+   *      f2
+   *     /  \
+   *    /   f3
+   *    \  /  \
+   *  1->f1    a
+   * 
+   * stack:
+   * 1. push (f2->f3)
+   * 2. push (f3->a)
+   * 3. pop (f3->a)
+   * 4. pop (f2->f3) but, f3 is dead !!!
+   */
+
+  faig.substitute_node( faig.get_node( f1 ), faig.get_constant( 1 ) /* constant 1 */ );
+
+  CHECK( faig.is_dead( faig.get_node( f1 ) ) );
+  CHECK( faig.is_dead( faig.get_node( f2 ) ) );
+  CHECK( faig.is_dead( faig.get_node( f3 ) ) );
+  CHECK( faig.po_at( 0 ) == a );
+
+}
