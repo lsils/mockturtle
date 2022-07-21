@@ -374,6 +374,6 @@ TEST_CASE( "10-bit constant multiplication by 661", "[modular_arithmetic]" )
   for ( auto i = 0u; i < 100u; ++i )
   {
     const auto v = dist( gen );
-    CHECK( to_int( simulate<bool>( xag, input_word_simulator( v ) ) ) == ( ( 661 * v ) % 1024 ) );
+    CHECK( to_int( simulate<bool>( xag, input_word_simulator( v ) ) ) == uint64_t( ( 661 * v ) % 1024 ) );
   }
 }

@@ -81,23 +81,6 @@ public:
     return steps.size();
   }
 
-  step const& get_step( uint32_t index ) const
-  {
-    assert( index < steps.size() );
-    return steps[index];
-  }
-
-  uint32_t get_operator( uint32_t index ) const
-  {
-    assert( index < operators.size() );
-    return operators.at( index );
-  }
-
-  int32_t get_output( uint32_t index ) const
-  {
-    return outputs.at( index );
-  }
-
   /* setter */
   void set_step( int32_t index, int32_t fanin1, int32_t fanin2, int32_t fanin3, int32_t op )
   {
@@ -126,9 +109,9 @@ public:
 
     /* temporary truth tables of current step's children */
     std::array<kitty::dynamic_truth_table, 3u> child_tts =
-      { kitty::dynamic_truth_table{nr_in}, kitty::dynamic_truth_table{nr_in}, kitty::dynamic_truth_table{nr_in} };
+      { kitty::dynamic_truth_table{uint32_t(nr_in)}, kitty::dynamic_truth_table{uint32_t(nr_in)}, kitty::dynamic_truth_table{uint32_t(nr_in)} };
 
-    kitty::dynamic_truth_table step_tt{nr_in};
+    kitty::dynamic_truth_table step_tt{uint32_t(nr_in)};
 
     /* some outputs may be simple constants or projections */
     for ( auto h = 0u; h < outputs.size(); ++h )
@@ -467,7 +450,7 @@ public:
   }
 
 public:
-  uint32_t nr_in;
+  int nr_in;
   std::vector<int> outputs;
   std::vector<step> steps;
   std::vector<int> operators;
