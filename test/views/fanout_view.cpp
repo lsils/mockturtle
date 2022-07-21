@@ -201,7 +201,7 @@ TEST_CASE( "compute fanouts during node construction after move assignment", "[f
 }
 
 
-TEST_CASE( "substitute node", "[fanout_view]" )
+TEST_CASE( "substitute node with dependency in fanout view", "[fanout_view]" )
 {
   aig_network aig{};
   fanout_view faig(aig);
@@ -213,23 +213,23 @@ TEST_CASE( "substitute node", "[fanout_view]" )
   auto const f1 = faig.create_and( a, b );
   auto const f2 = faig.create_and( tmp, a );
   auto const f3 = faig.create_and( f1, f2 );
-  faig.substitute_node( faig.get_node( tmp ), f1 );
   faig.create_po( f3 );
+  faig.substitute_node( faig.get_node( tmp ), f1 );
 
   /**
    * issue #545
    * 
-   *      f2
+   *      f3
    *     /  \
-   *    /   f3
+   *    /   f2
    *    \  /  \
    *  1->f1    a
    * 
    * stack:
-   * 1. push (f2->f3)
-   * 2. push (f3->a)
-   * 3. pop (f3->a)
-   * 4. pop (f2->f3) but, f3 is dead !!!
+   * 1. push (f3->f2)
+   * 2. push (f2->a)
+   * 3. pop (f2->a)
+   * 4. pop (f3->f2) but, f2 is dead !!!
    */
 
   faig.substitute_node( faig.get_node( f1 ), faig.get_constant( 1 ) /* constant 1 */ );
@@ -238,5 +238,4 @@ TEST_CASE( "substitute node", "[fanout_view]" )
   CHECK( faig.is_dead( faig.get_node( f2 ) ) );
   CHECK( faig.is_dead( faig.get_node( f3 ) ) );
   CHECK( faig.po_at( 0 ) == a );
-
 }

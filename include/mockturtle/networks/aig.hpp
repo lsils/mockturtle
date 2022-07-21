@@ -593,6 +593,9 @@ public:
       const auto [_old, _new] = to_substitute.top();
       to_substitute.pop();
 
+
+      std::unordered_map<node, signal> old_to_new;
+
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
         if ( is_ci( idx ) || is_dead( idx ) )
@@ -600,8 +603,18 @@ public:
 
         if ( const auto repl = replace_in_node( idx, _old, _new ); repl )
         {
-          to_substitute.push( *repl );
+          old_to_new.insert( *repl );
         }
+      }
+
+      for ( auto p : old_to_new )
+      {
+        while ( old_to_new.find( this->get_node( p.second ) ) != old_to_new.end() )
+        {
+          p.second = this->is_complemented( p.second ) ? this->create_not( old_to_new[this->get_node( p.second )] )
+                                                       : old_to_new[this->get_node( p.second )];
+        }
+        to_substitute.push( p );
       }
 
       /* check outputs */

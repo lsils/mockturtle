@@ -961,3 +961,41 @@ TEST_CASE( "substitute multiple nodes", "[aig]" )
     }
   });
 }
+
+TEST_CASE( "substitute node with dependency in aig_network", "[aig]" )
+{
+  aig_network aig{};
+
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const c = aig.create_pi(); /* place holder */
+  auto const tmp = aig.create_and( b, c ); /* place holder */
+  auto const f1 = aig.create_and( a, b );
+  auto const f2 = aig.create_and( f1, tmp );
+  auto const f3 = aig.create_and( f1, a );
+  aig.create_po( f2 );
+  aig.substitute_node( aig.get_node( tmp ), f3 );
+
+  /**
+   * issue #545
+   * 
+   *      f2
+   *     /  \
+   *    /   f3
+   *    \  /  \
+   *  1->f1    a
+   * 
+   * stack:
+   * 1. push (f2->f3)
+   * 2. push (f3->a)
+   * 3. pop (f3->a)
+   * 4. pop (f2->f3) but, f3 is dead !!!
+   */
+
+  aig.substitute_node( aig.get_node( f1 ), aig.get_constant( 1 ) /* constant 1 */ );
+
+  CHECK( aig.is_dead( aig.get_node( f1 ) ) );
+  CHECK( aig.is_dead( aig.get_node( f2 ) ) );
+  CHECK( aig.is_dead( aig.get_node( f3 ) ) );
+  CHECK( aig.po_at( 0 ) == a );
+}
