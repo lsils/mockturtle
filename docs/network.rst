@@ -21,7 +21,7 @@ Mandatory types and constants
 The interaction with a logic network data structure is performed using four
 types for which no application details are assumed.  The following four types
 must be defined within the network data structure.  They can be implemented as
-nested type, but may also be exposed as type alias.
+nested types, or be exposed as type aliases.
 
 .. doxygenclass:: mockturtle::network
    :members: base_type, node, signal, storage
@@ -60,7 +60,7 @@ Methods
 The remainder lists methods that may be implemented by a network data structure.
 Algorithms can check whether a method ``method`` is implemented using the
 ``has_method`` struct.  As an example to check whether the method
-``get_constant`` is implemented one of the following two static assertions
+``get_constant`` is implemented, one of the following two static assertions
 can be added to the beginning of an algorithm:
 
 .. code-block:: c++
@@ -78,8 +78,8 @@ Duplicate network
    :members: clone
    :no-link:
 
-Primary I/O and constants
-~~~~~~~~~~~~~~~~~~~~~~~~~
+I/O and constants
+~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
    :members: get_constant, create_pi, create_po, create_ro, create_ri, is_combinational, is_constant, is_ci, is_pi, is_ro, constant_value, latch_reset
@@ -124,7 +124,7 @@ Restructuring
 ~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: substitute_node, substitute_nodes, replace_in_node, replace_in_outputs, take_out_node, is_dead, substitute_node_of_parents
+   :members: substitute_node, substitute_nodes, replace_in_node, replace_in_outputs, take_out_node, is_dead
    :no-link:
 
 Structural properties

@@ -25,7 +25,7 @@
 
 /*!
   \file interface.hpp
-  \brief Type traits and checkers for the network interface
+  \brief Documentation of network interfaces
 
   \author Heinz Riener
   \author Mathias Soeken
@@ -72,7 +72,7 @@ public:
   /*! \brief Type representing a signal.
    *
    * A ``signal`` can be seen as a pointer to a node, or an outgoing edge of
-   * a node towards its parents.  Depending on the kind of logic network, it
+   * a node towards its fanout.  Depending on the kind of logic network, it
    * may carry additional information such as a complement attribute.
    */
   struct signal
@@ -117,7 +117,7 @@ public:
    */
   network clone();
 
-#pragma region Primary I / O and constants
+#pragma region I / O and constants
   /*! \brief Gets constant value represented by network.
    *
    * A constant node is the only node that must be created when initializing
@@ -403,21 +403,6 @@ public:
    * invoked on all fanins if their fanout count reach 0.
    */
   void take_out_node( node const& n );
-
-  /*! \brief Replaces one node in a network by another signal.
-   *
-   * This method causes all nodes in ``parents`` that have ``old_node`` as
-   * fanin to have `new_signal` as fanin instead.  In doing so, a possible
-   * polarity of `new_signal` is taken into account.  It also replaces
-   * ``old_node`` with ``new_signal``, if it drives primary outputs.
-   *
-   * It does not update custom values or visited flags of a node.
-   *
-   * \brief parents Vector of parents
-   * \brief old_node Node to replace
-   * \brief new_signal Signal to replace ``old_node`` with
-   */
-  void substitute_node_of_parents( std::vector<node> const& parents, node const& old_node, signal const& new_signal );
 #pragma endregion
 
 #pragma region Structural properties
