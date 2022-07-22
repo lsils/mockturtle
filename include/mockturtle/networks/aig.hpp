@@ -575,19 +575,31 @@ public:
     return ( _storage->nodes[n].data[0].h1 >> 31 ) & 1;
   }
 
+  template<class container_type>
+  signal get_final_signal( signal const& s, container_type& old_to_new )
+  {
+    const auto it = old_to_new.find( get_node( s ) );
+    if ( it == old_to_new.end() )
+      return s;
+    signal& s_new = it->second;
+    s_new = get_final_signal( s_new, old_to_new );
+    return is_complemented( s )? create_not( s_new ) : s_new; 
+  }
+
   void substitute_node( node const& old_node, signal const& new_signal )
   {
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( {old_node, new_signal} );
 
+    std::unordered_map<node, signal> old_to_new;
+
     while ( !to_substitute.empty() )
     {
-      const auto [_old, _new] = to_substitute.top();
+      const auto [_old, _curr] = to_substitute.top();
       to_substitute.pop();
 
-
-      std::unordered_map<node, signal> old_to_new;
-
+      signal _new = get_final_signal( _curr, old_to_new );
+      
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
         if ( is_ci( idx ) || is_dead( idx ) )
@@ -595,18 +607,8 @@ public:
 
         if ( const auto repl = replace_in_node( idx, _old, _new ); repl )
         {
-          old_to_new.insert( *repl );
+          to_substitute.push( *repl );
         }
-      }
-
-      for ( auto p : old_to_new )
-      {
-        while ( old_to_new.find( this->get_node( p.second ) ) != old_to_new.end() )
-        {
-          p.second = this->is_complemented( p.second ) ? this->create_not( old_to_new[this->get_node( p.second )] )
-                                                       : old_to_new[this->get_node( p.second )];
-        }
-        to_substitute.push( p );
       }
 
       /* check outputs */
@@ -615,6 +617,7 @@ public:
       /* recursively reset old node */
       if ( _old != _new.index )
       {
+        old_to_new.insert( { _old, _new } );
         take_out_node( _old );
       }
     }
