@@ -48,7 +48,6 @@
 #include <mockturtle/algorithms/aqfp/aqfp_node_resyn.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_resynthesis.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
-#include <mockturtle/algorithms/aqfp/detail/db_string.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 
 #include <mockturtle/networks/aqfp.hpp>
@@ -277,7 +276,7 @@ int main( int argc, char** argv )
 {
   opt_params_t opt_params;
 
-  std::string exact_syn_db_cfg = "all3";
+  std::string exact_syn_db_cfg = "db5";
   auto i = 1;
 
   while ( i < argc )
