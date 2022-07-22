@@ -27,7 +27,7 @@
   \file aqfp_db.hpp
   \brief AQFP DAG database
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -38,9 +38,9 @@
 
 #include <kitty/kitty.hpp>
 
-#include "./detail/dag.hpp"
-#include "./detail/dag_cost.hpp"
-#include "./detail/npn_cache.hpp"
+#include "detail/dag.hpp"
+#include "detail/dag_cost.hpp"
+#include "detail/npn_cache.hpp"
 
 namespace mockturtle
 {
@@ -86,6 +86,7 @@ inline uint64_t lvl_cfg_from_vec( std::vector<uint32_t> levels )
   return res;
 }
 
+/*! \brief A class to represent an AQFP exact synthesis database. */
 template<typename Ntk = aqfp_dag<>>
 class aqfp_db
 {
@@ -103,13 +104,15 @@ public:
       const std::unordered_map<uint32_t, double>& gate_costs = { { 3u, 6.0 }, { 5u, 10.0 } },
       const std::unordered_map<uint32_t, double>& splitters = { { 1u, 2.0 }, { 4u, 2.0 } } )
       : gate_costs( gate_costs ), splitters( splitters ), db( get_default_db() ), cc( gate_costs, splitters )
-  { }
+  {
+  }
 
   aqfp_db( const std::unordered_map<uint64_t, std::map<uint64_t, replacement>>& db,
            const std::unordered_map<uint32_t, double>& gate_costs = { { 3u, 6.0 }, { 5u, 10.0 } },
            const std::unordered_map<uint32_t, double>& splitters = { { 1u, 2.0 }, { 4u, 2.0 } } )
       : gate_costs( gate_costs ), splitters( splitters ), db( db ), cc( gate_costs, splitters )
-  { }
+  {
+  }
 
   using gate_info = std::vector<uint32_t>;                                               // fanin list with lsb denoting the inversion
   using mig_structure = std::tuple<std::vector<gate_info>, std::vector<uint32_t>, bool>; // (gates, levels, output inverted flag);
@@ -142,7 +145,6 @@ public:
     replacement best = db[npntt].begin()->second;
     uint32_t best_ind = 0;
 
-
     uint32_t temp_ind = 0;
     for ( auto it = db[npntt].begin(); it != db[npntt].end(); it++ )
     {
@@ -174,22 +176,22 @@ public:
         best = r;
         best_ind = temp_ind;
       }
-      temp_ind ++;
+      temp_ind++;
     }
 
-    usage_stats[{npntt, best_ind}]++;
+    usage_stats[{ npntt, best_ind }]++;
     return compute_replacement_structure( best, f );
   }
 
   /*! \brief Load database from input stream `is`. */
-  void load_db_from_file( std::istream& is, uint32_t version = 1u )
+  void load_db( std::istream& is, uint32_t version = 1u )
   {
-    load_db_from_file(is, db, version);
+    load_db( is, db, version );
   }
 
-    /*! \brief Load database from input stream `is`. */
-  template <typename T>
-  static void load_db_from_file( std::istream& is, T& db, uint32_t version = 1u )
+  /*! \brief Load database from input stream `is`. */
+  template<typename T>
+  static void load_db( std::istream& is, T& db, uint32_t version = 1u )
   {
     std::string line;
 
@@ -199,7 +201,8 @@ public:
     for ( auto func = 0u; func < num_func; func++ )
     {
       uint32_t N = 4;
-      if (version > 1u) {
+      if ( version > 1u )
+      {
         std::getline( is, line );
         N = std::stoul( line );
       }
@@ -241,10 +244,12 @@ public:
     }
   }
 
-  void print_usage_state(std::ostream& os) {
+  void print_usage_state( std::ostream& os )
+  {
     os << "printing stats\n";
-    for (auto& x : usage_stats) {
-      os << fmt::format("{}, {}, {}\n", x.first.first, x.first.second, x.second);
+    for ( auto& x : usage_stats )
+    {
+      os << fmt::format( "{}, {}, {}\n", x.first.first, x.first.second, x.second );
     }
     os << "printing stats done\n";
   }
@@ -268,7 +273,6 @@ private:
   std::map<std::pair<uint64_t, uint32_t>, uint32_t> usage_stats;
   dag_aqfp_cost_and_depths<Ntk> cc;
   npn_cache npndb;
-
 
   std::pair<bool, std::vector<uint32_t>> inverter_config_for_func( const std::vector<uint64_t>& input_tt, const Ntk& net, uint64_t func )
   {
@@ -336,13 +340,14 @@ private:
         }
         inv_config >>= shift;
       }
-      
-      if ( (func & 0xffff) == ( tt[0] & 0xffff ) )
+
+      if ( ( func & 0xffff ) == ( tt[0] & 0xffff ) )
       {
-        return {false, res};
-      } 
-      if ((~func & 0xffff) == (tt[0] & 0xffff)) {
-        return {true, res};
+        return { false, res };
+      }
+      if ( ( ~func & 0xffff ) == ( tt[0] & 0xffff ) )
+      {
+        return { true, res };
       }
     }
 
@@ -428,7 +433,7 @@ private:
       for ( auto k = 0u; k < node.size(); k++ )
       {
         auto new_fanin_id = sigmap[node[k]];
-        auto new_fanin_inv = (type & (1u << k)) > 0; 
+        auto new_fanin_inv = ( type & ( 1u << k ) ) > 0;
         gates[sigmap[j]].push_back( ( new_fanin_id << 1 ) | ( new_fanin_inv ? 1u : 0u ) );
       }
     }

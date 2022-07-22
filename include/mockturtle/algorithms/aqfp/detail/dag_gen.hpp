@@ -27,7 +27,7 @@
   \file dag_gen.hpp
   \brief AQFP DAG generation
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -44,9 +44,9 @@
 
 #include <fmt/format.h>
 
-#include "./dag.hpp"
-#include "./partial_dag.hpp"
-#include "./dag_util.hpp"
+#include "dag.hpp"
+#include "dag_util.hpp"
+#include "partial_dag.hpp"
 
 namespace mockturtle
 {
@@ -136,7 +136,8 @@ private:
   Ntk get_dag_for_partition( const PartialNtk& orig, const partition& p )
   {
     auto net = orig.copy_without_leaves();
-    std::for_each( p.begin(), p.end(), [&net]( const auto& q ) { net.add_leaf_node( q ); } );
+    std::for_each( p.begin(), p.end(), [&net]( const auto& q )
+                   { net.add_leaf_node( q ); } );
     return std::move( net );
   }
 };
@@ -173,7 +174,8 @@ public:
     for ( auto i = 0u; i < num_threads; i++ )
     {
       threads.emplace_back(
-          [&]( auto id ) {
+          [&]( auto id )
+          {
             dags_from_partial_dag<NodeT> dag_from_pdag( params.max_num_in, params.max_num_fanout );
             while ( true )
             {
@@ -324,8 +326,8 @@ private:
     return result;
   }
 
-  /*! \brief Compute the partial DAGs obtained by combining the slots of `orig` as indicated by 
-   *  partitioning 'p'. 
+  /*! \brief Compute the partial DAGs obtained by combining the slots of `orig` as indicated by
+   *  partitioning 'p'.
    */
   std::vector<PartialNtk> get_next_partial_dags( const PartialNtk& orig, const partition& p, const std::vector<int>& other_leaves )
   {

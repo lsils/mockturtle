@@ -27,7 +27,7 @@
   \file partial_dag.hpp
   \brief AQFP partial DAG data structure
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -37,11 +37,12 @@
 
 #include <fmt/format.h>
 
-#include "./dag.hpp"
+#include "dag.hpp"
 
 namespace mockturtle
 {
 
+/*! \brief A class for constructing DAG structures in an incremental manner. */
 template<typename NodeT = int>
 struct aqfp_partial_dag : public aqfp_dag<NodeT>
 {
@@ -52,7 +53,7 @@ struct aqfp_partial_dag : public aqfp_dag<NodeT>
   using aqfp_dag<node_type>::zero_input;
   using aqfp_dag<node_type>::num_gates;
 
-  uint32_t num_levels = 0u;    // current number of levels
+  uint32_t num_levels = 0u; // current number of levels
 
   std::unordered_map<uint32_t, uint32_t> num_gates_of_fanin;
   std::vector<uint32_t> node_num_fanin;     // number of fanins of each node

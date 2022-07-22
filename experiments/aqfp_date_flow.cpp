@@ -28,6 +28,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
 
 #include <fmt/format.h>
 #include <lorina/verilog.hpp>
@@ -42,13 +43,13 @@
 #include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 
-#include <mockturtle/algorithms/aqfp_resynthesis.hpp>
-#include <mockturtle/algorithms/aqfp_resynthesis/aqfp_db.hpp>
-#include <mockturtle/algorithms/aqfp_resynthesis/aqfp_fanout_resyn.hpp>
-#include <mockturtle/algorithms/aqfp_resynthesis/aqfp_node_resyn.hpp>
-#include <mockturtle/algorithms/aqfp_resynthesis/detail/db_string.hpp>
-#include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_db.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_fanout_resyn.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_node_resyn.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_resynthesis.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
+#include <mockturtle/algorithms/aqfp/detail/db_string.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
 
 #include <mockturtle/networks/aqfp.hpp>
 #include <mockturtle/networks/klut.hpp>
@@ -117,7 +118,8 @@ template<typename T>
 auto count_majorities( T& ntk )
 {
   std::unordered_map<uint32_t, uint32_t> counts;
-  ntk.foreach_gate( [&]( auto n ) { counts[ntk.fanin_size( n )]++; } );
+  ntk.foreach_gate( [&]( auto n )
+                    { counts[ntk.fanin_size( n )]++; } );
   return counts;
 }
 
@@ -130,11 +132,9 @@ struct opt_params_t
   std::unordered_map<uint32_t, double> splitters{ { 1u, 2.0 }, { 4u, 2.0 } };
   mutable mockturtle::aqfp_db<> db{ gate_costs, splitters };
   mutable mockturtle::aqfp_db<> db_last{ gate_costs, splitters };
-  mockturtle::aqfp_node_resyn_strategy strategy{ mockturtle::aqfp_node_resyn_strategy::cost_based };
+  mockturtle::aqfp_node_resyn_strategy strategy{ mockturtle::aqfp_node_resyn_strategy::area };
   std::string lutmap{ "abc" };
-  bool balance_pis{ false };
-  bool branch_pis{ false };
-  bool balance_pos{ true };
+  mockturtle::aqfp_assumptions assume{ false, false, true, 4u };
 };
 
 struct opt_stats_t
@@ -180,12 +180,15 @@ mig_network remapping_round( mig_network const& ntk, exact_library<mig_network, 
 template<typename Ntk>
 aqfp_network aqfp_exact_resynthesis( Ntk& ntk, opt_params_t const& params, opt_stats_t& stats )
 {
-  mockturtle::aqfp_network_cost cost_fn( params.gate_costs, params.splitters, params.balance_pis, params.branch_pis, params.balance_pos );
-  mockturtle::aqfp_node_resyn n_resyn( params.db, { params.splitters, params.strategy, params.branch_pis } );
-  mockturtle::aqfp_node_resyn n_resyn_last( params.db_last, { params.splitters, params.strategy, params.branch_pis } );
+  const uint32_t max_branching_factor = std::max_element( params.splitters.begin(), params.splitters.end(), [&]( auto s1, auto s2 )
+                                                          { return s1.first < s2.first; } )
+                                            ->first;
+  assert( max_branching_factor == params.assume.splitter_capacity );
 
-  uint32_t max_branching_factor = std::max_element( params.splitters.begin(), params.splitters.end(), [&]( auto s1, auto s2 ) { return s1.first < s2.first; } )->first;
-  mockturtle::aqfp_fanout_resyn fo_resyn( max_branching_factor, params.branch_pis );
+  mockturtle::aqfp_network_cost cost_fn( params.assume, params.gate_costs, params.splitters );
+  mockturtle::aqfp_node_resyn n_resyn( params.db, { params.assume, params.splitters, params.strategy } );
+  mockturtle::aqfp_node_resyn n_resyn_last( params.db_last, { params.assume, params.splitters, params.strategy } );
+  mockturtle::aqfp_fanout_resyn fo_resyn( params.assume );
 
   mockturtle::klut_network klut;
 
@@ -227,7 +230,7 @@ aqfp_network aqfp_exact_resynthesis( Ntk& ntk, opt_params_t const& params, opt_s
     res_last = mockturtle::aqfp_resynthesis( aqfp_last, klut, n_resyn_last, fo_resyn );
     cost_level = { cost_fn( aqfp_last, res_last.node_level, res_last.po_level ), res_last.critical_po_level() };
 
-    if ( params.strategy == mockturtle::aqfp_node_resyn_strategy::cost_based )
+    if ( params.strategy == mockturtle::aqfp_node_resyn_strategy::area )
     {
       if ( has_better_cost( cost_level, best_cost_level ) )
       {
@@ -238,7 +241,7 @@ aqfp_network aqfp_exact_resynthesis( Ntk& ntk, opt_params_t const& params, opt_s
     }
     else
     {
-      assert( params.strategy == mockturtle::aqfp_node_resyn_strategy::level_based );
+      assert( params.strategy == mockturtle::aqfp_node_resyn_strategy::delay );
       if ( has_better_level( cost_level, best_cost_level ) )
       {
         best_aqfp = aqfp_last;
@@ -257,6 +260,19 @@ aqfp_network aqfp_exact_resynthesis( Ntk& ntk, opt_params_t const& params, opt_s
   return best_aqfp;
 }
 
+/* `database_type` is either 'db3' (only maj-3 gates) or 'db5' (maj-3 and maj-5 gates). */
+std::ifstream get_database( std::string database_type )
+{
+  const std::string db_path = fmt::format("aqfp_database/{}.txt", database_type);
+  if (!std::filesystem::exists(db_path)) {
+    fmt::print("Cloning the aqfp database repository to working directory...\n");
+    system("git clone https://github.com/mdsudara/AQFP-Database.git aqfp_database");
+  }
+
+  std::ifstream db_file(db_path);
+  return db_file;
+}
+
 int main( int argc, char** argv )
 {
   opt_params_t opt_params;
@@ -270,17 +286,17 @@ int main( int argc, char** argv )
     if ( arg[0] == '-' )
     {
       if ( arg == "-balance_pis" )
-        opt_params.balance_pis = true;
+        opt_params.assume.balance_pis = true;
       else if ( arg == "-no-balance_pis" )
-        opt_params.balance_pis = false;
+        opt_params.assume.balance_pis = false;
       else if ( arg == "-branch_pis" )
-        opt_params.branch_pis = true;
+        opt_params.assume.branch_pis = true;
       else if ( arg == "-no-branch_pis" )
-        opt_params.branch_pis = false;
+        opt_params.assume.branch_pis = false;
       else if ( arg == "-balance_pos" )
-        opt_params.balance_pos = true;
+        opt_params.assume.balance_pos = true;
       else if ( arg == "-no-balance_pos" )
-        opt_params.balance_pos = false;
+        opt_params.assume.balance_pos = false;
       else
       {
         i++;
@@ -297,8 +313,8 @@ int main( int argc, char** argv )
         }
         else if ( arg == "-exact_resyn_strategy" )
           opt_params.strategy = ( val == "cost" )
-                                    ? mockturtle::aqfp_node_resyn_strategy::cost_based
-                                    : mockturtle::aqfp_node_resyn_strategy::level_based;
+                                    ? mockturtle::aqfp_node_resyn_strategy::area
+                                    : mockturtle::aqfp_node_resyn_strategy::delay;
         else if ( arg == "-lutmap" )
           opt_params.lutmap = val;
         else
@@ -322,10 +338,13 @@ int main( int argc, char** argv )
   exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn, eps );
 
   /* database loading for aqfp resynthesis*/
-  std::stringstream db3_str( mockturtle::aqfp_db3_str );
-  std::stringstream db5_str( exact_syn_db_cfg == "all3" ? mockturtle::aqfp_db3_str : mockturtle::aqfp_db5_str );
-  opt_params.db.load_db_from_file( db3_str );
-  opt_params.db_last.load_db_from_file( db5_str );
+  // std::stringstream db3_str( mockturtle::aqfp_db3_str );
+  // std::stringstream db5_str( exact_syn_db_cfg == "all3" ? mockturtle::aqfp_db3_str : mockturtle::aqfp_db5_str );
+  auto db3_str = get_database("db3");
+  auto db5_str( exact_syn_db_cfg == "all3" ? get_database("db3") : get_database("db5") );
+
+  opt_params.db.load_db( db3_str );
+  opt_params.db_last.load_db( db5_str );
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
       "aqfp", "bench", "size_init", "dep_init", "size_remap", "dep_remap", "maj3_exact", "maj5_exact", "JJ_exact", "JJ_dep_exact", "JJ_fin", "JJ_dep_fin", "cec" );
@@ -376,7 +395,7 @@ int main( int argc, char** argv )
 
     exp( benchmark, size_before, depth_before,
          opt_stats.maj3_after_remapping, opt_stats.level_after_remapping,
-         opt_stats.maj3_after_exact, opt_stats.maj5_after_exact, opt_stats.jj_after_exact, opt_stats.jj_level_after_exact, 
+         opt_stats.maj3_after_exact, opt_stats.maj5_after_exact, opt_stats.jj_after_exact, opt_stats.jj_level_after_exact,
          num_jjs, jj_depth, cec );
   }
 
