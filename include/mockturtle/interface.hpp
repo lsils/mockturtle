@@ -860,51 +860,6 @@ public:
   compute( node const& n, Iterator begin, Iterator end ) const;
 #pragma endregion
 
-#pragma region Mapping
-  /*! \brief Returns true, if network has a mapping. */
-  bool has_mapping() const;
-
-  /*! \brief Returns true, if node is the root of a mapped cell. */
-  bool is_cell_root( node const& n ) const;
-
-  /*! \brief Clears a mapping. */
-  void clear_mapping();
-
-  /*! \brief Number of cells, i.e, mapped nodes. */
-  uint32_t num_cells() const;
-
-  /*! \brief Adds a node to the mapping. */
-  template<typename LeavesIterator>
-  void add_to_mapping( node const& n, LeavesIterator begin, LeavesIterator end );
-
-  /*! \brief Remove from mapping. */
-  void remove_from_mapping( node const& n );
-
-  /*! \brief Gets function of the cell.
-   *
-   * The parameter `n` is a node that must be a cell root.
-   */
-  kitty::dynamic_truth_table cell_function( node const& n );
-
-  /*! \brief Sets cell function.
-   *
-   * The parameter `n` is a node that must be a cell root.
-   */
-  void set_cell_function( node const& n, kitty::dynamic_truth_table const& function );
-
-  /*! \brief Iterators over cell's fan-ins.
-   * The parameter `n` is a node that must be a cell root.
-   * The paramater ``fn`` is any callable that must have one of the
-   * following four signatures.
-   * - ``void(node const&)``
-   * - ``void(node const&, uint32_t)``
-   * - ``bool(node const&)``
-   * - ``bool(node const&, uint32_t)``
-   */
-  template<typename Fn>
-  void foreach_cell_fanin( node const& n, Fn&& fn ) const;
-#pragma endregion
-
 #pragma region Custom node values
   /*! \brief Reset all values to 0. */
   void clear_values() const;
@@ -937,82 +892,6 @@ public:
 
   /*! \brief Increment the current traversal id. */
   void incr_trav_id() const;
-#pragma endregion
-
-#pragma region Color values
-  /* Color values offer a more recent and flexible mechanism to manage
-     and manipulate traversal ids. */
-
-  /*! \brief Returns a new color and increases the current color. */
-  uint32_t new_color() const;
-
-  /*! \brief Returns the current color. */
-  uint32_t current_color() const;
-
-  /*! \brief Resets all nodes colors to value `color`. */
-  void clear_colors( uint32_t color = 0 ) const;
-
-  /*! \brief Returns the color of a node. */
-  auto color( node const& n ) const;
-
-  /*! \brief Returns the color of a node. */
-  auto color( signal const& n ) const;
-
-  /*! \brief Assigns the current color to a node. */
-  void paint( node const& n ) const;
-
-  /*! \brief Assigns `color` to a node. */
-  void paint( node const& n, uint32_t color ) const;
-
-  /*! \brief Copies the color from `other` to `n`. */
-  void paint( node const& n, node const& other ) const;
-
-  /*! \brief Evaluates a predicate on the color of a node.
-   *
-   * The predicate `pred` is any callable that must have the signature
-   * ``bool(color_type)``, where `color_type` is the
-   * implementation-dependent type returned by the method `color`.
-   */
-  template<typename Pred>
-  bool eval_color( node const& n, Pred&& pred ) const;
-
-  /*! \brief Evaluates a predicate on the colors of two nodes.
-   *
-   * The predicate `pred` is any callable that must have the signature
-   * ``bool(color_type,color_type)``, where `color_type` is the
-   * implementation-dependent type returned by the method `color`.
-   */
-  template<typename Pred>
-  bool eval_color( node const& a, node const& b, Pred&& pred ) const;
-
-  /*! \brief Evaluates a predicate on the colors of the fanins of a node.
-   *
-   * The predicate `pred` is any callable that must have the signature
-   * ``bool(color_type)``, where `color_type` is the
-   * implementation-dependent type returned by the method `color`.
-   */
-  template<typename Pred>
-  bool eval_fanins_color( node const& n, Pred&& pred ) const;
-#pragma endregion
-
-#pragma region Signal naming
-  /*! \brief Checks if a signal has a name. */
-  bool has_name( signal const& s ) const;
-
-  /*! \brief Set the name of a signal. */
-  void set_name( signal const& s, std::string const& name );
-
-  /*! \brief Returns the name of a signal. */
-  std::string get_name( signal const& s ) const;
-
-  /*! \brief Checks if an output signal has a name. */
-  bool has_output_name( uint32_t index ) const;
-
-  /*! \brief Set the name of an output signal. */
-  void set_output_name( uint32_t index, std::string const& name );
-
-  /*! \brief Returns the name of an output signal. */
-  std::string get_output_name( uint32_t index ) const;
 #pragma endregion
 
 #pragma region General methods
