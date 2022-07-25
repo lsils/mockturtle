@@ -30,7 +30,7 @@
   \author Heinz Riener
   \author Mathias Soeken
   \author Max Austin
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -40,11 +40,11 @@
 
 #include <fmt/format.h>
 
-#include <mockturtle/traits.hpp>
-#include <mockturtle/utils/node_map.hpp>
-#include <mockturtle/utils/stopwatch.hpp>
-#include <mockturtle/views/depth_view.hpp>
-#include <mockturtle/views/topo_view.hpp>
+#include "../../traits.hpp"
+#include "../../utils/node_map.hpp"
+#include "../../utils/stopwatch.hpp"
+#include "../../views/depth_view.hpp"
+#include "../../views/topo_view.hpp"
 
 namespace mockturtle
 {
@@ -61,7 +61,7 @@ struct aqfp_resynthesis_params
 
 /*! \brief Statistics of aqfp_resynthesis.
  *
- * The data structure `aqfp_resynthesis_stats` holds data collected during aqfp_resynthesis.  
+ * The data structure `aqfp_resynthesis_stats` holds data collected during AQFP re-synthesis.
  */
 struct aqfp_resynthesis_stats
 {
@@ -75,7 +75,7 @@ struct aqfp_resynthesis_stats
 
 /*! \brief Results of aqfp_resynthesis.
  *
- * The data structure `aqfp_resynthesis_result` holds the resulting level assignment of nodes 
+ * The data structure `aqfp_resynthesis_result` holds the resulting level assignment of nodes
  * and the level of the critical primary output.
  */
 template<typename NtkDest>
@@ -84,16 +84,18 @@ struct aqfp_resynthesis_result
   std::unordered_map<node<NtkDest>, uint32_t> node_level;
   std::unordered_map<node<NtkDest>, uint32_t> po_level;
 
-  uint32_t critical_po_level() {
-    return max_element(po_level.begin(), po_level.end(), [&](auto n1, auto n2) {
-      return n1.second < n2.second;
-    })->second;
+  uint32_t critical_po_level()
+  {
+    return max_element( po_level.begin(), po_level.end(), [&]( auto n1, auto n2 )
+                        { return n1.second < n2.second; } )
+        ->second;
   }
 };
 
 namespace detail
 {
 
+/*! \brief Implementation of the AQFP re-synthesis algorithm. */
 template<typename NtkDest, typename NtkSrc, typename NodeResynFn, typename FanoutResynFn>
 class aqfp_resynthesis_impl
 {
@@ -121,16 +123,14 @@ public:
     node_map<signal<NtkDest>, NtkSrc> node2new( ntk_src );
     node_map<uint32_t, NtkSrc> level_of_src_node( ntk_src );
 
-    std::unordered_map<node<NtkDest>, uint32_t> level_of_node;  
+    std::unordered_map<node<NtkDest>, uint32_t> level_of_node;
     std::unordered_map<node<NtkDest>, uint32_t> po_level_of_node;
     std::map<std::pair<node<NtkSrc>, node<NtkSrc>>, uint32_t> level_for_fanout;
 
     std::unordered_map<node<NtkSrc>, std::vector<node<NtkSrc>>> fanouts;
-    ntk_src.foreach_gate( [&]( auto n ) {
-      ntk_src.foreach_fanin(n, [&](auto fi){
-        fanouts[ntk_src.get_node(fi)].push_back(n);
-      });
-    } );
+    ntk_src.foreach_gate( [&]( auto n )
+                          { ntk_src.foreach_fanin( n, [&]( auto fi )
+                                                   { fanouts[ntk_src.get_node( fi )].push_back( n ); } ); } );
 
     depth_view ntk_depth{ ntk_src };
     topo_view ntk_topo{ ntk_depth };
@@ -148,7 +148,8 @@ public:
     }
 
     /* map primary inputs */
-    ntk_src.foreach_pi( [&]( auto n ) {
+    ntk_src.foreach_pi( [&]( auto n )
+                        {
       auto pi = ntk_dest.create_pi();
       node2new[n] = pi;
       level_of_node[ntk_dest.get_node( pi )] = 0u;
@@ -170,11 +171,11 @@ public:
         po_level_of_node[node] = std::max(po_level_of_node[node], level);
       };
 
-      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
-    } );
+      fanout_resyn_fn( ntk_topo, n, fanouts[n], ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback ); } );
 
     /* map register outputs */
-    ntk_src.foreach_ro( [&]( auto n ) {
+    ntk_src.foreach_ro( [&]( auto n )
+                        {
       auto ro = ntk_dest.create_ro();
       node2new[n] = ro;
       level_of_node[ntk_dest.get_node( ro )] = 0u;
@@ -196,11 +197,11 @@ public:
         po_level_of_node[node] = std::max(po_level_of_node[node], level);
       };
 
-      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback );
-    } );
+      fanout_resyn_fn( ntk_topo, n, fanouts[n], ntk_dest, node2new[n], 0u, fanout_node_callback, fanout_po_callback ); } );
 
     /* map nodes */
-    ntk_topo.foreach_node( [&]( auto n ) {
+    ntk_topo.foreach_node( [&]( auto n )
+                           {
       if ( ntk_topo.is_constant( n ) || ntk_topo.is_ci( n ) )
         return;
 
@@ -242,7 +243,7 @@ public:
         std::abort();
       }
 
-      /* synthesize fanout net of `n`*/
+      /* synthesize fanout net of `n` */
       auto fanout_node_callback = [&]( const auto& f, const auto& level ) {
         level_for_fanout[{ n, f }] = std::max(level_for_fanout[{n, f}], level);
       };
@@ -251,14 +252,13 @@ public:
         (void)index;
         auto node = ntk_dest.get_node(node2new[n]);
         po_level_of_node[node] = std::max(po_level_of_node[node], level);
-        // critical_po_level = std::max( critical_po_level, level );
       };
 
-      fanout_resyn_fn( ntk_topo, fanouts, n, ntk_dest, node2new[n], level_of_src_node[n], fanout_node_callback, fanout_po_callback );
-    } );
+      fanout_resyn_fn( ntk_topo, n, fanouts[n], ntk_dest, node2new[n], level_of_src_node[n], fanout_node_callback, fanout_po_callback ); } );
 
     /* map primary outputs */
-    ntk_src.foreach_po( [&]( auto const& f, auto index ) {
+    ntk_src.foreach_po( [&]( auto const& f, auto index )
+                        {
       (void)index;
 
       auto const o = ntk_src.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
@@ -273,11 +273,11 @@ public:
         {
           ntk_dest.set_output_name( index, ntk_src.get_output_name( index ) );
         }
-      }
-    } );
+      } } );
 
     /* map register inputs */
-    ntk_src.foreach_ri( [&]( auto const& f, auto index ) {
+    ntk_src.foreach_ri( [&]( auto const& f, auto index )
+                        {
       (void)index;
 
       auto const o = ntk_src.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
@@ -289,8 +289,7 @@ public:
         {
           ntk_dest.set_output_name( index + ntk_src.num_pos(), ntk_src.get_output_name( index + ntk_src.num_pos() ) );
         }
-      }
-    } );
+      } } );
 
     return { level_of_node, po_level_of_node };
   }
@@ -306,7 +305,34 @@ private:
 
 } /* namespace detail */
 
-/*! \brief Path balanced resynthesis algorithm. */
+/*! \brief Re-synthesize a given source network as a path-balanced AQFP network.
+ *
+ * The algorithm outputs an AQFP network with level assignments to its nodes and combinational outputs.
+ *
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+     aqfp_assumptions assume = { false, false, true, 4u };
+     aqfp_fanout_resyn fanout_resyn{ assume };
+
+     std::unordered_map<uint32_t, double> gate_costs = { { 3u, 6.0 }, { 5u, 10.0 } };
+     std::unordered_map<uint32_t, double> splitters = { { 1u, 2.0 }, { assume.splitter_capacity, 2.0 } };
+     aqfp_node_resyn_param ps{ assume, splitters, aqfp_node_resyn_strategy::delay };
+
+     aqfp_db<> db( gate_costs, splitters );
+     db.load_db( ... ); // from an input-stream (e.g., std::ifstream or std::stringstream)
+
+     aqfp_node_resyn node_resyn( db, ps );
+
+     klut_network src_ntk = ...;
+     aqfp_network dst_ntk;
+     auto res = aqfp_resynthesis( dst_ntk, src_ntk, node_resyn, fanout_resyn );
+
+   \endverbatim
+ */
 template<class NtkDest, class NtkSrc, class NodeResynFn, class FanoutResynFn>
 aqfp_resynthesis_result<NtkDest> aqfp_resynthesis(
     NtkDest& ntk_dest,

@@ -27,7 +27,7 @@
   \file db_utils.hpp
   \brief Utility functions for creating the DAGs, costs, and final AQFP databases
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -35,7 +35,6 @@
 #include <atomic>
 #include <iostream>
 #include <thread>
-#include <atomic>
 
 #include <kitty/kitty.hpp>
 
@@ -64,7 +63,8 @@ inline void generate_aqfp_dags( const mockturtle::dag_generator_params& params, 
   std::atomic<uint32_t> count = 0u;
   std::vector<std::atomic<uint64_t>> counts_inp( 6u );
 
-  gen.for_each_dag( [&]( const auto& net, uint32_t thread_id ) {
+  gen.for_each_dag( [&]( const auto& net, uint32_t thread_id )
+                    {
     counts_inp[net.input_slots.size()]++;
 
     os[thread_id] << fmt::format( "{}\n", net.encode_as_string() );
@@ -75,8 +75,7 @@ inline void generate_aqfp_dags( const mockturtle::dag_generator_params& params, 
       auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 );
 
       std::cerr << fmt::format( "Number of DAGs generated {:10d}\nTime so far in seconds {:9.3f}\n", count, d1.count() / 1000.0 );
-    }
-  } );
+    } } );
 
   for ( auto& file : os )
   {
@@ -102,7 +101,8 @@ inline void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& 
   for ( auto i = 0u; i < num_threads; i++ )
   {
     threads.emplace_back(
-        [&]( auto id ) {
+        [&]( auto id )
+        {
           std::ifstream is( fmt::format( "{}_{:02d}.txt", dag_file_prefix, id ) );
           assert( is.is_open() );
 
@@ -124,7 +124,7 @@ inline void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& 
                 os << fmt::format( "{:08x} {}\n", it->first, it->second );
               }
 
-              if ( (++count) % 100000u == 0u )
+              if ( ( ++count ) % 100000u == 0u )
               {
                 auto t1 = std::chrono::high_resolution_clock::now();
                 auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 );
@@ -162,7 +162,8 @@ inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_c
   for ( auto i = 0u; i < num_threads; i++ )
   {
     threads.emplace_back(
-        [&]( auto id ) {
+        [&]( auto id )
+        {
           std::ifstream ds( fmt::format( "{}_{:02d}.txt", dag_file_prefix, id ) );
           std::ifstream cs( fmt::format( "{}_{:02d}.txt", cost_file_prefix, id ) );
 
@@ -195,7 +196,7 @@ inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_c
               db.update( ntk, configs );
             }
 
-            if ( (++count) % 10000 == 0u )
+            if ( ( ++count ) % 10000 == 0u )
             {
               auto t1 = std::chrono::high_resolution_clock::now();
               auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 );
@@ -203,7 +204,7 @@ inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_c
               std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime so far in seconds {:9.3f}\n", count, d1.count() / 1000.0 );
             }
 
-            if ( (++local_count) % 10000 == 0u )
+            if ( ( ++local_count ) % 10000 == 0u )
             {
               db.remove_redundant();
 

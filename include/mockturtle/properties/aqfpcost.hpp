@@ -27,7 +27,7 @@
   \file aqfpcost.hpp
   \brief Cost functions for AQFP networks
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -136,28 +136,26 @@ private:
   }
 };
 
-/*! \brief Cost function for computing the cost of a path-balanced AQFP network with a given assignment of node levels. 
-  *
-  * Assumes no path balancing or splitters are needed for primary inputs or register outputs. 
-  */
+/*! \brief Cost function for computing the cost of a path-balanced AQFP network with a given assignment of node levels.
+ *
+ * Assumes no path balancing or splitters are needed for primary inputs or register outputs.
+ */
 struct aqfp_network_cost
 {
   static constexpr double IMPOSSIBLE = std::numeric_limits<double>::infinity();
 
-  aqfp_network_cost( const aqfp_assumptions& assume, const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters)
-      : assume(assume), gate_costs( gate_costs ), fanout_cc( splitters ) {}
+  aqfp_network_cost( const aqfp_assumptions& assume, const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters )
+      : assume( assume ), gate_costs( gate_costs ), fanout_cc( splitters ) {}
 
   template<typename Ntk, typename LevelMap, typename PoLevelMap>
   double operator()( const Ntk& ntk, const LevelMap& level_of_node, const PoLevelMap& po_level_of_node )
   {
-    /*  Collect fanouts of each node. 
+    /*  Collect fanouts of each node.
         Cannot use the fanout_view as duplicate fanis are not accounted with the correct multiplicity. */
     std::unordered_map<node<Ntk>, std::vector<node<Ntk>>> fanouts;
-    ntk.foreach_gate( [&]( auto n ) {
-      ntk.foreach_fanin(n, [&](auto fi){
-        fanouts[ntk.get_node(fi)].push_back(n);
-      });
-    } );
+    ntk.foreach_gate( [&]( auto n )
+                      { ntk.foreach_fanin( n, [&]( auto fi )
+                                           { fanouts[ntk.get_node( fi )].push_back( n ); } ); } );
 
     auto gate_cost = 0.0;
     auto fanout_net_cost = 0.0;
@@ -165,15 +163,20 @@ struct aqfp_network_cost
     std::vector<node<Ntk>> nodes;
     if ( assume.branch_pis )
     {
-      ntk.foreach_ci( [&]( auto n ) { nodes.push_back( n ); } );
+      ntk.foreach_ci( [&]( auto n )
+                      { nodes.push_back( n ); } );
     }
-    ntk.foreach_gate( [&]( auto n ) { nodes.push_back( n ); } );
+    ntk.foreach_gate( [&]( auto n )
+                      { nodes.push_back( n ); } );
 
-    if ( po_level_of_node.size() == 0 ) {
+    if ( po_level_of_node.size() == 0 )
+    {
       std::cout << "[w] - the map po_level_of_node is empty!\n";
     }
 
-    size_t critical_po_level = std::max_element( po_level_of_node.begin(), po_level_of_node.end(), []( auto n1, auto n2 ) { return n1.second < n2.second; } )->second;
+    size_t critical_po_level = std::max_element( po_level_of_node.begin(), po_level_of_node.end(), []( auto n1, auto n2 )
+                                                 { return n1.second < n2.second; } )
+                                   ->second;
     for ( auto n : nodes )
     {
       if ( !ntk.is_ci( n ) ) // n must be a gate
@@ -181,14 +184,16 @@ struct aqfp_network_cost
         gate_cost += gate_costs.at( ntk.fanin_size( n ) );
       }
 
-      if (ntk.fanout_size(n) == 0) {
+      if ( ntk.fanout_size( n ) == 0 )
+      {
         std::cout << fmt::format( "[w] - dangling node {}\n", n );
         continue;
       }
 
       std::vector<uint32_t> rellev;
 
-      for (auto fo : fanouts[n]) {
+      for ( auto fo : fanouts[n] )
+      {
         assert( level_of_node.at( fo ) > level_of_node.at( n ) );
         rellev.push_back( level_of_node.at( fo ) - level_of_node.at( n ) );
       }
@@ -211,13 +216,16 @@ struct aqfp_network_cost
       {
         std::sort( rellev.begin(), rellev.end() );
         auto net_cost = fanout_cc( rellev, ntk.is_ci( n ) && !assume.balance_pis );
-        if (net_cost == std::numeric_limits<double>::infinity()) {
-          std::cerr << fmt::format("[e] impossible to synthesize fanout net of node {} for relative levels [{}]\n", n, fmt::join(rellev, " "));
+        if ( net_cost == std::numeric_limits<double>::infinity() )
+        {
+          std::cerr << fmt::format( "[e] impossible to synthesize fanout net of node {} for relative levels [{}]\n", n, fmt::join( rellev, " " ) );
           std::abort();
         }
         fanout_net_cost += net_cost;
-      } else {
-        std::cerr << fmt::format("[e] invalid level assignment for node {} with levels [{}]\n", n, fmt::join(rellev, " "));
+      }
+      else
+      {
+        std::cerr << fmt::format( "[e] invalid level assignment for node {} with levels [{}]\n", n, fmt::join( rellev, " " ) );
         std::abort();
       }
     }
