@@ -17,17 +17,17 @@
       },
       {
         "JJ_dep_exact": 32,
-        "JJ_dep_fin": 31,
-        "JJ_exact": 4082,
-        "JJ_fin": 3684,
+        "JJ_dep_fin": 32,
+        "JJ_exact": 4126,
+        "JJ_fin": 3778,
         "bench": "c1908",
         "cec": true,
         "dep_init": 38,
-        "dep_remap": 21,
-        "maj3_exact": 290,
-        "maj5_exact": 57,
+        "dep_remap": 22,
+        "maj3_exact": 292,
+        "maj5_exact": 59,
         "size_init": 381,
-        "size_remap": 356
+        "size_remap": 353
       },
       {
         "JJ_dep_exact": 31,
@@ -144,14 +144,14 @@
       {
         "JJ_dep_exact": 16,
         "JJ_dep_fin": 17,
-        "JJ_exact": 13752,
-        "JJ_fin": 13282,
+        "JJ_exact": 13742,
+        "JJ_fin": 13250,
         "bench": "k2",
         "cec": true,
         "dep_init": 25,
         "dep_remap": 15,
-        "maj3_exact": 714,
-        "maj5_exact": 610,
+        "maj3_exact": 697,
+        "maj5_exact": 618,
         "size_init": 1955,
         "size_remap": 1704
       },
@@ -214,14 +214,14 @@
       {
         "JJ_dep_exact": 15,
         "JJ_dep_fin": 14,
-        "JJ_exact": 24020,
-        "JJ_fin": 22126,
+        "JJ_exact": 24108,
+        "JJ_fin": 22186,
         "bench": "prom2",
         "cec": true,
         "dep_init": 22,
         "dep_remap": 14,
-        "maj3_exact": 2358,
-        "maj5_exact": 662,
+        "maj3_exact": 2362,
+        "maj5_exact": 661,
         "size_init": 3477,
         "size_remap": 2939
       },
@@ -238,8 +238,22 @@
         "maj5_exact": 20,
         "size_init": 138,
         "size_remap": 118
+      },
+      {
+        "JJ_dep_exact": 10,
+        "JJ_dep_fin": 10,
+        "JJ_exact": 994,
+        "JJ_fin": 886,
+        "bench": "x1dn",
+        "cec": true,
+        "dep_init": 14,
+        "dep_remap": 9,
+        "maj3_exact": 57,
+        "maj5_exact": 46,
+        "size_init": 152,
+        "size_remap": 145
       }
     ],
-    "version": "f17ca72"
+    "version": "3d61432"
   }
 ]
