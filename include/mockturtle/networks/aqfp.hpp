@@ -28,6 +28,7 @@
   \brief AQFP network implementation
 
   \author Dewmini Marakkalage
+  \author Alessandro Tempia Calvino
 */
 
 #pragma once
@@ -181,10 +182,8 @@ public:
     return { 0, static_cast<uint64_t>( value ? 1 : 0 ) };
   }
 
-  signal create_pi( std::string const& name = std::string() )
+  signal create_pi()
   {
-    (void)name;
-
     const auto index = _storage->nodes.size();
     auto& node = _storage->nodes.emplace_back();
     node.children.resize( 3u );
@@ -194,10 +193,8 @@ public:
     return { index, 0 };
   }
 
-  uint32_t create_po( signal const& f, std::string const& name = std::string() )
+  uint32_t create_po( signal const& f )
   {
-    (void)name;
-
     /* increase ref-count to children */
     _storage->nodes[f.index].data[0].h1++;
     auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
@@ -206,10 +203,8 @@ public:
     return po_index;
   }
 
-  signal create_ro( std::string const& name = std::string() )
+  signal create_ro()
   {
-    (void)name;
-
     auto const index = _storage->nodes.size();
     auto& node = _storage->nodes.emplace_back();
     node.children.resize( 3u );
@@ -218,10 +213,8 @@ public:
     return { index, 0 };
   }
 
-  uint32_t create_ri( signal const& f, int8_t reset = 0, std::string const& name = std::string() )
+  uint32_t create_ri( signal const& f, int8_t reset = 0 )
   {
-    (void)name;
-
     /* increase ref-count to children */
     _storage->nodes[f.index].data[0].h1++;
     auto const ri_index = static_cast<uint32_t>( _storage->outputs.size() );
@@ -521,23 +514,27 @@ public:
 
     std::vector<signal> old_children;
 
-    for ( auto i = 0u; i <= node.children.size(); ++i )
+    bool replacement = false;
+    for ( size_t i = 0u; i < node.children.size(); ++i )
     {
-      if ( i == node.children.size() )
-      {
-        return std::nullopt;
-      }
-
       old_children.push_back( signal{ node.children[i] } );
 
       if ( node.children[i].index == old_node )
       {
         node.children[i] = node.children[i].weight ? !new_signal : new_signal;
-        new_signal.complement ^= node.children[i].weight;
+        replacement = true;
+
+        // update the reference counter of the new signal
+        _storage->nodes[new_signal.index].data[0].h1++;
       }
     }
 
-    /* TODO: Do the simplifications if possible */
+    if ( !replacement )
+    {
+      return std::nullopt;
+    }
+
+    /* TODO: Do the simplifications if possible and ordering */
 
     for ( auto const& fn : _events->on_modified )
     {

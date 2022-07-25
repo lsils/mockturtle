@@ -219,8 +219,11 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
 
 /*! \brief Cleans up dangling nodes.
  *
- * This method reconstructs a network and omits all dangling nodes.  The
- * network types of the source and destination network are the same.
+ * This method reconstructs a network and omits all dangling nodes. If the flag
+ * `remove_dangling_PIs` is true, dangling PIs are also omitted. If the flag
+ * `remove_redundant_POs` is true, redundant POs, i.e. POs connected to a PI or
+ * constant, are also omitted. The network types of the source and destination
+ * network are the same.
  *
    \verbatim embed:rst
 
@@ -246,7 +249,7 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
  * - `is_constant`
  */
 template<class NtkSrc, class NtkDest = NtkSrc>
-NtkDest cleanup_dangling( NtkSrc const& ntk )
+[[nodiscard]] NtkDest cleanup_dangling( NtkSrc const& ntk, bool remove_dangling_PIs = false, bool remove_redundant_POs = false )
 {
   static_assert( is_network_type_v<NtkSrc>, "NtkSrc is not a network type" );
   static_assert( is_network_type_v<NtkDest>, "NtkDest is not a network type" );
@@ -266,12 +269,17 @@ NtkDest cleanup_dangling( NtkSrc const& ntk )
 
   NtkDest dest;
   std::vector<signal<NtkDest>> pis;
-  ntk.foreach_pi( [&]( auto ) {
-    pis.push_back( dest.create_pi() );
+  ntk.foreach_pi( [&]( auto n ) {
+    if ( remove_dangling_PIs && ntk.fanout_size( n ) == 0 )
+      pis.push_back( dest.get_constant( false ) );
+    else
+      pis.push_back( dest.create_pi() );
   } );
 
   for ( auto f : cleanup_dangling( ntk, dest, pis.begin(), pis.end() ) )
   {
+    if ( remove_redundant_POs && ( dest.is_pi( dest.get_node( f ) ) || dest.is_constant( dest.get_node( f ) ) ) )
+      continue;
     dest.create_po( f );
   }
 
@@ -310,7 +318,7 @@ NtkDest cleanup_dangling( NtkSrc const& ntk )
  * - `node_function`
  */
 template<class Ntk>
-Ntk cleanup_luts( Ntk const& ntk )
+[[nodiscard]] Ntk cleanup_luts( Ntk const& ntk )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );

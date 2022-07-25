@@ -101,7 +101,7 @@ struct supergate
   composed_gate<NInputs> const* root{};
 
   /* area */
-  float area{ 0 };
+  float area{ 0.0 };
 
   /* pin-to-pin delay */
   std::array<float, NInputs> tdelay{};
@@ -118,13 +118,13 @@ struct supergate
  * This class creates a technology library from a set
  * of input gates. Each NP- or P-configuration of the gates
  * are enumerated and inserted in the library.
- * 
+ *
  * The configuration is selected using the template
  * parameter `Configuration`. P-configuration is suggested
  * for big libraries with few symmetric gates. The template
  * parameter `NInputs` selects the maximum number of variables
  * allowed for a gate in the library.
- * 
+ *
  * The library can be generated also using supergates definitions.
  *
    \verbatim embed:rst
@@ -337,10 +337,10 @@ private:
           for( auto phase : phases )
           {
             supergate<NInputs> sg = {&gate,
-                                    gate.area,
+                                    static_cast<float>(gate.area),
                                     {},
                                     perm,
-                                    phase};
+                                    static_cast<uint8_t>(phase)};
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
@@ -607,7 +607,7 @@ private:
 
   unsigned _max_size{ 0 }; /* max #fanins of the gates in the library */
 
-  bool _use_supergates; 
+  bool _use_supergates;
 
   std::vector<gate> const _gates; /* collection of gates */
   super_lib const& _supergates_spec; /* collection of supergates declarations */

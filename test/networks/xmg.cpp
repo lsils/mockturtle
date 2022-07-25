@@ -53,10 +53,15 @@ TEST_CASE( "create and use primary inputs in an xmg", "[xmg]" )
   CHECK( has_create_pi_v<xmg_network> );
 
   auto a = xmg.create_pi();
+  auto b = xmg.create_pi();
 
-  CHECK( xmg.size() == 2 );
-  CHECK( xmg.num_pis() == 1 );
+  CHECK( xmg.size() == 3 ); // constant + two primary inputs
+  CHECK( xmg.num_pis() == 2 );
   CHECK( xmg.num_gates() == 0 );
+  CHECK( xmg.is_pi( xmg.get_node( a ) ) );
+  CHECK( xmg.is_pi( xmg.get_node( b ) ) );
+  CHECK( xmg.pi_index( xmg.get_node( a ) ) == 0 );
+  CHECK( xmg.pi_index( xmg.get_node( b ) ) == 1 );
 
   CHECK( std::is_same_v<std::decay_t<decltype( a )>, xmg_network::signal> );
 
@@ -350,6 +355,31 @@ TEST_CASE( "hash nodes in xmg network", "[xmg]" )
   CHECK( xmg.num_gates() == 2u );
 
   CHECK( xmg.get_node( f1 ) == xmg.get_node( g1 ) );
+}
+
+TEST_CASE( "clone a XMG network", "[xmg]" )
+{
+  CHECK( has_clone_v<xmg_network> );
+
+  xmg_network xmg0;
+  auto a = xmg0.create_pi();
+  auto b = xmg0.create_pi();
+  auto c = xmg0.create_pi();
+  auto f0 = xmg0.create_maj( a, b, c );
+  CHECK( xmg0.size() == 5 );
+  CHECK( xmg0.num_gates() == 1 );
+
+  auto xmg1 = xmg0;
+  auto xmg_clone = xmg0.clone();
+
+  auto d = xmg0.create_pi();
+  auto e = xmg0.create_pi();
+  xmg1.create_maj( f0, d, e );
+  CHECK( xmg0.size() == 8 );
+  CHECK( xmg0.num_gates() == 2 );
+
+  CHECK( xmg_clone.size() == 5 );
+  CHECK( xmg_clone.num_gates() == 1 );
 }
 
 TEST_CASE( "clone a node in xmg network", "[xmg]" )

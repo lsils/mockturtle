@@ -50,10 +50,15 @@ TEST_CASE( "create and use primary inputs in an MIG", "[mig]" )
   CHECK( has_create_pi_v<mig_network> );
 
   auto a = mig.create_pi();
+  auto b = mig.create_pi();
 
-  CHECK( mig.size() == 2 );
-  CHECK( mig.num_pis() == 1 );
+  CHECK( mig.size() == 3 ); // constant + two primary inputs
+  CHECK( mig.num_pis() == 2 );
   CHECK( mig.num_gates() == 0 );
+  CHECK( mig.is_pi( mig.get_node( a ) ) );
+  CHECK( mig.is_pi( mig.get_node( b ) ) );
+  CHECK( mig.pi_index( mig.get_node( a ) ) == 0 );
+  CHECK( mig.pi_index( mig.get_node( b ) ) == 1 );
 
   CHECK( std::is_same_v<std::decay_t<decltype( a )>, mig_network::signal> );
 
@@ -283,6 +288,31 @@ TEST_CASE( "hash nodes in MIG network", "[mig]" )
   CHECK( mig.num_gates() == 2u );
 
   CHECK( mig.get_node( f1 ) == mig.get_node( g1 ) );
+}
+
+TEST_CASE( "clone a MIG network", "[mig]" )
+{
+  CHECK( has_clone_v<mig_network> );
+
+  mig_network mig0;
+  auto a = mig0.create_pi();
+  auto b = mig0.create_pi();
+  auto c = mig0.create_pi();
+  auto f0 = mig0.create_maj( a, b, c );
+  CHECK( mig0.size() == 5 );
+  CHECK( mig0.num_gates() == 1 );
+
+  auto mig1 = mig0;
+  auto mig_clone = mig0.clone();
+
+  auto d = mig0.create_pi();
+  auto e = mig0.create_pi();
+  mig1.create_maj( f0, d, e );
+  CHECK( mig0.size() == 8 );
+  CHECK( mig0.num_gates() == 2 );
+
+  CHECK( mig_clone.size() == 5 );
+  CHECK( mig_clone.num_gates() == 1 );
 }
 
 TEST_CASE( "clone a node in MIG network", "[mig]" )

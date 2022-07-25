@@ -321,7 +321,7 @@ public:
         assert( count_reachable_dead_nodes( ntk ) == 0u );
 
         /* ensure that the network structure is still acyclic */
-        assert( network_is_acylic( ntk ) );
+        assert( network_is_acyclic( ntk ) );
 
         if ( ps.level_update_strategy == window_rewriting_params::precise ||
              ps.level_update_strategy == window_rewriting_params::recompute )
@@ -670,7 +670,8 @@ void window_rewriting( Ntk& ntk, window_rewriting_params const& ps = {}, window_
   color_view cntk{dntk};
 
   window_rewriting_stats st;
-  detail::window_rewriting_impl( cntk, ps, st ).run();
+  detail::window_rewriting_impl p( cntk, ps, st );
+  p.run();
   if ( pst )
   {
     *pst = st;

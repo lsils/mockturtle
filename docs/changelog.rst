@@ -1,22 +1,33 @@
 Change Log
 ==========
 
-v0.3 (not yet released)
+v0.4 (not yet released)
 -----------------------
+
+* Network interface:
+    - Remove the "name" argument in `create_pi`, `create_po`, `create_ri`, and `create_ro`. Names should be set using the `names_view` APIs. `#559 <https://github.com/lsils/mockturtle/pull/559>`_
+
+v0.3 (July 12, 2022)
+--------------------
 
 * I/O:
     - Read GENLIB files using *lorina* (`genlib_reader`) `#421 <https://github.com/lsils/mockturtle/pull/421>`_
     - Read SUPER files using *lorina* (`super_reader`) `#489 <https://github.com/lsils/mockturtle/pull/489>`_
     - Read and write Verilog with submodules (for buffered networks) `#478 <https://github.com/lsils/mockturtle/pull/478>`_
     - Write Verilog for mapped netlists `#489 <https://github.com/lsils/mockturtle/pull/489>`_
+* Network interface:
+    - `clone` `#522 <https://github.com/lsils/mockturtle/pull/522>`_
 * Network implementations:
     - Buffered networks (`buffered_aig_network`, `buffered_mig_network`) `#478 <https://github.com/lsils/mockturtle/pull/478>`_
+    - Cover network (`cover_network`) `#512 <https://github.com/lsils/mockturtle/pull/512>`_
 * Algorithms:
     - Logic resynthesis engines for MIGs (`mig_resyn` `#414 <https://github.com/lsils/mockturtle/pull/414>`_) and AIGs/XAGs (`xag_resyn` `#425 <https://github.com/lsils/mockturtle/pull/425>`_)
     - AQFP buffer insertion & optimization (`buffer_insertion`, which replaces `aqfp_view`) and verification (`buffer_verification`) `#478 <https://github.com/lsils/mockturtle/pull/478>`_ `#483 <https://github.com/lsils/mockturtle/pull/483>`_
     - Technology mapping and optimized network conversion (`map`) `#484 <https://github.com/lsils/mockturtle/pull/484>`_
     - Fast cut enumeration based on static truth tables (`fast_cut_enumeration`) `#474 <https://github.com/lsils/mockturtle/pull/474>`_
     - Resynthesis of a k-LUT network into a graph (`klut_to_graph`) `#502 <https://github.com/lsils/mockturtle/pull/502>`_
+    - Conversion of a cover network into a graph (`cover_to_graph`) `#512 <https://github.com/lsils/mockturtle/pull/512>`_
+    - Minimize debugging testcase (`testcase_minimizer`) `#542 <https://github.com/lsils/mockturtle/pull/542>`_
 * Views:
     - Add bindings to a standard library (`binding_view`) `#489 <https://github.com/lsils/mockturtle/pull/489>`_
 * Utils:

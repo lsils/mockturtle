@@ -82,7 +82,7 @@ namespace mockturtle
       res.report_gates_usage();
 
       // write the mapped network in verilog
-      write_verilog( res, "file.v" );
+      write_verilog_with_binding( res, "file.v" );
    \endverbatim
  */
 template<class Ntk>
@@ -149,17 +149,17 @@ public:
     _bindings.erase( n );
   }
 
-  const gate& get_binding( node const& n) const
+  const gate& get_binding( node const& n ) const
   {
     return _library[_bindings[n]];
   }
 
-  bool has_binding( node const& n) const
+  bool has_binding( node const& n ) const
   {
     return _bindings.has( n );
   }
 
-  unsigned int get_binding_index( node const& n) const
+  unsigned int get_binding_index( node const& n ) const
   {
     return _bindings[n];
   }
@@ -239,7 +239,7 @@ public:
       {
         float tot_gate_area = gates_profile[i] * _library[i].area;
 
-        os << fmt::format( "[i] {:<15}", _library[i].name )
+        os << fmt::format( "[i] {:<25}", _library[i].name )
            << fmt::format( "\t Instance = {:>10d}", gates_profile[i] )
            << fmt::format( "\t Area = {:>12.2f}", tot_gate_area )
            << fmt::format( " {:>8.2f} %\n", tot_gate_area / area * 100 );
@@ -248,7 +248,7 @@ public:
       }
     }
 
-    os << fmt::format( "[i] {:<15}", "TOTAL" )
+    os << fmt::format( "[i] {:<25}", "TOTAL" )
        << fmt::format( "\t Instance = {:>10d}", tot_instances )
        << fmt::format( "\t Area = {:>12.2f}   100.00 %\n", area );
   }

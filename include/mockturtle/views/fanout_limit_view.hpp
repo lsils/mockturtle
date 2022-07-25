@@ -60,15 +60,15 @@ public:
     assert( ps.fanout_limit > 0u );
   }
 
-  uint32_t create_po( signal const& f, std::string const& name = std::string() )
+  uint32_t create_po( signal const& f )
   {
     if ( Ntk::is_maj( Ntk::get_node( f ) ) && Ntk::fanout_size( Ntk::get_node( f ) ) + 1 > ps.fanout_limit )
     {
-      return Ntk::create_po( replicate_node( f ), name );
+      return Ntk::create_po( replicate_node( f ) );
     }
     else
     {
-      return Ntk::create_po( f, name );
+      return Ntk::create_po( f );
     }
   }
 

@@ -33,7 +33,6 @@ endif()
 if (NOT TARGET percy)
   add_library(percy INTERFACE) # >v0.1.2
   target_include_directories(percy SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/percy)
-  target_compile_definitions(percy INTERFACE DISABLE_NAUTY)
 
   set(THREADS_PREFER_PTHREAD_FLAG ON)
   find_package(Threads REQUIRED)
@@ -48,6 +47,13 @@ if (NOT TARGET percy)
     target_compile_definitions(libabcsat PUBLIC ABC_NAMESPACE=pabc ABC_USE_NO_READLINE NOMINMAX  WIN32_NO_DLL _CRT_SECURE_NO_WARNINGS)
   endif()
   target_link_libraries(percy INTERFACE libabcsat)
+
+  if (ENABLE_NAUTY)
+    add_subdirectory(nauty)
+    target_link_libraries(percy INTERFACE nauty)
+  else()
+    target_compile_definitions(percy INTERFACE DISABLE_NAUTY)
+  endif()
 endif()
 
 if (NOT TARGET bill)
