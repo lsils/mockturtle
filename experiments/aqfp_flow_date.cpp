@@ -24,7 +24,7 @@
  */
 
 /*
-  \file aqfp_date_flow.cpp
+  \file aqfp_flow_date.cpp
   \brief AQFP synthesis flow
 
   This file contains the code to reproduce the experiment (Table I)
@@ -372,7 +372,7 @@ int main( int argc, char** argv )
   }
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
-      "aqfp", "bench", "size_init", "dep_init", "size_remap", "dep_remap", "maj3_exact", "maj5_exact", "JJ_exact", "JJ_dep_exact", "JJ_fin", "JJ_dep_fin", "cec" );
+      "aqfp_flow_date", "bench", "size_init", "dep_init", "size_remap", "dep_remap", "maj3_exact", "maj5_exact", "JJ_exact", "JJ_dep_exact", "JJ_fin", "JJ_dep_fin", "cec" );
 
   for ( auto const& benchmark : aqfp_benchmarks )
   {
