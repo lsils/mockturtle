@@ -444,10 +444,6 @@ static const char* benchmarks[] = {
 
     "c17", "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552"};
 
-static const char* benchmarks_aqfp[] = {
-    "5xp1", "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
-    "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn"};
-
 std::vector<std::string> epfl_benchmarks( uint64_t selection = epfl )
 {
   std::vector<std::string> result;
@@ -500,31 +496,12 @@ std::vector<std::string> all_benchmarks( uint64_t selection = all )
   return result;
 }
 
-std::vector<std::string> aqfp_benchmarks( )
-{
-  std::vector<std::string> result;
-  for ( uint32_t i = 0u; i < 18u; ++i )
-  {
-      result.push_back( benchmarks_aqfp[i] );
-  }
-  return result;
-}
-
 std::string benchmark_path( std::string const& benchmark_name )
 {
 #ifndef EXPERIMENTS_PATH
   return fmt::format( "{}.aig", benchmark_name );
 #else
   return fmt::format( "{}benchmarks/{}.aig", EXPERIMENTS_PATH, benchmark_name );
-#endif
-}
-
-std::string benchmark_aqfp_path( std::string const& benchmark_name )
-{
-#ifndef EXPERIMENTS_PATH
-  return fmt::format( "{}.v", benchmark_name );
-#else
-  return fmt::format( "{}benchmarks_aqfp/{}.v", EXPERIMENTS_PATH, benchmark_name );
 #endif
 }
 
@@ -564,12 +541,6 @@ template<class Ntk>
 inline bool abc_cec( Ntk const& ntk, std::string const& benchmark )
 {
   return abc_cec_impl( ntk, benchmark_path( benchmark ) );
-}
-
-template<class Ntk>
-inline bool abc_cec_aqfp( Ntk const& ntk, std::string const& benchmark )
-{
-  return abc_cec_impl( ntk, benchmark_aqfp_path( benchmark ) );
 }
 
 } // namespace experiments

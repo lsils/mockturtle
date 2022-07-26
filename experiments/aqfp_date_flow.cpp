@@ -23,6 +23,29 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <mockturtle/io/blif_reader.hpp>
+#include <mockturtle/io/verilog_reader.hpp>
+#include <mockturtle/io/write_blif.hpp>
+#include <mockturtle/algorithms/mapper.hpp>
+#include <mockturtle/algorithms/node_resynthesis.hpp>
+#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_db.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_fanout_resyn.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_node_resyn.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_resynthesis.hpp>
+#include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/networks/aqfp.hpp>
+#include <mockturtle/networks/klut.hpp>
+#include <mockturtle/networks/mig.hpp>
+#include <mockturtle/properties/aqfpcost.hpp>
+#include <mockturtle/views/depth_view.hpp>
+
+#include "experiments.hpp"
+
+#include <fmt/format.h>
+#include <lorina/verilog.hpp>
+
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -30,40 +53,26 @@
 #include <vector>
 #include <filesystem>
 
-#include <fmt/format.h>
-#include <lorina/verilog.hpp>
-
-#include <mockturtle/io/blif_reader.hpp>
-#include <mockturtle/io/verilog_reader.hpp>
-#include <mockturtle/io/write_blif.hpp>
-
-#include <mockturtle/algorithms/collapse_mapped.hpp>
-#include <mockturtle/algorithms/lut_mapper.hpp>
-#include <mockturtle/algorithms/mapper.hpp>
-#include <mockturtle/algorithms/node_resynthesis.hpp>
-#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
-
-#include <mockturtle/algorithms/aqfp/aqfp_db.hpp>
-#include <mockturtle/algorithms/aqfp/aqfp_fanout_resyn.hpp>
-#include <mockturtle/algorithms/aqfp/aqfp_node_resyn.hpp>
-#include <mockturtle/algorithms/aqfp/aqfp_resynthesis.hpp>
-#include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
-#include <mockturtle/algorithms/cleanup.hpp>
-
-#include <mockturtle/networks/aqfp.hpp>
-#include <mockturtle/networks/klut.hpp>
-#include <mockturtle/networks/mig.hpp>
-
-#include <mockturtle/properties/aqfpcost.hpp>
-
-#include <mockturtle/utils/tech_library.hpp>
-
-#include <mockturtle/views/depth_view.hpp>
-
-#include <experiments.hpp>
-
 using namespace experiments;
 using namespace mockturtle;
+
+static const std::string benchmark_repo_path = "SCE-benchmarks";
+
+/* AQFP benchmarks */
+std::vector<std::string> aqfp_benchmarks = {
+  "5xp1", "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
+  "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn"};
+
+std::string benchmark_aqfp_path( std::string const& benchmark_name )
+{
+  return fmt::format( "{}/MCNC/original/{}.v", benchmark_repo_path, benchmark_name );
+}
+
+template<class Ntk>
+inline bool abc_cec_aqfp( Ntk const& ntk, std::string const& benchmark )
+{
+  return abc_cec_impl( ntk, benchmark_aqfp_path( benchmark ) );
+}
 
 /* Supplementary functions for AQFP resynthesis */
 template<typename Result>
@@ -337,18 +346,23 @@ int main( int argc, char** argv )
   exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn, eps );
 
   /* database loading for aqfp resynthesis*/
-  // std::stringstream db3_str( mockturtle::aqfp_db3_str );
-  // std::stringstream db5_str( exact_syn_db_cfg == "all3" ? mockturtle::aqfp_db3_str : mockturtle::aqfp_db5_str );
   auto db3_str = get_database("db3");
   auto db5_str( exact_syn_db_cfg == "all3" ? get_database("db3") : get_database("db5") );
 
   opt_params.db.load_db( db3_str );
   opt_params.db_last.load_db( db5_str );
 
+  /* download benchmarks */
+  if ( !std::filesystem::exists( benchmark_repo_path ) )
+  {
+    fmt::print( "Cloning the SCE benchmark repository to {}...\n", benchmark_repo_path );
+    system( fmt::format( "git clone https://github.com/lsils/SCE-benchmarks.git {}", benchmark_repo_path ).c_str() );
+  }
+
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
       "aqfp", "bench", "size_init", "dep_init", "size_remap", "dep_remap", "maj3_exact", "maj5_exact", "JJ_exact", "JJ_dep_exact", "JJ_fin", "JJ_dep_fin", "cec" );
 
-  for ( auto const& benchmark : aqfp_benchmarks() )
+  for ( auto const& benchmark : aqfp_benchmarks )
   {
     fmt::print( "[i] processing {}\n", benchmark );
     opt_stats_t opt_stats;
@@ -366,14 +380,8 @@ int main( int argc, char** argv )
     /* main optimization loop */
     for ( auto i = 0u; i < opt_params.optimization_rounds; ++i )
     {
-      // const uint32_t size_before = mig.num_gates();
-      // const uint32_t depth_before = depth_view( mig ).depth();
-
       auto mig_opt = remapping_round( mig, exact_lib, opt_params, opt_stats );
       aqfp = aqfp_exact_resynthesis( mig_opt, opt_params, opt_stats );
-
-      /* TODO: add on improvement only, or save current best */
-      // mig = cleanup_dangling( mig_opt );
     }
 
     /* buffer insertion */
