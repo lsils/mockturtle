@@ -23,6 +23,18 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/*
+  \file aqfp_date_flow.cpp
+  \brief AQFP synthesis flow
+
+  This file contains the code to reproduce the experiment (Table I)
+  in the following paper:
+  "Majority-based Design Flow for AQFP Superconducting Family", DATE 2022,
+  by Giulia Meuli, Vinicius Possani, Rajinder Singh, Siang-Yun Lee,
+  Alessandro Tempia Calvino, Dewmini Sudara Marakkalage, Patrick Vuillod,
+  Luca Amaru, Scott Chase, Jamil Kawa, and Giovanni De Micheli.
+ */
+
 #include <mockturtle/io/blif_reader.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/io/write_blif.hpp>
