@@ -3,11 +3,11 @@
 Network interface API
 =====================
 
-This page describes the basic interfaces of a logic network data structure in
+This page describes the common interfaces of a logic network data structure in
 *mockturtle*. Besides those listed below, more interfaces may be extended to
 a network by wrapping the network with *views* (see :ref:`views`).
 
-.. warning:
+.. warning::
 
    This part of the documentation makes use of a class called ``network``.
    This class has been created solely for the purpose of creating this
@@ -79,11 +79,18 @@ Duplicate network
    :members: clone
    :no-link:
 
-I/O and constants
-~~~~~~~~~~~~~~~~~
+Primary I/O and constants
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_constant, create_pi, create_po, create_ro, create_ri, is_combinational, is_constant, is_ci, is_pi, is_ro, constant_value, latch_reset
+   :members: get_constant, create_pi, create_po, is_constant, is_pi, constant_value
+   :no-link:
+
+Sequential I/O and properties
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. doxygenclass:: mockturtle::network
+   :members: create_ro, create_ri, is_combinational, is_ci, is_ro, latch_reset
    :no-link:
 
 Create unary functions

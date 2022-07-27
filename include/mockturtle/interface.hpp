@@ -453,10 +453,18 @@ public:
    */
   uint32_t decr_fanout_size( node const& n ) const;
 
-  /*! \brief Returns the length of the critical path. */
+  /*! \brief Returns the length of the critical path.
+   *
+   * For efficiency reasons, this interface is often not provided in the
+   * network implementations, but has to be extended by wrapping with `depth_view`.
+   */
   uint32_t depth() const;
 
-  /*! \brief Returns the level of a node. */
+  /*! \brief Returns the level of a node.
+   *
+   * For efficiency reasons, this interface is often not provided in the
+   * network implementations, but has to be extended by wrapping with `depth_view`.
+   */
   uint32_t level( node const& n ) const;
 
   /*! \brief Returns true, if node is on critical path */
@@ -587,42 +595,42 @@ public:
    * \param n A combinational input node.
    * \return A value between 0 and num_cis()-1.
    */
-  uint32_t index_ci( node const& n ) const;
+  uint32_t ci_index( node const& n ) const;
 
   /*! \brief Returns the index of a combinational output signal.
    *
    * \param n A combinational output signal.
    * \return A value between 0 and num_cos()-1.
    */
-  uint32_t index_co( signal const& n ) const;
+  uint32_t co_index( signal const& n ) const;
 
   /*! \brief Returns the index of a primary input node.
    *
    * \param n A primary input node.
    * \return A value between 0 and num_pis()-1.
    */
-  uint32_t index_pi( node const& n ) const;
+  uint32_t pi_index( node const& n ) const;
 
   /*! \brief Returns the index of a primary output signal.
    *
    * \param n A primary output signal.
    * \return A value between 0 and num_pos()-1.
    */
-  uint32_t index_po( signal const& n ) const;
+  uint32_t po_index( signal const& n ) const;
 
   /*! \brief Returns the index of a register output node.
    *
    * \param n A register output node.
    * \return A value between 0 and num_cis()-num_pis()-1.
    */
-  uint32_t index_ro( node const& n ) const;
+  uint32_t ro_index( node const& n ) const;
 
   /*! \brief Returns the index of a register input signal.
    *
    * \param n A register input signal.
    * \return A value between 0 and num_cos()-num_pos()-1.
    */
-  uint32_t index_ri( signal const& n ) const;
+  uint32_t ri_index( signal const& n ) const;
 
   /*! \brief Returns the register input signal to a register output node.
    *
@@ -830,6 +838,9 @@ public:
    * If ``fn`` has two parameters, the second parameter is an index starting
    * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
    * then it can interrupt the iteration by returning ``false``.
+   *
+   * For efficiency reasons, this interface is often not provided in the
+   * network implementations, but has to be extended by wrapping with `fanout_view`.
    */
   template<typename Fn>
   void foreach_fanout( node const& n, Fn&& fn ) const;
