@@ -5,7 +5,11 @@ int main()
 {
   mockturtle::aig_network aig;
   auto const result = lorina::read_aiger( "../experiments/benchmarks/adder.aig", mockturtle::aiger_reader( aig ) );
-  assert( result == lorina::return_code::success );
+  if ( result != lorina::return_code::success )
+  {
+    std::cout << "Read benchmark failed\n";
+    return -1;
+  }
 
   auto const cuts = cut_enumeration( aig );
   aig.foreach_node( [&]( auto node ) {

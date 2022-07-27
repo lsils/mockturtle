@@ -673,7 +673,7 @@ struct has_is_dead : std::false_type
 };
 
 template<class Ntk>
-struct has_is_dead<Ntk, std::void_t<decltype( std::declval<Ntk>().is_dead( std::declval<signal<Ntk>>() ) )>> : std::true_type
+struct has_is_dead<Ntk, std::void_t<decltype( std::declval<Ntk>().is_dead( std::declval<node<Ntk>>() ) )>> : std::true_type
 {
 };
 

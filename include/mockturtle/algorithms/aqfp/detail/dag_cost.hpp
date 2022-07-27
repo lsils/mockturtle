@@ -27,7 +27,7 @@
   \file dag_cost.hpp
   \brief Cost computing functions for AQFP DAG structures
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -36,7 +36,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <mockturtle/properties/aqfpcost.hpp>
+#include "../../../properties/aqfpcost.hpp"
 
 namespace mockturtle
 {
@@ -48,7 +48,7 @@ class dag_gate_cost
 public:
   dag_gate_cost( const std::unordered_map<uint32_t, double>& gate_costs ) : gate_costs( gate_costs ) {}
 
-  double operator()(const Ntk& net )
+  double operator()( const Ntk& net )
   {
     double res = 0.0;
 
@@ -161,7 +161,8 @@ protected:
       else
       {
         auto critical_fo = *( std::max_element( fanout[i].begin(), fanout[i].end(),
-                                                [&]( auto x, auto y ) { return ( minlev[x] < minlev[y] ); } ) );
+                                                [&]( auto x, auto y )
+                                                { return ( minlev[x] < minlev[y] ); } ) );
         minlev[i] = 1 + minlev[critical_fo];
         if ( fanout[i].size() > 1 )
         {
@@ -280,7 +281,7 @@ public:
   dag_aqfp_cost_and_depths( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters )
       : dag_aqfp_cost<Ntk>( gate_costs, splitters ) {}
 
-  std::pair<double, std::vector<uint32_t>> operator()(const Ntk& orig_net, const std::vector<uint32_t>& input_depths )
+  std::pair<double, std::vector<uint32_t>> operator()( const Ntk& orig_net, const std::vector<uint32_t>& input_depths )
   {
     net = orig_net;
     fanout = std::vector<std::vector<typename Ntk::node_type>>( net.nodes.size() );
@@ -418,7 +419,7 @@ public:
   dag_aqfp_cost_all_configs( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters )
       : dag_aqfp_cost<Ntk>( gate_costs, splitters ) {}
 
-  std::unordered_map<depth_config_t, double> operator()(const Ntk& orig_net )
+  std::unordered_map<depth_config_t, double> operator()( const Ntk& orig_net )
   {
     std::unordered_map<depth_config_t, double> config_cost;
     net = orig_net;

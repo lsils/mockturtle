@@ -27,7 +27,7 @@
   \file dag_util.hpp
   \brief Utilities for DAG generation
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Marakkalage
 */
 
 #pragma once
@@ -37,7 +37,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <mockturtle/utils/hash_functions.hpp>
+#include "../../../utils/hash_functions.hpp"
 
 namespace mockturtle
 {
@@ -45,14 +45,15 @@ namespace mockturtle
 namespace detail
 {
 
-/*! \brief Computes and returns the frequency map for a given collection of elements. 
- *  Use std::map instead of std::unordered_map because we use it as a key in a hash-table so the order is important to compute the hash 
+/*! \brief Computes and returns the frequency map for a given collection of elements.
+ *  Use std::map instead of std::unordered_map because we use it as a key in a hash-table so the order is important to compute the hash
  */
 template<typename ElemT>
 inline std::map<ElemT, uint32_t> get_frequencies( const std::vector<ElemT>& elems )
 {
   std::map<ElemT, uint32_t> elem_counts;
-  std::for_each( elems.begin(), elems.end(), [&elem_counts]( auto e ) { elem_counts[e]++; } );
+  std::for_each( elems.begin(), elems.end(), [&elem_counts]( auto e )
+                 { elem_counts[e]++; } );
   return elem_counts;
 }
 
@@ -172,7 +173,7 @@ class partition_extender
   using outer_cache_t = std::map<outer_cache_key_t, inner_cache_t>;
 
 public:
-  /*! \brief Compute a list of different partitions that can be obtained by adding elements 
+  /*! \brief Compute a list of different partitions that can be obtained by adding elements
    * in `elems` to the parts of `base` such that no part contains any element `e` more than
    * `max_counts[e]` times
    */

@@ -1225,7 +1225,7 @@ private:
     });
 
     count_buffers();
-    assert( num_buffers() <= num_buffers_before );
+    //assert( num_buffers() <= num_buffers_before );
     return updated && num_buffers() < num_buffers_before;
   }
 
