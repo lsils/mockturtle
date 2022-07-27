@@ -68,7 +68,7 @@ public:
   using context_t = uint32_t;
   context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const
   {
-    uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_costs ), std::end( fanin_costs ) ) + 1;
+    uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_contexts ), std::end( fanin_contexts ) ) + 1;
     return _cost;
   }
   void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const
@@ -84,7 +84,7 @@ public:
   using context_t = uint32_t;
   context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const
   {
-    uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_costs ), std::end( fanin_costs ) ) + ntk.is_and( n );
+    uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_contexts ), std::end( fanin_contexts ) ) + ntk.is_and( n );
     return _cost;
   }
   void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const
