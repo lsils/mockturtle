@@ -575,30 +575,24 @@ public:
     return ( _storage->nodes[n].data[0].h1 >> 31 ) & 1;
   }
 
-  template<class container_type>
-  signal get_final_signal( signal const& s, container_type& old_to_new )
-  {
-    const auto it = old_to_new.find( get_node( s ) );
-    if ( it == old_to_new.end() )
-      return s;
-    signal& s_new = it->second;
-    s_new = get_final_signal( s_new, old_to_new );
-    return is_complemented( s )? create_not( s_new ) : s_new; 
-  }
-
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( {old_node, new_signal} );
-
-    std::unordered_map<node, signal> old_to_new;
 
     while ( !to_substitute.empty() )
     {
       const auto [_old, _curr] = to_substitute.top();
       to_substitute.pop();
 
-      signal _new = get_final_signal( _curr, old_to_new );
+      signal _new = _curr;
+      while ( is_dead( get_node( _new ) ) )
+      {
+        const auto it = old_to_new.find( get_node( _new ) );
+        assert( it != old_to_new.end() );
+        _new = is_complemented( _new ) ? create_not( it->second ) : it->second;
+      }
       
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
