@@ -39,12 +39,25 @@
 namespace mockturtle
 {
 
+/*! \brief (Recursive) customizable cost function
+ * 
+ * This is the base type of a customizable cost function. Two operators need to be defined.
+ */
 template<class Ntk>
 struct recursive_cost_functions
 {
   using base_type = recursive_cost_functions;
   using context_t = uint32_t;
-  virtual context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_costs = {} ) const = 0;
+  /*! \brief Context propagation function
+   *  
+   * Return the context of a node given fanin contexts.
+   */
+  virtual context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const = 0;
+
+  /*! \brief Contribution function
+   *  
+   * Update the total cost using node n and its context. 
+   */
   virtual void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const = 0;
 };
 
@@ -53,7 +66,7 @@ struct depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
-  context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_costs = {} ) const
+  context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const
   {
     uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_costs ), std::end( fanin_costs ) ) + 1;
     return _cost;
@@ -69,7 +82,7 @@ struct t_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
-  context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_costs = {} ) const
+  context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const
   {
     uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_costs ), std::end( fanin_costs ) ) + ntk.is_and( n );
     return _cost;
@@ -85,7 +98,7 @@ struct size_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
-  context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<uint32_t> const& fanin_costs = {} ) const
+  context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<uint32_t> const& fanin_contexts = {} ) const
   {
     return 0;
   }

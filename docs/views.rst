@@ -110,7 +110,7 @@ algorithm.  Several views are implemented in mockturtle.
    :members:
 
 `cost_view`: Manages global cost and maintains context
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/views/cost_view.hpp``
 

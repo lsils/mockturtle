@@ -175,44 +175,22 @@ public:
     Ntk::events().release_add_event( add_event );
   }
 
-  /**
-   * @brief Get the context of a node
-   * 
-   * @param n 
-   * @return context_t context
-   */
   context_t get_context( node const& n ) const
   {
     return context[n];
   }
 
-  /**
-   * @brief Set the context of a node
-   * 
-   * @param n 
-   * @param cost_val 
-   */
   void set_context( node const& n, context_t cost_val )
   {
     context[n] = cost_val;
     this->set_visited( n, this->trav_id() );
   }
 
-  /**
-   * @brief Get the cost of the whole network
-   * 
-   * @return context_t 
-   */
   uint32_t get_cost() const
   {
     return _cost;
   }
 
-  /**
-   * @brief Get the cost of one single node
-   * 
-   * @return context_t 
-   */
   uint32_t get_cost( node const& n )
   {
     uint32_t _c = 0u;
@@ -221,11 +199,6 @@ public:
     return _c;
   }
 
-  /**
-   * @brief Get the cost of one single node starting from divisors
-   * 
-   * @return context_t 
-   */
   uint32_t get_cost( node const& n, std::vector<signal> const& divs )
   {
     uint32_t _c = 0u;
