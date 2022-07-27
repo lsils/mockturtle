@@ -117,7 +117,7 @@ public:
    */
   network clone();
 
-#pragma region I / O and constants
+#pragma region Primary I / O and constants
   /*! \brief Gets constant value represented by network.
    *
    * A constant node is the only node that must be created when initializing
@@ -146,6 +146,20 @@ public:
    */
   void create_po( signal const& s );
 
+  /*! \brief Checks whether a node is a constant node. */
+  bool is_constant( node const& n ) const;
+
+  /*! \brief Checks whether a node is a primary input. */
+  bool is_pi( node const& n ) const;
+
+  /*! \brief Gets the Boolean value of the constant node.
+   *
+   * The method expects that `n` is a constant node.
+   */
+  bool constant_value( node const& n ) const;
+#pragma endregion
+
+#pragma region Sequential I/O and properties
   /*! \brief Creates a register output in the network.
    *
    * Each created register output is stored in a node and contributes
@@ -191,23 +205,18 @@ public:
    */
   bool is_combinational() const;
 
-  /*! \brief Checks whether a node is a constant node. */
-  bool is_constant( node const& n ) const;
-
   /*! \brief Checks whether a node is a combinational input (PI or RO). */
   bool is_ci( node const& n ) const;
-
-  /*! \brief Checks whether a node is a primary input. */
-  bool is_pi( node const& n ) const;
 
   /*! \brief Checks whether a node is a register output. */
   bool is_ro( node const& n ) const;
 
-  /*! \brief Gets the Boolean value of the constant node.
+  /*! \brief Get the reset value of a latch.
    *
-   * The method expects that `n` is a constant node.
+   * \param index A value between 0 (inclusive) and the number of
+   *              latches (exclusive).
    */
-  bool constant_value( node const& n ) const;
+  int8_t latch_reset( uint32_t index ) const;
 #pragma endregion
 
 #pragma region Create unary functions
@@ -423,6 +432,9 @@ public:
 
   /*! \brief Returns the number of gates (without dead nodes) */
   uint32_t num_gates() const;
+
+  /*! \brief Returns the number of latches. */
+  uint32_t num_latches() const;
 
   /*! \brief Returns the number of registers.
    *
