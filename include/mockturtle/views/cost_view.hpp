@@ -239,11 +239,6 @@ public:
     return s;
   }
 
-  /**
-   * @brief Create a pi
-   * this is required by the cleanup_dangling method
-   * @return signal 
-   */
   signal create_pi()
   {
     signal s = Ntk::create_pi();

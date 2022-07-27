@@ -149,9 +149,6 @@ struct costfn_windowing_stats
 
 namespace detail
 {
-/**
- * @brief The problem we agree on for cost function aware algorithm 
- */
 template<class Ntk, class TT>
 struct cost_aware_problem
 {
@@ -197,12 +194,6 @@ public:
   {
   }
 
-  /**
-   * @brief Create the cost-aware problem
-   * 
-   * @param n 
-   * @return std::optional<std::reference_wrapper<problem_t>> 
-   */
   std::optional<std::reference_wrapper<problem_t>> operator()( node const& n )
   {
     stopwatch t( st.time_total );
