@@ -1,8 +1,14 @@
 Change Log
 ==========
 
-v0.3 (not yet released)
+v0.4 (not yet released)
 -----------------------
+
+* Network interface:
+    - Remove the "name" argument in `create_pi`, `create_po`, `create_ri`, and `create_ro`. Names should be set using the `names_view` APIs. `#559 <https://github.com/lsils/mockturtle/pull/559>`_
+
+v0.3 (July 12, 2022)
+--------------------
 
 * I/O:
     - Read GENLIB files using *lorina* (`genlib_reader`) `#421 <https://github.com/lsils/mockturtle/pull/421>`_

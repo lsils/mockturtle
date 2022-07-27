@@ -116,7 +116,7 @@ public:
     {
       if ( size.empty() )
       {
-        signals_[name] = ntk_.create_pi( name );
+        signals_[name] = ntk_.create_pi();
         input_names_.emplace_back( name, 1u );
         if constexpr ( has_set_name_v<Ntk> )
         {
@@ -130,7 +130,7 @@ public:
         for ( auto i = 0u; i < length; ++i )
         {
           const auto sname = fmt::format( "{}[{}]", name, i );
-          word.push_back( ntk_.create_pi( sname ) );
+          word.push_back( ntk_.create_pi() );
           signals_[sname] = word.back();
           if constexpr ( has_set_name_v<Ntk> )
           {
@@ -399,7 +399,7 @@ public:
 
     for ( auto const& o : outputs_ )
     {
-      ntk_.create_po( signals_[o], o );
+      ntk_.create_po( signals_[o] );
     }
 
     if constexpr ( has_set_output_name_v<Ntk> )

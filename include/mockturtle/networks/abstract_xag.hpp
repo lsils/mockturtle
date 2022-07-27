@@ -180,20 +180,16 @@ public:
     return {0, value};
   }
 
-  signal create_pi( std::string const& name = std::string() )
+  signal create_pi()
   {
-    (void)name;
-
     const auto index = static_cast<uint32_t>( _storage->nodes.size() );
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
     return {index, 0};
   }
 
-  uint32_t create_po( signal const& f, std::string const& name = std::string() )
+  uint32_t create_po( signal const& f )
   {
-    (void)name;
-
     /* increase ref-count to children */
     _storage->nodes[f.index].fanout_size++;
     auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
