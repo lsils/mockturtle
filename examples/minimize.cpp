@@ -39,11 +39,11 @@ int main( int argc, char* argv[] )
     return *equivalence_checking( *miter<aig_network>( aig_copy, aig ) ); // true: normal (or not the expected bug); false: buggy
   };
 
-  /* Use this lambda function for debugging external tools or algorithms that segfaults */
+  /* Uncomment to use the following lambda function for debugging external tools or algorithms that segfaults */
   /* Note that this version is not supported on Windows platform */
-  auto make_command = []( std::string const& filename ) -> std::string {
-    return "abc -c \"read " + filename + "; rewrite\"";
-  };
+  // auto make_command = []( std::string const& filename ) -> std::string {
+  //   return "abc -c \"read " + filename + "; rewrite\"";
+  // };
 
   testcase_minimizer_params ps;
   ps.file_format = testcase_minimizer_params::aiger;
@@ -53,7 +53,7 @@ int main( int argc, char* argv[] )
   ps.verbose = true;
   testcase_minimizer<aig_network> minimizer( ps );
   minimizer.run( opt );
-  //minimizer.run( make_command );
+  // minimizer.run( make_command );
 
   return 0;
 }

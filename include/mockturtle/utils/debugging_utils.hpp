@@ -229,7 +229,7 @@ void count_reachable_dead_nodes_from_node_recur( Ntk const& ntk, typename Ntk::n
   }
 
   ntk.paint( n );
-  ntk.foreach_fanin( n, [&]( node const& f ){
+  ntk.foreach_fanin( n, [&]( auto const& f ){
     count_reachable_dead_nodes_from_node_recur( ntk, ntk.get_node( f ), nodes );
   });
 }
