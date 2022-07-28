@@ -134,11 +134,6 @@ public:
     return num_pos();
   }
 
-  inline uint32_t num_latches() const
-  {
-    return 0u;
-  }
-
   inline uint32_t num_pis() const
   {
     return static_cast<uint32_t>( _inputs.size() );

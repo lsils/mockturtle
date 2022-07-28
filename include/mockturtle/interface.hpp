@@ -433,9 +433,6 @@ public:
   /*! \brief Returns the number of gates (without dead nodes) */
   uint32_t num_gates() const;
 
-  /*! \brief Returns the number of latches. */
-  uint32_t num_latches() const;
-
   /*! \brief Returns the number of registers.
    *
    * This number is usually equal to the number of register outputs

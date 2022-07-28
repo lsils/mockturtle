@@ -442,11 +442,6 @@ signal create_maj( signal a, signal b, signal c )
     return static_cast<uint32_t>( _storage->outputs.size() );
   }
 
-  uint32_t num_latches() const
-  {
-      return static_cast<uint32_t>( _storage->data.latches.size() );
-  }
-
   auto num_pis() const
   {
     return _storage->data.num_pis;
