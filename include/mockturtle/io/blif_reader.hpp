@@ -91,10 +91,8 @@ public:
     for ( auto const& latch : latches )
     {
       auto const lit = std::get<0>( latch );
-      auto const reset = std::get<1>( latch );
-
       auto signal = signals[lit];
-      ntk_.create_ri( signal, reset );
+      ntk_.create_ri( signal );
     }
   }
 

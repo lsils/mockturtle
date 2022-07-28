@@ -178,7 +178,7 @@ struct has_create_ri : std::false_type
 };
 
 template<class Ntk>
-struct has_create_ri<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ri( std::declval<signal<Ntk>>(), int8_t() ) )>> : std::true_type
+struct has_create_ri<Ntk, std::void_t<decltype( std::declval<Ntk>().create_ri( std::declval<signal<Ntk>>() ) )>> : std::true_type
 {
 };
 
@@ -724,21 +724,6 @@ struct has_num_cos<Ntk, std::void_t<decltype( std::declval<Ntk>().num_cos() )>> 
 
 template<class Ntk>
 inline constexpr bool has_num_cos_v = has_num_cos<Ntk>::value;
-#pragma endregion
-
-#pragma region has_num_latches
-template<class Ntk, class = void>
-struct has_num_latches : std::false_type
-{
-};
-
-template<class Ntk>
-struct has_num_latches<Ntk, std::void_t<decltype( std::declval<Ntk>().num_latches() )>> : std::true_type
-{
-};
-
-template<class Ntk>
-inline constexpr bool has_num_latches_v = has_num_latches<Ntk>::value;
 #pragma endregion
 
 #pragma region has_num_pis

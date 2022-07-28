@@ -119,7 +119,8 @@ public:
           _ntk.set_name( signal, std::get<2>( latch ) + "_next" );
         }
 
-        _ntk.create_ri( signal, reset );
+        _ntk.create_ri( signal );
+        _ntk._storage->latch_information[_ntk.get_node( signal )].init = reset;
       }
     }
   }
