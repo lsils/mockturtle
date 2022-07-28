@@ -25,7 +25,11 @@
 
 /*!
   \file cost_resyn.hpp
-  \brief the lower level searching core
+  \brief Solver of cost-aware resynthesis problem.
+         Given a resynthesis problem and the cost function, returns
+         the solution with (1) correct functionality (2) lower cost.
+
+         This solver is cost-generic.
 
   \author Hanyu Wang
 */
@@ -83,15 +87,15 @@ struct cost_resyn_stats
     fmt::print( "[i]         <cost_resyn>\n" );
     fmt::print( "[i]             Evalutation      : {:>5.2f} secs\n", to_seconds( time_eval ) );
     fmt::print( "[i]             Searching        : {:>5.2f} secs\n", to_seconds( time_search ) );
+    fmt::print( "[i]             # Problem        : {}\n", num_problems );
     fmt::print( "[i]             Avg. forest size : {:>5.2f}\n", (float)size_forest / num_problems );
     fmt::print( "[i]             Avg. num solution: {:>5.2f}\n", (float)num_roots / num_problems );
     fmt::print( "[i]             Opt. ratio       : {:>5.2f}%\n", (float)num_solutions / num_problems * 100 );
-    fmt::print( "[i]             # Problem        : {:>5.2f}\n", (float)num_problems );
-    fmt::print( "[i]             Gain             : {:>5.2f}\n", (float)num_gain / num_problems );
     fmt::print( "[i]             0 - resub        : {:>5.2f}\n", (float)num_resub[0] / num_problems );
     fmt::print( "[i]             1 - resub        : {:>5.2f}\n", (float)num_resub[1] / num_problems );
     fmt::print( "[i]             2 - resub        : {:>5.2f}\n", (float)num_resub[2] / num_problems );
     fmt::print( "[i]             3 - resub        : {:>5.2f}\n", (float)num_resub[3] / num_problems );
+    fmt::print( "[i]             Gain             : {:>5.2f}\n", (float)num_gain / num_problems );
   }
 };
 
@@ -144,6 +148,7 @@ private:
     uint32_t lit1, lit2;
     uint32_t score{ 0 };
   };
+
   inline TT const& get_div( uint32_t idx ) const
   {
     return ( *ptts )[divisors[idx]];
@@ -152,7 +157,7 @@ private:
   uint32_t eval_result( Ntk& forest, index_list_t const& il )
   {
     uint32_t eval = 0u;
-    // insert il to forest
+    // insert il to forest, this might not be applicable to cost related to fanout size!
     insert( forest, std::begin( forest_leaves ), std::end( forest_leaves ), il, [&]( signal const& g ) {
       forest.incr_trav_id();
       eval = forest.get_cost( forest.get_node( g ), forest_leaves );
