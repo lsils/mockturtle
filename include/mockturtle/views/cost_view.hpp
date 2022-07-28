@@ -74,14 +74,14 @@ namespace mockturtle
       std::cout << "size: " << viewed.get_cost() << "\n";
    \endverbatim
  */
-template<class Ntk, class RecCostFn, class context_t>
+template<class Ntk, class RecCostFn>
 class cost_view : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
-  using costfn_t = RecCostFn;
+  using context_t = typename RecCostFn::context_t;
 
   explicit cost_view( RecCostFn const& cost_fn = {} )
       : Ntk(),
@@ -114,7 +114,7 @@ public:
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  explicit cost_view( cost_view<Ntk, RecCostFn, context_t> const& other )
+  explicit cost_view( cost_view<Ntk, RecCostFn> const& other )
       : Ntk( other ),
         _cost_fn( other._cost_fn ),
         context( other.context )
@@ -122,7 +122,7 @@ public:
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  cost_view<Ntk, RecCostFn, context_t>& operator=( cost_view<Ntk, RecCostFn, context_t> const& other )
+  cost_view<Ntk, RecCostFn>& operator=( cost_view<Ntk, RecCostFn> const& other )
   {
     /* delete the event of this network */
     Ntk::events().release_add_event( add_event );
@@ -273,9 +273,9 @@ private:
 };
 
 template<class T>
-cost_view( T const& ) -> cost_view<T, typename T::costfn_t, typename T::costfn_t::context_t>;
+cost_view( T const& ) -> cost_view<T, typename T::RecCostFn>;
 
 template<class T, class RecCostFn>
-cost_view( T const&, RecCostFn const& ) -> cost_view<T, RecCostFn, typename RecCostFn::context_t>;
+cost_view( T const&, RecCostFn const& ) -> cost_view<T, RecCostFn>;
 
 } // namespace mockturtle
