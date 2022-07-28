@@ -158,30 +158,24 @@ public:
     return _fanout[n];
   }
 
-  template<class container_type>
-  signal get_final_signal( signal const& s, container_type& old_to_new )
-  {
-    const auto it = old_to_new.find( this->get_node( s ) );
-    if ( it == old_to_new.end() )
-      return s;
-    signal& s_new = it->second;
-    s_new = this->get_final_signal( s_new, old_to_new );
-    return this->is_complemented( s )? this->create_not( s_new ) : s_new; 
-  }
-
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( { old_node, new_signal } );
-
-    std::unordered_map<node, signal> old_to_new;
 
     while ( !to_substitute.empty() )
     {
       const auto [_old, _curr] = to_substitute.top();
       to_substitute.pop();
 
-      signal _new = get_final_signal( _curr, old_to_new );
+      signal _new = _curr;
+      while ( Ntk::is_dead( Ntk::get_node( _new ) ) )
+      {
+        const auto it = old_to_new.find( Ntk::get_node( _new ) );
+        assert( it != old_to_new.end() );
+        _new = Ntk::is_complemented( _new ) ? Ntk::create_not( it->second ) : it->second;
+      }
 
       const auto parents = _fanout[_old];
       for ( auto n : parents )

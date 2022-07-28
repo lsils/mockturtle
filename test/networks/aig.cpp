@@ -889,7 +889,7 @@ TEST_CASE( "substitute node and restrash", "[aig]" )
   CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
 }
 
-TEST_CASE( "substitute node with complemented node", "[aig]" )
+TEST_CASE( "substitute node with complemented node in aig_network", "[aig]" )
 {
   aig_network aig;
   auto const x1 = aig.create_pi();
