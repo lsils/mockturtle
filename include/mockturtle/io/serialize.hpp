@@ -200,9 +200,9 @@ public:
     }
 
     /* storage data */
-    os.dump( (char*)&storage.data.num_pis, sizeof( uint32_t ) );
-    os.dump( (char*)&storage.data.num_pos, sizeof( uint32_t ) );
-    os.dump( (char*)&storage.data.trav_id, sizeof( uint32_t ) );
+    os.dump( (char*)&storage.num_pis, sizeof( uint32_t ) );
+    os.dump( (char*)&storage.num_pos, sizeof( uint32_t ) );
+    os.dump( (char*)&storage.trav_id, sizeof( uint32_t ) );
     
     return true;
   }
@@ -250,9 +250,9 @@ public:
     }
   
     /* aig_storage_data */
-    ar_input.load( (char*)&storage->data.num_pis, sizeof( uint32_t ) );
-    ar_input.load( (char*)&storage->data.num_pos, sizeof( uint32_t ) );
-    ar_input.load( (char*)&storage->data.trav_id, sizeof( uint32_t ) );
+    ar_input.load( (char*)&storage->num_pis, sizeof( uint32_t ) );
+    ar_input.load( (char*)&storage->num_pos, sizeof( uint32_t ) );
+    ar_input.load( (char*)&storage->trav_id, sizeof( uint32_t ) );
 
     return true;
   }

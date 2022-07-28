@@ -53,9 +53,6 @@ namespace mockturtle
 struct klut_storage_data
 {
   truth_table_cache<kitty::dynamic_truth_table> cache;
-  uint32_t num_pis = 0u;
-  uint32_t num_pos = 0u;
-  uint32_t trav_id = 0u;
 };
 
 /*! \brief k-LUT node
@@ -179,7 +176,7 @@ public:
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
     _storage->nodes[index].data[1].h1 = 2;
-    ++_storage->data.num_pis;
+    ++_storage->num_pis;
     return index;
   }
 
@@ -190,7 +187,7 @@ public:
 
     auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
     _storage->outputs.emplace_back( f );
-    ++_storage->data.num_pos;
+    ++_storage->num_pos;
     return po_index;
   }
 
@@ -214,8 +211,8 @@ public:
 
   bool is_combinational() const
   {
-    return ( static_cast<uint32_t>( _storage->inputs.size() ) == _storage->data.num_pis &&
-             static_cast<uint32_t>( _storage->outputs.size() ) == _storage->data.num_pos );
+    return ( static_cast<uint32_t>( _storage->inputs.size() ) == _storage->num_pis &&
+             static_cast<uint32_t>( _storage->outputs.size() ) == _storage->num_pos );
   }
 
   bool is_constant( node const& n ) const
@@ -230,14 +227,14 @@ public:
 
   bool is_pi( node const& n ) const
   {
-    const auto end = _storage->inputs.begin() + _storage->data.num_pis;
+    const auto end = _storage->inputs.begin() + _storage->num_pis;
 
     return std::find( _storage->inputs.begin(), end, n ) != end;
   }
 
   bool is_ro( node const& n ) const
   {
-    return std::find( _storage->inputs.begin() + _storage->data.num_pis, _storage->inputs.end(), n ) != _storage->inputs.end();
+    return std::find( _storage->inputs.begin() + _storage->num_pis, _storage->inputs.end(), n ) != _storage->inputs.end();
   }
 
   bool constant_value( node const& n ) const
@@ -436,18 +433,18 @@ signal create_maj( signal a, signal b, signal c )
 
   auto num_pis() const
   {
-    return _storage->data.num_pis;
+    return _storage->num_pis;
   }
 
   auto num_pos() const
   {
-    return _storage->data.num_pos;
+    return _storage->num_pos;
   }
 
   auto num_registers() const
   {
-    assert( static_cast<uint32_t>( _storage->inputs.size() - _storage->data.num_pis ) == static_cast<uint32_t>( _storage->outputs.size() - _storage->data.num_pos ) );
-    return static_cast<uint32_t>( _storage->inputs.size() - _storage->data.num_pis );
+    assert( static_cast<uint32_t>( _storage->inputs.size() - _storage->num_pis ) == static_cast<uint32_t>( _storage->outputs.size() - _storage->num_pos ) );
+    return static_cast<uint32_t>( _storage->inputs.size() - _storage->num_pis );
   }
 
   auto num_gates() const
@@ -519,26 +516,26 @@ signal create_maj( signal a, signal b, signal c )
 
   node pi_at( uint32_t index ) const
   {
-    assert( index < _storage->data.num_pis );
+    assert( index < _storage->num_pis );
     return *(_storage->inputs.begin() + index);
   }
 
   signal po_at( uint32_t index ) const
   {
-    assert( index < _storage->data.num_pos );
+    assert( index < _storage->num_pos );
     return (_storage->outputs.begin() + index)->index;
   }
 
   node ro_at( uint32_t index ) const
   {
-    assert( index < _storage->inputs.size() - _storage->data.num_pis );
-    return *(_storage->inputs.begin() + _storage->data.num_pis + index);
+    assert( index < _storage->inputs.size() - _storage->num_pis );
+    return *(_storage->inputs.begin() + _storage->num_pis + index);
   }
 
   signal ri_at( uint32_t index ) const
   {
-    assert( index < _storage->outputs.size() - _storage->data.num_pos );
-    return (_storage->outputs.begin() + _storage->data.num_pos + index)->index;
+    assert( index < _storage->outputs.size() - _storage->num_pos );
+    return (_storage->outputs.begin() + _storage->num_pos + index)->index;
   }
 
   uint32_t ci_index( node const& n ) const
@@ -584,7 +581,7 @@ signal create_maj( signal a, signal b, signal c )
   uint32_t ro_index( node const& n ) const
   {
     assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
-    return static_cast<uint32_t>( _storage->nodes[n].children[0].data - _storage->data.num_pis );
+    return static_cast<uint32_t>( _storage->nodes[n].children[0].data - _storage->num_pis );
   }
 
   uint32_t ri_index( signal const& s ) const
@@ -603,12 +600,12 @@ signal create_maj( signal a, signal b, signal c )
 
   signal ro_to_ri( signal const& s ) const
   {
-    return ( _storage->outputs.begin() + _storage->data.num_pos + _storage->nodes[s].children[0].data - _storage->data.num_pis )->index;
+    return ( _storage->outputs.begin() + _storage->num_pos + _storage->nodes[s].children[0].data - _storage->num_pis )->index;
   }
 
   node ri_to_ro( signal const& s ) const
   {
-    return *( _storage->inputs.begin() + _storage->data.num_pis + ri_index( s ) );
+    return *( _storage->inputs.begin() + _storage->num_pis + ri_index( s ) );
   }
 #pragma endregion
 
@@ -636,27 +633,27 @@ signal create_maj( signal a, signal b, signal c )
   template<typename Fn>
   void foreach_pi( Fn&& fn ) const
   {
-    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.begin() + _storage->data.num_pis, fn );
+    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.begin() + _storage->num_pis, fn );
   }
 
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->outputs.begin(), _storage->outputs.begin() + _storage->data.num_pos, []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->outputs.begin(), _storage->outputs.begin() + _storage->num_pos, []( auto o ) { return o.index; }, fn );
   }
 
   template<typename Fn>
   void foreach_ro( Fn&& fn ) const
   {
-    detail::foreach_element( _storage->inputs.begin() + _storage->data.num_pis, _storage->inputs.end(), fn );
+    detail::foreach_element( _storage->inputs.begin() + _storage->num_pis, _storage->inputs.end(), fn );
   }
 
   template<typename Fn>
   void foreach_ri( Fn&& fn ) const
   {
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->outputs.begin() + _storage->data.num_pos, _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->outputs.begin() + _storage->num_pos, _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
   }
 
   template<typename Fn>
@@ -667,9 +664,9 @@ signal create_maj( signal a, signal b, signal c )
                    detail::is_callable_with_index_v<Fn, std::pair<signal,node>, bool> ||
                    detail::is_callable_without_index_v<Fn, std::pair<signal,node>, bool> );
 
-    assert( _storage->inputs.size() - _storage->data.num_pis == _storage->outputs.size() - _storage->data.num_pos );
-    auto ro = _storage->inputs.begin() + _storage->data.num_pis;
-    auto ri = _storage->outputs.begin() + _storage->data.num_pos;
+    assert( _storage->inputs.size() - _storage->num_pis == _storage->outputs.size() - _storage->num_pos );
+    auto ro = _storage->inputs.begin() + _storage->num_pis;
+    auto ri = _storage->outputs.begin() + _storage->num_pos;
     if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal,node>, bool> )
     {
       while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
@@ -815,12 +812,12 @@ signal create_maj( signal a, signal b, signal c )
 
   uint32_t trav_id() const
   {
-    return _storage->data.trav_id;
+    return _storage->trav_id;
   }
 
   void incr_trav_id() const
   {
-    ++_storage->data.trav_id;
+    ++_storage->trav_id;
   }
 #pragma endregion
 

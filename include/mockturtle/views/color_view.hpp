@@ -59,14 +59,14 @@ public:
   /*! \brief Returns a new color and increases the current color */
   uint32_t new_color() const
   {
-    return ++this->_storage->data.trav_id;
+    return ++this->_storage->trav_id;
     // return ++value;
   }
 
   /*! \brief Returns the current color */
   uint32_t current_color() const
   {
-    return this->_storage->data.trav_id;
+    return this->_storage->trav_id;
     // return value;
   }
 
