@@ -90,7 +90,7 @@ Sequential I/O and properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: create_ro, create_ri, is_combinational, is_ci, is_ro, latch_reset
+   :members: create_ro, create_ri, is_combinational, is_ci, is_ro
    :no-link:
 
 Create unary functions

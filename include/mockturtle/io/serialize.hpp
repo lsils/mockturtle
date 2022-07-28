@@ -202,12 +202,7 @@ public:
     /* storage data */
     os.dump( (char*)&storage.data.num_pis, sizeof( uint32_t ) );
     os.dump( (char*)&storage.data.num_pos, sizeof( uint32_t ) );
-    size = storage.data.latches.size();
-    for ( const auto& l : storage.data.latches )
-    {
-      os.dump( (char*)&l, sizeof( int8_t ) );
-    }
-    os.dump( (char*)&storage.data.trav_id, sizeof( uint32_t ) );    
+    os.dump( (char*)&storage.data.trav_id, sizeof( uint32_t ) );
     
     return true;
   }
@@ -257,13 +252,6 @@ public:
     /* aig_storage_data */
     ar_input.load( (char*)&storage->data.num_pis, sizeof( uint32_t ) );
     ar_input.load( (char*)&storage->data.num_pos, sizeof( uint32_t ) );
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
-    for ( uint64_t i = 0; i < size; ++i )
-    {
-      int8_t l;
-      ar_input.load( (char*)&l, sizeof( int8_t ) );    
-      storage->data.latches.push_back( l );
-    }
     ar_input.load( (char*)&storage->data.trav_id, sizeof( uint32_t ) );
 
     return true;
