@@ -35,6 +35,7 @@
 #pragma once
 
 #include "../traits.hpp"
+#include "../networks/sequential.hpp"
 #include "../views/topo_view.hpp"
 
 #include <kitty/constructors.hpp>
@@ -92,6 +93,12 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
 
+  uint32_t num_latches{0};
+  if constexpr ( has_num_registers_v<Ntk> )
+  {
+    num_latches = ntk.num_registers();
+  }
+
   topo_view topo_ntk{ntk};
 
   /* write model */
@@ -103,7 +110,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     os << ".inputs ";
     topo_ntk.foreach_ci( [&]( auto const& n, auto index ) 
     {
-      if ( ( ( index + 1 ) <= topo_ntk.num_cis() - topo_ntk.num_registers() ) ) 
+      if ( ( ( index + 1 ) <= topo_ntk.num_cis() - num_latches ) ) 
       {
         if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
         {
@@ -127,7 +134,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     topo_ntk.foreach_co( [&]( auto const& f, auto index ) 
     {
       (void)f;
-      if( index < topo_ntk.num_cos() - topo_ntk.num_registers() ) 
+      if( index < topo_ntk.num_cos() - num_latches ) 
       {
         if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
         {
@@ -143,29 +150,32 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     os << "\n";
   }
 
-  if ( topo_ntk.num_registers() > 0u )
+  if constexpr ( has_num_registers_v<Ntk> )
   {
-    auto latch_idx = 0;
-    topo_ntk.foreach_co( [&]( auto const& f, auto index ) 
+    if ( num_latches > 0u )
     {
-      if( index >= topo_ntk.num_cos() - topo_ntk.num_registers() ) 
+      auto latch_idx = 0;
+      topo_ntk.foreach_co( [&]( auto const& f, auto index ) 
       {
-        os << ".latch ";
-        auto const ro_sig = topo_ntk.make_signal( topo_ntk.ri_to_ro( f ) );
-        mockturtle::latch_info l_info = topo_ntk._storage->latch_information[topo_ntk.get_node(ro_sig)];
-        if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+        if( index >= topo_ntk.num_cos() - num_latches ) 
         {
-          std::string const ri_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : fmt::format( "new_n{}", topo_ntk.get_node( f ) );
-          std::string const ro_name = topo_ntk.has_name( ro_sig ) ? topo_ntk.get_name( ro_sig ) : fmt::format( "new_n{}", topo_ntk.get_node( ro_sig ) );
-          os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, l_info.type, l_info.control, l_info.init);
-        }
-        else
-        {
-          os << fmt::format( "li{} new_n{} {} {} {}\n", latch_idx, topo_ntk.get_node( ro_sig ), l_info.type, l_info.control, l_info.init );
+          os << ".latch ";
+          auto const ro_sig = topo_ntk.make_signal( topo_ntk.ri_to_ro( f ) );
+          register_t l_info = topo_ntk.register_at( latch_idx );
+          if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+          {
+            std::string const ri_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : fmt::format( "new_n{}", topo_ntk.get_node( f ) );
+            std::string const ro_name = topo_ntk.has_name( ro_sig ) ? topo_ntk.get_name( ro_sig ) : fmt::format( "new_n{}", topo_ntk.get_node( ro_sig ) );
+            os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, l_info.type, l_info.control, l_info.init);
+          }
+          else
+          {
+            os << fmt::format( "li{} new_n{} {} {} {}\n", latch_idx, topo_ntk.get_node( ro_sig ), l_info.type, l_info.control, l_info.init );
+          }
           latch_idx++;
         }
-      }
-    } );
+      } );
+    }
   }
 
   /* write constants */
@@ -267,7 +277,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     }
     else
     {
-      if( index >= topo_ntk.num_cos() - topo_ntk.num_registers() ) 
+      if( index >= topo_ntk.num_cos() - num_latches ) 
       {
         if(!ps.skip_feedthrough || ( topo_ntk.get_node( f ) != index)){
           os << fmt::format( ".names new_n{} li{}\n{} 1\n", f_node, latch_idx, minterm_string );

@@ -12,6 +12,7 @@
 #include <mockturtle/networks/cover.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/sequential.hpp>
 
 #include <kitty/kitty.hpp>
 #include <lorina/blif.hpp>
@@ -65,7 +66,7 @@ TEST_CASE( "read a combinational BLIF file into KLUT network", "[blif_reader]" )
 
 TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in topological order", "[blif_reader]" )
 {
-  klut_network klut;
+  sequential<klut_network> klut;
 
   std::string file{
       ".model top\n"
@@ -113,7 +114,8 @@ TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in 
   CHECK( klut.num_gates() == 12 );
 
   klut.foreach_ro( [&]( auto ro, auto i ) {
-    latch_info l_info = klut._storage->latch_information[ro];
+    (void)ro;
+    auto l_info = klut.register_at( i );
     switch ( i )
     {
     case 0:
@@ -145,7 +147,7 @@ TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in 
   } );
 
   mig_npn_resynthesis resyn;
-  mig_network mig;
+  sequential<mig_network> mig;
   node_resynthesis( mig, klut, resyn );
   CHECK( mig.num_pis() == 5 );
   CHECK( mig.num_pos() == 1 );
@@ -153,7 +155,8 @@ TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in 
   CHECK( mig.num_gates() == 12 );
 
   mig.foreach_ro( [&]( auto ro, auto i ) {
-    latch_info l_info = mig._storage->latch_information[ro];
+    (void)ro;
+    auto l_info = mig.register_at( i );
     switch ( i )
     {
     case 0:
@@ -187,7 +190,7 @@ TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in 
 
 TEST_CASE( "read a BLIF file containing latch declaration bug that requires updated 'split' function", "[blif_reader]" )
 {
-  klut_network klut;
+  sequential<klut_network> klut;
 
   std::string file{
       ".model top\n"
@@ -304,7 +307,7 @@ TEST_CASE( "read a combinational BLIF file into cover network", "[blif_reader]" 
 
 TEST_CASE( "cover network, read a BLIF file containing latch declaration bug that requires updated 'split' function", "[blif_reader]" )
 {
-  cover_network cover;
+  sequential<cover_network> cover;
 
   std::string file{
       ".model top\n"

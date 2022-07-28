@@ -199,9 +199,6 @@ public:
       return false;
     }
 
-    /* storage data */
-    os.dump( (char*)&storage.num_pis, sizeof( uint32_t ) );
-    os.dump( (char*)&storage.num_pos, sizeof( uint32_t ) );
     os.dump( (char*)&storage.trav_id, sizeof( uint32_t ) );
     
     return true;
@@ -249,9 +246,6 @@ public:
       return false;
     }
   
-    /* aig_storage_data */
-    ar_input.load( (char*)&storage->num_pis, sizeof( uint32_t ) );
-    ar_input.load( (char*)&storage->num_pos, sizeof( uint32_t ) );
     ar_input.load( (char*)&storage->trav_id, sizeof( uint32_t ) );
 
     return true;
@@ -296,7 +290,6 @@ inline aig_network deserialize_network( phmap::BinaryInputArchive& ar_input )
   storage->nodes.clear();
   storage->inputs.clear();
   storage->outputs.clear();
-  storage->latch_information.clear();
   storage->hash.clear();
 
   bool const okay = _serializer( ar_input, storage.get() );

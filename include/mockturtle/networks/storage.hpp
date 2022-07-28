@@ -178,13 +178,6 @@ struct node_hash
   }
 };
 
-struct latch_info
-{
-  std::string control = "";
-  uint8_t init = 3;
-  std::string type = "";
-};
-
 struct empty_storage_data
 {
 };
@@ -203,14 +196,11 @@ struct storage
 
   using node_type = Node;
 
-  uint32_t num_pis = 0u;
-  uint32_t num_pos = 0u;
   uint32_t trav_id = 0u;
 
   std::vector<node_type> nodes;
   std::vector<uint64_t> inputs;
   std::vector<typename node_type::pointer_type> outputs;
-  std::unordered_map<uint64_t, latch_info> latch_information;
 
   phmap::flat_hash_map<node_type, uint64_t, NodeHasher> hash;
 
