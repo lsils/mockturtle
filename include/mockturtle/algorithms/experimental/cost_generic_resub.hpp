@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file costfn_window.hpp
+  \file cost_generic_resub.hpp
   \brief generic widnowing algorithm with customized cost function
 
   \author Siang-Yun (Sonia) Lee

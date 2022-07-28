@@ -44,23 +44,11 @@
 namespace mockturtle
 {
 
-struct cost_view_params
-{
-  /*! \brief Take complemented edges into account for depth computation. */
-  bool count_complements{ false };
-};
-
 /*! \brief Implements `get_cost` methods for networks.
  *
  * This view computes the cost of the entire network, a subnetwork, and 
  * also fanin cone of a single node. It maintains the context of each 
  * node, which is the aggregated variables that affect the cost a node. 
- * 
- * The `get_cost` method has 3 different usages:
- * - `get_cost()` returns the cost of the entire network
- * - `get_cost( node n )` returns the cost of the fanin cone of node `n`
- * - `get_cost( node n, std::vector<signal> leaves )` returns the cost
- * of a subnetwork from `leaves` to node `n`
  * 
  * **Required network functions:**
  * - `size`
@@ -86,26 +74,8 @@ struct cost_view_params
       std::cout << "size: " << viewed.get_cost() << "\n";
    \endverbatim
  */
-template<class Ntk, class RecCostFn = recursive_cost_functions<Ntk>, class context_t = uint32_t, bool has_cost_interface = has_cost_v<Ntk>>
-class cost_view
-{
-};
-
 template<class Ntk, class RecCostFn, class context_t>
-class cost_view<Ntk, RecCostFn, context_t, true> : public Ntk
-{
-public:
-  using costfn_t = RecCostFn;
-
-public:
-  cost_view( Ntk const& ntk, cost_view_params const& ps = {} ) : Ntk( ntk )
-  {
-    (void)ps;
-  }
-};
-
-template<class Ntk, class RecCostFn, class context_t>
-class cost_view<Ntk, RecCostFn, context_t, false> : public Ntk
+class cost_view : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
@@ -113,8 +83,10 @@ public:
   using signal = typename Ntk::signal;
   using costfn_t = RecCostFn;
 
-  explicit cost_view( RecCostFn const& cost_fn = {}, cost_view_params const& ps = {} )
-      : Ntk(), _ps( ps ), context( *this ), _cost_fn( cost_fn )
+  explicit cost_view( RecCostFn const& cost_fn = {} )
+      : Ntk(),
+        _cost_fn( cost_fn ),
+        context( *this )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -126,12 +98,10 @@ public:
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  /*! \brief Standard constructor.
-   *
-   * \param ntk Base network
-   */
-  explicit cost_view( Ntk const& ntk, RecCostFn const& cost_fn = {}, cost_view_params const& ps = {} )
-      : Ntk( ntk ), _ps( ps ), context( ntk ), _cost_fn( cost_fn )
+  explicit cost_view( Ntk const& ntk, RecCostFn const& cost_fn = {} )
+      : Ntk( ntk ),
+        _cost_fn( cost_fn ),
+        context( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -145,13 +115,15 @@ public:
   }
 
   /*! \brief Copy constructor. */
-  explicit cost_view( cost_view<Ntk, RecCostFn, context_t, false> const& other )
-      : Ntk( other ), _ps( other._ps ), context( other.context ), _cost_fn( other._cost_fn )
+  explicit cost_view( cost_view<Ntk, RecCostFn, context_t> const& other )
+      : Ntk( other ),
+        _cost_fn( other._cost_fn ),
+        context( other.context )
   {
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  cost_view<Ntk, RecCostFn, context_t, false>& operator=( cost_view<Ntk, RecCostFn, context_t, false> const& other )
+  cost_view<Ntk, RecCostFn, context_t>& operator=( cost_view<Ntk, RecCostFn, context_t> const& other )
   {
     /* delete the event of this network */
     Ntk::events().release_add_event( add_event );
@@ -161,7 +133,6 @@ public:
     this->_events = other._events;
 
     /* copy */
-    _ps = other._ps;
     context = other.context;
     _cost_fn = other._cost_fn;
 
@@ -246,21 +217,9 @@ public:
     return s;
   }
 
-  signal create_pi( std::string name )
-  {
-    signal s = Ntk::create_pi( name );
-    context.resize();
-    return s;
-  }
-
   void create_po( signal const& f )
   {
     Ntk::create_po( f );
-  }
-
-  void create_po( signal const& f, std::string name )
-  {
-    Ntk::create_po( f, name );
   }
 
 private:
@@ -301,7 +260,6 @@ private:
     } );
   }
 
-  cost_view_params _ps;
   node_map<context_t, Ntk> context;
   uint32_t _cost;
   RecCostFn _cost_fn;
@@ -310,7 +268,7 @@ private:
 };
 
 template<class T>
-cost_view( T const& ) -> cost_view<T, typename T::costfn_t>;
+cost_view( T const& ) -> cost_view<T, typename T::costfn_t, typename T::costfn_t::context_t>;
 
 template<class T, class RecCostFn>
 cost_view( T const&, RecCostFn const& ) -> cost_view<T, RecCostFn, typename RecCostFn::context_t>;

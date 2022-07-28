@@ -58,7 +58,7 @@ struct recursive_cost_functions
    *  
    * Update the total cost using node n and its context. 
    */
-  virtual void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const = 0;
+  virtual void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const = 0;
 };
 
 template<class Ntk>
@@ -71,9 +71,9 @@ public:
     uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_contexts ), std::end( fanin_contexts ) ) + 1;
     return _cost;
   }
-  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const
+  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const
   {
-    tot_cost = std::max( tot_cost, context );
+    total_cost = std::max( total_cost, context );
   }
 };
 
@@ -87,9 +87,9 @@ public:
     uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_contexts ), std::end( fanin_contexts ) ) + ntk.is_and( n );
     return _cost;
   }
-  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const
+  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const
   {
-    tot_cost = std::max( tot_cost, context );
+    total_cost = std::max( total_cost, context );
   }
 };
 
@@ -102,9 +102,9 @@ public:
   {
     return 0;
   }
-  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& tot_cost, context_t const context ) const
+  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const
   {
-    tot_cost += ( !ntk.is_pi( n ) && ntk.visited( n ) != ntk.trav_id() ) ? 1 : 0;
+    total_cost += ( !ntk.is_pi( n ) && ntk.visited( n ) != ntk.trav_id() ) ? 1 : 0;
   }
 };
 
