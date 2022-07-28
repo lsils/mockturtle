@@ -12,12 +12,12 @@ void test_cost_view()
   CHECK( is_network_type_v<Ntk> );
   CHECK( !has_cost_v<Ntk> );
 
-  using cost_ntk = cost_view<Ntk, size_cost_function<Ntk>>;
+  using cost_ntk = cost_view<Ntk, xag_size_cost_function<Ntk>>;
 
   CHECK( is_network_type_v<cost_ntk> );
   CHECK( has_cost_v<cost_ntk> );
 
-  using cost_cost_ntk = cost_view<cost_ntk, size_cost_function<cost_ntk>>;
+  using cost_cost_ntk = cost_view<cost_ntk, xag_size_cost_function<cost_ntk>>;
 
   CHECK( is_network_type_v<cost_cost_ntk> );
   CHECK( has_cost_v<cost_cost_ntk> );
@@ -40,7 +40,7 @@ TEST_CASE( "compute size cost for xag network", "[cost_view]" )
   const auto f4 = xag.create_and( f2, f3 );
   xag.create_po( f4 );
 
-  cost_view cost_xag( xag, size_cost_function<xag_network>() );
+  cost_view cost_xag( xag, xag_size_cost_function<xag_network>() );
   CHECK( cost_xag.get_cost() == 4 );
   CHECK( cost_xag.get_cost( xag.get_node( a  ) ) == 0 );
   CHECK( cost_xag.get_cost( xag.get_node( b  ) ) == 0 );
@@ -61,7 +61,7 @@ TEST_CASE( "compute size cost for xag window", "[cost_view]" )
   const auto f4 = xag.create_and( f2, f3 );
   xag.create_po( f4 );
 
-  cost_view cost_xag( xag, size_cost_function<xag_network>() );
+  cost_view cost_xag( xag, xag_size_cost_function<xag_network>() );
   CHECK( cost_xag.get_cost() == 4 );
   CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector({a,b}) ) == 1 );
   CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector({a,b}) ) == 2 );
@@ -84,7 +84,7 @@ TEST_CASE( "compute depth cost for xag network", "[cost_view]" )
   const auto f4 = xag.create_and( f2, f3 );
   xag.create_po( f4 );
 
-  cost_view cost_xag( xag, depth_cost_function<xag_network>() );
+  cost_view cost_xag( xag, xag_depth_cost_function<xag_network>() );
   CHECK( cost_xag.get_cost() == 3 );
   CHECK( cost_xag.get_cost( xag.get_node( a  ) ) == 0 );
   CHECK( cost_xag.get_cost( xag.get_node( b  ) ) == 0 );
@@ -105,7 +105,7 @@ TEST_CASE( "compute depth cost for xag window", "[cost_view]" )
   const auto f4 = xag.create_and( f2, f3 );
   xag.create_po( f4 );
 
-  cost_view cost_xag( xag, depth_cost_function<xag_network>() );
+  cost_view cost_xag( xag, xag_depth_cost_function<xag_network>() );
   CHECK( cost_xag.get_cost() == 3 );
   CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector({a,b}) ) == 1 );
   CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector({a,b}) ) == 2 );

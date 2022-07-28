@@ -26,7 +26,7 @@ int main()
     assert( result == lorina::return_code::success );
     (void)result;
 
-    auto costfn = t_depth_cost_function<xag_network>();
+    auto costfn = t_xag_depth_cost_function<xag_network>();
 
     auto cost_before = cost_view( xag, costfn ).get_cost();
 

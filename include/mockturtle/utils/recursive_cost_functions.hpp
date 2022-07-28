@@ -62,7 +62,7 @@ struct recursive_cost_functions
 };
 
 template<class Ntk>
-struct depth_cost_function : recursive_cost_functions<Ntk>
+struct xag_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
@@ -78,7 +78,7 @@ public:
 };
 
 template<class Ntk>
-struct t_depth_cost_function : recursive_cost_functions<Ntk>
+struct t_xag_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
@@ -94,7 +94,7 @@ public:
 };
 
 template<class Ntk>
-struct size_cost_function : recursive_cost_functions<Ntk>
+struct xag_size_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;

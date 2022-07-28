@@ -15,7 +15,7 @@ This header file defines a resubstitution algorithm to optimize a network with a
    cost_generic_resub_params ps;
    cost_generic_resub_stats st;
 
-   cost_generic_resub( xag, size_cost_function<xag_network>(), ps, &st );
+   cost_generic_resub( xag, xag_size_cost_function<xag_network>(), ps, &st );
    xag = cleanup_dangling( xag );
 
 Customized cost function

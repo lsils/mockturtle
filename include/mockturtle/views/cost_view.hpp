@@ -68,7 +68,7 @@ namespace mockturtle
       xag_network xag = ...;
 
       // create a cost view on the network, for example size cost
-      auto viewed = cost_view( xag, size_cost_function<xag_network>() );
+      auto viewed = cost_view( xag, xag_size_cost_function<xag_network>() );
 
       // print size
       std::cout << "size: " << viewed.get_cost() << "\n";
@@ -114,7 +114,6 @@ public:
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
-  /*! \brief Copy constructor. */
   explicit cost_view( cost_view<Ntk, RecCostFn, context_t> const& other )
       : Ntk( other ),
         _cost_fn( other._cost_fn ),
