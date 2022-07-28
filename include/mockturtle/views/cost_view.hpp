@@ -145,22 +145,26 @@ public:
     Ntk::events().release_add_event( add_event );
   }
 
+  /*! \brief Returns the context of node n */
   context_t get_context( node const& n ) const
   {
     return context[n];
   }
 
+  /*! \brief Assigns the context of node n */
   void set_context( node const& n, context_t cost_val )
   {
     context[n] = cost_val;
     this->set_visited( n, this->trav_id() );
   }
 
+  /*! \brief Returns the cost of the entire network */
   uint32_t get_cost() const
   {
     return _cost;
   }
 
+  /*! \brief Returns the cost of node n's fanin cone */
   uint32_t get_cost( node const& n )
   {
     uint32_t _c = 0u;
@@ -169,6 +173,7 @@ public:
     return _c;
   }
 
+  /*! \brief Returns the cost between node n and divs */
   uint32_t get_cost( node const& n, std::vector<signal> const& divs )
   {
     uint32_t _c = 0u;
@@ -181,6 +186,7 @@ public:
     return _c;
   }
 
+  /*! \brief Updates the context and cost of the entire network */
   void update_cost()
   {
     context.reset( context_t{} );
@@ -200,12 +206,12 @@ public:
     _cost_fn( *this, n, _cost, context[n] );
   }
 
-  /* Create a PI with context*/
-  signal create_pi( context_t pi_cost )
+  /*! \brief Creates a PI with context assigned */
+  signal create_pi( context_t pi_cotext )
   {
     signal s = Ntk::create_pi();
     context.resize();
-    set_context( this->get_node( s ), pi_cost );
+    set_context( this->get_node( s ), pi_cotext );
     return s;
   }
 

@@ -114,5 +114,5 @@ algorithm.  Several views are implemented in mockturtle.
 
 **Header:** ``mockturtle/views/cost_view.hpp``
 
-.. doxygenclass:: mockturtle::cost_view<Ntk, RecCostFn, context_t, false>
+.. doxygenclass:: mockturtle::cost_view
    :members:
