@@ -88,7 +88,7 @@ public:
   using stats = search_core_stats;
   using signal = typename Ntk::signal;
   using node = typename Ntk::node;
-  using context_t = typename Ntk::costfn_t::context_t;
+  using context_t = typename Ntk::context_t;
   using index_list_t = large_xag_index_list;
   using truth_table_t = TT;
 

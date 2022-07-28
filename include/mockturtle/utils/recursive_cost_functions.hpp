@@ -41,7 +41,18 @@ namespace mockturtle
 
 /*! \brief (Recursive) customizable cost function
  * 
- * This is the base type of a customizable cost function. Two operators need to be defined.
+ * To define a new cost function, you need to first specify how each node 
+ * contributes to the total cost via the *contribution functon*. Each node 
+ * is evaluated individually and independently. 
+ * 
+ * If additional (global) information is required to decide a node's contribution, 
+ * you may specify them as *context*. The content stored in the context can be 
+ * arbitrarily defined (`context_t`), but the derivation must be recursive. In
+ * other words, the context of a node is derived using *context propagation function* 
+ * which takes only the context of fanins as input.
+ * 
+ * Examples of recursive cost functions can be found at:
+ * `mockturtle/utils/recursive_cost_functions.hpp` 
  */
 template<class Ntk>
 struct recursive_cost_functions
