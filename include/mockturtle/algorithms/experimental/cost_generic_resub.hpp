@@ -266,7 +266,7 @@ public:
   uint32_t gain( problem_t const& prob, res_t const& res ) const
   {
     static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
-    return 1;
+    return 1; /* cannot predict the final cost */
   }
 
   template<typename res_t>
@@ -357,11 +357,11 @@ class costfn_resynthesis
 public:
   using problem_t = cost_aware_problem<Ntk, TT>;
   using res_t = typename ResynEngine::index_list_t;
-  using params_t = null_params;
+  using params_t = typename ResynEngine::params;
   using stats_t = typename ResynEngine::stats;
 
   explicit costfn_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-      : ntk( ntk ), engine( ntk, st )
+      : ntk( ntk ), engine( ntk, ps, st )
   {
     static_assert( has_cost_v<Ntk>, "Ntk does not implement the get_cost method" );
   }
@@ -383,8 +383,8 @@ private:
 
 } /* namespace detail */
 
-using cost_generic_resub_params = boolean_optimization_params<costfn_windowing_params, null_params>;
-using cost_generic_resub_stats = boolean_optimization_stats<costfn_windowing_stats, search_core_stats>;
+using cost_generic_resub_params = boolean_optimization_params<costfn_windowing_params, cost_resyn_params>;
+using cost_generic_resub_stats = boolean_optimization_stats<costfn_windowing_stats, cost_resyn_stats>;
 
 /*! \brief Cost-generic resubstitution algorithm.
  *

@@ -45,7 +45,13 @@
 namespace mockturtle::experimental
 {
 
-struct search_core_stats
+struct cost_resyn_params
+{
+  /* maximum number of feasible solutions to collect */
+  uint32_t max_solutions{ 1000u };
+};
+
+struct cost_resyn_stats
 {
   /* time for cost view the solution network */
   stopwatch<>::duration time_eval{ 0 };
@@ -53,14 +59,22 @@ struct search_core_stats
   /* time for searching the equivalent network */
   stopwatch<>::duration time_search{ 0 };
 
+  /* number of solutions */
   uint32_t num_solutions{ 0 };
+  
+  /* number of problems */
   uint32_t num_problems{ 0 };
 
+  /* number of solution with 0,1,2,3 insertions */
   uint32_t num_resub[4]{ 0 };
 
+  /* size of the forest of feasible solutions */
   uint32_t size_forest{ 0 };
 
+  /* number of root (feasible solutions) */
   uint32_t num_roots{ 0 };
+
+  /* number of total gains */
   uint32_t num_gain{ 0 };
 
   /* data */
@@ -85,7 +99,8 @@ template<class Ntk, class TT>
 class cost_resyn
 {
 public:
-  using stats = search_core_stats;
+  using params = cost_resyn_params;
+  using stats = cost_resyn_stats;
   using signal = typename Ntk::signal;
   using node = typename Ntk::node;
   using context_t = typename Ntk::context_t;
@@ -133,9 +148,7 @@ private:
   {
     return ( *ptts )[divisors[idx]];
   }
-  /**
- * Cost Evaluation Functions
- */
+
   uint32_t eval_result( Ntk& forest, index_list_t const& il )
   {
     uint32_t eval = 0u;
@@ -146,6 +159,7 @@ private:
     } );
     return eval; // the cost of the whole network
   }
+
   bool update_result( Ntk& forest, index_list_t const& il )
   {
     st.num_roots += 1u;
@@ -158,11 +172,13 @@ private:
     }
     return false;
   }
+
   bool push_solution( index_list_t const& il )
   {
-    ils.emplace_back( il );
-    return true;
+    ils.emplace_back( il ); /* push the solution to the solution set */
+    return ils.size() < ps.max_solutions; /* continue if capacity allows */
   }
+
   template<bool pol1, bool pol2>
   void collect_unate_pairs_detail( uint32_t div1, uint32_t div2 )
   {
@@ -177,6 +193,7 @@ private:
       neg_unate_pairs.emplace_back( ( div1 << 1 ) + ( uint32_t )( !pol1 ), ( div2 << 1 ) + ( uint32_t )( !pol2 ) );
     }
   }
+
   /* Sort the unate literals by the number of minterms in the intersection.
      - For `pos_unate_lits`, `on_off` = 1, sort by intersection with on-set;
      - For `neg_unate_lits`, `on_off` = 0, sort by intersection with off-set
@@ -191,6 +208,7 @@ private:
       return l1.score > l2.score; // descending order
     } );
   }
+
   void sort_unate_pairs( std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
   {
     for ( auto& p : unate_pairs )
@@ -235,6 +253,7 @@ private:
     }
     return std::nullopt;
   }
+
   template<bool is_xor = false>
   std::optional<index_list_t> find_and_and_helper( std::vector<unate_lit>& pos_unate_lits, std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
   {
@@ -281,6 +300,7 @@ private:
     }
     return std::nullopt;
   }
+
   template<bool left_xor = false, bool right_xor = false>
   std::optional<index_list_t> find_and_and_and_helper( std::vector<fanin_pair>& unate_pairs_1, std::vector<fanin_pair>& unate_pairs_2, uint32_t on_off )
   {
@@ -346,6 +366,7 @@ private:
     }
     return std::nullopt;
   }
+
   void prepare_clear()
   {
     pos_unate_lits.clear();
@@ -376,6 +397,7 @@ private:
 
     ils.clear();
   }
+
   void prepare_task()
   {
     assert( has_init == false );
@@ -383,6 +405,7 @@ private:
     num_bits[1] = kitty::count_ones( on_off_sets[1] ); /* on-set */
     has_init = true;
   }
+
   void prepare_unateness()
   {
     assert( has_unateness == false && "already have unateness" );
@@ -431,6 +454,7 @@ private:
     sort_unate_lits( neg_unate_lits, 0 );
     has_unateness = true;
   }
+
   void prepare_xor()
   {
     assert( has_xor == false );
@@ -440,6 +464,7 @@ private:
     }
     has_xor = true;
   }
+
   void prepare_xor_xor()
   {
     assert( has_xor_xor == false );
@@ -452,6 +477,7 @@ private:
     }
     has_xor_xor = true;
   }
+
   void prepare_xor_and()
   {
     assert( has_xor_and == false );
@@ -471,6 +497,7 @@ private:
     }
     has_xor_and = true;
   }
+
   void prepare_and_pairs()
   {
     if ( has_unateness == false )
@@ -491,6 +518,7 @@ private:
     sort_unate_pairs( neg_unate_pairs, 0 );
     has_and_pairs = true;
   }
+
   void prepare_xor_pairs()
   {
     if ( has_unateness == false )
@@ -576,6 +604,7 @@ private:
     }
     return std::nullopt;
   }
+
   std::optional<index_list_t> find_and()
   {
     if ( has_unateness == false )
@@ -584,6 +613,7 @@ private:
     }
     return find_and_detail( neg_unate_lits, 0 );
   }
+
   std::optional<index_list_t> find_or()
   {
     if ( has_unateness == false )
@@ -592,6 +622,7 @@ private:
     }
     return find_and_detail( pos_unate_lits, 1 );
   }
+
   std::optional<index_list_t> find_xor()
   {
     if ( has_xor == false )
@@ -622,6 +653,7 @@ private:
     }
     return std::nullopt;
   }
+
   std::optional<index_list_t> find_or_and()
   {
     if ( has_and_pairs == false )
@@ -630,6 +662,7 @@ private:
     }
     return find_and_and_helper( pos_unate_lits, pos_unate_pairs, 1 );
   }
+
   std::optional<index_list_t> find_and_or()
   {
     if ( has_and_pairs == false )
@@ -638,6 +671,7 @@ private:
     }
     return find_and_and_helper( neg_unate_lits, neg_unate_pairs, 0 );
   }
+
   std::optional<index_list_t> find_and_and()
   {
     if ( has_unateness == false )
@@ -707,6 +741,7 @@ private:
     }
     return std::nullopt;
   }
+
   std::optional<index_list_t> find_or_or()
   {
     if ( has_unateness == false )
@@ -777,6 +812,7 @@ private:
     }
     return std::nullopt;
   }
+  
   std::optional<index_list_t> find_and_xor()
   {
     if ( has_xor_pairs == false )
@@ -788,6 +824,7 @@ private:
       ret = find_and_and_helper<true>( neg_unate_lits, neg_unate_xor_pairs, 0 );
     return ret;
   }
+
   std::optional<index_list_t> find_xor_xor()
   {
     if ( has_xor == false )
@@ -881,6 +918,7 @@ private:
     }
     return std::nullopt;
   }
+
   std::optional<index_list_t> find_xor_xor_xor()
   {
     if ( has_xor_xor == false )
@@ -920,6 +958,7 @@ private:
     }
     return std::nullopt;
   }
+
   std::optional<index_list_t> find_xor_xor_and()
   {
     if ( has_xor_xor == false )
@@ -965,6 +1004,7 @@ private:
     }
     return std::nullopt;
   }
+
   std::optional<index_list_t> find_xor_and()
   {
     if ( has_xor == false )
@@ -1008,6 +1048,7 @@ private:
     }
     return std::nullopt;
   }
+
   std::optional<index_list_t> find_xor_and_and()
   {
     if ( has_xor_and == false )
@@ -1053,6 +1094,7 @@ private:
     }
     return std::nullopt;
   }
+
   std::optional<index_list_t> find_and_and_and()
   {
     if ( has_and_pairs == false )
@@ -1064,6 +1106,7 @@ private:
       ret = find_and_and_and_helper( neg_unate_pairs, neg_unate_pairs, 0 );
     return ret;
   }
+  
   std::optional<index_list_t> find_and_and_xor()
   {
     if ( has_and_pairs == false )
@@ -1079,6 +1122,7 @@ private:
       ret = find_and_and_and_helper<true>( neg_unate_xor_pairs, neg_unate_pairs, 0 );
     return ret;
   }
+
   std::optional<index_list_t> find_and_xor_xor()
   {
     if ( has_xor_pairs == false )
@@ -1090,6 +1134,7 @@ private:
       ret = find_and_and_and_helper<true, true>( neg_unate_xor_pairs, neg_unate_xor_pairs, 0 );
     return ret;
   }
+
   struct core_func_t
   {
     std::function<void( cost_resyn* )> func;
@@ -1103,14 +1148,16 @@ private:
       func( pcore );
     }
   };
+
   void sorted_core( Ntk& forest )
   {
     for ( core_func_t& fn : fns )
     {
+      if ( ils.size() >= ps.max_solutions ) break;
       uint32_t nbefore = ils.size();
       call_with_stopwatch( st.time_search, [&]() { fn( this ); } );
       st.num_resub[fn.effort] += ils.size() - nbefore;
-      if ( isConst )
+      if ( isConst ) /* try to find more solution of constant will crash */
         break;
     }
     st.num_roots += ils.size();
@@ -1126,8 +1173,8 @@ private:
   }
 
 public:
-  explicit cost_resyn( Ntk const& ntk, stats& st ) noexcept
-      : ntk( ntk ), st( st )
+  explicit cost_resyn( Ntk const& ntk, params const& ps, stats& st ) noexcept
+      : ntk( ntk ), ps( ps ), st( st )
   {
     fns.clear();
     fns.emplace_back( []( cost_resyn* _core ) { _core->find_wire(); }, 0 );
@@ -1143,12 +1190,13 @@ public:
     fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_xor(); }, 2 );
     fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_and_and(); }, 3 );
     fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_xor_and(); }, 3 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_xor_xor(); }, 3 ); // bad
+    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_xor_xor(); }, 3 ); // bad efficiency / gain trade-off
     fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_xor_xor(); }, 3 );
     fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_and_xor(); }, 3 );
     fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_and_and(); }, 3 );
     divisors.reserve( 200u );
   }
+
   template<class iterator_type, class truth_table_storage_type>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, std::vector<signal> const& divs, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_cost = std::numeric_limits<uint32_t>::max() )
   {
@@ -1221,6 +1269,7 @@ private:
   std::vector<signal> forest_leaves;
   std::vector<signal> candidates; // the output signals with correct functionality
   std::optional<signal> forest_root;
+  params const& ps;
   stats& st;
 
   std::optional<index_list_t> index_list;
