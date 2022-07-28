@@ -876,21 +876,6 @@ template<class Ntk>
 inline constexpr bool has_decr_fanout_size_v = has_decr_fanout_size<Ntk>::value;
 #pragma endregion
 
-#pragma region has_cost
-template<class Ntk, class = void>
-struct has_cost : std::false_type
-{
-};
-
-template<class Ntk>
-struct has_cost<Ntk, std::void_t<decltype( std::declval<Ntk>().get_cost() )>> : std::true_type
-{
-};
-
-template<class Ntk>
-inline constexpr bool has_cost_v = has_cost<Ntk>::value;
-#pragma endregion
-
 #pragma region has_depth
 template<class Ntk, class = void>
 struct has_depth : std::false_type
