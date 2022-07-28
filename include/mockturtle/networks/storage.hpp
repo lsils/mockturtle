@@ -181,7 +181,7 @@ struct node_hash
 struct latch_info
 {
   std::string control = "";
-  uint64_t init = 3;
+  uint8_t init = 3;
   std::string type = "";
 };
 

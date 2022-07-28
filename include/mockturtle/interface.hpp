@@ -194,9 +194,8 @@ public:
    * register input, etc.
    *
    * \param s Signal that drives the created register input
-   * \param reset Reset value
    */
-  void create_ri( signal const& s, int8_t reset );
+  void create_ri( signal const& s );
 
   /*! \brief Checks whether the network is combinational.
    *
@@ -210,13 +209,6 @@ public:
 
   /*! \brief Checks whether a node is a register output. */
   bool is_ro( node const& n ) const;
-
-  /*! \brief Get the reset value of a latch.
-   *
-   * \param index A value between 0 (inclusive) and the number of
-   *              latches (exclusive).
-   */
-  int8_t latch_reset( uint32_t index ) const;
 #pragma endregion
 
 #pragma region Create unary functions

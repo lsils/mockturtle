@@ -58,7 +58,6 @@ struct mig_storage_data
 {
   uint32_t num_pis = 0u;
   uint32_t num_pos = 0u;
-  std::vector<int8_t> latches;
   uint32_t trav_id = 0u;
 };
 
@@ -217,20 +216,13 @@ public:
     return {index, 0};
   }
 
-  uint32_t create_ri( signal const& f, int8_t reset = 0 )
+  uint32_t create_ri( signal const& f )
   {
     /* increase ref-count to children */
     _storage->nodes[f.index].data[0].h1++;
     auto const ri_index = static_cast<uint32_t>( _storage->outputs.size() );
     _storage->outputs.emplace_back( f.index, f.complement );
-    _storage->data.latches.emplace_back( reset );
     return ri_index;
-  }
-
-  int8_t latch_reset( uint32_t index ) const
-  {
-    assert( index < _storage->data.latches.size() );
-    return _storage->data.latches[index];
   }
 
   bool is_combinational() const
@@ -635,11 +627,6 @@ public:
   auto num_cos() const
   {
     return static_cast<uint32_t>( _storage->outputs.size() );
-  }
-
-  uint32_t num_latches() const
-  {
-      return static_cast<uint32_t>( _storage->data.latches.size() );
   }
 
   auto num_pis() const
