@@ -4,6 +4,16 @@ Change Log
 v0.4 (not yet released)
 -----------------------
 
+* Algorithms:
+    - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+
+* Views:
+    - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+
+* Utils:
+    - Add recursive cost function class to customize cost in resubstitution algorithm (`recurisve_cost_function`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+
 * Network interface:
     - Remove the "name" argument in `create_pi`, `create_po`, `create_ri`, and `create_ro`. Names should be set using the `names_view` APIs. `#559 <https://github.com/lsils/mockturtle/pull/559>`_
 

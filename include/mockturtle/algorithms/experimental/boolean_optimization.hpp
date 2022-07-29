@@ -35,6 +35,7 @@
 #include "../../traits.hpp"
 #include "../../utils/progress_bar.hpp"
 #include "../../utils/stopwatch.hpp"
+#include "../../views/topo_view.hpp"
 
 #include <optional>
 
@@ -172,7 +173,7 @@ public:
     });
 
     st.initial_size = ntk.num_gates();
-    ntk.foreach_gate( [&]( auto const n, auto i ) { // TODO: maybe problematic
+    topo_view<Ntk>{ntk}.foreach_gate( [&]( auto const n, auto i ) { // TODO: maybe problematic
       if ( !ps.optimize_new_nodes && i >= st.initial_size )
       {
         return false; /* terminate */
@@ -329,7 +330,7 @@ void null_optimization( Ntk& ntk, params_t const& ps = {}, stats_t* pst = nullpt
   stats_t st;
 
   using windowing_t = typename detail::null_windowing<Ntk>;
-  using resyn_t = typename detail::null_resynthesis<Ntk>; 
+  using resyn_t = typename detail::null_resynthesis<Ntk>;
   using opt_t = typename detail::boolean_optimization_impl<Ntk, windowing_t, resyn_t>;
 
   opt_t p( ntk, ps, st );
