@@ -201,7 +201,9 @@ public:
       reg.init = r;
       reg.type = type;
 
-      signals[output] = ntk_.create_ro( reg );
+      signals[output] = ntk_.create_ro();
+      ntk_.set_register( latches.size(), reg );
+
       if constexpr ( has_set_name_v<Ntk> && has_set_output_name_v<Ntk> )
       {
         ntk_.set_name( signals[output], output );

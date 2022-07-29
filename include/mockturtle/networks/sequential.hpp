@@ -119,9 +119,9 @@ public:
     return Ntk::create_po( f );
   }
 
-  signal create_ro( register_t const& reg = {} )
+  signal create_ro()
   {
-    _sequential_storage->registers.emplace_back( reg );
+    _sequential_storage->registers.emplace_back();
     return Ntk::create_pi();
   }
 
@@ -407,9 +407,9 @@ public:
     return Ntk::create_po( f );
   }
 
-  signal create_ro( register_t const& reg = {} )
+  signal create_ro()
   {
-    _sequential_storage->registers.emplace_back( reg );
+    _sequential_storage->registers.emplace_back();
     return Ntk::create_pi();
   }
 
