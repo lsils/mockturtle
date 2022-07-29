@@ -536,14 +536,23 @@ public:
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( {old_node, new_signal} );
 
     while ( !to_substitute.empty() )
     {
-      const auto [_old, _new] = to_substitute.top();
+      const auto [_old, _curr] = to_substitute.top();
       to_substitute.pop();
 
+      signal _new = _curr;
+      while ( is_dead( get_node( _new ) ) )
+      {
+        const auto it = old_to_new.find( get_node( _new ) );
+        assert( it != old_to_new.end() );
+        _new = is_complemented( _new ) ? create_not( it->second ) : it->second;
+      }
+      
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
         if ( is_ci( idx ) || is_dead( idx ) )
@@ -561,6 +570,7 @@ public:
       /* recursively reset old node */
       if ( _old != _new.index )
       {
+        old_to_new.insert( { _old, _new } );
         take_out_node( _old );
       }
     }

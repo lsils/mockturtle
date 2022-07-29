@@ -4,6 +4,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/traits.hpp>
 
@@ -658,5 +659,73 @@ TEST_CASE( "node substitution in MIGs", "[mig]" )
       CHECK( !mig.is_complemented( s ) );
       break;
     }
+  } );
+}
+
+TEST_CASE( "substitute node with complemented node in mig_network", "[mig]" )
+{
+  mig_network mig;
+  auto const x1 = mig.create_pi();
+  auto const x2 = mig.create_pi();
+
+  auto const f1 = mig.create_and( x1, x2 );
+  auto const f2 = mig.create_and( x1, f1 );
+  mig.create_po( f2 );
+
+  CHECK( mig.fanout_size( mig.get_node( x1 ) ) == 2 );
+  CHECK( mig.fanout_size( mig.get_node( x2 ) ) == 1 );
+  CHECK( mig.fanout_size( mig.get_node( f1 ) ) == 1 );
+  CHECK( mig.fanout_size( mig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( mig )[0]._bits == 0x8 );
+
+  mig.substitute_node( mig.get_node( f2 ), !f2 );
+
+  CHECK( mig.fanout_size( mig.get_node( x1 ) ) == 2 );
+  CHECK( mig.fanout_size( mig.get_node( x2 ) ) == 1 );
+  CHECK( mig.fanout_size( mig.get_node( f1 ) ) == 1 );
+  CHECK( mig.fanout_size( mig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( mig )[0]._bits == 0x7 );
+}
+
+
+TEST_CASE( "substitute node with dependency in mig_network", "[mig]" )
+{
+  mig_network mig{};
+
+  auto const a = mig.create_pi();
+  auto const b = mig.create_pi();
+  auto const c = mig.create_pi();          /* place holder */
+  auto const tmp = mig.create_and( b, c ); /* place holder */
+  auto const f1 = mig.create_and( a, b );
+  auto const f2 = mig.create_and( f1, tmp );
+  auto const f3 = mig.create_and( f1, a );
+  mig.create_po( f2 );
+  mig.substitute_node( mig.get_node( tmp ), f3 );
+
+  /**
+   * issue #545
+   * 
+   *      f2
+   *     /  \
+   *    /   f3
+   *    \  /  \
+   *  1->f1    a
+   * 
+   * stack:
+   * 1. push (f2->f3)
+   * 2. push (f3->a)
+   * 3. pop (f3->a)
+   * 4. pop (f2->f3) but, f3 is dead !!!
+   */
+
+  mig.substitute_node( mig.get_node( f1 ), mig.get_constant( 1 ) /* constant 1 */ );
+
+  CHECK( mig.is_dead( mig.get_node( f1 ) ) );
+  CHECK( mig.is_dead( mig.get_node( f2 ) ) );
+  CHECK( mig.is_dead( mig.get_node( f3 ) ) );
+  mig.foreach_po( [&]( auto s ) {
+    CHECK( mig.is_dead( mig.get_node( s ) ) == false );
   } );
 }

@@ -705,3 +705,72 @@ TEST_CASE( "create nary functions in XMGs", "[xmg]" )
   kitty::create_parity( copy );
   CHECK( result[2] == copy );
 }
+
+
+TEST_CASE( "substitute node with complemented node in xmg_network", "[xmg]" )
+{
+  xmg_network xmg;
+  auto const x1 = xmg.create_pi();
+  auto const x2 = xmg.create_pi();
+
+  auto const f1 = xmg.create_and( x1, x2 );
+  auto const f2 = xmg.create_and( x1, f1 );
+  xmg.create_po( f2 );
+
+  CHECK( xmg.fanout_size( xmg.get_node( x1 ) ) == 2 );
+  CHECK( xmg.fanout_size( xmg.get_node( x2 ) ) == 1 );
+  CHECK( xmg.fanout_size( xmg.get_node( f1 ) ) == 1 );
+  CHECK( xmg.fanout_size( xmg.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( xmg )[0]._bits == 0x8 );
+
+  xmg.substitute_node( xmg.get_node( f2 ), !f2 );
+
+  CHECK( xmg.fanout_size( xmg.get_node( x1 ) ) == 2 );
+  CHECK( xmg.fanout_size( xmg.get_node( x2 ) ) == 1 );
+  CHECK( xmg.fanout_size( xmg.get_node( f1 ) ) == 1 );
+  CHECK( xmg.fanout_size( xmg.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( xmg )[0]._bits == 0x7 );
+}
+
+
+TEST_CASE( "substitute node with dependency in xmg_network", "[xmg]" )
+{
+  xmg_network xmg{};
+
+  auto const a = xmg.create_pi();
+  auto const b = xmg.create_pi();
+  auto const c = xmg.create_pi();          /* place holder */
+  auto const tmp = xmg.create_and( b, c ); /* place holder */
+  auto const f1 = xmg.create_and( a, b );
+  auto const f2 = xmg.create_and( f1, tmp );
+  auto const f3 = xmg.create_and( f1, a );
+  xmg.create_po( f2 );
+  xmg.substitute_node( xmg.get_node( tmp ), f3 );
+
+  /**
+   * issue #545
+   * 
+   *      f2
+   *     /  \
+   *    /   f3
+   *    \  /  \
+   *  1->f1    a
+   * 
+   * stack:
+   * 1. push (f2->f3)
+   * 2. push (f3->a)
+   * 3. pop (f3->a)
+   * 4. pop (f2->f3) but, f3 is dead !!!
+   */
+
+  xmg.substitute_node( xmg.get_node( f1 ), xmg.get_constant( 1 ) /* constant 1 */ );
+
+  CHECK( xmg.is_dead( xmg.get_node( f1 ) ) );
+  CHECK( xmg.is_dead( xmg.get_node( f2 ) ) );
+  CHECK( xmg.is_dead( xmg.get_node( f3 ) ) );
+  xmg.foreach_po( [&]( auto s ) {
+    CHECK( xmg.is_dead( xmg.get_node( s ) ) == false );
+  } );
+}

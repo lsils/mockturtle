@@ -642,3 +642,71 @@ TEST_CASE( "create nary functions in XAGs", "[xag]" )
   kitty::create_parity( copy );
   CHECK( result[2] == copy );
 }
+
+TEST_CASE( "substitute node with complemented node in xag_network", "[xag]" )
+{
+  xag_network xag;
+  auto const x1 = xag.create_pi();
+  auto const x2 = xag.create_pi();
+
+  auto const f1 = xag.create_and( x1, x2 );
+  auto const f2 = xag.create_and( x1, f1 );
+  xag.create_po( f2 );
+
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 2 );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( f1 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( xag )[0]._bits == 0x8 );
+
+  xag.substitute_node( xag.get_node( f2 ), !f2 );
+
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 2 );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( f1 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( xag )[0]._bits == 0x7 );
+}
+
+
+TEST_CASE( "substitute node with dependency in xag_network", "[xag]" )
+{
+  xag_network xag{};
+
+  auto const a = xag.create_pi();
+  auto const b = xag.create_pi();
+  auto const c = xag.create_pi();          /* place holder */
+  auto const tmp = xag.create_and( b, c ); /* place holder */
+  auto const f1 = xag.create_and( a, b );
+  auto const f2 = xag.create_and( f1, tmp );
+  auto const f3 = xag.create_and( f1, a );
+  xag.create_po( f2 );
+  xag.substitute_node( xag.get_node( tmp ), f3 );
+
+  /**
+   * issue #545
+   * 
+   *      f2
+   *     /  \
+   *    /   f3
+   *    \  /  \
+   *  1->f1    a
+   * 
+   * stack:
+   * 1. push (f2->f3)
+   * 2. push (f3->a)
+   * 3. pop (f3->a)
+   * 4. pop (f2->f3) but, f3 is dead !!!
+   */
+
+  xag.substitute_node( xag.get_node( f1 ), xag.get_constant( 1 ) /* constant 1 */ );
+
+  CHECK( xag.is_dead( xag.get_node( f1 ) ) );
+  CHECK( xag.is_dead( xag.get_node( f2 ) ) );
+  CHECK( xag.is_dead( xag.get_node( f3 ) ) );
+  xag.foreach_po( [&]( auto s ) {
+    CHECK( xag.is_dead( xag.get_node( s ) ) == false );
+  } );
+}
