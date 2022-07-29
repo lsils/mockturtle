@@ -62,16 +62,265 @@ inline constexpr bool is_aig_like_v = is_aig_like<Ntk>::value;
 
 } // namespace detail
 
+/*! \brief Register information */
 struct register_t
 {
+  /*! \brief Control (clocking or enabling) signal */
   std::string control = "";
+  /*! \brief Initial (reset) value */
   uint8_t init = 3;
+  /*! \brief Type of register or latch (active high/low, rising/falling edge) */
   std::string type = "";
 };
 
 template<typename Ntk, bool aig_like = detail::is_aig_like_v<typename Ntk::base_type>>
 class sequential
-{};
+{
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  /*! \brief Creates a register output in the network.
+   *
+   * Each created register output is stored in a node and contributes
+   * to the size of the network.  Register outputs must be created
+   * after all primary inputs have been created and must have a
+   * corresponding register input that is created with `create_ri`.
+   *
+   * Register outputs serve as inputs for the network.
+   *
+   * Register outputs and register inputs always have to be created in
+   * pairs; they are associated to each other by index, i.e., the
+   * first created register output corresponds to the first created
+   * register input, etc.
+   */
+  signal create_ro();
+
+  /*! \brief Creates a register input in the network.
+   *
+   * A register input is not stored in terms of a node, and it also
+   * does not contribute to the size of the network.  A register input
+   * is created for a signal in the network and it is possible that
+   * multiple register inputs point to the same signal.  Register
+   * inputs must be created after all primary outputs have been
+   * created and must have a corresponding register output that is
+   * created with `create_ro`.
+   *
+   * Register inputs serve as outputs for the network.
+   *
+   * Register outputs and register inputs always have to be created in
+   * pairs; they are associated to each other by index, i.e., the
+   * first created register output corresponds to the first created
+   * register input, etc.
+   *
+   * \param f Signal that drives the created register input
+   */
+  uint32_t create_ri( signal const& f );
+
+  /*! \brief Checks whether a node is a combinational input (PI or RO). */
+  bool is_ci( node const& n ) const;
+
+  /*! \brief Checks whether a node is a register output. */
+  bool is_ro( node const& n ) const;
+
+  /*! \brief Checks whether the network is combinational.
+   *
+   * Returns true if and only if the network has no registers (neither
+   * register outputs nor register inputs).
+   */
+  bool is_combinational() const;
+
+  /*! \brief Returns the number of combinational inputs (PIs and ROs). */
+  auto num_cis() const;
+
+  /*! \brief Returns the number of combinational outputs (POs and RIs). */
+  auto num_cos() const;
+
+  /*! \brief Returns the number of registers.
+   *
+   * This number is usually equal to the number of register outputs
+   * and register inputs because they have to appear in pairs.  During
+   * the construction of a network, the number of register outputs and
+   * register inputs may diverge.
+   */
+  auto num_registers() const;
+
+  /*! \brief Returns the combinational input node for an index.
+   *
+   * \param index A value between 0 (inclusive) and the number of
+   *              combinational inputs (exclusive).
+   */
+  node ci_at( uint32_t index ) const;
+
+  /*! \brief Returns the combinational output signal for an index.
+   *
+   * \param index A value between 0 (inclusive) and the number of
+   *              combinational outputs (exclusive).
+   */
+  signal co_at( uint32_t index ) const;
+
+  /*! \brief Returns the register output node for an index.
+   *
+   * \param index A value between 0 (inclusive) and the number of
+   *              register outputs (exclusive).
+   */
+  node ro_at( uint32_t index ) const;
+
+  /*! \brief Returns the register input signal for an index.
+   *
+   * \param index A value between 0 (inclusive) and the number of
+   *              register inputs (exclusive).
+   */
+  signal ri_at( uint32_t index ) const;
+
+  /*! \brief Returns the index of a combinational input node.
+   *
+   * \param n A combinational input node.
+   * \return A value between 0 and num_cis()-1.
+   */
+  uint32_t ci_index( node const& n ) const;
+
+  /*! \brief Returns the index of a combinational output signal.
+   *
+   * \param n A combinational output signal.
+   * \return A value between 0 and num_cos()-1.
+   */
+  uint32_t co_index( signal const& s ) const;
+
+  /*! \brief Returns the index of a register output node.
+   *
+   * \param n A register output node.
+   * \return A value between 0 and num_cis()-num_pis()-1.
+   */
+  uint32_t ro_index( node const& n ) const;
+
+  /*! \brief Returns the index of a register input signal.
+   *
+   * \param n A register input signal.
+   * \return A value between 0 and num_cos()-num_pos()-1.
+   */
+  uint32_t ri_index( signal const& s ) const;
+
+  /*! \brief Returns the register input signal to a register output node.
+   *
+   * \param signal A signal of a register output.
+   */
+  signal ro_to_ri( signal const& s ) const;
+
+  /*! \brief Returns the register output node for a register input signal.
+   *
+   * \param signal A node of a register input.
+   */
+  node ri_to_ro( signal const& s ) const;
+
+  /*! \brief Calls ``fn`` on every combinational input node in the network.
+   *
+   * The order is in the same order as combinational inputs have been
+   * created with ``create_pi`` or ``create_ro``.  The paramater
+   * ``fn`` is any callable that must have one of the following four
+   * signatures.
+   * - ``void(node const&)``
+   * - ``void(node const&, uint32_t)``
+   * - ``bool(node const&)``
+   * - ``bool(node const&, uint32_t)``
+   *
+   * If ``fn`` has two parameters, the second parameter is an index starting
+   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
+   * then it can interrupt the iteration by returning ``false``.
+   */
+  template<typename Fn>
+  void foreach_ci( Fn&& fn ) const;
+
+  /*! \brief Calls ``fn`` on every combinational output signal in the network.
+   *
+   * The order is in the same order as combinational outputs have been
+   * created with ``create_po`` or ``create_ri``.  The function is
+   * called on the signal that is driving the output and may occur
+   * more than once in the iteration, if it drives more than one
+   * output.  The paramater ``fn`` is any callable that must have one
+   * of the following four
+   * signatures.
+   * - ``void(signal const&)``
+   * - ``void(signal const&, uint32_t)``
+   * - ``bool(signal const&)``
+   * - ``bool(signal const&, uint32_t)``
+   *
+   * If ``fn`` has two parameters, the second parameter is an index starting
+   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
+   * then it can interrupt the iteration by returning ``false``.
+   */
+  template<typename Fn>
+  void foreach_co( Fn&& fn ) const;
+
+  /*! \brief Calls ``fn`` on every register output node in the network.
+   *
+   * The order is in the same order as register outputs have been created with
+   * ``create_ro``.  The paramater ``fn`` is any callable that must have one of
+   * the following four signatures.
+   * - ``void(node const&)``
+   * - ``void(node const&, uint32_t)``
+   * - ``bool(node const&)``
+   * - ``bool(node const&, uint32_t)``
+   *
+   * If ``fn`` has two parameters, the second parameter is an index starting
+   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
+   * then it can interrupt the iteration by returning ``false``.
+   */
+  template<typename Fn>
+  void foreach_ro( Fn&& fn ) const;
+
+  /*! \brief Calls ``fn`` on every register input signal in the network.
+   *
+   * The order is in the same order as register inputs have been created with
+   * ``create_ri``.  The function is called on the signal that is driving the
+   * output and may occur more than once in the iteration, if it drives more
+   * than one output.  The paramater ``fn`` is any callable that must have one
+   * of the following four signatures.
+   * - ``void(signal const&)``
+   * - ``void(signal const&, uint32_t)``
+   * - ``bool(signal const&)``
+   * - ``bool(signal const&, uint32_t)``
+   *
+   * If ``fn`` has two parameters, the second parameter is an index starting
+   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
+   * then it can interrupt the iteration by returning ``false``.
+   */
+  template<typename Fn>
+  void foreach_ri( Fn&& fn ) const;
+
+  /*! \brief Calls ``fn`` on every pair of register input signal and
+   *         register output node in the network.
+   *
+   * Calls each pair of a register input signal and the associated
+   * register output node.  The paramater ``fn`` is any callable that
+   * must have one of the following four signatures.
+   * - ``void(std::pair<signal, node> const&)``
+   * - ``void(std::pair<signal, node> const&, uint32_t)``
+   * - ``bool(std::pair<signal, node> const&)``
+   * - ``bool(std::pair<signal, node> const&, uint32_t)``
+   *
+   * If ``fn`` has two parameters, the second parameter is an index starting
+   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
+   * then it can interrupt the iteration by returning ``false``.
+   */
+  template<typename Fn>
+  void foreach_register( Fn&& fn ) const;
+
+  /*! \brief Sets the register information for an index.
+   *
+   * \param index A value between 0 (inclusive) and the number of
+   *              registers (exclusive).
+   * \param reg Register information to set.
+   */
+  void set_register( uint32_t index, register_t reg );
+
+  /*! \brief Returns the register information for an index.
+   *
+   * \param index A value between 0 (inclusive) and the number of
+   *              registers (exclusive).
+   * \return Register information (see ``register_t``).
+   */
+  register_t register_at( uint32_t index ) const;
+};
 
 template<typename Ntk>
 class sequential<Ntk, true> : public Ntk
@@ -513,63 +762,6 @@ public:
     assert( index < _sequential_storage->registers.size() );
     return _sequential_storage->registers[index];
   }
-
-  /*
-  uint32_t pi_index( node const& n ) const
-  {
-    assert( this->_storage->nodes[n].children[0].data < _sequential_storage->num_pis );
-    return Ntk::pi_index( n );
-  }
-
-  uint32_t ci_index( node const& n ) const
-  {
-    return Ntk::pi_index( n );
-  }
-
-  uint32_t co_index( signal const& s ) const
-  {
-    uint32_t i = -1;
-    foreach_co( [&]( const auto& x, auto index )
-                {
-        if ( x == s )
-        {
-          i = index;
-          return false;
-        }
-        return true; } );
-    return i;
-  }
-
-  uint32_t ro_index( node const& n ) const
-  {
-    assert( this->_storage->nodes[n].children[0].data >= _sequential_storage->num_pis );
-    return Ntk::pi_index( n ) - _sequential_storage->num_pis;
-  }
-
-  uint32_t ri_index( signal const& s ) const
-  {
-    uint32_t i = -1;
-    foreach_ri( [&]( const auto& x, auto index )
-                {
-        if ( x == s )
-        {
-          i = index;
-          return false;
-        }
-        return true; } );
-    return i;
-  }
-
-  signal ro_to_ri( signal const& s ) const
-  {
-    return *( this->_storage->outputs.begin() + _sequential_storage->num_pos + this->_storage->nodes[s.index].children[0].data - _sequential_storage->num_pis );
-  }
-
-  node ri_to_ro( signal const& s ) const
-  {
-    return *( this->_storage->inputs.begin() + _sequential_storage->num_pis + ri_index( s ) );
-  }
-  */
 
   template<typename Fn>
   void foreach_ci( Fn&& fn ) const

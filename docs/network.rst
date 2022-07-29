@@ -83,14 +83,7 @@ Primary I/O and constants
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_constant, create_pi, create_po, is_constant, is_pi, constant_value
-   :no-link:
-
-Sequential I/O and properties
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. doxygenclass:: mockturtle::network
-   :members: create_ro, create_ri, is_combinational, is_ci, is_ro
+   :members: get_constant, create_pi, create_po, is_constant, is_pi, is_ci, constant_value
    :no-link:
 
 Create unary functions
@@ -139,7 +132,7 @@ Structural properties
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: size, num_cis, num_cos, num_pis, num_pos, num_gates, num_registers, fanin_size, fanout_size, incr_fanout_size, decr_fanout_size, depth, level, is_and, is_or, is_xor, is_maj, is_ite, is_xor3, is_function
+   :members: is_combinational, size, num_pis, num_pos, num_cis, num_cos, num_gates, fanin_size, fanout_size, incr_fanout_size, decr_fanout_size, depth, level, is_and, is_or, is_xor, is_maj, is_ite, is_xor3, is_nary_and, is_nary_or, is_nary_xor, is_function
    :no-link:
 
 Functional properties
@@ -153,14 +146,14 @@ Nodes and signals
 ~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node, ci_at, co_at, pi_at, po_at, ro_at, ri_at, ci_index, co_index, pi_index, po_index, ri_index, ro_index, ri_to_ro, ro_to_ri
+   :members: get_node, make_signal, is_complemented, node_to_index, index_to_node, pi_at, po_at, ci_at, co_at, pi_index, po_index, ci_index, co_index
    :no-link:
 
 Node and signal iterators
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenclass:: mockturtle::network
-   :members: foreach_node, foreach_pi, foreach_po, foreach_gate, foreach_register, foreach_fanin, foreach_fanout
+   :members: foreach_node, foreach_gate, foreach_pi, foreach_po, foreach_ci, foreach_co, foreach_fanin, foreach_fanout
    :no-link:
 
 Simulate values

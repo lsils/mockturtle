@@ -152,63 +152,18 @@ public:
   /*! \brief Checks whether a node is a primary input. */
   bool is_pi( node const& n ) const;
 
+  /*! \brief Checks whether a node is a combinational input.
+   *
+   * This method should be effectively the same as ``is_pi`` in a
+   * combinational network.
+   */
+  bool is_ci( node const& n ) const;
+
   /*! \brief Gets the Boolean value of the constant node.
    *
    * The method expects that `n` is a constant node.
    */
   bool constant_value( node const& n ) const;
-#pragma endregion
-
-#pragma region Sequential I/O and properties
-  /*! \brief Creates a register output in the network.
-   *
-   * Each created register output is stored in a node and contributes
-   * to the size of the network.  Register outputs must be created
-   * after all primary inputs have been created and must have a
-   * corresponding register input that is created with `create_ri`.
-   *
-   * Register outputs serve as inputs for the network.
-   *
-   * Register outputs and register inputs always have to be created in
-   * pairs; they are associated to each other by index, i.e., the
-   * first created register output corresponds to the first created
-   * register input, etc.
-   */
-  signal create_ro();
-
-  /*! \brief Creates a register input in the network.
-   *
-   * A register input is not stored in terms of a node, and it also
-   * does not contribute to the size of the network.  A register input
-   * is created for a signal in the network and it is possible that
-   * multiple register inputs point to the same signal.  Register
-   * inputs must be created after all primary outputs have been
-   * created and must have a corresponding register output that is
-   * created with `create_ro`.
-   *
-   * Register inputs serve as outputs for the network.
-   *
-   * Register outputs and register inputs always have to be created in
-   * pairs; they are associated to each other by index, i.e., the
-   * first created register output corresponds to the first created
-   * register input, etc.
-   *
-   * \param s Signal that drives the created register input
-   */
-  void create_ri( signal const& s );
-
-  /*! \brief Checks whether the network is combinational.
-   *
-   * Returns true if and only if the network has no registers (neither
-   * register outputs nor register inputs).
-   */
-  bool is_combinational() const;
-
-  /*! \brief Checks whether a node is a combinational input (PI or RO). */
-  bool is_ci( node const& n ) const;
-
-  /*! \brief Checks whether a node is a register output. */
-  bool is_ro( node const& n ) const;
 #pragma endregion
 
 #pragma region Create unary functions
@@ -350,8 +305,8 @@ public:
    *
    * It does not update custom values or visited flags of a node.
    *
-   * \brief old_node Node to replace
-   * \brief new_signal Signal to replace ``old_node`` with
+   * \param old_node Node to replace
+   * \param new_signal Signal to replace ``old_node`` with
    */
   void substitute_node( node const& old_node, signal const& new_signal );
 
@@ -360,7 +315,7 @@ public:
    * This method replaces all occurrences of a node with a signal for
    * all pairs (node, signal) in the substitution list.
    *
-   * \brief substitutions A list of (node, signal) replacement pairs
+   * \param substitutions A list of (node, signal) replacement pairs
    */
   void substitute_nodes( std::list<std::pair<node, signal>> substitutions );
 
@@ -374,9 +329,9 @@ public:
    * The function updates the hash table. If no trivial case was found, it
    * updates the hash table according to the new structure of ``n``.
    *
-   * \brief n Node which may have ``old_node`` as a child
-   * \brief old_node Child to be replaced
-   * \brief new_signal Signel to replace ``old_node`` with
+   * \param n Node which may have ``old_node`` as a child
+   * \param old_node Child to be replaced
+   * \param new_signal Signel to replace ``old_node`` with
    * \return May return new recursive replacement candidate
    */
   std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal );
@@ -386,35 +341,43 @@ public:
    * If ``old_node`` is drive to some output, then it will be replaced by
    * ``new_signal``.
    *
-   * \brief old_node Driver to be replaced
-   * \brief new_signal Signal replace ``old_node`` with
+   * \param old_node Driver to be replaced
+   * \param new_signal Signal replace ``old_node`` with
    */
   void replace_in_outputs( node const& old_node, signal const& new_signal );
 
-  /*! \brief Removes a node (and potentially its fanins) from the hash table .
+  /*! \brief Removes a node (and potentially its fanins) from the hash table.
    *
    * The node will be marked dead.  This status can be checked with
-   * ``is_dead``.  The node is no longer visited in the
-   * ``foreach_node`` and ``foreach_gate`` methods.  It still
-   * contributes to the overall ``size`` of the network, but
-   * ``num_gates`` does not take dead nodes into account.  Taking out
-   * a node does not change the indexes of other nodes.  The node will
-   * be removed from the hash table.  The reference counters of all
-   * fanin will be decremented and take_out_node will be recursively
-   * invoked on all fanins if their fanout count reach 0.
+   * ``is_dead``. Taking out a node does not change the indexes of
+   * other nodes.  The node will be removed from the hash table.
+   * The reference counters of all fanin will be decremented and
+   * ``take_out_node`` will be recursively invoked on all fanins
+   * if their fanout count reach 0.
+   *
+   * \param n Node to be removed
    */
   void take_out_node( node const& n );
+
+  /*! \brief Check if a node is dead.
+   *
+   * A dead node is no longer visited in the ``foreach_node`` and
+   * ``foreach_gate`` methods.  It still contributes to the overall
+   * ``size`` of the network, but ``num_gates`` does not take dead
+   * nodes into account.
+   *
+   * \param n Node to check
+   * \return Whether ``n`` is dead
+   */
+  bool is_dead( node const& n ) const;
 #pragma endregion
 
 #pragma region Structural properties
+  /*! \brief Checks whether the network is combinational. */
+  bool is_combinational() const;
+
   /*! \brief Returns the number of nodes (incl. constants and PIs and dead nodes). */
   uint32_t size() const;
-
-  /*! \brief Returns the number of combinational inputs. */
-  uint32_t num_cis() const;
-
-  /*! \brief Returns the number of combinational outputs. */
-  uint32_t num_cos() const;
 
   /*! \brief Returns the number of primary inputs. */
   uint32_t num_pis() const;
@@ -422,17 +385,22 @@ public:
   /*! \brief Returns the number of primary outputs. */
   uint32_t num_pos() const;
 
+  /*! \brief Returns the number of combinational inputs.
+   *
+   * This method should be effectively the same as `num_pis`` in a
+   * combinational network.
+   */
+  uint32_t num_cis() const;
+
+  /*! \brief Returns the number of combinational outputs.
+   *
+   * This method should be effectively the same as `num_pos`` in a
+   * combinational network.
+   */
+  uint32_t num_cos() const;
+
   /*! \brief Returns the number of gates (without dead nodes) */
   uint32_t num_gates() const;
-
-  /*! \brief Returns the number of registers.
-   *
-   * This number is usually equal to the number of register outputs
-   * and register inputs because they have to appear in pairs.  During
-   * the construction of a network, the number of register outputs and
-   * register inputs may diverge.
-   */
-  uint32_t num_registers() const;
 
   /*! \brief Returns the fanin size of a node. */
   uint32_t fanin_size( node const& n ) const;
@@ -467,9 +435,6 @@ public:
    * network implementations, but has to be extended by wrapping with `depth_view`.
    */
   uint32_t level( node const& n ) const;
-
-  /*! \brief Returns true, if node is on critical path */
-  bool is_on_critical_path( node const& n ) const;
 
   /*! \brief Returns true if node is a 2-input AND gate. */
   bool is_and( node const& n ) const;
@@ -549,20 +514,6 @@ public:
    */
   node index_to_node( uint32_t index ) const;
 
-  /*! \brief Returns the combinational input node for an index.
-   *
-   * \param index A value between 0 (inclusive) and the number of
-   *              combinational inputs (exclusive).
-   */
-  node ci_at( uint32_t index ) const;
-
-  /*! \brief Returns the combinational output signal for an index.
-   *
-   * \param index A value between 0 (inclusive) and the number of
-   *              combinational outputs (exclusive).
-   */
-  signal co_at( uint32_t index ) const;
-
   /*! \brief Returns the primary input node for an index.
    *
    * \param index A value between 0 (inclusive) and the number of
@@ -577,33 +528,19 @@ public:
    */
   signal po_at( uint32_t index ) const;
 
-  /*! \brief Returns the register output node for an index.
+  /*! \brief Returns the combinational input node for an index.
    *
    * \param index A value between 0 (inclusive) and the number of
-   *              register outputs (exclusive).
+   *              combinational inputs (exclusive).
    */
-  node ro_at( uint32_t index ) const;
+  node ci_at( uint32_t index ) const;
 
-  /*! \brief Returns the register input signal for an index.
+  /*! \brief Returns the combinational output signal for an index.
    *
    * \param index A value between 0 (inclusive) and the number of
-   *              register inputs (exclusive).
+   *              combinational outputs (exclusive).
    */
-  signal ri_at( uint32_t index ) const;
-
-  /*! \brief Returns the index of a combinational input node.
-   *
-   * \param n A combinational input node.
-   * \return A value between 0 and num_cis()-1.
-   */
-  uint32_t ci_index( node const& n ) const;
-
-  /*! \brief Returns the index of a combinational output signal.
-   *
-   * \param n A combinational output signal.
-   * \return A value between 0 and num_cos()-1.
-   */
-  uint32_t co_index( signal const& n ) const;
+  signal co_at( uint32_t index ) const;
 
   /*! \brief Returns the index of a primary input node.
    *
@@ -619,31 +556,19 @@ public:
    */
   uint32_t po_index( signal const& n ) const;
 
-  /*! \brief Returns the index of a register output node.
+  /*! \brief Returns the index of a combinational input node.
    *
-   * \param n A register output node.
-   * \return A value between 0 and num_cis()-num_pis()-1.
+   * \param n A combinational input node.
+   * \return A value between 0 and num_cis()-1.
    */
-  uint32_t ro_index( node const& n ) const;
+  uint32_t ci_index( node const& n ) const;
 
-  /*! \brief Returns the index of a register input signal.
+  /*! \brief Returns the index of a combinational output signal.
    *
-   * \param n A register input signal.
-   * \return A value between 0 and num_cos()-num_pos()-1.
+   * \param n A combinational output signal.
+   * \return A value between 0 and num_cos()-1.
    */
-  uint32_t ri_index( signal const& n ) const;
-
-  /*! \brief Returns the register input signal to a register output node.
-   *
-   * \param signal A signal of a register output.
-   */
-  signal ro_to_ri( signal const& s ) const;
-
-  /*! \brief Returns the register output node for a register input signal.
-   *
-   * \param signal A node of a register input.
-   */
-  node ri_to_ro( node const& n ) const;
+  uint32_t co_index( signal const& n ) const;
 #pragma endregion
 
 #pragma region Node and signal iterators
@@ -664,11 +589,10 @@ public:
   template<typename Fn>
   void foreach_node( Fn&& fn ) const;
 
-  /*! \brief Calls ``fn`` on every combinational input node in the network.
+  /*! \brief Calls ``fn`` on every gate node in the network.
    *
-   * The order is in the same order as combinational inputs have been
-   * created with ``create_pi`` or ``create_ro``.  The paramater
-   * ``fn`` is any callable that must have one of the following four
+   * Calls each node that is not constant and not a combinational input.  The
+   * paramater ``fn`` is any callable that must have one of the following four
    * signatures.
    * - ``void(node const&)``
    * - ``void(node const&, uint32_t)``
@@ -680,28 +604,7 @@ public:
    * then it can interrupt the iteration by returning ``false``.
    */
   template<typename Fn>
-  void foreach_ci( Fn&& fn ) const;
-
-  /*! \brief Calls ``fn`` on every combinational output signal in the network.
-   *
-   * The order is in the same order as combinational outputs have been
-   * created with ``create_po`` or ``create_ri``.  The function is
-   * called on the signal that is driving the output and may occur
-   * more than once in the iteration, if it drives more than one
-   * output.  The paramater ``fn`` is any callable that must have one
-   * of the following four
-   * signatures.
-   * - ``void(signal const&)``
-   * - ``void(signal const&, uint32_t)``
-   * - ``bool(signal const&)``
-   * - ``bool(signal const&, uint32_t)``
-   *
-   * If ``fn`` has two parameters, the second parameter is an index starting
-   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
-   * then it can interrupt the iteration by returning ``false``.
-   */
-  template<typename Fn>
-  void foreach_co( Fn&& fn ) const;
+  void foreach_gate( Fn&& fn ) const;
 
   /*! \brief Calls ``fn`` on every primary input node in the network.
    *
@@ -739,76 +642,21 @@ public:
   template<typename Fn>
   void foreach_po( Fn&& fn ) const;
 
-  /*! \brief Calls ``fn`` on every register output node in the network.
+  /*! \brief Calls ``fn`` on every combinational input node in the network.
    *
-   * The order is in the same order as register outputs have been created with
-   * ``create_ro``.  The paramater ``fn`` is any callable that must have one of
-   * the following four signatures.
-   * - ``void(node const&)``
-   * - ``void(node const&, uint32_t)``
-   * - ``bool(node const&)``
-   * - ``bool(node const&, uint32_t)``
-   *
-   * If ``fn`` has two parameters, the second parameter is an index starting
-   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
-   * then it can interrupt the iteration by returning ``false``.
+   * This method should be effectively the same as ``foreach_pi`` in a
+   * combinational network.
    */
   template<typename Fn>
-  void foreach_ro( Fn&& fn ) const;
+  void foreach_ci( Fn&& fn ) const;
 
-  /*! \brief Calls ``fn`` on every register input signal in the network.
+  /*! \brief Calls ``fn`` on every combinational output signal in the network.
    *
-   * The order is in the same order as register inputs have been created with
-   * ``create_ri``.  The function is called on the signal that is driving the
-   * output and may occur more than once in the iteration, if it drives more
-   * than one output.  The paramater ``fn`` is any callable that must have one
-   * of the following four signatures.
-   * - ``void(signal const&)``
-   * - ``void(signal const&, uint32_t)``
-   * - ``bool(signal const&)``
-   * - ``bool(signal const&, uint32_t)``
-   *
-   * If ``fn`` has two parameters, the second parameter is an index starting
-   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
-   * then it can interrupt the iteration by returning ``false``.
+   * This method should be effectively the same as ``foreach_po`` in a
+   * combinational network.
    */
   template<typename Fn>
-  void foreach_ri( Fn&& fn ) const;
-
-  /*! \brief Calls ``fn`` on every gate node in the network.
-   *
-   * Calls each node that is not constant and not a primary input.  The
-   * paramater ``fn`` is any callable that must have one of the following four
-   * signatures.
-   * - ``void(node const&)``
-   * - ``void(node const&, uint32_t)``
-   * - ``bool(node const&)``
-   * - ``bool(node const&, uint32_t)``
-   *
-   * If ``fn`` has two parameters, the second parameter is an index starting
-   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
-   * then it can interrupt the iteration by returning ``false``.
-   */
-  template<typename Fn>
-  void foreach_gate( Fn&& fn ) const;
-
-  /*! \brief Calls ``fn`` on every pair of register input signal and
-   *         register output node in the network.
-   *
-   * Calls each pair of a register input signal and the associated
-   * register output node.  The paramater ``fn`` is any callable that
-   * must have one of the following four signatures.
-   * - ``void(std::pair<signal, node> const&)``
-   * - ``void(std::pair<signal, node> const&, uint32_t)``
-   * - ``bool(std::pair<signal, node> const&)``
-   * - ``bool(std::pair<signal, node> const&, uint32_t)``
-   *
-   * If ``fn`` has two parameters, the second parameter is an index starting
-   * from 0 and incremented in every iteration.  If ``fn`` returns a ``bool``,
-   * then it can interrupt the iteration by returning ``false``.
-   */
-  template<typename Fn>
-  void foreach_register( Fn&& fn ) const;
+  void foreach_co( Fn&& fn ) const;
 
   /*! \brief Calls ``fn`` on every fanin of a node.
    *
