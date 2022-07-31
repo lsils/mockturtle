@@ -6,11 +6,11 @@ v0.4 (not yet released)
 
 * Network interfaces:
     - Remove the "name" argument in `create_pi`, `create_po`, `create_ri`, and `create_ro`. Names should be set using the `names_view` APIs. `#559 <https://github.com/lsils/mockturtle/pull/559>`_
-    - Deprecated APIs: `substitute_node_of_parents`, `num_latches` (use `num_registers` instead), `latch_reset`.
-    - Separate the sequential interfaces from core network APIs (they are only available when wrapped with `sequential`). Add sequential interfaces `register_at` and `set_register` to retrieve and set register information. Remove the "reset" argument of `create_ri`.
+    - Deprecated APIs: `substitute_node_of_parents`, `num_latches` (use `num_registers` instead), `latch_reset`. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
+    - Separate the sequential interfaces from core network APIs (they are only available when wrapped with `sequential`). Add sequential interfaces `register_at` and `set_register` to retrieve and set register information. Remove the "reset" argument of `create_ri`. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
 * Network implementations:
-    - Remove sequential interfaces from all networks (`aig_network`, `xag_network`, `mig_network`, `xmg_network`, `klut_network`, `cover_network`, `aqfp_network`). Add the `sequential` extension to combinational networks.
-    - Move `trav_id` from the custom storage data (e.g. `aig_storage_data`) to the common `storage`. Remove `num_pis` and `num_pos` as they are only needed for sequential network. Remove custom storage data when not needed (`aig_storage_data`, `xag_storage_data`, `mig_storage_data`, `xmg_storage_data`). Remove latch information from the common `storage`.
+    - Remove sequential interfaces from all networks (`aig_network`, `xag_network`, `mig_network`, `xmg_network`, `klut_network`, `cover_network`, `aqfp_network`). Add the `sequential` extension to combinational networks. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
+    - Move `trav_id` from the custom storage data (e.g. `aig_storage_data`) to the common `storage`. Remove `num_pis` and `num_pos` as they are only needed for sequential network. Remove custom storage data when not needed (`aig_storage_data`, `xag_storage_data`, `mig_storage_data`, `xmg_storage_data`). Remove latch information from the common `storage`. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
 * Algorithms:
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
