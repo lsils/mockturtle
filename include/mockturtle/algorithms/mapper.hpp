@@ -370,7 +370,7 @@ private:
 
         if ( supergates_pos != nullptr || supergates_neg != nullptr )
         {
-          cut_match_tech<NInputs> match { { supergates_pos, supergates_neg }, {negations_pos, negations_neg} };
+          cut_match_tech<NInputs> match{ { supergates_pos, supergates_neg }, { negations_pos, negations_neg } };
 
           node_matches.push_back( match );
           ( *cut )->data.match_index = i++;
@@ -1425,7 +1425,7 @@ private:
     auto ctr = 0u;
     for ( auto l : best_cut )
     {
-      if ( ctr >= gate->num_vars)
+      if ( ctr >= gate->num_vars )
         break;
       children[node_data.best_supergate[phase]->permutation[ctr]] = old2new[l][( node_data.phase[phase] >> ctr ) & 1];
       ++ctr;
@@ -1615,7 +1615,7 @@ private:
  * See `include/mockturtle/algorithms/cut_enumeration/cut_enumeration_tech_map_cut.hpp`
  * for one example of a CutData type that implements the cost function that is used in
  * the technology mapper.
- * 
+ *
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
@@ -1635,7 +1635,7 @@ private:
  * \param library Technology library
  * \param ps Mapping params
  * \param pst Mapping statistics
- * 
+ *
  * The implementation of this algorithm was inspired by the
  * mapping command ``map`` in ABC.
  */
@@ -2568,7 +2568,7 @@ private:
         old2new[n] = sig1;
       }
     }
-    
+
     double area_old = area;
     bool success = set_mapping_refs<true>();
 
@@ -3084,7 +3084,7 @@ private:
  * See `include/mockturtle/algorithms/cut_enumeration/cut_enumeration_exact_map_cut.hpp`
  * for one example of a CutData type that implements the cost function that is used in
  * the technology mapper.
- * 
+ *
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a mapped network representation generated using the exact

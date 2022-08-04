@@ -158,7 +158,7 @@ public:
     {
       if ( ntk.is_maj( n ) )
       {
-        std::string label{"MAJ"};
+        std::string label{ "MAJ" };
         ntk.foreach_fanin( n, [&]( auto const& f ) {
           if ( ntk.is_constant( ntk.get_node( f ) ) )
           {
@@ -237,7 +237,7 @@ public:
     {
       if ( ntk.is_maj( n ) )
       {
-        std::string color{"lightsalmon"};
+        std::string color{ "lightsalmon" };
         ntk.foreach_fanin( n, [&]( auto const& f ) {
           if ( ntk.is_constant( ntk.get_node( f ) ) )
           {

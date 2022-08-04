@@ -1,8 +1,8 @@
 #include <catch.hpp>
 
-#include <mockturtle/traits.hpp>
 #include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/traits.hpp>
 #include <mockturtle/views/depth_view.hpp>
 
 using namespace mockturtle;
@@ -22,7 +22,7 @@ TEST_CASE( "MIG depth optimization with associativity", "[mig_algebraic_rewritin
 
   mig.create_po( f3 );
 
-  depth_view depth_mig{mig};
+  depth_view depth_mig{ mig };
 
   CHECK( depth_mig.depth() == 3 );
 
@@ -46,7 +46,7 @@ TEST_CASE( "MIG depth optimization with complemented associativity", "[mig_algeb
 
   mig.create_po( f3 );
 
-  depth_view depth_mig{mig};
+  depth_view depth_mig{ mig };
 
   CHECK( depth_mig.depth() == 3 );
 
@@ -73,7 +73,7 @@ TEST_CASE( "MIG depth optimization with distributivity", "[mig_algebraic_rewriti
 
   mig.create_po( f3 );
 
-  depth_view depth_mig{mig};
+  depth_view depth_mig{ mig };
 
   CHECK( depth_mig.depth() == 3 );
 
@@ -100,7 +100,7 @@ TEST_CASE( "MIG selective depth optimization", "[mig_algebraic_rewriting]" )
 
   mig.create_po( f3 );
 
-  depth_view depth_mig{mig};
+  depth_view depth_mig{ mig };
   mig_algebraic_depth_rewriting_params ps;
   ps.strategy = mig_algebraic_depth_rewriting_params::selective;
 
@@ -129,7 +129,7 @@ TEST_CASE( "MIG aggressive depth optimization", "[mig_algebraic_rewriting]" )
 
   mig.create_po( f3 );
 
-  depth_view depth_mig{mig};
+  depth_view depth_mig{ mig };
   mig_algebraic_depth_rewriting_params ps;
   ps.strategy = mig_algebraic_depth_rewriting_params::aggressive;
 

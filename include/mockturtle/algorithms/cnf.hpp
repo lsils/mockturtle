@@ -83,128 +83,128 @@ namespace detail
 template<class ClauseFn>
 inline void on_and( uint32_t c, uint32_t a, uint32_t b, ClauseFn&& fn )
 {
-  fn( {a, lit_not( c )} );
-  fn( {b, lit_not( c )} );
-  fn( {lit_not( a ), lit_not( b ), c} );
+  fn( { a, lit_not( c ) } );
+  fn( { b, lit_not( c ) } );
+  fn( { lit_not( a ), lit_not( b ), c } );
 }
 
 /* c = a & b */
 template<class ClauseFn>
 inline void on_and( bill::lit_type c, bill::lit_type a, bill::lit_type b, ClauseFn&& fn )
 {
-  fn( {a, ~c} );
-  fn( {b, ~c} );
-  fn( {~a, ~b, c} );
+  fn( { a, ~c } );
+  fn( { b, ~c } );
+  fn( { ~a, ~b, c } );
 }
 
 /* c = a | b */
 template<class ClauseFn>
 inline void on_or( uint32_t c, uint32_t a, uint32_t b, ClauseFn&& fn )
 {
-  fn( {lit_not( a ), c} );
-  fn( {lit_not( b ), c} );
-  fn( {a, b, lit_not( c )} );
+  fn( { lit_not( a ), c } );
+  fn( { lit_not( b ), c } );
+  fn( { a, b, lit_not( c ) } );
 }
 
 /* c = a | b */
 template<class ClauseFn>
 inline void on_or( bill::lit_type c, bill::lit_type a, bill::lit_type b, ClauseFn&& fn )
 {
-  fn( {~a, c} );
-  fn( {~b, c} );
-  fn( {a, b, ~c} );
+  fn( { ~a, c } );
+  fn( { ~b, c } );
+  fn( { a, b, ~c } );
 }
 
 /* c = a ^ b */
 template<class ClauseFn>
 inline void on_xor( uint32_t c, uint32_t a, uint32_t b, ClauseFn&& fn )
 {
-  fn( {lit_not( a ), lit_not( b ), lit_not( c )} );
-  fn( {lit_not( a ), b, c} );
-  fn( {a, lit_not( b ), c} );
-  fn( {a, b, lit_not( c )} );
+  fn( { lit_not( a ), lit_not( b ), lit_not( c ) } );
+  fn( { lit_not( a ), b, c } );
+  fn( { a, lit_not( b ), c } );
+  fn( { a, b, lit_not( c ) } );
 }
 
 /* c = a ^ b */
 template<class ClauseFn>
 inline void on_xor( bill::lit_type c, bill::lit_type a, bill::lit_type b, ClauseFn&& fn )
 {
-  fn( {~a, ~b, ~c} );
-  fn( {~a, b, c} );
-  fn( {a, ~b, c} );
-  fn( {a, b, ~c} );
+  fn( { ~a, ~b, ~c } );
+  fn( { ~a, b, c } );
+  fn( { a, ~b, c } );
+  fn( { a, b, ~c } );
 }
 
 /* d = <abc> */
 template<class ClauseFn>
 inline void on_maj( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& fn )
 {
-  fn( {lit_not( a ), lit_not( b ), d} );
-  fn( {lit_not( a ), lit_not( c ), d} );
-  fn( {lit_not( b ), lit_not( c ), d} );
-  fn( {a, b, lit_not( d )} );
-  fn( {a, c, lit_not( d )} );
-  fn( {b, c, lit_not( d )} );
+  fn( { lit_not( a ), lit_not( b ), d } );
+  fn( { lit_not( a ), lit_not( c ), d } );
+  fn( { lit_not( b ), lit_not( c ), d } );
+  fn( { a, b, lit_not( d ) } );
+  fn( { a, c, lit_not( d ) } );
+  fn( { b, c, lit_not( d ) } );
 }
 
 /* d = <abc> */
 template<class ClauseFn>
 inline void on_maj( bill::lit_type d, bill::lit_type a, bill::lit_type b, bill::lit_type c, ClauseFn&& fn )
 {
-  fn( {~a, ~b, d} );
-  fn( {~a, ~c, d} );
-  fn( {~b, ~c, d} );
-  fn( {a, b, ~d} );
-  fn( {a, c, ~d} );
-  fn( {b, c, ~d} );
+  fn( { ~a, ~b, d } );
+  fn( { ~a, ~c, d } );
+  fn( { ~b, ~c, d } );
+  fn( { a, b, ~d } );
+  fn( { a, c, ~d } );
+  fn( { b, c, ~d } );
 }
 
 /* d = a ^ b ^ c */
 template<class ClauseFn>
 inline void on_xor3( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& fn )
 {
-  fn( {lit_not( a ), b, c, d} );
-  fn( {a, lit_not( b ), c, d} );
-  fn( {a, b, lit_not( c ), d} );
-  fn( {a, b, c, lit_not( d )} );
-  fn( {a, lit_not( b ), lit_not( c ), lit_not( d )} );
-  fn( {lit_not( a ), b, lit_not( c ), lit_not( d )} );
-  fn( {lit_not( a ), lit_not( b ), c, lit_not( d )} );
-  fn( {lit_not( a ), lit_not( b ), lit_not( c ), d} );
+  fn( { lit_not( a ), b, c, d } );
+  fn( { a, lit_not( b ), c, d } );
+  fn( { a, b, lit_not( c ), d } );
+  fn( { a, b, c, lit_not( d ) } );
+  fn( { a, lit_not( b ), lit_not( c ), lit_not( d ) } );
+  fn( { lit_not( a ), b, lit_not( c ), lit_not( d ) } );
+  fn( { lit_not( a ), lit_not( b ), c, lit_not( d ) } );
+  fn( { lit_not( a ), lit_not( b ), lit_not( c ), d } );
 }
 
 /* d = a ^ b ^ c */
 template<class ClauseFn>
 inline void on_xor3( bill::lit_type d, bill::lit_type a, bill::lit_type b, bill::lit_type c, ClauseFn&& fn )
 {
-  fn( {~a, b, c, d} );
-  fn( {a, ~b, c, d} );
-  fn( {a, b, ~c, d} );
-  fn( {a, b, c, ~d} );
-  fn( {a, ~b, ~c, ~d} );
-  fn( {~a, b, ~c, ~d} );
-  fn( {~a, ~b, c, ~d} );
-  fn( {~a, ~b, ~c, d} );
+  fn( { ~a, b, c, d } );
+  fn( { a, ~b, c, d } );
+  fn( { a, b, ~c, d } );
+  fn( { a, b, c, ~d } );
+  fn( { a, ~b, ~c, ~d } );
+  fn( { ~a, b, ~c, ~d } );
+  fn( { ~a, ~b, c, ~d } );
+  fn( { ~a, ~b, ~c, d } );
 }
 
 /* d = a ? b : c */
 template<class ClauseFn>
 inline void on_ite( uint32_t d, uint32_t a, uint32_t b, uint32_t c, ClauseFn&& fn )
 {
-  fn( {lit_not( a ), lit_not( b ), d} );
-  fn( {lit_not( a ), b, lit_not( d )} );
-  fn( {a, lit_not( c ), d} );
-  fn( {a, c, lit_not( d )} );
+  fn( { lit_not( a ), lit_not( b ), d } );
+  fn( { lit_not( a ), b, lit_not( d ) } );
+  fn( { a, lit_not( c ), d } );
+  fn( { a, c, lit_not( d ) } );
 }
 
 /* d = a ? b : c */
 template<class ClauseFn>
 inline void on_ite( bill::lit_type d, bill::lit_type a, bill::lit_type b, bill::lit_type c, ClauseFn&& fn )
 {
-  fn( {~a, ~b, d} );
-  fn( {~a, b, ~d} );
-  fn( {a, ~c, d} );
-  fn( {a, c, ~d} );
+  fn( { ~a, ~b, d } );
+  fn( { ~a, b, ~d } );
+  fn( { a, ~c, d } );
+  fn( { a, c, ~d } );
 }
 
 /* general case */
@@ -340,7 +340,7 @@ public:
   std::vector<lit_t> run()
   {
     /* unit clause for constant-0 */
-    fn_( {lit_not( node_lits_[ntk_.get_constant( false )])} );
+    fn_( { lit_not( node_lits_[ntk_.get_constant( false )] ) } );
 
     /* compute clauses for nodes */
     ntk_.foreach_gate( [&]( auto const& n ) {

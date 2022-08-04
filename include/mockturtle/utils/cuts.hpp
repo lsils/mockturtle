@@ -459,8 +459,8 @@ public:
 private:
   std::array<CutType, MaxCuts> _cuts;
   std::array<CutType*, MaxCuts> _pcuts;
-  typename std::array<CutType*, MaxCuts>::const_iterator _pcend{_pcuts.begin()};
-  typename std::array<CutType*, MaxCuts>::iterator _pend{_pcuts.begin()};
+  typename std::array<CutType*, MaxCuts>::const_iterator _pcend{ _pcuts.begin() };
+  typename std::array<CutType*, MaxCuts>::iterator _pend{ _pcuts.begin() };
 };
 
 template<typename CutType, int MaxCuts>

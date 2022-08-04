@@ -44,9 +44,9 @@
 #include "../algorithms/cnf.hpp"
 #include "../algorithms/simulation.hpp"
 #include "../networks/xag.hpp"
+#include "../traits.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/cnf_view.hpp"
-#include "../traits.hpp"
 
 #include <fmt/format.h>
 
@@ -60,7 +60,7 @@ class linear_sum_simulator
 {
 public:
   std::vector<uint32_t> compute_constant( bool ) const { return {}; }
-  std::vector<uint32_t> compute_pi( uint32_t index ) const { return {index}; }
+  std::vector<uint32_t> compute_pi( uint32_t index ) const { return { index }; }
   std::vector<uint32_t> compute_not( std::vector<uint32_t> const& value ) const
   {
     assert( false && "No NOTs in linear forms allowed" );
@@ -233,7 +233,7 @@ private:
   {
     occurrance_to_pairs.resize( 1u );
 
-    linear_xag lxag{xag};
+    linear_xag lxag{ xag };
     linear_equations = simulate<std::vector<uint32_t>>( lxag, linear_sum_simulator{} );
 
     for ( auto o = 0u; o < linear_equations.size(); ++o )
@@ -313,10 +313,10 @@ private:
       leq.erase( std::remove( leq.begin(), leq.end(), b ), leq.end() );
       for ( auto i : leq )
       {
-        remove_one_pair( {std::min( i, a ), std::max( i, a )}, o );
-        remove_one_pair( {std::min( i, b ), std::max( i, b )}, o );
-        add_pair( {i, c} );
-        pairs_to_output[{i, c}].push_back( o );
+        remove_one_pair( { std::min( i, a ), std::max( i, a ) }, o );
+        remove_one_pair( { std::min( i, b ), std::max( i, b ) }, o );
+        add_pair( { i, c } );
+        pairs_to_output[{ i, c }].push_back( o );
       }
       leq.push_back( c );
     }
@@ -380,10 +380,10 @@ struct exact_linear_synthesis_params
   std::optional<uint32_t> upper_bound{};
 
   /*! \brief Conflict limit for SAT solving (default 0 = no limit). */
-  int conflict_limit{0};
+  int conflict_limit{ 0 };
 
   /*! \brief Solution must be cancellation-free. */
-  bool cancellation_free{false};
+  bool cancellation_free{ false };
 
   /*! \brief Ignore inputs in any step to compute this output.
    *
@@ -395,19 +395,19 @@ struct exact_linear_synthesis_params
   std::vector<std::vector<uint32_t>> ignore_inputs;
 
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 
   /*! \brief Be very verbose (debug messages). */
-  bool very_verbose{false};
+  bool very_verbose{ false };
 };
 
 struct exact_linear_synthesis_stats
 {
   /*! \brief Total time. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Time for SAT solving. */
-  stopwatch<>::duration time_solving{0};
+  stopwatch<>::duration time_solving{ 0 };
 
   /*! \brief Prints report. */
   void report() const
@@ -688,7 +688,7 @@ private:
     }
 
     // at most one output (if no duplicates) per row
-    //for ( auto i = 0u; i < k_; ++i )
+    // for ( auto i = 0u; i < k_; ++i )
     //{
     //  for ( auto l = 1u; l < m_; ++l )
     //  {
@@ -743,7 +743,7 @@ private:
   }
 
 private:
-  std::vector<std::vector<bool>> const &linear_matrix_;
+  std::vector<std::vector<bool>> const& linear_matrix_;
   uint32_t k_;
   uint32_t n_;
   uint32_t m_;
@@ -935,7 +935,7 @@ private:
 
 private:
   uint32_t n_{};
-  uint32_t m_{0u};
+  uint32_t m_{ 0u };
   std::vector<std::vector<bool>> linear_matrix_;
   std::vector<std::pair<uint32_t, uint32_t>> trivial_pos_;
   std::vector<std::vector<uint32_t>> ignore_inputs_;
@@ -957,7 +957,7 @@ std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   detail::linear_matrix_simulator sim( ntk.num_pis() );
-  return simulate<std::vector<bool>>( detail::linear_xag{ntk}, sim );
+  return simulate<std::vector<bool>>( detail::linear_xag{ ntk }, sim );
 }
 
 /*! \brief Optimum linear circuit synthesis (based on SAT)
@@ -970,12 +970,12 @@ std::vector<std::vector<bool>> get_linear_matrix( Ntk const& ntk )
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
 template<class Ntk = xag_network, bill::solvers Solver = bill::solvers::glucose_41>
-std::optional<Ntk> exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
+std::optional<Ntk> exact_linear_synthesis( std::vector<std::vector<bool>> const& linear_matrix, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats* pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 
   exact_linear_synthesis_stats st;
-  const auto xag = detail::exact_linear_synthesis_impl<Ntk, Solver>{linear_matrix, ps, st}.run();
+  const auto xag = detail::exact_linear_synthesis_impl<Ntk, Solver>{ linear_matrix, ps, st }.run();
 
   if ( ps.verbose )
   {
@@ -997,7 +997,7 @@ std::optional<Ntk> exact_linear_synthesis( std::vector<std::vector<bool>> const&
  * Reference: [C. Fuhs and P. Schneider-Kamp, SAT (2010), page 71-84]
  */
 template<class Ntk = xag_network, bill::solvers Solver = bill::solvers::glucose_41>
-std::optional<Ntk> exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats *pst = nullptr )
+std::optional<Ntk> exact_linear_resynthesis( Ntk const& ntk, exact_linear_synthesis_params const& ps = {}, exact_linear_synthesis_stats* pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk is not XAG-like" );
 

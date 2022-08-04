@@ -55,7 +55,7 @@ namespace mockturtle
 struct node_resynthesis_params
 {
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 };
 
 /*! \brief Statistics for node_resynthesis.
@@ -66,7 +66,7 @@ struct node_resynthesis_params
 struct node_resynthesis_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   void report() const
   {
@@ -82,11 +82,11 @@ class node_resynthesis_impl
 {
 public:
   node_resynthesis_impl( NtkDest& ntk_dest, NtkSource const& ntk, ResynthesisFn&& resynthesis_fn, node_resynthesis_params const& ps, node_resynthesis_stats& st )
-    : ntk_dest( ntk_dest ),
-      ntk( ntk ),
-      resynthesis_fn( resynthesis_fn ),
-      ps( ps ),
-      st( st )
+      : ntk_dest( ntk_dest ),
+        ntk( ntk ),
+        resynthesis_fn( resynthesis_fn ),
+        ps( ps ),
+        st( st )
   {
   }
 
@@ -112,7 +112,7 @@ public:
         if ( ntk.has_name( ntk.make_signal( n ) ) )
           ntk_dest.set_name( node2new[n], ntk.get_name( ntk.make_signal( n ) ) );
       }
-      } );
+    } );
 
     if constexpr ( has_foreach_ro_v<NtkSource> && has_create_ro_v<NtkDest> )
     {
@@ -124,11 +124,11 @@ public:
           if ( ntk.has_name( ntk.make_signal( n ) ) )
             ntk_dest.set_name( node2new[n], ntk.get_name( ntk.make_signal( n ) ) );
         }
-        } );
+      } );
     }
 
     /* map nodes */
-    topo_view ntk_topo{ntk};
+    topo_view ntk_topo{ ntk };
     ntk_topo.foreach_node( [&]( auto n ) {
       if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
         return;
@@ -161,36 +161,36 @@ public:
 
     /* map primary outputs */
     ntk.foreach_po( [&]( auto const& f, auto index ) {
+      (void)index;
+
+      auto const o = ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
+      ntk_dest.create_po( o );
+
+      if constexpr ( has_has_output_name_v<NtkSource> && has_get_output_name_v<NtkSource> && has_set_output_name_v<NtkDest> )
+      {
+        if ( ntk.has_output_name( index ) )
+        {
+          ntk_dest.set_output_name( index, ntk.get_output_name( index ) );
+        }
+      }
+    } );
+
+    if constexpr ( has_foreach_ri_v<NtkSource> && has_create_ri_v<NtkDest> )
+    {
+      ntk.foreach_ri( [&]( auto const& f, auto index ) {
         (void)index;
 
         auto const o = ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
-        ntk_dest.create_po( o );
+        ntk_dest.create_ri( o );
 
         if constexpr ( has_has_output_name_v<NtkSource> && has_get_output_name_v<NtkSource> && has_set_output_name_v<NtkDest> )
         {
           if ( ntk.has_output_name( index ) )
           {
-            ntk_dest.set_output_name( index, ntk.get_output_name( index ) );
+            ntk_dest.set_output_name( index + ntk.num_pos(), ntk.get_output_name( index + ntk.num_pos() ) );
           }
         }
       } );
-
-    if constexpr ( has_foreach_ri_v<NtkSource> && has_create_ri_v<NtkDest> )
-    {
-      ntk.foreach_ri( [&]( auto const& f, auto index ) {
-          (void)index;
-
-          auto const o = ntk.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
-          ntk_dest.create_ri( o );
-
-          if constexpr ( has_has_output_name_v<NtkSource> && has_get_output_name_v<NtkSource> && has_set_output_name_v<NtkDest> )
-          {
-            if ( ntk.has_output_name( index ) )
-            {
-              ntk_dest.set_output_name( index + ntk.num_pos(), ntk.get_output_name( index + ntk.num_pos() ) );
-            }
-          }
-        } );
     }
 
     return ntk_dest;

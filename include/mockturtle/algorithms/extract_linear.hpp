@@ -68,7 +68,7 @@ extract_linear_circuit( xag_network const& xag )
     old_to_new[n] = dest.create_pi();
   } );
 
-  topo_view topo{xag};
+  topo_view topo{ xag };
   topo.foreach_node( [&]( auto const& n ) {
     if ( xag.is_constant( n ) || xag.is_pi( n ) )
       return;
@@ -104,7 +104,7 @@ extract_linear_circuit( xag_network const& xag )
     dest.create_po( b );
   }
 
-  return {dest, and_tuples};
+  return { dest, and_tuples };
 }
 
 namespace detail

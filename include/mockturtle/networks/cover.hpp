@@ -49,18 +49,18 @@
 namespace mockturtle
 {
 /*! \brief cover storage data
- * 
+ *
  * This struct contains the constituents of the network and its main features.
- * 
+ *
  * The constituents of the network are the covers representing the boolean functions stored in each node.
- * These are stored in a vector of pairs. Each element is the cover of a function and a boolean value indicating whether the 
+ * These are stored in a vector of pairs. Each element is the cover of a function and a boolean value indicating whether the
  * cover indicates the ON-set or the OFF set. More precisely:
  * `covers`           : Vector of pairs for covers storage
  * `covers[i].first`  : Cubes i-th cover
  * `covers[i].second` : Boolean true (false) if ON set (OFF set)
- * This data structure directly originates from the k-LUT one and, for this reason, it inherits from it the vast majority of the features. 
- * The main difference is the way the nodes are stored and future improvements could include the substitution of the current covers storage with 
- * a cache, to avoid the redundant storage of some recurrent boolean functions. 
+ * This data structure directly originates from the k-LUT one and, for this reason, it inherits from it the vast majority of the features.
+ * The main difference is the way the nodes are stored and future improvements could include the substitution of the current covers storage with
+ * a cache, to avoid the redundant storage of some recurrent boolean functions.
  */
 struct cover_storage_data
 {
@@ -105,7 +105,7 @@ using cover_storage = storage<cover_storage_node, cover_storage_data>;
 
 /*! \brief cover_network
  *
- * This class implements a data structure for a cover based network. 
+ * This class implements a data structure for a cover based network.
  * In this representation, each node is represented by specifying its ON set or its OFF set, that in both cases are stored as a vector of cubes.
  * The information related to the set to which the node refers to is contained in a boolean variable, that is true (false) if the
  * ON set (OFF set) is considered.
@@ -126,7 +126,7 @@ using cover_storage = storage<cover_storage_node, cover_storage_data>;
 
     kitty::cube _11 = kitty::cube("11");
 
-    std::vector<kitty::cube> nand_from_offset { _11 }; 
+    std::vector<kitty::cube> nand_from_offset { _11 };
     const auto n1 = cover.create_cover_node( {a, b}, std::make_pair( nand_from_offset, false ) );
 
     const auto y1 = cover.create_and( n1, c );

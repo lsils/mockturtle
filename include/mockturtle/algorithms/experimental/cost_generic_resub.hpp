@@ -82,13 +82,13 @@ struct costfn_windowing_params
   uint32_t window_size{ 12u };
 
   /*! \brief Whether to normalize the truth tables.
-   * 
+   *
    * For some enumerative resynthesis engines, if the truth tables
    * are normalized, some cases can be eliminated and thus improves
    * efficiency. When this option is turned off, be sure to use an
    * implementation of resynthesis that does not make this assumption;
    * otherwise, quality degradation may be observed.
-   * 
+   *
    * Normalization is typically only useful for enumerative methods
    * and for smaller solutions (i.e. when `max_inserts` < 2). Turning
    * on normalization may result in larger runtime overhead when there
@@ -387,11 +387,11 @@ using cost_generic_resub_stats = boolean_optimization_stats<costfn_windowing_sta
 
 /*! \brief Cost-generic resubstitution algorithm.
  *
- * This algorithm creates a reconvergence-driven window for each node in the 
+ * This algorithm creates a reconvergence-driven window for each node in the
  * network, collects divisors, and builds the resynthesis problem. A search core
- * then collects all the resubstitution candidates with the same functionality as 
+ * then collects all the resubstitution candidates with the same functionality as
  * the target. The candidate with the lowest cost will then replace the MFFC
- * of the window. 
+ * of the window.
  *
  * \param ntk Network
  * \param cost_fn Customized cost function

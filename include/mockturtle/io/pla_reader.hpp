@@ -113,17 +113,17 @@ public:
     {
       switch ( term[i] )
       {
-        default:
-          std::cerr << "[w] unknown character '" << term[i] << "' in PLA input term, treat as don't care\n";
-        case '-':
-          break;
+      default:
+        std::cerr << "[w] unknown character '" << term[i] << "' in PLA input term, treat as don't care\n";
+      case '-':
+        break;
 
-        case '0':
-          literals.push_back( _ntk.create_not( _pis[i] ) );
-          break;
-        case '1':
-          literals.push_back( _pis[i] );
-          break;
+      case '0':
+        literals.push_back( _ntk.create_not( _pis[i] ) );
+        break;
+      case '1':
+        literals.push_back( _pis[i] );
+        break;
       }
     }
 
@@ -132,14 +132,14 @@ public:
     {
       switch ( out[i] )
       {
-        default:
-          std::cerr << "[w] unknown character '" << out[i] << "' in PLA output term, treat is 0\n";
-        case '0':
-          break;
+      default:
+        std::cerr << "[w] unknown character '" << out[i] << "' in PLA output term, treat is 0\n";
+      case '0':
+        break;
 
-        case '1':
-          _products[i].push_back( product );
-          break;
+      case '1':
+        _products[i].push_back( product );
+        break;
       }
     }
   }
@@ -148,7 +148,7 @@ private:
   Ntk& _ntk;
   mutable std::vector<signal<Ntk>> _pis;
   mutable std::vector<std::vector<signal<Ntk>>> _products;
-  mutable bool _is_xor{false};
+  mutable bool _is_xor{ false };
 };
 
 } /* namespace mockturtle */

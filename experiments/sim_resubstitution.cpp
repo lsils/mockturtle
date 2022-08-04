@@ -54,7 +54,7 @@ int main()
     resubstitution_params ps;
     resubstitution_stats st;
 
-    //ps.pattern_filename = "1024sa1/" + benchmark + ".pat";
+    // ps.pattern_filename = "1024sa1/" + benchmark + ".pat";
     ps.max_inserts = 1;
 
     const uint32_t size_before = aig.num_gates();

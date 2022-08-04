@@ -1,13 +1,13 @@
 #include <catch.hpp>
 
 #include <lorina/lorina.hpp>
-#include <mockturtle/io/aiger_reader.hpp>
-#include <mockturtle/traits.hpp>
-#include <mockturtle/networks/mig.hpp>
-#include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_verification.hpp>
+#include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/buffered.hpp>
+#include <mockturtle/networks/mig.hpp>
+#include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
 
@@ -35,7 +35,7 @@ TEST_CASE( "buffer_insertion simple test", "[buffer_insertion]" )
   ps.optimization_effort = buffer_insertion_params::none;
 
   buffer_insertion buffering( mig, ps );
-  node_map<uint32_t, mig_network> levels{mig};
+  node_map<uint32_t, mig_network> levels{ mig };
   CHECK( buffering.dry_run( &levels ) == 2u );
 
   CHECK( levels[f1] == 1u );
@@ -204,7 +204,7 @@ TEST_CASE( "branch but not balance PIs", "[buffer_insertion]" )
   ps.optimization_effort = buffer_insertion_params::none;
 
   buffer_insertion buffering( mig, ps );
-  node_map<uint32_t, mig_network> levels{mig};
+  node_map<uint32_t, mig_network> levels{ mig };
   CHECK( buffering.dry_run( &levels ) == 4u );
 
   CHECK( buffering.level( mig.get_node( f1 ) ) == 2u );
@@ -237,8 +237,10 @@ TEST_CASE( "various assumptions", "[buffer_insertion]" )
   auto const f4 = aig.create_and( f2, f3 );
 
   aig.create_po( aig.get_constant( false ) ); // const -- PO
-  aig.create_po( a ); // PI -- PO
-  aig.create_po( b ); aig.create_po( b ); aig.create_po( b ); // PI -- buffer tree -- PO
+  aig.create_po( a );                         // PI -- PO
+  aig.create_po( b );
+  aig.create_po( b );
+  aig.create_po( b ); // PI -- buffer tree -- PO
   aig.create_po( f1 );
   aig.create_po( f3 );
   aig.create_po( f4 );
@@ -351,7 +353,7 @@ TEST_CASE( "optimization with chunked movement", "[buffer_insertion]" )
   ps.scheduling = buffer_insertion_params::better;
   ps.optimization_effort = buffer_insertion_params::one_pass;
   buffer_insertion buffering( aig_ntk, ps );
-  
+
   buffering.ASAP();
   buffering.count_buffers();
   auto const num_buf_asap = buffering.num_buffers();

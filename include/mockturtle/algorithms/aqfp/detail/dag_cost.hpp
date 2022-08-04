@@ -161,8 +161,7 @@ protected:
       else
       {
         auto critical_fo = *( std::max_element( fanout[i].begin(), fanout[i].end(),
-                                                [&]( auto x, auto y )
-                                                { return ( minlev[x] < minlev[y] ); } ) );
+                                                [&]( auto x, auto y ) { return ( minlev[x] < minlev[y] ); } ) );
         minlev[i] = 1 + minlev[critical_fo];
         if ( fanout[i].size() > 1 )
         {

@@ -5,12 +5,12 @@
 #include <vector>
 
 #include <mockturtle/generators/arithmetic.hpp>
+#include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
-#include <mockturtle/networks/buffered.hpp>
-#include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/views/binding_view.hpp>
 
 using namespace mockturtle;
@@ -107,8 +107,8 @@ TEST_CASE( "write Verilog with register names", "[write_verilog]" )
 
   std::ostringstream out;
   write_verilog_params ps;
-  ps.input_names = {{"a", 3u}, {"b", 3u}};
-  ps.output_names = {{"y", 4u}};
+  ps.input_names = { { "a", 3u }, { "b", 3u } };
+  ps.output_names = { { "y", 4u } };
   write_verilog( mig, out, ps );
 
   CHECK( out.str() == "module top( a , b , y );\n"
@@ -197,7 +197,7 @@ TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
   kitty::dynamic_truth_table tt_buf( 1 );
   kitty::create_from_words( tt_buf, &buf_func, &buf_func + 1 );
   const auto buf = klut.create_node( { a }, tt_buf );
-  
+
   const auto f1 = klut.create_nand( b, c );
   const auto f2 = klut.create_not( f1 );
 
@@ -248,7 +248,7 @@ TEST_CASE( "write mapped network with multiple driven POs and register names int
   kitty::dynamic_truth_table tt_buf( 1 );
   kitty::create_from_words( tt_buf, &buf_func, &buf_func + 1 );
   const auto buf = klut.create_node( { a }, tt_buf );
-  
+
   const auto f1 = klut.create_nand( b, c );
   const auto f2 = klut.create_not( f1 );
 
@@ -263,8 +263,8 @@ TEST_CASE( "write mapped network with multiple driven POs and register names int
 
   std::ostringstream out;
   write_verilog_params ps;
-  ps.input_names = {{"ref", 1u}, {"data", 2u}};
-  ps.output_names = {{"y", 4u}};
+  ps.input_names = { { "ref", 1u }, { "data", 2u } };
+  ps.output_names = { { "y", 4u } };
   write_verilog_with_binding( klut, out, ps );
 
   CHECK( out.str() == "module top( ref , data , y );\n"

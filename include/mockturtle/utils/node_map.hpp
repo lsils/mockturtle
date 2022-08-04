@@ -37,8 +37,8 @@
 #include <cassert>
 #include <memory>
 #include <unordered_map>
-#include <vector>
 #include <variant>
+#include <vector>
 
 #include "../traits.hpp"
 
@@ -123,14 +123,14 @@ public:
   reference operator[]( node const& n )
   {
     assert( ntk->node_to_index( n ) < data->size() && "index out of bounds" );
-    return (*data)[ntk->node_to_index( n )];
+    return ( *data )[ntk->node_to_index( n )];
   }
 
   /*! \brief Constant access to value by node. */
   const_reference operator[]( node const& n ) const
   {
     assert( ntk->node_to_index( n ) < data->size() && "index out of bounds" );
-    return (*data)[ntk->node_to_index( n )];
+    return ( *data )[ntk->node_to_index( n )];
   }
 
   /*! \brief Mutable access to value by signal.
@@ -142,7 +142,7 @@ public:
   reference operator[]( signal const& f )
   {
     assert( ntk->node_to_index( ntk->get_node( f ) ) < data->size() && "index out of bounds" );
-    return (*data)[ntk->node_to_index( ntk->get_node( f ) )];
+    return ( *data )[ntk->node_to_index( ntk->get_node( f ) )];
   }
 
   /*! \brief Constant access to value by signal.
@@ -154,7 +154,7 @@ public:
   const_reference operator[]( signal const& f ) const
   {
     assert( ntk->node_to_index( ntk->get_node( f ) ) < data->size() && "index out of bounds" );
-    return (*data)[ntk->node_to_index( ntk->get_node( f ) )];
+    return ( *data )[ntk->node_to_index( ntk->get_node( f ) )];
   }
 
   /*! \brief Resets the size of the map.
@@ -187,7 +187,7 @@ public:
   }
 
 private:
-  Ntk const *ntk;
+  Ntk const* ntk;
   std::shared_ptr<container_type> data;
 };
 
@@ -200,7 +200,7 @@ private:
  *
  * The implementation uses an std::unordered_map as underlying data
  * structure which is indexed by the node's index.
- * 
+ *
  * This implementation is aliased as `unordered_node_map`.
  *
  * **Required network functions:**
@@ -222,8 +222,8 @@ public:
 public:
   /*! \brief Default constructor. */
   explicit node_map( Ntk const& ntk )
-    : ntk( &ntk ),
-      data( std::make_shared<container_type>() )
+      : ntk( &ntk ),
+        data( std::make_shared<container_type>() )
   {
   }
 
@@ -276,14 +276,14 @@ public:
   /*! \brief Mutable access to value by node. */
   reference operator[]( node const& n )
   {
-    return (*data)[ntk->node_to_index( n )];
+    return ( *data )[ntk->node_to_index( n )];
   }
 
   /*! \brief Constant access to value by node. */
   const_reference operator[]( node const& n ) const
   {
     assert( has( n ) && "index out of bounds" );
-    return (*data)[ntk->node_to_index( n )];
+    return ( *data )[ntk->node_to_index( n )];
   }
 
   /*! \brief Mutable access to value by signal.
@@ -294,7 +294,7 @@ public:
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   reference operator[]( signal const& f )
   {
-    return (*data)[ntk->node_to_index( ntk->get_node( f ) )];
+    return ( *data )[ntk->node_to_index( ntk->get_node( f ) )];
   }
 
   /*! \brief Constant access to value by signal.
@@ -306,7 +306,7 @@ public:
   const_reference operator[]( signal const& f ) const
   {
     assert( has( ntk->get_node( f ) ) && "index out of bounds" );
-    return (*data)[ntk->node_to_index( ntk->get_node( f ) )];
+    return ( *data )[ntk->node_to_index( ntk->get_node( f ) )];
   }
 
   /*! \brief Clear all entries of the map.
@@ -323,7 +323,7 @@ public:
   }
 
 protected:
-  Ntk const *ntk;
+  Ntk const* ntk;
   std::shared_ptr<container_type> data;
 };
 
@@ -395,27 +395,27 @@ public:
   /*! \brief Check if a key is already defined. */
   bool has( node const& n ) const
   {
-    return std::holds_alternative<T>( (*data)[ntk->node_to_index( n )] );
+    return std::holds_alternative<T>( ( *data )[ntk->node_to_index( n )] );
   }
 
   /*! \brief Check if a key is already defined. */
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   bool has( signal const& f ) const
   {
-    return std::holds_alternative<T>( (*data)[ntk->node_to_index( ntk->get_node( f ) )] );
+    return std::holds_alternative<T>( ( *data )[ntk->node_to_index( ntk->get_node( f ) )] );
   }
 
   /*! \brief Erase a key (if it exists). */
   void erase( node const& n )
   {
-    (*data)[ntk->node_to_index( n )] = std::monostate();
+    ( *data )[ntk->node_to_index( n )] = std::monostate();
   }
 
   /*! \brief Erase a key (if it exists). */
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   void erase( signal const& f )
   {
-    (*data)[ntk->node_to_index( ntk->get_node( f ) )] = std::monostate();
+    ( *data )[ntk->node_to_index( ntk->get_node( f ) )] = std::monostate();
   }
 
   /*! \brief Mutable access to value by node. */
@@ -424,9 +424,9 @@ public:
     assert( ntk->node_to_index( n ) < data->size() && "index out of bounds" );
     if ( !has( n ) )
     {
-      (*data)[ntk->node_to_index( n )] = T();
+      ( *data )[ntk->node_to_index( n )] = T();
     }
-    return std::get<T>( (*data)[ntk->node_to_index( n )] );
+    return std::get<T>( ( *data )[ntk->node_to_index( n )] );
   }
 
   /*! \brief Constant access to value by node. */
@@ -434,7 +434,7 @@ public:
   {
     assert( ntk->node_to_index( n ) < data->size() && "index out of bounds" );
     assert( has( n ) );
-    return std::get<T>( (*data)[ntk->node_to_index( n )] );
+    return std::get<T>( ( *data )[ntk->node_to_index( n )] );
   }
 
   /*! \brief Mutable access to value by signal.
@@ -449,9 +449,9 @@ public:
     assert( ntk->node_to_index( n ) < data->size() && "index out of bounds" );
     if ( !has( n ) )
     {
-      (*data)[ntk->node_to_index( n )] = T();
+      ( *data )[ntk->node_to_index( n )] = T();
     }
-    return std::get<T>( (*data)[ntk->node_to_index( n )] );
+    return std::get<T>( ( *data )[ntk->node_to_index( n )] );
   }
 
   /*! \brief Constant access to value by signal.
@@ -464,7 +464,7 @@ public:
   {
     assert( ntk->node_to_index( ntk->get_node( f ) ) < data->size() && "index out of bounds" );
     assert( has( ntk->get_node( f ) ) );
-    return std::get<T>( (*data)[ntk->node_to_index( ntk->get_node( f ) )] );
+    return std::get<T>( ( *data )[ntk->node_to_index( ntk->get_node( f ) )] );
   }
 
   /*! \brief Resets the size of the map.
@@ -507,7 +507,7 @@ public:
   }
 
 private:
-  Ntk const *ntk;
+  Ntk const* ntk;
   std::shared_ptr<container_type> data;
 };
 
@@ -541,7 +541,7 @@ std::pair<NtkDest, node_map<signal<NtkDest>, NtkSrc>> initialize_copy_network( N
   src.foreach_pi( [&]( auto const& n ) {
     old2new[n] = dest.create_pi();
   } );
-  return {dest, old2new};
+  return { dest, old2new };
 }
 
 } /* namespace mockturtle */

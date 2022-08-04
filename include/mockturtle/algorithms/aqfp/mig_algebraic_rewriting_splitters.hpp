@@ -82,7 +82,7 @@ private:
       const auto driver = ntk.get_node( po );
       if ( ntk.level( driver ) < ntk.depth() )
         return;
-      topo_view topo{ntk, po};
+      topo_view topo{ ntk, po };
       topo.foreach_node( [this]( auto n ) {
         mark_critical_paths();
         reduce_depth( n );
@@ -93,12 +93,12 @@ private:
 
   void run_selective()
   {
-    uint32_t counter{0};
+    uint32_t counter{ 0 };
     while ( true )
     {
       mark_critical_paths();
 
-      topo_view topo{ntk};
+      topo_view topo{ ntk };
       topo.foreach_node( [this, &counter]( auto n ) {
         if ( ntk.fanout_size( n ) == 0 || ntk.value( n ) == 0 )
           return;
@@ -119,10 +119,10 @@ private:
 
   void run_aggressive()
   {
-    uint32_t counter{0}, init_size{ntk.size()};
+    uint32_t counter{ 0 }, init_size{ ntk.size() };
     while ( true )
     {
-      topo_view topo{ntk};
+      topo_view topo{ ntk };
       topo.foreach_node( [this, &counter]( auto n ) {
         if ( ntk.fanout_size( n ) == 0 )
           return;
@@ -247,7 +247,7 @@ private:
       }
 
       auto opt = ntk.create_maj( ocs2[2], s1, s2 );
-  
+
       if ( ( ntk.fanout_size( ntk.get_node( s1 ) ) == 5 ) || ( ntk.fanout_size( ntk.get_node( s1 ) ) >= 17 ) || ( ntk.fanout_size( ntk.get_node( s1 ) ) == 2 ) ) // it would mean the depth is actually increased
       {
         if ( ntk.fanout_size( ntk.get_node( s2 ) ) == 1 )
@@ -283,19 +283,19 @@ private:
   {
     if ( v.index == x.index )
     {
-      return candidate_t{w, y, z, v, v.complement == x.complement};
+      return candidate_t{ w, y, z, v, v.complement == x.complement };
     }
     if ( v.index == y.index )
     {
-      return candidate_t{w, x, z, v, v.complement == y.complement};
+      return candidate_t{ w, x, z, v, v.complement == y.complement };
     }
     if ( w.index == x.index )
     {
-      return candidate_t{v, y, z, w, w.complement == x.complement};
+      return candidate_t{ v, y, z, w, w.complement == x.complement };
     }
     if ( w.index == y.index )
     {
-      return candidate_t{v, x, z, w, w.complement == y.complement};
+      return candidate_t{ v, x, z, w, w.complement == y.complement };
     }
 
     return std::nullopt;

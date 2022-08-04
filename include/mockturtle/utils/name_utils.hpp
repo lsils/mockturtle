@@ -80,8 +80,7 @@ void restore_names( const NtkSrc& ntk_src, NtkDest& ntk_dest, node_map<signal<Nt
     static_assert( has_foreach_po_v<NtkSrc>, "NtkSrc does not implement the foreach_po function" );
     static_assert( has_get_node_v<NtkSrc>, "NtkSrc does not implement the get_node function" );
 
-    const auto restore_signal_name = [&ntk_src, &ntk_dest, &old2new]( const auto& f )
-    {
+    const auto restore_signal_name = [&ntk_src, &ntk_dest, &old2new]( const auto& f ) {
       if ( ntk_src.has_name( f ) )
       {
         const auto name = ntk_src.get_name( f );
@@ -90,8 +89,7 @@ void restore_names( const NtkSrc& ntk_src, NtkDest& ntk_dest, node_map<signal<Nt
       }
     };
 
-    const auto restore_output_name = [&ntk_src, &ntk_dest]( [[maybe_unused]] const auto& po, const auto i )
-    {
+    const auto restore_output_name = [&ntk_src, &ntk_dest]( [[maybe_unused]] const auto& po, const auto i ) {
       if ( ntk_src.has_output_name( i ) )
       {
         const auto name = ntk_src.get_output_name( i );
@@ -100,8 +98,7 @@ void restore_names( const NtkSrc& ntk_src, NtkDest& ntk_dest, node_map<signal<Nt
       }
     };
 
-    ntk_src.foreach_node( [&ntk_src, &restore_signal_name]( const auto& n )
-                          { ntk_src.foreach_fanin( n, restore_signal_name ); } );
+    ntk_src.foreach_node( [&ntk_src, &restore_signal_name]( const auto& n ) { ntk_src.foreach_fanin( n, restore_signal_name ); } );
 
     ntk_src.foreach_po( restore_output_name );
   }
@@ -119,7 +116,7 @@ void restore_names( const NtkSrc& ntk_src, NtkDest& ntk_dest, node_map<signal<Nt
  * - `make_signal`
  * - `has_output_name`
  * - `get_output_name`
- * 
+ *
  * **Required network functions for NtkDest:**
  * - `foreach_pi`
  * - `num_pis`
@@ -144,19 +141,19 @@ void restore_pio_names_by_order( const NtkSrc& ntk_src, NtkDest& ntk_dest )
   assert( ntk_src.num_pos() == ntk_dest.num_pos() );
 
   std::vector<std::string> pi_names( ntk_src.num_pis(), "" );
-  ntk_src.foreach_pi( [&]( auto const& n, auto i ){
+  ntk_src.foreach_pi( [&]( auto const& n, auto i ) {
     if ( ntk_src.has_name( ntk_src.make_signal( n ) ) )
       pi_names[i] = ntk_src.get_name( ntk_src.make_signal( n ) );
-  });
-  ntk_dest.foreach_pi( [&]( auto const& n, auto i ){
+  } );
+  ntk_dest.foreach_pi( [&]( auto const& n, auto i ) {
     if ( pi_names[i] != "" )
       ntk_dest.set_name( ntk_dest.make_signal( n ), pi_names[i] );
-  });
+  } );
 
-  ntk_src.foreach_po( [&]( auto const& f, auto i ){
+  ntk_src.foreach_po( [&]( auto const& f, auto i ) {
     if ( ntk_src.has_output_name( i ) )
       ntk_dest.set_output_name( i, ntk_src.get_output_name( i ) );
-  });
+  } );
 }
 
 } // namespace mockturtle

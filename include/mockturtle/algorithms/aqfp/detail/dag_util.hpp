@@ -52,8 +52,7 @@ template<typename ElemT>
 inline std::map<ElemT, uint32_t> get_frequencies( const std::vector<ElemT>& elems )
 {
   std::map<ElemT, uint32_t> elem_counts;
-  std::for_each( elems.begin(), elems.end(), [&elem_counts]( auto e )
-                 { elem_counts[e]++; } );
+  std::for_each( elems.begin(), elems.end(), [&elem_counts]( auto e ) { elem_counts[e]++; } );
   return elem_counts;
 }
 

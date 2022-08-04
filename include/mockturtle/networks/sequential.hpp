@@ -33,14 +33,14 @@
 #pragma once
 
 #include "../traits.hpp"
-#include "detail/foreach.hpp"
 #include "aig.hpp"
-#include "xag.hpp"
-#include "mig.hpp"
-#include "xmg.hpp"
 #include "aqfp.hpp"
-#include "klut.hpp"
 #include "cover.hpp"
+#include "detail/foreach.hpp"
+#include "klut.hpp"
+#include "mig.hpp"
+#include "xag.hpp"
+#include "xmg.hpp"
 
 namespace mockturtle
 {
@@ -49,13 +49,30 @@ namespace detail
 {
 
 template<class Ntk>
-struct is_aig_like : std::false_type {};
+struct is_aig_like : std::false_type
+{
+};
 
-template<> struct is_aig_like<aig_network> : std::true_type {};
-template<> struct is_aig_like<xag_network> : std::true_type {};
-template<> struct is_aig_like<mig_network> : std::true_type {};
-template<> struct is_aig_like<xmg_network> : std::true_type {};
-template<> struct is_aig_like<aqfp_network> : std::true_type {};
+template<>
+struct is_aig_like<aig_network> : std::true_type
+{
+};
+template<>
+struct is_aig_like<xag_network> : std::true_type
+{
+};
+template<>
+struct is_aig_like<mig_network> : std::true_type
+{
+};
+template<>
+struct is_aig_like<xmg_network> : std::true_type
+{
+};
+template<>
+struct is_aig_like<aqfp_network> : std::true_type
+{
+};
 
 template<class Ntk>
 inline constexpr bool is_aig_like_v = is_aig_like<Ntk>::value;
@@ -333,8 +350,8 @@ public:
 
   struct sequential_information
   {
-    uint32_t num_pis{0};
-    uint32_t num_pos{0};
+    uint32_t num_pis{ 0 };
+    uint32_t num_pos{ 0 };
     std::vector<register_t> registers;
   };
 
@@ -342,8 +359,8 @@ public:
       : _sequential_storage( std::make_shared<sequential_information>() )
   {
     static_assert( std::is_same_v<base_type, aig_network> || std::is_same_v<base_type, xag_network> ||
-                   std::is_same_v<base_type, mig_network> || std::is_same_v<base_type, xmg_network> ||
-                   std::is_same_v<base_type, aqfp_network>,
+                       std::is_same_v<base_type, mig_network> || std::is_same_v<base_type, xmg_network> ||
+                       std::is_same_v<base_type, aqfp_network>,
                    "Sequential interfaces extended for unknown network type. Please check the compatibility of implementations." );
   }
 
@@ -351,8 +368,8 @@ public:
       : Ntk( base_storage ), _sequential_storage( std::make_shared<sequential_information>() )
   {
     static_assert( std::is_same_v<base_type, aig_network> || std::is_same_v<base_type, xag_network> ||
-                   std::is_same_v<base_type, mig_network> || std::is_same_v<base_type, xmg_network> ||
-                   std::is_same_v<base_type, aqfp_network>,
+                       std::is_same_v<base_type, mig_network> || std::is_same_v<base_type, xmg_network> ||
+                       std::is_same_v<base_type, aqfp_network>,
                    "Sequential interfaces extended for unknown network type. Please check the compatibility of implementations." );
   }
 
@@ -488,8 +505,7 @@ public:
   uint32_t co_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_co( [&]( const auto& x, auto index )
-                {
+    foreach_co( [&]( const auto& x, auto index ) {
         if ( x == s )
         {
           i = index;
@@ -508,8 +524,7 @@ public:
   uint32_t ri_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_ri( [&]( const auto& x, auto index )
-                {
+    foreach_ri( [&]( const auto& x, auto index ) {
         if ( x == s )
         {
           i = index;
@@ -625,8 +640,8 @@ public:
 
   struct sequential_information
   {
-    uint32_t num_pis{0};
-    uint32_t num_pos{0};
+    uint32_t num_pis{ 0 };
+    uint32_t num_pos{ 0 };
     std::vector<register_t> registers;
   };
 
@@ -773,7 +788,8 @@ public:
   void foreach_co( Fn&& fn ) const
   {
     using IteratorType = decltype( this->_storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>( this->_storage->outputs.begin(), this->_storage->outputs.end(), []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>(
+        this->_storage->outputs.begin(), this->_storage->outputs.end(), []( auto o ) { return o.index; }, fn );
   }
 
   template<typename Fn>
@@ -786,7 +802,8 @@ public:
   void foreach_po( Fn&& fn ) const
   {
     using IteratorType = decltype( this->_storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>( this->_storage->outputs.begin(), this->_storage->outputs.begin() + _sequential_storage->num_pos, []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>(
+        this->_storage->outputs.begin(), this->_storage->outputs.begin() + _sequential_storage->num_pos, []( auto o ) { return o.index; }, fn );
   }
 
   template<typename Fn>
@@ -799,7 +816,8 @@ public:
   void foreach_ri( Fn&& fn ) const
   {
     using IteratorType = decltype( this->_storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>( this->_storage->outputs.begin() + _sequential_storage->num_pos, this->_storage->outputs.end(), []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>(
+        this->_storage->outputs.begin() + _sequential_storage->num_pos, this->_storage->outputs.end(), []( auto o ) { return o.index; }, fn );
   }
 
   template<typename Fn>

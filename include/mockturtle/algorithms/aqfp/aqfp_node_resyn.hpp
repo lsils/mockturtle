@@ -191,8 +191,7 @@ struct aqfp_node_resyn
     default:
       auto [mig, depths, output_inv] = db.get_best_replacement(
           tt._bits[0], leaf_levels, leaf_no_splitters,
-          [&]( const std::pair<double, uint32_t>& f, const std::pair<double, uint32_t>& s )
-          {
+          [&]( const std::pair<double, uint32_t>& f, const std::pair<double, uint32_t>& s ) {
             if ( params.strategy == aqfp_node_resyn_strategy::area )
             {
               return ( f.first < s.first || ( f.first == s.first && f.second < s.second ) );

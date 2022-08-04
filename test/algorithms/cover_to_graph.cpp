@@ -115,7 +115,7 @@ TEST_CASE( "Creation of a simple three node aig network: mixed gates", "[cover_t
   names_view<aig_network> aig_cp4{ convert_cover_to_graph<aig_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits );
-  
+
   CHECK( simulate<kitty::static_truth_table<4u>>( cover )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig )[0]._bits == sim_reference );
   CHECK( simulate<kitty::static_truth_table<4u>>( aig_cp1 )[0]._bits == sim_reference );
@@ -156,7 +156,7 @@ TEST_CASE( "Creation of a simple three node xag network: mixed gates", "[cover_t
 
   xag_network xag_cp2;
   xag_cp2 = convert_cover_to_graph<xag_network>( cover );
-  
+
   names_view<xag_network> xag_cp3;
   convert_cover_to_graph( xag_cp3, cover );
 
@@ -207,7 +207,7 @@ TEST_CASE( "Creation of a simple three node mig network: mixed gates", "[cover_t
 
   names_view<mig_network> mig_cp3;
   convert_cover_to_graph( mig_cp3, cover );
-  
+
   names_view<mig_network> mig_cp4{ convert_cover_to_graph<mig_network>( cover ) };
 
   auto const sim_reference = ( simulate<kitty::static_truth_table<4u>>( mig )[0]._bits );
@@ -252,7 +252,7 @@ TEST_CASE( "Creation of a simple three node xmg network: mixed gates", "[cover_t
 
   xmg_network xmg_cp2;
   xmg_cp2 = convert_cover_to_graph<xmg_network>( cover );
-  
+
   names_view<xmg_network> xmg_cp3;
   convert_cover_to_graph( xmg_cp3, cover );
 

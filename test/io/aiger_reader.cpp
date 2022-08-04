@@ -15,23 +15,23 @@ using namespace mockturtle;
 TEST_CASE( "read and write names", "[aiger_reader]" )
 {
   sequential<aig_network> aig;
-  names_view<sequential<aig_network>> named_aig{aig};
+  names_view<sequential<aig_network>> named_aig{ aig };
 
-  std::string file{"aag 7 2 1 2 4\n"
-  "2\n"
-  "4\n"
-  "6 8\n"
-  "6\n"
-  "7\n"
-  "8 2 6\n"
-  "10 3 7\n"
-  "12 9 11\n"
-  "14 4 12\n"
-  "i0 x0\n"
-  "i1 x1\n"
-  "l0 s0\n"
-  "o0 y0\n"
-  "o1 y1\n"};
+  std::string file{ "aag 7 2 1 2 4\n"
+                    "2\n"
+                    "4\n"
+                    "6 8\n"
+                    "6\n"
+                    "7\n"
+                    "8 2 6\n"
+                    "10 3 7\n"
+                    "12 9 11\n"
+                    "14 4 12\n"
+                    "i0 x0\n"
+                    "i1 x1\n"
+                    "l0 s0\n"
+                    "o0 y0\n"
+                    "o1 y1\n" };
 
   std::istringstream in( file );
   auto const result = lorina::read_ascii_aiger( in, aiger_reader( named_aig ) );
@@ -48,19 +48,19 @@ TEST_CASE( "read and write names", "[aiger_reader]" )
 TEST_CASE( "read an ASCII Aiger file into an AIG network and store input-output names", "[aiger_reader]" )
 {
   aig_network aig;
-  names_view<aig_network> named_aig{aig};
+  names_view<aig_network> named_aig{ aig };
 
-  std::string file{"aag 6 2 0 1 4\n"
-  "2\n"
-  "4\n"
-  "13\n"
-  "6 2 4\n"
-  "8 2 7\n"
-  "10 4 7\n"
-  "12 9 11\n"
-  "i0 foo\n"
-  "i1 bar\n"
-  "o0 foobar\n"};
+  std::string file{ "aag 6 2 0 1 4\n"
+                    "2\n"
+                    "4\n"
+                    "13\n"
+                    "6 2 4\n"
+                    "8 2 7\n"
+                    "10 4 7\n"
+                    "12 9 11\n"
+                    "i0 foo\n"
+                    "i1 bar\n"
+                    "o0 foobar\n" };
 
   std::istringstream in( file );
   auto const result = lorina::read_ascii_aiger( in, aiger_reader( named_aig ) );
@@ -78,23 +78,23 @@ TEST_CASE( "read an ASCII Aiger file into an AIG network and store input-output 
 TEST_CASE( "read a sequential ASCII Aiger file into an AIG network", "[aiger_reader]" )
 {
   sequential<aig_network> aig;
-  names_view<sequential<aig_network>> named_aig{aig};
+  names_view<sequential<aig_network>> named_aig{ aig };
 
-  std::string file{"aag 7 2 1 2 4\n"
-  "2\n"
-  "4\n"
-  "6 8\n"
-  "6\n"
-  "7\n"
-  "8 2 6\n"
-  "10 3 7\n"
-  "12 9 11\n"
-  "14 4 12\n"
-  "i0 foo\n"
-  "i1 bar\n"
-  "l0 barfoo\n"
-  "o0 foobar\n"
-  "o1 barbar\n"};
+  std::string file{ "aag 7 2 1 2 4\n"
+                    "2\n"
+                    "4\n"
+                    "6 8\n"
+                    "6\n"
+                    "7\n"
+                    "8 2 6\n"
+                    "10 3 7\n"
+                    "12 9 11\n"
+                    "14 4 12\n"
+                    "i0 foo\n"
+                    "i1 bar\n"
+                    "l0 barfoo\n"
+                    "o0 foobar\n"
+                    "o1 barbar\n" };
 
   lorina::text_diagnostics consumer;
   lorina::diagnostic_engine diag( &consumer );

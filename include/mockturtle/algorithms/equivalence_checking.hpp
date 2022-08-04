@@ -59,10 +59,10 @@ struct equivalence_checking_params
    * The default limit is 0, which means the number of conflicts is not used
    * as a resource limit.
    */
-  uint32_t conflict_limit{0u};
+  uint32_t conflict_limit{ 0u };
 
   /* \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 };
 
 /*! \brief Statistics for equivalence_checking.

@@ -1,7 +1,7 @@
 #include <catch.hpp>
 
-#include <mockturtle/traits.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/traits.hpp>
 #include <mockturtle/views/fanout_limit_view.hpp>
 
 using namespace mockturtle;
@@ -11,8 +11,8 @@ TEST_CASE( "test node replication", "[fanout_limit_view]" )
   using node = mig_network::node;
   using signal = mig_network::signal;
 
-  fanout_limit_view_params ps{4u};
-  fanout_limit_view<mig_network> lim_mig{ps};
+  fanout_limit_view_params ps{ 4u };
+  fanout_limit_view<mig_network> lim_mig{ ps };
 
   signal const a = lim_mig.create_pi();
   signal const b = lim_mig.create_pi();
@@ -33,9 +33,9 @@ TEST_CASE( "test node replication", "[fanout_limit_view]" )
   lim_mig.create_or( f1, c );
 
   CHECK( lim_mig.num_gates() == 8u );
-  lim_mig.foreach_gate( [&]( node const& n ){
-      CHECK( lim_mig.fanout_size( n ) <= 4u );
-    });
+  lim_mig.foreach_gate( [&]( node const& n ) {
+    CHECK( lim_mig.fanout_size( n ) <= 4u );
+  } );
 }
 
 TEST_CASE( "test rippled replication", "[fanout_limit_view]" )
@@ -43,8 +43,8 @@ TEST_CASE( "test rippled replication", "[fanout_limit_view]" )
   using node = mig_network::node;
   using signal = mig_network::signal;
 
-  fanout_limit_view_params ps{4u};
-  fanout_limit_view<mig_network> lim_mig{ps};
+  fanout_limit_view_params ps{ 4u };
+  fanout_limit_view<mig_network> lim_mig{ ps };
 
   signal const a = lim_mig.create_pi();
   signal const b = lim_mig.create_pi();
@@ -67,17 +67,17 @@ TEST_CASE( "test rippled replication", "[fanout_limit_view]" )
   lim_mig.create_or( f2, a );
 
   CHECK( lim_mig.num_gates() == 9u );
-  lim_mig.foreach_gate( [&]( node const& n ){
-      CHECK( lim_mig.fanout_size( n ) <= 4u );
-    });
+  lim_mig.foreach_gate( [&]( node const& n ) {
+    CHECK( lim_mig.fanout_size( n ) <= 4u );
+  } );
 
   /* +3 majority gates, because first f2 has to be replicated, and then also f1 */
   lim_mig.create_or( f2, b );
 
   CHECK( lim_mig.num_gates() == 12u );
-  lim_mig.foreach_gate( [&]( node const& n ){
-      CHECK( lim_mig.fanout_size( n ) <= 4u );
-    });
+  lim_mig.foreach_gate( [&]( node const& n ) {
+    CHECK( lim_mig.fanout_size( n ) <= 4u );
+  } );
 
   CHECK( lim_mig.fanout_size( lim_mig.get_node( f1 ) ) == 4u );
   CHECK( lim_mig.fanout_size( lim_mig.get_node( f2 ) ) == 4u );
@@ -88,8 +88,8 @@ TEST_CASE( "test duplicate fanout node", "[fanout_limit_view]" )
   using node = mig_network::node;
   using signal = mig_network::signal;
 
-  fanout_limit_view_params ps{4u};
-  fanout_limit_view<mig_network> lim_mig{ps};
+  fanout_limit_view_params ps{ 4u };
+  fanout_limit_view<mig_network> lim_mig{ ps };
 
   signal const a = lim_mig.create_pi();
   signal const b = lim_mig.create_pi();
@@ -114,7 +114,7 @@ TEST_CASE( "test duplicate fanout node", "[fanout_limit_view]" )
 
   CHECK( lim_mig.num_gates() == 2u );
 
-  lim_mig.foreach_gate( [&]( node const& n ){
-      CHECK( lim_mig.fanout_size( n ) <= 4u );
-    });
+  lim_mig.foreach_gate( [&]( node const& n ) {
+    CHECK( lim_mig.fanout_size( n ) <= 4u );
+  } );
 }

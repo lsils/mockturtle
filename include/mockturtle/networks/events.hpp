@@ -89,8 +89,7 @@ public:
 
     /* erase the event if the only instance remains in the vector */
     on_add.erase( std::remove_if( std::begin( on_add ), std::end( on_add ),
-                                  [&]( auto&& event ){
-                                    return event.get() == fn_ptr && event.use_count() <= 1u; } ),
+                                  [&]( auto&& event ) { return event.get() == fn_ptr && event.use_count() <= 1u; } ),
                   std::end( on_add ) );
   }
 
@@ -102,8 +101,7 @@ public:
 
     /* erase the event if the only instance remains in the vector */
     on_modified.erase( std::remove_if( std::begin( on_modified ), std::end( on_modified ),
-                                  [&]( auto&& event ){
-                                    return event.get() == fn_ptr && event.use_count() <= 1u; } ),
+                                       [&]( auto&& event ) { return event.get() == fn_ptr && event.use_count() <= 1u; } ),
                        std::end( on_modified ) );
   }
 
@@ -115,9 +113,8 @@ public:
 
     /* erase the event if the only instance remains in the vector */
     on_delete.erase( std::remove_if( std::begin( on_delete ), std::end( on_delete ),
-                                  [&]( auto&& event ){
-                                    return event.get() == fn_ptr && event.use_count() <= 1u; } ),
-                       std::end( on_delete ) );
+                                     [&]( auto&& event ) { return event.get() == fn_ptr && event.use_count() <= 1u; } ),
+                     std::end( on_delete ) );
   }
 
 public:

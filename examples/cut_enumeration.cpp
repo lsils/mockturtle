@@ -1,5 +1,5 @@
-#include <mockturtle/mockturtle.hpp>
 #include <lorina/aiger.hpp>
+#include <mockturtle/mockturtle.hpp>
 
 int main()
 {
@@ -18,4 +18,3 @@ int main()
 
   return 0;
 }
-

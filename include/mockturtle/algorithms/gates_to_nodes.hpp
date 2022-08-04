@@ -44,9 +44,9 @@
 #include <kitty/operations.hpp>
 #include <kitty/print.hpp>
 
-#include "simulation.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
+#include "simulation.hpp"
 
 namespace mockturtle
 {

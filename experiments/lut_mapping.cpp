@@ -56,7 +56,7 @@ int main()
     }
 
     lut_mapping_stats st;
-    mapping_view<aig_network, true> mapped_aig{aig};
+    mapping_view<aig_network, true> mapped_aig{ aig };
     lut_mapping<decltype( mapped_aig ), true>( mapped_aig, {}, &st );
     const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
 

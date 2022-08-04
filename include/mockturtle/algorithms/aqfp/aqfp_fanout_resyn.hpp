@@ -108,9 +108,8 @@ struct aqfp_fanout_resyn
 
     auto offsets = balanced_splitter_tree_offsets( ntk_src.fanout_size( n ) );
 
-    std::sort( fanouts_n.begin(), fanouts_n.end(), [&]( auto f1, auto f2 )
-               { return ( ntk_src.depth() - ntk_src.level( f1 ) ) > ( ntk_src.depth() - ntk_src.level( f2 ) ) ||
-                        ( ( ntk_src.depth() - ntk_src.level( f1 ) ) == ( ntk_src.depth() - ntk_src.level( f2 ) ) && ( f1 < f2 ) ); } );
+    std::sort( fanouts_n.begin(), fanouts_n.end(), [&]( auto f1, auto f2 ) { return ( ntk_src.depth() - ntk_src.level( f1 ) ) > ( ntk_src.depth() - ntk_src.level( f2 ) ) ||
+                                                                                    ( ( ntk_src.depth() - ntk_src.level( f1 ) ) == ( ntk_src.depth() - ntk_src.level( f2 ) ) && ( f1 < f2 ) ); } );
 
     auto n_dest = ntk_dest.get_node( f );
     auto no_splitters = ntk_dest.is_constant( n_dest ) || ( !branch_pis && ntk_dest.is_ci( n_dest ) );

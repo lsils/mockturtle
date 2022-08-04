@@ -284,8 +284,8 @@ TEST_CASE( "clone a node in xmg network", "[xmg]" )
   auto c2 = xmg2.create_pi();
   CHECK( xmg2.size() == 4 );
 
-  auto f2 = xmg2.clone_node( xmg1, xmg1.get_node( f1 ), {a2, b2, c2} );
-  xmg2.clone_node( xmg1, xmg1.get_node( g1 ), {a2, b2, c2} );
+  auto f2 = xmg2.clone_node( xmg1, xmg1.get_node( f1 ), { a2, b2, c2 } );
+  xmg2.clone_node( xmg1, xmg1.get_node( g1 ), { a2, b2, c2 } );
   CHECK( xmg2.size() == 6 );
 
   xmg2.foreach_fanin( xmg2.get_node( f2 ), [&]( auto const& s ) {
@@ -364,7 +364,7 @@ TEST_CASE( "node and signal iteration in an xmg", "[xmg]" )
   CHECK( xmg.size() == 6 );
 
   /* iterate over nodes */
-  uint32_t mask{0}, counter{0};
+  uint32_t mask{ 0 }, counter{ 0 };
   xmg.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 63 );
   CHECK( counter == 15 );
@@ -477,14 +477,14 @@ TEST_CASE( "compute values in XMGs", "[xmg]" )
   xmg.create_po( f2 );
 
   {
-    std::vector<bool> values{{true, false, true}};
+    std::vector<bool> values{ { true, false, true } };
 
     CHECK( xmg.compute( xmg.get_node( f1 ), values.begin(), values.end() ) == false );
     CHECK( xmg.compute( xmg.get_node( f2 ), values.begin(), values.end() ) == true );
   }
 
   {
-    std::vector<kitty::dynamic_truth_table> xs{3, kitty::dynamic_truth_table( 3 )};
+    std::vector<kitty::dynamic_truth_table> xs{ 3, kitty::dynamic_truth_table( 3 ) };
     kitty::create_nth_var( xs[0], 0 );
     kitty::create_nth_var( xs[1], 1 );
     kitty::create_nth_var( xs[2], 2 );
@@ -494,95 +494,143 @@ TEST_CASE( "compute values in XMGs", "[xmg]" )
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{3};
+    std::vector<kitty::partial_truth_table> xs{ 3 };
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 0 ); xs[2].add_bit( 0 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 0 );
+    xs[2].add_bit( 0 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 0 ); xs[2].add_bit( 1 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 0 );
+    xs[2].add_bit( 1 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 1 ); xs[2].add_bit( 0 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 1 );
+    xs[2].add_bit( 0 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 1 ); xs[2].add_bit( 1 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 1 );
+    xs[2].add_bit( 1 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 0 ); xs[2].add_bit( 0 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 0 );
+    xs[2].add_bit( 0 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 0 ); xs[2].add_bit( 1 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 0 );
+    xs[2].add_bit( 1 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 1 ); xs[2].add_bit( 0 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 1 );
+    xs[2].add_bit( 0 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 1 ); xs[2].add_bit( 1 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 1 );
+    xs[2].add_bit( 1 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{3};
+    std::vector<kitty::partial_truth_table> xs{ 3 };
     kitty::partial_truth_table result;
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 0 ); xs[2].add_bit( 0 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 0 );
+    xs[2].add_bit( 0 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 0 ); xs[2].add_bit( 1 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 0 );
+    xs[2].add_bit( 1 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 1 ); xs[2].add_bit( 0 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 1 );
+    xs[2].add_bit( 0 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 1 ); xs[2].add_bit( 1 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 1 );
+    xs[2].add_bit( 1 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 0 ); xs[2].add_bit( 0 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 0 );
+    xs[2].add_bit( 0 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 0 ); xs[2].add_bit( 1 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 0 );
+    xs[2].add_bit( 1 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 1 ); xs[2].add_bit( 0 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 1 );
+    xs[2].add_bit( 0 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 1 ); xs[2].add_bit( 1 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 1 );
+    xs[2].add_bit( 1 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
   }
 }
 
@@ -706,7 +754,6 @@ TEST_CASE( "create nary functions in XMGs", "[xmg]" )
   CHECK( result[2] == copy );
 }
 
-
 TEST_CASE( "substitute node with complemented node in xmg_network", "[xmg]" )
 {
   xmg_network xmg;
@@ -734,7 +781,6 @@ TEST_CASE( "substitute node with complemented node in xmg_network", "[xmg]" )
   CHECK( simulate<kitty::static_truth_table<2u>>( xmg )[0]._bits == 0x7 );
 }
 
-
 TEST_CASE( "substitute node with dependency in xmg_network", "[xmg]" )
 {
   xmg_network xmg{};
@@ -751,13 +797,13 @@ TEST_CASE( "substitute node with dependency in xmg_network", "[xmg]" )
 
   /**
    * issue #545
-   * 
+   *
    *      f2
    *     /  \
    *    /   f3
    *    \  /  \
    *  1->f1    a
-   * 
+   *
    * stack:
    * 1. push (f2->f3)
    * 2. push (f3->a)

@@ -35,17 +35,17 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 #include <fstream>
 #include <random>
+#include <vector>
 
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 
+#include <kitty/bit_operations.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operators.hpp>
-#include <kitty/bit_operations.hpp>
 #include <kitty/partial_truth_table.hpp>
 #include <kitty/static_truth_table.hpp>
 
@@ -182,7 +182,7 @@ public:
    * \param num_patterns Number of initial random simulation patterns.
    */
   partial_simulator( uint32_t num_pis, uint32_t num_patterns, std::default_random_engine::result_type seed = 1 )
-    : num_patterns( num_patterns )
+      : num_patterns( num_patterns )
   {
     assert( num_pis > 0u );
 
@@ -202,8 +202,8 @@ public:
    * \param initial_patterns Initial simulation patterns.
    */
   partial_simulator( std::vector<kitty::partial_truth_table> const& initial_patterns )
-    : patterns( initial_patterns ), num_patterns( patterns.at( 0 ).num_bits() )
-  { }
+      : patterns( initial_patterns ), num_patterns( patterns.at( 0 ).num_bits() )
+  {}
 
   /*! \brief Create a `partial_simulator` with simulation patterns read from a file.
    *
@@ -211,7 +211,7 @@ public:
    * Each line is the simulation signature of a primary input, represented in hexadecimal.
    *
    * \param fielname Name of the simulation pattern file.
-   * \param length Number of simulation patterns to keep. Should not be greater than 4 times 
+   * \param length Number of simulation patterns to keep. Should not be greater than 4 times
    * the length of a line in the file. Setting this parameter to 0 means to keep all patterns in the file.
    */
   partial_simulator( const std::string& filename, uint32_t length = 0u )
@@ -296,15 +296,15 @@ class bit_packed_simulator : public partial_simulator
 {
 public:
   using partial_simulator::compute_constant;
-  using partial_simulator::compute_pi;
   using partial_simulator::compute_not;
-  using partial_simulator::num_bits;
+  using partial_simulator::compute_pi;
   using partial_simulator::get_patterns;
+  using partial_simulator::num_bits;
 
   bit_packed_simulator() {}
 
   bit_packed_simulator( uint32_t num_pis, uint32_t num_patterns, std::default_random_engine::result_type seed = 1 )
-    : partial_simulator( num_pis, num_patterns, seed ), packed_patterns( num_patterns )
+      : partial_simulator( num_pis, num_patterns, seed ), packed_patterns( num_patterns )
   {
     fill_cares( num_pis );
   }
@@ -315,19 +315,19 @@ public:
 
   /* copy constructor from `partial_simulator` */
   bit_packed_simulator( partial_simulator const& sim )
-    : partial_simulator( sim ), packed_patterns( num_patterns )
+      : partial_simulator( sim ), packed_patterns( num_patterns )
   {
     fill_cares( patterns.size() );
   }
 
   bit_packed_simulator( std::vector<kitty::partial_truth_table> const& initial_patterns )
-    : partial_simulator( initial_patterns ), packed_patterns( num_patterns )
+      : partial_simulator( initial_patterns ), packed_patterns( num_patterns )
   {
     fill_cares( patterns.size() );
   }
 
   bit_packed_simulator( const std::string& filename, uint32_t length = 0u )
-    : partial_simulator( filename, length ), packed_patterns( num_patterns )
+      : partial_simulator( filename, length ), packed_patterns( num_patterns )
   {
     fill_cares( patterns.size() );
   }
@@ -356,8 +356,14 @@ public:
    */
   bool pack_bits()
   {
-    if ( num_patterns == 0u ) { return false; }
-    if ( num_patterns == packed_patterns ) { return false; }
+    if ( num_patterns == 0u )
+    {
+      return false;
+    }
+    if ( num_patterns == packed_patterns )
+    {
+      return false;
+    }
     assert( num_patterns > packed_patterns );
 
     std::vector<int64_t> empty_slots;
@@ -370,7 +376,10 @@ public:
         /* check each PI */
         for ( auto i = 0u; i < patterns.size(); ++i )
         {
-          if ( !kitty::get_bit( care[i], p ) ) { continue; } /* only check for the cared PIs of p */
+          if ( !kitty::get_bit( care[i], p ) )
+          {
+            continue;
+          } /* only check for the cared PIs of p */
           unavailable |= care[i]._bits[block];
         }
         auto pos = kitty::find_first_bit_in_word( ~unavailable );
@@ -392,11 +401,20 @@ public:
       {
         while ( empty_slots[j] >= num_patterns - 1 && j <= i )
         {
-          if ( empty_slots[j] == num_patterns - 1 ) { --num_patterns; }
+          if ( empty_slots[j] == num_patterns - 1 )
+          {
+            --num_patterns;
+          }
           ++j;
-          if ( j == (int64_t)empty_slots.size() ) { break; }
+          if ( j == (int64_t)empty_slots.size() )
+          {
+            break;
+          }
         }
-        if ( j > i ) { break; }
+        if ( j > i )
+        {
+          break;
+        }
         move_pattern( num_patterns - 1, empty_slots[i] );
         --num_patterns;
       }
@@ -439,7 +457,10 @@ private:
   {
     for ( auto i = 0u; i < patterns.size(); ++i )
     {
-      if ( !kitty::get_bit( care[i], from ) ) { continue; }
+      if ( !kitty::get_bit( care[i], from ) )
+      {
+        continue;
+      }
       assert( !kitty::get_bit( care[i], to ) );
       if ( kitty::get_bit( patterns[i], from ) )
       {
@@ -627,7 +648,8 @@ void simulate_nodes( Ntk const& ntk, incomplete_node_map<SimulationType, Ntk>& n
 namespace detail
 {
 /* Forward declaration */
-template<class Ntk, class Simulator, class Container> void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim );
+template<class Ntk, class Simulator, class Container>
+void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim );
 
 template<class Ntk, class Simulator, class Container>
 void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim )
@@ -684,12 +706,12 @@ void update_const_pi( Ntk const& ntk, Container& node_to_value, Simulator const&
 } // namespace detail
 
 /*! \brief (Re-)simulate `n` and its transitive fanin cone.
- * 
+ *
  * Note that re-simulation (when `node_to_value.has( n ) == true`) is only done
  * for the last block, no matter how many bits are used in this block.
  * Hence, it is advised to call `simulate_nodes` with `simulate_whole_tt = false`
  * whenever `sim.num_bits() % 64 == 0`.
- * 
+ *
  */
 template<class Ntk, class Simulator = partial_simulator, class Container = unordered_node_map<kitty::partial_truth_table, Ntk>>
 void simulate_node( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim )
@@ -708,7 +730,7 @@ void simulate_node( Ntk const& ntk, typename Ntk::node const& n, Container& node
   {
     detail::update_const_pi( ntk, node_to_value, sim );
   }
-    
+
   if ( !node_to_value.has( n ) )
   {
     detail::simulate_fanin_cone( ntk, n, node_to_value, sim );

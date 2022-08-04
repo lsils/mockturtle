@@ -165,7 +165,7 @@ public:
     } );
 
     /* nodes */
-    topo_view topo{ntk};
+    topo_view topo{ ntk };
     topo.foreach_node( [&]( auto n ) {
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) || !ntk.is_cell_root( n ) )
         return;
@@ -214,7 +214,7 @@ public:
           dest.set_output_name( index, ntk.get_output_name( index ) );
         }
       }
-      });
+    } );
   }
 
 private:

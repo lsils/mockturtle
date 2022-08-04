@@ -46,9 +46,9 @@
 
 #include <parallel_hashmap/phmap.h>
 
-#include "super_utils.hpp"
 #include "../io/genlib_reader.hpp"
 #include "../io/super_reader.hpp"
+#include "super_utils.hpp"
 
 namespace mockturtle
 {
@@ -169,7 +169,7 @@ public:
       : _gates( gates ),
         _supergates_spec( supergates_spec ),
         _ps( ps ),
-        _super( _gates, _supergates_spec, super_utils_params{ps.verbose} ),
+        _super( _gates, _supergates_spec, super_utils_params{ ps.verbose } ),
         _use_supergates( true ),
         _super_lib()
   {
@@ -276,11 +276,11 @@ private:
       if ( i++ < standard_gate_size )
       {
         const auto on_np = [&]( auto const& tt, auto neg, auto const& perm ) {
-          supergate<NInputs> sg = {&gate,
-                                  static_cast<float>( gate.area ),
-                                  {},
-                                  perm,
-                                  0};
+          supergate<NInputs> sg = { &gate,
+                                    static_cast<float>( gate.area ),
+                                    {},
+                                    perm,
+                                    0 };
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
@@ -336,13 +336,13 @@ private:
           /* get all the configurations that lead to the N-class representative */
           auto [tt_canon, phases] = kitty::exact_n_canonization_complete( tt );
 
-          for( auto phase : phases )
+          for ( auto phase : phases )
           {
-            supergate<NInputs> sg = {&gate,
-                                    static_cast<float>(gate.area),
-                                    {},
-                                    perm,
-                                    static_cast<uint8_t>(phase)};
+            supergate<NInputs> sg = { &gate,
+                                      static_cast<float>( gate.area ),
+                                      {},
+                                      perm,
+                                      static_cast<uint8_t>( phase ) };
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
@@ -420,11 +420,11 @@ private:
           std::vector<uint8_t> perm( gate.num_vars );
           std::iota( perm.begin(), perm.end(), 0u );
 
-          supergate<NInputs> sg = {&gate,
-                                  static_cast<float>( gate.area ),
-                                  {},
-                                  perm,
-                                  static_cast<uint8_t>( neg )};
+          supergate<NInputs> sg = { &gate,
+                                    static_cast<float>( gate.area ),
+                                    {},
+                                    perm,
+                                    static_cast<uint8_t>( neg ) };
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
@@ -480,13 +480,13 @@ private:
           std::vector<uint8_t> perm( gate.num_vars );
           std::iota( perm.begin(), perm.end(), 0u );
 
-          for( auto phase : phases )
+          for ( auto phase : phases )
           {
-            supergate<NInputs> sg = {&gate,
-                                    static_cast<float>( gate.area ),
-                                    {},
-                                    perm,
-                                    static_cast<uint8_t>( phase )};
+            supergate<NInputs> sg = { &gate,
+                                      static_cast<float>( gate.area ),
+                                      {},
+                                      perm,
+                                      static_cast<uint8_t>( phase ) };
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
@@ -611,12 +611,12 @@ private:
 
   bool _use_supergates;
 
-  std::vector<gate> const _gates; /* collection of gates */
+  std::vector<gate> const _gates;    /* collection of gates */
   super_lib const& _supergates_spec; /* collection of supergates declarations */
   tech_library_params const _ps;
   super_utils<NInputs> _super; /* supergates generation */
-  lib_t _super_lib; /* library of enumerated gates */
-}; /* class tech_library */
+  lib_t _super_lib;            /* library of enumerated gates */
+};                             /* class tech_library */
 
 template<typename Ntk, unsigned NInputs>
 struct exact_supergate

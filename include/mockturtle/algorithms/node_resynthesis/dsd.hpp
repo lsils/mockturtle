@@ -37,8 +37,8 @@
 
 #include <kitty/dynamic_truth_table.hpp>
 
-#include "traits.hpp"
 #include "../dsd_decomposition.hpp"
+#include "traits.hpp"
 
 namespace mockturtle
 {
@@ -89,7 +89,7 @@ public:
   template<typename LeavesIterator, typename Fn>
   void operator()( Ntk& ntk, kitty::dynamic_truth_table const& function, LeavesIterator begin, LeavesIterator end, Fn&& fn ) const
   {
-    bool success{true};
+    bool success{ true };
     const auto on_prime = [&]( kitty::dynamic_truth_table const& remainder, std::vector<signal<Ntk>> const& leaves ) {
       success = false;
       signal<Ntk> f = ntk.get_constant( false );
@@ -138,7 +138,7 @@ public:
       _resyn_fn.add_function( s, tt );
     }
   }
-  
+
 private:
   ResynthesisFn& _resyn_fn;
   dsd_resynthesis_params _ps;

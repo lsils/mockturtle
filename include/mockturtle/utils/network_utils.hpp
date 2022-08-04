@@ -52,10 +52,10 @@ auto clone_node_topologically( NtkSrc const& ntk, NtkDest& subntk, unordered_nod
   }
 
   std::vector<typename NtkDest::signal> children;
-  ntk.foreach_fanin( n, [&]( auto const& fi ){
+  ntk.foreach_fanin( n, [&]( auto const& fi ) {
     auto s = clone_node_topologically( ntk, subntk, node_to_signal, ntk.get_node( fi ) );
     children.emplace_back( ntk.is_complemented( fi ) ? !s : s );
-  });
+  } );
 
   if constexpr ( has_is_and_v<NtkSrc> )
   {
@@ -142,7 +142,6 @@ void clone_subnetwork( Ntk const& ntk, std::vector<typename Ntk::node> const& in
   static_assert( has_create_po_v<SubNtk>, "SubNtk does not implement the create_po method" );
   static_assert( has_create_not_v<SubNtk>, "SubNtk does not implement the create_not method" );
   static_assert( has_get_constant_v<SubNtk>, "SubNtk does not implement the get_constant method" );
-  
 
   /* map from nodes in ntk to signals in subntk */
   unordered_node_map<typename SubNtk::signal, Ntk> node_to_signal( ntk );
@@ -220,19 +219,19 @@ void insert_ntk( Ntk& ntk, BeginIter begin, EndIter end, SubNtk const& subntk, F
 
   /* inputs */
   auto it = begin;
-  subntk.foreach_pi( [&]( auto const& n ){
-    node_to_signal[n] = *(it++);
-  });
+  subntk.foreach_pi( [&]( auto const& n ) {
+    node_to_signal[n] = *( it++ );
+  } );
 
   /* create gates topologically */
-  subntk.foreach_gate( [&]( auto const& n ){
+  subntk.foreach_gate( [&]( auto const& n ) {
     detail::clone_node_topologically( subntk, ntk, node_to_signal, n );
-  });
+  } );
 
   /* outputs */
-  subntk.foreach_po( [&]( auto const& f ){
+  subntk.foreach_po( [&]( auto const& f ) {
     fn( subntk.is_complemented( f ) ? ntk.create_not( node_to_signal[subntk.get_node( f )] ) : node_to_signal[subntk.get_node( f )] );
-  });
+  } );
 }
 
-} /* mockturtle */
+} // namespace mockturtle

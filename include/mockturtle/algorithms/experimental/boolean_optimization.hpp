@@ -43,26 +43,31 @@
 namespace mockturtle::experimental
 {
 
-struct null_params {};
-struct null_stats { void report() const {} };
+struct null_params
+{
+};
+struct null_stats
+{
+  void report() const {}
+};
 
 template<class WinParams = null_params, class ResynParams = null_params>
 struct boolean_optimization_params
 {
   /*! \brief Show progress. */
-  bool progress{false};
+  bool progress{ false };
 
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 
   /*! \brief Whether to use new nodes as pivots. */
-  bool optimize_new_nodes{false};
+  bool optimize_new_nodes{ false };
 
   /*! \brief Whether to run in dry-run mode (call `report` instead of `update_ntk`). */
-  bool dry_run{false};
+  bool dry_run{ false };
 
   /*! \brief Whether to print verbosely in dry-run mode. Ignored if `dry_run` is `false`. */
-  bool dry_run_verbose{true};
+  bool dry_run_verbose{ true };
 
   /*! \brief Parameter object for the windowing engine. */
   WinParams wps;
@@ -75,28 +80,28 @@ template<class WinStats = null_stats, class ResynStats = null_stats>
 struct boolean_optimization_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Accumulated runtime of structural analysis and simulation. */
-  stopwatch<>::duration time_windowing{0};
+  stopwatch<>::duration time_windowing{ 0 };
 
   /*! \brief Accumulated runtime of resynthesis. */
-  stopwatch<>::duration time_resynthesis{0};
+  stopwatch<>::duration time_resynthesis{ 0 };
 
   /*! \brief Accumulated runtime of updating network. */
-  stopwatch<>::duration time_update{0};
+  stopwatch<>::duration time_update{ 0 };
 
   /*! \brief Total number of gain. */
-  uint32_t estimated_gain{0};
+  uint32_t estimated_gain{ 0 };
 
   /*! \brief Initial network size (before resubstitution). */
-  uint32_t initial_size{0};
+  uint32_t initial_size{ 0 };
 
   /*! \brief Number of constructed resynthesis problems. */
-  uint32_t num_problems{0u};
+  uint32_t num_problems{ 0u };
 
   /*! \brief Number of solutions found. */
-  uint32_t num_solutions{0u};
+  uint32_t num_solutions{ 0u };
 
   /*! \brief Statistics object for the windowing engine. */
   WinStats wst;
@@ -128,7 +133,7 @@ namespace detail
 {
 
 /*! \brief Logic optimization using Boolean methods.
- * 
+ *
  * \tparam Ntk Network type.
  * \tparam Windowing Implementation of a windowing algorithm that creates
  * a resynthesis problem to be solved.
@@ -158,23 +163,23 @@ public:
   }
 
   ~boolean_optimization_impl()
-  { }
+  {}
 
   void run()
   {
     stopwatch t( st.time_total );
-    progress_bar pbar{ntk.size(), "B-opt |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress};
+    progress_bar pbar{ ntk.size(), "B-opt |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress };
 
     /* initialize */
     call_with_stopwatch( st.time_windowing, [&]() {
       windowing.init();
-    });
+    } );
     call_with_stopwatch( st.time_resynthesis, [&]() {
       resyn.init();
-    });
+    } );
 
     st.initial_size = ntk.num_gates();
-    topo_view<Ntk>{ntk}.foreach_gate( [&]( auto const n, auto i ) { // TODO: maybe problematic
+    topo_view<Ntk>{ ntk }.foreach_gate( [&]( auto const n, auto i ) { // TODO: maybe problematic
       if ( !ps.optimize_new_nodes && i >= st.initial_size )
       {
         return false; /* terminate */
@@ -184,7 +189,7 @@ public:
       /* construct a resynthesis problem; usually by creating a window around the root node */
       auto prob = call_with_stopwatch( st.time_windowing, [&]() {
         return windowing( n );
-      });
+      } );
       if ( !prob )
       {
         return true; /* next */
@@ -194,7 +199,7 @@ public:
       /* solve the resynthesis problem; usually by finding a (re)substitution */
       auto res = call_with_stopwatch( st.time_resynthesis, [&]() {
         return resyn( *prob );
-      });
+      } );
       if ( !res )
       {
         return true; /* next */
@@ -211,7 +216,7 @@ public:
       {
         cont = call_with_stopwatch( st.time_update, [&]() {
           return windowing.update_ntk( *prob, *res );
-        });
+        } );
       }
       else if ( ps.dry_run_verbose )
       {
@@ -232,7 +237,7 @@ private:
   ResynSolver resyn;
 
   /* temporary statistics for progress bar */
-  uint32_t candidates{0};
+  uint32_t candidates{ 0 };
 }; /* boolean_optimization_impl */
 
 template<class Ntk>
@@ -243,7 +248,7 @@ struct null_problem
 };
 
 /*! \brief A windowing implementation that creates windows of only the pivot node.
- * 
+ *
  * This class is an example to demonstrate the interfaces required by
  * the `Windowing` template argument of class `boolean_optimization_impl`.
  * It is designed to be used together with `null_resynthesis`.
@@ -259,20 +264,24 @@ public:
   using node = typename Ntk::node;
 
   explicit null_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk )
-  { (void)ps; (void)st; }
+      : ntk( ntk )
+  {
+    (void)ps;
+    (void)st;
+  }
 
   void init()
-  { }
+  {}
 
   std::optional<problem_t> operator()( node const& n )
   {
-    return problem_t{n};
+    return problem_t{ n };
   }
 
   uint32_t gain( problem_t const& prob, res_t const& res ) const
   {
-    (void)prob; (void)res;
+    (void)prob;
+    (void)res;
     return 0u;
   }
 
@@ -293,7 +302,7 @@ private:
 };
 
 /*! \brief A resynthesis implementation that returns the pivot node itself.
- * 
+ *
  * This class is an example to demonstrate the interfaces required by
  * the `ResynSolver` template argument of class `boolean_optimization_impl`.
  * It is designed to be used together with `null_windowing`.
@@ -308,11 +317,14 @@ public:
   using stats_t = null_stats;
 
   explicit null_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk )
-  { (void)ps; (void)st; }
+      : ntk( ntk )
+  {
+    (void)ps;
+    (void)st;
+  }
 
   void init()
-  { }
+  {}
 
   std::optional<res_t> operator()( problem_t& prob )
   {

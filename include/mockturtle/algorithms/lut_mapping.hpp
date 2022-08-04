@@ -68,13 +68,13 @@ struct lut_mapping_params
    *
    * The first round is used for delay optimization.
    */
-  uint32_t rounds{2u};
+  uint32_t rounds{ 2u };
 
   /*! \brief Number of rounds for exact area optimization. */
-  uint32_t rounds_ela{1u};
+  uint32_t rounds_ela{ 1u };
 
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 };
 
 /*! \brief Statistics for lut_mapping.
@@ -85,7 +85,7 @@ struct lut_mapping_params
 struct lut_mapping_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   void report() const
   {
@@ -140,10 +140,10 @@ public:
     } );
 
     init_nodes();
-    //print_state();
+    // print_state();
 
     set_mapping_refs<false>();
-    //print_state();
+    // print_state();
 
     while ( iteration < ps.rounds )
     {
@@ -194,7 +194,7 @@ private:
       compute_best_cut<ELA>( ntk.node_to_index( n ) );
     }
     set_mapping_refs<ELA>();
-    //print_state();
+    // print_state();
   }
 
   template<bool ELA>
@@ -247,8 +247,8 @@ private:
 
   std::pair<float, uint32_t> cut_flow( cut_t const& cut )
   {
-    uint32_t time{0u};
-    float flow{0.0f};
+    uint32_t time{ 0u };
+    float flow{ 0.0f };
 
     for ( auto leaf : cut )
     {
@@ -256,7 +256,7 @@ private:
       flow += flows[leaf];
     }
 
-    return {flow + cut_area( cut ), time + 1u};
+    return { flow + cut_area( cut ), time + 1u };
   }
 
   /* reference cut:
@@ -345,14 +345,14 @@ private:
   template<bool ELA>
   void compute_best_cut( uint32_t index )
   {
-    constexpr auto mf_eps{0.005f};
+    constexpr auto mf_eps{ 0.005f };
 
     float flow;
-    uint32_t time{0};
-    int32_t best_cut{-1};
-    float best_flow{std::numeric_limits<float>::max()};
-    uint32_t best_time{std::numeric_limits<uint32_t>::max()};
-    int32_t cut_index{-1};
+    uint32_t time{ 0 };
+    int32_t best_cut{ -1 };
+    float best_flow{ std::numeric_limits<float>::max() };
+    uint32_t best_time{ std::numeric_limits<uint32_t>::max() };
+    int32_t cut_index{ -1 };
 
     if constexpr ( ELA )
     {
@@ -444,7 +444,7 @@ private:
     for ( auto i = 0u; i < ntk.size(); ++i )
     {
       std::cout << fmt::format( "*** Obj = {:>3} (node = {:>3})  FlowRefs = {:5.2f}  MapRefs = {:>2}  Flow = {:5.2f}  Delay = {:>3}\n", i, ntk.index_to_node( i ), flow_refs[i], map_refs[i], flows[i], delays[i] );
-      //std::cout << cuts.cuts( i );
+      // std::cout << cuts.cuts( i );
     }
     std::cout << fmt::format( "Level = {}  Area = {}\n", delay, area );
   }
@@ -454,10 +454,10 @@ private:
   lut_mapping_params const& ps;
   lut_mapping_stats& st;
 
-  uint32_t iteration{0}; /* current mapping iteration */
-  uint32_t delay{0};     /* current delay of the mapping */
-  uint32_t area{0};      /* current area of the mapping */
-  //bool ela{false};       /* compute exact area */
+  uint32_t iteration{ 0 }; /* current mapping iteration */
+  uint32_t delay{ 0 };     /* current delay of the mapping */
+  uint32_t area{ 0 };      /* current area of the mapping */
+  // bool ela{false};       /* compute exact area */
 
   std::vector<node<Ntk>> top_order;
   std::vector<float> flow_refs;

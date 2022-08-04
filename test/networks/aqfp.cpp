@@ -149,7 +149,7 @@ TEST_CASE( "create unary operations in an AQFP", "[aqfp]" )
   (void)f2;
 
   CHECK( aqfp.size() == 2 );
-} 
+}
 
 TEST_CASE( "create binary and ternary operations in an AQFP", "[aqfp]" )
 {
@@ -196,7 +196,7 @@ TEST_CASE( "create binary and ternary operations in an AQFP", "[aqfp]" )
 
   const auto f7 = aqfp.create_maj( x1, x2, aqfp.get_constant( true ) );
   CHECK( aqfp.size() == 13 );
-  (void) f7;
+  (void)f7;
 
   const auto x3 = aqfp.create_pi();
 

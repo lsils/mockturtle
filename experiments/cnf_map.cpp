@@ -23,8 +23,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <string>
 #include <algorithm>
+#include <string>
 #include <vector>
 
 #include <fmt/format.h>
@@ -71,7 +71,7 @@ int main()
     lut_mapping_params lmps;
     lmps.cut_enumeration_ps.cut_size = 8;
     lut_mapping_stats lmst;
-    mapping_view<aig_network, true> mapped_aig{aig};
+    mapping_view<aig_network, true> mapped_aig{ aig };
     lut_mapping<decltype( mapped_aig ), true, cut_enumeration_mf_cut>( mapped_aig, lmps, &lmst );
     const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
 

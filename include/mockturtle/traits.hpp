@@ -1615,7 +1615,6 @@ template<class Ntk, typename T>
 inline constexpr bool has_compute_v = has_compute<Ntk, T>::value;
 #pragma endregion
 
-
 #pragma region has_compute_inplace
 template<class Ntk, typename T, class = void>
 struct has_compute_inplace : std::false_type

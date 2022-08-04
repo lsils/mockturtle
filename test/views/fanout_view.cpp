@@ -6,6 +6,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -13,8 +14,6 @@
 #include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
 #include <mockturtle/views/fanout_view.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
-
 
 using namespace mockturtle;
 
@@ -223,13 +222,13 @@ TEST_CASE( "substitute node with dependency in fanout view", "[fanout_view]" )
 
   /**
    * issue #545
-   * 
+   *
    *      f3
    *     /  \
    *    /   f2
    *    \  /  \
    *  1->f1    a
-   * 
+   *
    * stack:
    * 1. push (f3->f2)
    * 2. push (f2->a)

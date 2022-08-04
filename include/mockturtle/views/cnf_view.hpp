@@ -41,8 +41,8 @@
 #include <vector>
 
 #include "../algorithms/cnf.hpp"
-#include "../utils/include/percy.hpp"
 #include "../traits.hpp"
+#include "../utils/include/percy.hpp"
 
 #include <bill/sat/interface/common.hpp>
 #include <bill/sat/interface/glucose.hpp>
@@ -58,7 +58,7 @@ struct cnf_view_params
 
   /*! \brief Automatically update clauses when network is modified.
              Only meaningful when AllowModify = true. */
-  bool auto_update{true};
+  bool auto_update{ true };
 };
 
 /* forward declaration */
@@ -73,7 +73,7 @@ class cnf_view_impl : public Ntk
 {
 public:
   cnf_view_impl( CnfView& cnf_view )
-    : Ntk()
+      : Ntk()
   {
     (void)cnf_view;
   }
@@ -349,10 +349,10 @@ public:
         }
         dimacs_.set_nr_vars( solver_.num_variables() );
 #ifdef _MSC_VER
-        FILE *fd = nullptr;
+        FILE* fd = nullptr;
         fopen_s( &fd, ps_.write_dimacs->c_str(), "w" );
 #else
-        FILE *fd = fopen( ps_.write_dimacs->c_str(), "w" );
+        FILE* fd = fopen( ps_.write_dimacs->c_str(), "w" );
 #endif
         dimacs_.to_dimacs( fd );
         fclose( fd );
@@ -491,11 +491,11 @@ public:
   {
     if constexpr ( std::conjunction_v<std::is_same<Lit, bill::lit_type>...> )
     {
-      add_clause( bill::result::clause_type{{lits...}} );
+      add_clause( bill::result::clause_type{ { lits... } } );
     }
     else
     {
-      add_clause( bill::result::clause_type{{lit( lits )...}} );
+      add_clause( bill::result::clause_type{ { lit( lits )... } } );
     }
   }
 
@@ -686,6 +686,6 @@ private:
 };
 
 template<class T>
-cnf_view(T const&) -> cnf_view<T, true>;
+cnf_view( T const& ) -> cnf_view<T, true>;
 
 } /* namespace mockturtle */

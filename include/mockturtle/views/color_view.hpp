@@ -52,7 +52,7 @@ public:
 
 public:
   explicit color_view( Ntk const& ntk )
-    : Ntk( ntk )
+      : Ntk( ntk )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   }
@@ -128,14 +128,14 @@ public:
   bool eval_fanins_color( node const& n, Pred&& pred ) const
   {
     bool result = true;
-    this->foreach_fanin( n, [&]( signal const& fi ){
+    this->foreach_fanin( n, [&]( signal const& fi ) {
       if ( !pred( color( this->get_node( fi ) ) ) )
       {
         result = false;
         return false;
       }
       return true;
-    });
+    } );
     return result;
   }
 
@@ -159,8 +159,7 @@ public:
 
 public:
   explicit out_of_place_color_view( Ntk const& ntk )
-    : Ntk( ntk )
-    , values( ntk.size() )
+      : Ntk( ntk ), values( ntk.size() )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   }
@@ -226,20 +225,20 @@ public:
   bool eval_fanins_color( node const& n, Pred&& pred ) const
   {
     bool result = true;
-    this->foreach_fanin( n, [&]( signal const& fi ){
+    this->foreach_fanin( n, [&]( signal const& fi ) {
       if ( !pred( color( this->get_node( fi ) ) ) )
       {
         result = false;
         return false;
       }
       return true;
-    });
+    } );
     return result;
   }
 
 protected:
   mutable std::vector<uint32_t> values;
-  mutable uint32_t value{0};
+  mutable uint32_t value{ 0 };
 }; /* out_of_place_color_view */
 
-} /* mockturtle */
+} // namespace mockturtle

@@ -33,9 +33,9 @@
 
 #pragma once
 
-#include "../utils/node_map.hpp"
-#include "../utils/index_list.hpp"
 #include "../networks/events.hpp"
+#include "../utils/index_list.hpp"
+#include "../utils/node_map.hpp"
 #include "cnf.hpp"
 
 #include <bill/sat/interface/abc_bsat2.hpp>
@@ -49,16 +49,16 @@ namespace mockturtle
 struct validator_params
 {
   /*! \brief Maximum number of clauses of the SAT solver. (incremental CNF construction) */
-  uint32_t max_clauses{1000};
+  uint32_t max_clauses{ 1000 };
 
   /*! \brief Whether to consider ODC, and how many levels. 0 = No consideration. -1 = Consider TFO until PO. */
-  int32_t odc_levels{0};
+  int32_t odc_levels{ 0 };
 
   /*! \brief Conflict limit of the SAT solver. */
-  uint32_t conflict_limit{1000};
+  uint32_t conflict_limit{ 1000 };
 
   /*! \brief Seed for randomized solving. */
-  uint32_t random_seed{0};
+  uint32_t random_seed{ 0 };
 };
 
 template<class Ntk, bill::solvers Solver = bill::solvers::glucose_41, bool use_pushpop = false, bool randomize = false, bool use_odc = false>
@@ -237,17 +237,17 @@ public:
 
     if constexpr ( std::is_same_v<index_list_type, abc_index_list> || std::is_same_v<index_list_type, xag_index_list<true>> || std::is_same_v<index_list_type, xag_index_list<false>> )
     {
-      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1 ){
+      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1 ) {
         uint32_t const node_pos0 = id_lit0 >> 1;
         uint32_t const node_pos1 = id_lit1 >> 1;
         assert( node_pos0 < lits.size() );
         assert( node_pos1 < lits.size() );
         lits.emplace_back( add_clauses_for_2input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), std::nullopt, id_lit0 < id_lit1 ? AND : XOR ) );
-      });
+      } );
     }
     else // mig_index_list
     {
-      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1, uint32_t id_lit2 ){
+      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1, uint32_t id_lit2 ) {
         uint32_t const node_pos0 = id_lit0 >> 1;
         uint32_t const node_pos1 = id_lit1 >> 1;
         uint32_t const node_pos2 = id_lit2 >> 1;
@@ -255,13 +255,13 @@ public:
         assert( node_pos1 < lits.size() );
         assert( node_pos2 < lits.size() );
         lits.emplace_back( add_clauses_for_3input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), lit_not_cond( lits[node_pos2], id_lit2 & 0x1 ), std::nullopt, MAJ ) );
-      });
+      } );
     }
 
     bill::lit_type lit_out;
-    id_list.foreach_po( [&]( uint32_t id_lit ){
+    id_list.foreach_po( [&]( uint32_t id_lit ) {
       lit_out = lit_not_cond( lits[id_lit >> 1], ( id_lit & 0x1 ) ^ inverted );
-    });
+    } );
 
     auto const res = validate( root, lit_out );
 
@@ -301,7 +301,7 @@ public:
         {
           push();
         }
-        res = solve( {build_odc_window( root, ~literals[root] ), lit_not_cond( literals[root], value )} );
+        res = solve( { build_odc_window( root, ~literals[root] ), lit_not_cond( literals[root], value ) } );
         if constexpr ( use_pushpop )
         {
           pop();
@@ -309,12 +309,12 @@ public:
       }
       else
       {
-        res = solve( {lit_not_cond( literals[root], value )} );
+        res = solve( { lit_not_cond( literals[root], value ) } );
       }
     }
     else
     {
-      res = solve( {lit_not_cond( literals[root], value )} );
+      res = solve( { lit_not_cond( literals[root], value ) } );
     }
 
     if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
@@ -324,9 +324,9 @@ public:
     return res;
   }
 
-  /*! \brief Generate pattern(s) for signal `f` to be `value`, optionally blocking several known patterns. 
+  /*! \brief Generate pattern(s) for signal `f` to be `value`, optionally blocking several known patterns.
    *
-   * Requires `use_pushpop = true`, which is only supported for `bsat2` and `z3`. If `bsat2` is used, 
+   * Requires `use_pushpop = true`, which is only supported for `bsat2` and `z3`. If `bsat2` is used,
    * and if the network has more than 2048 PIs, the `BUFFER_SIZE` in `lib/bill/sat/interface/abc_bsat2.hpp`
    * has to be increased to at least `ntk.num_pis()`.
    *
@@ -357,7 +357,7 @@ public:
       block_pattern( pattern );
     }
 
-    std::vector<bill::lit_type> assumptions( {lit_not_cond( literals[root], !value )} );
+    std::vector<bill::lit_type> assumptions( { lit_not_cond( literals[root], !value ) } );
     if constexpr ( use_odc )
     {
       if ( ps.odc_levels != 0 )
@@ -414,7 +414,7 @@ private:
     constructed.reset();
 
     solver.add_variables( ntk.num_pis() + 1 );
-    solver.add_clause( {~literals[ntk.get_constant( false )]} );
+    solver.add_clause( { ~literals[ntk.get_constant( false )] } );
   }
 
   bill::lit_type construct( node const& n )
@@ -562,7 +562,7 @@ private:
         {
           push();
         }
-        res = solve( {build_odc_window( root, lit )} );
+        res = solve( { build_odc_window( root, lit ) } );
         if constexpr ( use_pushpop )
         {
           pop();
@@ -571,17 +571,17 @@ private:
       else
       {
         auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-        solver.add_clause( {literals[root], lit, nlit} );
-        solver.add_clause( {~( literals[root] ), ~lit, nlit} );
-        res = solve( {~nlit} );
+        solver.add_clause( { literals[root], lit, nlit } );
+        solver.add_clause( { ~( literals[root] ), ~lit, nlit } );
+        res = solve( { ~nlit } );
       }
     }
     else
     {
       auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-      solver.add_clause( {literals[root], lit, nlit} );
-      solver.add_clause( {~( literals[root] ), ~lit, nlit} );
-      res = solve( {~nlit} );
+      solver.add_clause( { literals[root], lit, nlit } );
+      solver.add_clause( { ~( literals[root] ), ~lit, nlit } );
+      res = solve( { ~nlit } );
     }
 
     return res;
@@ -592,7 +592,7 @@ private:
     assert( pattern.size() == ntk.num_pis() );
     std::vector<bill::lit_type> clause;
     ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      clause.emplace_back( lit_not_cond( literals[n] , pattern[i] ) );
+      clause.emplace_back( lit_not_cond( literals[n], pattern[i] ) );
     } );
     solver.add_clause( clause );
   }

@@ -55,7 +55,8 @@ inline void invert_modulus( std::vector<bool>& m )
   for ( auto i = 0u; i < m.size(); ++i )
   {
     m[i] = !m[i];
-    if ( m[i] ) break;
+    if ( m[i] )
+      break;
   }
 }
 
@@ -117,7 +118,7 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
 /*! \brief Creates modular adder
  *
  * Given two input words of the same size *k*, this function creates a circuit
- * that computes *k* output signals that represent \f$(a + b) \bmod m\f$. 
+ * that computes *k* output signals that represent \f$(a + b) \bmod m\f$.
  * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
  * The first input word `a` is overriden and stores the output signals.
  */
@@ -157,7 +158,7 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
 /*! \brief Creates modular adder
  *
  * Given two input words of the same size *k*, this function creates a circuit
- * that computes *k* output signals that represent \f$(a + b) \bmod m\f$. 
+ * that computes *k* output signals that represent \f$(a + b) \bmod m\f$.
  * The first input word `a` is overriden and stores the output signals.
  */
 template<class Ntk>
@@ -243,7 +244,7 @@ inline void modular_adder_hiasat_inplace( Ntk& ntk, std::vector<signal<Ntk>>& x,
     C[i] = ntk.create_nary_and( cube );
   }
   const auto Cout = ntk.create_nary_or( C );
-  //ntk.create_po( Cout );
+  // ntk.create_po( Cout );
 
   /* MUX store result in p and g */
   p.pop_back();
@@ -301,7 +302,7 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
 /*! \brief Creates modular subtractor
  *
  * Given two input words of the same size *k*, this function creates a circuit
- * that computes *k* output signals that represent \f$(a - b) \bmod m\f$. 
+ * that computes *k* output signals that represent \f$(a - b) \bmod m\f$.
  * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
  * The first input word `a` is overriden and stores the output signals.
  */
@@ -342,7 +343,7 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
 /*! \brief Creates modular subtractor
  *
  * Given two input words of the same size *k*, this function creates a circuit
- * that computes *k* output signals that represent \f$(a - b) \bmod m\f$. 
+ * that computes *k* output signals that represent \f$(a - b) \bmod m\f$.
  * The first input word `a` is overriden and stores the output signals.
  */
 template<class Ntk>
@@ -377,7 +378,7 @@ inline std::vector<signal<Ntk>> modular_subtractor( Ntk& ntk, std::vector<signal
 /*! \brief Creates modular doubling (multiplication by 2)
  *
  * Given one input word \f$a\f$ of size *k*, this function creates a circuit
- * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$. 
+ * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$.
  * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
  * The input word `a` is overriden and stores the output signals.
  */
@@ -405,7 +406,7 @@ inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std
 /*! \brief Creates modular doubling (multiplication by 2)
  *
  * Given one input word \f$a\f$ of size *k*, this function creates a circuit
- * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$. 
+ * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$.
  * The input word `a` is overriden and stores the output signals.
  */
 template<class Ntk>
@@ -548,7 +549,8 @@ inline std::vector<signal<Ntk>> modular_constant_multiplier_one_bits( Ntk& ntk, 
     std::copy_n( a.begin(), a.size() - shift, sum.begin() + shift );
     it = std::find( it + 1, constant.end(), true );
 
-    while ( it != constant.end() ) {
+    while ( it != constant.end() )
+    {
       shift = std::distance( constant.begin(), it );
       std::vector<signal<Ntk>> summand( a.size(), ntk.get_constant( false ) );
       std::copy_n( a.begin(), a.size() - shift, summand.begin() + shift );
@@ -625,7 +627,7 @@ inline void bool_vector_from_hex( std::vector<bool>& res, std::string_view hex, 
 
   while ( itR != res.end() && itS != hex.rend() )
   {
-    uint32_t number{0};
+    uint32_t number{ 0 };
     if ( *itS >= '0' && *itS <= '9' )
     {
       number = *itS - '0';
@@ -703,8 +705,9 @@ inline uint64_t bool_vector_to_long( std::vector<bool> const& vec )
 {
   return std::accumulate( vec.begin(), vec.end(), std::make_pair( 0u, 0ul ),
                           []( auto accu, auto bit ) {
-                              return std::make_pair( accu.first + 1u, accu.second + ( bit ? 1ul << accu.first : 0ul ) );
-                          } ).second;
+                            return std::make_pair( accu.first + 1u, accu.second + ( bit ? 1ul << accu.first : 0ul ) );
+                          } )
+      .second;
 }
 
 /*! \brief Creates a multiplier assuming Montgomery numbers as inputs.
@@ -773,8 +776,8 @@ inline std::vector<signal<Ntk>> montgomery_multiplication( Ntk& ntk, std::vector
   while ( r )
   {
     const auto q = old_r / r;
-    std::tie( old_r, r ) = std::pair{r, old_r - q * r};
-    std::tie( old_s, s ) = std::pair{s, old_s - q * s};
+    std::tie( old_r, r ) = std::pair{ r, old_r - q * r };
+    std::tie( old_s, s ) = std::pair{ s, old_s - q * s };
   }
   const auto NN = std::abs( old_s );
 
@@ -785,7 +788,7 @@ inline std::vector<signal<Ntk>> montgomery_multiplication( Ntk& ntk, std::vector
     NNvec[i] = static_cast<bool>( ( NN >> i ) & 1 );
   }
 
-  //std::cout << fmt::format( "[i] R = {}, NN = {}, N = {}\n", R, NN, N );
+  // std::cout << fmt::format( "[i] R = {}, NN = {}, N = {}\n", R, NN, N );
 
   return montgomery_multiplication( ntk, a, b, Nvec, NNvec );
 }

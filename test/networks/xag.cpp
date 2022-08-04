@@ -290,7 +290,7 @@ TEST_CASE( "clone a node in xag network", "[xag]" )
   auto b2 = xag2.create_pi();
   CHECK( xag2.size() == 3 );
 
-  auto f2 = xag2.clone_node( xag1, xag1.get_node( f1 ), {a2, b2} );
+  auto f2 = xag2.clone_node( xag1, xag1.get_node( f1 ), { a2, b2 } );
   CHECK( xag2.size() == 4 );
 
   xag2.foreach_fanin( xag2.get_node( f2 ), [&]( auto const& s, auto ) {
@@ -354,7 +354,7 @@ TEST_CASE( "node and signal iteration in an xag", "[xag]" )
   CHECK( xag.size() == 5 );
 
   /* iterate over nodes */
-  uint32_t mask{0}, counter{0};
+  uint32_t mask{ 0 }, counter{ 0 };
   xag.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 31 );
   CHECK( counter == 10 );
@@ -466,14 +466,14 @@ TEST_CASE( "compute values in XAGs", "[xag]" )
   xag.create_po( f2 );
 
   {
-    std::vector<bool> values{{true, false}};
+    std::vector<bool> values{ { true, false } };
 
     CHECK( xag.compute( xag.get_node( f1 ), values.begin(), values.end() ) == false );
     CHECK( xag.compute( xag.get_node( f2 ), values.begin(), values.end() ) == true );
   }
 
   {
-    std::vector<kitty::dynamic_truth_table> xs{2, kitty::dynamic_truth_table( 2 )};
+    std::vector<kitty::dynamic_truth_table> xs{ 2, kitty::dynamic_truth_table( 2 ) };
     kitty::create_nth_var( xs[0], 0 );
     kitty::create_nth_var( xs[1], 1 );
 
@@ -482,55 +482,71 @@ TEST_CASE( "compute values in XAGs", "[xag]" )
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{2};
+    std::vector<kitty::partial_truth_table> xs{ 2 };
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 1 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 1 );
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 0 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 0 );
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 0 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 0 );
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 1 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 1 );
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{2};
+    std::vector<kitty::partial_truth_table> xs{ 2 };
     kitty::partial_truth_table result;
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 1 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 1 );
 
-    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
-    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 0 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 0 );
 
-    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
-    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 0 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 0 );
 
-    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
-    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 1 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 1 );
 
-    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
-    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );    
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( xs[0] & ~xs[1] ) );
   }
 }
 
@@ -670,7 +686,6 @@ TEST_CASE( "substitute node with complemented node in xag_network", "[xag]" )
   CHECK( simulate<kitty::static_truth_table<2u>>( xag )[0]._bits == 0x7 );
 }
 
-
 TEST_CASE( "substitute node with dependency in xag_network", "[xag]" )
 {
   xag_network xag{};
@@ -687,13 +702,13 @@ TEST_CASE( "substitute node with dependency in xag_network", "[xag]" )
 
   /**
    * issue #545
-   * 
+   *
    *      f2
    *     /  \
    *    /   f3
    *    \  /  \
    *  1->f1    a
-   * 
+   *
    * stack:
    * 1. push (f2->f3)
    * 2. push (f3->a)

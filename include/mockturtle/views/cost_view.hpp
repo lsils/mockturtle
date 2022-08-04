@@ -46,10 +46,10 @@ namespace mockturtle
 
 /*! \brief Implements `get_cost` methods for networks.
  *
- * This view computes the cost of the entire network, a subnetwork, and 
- * also fanin cone of a single node. It maintains the context of each 
- * node, which is the aggregated variables that affect the cost a node. 
- * 
+ * This view computes the cost of the entire network, a subnetwork, and
+ * also fanin cone of a single node. It maintains the context of each
+ * node, which is the aggregated variables that affect the cost a node.
+ *
  * **Required network functions:**
  * - `size`
  * - `get_node`
