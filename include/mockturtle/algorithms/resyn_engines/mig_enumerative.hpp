@@ -30,7 +30,7 @@
   \author Hanyu Wang
   \author Siang-Yun (Sonia) Lee
 
-  Based on previous implementation of MIG resubstitution by
+  Based on previous implementation of MIG resubstitution by 
   Eleonora Testa, Heinz Riener, and Mathias Soeken
 */
 
@@ -254,8 +254,7 @@ public:
             for ( l = 0u; l < maj1pairs.size(); ++l )
             {
               auto const& a = get_tt_from_lit( maj1pairs[l].first, tts, begin );
-              auto tt = maj1pairs[l].second >= 2 ? kitty::ternary_majority( a, get_tt_from_lit( maj1pairs[l].second, tts, begin ), tt_binate ) : maj1pairs[l].second ? a | tt_binate
-                                                                                                                                                                     : a & tt_binate;
+              auto tt = maj1pairs[l].second >= 2 ? kitty::ternary_majority( a, get_tt_from_lit( maj1pairs[l].second, tts, begin ), tt_binate ) : maj1pairs[l].second ? a | tt_binate : a & tt_binate;
               if ( tt == target )
               {
                 il.add_output( il.add_maj( maj1pairs[l].first, maj1pairs[l].second, il.add_maj( binate[i], binate[j], binate[k] ) ) );

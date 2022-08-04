@@ -33,11 +33,12 @@
 
 #pragma once
 
-#include "../../traits.hpp"
 #include <kitty/dynamic_truth_table.hpp>
+#include "../../traits.hpp"
 
 namespace mockturtle
 {
+
 
 template<class Ntk>
 class null_resynthesis

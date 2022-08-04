@@ -2,11 +2,11 @@
 
 #include <kitty/kitty.hpp>
 
-#include <mockturtle/algorithms/resyn_engines/xag_resyn.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/index_list.hpp>
+#include <mockturtle/algorithms/resyn_engines/xag_resyn.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
 
 using namespace mockturtle;
 
@@ -38,7 +38,7 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   xag_resyn_decompose<TT, aig_resyn_sparams_copy<TT>> engine_copy( st );
   const auto res = engine_copy( target, care, divs.begin(), divs.end(), tts, num_inserts );
   CHECK( res );
-  CHECK( ( *res ).num_gates() == num_inserts );
+  CHECK( (*res).num_gates() == num_inserts );
   aig_network aig;
   decode( aig, *res );
   const auto ans = simulate<TT, aig_network, partial_simulator>( aig, sim )[0];
@@ -48,7 +48,7 @@ void test_aig_kresub( TT const& target, TT const& care, std::vector<TT> const& t
   xag_resyn_decompose<TT, aig_resyn_sparams_no_copy<TT>> engine_no_copy( st );
   const auto res2 = engine_no_copy( target, care, divs.begin(), divs.end(), tts, num_inserts );
   CHECK( res2 );
-  CHECK( ( *res2 ).num_gates() == num_inserts );
+  CHECK( (*res2).num_gates() == num_inserts );
   aig_network aig2;
   decode( aig2, *res2 );
   const auto ans2 = simulate<TT, aig_network, partial_simulator>( aig2, sim )[0];
@@ -64,18 +64,18 @@ TEST_CASE( "AIG/XAG resynthesis -- 0-resub with don't care", "[xag_resyn]" )
 
   /* const */
   kitty::create_from_binary_string( target, "00110011" );
-  kitty::create_from_binary_string( care, "11001100" );
+  kitty::create_from_binary_string(   care, "11001100" );
   test_aig_kresub( target, care, tts, 0 );
 
   /* buffer */
   kitty::create_from_binary_string( target, "00110011" );
-  kitty::create_from_binary_string( care, "00111100" );
+  kitty::create_from_binary_string(   care, "00111100" );
   kitty::create_from_binary_string( tts[0], "11110000" );
   test_aig_kresub( target, care, tts, 0 );
 
   /* inverter */
   kitty::create_from_binary_string( target, "00110011" );
-  kitty::create_from_binary_string( care, "00110110" );
+  kitty::create_from_binary_string(   care, "00110110" );
   kitty::create_from_binary_string( tts[0], "00000101" );
   test_aig_kresub( target, care, tts, 0 );
 }
@@ -90,7 +90,7 @@ TEST_CASE( "AIG resynthesis -- 1 <= k <= 3", "[xag_resyn]" )
   kitty::create_from_binary_string( tts[0], "11000000" );
   kitty::create_from_binary_string( tts[1], "00110000" );
   kitty::create_from_binary_string( tts[2], "01011111" ); // binate
-  test_aig_kresub( target, care, tts, 1 );                // 1 | 2
+  test_aig_kresub( target, care, tts, 1 ); // 1 | 2
 
   kitty::create_from_binary_string( target, "11110000" ); // target
   kitty::create_from_binary_string( tts[0], "11001100" ); // binate
@@ -100,9 +100,9 @@ TEST_CASE( "AIG resynthesis -- 1 <= k <= 3", "[xag_resyn]" )
 
   kitty::create_from_binary_string( target, "11110000" ); // target
   kitty::create_from_binary_string( tts[0], "01110010" ); // binate
-  kitty::create_from_binary_string( tts[1], "11111100" );
+  kitty::create_from_binary_string( tts[1], "11111100" ); 
   kitty::create_from_binary_string( tts[2], "10000011" ); // binate
-  test_aig_kresub( target, care, tts, 2 );                // 2 & (1 | 3)
+  test_aig_kresub( target, care, tts, 2 ); // 2 & (1 | 3)
 
   tts.emplace_back( 8 );
   kitty::create_from_binary_string( target, "11110000" ); // target
@@ -110,7 +110,7 @@ TEST_CASE( "AIG resynthesis -- 1 <= k <= 3", "[xag_resyn]" )
   kitty::create_from_binary_string( tts[1], "00110011" ); // binate
   kitty::create_from_binary_string( tts[2], "10000011" ); // binate
   kitty::create_from_binary_string( tts[3], "11001011" ); // binate
-  test_aig_kresub( target, care, tts, 3 );                // ~(2 & 4) & (1 | 3)
+  test_aig_kresub( target, care, tts, 3 ); // ~(2 & 4) & (1 | 3)
 }
 
 TEST_CASE( "AIG resynthesis -- recursive", "[xag_resyn]" )
@@ -125,7 +125,7 @@ TEST_CASE( "AIG resynthesis -- recursive", "[xag_resyn]" )
   kitty::create_from_binary_string( tts[2], "1000001100000000" ); // binate
   kitty::create_from_binary_string( tts[3], "1100101100000000" ); // binate
   kitty::create_from_binary_string( tts[4], "0000000011111111" ); // unate
-  test_aig_kresub( target, care, tts, 4 );                        // 5 | ( ~(2 & 4) & (1 | 3) )
+  test_aig_kresub( target, care, tts, 4 ); // 5 | ( ~(2 & 4) & (1 | 3) )
 
   tts.emplace_back( 16 );
   kitty::create_from_binary_string( target, "1111000011111100" ); // target
@@ -135,7 +135,7 @@ TEST_CASE( "AIG resynthesis -- recursive", "[xag_resyn]" )
   kitty::create_from_binary_string( tts[3], "1100101100000000" ); // binate
   kitty::create_from_binary_string( tts[4], "0000000011111110" ); // binate
   kitty::create_from_binary_string( tts[5], "0000000011111101" ); // binate
-  test_aig_kresub( target, care, tts, 5 );                        // (5 & 6) | ( ~(2 & 4) & (1 | 3) )
+  test_aig_kresub( target, care, tts, 5 ); // (5 & 6) | ( ~(2 & 4) & (1 | 3) )
 }
 
 template<uint32_t num_vars>
@@ -143,9 +143,8 @@ class simulator
 {
 public:
   explicit simulator( std::vector<kitty::static_truth_table<num_vars>> const& input_values )
-      : input_values_( input_values )
-  {
-  }
+    : input_values_( input_values )
+  {}
 
   kitty::static_truth_table<num_vars> compute_constant( bool value ) const
   {
@@ -216,8 +215,8 @@ TEST_CASE( "Synthesize XAGs for all 3-input functions", "[xag_resyn]" )
 {
   using truth_table_type = kitty::static_truth_table<3>;
   using engine_t = xag_resyn_decompose<truth_table_type>;
-  uint32_t success_counter{ 0 };
-  uint32_t failed_counter{ 0 };
+  uint32_t success_counter{0};
+  uint32_t failed_counter{0};
   test_xag_n_input_functions<engine_t, 3>( success_counter, failed_counter );
 
   CHECK( success_counter == 254 );
@@ -236,8 +235,8 @@ TEST_CASE( "Synthesize XAGs for all 4-input functions", "[xag_resyn]" )
 {
   using truth_table_type = kitty::static_truth_table<4>;
   using engine_t = xag_resyn_decompose<truth_table_type>;
-  uint32_t success_counter{ 0 };
-  uint32_t failed_counter{ 0 };
+  uint32_t success_counter{0};
+  uint32_t failed_counter{0};
   test_xag_n_input_functions<engine_t, 4>( success_counter, failed_counter );
 
   CHECK( success_counter == 54622 );

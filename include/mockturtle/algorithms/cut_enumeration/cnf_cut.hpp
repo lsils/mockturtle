@@ -53,15 +53,15 @@ namespace mockturtle
 */
 struct cut_enumeration_cnf_cut
 {
-  uint32_t delay{ 0 };
-  float flow{ 0 };
-  float cost{ 0 };
+  uint32_t delay{0};
+  float flow{0};
+  float cost{0};
 };
 
 template<bool ComputeTruth>
 bool operator<( cut_type<ComputeTruth, cut_enumeration_cnf_cut> const& c1, cut_type<ComputeTruth, cut_enumeration_cnf_cut> const& c2 )
 {
-  constexpr auto eps{ 0.005f };
+  constexpr auto eps{0.005f};
   if ( c1->data.flow < c2->data.flow - eps )
     return true;
   if ( c1->data.flow > c2->data.flow + eps )
@@ -79,7 +79,7 @@ struct cut_enumeration_update_cut<cut_enumeration_cnf_cut>
   template<typename Cut, typename NetworkCuts, typename Ntk>
   static void apply( Cut& cut, NetworkCuts const& cuts, Ntk const& ntk, node<Ntk> const& n )
   {
-    uint32_t delay{ 0 };
+    uint32_t delay{0};
     auto tt = cuts.truth_table( cut );
     auto cnf = kitty::cnf_characteristic( tt );
     cut->data.cost = cnf;

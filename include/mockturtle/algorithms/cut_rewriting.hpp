@@ -80,10 +80,10 @@ struct cut_rewriting_params
   cut_enumeration_params cut_enumeration_ps{};
 
   /*! \brief Allow zero-gain substitutions. */
-  bool allow_zero_gain{ false };
+  bool allow_zero_gain{false};
 
   /*! \brief Use don't cares for optimization. */
-  bool use_dont_cares{ false };
+  bool use_dont_cares{false};
 
   /*! \brief Candidate selection strategy. */
   enum
@@ -93,22 +93,22 @@ struct cut_rewriting_params
   } candidate_selection_strategy = minimize_weight;
 
   /*! \brief Minimum candidate cut size */
-  uint32_t min_cand_cut_size{ 3u };
+  uint32_t min_cand_cut_size{3u};
 
   /*! \brief Minimum candidate cut size override (in conflict graph) */
   std::optional<uint32_t> min_cand_cut_size_override{};
 
   /*! \brief If true, candidates are only accepted if they do not increase logic level of node. */
-  bool preserve_depth{ false };
+  bool preserve_depth{false};
 
   /*! \brief Show progress. */
-  bool progress{ false };
+  bool progress{false};
 
   /*! \brief Be verbose. */
-  bool verbose{ false };
+  bool verbose{false};
 
   /*! \brief Be very verbose. */
-  bool very_verbose{ false };
+  bool very_verbose{false};
 };
 
 /*! \brief Statistics for cut_rewriting.
@@ -119,16 +119,16 @@ struct cut_rewriting_params
 struct cut_rewriting_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{ 0 };
+  stopwatch<>::duration time_total{0};
 
   /*! \brief Runtime for cut enumeration. */
-  stopwatch<>::duration time_cuts{ 0 };
+  stopwatch<>::duration time_cuts{0};
 
   /*! \brief Accumulated runtime for rewriting. */
-  stopwatch<>::duration time_rewriting{ 0 };
+  stopwatch<>::duration time_rewriting{0};
 
   /*! \brief Runtime to find minimal independent set. */
-  stopwatch<>::duration time_mis{ 0 };
+  stopwatch<>::duration time_mis{0};
 
   void report( bool show_time_mis = true ) const
   {
@@ -217,8 +217,8 @@ public:
   auto num_edges() const { return _num_edges; }
 
 private:
-  uint32_t _num_vertices{ 0u };
-  std::size_t _num_edges{ 0u };
+  uint32_t _num_vertices{0u};
+  std::size_t _num_edges{0u};
 
   std::vector<std::set<uint32_t>> _adjacent;
 
@@ -232,11 +232,11 @@ inline std::vector<uint32_t> maximum_weighted_independent_set_gwmin( graph& g )
   std::vector<uint32_t> vertices( g.num_vertices() );
   std::iota( vertices.begin(), vertices.end(), 0 );
 
-  std::stable_sort( vertices.begin(), vertices.end(), [&g]( auto v, auto w )
-                    {
+  std::stable_sort( vertices.begin(), vertices.end(), [&g]( auto v, auto w ) {
     const auto value_v = g.gwmin_value( v );
     const auto value_w = g.gwmin_value( w );
-    return value_v > value_w || ( value_v == value_w && g.degree( v ) > g.degree( w ) ); } );
+    return value_v > value_w || ( value_v == value_w && g.degree( v ) > g.degree( w ) );
+  } );
 
   for ( auto i : vertices )
   {
@@ -246,8 +246,7 @@ inline std::vector<uint32_t> maximum_weighted_independent_set_gwmin( graph& g )
     /* add vertex to independent set, then remove it and all its neighbors */
     mwis.emplace_back( i );
     std::vector<uint32_t> neighbors;
-    g.foreach_adjacent( i, [&]( auto v )
-                        { neighbors.emplace_back( v ); } );
+    g.foreach_adjacent( i, [&]( auto v ) { neighbors.emplace_back( v ); } );
     g.remove_vertex( i );
 
     for ( auto v : neighbors )
@@ -272,8 +271,7 @@ inline std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
     /* add vertex to independent set, then remove it and all its neighbors */
     mwis.emplace_back( i );
     std::vector<uint32_t> neighbors;
-    g.foreach_adjacent( i, [&]( auto v )
-                        { neighbors.emplace_back( v ); } );
+    g.foreach_adjacent( i, [&]( auto v ) { neighbors.emplace_back( v ); } );
     g.remove_vertex( i );
 
     for ( auto v : neighbors )
@@ -287,7 +285,7 @@ inline std::vector<uint32_t> maximal_weighted_independent_set( graph& g )
 
 struct cut_enumeration_cut_rewriting_cut
 {
-  int32_t gain{ -1 };
+  int32_t gain{-1};
 };
 
 template<typename Ntk, bool ComputeTruth>
@@ -307,8 +305,7 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
 
   ntk.clear_visited();
 
-  ntk.foreach_node( [&]( auto const& n, auto index )
-                    {
+  ntk.foreach_node( [&]( auto const& n, auto index ) {
     if ( index >= cuts.nodes_size() || ntk.is_constant( n ) || ntk.is_pi( n ) )
       return;
 
@@ -349,7 +346,8 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
       cut_addr_to_vertex[ntk.node_to_index( n )].emplace_back( static_cast<uint32_t>( v ) );
 
       ++cctr;
-    } } );
+    }
+  } );
 
   for ( auto n = 0u; n < conflicts.size(); ++n )
   {
@@ -368,7 +366,7 @@ std::tuple<graph, std::vector<std::pair<node<Ntk>, uint32_t>>> network_cuts_grap
     }
   }
 
-  return { g, vertex_to_cut_addr };
+  return {g, vertex_to_cut_addr};
 }
 
 template<class Ntk, class RewritingFn, class Iterator, class = void>
@@ -407,13 +405,13 @@ public:
     stopwatch t( st.time_total );
 
     /* enumerate cuts */
-    const auto cuts = call_with_stopwatch( st.time_cuts, [&]()
-                                           { return cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk, ps.cut_enumeration_ps ); } );
+    const auto cuts = call_with_stopwatch( st.time_cuts, [&]() { return cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk, ps.cut_enumeration_ps ); } );
 
     /* for cost estimation we use reference counters initialized by the fanout size */
     ntk.clear_values();
-    ntk.foreach_node( [&]( auto const& n )
-                      { ntk.set_value( n, ntk.fanout_size( n ) ); } );
+    ntk.foreach_node( [&]( auto const& n ) {
+      ntk.set_value( n, ntk.fanout_size( n ) );
+    } );
 
     /* store best replacement for each cut */
     node_map<std::vector<signal<Ntk>>, Ntk> best_replacements( ntk );
@@ -421,9 +419,8 @@ public:
     /* iterate over all original nodes in the network */
     const auto size = ntk.size();
     auto max_total_gain = 0u;
-    progress_bar pbar{ ntk.size(), "cut_rewriting |{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ) + "   comm. gain = {3}", ps.progress };
-    ntk.foreach_node( [&]( auto const& n, auto index )
-                      {
+    progress_bar pbar{ntk.size(), "cut_rewriting |{0}| node = {1:>4}@{2:>2} / " + std::to_string( size ) + "   comm. gain = {3}", ps.progress};
+    ntk.foreach_node( [&]( auto const& n, auto index ) {
       /* stop once all original nodes were visited */
       if ( index >= size )
         return false;
@@ -512,7 +509,8 @@ public:
         recursive_ref<Ntk, NodeCostFn>( ntk, n );
       }
 
-      return true; } );
+      return true;
+    } );
 
     stopwatch t2( st.time_mis );
     auto [g, map] = network_cuts_graph( ntk, cuts, ps );
@@ -561,21 +559,21 @@ private:
   {
     /* terminate? */
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
-      return { 0, false };
+      return {0, false};
 
     /* recursively collect nodes */
     int32_t value = cost_fn( ntk, n );
     bool contains = ( n == repl );
-    ntk.foreach_fanin( n, [&]( auto const& s )
-                       {
+    ntk.foreach_fanin( n, [&]( auto const& s ) {
       contains = contains || ( ntk.get_node( s ) == repl );
       if ( ntk.incr_value( ntk.get_node( s ) ) == 0 )
       {
         const auto [v, c] = recursive_ref_contains( ntk.get_node( s ), repl );
         value += v;
         contains = contains || c;
-      } } );
-    return { value, contains };
+      }
+    } );
+    return {value, contains};
   }
 
 private:
@@ -659,7 +657,7 @@ void cut_rewriting_with_compatibility_graph( Ntk& ntk, RewritingFn&& rewriting_f
   {
     fanout_view_params fvps;
     fvps.update_on_delete = false;
-    fanout_view<Ntk> ntk_fo{ ntk, fvps };
+    fanout_view<Ntk> ntk_fo{ntk, fvps};
     detail::cut_rewriting_with_compatibility_graph_impl<fanout_view<Ntk>, RewritingFn, NodeCostFn> p( ntk_fo, rewriting_fn, ps, st, cost_fn );
     p.run();
   }
@@ -699,12 +697,12 @@ struct cut_rewriting_impl
     {
       old2new[ntk_.get_constant( true )] = res.get_constant( true );
     }
-    ntk_.foreach_pi( [&]( auto const& n )
-                     { old2new[n] = res.create_pi(); } );
+    ntk_.foreach_pi( [&]( auto const& n ) {
+      old2new[n] = res.create_pi();
+    } );
 
     /* enumerate cuts */
-    const auto cuts = call_with_stopwatch( st_.time_cuts, [&]()
-                                           { return cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk_, ps_.cut_enumeration_ps ); } );
+    const auto cuts = call_with_stopwatch( st_.time_cuts, [&]() { return cut_enumeration<Ntk, true, cut_enumeration_cut_rewriting_cut>( ntk_, ps_.cut_enumeration_ps ); } );
 
     /* for cost estimation we use reference counters initialized by the fanout size */
     initialize_values_with_fanout( ntk_ );
@@ -712,9 +710,8 @@ struct cut_rewriting_impl
     /* original cost */
     const auto orig_cost = costs<Ntk, NodeCostFn>( ntk_ );
 
-    progress_bar pbar{ ntk_.num_gates(), "cut_rewriting |{0}| node = {1:>4} / " + std::to_string( ntk_.num_gates() ) + "   original cost = " + std::to_string( orig_cost ), ps_.progress };
-    ntk_.foreach_gate( [&]( auto const& n, auto i )
-                       {
+    progress_bar pbar{ntk_.num_gates(), "cut_rewriting |{0}| node = {1:>4} / " + std::to_string( ntk_.num_gates() ) + "   original cost = " + std::to_string( orig_cost ), ps_.progress};
+    ntk_.foreach_gate( [&]( auto const& n, auto i ) {
       pbar( i, i );
 
       /* nothing to optimize? */
@@ -792,11 +789,13 @@ struct cut_rewriting_impl
         }
       }
 
-      recursive_ref<Ntk, NodeCostFn>( res, res.get_node( old2new[n] ) ); } );
+      recursive_ref<Ntk, NodeCostFn>( res, res.get_node( old2new[n] ) );
+    } );
 
     /* create POs */
-    ntk_.foreach_po( [&]( auto const& f )
-                     { res.create_po( ntk_.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] ); } );
+    ntk_.foreach_po( [&]( auto const& f ) {
+      res.create_po( ntk_.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] );
+    } );
 
     NtkDest ret = cleanup_dangling<NtkDest>( res );
 
@@ -841,11 +840,10 @@ template<class Ntk, class RewritingFn, class NodeCostFn = unit_cost<Ntk>>
 Ntk cut_rewriting( Ntk const& ntk, RewritingFn const& rewriting_fn = {}, cut_rewriting_params const& ps = {}, cut_rewriting_stats* pst = nullptr )
 {
   cut_rewriting_stats st;
-  const auto result = [&]()
-  {
+  const auto result = [&]() {
     if ( ps.preserve_depth )
     {
-      depth_view<Ntk, NodeCostFn> depth_ntk{ ntk };
+      depth_view<Ntk, NodeCostFn> depth_ntk{ntk};
       return detail::cut_rewriting_impl<Ntk, depth_view<Ntk, NodeCostFn>, RewritingFn, NodeCostFn>( depth_ntk, rewriting_fn, ps, st ).run();
     }
     else

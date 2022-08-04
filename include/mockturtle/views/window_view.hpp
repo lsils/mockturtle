@@ -34,8 +34,8 @@
 
 #pragma once
 
-#include "../networks/detail/foreach.hpp"
 #include "../traits.hpp"
+#include "../networks/detail/foreach.hpp"
 #include "../utils/window_utils.hpp"
 #include "immutable_view.hpp"
 
@@ -86,22 +86,24 @@ public:
 public:
   template<typename _Ntk = Ntk, typename = std::enable_if_t<!std::is_same_v<typename _Ntk::signal, typename _Ntk::node>>>
   explicit window_view( Ntk const& ntk, std::vector<node> const& inputs, std::vector<signal> const& outputs, std::vector<node> const& gates )
-      : immutable_view<Ntk>( ntk ), _inputs( inputs ), _outputs( outputs )
+    : immutable_view<Ntk>( ntk )
+    , _inputs( inputs )
+    , _outputs( outputs )
   {
     construct( inputs, gates );
   }
 
   explicit window_view( Ntk const& ntk, std::vector<node> const& inputs, std::vector<node> const& outputs, std::vector<node> const& gates )
-      : immutable_view<Ntk>( ntk ), _inputs( inputs )
+    : immutable_view<Ntk>( ntk )
+    , _inputs( inputs )
   {
     construct( inputs, gates );
 
     /* convert output nodes to signals */
     std::transform( std::begin( outputs ), std::end( outputs ), std::back_inserter( _outputs ),
-                    [this]( node const& n )
-                    {
+                    [this]( node const& n ){
                       return this->make_signal( n );
-                    } );
+                    });
   }
 
 #pragma region Window
@@ -260,23 +262,23 @@ public:
   template<typename Fn>
   void foreach_internal_fanout( node const& n, Fn&& fn ) const
   {
-    this->foreach_fanout( n, [&]( node const& fo )
-                          {
+    this->foreach_fanout( n, [&]( node const& fo ){
       if ( tbelongs_to( fo ) )
       {
         fn( fo );
-      } } );
+      }
+    });
   }
 
   template<typename Fn>
   void foreach_external_fanout( node const& n, Fn&& fn ) const
   {
-    this->foreach_fanout( n, [&]( node const& fo )
-                          {
+    this->foreach_fanout( n, [&]( node const& fo ){
       if ( !belongs_to( fo ) )
       {
         fn( fo );
-      } } );
+      }
+    });
   }
 #pragma endregion
 

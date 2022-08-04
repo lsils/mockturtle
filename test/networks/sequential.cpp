@@ -1,13 +1,13 @@
 #include <catch.hpp>
 
-#include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/aqfp.hpp>
-#include <mockturtle/networks/cover.hpp>
-#include <mockturtle/networks/klut.hpp>
-#include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/sequential.hpp>
+#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/xag.hpp>
+#include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xmg.hpp>
+#include <mockturtle/networks/klut.hpp>
+#include <mockturtle/networks/cover.hpp>
+#include <mockturtle/networks/aqfp.hpp>
 
 using namespace mockturtle;
 
@@ -44,8 +44,7 @@ TEST_CASE( "create and use register in an AIG", "[aig]" )
   CHECK( aig.num_pos() == 3 );
   CHECK( aig.num_registers() == 1 );
 
-  aig.foreach_po( [&]( auto s, auto i )
-                  {
+  aig.foreach_po( [&]( auto s, auto i ) {
     switch ( i )
     {
     case 0:
@@ -61,7 +60,8 @@ TEST_CASE( "create and use register in an AIG", "[aig]" )
     default:
       CHECK( false );
       break;
-    } } );
+    }
+  } );
 }
 
 TEST_CASE( "create and use register in an xag network", "[xag]" )
@@ -101,8 +101,7 @@ TEST_CASE( "create and use register in an xag network", "[xag]" )
   CHECK( xag.num_cis() == 4 + 1 );
   CHECK( xag.num_cos() == 2 + 1 );
 
-  xag.foreach_pi( [&]( auto const& node, auto index )
-                  {
+  xag.foreach_pi( [&]( auto const& node, auto index ) {
     CHECK( xag.is_pi( node ) );
     switch ( index )
     {
@@ -120,10 +119,10 @@ TEST_CASE( "create and use register in an xag network", "[xag]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  xag.foreach_ci( [&]( auto const& node, auto index )
-                  {
+  xag.foreach_ci( [&]( auto const& node, auto index ) {
     CHECK( xag.is_ci( node ) );
     switch ( index )
     {
@@ -146,10 +145,10 @@ TEST_CASE( "create and use register in an xag network", "[xag]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  xag.foreach_po( [&]( auto const& node, auto index )
-                  {
+  xag.foreach_po( [&]( auto const& node, auto index ) {
     switch ( index )
     {
     case 0:
@@ -160,10 +159,10 @@ TEST_CASE( "create and use register in an xag network", "[xag]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  xag.foreach_co( [&]( auto const& node, auto index )
-                  {
+  xag.foreach_co( [&]( auto const& node, auto index ) {
     switch ( index )
     {
     case 0:
@@ -177,7 +176,8 @@ TEST_CASE( "create and use register in an xag network", "[xag]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 }
 
 TEST_CASE( "create and use register in an MIG", "[mig]" )
@@ -217,8 +217,7 @@ TEST_CASE( "create and use register in an MIG", "[mig]" )
   CHECK( mig.num_registers() == 1 );
   CHECK( !mig.is_combinational() );
 
-  mig.foreach_po( [&]( auto s, auto i )
-                  {
+  mig.foreach_po( [&]( auto s, auto i ) {
     switch ( i )
     {
     case 0:
@@ -234,7 +233,8 @@ TEST_CASE( "create and use register in an MIG", "[mig]" )
     default:
       CHECK( false );
       break;
-    } } );
+    }
+  } );
 }
 
 TEST_CASE( "create and use register in an xmg network", "[xmg]" )
@@ -274,8 +274,7 @@ TEST_CASE( "create and use register in an xmg network", "[xmg]" )
   CHECK( xmg.num_cis() == 4 + 1 );
   CHECK( xmg.num_cos() == 2 + 1 );
 
-  xmg.foreach_pi( [&]( auto const& node, auto index )
-                  {
+  xmg.foreach_pi( [&]( auto const& node, auto index ) {
     CHECK( xmg.is_pi( node ) );
     switch ( index )
     {
@@ -293,10 +292,10 @@ TEST_CASE( "create and use register in an xmg network", "[xmg]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  xmg.foreach_ci( [&]( auto const& node, auto index )
-                  {
+  xmg.foreach_ci( [&]( auto const& node, auto index ) {
     CHECK( xmg.is_ci( node ) );
     switch ( index )
     {
@@ -319,10 +318,10 @@ TEST_CASE( "create and use register in an xmg network", "[xmg]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  xmg.foreach_po( [&]( auto const& node, auto index )
-                  {
+  xmg.foreach_po( [&]( auto const& node, auto index ) {
     switch ( index )
     {
     case 0:
@@ -333,10 +332,10 @@ TEST_CASE( "create and use register in an xmg network", "[xmg]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  xmg.foreach_co( [&]( auto const& node, auto index )
-                  {
+  xmg.foreach_co( [&]( auto const& node, auto index ) {
     switch ( index )
     {
     case 0:
@@ -350,7 +349,8 @@ TEST_CASE( "create and use register in an xmg network", "[xmg]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 }
 
 TEST_CASE( "create and use register in a k-LUT network", "[klut]" )
@@ -390,8 +390,7 @@ TEST_CASE( "create and use register in a k-LUT network", "[klut]" )
   CHECK( klut.num_cis() == 4 + 1 );
   CHECK( klut.num_cos() == 2 + 1 );
 
-  klut.foreach_pi( [&]( auto const& node, auto index )
-                   {
+  klut.foreach_pi( [&]( auto const& node, auto index ) {
     CHECK( klut.is_pi( node ) );
     switch ( index )
     {
@@ -409,10 +408,10 @@ TEST_CASE( "create and use register in a k-LUT network", "[klut]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  klut.foreach_ci( [&]( auto const& node, auto index )
-                   {
+  klut.foreach_ci( [&]( auto const& node, auto index ) {
     CHECK( klut.is_ci( node ) );
     switch ( index )
     {
@@ -435,10 +434,10 @@ TEST_CASE( "create and use register in a k-LUT network", "[klut]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  klut.foreach_po( [&]( auto const& node, auto index )
-                   {
+  klut.foreach_po( [&]( auto const& node, auto index ) {
     switch ( index )
     {
     case 0:
@@ -449,10 +448,10 @@ TEST_CASE( "create and use register in a k-LUT network", "[klut]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  klut.foreach_co( [&]( auto const& node, auto index )
-                   {
+  klut.foreach_co( [&]( auto const& node, auto index ) {
     switch ( index )
     {
     case 0:
@@ -466,7 +465,8 @@ TEST_CASE( "create and use register in a k-LUT network", "[klut]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 }
 
 TEST_CASE( "create and use register in a cover network", "[cover]" )
@@ -506,8 +506,7 @@ TEST_CASE( "create and use register in a cover network", "[cover]" )
   CHECK( cover.num_cis() == 4 + 1 );
   CHECK( cover.num_cos() == 2 + 1 );
 
-  cover.foreach_pi( [&]( auto const& node, auto index )
-                    {
+  cover.foreach_pi( [&]( auto const& node, auto index ) {
     CHECK( cover.is_pi( node ) );
     switch ( index )
     {
@@ -525,10 +524,10 @@ TEST_CASE( "create and use register in a cover network", "[cover]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  cover.foreach_ci( [&]( auto const& node, auto index )
-                    {
+  cover.foreach_ci( [&]( auto const& node, auto index ) {
     CHECK( cover.is_ci( node ) );
     switch ( index )
     {
@@ -551,10 +550,10 @@ TEST_CASE( "create and use register in a cover network", "[cover]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  cover.foreach_po( [&]( auto const& node, auto index )
-                    {
+  cover.foreach_po( [&]( auto const& node, auto index ) {
     switch ( index )
     {
     case 0:
@@ -565,10 +564,10 @@ TEST_CASE( "create and use register in a cover network", "[cover]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 
-  cover.foreach_co( [&]( auto const& node, auto index )
-                    {
+  cover.foreach_co( [&]( auto const& node, auto index ) {
     switch ( index )
     {
     case 0:
@@ -582,7 +581,8 @@ TEST_CASE( "create and use register in a cover network", "[cover]" )
       break;
     default:
       CHECK( false );
-    } } );
+    }
+  } );
 }
 
 TEST_CASE( "create and use register in an AQFP", "[aqfp]" )
@@ -622,8 +622,7 @@ TEST_CASE( "create and use register in an AQFP", "[aqfp]" )
   CHECK( aqfp.num_registers() == 1 );
   CHECK( !aqfp.is_combinational() );
 
-  aqfp.foreach_po( [&]( auto s, auto i )
-                   {
+  aqfp.foreach_po( [&]( auto s, auto i ) {
     switch ( i )
     {
     case 0:
@@ -639,5 +638,6 @@ TEST_CASE( "create and use register in an AQFP", "[aqfp]" )
     default:
       CHECK( false );
       break;
-    } } );
+    }
+  } );
 }

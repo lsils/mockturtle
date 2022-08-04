@@ -86,7 +86,7 @@ struct has_add_function<ResynFn, Ntk, std::void_t<decltype( std::declval<ResynFn
 };
 
 template<class ResynFn, class Ntk>
-inline constexpr bool has_add_function_v = has_add_function<ResynFn, Ntk>::value;
+inline constexpr bool has_add_function_v = has_add_function<ResynFn,Ntk>::value;
 #pragma endregion
 
 } /* namespace mockturtle */

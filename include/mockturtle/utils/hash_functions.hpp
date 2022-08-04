@@ -63,6 +63,7 @@ struct hash<std::multiset<A>>;
 template<typename A, typename B>
 struct hash<std::map<A, B>>;
 
+
 template<typename A, typename B>
 struct hash<std::tuple<A, B>>
 {

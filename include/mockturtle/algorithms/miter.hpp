@@ -91,8 +91,7 @@ std::optional<NtkDest> miter( NtkSource1 const& ntk1, NtkSource2 const& ntk2 )
   /* create XOR of output pairs */
   std::vector<signal<NtkDest>> xor_outputs;
   std::transform( pos1.begin(), pos1.end(), pos2.begin(), std::back_inserter( xor_outputs ),
-                  [&]( auto const& o1, auto const& o2 )
-                  { return dest.create_xor( o1, o2 ); } );
+                  [&]( auto const& o1, auto const& o2 ) { return dest.create_xor( o1, o2 ); } );
 
   /* create big OR of XOR gates */
   dest.create_po( dest.create_nary_or( xor_outputs ) );

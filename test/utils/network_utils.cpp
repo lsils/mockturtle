@@ -1,12 +1,12 @@
 #include <catch.hpp>
 
-#include <kitty/static_truth_table.hpp>
-#include <mockturtle/algorithms/resyn_engines/xag_resyn.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/utils/network_utils.hpp>
 #include <mockturtle/utils/debugging_utils.hpp>
 #include <mockturtle/utils/index_list.hpp>
-#include <mockturtle/utils/network_utils.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
+#include <mockturtle/algorithms/resyn_engines/xag_resyn.hpp>
+#include <kitty/static_truth_table.hpp>
 
 using namespace mockturtle;
 
@@ -39,9 +39,9 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
   aig.create_po( t3 );
 
   /* create a window*/
-  std::vector<node> inputs{ aig.get_node( a ), aig.get_node( b ) };
-  std::vector<signal> outputs{ t2, t3 };
-  std::vector<node> gates{ aig.get_node( t0 ), aig.get_node( t1 ), aig.get_node( t2 ), aig.get_node( t3 ) };
+  std::vector<node> inputs{aig.get_node( a ), aig.get_node( b )};
+  std::vector<signal> outputs{t2, t3};
+  std::vector<node> gates{aig.get_node( t0 ), aig.get_node( t1 ), aig.get_node( t2 ), aig.get_node( t3 )};
 
   aig_network win;
   clone_subnetwork( aig, inputs, outputs, gates, win );
@@ -49,7 +49,7 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
   CHECK( win.num_pis() == 2u );
   CHECK( win.num_pos() == 2u );
   CHECK( win.num_gates() == 4u );
-
+  
   /* optimize the window */
   using TT = kitty::static_truth_table<2>;
   using ResynEngine = xag_resyn_decompose<TT, aig_resyn_sparams_node_map<TT>>;
@@ -57,8 +57,7 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
 
   default_simulator<TT> sim;
   auto tts = simulate_nodes<TT, aig_network>( win, sim );
-  win.foreach_po( [&]( auto const& f, auto const i )
-                  {
+  win.foreach_po( [&]( auto const& f, auto const i ){
     if ( i == 0 ) // try only the first PO
     {
       auto const root = win.get_node( f );
@@ -86,21 +85,24 @@ TEST_CASE( "clone a window, optimize it, and insert it back", "[network_utils]" 
           win.substitute_node( root, s );
         });
       }
-    } } );
+    }
+  });
 
   CHECK( win.num_gates() == 3u );
   CHECK( check_window_equivalence( aig, inputs, outputs, gates, win ) );
 
   /* insert the window back */
-  std::vector<signal> input_signals{ a, b };
+  std::vector<signal> input_signals{a, b};
   uint32_t counter = 0u;
   insert_ntk( aig, input_signals.begin(), input_signals.end(), win, [&]( signal const& _new )
-              {
+  {
     auto const _old = outputs.at( counter++ );
     if ( _old != _new )
     {
       aig.substitute_node( aig.get_node( _old ), aig.is_complemented( _old ) ? !_new : _new );
-    } } );
+    }
+  });
 
   CHECK( aig.num_gates() == 5u );
 }
+

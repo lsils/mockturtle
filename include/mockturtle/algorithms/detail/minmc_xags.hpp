@@ -193,6 +193,6 @@ static std::vector<std::vector<std::tuple<uint32_t, uint64_t, std::vector<uint32
 };
 // clang-format on
 
-} // namespace legacy
+}
 
 } /* namespace mockturtle::detail */

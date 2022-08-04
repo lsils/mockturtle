@@ -75,7 +75,7 @@ inline std::vector<signal<Ntk>> zero_extend( Ntk& ntk, std::vector<signal<Ntk>> 
 
   assert( bitwidth >= a.size() );
 
-  auto ret{ a };
+  auto ret{a};
   for ( auto i = a.size(); i < bitwidth; ++i )
   {
     ret.emplace_back( ntk.get_constant( false ) );
@@ -95,8 +95,7 @@ inline void mux_inplace( Ntk& ntk, signal<Ntk> const& cond, std::vector<signal<N
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_create_ite_v<Ntk>, "Ntk does not implement the create_ite method" );
 
-  std::transform( t.begin(), t.end(), e.begin(), t.begin(), [&]( auto const& a, auto const& b )
-                  { return ntk.create_ite( cond, a, b ); } );
+  std::transform( t.begin(), t.end(), e.begin(), t.begin(), [&]( auto const& a, auto const& b ) { return ntk.create_ite( cond, a, b ); } );
 }
 
 template<class Ntk>
@@ -106,8 +105,7 @@ inline std::vector<signal<Ntk>> mux( Ntk& ntk, signal<Ntk> const& cond, std::vec
   static_assert( has_create_ite_v<Ntk>, "Ntk does not implement the create_ite method" );
 
   std::vector<signal<Ntk>> ret;
-  std::transform( t.begin(), t.end(), e.begin(), std::back_inserter( ret ), [&]( auto const& a, auto const& b )
-                  { return ntk.create_ite( cond, a, b ); } );
+  std::transform( t.begin(), t.end(), e.begin(), std::back_inserter( ret ), [&]( auto const& a, auto const& b ) { return ntk.create_ite( cond, a, b ); } );
   return ret;
 }
 
@@ -126,7 +124,7 @@ std::vector<signal<Ntk>> binary_decoder( Ntk& ntk, std::vector<signal<Ntk>> cons
 
   if ( xs.size() == 1u )
   {
-    return { ntk.create_not( xs[0] ), xs[0] };
+    return {ntk.create_not( xs[0] ), xs[0]};
   }
 
   // recursion
@@ -204,8 +202,7 @@ signal<Ntk> binary_mux_klein_paterson( Ntk& ntk, std::vector<signal<Ntk>> const&
     std::transform( ds.begin(), ds.end(),
                     data.begin() + ( j * ( 1u << s ) ),
                     and_terms.begin(),
-                    [&]( auto const& f1, auto const& f2 )
-                    { return ntk.create_and( f1, f2 ); } );
+                    [&]( auto const& f1, auto const& f2 ) { return ntk.create_and( f1, f2 ); } );
     s_data[j] = ntk.create_nary_or( and_terms );
   }
 

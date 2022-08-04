@@ -53,8 +53,7 @@ namespace mockturtle
 
 struct abstract_xag_storage
 {
-  struct node_type
-  {
+  struct node_type {
     uint32_t* fanin{};
     uint32_t fanin_size{};
     uint32_t fanout_size{};
@@ -68,7 +67,7 @@ struct abstract_xag_storage
     /* constant 0 node */
     nodes.emplace_back();
 
-    // nodes.reserve( 10000u );
+    //nodes.reserve( 10000u );
   }
 
   ~abstract_xag_storage()
@@ -94,8 +93,7 @@ struct abstract_xag_storage
   {
     uint64_t operator()( abstract_xag_storage::node_type const& n ) const
     {
-      return std::accumulate( n.fanin, n.fanin + n.fanin_size, UINT64_C( 0 ), [&]( auto accu, auto c )
-                              { return accu + std::hash<uint32_t>{}( c ); } );
+      return std::accumulate( n.fanin, n.fanin + n.fanin_size, UINT64_C( 0 ), [&]( auto accu, auto c ) { return accu + std::hash<uint32_t>{}( c ); } );
     }
   };
 
@@ -131,22 +129,22 @@ public:
 
     signal operator!() const
     {
-      return { index, !complement };
+      return {index, !complement};
     }
 
     signal operator+() const
     {
-      return { index, false };
+      return {index, false};
     }
 
     signal operator-() const
     {
-      return { index, true };
+      return {index, true};
     }
 
     signal operator^( bool complement ) const
     {
-      return { index, this->complement != complement };
+      return {index, this->complement != complement};
     }
 
     bool operator==( signal const& other ) const
@@ -161,7 +159,7 @@ public:
 
     bool operator<( signal const& other ) const
     {
-      return index < other.index || ( index == other.index && !complement && other.complement );
+      return index < other.index || (index == other.index && !complement && other.complement);
     }
   };
 
@@ -179,7 +177,7 @@ public:
 #pragma region Primary I / O and constants
   signal get_constant( bool value ) const
   {
-    return { 0, value };
+    return {0, value};
   }
 
   signal create_pi()
@@ -187,7 +185,7 @@ public:
     const auto index = static_cast<uint32_t>( _storage->nodes.size() );
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
-    return { index, 0 };
+    return {index, 0};
   }
 
   uint32_t create_po( signal const& f )
@@ -246,7 +244,7 @@ public:
     if ( const auto it = _storage->hash.find( node ); it != _storage->hash.end() )
     {
       delete[] node.fanin;
-      return { it->second, 0 };
+      return {it->second, 0};
     }
 
     const auto index = static_cast<uint32_t>( _storage->nodes.size() );
@@ -262,7 +260,7 @@ public:
     }
     _storage->nodes[index].level = _level + level_offset;
 
-    return { index, 0u };
+    return {index, 0u};
   }
 
   signal create_and( signal a, signal b )
@@ -284,7 +282,7 @@ public:
     /* constant propagation */
     else if ( a.complement && b.complement )
     {
-      return !create_nary_xor( { +a, +b, create_and( +a, +b ) } );
+      return !create_nary_xor( {+a, +b, create_and( +a, +b )} );
     }
     else if ( a.complement )
     {
@@ -317,7 +315,7 @@ public:
       return create_xor( a, create_and( a, _create_nary_xor( set_bnew ) ) );
     }
 
-    return _create_node( std::vector<uint32_t>{ { a.index, b.index } }, 1u );
+    return _create_node( std::vector<uint32_t>{{a.index, b.index}}, 1u );
   }
 
   signal create_nand( signal const& a, signal const& b )
@@ -347,7 +345,7 @@ public:
 
   signal create_xor( signal const& a, signal const& b )
   {
-    return create_nary_xor( { a, b } );
+    return create_nary_xor( {a, b} );
   }
 
   signal create_xnor( signal const& a, signal const& b )
@@ -359,7 +357,7 @@ public:
 #pragma region Create ternary functions
   signal create_ite( signal cond, signal f_then, signal f_else )
   {
-    bool f_compl{ false };
+    bool f_compl{false};
     if ( f_then.index < f_else.index )
     {
       std::swap( f_then, f_else );
@@ -385,29 +383,26 @@ public:
 
   signal create_xor3( signal const& a, signal const& b, signal const& c )
   {
-    return create_nary_xor( { a, b, c } );
+    return create_nary_xor( {a, b, c} );
   }
 #pragma endregion
 
 #pragma region Create nary functions
   signal create_nary_and( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b )
-                        { return create_and( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
   }
 
   signal create_nary_or( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b )
-                        { return create_or( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
   }
 
   signal _create_nary_xor( std::vector<uint32_t> const& fs )
   {
     std::vector<uint32_t> _fs;
 
-    const auto merge_one = [&]( uint32_t f )
-    {
+    const auto merge_one = [&]( uint32_t f ) {
       const auto it = std::lower_bound( _fs.begin(), _fs.end(), f );
       if ( it != _fs.end() && *it == f )
       {
@@ -419,8 +414,7 @@ public:
       }
     };
 
-    const auto merge_many = [&]( uint32_t* begin, uint32_t* end )
-    {
+    const auto merge_many = [&]( uint32_t* begin, uint32_t* end ) {
       std::vector<uint32_t> tmp;
       std::set_symmetric_difference( _fs.begin(), _fs.end(), begin, end, std::back_inserter( tmp ) );
       _fs = std::move( tmp );
@@ -449,7 +443,7 @@ public:
     }
     else if ( _fs.size() == 1u )
     {
-      return { _fs.front(), false };
+      return {_fs.front(), false};
     }
     else
     {
@@ -461,8 +455,7 @@ public:
   {
     std::vector<uint32_t> _fs;
 
-    const auto merge_one = [&]( uint32_t f )
-    {
+    const auto merge_one = [&]( uint32_t f ) {
       const auto it = std::lower_bound( _fs.begin(), _fs.end(), f );
       if ( it != _fs.end() && *it == f )
       {
@@ -474,14 +467,13 @@ public:
       }
     };
 
-    const auto merge_many = [&]( uint32_t* begin, uint32_t* end )
-    {
+    const auto merge_many = [&]( uint32_t* begin, uint32_t* end ) {
       std::vector<uint32_t> tmp;
       std::set_symmetric_difference( _fs.begin(), _fs.end(), begin, end, std::back_inserter( tmp ) );
       _fs = std::move( tmp );
     };
 
-    bool complement{ false };
+    bool complement{false};
     for ( auto const& f : fs )
     {
       complement ^= f.complement;
@@ -510,7 +502,7 @@ public:
     }
     else if ( _fs.size() == 1u )
     {
-      return { _fs.front(), complement };
+      return {_fs.front(), complement};
     }
     else
     {
@@ -541,7 +533,7 @@ public:
 
   signal make_signal( node const& n ) const
   {
-    return { n, false };
+    return {n, false};
   }
 
   bool is_complemented( signal const& f ) const
@@ -569,7 +561,7 @@ public:
   {
     assert( index < _storage->outputs.size() );
     const auto po = _storage->outputs[index];
-    return { po.first, po.second };
+    return {po.first, po.second};
   }
 #pragma endregion
 
@@ -598,20 +590,14 @@ public:
   {
     using Iterator = decltype( _storage->outputs.begin() );
     using ElementType = signal;
-    detail::foreach_element_transform<Iterator, ElementType>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto const& po ) -> signal
-        { return { po.first, po.second }; },
-        fn );
+    detail::foreach_element_transform<Iterator, ElementType>( _storage->outputs.begin(), _storage->outputs.end(), []( auto const& po ) -> signal { return {po.first, po.second}; }, fn );
   }
 
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
     using Iterator = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<Iterator, signal>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto const& po ) -> signal
-        { return { po.first, po.second }; },
-        fn );
+    detail::foreach_element_transform<Iterator, signal>( _storage->outputs.begin(), _storage->outputs.end(), []( auto const& po ) -> signal { return {po.first, po.second}; }, fn );
   }
 
   template<typename Fn>
@@ -620,8 +606,7 @@ public:
     auto r = range<uint32_t>( 1u, _storage->nodes.size() ); /* start from 1 to avoid constants */
     detail::foreach_element_if(
         r.begin(), r.end(),
-        [this]( auto n )
-        { return !is_pi( n ); },
+        [this]( auto n ) { return !is_pi( n ); },
         fn );
   }
 
@@ -632,10 +617,7 @@ public:
       return;
 
     const auto& node = _storage->nodes[n];
-    detail::foreach_element_transform<uint32_t*, signal>(
-        node.fanin, node.fanin + node.fanin_size, []( auto c ) -> signal
-        { return { c, false }; },
-        fn );
+    detail::foreach_element_transform<uint32_t*, signal>( node.fanin, node.fanin + node.fanin_size, []( auto c ) -> signal { return { c, false }; }, fn );
   }
 #pragma endregion
 
@@ -802,8 +784,7 @@ public:
 #pragma region Custom node values
   void clear_values() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n )
-                   { n.value = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.value = 0; } );
   }
 
   auto value( node const& n ) const
@@ -830,8 +811,7 @@ public:
 #pragma region Visited flags
   void clear_visited() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n )
-                   { n.visited = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.visited = 0; } );
   }
 
   auto visited( node const& n ) const
@@ -887,7 +867,7 @@ namespace std
 template<>
 struct hash<mockturtle::abstract_xag_network::signal>
 {
-  uint64_t operator()( mockturtle::abstract_xag_network::signal const& s ) const noexcept
+  uint64_t operator()( mockturtle::abstract_xag_network::signal const &s ) const noexcept
   {
     uint64_t k = s.index;
     k ^= k >> 33;

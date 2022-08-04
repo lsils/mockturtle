@@ -39,10 +39,10 @@
 
 #include "../traits.hpp"
 
-#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <cstdio>
 
 namespace mockturtle
 {
@@ -63,7 +63,7 @@ inline void encode( std::vector<unsigned char>& buffer, uint32_t lit )
   buffer.push_back( ch );
 }
 
-} // namespace detail
+} /* detail */
 
 /*! \brief Writes a combinational AIG network in binary AIGER format into a file
  *
@@ -104,19 +104,18 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
 
   /* HEADER */
   char string_buffer[1024];
-  sprintf( string_buffer, "aig %u %u %u %u %u\n", M, aig.num_pis(), /*latches*/ 0, aig.num_pos(), aig.num_gates() );
-  os.write( &string_buffer[0], sizeof( unsigned char ) * strlen( string_buffer ) );
+  sprintf( string_buffer, "aig %u %u %u %u %u\n", M, aig.num_pis(), /*latches*/0, aig.num_pos(), aig.num_gates() );
+  os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) );
 
   /* POs */
-  aig.foreach_po( [&]( signal const& f )
-                  {
+  aig.foreach_po( [&]( signal const& f ){
     sprintf( string_buffer, "%u\n", uint32_t(2*aig.node_to_index( aig.get_node( f ) ) + aig.is_complemented( f )) );
-    os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) ); } );
+    os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) );
+  });
 
   /* GATES */
   std::vector<unsigned char> buffer;
-  aig.foreach_gate( [&]( node const& n )
-                    {
+  aig.foreach_gate( [&]( node const& n ){
     std::vector<uint32_t> lits;
     lits.push_back( 2*aig.node_to_index( n ) );
 
@@ -133,7 +132,8 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
 
     assert( lits[2] < lits[0] );
     detail::encode( buffer, lits[0] - lits[2] );
-    detail::encode( buffer, lits[2] - lits[1] ); } );
+    detail::encode( buffer, lits[2] - lits[1] );
+  });
 
   for ( const auto& b : buffer )
   {
@@ -141,29 +141,29 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
   }
 
   /* symbol table */
-  if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
+  if constexpr( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
   {
-    aig.foreach_pi( [&]( node const& i, uint32_t index )
-                    {
+    aig.foreach_pi( [&]( node const& i, uint32_t index ){
       if ( !aig.has_name( aig.make_signal( i ) ) )
         return;
 
       sprintf( string_buffer, "i%u %s\n",
                uint32_t( index ),
                aig.get_name( aig.make_signal( i ) ).c_str() );
-      os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) ); } );
+      os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) );
+    } );
   }
-  if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
+  if constexpr( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
   {
-    aig.foreach_po( [&]( signal const& f, uint32_t index )
-                    {
+    aig.foreach_po( [&]( signal const& f, uint32_t index ){
       if ( !aig.has_output_name( index ) )
         return;
 
       sprintf( string_buffer, "o%u %s\n",
                uint32_t( index ),
                aig.get_output_name( index ).c_str() );
-      os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) ); } );
+      os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) );
+    } );
   }
 
   /* COMMENT */

@@ -73,8 +73,7 @@ struct cut_enumeration_update_cut<cut_enumeration_gia_cut>
     (void)n;
     (void)cuts;
     cut->data.num_tree_leaves = std::count_if( cut.begin(), cut.end(),
-                                               [&ntk]( auto index )
-                                               {
+                                               [&ntk]( auto index ) {
                                                  return ntk.fanout_size( index ) == 1;
                                                } );
   }

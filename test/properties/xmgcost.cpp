@@ -27,3 +27,4 @@ TEST_CASE( "profile gates in XMG", "[xmgcost]" )
   CHECK( stats.maj == 1u );
   CHECK( stats.and_or == 1u );
 }
+

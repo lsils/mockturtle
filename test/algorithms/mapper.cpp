@@ -34,7 +34,7 @@ std::string const test_library = "GATE   inv1    1 O=!a;            PIN * INV 1 
 std::string const super_library = "test.genlib\n"
                                   "3\n"
                                   "2\n"
-                                  "6\n"
+                                  "6\n"       
                                   "* nand2 1 0\n"
                                   "inv1 3\n"
                                   "* nand2 2 4\n"

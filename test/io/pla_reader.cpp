@@ -16,12 +16,12 @@ TEST_CASE( "read a PLA file into an XAG", "[pla_reader]" )
 {
   xag_network xag;
 
-  std::string file{ ".i 3\n"
-                    ".o 2\n"
-                    "1-1 11\n"
-                    "00- 10\n"
-                    "-11 01\n"
-                    ".e\n" };
+  std::string file{".i 3\n"
+                   ".o 2\n"
+                   "1-1 11\n"
+                   "00- 10\n"
+                   "-11 01\n"
+                   ".e\n"};
 
   std::istringstream in( file );
   auto const result = lorina::read_pla( in, pla_reader( xag ) );

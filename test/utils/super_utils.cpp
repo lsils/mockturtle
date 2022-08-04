@@ -10,8 +10,8 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/npn.hpp>
 #include <kitty/static_truth_table.hpp>
+#include <kitty/npn.hpp>
 
 using namespace mockturtle;
 
@@ -25,7 +25,7 @@ std::string const genlib_library = "GATE zero 0 O=0;\n"
 std::string const super_library = "test.genlib\n"
                                   "3\n"
                                   "8\n"
-                                  "14\n"
+                                  "14\n"       
                                   "* and 1 0\n"
                                   "* and 2 3\n"
                                   "and 2 0\n"
@@ -45,7 +45,7 @@ TEST_CASE( "Standard gates super library", "[super_utils]" )
 
   std::istringstream in_genlib( genlib_library );
   auto result = lorina::read_genlib( in_genlib, genlib_reader( gates ) );
-
+  
   CHECK( result == lorina::return_code::success );
 
   super_utils<3> super( gates );
@@ -113,7 +113,7 @@ TEST_CASE( "Supergates super library", "[super_utils]" )
 
   std::istringstream in_genlib( genlib_library );
   auto result = lorina::read_genlib( in_genlib, genlib_reader( gates ) );
-
+  
   CHECK( result == lorina::return_code::success );
 
   std::istringstream in_super( super_library );

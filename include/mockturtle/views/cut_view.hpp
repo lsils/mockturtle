@@ -127,10 +127,10 @@ private:
     traverse( this->get_node( _root ) );
 
     /* restore visited */
-    // for ( auto const& n : _nodes )
+    //for ( auto const& n : _nodes )
     //{
-    //   this->set_visited( n, 0 );
-    // }
+    //  this->set_visited( n, 0 );
+    //}
   }
 
 public:
@@ -145,7 +145,7 @@ public:
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
-    std::vector<signal> roots{ { _root } };
+    std::vector<signal> roots{{_root}};
     detail::foreach_element( roots.begin(), roots.end(), fn );
   }
 
@@ -207,25 +207,26 @@ private:
     if ( this->visited( n ) == this->trav_id() )
       return;
 
-    this->foreach_fanin( n, [&]( const auto& f )
-                         { traverse( this->get_node( f ) ); } );
+    this->foreach_fanin( n, [&]( const auto& f ) {
+      traverse( this->get_node( f ) );
+    } );
 
     add_node( n );
     this->set_visited( n, this->trav_id() );
   }
 
 public:
-  unsigned _num_constants{ 1 };
-  unsigned _num_leaves{ 0 };
+  unsigned _num_constants{1};
+  unsigned _num_leaves{0};
   std::vector<node> _nodes;
   phmap::flat_hash_map<node, uint32_t> _node_to_index;
   signal _root;
 };
 
 template<class T>
-cut_view( T const&, std::vector<node<T>> const&, signal<T> const& ) -> cut_view<T>;
+cut_view(T const&, std::vector<node<T>> const&, signal<T> const&) -> cut_view<T>;
 
 template<class T, typename = std::enable_if_t<!std::is_same_v<typename T::signal, typename T::node>>>
-cut_view( T const&, std::vector<signal<T>> const&, signal<T> const& ) -> cut_view<T>;
+cut_view(T const&, std::vector<signal<T>> const&, signal<T> const&) -> cut_view<T>;
 
 } /* namespace mockturtle */

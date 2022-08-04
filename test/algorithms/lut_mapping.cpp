@@ -1,9 +1,9 @@
 #include <catch.hpp>
 
+#include <mockturtle/traits.hpp>
 #include <mockturtle/algorithms/lut_mapping.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/traits.hpp>
 #include <mockturtle/views/mapping_view.hpp>
 
 using namespace mockturtle;
@@ -62,16 +62,13 @@ TEST_CASE( "LUT mapping of 2-LUT network", "[lut_mapping]" )
   aig_network aig;
 
   std::vector<aig_network::signal> a( 2 ), b( 2 );
-  std::generate( a.begin(), a.end(), [&aig]()
-                 { return aig.create_pi(); } );
-  std::generate( b.begin(), b.end(), [&aig]()
-                 { return aig.create_pi(); } );
+  std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
   auto carry = aig.create_pi();
 
   carry_ripple_adder_inplace( aig, a, b, carry );
 
-  std::for_each( a.begin(), a.end(), [&]( auto f )
-                 { aig.create_po( f ); } );
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
   aig.create_po( carry );
 
   mapping_view mapped_aig{ aig };
@@ -85,16 +82,13 @@ TEST_CASE( "LUT mapping of 8-LUT network", "[lut_mapping]" )
   aig_network aig;
 
   std::vector<aig_network::signal> a( 8 ), b( 8 );
-  std::generate( a.begin(), a.end(), [&aig]()
-                 { return aig.create_pi(); } );
-  std::generate( b.begin(), b.end(), [&aig]()
-                 { return aig.create_pi(); } );
+  std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
   auto carry = aig.get_constant( false );
 
   carry_ripple_adder_inplace( aig, a, b, carry );
 
-  std::for_each( a.begin(), a.end(), [&]( auto f )
-                 { aig.create_po( f ); } );
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
   aig.create_po( carry );
 
   mapping_view mapped_aig{ aig };
@@ -108,16 +102,13 @@ TEST_CASE( "LUT mapping of 64-LUT network", "[lut_mapping]" )
   aig_network aig;
 
   std::vector<aig_network::signal> a( 64 ), b( 64 );
-  std::generate( a.begin(), a.end(), [&aig]()
-                 { return aig.create_pi(); } );
-  std::generate( b.begin(), b.end(), [&aig]()
-                 { return aig.create_pi(); } );
+  std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
   auto carry = aig.get_constant( false );
 
   carry_ripple_adder_inplace( aig, a, b, carry );
 
-  std::for_each( a.begin(), a.end(), [&]( auto f )
-                 { aig.create_po( f ); } );
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
   aig.create_po( carry );
 
   mapping_view mapped_aig{ aig };

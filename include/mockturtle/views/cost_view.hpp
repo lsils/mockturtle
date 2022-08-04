@@ -46,10 +46,10 @@ namespace mockturtle
 
 /*! \brief Implements `get_cost` methods for networks.
  *
- * This view computes the cost of the entire network, a subnetwork, and
- * also fanin cone of a single node. It maintains the context of each
- * node, which is the aggregated variables that affect the cost a node.
- *
+ * This view computes the cost of the entire network, a subnetwork, and 
+ * also fanin cone of a single node. It maintains the context of each 
+ * node, which is the aggregated variables that affect the cost a node. 
+ * 
  * **Required network functions:**
  * - `size`
  * - `get_node`
@@ -95,8 +95,7 @@ public:
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
 
-    add_event = Ntk::events().register_add_event( [this]( auto const& n )
-                                                  { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   explicit cost_view( Ntk const& ntk, RecCostFn const& cost_fn = {} )
@@ -112,8 +111,7 @@ public:
     static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
 
     update_cost();
-    add_event = Ntk::events().register_add_event( [this]( auto const& n )
-                                                  { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   explicit cost_view( cost_view<Ntk, RecCostFn> const& other )
@@ -121,8 +119,7 @@ public:
         _cost_fn( other._cost_fn ),
         context( other.context )
   {
-    add_event = Ntk::events().register_add_event( [this]( auto const& n )
-                                                  { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
 
   cost_view<Ntk, RecCostFn>& operator=( cost_view<Ntk, RecCostFn> const& other )
@@ -138,8 +135,7 @@ public:
     context = other.context;
     _cost_fn = other._cost_fn;
 
-    add_event = Ntk::events().register_add_event( [this]( auto const& n )
-                                                  { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
 
     return *this;
   }
@@ -203,8 +199,9 @@ public:
     context.resize();
 
     std::vector<context_t> fanin_costs;
-    this->foreach_fanin( n, [&]( auto const& f )
-                         { fanin_costs.emplace_back( context[this->get_node( f )] ); } );
+    this->foreach_fanin( n, [&]( auto const& f ) {
+      fanin_costs.emplace_back( context[this->get_node( f )] );
+    } );
     context[n] = _cost_fn( *this, n, fanin_costs );
     _cost_fn( *this, n, _cost, context[n] );
   }
@@ -251,8 +248,9 @@ private:
     else
     {
       std::vector<context_t> fanin_costs;
-      this->foreach_fanin( n, [&]( auto const& f )
-                           { fanin_costs.emplace_back( compute_cost( this->get_node( f ), _c ) ); } );
+      this->foreach_fanin( n, [&]( auto const& f ) {
+        fanin_costs.emplace_back( compute_cost( this->get_node( f ), _c ) );
+      } );
       _context = context[n] = _cost_fn( *this, n, fanin_costs );
     }
     _cost_fn( *this, n, _c, _context );
@@ -262,8 +260,9 @@ private:
   void compute_cost()
   {
     _cost = 0u; /* must define the zero initialization */
-    this->foreach_po( [&]( auto const& f )
-                      { compute_cost( this->get_node( f ), _cost ); } );
+    this->foreach_po( [&]( auto const& f ) {
+      compute_cost( this->get_node( f ), _cost );
+    } );
   }
 
   node_map<context_t, Ntk> context;

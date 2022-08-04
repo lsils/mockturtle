@@ -81,13 +81,12 @@ public:
     {
       old2new[xag.get_node( xag.get_constant( true ) )] = dest.get_constant( true );
     }
-    xag.foreach_pi( [&]( auto const& n )
-                    {
+    xag.foreach_pi( [&]( auto const& n ) {
       old2new[n] = dest.create_pi();
-      lfi[n].emplace_back( n ); } );
-    topo_view topo{ xag };
-    topo.foreach_node( [&]( auto const& n )
-                       {
+      lfi[n].emplace_back( n );
+    } );
+    topo_view topo{xag};
+    topo.foreach_node( [&]( auto const& n ) {
       if ( xag.is_constant( n ) || xag.is_pi( n ) )
         return;
 
@@ -121,10 +120,12 @@ public:
           children.push_back( old2new[f] ^ xag.is_complemented( f ) );
         } );
         old2new[n] = dest.create_and( children[0], children[1] );
-      } } );
+      }
+    } );
 
-    xag.foreach_po( [&]( auto const& f )
-                    { dest.create_po( old2new[f] ^ xag.is_complemented( f ) ); } );
+    xag.foreach_po( [&]( auto const& f ) {
+      dest.create_po( old2new[f] ^ xag.is_complemented( f ) );
+    } );
 
     return cleanup_dangling( dest );
   }
@@ -169,13 +170,13 @@ inline xag_network xag_dont_cares_optimization( xag_network const& xag )
   xag_network dest;
   old_to_new[xag.get_constant( false )] = dest.get_constant( false );
 
-  xag.foreach_pi( [&]( auto const& n )
-                  { old_to_new[n] = dest.create_pi(); } );
+  xag.foreach_pi( [&]( auto const& n ) {
+    old_to_new[n] = dest.create_pi();
+  } );
 
   satisfiability_dont_cares_checker<xag_network> checker( xag );
 
-  topo_view<xag_network>{ xag }.foreach_node( [&]( auto const& n )
-                                              {
+  topo_view<xag_network>{xag}.foreach_node( [&]( auto const& n ) {
     if ( xag.is_constant( n ) || xag.is_pi( n ) )
       return;
 
@@ -198,10 +199,12 @@ inline xag_network xag_dont_cares_optimization( xag_network const& xag )
     else /* is XOR */
     {
       old_to_new[n] = dest.create_xor( fanin[0], fanin[1] );
-    } } );
+    }
+  } );
 
-  xag.foreach_po( [&]( auto const& f )
-                  { dest.create_po( old_to_new[f] ^ xag.is_complemented( f ) ); } );
+  xag.foreach_po( [&]( auto const& f ) {
+    dest.create_po( old_to_new[f] ^ xag.is_complemented( f ) );
+  } );
 
   return dest;
 }
@@ -211,7 +214,7 @@ inline xag_network xag_dont_cares_optimization( xag_network const& xag )
  * See `exact_linear_resynthesis_optimization` for an example implementation
  * of this function.
  */
-inline xag_network linear_resynthesis_optimization( xag_network const& xag, std::function<xag_network( xag_network const& )> linear_resyn, std::function<void( std::vector<uint32_t> const& )> const& on_ignore_inputs = {} )
+inline xag_network linear_resynthesis_optimization( xag_network const& xag, std::function<xag_network(xag_network const&)> linear_resyn, std::function<void(std::vector<uint32_t> const&)> const& on_ignore_inputs = {} )
 {
   const auto num_ands = *multiplicative_complexity( xag );
   if ( num_ands == 0u )
@@ -249,8 +252,7 @@ inline xag_network exact_linear_resynthesis_optimization( xag_network const& xag
   exact_linear_synthesis_params ps;
   ps.conflict_limit = conflict_limit;
 
-  const auto linear_resyn = [&]( xag_network const& linear )
-  {
+  const auto linear_resyn = [&]( xag_network const& linear ) {
     if ( const auto optimized = exact_linear_resynthesis<xag_network, Solver>( linear, ps ); optimized )
     {
       return *optimized;
@@ -261,8 +263,7 @@ inline xag_network exact_linear_resynthesis_optimization( xag_network const& xag
     }
   };
 
-  const auto on_ignore_inputs = [&]( std::vector<uint32_t> const& ignore )
-  {
+  const auto on_ignore_inputs = [&]( std::vector<uint32_t> const& ignore ) {
     ps.ignore_inputs.push_back( ignore );
   };
 

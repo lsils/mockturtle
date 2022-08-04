@@ -1,11 +1,12 @@
 #include <catch.hpp>
 
-#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
-#include <mockturtle/algorithms/experimental/sim_resub.hpp>
 #include <mockturtle/algorithms/experimental/window_resub.hpp>
-#include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/algorithms/experimental/sim_resub.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/io/aiger_reader.hpp>
+
 
 using namespace mockturtle;
 using namespace mockturtle::experimental;
@@ -17,7 +18,7 @@ TEST_CASE( "Enumerative 0-resub", "[aig_resyn]" )
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
   auto n0 = aig.create_and( !x0, !x1 );
-  auto n1 = aig.create_and( x0, !n0 );
+  auto n1 = aig.create_and(  x0, !n0 );
   aig.create_po( n1 );
 
   const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
@@ -97,7 +98,7 @@ TEST_CASE( "Enumerative 1-resub: OR", "[aig_resyn]" )
   aig_network aig;
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
-  auto n0 = aig.create_and( x0, !x1 );
+  auto n0 = aig.create_and(  x0, !x1 );
   auto n1 = aig.create_and( !x1, !n0 );
   aig.create_po( n1 );
 
@@ -125,9 +126,9 @@ TEST_CASE( "Enumerative 2-resub: OR-OR", "[aig_resyn]" )
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
   auto x2 = aig.create_pi();
-  auto n0 = aig.create_and( x0, !x2 );
+  auto n0 = aig.create_and(  x0, !x2 );
   auto n1 = aig.create_and( !x1, !x2 );
-  auto n2 = aig.create_and( !n0, n1 );
+  auto n2 = aig.create_and( !n0,  n1 );
   aig.create_po( n2 );
 
   const auto tt = simulate<kitty::static_truth_table<3u>>( aig )[0];
@@ -154,9 +155,9 @@ TEST_CASE( "Enumerative 2-resub: AND-AND", "[aig_resyn]" )
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
   auto x2 = aig.create_pi();
-  auto n0 = aig.create_and( x0, x1 );
-  auto n1 = aig.create_and( x0, x2 );
-  auto n2 = aig.create_and( n0, n1 );
+  auto n0 = aig.create_and(  x0, x1 );
+  auto n1 = aig.create_and(  x0, x2 );
+  auto n2 = aig.create_and(  n0, n1 );
   aig.create_po( n2 );
 
   const auto tt = simulate<kitty::static_truth_table<3u>>( aig )[0];
@@ -183,9 +184,9 @@ TEST_CASE( "Enumerative 2-resub: OR-AND", "[aig_resyn]" )
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
   auto x2 = aig.create_pi();
-  auto n0 = aig.create_and( !x0, x1 );
+  auto n0 = aig.create_and( !x0,  x1 );
   auto n1 = aig.create_and( !x2, !n0 );
-  auto n2 = aig.create_and( !x2, n1 );
+  auto n2 = aig.create_and( !x2,  n1 );
   aig.create_po( n2 );
 
   const auto tt = simulate<kitty::static_truth_table<3u>>( aig )[0];
@@ -213,13 +214,13 @@ TEST_CASE( "Enumerative 3-resub: AND-2OR", "[aig_resyn]" )
   auto x1 = aig.create_pi();
   auto x2 = aig.create_pi();
   auto x3 = aig.create_pi();
-  auto n0 = aig.create_and( x0, x2 );
-  auto n1 = aig.create_and( x1, x3 );
-  auto n2 = aig.create_and( x0, x3 );
-  auto n3 = aig.create_and( x1, x2 );
+  auto n0 = aig.create_and( x0,  x2 );
+  auto n1 = aig.create_and( x1,  x3 );
+  auto n2 = aig.create_and( x0,  x3 );
+  auto n3 = aig.create_and( x1,  x2 );
   auto n4 = aig.create_and( !n0, !n1 );
   auto n5 = aig.create_and( !n2, !n3 );
-  auto n6 = aig.create_and( n4, n5 );
+  auto n6 = aig.create_and( n4,  n5 );
   aig.create_po( !n6 );
 
   const auto tt = simulate<kitty::static_truth_table<4u>>( aig )[0];

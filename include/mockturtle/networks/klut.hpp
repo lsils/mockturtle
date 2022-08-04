@@ -225,14 +225,14 @@ public:
 
   signal create_not( signal const& a )
   {
-    return _create_node( { a }, 3 );
+    return _create_node( {a}, 3 );
   }
 #pragma endregion
 
 #pragma region Create binary functions
   signal create_and( signal a, signal b )
   {
-    return _create_node( { a, b }, 4 );
+    return _create_node( {a, b}, 4 );
   }
 
   signal create_nand( signal a, signal b )
@@ -242,59 +242,56 @@ public:
 
   signal create_or( signal a, signal b )
   {
-    return _create_node( { a, b }, 6 );
+    return _create_node( {a, b}, 6 );
   }
 
   signal create_lt( signal a, signal b )
   {
-    return _create_node( { a, b }, 8 );
+    return _create_node( {a, b}, 8 );
   }
 
   signal create_le( signal a, signal b )
   {
-    return _create_node( { a, b }, 11 );
+    return _create_node( {a, b}, 11 );
   }
 
   signal create_xor( signal a, signal b )
   {
-    return _create_node( { a, b }, 12 );
+    return _create_node( {a, b}, 12 );
   }
 #pragma endregion
 
 #pragma region Create ternary functions
-  signal create_maj( signal a, signal b, signal c )
+signal create_maj( signal a, signal b, signal c )
   {
-    return _create_node( { a, b, c }, 14 );
+    return _create_node( {a, b, c}, 14 );
   }
 
   signal create_ite( signal a, signal b, signal c )
   {
-    return _create_node( { a, b, c }, 16 );
+    return _create_node( {a, b, c}, 16 );
   }
 
   signal create_xor3( signal a, signal b, signal c )
   {
-    return _create_node( { a, b, c }, 18 );
+    return _create_node( {a, b, c}, 18 );
   }
 #pragma endregion
 
 #pragma region Create nary functions
   signal create_nary_and( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b )
-                        { return create_and( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
   }
 
   signal create_nary_or( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b )
-                        { return create_or( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
   }
 
   signal create_nary_xor( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b )
-                        { return create_xor( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_xor( a, b ); } );
   }
 #pragma endregion
 
@@ -325,7 +322,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      ( *fn )( index );
+      (*fn)( index );
     }
 
     return index;
@@ -361,8 +358,7 @@ public:
         if ( child == old_node )
         {
           std::vector<signal> old_children( n.children.size() );
-          std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c )
-                          { return c.index; } );
+          std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c ) { return c.index; } );
           child = new_signal;
 
           // increment fan-out of new node
@@ -370,7 +366,7 @@ public:
 
           for ( auto const& fn : _events->on_modified )
           {
-            ( *fn )( i, old_children );
+            (*fn)( i, old_children );
           }
         }
       }
@@ -421,7 +417,7 @@ public:
 
   auto num_gates() const
   {
-    return static_cast<uint32_t>( _storage->nodes.size() - _storage->inputs.size() - 2 );
+    return static_cast<uint32_t>(_storage->nodes.size() - _storage->inputs.size() - 2 );
   }
 
   uint32_t fanin_size( node const& n ) const
@@ -477,25 +473,25 @@ public:
   node ci_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() );
-    return *( _storage->inputs.begin() + index );
+    return *(_storage->inputs.begin() + index);
   }
 
   signal co_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() );
-    return ( _storage->outputs.begin() + index )->index;
+    return (_storage->outputs.begin() + index)->index;
   }
 
   node pi_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() );
-    return *( _storage->inputs.begin() + index );
+    return *(_storage->inputs.begin() + index);
   }
 
   signal po_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() );
-    return ( _storage->outputs.begin() + index )->index;
+    return (_storage->outputs.begin() + index)->index;
   }
 #pragma endregion
 
@@ -517,10 +513,7 @@ public:
   void foreach_co( Fn&& fn ) const
   {
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto o )
-        { return o.index; },
-        fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
   }
 
   template<typename Fn>
@@ -533,21 +526,16 @@ public:
   void foreach_po( Fn&& fn ) const
   {
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto o )
-        { return o.index; },
-        fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
   }
 
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
     auto r = range<uint64_t>( 2u, _storage->nodes.size() ); /* start from 2 to avoid constants */
-    detail::foreach_element_if(
-        r.begin(), r.end(),
-        [this]( auto n )
-        { return !is_ci( n ); },
-        fn );
+    detail::foreach_element_if( r.begin(), r.end(),
+                                [this]( auto n ) { return !is_ci( n ); },
+                                fn );
   }
 
   template<typename Fn>
@@ -557,10 +545,7 @@ public:
       return;
 
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f )
-        { return f.index; },
-        fn );
+    detail::foreach_element_transform<IteratorType, uint32_t>( _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f ) { return f.index; }, fn );
   }
 #pragma endregion
 
@@ -569,7 +554,7 @@ public:
   iterates_over_t<Iterator, bool>
   compute( node const& n, Iterator begin, Iterator end ) const
   {
-    uint32_t index{ 0 };
+    uint32_t index{0};
     while ( begin != end )
     {
       index <<= 1;
@@ -613,8 +598,7 @@ public:
 #pragma region Custom node values
   void clear_values() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n )
-                   { n.data[0].h2 = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[0].h2 = 0; } );
   }
 
   uint32_t value( node const& n ) const
@@ -641,8 +625,7 @@ public:
 #pragma region Visited flags
   void clear_visited() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n )
-                   { n.data[1].h2 = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[1].h2 = 0; } );
   }
 
   auto visited( node const& n ) const

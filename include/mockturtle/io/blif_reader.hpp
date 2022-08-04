@@ -38,8 +38,8 @@
 #pragma once
 
 #include "../networks/aig.hpp"
-#include "../networks/cover.hpp"
 #include "../networks/sequential.hpp"
+#include "../networks/cover.hpp"
 #include "../traits.hpp"
 
 #include <kitty/kitty.hpp>
@@ -57,7 +57,7 @@ namespace mockturtle
  * **Required network functions:**
  * - `create_pi`
  * - `create_po`
- * - `create_node` or `create_cover_node`
+ * - `create_node` or `create_cover_node` 
  * - `get_constant`
  *
    \verbatim embed:rst
@@ -65,7 +65,7 @@ namespace mockturtle
    .. code-block:: c++
       klut_network klut;
       lorina::read_blif( "file.blif", blif_reader( klut ) );
-
+      
       cover_network cover;
       lorina::read_blif( "file.blif", blif_reader( cover ) );
    \endverbatim
@@ -211,7 +211,7 @@ public:
         ntk_.set_name( signals[output], output );
         ntk_.set_output_name( outputs.size() + latches.size(), input );
       }
-
+      
       latches.emplace_back( input );
     }
   }
@@ -243,7 +243,7 @@ public:
     if constexpr ( std::is_same<typename Ntk::base_type, cover_network>::value )
     {
       std::vector<kitty::cube> cubes;
-      bool is_sop = ( first_output_value == '1' );
+      bool is_sop =  ( first_output_value == '1' );
       for ( const auto& c : cover )
       {
         assert( c.second.size() == 1 );

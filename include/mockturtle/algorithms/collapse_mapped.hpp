@@ -74,8 +74,7 @@ public:
     std::unordered_map<node<NtkSource>, signal<NtkDest>> opposites;
 
     /* initial driver types */
-    ntk.foreach_po( [&]( auto const& f )
-                    {
+    ntk.foreach_po( [&]( auto const& f ) {
       switch ( node_driver_type[f] )
       {
       case driver_type::none:
@@ -90,11 +89,11 @@ public:
       case driver_type::mixed:
       default:
         break;
-      } } );
+      }
+    } );
 
     /* it could be that internal nodes also point to an output driver node */
-    ntk.foreach_node( [&]( auto const n )
-                      {
+    ntk.foreach_node( [&]( auto const n ) {
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) || !ntk.is_cell_root( n ) )
         return;
 
@@ -103,11 +102,11 @@ public:
         {
           node_driver_type[fanin] = driver_type::mixed;
         }
-      } ); } );
+      } );
+    } );
 
     /* constants */
-    auto add_constant_to_map = [&]( bool value )
-    {
+    auto add_constant_to_map = [&]( bool value ) {
       const auto n = ntk.get_node( ntk.get_constant( value ) );
       switch ( node_driver_type[n] )
       {
@@ -135,8 +134,7 @@ public:
     }
 
     /* primary inputs */
-    ntk.foreach_pi( [&]( auto n )
-                    {
+    ntk.foreach_pi( [&]( auto n ) {
       signal<NtkDest> dest_signal;
       switch ( node_driver_type[n] )
       {
@@ -163,12 +161,12 @@ public:
       {
         if ( ntk.has_name( ntk.make_signal( n ) ) )
           dest.set_name( dest_signal, ntk.get_name( ntk.make_signal( n ) ) );
-      } } );
+      }
+    } );
 
     /* nodes */
-    topo_view topo{ ntk };
-    topo.foreach_node( [&]( auto n )
-                       {
+    topo_view topo{ntk};
+    topo.foreach_node( [&]( auto n ) {
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) || !ntk.is_cell_root( n ) )
         return;
 
@@ -193,11 +191,11 @@ public:
         node_to_signal[n] = dest.create_node( children, ntk.cell_function( n ) );
         opposites[n] = dest.create_node( children, ~ntk.cell_function( n ) );
         break;
-      } } );
+      }
+    } );
 
     /* outputs */
-    ntk.foreach_po( [&]( auto const& f, auto index )
-                    {
+    ntk.foreach_po( [&]( auto const& f, auto index ) {
       (void)index;
 
       if ( ntk.is_complemented( f ) && node_driver_type[f] == driver_type::mixed )
@@ -215,7 +213,8 @@ public:
         {
           dest.set_output_name( index, ntk.get_output_name( index ) );
         }
-      } } );
+      }
+      });
   }
 
 private:

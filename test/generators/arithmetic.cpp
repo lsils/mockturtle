@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include <mockturtle/traits.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/io/write_verilog.hpp>
@@ -9,7 +10,6 @@
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
-#include <mockturtle/traits.hpp>
 
 #include <kitty/static_truth_table.hpp>
 
@@ -18,8 +18,7 @@ using namespace mockturtle;
 template<class IntType = uint64_t>
 inline IntType to_int( std::vector<bool> const& sim )
 {
-  return std::accumulate( sim.rbegin(), sim.rend(), IntType( 0 ), []( auto x, auto y )
-                          { return ( x << 1 ) + y; } );
+  return std::accumulate( sim.rbegin(), sim.rend(), IntType( 0 ), []( auto x, auto y ) { return ( x << 1 ) + y; } );
 }
 
 TEST_CASE( "build a full adder with an AIG", "[arithmetic]" )
@@ -62,16 +61,13 @@ TEST_CASE( "build a 2-bit adder with an AIG", "[arithmetic]" )
   aig_network aig;
 
   std::vector<aig_network::signal> a( 2 ), b( 2 );
-  std::generate( a.begin(), a.end(), [&aig]()
-                 { return aig.create_pi(); } );
-  std::generate( b.begin(), b.end(), [&aig]()
-                 { return aig.create_pi(); } );
+  std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
   auto carry = aig.create_pi();
 
   carry_ripple_adder_inplace( aig, a, b, carry );
 
-  std::for_each( a.begin(), a.end(), [&]( auto f )
-                 { aig.create_po( f ); } );
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
   aig.create_po( carry );
 
   CHECK( aig.num_pis() == 5 );
@@ -98,16 +94,13 @@ Ntk create_adder( uint32_t width, AdderFn&& adder )
   Ntk ntk;
 
   std::vector<typename Ntk::signal> a( width ), b( width );
-  std::generate( a.begin(), a.end(), [&ntk]()
-                 { return ntk.create_pi(); } );
-  std::generate( b.begin(), b.end(), [&ntk]()
-                 { return ntk.create_pi(); } );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
   auto carry = ntk.get_constant( false );
 
   adder( ntk, a, b, carry );
 
-  std::for_each( a.begin(), a.end(), [&]( auto f )
-                 { ntk.create_po( f ); } );
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
   ntk.create_po( carry );
 
   CHECK( ntk.num_pis() == 2 * width );
@@ -176,16 +169,13 @@ Ntk create_subtractor()
   Ntk ntk;
 
   std::vector<typename Ntk::signal> a( 8 ), b( 8 );
-  std::generate( a.begin(), a.end(), [&ntk]()
-                 { return ntk.create_pi(); } );
-  std::generate( b.begin(), b.end(), [&ntk]()
-                 { return ntk.create_pi(); } );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
   auto carry = ntk.get_constant( true );
 
   carry_ripple_subtractor_inplace( ntk, a, b, carry );
 
-  std::for_each( a.begin(), a.end(), [&]( auto f )
-                 { ntk.create_po( f ); } );
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { ntk.create_po( f ); } );
   ntk.create_po( ntk.create_not( carry ) );
 
   CHECK( ntk.num_pis() == 16 );
@@ -221,10 +211,8 @@ Ntk create_multiplier()
   Ntk ntk;
 
   std::vector<typename Ntk::signal> a( 8 ), b( 8 );
-  std::generate( a.begin(), a.end(), [&ntk]()
-                 { return ntk.create_pi(); } );
-  std::generate( b.begin(), b.end(), [&ntk]()
-                 { return ntk.create_pi(); } );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&ntk]() { return ntk.create_pi(); } );
 
   for ( auto const& o : carry_ripple_multiplier( ntk, a, b ) )
   {
@@ -271,13 +259,12 @@ TEST_CASE( "build an 8-bit multiplier with different networks", "[arithmetic]" )
 }
 
 template<typename Ntk>
-Ntk create_sideways_sum_adder( uint32_t size )
+Ntk create_sideways_sum_adder(uint32_t size)
 {
   Ntk ntk;
 
   std::vector<typename Ntk::signal> a( size );
-  std::generate( a.begin(), a.end(), [&ntk]()
-                 { return ntk.create_pi(); } );
+  std::generate( a.begin(), a.end(), [&ntk]() { return ntk.create_pi(); } );
 
   for ( auto const& o : sideways_sum_adder( ntk, a ) )
   {
@@ -285,7 +272,7 @@ Ntk create_sideways_sum_adder( uint32_t size )
   }
 
   CHECK( ntk.num_pis() == size );
-  CHECK( ntk.num_pos() == floor( log2( double( size ) ) ) + 1 );
+  CHECK( ntk.num_pos() == floor(log2(double(size))) + 1 );
 
   return ntk;
 }

@@ -23,8 +23,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <algorithm>
 #include <string>
+#include <algorithm>
 #include <vector>
 
 #include <fmt/format.h>
@@ -53,20 +53,16 @@ int main()
 
     aig_network aig;
     std::vector<aig_network::signal> as( i ), bs( i ), cs( i );
-    std::generate( as.begin(), as.end(), [&]()
-                   { return aig.create_pi(); } );
-    std::generate( bs.begin(), bs.end(), [&]()
-                   { return aig.create_pi(); } );
-    std::generate( cs.begin(), cs.end(), [&]()
-                   { return aig.create_pi(); } );
+    std::generate( as.begin(), as.end(), [&]() { return aig.create_pi(); } );
+    std::generate( bs.begin(), bs.end(), [&]() { return aig.create_pi(); } );
+    std::generate( cs.begin(), cs.end(), [&]() { return aig.create_pi(); } );
 
     auto o1 = carry_ripple_multiplier( aig, carry_ripple_multiplier( aig, as, bs ), cs );
     auto o2 = carry_ripple_multiplier( aig, as, carry_ripple_multiplier( aig, bs, cs ) );
     std::vector<aig_network::signal> xors( o1.size() );
     std::transform( o1.begin(), o1.end(), o2.begin(),
                     xors.begin(),
-                    [&]( auto const& a, auto const& b )
-                    { return aig.create_xor( a, b ); } );
+                    [&]( auto const& a, auto const& b ) { return aig.create_xor( a, b ); } );
     aig.create_po( aig.create_nary_or( xors ) );
 
     equivalence_checking_stats st;
@@ -75,7 +71,7 @@ int main()
     lut_mapping_params lmps;
     lmps.cut_enumeration_ps.cut_size = 8;
     lut_mapping_stats lmst;
-    mapping_view<aig_network, true> mapped_aig{ aig };
+    mapping_view<aig_network, true> mapped_aig{aig};
     lut_mapping<decltype( mapped_aig ), true, cut_enumeration_mf_cut>( mapped_aig, lmps, &lmst );
     const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
 

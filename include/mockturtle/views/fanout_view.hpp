@@ -204,18 +204,17 @@ private:
   {
     if ( _ps.update_on_add )
     {
-      add_event = Ntk::events().register_add_event( [this]( auto const& n )
-                                                    {
+      add_event = Ntk::events().register_add_event( [this]( auto const& n ) {
         _fanout.resize();
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].push_back( n );
-        } ); } );
+        } );
+      } );
     }
 
     if ( _ps.update_on_modified )
     {
-      modified_event = Ntk::events().register_modified_event( [this]( auto const& n, auto const& previous )
-                                                              {
+      modified_event = Ntk::events().register_modified_event( [this]( auto const& n, auto const& previous ) {
         (void)previous;
         for ( auto const& f : previous )
         {
@@ -223,17 +222,18 @@ private:
         }
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].push_back( n );
-        } ); } );
+        } );
+      } );
     }
 
     if ( _ps.update_on_delete )
     {
-      delete_event = Ntk::events().register_delete_event( [this]( auto const& n )
-                                                          {
+      delete_event = Ntk::events().register_delete_event( [this]( auto const& n ) {
         _fanout[n].clear();
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
-        } ); } );
+        } );
+      } );
     }
   }
 
@@ -259,14 +259,15 @@ private:
   {
     _fanout.reset();
 
-    this->foreach_gate( [&]( auto const& n )
-                        { this->foreach_fanin( n, [&]( auto const& c )
-                                               {
+    this->foreach_gate( [&]( auto const& n ) {
+      this->foreach_fanin( n, [&]( auto const& c ) {
         auto& fanout = _fanout[c];
         if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
         {
           fanout.push_back( n );
-        } } ); } );
+        }
+      } );
+    } );
   }
 
   node_map<std::vector<node>, Ntk> _fanout;

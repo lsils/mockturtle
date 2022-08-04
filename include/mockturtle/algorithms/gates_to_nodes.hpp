@@ -44,9 +44,9 @@
 #include <kitty/operations.hpp>
 #include <kitty/print.hpp>
 
+#include "simulation.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
-#include "simulation.hpp"
 
 namespace mockturtle
 {
@@ -101,8 +101,9 @@ NtkDest gates_to_nodes( NtkSource const& ntk )
   NtkDest dest;
   node_map<signal<NtkDest>, NtkSource> node_to_signal( ntk );
 
-  ntk.foreach_pi( [&]( auto const& n )
-                  { node_to_signal[n] = dest.create_pi(); } );
+  ntk.foreach_pi( [&]( auto const& n ) {
+    node_to_signal[n] = dest.create_pi();
+  } );
 
   node_to_signal[ntk.get_constant( false )] = dest.get_constant( false );
   if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
@@ -110,8 +111,7 @@ NtkDest gates_to_nodes( NtkSource const& ntk )
     node_to_signal[ntk.get_constant( true )] = dest.get_constant( true );
   }
 
-  ntk.foreach_gate( [&]( auto const& n )
-                    {
+  ntk.foreach_gate( [&]( auto const& n ) {
     std::vector<signal<NtkDest>> children;
     auto func = ntk.node_function( n );
     ntk.foreach_fanin( n, [&]( auto const& c, auto i ) {
@@ -122,11 +122,13 @@ NtkDest gates_to_nodes( NtkSource const& ntk )
       children.push_back( node_to_signal[c] );
     } );
 
-    node_to_signal[n] = dest.create_node( children, func ); } );
+    node_to_signal[n] = dest.create_node( children, func );
+  } );
 
   /* outputs */
-  ntk.foreach_po( [&]( auto const& s )
-                  { dest.create_po( ntk.is_complemented( s ) ? dest.create_not( node_to_signal[s] ) : node_to_signal[s] ); } );
+  ntk.foreach_po( [&]( auto const& s ) {
+    dest.create_po( ntk.is_complemented( s ) ? dest.create_not( node_to_signal[s] ) : node_to_signal[s] );
+  } );
 
   return dest;
 }
@@ -149,8 +151,7 @@ NtkDest single_node_network( NtkSrc const& src )
 
   NtkDest ntk;
   std::vector<signal<NtkDest>> pis( src.num_pis() );
-  std::generate( pis.begin(), pis.end(), [&]()
-                 { return ntk.create_pi(); } );
+  std::generate( pis.begin(), pis.end(), [&]() { return ntk.create_pi(); } );
 
   default_simulator<kitty::dynamic_truth_table> sim( src.num_pis() );
   const auto tts = simulate<kitty::dynamic_truth_table>( src, sim );

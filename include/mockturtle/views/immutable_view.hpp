@@ -86,4 +86,4 @@ public:
   void substitute_node( node const& old_node, node const& new_node ) = delete;
 };
 
-} // namespace mockturtle
+}

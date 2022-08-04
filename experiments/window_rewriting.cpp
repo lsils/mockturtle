@@ -25,11 +25,11 @@
 
 #include "experiments.hpp"
 
-#include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/window_rewriting.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <lorina/aiger.hpp>
 
 #include <fmt/format.h>
 
@@ -37,11 +37,11 @@ using namespace mockturtle;
 
 struct stats
 {
-  uint32_t estimated_gain{ 0 };
-  uint32_t real_gain{ 0 };
-  uint32_t num_substitutions{ 0 };
-  uint32_t num_iterations{ 0 };
-  stopwatch<>::duration time_total{ 0 };
+  uint32_t estimated_gain{0};
+  uint32_t real_gain{0};
+  uint32_t num_substitutions{0};
+  uint32_t num_iterations{0};
+  stopwatch<>::duration time_total{0};
 };
 
 aig_network optimize( aig_network const& aig, window_rewriting_params const& ps, window_rewriting_stats& st )
@@ -54,7 +54,7 @@ int main()
 {
   using namespace experiments;
   experiment<std::string, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, double, bool>
-      exp( "window_rewriting", "benchmark", "size_before", "size_after", "est. gain", "real gain", "resubs", "iterations", "runtime", "equivalent" );
+    exp( "window_rewriting", "benchmark", "size_before", "size_after", "est. gain", "real gain", "resubs", "iterations", "runtime", "equivalent" );
 
   for ( auto const& benchmark : all_benchmarks( iscas | epfl ) )
   {
@@ -76,7 +76,7 @@ int main()
     stats st{};
 
     /* optimize benchmark until convergence */
-    uint64_t const size_before{ aig.num_gates() };
+    uint64_t const size_before{aig.num_gates()};
     uint64_t size_current{};
     do
     {
@@ -93,7 +93,7 @@ int main()
       st.time_total += win_st.time_total;
 
       // st.report();
-    } while ( aig.num_gates() < size_current );
+    } while( aig.num_gates() < size_current );
 
     auto const cec = benchmark != "hyp" ? abc_cec( aig, benchmark ) : true;
 

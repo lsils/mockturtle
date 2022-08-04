@@ -41,8 +41,8 @@
 #include <vector>
 
 #include "../algorithms/cnf.hpp"
-#include "../traits.hpp"
 #include "../utils/include/percy.hpp"
+#include "../traits.hpp"
 
 #include <bill/sat/interface/common.hpp>
 #include <bill/sat/interface/glucose.hpp>
@@ -58,7 +58,7 @@ struct cnf_view_params
 
   /*! \brief Automatically update clauses when network is modified.
              Only meaningful when AllowModify = true. */
-  bool auto_update{ true };
+  bool auto_update{true};
 };
 
 /* forward declaration */
@@ -73,7 +73,7 @@ class cnf_view_impl : public Ntk
 {
 public:
   cnf_view_impl( CnfView& cnf_view )
-      : Ntk()
+    : Ntk()
   {
     (void)cnf_view;
   }
@@ -114,13 +114,14 @@ public:
     }
 
     uint32_t v = 0;
-    Ntk::foreach_pi( [&]( auto const& n )
-                     { literals_[n] = bill::lit_type( ++v, bill::lit_type::polarities::positive ); } );
-
-    Ntk::foreach_gate( [&]( auto const& n )
-                       {
+    Ntk::foreach_pi( [&]( auto const& n ) {
       literals_[n] = bill::lit_type( ++v, bill::lit_type::polarities::positive );
-      cnf_view_.on_add( n, false ); } );
+    } );
+
+    Ntk::foreach_gate( [&]( auto const& n ) {
+      literals_[n] = bill::lit_type( ++v, bill::lit_type::polarities::positive );
+      cnf_view_.on_add( n, false );
+    } );
   }
 
   inline bill::var_type add_var()
@@ -338,8 +339,7 @@ public:
    */
   inline std::optional<bool> solve( bill::result::clause_type const& assumptions, uint32_t limit = 0 )
   {
-    const auto _write_dimacs = [&]( bill::result::clause_type const& assumps )
-    {
+    const auto _write_dimacs = [&]( bill::result::clause_type const& assumps ) {
       if ( ps_.write_dimacs )
       {
         for ( const auto& a : assumps )
@@ -349,18 +349,17 @@ public:
         }
         dimacs_.set_nr_vars( solver_.num_variables() );
 #ifdef _MSC_VER
-        FILE* fd = nullptr;
+        FILE *fd = nullptr;
         fopen_s( &fd, ps_.write_dimacs->c_str(), "w" );
 #else
-        FILE* fd = fopen( ps_.write_dimacs->c_str(), "w" );
+        FILE *fd = fopen( ps_.write_dimacs->c_str(), "w" );
 #endif
         dimacs_.to_dimacs( fd );
         fclose( fd );
       }
     };
 
-    const auto _solve = [&]( bill::result::clause_type const& assumps ) -> std::optional<bool>
-    {
+    const auto _solve = [&]( bill::result::clause_type const& assumps ) -> std::optional<bool> {
       const auto res = solver_.solve( assumps, limit );
 
       switch ( res )
@@ -406,8 +405,9 @@ public:
   inline std::optional<bool> solve( int limit = 0 )
   {
     bill::result::clause_type assumptions;
-    Ntk::foreach_po( [&]( auto const& f )
-                     { assumptions.push_back( lit( f ) ); } );
+    Ntk::foreach_po( [&]( auto const& f ) {
+      assumptions.push_back( lit( f ) );
+    } );
     return solve( assumptions, limit );
   }
 
@@ -428,8 +428,9 @@ public:
   std::vector<bool> pi_model_values()
   {
     std::vector<bool> values( Ntk::num_pis() );
-    Ntk::foreach_pi( [&]( auto const& n, auto i )
-                     { values[i] = model_value( n ); } );
+    Ntk::foreach_pi( [&]( auto const& n, auto i ) {
+      values[i] = model_value( n );
+    } );
     return values;
   }
 
@@ -437,8 +438,9 @@ public:
   void block()
   {
     bill::result::clause_type blocking_clause;
-    Ntk::foreach_pi( [&]( auto const& n )
-                     { blocking_clause.push_back( bill::lit_type( var( n ), model_value( n ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive ) ); } );
+    Ntk::foreach_pi( [&]( auto const& n ) {
+      blocking_clause.push_back( bill::lit_type( var( n ), model_value( n ) ? bill::lit_type::polarities::negative : bill::lit_type::polarities::positive ) );
+    } );
     add_clause( blocking_clause );
   }
 
@@ -473,8 +475,7 @@ public:
   void add_clause( std::vector<signal> const& clause )
   {
     bill::result::clause_type lits;
-    std::transform( clause.begin(), clause.end(), std::back_inserter( lits ), [&]( auto const& s )
-                    { return lit( s ); } );
+    std::transform( clause.begin(), clause.end(), std::back_inserter( lits ), [&]( auto const& s ) { return lit( s ); } );
     add_clause( lits );
   }
 
@@ -490,21 +491,19 @@ public:
   {
     if constexpr ( std::conjunction_v<std::is_same<Lit, bill::lit_type>...> )
     {
-      add_clause( bill::result::clause_type{ { lits... } } );
+      add_clause( bill::result::clause_type{{lits...}} );
     }
     else
     {
-      add_clause( bill::result::clause_type{ { lit( lits )... } } );
+      add_clause( bill::result::clause_type{{lit( lits )...}} );
     }
   }
 
 private:
   void register_events()
   {
-    add_event = Ntk::events().register_add_event( [this]( auto const& n )
-                                                  { on_add( n ); } );
-    modified_event = Ntk::events().register_modified_event( [this]( auto const& n, auto const& previous )
-                                                            {
+    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+    modified_event = Ntk::events().register_modified_event( [this]( auto const& n, auto const& previous ) {
       (void)previous;
       if constexpr ( AllowModify )
       {
@@ -518,9 +517,9 @@ private:
       (void)n;
       (void)this;
       assert( false && "nodes should not be modified in cnf_view" );
-      std::abort(); } );
-    delete_event = Ntk::events().register_delete_event( [this]( auto const& n )
-                                                        {
+      std::abort();
+    } );
+    delete_event = Ntk::events().register_delete_event( [this]( auto const& n ) {
       if constexpr ( AllowModify )
       {
         if ( ps_.auto_update )
@@ -533,7 +532,8 @@ private:
       (void)n;
       (void)this;
       assert( false && "nodes should not be deleted in cnf_view" );
-      std::abort(); } );
+      std::abort();
+    } );
   }
 
   void on_add( node const& n, bool add_var = true ) /* add_var is only used when AllowModify = true */
@@ -568,8 +568,7 @@ private:
       node_lit = lit( Ntk::make_signal( n ) );
     }
 
-    const auto _add_clause = [&]( bill::result::clause_type const& clause )
-    {
+    const auto _add_clause = [&]( bill::result::clause_type const& clause ) {
       if constexpr ( AllowModify )
       {
         bill::result::clause_type clause_ = clause;
@@ -583,8 +582,9 @@ private:
     };
 
     bill::result::clause_type child_lits;
-    Ntk::foreach_fanin( n, [&]( auto const& f )
-                        { child_lits.push_back( lit( f ) ); } );
+    Ntk::foreach_fanin( n, [&]( auto const& f ) {
+      child_lits.push_back( lit( f ) );
+    } );
 
     if constexpr ( has_is_and_v<Ntk> )
     {
@@ -686,6 +686,6 @@ private:
 };
 
 template<class T>
-cnf_view( T const& ) -> cnf_view<T, true>;
+cnf_view(T const&) -> cnf_view<T, true>;
 
 } /* namespace mockturtle */

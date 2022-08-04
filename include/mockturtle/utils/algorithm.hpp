@@ -113,27 +113,18 @@ constexpr auto range( T begin, T end )
 
     value_type curr_;
     bool operator!=( iterator const& other ) const { return curr_ != other.curr_; }
-    iterator& operator++()
-    {
-      ++curr_;
-      return *this;
-    }
-    iterator operator++( int )
-    {
-      auto copy = *this;
-      ++( *this );
-      return copy;
-    }
+    iterator& operator++() { ++curr_; return *this; }
+    iterator operator++(int) { auto copy = *this; ++(*this); return copy; }
     value_type operator*() const { return curr_; }
   };
   struct iterable_wrapper
   {
     T begin_;
     T end_;
-    auto begin() { return iterator{ begin_ }; }
-    auto end() { return iterator{ end_ }; }
+    auto begin() { return iterator{begin_}; }
+    auto end() { return iterator{end_}; }
   };
-  return iterable_wrapper{ begin, end };
+  return iterable_wrapper{begin, end};
 }
 
 template<class T, typename = std::enable_if_t<std::is_integral_v<T>>>

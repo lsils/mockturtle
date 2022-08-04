@@ -32,13 +32,13 @@
   \author Siang-Yun (Sonia) Lee
 */
 
-#include "../algorithms/reconv_cut.hpp"
 #include "../networks/aig.hpp"
-#include "../views/cut_view.hpp"
+#include "../algorithms/reconv_cut.hpp"
 #include "../views/topo_view.hpp"
+#include "../views/cut_view.hpp"
 
-#include <algorithm>
 #include <unordered_map>
+#include <algorithm>
 
 namespace mockturtle
 {
@@ -66,19 +66,18 @@ inline aig_network self_dualize_aig( aig_network const& src_aig )
   /* copy inputs */
   node_to_signal_one[0] = dest_aig.get_constant( false );
   node_to_signal_two[0] = dest_aig.get_constant( false );
-  src_aig.foreach_pi( [&]( const auto& n )
-                      {
+  src_aig.foreach_pi( [&]( const auto& n ){
       auto const pi = dest_aig.create_pi();
       node_to_signal_one[n] = pi;
-      node_to_signal_two[n] = !pi; } );
+      node_to_signal_two[n] = !pi;
+    });
 
   reconvergence_driven_cut_parameters ps;
   ps.max_leaves = 99999999u;
   reconvergence_driven_cut_statistics st;
   detail::reconvergence_driven_cut_impl<aig_network, false, false> cut_generator( src_aig, ps, st );
 
-  src_aig.foreach_po( [&]( const auto& f )
-                      {
+  src_aig.foreach_po( [&]( const auto& f ){
       auto leaves = cut_generator.run( { src_aig.get_node( f ) } ).first;
       std::sort( std::begin( leaves ), std::end( leaves ) );
 
@@ -121,7 +120,8 @@ inline aig_network self_dualize_aig( aig_network const& src_aig )
 
       auto const new_pi = dest_aig.create_pi();
       auto const output = dest_aig.create_or( dest_aig.create_and( new_pi, output_signal_one ), dest_aig.create_and( !new_pi, !output_signal_two ) );
-      dest_aig.create_po( output ); } );
+      dest_aig.create_po( output );
+    });
 
   return dest_aig;
 }

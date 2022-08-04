@@ -93,15 +93,15 @@ public:
     static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
     static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
 
-    const auto c0 = this->get_node( this->get_constant( false ) );
-    _constants.push_back( c0 );
-    _node_to_index.emplace( c0, _node_to_index.size() );
+    const auto c0 = this->get_node( this->get_constant( false ));
+    _constants.push_back( c0);
+    _node_to_index.emplace( c0, _node_to_index.size());
 
-    const auto c1 = this->get_node( this->get_constant( true ) );
+    const auto c1 = this->get_node( this->get_constant( true));
     if ( c1 != c0 )
     {
-      _constants.push_back( c1 );
-      _node_to_index.emplace( c1, _node_to_index.size() );
+      _constants.push_back( c1);
+      _node_to_index.emplace( c1, _node_to_index.size());
       ++_num_constants;
     }
 
@@ -130,8 +130,7 @@ public:
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
-    if ( _empty )
-      return;
+    if ( _empty ) return;
     std::vector<signal> signals( 1, this->make_signal( _root ) );
     detail::foreach_element( signals.begin(), signals.end(), fn );
   }
@@ -202,23 +201,23 @@ private:
     /* we break from the loop over the fanins, if we find that _nodes contains
        too many nodes; the return value is stored in ret_val */
     bool ret_val = true;
-    this->foreach_fanin( n, [&]( auto const& f )
-                         {
+    this->foreach_fanin( n, [&]( auto const& f ) {
       _nodes.push_back( this->get_node( f ) );
       if ( this->decr_value( this->get_node( f ) ) == 0 && ( _nodes.size() > _limit || !collect( this->get_node( f ) ) ) )
       {
         ret_val = false;
         return false;
       }
-      return true; } );
+      return true;
+    } );
 
     return ret_val;
   }
 
   void compute_sets()
   {
-    // std::sort( _nodes.begin(), _nodes.end(),
-    //            [&]( auto const& n1, auto const& n2 ) { return static_cast<Ntk*>( this )->node_to_index( n1 ) < static_cast<Ntk*>( this )->node_to_index( n2 ); } );
+    //std::sort( _nodes.begin(), _nodes.end(),
+    //           [&]( auto const& n1, auto const& n2 ) { return static_cast<Ntk*>( this )->node_to_index( n1 ) < static_cast<Ntk*>( this )->node_to_index( n2 ); } );
     std::sort( _nodes.begin(), _nodes.end() );
 
     for ( auto const& n : _nodes )
@@ -261,12 +260,8 @@ private:
     _colors.clear();
     const auto _size = _num_constants + _inner.size() + _leaves.size();
     _colors.resize( _size, 0 );
-    std::for_each( _leaves.begin(), _leaves.end(), [&]( auto& l )
-                   { _colors[_node_to_index[l]] = 2u; } );
-    for ( auto i = 0u; i < _num_constants; ++i )
-    {
-      _colors[i] = 2u;
-    }
+    std::for_each( _leaves.begin(), _leaves.end(), [&]( auto& l ) { _colors[_node_to_index[l]] = 2u; } );
+    for ( auto i = 0u; i < _num_constants; ++i ) { _colors[i] = 2u; }
     topo_sort_rec( _root );
 
     assert( _inner.size() == _topo.size() );
@@ -285,8 +280,9 @@ private:
     _colors[idx] = 1u;
 
     /* mark children */
-    Ntk::foreach_fanin( n, [&]( auto const& f )
-                        { topo_sort_rec( Ntk::get_node( f ) ); } );
+    Ntk::foreach_fanin( n, [&]( auto const& f ) {
+      topo_sort_rec( Ntk::get_node( f ) );
+    } );
 
     /* mark node n permanently */
     _colors[idx] = 2u;
@@ -297,14 +293,15 @@ private:
 public:
   std::vector<node> _nodes, _constants, _leaves, _inner, _topo;
   std::vector<uint8_t> _colors;
-  unsigned _num_constants{ 1 }, _num_leaves{ 0 };
+  unsigned _num_constants{1}, _num_leaves{0};
   phmap::flat_hash_map<node, uint32_t> _node_to_index;
   node _root;
-  bool _empty{ true };
-  uint32_t _limit{ 100 };
+  bool _empty{true};
+  uint32_t _limit{100};
 };
 
 template<class T>
-mffc_view( T const&, typename T::node const& ) -> mffc_view<T>;
+mffc_view(T const&, typename T::node const&) -> mffc_view<T>;
+
 
 } /* namespace mockturtle */

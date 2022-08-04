@@ -13,12 +13,11 @@ using namespace mockturtle;
 
 TEST_CASE( "Find some simple functions", "[exact_mc_synthesis]" )
 {
-  auto const test_one = [&]( uint32_t num_vars, const std::string& expression )
-  {
+  auto const test_one = [&]( uint32_t num_vars, const std::string& expression ) {
     kitty::dynamic_truth_table func( num_vars );
     kitty::create_from_expression( func, expression );
     const auto xag = exact_mc_synthesis<xag_network>( func );
-    CHECK( simulate<kitty::dynamic_truth_table>( xag, { num_vars } )[0] == func );
+    CHECK( simulate<kitty::dynamic_truth_table>( xag, {num_vars} )[0] == func );
   };
 
   test_one( 3u, "<abc>" );
@@ -37,7 +36,7 @@ TEST_CASE( "Find multiple MAJ with exact MC synthesis", "[exact_mc_synthesis]" )
   CHECK( xags.size() == 2u );
   for ( auto const& xag : xags )
   {
-    CHECK( simulate<kitty::dynamic_truth_table>( xag, { 3u } )[0] == func );
+    CHECK( simulate<kitty::dynamic_truth_table>( xag, {3u} )[0] == func );
   }
 }
 
@@ -49,6 +48,6 @@ TEST_CASE( "Find multiple ITE with exact MC synthesis", "[exact_mc_synthesis]" )
   CHECK( xags.size() == 1u );
   for ( auto const& xag : xags )
   {
-    CHECK( simulate<kitty::dynamic_truth_table>( xag, { 3u } )[0] == func );
+    CHECK( simulate<kitty::dynamic_truth_table>( xag, {3u} )[0] == func );
   }
 }

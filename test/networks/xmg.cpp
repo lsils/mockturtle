@@ -124,8 +124,7 @@ TEST_CASE( "create and use primary outputs in an xmg", "[xmg]" )
   CHECK( xmg.size() == 2 );
   CHECK( xmg.num_pos() == 3 );
 
-  xmg.foreach_po( [&]( auto s, auto i )
-                  {
+  xmg.foreach_po( [&]( auto s, auto i ) {
     switch ( i )
     {
     case 0:
@@ -137,7 +136,8 @@ TEST_CASE( "create and use primary outputs in an xmg", "[xmg]" )
     case 2:
       CHECK( s == !x1 );
       break;
-    } } );
+    }
+  } );
 }
 
 TEST_CASE( "create unary operations in an xmg", "[xmg]" )
@@ -284,15 +284,15 @@ TEST_CASE( "clone a node in xmg network", "[xmg]" )
   auto c2 = xmg2.create_pi();
   CHECK( xmg2.size() == 4 );
 
-  auto f2 = xmg2.clone_node( xmg1, xmg1.get_node( f1 ), { a2, b2, c2 } );
-  xmg2.clone_node( xmg1, xmg1.get_node( g1 ), { a2, b2, c2 } );
+  auto f2 = xmg2.clone_node( xmg1, xmg1.get_node( f1 ), {a2, b2, c2} );
+  xmg2.clone_node( xmg1, xmg1.get_node( g1 ), {a2, b2, c2} );
   CHECK( xmg2.size() == 6 );
 
-  xmg2.foreach_fanin( xmg2.get_node( f2 ), [&]( auto const& s )
-                      { CHECK( !xmg2.is_complemented( s ) ); } );
+  xmg2.foreach_fanin( xmg2.get_node( f2 ), [&]( auto const& s ) {
+    CHECK( !xmg2.is_complemented( s ) );
+  } );
 
-  xmg2.foreach_gate( [&]( auto const& n, auto i )
-                     {
+  xmg2.foreach_gate( [&]( auto const& n, auto i ) {
     switch ( i )
     {
     default:
@@ -303,7 +303,8 @@ TEST_CASE( "clone a node in xmg network", "[xmg]" )
     case 1:
       CHECK( xmg2.is_xor3( n ) );
       break;
-    } } );
+    }
+  } );
 }
 
 TEST_CASE( "structural properties of an xmg", "[xmg]" )
@@ -363,118 +364,98 @@ TEST_CASE( "node and signal iteration in an xmg", "[xmg]" )
   CHECK( xmg.size() == 6 );
 
   /* iterate over nodes */
-  uint32_t mask{ 0 }, counter{ 0 };
-  xmg.foreach_node( [&]( auto n, auto i )
-                    { mask |= ( 1 << n ); counter += i; } );
+  uint32_t mask{0}, counter{0};
+  xmg.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 63 );
   CHECK( counter == 15 );
 
   mask = 0;
-  xmg.foreach_node( [&]( auto n )
-                    { mask |= ( 1 << n ); } );
+  xmg.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); } );
   CHECK( mask == 63 );
 
   mask = counter = 0;
-  xmg.foreach_node( [&]( auto n, auto i )
-                    { mask |= ( 1 << n ); counter += i; return false; } );
+  xmg.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 1 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xmg.foreach_node( [&]( auto n )
-                    { mask |= ( 1 << n ); return false; } );
+  xmg.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 1 );
 
   /* iterate over PIs */
   mask = counter = 0;
-  xmg.foreach_pi( [&]( auto n, auto i )
-                  { mask |= ( 1 << n ); counter += i; } );
+  xmg.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 14 );
   CHECK( counter == 3 );
 
   mask = 0;
-  xmg.foreach_pi( [&]( auto n )
-                  { mask |= ( 1 << n ); } );
+  xmg.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); } );
   CHECK( mask == 14 );
 
   mask = counter = 0;
-  xmg.foreach_pi( [&]( auto n, auto i )
-                  { mask |= ( 1 << n ); counter += i; return false; } );
+  xmg.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 2 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xmg.foreach_pi( [&]( auto n )
-                  { mask |= ( 1 << n ); return false; } );
+  xmg.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 2 );
 
   /* iterate over POs */
   mask = counter = 0;
-  xmg.foreach_po( [&]( auto s, auto i )
-                  { mask |= ( 1 << xmg.get_node( s ) ); counter += i; } );
+  xmg.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << xmg.get_node( s ) ); counter += i; } );
   CHECK( mask == 48 );
   CHECK( counter == 1 );
 
   mask = 0;
-  xmg.foreach_po( [&]( auto s )
-                  { mask |= ( 1 << xmg.get_node( s ) ); } );
+  xmg.foreach_po( [&]( auto s ) { mask |= ( 1 << xmg.get_node( s ) ); } );
   CHECK( mask == 48 );
 
   mask = counter = 0;
-  xmg.foreach_po( [&]( auto s, auto i )
-                  { mask |= ( 1 << xmg.get_node( s ) ); counter += i; return false; } );
+  xmg.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << xmg.get_node( s ) ); counter += i; return false; } );
   CHECK( mask == 16 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xmg.foreach_po( [&]( auto s )
-                  { mask |= ( 1 << xmg.get_node( s ) ); return false; } );
+  xmg.foreach_po( [&]( auto s ) { mask |= ( 1 << xmg.get_node( s ) ); return false; } );
   CHECK( mask == 16 );
 
   /* iterate over gates */
   mask = counter = 0;
-  xmg.foreach_gate( [&]( auto n, auto i )
-                    { mask |= ( 1 << n ); counter += i; } );
+  xmg.foreach_gate( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 48 );
   CHECK( counter == 1 );
 
   mask = 0;
-  xmg.foreach_gate( [&]( auto n )
-                    { mask |= ( 1 << n ); } );
+  xmg.foreach_gate( [&]( auto n ) { mask |= ( 1 << n ); } );
   CHECK( mask == 48 );
 
   mask = counter = 0;
-  xmg.foreach_gate( [&]( auto n, auto i )
-                    { mask |= ( 1 << n ); counter += i; return false; } );
+  xmg.foreach_gate( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 16 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xmg.foreach_gate( [&]( auto n )
-                    { mask |= ( 1 << n ); return false; } );
+  xmg.foreach_gate( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 16 );
 
   /* iterate over fanins */
   mask = counter = 0;
-  xmg.foreach_fanin( xmg.get_node( f1 ), [&]( auto s, auto i )
-                     { mask |= ( 1 << xmg.get_node( s ) ); counter += i; } );
+  xmg.foreach_fanin( xmg.get_node( f1 ), [&]( auto s, auto i ) { mask |= ( 1 << xmg.get_node( s ) ); counter += i; } );
   CHECK( mask == 14 );
   CHECK( counter == 3 );
 
   mask = 0;
-  xmg.foreach_fanin( xmg.get_node( f1 ), [&]( auto s )
-                     { mask |= ( 1 << xmg.get_node( s ) ); } );
+  xmg.foreach_fanin( xmg.get_node( f1 ), [&]( auto s ) { mask |= ( 1 << xmg.get_node( s ) ); } );
   CHECK( mask == 14 );
 
   mask = counter = 0;
-  xmg.foreach_fanin( xmg.get_node( f1 ), [&]( auto s, auto i )
-                     { mask |= ( 1 << xmg.get_node( s ) ); counter += i; return false; } );
+  xmg.foreach_fanin( xmg.get_node( f1 ), [&]( auto s, auto i ) { mask |= ( 1 << xmg.get_node( s ) ); counter += i; return false; } );
   CHECK( mask == 2 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xmg.foreach_fanin( xmg.get_node( f1 ), [&]( auto s )
-                     { mask |= ( 1 << xmg.get_node( s ) ); return false; } );
+  xmg.foreach_fanin( xmg.get_node( f1 ), [&]( auto s ) { mask |= ( 1 << xmg.get_node( s ) ); return false; } );
   CHECK( mask == 2 );
 }
 
@@ -496,14 +477,14 @@ TEST_CASE( "compute values in XMGs", "[xmg]" )
   xmg.create_po( f2 );
 
   {
-    std::vector<bool> values{ { true, false, true } };
+    std::vector<bool> values{{true, false, true}};
 
     CHECK( xmg.compute( xmg.get_node( f1 ), values.begin(), values.end() ) == false );
     CHECK( xmg.compute( xmg.get_node( f2 ), values.begin(), values.end() ) == true );
   }
 
   {
-    std::vector<kitty::dynamic_truth_table> xs{ 3, kitty::dynamic_truth_table( 3 ) };
+    std::vector<kitty::dynamic_truth_table> xs{3, kitty::dynamic_truth_table( 3 )};
     kitty::create_nth_var( xs[0], 0 );
     kitty::create_nth_var( xs[1], 1 );
     kitty::create_nth_var( xs[2], 2 );
@@ -513,143 +494,95 @@ TEST_CASE( "compute values in XMGs", "[xmg]" )
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{ 3 };
+    std::vector<kitty::partial_truth_table> xs{3};
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 );
-    xs[1].add_bit( 0 );
-    xs[2].add_bit( 0 );
+    xs[0].add_bit( 0 ); xs[1].add_bit( 0 ); xs[2].add_bit( 0 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 );
-    xs[1].add_bit( 0 );
-    xs[2].add_bit( 1 );
+    xs[0].add_bit( 0 ); xs[1].add_bit( 0 ); xs[2].add_bit( 1 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 );
-    xs[1].add_bit( 1 );
-    xs[2].add_bit( 0 );
+    xs[0].add_bit( 0 ); xs[1].add_bit( 1 ); xs[2].add_bit( 0 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 );
-    xs[1].add_bit( 1 );
-    xs[2].add_bit( 1 );
+    xs[0].add_bit( 0 ); xs[1].add_bit( 1 ); xs[2].add_bit( 1 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 );
-    xs[1].add_bit( 0 );
-    xs[2].add_bit( 0 );
+    xs[0].add_bit( 1 ); xs[1].add_bit( 0 ); xs[2].add_bit( 0 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 );
-    xs[1].add_bit( 0 );
-    xs[2].add_bit( 1 );
+    xs[0].add_bit( 1 ); xs[1].add_bit( 0 ); xs[2].add_bit( 1 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 );
-    xs[1].add_bit( 1 );
-    xs[2].add_bit( 0 );
+    xs[0].add_bit( 1 ); xs[1].add_bit( 1 ); xs[2].add_bit( 0 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 );
-    xs[1].add_bit( 1 );
-    xs[2].add_bit( 1 );
+    xs[0].add_bit( 1 ); xs[1].add_bit( 1 ); xs[2].add_bit( 1 );
 
     CHECK( xmg.compute( xmg.get_node( f1 ), xs.begin(), xs.end() ) == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
     CHECK( xmg.compute( xmg.get_node( f2 ), xs.begin(), xs.end() ) == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{ 3 };
+    std::vector<kitty::partial_truth_table> xs{3};
     kitty::partial_truth_table result;
 
-    xs[0].add_bit( 0 );
-    xs[1].add_bit( 0 );
-    xs[2].add_bit( 0 );
+    xs[0].add_bit( 0 ); xs[1].add_bit( 0 ); xs[2].add_bit( 0 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 );
-    xs[1].add_bit( 0 );
-    xs[2].add_bit( 1 );
+    xs[0].add_bit( 0 ); xs[1].add_bit( 0 ); xs[2].add_bit( 1 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 );
-    xs[1].add_bit( 1 );
-    xs[2].add_bit( 0 );
+    xs[0].add_bit( 0 ); xs[1].add_bit( 1 ); xs[2].add_bit( 0 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 0 );
-    xs[1].add_bit( 1 );
-    xs[2].add_bit( 1 );
+    xs[0].add_bit( 0 ); xs[1].add_bit( 1 ); xs[2].add_bit( 1 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 );
-    xs[1].add_bit( 0 );
-    xs[2].add_bit( 0 );
+    xs[0].add_bit( 1 ); xs[1].add_bit( 0 ); xs[2].add_bit( 0 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 );
-    xs[1].add_bit( 0 );
-    xs[2].add_bit( 1 );
+    xs[0].add_bit( 1 ); xs[1].add_bit( 0 ); xs[2].add_bit( 1 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 );
-    xs[1].add_bit( 1 );
-    xs[2].add_bit( 0 );
+    xs[0].add_bit( 1 ); xs[1].add_bit( 1 ); xs[2].add_bit( 0 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
 
-    xs[0].add_bit( 1 );
-    xs[1].add_bit( 1 );
-    xs[2].add_bit( 1 );
+    xs[0].add_bit( 1 ); xs[1].add_bit( 1 ); xs[2].add_bit( 1 );
 
-    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
-    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() );
-    CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
+    xmg.compute( xmg.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( ~xs[0] & xs[1] ) | ( ~xs[0] & xs[2] ) | ( xs[2] & xs[1] ) ) );
+    xmg.compute( xmg.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( ( xs[0] & ~xs[1] ) | ( xs[0] & xs[2] ) | ( xs[2] & ~xs[1] ) ) );
   }
 }
 
@@ -674,18 +607,19 @@ TEST_CASE( "custom node values in xmgs", "[xmg]" )
   CHECK( xmg.size() == 6 );
 
   xmg.clear_values();
-  xmg.foreach_node( [&]( auto n )
-                    {
+  xmg.foreach_node( [&]( auto n ) {
     CHECK( xmg.value( n ) == 0 );
     xmg.set_value( n, static_cast<uint32_t>( n ) );
     CHECK( xmg.value( n ) == n );
     CHECK( xmg.incr_value( n ) == n );
     CHECK( xmg.value( n ) == n + 1 );
     CHECK( xmg.decr_value( n ) == n );
-    CHECK( xmg.value( n ) == n ); } );
+    CHECK( xmg.value( n ) == n );
+  } );
   xmg.clear_values();
-  xmg.foreach_node( [&]( auto n )
-                    { CHECK( xmg.value( n ) == 0 ); } );
+  xmg.foreach_node( [&]( auto n ) {
+    CHECK( xmg.value( n ) == 0 );
+  } );
 }
 
 TEST_CASE( "visited values in xmgs", "[xmg]" )
@@ -707,14 +641,15 @@ TEST_CASE( "visited values in xmgs", "[xmg]" )
   CHECK( xmg.size() == 6 );
 
   xmg.clear_visited();
-  xmg.foreach_node( [&]( auto n )
-                    {
+  xmg.foreach_node( [&]( auto n ) {
     CHECK( xmg.visited( n ) == 0 );
     xmg.set_visited( n, static_cast<uint32_t>( n ) );
-    CHECK( xmg.visited( n ) == n ); } );
+    CHECK( xmg.visited( n ) == n );
+  } );
   xmg.clear_visited();
-  xmg.foreach_node( [&]( auto n )
-                    { CHECK( xmg.visited( n ) == 0 ); } );
+  xmg.foreach_node( [&]( auto n ) {
+    CHECK( xmg.visited( n ) == 0 );
+  } );
 }
 
 TEST_CASE( "node substitution in xmgs", "[xmg]" )
@@ -726,15 +661,15 @@ TEST_CASE( "node substitution in xmgs", "[xmg]" )
 
   CHECK( xmg.size() == 4 );
 
-  xmg.foreach_fanin( xmg.get_node( f ), [&]( auto const& s )
-                     { CHECK( !xmg.is_complemented( s ) ); } );
+  xmg.foreach_fanin( xmg.get_node( f ), [&]( auto const& s ) {
+    CHECK( !xmg.is_complemented( s ) );
+  } );
 
   xmg.substitute_node( xmg.get_node( xmg.get_constant( false ) ), xmg.get_constant( true ) );
 
   CHECK( xmg.size() == 4 );
 
-  xmg.foreach_fanin( xmg.get_node( f ), [&]( auto const& s, auto i )
-                     {
+  xmg.foreach_fanin( xmg.get_node( f ), [&]( auto const& s, auto i ) {
     switch ( i )
     {
     case 0:
@@ -743,15 +678,15 @@ TEST_CASE( "node substitution in xmgs", "[xmg]" )
     default:
       CHECK( !xmg.is_complemented( s ) );
       break;
-    } } );
+    }
+  } );
 }
 
 TEST_CASE( "create nary functions in XMGs", "[xmg]" )
 {
   xmg_network xmg;
   std::vector<xmg_network::signal> pis( 8u );
-  std::generate( pis.begin(), pis.end(), [&]()
-                 { return xmg.create_pi(); } );
+  std::generate( pis.begin(), pis.end(), [&]() { return xmg.create_pi(); } );
   xmg.create_po( xmg.create_nary_and( pis ) );
   xmg.create_po( xmg.create_nary_or( pis ) );
   xmg.create_po( xmg.create_nary_xor( pis ) );
@@ -770,6 +705,7 @@ TEST_CASE( "create nary functions in XMGs", "[xmg]" )
   kitty::create_parity( copy );
   CHECK( result[2] == copy );
 }
+
 
 TEST_CASE( "substitute node with complemented node in xmg_network", "[xmg]" )
 {
@@ -798,6 +734,7 @@ TEST_CASE( "substitute node with complemented node in xmg_network", "[xmg]" )
   CHECK( simulate<kitty::static_truth_table<2u>>( xmg )[0]._bits == 0x7 );
 }
 
+
 TEST_CASE( "substitute node with dependency in xmg_network", "[xmg]" )
 {
   xmg_network xmg{};
@@ -814,13 +751,13 @@ TEST_CASE( "substitute node with dependency in xmg_network", "[xmg]" )
 
   /**
    * issue #545
-   *
+   * 
    *      f2
    *     /  \
    *    /   f3
    *    \  /  \
    *  1->f1    a
-   *
+   * 
    * stack:
    * 1. push (f2->f3)
    * 2. push (f3->a)
@@ -833,6 +770,7 @@ TEST_CASE( "substitute node with dependency in xmg_network", "[xmg]" )
   CHECK( xmg.is_dead( xmg.get_node( f1 ) ) );
   CHECK( xmg.is_dead( xmg.get_node( f2 ) ) );
   CHECK( xmg.is_dead( xmg.get_node( f3 ) ) );
-  xmg.foreach_po( [&]( auto s )
-                  { CHECK( xmg.is_dead( xmg.get_node( s ) ) == false ); } );
+  xmg.foreach_po( [&]( auto s ) {
+    CHECK( xmg.is_dead( xmg.get_node( s ) ) == false );
+  } );
 }

@@ -172,7 +172,7 @@ private:
   bool _enable;
   std::ostream& _os;
 
-  std::string spinner{ "     .    ..   ...  .... ....." };
+  std::string spinner{"     .    ..   ...  .... ....."};
 };
 
 } // namespace mockturtle

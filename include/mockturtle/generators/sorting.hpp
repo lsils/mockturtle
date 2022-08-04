@@ -33,8 +33,8 @@
 
 #pragma once
 
-#include <cstdint>
 #include <numeric>
+#include <cstdint>
 
 namespace mockturtle
 {
@@ -140,8 +140,7 @@ void batcher_sort( uint32_t begin, uint32_t end, Fn&& compare_fn )
 template<class Fn>
 void batcher_sorting_network( uint32_t n, Fn&& compare_fn )
 {
-  if ( n < 2 )
-    return;
+  if ( n < 2 ) return;
   detail::batcher_sort( 0u, n, compare_fn );
 }
 

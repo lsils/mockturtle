@@ -59,13 +59,13 @@ namespace mockturtle
 struct xmg3_npn_resynthesis_params
 {
   /*! \brief Be verbose. */
-  bool verbose{ false };
+  bool verbose{false};
 };
 
 struct xmg3_npn_resynthesis_stats
 {
-  stopwatch<>::duration time_classes{ 0 };
-  stopwatch<>::duration time_db{ 0 };
+  stopwatch<>::duration time_classes{0};
+  stopwatch<>::duration time_db{0};
 
   uint32_t db_size;
   uint32_t covered_classes;
@@ -187,10 +187,10 @@ public:
     {
       std::unordered_map<node<DatabaseNtk>, signal<Ntk>> db_to_ntk;
 
-      db_to_ntk.insert( { 0, ntk.get_constant( false ) } );
+      db_to_ntk.insert( {0, ntk.get_constant( false )} );
       for ( auto i = 0; i < 4; ++i )
       {
-        db_to_ntk.insert( { i + 1, pis_perm[i] } );
+        db_to_ntk.insert( {i + 1, pis_perm[i]} );
       }
       auto f = copy_db_entry( ntk, _db.get_node( cand ), db_to_ntk );
       if ( _db.is_complemented( cand ) != ( ( phase >> 4 ) & 1 ) )
@@ -214,18 +214,18 @@ private:
     }
 
     std::vector<signal<Ntk>> fanin;
-    // std::array<signal<Ntk>, 2> fanin;
-    _db.foreach_fanin( n, [&]( auto const& f )
-                       {
+    //std::array<signal<Ntk>, 2> fanin;
+    _db.foreach_fanin( n, [&]( auto const& f ) {
       auto ntk_f = copy_db_entry( ntk, _db.get_node( f ), db_to_ntk );
       if ( _db.is_complemented( f ) )
       {
         ntk_f = ntk.create_not( ntk_f );
       }
-      fanin.push_back( ntk_f ); } );
+      fanin.push_back( ntk_f );
+    } );
 
     const auto f = _db.is_xor3( n ) ? ntk.create_xor3( fanin[0], fanin[1], fanin[2] ) : ntk.create_maj( fanin[0], fanin[1], fanin[2] );
-    db_to_ntk.insert( { n, f } );
+    db_to_ntk.insert( {n, f} );
     return f;
   }
 
@@ -234,18 +234,17 @@ private:
     stopwatch t( st.time_classes );
 
     kitty::dynamic_truth_table map( 16u );
-    std::transform( map.cbegin(), map.cend(), map.begin(), []( auto word )
-                    { return ~word; } );
+    std::transform( map.cbegin(), map.cend(), map.begin(), []( auto word ) { return ~word; } );
 
     int64_t index = 0;
     kitty::static_truth_table<4u> tt;
     while ( index != -1 )
     {
       kitty::create_from_words( tt, &index, &index + 1 );
-      const auto res = kitty::exact_npn_canonization( tt, [&]( const auto& tt )
-                                                      {
+      const auto res = kitty::exact_npn_canonization( tt, [&]( const auto& tt ) {
         _classes[*tt.cbegin()] = _repr.size();
-        kitty::clear_bit( map, *tt.cbegin() ); } );
+        kitty::clear_bit( map, *tt.cbegin() );
+      } );
       _repr.push_back( std::get<0>( res ) );
 
       /* find next non-classified truth table */
@@ -293,8 +292,7 @@ private:
 
     const auto sim_res = simulate_nodes<kitty::static_truth_table<4u>>( _db );
 
-    _db.foreach_node( [&]( auto n )
-                      {
+    _db.foreach_node( [&]( auto n ) {
       if ( _repr[_classes[*sim_res[n].cbegin()]] == sim_res[n] )
       {
         if ( _repr_to_signal.count( sim_res[n] ) == 0 )
@@ -320,7 +318,8 @@ private:
             _repr_to_signal[f].push_back( !_db.make_signal( n ) );
           }
         }
-      } } );
+      }
+    } );
 
     st.db_size = _db.size();
     st.covered_classes = static_cast<uint32_t>( _repr_to_signal.size() );
@@ -328,7 +327,7 @@ private:
 
   xmg3_npn_resynthesis_params ps;
   xmg3_npn_resynthesis_stats st;
-  xmg3_npn_resynthesis_stats* pst{ nullptr };
+  xmg3_npn_resynthesis_stats* pst{nullptr};
 
   std::vector<kitty::static_truth_table<4u>> _repr;
   std::vector<uint32_t> _classes;

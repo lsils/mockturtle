@@ -7,15 +7,15 @@
 #include <mockturtle/algorithms/node_resynthesis/xag_minmc2.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xmg3_npn.hpp>
+#include <mockturtle/views/fanout_view.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/properties/mccost.hpp>
-#include <mockturtle/traits.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
-#include <mockturtle/views/fanout_view.hpp>
+#include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
 
@@ -97,8 +97,9 @@ TEST_CASE( "In-place cut rewriting from constant", "[cut_rewriting]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  { CHECK( f == mig.get_constant( false ) ); } );
+  mig.foreach_po( [&]( auto const& f ) {
+    CHECK( f == mig.get_constant( false ) );
+  } );
 }
 
 TEST_CASE( "In-place cut rewriting from inverted constant", "[cut_rewriting]" )
@@ -116,8 +117,9 @@ TEST_CASE( "In-place cut rewriting from inverted constant", "[cut_rewriting]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  { CHECK( f == mig.get_constant( true ) ); } );
+  mig.foreach_po( [&]( auto const& f ) {
+    CHECK( f == mig.get_constant( true ) );
+  } );
 }
 
 TEST_CASE( "In-place cut rewriting from projection", "[cut_rewriting]" )
@@ -135,10 +137,10 @@ TEST_CASE( "In-place cut rewriting from projection", "[cut_rewriting]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  {
+  mig.foreach_po( [&]( auto const& f ) {
     CHECK( mig.get_node( f ) == 1 );
-    CHECK( !mig.is_complemented( f ) ); } );
+    CHECK( !mig.is_complemented( f ) );
+  } );
 }
 
 TEST_CASE( "In-place cut rewriting from inverted projection", "[cut_rewriting]" )
@@ -156,10 +158,10 @@ TEST_CASE( "In-place cut rewriting from inverted projection", "[cut_rewriting]" 
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  {
+  mig.foreach_po( [&]( auto const& f ) {
     CHECK( mig.get_node( f ) == 1 );
-    CHECK( mig.is_complemented( f ) ); } );
+    CHECK( mig.is_complemented( f ) );
+  } );
 }
 
 TEST_CASE( "In-place cut rewriting with exact LUT synthesis", "[cut_rewriting]" )
@@ -259,8 +261,9 @@ TEST_CASE( "Cut rewriting from constant", "[cut_rewriting]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  { CHECK( f == mig.get_constant( false ) ); } );
+  mig.foreach_po( [&]( auto const& f ) {
+    CHECK( f == mig.get_constant( false ) );
+  } );
 }
 
 TEST_CASE( "Cut rewriting from inverted constant", "[cut_rewriting]" )
@@ -276,8 +279,9 @@ TEST_CASE( "Cut rewriting from inverted constant", "[cut_rewriting]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  { CHECK( f == mig.get_constant( true ) ); } );
+  mig.foreach_po( [&]( auto const& f ) {
+    CHECK( f == mig.get_constant( true ) );
+  } );
 }
 
 TEST_CASE( "Cut rewriting from projection", "[cut_rewriting]" )
@@ -293,10 +297,10 @@ TEST_CASE( "Cut rewriting from projection", "[cut_rewriting]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  {
+  mig.foreach_po( [&]( auto const& f ) {
     CHECK( mig.get_node( f ) == 1 );
-    CHECK( !mig.is_complemented( f ) ); } );
+    CHECK( !mig.is_complemented( f ) );
+  } );
 }
 
 TEST_CASE( "Cut rewriting from inverted projection", "[cut_rewriting]" )
@@ -312,10 +316,10 @@ TEST_CASE( "Cut rewriting from inverted projection", "[cut_rewriting]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  {
+  mig.foreach_po( [&]( auto const& f ) {
     CHECK( mig.get_node( f ) == 1 );
-    CHECK( mig.is_complemented( f ) ); } );
+    CHECK( mig.is_complemented( f ) );
+  } );
 }
 
 TEST_CASE( "Cut rewriting with exact LUT synthesis", "[cut_rewriting]" )
@@ -411,8 +415,8 @@ TEST_CASE( "Cut rewriting with stacked fanout-depth views", "[cut_rewriting]" )
   using resyn_fn = xag_npn_resynthesis<aig_network>;
 
   resyn_fn resyn;
-  fanout_view fanout_aig{ aig };
-  depth_view<fanout_view<aig_network>, cost_fn> depth_aig{ fanout_aig };
+  fanout_view fanout_aig{aig};
+  depth_view<fanout_view<aig_network>, cost_fn> depth_aig{fanout_aig};
 
   cut_rewriting_params ps;
   cut_rewriting_stats st;
@@ -446,8 +450,8 @@ TEST_CASE( "Cut rewriting with stacked depth-fanout views", "[cut_rewriting]" )
   using resyn_fn = xag_npn_resynthesis<aig_network>;
 
   resyn_fn resyn;
-  fanout_view fanout_aig{ aig };
-  depth_view<fanout_view<aig_network>, cost_fn> depth_aig{ fanout_aig };
+  fanout_view fanout_aig{aig};
+  depth_view<fanout_view<aig_network>, cost_fn> depth_aig{fanout_aig};
 
   cut_rewriting_params ps;
   cut_rewriting_stats st;

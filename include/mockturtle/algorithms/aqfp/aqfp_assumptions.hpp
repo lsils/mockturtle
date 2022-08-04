@@ -36,23 +36,23 @@ namespace mockturtle
 {
 
 /*! \brief AQFP technology assumptions.
- *
+ * 
  * POs count toward the fanout sizes and always have to be branched.
  * If PIs need to be balanced, then they must also need to be branched.
  */
 struct aqfp_assumptions
 {
   /*! \brief Whether PIs need to be branched with splitters. */
-  bool branch_pis{ false };
+  bool branch_pis{false};
 
   /*! \brief Whether PIs need to be path-balanced. */
-  bool balance_pis{ false };
+  bool balance_pis{false};
 
   /*! \brief Whether POs need to be path-balanced. */
-  bool balance_pos{ true };
+  bool balance_pos{true};
 
   /*! \brief The maximum number of fanouts each splitter (buffer) can have. */
-  uint32_t splitter_capacity{ 3u };
+  uint32_t splitter_capacity{3u};
 };
 
 } // namespace mockturtle

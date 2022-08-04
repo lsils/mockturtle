@@ -1,8 +1,8 @@
 #include <catch.hpp>
 
 #include <mockturtle/networks/xag.hpp>
-#include <mockturtle/utils/recursive_cost_functions.hpp>
 #include <mockturtle/views/cost_view.hpp>
+#include <mockturtle/utils/recursive_cost_functions.hpp>
 
 using namespace mockturtle;
 
@@ -28,6 +28,7 @@ TEST_CASE( "create different cost views", "[cost_view]" )
   test_cost_view<xag_network>();
 }
 
+
 TEST_CASE( "compute size cost for xag network", "[cost_view]" )
 {
   xag_network xag;
@@ -41,8 +42,8 @@ TEST_CASE( "compute size cost for xag network", "[cost_view]" )
 
   cost_view cost_xag( xag, xag_size_cost_function<xag_network>() );
   CHECK( cost_xag.get_cost() == 4 );
-  CHECK( cost_xag.get_cost( xag.get_node( a ) ) == 0 );
-  CHECK( cost_xag.get_cost( xag.get_node( b ) ) == 0 );
+  CHECK( cost_xag.get_cost( xag.get_node( a  ) ) == 0 );
+  CHECK( cost_xag.get_cost( xag.get_node( b  ) ) == 0 );
   CHECK( cost_xag.get_cost( xag.get_node( f1 ) ) == 1 );
   CHECK( cost_xag.get_cost( xag.get_node( f2 ) ) == 2 );
   CHECK( cost_xag.get_cost( xag.get_node( f3 ) ) == 2 );
@@ -62,14 +63,14 @@ TEST_CASE( "compute size cost for xag window", "[cost_view]" )
 
   cost_view cost_xag( xag, xag_size_cost_function<xag_network>() );
   CHECK( cost_xag.get_cost() == 4 );
-  CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector( { a, b } ) ) == 1 );
-  CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector( { a, b } ) ) == 2 );
-  CHECK( cost_xag.get_cost( xag.get_node( f3 ), std::vector( { a, b } ) ) == 2 );
-  CHECK( cost_xag.get_cost( xag.get_node( f4 ), std::vector( { a, b } ) ) == 4 );
-  CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector( { f1, f2, f3 } ) ) == 0 );
-  CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector( { f1, f2, f3 } ) ) == 0 );
-  CHECK( cost_xag.get_cost( xag.get_node( f3 ), std::vector( { f1, f2, f3 } ) ) == 0 );
-  CHECK( cost_xag.get_cost( xag.get_node( f4 ), std::vector( { f1, f2, f3 } ) ) == 1 );
+  CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector({a,b}) ) == 1 );
+  CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector({a,b}) ) == 2 );
+  CHECK( cost_xag.get_cost( xag.get_node( f3 ), std::vector({a,b}) ) == 2 );
+  CHECK( cost_xag.get_cost( xag.get_node( f4 ), std::vector({a,b}) ) == 4 );
+  CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector({f1,f2,f3}) ) == 0 );
+  CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector({f1,f2,f3}) ) == 0 );
+  CHECK( cost_xag.get_cost( xag.get_node( f3 ), std::vector({f1,f2,f3}) ) == 0 );
+  CHECK( cost_xag.get_cost( xag.get_node( f4 ), std::vector({f1,f2,f3}) ) == 1 );
 }
 
 TEST_CASE( "compute depth cost for xag network", "[cost_view]" )
@@ -85,8 +86,8 @@ TEST_CASE( "compute depth cost for xag network", "[cost_view]" )
 
   cost_view cost_xag( xag, xag_depth_cost_function<xag_network>() );
   CHECK( cost_xag.get_cost() == 3 );
-  CHECK( cost_xag.get_cost( xag.get_node( a ) ) == 0 );
-  CHECK( cost_xag.get_cost( xag.get_node( b ) ) == 0 );
+  CHECK( cost_xag.get_cost( xag.get_node( a  ) ) == 0 );
+  CHECK( cost_xag.get_cost( xag.get_node( b  ) ) == 0 );
   CHECK( cost_xag.get_cost( xag.get_node( f1 ) ) == 1 );
   CHECK( cost_xag.get_cost( xag.get_node( f2 ) ) == 2 );
   CHECK( cost_xag.get_cost( xag.get_node( f3 ) ) == 2 );
@@ -106,12 +107,13 @@ TEST_CASE( "compute depth cost for xag window", "[cost_view]" )
 
   cost_view cost_xag( xag, xag_depth_cost_function<xag_network>() );
   CHECK( cost_xag.get_cost() == 3 );
-  CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector( { a, b } ) ) == 1 );
-  CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector( { a, b } ) ) == 2 );
-  CHECK( cost_xag.get_cost( xag.get_node( f3 ), std::vector( { a, b } ) ) == 2 );
-  CHECK( cost_xag.get_cost( xag.get_node( f4 ), std::vector( { a, b } ) ) == 3 );
-  CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector( { f1, f2, f3 } ) ) == 1 );
-  CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector( { f1, f2, f3 } ) ) == 2 );
-  CHECK( cost_xag.get_cost( xag.get_node( f3 ), std::vector( { f1, f2, f3 } ) ) == 2 );
-  CHECK( cost_xag.get_cost( xag.get_node( f4 ), std::vector( { f1, f2, f3 } ) ) == 3 );
+  CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector({a,b}) ) == 1 );
+  CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector({a,b}) ) == 2 );
+  CHECK( cost_xag.get_cost( xag.get_node( f3 ), std::vector({a,b}) ) == 2 );
+  CHECK( cost_xag.get_cost( xag.get_node( f4 ), std::vector({a,b}) ) == 3 );
+  CHECK( cost_xag.get_cost( xag.get_node( f1 ), std::vector({f1,f2,f3}) ) == 1 );
+  CHECK( cost_xag.get_cost( xag.get_node( f2 ), std::vector({f1,f2,f3}) ) == 2 );
+  CHECK( cost_xag.get_cost( xag.get_node( f3 ), std::vector({f1,f2,f3}) ) == 2 );
+  CHECK( cost_xag.get_cost( xag.get_node( f4 ), std::vector({f1,f2,f3}) ) == 3 );
 }
+

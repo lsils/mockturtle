@@ -114,7 +114,7 @@ public:
     }
     else if ( gate == "EQW" )
     {
-      signal_[out] = signal_[in[0]];
+        signal_[out] = signal_[in[0]];
     }
     else
     {

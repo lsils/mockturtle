@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <vector>
 
+#include <mockturtle/traits.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/properties/mccost.hpp>
-#include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
 
@@ -32,15 +32,12 @@ inline void test_ripple_carry_adder( uint32_t width, uint32_t expected_count, ui
   Ntk ntk;
 
   std::vector<typename Ntk::signal> as( width ), bs( width );
-  std::generate( as.begin(), as.end(), [&]()
-                 { return ntk.create_pi(); } );
-  std::generate( bs.begin(), bs.end(), [&]()
-                 { return ntk.create_pi(); } );
+  std::generate( as.begin(), as.end(), [&]() { return ntk.create_pi(); } );
+  std::generate( bs.begin(), bs.end(), [&]() { return ntk.create_pi(); } );
 
   auto carry = ntk.get_constant( false );
   carry_ripple_adder_inplace( ntk, as, bs, carry );
-  std::for_each( as.begin(), as.end(), [&]( auto const& f )
-                 { ntk.create_po( f ); } );
+  std::for_each( as.begin(), as.end(), [&]( auto const& f ) { ntk.create_po( f ); } );
   ntk.create_po( carry );
 
   CHECK( multiplicative_complexity( ntk ) == expected_count );

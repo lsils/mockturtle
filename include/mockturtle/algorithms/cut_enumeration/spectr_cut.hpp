@@ -41,12 +41,12 @@
 #include <map>
 #include <vector>
 
-#include "../../utils/cuts.hpp"
 #include "../cut_enumeration.hpp"
 #include "../lut_mapping.hpp"
 #include <kitty/constructors.hpp>
 #include <kitty/spectral.hpp>
 #include <kitty/static_truth_table.hpp>
+#include "../../utils/cuts.hpp"
 
 namespace mockturtle
 {
@@ -59,15 +59,15 @@ namespace mockturtle
 */
 struct cut_enumeration_spectr_cut
 {
-  uint32_t delay{ 0u };
-  float flow{ 0.0f };
-  float cost{ 0.0f };
+  uint32_t delay{0u};
+  float flow{0.0f};
+  float cost{0.0f};
 };
 
 template<bool ComputeTruth>
 bool operator<( cut_type<ComputeTruth, cut_enumeration_spectr_cut> const& c1, cut_type<ComputeTruth, cut_enumeration_spectr_cut> const& c2 )
 {
-  constexpr auto eps{ 0.005f };
+  constexpr auto eps{0.005f};
 
   if ( c1.size() == c2.size() )
   {
@@ -102,8 +102,7 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
   template<typename Ntk>
   static void grow_xor_cut( Ntk const& ntk, node<Ntk> const& n, std::map<uint32_t, std::vector<uint32_t>>& node_to_cut )
   {
-    ntk.foreach_fanin( n, [&]( auto ch )
-                       {
+    ntk.foreach_fanin( n, [&]( auto ch ) {
       auto ch_node = ntk.get_node( ch );
       if ( ntk.is_xor( ch_node ) )
       {
@@ -121,7 +120,8 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
       else
       {
         node_to_cut[n].push_back( ch_node );
-      } } );
+      }
+    } );
 
     std::sort( node_to_cut[n].begin(), node_to_cut[n].end() );
     node_to_cut[n].erase( unique( node_to_cut[n].begin(), node_to_cut[n].end() ), node_to_cut[n].end() );
@@ -133,8 +133,7 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
 
     std::map<uint32_t, std::vector<uint32_t>> node_to_cut;
 
-    topo_view<Ntk>( ntk ).foreach_node( [&]( auto n )
-                                        {
+    topo_view<Ntk>( ntk ).foreach_node( [&]( auto n ) {
       if ( ntk.is_xor( n ) )
       {
         const auto index = ntk.node_to_index( n );
@@ -156,7 +155,8 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
         kitty::dynamic_truth_table tt( node_to_cut[n].size() );
         kitty::create_parity( tt );
         my_cut->func_id = cuts.insert_truth_table( tt );
-      } } );
+      }
+    } );
   }
 };
 
@@ -166,12 +166,11 @@ struct cut_enumeration_update_cut<cut_enumeration_spectr_cut>
   template<typename Cut, typename NetworkCuts, typename Ntk>
   static void apply( Cut& cut, NetworkCuts const& cuts, Ntk const& ntk, node<Ntk> const& n )
   {
-    uint32_t delay{ 0 };
+    uint32_t delay{0};
 
     auto tt = cuts.truth_table( cut );
     auto spectrum = kitty::rademacher_walsh_spectrum( tt );
-    cut->data.cost = std::count_if( spectrum.begin(), spectrum.end(), []( auto s )
-                                    { return s != 0; } );
+    cut->data.cost = std::count_if( spectrum.begin(), spectrum.end(), []( auto s ) { return s != 0; } );
 
     float flow = cut.size() < 2 ? 0.0f : 1.0f;
     for ( auto leaf : cut )

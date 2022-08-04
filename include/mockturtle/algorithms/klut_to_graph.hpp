@@ -34,9 +34,9 @@
 
 #include "../networks/aig.hpp"
 #include "../networks/klut.hpp"
+#include "../networks/xmg.hpp"
 #include "../networks/mig.hpp"
 #include "../networks/xag.hpp"
-#include "../networks/xmg.hpp"
 #include "node_resynthesis.hpp"
 #include "node_resynthesis/dsd.hpp"
 #include "node_resynthesis/mig_npn.hpp"
@@ -74,11 +74,11 @@ const auto set_npn_resynthesis_fn()
  *
  * This function is a wrapper function for resynthesizing a k-LUT network (type `NtkSrc`) into a
  * new graph (of type `NtkDest`). The new data structure can be of type AIG, XAG, MIG or XMG.
- * First the function attempts a Disjoint Support Decomposition (DSD), branching the network into subnetworks.
- * As soon as DSD can no longer be done, there are two possibilities depending on the dimensionality of the
- * subnetwork to be resynthesized. On the one hand, if the size of the associated support is lower or equal
+ * First the function attempts a Disjoint Support Decomposition (DSD), branching the network into subnetworks. 
+ * As soon as DSD can no longer be done, there are two possibilities depending on the dimensionality of the 
+ * subnetwork to be resynthesized. On the one hand, if the size of the associated support is lower or equal 
  * than 4, the solution can be recovered by exploiting the mapping of the subnetwork to its NPN-class.
- * On the other hand, if the support size is higher than 4, A Shannon decomposition is performed, branching
+ * On the other hand, if the support size is higher than 4, A Shannon decomposition is performed, branching 
  * the network in further subnetworks with reduced support.
  * Finally, once the threshold value of 4 is reached, the NPN mapping completes the graph definition.
  *
@@ -93,10 +93,10 @@ NtkDest convert_klut_to_graph( NtkSrc const& ntk_src )
   using NtkDestBase = typename NtkDest::base_type;
   static_assert( std::is_same_v<typename NtkSrc::base_type, klut_network>, "NtkSrc is not klut_network" );
   static_assert( std::is_same_v<NtkDestBase, aig_network> || std::is_same_v<NtkDestBase, xag_network> ||
-                     std::is_same_v<NtkDestBase, mig_network> || std::is_same_v<NtkDestBase, xmg_network>,
+                 std::is_same_v<NtkDestBase, mig_network> || std::is_same_v<NtkDestBase, xmg_network>,
                  "NtkDest is not an AIG, XAG, MIG, or XMG" );
 
-  uint32_t threshold{ 4 };
+  uint32_t threshold{4};
   auto fallback_npn = detail::set_npn_resynthesis_fn<NtkDestBase>();
   shannon_resynthesis<NtkDest, decltype( fallback_npn )> fallback_shannon( threshold, &fallback_npn );
   dsd_resynthesis<NtkDest, decltype( fallback_shannon )> resyn( fallback_shannon );
@@ -118,10 +118,10 @@ void convert_klut_to_graph( NtkDest& ntk_dest, NtkSrc const& ntk_src )
   using NtkDestBase = typename NtkDest::base_type;
   static_assert( std::is_same_v<typename NtkSrc::base_type, klut_network>, "NtkSrc is not klut_network" );
   static_assert( std::is_same_v<NtkDestBase, aig_network> || std::is_same_v<NtkDestBase, xag_network> ||
-                     std::is_same_v<NtkDestBase, mig_network> || std::is_same_v<NtkDestBase, xmg_network>,
+                 std::is_same_v<NtkDestBase, mig_network> || std::is_same_v<NtkDestBase, xmg_network>,
                  "NtkDest is not an AIG, XAG, MIG, or XMG" );
 
-  uint32_t threshold{ 4 };
+  uint32_t threshold{4};
   auto fallback_npn = detail::set_npn_resynthesis_fn<NtkDestBase>();
   shannon_resynthesis<NtkDest, decltype( fallback_npn )> fallback_shannon( threshold, &fallback_npn );
   dsd_resynthesis<NtkDest, decltype( fallback_shannon )> resyn( fallback_shannon );

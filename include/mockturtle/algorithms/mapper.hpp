@@ -231,8 +231,9 @@ public:
 
     /* compute and save topological order */
     top_order.reserve( ntk.size() );
-    topo_view<Ntk>( ntk ).foreach_node( [this]( auto n )
-                                        { top_order.push_back( n ); } );
+    topo_view<Ntk>( ntk ).foreach_node( [this]( auto n ) {
+      top_order.push_back( n );
+    } );
 
     /* match cuts with gates */
     compute_matches();
@@ -291,8 +292,7 @@ public:
 private:
   void init_nodes()
   {
-    ntk.foreach_node( [this]( auto const& n, auto )
-                      {
+    ntk.foreach_node( [this]( auto const& n, auto ) {
       const auto index = ntk.node_to_index( n );
       auto& node_data = node_match[index];
 
@@ -312,14 +312,14 @@ private:
         node_data.arrival[0] = 0.0f;
         /* PIs have the negative phase implemented with an inverter */
         node_data.arrival[1] = lib_inv_delay;
-      } } );
+      }
+    } );
   }
 
   void compute_matches()
   {
     /* match gates */
-    ntk.foreach_gate( [&]( auto const& n )
-                      {
+    ntk.foreach_gate( [&]( auto const& n ) {
       const auto index = ntk.node_to_index( n );
 
       std::vector<cut_match_tech<NInputs>> node_matches;
@@ -382,7 +382,8 @@ private:
         }
       }
 
-      matches[index] = node_matches; } );
+      matches[index] = node_matches;
+    } );
   }
 
   template<bool DO_AREA>
@@ -495,8 +496,7 @@ private:
 
     /* compute the current worst delay and update the mapping refs */
     delay = 0.0f;
-    ntk.foreach_po( [this]( auto s )
-                    {
+    ntk.foreach_po( [this]( auto s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
 
       if ( ntk.is_complemented( s ) )
@@ -511,7 +511,8 @@ private:
           node_match[index].map_refs[1]++;
         else
           node_match[index].map_refs[0]++;
-      } } );
+      }
+    } );
 
     /* compute current area and update mapping refs in top-down order */
     area = 0.0f;
@@ -645,13 +646,13 @@ private:
     }
 
     /* set the required time at POs */
-    ntk.foreach_po( [&]( auto const& s )
-                    {
+    ntk.foreach_po( [&]( auto const& s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       if ( ntk.is_complemented( s ) )
         node_match[index].required[1] = required;
       else
-        node_match[index].required[0] = required; } );
+        node_match[index].required[0] = required;
+    } );
 
     /* propagate required time to the PIs */
     for ( auto it = top_order.rbegin(); it != top_order.rend(); ++it )
@@ -1295,15 +1296,15 @@ private:
       double area_old = area;
       bool buffers = false;
 
-      ntk.foreach_po( [&]( auto const& f )
-                      {
+      ntk.foreach_po( [&]( auto const& f ) {
         auto const& n = ntk.get_node( f );
         if ( !ntk.is_constant( n ) && ntk.is_pi( n ) && !ntk.is_complemented( f ) )
         {
           area += lib_buf_area;
           delay = std::max( delay, node_match[ntk.node_to_index( n )].arrival[0] + lib_inv_delay );
           buffers = true;
-        } } );
+        }
+      } );
 
       /* round stats */
       if ( ps.verbose && buffers )
@@ -1327,8 +1328,9 @@ private:
     old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][0] = dest.get_constant( false );
     old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][1] = dest.get_constant( true );
 
-    ntk.foreach_pi( [&]( auto const& n )
-                    { old2new[ntk.node_to_index( n )][0] = dest.create_pi(); } );
+    ntk.foreach_pi( [&]( auto const& n ) {
+      old2new[ntk.node_to_index( n )][0] = dest.create_pi();
+    } );
     return { dest, old2new };
   }
 
@@ -1383,8 +1385,7 @@ private:
     }
 
     /* create POs */
-    ntk.foreach_po( [&]( auto const& f )
-                    {
+    ntk.foreach_po( [&]( auto const& f ) {
       if ( ntk.is_complemented( f ) )
       {
         res.create_po( old2new[ntk.node_to_index( ntk.get_node( f ) )][1] );
@@ -1402,7 +1403,8 @@ private:
       else
       {
         res.create_po( old2new[ntk.node_to_index( ntk.get_node( f ) )][0] );
-      } } );
+      }
+    } );
 
     /* write final results */
     st.area = area;
@@ -1423,7 +1425,7 @@ private:
     auto ctr = 0u;
     for ( auto l : best_cut )
     {
-      if ( ctr >= gate->num_vars )
+      if ( ctr >= gate->num_vars)
         break;
       children[node_data.best_supergate[phase]->permutation[ctr]] = old2new[l][( node_data.phase[phase] >> ctr ) & 1];
       ++ctr;
@@ -1613,7 +1615,7 @@ private:
  * See `include/mockturtle/algorithms/cut_enumeration/cut_enumeration_tech_map_cut.hpp`
  * for one example of a CutData type that implements the cost function that is used in
  * the technology mapper.
- *
+ * 
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
@@ -1633,7 +1635,7 @@ private:
  * \param library Technology library
  * \param ps Mapping params
  * \param pst Mapping statistics
- *
+ * 
  * The implementation of this algorithm was inspired by the
  * mapping command ``map`` in ABC.
  */
@@ -1738,8 +1740,9 @@ public:
 
     /* compute and save topological order */
     top_order.reserve( ntk.size() );
-    topo_view<Ntk>( ntk ).foreach_node( [this]( auto n )
-                                        { top_order.push_back( n ); } );
+    topo_view<Ntk>( ntk ).foreach_node( [this]( auto n ) {
+      top_order.push_back( n );
+    } );
 
     /* match cuts with gates */
     compute_matches();
@@ -1798,8 +1801,7 @@ public:
 private:
   void init_nodes()
   {
-    ntk.foreach_node( [this]( auto const& n, auto )
-                      {
+    ntk.foreach_node( [this]( auto const& n, auto ) {
       const auto index = ntk.node_to_index( n );
       auto& node_data = node_match[index];
 
@@ -1818,14 +1820,14 @@ private:
         node_data.arrival[0] = 0.0f;
         /* PIs have the negative phase implemented with an inverter */
         node_data.arrival[1] = lib_inv_delay;
-      } } );
+      }
+    } );
   }
 
   void compute_matches()
   {
     /* match gates */
-    ntk.foreach_gate( [&]( auto const& n )
-                      {
+    ntk.foreach_gate( [&]( auto const& n ) {
       const auto index = ntk.node_to_index( n );
 
       std::vector<cut_match_t<NtkDest, NInputs>> node_matches;
@@ -1881,7 +1883,8 @@ private:
         }
       }
 
-      matches[index] = node_matches; } );
+      matches[index] = node_matches;
+    } );
   }
 
   template<bool DO_AREA>
@@ -1979,8 +1982,7 @@ private:
     {
       auto const& db = library.get_database();
 
-      ntk.foreach_node( [&]( auto const& n )
-                        {
+      ntk.foreach_node( [&]( auto const& n ) {
         if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
           return true;
         auto index = ntk.node_to_index( n );
@@ -2013,12 +2015,14 @@ private:
           f = !f;
 
         old2new[n] = f;
-        return true; } );
+        return true;
+      } );
     }
 
     /* create POs */
-    ntk.foreach_po( [&]( auto const& f )
-                    { res.create_po( ntk.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] ); } );
+    ntk.foreach_po( [&]( auto const& f ) {
+      res.create_po( ntk.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] );
+    } );
 
     /* write final results */
     st.area = area;
@@ -2040,8 +2044,7 @@ private:
 
     /* compute current delay and update mapping refs */
     delay = 0.0f;
-    ntk.foreach_po( [this]( auto s )
-                    {
+    ntk.foreach_po( [this]( auto s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       if ( ntk.is_complemented( s ) )
         delay = std::max( delay, node_match[index].arrival[1] );
@@ -2055,7 +2058,8 @@ private:
           node_match[index].map_refs[1]++;
         else
           node_match[index].map_refs[0]++;
-      } } );
+      }
+    } );
 
     /* compute current area and update mapping refs in top-down order */
     area = 0.0f;
@@ -2178,13 +2182,13 @@ private:
     }
 
     /* set the required time at POs */
-    ntk.foreach_po( [&]( auto const& s )
-                    {
+    ntk.foreach_po( [&]( auto const& s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       if ( ntk.is_complemented( s ) )
         node_match[index].required[1] = required;
       else
-        node_match[index].required[0] = required; } );
+        node_match[index].required[0] = required;
+    } );
 
     /* propagate required time to the PIs */
     auto i = ntk.size();
@@ -2564,7 +2568,7 @@ private:
         old2new[n] = sig1;
       }
     }
-
+    
     double area_old = area;
     bool success = set_mapping_refs<true>();
 
@@ -3080,7 +3084,7 @@ private:
  * See `include/mockturtle/algorithms/cut_enumeration/cut_enumeration_exact_map_cut.hpp`
  * for one example of a CutData type that implements the cost function that is used in
  * the technology mapper.
- *
+ * 
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a mapped network representation generated using the exact

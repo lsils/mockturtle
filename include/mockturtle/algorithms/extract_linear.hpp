@@ -64,12 +64,12 @@ extract_linear_circuit( xag_network const& xag )
   node_map<xag_network::signal, xag_network> old_to_new( xag );
 
   old_to_new[xag.get_constant( false )] = dest.get_constant( false );
-  xag.foreach_pi( [&]( auto const& n )
-                  { old_to_new[n] = dest.create_pi(); } );
+  xag.foreach_pi( [&]( auto const& n ) {
+    old_to_new[n] = dest.create_pi();
+  } );
 
-  topo_view topo{ xag };
-  topo.foreach_node( [&]( auto const& n )
-                     {
+  topo_view topo{xag};
+  topo.foreach_node( [&]( auto const& n ) {
     if ( xag.is_constant( n ) || xag.is_pi( n ) )
       return;
 
@@ -91,10 +91,12 @@ extract_linear_circuit( xag_network const& xag )
         children[i] = old_to_new[f] ^ xag.is_complemented( f );
       } );
       old_to_new[n] = dest.create_xor( children[0], children[1] );
-    } } );
+    }
+  } );
 
-  xag.foreach_po( [&]( auto const& f )
-                  { dest.create_po( old_to_new[f] ^ xag.is_complemented( f ) ); } );
+  xag.foreach_po( [&]( auto const& f ) {
+    dest.create_po( old_to_new[f] ^ xag.is_complemented( f ) );
+  } );
   for ( auto const& [a, b, _] : and_tuples )
   {
     (void)_;
@@ -102,7 +104,7 @@ extract_linear_circuit( xag_network const& xag )
     dest.create_po( b );
   }
 
-  return { dest, and_tuples };
+  return {dest, and_tuples};
 }
 
 namespace detail
@@ -126,26 +128,26 @@ public:
     orig_pis = xag.num_pis() - num_and_gates;
     orig_pos = xag.num_pos() - 2 * num_and_gates;
 
-    xag.foreach_pi( [&]( auto const& n, auto i )
-                    {
+    xag.foreach_pi( [&]( auto const& n, auto i ) {
       if ( i == orig_pis )
         return false;
 
       old_to_new[n] = dest.create_pi();
-      return true; } );
+      return true;
+    } );
 
     for ( auto i = 0u; i < num_and_gates; ++i )
     {
       create_and( i );
     }
 
-    xag.foreach_po( [&]( auto const& f, auto i )
-                    {
+    xag.foreach_po( [&]( auto const& f, auto i ) {
       if ( i == orig_pos )
         return false;
 
       dest.create_po( run_rec( xag.get_node( f ) ) ^ xag.is_complemented( f ) );
-      return true; } );
+      return true;
+    } );
 
     return dest;
   }
@@ -174,8 +176,9 @@ private:
 
     assert( xag.is_xor( n ) );
     std::array<xag_network::signal, 2> children{};
-    xag.foreach_fanin( n, [&]( auto const& cf, auto i )
-                       { children[i] = run_rec( xag.get_node( cf ) ) ^ xag.is_complemented( cf ); } );
+    xag.foreach_fanin( n, [&]( auto const& cf, auto i ) {
+      children[i] = run_rec( xag.get_node( cf ) ) ^ xag.is_complemented( cf );
+    } );
     return old_to_new[n] = dest.create_xor( children[0], children[1] );
   }
 

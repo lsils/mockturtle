@@ -82,7 +82,7 @@ private:
   void add_row( nlohmann::json const& row )
   {
     std::vector<std::string> entry;
-    uint32_t ctr{ 0u };
+    uint32_t ctr{0u};
     for ( auto const& key : columns_ )
     {
       auto const& data = row[key];
@@ -163,8 +163,7 @@ public:
       auto it = column_names_.begin();
       nlohmann::json entry;
       std::apply(
-          [&]( auto&&... args )
-          {
+          [&]( auto&&... args ) {
             ( ( entry[*it++] = args ), ... );
           },
           row );
@@ -185,8 +184,8 @@ public:
       data_.erase( data_.size() - 1u );
     }
 
-    data_.push_back( { { "version", version_ },
-                       { "entries", entries } } );
+    data_.push_back( {{"version", version_},
+                      {"entries", entries}} );
 
     std::ofstream os( filename_, std::ofstream::out );
     os << data_.dump( 2 ) << "\n";
@@ -205,9 +204,7 @@ public:
     }
     else
     {
-      if ( const auto it = std::find_if( data_.begin(), data_.end(), [&]( auto const& entry )
-                                         { return entry["version"] == version; } );
-           it != data_.end() )
+      if ( const auto it = std::find_if( data_.begin(), data_.end(), [&]( auto const& entry ) { return entry["version"] == version; } ); it != data_.end() )
       {
         return *it;
       }
@@ -293,18 +290,16 @@ public:
       }
 
       /* prepare entries */
-      auto find_key = [&]( nlohmann::json const& entries, first_t const& key )
-      {
-        return std::find_if( entries.begin(), entries.end(), [&]( auto const& entry )
-                             {
+      auto find_key = [&]( nlohmann::json const& entries, first_t const& key ) {
+        return std::find_if( entries.begin(), entries.end(), [&]( auto const& entry ) {
           nlohmann::json const& j = entry[column_names_.front()];
-          return j.get<first_t>() == key; } );
+          return j.get<first_t>() == key;
+        } );
       };
 
       auto compare_columns = column_names_;
       std::transform( column_names_.begin() + 1, column_names_.end(), std::back_inserter( compare_columns ),
-                      []( auto const& name )
-                      { return name + "'"; } );
+                      []( auto const& name ) { return name + "'"; } );
 
       nlohmann::json compare_entries;
       for ( auto const& key : keys )
@@ -319,11 +314,11 @@ public:
         {
           if ( it_old == entries_old.end() )
           {
-            row[column_names_[0]] = ( *it )[column_names_[0]];
+            row[column_names_[0]] = (*it)[column_names_[0]];
           }
           for ( auto i = 1u; i < column_names_.size(); ++i )
           {
-            row[column_names_[i] + "'"] = ( *it )[column_names_[i]];
+            row[column_names_[i] + "'"] = (*it)[column_names_[i]];
 
             if ( it_old != entries_old.end() )
             {
@@ -339,14 +334,10 @@ public:
 
       json_table( compare_entries, compare_columns ).print( os );
 
-      for ( const auto& [k, v] : differences )
-      {
-        if ( v == 0u )
-        {
+      for ( const auto& [k, v] : differences ) {
+        if ( v == 0u ) {
           os << fmt::format( "[i] no differences in column '{}'\n", k );
-        }
-        else
-        {
+        } else {
           os << fmt::format( "[i] {} differences in column '{}'\n", v, k );
         }
       }
@@ -451,7 +442,7 @@ static const char* benchmarks[] = {
     "simple_spi", "spi", "ss_pcm", "systemcaes", "systemcdes", "tv80", "usb_funct", "usb_phy",
     "vga_lcd", "wb_conmax",
 
-    "c17", "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552" };
+    "c17", "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552"};
 
 std::vector<std::string> epfl_benchmarks( uint64_t selection = epfl )
 {

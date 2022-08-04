@@ -78,8 +78,7 @@ public:
 private:
   void run_dfs()
   {
-    ntk.foreach_po( [this]( auto po )
-                    {
+    ntk.foreach_po( [this]( auto po ) {
       const auto driver = ntk.get_node( po );
       if ( ntk.level( driver ) < ntk.depth() )
         return;
@@ -88,19 +87,19 @@ private:
         mark_critical_paths();
         reduce_depth( n );
         return true;
-      } ); } );
+      } );
+    } );
   }
 
   void run_selective()
   {
-    uint32_t counter{ 0 };
+    uint32_t counter{0};
     while ( true )
     {
       mark_critical_paths();
 
-      topo_view topo{ ntk };
-      topo.foreach_node( [this, &counter]( auto n )
-                         {
+      topo_view topo{ntk};
+      topo.foreach_node( [this, &counter]( auto n ) {
         if ( ntk.fanout_size( n ) == 0 || ntk.value( n ) == 0 )
           return;
         if ( reduce_depth( n ) )
@@ -110,7 +109,8 @@ private:
         else
         {
           ++counter;
-        } } );
+        }
+      } );
 
       if ( counter > ntk.size() )
         break;
@@ -119,19 +119,19 @@ private:
 
   void run_aggressive()
   {
-    uint32_t counter{ 0 }, init_size{ ntk.size() };
+    uint32_t counter{0}, init_size{ntk.size()};
     while ( true )
     {
-      topo_view topo{ ntk };
-      topo.foreach_node( [this, &counter]( auto n )
-                         {
+      topo_view topo{ntk};
+      topo.foreach_node( [this, &counter]( auto n ) {
         if ( ntk.fanout_size( n ) == 0 )
           return;
 
         if ( !reduce_depth( n ) )
         {
           ++counter;
-        } } );
+        }
+      } );
 
       if ( ntk.size() > ps.overhead * init_size )
         break;
@@ -247,7 +247,7 @@ private:
       }
 
       auto opt = ntk.create_maj( ocs2[2], s1, s2 );
-
+  
       if ( ( ntk.fanout_size( ntk.get_node( s1 ) ) == 5 ) || ( ntk.fanout_size( ntk.get_node( s1 ) ) >= 17 ) || ( ntk.fanout_size( ntk.get_node( s1 ) ) == 2 ) ) // it would mean the depth is actually increased
       {
         if ( ntk.fanout_size( ntk.get_node( s2 ) ) == 1 )
@@ -283,19 +283,19 @@ private:
   {
     if ( v.index == x.index )
     {
-      return candidate_t{ w, y, z, v, v.complement == x.complement };
+      return candidate_t{w, y, z, v, v.complement == x.complement};
     }
     if ( v.index == y.index )
     {
-      return candidate_t{ w, x, z, v, v.complement == y.complement };
+      return candidate_t{w, x, z, v, v.complement == y.complement};
     }
     if ( w.index == x.index )
     {
-      return candidate_t{ v, y, z, w, w.complement == x.complement };
+      return candidate_t{v, y, z, w, w.complement == x.complement};
     }
     if ( w.index == y.index )
     {
-      return candidate_t{ v, x, z, w, w.complement == y.complement };
+      return candidate_t{v, x, z, w, w.complement == y.complement};
     }
 
     return std::nullopt;
@@ -304,10 +304,10 @@ private:
   std::array<signal<Ntk>, 3> ordered_children( node<Ntk> const& n ) const
   {
     std::array<signal<Ntk>, 3> children;
-    ntk.foreach_fanin( n, [&children]( auto const& f, auto i )
-                       { children[i] = f; } );
-    std::sort( children.begin(), children.end(), [this]( auto const& c1, auto const& c2 )
-               { return ntk.level( ntk.get_node( c1 ) ) < ntk.level( ntk.get_node( c2 ) ); } );
+    ntk.foreach_fanin( n, [&children]( auto const& f, auto i ) { children[i] = f; } );
+    std::sort( children.begin(), children.end(), [this]( auto const& c1, auto const& c2 ) {
+      return ntk.level( ntk.get_node( c1 ) ) < ntk.level( ntk.get_node( c2 ) );
+    } );
     return children;
   }
 
@@ -318,23 +318,23 @@ private:
 
     const auto level = ntk.level( n );
     ntk.set_value( n, 1 );
-    ntk.foreach_fanin( n, [this, level]( auto const& f )
-                       {
+    ntk.foreach_fanin( n, [this, level]( auto const& f ) {
       if ( ntk.level( ntk.get_node( f ) ) == level - 1 )
       {
         mark_critical_path( ntk.get_node( f ) );
-      } } );
+      }
+    } );
   }
 
   void mark_critical_paths()
   {
     ntk.clear_values();
-    ntk.foreach_po( [this]( auto const& f )
-                    {
+    ntk.foreach_po( [this]( auto const& f ) {
       if ( ntk.level( ntk.get_node( f ) ) == ntk.depth() )
       {
         mark_critical_path( ntk.get_node( f ) );
-      } } );
+      }
+    } );
   }
 
 private:

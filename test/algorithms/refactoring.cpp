@@ -1,9 +1,9 @@
 #include <catch.hpp>
 
+#include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/algorithms/node_resynthesis/akers.hpp>
 #include <mockturtle/algorithms/node_resynthesis/bidecomposition.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
-#include <mockturtle/algorithms/refactoring.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/traits.hpp>
@@ -70,7 +70,7 @@ TEST_CASE( "Refactoring with bi-decomposition", "[refactoring]" )
   const auto a = xag.create_pi();
   const auto b = xag.create_pi();
 
-  const auto f = xag.create_or( xag.create_and( a, xag.create_not( b ) ), xag.create_and( xag.create_not( a ), b ) );
+  const auto f = xag.create_or( xag.create_and(a, xag.create_not(b)), xag.create_and( xag.create_not(a), b));
   xag.create_po( f );
 
   bidecomposition_resynthesis<xag_network> resyn;
@@ -90,11 +90,11 @@ TEST_CASE( "Refactoring with bi-decomposition and different cost (free xor)", "[
   const auto a = xag.create_pi();
   const auto b = xag.create_pi();
 
-  const auto f = xag.create_or( xag.create_and( a, xag.create_not( b ) ), xag.create_and( xag.create_not( a ), b ) );
+  const auto f = xag.create_or( xag.create_and(a, xag.create_not(b)), xag.create_and( xag.create_not(a), b));
   xag.create_po( f );
 
   bidecomposition_resynthesis<xag_network> resyn;
-  refactoring( xag, resyn, {}, nullptr, ::detail::free_xor_cost<xag_network>() );
+  refactoring( xag, resyn, {}, nullptr, ::detail::free_xor_cost<xag_network>());
 
   xag = cleanup_dangling( xag );
 
@@ -119,8 +119,9 @@ TEST_CASE( "Refactoring from constant", "[refactoring]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  { CHECK( f == mig.get_constant( false ) ); } );
+  mig.foreach_po( [&]( auto const& f ) {
+    CHECK( f == mig.get_constant( false ) );
+  } );
 }
 
 TEST_CASE( "Refactoring from inverted constant", "[refactoring]" )
@@ -138,8 +139,9 @@ TEST_CASE( "Refactoring from inverted constant", "[refactoring]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  { CHECK( f == mig.get_constant( true ) ); } );
+  mig.foreach_po( [&]( auto const& f ) {
+    CHECK( f == mig.get_constant( true ) );
+  } );
 }
 
 TEST_CASE( "Refactoring from projection", "[refactoring]" )
@@ -157,10 +159,10 @@ TEST_CASE( "Refactoring from projection", "[refactoring]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  {
+  mig.foreach_po( [&]( auto const& f ) {
     CHECK( mig.get_node( f ) == 1 );
-    CHECK( !mig.is_complemented( f ) ); } );
+    CHECK( !mig.is_complemented( f ) );
+  } );
 }
 
 TEST_CASE( "Refactoring from inverted projection", "[refactoring]" )
@@ -178,8 +180,8 @@ TEST_CASE( "Refactoring from inverted projection", "[refactoring]" )
   CHECK( mig.num_pos() == 1 );
   CHECK( mig.num_gates() == 0 );
 
-  mig.foreach_po( [&]( auto const& f )
-                  {
+  mig.foreach_po( [&]( auto const& f ) {
     CHECK( mig.get_node( f ) == 1 );
-    CHECK( mig.is_complemented( f ) ); } );
+    CHECK( mig.is_complemented( f ) );
+  } );
 }

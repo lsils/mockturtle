@@ -34,10 +34,10 @@
 */
 
 #pragma once
-#include "../networks/xmg.hpp"
 #include "dont_cares.hpp"
-#include "resubstitution.hpp"
 #include <kitty/operations.hpp>
+#include "resubstitution.hpp"
+#include "../networks/xmg.hpp"
 
 namespace mockturtle
 {
@@ -49,8 +49,7 @@ namespace detail
 template<typename TT>
 inline TT ternary_xor( const TT& first, const TT& second, const TT& third )
 {
-  return kitty::ternary_operation( first, second, third, []( auto a, auto b, auto c )
-                                   { return ( ( a ^ b ) ^ c ); } );
+  return kitty::ternary_operation( first, second, third, []( auto a, auto b, auto c ) { return ( ( a ^ b ) ^ c ); } );
 }
 
 } // namespace detail
@@ -58,30 +57,30 @@ inline TT ternary_xor( const TT& first, const TT& second, const TT& third )
 struct xmg_resub_stats
 {
   /*! \brief Accumulated runtime for const-resub */
-  stopwatch<>::duration time_resubC{ 0 };
+  stopwatch<>::duration time_resubC{0};
 
   /*! \brief Accumulated runtime for zero-resub */
-  stopwatch<>::duration time_resub0{ 0 };
+  stopwatch<>::duration time_resub0{0};
 
   /*! \brief Accumulated runtime for one-resub */
-  stopwatch<>::duration time_resub1{ 0 };
+  stopwatch<>::duration time_resub1{0};
 
   /*! \brief Number of accepted constant resubsitutions */
-  uint32_t num_const_accepts{ 0 };
+  uint32_t num_const_accepts{0};
 
   /*! \brief Number of accepted zero resubsitutions */
-  uint32_t num_div0_accepts{ 0 };
+  uint32_t num_div0_accepts{0};
 
   /*! \brief Number of accepted one resubsitutions */
-  uint32_t num_div1_accepts{ 0 };
+  uint32_t num_div1_accepts{0};
 
-  uint32_t num_div1_xor3_accepts{ 0 };
-  uint32_t num_div1_xnor3_accepts{ 0 };
-  uint32_t num_div1_maj3_accepts{ 0 };
-  uint32_t num_div1_not_maj3_accepts{ 0 };
+  uint32_t num_div1_xor3_accepts{0};
+  uint32_t num_div1_xnor3_accepts{0};
+  uint32_t num_div1_maj3_accepts{0};
+  uint32_t num_div1_not_maj3_accepts{0};
 
-  uint32_t num_filtered0{ 0 };
-  uint32_t num_filtered1{ 0 };
+  uint32_t num_filtered0{0};
+  uint32_t num_filtered1{0};
 
   void report() const
   {
@@ -123,8 +122,9 @@ public:
       care = kitty::extend_to( care, tt.num_vars() );
 
     /* consider constants */
-    auto g = call_with_stopwatch( st.time_resubC, [&]()
-                                  { return resub_const( root, care, required ); } );
+    auto g = call_with_stopwatch( st.time_resubC, [&]() {
+      return resub_const( root, care, required );
+    } );
     if ( g )
     {
       ++st.num_const_accepts;
@@ -133,8 +133,9 @@ public:
     }
 
     /* consider equal nodes */
-    g = call_with_stopwatch( st.time_resub0, [&]()
-                             { return resub_div0( root, care, required ); } );
+    g = call_with_stopwatch( st.time_resub0, [&]() {
+      return resub_div0( root, care, required );
+    } );
     if ( g )
     {
       ++st.num_div0_accepts;
@@ -146,8 +147,9 @@ public:
       return std::nullopt;
 
     /* consider adding one gate */
-    g = call_with_stopwatch( st.time_resub1, [&]()
-                             { return resub_div1( root, care, required ); } );
+    g = call_with_stopwatch( st.time_resub1, [&]() {
+      return resub_div1( root, care, required );
+    } );
     if ( g )
     {
       ++st.num_div1_accepts;
@@ -213,11 +215,10 @@ public:
       sorted_divs.emplace_back( static_cast<uint32_t>( *it ), static_cast<uint32_t>( relative_distinguishing_power( tt_s, tt ) ) );
     }
     std::sort( std::rbegin( sorted_divs ), std::rend( sorted_divs ),
-               [&]( auto const& u, auto const& v )
-               {
+               [&]( auto const& u, auto const& v ) {
                  if ( u.entropy == v.entropy )
-                   return u.node < v.node;
-                 return u.entropy < v.entropy;
+                    return u.node < v.node;
+                 return u.entropy < v.entropy ;
                } );
 
     for ( auto i = 0u; i < sorted_divs.size(); ++i )
@@ -315,8 +316,8 @@ void xmg_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
 
   using resub_view_t = fanout_view<depth_view<Ntk>>;
-  depth_view<Ntk> depth_view{ ntk };
-  resub_view_t resub_view{ depth_view };
+  depth_view<Ntk> depth_view{ntk};
+  resub_view_t resub_view{depth_view};
 
   using truthtable_t = kitty::dynamic_truth_table;
   using truthtable_dc_t = kitty::dynamic_truth_table;

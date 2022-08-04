@@ -136,8 +136,9 @@ TEST_CASE( "clone a node in a cover network", "[cover]" )
   auto f2 = cover2.clone_node( cover1, cover1.get_node( f1 ), { a2, b2 } );
   CHECK( cover2.size() == 5 );
 
-  cover2.foreach_fanin( cover2.get_node( f2 ), [&]( auto const& s )
-                        { CHECK( !cover2.is_complemented( s ) ); } );
+  cover2.foreach_fanin( cover2.get_node( f2 ), [&]( auto const& s ) {
+    CHECK( !cover2.is_complemented( s ) );
+  } );
 }
 
 TEST_CASE( "compute functions from AND and NOT gates in cover networks", "[cover]" )
@@ -316,15 +317,14 @@ TEST_CASE( "subsitute cover node by another", "[cover]" )
   cover.create_po( n4 );
 
   std::vector<node<cover_network>> nodes;
-  cover.foreach_node( [&]( auto node )
-                      { nodes.push_back( node ); } );
+  cover.foreach_node( [&]( auto node ) { nodes.push_back( node ); } );
 
   CHECK( nodes == std::vector<cover_network::node>{ c0, c1, a, b, n1, n2, n3, n4 } );
   CHECK( cover.fanout_size( n4 ) == 1 );
-  cover.foreach_po( [&]( auto f )
-                    {
+  cover.foreach_po( [&]( auto f ) {
     CHECK( f == n4 );
-    return false; } );
+    return false;
+  } );
 
   // XOR with AND and OR
   const auto n5 = cover.create_cover_node( { a, b }, std::make_pair( _le, true ) );
@@ -332,8 +332,7 @@ TEST_CASE( "subsitute cover node by another", "[cover]" )
   const auto n7 = cover.create_cover_node( { n5, n6 }, std::make_pair( _or, true ) );
 
   nodes.clear();
-  cover.foreach_node( [&]( auto node )
-                      { nodes.push_back( node ); } );
+  cover.foreach_node( [&]( auto node ) { nodes.push_back( node ); } );
 
   CHECK( nodes == std::vector{ c0, c1, a, b, n1, n2, n3, n4, n5, n6, n7 } );
   CHECK( cover.fanout_size( n7 ) == 0 );
@@ -344,10 +343,10 @@ TEST_CASE( "subsitute cover node by another", "[cover]" )
   CHECK( cover.size() == 11 );
   CHECK( cover.fanout_size( n4 ) == 0 );
   CHECK( cover.fanout_size( n7 ) == 1 );
-  cover.foreach_po( [&]( auto f )
-                    {
+  cover.foreach_po( [&]( auto f ) {
     CHECK( f == n7 );
-    return false; } );
+    return false;
+  } );
 }
 
 TEST_CASE( "structural properties of a cover network", "[cover]" )
@@ -404,71 +403,59 @@ TEST_CASE( "node and signal iteration in a cover network", "[cover]" )
 
   /* iterate over nodes */
   uint32_t mask{ 0 }, counter{ 0 };
-  cover.foreach_node( [&]( auto n, auto i )
-                      { mask |= ( 1 << n ); counter += i; } );
+  cover.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 63 );
   CHECK( counter == 15 );
 
   mask = 0;
-  cover.foreach_node( [&]( auto n )
-                      { mask |= ( 1 << n ); } );
+  cover.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); } );
   CHECK( mask == 63 );
 
   mask = counter = 0;
-  cover.foreach_node( [&]( auto n, auto i )
-                      { mask |= ( 1 << n ); counter += i; return false; } );
+  cover.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 1 );
   CHECK( counter == 0 );
 
   mask = 0;
-  cover.foreach_node( [&]( auto n )
-                      { mask |= ( 1 << n ); return false; } );
+  cover.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 1 );
 
   /* iterate over PIs */
   mask = counter = 0;
-  cover.foreach_pi( [&]( auto n, auto i )
-                    { mask |= ( 1 << n ); counter += i; } );
+  cover.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 12 );
   CHECK( counter == 1 );
 
   mask = 0;
-  cover.foreach_pi( [&]( auto n )
-                    { mask |= ( 1 << n ); } );
+  cover.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); } );
   CHECK( mask == 12 );
 
   mask = counter = 0;
-  cover.foreach_pi( [&]( auto n, auto i )
-                    { mask |= ( 1 << n ); counter += i; return false; } );
+  cover.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 4 );
   CHECK( counter == 0 );
 
   mask = 0;
-  cover.foreach_pi( [&]( auto n )
-                    { mask |= ( 1 << n ); return false; } );
+  cover.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 4 );
 
   /* iterate over POs */
   mask = counter = 0;
-  cover.foreach_po( [&]( auto s, auto i )
-                    { mask |= ( 1 << cover.get_node( s ) ); counter += i; } );
+  cover.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << cover.get_node( s ) ); counter += i; } );
   CHECK( mask == 48 );
   CHECK( counter == 1 );
 
   mask = 0;
-  cover.foreach_po( [&]( auto s )
-                    { mask |= ( 1 << cover.get_node( s ) ); } );
+  cover.foreach_po( [&]( auto s ) { mask |= ( 1 << cover.get_node( s ) ); } );
   CHECK( mask == 48 );
 
   mask = counter = 0;
-  cover.foreach_po( [&]( auto s, auto i )
-                    { mask |= ( 1 << cover.get_node( s ) ); counter += i; return false; } );
+  cover.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << cover.get_node( s ) ); counter += i; return false; } );
   CHECK( mask == 16 );
   CHECK( counter == 0 );
 
   mask = 0;
-  cover.foreach_po( [&]( auto s )
-                    { mask |= ( 1 << cover.get_node( s ) ); return false; } );
+  cover.foreach_po( [&]( auto s ) { mask |= ( 1 << cover.get_node( s ) ); return false; } );
   CHECK( mask == 16 );
 }
 
@@ -492,18 +479,19 @@ TEST_CASE( "custom node values in cover networks", "[cover]" )
   CHECK( cover.size() == 6 );
 
   cover.clear_values();
-  cover.foreach_node( [&]( auto n )
-                      {
+  cover.foreach_node( [&]( auto n ) {
     CHECK( cover.value( n ) == 0 );
     cover.set_value( n, static_cast<uint32_t>( n ) );
     CHECK( cover.value( n ) == n );
     CHECK( cover.incr_value( n ) == n );
     CHECK( cover.value( n ) == n + 1 );
     CHECK( cover.decr_value( n ) == n );
-    CHECK( cover.value( n ) == n ); } );
+    CHECK( cover.value( n ) == n );
+  } );
   cover.clear_values();
-  cover.foreach_node( [&]( auto n )
-                      { CHECK( cover.value( n ) == 0 ); } );
+  cover.foreach_node( [&]( auto n ) {
+    CHECK( cover.value( n ) == 0 );
+  } );
 }
 
 TEST_CASE( "visited values in cover networks", "[cover]" )
@@ -524,12 +512,13 @@ TEST_CASE( "visited values in cover networks", "[cover]" )
   CHECK( cover.size() == 6 );
 
   cover.clear_visited();
-  cover.foreach_node( [&]( auto n )
-                      {
+  cover.foreach_node( [&]( auto n ) {
     CHECK( cover.visited( n ) == 0 );
     cover.set_visited( n, static_cast<uint32_t>( n ) );
-    CHECK( cover.visited( n ) == n ); } );
+    CHECK( cover.visited( n ) == n );
+  } );
   cover.clear_visited();
-  cover.foreach_node( [&]( auto n )
-                      { CHECK( cover.visited( n ) == 0 ); } );
+  cover.foreach_node( [&]( auto n ) {
+    CHECK( cover.visited( n ) == 0 );
+  } );
 }

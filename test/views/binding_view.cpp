@@ -22,7 +22,7 @@ TEST_CASE( "Create binding view", "[binding_view]" )
 
   std::istringstream in( simple_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-
+  
   CHECK( result == lorina::return_code::success );
 
   binding_view<klut_network> ntk( gates );
@@ -93,7 +93,7 @@ TEST_CASE( "Binding view on copy", "[binding_view]" )
 
   std::istringstream in( simple_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-
+  
   CHECK( result == lorina::return_code::success );
 
   binding_view<klut_network> ntk( gates );

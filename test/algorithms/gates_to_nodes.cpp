@@ -3,8 +3,8 @@
 #include <mockturtle/algorithms/gates_to_nodes.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/xag.hpp>
+#include <mockturtle/networks/klut.hpp>
 
 #include <kitty/dynamic_truth_table.hpp>
 
@@ -39,12 +39,11 @@ TEST_CASE( "Single node network from AIG", "[gates_to_nodes]" )
   aig.create_po( aig.create_maj( a, b, c ) );
   aig.create_po( aig.create_ite( b, c, d ) );
   aig.create_po( aig.create_xor3( a, c, d ) );
-  aig.create_po( aig.create_nary_or( { a, b, c, d } ) );
+  aig.create_po( aig.create_nary_or( {a, b, c, d} ) );
 
   const auto klut = single_node_network<klut_network>( aig );
 
-  klut.foreach_gate( [&]( auto n, auto i )
-                     {
+  klut.foreach_gate( [&]( auto n, auto i ) {
     switch ( i )
     {
     case 0:
@@ -58,7 +57,8 @@ TEST_CASE( "Single node network from AIG", "[gates_to_nodes]" )
     default:
       CHECK( false );
       break;
-    } } );
+    }
+  } );
 
   default_simulator<kitty::dynamic_truth_table> sim( aig.num_pis() );
   CHECK( simulate<kitty::dynamic_truth_table>( aig, sim ) == simulate<kitty::dynamic_truth_table>( klut, sim ) );

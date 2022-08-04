@@ -65,13 +65,13 @@ struct balancing_params
   cut_enumeration_params cut_enumeration_ps;
 
   /*! \brief Optimize only on critical path. */
-  bool only_on_critical_path{ false };
+  bool only_on_critical_path{false};
 
   /*! \brief Show progress. */
-  bool progress{ false };
+  bool progress{false};
 
   /*! \brief Be verbose. */
-  bool verbose{ false };
+  bool verbose{false};
 };
 
 /*! \brief Statistics for balancing.
@@ -106,16 +106,16 @@ struct arrival_time_pair
  * could be used for replacement in the main balancing algorithm.  Using a callback
  * makes it possible to account for situations in which none, a single, or multiple
  * candidates are generated.
- *
+ * 
  * The callback returns a pair composed of the output signal of the replacement
  * candidate and the level of the new candidate.  Ideally, the rebalancing function
  * should not call the callback with candidates that a worse level.
  */
 template<class Ntk>
-using rebalancing_function_callback_t = std::function<void( arrival_time_pair<Ntk> const&, uint32_t )>;
+using rebalancing_function_callback_t = std::function<void(arrival_time_pair<Ntk> const&, uint32_t)>;
 
 template<class Ntk>
-using rebalancing_function_t = std::function<void( Ntk&, kitty::dynamic_truth_table const&, std::vector<arrival_time_pair<Ntk>> const&, uint32_t, uint32_t, rebalancing_function_callback_t<Ntk> const& )>;
+using rebalancing_function_t = std::function<void(Ntk&, kitty::dynamic_truth_table const&, std::vector<arrival_time_pair<Ntk>> const&, uint32_t, uint32_t, rebalancing_function_callback_t<Ntk> const&)>;
 
 namespace detail
 {
@@ -137,13 +137,14 @@ struct balancing_impl
     node_map<arrival_time_pair<Ntk>, Ntk> old_to_new( ntk_ );
 
     /* input arrival times and mapping */
-    old_to_new[ntk_.get_constant( false )] = { dest.get_constant( false ), 0u };
+    old_to_new[ntk_.get_constant( false )] = {dest.get_constant( false ), 0u};
     if ( ntk_.get_node( ntk_.get_constant( false ) ) != ntk_.get_node( ntk_.get_constant( true ) ) )
     {
-      old_to_new[ntk_.get_constant( true )] = { dest.get_constant( true ), 0u };
+      old_to_new[ntk_.get_constant( true )] = {dest.get_constant( true ), 0u};
     }
-    ntk_.foreach_pi( [&]( auto const& n )
-                     { old_to_new[n] = { dest.create_pi(), 0u }; } );
+    ntk_.foreach_pi( [&]( auto const& n ) {
+      old_to_new[n] = {dest.create_pi(), 0u};
+    } );
 
     std::shared_ptr<depth_view<Ntk, CostFn>> depth_ntk;
     if ( ps_.only_on_critical_path )
@@ -156,9 +157,8 @@ struct balancing_impl
 
     uint32_t current_level{};
     const auto size = ntk_.size();
-    progress_bar pbar{ ntk_.size(), "balancing |{0}| node = {1:>4} / " + std::to_string( size ) + "   current level = {2}", ps_.progress };
-    topo_view<Ntk>{ ntk_ }.foreach_node( [&]( auto const& n, auto index )
-                                         {
+    progress_bar pbar{ntk_.size(), "balancing |{0}| node = {1:>4} / " + std::to_string( size ) + "   current level = {2}", ps_.progress};
+    topo_view<Ntk>{ntk_}.foreach_node( [&]( auto const& n, auto index ) {
       pbar( index, index, current_level );
 
       if ( ntk_.is_constant( n ) || ntk_.is_pi( n ) )
@@ -198,12 +198,13 @@ struct balancing_impl
         });
       }
       old_to_new[n] = best;
-      current_level = std::max( current_level, best.level ); } );
+      current_level = std::max( current_level, best.level );
+    } );
 
-    ntk_.foreach_po( [&]( auto const& f )
-                     {
+    ntk_.foreach_po( [&]( auto const& f ) {
       const auto s = old_to_new[f].f;
-      dest.create_po( ntk_.is_complemented( f ) ? dest.create_not( s ) : s ); } );
+      dest.create_po( ntk_.is_complemented( f ) ? dest.create_not( s ) : s );
+    } );
 
     return cleanup_dangling( dest );
   }
@@ -260,7 +261,7 @@ Ntk balancing( Ntk const& ntk, rebalancing_function_t<Ntk> const& rebalancing_fn
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
 
   balancing_stats st;
-  const auto dest = detail::balancing_impl<Ntk, CostFn>{ ntk, rebalancing_fn, ps, st }.run();
+  const auto dest = detail::balancing_impl<Ntk, CostFn>{ntk, rebalancing_fn, ps, st}.run();
 
   if ( pst )
   {
