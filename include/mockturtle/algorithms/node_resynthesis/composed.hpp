@@ -78,6 +78,6 @@ auto cached_exact_xag_resynthesis( std::string const& cache_filename, uint32_t i
   return cached_resynthesis<Ntk, decltype( exact_resyn ), exact_blacklist_cache_info>( exact_resyn, input_limit, cache_filename, info );
 }
 
-} /* mockturtle */
+} // namespace mockturtle
 
 #endif

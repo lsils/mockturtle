@@ -35,18 +35,18 @@
   Luca Amaru, Scott Chase, Jamil Kawa, and Giovanni De Micheli.
  */
 
-#include <mockturtle/io/blif_reader.hpp>
-#include <mockturtle/io/verilog_reader.hpp>
-#include <mockturtle/io/write_blif.hpp>
-#include <mockturtle/algorithms/mapper.hpp>
-#include <mockturtle/algorithms/node_resynthesis.hpp>
-#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_db.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_fanout_resyn.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_node_resyn.hpp>
 #include <mockturtle/algorithms/aqfp/aqfp_resynthesis.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/mapper.hpp>
+#include <mockturtle/algorithms/node_resynthesis.hpp>
+#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
+#include <mockturtle/io/blif_reader.hpp>
+#include <mockturtle/io/verilog_reader.hpp>
+#include <mockturtle/io/write_blif.hpp>
 #include <mockturtle/networks/aqfp.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -58,12 +58,12 @@
 #include <fmt/format.h>
 #include <lorina/verilog.hpp>
 
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <filesystem>
 
 using namespace experiments;
 using namespace mockturtle;
@@ -72,8 +72,8 @@ static const std::string benchmark_repo_path = "SCE-benchmarks";
 
 /* AQFP benchmarks */
 std::vector<std::string> aqfp_benchmarks = {
-  "5xp1", "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
-  "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn"};
+    "5xp1", "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
+    "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn" };
 
 std::string benchmark_aqfp_path( std::string const& benchmark_name )
 {
@@ -283,13 +283,14 @@ aqfp_network aqfp_exact_resynthesis( Ntk& ntk, opt_params_t const& params, opt_s
 /* `database_type` is either 'db3' (only maj-3 gates) or 'db5' (maj-3 and maj-5 gates). */
 std::ifstream get_database( std::string database_type )
 {
-  const std::string db_path = fmt::format("aqfp_database/{}.txt", database_type);
-  if (!std::filesystem::exists(db_path)) {
-    fmt::print("Cloning the aqfp database repository to working directory...\n");
-    system("git clone https://github.com/mdsudara/AQFP-Database.git aqfp_database");
+  const std::string db_path = fmt::format( "aqfp_database/{}.txt", database_type );
+  if ( !std::filesystem::exists( db_path ) )
+  {
+    fmt::print( "Cloning the aqfp database repository to working directory...\n" );
+    system( "git clone https://github.com/mdsudara/AQFP-Database.git aqfp_database" );
   }
 
-  std::ifstream db_file(db_path);
+  std::ifstream db_file( db_path );
   return db_file;
 }
 
@@ -358,8 +359,8 @@ int main( int argc, char** argv )
   exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn, eps );
 
   /* database loading for aqfp resynthesis*/
-  auto db3_str = get_database("db3");
-  auto db5_str( exact_syn_db_cfg == "all3" ? get_database("db3") : get_database("db5") );
+  auto db3_str = get_database( "db3" );
+  auto db5_str( exact_syn_db_cfg == "all3" ? get_database( "db3" ) : get_database( "db5" ) );
 
   opt_params.db.load_db( db3_str );
   opt_params.db_last.load_db( db5_str );

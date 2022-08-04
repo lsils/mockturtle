@@ -57,13 +57,13 @@ namespace mockturtle
 struct xag_npn_resynthesis_params
 {
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 };
 
 struct xag_npn_resynthesis_stats
 {
-  stopwatch<>::duration time_classes{0};
-  stopwatch<>::duration time_db{0};
+  stopwatch<>::duration time_classes{ 0 };
+  stopwatch<>::duration time_db{ 0 };
 
   uint32_t db_size;
   uint32_t covered_classes;
@@ -168,10 +168,10 @@ public:
     std::copy( begin, end, pis.begin() );
 
     std::unordered_map<node<DatabaseNtk>, signal<Ntk>> db_to_ntk;
-    db_to_ntk.insert( {0, ntk.get_constant( false )} );
+    db_to_ntk.insert( { 0, ntk.get_constant( false ) } );
     for ( auto i = 0; i < 4; ++i )
     {
-      db_to_ntk.insert( {i + 1, ( phase >> perm[i] & 1 ) ? ntk.create_not( pis[perm[i]] ) : pis[perm[i]]} );
+      db_to_ntk.insert( { i + 1, ( phase >> perm[i] & 1 ) ? ntk.create_not( pis[perm[i]] ) : pis[perm[i]] } );
     }
 
     for ( auto const& cand : it->second )
@@ -194,13 +194,13 @@ private:
     }
 
     std::array<signal<Ntk>, 2> fanin{};
-    _db.foreach_fanin( n, [&]( auto const& f, auto i ) {
+    _db.foreach_fanin( n, [&]( auto const& f, auto i )
+                       {
       const auto ntk_f = copy_db_entry( ntk, _db.get_node( f ), db_to_ntk );
-      fanin[i] = _db.is_complemented( f ) ? ntk.create_not( ntk_f ) : ntk_f;
-    } );
+      fanin[i] = _db.is_complemented( f ) ? ntk.create_not( ntk_f ) : ntk_f; } );
 
     const auto f = _db.is_xor( n ) ? ntk.create_xor( fanin[0], fanin[1] ) : ntk.create_and( fanin[0], fanin[1] );
-    db_to_ntk.insert( {n, f} );
+    db_to_ntk.insert( { n, f } );
     return f;
   }
 
@@ -209,7 +209,8 @@ private:
     stopwatch t( st.time_classes );
 
     kitty::static_truth_table<4u> tt;
-    do {
+    do
+    {
       _repr[*tt.cbegin()] = kitty::exact_npn_canonization( tt );
       kitty::next_inplace( tt );
     } while ( !kitty::is_const0( tt ) );
@@ -221,19 +222,20 @@ private:
 
     if constexpr ( DBKind == xag_npn_db_kind::xag_incomplete )
     {
-      decode( _db, xag_index_list{std::vector<uint32_t>{subgraphs, subgraphs + sizeof subgraphs / sizeof subgraphs[0]}} );
+      decode( _db, xag_index_list{ std::vector<uint32_t>{ subgraphs, subgraphs + sizeof subgraphs / sizeof subgraphs[0] } } );
     }
     else if constexpr ( DBKind == xag_npn_db_kind::xag_complete )
     {
-      decode( _db, xag_index_list{std::vector<uint32_t>{subgraphs_xag, subgraphs_xag + sizeof subgraphs_xag / sizeof subgraphs_xag[0]}} );
+      decode( _db, xag_index_list{ std::vector<uint32_t>{ subgraphs_xag, subgraphs_xag + sizeof subgraphs_xag / sizeof subgraphs_xag[0] } } );
     }
     else if constexpr ( DBKind == xag_npn_db_kind::aig_complete )
     {
-      decode( _db, xag_index_list{std::vector<uint32_t>{subgraphs_aig, subgraphs_aig + sizeof subgraphs_aig / sizeof subgraphs_aig[0]}} );
+      decode( _db, xag_index_list{ std::vector<uint32_t>{ subgraphs_aig, subgraphs_aig + sizeof subgraphs_aig / sizeof subgraphs_aig[0] } } );
     }
     const auto sim_res = simulate_nodes<kitty::static_truth_table<4u>>( _db );
 
-    _db.foreach_node( [&]( auto n ) {
+    _db.foreach_node( [&]( auto n )
+                      {
       if ( std::get<0>( _repr[*sim_res[n].cbegin()] ) == sim_res[n] )
       {
         if ( _repr_to_signal.count( sim_res[n] ) == 0 )
@@ -259,8 +261,7 @@ private:
             _repr_to_signal[f].push_back( !_db.make_signal( n ) );
           }
         }
-      }
-    } );
+      } } );
 
     st.db_size = _db.size();
     st.covered_classes = static_cast<uint32_t>( _repr_to_signal.size() );
@@ -268,7 +269,7 @@ private:
 
   xag_npn_resynthesis_params ps;
   xag_npn_resynthesis_stats st;
-  xag_npn_resynthesis_stats* pst{nullptr};
+  xag_npn_resynthesis_stats* pst{ nullptr };
 
   std::vector<std::tuple<kitty::static_truth_table<4u>, uint32_t, std::vector<uint8_t>>> _repr;
   std::unordered_map<kitty::static_truth_table<4u>, std::vector<signal<DatabaseNtk>>, kitty::hash<kitty::static_truth_table<4u>>> _repr_to_signal;

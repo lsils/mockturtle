@@ -37,8 +37,8 @@
 #include <optional>
 #include <vector>
 
-#include <bill/sat/interface/glucose.hpp>
 #include <bill/sat/interface/common.hpp>
+#include <bill/sat/interface/glucose.hpp>
 #include <kitty/bit_operations.hpp>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -60,52 +60,52 @@ namespace mockturtle
 struct exact_mc_synthesis_params
 {
   /* \brief Minimum number of AND gates. */
-  uint32_t min_and_gates{0u};
+  uint32_t min_and_gates{ 0u };
 
   /*! \brief Use CEGAR based solving strategy. */
-  bool use_cegar{false};
+  bool use_cegar{ false };
 
   /*! \brief Use subset symmetry breaking. */
-  bool break_subset_symmetries{true};
+  bool break_subset_symmetries{ true };
 
   /*! \brief Use multi-level subset symmetry breaking. */
-  bool break_multi_level_subset_symmetries{true};
+  bool break_multi_level_subset_symmetries{ true };
 
   /*! \brief Use symmetric variables. */
-  bool break_symmetric_variables{true};
+  bool break_symmetric_variables{ true };
 
   /*! \brief User-specified variable symmetries. */
   std::vector<std::pair<uint32_t, uint32_t>> custom_symmetric_variables;
 
   /*! \brief Ensure to use all gates and essential variables. */
-  bool ensure_to_use_gates{true};
+  bool ensure_to_use_gates{ true };
 
   /*! \brief Heuristic XOR bound (based on sorter network). */
   std::optional<uint32_t> heuristic_xor_bound{};
 
   /*! \brief Updates XOR bound heuristic after each found solution. */
-  bool auto_update_xor_bound{false};
+  bool auto_update_xor_bound{ false };
 
   /*! \brief Conflict limit for the SAT solver. */
-  uint32_t conflict_limit{0u};
+  uint32_t conflict_limit{ 0u };
 
   /*! \brief Use conflict limit only when searching for multiple solutions
    *
    * The conflict limit will be ignored for the first call.
    */
-  bool ignore_conflict_limit_for_first_solution{false};
+  bool ignore_conflict_limit_for_first_solution{ false };
 
   /*! \brief Show progress (in CEGAR). */
-  bool progress{false};
+  bool progress{ false };
 
   /*! \brief Write DIMACS file, everytime solve is called. */
   std::optional<std::string> write_dimacs{};
 
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 
   /*! \brief Be very verbose */
-  bool very_verbose{false};
+  bool very_verbose{ false };
 };
 
 struct exact_mc_synthesis_stats
@@ -273,9 +273,8 @@ private:
   {
     stopwatch<> t_sat( st_.time_solving );
     bill::result::clause_type assumptions;
-    pntk.foreach_po( [&]( auto const& f ) {
-      assumptions.push_back( pntk.lit( f ) );
-    } );
+    pntk.foreach_po( [&]( auto const& f )
+                     { assumptions.push_back( pntk.lit( f ) ); } );
     if ( heuristic_xor_bound_ )
     {
       if ( int32_t pos = static_cast<int32_t>( xor_counter_.size() ) - *heuristic_xor_bound_ - 1; pos >= 0 )
@@ -298,9 +297,11 @@ private:
   {
     Ntk xag;
     std::vector<signal<Ntk>> nodes( num_vars_ );
-    std::generate( nodes.begin(), nodes.end(), [&]() { return xag.create_pi(); } );
+    std::generate( nodes.begin(), nodes.end(), [&]()
+                   { return xag.create_pi(); } );
 
-    const auto extract_ltfi = [&]( std::vector<signal<problem_network_t>> const& ltfi_vars ) -> signal<Ntk> {
+    const auto extract_ltfi = [&]( std::vector<signal<problem_network_t>> const& ltfi_vars ) -> signal<Ntk>
+    {
       std::vector<signal<Ntk>> ltfi;
       for ( auto j = 0u; j < ltfi_vars.size(); ++j )
       {
@@ -362,19 +363,22 @@ private:
     for ( auto j = 0u; j < 2u; ++j )
     {
       ltfi_vars_.push_back( std::vector<signal<problem_network_t>>( num_vars_ + gate_index ) );
-      std::generate( ltfi_vars_.back().begin(), ltfi_vars_.back().end(), [&]() { return pntk.create_pi(); } );
+      std::generate( ltfi_vars_.back().begin(), ltfi_vars_.back().end(), [&]()
+                     { return pntk.create_pi(); } );
     }
   }
 
   void add_output( problem_network_t& pntk )
   {
     ltfi_vars_.push_back( std::vector<signal<problem_network_t>>( num_vars_ + ltfi_vars_.size() / 2 ) );
-    std::generate( ltfi_vars_.back().begin(), ltfi_vars_.back().end(), [&]() { return pntk.create_pi(); } );
+    std::generate( ltfi_vars_.back().begin(), ltfi_vars_.back().end(), [&]()
+                   { return pntk.create_pi(); } );
   }
 
   void constrain_assignment( problem_network_t& pntk, uint32_t bit )
   {
-    const auto create_xor_clause = [&]( std::vector<signal<problem_network_t>> const& ltfi_vars ) -> signal<problem_network_t> {
+    const auto create_xor_clause = [&]( std::vector<signal<problem_network_t>> const& ltfi_vars ) -> signal<problem_network_t>
+    {
       std::vector<signal<problem_network_t>> ltfi( ltfi_vars.size() );
       for ( auto j = 0u; j < ltfi.size(); ++j )
       {
@@ -423,12 +427,13 @@ private:
     // left linear TFI is lexicographically smaller than right one
     for ( auto i = 0u; i < ltfi_vars_.size() / 2u; ++i )
     {
-      auto const& ltfi2 =ltfi_vars_[2 * i];
+      auto const& ltfi2 = ltfi_vars_[2 * i];
       auto const& ltfi1 = ltfi_vars_[2 * i + 1];
 
       auto n = ltfi1.size();
       std::vector<signal<problem_network_t>> as( n - 1u );
-      std::generate( as.begin(), as.end(), [&]() { return pntk.create_pi(); } );
+      std::generate( as.begin(), as.end(), [&]()
+                     { return pntk.create_pi(); } );
 
       pntk.add_clause( !ltfi1[0], ltfi2[0] );
       pntk.add_clause( !ltfi1[0], as[0] );
@@ -469,7 +474,8 @@ private:
     // break on symmetric variables
     if ( ps_.break_symmetric_variables )
     {
-      const auto break_symmetric_vars = [&]( auto j, auto jj ) {
+      const auto break_symmetric_vars = [&]( auto j, auto jj )
+      {
         if ( ps_.very_verbose )
         {
           fmt::print( "[i] symmetry breaking based on symmetric variables {} and {}\n", j, jj );
@@ -507,7 +513,7 @@ private:
     if ( ps_.ensure_to_use_gates )
     {
       const auto num_ands = ltfi_vars_.size() / 2;
-      for ( auto j = 0u ; j < num_vars_ + num_ands; ++j )
+      for ( auto j = 0u; j < num_vars_ + num_ands; ++j )
       {
         if ( j < num_vars_ && !kitty::has_var( func_, j ) )
         {
@@ -535,12 +541,12 @@ private:
       std::copy( ltfi.begin(), ltfi.end(), std::back_inserter( xor_counter_ ) );
     }
 
-    insertion_sorting_network( static_cast<uint32_t>( xor_counter_.size() ), [&]( auto a, auto b ) {
+    insertion_sorting_network( static_cast<uint32_t>( xor_counter_.size() ), [&]( auto a, auto b )
+                               {
       auto const aa = pntk.create_and( xor_counter_[a], xor_counter_[b] );
       auto const bb = pntk.create_or( xor_counter_[a], xor_counter_[b] );
       xor_counter_[a] = aa;
-      xor_counter_[b] = bb;
-    } );
+      xor_counter_[b] = bb; } );
   }
 
 private:
@@ -560,7 +566,8 @@ private:
   void debug_solution( problem_network_t& pntk ) const
   {
     const auto num_ands = ltfi_vars_.size() / 2u;
-    const auto print_ltfi = [&]( std::vector<signal<problem_network_t>> const& ltfi ) {
+    const auto print_ltfi = [&]( std::vector<signal<problem_network_t>> const& ltfi )
+    {
       for ( auto const& f : ltfi )
       {
         fmt::print( "{} ", (uint32_t)pntk.model_value( f ) );
@@ -590,7 +597,7 @@ private:
   std::vector<std::vector<signal<problem_network_t>>> truth_vars_;
   std::vector<signal<problem_network_t>> xor_counter_;
   kitty::dynamic_truth_table func_;
-  bool invert_{false};
+  bool invert_{ false };
   std::optional<uint32_t> heuristic_xor_bound_;
   uint32_t num_solutions_;
   exact_mc_synthesis_params const& ps_;
@@ -603,7 +610,7 @@ template<class Ntk = xag_network, bill::solvers Solver = bill::solvers::glucose_
 Ntk exact_mc_synthesis( kitty::dynamic_truth_table const& func, exact_mc_synthesis_params const& ps = {}, exact_mc_synthesis_stats* pst = nullptr )
 {
   exact_mc_synthesis_stats st;
-  const auto xag = detail::exact_mc_synthesis_impl<Ntk, Solver>{func, 1u, ps, st}.run().front();
+  const auto xag = detail::exact_mc_synthesis_impl<Ntk, Solver>{ func, 1u, ps, st }.run().front();
 
   if ( ps.verbose )
   {
@@ -621,7 +628,7 @@ template<class Ntk = xag_network, bill::solvers Solver = bill::solvers::glucose_
 std::vector<Ntk> exact_mc_synthesis_multiple( kitty::dynamic_truth_table const& func, uint32_t num_solutions, exact_mc_synthesis_params const& ps = {}, exact_mc_synthesis_stats* pst = nullptr )
 {
   exact_mc_synthesis_stats st;
-  const auto xags = detail::exact_mc_synthesis_impl<Ntk, Solver>{func, num_solutions, ps, st}.run();
+  const auto xags = detail::exact_mc_synthesis_impl<Ntk, Solver>{ func, num_solutions, ps, st }.run();
 
   if ( ps.verbose )
   {

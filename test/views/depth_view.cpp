@@ -1,10 +1,10 @@
 #include <catch.hpp>
 
-#include <mockturtle/traits.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/klut.hpp>
+#include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
+#include <mockturtle/traits.hpp>
 #include <mockturtle/views/depth_view.hpp>
 
 using namespace mockturtle;
@@ -47,7 +47,7 @@ TEST_CASE( "compute depth and levels for AIG", "[depth_view]" )
   const auto f4 = aig.create_nand( f2, f3 );
   aig.create_po( f4 );
 
-  depth_view depth_aig{aig};
+  depth_view depth_aig{ aig };
   CHECK( depth_aig.depth() == 3 );
   CHECK( depth_aig.level( aig.get_node( a ) ) == 0 );
   CHECK( depth_aig.level( aig.get_node( b ) ) == 0 );
@@ -70,7 +70,7 @@ TEST_CASE( "compute depth and levels for AIG with inverter costs", "[depth_view]
 
   depth_view_params ps;
   ps.count_complements = true;
-  depth_view depth_aig{aig, {}, ps};
+  depth_view depth_aig{ aig, {}, ps };
   CHECK( depth_aig.depth() == 6 );
   CHECK( depth_aig.level( aig.get_node( a ) ) == 0 );
   CHECK( depth_aig.level( aig.get_node( b ) ) == 0 );
@@ -95,9 +95,9 @@ TEST_CASE( "compute critical path information", "[depth_view]" )
   const auto f = aig.create_and( f2, f3 );
   aig.create_po( f );
 
-  depth_view depth_aig{aig};
-  CHECK( !has_is_on_critical_path_v<decltype(aig)> );
-  CHECK( has_is_on_critical_path_v<decltype(depth_aig)> );
+  depth_view depth_aig{ aig };
+  CHECK( !has_is_on_critical_path_v<decltype( aig )> );
+  CHECK( has_is_on_critical_path_v<decltype( depth_aig )> );
   CHECK( depth_aig.is_on_critical_path( aig.get_node( a ) ) );
   CHECK( depth_aig.is_on_critical_path( aig.get_node( b ) ) );
   CHECK( !depth_aig.is_on_critical_path( aig.get_node( c ) ) );
@@ -125,7 +125,7 @@ TEST_CASE( "compute levels during node construction", "[depth_view]" )
 TEST_CASE( "compute levels during node construction with cost function", "[depth_view]" )
 {
   xag_network xag;
-  depth_view<xag_network, mc_cost<xag_network>> dxag{xag};
+  depth_view<xag_network, mc_cost<xag_network>> dxag{ xag };
 
   const auto a = dxag.create_pi();
   const auto b = dxag.create_pi();
@@ -140,10 +140,10 @@ TEST_CASE( "compute levels during node construction after copy ctor", "[depth_vi
 {
   xag_network xag{};
   {
-    auto tmp = new depth_view<xag_network>{xag};
+    auto tmp = new depth_view<xag_network>{ xag };
     CHECK( xag.events().on_add.size() == 1u );
 
-    depth_view<xag_network> dxag{*tmp}; // copy ctor
+    depth_view<xag_network> dxag{ *tmp }; // copy ctor
     CHECK( xag.events().on_add.size() == 2u );
 
     delete tmp;
@@ -173,10 +173,10 @@ TEST_CASE( "compute levels during node construction after move ctor", "[depth_vi
 {
   xag_network xag{};
   {
-    auto tmp = new depth_view<xag_network>{xag};
+    auto tmp = new depth_view<xag_network>{ xag };
     CHECK( xag.events().on_add.size() == 1u );
 
-    depth_view<xag_network> dxag{ std::move(*tmp) }; // move ctor
+    depth_view<xag_network> dxag{ std::move( *tmp ) }; // move ctor
     CHECK( xag.events().on_add.size() == 2u );
 
     delete tmp;
@@ -207,7 +207,7 @@ TEST_CASE( "compute levels during node construction after copy assignment", "[de
   xag_network xag{};
   depth_view<xag_network> dxag;
   {
-    auto tmp = new depth_view<xag_network>{xag};
+    auto tmp = new depth_view<xag_network>{ xag };
     dxag = *tmp; /* copy assignment */
     delete tmp;
   }
@@ -225,7 +225,7 @@ TEST_CASE( "compute levels during node construction after move assignment", "[de
   xag_network xag{};
   depth_view<xag_network> dxag;
   {
-    auto tmp = new depth_view<xag_network>{xag};
+    auto tmp = new depth_view<xag_network>{ xag };
     dxag = std::move( *tmp ); /* move assignment */
     delete tmp;
   }

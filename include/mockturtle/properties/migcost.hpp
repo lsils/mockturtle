@@ -60,21 +60,20 @@ uint32_t num_inverters( Ntk const& ntk )
 
   std::unordered_set<node<Ntk>> inverted_nodes;
 
-  ntk.foreach_gate( [&]( auto const& n ) {
-    ntk.foreach_fanin( n, [&]( auto const& f ) {
+  ntk.foreach_gate( [&]( auto const& n )
+                    { ntk.foreach_fanin( n, [&]( auto const& f )
+                                         {
       if ( ntk.is_complemented( f ) )
       {
         inverted_nodes.insert( ntk.get_node( f ) );
-      }
-    } );
-  } );
+      } } ); } );
 
-  ntk.foreach_po( [&]( auto const& f ) {
+  ntk.foreach_po( [&]( auto const& f )
+                  {
     if ( ntk.is_complemented( f ) )
     {
       inverted_nodes.insert( ntk.get_node( f ) );
-    }
-  } );
+    } } );
 
   return static_cast<uint32_t>( inverted_nodes.size() );
 }
@@ -93,23 +92,22 @@ uint32_t num_dangling_inputs( Ntk const& ntk )
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
 
-  uint32_t costs{0u};
+  uint32_t costs{ 0u };
 
-  ntk.foreach_gate( [&]( auto const& n ) {
-    ntk.foreach_fanin( n, [&]( auto const& f ) {
+  ntk.foreach_gate( [&]( auto const& n )
+                    { ntk.foreach_fanin( n, [&]( auto const& f )
+                                         {
       if ( ntk.is_pi( ntk.get_node( f ) ) )
       {
         costs++;
-      }
-    } );
-  } );
+      } } ); } );
 
-  ntk.foreach_po( [&]( auto const& f ) {
+  ntk.foreach_po( [&]( auto const& f )
+                  {
     if ( ntk.is_pi( ntk.get_node( f ) ) )
     {
       costs++;
-    }
-  } );
+    } } );
 
   return costs;
 }

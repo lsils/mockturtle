@@ -40,9 +40,9 @@
 #include <bill/sat/interface/abc_bsat2.hpp>
 #include <kitty/partial_truth_table.hpp>
 
+#include "../io/write_patterns.hpp"
 #include "circuit_validator.hpp"
 #include "simulation.hpp"
-#include "../io/write_patterns.hpp"
 
 namespace mockturtle
 {
@@ -50,13 +50,13 @@ namespace mockturtle
 struct functional_reduction_params
 {
   /*! \brief Show progress. */
-  bool progress{false};
+  bool progress{ false };
 
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 
   /*! \brief Whether to repeat until no further improvement can be found. */
-  bool saturation{false};
+  bool saturation{ false };
 
   /*! \brief Whether to use pre-generated patterns stored in a file.
    * If not, by default, 256 random patterns will be used.
@@ -67,43 +67,43 @@ struct functional_reduction_params
   std::optional<std::string> save_patterns{};
 
   /*! \brief Maximum number of nodes in the transitive fanin cone (and their fanouts) to be compared to. */
-  uint32_t max_TFI_nodes{1000};
+  uint32_t max_TFI_nodes{ 1000 };
 
   /*! \brief Maximum fanout count of a node in the transitive fanin cone to explore its fanouts. */
-  uint32_t skip_fanout_limit{100};
+  uint32_t skip_fanout_limit{ 100 };
 
   /*! \brief Conflict limit for the SAT solver. */
-  uint32_t conflict_limit{100};
+  uint32_t conflict_limit{ 100 };
 
   /*! \brief Maximum number of clauses of the SAT solver. (incremental CNF construction) */
-  uint32_t max_clauses{1000};
+  uint32_t max_clauses{ 1000 };
 };
 
 struct functional_reduction_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Time for simulation. */
-  stopwatch<>::duration time_sim{0};
+  stopwatch<>::duration time_sim{ 0 };
 
   /*! \brief Time for SAT solving. */
-  stopwatch<>::duration time_sat{0};
+  stopwatch<>::duration time_sat{ 0 };
 
   /*! \brief Number of accepted constant nodes. */
-  uint32_t num_const_accepts{0};
+  uint32_t num_const_accepts{ 0 };
 
   /*! \brief Number of accepted functionally equivalent nodes. */
-  uint32_t num_equ_accepts{0};
+  uint32_t num_equ_accepts{ 0 };
 
   /*! \brief Number of counter-examples (SAT calls). */
-  uint32_t num_cex{0};
+  uint32_t num_cex{ 0 };
 
   /*! \brief Number of successful node reductions (UNSAT calls). */
-  uint32_t num_reduction{0};
+  uint32_t num_reduction{ 0 };
 
   /*! \brief Number of SAT solver timeout. */
-  uint32_t num_timeout{0};
+  uint32_t num_timeout{ 0 };
 
   void report() const
   {
@@ -154,9 +154,8 @@ public:
     stopwatch t( st.time_total );
 
     /* first simulation: the whole circuit; from 0 bits. */
-    call_with_stopwatch( st.time_sim, [&]() {
-      simulate_nodes<Ntk>( ntk, tts, sim, true );
-    } );
+    call_with_stopwatch( st.time_sim, [&]()
+                         { simulate_nodes<Ntk>( ntk, tts, sim, true ); } );
 
     /* remove constant nodes. */
     substitute_constants();
@@ -174,11 +173,12 @@ public:
 private:
   void substitute_constants()
   {
-    progress_bar pbar{ntk.size(), "FR-const |{0}| node = {1:>4}   cand = {2:>4}", ps.progress};
+    progress_bar pbar{ ntk.size(), "FR-const |{0}| node = {1:>4}   cand = {2:>4}", ps.progress };
 
     auto zero = sim.compute_constant( false );
     auto one = sim.compute_constant( true );
-    ntk.foreach_gate( [&]( auto const& n, auto i ) {
+    ntk.foreach_gate( [&]( auto const& n, auto i )
+                      {
       pbar( i, i, candidates );
 
       check_tts( n );
@@ -220,14 +220,14 @@ private:
         /* update network */
         ntk.substitute_node( n, ntk.get_constant( const_value ) );
       }
-      return true;
-    } );
+      return true; } );
   }
 
   void substitute_equivalent_nodes()
   {
-    progress_bar pbar{ntk.size(), "FR-equ |{0}| node = {1:>4}   cand = {2:>4}", ps.progress};
-    ntk.foreach_gate( [&]( auto const& root, auto i ) {
+    progress_bar pbar{ ntk.size(), "FR-equ |{0}| node = {1:>4}   cand = {2:>4}", ps.progress };
+    ntk.foreach_gate( [&]( auto const& root, auto i )
+                      {
       pbar( i, i, candidates );
 
       check_tts( root );
@@ -293,8 +293,7 @@ private:
         }
       }
 
-      return true; /* next */
-    } );
+      return true; /* next */ } );
   }
 
   bool try_node( kitty::partial_truth_table& tt, kitty::partial_truth_table& ntt, node const& root, node const& n )
@@ -316,9 +315,8 @@ private:
     /* update progress bar */
     candidates++;
 
-    const auto res = call_with_stopwatch( st.time_sat, [&]() {
-      return validator.validate( root, g );
-    } );
+    const auto res = call_with_stopwatch( st.time_sat, [&]()
+                                          { return validator.validate( root, g ); } );
     if ( !res ) /* timeout */
     {
       ++st.num_timeout;
@@ -350,9 +348,8 @@ private:
     /* re-simulate the whole circuit (for the last block) when a block is full */
     if ( sim.num_bits() % 64 == 0 )
     {
-      call_with_stopwatch( st.time_sim, [&]() {
-        simulate_nodes<Ntk>( ntk, tts, sim, false );
-      } );
+      call_with_stopwatch( st.time_sim, [&]()
+                           { simulate_nodes<Ntk>( ntk, tts, sim, false ); } );
     }
   }
 
@@ -360,9 +357,8 @@ private:
   {
     if ( tts[n].num_bits() != sim.num_bits() )
     {
-      call_with_stopwatch( st.time_sim, [&]() {
-        simulate_node<Ntk>( ntk, n, tts, sim );
-      } );
+      call_with_stopwatch( st.time_sim, [&]()
+                           { simulate_node<Ntk>( ntk, n, tts, sim ); } );
     }
   }
 
@@ -372,9 +368,8 @@ private:
     ntk.incr_trav_id();
     ntk.set_visited( n, ntk.trav_id() );
 
-    ntk.foreach_fanin( n, [&]( auto const& f ) {
-      return foreach_transitive_fanin_rec( ntk.get_node( f ), fn );
-    });
+    ntk.foreach_fanin( n, [&]( auto const& f )
+                       { return foreach_transitive_fanin_rec( ntk.get_node( f ), fn ); } );
   }
 
   template<typename Fn>
@@ -386,15 +381,15 @@ private:
       return false;
     }
     bool continue_loop = true;
-    ntk.foreach_fanin( n, [&]( auto const& f ) {
+    ntk.foreach_fanin( n, [&]( auto const& f )
+                       {
       if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() )
       {
         return true;
       } /* skip visited node, continue looping. */
 
       continue_loop = foreach_transitive_fanin_rec( ntk.get_node( f ), fn );
-      return continue_loop; /* break `foreach_fanin` loop immediately when receiving `false`. */
-    } );
+      return continue_loop; /* break `foreach_fanin` loop immediately when receiving `false`. */ } );
     return continue_loop; /* return `false` only if `false` has ever been received from recursive calls. */
   }
 
@@ -407,7 +402,7 @@ private:
   partial_simulator sim;
   validator_t validator;
 
-  uint32_t candidates{0};
+  uint32_t candidates{ 0 };
 }; /* functional_reduction_impl */
 
 } /* namespace detail */
@@ -438,7 +433,7 @@ void functional_reduction( Ntk& ntk, functional_reduction_params const& ps = {},
   vps.conflict_limit = ps.conflict_limit;
 
   using fanout_view_t = fanout_view<Ntk>;
-  fanout_view_t fanout_view{ntk};
+  fanout_view_t fanout_view{ ntk };
 
   functional_reduction_stats st;
   detail::functional_reduction_impl p( fanout_view, ps, vps, st );

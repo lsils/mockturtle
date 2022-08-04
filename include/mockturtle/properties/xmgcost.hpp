@@ -25,7 +25,7 @@
 
 /*!
   \file xmgcost.hpp
-  \brief Cost functions for xmg-based networks 
+  \brief Cost functions for xmg-based networks
 
   \author Heinz Riener
   \author Shubham Rai
@@ -43,22 +43,22 @@ namespace mockturtle
 struct xmg_gate_stats
 {
   /*! \brief Total number of XOR3 gates (structurally). */
-  uint32_t total_xor3{0};
+  uint32_t total_xor3{ 0 };
 
   /*! \brief Number of XOR3 (functionally). */
-  uint32_t xor3{0};
+  uint32_t xor3{ 0 };
 
   /*! \brief Number of XOR2 (functionally). */
-  uint32_t xor2{0};
+  uint32_t xor2{ 0 };
 
   /*! \brief Total number of MAJ gates (structurally). */
-  uint32_t total_maj{0};
+  uint32_t total_maj{ 0 };
 
   /*! \brief Number of MAJ gates. */
-  uint32_t maj{0};
+  uint32_t maj{ 0 };
 
   /*! \brief Number of AND/OR gates. */
-  uint32_t and_or{0};
+  uint32_t and_or{ 0 };
 
   void report() const
   {
@@ -85,7 +85,8 @@ void xmg_profile_gates( Ntk const& ntk, xmg_gate_stats& stats )
   static_assert( has_is_maj_v<Ntk>, "Ntk does not implement the is_maj method" );
   static_assert( has_is_xor3_v<Ntk>, "Ntk does not implement the is_xor3 method" );
 
-  ntk.foreach_gate( [&]( auto const& node ) {
+  ntk.foreach_gate( [&]( auto const& node )
+                    {
     bool has_const_fanin = false;
 
     /* Check if all of the fanin nodes are not constant */
@@ -119,8 +120,7 @@ void xmg_profile_gates( Ntk const& ntk, xmg_gate_stats& stats )
       {
         ++stats.xor3;
       }
-    }
-  } );
+    } } );
 
   stats.total_xor3 = stats.xor2 + stats.xor3;
   stats.total_maj = stats.and_or + stats.maj;

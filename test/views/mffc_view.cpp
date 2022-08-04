@@ -10,9 +10,8 @@ template<typename Ntk>
 void initialize_refs( Ntk& ntk )
 {
   ntk.clear_values();
-  ntk.foreach_node( [&]( auto const& n ) {
-    ntk.set_value( n, ntk.fanout_size( n ) );
-  } );
+  ntk.foreach_node( [&]( auto const& n )
+                    { ntk.set_value( n, ntk.fanout_size( n ) ); } );
 }
 
 TEST_CASE( "create a MFFC view", "[mffc_view]" )
@@ -50,13 +49,14 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
   CHECK( aig.get_node( f7 ) == 12 );
   CHECK( aig.get_node( f8 ) == 13 );
 
-  mffc_view mffc1{aig, aig.get_node( f1 )};
+  mffc_view mffc1{ aig, aig.get_node( f1 ) };
 
   CHECK( mffc1.size() == 4 );
   CHECK( mffc1.num_pis() == 2 );
   CHECK( mffc1.num_pos() == 1 );
   CHECK( mffc1.num_gates() == 1 );
-  mffc1.foreach_pi( [&]( auto const& n, auto i ) {
+  mffc1.foreach_pi( [&]( auto const& n, auto i )
+                    {
     CHECK( mffc1.node_to_index( n ) == i + 1 );
     switch ( i )
     {
@@ -69,9 +69,9 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc1.foreach_gate( [&]( auto const& n, auto i ) {
+    } } );
+  mffc1.foreach_gate( [&]( auto const& n, auto i )
+                      {
     CHECK( mffc1.node_to_index( n ) == i + 1 + mffc1.num_pis() );
     switch ( i )
     {
@@ -81,9 +81,9 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc1.foreach_node( [&]( auto const& n, auto i ) {
+    } } );
+  mffc1.foreach_node( [&]( auto const& n, auto i )
+                      {
     CHECK( mffc1.node_to_index( n ) == i );
     switch ( i )
     {
@@ -102,17 +102,18 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc1.foreach_po( [&]( auto const& f ) { CHECK( mffc1.get_node( f ) == aig.get_node( f1 ) ); } );
+    } } );
+  mffc1.foreach_po( [&]( auto const& f )
+                    { CHECK( mffc1.get_node( f ) == aig.get_node( f1 ) ); } );
 
-  mffc_view mffc2{aig, aig.get_node( f3 )};
+  mffc_view mffc2{ aig, aig.get_node( f3 ) };
 
   CHECK( mffc2.size() == 4 );
   CHECK( mffc2.num_pis() == 2 );
   CHECK( mffc2.num_pos() == 1 );
   CHECK( mffc2.num_gates() == 1 );
-  mffc2.foreach_pi( [&]( auto const& n, auto i ) {
+  mffc2.foreach_pi( [&]( auto const& n, auto i )
+                    {
     CHECK( mffc2.node_to_index( n ) == i + 1 );
     switch ( i )
     {
@@ -125,9 +126,9 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc2.foreach_gate( [&]( auto const& n, auto i ) {
+    } } );
+  mffc2.foreach_gate( [&]( auto const& n, auto i )
+                      {
     CHECK( mffc2.node_to_index( n ) == i + 1 + mffc2.num_pis() );
     switch ( i )
     {
@@ -137,9 +138,9 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc2.foreach_node( [&]( auto const& n, auto i ) {
+    } } );
+  mffc2.foreach_node( [&]( auto const& n, auto i )
+                      {
     CHECK( mffc2.node_to_index( n ) == i );
     switch ( i )
     {
@@ -158,17 +159,18 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc2.foreach_po( [&]( auto const& f ) { CHECK( mffc2.get_node( f ) == aig.get_node( f3 ) ); } );
+    } } );
+  mffc2.foreach_po( [&]( auto const& f )
+                    { CHECK( mffc2.get_node( f ) == aig.get_node( f3 ) ); } );
 
-  mffc_view mffc3{aig, aig.get_node( f5 )};
+  mffc_view mffc3{ aig, aig.get_node( f5 ) };
 
   CHECK( mffc3.size() == 4 );
   CHECK( mffc3.num_pis() == 2 );
   CHECK( mffc3.num_pos() == 1 );
   CHECK( mffc3.num_gates() == 1 );
-  mffc3.foreach_pi( [&]( auto const& n, auto i ) {
+  mffc3.foreach_pi( [&]( auto const& n, auto i )
+                    {
     CHECK( mffc3.node_to_index( n ) == i + 1 );
     switch ( i )
     {
@@ -181,9 +183,9 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc3.foreach_gate( [&]( auto const& n, auto i ) {
+    } } );
+  mffc3.foreach_gate( [&]( auto const& n, auto i )
+                      {
     CHECK( mffc3.node_to_index( n ) == i + 1 + mffc3.num_pis() );
     switch ( i )
     {
@@ -193,9 +195,9 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc3.foreach_node( [&]( auto const& n, auto i ) {
+    } } );
+  mffc3.foreach_node( [&]( auto const& n, auto i )
+                      {
     CHECK( mffc3.node_to_index( n ) == i );
     switch ( i )
     {
@@ -214,17 +216,18 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc3.foreach_po( [&]( auto const& f ) { CHECK( mffc3.get_node( f ) == aig.get_node( f5 ) ); } );
+    } } );
+  mffc3.foreach_po( [&]( auto const& f )
+                    { CHECK( mffc3.get_node( f ) == aig.get_node( f5 ) ); } );
 
-  mffc_view mffc4{aig, aig.get_node( f7 )};
+  mffc_view mffc4{ aig, aig.get_node( f7 ) };
 
   CHECK( mffc4.size() == 9 );
   CHECK( mffc4.num_pis() == 3 );
   CHECK( mffc4.num_pos() == 1 );
   CHECK( mffc4.num_gates() == 5 );
-  mffc4.foreach_pi( [&]( auto const& n, auto i ) {
+  mffc4.foreach_pi( [&]( auto const& n, auto i )
+                    {
     CHECK( mffc4.node_to_index( n ) == i + 1 );
     switch ( i )
     {
@@ -240,9 +243,9 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc4.foreach_gate( [&]( auto const& n, auto i ) {
+    } } );
+  mffc4.foreach_gate( [&]( auto const& n, auto i )
+                      {
     CHECK( mffc4.node_to_index( n ) == i + 1 + mffc4.num_pis() );
     switch ( i )
     {
@@ -264,9 +267,9 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc4.foreach_node( [&]( auto const& n, auto i ) {
+    } } );
+  mffc4.foreach_node( [&]( auto const& n, auto i )
+                      {
     CHECK( mffc4.node_to_index( n ) == i );
     switch ( i )
     {
@@ -300,19 +303,20 @@ TEST_CASE( "create a MFFC view", "[mffc_view]" )
     default:
       CHECK( false );
       break;
-    }
-  } );
-  mffc4.foreach_po( [&]( auto const& f ) { CHECK( mffc4.get_node( f ) == aig.get_node( f7 ) ); } );
+    } } );
+  mffc4.foreach_po( [&]( auto const& f )
+                    { CHECK( mffc4.get_node( f ) == aig.get_node( f7 ) ); } );
 
-  mffc_view mffc5{aig, aig.get_node( f8 )};
+  mffc_view mffc5{ aig, aig.get_node( f8 ) };
 
   CHECK( mffc5.size() == 14 );
   CHECK( mffc5.num_pis() == 5 );
   CHECK( mffc5.num_pos() == 1 );
   CHECK( mffc5.num_gates() == 8 );
-  mffc5.foreach_pi( [&]( auto const& n, auto i ) {
+  mffc5.foreach_pi( [&]( auto const& n, auto i )
+                    {
     CHECK( mffc5.node_to_index( n ) == i + 1 );
-    CHECK( n == i + 1 );
-  } );
-  mffc5.foreach_po( [&]( auto const& f ) { CHECK( mffc5.get_node( f ) == aig.get_node( f8 ) ); } );
+    CHECK( n == i + 1 ); } );
+  mffc5.foreach_po( [&]( auto const& f )
+                    { CHECK( mffc5.get_node( f ) == aig.get_node( f8 ) ); } );
 }

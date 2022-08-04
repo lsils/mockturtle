@@ -158,16 +158,16 @@ public:
     {
       if ( ntk.is_maj( n ) )
       {
-        std::string label{"MAJ"};
-        ntk.foreach_fanin( n, [&]( auto const& f ) {
+        std::string label{ "MAJ" };
+        ntk.foreach_fanin( n, [&]( auto const& f )
+                           {
           if ( ntk.is_constant( ntk.get_node( f ) ) )
           {
             const auto v = ntk.constant_value( ntk.get_node( f ) ) != ntk.is_complemented( f );
             label = v ? "OR" : "AND";
             return false;
           }
-          return true;
-        } );
+          return true; } );
         return label;
       }
     }
@@ -237,16 +237,16 @@ public:
     {
       if ( ntk.is_maj( n ) )
       {
-        std::string color{"lightsalmon"};
-        ntk.foreach_fanin( n, [&]( auto const& f ) {
+        std::string color{ "lightsalmon" };
+        ntk.foreach_fanin( n, [&]( auto const& f )
+                           {
           if ( ntk.is_constant( ntk.get_node( f ) ) )
           {
             const auto v = ntk.constant_value( ntk.get_node( f ) ) != ntk.is_complemented( f );
             color = v ? "palegreen2" : "lightcoral";
             return false;
           }
-          return true;
-        } );
+          return true; } );
         return color;
       }
     }
@@ -328,7 +328,8 @@ void write_dot( Ntk const& ntk, std::ostream& os, Drawer const& drawer = {} )
 
   std::vector<std::vector<uint32_t>> level_to_node_indexes;
 
-  ntk.foreach_node( [&]( auto const& n ) {
+  ntk.foreach_node( [&]( auto const& n )
+                    {
     nodes << fmt::format( "{} [label=\"{}\",shape={},style=filled,fillcolor={}]\n",
                           ntk.node_to_index( n ),
                           drawer.node_label( ntk, n ),
@@ -352,8 +353,7 @@ void write_dot( Ntk const& ntk, std::ostream& os, Drawer const& drawer = {} )
     {
       level_to_node_indexes.resize( lvl + 1 );
     }
-    level_to_node_indexes[lvl].push_back( ntk.node_to_index( n ) );
-  } );
+    level_to_node_indexes[lvl].push_back( ntk.node_to_index( n ) ); } );
 
   for ( auto const& indexes : level_to_node_indexes )
   {
@@ -363,14 +363,14 @@ void write_dot( Ntk const& ntk, std::ostream& os, Drawer const& drawer = {} )
   }
 
   levels << "{rank = same; ";
-  ntk.foreach_po( [&]( auto const& f, auto i ) {
+  ntk.foreach_po( [&]( auto const& f, auto i )
+                  {
     nodes << fmt::format( "po{} [shape={},style=filled,fillcolor={}]\n", i, drawer.po_shape( ntk, i ), drawer.po_fillcolor( ntk, i ) );
     edges << fmt::format( "{} -> po{} [style={}]\n",
                           ntk.node_to_index( ntk.get_node( f ) ),
                           i,
                           drawer.signal_style( ntk, f ) );
-    levels << fmt::format( "po{}; ", i );
-  } );
+    levels << fmt::format( "po{}; ", i ); } );
   levels << "}\n";
 
   os << "digraph {\n"

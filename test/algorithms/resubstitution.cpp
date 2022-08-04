@@ -1,26 +1,25 @@
 #include <catch.hpp>
 
-#include <mockturtle/views/depth_view.hpp>
-#include <mockturtle/views/fanout_view.hpp>
-#include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
-#include <mockturtle/io/write_verilog.hpp>
+#include <mockturtle/views/depth_view.hpp>
+#include <mockturtle/views/fanout_view.hpp>
 
 #include <mockturtle/algorithms/aig_resub.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
-#include <mockturtle/algorithms/xmg_resub.hpp>
-#include <mockturtle/algorithms/xag_resub_withDC.hpp>
 #include <mockturtle/algorithms/sim_resub.hpp>
+#include <mockturtle/algorithms/xag_resub_withDC.hpp>
+#include <mockturtle/algorithms/xmg_resub.hpp>
 
 #include <kitty/static_truth_table.hpp>
 
 using namespace mockturtle;
-
 
 TEST_CASE( "Resubstitution of AIGs", "[resubstitution]" )
 {
@@ -28,21 +27,21 @@ TEST_CASE( "Resubstitution of AIGs", "[resubstitution]" )
      the expected improvement after resubstitution. */
   using value_type = std::vector<uint32_t>;
   std::vector<std::pair<value_type, uint32_t>> const test_cases{
-    #include "aig_resubstitution.tc"
+#include "aig_resubstitution.tc"
   };
 
   for ( const auto& tc : test_cases )
   {
     aig_network aig;
-    decode( aig, xag_index_list{tc.first} );
+    decode( aig, xag_index_list{ tc.first } );
 
-    uint64_t const size_before{aig.size()};
+    uint64_t const size_before{ aig.size() };
 
     default_simulator<kitty::dynamic_truth_table> sim( aig.num_pis() );
     auto const tt = simulate<kitty::dynamic_truth_table>( aig, sim )[0];
     using view_t = depth_view<fanout_view<aig_network>>;
-    fanout_view<aig_network> fanout_view{aig};
-    view_t resub_view{fanout_view};
+    fanout_view<aig_network> fanout_view{ aig };
+    view_t resub_view{ fanout_view };
 
     aig_resubstitution( resub_view );
     aig = cleanup_dangling( aig );
@@ -69,8 +68,8 @@ TEST_CASE( "Replace with constant in AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 2u );
 
   using view_t = depth_view<fanout_view<aig_network>>;
-  fanout_view<aig_network> fanout_view{aig};
-  view_t resub_view{fanout_view};
+  fanout_view<aig_network> fanout_view{ aig };
+  view_t resub_view{ fanout_view };
 
   aig_resubstitution( resub_view );
   aig = cleanup_dangling( aig );
@@ -88,7 +87,7 @@ TEST_CASE( "Merge equivalent nodes in AIG", "[resubstitution]" )
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
   auto n0 = aig.create_and( !x0, !x1 );
-  auto n1 = aig.create_and(  x0, !n0 );
+  auto n1 = aig.create_and( x0, !n0 );
   aig.create_po( n1 );
 
   const auto tt = simulate<kitty::static_truth_table<2u>>( aig )[0];
@@ -96,8 +95,8 @@ TEST_CASE( "Merge equivalent nodes in AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 2u );
 
   using view_t = depth_view<fanout_view<aig_network>>;
-  fanout_view<aig_network> fanout_view{aig};
-  view_t resub_view{fanout_view};
+  fanout_view<aig_network> fanout_view{ aig };
+  view_t resub_view{ fanout_view };
 
   aig_resubstitution( resub_view );
   aig = cleanup_dangling( aig );
@@ -123,8 +122,8 @@ TEST_CASE( "Substitute AND with positive divisor in AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 2u );
 
   using view_t = depth_view<fanout_view<aig_network>>;
-  fanout_view<aig_network> fanout_view{aig};
-  view_t resub_view{fanout_view};
+  fanout_view<aig_network> fanout_view{ aig };
+  view_t resub_view{ fanout_view };
 
   aig_resubstitution( resub_view );
   aig = cleanup_dangling( aig );
@@ -150,8 +149,8 @@ TEST_CASE( "Substitute AND with negative divisor in AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 2u );
 
   using view_t = depth_view<fanout_view<aig_network>>;
-  fanout_view<aig_network> fanout_view{aig};
-  view_t resub_view{fanout_view};
+  fanout_view<aig_network> fanout_view{ aig };
+  view_t resub_view{ fanout_view };
 
   aig_resubstitution( resub_view );
   aig = cleanup_dangling( aig );
@@ -168,7 +167,7 @@ TEST_CASE( "Substitute OR with positive divisors in AIG", "[resubstitution]" )
   aig_network aig;
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
-  auto n0 = aig.create_and(  x0, !x1 );
+  auto n0 = aig.create_and( x0, !x1 );
   auto n1 = aig.create_and( !x1, !n0 );
   aig.create_po( n1 );
 
@@ -177,8 +176,8 @@ TEST_CASE( "Substitute OR with positive divisors in AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 2u );
 
   using view_t = depth_view<fanout_view<aig_network>>;
-  fanout_view<aig_network> fanout_view{aig};
-  view_t resub_view{fanout_view};
+  fanout_view<aig_network> fanout_view{ aig };
+  view_t resub_view{ fanout_view };
 
   aig_resubstitution( resub_view );
   aig = cleanup_dangling( aig );
@@ -196,9 +195,9 @@ TEST_CASE( "Substitute OR-OR in AIG", "[resubstitution]" )
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
   auto x2 = aig.create_pi();
-  auto n0 = aig.create_and(  x0, !x2 );
+  auto n0 = aig.create_and( x0, !x2 );
   auto n1 = aig.create_and( !x1, !x2 );
-  auto n2 = aig.create_and( !n0,  n1 );
+  auto n2 = aig.create_and( !n0, n1 );
   aig.create_po( n2 );
 
   const auto tt = simulate<kitty::static_truth_table<3u>>( aig )[0];
@@ -206,8 +205,8 @@ TEST_CASE( "Substitute OR-OR in AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 3u );
 
   using view_t = depth_view<fanout_view<aig_network>>;
-  fanout_view<aig_network> fanout_view{aig};
-  view_t resub_view{fanout_view};
+  fanout_view<aig_network> fanout_view{ aig };
+  view_t resub_view{ fanout_view };
 
   aig_resubstitution( resub_view );
   aig = cleanup_dangling( aig );
@@ -225,9 +224,9 @@ TEST_CASE( "Substitute OR-AND in AIG", "[resubstitution]" )
   auto x0 = aig.create_pi();
   auto x1 = aig.create_pi();
   auto x2 = aig.create_pi();
-  auto n0 = aig.create_and( !x0,  x1 );
+  auto n0 = aig.create_and( !x0, x1 );
   auto n1 = aig.create_and( !x2, !n0 );
-  auto n2 = aig.create_and( !x2,  n1 );
+  auto n2 = aig.create_and( !x2, n1 );
   aig.create_po( n2 );
 
   const auto tt = simulate<kitty::static_truth_table<3u>>( aig )[0];
@@ -235,8 +234,8 @@ TEST_CASE( "Substitute OR-AND in AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 3u );
 
   using view_t = depth_view<fanout_view<aig_network>>;
-  fanout_view<aig_network> fanout_view{aig};
-  view_t resub_view{fanout_view};
+  fanout_view<aig_network> fanout_view{ aig };
+  view_t resub_view{ fanout_view };
 
   aig_resubstitution( resub_view );
   aig = cleanup_dangling( aig );
@@ -254,14 +253,14 @@ TEST_CASE( "Substitute AND-2OR in AIG", "[resubstitution]" )
   auto x1 = aig.create_pi();
   auto x2 = aig.create_pi();
   auto x3 = aig.create_pi();
-  auto n0 = aig.create_and( !x2,  x3 );
-  auto n1 = aig.create_and( !x2,  n0 );
-  auto n2 = aig.create_and(  x3, !n1 );
-  auto n3 = aig.create_and(  x0, !x1 );
-  auto n4 = aig.create_and( !n2,  n3 );
-  auto n5 = aig.create_and(  x1, !n2 );
+  auto n0 = aig.create_and( !x2, x3 );
+  auto n1 = aig.create_and( !x2, n0 );
+  auto n2 = aig.create_and( x3, !n1 );
+  auto n3 = aig.create_and( x0, !x1 );
+  auto n4 = aig.create_and( !n2, n3 );
+  auto n5 = aig.create_and( x1, !n2 );
   auto n6 = aig.create_and( !n4, !n5 );
-  auto n7 = aig.create_and(  n1,  n3 );
+  auto n7 = aig.create_and( n1, n3 );
   aig.create_po( n6 );
   aig.create_po( n7 );
 
@@ -271,8 +270,8 @@ TEST_CASE( "Substitute AND-2OR in AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 8u );
 
   using view_t = depth_view<fanout_view<aig_network>>;
-  fanout_view<aig_network> fanout_view{aig};
-  view_t resub_view{fanout_view};
+  fanout_view<aig_network> fanout_view{ aig };
+  view_t resub_view{ fanout_view };
 
   resubstitution_params ps;
   ps.max_inserts = 3;
@@ -306,8 +305,8 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   CHECK( tt._bits == 0xe8 );
 
   using view_t = depth_view<fanout_view<mig_network>>;
-  fanout_view<mig_network> fanout_view{mig};
-  view_t resub_view{fanout_view};
+  fanout_view<mig_network> fanout_view{ mig };
+  view_t resub_view{ fanout_view };
 
   mig_resubstitution( resub_view );
 
@@ -347,8 +346,8 @@ TEST_CASE( "Resubstitution of XMG", "[resubstitution]" )
   CHECK( tt2._bits == 0xcc );
 
   using view_t = depth_view<fanout_view<xmg_network>>;
-  fanout_view<xmg_network> fanout_view{xmg};
-  view_t resub_view{fanout_view};
+  fanout_view<xmg_network> fanout_view{ xmg };
+  view_t resub_view{ fanout_view };
 
   xmg_resubstitution( resub_view );
 
@@ -364,7 +363,7 @@ TEST_CASE( "Resubstitution of XMG", "[resubstitution]" )
   CHECK( xmg.num_pis() == 3 );
   CHECK( xmg.num_pos() == 2 );
   CHECK( xmg.num_gates() == 1 );
-} 
+}
 
 TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
 {
@@ -374,7 +373,7 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
   const auto b = xag.create_pi();
   const auto c = xag.create_pi();
 
-  const auto f = xag.create_xor(xag.create_or( xag.create_and(a, xag.create_not(b)), xag.create_and(b, xag.create_not(a)) ), c);
+  const auto f = xag.create_xor( xag.create_or( xag.create_and( a, xag.create_not( b ) ), xag.create_and( b, xag.create_not( a ) ) ), c );
   xag.create_po( f );
 
   CHECK( xag.size() == 8 );
@@ -387,9 +386,9 @@ TEST_CASE( "Resubstitution of XAG to minimize ANDs", "[resubstitution]" )
   resubstitution_params ps;
 
   using view_t = depth_view<fanout_view<xag_network>>;
-  fanout_view<xag_network> fanout_view{xag};
-  view_t resub_view{fanout_view};
-  resubstitution_minmc_withDC( resub_view , ps);
+  fanout_view<xag_network> fanout_view{ xag };
+  view_t resub_view{ fanout_view };
+  resubstitution_minmc_withDC( resub_view, ps );
 
   xag = cleanup_dangling( xag );
 

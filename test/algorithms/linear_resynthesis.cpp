@@ -11,12 +11,13 @@ TEST_CASE( "Linear resynthesis with Paar algorithm", "[linear_resynthesis]" )
 {
   xag_network xag;
   std::vector<xag_network::signal> xs( 7u );
-  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
-  xag.create_po( xag.create_nary_xor( {xs[0], xs[1], xs[2], xs[4], xs[6]} ) );
-  xag.create_po( xag.create_nary_xor( {xs[1], xs[2], xs[4], xs[5]} ) );
-  xag.create_po( xag.create_nary_xor( {xs[0], xs[1], xs[2]} ) );
-  xag.create_po( xag.create_nary_xor( {xs[0], xs[1], xs[3], xs[4], xs[6]} ) );
-  xag.create_po( xag.create_nary_xor( {xs[0], xs[2], xs[3], xs[5], xs[6]} ) );
+  std::generate( xs.begin(), xs.end(), [&]()
+                 { return xag.create_pi(); } );
+  xag.create_po( xag.create_nary_xor( { xs[0], xs[1], xs[2], xs[4], xs[6] } ) );
+  xag.create_po( xag.create_nary_xor( { xs[1], xs[2], xs[4], xs[5] } ) );
+  xag.create_po( xag.create_nary_xor( { xs[0], xs[1], xs[2] } ) );
+  xag.create_po( xag.create_nary_xor( { xs[0], xs[1], xs[3], xs[4], xs[6] } ) );
+  xag.create_po( xag.create_nary_xor( { xs[0], xs[2], xs[3], xs[5], xs[6] } ) );
 
   const auto xag2 = linear_resynthesis_paar( xag );
 
@@ -31,15 +32,15 @@ TEST_CASE( "Linear resynthesis with Paar algorithm", "[linear_resynthesis]" )
   }
 }
 
-
 TEST_CASE( "Linear resynthesis with Paar algorithm 2", "[linear_resynthesis]" )
 {
   xag_network xag;
   std::vector<xag_network::signal> xs( 5u );
-  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
-  xag.create_po( xag.create_nary_xor( {xs[0], xs[1], xs[2]} ) );
-  xag.create_po( xag.create_nary_xor( {xs[1], xs[2], xs[3]} ) );
-  xag.create_po( xag.create_nary_xor( {xs[2], xs[3], xs[4]} ) );
+  std::generate( xs.begin(), xs.end(), [&]()
+                 { return xag.create_pi(); } );
+  xag.create_po( xag.create_nary_xor( { xs[0], xs[1], xs[2] } ) );
+  xag.create_po( xag.create_nary_xor( { xs[1], xs[2], xs[3] } ) );
+  xag.create_po( xag.create_nary_xor( { xs[2], xs[3], xs[4] } ) );
 
   const auto xag2 = linear_resynthesis_paar( xag );
 
@@ -58,23 +59,23 @@ TEST_CASE( "Extract linear matrix from linear network", "[linear_resynthesis]" )
 {
   xag_network xag;
   std::vector<xag_network::signal> xs( 5u );
-  std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+  std::generate( xs.begin(), xs.end(), [&]()
+                 { return xag.create_pi(); } );
 
   xag.create_po( xag.create_nary_xor( xs ) );
-  xag.create_po( xag.create_nary_xor( {xs[0], xs[1], xs[2], xs[3]} ) );
-  xag.create_po( xag.create_nary_xor( {xs[0], xs[1], xs[2], xs[4]} ) );
-  xag.create_po( xag.create_nary_xor( {xs[2], xs[3], xs[4]} ) );
-  xag.create_po( xag.create_nary_xor( {xs[0], xs[4]} ) );
+  xag.create_po( xag.create_nary_xor( { xs[0], xs[1], xs[2], xs[3] } ) );
+  xag.create_po( xag.create_nary_xor( { xs[0], xs[1], xs[2], xs[4] } ) );
+  xag.create_po( xag.create_nary_xor( { xs[2], xs[3], xs[4] } ) );
+  xag.create_po( xag.create_nary_xor( { xs[0], xs[4] } ) );
 
   const auto matrix = get_linear_matrix( xag );
 
   std::vector<std::vector<bool>> expected = {
-    {true, true, true, true, true},
-    {true, true, true, true, false},
-    {true, true, true, false, true},
-    {false, false, true, true, true},
-    {true, false, false, false, true}
-  };
+      { true, true, true, true, true },
+      { true, true, true, true, false },
+      { true, true, true, false, true },
+      { false, false, true, true, true },
+      { true, false, false, false, true } };
 
   CHECK( xag.num_gates() == 9u );
   CHECK( matrix == expected );
@@ -86,12 +87,11 @@ TEST_CASE( "Extract linear matrix from linear network", "[linear_resynthesis]" )
 TEST_CASE( "Exact linear synthesis with SAT (example from paper)", "[linear_resynthesis]" )
 {
   std::vector<std::vector<bool>> matrix = {
-    {true, true, true, true, true},
-    {true, true, true, true, false},
-    {true, true, true, false, true},
-    {false, false, true, true, true},
-    {true, false, false, false, true}
-  };
+      { true, true, true, true, true },
+      { true, true, true, true, false },
+      { true, true, true, false, true },
+      { false, false, true, true, true },
+      { true, false, false, false, true } };
 
   const auto xag = *exact_linear_synthesis<xag_network>( matrix );
 
@@ -101,13 +101,13 @@ TEST_CASE( "Exact linear synthesis with SAT (example from paper)", "[linear_resy
 TEST_CASE( "More difficult example", "[linear_resynthesis]" )
 {
   std::vector<std::vector<bool>> matrix = {
-      {false, true, false, false, false, false, true, true},
-      {false, false, false, true, false, false, false, false},
-      {true, true, true, true, false, false, false, false},
-      {false, true, false, true, true, true, false, false},
-      {true, false, false, true, true, true, false, false},
-      {false, true, false, false, false, false, true, false},
-      {true, true, false, false, false, false, true, false}};
+      { false, true, false, false, false, false, true, true },
+      { false, false, false, true, false, false, false, false },
+      { true, true, true, true, false, false, false, false },
+      { false, true, false, true, true, true, false, false },
+      { true, false, false, true, true, true, false, false },
+      { false, true, false, false, false, false, true, false },
+      { true, true, false, false, false, false, true, false } };
 
   exact_linear_synthesis_params ps;
   ps.conflict_limit = 10000;
@@ -120,13 +120,13 @@ TEST_CASE( "More difficult example", "[linear_resynthesis]" )
 TEST_CASE( "More difficult example with upper bound", "[linear_resynthesis]" )
 {
   std::vector<std::vector<bool>> matrix = {
-      {false, true, false, false, false, false, true, true},
-      {false, false, false, true, false, false, false, false},
-      {true, true, true, true, false, false, false, false},
-      {false, true, false, true, true, true, false, false},
-      {true, false, false, true, true, true, false, false},
-      {false, true, false, false, false, false, true, false},
-      {true, true, false, false, false, false, true, false}};
+      { false, true, false, false, false, false, true, true },
+      { false, false, false, true, false, false, false, false },
+      { true, true, true, true, false, false, false, false },
+      { false, true, false, true, true, true, false, false },
+      { true, false, false, true, true, true, false, false },
+      { false, true, false, false, false, false, true, false },
+      { true, true, false, false, false, false, true, false } };
 
   exact_linear_synthesis_params ps;
   ps.conflict_limit = 10000;
@@ -140,11 +140,10 @@ TEST_CASE( "More difficult example with upper bound", "[linear_resynthesis]" )
 TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; with cancellations", "[linear_resynthesis]" )
 {
   std::vector<std::vector<bool>> matrix = {
-    {true, true, false, false},
-    {true, true, true, false},
-    {true, true, true, true},
-    {false, true, true, true}
-  };
+      { true, true, false, false },
+      { true, true, true, false },
+      { true, true, true, true },
+      { false, true, true, true } };
 
   const auto xag = *exact_linear_synthesis<xag_network>( matrix );
 
@@ -155,11 +154,10 @@ TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; with cancellations", "[line
 TEST_CASE( "Example from SEA'10 Boyar-Peralta paper; cancellation-free", "[linear_resynthesis]" )
 {
   std::vector<std::vector<bool>> matrix = {
-    {true, true, false, false},
-    {true, true, true, false},
-    {true, true, true, true},
-    {false, true, true, true}
-  };
+      { true, true, false, false },
+      { true, true, true, false },
+      { true, true, true, true },
+      { false, true, true, true } };
 
   exact_linear_synthesis_params ps;
   ps.cancellation_free = true;

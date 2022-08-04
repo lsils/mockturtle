@@ -56,10 +56,11 @@ std::optional<uint32_t> multiplicative_complexity( Ntk const& ntk )
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
 
-  uint32_t total{0u};
-  bool valid{true};
+  uint32_t total{ 0u };
+  bool valid{ true };
 
-  ntk.foreach_gate( [&]( auto const& n ) {
+  ntk.foreach_gate( [&]( auto const& n )
+                    {
     if constexpr ( has_is_and_v<Ntk> )
     {
       if ( ntk.is_and( n ) )
@@ -145,8 +146,7 @@ std::optional<uint32_t> multiplicative_complexity( Ntk const& ntk )
     }
 
     valid = false;
-    return false; /* break */
-  } );
+    return false; /* break */ } );
 
   if ( valid )
   {
@@ -158,11 +158,9 @@ std::optional<uint32_t> multiplicative_complexity( Ntk const& ntk )
   }
 }
 
-
-
 /*! \brief Computes the multiplicative complexity depth
  *
- * Computes multiplicative complexity of each gate and the sum of them on the 
+ * Computes multiplicative complexity of each gate and the sum of them on the
  * critical path in the network. Returns `std::nullopt`, if multiplicative
  * complexity cannot be determined for some gate.
  *
@@ -178,12 +176,13 @@ std::optional<uint32_t> multiplicative_complexity_depth( Ntk const& ntk )
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
 
-  bool valid{true};
+  bool valid{ true };
 
   node_map<uint32_t, Ntk> level( ntk, 0u );
-  topo_view<Ntk> topo{ntk};
+  topo_view<Ntk> topo{ ntk };
 
-  topo.foreach_node( [&]( auto const& n ) {
+  topo.foreach_node( [&]( auto const& n )
+                     {
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
     {
       return true;
@@ -280,18 +279,17 @@ std::optional<uint32_t> multiplicative_complexity_depth( Ntk const& ntk )
     }
 
     valid = false;
-    return false; /* break */
-  } );
+    return false; /* break */ } );
 
   if ( valid )
   {
-    uint32_t max_level{0u};
-    ntk.foreach_po( [&]( const auto& f ) {
+    uint32_t max_level{ 0u };
+    ntk.foreach_po( [&]( const auto& f )
+                    {
       if ( level[f] > max_level )
       {
         max_level = level[f];
-      }
-    } );
+      } } );
     return max_level;
   }
   else
@@ -299,6 +297,5 @@ std::optional<uint32_t> multiplicative_complexity_depth( Ntk const& ntk )
     return std::nullopt;
   }
 }
-
 
 } // namespace mockturtle

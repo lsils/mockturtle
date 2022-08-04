@@ -18,11 +18,13 @@ TEST_CASE( "Create n-to-2^n binary decoder using XAGs", "[control]" )
   {
     xag_network xag;
     std::vector<xag_network::signal> xs( n );
-    std::generate( xs.begin(), xs.end(), [&]() { return xag.create_pi(); } );
+    std::generate( xs.begin(), xs.end(), [&]()
+                   { return xag.create_pi(); } );
     const auto ds = binary_decoder( xag, xs );
-    std::for_each( ds.begin(), ds.end(), [&]( auto const& d ) { xag.create_po( d ); } );
+    std::for_each( ds.begin(), ds.end(), [&]( auto const& d )
+                   { xag.create_po( d ); } );
 
-    const auto sim = simulate<kitty::dynamic_truth_table>( xag, {n} );
+    const auto sim = simulate<kitty::dynamic_truth_table>( xag, { n } );
 
     for ( auto i = 0u; i < sim.size(); ++i )
     {
@@ -41,8 +43,10 @@ TEST_CASE( "Create a 2^k-way MUX in XAGs", "[control]" )
     xag_network xag;
     std::vector<xag_network::signal> sel( k ), data( 1u << k );
 
-    std::generate( sel.begin(), sel.end(), [&]() { return xag.create_pi(); } );
-    std::generate( data.begin(), data.end(), [&]() { return xag.create_pi(); } );
+    std::generate( sel.begin(), sel.end(), [&]()
+                   { return xag.create_pi(); } );
+    std::generate( data.begin(), data.end(), [&]()
+                   { return xag.create_pi(); } );
 
     xag.create_po( binary_mux( xag, sel, data ) );
 
@@ -57,8 +61,10 @@ TEST_CASE( "Create a Klein-Paterson 2^k-way MUX in XAGs", "[control]" )
     xag_network xag;
     std::vector<xag_network::signal> sel( k ), data( 1u << k );
 
-    std::generate( sel.begin(), sel.end(), [&]() { return xag.create_pi(); } );
-    std::generate( data.begin(), data.end(), [&]() { return xag.create_pi(); } );
+    std::generate( sel.begin(), sel.end(), [&]()
+                   { return xag.create_pi(); } );
+    std::generate( data.begin(), data.end(), [&]()
+                   { return xag.create_pi(); } );
 
     xag.create_po( binary_mux_klein_paterson( xag, sel, data ) );
 

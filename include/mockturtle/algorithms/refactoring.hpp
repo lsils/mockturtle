@@ -61,19 +61,19 @@ namespace mockturtle
 struct refactoring_params
 {
   /*! \brief Maximum number of PIs in MFFCs. */
-  uint32_t max_pis{6};
+  uint32_t max_pis{ 6 };
 
   /*! \brief Allow zero-gain substitutions */
-  bool allow_zero_gain{false};
+  bool allow_zero_gain{ false };
 
   /*! \brief Use don't cares for optimization. */
-  bool use_dont_cares{false};
+  bool use_dont_cares{ false };
 
   /*! \brief Show progress. */
-  bool progress{false};
+  bool progress{ false };
 
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 };
 
 /*! \brief Statistics for refactoring.
@@ -84,16 +84,16 @@ struct refactoring_params
 struct refactoring_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Accumulated runtime for computing MFFCs. */
-  stopwatch<>::duration time_mffc{0};
+  stopwatch<>::duration time_mffc{ 0 };
 
   /*! \brief Accumulated runtime for rewriting. */
-  stopwatch<>::duration time_refactoring{0};
+  stopwatch<>::duration time_refactoring{ 0 };
 
   /*! \brief Accumulated runtime for simulating MFFCs. */
-  stopwatch<>::duration time_simulation{0};
+  stopwatch<>::duration time_simulation{ 0 };
 
   void report() const
   {
@@ -136,18 +136,18 @@ public:
 
   void run()
   {
-    progress_bar pbar{ntk.size(), "refactoring |{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress};
+    progress_bar pbar{ ntk.size(), "refactoring |{0}| node = {1:>4}   cand = {2:>4}   est. reduction = {3:>5}", ps.progress };
 
     stopwatch t( st.time_total );
 
     ntk.clear_visited();
     ntk.clear_values();
-    ntk.foreach_node( [&]( auto const& n ) {
-      ntk.set_value( n, ntk.fanout_size( n ) );
-    } );
+    ntk.foreach_node( [&]( auto const& n )
+                      { ntk.set_value( n, ntk.fanout_size( n ) ); } );
 
     const auto size = ntk.num_gates();
-    ntk.foreach_gate( [&]( auto const& n, auto i ) {
+    ntk.foreach_gate( [&]( auto const& n, auto i )
+                      {
       if ( i >= size )
       {
         return false;
@@ -229,8 +229,7 @@ public:
         recursive_deref( ntk.get_node( new_f ) );
         recursive_ref( n );
       }
-      return true;
-    } );
+      return true; } );
   }
 
 private:
@@ -241,13 +240,13 @@ private:
       return 0;
 
     /* recursively collect nodes */
-    uint32_t value{cost_fn( ntk, n )};
-    ntk.foreach_fanin( n, [&]( auto const& s ) {
+    uint32_t value{ cost_fn( ntk, n ) };
+    ntk.foreach_fanin( n, [&]( auto const& s )
+                       {
       if ( ntk.decr_value( ntk.get_node( s ) ) == 0 )
       {
         value += recursive_deref( ntk.get_node( s ) );
-      }
-    } );
+      } } );
     return value;
   }
 
@@ -258,13 +257,13 @@ private:
       return 0;
 
     /* recursively collect nodes */
-    uint32_t value{cost_fn( ntk, n )};
-    ntk.foreach_fanin( n, [&]( auto const& s ) {
+    uint32_t value{ cost_fn( ntk, n ) };
+    ntk.foreach_fanin( n, [&]( auto const& s )
+                       {
       if ( ntk.incr_value( ntk.get_node( s ) ) == 0 )
       {
         value += recursive_ref( ntk.get_node( s ) );
-      }
-    } );
+      } } );
     return value;
   }
 
@@ -275,8 +274,8 @@ private:
   refactoring_stats& st;
   NodeCostFn cost_fn;
 
-  uint32_t _candidates{0};
-  uint32_t _estimated_gain{0};
+  uint32_t _candidates{ 0 };
+  uint32_t _estimated_gain{ 0 };
 };
 
 } /* namespace detail */

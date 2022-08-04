@@ -13,7 +13,7 @@ using namespace mockturtle;
 
 TEST_CASE( "Check Akers for MAJ-3", "[akers_synthesis]" )
 {
-  std::vector<kitty::dynamic_truth_table> xs{5, kitty::dynamic_truth_table( 3 )};
+  std::vector<kitty::dynamic_truth_table> xs{ 5, kitty::dynamic_truth_table( 3 ) };
 
   create_majority( xs[0] );
   for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
@@ -33,7 +33,7 @@ TEST_CASE( "Check Akers for MAJ-3", "[akers_synthesis]" )
 
 TEST_CASE( "Check Akers for MAJ-5", "[akers_synthesis]" )
 {
-  std::vector<kitty::dynamic_truth_table> xs{7, kitty::dynamic_truth_table( 5 )};
+  std::vector<kitty::dynamic_truth_table> xs{ 7, kitty::dynamic_truth_table( 5 ) };
 
   create_majority( xs[0] );
   for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
@@ -49,19 +49,19 @@ TEST_CASE( "Check Akers for MAJ-5", "[akers_synthesis]" )
   kitty::create_nth_var( xs[5], 3 );
   kitty::create_nth_var( xs[6], 4 );
 
-  mig.foreach_gate( [&]( auto n ) {
+  mig.foreach_gate( [&]( auto n )
+                    {
     std::vector<kitty::dynamic_truth_table> fanin{3, kitty::dynamic_truth_table( 5 )};
     mig.foreach_fanin( n, [&]( auto s, auto j ) {
       fanin[j] = xs[mig.node_to_index( mig.get_node( s ) ) + 1];
     } );
-    xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) );
-  } );
+    xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) ); } );
   CHECK( xs[xs.size() - 1] == xs[0] );
 }
 
 TEST_CASE( "Check Akers for MAJ-5 in XMG", "[akers_synthesis]" )
 {
-  std::vector<kitty::dynamic_truth_table> xs{7, kitty::dynamic_truth_table( 5 )};
+  std::vector<kitty::dynamic_truth_table> xs{ 7, kitty::dynamic_truth_table( 5 ) };
 
   create_majority( xs[0] );
   for ( auto i = 0u; i < unsigned( xs[0].num_bits() ); i++ )
@@ -77,13 +77,13 @@ TEST_CASE( "Check Akers for MAJ-5 in XMG", "[akers_synthesis]" )
   kitty::create_nth_var( xs[5], 3 );
   kitty::create_nth_var( xs[6], 4 );
 
-  xmg.foreach_gate( [&]( auto n ) {
+  xmg.foreach_gate( [&]( auto n )
+                    {
     std::vector<kitty::dynamic_truth_table> fanin{3, kitty::dynamic_truth_table( 5 )};
     xmg.foreach_fanin( n, [&]( auto s, auto j ) {
       fanin[j] = xs[xmg.node_to_index( xmg.get_node( s ) ) + 1];
     } );
-    xs.push_back( xmg.compute( n, fanin.begin(), fanin.end() ) );
-  } );
+    xs.push_back( xmg.compute( n, fanin.begin(), fanin.end() ) ); } );
   CHECK( xs[xs.size() - 1] == xs[0] );
 }
 
@@ -93,7 +93,7 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[akers_synthesis]" )
 
   for ( auto y = 0; y < 5; y++ )
   {
-    std::vector<kitty::dynamic_truth_table> xs{6, kitty::dynamic_truth_table( 4 )};
+    std::vector<kitty::dynamic_truth_table> xs{ 6, kitty::dynamic_truth_table( 4 ) };
     kitty::create_nth_var( xs[2], 0 );
     kitty::create_nth_var( xs[3], 1 );
     kitty::create_nth_var( xs[4], 2 );
@@ -109,7 +109,8 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[akers_synthesis]" )
     auto mig = akers_synthesis<mig_network>( xs[0], xs[1] );
     if ( mig.size() > 4 )
     {
-      mig.foreach_gate( [&]( auto n ) {
+      mig.foreach_gate( [&]( auto n )
+                        {
         std::vector<kitty::dynamic_truth_table> fanin{3, kitty::dynamic_truth_table( 4 )};
         mig.foreach_fanin( n, [&]( auto s, auto j ) {
           if ( mig.node_to_index( mig.get_node( s ) ) == 0 )
@@ -121,15 +122,14 @@ TEST_CASE( "Check Akers for random - 4 inputs", "[akers_synthesis]" )
             fanin[j] = xs[mig.node_to_index( mig.get_node( s ) ) + 1];
           }
         } );
-        xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) );
-      } );
+        xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) ); } );
 
-      mig.foreach_po( [&]( auto n ) {
+      mig.foreach_po( [&]( auto n )
+                      {
         if ( mig.is_complemented( n ) )
           CHECK( ~xs[xs.size() - 1] == xs[0] );
         else
-          CHECK( xs[xs.size() - 1] == xs[0] );
-      } );
+          CHECK( xs[xs.size() - 1] == xs[0] ); } );
     }
   }
 }
@@ -140,7 +140,7 @@ TEST_CASE( "Check Akers for random - 5 inputs", "[akers_synthesis]" )
 
   for ( auto y = 0; y < 5; y++ )
   {
-    std::vector<kitty::dynamic_truth_table> xs{7, kitty::dynamic_truth_table( 5 )};
+    std::vector<kitty::dynamic_truth_table> xs{ 7, kitty::dynamic_truth_table( 5 ) };
     kitty::create_nth_var( xs[2], 0 );
     kitty::create_nth_var( xs[3], 1 );
     kitty::create_nth_var( xs[4], 2 );
@@ -157,7 +157,8 @@ TEST_CASE( "Check Akers for random - 5 inputs", "[akers_synthesis]" )
     auto mig = akers_synthesis<mig_network>( xs[0], xs[1] );
     if ( mig.size() > 6 )
     {
-      mig.foreach_gate( [&]( auto n ) {
+      mig.foreach_gate( [&]( auto n )
+                        {
         std::vector<kitty::dynamic_truth_table> fanin{3, kitty::dynamic_truth_table( 5 )};
         mig.foreach_fanin( n, [&]( auto s, auto j ) {
           if ( mig.node_to_index( mig.get_node( s ) ) == 0 )
@@ -169,15 +170,14 @@ TEST_CASE( "Check Akers for random - 5 inputs", "[akers_synthesis]" )
             fanin[j] = xs[mig.node_to_index( mig.get_node( s ) ) + 1];
           }
         } );
-        xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) );
-      } );
+        xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) ); } );
 
-      mig.foreach_po( [&]( auto n ) {
+      mig.foreach_po( [&]( auto n )
+                      {
         if ( mig.is_complemented( n ) )
           CHECK( ~xs[xs.size() - 1] == xs[0] );
         else
-          CHECK( xs[xs.size() - 1] == xs[0] );
-      } );
+          CHECK( xs[xs.size() - 1] == xs[0] ); } );
     }
   }
 }
@@ -186,7 +186,7 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[akers_synthesis]" )
 {
   for ( auto y = 0; y < 1; y++ )
   {
-    std::vector<kitty::dynamic_truth_table> xs{8, kitty::dynamic_truth_table( 6 )};
+    std::vector<kitty::dynamic_truth_table> xs{ 8, kitty::dynamic_truth_table( 6 ) };
     kitty::create_nth_var( xs[2], 0 );
     kitty::create_nth_var( xs[3], 1 );
     kitty::create_nth_var( xs[4], 2 );
@@ -204,7 +204,8 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[akers_synthesis]" )
     auto mig = akers_synthesis<mig_network>( xs[0], xs[1] );
     if ( mig.size() > 6 )
     {
-      mig.foreach_gate( [&]( auto n ) {
+      mig.foreach_gate( [&]( auto n )
+                        {
         std::vector<kitty::dynamic_truth_table> fanin{3, kitty::dynamic_truth_table( 6 )};
         mig.foreach_fanin( n, [&]( auto s, auto j ) {
           if ( mig.node_to_index( mig.get_node( s ) ) == 0 )
@@ -216,14 +217,13 @@ TEST_CASE( "Check Akers for random - 6 inputs", "[akers_synthesis]" )
             fanin[j] = xs[mig.node_to_index( mig.get_node( s ) ) + 1];
           }
         } );
-        xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) );
-      } );
-      mig.foreach_po( [&]( auto n ) {
+        xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) ); } );
+      mig.foreach_po( [&]( auto n )
+                      {
         if ( mig.is_complemented( n ) )
           CHECK( ~xs[xs.size() - 1] == xs[0] );
         else
-          CHECK( xs[xs.size() - 1] == xs[0] );
-      } );
+          CHECK( xs[xs.size() - 1] == xs[0] ); } );
     }
   }
 }
@@ -240,8 +240,8 @@ TEST_CASE( "Check leaves iterator -- easy case ", "[akers_synthesis]" )
   operations.push_back( mig.create_and( a, b ) );
   operations.push_back( mig.create_and( c, d ) );
 
-  std::vector<kitty::dynamic_truth_table> xs_in{2, kitty::dynamic_truth_table( 2 )};
-  std::vector<kitty::dynamic_truth_table> xs{5, kitty::dynamic_truth_table( 4 )};
+  std::vector<kitty::dynamic_truth_table> xs_in{ 2, kitty::dynamic_truth_table( 2 ) };
+  std::vector<kitty::dynamic_truth_table> xs{ 5, kitty::dynamic_truth_table( 4 ) };
   create_from_binary_string( xs_in[0], "0110" );
   for ( auto i = 0u; i < unsigned( xs_in[0].num_bits() ); i++ )
   {
@@ -264,7 +264,8 @@ TEST_CASE( "Check leaves iterator -- easy case ", "[akers_synthesis]" )
 
   if ( mig.size() > 6 )
   {
-    mig.foreach_gate( [&]( auto n ) {
+    mig.foreach_gate( [&]( auto n )
+                      {
       std::vector<kitty::dynamic_truth_table> fanin{3, kitty::dynamic_truth_table( 4 )};
       mig.foreach_fanin( n, [&]( auto s, auto j ) {
         if ( mig.node_to_index( mig.get_node( s ) ) == 0 )
@@ -276,13 +277,12 @@ TEST_CASE( "Check leaves iterator -- easy case ", "[akers_synthesis]" )
           fanin[j] = xs[mig.get_node( s )];
         }
       } );
-      xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) );
-    } );
-    mig.foreach_po( [&]( auto n ) {
+      xs.push_back( mig.compute( n, fanin.begin(), fanin.end() ) ); } );
+    mig.foreach_po( [&]( auto n )
+                    {
       if ( mig.is_complemented( n ) )
         CHECK( ~xs[xs.size() - 1] == binary_xor( binary_and( xs[1], xs[2] ), binary_and( xs[4], xs[3] ) ) );
       else
-        CHECK( xs[xs.size() - 1] == binary_xor( binary_and( xs[1], xs[2] ), binary_and( xs[4], xs[3] ) ) );
-    } );
+        CHECK( xs[xs.size() - 1] == binary_xor( binary_and( xs[1], xs[2] ), binary_and( xs[4], xs[3] ) ) ); } );
   }
 }

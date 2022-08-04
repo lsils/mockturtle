@@ -37,13 +37,14 @@ TEST_CASE( "Create majority in abstract XAG", "[abstract_xag]" )
 
 TEST_CASE( "Check subset resolution", "[abstract_xag]" )
 {
-  const auto init_ntk = []( auto& ntk ) {
+  const auto init_ntk = []( auto& ntk )
+  {
     const auto a = ntk.create_pi();
     const auto b = ntk.create_pi();
     const auto c = ntk.create_pi();
 
-    ntk.create_po( ntk.create_and( ntk.create_xor( b, a ), ntk.create_nary_xor( {a, c, b} ) ) );
-    ntk.create_po( ntk.create_and( ntk.create_nary_xor( {c, b, a} ), ntk.create_xor( c, a ) ) );
+    ntk.create_po( ntk.create_and( ntk.create_xor( b, a ), ntk.create_nary_xor( { a, c, b } ) ) );
+    ntk.create_po( ntk.create_and( ntk.create_nary_xor( { c, b, a } ), ntk.create_xor( c, a ) ) );
     ntk = cleanup_dangling( ntk );
   };
 

@@ -34,10 +34,10 @@
 
 #pragma once
 
-#include "dont_cares.hpp"
-#include <kitty/operations.hpp>
-#include "resubstitution.hpp"
 #include "../networks/xag.hpp"
+#include "dont_cares.hpp"
+#include "resubstitution.hpp"
+#include <kitty/operations.hpp>
 
 namespace mockturtle
 {
@@ -45,55 +45,55 @@ namespace mockturtle
 struct xag_resub_stats
 {
   /*! \brief Accumulated runtime for const-resub */
-  stopwatch<>::duration time_resubC{0};
+  stopwatch<>::duration time_resubC{ 0 };
 
   /*! \brief Accumulated runtime for zero-resub */
-  stopwatch<>::duration time_resub0{0};
+  stopwatch<>::duration time_resub0{ 0 };
 
   /*! \brief Accumulated runtime for one-resub */
-  stopwatch<>::duration time_resub1{0};
+  stopwatch<>::duration time_resub1{ 0 };
 
   /*! \brief Accumulated runtime for two-resub. */
-  stopwatch<>::duration time_resub2{0};
+  stopwatch<>::duration time_resub2{ 0 };
 
   /*! \brief Accumulated runtime for three-resub. */
-  stopwatch<>::duration time_resub3{0};
+  stopwatch<>::duration time_resub3{ 0 };
 
   /*! \brief Accumulated runtime for one-resub */
-  stopwatch<>::duration time_resub1_and{0};
+  stopwatch<>::duration time_resub1_and{ 0 };
 
   /*! \brief Accumulated runtime for one-resub */
-  stopwatch<>::duration time_resub2_and{0};
+  stopwatch<>::duration time_resub2_and{ 0 };
 
   /*! \brief Accumulated runtime for collecting unate divisors. */
-  stopwatch<>::duration time_collect_unate_divisors{0};
+  stopwatch<>::duration time_collect_unate_divisors{ 0 };
 
   /*! \brief Accumulated runtime for collecting unate divisors. */
-  stopwatch<>::duration time_collect_binate_divisors{0};
+  stopwatch<>::duration time_collect_binate_divisors{ 0 };
 
   /*! \brief Accumulated runtime for 12-resub. */
-  stopwatch<>::duration time_resub12{0};
+  stopwatch<>::duration time_resub12{ 0 };
 
   /*! \brief Number of accepted constant resubsitutions */
-  uint32_t num_const_accepts{0};
+  uint32_t num_const_accepts{ 0 };
 
   /*! \brief Number of accepted zero resubsitutions */
-  uint32_t num_div0_accepts{0};
+  uint32_t num_div0_accepts{ 0 };
 
   /*! \brief Number of accepted one resubsitutions */
-  uint64_t num_div1_accepts{0};
+  uint64_t num_div1_accepts{ 0 };
 
   /*! \brief Number of accepted two resubsitutions */
-  uint64_t num_div2_accepts{0};
+  uint64_t num_div2_accepts{ 0 };
 
   /*! \brief Number of accepted one resubsitutions for AND */
-  uint64_t num_div1_and_accepts{0};
+  uint64_t num_div1_and_accepts{ 0 };
 
   /*! \brief Number of accepted one resubsitutions for AND */
-  uint64_t num_div2_and_accepts{0};
+  uint64_t num_div2_and_accepts{ 0 };
 
   /*! \brief Number of accepted two resubsitutions using triples of unate divisors */
-  uint64_t num_div12_accepts{0};
+  uint64_t num_div12_accepts{ 0 };
 
   void report() const
   {
@@ -165,7 +165,7 @@ private:
   {
 
     if ( ntk.is_pi( n ) )
-      return {0, 0};
+      return { 0, 0 };
 
     int32_t counter_and = 0;
     int32_t counter_xor = 0;
@@ -179,7 +179,8 @@ private:
       counter_xor = 1;
     }
 
-    ntk.foreach_fanin( n, [&]( const auto& f ) {
+    ntk.foreach_fanin( n, [&]( const auto& f )
+                       {
       auto const& p = ntk.get_node( f );
 
       ntk.decr_fanout_size( p );
@@ -188,17 +189,16 @@ private:
         auto counter = node_deref_rec( p );
         counter_and += counter.first;
         counter_xor += counter.second;
-      }
-    } );
+      } } );
 
-    return {counter_and, counter_xor};
+    return { counter_and, counter_xor };
   }
 
   /* ! \brief Reference the node's MFFC */
   std::pair<int32_t, int32_t> node_ref_rec( node const& n )
   {
     if ( ntk.is_pi( n ) )
-      return {0, 0};
+      return { 0, 0 };
 
     int32_t counter_and = 0;
     int32_t counter_xor = 0;
@@ -212,7 +212,8 @@ private:
       counter_xor = 1;
     }
 
-    ntk.foreach_fanin( n, [&]( const auto& f ) {
+    ntk.foreach_fanin( n, [&]( const auto& f )
+                       {
       auto const& p = ntk.get_node( f );
 
       auto v = ntk.fanout_size( p );
@@ -222,10 +223,9 @@ private:
         auto counter = node_ref_rec( p );
         counter_and += counter.first;
         counter_xor += counter.second;
-      }
-    } );
+      } } );
 
-    return {counter_and, counter_xor};
+    return { counter_and, counter_xor };
   }
 
   void node_mffc_cone_rec( node const& n, std::vector<node>& cone, bool top_most )
@@ -239,9 +239,8 @@ private:
       return;
 
     /* recurse on children */
-    ntk.foreach_fanin( n, [&]( const auto& f ) {
-      node_mffc_cone_rec( ntk.get_node( f ), cone, false );
-    } );
+    ntk.foreach_fanin( n, [&]( const auto& f )
+                       { node_mffc_cone_rec( ntk.get_node( f ), cone, false ); } );
 
     /* collect the internal nodes */
     cone.emplace_back( n );
@@ -314,9 +313,8 @@ public:
     uint32_t num_and_mffc = num_mffc.first;
     uint32_t num_xor_mffc = num_mffc.second;
     /* consider constants */
-    auto g = call_with_stopwatch( st.time_resubC, [&]() {
-      return resub_const( root, care, required );
-    } );
+    auto g = call_with_stopwatch( st.time_resubC, [&]()
+                                  { return resub_const( root, care, required ); } );
     if ( g )
     {
       ++st.num_const_accepts;
@@ -325,9 +323,8 @@ public:
     }
 
     /* consider equal nodes */
-    g = call_with_stopwatch( st.time_resub0, [&]() {
-      return resub_div0( root, care, required );
-    } );
+    g = call_with_stopwatch( st.time_resub0, [&]()
+                             { return resub_div0( root, care, required ); } );
     if ( g )
     {
       ++st.num_div0_accepts;
@@ -341,9 +338,8 @@ public:
       if ( max_inserts == 0 || num_xor_mffc == 1 )
         return std::nullopt;
 
-      g = call_with_stopwatch( st.time_resub1, [&]() {
-        return resub_div1( root, care, required );
-      } );
+      g = call_with_stopwatch( st.time_resub1, [&]()
+                               { return resub_div1( root, care, required ); } );
       if ( g )
       {
         ++st.num_div1_accepts;
@@ -355,7 +351,8 @@ public:
         return std::nullopt;
 
       /* consider two nodes */
-      g = call_with_stopwatch( st.time_resub2, [&]() { return resub_div2( root, care, required ); } );
+      g = call_with_stopwatch( st.time_resub2, [&]()
+                               { return resub_div2( root, care, required ); } );
       if ( g )
       {
         ++st.num_div2_accepts;
@@ -366,9 +363,8 @@ public:
     else
     {
 
-      g = call_with_stopwatch( st.time_resub1, [&]() {
-        return resub_div1( root, care, required );
-      } );
+      g = call_with_stopwatch( st.time_resub1, [&]()
+                               { return resub_div1( root, care, required ); } );
       if ( g )
       {
         ++st.num_div1_accepts;
@@ -377,7 +373,8 @@ public:
       }
 
       /* consider two nodes */
-      g = call_with_stopwatch( st.time_resub2, [&]() { return resub_div2( root, care, required ); } );
+      g = call_with_stopwatch( st.time_resub2, [&]()
+                               { return resub_div2( root, care, required ); } );
       if ( g )
       {
         ++st.num_div2_accepts;
@@ -389,11 +386,11 @@ public:
         return std::nullopt;
 
       /* collect level one divisors */
-      call_with_stopwatch( st.time_collect_unate_divisors, [&]() {
-        collect_unate_divisors( root, required );
-      } );
+      call_with_stopwatch( st.time_collect_unate_divisors, [&]()
+                           { collect_unate_divisors( root, required ); } );
 
-      g = call_with_stopwatch( st.time_resub1_and, [&]() { return resub_div1_and( root, care, required ); } );
+      g = call_with_stopwatch( st.time_resub1_and, [&]()
+                               { return resub_div1_and( root, care, required ); } );
       if ( g )
       {
         ++st.num_div1_and_accepts;
@@ -404,7 +401,8 @@ public:
         return std::nullopt;
 
       /* consider triples */
-      g = call_with_stopwatch( st.time_resub12, [&]() { return resub_div12( root, care, required ); } );
+      g = call_with_stopwatch( st.time_resub12, [&]()
+                               { return resub_div12( root, care, required ); } );
       if ( g )
       {
         ++st.num_div12_accepts;
@@ -413,12 +411,12 @@ public:
       }
 
       /* collect level two divisors */
-      call_with_stopwatch( st.time_collect_binate_divisors, [&]() {
-        collect_binate_divisors( root, required );
-      } );
+      call_with_stopwatch( st.time_collect_binate_divisors, [&]()
+                           { collect_binate_divisors( root, required ); } );
 
       /* consider two nodes */
-      g = call_with_stopwatch( st.time_resub2_and, [&]() { return resub_div2_and( root, care, required ); } );
+      g = call_with_stopwatch( st.time_resub2_and, [&]()
+                               { return resub_div2_and( root, care, required ); } );
       if ( g )
       {
         ++st.num_div2_and_accepts;
@@ -527,9 +525,9 @@ public:
 
           if ( binary_and( ( tt_s0 ^ tt_s1 ^ tt_s2 ), care ) == binary_and( tt, care ) )
           {
-            auto const max_level = std::max( {ntk.level( s0 ),
-                                              ntk.level( s1 ),
-                                              ntk.level( s2 )} );
+            auto const max_level = std::max( { ntk.level( s0 ),
+                                               ntk.level( s1 ),
+                                               ntk.level( s2 ) } );
             assert( max_level <= required - 1 );
 
             signal max = ntk.make_signal( s0 );
@@ -556,9 +554,9 @@ public:
           }
           else if ( binary_and( ( tt_s0 ^ tt_s1 ^ tt_s2 ), care ) == binary_and( kitty::unary_not( tt ), care ) )
           {
-            auto const max_level = std::max( {ntk.level( s0 ),
-                                              ntk.level( s1 ),
-                                              ntk.level( s2 )} );
+            auto const max_level = std::max( { ntk.level( s0 ),
+                                               ntk.level( s1 ),
+                                               ntk.level( s2 ) } );
             assert( max_level <= required - 1 );
 
             signal max = ntk.make_signal( s0 );
@@ -703,9 +701,9 @@ public:
 
           if ( binary_and( ( tt_s0 | tt_s1 | tt_s2 ), care ) == binary_and( tt, care ) )
           {
-            auto const max_level = std::max( {ntk.level( ntk.get_node( s0 ) ),
-                                              ntk.level( ntk.get_node( s1 ) ),
-                                              ntk.level( ntk.get_node( s2 ) )} );
+            auto const max_level = std::max( { ntk.level( ntk.get_node( s0 ) ),
+                                               ntk.level( ntk.get_node( s1 ) ),
+                                               ntk.level( ntk.get_node( s2 ) ) } );
             assert( max_level <= required - 1 );
 
             signal max = s0;
@@ -753,9 +751,9 @@ public:
 
           if ( binary_and( ( tt_s0 & tt_s1 & tt_s2 ), care ) == binary_and( tt, care ) )
           {
-            auto const max_level = std::max( {ntk.level( ntk.get_node( s0 ) ),
-                                              ntk.level( ntk.get_node( s1 ) ),
-                                              ntk.level( ntk.get_node( s2 ) )} );
+            auto const max_level = std::max( { ntk.level( ntk.get_node( s0 ) ),
+                                               ntk.level( ntk.get_node( s1 ) ),
+                                               ntk.level( ntk.get_node( s2 ) ) } );
             assert( max_level <= required - 1 );
 
             signal max = s0;
@@ -959,8 +957,8 @@ void resubstitution_minmc_withDC( Ntk& ntk, resubstitution_params const& ps = {}
   static_assert( has_visited_v<Ntk>, "Ntk does not implement the has_visited method" );
 
   using resub_view_t = fanout_view<depth_view<Ntk>>;
-  depth_view<Ntk> depth_view{ntk};
-  resub_view_t resub_view{depth_view};
+  depth_view<Ntk> depth_view{ ntk };
+  resub_view_t resub_view{ depth_view };
 
   using truthtable_t = kitty::dynamic_truth_table;
   using mffc_result_t = std::pair<uint32_t, uint32_t>;

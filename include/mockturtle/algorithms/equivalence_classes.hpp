@@ -147,7 +147,8 @@ signal<Ntk> apply_npn_transformations( Ntk& dest, uint32_t phase, std::vector<ui
   static_assert( std::is_invocable_r_v<signal<Ntk>, SynthesisFn, Ntk&, std::vector<signal<Ntk>> const&>, "SythesisFn does not have expected signature" );
 
   std::vector<signal<Ntk>> _leaves( perm.size() );
-  std::transform( perm.begin(), perm.end(), _leaves.begin(), [&]( auto const& i ) { return ( phase >> i ) & 1 ? dest.create_not( leaves[i] ) : leaves[i]; });
+  std::transform( perm.begin(), perm.end(), _leaves.begin(), [&]( auto const& i )
+                  { return ( phase >> i ) & 1 ? dest.create_not( leaves[i] ) : leaves[i]; } );
 
   const auto f = synthesis_fn( dest, _leaves );
   return ( phase >> leaves.size() ) & 1 ? dest.create_not( f ) : f;

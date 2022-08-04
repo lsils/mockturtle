@@ -49,18 +49,18 @@
 namespace mockturtle
 {
 /*! \brief cover storage data
- * 
+ *
  * This struct contains the constituents of the network and its main features.
- * 
+ *
  * The constituents of the network are the covers representing the boolean functions stored in each node.
- * These are stored in a vector of pairs. Each element is the cover of a function and a boolean value indicating whether the 
+ * These are stored in a vector of pairs. Each element is the cover of a function and a boolean value indicating whether the
  * cover indicates the ON-set or the OFF set. More precisely:
  * `covers`           : Vector of pairs for covers storage
  * `covers[i].first`  : Cubes i-th cover
  * `covers[i].second` : Boolean true (false) if ON set (OFF set)
- * This data structure directly originates from the k-LUT one and, for this reason, it inherits from it the vast majority of the features. 
- * The main difference is the way the nodes are stored and future improvements could include the substitution of the current covers storage with 
- * a cache, to avoid the redundant storage of some recurrent boolean functions. 
+ * This data structure directly originates from the k-LUT one and, for this reason, it inherits from it the vast majority of the features.
+ * The main difference is the way the nodes are stored and future improvements could include the substitution of the current covers storage with
+ * a cache, to avoid the redundant storage of some recurrent boolean functions.
  */
 struct cover_storage_data
 {
@@ -105,7 +105,7 @@ using cover_storage = storage<cover_storage_node, cover_storage_data>;
 
 /*! \brief cover_network
  *
- * This class implements a data structure for a cover based network. 
+ * This class implements a data structure for a cover based network.
  * In this representation, each node is represented by specifying its ON set or its OFF set, that in both cases are stored as a vector of cubes.
  * The information related to the set to which the node refers to is contained in a boolean variable, that is true (false) if the
  * ON set (OFF set) is considered.
@@ -126,7 +126,7 @@ using cover_storage = storage<cover_storage_node, cover_storage_data>;
 
     kitty::cube _11 = kitty::cube("11");
 
-    std::vector<kitty::cube> nand_from_offset { _11 }; 
+    std::vector<kitty::cube> nand_from_offset { _11 };
     const auto n1 = cover.create_cover_node( {a, b}, std::make_pair( nand_from_offset, false ) );
 
     const auto y1 = cover.create_and( n1, c );
@@ -351,17 +351,20 @@ public:
 #pragma region Create nary functions
   signal create_nary_and( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b )
+                        { return create_and( a, b ); } );
   }
 
   signal create_nary_or( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b )
+                        { return create_or( a, b ); } );
   }
 
   signal create_nary_xor( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_xor( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b )
+                        { return create_xor( a, b ); } );
   }
 #pragma endregion
 
@@ -464,7 +467,8 @@ public:
         if ( child == old_node )
         {
           std::vector<signal> old_children( n.children.size() );
-          std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c ) { return c.index; } );
+          std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c )
+                          { return c.index; } );
           child = new_signal;
 
           // increment fan-out of new node
@@ -620,7 +624,8 @@ public:
   {
     using IteratorType = decltype( _storage->outputs.begin() );
     detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; },
+        _storage->outputs.begin(), _storage->outputs.end(), []( auto o )
+        { return o.index; },
         fn );
   }
 
@@ -635,7 +640,8 @@ public:
   {
     using IteratorType = decltype( _storage->outputs.begin() );
     detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; },
+        _storage->outputs.begin(), _storage->outputs.end(), []( auto o )
+        { return o.index; },
         fn );
   }
 
@@ -645,7 +651,8 @@ public:
     auto r = range<uint64_t>( 2u, _storage->nodes.size() ); /* start from 2 to avoid constants */
     detail::foreach_element_if(
         r.begin(), r.end(),
-        [this]( auto n ) { return !is_ci( n ); },
+        [this]( auto n )
+        { return !is_ci( n ); },
         fn );
   }
 
@@ -657,7 +664,8 @@ public:
 
     using IteratorType = decltype( _storage->outputs.begin() );
     detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f ) { return f.index; },
+        _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f )
+        { return f.index; },
         fn );
   }
 
@@ -737,7 +745,8 @@ public:
 #pragma region Custom node values
   void clear_values() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[0].h2 = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n )
+                   { n.data[0].h2 = 0; } );
   }
 
   uint32_t value( node const& n ) const
@@ -764,7 +773,8 @@ public:
 #pragma region Visited flags
   void clear_visited() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[1].h2 = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n )
+                   { n.data[1].h2 = 0; } );
   }
 
   auto visited( node const& n ) const

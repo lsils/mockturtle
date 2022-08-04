@@ -36,11 +36,11 @@
 #include <cstdint>
 #include <string>
 
-#include "cleanup.hpp"
-#include "dont_cares.hpp"
 #include "../networks/xmg.hpp"
 #include "../utils/node_map.hpp"
 #include "../views/topo_view.hpp"
+#include "cleanup.hpp"
+#include "dont_cares.hpp"
 
 namespace mockturtle
 {
@@ -59,13 +59,13 @@ inline xmg_network xmg_dont_cares_optimization( xmg_network const& xmg )
   xmg_network dest;
   old_to_new[xmg.get_constant( false )] = dest.get_constant( false );
 
-  xmg.foreach_pi( [&]( auto const& n ) {
-    old_to_new[n] = dest.create_pi();
-  } );
+  xmg.foreach_pi( [&]( auto const& n )
+                  { old_to_new[n] = dest.create_pi(); } );
 
   satisfiability_dont_cares_checker<xmg_network> checker( xmg );
 
-  topo_view<xmg_network>{xmg}.foreach_node( [&]( auto const& n ) {
+  topo_view<xmg_network>{ xmg }.foreach_node( [&]( auto const& n )
+                                              {
     if ( xmg.is_constant( n ) || xmg.is_pi( n ) ) return;
 
     std::array<xmg_network::signal, 3> fanin;
@@ -87,12 +87,10 @@ inline xmg_network xmg_dont_cares_optimization( xmg_network const& xmg )
     else /* is XOR */
     {
       old_to_new[n] = dest.create_xor3( fanin[0], fanin[1], fanin[2] );
-    }
-  } );
+    } } );
 
-  xmg.foreach_po( [&]( auto const& f ) {
-    dest.create_po( old_to_new[f] ^ xmg.is_complemented( f ) );
-  });
+  xmg.foreach_po( [&]( auto const& f )
+                  { dest.create_po( old_to_new[f] ^ xmg.is_complemented( f ) ); } );
 
   return dest;
 }

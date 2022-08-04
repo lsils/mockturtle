@@ -44,16 +44,16 @@
 #include <filesystem>
 #endif
 #include <fstream>
-#include <unordered_set>
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/hash.hpp>
 #include <nlohmann/json.hpp>
+#include <unordered_set>
 
-#include "traits.hpp"
-#include "../../traits.hpp"
 #include "../../algorithms/cleanup.hpp"
+#include "../../traits.hpp"
 #include "../../utils/json_utils.hpp"
 #include "../../utils/network_cache.hpp"
+#include "traits.hpp"
 
 namespace mockturtle
 {
@@ -84,11 +84,11 @@ class cached_resynthesis
 {
 public:
   explicit cached_resynthesis( ResynthesisFn const& resyn_fn, uint32_t max_pis, std::string const& cache_filename = {}, BlacklistCacheInfo const& blacklist_cache_info = {} )
-    : _resyn_fn( resyn_fn ),
-      _cache( max_pis ),
-      _cache_filename( cache_filename ),
-      _blacklist_cache_info( blacklist_cache_info ),
-      _initial_size( max_pis )
+      : _resyn_fn( resyn_fn ),
+        _cache( max_pis ),
+        _cache_filename( cache_filename ),
+        _blacklist_cache_info( blacklist_cache_info ),
+        _initial_size( max_pis )
   {
     if ( !_cache_filename.empty() )
     {
@@ -112,7 +112,8 @@ private:
     std::size_t operator()( const cache_key_t& p ) const
     {
       auto seed = _h( p.first );
-      std::for_each( p.second.begin(), p.second.end(), [&]( auto const& tt ) { kitty::hash_combine( seed, _h( tt ) ); } );
+      std::for_each( p.second.begin(), p.second.end(), [&]( auto const& tt )
+                     { kitty::hash_combine( seed, _h( tt ) ); } );
       return seed;
     }
 
@@ -143,7 +144,7 @@ private:
 
   bool is_blacklisted( kitty::dynamic_truth_table const& tt ) const
   {
-    auto it = _blacklist_cache.find( {tt, _blacklist_cache_info} );
+    auto it = _blacklist_cache.find( { tt, _blacklist_cache_info } );
 
     /* function cannot be found in black list cache */
     if ( it == _blacklist_cache.end() )
@@ -184,7 +185,8 @@ public:
     else
     {
       bool found_one = false;
-      auto on_signal = [&]( signal<Ntk> const& f ) -> bool { 
+      auto on_signal = [&]( signal<Ntk> const& f ) -> bool
+      {
         if ( !found_one )
         {
           ++_cache_misses;
@@ -203,11 +205,11 @@ public:
 
       if ( !found_one )
       {
-        _blacklist_cache.insert( {function, _blacklist_cache_info} );
+        _blacklist_cache.insert( { function, _blacklist_cache_info } );
       }
     }
   }
-  
+
   void set_bounds( std::optional<uint32_t> const& lower_bound, std::optional<uint32_t> const& upper_bound )
   {
     if constexpr ( has_set_bounds_v<ResynthesisFn> )
@@ -244,7 +246,7 @@ public:
       // TODO assert or warn?
     }
   }
-    
+
   void report() const
   {
     fmt::print( "[i] cache hits              = {}\n", _cache_hits );
@@ -257,7 +259,8 @@ private:
   void load()
   {
     std::ifstream is( _cache_filename.c_str(), std::ifstream::in );
-    if ( !is.good() ) return;
+    if ( !is.good() )
+      return;
     nlohmann::json data;
     is >> data;
 
@@ -275,10 +278,9 @@ private:
 #endif
 
     nlohmann::json data{
-      {"cache", _cache.to_json()},
-      {"blacklist_cache", _blacklist_cache},
-      {"initial_size", _initial_size}
-    };
+        { "cache", _cache.to_json() },
+        { "blacklist_cache", _blacklist_cache },
+        { "initial_size", _initial_size } };
 
     // make a backup of existing cache file, if it exists
     std::string _backup_filename = fmt::format( "{}.bak", _cache_filename );

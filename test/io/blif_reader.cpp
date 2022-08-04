@@ -51,7 +51,8 @@ TEST_CASE( "read a combinational BLIF file into KLUT network", "[blif_reader]" )
   /* functional checks */
   default_simulator<kitty::dynamic_truth_table> sim( klut.num_pis() );
   const auto tts = simulate<kitty::dynamic_truth_table>( klut, sim );
-  klut.foreach_po( [&]( auto const&, auto i ) {
+  klut.foreach_po( [&]( auto const&, auto i )
+                   {
     switch ( i )
     {
     case 0:
@@ -60,8 +61,7 @@ TEST_CASE( "read a combinational BLIF file into KLUT network", "[blif_reader]" )
     case 1:
       CHECK( kitty::to_hex( tts[i] ) == "f8" );
       break;
-    }
-  } );
+    } } );
 }
 
 TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in topological order", "[blif_reader]" )
@@ -113,7 +113,8 @@ TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in 
   CHECK( klut.num_registers() == 5 );
   CHECK( klut.num_gates() == 12 );
 
-  klut.foreach_ro( [&]( auto ro, auto i ) {
+  klut.foreach_ro( [&]( auto ro, auto i )
+                   {
     (void)ro;
     auto l_info = klut.register_at( i );
     switch ( i )
@@ -143,8 +144,7 @@ TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in 
       CHECK( l_info.control == "clock" );
       CHECK( l_info.init == 1 );
       break;
-    }
-  } );
+    } } );
 
   mig_npn_resynthesis resyn;
   sequential<mig_network> mig;
@@ -154,7 +154,8 @@ TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in 
   CHECK( mig.num_registers() == 5 );
   CHECK( mig.num_gates() == 12 );
 
-  mig.foreach_ro( [&]( auto ro, auto i ) {
+  mig.foreach_ro( [&]( auto ro, auto i )
+                  {
     (void)ro;
     auto l_info = mig.register_at( i );
     switch ( i )
@@ -184,8 +185,7 @@ TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in 
       CHECK( l_info.control == "clock" );
       CHECK( l_info.init == 1 );
       break;
-    }
-  } );
+    } } );
 }
 
 TEST_CASE( "read a BLIF file containing latch declaration bug that requires updated 'split' function", "[blif_reader]" )

@@ -34,10 +34,10 @@
 
 #pragma once
 
+#include "../networks/events.hpp"
 #include "../traits.hpp"
 #include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
-#include "../networks/events.hpp"
 #include "immutable_view.hpp"
 
 #include <cstdint>
@@ -49,10 +49,10 @@ namespace mockturtle
 struct depth_view_params
 {
   /*! \brief Take complemented edges into account for depth computation. */
-  bool count_complements{false};
+  bool count_complements{ false };
 
   /*! \brief Whether PIs have costs. */
-  bool pi_cost{false};
+  bool pi_cost{ false };
 };
 
 /*! \brief Implements `depth` and `level` methods for networks.
@@ -116,11 +116,7 @@ public:
   using signal = typename Ntk::signal;
 
   explicit depth_view( NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
-    : Ntk()
-    , _ps( ps )
-    , _levels( *this )
-    , _crit_path( *this )
-    , _cost_fn( cost_fn )
+      : Ntk(), _ps( ps ), _levels( *this ), _crit_path( *this ), _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -131,7 +127,8 @@ public:
     static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
     static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
 
-    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n )
+                                                  { on_add( n ); } );
   }
 
   /*! \brief Standard constructor.
@@ -139,11 +136,7 @@ public:
    * \param ntk Base network
    */
   explicit depth_view( Ntk const& ntk, NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
-    : Ntk( ntk )
-    , _ps( ps )
-    , _levels( ntk )
-    , _crit_path( ntk )
-    , _cost_fn( cost_fn )
+      : Ntk( ntk ), _ps( ps ), _levels( ntk ), _crit_path( ntk ), _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -156,19 +149,16 @@ public:
 
     update_levels();
 
-    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n )
+                                                  { on_add( n ); } );
   }
 
   /*! \brief Copy constructor. */
   explicit depth_view( depth_view<Ntk, NodeCostFn, false> const& other )
-    : Ntk( other )
-    , _ps( other._ps )
-    , _levels( other._levels )
-    , _crit_path( other._crit_path )
-    , _depth( other._depth )
-    , _cost_fn( other._cost_fn )
+      : Ntk( other ), _ps( other._ps ), _levels( other._levels ), _crit_path( other._crit_path ), _depth( other._depth ), _cost_fn( other._cost_fn )
   {
-    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n )
+                                                  { on_add( n ); } );
   }
 
   depth_view<Ntk, NodeCostFn, false>& operator=( depth_view<Ntk, NodeCostFn, false> const& other )
@@ -188,7 +178,8 @@ public:
     _cost_fn = other._cost_fn;
 
     /* register new event in the other network */
-    add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
+    add_event = Ntk::events().register_add_event( [this]( auto const& n )
+                                                  { on_add( n ); } );
 
     return *this;
   }
@@ -262,15 +253,15 @@ private:
       return _levels[n] = _ps.pi_cost ? _cost_fn( *this, n ) - 1 : 0;
     }
 
-    uint32_t level{0};
-    this->foreach_fanin( n, [&]( auto const& f ) {
+    uint32_t level{ 0 };
+    this->foreach_fanin( n, [&]( auto const& f )
+                         {
       auto clevel = compute_levels( this->get_node( f ) );
       if ( _ps.count_complements && this->is_complemented( f ) )
       {
         clevel++;
       }
-      level = std::max( level, clevel );
-    } );
+      level = std::max( level, clevel ); } );
 
     return _levels[n] = level + _cost_fn( *this, n );
   }
@@ -278,22 +269,22 @@ private:
   void compute_levels()
   {
     _depth = 0;
-    this->foreach_po( [&]( auto const& f ) {
+    this->foreach_po( [&]( auto const& f )
+                      {
       auto clevel = compute_levels( this->get_node( f ) );
       if ( _ps.count_complements && this->is_complemented( f ) )
       {
         clevel++;
       }
-      _depth = std::max( _depth, clevel );
-    } );
+      _depth = std::max( _depth, clevel ); } );
 
-    this->foreach_po( [&]( auto const& f ) {
+    this->foreach_po( [&]( auto const& f )
+                      {
       const auto n = this->get_node( f );
       if ( _levels[n] == _depth )
       {
         set_critical_path( n );
-      }
-    } );
+      } } );
   }
 
   void set_critical_path( node const& n )
@@ -302,7 +293,8 @@ private:
     if ( !this->is_constant( n ) && !( _ps.pi_cost && this->is_pi( n ) ) )
     {
       const auto lvl = _levels[n];
-      this->foreach_fanin( n, [&]( auto const& f ) {
+      this->foreach_fanin( n, [&]( auto const& f )
+                           {
         const auto cn = this->get_node( f );
         auto offset = _cost_fn( *this, n );
         if ( _ps.count_complements && this->is_complemented( f ) )
@@ -312,8 +304,7 @@ private:
         if ( _levels[cn] + offset == lvl && !_crit_path[cn] )
         {
           set_critical_path( cn );
-        }
-      } );
+        } } );
     }
   }
 
@@ -321,15 +312,15 @@ private:
   {
     _levels.resize();
 
-    uint32_t level{0};
-    this->foreach_fanin( n, [&]( auto const& f ) {
+    uint32_t level{ 0 };
+    this->foreach_fanin( n, [&]( auto const& f )
+                         {
       auto clevel = _levels[f];
       if ( _ps.count_complements && this->is_complemented( f ) )
       {
         clevel++;
       }
-      level = std::max( level, clevel );
-    } );
+      level = std::max( level, clevel ); } );
 
     _levels[n] = level + _cost_fn( *this, n );
   }
@@ -344,9 +335,9 @@ private:
 };
 
 template<class T>
-depth_view( T const& )->depth_view<T>;
+depth_view( T const& ) -> depth_view<T>;
 
 template<class T, class NodeCostFn = unit_cost<T>>
-depth_view( T const&, NodeCostFn const&, depth_view_params const& )->depth_view<T, NodeCostFn>;
+depth_view( T const&, NodeCostFn const&, depth_view_params const& ) -> depth_view<T, NodeCostFn>;
 
 } // namespace mockturtle

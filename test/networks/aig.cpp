@@ -123,7 +123,8 @@ TEST_CASE( "create and use primary outputs in an AIG", "[aig]" )
   CHECK( aig.size() == 2 );
   CHECK( aig.num_pos() == 3 );
 
-  aig.foreach_po( [&]( auto s, auto i ) {
+  aig.foreach_po( [&]( auto s, auto i )
+                  {
     switch ( i )
     {
     case 0:
@@ -135,8 +136,7 @@ TEST_CASE( "create and use primary outputs in an AIG", "[aig]" )
     case 2:
       CHECK( s == !x1 );
       break;
-    }
-  } );
+    } } );
 }
 
 TEST_CASE( "create unary operations in an AIG", "[aig]" )
@@ -253,9 +253,8 @@ TEST_CASE( "clone a node in AIG network", "[aig]" )
   auto f2 = aig2.clone_node( aig1, aig1.get_node( f1 ), { a2, b2 } );
   CHECK( aig2.size() == 4 );
 
-  aig2.foreach_fanin( aig2.get_node( f2 ), [&]( auto const& s, auto ) {
-    CHECK( !aig2.is_complemented( s ) );
-  } );
+  aig2.foreach_fanin( aig2.get_node( f2 ), [&]( auto const& s, auto )
+                      { CHECK( !aig2.is_complemented( s ) ); } );
 }
 
 TEST_CASE( "structural properties of an AIG", "[aig]" )
@@ -313,97 +312,117 @@ TEST_CASE( "node and signal iteration in an AIG", "[aig]" )
 
   /* iterate over nodes */
   uint32_t mask{ 0 }, counter{ 0 };
-  aig.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
+  aig.foreach_node( [&]( auto n, auto i )
+                    { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 31 );
   CHECK( counter == 10 );
 
   mask = 0;
-  aig.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); } );
+  aig.foreach_node( [&]( auto n )
+                    { mask |= ( 1 << n ); } );
   CHECK( mask == 31 );
 
   mask = counter = 0;
-  aig.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
+  aig.foreach_node( [&]( auto n, auto i )
+                    { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 1 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aig.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
+  aig.foreach_node( [&]( auto n )
+                    { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 1 );
 
   /* iterate over PIs */
   mask = counter = 0;
-  aig.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
+  aig.foreach_pi( [&]( auto n, auto i )
+                  { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 6 );
   CHECK( counter == 1 );
 
   mask = 0;
-  aig.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); } );
+  aig.foreach_pi( [&]( auto n )
+                  { mask |= ( 1 << n ); } );
   CHECK( mask == 6 );
 
   mask = counter = 0;
-  aig.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
+  aig.foreach_pi( [&]( auto n, auto i )
+                  { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 2 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aig.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
+  aig.foreach_pi( [&]( auto n )
+                  { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 2 );
 
   /* iterate over POs */
   mask = counter = 0;
-  aig.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << aig.get_node( s ) ); counter += i; } );
+  aig.foreach_po( [&]( auto s, auto i )
+                  { mask |= ( 1 << aig.get_node( s ) ); counter += i; } );
   CHECK( mask == 24 );
   CHECK( counter == 1 );
 
   mask = 0;
-  aig.foreach_po( [&]( auto s ) { mask |= ( 1 << aig.get_node( s ) ); } );
+  aig.foreach_po( [&]( auto s )
+                  { mask |= ( 1 << aig.get_node( s ) ); } );
   CHECK( mask == 24 );
 
   mask = counter = 0;
-  aig.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << aig.get_node( s ) ); counter += i; return false; } );
+  aig.foreach_po( [&]( auto s, auto i )
+                  { mask |= ( 1 << aig.get_node( s ) ); counter += i; return false; } );
   CHECK( mask == 8 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aig.foreach_po( [&]( auto s ) { mask |= ( 1 << aig.get_node( s ) ); return false; } );
+  aig.foreach_po( [&]( auto s )
+                  { mask |= ( 1 << aig.get_node( s ) ); return false; } );
   CHECK( mask == 8 );
 
   /* iterate over gates */
   mask = counter = 0;
-  aig.foreach_gate( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
+  aig.foreach_gate( [&]( auto n, auto i )
+                    { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 24 );
   CHECK( counter == 1 );
 
   mask = 0;
-  aig.foreach_gate( [&]( auto n ) { mask |= ( 1 << n ); } );
+  aig.foreach_gate( [&]( auto n )
+                    { mask |= ( 1 << n ); } );
   CHECK( mask == 24 );
 
   mask = counter = 0;
-  aig.foreach_gate( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
+  aig.foreach_gate( [&]( auto n, auto i )
+                    { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 8 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aig.foreach_gate( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
+  aig.foreach_gate( [&]( auto n )
+                    { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 8 );
 
   /* iterate over fanins */
   mask = counter = 0;
-  aig.foreach_fanin( aig.get_node( f1 ), [&]( auto s, auto i ) { mask |= ( 1 << aig.get_node( s ) ); counter += i; } );
+  aig.foreach_fanin( aig.get_node( f1 ), [&]( auto s, auto i )
+                     { mask |= ( 1 << aig.get_node( s ) ); counter += i; } );
   CHECK( mask == 6 );
   CHECK( counter == 1 );
 
   mask = 0;
-  aig.foreach_fanin( aig.get_node( f1 ), [&]( auto s ) { mask |= ( 1 << aig.get_node( s ) ); } );
+  aig.foreach_fanin( aig.get_node( f1 ), [&]( auto s )
+                     { mask |= ( 1 << aig.get_node( s ) ); } );
   CHECK( mask == 6 );
 
   mask = counter = 0;
-  aig.foreach_fanin( aig.get_node( f1 ), [&]( auto s, auto i ) { mask |= ( 1 << aig.get_node( s ) ); counter += i; return false; } );
+  aig.foreach_fanin( aig.get_node( f1 ), [&]( auto s, auto i )
+                     { mask |= ( 1 << aig.get_node( s ) ); counter += i; return false; } );
   CHECK( mask == 2 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aig.foreach_fanin( aig.get_node( f1 ), [&]( auto s ) { mask |= ( 1 << aig.get_node( s ) ); return false; } );
+  aig.foreach_fanin( aig.get_node( f1 ), [&]( auto s )
+                     { mask |= ( 1 << aig.get_node( s ) ); return false; } );
   CHECK( mask == 2 );
 }
 
@@ -528,19 +547,18 @@ TEST_CASE( "custom node values in AIGs", "[aig]" )
   CHECK( aig.size() == 5 );
 
   aig.clear_values();
-  aig.foreach_node( [&]( auto n ) {
+  aig.foreach_node( [&]( auto n )
+                    {
     CHECK( aig.value( n ) == 0 );
     aig.set_value( n, static_cast<uint32_t>( n ) );
     CHECK( aig.value( n ) == n );
     CHECK( aig.incr_value( n ) == n );
     CHECK( aig.value( n ) == n + 1 );
     CHECK( aig.decr_value( n ) == n );
-    CHECK( aig.value( n ) == n );
-  } );
+    CHECK( aig.value( n ) == n ); } );
   aig.clear_values();
-  aig.foreach_node( [&]( auto n ) {
-    CHECK( aig.value( n ) == 0 );
-  } );
+  aig.foreach_node( [&]( auto n )
+                    { CHECK( aig.value( n ) == 0 ); } );
 }
 
 TEST_CASE( "visited values in AIGs", "[aig]" )
@@ -561,15 +579,14 @@ TEST_CASE( "visited values in AIGs", "[aig]" )
   CHECK( aig.size() == 5 );
 
   aig.clear_visited();
-  aig.foreach_node( [&]( auto n ) {
+  aig.foreach_node( [&]( auto n )
+                    {
     CHECK( aig.visited( n ) == 0 );
     aig.set_visited( n, static_cast<uint32_t>( n ) );
-    CHECK( aig.visited( n ) == static_cast<uint32_t>( n ) );
-  } );
+    CHECK( aig.visited( n ) == static_cast<uint32_t>( n ) ); } );
   aig.clear_visited();
-  aig.foreach_node( [&]( auto n ) {
-    CHECK( aig.visited( n ) == 0 );
-  } );
+  aig.foreach_node( [&]( auto n )
+                    { CHECK( aig.visited( n ) == 0 ); } );
 }
 
 TEST_CASE( "simulate some special functions in AIGs", "[aig]" )
@@ -909,7 +926,8 @@ TEST_CASE( "substitute multiple nodes", "[aig]" )
   CHECK( aig.fanout_size( aig.get_node( n8 ) ) == 0u );
   CHECK( aig.fanout_size( aig.get_node( n9 ) ) == 0u );
 
-  aig.foreach_po( [&]( signal const o, uint32_t index ) {
+  aig.foreach_po( [&]( signal const o, uint32_t index )
+                  {
     switch ( index )
     {
     case 0:
@@ -920,8 +938,7 @@ TEST_CASE( "substitute multiple nodes", "[aig]" )
       break;
     default:
       CHECK( false );
-    }
-  } );
+    } } );
 }
 
 TEST_CASE( "substitute node with dependency in aig_network", "[aig]" )
@@ -940,13 +957,13 @@ TEST_CASE( "substitute node with dependency in aig_network", "[aig]" )
 
   /**
    * issue #545
-   * 
+   *
    *      f2
    *     /  \
    *    /   f3
    *    \  /  \
    *  1->f1    a
-   * 
+   *
    * stack:
    * 1. push (f2->f3)
    * 2. push (f3->a)
@@ -959,7 +976,6 @@ TEST_CASE( "substitute node with dependency in aig_network", "[aig]" )
   CHECK( aig.is_dead( aig.get_node( f1 ) ) );
   CHECK( aig.is_dead( aig.get_node( f2 ) ) );
   CHECK( aig.is_dead( aig.get_node( f3 ) ) );
-  aig.foreach_po( [&]( auto s ) {
-    CHECK( aig.is_dead( aig.get_node( s ) ) == false );
-  } );
+  aig.foreach_po( [&]( auto s )
+                  { CHECK( aig.is_dead( aig.get_node( s ) ) == false ); } );
 }

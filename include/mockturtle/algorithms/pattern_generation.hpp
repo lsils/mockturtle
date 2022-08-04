@@ -33,15 +33,15 @@
 
 #pragma once
 
+#include "../networks/aig.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
-#include <bill/sat/interface/abc_bsat2.hpp>
-#include <bill/sat/interface/z3.hpp>
-#include <kitty/partial_truth_table.hpp>
 #include "circuit_validator.hpp"
 #include "dont_cares.hpp"
 #include "simulation.hpp"
-#include "../networks/aig.hpp"
+#include <bill/sat/interface/abc_bsat2.hpp>
+#include <bill/sat/interface/z3.hpp>
+#include <kitty/partial_truth_table.hpp>
 #include <random>
 
 namespace mockturtle
@@ -49,61 +49,61 @@ namespace mockturtle
 
 struct pattern_generation_params
 {
-  /*! \brief Number of patterns each node should have for both values. 
-   * 
+  /*! \brief Number of patterns each node should have for both values.
+   *
    * When this parameter is set to greater than 1, and if the network has more
    * than 2048 PIs, the `BUFFER_SIZE` in `lib/bill/sat/interface/abc_bsat2.hpp`
    * has to be increased to at least `ntk.num_pis()`.
    */
-  uint32_t num_stuck_at{1};
+  uint32_t num_stuck_at{ 1 };
 
   /*! \brief Whether to consider observability, and how many levels. 0 = no. -1 = Consider TFO until PO. */
-  int32_t odc_levels{0};
+  int32_t odc_levels{ 0 };
 
   /*! \brief Show progress. */
-  bool progress{false};
+  bool progress{ false };
 
   /*! \brief Be verbose. Note that it will take more time to do extra ODC computation if this is turned on. */
-  bool verbose{false};
+  bool verbose{ false };
 
   /*! \brief Random seed. */
-  std::default_random_engine::result_type random_seed{1};
+  std::default_random_engine::result_type random_seed{ 1 };
 
   /*! \brief Conflict limit of the SAT solver. */
-  uint32_t conflict_limit{1000};
+  uint32_t conflict_limit{ 1000 };
 
   /*! \brief Maximum number of clauses of the SAT solver. (incremental CNF construction) */
-  uint32_t max_clauses{1000};
+  uint32_t max_clauses{ 1000 };
 };
 
 struct pattern_generation_stats
 {
   /*! \brief Total time. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Time for simulation. */
-  stopwatch<>::duration time_sim{0};
+  stopwatch<>::duration time_sim{ 0 };
 
   /*! \brief Time for SAT solving. */
-  stopwatch<>::duration time_sat{0};
+  stopwatch<>::duration time_sat{ 0 };
 
   /*! \brief Time for ODC computation */
-  stopwatch<>::duration time_odc{0};
+  stopwatch<>::duration time_odc{ 0 };
 
   /*! \brief Number of constant nodes. */
-  uint32_t num_constant{0};
+  uint32_t num_constant{ 0 };
 
   /*! \brief Number of generated patterns. */
-  uint32_t num_generated_patterns{0};
+  uint32_t num_generated_patterns{ 0 };
 
   /*! \brief Number of stuck-at patterns that is re-generated because the original one was unobservable. */
-  uint32_t unobservable_type1{0};
+  uint32_t unobservable_type1{ 0 };
 
   /*! \brief Number of additional patterns generated because the node was unobservable with one value. */
-  uint32_t unobservable_type2{0};
+  uint32_t unobservable_type2{ 0 };
 
   /*! \brief Number of unobservable nodes (node for which an observable pattern can not be found). */
-  uint32_t unobservable_node{0};
+  uint32_t unobservable_node{ 0 };
 };
 
 namespace detail
@@ -127,9 +127,8 @@ public:
   {
     stopwatch t( st.time_total );
 
-    call_with_stopwatch( st.time_sim, [&]() {
-      simulate_nodes<Ntk>( ntk, tts, sim, true );
-    } );
+    call_with_stopwatch( st.time_sim, [&]()
+                         { simulate_nodes<Ntk>( ntk, tts, sim, true ); } );
 
     if ( ps.num_stuck_at > 0 )
     {
@@ -137,10 +136,10 @@ public:
       if constexpr ( std::is_same_v<Simulator, bit_packed_simulator> )
       {
         sim.pack_bits();
-        call_with_stopwatch( st.time_sim, [&]() {
+        call_with_stopwatch( st.time_sim, [&]()
+                             {
           tts.reset();
-          simulate_nodes<Ntk>( ntk, tts, sim, true );
-        } );
+          simulate_nodes<Ntk>( ntk, tts, sim, true ); } );
       }
       if constexpr ( substitute_const )
       {
@@ -157,17 +156,17 @@ public:
     if constexpr ( use_odc )
     {
       observability_check();
-      if constexpr( std::is_same_v<Simulator, bit_packed_simulator> )
+      if constexpr ( std::is_same_v<Simulator, bit_packed_simulator> )
       {
         sim.pack_bits();
-        call_with_stopwatch( st.time_sim, [&]() {
+        call_with_stopwatch( st.time_sim, [&]()
+                             {
           tts.reset();
-          simulate_nodes<Ntk>( ntk, tts, sim, true );
-        } );
+          simulate_nodes<Ntk>( ntk, tts, sim, true ); } );
       }
     }
 
-    if constexpr( std::is_same_v<Simulator, bit_packed_simulator> )
+    if constexpr ( std::is_same_v<Simulator, bit_packed_simulator> )
     {
       sim.randomize_dont_care_bits( ps.random_seed );
     }
@@ -176,11 +175,12 @@ public:
 private:
   void stuck_at_check()
   {
-    progress_bar pbar{ntk.size(), "patgen-sa |{0}| node = {1:>4} #pat = {2:>4}", ps.progress};
+    progress_bar pbar{ ntk.size(), "patgen-sa |{0}| node = {1:>4} #pat = {2:>4}", ps.progress };
 
     kitty::partial_truth_table zero = sim.compute_constant( false );
 
-    ntk.foreach_gate( [&]( auto const& n, auto i ) {
+    ntk.foreach_gate( [&]( auto const& n, auto i )
+                      {
       pbar( i, i, sim.num_bits() );
 
       if ( tts[n].num_bits() != sim.num_bits() )
@@ -280,17 +280,17 @@ private:
           generate_more_patterns( n, tt, false, zero );
         }
       }
-      return true; /* next gate */
-    } );
+      return true; /* next gate */ } );
   }
 
   void observability_check()
   {
-    progress_bar pbar{ntk.size(), "patgen-obs |{0}| node = {1:>4} #pat = {2:>4}", ps.progress};
+    progress_bar pbar{ ntk.size(), "patgen-obs |{0}| node = {1:>4} #pat = {2:>4}", ps.progress };
 
     kitty::partial_truth_table zero = sim.compute_constant( false );
 
-    ntk.foreach_gate( [&]( auto const& n, auto i ) {
+    ntk.foreach_gate( [&]( auto const& n, auto i )
+                      {
       pbar( i, i, sim.num_bits() );
 
       for ( auto& f : const_nodes )
@@ -390,14 +390,13 @@ private:
         }
       }
 
-      return true; /* next gate */
-    } );
+      return true; /* next gate */ } );
   }
 
 private:
   void new_pattern( std::vector<bool> const& pattern, node const& n )
   {
-    if constexpr( std::is_same_v<Simulator, bit_packed_simulator> )
+    if constexpr ( std::is_same_v<Simulator, bit_packed_simulator> )
     {
       sim.add_pattern( pattern, compute_support( n ) );
     }
@@ -406,15 +405,14 @@ private:
       (void)n;
       sim.add_pattern( pattern );
     }
-    
+
     ++st.num_generated_patterns;
 
     /* re-simulate */
     if ( sim.num_bits() % 64 == 0 )
     {
-      call_with_stopwatch( st.time_sim, [&]() {
-        simulate_nodes<Ntk>( ntk, tts, sim, false );
-      } );
+      call_with_stopwatch( st.time_sim, [&]()
+                           { simulate_nodes<Ntk>( ntk, tts, sim, false ); } );
     }
   }
 
@@ -427,16 +425,15 @@ private:
       if ( kitty::get_bit( tt, i ) == value )
       {
         patterns.emplace_back();
-        ntk.foreach_pi( [&]( auto const& pi ) {
-          patterns.back().emplace_back( kitty::get_bit( tts[pi], i ) );
-        } );
+        ntk.foreach_pi( [&]( auto const& pi )
+                        { patterns.back().emplace_back( kitty::get_bit( tts[pi], i ) ); } );
       }
     }
 
-    auto generated = call_with_stopwatch( st.time_sat, [&]() {
+    auto generated = call_with_stopwatch( st.time_sat, [&]()
+                                          {
       validator.set_odc_levels( ps.odc_levels );
-      return validator.generate_pattern( n, value, patterns, ps.num_stuck_at - patterns.size() );
-    } );
+      return validator.generate_pattern( n, value, patterns, ps.num_stuck_at - patterns.size() ); } );
     for ( auto& pattern : generated )
     {
       new_pattern( pattern, n );
@@ -453,12 +450,12 @@ private:
       {
         std::vector<node> leaves;
         mark_fanout_leaves_rec( n, 1, leaves );
-        ntk.foreach_po( [&]( auto const& f ) {
+        ntk.foreach_po( [&]( auto const& f )
+                        {
           if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() )
           {
             leaves.emplace_back( ntk.get_node( f ) );
-          }
-        });
+          } } );
 
         ntk.incr_trav_id();
         for ( auto& l : leaves )
@@ -470,32 +467,35 @@ private:
     mark_support_rec( n );
 
     std::vector<bool> care( ntk.num_pis(), false );
-    ntk.foreach_pi( [&]( auto const& f, uint32_t i ) {
+    ntk.foreach_pi( [&]( auto const& f, uint32_t i )
+                    {
       if ( ntk.visited( f ) == ntk.trav_id() )
       {
         care[i] = true;
-      }
-    });
+      } } );
     return care;
   }
 
   void mark_support_rec( node const& n )
   {
     if ( ntk.visited( n ) == ntk.trav_id() )
-      { return; }
+    {
+      return;
+    }
     ntk.set_visited( n, ntk.trav_id() );
 
-    ntk.foreach_fanin( n, [&]( auto const& f ) {
+    ntk.foreach_fanin( n, [&]( auto const& f )
+                       {
       if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() )
         { return true; }
       mark_support_rec( ntk.get_node( f ) );
-      return true;
-    });
+      return true; } );
   }
 
   void mark_fanout_leaves_rec( node const& n, int32_t level, std::vector<node>& leaves )
   {
-    ntk.foreach_fanout( n, [&]( auto const& fo ) {
+    ntk.foreach_fanout( n, [&]( auto const& fo )
+                        {
       if ( ntk.visited( fo ) == ntk.trav_id() )
         { return true; }
       ntk.set_visited( fo, ntk.trav_id() );
@@ -507,8 +507,7 @@ private:
       }
 
       mark_fanout_leaves_rec( fo, level + 1, leaves );
-      return true;
-    } );
+      return true; } );
   }
 
 private:
@@ -539,7 +538,7 @@ private:
  * \param sim Reference of a `partial_simulator` or `bit_packed_simulator`
  * object where the generated patterns will be stored.
  * It can be empty (`Simulator( ntk.num_pis(), 0 )`)
- * or already containing some patterns generated from previous runs 
+ * or already containing some patterns generated from previous runs
  * (`Simulator( filename )`) or randomly generated
  * (`Simulator( ntk.num_pis(), num_random_patterns )`). The generated
  * patterns can then be written out with `write_patterns`
@@ -564,14 +563,14 @@ void pattern_generation( Ntk& ntk, Simulator& sim, pattern_generation_params con
   if ( ps.odc_levels != 0 )
   {
     using fanout_view_t = fanout_view<Ntk>;
-    fanout_view_t fanout_view{ntk};
+    fanout_view_t fanout_view{ ntk };
 
-    detail::patgen_impl<fanout_view_t, Simulator, /*use_odc*/true, substitute_const> p( fanout_view, sim, ps, vps, st );
+    detail::patgen_impl<fanout_view_t, Simulator, /*use_odc*/ true, substitute_const> p( fanout_view, sim, ps, vps, st );
     p.run();
   }
   else
   {
-    detail::patgen_impl<Ntk, Simulator, /*use_odc*/false, substitute_const> p( ntk, sim, ps, vps, st );
+    detail::patgen_impl<Ntk, Simulator, /*use_odc*/ false, substitute_const> p( ntk, sim, ps, vps, st );
     p.run();
   }
 

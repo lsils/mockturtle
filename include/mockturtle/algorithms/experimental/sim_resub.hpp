@@ -33,26 +33,26 @@
 
 #pragma once
 
+#include "../../io/write_patterns.hpp"
+#include "../../networks/aig.hpp"
+#include "../../networks/xag.hpp"
 #include "../../traits.hpp"
+#include "../../utils/index_list.hpp"
 #include "../../views/depth_view.hpp"
 #include "../../views/fanout_view.hpp"
-#include "../../utils/index_list.hpp"
-#include "../../networks/xag.hpp"
-#include "../../networks/aig.hpp"
-#include "../detail/resub_utils.hpp"
-#include "../resyn_engines/xag_resyn.hpp"
-#include "../resyn_engines/aig_enumerative.hpp"
-#include "../resyn_engines/mig_resyn.hpp"
-#include "../resyn_engines/mig_enumerative.hpp"
-#include "../simulation.hpp"
-#include "../dont_cares.hpp"
 #include "../circuit_validator.hpp"
+#include "../detail/resub_utils.hpp"
+#include "../dont_cares.hpp"
 #include "../pattern_generation.hpp"
-#include "../../io/write_patterns.hpp"
+#include "../resyn_engines/aig_enumerative.hpp"
+#include "../resyn_engines/mig_enumerative.hpp"
+#include "../resyn_engines/mig_resyn.hpp"
+#include "../resyn_engines/xag_resyn.hpp"
+#include "../simulation.hpp"
 #include <kitty/kitty.hpp>
 
-#include <optional>
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace mockturtle::experimental
@@ -61,19 +61,19 @@ namespace mockturtle::experimental
 struct breadth_first_windowing_params
 {
   /*! \brief Maximum number of divisors to consider. */
-  uint32_t max_divisors{50};
+  uint32_t max_divisors{ 50 };
 
   /*! \brief Maximum number of TFI nodes to collect. */
-  uint32_t max_tfi{uint32_t(max_divisors * 0.5)};
+  uint32_t max_tfi{ uint32_t( max_divisors * 0.5 ) };
 
   /*! \brief Maximum number of nodes added by resubstitution. */
-  uint32_t max_inserts{std::numeric_limits<uint32_t>::max()};
+  uint32_t max_inserts{ std::numeric_limits<uint32_t>::max() };
 
   /*! \brief Maximum fanout of a node to be considered as root. */
-  uint32_t skip_fanout_limit_for_roots{1000};
+  uint32_t skip_fanout_limit_for_roots{ 1000 };
 
   /*! \brief Maximum fanout of a node to be considered as divisor. */
-  uint32_t skip_fanout_limit_for_divisors{100};
+  uint32_t skip_fanout_limit_for_divisors{ 100 };
 };
 
 struct simulation_guided_resynthesis_params
@@ -87,40 +87,40 @@ struct simulation_guided_resynthesis_params
   std::optional<std::string> save_patterns{};
 
   /*! \brief Maximum number of clauses of the SAT solver. */
-  uint32_t max_clauses{1000};
+  uint32_t max_clauses{ 1000 };
 
   /*! \brief Conflict limit for the SAT solver. */
-  uint32_t conflict_limit{1000};
+  uint32_t conflict_limit{ 1000 };
 
   /*! \brief Random seed for the SAT solver (influences the randomness of counter-examples). */
-  uint32_t random_seed{1};
+  uint32_t random_seed{ 1 };
 
   /*! \brief Maximum number of trials to call the resub functor. */
-  uint32_t max_trials{100};
+  uint32_t max_trials{ 100 };
 
   /*! \brief Whether to utilize ODC, and how many levels. 0 = no. -1 = Consider TFO until PO. */
-  int32_t odc_levels{0};
+  int32_t odc_levels{ 0 };
 };
 
 struct breadth_first_windowing_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Accumulated runtime for mffc computation. */
-  stopwatch<>::duration time_mffc{0};
+  stopwatch<>::duration time_mffc{ 0 };
 
   /*! \brief Accumulated runtime for divisor collection. */
-  stopwatch<>::duration time_divs{0};
+  stopwatch<>::duration time_divs{ 0 };
 
   /*! \brief Total number of divisors. */
-  uint64_t num_divisors{0u};
+  uint64_t num_divisors{ 0u };
 
   /*! \brief Number of constructed windows. */
-  uint32_t num_windows{0u};
+  uint32_t num_windows{ 0u };
 
   /*! \brief Total number of MFFC nodes. */
-  uint64_t sum_mffc_size{0u};
+  uint64_t sum_mffc_size{ 0u };
 
   void report() const
   {
@@ -139,43 +139,43 @@ struct breadth_first_windowing_stats
 struct simulation_guided_resynthesis_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Time for pattern generation. */
-  stopwatch<>::duration time_patgen{0};
+  stopwatch<>::duration time_patgen{ 0 };
 
   /*! \brief Time for simulation. */
-  stopwatch<>::duration time_sim{0};
+  stopwatch<>::duration time_sim{ 0 };
 
   /*! \brief Time for SAT solving. */
-  stopwatch<>::duration time_sat{0};
+  stopwatch<>::duration time_sat{ 0 };
 
   /*! \brief Time for finding dependency function. */
-  stopwatch<>::duration time_resyn{0};
+  stopwatch<>::duration time_resyn{ 0 };
 
   /*! \brief Time for computing ODCs. */
-  stopwatch<>::duration time_odc{0};
+  stopwatch<>::duration time_odc{ 0 };
 
   /*! \brief Time for saving patterns. */
-  stopwatch<>::duration time_patsave{0};
+  stopwatch<>::duration time_patsave{ 0 };
 
   /*! \brief Number of calls to the resynthesis engine. */
-  uint32_t num_calls{0};
+  uint32_t num_calls{ 0 };
 
   /*! \brief Number of solutions found by the resynthesis engine. */
-  uint32_t num_sols{0};
+  uint32_t num_sols{ 0 };
 
   /*! \brief Number of patterns used. */
-  uint32_t num_pats{0};
+  uint32_t num_pats{ 0 };
 
   /*! \brief Number of valid solutions. */
-  uint32_t num_valid{0};
+  uint32_t num_valid{ 0 };
 
   /*! \brief Number of counter-examples. */
-  uint32_t num_cex{0};
+  uint32_t num_cex{ 0 };
 
   /*! \brief Number of SAT solver timeout. */
-  uint32_t num_timeout{0};
+  uint32_t num_timeout{ 0 };
 
   void report() const
   {
@@ -208,8 +208,8 @@ struct breadth_first_window
   node root;
   std::vector<node> divs;
   uint32_t mffc_size;
-  uint32_t max_size{std::numeric_limits<uint32_t>::max()};
-  //uint32_t max_level{std::numeric_limits<uint32_t>::max()};
+  uint32_t max_size{ std::numeric_limits<uint32_t>::max() };
+  // uint32_t max_level{std::numeric_limits<uint32_t>::max()};
 };
 
 template<class Ntk>
@@ -224,8 +224,8 @@ public:
   using signal = typename Ntk::signal;
 
   explicit breadth_first_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), ps( ps ), st( st ), mffc_mgr( ntk ),
-      divs_mgr( ntk, divisor_collector_params( {ps.max_tfi, ps.max_divisors, ps.skip_fanout_limit_for_divisors} ) )
+      : ntk( ntk ), ps( ps ), st( st ), mffc_mgr( ntk ),
+        divs_mgr( ntk, divisor_collector_params( { ps.max_tfi, ps.max_divisors, ps.skip_fanout_limit_for_divisors } ) )
   {
     static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
@@ -248,20 +248,17 @@ public:
     /* collect TFI nodes with BFS and supported "wing" nodes */
     win.root = n;
     win.divs.clear();
-    call_with_stopwatch( st.time_divs, [&]() {
-      divs_mgr.collect_tfi_and_wings( n, win.divs );
-    });
+    call_with_stopwatch( st.time_divs, [&]()
+                         { divs_mgr.collect_tfi_and_wings( n, win.divs ); } );
 
     /* compute and mark MFFC nodes */
     ++mffc_marker;
-    win.mffc_size = call_with_stopwatch( st.time_mffc, [&]() {
-      return mffc_mgr.call_on_mffc_and_count( n, {}, [&]( node const& n ){
-        ntk.set_value( n, mffc_marker );
-      });
-    });
+    win.mffc_size = call_with_stopwatch( st.time_mffc, [&]()
+                                         { return mffc_mgr.call_on_mffc_and_count( n, {}, [&]( node const& n )
+                                                                                   { ntk.set_value( n, mffc_marker ); } ); } );
 
     /* exclude MFFC node in divs */
-    uint32_t counter{0};
+    uint32_t counter{ 0 };
     for ( int32_t i = 0; i < win.divs.size(); ++i )
     {
       if ( ntk.value( win.divs.at( i ) ) == mffc_marker )
@@ -296,9 +293,8 @@ public:
   {
     static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     assert( res.num_pos() == 1 );
-    insert<false>( ntk, prob.divs.begin(), prob.divs.end(), res, [&]( signal const& g ){
-      ntk.substitute_node( prob.root, g );
-    } );
+    insert<false>( ntk, prob.divs.begin(), prob.divs.end(), res, [&]( signal const& g )
+                   { ntk.substitute_node( prob.root, g ); } );
     return true; /* continue optimization */
   }
 
@@ -312,14 +308,13 @@ public:
   }
 
 private:
-
 private:
   Ntk& ntk;
   problem_t win;
   params_t const& ps;
   stats_t& st;
   typename mockturtle::detail::node_mffc_inside<Ntk> mffc_mgr; // TODO: namespaces can be removed when we move out of experimental::
-  uint32_t mffc_marker{0u};
+  uint32_t mffc_marker{ 0u };
   divisor_collector<Ntk> divs_mgr;
 }; /* breadth_first_windowing */
 
@@ -334,20 +329,20 @@ public:
 
   using node = typename Ntk::node;
   using TT = kitty::partial_truth_table;
-  using validator_t = circuit_validator<Ntk, Solver, /*use_pushpop*/false, /*randomize*/true, /*use_odc*/UseODC>;
+  using validator_t = circuit_validator<Ntk, Solver, /*use_pushpop*/ false, /*randomize*/ true, /*use_odc*/ UseODC>;
 
   explicit simulation_guided_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-    : ntk( ntk ), ps( ps ), st( st ), engine( rst ), 
-      validator( ntk, {ps.max_clauses, ps.odc_levels, ps.conflict_limit, ps.random_seed} ), tts( ntk )
-  { }
+      : ntk( ntk ), ps( ps ), st( st ), engine( rst ),
+        validator( ntk, { ps.max_clauses, ps.odc_levels, ps.conflict_limit, ps.random_seed } ), tts( ntk )
+  {
+  }
 
   ~simulation_guided_resynthesis()
   {
     if ( ps.save_patterns )
     {
-      call_with_stopwatch( st.time_patsave, [&]() {
-        write_patterns( sim, *ps.save_patterns );
-      });
+      call_with_stopwatch( st.time_patsave, [&]()
+                           { write_patterns( sim, *ps.save_patterns ); } );
     }
 
     if ( add_event )
@@ -358,15 +353,16 @@ public:
 
   void init()
   {
-    add_event = ntk.events().register_add_event( [&]( const auto& n ) {
+    add_event = ntk.events().register_add_event( [&]( const auto& n )
+                                                 {
       tts.resize();
       call_with_stopwatch( st.time_sim, [&]() {
         simulate_node<Ntk>( ntk, n, tts, sim );
-      });
-    } );
+      }); } );
 
     /* prepare simulation patterns */
-    call_with_stopwatch( st.time_patgen, [&]() {
+    call_with_stopwatch( st.time_patgen, [&]()
+                         {
       if ( ps.pattern_filename )
       {
         sim = partial_simulator( *ps.pattern_filename );
@@ -375,14 +371,12 @@ public:
       {
         sim = partial_simulator( ntk.num_pis(), 1024 );
         pattern_generation( ntk, sim );
-      }
-    });
+      } } );
     st.num_pats = sim.num_bits();
 
     /* first simulation: the whole circuit; from 0 bits. */
-    call_with_stopwatch( st.time_sim, [&]() {
-      simulate_nodes<Ntk>( ntk, tts, sim, true );
-    });
+    call_with_stopwatch( st.time_sim, [&]()
+                         { simulate_nodes<Ntk>( ntk, tts, sim, true ); } );
   }
 
   std::optional<res_t> operator()( problem_t& prob )
@@ -395,22 +389,20 @@ public:
         check_tts( d );
       }
 
-      TT const care = call_with_stopwatch( st.time_odc, [&]() {
-        return ( ps.odc_levels == 0 ) ? sim.compute_constant( true ) : ~observability_dont_cares( ntk, prob.root, sim, tts, ps.odc_levels );
-      });
+      TT const care = call_with_stopwatch( st.time_odc, [&]()
+                                           { return ( ps.odc_levels == 0 ) ? sim.compute_constant( true ) : ~observability_dont_cares( ntk, prob.root, sim, tts, ps.odc_levels ); } );
 
-      const auto res = call_with_stopwatch( st.time_resyn, [&]() {
+      const auto res = call_with_stopwatch( st.time_resyn, [&]()
+                                            {
         ++st.num_calls;
-        return engine( tts[prob.root], care, std::begin( prob.divs ), std::end( prob.divs ), tts, prob.max_size );
-      });
+        return engine( tts[prob.root], care, std::begin( prob.divs ), std::end( prob.divs ), tts, prob.max_size ); } );
 
       if ( res )
       {
         ++st.num_sols;
         auto const& id_list = *res;
-        auto valid = call_with_stopwatch( st.time_sat, [&]() {
-          return validator.validate( prob.root, prob.divs, id_list );
-        });
+        auto valid = call_with_stopwatch( st.time_sat, [&]()
+                                          { return validator.validate( prob.root, prob.divs, id_list ); } );
         if ( valid )
         {
           if ( *valid )
@@ -419,25 +411,22 @@ public:
             if constexpr ( UseODC )
             {
               /* restart the solver -- clear constructed CNF */
-              call_with_stopwatch( st.time_sat, [&]() {
-                validator.update();
-              });
+              call_with_stopwatch( st.time_sat, [&]()
+                                   { validator.update(); } );
             }
             return id_list;
           }
           else
           {
             ++st.num_cex;
-            call_with_stopwatch( st.time_sim, [&]() {
-              sim.add_pattern( validator.cex );
-            });
+            call_with_stopwatch( st.time_sim, [&]()
+                                 { sim.add_pattern( validator.cex ); } );
 
             /* re-simulate the whole circuit (for the last block) when a block is full */
             if ( sim.num_bits() % 64 == 0 )
             {
-              call_with_stopwatch( st.time_sim, [&]() {
-                simulate_nodes<Ntk>( ntk, tts, sim, false );
-              } );
+              call_with_stopwatch( st.time_sim, [&]()
+                                   { simulate_nodes<Ntk>( ntk, tts, sim, false ); } );
             }
             continue;
           }
@@ -461,9 +450,8 @@ private:
   {
     if ( tts[n].num_bits() != sim.num_bits() )
     {
-      call_with_stopwatch( st.time_sim, [&]() {
-        simulate_node<Ntk>( ntk, n, tts, sim );
-      } );
+      call_with_stopwatch( st.time_sim, [&]()
+                           { simulate_node<Ntk>( ntk, n, tts, sim ); } );
     }
   }
 
@@ -496,7 +484,7 @@ void simulation_xag_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, 
 
   using windowing_t = typename detail::breadth_first_windowing<ViewedNtk>;
   using engine_t = xag_resyn_decompose<kitty::partial_truth_table, xag_resyn_static_params_for_sim_resub<ViewedNtk>>;
-  using resyn_t = typename detail::simulation_guided_resynthesis<ViewedNtk, engine_t>; 
+  using resyn_t = typename detail::simulation_guided_resynthesis<ViewedNtk, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
   sim_resub_stats st;
@@ -525,7 +513,7 @@ void simulation_aig_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, 
 
   using windowing_t = typename detail::breadth_first_windowing<ViewedNtk>;
   using engine_t = xag_resyn_decompose<kitty::partial_truth_table, aig_resyn_static_params_for_sim_resub<ViewedNtk>>;
-  using resyn_t = typename detail::simulation_guided_resynthesis<ViewedNtk, engine_t>; 
+  using resyn_t = typename detail::simulation_guided_resynthesis<ViewedNtk, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
   sim_resub_stats st;
@@ -542,6 +530,5 @@ void simulation_aig_heuristic_resub( Ntk& ntk, sim_resub_params const& ps = {}, 
     *pst = st;
   }
 }
-
 
 } /* namespace mockturtle::experimental */

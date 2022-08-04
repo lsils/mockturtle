@@ -124,7 +124,7 @@ truth_table_cache<TT>::truth_table_cache( uint32_t capacity )
 template<typename TT>
 uint32_t truth_table_cache<TT>::insert( TT tt )
 {
-  uint32_t is_compl{0};
+  uint32_t is_compl{ 0 };
 
   if ( kitty::get_bit( tt, 0 ) )
   {

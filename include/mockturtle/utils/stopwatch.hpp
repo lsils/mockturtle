@@ -147,7 +147,7 @@ template<class T, class... Args, class Clock = std::chrono::steady_clock>
 T make_with_stopwatch( typename Clock::duration& dur, Args... args )
 {
   stopwatch<Clock> t( dur );
-  return T{std::forward<Args>( args )...};
+  return T{ std::forward<Args>( args )... };
 }
 
 /*! \brief Utility function to convert duration into seconds. */
@@ -173,7 +173,7 @@ public:
   }
 
 private:
-  stopwatch<Clock>* _t{nullptr};
+  stopwatch<Clock>* _t{ nullptr };
   typename stopwatch<Clock>::duration _d{};
 };
 

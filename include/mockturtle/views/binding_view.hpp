@@ -34,11 +34,11 @@
 #pragma once
 
 #include "../io/genlib_reader.hpp"
-#include "../views/topo_view.hpp"
 #include "../utils/node_map.hpp"
+#include "../views/topo_view.hpp"
 
-#include <map>
 #include <iostream>
+#include <map>
 
 namespace mockturtle
 {
@@ -94,9 +94,7 @@ public:
 
 public:
   explicit binding_view( std::vector<gate> const& library )
-      : Ntk()
-      , _library{ library }
-      , _bindings( *this )
+      : Ntk(), _library{ library }, _bindings( *this )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -106,9 +104,7 @@ public:
   }
 
   explicit binding_view( Ntk const& ntk, std::vector<gate> const& library )
-      : Ntk( ntk )
-      , _library{ library }
-      , _bindings( *this )
+      : Ntk( ntk ), _library{ library }, _bindings( *this )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -173,23 +169,24 @@ public:
   double compute_area() const
   {
     double area = 0;
-    Ntk::foreach_node( [&]( auto const& n, auto ) {
+    Ntk::foreach_node( [&]( auto const& n, auto )
+                       {
       if ( has_binding( n ) )
       {
         area += get_binding( n ).area;
-      }
-    } );
+      } } );
 
     return area;
   }
 
   double compute_worst_delay() const
   {
-    topo_view ntk_topo{*this};
+    topo_view ntk_topo{ *this };
     node_map<double, Ntk> delays( *this );
     double worst_delay = 0;
 
-    ntk_topo.foreach_node( [&]( auto const& n, auto ) {
+    ntk_topo.foreach_node( [&]( auto const& n, auto )
+                           {
       if ( Ntk::is_constant( n ) || Ntk::is_pi( n ) )
       {
         delays[n] = 0;
@@ -206,8 +203,7 @@ public:
         delays[n] = gate_delay;
         worst_delay = std::max( worst_delay, gate_delay );
       }
-      return true;
-    } );
+      return true; } );
 
     return worst_delay;
   }
@@ -222,14 +218,14 @@ public:
     std::vector<uint32_t> gates_profile( _library.size(), 0u );
 
     double area = 0;
-    Ntk::foreach_node( [&]( auto const& n, auto ) {
+    Ntk::foreach_node( [&]( auto const& n, auto )
+                       {
       if ( has_binding( n ) )
       {
         auto const& g = get_binding( n );
         ++gates_profile[g.id];
         area += g.area;
-      }
-    } );
+      } } );
 
     os << "[i] Report gates usage:\n";
 

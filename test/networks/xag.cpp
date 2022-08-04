@@ -163,7 +163,8 @@ TEST_CASE( "create and use primary outputs in an xag", "[xag]" )
   CHECK( xag.size() == 2 );
   CHECK( xag.num_pos() == 3 );
 
-  xag.foreach_po( [&]( auto s, auto i ) {
+  xag.foreach_po( [&]( auto s, auto i )
+                  {
     switch ( i )
     {
     case 0:
@@ -175,8 +176,7 @@ TEST_CASE( "create and use primary outputs in an xag", "[xag]" )
     case 2:
       CHECK( s == !x1 );
       break;
-    }
-  } );
+    } } );
 }
 
 TEST_CASE( "create unary operations in an xag", "[xag]" )
@@ -290,12 +290,11 @@ TEST_CASE( "clone a node in xag network", "[xag]" )
   auto b2 = xag2.create_pi();
   CHECK( xag2.size() == 3 );
 
-  auto f2 = xag2.clone_node( xag1, xag1.get_node( f1 ), {a2, b2} );
+  auto f2 = xag2.clone_node( xag1, xag1.get_node( f1 ), { a2, b2 } );
   CHECK( xag2.size() == 4 );
 
-  xag2.foreach_fanin( xag2.get_node( f2 ), [&]( auto const& s, auto ) {
-    CHECK( !xag2.is_complemented( s ) );
-  } );
+  xag2.foreach_fanin( xag2.get_node( f2 ), [&]( auto const& s, auto )
+                      { CHECK( !xag2.is_complemented( s ) ); } );
 }
 
 TEST_CASE( "structural properties of an xag", "[xag]" )
@@ -354,98 +353,118 @@ TEST_CASE( "node and signal iteration in an xag", "[xag]" )
   CHECK( xag.size() == 5 );
 
   /* iterate over nodes */
-  uint32_t mask{0}, counter{0};
-  xag.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
+  uint32_t mask{ 0 }, counter{ 0 };
+  xag.foreach_node( [&]( auto n, auto i )
+                    { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 31 );
   CHECK( counter == 10 );
 
   mask = 0;
-  xag.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); } );
+  xag.foreach_node( [&]( auto n )
+                    { mask |= ( 1 << n ); } );
   CHECK( mask == 31 );
 
   mask = counter = 0;
-  xag.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
+  xag.foreach_node( [&]( auto n, auto i )
+                    { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 1 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xag.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
+  xag.foreach_node( [&]( auto n )
+                    { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 1 );
 
   /* iterate over PIs */
   mask = counter = 0;
-  xag.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
+  xag.foreach_pi( [&]( auto n, auto i )
+                  { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 6 );
   CHECK( counter == 1 );
 
   mask = 0;
-  xag.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); } );
+  xag.foreach_pi( [&]( auto n )
+                  { mask |= ( 1 << n ); } );
   CHECK( mask == 6 );
 
   mask = counter = 0;
-  xag.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
+  xag.foreach_pi( [&]( auto n, auto i )
+                  { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 2 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xag.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
+  xag.foreach_pi( [&]( auto n )
+                  { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 2 );
 
   /* iterate over POs */
   mask = counter = 0;
-  xag.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << xag.get_node( s ) ); counter += i; } );
+  xag.foreach_po( [&]( auto s, auto i )
+                  { mask |= ( 1 << xag.get_node( s ) ); counter += i; } );
   CHECK( mask == 24 );
   CHECK( counter == 1 );
 
   mask = 0;
-  xag.foreach_po( [&]( auto s ) { mask |= ( 1 << xag.get_node( s ) ); } );
+  xag.foreach_po( [&]( auto s )
+                  { mask |= ( 1 << xag.get_node( s ) ); } );
   CHECK( mask == 24 );
 
   mask = counter = 0;
-  xag.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << xag.get_node( s ) ); counter += i; return false; } );
+  xag.foreach_po( [&]( auto s, auto i )
+                  { mask |= ( 1 << xag.get_node( s ) ); counter += i; return false; } );
   CHECK( mask == 8 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xag.foreach_po( [&]( auto s ) { mask |= ( 1 << xag.get_node( s ) ); return false; } );
+  xag.foreach_po( [&]( auto s )
+                  { mask |= ( 1 << xag.get_node( s ) ); return false; } );
   CHECK( mask == 8 );
 
   /* iterate over gates */
   mask = counter = 0;
-  xag.foreach_gate( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
+  xag.foreach_gate( [&]( auto n, auto i )
+                    { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 24 );
   CHECK( counter == 1 );
 
   mask = 0;
-  xag.foreach_gate( [&]( auto n ) { mask |= ( 1 << n ); } );
+  xag.foreach_gate( [&]( auto n )
+                    { mask |= ( 1 << n ); } );
   CHECK( mask == 24 );
 
   mask = counter = 0;
-  xag.foreach_gate( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
+  xag.foreach_gate( [&]( auto n, auto i )
+                    { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 8 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xag.foreach_gate( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
+  xag.foreach_gate( [&]( auto n )
+                    { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 8 );
 
   /* iterate over fanins */
   mask = counter = 0;
-  xag.foreach_fanin( xag.get_node( f1 ), [&]( auto s, auto i ) { mask |= ( 1 << xag.get_node( s ) ); counter += i; } );
+  xag.foreach_fanin( xag.get_node( f1 ), [&]( auto s, auto i )
+                     { mask |= ( 1 << xag.get_node( s ) ); counter += i; } );
   CHECK( mask == 6 );
   CHECK( counter == 1 );
 
   mask = 0;
-  xag.foreach_fanin( xag.get_node( f1 ), [&]( auto s ) { mask |= ( 1 << xag.get_node( s ) ); } );
+  xag.foreach_fanin( xag.get_node( f1 ), [&]( auto s )
+                     { mask |= ( 1 << xag.get_node( s ) ); } );
   CHECK( mask == 6 );
 
   mask = counter = 0;
-  xag.foreach_fanin( xag.get_node( f1 ), [&]( auto s, auto i ) { mask |= ( 1 << xag.get_node( s ) ); counter += i; return false; } );
+  xag.foreach_fanin( xag.get_node( f1 ), [&]( auto s, auto i )
+                     { mask |= ( 1 << xag.get_node( s ) ); counter += i; return false; } );
   CHECK( mask == 2 );
   CHECK( counter == 0 );
 
   mask = 0;
-  xag.foreach_fanin( xag.get_node( f1 ), [&]( auto s ) { mask |= ( 1 << xag.get_node( s ) ); return false; } );
+  xag.foreach_fanin( xag.get_node( f1 ), [&]( auto s )
+                     { mask |= ( 1 << xag.get_node( s ) ); return false; } );
   CHECK( mask == 2 );
 }
 
@@ -466,14 +485,14 @@ TEST_CASE( "compute values in XAGs", "[xag]" )
   xag.create_po( f2 );
 
   {
-    std::vector<bool> values{{true, false}};
+    std::vector<bool> values{ { true, false } };
 
     CHECK( xag.compute( xag.get_node( f1 ), values.begin(), values.end() ) == false );
     CHECK( xag.compute( xag.get_node( f2 ), values.begin(), values.end() ) == true );
   }
 
   {
-    std::vector<kitty::dynamic_truth_table> xs{2, kitty::dynamic_truth_table( 2 )};
+    std::vector<kitty::dynamic_truth_table> xs{ 2, kitty::dynamic_truth_table( 2 ) };
     kitty::create_nth_var( xs[0], 0 );
     kitty::create_nth_var( xs[1], 1 );
 
@@ -482,55 +501,71 @@ TEST_CASE( "compute values in XAGs", "[xag]" )
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{2};
+    std::vector<kitty::partial_truth_table> xs{ 2 };
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 1 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 1 );
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 0 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 0 );
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 0 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 0 );
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 1 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 1 );
 
     CHECK( xag.compute( xag.get_node( f1 ), xs.begin(), xs.end() ) == ( ~xs[0] & xs[1] ) );
     CHECK( xag.compute( xag.get_node( f2 ), xs.begin(), xs.end() ) == ( xs[0] & ~xs[1] ) );
   }
 
   {
-    std::vector<kitty::partial_truth_table> xs{2};
+    std::vector<kitty::partial_truth_table> xs{ 2 };
     kitty::partial_truth_table result;
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 1 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 1 );
 
-    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
-    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 0 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 0 );
 
-    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
-    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 0 ); xs[1].add_bit( 0 );
+    xs[0].add_bit( 0 );
+    xs[1].add_bit( 0 );
 
-    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
-    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( xs[0] & ~xs[1] ) );
 
-    xs[0].add_bit( 1 ); xs[1].add_bit( 1 );
+    xs[0].add_bit( 1 );
+    xs[1].add_bit( 1 );
 
-    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() ); CHECK( result == ( ~xs[0] & xs[1] ) );
-    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() ); CHECK( result == ( xs[0] & ~xs[1] ) );    
+    xag.compute( xag.get_node( f1 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( ~xs[0] & xs[1] ) );
+    xag.compute( xag.get_node( f2 ), result, xs.begin(), xs.end() );
+    CHECK( result == ( xs[0] & ~xs[1] ) );
   }
 }
 
@@ -554,19 +589,18 @@ TEST_CASE( "custom node values in xags", "[xag]" )
   CHECK( xag.size() == 5 );
 
   xag.clear_values();
-  xag.foreach_node( [&]( auto n ) {
+  xag.foreach_node( [&]( auto n )
+                    {
     CHECK( xag.value( n ) == 0 );
     xag.set_value( n, static_cast<uint32_t>( n ) );
     CHECK( xag.value( n ) == n );
     CHECK( xag.incr_value( n ) == n );
     CHECK( xag.value( n ) == n + 1 );
     CHECK( xag.decr_value( n ) == n );
-    CHECK( xag.value( n ) == n );
-  } );
+    CHECK( xag.value( n ) == n ); } );
   xag.clear_values();
-  xag.foreach_node( [&]( auto n ) {
-    CHECK( xag.value( n ) == 0 );
-  } );
+  xag.foreach_node( [&]( auto n )
+                    { CHECK( xag.value( n ) == 0 ); } );
 }
 
 TEST_CASE( "visited values in xags", "[xag]" )
@@ -587,15 +621,14 @@ TEST_CASE( "visited values in xags", "[xag]" )
   CHECK( xag.size() == 5 );
 
   xag.clear_visited();
-  xag.foreach_node( [&]( auto n ) {
+  xag.foreach_node( [&]( auto n )
+                    {
     CHECK( xag.visited( n ) == 0 );
     xag.set_visited( n, static_cast<uint32_t>( n ) );
-    CHECK( xag.visited( n ) == static_cast<uint32_t>( n ) );
-  } );
+    CHECK( xag.visited( n ) == static_cast<uint32_t>( n ) ); } );
   xag.clear_visited();
-  xag.foreach_node( [&]( auto n ) {
-    CHECK( xag.visited( n ) == 0 );
-  } );
+  xag.foreach_node( [&]( auto n )
+                    { CHECK( xag.visited( n ) == 0 ); } );
 }
 
 TEST_CASE( "simulate some special functions in XAGs", "[xag]" )
@@ -623,7 +656,8 @@ TEST_CASE( "create nary functions in XAGs", "[xag]" )
 {
   xag_network xag;
   std::vector<xag_network::signal> pis( 8u );
-  std::generate( pis.begin(), pis.end(), [&]() { return xag.create_pi(); } );
+  std::generate( pis.begin(), pis.end(), [&]()
+                 { return xag.create_pi(); } );
   xag.create_po( xag.create_nary_and( pis ) );
   xag.create_po( xag.create_nary_or( pis ) );
   xag.create_po( xag.create_nary_xor( pis ) );
@@ -670,7 +704,6 @@ TEST_CASE( "substitute node with complemented node in xag_network", "[xag]" )
   CHECK( simulate<kitty::static_truth_table<2u>>( xag )[0]._bits == 0x7 );
 }
 
-
 TEST_CASE( "substitute node with dependency in xag_network", "[xag]" )
 {
   xag_network xag{};
@@ -687,13 +720,13 @@ TEST_CASE( "substitute node with dependency in xag_network", "[xag]" )
 
   /**
    * issue #545
-   * 
+   *
    *      f2
    *     /  \
    *    /   f3
    *    \  /  \
    *  1->f1    a
-   * 
+   *
    * stack:
    * 1. push (f2->f3)
    * 2. push (f3->a)
@@ -706,7 +739,6 @@ TEST_CASE( "substitute node with dependency in xag_network", "[xag]" )
   CHECK( xag.is_dead( xag.get_node( f1 ) ) );
   CHECK( xag.is_dead( xag.get_node( f2 ) ) );
   CHECK( xag.is_dead( xag.get_node( f3 ) ) );
-  xag.foreach_po( [&]( auto s ) {
-    CHECK( xag.is_dead( xag.get_node( s ) ) == false );
-  } );
+  xag.foreach_po( [&]( auto s )
+                  { CHECK( xag.is_dead( xag.get_node( s ) ) == false ); } );
 }

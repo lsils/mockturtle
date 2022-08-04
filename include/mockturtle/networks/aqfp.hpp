@@ -60,7 +60,7 @@ struct aqfp_storage_data
 
 /*! \brief AQFP storage container
 
-  We use one bit of the index pointer to store a complemented attribute.  
+  We use one bit of the index pointer to store a complemented attribute.
   Every node has 64-bit of additional data used for the following purposes:
 
   `data[0].h1`: Fan-out size (we use MSB to indicate whether a node is dead)
@@ -294,7 +294,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      ( *fn )( index );
     }
 
     return { index, node_complement };
@@ -310,7 +310,8 @@ public:
       return children[0u];
     }
 
-    std::sort( children.begin(), children.end(), []( auto f, auto s ) { return f.index < s.index; } );
+    std::sort( children.begin(), children.end(), []( auto f, auto s )
+               { return f.index < s.index; } );
 
     for ( auto i = 1u; i < children.size(); i++ )
     {
@@ -372,7 +373,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      ( *fn )( index );
     }
 
     return { index, node_complement };
@@ -445,17 +446,20 @@ public:
 #pragma region Create nary functions
   signal create_nary_and( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b ) { return create_and( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( true ), [this]( auto const& a, auto const& b )
+                        { return create_and( a, b ); } );
   }
 
   signal create_nary_or( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_or( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b )
+                        { return create_or( a, b ); } );
   }
 
   signal create_nary_xor( std::vector<signal> const& fs )
   {
-    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b ) { return create_xor( a, b ); } );
+    return tree_reduce( fs.begin(), fs.end(), get_constant( false ), [this]( auto const& a, auto const& b )
+                        { return create_xor( a, b ); } );
   }
 #pragma endregion
 
@@ -500,7 +504,7 @@ public:
 
     for ( auto const& fn : _events->on_modified )
     {
-      (*fn)( n, old_children );
+      ( *fn )( n, old_children );
     }
 
     return std::nullopt;
@@ -532,7 +536,7 @@ public:
 
     for ( auto const& fn : _events->on_delete )
     {
-      (*fn)( n );
+      ( *fn )( n );
     }
 
     for ( auto i = 0u; i < nobj.children.size(); ++i )
@@ -793,14 +797,14 @@ public:
   uint32_t co_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_co( [&]( const auto& x, auto index ) {
+    foreach_co( [&]( const auto& x, auto index )
+                {
       if ( x == s )
       {
         i = index;
         return false;
       }
-      return true;
-    } );
+      return true; } );
     return i;
   }
 
@@ -814,14 +818,14 @@ public:
   uint32_t po_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_po( [&]( const auto& x, auto index ) {
+    foreach_po( [&]( const auto& x, auto index )
+                {
       if ( x == s )
       {
         i = index;
         return false;
       }
-      return true;
-    } );
+      return true; } );
     return i;
   }
 #pragma endregion
@@ -833,7 +837,8 @@ public:
     auto r = range<uint64_t>( _storage->nodes.size() );
     detail::foreach_element_if(
         r.begin(), r.end(),
-        [this]( auto n ) { return !is_dead( n ); },
+        [this]( auto n )
+        { return !is_dead( n ); },
         fn );
   }
 
@@ -867,7 +872,8 @@ public:
     auto r = range<uint64_t>( 1u, _storage->nodes.size() ); // start from 1 to avoid constant
     detail::foreach_element_if(
         r.begin(), r.end(),
-        [this]( auto n ) { return !is_ci( n ) && !is_dead( n ); },
+        [this]( auto n )
+        { return !is_ci( n ) && !is_dead( n ); },
         fn );
   }
 
@@ -1035,7 +1041,8 @@ public:
 #pragma region Custom node values
   void clear_values() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[0].h2 = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n )
+                   { n.data[0].h2 = 0; } );
   }
 
   auto value( node const& n ) const
@@ -1062,7 +1069,8 @@ public:
 #pragma region Visited flags
   void clear_visited() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[1].h1 = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n )
+                   { n.data[1].h1 = 0; } );
   }
 
   auto visited( node const& n ) const

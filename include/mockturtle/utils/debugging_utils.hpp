@@ -77,9 +77,8 @@ inline void print( Ntk const& ntk )
 
     std::cout << " = ";
 
-    ntk.foreach_fanin( n, [&]( signal const& fi ){
-      std::cout << ( ntk.is_complemented( fi ) ? "~" : "" ) << ntk.get_node( fi ) << " ";
-    });
+    ntk.foreach_fanin( n, [&]( signal const& fi )
+                       { std::cout << ( ntk.is_complemented( fi ) ? "~" : "" ) << ntk.get_node( fi ) << " "; } );
     std::cout << " ;";
     if constexpr ( has_level_v<Ntk> )
     {
@@ -92,9 +91,8 @@ inline void print( Ntk const& ntk )
     std::cout << std::endl;
   }
 
-  ntk.foreach_co( [&]( signal const& s ){
-    std::cout << "o " << ( ntk.is_complemented( s ) ? "~" : "" ) << ntk.get_node( s ) << std::endl;
-  });
+  ntk.foreach_co( [&]( signal const& s )
+                  { std::cout << "o " << ( ntk.is_complemented( s ) ? "~" : "" ) << ntk.get_node( s ) << std::endl; } );
 }
 
 /*! \brief Counts dead nodes in a network
@@ -108,7 +106,7 @@ inline uint64_t count_dead_nodes( Ntk const& ntk )
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_is_dead_v<Ntk>, "Ntk does not implement the is_dead function" );
 
-  uint64_t counter{0};
+  uint64_t counter{ 0 };
   for ( uint64_t n = 0; n < ntk.size(); ++n )
   {
     if ( ntk.is_dead( n ) )
@@ -132,7 +130,7 @@ inline uint64_t count_dangling_roots( Ntk const& ntk )
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size function" );
 
-  uint64_t counter{0};
+  uint64_t counter{ 0 };
   for ( uint64_t n = 0; n < ntk.size(); ++n )
   {
     if ( ntk.fanout_size( n ) == 0 )
@@ -165,9 +163,8 @@ void count_reachable_dead_nodes_recur( Ntk const& ntk, typename Ntk::node const&
   }
 
   ntk.paint( n );
-  ntk.foreach_fanin( n, [&]( signal const& fi ){
-    count_reachable_dead_nodes_recur( ntk, ntk.get_node( fi ), nodes );
-  });
+  ntk.foreach_fanin( n, [&]( signal const& fi )
+                     { count_reachable_dead_nodes_recur( ntk, ntk.get_node( fi ), nodes ); } );
 }
 
 } /* namespace detail */
@@ -200,9 +197,8 @@ inline uint64_t count_reachable_dead_nodes( Ntk const& ntk )
   ntk.new_color();
 
   std::vector<node> dead_nodes;
-  ntk.foreach_co( [&]( signal const& po ){
-    detail::count_reachable_dead_nodes_recur( ntk, ntk.get_node( po ), dead_nodes );
-  });
+  ntk.foreach_co( [&]( signal const& po )
+                  { detail::count_reachable_dead_nodes_recur( ntk, ntk.get_node( po ), dead_nodes ); } );
 
   return dead_nodes.size();
 }
@@ -229,9 +225,8 @@ void count_reachable_dead_nodes_from_node_recur( Ntk const& ntk, typename Ntk::n
   }
 
   ntk.paint( n );
-  ntk.foreach_fanin( n, [&]( auto const& f ){
-    count_reachable_dead_nodes_from_node_recur( ntk, ntk.get_node( f ), nodes );
-  });
+  ntk.foreach_fanin( n, [&]( auto const& f )
+                     { count_reachable_dead_nodes_from_node_recur( ntk, ntk.get_node( f ), nodes ); } );
 }
 
 } /* namespace detail */
@@ -279,22 +274,22 @@ uint64_t count_nodes_with_dead_fanins( Ntk const& ntk, typename Ntk::node const&
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin function" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node function" );
-  static_assert( has_is_dead_v<Ntk>, "Ntk does not implement the is_dead function" );  static_assert( has_new_color_v<Ntk>, "Ntk does not implement the new_color function" );
+  static_assert( has_is_dead_v<Ntk>, "Ntk does not implement the is_dead function" );
+  static_assert( has_new_color_v<Ntk>, "Ntk does not implement the new_color function" );
 
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  uint64_t counter{0u};
-  ntk.foreach_node( [&]( node const& n ){
-    ntk.foreach_fanin( n, [&]( signal const& s ){
+  uint64_t counter{ 0u };
+  ntk.foreach_node( [&]( node const& n )
+                    { ntk.foreach_fanin( n, [&]( signal const& s )
+                                         {
       if ( ntk.is_dead( ntk.get_node( s ) ) )
       {
         counter++;
         return false;
       }
-      return true;
-    });
-  });
+      return true; } ); } );
 
   return counter;
 }
@@ -320,15 +315,15 @@ bool network_is_acyclic_recur( Ntk const& ntk, typename Ntk::node const& n )
 
   ntk.paint( n, ntk.current_color() - 1 );
 
-  bool result{true};
-  ntk.foreach_fanin( n, [&]( signal const& fi ) {
+  bool result{ true };
+  ntk.foreach_fanin( n, [&]( signal const& fi )
+                     {
     if ( !network_is_acyclic_recur( ntk, ntk.get_node( fi ) ) )
     {
       result = false;
       return false;
     }
-    return true;
-  });
+    return true; } );
   ntk.paint( n, ntk.current_color() );
 
   return result;
@@ -364,19 +359,18 @@ bool network_is_acyclic( Ntk const& ntk )
   ntk.new_color();
 
   ntk.paint( ntk.get_node( ntk.get_constant( false ) ) );
-  ntk.foreach_ci( [&]( node const& n ){
-    ntk.paint( n );
-  });
+  ntk.foreach_ci( [&]( node const& n )
+                  { ntk.paint( n ); } );
 
-  bool result{true};
-  ntk.foreach_co( [&]( signal const& o ){
+  bool result{ true };
+  ntk.foreach_co( [&]( signal const& o )
+                  {
     if ( !detail::network_is_acyclic_recur( ntk, ntk.get_node( o ) ) )
     {
       result = false;
       return false;
     }
-    return true;
-  });
+    return true; } );
 
   return result;
 }
@@ -413,19 +407,19 @@ bool check_network_levels( Ntk const& ntk )
     }
 
     uint32_t max_fanin_level = 0;
-    ntk.foreach_fanin( i, [&]( signal fi ){
+    ntk.foreach_fanin( i, [&]( signal fi )
+                       {
       if ( ntk.level( ntk.get_node( fi ) ) > max_fanin_level )
       {
         max_fanin_level = ntk.level( ntk.get_node( fi ) );
-      }
-    });
+      } } );
 
     /* the node's level has not been correctly computed */
     if ( ntk.level( i ) != max_fanin_level + 1 )
     {
       return false;
-    } 
-      
+    }
+
     if ( ntk.level( i ) > max )
     {
       max = ntk.level( i );
@@ -460,15 +454,16 @@ bool check_fanouts( Ntk const& ntk )
   static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co function" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size function" );
 
-  using node   = typename Ntk::node;
+  using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
   for ( auto i = 0u; i < ntk.size(); ++i )
   {
-    uint32_t fanout_counter{0};
+    uint32_t fanout_counter{ 0 };
 
     bool fanout_error = false;
-    ntk.foreach_fanout( i, [&]( node fo ){
+    ntk.foreach_fanout( i, [&]( node fo )
+                        {
       ++fanout_counter;
 
       /* check the fanins of the fanout  */
@@ -489,8 +484,7 @@ bool check_fanouts( Ntk const& ntk )
         return false;
       }
 
-      return true;
-    });
+      return true; } );
 
     /* report error */
     if ( fanout_error )
@@ -498,13 +492,13 @@ bool check_fanouts( Ntk const& ntk )
       return false;
     }
 
-     /* update the fanout counter by considering outputs */
-    ntk.foreach_co( [&]( signal f ){
+    /* update the fanout counter by considering outputs */
+    ntk.foreach_co( [&]( signal f )
+                    {
       if ( ntk.get_node( f ) == i )
       {
         ++fanout_counter;
-      }
-    });
+      } } );
 
     /* report error fanout_size does not match with the counter */
     if ( fanout_counter != ntk.fanout_size( i ) )
@@ -530,7 +524,7 @@ bool check_window_equivalence( Ntk const& ntk, std::vector<typename Ntk::node> c
 {
   NtkWin win;
   clone_subnetwork( ntk, inputs, outputs, gates, win );
-  topo_view topo_win{win_opt};
+  topo_view topo_win{ win_opt };
   assert( win.num_pis() == win_opt.num_pis() );
   assert( win.num_pos() == win_opt.num_pos() );
 

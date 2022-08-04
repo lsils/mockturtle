@@ -5,8 +5,8 @@
 #include <mockturtle/algorithms/detail/minmc_xags.hpp>
 #include <mockturtle/algorithms/equivalence_classes.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/utils/index_list.hpp>
 #include <mockturtle/networks/xag.hpp>
+#include <mockturtle/utils/index_list.hpp>
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -21,9 +21,8 @@ TEST_CASE( "Synthesize MAJ from AND", "[equivalence_classes]" )
   kitty::create_majority( func );
 
   std::vector<kitty::detail::spectral_operation> transformations;
-  const auto repr = kitty::hybrid_exact_spectral_canonization( func, [&]( auto const& _transformations ) {
-    transformations = _transformations;
-  } );
+  const auto repr = kitty::hybrid_exact_spectral_canonization( func, [&]( auto const& _transformations )
+                                                               { transformations = _transformations; } );
 
   auto expected = func.construct();
   kitty::create_from_expression( expected, "(ab)" );
@@ -31,14 +30,14 @@ TEST_CASE( "Synthesize MAJ from AND", "[equivalence_classes]" )
 
   xag_network xag;
   std::vector<xag_network::signal> pis( func.num_vars() );
-  std::generate( pis.begin(), pis.end(), [&]() { return xag.create_pi(); } );
+  std::generate( pis.begin(), pis.end(), [&]()
+                 { return xag.create_pi(); } );
 
-  const auto f = apply_spectral_transformations( xag, transformations, pis, [&]( xag_network& ntk, std::vector<xag_network::signal> const& leaves ) {
-    return ntk.create_and( leaves[0], leaves[1] );
-  } );
+  const auto f = apply_spectral_transformations( xag, transformations, pis, [&]( xag_network& ntk, std::vector<xag_network::signal> const& leaves )
+                                                 { return ntk.create_and( leaves[0], leaves[1] ); } );
   xag.create_po( f );
 
-  CHECK( simulate<kitty::dynamic_truth_table>( xag, {static_cast<uint32_t>( func.num_vars() )} )[0] == func );
+  CHECK( simulate<kitty::dynamic_truth_table>( xag, { static_cast<uint32_t>( func.num_vars() ) } )[0] == func );
 }
 
 TEST_CASE( "Synthesize from database for 4-input functions", "[equivalence_classes]" )
@@ -60,24 +59,24 @@ TEST_CASE( "Synthesize from database for 4-input functions", "[equivalence_class
     kitty::create_random( func, 0xcafeaffe + i );
 
     std::vector<kitty::detail::spectral_operation> transformations;
-    const auto repr = kitty::hybrid_exact_spectral_canonization( func, [&]( auto const& _transformations ) {
-      transformations = _transformations;
-    } );
+    const auto repr = kitty::hybrid_exact_spectral_canonization( func, [&]( auto const& _transformations )
+                                                                 { transformations = _transformations; } );
     CHECK( repr == kitty::spectral_representative( func ) );
 
     xag_network xag;
     std::vector<xag_network::signal> pis( func.num_vars() );
-    std::generate( pis.begin(), pis.end(), [&]() { return xag.create_pi(); } );
+    std::generate( pis.begin(), pis.end(), [&]()
+                   { return xag.create_pi(); } );
 
-    const auto f = apply_spectral_transformations( xag, transformations, pis, [&]( xag_network& ntk, std::vector<xag_network::signal> const& leaves ) {
+    const auto f = apply_spectral_transformations( xag, transformations, pis, [&]( xag_network& ntk, std::vector<xag_network::signal> const& leaves )
+                                                   {
       xag_index_list il{*db[repr]};
       std::vector<xag_network::signal> pos;
       insert( ntk, std::begin( leaves ), std::begin( leaves ) + il.num_pis(), il,
               [&]( xag_network::signal const& s ){ pos.emplace_back( s ); });
-      return pos[0];
-    } );
+      return pos[0]; } );
     xag.create_po( f );
 
-    CHECK( simulate<kitty::dynamic_truth_table>( xag, {static_cast<uint32_t>( func.num_vars() )} )[0] == func );
+    CHECK( simulate<kitty::dynamic_truth_table>( xag, { static_cast<uint32_t>( func.num_vars() ) } )[0] == func );
   }
 }

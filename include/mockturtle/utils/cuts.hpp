@@ -459,8 +459,8 @@ public:
 private:
   std::array<CutType, MaxCuts> _cuts;
   std::array<CutType*, MaxCuts> _pcuts;
-  typename std::array<CutType*, MaxCuts>::const_iterator _pcend{_pcuts.begin()};
-  typename std::array<CutType*, MaxCuts>::iterator _pend{_pcuts.begin()};
+  typename std::array<CutType*, MaxCuts>::const_iterator _pcend{ _pcuts.begin() };
+  typename std::array<CutType*, MaxCuts>::iterator _pend{ _pcuts.begin() };
 };
 
 template<typename CutType, int MaxCuts>
@@ -496,17 +496,20 @@ CutType& cut_set<CutType, MaxCuts>::add_cut( Iterator begin, Iterator end )
 template<typename CutType, int MaxCuts>
 bool cut_set<CutType, MaxCuts>::is_dominated( CutType const& cut ) const
 {
-  return std::find_if( _pcuts.begin(), _pcend, [&cut]( auto const* other ) { return other->dominates( cut ); } ) != _pcend;
+  return std::find_if( _pcuts.begin(), _pcend, [&cut]( auto const* other )
+                       { return other->dominates( cut ); } ) != _pcend;
 }
 
 template<typename CutType, int MaxCuts>
 void cut_set<CutType, MaxCuts>::insert( CutType const& cut )
 {
   /* remove elements that are dominated by new cut */
-  _pcend = _pend = std::stable_partition( _pcuts.begin(), _pend, [&cut]( auto const* other ) { return !cut.dominates( *other ); } );
+  _pcend = _pend = std::stable_partition( _pcuts.begin(), _pend, [&cut]( auto const* other )
+                                          { return !cut.dominates( *other ); } );
 
   /* insert cut in a sorted way */
-  auto ipos = std::lower_bound( _pcuts.begin(), _pend, &cut, []( auto a, auto b ) { return *a < *b; } );
+  auto ipos = std::lower_bound( _pcuts.begin(), _pend, &cut, []( auto a, auto b )
+                                { return *a < *b; } );
 
   /* too many cuts, we need to remove one */
   if ( _pend == _pcuts.end() )

@@ -46,9 +46,9 @@
 #include <fmt/format.h>
 #include <lorina/verilog.hpp>
 
-#include "../traits.hpp"
 #include "../generators/arithmetic.hpp"
 #include "../generators/modular_arithmetic.hpp"
+#include "../traits.hpp"
 
 namespace mockturtle
 {
@@ -111,7 +111,8 @@ public:
   void on_inputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
     (void)size;
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     for ( const auto& name : names )
     {
@@ -147,7 +148,8 @@ public:
   void on_outputs( const std::vector<std::string>& names, std::string const& size = "" ) const override
   {
     (void)size;
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     for ( const auto& name : names )
     {
@@ -170,7 +172,8 @@ public:
 
   void on_assign( const std::string& lhs, const std::pair<std::string, bool>& rhs ) const override
   {
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     if ( signals_.find( rhs.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", rhs.first );
@@ -181,7 +184,8 @@ public:
 
   void on_nand( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
@@ -195,7 +199,8 @@ public:
 
   void on_and( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
@@ -209,7 +214,8 @@ public:
 
   void on_or( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
@@ -223,7 +229,8 @@ public:
 
   void on_xor( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
   {
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
@@ -237,7 +244,8 @@ public:
 
   void on_xor3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
   {
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
@@ -262,7 +270,8 @@ public:
 
   void on_maj3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
   {
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
@@ -281,10 +290,12 @@ public:
                                 std::vector<std::pair<std::string, std::string>> const& args ) const override
   {
     (void)inst_name;
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     /* check routines */
-    const auto num_args_equals = [&]( uint32_t expected_count ) {
+    const auto num_args_equals = [&]( uint32_t expected_count )
+    {
       if ( args.size() != expected_count )
       {
         fmt::print( stderr, "[e] {} module expects {} arguments\n", module_name, expected_count );
@@ -293,7 +304,8 @@ public:
       return true;
     };
 
-    const auto num_params_equals = [&]( uint32_t expected_count ) {
+    const auto num_params_equals = [&]( uint32_t expected_count )
+    {
       if ( params.size() != expected_count )
       {
         fmt::print( stderr, "[e] {} module expects {} parameters\n", module_name, expected_count );
@@ -302,7 +314,8 @@ public:
       return true;
     };
 
-    const auto register_exists = [&]( std::string const& name ) {
+    const auto register_exists = [&]( std::string const& name )
+    {
       if ( registers_.find( name ) == registers_.end() )
       {
         fmt::print( stderr, "[e] register {} does not exist\n", name );
@@ -311,7 +324,8 @@ public:
       return true;
     };
 
-    const auto register_has_size = [&]( std::string const& name, uint32_t size ) {
+    const auto register_has_size = [&]( std::string const& name, uint32_t size )
+    {
       if ( !register_exists( name ) || registers_[name].size() != size )
       {
         fmt::print( stderr, "[e] register {} must have size {}\n", name, size );
@@ -320,21 +334,26 @@ public:
       return true;
     };
 
-    const auto add_register = [&]( std::string const& name, std::vector<signal<Ntk>> const& fs ) {
+    const auto add_register = [&]( std::string const& name, std::vector<signal<Ntk>> const& fs )
+    {
       for ( auto i = 0u; i < fs.size(); ++i )
       {
-        signals_[fmt::format( "{}[{}]", name, i) ] = fs[i];
+        signals_[fmt::format( "{}[{}]", name, i )] = fs[i];
       }
       registers_[name] = fs;
     };
 
     if ( module_name == "ripple_carry_adder" )
     {
-      if ( !num_args_equals( 3u ) ) return;
-      if ( !num_params_equals( 1u ) ) return;
+      if ( !num_args_equals( 3u ) )
+        return;
+      if ( !num_params_equals( 1u ) )
+        return;
       const auto bitwidth = static_cast<uint32_t>( parse_small_value( params[0u] ) );
-      if ( !register_has_size( args[0].second, bitwidth ) ) return;
-      if ( !register_has_size( args[1].second, bitwidth ) ) return;
+      if ( !register_has_size( args[0].second, bitwidth ) )
+        return;
+      if ( !register_has_size( args[1].second, bitwidth ) )
+        return;
 
       auto a_copy = registers_[args[0].second];
       const auto& b = registers_[args[1].second];
@@ -345,11 +364,15 @@ public:
     }
     else if ( module_name == "montgomery_multiplier" )
     {
-      if ( !num_args_equals( 3u ) ) return;
-      if ( !num_params_equals( 3u ) ) return;
+      if ( !num_args_equals( 3u ) )
+        return;
+      if ( !num_params_equals( 3u ) )
+        return;
       const auto bitwidth = static_cast<uint32_t>( parse_small_value( params[0u] ) );
-      if ( !register_has_size( args[0].second, bitwidth ) ) return;
-      if ( !register_has_size( args[1].second, bitwidth ) ) return;
+      if ( !register_has_size( args[0].second, bitwidth ) )
+        return;
+      if ( !register_has_size( args[1].second, bitwidth ) )
+        return;
 
       auto N = parse_value( params[1u] );
       auto NN = parse_value( params[2u] );
@@ -361,12 +384,12 @@ public:
     }
     else if ( module_name == "buffer" || module_name == "inverter" )
     {
-      if constexpr( is_buffered_network_type_v<Ntk> )
+      if constexpr ( is_buffered_network_type_v<Ntk> )
       {
         static_assert( has_create_buf_v<Ntk>, "Ntk does not implement the create_buf method" );
         if ( !num_args_equals( 2u ) )
           fmt::print( stderr, "[e] number of arguments of a `{}` instance is not 2\n", module_name );
-        
+
         signal<Ntk> fi = ntk_.get_constant( false );
         std::string lhs;
         for ( auto const& arg : args )
@@ -396,7 +419,8 @@ public:
 
   void on_endmodule() const override
   {
-    if ( name_ != top_module_name_ ) return;
+    if ( name_ != top_module_name_ )
+      return;
 
     for ( auto const& o : outputs_ )
     {
@@ -405,7 +429,7 @@ public:
 
     if constexpr ( has_set_output_name_v<Ntk> )
     {
-      uint32_t ctr{0u};
+      uint32_t ctr{ 0u };
       for ( auto const& output_name : output_names_ )
       {
         if ( output_name.second == 1u )
@@ -433,7 +457,7 @@ public:
   {
     return input_names_;
   }
-  
+
   const std::vector<std::pair<std::string, uint32_t>> output_names()
   {
     return output_names_;
@@ -497,7 +521,7 @@ private:
   mutable std::vector<std::pair<std::string, uint32_t>> input_names_;
   mutable std::vector<std::pair<std::string, uint32_t>> output_names_;
 
-  std::regex hex_string{"(\\d+)'h([0-9a-fA-F]+)"};
+  std::regex hex_string{ "(\\d+)'h([0-9a-fA-F]+)" };
 };
 
 } /* namespace mockturtle */

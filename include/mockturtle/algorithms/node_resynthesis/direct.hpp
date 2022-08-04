@@ -50,7 +50,7 @@ namespace mockturtle
 
 struct direct_resynthesis_params
 {
-  bool warn_on_unsupported{false};
+  bool warn_on_unsupported{ false };
 };
 
 /*! \brief Resynthesis function that creates a gate for each node.

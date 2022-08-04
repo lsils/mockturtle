@@ -74,16 +74,16 @@ struct satlut_mapping_params
    * The default limit is 0, which means the number of conflicts is not used
    * as a resource limit.
    */
-  uint32_t conflict_limit{0u};
+  uint32_t conflict_limit{ 0u };
 
   /*! \brief Show progress. */
-  bool progress{false};
+  bool progress{ false };
 
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 
   /*! \brief Be very verbose. */
-  bool very_verbose{false};
+  bool very_verbose{ false };
 };
 
 /*! \brief Statistics for satlut_mapping.
@@ -94,16 +94,16 @@ struct satlut_mapping_params
 struct satlut_mapping_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_sat{0};
+  stopwatch<>::duration time_sat{ 0 };
 
   /*! \brief Number of SAT variables. */
-  uint64_t num_vars{0u};
+  uint64_t num_vars{ 0u };
 
   /*! \brief Number of SAT clauses. */
-  uint64_t num_clauses{0u};
+  uint64_t num_clauses{ 0u };
 
   void report()
   {
@@ -129,10 +129,11 @@ std::vector<int> cardinality_network( Solver& solver, std::vector<int> const& va
   {
     current.resize( static_cast<uint64_t>( 1u ) << logn, next_var );
     lits[0] = pabc::Abc_Var2Lit( next_var++, 1 );
-    solver.add_clause( lits, lits + 1);
+    solver.add_clause( lits, lits + 1 );
   }
 
-  batcher_sorting_network( static_cast<uint32_t>( current.size() ), [&]( auto a, auto b ) {
+  batcher_sorting_network( static_cast<uint32_t>( current.size() ), [&]( auto a, auto b )
+                           {
     auto va = current[a];
     auto vb = current[b];
     auto va_next = next_var++;
@@ -163,14 +164,13 @@ std::vector<int> cardinality_network( Solver& solver, std::vector<int> const& va
     solver.add_clause( lits, lits + 3 );
 
     current[a] = va_next;
-    current[b] = vb_next;
-  } );
+    current[b] = vb_next; } );
 
   for ( auto i = 0u; i < current.size() - 1; ++i )
   {
     lits[0] = pabc::Abc_Var2Lit( current[i], 1 );
     lits[1] = pabc::Abc_Var2Lit( current[i + 1], 0 );
-    solver.add_clause( lits, lits + 2);
+    solver.add_clause( lits, lits + 2 );
   }
 
   return current;
@@ -204,16 +204,17 @@ public:
     percy::bsat_wrapper solver;
 
     /* initialize gate vars */
-    ntk.foreach_gate( [&]( auto n ) {
+    ntk.foreach_gate( [&]( auto n )
+                      {
       card_inp.push_back( next_var );
-      gate_var[n] = next_var++;
-    } );
+      gate_var[n] = next_var++; } );
 
     const auto card_out = cardinality_network( solver, card_inp, next_var );
 
     /* create clauses */
     int cut_lits[2];
-    ntk.foreach_gate( [&]( auto n ) {
+    ntk.foreach_gate( [&]( auto n )
+                      {
       std::vector<int> gate_is_mapped;
       gate_is_mapped.push_back( pabc::Abc_Var2Lit( gate_var[n], 1 ) );
 
@@ -235,21 +236,20 @@ public:
         }
       }
 
-      solver.add_clause( &gate_is_mapped[0], &gate_is_mapped[0] + gate_is_mapped.size() );
-    } );
+      solver.add_clause( &gate_is_mapped[0], &gate_is_mapped[0] + gate_is_mapped.size() ); } );
 
     /* outputs must be mapped */
-    ntk.foreach_po( [&]( auto f ) {
+    ntk.foreach_po( [&]( auto f )
+                    {
       auto lit = pabc::Abc_Var2Lit( gate_var[f], 0 );
-      solver.add_clause( &lit, &lit + 1 );
-    } );
+      solver.add_clause( &lit, &lit + 1 ); } );
 
     st.num_vars = solver.nr_vars();
     st.num_clauses = solver.nr_clauses();
 
     auto best_size = ntk.has_mapping() ? ntk.num_cells() + 1 : card_inp.size();
 
-    progress_bar pbar{"satlut iteration = {0}   try size = {1}", ps.progress};
+    progress_bar pbar{ "satlut iteration = {0}   try size = {1}", ps.progress };
     auto iteration = 0u;
     while ( true )
     {
@@ -257,16 +257,18 @@ public:
       if ( best_size > card_out.size() )
       {
         std::cout << fmt::format( "[e] best_size = {}   card_inp.size() = {}   card_out.size() = {}   ntk.num_cells = {}   ntk.has_mapping = {}\n",
-        best_size, card_inp.size(), card_out.size(), ntk.num_cells(), ntk.has_mapping() );
+                                  best_size, card_inp.size(), card_out.size(), ntk.num_cells(), ntk.has_mapping() );
         assert( false );
       }
       auto assump = pabc::Abc_Var2Lit( card_out[card_out.size() - best_size], 1 );
 
-      const auto result = call_with_stopwatch( st.time_sat, [&]() { return solver.solve( &assump, &assump + 1, ps.conflict_limit ); } );
+      const auto result = call_with_stopwatch( st.time_sat, [&]()
+                                               { return solver.solve( &assump, &assump + 1, ps.conflict_limit ); } );
       if ( result == percy::success )
       {
         ntk.clear_mapping();
-        ntk.foreach_gate( [&]( auto n ) {
+        ntk.foreach_gate( [&]( auto n )
+                          {
           if ( solver.var_value( gate_var[n] ) )
           {
             for ( auto i = 0u; i < cut_vars[n].size(); ++i )
@@ -288,8 +290,7 @@ public:
                 break;
               }
             }
-          }
-        } );
+          } } );
 
         if ( ntk.num_cells() == ntk.num_pos() )
         {
@@ -429,9 +430,10 @@ void satlut_mapping( Ntk& ntk, uint32_t window_size, satlut_mapping_params ps = 
   satlut_mapping_stats st;
   stopwatch<>::duration time_total{};
   cell_window window( ntk, window_size );
-  progress_bar pbar{ntk.size(), "satlut (windowed) |{0}| node = {1:>4} / " + std::to_string( ntk.size() ), ps.progress};
+  progress_bar pbar{ ntk.size(), "satlut (windowed) |{0}| node = {1:>4} / " + std::to_string( ntk.size() ), ps.progress };
   ps.progress = false; /* do not show inner progress */
-  ntk.foreach_gate( [&]( auto n, int index ) {
+  ntk.foreach_gate( [&]( auto n, int index )
+                    {
     stopwatch<> t( time_total );
     pbar( index, ntk.node_to_index( n ) );
     if ( ntk.is_cell_root( n ) )
@@ -461,8 +463,7 @@ void satlut_mapping( Ntk& ntk, uint32_t window_size, satlut_mapping_params ps = 
       return true;
     }
 
-    return true;
-  } );
+    return true; } );
 
   st.time_total = time_total;
 

@@ -53,7 +53,7 @@ namespace mockturtle
 struct dsd_decomposition_params
 {
   /*! \brief Apply XOR decomposition. */
-  bool with_xor{true};
+  bool with_xor{ true };
 };
 
 namespace detail

@@ -35,10 +35,10 @@
 
 #include "../traits.hpp"
 
+#include <fmt/format.h>
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <lorina/genlib.hpp>
-#include <fmt/format.h>
 
 namespace mockturtle
 {
@@ -75,7 +75,7 @@ struct gate
 }; /* gate */
 
 /*! \brief lorina callbacks for GENLIB files.
- * 
+ *
    \verbatim embed:rst
 
    Example
@@ -90,8 +90,9 @@ class genlib_reader : public lorina::genlib_reader
 {
 public:
   explicit genlib_reader( std::vector<gate>& gates )
-    : gates( gates )
-  {}
+      : gates( gates )
+  {
+  }
 
   virtual void on_gate( std::string const& name, std::string const& expression, double area, std::vector<lorina::pin_spec> const& ps, std::string const& output_pin ) const override
   {
@@ -102,7 +103,7 @@ public:
     {
       /* pins not defined, use names and appearence order of the expression */
       std::vector<std::string> tokens;
-      std::string const delimitators{" ()!\'*&+|^\t\r\n"};
+      std::string const delimitators{ " ()!\'*&+|^\t\r\n" };
       std::size_t prev = 0, pos;
       while ( ( pos = expression.find_first_of( delimitators, prev ) ) != std::string::npos )
       {
@@ -118,12 +119,12 @@ public:
       }
       for ( auto const& pin_name : tokens )
       {
-        if ( std::find( pin_names.begin(), pin_names.end(), pin_name ) == pin_names.end() ) 
+        if ( std::find( pin_names.begin(), pin_names.end(), pin_name ) == pin_names.end() )
         {
-          pp.emplace_back( pin{pin_name,
-                           phase_type( static_cast<uint8_t>( ps[0].phase ) ),
-                           ps[0].input_load, ps[0].max_load,
-                           ps[0].rise_block_delay, ps[0].rise_fanout_delay, ps[0].fall_block_delay, ps[0].fall_fanout_delay} );
+          pp.emplace_back( pin{ pin_name,
+                                phase_type( static_cast<uint8_t>( ps[0].phase ) ),
+                                ps[0].input_load, ps[0].max_load,
+                                ps[0].rise_block_delay, ps[0].rise_fanout_delay, ps[0].fall_block_delay, ps[0].fall_fanout_delay } );
           pin_names.push_back( pin_name );
         }
       }
@@ -132,10 +133,10 @@ public:
     {
       for ( const auto& p : ps )
       {
-        pp.emplace_back( pin{p.name,
-                             phase_type( static_cast<uint8_t>( p.phase ) ),
-                             p.input_load, p.max_load,
-                             p.rise_block_delay, p.rise_fanout_delay, p.fall_block_delay, p.fall_fanout_delay} );
+        pp.emplace_back( pin{ p.name,
+                              phase_type( static_cast<uint8_t>( p.phase ) ),
+                              p.input_load, p.max_load,
+                              p.rise_block_delay, p.rise_fanout_delay, p.fall_block_delay, p.fall_fanout_delay } );
         pin_names.push_back( p.name );
       }
     }
@@ -150,7 +151,7 @@ public:
 
     uint32_t num_vars = pin_names.size();
 
-    kitty::dynamic_truth_table tt{num_vars};
+    kitty::dynamic_truth_table tt{ num_vars };
 
     if ( !kitty::create_from_formula( tt, formula, pin_names ) )
     {
@@ -158,8 +159,8 @@ public:
       return;
     }
 
-    gates.emplace_back( gate{static_cast<unsigned int>( gates.size() ), name,
-                             expression, num_vars, tt, area, pp, output_pin} );
+    gates.emplace_back( gate{ static_cast<unsigned int>( gates.size() ), name,
+                              expression, num_vars, tt, area, pp, output_pin } );
   }
 
 protected:

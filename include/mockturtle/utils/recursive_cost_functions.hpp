@@ -40,19 +40,19 @@ namespace mockturtle
 {
 
 /*! \brief (Recursive) customizable cost function
- * 
- * To define a new cost function, you need to first specify how each node 
- * contributes to the total cost via the *contribution functon*. Each node 
- * is evaluated individually and independently. 
- * 
- * If additional (global) information is required to decide a node's contribution, 
- * you may specify them as *context*. The content stored in the context can be 
+ *
+ * To define a new cost function, you need to first specify how each node
+ * contributes to the total cost via the *contribution functon*. Each node
+ * is evaluated individually and independently.
+ *
+ * If additional (global) information is required to decide a node's contribution,
+ * you may specify them as *context*. The content stored in the context can be
  * arbitrarily defined (`context_t`), but the derivation must be recursive. In
- * other words, the context of a node is derived using *context propagation function* 
+ * other words, the context of a node is derived using *context propagation function*
  * which takes only the context of fanins as input.
- * 
+ *
  * Examples of recursive cost functions can be found at:
- * `mockturtle/utils/recursive_cost_functions.hpp` 
+ * `mockturtle/utils/recursive_cost_functions.hpp`
  */
 template<class Ntk>
 struct recursive_cost_functions
@@ -60,14 +60,14 @@ struct recursive_cost_functions
   using base_type = recursive_cost_functions;
   using context_t = uint32_t;
   /*! \brief Context propagation function
-   *  
+   *
    * Return the context of a node given fanin contexts.
    */
   virtual context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const = 0;
 
   /*! \brief Contribution function
-   *  
-   * Update the total cost using node n and its context. 
+   *
+   * Update the total cost using node n and its context.
    */
   virtual void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const = 0;
 };

@@ -154,7 +154,7 @@ public:
   /*! \brief Reimplementation of `num_gates`. */
   auto num_gates() const
   {
-    uint32_t const offset = 1u + this->num_pis() + ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) ); 
+    uint32_t const offset = 1u + this->num_pis() + ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) );
     return static_cast<uint32_t>( topo_order.size() - offset );
   }
 
@@ -192,7 +192,7 @@ public:
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
-    uint32_t const offset = 1u + this->num_pis() + ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) ); 
+    uint32_t const offset = 1u + this->num_pis() + ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) );
     detail::foreach_element( topo_order.begin() + offset,
                              topo_order.end(),
                              fn );
@@ -202,7 +202,7 @@ public:
   template<typename Fn>
   void foreach_gate_reverse( Fn&& fn ) const
   {
-    uint32_t const offset = 1u + this->num_pis() + ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) ); 
+    uint32_t const offset = 1u + this->num_pis() + ( this->get_node( this->get_constant( true ) ) != this->get_node( this->get_constant( false ) ) );
     detail::foreach_element( topo_order.rbegin(),
                              topo_order.rend() - offset,
                              fn );
@@ -249,13 +249,13 @@ public:
       this->set_visited( c1, this->trav_id() );
     }
 
-    this->foreach_ci( [this]( auto n ) {
+    this->foreach_ci( [this]( auto n )
+                      {
       if ( this->visited( n ) != this->trav_id() )
       {
         topo_order.push_back( n );
         this->set_visited( n, this->trav_id() );
-      }
-    } );
+      } } );
 
     if ( start_signal )
     {
@@ -265,13 +265,13 @@ public:
     }
     else
     {
-      Ntk::foreach_co( [this]( auto f ) {
+      Ntk::foreach_co( [this]( auto f )
+                       {
         /* node was already visited */
         if ( this->visited( this->get_node( f ) ) == this->trav_id() )
           return;
 
-        create_topo_rec( this->get_node( f ) );
-      } );
+        create_topo_rec( this->get_node( f ) ); } );
     }
   }
 
@@ -289,9 +289,8 @@ private:
     this->set_visited( n, this->trav_id() - 1 );
 
     /* mark children */
-    this->foreach_fanin( n, [this]( signal const& f ) {
-      create_topo_rec( this->get_node( f ) );
-    } );
+    this->foreach_fanin( n, [this]( signal const& f )
+                         { create_topo_rec( this->get_node( f ) ); } );
 
     /* mark node n permanently */
     this->set_visited( n, this->trav_id() );
@@ -315,9 +314,9 @@ public:
 };
 
 template<class T>
-topo_view(T const&) -> topo_view<T>;
+topo_view( T const& ) -> topo_view<T>;
 
 template<class T>
-topo_view(T const&, typename T::signal const&) -> topo_view<T>;
+topo_view( T const&, typename T::signal const& ) -> topo_view<T>;
 
 } // namespace mockturtle

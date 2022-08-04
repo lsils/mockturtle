@@ -68,9 +68,8 @@ template<class Ntk>
 class cell_window_storage
 {
 public:
-  cell_window_storage( Ntk const& ntk ) :
-        _cell_refs( ntk ),
-        _cell_parents( ntk )
+  cell_window_storage( Ntk const& ntk ) : _cell_refs( ntk ),
+                                          _cell_parents( ntk )
   {
     if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
     {
@@ -95,12 +94,12 @@ public:
   std::vector<node<Ntk>> _index_to_node;
   phmap::flat_hash_map<node<Ntk>, uint32_t> _node_to_index;
 
-  uint32_t _num_constants{1u};
+  uint32_t _num_constants{ 1u };
   uint32_t _max_gates{};
-  bool _has_mapping{true};
+  bool _has_mapping{ true };
 };
 
-}
+} // namespace detail
 
 template<class Ntk>
 class cell_window : public Ntk
@@ -113,7 +112,7 @@ public:
 public:
   cell_window( Ntk const& ntk, uint32_t max_gates = 64 )
       : Ntk( ntk ),
-      _storage( std::make_shared<detail::cell_window_storage<Ntk>>( ntk ) )
+        _storage( std::make_shared<detail::cell_window_storage<Ntk>>( ntk ) )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_is_cell_root_v<Ntk>, "Ntk does not implement the is_cell_root method" );
@@ -135,7 +134,7 @@ public:
   {
     init_cell_refs();
 
-    //print_time<> pt;
+    // print_time<> pt;
     assert( Ntk::is_cell_root( pivot ) );
 
     // reset old window
@@ -270,7 +269,8 @@ private:
     _storage->_cell_parents.reset();
 
     /* initial ref counts for cells */
-    Ntk::foreach_gate( [&]( auto const& n ) {
+    Ntk::foreach_gate( [&]( auto const& n )
+                       {
       if ( Ntk::is_cell_root( n ) )
       {
         Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
@@ -278,16 +278,16 @@ private:
           _storage->_cell_parents[n2].push_back( n );
         } );
     } } );
-    Ntk::foreach_po( [&]( auto const& f ) {
-      _storage->_cell_refs[f]++;
-    } );
+    Ntk::foreach_po( [&]( auto const& f )
+                     { _storage->_cell_refs[f]++; } );
   }
 
   void collect_mffc( node const& pivot, std::vector<node>& gates )
   {
     Ntk::incr_trav_id();
     collect_gates( pivot, gates );
-    const auto it = std::remove_if( gates.begin(), gates.end(), [&]( auto const& g ) { return _storage->_gates.count( g ); } );
+    const auto it = std::remove_if( gates.begin(), gates.end(), [&]( auto const& g )
+                                    { return _storage->_gates.count( g ); } );
     gates.erase( it, gates.end() );
   }
 
@@ -298,9 +298,8 @@ private:
     Ntk::set_visited( Ntk::get_node( Ntk::get_constant( false ) ), Ntk::trav_id() );
     Ntk::set_visited( Ntk::get_node( Ntk::get_constant( true ) ), Ntk::trav_id() );
 
-    Ntk::foreach_cell_fanin( pivot, [this]( auto const& n ) {
-      Ntk::set_visited( n, Ntk::trav_id() );
-    } );
+    Ntk::foreach_cell_fanin( pivot, [this]( auto const& n )
+                             { Ntk::set_visited( n, Ntk::trav_id() ); } );
 
     collect_gates_rec( pivot, gates );
   }
@@ -313,9 +312,8 @@ private:
       return;
 
     Ntk::set_visited( n, Ntk::trav_id() );
-    Ntk::foreach_fanin( n, [&]( auto const& f ) {
-      collect_gates_rec( Ntk::get_node( f ), gates );
-    } );
+    Ntk::foreach_fanin( n, [&]( auto const& f )
+                        { collect_gates_rec( Ntk::get_node( f ), gates ); } );
     gates.push_back( n );
   }
 
@@ -335,9 +333,8 @@ private:
     /* deref */
     for ( auto const& n : _storage->_nodes )
     {
-      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
-        _storage->_cell_refs[n2]--;
-      } );
+      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 )
+                               { _storage->_cell_refs[n2]--; } );
     }
 
     std::vector<node> candidates;
@@ -347,24 +344,24 @@ private:
     {
       for ( auto const& n : _storage->_nodes )
       {
-        Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
+        Ntk::foreach_cell_fanin( n, [&]( auto const& n2 )
+                                 {
           if ( !_storage->_nodes.count( n2 ) && !Ntk::is_pi( n2 ) && !_storage->_cell_refs[n2] )
           {
             candidates.push_back( n2 );
             inputs.insert( n2 );
-          }
-        } );
+          } } );
       }
 
       if ( !candidates.empty() )
       {
         const auto best = max_element_unary(
             candidates.begin(), candidates.end(),
-            [&]( auto const& cand ) {
-              auto cnt{0};
-              this->foreach_cell_fanin( cand, [&]( auto const& n2 ) {
-                cnt += inputs.count( n2 );
-              } );
+            [&]( auto const& cand )
+            {
+              auto cnt{ 0 };
+              this->foreach_cell_fanin( cand, [&]( auto const& n2 )
+                                        { cnt += inputs.count( n2 ); } );
               return cnt;
             },
             -1 );
@@ -374,13 +371,13 @@ private:
 
       for ( auto const& n : _storage->_nodes )
       {
-        Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
+        Ntk::foreach_cell_fanin( n, [&]( auto const& n2 )
+                                 {
           if ( !_storage->_nodes.count( n2 ) && !Ntk::is_pi( n2 ) )
           {
             candidates.push_back( n2 );
             inputs.insert( n2 );
-          }
-        } );
+          } } );
       }
 
       for ( auto const& n : _storage->_nodes )
@@ -397,7 +394,8 @@ private:
         }
         std::copy_if( _storage->_cell_parents[n].begin(), _storage->_cell_parents[n].end(),
                       std::back_inserter( candidates ),
-                      [&]( auto const& g ) {
+                      [&]( auto const& g )
+                      {
                         return !_storage->_nodes.count( g );
                       } );
       }
@@ -406,11 +404,11 @@ private:
       {
         const auto best = max_element_unary(
             candidates.begin(), candidates.end(),
-            [&]( auto const& cand ) {
-              auto cnt{0};
-              this->foreach_cell_fanin( cand, [&]( auto const& n2 ) {
-                cnt += inputs.count( n2 );
-              } );
+            [&]( auto const& cand )
+            {
+              auto cnt{ 0 };
+              this->foreach_cell_fanin( cand, [&]( auto const& n2 )
+                                        { cnt += inputs.count( n2 ); } );
               return cnt;
             },
             -1 );
@@ -421,9 +419,8 @@ private:
     /* ref */
     for ( auto const& n : _storage->_nodes )
     {
-      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
-        _storage->_cell_refs[n2]++;
-      } );
+      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 )
+                               { _storage->_cell_refs[n2]++; } );
     }
 
     if ( candidates.empty() )
@@ -442,23 +439,22 @@ private:
     _storage->_window_mask[0] = 0u;
     for ( auto const& g : _storage->_gates )
     {
-      Ntk::foreach_fanin( g, [&]( auto const& f ) {
+      Ntk::foreach_fanin( g, [&]( auto const& f )
+                          {
         auto const child = Ntk::get_node( f );
         if ( !_storage->_gates.count( child ) )
         {
           _storage->_leaves.insert( child );
           _storage->_window_mask[0] |= UINT64_C( 1 ) << ( Ntk::node_to_index( child ) % 64 );
-        }
-      } );
+        } } );
     }
 
     _storage->_roots.clear();
     _storage->_window_mask[1] = 0u;
     for ( auto const& n : _storage->_nodes )
     {
-      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
-        _storage->_cell_refs[n2]--;
-      } );
+      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 )
+                               { _storage->_cell_refs[n2]--; } );
     }
     for ( auto const& n : _storage->_nodes )
     {
@@ -470,9 +466,8 @@ private:
     }
     for ( auto const& n : _storage->_nodes )
     {
-      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
-        _storage->_cell_refs[n2]++;
-      } );
+      Ntk::foreach_cell_fanin( n, [&]( auto const& n2 )
+                               { _storage->_cell_refs[n2]++; } );
     }
   }
 
@@ -489,11 +484,13 @@ private:
     }
 
     auto idx = _storage->_num_constants;
-    for ( auto const& n : _storage->_leaves ) {
+    for ( auto const& n : _storage->_leaves )
+    {
       _storage->_node_to_index[_storage->_index_to_node[idx] = n] = idx;
       ++idx;
     }
-    for ( auto const& n : _storage->_gates ) {
+    for ( auto const& n : _storage->_gates )
+    {
       _storage->_node_to_index[_storage->_index_to_node[idx] = n] = idx;
       ++idx;
     }

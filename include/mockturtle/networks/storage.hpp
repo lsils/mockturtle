@@ -58,7 +58,8 @@ public:
   node_pointer() = default;
   node_pointer( uint64_t index, uint64_t weight ) : weight( weight ), index( index ) {}
 
-  union {
+  union
+  {
     struct
     {
       uint64_t weight : PointerFieldSize;
@@ -80,7 +81,8 @@ public:
   node_pointer() = default;
   node_pointer( uint64_t index ) : index( index ) {}
 
-  union {
+  union
+  {
     uint64_t index;
     uint64_t data;
   };
@@ -91,8 +93,9 @@ public:
   }
 };
 
-union cauint64_t {
-  uint64_t n{0};
+union cauint64_t
+{
+  uint64_t n{ 0 };
   struct
   {
     uint64_t h1 : 32;

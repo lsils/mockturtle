@@ -82,13 +82,13 @@ struct costfn_windowing_params
   uint32_t window_size{ 12u };
 
   /*! \brief Whether to normalize the truth tables.
-   * 
+   *
    * For some enumerative resynthesis engines, if the truth tables
    * are normalized, some cases can be eliminated and thus improves
    * efficiency. When this option is turned off, be sure to use an
    * implementation of resynthesis that does not make this assumption;
    * otherwise, quality degradation may be observed.
-   * 
+   *
    * Normalization is typically only useful for enumerative methods
    * and for smaller solutions (i.e. when `max_inserts` < 2). Turning
    * on normalization may result in larger runtime overhead when there
@@ -202,32 +202,27 @@ public:
     }
 
     /* compute a cut and collect supported nodes */
-    std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
-      return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, { n }, cps ).first;
-    } );
+    std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]()
+                                                    { return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, { n }, cps ).first; } );
     std::vector<node> supported;
-    call_with_stopwatch( st.time_divs, [&]() {
-      divs_mgr.collect_supported_nodes( n, leaves, supported );
-    } );
+    call_with_stopwatch( st.time_divs, [&]()
+                         { divs_mgr.collect_supported_nodes( n, leaves, supported ); } );
 
     /* simulate */
-    call_with_stopwatch( st.time_sim, [&]() {
-      sim.simulate( leaves, supported );
-    } );
+    call_with_stopwatch( st.time_sim, [&]()
+                         { sim.simulate( leaves, supported ); } );
 
     /* mark MFFC nodes and collect divisors */
     ++mffc_marker;
-    win.mffc_size = call_with_stopwatch( st.time_mffc, [&]() {
-      return mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n ) {
-        ntk.set_value( n, mffc_marker );
-      } );
-    } );
-    call_with_stopwatch( st.time_divs, [&]() {
-      collect_divisors( leaves, supported );
-    } );
+    win.mffc_size = call_with_stopwatch( st.time_mffc, [&]()
+                                         { return mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n )
+                                                                                   { ntk.set_value( n, mffc_marker ); } ); } );
+    call_with_stopwatch( st.time_divs, [&]()
+                         { collect_divisors( leaves, supported ); } );
 
     /* normalize */
-    call_with_stopwatch( st.time_sim, [&]() {
+    call_with_stopwatch( st.time_sim, [&]()
+                         {
       if ( ps.normalize )
       {
         win.root = normalize_truth_tables() ? !ntk.make_signal( n ) : ntk.make_signal( n );
@@ -235,11 +230,11 @@ public:
       else
       {
         win.root = ntk.make_signal( n );
-      }
-    } );
+      } } );
 
     /* compute don't cares */
-    call_with_stopwatch( st.time_dont_care, [&]() {
+    call_with_stopwatch( st.time_dont_care, [&]()
+                         {
       if ( ps.use_dont_cares )
       {
         win.care = ~satisfiability_dont_cares( ntk, leaves, ps.window_size );
@@ -247,8 +242,7 @@ public:
       else
       {
         win.care = ~kitty::create<TT>( ps.max_pis );
-      }
-    } );
+      } } );
 
     /* compute cost */
     win.max_cost = ntk.get_cost( n, win.divs );
@@ -273,9 +267,8 @@ public:
   {
     static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     assert( res.num_pos() == 1 );
-    insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ) {
-      ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !g : g );
-    } );
+    insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g )
+            { ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !g : g ); } );
     return true; /* continue optimization */
   }
 
@@ -387,11 +380,11 @@ using cost_generic_resub_stats = boolean_optimization_stats<costfn_windowing_sta
 
 /*! \brief Cost-generic resubstitution algorithm.
  *
- * This algorithm creates a reconvergence-driven window for each node in the 
+ * This algorithm creates a reconvergence-driven window for each node in the
  * network, collects divisors, and builds the resynthesis problem. A search core
- * then collects all the resubstitution candidates with the same functionality as 
+ * then collects all the resubstitution candidates with the same functionality as
  * the target. The candidate with the lowest cost will then replace the MFFC
- * of the window. 
+ * of the window.
  *
  * \param ntk Network
  * \param cost_fn Customized cost function

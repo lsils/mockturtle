@@ -74,18 +74,23 @@ public:
   void on_number_of_variables( uint64_t number_of_inputs ) const override
   {
     _pis.resize( number_of_inputs );
-    std::generate( _pis.begin(), _pis.end(), [this]() { return _ntk.create_pi(); } );
+    std::generate( _pis.begin(), _pis.end(), [this]()
+                   { return _ntk.create_pi(); } );
   }
 
   void on_clause( const std::vector<int>& clause ) const override
   {
     std::vector<signal<Ntk>> literals;
 
-    for ( int lit : clause ) {
+    for ( int lit : clause )
+    {
       uint32_t var = std::abs( lit ) - 1;
-      if ( lit < 0 ) {
+      if ( lit < 0 )
+      {
         literals.push_back( !_pis.at( var ) );
-      } else {
+      }
+      else
+      {
         literals.push_back( _pis.at( var ) );
       }
     }
@@ -94,10 +99,10 @@ public:
     _sums.push_back( sum );
   }
 
-  void on_end( ) const override
+  void on_end() const override
   {
     const auto output = _ntk.create_nary_and( _sums );
-     _ntk.create_po( output );
+    _ntk.create_po( output );
   }
 
 private:

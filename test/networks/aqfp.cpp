@@ -116,7 +116,8 @@ TEST_CASE( "create and use primary outputs in an AQFP", "[aqfp]" )
   CHECK( aqfp.size() == 2 );
   CHECK( aqfp.num_pos() == 3 );
 
-  aqfp.foreach_po( [&]( auto s, auto i ) {
+  aqfp.foreach_po( [&]( auto s, auto i )
+                   {
     switch ( i )
     {
     case 0:
@@ -128,8 +129,7 @@ TEST_CASE( "create and use primary outputs in an AQFP", "[aqfp]" )
     case 2:
       CHECK( s == !x1 );
       break;
-    }
-  } );
+    } } );
 }
 
 TEST_CASE( "create unary operations in an AQFP", "[aqfp]" )
@@ -149,7 +149,7 @@ TEST_CASE( "create unary operations in an AQFP", "[aqfp]" )
   (void)f2;
 
   CHECK( aqfp.size() == 2 );
-} 
+}
 
 TEST_CASE( "create binary and ternary operations in an AQFP", "[aqfp]" )
 {
@@ -196,7 +196,7 @@ TEST_CASE( "create binary and ternary operations in an AQFP", "[aqfp]" )
 
   const auto f7 = aqfp.create_maj( x1, x2, aqfp.get_constant( true ) );
   CHECK( aqfp.size() == 13 );
-  (void) f7;
+  (void)f7;
 
   const auto x3 = aqfp.create_pi();
 
@@ -253,9 +253,8 @@ TEST_CASE( "clone a node in AQFP network", "[aqfp]" )
   auto f2 = aqfp2.clone_node( aqfp1, aqfp1.get_node( f1 ), { a2, b2, c2 } );
   CHECK( aqfp2.size() == 5 );
 
-  aqfp2.foreach_fanin( aqfp2.get_node( f2 ), [&]( auto const& s, auto ) {
-    CHECK( !aqfp2.is_complemented( s ) );
-  } );
+  aqfp2.foreach_fanin( aqfp2.get_node( f2 ), [&]( auto const& s, auto )
+                       { CHECK( !aqfp2.is_complemented( s ) ); } );
 }
 
 TEST_CASE( "structural properties of an AQFP", "[aqfp]" )
@@ -316,97 +315,117 @@ TEST_CASE( "node and signal iteration in an AQFP", "[aqfp]" )
 
   /* iterate over nodes */
   uint32_t mask{ 0 }, counter{ 0 };
-  aqfp.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
+  aqfp.foreach_node( [&]( auto n, auto i )
+                     { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 63 );
   CHECK( counter == 15 );
 
   mask = 0;
-  aqfp.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); } );
+  aqfp.foreach_node( [&]( auto n )
+                     { mask |= ( 1 << n ); } );
   CHECK( mask == 63 );
 
   mask = counter = 0;
-  aqfp.foreach_node( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
+  aqfp.foreach_node( [&]( auto n, auto i )
+                     { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 1 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aqfp.foreach_node( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
+  aqfp.foreach_node( [&]( auto n )
+                     { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 1 );
 
   /* iterate over PIs */
   mask = counter = 0;
-  aqfp.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
+  aqfp.foreach_pi( [&]( auto n, auto i )
+                   { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 14 );
   CHECK( counter == 3 );
 
   mask = 0;
-  aqfp.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); } );
+  aqfp.foreach_pi( [&]( auto n )
+                   { mask |= ( 1 << n ); } );
   CHECK( mask == 14 );
 
   mask = counter = 0;
-  aqfp.foreach_pi( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
+  aqfp.foreach_pi( [&]( auto n, auto i )
+                   { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 2 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aqfp.foreach_pi( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
+  aqfp.foreach_pi( [&]( auto n )
+                   { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 2 );
 
   /* iterate over POs */
   mask = counter = 0;
-  aqfp.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << aqfp.get_node( s ) ); counter += i; } );
+  aqfp.foreach_po( [&]( auto s, auto i )
+                   { mask |= ( 1 << aqfp.get_node( s ) ); counter += i; } );
   CHECK( mask == 48 );
   CHECK( counter == 1 );
 
   mask = 0;
-  aqfp.foreach_po( [&]( auto s ) { mask |= ( 1 << aqfp.get_node( s ) ); } );
+  aqfp.foreach_po( [&]( auto s )
+                   { mask |= ( 1 << aqfp.get_node( s ) ); } );
   CHECK( mask == 48 );
 
   mask = counter = 0;
-  aqfp.foreach_po( [&]( auto s, auto i ) { mask |= ( 1 << aqfp.get_node( s ) ); counter += i; return false; } );
+  aqfp.foreach_po( [&]( auto s, auto i )
+                   { mask |= ( 1 << aqfp.get_node( s ) ); counter += i; return false; } );
   CHECK( mask == 16 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aqfp.foreach_po( [&]( auto s ) { mask |= ( 1 << aqfp.get_node( s ) ); return false; } );
+  aqfp.foreach_po( [&]( auto s )
+                   { mask |= ( 1 << aqfp.get_node( s ) ); return false; } );
   CHECK( mask == 16 );
 
   /* iterate over gates */
   mask = counter = 0;
-  aqfp.foreach_gate( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; } );
+  aqfp.foreach_gate( [&]( auto n, auto i )
+                     { mask |= ( 1 << n ); counter += i; } );
   CHECK( mask == 48 );
   CHECK( counter == 1 );
 
   mask = 0;
-  aqfp.foreach_gate( [&]( auto n ) { mask |= ( 1 << n ); } );
+  aqfp.foreach_gate( [&]( auto n )
+                     { mask |= ( 1 << n ); } );
   CHECK( mask == 48 );
 
   mask = counter = 0;
-  aqfp.foreach_gate( [&]( auto n, auto i ) { mask |= ( 1 << n ); counter += i; return false; } );
+  aqfp.foreach_gate( [&]( auto n, auto i )
+                     { mask |= ( 1 << n ); counter += i; return false; } );
   CHECK( mask == 16 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aqfp.foreach_gate( [&]( auto n ) { mask |= ( 1 << n ); return false; } );
+  aqfp.foreach_gate( [&]( auto n )
+                     { mask |= ( 1 << n ); return false; } );
   CHECK( mask == 16 );
 
   /* iterate over fanins */
   mask = counter = 0;
-  aqfp.foreach_fanin( aqfp.get_node( f1 ), [&]( auto s, auto i ) { mask |= ( 1 << aqfp.get_node( s ) ); counter += i; } );
+  aqfp.foreach_fanin( aqfp.get_node( f1 ), [&]( auto s, auto i )
+                      { mask |= ( 1 << aqfp.get_node( s ) ); counter += i; } );
   CHECK( mask == 14 );
   CHECK( counter == 3 );
 
   mask = 0;
-  aqfp.foreach_fanin( aqfp.get_node( f1 ), [&]( auto s ) { mask |= ( 1 << aqfp.get_node( s ) ); } );
+  aqfp.foreach_fanin( aqfp.get_node( f1 ), [&]( auto s )
+                      { mask |= ( 1 << aqfp.get_node( s ) ); } );
   CHECK( mask == 14 );
 
   mask = counter = 0;
-  aqfp.foreach_fanin( aqfp.get_node( f1 ), [&]( auto s, auto i ) { mask |= ( 1 << aqfp.get_node( s ) ); counter += i; return false; } );
+  aqfp.foreach_fanin( aqfp.get_node( f1 ), [&]( auto s, auto i )
+                      { mask |= ( 1 << aqfp.get_node( s ) ); counter += i; return false; } );
   CHECK( mask == 2 );
   CHECK( counter == 0 );
 
   mask = 0;
-  aqfp.foreach_fanin( aqfp.get_node( f1 ), [&]( auto s ) { mask |= ( 1 << aqfp.get_node( s ) ); return false; } );
+  aqfp.foreach_fanin( aqfp.get_node( f1 ), [&]( auto s )
+                      { mask |= ( 1 << aqfp.get_node( s ) ); return false; } );
   CHECK( mask == 2 );
 }
 
@@ -611,19 +630,18 @@ TEST_CASE( "custom node values in AQFPs", "[aqfp]" )
   CHECK( aqfp.size() == 6 );
 
   aqfp.clear_values();
-  aqfp.foreach_node( [&]( auto n ) {
+  aqfp.foreach_node( [&]( auto n )
+                     {
     CHECK( aqfp.value( n ) == 0 );
     aqfp.set_value( n, static_cast<uint32_t>( n ) );
     CHECK( aqfp.value( n ) == n );
     CHECK( aqfp.incr_value( n ) == n );
     CHECK( aqfp.value( n ) == n + 1 );
     CHECK( aqfp.decr_value( n ) == n );
-    CHECK( aqfp.value( n ) == n );
-  } );
+    CHECK( aqfp.value( n ) == n ); } );
   aqfp.clear_values();
-  aqfp.foreach_node( [&]( auto n ) {
-    CHECK( aqfp.value( n ) == 0 );
-  } );
+  aqfp.foreach_node( [&]( auto n )
+                     { CHECK( aqfp.value( n ) == 0 ); } );
 }
 
 TEST_CASE( "visited values in AQFPs", "[aqfp]" )
@@ -645,15 +663,14 @@ TEST_CASE( "visited values in AQFPs", "[aqfp]" )
   CHECK( aqfp.size() == 6 );
 
   aqfp.clear_visited();
-  aqfp.foreach_node( [&]( auto n ) {
+  aqfp.foreach_node( [&]( auto n )
+                     {
     CHECK( aqfp.visited( n ) == 0 );
     aqfp.set_visited( n, static_cast<uint32_t>( n ) );
-    CHECK( aqfp.visited( n ) == n );
-  } );
+    CHECK( aqfp.visited( n ) == n ); } );
   aqfp.clear_visited();
-  aqfp.foreach_node( [&]( auto n ) {
-    CHECK( aqfp.visited( n ) == 0 );
-  } );
+  aqfp.foreach_node( [&]( auto n )
+                     { CHECK( aqfp.visited( n ) == 0 ); } );
 }
 
 TEST_CASE( "node substitution in AQFPs", "[aqfp]" )
@@ -665,15 +682,15 @@ TEST_CASE( "node substitution in AQFPs", "[aqfp]" )
 
   CHECK( aqfp.size() == 4 );
 
-  aqfp.foreach_fanin( aqfp.get_node( f ), [&]( auto const& s ) {
-    CHECK( !aqfp.is_complemented( s ) );
-  } );
+  aqfp.foreach_fanin( aqfp.get_node( f ), [&]( auto const& s )
+                      { CHECK( !aqfp.is_complemented( s ) ); } );
 
   aqfp.substitute_node( aqfp.get_node( aqfp.get_constant( false ) ), aqfp.get_constant( true ) );
 
   CHECK( aqfp.size() == 4 );
 
-  aqfp.foreach_fanin( aqfp.get_node( f ), [&]( auto const& s, auto i ) {
+  aqfp.foreach_fanin( aqfp.get_node( f ), [&]( auto const& s, auto i )
+                      {
     switch ( i )
     {
     case 0:
@@ -682,6 +699,5 @@ TEST_CASE( "node substitution in AQFPs", "[aqfp]" )
     default:
       CHECK( !aqfp.is_complemented( s ) );
       break;
-    }
-  } );
+    } } );
 }

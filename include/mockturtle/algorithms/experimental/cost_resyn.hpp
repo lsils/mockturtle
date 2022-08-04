@@ -65,7 +65,7 @@ struct cost_resyn_stats
 
   /* number of solutions */
   uint32_t num_solutions{ 0 };
-  
+
   /* number of problems */
   uint32_t num_problems{ 0 };
 
@@ -158,10 +158,10 @@ private:
   {
     uint32_t eval = 0u;
     // insert il to forest, this might not be applicable to cost related to fanout size!
-    insert( forest, std::begin( forest_leaves ), std::end( forest_leaves ), il, [&]( signal const& g ) {
+    insert( forest, std::begin( forest_leaves ), std::end( forest_leaves ), il, [&]( signal const& g )
+            {
       forest.incr_trav_id();
-      eval = forest.get_cost( forest.get_node( g ), forest_leaves );
-    } );
+      eval = forest.get_cost( forest.get_node( g ), forest_leaves ); } );
     return eval; // the cost of the whole network
   }
 
@@ -180,7 +180,7 @@ private:
 
   bool push_solution( index_list_t const& il )
   {
-    ils.emplace_back( il ); /* push the solution to the solution set */
+    ils.emplace_back( il );               /* push the solution to the solution set */
     return ils.size() < ps.max_solutions; /* continue if capacity allows */
   }
 
@@ -190,12 +190,12 @@ private:
     /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
     if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) )
     {
-      pos_unate_pairs.emplace_back( ( div1 << 1 ) + ( uint32_t )( !pol1 ), ( div2 << 1 ) + ( uint32_t )( !pol2 ) );
+      pos_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)( !pol1 ), ( div2 << 1 ) + (uint32_t)( !pol2 ) );
     }
     /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
     else if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) )
     {
-      neg_unate_pairs.emplace_back( ( div1 << 1 ) + ( uint32_t )( !pol1 ), ( div2 << 1 ) + ( uint32_t )( !pol2 ) );
+      neg_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)( !pol1 ), ( div2 << 1 ) + (uint32_t)( !pol2 ) );
     }
   }
 
@@ -209,9 +209,9 @@ private:
     {
       l.score = kitty::count_ones( ( l.lit & 0x1 ? ~get_div( l.lit >> 1 ) : get_div( l.lit >> 1 ) ) & on_off_sets[on_off] );
     }
-    std::sort( pos_unate_lits.begin(), pos_unate_lits.end(), [&]( unate_lit const& l1, unate_lit const& l2 ) {
-      return l1.score > l2.score; // descending order
-    } );
+    std::sort( pos_unate_lits.begin(), pos_unate_lits.end(), [&]( unate_lit const& l1, unate_lit const& l2 )
+               {
+      return l1.score > l2.score; // descending order } );
   }
 
   void sort_unate_pairs( std::vector<fanin_pair>& unate_pairs, uint32_t on_off )
@@ -221,9 +221,9 @@ private:
       p.score = ( p.lit1 > p.lit2 ) ? kitty::count_ones( ( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) ) ^ ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) ) ) & on_off_sets[on_off] )
                                     : kitty::count_ones( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) ) & ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) ) & on_off_sets[on_off] );
     }
-    std::sort( unate_pairs.begin(), unate_pairs.end(), [&]( fanin_pair const& p1, fanin_pair const& p2 ) {
-      return p1.score > p2.score; // descending order
-    } );
+    std::sort( unate_pairs.begin(), unate_pairs.end(), [&]( fanin_pair const& p1, fanin_pair const& p2 )
+               {
+      return p1.score > p2.score; // descending order } );
   }
 
   std::optional<index_list_t> find_and_detail( std::vector<unate_lit> const& pos_unate_lits, uint32_t on_off )
@@ -817,7 +817,7 @@ private:
     }
     return std::nullopt;
   }
-  
+
   std::optional<index_list_t> find_and_xor()
   {
     if ( has_xor_pairs == false )
@@ -1111,7 +1111,7 @@ private:
       ret = find_and_and_and_helper( neg_unate_pairs, neg_unate_pairs, 0 );
     return ret;
   }
-  
+
   std::optional<index_list_t> find_and_and_xor()
   {
     if ( has_and_pairs == false )
@@ -1158,9 +1158,11 @@ private:
   {
     for ( core_func_t& fn : fns )
     {
-      if ( ils.size() >= ps.max_solutions ) break;
+      if ( ils.size() >= ps.max_solutions )
+        break;
       uint32_t nbefore = ils.size();
-      call_with_stopwatch( st.time_search, [&]() { fn( this ); } );
+      call_with_stopwatch( st.time_search, [&]()
+                           { fn( this ); } );
       st.num_resub[fn.effort] += ils.size() - nbefore;
       if ( isConst ) /* try to find more solution of constant will crash */
         break;
@@ -1172,7 +1174,8 @@ private:
     {
       if ( best_cost > eval_result( forest, il ) )
         ngain = std::max( best_cost - eval_result( forest, il ), ngain );
-      call_with_stopwatch( st.time_eval, [&]() { update_result( forest, il ); } );
+      call_with_stopwatch( st.time_eval, [&]()
+                           { update_result( forest, il ); } );
     }
     st.num_gain += ngain;
   }
@@ -1182,23 +1185,57 @@ public:
       : ntk( ntk ), ps( ps ), st( st )
   {
     fns.clear();
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_wire(); }, 0 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor(); }, 1 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and(); }, 1 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_or(); }, 1 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_xor(); }, 2 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_and(); }, 2 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_and(); }, 2 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_or(); }, 2 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_or_or(); }, 2 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_or_and(); }, 2 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_xor(); }, 2 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_and_and(); }, 3 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_xor_and(); }, 3 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_xor_xor_xor(); }, 3 ); // bad efficiency / gain trade-off
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_xor_xor(); }, 3 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_and_xor(); }, 3 );
-    fns.emplace_back( []( cost_resyn* _core ) { _core->find_and_and_and(); }, 3 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_wire(); },
+                      0 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_xor(); },
+                      1 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_and(); },
+                      1 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_or(); },
+                      1 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_xor_xor(); },
+                      2 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_xor_and(); },
+                      2 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_and_and(); },
+                      2 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_and_or(); },
+                      2 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_or_or(); },
+                      2 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_or_and(); },
+                      2 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_and_xor(); },
+                      2 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_xor_and_and(); },
+                      3 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_xor_xor_and(); },
+                      3 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_xor_xor_xor(); },
+                      3 ); // bad efficiency / gain trade-off
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_and_xor_xor(); },
+                      3 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_and_and_xor(); },
+                      3 );
+    fns.emplace_back( []( cost_resyn* _core )
+                      { _core->find_and_and_and(); },
+                      3 );
     divisors.reserve( 200u );
   }
 

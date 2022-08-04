@@ -77,14 +77,14 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
 
   /* create inputs in same order */
   auto it = begin;
-  ntk.foreach_pi( [&]( auto node ) {
-    old_to_new[node] = *it++;
-  } );
+  ntk.foreach_pi( [&]( auto node )
+                  { old_to_new[node] = *it++; } );
   assert( it == end );
 
   /* foreach node in topological order */
-  topo_view topo{ntk};
-  topo.foreach_node( [&]( auto node ) {
+  topo_view topo{ ntk };
+  topo.foreach_node( [&]( auto node )
+                     {
     if ( ntk.is_constant( node ) || ntk.is_pi( node ) )
       return;
 
@@ -198,12 +198,12 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
         }
         std::cerr << "[e] something went wrong, could not copy node " << ntk.node_to_index( node ) << "\n";
       } while ( false );
-    }
-  } );
+    } } );
 
   /* create outputs in same order */
   std::vector<signal<NtkDest>> fs;
-  ntk.foreach_po( [&]( auto po ) {
+  ntk.foreach_po( [&]( auto po )
+                  {
     const auto f = old_to_new[po];
     if ( ntk.is_complemented( po ) )
     {
@@ -212,8 +212,7 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
     else
     {
       fs.push_back( f );
-    }
-  } );
+    } } );
 
   return fs;
 }
@@ -270,12 +269,12 @@ template<class NtkSrc, class NtkDest = NtkSrc>
 
   NtkDest dest;
   std::vector<signal<NtkDest>> pis;
-  ntk.foreach_pi( [&]( auto n ) {
+  ntk.foreach_pi( [&]( auto n )
+                  {
     if ( remove_dangling_PIs && ntk.fanout_size( n ) == 0 )
       pis.push_back( dest.get_constant( false ) );
     else
-      pis.push_back( dest.create_pi() );
-  } );
+      pis.push_back( dest.create_pi() ); } );
 
   for ( auto f : cleanup_dangling( ntk, dest, pis.begin(), pis.end() ) )
   {
@@ -342,9 +341,8 @@ template<class Ntk>
   node_map<signal<Ntk>, Ntk> old_to_new( ntk );
 
   // PIs and constants
-  ntk.foreach_pi( [&]( auto const& n ) {
-    old_to_new[n] = dest.create_pi();
-  } );
+  ntk.foreach_pi( [&]( auto const& n )
+                  { old_to_new[n] = dest.create_pi(); } );
   old_to_new[ntk.get_constant( false )] = dest.get_constant( false );
   if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
   {
@@ -352,8 +350,9 @@ template<class Ntk>
   }
 
   // iterate through nodes
-  topo_view topo{ntk};
-  topo.foreach_node( [&]( auto const& n ) {
+  topo_view topo{ ntk };
+  topo.foreach_node( [&]( auto const& n )
+                     {
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) ) return true; /* continue */
 
     auto func = ntk.node_function( n );
@@ -407,14 +406,13 @@ template<class Ntk>
       old_to_new[n] = dest.create_node( children, new_func );
     }
 
-    return true;
-  } );
+    return true; } );
 
   // POs
-  ntk.foreach_po( [&]( auto const& f ) {
+  ntk.foreach_po( [&]( auto const& f )
+                  {
     auto const& new_f = old_to_new[f];
-    dest.create_po( ntk.is_complemented( f ) ? dest.create_not( new_f ) : new_f );
-  });
+    dest.create_po( ntk.is_complemented( f ) ? dest.create_not( new_f ) : new_f ); } );
 
   return dest;
 }

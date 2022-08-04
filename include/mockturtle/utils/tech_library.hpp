@@ -46,9 +46,9 @@
 
 #include <parallel_hashmap/phmap.h>
 
-#include "super_utils.hpp"
 #include "../io/genlib_reader.hpp"
 #include "../io/super_reader.hpp"
+#include "super_utils.hpp"
 
 namespace mockturtle
 {
@@ -169,7 +169,7 @@ public:
       : _gates( gates ),
         _supergates_spec( supergates_spec ),
         _ps( ps ),
-        _super( _gates, _supergates_spec, super_utils_params{ps.verbose} ),
+        _super( _gates, _supergates_spec, super_utils_params{ ps.verbose } ),
         _use_supergates( true ),
         _super_lib()
   {
@@ -275,12 +275,13 @@ private:
 
       if ( i++ < standard_gate_size )
       {
-        const auto on_np = [&]( auto const& tt, auto neg, auto const& perm ) {
-          supergate<NInputs> sg = {&gate,
-                                  static_cast<float>( gate.area ),
-                                  {},
-                                  perm,
-                                  0};
+        const auto on_np = [&]( auto const& tt, auto neg, auto const& perm )
+        {
+          supergate<NInputs> sg = { &gate,
+                                    static_cast<float>( gate.area ),
+                                    {},
+                                    perm,
+                                    0 };
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
@@ -293,7 +294,8 @@ private:
           auto& v = _super_lib[static_tt];
 
           /* ordered insert by ascending area and number of input pins */
-          auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 ) {
+          auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 )
+                                      {
             if ( s1.area < s2.area )
               return true;
             if ( s1.area > s2.area )
@@ -302,8 +304,7 @@ private:
               return true;
             if ( s1.root->num_vars > s2.root->num_vars )
               return true;
-            return s1.root->id < s2.root->id;
-          } );
+            return s1.root->id < s2.root->id; } );
 
           bool to_add = true;
           /* search for duplicated element due to symmetries */
@@ -332,17 +333,18 @@ private:
           }
         };
 
-        const auto on_p = [&]( auto const& tt, auto const& perm ) {
+        const auto on_p = [&]( auto const& tt, auto const& perm )
+        {
           /* get all the configurations that lead to the N-class representative */
           auto [tt_canon, phases] = kitty::exact_n_canonization_complete( tt );
 
-          for( auto phase : phases )
+          for ( auto phase : phases )
           {
-            supergate<NInputs> sg = {&gate,
-                                    static_cast<float>(gate.area),
-                                    {},
-                                    perm,
-                                    static_cast<uint8_t>(phase)};
+            supergate<NInputs> sg = { &gate,
+                                      static_cast<float>( gate.area ),
+                                      {},
+                                      perm,
+                                      static_cast<uint8_t>( phase ) };
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
@@ -354,7 +356,8 @@ private:
             auto& v = _super_lib[static_tt];
 
             /* ordered insert by ascending area and number of input pins */
-            auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 ) {
+            auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 )
+                                        {
               if ( s1.area < s2.area )
                 return true;
               if ( s1.area > s2.area )
@@ -363,8 +366,7 @@ private:
                 return true;
               if ( s1.root->num_vars > s2.root->num_vars )
                 return true;
-              return s1.root->id < s2.root->id;
-            } );
+              return s1.root->id < s2.root->id; } );
 
             bool to_add = true;
             /* search for duplicated element due to symmetries */
@@ -416,15 +418,16 @@ private:
           continue;
         }
 
-        const auto on_np = [&]( auto const& tt, auto neg ) {
+        const auto on_np = [&]( auto const& tt, auto neg )
+        {
           std::vector<uint8_t> perm( gate.num_vars );
           std::iota( perm.begin(), perm.end(), 0u );
 
-          supergate<NInputs> sg = {&gate,
-                                  static_cast<float>( gate.area ),
-                                  {},
-                                  perm,
-                                  static_cast<uint8_t>( neg )};
+          supergate<NInputs> sg = { &gate,
+                                    static_cast<float>( gate.area ),
+                                    {},
+                                    perm,
+                                    static_cast<uint8_t>( neg ) };
 
           for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
           {
@@ -436,7 +439,8 @@ private:
           auto& v = _super_lib[static_tt];
 
           /* ordered insert by ascending area and number of input pins */
-          auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 ) {
+          auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 )
+                                      {
             if ( s1.area < s2.area )
               return true;
             if ( s1.area > s2.area )
@@ -445,8 +449,7 @@ private:
               return true;
             if ( s1.root->num_vars > s2.root->num_vars )
               return true;
-            return s1.root->id < s2.root->id;
-          } );
+            return s1.root->id < s2.root->id; } );
 
           bool to_add = true;
           /* search for duplicated element due to symmetries */
@@ -475,18 +478,19 @@ private:
           }
         };
 
-        const auto on_p = [&]() {
+        const auto on_p = [&]()
+        {
           auto [tt_canon, phases] = kitty::exact_n_canonization_complete( gate.function );
           std::vector<uint8_t> perm( gate.num_vars );
           std::iota( perm.begin(), perm.end(), 0u );
 
-          for( auto phase : phases )
+          for ( auto phase : phases )
           {
-            supergate<NInputs> sg = {&gate,
-                                    static_cast<float>( gate.area ),
-                                    {},
-                                    perm,
-                                    static_cast<uint8_t>( phase )};
+            supergate<NInputs> sg = { &gate,
+                                      static_cast<float>( gate.area ),
+                                      {},
+                                      perm,
+                                      static_cast<uint8_t>( phase ) };
 
             for ( auto i = 0u; i < perm.size() && i < NInputs; ++i )
             {
@@ -498,7 +502,8 @@ private:
             auto& v = _super_lib[static_tt];
 
             /* ordered insert by ascending area and number of input pins */
-            auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 ) {
+            auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 )
+                                        {
               if ( s1.area < s2.area )
                 return true;
               if ( s1.area > s2.area )
@@ -507,8 +512,7 @@ private:
                 return true;
               if ( s1.root->num_vars > s2.root->num_vars )
                 return true;
-              return s1.root->id < s2.root->id;
-            } );
+              return s1.root->id < s2.root->id; } );
 
             bool to_add = true;
             /* search for duplicated element due to symmetries */
@@ -611,12 +615,12 @@ private:
 
   bool _use_supergates;
 
-  std::vector<gate> const _gates; /* collection of gates */
+  std::vector<gate> const _gates;    /* collection of gates */
   super_lib const& _supergates_spec; /* collection of supergates declarations */
   tech_library_params const _ps;
   super_utils<NInputs> _super; /* supergates generation */
-  lib_t _super_lib; /* library of enumerated gates */
-}; /* class tech_library */
+  lib_t _super_lib;            /* library of enumerated gates */
+};                             /* class tech_library */
 
 template<typename Ntk, unsigned NInputs>
 struct exact_supergate
@@ -745,7 +749,8 @@ private:
       supergates_list_t supergates_neg;
       auto const not_entry = ~entry;
 
-      const auto add_supergate = [&]( auto const& f_new ) {
+      const auto add_supergate = [&]( auto const& f_new )
+      {
         bool complemented = _database.is_complemented( f_new );
         auto f = f_new;
         if ( _ps.np_classification && complemented )
@@ -854,9 +859,8 @@ private:
       }
     }
 
-    _database.foreach_fanin( n, [&]( auto const& child ) {
-      area += compute_info_rec( sg, child, tdelay );
-    } );
+    _database.foreach_fanin( n, [&]( auto const& child )
+                             { area += compute_info_rec( sg, child, tdelay ); } );
 
     return area;
   }

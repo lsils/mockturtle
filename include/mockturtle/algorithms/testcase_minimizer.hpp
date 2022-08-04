@@ -30,17 +30,17 @@
   \author Siang-Yun (Sonia) Lee
 */
 
-#include "../io/write_verilog.hpp"
+#include "../io/aiger_reader.hpp"
 #include "../io/verilog_reader.hpp"
 #include "../io/write_aiger.hpp"
-#include "../io/aiger_reader.hpp"
-#include "../utils/debugging_utils.hpp"
+#include "../io/write_verilog.hpp"
 #include "../networks/aig.hpp"
+#include "../utils/debugging_utils.hpp"
 #include "../views/color_view.hpp"
 #include "cleanup.hpp"
 
-#include <lorina/lorina.hpp>
 #include <fmt/format.h>
+#include <lorina/lorina.hpp>
 #include <optional>
 #include <utility>
 
@@ -51,32 +51,32 @@ namespace mockturtle
 struct testcase_minimizer_params
 {
   /*! \brief File format of the testcase. */
-  enum 
+  enum
   {
     verilog,
     aiger
   } file_format = verilog;
 
   /*! \brief Path to find the initial test case and to store the minimized test case. */
-  std::string path{"."};
+  std::string path{ "." };
 
   /*! \brief File name of the initial test case (excluding extension). */
-  std::string init_case{"testcase"};
+  std::string init_case{ "testcase" };
 
   /*! \brief File name of the minimized test case (excluding extension). */
-  std::string minimized_case{"minimized"};
+  std::string minimized_case{ "minimized" };
 
   /*! \brief Maximum number of iterations in total. nullopt = infinity */
-  std::optional<uint32_t> num_iterations{std::nullopt};
+  std::optional<uint32_t> num_iterations{ std::nullopt };
 
   /*! \brief Step into the next stage if nothing works for this number of iterations. */
-  std::optional<uint32_t> num_iterations_stage{std::nullopt};
+  std::optional<uint32_t> num_iterations_stage{ std::nullopt };
 
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 
   /*! \brief Seed of the random generator. */
-  uint64_t seed{0xcafeaffe};
+  uint64_t seed{ 0xcafeaffe };
 }; /* testcase_minimizer_params */
 
 /*! \brief Debugging testcase minimizer
@@ -84,7 +84,7 @@ struct testcase_minimizer_params
  * Given a (sequence of) algorithm(s) and a testcase that is
  * known to trigger a bug in the algorithm(s), this utility
  * minimizes the testcase by trying to remove parts of the network
- * with an increasing granularity in each stage. Only changes after 
+ * with an increasing granularity in each stage. Only changes after
  * which the bug is still triggered are kept; otherwise, the change
  * is reverted.
  *
@@ -133,24 +133,24 @@ class testcase_minimizer
 
 public:
   explicit testcase_minimizer( testcase_minimizer_params const ps = {} )
-    : ps( ps )
+      : ps( ps )
   {
-    //assert( ps.file_format != testcase_minimizer_params::aiger || std::is_same_v<typename Ntk::base_type, aig_network> );
+    // assert( ps.file_format != testcase_minimizer_params::aiger || std::is_same_v<typename Ntk::base_type, aig_network> );
     switch ( ps.file_format )
     {
-      case testcase_minimizer_params::verilog:
-        file_extension = ".v";
-        break;
-      case testcase_minimizer_params::aiger:
-        file_extension = ".aig";
-        break;
-      default:
-        fmt::print( "[e] Unsupported format\n" );
+    case testcase_minimizer_params::verilog:
+      file_extension = ".v";
+      break;
+    case testcase_minimizer_params::aiger:
+      file_extension = ".aig";
+      break;
+    default:
+      fmt::print( "[e] Unsupported format\n" );
     }
     std::srand( ps.seed );
   }
 
-  void run( std::function<bool(Ntk)> const& fn )
+  void run( std::function<bool( Ntk )> const& fn )
   {
     if ( !read_initial_testcase() )
     {
@@ -163,7 +163,7 @@ public:
       return;
     }
 
-    uint32_t counter{0};
+    uint32_t counter{ 0 };
     while ( !ps.num_iterations || counter++ < ps.num_iterations )
     {
       ntk_backup2 = cleanup_dangling( ntk );
@@ -201,7 +201,7 @@ public:
   }
 
 #ifndef _MSC_VER
-  void run( std::function<std::string(std::string const&)> const& make_command )
+  void run( std::function<std::string( std::string const& )> const& make_command )
   {
     if ( !read_initial_testcase() )
     {
@@ -214,7 +214,7 @@ public:
       return;
     }
 
-    uint32_t counter{0};
+    uint32_t counter{ 0 };
     while ( !ps.num_iterations || counter++ < ps.num_iterations )
     {
       ntk_backup2 = cleanup_dangling( ntk );
@@ -258,23 +258,23 @@ private:
   {
     switch ( ps.file_format )
     {
-      case testcase_minimizer_params::verilog:
-        if ( lorina::read_verilog( ps.path + "/" + ps.init_case + file_extension, verilog_reader( ntk ) ) != lorina::return_code::success )
-        {
-          fmt::print( "[e] Could not read test case `{}`\n", ps.path + "/" + ps.init_case + file_extension );
-          return false;
-        }
-        break;
-      case testcase_minimizer_params::aiger:
-        if ( lorina::read_aiger( ps.path + "/" + ps.init_case + file_extension, aiger_reader( ntk ) ) != lorina::return_code::success )
-        {
-          fmt::print( "[e] Could not read test case `{}`\n", ps.path + "/" + ps.init_case + file_extension );
-          return false;
-        }
-        break;
-      default:
-        fmt::print( "[e] Unsupported format\n" );
+    case testcase_minimizer_params::verilog:
+      if ( lorina::read_verilog( ps.path + "/" + ps.init_case + file_extension, verilog_reader( ntk ) ) != lorina::return_code::success )
+      {
+        fmt::print( "[e] Could not read test case `{}`\n", ps.path + "/" + ps.init_case + file_extension );
         return false;
+      }
+      break;
+    case testcase_minimizer_params::aiger:
+      if ( lorina::read_aiger( ps.path + "/" + ps.init_case + file_extension, aiger_reader( ntk ) ) != lorina::return_code::success )
+      {
+        fmt::print( "[e] Could not read test case `{}`\n", ps.path + "/" + ps.init_case + file_extension );
+        return false;
+      }
+      break;
+    default:
+      fmt::print( "[e] Unsupported format\n" );
+      return false;
     }
     init_PIs = ntk.num_pis();
     init_POs = ntk.num_pos();
@@ -286,18 +286,18 @@ private:
   {
     switch ( ps.file_format )
     {
-      case testcase_minimizer_params::verilog:
-        write_verilog( ntk, ps.path + "/" + filename + file_extension );
-        break;
-      case testcase_minimizer_params::aiger:
-        write_aiger( ntk, ps.path + "/" + filename + file_extension );
-        break;
-      default:
-        fmt::print( "[e] Unsupported format\n" );
+    case testcase_minimizer_params::verilog:
+      write_verilog( ntk, ps.path + "/" + filename + file_extension );
+      break;
+    case testcase_minimizer_params::aiger:
+      write_aiger( ntk, ps.path + "/" + filename + file_extension );
+      break;
+    default:
+      fmt::print( "[e] Unsupported format\n" );
     }
   }
 
-  bool test( std::function<bool(Ntk)> const& fn )
+  bool test( std::function<bool( Ntk )> const& fn )
   {
     ntk_backup = cleanup_dangling( ntk );
     bool res = fn( ntk );
@@ -307,13 +307,13 @@ private:
   }
 
 #ifndef _MSC_VER
-  bool test( std::function<std::string(std::string const&)> const& make_command, std::string const& filename )
+  bool test( std::function<std::string( std::string const& )> const& make_command, std::string const& filename )
   {
     was_FIT = test_inner( make_command, filename );
     return was_FIT;
   }
 
-  bool test_inner( std::function<std::string(std::string const&)> const& make_command, std::string const& filename )
+  bool test_inner( std::function<std::string( std::string const& )> const& make_command, std::string const& filename )
   {
     std::string const command = make_command( ps.path + "/" + filename + file_extension );
     int status = std::system( command.c_str() );
@@ -370,95 +370,94 @@ private:
 
     switch ( reducing_stage )
     {
-      case many_pos:
-      {
-        assert( pos_to_remove <= ntk.num_pos() - sampled.size() );
-        if ( ps.verbose )
-          fmt::print( "[i] Remove {} POs\n", pos_to_remove);
-        for ( auto i = 0u; i < pos_to_remove; ++i )
-        {
-          auto const& [ith_po, n] = get_random_po();
-          if ( ntk.is_pi( n ) || ntk.is_constant( n ) ) continue;
-          ntk.substitute_node( n, ntk.get_constant( false ) );
-        }
-        break;
-      }
-      case po:
+    case many_pos:
+    {
+      assert( pos_to_remove <= ntk.num_pos() - sampled.size() );
+      if ( ps.verbose )
+        fmt::print( "[i] Remove {} POs\n", pos_to_remove );
+      for ( auto i = 0u; i < pos_to_remove; ++i )
       {
         auto const& [ith_po, n] = get_random_po();
-        if ( ps.verbose )
-          fmt::print( "[i] Remove {}-th PO (node {})\n", ith_po, n );
+        if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+          continue;
         ntk.substitute_node( n, ntk.get_constant( false ) );
-        break;
       }
-      case pi:
-      {
-        const node n = get_random_pi();
-        if ( ps.verbose )
-          fmt::print( "[i] Remove PI {}\n", n );
-        ntk.substitute_node( n, ntk.get_constant( false ) );
-        break;
-      }
-      case const_gate:
-      {
-        node const& n = get_random_gate();
-        if ( ps.verbose )
-          fmt::print( "[i] Substitute gate {} with const0\n", n );
-        ntk.substitute_node( n, ntk.get_constant( false ) );
-        break;
-      }
-      case mffc:
-      {
-        node const& n = get_random_gate();
-        signal fi = ntk.create_pi();
-        if ( ps.verbose )
-          fmt::print( "[i] Substitute gate {} with a new PI {}\n", n, ntk.get_node( fi ) );
-        ntk.substitute_node( n, fi );
-        break;
-      }
-      case half_mffc:
-      {
-        node const& n = get_random_gate();
-        signal fi;
-        uint32_t const ith_fanin = std::rand() % ntk.fanin_size( n );
-        ntk.foreach_fanin( n, [&]( auto const& f, auto i ){
+      break;
+    }
+    case po:
+    {
+      auto const& [ith_po, n] = get_random_po();
+      if ( ps.verbose )
+        fmt::print( "[i] Remove {}-th PO (node {})\n", ith_po, n );
+      ntk.substitute_node( n, ntk.get_constant( false ) );
+      break;
+    }
+    case pi:
+    {
+      const node n = get_random_pi();
+      if ( ps.verbose )
+        fmt::print( "[i] Remove PI {}\n", n );
+      ntk.substitute_node( n, ntk.get_constant( false ) );
+      break;
+    }
+    case const_gate:
+    {
+      node const& n = get_random_gate();
+      if ( ps.verbose )
+        fmt::print( "[i] Substitute gate {} with const0\n", n );
+      ntk.substitute_node( n, ntk.get_constant( false ) );
+      break;
+    }
+    case mffc:
+    {
+      node const& n = get_random_gate();
+      signal fi = ntk.create_pi();
+      if ( ps.verbose )
+        fmt::print( "[i] Substitute gate {} with a new PI {}\n", n, ntk.get_node( fi ) );
+      ntk.substitute_node( n, fi );
+      break;
+    }
+    case half_mffc:
+    {
+      node const& n = get_random_gate();
+      signal fi;
+      uint32_t const ith_fanin = std::rand() % ntk.fanin_size( n );
+      ntk.foreach_fanin( n, [&]( auto const& f, auto i )
+                         {
           if ( i == ith_fanin )
-            fi = f;
-        });
-        if ( ps.verbose )
-          fmt::print( "[i] Substitute gate {} with its {}-th fanin {}{}\n", n, ith_fanin, ntk.is_complemented( fi ) ? "!" : "", ntk.get_node( fi ) );
-        ntk.substitute_node( n, fi );
-        assert( network_is_acyclic( color_view{ntk} ) );
-        break;
-      }
-      case simplify_tfo:
-      {
-        node const& n = get_random_gate();
-        if ( ps.verbose )
-          fmt::print( "[i] Simplify TFO of gate {} with const0 but keep all its fanins\n", n );
-        ntk.foreach_fanin( n, [&]( auto f ){
-          ntk.create_po( f );
-        });
-        ntk.substitute_node( n, ntk.get_constant( false ) );
-        break;
-      }
-      case single_gate:
-      {
-        node const& n = get_random_gate();
-        if ( ps.verbose )
-          fmt::print( "[i] Remove a single gate {}\n", n );
-        ntk.foreach_fanin( n, [&]( auto f ){
-          ntk.create_po( f );
-        });
-        signal fi = ntk.create_pi();
-        ntk.substitute_node( n, fi );
-        break;
-      }
-      default:
-      {
-        ntk = cleanup_dangling( ntk, true, true );
-        return false; // all stages done, nothing to reduce
-      }
+            fi = f; } );
+      if ( ps.verbose )
+        fmt::print( "[i] Substitute gate {} with its {}-th fanin {}{}\n", n, ith_fanin, ntk.is_complemented( fi ) ? "!" : "", ntk.get_node( fi ) );
+      ntk.substitute_node( n, fi );
+      assert( network_is_acyclic( color_view{ ntk } ) );
+      break;
+    }
+    case simplify_tfo:
+    {
+      node const& n = get_random_gate();
+      if ( ps.verbose )
+        fmt::print( "[i] Simplify TFO of gate {} with const0 but keep all its fanins\n", n );
+      ntk.foreach_fanin( n, [&]( auto f )
+                         { ntk.create_po( f ); } );
+      ntk.substitute_node( n, ntk.get_constant( false ) );
+      break;
+    }
+    case single_gate:
+    {
+      node const& n = get_random_gate();
+      if ( ps.verbose )
+        fmt::print( "[i] Remove a single gate {}\n", n );
+      ntk.foreach_fanin( n, [&]( auto f )
+                         { ntk.create_po( f ); } );
+      signal fi = ntk.create_pi();
+      ntk.substitute_node( n, fi );
+      break;
+    }
+    default:
+    {
+      ntk = cleanup_dangling( ntk, true, true );
+      return false; // all stages done, nothing to reduce
+    }
     }
 
     ntk = cleanup_dangling( ntk, true, true );
@@ -514,15 +513,15 @@ private:
       node const& n = get_random_gate();
       node ni;
       bool has_gate_fanin = false;
-      ntk.foreach_fanin( n, [&]( auto const& f ){
+      ntk.foreach_fanin( n, [&]( auto const& f )
+                         {
         ni = ntk.get_node( f );
         if ( !ntk.is_pi( ni ) && !ntk.is_constant( ni ) )
         {
           has_gate_fanin = true;
           return false; // break
         }
-        return true; // next fanin
-      });
+        return true; // next fanin } );
       if ( has_gate_fanin )
       {
         return std::make_pair( n, ni );
@@ -535,19 +534,20 @@ private:
   std::string file_extension;
   Ntk ntk, ntk_backup, ntk_backup2;
 
-  enum stages : int {
+  enum stages : int
+  {
     pi = 1, // remove a PI (substitute with const0)
     many_pos,
-    po, // remove a PO (substitute with const0)
-    const_gate, // substitute a gate with const0
+    po,           // remove a PO (substitute with const0)
+    const_gate,   // substitute a gate with const0
     simplify_tfo, // create PO for all of a gate's fanins, then substitute it with const0
-    mffc, // substitute a gate with a new PI
-    half_mffc, // substitute a gate with one of its fanin
-    single_gate // remove a single gate by creating POs for its fanins and substitute it with a new PI
-  } reducing_stage{pi};
-  uint32_t stage_counter{0u};
-  uint32_t pos_to_remove{1000};
-  bool was_FIT{true};
+    mffc,         // substitute a gate with a new PI
+    half_mffc,    // substitute a gate with one of its fanin
+    single_gate   // remove a single gate by creating POs for its fanins and substitute it with a new PI
+  } reducing_stage{ pi };
+  uint32_t stage_counter{ 0u };
+  uint32_t pos_to_remove{ 1000 };
+  bool was_FIT{ true };
   std::set<uint32_t> sampled;
 
   uint32_t init_PIs, init_POs, init_gates;

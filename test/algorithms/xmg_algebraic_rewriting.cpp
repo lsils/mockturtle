@@ -23,7 +23,7 @@ TEST_CASE( "xmg depth optimization with xor complementary associativity", "[xmg_
 
   xmg.create_po( f3 );
 
-  depth_view depth_xmg{xmg};
+  depth_view depth_xmg{ xmg };
 
   CHECK( depth_xmg.depth() == 3 );
 
@@ -48,7 +48,7 @@ TEST_CASE( "xmg depth optimization with xor associativity", "[xmg_algebraic_rewr
 
   xmg.create_po( f3 );
 
-  depth_view depth_xmg{xmg};
+  depth_view depth_xmg{ xmg };
 
   CHECK( depth_xmg.depth() == 3 );
 
@@ -72,7 +72,7 @@ TEST_CASE( "xmg depth optimization with associativity", "[xmg_algebraic_rewritin
 
   xmg.create_po( f3 );
 
-  depth_view depth_xmg{xmg};
+  depth_view depth_xmg{ xmg };
 
   CHECK( depth_xmg.depth() == 3 );
 
@@ -96,7 +96,7 @@ TEST_CASE( "xmg depth optimization with complemented associativity", "[xmg_algeb
 
   xmg.create_po( f3 );
 
-  depth_view depth_xmg{xmg};
+  depth_view depth_xmg{ xmg };
 
   CHECK( depth_xmg.depth() == 3 );
 
@@ -123,7 +123,7 @@ TEST_CASE( "xmg depth optimization with distributivity", "[xmg_algebraic_rewriti
 
   xmg.create_po( f3 );
 
-  depth_view depth_xmg{xmg};
+  depth_view depth_xmg{ xmg };
 
   CHECK( depth_xmg.depth() == 3 );
 
@@ -150,7 +150,7 @@ TEST_CASE( "xmg selective depth optimization", "[xmg_algebraic_rewriting]" )
 
   xmg.create_po( f3 );
 
-  depth_view depth_xmg{xmg};
+  depth_view depth_xmg{ xmg };
   xmg_algebraic_depth_rewriting_params ps;
   ps.strategy = xmg_algebraic_depth_rewriting_params::selective;
 
@@ -179,7 +179,7 @@ TEST_CASE( "xmg aggressive depth optimization", "[xmg_algebraic_rewriting]" )
 
   xmg.create_po( f3 );
 
-  depth_view depth_xmg{xmg};
+  depth_view depth_xmg{ xmg };
   xmg_algebraic_depth_rewriting_params ps;
   ps.strategy = xmg_algebraic_depth_rewriting_params::aggressive;
 

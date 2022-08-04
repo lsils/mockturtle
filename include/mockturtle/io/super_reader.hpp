@@ -83,7 +83,7 @@ public:
   {
     lib.genlib_name = genlib_name;
     lib.max_num_vars = max_num_vars;
-    lib.num_supergates = max_superGates; 
+    lib.num_supergates = max_superGates;
     lib.num_lines = num_lines;
   }
 

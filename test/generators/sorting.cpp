@@ -22,12 +22,12 @@ TEST_CASE( "sorting networks based on bubble sort", "[sorting]" )
       auto copy = list;
       std::shuffle( copy.begin(), copy.end(), std::default_random_engine( 0 ) );
 
-      bubble_sorting_network( n, [&]( auto a, auto b ) {
+      bubble_sorting_network( n, [&]( auto a, auto b )
+                              {
         if ( copy[a] > copy[b] )
         {
           std::swap( copy[a], copy[b] );
-        }
-      } );
+        } } );
 
       CHECK( copy == list );
     }
@@ -46,12 +46,12 @@ TEST_CASE( "sorting networks based on insertion sort", "[sorting]" )
       auto copy = list;
       std::shuffle( copy.begin(), copy.end(), std::default_random_engine( 0 ) );
 
-      insertion_sorting_network( n, [&]( auto a, auto b ) {
+      insertion_sorting_network( n, [&]( auto a, auto b )
+                                 {
         if ( copy[a] > copy[b] )
         {
           std::swap( copy[a], copy[b] );
-        }
-      } );
+        } } );
 
       CHECK( copy == list );
     }
@@ -71,12 +71,12 @@ TEST_CASE( "sorting networks based on batcher sort", "[sorting]" )
       auto copy = list;
       std::shuffle( copy.begin(), copy.end(), std::default_random_engine( 0 ) );
 
-      insertion_sorting_network( N, [&]( auto a, auto b ) {
+      insertion_sorting_network( N, [&]( auto a, auto b )
+                                 {
         if ( copy[a] > copy[b] )
         {
           std::swap( copy[a], copy[b] );
-        }
-      } );
+        } } );
 
       CHECK( copy == list );
     }

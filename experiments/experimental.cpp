@@ -23,15 +23,15 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "experiments.hpp"
-#include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
-#include <mockturtle/algorithms/experimental/window_resub.hpp>
-#include <mockturtle/algorithms/experimental/sim_resub.hpp>
+#include <iostream>
+#include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
+#include <mockturtle/algorithms/experimental/sim_resub.hpp>
+#include <mockturtle/algorithms/experimental/window_resub.hpp>
+#include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
-#include <mockturtle/io/aiger_reader.hpp>
-#include <lorina/aiger.hpp>
-#include <iostream>
 #include <string>
 
 int main()
@@ -48,7 +48,8 @@ int main()
 
     aig_network aig;
     auto const result = lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) );
-    assert( result == lorina::return_code::success ); (void)result;
+    assert( result == lorina::return_code::success );
+    (void)result;
 
     window_resub_params ps;
     window_resub_stats st;

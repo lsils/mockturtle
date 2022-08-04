@@ -12,8 +12,8 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/static_truth_table.hpp>
 #include <kitty/npn.hpp>
+#include <kitty/static_truth_table.hpp>
 
 using namespace mockturtle;
 
@@ -32,7 +32,7 @@ std::string const simple_library = "GATE zero 0 O=0;\n"
 std::string const super_library = "simple.genlib\n"
                                   "3\n"
                                   "7\n"
-                                  "13\n"       
+                                  "13\n"
                                   "* and 1 0\n"
                                   "* and 2 3\n"
                                   "and 2 0\n"
@@ -45,29 +45,29 @@ std::string const super_library = "simple.genlib\n"
                                   "* and 2 9\n"
                                   "\0";
 
-std::string const test_library =  "GATE   inv1    3 O=!a;               PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
-                                  "GATE   inv2    2 O=!a;               PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
-                                  "GATE   inv3    1 O=!a;               PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
-                                  "GATE   inv4    4 O=!a;               PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
-                                  "GATE   nand2   2 O=!(a*b);           PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                  "GATE   nand3   3 O=!(a*b*c);         PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
-                                  "GATE   nand4   4 O=!(a*b*c*d);       PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
-                                  "GATE   nor2    2 O=!(a+b);           PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
-                                  "GATE   nor3    3 O=!(a+b+c);         PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
-                                  "GATE   nor4    4 O=!(a+b+c+d);       PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
-                                  "GATE   and2    3 O=a*b;              PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
-                                  "GATE   or2     3 O=a+b;              PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
-                                  "GATE   xor2a   5 O=a*!b+!a*b;        PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "#GATE  xor2b   5 O=!(a*b+!a*!b);     PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                  "GATE   xnor2a  5 O=a*b+!a*!b;        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
-                                  "#GATE  xnor2b  5 O=!(a*!b+!a*b);     PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
-                                  "GATE   aoi21   3 O=!(a*b+c);         PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   aoi22   4 O=!(a*b+c*d);       PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   oai21   3 O=!((a+b)*c);       PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
-                                  "GATE   oai22   4 O=!((a+b)*(c+d));   PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                  "GATE   buf     2 O=a;                PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
-                                  "GATE   zero    0 O=CONST0;\n"
-                                  "GATE   one     0 O=CONST1;";
+std::string const test_library = "GATE   inv1    3 O=!a;               PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
+                                 "GATE   inv2    2 O=!a;               PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                 "GATE   inv3    1 O=!a;               PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                 "GATE   inv4    4 O=!a;               PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
+                                 "GATE   nand2   2 O=!(a*b);           PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                 "GATE   nand3   3 O=!(a*b*c);         PIN * INV 1 999 1.1 0.3 1.1 0.3\n"
+                                 "GATE   nand4   4 O=!(a*b*c*d);       PIN * INV 1 999 1.4 0.4 1.4 0.4\n"
+                                 "GATE   nor2    2 O=!(a+b);           PIN * INV 1 999 1.4 0.5 1.4 0.5\n"
+                                 "GATE   nor3    3 O=!(a+b+c);         PIN * INV 1 999 2.4 0.7 2.4 0.7\n"
+                                 "GATE   nor4    4 O=!(a+b+c+d);       PIN * INV 1 999 3.8 1.0 3.8 1.0\n"
+                                 "GATE   and2    3 O=a*b;              PIN * NONINV 1 999 1.9 0.3 1.9 0.3\n"
+                                 "GATE   or2     3 O=a+b;              PIN * NONINV 1 999 2.4 0.3 2.4 0.3\n"
+                                 "GATE   xor2a   5 O=a*!b+!a*b;        PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                 "#GATE  xor2b   5 O=!(a*b+!a*!b);     PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                 "GATE   xnor2a  5 O=a*b+!a*!b;        PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                 "#GATE  xnor2b  5 O=!(a*!b+!a*b);     PIN * UNKNOWN 2 999 2.1 0.5 2.1 0.5\n"
+                                 "GATE   aoi21   3 O=!(a*b+c);         PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                 "GATE   aoi22   4 O=!(a*b+c*d);       PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                 "GATE   oai21   3 O=!((a+b)*c);       PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
+                                 "GATE   oai22   4 O=!((a+b)*(c+d));   PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
+                                 "GATE   buf     2 O=a;                PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                 "GATE   zero    0 O=CONST0;\n"
+                                 "GATE   one     0 O=CONST1;";
 
 TEST_CASE( "Simple test library generation 1", "[tech_library]" )
 {
@@ -75,7 +75,7 @@ TEST_CASE( "Simple test library generation 1", "[tech_library]" )
 
   std::istringstream in( simple_test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   tech_library<2, classification_type::np_configurations> lib( gates );
@@ -146,7 +146,7 @@ TEST_CASE( "Simple test library generation 2", "[tech_library]" )
 
   std::istringstream in( simple_test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   tech_library<2, classification_type::p_configurations> lib( gates );
@@ -200,7 +200,7 @@ TEST_CASE( "Supergate library generation P", "[tech_library]" )
 
   std::istringstream in_genlib( simple_library );
   auto result = lorina::read_genlib( in_genlib, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   std::istringstream in_super( super_library );
@@ -228,7 +228,6 @@ TEST_CASE( "Supergate library generation P", "[tech_library]" )
   CHECK( ( *inv )[0].area == 1.0f );
   CHECK( ( *inv )[0].tdelay[0] == 1.0f );
   CHECK( ( *inv )[0].polarity == 0u );
-  
 
   kitty::create_from_hex_string( tt, "11" );
   auto const and_1 = lib.get_supergates( tt );
@@ -288,7 +287,7 @@ TEST_CASE( "Supergate library generation NP", "[tech_library]" )
 
   std::istringstream in_genlib( simple_library );
   auto result = lorina::read_genlib( in_genlib, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   std::istringstream in_super( super_library );
@@ -377,7 +376,7 @@ TEST_CASE( "Complete library generation", "[tech_library]" )
 
   std::istringstream in( test_library );
   auto result = lorina::read_genlib( in, genlib_reader( gates ) );
-  
+
   CHECK( result == lorina::return_code::success );
 
   tech_library<4, classification_type::np_configurations> lib( gates );
@@ -389,7 +388,8 @@ TEST_CASE( "Complete library generation", "[tech_library]" )
   {
     auto const tt = gate.function;
 
-    const auto test_enumeration = [&]( auto const& tt, auto, auto ) {
+    const auto test_enumeration = [&]( auto const& tt, auto, auto )
+    {
       const auto static_tt = kitty::extend_to<4>( tt );
 
       auto const supergates = lib.get_supergates( static_tt );

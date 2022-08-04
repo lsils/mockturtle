@@ -35,8 +35,8 @@
 
 #pragma once
 
-#include "../traits.hpp"
 #include "../networks/sequential.hpp"
+#include "../traits.hpp"
 #include "../views/topo_view.hpp"
 
 #include <kitty/constructors.hpp>
@@ -53,10 +53,10 @@
 namespace mockturtle
 {
 
-  struct write_blif_params
-  {
-    uint32_t skip_feedthrough = 0u;
-  };
+struct write_blif_params
+{
+  uint32_t skip_feedthrough = 0u;
+};
 
 /*! \brief Writes network in BLIF format into output stream
  *
@@ -94,13 +94,13 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_node_function_v<Ntk>, "Ntk does not implement the node_function method" );
 
-  uint32_t num_latches{0};
+  uint32_t num_latches{ 0 };
   if constexpr ( has_num_registers_v<Ntk> )
   {
     num_latches = ntk.num_registers();
   }
 
-  topo_view topo_ntk{ntk};
+  topo_view topo_ntk{ ntk };
 
   /* write model */
   os << ".model top\n";
@@ -109,8 +109,8 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
   if ( topo_ntk.num_pis() > 0u )
   {
     os << ".inputs ";
-    topo_ntk.foreach_ci( [&]( auto const& n, auto index ) 
-    {
+    topo_ntk.foreach_ci( [&]( auto const& n, auto index )
+                         {
       if ( ( ( index + 1 ) <= topo_ntk.num_cis() - num_latches ) ) 
       {
         if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
@@ -123,8 +123,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
         {
           os << fmt::format( "pi{} ", topo_ntk.node_to_index( n ) );
         }
-      }
-    } );
+      } } );
     os << "\n";
   }
 
@@ -132,8 +131,8 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
   if ( topo_ntk.num_pos() > 0u )
   {
     os << ".outputs ";
-    topo_ntk.foreach_co( [&]( auto const& f, auto index ) 
-    {
+    topo_ntk.foreach_co( [&]( auto const& f, auto index )
+                         {
       (void)f;
       if( index < topo_ntk.num_cos() - num_latches ) 
       {
@@ -146,8 +145,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
         {
           os << fmt::format( "po{} ", index );
         }
-      }
-    } );
+      } } );
     os << "\n";
   }
 
@@ -156,8 +154,8 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     if ( num_latches > 0u )
     {
       auto latch_idx = 0;
-      topo_ntk.foreach_co( [&]( auto const& f, auto index ) 
-      {
+      topo_ntk.foreach_co( [&]( auto const& f, auto index )
+                           {
         if( index >= topo_ntk.num_cos() - num_latches ) 
         {
           os << ".latch ";
@@ -174,8 +172,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
             os << fmt::format( "li{} new_n{} {} {} {}\n", latch_idx, topo_ntk.get_node( ro_sig ), l_info.type, l_info.control, l_info.init );
           }
           latch_idx++;
-        }
-      } );
+        } } );
     }
   }
 
@@ -183,15 +180,15 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
   os << ".names new_n0\n";
   os << "0\n";
 
-  if ( topo_ntk.get_constant( false ) != topo_ntk.get_constant( true ) ) 
+  if ( topo_ntk.get_constant( false ) != topo_ntk.get_constant( true ) )
   {
     os << ".names new_n1\n";
     os << "1\n";
   }
 
   /* write nodes */
-  topo_ntk.foreach_node( [&]( auto const& n ) 
-  {
+  topo_ntk.foreach_node( [&]( auto const& n )
+                         {
 
     if ( topo_ntk.is_constant( n ) || topo_ntk.is_ci( n ) )
       return; /* continue */
@@ -260,12 +257,11 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
       cube.print( topo_ntk.fanin_size( n ), os );
       os << " 1\n";
       count++;
-    }
-  } );
+    } } );
 
   auto latch_idx = 0;
   topo_ntk.foreach_co( [&]( auto const& f, auto index )
-  {
+                       {
     auto f_node = topo_ntk.get_node( f );
     auto const minterm_string = topo_ntk.is_complemented( f ) ? "0" : "1";
     if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> && has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
@@ -292,8 +288,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
           os << fmt::format( ".names {} po{}\n{} 1\n", node_name, index, minterm_string );
       }
       
-    }
-  } );
+    } } );
 
   os << ".end\n";
   os << std::flush;

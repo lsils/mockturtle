@@ -58,11 +58,11 @@ std::vector<float> switching_activity( Ntk const& ntk, unsigned simulation_size 
 
   auto tts = simulate_nodes<kitty::partial_truth_table, Ntk, partial_simulator>( ntk, sim );
 
-  ntk.foreach_node( [&]( auto const& n ) {
+  ntk.foreach_node( [&]( auto const& n )
+                    {
     float ones = static_cast<float>( kitty::count_ones( tts[n] ) );
     float activity = 2.0 * ones / simulation_size * ( simulation_size - ones ) / simulation_size;
-    sw_map[ntk.node_to_index( n )] = activity;
-  } );
+    sw_map[ntk.node_to_index( n )] = activity; } );
 
   return sw_map;
 }

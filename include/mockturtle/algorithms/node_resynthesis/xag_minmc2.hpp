@@ -38,8 +38,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../../utils/index_list.hpp"
 #include "../../networks/xag.hpp"
+#include "../../utils/index_list.hpp"
 #include "../detail/minmc_xags.hpp"
 #include "../equivalence_classes.hpp"
 
@@ -56,9 +56,8 @@ namespace mockturtle::future
 struct xag_minmc_resynthesis_params
 {
   /*! \brief Be verbose. */
-  bool verbose{false};
+  bool verbose{ false };
 };
-
 
 struct xag_minmc_resynthesis_stats
 {
@@ -90,7 +89,8 @@ public:
       kitty::create_from_hex_string( func, vline[0] );
       const auto sindexes = lorina::detail::split( vline[3], "," );
       std::vector<uint32_t> index_list( sindexes.size() );
-      std::transform( sindexes.begin(), sindexes.end(), index_list.begin(), [&]( std::string const& s ) { return static_cast<uint32_t>( std::stoul( s ) ); } );
+      std::transform( sindexes.begin(), sindexes.end(), index_list.begin(), [&]( std::string const& s )
+                      { return static_cast<uint32_t>( std::stoul( s ) ); } );
       db_[6u][*func.cbegin()] = index_list;
       st_.db_size += sizeof( uint64_t ) + sizeof( sindexes ) + sizeof( uint32_t ) * sindexes.size();
     }
@@ -114,8 +114,10 @@ public:
     }
     else
     {
-      repr = *kitty::hybrid_exact_spectral_canonization( function, [&]( auto const& ops ) { trans = ops; } ).cbegin();
-      cache_[num_vars][*function.cbegin()] = {repr, trans};
+      repr = *kitty::hybrid_exact_spectral_canonization( function, [&]( auto const& ops )
+                                                         { trans = ops; } )
+                  .cbegin();
+      cache_[num_vars][*function.cbegin()] = { repr, trans };
     }
 
     const auto it = db_[num_vars].find( repr );
@@ -125,7 +127,8 @@ public:
       return;
     }
 
-    const auto f = apply_spectral_transformations( ntk, trans, std::vector<signal<Ntk>>( begin, end ), [&]( xag_network& ntk, std::vector<signal<Ntk>> const& leaves ) {
+    const auto f = apply_spectral_transformations( ntk, trans, std::vector<signal<Ntk>>( begin, end ), [&]( xag_network& ntk, std::vector<signal<Ntk>> const& leaves )
+                                                   {
       xag_index_list il{it->second};
       std::vector<xag_network::signal> pos;
       insert( ntk, std::begin( leaves ), std::begin( leaves ) + il.num_pis(), il,
@@ -134,8 +137,7 @@ public:
                 pos.push_back( f );
               } );
       assert( pos.size() == 1u );
-      return pos[0u];
-    } );
+      return pos[0u]; } );
 
     fn( f );
   }
@@ -163,8 +165,8 @@ private:
   }
 
 private:
-  std::vector<std::unordered_map<uint64_t, std::vector<uint32_t>>> db_{7u};
-  mutable std::vector<std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<kitty::detail::spectral_operation>>>> cache_{7u};
+  std::vector<std::unordered_map<uint64_t, std::vector<uint32_t>>> db_{ 7u };
+  mutable std::vector<std::unordered_map<uint64_t, std::pair<uint64_t, std::vector<kitty::detail::spectral_operation>>>> cache_{ 7u };
 
 private:
   xag_minmc_resynthesis_params ps_;

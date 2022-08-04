@@ -41,14 +41,14 @@
 #include "../views/binding_view.hpp"
 #include "../views/topo_view.hpp"
 
-#include <lorina/verilog.hpp>
 #include <fmt/format.h>
+#include <lorina/verilog.hpp>
 
 #include <array>
 #include <fstream>
 #include <iostream>
-#include <string>
 #include <optional>
+#include <string>
 
 namespace mockturtle
 {
@@ -63,9 +63,8 @@ std::vector<std::pair<bool, std::string>>
 format_fanin( Ntk const& ntk, node<Ntk> const& n, node_map<std::string, Ntk>& node_names )
 {
   std::vector<std::pair<bool, std::string>> children;
-  ntk.foreach_fanin( n, [&]( auto const& f ) {
-      children.emplace_back( std::make_pair( ntk.is_complemented( f ), node_names[f] ) );
-    });
+  ntk.foreach_fanin( n, [&]( auto const& f )
+                     { children.emplace_back( std::make_pair( ntk.is_complemented( f ), node_names[f] ) ); } );
   return children;
 }
 
@@ -73,7 +72,7 @@ format_fanin( Ntk const& ntk, node<Ntk> const& n, node_map<std::string, Ntk>& no
 
 struct write_verilog_params
 {
-  std::optional<std::string> module_name{std::nullopt};
+  std::optional<std::string> module_name{ std::nullopt };
   std::vector<std::pair<std::string, uint32_t>> input_names;
   std::vector<std::pair<std::string, uint32_t>> output_names;
 };
@@ -128,12 +127,12 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
 
   if constexpr ( is_buffered_network_type_v<Ntk> )
   {
-    writer.on_module_begin( "buffer", {"i"}, {"o"} );
+    writer.on_module_begin( "buffer", { "i" }, { "o" } );
     writer.on_input( "i" );
     writer.on_output( "o" );
     writer.on_module_end();
 
-    writer.on_module_begin( "inverter", {"i"}, {"o"} );
+    writer.on_module_begin( "inverter", { "i" }, { "o" } );
     writer.on_input( "i" );
     writer.on_output( "o" );
     writer.on_module_end();
@@ -144,7 +143,8 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   {
     if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
     {
-      ntk.foreach_pi( [&]( auto const& i, uint32_t index ){
+      ntk.foreach_pi( [&]( auto const& i, uint32_t index )
+                      {
         if ( ntk.has_name( ntk.make_signal( i ) ) )
         {
           xs.emplace_back( ntk.get_name( ntk.make_signal( i ) ) );
@@ -152,8 +152,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
         else
         {
           xs.emplace_back( fmt::format( "x{}", index ) );
-        }
-      });
+        } } );
     }
     else
     {
@@ -166,7 +165,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   }
   else
   {
-    uint32_t ctr{0u};
+    uint32_t ctr{ 0u };
     for ( auto const& [name, width] : ps.input_names )
     {
       inputs.emplace_back( name );
@@ -187,7 +186,8 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   {
     if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
     {
-      ntk.foreach_po( [&]( auto const& o, uint32_t index ){
+      ntk.foreach_po( [&]( auto const& o, uint32_t index )
+                      {
         if ( ntk.has_output_name( index ) )
         {
           ys.emplace_back( ntk.get_output_name( index ) );
@@ -195,8 +195,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
         else
         {
           ys.emplace_back( fmt::format( "y{}", index ) );
-        }
-      });
+        } } );
     }
     else
     {
@@ -209,7 +208,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   }
   else
   {
-    uint32_t ctr{0u};
+    uint32_t ctr{ 0u };
     for ( auto const& [name, width] : ps.output_names )
     {
       outputs.emplace_back( name );
@@ -230,16 +229,15 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   if constexpr ( is_buffered_network_type_v<Ntk> )
   {
     static_assert( has_is_buf_v<Ntk>, "Ntk does not implement the is_buf method" );
-    ntk.foreach_node( [&]( auto const& n ) {
+    ntk.foreach_node( [&]( auto const& n )
+                      {
       if ( ntk.fanin_size( n ) > 0 )
-        ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
-    } );
+        ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) ); } );
   }
   else
   {
-    ntk.foreach_gate( [&]( auto const& n ) {
-      ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
-    } );
+    ntk.foreach_gate( [&]( auto const& n )
+                      { ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) ); } );
   }
 
   std::string module_name = "top";
@@ -258,7 +256,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     }
   }
   writer.on_module_begin( module_name, inputs, outputs );
-  
+
   if ( ps.input_names.empty() )
   {
     writer.on_input( xs );
@@ -291,13 +289,13 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
     node_names[ntk.get_constant( true )] = "1'b1";
 
-  ntk.foreach_pi( [&]( auto const& n, auto i ) {
-    node_names[n] = xs[i];
-  } );
+  ntk.foreach_pi( [&]( auto const& n, auto i )
+                  { node_names[n] = xs[i]; } );
 
-  topo_view ntk_topo{ntk};
+  topo_view ntk_topo{ ntk };
 
-  ntk_topo.foreach_node( [&]( auto const& n ) {
+  ntk_topo.foreach_node( [&]( auto const& n )
+                         {
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
       return true;
 
@@ -395,12 +393,10 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
       writer.on_assign_unknown_gate( node_names[n] );
     }
 
-    return true;
-  } );
+    return true; } );
 
-  ntk.foreach_po( [&]( auto const& f, auto i ) {
-    writer.on_assign_po( ys[i], std::make_pair( ntk.is_complemented( f ), node_names[f] ) );
-  } );
+  ntk.foreach_po( [&]( auto const& f, auto i )
+                  { writer.on_assign_po( ys[i], std::make_pair( ntk.is_complemented( f ), node_names[f] ) ); } );
 
   writer.on_module_end();
 }
@@ -451,7 +447,8 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
   {
     if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
     {
-      ntk.foreach_pi( [&]( auto const& i, uint32_t index ){
+      ntk.foreach_pi( [&]( auto const& i, uint32_t index )
+                      {
         if ( ntk.has_name( ntk.make_signal( i ) ) )
         {
           xs.emplace_back( ntk.get_name( ntk.make_signal( i ) ) );
@@ -459,8 +456,7 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
         else
         {
           xs.emplace_back( fmt::format( "x{}", index ) );
-        }
-      });
+        } } );
     }
     else
     {
@@ -473,7 +469,7 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
   }
   else
   {
-    uint32_t ctr{0u};
+    uint32_t ctr{ 0u };
     for ( auto const& [name, width] : ps.input_names )
     {
       inputs.emplace_back( name );
@@ -494,7 +490,8 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
   {
     if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
     {
-      ntk.foreach_po( [&]( auto const& o, uint32_t index ){
+      ntk.foreach_po( [&]( auto const& o, uint32_t index )
+                      {
         if ( ntk.has_output_name( index ) )
         {
           ys.emplace_back( ntk.get_output_name( index ) );
@@ -502,8 +499,7 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
         else
         {
           ys.emplace_back( fmt::format( "y{}", index ) );
-        }
-      });
+        } } );
     }
     else
     {
@@ -516,7 +512,7 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
   }
   else
   {
-    uint32_t ctr{0u};
+    uint32_t ctr{ 0u };
     for ( auto const& [name, width] : ps.output_names )
     {
       outputs.emplace_back( name );
@@ -534,9 +530,8 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
 
   /* compute which nodes are POs and register index */
   node_map<std::vector<uint32_t>, Ntk, std::unordered_map<typename Ntk::node, std::vector<uint32_t>>> po_nodes( ntk );
-  ntk.foreach_po( [&]( auto const& f, auto i ) {
-    po_nodes[f].push_back( i );
-  } );
+  ntk.foreach_po( [&]( auto const& f, auto i )
+                  { po_nodes[f].push_back( i ); } );
 
   std::vector<std::string> ws;
   node_map<std::string, Ntk> node_names( ntk );
@@ -544,7 +539,7 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
   /* constants */
   if ( ntk.has_binding( ntk.get_constant( false ) ) )
   {
-    node_names[ntk.get_constant( false )] = fmt::format("n{}", ntk.node_to_index( ntk.get_constant( false ) ) );
+    node_names[ntk.get_constant( false )] = fmt::format( "n{}", ntk.node_to_index( ntk.get_constant( false ) ) );
     if ( !po_nodes.has( ntk.get_constant( false ) ) )
     {
       ws.emplace_back( node_names[ntk.get_constant( false )] );
@@ -558,7 +553,7 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
   {
     if ( ntk.has_binding( ntk.get_constant( true ) ) )
     {
-      node_names[ntk.get_constant( true )] = fmt::format("n{}", ntk.node_to_index( ntk.get_constant( true ) ) );
+      node_names[ntk.get_constant( true )] = fmt::format( "n{}", ntk.node_to_index( ntk.get_constant( true ) ) );
       if ( !po_nodes.has( ntk.get_constant( true ) ) )
       {
         ws.emplace_back( node_names[ntk.get_constant( true )] );
@@ -571,12 +566,12 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
   }
 
   /* add wires */
-  ntk.foreach_gate( [&]( auto const& n ) {
+  ntk.foreach_gate( [&]( auto const& n )
+                    {
     if ( !po_nodes.has( n ) )
     {
       ws.emplace_back( fmt::format( "n{}", ntk.node_to_index( n ) ) );
-    }
-  } );
+    } } );
 
   std::string module_name = "top";
   if ( ps.module_name )
@@ -621,13 +616,12 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
     writer.on_wire( ws );
   }
 
-  ntk.foreach_pi( [&]( auto const& n, auto i ) {
-    node_names[n] = xs[i];
-  } );
+  ntk.foreach_pi( [&]( auto const& n, auto i )
+                  { node_names[n] = xs[i]; } );
 
   auto const& gates = ntk.get_library();
 
-  int nDigits = ( int ) std::floor( std::log10( ntk.num_gates() ) );
+  int nDigits = (int)std::floor( std::log10( ntk.num_gates() ) );
   unsigned int length = 0;
   unsigned counter = 0;
 
@@ -636,9 +630,10 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
     length = std::max( length, static_cast<unsigned int>( gate.name.length() ) );
   }
 
-  topo_view ntk_topo{ntk};
+  topo_view ntk_topo{ ntk };
 
-  ntk_topo.foreach_node( [&]( auto const& n ) {
+  ntk_topo.foreach_node( [&]( auto const& n )
+                         {
     if ( po_nodes.has( n ) )
     {
       node_names[n] = ys[po_nodes[n][0]];
@@ -693,8 +688,7 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
       std::cerr << "[e] internal node " << n << " is not mapped.\n";
     }
 
-    return true;
-  } );
+    return true; } );
 
   writer.on_module_end();
 }

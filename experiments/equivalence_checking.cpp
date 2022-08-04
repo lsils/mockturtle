@@ -44,27 +44,26 @@ int main()
   using namespace mockturtle;
 
   std::unordered_map<std::string, double> baseline = {
-    {"adder", 0.00},
-    {"bar", 0.33},
-    {"div", 9.66},
-    {"hyp", 25.70},
-    {"log2", 9.74},
-    {"max", 0.21},
-    {"multiplier", 6.27},
-    {"sin", 1.97},
-    {"sqrt", 5.28},
-    {"square", 2.90},
-    {"arbiter", 0.01},
-    {"cavlc", 0.01},
-    {"ctrl", 0.01},
-    {"dec", 0.00},
-    {"i2c", 0.02},
-    {"int2float", 0.01},
-    {"mem_ctrl", 4.46},
-    {"priority", 0.06},
-    {"router", 0.01},
-    {"voter", 3.54}
-  };
+      { "adder", 0.00 },
+      { "bar", 0.33 },
+      { "div", 9.66 },
+      { "hyp", 25.70 },
+      { "log2", 9.74 },
+      { "max", 0.21 },
+      { "multiplier", 6.27 },
+      { "sin", 1.97 },
+      { "sqrt", 5.28 },
+      { "square", 2.90 },
+      { "arbiter", 0.01 },
+      { "cavlc", 0.01 },
+      { "ctrl", 0.01 },
+      { "dec", 0.00 },
+      { "i2c", 0.02 },
+      { "int2float", 0.01 },
+      { "mem_ctrl", 4.46 },
+      { "priority", 0.06 },
+      { "router", 0.01 },
+      { "voter", 3.54 } };
 
   experiment<std::string, double, double, bool> exp( "equivalence_checking", "benchmark", "abc cec", "runtime", "equivalent" );
 

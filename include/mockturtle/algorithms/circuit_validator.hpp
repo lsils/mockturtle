@@ -33,9 +33,9 @@
 
 #pragma once
 
-#include "../utils/node_map.hpp"
-#include "../utils/index_list.hpp"
 #include "../networks/events.hpp"
+#include "../utils/index_list.hpp"
+#include "../utils/node_map.hpp"
 #include "cnf.hpp"
 
 #include <bill/sat/interface/abc_bsat2.hpp>
@@ -49,16 +49,16 @@ namespace mockturtle
 struct validator_params
 {
   /*! \brief Maximum number of clauses of the SAT solver. (incremental CNF construction) */
-  uint32_t max_clauses{1000};
+  uint32_t max_clauses{ 1000 };
 
   /*! \brief Whether to consider ODC, and how many levels. 0 = No consideration. -1 = Consider TFO until PO. */
-  int32_t odc_levels{0};
+  int32_t odc_levels{ 0 };
 
   /*! \brief Conflict limit of the SAT solver. */
-  uint32_t conflict_limit{1000};
+  uint32_t conflict_limit{ 1000 };
 
   /*! \brief Seed for randomized solving. */
-  uint32_t random_seed{0};
+  uint32_t random_seed{ 0 };
 };
 
 template<class Ntk, bill::solvers Solver = bill::solvers::glucose_41, bool use_pushpop = false, bool randomize = false, bool use_odc = false>
@@ -118,10 +118,10 @@ public:
       static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
     }
 
-    add_event = ntk.events().register_add_event( [&]( node const& n ) {
+    add_event = ntk.events().register_add_event( [&]( node const& n )
+                                                 {
       (void)n;
-      literals.resize();
-    } );
+      literals.resize(); } );
 
     /* constants are mapped to var 0 */
     literals[ntk.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
@@ -131,9 +131,8 @@ public:
     }
 
     /* first indexes (starting from 1) are for PIs */
-    ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      literals[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive );
-    } );
+    ntk.foreach_pi( [&]( auto const& n, auto i )
+                    { literals[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive ); } );
 
     restart();
   }
@@ -237,31 +236,30 @@ public:
 
     if constexpr ( std::is_same_v<index_list_type, abc_index_list> || std::is_same_v<index_list_type, xag_index_list<true>> || std::is_same_v<index_list_type, xag_index_list<false>> )
     {
-      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1 ){
+      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1 )
+                            {
         uint32_t const node_pos0 = id_lit0 >> 1;
         uint32_t const node_pos1 = id_lit1 >> 1;
         assert( node_pos0 < lits.size() );
         assert( node_pos1 < lits.size() );
-        lits.emplace_back( add_clauses_for_2input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), std::nullopt, id_lit0 < id_lit1 ? AND : XOR ) );
-      });
+        lits.emplace_back( add_clauses_for_2input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), std::nullopt, id_lit0 < id_lit1 ? AND : XOR ) ); } );
     }
     else // mig_index_list
     {
-      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1, uint32_t id_lit2 ){
+      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1, uint32_t id_lit2 )
+                            {
         uint32_t const node_pos0 = id_lit0 >> 1;
         uint32_t const node_pos1 = id_lit1 >> 1;
         uint32_t const node_pos2 = id_lit2 >> 1;
         assert( node_pos0 < lits.size() );
         assert( node_pos1 < lits.size() );
         assert( node_pos2 < lits.size() );
-        lits.emplace_back( add_clauses_for_3input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), lit_not_cond( lits[node_pos2], id_lit2 & 0x1 ), std::nullopt, MAJ ) );
-      });
+        lits.emplace_back( add_clauses_for_3input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), lit_not_cond( lits[node_pos2], id_lit2 & 0x1 ), std::nullopt, MAJ ) ); } );
     }
 
     bill::lit_type lit_out;
-    id_list.foreach_po( [&]( uint32_t id_lit ){
-      lit_out = lit_not_cond( lits[id_lit >> 1], ( id_lit & 0x1 ) ^ inverted );
-    });
+    id_list.foreach_po( [&]( uint32_t id_lit )
+                        { lit_out = lit_not_cond( lits[id_lit >> 1], ( id_lit & 0x1 ) ^ inverted ); } );
 
     auto const res = validate( root, lit_out );
 
@@ -301,7 +299,7 @@ public:
         {
           push();
         }
-        res = solve( {build_odc_window( root, ~literals[root] ), lit_not_cond( literals[root], value )} );
+        res = solve( { build_odc_window( root, ~literals[root] ), lit_not_cond( literals[root], value ) } );
         if constexpr ( use_pushpop )
         {
           pop();
@@ -309,12 +307,12 @@ public:
       }
       else
       {
-        res = solve( {lit_not_cond( literals[root], value )} );
+        res = solve( { lit_not_cond( literals[root], value ) } );
       }
     }
     else
     {
-      res = solve( {lit_not_cond( literals[root], value )} );
+      res = solve( { lit_not_cond( literals[root], value ) } );
     }
 
     if ( solver.num_clauses() > ps.max_clauses && num_invoke >= MIN_NUM_INVOKE )
@@ -324,9 +322,9 @@ public:
     return res;
   }
 
-  /*! \brief Generate pattern(s) for signal `f` to be `value`, optionally blocking several known patterns. 
+  /*! \brief Generate pattern(s) for signal `f` to be `value`, optionally blocking several known patterns.
    *
-   * Requires `use_pushpop = true`, which is only supported for `bsat2` and `z3`. If `bsat2` is used, 
+   * Requires `use_pushpop = true`, which is only supported for `bsat2` and `z3`. If `bsat2` is used,
    * and if the network has more than 2048 PIs, the `BUFFER_SIZE` in `lib/bill/sat/interface/abc_bsat2.hpp`
    * has to be increased to at least `ntk.num_pis()`.
    *
@@ -357,7 +355,7 @@ public:
       block_pattern( pattern );
     }
 
-    std::vector<bill::lit_type> assumptions( {lit_not_cond( literals[root], !value )} );
+    std::vector<bill::lit_type> assumptions( { lit_not_cond( literals[root], !value ) } );
     if constexpr ( use_odc )
     {
       if ( ps.odc_levels != 0 )
@@ -414,7 +412,7 @@ private:
     constructed.reset();
 
     solver.add_variables( ntk.num_pis() + 1 );
-    solver.add_clause( {~literals[ntk.get_constant( false )]} );
+    solver.add_clause( { ~literals[ntk.get_constant( false )] } );
   }
 
   bill::lit_type construct( node const& n )
@@ -429,39 +427,35 @@ private:
     }
 
     std::vector<bill::lit_type> child_lits;
-    ntk.foreach_fanin( n, [&]( auto const& f ) {
+    ntk.foreach_fanin( n, [&]( auto const& f )
+                       {
       if ( !constructed.has( f ) && !ntk.is_pi( ntk.get_node( f ) ) && !ntk.is_constant( ntk.get_node( f ) ) )
       {
         construct( ntk.get_node( f ) );
       }
-      child_lits.push_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
-    } );
+      child_lits.push_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) ); } );
     bill::lit_type node_lit = literals[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
     constructed[n] = true;
 
     if ( ntk.is_and( n ) )
     {
-      detail::on_and<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_and<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause )
+                                       { solver.add_clause( clause ); } );
     }
     else if ( ntk.is_xor( n ) )
     {
-      detail::on_xor<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_xor<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause )
+                                       { solver.add_clause( clause ); } );
     }
     else if ( ntk.is_xor3( n ) )
     {
-      detail::on_xor3<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_xor3<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause )
+                                        { solver.add_clause( clause ); } );
     }
     else if ( ntk.is_maj( n ) )
     {
-      detail::on_maj<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_maj<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause )
+                                       { solver.add_clause( clause ); } );
     }
     return node_lit;
   }
@@ -490,15 +484,13 @@ private:
     auto nlit = c ? *c : bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
     if ( type == AND )
     {
-      detail::on_and<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_and<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause )
+                                       { solver.add_clause( clause ); } );
     }
     else if ( type == XOR )
     {
-      detail::on_xor<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_xor<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause )
+                                       { solver.add_clause( clause ); } );
     }
 
     return nlit;
@@ -511,15 +503,13 @@ private:
     auto nlit = d ? *d : bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
     if ( type == MAJ )
     {
-      detail::on_maj<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_maj<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause )
+                                       { solver.add_clause( clause ); } );
     }
     else if ( type == XOR )
     {
-      detail::on_xor3<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_xor3<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause )
+                                        { solver.add_clause( clause ); } );
     }
 
     return nlit;
@@ -562,7 +552,7 @@ private:
         {
           push();
         }
-        res = solve( {build_odc_window( root, lit )} );
+        res = solve( { build_odc_window( root, lit ) } );
         if constexpr ( use_pushpop )
         {
           pop();
@@ -571,17 +561,17 @@ private:
       else
       {
         auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-        solver.add_clause( {literals[root], lit, nlit} );
-        solver.add_clause( {~( literals[root] ), ~lit, nlit} );
-        res = solve( {~nlit} );
+        solver.add_clause( { literals[root], lit, nlit } );
+        solver.add_clause( { ~( literals[root] ), ~lit, nlit } );
+        res = solve( { ~nlit } );
       }
     }
     else
     {
       auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-      solver.add_clause( {literals[root], lit, nlit} );
-      solver.add_clause( {~( literals[root] ), ~lit, nlit} );
-      res = solve( {~nlit} );
+      solver.add_clause( { literals[root], lit, nlit } );
+      solver.add_clause( { ~( literals[root] ), ~lit, nlit } );
+      res = solve( { ~nlit } );
     }
 
     return res;
@@ -591,9 +581,8 @@ private:
   {
     assert( pattern.size() == ntk.num_pis() );
     std::vector<bill::lit_type> clause;
-    ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      clause.emplace_back( lit_not_cond( literals[n] , pattern[i] ) );
-    } );
+    ntk.foreach_pi( [&]( auto const& n, auto i )
+                    { clause.emplace_back( lit_not_cond( literals[n], pattern[i] ) ); } );
     solver.add_clause( clause );
   }
 
@@ -613,12 +602,12 @@ private:
     duplicate_fanout_cone_rec( root, lits, 1 );
 
     /* miter for POs */
-    ntk.foreach_po( [&]( auto const& f ) {
+    ntk.foreach_po( [&]( auto const& f )
+                    {
       if ( !lits.has( ntk.get_node( f ) ) )
         return true; /* PO not in TFO, skip */
       add_miter_clauses( ntk.get_node( f ), lits, miter );
-      return true; /* next */
-    } );
+      return true; /* next */ } );
 
     assert( miter.size() > 0 && "max fanout depth < odc_levels (-1 is infinity) and there is no PO in TFO cone" );
     auto nlit2 = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
@@ -630,7 +619,8 @@ private:
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   void duplicate_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk> const& lits, int32_t level )
   {
-    ntk.foreach_fanout( n, [&]( auto const& fo ) {
+    ntk.foreach_fanout( n, [&]( auto const& fo )
+                        {
       if ( ntk.visited( fo ) == ntk.trav_id() )
         return true; /* skip */
       ntk.set_visited( fo, ntk.trav_id() );
@@ -659,14 +649,14 @@ private:
         return true;
 
       duplicate_fanout_cone_rec( fo, lits, level + 1 );
-      return true; /* next */
-    } );
+      return true; /* next */ } );
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   void make_lit_fanout_cone_rec( node const& n, unordered_node_map<bill::lit_type, Ntk>& lits, std::vector<bill::lit_type>& miter, int32_t level )
   {
-    ntk.foreach_fanout( n, [&]( auto const& fo ) {
+    ntk.foreach_fanout( n, [&]( auto const& fo )
+                        {
       if ( ntk.visited( fo ) == ntk.trav_id() )
         return true; /* skip */
       ntk.set_visited( fo, ntk.trav_id() );
@@ -685,8 +675,7 @@ private:
       }
 
       make_lit_fanout_cone_rec( fo, lits, miter, level + 1 );
-      return true; /* next */
-    } );
+      return true; /* next */ } );
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>

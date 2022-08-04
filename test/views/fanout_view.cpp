@@ -6,6 +6,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -13,8 +14,6 @@
 #include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
 #include <mockturtle/views/fanout_view.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
-
 
 using namespace mockturtle;
 
@@ -62,31 +61,36 @@ void test_fanout_computation()
   fanout_view fanout_ntk{ ntk };
   {
     nodes_t nodes;
-    fanout_ntk.foreach_fanout( ntk.get_node( a ), [&]( const auto& p ) { nodes.insert( p ); } );
+    fanout_ntk.foreach_fanout( ntk.get_node( a ), [&]( const auto& p )
+                               { nodes.insert( p ); } );
     CHECK( nodes == nodes_t{ ntk.get_node( f1 ), ntk.get_node( f2 ) } );
   }
 
   {
     nodes_t nodes;
-    fanout_ntk.foreach_fanout( ntk.get_node( b ), [&]( const auto& p ) { nodes.insert( p ); } );
+    fanout_ntk.foreach_fanout( ntk.get_node( b ), [&]( const auto& p )
+                               { nodes.insert( p ); } );
     CHECK( nodes == nodes_t{ ntk.get_node( f1 ), ntk.get_node( f3 ) } );
   }
 
   {
     nodes_t nodes;
-    fanout_ntk.foreach_fanout( ntk.get_node( f1 ), [&]( const auto& p ) { nodes.insert( p ); } );
+    fanout_ntk.foreach_fanout( ntk.get_node( f1 ), [&]( const auto& p )
+                               { nodes.insert( p ); } );
     CHECK( nodes == nodes_t{ ntk.get_node( f2 ), ntk.get_node( f3 ) } );
   }
 
   {
     nodes_t nodes;
-    fanout_ntk.foreach_fanout( ntk.get_node( f2 ), [&]( const auto& p ) { nodes.insert( p ); } );
+    fanout_ntk.foreach_fanout( ntk.get_node( f2 ), [&]( const auto& p )
+                               { nodes.insert( p ); } );
     CHECK( nodes == nodes_t{ ntk.get_node( f4 ) } );
   }
 
   {
     nodes_t nodes;
-    fanout_ntk.foreach_fanout( ntk.get_node( f3 ), [&]( const auto& p ) { nodes.insert( p ); } );
+    fanout_ntk.foreach_fanout( ntk.get_node( f3 ), [&]( const auto& p )
+                               { nodes.insert( p ); } );
     CHECK( nodes == nodes_t{ ntk.get_node( f4 ) } );
   }
 }
@@ -114,15 +118,15 @@ TEST_CASE( "compute fanouts during node construction after move ctor", "[fanout_
   fxag.create_po( f );
 
   using node = node<xag_network>;
-  xag.foreach_node( [&]( node const& n ) {
+  xag.foreach_node( [&]( node const& n )
+                    {
     std::set<node> fanouts;
     fxag.foreach_fanout( n, [&]( node const& fo ) {
       fanouts.insert( fo );
     } );
 
     /* `fanout_size` counts internal and external fanouts (POs), but `fanouts` only contains internal fanouts */
-    CHECK( fanouts.size() + ( xag.get_node( f ) == n ) == xag.fanout_size( n ) );
-  } );
+    CHECK( fanouts.size() + ( xag.get_node( f ) == n ) == xag.fanout_size( n ) ); } );
 }
 
 TEST_CASE( "compute fanouts during node construction after copy ctor", "[fanout_view]" )
@@ -139,15 +143,15 @@ TEST_CASE( "compute fanouts during node construction after copy ctor", "[fanout_
   fxag.create_po( f );
 
   using node = node<xag_network>;
-  xag.foreach_node( [&]( node const& n ) {
+  xag.foreach_node( [&]( node const& n )
+                    {
     std::set<node> fanouts;
     fxag.foreach_fanout( n, [&]( node const& fo ) {
       fanouts.insert( fo );
     } );
 
     /* `fanout_size` counts internal and external fanouts (POs), but `fanouts` only contains internal fanouts */
-    CHECK( fanouts.size() + ( xag.get_node( f ) == n ) == xag.fanout_size( n ) );
-  } );
+    CHECK( fanouts.size() + ( xag.get_node( f ) == n ) == xag.fanout_size( n ) ); } );
 }
 
 TEST_CASE( "compute fanouts during node construction after copy assignment", "[fanout_view]" )
@@ -167,15 +171,15 @@ TEST_CASE( "compute fanouts during node construction after copy assignment", "[f
   fxag.create_po( f );
 
   using node = node<xag_network>;
-  xag.foreach_node( [&]( node const& n ) {
+  xag.foreach_node( [&]( node const& n )
+                    {
     std::set<node> fanouts;
     fxag.foreach_fanout( n, [&]( node const& fo ) {
       fanouts.insert( fo );
     } );
 
     /* `fanout_size` counts internal and external fanouts (POs), but `fanouts` only contains internal fanouts */
-    CHECK( fanouts.size() + ( xag.get_node( f ) == n ) == xag.fanout_size( n ) );
-  } );
+    CHECK( fanouts.size() + ( xag.get_node( f ) == n ) == xag.fanout_size( n ) ); } );
 }
 
 TEST_CASE( "compute fanouts during node construction after move assignment", "[fanout_view]" )
@@ -195,15 +199,15 @@ TEST_CASE( "compute fanouts during node construction after move assignment", "[f
   fxag.create_po( f );
 
   using node = node<xag_network>;
-  xag.foreach_node( [&]( node const& n ) {
+  xag.foreach_node( [&]( node const& n )
+                    {
     std::set<node> fanouts;
     fxag.foreach_fanout( n, [&]( node const& fo ) {
       fanouts.insert( fo );
     } );
 
     /* `fanout_size` counts internal and external fanouts (POs), but `fanouts` only contains internal fanouts */
-    CHECK( fanouts.size() + ( xag.get_node( f ) == n ) == xag.fanout_size( n ) );
-  } );
+    CHECK( fanouts.size() + ( xag.get_node( f ) == n ) == xag.fanout_size( n ) ); } );
 }
 
 TEST_CASE( "substitute node with dependency in fanout view", "[fanout_view]" )
@@ -223,13 +227,13 @@ TEST_CASE( "substitute node with dependency in fanout view", "[fanout_view]" )
 
   /**
    * issue #545
-   * 
+   *
    *      f3
    *     /  \
    *    /   f2
    *    \  /  \
    *  1->f1    a
-   * 
+   *
    * stack:
    * 1. push (f3->f2)
    * 2. push (f2->a)
@@ -242,9 +246,8 @@ TEST_CASE( "substitute node with dependency in fanout view", "[fanout_view]" )
   CHECK( faig.is_dead( faig.get_node( f1 ) ) );
   CHECK( faig.is_dead( faig.get_node( f2 ) ) );
   CHECK( faig.is_dead( faig.get_node( f3 ) ) );
-  aig.foreach_po( [&]( auto s ) {
-    CHECK( aig.is_dead( aig.get_node( s ) ) == false );
-  } );
+  aig.foreach_po( [&]( auto s )
+                  { CHECK( aig.is_dead( aig.get_node( s ) ) == false ); } );
 }
 
 TEST_CASE( "substitute node with complemented node in fanout view", "[fanout_view]" )
