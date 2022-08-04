@@ -137,6 +137,7 @@ def git_authors( file ):
 
 # find all `.hpp` files
 hpp_files = find_files( 'include/', '.hpp' )
+cpp_files = find_files( 'experiments/', '.cpp' )
 
 # prepare regular expression patterns
 copyright_header_pattern = re.compile( copyright_header )
@@ -161,6 +162,31 @@ for path in hpp_files:
 
     # update file header if necessary
     found, new_content = match_file_header( new_content, file_header_pattern, filename, authors )
+
+    # rewrite the file
+    if ( content != new_content ):
+        print( "create backup ", path + "~" )
+        write_file( path + "~", [ content ] )
+
+        print( "update file ", path )
+        write_file( path, [ new_content ] )
+
+for path in cpp_files:
+    filename = os.path.basename( path )
+
+    # determine authors of file
+    authors = git_authors( path )
+
+    content = read_file( path )
+    content = '\n'.join( content )
+    new_content = content
+
+    # update copyright header if necessary
+    copyright_header_found, new_content = match_replace( new_content, copyright_header_pattern, copyright_header_replace )
+
+    # add copyright header if not found
+    if not copyright_header_found:
+        new_content = ''.join( [ copyright_header_replace, new_content ] )
 
     # rewrite the file
     if ( content != new_content ):
