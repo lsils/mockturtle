@@ -42,7 +42,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
-#include <string>
+#include <cstring>
 
 namespace mockturtle
 {
@@ -105,12 +105,12 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
   /* HEADER */
   char string_buffer[1024];
   sprintf( string_buffer, "aig %u %u %u %u %u\n", M, aig.num_pis(), /*latches*/ 0, aig.num_pos(), aig.num_gates() );
-  os.write( &string_buffer[0], sizeof( unsigned char ) * strlen( string_buffer ) );
+  os.write( &string_buffer[0], sizeof( unsigned char ) * std::strlen( string_buffer ) );
 
   /* POs */
   aig.foreach_po( [&]( signal const& f ) {
     sprintf( string_buffer, "%u\n", uint32_t( 2 * aig.node_to_index( aig.get_node( f ) ) + aig.is_complemented( f ) ) );
-    os.write( &string_buffer[0], sizeof( unsigned char ) * strlen( string_buffer ) );
+    os.write( &string_buffer[0], sizeof( unsigned char ) * std::strlen( string_buffer ) );
   } );
 
   /* GATES */
@@ -150,7 +150,7 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
       sprintf( string_buffer, "i%u %s\n",
                uint32_t( index ),
                aig.get_name( aig.make_signal( i ) ).c_str() );
-      os.write( &string_buffer[0], sizeof( unsigned char ) * strlen( string_buffer ) );
+      os.write( &string_buffer[0], sizeof( unsigned char ) * std::strlen( string_buffer ) );
     } );
   }
   if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
@@ -162,7 +162,7 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
       sprintf( string_buffer, "o%u %s\n",
                uint32_t( index ),
                aig.get_output_name( index ).c_str() );
-      os.write( &string_buffer[0], sizeof( unsigned char ) * strlen( string_buffer ) );
+      os.write( &string_buffer[0], sizeof( unsigned char ) * std::strlen( string_buffer ) );
     } );
   }
 
