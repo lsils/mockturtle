@@ -6,6 +6,6 @@ sphinx:
 formats: []
 
 python:
-  version: 3.7
+  version: 3.9.13
   install:
     - requirements: docs/requirements.txt
