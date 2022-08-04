@@ -40,7 +40,7 @@
 
 #pragma once
 
-#include <mockturtle/networks/aig.hpp>
+#include "../networks/aig.hpp"
 #include <parallel_hashmap/phmap_dump.h>
 #include <fstream>
 

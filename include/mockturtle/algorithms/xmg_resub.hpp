@@ -36,8 +36,8 @@
 #pragma once
 #include "dont_cares.hpp"
 #include <kitty/operations.hpp>
-#include <mockturtle/algorithms/resubstitution.hpp>
-#include <mockturtle/networks/xmg.hpp>
+#include "resubstitution.hpp"
+#include "../networks/xmg.hpp"
 
 namespace mockturtle
 {

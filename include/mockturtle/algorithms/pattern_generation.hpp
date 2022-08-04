@@ -38,10 +38,10 @@
 #include <bill/sat/interface/abc_bsat2.hpp>
 #include <bill/sat/interface/z3.hpp>
 #include <kitty/partial_truth_table.hpp>
-#include <mockturtle/algorithms/circuit_validator.hpp>
-#include <mockturtle/algorithms/dont_cares.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/networks/aig.hpp>
+#include "circuit_validator.hpp"
+#include "dont_cares.hpp"
+#include "simulation.hpp"
+#include "../networks/aig.hpp"
 #include <random>
 
 namespace mockturtle

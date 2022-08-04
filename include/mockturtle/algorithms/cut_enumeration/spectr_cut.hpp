@@ -46,7 +46,7 @@
 #include <kitty/constructors.hpp>
 #include <kitty/spectral.hpp>
 #include <kitty/static_truth_table.hpp>
-#include <mockturtle/utils/cuts.hpp>
+#include "../../utils/cuts.hpp"
 
 namespace mockturtle
 {

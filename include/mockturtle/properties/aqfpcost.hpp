@@ -41,7 +41,7 @@
 #include "../utils/hash_functions.hpp"
 #include "../views/fanout_view.hpp"
 
-#include <mockturtle/algorithms/aqfp/aqfp_assumptions.hpp>
+#include "../algorithms/aqfp/aqfp_assumptions.hpp"
 
 namespace mockturtle
 {

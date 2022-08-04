@@ -36,8 +36,8 @@
 
 #include "dont_cares.hpp"
 #include <kitty/operations.hpp>
-#include <mockturtle/algorithms/resubstitution.hpp>
-#include <mockturtle/networks/xag.hpp>
+#include "resubstitution.hpp"
+#include "../networks/xag.hpp"
 
 namespace mockturtle
 {

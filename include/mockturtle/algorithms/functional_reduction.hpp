@@ -40,9 +40,9 @@
 #include <bill/sat/interface/abc_bsat2.hpp>
 #include <kitty/partial_truth_table.hpp>
 
-#include <mockturtle/algorithms/circuit_validator.hpp>
-#include <mockturtle/algorithms/simulation.hpp>
-#include <mockturtle/io/write_patterns.hpp>
+#include "circuit_validator.hpp"
+#include "simulation.hpp"
+#include "../io/write_patterns.hpp"
 
 namespace mockturtle
 {

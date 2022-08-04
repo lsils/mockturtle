@@ -35,8 +35,8 @@
 
 #pragma once
 
-#include <mockturtle/algorithms/resubstitution.hpp>
-#include <mockturtle/networks/aig.hpp>
+#include "resubstitution.hpp"
+#include "../networks/aig.hpp"
 
 namespace mockturtle
 {
