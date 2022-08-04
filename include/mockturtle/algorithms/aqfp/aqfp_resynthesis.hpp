@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,10 +27,8 @@
   \file aqfp_resynthesis.hpp
   \brief Resynthesis of path balanced networks
 
-  \author Heinz Riener
-  \author Mathias Soeken
-  \author Max Austin
-  \author Dewmini Marakkalage
+  \author Dewmini Sudara Marakkalage
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

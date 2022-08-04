@@ -27,9 +27,7 @@
   \file random_network.hpp
   \brief Generate random logic networks
 
-  \author Heinz Riener
-  \author Mathias Soeken
-  \author Siang-Yun Lee
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

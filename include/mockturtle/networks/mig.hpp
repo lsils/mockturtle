@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,11 +27,14 @@
   \file mig.hpp
   \brief MIG logic network implementation
 
+  \author Bruno Schmitt
   \author Eleonora Testa
+  \author Hanyu Wang
   \author Heinz Riener
   \author Jinzheng Tu
   \author Mathias Soeken
   \author Max Austin
+  \author Siang-Yun (Sonia) Lee
   \author Walter Lau Neto
 */
 

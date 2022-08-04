@@ -28,7 +28,7 @@
   \brief Network debugging utilities
 
   \author Heinz Riener
-  \author Siang-Yun Lee
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

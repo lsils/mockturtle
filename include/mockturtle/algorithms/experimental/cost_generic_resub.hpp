@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,6 @@
   \file cost_generic_resub.hpp
   \brief generic widnowing algorithm with customized cost function
 
-  \author Siang-Yun (Sonia) Lee
   \author Hanyu Wang
 */
 

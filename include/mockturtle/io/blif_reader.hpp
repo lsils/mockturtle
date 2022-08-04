@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,10 +27,12 @@
   \file blif_reader.hpp
   \brief Lorina reader for BLIF files
 
+  \author Andrea Costamagna
   \author Heinz Riener
+  \author Marcel Walter
   \author Mathias Soeken
   \author Max Austin
-  \author Andrea Costamagna
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

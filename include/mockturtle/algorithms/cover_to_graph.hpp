@@ -26,7 +26,9 @@
 /*!
   \file cover_to_graph.hpp
   \brief transforms a cover data structure into another network type
+
   \author Andrea Costamagna
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once

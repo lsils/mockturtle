@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,8 +27,8 @@
   \file genlib_reader.hpp
   \brief Reader visitor for GENLIB files
 
-  \author Heinz Riener
   \author Alessandro Tempia Calvino
+  \author Heinz Riener
 */
 
 #pragma once

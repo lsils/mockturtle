@@ -27,7 +27,7 @@
   \file testcase_minimizer.hpp
   \brief Minimize testcase for debugging
 
-  \author Siang-Yun Lee
+  \author Siang-Yun (Sonia) Lee
 */
 
 #include "../io/write_verilog.hpp"

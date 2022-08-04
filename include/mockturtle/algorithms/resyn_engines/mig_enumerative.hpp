@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,8 +27,9 @@
   \file mig_enumerative.hpp
   \brief MIG enumerative resynthesis
 
+  \author Hanyu Wang
   \author Siang-Yun (Sonia) Lee
-  
+
   Based on previous implementation of MIG resubstitution by 
   Eleonora Testa, Heinz Riener, and Mathias Soeken
 */

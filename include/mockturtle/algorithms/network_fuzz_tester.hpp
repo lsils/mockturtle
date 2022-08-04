@@ -28,7 +28,7 @@
   \brief Network fuzz tester
 
   \author Heinz Riener
-  \author Siang-Yun Lee
+  \author Siang-Yun (Sonia) Lee
 */
 
 #include "../io/write_verilog.hpp"
