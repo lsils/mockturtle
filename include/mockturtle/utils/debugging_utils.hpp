@@ -274,7 +274,7 @@ inline uint64_t count_reachable_dead_nodes_from_node( Ntk const& ntk, typename N
  * network have at least one fanin being dead.
  */
 template<typename Ntk>
-uint64_t count_nodes_with_dead_fanins( Ntk const& ntk, typename Ntk::node const& n )
+uint64_t count_nodes_with_dead_fanins( Ntk const& ntk )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin function" );
