@@ -37,6 +37,7 @@
 #include <fmt/format.h>
 #include <kitty/kitty.hpp>
 
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
