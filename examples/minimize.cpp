@@ -2,11 +2,11 @@
  * testcase minimizer to minimize bug-triggering testcases.
  */
 
+#include <mockturtle/algorithms/equivalence_checking.hpp>
+#include <mockturtle/algorithms/miter.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/utils/debugging_utils.hpp>
 #include <mockturtle/views/color_view.hpp>
-#include <mockturtle/algorithms/equivalence_checking.hpp>
-#include <mockturtle/algorithms/miter.hpp>
 
 // algorithm under test
 #include <mockturtle/algorithms/aig_resub.hpp>
@@ -19,7 +19,7 @@ using namespace mockturtle;
 
 int main( int argc, char* argv[] )
 {
-  if( argc != 2 )
+  if ( argc != 2 )
   {
     std::cout << "Please give exactly one argument, which is the filename of the initial testcase (without extension)\n";
     std::cout << "For example: ./minimize fuzz\n";
@@ -27,7 +27,8 @@ int main( int argc, char* argv[] )
   }
 
   /* Use this lambda function for debugging mockturtle algorithms */
-  auto opt = [&]( aig_network aig ) -> bool {
+  auto opt = [&]( aig_network aig ) -> bool
+  {
     aig_network const aig_copy = aig.clone();
 
     resubstitution_params ps;
