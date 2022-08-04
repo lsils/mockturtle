@@ -1,5 +1,5 @@
-#include <lorina/aiger.hpp>
 #include <mockturtle/mockturtle.hpp>
+#include <lorina/aiger.hpp>
 
 int main()
 {
@@ -12,8 +12,10 @@ int main()
   }
 
   auto const cuts = cut_enumeration( aig );
-  aig.foreach_node( [&]( auto node )
-                    { std::cout << cuts.cuts( aig.node_to_index( node ) ) << "\n"; } );
+  aig.foreach_node( [&]( auto node ) {
+    std::cout << cuts.cuts( aig.node_to_index( node ) ) << "\n";
+  } );
 
   return 0;
 }
+

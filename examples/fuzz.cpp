@@ -4,8 +4,8 @@
 // common
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/utils/debugging_utils.hpp>
 #include <mockturtle/views/color_view.hpp>
+#include <mockturtle/utils/debugging_utils.hpp>
 
 // algorithm under test
 #include <mockturtle/algorithms/aig_resub.hpp>
@@ -23,8 +23,7 @@ using namespace mockturtle;
 
 int main()
 {
-  auto opt = [&]( aig_network aig ) -> bool
-  {
+  auto opt = [&]( aig_network aig ) -> bool {
     aig_network const aig_copy = aig.clone();
 
     resubstitution_params ps;
@@ -53,7 +52,7 @@ int main()
   ps_fuzz.file_format = fuzz_tester_params::aiger;
   ps_fuzz.filename = "fuzz.aig";
 
-  network_fuzz_tester<aig_network, decltype( gen )> fuzzer( gen, ps_fuzz );
+  network_fuzz_tester<aig_network, decltype(gen)> fuzzer( gen, ps_fuzz );
   fuzzer.run( opt );
 
   return 0;

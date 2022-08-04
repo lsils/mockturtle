@@ -1,19 +1,19 @@
 /* This example code makes it easy to visualize small AIG benchmarks.
  */
 
-#include <fmt/format.h>
-#include <lorina/aiger.hpp>
-#include <lorina/verilog.hpp>
+#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/io/write_dot.hpp>
-#include <mockturtle/networks/aig.hpp>
+#include <lorina/aiger.hpp>
+#include <lorina/verilog.hpp>
+#include <fmt/format.h>
 
 using namespace mockturtle;
 
 int main( int argc, char* argv[] )
 {
-  if ( argc != 2 )
+  if( argc != 2 )
   {
     std::cout << "[e] Please give exactly one argument, which is the AIGER or Verilog file to be visualized\n";
     std::cout << "    For example: ./draw test.aig\n";
