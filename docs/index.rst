@@ -21,6 +21,7 @@ Welcome to mockturtle's documentation!
    philosophy
    network
    implementations
+   sequential
    views
    events
 

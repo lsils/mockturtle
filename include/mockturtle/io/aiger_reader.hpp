@@ -34,6 +34,7 @@
 #pragma once
 
 #include "../networks/aig.hpp"
+#include "../networks/sequential.hpp"
 #include "../traits.hpp"
 #include <lorina/aiger.hpp>
 
@@ -101,10 +102,11 @@ public:
       _ntk.create_po( signal );
     }
 
-    if constexpr ( has_create_ri_v<Ntk> && has_create_ro_v<Ntk> )
+    if constexpr ( has_create_ri_v<Ntk> )
     {
-      for ( auto latch : latches )
+      for ( auto i = 0u; i < latches.size(); ++i )
       {
+        auto& latch = latches[i];
         auto const lit = std::get<0>( latch );
         auto const reset = std::get<1>( latch );
 
@@ -119,7 +121,10 @@ public:
           _ntk.set_name( signal, std::get<2>( latch ) + "_next" );
         }
 
-        _ntk.create_ri( signal, reset );
+        _ntk.create_ri( signal );
+        register_t reg;
+        reg.init = reset;
+        _ntk.set_register( i, reg );
       }
     }
   }
@@ -143,7 +148,7 @@ public:
       signals.push_back( _ntk.create_pi() );
     }
 
-    if constexpr ( has_create_ri_v<Ntk> && has_create_ro_v<Ntk> )
+    if constexpr ( has_create_ro_v<Ntk> )
     {
       /* create latch outputs (ro) */
       for ( auto i = 0u; i < num_latches; ++i )

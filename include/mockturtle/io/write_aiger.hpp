@@ -99,12 +99,11 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-  assert( aig.num_latches() == 0u );
-  uint32_t const M = aig.num_cis() + aig.num_gates() + aig.num_latches();
+  uint32_t const M = aig.num_cis() + aig.num_gates();
 
   /* HEADER */
   char string_buffer[1024];
-  sprintf( string_buffer, "aig %u %u %u %u %u\n", M, aig.num_pis(), aig.num_latches(), aig.num_pos(), aig.num_gates() );
+  sprintf( string_buffer, "aig %u %u %u %u %u\n", M, aig.num_pis(), /*latches*/0, aig.num_pos(), aig.num_gates() );
   os.write( &string_buffer[0], sizeof( unsigned char )*strlen( string_buffer ) );
 
   /* POs */

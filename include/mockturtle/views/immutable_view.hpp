@@ -65,7 +65,7 @@ public:
   signal create_pi() = delete;
   void create_po( signal const& s ) = delete;
   signal create_ro() = delete;
-  void create_ri( signal const& s, int8_t reset = 0 ) = delete;
+  void create_ri( signal const& s ) = delete;
   signal create_buf( signal const& f ) = delete;
   signal create_not( signal const& f ) = delete;
   signal create_and( signal const& f, signal const& g ) = delete;

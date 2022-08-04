@@ -83,6 +83,13 @@ inline constexpr bool implements_mapping_interface_v = has_has_mapping_v<Ntk> &&
  * For the latter case, this view requires more memory to also store the cells'
  * truth tables.
  *
+ * These methods are used to represent a mapping that is annotated to a
+ * subject graph.  The interface can, e.g., be used for LUT mapping or standard
+ * cell mapping.  For a common terminology, we call a collection of nodes that
+ * belong to the same unit a cell, which has a single root.  The *mapped node* is
+ * the cell root.  A cell root, and therefore the cell it represents, may be
+ * assigned a function by means of a truth table.
+ *
  * **Required network functions:**
  * - `size`
  * - `node_to_index`
@@ -154,16 +161,19 @@ public:
     }
   }
 
+  /*! \brief Returns true, if network has a mapping. */
   bool has_mapping() const
   {
     return _mapping_storage->mapping_size > 0;
   }
 
+  /*! \brief Returns true, if node is the root of a mapped cell. */
   bool is_cell_root( node const& n ) const
   {
     return _mapping_storage->mappings[this->node_to_index( n )] != 0;
   }
 
+  /*! \brief Clears a mapping. */
   void clear_mapping()
   {
     _mapping_storage->mappings.clear();
@@ -171,11 +181,13 @@ public:
     _mapping_storage->mapping_size = 0;
   }
 
+  /*! \brief Number of cells, i.e, mapped nodes. */
   uint32_t num_cells() const
   {
     return _mapping_storage->mapping_size;
   }
 
+  /*! \brief Adds a node to the mapping. */
   template<typename LeavesIterator>
   void add_to_mapping( node const& n, LeavesIterator begin, LeavesIterator end )
   {
@@ -200,6 +212,7 @@ public:
     }
   }
 
+  /*! \brief Remove from mapping. */
   void remove_from_mapping( node const& n )
   {
     auto& mindex = _mapping_storage->mappings[this->node_to_index( n )];
@@ -212,18 +225,35 @@ public:
     _mapping_storage->mappings[this->node_to_index( n )] = 0;
   }
 
+  /*! \brief Gets function of the cell.
+   *
+   * The parameter `n` is a node that must be a cell root.
+   */
   template<bool enabled = StoreFunction, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
   kitty::dynamic_truth_table cell_function( node const& n ) const
   {
     return _mapping_storage->cache[_mapping_storage->functions[this->node_to_index( n )]];
   }
 
+  /*! \brief Sets cell function.
+   *
+   * The parameter `n` is a node that must be a cell root.
+   */
   template<bool enabled = StoreFunction, typename = std::enable_if_t<std::is_same_v<Ntk, Ntk> && enabled>>
   void set_cell_function( node const& n, kitty::dynamic_truth_table const& function )
   {
     _mapping_storage->functions[this->node_to_index( n )] = _mapping_storage->cache.insert( function );
   }
 
+  /*! \brief Iterators over cell's fan-ins.
+   * The parameter `n` is a node that must be a cell root.
+   * The paramater ``fn`` is any callable that must have one of the
+   * following four signatures.
+   * - ``void(node const&)``
+   * - ``void(node const&, uint32_t)``
+   * - ``bool(node const&)``
+   * - ``bool(node const&, uint32_t)``
+   */
   template<typename Fn>
   void foreach_cell_fanin( node const& n, Fn&& fn ) const
   {

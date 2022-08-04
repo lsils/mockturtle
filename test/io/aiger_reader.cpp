@@ -2,6 +2,7 @@
 
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/sequential.hpp>
 #include <mockturtle/views/names_view.hpp>
 
 #include <lorina/aiger.hpp>
@@ -13,8 +14,8 @@ using namespace mockturtle;
 
 TEST_CASE( "read and write names", "[aiger_reader]" )
 {
-  aig_network aig;
-  names_view<aig_network> named_aig{aig};
+  sequential<aig_network> aig;
+  names_view<sequential<aig_network>> named_aig{aig};
 
   std::string file{"aag 7 2 1 2 4\n"
   "2\n"
@@ -76,8 +77,8 @@ TEST_CASE( "read an ASCII Aiger file into an AIG network and store input-output 
 
 TEST_CASE( "read a sequential ASCII Aiger file into an AIG network", "[aiger_reader]" )
 {
-  aig_network aig;
-  names_view<aig_network> named_aig{aig};
+  sequential<aig_network> aig;
+  names_view<sequential<aig_network>> named_aig{aig};
 
   std::string file{"aag 7 2 1 2 4\n"
   "2\n"
