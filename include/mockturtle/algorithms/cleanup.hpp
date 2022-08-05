@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -82,7 +83,7 @@ std::vector<signal<NtkDest>> cleanup_dangling( NtkSource const& ntk, NtkDest& de
   assert( it == end );
 
   /* foreach node in topological order */
-  topo_view topo{ntk};
+  topo_view topo{ ntk };
   topo.foreach_node( [&]( auto node ) {
     if ( ntk.is_constant( node ) || ntk.is_pi( node ) )
       return;
@@ -351,9 +352,10 @@ template<class Ntk>
   }
 
   // iterate through nodes
-  topo_view topo{ntk};
+  topo_view topo{ ntk };
   topo.foreach_node( [&]( auto const& n ) {
-    if ( ntk.is_constant( n ) || ntk.is_pi( n ) ) return true; /* continue */
+    if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      return true; /* continue */
 
     auto func = ntk.node_function( n );
 
@@ -371,7 +373,6 @@ template<class Ntk>
         }
       }
     } );
-
 
     const auto support = kitty::min_base_inplace( func );
     auto new_func = kitty::shrink_to( func, static_cast<unsigned int>( support.size() ) );
@@ -413,7 +414,7 @@ template<class Ntk>
   ntk.foreach_po( [&]( auto const& f ) {
     auto const& new_f = old_to_new[f];
     dest.create_po( ntk.is_complemented( f ) ? dest.create_not( new_f ) : new_f );
-  });
+  } );
 
   return dest;
 }

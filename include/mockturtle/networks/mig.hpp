@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,11 +27,14 @@
   \file mig.hpp
   \brief MIG logic network implementation
 
+  \author Bruno Schmitt
   \author Eleonora Testa
+  \author Hanyu Wang
   \author Heinz Riener
   \author Jinzheng Tu
   \author Mathias Soeken
   \author Max Austin
+  \author Siang-Yun (Sonia) Lee
   \author Walter Lau Neto
 */
 
@@ -96,7 +99,8 @@ public:
     {
     }
 
-    union {
+    union
+    {
       struct
       {
         uint64_t complement : 1;
@@ -112,12 +116,12 @@ public:
 
     signal operator+() const
     {
-      return {index, 0};
+      return { index, 0 };
     }
 
     signal operator-() const
     {
-      return {index, 1};
+      return { index, 1 };
     }
 
     signal operator^( bool complement ) const
@@ -142,7 +146,7 @@ public:
 
     operator mig_storage::node_type::pointer_type() const
     {
-      return {index, complement};
+      return { index, complement };
     }
 
 #if __cplusplus > 201703L
@@ -165,7 +169,7 @@ public:
   {
   }
 
-  mig_network clone() const 
+  mig_network clone() const
   {
     return { std::make_shared<mig_storage>( *_storage ) };
   }
@@ -174,7 +178,7 @@ public:
 #pragma region Primary I / O and constants
   signal get_constant( bool value ) const
   {
-    return {0, static_cast<uint64_t>( value ? 1 : 0 )};
+    return { 0, static_cast<uint64_t>( value ? 1 : 0 ) };
   }
 
   signal create_pi()
@@ -183,7 +187,7 @@ public:
     auto& node = _storage->nodes.emplace_back();
     node.children[0].data = node.children[1].data = node.children[2].data = _storage->inputs.size();
     _storage->inputs.emplace_back( index );
-    return {index, 0};
+    return { index, 0 };
   }
 
   uint32_t create_po( signal const& f )
@@ -285,7 +289,7 @@ public:
     const auto it = _storage->hash.find( node );
     if ( it != _storage->hash.end() )
     {
-      return {it->second, node_complement};
+      return { it->second, node_complement };
     }
 
     const auto index = _storage->nodes.size();
@@ -307,10 +311,10 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      ( *fn )( index );
     }
 
-    return {index, node_complement};
+    return { index, node_complement };
   }
 
   signal create_and( signal const& a, signal const& b )
@@ -353,7 +357,7 @@ public:
 
   signal create_ite( signal cond, signal f_then, signal f_else )
   {
-    bool f_compl{false};
+    bool f_compl{ false };
     if ( f_then.index < f_else.index )
     {
       std::swap( f_then, f_else );
@@ -469,9 +473,9 @@ public:
     }
 
     // remember before
-    const auto old_child0 = signal{node.children[0]};
-    const auto old_child1 = signal{node.children[1]};
-    const auto old_child2 = signal{node.children[2]};
+    const auto old_child0 = signal{ node.children[0] };
+    const auto old_child1 = signal{ node.children[1] };
+    const auto old_child2 = signal{ node.children[2] };
 
     // erase old node in hash table
     _storage->hash.erase( node );
@@ -487,7 +491,7 @@ public:
 
     for ( auto const& fn : _events->on_modified )
     {
-      (*fn)( n, {old_child0, old_child1, old_child2} );
+      ( *fn )( n, { old_child0, old_child1, old_child2 } );
     }
 
     return std::nullopt;
@@ -526,7 +530,7 @@ public:
 
     for ( auto const& fn : _events->on_delete )
     {
-      (*fn)( n );
+      ( *fn )( n );
     }
 
     for ( auto i = 0u; i < 3u; ++i )
@@ -551,7 +555,7 @@ public:
   {
     std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
-    to_substitute.push( {old_node, new_signal} );
+    to_substitute.push( { old_node, new_signal } );
 
     while ( !to_substitute.empty() )
     {
@@ -565,7 +569,7 @@ public:
         assert( it != old_to_new.end() );
         _new = is_complemented( _new ) ? create_not( it->second ) : it->second;
       }
-      
+
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
         if ( is_ci( idx ) || is_dead( idx ) )
@@ -780,8 +784,8 @@ public:
 
   uint32_t pi_index( node const& n ) const
   {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && 
-            _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data);
+    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data &&
+            _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data );
     return static_cast<uint32_t>( _storage->nodes[n].children[0].data );
   }
 
@@ -859,31 +863,31 @@ public:
     // we don't use foreach_element here to have better performance
     if constexpr ( detail::is_callable_without_index_v<Fn, signal, bool> )
     {
-      if ( !fn( signal{_storage->nodes[n].children[0]} ) )
+      if ( !fn( signal{ _storage->nodes[n].children[0] } ) )
         return;
-      if ( !fn( signal{_storage->nodes[n].children[1]} ) )
+      if ( !fn( signal{ _storage->nodes[n].children[1] } ) )
         return;
-      fn( signal{_storage->nodes[n].children[2]} );
+      fn( signal{ _storage->nodes[n].children[2] } );
     }
     else if constexpr ( detail::is_callable_with_index_v<Fn, signal, bool> )
     {
-      if ( !fn( signal{_storage->nodes[n].children[0]}, 0 ) )
+      if ( !fn( signal{ _storage->nodes[n].children[0] }, 0 ) )
         return;
-      if ( !fn( signal{_storage->nodes[n].children[1]}, 1 ) )
+      if ( !fn( signal{ _storage->nodes[n].children[1] }, 1 ) )
         return;
-      fn( signal{_storage->nodes[n].children[2]}, 2 );
+      fn( signal{ _storage->nodes[n].children[2] }, 2 );
     }
     else if constexpr ( detail::is_callable_without_index_v<Fn, signal, void> )
     {
-      fn( signal{_storage->nodes[n].children[0]} );
-      fn( signal{_storage->nodes[n].children[1]} );
-      fn( signal{_storage->nodes[n].children[2]} );
+      fn( signal{ _storage->nodes[n].children[0] } );
+      fn( signal{ _storage->nodes[n].children[1] } );
+      fn( signal{ _storage->nodes[n].children[2] } );
     }
     else if constexpr ( detail::is_callable_with_index_v<Fn, signal, void> )
     {
-      fn( signal{_storage->nodes[n].children[0]}, 0 );
-      fn( signal{_storage->nodes[n].children[1]}, 1 );
-      fn( signal{_storage->nodes[n].children[2]}, 2 );
+      fn( signal{ _storage->nodes[n].children[0] }, 0 );
+      fn( signal{ _storage->nodes[n].children[1] }, 1 );
+      fn( signal{ _storage->nodes[n].children[2] }, 2 );
     }
   }
 #pragma endregion
@@ -952,9 +956,9 @@ public:
 
     result.resize( tt1.num_bits() );
     result._bits.back() =
-      ( ( c1.weight ? ~tt1._bits.back() : tt1._bits.back() ) & ( c2.weight ? ~tt2._bits.back() : tt2._bits.back() ) ) |
-      ( ( c1.weight ? ~tt1._bits.back() : tt1._bits.back() ) & ( c3.weight ? ~tt3._bits.back() : tt3._bits.back() ) ) |
-      ( ( c2.weight ? ~tt2._bits.back() : tt2._bits.back() ) & ( c3.weight ? ~tt3._bits.back() : tt3._bits.back() ) );
+        ( ( c1.weight ? ~tt1._bits.back() : tt1._bits.back() ) & ( c2.weight ? ~tt2._bits.back() : tt2._bits.back() ) ) |
+        ( ( c1.weight ? ~tt1._bits.back() : tt1._bits.back() ) & ( c3.weight ? ~tt3._bits.back() : tt3._bits.back() ) ) |
+        ( ( c2.weight ? ~tt2._bits.back() : tt2._bits.back() ) & ( c3.weight ? ~tt3._bits.back() : tt3._bits.back() ) );
     result.mask_bits();
   }
 #pragma endregion

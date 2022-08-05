@@ -2,16 +2,16 @@
  * fuzz tester to test ABC commands.
  */
 
-#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/algorithms/network_fuzz_tester.hpp>
 #include <mockturtle/generators/random_network.hpp>
+#include <mockturtle/networks/aig.hpp>
 
 using namespace mockturtle;
 
 int main( int argc, char* argv[] )
 {
 #ifndef _MSC_VER
-  if( argc != 2 )
+  if ( argc != 2 )
   {
     std::cout << "Please give exactly one argument, which is the optimization command(s) to test in ABC\n";
     std::cout << "(excluding read, write and cec)\n";
@@ -39,7 +39,7 @@ int main( int argc, char* argv[] )
   ps_fuzz.filename = "fuzz.aig";
   ps_fuzz.outputfile = "fuzz_opt.aig";
 
-  network_fuzz_tester<aig_network, decltype(gen)> fuzzer( gen, ps_fuzz );
+  network_fuzz_tester<aig_network, decltype( gen )> fuzzer( gen, ps_fuzz );
   fuzzer.run( fn );
 #endif
 

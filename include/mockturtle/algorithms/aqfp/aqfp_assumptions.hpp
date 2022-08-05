@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -36,24 +36,23 @@ namespace mockturtle
 {
 
 /*! \brief AQFP technology assumptions.
- * 
+ *
  * POs count toward the fanout sizes and always have to be branched.
  * If PIs need to be balanced, then they must also need to be branched.
  */
 struct aqfp_assumptions
 {
   /*! \brief Whether PIs need to be branched with splitters. */
-  bool branch_pis{false};
+  bool branch_pis{ false };
 
   /*! \brief Whether PIs need to be path-balanced. */
-  bool balance_pis{false};
+  bool balance_pis{ false };
 
   /*! \brief Whether POs need to be path-balanced. */
-  bool balance_pos{true};
+  bool balance_pos{ true };
 
   /*! \brief The maximum number of fanouts each splitter (buffer) can have. */
-  uint32_t splitter_capacity{3u};
+  uint32_t splitter_capacity{ 3u };
 };
 
 } // namespace mockturtle
-

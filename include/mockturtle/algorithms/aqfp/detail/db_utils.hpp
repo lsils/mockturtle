@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file db_utils.hpp
   \brief Utility functions for creating the DAGs, costs, and final AQFP databases
 
-  \author Dewmini Marakkalage
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -63,8 +63,7 @@ inline void generate_aqfp_dags( const mockturtle::dag_generator_params& params, 
   std::atomic<uint32_t> count = 0u;
   std::vector<std::atomic<uint64_t>> counts_inp( 6u );
 
-  gen.for_each_dag( [&]( const auto& net, uint32_t thread_id )
-                    {
+  gen.for_each_dag( [&]( const auto& net, uint32_t thread_id ) {
     counts_inp[net.input_slots.size()]++;
 
     os[thread_id] << fmt::format( "{}\n", net.encode_as_string() );
@@ -101,8 +100,7 @@ inline void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& 
   for ( auto i = 0u; i < num_threads; i++ )
   {
     threads.emplace_back(
-        [&]( auto id )
-        {
+        [&]( auto id ) {
           std::ifstream is( fmt::format( "{}_{:02d}.txt", dag_file_prefix, id ) );
           assert( is.is_open() );
 
@@ -162,8 +160,7 @@ inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_c
   for ( auto i = 0u; i < num_threads; i++ )
   {
     threads.emplace_back(
-        [&]( auto id )
-        {
+        [&]( auto id ) {
           std::ifstream ds( fmt::format( "{}_{:02d}.txt", dag_file_prefix, id ) );
           std::ifstream cs( fmt::format( "{}_{:02d}.txt", cost_file_prefix, id ) );
 

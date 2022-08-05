@@ -1,7 +1,7 @@
 #include <catch.hpp>
 
-#include <mockturtle/io/super_reader.hpp>
 #include <lorina/super.hpp>
+#include <mockturtle/io/super_reader.hpp>
 
 #include <sstream>
 #include <string>
@@ -9,23 +9,22 @@
 TEST_CASE( "read super file", "[super_reader]" )
 {
   std::string const file{
-    "test.genlib\n"
-    "3\n"
-    "8\n"
-    "14\n"       
-    "* and 1 0\n"
-    "* and 2 3\n"
-    "and 2 0\n"
-    "* and 1 5\n"
-    "or 2 1\n"
-    "* and 0 7\n"
-    "* or 1 0\n"
-    "* and 0 9\n"
-    "or 2 0\n"
-    "* and 1 11\n"
-    "* and 2 9\n"
-    "\0"
-  };
+      "test.genlib\n"
+      "3\n"
+      "8\n"
+      "14\n"
+      "* and 1 0\n"
+      "* and 2 3\n"
+      "and 2 0\n"
+      "* and 1 5\n"
+      "or 2 1\n"
+      "* and 0 7\n"
+      "* or 1 0\n"
+      "* and 0 9\n"
+      "or 2 0\n"
+      "* and 1 11\n"
+      "* and 2 9\n"
+      "\0" };
 
   mockturtle::super_lib super_data;
 

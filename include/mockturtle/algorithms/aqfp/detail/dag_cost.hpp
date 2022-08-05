@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file dag_cost.hpp
   \brief Cost computing functions for AQFP DAG structures
 
-  \author Dewmini Marakkalage
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -161,8 +161,7 @@ protected:
       else
       {
         auto critical_fo = *( std::max_element( fanout[i].begin(), fanout[i].end(),
-                                                [&]( auto x, auto y )
-                                                { return ( minlev[x] < minlev[y] ); } ) );
+                                                [&]( auto x, auto y ) { return ( minlev[x] < minlev[y] ); } ) );
         minlev[i] = 1 + minlev[critical_fo];
         if ( fanout[i].size() > 1 )
         {

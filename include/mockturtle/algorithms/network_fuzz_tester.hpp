@@ -28,20 +28,20 @@
   \brief Network fuzz tester
 
   \author Heinz Riener
-  \author Siang-Yun Lee
+  \author Siang-Yun (Sonia) Lee
 */
 
-#include "../io/write_verilog.hpp"
-#include "../io/write_aiger.hpp"
-#include "../io/verilog_reader.hpp"
 #include "../io/aiger_reader.hpp"
+#include "../io/verilog_reader.hpp"
+#include "../io/write_aiger.hpp"
+#include "../io/write_verilog.hpp"
 #include "../utils/stopwatch.hpp"
 
-#include <lorina/lorina.hpp>
-#include <fmt/format.h>
-#include <optional>
 #include <array>
 #include <cstdio>
+#include <fmt/format.h>
+#include <lorina/lorina.hpp>
+#include <optional>
 
 namespace mockturtle
 {
@@ -57,16 +57,16 @@ struct fuzz_tester_params
   } file_format = verilog;
 
   /*! \brief Name of the generated testcase file. */
-  std::string filename{"fuzz_test.v"};
+  std::string filename{ "fuzz_test.v" };
 
   /*! \brief Filename written out by the command (to do CEC with the input testcase). */
-  std::optional<std::string> outputfile{std::nullopt};
+  std::optional<std::string> outputfile{ std::nullopt };
 
   /*! \brief Max number of networks to test: nullopt means infinity. */
-  std::optional<uint64_t> num_iterations{std::nullopt};
+  std::optional<uint64_t> num_iterations{ std::nullopt };
 
   /*! \brief Timeout in seconds: nullopt means infinity. */
-  std::optional<uint64_t> timeout{std::nullopt};
+  std::optional<uint64_t> timeout{ std::nullopt };
 }; /* fuzz_tester_params */
 
 /*! \brief Network fuzz tester
@@ -125,22 +125,21 @@ class network_fuzz_tester
 {
 public:
   explicit network_fuzz_tester( NetworkGenerator& gen, fuzz_tester_params const ps = {} )
-    : gen( gen )
-    , ps( ps )
+      : gen( gen ), ps( ps )
   {}
 
 #ifndef _MSC_VER
-  uint64_t run( std::function<std::string(std::string const&)>&& make_command )
+  uint64_t run( std::function<std::string( std::string const& )>&& make_command )
   {
     return run( make_callback( make_command ) );
   }
 #endif
 
-  uint64_t run( std::function<bool(Ntk)>&& fn )
+  uint64_t run( std::function<bool( Ntk )>&& fn )
   {
-    uint64_t counter{0};
-    stopwatch<>::duration time{0};
-    while ( ( !ps.num_iterations || counter < ps.num_iterations ) && 
+    uint64_t counter{ 0 };
+    stopwatch<>::duration time{ 0 };
+    while ( ( !ps.num_iterations || counter < ps.num_iterations ) &&
             ( !ps.timeout || to_seconds( time ) < ps.timeout ) )
     {
       stopwatch t( time );
@@ -150,15 +149,15 @@ public:
 
       switch ( ps.file_format )
       {
-        case fuzz_tester_params::verilog:
-          write_verilog( ntk, ps.filename );
-          break;
-        case fuzz_tester_params::aiger:
-          write_aiger( ntk, ps.filename );
-          break;
-        default:
-          fmt::print( "[w] unsupported format\n" );
-          return 0;
+      case fuzz_tester_params::verilog:
+        write_verilog( ntk, ps.filename );
+        break;
+      case fuzz_tester_params::aiger:
+        write_aiger( ntk, ps.filename );
+        break;
+      default:
+        fmt::print( "[w] unsupported format\n" );
+        return 0;
       }
 
       /* run optimization algorithm */
@@ -178,10 +177,10 @@ public:
 
 private:
 #ifndef _MSC_VER
-  inline std::function<bool(Ntk)> make_callback( std::function<std::string(std::string const&)>& make_command )
+  inline std::function<bool( Ntk )> make_callback( std::function<std::string( std::string const& )>& make_command )
   {
-    std::function<bool(Ntk)> fn = [&]( Ntk ntk ) -> bool {
-      (void) ntk;
+    std::function<bool( Ntk )> fn = [&]( Ntk ntk ) -> bool {
+      (void)ntk;
       int status = std::system( make_command( ps.filename ).c_str() );
       if ( status < 0 )
       {
@@ -224,11 +223,11 @@ private:
 
     std::array<char, 128> buffer;
     std::string result;
-    #ifdef _MSC_VER
+#ifdef _MSC_VER
     std::unique_ptr<FILE, decltype( &_pclose )> pipe( _popen( command.c_str(), "r" ), _pclose );
-    #else
+#else
     std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
-    #endif
+#endif
     if ( !pipe )
     {
       throw std::runtime_error( "popen() failed" );

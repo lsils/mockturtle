@@ -27,9 +27,10 @@
   \file interface.hpp
   \brief Documentation of network interfaces
 
+  \author Bruno Schmitt
   \author Heinz Riener
   \author Mathias Soeken
-  \author Siang-Yun Lee
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -99,7 +100,7 @@ public:
 
   /*! \brief Constructor taking a storage. */
   explicit network( storage s );
-  
+
   /*! \brief Default copy assignment operator.
    *
    * Currently, most network implementations in mockturtle use `std::shared_ptr<storage>`
@@ -762,7 +763,6 @@ public:
    */
   network_events<base_type>& events() const;
 #pragma endregion
-
 };
 
 } /* namespace mockturtle */

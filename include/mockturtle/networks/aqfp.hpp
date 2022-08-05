@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,8 +27,10 @@
   \file aqfp.hpp
   \brief AQFP network implementation
 
-  \author Dewmini Marakkalage
   \author Alessandro Tempia Calvino
+  \author Dewmini Sudara Marakkalage
+  \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -58,7 +60,7 @@ struct aqfp_storage_data
 
 /*! \brief AQFP storage container
 
-  We use one bit of the index pointer to store a complemented attribute.  
+  We use one bit of the index pointer to store a complemented attribute.
   Every node has 64-bit of additional data used for the following purposes:
 
   `data[0].h1`: Fan-out size (we use MSB to indicate whether a node is dead)
@@ -292,7 +294,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      ( *fn )( index );
     }
 
     return { index, node_complement };
@@ -370,7 +372,7 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      ( *fn )( index );
     }
 
     return { index, node_complement };
@@ -498,7 +500,7 @@ public:
 
     for ( auto const& fn : _events->on_modified )
     {
-      (*fn)( n, old_children );
+      ( *fn )( n, old_children );
     }
 
     return std::nullopt;
@@ -530,7 +532,7 @@ public:
 
     for ( auto const& fn : _events->on_delete )
     {
-      (*fn)( n );
+      ( *fn )( n );
     }
 
     for ( auto i = 0u; i < nobj.children.size(); ++i )

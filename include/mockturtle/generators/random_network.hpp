@@ -27,20 +27,18 @@
   \file random_network.hpp
   \brief Generate random logic networks
 
-  \author Heinz Riener
-  \author Mathias Soeken
-  \author Siang-Yun Lee
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
 
 #include "../networks/aig.hpp"
-#include "../networks/xag.hpp"
 #include "../networks/mig.hpp"
+#include "../networks/xag.hpp"
 
+#include <algorithm>
 #include <percy/percy.hpp>
 #include <random>
-#include <algorithm>
 
 namespace mockturtle
 {
@@ -59,23 +57,23 @@ namespace mockturtle
 struct random_network_generator_params_size
 {
   /*! \brief Seed of the random generator. */
-  uint64_t seed{0xcafeaffe};
+  uint64_t seed{ 0xcafeaffe };
 
   /*! \brief Number of networks of each configuration to generate
    * before increasing size. */
-  uint32_t num_networks_per_configuration{100u};
+  uint32_t num_networks_per_configuration{ 100u };
 
   /*! \brief Number of PIs to start with. */
-  uint32_t num_pis{4u};
+  uint32_t num_pis{ 4u };
 
   /*! \brief Number of gates to start with. */
-  uint32_t num_gates{10u};
+  uint32_t num_gates{ 10u };
 
   /*! \brief Number of PIs to increment at each step. */
-  uint32_t num_pis_increment{0u};
+  uint32_t num_pis_increment{ 0u };
 
   /*! \brief Number of gates to increment at each step. */
-  uint32_t num_gates_increment{0u};
+  uint32_t num_gates_increment{ 0u };
 }; /* random_network_generator_params_size */
 
 /*! \brief Parameters for random_network_generator.
@@ -116,21 +114,21 @@ struct random_network_generator_params_size
 struct random_network_generator_params_topology
 {
   /*! \brief Seed of the random generator. */
-  uint64_t seed{0xcafeaffe};
+  uint64_t seed{ 0xcafeaffe };
 
   /*! \brief Number of networks to generate for each topology. */
-  uint32_t num_networks_per_configuration{100u};
+  uint32_t num_networks_per_configuration{ 100u };
 
   /*! \brief Number of gates to start with. */
-  uint32_t num_gates{3u};
+  uint32_t num_gates{ 3u };
 
   /*! \brief Minimum ratio of (#PIs/#inputs of DAG).
    * Lower ratio makes more reconvergences. */
-  float min_PI_ratio{0.5};
+  float min_PI_ratio{ 0.5 };
 
   /*! \brief Maximum ratio of (#PIs/#inputs of DAG).
    * Higher ratio makes it more likely to sample a full tree. */
-  float max_PI_ratio{1.0};
+  float max_PI_ratio{ 1.0 };
 }; /* random_network_generator_params_topology */
 
 /*! \brief Parameters for random_network_generator.
@@ -152,28 +150,28 @@ struct random_network_generator_params_topology
 struct random_network_generator_params_composed
 {
   /*! \brief Seed of the random generator. */
-  uint64_t seed{0xcafeaffe};
+  uint64_t seed{ 0xcafeaffe };
 
   /*! \brief Number of networks to generate for each topology. */
-  uint32_t num_networks_per_configuration{1000u};
+  uint32_t num_networks_per_configuration{ 1000u };
 
   /*! \brief Minimum number of gates of the components. */
-  uint32_t min_num_gates_component{3u};
+  uint32_t min_num_gates_component{ 3u };
 
   /*! \brief Maximum number of gates of the components. */
-  uint32_t max_num_gates_component{5u};
+  uint32_t max_num_gates_component{ 5u };
 
   /*! \brief Number of components to start with. */
-  uint32_t num_components{2u};
+  uint32_t num_components{ 2u };
 
   /*! \brief Number of PIs to start with. */
-  uint32_t num_pis{4u};
+  uint32_t num_pis{ 4u };
 
   /*! \brief Number of components to increment at each step. */
-  uint32_t num_components_increment{1u};
+  uint32_t num_components_increment{ 1u };
 
   /*! \brief Number of PIs to increment at each step. */
-  uint32_t num_pis_increment{2u};
+  uint32_t num_pis_increment{ 2u };
 }; /* random_network_generator_params_composed */
 
 namespace detail
@@ -184,7 +182,7 @@ struct create_gate_rule
 {
   using signal = typename Ntk::signal;
 
-  std::function<signal(Ntk&, std::vector<signal> const&)> func;
+  std::function<signal( Ntk&, std::vector<signal> const& )> func;
   uint32_t num_args;
 };
 
@@ -205,7 +203,8 @@ struct create_gate_rule
  */
 template<typename Ntk, typename Params = random_network_generator_params_size>
 class random_network_generator
-{};
+{
+};
 
 template<typename Ntk>
 class random_network_generator<Ntk, random_network_generator_params_size>
@@ -223,9 +222,9 @@ private: /* common data members */
   rand_engine_t _rng;
 
 public:
-  explicit random_network_generator( rules_t const &gens, params_t ps = {} )
-    : _gens( gens ), _ps( ps ), _rng( static_cast<rand_engine_t::result_type>( ps.seed ) ),
-      _counter( 0u ), _num_pis( ps.num_pis ), _num_gates( ps.num_gates )
+  explicit random_network_generator( rules_t const& gens, params_t ps = {} )
+      : _gens( gens ), _ps( ps ), _rng( static_cast<rand_engine_t::result_type>( ps.seed ) ),
+        _counter( 0u ), _num_pis( ps.num_pis ), _num_gates( ps.num_gates )
   {
   }
 
@@ -274,12 +273,12 @@ public:
     }
 
     /* generate pos */
-    ntk.foreach_node( [&]( auto const& n ){
+    ntk.foreach_node( [&]( auto const& n ) {
       if ( ntk.fanout_size( n ) == 0u )
       {
         ntk.create_po( ntk.make_signal( n ) );
       }
-    });
+    } );
 
     assert( ntk.num_pis() == _num_pis );
     assert( ntk.num_gates() == _num_gates );
@@ -317,10 +316,10 @@ private: /* common data members */
   rand_engine_t _rng;
 
 public:
-  explicit random_network_generator( rules_t const &gens, params_t ps = {} )
-    : _gens( gens ), _ps( ps ), _rng( static_cast<rand_engine_t::result_type>( ps.seed ) ),
-      _counter( 0u ), _num_gates( ps.num_gates ), _ith_dag( 0u ),
-      _rule_dist( 0, _gens.size() - 1u )
+  explicit random_network_generator( rules_t const& gens, params_t ps = {} )
+      : _gens( gens ), _ps( ps ), _rng( static_cast<rand_engine_t::result_type>( ps.seed ) ),
+        _counter( 0u ), _num_gates( ps.num_gates ), _ith_dag( 0u ),
+        _rule_dist( 0, _gens.size() - 1u )
   {
   }
 
@@ -341,7 +340,7 @@ public:
     percy::partial_dag const& pd = _dags.at( _ith_dag );
     uint32_t num_pis = _num_pis_dist( _rng );
     std::uniform_int_distribution<uint32_t> pis_dist( 1u, num_pis );
-    
+
     std::vector<signal> fs;
     Ntk ntk;
 
@@ -355,7 +354,7 @@ public:
     }
 
     /* generate gates */
-    pd.foreach_vertex( [&]( auto const& v, auto i ){
+    pd.foreach_vertex( [&]( auto const& v, auto i ) {
       uint32_t size_before = ntk.num_gates();
       signal g;
 
@@ -384,16 +383,16 @@ public:
       } while ( ntk.num_gates() == size_before );
 
       fs.emplace_back( g );
-    });
+    } );
 
     /* generate pos */
-    ntk.foreach_gate( [&]( auto const& n ){
+    ntk.foreach_gate( [&]( auto const& n ) {
       if ( ntk.fanout_size( n ) == 0u )
       {
         ntk.create_po( ntk.make_signal( n ) );
       }
-    });
-    
+    } );
+
     if ( ++_counter >= _ps.num_networks_per_configuration )
     {
       _counter = 0;
@@ -414,21 +413,22 @@ private:
 
     _dags.clear();
     partial_dag g;
-    partial_dag_generator gen(_num_gates);
+    partial_dag_generator gen( _num_gates );
     std::set<std::vector<graph>> can_reprs;
-    pd_iso_checker checker(_num_gates);
+    pd_iso_checker checker( _num_gates );
 
-    gen.set_callback([&](partial_dag_generator* gen) {
-        for (int i = 0; i < gen->nr_vertices(); i++) {
-            g.set_vertex(i, gen->_js[i], gen->_ks[i]);
-        }
-        const auto can_repr = checker.crepr(g);
-        const auto res = can_reprs.insert(can_repr);
-        if (res.second)
-            _dags.push_back(g);
-    });
-    gen.gen_type(partial_gen_type::GEN_COLEX);
-    g.reset(2, _num_gates);
+    gen.set_callback( [&]( partial_dag_generator* gen ) {
+      for ( int i = 0; i < gen->nr_vertices(); i++ )
+      {
+        g.set_vertex( i, gen->_js[i], gen->_ks[i] );
+      }
+      const auto can_repr = checker.crepr( g );
+      const auto res = can_reprs.insert( can_repr );
+      if ( res.second )
+        _dags.push_back( g );
+    } );
+    gen.gen_type( partial_gen_type::GEN_COLEX );
+    g.reset( 2, _num_gates );
     gen.count_dags();
 
     std::shuffle( _dags.begin(), _dags.end(), _rng );
@@ -458,10 +458,10 @@ private: /* common data members */
   rand_engine_t _rng;
 
 public:
-  explicit random_network_generator( rules_t const &gens, params_t ps = {} )
-    : _gens( gens ), _ps( ps ), _rng( static_cast<rand_engine_t::result_type>( ps.seed ) ),
-      _counter( 0u ), _num_components( ps.num_components ), _num_pis( ps.num_pis ),
-      _rule_dist( 0, _gens.size() - 1u )
+  explicit random_network_generator( rules_t const& gens, params_t ps = {} )
+      : _gens( gens ), _ps( ps ), _rng( static_cast<rand_engine_t::result_type>( ps.seed ) ),
+        _counter( 0u ), _num_components( ps.num_components ), _num_pis( ps.num_pis ),
+        _rule_dist( 0, _gens.size() - 1u )
   {
     prepare_partial_dags();
     _dag_dist = std::uniform_int_distribution<uint32_t>( 0, _dags.size() - 1u );
@@ -485,17 +485,17 @@ public:
     for ( auto i = 0u; i < _num_components; ++i )
     {
       concretize( ntk, _dags.at( _dag_dist( _rng ) ), fs );
-      //concretize( ntk, _dags.at( 3 ), fs ); // [3] in 4-gate topologies: diamond
+      // concretize( ntk, _dags.at( 3 ), fs ); // [3] in 4-gate topologies: diamond
     }
 
     /* generate pos */
-    ntk.foreach_gate( [&]( auto const& n ){
+    ntk.foreach_gate( [&]( auto const& n ) {
       if ( ntk.fanout_size( n ) == 0u )
       {
         ntk.create_po( ntk.make_signal( n ) );
       }
-    });
-    
+    } );
+
     if ( ++_counter >= _ps.num_networks_per_configuration )
     {
       _counter = 0;
@@ -511,9 +511,9 @@ private:
   {
     uint32_t num_existing = ntk.size() - 1u;
     std::uniform_int_distribution<uint32_t> dist( 1u, num_existing );
-    //std::uniform_int_distribution<uint32_t> dist( 1u, _num_pis );
+    // std::uniform_int_distribution<uint32_t> dist( 1u, _num_pis );
 
-    pd.foreach_vertex( [&]( auto const& v, auto i ){
+    pd.foreach_vertex( [&]( auto const& v, auto i ) {
       uint32_t size_before = ntk.num_gates();
       signal g;
 
@@ -543,7 +543,7 @@ private:
 
       fs.emplace_back( g );
       assert( ntk.size() == fs.size() );
-    });
+    } );
   }
 
   void prepare_partial_dags()
@@ -557,23 +557,24 @@ private:
   void prepare_partial_dags( uint32_t num_gates )
   {
     using namespace percy;
-    
-    partial_dag g;
-    partial_dag_generator gen(num_gates);
-    std::set<std::vector<graph>> can_reprs;
-    pd_iso_checker checker(num_gates);
 
-    gen.set_callback([&](partial_dag_generator* gen) {
-        for (int i = 0; i < gen->nr_vertices(); i++) {
-            g.set_vertex(i, gen->_js[i], gen->_ks[i]);
-        }
-        const auto can_repr = checker.crepr(g);
-        const auto res = can_reprs.insert(can_repr);
-        if (res.second)
-            _dags.push_back(g);
-    });
-    gen.gen_type(partial_gen_type::GEN_COLEX);
-    g.reset(2, num_gates);
+    partial_dag g;
+    partial_dag_generator gen( num_gates );
+    std::set<std::vector<graph>> can_reprs;
+    pd_iso_checker checker( num_gates );
+
+    gen.set_callback( [&]( partial_dag_generator* gen ) {
+      for ( int i = 0; i < gen->nr_vertices(); i++ )
+      {
+        g.set_vertex( i, gen->_js[i], gen->_ks[i] );
+      }
+      const auto can_repr = checker.crepr( g );
+      const auto res = can_reprs.insert( can_repr );
+      if ( res.second )
+        _dags.push_back( g );
+    } );
+    gen.gen_type( partial_gen_type::GEN_COLEX );
+    g.reset( 2, num_gates );
     gen.count_dags();
   }
 
@@ -593,11 +594,11 @@ auto random_aig_generator( GenParams ps = {} )
   using rule_t = typename detail::create_gate_rule<aig_network>;
 
   std::vector<rule_t> rules;
-  rules.emplace_back( rule_t{[]( aig_network& aig, std::vector<aig_network::signal> const& vs ) -> aig_network::signal
-    {
-      assert( vs.size() == 2u );
-      return aig.create_and( vs[0], vs[1] );
-    }, 2u} );
+  rules.emplace_back( rule_t{ []( aig_network& aig, std::vector<aig_network::signal> const& vs ) -> aig_network::signal {
+                               assert( vs.size() == 2u );
+                               return aig.create_and( vs[0], vs[1] );
+                             },
+                              2u } );
 
   return gen_t( rules, ps );
 }
@@ -610,16 +611,16 @@ auto random_xag_generator( GenParams ps = {} )
   using rule_t = typename detail::create_gate_rule<xag_network>;
 
   std::vector<rule_t> rules;
-  rules.emplace_back( rule_t{[]( xag_network& xag, std::vector<xag_network::signal> const& vs ) -> xag_network::signal
-    {
-      assert( vs.size() == 2u );
-      return xag.create_and( vs[0], vs[1] );
-    }, 2u} );
-  rules.emplace_back( rule_t{[]( xag_network& xag, std::vector<xag_network::signal> const& vs ) -> xag_network::signal
-    {
-      assert( vs.size() == 2u );
-      return xag.create_xor( vs[0], vs[1] );
-    }, 2u} );
+  rules.emplace_back( rule_t{ []( xag_network& xag, std::vector<xag_network::signal> const& vs ) -> xag_network::signal {
+                               assert( vs.size() == 2u );
+                               return xag.create_and( vs[0], vs[1] );
+                             },
+                              2u } );
+  rules.emplace_back( rule_t{ []( xag_network& xag, std::vector<xag_network::signal> const& vs ) -> xag_network::signal {
+                               assert( vs.size() == 2u );
+                               return xag.create_xor( vs[0], vs[1] );
+                             },
+                              2u } );
 
   return gen_t( rules, ps );
 }
@@ -632,11 +633,11 @@ auto random_mig_generator( GenParams ps = {} )
   using rule_t = typename detail::create_gate_rule<mig_network>;
 
   std::vector<rule_t> rules;
-  rules.emplace_back( rule_t{[]( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal
-    {
-      assert( vs.size() == 3u );
-      return mig.create_maj( vs[0], vs[1], vs[2] );
-    }, 3u} );
+  rules.emplace_back( rule_t{ []( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal {
+                               assert( vs.size() == 3u );
+                               return mig.create_maj( vs[0], vs[1], vs[2] );
+                             },
+                              3u } );
 
   return gen_t( rules, ps );
 }
@@ -649,21 +650,21 @@ auto mixed_random_mig_generator( GenParams ps = {} )
   using rule_t = typename detail::create_gate_rule<mig_network>;
 
   std::vector<rule_t> rules;
-  rules.emplace_back( rule_t{[]( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal
-    {
-      assert( vs.size() == 3u );
-      return mig.create_maj( vs[0], vs[1], vs[2] );
-    }, 3u} );
-  rules.emplace_back( rule_t{[]( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal
-    {
-      assert( vs.size() == 2u );
-      return mig.create_and( vs[0], vs[1] );
-    }, 2u} );
-  rules.emplace_back( rule_t{[]( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal
-    {
-      assert( vs.size() == 2u );
-      return mig.create_or( vs[0], vs[1] );
-    }, 2u} );
+  rules.emplace_back( rule_t{ []( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal {
+                               assert( vs.size() == 3u );
+                               return mig.create_maj( vs[0], vs[1], vs[2] );
+                             },
+                              3u } );
+  rules.emplace_back( rule_t{ []( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal {
+                               assert( vs.size() == 2u );
+                               return mig.create_and( vs[0], vs[1] );
+                             },
+                              2u } );
+  rules.emplace_back( rule_t{ []( mig_network& mig, std::vector<mig_network::signal> const& vs ) -> mig_network::signal {
+                               assert( vs.size() == 2u );
+                               return mig.create_or( vs[0], vs[1] );
+                             },
+                              2u } );
 
   return gen_t( rules, ps );
 }

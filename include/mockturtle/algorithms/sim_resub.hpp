@@ -33,23 +33,23 @@
 
 #pragma once
 
-#include "resubstitution.hpp"
-#include "circuit_validator.hpp"
-#include "simulation.hpp"
-#include "pattern_generation.hpp"
-#include "resyn_engines/xag_resyn.hpp"
 #include "../io/write_patterns.hpp"
 #include "../networks/aig.hpp"
 #include "../networks/xag.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
+#include "circuit_validator.hpp"
+#include "pattern_generation.hpp"
+#include "resubstitution.hpp"
+#include "resyn_engines/xag_resyn.hpp"
+#include "simulation.hpp"
 
 #include <bill/bill.hpp>
-#include <kitty/kitty.hpp>
 #include <fmt/format.h>
+#include <kitty/kitty.hpp>
 
-#include <variant>
 #include <algorithm>
+#include <variant>
 
 namespace mockturtle
 {
@@ -61,41 +61,41 @@ template<typename ResynSt>
 struct sim_resub_stats
 {
   /*! \brief Time for pattern generation. */
-  stopwatch<>::duration time_patgen{0};
+  stopwatch<>::duration time_patgen{ 0 };
 
   /*! \brief Time for saving patterns. */
-  stopwatch<>::duration time_patsave{0};
+  stopwatch<>::duration time_patsave{ 0 };
 
   /*! \brief Time for simulation. */
-  stopwatch<>::duration time_sim{0};
+  stopwatch<>::duration time_sim{ 0 };
 
   /*! \brief Time for SAT solving. */
-  stopwatch<>::duration time_sat{0};
-  stopwatch<>::duration time_sat_restart{0};
+  stopwatch<>::duration time_sat{ 0 };
+  stopwatch<>::duration time_sat_restart{ 0 };
 
   /*! \brief Time for computing ODCs. */
-  stopwatch<>::duration time_odc{0};
+  stopwatch<>::duration time_odc{ 0 };
 
   /*! \brief Time for finding dependency function. */
-  stopwatch<>::duration time_resyn{0};
+  stopwatch<>::duration time_resyn{ 0 };
 
   /*! \brief Time for translating from index lists to network signals. */
-  stopwatch<>::duration time_interface{0};
+  stopwatch<>::duration time_interface{ 0 };
 
   /*! \brief Number of patterns used. */
-  uint32_t num_pats{0};
+  uint32_t num_pats{ 0 };
 
   /*! \brief Number of counter-examples. */
-  uint32_t num_cex{0};
+  uint32_t num_cex{ 0 };
 
   /*! \brief Number of successful resubstitutions. */
-  uint32_t num_resub{0};
+  uint32_t num_resub{ 0 };
 
   /*! \brief Number of SAT solver timeout. */
-  uint32_t num_timeout{0};
+  uint32_t num_timeout{ 0 };
 
   /*! \brief Number of calls to the resynthesis engine. */
-  uint32_t num_resyn{0};
+  uint32_t num_resyn{ 0 };
 
   ResynSt resyn_st;
 
@@ -163,7 +163,7 @@ public:
   using TT = kitty::partial_truth_table;
 
   explicit simulation_based_resub_engine( Ntk& ntk, resubstitution_params const& ps, stats& st )
-      : ntk( ntk ), ps( ps ), st( st ), tts( ntk ), validator( ntk, {ps.max_clauses, ps.odc_levels, ps.conflict_limit, ps.random_seed} )
+      : ntk( ntk ), ps( ps ), st( st ), tts( ntk ), validator( ntk, { ps.max_clauses, ps.odc_levels, ps.conflict_limit, ps.random_seed } )
   {
     if constexpr ( !validator_t::use_odc_ )
     {
@@ -174,7 +174,7 @@ public:
       tts.resize();
       call_with_stopwatch( st.time_sim, [&]() {
         simulate_node<Ntk>( ntk, n, tts, sim );
-      });
+      } );
     } );
   }
 
@@ -184,7 +184,7 @@ public:
     {
       call_with_stopwatch( st.time_patsave, [&]() {
         write_patterns( sim, *ps.save_patterns );
-      });
+      } );
     }
 
     if ( add_event )
@@ -206,13 +206,13 @@ public:
         sim = partial_simulator( ntk.num_pis(), 1024 );
         pattern_generation( ntk, sim );
       }
-    });
+    } );
     st.num_pats = sim.num_bits();
 
     /* first simulation: the whole circuit; from 0 bits. */
     call_with_stopwatch( st.time_sim, [&]() {
       simulate_nodes<Ntk>( ntk, tts, sim, true );
-    });
+    } );
   }
 
   std::optional<signal> run( node const& n, std::vector<node> const& divs, mffc_result_t potential_gain, uint32_t& last_gain )
@@ -227,13 +227,13 @@ public:
 
       TT const care = call_with_stopwatch( st.time_odc, [&]() {
         return ( ps.odc_levels == 0 ) ? sim.compute_constant( true ) : ~observability_dont_cares( ntk, n, sim, tts, ps.odc_levels );
-      });
+      } );
 
       const auto res = call_with_stopwatch( st.time_resyn, [&]() {
         ++st.num_resyn;
         ResynEngine engine( st.resyn_st );
         return engine( tts[n], care, std::begin( divs ), std::end( divs ), tts, std::min( potential_gain - 1, ps.max_inserts ) );
-      });
+      } );
 
       if ( res )
       {
@@ -242,7 +242,7 @@ public:
         last_gain = potential_gain - id_list.num_gates();
         auto valid = call_with_stopwatch( st.time_sat, [&]() {
           return validator.validate( n, divs, id_list );
-        });
+        } );
         if ( valid )
         {
           if ( *valid )
@@ -251,18 +251,18 @@ public:
             signal out_sig;
             call_with_stopwatch( st.time_interface, [&]() {
               std::vector<signal> divs_sig( divs.size() );
-              std::transform( divs.begin(), divs.end(), divs_sig.begin(), [&]( const node n ){
+              std::transform( divs.begin(), divs.end(), divs_sig.begin(), [&]( const node n ) {
                 return ntk.make_signal( n );
-              });
-              insert( ntk, divs_sig.begin(), divs_sig.end(), id_list, [&]( signal const& s ){
+              } );
+              insert( ntk, divs_sig.begin(), divs_sig.end(), id_list, [&]( signal const& s ) {
                 out_sig = s;
-              });
-            });
+              } );
+            } );
             if constexpr ( validator_t::use_odc_ )
             {
               call_with_stopwatch( st.time_sat_restart, [&]() {
                 validator.update();
-              });
+              } );
             }
             return out_sig;
           }
@@ -290,7 +290,7 @@ public:
     ++st.num_cex;
     call_with_stopwatch( st.time_sim, [&]() {
       sim.add_pattern( validator.cex );
-    });
+    } );
 
     /* re-simulate the whole circuit (for the last block) when a block is full */
     if ( sim.num_bits() % 64 == 0 )
@@ -358,8 +358,8 @@ void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
   static_assert( std::is_same_v<typename Ntk::base_type, aig_network> || std::is_same_v<typename Ntk::base_type, xag_network>, "Currently only supports AIG and XAG" );
 
   using resub_view_t = fanout_view<depth_view<Ntk>>;
-  depth_view<Ntk> depth_view{ntk};
-  resub_view_t resub_view{depth_view};
+  depth_view<Ntk> depth_view{ ntk };
+  resub_view_t resub_view{ depth_view };
 
   if constexpr ( std::is_same_v<typename Ntk::base_type, aig_network> )
   {

@@ -220,8 +220,7 @@ TEST_CASE( "DAG generation", "[aqfp_resyn]" )
   std::vector<Ntk> generated_dags;
 
   mockturtle::dag_generator<> gen( params, 1u );
-  gen.for_each_dag( [&]( const auto& dag, auto thread_id )
-                    { (void)thread_id; generated_dags.push_back( dag ); } );
+  gen.for_each_dag( [&]( const auto& dag, auto thread_id ) { (void)thread_id; generated_dags.push_back( dag ); } );
 
   CHECK( generated_dags.size() == 3018u );
 }

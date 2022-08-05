@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -65,7 +65,7 @@ struct cost_resyn_stats
 
   /* number of solutions */
   uint32_t num_solutions{ 0 };
-  
+
   /* number of problems */
   uint32_t num_problems{ 0 };
 
@@ -180,7 +180,7 @@ private:
 
   bool push_solution( index_list_t const& il )
   {
-    ils.emplace_back( il ); /* push the solution to the solution set */
+    ils.emplace_back( il );               /* push the solution to the solution set */
     return ils.size() < ps.max_solutions; /* continue if capacity allows */
   }
 
@@ -190,12 +190,12 @@ private:
     /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
     if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) )
     {
-      pos_unate_pairs.emplace_back( ( div1 << 1 ) + ( uint32_t )( !pol1 ), ( div2 << 1 ) + ( uint32_t )( !pol2 ) );
+      pos_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)( !pol1 ), ( div2 << 1 ) + (uint32_t)( !pol2 ) );
     }
     /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
     else if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) )
     {
-      neg_unate_pairs.emplace_back( ( div1 << 1 ) + ( uint32_t )( !pol1 ), ( div2 << 1 ) + ( uint32_t )( !pol2 ) );
+      neg_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)( !pol1 ), ( div2 << 1 ) + (uint32_t)( !pol2 ) );
     }
   }
 
@@ -817,7 +817,7 @@ private:
     }
     return std::nullopt;
   }
-  
+
   std::optional<index_list_t> find_and_xor()
   {
     if ( has_xor_pairs == false )
@@ -1111,7 +1111,7 @@ private:
       ret = find_and_and_and_helper( neg_unate_pairs, neg_unate_pairs, 0 );
     return ret;
   }
-  
+
   std::optional<index_list_t> find_and_and_xor()
   {
     if ( has_and_pairs == false )
@@ -1158,7 +1158,8 @@ private:
   {
     for ( core_func_t& fn : fns )
     {
-      if ( ils.size() >= ps.max_solutions ) break;
+      if ( ils.size() >= ps.max_solutions )
+        break;
       uint32_t nbefore = ils.size();
       call_with_stopwatch( st.time_search, [&]() { fn( this ); } );
       st.num_resub[fn.effort] += ils.size() - nbefore;

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file aqfp_node_resyn.hpp
   \brief AQFP node resynthesis strategy
 
-  \author Dewmini Marakkalage
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -191,8 +191,7 @@ struct aqfp_node_resyn
     default:
       auto [mig, depths, output_inv] = db.get_best_replacement(
           tt._bits[0], leaf_levels, leaf_no_splitters,
-          [&]( const std::pair<double, uint32_t>& f, const std::pair<double, uint32_t>& s )
-          {
+          [&]( const std::pair<double, uint32_t>& f, const std::pair<double, uint32_t>& s ) {
             if ( params.strategy == aqfp_node_resyn_strategy::area )
             {
               return ( f.first < s.first || ( f.first == s.first && f.second < s.second ) );

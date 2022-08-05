@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,10 +27,13 @@
   \file storage.hpp
   \brief Configurable storage container
 
+  \author Andrea Costamagna
   \author Bruno Schmitt
   \author Heinz Riener
+  \author Jinzheng Tu
   \author Mathias Soeken
   \author Max Austin
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -55,7 +58,8 @@ public:
   node_pointer() = default;
   node_pointer( uint64_t index, uint64_t weight ) : weight( weight ), index( index ) {}
 
-  union {
+  union
+  {
     struct
     {
       uint64_t weight : PointerFieldSize;
@@ -77,7 +81,8 @@ public:
   node_pointer() = default;
   node_pointer( uint64_t index ) : index( index ) {}
 
-  union {
+  union
+  {
     uint64_t index;
     uint64_t data;
   };
@@ -88,8 +93,9 @@ public:
   }
 };
 
-union cauint64_t {
-  uint64_t n{0};
+union cauint64_t
+{
+  uint64_t n{ 0 };
   struct
   {
     uint64_t h1 : 32;

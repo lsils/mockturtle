@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file aqfpcost.hpp
   \brief Cost functions for AQFP networks
 
-  \author Dewmini Marakkalage
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -41,7 +41,7 @@
 #include "../utils/hash_functions.hpp"
 #include "../views/fanout_view.hpp"
 
-#include <mockturtle/algorithms/aqfp/aqfp_assumptions.hpp>
+#include "../algorithms/aqfp/aqfp_assumptions.hpp"
 
 namespace mockturtle
 {
@@ -153,9 +153,7 @@ struct aqfp_network_cost
     /*  Collect fanouts of each node.
         Cannot use the fanout_view as duplicate fanis are not accounted with the correct multiplicity. */
     std::unordered_map<node<Ntk>, std::vector<node<Ntk>>> fanouts;
-    ntk.foreach_gate( [&]( auto n )
-                      { ntk.foreach_fanin( n, [&]( auto fi )
-                                           { fanouts[ntk.get_node( fi )].push_back( n ); } ); } );
+    ntk.foreach_gate( [&]( auto n ) { ntk.foreach_fanin( n, [&]( auto fi ) { fanouts[ntk.get_node( fi )].push_back( n ); } ); } );
 
     auto gate_cost = 0.0;
     auto fanout_net_cost = 0.0;
@@ -163,19 +161,16 @@ struct aqfp_network_cost
     std::vector<node<Ntk>> nodes;
     if ( assume.branch_pis )
     {
-      ntk.foreach_ci( [&]( auto n )
-                      { nodes.push_back( n ); } );
+      ntk.foreach_ci( [&]( auto n ) { nodes.push_back( n ); } );
     }
-    ntk.foreach_gate( [&]( auto n )
-                      { nodes.push_back( n ); } );
+    ntk.foreach_gate( [&]( auto n ) { nodes.push_back( n ); } );
 
     if ( po_level_of_node.size() == 0 )
     {
       std::cout << "[w] - the map po_level_of_node is empty!\n";
     }
 
-    size_t critical_po_level = std::max_element( po_level_of_node.begin(), po_level_of_node.end(), []( auto n1, auto n2 )
-                                                 { return n1.second < n2.second; } )
+    size_t critical_po_level = std::max_element( po_level_of_node.begin(), po_level_of_node.end(), []( auto n1, auto n2 ) { return n1.second < n2.second; } )
                                    ->second;
     for ( auto n : nodes )
     {

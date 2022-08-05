@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -83,7 +84,7 @@ public:
 
   ~aiger_reader()
   {
-    uint32_t output_id{0};
+    uint32_t output_id{ 0 };
     for ( auto out : outputs )
     {
       auto const lit = std::get<0>( out );
@@ -175,7 +176,7 @@ public:
   {
     if constexpr ( has_create_ri_v<Ntk> && has_create_ro_v<Ntk> )
     {
-      if constexpr( has_set_name_v<Ntk> )
+      if constexpr ( has_set_name_v<Ntk> )
       {
         _ntk.set_name( signals[1 + _num_inputs + index], name );
       }
@@ -223,7 +224,7 @@ public:
 private:
   Ntk& _ntk;
 
-  mutable uint32_t _num_inputs{0};
+  mutable uint32_t _num_inputs{ 0 };
   mutable std::vector<std::tuple<unsigned, std::string>> outputs;
   mutable std::vector<typename Ntk::signal> signals;
   mutable std::vector<std::tuple<unsigned, int8_t, std::string>> latches;

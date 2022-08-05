@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -46,10 +46,10 @@ namespace mockturtle
 
 /*! \brief Implements `get_cost` methods for networks.
  *
- * This view computes the cost of the entire network, a subnetwork, and 
- * also fanin cone of a single node. It maintains the context of each 
- * node, which is the aggregated variables that affect the cost a node. 
- * 
+ * This view computes the cost of the entire network, a subnetwork, and
+ * also fanin cone of a single node. It maintains the context of each
+ * node, which is the aggregated variables that affect the cost a node.
+ *
  * **Required network functions:**
  * - `size`
  * - `get_node`

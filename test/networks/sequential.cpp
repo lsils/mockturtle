@@ -1,13 +1,13 @@
 #include <catch.hpp>
 
-#include <mockturtle/networks/sequential.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/xag.hpp>
-#include <mockturtle/networks/mig.hpp>
-#include <mockturtle/networks/xmg.hpp>
-#include <mockturtle/networks/klut.hpp>
-#include <mockturtle/networks/cover.hpp>
 #include <mockturtle/networks/aqfp.hpp>
+#include <mockturtle/networks/cover.hpp>
+#include <mockturtle/networks/klut.hpp>
+#include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/sequential.hpp>
+#include <mockturtle/networks/xag.hpp>
+#include <mockturtle/networks/xmg.hpp>
 
 using namespace mockturtle;
 

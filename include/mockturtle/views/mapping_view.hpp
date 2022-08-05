@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -56,7 +57,7 @@ template<>
 struct mapping_view_storage<true>
 {
   std::vector<uint32_t> mappings;
-  uint32_t mapping_size{0};
+  uint32_t mapping_size{ 0 };
   std::vector<uint32_t> functions;
   truth_table_cache<kitty::dynamic_truth_table> cache;
 };
@@ -65,13 +66,13 @@ template<>
 struct mapping_view_storage<false>
 {
   std::vector<uint32_t> mappings;
-  uint32_t mapping_size{0};
+  uint32_t mapping_size{ 0 };
 };
 
 } // namespace detail
 
 template<typename Ntk, bool StoreFunction>
-inline constexpr bool implements_mapping_interface_v = has_has_mapping_v<Ntk> && (!StoreFunction || has_cell_function_v<Ntk>);
+inline constexpr bool implements_mapping_interface_v = has_has_mapping_v<Ntk> && ( !StoreFunction || has_cell_function_v<Ntk> );
 
 /*! \brief Adds mapping API methods to network.
  *
@@ -260,8 +261,9 @@ public:
     auto it = _mapping_storage->mappings.begin() + _mapping_storage->mappings[this->node_to_index( n )];
     const auto size = *it++;
     using IteratorType = decltype( it );
-    detail::foreach_element_transform<IteratorType, typename Ntk::node>( it, it + size,
-                                                                         [&]( auto i ) { return this->index_to_node( i ); }, fn );
+    detail::foreach_element_transform<IteratorType, typename Ntk::node>(
+        it, it + size,
+        [&]( auto i ) { return this->index_to_node( i ); }, fn );
   }
 
 private:
@@ -269,6 +271,6 @@ private:
 };
 
 template<class T>
-mapping_view(T const&) -> mapping_view<T>;
+mapping_view( T const& ) -> mapping_view<T>;
 
 } // namespace mockturtle

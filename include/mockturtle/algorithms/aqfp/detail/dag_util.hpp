@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file dag_util.hpp
   \brief Utilities for DAG generation
 
-  \author Dewmini Marakkalage
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -52,8 +52,7 @@ template<typename ElemT>
 inline std::map<ElemT, uint32_t> get_frequencies( const std::vector<ElemT>& elems )
 {
   std::map<ElemT, uint32_t> elem_counts;
-  std::for_each( elems.begin(), elems.end(), [&elem_counts]( auto e )
-                 { elem_counts[e]++; } );
+  std::for_each( elems.begin(), elems.end(), [&elem_counts]( auto e ) { elem_counts[e]++; } );
   return elem_counts;
 }
 

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,11 @@
   \file traits.hpp
   \brief Type traits and checkers for the network interface
 
+  \author Andrea Costamagna
+  \author Bruno Schmitt
+  \author Hanyu Wang
   \author Heinz Riener
+  \author Marcel Walter
   \author Mathias Soeken
   \author Max Austin
   \author Siang-Yun (Sonia) Lee
@@ -1610,7 +1614,6 @@ struct has_compute<Ntk, T, std::void_t<decltype( std::declval<Ntk>().compute( st
 template<class Ntk, typename T>
 inline constexpr bool has_compute_v = has_compute<Ntk, T>::value;
 #pragma endregion
-
 
 #pragma region has_compute_inplace
 template<class Ntk, typename T, class = void>

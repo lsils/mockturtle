@@ -1,9 +1,9 @@
 #include <catch.hpp>
 
+#include <kitty/kitty.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/traits.hpp>
-#include <kitty/kitty.hpp>
 
 using namespace mockturtle;
 
@@ -37,7 +37,7 @@ void test_buffered_network()
   CHECK( ntk.num_pis() == 2 );
   CHECK( ntk.size() == 9 );
   CHECK( ntk.num_gates() == 2 );
-  
+
   CHECK( ntk.fanout_size( ntk.get_node( x1 ) ) == 1 );
   CHECK( ntk.fanout_size( ntk.get_node( b1 ) ) == 2 );
   CHECK( ntk.fanin_size( ntk.get_node( b1 ) ) == 1 );
@@ -60,7 +60,7 @@ void test_buffered_network()
   CHECK( mask == 0x180 );
 
   /* simulation */
-  auto const po_values = simulate_buffered<2> ( ntk );
+  auto const po_values = simulate_buffered<2>( ntk );
 
   CHECK( po_values[0]._bits == 8 );
   CHECK( po_values[1]._bits == 8 );

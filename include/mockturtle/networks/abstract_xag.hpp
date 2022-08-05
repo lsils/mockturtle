@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -53,7 +53,8 @@ namespace mockturtle
 
 struct abstract_xag_storage
 {
-  struct node_type {
+  struct node_type
+  {
     uint32_t* fanin{};
     uint32_t fanin_size{};
     uint32_t fanout_size{};
@@ -67,7 +68,7 @@ struct abstract_xag_storage
     /* constant 0 node */
     nodes.emplace_back();
 
-    //nodes.reserve( 10000u );
+    // nodes.reserve( 10000u );
   }
 
   ~abstract_xag_storage()
@@ -129,22 +130,22 @@ public:
 
     signal operator!() const
     {
-      return {index, !complement};
+      return { index, !complement };
     }
 
     signal operator+() const
     {
-      return {index, false};
+      return { index, false };
     }
 
     signal operator-() const
     {
-      return {index, true};
+      return { index, true };
     }
 
     signal operator^( bool complement ) const
     {
-      return {index, this->complement != complement};
+      return { index, this->complement != complement };
     }
 
     bool operator==( signal const& other ) const
@@ -159,7 +160,7 @@ public:
 
     bool operator<( signal const& other ) const
     {
-      return index < other.index || (index == other.index && !complement && other.complement);
+      return index < other.index || ( index == other.index && !complement && other.complement );
     }
   };
 
@@ -177,7 +178,7 @@ public:
 #pragma region Primary I / O and constants
   signal get_constant( bool value ) const
   {
-    return {0, value};
+    return { 0, value };
   }
 
   signal create_pi()
@@ -185,7 +186,7 @@ public:
     const auto index = static_cast<uint32_t>( _storage->nodes.size() );
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
-    return {index, 0};
+    return { index, 0 };
   }
 
   uint32_t create_po( signal const& f )
@@ -244,7 +245,7 @@ public:
     if ( const auto it = _storage->hash.find( node ); it != _storage->hash.end() )
     {
       delete[] node.fanin;
-      return {it->second, 0};
+      return { it->second, 0 };
     }
 
     const auto index = static_cast<uint32_t>( _storage->nodes.size() );
@@ -260,7 +261,7 @@ public:
     }
     _storage->nodes[index].level = _level + level_offset;
 
-    return {index, 0u};
+    return { index, 0u };
   }
 
   signal create_and( signal a, signal b )
@@ -282,7 +283,7 @@ public:
     /* constant propagation */
     else if ( a.complement && b.complement )
     {
-      return !create_nary_xor( {+a, +b, create_and( +a, +b )} );
+      return !create_nary_xor( { +a, +b, create_and( +a, +b ) } );
     }
     else if ( a.complement )
     {
@@ -315,7 +316,7 @@ public:
       return create_xor( a, create_and( a, _create_nary_xor( set_bnew ) ) );
     }
 
-    return _create_node( std::vector<uint32_t>{{a.index, b.index}}, 1u );
+    return _create_node( std::vector<uint32_t>{ { a.index, b.index } }, 1u );
   }
 
   signal create_nand( signal const& a, signal const& b )
@@ -345,7 +346,7 @@ public:
 
   signal create_xor( signal const& a, signal const& b )
   {
-    return create_nary_xor( {a, b} );
+    return create_nary_xor( { a, b } );
   }
 
   signal create_xnor( signal const& a, signal const& b )
@@ -357,7 +358,7 @@ public:
 #pragma region Create ternary functions
   signal create_ite( signal cond, signal f_then, signal f_else )
   {
-    bool f_compl{false};
+    bool f_compl{ false };
     if ( f_then.index < f_else.index )
     {
       std::swap( f_then, f_else );
@@ -383,7 +384,7 @@ public:
 
   signal create_xor3( signal const& a, signal const& b, signal const& c )
   {
-    return create_nary_xor( {a, b, c} );
+    return create_nary_xor( { a, b, c } );
   }
 #pragma endregion
 
@@ -443,7 +444,7 @@ public:
     }
     else if ( _fs.size() == 1u )
     {
-      return {_fs.front(), false};
+      return { _fs.front(), false };
     }
     else
     {
@@ -473,7 +474,7 @@ public:
       _fs = std::move( tmp );
     };
 
-    bool complement{false};
+    bool complement{ false };
     for ( auto const& f : fs )
     {
       complement ^= f.complement;
@@ -502,7 +503,7 @@ public:
     }
     else if ( _fs.size() == 1u )
     {
-      return {_fs.front(), complement};
+      return { _fs.front(), complement };
     }
     else
     {
@@ -533,7 +534,7 @@ public:
 
   signal make_signal( node const& n ) const
   {
-    return {n, false};
+    return { n, false };
   }
 
   bool is_complemented( signal const& f ) const
@@ -561,7 +562,7 @@ public:
   {
     assert( index < _storage->outputs.size() );
     const auto po = _storage->outputs[index];
-    return {po.first, po.second};
+    return { po.first, po.second };
   }
 #pragma endregion
 
@@ -590,14 +591,16 @@ public:
   {
     using Iterator = decltype( _storage->outputs.begin() );
     using ElementType = signal;
-    detail::foreach_element_transform<Iterator, ElementType>( _storage->outputs.begin(), _storage->outputs.end(), []( auto const& po ) -> signal { return {po.first, po.second}; }, fn );
+    detail::foreach_element_transform<Iterator, ElementType>(
+        _storage->outputs.begin(), _storage->outputs.end(), []( auto const& po ) -> signal { return { po.first, po.second }; }, fn );
   }
 
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
     using Iterator = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<Iterator, signal>( _storage->outputs.begin(), _storage->outputs.end(), []( auto const& po ) -> signal { return {po.first, po.second}; }, fn );
+    detail::foreach_element_transform<Iterator, signal>(
+        _storage->outputs.begin(), _storage->outputs.end(), []( auto const& po ) -> signal { return { po.first, po.second }; }, fn );
   }
 
   template<typename Fn>
@@ -617,7 +620,8 @@ public:
       return;
 
     const auto& node = _storage->nodes[n];
-    detail::foreach_element_transform<uint32_t*, signal>( node.fanin, node.fanin + node.fanin_size, []( auto c ) -> signal { return { c, false }; }, fn );
+    detail::foreach_element_transform<uint32_t*, signal>(
+        node.fanin, node.fanin + node.fanin_size, []( auto c ) -> signal { return { c, false }; }, fn );
   }
 #pragma endregion
 
@@ -867,7 +871,7 @@ namespace std
 template<>
 struct hash<mockturtle::abstract_xag_network::signal>
 {
-  uint64_t operator()( mockturtle::abstract_xag_network::signal const &s ) const noexcept
+  uint64_t operator()( mockturtle::abstract_xag_network::signal const& s ) const noexcept
   {
     uint64_t k = s.index;
     k ^= k >> 33;

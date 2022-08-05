@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,10 +27,8 @@
   \file aqfp_resynthesis.hpp
   \brief Resynthesis of path balanced networks
 
-  \author Heinz Riener
-  \author Mathias Soeken
-  \author Max Austin
-  \author Dewmini Marakkalage
+  \author Dewmini Sudara Marakkalage
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -86,8 +84,7 @@ struct aqfp_resynthesis_result
 
   uint32_t critical_po_level()
   {
-    return max_element( po_level.begin(), po_level.end(), [&]( auto n1, auto n2 )
-                        { return n1.second < n2.second; } )
+    return max_element( po_level.begin(), po_level.end(), [&]( auto n1, auto n2 ) { return n1.second < n2.second; } )
         ->second;
   }
 };
@@ -128,9 +125,7 @@ public:
     std::map<std::pair<node<NtkSrc>, node<NtkSrc>>, uint32_t> level_for_fanout;
 
     std::unordered_map<node<NtkSrc>, std::vector<node<NtkSrc>>> fanouts;
-    ntk_src.foreach_gate( [&]( auto n )
-                          { ntk_src.foreach_fanin( n, [&]( auto fi )
-                                                   { fanouts[ntk_src.get_node( fi )].push_back( n ); } ); } );
+    ntk_src.foreach_gate( [&]( auto n ) { ntk_src.foreach_fanin( n, [&]( auto fi ) { fanouts[ntk_src.get_node( fi )].push_back( n ); } ); } );
 
     depth_view ntk_depth{ ntk_src };
     topo_view ntk_topo{ ntk_depth };
@@ -148,8 +143,7 @@ public:
     }
 
     /* map primary inputs */
-    ntk_src.foreach_pi( [&]( auto n )
-                        {
+    ntk_src.foreach_pi( [&]( auto n ) {
       auto pi = ntk_dest.create_pi();
       node2new[n] = pi;
       level_of_node[ntk_dest.get_node( pi )] = 0u;
@@ -176,8 +170,7 @@ public:
     /* map register outputs */
     if constexpr ( has_foreach_ro_v<NtkSrc> && has_create_ro_v<NtkDest> )
     {
-      ntk_src.foreach_ro( [&]( auto n, auto i )
-                          {
+      ntk_src.foreach_ro( [&]( auto n, auto i ) {
         auto ro = ntk_dest.create_ro();
         node2new[n] = ro;
         level_of_node[ntk_dest.get_node( ro )] = 0u;
@@ -203,8 +196,7 @@ public:
     }
 
     /* map nodes */
-    ntk_topo.foreach_node( [&]( auto n )
-                           {
+    ntk_topo.foreach_node( [&]( auto n ) {
       if ( ntk_topo.is_constant( n ) || ntk_topo.is_ci( n ) )
         return;
 
@@ -260,8 +252,7 @@ public:
       fanout_resyn_fn( ntk_topo, n, fanouts[n], ntk_dest, node2new[n], level_of_src_node[n], fanout_node_callback, fanout_po_callback ); } );
 
     /* map primary outputs */
-    ntk_src.foreach_po( [&]( auto const& f, auto index )
-                        {
+    ntk_src.foreach_po( [&]( auto const& f, auto index ) {
       (void)index;
 
       auto const o = ntk_src.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];
@@ -281,8 +272,7 @@ public:
     /* map register inputs */
     if constexpr ( has_foreach_ri_v<NtkSrc> && has_create_ri_v<NtkDest> )
     {
-      ntk_src.foreach_ri( [&]( auto const& f, auto index )
-                          {
+      ntk_src.foreach_ri( [&]( auto const& f, auto index ) {
         (void)index;
 
         auto const o = ntk_src.is_complemented( f ) ? ntk_dest.create_not( node2new[f] ) : node2new[f];

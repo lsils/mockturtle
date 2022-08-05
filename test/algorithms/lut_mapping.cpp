@@ -1,9 +1,9 @@
 #include <catch.hpp>
 
-#include <mockturtle/traits.hpp>
 #include <mockturtle/algorithms/lut_mapping.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/traits.hpp>
 #include <mockturtle/views/mapping_view.hpp>
 
 using namespace mockturtle;

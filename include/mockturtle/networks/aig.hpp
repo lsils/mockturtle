@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,6 +27,8 @@
   \file aig.hpp
   \brief AIG logic network implementation
 
+  \author Bruno Schmitt
+  \author Hanyu Wang
   \author Heinz Riener
   \author Jinzheng Tu
   \author Mathias Soeken
@@ -44,8 +46,8 @@
 #include "storage.hpp"
 
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/partial_truth_table.hpp>
 #include <kitty/operators.hpp>
+#include <kitty/partial_truth_table.hpp>
 
 #include <list>
 #include <memory>
@@ -115,7 +117,8 @@ public:
     {
     }
 
-    union {
+    union
+    {
       struct
       {
         uint64_t complement : 1;
@@ -131,12 +134,12 @@ public:
 
     signal operator+() const
     {
-      return {index, 0};
+      return { index, 0 };
     }
 
     signal operator-() const
     {
-      return {index, 1};
+      return { index, 1 };
     }
 
     signal operator^( bool complement ) const
@@ -161,7 +164,7 @@ public:
 
     operator aig_storage::node_type::pointer_type() const
     {
-      return {index, complement};
+      return { index, complement };
     }
 
 #if __cplusplus > 201703L
@@ -184,7 +187,7 @@ public:
   {
   }
 
-  aig_network clone() const 
+  aig_network clone() const
   {
     return { std::make_shared<aig_storage>( *_storage ) };
   }
@@ -193,7 +196,7 @@ public:
 #pragma region Primary I / O and constants
   signal get_constant( bool value ) const
   {
-    return {0, static_cast<uint64_t>( value ? 1 : 0 )};
+    return { 0, static_cast<uint64_t>( value ? 1 : 0 ) };
   }
 
   signal create_pi()
@@ -202,7 +205,7 @@ public:
     auto& node = _storage->nodes.emplace_back();
     node.children[0].data = node.children[1].data = _storage->inputs.size();
     _storage->inputs.emplace_back( index );
-    return {index, 0};
+    return { index, 0 };
   }
 
   uint32_t create_po( signal const& f )
@@ -281,7 +284,7 @@ public:
     if ( it != _storage->hash.end() )
     {
       assert( !is_dead( it->second ) );
-      return {it->second, 0};
+      return { it->second, 0 };
     }
 
     const auto index = _storage->nodes.size();
@@ -302,10 +305,10 @@ public:
 
     for ( auto const& fn : _events->on_add )
     {
-      (*fn)( index );
+      ( *fn )( index );
     }
 
-    return {index, 0};
+    return { index, 0 };
   }
 
   signal create_nand( signal const& a, signal const& b )
@@ -350,7 +353,7 @@ public:
 #pragma region Createy ternary functions
   signal create_ite( signal cond, signal f_then, signal f_else )
   {
-    bool f_compl{false};
+    bool f_compl{ false };
     if ( f_then.index < f_else.index )
     {
       std::swap( f_then, f_else );
@@ -455,8 +458,8 @@ public:
     }
 
     // remember before
-    const auto old_child0 = signal{node.children[0]};
-    const auto old_child1 = signal{node.children[1]};
+    const auto old_child0 = signal{ node.children[0] };
+    const auto old_child1 = signal{ node.children[1] };
 
     // erase old node in hash table
     _storage->hash.erase( node );
@@ -471,7 +474,7 @@ public:
 
     for ( auto const& fn : _events->on_modified )
     {
-      (*fn)( n, {old_child0, old_child1} );
+      ( *fn )( n, { old_child0, old_child1 } );
     }
 
     return std::nullopt;
@@ -511,7 +514,7 @@ public:
 
     for ( auto const& fn : _events->on_delete )
     {
-      (*fn)( n );
+      ( *fn )( n );
     }
 
     /* if the node has been deleted, then deref fanout_size of
@@ -538,7 +541,7 @@ public:
   {
     std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
-    to_substitute.push( {old_node, new_signal} );
+    to_substitute.push( { old_node, new_signal } );
 
     while ( !to_substitute.empty() )
     {
@@ -552,7 +555,7 @@ public:
         assert( it != old_to_new.end() );
         _new = is_complemented( _new ) ? create_not( it->second ) : it->second;
       }
-      
+
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {
         if ( is_ci( idx ) || is_dead( idx ) )
@@ -578,10 +581,9 @@ public:
 
   void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
   {
-    auto clean_substitutions = [&]( node const& n )
-    {
+    auto clean_substitutions = [&]( node const& n ) {
       substitutions.erase( std::remove_if( std::begin( substitutions ), std::end( substitutions ),
-                                           [&]( auto const& s ){
+                                           [&]( auto const& s ) {
                                              if ( s.first == n )
                                              {
                                                node const nn = get_node( s.second );
@@ -630,7 +632,7 @@ public:
 
         /* skip nodes that will be deleted */
         if ( std::find_if( std::begin( substitutions ), std::end( substitutions ),
-                           [&index]( auto s ){ return s.first == index; } ) != std::end( substitutions ) )
+                           [&index]( auto s ) { return s.first == index; } ) != std::end( substitutions ) )
           continue;
 
         /* replace in node */
@@ -815,25 +817,25 @@ public:
   node ci_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() );
-    return *(_storage->inputs.begin() + index);
+    return *( _storage->inputs.begin() + index );
   }
 
   signal co_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() );
-    return *(_storage->outputs.begin() + index);
+    return *( _storage->outputs.begin() + index );
   }
 
   node pi_at( uint32_t index ) const
   {
     assert( index < _storage->inputs.size() );
-    return *(_storage->inputs.begin() + index);
+    return *( _storage->inputs.begin() + index );
   }
 
   signal po_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() );
-    return *(_storage->outputs.begin() + index);
+    return *( _storage->outputs.begin() + index );
   }
 
   uint32_t ci_index( node const& n ) const
@@ -845,14 +847,14 @@ public:
   uint32_t co_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_co( [&]( const auto& x, auto index ){
-        if ( x == s )
-        {
-          i = index;
-          return false;
-        }
-        return true;
-      });
+    foreach_co( [&]( const auto& x, auto index ) {
+      if ( x == s )
+      {
+        i = index;
+        return false;
+      }
+      return true;
+    } );
     return i;
   }
 
@@ -865,14 +867,14 @@ public:
   uint32_t po_index( signal const& s ) const
   {
     uint32_t i = -1;
-    foreach_po( [&]( const auto& x, auto index ){
-        if ( x == s )
-        {
-          i = index;
-          return false;
-        }
-        return true;
-      });
+    foreach_po( [&]( const auto& x, auto index ) {
+      if ( x == s )
+      {
+        i = index;
+        return false;
+      }
+      return true;
+    } );
     return i;
   }
 #pragma endregion
@@ -882,9 +884,10 @@ public:
   void foreach_node( Fn&& fn ) const
   {
     auto r = range<uint64_t>( _storage->nodes.size() );
-    detail::foreach_element_if( r.begin(), r.end(),
-                                [this]( auto n ) { return !is_dead( n ); },
-                                fn );
+    detail::foreach_element_if(
+        r.begin(), r.end(),
+        [this]( auto n ) { return !is_dead( n ); },
+        fn );
   }
 
   template<typename Fn>
@@ -915,9 +918,10 @@ public:
   void foreach_gate( Fn&& fn ) const
   {
     auto r = range<uint64_t>( 1u, _storage->nodes.size() ); /* start from 1 to avoid constant */
-    detail::foreach_element_if( r.begin(), r.end(),
-                                [this]( auto n ) { return !is_ci( n ) && !is_dead( n ); },
-                                fn );
+    detail::foreach_element_if(
+        r.begin(), r.end(),
+        [this]( auto n ) { return !is_ci( n ) && !is_dead( n ); },
+        fn );
   }
 
   template<typename Fn>
@@ -934,25 +938,25 @@ public:
     /* we don't use foreach_element here to have better performance */
     if constexpr ( detail::is_callable_without_index_v<Fn, signal, bool> )
     {
-      if ( !fn( signal{_storage->nodes[n].children[0]} ) )
+      if ( !fn( signal{ _storage->nodes[n].children[0] } ) )
         return;
-      fn( signal{_storage->nodes[n].children[1]} );
+      fn( signal{ _storage->nodes[n].children[1] } );
     }
     else if constexpr ( detail::is_callable_with_index_v<Fn, signal, bool> )
     {
-      if ( !fn( signal{_storage->nodes[n].children[0]}, 0 ) )
+      if ( !fn( signal{ _storage->nodes[n].children[0] }, 0 ) )
         return;
-      fn( signal{_storage->nodes[n].children[1]}, 1 );
+      fn( signal{ _storage->nodes[n].children[1] }, 1 );
     }
     else if constexpr ( detail::is_callable_without_index_v<Fn, signal, void> )
     {
-      fn( signal{_storage->nodes[n].children[0]} );
-      fn( signal{_storage->nodes[n].children[1]} );
+      fn( signal{ _storage->nodes[n].children[0] } );
+      fn( signal{ _storage->nodes[n].children[1] } );
     }
     else if constexpr ( detail::is_callable_with_index_v<Fn, signal, void> )
     {
-      fn( signal{_storage->nodes[n].children[0]}, 0 );
-      fn( signal{_storage->nodes[n].children[1]}, 1 );
+      fn( signal{ _storage->nodes[n].children[0] }, 0 );
+      fn( signal{ _storage->nodes[n].children[1] }, 1 );
     }
   }
 #pragma endregion
@@ -1013,7 +1017,7 @@ public:
     assert( result.num_blocks() == tt1.num_blocks() || ( result.num_blocks() == tt1.num_blocks() - 1 && result.num_bits() % 64 == 0 ) );
 
     result.resize( tt1.num_bits() );
-    result._bits.back() = ( c1.weight ? ~(tt1._bits.back()) : tt1._bits.back() ) & ( c2.weight ? ~(tt2._bits.back()) : tt2._bits.back() );
+    result._bits.back() = ( c1.weight ? ~( tt1._bits.back() ) : tt1._bits.back() ) & ( c2.weight ? ~( tt2._bits.back() ) : tt2._bits.back() );
     result.mask_bits();
   }
 #pragma endregion
@@ -1092,7 +1096,7 @@ namespace std
 template<>
 struct hash<mockturtle::aig_network::signal>
 {
-  uint64_t operator()( mockturtle::aig_network::signal const &s ) const noexcept
+  uint64_t operator()( mockturtle::aig_network::signal const& s ) const noexcept
   {
     uint64_t k = s.data;
     k ^= k >> 33;

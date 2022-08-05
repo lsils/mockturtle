@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file dag_gen.hpp
   \brief AQFP DAG generation
 
-  \author Dewmini Marakkalage
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -136,8 +136,7 @@ private:
   Ntk get_dag_for_partition( const PartialNtk& orig, const partition& p )
   {
     auto net = orig.copy_without_leaves();
-    std::for_each( p.begin(), p.end(), [&net]( const auto& q )
-                   { net.add_leaf_node( q ); } );
+    std::for_each( p.begin(), p.end(), [&net]( const auto& q ) { net.add_leaf_node( q ); } );
     return std::move( net );
   }
 };
@@ -174,8 +173,7 @@ public:
     for ( auto i = 0u; i < num_threads; i++ )
     {
       threads.emplace_back(
-          [&]( auto id )
-          {
+          [&]( auto id ) {
             dags_from_partial_dag<NodeT> dag_from_pdag( params.max_num_in, params.max_num_fanout );
             while ( true )
             {
