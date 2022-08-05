@@ -387,6 +387,11 @@ public:
     // reset fan-out of old node
     _storage->nodes[old_node].data[0].h1 = 0;
   }
+
+  inline bool is_dead( node const& n ) const
+  {
+    return false;
+  }
 #pragma endregion
 
 #pragma region Structural properties
