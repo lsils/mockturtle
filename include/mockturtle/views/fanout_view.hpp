@@ -161,6 +161,7 @@ public:
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    assert( !Ntk::is_dead( Ntk::get_node( new_signal ) ) );
     std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( { old_node, new_signal } );
