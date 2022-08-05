@@ -214,6 +214,11 @@ public:
     return n > 0 && _storage->nodes[n].fanin_size == 0u;
   }
 
+  bool is_ci( node const& n ) const
+  {
+    return n > 0 && _storage->nodes[n].fanin_size == 0u;
+  }
+
   bool constant_value( node const& n ) const
   {
     (void)n;
