@@ -34,11 +34,10 @@
 
 #pragma once
 
-#include <functional>
-#include <vector>
-
 #include "../traits.hpp"
 
+#include <functional>
+#include <vector>
 #include <iostream>
 #include <memory>
 
