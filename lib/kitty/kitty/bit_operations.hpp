@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2021  EPFL
+ * Copyright (C) 2017-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -82,12 +82,10 @@ auto get_bit( const static_truth_table<NumVars, true>& tt, uint64_t index )
 }
 /*! \endcond */
 
-/*! \brief Clears bit at index
+/*! \brief Clears bit at index (sets bit at index to false)
 
   \param tt Truth table
   \param index Bit index
-
-  \return 1 if bit is set, otherwise 0
 */
 template<typename TT>
 void clear_bit( TT& tt, uint64_t index )
@@ -103,7 +101,7 @@ void clear_bit( static_truth_table<NumVars, true>& tt, uint64_t index )
 }
 /*! \endcond */
 
-/*! \brief Flip bit at index
+/*! \brief Flips bit at index
 
   \param tt Truth table
   \param index Bit index
@@ -119,6 +117,28 @@ template<uint32_t NumVars>
 void flip_bit( static_truth_table<NumVars, true>& tt, uint64_t index )
 {
   tt._bits ^= uint64_t( 1 ) << index;
+}
+
+/*! \brief Copies bit at index
+
+  Copy the bit from `tt_from` at index `index_from` to `tt_to` at index `index_to`.
+
+  \param tt_from Truth table to copy from
+  \param index_from Bit index to copy from
+  \param tt_to Truth table to write to
+  \param index_to Bit index to write to
+*/
+template<typename TTfrom, typename TTto>
+void copy_bit( const TTfrom& tt_from, uint64_t index_from, TTto& tt_to, uint64_t index_to )
+{
+  if ( get_bit( tt_from, index_from ) )
+  {
+    set_bit( tt_to, index_to );
+  }
+  else
+  {
+    clear_bit( tt_to, index_to );
+  }
 }
 
 /*! \brief Clears all bits
@@ -147,7 +167,8 @@ template<typename TT>
 inline uint64_t count_ones( const TT& tt )
 {
   return std::accumulate( tt.cbegin(), tt.cend(), uint64_t( 0 ),
-                          []( auto accu, auto word ) {
+                          []( auto accu, auto word )
+                          {
                             return accu + __builtin_popcount( word & 0xffffffff ) + __builtin_popcount( word >> 32 );
                           } );
 }
@@ -275,7 +296,8 @@ int64_t find_first_one_bit( const TT& tt, int64_t start = 0 )
     return -1;
   }
 
-  it = std::find_if( it + 1, tt.cend(), []( auto word ) { return word != 0; } );
+  it = std::find_if( it + 1, tt.cend(), []( auto word )
+                     { return word != 0; } );
 
   if ( it == tt.cend() )
   {
@@ -294,7 +316,8 @@ int64_t find_first_one_bit( const TT& tt, int64_t start = 0 )
 template<typename TT>
 int64_t find_last_one_bit( const TT& tt )
 {
-  const auto it = std::find_if( tt.crbegin(), tt.crend(), []( auto word ) { return word != 0; } );
+  const auto it = std::find_if( tt.crbegin(), tt.crend(), []( auto word )
+                                { return word != 0; } );
 
   if ( it == tt.crend() )
   {

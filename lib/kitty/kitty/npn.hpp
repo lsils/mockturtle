@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2021  EPFL
+ * Copyright (C) 2017-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -90,7 +90,7 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_p_canonization( const TT& t
   /* Special case for n = 1 */
   if ( num_vars == 1 )
   {
-    return std::make_tuple( tt, 0u, std::vector<uint8_t>{0} );
+    return std::make_tuple( tt, 0u, std::vector<uint8_t>{ 0 } );
   }
 
   assert( num_vars >= 2 && num_vars <= 7 );
@@ -171,7 +171,7 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> exact_npn_canonization( const TT&
   if ( num_vars == 1 )
   {
     const auto bit1 = get_bit( tt, 1 );
-    return std::make_tuple( unary_not_if( tt, bit1 ), static_cast<uint32_t>( bit1 << 1 ), std::vector<uint8_t>{0} );
+    return std::make_tuple( unary_not_if( tt, bit1 ), static_cast<uint32_t>( bit1 << 1 ), std::vector<uint8_t>{ 0 } );
   }
 
   assert( num_vars >= 2 && num_vars <= 6 );
@@ -364,7 +364,7 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> flip_swap_npn_canonization( const
   std::vector<uint8_t> perm( num_vars );
   std::iota( perm.begin(), perm.end(), 0u );
 
-  uint32_t phase{0u};
+  uint32_t phase{ 0u };
 
   auto npn = tt;
   auto improvement = true;
@@ -510,7 +510,6 @@ void sifting_p_canonization_loop( TT& p, uint32_t& phase, std::vector<uint8_t>& 
     }
     forward = !forward;
   }
-
 }
 } /* namespace detail */
 /*! \endcond */
@@ -543,7 +542,7 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> sifting_npn_canonization( const T
   /* initialize permutation and phase */
   std::vector<uint8_t> perm( num_vars );
   std::iota( perm.begin(), perm.end(), 0u );
-  uint32_t phase{0u};
+  uint32_t phase{ 0u };
 
   if ( num_vars < 2 )
   {
@@ -600,7 +599,7 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> sifting_p_canonization( const TT&
   /* initialize permutation and phase */
   std::vector<uint8_t> perm( num_vars );
   std::iota( perm.begin(), perm.end(), 0u );
-  uint32_t phase{0u};
+  uint32_t phase{ 0u };
 
   if ( num_vars < 2u )
   {
@@ -646,7 +645,7 @@ void exact_np_enumeration( const TT& tt, Callback&& fn )
   /* Special case for n = 1 */
   if ( num_vars == 1 )
   {
-    fn( tt, 0u, std::vector<uint8_t>{0} );
+    fn( tt, 0u, std::vector<uint8_t>{ 0 } );
     return;
   }
 
@@ -728,7 +727,7 @@ void exact_p_enumeration( const TT& tt, Callback&& fn )
   /* Special case for n = 1 */
   if ( num_vars == 1 )
   {
-    fn( tt, std::vector<uint8_t>{0} );
+    fn( tt, std::vector<uint8_t>{ 0 } );
     return;
   }
 
@@ -838,13 +837,13 @@ std::tuple<TT, std::vector<uint32_t>> exact_n_canonization_complete( const TT& t
   /* Special case for n = 0 */
   if ( num_vars == 0 )
   {
-    return std::make_tuple( tt, std::vector<uint32_t>{0} );
+    return std::make_tuple( tt, std::vector<uint32_t>{ 0 } );
   }
 
   /* Special case for n = 1 */
   if ( num_vars == 1 )
   {
-    return std::make_tuple( tt, std::vector<uint32_t>{0} );
+    return std::make_tuple( tt, std::vector<uint32_t>{ 0 } );
   }
 
   assert( num_vars >= 2 && num_vars <= 6 );
@@ -856,7 +855,7 @@ std::tuple<TT, std::vector<uint32_t>> exact_n_canonization_complete( const TT& t
 
   const auto& flips = detail::flips[num_vars - 2u];
 
-  std::vector<int> best_flip {-1};
+  std::vector<int> best_flip{ -1 };
 
   for ( std::size_t j = 0; j < flips.size(); ++j )
   {

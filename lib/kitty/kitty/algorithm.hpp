@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2021  EPFL
+ * Copyright (C) 2017-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -71,8 +71,8 @@ auto unary_operation( const static_truth_table<NumVars, true>& tt, Fn&& op )
 /*! \endcond */
 
 /*! \cond PRIVATE */
-/*! 
-    \param num_blocks_offset Number of blocks that don't need to be computed 
+/*!
+    \param num_blocks_offset Number of blocks that don't need to be computed
     (the first `num_blocks_offset` blocks of `result` will remain the same before computation)
  */
 template<typename Fn>
@@ -131,8 +131,8 @@ auto binary_operation( const partial_truth_table& first, const partial_truth_tab
 /*! \endcond */
 
 /*! \cond PRIVATE */
-/*! 
-    \param num_blocks_offset Number of blocks that don't need to be computed 
+/*!
+    \param num_blocks_offset Number of blocks that don't need to be computed
     (the first `num_blocks_offset` blocks of `result` will remain the same before computation)
  */
 template<typename Fn>
