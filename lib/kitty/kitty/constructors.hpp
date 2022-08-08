@@ -1256,10 +1256,11 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
 
   /* create input truth tables */
   std::vector<TT> inputs_tts( tt.num_vars() );
-  for ( uint8_t i = 0u; i < tt.num_vars(); ++i )
+  asset( tt.num_vars() < 256 );
+  for ( uint32_t i = 0u; i < tt.num_vars(); ++i )
   {
     auto var = tt.construct();
-    create_nth_var( var, i );
+    create_nth_var( var, static_cast<uint8_t>( i ) );
     inputs_tts[i] = var;
   }
 
