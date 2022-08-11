@@ -35,6 +35,7 @@
 #include "../traits.hpp"
 #include "aig.hpp"
 #include "mig.hpp"
+#include "crossed.hpp"
 
 namespace mockturtle
 {
@@ -554,5 +555,50 @@ public:
   }
 #pragma endregion
 }; /* buffered_mig_network */
+
+class buffered_crossed_klut_network : public crossed_klut_network
+{
+public:
+  static constexpr bool is_buffered_network_type = true;
+
+#pragma region Create unary functions
+  signal create_buf( signal const& a )
+  {
+    return _create_node( { a }, 2 );
+  }
+
+  void invert( node const& n )
+  {
+    assert( false );
+    (void)n;
+  }
+#pragma endregion
+
+#pragma region Structural properties
+  // including buffers, splitters, and inverters
+  bool is_buf( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 2 || _storage->nodes[n].data[1].h1 == 3;
+  }
+
+  bool is_not( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 3;
+  }
+#pragma endregion
+
+#pragma region Node and signal iterators
+  /* TODO: Should crossings be included? */
+  template<typename Fn>
+  void foreach_gate( Fn&& fn ) const
+  {
+    auto r = range<uint64_t>( 2u, _storage->nodes.size() ); /* start from 2 to avoid constants */
+    detail::foreach_element_if(
+        r.begin(), r.end(),
+        [this]( auto n ) { return !is_ci( n ) && !is_buf( n ); },
+        fn );
+  }
+#pragma endregion
+}; /* buffered_crossed_klut_network */
 
 } // namespace mockturtle
