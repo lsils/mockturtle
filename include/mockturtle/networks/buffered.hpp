@@ -33,7 +33,6 @@
 #pragma once
 
 #include "../traits.hpp"
-#include "../views/names_view.hpp"
 #include "aig.hpp"
 #include "mig.hpp"
 
@@ -43,6 +42,8 @@ namespace mockturtle
 class buffered_aig_network : public aig_network
 {
 public:
+  static constexpr bool is_buffered_network_type = true;
+
 #pragma region Create unary functions
   signal create_buf( signal const& a )
   {
@@ -290,6 +291,8 @@ public:
 class buffered_mig_network : public mig_network
 {
 public:
+  static constexpr bool is_buffered_network_type = true;
+
 #pragma region Create unary functions
   signal create_buf( signal const& a )
   {
@@ -551,25 +554,5 @@ public:
   }
 #pragma endregion
 }; /* buffered_mig_network */
-
-template<>
-struct is_buffered_network_type<buffered_aig_network> : std::true_type
-{
-};
-
-template<>
-struct is_buffered_network_type<names_view<buffered_aig_network>> : std::true_type
-{
-};
-
-template<>
-struct is_buffered_network_type<buffered_mig_network> : std::true_type
-{
-};
-
-template<>
-struct is_buffered_network_type<names_view<buffered_mig_network>> : std::true_type
-{
-};
 
 } // namespace mockturtle
