@@ -411,6 +411,29 @@ public:
     return _storage->nodes[n].data[1].h1 == literal_crossing;
   }
 
+  /*! \brief Whether a crossing's fanout signal is the second one
+   *
+   * \param f A signal pointing to a crossing cell
+   * \return Whether this fanout connects to the second fanin (return 1) or the first fanin (return 0)
+   */
+  bool is_second( signal const& f ) const
+  {
+    assert( is_crossing( f.index ) );
+    return f.weight;
+  }
+
+  /*! \brief Take a crossing's first fanout signal and make it the second
+   *
+   * \param f A signal pointing to a crossing cell, referring to the fanout connecting to the first fanin
+   * \return The signal referring to the fanout connecting to the second fanin
+   */
+  signal make_second( signal const& f ) const
+  {
+    assert( is_crossing( f.index ) );
+    assert( !is_second( f ) );
+    return signal( f.index, 1 );
+  }
+
   /*! \brief Get the real fanin signal ignoring all crossings in between
    *
    * \param f A signal pointing to a crossing
