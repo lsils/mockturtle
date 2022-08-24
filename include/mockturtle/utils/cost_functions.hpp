@@ -116,13 +116,15 @@ struct lut_unitary_cost
 {
   std::pair<uint32_t, uint32_t> operator()( uint32_t num_leaves ) const
   {
-    (void)num_leaves;
+    if ( num_leaves < 2u )
+      return {0u, 0u};
     return {1u, 1u}; /* area, delay */
   }
 
   std::pair<uint32_t, uint32_t> operator()( kitty::dynamic_truth_table const& tt ) const
   {
-    (void)tt;
+    if ( tt.num_vars() < 2u )
+      return {0u, 0u};
     return {1u, 1u}; /* area, delay */
   }
 };

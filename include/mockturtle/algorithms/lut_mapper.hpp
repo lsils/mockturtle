@@ -72,7 +72,7 @@ struct lut_map_params
    *
    * The default cut limit is 8. The maximum value
    * is 249. By default, truth table minimization
-   * is not performed.
+   * is performed.
    */
   cut_enumeration_params cut_enumeration_ps{};
 
@@ -574,7 +574,7 @@ public:
     init_nodes();
     init_cuts();
 
-    /* compute mapping for depth */
+    /* compute mapping for depth or area */
     if ( !ps.area_oriented_mapping )
     {
       compute_required_time();
@@ -586,7 +586,6 @@ public:
         compute_mapping<false, false>( lut_cut_sort_type::DELAY2, true, true );
         compute_required_time();
         compute_mapping<true, false>( lut_cut_sort_type::AREA, true, true );
-        // compute_required_time();
       }
       else
       {
@@ -677,6 +676,19 @@ private:
     cuts_total = 0;
     for ( auto const& n : top_order )
     {
+      if constexpr ( !ELA )
+      {
+        auto const index = ntk.node_to_index( n );
+        if ( !preprocess && iteration != 0  )
+        {
+          node_match[index].est_refs = ( 2.0 * node_match[index].est_refs + node_match[index].map_refs ) / 3.0;
+        }
+        else
+        {
+          node_match[index].est_refs = static_cast<float>( node_match[index].map_refs );
+        }
+      }
+
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
       {
         continue;
@@ -762,8 +774,6 @@ private:
   template<bool ELA>
   void set_mapping_refs()
   {
-    const auto coef = 2.0f / 3.0f;
-
     if constexpr ( !ELA )
     {
       for ( auto i = 0u; i < node_match.size(); ++i )
@@ -814,15 +824,6 @@ private:
       }
       area += best_cut->data.lut_area;
       edges += best_cut.size();
-    }
-
-    /* blend estimated references */
-    if constexpr ( !ELA )
-    {
-      for ( auto i = 0u; i < ntk.size(); ++i )
-      {
-        node_match[i].est_refs = coef * node_match[i].est_refs + ( 1.0f - coef ) *  node_match[i].map_refs;
-      }
     }
 
     ++iteration;
@@ -896,9 +897,9 @@ private:
     lcuts[2] = &cuts[index];
     auto& rcuts = *lcuts[fanin];
 
-    if constexpr ( ELA )
+    if constexpr ( DO_AREA )
     {
-      if ( node_data.map_refs )
+      if ( iteration != 0 && node_data.map_refs > 0 )
       {
         cut_deref( rcuts[0] );
       }
@@ -982,11 +983,11 @@ private:
       add_unit_cut( index );
     }
 
-    if constexpr ( ELA )
+    if constexpr ( DO_AREA )
     {
-      if ( node_data.map_refs )
+      if ( iteration != 0 && node_data.map_refs > 0 )
       {
-        cut_ref( rcuts[0] ); /* TODO test best */
+        cut_ref( rcuts[0] );
       }
     }
   }
@@ -1010,9 +1011,9 @@ private:
     lcuts[fanin] = &cuts[index];
     auto& rcuts = *lcuts[fanin];
 
-    if constexpr ( ELA )
+    if constexpr ( DO_AREA )
     {
-      if ( node_data.map_refs )
+      if ( iteration != 0 && node_data.map_refs > 0 )
       {
         cut_deref( rcuts[0] );
       }
@@ -1142,9 +1143,9 @@ private:
 
     add_unit_cut( index );
 
-    if constexpr ( ELA )
+    if constexpr ( DO_AREA )
     {
-      if ( node_data.map_refs )
+      if ( iteration != 0 && node_data.map_refs > 0 )
       {
         cut_ref( rcuts[0] );
       }
@@ -1162,9 +1163,9 @@ private:
 
     cut_t const* best_cut = &node_cut_set.best();
 
-    if constexpr ( ELA )
+    if constexpr ( DO_AREA )
     {
-      if ( node_data.map_refs )
+      if ( iteration != 0 && node_data.map_refs > 0 )
       {
         cut_deref( *best_cut );
       }
@@ -1206,9 +1207,9 @@ private:
       ++cut_index;
     }
 
-    if constexpr ( ELA )
+    if constexpr ( DO_AREA || ELA )
     {
-      if ( node_data.map_refs )
+      if ( iteration != 0 && node_data.map_refs > 0 )
       {
         cut_ref( *best_cut );
       }
@@ -1625,32 +1626,31 @@ private:
     else
     {
       uint32_t delay{0};
-      /* TODO: check this */
-      float area_flow = cut.size() < 2 ? 0.0f : static_cast<float>( lut_area );
+
+      float area_flow = static_cast<float>( lut_area );
       float edge_flow = cut.size();
 
       for ( auto leaf : cut )
       {
         const auto& best_leaf_cut = cuts[leaf][0];
         delay = std::max( delay, best_leaf_cut->data.delay );
-        area_flow += best_leaf_cut->data.area_flow;
-        edge_flow += best_leaf_cut->data.edge_flow;
+        if ( node_match[leaf].map_refs > 0 && leaf != 0 )
+        {
+          area_flow += best_leaf_cut->data.area_flow / node_match[leaf].est_refs;
+          edge_flow += best_leaf_cut->data.edge_flow / node_match[leaf].est_refs;
+        }
+        else
+        {
+          area_flow += best_leaf_cut->data.area_flow;
+          edge_flow += best_leaf_cut->data.edge_flow;
+        }
       }
 
-      /* TODO: check this heuristic */
       cut->data.delay = lut_delay + delay;
       cut->data.lut_area = lut_area;
       cut->data.lut_delay = lut_delay;
-      if ( node_match[n].map_refs > 0 )
-      {
-        cut->data.area_flow = area_flow / node_match[n].est_refs;
-        cut->data.edge_flow = edge_flow / node_match[n].est_refs;
-      }
-      else
-      {
-        cut->data.area_flow = area_flow;
-        cut->data.edge_flow = edge_flow;
-      }
+      cut->data.area_flow = area_flow;
+      cut->data.edge_flow = edge_flow;
     }
   }
 
