@@ -166,7 +166,7 @@ struct cut_enumeration_lut_cut
   float edge_flow{0};
 };
 
-enum lut_cut_sort_type
+enum class lut_cut_sort_type
 {
   DELAY,
   DELAY2,
