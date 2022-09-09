@@ -206,7 +206,7 @@ inline muxig_signal muxig_network::create_maj( signal const& a, signal const& b,
 }
 
 template<>
-inline muxig_signal muxig_network::create_ite( signal const& a, signal const& b, signal const& c )
+inline muxig_signal muxig_network::create_ite( signal a, signal b, signal c )
 {
   return create_gate( a, b, c );
 }

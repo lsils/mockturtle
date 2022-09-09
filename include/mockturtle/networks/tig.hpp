@@ -73,6 +73,85 @@ struct compute_function
   std::enable_if_t<std::is_integral<T>::value, T> operator()( T a, T b, T c );
 };
 
+using tig_storage = storage<regular_node<3, 2, 1>>;
+
+struct tig_signal
+{
+  tig_signal() = default;
+
+  tig_signal( uint64_t index, uint64_t complement )
+      : complement( complement ), index( index )
+  {
+  }
+
+  explicit tig_signal( uint64_t data )
+      : data( data )
+  {
+  }
+
+  tig_signal( tig_storage::node_type::pointer_type const& p )
+      : complement( p.weight ), index( p.index )
+  {
+  }
+
+  union
+  {
+    struct
+    {
+      uint64_t complement : 1;
+      uint64_t index : 63;
+    };
+    uint64_t data;
+  };
+
+  tig_signal operator!() const
+  {
+    return tig_signal( data ^ 1 );
+  }
+
+  tig_signal operator+() const
+  {
+    return { index, 0 };
+  }
+
+  tig_signal operator-() const
+  {
+    return { index, 1 };
+  }
+
+  tig_signal operator^( bool complement ) const
+  {
+    return tig_signal( data ^ ( complement ? 1 : 0 ) );
+  }
+
+  bool operator==( tig_signal const& other ) const
+  {
+    return data == other.data;
+  }
+
+  bool operator!=( tig_signal const& other ) const
+  {
+    return data != other.data;
+  }
+
+  bool operator<( tig_signal const& other ) const
+  {
+    return data < other.data;
+  }
+
+  operator tig_storage::node_type::pointer_type() const
+  {
+    return { index, complement };
+  }
+
+#if __cplusplus > 201703L
+  bool operator==( tig_storage::node_type::pointer_type const& other ) const
+  {
+    return data == other.data;
+  }
+#endif
+};
+
 /*! \brief T-Inverter-Graph storage container
   TIGs have nodes with fan-in 3.  We split of one bit of the index pointer to
   store a complemented attribute.  Every node has 64-bit of additional data
@@ -81,8 +160,6 @@ struct compute_function
   `data[0].h2`: Application-specific value
   `data[1].h1`: Visited flag
   */
-
-using tig_storage = storage<regular_node<3, 2, 1>>;
 
 template<three_input_function NodeFunc>
 class tig_network
@@ -95,83 +172,7 @@ public:
   using base_type = tig_network<NodeFunc>;
   using storage = std::shared_ptr<tig_storage>;
   using node = uint64_t;
-
-  struct signal
-  {
-    signal() = default;
-
-    signal( uint64_t index, uint64_t complement )
-        : complement( complement ), index( index )
-    {
-    }
-
-    explicit signal( uint64_t data )
-        : data( data )
-    {
-    }
-
-    signal( tig_storage::node_type::pointer_type const& p )
-        : complement( p.weight ), index( p.index )
-    {
-    }
-
-    union
-    {
-      struct
-      {
-        uint64_t complement : 1;
-        uint64_t index : 63;
-      };
-      uint64_t data;
-    };
-
-    signal operator!() const
-    {
-      return signal( data ^ 1 );
-    }
-
-    signal operator+() const
-    {
-      return { index, 0 };
-    }
-
-    signal operator-() const
-    {
-      return { index, 1 };
-    }
-
-    signal operator^( bool complement ) const
-    {
-      return signal( data ^ ( complement ? 1 : 0 ) );
-    }
-
-    bool operator==( signal const& other ) const
-    {
-      return data == other.data;
-    }
-
-    bool operator!=( signal const& other ) const
-    {
-      return data != other.data;
-    }
-
-    bool operator<( signal const& other ) const
-    {
-      return data < other.data;
-    }
-
-    operator tig_storage::node_type::pointer_type() const
-    {
-      return { index, complement };
-    }
-
-#if __cplusplus > 201703L
-    bool operator==( tig_storage::node_type::pointer_type const& other ) const
-    {
-      return data == other.data;
-    }
-#endif
-  };
+  using signal = tig_signal;
 
   tig_network()
       : _storage( std::make_shared<tig_storage>() ),
@@ -359,7 +360,7 @@ public:
   }
 
   /* Remark: To be specialized. */
-  signal create_ite( signal const& cond, signal const& f_then, signal const& f_else )
+  signal create_ite( signal cond, signal f_then, signal f_else )
   {
     bool f_compl{ false };
     if ( f_then.index < f_else.index )
@@ -1079,10 +1080,10 @@ private:
 namespace std
 {
 
-template<mockturtle::three_input_function NodeFunc>
-struct hash<typename mockturtle::tig_network<NodeFunc>::signal>
+template<>
+struct hash<mockturtle::tig_signal>
 {
-  uint64_t operator()( typename mockturtle::tig_network<NodeFunc>::signal const& s ) const noexcept
+  uint64_t operator()( mockturtle::tig_signal const& s ) const noexcept
   {
     uint64_t k = s.data;
     k ^= k >> 33;
@@ -1093,4 +1094,5 @@ struct hash<typename mockturtle::tig_network<NodeFunc>::signal>
     return k;
   }
 }; /* hash */
+
 } // namespace std
