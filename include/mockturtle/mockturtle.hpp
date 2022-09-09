@@ -167,6 +167,7 @@
 #include "mockturtle/networks/events.hpp"
 #include "mockturtle/networks/klut.hpp"
 #include "mockturtle/networks/mig.hpp"
+#include "mockturtle/networks/muxig.hpp"
 #include "mockturtle/networks/sequential.hpp"
 #include "mockturtle/networks/storage.hpp"
 #include "mockturtle/networks/xag.hpp"
