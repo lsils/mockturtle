@@ -143,5 +143,24 @@
       }
     ],
     "version": "df695e1"
+  },
+  {
+    "entries": [
+      {
+        "benchmark": "div",
+        "equivalent": true,
+        "gain": 108,
+        "runtime": 1.868368148803711,
+        "size": 40611
+      },
+      {
+        "benchmark": "hyp",
+        "equivalent": true,
+        "gain": 381,
+        "runtime": 24.60197639465332,
+        "size": 204360
+      }
+    ],
+    "version": "1670606"
   }
 ]

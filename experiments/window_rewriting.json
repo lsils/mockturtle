@@ -1,0 +1,348 @@
+[
+  {
+    "entries": [
+      {
+        "benchmark": "adder",
+        "equivalent": true,
+        "est. gain": 128,
+        "iterations": 2,
+        "real gain": 256,
+        "resubs": 128,
+        "runtime": 0.0119443,
+        "size_after": 892,
+        "size_before": 1020
+      },
+      {
+        "benchmark": "bar",
+        "equivalent": true,
+        "est. gain": 384,
+        "iterations": 17,
+        "real gain": 5208,
+        "resubs": 129,
+        "runtime": 0.653752374,
+        "size_after": 2952,
+        "size_before": 3336
+      },
+      {
+        "benchmark": "div",
+        "equivalent": true,
+        "est. gain": 16182,
+        "iterations": 3,
+        "real gain": 48525,
+        "resubs": 11996,
+        "runtime": 0.974113776,
+        "size_after": 41060,
+        "size_before": 57247
+      },
+      {
+        "benchmark": "hyp",
+        "equivalent": true,
+        "est. gain": 9336,
+        "iterations": 3,
+        "real gain": 28013,
+        "resubs": 8291,
+        "runtime": 4.447613291,
+        "size_after": 204997,
+        "size_before": 214335
+      },
+      {
+        "benchmark": "log2",
+        "equivalent": true,
+        "est. gain": 2357,
+        "iterations": 3,
+        "real gain": 7070,
+        "resubs": 2201,
+        "runtime": 1.200829775,
+        "size_after": 29703,
+        "size_before": 32060
+      },
+      {
+        "benchmark": "max",
+        "equivalent": true,
+        "est. gain": 99,
+        "iterations": 3,
+        "real gain": 265,
+        "resubs": 96,
+        "runtime": 0.039301154,
+        "size_after": 2766,
+        "size_before": 2865
+      },
+      {
+        "benchmark": "multiplier",
+        "equivalent": true,
+        "est. gain": 2483,
+        "iterations": 2,
+        "real gain": 4966,
+        "resubs": 1989,
+        "runtime": 0.676069695,
+        "size_after": 24579,
+        "size_before": 27062
+      },
+      {
+        "benchmark": "sin",
+        "equivalent": true,
+        "est. gain": 280,
+        "iterations": 4,
+        "real gain": 1118,
+        "resubs": 241,
+        "runtime": 0.348240314,
+        "size_after": 5135,
+        "size_before": 5416
+      },
+      {
+        "benchmark": "sqrt",
+        "equivalent": true,
+        "est. gain": 6273,
+        "iterations": 3,
+        "real gain": 18719,
+        "resubs": 5950,
+        "runtime": 0.641100767,
+        "size_after": 18344,
+        "size_before": 24618
+      },
+      {
+        "benchmark": "square",
+        "equivalent": true,
+        "est. gain": 1513,
+        "iterations": 3,
+        "real gain": 4531,
+        "resubs": 1332,
+        "runtime": 0.450843123,
+        "size_after": 16971,
+        "size_before": 18484
+      },
+      {
+        "benchmark": "arbiter",
+        "equivalent": true,
+        "est. gain": 0,
+        "iterations": 1,
+        "real gain": 0,
+        "resubs": 0,
+        "runtime": 0.058137041,
+        "size_after": 11839,
+        "size_before": 11839
+      },
+      {
+        "benchmark": "cavlc",
+        "equivalent": true,
+        "est. gain": 21,
+        "iterations": 3,
+        "real gain": 61,
+        "resubs": 14,
+        "runtime": 0.026685663,
+        "size_after": 672,
+        "size_before": 693
+      },
+      {
+        "benchmark": "ctrl",
+        "equivalent": true,
+        "est. gain": 80,
+        "iterations": 3,
+        "real gain": 232,
+        "resubs": 24,
+        "runtime": 0.011839377,
+        "size_after": 94,
+        "size_before": 174
+      },
+      {
+        "benchmark": "dec",
+        "equivalent": true,
+        "est. gain": 0,
+        "iterations": 1,
+        "real gain": 0,
+        "resubs": 0,
+        "runtime": 3.0125e-05,
+        "size_after": 304,
+        "size_before": 304
+      },
+      {
+        "benchmark": "i2c",
+        "equivalent": true,
+        "est. gain": 52,
+        "iterations": 3,
+        "real gain": 155,
+        "resubs": 39,
+        "runtime": 0.0120985,
+        "size_after": 1290,
+        "size_before": 1342
+      },
+      {
+        "benchmark": "int2float",
+        "equivalent": true,
+        "est. gain": 25,
+        "iterations": 2,
+        "real gain": 50,
+        "resubs": 20,
+        "runtime": 0.003062281,
+        "size_after": 235,
+        "size_before": 260
+      },
+      {
+        "benchmark": "mem_ctrl",
+        "equivalent": true,
+        "est. gain": 2049,
+        "iterations": 6,
+        "real gain": 11924,
+        "resubs": 1011,
+        "runtime": 1.623458781,
+        "size_after": 44746,
+        "size_before": 46836
+      },
+      {
+        "benchmark": "priority",
+        "equivalent": true,
+        "est. gain": 507,
+        "iterations": 61,
+        "real gain": 28688,
+        "resubs": 333,
+        "runtime": 0.04464617,
+        "size_after": 471,
+        "size_before": 978
+      },
+      {
+        "benchmark": "router",
+        "equivalent": true,
+        "est. gain": 97,
+        "iterations": 3,
+        "real gain": 278,
+        "resubs": 57,
+        "runtime": 0.002820913,
+        "size_after": 160,
+        "size_before": 257
+      },
+      {
+        "benchmark": "voter",
+        "equivalent": true,
+        "est. gain": 5641,
+        "iterations": 7,
+        "real gain": 39361,
+        "resubs": 1836,
+        "runtime": 0.566913283,
+        "size_after": 8093,
+        "size_before": 13758
+      },
+      {
+        "benchmark": "c17",
+        "equivalent": true,
+        "est. gain": 0,
+        "iterations": 1,
+        "real gain": 0,
+        "resubs": 0,
+        "runtime": 3.1291e-05,
+        "size_after": 6,
+        "size_before": 6
+      },
+      {
+        "benchmark": "c432",
+        "equivalent": true,
+        "est. gain": 78,
+        "iterations": 3,
+        "real gain": 202,
+        "resubs": 30,
+        "runtime": 0.002447287,
+        "size_after": 138,
+        "size_before": 208
+      },
+      {
+        "benchmark": "c499",
+        "equivalent": true,
+        "est. gain": 6,
+        "iterations": 2,
+        "real gain": 12,
+        "resubs": 2,
+        "runtime": 0.003949541,
+        "size_after": 392,
+        "size_before": 398
+      },
+      {
+        "benchmark": "c880",
+        "equivalent": true,
+        "est. gain": 24,
+        "iterations": 2,
+        "real gain": 48,
+        "resubs": 6,
+        "runtime": 0.002256626,
+        "size_after": 301,
+        "size_before": 325
+      },
+      {
+        "benchmark": "c1355",
+        "equivalent": true,
+        "est. gain": 70,
+        "iterations": 4,
+        "real gain": 264,
+        "resubs": 55,
+        "runtime": 0.014902704,
+        "size_after": 432,
+        "size_before": 502
+      },
+      {
+        "benchmark": "c1908",
+        "equivalent": true,
+        "est. gain": 33,
+        "iterations": 3,
+        "real gain": 111,
+        "resubs": 16,
+        "runtime": 0.005269333,
+        "size_after": 303,
+        "size_before": 341
+      },
+      {
+        "benchmark": "c2670",
+        "equivalent": true,
+        "est. gain": 142,
+        "iterations": 3,
+        "real gain": 435,
+        "resubs": 86,
+        "runtime": 0.009415663,
+        "size_after": 567,
+        "size_before": 716
+      },
+      {
+        "benchmark": "c3540",
+        "equivalent": true,
+        "est. gain": 128,
+        "iterations": 4,
+        "real gain": 604,
+        "resubs": 67,
+        "runtime": 0.03222779,
+        "size_after": 872,
+        "size_before": 1024
+      },
+      {
+        "benchmark": "c5315",
+        "equivalent": true,
+        "est. gain": 367,
+        "iterations": 4,
+        "real gain": 1487,
+        "resubs": 213,
+        "runtime": 0.046120727,
+        "size_after": 1397,
+        "size_before": 1776
+      },
+      {
+        "benchmark": "c6288",
+        "equivalent": true,
+        "est. gain": 452,
+        "iterations": 2,
+        "real gain": 904,
+        "resubs": 445,
+        "runtime": 0.034354287,
+        "size_after": 1885,
+        "size_before": 2337
+      },
+      {
+        "benchmark": "c7552",
+        "equivalent": true,
+        "est. gain": 128,
+        "iterations": 4,
+        "real gain": 484,
+        "resubs": 63,
+        "runtime": 0.048178888,
+        "size_after": 1341,
+        "size_before": 1469
+      }
+    ],
+    "version": "1670606"
+  }
+]

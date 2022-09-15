@@ -37,12 +37,12 @@
 #pragma once
 
 #include "../../utils/index_list.hpp"
-#include "../experimental/boolean_optimization.hpp"
+#include "../../utils/null_utils.hpp"
 #include <kitty/kitty.hpp>
 #include <optional>
 #include <vector>
 
-namespace mockturtle::experimental
+namespace mockturtle
 {
 
 struct aig_enumerative_resyn_stats
@@ -142,7 +142,6 @@ struct aig_enumerative_resyn
 {
 public:
   using stats = aig_enumerative_resyn_stats;
-  using params = null_params;
   using index_list_t = xag_index_list<false>;
   using truth_table_t = TT;
 
@@ -472,4 +471,4 @@ private:
   stats& st;
 }; /* aig_enumerative_resyn */
 
-} // namespace mockturtle::experimental
+} // namespace mockturtle
