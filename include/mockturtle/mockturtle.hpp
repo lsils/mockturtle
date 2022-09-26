@@ -170,6 +170,7 @@
 #include "mockturtle/networks/muxig.hpp"
 #include "mockturtle/networks/sequential.hpp"
 #include "mockturtle/networks/storage.hpp"
+#include "mockturtle/networks/tig.hpp"
 #include "mockturtle/networks/xag.hpp"
 #include "mockturtle/networks/xmg.hpp"
 #include "mockturtle/properties/aqfpcost.hpp"
