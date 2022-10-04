@@ -58,13 +58,16 @@ public:
 
 public:
   explicit mux_resyn( stats& st )
-      : st( st )
+      : st( st ), max_depth( 10 )
   {
   }
 
   template<class iterator_type, class truth_table_storage_type>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
+    divisors.clear();
+    normalized.clear();
+
     normalized.emplace_back( ~target ); // 0 XNOR target = ~target
     normalized.emplace_back( target );  // 1 XNOR target = target
 
@@ -77,71 +80,144 @@ public:
       divisors.emplace_back( tt );
       ++begin;
     }
-    size_limit = max_size;
+
     num_bits = kitty::count_ones( care );
-    //scores.resize( normalized.size() );
-
-    for ( auto i = 0u; i < normalized.size(); ++i )
+    remaining_size = max_size;
+    index_list.clear();
+    index_list.add_inputs( divisors.size() );
+    
+    auto res = compute_function( care, 0 );
+    if ( res )
     {
-      if ( kitty::is_const0( ~normalized.at( i ) & care ) )
-      {
-        /* 0-resub (including constants) */
-        muxig_index_list index_list( divisors.size() );
-        index_list.add_output( i );
-        return index_list;
-      }
+      index_list.add_output( *res );
+      return index_list;
     }
-
-    if ( size_limit == 0u )
+    else
     {
       return std::nullopt;
     }
-
-    return compute_function( care );
   }
 
 private:
-  std::optional<index_list_t> compute_function( TT const& care )
+  std::optional<index_list_t::element_type> compute_function( TT const& care, uint32_t depth )
   {
-    uint32_t chosen_i{0}, chosen_s{0}, max_score{0};
-    for ( auto i = 0u; i < normalized.size(); ++i )
+    if ( depth > max_depth )
+      return std::nullopt;
+
+    uint32_t chosen_t{0}, chosen_s{0}, chosen_e{0}, score1{0}, score2{0}, max_score{0}, min_score1{num_bits}, min_score2{num_bits};
+    for ( auto t = 0u; t < normalized.size(); ++t )
     {
-      TT covered_and_cared = normalized.at( i ) & care;
-      for ( auto s = 0u; s < divisors.size(); ++s )
+      score1 = kitty::count_ones( normalized.at( t ) & care );
+      if ( score1 > max_score )
       {
-        uint32_t score = kitty::count_ones( covered_and_cared & divisors.at( s ) );
-        if ( score > max_score )
+        max_score = score1;
+        chosen_t = t;
+        if ( score1 == num_bits )
         {
-          max_score = score;
-          chosen_i = i;
+          /* 0-resub */
+          return t;
+        }
+      }
+    }
+
+    if ( remaining_size == 0 )
+      return std::nullopt;
+
+    TT uncovered = ~normalized.at( chosen_t ) & care;
+    for ( auto s = 0u; s < divisors.size(); ++s )
+    {
+      TT& tt_s = divisors.at( s );
+      TT tt_not_s = ~divisors.at( s );
+
+      // try positive s
+      score1 = kitty::count_ones( uncovered & tt_s );
+      if ( score1 < min_score1 )
+      {
+        min_score1 = score1;
+        chosen_s = s * 2;
+        min_score2 = num_bits;
+      }
+      if ( score1 == min_score1 )
+      {
+        score2 = kitty::count_ones( tt_not_s & care );
+        if ( score2 < min_score2 )
+        {
+          min_score2 = score2;
           chosen_s = s * 2;
         }
+      }
 
-        score = kitty::count_ones( covered_and_cared & ~divisors.at( s ) );
-        if ( score > max_score )
+      // try negative s
+      score1 = kitty::count_ones( uncovered & tt_not_s );
+      if ( score1 < min_score1 )
+      {
+        min_score1 = score1;
+        chosen_s = s * 2 + 1;
+        min_score2 = num_bits;
+      }
+      if ( score1 == min_score1 )
+      {
+        score2 = kitty::count_ones( tt_s & care );
+        if ( score2 < min_score2 )
         {
-          max_score = score;
-          chosen_i = i;
+          min_score2 = score2;
           chosen_s = s * 2 + 1;
         }
       }
     }
 
-    TT tt_s = chosen_s % 2 ? ~divisors.at( chosen_s / 2 ) : divisors.at( chosen_s / 2 );
-    // choose the best for care & ~tt_s
+    TT tt_chosen_s = chosen_s % 2 ? ~divisors.at( chosen_s / 2 ) : divisors.at( chosen_s / 2 );
+    if ( min_score2 != 0 )
+    {
+      TT to_cover = care & ~tt_chosen_s;
+      max_score = 0;
+      for ( auto e = 0u; e < normalized.size(); ++e )
+      {
+        score1 = kitty::count_ones( normalized.at( e ) & to_cover );
+        if ( score1 > max_score )
+        {
+          max_score = score1;
+          chosen_e = e;
+          if ( max_score == min_score2 ) // best e-child
+            break;
+        }
+      }
+    }
 
-    // uncovered: care & ~normalized( chosen_i ) & tt_s
-    // uncovered: care & ~normalized( chosen_j ) & ~tt_s
+    if ( min_score1 != 0 ) /* expand on t-child */
+    {
+      TT t_care = care & tt_chosen_s;
+      auto res = compute_function( t_care, depth + 1 );
+      if ( res && remaining_size > 0 )
+        chosen_t = *res;
+      else
+        return std::nullopt;
+    }
 
+    if ( max_score != min_score2 ) /* expand on e-child */
+    {
+      TT e_care = care & ~tt_chosen_s;
+      auto res = compute_function( e_care, depth + 1 );
+      if ( res && remaining_size > 0 )
+        chosen_e = *res;
+      else
+        return std::nullopt;
+    }
+
+    assert( remaining_size >= 1 );
+    --remaining_size;
+    return index_list.add_mux( chosen_s, chosen_t, chosen_e );
   }
 
 private:
-  uint32_t size_limit;
   uint32_t num_bits;
+  uint32_t remaining_size;
+  uint32_t max_depth;
 
   std::vector<TT> divisors;
   std::vector<TT> normalized;
-  //std::vector<uint32_t> scores;
+
+  muxig_index_list index_list;
 
   stats& st;
 }; /* mux_resyn */
