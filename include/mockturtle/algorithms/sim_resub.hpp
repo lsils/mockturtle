@@ -160,7 +160,7 @@ public:
   using TT = kitty::partial_truth_table;
 
   explicit simulation_based_resub_engine( Ntk& ntk, resubstitution_params const& ps, stats& st )
-      : ntk( ntk ), ps( ps ), st( st ), tts( ntk ), validator( ntk, { ps.max_clauses, ps.odc_levels, ps.conflict_limit, ps.random_seed } )//, engine( st.resyn_st )
+      : ntk( ntk ), ps( ps ), st( st ), tts( ntk ), validator( ntk, { ps.max_clauses, ps.odc_levels, ps.conflict_limit, ps.random_seed } ), engine( st.resyn_st )
   {
     if constexpr ( !validator_t::use_odc_ )
     {
@@ -190,7 +190,7 @@ public:
     }
   }
 
-  void init( std::string benchmark = "" )
+  void init()
   {
     /* prepare simulation patterns */
     call_with_stopwatch( st.time_patgen, [&]() {
@@ -210,8 +210,6 @@ public:
     call_with_stopwatch( st.time_sim, [&]() {
       simulate_nodes<Ntk>( ntk, tts, sim, true );
     } );
-
-    //engine.reset_filename( benchmark );
   }
 
   std::optional<signal> run( node const& n, std::vector<node> const& divs, mffc_result_t potential_gain, uint32_t& last_gain )
@@ -230,7 +228,6 @@ public:
 
       const auto res = call_with_stopwatch( st.time_resyn, [&]() {
         ++st.num_resyn;
-        ResynEngine engine( st.resyn_st );
         return engine( tts[n], care, std::begin( divs ), std::end( divs ), tts, std::min( potential_gain - 1, ps.max_inserts ) );
       } );
 
@@ -247,8 +244,6 @@ public:
           if ( *valid )
           {
             ++st.num_resub;
-            if ( id_list.num_gates() > 3 )
-              std::cout << "found valid resub of size " << id_list.num_gates() << "\n";
             signal out_sig;
             call_with_stopwatch( st.time_interface, [&]() {
               std::vector<signal> divs_sig( divs.size() );
@@ -321,7 +316,7 @@ private:
   partial_simulator sim;
 
   validator_t validator;
-  //ResynEngine engine;
+  ResynEngine engine;
 
   /* events */
   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
