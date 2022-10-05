@@ -1,10 +1,19 @@
 #include <catch.hpp>
 
+#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/networks/crossed.hpp>
 #include <mockturtle/networks/klut.hpp>
-#include <mockturtle/algorithms/cleanup.hpp>
 
 using namespace mockturtle;
+
+TEST_CASE( "type traits", "[crossed]" )
+{
+  CHECK( !has_create_crossing_v<klut_network> );
+  CHECK( !has_is_crossing_v<klut_network> );
+
+  CHECK( has_create_crossing_v<crossed_klut_network> );
+  CHECK( has_is_crossing_v<crossed_klut_network> );
+}
 
 TEST_CASE( "insert crossings in reversed topological order, then cleanup (topo-sort)", "[crossed]" )
 {
@@ -27,8 +36,8 @@ TEST_CASE( "insert crossings in reversed topological order, then cleanup (topo-s
 
   crossed = cleanup_dangling( crossed );
 
-  crossed.foreach_po( [&]( auto const& po ){
-    crossed.foreach_fanin_ignore_crossings( crossed.get_node( po ), [&]( auto const& f, auto i ){
+  crossed.foreach_po( [&]( auto const& po ) {
+    crossed.foreach_fanin_ignore_crossings( crossed.get_node( po ), [&]( auto const& f, auto i ) {
       if ( i == 0 )
         CHECK( f == x1 );
       else
@@ -55,8 +64,8 @@ TEST_CASE( "create crossings in topological order", "[crossed]" )
   crossed.create_po( n7 );
   crossed.create_po( n8 );
 
-  crossed.foreach_po( [&]( auto const& po ){
-    crossed.foreach_fanin_ignore_crossings( crossed.get_node( po ), [&]( auto const& f, auto i ){
+  crossed.foreach_po( [&]( auto const& po ) {
+    crossed.foreach_fanin_ignore_crossings( crossed.get_node( po ), [&]( auto const& f, auto i ) {
       if ( i == 0 )
         CHECK( f == x1 );
       else

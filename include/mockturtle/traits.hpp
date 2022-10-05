@@ -587,6 +587,21 @@ template<class Ntk>
 inline constexpr bool has_create_cover_node_v = has_create_cover_node<Ntk>::value;
 #pragma endregion
 
+#pragma region has_create_crossing
+template<class Ntk, class = void>
+struct has_create_crossing : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_crossing<Ntk, std::void_t<decltype( std::declval<Ntk>().create_crossing( std::declval<signal<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_crossing_v = has_create_crossing<Ntk>::value;
+#pragma endregion
+
 #pragma region has_clone_node
 template<class Ntk, class = void>
 struct has_clone_node : std::false_type
@@ -1005,6 +1020,21 @@ struct has_is_not<Ntk, std::void_t<decltype( std::declval<Ntk>().is_not( std::de
 
 template<class Ntk>
 inline constexpr bool has_is_not_v = has_is_not<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_crossing
+template<class Ntk, class = void>
+struct has_is_crossing : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_crossing<Ntk, std::void_t<decltype( std::declval<Ntk>().is_crossing( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_crossing_v = has_is_crossing<Ntk>::value;
 #pragma endregion
 
 #pragma region has_is_and
