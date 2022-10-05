@@ -14,6 +14,7 @@ void test_buffered_network()
 
   CHECK( has_create_buf_v<Ntk> );
   CHECK( has_is_buf_v<Ntk> );
+  CHECK( has_is_not_v<Ntk> );
 
   auto x1 = ntk.create_pi();
   auto x2 = ntk.create_pi();
@@ -31,6 +32,7 @@ void test_buffered_network()
   /* properties */
   CHECK( ntk.is_pi( ntk.get_node( x1 ) ) );
   CHECK( !ntk.is_buf( ntk.get_node( x1 ) ) );
+  CHECK( !ntk.is_not( ntk.get_node( x1 ) ) );
   CHECK( !ntk.is_ci( ntk.get_node( b1 ) ) );
   CHECK( ntk.is_buf( ntk.get_node( b1 ) ) );
 

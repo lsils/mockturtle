@@ -34,10 +34,10 @@
 
 #pragma once
 
+#include "../networks/crossed.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "../views/topo_view.hpp"
-#include "../networks/crossed.hpp"
 
 #include <kitty/operations.hpp>
 
@@ -190,6 +190,24 @@ void cleanup_dangling_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterator beg
           static_assert( has_create_node_v<NtkDest>, "NtkDest cannot create arbitrary function gates" );
           old_to_new[node] = dest.create_node( children, ntk.node_function( node ) );
           break;
+        }
+        if constexpr ( has_is_not_v<NtkSrc> )
+        {
+          static_assert( has_create_not_v<NtkDest>, "NtkDest cannot create NOT gates" );
+          if ( ntk.is_not( node ) )
+          {
+            old_to_new[node] = dest.create_not( children[0] );
+            break;
+          }
+        }
+        if constexpr ( has_is_buf_v<NtkSrc> )
+        {
+          static_assert( has_create_buf_v<NtkDest>, "NtkDest cannot create buffer gates" );
+          if ( ntk.is_buf( node ) )
+          {
+            old_to_new[node] = dest.create_buf( children[0] );
+            break;
+          }
         }
         std::cerr << "[e] something went wrong, could not copy node " << ntk.node_to_index( node ) << "\n";
       } while ( false );
