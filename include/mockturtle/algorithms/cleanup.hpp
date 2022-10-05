@@ -185,12 +185,6 @@ void cleanup_dangling_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterator beg
             break;
           }
         }
-        if constexpr ( has_is_function_v<NtkSrc> )
-        {
-          static_assert( has_create_node_v<NtkDest>, "NtkDest cannot create arbitrary function gates" );
-          old_to_new[node] = dest.create_node( children, ntk.node_function( node ) );
-          break;
-        }
         if constexpr ( has_is_not_v<NtkSrc> )
         {
           static_assert( has_create_not_v<NtkDest>, "NtkDest cannot create NOT gates" );
@@ -202,12 +196,18 @@ void cleanup_dangling_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterator beg
         }
         if constexpr ( has_is_buf_v<NtkSrc> )
         {
-          static_assert( has_create_buf_v<NtkDest>, "NtkDest cannot create buffer gates" );
+          static_assert( has_create_buf_v<NtkDest>, "NtkDest cannot create buffers" );
           if ( ntk.is_buf( node ) )
           {
             old_to_new[node] = dest.create_buf( children[0] );
             break;
           }
+        }
+        if constexpr ( has_is_function_v<NtkSrc> )
+        {
+          static_assert( has_create_node_v<NtkDest>, "NtkDest cannot create arbitrary function gates" );
+          old_to_new[node] = dest.create_node( children, ntk.node_function( node ) );
+          break;
         }
         std::cerr << "[e] something went wrong, could not copy node " << ntk.node_to_index( node ) << "\n";
       } while ( false );
