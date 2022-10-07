@@ -548,8 +548,7 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
     }
 
     std::vector<SimulationType> fanin_values( ntk.fanin_size( n ) );
-
-    const auto fanin_fun = [&]( auto const& f, auto i ) {
+    auto const fanin_fun = [&]( auto const& f, auto i ) {
       fanin_values[i] = node_to_value[f];
     };
 
@@ -619,7 +618,7 @@ void simulate_nodes_with_node_map( Ntk const& ntk, Container& node_to_value, Sim
     if ( !node_to_value.has( n ) )
     {
       std::vector<SimulationType> fanin_values( ntk.fanin_size( n ) );
-      const auto fanin_fun = [&]( auto const& f, auto i ) {
+      auto const fanin_fun = [&]( auto const& f, auto i ) {
         fanin_values[i] = node_to_value[ntk.get_node( f )];
       };
 
@@ -693,7 +692,7 @@ template<class Ntk, class Simulator, class Container>
 void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim )
 {
   std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
-  const auto fanin_fun = [&]( auto const& f, auto i ) {
+  auto const fanin_fun = [&]( auto const& f, auto i ) {
     if ( !node_to_value.has( ntk.get_node( f ) ) )
     {
       simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
@@ -721,8 +720,7 @@ template<class Ntk, class Simulator, class Container>
 void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim )
 {
   std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
-
-  const auto fanin_fun = [&]( auto const& f, auto i ) {
+  auto const fanin_fun = [&]( auto const& f, auto i ) {
     if ( !node_to_value.has( ntk.get_node( f ) ) )
     {
       simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
@@ -881,7 +879,7 @@ std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Sim
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented function" );
   static_assert( has_compute_v<Ntk, SimulationType>, "Ntk does not implement the compute function for SimulationType" );
 
-  const auto node_to_value = simulate_nodes<SimulationType, Ntk, Simulator>( ntk, sim );
+  auto const node_to_value = simulate_nodes<SimulationType, Ntk, Simulator>( ntk, sim );
 
   std::vector<SimulationType> po_values( ntk.num_pos() );
   ntk.foreach_po( [&]( auto const& f, auto i ) {
@@ -933,7 +931,7 @@ std::vector<kitty::static_truth_table<NumPIs>> simulate_buffered( Ntk const& ntk
     if ( ntk.fanin_size( n ) > 0 )
     {
       std::vector<kitty::static_truth_table<NumPIs>> fanin_values( ntk.fanin_size( n ) );
-      const auto fanin_fun = [&]( auto const& f, auto i ) {
+      auto const fanin_fun = [&]( auto const& f, auto i ) {
         fanin_values[i] = node_to_value[f];
       };
 
