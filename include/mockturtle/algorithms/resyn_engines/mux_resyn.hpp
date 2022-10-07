@@ -58,7 +58,7 @@ public:
 
 public:
   explicit mux_resyn( stats& st )
-      : st( st ), max_depth( 10 )
+      : st( st )
   {
   }
 
@@ -83,9 +83,10 @@ public:
 
     num_bits = kitty::count_ones( care );
     remaining_size = max_size;
+    max_depth = std::min( 10u, max_size );
     index_list.clear();
     index_list.add_inputs( divisors.size() );
-    
+
     auto res = compute_function( care, 0 );
     if ( res )
     {
@@ -206,7 +207,7 @@ private:
 
     assert( remaining_size >= 1 );
     --remaining_size;
-    return index_list.add_mux( chosen_s, chosen_t, chosen_e );
+    return index_list.add_mux( chosen_s + 2, chosen_t, chosen_e );
   }
 
 private:
