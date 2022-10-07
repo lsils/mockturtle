@@ -8,6 +8,7 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/crossed.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/sequential.hpp>
@@ -318,4 +319,34 @@ TEST_CASE( "cleanup network with names", "[cleanup]" )
   CHECK( ntk.get_output_name( 2 ) == "ri1" );
   CHECK( ntk.has_output_name( 3 ) );
   CHECK( ntk.get_output_name( 3 ) == "po1" );
+}
+
+TEST_CASE( "cleanup crossed network", "[cleanup]" )
+{
+  crossed_klut_network crossed;
+  auto const x1 = crossed.create_pi();
+  auto const x2 = crossed.create_pi();
+
+  auto const [c3x1, c3x2] = crossed.create_crossing( x1, x2 );
+  auto const [c4x1, c4x2] = crossed.create_crossing( x1, c3x2 );
+  auto const [c5x1, c5x2] = crossed.create_crossing( c3x1, x2 );
+
+  auto const n6 = crossed.create_and( x1, c4x2 );
+  auto const n7 = crossed.create_or( c4x1, c5x2 );
+  auto const n8 = crossed.create_xor( c5x1, x2 );
+
+  crossed.create_po( n6 );
+  crossed.create_po( n7 );
+  crossed.create_po( n8 );
+
+  const auto cleaned_crossed = cleanup_dangling( crossed );
+
+  CHECK( crossed.size() == cleaned_crossed.size() );
+
+  const auto crossed_simulation = simulate<kitty::static_truth_table<3u>>( crossed );
+  const auto cleaned_crossed_simulation = simulate<kitty::static_truth_table<3u>>( cleaned_crossed );
+
+  CHECK( crossed_simulation[0] == cleaned_crossed_simulation[0] );
+  CHECK( crossed_simulation[1] == cleaned_crossed_simulation[1] );
+  CHECK( crossed_simulation[2] == cleaned_crossed_simulation[2] );
 }
