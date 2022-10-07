@@ -376,24 +376,24 @@ public:
   node insert_crossing( signal const& in1, signal const& in2, node const& out1, node const& out2 )
   {
     uint32_t fanin_index1 = std::numeric_limits<uint32_t>::max();
-    foreach_fanin( out1, [&]( auto const& f, auto i ){
-        if ( f == in1 )
-        {
-          fanin_index1 = i;
-          return false;
-        }
-        return true;
+    foreach_fanin( out1, [&]( auto const& f, auto i ) {
+      if ( f == in1 )
+      {
+        fanin_index1 = i;
+        return false;
+      }
+      return true;
     } );
     assert( fanin_index1 != std::numeric_limits<uint32_t>::max() );
 
     uint32_t fanin_index2 = std::numeric_limits<uint32_t>::max();
-    foreach_fanin( out2, [&]( auto const& f, auto i ){
-        if ( f == in2 )
-        {
-          fanin_index2 = i;
-          return false;
-        }
-        return true;
+    foreach_fanin( out2, [&]( auto const& f, auto i ) {
+      if ( f == in2 )
+      {
+        fanin_index2 = i;
+        return false;
+      }
+      return true;
     } );
     assert( fanin_index2 != std::numeric_limits<uint32_t>::max() );
 
@@ -402,8 +402,8 @@ public:
     _storage->nodes[out2].children[fanin_index2] = fout2;
 
     /* decrease ref-count to children (was increased in `create_crossing`) */
-    _storage->nodes[in1.index].data[0].h1++;
-    _storage->nodes[in2.index].data[0].h1++;
+    _storage->nodes[in1.index].data[0].h1--;
+    _storage->nodes[in2.index].data[0].h1--;
 
     return get_node( fout1 );
   }
