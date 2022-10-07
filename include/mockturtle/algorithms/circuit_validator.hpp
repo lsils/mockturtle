@@ -74,7 +74,8 @@ public:
   {
     AND,
     XOR,
-    MAJ
+    MAJ,
+    MUX
   };
 
   explicit circuit_validator( Ntk const& ntk, validator_params const& ps = {} )
@@ -209,7 +210,11 @@ public:
   template<class iterator_type, class index_list_type>
   std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, index_list_type const& id_list, bool inverted = false )
   {
-    static_assert( std::is_same_v<index_list_type, abc_index_list> || std::is_same_v<index_list_type, mig_index_list> || std::is_same_v<index_list_type, xag_index_list<true>> || std::is_same_v<index_list_type, xag_index_list<false>>, "Unknown type of index list" );
+    static_assert( std::is_same_v<index_list_type, abc_index_list> ||
+                   std::is_same_v<index_list_type, mig_index_list> ||
+                   std::is_same_v<index_list_type, xag_index_list<true>> ||
+                   std::is_same_v<index_list_type, xag_index_list<false>> ||
+                   std::is_same_v<index_list_type, muxig_index_list>, "Unknown type of index list" );
     assert( uint64_t( std::distance( divs_begin, divs_end ) ) == id_list.num_pis() && "Size of the provided divisor list does not match number of PIs of the index list" );
     assert( id_list.num_pos() == 1u && "Index list must have exactly one PO" );
 
@@ -245,7 +250,7 @@ public:
         lits.emplace_back( add_clauses_for_2input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), std::nullopt, id_lit0 < id_lit1 ? AND : XOR ) );
       } );
     }
-    else // mig_index_list
+    if constexpr ( std::is_same_v<index_list_type, mig_index_list> )
     {
       id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1, uint32_t id_lit2 ) {
         uint32_t const node_pos0 = id_lit0 >> 1;
@@ -255,6 +260,18 @@ public:
         assert( node_pos1 < lits.size() );
         assert( node_pos2 < lits.size() );
         lits.emplace_back( add_clauses_for_3input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), lit_not_cond( lits[node_pos2], id_lit2 & 0x1 ), std::nullopt, MAJ ) );
+      } );
+    }
+    if constexpr ( std::is_same_v<index_list_type, muxig_index_list> )
+    {
+      id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1, uint32_t id_lit2 ) {
+        uint32_t const node_pos0 = id_lit0 >> 1;
+        uint32_t const node_pos1 = id_lit1 >> 1;
+        uint32_t const node_pos2 = id_lit2 >> 1;
+        assert( node_pos0 < lits.size() );
+        assert( node_pos1 < lits.size() );
+        assert( node_pos2 < lits.size() );
+        lits.emplace_back( add_clauses_for_3input_gate( lit_not_cond( lits[node_pos0], id_lit0 & 0x1 ), lit_not_cond( lits[node_pos1], id_lit1 & 0x1 ), lit_not_cond( lits[node_pos2], id_lit2 & 0x1 ), std::nullopt, MUX ) );
       } );
     }
 
@@ -463,6 +480,12 @@ private:
         solver.add_clause( clause );
       } );
     }
+    else if ( ntk.is_ite( n ) )
+    {
+      detail::on_ite<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
     return node_lit;
   }
 
@@ -506,7 +529,7 @@ private:
 
   bill::lit_type add_clauses_for_3input_gate( bill::lit_type a, bill::lit_type b, bill::lit_type c, std::optional<bill::lit_type> d = std::nullopt, gate_type type = MAJ )
   {
-    assert( type == MAJ || type == XOR );
+    assert( type == MAJ || type == XOR || type == MUX );
 
     auto nlit = d ? *d : bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
     if ( type == MAJ )
@@ -518,6 +541,12 @@ private:
     else if ( type == XOR )
     {
       detail::on_xor3<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
+        solver.add_clause( clause );
+      } );
+    }
+    else if ( type == MUX )
+    {
+      detail::on_ite<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
         solver.add_clause( clause );
       } );
     }

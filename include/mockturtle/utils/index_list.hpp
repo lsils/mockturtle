@@ -466,6 +466,90 @@ private:
   std::vector<element_type> values;
 };
 
+/*! \brief Inserts a muxig_index_list into an existing network
+ *
+ * **Required network functions:**
+ * - `get_constant`
+ * - `create_ite`
+ *
+ * \param ntk A logic network
+ * \param begin Begin iterator of signal inputs
+ * \param end End iterator of signal inputs
+ * \param indices An index list
+ * \param fn Callback function
+ */
+template<bool useSignal = true, typename Ntk, typename BeginIter, typename EndIter, typename Fn>
+void insert( Ntk& ntk, BeginIter begin, EndIter end, muxig_index_list const& indices, Fn&& fn )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_ite_v<Ntk>, "Ntk does not implement the create_maj method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+
+  if constexpr ( useSignal )
+  {
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, signal>, "BeginIter value_type must be Ntk signal type" );
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, signal>, "EndIter value_type must be Ntk signal type" );
+  }
+  else
+  {
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<BeginIter>::value_type>, node>, "BeginIter value_type must be Ntk node type" );
+    static_assert( std::is_same_v<std::decay_t<typename std::iterator_traits<EndIter>::value_type>, node>, "EndIter value_type must be Ntk node type" );
+  }
+
+  assert( uint64_t( std::distance( begin, end ) ) == indices.num_pis() );
+
+  std::vector<signal> signals;
+  signals.emplace_back( ntk.get_constant( false ) );
+  for ( auto it = begin; it != end; ++it )
+  {
+    if constexpr ( useSignal )
+    {
+      signals.push_back( *it );
+    }
+    else
+    {
+      signals.emplace_back( ntk.make_signal( *it ) );
+    }
+  }
+
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ) {
+    signal const s0 = ( lit0 % 2 ) ? !signals.at( lit0 >> 1 ) : signals.at( lit0 >> 1 );
+    signal const s1 = ( lit1 % 2 ) ? !signals.at( lit1 >> 1 ) : signals.at( lit1 >> 1 );
+    signal const s2 = ( lit2 % 2 ) ? !signals.at( lit2 >> 1 ) : signals.at( lit2 >> 1 );
+    signals.push_back( ntk.create_ite( s0, s1, s2 ) );
+  } );
+
+  indices.foreach_po( [&]( uint32_t lit ) {
+    uint32_t const i = lit >> 1;
+    fn( ( lit % 2 ) ? !signals.at( i ) : signals.at( i ) );
+  } );
+}
+
+/*! \brief Converts an mig_index_list to a string
+ *
+ * \param indices An index list
+ * \return A string representation of the index list
+ */
+inline std::string to_index_list_string( muxig_index_list const& indices )
+{
+  auto s = fmt::format( "{{{} pis | {} pos | {} gates", indices.num_pis(), indices.num_pos(), indices.num_gates() );
+
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ) {
+    s += fmt::format( ", ({} ? {} : {})", lit0, lit1, lit2 );
+  } );
+
+  indices.foreach_po( [&]( uint32_t lit ) {
+    s += fmt::format( ", {}", lit );
+  } );
+
+  s += "}";
+
+  return s;
+}
+
 /*! \brief Index list for majority-inverter graphs.
  *
  * Small network consisting of majority gates and inverters
