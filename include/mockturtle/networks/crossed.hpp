@@ -66,6 +66,8 @@ public:
   static constexpr auto min_fanin_size = 1;
   static constexpr auto max_fanin_size = 32;
 
+  static constexpr bool is_crossed_network_type = true;
+
   using base_type = crossed_klut_network;
   using storage = std::shared_ptr<crossed_klut_storage>;
   using node = uint64_t;

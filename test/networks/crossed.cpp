@@ -9,14 +9,17 @@ using namespace mockturtle;
 
 TEST_CASE( "type traits", "[crossed]" )
 {
+  CHECK( !is_crossed_network_type_v<klut_network> );
   CHECK( !has_create_crossing_v<klut_network> );
   CHECK( !has_insert_crossing_v<klut_network> );
   CHECK( !has_is_crossing_v<klut_network> );
   CHECK( !has_merge_into_crossing_v<klut_network> );
 
+  CHECK( is_crossed_network_type_v<crossed_klut_network> );
   CHECK( has_create_crossing_v<crossed_klut_network> );
   CHECK( has_insert_crossing_v<crossed_klut_network> );
   CHECK( has_is_crossing_v<crossed_klut_network> );
+  CHECK( is_crossed_network_type_v<buffered_crossed_klut_network> );
   CHECK( !has_merge_into_crossing_v<crossed_klut_network> );
   CHECK( has_merge_into_crossing_v<buffered_crossed_klut_network> );
 }

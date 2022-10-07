@@ -576,7 +576,7 @@ template<class NtkSrc, class NtkDest = NtkSrc>
   detail::clone_inputs( ntk, dest, cis, remove_dangling_PIs );
 
   node_map<signal<NtkDest>, NtkSrc> old_to_new( ntk );
-  if constexpr ( std::is_same_v<typename NtkSrc::base_type, crossed_klut_network> )
+  if constexpr ( is_crossed_network_type_v<NtkSrc> )
   {
     detail::cleanup_dangling_with_crossings_impl( ntk, dest, cis.begin(), cis.end(), old_to_new );
   }
