@@ -1,6 +1,7 @@
 #include <catch.hpp>
 
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/networks/crossed.hpp>
 #include <mockturtle/networks/klut.hpp>
 
@@ -9,10 +10,15 @@ using namespace mockturtle;
 TEST_CASE( "type traits", "[crossed]" )
 {
   CHECK( !has_create_crossing_v<klut_network> );
+  CHECK( !has_insert_crossing_v<klut_network> );
   CHECK( !has_is_crossing_v<klut_network> );
+  CHECK( !has_merge_into_crossing_v<klut_network> );
 
   CHECK( has_create_crossing_v<crossed_klut_network> );
+  CHECK( has_insert_crossing_v<crossed_klut_network> );
   CHECK( has_is_crossing_v<crossed_klut_network> );
+  CHECK( !has_merge_into_crossing_v<crossed_klut_network> );
+  CHECK( has_merge_into_crossing_v<buffered_crossed_klut_network> );
 }
 
 TEST_CASE( "insert crossings in reversed topological order, then cleanup (topo-sort)", "[crossed]" )
@@ -91,4 +97,38 @@ TEST_CASE( "transform from klut to crossed_klut", "[crossed]" )
 
   crossed_klut_network crossed = cleanup_dangling<klut_network, crossed_klut_network>( klut );
   CHECK( klut.size() == crossed.size() );
+}
+
+TEST_CASE( "merge buffers into a crossing cell", "[crossed]" )
+{
+  buffered_crossed_klut_network klut;
+
+  auto const x1 = klut.create_pi();
+  auto const x2 = klut.create_pi();
+
+  auto const w1 = klut.create_buf( x1 );
+  auto const w2 = klut.create_buf( x2 );
+  auto const w3 = klut.create_buf( w1 );
+  auto const w4 = klut.create_buf( w2 );
+
+  auto const a1 = klut.create_and( w3, w4 );
+
+  klut.create_po( a1 );
+
+  auto const cx = klut.merge_into_crossing( klut.get_node( w1 ), klut.get_node( w2 ) );
+
+  CHECK( klut.is_crossing( cx ) );
+
+  klut.foreach_fanin( cx, [&]( auto const& f, auto i ) {
+    if ( i == 0 )
+      CHECK( f == x1 );
+    else
+      CHECK( f == x2 );
+  } );
+
+  CHECK( klut.size() == 10 );
+
+  klut = cleanup_dangling( klut );
+
+  CHECK( klut.size() == 8 );
 }

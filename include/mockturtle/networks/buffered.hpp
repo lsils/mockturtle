@@ -34,8 +34,10 @@
 
 #include "../traits.hpp"
 #include "aig.hpp"
-#include "mig.hpp"
 #include "crossed.hpp"
+#include "mig.hpp"
+
+#include <cassert>
 
 namespace mockturtle
 {
@@ -572,6 +574,60 @@ public:
     assert( false );
     (void)n;
   }
+#pragma endregion
+
+#pragma region Crossings
+
+  /*!
+   * \brief Merges two buffer nodes into a crossing cell
+   *
+   * After this operation, the network will not be in a topological order. Additionally, buf1 and buf2 will be dangling.
+   *
+   * \param buf1 First buffer node.
+   * \param buf2 Second buffer node.
+   * \return The created crossing cell.
+   */
+  node merge_into_crossing( node const& buf1, node const& buf2 )
+  {
+    assert( is_buf( buf1 ) && is_buf( buf2 ) );
+
+    auto const& in_buf1 = _storage->nodes[buf1].children[0];
+    auto const& in_buf2 = _storage->nodes[buf2].children[0];
+
+    node out_buf1{}, out_buf2{};
+    uint32_t fanin_index1 = std::numeric_limits<uint32_t>::max(), fanin_index2 = std::numeric_limits<uint32_t>::max();
+    foreach_node( [&]( node const& n ) {
+      foreach_fanin( n, [&]( auto const& f, auto i ) {
+        if ( auto const fin = get_node( f ); fin == buf1 )
+        {
+          out_buf1 = n;
+          fanin_index1 = i;
+        }
+        else if ( fin == buf2 )
+        {
+          out_buf2 = n;
+          fanin_index2 = i;
+        }
+      } );
+    } );
+    assert( out_buf1 != 0 && out_buf2 != 0 );
+    assert( fanin_index1 != std::numeric_limits<uint32_t>::max() && fanin_index2 != std::numeric_limits<uint32_t>::max() );
+
+    auto const [fout1, fout2] = create_crossing( in_buf1, in_buf2 );
+
+    _storage->nodes[out_buf1].children[fanin_index1] = fout1;
+    _storage->nodes[out_buf2].children[fanin_index2] = fout2;
+
+    /* decrease ref-count to children (was increased in `create_crossing`) */
+    _storage->nodes[in_buf1.index].data[0].h1--;
+    _storage->nodes[in_buf2.index].data[0].h1--;
+
+    _storage->nodes[buf1].children.clear();
+    _storage->nodes[buf2].children.clear();
+
+    return get_node( fout1 );
+  }
+
 #pragma endregion
 
 #pragma region Structural properties
