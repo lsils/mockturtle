@@ -443,7 +443,6 @@ private:
     uint32_t pairs{ 1 };
     std::vector<uint32_t> cut_sizes;
     ntk.foreach_fanin( ntk.index_to_node( index ), [this, &pairs, &cut_sizes]( auto child, auto i ) {
-      /* handle register outputs */
       lcuts[i] = &cuts.cuts( ntk.node_to_index( ntk.get_node( child ) ) );
       cut_sizes.push_back( static_cast<uint32_t>( lcuts[i]->size() ) );
       pairs *= cut_sizes.back();
