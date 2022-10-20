@@ -32,11 +32,14 @@
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/sequential.hpp>
 #include <mockturtle/io/blif_reader.hpp>
+#include <mockturtle/io/write_blif.hpp>
 #include <mockturtle/views/mapping_view.hpp>
 #include <mockturtle/algorithms/collapse_mapped.hpp>
 
 int main( int argc, char ** argv )
 {
+
+  (void)argc;
 
   using namespace mockturtle;
   using namespace mockturtle::experimental;
@@ -53,16 +56,20 @@ int main( int argc, char ** argv )
   fmt::print( "Cleanup network (cleanup_dangling)\n" );
   fmt::print( "num LUTs = {}\t", sequential_klut.num_gates() );
   fmt::print( "num FFs = {}\n", sequential_klut.num_registers() );
+  // write_blif( sequential_klut, argv[2] );
   
   mapping_view<decltype(sequential_klut), true> viewed{sequential_klut};
   sequential_mapping_params ps;
   ps.cut_enumeration_ps.cut_size = 6;
-  sequential_mapping( viewed );
+  sequential_mapping( viewed, ps );
   sequential_klut = *collapse_mapped_network<decltype(sequential_klut)>( viewed );
 
   fmt::print( "Re-Mapped network (sequential_mapping, cut_size = 6)\n" );
   fmt::print( "num LUTs = {}\t", sequential_klut.num_gates() );
   fmt::print( "num FFs = {}\n", sequential_klut.num_registers() );
+  write_blif( sequential_klut, argv[2] );
+
+  static_assert( has_ri_to_ro_v<sequential<klut_network>>, "sequential interface with no ri-to-ro" );
 
   return 0;
 }
