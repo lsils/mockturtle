@@ -34,10 +34,10 @@
 
 #pragma once
 
+#include "../networks/crossed.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "../views/topo_view.hpp"
-#include "../networks/crossed.hpp"
 
 #include <kitty/operations.hpp>
 
@@ -182,6 +182,24 @@ void cleanup_dangling_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterator beg
           if ( ntk.is_nary_xor( node ) )
           {
             old_to_new[node] = dest.create_nary_xor( children );
+            break;
+          }
+        }
+        if constexpr ( has_is_not_v<NtkSrc> )
+        {
+          static_assert( has_create_not_v<NtkDest>, "NtkDest cannot create NOT gates" );
+          if ( ntk.is_not( node ) )
+          {
+            old_to_new[node] = dest.create_not( children[0] );
+            break;
+          }
+        }
+        if constexpr ( has_is_buf_v<NtkSrc> )
+        {
+          static_assert( has_create_buf_v<NtkDest>, "NtkDest cannot create buffers" );
+          if ( ntk.is_buf( node ) )
+          {
+            old_to_new[node] = dest.create_buf( children[0] );
             break;
           }
         }
@@ -558,7 +576,7 @@ template<class NtkSrc, class NtkDest = NtkSrc>
   detail::clone_inputs( ntk, dest, cis, remove_dangling_PIs );
 
   node_map<signal<NtkDest>, NtkSrc> old_to_new( ntk );
-  if constexpr ( std::is_same_v<typename NtkSrc::base_type, crossed_klut_network> )
+  if constexpr ( is_crossed_network_type_v<NtkSrc> )
   {
     detail::cleanup_dangling_with_crossings_impl( ntk, dest, cis.begin(), cis.end(), old_to_new );
   }
