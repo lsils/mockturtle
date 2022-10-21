@@ -158,7 +158,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
         if ( index >= topo_ntk.num_cos() - num_latches )
         {
           os << ".latch ";
-          auto const ro_sig = topo_ntk.make_signal( ntk.ri_to_ro( f ) );
+          auto const ro_sig = topo_ntk.make_signal( topo_ntk.ri_to_ro( f ) );
           register_t l_info = topo_ntk.register_at( latch_idx );
           if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
           {
