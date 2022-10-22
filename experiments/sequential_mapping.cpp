@@ -70,7 +70,5 @@ int main( int argc, char ** argv )
   fmt::print( "num FFs = {}\n", sequential_klut.num_registers() );
   // write_blif( sequential_klut, argv[2] );
 
-  static_assert( has_ri_to_ro_v<sequential<klut_network>>, "sequential interface with no ri-to-ro" );
-
   return 0;
 }
