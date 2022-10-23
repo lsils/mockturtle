@@ -151,10 +151,10 @@ public:
       compute_mapping<false>();
     }
 
-    while ( iteration < ps.rounds + ps.rounds_ela ) // area optimization
-    {
-      compute_mapping<true>();
-    }
+    // while ( iteration < ps.rounds + ps.rounds_ela ) // area optimization
+    // {
+    //   compute_mapping<true>();
+    // }
 
     derive_mapping();
   }
@@ -169,7 +169,14 @@ private:
   {
     ntk.foreach_node( [this]( auto n, auto ) {
       const auto index = ntk.node_to_index( n );
-
+      if constexpr ( has_is_ro_v<Ntk> ) /* sequential circuit */
+      {
+        if ( ntk.is_ro( n ) )
+        {
+          flow_refs[index] = 1.0f;
+          return; /* continue */
+        }
+      }
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
       {
         /* all terminals have flow 1.0 */
@@ -192,6 +199,13 @@ private:
     {
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
         continue;
+      if constexpr ( has_is_ro_v<Ntk> ) /* sequential circuit */
+      {
+        if ( ntk.is_ro( n ) )
+        {
+          continue;
+        }
+      }
       compute_best_cut<ELA>( ntk.node_to_index( n ) );
     }
     set_mapping_refs<ELA>();
@@ -205,7 +219,7 @@ private:
 
     /* compute current delay and update mapping refs */
     delay = 0;
-    ntk.foreach_po( [this]( auto s ) {
+    ntk.foreach_co( [this]( auto s ) { /* POs and RIs */
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       delay = std::max( delay, delays[index] );
 

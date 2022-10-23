@@ -56,10 +56,8 @@ TEST_CASE( "initialize a sequential k-LUT", "[sequential_mapping]" )
   sequential_mapping<decltype(viewed), true>( viewed, ps );
   klut = *collapse_mapped_network<Ntk>( viewed );
 
-  CHECK( klut.num_gates() == 2 );
+  CHECK( klut.num_gates() == 4 );
   CHECK( klut.num_registers() == 1 );
-
-  write_blif( klut, "output.blif" );
 
 }
 
@@ -105,15 +103,13 @@ TEST_CASE( "initialize a simple sequential k-LUT without registers", "[sequentia
   ps.cut_enumeration_ps.cut_size = 3;
   sequential_mapping<decltype(viewed), true>( viewed, ps );
 
-  CHECK( viewed.num_cells() == 2 );
+  CHECK( viewed.num_cells() == 3 );
 
   /* collapse to network */
   klut = *collapse_mapped_network<Ntk>( viewed );
 
-  CHECK( klut.num_gates() == 2 );
-  CHECK( klut.num_registers() == 0 );
-
-  write_blif( klut, "output2.blif" );
+  CHECK( klut.num_gates() == 3 );
+  CHECK( klut.num_registers() == 1 );
 
 }
 
