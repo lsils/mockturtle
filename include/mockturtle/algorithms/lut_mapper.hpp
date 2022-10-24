@@ -279,7 +279,7 @@ public:
       return true;
     if ( c1.size() > c2.size() )
       return false;
-    return c1->data.delay <= c2->data.delay;
+    return c1->data.delay < c2->data.delay;
   }
 
   /*! \brief Compare two cuts using sorting functions.
