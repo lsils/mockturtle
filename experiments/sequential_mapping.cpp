@@ -57,17 +57,17 @@ int main( int argc, char ** argv )
   fmt::print( "Cleanup network (cleanup_dangling)\n" );
   fmt::print( "num LUTs = {}\t", sequential_klut.num_gates() );
   fmt::print( "num FFs = {}\n", sequential_klut.num_registers() );
-  write_blif( sequential_klut, argv[2] );
   
   mapping_view<decltype(sequential_klut), true> viewed{sequential_klut};
   sequential_mapping_params ps;
   ps.cut_enumeration_ps.cut_size = 6;
-  sequential_mapping( viewed, ps );
+  sequential_mapping<decltype(viewed), true>( viewed, ps );
   sequential_klut = *collapse_mapped_network<decltype(sequential_klut)>( viewed );
 
   fmt::print( "Re-Mapped network (sequential_mapping, cut_size = 6)\n" );
   fmt::print( "num LUTs = {}\t", sequential_klut.num_gates() );
   fmt::print( "num FFs = {}\n", sequential_klut.num_registers() );
+  write_blif( sequential_klut, argv[2] );
   // write_blif( sequential_klut, argv[2] );
 
   return 0;
