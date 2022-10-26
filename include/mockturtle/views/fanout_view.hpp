@@ -161,6 +161,9 @@ public:
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    if ( Ntk::get_node( new_signal ) == old_node && !Ntk::is_complemented( new_signal ) )
+      return;
+
     assert( !Ntk::is_dead( Ntk::get_node( new_signal ) ) );
     std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
@@ -178,6 +181,9 @@ public:
         assert( it != old_to_new.end() );
         _new = Ntk::is_complemented( _new ) ? Ntk::create_not( it->second ) : it->second;
       }
+
+      if ( Ntk::get_node( _new ) == _old && !Ntk::is_complemented( _new ) )
+        continue;
 
       const auto parents = _fanout[_old];
       for ( auto n : parents )
