@@ -1,28 +1,3 @@
-/* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
-
 #include "experiments.hpp"
 
 #include <mockturtle/algorithms/resyn_engines/mig_resyn.hpp>
@@ -35,8 +10,10 @@
 #include <mockturtle/algorithms/mig_resub.hpp>
 
 #include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/fanout_view.hpp>
 
@@ -49,6 +26,7 @@
 #include <mockturtle/utils/stopwatch.hpp>
 
 #include <lorina/aiger.hpp>
+#include <lorina/verilog.hpp>
 #include <kitty/kitty.hpp>
 
 #include <fmt/format.h>
@@ -58,7 +36,7 @@
 #include <fstream>
 #include <sstream>
 
-int main( int argc, char* argv[] )
+int main1( int argc, char* argv[] )
 {
   if ( argc < 3 ) return -1;
 
@@ -179,117 +157,6 @@ int main( int argc, char* argv[] )
   return 0;
 }
 
-int main2()
-{
-  using namespace experiments;
-  using namespace mockturtle;
-
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float>
-      exp( "mig_resyn", "benchmark", "size0", "size1", "size2", "#probs", "est. gain", "time" );
-
-  for ( auto const& benchmark : epfl_benchmarks() )
-  {
-    //if ( benchmark != "voter" ) continue;
-    fmt::print( "[i] processing {}\n", benchmark );
-
-    aig_network aig;
-    mig_network mig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
-    {
-      continue;
-    }
-
-    /* cut rewriting on AIG */
-    {
-      xag_npn_resynthesis<aig_network> resyn1;
-      cut_rewriting_params ps;
-      ps.cut_enumeration_ps.cut_size = 4;
-      aig = cut_rewriting( aig, resyn1, ps );
-    }
-
-    /* map AIG to MIG */
-    {
-      mig_npn_resynthesis resyn2{ true };
-      exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
-
-      map_params ps;
-      ps.skip_delay_round = true;
-      ps.required_time = std::numeric_limits<double>::max();
-      mig = map( aig, exact_lib, ps );
-
-      /* remap */
-      ps.area_flow_rounds = 2;
-      mig = map( mig, exact_lib, ps );
-
-      ps.area_flow_rounds = 1;
-      ps.enable_logic_sharing = true; /* high-effort remap */
-      mig = map( mig, exact_lib, ps );
-    }
-
-    uint32_t size_before, size_middle, tmp;
-    /* simple MIG resub */
-    {
-      resubstitution_params ps;
-      ps.max_pis = 8u;
-      ps.max_inserts = 2u;
-
-      size_before = mig.num_gates();
-      do
-      {
-        tmp = mig.num_gates();
-        depth_view depth_mig{ mig };
-        fanout_view fanout_mig{ depth_mig };
-        mig_resubstitution( fanout_mig, ps );
-        mig = cleanup_dangling( mig );
-      } while ( mig.num_gates() > tmp );
-      size_middle = mig.num_gates();
-    }
-
-    {
-      resubstitution_params ps;
-      resubstitution_stats st;
-      ps.max_pis = 8u;
-      ps.max_inserts = std::numeric_limits<uint32_t>::max();
-      std::string pat_filename = fmt::format( "pats/{}.pat", benchmark );
-      if ( std::filesystem::exists( pat_filename ) )
-        ps.pattern_filename = pat_filename;
-      else
-      {
-        assert( false );
-        ps.save_patterns = pat_filename;
-      }
-
-      depth_view depth_mig{ mig };
-      fanout_view fanout_mig{ depth_mig };
-
-      using resub_view_t = fanout_view<depth_view<mig_network>>;
-      //using resyn_engine_t = mig_resyn_topdown<kitty::partial_truth_table, mig_resyn_static_params>;
-      //using resyn_engine_t = mig_resyn_akers<mig_resyn_static_params>;
-      //using resyn_engine_t = mig_enumerative_resyn<kitty::partial_truth_table>;
-      using resyn_engine_t = resyn_dumper<kitty::partial_truth_table, mig_index_list>;
-
-      using validator_t = circuit_validator<resub_view_t, bill::solvers::bsat2, false, true, false>;
-      using resub_impl_t = typename detail::resubstitution_impl<resub_view_t, typename detail::simulation_based_resub_engine<resub_view_t, validator_t, resyn_engine_t>>;
-      
-      typename resub_impl_t::engine_st_t engine_st;
-      typename resub_impl_t::collector_st_t collector_st;
-
-      resub_impl_t p( fanout_mig, ps, st, engine_st, collector_st );
-      p.run( "hardest_problems/" + benchmark );
-      mig = cleanup_dangling( mig );
-      //p.run( []( auto& ntk, auto const& n, auto const& g ){ (void)ntk; (void)n; (void)g; return false; } );
-
-      exp( benchmark, size_before, size_middle, mig.num_gates(), engine_st.num_resyn, st.estimated_gain, to_seconds( engine_st.time_resyn ) );
-    }
-  }
-
-  exp.save();
-  exp.table();
-
-  return 0;
-}
-
-
 int main3()
 {
   using namespace mockturtle;
@@ -334,13 +201,6 @@ int main3()
     auto res = engine( target, ~target.construct(), divisors.begin(), divisors.end(), divisor_functions, opt_size );
   }
 
-#if 0
-  do
-  {
-    auto res = engine( target, ~target.construct(), divisors.begin(), divisors.end(), divisor_functions, std::numeric_limits<uint32_t>::max() );
-    kitty::next_inplace( target );
-  } while ( !kitty::is_const0( target ) );
-#endif
 
   return 0;
 }
