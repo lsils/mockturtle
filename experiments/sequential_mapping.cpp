@@ -34,8 +34,9 @@
 #include <mockturtle/io/blif_reader.hpp>
 #include <mockturtle/io/write_blif.hpp>
 #include <mockturtle/io/write_verilog.hpp>
-#include <mockturtle/views/mapping_view.hpp>
 #include <mockturtle/algorithms/collapse_mapped_sequential.hpp>
+#include <mockturtle/views/mapping_view.hpp>
+#include <mockturtle/views/names_view.hpp>
 #include <mockturtle/algorithms/retiming_network.hpp>
 
 int main( int argc, char ** argv )
@@ -52,10 +53,18 @@ int main( int argc, char ** argv )
   using namespace mockturtle;
   using namespace mockturtle::experimental;
 
+  write_blif_params wps;
+  wps.skip_feedthrough = 1u;
+
+  // names_view<sequential<klut_network>> sequential_klut;
   sequential<klut_network> sequential_klut;
   (void)lorina::read_blif( argv[1], blif_reader( sequential_klut ) );
 
+  write_blif( sequential_klut, "step1.blif", wps );
+
   sequential_klut = cleanup_dangling( sequential_klut );
+
+  write_blif( sequential_klut, "step2.blif", wps );
 
   fmt::print( "[i] Cleanup network (cleanup_dangling)\n" );
   fmt::print( "num LUTs = {}\t", sequential_klut.num_gates() );
@@ -72,12 +81,28 @@ int main( int argc, char ** argv )
   fmt::print( "num LUTs = {}\t", sequential_klut.num_gates() );
   fmt::print( "num FFs = {}\n", sequential_klut.num_registers() );
 
+  write_blif( sequential_klut, "step3.blif", wps );
+
+
   retiming_network_params rps;
   rps.clock_period = 1;
   retiming_network( sequential_klut, rps );
 
-  write_blif_params wps;
-  wps.skip_feedthrough = 1u;
+  fmt::print( "[i] Buffer insertion (clock period = {})\n", rps.clock_period );
+  fmt::print( "num LUTs = {}\t", sequential_klut.num_gates() );
+  fmt::print( "num FFs = {}\n", sequential_klut.num_registers() );
+
+  sequential_klut = cleanup_dangling( sequential_klut );
+
+  write_blif( sequential_klut, "step4.blif", wps );
+
+  fmt::print( "[i] Cleanup network (cleanup_dangling)\n" );
+  fmt::print( "num LUTs = {}\t", sequential_klut.num_gates() );
+  fmt::print( "num FFs = {}\n", sequential_klut.num_registers() );
+
+  write_blif( sequential_klut, "step5.blif", wps );
+
+
   write_blif( sequential_klut, argv[2], wps );
   // write_blif( sequential_klut, argv[2] );
 

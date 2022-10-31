@@ -274,7 +274,8 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
       {
         if ( !ps.skip_feedthrough || ( topo_ntk.get_node( f ) != index ) )
         {
-          os << fmt::format( ".names new_n{} li{}\n{} 1\n", f_node, latch_idx, minterm_string );
+          std::string const node_name = topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
+          os << fmt::format( ".names {} li{}\n{} 1\n", node_name, latch_idx, minterm_string );
           latch_idx++;
         }
       }

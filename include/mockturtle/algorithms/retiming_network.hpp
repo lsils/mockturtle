@@ -46,6 +46,7 @@ namespace mockturtle
 struct retiming_network_params
 {
   uint32_t clock_period{ std::numeric_limits<uint32_t>::max() };
+  uint32_t lut_delay{ 1u };
 };
 
 namespace detail
@@ -79,7 +80,7 @@ public:
         uint32_t node_delay = node_to_delay[ntk.get_node( fanin )];
         max_fanin_delay = node_delay > max_fanin_delay? node_delay:max_fanin_delay;
       } );
-      node_to_delay[n] = max_fanin_delay + 1;
+      node_to_delay[n] = max_fanin_delay + ps.lut_delay;
       if ( node_to_delay[n] > ps.clock_period )
       {
         std::vector<signal<Ntk>> children;
@@ -87,10 +88,14 @@ public:
         ntk.foreach_fanin( n, [&]( auto fanin ) {
           ntk.create_ri( fanin );
           const auto f = ntk.create_ro();
+          node_to_delay.resize();
+          node_to_delay[ntk.get_node(f)] = 0;
           children.emplace_back( f );
         } );
         const auto new_node = ntk.create_node( children, ntk.node_function( n ) );
         ntk.substitute_node( n, ntk.make_signal( new_node ) );
+        node_to_delay.resize();
+        node_to_delay[new_node] = ps.lut_delay;
       }
     } );
   }
