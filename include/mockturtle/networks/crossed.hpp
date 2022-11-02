@@ -229,9 +229,24 @@ public:
     return _create_node( { a, b }, 6 );
   }
 
+  signal create_nor( signal a, signal b )
+  {
+    return _create_node( { a, b }, 7 );
+  }
+
   signal create_lt( signal a, signal b )
   {
     return _create_node( { a, b }, 8 );
+  }
+
+  signal create_ge( signal a, signal b )
+  {
+    return _create_node( { a, b }, 9 );
+  }
+
+  signal create_gt( signal a, signal b )
+  {
+    return _create_node( { a, b }, 10 );
   }
 
   signal create_le( signal a, signal b )
@@ -242,6 +257,11 @@ public:
   signal create_xor( signal a, signal b )
   {
     return _create_node( { a, b }, 12 );
+  }
+
+  signal create_xnor( signal a, signal b )
+  {
+    return _create_node( { a, b }, 13 );
   }
 #pragma endregion
 
@@ -513,6 +533,98 @@ public:
   {
     assert( !is_crossing( n ) );
     return _storage->data.cache[_storage->nodes[n].data[1].h1];
+  }
+
+  bool is_not( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    return _storage->nodes[n].children.size() == 1 && _storage->nodes[n].data[1].h1 == 3;
+  }
+
+  /* AND-2 with any input negation, but not output negation */
+  bool is_and( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 2 )
+      return false;
+    return node.data[1].h1 == 4 || node.data[1].h1 == 8 || node.data[1].h1 == 10 || node.data[1].h1 == 7;
+  }
+
+  /* OR-2 with any input negation, but not output negation */
+  bool is_or( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 2 )
+      return false;
+    return node.data[1].h1 == 5 || node.data[1].h1 == 9 || node.data[1].h1 == 11 || node.data[1].h1 == 6;
+  }
+
+  /* XOR-2 or XNOR-2 */
+  bool is_xor( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 2 )
+      return false;
+    return node.data[1].h1 == 12 || node.data[1].h1 == 13;
+  }
+
+  /* XOR-3 or XNOR-3 */
+  bool is_xor3( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 3 )
+      return false;
+    return node.data[1].h1 == 18 || node.data[1].h1 == 19;
+  }
+
+  /* MAJ-3 or MINORITY-3 without non-symmetric input negation */
+  bool is_maj( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 3 )
+      return false;
+    return node.data[1].h1 == 14 || node.data[1].h1 == 15;
+  }
+
+  std::vector<bool> get_fanin_negations( node const& n ) const
+  {
+    if ( is_crossing( n ) )
+      return {false, false};
+    if ( !is_function( n ) )
+      return {};
+    switch ( _storage->nodes[n].data[1].h1 )
+    {
+      case 2: return {false}; // buf
+      case 3: return {true}; // not
+      case 4: return {false, false}; // and
+      case 5: return {true, true}; // x nand y = !x or !y
+      case 6: return {false, false}; // or
+      case 7: return {true, true}; // x nor y = !x and !y
+      case 8: return {true, false}; // !x and y
+      case 9: return {false, true}; // x or !y
+      case 10: return {false, true}; // x and !y
+      case 11: return {true, false}; // !x or y
+      case 12: return {false, false}; // xor
+      case 13: return {true, false}; // xnor (symmetric)
+      case 14: return {false, false, false}; // maj
+      case 15: return {true, true, true}; // minority
+      case 16: return {false, false, false}; // ite
+      case 17: return {false, true, true}; // !(x ? y : z) = x ? !y : !z
+      case 18: return {false, false, false}; // xor3
+      case 19: return {true, false, false}; // xnor3 (symmetric)
+    }
+    return {};
   }
 #pragma endregion
 
