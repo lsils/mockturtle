@@ -47,6 +47,9 @@
 #include "../resyn_engines/mig_resyn.hpp"
 #include "../resyn_engines/xag_resyn.hpp"
 #include "../simulation.hpp"
+
+#include "../../utils/include/percy.hpp"
+
 #include <kitty/kitty.hpp>
 
 #include <functional>
@@ -66,6 +69,8 @@ struct complete_tt_windowing_params
 
   /*! \brief Maximum number of nodes added by resubstitution. */
   uint32_t max_inserts{ 2 };
+
+  uint32_t min_size{ 0 };
 
   /*! \brief Maximum fanout of a node to be considered as root. */
   uint32_t skip_fanout_limit_for_roots{ 1000 };
@@ -150,6 +155,54 @@ struct complete_tt_windowing_stats
   }
 };
 
+template<class EngineStats>
+struct resynthesis_stats
+{
+  /*! \brief Total runtime. */
+  stopwatch<>::duration time_total{ 0 };
+
+  /*! \brief Total number of problems received. */
+  uint32_t num_probs{ 0u };
+
+  /*! \brief Total number of solutions found. */
+  uint32_t num_sols{ 0u };
+
+  /*! \brief Summed sizes of solutions. */
+  uint32_t sum_sol_size{ 0u };
+
+  /*! \brief Summed ratios of solution size over max size. */
+  float sum_ratio{ 0.0 };
+  uint32_t sum_overhead{ 0u };
+
+  /*! \brief Summed max_size of all problems. */
+  uint32_t sum_max_size{ 0u };
+
+  /*! \brief Summed max_size of solved problems. */
+  uint32_t sum_max_size_solved{ 0u };
+
+  /*! \brief Statistics object for the resynthesis engine. */
+  EngineStats rst;
+
+  void report() const
+  {
+    // clang-format off
+    fmt::print( "[i] resynthesis report\n" );
+    fmt::print( "    tot. #problems = {:5d}, tot. #solutions = {:5d}, #sols/#probs = {:>5.2f} (%)\n", num_probs, num_sols, float( num_sols ) / float( num_probs ) * 100.0 );
+    fmt::print( "    avg. |H| = {:>5.2f}, avg. |H|/opt = {:>7.4f}, avg. overhead = {:>5.2f}\n", float( sum_sol_size ) / float( num_sols ), sum_ratio / float( num_sols ), sum_overhead / float( num_sols ) );
+    fmt::print( "    avg. max size (all problems) = {:>5.2f}, avg. max size (solved) = {:>5.2f}\n", float( sum_max_size ) / float( num_probs ), float( sum_max_size_solved ) / float( num_sols ) );
+
+    //fmt::print( "    ===== Runtime Breakdown =====\n" );
+    fmt::print( "    Total       : {:>5.2f} secs\n", to_seconds( time_total ) );
+    //fmt::print( "      Cut       : {:>5.2f} secs\n", to_seconds( time_cuts ) );
+    //fmt::print( "      MFFC      : {:>5.2f} secs\n", to_seconds( time_mffc ) );
+    //fmt::print( "      Divs      : {:>5.2f} secs\n", to_seconds( time_divs ) );
+    //fmt::print( "      Simulation: {:>5.2f} secs\n", to_seconds( time_sim ) );
+    //fmt::print( "      Dont cares: {:>5.2f} secs\n", to_seconds( time_dont_care ) );
+    rst.report();
+    // clang-format on
+  }
+};
+
 namespace detail
 {
 
@@ -160,6 +213,7 @@ struct small_window
   using signal = typename Ntk::signal;
 
   signal root;
+  uint32_t num_leaves;
   std::vector<signal> divs;
   std::vector<uint32_t> div_ids; /* positions of divisor truth tables in `tts` */
   std::vector<TT> tts;
@@ -242,6 +296,8 @@ public:
     std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
       return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, { n }, cps ).first;
     } );
+    if ( leaves.size() != ps.max_pis )
+      return std::nullopt;
     std::vector<node> supported;
     call_with_stopwatch( st.time_divs, [&]() {
       divs_mgr.collect_supported_nodes( n, leaves, supported );
@@ -288,6 +344,11 @@ public:
     } );
 
     win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
+
+    if ( win.max_size < ps.min_size )
+      return std::nullopt;
+    //if ( win.max_size > 3 )
+    //  return std::nullopt;
 
     st.num_windows++;
     st.num_leaves += leaves.size();
@@ -336,6 +397,7 @@ private:
       win.div_ids.emplace_back( i++ );
       win.divs.emplace_back( ntk.make_signal( l ) );
     }
+    win.num_leaves = leaves.size();
 
     i = ps.max_pis + 1;
     for ( auto const& n : supported )
@@ -393,10 +455,10 @@ public:
   using problem_t = small_window<Ntk, TT>;
   using res_t = typename ResynEngine::index_list_t;
   using params_t = null_params;
-  using stats_t = null_stats;
+  using stats_t = resynthesis_stats<typename ResynEngine::stats>;
 
   explicit complete_tt_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-      : ntk( ntk ), engine( rst )
+      : ntk( ntk ), st( st ), engine( st.rst )
   {}
 
   void init()
@@ -404,21 +466,358 @@ public:
 
   std::optional<res_t> operator()( problem_t& prob )
   {
-    if constexpr ( preserve_depth ) // TODO: maybe separate via different problem type
+    ++st.num_probs;
+    st.sum_max_size += prob.max_size;
+    auto const res = call_with_stopwatch( st.time_total, [&](){
+      if constexpr ( preserve_depth )
+      {
+        return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size, prob.max_level );
+      }
+      else
+      {
+        return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size );
+      }
+    });
+    if ( res )
     {
-      return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size, prob.max_level );
+      ++st.num_sols;
+      st.sum_max_size_solved += prob.max_size;
+      st.sum_sol_size += res->num_gates();
+      //if ( prob.max_size == 0 )
+      //  st.sum_ratio += 1;
+      //else
+      //  st.sum_ratio += float( res->num_gates() ) / float( prob.max_size );
+      return res;
+
+      if ( res->num_gates() == 0 )
+      {
+        st.sum_ratio += 1;
+      }
+      else if ( res->num_gates() < 3 )
+      {
+        aig_enumerative_resyn_stats enust;
+        aig_enumerative_resyn<TT, true> enu( enust );
+        auto res_opt = enu( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size );
+        if ( !res_opt )
+        {
+          fmt::print( "enumeration failed: max_size = {} heuristic = {}\n", prob.max_size, res->num_gates() );
+          goto exact;
+        }
+        else
+        {
+          auto opt = res_opt->num_gates();
+          if ( res->num_gates() < opt )
+          {
+            fmt::print( "heuristic {} < enumeration {}\n", res->num_gates(), opt );
+            st.sum_ratio += 1;
+          }
+          else
+          {
+            st.sum_ratio += float( res->num_gates() ) / float( opt );
+            st.sum_overhead += res->num_gates() - opt;
+          }
+        }
+      }
+      else
+      {
+exact:
+        auto c = exact_solve( prob );
+        if ( !c )
+        {
+          fmt::print( "exact failed: max_size = {} heuristic = {} \n", prob.max_size, res->num_gates() );
+        }
+        auto opt = c->get_nr_steps();
+        if ( res->num_gates() < opt )
+        {
+          fmt::print( "heuristic {} < exact {}\n", res->num_gates(), opt );
+          std::cout << "target: "; kitty::print_binary( prob.tts.back() );
+          std::cout << "\ncare:   "; kitty::print_binary( prob.care ); std::cout << "\n";
+          for ( auto& i : prob.div_ids )
+          {
+            kitty::print_binary( prob.tts[i] ); std::cout << "\n";
+          }
+          std::cout << to_index_list_string( *res ) << "\n";
+          c->print_expression(prob.divs.size() - prob.num_leaves);
+          std::cout << "\n";
+
+          st.sum_ratio += 1;
+          st.sum_overhead += 0;
+        }
+        else
+        {
+          st.sum_ratio += float( res->num_gates() ) / float( opt );
+          st.sum_overhead += res->num_gates() - opt;
+        }
+      }
     }
-    else
+    return res;
+  }
+
+  std::optional<percy::chain> exact_solve( problem_t& prob )
+  {
+    percy::spec spec;
+    spec.set_primitive( percy::AIG );
+    spec.fanin = 2;
+    spec.verbosity = 0;
+    spec.add_alonce_clauses = _ps.add_alonce_clauses;
+    spec.add_colex_clauses = _ps.add_colex_clauses;
+    spec.add_lex_clauses = _ps.add_lex_clauses;
+    spec.add_lex_func_clauses = _ps.add_lex_func_clauses;
+    spec.add_nontriv_clauses = _ps.add_nontriv_clauses;
+    spec.add_noreapply_clauses = _ps.add_noreapply_clauses;
+    spec.add_symvar_clauses = _ps.add_symvar_clauses;
+    spec.conflict_limit = _ps.conflict_limit;
+    spec.max_nr_steps = prob.max_size + 1;
+
+    TT const& target = prob.tts.back();
+    spec[0] = target;
+    bool with_dont_cares{ false };
+    if ( !kitty::is_const0( ~prob.care ) )
     {
-      return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size );
+      spec.set_dont_care( 0, ~prob.care );
+      with_dont_cares = true;
     }
+
+    /* add divisors */
+    for ( auto i = prob.num_leaves; i < prob.divs.size(); ++i )
+    {
+      spec.add_function( prob.tts[prob.div_ids[i]] );
+    }
+
+    percy::chain c;
+    if ( const auto result = percy::synthesize( spec, c, _ps.solver_type,
+                                                _ps.encoder_type,
+                                                _ps.synthesis_method );
+         result != percy::success )
+    {
+      return std::nullopt;
+    }
+
+    assert( kitty::to_hex( c.simulate()[0u] & prob.care ) == kitty::to_hex( target & prob.care ) );
+    return c;
   }
 
 private:
   Ntk const& ntk;
-  typename ResynEngine::stats rst;
+  stats_t& st;
   ResynEngine engine;
+
+  bool _allow_xor;
+  struct
+  {
+    using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
+    using cache_t = std::shared_ptr<cache_map_t>;
+
+    using blacklist_cache_map_t = std::unordered_map<kitty::dynamic_truth_table, int32_t, kitty::hash<kitty::dynamic_truth_table>>;
+    using blacklist_cache_t = std::shared_ptr<blacklist_cache_map_t>;
+
+    cache_t cache;
+    blacklist_cache_t blacklist_cache;
+
+    bool add_alonce_clauses{ false };
+    bool add_colex_clauses{ false };
+    bool add_lex_clauses{ false };
+    bool add_lex_func_clauses{ false };
+    bool add_nontriv_clauses{ false };
+    bool add_noreapply_clauses{ false };
+    bool add_symvar_clauses{ false };
+    int conflict_limit{ 0 };
+
+    percy::SolverType solver_type = percy::SLV_BSAT2;
+    percy::EncoderType encoder_type = percy::ENC_SSV;
+    percy::SynthMethod synthesis_method = percy::SYNTH_STD;
+  } _ps;
 }; /* complete_tt_resynthesis */
+
+template<class Ntk, class TT, class index_list_t = xag_index_list<false>>
+class exact_resynthesis
+{
+public:
+  using problem_t = small_window<Ntk, TT>;
+  using res_t = index_list_t;
+  using params_t = null_params;
+  using stats_t = resynthesis_stats<null_stats>;
+
+  explicit exact_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
+      : ntk( ntk ), st( st )
+  {}
+
+  void init()
+  {
+    _allow_xor = false;
+  }
+
+  std::optional<res_t> operator()( problem_t& prob )
+  {
+    ++st.num_probs;
+    st.sum_max_size += prob.max_size;
+    auto c = call_with_stopwatch( st.time_total, [&](){
+      return solve( prob );
+    });
+
+    if ( c && c->get_nr_steps() <= prob.max_size )
+    {
+      ++st.num_sols;
+      st.sum_max_size_solved += prob.max_size;
+      st.sum_sol_size += c->get_nr_steps();
+      if ( prob.max_size == 0 )
+        st.sum_ratio += 1;
+      else
+        st.sum_ratio += float( c->get_nr_steps() ) / float( prob.max_size );
+      //return translate( prob, *c );
+    }
+    return std::nullopt;
+  }
+
+private:
+  std::optional<percy::chain> solve( problem_t& prob )
+  {
+    percy::spec spec;
+    if ( !_allow_xor )
+    {
+      spec.set_primitive( percy::AIG );
+    }
+    spec.fanin = 2;
+    spec.verbosity = 0;
+    spec.add_alonce_clauses = _ps.add_alonce_clauses;
+    spec.add_colex_clauses = _ps.add_colex_clauses;
+    spec.add_lex_clauses = _ps.add_lex_clauses;
+    spec.add_lex_func_clauses = _ps.add_lex_func_clauses;
+    spec.add_nontriv_clauses = _ps.add_nontriv_clauses;
+    spec.add_noreapply_clauses = _ps.add_noreapply_clauses;
+    spec.add_symvar_clauses = _ps.add_symvar_clauses;
+    spec.conflict_limit = _ps.conflict_limit;
+    //if ( _lower_bound )
+    //{
+    //  spec.initial_steps = *_lower_bound;
+    //}
+    spec.max_nr_steps = prob.max_size;
+
+    TT const& target = prob.tts.back();
+    spec[0] = target;
+    bool with_dont_cares{ false };
+    if ( !kitty::is_const0( ~prob.care ) )
+    {
+      spec.set_dont_care( 0, ~prob.care );
+      with_dont_cares = true;
+    }
+
+    /* add divisors */
+    for ( auto i = prob.num_leaves; i < prob.divs.size(); ++i )
+    {
+      spec.add_function( prob.tts[prob.div_ids[i]] );
+    }
+
+    //if ( !with_dont_cares && _ps.cache )
+    //{
+    //  const auto it = _ps.cache->find( target );
+    //  if ( it != _ps.cache->end() )
+    //  {
+    //    return it->second;
+    //  }
+    //}
+    //if ( !with_dont_cares && _ps.blacklist_cache )
+    //{
+    //  const auto it = _ps.blacklist_cache->find( target );
+    //  if ( it != _ps.blacklist_cache->end() && ( it->second == 0 || _ps.conflict_limit <= it->second ) )
+    //  {
+    //    return std::nullopt;
+    //  }
+    //}
+
+    percy::chain c;
+    if ( const auto result = percy::synthesize( spec, c, _ps.solver_type,
+                                                _ps.encoder_type,
+                                                _ps.synthesis_method );
+         result != percy::success )
+    {
+      //if ( !with_dont_cares && _ps.blacklist_cache )
+      //{
+      //  ( *_ps.blacklist_cache )[target] = ( result == percy::timeout ) ? _ps.conflict_limit : 0;
+      //}
+      return std::nullopt;
+    }
+
+    assert( kitty::to_hex( c.simulate()[0u] & prob.care ) == kitty::to_hex( target & prob.care ) );
+
+    //if ( !with_dont_cares && _ps.cache )
+    //{
+    //  ( *_ps.cache )[target] = c;
+    //}
+    return c;
+  }
+
+  index_list_t translate( problem_t& prob, percy::chain const& c )
+  {
+    index_list_t il( prob.divs.size() );
+    /*
+    std::vector<bool> negated( prob.divs.size() + c->get_nr_steps() + 1, false );
+    for ( auto i = 0; i < c->get_nr_steps(); ++i )
+    {
+      auto const v1 = c->get_step( i )[0] + 1; // +1 : zero-based to one-based indices
+      auto const v2 = c->get_step( i )[1] + 1;
+      auto const l1 = negated[v1] ? ( v1 << 1 ) ^ 0x1 : v1 << 1;
+      auto const l2 = negated[v2] ? ( v2 << 1 ) ^ 0x1 : v2 << 1;
+
+      switch ( c->get_operator( i )._bits[0] )
+      {
+      default:
+        std::cerr << "[e] unsupported operation " << kitty::to_hex( c->get_operator( i ) ) << "\n";
+        assert( false );
+        break;
+      case 0x8:
+        il.add_and( l1, l2 );
+        break;
+      case 0x4:
+        il.add_and( l1 ^ 0x1, l2 );
+        break;
+      case 0x2:
+        il.add_and( l1, l2 ^ 0x1 );
+        break;
+      case 0xe:
+        negated[il.add_and( l1 ^ 0x1, l2 ^ 0x1 ) >> 1] = true;
+        break;
+      case 0x6:
+        il.add_xor( l1, l2 );
+        break;
+      }
+    }
+
+    auto const last_lit = ( prob.divs.size() + c->get_nr_steps() ) << 1;
+    il.add_output( c->is_output_inverted( 0 ) ? last_lit ^ 0x1 : last_lit );
+    */
+    return il;
+  }
+
+private:
+  Ntk const& ntk;
+  bool _allow_xor;
+  struct
+  {
+    using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
+    using cache_t = std::shared_ptr<cache_map_t>;
+
+    using blacklist_cache_map_t = std::unordered_map<kitty::dynamic_truth_table, int32_t, kitty::hash<kitty::dynamic_truth_table>>;
+    using blacklist_cache_t = std::shared_ptr<blacklist_cache_map_t>;
+
+    cache_t cache;
+    blacklist_cache_t blacklist_cache;
+
+    bool add_alonce_clauses{ true };
+    bool add_colex_clauses{ true };
+    bool add_lex_clauses{ false };
+    bool add_lex_func_clauses{ true };
+    bool add_nontriv_clauses{ true };
+    bool add_noreapply_clauses{ true };
+    bool add_symvar_clauses{ true };
+    int conflict_limit{ 1000 };
+
+    percy::SolverType solver_type = percy::SLV_BSAT2;
+    percy::EncoderType encoder_type = percy::ENC_SSV;
+    percy::SynthMethod synthesis_method = percy::SYNTH_STD;
+  } _ps;
+  stats_t& st;
+}; /* exact_resynthesis */
 
 } /* namespace detail */
 

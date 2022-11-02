@@ -281,5 +281,5 @@ int main3_gen_opt_sizes()
 
 int main()
 {
-  return main_opt2();
+  return ;
 }

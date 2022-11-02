@@ -1,13 +1,16 @@
 #include "experiments.hpp"
 
-#include <mockturtle/algorithms/resyn_engines/mig_resyn.hpp>
+//#include <mockturtle/algorithms/resyn_engines/mig_resyn.hpp>
 #include <mockturtle/algorithms/resyn_engines/mux_resyn.hpp>
-#include <mockturtle/algorithms/resyn_engines/mig_enumerative.hpp>
+//#include <mockturtle/algorithms/resyn_engines/mig_enumerative.hpp>
 #include <mockturtle/algorithms/resyn_engines/dump_resyn.hpp>
-#include <mockturtle/algorithms/resubstitution.hpp>
-#include <mockturtle/algorithms/circuit_validator.hpp>
-#include <mockturtle/algorithms/sim_resub.hpp>
-#include <mockturtle/algorithms/mig_resub.hpp>
+//#include <mockturtle/algorithms/resubstitution.hpp>
+//#include <mockturtle/algorithms/circuit_validator.hpp>
+//#include <mockturtle/algorithms/sim_resub.hpp>
+//#include <mockturtle/algorithms/mig_resub.hpp>
+
+#include <mockturtle/algorithms/experimental/boolean_optimization.hpp>
+#include <mockturtle/algorithms/experimental/window_resub.hpp>
 
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
@@ -17,11 +20,11 @@
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/fanout_view.hpp>
 
-#include <mockturtle/algorithms/mapper.hpp>
-#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
-#include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/cut_rewriting.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+//#include <mockturtle/algorithms/mapper.hpp>
+//#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
+//#include <mockturtle/algorithms/cleanup.hpp>
+//#include <mockturtle/algorithms/cut_rewriting.hpp>
+//#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 
 #include <mockturtle/utils/stopwatch.hpp>
 
@@ -36,6 +39,11 @@
 #include <fstream>
 #include <sstream>
 
+using namespace mockturtle;
+using namespace mockturtle::experimental;
+using namespace mockturtle::experimental::detail;
+using namespace experiments;
+
 int main1( int argc, char* argv[] )
 {
   if ( argc < 3 ) return -1;
@@ -45,10 +53,15 @@ int main1( int argc, char* argv[] )
   //using resyn_engine_t = mig_resyn_topdown<truth_table_type, mig_resyn_static_params>;
   //using resyn_engine_t = mig_resyn_akers<mig_resyn_static_params>;
   //using resyn_engine_t = mig_enumerative_resyn<truth_table_type>;
+  //using resyn_engine_t = mig_resyn_topdown<kitty::partial_truth_table, mig_resyn_static_params>;
+  //using resyn_engine_t = mig_resyn_akers<mig_resyn_static_params>;
+  //using resyn_engine_t = xag_resyn_decompose<truth_table_type, aig_resyn_static_params_for_sim_resub<resub_view_t>>;
+  //using resyn_engine_t = xag_resyn_decompose<truth_table_type>;
+  //using resyn_engine_t = mux_resyn<truth_table_type>;
   using resyn_engine_t = mux_resyn<truth_table_type>;
   typename resyn_engine_t::stats st;
 
-  uint32_t num_probs{0}, num_success{0}, total_size{0};
+  uint32_t num_probs{0}, num_success{0}, total_size{0}, total_max_size{0};
   float sum_ratios{0.0};
   stopwatch<>::duration total_time{0};
 
@@ -133,6 +146,7 @@ int main1( int argc, char* argv[] )
       return engine( onset, care, divisors.begin(), divisors.end(), divisor_functions, max_size + std::stoi( argv[2] ) );
     });
     num_probs++;
+    total_max_size += max_size;
     if ( res )
     {
       num_success++;
@@ -152,55 +166,59 @@ int main1( int argc, char* argv[] )
   }
 
   fmt::print( "#success / #problems = {} / {} = {:.2f}%\n", num_success, num_probs, float( num_success ) / num_probs * 100.0 );
-  fmt::print( "avg. size = {:.2f}, avg. ratio = {:.2f}\n", float( total_size ) / num_success, float( sum_ratios ) / num_success );
+  fmt::print( "avg. size = {:.2f}, avg. max size = {:.2f}, avg. ratio = {:.2f}\n", float( total_size ) / num_success, float( total_max_size ) / num_probs, float( sum_ratios ) / num_success );
   fmt::print( "total runtime = {:.3f}, avg. runtime = {:.5f}\n", to_seconds( total_time ), to_seconds( total_time ) / num_probs );
   return 0;
 }
 
-int main3()
+int main_aig_win()
 {
-  using namespace mockturtle;
+  using Ntk = aig_network;
+  using ViewedNtk = depth_view<fanout_view<Ntk>>;
+  using TT = typename kitty::dynamic_truth_table;
+  using windowing_t = complete_tt_windowing<ViewedNtk, TT>;
+  using resyn_t = complete_tt_resynthesis<ViewedNtk, TT, xag_resyn_decompose<TT, aig_resyn_static_params_default<TT>>>;
+  //using resyn_t = complete_tt_resynthesis<ViewedNtk, TT, aig_enumerative_resyn<TT, true>>;
+  //using resyn_t = exact_resynthesis<ViewedNtk, TT, xag_index_list<false>>;
+  using stats_t = boolean_optimization_stats<complete_tt_windowing_stats, typename resyn_t::stats_t>;
+  using opt_t = boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  using truth_table_type = kitty::dynamic_truth_table;
-  
-  std::vector<truth_table_type> divisor_functions;
-  std::vector<uint32_t> divisors;
-  truth_table_type x( 4 ), target( 4 ), care( 4 );
-  care = ~care;
-  for ( uint32_t i = 0; i < 4; ++i )
+  stats_t st;
+  for ( auto const& benchmark : epfl_benchmarks() )
   {
-    kitty::create_nth_var( x, i );
-    divisor_functions.emplace_back( x );
-    divisors.emplace_back( i );
+    //if ( benchmark != "mem_ctrl" ) continue;
+    fmt::print( "[i] processing {}\n", benchmark );
+
+    aig_network ntk;
+    if ( lorina::read_aiger( fmt::format( "compress2rs/{}.aig", benchmark ), aiger_reader( ntk ) ) != lorina::return_code::success )
+    {
+      continue;
+    }
+
+    window_resub_params ps;
+    ps.dry_run = true;
+    ps.dry_run_verbose = false;
+    ps.wps.max_pis = 6;
+    //ps.wps.max_inserts = 3;
+    ps.wps.max_inserts = std::numeric_limits<uint32_t>::max();
+    //ps.wps.min_size = 4;
+    ps.wps.normalize = true;
+    ps.wps.use_dont_cares = true;
+
+    fanout_view<Ntk> fntk( ntk );
+    ViewedNtk viewed( fntk );
+
+    opt_t p( viewed, ps, st );
+    p.run();
+    //st.report();
   }
 
-  using resyn_engine_t = resyn_dumper<truth_table_type, mig_index_list>;
-  typename resyn_engine_t::stats st;
-
-  const std::vector<uint16_t> classes{ { 0x1ee1, 0x1be4, 0x1bd8, 0x18e7, 0x17e8, 0x17ac, 0x1798, 0x1796, 0x178e, 0x177e, 0x16e9, 0x16bc, 0x169e, 0x003f, 0x0359, 0x0672, 0x07e9, 0x0693, 0x0358, 0x01bf, 0x6996, 0x0356, 0x01bd, 0x001f, 0x01ac, 0x001e, 0x0676, 0x01ab, 0x01aa, 0x001b, 0x07e1, 0x07e0, 0x0189, 0x03de, 0x035a, 0x1686, 0x0186, 0x03db, 0x0357, 0x01be, 0x1683, 0x0368, 0x0183, 0x03d8, 0x07e6, 0x0182, 0x03d7, 0x0181, 0x03d6, 0x167e, 0x016a, 0x007e, 0x0169, 0x006f, 0x0069, 0x0168, 0x0001, 0x019a, 0x036b, 0x1697, 0x0369, 0x0199, 0x0000, 0x169b, 0x003d, 0x036f, 0x0666, 0x019b, 0x0187, 0x03dc, 0x0667, 0x0003, 0x168e, 0x06b6, 0x01eb, 0x07e2, 0x017e, 0x07b6, 0x007f, 0x19e3, 0x06b7, 0x011a, 0x077e, 0x018b, 0x00ff, 0x0673, 0x01a8, 0x000f, 0x1696, 0x036a, 0x011b, 0x0018, 0x0117, 0x1698, 0x036c, 0x01af, 0x0016, 0x067a, 0x0118, 0x0017, 0x067b, 0x0119, 0x169a, 0x003c, 0x036e, 0x07e3, 0x017f, 0x03d4, 0x06f0, 0x011e, 0x037c, 0x012c, 0x19e6, 0x01ef, 0x16a9, 0x037d, 0x006b, 0x012d, 0x012f, 0x01fe, 0x0019, 0x03fc, 0x179a, 0x013c, 0x016b, 0x06f2, 0x03c0, 0x033c, 0x1668, 0x0669, 0x019e, 0x013d, 0x0006, 0x019f, 0x013e, 0x0776, 0x013f, 0x016e, 0x03c3, 0x3cc3, 0x033f, 0x166b, 0x016f, 0x011f, 0x035e, 0x0690, 0x0180, 0x03d5, 0x06f1, 0x06b0, 0x037e, 0x03c1, 0x03c5, 0x03c6, 0x01a9, 0x166e, 0x03cf, 0x03d9, 0x07bc, 0x01bc, 0x1681, 0x03dd, 0x03c7, 0x06f9, 0x0660, 0x0196, 0x0661, 0x0197, 0x0662, 0x07f0, 0x0198, 0x0663, 0x07f1, 0x0007, 0x066b, 0x033d, 0x1669, 0x066f, 0x01ad, 0x0678, 0x01ae, 0x0679, 0x067e, 0x168b, 0x035f, 0x0691, 0x0696, 0x0697, 0x06b1, 0x0778, 0x16ac, 0x06b2, 0x0779, 0x16ad, 0x01e8, 0x06b3, 0x0116, 0x077a, 0x01e9, 0x06b4, 0x19e1, 0x01ea, 0x06b5, 0x01ee, 0x06b9, 0x06bd, 0x06f6, 0x07b0, 0x07b1, 0x07b4, 0x07b5, 0x07f2, 0x07f8, 0x018f, 0x0ff0, 0x166a, 0x035b, 0x1687, 0x1689, 0x036d, 0x069f, 0x1699 } };
-  mig_npn_resynthesis db_resyn;
-
-  resyn_engine_t engine( st );
-  engine.reset_filename( "npn4/" );
-  for ( auto func : classes )
-  {
-    target._bits[0] = func;
-
-    mig_network opt_mig;
-    const auto a = opt_mig.create_pi();
-    const auto b = opt_mig.create_pi();
-    const auto c = opt_mig.create_pi();
-    const auto d = opt_mig.create_pi();
-    std::vector<mig_network::signal> pis = { a, b, c, d };
-    db_resyn( opt_mig, target, pis.begin(), pis.end(), [&]( auto const& f ) {
-      opt_mig.create_po( f );
-      return false;
-    } );
-    uint32_t opt_size = opt_mig.num_gates();
-
-    auto res = engine( target, ~target.construct(), divisors.begin(), divisors.end(), divisor_functions, opt_size );
-  }
-
+  st.report();
 
   return 0;
+}
+
+int main()
+{
+  return main_aig_win();
 }

@@ -732,18 +732,18 @@ namespace percy
                 2-input operators.
             *******************************************************************/
             void
-            step_to_expression(std::ostream& s, int step_idx)
+            step_to_expression(std::ostream& s, int step_idx, int nr_compiled_functions)
             {
                 assert(fanin == 2);
 
-                if (step_idx < nr_in) {
+                if (step_idx < nr_in + nr_compiled_functions) {
                     s << char(('a' + step_idx));
                     return;
                 }
-                const auto& step = steps[step_idx - nr_in];
+                const auto& step = steps[step_idx - nr_in - nr_compiled_functions];
                 auto word = 0;
                 for (int i = 0; i < 4; i++) {
-                    if (kitty::get_bit(operators[step_idx - nr_in], i)) {
+                    if (kitty::get_bit(operators[step_idx - nr_in - nr_compiled_functions], i)) {
                         word |= (1 << i);
                     }
                 }
@@ -751,34 +751,34 @@ namespace percy
                 switch (word) {
                     case 2:
                         s << "(";
-                        step_to_expression(s, step[0]);
+                        step_to_expression(s, step[0],nr_compiled_functions);
                         s << "!";
-                        step_to_expression(s, step[1]);
+                        step_to_expression(s, step[1],nr_compiled_functions);
                         s << ")";
                         break;
                     case 4:
                         s << "(";
                         s << "!";
-                        step_to_expression(s, step[0]);
-                        step_to_expression(s, step[1]);
+                        step_to_expression(s, step[0],nr_compiled_functions);
+                        step_to_expression(s, step[1],nr_compiled_functions);
                         s << ")";
                         break;
                     case 6:
                         s << "[";
-                        step_to_expression(s, step[0]);
-                        step_to_expression(s, step[1]);
+                        step_to_expression(s, step[0],nr_compiled_functions);
+                        step_to_expression(s, step[1],nr_compiled_functions);
                         s << "]";
                         break;
                     case 8:
                         s << "(";
-                        step_to_expression(s, step[0]);
-                        step_to_expression(s, step[1]);
+                        step_to_expression(s, step[0],nr_compiled_functions);
+                        step_to_expression(s, step[1],nr_compiled_functions);
                         s << ")";
                         break;
                     case 14:
                         s << "{";
-                        step_to_expression(s, step[0]);
-                        step_to_expression(s, step[1]);
+                        step_to_expression(s, step[0],nr_compiled_functions);
+                        step_to_expression(s, step[1],nr_compiled_functions);
                         s << "}";
                         break;
                     default:
@@ -790,7 +790,7 @@ namespace percy
             }
 
             void
-            to_expression(std::ostream& s)
+            to_expression(std::ostream& s, int nr_compiled_functions)
             {
                 assert(outputs.size() == 1 && fanin == 2);
                 const auto outlit = outputs[0];
@@ -801,14 +801,14 @@ namespace percy
                 if (outvar == 0) { // Special case of constant 0
                     s << "0";
                 } else {
-                    step_to_expression(s, outvar-1);
+                    step_to_expression(s, outvar-1, nr_compiled_functions);
                 }
             }
 
             void
-            print_expression()
+            print_expression(int nr_compiled_functions)
             {
-                to_expression(std::cout);
+                to_expression(std::cout, nr_compiled_functions);
             }
 
             void step_to_mag_expression(std::ostream& s, int step_idx)

@@ -101,7 +101,7 @@ public:
     os << "\n";
 
     /* comment */
-    os << fmt::format( "c\nopt size = {}\n", max_size );
+    os << fmt::format( "c\nmax size = {}\n", max_size );
 
     total_size += max_size;
     num_calls++;
