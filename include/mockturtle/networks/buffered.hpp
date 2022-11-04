@@ -571,13 +571,16 @@ public:
 
   void invert( node const& n )
   {
-    assert( false );
-    (void)n;
+    if ( _storage->nodes[n].data[1].h1 == 2 )
+      _storage->nodes[n].data[1].h1 = 3;
+    else if ( _storage->nodes[n].data[1].h1 == 3 )
+      _storage->nodes[n].data[1].h1 = 2;
+    else
+      assert( false );
   }
 #pragma endregion
 
 #pragma region Crossings
-
   /*!
    * \brief Merges two buffer nodes into a crossing cell
    *

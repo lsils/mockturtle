@@ -439,9 +439,9 @@ public:
           else
             fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
         }
-        if ( module_name == "inverter" )
-          fi = ntk_.create_not( fi );
         signals_[lhs] = ntk_.create_buf( fi );
+        if ( module_name == "inverter" )
+          ntk_.invert( ntk_.get_node( signals_[lhs] ) );
       }
     }
     else if ( module_name == "crossing" )

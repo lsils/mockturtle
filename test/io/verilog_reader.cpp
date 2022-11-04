@@ -234,7 +234,7 @@ TEST_CASE( "read VERILOG into buffered_crossed_klut", "[verilog_reader]" )
       "  buffer buf_n7( .i (n4), .o (n7) );\n"
       "  crossing cross_n8( .i1 (n4), .i2 (n5_2), .o1 (n8_1), .o2 (n8_2) );\n"
       "  crossing cross_n9( .i1 (n5_1), .i2 (n6), .o1 (n9_1), .o2 (n9_2) );\n"
-      "  buffer buf_n10( .i (n6), .o (n10) );\n"
+      "  inverter inv_n10( .i (n6), .o (n10) );\n"
       "  assign n11 = ~n7 | ~n8_2 ;\n"
       "  assign n12 = n8_1 | n9_2 ;\n"
       "  assign n13 = n9_1 ^ n10 ;\n"
@@ -250,11 +250,11 @@ TEST_CASE( "read VERILOG into buffered_crossed_klut", "[verilog_reader]" )
   CHECK( result == lorina::return_code::success );
   CHECK( ntk.num_pis() == 2 );
   CHECK( ntk.num_pos() == 3 );
-  CHECK( ntk.size() == 14 ); // 2 constants, 2 PIs, 4 buffers, 3 crossings, 3 gates
+  CHECK( ntk.size() == 14 ); // 2 constants, 2 PIs, 3 buffers, 1 inverter, 3 crossings, 3 gates
 
   /* functional check */
   auto const po_values = simulate_buffered<2>( ntk );
   CHECK( po_values[0]._bits == 0x7 ); // nand
   CHECK( po_values[1]._bits == 0xe ); // or
-  CHECK( po_values[2]._bits == 0x6 ); // xor
+  CHECK( po_values[2]._bits == 0x9 ); // xnor
 }
