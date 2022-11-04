@@ -173,10 +173,10 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     }
     else
     {
-      for ( auto i = 0u; i < ntk.num_pis(); ++i )
-      {
-        xs.emplace_back( fmt::format( "x{}", i ) );
-      }
+      ntk.foreach_pi( [&]( auto const& i, uint32_t index ) {
+        (void)i;
+        xs.emplace_back( fmt::format( "x{}", index ) );
+      } );
     }
     inputs = xs;
   }
@@ -216,10 +216,10 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     }
     else
     {
-      for ( auto i = 0u; i < ntk.num_pos(); ++i )
-      {
-        ys.emplace_back( fmt::format( "y{}", i ) );
-      }
+      ntk.foreach_po( [&]( auto const& o, uint32_t index ) {
+        (void)o;
+        ys.emplace_back( fmt::format( "y{}", index ) );
+      } );
     }
     outputs = ys;
   }
