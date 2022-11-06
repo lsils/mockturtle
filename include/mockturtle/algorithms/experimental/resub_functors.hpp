@@ -1115,10 +1115,10 @@ public:
       if ( is_constant || is_done ) /* try to find more solution of constant will crash */
         break;
       fn( this );
-      if ( candidates.size() > 0 )
+      while ( !is_done && !candidates.empty() )
       {
-        evalfn( candidates.back() );
-        candidates.clear();
+        is_done |= evalfn( candidates.back() );
+        candidates.pop_back();
       }
     }
   }

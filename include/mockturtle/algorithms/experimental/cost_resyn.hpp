@@ -139,9 +139,9 @@ public:
       {
         best_cost = curr_cost;
         best_candidate = g;
-        return false; /* stop searching */
+        return true; /* stop searching */
       }
-      return true; /* keep searching */
+      return false; /* keep searching */
     } );
 
     if ( best_candidate )

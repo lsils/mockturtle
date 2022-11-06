@@ -98,6 +98,7 @@ public:
     uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_contexts ), std::end( fanin_contexts ) ) + ntk.is_and( n );
     return _cost;
   }
+  
   void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const
   {
     total_cost = std::max( total_cost, context );
