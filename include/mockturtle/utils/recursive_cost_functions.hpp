@@ -33,6 +33,7 @@
 #pragma once
 
 #include <cstdint>
+#include <queue>
 
 #include "../traits.hpp"
 
@@ -59,6 +60,9 @@ struct recursive_cost_functions
 {
   using base_type = recursive_cost_functions;
   using context_t = uint32_t;
+
+  virtual bool context_compare( const context_t& c1, const context_t c2 ) const = 0;
+
   /*! \brief Context propagation function
    *
    * Return the context of a node given fanin contexts.
@@ -71,6 +75,21 @@ struct recursive_cost_functions
    */
   virtual void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const = 0;
 };
+
+template<class Ntk>
+using cotext_signal_pair = std::pair<typename Ntk::context_t, signal<Ntk>>;
+
+template<class Ntk>
+struct context_signal_compare
+{
+  bool operator()( cotext_signal_pair<Ntk> const& p1, cotext_signal_pair<Ntk> const& p2 ) const
+  {
+    return Ntk::context_compare( p1.first, p2.second );
+  }
+};
+
+template<class Ntk>
+using cotext_signal_queue = std::priority_queue<cotext_signal_pair<Ntk>, std::vector<cotext_signal_pair<Ntk>>, context_signal_compare<Ntk>>;
 
 template<class Ntk>
 struct xag_depth_cost_function : recursive_cost_functions<Ntk>
@@ -93,6 +112,11 @@ struct t_xag_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
+  virtual bool context_compare( const context_t& c1, const context_t c2 ) const
+  {
+    return c1 > c2;
+  }
+
   context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const
   {
     uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_contexts ), std::end( fanin_contexts ) ) + ntk.is_and( n );

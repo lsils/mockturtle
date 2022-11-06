@@ -37,6 +37,7 @@
 #pragma once
 
 #include "../../algorithms/cleanup.hpp"
+#include "../../algorithms/exorcism.hpp"
 #include "../../utils/index_list.hpp"
 #include "resub_functors.hpp"
 
@@ -110,6 +111,7 @@ public:
   using node = typename Ntk::node;
   using context_t = typename Ntk::context_t;
   using index_list_t = large_xag_index_list;
+;
 
 public:
   explicit cost_resyn( Ntk const& ntk, params const& ps, stats& st ) noexcept
@@ -155,10 +157,72 @@ public:
     return std::nullopt;
   }
 
+
+  std::vector<kitty::cube> create_sop_form( TT const& func ) const
+  {
+    if ( auto it = sop_hash_.find( func ); it != sop_hash_.end() )
+    {
+      return it->second;
+    }
+    else
+    {
+      return sop_hash_[func] = mockturtle::exorcism( func ); // TODO generalize
+    }
+  }
+
+  cotext_signal_pair<Ntk> create_and_tree( Ntk& dest, cotext_signal_queue<Ntk>& queue ) const
+  {
+    if ( queue.empty() )
+    {
+      return { dest.get_constant( true ), 0u };
+    }
+
+    while ( queue.size() > 1u )
+    {
+      auto [s1, l1] = queue.top();
+      queue.pop();
+      auto [s2, l2] = queue.top();
+      queue.pop();
+      const auto s = dest.create_and( s1, s2 );
+      const auto l = std::max( l1, l2 ) + 1;
+      queue.push( { s, l } );
+    }
+    return queue.top();
+  }
+
+  /* esop rebalancing */
+  signal create_function( Ntk& dest, TT const& func, std::vector<cotext_signal_pair<Ntk>> const& arrival_times ) const
+  {
+    const auto esop = create_sop_form( func );
+
+    std::vector<signal> and_terms;
+    uint32_t max_level{};
+    uint32_t num_and_gates{};
+
+    for ( auto const& cube : esop )
+    {
+      cotext_signal_queue<Ntk> product_queue;
+      for ( auto i = 0u; i < func.num_vars(); ++i )
+      {
+        if ( cube.get_mask( i ) )
+        {
+          const auto [f, l] = arrival_times[i];
+          product_queue.push( { cube.get_bit( i ) ? f : dest.create_not( f ), l } );
+        }
+      }
+      auto [s, l] = create_and_tree( dest, product_queue );
+      and_terms.push_back( s );
+      max_level = std::max( max_level, l );
+    }
+    return dest.create_nary_xor( and_terms );
+  }
+
 private:
   Ntk const& ntk;
   params const& ps;
   stats& st;
+
+  mutable std::unordered_map<TT, std::vector<kitty::cube>, kitty::hash<TT>> sop_hash_;
 };
 
 } // namespace mockturtle::experimental
