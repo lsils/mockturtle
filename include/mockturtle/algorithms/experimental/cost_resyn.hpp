@@ -53,8 +53,12 @@ namespace mockturtle::experimental
 
 struct cost_resyn_params
 {
-  /* maximum number of feasible solutions to collect */
-  uint32_t max_solutions{ 1000u };
+  /* maximum number of feasible solutions to collect, 0: no limit */
+  uint32_t max_solutions{ 0u };
+
+  /* use esop */
+  bool use_esop{ false };
+
 };
 
 struct cost_resyn_stats
@@ -123,6 +127,7 @@ public:
   std::optional<index_list_t> operator()( TT const& target, TT const& care, std::vector<signal> const& divs, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_cost = std::numeric_limits<uint32_t>::max() )
   {
     uint32_t best_cost = max_cost;
+    uint32_t n_solutions = 0u;
     std::optional<signal> best_candidate;
 
     // prepare virtual network
@@ -133,13 +138,16 @@ public:
     std::vector<signal> leaves;
     forest.foreach_pi( [&]( node n ) { leaves.emplace_back( ntk.make_signal( n ) ); } );
 
-    /* cut-rewriting solutions (try building ntk without divisors ) */
-    const auto s = create_function( forest, target );
-    auto rw_cost = forest.get_cost( forest.get_node( s ), leaves );
-    if ( rw_cost < best_cost )
+    /* esop solutions (try building ntk without divisors ) */
+    if ( ps.use_esop )
     {
-      best_cost = rw_cost;
-      best_candidate = s;
+      const auto s = create_function( forest, target );
+      auto rw_cost = forest.get_cost( forest.get_node( s ), leaves );
+      if ( rw_cost < best_cost )
+      {
+        best_cost = rw_cost;
+        best_candidate = s;
+      }
     }
 
     /* grow the forest */
@@ -149,9 +157,10 @@ public:
       uint32_t curr_cost = forest.get_cost( forest.get_node( g ), leaves );
       if ( curr_cost < best_cost )
       {
+        n_solutions++;
         best_cost = curr_cost;
         best_candidate = g;
-        return true; /* stop searching */
+        return (ps.max_solutions > 0) && (n_solutions >= ps.max_solutions); /* stop searching */
       }
       return false; /* keep searching */
     } );

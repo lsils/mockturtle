@@ -4,142 +4,130 @@
       {
         "benchmark": "adder",
         "cec": true,
-        "cost after": 127,
+        "cost after": 128,
         "cost before": 255,
-        "runtime": 0.25570768117904663
+        "n_iter": 1,
+        "runtime": 0.6611640453338623
       },
       {
         "benchmark": "bar",
         "cec": true,
         "cost after": 7,
         "cost before": 12,
-        "runtime": 1.8837000131607056
+        "n_iter": 3,
+        "runtime": 6.261210918426514
       },
       {
         "benchmark": "div",
         "cec": true,
-        "cost after": 2247,
-        "cost before": 4372,
-        "runtime": 13.86986255645752
-      },
-      {
-        "benchmark": "hyp",
-        "cec": true,
-        "cost after": 16256,
-        "cost before": 24801,
-        "runtime": 66.54596710205078
-      },
-      {
-        "benchmark": "log2",
-        "cec": true,
-        "cost after": 254,
-        "cost before": 444,
-        "runtime": 78.26806640625
+        "cost after": 2246,
+        "cost before": 4370,
+        "n_iter": 10,
+        "runtime": 82.9111099243164
       },
       {
         "benchmark": "max",
         "cec": true,
-        "cost after": 154,
+        "cost after": 268,
         "cost before": 287,
-        "runtime": 0.5341510772705078
+        "n_iter": 1,
+        "runtime": 1.3963972330093384
       },
       {
         "benchmark": "multiplier",
         "cec": true,
-        "cost after": 145,
+        "cost after": 131,
         "cost before": 274,
-        "runtime": 17.418983459472656
-      },
-      {
-        "benchmark": "sin",
-        "cec": true,
-        "cost after": 122,
-        "cost before": 225,
-        "runtime": 15.497591972351074
+        "n_iter": 1,
+        "runtime": 33.663787841796875
       },
       {
         "benchmark": "sqrt",
         "cec": true,
-        "cost after": 3379,
-        "cost before": 5058,
-        "runtime": 12.623181343078613
+        "cost after": 4028,
+        "cost before": 5057,
+        "n_iter": 4,
+        "runtime": 49.3831787109375
       },
       {
         "benchmark": "square",
         "cec": true,
-        "cost after": 124,
+        "cost after": 122,
         "cost before": 250,
-        "runtime": 9.730659484863281
+        "n_iter": 2,
+        "runtime": 20.10350799560547
       },
       {
         "benchmark": "arbiter",
         "cec": true,
-        "cost after": 44,
+        "cost after": 87,
         "cost before": 87,
-        "runtime": 10.756942749023438
+        "n_iter": 0,
+        "runtime": 3.610175609588623
       },
       {
         "benchmark": "cavlc",
         "cec": true,
-        "cost after": 9,
+        "cost after": 15,
         "cost before": 16,
-        "runtime": 3.2114570140838623
+        "n_iter": 1,
+        "runtime": 5.780457496643066
       },
       {
         "benchmark": "ctrl",
         "cec": true,
-        "cost after": 4,
+        "cost after": 5,
         "cost before": 10,
-        "runtime": 1.995269775390625
+        "n_iter": 2,
+        "runtime": 2.1623241901397705
       },
       {
         "benchmark": "dec",
         "cec": true,
         "cost after": 3,
         "cost before": 3,
-        "runtime": 7.721197128295898
+        "n_iter": 0,
+        "runtime": 7.869967460632324
       },
       {
         "benchmark": "i2c",
         "cec": true,
-        "cost after": 9,
+        "cost after": 19,
         "cost before": 20,
-        "runtime": 0.621740460395813
+        "n_iter": 1,
+        "runtime": 0.82660973072052
       },
       {
         "benchmark": "int2float",
         "cec": true,
-        "cost after": 8,
+        "cost after": 15,
         "cost before": 16,
-        "runtime": 0.47521427273750305
-      },
-      {
-        "benchmark": "mem_ctrl",
-        "cec": true,
-        "cost after": 58,
-        "cost before": 114,
-        "runtime": 18.41009521484375
+        "n_iter": 1,
+        "runtime": 0.4415104389190674
       },
       {
         "benchmark": "priority",
         "cec": true,
-        "cost after": 123,
+        "cost after": 78,
         "cost before": 250,
-        "runtime": 0.20668242871761322
+        "n_iter": 3,
+        "runtime": 1.6577783823013306
       },
       {
         "benchmark": "router",
         "cec": true,
-        "cost after": 22,
+        "cost after": 44,
         "cost before": 54,
-        "runtime": 0.13457682728767395
+        "n_iter": 1,
+        "runtime": 0.15025518834590912
       },
       {
         "benchmark": "voter",
         "cec": true,
-        "cost after": 47,
-        "cost before": 70,
-        "runtime": 7.060281753540039
+        "cost after": 18,
+        "cost before": 68,
+        "n_iter": 4,
+        "runtime": 102.98139190673828
       }
     ],
     "version": "eaec2e1"

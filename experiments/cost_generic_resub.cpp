@@ -25,8 +25,12 @@
 #include <experiments.hpp>
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/balancing.hpp>
+#include <mockturtle/algorithms/balancing/esop_balancing.hpp>
 #include <mockturtle/algorithms/experimental/cost_generic_resub.hpp>
+#include <mockturtle/algorithms/functional_reduction.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
 #include <mockturtle/utils/stopwatch.hpp>
 
@@ -38,10 +42,17 @@ int main()
   using namespace mockturtle::experimental;
   using namespace experiments;
 
+  std::string results_dir = "../experiments/results";
+
   /* run the actual experiments */
-  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "cost_generic_resub", "benchmark", "cost before", "cost after", "runtime", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, float, bool> exp( "cost_generic_resub", "benchmark", "cost before", "n_iter", "cost after", "runtime", "cec" );
   for ( auto const& benchmark : epfl_benchmarks() )
   {
+    /* skip these for "collect all" experiments */
+    if (benchmark == "hyp") continue; 
+    if (benchmark == "mem_ctrl") continue;
+    if (benchmark == "log2") continue;
+    if (benchmark == "sin") continue;
     float run_time = 0;
 
     fmt::print( "[i] processing {}\n", benchmark );
@@ -50,25 +61,54 @@ int main()
     assert( result == lorina::return_code::success );
     (void)result;
 
+    /* fraig */
+    functional_reduction( xag );
+    xag = cleanup_dangling( xag );
+
     auto costfn = t_xag_depth_cost_function<xag_network>();
 
     auto cost_before = cost_view( xag, costfn ).get_cost();
 
     cost_generic_resub_params ps;
     cost_generic_resub_stats st;
-    ps.verbose = true;
+    ps.verbose = false;
+    ps.rps.max_solutions = 0; /* = 1: collect one, =0: collect all */
+    ps.rps.use_esop = false; /* true: use esop, false: no esop */
 
-    cost_generic_resub( xag, costfn, ps, &st );
-    xag = cleanup_dangling( xag );
+    stopwatch<>::duration time_tot{ 0 };
 
-    run_time = to_seconds( st.time_total );
+    auto curr_cost = cost_before;
 
+    int n_iter = 10; /* 1: once, <large number(e.g. 10)>: converge */
+    int iter = 0;
+    while ( iter < n_iter )
+    {
+      fmt::print( "{},{},{},{:>5.2f}\n", iter, xag.num_gates(), curr_cost, to_seconds( time_tot ) );
+
+      call_with_stopwatch( time_tot, [&]() {
+        cost_generic_resub( xag, costfn, ps, &st );
+        // xag = balancing( xag, { esop_rebalancing<xag_network>{} } );
+        xag = cleanup_dangling( xag );
+      } );
+
+      write_verilog( xag, fmt::format("{}/{}_{}.v", results_dir, benchmark, iter ) );
+
+      auto tmp_cost = cost_view( xag, costfn ).get_cost();
+      if ( tmp_cost >= curr_cost ) break;
+      curr_cost = tmp_cost;
+      iter++;
+    }
+
+
+    run_time = to_seconds( time_tot );
     auto cost_after = cost_view( xag, costfn ).get_cost();
+
+    // fmt::print( "{},{},{},{:>5.2f}\n", iter++, xag.num_gates(), cost_after, run_time );
 
     auto cec = true;
     // cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
     cec = xag.num_gates() > 10000 ? true : abc_cec( xag, benchmark );
-    exp( benchmark, cost_before, cost_after, run_time, cec );
+    exp( benchmark, cost_before, iter, cost_after, run_time, cec );
   }
   exp.save();
   exp.table();
