@@ -129,8 +129,18 @@ public:
     Ntk forest;
     std::for_each( std::begin(divs), std::end(divs), [&]( signal const& div ) {
       forest.set_context( forest.get_node( forest.create_pi() ), ntk.get_context( ntk.get_node( div ) ) ); } );
+    // forest leaves
     std::vector<signal> leaves;
     forest.foreach_pi( [&]( node n ) { leaves.emplace_back( ntk.make_signal( n ) ); } );
+
+    /* cut-rewriting solutions (try building ntk without divisors ) */
+    const auto s = create_function( forest, target );
+    auto rw_cost = forest.get_cost( forest.get_node( s ), leaves );
+    if ( rw_cost < best_cost )
+    {
+      best_cost = rw_cost;
+      best_candidate = s;
+    }
 
     /* grow the forest */
     resub_functor<Ntk, TT, decltype(begin), decltype(tts)> engine( forest, target, care, begin, end, tts );
@@ -174,26 +184,26 @@ public:
   {
     if ( queue.empty() )
     {
-      return { dest.get_constant( true ), 0u };
+      context_t context{};
+      return { context, dest.get_constant( true ) };
     }
 
     while ( queue.size() > 1u )
     {
-      auto [s1, l1] = queue.top();
+      auto [l1, s1] = queue.top();
       queue.pop();
-      auto [s2, l2] = queue.top();
+      auto [l2, s2] = queue.top();
       queue.pop();
-      const auto s = dest.create_and( s1, s2 );
-      const auto l = std::max( l1, l2 ) + 1;
-      queue.push( { s, l } );
+      const auto s = dest.create_and( s1, s2 ); /* context propagate automatically */
+      queue.push( { dest.get_context( dest.get_node( s ) ), s } );
     }
     return queue.top();
   }
 
   /* esop rebalancing */
-  signal create_function( Ntk& dest, TT const& func, std::vector<cotext_signal_pair<Ntk>> const& arrival_times ) const
+  signal create_function( Ntk& dest, TT const& tt ) const
   {
-    const auto esop = create_sop_form( func );
+    const auto esop = create_sop_form( tt );
 
     std::vector<signal> and_terms;
     uint32_t max_level{};
@@ -201,20 +211,21 @@ public:
 
     for ( auto const& cube : esop )
     {
-      cotext_signal_queue<Ntk> product_queue;
-      for ( auto i = 0u; i < func.num_vars(); ++i )
+      cotext_signal_queue<Ntk> q;
+      for ( auto i = 0u; i < tt.num_vars(); ++i )
       {
         if ( cube.get_mask( i ) )
         {
-          const auto [f, l] = arrival_times[i];
-          product_queue.push( { cube.get_bit( i ) ? f : dest.create_not( f ), l } );
+          const auto n = dest.pi_at( i );
+          const auto f = dest.make_signal( n );
+          const auto l = dest.get_context( n );
+          q.push( { l, cube.get_bit( i ) ? f : dest.create_not( f ) } );
         }
       }
-      auto [s, l] = create_and_tree( dest, product_queue );
+      auto [l ,s] = create_and_tree( dest, q );
       and_terms.push_back( s );
-      max_level = std::max( max_level, l );
     }
-    return dest.create_nary_xor( and_terms );
+    return dest.create_nary_xor( and_terms ); // TODO: use XOR tree
   }
 
 private:

@@ -61,8 +61,6 @@ struct recursive_cost_functions
   using base_type = recursive_cost_functions;
   using context_t = uint32_t;
 
-  virtual bool context_compare( const context_t& c1, const context_t c2 ) const = 0;
-
   /*! \brief Context propagation function
    *
    * Return the context of a node given fanin contexts.
@@ -84,7 +82,7 @@ struct context_signal_compare
 {
   bool operator()( cotext_signal_pair<Ntk> const& p1, cotext_signal_pair<Ntk> const& p2 ) const
   {
-    return Ntk::context_compare( p1.first, p2.second );
+    return Ntk::costfn_t::context_compare( p1.first, p2.first );
   }
 };
 
@@ -96,6 +94,7 @@ struct xag_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
+
   context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const
   {
     uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_contexts ), std::end( fanin_contexts ) ) + 1;
@@ -112,7 +111,7 @@ struct t_xag_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
-  virtual bool context_compare( const context_t& c1, const context_t c2 ) const
+  static bool context_compare( const context_t& c1, const context_t c2 )
   {
     return c1 > c2;
   }

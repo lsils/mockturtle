@@ -82,6 +82,7 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
   using context_t = typename RecCostFn::context_t;
+  using costfn_t = RecCostFn;
 
   explicit cost_view( RecCostFn const& cost_fn = {} )
       : Ntk(),

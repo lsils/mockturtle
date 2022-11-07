@@ -65,7 +65,9 @@ int main()
 
     auto cost_after = cost_view( xag, costfn ).get_cost();
 
-    const auto cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
+    auto cec = true;
+    // cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
+    cec = xag.num_gates() > 10000 ? true : abc_cec( xag, benchmark );
     exp( benchmark, cost_before, cost_after, run_time, cec );
   }
   exp.save();
