@@ -3,9 +3,9 @@
     "entries": [
       {
         "#FF": 1926,
-        "#FF'": 4297,
-        "#LUTs": 2691,
-        "#LUTs'": 3398,
+        "#FF'": 6128,
+        "#LUTs": 4935,
+        "#LUTs'": 5701,
         "CP": 0,
         "CP'": 7,
         "benchmark": "covariance_float"

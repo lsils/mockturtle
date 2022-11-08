@@ -158,11 +158,11 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
         if ( index >= topo_ntk.num_cos() - num_latches )
         {
           os << ".latch ";
-          auto const ro_sig = topo_ntk.make_signal( topo_ntk.ri_to_ro( f ) );
+          auto const ro_sig = topo_ntk.make_signal( topo_ntk.ro_at( latch_idx ) );
           register_t l_info = topo_ntk.register_at( latch_idx );
           if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
           {
-            std::string const ri_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : fmt::format( "new_n{}", topo_ntk.get_node( f ) );
+            std::string const ri_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : fmt::format( "li{}", latch_idx );
             std::string const ro_name = topo_ntk.has_name( ro_sig ) ? topo_ntk.get_name( ro_sig ) : fmt::format( "new_n{}", topo_ntk.get_node( ro_sig ) );
             os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, l_info.type, l_info.control, l_info.init );
           }
@@ -264,7 +264,11 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     {
       signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.get_node( f ) );
       std::string const node_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "new_n{}", topo_ntk.get_node( s ) );
-      std::string const output_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : fmt::format( "po{}", index );
+
+      /* PO or RI */
+      std::string default_name = ( index >= topo_ntk.num_cos() - num_latches ? fmt::format( "li{}", latch_idx++ ) : fmt::format( "po{}", index ) );
+
+      std::string const output_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : default_name;
       if ( !ps.skip_feedthrough || ( node_name != output_name ) )
         os << fmt::format( ".names {} {}\n{} 1\n", node_name, output_name, minterm_string, index );
     }
