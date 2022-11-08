@@ -67,6 +67,7 @@ public:
   void run()
   {
     node_map<uint32_t, Ntk> node_to_delay( ntk );
+    std::unordered_map<node<Ntk>, signal<Ntk>> node_to_buffer;
 
     topo_view topo{ ntk };
     topo.foreach_node( [&]( auto n ) {
@@ -80,24 +81,37 @@ public:
         uint32_t node_delay = node_to_delay[ntk.get_node( fanin )];
         max_fanin_delay = node_delay > max_fanin_delay? node_delay:max_fanin_delay;
       } );
-      node_to_delay[n] = max_fanin_delay + ps.lut_delay;
+      uint32_t local_delay = ( ntk.fanin_size( n ) > 1 ? ps.lut_delay : 0 );
+      node_to_delay[n] = max_fanin_delay + local_delay;
       if ( node_to_delay[n] > ps.clock_period )
       {
         std::vector<signal<Ntk>> children;
         /* buffer all the fanins */
         ntk.foreach_fanin( n, [&]( auto fanin ) {
-          ntk.create_ri( fanin );
-          const auto f = ntk.create_ro();
+          signal<Ntk> buffered_fanin;
+          auto it = node_to_buffer.find( ntk.get_node( fanin ) );
+          if ( it != node_to_buffer.end() )
+          {
+            buffered_fanin = it->second;
+          }
+          else 
+          {
+            ntk.create_ri( fanin );
+            buffered_fanin = ntk.create_ro();
 
-          ntk.set_register( ntk.num_registers()-1, ntk.register_at( 0 ) ); // TODO: maybe different
-          node_to_delay.resize();
-          node_to_delay[ntk.get_node(f)] = 0;
-          children.emplace_back( f );
+            ntk.set_register( ntk.num_registers()-1, ntk.register_at( 0 ) ); // TODO: maybe different            
+            node_to_delay.resize();
+            node_to_delay[ntk.get_node( buffered_fanin ) ] = 0;
+
+            node_to_buffer[ ntk.get_node( fanin ) ] = buffered_fanin;
+          }
+
+          children.emplace_back( buffered_fanin );
         } );
         const auto new_node = ntk.create_node( children, ntk.node_function( n ) );
         ntk.substitute_node( n, ntk.make_signal( new_node ) );
         node_to_delay.resize();
-        node_to_delay[new_node] = ps.lut_delay;
+        node_to_delay[new_node] = local_delay;
       }
     } );
   }

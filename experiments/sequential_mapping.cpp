@@ -47,19 +47,19 @@
 int main()
 {
 
-  std::string benchmark_dir = "../experiments/elastic_circuit/cutloopback";
+  std::string benchmark_dir = "/home/hanywang/cutloopback"; // TODO: change it
   std::vector<std::string> benchmark_suite = {
     "covariance_float",
-    // "gaussian",
-    // "gemver",
-    // "gsum",
-    // "gsumif",
-    // "insertion_sort",
-    // "kmp",
-    // "matching_2",
-    // "matrix",
-    // "mvt_float",
-    // "stencil_2d"
+    "gaussian",
+    "gemver",
+    "gsum",
+    "gsumif",
+    "insertion_sort",
+    "kmp",
+    "matching_2",
+    "matrix",
+    "mvt_float",
+    "stencil_2d"
   };
 
   using namespace mockturtle;

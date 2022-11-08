@@ -12,5 +12,109 @@
       }
     ],
     "version": "ecdd13a"
+  },
+  {
+    "entries": [
+      {
+        "#FF": 963,
+        "#FF'": 3518,
+        "#LUTs": 1825,
+        "#LUTs'": 7500,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "covariance_float"
+      },
+      {
+        "#FF": 479,
+        "#FF'": 1376,
+        "#LUTs": 879,
+        "#LUTs'": 3585,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "gaussian"
+      },
+      {
+        "#FF": 2583,
+        "#FF'": 8144,
+        "#LUTs": 4195,
+        "#LUTs'": 18254,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "gemver"
+      },
+      {
+        "#FF": 345,
+        "#FF'": 1298,
+        "#LUTs": 617,
+        "#LUTs'": 2610,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "gsum"
+      },
+      {
+        "#FF": 496,
+        "#FF'": 1562,
+        "#LUTs": 944,
+        "#LUTs'": 3707,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "gsumif"
+      },
+      {
+        "#FF": 1270,
+        "#FF'": 4990,
+        "#LUTs": 2656,
+        "#LUTs'": 10527,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "insertion_sort"
+      },
+      {
+        "#FF": 2297,
+        "#FF'": 8382,
+        "#LUTs": 4532,
+        "#LUTs'": 17933,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "kmp"
+      },
+      {
+        "#FF": 634,
+        "#FF'": 1736,
+        "#LUTs": 1280,
+        "#LUTs'": 4771,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "matching_2"
+      },
+      {
+        "#FF": 511,
+        "#FF'": 2048,
+        "#LUTs": 884,
+        "#LUTs'": 3913,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "matrix"
+      },
+      {
+        "#FF": 993,
+        "#FF'": 2738,
+        "#LUTs": 1697,
+        "#LUTs'": 6902,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "mvt_float"
+      },
+      {
+        "#FF": 872,
+        "#FF'": 2462,
+        "#LUTs": 1549,
+        "#LUTs'": 6337,
+        "CP": 0,
+        "CP'": 7,
+        "benchmark": "stencil_2d"
+      }
+    ],
+    "version": "f29efda"
   }
 ]
