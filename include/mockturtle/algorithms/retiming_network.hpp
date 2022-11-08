@@ -88,6 +88,8 @@ public:
         ntk.foreach_fanin( n, [&]( auto fanin ) {
           ntk.create_ri( fanin );
           const auto f = ntk.create_ro();
+
+          ntk.set_register( ntk.num_registers()-1, ntk.register_at( 0 ) ); // TODO: maybe different
           node_to_delay.resize();
           node_to_delay[ntk.get_node(f)] = 0;
           children.emplace_back( f );

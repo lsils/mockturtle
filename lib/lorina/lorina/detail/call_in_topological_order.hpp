@@ -388,6 +388,7 @@ public:
       /* collect all keys that are still waiting for an item */
       for ( const auto& entry : wait_list )
       {
+  if ( waits_for_.find( entry ) == waits_for_.end() )
 	deps.emplace_back( key, entry );
       }
     }

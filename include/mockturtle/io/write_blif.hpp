@@ -260,7 +260,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
   topo_ntk.foreach_co( [&]( auto const& f, auto index ) {
     auto f_node = topo_ntk.get_node( f );
     auto const minterm_string = topo_ntk.is_complemented( f ) ? "0" : "1";
-    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> && has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
+    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> && has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> ) /* with name view */
     {
       signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.get_node( f ) );
       std::string const node_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "new_n{}", topo_ntk.get_node( s ) );
@@ -268,7 +268,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
       if ( !ps.skip_feedthrough || ( node_name != output_name ) )
         os << fmt::format( ".names {} {}\n{} 1\n", node_name, output_name, minterm_string, index );
     }
-    else
+    else /* no name view */
     {
       if ( index >= topo_ntk.num_cos() - num_latches )
       {

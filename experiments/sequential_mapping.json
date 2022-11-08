@@ -2,103 +2,13 @@
   {
     "entries": [
       {
-        "#FF": 963,
-        "#FF'": 9279,
-        "#LUTs": 1825,
-        "#LUTs'": 2778,
+        "#FF": 1926,
+        "#FF'": 4297,
+        "#LUTs": 2691,
+        "#LUTs'": 3398,
         "CP": 0,
-        "CP'": 1,
+        "CP'": 7,
         "benchmark": "covariance_float"
-      },
-      {
-        "#FF": 479,
-        "#FF'": 4048,
-        "#LUTs": 879,
-        "#LUTs'": 1357,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "gaussian"
-      },
-      {
-        "#FF": 2583,
-        "#FF'": 20609,
-        "#LUTs": 4195,
-        "#LUTs'": 6766,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "gemver"
-      },
-      {
-        "#FF": 345,
-        "#FF'": 3255,
-        "#LUTs": 617,
-        "#LUTs'": 952,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "gsum"
-      },
-      {
-        "#FF": 496,
-        "#FF'": 4883,
-        "#LUTs": 944,
-        "#LUTs'": 1437,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "gsumif"
-      },
-      {
-        "#FF": 1270,
-        "#FF'": 13823,
-        "#LUTs": 2656,
-        "#LUTs'": 3913,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "insertion_sort"
-      },
-      {
-        "#FF": 2297,
-        "#FF'": 22758,
-        "#LUTs": 4532,
-        "#LUTs'": 6750,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "kmp"
-      },
-      {
-        "#FF": 634,
-        "#FF'": 6654,
-        "#LUTs": 1280,
-        "#LUTs'": 1911,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "matching_2"
-      },
-      {
-        "#FF": 511,
-        "#FF'": 4318,
-        "#LUTs": 884,
-        "#LUTs'": 1393,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "matrix"
-      },
-      {
-        "#FF": 993,
-        "#FF'": 8834,
-        "#LUTs": 1697,
-        "#LUTs'": 2689,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "mvt_float"
-      },
-      {
-        "#FF": 872,
-        "#FF'": 7812,
-        "#LUTs": 1549,
-        "#LUTs'": 2415,
-        "CP": 0,
-        "CP'": 1,
-        "benchmark": "stencil_2d"
       }
     ],
     "version": "ecdd13a"
