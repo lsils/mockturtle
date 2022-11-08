@@ -271,6 +271,6 @@ TEST_CASE( "initialize a 2-stage sequential k-LUT with timing constraints", "[se
 
   // write_blif( klut, "output.blif" );
 
-  CHECK( klut.num_gates() == 4 );
-  CHECK( klut.num_registers() == 1 );
+  CHECK( klut.num_gates() == 6 );
+  CHECK( klut.num_registers() == 6 );
 }
