@@ -55,7 +55,7 @@ namespace mockturtle
 
 struct write_blif_params
 {
-  uint32_t skip_feedthrough = 0u;
+  uint32_t skip_feedthrough = 0u; 
 };
 
 /*! \brief Writes network in BLIF format into output stream
@@ -269,14 +269,14 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
       std::string default_name = ( index >= topo_ntk.num_cos() - num_latches ? fmt::format( "li{}", latch_idx++ ) : fmt::format( "po{}", index ) );
 
       std::string const output_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : default_name;
-      if ( !ps.skip_feedthrough || ( node_name != output_name ) )
+      if ( !ps.skip_feedthrough && ( node_name != output_name ) )
         os << fmt::format( ".names {} {}\n{} 1\n", node_name, output_name, minterm_string, index );
     }
     else /* no name view */
     {
       if ( index >= topo_ntk.num_cos() - num_latches )
       {
-        if ( !ps.skip_feedthrough || ( topo_ntk.get_node( f ) != index ) )
+        if ( !ps.skip_feedthrough && ( topo_ntk.get_node( f ) != index ) )
         {
           std::string const node_name = topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
           os << fmt::format( ".names {} li{}\n{} 1\n", node_name, latch_idx, minterm_string );
@@ -286,7 +286,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
       else
       {
         std::string const node_name = topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
-        if ( !ps.skip_feedthrough || ( topo_ntk.get_node( f ) != index ) )
+        if ( !ps.skip_feedthrough && ( topo_ntk.get_node( f ) != index ) )
           os << fmt::format( ".names {} po{}\n{} 1\n", node_name, index, minterm_string );
       }
     }

@@ -2,10 +2,10 @@
   {
     "entries": [
       {
-        "#FF": 1926,
-        "#FF'": 6128,
-        "#LUTs": 4935,
-        "#LUTs'": 5701,
+        "#FF": 963,
+        "#FF'": 6114,
+        "#LUTs": 1825,
+        "#LUTs'": 7365,
         "CP": 0,
         "CP'": 7,
         "benchmark": "covariance_float"

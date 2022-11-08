@@ -70,7 +70,7 @@ int main()
 
   auto abc_read = [&] ( auto const& benchmark ) 
   {
-    std::string command = fmt::format( "abc -q \"r {}/{}.blif; write_blif {}/{}_collapsed.blif\";", benchmark_dir, benchmark, benchmark_dir, benchmark );
+    std::string command = fmt::format( "abc -q \"r {}/{}.blif; write_blif {}/{}_flat.blif\";", benchmark_dir, benchmark, benchmark_dir, benchmark );
     std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
     std::array<char, 128> buffer;
     std::string result;
@@ -80,7 +80,7 @@ int main()
     }
     fmt::print( result );
     Ntk sequential_klut;
-    if ( lorina::read_blif( fmt::format( "{}/{}_collapsed.blif", benchmark_dir, benchmark ), blif_reader( sequential_klut ) ) != lorina::return_code::success )
+    if ( lorina::read_blif( fmt::format( "{}/{}_flat.blif", benchmark_dir, benchmark ), blif_reader( sequential_klut ) ) != lorina::return_code::success )
     {
       fmt::print( "FATAL: read blif failed\n" );
     }
@@ -106,20 +106,6 @@ int main()
   {
     write_blif( sequential_klut, fmt::format( "/tmp/{}.blif", benchmark ) );
 
-    sequential_klut.foreach_co( [&]( auto const& f, auto index ) {
-      if ( index >= sequential_klut.num_cos() - sequential_klut.num_registers() )
-      {
-        std::string const ri_name = sequential_klut.get_output_name( index );
-        auto const ro_sig = sequential_klut.make_signal( sequential_klut.ri_to_ro( f ) );
-        if ( ri_name == "n4402_2" )
-        {
-          std::string const ro_name = sequential_klut.has_name( ro_sig ) ? sequential_klut.get_name( ro_sig ) : fmt::format( "new_n{}", sequential_klut.get_node( ro_sig ) );
-          fmt::print( "{}!\n", ro_name ); 
-        }        
-      }
-
-    } );
-
     lorina::text_diagnostics td;
     lorina::diagnostic_engine diag( &td );
 
@@ -138,7 +124,6 @@ int main()
     fmt::print( "[i] processing {}\n", benchmark );
     
     auto sequential_klut = abc_read( benchmark );
-    (void)mockturtle_verify( benchmark, sequential_klut );
 
     sequential_klut = cleanup_dangling( sequential_klut );
 
@@ -159,6 +144,8 @@ int main()
     retiming_network( sequential_klut, rps );
     sequential_klut = cleanup_dangling( sequential_klut );
 
+    (void)mockturtle_verify( benchmark, sequential_klut );
+    write_blif( sequential_klut, fmt::format( "{}/{}_buffered.blif", benchmark_dir, benchmark ) );
 
     exp( benchmark, n_luts, n_ffs, cp, sequential_klut.num_gates(), sequential_klut.num_registers(), rps.clock_period );
   }

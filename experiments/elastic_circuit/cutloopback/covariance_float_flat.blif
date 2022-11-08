@@ -1,4 +1,4 @@
-# Benchmark "covariance_float_cutLoopback" written by ABC on Tue Nov  8 14:07:06 2022
+# Benchmark "covariance_float_cutLoopback" written by ABC on Tue Nov  8 14:33:05 2022
 .model covariance_float_cutLoopback
 .inputs $add~257^ADD~2111-1[0] $add~257^ADD~2111-1[1] \
  $add~257^ADD~2111-2[0] $add~257^ADD~2111-2[1] $add~257^ADD~2111-3[0] \
