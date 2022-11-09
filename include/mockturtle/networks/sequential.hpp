@@ -739,7 +739,7 @@ public:
   signal po_at( uint32_t index ) const
   {
     assert( index < _sequential_storage->num_pos );
-    return *( this->_storage->outputs.begin() + index );
+    return *( this->_storage->outputs.begin() + index )->index;
   }
 
   node ci_at( uint32_t index ) const
@@ -751,7 +751,7 @@ public:
   signal co_at( uint32_t index ) const
   {
     assert( index < this->_storage->outputs.size() );
-    return *( this->_storage->outputs.begin() + index );
+    return *( this->_storage->outputs.begin() + index )->index;
   }
 
   node ro_at( uint32_t index ) const
@@ -763,7 +763,7 @@ public:
   signal ri_at( uint32_t index ) const
   {
     assert( index < this->_storage->outputs.size() - _sequential_storage->num_pos );
-    return *( this->_storage->outputs.begin() + _sequential_storage->num_pos + index );
+    return ( this->_storage->outputs.begin() + _sequential_storage->num_pos + index )->index;
   }
 
   void set_register( uint32_t index, register_t reg )

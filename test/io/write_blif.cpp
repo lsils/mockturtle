@@ -4,13 +4,40 @@
 #include <sstream>
 #include <vector>
 
+#include <lorina/blif.hpp>
 #include <mockturtle/io/write_blif.hpp>
+#include <mockturtle/io/blif_reader.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/sequential.hpp>
 
 using namespace mockturtle;
 
-TEST_CASE( "write a k-LUT into BLIF file", "[write_blif]" )
+template<class Ntk>
+void blif_read_after_write_test( const Ntk& to_write )
+{
+  std::ostringstream out;
+  write_blif_params ps;
+  ps.skip_feedthrough = true;
+  write_blif( to_write, out, ps );
+
+  Ntk to_read;
+  std::istringstream in( out.str() );
+  auto const ret = lorina::read_blif( in, blif_reader( to_read ) );
+
+  CHECK( ret == lorina::return_code::success );
+
+  CHECK( to_read.size() == to_write.size() ); 
+  CHECK( to_read.num_pis() == to_write.num_pis() ); 
+  CHECK( to_read.num_pos() == to_write.num_pos() ); 
+  CHECK( to_read.num_gates() == to_write.num_gates() );
+
+  if constexpr ( has_num_registers_v<Ntk> )
+  {
+    CHECK( to_read.num_registers() == to_write.num_registers() ); 
+  }
+}
+
+TEST_CASE( "write a simple combinational k-LUT into BLIF file", "[write_blif]" )
 {
   klut_network klut;
 
@@ -19,6 +46,10 @@ TEST_CASE( "write a k-LUT into BLIF file", "[write_blif]" )
 
   const auto f1 = klut.create_or( a, b );
   klut.create_po( f1 );
+
+  CHECK( klut.num_gates() == 1 );
+  CHECK( klut.num_pis() == 2 );
+  CHECK( klut.num_pos() == 1 );
 
   std::ostringstream out;
   write_blif( klut, out );
@@ -37,9 +68,11 @@ TEST_CASE( "write a k-LUT into BLIF file", "[write_blif]" )
                       ".names new_n4 po0\n"
                       "1 1\n"
                       ".end\n" );
+
+  blif_read_after_write_test( klut );
 }
 
-TEST_CASE( "write a sequential k-LUT into BLIF file", "[write_blif]" )
+TEST_CASE( "write a simple sequential k-LUT into BLIF file", "[write_blif]" )
 {
   sequential<klut_network> klut;
 
@@ -48,17 +81,67 @@ TEST_CASE( "write a sequential k-LUT into BLIF file", "[write_blif]" )
   const auto c = klut.create_pi();
 
   const auto f1 = klut.create_or( a, b );
-  const auto f_ = klut.create_and( a, b );
-  klut.create_po( f_ ); // place-holder, POs should be defined first
-
-  klut.create_ri( f1 );
   const auto f2 = klut.create_ro(); // f2 <- f1
   const auto f3 = klut.create_or( f2, c );
-  klut.substitute_node( klut.get_node( f_ ), f3 );
+
+  klut.create_po( f3 );
+  klut.create_ri( f1 ); // f2 <- f1
+
+  CHECK( klut.num_gates() == 2 );
+  CHECK( klut.num_registers() == 1 );
+  CHECK( klut.num_pis() == 3 );
+  CHECK( klut.num_pos() == 1 );
 
   std::ostringstream out;
-  write_blif_params ps;
-  ps.skip_feedthrough = true;
+  write_blif( klut, out );
+
+  /* additional spaces at the end of .inputs and .outputs */
+  CHECK( out.str() == ".model top\n"
+                      ".inputs pi2 pi3 pi4 \n"
+                      ".outputs po0 \n"
+                      ".latch li0 new_n6   3\n"
+                      ".names new_n0\n"
+                      "0\n"
+                      ".names new_n1\n"
+                      "1\n"
+                      ".names new_n6 pi4 new_n7\n"
+                      "-1 1\n"
+                      "1- 1\n"
+                      ".names pi2 pi3 new_n5\n"
+                      "-1 1\n"
+                      "1- 1\n"
+                      ".names new_n7 po0\n"
+                      "1 1\n"
+                      ".names new_n5 li0\n"
+                      "1 1\n"
+                      ".end\n" );
+
+  blif_read_after_write_test( klut );
+}
+
+TEST_CASE( "write a sequential k-LUT with multiple fanout registers into BLIF file", "[write_blif]" )
+{
+  sequential<klut_network> klut;
+
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto c = klut.create_pi();
+
+  const auto f1 = klut.create_maj( a, b, c );
+  const auto f2 = klut.create_ro(); // f2 <- f1
+  const auto f3 = klut.create_ro(); // f3 <- f1
+  const auto f4 = klut.create_xor( f2, f3 );
+
+  klut.create_po( f4 );
+  klut.create_ri( f1 ); // f2 <- f1
+  klut.create_ri( f1 ); // f3 <- f1
+
+  CHECK( klut.num_gates() == 2 );
+  CHECK( klut.num_registers() == 2 );
+  CHECK( klut.num_pis() == 3 );
+  CHECK( klut.num_pos() == 1 );
+
+  std::ostringstream out;
   write_blif( klut, out );
   write_blif( klut, "test.blif" );
 
@@ -66,20 +149,26 @@ TEST_CASE( "write a sequential k-LUT into BLIF file", "[write_blif]" )
   CHECK( out.str() == ".model top\n"
                       ".inputs pi2 pi3 pi4 \n"
                       ".outputs po0 \n"
-                      ".latch li0 new_n7   3\n"
+                      ".latch li0 new_n6   3\n"
+                      ".latch li1 new_n7   3\n"
                       ".names new_n0\n"
                       "0\n"
                       ".names new_n1\n"
                       "1\n"
-                      ".names new_n7 pi4 new_n8\n"
-                      "-1 1\n"
-                      "1- 1\n"
-                      ".names pi2 pi3 new_n5\n"
-                      "-1 1\n"
-                      "1- 1\n"
+                      ".names new_n6 new_n7 new_n8\n"
+                      "10 1\n"
+                      "01 1\n"
+                      ".names pi2 pi3 pi4 new_n5\n"
+                      "-11 1\n"
+                      "1-1 1\n"
+                      "11- 1\n"
                       ".names new_n8 po0\n"
                       "1 1\n"
                       ".names new_n5 li0\n"
                       "1 1\n"
+                      ".names new_n5 li1\n"
+                      "1 1\n"
                       ".end\n" );
+
+  blif_read_after_write_test( klut );
 }
