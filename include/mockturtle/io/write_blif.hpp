@@ -222,7 +222,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
       if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
       {
         signal<Ntk> const s = topo_ntk.make_signal( f_node );
-        std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : topo_ntk.is_pi( f_node ) ? fmt::format( "pi{} ", f_node ) : fmt::format( "new_n{} ", f_node );
+        std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
         os << name << ' ';
       }
       else
