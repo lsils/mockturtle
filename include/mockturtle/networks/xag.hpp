@@ -476,23 +476,20 @@ public:
         return std::make_pair( n, get_constant( diff_pol ) );
       }
     }
-    else if ( child0.index == 0 ) /* constant child */
+    else if ( _is_and && child0.index == 0 ) /* constant child */
     {
-      if ( _is_and )
-      {
-        return std::make_pair( n, child0.complement ? child1 : get_constant( false ) );
-      }
-      else
-      {
-        return std::make_pair( n, child1 ^ child0.complement );
-      }
+      return std::make_pair( n, child0.complement ? child1 : get_constant( false ) );
+    }
+    else if ( !_is_and && child1.index == 0 )
+    {
+      return std::make_pair( n, child0 ^ child1.complement );
     }
 
     // node already in hash table
     storage::element_type::node_type _hash_obj;
     _hash_obj.children[0] = child0;
     _hash_obj.children[1] = child1;
-    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() )
+    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() && it->second != old_node )
     {
       return std::make_pair( n, signal( it->second, 0 ) );
     }
@@ -522,6 +519,9 @@ public:
 
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
+    if ( is_dead( old_node ) )
+      return;
+
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -541,7 +541,7 @@ public:
   void take_out_node( node const& n )
   {
     /* we cannot delete CIs or constants */
-    if ( n == 0 || is_ci( n ) )
+    if ( n == 0 || is_ci( n ) || is_dead( n ) )
       return;
 
     auto& nobj = _storage->nodes[n];
@@ -615,8 +615,7 @@ public:
 #pragma endregion
 
 #pragma region Structural properties
-  auto
-  size() const
+  auto size() const
   {
     return static_cast<uint32_t>( _storage->nodes.size() );
   }
