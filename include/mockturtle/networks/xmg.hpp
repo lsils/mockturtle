@@ -621,6 +621,9 @@ public:
 
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
+    if ( is_dead( old_node ) )
+      return;
+
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -640,7 +643,7 @@ public:
   void take_out_node( node const& n )
   {
     /* we cannot delete CIs or constants */
-    if ( n == 0 || is_ci( n ) )
+    if ( n == 0 || is_ci( n ) || is_dead( n ) )
       return;
 
     auto& nobj = _storage->nodes[n];
