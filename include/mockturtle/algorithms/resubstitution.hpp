@@ -637,7 +637,7 @@ public:
     ntk.events().release_delete_event( delete_event );
   }
 
-  void run( std::string benchmark = "", resub_callback_t const& callback = substitute_fn<Ntk> )
+  void run( resub_callback_t const& callback = substitute_fn<Ntk> )
   {
     stopwatch t( st.time_total );
 
@@ -645,10 +645,7 @@ public:
     DivCollector collector( ntk, ps, collector_st );
     ResubEngine resub_engine( ntk, ps, engine_st );
     call_with_stopwatch( st.time_resub, [&]() {
-      if constexpr ( ResubEngine::require_leaves_and_mffc )
-        resub_engine.init();
-      else
-        resub_engine.init( benchmark );
+      resub_engine.init();
     } );
 
     progress_bar pbar{ ntk.size(), "resub |{0}| node = {1:>4}   cand = {2:>4}   est. gain = {3:>5}", ps.progress };

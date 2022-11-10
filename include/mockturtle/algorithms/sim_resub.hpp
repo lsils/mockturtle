@@ -190,7 +190,7 @@ public:
     }
   }
 
-  void init( std::string const& path = "" )
+  void init()
   {
     /* prepare simulation patterns */
     call_with_stopwatch( st.time_patgen, [&]() {
@@ -210,7 +210,6 @@ public:
     call_with_stopwatch( st.time_sim, [&]() {
       simulate_nodes<Ntk>( ntk, tts, sim, true );
     } );
-    engine.reset_filename( path );
   }
 
   std::optional<signal> run( node const& n, std::vector<node> const& divs, mffc_result_t potential_gain, uint32_t& last_gain )

@@ -70,8 +70,6 @@ struct complete_tt_windowing_params
   /*! \brief Maximum number of nodes added by resubstitution. */
   uint32_t max_inserts{ 2 };
 
-  uint32_t min_size{ 0 };
-
   /*! \brief Maximum fanout of a node to be considered as root. */
   uint32_t skip_fanout_limit_for_roots{ 1000 };
 
@@ -188,17 +186,9 @@ struct resynthesis_stats
     // clang-format off
     fmt::print( "[i] resynthesis report\n" );
     fmt::print( "    tot. #problems = {:5d}, tot. #solutions = {:5d}, #sols/#probs = {:>5.2f} (%)\n", num_probs, num_sols, float( num_sols ) / float( num_probs ) * 100.0 );
-    fmt::print( "    avg. |H| = {:>5.2f}, avg. |H|/opt = {:>7.4f}, avg. overhead = {:>5.2f}\n", float( sum_sol_size ) / float( num_sols ), sum_ratio / float( num_sols ), sum_overhead / float( num_sols ) );
+    fmt::print( "    avg. |H| = {:>5.2f}, avg. |H|/max = {:>7.4f}, avg. overhead = {:>5.2f}\n", float( sum_sol_size ) / float( num_sols ), sum_ratio / float( num_sols ), sum_overhead / float( num_sols ) );
     fmt::print( "    avg. max size (all problems) = {:>5.2f}, avg. max size (solved) = {:>5.2f}\n", float( sum_max_size ) / float( num_probs ), float( sum_max_size_solved ) / float( num_sols ) );
-
-    //fmt::print( "    ===== Runtime Breakdown =====\n" );
-    fmt::print( "    Total       : {:>5.2f} secs\n", to_seconds( time_total ) );
-    //fmt::print( "      Cut       : {:>5.2f} secs\n", to_seconds( time_cuts ) );
-    //fmt::print( "      MFFC      : {:>5.2f} secs\n", to_seconds( time_mffc ) );
-    //fmt::print( "      Divs      : {:>5.2f} secs\n", to_seconds( time_divs ) );
-    //fmt::print( "      Simulation: {:>5.2f} secs\n", to_seconds( time_sim ) );
-    //fmt::print( "      Dont cares: {:>5.2f} secs\n", to_seconds( time_dont_care ) );
-    rst.report();
+    fmt::print( "    Total runtime: {:>5.2f} secs\n", to_seconds( time_total ) );
     // clang-format on
   }
 };
@@ -296,8 +286,6 @@ public:
     std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
       return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, { n }, cps ).first;
     } );
-    if ( leaves.size() != ps.max_pis )
-      return std::nullopt;
     std::vector<node> supported;
     call_with_stopwatch( st.time_divs, [&]() {
       divs_mgr.collect_supported_nodes( n, leaves, supported );
@@ -344,11 +332,6 @@ public:
     } );
 
     win.max_size = std::min( win.mffc_size - 1, ps.max_inserts );
-
-    if ( win.max_size < ps.min_size )
-      return std::nullopt;
-    //if ( win.max_size > 3 )
-    //  return std::nullopt;
 
     st.num_windows++;
     st.num_leaves += leaves.size();
@@ -483,150 +466,18 @@ public:
       ++st.num_sols;
       st.sum_max_size_solved += prob.max_size;
       st.sum_sol_size += res->num_gates();
-      //if ( prob.max_size == 0 )
-      //  st.sum_ratio += 1;
-      //else
-      //  st.sum_ratio += float( res->num_gates() ) / float( prob.max_size );
-      return res;
-
-      if ( res->num_gates() == 0 )
-      {
+      if ( prob.max_size == 0 )
         st.sum_ratio += 1;
-      }
-      else if ( res->num_gates() < 3 )
-      {
-        aig_enumerative_resyn_stats enust;
-        aig_enumerative_resyn<TT, true> enu( enust );
-        auto res_opt = enu( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size );
-        if ( !res_opt )
-        {
-          fmt::print( "enumeration failed: max_size = {} heuristic = {}\n", prob.max_size, res->num_gates() );
-          goto exact;
-        }
-        else
-        {
-          auto opt = res_opt->num_gates();
-          if ( res->num_gates() < opt )
-          {
-            fmt::print( "heuristic {} < enumeration {}\n", res->num_gates(), opt );
-            st.sum_ratio += 1;
-          }
-          else
-          {
-            st.sum_ratio += float( res->num_gates() ) / float( opt );
-            st.sum_overhead += res->num_gates() - opt;
-          }
-        }
-      }
       else
-      {
-exact:
-        auto c = exact_solve( prob );
-        if ( !c )
-        {
-          fmt::print( "exact failed: max_size = {} heuristic = {} \n", prob.max_size, res->num_gates() );
-        }
-        auto opt = c->get_nr_steps();
-        if ( res->num_gates() < opt )
-        {
-          fmt::print( "heuristic {} < exact {}\n", res->num_gates(), opt );
-          std::cout << "target: "; kitty::print_binary( prob.tts.back() );
-          std::cout << "\ncare:   "; kitty::print_binary( prob.care ); std::cout << "\n";
-          for ( auto& i : prob.div_ids )
-          {
-            kitty::print_binary( prob.tts[i] ); std::cout << "\n";
-          }
-          std::cout << to_index_list_string( *res ) << "\n";
-          c->print_expression(prob.divs.size() - prob.num_leaves);
-          std::cout << "\n";
-
-          st.sum_ratio += 1;
-          st.sum_overhead += 0;
-        }
-        else
-        {
-          st.sum_ratio += float( res->num_gates() ) / float( opt );
-          st.sum_overhead += res->num_gates() - opt;
-        }
-      }
+        st.sum_ratio += float( res->num_gates() ) / float( prob.max_size );
     }
     return res;
-  }
-
-  std::optional<percy::chain> exact_solve( problem_t& prob )
-  {
-    percy::spec spec;
-    spec.set_primitive( percy::AIG );
-    spec.fanin = 2;
-    spec.verbosity = 0;
-    spec.add_alonce_clauses = _ps.add_alonce_clauses;
-    spec.add_colex_clauses = _ps.add_colex_clauses;
-    spec.add_lex_clauses = _ps.add_lex_clauses;
-    spec.add_lex_func_clauses = _ps.add_lex_func_clauses;
-    spec.add_nontriv_clauses = _ps.add_nontriv_clauses;
-    spec.add_noreapply_clauses = _ps.add_noreapply_clauses;
-    spec.add_symvar_clauses = _ps.add_symvar_clauses;
-    spec.conflict_limit = _ps.conflict_limit;
-    spec.max_nr_steps = prob.max_size + 1;
-
-    TT const& target = prob.tts.back();
-    spec[0] = target;
-    bool with_dont_cares{ false };
-    if ( !kitty::is_const0( ~prob.care ) )
-    {
-      spec.set_dont_care( 0, ~prob.care );
-      with_dont_cares = true;
-    }
-
-    /* add divisors */
-    for ( auto i = prob.num_leaves; i < prob.divs.size(); ++i )
-    {
-      spec.add_function( prob.tts[prob.div_ids[i]] );
-    }
-
-    percy::chain c;
-    if ( const auto result = percy::synthesize( spec, c, _ps.solver_type,
-                                                _ps.encoder_type,
-                                                _ps.synthesis_method );
-         result != percy::success )
-    {
-      return std::nullopt;
-    }
-
-    assert( kitty::to_hex( c.simulate()[0u] & prob.care ) == kitty::to_hex( target & prob.care ) );
-    return c;
   }
 
 private:
   Ntk const& ntk;
   stats_t& st;
   ResynEngine engine;
-
-  bool _allow_xor;
-  struct
-  {
-    using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
-    using cache_t = std::shared_ptr<cache_map_t>;
-
-    using blacklist_cache_map_t = std::unordered_map<kitty::dynamic_truth_table, int32_t, kitty::hash<kitty::dynamic_truth_table>>;
-    using blacklist_cache_t = std::shared_ptr<blacklist_cache_map_t>;
-
-    cache_t cache;
-    blacklist_cache_t blacklist_cache;
-
-    bool add_alonce_clauses{ false };
-    bool add_colex_clauses{ false };
-    bool add_lex_clauses{ false };
-    bool add_lex_func_clauses{ false };
-    bool add_nontriv_clauses{ false };
-    bool add_noreapply_clauses{ false };
-    bool add_symvar_clauses{ false };
-    int conflict_limit{ 0 };
-
-    percy::SolverType solver_type = percy::SLV_BSAT2;
-    percy::EncoderType encoder_type = percy::ENC_SSV;
-    percy::SynthMethod synthesis_method = percy::SYNTH_STD;
-  } _ps;
 }; /* complete_tt_resynthesis */
 
 template<class Ntk, class TT, class index_list_t = xag_index_list<false>>
@@ -687,10 +538,6 @@ private:
     spec.add_noreapply_clauses = _ps.add_noreapply_clauses;
     spec.add_symvar_clauses = _ps.add_symvar_clauses;
     spec.conflict_limit = _ps.conflict_limit;
-    //if ( _lower_bound )
-    //{
-    //  spec.initial_steps = *_lower_bound;
-    //}
     spec.max_nr_steps = prob.max_size;
 
     TT const& target = prob.tts.back();
@@ -750,7 +597,7 @@ private:
   index_list_t translate( problem_t& prob, percy::chain const& c )
   {
     index_list_t il( prob.divs.size() );
-    /*
+    /* Doesn't work well yet
     std::vector<bool> negated( prob.divs.size() + c->get_nr_steps() + 1, false );
     for ( auto i = 0; i < c->get_nr_steps(); ++i )
     {
@@ -822,10 +669,13 @@ private:
 } /* namespace detail */
 
 using window_resub_params = boolean_optimization_params<complete_tt_windowing_params, null_params>;
-using window_resub_stats = boolean_optimization_stats<complete_tt_windowing_stats, null_stats>;
+using window_resub_stats = boolean_optimization_stats<complete_tt_windowing_stats, resynthesis_stats<null_stats>>;
+using window_resub_stats_xag = boolean_optimization_stats<complete_tt_windowing_stats, resynthesis_stats<xag_resyn_stats>>;
+using window_resub_stats_aig_enum = boolean_optimization_stats<complete_tt_windowing_stats, resynthesis_stats<aig_enumerative_resyn_stats>>;
+using window_resub_stats_mig = boolean_optimization_stats<complete_tt_windowing_stats, resynthesis_stats<mig_resyn_stats>>;
 
 template<class Ntk>
-void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats_xag* pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk::base_type is not xag_network" );
 
@@ -855,7 +705,7 @@ void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
 }
 
 template<class Ntk>
-void window_aig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+void window_aig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats_xag* pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, aig_network>, "Ntk::base_type is not aig_network" );
 
@@ -885,10 +735,8 @@ void window_aig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
 }
 
 template<class Ntk>
-void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats_aig_enum* pst = nullptr )
 {
-  // using ViewedNtk = fanout_view<Ntk>;
-  // ViewedNtk viewed( ntk );
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
@@ -928,7 +776,7 @@ void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {},
 }
 
 template<class Ntk>
-void window_mig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+void window_mig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats_mig* pst = nullptr )
 {
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );

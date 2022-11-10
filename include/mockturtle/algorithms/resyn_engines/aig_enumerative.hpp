@@ -153,24 +153,23 @@ public:
   template<class iterator_type, class truth_table_storage_type>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
-    //(void)care;
-    //assert( is_const0( ~care ) && "enumerative resynthesis does not support don't cares" );
+    (void)care;
+    assert( is_const0( ~care ) && "enumerative resynthesis does not support don't cares" );
 
     index_list_t il( std::distance( begin, end ) );
-    const TT onset = target & care;
-    const TT offset = ~target & care;
+    const TT ntarget = ~target;
     uint32_t i, j, k, l;
     iterator_type it = begin;
 
     /* C-resub */
-    if ( kitty::is_const0( onset ) )
+    if ( kitty::is_const0( target ) )
     {
       il.add_output( 0 );
       return il;
     }
     if constexpr ( !normalized )
     {
-      if ( kitty::is_const0( offset ) )
+      if ( kitty::is_const0( ntarget ) )
       {
         il.add_output( 1 );
         return il;
@@ -187,7 +186,7 @@ public:
       }
       if constexpr ( !normalized )
       {
-        if ( ~target == tts[*it] )
+        if ( ntarget == tts[*it] )
         {
           assert( !normalized );
           il.add_output( make_lit( i, true ) );

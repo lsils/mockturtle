@@ -44,10 +44,9 @@ int main()
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
-    //if ( benchmark != "hyp" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
     aig_network aig;
-    if ( lorina::read_aiger( "highly_optimized/" + benchmark + ".aig", aiger_reader( aig ) ) != lorina::return_code::success )
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
     {
       continue;
     }
@@ -57,7 +56,7 @@ int main()
 
     // ps.pattern_filename = "1024sa1/" + benchmark + ".pat";
     ps.max_inserts = 20;
-    ps.max_pis = 20;
+    ps.max_pis = 8;
     ps.max_divisors = std::numeric_limits<uint32_t>::max();
 
     const uint32_t size_before = aig.num_gates();
