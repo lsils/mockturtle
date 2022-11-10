@@ -721,6 +721,31 @@ TEST_CASE( "substitute node and restrash in XAG", "[xag]" )
   CHECK( xag.fanout_size( xag.get_node( f2 ) ) == 1 );
 }
 
+TEST_CASE( "trivial case (constant) detection in replace_in_node of xag_network", "[xag]" )
+{
+  xag_network xag;
+  auto const x1 = xag.create_pi();
+  auto const x2 = xag.create_pi();
+
+  auto const f1 = xag.create_xor( x1, x2 );
+  auto const f2 = xag.create_and( x1, x2 );
+  xag.create_po( f1 );
+  xag.create_po( f2 );
+
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 2 );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 2 );
+  CHECK( xag.fanout_size( xag.get_node( f1 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( f2 ) ) == 1 );
+
+  xag.substitute_node( xag.get_node( x1 ), xag.get_constant( true ) );
+
+  CHECK( xag.is_dead( xag.get_node( f1 ) ) );
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 0 );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 2 );
+  CHECK( xag.get_node( xag.po_at( 0 ) ) == xag.get_node( x2 ) );
+  CHECK( xag.get_node( xag.po_at( 1 ) ) == xag.get_node( x2 ) );
+}
+
 TEST_CASE( "substitute node with complemented node in xag_network", "[xag]" )
 {
   xag_network xag;

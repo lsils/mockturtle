@@ -482,7 +482,7 @@ public:
     }
     else if ( !_is_and && child1.index == 0 )
     {
-      return std::make_pair( n, child1 ^ child0.complement );
+      return std::make_pair( n, child0 ^ child1.complement );
     }
 
     // node already in hash table
