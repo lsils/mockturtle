@@ -689,7 +689,7 @@ void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  window_resub_stats st;
+  window_resub_stats_xag st;
   opt_t p( viewed, ps, st );
   p.run();
 
@@ -719,7 +719,7 @@ void window_aig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  window_resub_stats st;
+  window_resub_stats_xag st;
   opt_t p( viewed, ps, st );
   p.run();
 
@@ -741,7 +741,7 @@ void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {},
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
 
-  window_resub_stats st;
+  window_resub_stats_aig_enum st;
 
   using TT = typename kitty::static_truth_table<8>;
   using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
@@ -788,7 +788,7 @@ void window_mig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  window_resub_stats st;
+  window_resub_stats_mig st;
   opt_t p( viewed, ps, st );
   p.run();
 

@@ -416,7 +416,6 @@ public:
 
   std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal )
   {
-    assert( get_node( new_signal ) != n );
     auto& node = _storage->nodes[n];
 
     std::array<signal, 3> child;
@@ -478,12 +477,6 @@ public:
       ( *fn )( n, { old_child0, old_child1, old_child2 } );
     }
 
-    //if ( norm_res.output_compl )
-    //{
-    //  // n's output need to be negated.
-    //  return std::make_pair( n, signal( n, 1 ) );
-    //}
-
     return std::nullopt;
   }
 
@@ -543,8 +536,8 @@ public:
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
-    if ( get_node( new_signal ) == old_node && !is_complemented( new_signal ) )
-      return;
+    //if ( get_node( new_signal ) == old_node && !is_complemented( new_signal ) )
+    //  return;
 
     std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
@@ -563,8 +556,8 @@ public:
         _new = is_complemented( _new ) ? create_not( it->second ) : it->second;
       }
 
-      if ( get_node( _new ) == _old && !is_complemented( _new ) )
-        continue;
+      //if ( get_node( _new ) == _old && !is_complemented( _new ) )
+      //  continue;
 
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {

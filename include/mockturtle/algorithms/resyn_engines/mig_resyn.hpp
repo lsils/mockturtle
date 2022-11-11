@@ -968,7 +968,7 @@ public:
     (void)max_level;
 
     divisors.clear();
-    id_to_lit.clear();
+    id_to_lit.resize( 2 );
     index_list.clear();
 
     divisors.emplace_back( ~target );
