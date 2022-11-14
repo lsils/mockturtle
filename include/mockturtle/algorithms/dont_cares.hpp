@@ -102,7 +102,7 @@ kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vecto
 
 /*! \brief Computes observability don't cares of a node.
  *
- * This function returns input assignemnts for which a change of the
+ * This function returns input assignments for which a change of the
  * node's value cannot be observed at any of the roots.  They may
  * therefore be used as don't care conditions.
  *
@@ -205,7 +205,7 @@ void simulate_TFO_rec( Ntk const& ntk, node<Ntk> const& n, partial_simulator con
  *
  * \param sim The `partial_simulator` containing the patterns to be tested.
  * \param tts Stores the simulation signatures of each node. Can be empty or incomplete.
- * \param levels Level of tansitive fanout to consider. -1 = consider until PO.
+ * \param levels Level of transitive fanout to consider. -1 = consider until PO.
  */
 template<class Ntk, class Container = unordered_node_map<kitty::partial_truth_table, Ntk>>
 kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, Container& tts, int levels = -1 )
@@ -263,7 +263,7 @@ kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
  * replacing `n` with `!n` does not affect the value of any primary output or
  * any leaf node of `levels` levels of transitive fanout cone.
  *
- * \param levels Level of tansitive fanout to consider. -1 = consider until PO.
+ * \param levels Level of transitive fanout to consider. -1 = consider until PO.
  */
 template<class Ntk>
 bool pattern_is_observable( Ntk const& ntk, node<Ntk> const& n, std::vector<bool> const& pattern, int levels = -1 )
