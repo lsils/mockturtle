@@ -72,8 +72,8 @@ int main()
     cost_generic_resub_params ps;
     cost_generic_resub_stats st;
     ps.verbose = false;
-    ps.rps.max_solutions = 0; /* = 1: collect one, =0: collect all */
-    ps.rps.use_esop = false; /* true: use esop, false: no esop */
+    ps.rps.max_solutions = 1; /* = 1: collect one, =0: collect all */
+    ps.rps.use_esop = true; /* true: use esop, false: no esop */
 
     stopwatch<>::duration time_tot{ 0 };
 

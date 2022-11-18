@@ -39,6 +39,8 @@
 #include "../../algorithms/cleanup.hpp"
 #include "../../algorithms/exorcism.hpp"
 #include "../../utils/index_list.hpp"
+#include "../detail/resub_utils.hpp"
+#include "../simulation.hpp"
 #include "resub_functors.hpp"
 
 #include <algorithm>
@@ -55,6 +57,8 @@ struct cost_resyn_params
 {
   /* maximum number of feasible solutions to collect, 0: no limit */
   uint32_t max_solutions{ 0u };
+
+  uint32_t max_pis{ 8u };
 
   /* use esop */
   bool use_esop{ false };
@@ -123,56 +127,105 @@ public:
   {
   }
 
-  template<class iterator_type, class truth_table_storage_type>
-  std::optional<index_list_t> operator()( TT const& target, TT const& care, std::vector<signal> const& divs, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_cost = std::numeric_limits<uint32_t>::max() )
+  std::optional<signal> operator()( std::vector<signal> const& leaves, std::vector<signal> const& divs, std::vector<signal> const& mffc, signal& root )
   {
-    uint32_t best_cost = max_cost;
-    uint32_t n_solutions = 0u;
-    std::optional<signal> best_candidate;
+    // uint32_t best_cost = ntk.get_cost( ntk.get_node( root ), divs );
+    // uint32_t n_solutions = 0u;
+    // std::optional<signal> best_candidate;
 
-    // prepare virtual network
-    Ntk forest;
-    std::for_each( std::begin(divs), std::end(divs), [&]( signal const& div ) {
-      forest.set_context( forest.get_node( forest.create_pi() ), ntk.get_context( ntk.get_node( div ) ) ); } );
-    // forest leaves
-    std::vector<signal> leaves;
-    forest.foreach_pi( [&]( node n ) { leaves.emplace_back( ntk.make_signal( n ) ); } );
+    // /* convert the divisors to a tree */
+    // Ntk forest;
+    // std::for_each( std::begin(divs), std::end(divs), [&]( signal const& div ) {
+    //   forest.set_context( forest.get_node( forest.create_pi() ), ntk.get_context( ntk.get_node( div ) ) ); 
+    // } );
 
-    /* esop solutions (try building ntk without divisors ) */
-    if ( ps.use_esop )
-    {
-      const auto s = create_function( forest, target );
-      auto rw_cost = forest.get_cost( forest.get_node( s ), leaves );
-      if ( rw_cost < best_cost )
-      {
-        best_cost = rw_cost;
-        best_candidate = s;
-      }
-    }
+    // // forest leaves
+    // std::vector<signal> leaves;
+    // forest.foreach_pi( [&]( node n ) { leaves.emplace_back( ntk.make_signal( n ) ); } );
 
-    /* grow the forest */
-    resub_functor<Ntk, TT, decltype(begin), decltype(tts)> engine( forest, target, care, begin, end, tts );
-    engine.run( [&]( signal g ) {
-      forest.incr_trav_id();
-      uint32_t curr_cost = forest.get_cost( forest.get_node( g ), leaves );
-      if ( curr_cost < best_cost )
-      {
-        n_solutions++;
-        best_cost = curr_cost;
-        best_candidate = g;
-        return (ps.max_solutions > 0) && (n_solutions >= ps.max_solutions); /* stop searching */
-      }
-      return false; /* keep searching */
-    } );
+    // /* use a different forest, constructed by re-constructing the divs */
+    // Ntk _forest; // TODO: modify the resub to use this forest 
+    // uint32_t degree_of_freedom = target.num_vars();
+    // node_map<signal, Ntk> old_to_new( ntk );
+    // auto it = std::begin( divs );
+    // for ( int i = 0; i < degree_of_freedom; i++ ) // PIs
+    // {
+    //   auto const s = _forest.create_pi(); /* usually PI is not complemented */
+    //   old_to_new[ ntk.get_node( *it ) ] = ntk.is_complemented( *it )? _forest.create_not( s ) : s;
+    //   it++;
+    // }
+    // for ( ; it != std::end( divs ); it++ ) // divisors
+    // {
+    //   auto const n = ntk.get_node( *it );
+    //   std::vector<signal> children;
+    //   ntk.foreach_fanin( n, [&]( auto child, auto ) {
+    //     const auto f = old_to_new[child];
+    //     if ( ntk.is_complemented( child ) )
+    //     {
+    //       children.push_back( _forest.create_not( f ) );
+    //     }
+    //     else
+    //     {
+    //       children.push_back( f );
+    //     }
+    //   } );
+    //   auto const s = _forest.clone_node( ntk, n, children );
+    //   old_to_new[n] = ntk.is_complemented( *it )? _forest.create_not( s ) : s;
+    // }
+    // {
+    //   /* root: MFFC should be here */
+    //   auto const n = ntk.get_node( root );
+    //   std::vector<signal> children;
+    //   ntk.foreach_fanin( n, [&]( auto child, auto ) {
+    //     const auto f = old_to_new[child];
+    //     if ( ntk.is_complemented( child ) )
+    //     {
+    //       children.push_back( _forest.create_not( f ) );
+    //     }
+    //     else
+    //     {
+    //       children.push_back( f );
+    //     }
+    //   } );
+    //   auto const s = _forest.clone_node( ntk, n, children );
+    //   old_to_new[n] = ntk.is_complemented( root )? _forest.create_not( s ) : s;
+    // }
 
-    if ( best_candidate )
-    {
-      index_list_t index_list;
-      forest.create_po( *best_candidate );
-      typename Ntk::base_type solution = cleanup_dangling( (typename Ntk::base_type)forest );
-      encode( index_list, solution );
-      return index_list;
-    }
+    // /* esop solutions (try building ntk without divisors ) */
+    // if ( ps.use_esop )
+    // {
+    //   const auto s = create_function( forest, target );
+    //   auto rw_cost = forest.get_cost( forest.get_node( s ), leaves );
+    //   if ( rw_cost < best_cost )
+    //   {
+    //     best_cost = rw_cost;
+    //     best_candidate = s;
+    //   }
+    // }
+
+    // /* grow the forest */
+    // resub_functor<Ntk, TT, decltype(begin), decltype(tts)> engine( forest, target, care, begin, end, tts );
+    // engine.run( [&]( signal g ) {
+    //   forest.incr_trav_id();
+    //   uint32_t curr_cost = forest.get_cost( forest.get_node( g ), leaves );
+    //   if ( curr_cost < best_cost )
+    //   {
+    //     n_solutions++;
+    //     best_cost = curr_cost;
+    //     best_candidate = g;
+    //     return (ps.max_solutions > 0) && (n_solutions >= ps.max_solutions); /* stop searching */
+    //   }
+    //   return false; /* keep searching */
+    // } );
+
+    // if ( best_candidate )
+    // {
+    //   index_list_t index_list;
+    //   forest.create_po( *best_candidate );
+    //   typename Ntk::base_type solution = cleanup_dangling( (typename Ntk::base_type)forest );
+    //   encode( index_list, solution );
+    //   return index_list;
+    // }
     return std::nullopt;
   }
 
@@ -241,7 +294,7 @@ private:
   Ntk const& ntk;
   params const& ps;
   stats& st;
-
+  std::vector<TT> tts;
   mutable std::unordered_map<TT, std::vector<kitty::cube>, kitty::hash<TT>> sop_hash_;
 };
 

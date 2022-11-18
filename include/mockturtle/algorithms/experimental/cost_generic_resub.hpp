@@ -155,13 +155,9 @@ struct cost_aware_problem
   using signal = typename Ntk::signal;
 
   signal root;
+  std::vector<signal> leaves;
   std::vector<signal> divs;
-  std::vector<uint32_t> div_ids;    /* positions of divisor truth tables in `tts` */
-  std::vector<node> div_id_to_node; /* maps IDs in `div_ids` to the corresponding node */
-  std::vector<TT> tts;
-  TT care;
-  uint32_t mffc_size;
-  uint32_t max_cost{ std::numeric_limits<uint32_t>::max() };
+  std::vector<signal> mffcs;
 };
 
 template<class Ntk, class TT = kitty::dynamic_truth_table>
@@ -177,8 +173,7 @@ public:
 
   explicit costfn_windowing( Ntk& ntk, params_t const& ps, stats_t& st )
       : ntk( ntk ), ps( ps ), st( st ), cps( { ps.max_pis } ), mffc_mgr( ntk ),
-        divs_mgr( ntk, divisor_collector_params( { ps.max_divisors, ps.max_divisors, ps.skip_fanout_limit_for_divisors } ) ),
-        sim( ntk, win.tts, ps.max_pis )
+        divs_mgr( ntk, divisor_collector_params( { ps.max_divisors, ps.max_divisors, ps.skip_fanout_limit_for_divisors } ) )
   {
     static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
@@ -205,19 +200,19 @@ public:
     std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
       return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, { n }, cps ).first;
     } );
+    for ( auto const node : leaves )
+    {
+      win.leaves.emplace_back( ntk.make_signal( node ) );
+    }
+
     std::vector<node> supported;
     call_with_stopwatch( st.time_divs, [&]() {
       divs_mgr.collect_supported_nodes( n, leaves, supported );
     } );
 
-    /* simulate */
-    call_with_stopwatch( st.time_sim, [&]() {
-      sim.simulate( leaves, supported );
-    } );
-
     /* mark MFFC nodes and collect divisors */
     ++mffc_marker;
-    win.mffc_size = call_with_stopwatch( st.time_mffc, [&]() {
+    uint32_t mffc_size = call_with_stopwatch( st.time_mffc, [&]() {
       return mffc_mgr.call_on_mffc_and_count( n, leaves, [&]( node const& n ) {
         ntk.set_value( n, mffc_marker );
       } );
@@ -226,37 +221,12 @@ public:
       collect_divisors( leaves, supported );
     } );
 
-    /* normalize */
-    call_with_stopwatch( st.time_sim, [&]() {
-      if ( ps.normalize )
-      {
-        win.root = normalize_truth_tables() ? !ntk.make_signal( n ) : ntk.make_signal( n );
-      }
-      else
-      {
-        win.root = ntk.make_signal( n );
-      }
-    } );
-
-    /* compute don't cares */
-    call_with_stopwatch( st.time_dont_care, [&]() {
-      if ( ps.use_dont_cares )
-      {
-        win.care = ~satisfiability_dont_cares( ntk, leaves, ps.window_size );
-      }
-      else
-      {
-        win.care = ~kitty::create<TT>( ps.max_pis );
-      }
-    } );
-
-    /* compute cost */
-    win.max_cost = ntk.get_cost( n, win.divs );
+    win.root = ntk.make_signal( n );
 
     st.num_windows++;
     st.num_leaves += leaves.size();
     st.num_divisors += win.divs.size();
-    st.sum_mffc_size += win.mffc_size;
+    st.sum_mffc_size += mffc_size;
 
     return win;
   }
@@ -264,27 +234,19 @@ public:
   template<typename res_t>
   uint32_t gain( problem_t const& prob, res_t const& res ) const
   {
-    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
     return 1; /* cannot predict the final cost */
   }
 
   template<typename res_t>
   bool update_ntk( problem_t const& prob, res_t const& res )
   {
-    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
-    assert( res.num_pos() == 1 );
-    insert( ntk, std::begin( prob.divs ), std::end( prob.divs ), res, [&]( signal const& g ) {
-      ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !g : g );
-    } );
+    ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !res : res );
     return true; /* continue optimization */
   }
 
   template<typename res_t>
   bool report( problem_t const& prob, res_t const& res )
   {
-    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
-    assert( res.num_pos() == 1 );
-    fmt::print( "[i] found solution {} for root signal {}{}\n", to_index_list_string( res ), ntk.is_complemented( prob.root ) ? "!" : "", ntk.get_node( prob.root ) );
     return true;
   }
 
@@ -292,48 +254,20 @@ private:
   void collect_divisors( std::vector<node> const& leaves, std::vector<node> const& supported )
   {
     win.divs.clear();
-    win.div_ids.clear();
-
-    uint32_t i{ 1 };
     for ( auto const& l : leaves )
     {
-      win.div_ids.emplace_back( i++ );
       win.divs.emplace_back( ntk.make_signal( l ) );
     }
-
-    i = ps.max_pis + 1;
     for ( auto const& n : supported )
     {
       if ( ntk.value( n ) != mffc_marker ) /* not in MFFC, not root */
       {
-        win.div_ids.emplace_back( i );
         win.divs.emplace_back( ntk.make_signal( n ) );
       }
-      ++i;
-    }
-    assert( i == win.tts.size() );
-  }
-
-  bool normalize_truth_tables()
-  {
-    assert( win.divs.size() == win.div_ids.size() );
-    for ( auto i = 0u; i < win.divs.size(); ++i )
-    {
-      if ( kitty::get_bit( win.tts.at( win.div_ids.at( i ) ), 0 ) )
+      else
       {
-        win.tts.at( win.div_ids.at( i ) ) = ~win.tts.at( win.div_ids.at( i ) );
-        win.divs.at( i ) = !win.divs.at( i );
+        win.mffcs.emplace_back( ntk.make_signal( n ) );
       }
-    }
-
-    if ( kitty::get_bit( win.tts.back(), 0 ) )
-    {
-      win.tts.back() = ~win.tts.back();
-      return true;
-    }
-    else
-    {
-      return false;
     }
   }
 
@@ -345,7 +279,6 @@ private:
   reconvergence_driven_cut_parameters const cps;
   typename mockturtle::detail::node_mffc_inside<Ntk> mffc_mgr; // TODO: namespaces can be removed when we move out of experimental::
   divisor_collector<Ntk> divs_mgr;
-  window_simulator<Ntk, TT> sim;
   uint32_t mffc_marker{ 0u };
   std::shared_ptr<typename network_events<Ntk>::modified_event_type> lazy_update_event;
 }; /* costfn_windowing */
@@ -355,7 +288,7 @@ class costfn_resynthesis
 {
 public:
   using problem_t = cost_aware_problem<Ntk, TT>;
-  using res_t = typename ResynEngine::index_list_t;
+  using res_t = signal<Ntk>;
   using params_t = typename ResynEngine::params;
   using stats_t = typename ResynEngine::stats;
 
@@ -371,7 +304,7 @@ public:
 
   std::optional<res_t> operator()( problem_t& prob )
   {
-    return engine( prob.tts.back(), prob.care, prob.divs, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_cost );
+    return engine( prob.leaves, prob.divs, prob.mffcs, prob.root );
   }
 
 private:
