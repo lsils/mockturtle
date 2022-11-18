@@ -79,7 +79,7 @@ int main()
 
     auto curr_cost = cost_before;
 
-    int n_iter = 10; /* 1: once, <large number(e.g. 10)>: converge */
+    int n_iter = 1; /* 1: once, <large number(e.g. 10)>: converge */
     int iter = 0;
     while ( iter < n_iter )
     {
@@ -91,7 +91,7 @@ int main()
         xag = cleanup_dangling( xag );
       } );
 
-      write_verilog( xag, fmt::format("{}/{}_{}.v", results_dir, benchmark, iter ) );
+      // write_verilog( xag, fmt::format("{}/{}_{}.v", results_dir, benchmark, iter ) );
 
       auto tmp_cost = cost_view( xag, costfn ).get_cost();
       if ( tmp_cost >= curr_cost ) break;
