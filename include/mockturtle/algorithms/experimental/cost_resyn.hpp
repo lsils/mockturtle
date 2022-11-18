@@ -192,14 +192,15 @@ public:
     uint32_t best_cost = forest.get_cost( forest.get_node( po ), pis );
     std::optional<signal> best_candidate;
     uint32_t n_solutions = 0u;
-    auto add_event = forest.events().register_add_event( [&]( const auto& n_ ) {
-      ntts.resize();
-      std::vector<TT> fanin_values( forest.fanin_size( n_ ) );
-      forest.foreach_fanin( n_, [&]( auto const& f, auto i ) {
-        fanin_values[i] = ntts[forest.get_node( f )]; /* compute will take care of the complement */
-      } );
-      ntts[n_] = forest.compute( n_, std::begin( fanin_values ), std::end( fanin_values ) );
-    } );
+
+    // auto add_event = forest.events().register_add_event( [&]( const auto& n_ ) {
+    //   ntts.resize();
+    //   std::vector<TT> fanin_values( forest.fanin_size( n_ ) );
+    //   forest.foreach_fanin( n_, [&]( auto const& f, auto i ) {
+    //     fanin_values[i] = ntts[forest.get_node( f )]; /* compute will take care of the complement */
+    //   } );
+    //   ntts[n_] = forest.compute( n_, std::begin( fanin_values ), std::end( fanin_values ) );
+    // } );
 
     auto get_tt = [&]( const auto s ) {
       return forest.is_complemented( s )? ~ntts[ forest.get_node(s) ] : ntts[ forest.get_node(s) ];
@@ -220,15 +221,15 @@ public:
     /* esop solutions (try building ntk without divisors ) */
     if ( ps.use_esop )
     {
-      // refactor_engine( forest, evalfn );
+      refactor_engine( forest, evalfn );
     }
 
     /* grow the forest */
     resub_functor engine( forest, get_tt( po ), ~kitty::create<TT>( forest.num_pis() ), std::begin(pis), std::end(pis), ntts );
     engine.run( evalfn );
 
-    if ( add_event )
-      forest.events().release_add_event( add_event );
+    // if ( add_event )
+    //   forest.events().release_add_event( add_event );
 
     if ( best_candidate )
     {
