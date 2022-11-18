@@ -49,10 +49,10 @@ int main()
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     /* skip these for "collect all" experiments */
-    // if (benchmark == "hyp") continue; 
-    // if (benchmark == "mem_ctrl") continue;
-    // if (benchmark == "log2") continue;
-    // if (benchmark == "sin") continue;
+    if (benchmark == "hyp") continue; 
+    if (benchmark == "mem_ctrl") continue;
+    if (benchmark == "log2") continue;
+    if (benchmark == "sin") continue;
     float run_time = 0;
 
     fmt::print( "[i] processing {}\n", benchmark );
@@ -72,7 +72,7 @@ int main()
     cost_generic_resub_params ps;
     cost_generic_resub_stats st;
     ps.verbose = false;
-    ps.rps.max_solutions = 5; /* = 1: collect one, =0: collect all */
+    ps.rps.max_solutions = 0; /* = 1: collect one, =0: collect all */
     ps.rps.use_esop = true; /* true: use esop, false: no esop */
 
     stopwatch<>::duration time_tot{ 0 };

@@ -39,6 +39,7 @@
 #include "../../algorithms/cleanup.hpp"
 #include "../../utils/index_list.hpp"
 #include "../../algorithms/simulation.hpp"
+#include "../../algorithms/cut_enumeration.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -69,10 +70,29 @@ public:
     default_simulator<kitty::dynamic_truth_table> sim( ntk.num_pis() );
     const auto tts = simulate_nodes<kitty::dynamic_truth_table>( ntk, sim );
     auto const po = ntk.po_at( 0 );
-    TT target = ntk.is_complemented( po )? ~tts[po] : tts[po];
+    TT const& target = ntk.is_complemented( po )? ~tts[po] : tts[po];
+
+    cut_enumeration_params ps;
+    ps.cut_size = ntk.num_pis();
+    cut_enumeration_stats st;
+
+    const auto cuts = cut_enumeration<Ntk, true>( ntk, ps, &st );
+    for ( auto& cut : cuts.cuts( ntk.node_to_index( ntk.get_node( po ) ) ) )
+    {
+      if ( cut->size() == 1u || kitty::is_const0( cuts.truth_table( *cut ) ) )
+      {
+        continue;
+      }
+      TT const& tt = cuts.truth_table( *cut );
+      std::vector<signal> leaves( cut->size() );
+      std::transform( cut->begin(), cut->end(), std::begin(leaves), [&]( auto leaf ){ return ntk.make_signal( ntk.index_to_node( leaf ) ); } );
+      assert( leaves.size() == tt.num_vars() );
+      auto const s = create_function( ntk, tt, leaves );
+      evalfn( s );
+
+    }
+
     // kitty::print_hex( target ); fmt::print( " : {}\n", target.num_vars() );
-    auto const s = create_function( ntk, target );
-    evalfn( s );
   }
 private:
 
@@ -109,7 +129,7 @@ private:
   }
 
   /* esop rebalancing */
-  signal create_function( Ntk& dest, TT const& tt ) const
+  signal create_function( Ntk& dest, TT const& tt, std::vector<signal> const& leaves ) const
   {
     const auto esop = create_sop_form( tt );
 
@@ -124,9 +144,8 @@ private:
       {
         if ( cube.get_mask( i ) )
         {
-          const auto n = dest.pi_at( i );
-          const auto f = dest.make_signal( n );
-          const auto l = dest.get_context( n );
+          const auto f = leaves[i];
+          const auto l = dest.get_context( dest.get_node( f ) );
           q.push( { l, cube.get_bit( i ) ? f : dest.create_not( f ) } );
         }
       }
