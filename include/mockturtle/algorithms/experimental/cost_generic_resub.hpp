@@ -200,6 +200,7 @@ public:
     std::vector<node> leaves = call_with_stopwatch( st.time_cuts, [&]() {
       return reconvergence_driven_cut<Ntk, false, has_level_v<Ntk>>( ntk, { n }, cps ).first;
     } );
+    win.leaves.clear();
     for ( auto const node : leaves )
     {
       win.leaves.emplace_back( ntk.make_signal( node ) );
@@ -240,8 +241,12 @@ public:
   template<typename res_t>
   bool update_ntk( problem_t const& prob, res_t const& res )
   {
-    ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !res : res );
-    return true; /* continue optimization */
+    static_assert( is_index_list_v<res_t>, "res_t is not an index_list (windowing engine and resynthesis engine do not match)" );
+    assert( res.num_pos() == 1 );
+    insert( ntk, std::begin( prob.leaves ), std::end( prob.leaves ), res, [&]( signal const& g ) {
+      ntk.substitute_node( ntk.get_node( prob.root ), ntk.is_complemented( prob.root ) ? !g : g );
+    } );
+    return true; /* continue */
   }
 
   template<typename res_t>
@@ -254,6 +259,7 @@ private:
   void collect_divisors( std::vector<node> const& leaves, std::vector<node> const& supported )
   {
     win.divs.clear();
+    win.mffcs.clear();
     for ( auto const& l : leaves )
     {
       win.divs.emplace_back( ntk.make_signal( l ) );
@@ -288,7 +294,7 @@ class costfn_resynthesis
 {
 public:
   using problem_t = cost_aware_problem<Ntk, TT>;
-  using res_t = signal<Ntk>;
+  using res_t = typename ResynEngine::index_list_t;
   using params_t = typename ResynEngine::params;
   using stats_t = typename ResynEngine::stats;
 

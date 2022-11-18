@@ -83,13 +83,12 @@ int main()
     int iter = 0;
     while ( iter < n_iter )
     {
-      fmt::print( "{},{},{},{:>5.2f}\n", iter, xag.num_gates(), curr_cost, to_seconds( time_tot ) );
-
       call_with_stopwatch( time_tot, [&]() {
         cost_generic_resub( xag, costfn, ps, &st );
         // xag = balancing( xag, { esop_rebalancing<xag_network>{} } );
         xag = cleanup_dangling( xag );
       } );
+      fmt::print( "{},{},{},{:>5.2f}\n", iter, xag.num_gates(), curr_cost, to_seconds( time_tot ) );
 
       // write_verilog( xag, fmt::format("{}/{}_{}.v", results_dir, benchmark, iter ) );
 

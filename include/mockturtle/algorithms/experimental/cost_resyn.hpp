@@ -42,6 +42,7 @@
 #include "../detail/resub_utils.hpp"
 #include "../simulation.hpp"
 #include "resub_functors.hpp"
+#include "refactor_functor.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -127,10 +128,8 @@ public:
   {
   }
 
-  std::optional<signal> operator()( std::vector<signal> const& leaves, std::vector<signal> const& divs, std::vector<signal> const& mffcs, signal& root )
+  std::optional<index_list_t> operator()( std::vector<signal> const& leaves, std::vector<signal> const& divs, std::vector<signal> const& mffcs, signal& root )
   {
-    uint32_t n_solutions = 0u;
-    std::optional<signal> best_candidate;
 
     /* convert the divisors to a tree */
     Ntk forest;
@@ -184,21 +183,27 @@ public:
       pis.emplace_back( old_to_new[ ntk.get_node( s ) ]);
     } );
     auto const po = old_to_new[ ntk.get_node( root ) ];
+    forest.create_po( po );
 
     uint32_t best_cost = forest.get_cost( forest.get_node( po ), pis );
-    fmt::print( "cost = {}\n", best_cost );
+    std::optional<signal> best_candidate;
+    uint32_t n_solutions = 0u;
 
-    // /* esop solutions (try building ntk without divisors ) */
-    // if ( ps.use_esop )
-    // {
-    //   const auto s = create_function( forest, target );
-    //   auto rw_cost = forest.get_cost( forest.get_node( s ), leaves );
-    //   if ( rw_cost < best_cost )
-    //   {
-    //     best_cost = rw_cost;
-    //     best_candidate = s;
-    //   }
-    // }
+    auto evalfn = [&]( const auto s ) {
+        auto _cost = forest.get_cost( forest.get_node( s ), pis );
+        if ( _cost < best_cost )
+        {
+          n_solutions++;
+          best_cost = _cost;
+          best_candidate = s;
+        }
+      };
+
+    /* esop solutions (try building ntk without divisors ) */
+    if ( ps.use_esop )
+    {
+      refactor_engine( forest, evalfn );
+    }
 
     // /* grow the forest */
     // resub_functor<Ntk, TT, decltype(begin), decltype(tts)> engine( forest, target, care, begin, end, tts );
@@ -215,84 +220,26 @@ public:
     //   return false; /* keep searching */
     // } );
 
-    // if ( best_candidate )
-    // {
-    //   index_list_t index_list;
-    //   forest.create_po( *best_candidate );
-    //   typename Ntk::base_type solution = cleanup_dangling( (typename Ntk::base_type)forest );
-    //   encode( index_list, solution );
-    //   return index_list;
-    // }
+    if ( best_candidate )
+    {
+      index_list_t index_list;
+      signal s = *best_candidate;
+      forest.substitute_node( forest.get_node( po ), forest.is_complemented( po )? forest.create_not( s ) : s );
+      typename Ntk::base_type solution = cleanup_dangling( (typename Ntk::base_type)forest );
+      encode( index_list, solution );
+      return index_list;
+    }
     return std::nullopt;
   }
 
-
-  std::vector<kitty::cube> create_sop_form( TT const& func ) const
-  {
-    if ( auto it = sop_hash_.find( func ); it != sop_hash_.end() )
-    {
-      return it->second;
-    }
-    else
-    {
-      return sop_hash_[func] = mockturtle::exorcism( func ); // TODO generalize
-    }
-  }
-
-  cotext_signal_pair<Ntk> create_and_tree( Ntk& dest, cotext_signal_queue<Ntk>& queue ) const
-  {
-    if ( queue.empty() )
-    {
-      context_t context{};
-      return { context, dest.get_constant( true ) };
-    }
-
-    while ( queue.size() > 1u )
-    {
-      auto [l1, s1] = queue.top();
-      queue.pop();
-      auto [l2, s2] = queue.top();
-      queue.pop();
-      const auto s = dest.create_and( s1, s2 ); /* context propagate automatically */
-      queue.push( { dest.get_context( dest.get_node( s ) ), s } );
-    }
-    return queue.top();
-  }
-
-  /* esop rebalancing */
-  signal create_function( Ntk& dest, TT const& tt ) const
-  {
-    const auto esop = create_sop_form( tt );
-
-    std::vector<signal> and_terms;
-    uint32_t max_level{};
-    uint32_t num_and_gates{};
-
-    for ( auto const& cube : esop )
-    {
-      cotext_signal_queue<Ntk> q;
-      for ( auto i = 0u; i < tt.num_vars(); ++i )
-      {
-        if ( cube.get_mask( i ) )
-        {
-          const auto n = dest.pi_at( i );
-          const auto f = dest.make_signal( n );
-          const auto l = dest.get_context( n );
-          q.push( { l, cube.get_bit( i ) ? f : dest.create_not( f ) } );
-        }
-      }
-      auto [l ,s] = create_and_tree( dest, q );
-      and_terms.push_back( s );
-    }
-    return dest.create_nary_xor( and_terms ); // TODO: use XOR tree
-  }
 
 private:
   Ntk const& ntk;
   params const& ps;
   stats& st;
+
+  refactor_functor<TT> refactor_engine;
   std::vector<TT> tts;
-  mutable std::unordered_map<TT, std::vector<kitty::cube>, kitty::hash<TT>> sop_hash_;
 };
 
 } // namespace mockturtle::experimental
