@@ -170,7 +170,7 @@ private:
         {
           index_list_t il;
           il.clear();
-          il.add_inputs( divisors.size() - 1 );
+          il.add_inputs( num_divisors - 1 );
           auto const new_lit = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
           il.add_output( new_lit + on_off );
           if ( !push_solution( il ) )
@@ -208,7 +208,7 @@ private:
         {
           index_list_t il;
           il.clear();
-          il.add_inputs( divisors.size() - 1 );
+          il.add_inputs( num_divisors - 1 );
           uint32_t new_lit1;
           if constexpr ( is_xor )
           {
@@ -266,7 +266,7 @@ private:
         {
           index_list_t il;
           il.clear();
-          il.add_inputs( divisors.size() - 1 );
+          il.add_inputs( num_divisors - 1 );
           uint32_t fanin_lit1, fanin_lit2;
           if constexpr ( left_xor )
           {
@@ -334,7 +334,7 @@ private:
     {
       prepare_task();
     }
-    for ( auto v = 1u; v < divisors.size(); ++v )
+    for ( auto v = 1u; v < num_divisors; ++v )
     {
       bool unateness[4] = { false, false, false, false };
       /* check intersection with off-set */
@@ -379,7 +379,7 @@ private:
   void prepare_xor()
   {
     assert( has_xor == false );
-    for ( auto i = 1u; i < divisors.size(); i++ )
+    for ( auto i = 1u; i < num_divisors; i++ )
     {
       mem_xor[on_off_sets[1] ^ get_div( i )] = i;
     }
@@ -389,11 +389,11 @@ private:
   void prepare_xor_xor()
   {
     assert( has_xor_xor == false );
-    for ( auto i = 1u; i < divisors.size(); i++ )
+    for ( auto i = 1u; i < num_divisors; i++ )
     {
-      for ( auto j = i + 1; j < divisors.size(); j++ )
+      for ( auto j = i + 1; j < num_divisors; j++ )
       {
-        mem_xor_xor[get_div( i ) ^ get_div( j ) ^ on_off_sets[1]] = i * divisors.size() + j;
+        mem_xor_xor[get_div( i ) ^ get_div( j ) ^ on_off_sets[1]] = i * num_divisors + j;
       }
     }
     has_xor_xor = true;
@@ -402,16 +402,16 @@ private:
   void prepare_xor_and()
   {
     assert( has_xor_and == false );
-    for ( auto i = 1u; i < divisors.size(); i++ )
+    for ( auto i = 1u; i < num_divisors; i++ )
     {
-      for ( auto j = i + 1; j < divisors.size(); j++ )
+      for ( auto j = i + 1; j < num_divisors; j++ )
       {
         for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
         {
           for ( auto on_off_2 = 0u; on_off_2 < 2; on_off_2++ )
           {
             auto const tt = ( on_off_1 ? ~get_div( i ) : get_div( i ) ) & ( on_off_2 ? ~get_div( j ) : get_div( j ) );
-            mem_xor_and[tt ^ on_off_sets[1]] = ( ( i << 1 ) + on_off_1 ) * 2 * divisors.size() + ( ( j << 1 ) + on_off_2 );
+            mem_xor_and[tt ^ on_off_sets[1]] = ( ( i << 1 ) + on_off_1 ) * 2 * num_divisors + ( ( j << 1 ) + on_off_2 );
           }
         }
       }
@@ -486,7 +486,7 @@ private:
     {
       index_list_t il;
       il.clear();
-      il.add_inputs( divisors.size() - 1 );
+      il.add_inputs( num_divisors - 1 );
       il.add_output( 1 );
       if ( !push_solution( il ) )
         return std::nullopt;
@@ -496,19 +496,19 @@ private:
     {
       index_list_t il;
       il.clear();
-      il.add_inputs( divisors.size() - 1 );
+      il.add_inputs( num_divisors - 1 );
       il.add_output( 0 );
       if ( !push_solution( il ) )
         return std::nullopt;
       is_constant = true;
     }
-    for ( auto v = 1u; v < divisors.size(); ++v )
+    for ( auto v = 1u; v < num_divisors; ++v )
     {
       if ( get_div( v ) == on_off_sets[1] )
       {
         index_list_t il;
         il.clear();
-        il.add_inputs( divisors.size() - 1 );
+        il.add_inputs( num_divisors - 1 );
         il.add_output( v << 1 );
         if ( !push_solution( il ) )
           return std::nullopt;
@@ -517,7 +517,7 @@ private:
       {
         index_list_t il;
         il.clear();
-        il.add_inputs( divisors.size() - 1 );
+        il.add_inputs( num_divisors - 1 );
         il.add_output( ( v << 1 ) + 1 );
         if ( !push_solution( il ) )
           return std::nullopt;
@@ -550,14 +550,14 @@ private:
     {
       prepare_xor();
     }
-    for ( auto i = 1u; i < divisors.size(); ++i )
+    for ( auto i = 1u; i < num_divisors; ++i )
     {
       auto const tt = get_div( i );
       if ( mem_xor.find( tt ) != mem_xor.end() )
       {
         index_list_t il;
         il.clear();
-        il.add_inputs( divisors.size() - 1 );
+        il.add_inputs( num_divisors - 1 );
         il.add_output( il.add_xor( ( i << 1 ), mem_xor[tt] << 1 ) );
         if ( !push_solution( il ) )
           return std::nullopt;
@@ -566,7 +566,7 @@ private:
       {
         index_list_t il;
         il.clear();
-        il.add_inputs( divisors.size() - 1 );
+        il.add_inputs( num_divisors - 1 );
         il.add_output( il.add_xor( ( i << 1 ) + 1, mem_xor[~tt] << 1 ) );
         if ( !push_solution( il ) )
           return std::nullopt;
@@ -629,7 +629,7 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit3 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 + 1 );
@@ -639,7 +639,7 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit3 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit2 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 + 1 );
@@ -649,7 +649,7 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto const new_lit1 = il.add_and( ( lit2 ^ 0x1 ), ( lit3 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit1 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 + 1 );
@@ -700,7 +700,7 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit2 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit3 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 );
@@ -710,7 +710,7 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto const new_lit1 = il.add_and( ( lit1 ^ 0x1 ), ( lit3 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit2 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 );
@@ -720,7 +720,7 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto const new_lit1 = il.add_and( ( lit2 ^ 0x1 ), ( lit3 ^ 0x1 ) );
               auto const new_lit2 = il.add_and( ( lit1 ^ 0x1 ), new_lit1 );
               il.add_output( new_lit2 );
@@ -752,9 +752,9 @@ private:
     {
       prepare_xor();
     }
-    for ( auto i = 1u; i < divisors.size(); i++ )
+    for ( auto i = 1u; i < num_divisors; i++ )
     {
-      for ( auto j = i + 1; j < divisors.size(); j++ )
+      for ( auto j = i + 1; j < num_divisors; j++ )
       {
         auto const tt = get_div( i ) ^ get_div( j );
         if ( mem_xor.find( tt ) != mem_xor.end() )
@@ -766,7 +766,7 @@ private:
           index_list_t il;
           {
             il.clear();
-            il.add_inputs( divisors.size() - 1 );
+            il.add_inputs( num_divisors - 1 );
             auto new_lit1 = il.add_xor( ( i << 1 ), ( j << 1 ) );
             auto new_lit2 = il.add_xor( new_lit1, mem_xor[tt] << 1 );
             il.add_output( new_lit2 );
@@ -777,7 +777,7 @@ private:
           // commutative
           {
             il.clear();
-            il.add_inputs( divisors.size() - 1 );
+            il.add_inputs( num_divisors - 1 );
             auto new_lit1 = il.add_xor( ( i << 1 ), ( mem_xor[tt] << 1 ) );
             auto new_lit2 = il.add_xor( new_lit1, j << 1 );
             il.add_output( new_lit2 );
@@ -788,7 +788,7 @@ private:
           // commutative
           {
             il.clear();
-            il.add_inputs( divisors.size() - 1 );
+            il.add_inputs( num_divisors - 1 );
             auto new_lit1 = il.add_xor( ( j << 1 ), ( mem_xor[tt] << 1 ) );
             auto new_lit2 = il.add_xor( new_lit1, i << 1 );
             il.add_output( new_lit2 );
@@ -805,7 +805,7 @@ private:
           index_list_t il;
           {
             il.clear();
-            il.add_inputs( divisors.size() - 1 );
+            il.add_inputs( num_divisors - 1 );
             auto new_lit1 = il.add_xor( ( i << 1 ), ( j << 1 ) );
             auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, mem_xor[~tt] << 1 );
             il.add_output( new_lit2 );
@@ -816,7 +816,7 @@ private:
           // commutative
           {
             il.clear();
-            il.add_inputs( divisors.size() - 1 );
+            il.add_inputs( num_divisors - 1 );
             auto new_lit1 = il.add_xor( ( i << 1 ), ( mem_xor[~tt] << 1 ) );
             auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, j << 1 );
             il.add_output( new_lit2 );
@@ -827,7 +827,7 @@ private:
           // commutative
           {
             il.clear();
-            il.add_inputs( divisors.size() - 1 );
+            il.add_inputs( num_divisors - 1 );
             auto new_lit1 = il.add_xor( ( j << 1 ), ( mem_xor[~tt] << 1 ) );
             auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, i << 1 );
             il.add_output( new_lit2 );
@@ -846,18 +846,18 @@ private:
     {
       prepare_xor_xor();
     }
-    for ( auto i = 1u; i < divisors.size(); i++ )
+    for ( auto i = 1u; i < num_divisors; i++ )
     {
-      for ( auto j = i + 1; j < divisors.size(); j++ )
+      for ( auto j = i + 1; j < num_divisors; j++ )
       {
         auto const tt = get_div( i ) ^ get_div( j );
         if ( mem_xor_xor.find( tt ) != mem_xor_xor.end() )
         {
           index_list_t il;
           il.clear();
-          il.add_inputs( divisors.size() - 1 );
+          il.add_inputs( num_divisors - 1 );
           auto new_lit1 = il.add_xor( ( i << 1 ), ( j << 1 ) );
-          auto new_lit2 = il.add_xor( ( mem_xor_xor[tt] % divisors.size() ) << 1, ( mem_xor_xor[tt] / divisors.size() ) << 1 );
+          auto new_lit2 = il.add_xor( ( mem_xor_xor[tt] % num_divisors ) << 1, ( mem_xor_xor[tt] / num_divisors ) << 1 );
           auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
           il.add_output( new_lit3 );
           if ( !push_solution( il ) )
@@ -867,9 +867,9 @@ private:
         {
           index_list_t il;
           il.clear();
-          il.add_inputs( divisors.size() - 1 );
+          il.add_inputs( num_divisors - 1 );
           auto new_lit1 = il.add_xor( ( i << 1 ), ( j << 1 ) );
-          auto new_lit2 = il.add_xor( ( mem_xor_xor[~tt] % divisors.size() ) << 1, ( mem_xor_xor[~tt] / divisors.size() ) << 1 );
+          auto new_lit2 = il.add_xor( ( mem_xor_xor[~tt] % num_divisors ) << 1, ( mem_xor_xor[~tt] / num_divisors ) << 1 );
           auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
           il.add_output( new_lit3 );
           if ( !push_solution( il ) )
@@ -886,9 +886,9 @@ private:
     {
       prepare_xor_xor();
     }
-    for ( auto i = 1u; i < divisors.size(); i++ )
+    for ( auto i = 1u; i < num_divisors; i++ )
     {
-      for ( auto j = i + 1; j < divisors.size(); j++ )
+      for ( auto j = i + 1; j < num_divisors; j++ )
       {
         for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
         {
@@ -899,9 +899,9 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto new_lit1 = il.add_and( ( i << 1 ) + on_off_1, ( j << 1 ) + on_off_2 );
-              auto new_lit2 = il.add_xor( ( mem_xor_xor[tt] % divisors.size() ) << 1, ( mem_xor_xor[tt] / divisors.size() ) << 1 );
+              auto new_lit2 = il.add_xor( ( mem_xor_xor[tt] % num_divisors ) << 1, ( mem_xor_xor[tt] / num_divisors ) << 1 );
               auto new_lit3 = il.add_xor( new_lit2, new_lit1 );
               il.add_output( new_lit3 );
               if ( !push_solution( il ) )
@@ -911,9 +911,9 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto new_lit1 = il.add_and( ( i << 1 ) + on_off_1, ( j << 1 ) + on_off_2 );
-              auto new_lit2 = il.add_xor( ( mem_xor_xor[~tt] % divisors.size() ) << 1, ( mem_xor_xor[~tt] / divisors.size() ) << 1 );
+              auto new_lit2 = il.add_xor( ( mem_xor_xor[~tt] % num_divisors ) << 1, ( mem_xor_xor[~tt] / num_divisors ) << 1 );
               auto new_lit3 = il.add_xor( new_lit2 ^ 0x1, new_lit1 );
               il.add_output( new_lit3 );
               if ( !push_solution( il ) )
@@ -932,9 +932,9 @@ private:
     {
       prepare_xor();
     }
-    for ( auto i = 1u; i < divisors.size(); i++ )
+    for ( auto i = 1u; i < num_divisors; i++ )
     {
-      for ( auto j = i + 1; j < divisors.size(); j++ )
+      for ( auto j = i + 1; j < num_divisors; j++ )
       {
         for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
         {
@@ -945,7 +945,7 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto new_lit1 = il.add_and( ( i << 1 ) + on_off_1, ( j << 1 ) + on_off_2 );
               auto new_lit2 = il.add_xor( new_lit1, mem_xor[tt] << 1 );
               il.add_output( new_lit2 );
@@ -956,7 +956,7 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto new_lit1 = il.add_and( ( i << 1 ) + on_off_1, ( j << 1 ) + on_off_2 );
               auto new_lit2 = il.add_xor( new_lit1 ^ 0x1, mem_xor[~tt] << 1 );
               il.add_output( new_lit2 );
@@ -976,9 +976,9 @@ private:
     {
       prepare_xor_and();
     }
-    for ( auto i = 1u; i < divisors.size(); i++ )
+    for ( auto i = 1u; i < num_divisors; i++ )
     {
-      for ( auto j = i + 1; j < divisors.size(); j++ )
+      for ( auto j = i + 1; j < num_divisors; j++ )
       {
         for ( auto on_off_1 = 0u; on_off_1 < 2; on_off_1++ )
         {
@@ -989,9 +989,9 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto new_lit1 = il.add_and( ( i << 1 ) + on_off_1, ( j << 1 ) + on_off_2 );
-              auto new_lit2 = il.add_and( mem_xor_and[tt] % ( 2 * divisors.size() ), mem_xor_and[tt] / ( 2 * divisors.size() ) );
+              auto new_lit2 = il.add_and( mem_xor_and[tt] % ( 2 * num_divisors ), mem_xor_and[tt] / ( 2 * num_divisors ) );
               auto new_lit3 = il.add_xor( new_lit1, new_lit2 );
               il.add_output( new_lit3 );
               if ( !push_solution( il ) )
@@ -1001,9 +1001,9 @@ private:
             {
               index_list_t il;
               il.clear();
-              il.add_inputs( divisors.size() - 1 );
+              il.add_inputs( num_divisors - 1 );
               auto new_lit1 = il.add_and( ( i << 1 ) + on_off_1, ( j << 1 ) + on_off_2 );
-              auto new_lit2 = il.add_and( mem_xor_and[~tt] % ( 2 * divisors.size() ), mem_xor_and[~tt] / ( 2 * divisors.size() ) );
+              auto new_lit2 = il.add_and( mem_xor_and[~tt] % ( 2 * num_divisors ), mem_xor_and[~tt] / ( 2 * num_divisors ) );
               auto new_lit3 = il.add_xor( new_lit1 ^ 0x1, new_lit2 );
               il.add_output( new_lit3 );
               if ( !push_solution( il ) )
@@ -1077,16 +1077,18 @@ public:
     ptts = &tts;
     on_off_sets[0] = ~target & care;
     on_off_sets[1] = target & care;
-    divisors.resize( 1 ); /* clear previous data and reserve 1 dummy node for constant */
+    num_divisors = 1;
+    divisors.resize(1);
+    leaves.clear();
     while ( begin != end )
     {
-      divisors.emplace_back( *begin );
+      num_divisors++;
+      divisors.emplace_back(*begin);
+      leaves.emplace_back( *begin );
       ++begin;
     }
     prepare_clear();
-    leaves.clear();
     candidates.clear();
-    ntk.foreach_pi( [&]( node n ) { leaves.emplace_back( ntk.make_signal( n ) ); } );
     fns.clear();
     fns.emplace_back( []( resub_functor* _core ) { _core->find_wire(); }, 0 );
     fns.emplace_back( []( resub_functor* _core ) { _core->find_xor(); }, 1 );
@@ -1127,13 +1129,16 @@ private:
   std::array<TT, 2> on_off_sets;
   std::array<uint32_t, 2> num_bits; /* number of bits in on-set and off-set */
 
-  const std::vector<TT>* ptts;
-  std::vector<uint32_t> divisors;
+  const truth_table_storage_type* ptts;
+
   std::array<TT, 0x100u> tts_xors;
 
   std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor;
   std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor_xor;
   std::unordered_map<TT, uint32_t, kitty::hash<TT>> mem_xor_and;
+
+  uint32_t num_divisors;
+  std::vector<signal> divisors;
 
   bool has_xor;
   bool has_xor_xor;

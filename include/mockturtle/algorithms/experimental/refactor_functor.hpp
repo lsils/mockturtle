@@ -50,15 +50,19 @@
 namespace mockturtle::experimental
 {
 
-template<class TT>
+template<class Ntk, class TT>
 class refactor_functor
 {
+public:
+  using signal = typename Ntk::signal;
+  using context_t = typename Ntk::context_t;
+
 public:
   explicit refactor_functor()
   {
   }
 
-  template<typename Ntk, typename Fn>
+  template<typename Fn>
   void operator()( Ntk& ntk, Fn&& evalfn )
   {
     assert( ntk.num_pos() == 1 && "network does not have single PO" );
@@ -84,7 +88,6 @@ private:
     }
   }
 
-  template<typename Ntk, typename context_t = typename Ntk::context_t>
   cotext_signal_pair<Ntk> create_and_tree( Ntk& dest, cotext_signal_queue<Ntk>& queue ) const
   {
     if ( queue.empty() )
@@ -106,12 +109,11 @@ private:
   }
 
   /* esop rebalancing */
-  template<typename Ntk>
-  signal<Ntk> create_function( Ntk& dest, TT const& tt ) const
+  signal create_function( Ntk& dest, TT const& tt ) const
   {
     const auto esop = create_sop_form( tt );
 
-    std::vector<signal<Ntk>> and_terms;
+    std::vector<signal> and_terms;
     uint32_t max_level{};
     uint32_t num_and_gates{};
 

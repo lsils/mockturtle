@@ -137,82 +137,82 @@
       {
         "benchmark": "adder",
         "cec": true,
-        "cost after": 127,
+        "cost after": 255,
         "cost before": 255,
-        "n_iter": 1,
-        "runtime": 0.23707440495491028
+        "n_iter": 0,
+        "runtime": 0.1682797521352768
       },
       {
         "benchmark": "bar",
         "cec": true,
-        "cost after": 7,
+        "cost after": 12,
         "cost before": 12,
-        "n_iter": 1,
-        "runtime": 0.9675196409225464
+        "n_iter": 0,
+        "runtime": 0.58709317445755
       },
       {
         "benchmark": "div",
         "cec": true,
-        "cost after": 2306,
+        "cost after": 4370,
         "cost before": 4370,
-        "n_iter": 1,
-        "runtime": 11.729477882385254
+        "n_iter": 0,
+        "runtime": 5.420233249664307
       },
       {
         "benchmark": "max",
         "cec": true,
-        "cost after": 154,
+        "cost after": 287,
         "cost before": 287,
-        "n_iter": 1,
-        "runtime": 1.0598595142364502
+        "n_iter": 0,
+        "runtime": 0.3846725821495056
       },
       {
         "benchmark": "multiplier",
         "cec": true,
-        "cost after": 157,
+        "cost after": 274,
         "cost before": 274,
-        "n_iter": 1,
-        "runtime": 10.983144760131836
+        "n_iter": 0,
+        "runtime": 5.015409469604492
       },
       {
         "benchmark": "sqrt",
         "cec": true,
-        "cost after": 3788,
+        "cost after": 5057,
         "cost before": 5057,
-        "n_iter": 1,
-        "runtime": 10.601282119750977
+        "n_iter": 0,
+        "runtime": 3.9068500995635986
       },
       {
         "benchmark": "square",
         "cec": true,
-        "cost after": 130,
+        "cost after": 250,
         "cost before": 250,
-        "n_iter": 1,
-        "runtime": 7.32258415222168
+        "n_iter": 0,
+        "runtime": 3.268707036972046
       },
       {
         "benchmark": "arbiter",
         "cec": true,
-        "cost after": 44,
+        "cost after": 87,
         "cost before": 87,
-        "n_iter": 1,
-        "runtime": 4.150978088378906
+        "n_iter": 0,
+        "runtime": 1.9033254384994507
       },
       {
         "benchmark": "cavlc",
         "cec": true,
-        "cost after": 9,
+        "cost after": 16,
         "cost before": 16,
-        "n_iter": 1,
-        "runtime": 0.46766626834869385
+        "n_iter": 0,
+        "runtime": 0.25380444526672363
       },
       {
         "benchmark": "ctrl",
         "cec": true,
-        "cost after": 4,
+        "cost after": 10,
         "cost before": 10,
-        "n_iter": 1,
-        "runtime": 0.1026819571852684
+        "n_iter": 0,
+        "runtime": 0.07586565613746643
       },
       {
         "benchmark": "dec",
@@ -220,47 +220,47 @@
         "cost after": 3,
         "cost before": 3,
         "n_iter": 0,
-        "runtime": 0.3280889391899109
+        "runtime": 0.2404666543006897
       },
       {
         "benchmark": "i2c",
         "cec": true,
-        "cost after": 9,
+        "cost after": 20,
         "cost before": 20,
-        "n_iter": 1,
-        "runtime": 0.49706050753593445
+        "n_iter": 0,
+        "runtime": 0.19182933866977692
       },
       {
         "benchmark": "int2float",
         "cec": true,
-        "cost after": 8,
+        "cost after": 16,
         "cost before": 16,
-        "n_iter": 1,
-        "runtime": 0.1258060783147812
+        "n_iter": 0,
+        "runtime": 0.052450940012931824
       },
       {
         "benchmark": "priority",
         "cec": true,
-        "cost after": 123,
+        "cost after": 250,
         "cost before": 250,
-        "n_iter": 1,
-        "runtime": 0.3656311333179474
+        "n_iter": 0,
+        "runtime": 0.16013002395629883
       },
       {
         "benchmark": "router",
         "cec": true,
-        "cost after": 22,
+        "cost after": 54,
         "cost before": 54,
-        "n_iter": 1,
-        "runtime": 0.16782380640506744
+        "n_iter": 0,
+        "runtime": 0.04595479741692543
       },
       {
         "benchmark": "voter",
         "cec": true,
-        "cost after": 56,
+        "cost after": 68,
         "cost before": 68,
-        "n_iter": 1,
-        "runtime": 4.488956451416016
+        "n_iter": 0,
+        "runtime": 2.1460914611816406
       }
     ],
     "version": "eda70d3"

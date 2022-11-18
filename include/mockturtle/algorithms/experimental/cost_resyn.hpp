@@ -185,9 +185,25 @@ public:
     auto const po = old_to_new[ ntk.get_node( root ) ];
     forest.create_po( po );
 
+    default_simulator<TT> nsim( forest.num_pis() );
+    unordered_node_map<TT, Ntk> ntts( forest );
+    simulate_nodes<TT>( forest, ntts, nsim );
+
     uint32_t best_cost = forest.get_cost( forest.get_node( po ), pis );
     std::optional<signal> best_candidate;
     uint32_t n_solutions = 0u;
+    auto add_event = forest.events().register_add_event( [&]( const auto& n_ ) {
+      ntts.resize();
+      std::vector<TT> fanin_values( forest.fanin_size( n_ ) );
+      forest.foreach_fanin( n_, [&]( auto const& f, auto i ) {
+        fanin_values[i] = ntts[forest.get_node( f )]; /* compute will take care of the complement */
+      } );
+      ntts[n_] = forest.compute( n_, std::begin( fanin_values ), std::end( fanin_values ) );
+    } );
+
+    auto get_tt = [&]( const auto s ) {
+      return forest.is_complemented( s )? ~ntts[ forest.get_node(s) ] : ntts[ forest.get_node(s) ];
+    };
 
     auto evalfn = [&]( const auto s ) {
         auto _cost = forest.get_cost( forest.get_node( s ), pis );
@@ -196,29 +212,23 @@ public:
           n_solutions++;
           best_cost = _cost;
           best_candidate = s;
+          return (ps.max_solutions > 0) && (n_solutions >= ps.max_solutions); /* stop searching */
         }
+        return false; /* keep searching */
       };
 
     /* esop solutions (try building ntk without divisors ) */
     if ( ps.use_esop )
     {
-      refactor_engine( forest, evalfn );
+      // refactor_engine( forest, evalfn );
     }
 
-    // /* grow the forest */
-    // resub_functor<Ntk, TT, decltype(begin), decltype(tts)> engine( forest, target, care, begin, end, tts );
-    // engine.run( [&]( signal g ) {
-    //   forest.incr_trav_id();
-    //   uint32_t curr_cost = forest.get_cost( forest.get_node( g ), leaves );
-    //   if ( curr_cost < best_cost )
-    //   {
-    //     n_solutions++;
-    //     best_cost = curr_cost;
-    //     best_candidate = g;
-    //     return (ps.max_solutions > 0) && (n_solutions >= ps.max_solutions); /* stop searching */
-    //   }
-    //   return false; /* keep searching */
-    // } );
+    /* grow the forest */
+    resub_functor engine( forest, get_tt( po ), ~kitty::create<TT>( forest.num_pis() ), std::begin(pis), std::end(pis), ntts );
+    engine.run( evalfn );
+
+    if ( add_event )
+      forest.events().release_add_event( add_event );
 
     if ( best_candidate )
     {
@@ -238,7 +248,7 @@ private:
   params const& ps;
   stats& st;
 
-  refactor_functor<TT> refactor_engine;
+  refactor_functor<Ntk, TT> refactor_engine;
   std::vector<TT> tts;
 };
 
