@@ -589,7 +589,7 @@ public:
     _hash_obj.children[0] = child0;
     _hash_obj.children[1] = child1;
     _hash_obj.children[2] = child2;
-    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() )
+    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() && it->second != old_node )
     {
       return std::make_pair( n, signal( it->second, 0 ) );
     }
@@ -621,6 +621,9 @@ public:
 
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
+    if ( is_dead( old_node ) )
+      return;
+
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -640,7 +643,7 @@ public:
   void take_out_node( node const& n )
   {
     /* we cannot delete CIs or constants */
-    if ( n == 0 || is_ci( n ) )
+    if ( n == 0 || is_ci( n ) || is_dead( n ) )
       return;
 
     auto& nobj = _storage->nodes[n];

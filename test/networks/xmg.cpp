@@ -6,6 +6,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
@@ -728,6 +729,67 @@ TEST_CASE( "node substitution in xmgs", "[xmg]" )
       break;
     }
   } );
+}
+
+TEST_CASE( "invoke take_out_node two times on the same node in XMG", "[xmg]" )
+{
+  xmg_network xmg;
+  const auto x1 = xmg.create_pi();
+  const auto x2 = xmg.create_pi();
+
+  const auto f1 = xmg.create_and( x1, x2 );
+  const auto f2 = xmg.create_or( x1, x2 );
+  (void)f2;
+
+  CHECK( xmg.fanout_size( xmg.get_node( x1 ) ) == 2u );
+  CHECK( xmg.fanout_size( xmg.get_node( x2 ) ) == 2u );
+
+  /* delete node */
+  CHECK( !xmg.is_dead( xmg.get_node( f1 ) ) );
+  xmg.take_out_node( xmg.get_node( f1 ) );
+  CHECK( xmg.is_dead( xmg.get_node( f1 ) ) );
+  CHECK( xmg.fanout_size( xmg.get_node( x1 ) ) == 1u );
+  CHECK( xmg.fanout_size( xmg.get_node( x2 ) ) == 1u );
+
+  /* ensure that double-deletion has no effect on the fanout-size of x1 and x2 */
+  CHECK( xmg.is_dead( xmg.get_node( f1 ) ) );
+  xmg.take_out_node( xmg.get_node( f1 ) );
+  CHECK( xmg.is_dead( xmg.get_node( f1 ) ) );
+  CHECK( xmg.fanout_size( xmg.get_node( x1 ) ) == 1u );
+  CHECK( xmg.fanout_size( xmg.get_node( x2 ) ) == 1u );
+}
+
+TEST_CASE( "substitute node and restrash in XMG", "[xmg]" )
+{
+  xmg_network xmg;
+  auto const x1 = xmg.create_pi();
+  auto const x2 = xmg.create_pi();
+
+  auto const f1 = xmg.create_and( x1, x2 );
+  auto const f2 = xmg.create_and( f1, x2 );
+  xmg.create_po( f2 );
+
+  CHECK( xmg.fanout_size( xmg.get_node( x1 ) ) == 1 );
+  CHECK( xmg.fanout_size( xmg.get_node( x2 ) ) == 2 );
+  CHECK( xmg.fanout_size( xmg.get_node( f1 ) ) == 1 );
+  CHECK( xmg.fanout_size( xmg.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( xmg )[0]._bits == 0x8 );
+
+  /* substitute f1 with x1
+   *
+   * this is a very interesting test case because replacing f1 with x1
+   * in f2 makes f2 and f1 equal.  a correct implementation will
+   * create a new entry in the hash, although (x1, x2) is already
+   * there, because (x1, x2) will be deleted in the next step.
+   */
+  xmg.substitute_node( xmg.get_node( f1 ), x1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( xmg )[0]._bits == 0x8 );
+
+  CHECK( xmg.fanout_size( xmg.get_node( x1 ) ) == 1 );
+  CHECK( xmg.fanout_size( xmg.get_node( x2 ) ) == 1 );
+  CHECK( xmg.fanout_size( xmg.get_node( f1 ) ) == 0 );
+  CHECK( xmg.fanout_size( xmg.get_node( f2 ) ) == 1 );
 }
 
 TEST_CASE( "create nary functions in XMGs", "[xmg]" )
