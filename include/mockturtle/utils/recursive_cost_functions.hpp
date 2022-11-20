@@ -94,6 +94,10 @@ struct xag_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
+  static bool context_compare( const context_t& c1, const context_t c2 )
+  {
+    return c1 > c2;
+  }
 
   context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const
   {
@@ -107,7 +111,7 @@ public:
 };
 
 template<class Ntk>
-struct t_xag_depth_cost_function : recursive_cost_functions<Ntk>
+struct xag_t_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
@@ -133,6 +137,12 @@ struct xag_size_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
+  static bool context_compare( const context_t& c1, const context_t c2 )
+  {
+    return true;
+  }
+
+
   context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<uint32_t> const& fanin_contexts = {} ) const
   {
     return 0;
@@ -140,6 +150,26 @@ public:
   void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const
   {
     total_cost += ( !ntk.is_pi( n ) && ntk.visited( n ) != ntk.trav_id() ) ? 1 : 0;
+  }
+};
+
+template<class Ntk>
+struct xag_multiplicative_complexity_cost_function : recursive_cost_functions<Ntk>
+{
+public:
+  using context_t = uint32_t;
+  static bool context_compare( const context_t& c1, const context_t c2 )
+  {
+    return true;
+  }
+
+  context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<uint32_t> const& fanin_contexts = {} ) const
+  {
+    return 0;
+  }
+  void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const
+  {
+    total_cost += ( !ntk.is_pi( n ) && ntk.visited( n ) != ntk.trav_id() && ntk.is_and( n ) ) ? 1 : 0;
   }
 };
 

@@ -45,14 +45,14 @@ int main()
   std::string results_dir = "../experiments/results";
 
   /* run the actual experiments */
-  experiment<std::string, uint32_t, uint32_t, uint32_t, float, bool> exp( "cost_generic_resub", "benchmark", "cost before", "n_iter", "cost after", "runtime", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "cost_generic_resub", "benchmark", "c1", "c2", "c3", "c4", "_c1", "_c2", "_c3", "_c4", "runtime", "cec" );
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     /* skip these for "collect all" experiments */
-    if (benchmark == "hyp") continue; 
-    if (benchmark == "mem_ctrl") continue;
-    if (benchmark == "log2") continue;
-    if (benchmark == "sin") continue;
+    // if (benchmark == "hyp") continue; 
+    // if (benchmark == "mem_ctrl") continue;
+    // if (benchmark == "log2") continue;
+    // if (benchmark == "sin") continue;
     float run_time = 0;
 
     fmt::print( "[i] processing {}\n", benchmark );
@@ -65,9 +65,18 @@ int main()
     functional_reduction( xag );
     xag = cleanup_dangling( xag );
 
-    auto costfn = t_xag_depth_cost_function<xag_network>();
+    auto costfn_1 = xag_size_cost_function<xag_network>();
+    auto costfn_2 = xag_depth_cost_function<xag_network>();
+    auto costfn_3 = xag_multiplicative_complexity_cost_function<xag_network>();
+    auto costfn_4 = xag_t_depth_cost_function<xag_network>();
 
-    auto cost_before = cost_view( xag, costfn ).get_cost();
+    std::string costfn_str = "mc";
+    auto costfn = costfn_3;
+
+    auto c1 = cost_view( xag, costfn_1 ).get_cost();
+    auto c2 = cost_view( xag, costfn_2 ).get_cost();
+    auto c3 = cost_view( xag, costfn_3 ).get_cost();
+    auto c4 = cost_view( xag, costfn_4 ).get_cost();
 
     cost_generic_resub_params ps;
     cost_generic_resub_stats st;
@@ -77,37 +86,26 @@ int main()
 
     stopwatch<>::duration time_tot{ 0 };
 
-    auto curr_cost = cost_before;
+    call_with_stopwatch( time_tot, [&]() {
+      cost_generic_resub( xag, costfn, ps, &st );
+      xag = cleanup_dangling( xag );
+    } );
 
-    int n_iter = 1; /* 1: once, <large number(e.g. 10)>: converge */
-    int iter = 0;
-    while ( iter < n_iter )
-    {
-      call_with_stopwatch( time_tot, [&]() {
-        cost_generic_resub( xag, costfn, ps, &st );
-        // xag = balancing( xag, { esop_rebalancing<xag_network>{} } );
-        xag = cleanup_dangling( xag );
-      } );
-      fmt::print( "{},{},{},{:>5.2f}\n", iter, xag.num_gates(), curr_cost, to_seconds( time_tot ) );
-
-      write_verilog( xag, fmt::format("{}/{}_{}.v", results_dir, benchmark, iter ) );
-
-      auto tmp_cost = cost_view( xag, costfn ).get_cost();
-      if ( tmp_cost >= curr_cost ) break;
-      curr_cost = tmp_cost;
-      iter++;
-    }
-
+    write_verilog( xag, fmt::format("{}/{}_{}.v", results_dir, benchmark, costfn_str ) );
 
     run_time = to_seconds( time_tot );
-    auto cost_after = cost_view( xag, costfn ).get_cost();
 
     // fmt::print( "{},{},{},{:>5.2f}\n", iter++, xag.num_gates(), cost_after, run_time );
 
+    auto _c1 = cost_view( xag, costfn_1 ).get_cost();
+    auto _c2 = cost_view( xag, costfn_2 ).get_cost();
+    auto _c3 = cost_view( xag, costfn_3 ).get_cost();
+    auto _c4 = cost_view( xag, costfn_4 ).get_cost();
+
     auto cec = true;
-    // cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
-    cec = xag.num_gates() > 10000 ? true : abc_cec( xag, benchmark );
-    exp( benchmark, cost_before, iter, cost_after, run_time, cec );
+    cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
+    // cec = xag.num_gates() > 10000 ? true : abc_cec( xag, benchmark );
+    exp( benchmark, c1, c2, c3, c4, _c1, _c2, _c3, _c4, run_time, cec );
   }
   exp.save();
   exp.table();
