@@ -27,6 +27,7 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/balancing.hpp>
 #include <mockturtle/algorithms/balancing/esop_balancing.hpp>
+#include <mockturtle/algorithms/balancing/sop_balancing.hpp>
 #include <mockturtle/algorithms/experimental/cost_generic_resub.hpp>
 #include <mockturtle/algorithms/functional_reduction.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
@@ -62,8 +63,8 @@ int main()
     (void)result;
 
     /* fraig */
-    functional_reduction( xag );
-    xag = cleanup_dangling( xag );
+    // functional_reduction( xag );
+    // xag = cleanup_dangling( xag );
 
     auto costfn_1 = xag_size_cost_function<xag_network>();
     auto costfn_2 = xag_depth_cost_function<xag_network>();
@@ -81,13 +82,16 @@ int main()
     cost_generic_resub_params ps;
     cost_generic_resub_stats st;
     ps.verbose = false;
-    ps.rps.max_solutions = 0; /* = 1: collect one, =0: collect all */
+    ps.rps.max_solutions = 1; /* = 1: collect one, =0: collect all */
     ps.rps.use_esop = true; /* true: use esop, false: no esop */
 
     stopwatch<>::duration time_tot{ 0 };
 
     call_with_stopwatch( time_tot, [&]() {
       cost_generic_resub( xag, costfn, ps, &st );
+
+      // xag = balancing( xag, { sop_rebalancing<xag_network>{} } );
+      // xag = balancing( xag, { esop_rebalancing<xag_network>{} } );
       xag = cleanup_dangling( xag );
     } );
 

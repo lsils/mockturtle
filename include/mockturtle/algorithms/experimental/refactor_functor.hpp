@@ -89,7 +89,7 @@ public:
       assert( leaves.size() == tt.num_vars() );
       auto const s = create_esop_function( ntk, tt, leaves );
       evalfn( s );
-      auto const _s = create_esop_function( ntk, tt, leaves );
+      auto const _s = create_sop_function( ntk, tt, leaves );
       evalfn( _s );
     }
 

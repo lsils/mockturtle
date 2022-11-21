@@ -224,6 +224,8 @@ public:
       refactor_engine( forest, evalfn );
     }
 
+    n_solutions = 0; // reset
+
     /* grow the forest */
     resub_functor engine( forest, get_tt( po ), ~kitty::create<TT>( forest.num_pis() ), std::begin(pis), std::end(pis), ntts );
     engine.run( evalfn );
