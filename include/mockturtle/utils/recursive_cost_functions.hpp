@@ -169,7 +169,7 @@ public:
   }
   void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const
   {
-    total_cost += ( !ntk.is_pi( n ) && ntk.visited( n ) != ntk.trav_id() && ntk.is_and( n ) ) ? 1 : 0;
+    total_cost += ( !ntk.is_pi( n ) && ntk.visited( n ) != ntk.trav_id() ) ? ntk.is_and( n ) : 0;
   }
 };
 
