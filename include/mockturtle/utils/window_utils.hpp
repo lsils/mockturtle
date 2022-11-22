@@ -732,7 +732,7 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
           return false;
         }
 
-        /* ignore nodes wihout fanins */
+        /* ignore nodes without fanins */
         if ( ntk.is_constant( fo ) || ntk.is_ci( fo ) )
         {
           return true;

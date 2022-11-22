@@ -72,7 +72,7 @@ namespace mockturtle
  *       only if the corresponding node belongs to the window
  *   2.) `foreach_internal_fanout`: takes a node and invokes a predicate
          on all fanout nodes of the node that belong to the window
- *   3.) `foreach_exnteral_fanout`: takes a node and invokes a predicate
+ *   3.) `foreach_external_fanout`: takes a node and invokes a predicate
          on all fanouts of the node that do not belong to the window
  */
 template<typename Ntk>
