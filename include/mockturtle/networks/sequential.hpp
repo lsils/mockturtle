@@ -232,7 +232,7 @@ class sequential
   /*! \brief Calls ``fn`` on every combinational input node in the network.
    *
    * The order is in the same order as combinational inputs have been
-   * created with ``create_pi`` or ``create_ro``.  The paramater
+   * created with ``create_pi`` or ``create_ro``.  The parameter
    * ``fn`` is any callable that must have one of the following four
    * signatures.
    * - ``void(node const&)``
@@ -253,7 +253,7 @@ class sequential
    * created with ``create_po`` or ``create_ri``.  The function is
    * called on the signal that is driving the output and may occur
    * more than once in the iteration, if it drives more than one
-   * output.  The paramater ``fn`` is any callable that must have one
+   * output.  The parameter ``fn`` is any callable that must have one
    * of the following four
    * signatures.
    * - ``void(signal const&)``
@@ -271,7 +271,7 @@ class sequential
   /*! \brief Calls ``fn`` on every register output node in the network.
    *
    * The order is in the same order as register outputs have been created with
-   * ``create_ro``.  The paramater ``fn`` is any callable that must have one of
+   * ``create_ro``.  The parameter ``fn`` is any callable that must have one of
    * the following four signatures.
    * - ``void(node const&)``
    * - ``void(node const&, uint32_t)``
@@ -290,7 +290,7 @@ class sequential
    * The order is in the same order as register inputs have been created with
    * ``create_ri``.  The function is called on the signal that is driving the
    * output and may occur more than once in the iteration, if it drives more
-   * than one output.  The paramater ``fn`` is any callable that must have one
+   * than one output.  The parameter ``fn`` is any callable that must have one
    * of the following four signatures.
    * - ``void(signal const&)``
    * - ``void(signal const&, uint32_t)``
@@ -308,7 +308,7 @@ class sequential
    *         register output node in the network.
    *
    * Calls each pair of a register input signal and the associated
-   * register output node.  The paramater ``fn`` is any callable that
+   * register output node.  The parameter ``fn`` is any callable that
    * must have one of the following four signatures.
    * - ``void(std::pair<signal, node> const&)``
    * - ``void(std::pair<signal, node> const&, uint32_t)``

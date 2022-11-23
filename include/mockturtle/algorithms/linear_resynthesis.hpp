@@ -207,9 +207,9 @@ public:
 
     extract_linear_equations();
 
-    while ( !occurrance_to_pairs.empty() )
+    while ( !occurrence_to_pairs.empty() )
     {
-      const auto p = *( occurrance_to_pairs.back().begin() );
+      const auto p = *( occurrence_to_pairs.back().begin() );
       replace_one_pair( p );
     }
 
@@ -231,7 +231,7 @@ public:
 private:
   void extract_linear_equations()
   {
-    occurrance_to_pairs.resize( 1u );
+    occurrence_to_pairs.resize( 1u );
 
     linear_xag lxag{ xag };
     linear_equations = simulate<std::vector<uint32_t>>( lxag, linear_sum_simulator{} );
@@ -253,47 +253,47 @@ private:
 
   void add_pair( index_pair_t const& p )
   {
-    if ( auto it = pair_to_occurrance.find( p ); it != pair_to_occurrance.end() )
+    if ( auto it = pair_to_occurrence.find( p ); it != pair_to_occurrence.end() )
     {
       // found another time
       const auto occ = it->second;
-      occurrance_to_pairs[occ - 1u].erase( p );
-      if ( occurrance_to_pairs.size() <= occ + 1u )
+      occurrence_to_pairs[occ - 1u].erase( p );
+      if ( occurrence_to_pairs.size() <= occ + 1u )
       {
-        occurrance_to_pairs.resize( occ + 1u );
+        occurrence_to_pairs.resize( occ + 1u );
       }
-      occurrance_to_pairs[occ].insert( p );
+      occurrence_to_pairs[occ].insert( p );
       it->second++;
     }
     else
     {
       // first time found
-      pair_to_occurrance[p] = 1u;
-      occurrance_to_pairs[0u].insert( p );
+      pair_to_occurrence[p] = 1u;
+      occurrence_to_pairs[0u].insert( p );
     }
   }
 
   void remove_all_pairs( index_pair_t const& p )
   {
-    auto it = pair_to_occurrance.find( p );
+    auto it = pair_to_occurrence.find( p );
     const auto occ = it->second;
-    pair_to_occurrance.erase( it );
-    occurrance_to_pairs[occ - 1u].erase( p );
-    while ( !occurrance_to_pairs.empty() && occurrance_to_pairs.back().empty() )
+    pair_to_occurrence.erase( it );
+    occurrence_to_pairs[occ - 1u].erase( p );
+    while ( !occurrence_to_pairs.empty() && occurrence_to_pairs.back().empty() )
     {
-      occurrance_to_pairs.pop_back();
+      occurrence_to_pairs.pop_back();
     }
     pairs_to_output.erase( p );
   }
 
   void remove_one_pair( index_pair_t const& p, uint32_t output )
   {
-    auto it = pair_to_occurrance.find( p );
+    auto it = pair_to_occurrence.find( p );
     const auto occ = it->second;
-    occurrance_to_pairs[occ - 1u].erase( p );
+    occurrence_to_pairs[occ - 1u].erase( p );
     if ( occ > 1u )
     {
-      occurrance_to_pairs[occ - 2u].insert( p );
+      occurrence_to_pairs[occ - 2u].insert( p );
     }
     it->second--;
     pairs_to_output[p].erase( std::remove( pairs_to_output[p].begin(), pairs_to_output[p].end(), output ), pairs_to_output[p].end() );
@@ -350,8 +350,8 @@ private:
   Ntk dest;
   std::vector<signal<Ntk>> signals;
   std::vector<std::vector<uint32_t>> linear_equations;
-  std::vector<std::unordered_set<index_pair_t, pair_hash>> occurrance_to_pairs;
-  std::unordered_map<index_pair_t, uint32_t, pair_hash> pair_to_occurrance;
+  std::vector<std::unordered_set<index_pair_t, pair_hash>> occurrence_to_pairs;
+  std::unordered_map<index_pair_t, uint32_t, pair_hash> pair_to_occurrence;
   std::unordered_map<index_pair_t, std::vector<uint32_t>, pair_hash> pairs_to_output;
 };
 

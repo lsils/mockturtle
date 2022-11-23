@@ -43,10 +43,10 @@
 namespace mockturtle
 {
 
-/*! \brief An ABC-compatiable index list.
+/*! \brief An ABC-compatible index list.
  *
  * Small network represented as a list of literals.  The
- * implementation supports AND and XOR gates and is compatiable with
+ * implementation supports AND and XOR gates and is compatible with
  * ABC's encoding.
  *
  * Example: The following index list creates the output function `(x1

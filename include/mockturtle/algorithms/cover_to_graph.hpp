@@ -181,7 +181,7 @@ public:
 
   /*! \brief convert_node_to_graph
    * This helper function receives as input a node, storing the cover information.
-   * This information corresponds to a vactor of cubes and to a boolean determining whether
+   * This information corresponds to a vector of cubes and to a boolean determining whether
    * the cubes represent the ON set or the OFF set.
    * Each cube is mapped into a subgraph and the output signals are collected in a vector, corresponding to the
    * products/sums of the SOP/POS.

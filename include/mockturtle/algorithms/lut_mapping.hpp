@@ -236,7 +236,7 @@ private:
       area++;
     }
 
-    /* blend flow referenes */
+    /* blend flow references */
     for ( auto i = 0u; i < ntk.size(); ++i )
     {
       flow_refs[i] = coef * flow_refs[i] + ( 1.0f - coef ) * std::max( 1.0f, static_cast<float>( map_refs[i] ) );
@@ -503,7 +503,7 @@ private:
  * - `fanout_size`
  * - `clear_mapping`
  * - `add_to_mapping`
- * - `set_lut_funtion` (if `StoreFunction` is true)
+ * - `set_lut_function` (if `StoreFunction` is true)
  *
    \verbatim embed:rst
 

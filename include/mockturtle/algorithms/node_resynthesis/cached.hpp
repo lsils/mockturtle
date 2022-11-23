@@ -230,7 +230,7 @@ public:
   {
     if constexpr ( has_add_function_v<ResynthesisFn, Ntk> )
     {
-      // index of cache PI to foward
+      // index of cache PI to forward
       const auto pi_index = _initial_size + _existing_signals.size();
 
       _existing_signals.push_back( s );

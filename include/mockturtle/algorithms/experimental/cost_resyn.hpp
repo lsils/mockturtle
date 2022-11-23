@@ -85,7 +85,7 @@ struct cost_resyn_stats
   void report() const
   {
     fmt::print( "[i]         <cost_resyn>\n" );
-    fmt::print( "[i]             Evalutation      : {:>5.2f} secs\n", to_seconds( time_eval ) );
+    fmt::print( "[i]             Evaluation      : {:>5.2f} secs\n", to_seconds( time_eval ) );
     fmt::print( "[i]             Searching        : {:>5.2f} secs\n", to_seconds( time_search ) );
     fmt::print( "[i]             # Problem        : {}\n", num_problems );
     fmt::print( "[i]             Avg. forest size : {:>5.2f}\n", (float)size_forest / num_problems );

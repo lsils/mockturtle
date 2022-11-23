@@ -554,7 +554,7 @@ private:
  * Unit cuts do not participate in the sorting and are always added to the end
  * of each cut set.
  *
- * The algorithm can be configured by speciying the template argument `CutData`
+ * The algorithm can be configured by specifying the template argument `CutData`
  * which holds the application specific data assigned to each cut.  Examples
  * on how to specify custom cost functions for sorting cuts based on the
  * application specific cut data can be found in the files contained in the
@@ -1041,7 +1041,7 @@ private:
  * Unit cuts do not participate in the sorting and are always added to the end
  * of each cut set.
  *
- * The algorithm can be configured by speciying the template argument `CutData`
+ * The algorithm can be configured by specifying the template argument `CutData`
  * which holds the application specific data assigned to each cut.  Examples
  * on how to specify custom cost functions for sorting cuts based on the
  * application specific cut data can be found in the files contained in the

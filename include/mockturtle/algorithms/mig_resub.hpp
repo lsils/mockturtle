@@ -679,7 +679,7 @@ private:
  * function using existing nodes from the cut.  Node which are no
  * longer used (including nodes in their transitive fanins) can then
  * be removed.  The objective is to reduce the size of the network as
- * much as possible while maintaing the global input-output
+ * much as possible while maintaining the global input-output
  * functionality.
  *
  * **Required network functions:**
@@ -793,7 +793,7 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
  * function using existing nodes from the cut.  Node which are no
  * longer used (including nodes in their transitive fanins) can then
  * be removed.  The objective is to reduce the size of the network as
- * much as possible while maintaing the global input-output
+ * much as possible while maintaining the global input-output
  * functionality.
  *
  * **Required network functions:**

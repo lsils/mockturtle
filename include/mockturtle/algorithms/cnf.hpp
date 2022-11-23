@@ -262,7 +262,7 @@ using clause_callback_t = std::function<void( std::vector<lit_t> const& )>;
  * In the default map, constants are mapped to variable `0` (literal `1` for
  * constant-1 and literal `0` for constant-0).  Then each primary input is
  * mapped to variables `1, ..., n`.  Then the next variables are assigned to
- * each gate in order, unless `gate_offset` is overriden which will be used for
+ * each gate in order, unless `gate_offset` is overridden which will be used for
  * the next variable id.  Therefore, this function can be used to create two
  * independent sets of node literals for two networks, but keep the same indexes
  * for the primary inputs.
