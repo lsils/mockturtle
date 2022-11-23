@@ -1,8 +1,9 @@
 #include <catch.hpp>
 
-#include <algorithm>
+#include <vector>
 
 #include <kitty/constructors.hpp>
+#include <kitty/cube.hpp>
 #include <kitty/dynamic_truth_table.hpp>
 #include <mockturtle/properties/litcost.hpp>
 
@@ -14,6 +15,23 @@ TEST_CASE( "count factored form literals for constants", "[litcost]" )
 
   CHECK( factored_literal_cost( tt ) == 0u );
   CHECK( factored_literal_cost( ~tt ) == 0u );
+}
+
+TEST_CASE( "count factored form literals for constants cube", "[litcost]" )
+{
+  std::vector<kitty::cube> sop;
+  sop.emplace_back( kitty::cube{3, 0} );
+
+  CHECK( factored_literal_cost( sop, 2 ) == 0u );
+}
+
+TEST_CASE( "count factored form literals for sop", "[litcost]" )
+{
+  std::vector<kitty::cube> sop;
+  sop.emplace_back( kitty::cube{3, 3} );
+  sop.emplace_back( kitty::cube{5, 5} );
+
+  CHECK( factored_literal_cost( sop, 3 ) == 3u );
 }
 
 TEST_CASE( "count factored form literals for constants using cares", "[litcost]" )

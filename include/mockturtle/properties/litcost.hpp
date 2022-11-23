@@ -147,7 +147,7 @@ uint32_t count_literals_rec( std::vector<uint64_t>& sop, uint32_t const num_lit 
 /*! \brief Counts number of literals of the factored form of a SOP.
  *
  * This method computes the factored form of the SOP and
- * returns its number of literals.
+ * returns its number of factored form literals.
  * 
  * \param sop Sum-of-products
  * \param num_vars Number of variables
@@ -166,10 +166,11 @@ uint32_t factored_literal_cost( std::vector<kitty::cube> const& sop, uint32_t nu
 
 /*! \brief Counts number of literals of the factored form of a SOP.
  *
- * This method computes the factored form of the SOP and
- * returns its number of literals.
+ * This method computes the factored form of a completely specified
+ * function given as a truth table and returns its number of
+ * factored form literals.
  * 
- * \param tt truth table
+ * \param tt function as truth table
  * \param try_both_polarities factoring is also tried for the negated TT
  */
 uint32_t factored_literal_cost( kitty::dynamic_truth_table const& tt, bool try_both_polarities = false )
@@ -209,8 +210,9 @@ uint32_t factored_literal_cost( kitty::dynamic_truth_table const& tt, bool try_b
 
 /*! \brief Counts number of literals of the factored form of a SOP.
  *
- * This method computes the factored form of the SOP and
- * returns its number of literals.
+ * This method computes the factored form of an incompletely specified
+ * function given as a truth table and its don't care set and returns
+ * its number of factored form literals.
  * 
  * \param tt function as truth table
  * \param dc don't care set
