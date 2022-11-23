@@ -85,7 +85,7 @@ uint32_t lit_factor_count_rec( std::vector<uint64_t> const& sop, uint64_t const 
   {
     return div_lit + quot_lit + count_literals_rec( reminder, num_lit );
   }
-  
+
   return div_lit + quot_lit;
 }
 
@@ -148,7 +148,7 @@ uint32_t count_literals_rec( std::vector<uint64_t>& sop, uint32_t const num_lit 
  *
  * This method computes the factored form of the SOP and
  * returns its number of factored form literals.
- * 
+ *
  * \param sop Sum-of-products
  * \param num_vars Number of variables
  */
@@ -169,7 +169,7 @@ uint32_t factored_literal_cost( std::vector<kitty::cube> const& sop, uint32_t nu
  * This method computes the factored form of a completely specified
  * function given as a truth table and returns its number of
  * factored form literals.
- * 
+ *
  * \param tt function as truth table
  * \param try_both_polarities factoring is also tried for the negated TT
  */
@@ -195,8 +195,14 @@ uint32_t factored_literal_cost( kitty::dynamic_truth_table const& tt, bool try_b
     {
       uint32_t n_lit = 0;
       uint32_t lit = 0;
-      for ( auto const& c : n_cubes ) { n_lit += c.num_literals(); }
-      for ( auto const& c : cubes ) { lit += c.num_literals(); }
+      for ( auto const& c : n_cubes )
+      {
+        n_lit += c.num_literals();
+      }
+      for ( auto const& c : cubes )
+      {
+        lit += c.num_literals();
+      }
 
       if ( n_lit < lit )
       {
@@ -213,7 +219,7 @@ uint32_t factored_literal_cost( kitty::dynamic_truth_table const& tt, bool try_b
  * This method computes the factored form of an incompletely specified
  * function given as a truth table and its don't care set and returns
  * its number of factored form literals.
- * 
+ *
  * \param tt function as truth table
  * \param dc don't care set
  * \param try_both_polarities factoring is also tried for the negated TT
@@ -242,8 +248,14 @@ uint32_t factored_literal_cost( kitty::dynamic_truth_table const& tt, kitty::dyn
     {
       uint32_t n_lit = 0;
       uint32_t lit = 0;
-      for ( auto const& c : n_cubes ) { n_lit += c.num_literals(); }
-      for ( auto const& c : cubes ) { lit += c.num_literals(); }
+      for ( auto const& c : n_cubes )
+      {
+        n_lit += c.num_literals();
+      }
+      for ( auto const& c : cubes )
+      {
+        lit += c.num_literals();
+      }
 
       if ( n_lit < lit )
       {

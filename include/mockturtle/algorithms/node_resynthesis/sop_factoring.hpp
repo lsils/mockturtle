@@ -38,8 +38,8 @@
 #include <vector>
 
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/operators.hpp>
 #include <kitty/isop.hpp>
+#include <kitty/operators.hpp>
 
 #include "../../utils/sop_utils.hpp"
 #include "../../utils/stopwatch.hpp"
@@ -64,7 +64,7 @@ struct sop_factoring_params
  *
  * This resynthesis function can be passed to ``node_resynthesis``,
  * ``cut_rewriting``, and ``refactoring``. The method converts a
- * given truth table in an ISOP, then factors the ISOP, and 
+ * given truth table in an ISOP, then factors the ISOP, and
  * returns the factored form.
  *
    \verbatim embed:rst
@@ -118,7 +118,7 @@ public:
     sop_t sop = cubes_to_sop( cubes, function.num_vars() );
 
     /* derive the factored form */
-    signal f = gen_factor_rec( dest, {begin, end}, sop, 2 * function.num_vars() );
+    signal f = gen_factor_rec( dest, { begin, end }, sop, 2 * function.num_vars() );
 
     fn( negated ? !f : f );
   }
@@ -149,7 +149,7 @@ public:
     sop_t sop = cubes_to_sop( cubes, function.num_vars() );
 
     /* derive the factored form */
-    signal f = gen_factor_rec( dest, {begin, end}, sop, 2 * function.num_vars() );
+    signal f = gen_factor_rec( dest, { begin, end }, sop, 2 * function.num_vars() );
 
     fn( negated ? !f : f );
   }
@@ -202,13 +202,19 @@ private:
         {
           uint32_t n_lit = 0;
           uint32_t lit = 0;
-          for ( auto const& c : n_cubes ) { n_lit += c.num_literals(); }
-          for ( auto const& c : cubes ) { lit += c.num_literals(); }
+          for ( auto const& c : n_cubes )
+          {
+            n_lit += c.num_literals();
+          }
+          for ( auto const& c : cubes )
+          {
+            lit += c.num_literals();
+          }
 
           if ( n_lit < lit )
           {
             negated = true;
-            return n_cubes; 
+            return n_cubes;
           }
         }
       }
@@ -261,19 +267,25 @@ private:
         if ( n_cubes.size() < cubes.size() )
         {
           negated = true;
-          return n_cubes; 
+          return n_cubes;
         }
         else if ( n_cubes.size() == cubes.size() )
         {
           uint32_t n_lit = 0;
           uint32_t lit = 0;
-          for ( auto const& c : n_cubes ) { n_lit += c.num_literals(); }
-          for ( auto const& c : cubes ) { lit += c.num_literals(); }
+          for ( auto const& c : n_cubes )
+          {
+            n_lit += c.num_literals();
+          }
+          for ( auto const& c : cubes )
+          {
+            lit += c.num_literals();
+          }
 
           if ( n_lit < lit )
           {
             negated = true;
-            return n_cubes; 
+            return n_cubes;
           }
         }
       }
@@ -291,7 +303,7 @@ private:
     assert( sop.size() );
 
     /* compute the divisor */
-    bool success = ps.use_quick_factoring ? sop_quick_divisor( sop, divisor, num_lit ) : sop_good_divisor( sop, divisor, num_lit );
+    bool success = _ps.use_quick_factoring ? sop_quick_divisor( sop, divisor, num_lit ) : sop_good_divisor( sop, divisor, num_lit );
     if ( !success )
     {
       /* generate trivial sop circuit */
@@ -364,7 +376,7 @@ private:
       signal rem_s = gen_factor_rec( ntk, children, reminder, num_lit );
       return ntk.create_or( dq_and, rem_s );
     }
-    
+
     return dq_and;
   }
 #pragma endregion

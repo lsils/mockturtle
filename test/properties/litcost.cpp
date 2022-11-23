@@ -20,7 +20,7 @@ TEST_CASE( "count factored form literals for constants", "[litcost]" )
 TEST_CASE( "count factored form literals for constants cube", "[litcost]" )
 {
   std::vector<kitty::cube> sop;
-  sop.emplace_back( kitty::cube{3, 0} );
+  sop.emplace_back( kitty::cube{ 3, 0 } );
 
   CHECK( factored_literal_cost( sop, 2 ) == 0u );
 }
@@ -28,8 +28,8 @@ TEST_CASE( "count factored form literals for constants cube", "[litcost]" )
 TEST_CASE( "count factored form literals for sop", "[litcost]" )
 {
   std::vector<kitty::cube> sop;
-  sop.emplace_back( kitty::cube{3, 3} );
-  sop.emplace_back( kitty::cube{5, 5} );
+  sop.emplace_back( kitty::cube{ 3, 3 } );
+  sop.emplace_back( kitty::cube{ 5, 5 } );
 
   CHECK( factored_literal_cost( sop, 3 ) == 3u );
 }

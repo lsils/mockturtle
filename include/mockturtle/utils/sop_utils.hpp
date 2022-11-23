@@ -32,10 +32,9 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 #include <vector>
-#include <cassert>
-
 
 namespace mockturtle
 {
@@ -51,7 +50,10 @@ inline bool cube_has_lit( uint64_t const cube, uint64_t const lit )
 inline uint32_t cube_count_literals( uint64_t cube )
 {
   uint32_t count;
-  for ( count = 0; cube; ++count ) { cube &= cube - 1u; };
+  for ( count = 0; cube; ++count )
+  {
+    cube &= cube - 1u;
+  };
   return count;
 }
 
@@ -168,12 +170,12 @@ inline uint32_t sop_count_literals( std::vector<uint64_t> const& sop )
 }
 
 /*! \brief Makes a SOP cube free
-*
-* This method checks for a common cube divisor in
-* the SOP. If found, the SOP is divided by that cube.
-* 
-* \param sop
-*/
+ *
+ * This method checks for a common cube divisor in
+ * the SOP. If found, the SOP is divided by that cube.
+ *
+ * \param sop
+ */
 inline void sop_make_cube_free( std::vector<uint64_t>& sop )
 {
   /* find common cube */
@@ -185,7 +187,7 @@ inline void sop_make_cube_free( std::vector<uint64_t>& sop )
 
   if ( mask == 0 )
     return;
-  
+
   /* make cube free */
   for ( auto& c : sop )
   {
@@ -194,12 +196,12 @@ inline void sop_make_cube_free( std::vector<uint64_t>& sop )
 }
 
 /*! \brief Checks if a SOP is cube free
-*
-* This method checks for a common cube divisor in
-* the SOP.
-* 
-* \param sop
-*/
+ *
+ * This method checks for a common cube divisor in
+ * the SOP.
+ *
+ * \param sop
+ */
 inline bool sop_is_cube_free( std::vector<uint64_t> const& sop )
 {
   /* find common cube */
@@ -213,13 +215,13 @@ inline bool sop_is_cube_free( std::vector<uint64_t> const& sop )
 }
 
 /*! \brief Algebraic division by literal
-*
-* This method divides a SOP inplace by a literal and
-* stores the resulting quotient in the original SOP.
-* 
-* \param sop
-* \param lit
-*/
+ *
+ * This method divides a SOP inplace by a literal and
+ * stores the resulting quotient in the original SOP.
+ *
+ * \param sop
+ * \param lit
+ */
 inline void sop_divide_by_literal_inplace( std::vector<uint64_t>& sop, uint64_t const lit )
 {
   uint32_t p = 0;
@@ -235,15 +237,15 @@ inline void sop_divide_by_literal_inplace( std::vector<uint64_t>& sop, uint64_t 
 }
 
 /*! \brief Algebraic division by a cube
-*
-* This method divides a SOP (divident) by the divisor
-* and stores the resulting quotient and reminder.
-* 
-* \param Divident
-* \param Divisor
-* \param Quotient
-* \param Reminder
-*/
+ *
+ * This method divides a SOP (divident) by the divisor
+ * and stores the resulting quotient and reminder.
+ *
+ * \param Divident
+ * \param Divisor
+ * \param Quotient
+ * \param Reminder
+ */
 inline void sop_divide_by_cube( std::vector<uint64_t> const& divident, std::vector<uint64_t> const& divisor, std::vector<uint64_t>& quotient, std::vector<uint64_t>& reminder )
 {
   assert( divisor.size() == 1 );
@@ -266,14 +268,14 @@ inline void sop_divide_by_cube( std::vector<uint64_t> const& divident, std::vect
 }
 
 /*! \brief Algebraic division by a cube
-*
-* This method divides a SOP (divident) by the divisor
-* and stores the resulting quotient.
-* 
-* \param Divident
-* \param Divisor
-* \param Quotient
-*/
+ *
+ * This method divides a SOP (divident) by the divisor
+ * and stores the resulting quotient.
+ *
+ * \param Divident
+ * \param Divisor
+ * \param Quotient
+ */
 inline void sop_divide_by_cube_no_reminder( std::vector<uint64_t> const& divident, uint64_t const& divisor, std::vector<uint64_t>& quotient )
 {
   quotient.clear();
@@ -289,15 +291,15 @@ inline void sop_divide_by_cube_no_reminder( std::vector<uint64_t> const& dividen
 }
 
 /*! \brief Algebraic division
-*
-* This method divides a SOP (divident) by the divisor
-* and stores the resulting quotient and reminder.
-* 
-* \param Divident
-* \param Divisor
-* \param Quotient
-* \param Reminder
-*/
+ *
+ * This method divides a SOP (divident) by the divisor
+ * and stores the resulting quotient and reminder.
+ *
+ * \param Divident
+ * \param Divisor
+ * \param Quotient
+ * \param Reminder
+ */
 inline void sop_divide( std::vector<uint64_t>& divident, std::vector<uint64_t> const& divisor, std::vector<uint64_t>& quotient, std::vector<uint64_t>& reminder )
 {
   /* divisor contains a single cube */
@@ -360,7 +362,7 @@ inline void sop_divide( std::vector<uint64_t>& divident, std::vector<uint64_t> c
 
     if ( !found )
       continue;
-    
+
     /* valid divisor, select covered cubes */
     quotient.push_back( c_quotient );
 
@@ -401,15 +403,15 @@ inline void sop_divide( std::vector<uint64_t>& divident, std::vector<uint64_t> c
 }
 
 /*! \brief Extracts all the kernels
-*
-* This method is used to identify and collect all
-* the kernels.
-*
-* \param sop
-* \param kernels
-* \param j
-* \param num_lit
-*/
+ *
+ * This method is used to identify and collect all
+ * the kernels.
+ *
+ * \param sop
+ * \param kernels
+ * \param j
+ * \param num_lit
+ */
 inline void sop_kernels_rec( std::vector<uint64_t> const& sop, std::vector<std::vector<uint64_t>>& kernels, uint32_t const j, uint32_t const num_lit )
 {
   std::vector<uint64_t> kernel;
@@ -432,17 +434,17 @@ inline void sop_kernels_rec( std::vector<uint64_t> const& sop, std::vector<std::
 }
 
 /*! \brief Extracts the best factorizing kernel
-*
-* This method is used to identify the best kernel
-* according to the algebraic factorization value.
-*
-* \param sop
-* \param kernel
-* \param best_kernel
-* \param j
-* \param best_cost
-* \param num_lit
-*/
+ *
+ * This method is used to identify the best kernel
+ * according to the algebraic factorization value.
+ *
+ * \param sop
+ * \param kernel
+ * \param best_kernel
+ * \param j
+ * \param best_cost
+ * \param num_lit
+ */
 inline uint32_t sop_best_kernel_rec( std::vector<uint64_t>& sop, std::vector<uint64_t>& kernel, std::vector<uint64_t>& best_kernel, uint32_t const j, uint32_t& best_cost, uint32_t const num_lit )
 {
   std::vector<uint64_t> new_kernel;
@@ -464,7 +466,7 @@ inline uint32_t sop_best_kernel_rec( std::vector<uint64_t>& sop, std::vector<uin
         continue;
 
       /* extract the new kernel */
-      sop_divide_by_cube( kernel, {c}, new_kernel, reminder );
+      sop_divide_by_cube( kernel, { c }, new_kernel, reminder );
       uint32_t fact_cost_rec = detail::cube_count_literals( c ) + sop_count_literals( reminder );
       uint32_t fact_cost = sop_best_kernel_rec( sop, new_kernel, best_kernel, i + 1, best_cost, num_lit );
 
@@ -484,13 +486,13 @@ inline uint32_t sop_best_kernel_rec( std::vector<uint64_t>& sop, std::vector<uin
 }
 
 /*! \brief Extracts a one level-0 kernel
-*
-* This method is used to identify and return a one
-* level-0 kernel.
-* 
-* \param sop
-* \param num_lit
-*/
+ *
+ * This method is used to identify and return a one
+ * level-0 kernel.
+ *
+ * \param sop
+ * \param num_lit
+ */
 inline void sop_one_level_zero_kernel_rec( std::vector<uint64_t>& sop, uint32_t const num_lit )
 {
   /* find least occurring leteral which occurs more than once. TODO: test other metrics */
@@ -498,7 +500,7 @@ inline void sop_one_level_zero_kernel_rec( std::vector<uint64_t>& sop, uint32_t 
 
   if ( min_lit == -1 )
     return;
-  
+
   sop_divide_by_literal_inplace( sop, static_cast<uint64_t>( min_lit ) );
   sop_make_cube_free( sop );
 
@@ -506,13 +508,13 @@ inline void sop_one_level_zero_kernel_rec( std::vector<uint64_t>& sop, uint32_t 
 }
 
 /*! \brief Finds a quick divisor for a SOP
-*
-* This method is used to identify and return a quick
-* divisor for the SOP.
-* 
-* \param sop
-* \param num_lit
-*/
+ *
+ * This method is used to identify and return a quick
+ * divisor for the SOP.
+ *
+ * \param sop
+ * \param num_lit
+ */
 inline bool sop_quick_divisor( std::vector<uint64_t> const& sop, std::vector<uint64_t>& res, uint32_t const num_lit )
 {
   if ( sop.size() <= 1 )
@@ -531,13 +533,13 @@ inline bool sop_quick_divisor( std::vector<uint64_t> const& sop, std::vector<uin
 }
 
 /*! \brief Finds a good divisor for a SOP
-*
-* This method is used to identify and return a good
-* divisor for the SOP.
-* 
-* \param sop
-* \param num_lit
-*/
+ *
+ * This method is used to identify and return a good
+ * divisor for the SOP.
+ *
+ * \param sop
+ * \param num_lit
+ */
 inline bool sop_good_divisor( std::vector<uint64_t>& sop, std::vector<uint64_t>& res, uint32_t const num_lit )
 {
   if ( sop.size() <= 1 )
@@ -557,16 +559,16 @@ inline bool sop_good_divisor( std::vector<uint64_t>& sop, std::vector<uint64_t>&
 }
 
 /*! \brief Translates cubes into products
-*
-* This method translate SOP of kitty::cubes (bits + mask)
-* into SOP of products represented by literals.
-* Example for: ab'c*
-*   - cube: _bits = 1010; _mask = 1110
-*   - product: 10011000
-* 
-* \param cubes Sum-of-products described using cubes
-* \param num_vars Number of variables
-*/
+ *
+ * This method translate SOP of kitty::cubes (bits + mask)
+ * into SOP of products represented by literals.
+ * Example for: ab'c*
+ *   - cube: _bits = 1010; _mask = 1110
+ *   - product: 10011000
+ *
+ * \param cubes Sum-of-products described using cubes
+ * \param num_vars Number of variables
+ */
 inline std::vector<uint64_t> cubes_to_sop( std::vector<kitty::cube> const& cubes, uint32_t const num_vars )
 {
   using sop_t = std::vector<uint64_t>;
@@ -582,11 +584,11 @@ inline std::vector<uint64_t> cubes_to_sop( std::vector<kitty::cube> const& cubes
     for ( auto i = 0; i < num_vars; ++i )
     {
       if ( c.get_mask( i ) )
-        product |= static_cast<uint64_t>( 1 ) << ( 2*i + static_cast<unsigned>( c.get_bit( i ) ) );
+        product |= static_cast<uint64_t>( 1 ) << ( 2 * i + static_cast<unsigned>( c.get_bit( i ) ) );
     }
   }
 
   return sop;
 }
 
-} //namespace mockturtle
+} // namespace mockturtle
