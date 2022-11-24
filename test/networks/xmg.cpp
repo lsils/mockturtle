@@ -242,6 +242,30 @@ TEST_CASE( "hash nodes in xmg network", "[xmg]" )
   CHECK( xmg.get_node( f1 ) == xmg.get_node( g1 ) );
 }
 
+TEST_CASE( "check has_maj and has_xor3 in xmg", "[xmg]" )
+{
+  xmg_network xmg;
+
+  auto a = xmg.create_pi();
+  auto b = xmg.create_pi();
+  auto c = xmg.create_pi();
+  auto d = xmg.create_pi();
+
+  auto f = xmg.create_maj( a, b, c );
+  auto g = xmg.create_maj( a, c, d );
+  auto p = xmg.create_xor3( a, c, d );
+
+  CHECK( xmg.has_maj( a, b, c ).has_value() == true );
+  CHECK( *xmg.has_maj( a, b, c ) == xmg.get_node( f ) );
+  CHECK( xmg.has_maj( a, b, d ).has_value() == false );
+  CHECK( xmg.has_maj( !a, !c, !d ).has_value() == true );
+  CHECK( *xmg.has_maj( !a, !c, !d ) == xmg.get_node( g ) );
+  CHECK( xmg.has_xor3( !a, !c, d ).has_value() == true );
+  CHECK( *xmg.has_xor3( !a, !c, d ) == xmg.get_node( p ) );
+  CHECK( xmg.has_xor3( a, !c, !d ).has_value() == true );
+  CHECK( *xmg.has_xor3( a, !c, !d ) == xmg.get_node( p ) );
+}
+
 TEST_CASE( "clone a XMG network", "[xmg]" )
 {
   CHECK( has_clone_v<xmg_network> );
