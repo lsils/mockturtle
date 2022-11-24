@@ -411,6 +411,7 @@ void aig_balance( Ntk& ntk, aig_balancing_params const& ps = {} )
   static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po method" );
   static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_has_and_v<Ntk>, "Ntk does not implement the has_and method" );
 
   fanout_view<Ntk> f_ntk{ ntk };
   depth_view<fanout_view<Ntk>> d_ntk{ f_ntk };
