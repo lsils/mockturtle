@@ -943,7 +943,7 @@ namespace percy
             /// Extracts chain from encoded CNF solution.
             void extract_chain(const spec& spec, chain& chain)
             {
-              if ( spec.verbosity ) print_solver_state( spec );
+              // print_solver_state( spec );
               
               chain.reset(spec.get_nr_in(), spec.get_nr_out(), spec.nr_steps, spec.fanin);
 
