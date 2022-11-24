@@ -27,5 +27,6 @@ Logic restructuring and optimization
    xmg_optimization
    functional_reduction
    refactoring
+   aig_balancing
    balancing
    cost_generic_resub

@@ -27,6 +27,7 @@
   \file aig.hpp
   \brief AIG logic network implementation
 
+  \author Alessandro Tempia Calvino
   \author Bruno Schmitt
   \author Hanyu Wang
   \author Heinz Riener
@@ -404,6 +405,41 @@ public:
     (void)source;
     assert( children.size() == 2u );
     return create_and( children[0u], children[1u] );
+  }
+#pragma endregion
+
+#pragma region Has node
+  std::optional<node> has_and( signal a, signal b )
+  {
+    /* order inputs */
+    if ( a.index > b.index )
+    {
+      std::swap( a, b );
+    }
+
+    /* trivial cases */
+    if ( a.index == b.index )
+    {
+      return ( a.complement == b.complement ) ? a.index : 0;
+    }
+    else if ( a.index == 0 )
+    {
+      return a.complement ? b.index : 0;
+    }
+
+    storage::element_type::node_type node;
+    node.children[0] = a;
+    node.children[1] = b;
+
+    /* structural hashing */
+    const auto it = _storage->hash.find( node );
+    if ( it != _storage->hash.end() )
+    {
+      assert( !is_dead( it->second ) );
+      return it->second;
+    }
+
+    return {};
   }
 #pragma endregion
 
