@@ -15,6 +15,7 @@ Logic restructuring and optimization
    :caption: Rewriting and resubstitution
 
    cut_rewriting
+   xag_algebraic_rewriting
    mig_algebraic_rewriting
    resubstitution
 

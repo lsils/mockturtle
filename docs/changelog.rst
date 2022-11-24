@@ -15,12 +15,13 @@ v0.4 (not yet released)
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Resynthesis based on SOP factoring (`sop_factoring`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
+    - XAG algebraic depth rewriting (`xag_algebraic_rewriting`)
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
 * Properties:
     - Cost functions based on the factored form literals count (`factored_literal_cost`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
 * Utils:
-    - Add recursive cost function class to customize cost in resubstitution algorithm (`recurisve_cost_function`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Add recursive cost function class to customize cost in resubstitution algorithm (`recursive_cost_function`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Sum-of-products factoring utilities `#579 <https://github.com/lsils/mockturtle/pull/579>`_
 
 v0.3 (July 12, 2022)
