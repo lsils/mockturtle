@@ -104,15 +104,6 @@ struct lut_map_params
   /*! \brief Maps by collapsing MFFCs */
   bool collapse_mffcs{ false };
 
-  /*! \brief Solves the covering problem using SMT */
-  bool use_smt_solver{ false };
-
-  /*! \brief Maximum number of cuts for SMT */
-  uint32_t smt_cut_limit{ 3 };
-
-  /*! \brief Timeout for the SMT solver in seconds */
-  uint32_t smt_timeout{ UINT32_MAX };
-
   /*! \brief Maximum number variables for cost function caching */
   uint32_t cost_cache_vars{ 3u };
 
@@ -634,12 +625,6 @@ public:
         expand_cuts<true>();
       }
       ++i;
-    }
-
-    if ( ps.use_smt_solver )
-    {
-      compute_mapping_smt();
-      return;
     }
 
     /* generate the output network */
@@ -1849,238 +1834,6 @@ private:
     node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
   }
 
-  /* SMT covering
-   * Variables:
-   * - n_i : node `i` is a root of a LUT
-   * - total: sum of n_i
-   * Constraints:
-   * - n_i = 1 for all the POs
-   * - n_i -> ( C0 || C1 .... || Cm )
-   *          where Cj is an and of all the leaves nk
-   * Objective: minimize total
-   */
-  void compute_mapping_smt()
-  {
-    std::string name = "";
-
-    // if constexpr ( StoreFunction )
-    // {
-    //   std::cerr << "[i] SMT solver is not compatible with StoreFunction\n";
-    //   return;
-    // }
-
-    if constexpr ( has_get_network_name_v<Ntk> )
-    {
-      name = ntk.get_network_name();
-    }
-
-    std::ofstream os( "model_" + name + ".smt2", std::ofstream::out );
-
-    if ( ps.smt_timeout != UINT32_MAX )
-      os << fmt::format( "(set-option :timeout {})\n", ps.smt_timeout * 1000 );
-
-    os << "(set-logic QF_LIA)\n";
-
-    for ( auto const& n : top_order )
-    {
-      auto index = ntk.node_to_index( n );
-
-      /* create a Boolean variable for each node */
-      os << fmt::format( "(declare-const n{} Bool)\n", index );
-
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
-        continue;
-
-      /* embed cut constraints */
-      std::stringstream ss;
-      ss << fmt::format( "(assert (or (not n{}) ", index );
-
-      uint32_t i = 0;
-      for ( auto const& cut : cuts[index] )
-      {
-        if ( ++i > ps.smt_cut_limit )
-          break;
-
-        /* ignore the trivial cut */
-        if ( cut->size() == 1 )
-          continue;
-
-        /* declare the vaiable for the cut */
-        os << fmt::format( "(declare-const c{} Bool)\n", ( index << 8 ) + i );
-
-        // os << "(and ";
-        os << fmt::format( "(assert (or (not c{}) (and ", ( index << 8 ) + i );
-        for ( auto const& leaf : *cut )
-        {
-          os << fmt::format( "n{} ", leaf );
-        }
-        os << ")))\n";
-        ss << fmt::format( "c{} ", ( index << 8 ) + i );
-      }
-
-      ss << "))\n";
-      os << ss.str();
-    }
-
-    /* POs must be selected */
-    ntk.foreach_po( [&]( auto const& f ) {
-      os << fmt::format( "(assert (= n{} true) )\n", ntk.node_to_index( ntk.get_node( f ) ) );
-    } );
-
-    /* minimize the sum of n(index) */
-    os << "(declare-const total Int)\n";
-    os << "(assert (= total (+ ";
-    for ( auto const& n : top_order )
-    {
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
-        continue;
-
-      auto index = ntk.node_to_index( n );
-      // os << fmt::format( "(ite n{} 1 0) ", ntk.node_to_index( n ) );
-
-      uint32_t i = 0;
-      for ( auto const& cut : cuts[index] )
-      {
-        if ( ++i > ps.smt_cut_limit )
-          break;
-
-        /* ignore the trivial cut */
-        if ( cut->size() == 1 )
-          continue;
-
-        os << fmt::format( "(ite c{} {} 0) ", ( index << 8 ) + i, ( *cut )->data.lut_area >> 1 );
-      }
-    }
-    os << ")))\n";
-
-    /* minimize total */
-    os << "(minimize total)\n(check-sat)\n";
-
-    /* get total */
-    os << "(get-value (total))\n";
-    os << "(get-value (";
-    for ( auto const& n : top_order )
-    {
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
-        continue;
-
-      // os << fmt::format( "n{} ", ntk.node_to_index( n ) );
-      auto index = ntk.node_to_index( n );
-
-      uint32_t i = 0;
-      for ( auto const& cut : cuts[index] )
-      {
-        if ( ++i > ps.smt_cut_limit )
-          break;
-
-        /* ignore the trivial cut */
-        if ( cut->size() == 1 )
-          continue;
-
-        os << fmt::format( "c{} ", ( index << 8 ) + i );
-      }
-    }
-    os << "))\n";
-
-    os << "(exit)\n";
-    os.close();
-    std::string command = "z3 -v:1 model_" + name + ".smt2 &> sol_" + name + ".txt";
-    std::system( command.c_str() );
-
-    parse_smt( name );
-  }
-
-  void parse_smt( std::string const& name )
-  {
-    std::ifstream fin( "sol_" + name + ".txt", std::ifstream::in );
-
-    if ( !fin.is_open() )
-    {
-      std::cerr << "[i] Z3 solver error: output file not found\n";
-    }
-
-    std::string line;
-    do
-    {
-      std::getline( fin, line ); /* first line: "sat" */
-    } while ( line != "sat" && !fin.eof() );
-
-    if ( fin.eof() )
-    {
-      std::cerr << "[i] SMT solver timeout\n";
-      derive_mapping();
-      return;
-    }
-
-    std::getline( fin, line ); /* second line: "((total <>)" */
-    area = std::stoi( line.substr( 8, line.find_first_of( ')' ) - 8 ) );
-
-    while ( std::getline( fin, line ) ) /* remaining lines: "((n<> <>)" or " (n<> <>)" or " (n<> <>))" */
-    {
-      line = line.substr( line.find( 'n' ) + 1 );
-      uint32_t n = std::stoi( line.substr( 0, line.find( ' ' ) ) );
-      line = line.substr( line.find( ' ' ) + 1 );
-      std::string result = line.substr( 0, line.find_first_of( ')' ) );
-      if ( result == "false" )
-        node_match[n].map_refs = 0;
-      else
-        node_match[n].map_refs = 1;
-    }
-
-    derive_mapping_smt();
-  }
-
-  void derive_mapping_smt()
-  {
-    ntk.clear_mapping();
-
-    for ( auto const& n : top_order )
-    {
-      const auto index = ntk.node_to_index( n );
-
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
-      {
-        continue;
-      }
-
-      if ( node_match[index].map_refs == 0 )
-        continue;
-
-      std::vector<node> nodes;
-
-      ntk.foreach_fanin( n, [&]( auto const& f ) {
-        rec_collect_leaves( ntk.get_node( f ), nodes );
-      } );
-
-      ntk.add_to_mapping( n, nodes.begin(), nodes.end() );
-
-      if constexpr ( StoreFunction )
-      {
-        auto const& best_cut = cuts[index][0];
-        ntk.set_cell_function( n, truth_tables[best_cut->func_id] );
-      }
-    }
-
-    st.area = area;
-    st.delay = delay;
-    st.edges = edges;
-  }
-
-  void rec_collect_leaves( node const& n, std::vector<node>& leaves )
-  {
-    const auto index = ntk.node_to_index( n );
-
-    if ( node_match[index].map_refs == 1 || ntk.is_pi( n ) || ntk.is_constant( n ) )
-    {
-      leaves.push_back( n );
-      return;
-    }
-
-    ntk.foreach_fanin( n, [&]( auto const& f ) {
-      rec_collect_leaves( ntk.get_node( f ), leaves );
-    } );
-  }
-
 private:
   Ntk& ntk;
   lut_map_params const& ps;
@@ -2118,6 +1871,9 @@ private:
  * The template `LUTCostFn` sets the cost function to evaluate depth and
  * size of a truth table given its support size, if `StoreFunction` is set
  * to false, or its function, if `StoreFunction` is set to true.
+ * 
+ * This implementation offers more options such as delay oriented mapping
+ * and edges minimization compared to the command `lut_mapping`.
  *
  * **Required network functions:**
  * - `size`
@@ -2138,7 +1894,7 @@ private:
 
    .. note::
 
-      The implementation of this algorithm was heavily inspired but the LUT
+      The implementation of this algorithm was inspired by the LUT
       mapping command ``&if`` in ABC.
    \endverbatim
  */

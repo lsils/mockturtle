@@ -43,7 +43,7 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, double, bool> exp( "lut_mapping", "benchmark", "luts", "lut_depth", "edges", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, double, bool> exp( "lut_mapper", "benchmark", "luts", "lut_depth", "edges", "runtime", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
