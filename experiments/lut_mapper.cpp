@@ -67,8 +67,7 @@ int main()
 
     depth_view<klut_network> klut_d{ klut };
 
-    // auto const cec = benchmark == "hyp" ? true : abc_cec( klut, benchmark );
-    auto const cec = true;
+    auto const cec = benchmark == "hyp" ? true : abc_cec( klut, benchmark );
 
     exp( benchmark, klut.num_gates(), klut_d.depth(), st.edges, to_seconds( st.time_total ), cec );
   }

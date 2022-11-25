@@ -40,8 +40,8 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
-#include <kitty/static_truth_table.hpp>
 #include <kitty/hash.hpp>
+#include <kitty/static_truth_table.hpp>
 
 #include <fmt/format.h>
 
@@ -158,9 +158,9 @@ namespace detail
 template<unsigned NInputs>
 struct cut_enumeration_emap_cut
 {
-  double delay{0};
-  double flow{0};
-  bool ignore{false};
+  double delay{ 0 };
+  double flow{ 0 };
+  bool ignore{ false };
 
   /* list of supergates matching the cut for positive and negative output phases */
   std::array<std::vector<supergate<NInputs>> const*, 2> supergates = { nullptr, nullptr };
@@ -231,7 +231,7 @@ public:
 
   static bool sort_delay( CutType const& c1, CutType const& c2 )
   {
-    constexpr auto eps{0.005f};
+    constexpr auto eps{ 0.005f };
     if ( c1->data.delay < c2->data.delay - eps )
       return true;
     if ( c1->data.delay > c2->data.delay + eps )
@@ -245,7 +245,7 @@ public:
 
   static bool sort_area( CutType const& c1, CutType const& c2 )
   {
-    constexpr auto eps{0.005f};
+    constexpr auto eps{ 0.005f };
     if ( c1->data.flow < c2->data.flow - eps )
       return true;
     if ( c1->data.flow > c2->data.flow + eps )
@@ -265,7 +265,7 @@ public:
    * \param cut2 second cut.
    * \param sort sorting function.
    */
-  static bool compare( CutType const& cut1, CutType const& cut2, emap_cut_sort_type sort = emap_cut_sort_type::NONE  )
+  static bool compare( CutType const& cut1, CutType const& cut2, emap_cut_sort_type sort = emap_cut_sort_type::NONE )
   {
     if ( sort == emap_cut_sort_type::DELAY )
     {
@@ -308,7 +308,7 @@ public:
     }
     else /* NONE */
     {
-       ipos == _pend;
+      ipos == _pend;
     }
 
     /* too many cuts, we need to remove one */
@@ -468,8 +468,8 @@ public:
 private:
   std::array<CutType, MaxCuts> _cuts;
   std::array<CutType*, MaxCuts> _pcuts;
-  typename std::array<CutType*, MaxCuts>::const_iterator _pcend{_pcuts.begin()};
-  typename std::array<CutType*, MaxCuts>::iterator _pend{_pcuts.begin()};
+  typename std::array<CutType*, MaxCuts>::const_iterator _pcend{ _pcuts.begin() };
+  typename std::array<CutType*, MaxCuts>::iterator _pend{ _pcuts.begin() };
 };
 #pragma endregion
 
@@ -710,7 +710,7 @@ private:
 
     /* compute cuts */
     const auto fanin = 2;
-    uint32_t pairs{1};
+    uint32_t pairs{ 1 };
     ntk.foreach_fanin( ntk.index_to_node( index ), [this, &pairs]( auto child, auto i ) {
       lcuts[i] = &cuts[ntk.node_to_index( ntk.get_node( child ) )];
       pairs *= static_cast<uint32_t>( lcuts[i]->size() );
@@ -776,7 +776,7 @@ private:
     }
 
     /* compute cuts */
-    uint32_t pairs{1};
+    uint32_t pairs{ 1 };
     std::vector<uint32_t> cut_sizes;
     ntk.foreach_fanin( ntk.index_to_node( index ), [this, &pairs, &cut_sizes]( auto child, auto i ) {
       lcuts[i] = &cuts[ntk.node_to_index( ntk.get_node( child ) )];
@@ -838,10 +838,11 @@ private:
     }
     else if ( fanin == 1 )
     {
-      for ( auto const& cut : *lcuts[0] ) {
+      for ( auto const& cut : *lcuts[0] )
+      {
         cut_t new_cut = *cut;
 
-        new_cut->func_id = compute_truth_table( index, {cut}, new_cut );
+        new_cut->func_id = compute_truth_table( index, { cut }, new_cut );
 
         /* match cut and compute data */
         compute_cut_data<DO_AREA>( new_cut, n );
@@ -1619,14 +1620,14 @@ private:
       // if ( node_match[leaf].same_match )
       // {
       //   if ( node_match[leaf].map_refs[2] > 0 )
-          // flow += node_match[leaf].flows[2];
+      // flow += node_match[leaf].flows[2];
       //   else
       //     flow += node_match[leaf].flows[2] * node_match[leaf].est_refs[2];
       // }
       // else
       // {
       //   if ( node_match[leaf].map_refs[leaf_phase] > 0 )
-           flow += node_match[leaf].flows[leaf_phase];
+      flow += node_match[leaf].flows[leaf_phase];
       //   else
       //     flow += node_match[leaf].flows[leaf_phase] * node_match[leaf].est_refs[leaf_phase];
       // }
@@ -1909,7 +1910,7 @@ private:
     auto ctr = 0u;
     for ( auto l : best_cut )
     {
-      if ( ctr >= gate->num_vars)
+      if ( ctr >= gate->num_vars )
         break;
       children[node_data.best_supergate[phase]->permutation[ctr]] = old2new[l][( node_data.phase[phase] >> ctr ) & 1];
       ++ctr;
@@ -2021,8 +2022,8 @@ private:
 
     if ( supergates_pos != nullptr || supergates_neg != nullptr )
     {
-      cut->data.supergates = {supergates_pos, supergates_neg};
-      cut->data.negations = {negations_pos, negations_neg};
+      cut->data.supergates = { supergates_pos, supergates_neg };
+      cut->data.negations = { negations_pos, negations_neg };
     }
     else
     {
@@ -2259,10 +2260,10 @@ private:
   emap_params const& ps;
   emap_stats& st;
 
-  uint32_t iteration{ 0 };        /* current mapping iteration */
-  double delay{ 0.0f };           /* current delay of the mapping */
-  double area{ 0.0f };            /* current area of the mapping */
-  const float epsilon{ 0.005f };  /* epsilon */
+  uint32_t iteration{ 0 };       /* current mapping iteration */
+  double delay{ 0.0f };          /* current delay of the mapping */
+  double area{ 0.0f };           /* current area of the mapping */
+  const float epsilon{ 0.005f }; /* epsilon */
 
   /* lib inverter info */
   float lib_inv_area;
@@ -2279,10 +2280,10 @@ private:
   std::vector<float> switch_activity;
 
   /* cut computation */
-  std::vector<cut_set_t> cuts;    /* compressed representation of cuts */
-  cut_merge_t lcuts;              /* cut merger container */
-  tt_cache truth_tables;          /* cut truth tables */
-  uint32_t cuts_total{ 0 };       /* current computed cuts */
+  std::vector<cut_set_t> cuts; /* compressed representation of cuts */
+  cut_merge_t lcuts;           /* cut merger container */
+  tt_cache truth_tables;       /* cut truth tables */
+  uint32_t cuts_total{ 0 };    /* current computed cuts */
 };
 
 } /* namespace detail */
@@ -2290,7 +2291,7 @@ private:
 /*! \brief Technology mapping.
  *
  * This function implements a technology mapping algorithm.
- * 
+ *
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
@@ -2343,15 +2344,12 @@ binding_view<klut_network> emap( Ntk const& ntk, tech_library<NInputs, Configura
   return res;
 }
 
-
 /*! \brief Technology node mapping.
  *
  * This function implements a simple technology mapping algorithm.
  * The algorithm maps each node to the first implementation in the technology library.
- * 
- * The input must be a binding_view with the gates correctly loaded.
  *
- * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
+ * The input must be a binding_view with the gates correctly loaded.
  *
  * **Required network functions:**
  * - `size`
@@ -2369,7 +2367,7 @@ binding_view<klut_network> emap( Ntk const& ntk, tech_library<NInputs, Configura
  *
  */
 template<class Ntk>
-void flex_node_map( Ntk& ntk )
+void emap_node_map( Ntk& ntk )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -2381,7 +2379,6 @@ void flex_node_map( Ntk& ntk )
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_has_binding_v<Ntk>, "Ntk does not implement the has_binding method" );
-
 
   /* build the library map */
   using lib_t = std::unordered_map<kitty::dynamic_truth_table, uint32_t, kitty::hash<kitty::dynamic_truth_table>>;

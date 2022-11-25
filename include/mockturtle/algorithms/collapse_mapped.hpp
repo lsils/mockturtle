@@ -27,24 +27,24 @@
   \file collapse_mapped.hpp
   \brief Collapses mapped network into k-LUT network
 
+  \author Alessandro Tempia Calvino
   \author Heinz Riener
   \author Mathias Soeken
-  \author Alessandro Tempia Calvino
 */
 
 #pragma once
 
-#include <optional>
 #include <algorithm>
 #include <iterator>
+#include <optional>
 #include <unordered_map>
 
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/window_utils.hpp"
-#include "../views/topo_view.hpp"
-#include "../views/fanout_view.hpp"
 #include "../views/color_view.hpp"
+#include "../views/fanout_view.hpp"
+#include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
 #include "simulation.hpp"
 
@@ -174,9 +174,9 @@ public:
       }
     } );
 
-    fanout_view<NtkSource> fanout_ntk{ntk};
+    fanout_view<NtkSource> fanout_ntk{ ntk };
     fanout_ntk.clear_visited();
-    color_view<fanout_view<NtkSource>> color_ntk{fanout_ntk};
+    color_view<fanout_view<NtkSource>> color_ntk{ fanout_ntk };
 
     /* nodes */
     topo_view topo{ ntk };
@@ -198,15 +198,15 @@ public:
       else
       {
         /* compute function constructing a window */
-        std::vector<node<NtkSource>> roots{n};
+        std::vector<node<NtkSource>> roots{ n };
         std::vector<node<NtkSource>> leaves;
-        
+
         ntk.foreach_cell_fanin( n, [&]( auto fanin ) {
           leaves.push_back( fanin );
         } );
 
-        std::vector<node<NtkSource>> gates{collect_nodes( color_ntk, leaves, roots )};
-        window_view window_ntk{color_ntk, leaves, roots, gates};
+        std::vector<node<NtkSource>> gates{ collect_nodes( color_ntk, leaves, roots ) };
+        window_view window_ntk{ color_ntk, leaves, roots, gates };
 
         using Ntk = mockturtle::window_view<mockturtle::color_view<mockturtle::fanout_view<NtkSource>>>;
         default_simulator<kitty::dynamic_truth_table> sim( window_ntk.num_pis() );

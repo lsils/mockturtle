@@ -33,16 +33,16 @@
 #pragma once
 
 #include <cstdint>
-#include <limits>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <string>
 
 #include <fmt/format.h>
 
 #include "../networks/klut.hpp"
-#include "../utils/cuts.hpp"
 #include "../utils/cost_functions.hpp"
+#include "../utils/cuts.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/truth_table_cache.hpp"
 #include "../views/mapping_view.hpp"
@@ -100,8 +100,8 @@ struct lut_map_params
   /*! \brief Remove the cuts that are contained in others */
   bool remove_dominated_cuts{ true };
 
-  /*! \brief Maps using MFFC */
-  bool map_mffcs{ false };
+  /*! \brief Maps by collapsing MFFCs */
+  bool collapse_mffcs{ false };
 
   /*! \brief Solves the covering problem using SMT */
   bool use_smt_solver{ false };
@@ -113,7 +113,7 @@ struct lut_map_params
   uint32_t smt_timeout{ UINT32_MAX };
 
   /*! \brief Maximum number variables for cost function caching */
-  uint32_t cost_cache_vars{ 4u };
+  uint32_t cost_cache_vars{ 3u };
 
   /*! \brief Be verbose. */
   bool verbose{ false };
@@ -159,11 +159,11 @@ namespace detail
 /* cut data */
 struct cut_enumeration_lut_cut
 {
-  uint32_t delay{0};
-  uint32_t lut_area{0};
-  uint32_t lut_delay{0};
-  float area_flow{0};
-  float edge_flow{0};
+  uint32_t delay{ 0 };
+  uint32_t lut_area{ 0 };
+  uint32_t lut_delay{ 0 };
+  float area_flow{ 0 };
+  float edge_flow{ 0 };
 };
 
 enum class lut_cut_sort_type
@@ -230,7 +230,7 @@ public:
 
   static bool sort_delay( CutType const& c1, CutType const& c2 )
   {
-    constexpr auto eps{0.005f};
+    constexpr auto eps{ 0.005f };
     if ( c1->data.delay < c2->data.delay )
       return true;
     if ( c1->data.delay > c2->data.delay )
@@ -248,7 +248,7 @@ public:
 
   static bool sort_delay2( CutType const& c1, CutType const& c2 )
   {
-    constexpr auto eps{0.005f};
+    constexpr auto eps{ 0.005f };
     if ( c1->data.delay < c2->data.delay )
       return true;
     if ( c1->data.delay > c2->data.delay )
@@ -266,7 +266,7 @@ public:
 
   static bool sort_area( CutType const& c1, CutType const& c2 )
   {
-    constexpr auto eps{0.005f};
+    constexpr auto eps{ 0.005f };
     if ( c1->data.area_flow < c2->data.area_flow - eps )
       return true;
     if ( c1->data.area_flow > c2->data.area_flow + eps )
@@ -290,7 +290,7 @@ public:
    * \param cut2 second cut.
    * \param sort sorting function.
    */
-  static bool compare( CutType const& cut1, CutType const& cut2, lut_cut_sort_type sort = lut_cut_sort_type::NONE  )
+  static bool compare( CutType const& cut1, CutType const& cut2, lut_cut_sort_type sort = lut_cut_sort_type::NONE )
   {
     if ( sort == lut_cut_sort_type::DELAY )
     {
@@ -341,7 +341,7 @@ public:
     }
     else /* NONE */
     {
-       ipos == _pend;
+      ipos == _pend;
     }
 
     /* too many cuts, we need to remove one */
@@ -501,8 +501,8 @@ public:
 private:
   std::array<CutType, MaxCuts> _cuts;
   std::array<CutType*, MaxCuts> _pcuts;
-  typename std::array<CutType*, MaxCuts>::const_iterator _pcend{_pcuts.begin()};
-  typename std::array<CutType*, MaxCuts>::iterator _pend{_pcuts.begin()};
+  typename std::array<CutType*, MaxCuts>::const_iterator _pcend{ _pcuts.begin() };
+  typename std::array<CutType*, MaxCuts>::iterator _pend{ _pcuts.begin() };
 };
 #pragma endregion
 
@@ -564,7 +564,7 @@ public:
       top_order.push_back( n );
     } );
 
-    if ( ps.map_mffcs )
+    if ( ps.collapse_mffcs )
     {
       compute_mffcs_mapping();
       return;
@@ -679,7 +679,7 @@ private:
       if constexpr ( !ELA )
       {
         auto const index = ntk.node_to_index( n );
-        if ( !preprocess && iteration != 0  )
+        if ( !preprocess && iteration != 0 )
         {
           node_match[index].est_refs = ( 2.0 * node_match[index].est_refs + node_match[index].map_refs ) / 3.0;
         }
@@ -889,7 +889,7 @@ private:
 
     /* compute cuts */
     const auto fanin = 2;
-    uint32_t pairs{1};
+    uint32_t pairs{ 1 };
     ntk.foreach_fanin( ntk.index_to_node( index ), [this, &pairs]( auto child, auto i ) {
       lcuts[i] = &cuts[ntk.node_to_index( ntk.get_node( child ) )];
       pairs *= static_cast<uint32_t>( lcuts[i]->size() );
@@ -975,7 +975,7 @@ private:
 
     /* replace the new best cut with previous one */
     if ( preprocess && rcuts[0]->data.delay > node_data.required )
-     rcuts.replace( 0, best_cut );
+      rcuts.replace( 0, best_cut );
 
     /* add trivial cut */
     if ( rcuts.size() > 1 || ( *rcuts.begin() )->size() > 1 )
@@ -1000,7 +1000,7 @@ private:
     cut_t best_cut;
 
     /* compute cuts */
-    uint32_t pairs{1};
+    uint32_t pairs{ 1 };
     std::vector<uint32_t> cut_sizes;
     ntk.foreach_fanin( ntk.index_to_node( index ), [this, &pairs, &cut_sizes]( auto child, auto i ) {
       lcuts[i] = &cuts[ntk.node_to_index( ntk.get_node( child ) )];
@@ -1102,12 +1102,13 @@ private:
     }
     else if ( fanin == 1 )
     {
-      for ( auto const& cut : *lcuts[0] ) {
+      for ( auto const& cut : *lcuts[0] )
+      {
         cut_t new_cut = *cut;
 
         if constexpr ( StoreFunction )
         {
-          new_cut->func_id = compute_truth_table( index, {cut}, new_cut );
+          new_cut->func_id = compute_truth_table( index, { cut }, new_cut );
         }
 
         compute_cut_data<ELA>( new_cut, n, true );
@@ -1139,7 +1140,7 @@ private:
 
     /* replace the new best cut with previous one */
     if ( preprocess && rcuts[0]->data.delay > node_data.required )
-     rcuts.replace( 0, best_cut );
+      rcuts.replace( 0, best_cut );
 
     add_unit_cut( index );
 
@@ -1186,7 +1187,7 @@ private:
       /* update best */
       if constexpr ( DO_AREA )
       {
-        if ( (*cut)->data.delay <= node_data.required )
+        if ( ( *cut )->data.delay <= node_data.required )
         {
           if ( node_cut_set.compare( *cut, *best_cut, sort ) )
           {
@@ -1256,7 +1257,8 @@ private:
     mark_cut_volume_rec( n );
 
     /* improve cut */
-    while ( improve_cut( leaves ) );
+    while ( improve_cut( leaves ) )
+      ;
 
     /* measure improvement */
     uint32_t cost_after = 0;
@@ -1314,7 +1316,7 @@ private:
     {
       if ( ntk.is_ci( *it ) )
         continue;
-      
+
       /* test if expansion would increase the number of leaves */
       int marked = 0;
       ntk.foreach_fanin( ntk.index_to_node( *it ), [&]( auto const& f ) {
@@ -1365,7 +1367,7 @@ private:
     {
       if ( ntk.is_ci( *it ) )
         continue;
-      
+
       /* test if expansion would increase the number of leaves by more than 1*/
       int marked = 0;
       ntk.foreach_fanin( ntk.index_to_node( *it ), [&]( auto const& f ) {
@@ -1602,7 +1604,7 @@ private:
 
     if constexpr ( ELA )
     {
-      uint32_t delay{0};
+      uint32_t delay{ 0 };
       for ( auto leaf : cut )
       {
         const auto& best_leaf_cut = cuts[leaf][0];
@@ -1625,7 +1627,7 @@ private:
     }
     else
     {
-      uint32_t delay{0};
+      uint32_t delay{ 0 };
 
       float area_flow = static_cast<float>( lut_area );
       float edge_flow = cut.size();
@@ -1733,7 +1735,7 @@ private:
         continue;
       if ( ntk.fanout_size( n ) <= 1 ) /* it should be unnecessary */
         continue;
-      
+
       /* create MFFC cut */
       compute_mffc_mapping_node( n );
     }
@@ -1870,7 +1872,7 @@ private:
     {
       name = ntk.get_network_name();
     }
-    
+
     std::ofstream os( "model_" + name + ".smt2", std::ofstream::out );
 
     if ( ps.smt_timeout != UINT32_MAX )
@@ -1901,7 +1903,7 @@ private:
         /* ignore the trivial cut */
         if ( cut->size() == 1 )
           continue;
-        
+
         /* declare the vaiable for the cut */
         os << fmt::format( "(declare-const c{} Bool)\n", ( index << 8 ) + i );
 
@@ -1944,7 +1946,7 @@ private:
         /* ignore the trivial cut */
         if ( cut->size() == 1 )
           continue;
-        
+
         os << fmt::format( "(ite c{} {} 0) ", ( index << 8 ) + i, ( *cut )->data.lut_area >> 1 );
       }
     }
@@ -1973,7 +1975,7 @@ private:
         /* ignore the trivial cut */
         if ( cut->size() == 1 )
           continue;
-        
+
         os << fmt::format( "c{} ", ( index << 8 ) + i );
       }
     }
@@ -2001,7 +2003,7 @@ private:
     {
       std::getline( fin, line ); /* first line: "sat" */
     } while ( line != "sat" && !fin.eof() );
-    
+
     if ( fin.eof() )
     {
       std::cerr << "[i] SMT solver timeout\n";
@@ -2018,7 +2020,7 @@ private:
       uint32_t n = std::stoi( line.substr( 0, line.find( ' ' ) ) );
       line = line.substr( line.find( ' ' ) + 1 );
       std::string result = line.substr( 0, line.find_first_of( ')' ) );
-       if ( result == "false" )
+      if ( result == "false" )
         node_match[n].map_refs = 0;
       else
         node_match[n].map_refs = 1;
@@ -2044,11 +2046,11 @@ private:
         continue;
 
       std::vector<node> nodes;
-      
+
       ntk.foreach_fanin( n, [&]( auto const& f ) {
         rec_collect_leaves( ntk.get_node( f ), nodes );
       } );
-      
+
       ntk.add_to_mapping( n, nodes.begin(), nodes.end() );
 
       if constexpr ( StoreFunction )
@@ -2083,22 +2085,22 @@ private:
   lut_map_params const& ps;
   lut_map_stats& st;
 
-  uint32_t iteration{ 0 };        /* current mapping iteration */
-  uint32_t area_iteration{ 0 };   /* current area iteration */
-  uint32_t delay{ 0 };            /* current delay of the mapping */
-  uint32_t area{ 0 };             /* current area of the mapping */
-  uint32_t edges{ 0 };            /* current edges of the mapping */
-  uint32_t cuts_total{ 0 };       /* current computed cuts */
-  const float epsilon{ 0.005f };  /* epsilon */
+  uint32_t iteration{ 0 };       /* current mapping iteration */
+  uint32_t area_iteration{ 0 };  /* current area iteration */
+  uint32_t delay{ 0 };           /* current delay of the mapping */
+  uint32_t area{ 0 };            /* current area of the mapping */
+  uint32_t edges{ 0 };           /* current edges of the mapping */
+  uint32_t cuts_total{ 0 };      /* current computed cuts */
+  const float epsilon{ 0.005f }; /* epsilon */
   LUTCostFn lut_cost{};
 
   std::vector<node> top_order;
   std::vector<node_lut> node_match;
 
-  std::vector<cut_set_t> cuts;    /* compressed representation of cuts */
-  cut_merge_t lcuts;              /* cut merger container */
-  tt_cache truth_tables;          /* cut truth tables */
-  cost_cache truth_tables_cost;   /* truth tables cost */
+  std::vector<cut_set_t> cuts;  /* compressed representation of cuts */
+  cut_merge_t lcuts;            /* cut merger container */
+  tt_cache truth_tables;        /* cut truth tables */
+  cost_cache truth_tables_cost; /* truth tables cost */
 };
 #pragma endregion
 
@@ -2111,6 +2113,10 @@ private:
  * whether the LUT function is stored in the mapping. In that case
  * truth tables are computed during cut enumeration, which requires more
  * runtime.
+ *
+ * The template `LUTCostFn` sets the cost function to evaluate depth and
+ * size of a truth table given its support size, if `StoreFunction` is set
+ * to false, or its function, if `StoreFunction` is set to true.
  *
  * **Required network functions:**
  * - `size`
@@ -2125,7 +2131,7 @@ private:
  * - `clear_mapping`
  * - `add_to_mapping`
  * - `set_lut_function` (if `StoreFunction` is true)
- * 
+ *
  *
    \verbatim embed:rst
 
