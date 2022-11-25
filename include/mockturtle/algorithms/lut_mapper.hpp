@@ -36,6 +36,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <string>
 
 #include <fmt/format.h>
@@ -722,7 +723,7 @@ private:
     /* round stats */
     if ( ps.verbose )
     {
-      std::stringstream stats{};
+      std::stringstream stats;
 
       if ( sort == lut_cut_sort_type::AREA && ELA )
       {
@@ -1746,13 +1747,13 @@ private:
 
     if ( ps.verbose )
     {
-      std::stringstream stats{};
+      std::stringstream stats;
       stats << fmt::format( "[i] Area MFFC: Delay = {:8d}  Area = {:8d}  Edges = {:8d}  Cuts = {:8d}\n", delay, area, edges, cuts_total );
       st.round_stats.push_back( stats.str() );
     }
   }
 
-  compute_mffc_mapping_node( node const& n )
+  void compute_mffc_mapping_node( node const& n )
   {
     uint32_t lut_area, lut_delay;
 
