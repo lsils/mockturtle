@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2021  EPFL
+ * Copyright (C) 2017-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -331,7 +331,8 @@ void create_from_hex_string( partial_truth_table& tt, const std::string& hex )
 template<typename TT>
 void create_from_raw( TT& tt, std::istream& in )
 {
-  std::for_each( tt.begin(), tt.end(), [&in]( auto& word ) { in.read( reinterpret_cast<char*>( &word ), sizeof( word ) ); } );
+  std::for_each( tt.begin(), tt.end(), [&in]( auto& word )
+                 { in.read( reinterpret_cast<char*>( &word ), sizeof( word ) ); } );
 }
 
 /*! \brief Constructs a truth table from random value
@@ -348,7 +349,8 @@ void create_random( TT& tt, std::default_random_engine::result_type seed )
   std::default_random_engine gen( seed );
   std::uniform_int_distribution<uint64_t> dist( 0ul, std::numeric_limits<uint64_t>::max() );
 
-  assign_operation( tt, [&dist, &gen]() { return dist( gen ); } );
+  assign_operation( tt, [&dist, &gen]()
+                    { return dist( gen ); } );
 }
 
 /*! \brief Constructs a truth table from random value
@@ -533,7 +535,8 @@ template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::v
 void create_equals( TT& tt, uint8_t bitcount )
 {
   clear( tt );
-  if ( bitcount > tt.num_vars() ) return;
+  if ( bitcount > tt.num_vars() )
+    return;
 
   if ( tt.num_vars() <= 6 )
   {
@@ -596,7 +599,8 @@ void create_parity( TT& tt )
   {
     for ( auto i = 1u; i < tt.num_blocks(); i <<= 1 )
     {
-      std::transform( tt.begin(), tt.begin() + i, tt.begin() + i, []( auto const& block ) { return ~block; } );
+      std::transform( tt.begin(), tt.begin() + i, tt.begin() + i, []( auto const& block )
+                      { return ~block; } );
     }
   }
 }
@@ -606,7 +610,8 @@ template<typename TT, typename Fn, typename = std::enable_if_t<is_complete_truth
 bool create_from_chain( TT& tt, Fn&& next_line, std::vector<TT>& steps, std::string* error )
 {
   /* in case of error (makes code more readable) */
-  auto fail_with = [&error]( const std::string& line, const std::string& message ) {
+  auto fail_with = [&error]( const std::string& line, const std::string& message )
+  {
     if ( error )
     {
       *error = "error in \"" + line + "\": " + message;
@@ -808,7 +813,7 @@ bool create_from_chain( TT& tt, Fn&& next_line, std::vector<TT>& steps, std::str
 
   \verbatim embed:rst
       .. code-block:: cpp
-      
+
          kitty::static_truth_table<3> tt;
          kitty::create_from_chain( tt, {"x4 = x1 & x2",
                                         "x5 = x1 & x3",
@@ -832,10 +837,10 @@ bool create_from_chain( TT& tt, const std::vector<std::string>& steps, std::stri
 {
   std::vector<TT> vec_steps;
   auto it = steps.begin();
-  if ( !create_from_chain( tt, [&it, &steps]() {
-         return ( it != steps.end() ) ? *it++ : std::string();
-       },
-                           vec_steps, error ) )
+  if ( !create_from_chain(
+           tt, [&it, &steps]()
+           { return ( it != steps.end() ) ? *it++ : std::string(); },
+           vec_steps, error ) )
   {
     return false;
   }
@@ -861,10 +866,10 @@ bool create_multiple_from_chain( unsigned num_vars, std::vector<TT>& tts, const 
   auto tt = create<TT>( num_vars );
   tts.clear();
   auto it = steps.begin();
-  if ( !create_from_chain( tt, [&it, &steps]() {
-         return ( it != steps.end() ) ? *it++ : std::string();
-       },
-                           tts, error ) )
+  if ( !create_from_chain(
+           tt, [&it, &steps]()
+           { return ( it != steps.end() ) ? *it++ : std::string(); },
+           tts, error ) )
   {
     return false;
   }
@@ -889,7 +894,9 @@ template<typename TT, typename = std::enable_if_t<is_complete_truth_table<TT>::v
 bool create_from_chain( TT& tt, std::istream& in, std::string* error = nullptr )
 {
   std::vector<TT> vec_steps;
-  if ( !create_from_chain( tt, [&in]() {
+  if ( !create_from_chain(
+           tt, [&in]()
+           {
     std::string line;
     while ( true )
     {
@@ -905,7 +912,8 @@ bool create_from_chain( TT& tt, std::istream& in, std::string* error = nullptr )
       {
         return std::string();
       }
-    } }, vec_steps, error ) )
+    } },
+           vec_steps, error ) )
   {
     return false;
   }
@@ -930,7 +938,9 @@ bool create_multiple_from_chain( unsigned num_vars, std::vector<TT>& tts, std::i
 {
   auto tt = create<TT>( num_vars );
   tts.clear();
-  if ( !create_from_chain( tt, [&in]() {
+  if ( !create_from_chain(
+           tt, [&in]()
+           {
     std::string line;
     while ( true )
     {
@@ -946,7 +956,8 @@ bool create_multiple_from_chain( unsigned num_vars, std::vector<TT>& tts, std::i
       {
         return std::string();
       }
-    } }, tts, error ) )
+    } },
+           tts, error ) )
   {
     return false;
   }
@@ -1006,7 +1017,8 @@ bool create_from_expression( TT& tt, const std::string& expression, std::vector<
   std::stack<stack_symbols> symbols;
   std::stack<TT> truth_tables;
 
-  const auto push_tt = [&]( TT& func ) {
+  const auto push_tt = [&]( TT& func )
+  {
     while ( !symbols.empty() && symbols.top() == NEG )
     {
       func = ~func;
@@ -1244,10 +1256,11 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
 
   /* create input truth tables */
   std::vector<TT> inputs_tts( tt.num_vars() );
-  for ( uint8_t i = 0u; i < tt.num_vars(); ++i )
+  assert( tt.num_vars() < 256 );
+  for ( uint32_t i = 0u; i < tt.num_vars(); ++i )
   {
     auto var = tt.construct();
-    create_nth_var( var, i );
+    create_nth_var( var, static_cast<uint8_t>( i ) );
     inputs_tts[i] = var;
   }
 
@@ -1279,7 +1292,7 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
   for ( auto i = 0u; i < expression.length(); ++i )
   {
     char const c = expression.at( i );
-    switch( c )
+    switch ( c )
     {
     case ' ':
     case '\t':
@@ -1375,11 +1388,11 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
       symbols.push( MARK );
       flag = START;
       break;
-    
+
     case ')':
       if ( symbols.size() != 0 )
       {
-        while( 1 )
+        while ( 1 )
         {
           stack_symbols oper = symbols.top();
           symbols.pop();
@@ -1549,7 +1562,8 @@ bool create_from_formula( TT& tt, const std::string& expression, const std::vect
 template<class TT, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
 void create_prime( TT& tt )
 {
-  if ( tt.num_vars() > 10 ) return;
+  if ( tt.num_vars() > 10 )
+    return;
 
   clear( tt );
   auto p = detail::primes;

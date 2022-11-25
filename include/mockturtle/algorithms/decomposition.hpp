@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -63,13 +63,13 @@ public:
         pis_( children ),
         resyn_( resyn )
   {
-    cache_.insert( {func.construct(), ntk_.get_constant( false )} );
+    cache_.insert( { func.construct(), ntk_.get_constant( false ) } );
 
     for ( auto i = 0u; i < pis_.size(); ++i )
     {
       auto var = func.construct();
       kitty::create_nth_var( var, i );
-      cache_.insert( {func.construct(), pis_[i] });
+      cache_.insert( { func.construct(), pis_[i] } );
     }
   }
 
@@ -118,7 +118,7 @@ private:
       const auto f1 = decompose( var_index + 1, kitty::cofactor1( func, vars_[var_index] ) );
       f = ntk_.create_ite( pis_[vars_[var_index]], f1, f0 );
     }
-    cache_.insert( {func, f} );
+    cache_.insert( { func, f } );
     return f;
   }
 
@@ -143,13 +143,13 @@ public:
         vars_( vars ),
         resyn_( resyn )
   {
-    cache_.insert( {func.construct(), ntk_.get_constant( false )} );
+    cache_.insert( { func.construct(), ntk_.get_constant( false ) } );
 
     for ( auto i = 0u; i < pis_.size(); ++i )
     {
       auto var = func.construct();
       kitty::create_nth_var( var, i );
-      cache_.insert( {func.construct(), pis_[i] });
+      cache_.insert( { func.construct(), pis_[i] } );
     }
   }
 
@@ -206,7 +206,7 @@ private:
         f = ntk_.create_xor( f1, ntk_.create_and( ntk_.create_not( pis_[vars_[var_index]] ), ntk_.create_xor( f0, f1 ) ) );
       }
     }
-    cache_.insert( {func, f} );
+    cache_.insert( { func, f } );
     return f;
   }
 

@@ -2,12 +2,12 @@
 
 #include <set>
 
-#include <mockturtle/traits.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/xmg.hpp>
-#include <mockturtle/networks/klut.hpp>
+#include <mockturtle/traits.hpp>
 #include <mockturtle/views/names_view.hpp>
 
 using namespace mockturtle;
@@ -45,17 +45,17 @@ void test_create_names_view()
   CHECK( !named_ntk.has_name( b ) );
   CHECK( !named_ntk.has_name( c ) );
   CHECK( !named_ntk.has_output_name( 0 ) );
-  
+
   named_ntk.set_name( a, "a" );
   named_ntk.set_name( b, "b" );
   named_ntk.set_name( c, "c" );
   named_ntk.set_output_name( 0, "f" );
-  
+
   CHECK( named_ntk.has_name( a ) );
   CHECK( named_ntk.has_name( b ) );
   CHECK( named_ntk.has_name( c ) );
   CHECK( named_ntk.has_output_name( 0 ) );
-  
+
   CHECK( named_ntk.get_name( a ) == "a" );
   CHECK( named_ntk.get_name( b ) == "b" );
   CHECK( named_ntk.get_name( c ) == "c" );

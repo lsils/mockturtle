@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -77,6 +78,6 @@ auto cached_exact_xag_resynthesis( std::string const& cache_filename, uint32_t i
   return cached_resynthesis<Ntk, decltype( exact_resyn ), exact_blacklist_cache_info>( exact_resyn, input_limit, cache_filename, info );
 }
 
-} /* mockturtle */
+} // namespace mockturtle
 
 #endif

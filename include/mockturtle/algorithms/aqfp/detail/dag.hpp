@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file dag.hpp
   \brief AQFP DAG data structure
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -40,10 +40,10 @@
 namespace mockturtle
 {
 
-/*! \brief Represents a single-output connected Partial DAG or DAG. 
+/*! \brief Represents a single-output connected Partial DAG or DAG.
  *
  * A partial DAG is a network with majority gates where some gates may have unconnected fanin slots.
- * A DAG is a network with majority gates obtained from a partial DAG by specifying which 
+ * A DAG is a network with majority gates obtained from a partial DAG by specifying which
  * unconnected fanin slots connect to the same primary input.
  * Optionally, a DAG may designate which fanin slots are connected the constant 0.
  * Unlike logic networks elsewhere in mockturtle, gates are numbered from 0 starting from the top gate.

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,6 +28,7 @@
   \brief Window rewriting
 
   \author Heinz Riener
+  \author Siang-Yun (Sonia) Lee
 */
 
 #include "../networks/events.hpp"
@@ -35,11 +36,11 @@
 #include "../utils/index_list.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/window_utils.hpp"
+#include "../views/color_view.hpp"
+#include "../views/depth_view.hpp"
+#include "../views/fanout_view.hpp"
 #include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
-#include "../views/fanout_view.hpp"
-#include "../views/depth_view.hpp"
-#include "../views/color_view.hpp"
 
 #include <abcresub/abcresub2.hpp>
 #include <fmt/format.h>
@@ -52,8 +53,8 @@ namespace mockturtle
 
 struct window_rewriting_params
 {
-  uint64_t cut_size{6};
-  uint64_t num_levels{5};
+  uint64_t cut_size{ 6 };
+  uint64_t num_levels{ 5 };
 
   /* Level information guides the windowing construction and as such impacts QoR:
      -- dont_update: fastest, but levels are wrong (QoR degrades)
@@ -76,40 +77,40 @@ struct window_rewriting_params
     recompute,
   } level_update_strategy = dont_update;
 
-  bool filter_cyclic_substitutions{false};
+  bool filter_cyclic_substitutions{ false };
 }; /* window_rewriting_params */
 
 struct window_rewriting_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Time for constructing windows. */
-  stopwatch<>::duration time_window{0};
+  stopwatch<>::duration time_window{ 0 };
 
   /*! \brief Time for optimizing windows. */
-  stopwatch<>::duration time_optimize{0};
+  stopwatch<>::duration time_optimize{ 0 };
 
   /*! \brief Time for substituting. */
-  stopwatch<>::duration time_substitute{0};
+  stopwatch<>::duration time_substitute{ 0 };
 
   /*! \brief Time for updating level information. */
-  stopwatch<>::duration time_levels{0};
+  stopwatch<>::duration time_levels{ 0 };
 
   /*! \brief Time for topological sorting. */
-  stopwatch<>::duration time_topo_sort{0};
+  stopwatch<>::duration time_topo_sort{ 0 };
 
   /*! \brief Time for encoding index_list. */
-  stopwatch<>::duration time_encode{0};
+  stopwatch<>::duration time_encode{ 0 };
 
   /*! \brief Time for detecting cycles. */
-  stopwatch<>::duration time_cycle{0};
+  stopwatch<>::duration time_cycle{ 0 };
 
   /*! \brief Total number of calls to the resub. engine. */
-  uint64_t num_substitutions{0};
-  uint64_t num_restrashes{0};
-  uint64_t num_windows{0};
-  uint64_t gain{0};
+  uint64_t num_substitutions{ 0 };
+  uint64_t num_restrashes{ 0 };
+  uint64_t num_windows{ 0 };
+  uint64_t gain{ 0 };
 
   window_rewriting_stats operator+=( window_rewriting_stats const& other )
   {
@@ -130,7 +131,7 @@ struct window_rewriting_stats
   void report() const
   {
     stopwatch<>::duration time_other =
-      time_total - time_window - time_topo_sort - time_optimize - time_substitute - time_levels;
+        time_total - time_window - time_topo_sort - time_optimize - time_substitute - time_levels;
 
     fmt::print( "===========================================================================\n" );
     fmt::print( "[i] Windowing =  {:7.2f} ({:5.2f}%) (#win = {})\n",
@@ -169,14 +170,14 @@ bool is_contained_in_tfi_recursive( Ntk const& ntk, typename Ntk::node const& no
   }
 
   bool found = false;
-  ntk.foreach_fanin( node, [&]( typename Ntk::signal const& fi ){
+  ntk.foreach_fanin( node, [&]( typename Ntk::signal const& fi ) {
     if ( is_contained_in_tfi_recursive( ntk, ntk.get_node( fi ), n ) )
     {
       found = true;
       return false;
     }
     return true;
-  });
+  } );
 
   return found;
 }
@@ -203,11 +204,10 @@ public:
 
 public:
   explicit window_rewriting_impl( Ntk& ntk, window_rewriting_params const& ps, window_rewriting_stats& st )
-    : ntk( ntk )
-    , ps( ps )
-    , st( st )
-    /* initialize levels to network depth */
-    , levels( ntk.depth() )
+      : ntk( ntk ), ps( ps ), st( st )
+        /* initialize levels to network depth */
+        ,
+        levels( ntk.depth() )
   {
     register_events();
   }
@@ -236,11 +236,11 @@ public:
       {
         ++st.num_windows;
 
-        auto topo_win = call_with_stopwatch( st.time_topo_sort, ( [&](){
-          window_view win( ntk, w->inputs, w->outputs, w->nodes );
-          topo_view topo_win{win};
-          return topo_win;
-        }) );
+        auto topo_win = call_with_stopwatch( st.time_topo_sort, ( [&]() {
+                                               window_view win( ntk, w->inputs, w->outputs, w->nodes );
+                                               topo_view topo_win{ win };
+                                               return topo_win;
+                                             } ) );
 
         abc_index_list il;
         call_with_stopwatch( st.time_encode, [&]() {
@@ -260,11 +260,11 @@ public:
         }
 
         std::vector<signal> outputs;
-        topo_win.foreach_co( [&]( signal const& o ){
+        topo_win.foreach_co( [&]( signal const& o ) {
           outputs.push_back( o );
-        });
+        } );
 
-        uint32_t counter{0};
+        uint32_t counter{ 0 };
         ++st.num_substitutions;
 
         /* ensure that no dead nodes are reachable */
@@ -272,8 +272,7 @@ public:
 
         std::list<std::pair<node, signal>> substitutions;
         insert( ntk, std::begin( signals ), std::end( signals ), *il_opt,
-                [&]( signal const& _new )
-                {
+                [&]( signal const& _new ) {
                   assert( !ntk.is_dead( ntk.get_node( _new ) ) );
                   auto const _old = outputs.at( counter++ );
                   if ( _old == _new )
@@ -284,10 +283,10 @@ public:
                   /* ensure that _old is not in the TFI of _new */
                   // assert( !is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) );
                   if ( ps.filter_cyclic_substitutions &&
-                       call_with_stopwatch( st.time_window, [&](){ return is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ); }) )
+                       call_with_stopwatch( st.time_window, [&]() { return is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ); } ) )
                   {
                     std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
-                    substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );                    
+                    substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
                     for ( auto it = std::rbegin( substitutions ); it != std::rend( substitutions ); ++it )
                     {
                       if ( ntk.fanout_size( ntk.get_node( it->second ) ) == 0u )
@@ -301,7 +300,7 @@ public:
 
                   substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
                   return true;
-                });
+                } );
 
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
@@ -370,7 +369,7 @@ private:
   {
     stopwatch t( st.time_optimize );
 
-    int *raw = ABC_CALLOC( int, il.size() + 1u );
+    int* raw = ABC_CALLOC( int, il.size() + 1u );
     uint64_t i = 0;
     for ( auto const& v : il.raw() )
     {
@@ -379,7 +378,7 @@ private:
     raw[1] = 0; /* fix encoding */
 
     abcresub::Abc_ResubPrepareManager( 1 );
-    int *new_raw = nullptr;
+    int* new_raw = nullptr;
     int num_resubs = 0;
     uint64_t new_entries = abcresub::Abc_ResubComputeWindow( raw, ( il.size() / 2u ), 1000, -1, 0, 0, 0, 0, &new_raw, &num_resubs );
     abcresub::Abc_ResubPrepareManager( 0 );
@@ -399,7 +398,7 @@ private:
     if ( new_entries > 0 )
     {
       std::vector<uint32_t> values;
-      for ( uint32_t i = 0; i < 2*new_entries; ++i )
+      for ( uint32_t i = 0; i < 2 * new_entries; ++i )
       {
         values.push_back( new_raw[i] );
       }
@@ -421,10 +420,9 @@ private:
   {
     stopwatch t( st.time_substitute );
 
-    auto clean_substitutions = [&]( node const& n )
-    {
+    auto clean_substitutions = [&]( node const& n ) {
       substitutions.erase( std::remove_if( std::begin( substitutions ), std::end( substitutions ),
-                                           [&]( auto const& s ){
+                                           [&]( auto const& s ) {
                                              if ( s.first == n )
                                              {
                                                node const nn = ntk.get_node( s.second );
@@ -475,7 +473,7 @@ private:
 
         /* skip nodes that will be deleted */
         if ( std::find_if( std::begin( substitutions ), std::end( substitutions ),
-                           [&index]( auto s ){ return s.first == index; } ) != std::end( substitutions ) )
+                           [&index]( auto s ) { return s.first == index; } ) != std::end( substitutions ) )
         {
           continue;
         }
@@ -543,10 +541,10 @@ private:
     // assert( count_nodes_with_dead_fanins( ntk, n ) == 0u );
 
     /* compute level of current node */
-    uint32_t level_offset{0};
-    ntk.foreach_fanin( n, [&]( signal const& fi ){
+    uint32_t level_offset{ 0 };
+    ntk.foreach_fanin( n, [&]( signal const& fi ) {
       level_offset = std::max( ntk.level( ntk.get_node( fi ) ), level_offset );
-    });
+    } );
     ++level_offset;
 
     /* add node into levels */
@@ -566,14 +564,14 @@ private:
         node const p = levels[level_index][node_index];
 
         /* recompute level of this node */
-        uint32_t lvl{0};
-        ntk.foreach_fanin( p, [&]( signal const& fi ){
+        uint32_t lvl{ 0 };
+        ntk.foreach_fanin( p, [&]( signal const& fi ) {
           if ( ntk.is_dead( ntk.get_node( fi ) ) )
             return;
 
           lvl = std::max( ntk.level( ntk.get_node( fi ) ), lvl );
           return;
-        });
+        } );
         ++lvl;
         assert( lvl > 0 );
 
@@ -582,7 +580,7 @@ private:
         if ( lvl != ntk.level( p ) )
         {
           ntk.set_level( p, lvl );
-          ntk.foreach_fanout( p, [&]( node const& fo ){
+          ntk.foreach_fanout( p, [&]( node const& fo ) {
             assert( std::max( ntk.level( fo ), lvl + 1 ) >= level_offset );
             uint32_t const pos = std::max( ntk.level( fo ), lvl + 1 ) - level_offset;
             assert( pos >= 0u );
@@ -592,7 +590,7 @@ private:
               levels.resize( std::max( uint32_t( levels.size() << 1 ), pos + 1 ) );
             }
             levels[pos].emplace_back( fo );
-          });
+          } );
         }
       }
 
@@ -635,11 +633,11 @@ private:
   {
     stopwatch t( st.time_levels );
 
-    uint32_t max_level{0};
-    ntk.foreach_co( [&]( signal const& s ){
+    uint32_t max_level{ 0 };
+    ntk.foreach_co( [&]( signal const& s ) {
       assert( !ntk.is_dead( ntk.get_node( s ) ) );
       max_level = std::max( ntk.level( ntk.get_node( s ) ), max_level );
-    });
+    } );
 
     if ( ntk.depth() != max_level )
     {
@@ -665,9 +663,9 @@ private:
 template<class Ntk>
 void window_rewriting( Ntk& ntk, window_rewriting_params const& ps = {}, window_rewriting_stats* pst = nullptr )
 {
-  fanout_view fntk{ntk};
-  depth_view dntk{fntk};
-  color_view cntk{dntk};
+  fanout_view fntk{ ntk };
+  depth_view dntk{ fntk };
+  color_view cntk{ dntk };
 
   window_rewriting_stats st;
   detail::window_rewriting_impl p( cntk, ps, st );

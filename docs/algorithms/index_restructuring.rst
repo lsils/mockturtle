@@ -8,6 +8,7 @@ Logic restructuring and optimization
    akers_synthesis
    resyn_engines
    linear_resynthesis
+   aqfp_resynthesis
 
 .. toctree::
    :maxdepth: 1
@@ -26,3 +27,4 @@ Logic restructuring and optimization
    functional_reduction
    refactoring
    balancing
+   cost_generic_resub

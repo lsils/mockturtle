@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file hash_functions.hpp
   \brief hash specializations for collections.
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -62,7 +62,6 @@ struct hash<std::multiset<A>>;
 
 template<typename A, typename B>
 struct hash<std::map<A, B>>;
-
 
 template<typename A, typename B>
 struct hash<std::tuple<A, B>>

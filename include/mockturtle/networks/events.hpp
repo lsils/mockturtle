@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,16 +28,16 @@
   \brief Event API for updating a logic network.
 
   \author Heinz Riener
+  \author Marcel Walter
   \author Mathias Soeken
 */
 
 #pragma once
 
-#include <functional>
-#include <vector>
-
 #include "../traits.hpp"
 
+#include <functional>
+#include <vector>
 #include <iostream>
 #include <memory>
 
@@ -88,8 +88,7 @@ public:
 
     /* erase the event if the only instance remains in the vector */
     on_add.erase( std::remove_if( std::begin( on_add ), std::end( on_add ),
-                                  [&]( auto&& event ){
-                                    return event.get() == fn_ptr && event.use_count() <= 1u; } ),
+                                  [&]( auto&& event ) { return event.get() == fn_ptr && event.use_count() <= 1u; } ),
                   std::end( on_add ) );
   }
 
@@ -101,8 +100,7 @@ public:
 
     /* erase the event if the only instance remains in the vector */
     on_modified.erase( std::remove_if( std::begin( on_modified ), std::end( on_modified ),
-                                  [&]( auto&& event ){
-                                    return event.get() == fn_ptr && event.use_count() <= 1u; } ),
+                                       [&]( auto&& event ) { return event.get() == fn_ptr && event.use_count() <= 1u; } ),
                        std::end( on_modified ) );
   }
 
@@ -114,9 +112,8 @@ public:
 
     /* erase the event if the only instance remains in the vector */
     on_delete.erase( std::remove_if( std::begin( on_delete ), std::end( on_delete ),
-                                  [&]( auto&& event ){
-                                    return event.get() == fn_ptr && event.use_count() <= 1u; } ),
-                       std::end( on_delete ) );
+                                     [&]( auto&& event ) { return event.get() == fn_ptr && event.use_count() <= 1u; } ),
+                     std::end( on_delete ) );
   }
 
 public:

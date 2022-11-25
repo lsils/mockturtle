@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,16 +28,17 @@
   \brief Implements methods to bind the network to a standard cell library
 
   \author Alessandro Tempia Calvino
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
 
 #include "../io/genlib_reader.hpp"
-#include "../views/topo_view.hpp"
 #include "../utils/node_map.hpp"
+#include "../views/topo_view.hpp"
 
-#include <map>
 #include <iostream>
+#include <map>
 
 namespace mockturtle
 {
@@ -82,7 +83,7 @@ namespace mockturtle
       res.report_gates_usage();
 
       // write the mapped network in verilog
-      write_verilog( res, "file.v" );
+      write_verilog_with_binding( res, "file.v" );
    \endverbatim
  */
 template<class Ntk>
@@ -93,9 +94,7 @@ public:
 
 public:
   explicit binding_view( std::vector<gate> const& library )
-      : Ntk()
-      , _library{ library }
-      , _bindings( *this )
+      : Ntk(), _library{ library }, _bindings( *this )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -105,9 +104,7 @@ public:
   }
 
   explicit binding_view( Ntk const& ntk, std::vector<gate> const& library )
-      : Ntk( ntk )
-      , _library{ library }
-      , _bindings( *this )
+      : Ntk( ntk ), _library{ library }, _bindings( *this )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -149,17 +146,17 @@ public:
     _bindings.erase( n );
   }
 
-  const gate& get_binding( node const& n) const
+  const gate& get_binding( node const& n ) const
   {
     return _library[_bindings[n]];
   }
 
-  bool has_binding( node const& n) const
+  bool has_binding( node const& n ) const
   {
     return _bindings.has( n );
   }
 
-  unsigned int get_binding_index( node const& n) const
+  unsigned int get_binding_index( node const& n ) const
   {
     return _bindings[n];
   }
@@ -184,7 +181,7 @@ public:
 
   double compute_worst_delay() const
   {
-    topo_view ntk_topo{*this};
+    topo_view ntk_topo{ *this };
     node_map<double, Ntk> delays( *this );
     double worst_delay = 0;
 
@@ -200,7 +197,7 @@ public:
         auto const& g = get_binding( n );
         double gate_delay = 0;
         Ntk::foreach_fanin( n, [&]( auto const& f, auto i ) {
-          gate_delay = std::max( gate_delay, (double) ( delays[f] + std::max( g.pins[i].rise_block_delay, g.pins[i].fall_block_delay ) ) );
+          gate_delay = std::max( gate_delay, (double)( delays[f] + std::max( g.pins[i].rise_block_delay, g.pins[i].fall_block_delay ) ) );
         } );
         delays[n] = gate_delay;
         worst_delay = std::max( worst_delay, gate_delay );

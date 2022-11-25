@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -179,7 +179,7 @@ public:
     color_view<fanout_view<NtkSource>> color_ntk{fanout_ntk};
 
     /* nodes */
-    topo_view topo{ntk};
+    topo_view topo{ ntk };
     topo.foreach_node( [&]( auto n ) {
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) || !ntk.is_cell_root( n ) )
         return;
@@ -256,7 +256,7 @@ public:
           dest.set_output_name( index, ntk.get_output_name( index ) );
         }
       }
-      });
+    } );
   }
 
 private:

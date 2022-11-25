@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -25,7 +25,7 @@
 
 /*!
   \file xmgcost.hpp
-  \brief Cost functions for xmg-based networks 
+  \brief Cost functions for xmg-based networks
 
   \author Heinz Riener
   \author Shubham Rai
@@ -43,22 +43,22 @@ namespace mockturtle
 struct xmg_gate_stats
 {
   /*! \brief Total number of XOR3 gates (structurally). */
-  uint32_t total_xor3{0};
+  uint32_t total_xor3{ 0 };
 
   /*! \brief Number of XOR3 (functionally). */
-  uint32_t xor3{0};
+  uint32_t xor3{ 0 };
 
   /*! \brief Number of XOR2 (functionally). */
-  uint32_t xor2{0};
+  uint32_t xor2{ 0 };
 
   /*! \brief Total number of MAJ gates (structurally). */
-  uint32_t total_maj{0};
+  uint32_t total_maj{ 0 };
 
   /*! \brief Number of MAJ gates. */
-  uint32_t maj{0};
+  uint32_t maj{ 0 };
 
   /*! \brief Number of AND/OR gates. */
-  uint32_t and_or{0};
+  uint32_t and_or{ 0 };
 
   void report() const
   {

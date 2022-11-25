@@ -99,3 +99,17 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  compile-gcc9:
+    runs-on: ubuntu-latest
+    name: Compile everything (GCC 9)
+    
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_CXX_COMPILER=g++-9 -DMOCKTURTLE_EXAMPLES=ON -DMOCKTURTLE_EXPERIMENTS=ON -DMOCKTURTLE_TEST=ON ..
+        make

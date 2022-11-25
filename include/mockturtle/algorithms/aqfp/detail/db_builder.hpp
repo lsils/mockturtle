@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,13 +27,13 @@
   \file db_builder.hpp
   \brief Builder class for AQFP DAG database
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <unordered_map>
 #include <vector>
@@ -48,6 +48,7 @@
 namespace mockturtle
 {
 
+/*! \brief A class to help the generation of AQFP database in an incremental manner. */
 template<typename Ntk = aqfp_dag<>>
 class aqfp_db_builder
 {
@@ -229,10 +230,8 @@ public:
   /*! \brief Load database from input stream `is`. */
   void load_db( std::istream& is )
   {
-    aqfp_db<Ntk>::load_db(is, db);
+    aqfp_db<Ntk>::load_db( is, db );
   }
-
-
 
 private:
   std::unordered_map<uint32_t, double> gate_costs;

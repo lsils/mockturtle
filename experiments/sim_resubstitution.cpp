@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2020  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -54,7 +54,7 @@ int main()
     resubstitution_params ps;
     resubstitution_stats st;
 
-    //ps.pattern_filename = "1024sa1/" + benchmark + ".pat";
+    // ps.pattern_filename = "1024sa1/" + benchmark + ".pat";
     ps.max_inserts = 1;
 
     const uint32_t size_before = aig.num_gates();

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -37,8 +37,8 @@
 
 #include <fmt/format.h>
 
-#include <vector>
 #include <array>
+#include <vector>
 
 namespace mockturtle
 {
@@ -73,7 +73,7 @@ public:
   }
 
   explicit abc_index_list( std::vector<element_type> const& values, uint32_t num_pis )
-    : values( std::begin( values ), std::end( values ) )
+      : values( std::begin( values ), std::end( values ) )
   {
     /* The number of primary inputs has to be passed as a parameter
        because constant outputs cannot be distinguished from primary
@@ -87,9 +87,9 @@ public:
     _num_pis = num_pis;
 
     /* parse the values to determine the number of outputs */
-    for ( auto i = ( num_pis + 1 ) << 1; ( i+1 ) < values.size(); i += 2 )
+    for ( auto i = ( num_pis + 1 ) << 1; ( i + 1 ) < values.size(); i += 2 )
     {
-      if ( values.at( i ) == values.at( i+1 ) )
+      if ( values.at( i ) == values.at( i + 1 ) )
       {
         ++_num_pos;
       }
@@ -127,14 +127,14 @@ public:
     assert( ( values.size() % 2 ) == 0 );
     for ( uint64_t i = ( 1 + _num_pis ) << 1u; i < values.size() - ( _num_pos << 1 ); i += 2 )
     {
-      fn( values.at( i ), values.at( i+1 ) );
+      fn( values.at( i ), values.at( i + 1 ) );
     }
   }
 
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
-    for ( uint64_t i = values.size() - 2*_num_pos; i < values.size(); i+=2 )
+    for ( uint64_t i = values.size() - 2 * _num_pos; i < values.size(); i += 2 )
     {
       fn( values.at( i ) );
     }
@@ -177,8 +177,8 @@ public:
   }
 
 private:
-  uint32_t _num_pis{0};
-  uint32_t _num_pos{0};
+  uint32_t _num_pis{ 0 };
+  uint32_t _num_pos{ 0 };
   std::vector<uint32_t> values;
 };
 
@@ -214,7 +214,7 @@ void encode( abc_index_list& indices, Ntk const& ntk )
   static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
   static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
 
-  using node   = typename Ntk::node;
+  using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
   ntk.foreach_pi( [&]( node const& n, uint64_t index ) {
@@ -223,13 +223,13 @@ void encode( abc_index_list& indices, Ntk const& ntk )
       fmt::print( "[e] network is not in normalized index order (violated by PI {})\n", index + 1 );
       std::abort();
     }
-  });
+  } );
 
   /* inputs */
   indices.add_inputs( ntk.num_pis() );
 
   /* gates */
-  ntk.foreach_gate( [&]( node const& n, uint64_t index ){
+  ntk.foreach_gate( [&]( node const& n, uint64_t index ) {
     assert( ntk.is_and( n ) || ntk.is_xor( n ) );
     if ( ntk.node_to_index( n ) != ntk.num_pis() + index + 1 )
     {
@@ -238,14 +238,14 @@ void encode( abc_index_list& indices, Ntk const& ntk )
     }
 
     std::array<uint32_t, 2u> lits;
-    ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ){
+    ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ) {
       if ( ntk.node_to_index( ntk.get_node( fi ) ) > ntk.node_to_index( n ) )
       {
         fmt::print( "[e] node {} not in topological order\n", ntk.node_to_index( n ) );
         std::abort();
       }
-      lits[index] = 2*ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
-    });
+      lits[index] = 2 * ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
+    } );
 
     if ( ntk.is_and( n ) )
     {
@@ -263,12 +263,12 @@ void encode( abc_index_list& indices, Ntk const& ntk )
       }
       indices.add_xor( lits[0u], lits[1u] );
     }
-  });
+  } );
 
   /* outputs */
-  ntk.foreach_po( [&]( signal const& f ){
-    indices.add_output( 2*ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
-  });
+  ntk.foreach_po( [&]( signal const& f ) {
+    indices.add_output( 2 * ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
+  } );
 
   assert( indices.size() == ( 1u + ntk.num_pis() + ntk.num_gates() + ntk.num_pos() ) << 1u );
 }
@@ -309,7 +309,6 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
   }
 
   assert( uint64_t( std::distance( begin, end ) ) == indices.num_pis() );
-  
 
   std::vector<signal> signals;
   signals.emplace_back( ntk.get_constant( false ) );
@@ -325,7 +324,7 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
     }
   }
 
-  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ) {
     assert( lit0 != lit1 );
 
     uint32_t const i0 = lit0 >> 1;
@@ -334,12 +333,12 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, abc_index_list const& indic
     signal const s1 = ( lit1 % 2 ) ? !signals.at( i1 ) : signals.at( i1 );
 
     signals.push_back( lit0 < lit1 ? ntk.create_and( s0, s1 ) : ntk.create_xor( s0, s1 ) );
-  });
+  } );
 
-  indices.foreach_po( [&]( uint32_t lit ){
+  indices.foreach_po( [&]( uint32_t lit ) {
     uint32_t const i = lit >> 1;
     fn( ( lit % 2 ) ? !signals.at( i ) : signals.at( i ) );
-  });
+  } );
 }
 
 /*! \brief Converts an abc_index_list to a string
@@ -351,7 +350,7 @@ inline std::string to_index_list_string( abc_index_list const& indices )
 {
   auto const raw = indices.raw();
 
-  std::string s{"{"};
+  std::string s{ "{" };
   auto it = std::begin( raw );
   while ( it != std::end( raw ) )
   {
@@ -382,12 +381,12 @@ public:
 
 public:
   explicit mig_index_list( uint32_t num_pis = 0 )
-    : values( {num_pis} )
+      : values( { num_pis } )
   {
   }
 
   explicit mig_index_list( std::vector<element_type> const& values )
-    : values( std::begin( values ), std::end( values ) )
+      : values( std::begin( values ), std::end( values ) )
   {}
 
   std::vector<element_type> raw() const
@@ -421,7 +420,7 @@ public:
     assert( ( values.size() - 1u - num_pos() ) % 3 == 0 );
     for ( uint64_t i = 1u; i < values.size() - num_pos(); i += 3 )
     {
-      fn( values.at( i ), values.at( i+1 ), values.at( i+2 ) );
+      fn( values.at( i ), values.at( i + 1 ), values.at( i + 2 ) );
     }
   }
 
@@ -499,7 +498,7 @@ void encode( mig_index_list& indices, Ntk const& ntk )
   static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
   static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
 
-  using node   = typename Ntk::node;
+  using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
   ntk.foreach_pi( [&]( node const& n, uint64_t index ) {
@@ -508,13 +507,13 @@ void encode( mig_index_list& indices, Ntk const& ntk )
       fmt::print( "[e] network is not in normalized index order (violated by PI {})\n", index + 1 );
       std::abort();
     }
-  });
+  } );
 
   /* inputs */
   indices.add_inputs( ntk.num_pis() );
 
   /* gates */
-  ntk.foreach_gate( [&]( node const& n, uint64_t index ){
+  ntk.foreach_gate( [&]( node const& n, uint64_t index ) {
     assert( ntk.is_maj( n ) );
     if ( ntk.node_to_index( n ) != ntk.num_pis() + index + 1 )
     {
@@ -523,23 +522,23 @@ void encode( mig_index_list& indices, Ntk const& ntk )
     }
 
     std::array<uint32_t, 3u> lits;
-    ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ){
+    ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ) {
       if ( ntk.node_to_index( ntk.get_node( fi ) ) > ntk.node_to_index( n ) )
       {
         fmt::print( "[e] node {} not in topological order\n", ntk.node_to_index( n ) );
         std::abort();
       }
-      lits[index] = 2*ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
-    });
+      lits[index] = 2 * ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
+    } );
     indices.add_maj( lits[0u], lits[1u], lits[2u] );
-  });
+  } );
 
   /* outputs */
-  ntk.foreach_po( [&]( signal const& f ){
-    indices.add_output( 2*ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
-  });
+  ntk.foreach_po( [&]( signal const& f ) {
+    indices.add_output( 2 * ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
+  } );
 
-  assert( indices.size() == 1u + 3u*ntk.num_gates() + ntk.num_pos() );
+  assert( indices.size() == 1u + 3u * ntk.num_gates() + ntk.num_pos() );
 }
 
 /*! \brief Inserts a mig_index_list into an existing network
@@ -591,17 +590,17 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, mig_index_list const& indic
     }
   }
 
-  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ) {
     signal const s0 = ( lit0 % 2 ) ? !signals.at( lit0 >> 1 ) : signals.at( lit0 >> 1 );
     signal const s1 = ( lit1 % 2 ) ? !signals.at( lit1 >> 1 ) : signals.at( lit1 >> 1 );
     signal const s2 = ( lit2 % 2 ) ? !signals.at( lit2 >> 1 ) : signals.at( lit2 >> 1 );
     signals.push_back( ntk.create_maj( s0, s1, s2 ) );
-  });
+  } );
 
-  indices.foreach_po( [&]( uint32_t lit ){
+  indices.foreach_po( [&]( uint32_t lit ) {
     uint32_t const i = lit >> 1;
     fn( ( lit % 2 ) ? !signals.at( i ) : signals.at( i ) );
-  });
+  } );
 }
 
 /*! \brief Converts an mig_index_list to a string
@@ -613,13 +612,13 @@ inline std::string to_index_list_string( mig_index_list const& indices )
 {
   auto s = fmt::format( "{{{} | {} << 8 | {} << 16", indices.num_pis(), indices.num_pos(), indices.num_gates() );
 
-  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1, uint32_t lit2 ) {
     s += fmt::format( ", {}, {}, {}", lit0, lit1, lit2 );
-  });
+  } );
 
   indices.foreach_po( [&]( uint32_t lit ) {
     s += fmt::format( ", {}", lit );
-  });
+  } );
 
   s += "}";
 
@@ -646,7 +645,7 @@ inline std::string to_index_list_string( mig_index_list const& indices )
  * AND x2) XOR (x3 AND x4)` with 4 inputs, 1 output, and 3 gates:
  * `{4 | 1 << 8 | 3 << 16, 2, 4, 6, 8, 12, 10, 14}`
  *
- * Note: if `separate_header = true`, the header will be split into 3 
+ * Note: if `separate_header = true`, the header will be split into 3
  * elements to support networks with larger number of PIs.
  */
 template<bool separate_header = false>
@@ -657,7 +656,7 @@ public:
 
 public:
   explicit xag_index_list( uint32_t num_pis = 0 )
-    : values( {num_pis} )
+      : values( { num_pis } )
   {
     if constexpr ( separate_header )
     {
@@ -667,7 +666,7 @@ public:
   }
 
   explicit xag_index_list( std::vector<element_type> const& values )
-    : values( std::begin( values ), std::end( values ) )
+      : values( std::begin( values ), std::end( values ) )
   {}
 
   std::vector<element_type> raw() const
@@ -715,7 +714,7 @@ public:
       assert( ( values.size() - 3u - num_pos() ) % 2 == 0 );
       for ( uint64_t i = 3u; i < values.size() - num_pos(); i += 2 )
       {
-        fn( values.at( i ), values.at( i+1 ) );
+        fn( values.at( i ), values.at( i + 1 ) );
       }
     }
     else
@@ -723,7 +722,7 @@ public:
       assert( ( values.size() - 1u - num_pos() ) % 2 == 0 );
       for ( uint64_t i = 1u; i < values.size() - num_pos(); i += 2 )
       {
-        fn( values.at( i ), values.at( i+1 ) );
+        fn( values.at( i ), values.at( i + 1 ) );
       }
     }
   }
@@ -768,7 +767,7 @@ public:
       assert( num_gates() + 1u <= 0xffff );
       values.at( 0u ) = ( ( num_gates() + 1 ) << 16 ) | ( values.at( 0 ) & 0xffff );
     }
-    
+
     values.push_back( lit0 < lit1 ? lit0 : lit1 );
     values.push_back( lit0 < lit1 ? lit1 : lit0 );
     return ( num_gates() + num_pis() ) << 1;
@@ -802,7 +801,7 @@ public:
       assert( num_pos() + 1 <= 0xff );
       values.at( 0u ) = ( num_pos() + 1 ) << 8 | ( values.at( 0u ) & 0xffff00ff );
     }
-    
+
     values.push_back( lit );
   }
 
@@ -846,7 +845,7 @@ void encode( xag_index_list<separate_header>& indices, Ntk const& ntk )
   static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
   static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
 
-  using node   = typename Ntk::node;
+  using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
   ntk.foreach_pi( [&]( node const& n, uint64_t index ) {
@@ -855,13 +854,13 @@ void encode( xag_index_list<separate_header>& indices, Ntk const& ntk )
       fmt::print( "[e] network is not in normalized index order (violated by PI {})\n", index + 1 );
       std::abort();
     }
-  });
+  } );
 
   /* inputs */
   indices.add_inputs( ntk.num_pis() );
 
   /* gates */
-  ntk.foreach_gate( [&]( node const& n, uint64_t index ){
+  ntk.foreach_gate( [&]( node const& n, uint64_t index ) {
     assert( ntk.is_and( n ) || ntk.is_xor( n ) );
     if ( ntk.node_to_index( n ) != ntk.num_pis() + index + 1 )
     {
@@ -870,14 +869,14 @@ void encode( xag_index_list<separate_header>& indices, Ntk const& ntk )
     }
 
     std::array<uint32_t, 2u> lits;
-    ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ){
+    ntk.foreach_fanin( n, [&]( signal const& fi, uint64_t index ) {
       if ( ntk.node_to_index( ntk.get_node( fi ) ) > ntk.node_to_index( n ) )
       {
         fmt::print( "[e] node {} not in topological order\n", ntk.node_to_index( n ) );
         std::abort();
       }
-      lits[index] = 2*ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
-    });
+      lits[index] = 2 * ntk.node_to_index( ntk.get_node( fi ) ) + ntk.is_complemented( fi );
+    } );
 
     if ( ntk.is_and( n ) )
     {
@@ -887,20 +886,20 @@ void encode( xag_index_list<separate_header>& indices, Ntk const& ntk )
     {
       indices.add_xor( lits[0u], lits[1u] );
     }
-  });
+  } );
 
   /* outputs */
-  ntk.foreach_po( [&]( signal const& f ){
-    indices.add_output( 2*ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
-  });
+  ntk.foreach_po( [&]( signal const& f ) {
+    indices.add_output( 2 * ntk.node_to_index( ntk.get_node( f ) ) + ntk.is_complemented( f ) );
+  } );
 
   if constexpr ( separate_header )
   {
-    assert( indices.size() == 3u + 2u*ntk.num_gates() + ntk.num_pos() );
+    assert( indices.size() == 3u + 2u * ntk.num_gates() + ntk.num_pos() );
   }
   else
   {
-    assert( indices.size() == 1u + 2u*ntk.num_gates() + ntk.num_pos() );
+    assert( indices.size() == 1u + 2u * ntk.num_gates() + ntk.num_pos() );
   }
 }
 
@@ -955,19 +954,19 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list<separate_hea
     }
   }
 
-  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ) {
     assert( lit0 != lit1 );
     uint32_t const i0 = lit0 >> 1;
     uint32_t const i1 = lit1 >> 1;
     signal const s0 = ( lit0 % 2 ) ? ntk.create_not( signals.at( i0 ) ) : signals.at( i0 );
     signal const s1 = ( lit1 % 2 ) ? ntk.create_not( signals.at( i1 ) ) : signals.at( i1 );
     signals.push_back( lit0 > lit1 ? ntk.create_xor( s0, s1 ) : ntk.create_and( s0, s1 ) );
-  });
+  } );
 
-  indices.foreach_po( [&]( uint32_t lit ){
+  indices.foreach_po( [&]( uint32_t lit ) {
     uint32_t const i = lit >> 1;
     fn( ( lit % 2 ) ? ntk.create_not( signals.at( i ) ) : signals.at( i ) );
-  });
+  } );
 }
 
 /*! \brief Converts an xag_index_list to a string
@@ -979,13 +978,13 @@ inline std::string to_index_list_string( xag_index_list<false> const& indices )
 {
   auto s = fmt::format( "{{{} | {} << 8 | {} << 16", indices.num_pis(), indices.num_pos(), indices.num_gates() );
 
-  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ) {
     s += fmt::format( ", {}, {}", lit0, lit1 );
-  });
+  } );
 
   indices.foreach_po( [&]( uint32_t lit ) {
     s += fmt::format( ", {}", lit );
-  });
+  } );
 
   s += "}";
 
@@ -996,13 +995,13 @@ inline std::string to_index_list_string( xag_index_list<true> const& indices )
 {
   auto s = fmt::format( "{{{}, {}, {}", indices.num_pis(), indices.num_pos(), indices.num_gates() );
 
-  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ){
+  indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ) {
     s += fmt::format( ", {}, {}", lit0, lit1 );
-  });
+  } );
 
   indices.foreach_po( [&]( uint32_t lit ) {
     s += fmt::format( ", {}", lit );
-  });
+  } );
 
   s += "}";
 
@@ -1029,10 +1028,10 @@ void decode( Ntk& ntk, IndexList const& indices )
 
   std::vector<signal> signals( indices.num_pis() );
   std::generate( std::begin( signals ), std::end( signals ),
-                 [&]() { return ntk.create_pi(); });
+                 [&]() { return ntk.create_pi(); } );
 
   insert( ntk, std::begin( signals ), std::end( signals ), indices,
-          [&]( signal const& s ){ ntk.create_po( s ); });
+          [&]( signal const& s ) { ntk.create_po( s ); } );
 }
 
 /*! \brief Enumerate structured index_lists
@@ -1070,10 +1069,7 @@ class aig_index_list_enumerator
 {
 public:
   explicit aig_index_list_enumerator( std::vector<int32_t> const& values, uint32_t num_pis, uint32_t num_gates, uint32_t num_pos )
-    : values_( values )
-    , num_pis( num_pis )
-    , num_gates( num_gates )
-    , num_pos( num_pos )
+      : values_( values ), num_pis( num_pis ), num_gates( num_gates ), num_pos( num_pos )
   {}
 
   template<typename Fn>
@@ -1087,7 +1083,7 @@ protected:
   void recurse( std::vector<int32_t> values, uint32_t pos, Fn&& fn )
   {
     /* process gate */
-    if ( pos < 2*num_gates )
+    if ( pos < 2 * num_gates )
     {
       auto& a = values.at( pos );
       auto& b = values.at( pos + 1 );
@@ -1183,21 +1179,31 @@ protected:
 };
 
 template<class T>
-struct is_index_list : std::false_type {};
+struct is_index_list : std::false_type
+{
+};
 
 template<>
-struct is_index_list<abc_index_list> : std::true_type {};
+struct is_index_list<abc_index_list> : std::true_type
+{
+};
 
 template<>
-struct is_index_list<xag_index_list<true>> : std::true_type {};
+struct is_index_list<xag_index_list<true>> : std::true_type
+{
+};
 
 template<>
-struct is_index_list<xag_index_list<false>> : std::true_type {};
+struct is_index_list<xag_index_list<false>> : std::true_type
+{
+};
 
 template<>
-struct is_index_list<mig_index_list> : std::true_type {};
+struct is_index_list<mig_index_list> : std::true_type
+{
+};
 
 template<class T>
 inline constexpr bool is_index_list_v = is_index_list<T>::value;
 
-} /* mockturtle */
+} // namespace mockturtle

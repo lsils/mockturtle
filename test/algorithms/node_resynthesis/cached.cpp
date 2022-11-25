@@ -26,7 +26,7 @@ TEST_CASE( "Exact XAG for MAJ cached", "[cached]" )
   const auto b = xag.create_pi();
   const auto c = xag.create_pi();
 
-  std::vector<xag_network::signal> pis = {a, b, c};
+  std::vector<xag_network::signal> pis = { a, b, c };
 
   {
     exact_aig_resynthesis<xag_network> exact_resyn;

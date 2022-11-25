@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,7 +28,9 @@
   \brief Implements methods to declare names for network signals
 
   \author Heinz Riener
+  \author Marcel Walter
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -78,9 +80,13 @@ public:
     return *this;
   }
 
+  /*! \brief Creates a primary input and set its name.
+   *
+   * \param name Name of the created primary input
+   */
   signal create_pi( std::string const& name = {} )
   {
-    const auto s = Ntk::create_pi( name );
+    const auto s = Ntk::create_pi();
     if ( !name.empty() )
     {
       set_name( s, name );
@@ -88,52 +94,107 @@ public:
     return s;
   }
 
+  /*! \brief Creates a primary output and set its name.
+   *
+   * \param s Signal that drives the created primary output
+   * \param name Name of the created primary output
+   */
   void create_po( signal const& s, std::string const& name = {} )
   {
     const auto index = Ntk::num_pos();
-    Ntk::create_po( s, name );
+    Ntk::create_po( s );
     if ( !name.empty() )
     {
       set_output_name( index, name );
     }
   }
 
+  /*! \brief Sets network name.
+   *
+   * \param name Name of the network
+   */
   template<typename StrType = const char*>
   void set_network_name( StrType name ) noexcept
   {
     _network_name = name;
   }
 
+  /*! \brief Gets network name.
+   *
+   * \return Network name
+   */
   std::string get_network_name() const noexcept
   {
     return _network_name;
   }
 
+  /*! \brief Checks if a signal has a name.
+   *
+   * Note that complemented signals may have different names.
+   *
+   * \param s Signal to be checked
+   * \return Whether the signal has a name in record
+   */
   bool has_name( signal const& s ) const
   {
     return ( _signal_names.find( s ) != _signal_names.end() );
   }
 
+  /*! \brief Sets the name for a signal.
+   *
+   * Note that names are set separately for complemented signals.
+   *
+   * \param s Signal to be set a name
+   * \param name Name of the signal
+   */
   void set_name( signal const& s, std::string const& name )
   {
     _signal_names[s] = name;
   }
 
+  /*! \brief Gets signal name.
+   *
+   * Note that complemented signals may have different names.
+   *
+   * \param s Signal to be queried
+   * \return Name of the signal
+   */
   std::string get_name( signal const& s ) const
   {
     return _signal_names.at( s );
   }
 
+  /*! \brief Checks if a primary output has a name.
+   *
+   * \param index Index of the primary output to be checked
+   * \return Whether the primary output has a name in record
+   */
   bool has_output_name( uint32_t index ) const
   {
     return ( _output_names.find( index ) != _output_names.end() );
   }
 
+  /*! \brief Sets the name for a primary output.
+   *
+   * Note that even if two primary outputs are driven by
+   * the same signal, they may have different names.
+   *
+   * \param index Index of the primary output to set a name
+   * \param name Name of the primary output
+   */
   void set_output_name( uint32_t index, std::string const& name )
   {
     _output_names[index] = name;
   }
 
+  /*! \brief Gets the name of a primary output.
+   *
+   * Note that even if two primary outputs are driven by
+   * the same signal, they may have different names.
+   *
+   * \param index Index of the primary output to be queried
+   * \return Name of the primary output
+   */
   std::string get_output_name( uint32_t index ) const
   {
     return _output_names.at( index );

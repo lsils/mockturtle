@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file dag_gen.hpp
   \brief AQFP DAG generation
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -324,8 +324,8 @@ private:
     return result;
   }
 
-  /*! \brief Compute the partial DAGs obtained by combining the slots of `orig` as indicated by 
-   *  partitioning 'p'. 
+  /*! \brief Compute the partial DAGs obtained by combining the slots of `orig` as indicated by
+   *  partitioning 'p'.
    */
   std::vector<PartialNtk> get_next_partial_dags( const PartialNtk& orig, const partition& p, const std::vector<int>& other_leaves )
   {

@@ -24,7 +24,7 @@ TEST_CASE( "Mapped AIG into k-LUT network", "[collapse_mapped]" )
   const auto f4 = aig.create_nand( f2, f3 );
   aig.create_po( f4 );
 
-  mapping_view<aig_network, true> mapped_aig{aig};
+  mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
   const auto klut_opt = collapse_mapped_network<klut_network>( mapped_aig );
@@ -53,7 +53,7 @@ TEST_CASE( "Mapped AIG with positive output driver", "[collapse_mapped]" )
   const auto f1 = aig.create_and( a, b );
   aig.create_po( f1 );
 
-  mapping_view<aig_network, true> mapped_aig{aig};
+  mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
   const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
@@ -72,7 +72,7 @@ TEST_CASE( "Mapped AIG with negative output driver", "[collapse_mapped]" )
   const auto f1 = aig.create_nand( a, b );
   aig.create_po( f1 );
 
-  mapping_view<aig_network, true> mapped_aig{aig};
+  mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
   const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
@@ -93,7 +93,7 @@ TEST_CASE( "Mapped AIG with mixed output driver", "[collapse_mapped]" )
   aig.create_po( f1 );
   aig.create_po( f2 );
 
-  mapping_view<aig_network, true> mapped_aig{aig};
+  mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
   const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
@@ -115,7 +115,7 @@ TEST_CASE( "Mapped AIG with mixed output driver (opposite)", "[collapse_mapped]"
   aig.create_po( f1 );
   aig.create_po( f2 );
 
-  mapping_view<aig_network, true> mapped_aig{aig};
+  mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
   const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
@@ -138,7 +138,7 @@ TEST_CASE( "Mapped AIG with internal output", "[collapse_mapped]" )
   aig.create_po( f1 );
   aig.create_po( f2 );
 
-  mapping_view<aig_network, true> mapped_aig{aig};
+  mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
   const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
@@ -162,7 +162,7 @@ TEST_CASE( "Mapped AIG with PI outputs", "[collapse_mapped]" )
   aig.create_po( c );
   aig.create_po( !c );
 
-  mapping_view<aig_network, true> mapped_aig{aig};
+  mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
   const auto klut = collapse_mapped_network<klut_network>( mapped_aig );
@@ -178,7 +178,7 @@ TEST_CASE( "Mapped AIG with constant-0 output", "[collapse_mapped]" )
 
   aig.create_po( aig.get_constant( false ) );
 
-  mapping_view<aig_network, true> mapped_aig{aig};
+  mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
   const auto klut = collapse_mapped_network<klut_network>( mapped_aig );
@@ -197,7 +197,7 @@ TEST_CASE( "Mapped AIG with constant-1 output", "[collapse_mapped]" )
 
   aig.create_po( aig.get_constant( true ) );
 
-  mapping_view<aig_network, true> mapped_aig{aig};
+  mapping_view<aig_network, true> mapped_aig{ aig };
   lut_mapping<mapping_view<aig_network, true>, true>( mapped_aig );
 
   const auto klut = collapse_mapped_network<klut_network>( mapped_aig );

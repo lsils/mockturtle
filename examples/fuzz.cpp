@@ -4,17 +4,16 @@
 // common
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/utils/debugging_utils.hpp>
 #include <mockturtle/views/color_view.hpp>
 
 // algorithm under test
-#include <mockturtle/algorithms/cut_rewriting.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/resubstitution.hpp>
 
 // fuzzer
-#include <mockturtle/utils/debugging_utils.hpp>
 #include <mockturtle/algorithms/network_fuzz_tester.hpp>
-#include <mockturtle/generators/random_logic_generator.hpp>
-#include <lorina/lorina.hpp>
+#include <mockturtle/generators/random_network.hpp>
 
 // cec
 #include <mockturtle/algorithms/equivalence_checking.hpp>
@@ -24,31 +23,37 @@ using namespace mockturtle;
 
 int main()
 {
-  xag_npn_resynthesis<aig_network> resyn;
   auto opt = [&]( aig_network aig ) -> bool {
-    aig_network const aig_copy = cleanup_dangling( aig );
+    aig_network const aig_copy = aig.clone();
 
-    cut_rewriting_params ps;
-    ps.cut_enumeration_ps.cut_size = 4;
-    aig = cut_rewriting( aig, resyn, ps );
+    resubstitution_params ps;
+    ps.max_pis = 8u;
+    ps.max_inserts = 5u;
+    aig_resubstitution( aig, ps );
+    aig = cleanup_dangling( aig );
 
-    color_view caig{aig};
-    if ( !network_is_acyclic( caig ) )
-      return false;
-
-    return *equivalence_checking( *miter<aig_network>( aig_copy, aig ) );
+    bool const cec = *equivalence_checking( *miter<aig_network>( aig_copy, aig ) );
+    if ( !cec )
+      std::cout << "Optimized network is not equivalent to the original one!\n";
+    return cec;
   };
 
-  fuzz_tester_params ps;
-  ps.num_iterations_step = 1000;
-  ps.num_pis_max = 100;
-  ps.num_gates_max = 1000;
-  ps.file_format = fuzz_tester_params::aiger;
-  ps.filename = "fuzz.aig";
+#ifdef ENABLE_NAUTY
+  random_network_generator_params_composed ps_gen;
+  std::cout << "[i] fuzzer: using the \"composed topologies\" generator\n";
+#else
+  random_network_generator_params_size ps_gen;
+  ps_gen.num_gates = 30;
+  std::cout << "[i] fuzzer: using the default (random) generator\n";
+#endif
+  auto gen = random_aig_generator( ps_gen );
 
-  auto gen = default_random_aig_generator();
-  network_fuzz_tester<aig_network, decltype(gen)> fuzzer( gen, ps );
-  fuzzer.run_incremental( opt );
+  fuzz_tester_params ps_fuzz;
+  ps_fuzz.file_format = fuzz_tester_params::aiger;
+  ps_fuzz.filename = "fuzz.aig";
+
+  network_fuzz_tester<aig_network, decltype( gen )> fuzzer( gen, ps_fuzz );
+  fuzzer.run( opt );
 
   return 0;
 }

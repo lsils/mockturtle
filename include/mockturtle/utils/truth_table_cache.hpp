@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -124,7 +124,7 @@ truth_table_cache<TT>::truth_table_cache( uint32_t capacity )
 template<typename TT>
 uint32_t truth_table_cache<TT>::insert( TT tt )
 {
-  uint32_t is_compl{0};
+  uint32_t is_compl{ 0 };
 
   if ( kitty::get_bit( tt, 0 ) )
   {

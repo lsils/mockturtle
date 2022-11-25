@@ -132,63 +132,6 @@ TEST_CASE( "create and use primary outputs in an AQFP", "[aqfp]" )
   } );
 }
 
-TEST_CASE( "create and use register in an AQFP", "[aqfp]" )
-{
-  aqfp_network aqfp;
-
-  CHECK( has_foreach_po_v<aqfp_network> );
-  CHECK( has_create_po_v<aqfp_network> );
-  CHECK( has_create_pi_v<aqfp_network> );
-  CHECK( has_create_ro_v<aqfp_network> );
-  CHECK( has_create_ri_v<aqfp_network> );
-  CHECK( has_create_maj_v<aqfp_network> );
-
-  const auto c0 = aqfp.get_constant( false );
-  const auto x1 = aqfp.create_pi();
-  const auto x2 = aqfp.create_pi();
-  const auto x3 = aqfp.create_pi();
-  const auto x4 = aqfp.create_pi();
-
-  CHECK( aqfp.size() == 5 );
-  CHECK( aqfp.num_registers() == 0 );
-  CHECK( aqfp.num_pis() == 4 );
-  CHECK( aqfp.num_pos() == 0 );
-  CHECK( aqfp.is_combinational() );
-
-  const auto f1 = aqfp.create_maj( x1, x2, x3 );
-  aqfp.create_po( f1 );
-  aqfp.create_po( !f1 );
-
-  const auto f2 = aqfp.create_maj( f1, x4, c0 );
-  aqfp.create_ri( f2 );
-
-  const auto ro = aqfp.create_ro();
-  aqfp.create_po( ro );
-
-  CHECK( aqfp.num_pos() == 3 );
-  CHECK( aqfp.num_registers() == 1 );
-  CHECK( !aqfp.is_combinational() );
-
-  aqfp.foreach_po( [&]( auto s, auto i ) {
-    switch ( i )
-    {
-    case 0:
-      CHECK( s == f1 );
-      break;
-    case 1:
-      CHECK( s == !f1 );
-      break;
-    case 2:
-      // Check if the output (connected to the register) data is the same as the node data being registered.
-      CHECK( f2.data == aqfp.po_at( i ).data );
-      break;
-    default:
-      CHECK( false );
-      break;
-    }
-  } );
-}
-
 TEST_CASE( "create unary operations in an AQFP", "[aqfp]" )
 {
   aqfp_network aqfp;
@@ -206,7 +149,7 @@ TEST_CASE( "create unary operations in an AQFP", "[aqfp]" )
   (void)f2;
 
   CHECK( aqfp.size() == 2 );
-} 
+}
 
 TEST_CASE( "create binary and ternary operations in an AQFP", "[aqfp]" )
 {
@@ -253,7 +196,7 @@ TEST_CASE( "create binary and ternary operations in an AQFP", "[aqfp]" )
 
   const auto f7 = aqfp.create_maj( x1, x2, aqfp.get_constant( true ) );
   CHECK( aqfp.size() == 13 );
-  (void) f7;
+  (void)f7;
 
   const auto x3 = aqfp.create_pi();
 

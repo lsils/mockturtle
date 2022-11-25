@@ -14,13 +14,13 @@ TEST_CASE( "read a BENCH file into K-LUT network", "[bench_reader]" )
 {
   klut_network klut;
 
-  std::string file{"INPUT(a)\n"
-                   "INPUT(b)\n"
-                   "INPUT(c)\n"
-                   "OUTPUT(sum)\n"
-                   "OUTPUT(carry)\n"
-                   "sum = LUT 0x96 (a, b, c)\n"
-                   "carry = LUT 0xe8 (a, b, c)\n"};
+  std::string file{ "INPUT(a)\n"
+                    "INPUT(b)\n"
+                    "INPUT(c)\n"
+                    "OUTPUT(sum)\n"
+                    "OUTPUT(carry)\n"
+                    "sum = LUT 0x96 (a, b, c)\n"
+                    "carry = LUT 0xe8 (a, b, c)\n" };
 
   std::istringstream in( file );
   auto const result = lorina::read_bench( in, bench_reader( klut ) );

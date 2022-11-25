@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file db_utils.hpp
   \brief Utility functions for creating the DAGs, costs, and final AQFP databases
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -35,7 +35,6 @@
 #include <atomic>
 #include <iostream>
 #include <thread>
-#include <atomic>
 
 #include <kitty/kitty.hpp>
 
@@ -75,8 +74,7 @@ inline void generate_aqfp_dags( const mockturtle::dag_generator_params& params, 
       auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 );
 
       std::cerr << fmt::format( "Number of DAGs generated {:10d}\nTime so far in seconds {:9.3f}\n", count, d1.count() / 1000.0 );
-    }
-  } );
+    } } );
 
   for ( auto& file : os )
   {
@@ -124,7 +122,7 @@ inline void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& 
                 os << fmt::format( "{:08x} {}\n", it->first, it->second );
               }
 
-              if ( (++count) % 100000u == 0u )
+              if ( ( ++count ) % 100000u == 0u )
               {
                 auto t1 = std::chrono::high_resolution_clock::now();
                 auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 );
@@ -195,7 +193,7 @@ inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_c
               db.update( ntk, configs );
             }
 
-            if ( (++count) % 10000 == 0u )
+            if ( ( ++count ) % 10000 == 0u )
             {
               auto t1 = std::chrono::high_resolution_clock::now();
               auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 );
@@ -203,7 +201,7 @@ inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_c
               std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime so far in seconds {:9.3f}\n", count, d1.count() / 1000.0 );
             }
 
-            if ( (++local_count) % 10000 == 0u )
+            if ( ( ++local_count ) % 10000 == 0u )
             {
               db.remove_redundant();
 

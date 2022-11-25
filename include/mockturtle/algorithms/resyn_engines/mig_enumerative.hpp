@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,9 +27,10 @@
   \file mig_enumerative.hpp
   \brief MIG enumerative resynthesis
 
+  \author Hanyu Wang
   \author Siang-Yun (Sonia) Lee
-  
-  Based on previous implementation of MIG resubstitution by 
+
+  Based on previous implementation of MIG resubstitution by
   Eleonora Testa, Heinz Riener, and Mathias Soeken
 */
 
@@ -253,7 +254,8 @@ public:
             for ( l = 0u; l < maj1pairs.size(); ++l )
             {
               auto const& a = get_tt_from_lit( maj1pairs[l].first, tts, begin );
-              auto tt = maj1pairs[l].second >= 2 ? kitty::ternary_majority( a, get_tt_from_lit( maj1pairs[l].second, tts, begin ), tt_binate ) : maj1pairs[l].second ? a | tt_binate : a & tt_binate;
+              auto tt = maj1pairs[l].second >= 2 ? kitty::ternary_majority( a, get_tt_from_lit( maj1pairs[l].second, tts, begin ), tt_binate ) : maj1pairs[l].second ? a | tt_binate
+                                                                                                                                                                     : a & tt_binate;
               if ( tt == target )
               {
                 il.add_output( il.add_maj( maj1pairs[l].first, maj1pairs[l].second, il.add_maj( binate[i], binate[j], binate[k] ) ) );

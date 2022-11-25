@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file tech_library.hpp
+  \file super_utils.hpp
   \brief Implements utilities to create supergates for technology mapping
 
   \author Alessandro Tempia Calvino
@@ -33,9 +33,9 @@
 #pragma once
 
 #include <cassert>
+#include <deque>
 #include <unordered_map>
 #include <vector>
-#include <deque>
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
@@ -59,13 +59,13 @@ struct composed_gate
   uint32_t id;
 
   /* gate is a supergate */
-  bool is_super{false};
+  bool is_super{ false };
 
   /* pointer to the root library gate */
   gate const* root{ nullptr };
 
   /* support of the composed gate */
-  uint32_t num_vars{0};
+  uint32_t num_vars{ 0 };
 
   /* function */
   kitty::dynamic_truth_table function;
@@ -85,7 +85,7 @@ struct composed_gate
  * This class creates supergates starting from supergates
  * specifications contained in `supergates_spec` extracted
  * from a SUPER file.
- * 
+ *
  * This utility is called by `tech_library` to construct
  * the library for technology mapping.
  */
@@ -151,14 +151,14 @@ public:
         pin_to_pin_delays[i++] = std::max( pin.rise_block_delay, pin.fall_block_delay );
       }
 
-      _supergates.emplace_back( composed_gate<NInputs>{static_cast<unsigned int>( _supergates.size() ),
-                                                       false,
-                                                       &g,
-                                                       g.num_vars,
-                                                       g.function,
-                                                       g.area,
-                                                       pin_to_pin_delays,
-                                                       {}} );
+      _supergates.emplace_back( composed_gate<NInputs>{ static_cast<unsigned int>( _supergates.size() ),
+                                                        false,
+                                                        &g,
+                                                        g.num_vars,
+                                                        g.function,
+                                                        g.area,
+                                                        pin_to_pin_delays,
+                                                        {} } );
     }
 
     simple_gates_size = _supergates.size() - initial_size;
@@ -174,8 +174,7 @@ public:
     if ( _supergates_spec.max_num_vars > NInputs )
     {
       std::cerr << fmt::format(
-        "ERROR: NInputs ({}) should be greater or equal than the max number of variables ({}) in the super file.\n", NInputs, _supergates_spec.max_num_vars
-        );
+          "ERROR: NInputs ({}) should be greater or equal than the max number of variables ({}) in the super file.\n", NInputs, _supergates_spec.max_num_vars );
       std::cerr << "WARNING: ignoring supergates, proceeding with standard library." << std::endl;
       generate_library_with_genlib();
       return;
@@ -196,21 +195,20 @@ public:
       }
     }
 
-
     /* creating input variables */
     for ( uint8_t i = 0; i < _supergates_spec.max_num_vars; ++i )
     {
       kitty::dynamic_truth_table tt{ NInputs };
       kitty::create_nth_var( tt, i );
 
-      _supergates.emplace_back( composed_gate<NInputs>{static_cast<unsigned int>( i ),
-                                                       false,
-                                                       nullptr,
-                                                       0,
-                                                       tt,
-                                                       0.0,
-                                                       {},
-                                                       {}} );
+      _supergates.emplace_back( composed_gate<NInputs>{ static_cast<unsigned int>( i ),
+                                                        false,
+                                                        nullptr,
+                                                        0,
+                                                        tt,
+                                                        0.0,
+                                                        {},
+                                                        {} } );
     }
 
     generate_library_with_genlib();
@@ -285,14 +283,14 @@ public:
       float area = compute_area( root_match_id, sub_gates );
       const kitty::dynamic_truth_table tt = compute_truth_table( root_match_id, sub_gates );
 
-      _supergates.emplace_back( composed_gate<NInputs>{static_cast<unsigned int>( _supergates.size() ),
-                                                       is_super_verified,
-                                                       &_gates[root_match_id],
-                                                       0,
-                                                       tt,
-                                                       area,
-                                                       {},
-                                                       sub_gates} );
+      _supergates.emplace_back( composed_gate<NInputs>{ static_cast<unsigned int>( _supergates.size() ),
+                                                        is_super_verified,
+                                                        &_gates[root_match_id],
+                                                        0,
+                                                        tt,
+                                                        area,
+                                                        {},
+                                                        sub_gates } );
 
       if ( g.is_super )
       {

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file aqfp_fanout_resyn.hpp
   \brief AQFP fanout resynthesis strategy
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -41,15 +41,63 @@
 namespace mockturtle
 {
 
+/*! \brief A callback to determine the fanout levels.
+ *
+ * This is intended to be used with AQFP networks. Levels are determined assuming that
+ * a nearly-balanced splitter tree is used for each the considered fanout net.
+ *
+   \verbatim embed:rst
+
+   Example
+
+   .. code-block:: c++
+
+     aqfp_assumptions assume = { false, false, true, 4u };
+     aqfp_fanout_resyn fanout_resyn{ assume };
+
+     std::unordered_map<uint32_t, double> gate_costs = { { 3u, 6.0 }, { 5u, 10.0 } };
+     std::unordered_map<uint32_t, double> splitters = { { 1u, 2.0 }, { assume.splitter_capacity, 2.0 } };
+     aqfp_node_resyn_param ps{ assume, splitters, aqfp_node_resyn_strategy::delay };
+
+     aqfp_db<> db( gate_costs, splitters );
+     db.load_db( ... ); // from an input-stream (e.g., std::ifstream or std::stringstream)
+
+     aqfp_node_resyn node_resyn( db, ps );
+
+     klut_network src_ntk = ...;
+     aqfp_network dst_ntk;
+     auto res = aqfp_resynthesis( dst_ntk, src_ntk, node_resyn, fanout_resyn );
+
+   \endverbatim
+ */
 struct aqfp_fanout_resyn
 {
-  aqfp_fanout_resyn( const aqfp_assumptions& assume ) : splitter_capacity{ assume.splitter_capacity }, branch_pis{ assume.branch_pis } {}
+  /*! \brief Default constructor.
+   *
+   * \param assume AQFP synthesis assumptions (only the fields `splitter_capacity` and `branch_pis` will be used)
+   */
+  aqfp_fanout_resyn( const aqfp_assumptions& assume )
+      : splitter_capacity{ assume.splitter_capacity }, branch_pis{ assume.branch_pis } {}
 
-  /*! \brief Determines the relative levels of fanouts of a node assuming a nearly balanced splitter tree. */
-  template<typename NtkSrc, typename FOuts, typename NtkDest, typename FanoutNodeCallback, typename FanoutPoCallback>
-  void operator()( const NtkSrc& ntk_src, FOuts& fanouts, node<NtkSrc> n, const NtkDest& ntk_dest, signal<NtkDest> f, uint32_t level_f,
+  /*! \brief Determine the relative levels of fanouts of a node assuming a nearly balanced splitter tree.
+   *
+   * \param ntk_src Source network with `depth()` and `level()` member functions.
+   * \param n Node in `ntk_src` for which the fanout levels are to be determined.
+   * \param fanouts_n Fanout nodes of `n` in `ntk_dest`.
+   * \param ntk_dest Destination network which is being synthesized as an AQFP network.
+   * \param f The signal in `ntk_dest` that correspond to source node `n`.
+   * \param level_f The level of `f` in `ntk_dest`.
+   * \param fanout_node_fn Callback with arguments (source network node, level in destination network).
+   * \param fanout_co_fn Callback with arguments (index of the combinational output, level in destination network).
+   */
+  template<typename NtkSrc, typename FOutsSrc, typename NtkDest, typename FanoutNodeCallback, typename FanoutPoCallback>
+  void operator()( const NtkSrc& ntk_src, node<NtkSrc> n, FOutsSrc& fanouts_n, const NtkDest& ntk_dest, signal<NtkDest> f, uint32_t level_f,
                    FanoutNodeCallback&& fanout_node_fn, FanoutPoCallback&& fanout_co_fn )
   {
+    static_assert( has_depth_v<NtkSrc>,
+                   "The source network does not provide a method named depth()." );
+    static_assert( has_level_v<NtkSrc>,
+                   "The source network does not provide a method named level(node)." );
     static_assert( std::is_invocable_v<FanoutNodeCallback, node<NtkSrc>, uint32_t>,
                    "FanoutNodeCallback is not callable with arguments (node, level)" );
     static_assert( std::is_invocable_v<FanoutPoCallback, uint32_t, uint32_t>,
@@ -60,10 +108,8 @@ struct aqfp_fanout_resyn
 
     auto offsets = balanced_splitter_tree_offsets( ntk_src.fanout_size( n ) );
 
-    auto fanouts_n = fanouts[n];
-    std::sort( fanouts_n.begin(), fanouts_n.end(), [&]( auto f1, auto f2 )
-               { return ( ntk_src.depth() - ntk_src.level( f1 ) ) > ( ntk_src.depth() - ntk_src.level( f2 ) ) ||
-                        ( ( ntk_src.depth() - ntk_src.level( f1 ) ) == ( ntk_src.depth() - ntk_src.level( f2 ) ) && ( f1 < f2 ) ); } );
+    std::sort( fanouts_n.begin(), fanouts_n.end(), [&]( auto f1, auto f2 ) { return ( ntk_src.depth() - ntk_src.level( f1 ) ) > ( ntk_src.depth() - ntk_src.level( f2 ) ) ||
+                                                                                    ( ( ntk_src.depth() - ntk_src.level( f1 ) ) == ( ntk_src.depth() - ntk_src.level( f2 ) ) && ( f1 < f2 ) ); } );
 
     auto n_dest = ntk_dest.get_node( f );
     auto no_splitters = ntk_dest.is_constant( n_dest ) || ( !branch_pis && ntk_dest.is_ci( n_dest ) );
@@ -71,14 +117,16 @@ struct aqfp_fanout_resyn
     uint32_t foind = 0u;
     for ( auto fo : fanouts_n )
     {
-      fanout_node_fn( fo, no_splitters ? level_f : level_f + offsets[foind++] );
+      fanout_node_fn( fo, no_splitters ? level_f : level_f + offsets[foind] );
+      foind++;
     }
 
     // remaining fanouts are either combinational outputs (primary outputs or register inputs)
     for ( auto i = foind; i < ntk_src.fanout_size( n ); i++ )
     {
       auto co_index = i - foind;
-      fanout_co_fn( co_index, no_splitters ? level_f : level_f + offsets[foind++] );
+      fanout_co_fn( co_index, no_splitters ? level_f : level_f + offsets[foind] );
+      foind++;
     }
   }
 

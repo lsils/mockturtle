@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2021  EPFL
+ * Copyright (C) 2017-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -61,7 +61,8 @@ dynamic_truth_table create<dynamic_truth_table>( unsigned num_vars );
 template<typename TT>
 inline TT unary_not( const TT& tt )
 {
-  return unary_operation( tt, []( auto a ) { return ~a; } );
+  return unary_operation( tt, []( auto a )
+                          { return ~a; } );
 }
 
 /*! Inverts all bits in a truth table, based on a condition */
@@ -69,14 +70,15 @@ template<typename TT>
 inline TT unary_not_if( const TT& tt, bool cond )
 {
 #ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable:4146)
+#pragma warning( push )
+#pragma warning( disable : 4146 )
 #endif
   const auto mask = -static_cast<uint64_t>( cond );
 #ifdef _MSC_VER
-#pragma warning(pop)
+#pragma warning( pop )
 #endif
-  return unary_operation( tt, [mask]( auto a ) { return a ^ mask; } );
+  return unary_operation( tt, [mask]( auto a )
+                          { return a ^ mask; } );
 }
 
 /*! \brief Bitwise AND of two truth tables */
@@ -105,7 +107,8 @@ inline TT binary_xor( const TT& first, const TT& second )
 template<typename TT>
 inline TT ternary_majority( const TT& first, const TT& second, const TT& third )
 {
-  return ternary_operation( first, second, third, []( auto a, auto b, auto c ) { return ( a & ( b ^ c ) ) ^ ( b & c ); } );
+  return ternary_operation( first, second, third, []( auto a, auto b, auto c )
+                            { return ( a & ( b ^ c ) ) ^ ( b & c ); } );
 }
 
 /*! \brief Performs ternary if-then-else of three truth tables
@@ -117,7 +120,8 @@ inline TT ternary_majority( const TT& first, const TT& second, const TT& third )
 template<typename TT>
 inline TT ternary_ite( const TT& first, const TT& second, const TT& third )
 {
-  return ternary_operation( first, second, third, []( auto a, auto b, auto c ) { return ( a & b ) ^ ( ~a & c ); } );
+  return ternary_operation( first, second, third, []( auto a, auto b, auto c )
+                            { return ( a & b ) ^ ( ~a & c ); } );
 }
 
 /*! \brief Muxes two truth tables based on a variable
@@ -132,8 +136,9 @@ inline TT mux_var( uint8_t var_index, const TT& then_, const TT& else_ )
   if ( var_index < 6u )
   {
     return binary_operation( then_, else_,
-                             [&]( auto a, auto b ) { return ( a & detail::projections[var_index] ) |
-                                                            ( b & detail::projections_neg[var_index] ); } );
+                             [&]( auto a, auto b )
+                             { return ( a & detail::projections[var_index] ) |
+                                      ( b & detail::projections_neg[var_index] ); } );
   }
   else
   {
@@ -142,10 +147,10 @@ inline TT mux_var( uint8_t var_index, const TT& then_, const TT& else_ )
     auto res = then_.construct();
 
     std::transform( then_.begin(), then_.end(), else_.begin(), res.begin(),
-      [&]( auto a, auto b ) {
-        return ( j++ % ( 2 * step ) ) < step ? b : a;
-      }
-    );
+                    [&]( auto a, auto b )
+                    {
+                      return ( j++ % ( 2 * step ) ) < step ? b : a;
+                    } );
 
     return res;
   }
@@ -187,7 +192,8 @@ inline bool equal( const partial_truth_table& first, const partial_truth_table& 
 template<typename TT>
 inline bool implies( const TT& first, const TT& second )
 {
-  return binary_predicate( first, second, []( uint64_t a, uint64_t b ){ return ( a & ~b ) == 0u; } );
+  return binary_predicate( first, second, []( uint64_t a, uint64_t b )
+                           { return ( a & ~b ) == 0u; } );
 }
 
 /*! \brief Checks whether a truth table is lexicographically smaller than another
@@ -219,7 +225,8 @@ inline bool less_than( const static_truth_table<NumVars, true>& first, const sta
 template<typename TT>
 inline bool is_const0( const TT& tt )
 {
-  return std::all_of( std::begin( tt._bits ), std::end( tt._bits ), []( uint64_t word ) { return word == 0; } );
+  return std::all_of( std::begin( tt._bits ), std::end( tt._bits ), []( uint64_t word )
+                      { return word == 0; } );
 }
 
 /*! \cond PRIVATE */
@@ -241,13 +248,17 @@ template<typename TT, bool polarity1 = true, bool polarity2 = true>
 bool intersection_is_empty( const TT& first, const TT& second )
 {
   if constexpr ( polarity1 && polarity2 )
-    return binary_predicate( first, second, []( uint64_t a, uint64_t b ){ return ( a & b ) == 0u; } );
+    return binary_predicate( first, second, []( uint64_t a, uint64_t b )
+                             { return ( a & b ) == 0u; } );
   else if constexpr ( !polarity1 && polarity2 )
-    return binary_predicate( first, second, []( uint64_t a, uint64_t b ){ return ( ~a & b ) == 0u; } );
+    return binary_predicate( first, second, []( uint64_t a, uint64_t b )
+                             { return ( ~a & b ) == 0u; } );
   else if constexpr ( polarity1 && !polarity2 )
-    return binary_predicate( first, second, []( uint64_t a, uint64_t b ){ return ( a & ~b ) == 0u; } );
+    return binary_predicate( first, second, []( uint64_t a, uint64_t b )
+                             { return ( a & ~b ) == 0u; } );
   else // !polarity1 && !polarity2
-    return binary_predicate( first, second, []( uint64_t a, uint64_t b ){ return ( ~a & ~b ) == 0u; } );
+    return binary_predicate( first, second, []( uint64_t a, uint64_t b )
+                             { return ( ~a & ~b ) == 0u; } );
 }
 
 /*! \brief Checks whether the intersection of three truth tables is empty
@@ -263,21 +274,29 @@ template<typename TT, bool polarity1 = true, bool polarity2 = true, bool polarit
 bool intersection_is_empty( const TT& first, const TT& second, const TT& third )
 {
   if constexpr ( polarity1 && polarity2 && polarity3 )
-    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c ){ return ( a & b & c ) == 0u; } );
+    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c )
+                              { return ( a & b & c ) == 0u; } );
   else if constexpr ( !polarity1 && polarity2 && polarity3 )
-    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c ){ return ( ~a & b & c ) == 0u; } );
+    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c )
+                              { return ( ~a & b & c ) == 0u; } );
   else if constexpr ( polarity1 && !polarity2 && polarity3 )
-    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c ){ return ( a & ~b & c ) == 0u; } );
+    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c )
+                              { return ( a & ~b & c ) == 0u; } );
   else if constexpr ( polarity1 && polarity2 && !polarity3 )
-    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c ){ return ( a & b & ~c ) == 0u; } );
+    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c )
+                              { return ( a & b & ~c ) == 0u; } );
   else if constexpr ( !polarity1 && !polarity2 && polarity3 )
-    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c ){ return ( ~a & ~b & c ) == 0u; } );
+    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c )
+                              { return ( ~a & ~b & c ) == 0u; } );
   else if constexpr ( polarity1 && !polarity2 && !polarity3 )
-    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c ){ return ( a & ~b & ~c ) == 0u; } );
+    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c )
+                              { return ( a & ~b & ~c ) == 0u; } );
   else if constexpr ( !polarity1 && polarity2 && !polarity3 )
-    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c ){ return ( ~a & b & ~c ) == 0u; } );
+    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c )
+                              { return ( ~a & b & ~c ) == 0u; } );
   else // !polarity1 && !polarity2 && !polarity3
-    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c ){ return ( ~a & ~b & ~c ) == 0u; } );
+    return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c )
+                              { return ( ~a & ~b & ~c ) == 0u; } );
 }
 
 /*! \brief Checks whether truth table depends on given variable index
@@ -293,8 +312,9 @@ bool has_var( const TT& tt, uint8_t var_index )
   if ( tt.num_vars() <= 6 || var_index < 6 )
   {
     return std::any_of( std::begin( tt._bits ), std::end( tt._bits ),
-                        [var_index]( uint64_t word ) { return ( ( word >> ( uint64_t( 1 ) << var_index ) ) & detail::projections_neg[var_index] ) !=
-                                                              ( word & detail::projections_neg[var_index] ); } );
+                        [var_index]( uint64_t word )
+                        { return ( ( word >> ( uint64_t( 1 ) << var_index ) ) & detail::projections_neg[var_index] ) !=
+                                 ( word & detail::projections_neg[var_index] ); } );
   }
 
   const auto step = 1 << ( var_index - 6 );
@@ -401,8 +421,9 @@ void cofactor0_inplace( TT& tt, uint8_t var_index )
   {
     std::transform( std::begin( tt._bits ), std::end( tt._bits ),
                     std::begin( tt._bits ),
-                    [var_index]( uint64_t word ) { return ( ( word & detail::projections_neg[var_index] ) << ( uint64_t( 1 ) << var_index ) ) |
-                                                          ( word & detail::projections_neg[var_index] ); } );
+                    [var_index]( uint64_t word )
+                    { return ( ( word & detail::projections_neg[var_index] ) << ( uint64_t( 1 ) << var_index ) ) |
+                             ( word & detail::projections_neg[var_index] ); } );
   }
   else
   {
@@ -451,8 +472,9 @@ void cofactor1_inplace( TT& tt, uint8_t var_index )
   {
     std::transform( std::begin( tt._bits ), std::end( tt._bits ),
                     std::begin( tt._bits ),
-                    [var_index]( uint64_t word ) { return ( word & detail::projections[var_index] ) |
-                                                          ( ( word & detail::projections[var_index] ) >> ( uint64_t( 1 ) << var_index ) ); } );
+                    [var_index]( uint64_t word )
+                    { return ( word & detail::projections[var_index] ) |
+                             ( ( word & detail::projections[var_index] ) >> ( uint64_t( 1 ) << var_index ) ); } );
   }
   else
   {
@@ -507,7 +529,8 @@ void swap_adjacent_inplace( TT& tt, uint8_t var_index )
   {
     const auto shift = uint64_t( 1 ) << var_index;
     std::transform( std::begin( tt._bits ), std::end( tt._bits ), std::begin( tt._bits ),
-                    [shift, var_index]( uint64_t word ) {
+                    [shift, var_index]( uint64_t word )
+                    {
                       return ( word & detail::permutation_masks[var_index][0] ) |
                              ( ( word & detail::permutation_masks[var_index][1] ) << shift ) |
                              ( ( word & detail::permutation_masks[var_index][2] ) >> shift );
@@ -533,7 +556,7 @@ void swap_adjacent_inplace( TT& tt, uint8_t var_index )
     auto it = std::begin( tt._bits );
     while ( it != std::end( tt._bits ) )
     {
-      for ( auto i = decltype( step ){0}; i < step; ++i )
+      for ( auto i = decltype( step ){ 0 }; i < step; ++i )
       {
         std::swap( *( it + i + step ), *( it + i + 2 * step ) );
       }
@@ -606,7 +629,8 @@ void swap_inplace( TT& tt, uint8_t var_index1, uint8_t var_index2 )
     const auto& pmask = detail::ppermutation_masks[var_index1][var_index2];
     const auto shift = ( 1 << var_index2 ) - ( 1 << var_index1 );
     std::transform( std::begin( tt._bits ), std::end( tt._bits ), std::begin( tt._bits ),
-                    [shift, &pmask]( uint64_t word ) {
+                    [shift, &pmask]( uint64_t word )
+                    {
                       return ( word & pmask[0] ) | ( ( word & pmask[1] ) << shift ) | ( ( word & pmask[2] ) >> shift );
                     } );
   }
@@ -617,7 +641,7 @@ void swap_inplace( TT& tt, uint8_t var_index1, uint8_t var_index2 )
     auto it = std::begin( tt._bits );
     while ( it != std::end( tt._bits ) )
     {
-      for ( auto i = decltype( step ){0}; i < step; ++i )
+      for ( auto i = decltype( step ){ 0 }; i < step; ++i )
       {
         const auto low_to_high = ( *( it + i ) & detail::projections[var_index1] ) >> shift;
         const auto high_to_low = ( *( it + i + step ) << shift ) & detail::projections[var_index1];
@@ -706,7 +730,8 @@ void flip_inplace( TT& tt, uint8_t var_index )
   {
     const auto shift = 1 << var_index;
     std::transform( std::begin( tt._bits ), std::end( tt._bits ), std::begin( tt._bits ),
-                    [var_index, shift]( uint64_t word ) {
+                    [var_index, shift]( uint64_t word )
+                    {
                       return ( ( word << shift ) & detail::projections[var_index] ) | ( ( word & detail::projections[var_index] ) >> shift );
                     } );
   }
@@ -716,7 +741,7 @@ void flip_inplace( TT& tt, uint8_t var_index )
     auto it = std::begin( tt._bits );
     while ( it != std::end( tt._bits ) )
     {
-      for ( auto i = decltype( step ){0}; i < step; ++i )
+      for ( auto i = decltype( step ){ 0 }; i < step; ++i )
       {
         std::swap( *( it + i ), *( it + i + step ) );
       }
@@ -881,8 +906,8 @@ inline dynamic_truth_table extend_to( const TTFrom& from, unsigned num_vars )
 /*! \brief Shrinks larger truth table to smaller one
 
   The function expects that the most significant bits, which are cut off, are
-  not in the functional support of the original function.  Only then it is 
-  ensured that the resulting function is equivalent. 
+  not in the functional support of the original function.  Only then it is
+  ensured that the resulting function is equivalent.
 
   \param tt Smaller truth table to create
   \param from Larger truth table to copy from
