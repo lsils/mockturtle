@@ -477,7 +477,7 @@ public:
    * in an MIG, all gate functions are MAJ, independently of complemented edges
    * and possible constant inputs.
    *
-   * In order to retreive a function with respect to complemented edges one can
+   * In order to retrieve a function with respect to complemented edges one can
    * use the `compute` function with a truth table as simulation value.
    */
   kitty::dynamic_truth_table node_function( node const& n ) const;
@@ -576,7 +576,7 @@ public:
   /*! \brief Calls ``fn`` on every node in network.
    *
    * The order of nodes depends on the implementation and must not guarantee
-   * topological order.  The paramater ``fn`` is any callable that must have
+   * topological order.  The parameter ``fn`` is any callable that must have
    * one of the following four signatures.
    * - ``void(node const&)``
    * - ``void(node const&, uint32_t)``
@@ -593,7 +593,7 @@ public:
   /*! \brief Calls ``fn`` on every gate node in the network.
    *
    * Calls each node that is not constant and not a combinational input.  The
-   * paramater ``fn`` is any callable that must have one of the following four
+   * parameter ``fn`` is any callable that must have one of the following four
    * signatures.
    * - ``void(node const&)``
    * - ``void(node const&, uint32_t)``
@@ -610,7 +610,7 @@ public:
   /*! \brief Calls ``fn`` on every primary input node in the network.
    *
    * The order is in the same order as primary inputs have been created with
-   * ``create_pi``.  The paramater ``fn`` is any callable that must have one of
+   * ``create_pi``.  The parameter ``fn`` is any callable that must have one of
    * the following four signatures.
    * - ``void(node const&)``
    * - ``void(node const&, uint32_t)``
@@ -629,7 +629,7 @@ public:
    * The order is in the same order as primary outputs have been created with
    * ``create_po``.  The function is called on the signal that is driving the
    * output and may occur more than once in the iteration, if it drives more
-   * than one output.  The paramater ``fn`` is any callable that must have one
+   * than one output.  The parameter ``fn`` is any callable that must have one
    * of the following four signatures.
    * - ``void(signal const&)``
    * - ``void(signal const&, uint32_t)``
@@ -662,7 +662,7 @@ public:
   /*! \brief Calls ``fn`` on every fanin of a node.
    *
    * The order of the fanins is in the same order that was used to create the
-   * node.  The paramater ``fn`` is any callable that must have one of the
+   * node.  The parameter ``fn`` is any callable that must have one of the
    * following four signatures.
    * - ``void(signal const&)``
    * - ``void(signal const&, uint32_t)``

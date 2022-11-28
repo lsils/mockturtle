@@ -106,7 +106,7 @@ inline std::vector<bool> decrement( std::vector<bool> const& word )
  *
  * Given two input words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(a + b) \bmod 2^k\f$.
- * The first input word `a` is overriden and stores the output signals.
+ * The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b )
@@ -120,7 +120,7 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
  * Given two input words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(a + b) \bmod m\f$.
  * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
- * The first input word `a` is overriden and stores the output signals.
+ * The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
@@ -159,7 +159,7 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
  *
  * Given two input words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(a + b) \bmod m\f$.
- * The first input word `a` is overriden and stores the output signals.
+ * The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
@@ -290,7 +290,7 @@ inline void modular_adder_hiasat_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a,
  *
  * Given two input words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(a - b) \bmod 2^k\f$.
- * The first input word `a` is overriden and stores the output signals.
+ * The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b )
@@ -304,7 +304,7 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
  * Given two input words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(a - b) \bmod m\f$.
  * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
- * The first input word `a` is overriden and stores the output signals.
+ * The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
@@ -344,7 +344,7 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
  *
  * Given two input words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(a - b) \bmod m\f$.
- * The first input word `a` is overriden and stores the output signals.
+ * The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )
@@ -380,7 +380,7 @@ inline std::vector<signal<Ntk>> modular_subtractor( Ntk& ntk, std::vector<signal
  * Given one input word \f$a\f$ of size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$.
  * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
- * The input word `a` is overriden and stores the output signals.
+ * The input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<bool> const& m )
@@ -407,7 +407,7 @@ inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std
  *
  * Given one input word \f$a\f$ of size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(2 * a) \bmod m\f$.
- * The input word `a` is overriden and stores the output signals.
+ * The input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uint64_t m )
@@ -429,7 +429,7 @@ inline void modular_doubling_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uin
  * modulus must be odd, and the function is evaluated to \f$a / 2\f$, if `a` is
  * even and to \f$(a + m) / 2\f$, if `a` is odd.
  * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
- * The input word `a` is overriden and stores the output signals.
+ * The input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_halving_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<bool> const& m )
@@ -461,7 +461,7 @@ inline void modular_halving_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std:
  * that computes *k* output signals that represent \f$(a / 2) \bmod m\f$.  The
  * modulus must be odd, and the function is evaluated to \f$a / 2\f$, if `a` is
  * even and to \f$(a + m) / 2\f$, if `a` is odd.
- * The input word `a` is overriden and stores the output signals.
+ * The input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_halving_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uint64_t m )
@@ -481,7 +481,7 @@ inline void modular_halving_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, uint
  * Given two inputs words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(ab) \bmod c\f$.
  * The modulus `m` is passed as a vector of Booleans to support large bitsizes.
- * The first input word `a` is overriden and stores the output signals.
+ * The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, std::vector<bool> const& m )
@@ -512,7 +512,7 @@ inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& 
  *
  * Given two inputs words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(ab) \bmod c\f$.
- * The first input word `a` is overriden and stores the output signals.
+ * The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_multiplication_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t m )

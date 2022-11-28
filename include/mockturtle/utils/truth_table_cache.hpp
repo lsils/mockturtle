@@ -104,7 +104,7 @@ public:
 
   /*! \brief Returns truth table for a given literal.
    *
-   * The funtion requires that `lit` is smaller than `size()`.
+   * The function requires that `lit` is smaller than `size()`.
    */
   TT operator[]( uint32_t lit ) const;
 

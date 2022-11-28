@@ -42,7 +42,7 @@ namespace mockturtle
 /*! \brief (Recursive) customizable cost function
  *
  * To define a new cost function, you need to first specify how each node
- * contributes to the total cost via the *contribution functon*. Each node
+ * contributes to the total cost via the *contribution function*. Each node
  * is evaluated individually and independently.
  *
  * If additional (global) information is required to decide a node's contribution,

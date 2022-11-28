@@ -73,7 +73,7 @@ signal<Ntk> apply_spectral_transformations( Ntk& dest, std::vector<kitty::detail
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
   static_assert( has_create_nary_xor_v<Ntk>, "Ntk does not implement the create_nary_xor method" );
-  static_assert( std::is_invocable_r_v<signal<Ntk>, SynthesisFn, Ntk&, std::vector<signal<Ntk>> const&>, "SythesisFn does not have expected signature" );
+  static_assert( std::is_invocable_r_v<signal<Ntk>, SynthesisFn, Ntk&, std::vector<signal<Ntk>> const&>, "SynthesisFn does not have expected signature" );
 
   auto _leaves = leaves;
   std::vector<signal<Ntk>> _final_xors;
@@ -144,7 +144,7 @@ signal<Ntk> apply_npn_transformations( Ntk& dest, uint32_t phase, std::vector<ui
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
   static_assert( has_create_nary_xor_v<Ntk>, "Ntk does not implement the create_nary_xor method" );
-  static_assert( std::is_invocable_r_v<signal<Ntk>, SynthesisFn, Ntk&, std::vector<signal<Ntk>> const&>, "SythesisFn does not have expected signature" );
+  static_assert( std::is_invocable_r_v<signal<Ntk>, SynthesisFn, Ntk&, std::vector<signal<Ntk>> const&>, "SynthesisFn does not have expected signature" );
 
   std::vector<signal<Ntk>> _leaves( perm.size() );
   std::transform( perm.begin(), perm.end(), _leaves.begin(), [&]( auto const& i ) { return ( phase >> i ) & 1 ? dest.create_not( leaves[i] ) : leaves[i]; } );

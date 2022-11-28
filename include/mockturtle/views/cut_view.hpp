@@ -50,7 +50,7 @@ namespace mockturtle
 
 /*! \brief Implements an isolated view on a single cut in a network.
  *
- * This view can create a network from a single cut in a larget network.  This
+ * This view can create a network from a single cut in a largest network.  This
  * cut has a single output `root` and set of `leaves`.  The view reimplements
  * the methods `size`, `num_pis`, `num_pos`, `foreach_pi`, `foreach_po`,
  * `foreach_node`, `foreach_gate`, `is_pi`, `node_to_index`, and

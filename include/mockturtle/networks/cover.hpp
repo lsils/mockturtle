@@ -96,7 +96,7 @@ struct cover_storage_node : mixed_fanin_node<2>
  * The network as a storage entity is defined by combining the node structure with the cover_storage structure.
  * The attributes of this storage unit are listed in the following:
  * `nodes`            : Vector of cover storage nodes
- * `inputs`           : Vector of indeces to inputs nodes
+ * `inputs`           : Vector of indices to inputs nodes
  * `outputs`          : Vector of pointers to node types
  * `hash`             : maps a node to its index in the nodes vector
  * `data`             : cover storage data

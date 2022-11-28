@@ -290,7 +290,7 @@ TEST_CASE( "hash nodes in cover network", "[cover]" )
   CHECK( cover.size() == 9 );
 }
 
-TEST_CASE( "subsitute cover node by another", "[cover]" )
+TEST_CASE( "substitute cover node by another", "[cover]" )
 {
   cover_network cover;
 

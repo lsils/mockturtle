@@ -111,7 +111,7 @@ std::vector<signal<Ntk>> to_montgomery_form( Ntk& ntk, std::vector<signal<Ntk>> 
  *
  * Given two input words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(a + b) \bmod (2^k -
- * c)\f$.  The first input word `a` is overriden and stores the output signals.
+ * c)\f$.  The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
@@ -144,7 +144,7 @@ inline void modular_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::v
  *
  * Given two input words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(a - b) \bmod (2^k -
- * c)\f$.  The first input word `a` is overriden and stores the output signals.
+ * c)\f$.  The first input word `a` is overridden and stores the output signals.
  */
 template<class Ntk>
 inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, std::vector<signal<Ntk>> const& b, uint64_t c )
@@ -174,7 +174,7 @@ inline void modular_subtractor_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
  *
  * Given two inputs words of the same size *k*, this function creates a circuit
  * that computes *k* output signals that represent \f$(ab) \bmod (2^k - c)\f$.
- * The first input word `a` is overriden and stores the output signals.
+ * The first input word `a` is overridden and stores the output signals.
  *
  * The implementation is based on Montgomery multiplication and includes the
  * encoding and decoding in and from the Montgomery number representation.

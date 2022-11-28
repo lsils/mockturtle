@@ -229,7 +229,7 @@ TEST_CASE( "hash nodes in K-LUT network", "[klut]" )
   CHECK( klut.size() == 7 );
 }
 
-TEST_CASE( "subsitute node by another", "[klut]" )
+TEST_CASE( "substitute node by another", "[klut]" )
 {
   klut_network klut;
 
