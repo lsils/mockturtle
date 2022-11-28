@@ -27,6 +27,7 @@
   \file mig.hpp
   \brief MIG logic network implementation
 
+  \author Alessandro Tempia Calvino
   \author Bruno Schmitt
   \author Eleonora Testa
   \author Hanyu Wang
@@ -405,6 +406,63 @@ public:
     (void)source;
     assert( children.size() == 3u );
     return create_maj( children[0u], children[1u], children[2u] );
+  }
+#pragma endregion
+
+#pragma region Has node
+  std::optional<node> has_maj( signal a, signal b, signal c )
+  {
+    /* order inputs */
+    if ( a.index > b.index )
+    {
+      std::swap( a, b );
+      if ( b.index > c.index )
+        std::swap( b, c );
+      if ( a.index > b.index )
+        std::swap( a, b );
+    }
+    else
+    {
+      if ( b.index > c.index )
+        std::swap( b, c );
+      if ( a.index > b.index )
+        std::swap( a, b );
+    }
+
+    /* trivial cases */
+    if ( a.index == b.index )
+    {
+      return ( a.complement == b.complement ) ? get_node( a ) : get_node( c );
+    }
+    else if ( b.index == c.index )
+    {
+      return ( b.complement == c.complement ) ? get_node( b ) : get_node( a );
+    }
+
+    /*  complemented edges minimization */
+    if ( static_cast<unsigned>( a.complement ) + static_cast<unsigned>( b.complement ) +
+             static_cast<unsigned>( c.complement ) >=
+         2u )
+    {
+      a.complement = !a.complement;
+      b.complement = !b.complement;
+      c.complement = !c.complement;
+    }
+
+    storage::element_type::node_type node;
+    node.children[0] = a;
+    node.children[1] = b;
+    node.children[2] = c;
+
+    /* structural hashing */
+    const auto it = _storage->hash.find( node );
+    if ( it != _storage->hash.end() )
+    {
+      assert( !is_dead( it->second ) );
+      return it->second;
+    }
+
+    return {};
   }
 #pragma endregion
 
