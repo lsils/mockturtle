@@ -40,6 +40,8 @@
 #include <string>
 
 #include <fmt/format.h>
+#include <kitty/dynamic_truth_table.hpp>
+#include <kitty/operations.hpp>
 
 #include "../networks/klut.hpp"
 #include "../utils/cost_functions.hpp"
@@ -518,7 +520,8 @@ public:
   using cut_set_t = lut_cut_set<cut_t, max_cut_num>;
   using node = typename Ntk::node;
   using cut_merge_t = typename std::array<cut_set_t*, Ntk::max_fanin_size + 1>;
-  using tt_cache = truth_table_cache<kitty::dynamic_truth_table>;
+  using TT = kitty::dynamic_truth_table;
+  using tt_cache = truth_table_cache<TT>;
   using cost_cache = std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>>;
 
 public:
@@ -533,8 +536,10 @@ public:
 
     if constexpr ( StoreFunction )
     {
-      kitty::dynamic_truth_table zero( 0u ), proj( 1u );
+      TT zero( 0u ), proj( 1u );
       kitty::create_nth_var( proj, 0u );
+
+      truth_tables.resize( 20000 );
 
       truth_tables.insert( zero );
       truth_tables.insert( proj );
@@ -1529,19 +1534,24 @@ private:
    * Example:
    *   compute_truth_table_support( {1, 3, 6}, {0, 1, 2, 3, 6, 7} ) = {1, 3, 4}
    */
-  std::vector<uint8_t> compute_truth_table_support( cut_t const& sub, cut_t const& sup ) const
+  void compute_truth_table_support( cut_t const& sub, cut_t const& sup, TT& tt )
   {
-    std::vector<uint8_t> support;
-    support.reserve( sub.size() );
+    std::vector<uint8_t> support( sub.size() );
 
+    size_t j = 0;
     auto itp = sup.begin();
     for ( auto i : sub )
     {
       itp = std::find( itp, sup.end(), i );
-      support.push_back( static_cast<uint8_t>( std::distance( sup.begin(), itp ) ) );
+      support[j++] = static_cast<uint8_t>( std::distance( sup.begin(), itp ) );
     }
 
-    return support;
+    /* swap variables in the truth table */
+    for ( int i = j - 1; i >= 0; --i )
+    {
+      assert( i <= support[i] );
+      kitty::swap_inplace( tt, i, support[i] );
+    }
   }
 
   template<bool ELA>
@@ -1662,23 +1672,51 @@ private:
     }
   }
 
+  inline bool fast_support_minimization( TT const& tt, cut_t& res )
+  {
+    uint32_t support = 0u;
+    uint32_t support_size = 0u;
+    for ( uint32_t i = 0u; i < tt.num_vars(); ++i )
+    {
+      if ( kitty::has_var( tt, i ) )
+      {
+        support |= 1u << i;
+        ++support_size;
+      }
+    }
+
+    /* has not minimized support? */
+    if ( ( support & ( support + 1u ) ) != 0u )
+    {
+      return false;
+    }
+
+    /* variables not in the support are the most significative */
+    if ( support_size != res.size() )
+    {
+      std::vector<uint32_t> leaves( res.begin(), res.begin() + support_size );
+      res.set_leaves( leaves.begin(), leaves.end() );
+    }
+
+    return true;
+  }
+
   uint32_t compute_truth_table( uint32_t index, std::vector<cut_t const*> const& vcuts, cut_t& res )
   {
-    stopwatch t( st.cut_enumeration_st.time_truth_table );
+    // stopwatch t( st.cut_enumeration_st.time_truth_table ); /* runtime optimized */
 
-    std::vector<kitty::dynamic_truth_table> tt( vcuts.size() );
+    std::vector<TT> tt( vcuts.size() );
     auto i = 0;
     for ( auto const& cut : vcuts )
     {
       tt[i] = kitty::extend_to( truth_tables[( *cut )->func_id], res.size() );
-      const auto supp = compute_truth_table_support( *cut, res );
-      kitty::expand_inplace( tt[i], supp );
+      compute_truth_table_support( *cut, res, tt[i] );
       ++i;
     }
 
     auto tt_res = ntk.compute( ntk.index_to_node( index ), tt.begin(), tt.end() );
 
-    if ( ps.cut_enumeration_ps.minimize_truth_table )
+    if ( ps.cut_enumeration_ps.minimize_truth_table && !fast_support_minimization( tt_res, res ) )
     {
       const auto support = kitty::min_base_inplace( tt_res );
       if ( support.size() != res.size() )
@@ -1768,8 +1806,8 @@ private:
 
     if constexpr ( StoreFunction )
     {
-      default_simulator<kitty::dynamic_truth_table> sim( leaves.size() );
-      unordered_node_map<kitty::dynamic_truth_table, Ntk> node_to_value( ntk );
+      default_simulator<TT> sim( leaves.size() );
+      unordered_node_map<TT, Ntk> node_to_value( ntk );
 
       /* populate simulation values for constants */
       node_to_value[ntk.get_node( ntk.get_constant( false ) )] = sim.compute_constant( ntk.constant_value( ntk.get_node( ntk.get_constant( false ) ) ) );
@@ -1818,9 +1856,9 @@ private:
     } );
   }
 
-  void simulate_fc_rec( node const& n, unordered_node_map<kitty::dynamic_truth_table, Ntk>& node_to_value )
+  void simulate_fc_rec( node const& n, unordered_node_map<TT, Ntk>& node_to_value )
   {
-    std::vector<kitty::dynamic_truth_table> fanin_values( ntk.fanin_size( n ) );
+    std::vector<TT> fanin_values( ntk.fanin_size( n ) );
 
     ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
       if ( !node_to_value.has( ntk.get_node( f ) ) )
