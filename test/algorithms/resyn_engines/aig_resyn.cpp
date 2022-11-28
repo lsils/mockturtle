@@ -25,10 +25,9 @@ TEST_CASE( "Enumerative 0-resub", "[aig_resyn]" )
   CHECK( aig.num_gates() == 2u );
 
   window_resub_params ps;
-  window_resub_stats st;
   ps.wps.max_inserts = 3;
 
-  window_aig_enumerative_resub( aig, ps, &st );
+  window_aig_enumerative_resub( aig, ps );
   aig = cleanup_dangling( aig );
 
   /* check equivalence */
@@ -52,10 +51,9 @@ TEST_CASE( "Enumerative 1-resub: AND", "[aig_resyn]" )
   CHECK( aig.num_gates() == 2u );
 
   window_resub_params ps;
-  window_resub_stats st;
   ps.wps.max_inserts = 3;
 
-  window_aig_enumerative_resub( aig, ps, &st );
+  window_aig_enumerative_resub( aig, ps );
   aig = cleanup_dangling( aig );
 
   /* check equivalence */
@@ -79,10 +77,9 @@ TEST_CASE( "Enumerative 1-resub: AND-INV", "[aig_resyn]" )
   CHECK( aig.num_gates() == 2u );
 
   window_resub_params ps;
-  window_resub_stats st;
   ps.wps.max_inserts = 3;
 
-  window_aig_enumerative_resub( aig, ps, &st );
+  window_aig_enumerative_resub( aig, ps );
   aig = cleanup_dangling( aig );
 
   /* check equivalence */
@@ -106,10 +103,9 @@ TEST_CASE( "Enumerative 1-resub: OR", "[aig_resyn]" )
   CHECK( aig.num_gates() == 2u );
 
   window_resub_params ps;
-  window_resub_stats st;
   ps.wps.max_inserts = 3;
 
-  window_aig_enumerative_resub( aig, ps, &st );
+  window_aig_enumerative_resub( aig, ps );
   aig = cleanup_dangling( aig );
 
   /* check equivalence */
@@ -135,10 +131,9 @@ TEST_CASE( "Enumerative 2-resub: OR-OR", "[aig_resyn]" )
   CHECK( aig.num_gates() == 3u );
 
   window_resub_params ps;
-  window_resub_stats st;
   ps.wps.max_inserts = 3;
 
-  window_aig_enumerative_resub( aig, ps, &st );
+  window_aig_enumerative_resub( aig, ps );
   aig = cleanup_dangling( aig );
 
   /* check equivalence */
@@ -164,10 +159,9 @@ TEST_CASE( "Enumerative 2-resub: AND-AND", "[aig_resyn]" )
   CHECK( aig.num_gates() == 3u );
 
   window_resub_params ps;
-  window_resub_stats st;
   ps.wps.max_inserts = 3;
 
-  window_aig_enumerative_resub( aig, ps, &st );
+  window_aig_enumerative_resub( aig, ps );
   aig = cleanup_dangling( aig );
 
   /* check equivalence */
@@ -193,10 +187,9 @@ TEST_CASE( "Enumerative 2-resub: OR-AND", "[aig_resyn]" )
   CHECK( aig.num_gates() == 3u );
 
   window_resub_params ps;
-  window_resub_stats st;
   ps.wps.max_inserts = 3;
 
-  window_aig_enumerative_resub( aig, ps, &st );
+  window_aig_enumerative_resub( aig, ps );
   aig = cleanup_dangling( aig );
 
   /* check equivalence */
@@ -227,10 +220,9 @@ TEST_CASE( "Enumerative 3-resub: AND-2OR", "[aig_resyn]" )
   CHECK( aig.num_gates() == 7u );
 
   window_resub_params ps;
-  window_resub_stats st;
   ps.wps.max_inserts = 3;
 
-  window_aig_enumerative_resub( aig, ps, &st );
+  window_aig_enumerative_resub( aig, ps );
   aig = cleanup_dangling( aig );
 
   /* check equivalence */

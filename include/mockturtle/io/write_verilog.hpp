@@ -97,6 +97,7 @@ struct write_verilog_params
  * - `is_xor`
  * - `is_xor3`
  * - `is_maj`
+ * - `is_ite`
  * - `node_to_index`
  *
  * \param ntk Network
@@ -120,6 +121,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
   static_assert( has_is_xor_v<Ntk>, "Ntk does not implement the is_xor method" );
   static_assert( has_is_xor3_v<Ntk>, "Ntk does not implement the is_xor3 method" );
   static_assert( has_is_maj_v<Ntk>, "Ntk does not implement the is_maj method" );
+  static_assert( has_is_ite_v<Ntk>, "Ntk does not implement the is_ite method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
 
   assert( ntk.is_combinational() && "Network has to be combinational" );
@@ -364,6 +366,34 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
       else
       {
         writer.on_assign_maj3( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ) );
+      }
+    }
+    else if ( ntk.is_ite( n ) )
+    {
+      std::array<signal<Ntk>, 3> children;
+      ntk.foreach_fanin( n, [&]( auto const& f, auto i ) { children[i] = f; } );
+
+      if ( ntk.is_constant( ntk.get_node( children[1u] ) ) )
+      {
+        assert( children[1u] == ntk.get_constant( false ) );
+        // a ? 0 : c = ~a & c
+        std::vector<std::pair<bool, std::string>> ins;
+        ins.emplace_back( std::make_pair( !ntk.is_complemented( children[0u] ), node_names[ntk.get_node( children[0u] )] ) );
+        ins.emplace_back( std::make_pair( ntk.is_complemented( children[2u] ), node_names[ntk.get_node( children[2u] )] ) );
+        writer.on_assign( node_names[n], ins, "&" );
+      }
+      else if ( ntk.get_node( children[1u] ) == ntk.get_node( children[2u] ) )
+      {
+        assert( !ntk.is_complemented( children[1u] ) && ntk.is_complemented( children[2u] ) );
+        // a ? b : ~b = a ^ ~b
+        std::vector<std::pair<bool, std::string>> ins;
+        ins.emplace_back( std::make_pair( ntk.is_complemented( children[0u] ), node_names[ntk.get_node( children[0u] )] ) );
+        ins.emplace_back( std::make_pair( ntk.is_complemented( children[2u] ), node_names[ntk.get_node( children[2u] )] ) );
+        writer.on_assign( node_names[n], ins, "^" );
+      }
+      else
+      {
+        writer.on_assign_mux21( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ) );
       }
     }
     else

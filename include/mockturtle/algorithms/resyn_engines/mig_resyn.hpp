@@ -99,6 +99,9 @@ public:
   {
     (void)care;
     (void)max_level;
+    divisors.clear();
+    index_list.clear();
+
     num_bits = target.num_bits();
     divisors.emplace_back( ~target );
     divisors.emplace_back( target );
@@ -295,6 +298,11 @@ public:
   template<class iterator_type, class truth_table_storage_type, bool enabled = static_params::uniform_div_cost && !static_params::preserve_depth, typename = std::enable_if_t<enabled>>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
   {
+    divisors.clear();
+    maj_nodes.clear();
+    computed_table.clear();
+    leaves.clear();
+
     divisors.emplace_back( ~target );
     divisors.emplace_back( target );
 
@@ -958,6 +966,11 @@ public:
   {
     (void)care;
     (void)max_level;
+
+    divisors.clear();
+    id_to_lit.resize( 2 );
+    index_list.clear();
+
     divisors.emplace_back( ~target );
     divisors.emplace_back( target );
 

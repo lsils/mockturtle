@@ -8,6 +8,7 @@
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/muxig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/xmg.hpp>
 
@@ -108,6 +109,38 @@ TEST_CASE( "read a VERILOG file into XMG network", "[verilog_reader]" )
       break;
     }
   } );
+}
+
+TEST_CASE( "read a VERILOG file into MuxIG network", "[verilog_reader]" )
+{
+  muxig_network ntk;
+
+  std::string file{
+      "module top( y1, a, b, c ) ;\n"
+      "  input a , b , c ;\n"
+      "  output y1 ;\n"
+      "  wire zero, g1 , g2 , g3 , g4 ;\n"
+      "  assign g1 = a & b ;\n"
+      "  assign g2 = a | b ;\n"
+      "  assign g3 = ~g2 ;\n"
+      "  assign g4 = c ? g1 : g3 ;\n"
+      "  assign y1 = g4 ;\n"
+      "endmodule\n" };
+
+  std::istringstream in( file );
+  auto const result = lorina::read_verilog( in, verilog_reader( ntk ) );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+  CHECK( ntk.size() == 7 );
+  CHECK( ntk.num_pis() == 3 );
+  CHECK( ntk.num_pos() == 1 );
+  CHECK( ntk.num_gates() == 3 );
+
+  /* functional checks */
+  default_simulator<kitty::dynamic_truth_table> sim( ntk.num_pis() );
+  const auto tts = simulate<kitty::dynamic_truth_table>( ntk, sim );
+  CHECK( kitty::to_hex( tts[0] ) == "81" );
 }
 
 TEST_CASE( "read a VERILOG file with instances", "[verilog_reader]" )
