@@ -27,6 +27,7 @@
   \file traits.hpp
   \brief Type traits and checkers for the network interface
 
+  \author Alessandro Tempia Calvino
   \author Andrea Costamagna
   \author Bruno Schmitt
   \author Hanyu Wang
@@ -593,6 +594,66 @@ struct has_clone_node<Ntk, std::void_t<decltype( std::declval<Ntk>().clone_node(
 
 template<class Ntk>
 inline constexpr bool has_clone_node_v = has_clone_node<Ntk>::value;
+#pragma endregion
+
+#pragma region has_has_and
+template<class Ntk, class = void>
+struct has_has_and : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_and<Ntk, std::void_t<decltype( std::declval<Ntk>().has_and( std::declval<signal<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_and_v = has_has_and<Ntk>::value;
+#pragma endregion
+
+#pragma region has_has_xor
+template<class Ntk, class = void>
+struct has_has_xor : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_xor<Ntk, std::void_t<decltype( std::declval<Ntk>().has_xor( std::declval<signal<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_xor_v = has_has_xor<Ntk>::value;
+#pragma endregion
+
+#pragma region has_has_maj
+template<class Ntk, class = void>
+struct has_has_maj : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_maj<Ntk, std::void_t<decltype( std::declval<Ntk>().has_maj( std::declval<signal<Ntk>>(), std::declval<signal<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_maj_v = has_has_maj<Ntk>::value;
+#pragma endregion
+
+#pragma region has_has_xor3
+template<class Ntk, class = void>
+struct has_has_xor3 : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_xor3<Ntk, std::void_t<decltype( std::declval<Ntk>().has_xor3( std::declval<signal<Ntk>>(), std::declval<signal<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_xor3_v = has_has_xor3<Ntk>::value;
 #pragma endregion
 
 #pragma region has_substitute_node

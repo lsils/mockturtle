@@ -292,6 +292,30 @@ TEST_CASE( "structural properties of an AIG", "[aig]" )
   CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
 }
 
+TEST_CASE( "check has_and in AIG", "[aig]" )
+{
+  aig_network aig;
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+  auto const x3 = aig.create_pi();
+
+  auto const n4 = aig.create_and( !x1, x2 );
+  auto const n5 = aig.create_and( x1, n4 );
+  auto const n6 = aig.create_and( x3, n5 );
+  auto const n7 = aig.create_and( n4, x2 );
+  auto const n8 = aig.create_and( !n5, !n7 );
+  auto const n9 = aig.create_and( !n8, n4 );
+
+  aig.create_po( n6 );
+  aig.create_po( n9 );
+
+  CHECK( aig.has_and( !x1, x2 ).has_value() == true );
+  CHECK( *aig.has_and( !x1, x2 ) == aig.get_node( n4 ) );
+  CHECK( aig.has_and( !x1, x3 ).has_value() == false );
+  CHECK( aig.has_and( !n7, !n5 ).has_value() == true );
+  CHECK( *aig.has_and( !n7, !n5 ) == aig.get_node( n8 ) );
+}
+
 TEST_CASE( "node and signal iteration in an AIG", "[aig]" )
 {
   aig_network aig;

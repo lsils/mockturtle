@@ -321,6 +321,25 @@ TEST_CASE( "structural properties of an MIG", "[mig]" )
   CHECK( mig.fanout_size( mig.get_node( f2 ) ) == 1 );
 }
 
+TEST_CASE( "check has_maj in MIG", "[mig]" )
+{
+  mig_network mig;
+
+  auto a = mig.create_pi();
+  auto b = mig.create_pi();
+  auto c = mig.create_pi();
+  auto d = mig.create_pi();
+
+  auto f = mig.create_maj( a, b, c );
+  auto g = mig.create_maj( a, c, d );
+
+  CHECK( mig.has_maj( a, b, c ).has_value() == true );
+  CHECK( *mig.has_maj( a, b, c ) == mig.get_node( f ) );
+  CHECK( mig.has_maj( a, b, d ).has_value() == false );
+  CHECK( mig.has_maj( !a, !c, !d ).has_value() == true );
+  CHECK( *mig.has_maj( !a, !c, !d ) == mig.get_node( g ) );
+}
+
 TEST_CASE( "node and signal iteration in an MIG", "[mig]" )
 {
   mig_network mig;
