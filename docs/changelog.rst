@@ -18,6 +18,8 @@ v0.4 (not yet released)
     - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Resynthesis based on SOP factoring (`sop_factoring`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
     - XAG algebraic depth rewriting (`xag_algebraic_depth_rewriting`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
+    - Collapse mapped extended to compute mapping functions if the mapped network doesn't have them stored (`collapse_mapped`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
+    - Extended LUT mapping for delay and area (`lut_map`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
 * Properties:
