@@ -79,11 +79,14 @@ struct lut_map_params
    */
   cut_enumeration_params cut_enumeration_ps{};
 
+  /*! \brief Do area-oriented mapping. */
+  bool area_oriented_mapping{ false };
+
   /*! \brief Required depth for depth relaxation. */
   uint32_t required_delay{ 0u };
 
-  /*! \brief Do area-oriented mapping. */
-  bool area_oriented_mapping{ false };
+  /*! \brief Required depth relaxation ratio (%). */
+  uint32_t relax_required{ 0u };
 
   /*! \brief Recompute cuts at each step. */
   bool recompute_cuts{ true };
@@ -824,7 +827,7 @@ private:
   {
     for ( auto i = 0u; i < node_match.size(); ++i )
     {
-      node_match[i].required = UINT32_MAX;
+      node_match[i].required = UINT32_MAX >> 1;
     }
 
     /* return in case of area_oriented_mapping */
@@ -832,6 +835,12 @@ private:
       return;
 
     uint32_t required = delay;
+
+    /* relax delay constraints */
+    if ( ps.required_delay == 0.0f && ps.relax_required > 0.0f )
+    {
+      required *= ( 100.0 + ps.relax_required ) / 100.0;
+    }
 
     if ( ps.required_delay != 0 )
     {

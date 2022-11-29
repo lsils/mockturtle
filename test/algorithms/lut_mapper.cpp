@@ -159,6 +159,33 @@ TEST_CASE( "LUT map of 64-LUT network", "[lut_mapper]" )
   CHECK( mapped_aig.num_cells() == 114 );
 }
 
+TEST_CASE( "LUT map of 64-LUT network delay relaxed", "[lut_mapper]" )
+{
+  aig_network aig;
+
+  std::vector<aig_network::signal> a( 64 ), b( 64 );
+  std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
+  auto carry = aig.get_constant( false );
+
+  carry_ripple_adder_inplace( aig, a, b, carry );
+
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
+  aig.create_po( carry );
+
+  mapping_view<aig_network, false> mapped_aig{ aig };
+
+  lut_map_params ps;
+  ps.area_oriented_mapping = false;
+  ps.relax_required = 1000;
+  ps.recompute_cuts = true;
+  ps.remove_dominated_cuts = false;
+  ps.edge_optimization = false;
+  lut_map<decltype( mapped_aig ), false>( mapped_aig, ps );
+
+  CHECK( mapped_aig.num_cells() == 114 );
+}
+
 TEST_CASE( "LUT map of 64-LUT network area", "[lut_mapper]" )
 {
   aig_network aig;
