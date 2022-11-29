@@ -827,7 +827,7 @@ private:
   {
     for ( auto i = 0u; i < node_match.size(); ++i )
     {
-      node_match[i].required = UINT32_MAX - 1;
+      node_match[i].required = UINT32_MAX << 1;
     }
 
     /* return in case of area_oriented_mapping */
