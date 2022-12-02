@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,45 +27,36 @@
   \file mig_enumerative.hpp
   \brief MIG enumerative resynthesis
 
+  \author Hanyu Wang
   \author Siang-Yun (Sonia) Lee
-  
-  Based on previous implementation of MIG resubstitution by 
+
+  Based on previous implementation of MIG resubstitution by
   Eleonora Testa, Heinz Riener, and Mathias Soeken
 */
 
 #pragma once
 
 #include "../../utils/index_list.hpp"
-#include "../experimental/boolean_optimization.hpp"
+#include "../../utils/null_utils.hpp"
 #include <kitty/kitty.hpp>
 #include <optional>
 #include <vector>
 
-namespace mockturtle::experimental
+namespace mockturtle
 {
-
-struct mig_enumerative_resyn_stats
-{
-
-  void report() const
-  {
-  }
-}; /* mig_enumerative_resyn_stats */
 
 template<typename TT>
 struct mig_enumerative_resyn
 {
 public:
-  using stats = mig_enumerative_resyn_stats;
-  using params = null_params;
+  using stats = null_stats;
   using index_list_t = mig_index_list;
   using truth_table_t = TT;
 
 public:
-  explicit mig_enumerative_resyn( stats& st, params const& ps = {} ) noexcept
+  explicit mig_enumerative_resyn( stats& st ) noexcept
       : st( st )
   {
-    (void)ps;
   }
 
   template<class iterator_type, class truth_table_storage_type>
@@ -253,7 +244,8 @@ public:
             for ( l = 0u; l < maj1pairs.size(); ++l )
             {
               auto const& a = get_tt_from_lit( maj1pairs[l].first, tts, begin );
-              auto tt = maj1pairs[l].second >= 2 ? kitty::ternary_majority( a, get_tt_from_lit( maj1pairs[l].second, tts, begin ), tt_binate ) : maj1pairs[l].second ? a | tt_binate : a & tt_binate;
+              auto tt = maj1pairs[l].second >= 2 ? kitty::ternary_majority( a, get_tt_from_lit( maj1pairs[l].second, tts, begin ), tt_binate ) : maj1pairs[l].second ? a | tt_binate
+                                                                                                                                                                     : a & tt_binate;
               if ( tt == target )
               {
                 il.add_output( il.add_maj( maj1pairs[l].first, maj1pairs[l].second, il.add_maj( binate[i], binate[j], binate[k] ) ) );
@@ -289,4 +281,4 @@ private:
   stats& st;
 }; /* mig_enumerative_resyn */
 
-} // namespace mockturtle::experimental
+} // namespace mockturtle

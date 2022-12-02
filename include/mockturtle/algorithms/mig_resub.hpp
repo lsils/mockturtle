@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -35,11 +35,11 @@
 
 #pragma once
 
-#include "resubstitution.hpp"
-#include "resyn_engines/mig_resyn.hpp"
 #include "../networks/mig.hpp"
 #include "../utils/index_list.hpp"
 #include "../utils/truth_table_utils.hpp"
+#include "resubstitution.hpp"
+#include "resyn_engines/mig_resyn.hpp"
 
 #include <kitty/kitty.hpp>
 
@@ -49,40 +49,40 @@ namespace mockturtle
 struct mig_enumerative_resub_stats
 {
   /*! \brief Accumulated runtime for const-resub */
-  stopwatch<>::duration time_resubC{0};
+  stopwatch<>::duration time_resubC{ 0 };
 
   /*! \brief Accumulated runtime for zero-resub */
-  stopwatch<>::duration time_resub0{0};
+  stopwatch<>::duration time_resub0{ 0 };
 
   /*! \brief Accumulated runtime for collecting unate divisors. */
-  stopwatch<>::duration time_collect_unate_divisors{0};
+  stopwatch<>::duration time_collect_unate_divisors{ 0 };
 
   /*! \brief Accumulated runtime for one-resub */
-  stopwatch<>::duration time_resub1{0};
+  stopwatch<>::duration time_resub1{ 0 };
 
   /*! \brief Accumulated runtime for relevance resub */
-  stopwatch<>::duration time_resubR{0};
+  stopwatch<>::duration time_resubR{ 0 };
 
   /*! \brief Accumulated runtime for collecting unate divisors. */
-  stopwatch<>::duration time_collect_binate_divisors{0};
+  stopwatch<>::duration time_collect_binate_divisors{ 0 };
 
   /*! \brief Accumulated runtime for two-resub. */
-  stopwatch<>::duration time_resub2{0};
+  stopwatch<>::duration time_resub2{ 0 };
 
   /*! \brief Number of accepted constant resubsitutions */
-  uint32_t num_const_accepts{0};
+  uint32_t num_const_accepts{ 0 };
 
   /*! \brief Number of accepted zero resubsitutions */
-  uint32_t num_div0_accepts{0};
+  uint32_t num_div0_accepts{ 0 };
 
   /*! \brief Number of accepted one resubsitutions */
-  uint64_t num_div1_accepts{0};
+  uint64_t num_div1_accepts{ 0 };
 
   /*! \brief Number of accepted relevance resubsitutions */
-  uint32_t num_divR_accepts{0};
+  uint32_t num_divR_accepts{ 0 };
 
   /*! \brief Number of accepted two resubsitutions */
-  uint64_t num_div2_accepts{0};
+  uint64_t num_div2_accepts{ 0 };
 
   void report() const
   {
@@ -98,9 +98,9 @@ struct mig_enumerative_resub_stats
                               num_div1_accepts, num_div1_accepts, to_seconds( time_resub1 ) );
     std::cout << fmt::format( "[i]            collect binate divisors                          ({:>5.2f} secs)\n", to_seconds( time_collect_binate_divisors ) );
     std::cout << fmt::format( "[i]            2-resub {:6d} = {:6d} 2MAJ                     ({:>5.2f} secs)\n",
-                               num_div2_accepts, num_div2_accepts, to_seconds( time_resub2 ) );
+                              num_div2_accepts, num_div2_accepts, to_seconds( time_resub2 ) );
     std::cout << fmt::format( "[i]            total   {:6d}\n",
-                              (num_const_accepts + num_div0_accepts + num_divR_accepts + num_div1_accepts + num_div2_accepts) );
+                              ( num_const_accepts + num_div0_accepts + num_divR_accepts + num_div1_accepts + num_div2_accepts ) );
   }
 }; /* mig_enumerative_resub_stats */
 
@@ -142,23 +142,19 @@ public:
 
 public:
   explicit mig_enumerative_resub_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
-    : ntk( ntk )
-    , sim( sim )
-    , divs( divs )
-    , num_divs( num_divs )
-    , st( st )
+      : ntk( ntk ), sim( sim ), divs( divs ), num_divs( num_divs ), st( st )
   {
   }
 
   std::optional<signal> operator()( node const& root, TT care, uint32_t required, uint32_t max_inserts, uint32_t num_mffc, uint32_t& last_gain )
   {
     (void)care;
-    assert(is_const0(~care));
+    assert( is_const0( ~care ) );
 
     /* consider constants */
     auto g = call_with_stopwatch( st.time_resubC, [&]() {
-        return resub_const( root, required );
-      } );
+      return resub_const( root, required );
+    } );
     if ( g )
     {
       ++st.num_const_accepts;
@@ -168,8 +164,8 @@ public:
 
     /* consider equal nodes */
     g = call_with_stopwatch( st.time_resub0, [&]() {
-        return resub_div0( root, required );
-      } );
+      return resub_div0( root, required );
+    } );
     if ( g )
     {
       ++st.num_div0_accepts;
@@ -179,8 +175,8 @@ public:
 
     /* consider relevance optimization */
     g = call_with_stopwatch( st.time_resubR, [&]() {
-        return resub_divR( root, required );
-      });
+      return resub_divR( root, required );
+    } );
     if ( g )
     {
       ++st.num_divR_accepts;
@@ -193,13 +189,13 @@ public:
 
     /* collect level one divisors */
     call_with_stopwatch( st.time_collect_unate_divisors, [&]() {
-        collect_unate_divisors( root, required );
-      });
+      collect_unate_divisors( root, required );
+    } );
 
     /* consider equal nodes */
     g = call_with_stopwatch( st.time_resub1, [&]() {
-        return resub_div1( root, required );
-      } );
+      return resub_div1( root, required );
+    } );
     if ( g )
     {
       ++st.num_div1_accepts;
@@ -212,12 +208,11 @@ public:
 
     /* collect level two divisors */
     call_with_stopwatch( st.time_collect_binate_divisors, [&]() {
-        collect_binate_divisors( root, required );
-      });
+      collect_binate_divisors( root, required );
+    } );
 
     /* consider two nodes */
-    g = call_with_stopwatch( st.time_resub2, [&]() {
-        return resub_div2( root, required ); });
+    g = call_with_stopwatch( st.time_resub2, [&]() { return resub_div2( root, required ); } );
     if ( g )
     {
       ++st.num_div2_accepts;
@@ -261,9 +256,9 @@ public:
     (void)required;
 
     std::vector<signal> fs;
-    ntk.foreach_fanin( root, [&]( const auto& f ){
-        fs.emplace_back( f );
-      });
+    ntk.foreach_fanin( root, [&]( const auto& f ) {
+      fs.emplace_back( f );
+    } );
 
     for ( auto i = 0u; i < divs.size(); ++i )
     {
@@ -283,54 +278,42 @@ public:
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
 
-        return sim.get_phase( root ) ?
-          !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, b, c ) :
-           ntk.create_maj( sim.get_phase( d0 ) ? !s : s, b, c );
+        return sim.get_phase( root ) ? !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, b, c ) : ntk.create_maj( sim.get_phase( d0 ) ? !s : s, b, c );
       }
       else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && can_replace_majority_fanin( tt1, tt0, tt2, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
 
-        return sim.get_phase( root ) ?
-          !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, c ) :
-           ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, c );
+        return sim.get_phase( root ) ? !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, c ) : ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, c );
       }
       else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && can_replace_majority_fanin( tt2, tt0, tt1, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
 
-        return sim.get_phase( root ) ?
-          !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, b ) :
-          ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, b );
+        return sim.get_phase( root ) ? !ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, b ) : ntk.create_maj( sim.get_phase( d0 ) ? !s : s, a, b );
       }
       else if ( ntk.get_node( fs[0] ) != d0 && ntk.fanout_size( ntk.get_node( fs[0] ) ) == 1 && can_replace_majority_fanin( ~tt0, tt1, tt2, tt ) )
       {
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
 
-        return sim.get_phase( root ) ?
-          !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, b, c ) :
-           ntk.create_maj( sim.get_phase( d0 ) ? s : !s, b, c );
+        return sim.get_phase( root ) ? !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, b, c ) : ntk.create_maj( sim.get_phase( d0 ) ? s : !s, b, c );
       }
       else if ( ntk.get_node( fs[1] ) != d0 && ntk.fanout_size( ntk.get_node( fs[1] ) ) == 1 && can_replace_majority_fanin( ~tt1, tt0, tt2, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const c = sim.get_phase( ntk.get_node( fs[2] ) ) ? !fs[2] : fs[2];
 
-        return sim.get_phase( root ) ?
-          !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, c ) :
-           ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, c );
+        return sim.get_phase( root ) ? !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, c ) : ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, c );
       }
       else if ( ntk.get_node( fs[2] ) != d0 && ntk.fanout_size( ntk.get_node( fs[2] ) ) == 1 && can_replace_majority_fanin( ~tt2, tt0, tt1, tt ) )
       {
         auto const a = sim.get_phase( ntk.get_node( fs[0] ) ) ? !fs[0] : fs[0];
         auto const b = sim.get_phase( ntk.get_node( fs[1] ) ) ? !fs[1] : fs[1];
 
-        return sim.get_phase( root ) ?
-          !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, b ) :
-           ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, b );
+        return sim.get_phase( root ) ? !ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, b ) : ntk.create_maj( sim.get_phase( d0 ) ? s : !s, a, b );
       }
     }
 
@@ -490,32 +473,32 @@ public:
           /* Note: the implication relation is actually not necessary for majority; this is an over-filtering */
           if ( kitty::implies( kitty::ternary_majority( tt_s0, tt_s1, tt_s2 ), tt ) )
           {
-            bdivs.b0.emplace_back(  s0 );
-            bdivs.b1.emplace_back(  s1 );
-            bdivs.b2.emplace_back(  s2 );
+            bdivs.b0.emplace_back( s0 );
+            bdivs.b1.emplace_back( s1 );
+            bdivs.b2.emplace_back( s2 );
             continue;
           }
 
           if ( kitty::implies( kitty::ternary_majority( ~tt_s0, tt_s1, tt_s2 ), tt ) )
           {
             bdivs.b0.emplace_back( !s0 );
-            bdivs.b1.emplace_back(  s1 );
-            bdivs.b2.emplace_back(  s2 );
+            bdivs.b1.emplace_back( s1 );
+            bdivs.b2.emplace_back( s2 );
             continue;
           }
 
           if ( kitty::implies( kitty::ternary_majority( tt_s0, ~tt_s1, tt_s2 ), tt ) )
           {
-            bdivs.b0.emplace_back(  s0 );
+            bdivs.b0.emplace_back( s0 );
             bdivs.b1.emplace_back( !s1 );
-            bdivs.b2.emplace_back(  s2 );
+            bdivs.b2.emplace_back( s2 );
             continue;
           }
 
           if ( kitty::implies( kitty::ternary_majority( tt_s0, tt_s1, ~tt_s2 ), tt ) )
           {
-            bdivs.b0.emplace_back(  s0 );
-            bdivs.b1.emplace_back(  s1 );
+            bdivs.b0.emplace_back( s0 );
+            bdivs.b1.emplace_back( s1 );
             bdivs.b2.emplace_back( !s2 );
             continue;
           }
@@ -524,13 +507,13 @@ public:
           {
             bdivs.b0.emplace_back( !s0 );
             bdivs.b1.emplace_back( !s1 );
-            bdivs.b2.emplace_back(  s2 );
+            bdivs.b2.emplace_back( s2 );
             continue;
           }
 
           if ( kitty::implies( kitty::ternary_majority( tt_s0, ~tt_s1, ~tt_s2 ), tt ) )
           {
-            bdivs.b0.emplace_back(  s0 );
+            bdivs.b0.emplace_back( s0 );
             bdivs.b1.emplace_back( !s1 );
             bdivs.b2.emplace_back( !s2 );
             continue;
@@ -539,7 +522,7 @@ public:
           if ( kitty::implies( kitty::ternary_majority( ~tt_s0, tt_s1, ~tt_s2 ), tt ) )
           {
             bdivs.b0.emplace_back( !s0 );
-            bdivs.b1.emplace_back(  s1 );
+            bdivs.b1.emplace_back( s1 );
             bdivs.b2.emplace_back( !s2 );
             continue;
           }
@@ -586,9 +569,7 @@ public:
 
         if ( kitty::ternary_majority( tt_s0, tt_s1, kitty::ternary_majority( tt_s2, tt_s3, tt_s4 ) ) == tt )
         {
-          return sim.get_phase( root ) ?
-            !ntk.create_maj( a, b, ntk.create_maj( c, d, e ) ) :
-             ntk.create_maj( a, b, ntk.create_maj( c, d, e ) );
+          return sim.get_phase( root ) ? !ntk.create_maj( a, b, ntk.create_maj( c, d, e ) ) : ntk.create_maj( a, b, ntk.create_maj( c, d, e ) );
         }
       }
     }
@@ -610,13 +591,13 @@ private:
 struct mig_resyn_resub_stats
 {
   /*! \brief Time for finding dependency function. */
-  stopwatch<>::duration time_compute_function{0};
+  stopwatch<>::duration time_compute_function{ 0 };
 
   /*! \brief Number of found solutions. */
-  uint32_t num_success{0};
+  uint32_t num_success{ 0 };
 
   /*! \brief Number of times that no solution can be found. */
-  uint32_t num_fail{0};
+  uint32_t num_fail{ 0 };
 
   void report() const
   {
@@ -642,13 +623,10 @@ public:
 
 public:
   explicit mig_resyn_functor( Ntk& ntk, Simulator const& sim, std::vector<node> const& divs, uint32_t num_divs, stats& st )
-    : ntk( ntk )
-    , sim( sim )
-    , tts( ntk )
-    , divs( divs )
-    , st( st )
+      : ntk( ntk ), sim( sim ), tts( ntk ), divs( divs ), st( st )
   {
-    assert( divs.size() == num_divs ); (void)num_divs;
+    assert( divs.size() == num_divs );
+    (void)num_divs;
     div_signals.reserve( divs.size() );
   }
 
@@ -669,13 +647,13 @@ public:
 
     auto const res = call_with_stopwatch( st.time_compute_function, [&]() {
       return engine( target, care_transformed, divs.begin(), divs.end(), tts, std::min( potential_gain - 1, max_inserts ) );
-    });
+    } );
     if ( res )
     {
       ++st.num_success;
       signal ret;
-      real_gain = potential_gain - (*res).num_gates();
-      insert( ntk, div_signals.begin(), div_signals.end(), *res, [&]( signal const& s ){ ret = s; } );
+      real_gain = potential_gain - ( *res ).num_gates();
+      insert( ntk, div_signals.begin(), div_signals.end(), *res, [&]( signal const& s ) { ret = s; } );
       return ret;
     }
     else
@@ -701,7 +679,7 @@ private:
  * function using existing nodes from the cut.  Node which are no
  * longer used (including nodes in their transitive fanins) can then
  * be removed.  The objective is to reduce the size of the network as
- * much as possible while maintaing the global input-output
+ * much as possible while maintaining the global input-output
  * functionality.
  *
  * **Required network functions:**
@@ -815,7 +793,7 @@ void mig_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
  * function using existing nodes from the cut.  Node which are no
  * longer used (including nodes in their transitive fanins) can then
  * be removed.  The objective is to reduce the size of the network as
- * much as possible while maintaing the global input-output
+ * much as possible while maintaining the global input-output
  * functionality.
  *
  * **Required network functions:**

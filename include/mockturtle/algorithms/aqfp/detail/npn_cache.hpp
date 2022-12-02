@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file npn_cache.hpp
   \brief Cached NPN class computation
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -47,11 +47,13 @@ class npn_cache
 
 public:
   npn_cache() : arr( 1ul << ( 1ul << 4u ) ), has( 1ul << ( 1ul << 4u ), false )
-  { }
+  {
+  }
 
   npn_info operator()( uint64_t tt, uint32_t num_inputs = 4u )
   {
-    if (num_inputs == 4u) {
+    if ( num_inputs == 4u )
+    {
       if ( has[tt] )
       {
         return arr[tt];
@@ -63,9 +65,10 @@ public:
 
       has[tt] = true;
       return ( arr[tt] = { std::get<0>( tmp )._bits[0] & 0xffff, std::get<1>( tmp ), std::get<2>( tmp ) } );
-    } 
+    }
 
-    if (cache.count(tt)) {
+    if ( cache.count( tt ) )
+    {
       return cache[tt];
     }
 

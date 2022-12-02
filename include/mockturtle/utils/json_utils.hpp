@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -41,7 +41,7 @@ namespace kitty
 
 inline void to_json( nlohmann::json& j, const dynamic_truth_table& tt )
 {
-  j = nlohmann::json{{"_bits", tt._bits}, {"_num_vars", tt._num_vars}};
+  j = nlohmann::json{ { "_bits", tt._bits }, { "_num_vars", tt._num_vars } };
 }
 
 inline void from_json( const nlohmann::json& j, dynamic_truth_table& tt )

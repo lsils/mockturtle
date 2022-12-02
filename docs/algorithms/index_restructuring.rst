@@ -8,12 +8,14 @@ Logic restructuring and optimization
    akers_synthesis
    resyn_engines
    linear_resynthesis
+   aqfp_resynthesis
 
 .. toctree::
    :maxdepth: 1
    :caption: Rewriting and resubstitution
 
    cut_rewriting
+   xag_algebraic_rewriting
    mig_algebraic_rewriting
    resubstitution
 
@@ -25,4 +27,6 @@ Logic restructuring and optimization
    xmg_optimization
    functional_reduction
    refactoring
+   aig_balancing
    balancing
+   cost_generic_resub

@@ -4,14 +4,14 @@
 using namespace mockturtle;
 
 /* NOTATION
-* AIG   : And Inverter Graph
-* XAG   : Xor And Graph
-* MIG   : Majority Inverter Graph
-* XMG   : Xor Majority Graph
-* DSD-R : Disjoint Support Decomposition based Resynthesis
-* SD-R  : Shannon Decomposition based Resynthesis
-* NPN-R : NPN based Resynthesis
-*/
+ * AIG   : And Inverter Graph
+ * XAG   : Xor And Graph
+ * MIG   : Majority Inverter Graph
+ * XMG   : Xor Majority Graph
+ * DSD-R : Disjoint Support Decomposition based Resynthesis
+ * SD-R  : Shannon Decomposition based Resynthesis
+ * NPN-R : NPN based Resynthesis
+ */
 
 // Fully disjoint support decomposable functions
 TEST_CASE( "AIG, XAG, MIG, XMG: DSD-R only ", "[klut_to_graph]" )
@@ -36,7 +36,7 @@ TEST_CASE( "AIG, XAG, MIG, XMG: DSD-R only ", "[klut_to_graph]" )
     return kLUT_ntk.create_node( children, remainder );
   };
 
-  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, {x1, x2, x3, x4, x5, x6}, fn ) );
+  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, { x1, x2, x3, x4, x5, x6 }, fn ) );
 
   aig = convert_klut_to_graph<aig_network>( kLUT_ntk );
   xag = convert_klut_to_graph<xag_network>( kLUT_ntk );
@@ -73,7 +73,7 @@ TEST_CASE( "AIG, XAG, MIG, XMG: DSD-R -fallback-> NPN-R", "[klut_to_graph]" )
     return kLUT_ntk.create_node( children, remainder );
   };
 
-  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, {x1, x2, x3, x4, x5, x6}, fn ) );
+  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, { x1, x2, x3, x4, x5, x6 }, fn ) );
 
   aig = convert_klut_to_graph<aig_network>( kLUT_ntk );
   xag = convert_klut_to_graph<xag_network>( kLUT_ntk );
@@ -109,7 +109,7 @@ TEST_CASE( "AIG, XAG, MIG, XMG: SD-R -fallback-> NPN-R", "[klut_to_graph]" )
     return kLUT_ntk.create_node( children, remainder );
   };
 
-  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, {x1, x2, x3, x4, x5}, fn ) );
+  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, { x1, x2, x3, x4, x5 }, fn ) );
 
   aig = convert_klut_to_graph<aig_network>( kLUT_ntk );
   xag = convert_klut_to_graph<xag_network>( kLUT_ntk );
@@ -147,7 +147,7 @@ TEST_CASE( "AIG, XAG, MIG, XMG: DSD-R -fallback-> SD-R -fallback-> NPN-R", "[klu
     return kLUT_ntk.create_node( children, remainder );
   };
 
-  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, {x1, x2, x3, x4, x5, x6}, fn ) );
+  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, { x1, x2, x3, x4, x5, x6 }, fn ) );
 
   aig = convert_klut_to_graph<aig_network>( kLUT_ntk );
   xag = convert_klut_to_graph<xag_network>( kLUT_ntk );
@@ -189,7 +189,7 @@ TEST_CASE( "AIG,XAG,MIG,XMG: Random 10-LUT ", "[klut_to_graph]" )
     return kLUT_ntk.create_node( children, remainder );
   };
 
-  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, {x1, x2, x3, x4, x5, x6, x7, x8, x9, x10}, fn ) );
+  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, { x1, x2, x3, x4, x5, x6, x7, x8, x9, x10 }, fn ) );
 
   aig = convert_klut_to_graph<aig_network>( kLUT_ntk );
   xag = convert_klut_to_graph<xag_network>( kLUT_ntk );
@@ -204,7 +204,7 @@ TEST_CASE( "AIG,XAG,MIG,XMG: Random 10-LUT ", "[klut_to_graph]" )
   CHECK( simulate<kitty::dynamic_truth_table>( xmg, sim )[0] == table );
 }
 
-// additional test for XAG explicitely presenting a XAG
+// additional test for XAG explicitly presenting a XAG
 TEST_CASE( "XAG: DSD-R -fallback-> NPN-R", "[klut_to_graph]" )
 {
 
@@ -225,7 +225,7 @@ TEST_CASE( "XAG: DSD-R -fallback-> NPN-R", "[klut_to_graph]" )
     return kLUT_ntk.create_node( children, remainder );
   };
 
-  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, {x1, x2, x3, x4, x5, x6}, fn ) );
+  kLUT_ntk.create_po( dsd_decomposition( kLUT_ntk, table, { x1, x2, x3, x4, x5, x6 }, fn ) );
 
   xag = convert_klut_to_graph<xag_network>( kLUT_ntk );
 

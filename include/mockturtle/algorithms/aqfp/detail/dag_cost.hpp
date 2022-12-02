@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,7 +27,7 @@
   \file dag_cost.hpp
   \brief Cost computing functions for AQFP DAG structures
 
-  \author Dewmini Marakkalage 
+  \author Dewmini Sudara Marakkalage
 */
 
 #pragma once
@@ -36,7 +36,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <mockturtle/properties/aqfpcost.hpp>
+#include "../../../properties/aqfpcost.hpp"
 
 namespace mockturtle
 {
@@ -48,7 +48,7 @@ class dag_gate_cost
 public:
   dag_gate_cost( const std::unordered_map<uint32_t, double>& gate_costs ) : gate_costs( gate_costs ) {}
 
-  double operator()(const Ntk& net )
+  double operator()( const Ntk& net )
   {
     double res = 0.0;
 
@@ -280,7 +280,7 @@ public:
   dag_aqfp_cost_and_depths( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters )
       : dag_aqfp_cost<Ntk>( gate_costs, splitters ) {}
 
-  std::pair<double, std::vector<uint32_t>> operator()(const Ntk& orig_net, const std::vector<uint32_t>& input_depths )
+  std::pair<double, std::vector<uint32_t>> operator()( const Ntk& orig_net, const std::vector<uint32_t>& input_depths )
   {
     net = orig_net;
     fanout = std::vector<std::vector<typename Ntk::node_type>>( net.nodes.size() );
@@ -418,7 +418,7 @@ public:
   dag_aqfp_cost_all_configs( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters )
       : dag_aqfp_cost<Ntk>( gate_costs, splitters ) {}
 
-  std::unordered_map<depth_config_t, double> operator()(const Ntk& orig_net )
+  std::unordered_map<depth_config_t, double> operator()( const Ntk& orig_net )
   {
     std::unordered_map<depth_config_t, double> config_cost;
     net = orig_net;

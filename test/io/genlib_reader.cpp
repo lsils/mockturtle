@@ -1,7 +1,7 @@
 #include <catch.hpp>
 
-#include <mockturtle/io/genlib_reader.hpp>
 #include <lorina/genlib.hpp>
+#include <mockturtle/io/genlib_reader.hpp>
 
 #include <sstream>
 #include <string>
@@ -13,13 +13,12 @@ TEST_CASE( "read genlib file", "[genlib_reader]" )
   std::vector<mockturtle::gate> gates;
 
   std::string const file{
-    "GATE zero 0 O=CONST0;\n"
-    "GATE one 0 O=CONST1;\n"
-    "GATE inverter 1 O=!a; PIN * INV 1 999 1.0 1.0 1.0 1.0\n"
-    "GATE buffer 2 O=a; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
-    "GATE and 5 Y=a*b; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
-    "GATE or 5 Y=n1+n2; PIN n1 NONINV 1 999 1.0 1.0 1.0 1.0; PIN n2 NONINV 1 999 0.98 1.0 0.98 1.0\n"
-  };
+      "GATE zero 0 O=CONST0;\n"
+      "GATE one 0 O=CONST1;\n"
+      "GATE inverter 1 O=!a; PIN * INV 1 999 1.0 1.0 1.0 1.0\n"
+      "GATE buffer 2 O=a; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+      "GATE and 5 Y=a*b; PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+      "GATE or 5 Y=n1+n2; PIN n1 NONINV 1 999 1.0 1.0 1.0 1.0; PIN n2 NONINV 1 999 0.98 1.0 0.98 1.0\n" };
 
   std::istringstream in( file );
   auto const result = lorina::read_genlib( in, mockturtle::genlib_reader( gates ) );
@@ -133,8 +132,7 @@ TEST_CASE( "skip gate with invalid formula", "[genlib_reader]" )
 {
   std::vector<mockturtle::gate> gates;
   std::string const file{
-    "GATE or 5 Y=(n1+n2; PIN n1 NONINV 1 999 1.0 1.0 1.0 1.0; PIN n2 NONINV 1 999 0.98 1.0 0.98 1.0\n"
-  };
+      "GATE or 5 Y=(n1+n2; PIN n1 NONINV 1 999 1.0 1.0 1.0 1.0; PIN n2 NONINV 1 999 0.98 1.0 0.98 1.0\n" };
 
   std::istringstream in( file );
   auto const result = lorina::read_genlib( in, mockturtle::genlib_reader( gates ) );

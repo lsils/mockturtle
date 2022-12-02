@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -57,11 +57,15 @@ namespace mockturtle
  */
 struct equivalence_checking_params
 {
-  /*! \brief Conflict limit for SAT solver. */
-  uint32_t conflict_limit{1000u};
+  /*! \brief Conflict limit for SAT solver.
+   *
+   * The default limit is 0, which means the number of conflicts is not used
+   * as a resource limit.
+   */
+  uint32_t conflict_limit{ 0u };
 
-  /*! \brief Be verbose. */
-  bool verbose{false};
+  /* \brief Be verbose. */
+  bool verbose{ false };
 };
 
 /*! \brief Statistics for equivalence_checking.

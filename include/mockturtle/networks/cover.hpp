@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -26,7 +26,9 @@
 /*!
   \file cover.hpp
   \brief single output cover logic network implementation
+
   \author Andrea Costamagna
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -47,21 +49,18 @@
 namespace mockturtle
 {
 /*! \brief cover storage data
- * 
+ *
  * This struct contains the constituents of the network and its main features.
- * For what concerns the features, these include:  
- * `num_pis`          : Number of primary inputs
- * `num_pos`          : Number of primary outputs
- * 
- * On the other hand, the constituents of the network are the covers representing the boolean functions stored in each node.
- * These are stored in a vector of pairs. Each element is the cover of a function and a boolean value indicating whether the 
+ *
+ * The constituents of the network are the covers representing the boolean functions stored in each node.
+ * These are stored in a vector of pairs. Each element is the cover of a function and a boolean value indicating whether the
  * cover indicates the ON-set or the OFF set. More precisely:
  * `covers`           : Vector of pairs for covers storage
  * `covers[i].first`  : Cubes i-th cover
  * `covers[i].second` : Boolean true (false) if ON set (OFF set)
- * This data structure directly originates from the k-LUT one and, for this reason, it inherits from it the vast majority of the features. 
- * The main difference is the way the nodes are stored and future improvements could include the substitution of the current covers storage with 
- * a cache, to avoid the redundant storage of some recurrent boolean functions. 
+ * This data structure directly originates from the k-LUT one and, for this reason, it inherits from it the vast majority of the features.
+ * The main difference is the way the nodes are stored and future improvements could include the substitution of the current covers storage with
+ * a cache, to avoid the redundant storage of some recurrent boolean functions.
  */
 struct cover_storage_data
 {
@@ -73,10 +72,6 @@ struct cover_storage_data
   }
 
   std::vector<std::pair<std::vector<kitty::cube>, bool>> covers;
-  uint32_t num_pis = 0u;
-  uint32_t num_pos = 0u;
-  std::vector<int8_t> latches;
-  uint32_t trav_id = 0u;
 };
 
 /*! \brief cover node
@@ -101,7 +96,7 @@ struct cover_storage_node : mixed_fanin_node<2>
  * The network as a storage entity is defined by combining the node structure with the cover_storage structure.
  * The attributes of this storage unit are listed in the following:
  * `nodes`            : Vector of cover storage nodes
- * `inputs`           : Vector of indeces to inputs nodes
+ * `inputs`           : Vector of indices to inputs nodes
  * `outputs`          : Vector of pointers to node types
  * `hash`             : maps a node to its index in the nodes vector
  * `data`             : cover storage data
@@ -110,14 +105,13 @@ using cover_storage = storage<cover_storage_node, cover_storage_data>;
 
 /*! \brief cover_network
  *
- * This class implements a data structure for a cover based network. 
+ * This class implements a data structure for a cover based network.
  * In this representation, each node is represented by specifying its ON set or its OFF set, that in both cases are stored as a vector of cubes.
  * The information related to the set to which the node refers to is contained in a boolean variable, that is true (false) if the
- * ON set (OFF set) is considered. All the basic network methods are implemented and tested but one should note the following things:
- * - Contrarily to the AIG network, and similarly to the k-LUT network, it is not yet implemented the possibility to negate signals while defining a gate;
- * - The methods relative to the latches manipulation need a more extensive testing before being safely used.
+ * ON set (OFF set) is considered.
+ *
  * This data structure is primarily meant to be used for reading .blif files in which the number of variables would make it unfeasible the reading via a k-LUT network.
- * 
+ *
   \verbatim embed:rst
 
   Example
@@ -132,7 +126,7 @@ using cover_storage = storage<cover_storage_node, cover_storage_data>;
 
     kitty::cube _11 = kitty::cube("11");
 
-    std::vector<kitty::cube> nand_from_offset { _11 }; 
+    std::vector<kitty::cube> nand_from_offset { _11 };
     const auto n1 = cover.create_cover_node( {a, b}, std::make_pair( nand_from_offset, false ) );
 
     const auto y1 = cover.create_and( n1, c );
@@ -199,10 +193,8 @@ public:
     return value ? 1 : 0;
   }
 
-  signal create_pi( std::string const& name = std::string() )
+  signal create_pi()
   {
-    (void)name;
-
     const auto index_node = _storage->nodes.size();
     std::vector<kitty::cube> cube_I{ kitty::cube( "1" ) };
     const auto index_covers = _storage->data.insert( std::make_pair( cube_I, true ) );
@@ -213,57 +205,21 @@ public:
     _storage->hash[node_in] = index_node;
     _storage->inputs.emplace_back( index_node );
 
-    ++_storage->data.num_pis;
-
     return index_node;
   }
 
-  uint32_t create_po( signal const& f, std::string const& name = std::string() )
+  uint32_t create_po( signal const& f )
   {
-    (void)name;
-
     /* increase ref-count to children */
     _storage->nodes[f].data[0].h1++;
-
     auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
     _storage->outputs.emplace_back( f );
-    ++_storage->data.num_pos;
-
     return po_index;
-  }
-  signal create_ro( std::string const& name = std::string() )
-  {
-    (void)name;
-
-    auto const index = static_cast<uint32_t>( _storage->nodes.size() );
-    _storage->nodes.emplace_back();
-    _storage->inputs.emplace_back( index );
-    _storage->nodes[index].data[1].h1 = index;
-    return index;
-  }
-
-  uint32_t create_ri( signal const& f, int8_t reset = 0, std::string const& name = std::string() )
-  {
-    (void)name;
-
-    /* increase ref-count to children */
-    _storage->nodes[f].data[0].h1++;
-    auto const ri_index = static_cast<uint32_t>( _storage->outputs.size() );
-    _storage->outputs.emplace_back( f );
-    _storage->data.latches.emplace_back( reset );
-    return ri_index;
-  }
-
-  int8_t latch_reset( uint32_t index ) const
-  {
-    assert( index < _storage->data.latches.size() );
-    return _storage->data.latches[index];
   }
 
   bool is_combinational() const
   {
-    return ( static_cast<uint32_t>( _storage->inputs.size() ) == _storage->data.num_pis &&
-             static_cast<uint32_t>( _storage->outputs.size() ) == _storage->data.num_pos );
+    return true;
   }
 
   bool is_constant( node const& n ) const
@@ -278,14 +234,7 @@ public:
 
   bool is_pi( node const& n ) const
   {
-    const auto end = _storage->inputs.begin() + _storage->data.num_pis;
-
-    return std::find( _storage->inputs.begin(), end, n ) != end;
-  }
-
-  bool is_ro( node const& n ) const
-  {
-    return std::find( _storage->inputs.begin() + _storage->data.num_pis, _storage->inputs.end(), n ) != _storage->inputs.end();
+    return std::find( _storage->inputs.begin(), _storage->inputs.end(), n ) != _storage->inputs.end();
   }
 
   bool constant_value( node const& n ) const
@@ -544,6 +493,11 @@ public:
     // reset fan-out of old node
     _storage->nodes[old_node].data[0].h1 = 0;
   }
+
+  inline bool is_dead( node const& n ) const
+  {
+    return false;
+  }
 #pragma endregion
 
 #pragma region Structural properties
@@ -562,25 +516,14 @@ public:
     return static_cast<uint32_t>( _storage->outputs.size() );
   }
 
-  uint32_t num_latches() const
-  {
-    return static_cast<uint32_t>( _storage->data.latches.size() );
-  }
-
   auto num_pis() const
   {
-    return _storage->data.num_pis;
+    return static_cast<uint32_t>( _storage->inputs.size() );
   }
 
   auto num_pos() const
   {
-    return _storage->data.num_pos;
-  }
-
-  auto num_registers() const
-  {
-    assert( static_cast<uint32_t>( _storage->inputs.size() - _storage->data.num_pis ) == static_cast<uint32_t>( _storage->outputs.size() - _storage->data.num_pos ) );
-    return static_cast<uint32_t>( _storage->inputs.size() - _storage->data.num_pis );
+    return static_cast<uint32_t>( _storage->outputs.size() );
   }
 
   auto num_gates() const
@@ -652,96 +595,14 @@ public:
 
   node pi_at( uint32_t index ) const
   {
-    assert( index < _storage->data.num_pis );
+    assert( index < _storage->inputs.size() );
     return *( _storage->inputs.begin() + index );
   }
 
   signal po_at( uint32_t index ) const
   {
-    assert( index < _storage->data.num_pos );
+    assert( index < _storage->outputs.size() );
     return ( _storage->outputs.begin() + index )->index;
-  }
-
-  node ro_at( uint32_t index ) const
-  {
-    assert( index < _storage->inputs.size() - _storage->data.num_pis );
-    return *( _storage->inputs.begin() + _storage->data.num_pis + index );
-  }
-
-  signal ri_at( uint32_t index ) const
-  {
-    assert( index < _storage->outputs.size() - _storage->data.num_pos );
-    return ( _storage->outputs.begin() + _storage->data.num_pos + index )->index;
-  }
-
-  uint32_t ci_index( node const& n ) const
-  {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
-    return static_cast<uint32_t>( _storage->nodes[n].children[0].data );
-  }
-
-  uint32_t co_index( signal const& s ) const
-  {
-    uint32_t i = -1;
-    foreach_co( [&]( const auto& x, auto index ) {
-      if ( x == s )
-      {
-        i = index;
-        return false;
-      }
-      return true;
-    } );
-    return i;
-  }
-
-  uint32_t pi_index( node const& n ) const
-  {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
-    return static_cast<uint32_t>( _storage->nodes[n].children[0].data );
-  }
-
-  uint32_t po_index( signal const& s ) const
-  {
-    uint32_t i = -1;
-    foreach_po( [&]( const auto& x, auto index ) {
-      if ( x == s )
-      {
-        i = index;
-        return false;
-      }
-      return true;
-    } );
-    return i;
-  }
-
-  uint32_t ro_index( node const& n ) const
-  {
-    assert( _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data );
-    return static_cast<uint32_t>( _storage->nodes[n].children[0].data - _storage->data.num_pis );
-  }
-
-  uint32_t ri_index( signal const& s ) const
-  {
-    uint32_t i = -1;
-    foreach_ri( [&]( const auto& x, auto index ) {
-      if ( x == s )
-      {
-        i = index;
-        return false;
-      }
-      return true;
-    } );
-    return i;
-  }
-
-  signal ro_to_ri( signal const& s ) const
-  {
-    return ( _storage->outputs.begin() + _storage->data.num_pos + _storage->nodes[s].children[0].data - _storage->data.num_pis )->index;
-  }
-
-  node ri_to_ro( signal const& s ) const
-  {
-    return *( _storage->inputs.begin() + _storage->data.num_pis + ri_index( s ) );
   }
 #pragma endregion
 
@@ -771,7 +632,7 @@ public:
   template<typename Fn>
   void foreach_pi( Fn&& fn ) const
   {
-    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.begin() + _storage->data.num_pis, fn );
+    detail::foreach_element( _storage->inputs.begin(), _storage->inputs.end(), fn );
   }
 
   template<typename Fn>
@@ -779,68 +640,8 @@ public:
   {
     using IteratorType = decltype( _storage->outputs.begin() );
     detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin(), _storage->outputs.begin() + _storage->data.num_pos, []( auto o ) { return o.index; },
+        _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; },
         fn );
-  }
-
-  template<typename Fn>
-  void foreach_ro( Fn&& fn ) const
-  {
-    detail::foreach_element( _storage->inputs.begin() + _storage->data.num_pis, _storage->inputs.end(), fn );
-  }
-
-  template<typename Fn>
-  void foreach_ri( Fn&& fn ) const
-  {
-    using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin() + _storage->data.num_pos, _storage->outputs.end(), []( auto o ) { return o.index; },
-        fn );
-  }
-
-  template<typename Fn>
-  void foreach_register( Fn&& fn ) const
-  {
-    static_assert( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> ||
-                   detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> ||
-                   detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> ||
-                   detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> );
-
-    assert( _storage->inputs.size() - _storage->data.num_pis == _storage->outputs.size() - _storage->data.num_pos );
-    auto ro = _storage->inputs.begin() + _storage->data.num_pis;
-    auto ri = _storage->outputs.begin() + _storage->data.num_pos;
-    if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> )
-    {
-      while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
-      {
-        if ( !fn( std::make_pair( ( ri++ )->index, ro++ ) ) )
-          return;
-      }
-    }
-    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> )
-    {
-      uint32_t index{ 0 };
-      while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
-      {
-        if ( !fn( std::make_pair( ( ri++ )->index, ro++ ), index++ ) )
-          return;
-      }
-    }
-    else if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> )
-    {
-      while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
-      {
-        fn( std::make_pair( ( ri++ )->index, *ro++ ) );
-      }
-    }
-    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> )
-    {
-      uint32_t index{ 0 };
-      while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
-      {
-        fn( std::make_pair( ( ri++ )->index, *ro++ ), index++ );
-      }
-    }
   }
 
   template<typename Fn>
@@ -983,12 +784,12 @@ public:
 
   uint32_t trav_id() const
   {
-    return _storage->data.trav_id;
+    return _storage->trav_id;
   }
 
   void incr_trav_id() const
   {
-    ++_storage->data.trav_id;
+    ++_storage->trav_id;
   }
 #pragma endregion
 

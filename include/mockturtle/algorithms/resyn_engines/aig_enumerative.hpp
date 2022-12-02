@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,90 +27,91 @@
   \file aig_enumerative.hpp
   \brief AIG enumerative resynthesis
 
+  \author Hanyu Wang
   \author Siang-Yun (Sonia) Lee
-  
-  Based on previous implementation of AIG resubstitution by 
+
+  Based on previous implementation of AIG resubstitution by
   Eleonora Testa, Heinz Riener, and Mathias Soeken
 */
 
 #pragma once
 
 #include "../../utils/index_list.hpp"
-#include "../experimental/boolean_optimization.hpp"
+#include "../../utils/null_utils.hpp"
 #include <kitty/kitty.hpp>
 #include <optional>
 #include <vector>
 
-namespace mockturtle::experimental
+namespace mockturtle
 {
 
 struct aig_enumerative_resyn_stats
 {
   /*! \brief Accumulated runtime for const-resub */
-  stopwatch<>::duration time_resubC{0};
+  stopwatch<>::duration time_resubC{ 0 };
 
   /*! \brief Accumulated runtime for zero-resub */
-  stopwatch<>::duration time_resub0{0};
+  stopwatch<>::duration time_resub0{ 0 };
 
   /*! \brief Accumulated runtime for collecting unate divisors. */
-  stopwatch<>::duration time_collect_unate_divisors{0};
+  stopwatch<>::duration time_collect_unate_divisors{ 0 };
 
   /*! \brief Accumulated runtime for one-resub */
-  stopwatch<>::duration time_resub1{0};
+  stopwatch<>::duration time_resub1{ 0 };
 
   /*! \brief Accumulated runtime for 12-resub. */
-  stopwatch<>::duration time_resub12{0};
+  stopwatch<>::duration time_resub12{ 0 };
 
   /*! \brief Accumulated runtime for collecting unate divisors. */
-  stopwatch<>::duration time_collect_binate_divisors{0};
+  stopwatch<>::duration time_collect_binate_divisors{ 0 };
 
   /*! \brief Accumulated runtime for two-resub. */
-  stopwatch<>::duration time_resub2{0};
+  stopwatch<>::duration time_resub2{ 0 };
 
   /*! \brief Accumulated runtime for three-resub. */
-  stopwatch<>::duration time_resub3{0};
+  stopwatch<>::duration time_resub3{ 0 };
 
   /*! \brief Number of accepted constant resubsitutions */
-  uint32_t num_const_accepts{0};
+  uint32_t num_const_accepts{ 0 };
 
   /*! \brief Number of accepted zero resubsitutions */
-  uint32_t num_div0_accepts{0};
+  uint32_t num_div0_accepts{ 0 };
 
   /*! \brief Number of accepted one resubsitutions */
-  uint64_t num_div1_accepts{0};
+  uint64_t num_div1_accepts{ 0 };
 
   /*! \brief Number of accepted single AND-resubsitutions */
-  uint64_t num_div1_and_accepts{0};
+  uint64_t num_div1_and_accepts{ 0 };
 
   /*! \brief Number of accepted single OR-resubsitutions */
-  uint64_t num_div1_or_accepts{0};
+  uint64_t num_div1_or_accepts{ 0 };
 
   /*! \brief Number of accepted two resubsitutions using triples of unate divisors */
-  uint64_t num_div12_accepts{0};
+  uint64_t num_div12_accepts{ 0 };
 
   /*! \brief Number of accepted single 2AND-resubsitutions */
-  uint64_t num_div12_2and_accepts{0};
+  uint64_t num_div12_2and_accepts{ 0 };
 
   /*! \brief Number of accepted single 2OR-resubsitutions */
-  uint64_t num_div12_2or_accepts{0};
+  uint64_t num_div12_2or_accepts{ 0 };
 
   /*! \brief Number of accepted two resubsitutions */
-  uint64_t num_div2_accepts{0};
+  uint64_t num_div2_accepts{ 0 };
 
   /*! \brief Number of accepted double AND-OR-resubsitutions */
-  uint64_t num_div2_and_or_accepts{0};
+  uint64_t num_div2_and_or_accepts{ 0 };
 
   /*! \brief Number of accepted double OR-AND-resubsitutions */
-  uint64_t num_div2_or_and_accepts{0};
+  uint64_t num_div2_or_and_accepts{ 0 };
 
   /*! \brief Number of accepted three resubsitutions */
-  uint64_t num_div3_accepts{0};
+  uint64_t num_div3_accepts{ 0 };
 
   /*! \brief Number of accepted AND-2OR-resubsitutions */
-  uint64_t num_div3_and_2or_accepts{0};
+  uint64_t num_div3_and_2or_accepts{ 0 };
 
   /*! \brief Number of accepted OR-2AND-resubsitutions */
-  uint64_t num_div3_or_2and_accepts{0};
+  uint64_t num_div3_or_2and_accepts{ 0 };
 
   void report() const
   {
@@ -141,16 +142,13 @@ struct aig_enumerative_resyn
 {
 public:
   using stats = aig_enumerative_resyn_stats;
-  using params = null_params;
   using index_list_t = xag_index_list<false>;
   using truth_table_t = TT;
 
 public:
-  explicit aig_enumerative_resyn( stats& st, params const& ps = {} ) noexcept
+  explicit aig_enumerative_resyn( stats& st ) noexcept
       : st( st )
-  {
-    (void)ps;
-  }
+  {}
 
   template<class iterator_type, class truth_table_storage_type>
   std::optional<index_list_t> operator()( TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts, uint32_t max_size = std::numeric_limits<uint32_t>::max() )
@@ -471,4 +469,4 @@ private:
   stats& st;
 }; /* aig_enumerative_resyn */
 
-} // namespace mockturtle::experimental
+} // namespace mockturtle

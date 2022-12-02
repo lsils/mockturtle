@@ -5,12 +5,13 @@
 #include <vector>
 
 #include <mockturtle/generators/arithmetic.hpp>
+#include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
-#include <mockturtle/networks/buffered.hpp>
-#include <mockturtle/io/genlib_reader.hpp>
+#include <mockturtle/networks/muxig.hpp>
 #include <mockturtle/views/binding_view.hpp>
 
 using namespace mockturtle;
@@ -92,6 +93,29 @@ TEST_CASE( "write MIG into Verilog file", "[write_verilog]" )
                       "endmodule\n" );
 }
 
+TEST_CASE( "write MuxIG into Verilog file", "[write_verilog]" )
+{
+  muxig_network ntk;
+
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+
+  const auto f1 = ntk.create_ite( a, b, c );
+  ntk.create_po( f1 );
+
+  std::ostringstream out;
+  write_verilog( ntk, out );
+
+  CHECK( out.str() == "module top( x0 , x1 , x2 , y0 );\n"
+                      "  input x0 , x1 , x2 ;\n"
+                      "  output y0 ;\n"
+                      "  wire n4 ;\n"
+                      "  assign n4 = x0 ? x1 : x2 ;\n"
+                      "  assign y0 = n4 ;\n"
+                      "endmodule\n" );
+}
+
 TEST_CASE( "write Verilog with register names", "[write_verilog]" )
 {
   mig_network mig;
@@ -107,8 +131,8 @@ TEST_CASE( "write Verilog with register names", "[write_verilog]" )
 
   std::ostringstream out;
   write_verilog_params ps;
-  ps.input_names = {{"a", 3u}, {"b", 3u}};
-  ps.output_names = {{"y", 4u}};
+  ps.input_names = { { "a", 3u }, { "b", 3u } };
+  ps.output_names = { { "y", 4u } };
   write_verilog( mig, out, ps );
 
   CHECK( out.str() == "module top( a , b , y );\n"
@@ -197,7 +221,7 @@ TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
   kitty::dynamic_truth_table tt_buf( 1 );
   kitty::create_from_words( tt_buf, &buf_func, &buf_func + 1 );
   const auto buf = klut.create_node( { a }, tt_buf );
-  
+
   const auto f1 = klut.create_nand( b, c );
   const auto f2 = klut.create_not( f1 );
 
@@ -212,7 +236,7 @@ TEST_CASE( "write mapped network into Verilog file", "[write_verilog]" )
   klut.add_binding( klut.get_node( f2 ), 2 );
 
   std::ostringstream out;
-  write_verilog( klut, out );
+  write_verilog_with_binding( klut, out );
 
   CHECK( out.str() == "module top( x0 , x1 , x2 , y0 , y1 , y2 , y3 );\n"
                       "  input x0 , x1 , x2 ;\n"
@@ -248,7 +272,7 @@ TEST_CASE( "write mapped network with multiple driven POs and register names int
   kitty::dynamic_truth_table tt_buf( 1 );
   kitty::create_from_words( tt_buf, &buf_func, &buf_func + 1 );
   const auto buf = klut.create_node( { a }, tt_buf );
-  
+
   const auto f1 = klut.create_nand( b, c );
   const auto f2 = klut.create_not( f1 );
 
@@ -263,9 +287,9 @@ TEST_CASE( "write mapped network with multiple driven POs and register names int
 
   std::ostringstream out;
   write_verilog_params ps;
-  ps.input_names = {{"ref", 1u}, {"data", 2u}};
-  ps.output_names = {{"y", 4u}};
-  write_verilog( klut, out, ps );
+  ps.input_names = { { "ref", 1u }, { "data", 2u } };
+  ps.output_names = { { "y", 4u } };
+  write_verilog_with_binding( klut, out, ps );
 
   CHECK( out.str() == "module top( ref , data , y );\n"
                       "  input [0:0] ref ;\n"

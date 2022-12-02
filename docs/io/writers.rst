@@ -37,7 +37,7 @@ Write into structural Verilog files
 
 .. doxygenfunction:: mockturtle::write_verilog(Ntk const&, std::ostream&, write_verilog_params const&)
 
-.. doxygenfunction:: mockturtle::write_verilog(binding_view<Ntk> const&, std::ostream&, write_verilog_params const&)
+.. doxygenfunction:: mockturtle::write_verilog_with_binding(Ntk const&, std::ostream&, write_verilog_params const&)
 
 Write into DIMACS files (CNF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

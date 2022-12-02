@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -32,9 +32,9 @@
 #include <mockturtle/algorithms/equivalence_checking.hpp>
 #include <mockturtle/algorithms/lut_mapping.hpp>
 #include <mockturtle/algorithms/miter.hpp>
+#include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/algorithms/node_resynthesis/dsd.hpp>
 #include <mockturtle/algorithms/node_resynthesis/exact.hpp>
-#include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
@@ -65,7 +65,7 @@ int main()
     lut_mapping_params ps;
     ps.cut_enumeration_ps.cut_size = 4u;
     lut_mapping_stats st;
-    mapping_view<aig_network, true> mapped_aig{aig};
+    mapping_view<aig_network, true> mapped_aig{ aig };
     lut_mapping<decltype( mapped_aig ), true>( mapped_aig, ps, &st );
     const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
 

@@ -1,8 +1,35 @@
-Change Log
+Change log
 ==========
 
-v0.3 (not yet released)
+v0.4 (not yet released)
 -----------------------
+
+* Network interfaces:
+    - Remove the "name" argument in `create_pi`, `create_po`, `create_ri`, and `create_ro`. Names should be set using the `names_view` APIs. `#559 <https://github.com/lsils/mockturtle/pull/559>`_
+    - Deprecated APIs: `substitute_node_of_parents`, `num_latches` (use `num_registers` instead), `latch_reset`. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
+    - Separate the sequential interfaces from core network APIs (they are only available when wrapped with `sequential`). Add sequential interfaces `register_at` and `set_register` to retrieve and set register information. Remove the "reset" argument of `create_ri`. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
+* Network implementations:
+    - Remove sequential interfaces from all networks (`aig_network`, `xag_network`, `mig_network`, `xmg_network`, `klut_network`, `cover_network`, `aqfp_network`). Add the `sequential` extension to combinational networks. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
+    - Move `trav_id` from the custom storage data (e.g. `aig_storage_data`) to the common `storage`. Remove `num_pis` and `num_pos` as they are only needed for sequential network. Remove custom storage data when not needed (`aig_storage_data`, `xag_storage_data`, `mig_storage_data`, `xmg_storage_data`). Remove latch information from the common `storage`. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
+    - Add access methods to check if a node is present in the network given its immediate fanin (e.g., `has_and` in `aig_network`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
+* Algorithms:
+    - AIG balancing (`aig_balance`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
+    - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Resynthesis based on SOP factoring (`sop_factoring`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
+    - XAG algebraic depth rewriting (`xag_algebraic_depth_rewriting`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
+    - Collapse mapped extended to compute mapping functions if the mapped network doesn't have them stored (`collapse_mapped`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
+    - Extended LUT mapping for delay and area (`lut_map`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
+* Views:
+    - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+* Properties:
+    - Cost functions based on the factored form literals count (`factored_literal_cost`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
+* Utils:
+    - Add recursive cost function class to customize cost in resubstitution algorithm (`recursive_cost_function`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Sum-of-products factoring utilities `#579 <https://github.com/lsils/mockturtle/pull/579>`_
+
+v0.3 (July 12, 2022)
+--------------------
 
 * I/O:
     - Read GENLIB files using *lorina* (`genlib_reader`) `#421 <https://github.com/lsils/mockturtle/pull/421>`_

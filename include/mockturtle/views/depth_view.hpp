@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -29,14 +29,15 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
 
+#include "../networks/events.hpp"
 #include "../traits.hpp"
 #include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
-#include "../networks/events.hpp"
 #include "immutable_view.hpp"
 
 #include <cstdint>
@@ -48,10 +49,10 @@ namespace mockturtle
 struct depth_view_params
 {
   /*! \brief Take complemented edges into account for depth computation. */
-  bool count_complements{false};
+  bool count_complements{ false };
 
   /*! \brief Whether PIs have costs. */
-  bool pi_cost{false};
+  bool pi_cost{ false };
 };
 
 /*! \brief Implements `depth` and `level` methods for networks.
@@ -115,11 +116,7 @@ public:
   using signal = typename Ntk::signal;
 
   explicit depth_view( NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
-    : Ntk()
-    , _ps( ps )
-    , _levels( *this )
-    , _crit_path( *this )
-    , _cost_fn( cost_fn )
+      : Ntk(), _ps( ps ), _levels( *this ), _crit_path( *this ), _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -138,11 +135,7 @@ public:
    * \param ntk Base network
    */
   explicit depth_view( Ntk const& ntk, NodeCostFn const& cost_fn = {}, depth_view_params const& ps = {} )
-    : Ntk( ntk )
-    , _ps( ps )
-    , _levels( ntk )
-    , _crit_path( ntk )
-    , _cost_fn( cost_fn )
+      : Ntk( ntk ), _ps( ps ), _levels( ntk ), _crit_path( ntk ), _cost_fn( cost_fn )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -160,12 +153,7 @@ public:
 
   /*! \brief Copy constructor. */
   explicit depth_view( depth_view<Ntk, NodeCostFn, false> const& other )
-    : Ntk( other )
-    , _ps( other._ps )
-    , _levels( other._levels )
-    , _crit_path( other._crit_path )
-    , _depth( other._depth )
-    , _cost_fn( other._cost_fn )
+      : Ntk( other ), _ps( other._ps ), _levels( other._levels ), _crit_path( other._crit_path ), _depth( other._depth ), _cost_fn( other._cost_fn )
   {
     add_event = Ntk::events().register_add_event( [this]( auto const& n ) { on_add( n ); } );
   }
@@ -261,7 +249,7 @@ private:
       return _levels[n] = _ps.pi_cost ? _cost_fn( *this, n ) - 1 : 0;
     }
 
-    uint32_t level{0};
+    uint32_t level{ 0 };
     this->foreach_fanin( n, [&]( auto const& f ) {
       auto clevel = compute_levels( this->get_node( f ) );
       if ( _ps.count_complements && this->is_complemented( f ) )
@@ -320,7 +308,7 @@ private:
   {
     _levels.resize();
 
-    uint32_t level{0};
+    uint32_t level{ 0 };
     this->foreach_fanin( n, [&]( auto const& f ) {
       auto clevel = _levels[f];
       if ( _ps.count_complements && this->is_complemented( f ) )
@@ -343,9 +331,9 @@ private:
 };
 
 template<class T>
-depth_view( T const& )->depth_view<T>;
+depth_view( T const& ) -> depth_view<T>;
 
 template<class T, class NodeCostFn = unit_cost<T>>
-depth_view( T const&, NodeCostFn const&, depth_view_params const& )->depth_view<T, NodeCostFn>;
+depth_view( T const&, NodeCostFn const&, depth_view_params const& ) -> depth_view<T, NodeCostFn>;
 
 } // namespace mockturtle

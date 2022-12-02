@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -23,7 +23,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <string>
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/balancing.hpp>
@@ -31,6 +30,7 @@
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/views/depth_view.hpp>
+#include <string>
 
 #include <experiments.hpp>
 
@@ -57,14 +57,14 @@ int main()
 
     ps.progress = true;
     ps.cut_enumeration_ps.cut_size = 4u;
-    const auto aig4 = balancing( aig, {sop_balancing}, ps, &st4 );
+    const auto aig4 = balancing( aig, { sop_balancing }, ps, &st4 );
 
     ps.cut_enumeration_ps.cut_size = 6u;
-    const auto aig6 = balancing( aig, {sop_balancing}, ps, &st6 );
+    const auto aig6 = balancing( aig, { sop_balancing }, ps, &st6 );
 
-    depth_view daig{aig};
-    depth_view daig4{aig4};
-    depth_view daig6{aig6};
+    depth_view daig{ aig };
+    depth_view daig4{ aig4 };
+    depth_view daig6{ aig6 };
 
     const auto cec4 = abc_cec( aig4, benchmark );
     const auto cec6 = abc_cec( aig6, benchmark );

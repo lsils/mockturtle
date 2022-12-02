@@ -26,7 +26,9 @@
 /*!
   \file cover_to_graph.hpp
   \brief transforms a cover data structure into another network type
+
   \author Andrea Costamagna
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -62,9 +64,9 @@ struct signals_connector
 
 /*! \brief cover_to_graph_converter
  * This data type is equipped with the main operations involved in the cover to graph conversion.
- * Given a cover network its features are mapped into the corresponding ones of a graph using the 
+ * Given a cover network its features are mapped into the corresponding ones of a graph using the
  * signals_connector for storing the signal of the new network associated to the node index in the cover one.
- * The mapping is performed by the convert method, which must be called explicitly to perform the mapping. 
+ * The mapping is performed by the convert method, which must be called explicitly to perform the mapping.
  */
 template<class Ntk>
 class cover_to_graph_converter
@@ -86,8 +88,8 @@ public:
    * In all other cases recursively split the input signals into two subsets of size differing by at most one.
    * These two will give rise to a unique output, which is the OR of two signals coming from the two subgraphs.
    * The problem of finding the network of each subgraph presents the same structure as the original problem.
-   * Therefore, recursion can be performed. 
-  */
+   * Therefore, recursion can be performed.
+   */
   signal<Ntk> recursive_or( const std::vector<signal<Ntk>>& signals )
   {
     if ( signals.size() == 0u )
@@ -120,8 +122,8 @@ public:
    * In all other cases recursively split the input signals into two subsets of size differing by at most one.
    * These two will give rise to a unique output, which is the AND of two signals coming from the two subgraphs.
    * The problem of finding the network of each subgraph presents the same structure as the original problem.
-   * Therefore, recursion can be performed. 
-  */
+   * Therefore, recursion can be performed.
+   */
   signal<Ntk> recursive_and( std::vector<signal<Ntk>> const& signals )
   {
     if ( signals.size() == 0u )
@@ -151,9 +153,9 @@ public:
   /*! \brief convert_cube_to_graph
    * Given a node, a cube stored into it and the boolean type associated to the SOP/POS, all children are scanned.
    * Unless the cube is independent of the value of the children ( don't care ), the signal is stored in a vector.
-   * Finally, depending on the bit value of the cube, the signal influencing the cover or their negation are used 
-   * to create the subgraph. This create the products/sums in the SOP/POS. 
-  */
+   * Finally, depending on the bit value of the cube, the signal influencing the cover or their negation are used
+   * to create the subgraph. This create the products/sums in the SOP/POS.
+   */
 #pragma region converter functions
   signal<Ntk> convert_cube_to_graph( const mockturtle::cover_storage_node& Nde, const kitty::cube& cb, const bool& is_sop )
   {
@@ -179,12 +181,12 @@ public:
 
   /*! \brief convert_node_to_graph
    * This helper function receives as input a node, storing the cover information.
-   * This information corresponds to a vactor of cubes and to a boolean determining whether 
+   * This information corresponds to a vector of cubes and to a boolean determining whether
    * the cubes represent the ON set or the OFF set.
    * Each cube is mapped into a subgraph and the output signals are collected in a vector, corresponding to the
    * products/sums of the SOP/POS.
-   * Depending on the boolean, the SOP/POS is finally performed using the recursive OR/AND.   
-  */
+   * Depending on the boolean, the SOP/POS is finally performed using the recursive OR/AND.
+   */
   signal<Ntk> convert_node_to_graph( const mockturtle::cover_storage_node& Nde )
   {
     auto& cbs = _cover_ntk._storage->data.covers[Nde.data[1].h1].first;
@@ -206,8 +208,8 @@ public:
   }
 
   /*! \brief convert
-   * This method combines the helper functions and performs the mapping of a cover network into the desired graph. 
-  */
+   * This method combines the helper functions and performs the mapping of a cover network into the desired graph.
+   */
   void run()
   {
     /* convert the pi */
