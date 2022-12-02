@@ -66,6 +66,7 @@ public:
   /*! \brief Prints K-map
       \param os output stream (default = cout)
  */
+
   void print( std::ostream& os = std::cout )
   {
     print_space( vars_col, os );
@@ -89,7 +90,15 @@ public:
         if ( vars_row > 2 )
           middle_space = vars_row / 2;
         print_space( middle_space, os );
-        os << get_bit( truth_table, ( j << vars_row ) + i );
+        if ( is_dont_care( truth_table, ( j << vars_row ) + i ) )
+          os << "-";
+        else
+        {
+          if ( is_dont_know( truth_table, ( j << vars_row ) + i ) )
+            os << "x";
+          else
+            os << get_bit( truth_table, ( j << vars_row ) + i );
+        }
         print_space( ( vars_row << 1 ) - 1 - middle_space, os );
         os << "    ";
       }

@@ -33,9 +33,13 @@
 #pragma once
 
 #include <cstdint>
+#include <cassert>
 #include <numeric>
+#include <algorithm>
 
 #include "static_truth_table.hpp"
+#include "ternary_truth_table.hpp"
+#include "quaternary_truth_table.hpp"
 #include "partial_truth_table.hpp"
 #include "detail/mscfix.hpp"
 
@@ -59,6 +63,32 @@ void set_bit( static_truth_table<NumVars, true>& tt, uint64_t index )
 {
   tt._bits |= uint64_t( 1 ) << index;
 }
+
+template<typename TT>
+void set_bit( ternary_truth_table<TT>& tt, uint64_t index, bool value = true )
+{
+  set_bit( tt._care, index );
+  if ( value )
+    set_bit( tt._bits, index );
+  else
+    clear_bit( tt._bits, index );
+}
+
+template<typename TT>
+void set_bit( quaternary_truth_table<TT>& tt, uint64_t index, bool value = true )
+{
+  if ( value )
+  {
+    set_bit( tt._onset, index );
+    clear_bit( tt._offset, index );
+  }
+  else
+  {
+    clear_bit( tt._onset, index );
+    set_bit( tt._offset, index );
+  }
+}
+
 /*! \endcond */
 
 /*! \brief Gets bit at index
@@ -80,6 +110,33 @@ auto get_bit( const static_truth_table<NumVars, true>& tt, uint64_t index )
 {
   return ( tt._bits >> index ) & 0x1;
 }
+
+/*! \brief Gets bit at index
+
+\param tt Ternary truth table
+\param index Bit index
+
+\return 1 if bit is set, 0 if it is reset or if it is a don't care
+*/
+template<typename TT>
+auto get_bit( const ternary_truth_table<TT>& tt, uint64_t index )
+{
+  return get_bit( tt._bits, index );
+}
+
+/*! \brief Gets bit at index
+
+\param tt Ternary truth table
+\param index Bit index
+
+\return 1 if bit is set, 0 if it is reset, if it is a don't care, or if it is a don't know
+*/
+template<typename TT>
+auto get_bit( const quaternary_truth_table<TT>& tt, uint64_t index )
+{
+  return get_bit( tt._onset, index ) && !get_bit( tt._offset, index );
+}
+
 /*! \endcond */
 
 /*! \brief Clears bit at index (sets bit at index to false)
@@ -112,11 +169,122 @@ void flip_bit( TT& tt, uint64_t index )
   tt._bits[index >> 6] ^= uint64_t( 1 ) << ( index & 0x3f );
 }
 
+template<typename TT>
+void flip_bit( ternary_truth_table<TT>& tt, uint64_t index )
+{
+  if ( !get_bit( tt._care, index ) )
+    return;
+  flip_bit( tt._bits, index );
+}
+
 /*! \cond PRIVATE */
 template<uint32_t NumVars>
 void flip_bit( static_truth_table<NumVars, true>& tt, uint64_t index )
 {
   tt._bits ^= uint64_t( 1 ) << index;
+}
+
+/*! \brief Checks if a bit in a ternary truth table is a don't care
+
+  \param tt Ternary truth table
+  \param index Bit index
+*/
+template<typename TT>
+bool is_dont_care( const ternary_truth_table<TT>& tt, uint64_t index )
+{
+  return !get_bit( tt._care, index );
+}
+
+/*! \brief Checks if a bit in a quaternary truth table is a don't care
+
+  \param tt Quaternary truth table
+  \param index Bit index
+*/
+template<typename TT>
+bool is_dont_care( const quaternary_truth_table<TT>& tt, uint64_t index )
+{
+  return get_bit( tt._onset, index ) && get_bit( tt._offset, index );
+}
+
+/*! \cond PRIVATE */
+template<typename TT>
+bool is_dont_care( const TT& tt, uint64_t index )
+{
+  return false;
+}
+
+/*! \brief Sets a bit in a ternary truth table as a don't care
+
+  \param tt Ternary truth table
+  \param index Bit index
+*/
+template<typename TT>
+void set_dont_care( ternary_truth_table<TT>& tt, uint64_t index )
+{
+  clear_bit( tt._care, index );
+  clear_bit( tt._bits, index );
+}
+
+/*! \brief Sets a bit in a quaternary truth table as a don't care
+
+  \param tt Ternary truth table
+  \param index Bit index
+*/
+template<typename TT>
+void set_dont_care( quaternary_truth_table<TT>& tt, uint64_t index )
+{
+  set_bit( tt._onset, index );
+  set_bit( tt._offset, index );
+}
+
+/*! \brief Checks if a bit in a ternary truth table is a don't know
+
+  \param tt Ternary truth table
+  \param index Bit index
+*/
+template<typename TT>
+bool is_dont_know( const ternary_truth_table<TT>& tt, uint64_t index )
+{
+  return !get_bit( tt._care, index );
+}
+
+/*! \brief Checks if a bit in a quaternary truth table is a don't care
+
+  \param tt Ternary truth table
+  \param index Bit index
+*/
+template<typename TT>
+bool is_dont_know( const quaternary_truth_table<TT>& tt, uint64_t index )
+{
+  return !get_bit( tt._onset, index ) && !get_bit( tt._offset, index );
+}
+
+/*! \cond PRIVATE */
+template<typename TT>
+bool is_dont_know( const TT& tt, uint64_t index )
+{
+  return false;
+}
+
+template<typename TT>
+void set_dont_know( quaternary_truth_table<TT>& tt, uint64_t index )
+{
+  clear_bit( tt._onset, index );
+  clear_bit( tt._offset, index );
+}
+
+/*! Returns a block of bits vector.
+ */
+template<typename TT>
+uint64_t get_block( const TT& tt, uint64_t block_index )
+{
+  return tt._bits[block_index];
+}
+
+template<uint32_t NumVars>
+uint64_t get_block( const static_truth_table<NumVars, true>& tt, uint64_t block_index )
+{
+  return tt._bits;
 }
 
 /*! \brief Copies bit at index

@@ -182,4 +182,10 @@ template<>
 struct is_complete_truth_table<kitty::dynamic_truth_table> : std::true_type
 {
 };
+
+template<>
+struct is_completely_specified_truth_table<kitty::dynamic_truth_table> : std::true_type
+{
+};
+
 } // namespace kitty
