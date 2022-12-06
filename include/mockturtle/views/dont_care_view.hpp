@@ -198,7 +198,7 @@ private:
     return res;
   }
 
-  uint32_t cube_to_uint32( cube const& c ) const
+  uint32_t cube_to_uint32( kitty::cube const& c ) const
   {
     assert( c.num_literals() == _num_bits ); // fully assigned
     return c._bits;
@@ -211,7 +211,7 @@ private:
 
 } // namespace detail
 
-template<class Ntk, class OecMgr = detail::equivalence_classes_mgr>
+template<class Ntk, bool hasEXCDC = true, bool hasEXODC = true>
 class dont_care_view : public Ntk
 {
 public:
@@ -220,7 +220,7 @@ public:
   using signal = typename Ntk::signal;
 
 public:
-  // no EXDC
+  template<bool enabled = !hasEXCDC, typename = std::enable_if_t<enabled>>
   dont_care_view( Ntk const& ntk )
     : Ntk( ntk ), _exoec( ntk.num_pos() )
   {
@@ -231,7 +231,7 @@ public:
     _excdc.create_po( _excdc.get_constant( false ) );
   }
 
-  // only EXCDC
+  template<bool enabled = hasEXCDC, typename = std::enable_if_t<enabled>>
   dont_care_view( Ntk const& ntk, Ntk const& cdc_ntk )
     : Ntk( ntk ), _excdc( cdc_ntk ), _exoec( ntk.num_pos() )
   {
@@ -254,6 +254,7 @@ public:
     return *this;
   }
 
+  template<bool enabled = hasEXCDC, typename = std::enable_if_t<enabled>>
   bool pattern_is_EXCDC( std::vector<bool> const& pattern ) const
   {
     assert( pattern.size() == this->num_pis() );
@@ -263,7 +264,7 @@ public:
     return vals[0];
   }
 
-  template<typename solver_t>
+  template<typename solver_t, bool enabled = hasEXCDC, typename = std::enable_if_t<enabled>>
   void add_EXCDC_clauses( solver_t& solver ) const
   {
     using add_clause_fn_t = std::function<void( std::vector<bill::lit_type> const& )>;
@@ -289,6 +290,7 @@ public:
   }
 
   // ito = in terms of
+  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
   void add_EXODC_ito_pos( kitty::cube const& cond, uint32_t po_id )
   {
     cond.foreach_minterm( this->num_pos(), [&]( kitty::cube const& c ){
@@ -302,24 +304,28 @@ public:
   }
 
   // full assignment
+  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
   void add_EXOEC_pair( std::vector<bool> const& pat1, std::vector<bool> const& pat2 )
   {
     _exoec.set_equivalent( pat1, pat2 );
   }
 
   // full assignment
+  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
   bool are_observability_equivalent( std::vector<bool> const& pat1, std::vector<bool> const& pat2 ) const
   {
     return _exoec.are_equivalent( pat1, pat2 );
   }
 
   // partial assignment
+  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
   bool are_observability_equivalent( kitty::cube const& pat1, kitty::cube const& pat2 ) const
   {
     return _exoec.are_equivalent( pat1, pat2 );
   }
 
-  void build_oec_network()
+  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
+  void build_oec_network( Ntk& _are_oe ) const
   {
     std::vector<signal> pos1, pos2;
     for ( auto i = 0u; i < this->num_pos(); ++i )
@@ -356,67 +362,15 @@ public:
     _are_oe.create_po( _are_oe.create_nary_or( are_both_in_class_i ) );
   }
 
-  template<typename solver_t>
-  void add_EXOEC_clauses( solver_t& solver, std::vector<bill::lit_type> const& po_lits ) const
-  {
-    assert( po_lits.size() == this->num_pos() );
-    _po_lits = po_lits;
-
-    using add_clause_fn_t = std::function<void( std::vector<bill::lit_type> const& )>;
-    add_clause_fn_t add_clause_fn = [&]( auto const& clause ) { solver.add_clause( clause ); };
-
-    /* miter */
-    std::vector<bill::lit_type> xors;
-    for ( auto i = 0u; i < this->num_pos(); ++i )
-    {
-      _po_lits_link.emplace_back( solver.add_variable(), bill::lit_type::polarities::positive );
-      auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-      detail::on_xor<add_clause_fn_t>( nlit, _po_lits[i], _po_lits_link[i], [&]( auto const& clause ) { solver.add_clause( clause ); } );
-      xors.emplace_back( nlit );
-    }
-    solver.add_clause( xors );
-
-    /* OEC */
-    assert( _are_oe.num_pis() == this->num_pos() * 2 && _are_oe.num_pos() == 1 );
-    node_map<bill::lit_type, Ntk> oe_lits( _are_oe );
-    oe_lits[_are_oe.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
-    if ( _are_oe.get_node( _are_oe.get_constant( false ) ) != _are_oe.get_node( _are_oe.get_constant( true ) ) )
-    {
-      oe_lits[_are_oe.get_constant( true )] = bill::lit_type( 0, bill::lit_type::polarities::negative );
-    }
-    _are_oe.foreach_pi( [&]( auto const& n, auto i ) {
-      oe_lits[n] = i < this->num_pos() ? _po_lits[i] : _po_lits_link[i - this->num_pos()];
-    } );
-
-    _are_oe.foreach_gate( [&]( auto const& n ){
-      oe_lits[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-    });
-
-    auto out_lits = generate_cnf<Ntk, bill::lit_type>( _are_oe, add_clause_fn, oe_lits );
-    solver.add_clause( {~out_lits[0]} );
-  }
-
-  template<typename solver_t>
-  bill::lit_type add_EXOEC_linking_clauses( solver_t& solver, std::vector<bill::lit_type> const& dup_po_lits ) const
-  {
-    assert( dup_po_lits.size() == this->num_pos() );
-    auto assump = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-    for ( auto i = 0u; i < this->num_pos(); ++i )
-    {
-      solver.add_clause( {~assump, ~_po_lits_link[i], dup_po_lits[i]} );
-      solver.add_clause( {~assump, _po_lits_link[i], ~dup_po_lits[i]} );
-    }
-    return assump;
-  }
-
 private:
   Ntk _excdc;
-  OecMgr _exoec;
-  Ntk _are_oe;
-  mutable std::vector<bill::lit_type> _po_lits, _po_lits_link;
+  detail::equivalence_classes_mgr _exoec;
 }; /* dont_care_view */
 
 template<class T>
-dont_care_view( T const&, T const& ) -> dont_care_view<T>;
+dont_care_view( T const& ) -> dont_care_view<T, false, true>;
+
+template<class T>
+dont_care_view( T const&, T const& ) -> dont_care_view<T, true, true>;
 
 } // namespace mockturtle

@@ -664,7 +664,7 @@ inline bool is_const0( const quaternary_truth_table<TT>& tt )
   \param polarity1 Polarity of the first truth table
   \param polarity2 Polarity of the second truth table
 */
-template<typename TT, bool polarity1 = true, bool polarity2 = true>
+template<typename TT, bool polarity1 = true, bool polarity2 = true, typename = std::enable_if_t<is_completely_specified_truth_table<TT>::value>>
 bool intersection_is_empty( const TT& first, const TT& second )
 {
   if constexpr ( polarity1 && polarity2 )
@@ -681,46 +681,6 @@ bool intersection_is_empty( const TT& first, const TT& second )
                              { return ( ~a & ~b ) == 0u; } );
 }
 
-/*! \brief Checks whether the intersection of two ternary truth tables is empty
-
-  \param first First truth table
-  \param second Second truth table
-  \param polarity1 Polarity of the first truth table
-  \param polarity2 Polarity of the second truth table
-*/
-template<typename TT, bool polarity1 = true, bool polarity2 = true>
-bool intersection_is_empty( const ternary_truth_table<TT>& a, const ternary_truth_table<TT>& b )
-{
-  if constexpr ( polarity1 && polarity2 )
-    return is_const0( a & b );
-  else if constexpr ( !polarity1 && polarity2 )
-    return is_const0( ~a & b );
-  else if constexpr ( polarity1 && !polarity2 )
-    return is_const0( a & ~b );
-  else // !polarity1 && !polarity2
-    return is_const0( ~a & ~b );
-}
-
-/*! \brief Checks whether the intersection of two quaternary truth tables is empty
-
-  \param first First truth table
-  \param second Second truth table
-  \param polarity1 Polarity of the first truth table
-  \param polarity2 Polarity of the second truth table
-*/
-template<typename TT, bool polarity1 = true, bool polarity2 = true>
-bool intersection_is_empty( const quaternary_truth_table<TT>& a, const quaternary_truth_table<TT>& b )
-{
-  if constexpr ( polarity1 && polarity2 )
-    return is_const0( a & b );
-  else if constexpr ( !polarity1 && polarity2 )
-    return is_const0( ~a & b );
-  else if constexpr ( polarity1 && !polarity2 )
-    return is_const0( a & ~b );
-  else // !polarity1 && !polarity2
-    return is_const0( ~a & ~b );
-}
-
 /*! \brief Checks whether the intersection of three truth tables is empty
 
   \param first First truth table
@@ -730,7 +690,7 @@ bool intersection_is_empty( const quaternary_truth_table<TT>& a, const quaternar
   \param polarity2 Polarity of the second truth table
   \param polarity3 Polarity of the first truth table
 */
-template<typename TT, bool polarity1 = true, bool polarity2 = true, bool polarity3 = true>
+template<typename TT, bool polarity1 = true, bool polarity2 = true, bool polarity3 = true, typename = std::enable_if_t<is_completely_specified_truth_table<TT>::value>>
 bool intersection_is_empty( const TT& first, const TT& second, const TT& third )
 {
   if constexpr ( polarity1 && polarity2 && polarity3 )
@@ -757,66 +717,6 @@ bool intersection_is_empty( const TT& first, const TT& second, const TT& third )
   else // !polarity1 && !polarity2 && !polarity3
     return ternary_predicate( first, second, third, []( uint64_t a, uint64_t b, uint64_t c )
                               { return ( ~a & ~b & ~c ) == 0u; } );
-}
-
-/*! \brief Checks whether the intersection of three ternary truth tables is empty
-
-  \param first First truth table
-  \param second Second truth table
-  \param third Third truth table
-  \param polarity1 Polarity of the first truth table
-  \param polarity2 Polarity of the second truth table
-  \param polarity3 Polarity of the first truth table
-*/
-template<typename TT, bool polarity1 = true, bool polarity2 = true, bool polarity3 = true>
-bool intersection_is_empty( const ternary_truth_table<TT>& a, const ternary_truth_table<TT>& b, const ternary_truth_table<TT>& c )
-{
-  if constexpr ( polarity1 && polarity2 && polarity3 )
-    return is_const0( a & b & c );
-  else if constexpr ( !polarity1 && polarity2 && polarity3 )
-    return is_const0( ~a & b & c );
-  else if constexpr ( polarity1 && !polarity2 && polarity3 )
-    return is_const0( a & ~b & c );
-  else if constexpr ( polarity1 && polarity2 && !polarity3 )
-    return is_const0( a & b & ~c );
-  else if constexpr ( !polarity1 && !polarity2 && polarity3 )
-    return is_const0( ~a & ~b & c );
-  else if constexpr ( polarity1 && !polarity2 && !polarity3 )
-    return is_const0( a & ~b & ~c );
-  else if constexpr ( !polarity1 && polarity2 && !polarity3 )
-    return is_const0( ~a & b & ~c );
-  else // !polarity1 && !polarity2 && !polarity3
-    return is_const0( ~a & ~b & ~c );
-}
-
-/*! \brief Checks whether the intersection of three quaternary truth tables is empty
-
-  \param first First truth table
-  \param second Second truth table
-  \param third Third truth table
-  \param polarity1 Polarity of the first truth table
-  \param polarity2 Polarity of the second truth table
-  \param polarity3 Polarity of the first truth table
-*/
-template<typename TT, bool polarity1 = true, bool polarity2 = true, bool polarity3 = true>
-bool intersection_is_empty( const quaternary_truth_table<TT>& a, const quaternary_truth_table<TT>& b, const quaternary_truth_table<TT>& c )
-{
-  if constexpr ( polarity1 && polarity2 && polarity3 )
-    return is_const0( a & b & c );
-  else if constexpr ( !polarity1 && polarity2 && polarity3 )
-    return is_const0( ~a & b & c );
-  else if constexpr ( polarity1 && !polarity2 && polarity3 )
-    return is_const0( a & ~b & c );
-  else if constexpr ( polarity1 && polarity2 && !polarity3 )
-    return is_const0( a & b & ~c );
-  else if constexpr ( !polarity1 && !polarity2 && polarity3 )
-    return is_const0( ~a & ~b & c );
-  else if constexpr ( polarity1 && !polarity2 && !polarity3 )
-    return is_const0( a & ~b & ~c );
-  else if constexpr ( !polarity1 && polarity2 && !polarity3 )
-    return is_const0( ~a & b & ~c );
-  else // !polarity1 && !polarity2 && !polarity3
-    return is_const0( ~a & ~b & ~c );
 }
 
 /*! \brief Checks whether truth table depends on given variable index

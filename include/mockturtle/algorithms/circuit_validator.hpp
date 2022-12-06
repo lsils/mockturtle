@@ -433,15 +433,19 @@ private:
     solver.add_variables( ntk.num_pis() + 1 );
     solver.add_clause( { ~literals[ntk.get_constant( false )] } );
 
-    if constexpr ( has_pattern_is_EXCDC_v<Ntk> )
+    if constexpr ( has_EXCDC_interface_v<Ntk> )
     {
       ntk.add_EXCDC_clauses( solver );
     }
 
-    if constexpr ( has_are_observability_equivalent_v<Ntk> )
+    if constexpr ( has_EXODC_interface_v<Ntk> )
     {
       if ( ps.odc_levels == -1 )
       {
+        po_lits_link.clear();
+        typename Ntk::base_type oec_ntk;
+        ntk.build_oec_network( oec_ntk );
+
         std::vector<bill::lit_type> po_lits;
         ntk.foreach_po( [&]( auto const& f ) {
           if ( !ntk.is_pi( ntk.get_node( f ) ) && !constructed.has( f ) )
@@ -450,7 +454,36 @@ private:
           }
           po_lits.emplace_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
         });
-        ntk.add_EXOEC_clauses( solver, po_lits );
+
+        /* miter */
+        std::vector<bill::lit_type> xors;
+        for ( auto i = 0u; i < ntk.num_pos(); ++i )
+        {
+          po_lits_link.emplace_back( solver.add_variable(), bill::lit_type::polarities::positive );
+          auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+          detail::on_xor<add_clause_fn_t>( nlit, po_lits[i], po_lits_link[i], add_clause_fn );
+          xors.emplace_back( nlit );
+        }
+        solver.add_clause( xors );
+
+        /* OEC */
+        assert( oec_ntk.num_pis() == ntk.num_pos() * 2 && oec_ntk.num_pos() == 1 );
+        node_map<bill::lit_type, typename Ntk::base_type> oe_lits( oec_ntk );
+        oe_lits[oec_ntk.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
+        if ( oec_ntk.get_node( oec_ntk.get_constant( false ) ) != oec_ntk.get_node( oec_ntk.get_constant( true ) ) )
+        {
+          oe_lits[oec_ntk.get_constant( true )] = bill::lit_type( 0, bill::lit_type::polarities::negative );
+        }
+        oec_ntk.foreach_pi( [&]( auto const& n, auto i ) {
+          oe_lits[n] = i < ntk.num_pos() ? po_lits[i] : po_lits_link[i - ntk.num_pos()];
+        } );
+
+        oec_ntk.foreach_gate( [&]( auto const& n ){
+          oe_lits[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+        });
+
+        auto out_lits = generate_cnf<typename Ntk::base_type, bill::lit_type>( oec_ntk, add_clause_fn, oe_lits );
+        solver.add_clause( {~out_lits[0]} );
       }
     }
   }
@@ -479,33 +512,23 @@ private:
 
     if ( ntk.is_and( n ) )
     {
-      detail::on_and<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_and<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], add_clause_fn );
     }
     else if ( ntk.is_xor( n ) )
     {
-      detail::on_xor<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_xor<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], add_clause_fn );
     }
     else if ( ntk.is_xor3( n ) )
     {
-      detail::on_xor3<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_xor3<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], add_clause_fn );
     }
     else if ( ntk.is_maj( n ) )
     {
-      detail::on_maj<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_maj<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], add_clause_fn );
     }
     else if ( ntk.is_ite( n ) )
     {
-      detail::on_ite<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_ite<add_clause_fn_t>( node_lit, child_lits[0], child_lits[1], child_lits[2], add_clause_fn );
     }
     return node_lit;
   }
@@ -534,15 +557,11 @@ private:
     auto nlit = c ? *c : bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
     if ( type == AND )
     {
-      detail::on_and<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_and<add_clause_fn_t>( nlit, a, b, add_clause_fn );
     }
     else if ( type == XOR )
     {
-      detail::on_xor<add_clause_fn_t>( nlit, a, b, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_xor<add_clause_fn_t>( nlit, a, b, add_clause_fn );
     }
 
     return nlit;
@@ -555,21 +574,15 @@ private:
     auto nlit = d ? *d : bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
     if ( type == MAJ )
     {
-      detail::on_maj<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_maj<add_clause_fn_t>( nlit, a, b, c, add_clause_fn );
     }
     else if ( type == XOR )
     {
-      detail::on_xor3<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_xor3<add_clause_fn_t>( nlit, a, b, c, add_clause_fn );
     }
     else if ( type == MUX )
     {
-      detail::on_ite<add_clause_fn_t>( nlit, a, b, c, [&]( auto const& clause ) {
-        solver.add_clause( clause );
-      } );
+      detail::on_ite<add_clause_fn_t>( nlit, a, b, c, add_clause_fn );
     }
 
     return nlit;
@@ -578,39 +591,30 @@ private:
   std::optional<bool> solve( std::vector<bill::lit_type> assumptions )
   {
     ++num_invoke;
-    while ( true )
+    auto const res = solver.solve( assumptions, ps.conflict_limit );
+
+    if ( res == bill::result::states::satisfiable )
     {
-      auto const res = solver.solve( assumptions, ps.conflict_limit );
+      auto model = solver.get_model().model();
+      for ( auto i = 0u; i < ntk.num_pis(); ++i )
+      {
+        cex.at( i ) = model.at( i + 1 ) == bill::lbool_type::true_;
+      }
 
-      if ( res == bill::result::states::satisfiable )
+      if constexpr ( has_EXCDC_interface_v<Ntk> )
       {
-        auto model = solver.get_model().model();
-        for ( auto i = 0u; i < ntk.num_pis(); ++i )
-        {
-          cex.at( i ) = model.at( i + 1 ) == bill::lbool_type::true_;
-        }
-
-        if constexpr ( has_pattern_is_EXCDC_v<Ntk> )
-        {
-          if ( ntk.pattern_is_EXCDC( cex ) )
-          {
-            block_pattern( cex );
-            continue;
-          }
-        }
-        
-        return false;
+        assert( !ntk.pattern_is_EXCDC( cex ) );
       }
-      else if ( res == bill::result::states::unsatisfiable )
-      {
-        return true;
-      }
-      else
-      {
-        return std::nullopt; /* timeout or something wrong */
-      }
+      return false;
     }
-    return std::nullopt;
+    else if ( res == bill::result::states::unsatisfiable )
+    {
+      return true;
+    }
+    else
+    {
+      return std::nullopt; /* timeout or something wrong */
+    }
   }
 
   std::optional<bool> validate( node const& root, bill::lit_type const& lit )
@@ -668,10 +672,6 @@ private:
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
   bill::lit_type build_odc_window( node const& root, bill::lit_type const& lit )
   {
-  if constexpr ( has_are_observability_equivalent_v<Ntk> )
-  {
-    assert( ps.odc_levels == -1 );
-
     /* literals for the duplicated fanout cone */
     unordered_node_map<bill::lit_type, Ntk> lits( ntk );
     /* miter literals that should be empty */
@@ -682,26 +682,21 @@ private:
     make_lit_fanout_cone_rec( root, lits, miter, 1 );
     ntk.incr_trav_id();
     duplicate_fanout_cone_rec( root, lits, 1 );
-    assert( miter.size() == 0 );
 
-    std::vector<bill::lit_type> dup_po_lits;
-    ntk.foreach_po( [&]( auto const& f ) {
-      dup_po_lits.emplace_back( lit_not_cond( lits.has( ntk.get_node( f ) ) ? lits[f] : literals[f], ntk.is_complemented( f ) ) );
-    } );
-    return ntk.add_EXOEC_linking_clauses( solver, dup_po_lits );
-  }
-  else
-  {
-    /* literals for the duplicated fanout cone */
-    unordered_node_map<bill::lit_type, Ntk> lits( ntk );
-    /* literals of XORs in the miter */
-    std::vector<bill::lit_type> miter;
-
-    lits[root] = lit;
-    ntk.incr_trav_id();
-    make_lit_fanout_cone_rec( root, lits, miter, 1 );
-    ntk.incr_trav_id();
-    duplicate_fanout_cone_rec( root, lits, 1 );
+    if constexpr ( has_EXODC_interface_v<Ntk> )
+    {
+      if ( ps.odc_levels == -1 )
+      {
+        assert( miter.size() == 0 );
+        auto assump = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+        ntk.foreach_po( [&]( auto const& f, auto i ) {
+          auto dup_po_lit = lit_not_cond( lits.has( ntk.get_node( f ) ) ? lits[f] : literals[f], ntk.is_complemented( f ) );
+          solver.add_clause( {~assump, ~po_lits_link[i], dup_po_lit} );
+          solver.add_clause( {~assump, po_lits_link[i], ~dup_po_lit} );
+        } );
+        return assump;
+      }
+    }
 
     /* miter for POs */
     ntk.foreach_po( [&]( auto const& f ) {
@@ -712,11 +707,10 @@ private:
     } );
 
     assert( miter.size() > 0 && "no fanout node at distance odc_levels and there is no PO in TFO cone (possibly due to a dangling cone)" );
-    auto nlit2 = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-    miter.emplace_back( nlit2 );
+    auto assump = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+    miter.emplace_back( ~assump );
     solver.add_clause( miter );
-    return ~nlit2;
-  }
+    return assump;
   }
 
   template<bool enabled = use_odc, typename = std::enable_if_t<enabled>>
@@ -796,6 +790,7 @@ private:
   node_map<bill::lit_type, Ntk> literals;
   unordered_node_map<bool, Ntk> constructed;
   bill::solver<Solver> solver;
+  add_clause_fn_t add_clause_fn = [&]( auto const& clause ) { solver.add_clause( clause ); };
 
   static const uint32_t MIN_NUM_INVOKE = 20u;
   uint32_t num_invoke;
@@ -804,6 +799,8 @@ private:
   std::vector<node> tmp;
 
   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
+
+  std::vector<bill::lit_type> po_lits_link;
 
 public:
   std::vector<bool> cex;

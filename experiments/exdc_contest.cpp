@@ -14,7 +14,7 @@
 #include <string>
 #include <fmt/format.h>
 
-int main()
+int main1()
 {
   using namespace mockturtle;
 
@@ -57,16 +57,16 @@ int main()
   cdc.create_pi();
   cdc.create_po( cdc.create_and( x1cdc, x2cdc ) );
 
-  dont_care_view<aig_network, kitty::oec_manager<true>> exdc( aig );
+  dont_care_view exdc( aig );
   /* EXOEC pair: 01 = 10 */
   exdc.add_EXOEC_pair( std::vector<bool>( {0, 1} ), std::vector<bool>( {1, 0} ) );
   exdc.add_EXOEC_pair( std::vector<bool>( {0, 0} ), std::vector<bool>( {1, 0} ) );
   //exdc.add_EXOEC_pair( std::vector<bool>( {0, 1} ), std::vector<bool>( {0, 0} ) );
   //std::cout << "num OECs = " << exdc.num_OECs() << "\n";
 #else
-  dont_care_view<aig_network, kitty::oec_manager<true>> exdc( aig );
+  dont_care_view exdc( aig );
 #endif
-  exdc.build_oec_network();
+  //exdc.build_oec_network();
 
   fmt::print( "[i] original: I/O = {}/{}, #gates = {}\n", aig.num_pis(), aig.num_pos(), aig.num_gates() );
 
@@ -125,9 +125,9 @@ int main2()
   }
   cdc.create_po( cdc.create_nary_or( pats ) );
 
-  dont_care_view<aig_network, kitty::oec_manager<true>> exdc( ntk, cdc );
+  dont_care_view exdc( ntk, cdc );
 #else
-  dont_care_view<aig_network, kitty::oec_manager<true>> exdc( ntk );
+  dont_care_view exdc( ntk );
 #endif
  
 #if 1
@@ -138,7 +138,7 @@ int main2()
   exdc.add_EXODC_ito_pos( cond2, 2 );
   kitty::cube cond3( "--0" );
   exdc.add_EXODC_ito_pos( cond3, 0 );
-  exdc.build_oec_network();
+  //exdc.build_oec_network();
 #endif
 
   resubstitution_params ps;
@@ -228,9 +228,9 @@ int main3( int argc, char* argv[] )
     cdc.create_po( cdc.create_nary_or( pats ) );
     write_aiger( cdc, result_path + benchmark + "CDC.aig" );
 
-    dont_care_view<aig_network, kitty::oec_manager<true>> exdc( ntk, cdc );
+    dont_care_view exdc( ntk, cdc );
 #else
-    dont_care_view<aig_network, kitty::oec_manager<true>> exdc( ntk );
+    dont_care_view exdc( ntk );
 #endif
  
 #if 0
@@ -258,7 +258,7 @@ int main3( int argc, char* argv[] )
       }
     }
 #endif
-    exdc.build_oec_network();
+    //exdc.build_oec_network();
 
     sim_resubstitution( exdc, ps );
     ntk = cleanup_dangling( ntk );
@@ -274,7 +274,7 @@ int main3( int argc, char* argv[] )
   return 0;
 }
 
-int main4( int argc, char* argv[] )
+int main( int argc, char* argv[] )
 {
   using namespace experiments;
   using namespace mockturtle;
@@ -321,7 +321,6 @@ int main4( int argc, char* argv[] )
       continue;
     }
 
-
     default_simulator<kitty::dynamic_truth_table> sim( cdc.num_pis() );
     auto const tts = simulate_nodes<kitty::dynamic_truth_table>( cdc, sim );
     cdc.foreach_po( [&]( auto f ){
@@ -329,9 +328,9 @@ int main4( int argc, char* argv[] )
       std::cout << kitty::count_ones(tt) << "\n";
     });
 
-    dont_care_view<aig_network, kitty::oec_manager<true>> exdc( ntk, cdc );
+    dont_care_view exdc( ntk, cdc );
 #else
-    dont_care_view<aig_network, kitty::oec_manager<true>> exdc( ntk );
+    dont_care_view exdc( ntk );
 #endif
  
 #if 0
@@ -339,7 +338,7 @@ int main4( int argc, char* argv[] )
     kitty::cube cond1( "0--" );
     exdc.add_EXODC_ito_pos( cond1, 1 );
 #endif
-    exdc.build_oec_network();
+    //exdc.build_oec_network();
 
     stopwatch<>::duration time{0};
     {

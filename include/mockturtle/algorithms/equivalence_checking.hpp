@@ -166,7 +166,7 @@ public:
     solver.add_variables( miter_.num_pis() + 1 );
     solver.add_clause( {~literals[miter_.get_constant( false )]} );
 
-    if constexpr ( has_pattern_is_EXCDC_v<Ntk> )
+    if constexpr ( has_EXCDC_interface_v<Ntk> )
     {
       miter_.add_EXCDC_clauses( solver );
     }

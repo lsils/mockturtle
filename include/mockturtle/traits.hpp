@@ -2231,34 +2231,34 @@ template<class Ntk>
 inline constexpr bool has_eval_fanins_color_v = has_eval_fanins_color<Ntk>::value;
 #pragma endregion
 
-#pragma region has_pattern_is_EXCDC
+#pragma region has_EXCDC_interface
 template<class Ntk, class = void>
-struct has_pattern_is_EXCDC : std::false_type
+struct has_EXCDC_interface : std::false_type
 {
 };
 
 template<class Ntk>
-struct has_pattern_is_EXCDC<Ntk, std::void_t<decltype( std::declval<Ntk>().pattern_is_EXCDC( std::declval<std::vector<bool>>() ) )>> : std::true_type
+struct has_EXCDC_interface<Ntk, std::enable_if_t<Ntk::has_EXCDC, std::void_t<decltype( Ntk::has_EXCDC )>>> : std::true_type
 {
 };
 
 template<class Ntk>
-inline constexpr bool has_pattern_is_EXCDC_v = has_pattern_is_EXCDC<Ntk>::value;
+inline constexpr bool has_EXCDC_interface_v = has_EXCDC_interface<Ntk>::value;
 #pragma endregion
 
-#pragma region has_are_observability_equivalent
+#pragma region has_EXODC_interface
 template<class Ntk, class = void>
-struct has_are_observability_equivalent : std::false_type
+struct has_EXODC_interface : std::false_type
 {
 };
 
 template<class Ntk>
-struct has_are_observability_equivalent<Ntk, std::void_t<decltype( std::declval<Ntk>().are_observability_equivalent( std::declval<kitty::cube>(), std::declval<kitty::cube>() ) )>> : std::true_type
+struct has_EXODC_interface<Ntk, std::enable_if_t<Ntk::has_EXODC, std::void_t<decltype( Ntk::has_EXODC )>>> : std::true_type
 {
 };
 
 template<class Ntk>
-inline constexpr bool has_are_observability_equivalent_v = has_are_observability_equivalent<Ntk>::value;
+inline constexpr bool has_EXODC_interface_v = has_EXODC_interface<Ntk>::value;
 #pragma endregion
 
 /*! \brief SFINAE based on iterator type (for compute functions).

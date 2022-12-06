@@ -253,7 +253,7 @@ kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
     care |= tts[r] ^ tts_roots[r];
   }
 
-  if constexpr ( has_are_observability_equivalent_v<Ntk> )
+  if constexpr ( has_EXODC_interface_v<Ntk> )
   {
     if ( levels == -1 )
     {

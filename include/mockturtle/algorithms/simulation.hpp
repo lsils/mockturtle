@@ -281,11 +281,9 @@ public:
     return patterns;
   }
 
-  template<class Ntk>
+  template<class Ntk, bool enabled = has_EXCDC_interface_v<Ntk>, typename = std::enable_if_t<enabled>>
   void remove_CDC_patterns( Ntk const& ntk )
   {
-    static_assert( has_pattern_is_EXCDC_v<Ntk>, "Ntk does not have EXCDC interface" );
-
     std::vector<bool> pattern( patterns.size() );
     for ( int i = 0; i < (int)num_patterns; ++i )
     {

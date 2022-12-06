@@ -255,7 +255,7 @@ public:
                 out_sig = s;
               } );
             } );
-            if constexpr ( validator_t::use_odc_ || has_pattern_is_EXCDC_v<Ntk> )
+            if constexpr ( validator_t::use_odc_ || has_EXCDC_interface_v<Ntk> )
             {
               call_with_stopwatch( st.time_sat_restart, [&]() {
                 validator.update();
