@@ -28,6 +28,7 @@
   \brief Implements quaternary_truth_table
 
   \author Siang-Yun Lee
+  \author Gianluca Radi
 */
 
 #pragma once
