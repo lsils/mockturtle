@@ -315,6 +315,7 @@ public:
       {
         std::cout << fmt::format( "[i] compute cut for node at index {}\n", index );
       }
+      
       if ( ntk.is_constant( node ) )
       {
         cuts.add_zero_cut( index );
