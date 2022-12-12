@@ -149,7 +149,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     os << "\n";
   }
 
-  if constexpr ( has_num_registers_v<Ntk> && has_ri_to_ro_v<Ntk> )
+  if constexpr ( has_num_registers_v<Ntk> )
   {
     if ( num_latches > 0u )
     {

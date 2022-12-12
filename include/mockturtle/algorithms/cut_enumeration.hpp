@@ -315,14 +315,6 @@ public:
       {
         std::cout << fmt::format( "[i] compute cut for node at index {}\n", index );
       }
-      if constexpr ( has_is_ro_v<Ntk> ) /* sequential circuit */
-      {
-        if ( ntk.is_ro( node ) )
-        {
-          cuts.add_unit_cut( index );
-          return; /* continue */
-        }
-      }
       if ( ntk.is_constant( node ) )
       {
         cuts.add_zero_cut( index );
