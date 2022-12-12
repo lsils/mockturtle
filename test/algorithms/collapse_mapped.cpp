@@ -4,6 +4,7 @@
 #include <mockturtle/algorithms/lut_mapping.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
+#include <mockturtle/networks/sequential.hpp>
 #include <mockturtle/traits.hpp>
 #include <mockturtle/views/mapping_view.hpp>
 
@@ -323,4 +324,40 @@ TEST_CASE( "Mapped AIG with constant-1 output", "[collapse_mapped]" )
   klut->foreach_po( [&]( auto const& f ) {
     CHECK( klut->get_node( f ) == 1 );
   } );
+}
+
+TEST_CASE( "Mapped sequential k-LUT network", "[collapse_mapped]" )
+{
+  sequential<klut_network> klut;
+
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto c = klut.create_pi();
+
+  const auto f1 = klut.create_maj( a, b, c );
+  const auto f2 = klut.create_ro(); // f2 <- f1
+  const auto f3 = klut.create_ro(); // f3 <- f1
+  const auto f4 = klut.create_xor( f2, f3 );
+
+  klut.create_po( f4 );
+  klut.create_ri( f1 ); // f2 <- f1
+  klut.create_ri( f1 ); // f3 <- f1
+
+  CHECK( klut.num_gates() == 2 );
+  CHECK( klut.num_registers() == 2 );
+  CHECK( klut.num_pis() == 3 );
+  CHECK( klut.num_pos() == 1 );
+
+  mapping_view<decltype(klut), true> mapped_klut{ klut };
+  lut_mapping_params ps;
+  ps.cut_enumeration_ps.cut_size = 3;
+  lut_mapping<decltype(mapped_klut), true>( mapped_klut );
+
+  const auto _klut = collapse_mapped_network<decltype(klut)>( mapped_klut );
+
+  CHECK( _klut );
+  CHECK( _klut->num_gates() == 2 );
+  CHECK( _klut->num_registers() == 2 );
+  CHECK( _klut->num_pis() == 3 );
+  CHECK( _klut->num_pos() == 1 );
 }

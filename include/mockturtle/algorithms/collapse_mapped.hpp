@@ -211,7 +211,7 @@ public:
     /* nodes */
     topo_view topo{ ntk };
     topo.foreach_node( [&]( auto n ) {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) || !ntk.is_cell_root( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) || !ntk.is_cell_root( n ) )
         return;
 
       std::vector<signal<NtkDest>> children;
