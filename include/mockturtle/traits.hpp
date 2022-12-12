@@ -977,6 +977,111 @@ template<class Ntk>
 inline constexpr bool has_update_levels_v = has_update_levels<Ntk>::value;
 #pragma endregion
 
+#pragma region has_rank_position
+template<class Ntk, class = void>
+struct has_rank_position : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_rank_position<Ntk, std::void_t<decltype( std::declval<Ntk>().rank_position( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_rank_position_v = has_rank_position<Ntk>::value;
+#pragma endregion
+
+#pragma region has_at_rank_position
+template<class Ntk, class = void>
+struct has_at_rank_position : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_at_rank_position<Ntk, std::void_t<decltype( std::declval<Ntk>().at_rank_position( std::declval<uint32_t>(), std::declval<uint32_t>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_at_rank_position_v = has_at_rank_position<Ntk>::value;
+#pragma endregion
+
+#pragma region has_width
+template<class Ntk, class = void>
+struct has_width : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_width<Ntk, std::void_t<decltype( std::declval<Ntk>().width() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_width_v = has_width<Ntk>::value;
+#pragma endregion
+
+#pragma region has_swap
+template<class Ntk, class = void>
+struct has_swap : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_swap<Ntk, std::void_t<decltype( std::declval<Ntk>().swap( std::declval<node<Ntk>>(), std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_swap_v = has_swap<Ntk>::value;
+#pragma endregion
+
+#pragma region has_sort_rank
+template<class Ntk, class = void>
+struct has_sort_rank : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_sort_rank<Ntk, std::void_t<decltype( std::declval<Ntk>().sort_rank( std::declval<uint32_t>(), std::declval<void( node<Ntk>, node<Ntk> )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_sort_rank_v = has_sort_rank<Ntk>::value;
+#pragma endregion
+
+#pragma region has_foreach_node_in_rank
+template<class Ntk, class = void>
+struct has_foreach_node_in_rank : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_node_in_rank<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_node_in_rank( std::declval<uint32_t>(), std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_node_in_rank_v = has_foreach_node_in_rank<Ntk>::value;
+#pragma endregion
+
+#pragma region has_foreach_gate_in_rank
+template<class Ntk, class = void>
+struct has_foreach_gate_in_rank : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_gate_in_rank<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_gate_in_rank( std::declval<uint32_t>(), std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_gate_in_rank_v = has_foreach_gate_in_rank<Ntk>::value;
+#pragma endregion
+
 #pragma region has_update_mffcs
 template<class Ntk, class = void>
 struct has_update_mffcs : std::false_type
