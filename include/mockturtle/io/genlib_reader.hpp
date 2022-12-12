@@ -100,7 +100,7 @@ public:
 
     if ( ps.size() == 1 && ps[0].name == "*" )
     {
-      /* pins not defined, use names and appearence order of the expression */
+      /* pins not defined, use names and appearance order of the expression */
       std::vector<std::string> tokens;
       std::string const delimitators{ " ()!\'*&+|^\t\r\n" };
       std::size_t prev = 0, pos;

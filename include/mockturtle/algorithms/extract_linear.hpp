@@ -53,7 +53,7 @@ namespace mockturtle
  * AND gates are traversed in topological order.
  *
  * Besides the new XAG, this function returns a vector of the size of all
- * original AND gates with pointers to the signals refering to the AND's fanin
+ * original AND gates with pointers to the signals referring to the AND's fanin
  * and fanout (in that order).
  */
 inline std::pair<xag_network, std::vector<std::array<xag_network::signal, 3>>>

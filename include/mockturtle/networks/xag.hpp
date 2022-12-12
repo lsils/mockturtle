@@ -27,6 +27,7 @@
   \file xag.hpp
   \brief Xor-And Graph (XAG) logic network implementation
 
+  \author Alessandro Tempia Calvino
   \author Bruno Schmitt
   \author Eleonora Testa
   \author Hanyu Wang
@@ -430,6 +431,76 @@ public:
   }
 #pragma endregion
 
+#pragma region Has node
+  std::optional<node> has_and( signal a, signal b )
+  {
+    /* order inputs */
+    if ( a.index > b.index )
+    {
+      std::swap( a, b );
+    }
+
+    /* trivial cases */
+    if ( a.index == b.index )
+    {
+      return ( a.complement == b.complement ) ? a.index : 0;
+    }
+    else if ( a.index == 0 )
+    {
+      return a.complement ? b.index : 0;
+    }
+
+    storage::element_type::node_type node;
+    node.children[0] = a;
+    node.children[1] = b;
+
+    /* structural hashing */
+    const auto it = _storage->hash.find( node );
+    if ( it != _storage->hash.end() )
+    {
+      assert( !is_dead( it->second ) );
+      return it->second;
+    }
+
+    return {};
+  }
+
+  std::optional<node> has_xor( signal a, signal b )
+  {
+    /* order inputs */
+    if ( a.index < b.index )
+    {
+      std::swap( a, b );
+    }
+
+    /* trivial cases */
+    if ( a.index == b.index )
+    {
+      return 0;
+    }
+    else if ( b.index == 0 )
+    {
+      return get_node( a );
+    }
+
+    a.complement = b.complement = false;
+
+    storage::element_type::node_type node;
+    node.children[0] = a;
+    node.children[1] = b;
+
+    /* structural hashing */
+    const auto it = _storage->hash.find( node );
+    if ( it != _storage->hash.end() )
+    {
+      assert( !is_dead( it->second ) );
+      return it->second;
+    }
+
+    return {};
+  }
+#pragma endregion
+
 #pragma region Restructuring
   std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal )
   {
@@ -476,23 +547,20 @@ public:
         return std::make_pair( n, get_constant( diff_pol ) );
       }
     }
-    else if ( child0.index == 0 ) /* constant child */
+    else if ( _is_and && child0.index == 0 ) /* constant child */
     {
-      if ( _is_and )
-      {
-        return std::make_pair( n, child0.complement ? child1 : get_constant( false ) );
-      }
-      else
-      {
-        return std::make_pair( n, child1 ^ child0.complement );
-      }
+      return std::make_pair( n, child0.complement ? child1 : get_constant( false ) );
+    }
+    else if ( !_is_and && child1.index == 0 )
+    {
+      return std::make_pair( n, child0 ^ child1.complement );
     }
 
     // node already in hash table
     storage::element_type::node_type _hash_obj;
     _hash_obj.children[0] = child0;
     _hash_obj.children[1] = child1;
-    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() )
+    if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() && it->second != old_node )
     {
       return std::make_pair( n, signal( it->second, 0 ) );
     }
@@ -522,6 +590,9 @@ public:
 
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
+    if ( is_dead( old_node ) )
+      return;
+
     for ( auto& output : _storage->outputs )
     {
       if ( output.index == old_node )
@@ -541,7 +612,7 @@ public:
   void take_out_node( node const& n )
   {
     /* we cannot delete CIs or constants */
-    if ( n == 0 || is_ci( n ) )
+    if ( n == 0 || is_ci( n ) || is_dead( n ) )
       return;
 
     auto& nobj = _storage->nodes[n];
@@ -615,8 +686,7 @@ public:
 #pragma endregion
 
 #pragma region Structural properties
-  auto
-  size() const
+  auto size() const
   {
     return static_cast<uint32_t>( _storage->nodes.size() );
   }

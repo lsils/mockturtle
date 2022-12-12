@@ -1618,7 +1618,7 @@ private:
  *
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
- * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
+ * The function returns a k-LUT network. Each LUT abstracts a gate of the technology library.
  *
  * **Required network functions:**
  * - `size`
@@ -2804,7 +2804,7 @@ private:
       use_one = worst_arrival_npos < node_data.required[0] + epsilon - area_margin_factor * lib_inv_delay;
     }
 
-    /* use area flow as a tiebreaker. Unfortunatly cannot keep
+    /* use area flow as a tiebreaker. Unfortunately cannot keep
      * the both phases since `node_map` does not support that */
     if ( use_zero && use_one )
     {

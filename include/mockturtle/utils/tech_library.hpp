@@ -738,7 +738,7 @@ private:
       kitty::next_inplace( tt );
     } while ( !kitty::is_const0( tt ) );
 
-    /* Constuct supergates */
+    /* Construct supergates */
     for ( auto const& entry : classes )
     {
       supergates_list_t supergates_pos;

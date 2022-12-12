@@ -11,6 +11,7 @@
 #include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/muxig.hpp>
 #include <mockturtle/views/binding_view.hpp>
 
 using namespace mockturtle;
@@ -89,6 +90,29 @@ TEST_CASE( "write MIG into Verilog file", "[write_verilog]" )
                       "  assign n5 = x0 | x1 ;\n"
                       "  assign n6 = ( x2 & n4 ) | ( x2 & n5 ) | ( n4 & n5 ) ;\n"
                       "  assign y0 = n6 ;\n"
+                      "endmodule\n" );
+}
+
+TEST_CASE( "write MuxIG into Verilog file", "[write_verilog]" )
+{
+  muxig_network ntk;
+
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+
+  const auto f1 = ntk.create_ite( a, b, c );
+  ntk.create_po( f1 );
+
+  std::ostringstream out;
+  write_verilog( ntk, out );
+
+  CHECK( out.str() == "module top( x0 , x1 , x2 , y0 );\n"
+                      "  input x0 , x1 , x2 ;\n"
+                      "  output y0 ;\n"
+                      "  wire n4 ;\n"
+                      "  assign n4 = x0 ? x1 : x2 ;\n"
+                      "  assign y0 = n4 ;\n"
                       "endmodule\n" );
 }
 

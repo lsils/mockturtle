@@ -210,7 +210,7 @@ public:
    * The simulation pattern file should contain `num_pis` lines of the same length.
    * Each line is the simulation signature of a primary input, represented in hexadecimal.
    *
-   * \param fielname Name of the simulation pattern file.
+   * \param filename Name of the simulation pattern file.
    * \param length Number of simulation patterns to keep. Should not be greater than 4 times
    * the length of a line in the file. Setting this parameter to 0 means to keep all patterns in the file.
    */
