@@ -52,6 +52,9 @@
 namespace mockturtle
 {
 
+template<class Ntk, bool hasEXCDC = true, bool hasEXODC = true>
+class dont_care_view;
+
 namespace detail
 {
 
@@ -209,49 +212,25 @@ private:
   std::vector<uint32_t> _classes;
 }; // equivalence_classes_mgr
 
-} // namespace detail
-
-template<class Ntk, bool hasEXCDC = true, bool hasEXODC = true>
-class dont_care_view : public Ntk
+template<class Ntk, bool hasEXCDC>
+class dont_care_view_impl : public Ntk
 {
 public:
-  using storage = typename Ntk::storage;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
 public:
   template<bool enabled = !hasEXCDC, typename = std::enable_if_t<enabled>>
-  dont_care_view( Ntk const& ntk )
-    : Ntk( ntk ), _exoec( ntk.num_pos() )
-  {
-    for ( auto i = 0u; i < ntk.num_pis(); ++i )
-    {
-      _excdc.create_pi();
-    }
-    _excdc.create_po( _excdc.get_constant( false ) );
-  }
+  dont_care_view_impl( Ntk const& ntk )
+    : Ntk( ntk )
+  {}
 
   template<bool enabled = hasEXCDC, typename = std::enable_if_t<enabled>>
-  dont_care_view( Ntk const& ntk, Ntk const& cdc_ntk )
-    : Ntk( ntk ), _excdc( cdc_ntk ), _exoec( ntk.num_pos() )
+  dont_care_view_impl( Ntk const& ntk, Ntk const& cdc_ntk )
+    : Ntk( ntk ), _excdc( cdc_ntk )
   {
     assert( cdc_ntk.num_pis() == ntk.num_pis() );
     assert( cdc_ntk.num_pos() == 1 );
-  }
-
-  // copy constructor
-  dont_care_view( dont_care_view<Ntk> const& ntk )
-    : Ntk( ntk ), _excdc( ntk._excdc ), _exoec( ntk._exoec )
-  {
-  }
-
-  // assignment operator
-  dont_care_view<Ntk>& operator=( dont_care_view<Ntk> const& other )
-  {
-    Ntk::operator=( other );
-    _excdc = other._excdc;
-    _exoec = other._exoec;
-    return *this;
   }
 
   template<bool enabled = hasEXCDC, typename = std::enable_if_t<enabled>>
@@ -289,8 +268,51 @@ public:
     solver.add_clause( {~out_lits[0]} );
   }
 
+private:
+  Ntk _excdc;
+}; /* dont_care_view_impl */
+} // namespace detail
+
+template<class Ntk, bool hasEXCDC>
+class dont_care_view<Ntk, hasEXCDC, false> : public detail::dont_care_view_impl<Ntk, hasEXCDC>
+{
+public:
+  static constexpr bool has_EXCDC_interface = hasEXCDC;
+  static constexpr bool has_EXODC_interface = false;
+
+public:
+  template<bool enabled = !hasEXCDC, typename = std::enable_if_t<enabled>>
+  dont_care_view( Ntk const& ntk )
+    : detail::dont_care_view_impl<Ntk, hasEXCDC>( ntk )
+  {}
+
+  template<bool enabled = hasEXCDC, typename = std::enable_if_t<enabled>>
+  dont_care_view( Ntk const& ntk, Ntk const& cdc_ntk )
+    : detail::dont_care_view_impl<Ntk, hasEXCDC>( ntk, cdc_ntk )
+  {}
+};
+
+template<class Ntk, bool hasEXCDC>
+class dont_care_view<Ntk, hasEXCDC, true> : public detail::dont_care_view_impl<Ntk, hasEXCDC>
+{
+public:
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
+  static constexpr bool has_EXCDC_interface = hasEXCDC;
+  static constexpr bool has_EXODC_interface = true;
+
+public:
+  template<bool enabled = !hasEXCDC, typename = std::enable_if_t<enabled>>
+  dont_care_view( Ntk const& ntk )
+    : detail::dont_care_view_impl<Ntk, hasEXCDC>( ntk ), _exoec( ntk.num_pos() )
+  {}
+
+  template<bool enabled = hasEXCDC, typename = std::enable_if_t<enabled>>
+  dont_care_view( Ntk const& ntk, Ntk const& cdc_ntk )
+    : detail::dont_care_view_impl<Ntk, hasEXCDC>( ntk, cdc_ntk ), _exoec( ntk.num_pos() )
+  {}
+
   // ito = in terms of
-  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
   void add_EXODC_ito_pos( kitty::cube const& cond, uint32_t po_id )
   {
     cond.foreach_minterm( this->num_pos(), [&]( kitty::cube const& c ){
@@ -304,42 +326,46 @@ public:
   }
 
   // full assignment
-  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
   void add_EXOEC_pair( std::vector<bool> const& pat1, std::vector<bool> const& pat2 )
   {
     _exoec.set_equivalent( pat1, pat2 );
   }
 
   // full assignment
-  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
   bool are_observability_equivalent( std::vector<bool> const& pat1, std::vector<bool> const& pat2 ) const
   {
     return _exoec.are_equivalent( pat1, pat2 );
   }
 
   // partial assignment
-  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
   bool are_observability_equivalent( kitty::cube const& pat1, kitty::cube const& pat2 ) const
   {
     return _exoec.are_equivalent( pat1, pat2 );
   }
 
-  template<bool enabled = hasEXODC, typename = std::enable_if_t<enabled>>
-  void build_oec_network( Ntk& _are_oe ) const
+  void build_oec_network( Ntk& are_oe ) const
   {
     std::vector<signal> pos1, pos2;
     for ( auto i = 0u; i < this->num_pos(); ++i )
     {
-      pos1.emplace_back( _are_oe.create_pi() );
+      pos1.emplace_back( are_oe.create_pi() );
     }
     for ( auto i = 0u; i < this->num_pos(); ++i )
     {
-      pos2.emplace_back( _are_oe.create_pi() );
+      pos2.emplace_back( are_oe.create_pi() );
     }
+    build_oec_miter( are_oe, pos1, pos2 );
+  }
 
-    std::vector<signal> are_both_in_class_i;
-    std::vector<signal> is_in_class1, is_in_class2;
-    std::vector<signal> ins1, ins2;
+  template<class NtkMiter>
+  void build_oec_miter( NtkMiter& miter, std::vector<typename NtkMiter::signal> const& pos1, std::vector<typename NtkMiter::signal> const& pos2 ) const
+  {
+    assert( pos1.size() == this->num_pos() );
+    assert( pos2.size() == this->num_pos() );
+
+    std::vector<typename NtkMiter::signal> are_both_in_class_i;
+    std::vector<typename NtkMiter::signal> is_in_class1, is_in_class2;
+    std::vector<typename NtkMiter::signal> ins1, ins2;
     ins1.resize( this->num_pos() );
     ins2.resize( this->num_pos() );
     _exoec.foreach_class( [&]( std::vector<uint32_t> const& pats ){
@@ -353,17 +379,16 @@ public:
           ins2[i] = ( pat & 0x1 ) ? pos2[i] : !pos2[i];
           pat >>= 1;
         }
-        is_in_class1.emplace_back( _are_oe.create_nary_and( ins1 ) );
-        is_in_class2.emplace_back( _are_oe.create_nary_and( ins2 ) );
+        is_in_class1.emplace_back( miter.create_nary_and( ins1 ) );
+        is_in_class2.emplace_back( miter.create_nary_and( ins2 ) );
       }
-      are_both_in_class_i.emplace_back( _are_oe.create_and( _are_oe.create_nary_or( is_in_class1 ), _are_oe.create_nary_or( is_in_class2 ) ) );
+      are_both_in_class_i.emplace_back( miter.create_and( miter.create_nary_or( is_in_class1 ), miter.create_nary_or( is_in_class2 ) ) );
       return true;
     });
-    _are_oe.create_po( _are_oe.create_nary_or( are_both_in_class_i ) );
+    miter.create_po( miter.create_nary_or( are_both_in_class_i ) );
   }
 
 private:
-  Ntk _excdc;
   detail::equivalence_classes_mgr _exoec;
 }; /* dont_care_view */
 

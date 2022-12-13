@@ -2238,7 +2238,7 @@ struct has_EXCDC_interface : std::false_type
 };
 
 template<class Ntk>
-struct has_EXCDC_interface<Ntk, std::enable_if_t<Ntk::has_EXCDC, std::void_t<decltype( Ntk::has_EXCDC )>>> : std::true_type
+struct has_EXCDC_interface<Ntk, std::enable_if_t<Ntk::has_EXCDC_interface, std::void_t<decltype( Ntk::has_EXCDC_interface )>>> : std::true_type
 {
 };
 
@@ -2253,7 +2253,7 @@ struct has_EXODC_interface : std::false_type
 };
 
 template<class Ntk>
-struct has_EXODC_interface<Ntk, std::enable_if_t<Ntk::has_EXODC, std::void_t<decltype( Ntk::has_EXODC )>>> : std::true_type
+struct has_EXODC_interface<Ntk, std::enable_if_t<Ntk::has_EXODC_interface, std::void_t<decltype( Ntk::has_EXODC_interface )>>> : std::true_type
 {
 };
 
