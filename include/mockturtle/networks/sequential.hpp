@@ -739,7 +739,7 @@ public:
   signal po_at( uint32_t index ) const
   {
     assert( index < _sequential_storage->num_pos );
-    return *( this->_storage->outputs.begin() + index );
+    return *( this->_storage->outputs.begin() + index )->index;
   }
 
   node ci_at( uint32_t index ) const
@@ -751,7 +751,7 @@ public:
   signal co_at( uint32_t index ) const
   {
     assert( index < this->_storage->outputs.size() );
-    return *( this->_storage->outputs.begin() + index );
+    return *( this->_storage->outputs.begin() + index )->index;
   }
 
   node ro_at( uint32_t index ) const
@@ -763,7 +763,7 @@ public:
   signal ri_at( uint32_t index ) const
   {
     assert( index < this->_storage->outputs.size() - _sequential_storage->num_pos );
-    return *( this->_storage->outputs.begin() + _sequential_storage->num_pos + index );
+    return ( this->_storage->outputs.begin() + _sequential_storage->num_pos + index )->index;
   }
 
   void set_register( uint32_t index, register_t reg )
@@ -776,6 +776,59 @@ public:
   {
     assert( index < _sequential_storage->registers.size() );
     return _sequential_storage->registers[index];
+  }
+
+  uint32_t pi_index( node const& n ) const
+  {
+    assert( this->_storage->nodes[n].children[0].data < _sequential_storage->num_pis );
+    return Ntk::pi_index( n );
+  }
+
+  uint32_t ci_index( node const& n ) const
+  {
+    return Ntk::pi_index( n );
+  }
+
+  uint32_t co_index( signal const& s ) const
+  {
+    uint32_t i = -1;
+    foreach_co( [&]( const auto& x, auto index ) {
+        if ( x == s )
+        {
+          i = index;
+          return false;
+        }
+        return true; } );
+    return i;
+  }
+
+  uint32_t ro_index( node const& n ) const
+  {
+    assert( this->_storage->nodes[n].children[0].data >= _sequential_storage->num_pis );
+    return Ntk::pi_index( n ) - _sequential_storage->num_pis;
+  }
+
+  uint32_t ri_index( signal const& s ) const
+  {
+    uint32_t i = -1;
+    foreach_ri( [&]( const auto& x, auto index ) {
+        if ( x == s )
+        {
+          i = index;
+          return false;
+        }
+        return true; } );
+    return i;
+  }
+
+  signal ro_to_ri( signal const& s ) const
+  {
+    return *( this->_storage->outputs.begin() + _sequential_storage->num_pos + this->_storage->nodes[s.index].children[0].data - _sequential_storage->num_pis );
+  }
+
+  node ri_to_ro( signal const& s ) const
+  {
+    return *( this->_storage->inputs.begin() + _sequential_storage->num_pis + ri_index( s ) );
   }
 
   template<typename Fn>

@@ -174,6 +174,36 @@ public:
       }
     } );
 
+    /* ROs & RO names & register information */
+    if constexpr ( has_foreach_ro_v<NtkSource> && has_create_ro_v<NtkDest> )
+    {
+      std::vector<signal<NtkDest>> cis;
+      ntk.foreach_ro( [&]( auto const& n, auto i ) {
+        cis.push_back( dest.create_ro() );
+        if constexpr ( has_has_name_v<NtkSource> && has_get_name_v<NtkSource> && has_set_name_v<NtkDest> )
+        {
+          auto const s = ntk.make_signal( n );
+          if ( ntk.has_name( s ) )
+          {
+            dest.set_name( cis.back(), ntk.get_name( s ) );
+          }
+          if ( ntk.has_name( !s ) )
+          {
+            dest.set_name( !cis.back(), ntk.get_name( !s ) );
+          }
+        }
+        dest.set_register( i, ntk.register_at( i ) );
+      } );
+
+      auto it = std::begin( cis );
+      if constexpr ( has_foreach_ro_v<NtkSource> )
+      {
+        ntk.foreach_ro( [&]( auto n ) {
+          node_to_signal[n] = *it++;
+        } );
+      }
+    }
+    
     fanout_view<NtkSource> fanout_ntk{ ntk };
     fanout_ntk.clear_visited();
     color_view<fanout_view<NtkSource>> color_ntk{ fanout_ntk };
@@ -181,7 +211,7 @@ public:
     /* nodes */
     topo_view topo{ ntk };
     topo.foreach_node( [&]( auto n ) {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) || !ntk.is_cell_root( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) || !ntk.is_cell_root( n ) )
         return;
 
       std::vector<signal<NtkDest>> children;
@@ -257,6 +287,26 @@ public:
         }
       }
     } );
+
+    /* RIs */
+    if constexpr ( has_foreach_ri_v<NtkSource> && has_create_ri_v<NtkDest> )
+    {
+      ntk.foreach_ri( [&]( auto const& f ) {
+        dest.create_ri( ntk.is_complemented( f ) ? dest.create_not( node_to_signal[f] ) : node_to_signal[f] );
+      } );
+    }
+
+    /* CO names */
+    if constexpr ( has_has_output_name_v<NtkSource> && has_get_output_name_v<NtkSource> && has_set_output_name_v<NtkDest> )
+    {
+      ntk.foreach_co( [&]( auto co, auto index ) {
+        (void)co;
+        if ( ntk.has_output_name( index ) )
+        {
+          dest.set_output_name( index, ntk.get_output_name( index ) );
+        }
+      } );
+    }
   }
 
 private:
