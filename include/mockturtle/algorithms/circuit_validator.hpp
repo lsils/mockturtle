@@ -453,18 +453,9 @@ private:
             construct( ntk.get_node( f ) );
           }
           po_lits.emplace_back( lit_not_cond( literals[f], ntk.is_complemented( f ) ) );
+          po_lits_link.emplace_back( solver.add_variable(), bill::lit_type::polarities::positive );
         });
 
-        /* miter */
-        std::vector<bill::lit_type> xors;
-        for ( auto i = 0u; i < ntk.num_pos(); ++i )
-        {
-          po_lits_link.emplace_back( solver.add_variable(), bill::lit_type::polarities::positive );
-          auto nlit = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
-          detail::on_xor<add_clause_fn_t>( nlit, po_lits[i], po_lits_link[i], add_clause_fn );
-          xors.emplace_back( nlit );
-        }
-        solver.add_clause( xors );
 
         /* OEC */
         assert( oec_ntk.num_pis() == ntk.num_pos() * 2 && oec_ntk.num_pos() == 1 );
@@ -483,7 +474,7 @@ private:
         });
 
         auto out_lits = generate_cnf<typename Ntk::base_type, bill::lit_type>( oec_ntk, add_clause_fn, oe_lits );
-        solver.add_clause( {~out_lits[0]} );
+        solver.add_clause( {out_lits[0]} );
       }
     }
   }

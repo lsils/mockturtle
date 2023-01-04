@@ -93,6 +93,11 @@ std::optional<NtkDest> miter( NtkSource1 const& ntk1, NtkSource2 const& ntk2 )
     ntk1.build_oec_miter( dest, pos1, pos2 );
     return dest;
   }
+  if constexpr ( has_EXODC_interface_v<NtkSource2> )
+  {
+    ntk2.build_oec_miter( dest, pos1, pos2 );
+    return dest;
+  }
 
   /* create XOR of output pairs */
   std::vector<signal<NtkDest>> xor_outputs;

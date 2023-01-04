@@ -343,18 +343,18 @@ public:
     return _exoec.are_equivalent( pat1, pat2 );
   }
 
-  void build_oec_network( Ntk& are_oe ) const
+  void build_oec_network( Ntk& miter ) const
   {
     std::vector<signal> pos1, pos2;
     for ( auto i = 0u; i < this->num_pos(); ++i )
     {
-      pos1.emplace_back( are_oe.create_pi() );
+      pos1.emplace_back( miter.create_pi() );
     }
     for ( auto i = 0u; i < this->num_pos(); ++i )
     {
-      pos2.emplace_back( are_oe.create_pi() );
+      pos2.emplace_back( miter.create_pi() );
     }
-    build_oec_miter( are_oe, pos1, pos2 );
+    build_oec_miter( miter, pos1, pos2 );
   }
 
   template<class NtkMiter>
@@ -385,7 +385,8 @@ public:
       are_both_in_class_i.emplace_back( miter.create_and( miter.create_nary_or( is_in_class1 ), miter.create_nary_or( is_in_class2 ) ) );
       return true;
     });
-    miter.create_po( miter.create_nary_or( are_both_in_class_i ) );
+    miter.create_po( !miter.create_nary_or( are_both_in_class_i ) );
+    /* miter output = 1 <=> there is no class i that pos1 and pos2 are both in <=> pos1 and pos2 are not OE */
   }
 
 private:

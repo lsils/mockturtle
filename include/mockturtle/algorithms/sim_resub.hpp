@@ -213,6 +213,20 @@ public:
     } );
   }
 
+  void update()
+  {
+    if constexpr ( validator_t::use_odc_ || has_EXODC_interface_v<Ntk> )
+    {
+      call_with_stopwatch( st.time_sat_restart, [&]() {
+        validator.update();
+      } );
+      tts.reset();
+      call_with_stopwatch( st.time_sim, [&]() {
+        simulate_nodes<Ntk>( ntk, tts, sim, true );
+      } );
+    }
+  }
+
   std::optional<signal> run( node const& n, std::vector<node> const& divs, mffc_result_t potential_gain, uint32_t& last_gain )
   {
     for ( auto j = 0u; j < ps.max_trials; ++j )
@@ -255,12 +269,6 @@ public:
                 out_sig = s;
               } );
             } );
-            if constexpr ( validator_t::use_odc_ || has_EXCDC_interface_v<Ntk> )
-            {
-              call_with_stopwatch( st.time_sat_restart, [&]() {
-                validator.update();
-              } );
-            }
             return out_sig;
           }
           else

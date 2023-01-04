@@ -154,17 +154,19 @@ public:
     bill::solver<Solver> solver;
     node_map<bill::lit_type, Ntk> literals( miter_ );
 
-    literals[miter_.get_constant( false )] = bill::lit_type( 0, bill::lit_type::polarities::positive );
+    literals[miter_.get_constant( false )] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
     if ( miter_.get_node( miter_.get_constant( false ) ) != miter_.get_node( miter_.get_constant( true ) ) )
     {
-      literals[miter_.get_constant( true )] = bill::lit_type( 0, bill::lit_type::polarities::negative );
+      literals[miter_.get_constant( true )] = lit_not( literals[miter_.get_constant( false )] );
     }
-    miter_.foreach_pi( [&]( auto const& n, auto i ) {
-      literals[n] = bill::lit_type( i + 1, bill::lit_type::polarities::positive );
-    } );
-
-    solver.add_variables( miter_.num_pis() + 1 );
     solver.add_clause( {~literals[miter_.get_constant( false )]} );
+
+    miter_.foreach_pi( [&]( auto const& n ) {
+      literals[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+    } );
+    miter_.foreach_gate( [&]( auto const& n ) {
+      literals[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+    } );
 
     if constexpr ( has_EXCDC_interface_v<Ntk> )
     {
