@@ -444,7 +444,7 @@ private:
       {
         po_lits_link.clear();
         typename Ntk::base_type oec_ntk;
-        ntk.build_oec_network( oec_ntk );
+        ntk.build_oe_miter( oec_ntk );
 
         std::vector<bill::lit_type> po_lits;
         ntk.foreach_po( [&]( auto const& f ) {

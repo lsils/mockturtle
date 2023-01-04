@@ -90,12 +90,12 @@ std::optional<NtkDest> miter( NtkSource1 const& ntk1, NtkSource2 const& ntk2 )
 
   if constexpr ( has_EXODC_interface_v<NtkSource1> )
   {
-    ntk1.build_oec_miter( dest, pos1, pos2 );
+    ntk1.build_oe_miter( dest, pos1, pos2 );
     return dest;
   }
   if constexpr ( has_EXODC_interface_v<NtkSource2> )
   {
-    ntk2.build_oec_miter( dest, pos1, pos2 );
+    ntk2.build_oe_miter( dest, pos1, pos2 );
     return dest;
   }
 

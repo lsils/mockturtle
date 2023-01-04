@@ -70,16 +70,16 @@ void test_create_dont_care_view()
   dc_view_odc dc_ntk2( ntk );
   dc_ntk2.add_EXODC( cube1, 2 );
   /* The third PO (f) is EXODC whenever the first PO (t1) is 1 */
-  CHECK( dc_ntk2.are_observability_equivalent( pat1, pat2 ) );
-  CHECK( dc_ntk2.are_observability_equivalent( cube2, cube3 ) );
+  CHECK( dc_ntk2.are_observably_equivalent( pat1, pat2 ) );
+  CHECK( dc_ntk2.are_observably_equivalent( cube2, cube3 ) );
 
   dc_view_both dc_ntk3( ntk, cdc );
   dc_ntk3.add_EXODC( cube1, 2 );
   dc_ntk3.add_EXOEC_pair( pat1, pat3 );
   /* 100 = 101 and 110 = 111 by EXODC, 000 = 111 by EXOEC, thus 110 = 000 by transitivity */
-  CHECK( dc_ntk3.are_observability_equivalent( pat1, pat2 ) );
-  CHECK( dc_ntk3.are_observability_equivalent( pat2, pat3 ) );
-  CHECK( dc_ntk3.are_observability_equivalent( cube2, cube3 ) );
+  CHECK( dc_ntk3.are_observably_equivalent( pat1, pat2 ) );
+  CHECK( dc_ntk3.are_observably_equivalent( pat2, pat3 ) );
+  CHECK( dc_ntk3.are_observably_equivalent( cube2, cube3 ) );
   CHECK( dc_ntk3.pattern_is_EXCDC( pat1 ) );
   CHECK( !dc_ntk3.pattern_is_EXCDC( pat2 ) );
 }

@@ -277,7 +277,7 @@ kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
             }
           });
 
-          if ( ntk.are_observability_equivalent( pat1, pat2 ) )
+          if ( ntk.are_observably_equivalent( pat1, pat2 ) )
           {
             kitty::clear_bit( care, i );
           }

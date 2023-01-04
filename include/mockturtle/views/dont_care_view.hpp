@@ -52,6 +52,35 @@
 namespace mockturtle
 {
 
+/*! \brief A view holding external don't care information of a network
+ *
+ * This view helps storing and managing external don't care information.
+ * There are two types of external don't cares that may be given together
+ * or independently:
+ *
+ * External controllability don't cares (EXCDCs) are primary input patterns
+ * that will never happen or can be ignored. They are given as another
+ * network `cdc_ntk` having the same number of PIs as the main network and
+ * one PO. An input assignment making `cdc_ntk` output 1 is an EXCDC.
+ *
+ * External observability don't cares (EXODCs) are conditions for one or
+ * more primary outputs under which their values can be altered. EXODCs may
+ * be given for a PO as value combinations of other POs (for example, “the
+ * second PO is don't care whenever the first PO is 1”). They may also be
+ * given as pairs of observably equivalent PO values (for example, “the output
+ * values 01 and 10 are considered equivalent and interchangable”).
+ *
+ * By wrapping a network with this view and giving some external don't care
+ * conditions, some algorithms supporting the consideration of external don't
+ * cares can make use of them. Currently, only `sim_resubstitution`
+ * (which makes use of `circuit_validator`) and `equivalence_checking_bill`
+ * support external don't cares.
+ *
+ * \tparam hasEXCDC Enables interfaces and data structure holding external
+ * controllability don't cares (external don't cares at the primary inputs)
+ * \tparam hasEXODC Enables interfaces and data structure holding external
+ * observability don't cares (external dont cares at the primary outputs)
+ */
 template<class Ntk, bool hasEXCDC = true, bool hasEXODC = true>
 class dont_care_view;
 
@@ -233,6 +262,11 @@ public:
     assert( cdc_ntk.num_pos() == 1 );
   }
 
+  /*! \brief Checks whether an input pattern is EXCDC
+   *
+   * \param pattern The PI value combination to be checked
+   * \return Whether `pattern` is EXCDC
+   */
   template<bool enabled = hasEXCDC, typename = std::enable_if_t<enabled>>
   bool pattern_is_EXCDC( std::vector<bool> const& pattern ) const
   {
@@ -302,16 +336,31 @@ public:
   static constexpr bool has_EXODC_interface = true;
 
 public:
+  /*! \brief Constructor when no EXCDC is provided
+   *
+   * \param ntk The main network
+   */
   template<bool enabled = !hasEXCDC, typename = std::enable_if_t<enabled>>
   dont_care_view( Ntk const& ntk )
     : detail::dont_care_view_impl<Ntk, hasEXCDC>( ntk ), _exoec( ntk.num_pos() )
   {}
 
+  /*! \brief Constructor when EXCDC is provided
+   *
+   * \param ntk The main network
+   * \param cdc_ntk The network representing EXCDC conditions, having the same
+   * number of PIs as `ntk` and one PO
+   */
   template<bool enabled = hasEXCDC, typename = std::enable_if_t<enabled>>
   dont_care_view( Ntk const& ntk, Ntk const& cdc_ntk )
     : detail::dont_care_view_impl<Ntk, hasEXCDC>( ntk, cdc_ntk ), _exoec( ntk.num_pos() )
   {}
 
+  /*! \brief Adds an EXODC condition for a PO in terms of other POs
+   *
+   * \param cond Condition in terms of other POs for the concerned PO to be don't care
+   * \param po_id Index of the concerned PO
+   */
   void add_EXODC( kitty::cube const& cond, uint32_t po_id )
   {
     cond.foreach_minterm( this->num_pos(), [&]( kitty::cube const& c ){
@@ -324,25 +373,51 @@ public:
     });
   }
 
-  // full assignment
+  /*! \brief Adds a pair of PO values that are considered observably equivalent
+   *
+   * \param pat1 The first PO value combination
+   * \param pat2 The second PO value combination
+   */
   void add_EXOEC_pair( std::vector<bool> const& pat1, std::vector<bool> const& pat2 )
   {
     _exoec.set_equivalent( pat1, pat2 );
   }
 
-  // full assignment
-  bool are_observability_equivalent( std::vector<bool> const& pat1, std::vector<bool> const& pat2 ) const
+  /*! \brief Checks whether a pair of PO value assignments are observably equivalent
+   *
+   * \param pat1 The first PO value combination
+   * \param pat2 The second PO value combination
+   * \return Whether `pat1` and `pat2` are observably equivalent
+   */
+  bool are_observably_equivalent( std::vector<bool> const& pat1, std::vector<bool> const& pat2 ) const
   {
     return _exoec.are_equivalent( pat1, pat2 );
   }
 
-  // partial assignment
-  bool are_observability_equivalent( kitty::cube const& pat1, kitty::cube const& pat2 ) const
+  /*! \brief Checks whether a pair of partial PO value assignments are observably equivalent
+   *
+   * For a pair of partial assignments to be equivalent, all pairs of expansions of
+   * the partial assignments have to be equivalent.
+   *
+   * \param pat1 The first partial PO value
+   * \param pat2 The second partial PO value
+   * \return Whether `pat1` and `pat2` are observably equivalent
+   */
+  bool are_observably_equivalent( kitty::cube const& pat1, kitty::cube const& pat2 ) const
   {
     return _exoec.are_equivalent( pat1, pat2 );
   }
 
-  void build_oec_network( Ntk& miter ) const
+  /*! \brief Builds an observability-equivalence miter network
+   *
+   * An observability-equivalence miter network is a generalization of a miter network.
+   * This network takes two PO value combinations as inputs (thus it has
+   * `2 * ntk.num_pos()` PIs) and outputs 1 if the two PO value combinations are
+   * _not_ observably equivalent.
+   *
+   * \param miter An empty network where the miter will be built
+   */
+  void build_oe_miter( Ntk& miter ) const
   {
     std::vector<signal> pos1, pos2;
     for ( auto i = 0u; i < this->num_pos(); ++i )
@@ -353,11 +428,22 @@ public:
     {
       pos2.emplace_back( miter.create_pi() );
     }
-    build_oec_miter( miter, pos1, pos2 );
+    build_oe_miter( miter, pos1, pos2 );
   }
 
+  /*! \brief Builds an observability-equivalence miter network
+   *
+   * An observability-equivalence miter network is a generalization of a miter network.
+   * This network takes two PO value combinations as inputs (thus it has
+   * `2 * ntk.num_pos()` PIs) and outputs 1 if the two PO value combinations are
+   * _not_ observably equivalent.
+   *
+   * \param miter The network where the miter will be built
+   * \param pos1 Signals of the first set of (main network's) POs
+   * \param pos2 Signals of the second set of (main network's) POs
+   */
   template<class NtkMiter>
-  void build_oec_miter( NtkMiter& miter, std::vector<typename NtkMiter::signal> const& pos1, std::vector<typename NtkMiter::signal> const& pos2 ) const
+  void build_oe_miter( NtkMiter& miter, std::vector<typename NtkMiter::signal> const& pos1, std::vector<typename NtkMiter::signal> const& pos2 ) const
   {
     assert( pos1.size() == this->num_pos() );
     assert( pos2.size() == this->num_pos() );

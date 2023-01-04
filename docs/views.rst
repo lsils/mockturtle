@@ -118,3 +118,10 @@ algorithm.  Several views are implemented in mockturtle.
 
 .. doxygenclass:: mockturtle::cost_view
    :members:
+
+`dont_care_view`: Manages external don't care information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/dont_care_view.hpp``
+
+.. doxygenclass:: mockturtle::dont_care_view
