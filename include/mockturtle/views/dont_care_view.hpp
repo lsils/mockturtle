@@ -312,8 +312,7 @@ public:
     : detail::dont_care_view_impl<Ntk, hasEXCDC>( ntk, cdc_ntk ), _exoec( ntk.num_pos() )
   {}
 
-  // ito = in terms of
-  void add_EXODC_ito_pos( kitty::cube const& cond, uint32_t po_id )
+  void add_EXODC( kitty::cube const& cond, uint32_t po_id )
   {
     cond.foreach_minterm( this->num_pos(), [&]( kitty::cube const& c ){
       assert( c.num_literals() == this->num_pos() );
@@ -392,11 +391,5 @@ public:
 private:
   detail::equivalence_classes_mgr _exoec;
 }; /* dont_care_view */
-
-template<class T>
-dont_care_view( T const& ) -> dont_care_view<T, false, true>;
-
-template<class T>
-dont_care_view( T const&, T const& ) -> dont_care_view<T, true, true>;
 
 } // namespace mockturtle
