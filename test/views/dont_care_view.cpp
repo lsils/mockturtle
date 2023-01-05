@@ -146,6 +146,10 @@ void test_optimize_with_EXDC()
   {
     ntk.substitute_node( ntk.get_node( ntk.po_at( 3 ) ), ntk.po_at( 2 ) );
   }
+  else
+  {
+    std::cout << "CEX: " << val.cex[0] << val.cex[1] << val.cex[2] << "\n";
+  }
   ntk = cleanup_dangling( ntk );
 
   CHECK( ntk.num_gates() == 3 );
