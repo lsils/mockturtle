@@ -131,7 +131,6 @@ void test_optimize_with_EXDC()
   /* Optimize with sim_resub */
   resubstitution_params ps;
   ps.odc_levels = -1;
-  ps.pattern_filename = "tmp.pat";
   sim_resubstitution( exdc, ps );
   ntk = cleanup_dangling( ntk );
 
@@ -149,10 +148,6 @@ void test_optimize_with_EXDC()
   {
     ntk.substitute_node( ntk.get_node( ntk.po_at( 3 ) ), ntk.po_at( 2 ) );
   }
-  else
-  {
-    std::cout << "CEX: " << val.cex[0] << val.cex[1] << val.cex[2] << "\n";
-  }
   ntk = cleanup_dangling( ntk );
 
   CHECK( ntk.num_gates() == 3 );
@@ -161,10 +156,6 @@ void test_optimize_with_EXDC()
 
 TEST_CASE( "optimize with external don't cares", "[dont_care_view]" )
 {
-  std::ofstream os( "tmp.pat", std::ofstream::out );
-  os << "1\n1\n1\n";
-  os.close();
-
   test_optimize_with_EXDC<aig_network>();
   test_optimize_with_EXDC<xag_network>();
 }
