@@ -118,7 +118,10 @@ void test_optimize_with_EXDC()
 
   /* The input pattern 110 is EXCDC */
   Ntk cdc;
-  cdc.create_po( cdc.create_and( cdc.create_and( cdc.create_pi(), cdc.create_pi() ), !cdc.create_pi() ) );
+  auto const a_ = cdc.create_pi();
+  auto const b_ = cdc.create_pi();
+  auto const c_ = cdc.create_pi();
+  cdc.create_po( cdc.create_and( cdc.create_and( a_, b_ ), !c_ ) );
 
   /* The last PO is EXODC whenever the first or the second PO is 1 */
   dc_view exdc( ntk, cdc );
