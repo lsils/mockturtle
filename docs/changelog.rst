@@ -20,8 +20,10 @@ v0.4 (not yet released)
     - XAG algebraic depth rewriting (`xag_algebraic_depth_rewriting`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
     - Collapse mapped extended to compute mapping functions if the mapped network doesn't have them stored (`collapse_mapped`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
     - Extended LUT mapping for delay and area (`lut_map`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
+    - Support for external don't cares (mainly in `circuit_validator`, `sim_resub`, `miter` and `equivalence_checking_bill`) `#585 <https://github.com/lsils/mockturtle/pull/585>`_
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Support for external don't cares (`dont_care_view`) `#585 <https://github.com/lsils/mockturtle/pull/585>`_
 * Properties:
     - Cost functions based on the factored form literals count (`factored_literal_cost`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
 * Utils:

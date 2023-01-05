@@ -249,11 +249,43 @@ kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
   kitty::partial_truth_table care( sim.num_bits() );
   for ( const auto& r : roots )
   {
-    if ( tts[r].num_bits() == sim.num_bits() )
+    assert( tts[r].num_bits() == sim.num_bits() );
+    care |= tts[r] ^ tts_roots[r];
+  }
+
+  if constexpr ( has_EXODC_interface_v<Ntk> )
+  {
+    if ( levels == -1 )
     {
-      care |= tts[r] ^ tts_roots[r];
+      for ( auto i = 0u; i < sim.num_bits(); ++i )
+      {
+        if ( kitty::get_bit( care, i ) )
+        {
+          kitty::cube pat1, pat2;
+          ntk.foreach_po( [&]( auto const& f, auto po_index )
+          {
+            if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() ) /* PO is in TFO */
+            {
+              pat1.set_mask( po_index );
+              pat2.set_mask( po_index );
+              assert( tts[f].num_bits() == sim.num_bits() );
+              assert( tts_roots[f].num_bits() == sim.num_bits() );
+              if ( kitty::get_bit( tts[f], i ) ^ ntk.is_complemented( f ) )
+                pat1.set_bit( po_index );
+              if ( kitty::get_bit( tts_roots[f], i ) ^ ntk.is_complemented( f ) )
+                pat2.set_bit( po_index );
+            }
+          });
+
+          if ( ntk.are_observably_equivalent( pat1, pat2 ) )
+          {
+            kitty::clear_bit( care, i );
+          }
+        }
+      }
     }
   }
+
   return ~care;
 }
 

@@ -47,4 +47,9 @@ struct is_complete_truth_table : std::false_type
 {
 };
 
+template<class TT>
+struct is_completely_specified_truth_table : std::false_type
+{
+};
+
 } // namespace kitty

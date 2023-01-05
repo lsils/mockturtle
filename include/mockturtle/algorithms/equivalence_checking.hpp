@@ -42,6 +42,9 @@
 #include "../utils/stopwatch.hpp"
 #include "cnf.hpp"
 
+#include <bill/sat/interface/common.hpp>
+#include <bill/sat/interface/abc_bsat2.hpp>
+
 #include <fmt/format.h>
 
 namespace mockturtle
@@ -133,6 +136,73 @@ private:
   equivalence_checking_stats& st_;
 };
 
+template<class Ntk, bill::solvers Solver = bill::solvers::bsat2>
+class equivalence_checking_impl_bill
+{
+public:
+  equivalence_checking_impl_bill( Ntk const& miter, equivalence_checking_params const& ps, equivalence_checking_stats& st )
+      : miter_( miter ),
+        ps_( ps ),
+        st_( st )
+  {
+  }
+
+  std::optional<bool> run()
+  {
+    stopwatch<> t( st_.time_total );
+
+    bill::solver<Solver> solver;
+    node_map<bill::lit_type, Ntk> literals( miter_ );
+
+    literals[miter_.get_constant( false )] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+    if ( miter_.get_node( miter_.get_constant( false ) ) != miter_.get_node( miter_.get_constant( true ) ) )
+    {
+      literals[miter_.get_constant( true )] = lit_not( literals[miter_.get_constant( false )] );
+    }
+    solver.add_clause( {~literals[miter_.get_constant( false )]} );
+
+    miter_.foreach_pi( [&]( auto const& n ) {
+      literals[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+    } );
+    miter_.foreach_gate( [&]( auto const& n ) {
+      literals[n] = bill::lit_type( solver.add_variable(), bill::lit_type::polarities::positive );
+    } );
+
+    if constexpr ( has_EXCDC_interface_v<Ntk> )
+    {
+      miter_.add_EXCDC_clauses( solver );
+    }
+
+    auto output = generate_cnf<Ntk, bill::lit_type>( miter_, [&]( bill::result::clause_type const& clause ) {
+      solver.add_clause( clause );
+    }, literals )[0];
+
+    const auto res = solver.solve( {output}, ps_.conflict_limit );
+
+    switch ( res )
+    {
+    default:
+      return std::nullopt;
+    case bill::result::states::satisfiable:
+    {
+      st_.counter_example.clear();
+      for ( auto i = 1u; i <= miter_.num_pis(); ++i )
+      {
+        st_.counter_example.push_back( solver.get_model().model().at( i ) == bill::lbool_type::true_ );
+      }
+      return false;
+    }
+    case bill::result::states::unsatisfiable:
+      return true;
+    }
+  }
+
+private:
+  Ntk const& miter_;
+  equivalence_checking_params const& ps_;
+  equivalence_checking_stats& st_;
+};
+
 } // namespace detail
 
 /*! \brief Combinational equivalence checking.
@@ -164,6 +234,36 @@ std::optional<bool> equivalence_checking( Ntk const& miter, equivalence_checking
 
   equivalence_checking_stats st;
   detail::equivalence_checking_impl<Ntk> impl( miter, ps, st );
+  const auto result = impl.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+
+  return result;
+}
+
+template<class Ntk>
+std::optional<bool> equivalence_checking_bill( Ntk const& miter, equivalence_checking_params const& ps = {}, equivalence_checking_stats* pst = nullptr )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_num_pis_v<Ntk>, "Ntk does not implement the num_pis method" );
+  static_assert( has_num_pos_v<Ntk>, "Ntk does not implement the num_pos method" );
+
+  if ( miter.num_pos() != 1u )
+  {
+    std::cout << "[e] miter network must have a single output\n";
+    return std::nullopt;
+  }
+
+  equivalence_checking_stats st;
+  detail::equivalence_checking_impl_bill<Ntk> impl( miter, ps, st );
   const auto result = impl.run();
 
   if ( ps.verbose )

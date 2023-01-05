@@ -2231,6 +2231,36 @@ template<class Ntk>
 inline constexpr bool has_eval_fanins_color_v = has_eval_fanins_color<Ntk>::value;
 #pragma endregion
 
+#pragma region has_EXCDC_interface
+template<class Ntk, class = void>
+struct has_EXCDC_interface : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_EXCDC_interface<Ntk, std::enable_if_t<Ntk::has_EXCDC_interface, std::void_t<decltype( Ntk::has_EXCDC_interface )>>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_EXCDC_interface_v = has_EXCDC_interface<Ntk>::value;
+#pragma endregion
+
+#pragma region has_EXODC_interface
+template<class Ntk, class = void>
+struct has_EXODC_interface : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_EXODC_interface<Ntk, std::enable_if_t<Ntk::has_EXODC_interface, std::void_t<decltype( Ntk::has_EXODC_interface )>>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_EXODC_interface_v = has_EXODC_interface<Ntk>::value;
+#pragma endregion
+
 /*! \brief SFINAE based on iterator type (for compute functions).
  */
 template<typename Iterator, typename T>

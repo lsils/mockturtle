@@ -198,6 +198,36 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
   return inputs;
 }
 
+/*! \brief Collect all nodes supported by a cut
+ *
+ * Network is assumed to be topologically sorted (e.g. just created or wrapped with topo_view)
+ */
+template<typename Ntk>
+inline std::vector<typename Ntk::node> collect_supported( Ntk const& ntk, std::vector<typename Ntk::node> const& cut )
+{
+  ntk.new_color();
+  for ( auto const& n : cut )
+  {
+    ntk.paint( n );
+  }
+
+  std::vector<typename Ntk::node> nodes;
+  ntk.foreach_gate( [&]( auto const& n ){
+    if ( ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
+    {
+      return true;
+    }
+    if ( ntk.eval_fanins_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
+    {
+      ntk.paint( n );
+      nodes.emplace_back( n );
+    }
+    return true;
+  });
+
+  return nodes;
+}
+
 /*! \brief Identify outputs using reference counting
  *
  * Identify outputs using a reference counting approach.  The
@@ -225,6 +255,16 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
  * - `is_constant`
  * - `make_signal`
  */
+template<typename Ntk>
+inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
+                                                          std::vector<typename Ntk::node> const& inputs,
+                                                          std::vector<typename Ntk::node> const& nodes )
+{
+  std::vector<uint32_t> refs;
+  refs.resize( ntk.size() );
+  return collect_outputs( ntk, inputs, nodes );
+}
+
 template<typename Ntk>
 inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
                                                           std::vector<typename Ntk::node> const& inputs,
