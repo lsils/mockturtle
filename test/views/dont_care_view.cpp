@@ -155,7 +155,7 @@ void test_optimize_with_EXDC()
 TEST_CASE( "optimize with external don't cares", "[dont_care_view]" )
 {
   std::ofstream os( "tmp.pat", std::ofstream::out );
-  os << "f0\ncc\naa\n";
+  os << "1\n1\n1\n";
   os.close();
 
   test_optimize_with_EXDC<aig_network>();
