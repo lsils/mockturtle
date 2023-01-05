@@ -203,6 +203,11 @@ public:
         sim = partial_simulator( ntk.num_pis(), 1024 );
         pattern_generation( ntk, sim );
       }
+
+      if constexpr ( has_EXCDC_interface_v<Ntk> )
+      {
+        sim.remove_CDC_patterns( ntk );
+      }
     } );
     st.num_pats = sim.num_bits();
     assert( sim.num_bits() > 0 );

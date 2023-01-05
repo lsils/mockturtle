@@ -175,6 +175,10 @@ public:
     if constexpr ( std::is_same_v<Simulator, bit_packed_simulator> )
     {
       sim.randomize_dont_care_bits( ps.random_seed );
+      if constexpr ( has_EXCDC_interface_v<Ntk> )
+      {
+        sim.remove_CDC_patterns( ntk );
+      }
     }
   }
 
