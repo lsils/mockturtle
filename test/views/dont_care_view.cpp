@@ -13,6 +13,8 @@
 #include <mockturtle/algorithms/miter.hpp>
 
 #include <vector>
+#include <fstream>
+#include <iostream>
 
 using namespace mockturtle;
 
@@ -126,6 +128,7 @@ void test_optimize_with_EXDC()
   /* Optimize with sim_resub */
   resubstitution_params ps;
   ps.odc_levels = -1;
+  ps.pattern_filename = "tmp.pat";
   sim_resubstitution( exdc, ps );
   ntk = cleanup_dangling( ntk );
 
@@ -151,6 +154,10 @@ void test_optimize_with_EXDC()
 
 TEST_CASE( "optimize with external don't cares", "[dont_care_view]" )
 {
+  std::ofstream os( "tmp.pat", std::ofstream::out );
+  os << "f0\ncc\naa\n";
+  os.close();
+
   test_optimize_with_EXDC<aig_network>();
   test_optimize_with_EXDC<xag_network>();
 }
