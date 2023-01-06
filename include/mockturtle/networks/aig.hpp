@@ -650,6 +650,72 @@ public:
     }
   }
 
+  void substitute_node_no_restrash( node const& old_node, signal const& new_signal )
+  {
+    if ( is_dead( get_node( new_signal ) ) )
+    {
+      revive_node( get_node( new_signal ) );
+    }
+
+    for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
+    {
+      if ( is_ci( idx ) || is_dead( idx ) )
+        continue; /* ignore CIs and dead nodes */
+
+      /* replace_in_node(idx, old_node, new_signal) but without restrashing or constant propagation  */
+      auto& nobj = _storage->nodes[idx];
+      uint32_t fanin = 0u;
+      signal _new = new_signal;
+      if ( nobj.children[0].index == old_node )
+      {
+        fanin = 0u;
+        _new.complement ^= nobj.children[0].weight;
+      }
+      else if ( nobj.children[1].index == old_node )
+      {
+        fanin = 1u;
+        _new.complement ^= nobj.children[1].weight;
+      }
+      else
+      {
+        continue; /* not a fanout of old_node */
+      }
+
+      const auto old_child0 = signal{ nobj.children[0] };
+      const auto old_child1 = signal{ nobj.children[1] };
+
+      signal child1 = _new;
+      signal child0 = nobj.children[fanin ^ 1];
+      if ( child0.index > child1.index )
+      {
+        std::swap( child0, child1 );
+      }
+
+      _storage->hash.erase( nobj );
+      nobj.children[0] = child0;
+      nobj.children[1] = child1;
+      if ( _storage->hash.find( nobj ) == _storage->hash.end() )
+      {
+        _storage->hash[nobj] = idx;
+      }
+      _storage->nodes[new_signal.index].data[0].h1++;
+
+      for ( auto const& fn : _events->on_modified )
+      {
+        ( *fn )( idx, { old_child0, old_child1 } );
+      }
+    }
+
+    /* check outputs */
+    replace_in_outputs( old_node, new_signal );
+
+    /* recursively reset old node */
+    if ( old_node != new_signal.index )
+    {
+      take_out_node( old_node );
+    }
+  }
+
   void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
   {
     auto clean_substitutions = [&]( node const& n ) {
