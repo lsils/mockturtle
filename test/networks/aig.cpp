@@ -987,3 +987,41 @@ TEST_CASE( "substitute node with dependency in aig_network", "[aig]" )
     CHECK( aig.is_dead( aig.get_node( s ) ) == false );
   } );
 }
+
+TEST_CASE( "substitute node and re-strash case 2", "[aig]" )
+{
+  aig_network aig;
+
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+  auto const x3 = aig.create_pi();
+  auto const n4 = aig.create_and( x2, x3 );
+  auto const n5 = aig.create_and( x1, n4 );
+  auto const n6 = aig.create_and( n5, x3 );
+  auto const n7 = aig.create_and( x1, n6 );
+  aig.create_po( n7 );
+
+  aig.substitute_node( aig.get_node( n6 ), n4 );
+  /* replace in node n7: n6 <- n4 => re-strash with fanins (x1, n4) => n7 <- n5
+   * take out node n6 => take out node n5 => take out node n4 (MFFC)
+   * execute n7 <- n5, but n5 is dead => skip this operation and keep n7 */
+
+  CHECK( !aig.is_dead( aig.get_node( n4 ) ) );
+  CHECK( !aig.is_dead( aig.get_node( n5 ) ) );
+  CHECK( aig.is_dead( aig.get_node( n6 ) ) );
+  CHECK( aig.is_dead( aig.get_node( n7 ) ) );
+  aig.foreach_fanin( aig.get_node( aig.po_at( 0 ) ), [&]( auto f, auto i ){
+    switch ( i )
+    {
+    case 0:
+      CHECK( f == x1 );
+      break;
+    case 1:
+      CHECK( f == n4 );
+      break;
+    default:
+      CHECK( false );
+    }
+  } );
+  CHECK( aig.fanout_size( aig.get_node( n4 ) ) == 1 );
+}
