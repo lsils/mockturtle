@@ -428,6 +428,11 @@ public:
     return get_node( fout1 );
   }
 
+  /*! \brief Whether a node is a crossing cell
+   *
+   * \param n The node to be checked
+   * \return Whether this node is a crossing cell
+   */
   bool is_crossing( node const& n ) const
   {
     return _storage->nodes[n].data[1].h1 == literal_crossing;
@@ -724,7 +729,7 @@ public:
     detail::foreach_element( _storage->outputs.begin(), _storage->outputs.end(), fn );
   }
 
-  /* TODO: Should crossings be included? */
+  /* Note: crossings are included */
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {

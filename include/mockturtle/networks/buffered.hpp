@@ -581,8 +581,7 @@ public:
 #pragma endregion
 
 #pragma region Crossings
-  /*!
-   * \brief Merges two buffer nodes into a crossing cell
+  /*! \brief Merges two buffer nodes into a crossing cell
    *
    * After this operation, the network will not be in a topological order. Additionally, buf1 and buf2 will be dangling.
    *
@@ -647,7 +646,7 @@ public:
 #pragma endregion
 
 #pragma region Node and signal iterators
-  /* TODO: Should crossings be included? */
+  /* Note: crossings are included; buffers, splitters, inverters are not */
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
