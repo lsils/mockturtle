@@ -4,6 +4,7 @@
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
+#include <mockturtle/networks/muxig.hpp>
 #include <mockturtle/utils/index_list.hpp>
 
 using namespace mockturtle;
@@ -122,4 +123,20 @@ TEST_CASE( "encode xag_network into xag_index_list", "[index_list]" )
   CHECK( xag_il.size() == 8u );
   CHECK( xag_il.raw() == std::vector<uint32_t>{ 4 | ( 1 << 8 ) | ( 3 << 16 ), 2, 4, 6, 8, 12, 10, 14 } );
   CHECK( to_index_list_string( xag_il ) == "{4 | 1 << 8 | 3 << 16, 2, 4, 6, 8, 12, 10, 14}" );
+}
+
+TEST_CASE( "decode muxig_index_list into muxig_network", "[index_list]" )
+{
+  std::vector<uint32_t> const raw_list{ 4 | ( 1 << 8 ) | ( 2 << 16 ), 2, 4, 6, 10, 4, 8, 12 };
+  muxig_index_list il{ raw_list };
+
+  muxig_network ntk;
+  decode( ntk, il );
+
+  CHECK( ntk.num_gates() == 2u );
+  CHECK( ntk.num_pis() == 4u );
+  CHECK( ntk.num_pos() == 1u );
+
+  const auto tt = simulate<kitty::static_truth_table<4u>>( ntk )[0];
+  CHECK( tt._bits == 0xefc8 );
 }

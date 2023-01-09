@@ -204,7 +204,7 @@ TEST_CASE( "AIG,XAG,MIG,XMG: Random 10-LUT ", "[klut_to_graph]" )
   CHECK( simulate<kitty::dynamic_truth_table>( xmg, sim )[0] == table );
 }
 
-// additional test for XAG explicitely presenting a XAG
+// additional test for XAG explicitly presenting a XAG
 TEST_CASE( "XAG: DSD-R -fallback-> NPN-R", "[klut_to_graph]" )
 {
 

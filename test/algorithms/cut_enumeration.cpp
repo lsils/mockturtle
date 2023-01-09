@@ -7,6 +7,7 @@
 #include <mockturtle/algorithms/cut_enumeration.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
+#include <mockturtle/networks/sequential.hpp>
 
 using namespace mockturtle;
 
@@ -338,4 +339,53 @@ TEST_CASE( "enumerate smaller cuts for an AIG (small graph version)", "[fast_sma
   CHECK( bitcut_to_vector( cuts.at( i4 )[0] ) == std::vector<uint32_t>{ 1, 2 } );
   CHECK( bitcut_to_vector( cuts.at( i4 )[1] ) == std::vector<uint32_t>{ 4, 5 } );
   CHECK( bitcut_to_vector( cuts.at( i4 )[2] ) == std::vector<uint32_t>{ 6 } );
+}
+
+
+TEST_CASE( "enumerate cuts for a sequential k-LUT network", "[sequential_cut_enumeration]" )
+{
+  sequential<klut_network> klut;
+
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto c = klut.create_pi();
+
+  const auto f1 = klut.create_maj( a, b, c );
+  const auto f2 = klut.create_ro(); // f2 <- f1
+  const auto f3 = klut.create_ro(); // f3 <- f1
+  const auto f4 = klut.create_xor( f2, f3 );
+
+  klut.create_po( f4 );
+  klut.create_ri( f1 ); // f2 <- f1
+  klut.create_ri( f1 ); // f3 <- f1
+
+  CHECK( klut.num_gates() == 2 );
+  CHECK( klut.num_registers() == 2 );
+  CHECK( klut.num_pis() == 3 );
+  CHECK( klut.num_pos() == 1 );
+
+  const auto cuts = cut_enumeration( klut );
+
+  const auto to_vector = []( auto const& cut ) {
+    return std::vector<uint32_t>( cut.begin(), cut.end() );
+  };
+
+  /* all unit cuts are in the back */
+  klut.foreach_node( [&]( auto n ) {
+    if ( klut.is_constant( n ) )
+      return;
+
+    auto const& set = cuts.cuts( klut.node_to_index( n ) );
+    CHECK( to_vector( set[static_cast<uint32_t>( set.size() - 1 )] ) == std::vector<uint32_t>{ klut.node_to_index( n ) } );
+  } );
+
+  const auto i1 = klut.node_to_index( klut.get_node( f1 ) );
+  const auto i2 = klut.node_to_index( klut.get_node( f2 ) );
+  const auto i3 = klut.node_to_index( klut.get_node( f3 ) );
+  const auto i4 = klut.node_to_index( klut.get_node( f4 ) );
+
+  CHECK( cuts.cuts( i1 ).size() == 2 );
+  CHECK( cuts.cuts( i2 ).size() == 1 ); /* unit cutset at ROs */
+  CHECK( cuts.cuts( i3 ).size() == 1 ); /* unit cutset at ROs */
+  CHECK( cuts.cuts( i4 ).size() == 2 ); /* cut merge stops at ROs */
 }

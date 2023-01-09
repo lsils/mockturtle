@@ -225,7 +225,7 @@ private:
 /*! \brief Shannon decomposition
  *
  * This function applies Shannon decomposition on an input truth table and
- * constructs a network based.  The variabe ordering can be specified as
+ * constructs a network based.  The variable ordering can be specified as
  * an input.  If not all variables are specified, the remaining co-factors
  * are synthesizes using the resynthesis function.
  *
@@ -249,7 +249,7 @@ signal<Ntk> shannon_decomposition( Ntk& ntk, kitty::dynamic_truth_table const& f
 /*! \brief Positive Davio decomposition
  *
  * This function applies positive Davio decomposition on an input truth table and
- * constructs a network based.  The variabe ordering can be specified as
+ * constructs a network based.  The variable ordering can be specified as
  * an input.  If not all variables are specified, the remaining co-factors
  * are synthesizes using the resynthesis function.
  *
@@ -275,7 +275,7 @@ signal<Ntk> positive_davio_decomposition( Ntk& ntk, kitty::dynamic_truth_table c
 /*! \brief Negative Davio decomposition
  *
  * This function applies positive Davio decomposition on an input truth table and
- * constructs a network based.  The variabe ordering can be specified as
+ * constructs a network based.  The variable ordering can be specified as
  * an input.  If not all variables are specified, the remaining co-factors
  * are synthesizes using the resynthesis function.
  *

@@ -271,7 +271,7 @@ public:
 
       /* force at `is_super = false` simple gates considered as supergates.
        * This is necessary to not have duplicates since tech_library
-       * computes indipendently the permutations for simple gates.
+       * computes independently the permutations for simple gates.
        * Moreover simple gates permutations could be incomplete in SUPER
        * libraries which are constrained by the number of gates. */
       bool is_super_verified = g.is_super;

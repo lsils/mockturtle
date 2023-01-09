@@ -252,6 +252,47 @@ public:
     _mask ^= ( 1 << index );
   }
 
+  /*! \brief Iterates over all minterms in the cube
+   *
+   * The callback function takes a cube as input, which is actually
+   * a minterm (i.e., all variables are set), and returns a boolean.
+   * The loop terminates when the callback returns false.
+   *
+   * \param length Number of variables in the cube
+   * \param fn Callback function on each minterm
+   */
+  template<class Fn>
+  void foreach_minterm( uint8_t length, Fn&& fn ) const
+  {
+    foreach_minterm_rec( *this, length, fn );
+  }
+
+  template<class Fn>
+  bool foreach_minterm_rec( cube const& c, uint8_t prev_index, Fn&& fn ) const
+  {
+    if ( prev_index == 0 )
+    {
+      return fn( c );
+    }
+
+    uint8_t index = prev_index - 1;
+    if ( !get_mask( index ) )
+    {
+      cube c0 = c;
+      c0.set_mask( index );
+      if ( !foreach_minterm_rec( c0, index, fn ) )
+      {
+        return false;
+      }
+      c0.set_bit( index );
+      return foreach_minterm_rec( c0, index, fn );
+    }
+    else
+    {
+      return foreach_minterm_rec( c, index, fn );
+    }
+  }
+
   /* cube data */
   union
   {

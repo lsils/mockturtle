@@ -102,7 +102,7 @@ kitty::dynamic_truth_table satisfiability_dont_cares( Ntk const& ntk, std::vecto
 
 /*! \brief Computes observability don't cares of a node.
  *
- * This function returns input assignemnts for which a change of the
+ * This function returns input assignments for which a change of the
  * node's value cannot be observed at any of the roots.  They may
  * therefore be used as don't care conditions.
  *
@@ -205,7 +205,7 @@ void simulate_TFO_rec( Ntk const& ntk, node<Ntk> const& n, partial_simulator con
  *
  * \param sim The `partial_simulator` containing the patterns to be tested.
  * \param tts Stores the simulation signatures of each node. Can be empty or incomplete.
- * \param levels Level of tansitive fanout to consider. -1 = consider until PO.
+ * \param levels Level of transitive fanout to consider. -1 = consider until PO.
  */
 template<class Ntk, class Container = unordered_node_map<kitty::partial_truth_table, Ntk>>
 kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> const& n, partial_simulator const& sim, Container& tts, int levels = -1 )
@@ -249,11 +249,43 @@ kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
   kitty::partial_truth_table care( sim.num_bits() );
   for ( const auto& r : roots )
   {
-    if ( tts[r].num_bits() == sim.num_bits() )
+    assert( tts[r].num_bits() == sim.num_bits() );
+    care |= tts[r] ^ tts_roots[r];
+  }
+
+  if constexpr ( has_EXODC_interface_v<Ntk> )
+  {
+    if ( levels == -1 )
     {
-      care |= tts[r] ^ tts_roots[r];
+      for ( auto i = 0u; i < sim.num_bits(); ++i )
+      {
+        if ( kitty::get_bit( care, i ) )
+        {
+          kitty::cube pat1, pat2;
+          ntk.foreach_po( [&]( auto const& f, auto po_index )
+          {
+            if ( ntk.visited( ntk.get_node( f ) ) == ntk.trav_id() ) /* PO is in TFO */
+            {
+              pat1.set_mask( po_index );
+              pat2.set_mask( po_index );
+              assert( tts[f].num_bits() == sim.num_bits() );
+              assert( tts_roots[f].num_bits() == sim.num_bits() );
+              if ( kitty::get_bit( tts[f], i ) ^ ntk.is_complemented( f ) )
+                pat1.set_bit( po_index );
+              if ( kitty::get_bit( tts_roots[f], i ) ^ ntk.is_complemented( f ) )
+                pat2.set_bit( po_index );
+            }
+          });
+
+          if ( ntk.are_observably_equivalent( pat1, pat2 ) )
+          {
+            kitty::clear_bit( care, i );
+          }
+        }
+      }
     }
   }
+
   return ~care;
 }
 
@@ -263,7 +295,7 @@ kitty::partial_truth_table observability_dont_cares( Ntk const& ntk, node<Ntk> c
  * replacing `n` with `!n` does not affect the value of any primary output or
  * any leaf node of `levels` levels of transitive fanout cone.
  *
- * \param levels Level of tansitive fanout to consider. -1 = consider until PO.
+ * \param levels Level of transitive fanout to consider. -1 = consider until PO.
  */
 template<class Ntk>
 bool pattern_is_observable( Ntk const& ntk, node<Ntk> const& n, std::vector<bool> const& pattern, int levels = -1 )

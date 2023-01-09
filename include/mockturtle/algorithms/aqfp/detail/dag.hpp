@@ -55,7 +55,7 @@ struct aqfp_dag
 
   std::vector<std::vector<NodeT>> nodes; // fanins of nodes
   std::vector<NodeT> input_slots;        // identifiers of the input slots (bundles of fanins where the inputs will be connected)
-  NodeT zero_input = 0;                  // id of the input slot that is connected to contant 0
+  NodeT zero_input = 0;                  // id of the input slot that is connected to constant 0
 
   aqfp_dag( const std::vector<std::vector<NodeT>>& nodes = {}, const std::vector<NodeT>& input_slots = {}, node_type zero_input = {} )
       : nodes( nodes ), input_slots( input_slots ), zero_input( zero_input ) {}

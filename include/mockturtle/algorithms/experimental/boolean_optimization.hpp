@@ -36,20 +36,13 @@
 #include "../../traits.hpp"
 #include "../../utils/progress_bar.hpp"
 #include "../../utils/stopwatch.hpp"
+#include "../../utils/null_utils.hpp"
 #include "../../views/topo_view.hpp"
 
 #include <optional>
 
 namespace mockturtle::experimental
 {
-
-struct null_params
-{
-};
-struct null_stats
-{
-  void report() const {}
-};
 
 template<class WinParams = null_params, class ResynParams = null_params>
 struct boolean_optimization_params

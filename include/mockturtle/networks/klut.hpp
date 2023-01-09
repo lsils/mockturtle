@@ -215,6 +215,20 @@ public:
   {
     return n == 1;
   }
+
+  uint32_t po_index( signal const& s ) const
+  {
+    uint32_t i = -1;
+    foreach_po( [&]( const auto& x, auto index ) {
+      if ( x == s )
+      {
+        i = index;
+        return false;
+      }
+      return true;
+    } );
+    return i;
+  }
 #pragma endregion
 
 #pragma region Create unary functions

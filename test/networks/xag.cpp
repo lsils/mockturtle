@@ -9,6 +9,7 @@
 #include <kitty/dynamic_truth_table.hpp>
 #include <kitty/operations.hpp>
 #include <kitty/operators.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/traits.hpp>
@@ -614,6 +615,36 @@ TEST_CASE( "visited values in xags", "[xag]" )
   } );
 }
 
+TEST_CASE( "check has_and and has_xor in XAG", "[xag]" )
+{
+  xag_network xag;
+  auto const x1 = xag.create_pi();
+  auto const x2 = xag.create_pi();
+  auto const x3 = xag.create_pi();
+
+  auto const n4 = xag.create_and( !x1, x2 );
+  auto const n5 = xag.create_and( x1, n4 );
+  auto const n6 = xag.create_xor( x3, n5 );
+  auto const n7 = xag.create_and( n4, x2 );
+  auto const n8 = xag.create_and( !n5, !n7 );
+  auto const n9 = xag.create_xor( !n8, n4 );
+
+  xag.create_po( n6 );
+  xag.create_po( n9 );
+
+  CHECK( xag.has_and( !x1, x2 ).has_value() == true );
+  CHECK( *xag.has_and( !x1, x2 ) == xag.get_node( n4 ) );
+  CHECK( xag.has_xor( !x1, x2 ).has_value() == false );
+  CHECK( xag.has_and( !x1, x3 ).has_value() == false );
+  CHECK( xag.has_xor( !x1, x3 ).has_value() == false );
+  CHECK( xag.has_xor( n5, x3 ).has_value() == true );
+  CHECK( *xag.has_xor( n5, x3 ) == xag.get_node( n6 ) );
+  CHECK( xag.has_xor( !n5, !x3 ).has_value() == true );
+  CHECK( *xag.has_xor( !n5, !x3 ) == xag.get_node( n6 ) );
+  CHECK( xag.has_and( !n7, !n5 ).has_value() == true );
+  CHECK( *xag.has_and( !n7, !n5 ) == xag.get_node( n8 ) );
+}
+
 TEST_CASE( "simulate some special functions in XAGs", "[xag]" )
 {
   xag_network xag;
@@ -657,6 +688,92 @@ TEST_CASE( "create nary functions in XAGs", "[xag]" )
   auto copy = result[2].construct();
   kitty::create_parity( copy );
   CHECK( result[2] == copy );
+}
+
+TEST_CASE( "invoke take_out_node two times on the same node in XAG", "[xag]" )
+{
+  xag_network xag;
+  const auto x1 = xag.create_pi();
+  const auto x2 = xag.create_pi();
+
+  const auto f1 = xag.create_and( x1, x2 );
+  const auto f2 = xag.create_or( x1, x2 );
+  (void)f2;
+
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 2u );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 2u );
+
+  /* delete node */
+  CHECK( !xag.is_dead( xag.get_node( f1 ) ) );
+  xag.take_out_node( xag.get_node( f1 ) );
+  CHECK( xag.is_dead( xag.get_node( f1 ) ) );
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 1u );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 1u );
+
+  /* ensure that double-deletion has no effect on the fanout-size of x1 and x2 */
+  CHECK( xag.is_dead( xag.get_node( f1 ) ) );
+  xag.take_out_node( xag.get_node( f1 ) );
+  CHECK( xag.is_dead( xag.get_node( f1 ) ) );
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 1u );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 1u );
+}
+
+TEST_CASE( "substitute node and restrash in XAG", "[xag]" )
+{
+  xag_network xag;
+  auto const x1 = xag.create_pi();
+  auto const x2 = xag.create_pi();
+
+  auto const f1 = xag.create_and( x1, x2 );
+  auto const f2 = xag.create_and( f1, x2 );
+  xag.create_po( f2 );
+
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 2 );
+  CHECK( xag.fanout_size( xag.get_node( f1 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( xag )[0]._bits == 0x8 );
+
+  /* substitute f1 with x1
+   *
+   * this is a very interesting test case because replacing f1 with x1
+   * in f2 makes f2 and f1 equal.  a correct implementation will
+   * create a new entry in the hash, although (x1, x2) is already
+   * there, because (x1, x2) will be deleted in the next step.
+   */
+  xag.substitute_node( xag.get_node( f1 ), x1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( xag )[0]._bits == 0x8 );
+
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( f1 ) ) == 0 );
+  CHECK( xag.fanout_size( xag.get_node( f2 ) ) == 1 );
+}
+
+TEST_CASE( "trivial case (constant) detection in replace_in_node of xag_network", "[xag]" )
+{
+  xag_network xag;
+  auto const x1 = xag.create_pi();
+  auto const x2 = xag.create_pi();
+
+  auto const f1 = xag.create_xor( x1, x2 );
+  auto const f2 = xag.create_and( x1, x2 );
+  xag.create_po( f1 );
+  xag.create_po( f2 );
+
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 2 );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 2 );
+  CHECK( xag.fanout_size( xag.get_node( f1 ) ) == 1 );
+  CHECK( xag.fanout_size( xag.get_node( f2 ) ) == 1 );
+
+  xag.substitute_node( xag.get_node( x1 ), xag.get_constant( true ) );
+
+  CHECK( xag.is_dead( xag.get_node( f1 ) ) );
+  CHECK( xag.fanout_size( xag.get_node( x1 ) ) == 0 );
+  CHECK( xag.fanout_size( xag.get_node( x2 ) ) == 2 );
+  CHECK( xag.get_node( xag.po_at( 0 ) ) == xag.get_node( x2 ) );
+  CHECK( xag.get_node( xag.po_at( 1 ) ) == xag.get_node( x2 ) );
 }
 
 TEST_CASE( "substitute node with complemented node in xag_network", "[xag]" )

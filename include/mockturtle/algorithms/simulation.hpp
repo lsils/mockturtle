@@ -211,7 +211,7 @@ public:
    * The simulation pattern file should contain `num_pis` lines of the same length.
    * Each line is the simulation signature of a primary input, represented in hexadecimal.
    *
-   * \param fielname Name of the simulation pattern file.
+   * \param filename Name of the simulation pattern file.
    * \param length Number of simulation patterns to keep. Should not be greater than 4 times
    * the length of a line in the file. Setting this parameter to 0 means to keep all patterns in the file.
    */
@@ -280,6 +280,32 @@ public:
   std::vector<kitty::partial_truth_table> get_patterns() const
   {
     return patterns;
+  }
+
+  template<class Ntk, bool enabled = has_EXCDC_interface_v<Ntk>, typename = std::enable_if_t<enabled>>
+  void remove_CDC_patterns( Ntk const& ntk )
+  {
+    std::vector<bool> pattern( patterns.size() );
+    for ( int i = 0; i < (int)num_patterns; ++i )
+    {
+      for ( auto j = 0u; j < patterns.size(); ++j )
+      {
+        pattern[j] = kitty::get_bit( patterns[j], i );
+      }
+      if ( ntk.pattern_is_EXCDC( pattern ) )
+      {
+        for ( auto j = 0u; j < patterns.size(); ++j )
+        {
+          kitty::copy_bit( patterns[j], num_patterns - 1, patterns[j], i );
+        }
+        --num_patterns;
+        --i;
+      }
+    }
+    for ( auto j = 0u; j < patterns.size(); ++j )
+    {
+      patterns[j].resize( num_patterns );
+    }
   }
 
 private:
@@ -463,14 +489,7 @@ private:
         continue;
       }
       assert( !kitty::get_bit( care[i], to ) );
-      if ( kitty::get_bit( patterns[i], from ) )
-      {
-        kitty::set_bit( patterns[i], to );
-      }
-      else
-      {
-        kitty::clear_bit( patterns[i], to );
-      }
+      kitty::copy_bit( patterns[i], from, patterns[i], to );
       kitty::set_bit( care[i], to );
       kitty::clear_bit( care[i], from );
     }
