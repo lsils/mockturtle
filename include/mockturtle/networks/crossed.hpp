@@ -597,6 +597,18 @@ public:
     return node.data[1].h1 == 14 || node.data[1].h1 == 15;
   }
 
+  /* ITE (MUX2-1) without input negation; with or without output negation
+   * i.e., (x ? y :z) or !(x ? y : z) = x ? !y : !z */
+  bool is_ite( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 3 )
+      return false;
+    return node.data[1].h1 == 16 || node.data[1].h1 == 17;
+  }
+
   std::vector<bool> get_fanin_negations( node const& n ) const
   {
     if ( is_crossing( n ) )

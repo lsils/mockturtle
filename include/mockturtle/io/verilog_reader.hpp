@@ -89,6 +89,7 @@ public:
     static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and function" );
     static_assert( has_create_or_v<Ntk>, "Ntk does not implement the create_or function" );
     static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor function" );
+    static_assert( has_create_ite_v<Ntk>, "Ntk does not implement the create_ite function" );
     static_assert( has_create_maj_v<Ntk>, "Ntk does not implement the create_maj function" );
 
     signals_["0"] = ntk_.get_constant( false );
@@ -285,6 +286,11 @@ public:
     if ( name_ != top_module_name_ )
       return;
 
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      assert( false && "3-input gates in crossed_network are not supported (to be implemented)" );
+    }
+
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
     if ( signals_.find( op2.first ) == signals_.end() )
@@ -311,6 +317,11 @@ public:
     if ( name_ != top_module_name_ )
       return;
 
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      assert( false && "3-input gates in crossed_network are not supported (to be implemented)" );
+    }
+
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
     if ( signals_.find( op2.first ) == signals_.end() )
@@ -328,6 +339,11 @@ public:
   {
     if ( name_ != top_module_name_ )
       return;
+
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      assert( false && "3-input gates in crossed_network are not supported (to be implemented)" );
+    }
 
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
