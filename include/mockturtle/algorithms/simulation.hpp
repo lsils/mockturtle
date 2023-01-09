@@ -734,7 +734,6 @@ void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Contai
 
   if constexpr ( is_crossed_network_type_v<Ntk> )
   {
-
     ntk.foreach_fanin_ignore_crossings( n, fanin_fun );
   }
   else
