@@ -12,6 +12,7 @@ v0.4 (not yet released)
     - Remove sequential interfaces from all networks (`aig_network`, `xag_network`, `mig_network`, `xmg_network`, `klut_network`, `cover_network`, `aqfp_network`). Add the `sequential` extension to combinational networks. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
     - Move `trav_id` from the custom storage data (e.g. `aig_storage_data`) to the common `storage`. Remove `num_pis` and `num_pos` as they are only needed for sequential network. Remove custom storage data when not needed (`aig_storage_data`, `xag_storage_data`, `mig_storage_data`, `xmg_storage_data`). Remove latch information from the common `storage`. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
     - Add access methods to check if a node is present in the network given its immediate fanin (e.g., `has_and` in `aig_network`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
+    - Crossed networks (`crossed_klut_network` and `buffered_crossed_klut_network`) `#589 <https://github.com/lsils/mockturtle/pull/589>`_
 * Algorithms:
     - AIG balancing (`aig_balance`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
@@ -24,6 +25,7 @@ v0.4 (not yet released)
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Support for external don't cares (`dont_care_view`) `#585 <https://github.com/lsils/mockturtle/pull/585>`_
+    - Rank view for management of the ordering of nodes within each level (`rank_view`, contributed by Marcel Walter) `#589 <https://github.com/lsils/mockturtle/pull/589>`_
 * Properties:
     - Cost functions based on the factored form literals count (`factored_literal_cost`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
 * Utils:
