@@ -203,13 +203,33 @@ public:
         sim = partial_simulator( ntk.num_pis(), 1024 );
         pattern_generation( ntk, sim );
       }
+
+      if constexpr ( has_EXCDC_interface_v<Ntk> )
+      {
+        sim.remove_CDC_patterns( ntk );
+      }
     } );
     st.num_pats = sim.num_bits();
+    assert( sim.num_bits() > 0 );
 
     /* first simulation: the whole circuit; from 0 bits. */
     call_with_stopwatch( st.time_sim, [&]() {
       simulate_nodes<Ntk>( ntk, tts, sim, true );
     } );
+  }
+
+  void update()
+  {
+    if constexpr ( validator_t::use_odc_ || has_EXODC_interface_v<Ntk> )
+    {
+      call_with_stopwatch( st.time_sat_restart, [&]() {
+        validator.update();
+      } );
+      tts.reset();
+      call_with_stopwatch( st.time_sim, [&]() {
+        simulate_nodes<Ntk>( ntk, tts, sim, true );
+      } );
+    }
   }
 
   std::optional<signal> run( node const& n, std::vector<node> const& divs, mffc_result_t potential_gain, uint32_t& last_gain )
@@ -254,12 +274,6 @@ public:
                 out_sig = s;
               } );
             } );
-            if constexpr ( validator_t::use_odc_ )
-            {
-              call_with_stopwatch( st.time_sat_restart, [&]() {
-                validator.update();
-              } );
-            }
             return out_sig;
           }
           else

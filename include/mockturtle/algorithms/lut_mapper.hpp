@@ -1681,7 +1681,7 @@ private:
     }
   }
 
-  inline bool fast_support_minimization( TT const& tt, cut_t& res )
+  inline bool fast_support_minimization( TT& tt, cut_t& res )
   {
     uint32_t support = 0u;
     uint32_t support_size = 0u;
@@ -1705,6 +1705,7 @@ private:
     {
       std::vector<uint32_t> leaves( res.begin(), res.begin() + support_size );
       res.set_leaves( leaves.begin(), leaves.end() );
+      tt = kitty::shrink_to( tt, support_size );
     }
 
     return true;
