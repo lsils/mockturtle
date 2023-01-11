@@ -57,6 +57,7 @@ private:
 public:
   node_pointer() = default;
   node_pointer( uint64_t index, uint64_t weight ) : weight( weight ), index( index ) {}
+  node_pointer( uint64_t data ) : data( data ) {}
 
   union
   {
@@ -71,6 +72,11 @@ public:
   bool operator==( node_pointer<PointerFieldSize> const& other ) const
   {
     return data == other.data;
+  }
+
+  bool operator!=( node_pointer<PointerFieldSize> const& other ) const
+  {
+    return data != other.data;
   }
 };
 

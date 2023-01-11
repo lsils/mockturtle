@@ -78,13 +78,35 @@ struct is_network_type<Ntk, std::enable_if_t<
 template<class Ntk>
 inline constexpr bool is_network_type_v = is_network_type<Ntk>::value;
 
-template<class Ntk>
+#pragma region is_buffered_network_type
+template<class Ntk, class = void>
 struct is_buffered_network_type : std::false_type
 {
 };
 
 template<class Ntk>
+struct is_buffered_network_type<Ntk, std::enable_if_t<Ntk::is_buffered_network_type, std::void_t<decltype( Ntk::is_buffered_network_type )>>> : std::true_type
+{
+};
+
+template<class Ntk>
 inline constexpr bool is_buffered_network_type_v = is_buffered_network_type<Ntk>::value;
+#pragma endregion
+
+#pragma region is_crossed_network_type
+template<class Ntk, class = void>
+struct is_crossed_network_type : std::false_type
+{
+};
+
+template<class Ntk>
+struct is_crossed_network_type<Ntk, std::enable_if_t<Ntk::is_crossed_network_type, std::void_t<decltype( Ntk::is_crossed_network_type )>>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool is_crossed_network_type_v = is_crossed_network_type<Ntk>::value;
+#pragma endregion
 
 #pragma region has_clone
 template<class Ntk, class = void>
@@ -581,6 +603,51 @@ template<class Ntk>
 inline constexpr bool has_create_cover_node_v = has_create_cover_node<Ntk>::value;
 #pragma endregion
 
+#pragma region has_create_crossing
+template<class Ntk, class = void>
+struct has_create_crossing : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_crossing<Ntk, std::void_t<decltype( std::declval<Ntk>().create_crossing( std::declval<signal<Ntk>>(), std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_crossing_v = has_create_crossing<Ntk>::value;
+#pragma endregion
+
+#pragma region has_insert_crossing
+template<class Ntk, class = void>
+struct has_insert_crossing : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_insert_crossing<Ntk, std::void_t<decltype( std::declval<Ntk>().insert_crossing( std::declval<signal<Ntk>>(), std::declval<signal<Ntk>>(), std::declval<node<Ntk>>(), std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_insert_crossing_v = has_insert_crossing<Ntk>::value;
+#pragma endregion
+
+#pragma region has_merge_into_crossing
+template<class Ntk, class = void>
+struct has_merge_into_crossing : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_merge_into_crossing<Ntk, std::void_t<decltype( std::declval<Ntk>().merge_into_crossing( std::declval<node<Ntk>>(), std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_merge_into_crossing_v = has_merge_into_crossing<Ntk>::value;
+#pragma endregion
+
 #pragma region has_clone_node
 template<class Ntk, class = void>
 struct has_clone_node : std::false_type
@@ -971,6 +1038,111 @@ template<class Ntk>
 inline constexpr bool has_update_levels_v = has_update_levels<Ntk>::value;
 #pragma endregion
 
+#pragma region has_rank_position
+template<class Ntk, class = void>
+struct has_rank_position : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_rank_position<Ntk, std::void_t<decltype( std::declval<Ntk>().rank_position( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_rank_position_v = has_rank_position<Ntk>::value;
+#pragma endregion
+
+#pragma region has_at_rank_position
+template<class Ntk, class = void>
+struct has_at_rank_position : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_at_rank_position<Ntk, std::void_t<decltype( std::declval<Ntk>().at_rank_position( std::declval<uint32_t>(), std::declval<uint32_t>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_at_rank_position_v = has_at_rank_position<Ntk>::value;
+#pragma endregion
+
+#pragma region has_width
+template<class Ntk, class = void>
+struct has_width : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_width<Ntk, std::void_t<decltype( std::declval<Ntk>().width() )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_width_v = has_width<Ntk>::value;
+#pragma endregion
+
+#pragma region has_swap
+template<class Ntk, class = void>
+struct has_swap : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_swap<Ntk, std::void_t<decltype( std::declval<Ntk>().swap( std::declval<node<Ntk>>(), std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_swap_v = has_swap<Ntk>::value;
+#pragma endregion
+
+#pragma region has_sort_rank
+template<class Ntk, class = void>
+struct has_sort_rank : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_sort_rank<Ntk, std::void_t<decltype( std::declval<Ntk>().sort_rank( std::declval<uint32_t>(), std::declval<void( node<Ntk>, node<Ntk> )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_sort_rank_v = has_sort_rank<Ntk>::value;
+#pragma endregion
+
+#pragma region has_foreach_node_in_rank
+template<class Ntk, class = void>
+struct has_foreach_node_in_rank : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_node_in_rank<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_node_in_rank( std::declval<uint32_t>(), std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_node_in_rank_v = has_foreach_node_in_rank<Ntk>::value;
+#pragma endregion
+
+#pragma region has_foreach_gate_in_rank
+template<class Ntk, class = void>
+struct has_foreach_gate_in_rank : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_gate_in_rank<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_gate_in_rank( std::declval<uint32_t>(), std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_gate_in_rank_v = has_foreach_gate_in_rank<Ntk>::value;
+#pragma endregion
+
 #pragma region has_update_mffcs
 template<class Ntk, class = void>
 struct has_update_mffcs : std::false_type
@@ -1044,6 +1216,36 @@ struct has_is_buf<Ntk, std::void_t<decltype( std::declval<Ntk>().is_buf( std::de
 
 template<class Ntk>
 inline constexpr bool has_is_buf_v = has_is_buf<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_not
+template<class Ntk, class = void>
+struct has_is_not : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_not<Ntk, std::void_t<decltype( std::declval<Ntk>().is_not( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_not_v = has_is_not<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_crossing
+template<class Ntk, class = void>
+struct has_is_crossing : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_crossing<Ntk, std::void_t<decltype( std::declval<Ntk>().is_crossing( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_crossing_v = has_is_crossing<Ntk>::value;
 #pragma endregion
 
 #pragma region has_is_and
