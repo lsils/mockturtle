@@ -550,10 +550,7 @@ public:
         std::cout << "[i] optimize cut #" << v_cut << " in node #" << ntk.node_to_index( v_node ) << " and replace with node " << ntk.node_to_index( ntk.get_node( replacement ) ) << "\n";
       }
 
-      if ( !ntk.is_dead( ntk.get_node( replacement ) ) )
-      {
-        ntk.substitute_node( v_node, replacement );
-      }
+      ntk.substitute_node( v_node, replacement );
     }
   }
 

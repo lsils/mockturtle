@@ -164,7 +164,11 @@ public:
     if ( Ntk::get_node( new_signal ) == old_node && !Ntk::is_complemented( new_signal ) )
       return;
 
-    assert( !Ntk::is_dead( Ntk::get_node( new_signal ) ) );
+    if ( Ntk::is_dead( Ntk::get_node( new_signal ) ) )
+    {
+      Ntk::revive_node( Ntk::get_node( new_signal ) );
+    }
+
     std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( { old_node, new_signal } );
