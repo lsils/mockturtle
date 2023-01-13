@@ -219,4 +219,26 @@ struct storage
   T data;
 };
 
+template<typename Node, typename T = empty_storage_data>
+struct storage_no_hash
+{
+  storage()
+  {
+    nodes.reserve( 10000u );
+
+    /* we generally reserve the first node for a constant */
+    nodes.emplace_back();
+  }
+
+  using node_type = Node;
+
+  uint32_t trav_id = 0u;
+
+  std::vector<node_type> nodes;
+  std::vector<uint64_t> inputs;
+  std::vector<typename node_type::pointer_type> outputs;
+
+  T data;
+};
+
 } /* namespace mockturtle */

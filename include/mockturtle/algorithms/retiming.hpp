@@ -110,7 +110,7 @@ public:
   {
     stopwatch t( _st.time_total );
 
-    _st.registers_pre = _ntk.num_latches();
+    _st.registers_pre = _ntk.num_registeres();
 
     if ( !_ps.backward_only )
     {
@@ -130,14 +130,14 @@ public:
       }
     }
 
-    _st.registers_post = _ntk.num_latches();
+    _st.registers_post = _ntk.num_registeres();
   }
 
 private:
   template<bool forward>
   bool retime_area( uint32_t iteration )
   {
-    auto const num_latches_pre = _ntk.num_latches();
+    auto const num_registers_pre = _ntk.num_registers();
 
     init_values<forward>();
 
@@ -145,16 +145,16 @@ private:
 
     if ( _ps.verbose )
     {
-      float latch_improvement = ( (float)num_latches_pre - min_cut.size() ) / num_latches_pre * 100;
+      float register_improvement = ( (float)num_registers_pre - min_cut.size() ) / num_registers_pre * 100;
       std::cout << fmt::format( "[i] Retiming {}\t pre = {:7d}\t post = {:7d}\t improvement = {:>5.2f}%\n",
-                                forward ? "forward" : "backward", num_latches_pre, min_cut.size(), latch_improvement );
+                                forward ? "forward" : "backward", num_registers_pre, min_cut.size(), register_improvement );
     }
 
-    if ( min_cut.size() >= num_latches_pre )
+    if ( min_cut.size() >= num_registers_pre )
       return false;
 
-    /* move latches */
-    update_latches_position<forward>( min_cut, iteration );
+    /* move registers */
+    update_registers_position<forward>( min_cut, iteration );
 
     return true;
   }
@@ -168,7 +168,7 @@ private:
     _ntk.incr_trav_id();
 
     /* run max flow from each register (capacity 1) */
-    _ntk.foreach_latch( [&]( auto const& n ) {
+    _ntk.foreach_register( [&]( auto const& n ) {
       uint32_t local_flow;
       if constexpr ( forward )
       {
@@ -190,7 +190,7 @@ private:
 
     /* run reachability */
     _ntk.incr_trav_id();
-    _ntk.foreach_latch( [&]( auto const& n ) {
+    _ntk.foreach_register( [&]( auto const& n ) {
       uint32_t local_flow;
       if constexpr ( forward )
       {
@@ -366,7 +366,7 @@ private:
   std::vector<node> get_min_cut()
   {
     std::vector<node> min_cut;
-    min_cut.reserve( _ntk.num_latches() );
+    min_cut.reserve( _ntk.num_registers() );
 
     _ntk.foreach_node( [&]( auto const& n ) {
       if ( _flow_path[n] == 0 )
@@ -387,7 +387,7 @@ private:
   {
     _ntk.clear_values();
 
-    _ntk.foreach_latch( [&]( auto const& n ) {
+    _ntk.foreach_register( [&]( auto const& n ) {
       _ntk.set_value( _ntk.fanout( n )[0], 1 );
     } );
 
@@ -418,7 +418,7 @@ private:
     else
     {
       _ntk.incr_trav_id();
-      _ntk.foreach_latch( [&]( auto const& n ) {
+      _ntk.foreach_register( [&]( auto const& n ) {
         node fanin = _ntk.get_node( _ntk.get_fanin0( n ) );
         collect_cut_nodes_tfi( fanin, min_cut );
         return true;
@@ -468,7 +468,7 @@ private:
       } );
 
       /* mark registers as sink */
-      _ntk.foreach_latch( [&]( auto const& n ) {
+      _ntk.foreach_register( [&]( auto const& n ) {
         _ntk.set_value( n, 1 );
         _ntk.foreach_fanin( n, [&]( auto const& f ) {
           if ( _ntk.is_constant( _ntk.get_node( f ) ) )
@@ -509,7 +509,7 @@ private:
       } );
 
       /* mark registers as sink */
-      _ntk.foreach_latch( [&]( auto const& n ) {
+      _ntk.foreach_register( [&]( auto const& n ) {
         _ntk.set_value( n, 1 );
         _ntk.foreach_fanout( n, [&]( auto const& f ) {
           _ntk.set_value( f, 1 );
@@ -524,54 +524,54 @@ private:
   }
 
   template<bool forward>
-  void update_latches_position( std::vector<node> const& min_cut, uint32_t iteration )
+  void update_registers_position( std::vector<node> const& min_cut, uint32_t iteration )
   {
     _ntk.incr_trav_id();
 
-    /* create new latches and mark the ones to reuse */
+    /* create new registers and mark the ones to reuse */
     for ( auto const& n : min_cut )
     {
       if constexpr ( forward )
       {
         if ( _ntk.is_box_output( n ) )
         {
-          /* reuse the current latch */
-          auto latch = _ntk.get_node( _ntk.get_fanin0( n ) );
-          auto in_latch = _ntk.get_node( _ntk.get_fanin0( latch ) );
-          auto in_in_latch = _ntk.get_node( _ntk.get_fanin0( in_latch ) );
+          /* reuse the current register */
+          auto node_register = _ntk.get_node( _ntk.get_fanin0( n ) );
+          auto in_register = _ntk.get_node( _ntk.get_fanin0( node_register ) );
+          auto in_in_register = _ntk.get_node( _ntk.get_fanin0( in_register ) );
 
-          /* check for marked fanouts to connect to latch input */
+          /* check for marked fanouts to connect to register input */
           auto fanout = _ntk.fanout( n );
           for ( auto const& f : fanout )
           {
             if ( _ntk.value( f ) )
             {
-              _ntk.replace_in_node( f, n, in_in_latch );
+              _ntk.replace_in_node( f, n, in_in_register );
               _ntk.decr_fanout_size( n );
             }
           }
 
-          _ntk.set_visited( latch, _ntk.trav_id() );
+          _ntk.set_visited( node_register, _ntk.trav_id() );
         }
         else
         {
-          /* create a new latch */
-          auto const in_latch = _ntk.create_box_input( _ntk.make_signal( n ) );
-          auto const latch = _ntk.create_latch( in_latch );
-          auto const latch_out = _ntk.create_box_output( latch );
+          /* create a new register */
+          auto const in_register = _ntk.create_box_input( _ntk.make_signal( n ) );
+          auto const node_register = _ntk.create_register( in_register );
+          auto const node_register_out = _ntk.create_box_output( node_register );
 
           /* replace in n fanout */
           auto fanout = _ntk.fanout( n );
           for ( auto const& f : fanout )
           {
-            if ( f != _ntk.get_node( in_latch ) && !_ntk.value( f ) )
+            if ( f != _ntk.get_node( in_register ) && !_ntk.value( f ) )
             {
-              _ntk.replace_in_node( f, n, latch_out );
+              _ntk.replace_in_node( f, n, node_register_out );
               _ntk.decr_fanout_size( n );
             }
           }
 
-          _ntk.set_visited( _ntk.get_node( latch ), _ntk.trav_id() );
+          _ntk.set_visited( _ntk.get_node( node_register ), _ntk.trav_id() );
         }
       }
       else
@@ -584,45 +584,45 @@ private:
         }
         else
         {
-          /* create a new latch */
-          auto const in_latch = _ntk.create_box_input( _ntk.make_signal( n ) );
-          auto const latch = _ntk.create_latch( in_latch );
-          auto const latch_out = _ntk.create_box_output( latch );
+          /* create a new register */
+          auto const in_register = _ntk.create_box_input( _ntk.make_signal( n ) );
+          auto const node_register = _ntk.create_register( in_register );
+          auto const node_register_out = _ntk.create_box_output( node_register );
 
           /* replace in n fanout */
           auto fanout = _ntk.fanout( n );
           for ( auto const& f : fanout )
           {
-            if ( f != _ntk.get_node( in_latch ) && _ntk.value( f ) )
+            if ( f != _ntk.get_node( in_register ) && _ntk.value( f ) )
             {
-              _ntk.replace_in_node( f, n, latch_out );
+              _ntk.replace_in_node( f, n, node_register_out );
               _ntk.decr_fanout_size( n );
             }
           }
 
-          _ntk.set_visited( _ntk.get_node( latch ), _ntk.trav_id() );
+          _ntk.set_visited( _ntk.get_node( node_register ), _ntk.trav_id() );
         }
       }
     }
 
-    /* remove retimed latches */
-    _ntk.foreach_latch( [&]( auto const& n ) {
+    /* remove retimed registers */
+    _ntk.foreach_register( [&]( auto const& n ) {
       if ( _ntk.visited( n ) == _ntk.trav_id() )
         return true;
 
-      node latch_out;
-      node latch_in = _ntk.get_node( _ntk.get_fanin0( n ) );
-      signal latch_in_in = _ntk.get_fanin0( latch_in );
+      node node_register_out;
+      node node_register_in = _ntk.get_node( _ntk.get_fanin0( n ) );
+      signal node_register_in_in = _ntk.get_fanin0( node_register_in );
 
       _ntk.foreach_fanout( n, [&]( auto const& f ) {
-        latch_out = f;
+        node_register_out = f;
       } );
 
-      auto latch_fanout = _ntk.fanout_size( latch_out );
-      auto fanin_fanout = _ntk.fanout_size( _ntk.get_node( latch_in_in ) );
-      auto fanin_type = _ntk.is_box_output( _ntk.get_node( latch_in_in ) );
+      auto node_register_fanout = _ntk.fanout_size( node_register_out );
+      auto fanin_fanout = _ntk.fanout_size( _ntk.get_node( node_register_in_in ) );
+      auto fanin_type = _ntk.is_box_output( _ntk.get_node( node_register_in_in ) );
 
-      _ntk.substitute_node( latch_out, latch_in_in );
+      _ntk.substitute_node( node_register_out, node_register_in_in );
 
       return true;
     } );
@@ -663,7 +663,7 @@ private:
     }
 
     bool check = true;
-    _ntk.foreach_latch( [&]( auto const& n ) {
+    _ntk.foreach_register( [&]( auto const& n ) {
       if constexpr ( forward )
       {
         if ( !check_min_cut_rec<forward>( _ntk.fanout( n )[0] ) )
