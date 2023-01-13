@@ -211,7 +211,7 @@ public:
       Ntk::replace_in_outputs( _old, _new );
 
       /* reset fan-in of old node */
-      if ( _old != _new.index ) /* substitute a node using itself*/
+      if ( _old != Ntk::get_node( _new ) ) /* substitute a node using itself*/
       {
         old_to_new.insert( { _old, _new } );
         Ntk::take_out_node( _old );

@@ -106,14 +106,16 @@ public:
 
   generic_network()
       : _storage( std::make_shared<generic_storage>() ),
-        _events( std::make_shared<decltype( _events )::element_type>() )
+        _events( std::make_shared<decltype( _events )::element_type>() ),
+        _register_information( std::make_shared<std::unordered_map<uint64_t, register_t>>() )
   {
     _init();
   }
 
   generic_network( std::shared_ptr<generic_storage> storage )
       : _storage( storage ),
-        _events( std::make_shared<decltype( _events )::element_type>() )
+        _events( std::make_shared<decltype( _events )::element_type>() ),
+        _register_information( std::make_shared<std::unordered_map<uint64_t, register_t>>() )
   {
     _init();
   }
@@ -446,7 +448,7 @@ public:
   {
     auto const r = create_buf( a );
     _storage->nodes[get_node( r )].data[2].h1 = 6;
-    _register_information[get_node( r )] = l_info;
+    _register_information->insert( { get_node( r ), l_info } );
 
     return r;
   }
@@ -502,7 +504,7 @@ public:
     /*  remove register entry if register */
     if ( is_register( n ) )
     {
-      _register_information.erase( n );
+      _register_information->erase( n );
     }
 
     for ( auto const& fn : _events->on_delete )
@@ -521,6 +523,12 @@ public:
         take_out_node( child.index );
       }
     }
+  }
+
+  void revive_node( node const& n )
+  {
+    assert( !is_dead( n ) );
+    return;
   }
 
   inline bool is_dead( node const& n ) const
@@ -579,8 +587,15 @@ public:
 
   uint32_t num_registers() const
   {
-    return static_cast<uint32_t>( _register_information.size() );
+    return static_cast<uint32_t>( _register_information->size() );
   }
+
+  /*! \brief Standard version of num_registers replaced by the one above. */
+  // auto num_registers() const
+  // {
+  //   assert( static_cast<uint32_t>( _storage->inputs.size() - _storage->data.num_pis ) == static_cast<uint32_t>( _storage->outputs.size() - _storage->data.num_pos ) );
+  //   return static_cast<uint32_t>( _storage->inputs.size() - _storage->data.num_pis );
+  // }
 
   auto num_pis() const
   {
@@ -590,12 +605,6 @@ public:
   auto num_pos() const
   {
     return _storage->data.num_pos;
-  }
-
-  auto num_registers() const
-  {
-    assert( static_cast<uint32_t>( _storage->inputs.size() - _storage->data.num_pis ) == static_cast<uint32_t>( _storage->outputs.size() - _storage->data.num_pos ) );
-    return static_cast<uint32_t>( _storage->inputs.size() - _storage->data.num_pis );
   }
 
   auto num_gates() const
@@ -834,47 +843,58 @@ public:
   template<typename Fn>
   void foreach_register( Fn&& fn ) const
   {
-    static_assert( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> ||
-                   detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> ||
-                   detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> ||
-                   detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> );
-
-    assert( _storage->inputs.size() - _storage->data.num_pis == _storage->outputs.size() - _storage->data.num_pos );
-    auto ro = _storage->inputs.begin() + _storage->data.num_pis;
-    auto ri = _storage->outputs.begin() + _storage->data.num_pos;
-    if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> )
-    {
-      while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
-      {
-        if ( !fn( std::make_pair( ( ri++ )->index, ro++ ) ) )
-          return;
-      }
-    }
-    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> )
-    {
-      uint32_t index{ 0 };
-      while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
-      {
-        if ( !fn( std::make_pair( ( ri++ )->index, ro++ ), index++ ) )
-          return;
-      }
-    }
-    else if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> )
-    {
-      while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
-      {
-        fn( std::make_pair( ( ri++ )->index, *ro++ ) );
-      }
-    }
-    else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> )
-    {
-      uint32_t index{ 0 };
-      while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
-      {
-        fn( std::make_pair( ( ri++ )->index, *ro++ ), index++ );
-      }
-    }
+    auto r = range<uint64_t>( 2u, _storage->nodes.size() ); /* start from 2 to avoid constants */
+    detail::foreach_element_if(
+        r.begin(), r.end(),
+        [this]( auto n ) { return is_register( n ) && !is_dead( n ); },
+        fn );
   }
+
+  /*! \brief Standard version of foreach_register replaced by the one above. */
+  // template<typename Fn>
+  // void foreach_register( Fn&& fn ) const
+  // {
+  //   static_assert( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> ||
+  //                  detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> ||
+  //                  detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> ||
+  //                  detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> );
+
+  //   assert( _storage->inputs.size() - _storage->data.num_pis == _storage->outputs.size() - _storage->data.num_pos );
+  //   auto ro = _storage->inputs.begin() + _storage->data.num_pis;
+  //   auto ri = _storage->outputs.begin() + _storage->data.num_pos;
+  //   if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, bool> )
+  //   {
+  //     while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
+  //     {
+  //       if ( !fn( std::make_pair( ( ri++ )->index, ro++ ) ) )
+  //         return;
+  //     }
+  //   }
+  //   else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, bool> )
+  //   {
+  //     uint32_t index{ 0 };
+  //     while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
+  //     {
+  //       if ( !fn( std::make_pair( ( ri++ )->index, ro++ ), index++ ) )
+  //         return;
+  //     }
+  //   }
+  //   else if constexpr ( detail::is_callable_without_index_v<Fn, std::pair<signal, node>, void> )
+  //   {
+  //     while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
+  //     {
+  //       fn( std::make_pair( ( ri++ )->index, *ro++ ) );
+  //     }
+  //   }
+  //   else if constexpr ( detail::is_callable_with_index_v<Fn, std::pair<signal, node>, void> )
+  //   {
+  //     uint32_t index{ 0 };
+  //     while ( ro != _storage->inputs.end() && ri != _storage->outputs.end() )
+  //     {
+  //       fn( std::make_pair( ( ri++ )->index, *ro++ ), index++ );
+  //     }
+  //   }
+  // }
 
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
@@ -883,16 +903,6 @@ public:
     detail::foreach_element_if(
         r.begin(), r.end(),
         [this]( auto n ) { return !is_pi( n ) && !is_dead( n ); }, /* change to PI to cycle over boxes as well */
-        fn );
-  }
-
-  template<typename Fn>
-  void foreach_register( Fn&& fn ) const
-  {
-    auto r = range<uint64_t>( 2u, _storage->nodes.size() ); /* start from 2 to avoid constants */
-    detail::foreach_element_if(
-        r.begin(), r.end(),
-        [this]( auto n ) { return is_register( n ) && !is_dead( n ); },
         fn );
   }
 
@@ -1032,7 +1042,7 @@ public:
 public:
   std::shared_ptr<generic_storage> _storage;
   std::shared_ptr<network_events<base_type>> _events;
-  std::unordered_map<uint64_t, register_t> _register_information;
+  std::shared_ptr<std::unordered_map<uint64_t, register_t>> _register_information;
 };
 
 } // namespace mockturtle

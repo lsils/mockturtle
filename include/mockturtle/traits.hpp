@@ -2133,6 +2133,21 @@ template<class Ntk>
 inline constexpr bool has_decr_value_v = has_decr_value<Ntk>::value;
 #pragma endregion
 
+#pragma region has_get_fanin0
+template<class Ntk, class = void>
+struct has_get_fanin0 : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_get_fanin0<Ntk, std::void_t<decltype( std::declval<Ntk>().get_fanin0( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_get_fanin0_v = has_get_fanin0<Ntk>::value;
+#pragma endregion
+
 #pragma region has_clear_visited
 template<class Ntk, class = void>
 struct has_clear_visited : std::false_type

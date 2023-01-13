@@ -27,6 +27,7 @@
   \file storage.hpp
   \brief Configurable storage container
 
+  \author Alessandro Tempia Calvino
   \author Andrea Costamagna
   \author Bruno Schmitt
   \author Heinz Riener
@@ -222,7 +223,7 @@ struct storage
 template<typename Node, typename T = empty_storage_data>
 struct storage_no_hash
 {
-  storage()
+  storage_no_hash()
   {
     nodes.reserve( 10000u );
 

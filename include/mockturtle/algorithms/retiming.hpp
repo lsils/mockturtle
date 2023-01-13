@@ -110,7 +110,7 @@ public:
   {
     stopwatch t( _st.time_total );
 
-    _st.registers_pre = _ntk.num_registeres();
+    _st.registers_pre = _ntk.num_registers();
 
     if ( !_ps.backward_only )
     {
@@ -130,7 +130,7 @@ public:
       }
     }
 
-    _st.registers_post = _ntk.num_registeres();
+    _st.registers_post = _ntk.num_registers();
   }
 
 private:
