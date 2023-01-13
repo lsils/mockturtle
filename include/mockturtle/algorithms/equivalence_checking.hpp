@@ -184,23 +184,7 @@ public:
     stopwatch<> t( st_.time_total );
 
     bill::solver<Solver> solver;
-    bill::lit_type output;
-
-    if ( ps_.functional_reduction )
-    {
-      Ntk opt = miter_.clone();
-      functional_reduction( opt );
-      opt = cleanup_dangling( opt );
-      if ( opt.num_gates() == 0 )
-      {
-        return opt.po_at( 0 ) == opt.get_constant( false );
-      }
-      output = convert_to_cnf( opt, solver );
-    }
-    else
-    {
-      output = convert_to_cnf( miter_, solver );
-    }
+    bill::lit_type output = convert_to_cnf( miter_, solver );
 
     const auto res = solver.solve( {output}, ps_.conflict_limit );
 
