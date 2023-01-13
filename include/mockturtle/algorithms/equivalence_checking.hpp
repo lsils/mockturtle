@@ -142,7 +142,7 @@ public:
       } )[0];
     }
 
-    const auto res = solver.solve( &output, &output + 1, 0 );
+    const auto res = solver.solve( &output, &output + 1, ps_.conflict_limit );
 
     switch ( res )
     {
