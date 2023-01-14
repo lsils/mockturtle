@@ -92,13 +92,13 @@ public:
 
 public:
   explicit aqfp_reconstruct_impl( buffered_aqfp_network const& ntk, aqfp_reconstruct_params const& ps, aqfp_reconstruct_stats& st )
-      : _ntk( ntk ), _ps( ps ), _num_buffers( num_buffers ), _runtime( runtime )
+      : _ntk( ntk ), _ps( ps ), _st( st )
   {
   }
 
   buffered_aqfp_network run()
   {
-    stopwatch( st.total_time );
+    stopwatch( _st.total_time );
 
     /* save the level of each node */
     depth_view ntk_level{ _ntk };
@@ -133,7 +133,7 @@ public:
     /* recompute splitter trees and return the new buffered network */
     buffered_aqfp_network res;
     buffer_insertion buf_inst( clean_ntk, levels, _ps.buffer_insertion_ps );
-    st.num_buffers = buf_inst.run( res );
+    _st.num_buffers = buf_inst.run( res );
     return res;
   }
 
@@ -182,7 +182,7 @@ private:
 private:
   buffered_aqfp_network const& _ntk;
   aqfp_reconstruct_params const& _ps;
-  aqfp_reconstruct_stats& st;
+  aqfp_reconstruct_stats& _st;
 };
 
 } /* namespace detail */

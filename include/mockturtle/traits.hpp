@@ -498,6 +498,21 @@ template<class Ntk>
 inline constexpr bool has_create_maj_v = has_create_maj<Ntk>::value;
 #pragma endregion
 
+#pragma region has_create_maj_odd
+template<class Ntk, class = void>
+struct has_create_maj_odd : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_maj_odd<Ntk, std::void_t<decltype( std::declval<Ntk>().create_maj( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_maj_odd_v = has_create_maj_odd<Ntk>::value;
+#pragma endregion
+
 #pragma region has_create_ite
 template<class Ntk, class = void>
 struct has_create_ite : std::false_type

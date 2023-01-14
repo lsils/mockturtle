@@ -143,7 +143,8 @@ public:
     buf_ps.assume = _ps.aqfp_assumptions_ps;
     buf_ps.scheduling = buffer_insertion_params::provided;
     buf_ps.optimization_effort = buffer_insertion_params::none;
-    aqfp_reconstruct_splitter_trees_params reconstruct_ps;
+    aqfp_reconstruct_params reconstruct_ps;
+    aqfp_reconstruct_stats reconstruct_st;
     reconstruct_ps.buffer_insertion_ps = buf_ps;
     reconstruct_ps.det_randomization = _ps.det_randomization;
 
@@ -205,7 +206,9 @@ public:
       }
     }
 
-    return aqfp_reconstruct_splitter_trees( ntk, reconstruct_ps, &_st.buffers_post );
+    auto res = aqfp_reconstruct( ntk, reconstruct_ps, &reconstruct_st );
+    _st.buffers_post = reconstruct_st.num_buffers;
+    return res;
   }
 
 private:

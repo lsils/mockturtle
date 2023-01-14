@@ -604,6 +604,16 @@ public:
 
     return { index, 0 };
   }
+
+  void invert( node const& n )
+  {
+    assert( !is_constant( n ) && !is_pi( n ) );
+    assert( fanout_size( n ) == 0 );
+    for ( auto& s : _storage->nodes[n].children )
+    {
+      s.weight ^= 1;
+    }
+  }
 #pragma endregion
 
 #pragma region Create arbitrary functions
@@ -631,6 +641,11 @@ public:
   bool is_buf( node const& n ) const
   {
     return _storage->nodes[n].children.size() == 1;
+  }
+
+  bool is_not( node const& n ) const
+  {
+    return _storage->nodes[n].children[0].weight;
   }
 
   bool is_maj( node const& n ) const
