@@ -580,14 +580,6 @@ public:
 
     return _storage->nodes[n].children[0].data == ~static_cast<uint64_t>( 0 ) && _storage->nodes[n].children[1].data == ~static_cast<uint64_t>( 0 ) && _storage->nodes[n].children[2].data == ~static_cast<uint64_t>( 0 );
   }
-
-  bool is_ro( node const& n ) const
-  {
-    if ( is_buf( n ) )
-      return false;
-
-    return _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data && _storage->nodes[n].children[0].data >= static_cast<uint64_t>( _storage->data.num_pis );
-  }
 #pragma endregion
 
 #pragma region Create unary functions
