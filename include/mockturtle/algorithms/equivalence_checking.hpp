@@ -42,6 +42,7 @@
 #include "../traits.hpp"
 #include "../utils/include/percy.hpp"
 #include "../utils/stopwatch.hpp"
+#include "../networks/klut.hpp"
 #include "cnf.hpp"
 
 #include <bill/sat/interface/common.hpp>
@@ -124,8 +125,12 @@ public:
     if ( ps_.functional_reduction )
     {
       Ntk opt = miter_.clone();
-      functional_reduction( opt );
-      opt = cleanup_dangling( opt );
+      if constexpr ( !std::is_same_v<typename Ntk::base_type, klut_network> )
+      {
+        functional_reduction( opt );
+        opt = cleanup_dangling( opt );
+      }
+
       if ( opt.num_gates() == 0 )
       {
         return opt.po_at( 0 ) == opt.get_constant( false );

@@ -105,6 +105,11 @@ public:
     _init();
   }
 
+  klut_network clone() const
+  {
+    return { std::make_shared<klut_storage>( *_storage ) };
+  }
+
 protected:
   inline void _init()
   {
@@ -163,11 +168,6 @@ protected:
     /* truth tables for constants */
     _storage->nodes[0].data[1].h1 = 0;
     _storage->nodes[1].data[1].h1 = 1;
-  }
-
-  klut_network clone() const
-  {
-    return { std::make_shared<klut_storage>( *_storage ) };
   }
 #pragma endregion
 
