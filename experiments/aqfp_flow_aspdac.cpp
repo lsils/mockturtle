@@ -33,7 +33,7 @@
   ASP-DAC 2023, by Alessandro Tempia Calvino and Giovanni De Micheli.
 
   This version runs on the ISCAS benchmarks. The benchmarks for Table 1 can be
-  downloaded at TODO...
+  downloaded at https://github.com/lsils/SCE-benchmarks
  */
 
 #include <iostream>
