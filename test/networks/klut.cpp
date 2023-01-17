@@ -135,12 +135,12 @@ TEST_CASE( "clone a k-LUT network", "[klut]" )
   auto ntk2 = ntk1;
   auto ntk3 = ntk1.clone();
 
-  auto c = ntk1.create_pi();
-  auto f2 = ntk1.create_or( f1, c );
-  ntk1.create_po( f2 );
-  CHECK( ntk2.size() == 7 );
-  CHECK( ntk2.num_gates() == 2 );
-  CHECK( ntk2.num_pos() == 2 );
+  auto c = ntk2.create_pi();
+  auto f2 = ntk2.create_or( f1, c );
+  ntk2.create_po( f2 );
+  CHECK( ntk1.size() == 7 );
+  CHECK( ntk1.num_gates() == 2 );
+  CHECK( ntk1.num_pos() == 2 );
 
   CHECK( ntk3.size() == 5 );
   CHECK( ntk3.num_gates() == 1 );
