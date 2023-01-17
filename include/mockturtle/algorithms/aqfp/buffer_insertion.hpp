@@ -709,6 +709,7 @@ public:
     } );
 
     _outdated = true;
+    _is_scheduled_ASAP = true;
   }
 
   /*! \brief ALAP scheduling.
@@ -771,6 +772,7 @@ public:
 
     _depth -= min_level;
     _outdated = true;
+    _is_scheduled_ASAP = false;
   }
 
   void depth_optimal_schedule( fanout_view<Ntk> const& f_ntk )

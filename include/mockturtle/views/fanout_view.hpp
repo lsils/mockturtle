@@ -279,7 +279,9 @@ private:
   {
     _fanout.reset();
 
-    this->foreach_gate( [&]( auto const& n ) {
+    this->foreach_node( [&]( auto const& n ) {
+      if ( this->is_pi( n ) || this->is_constant( n ) )
+        return true;
       this->foreach_fanin( n, [&]( auto const& c ) {
         auto& fanout = _fanout[c];
         if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
