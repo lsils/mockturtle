@@ -61,11 +61,11 @@ namespace mockturtle
 * however, it does not update the information, when modifying or deleting nodes.
 *
 * **Required network functions:**
-* -  foreach_node
-* -  get_node
-* -  num_pis
-* -  is_ci
-* -  is_constant
+* -  `foreach_node`
+* -  `get_node`
+* -  `num_pis`
+* -  `is_ci`
+* -  `is_constant`
 *
 * Example
 *
@@ -76,9 +76,7 @@ namespace mockturtle
      // create network somehow
      aig_network aig = ...;
 
-     // create a depth view on the network
-     depth_view aig_depth{aig};
-     // create a rank view on the depth view
+     // create a rank view on the network
      rank_view aig_rank{aig_depth};
 
      // print width
@@ -171,14 +169,25 @@ public:
   {
     Ntk::events().release_add_event( add_event );
   }
-
+  /**
+   * \brief Returns the rank position of a node.
+   *
+   * @param n Node to get the rank position of.
+   * @return Rank position of node `n`.
+   */
   uint32_t rank_position( node const& n ) const noexcept
   {
     assert( !this->is_constant( n ) && "node must not be constant" );
 
     return rank_pos[n];
   }
-
+  /**
+   * \brief Returns the node at a certain rank position.
+   *
+   * @param level Level in the network, i.e., rank to get the node from.
+   * @param pos Position in the rank to get the node from.
+   * @return Node at position `pos` in rank `level`.
+   */
   node at_rank_position( uint32_t const level, uint32_t const pos ) const noexcept
   {
     assert( level < ranks.size() && "level must be less than the number of ranks" );
@@ -186,12 +195,21 @@ public:
 
     return ranks[level][pos];
   }
-
+  /**
+   * \brief Returns the width of the widest rank in the network.
+   *
+   * @return Width of the widest rank in the network.
+   */
   uint32_t width() const noexcept
   {
     return max_rank_width;
   }
-
+  /**
+   * \brief Swaps the positions of two nodes in the same rank.
+   *
+   * @param n1 First node to swap.
+   * @param n2 Second node to swap.
+   */
   void swap( node const& n1, node const& n2 ) noexcept
   {
     assert( this->level( n1 ) == this->level( n2 ) && "nodes must be in the same rank" );
