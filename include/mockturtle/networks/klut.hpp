@@ -105,9 +105,18 @@ public:
     _init();
   }
 
+  klut_network clone() const
+  {
+    return { std::make_shared<klut_storage>( *_storage ) };
+  }
+
 protected:
   inline void _init()
   {
+    /* already initialized */
+    if ( _storage->nodes.size() > 1 ) 
+      return;
+
     /* reserve the second node for constant 1 */
     _storage->nodes.emplace_back();
 

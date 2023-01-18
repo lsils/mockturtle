@@ -55,8 +55,8 @@ struct functional_reduction_params
   /*! \brief Be verbose. */
   bool verbose{ false };
 
-  /*! \brief Whether to repeat until no further improvement can be found. */
-  bool saturation{ false };
+  /*! \brief Maximum number of iterations to run. 0 = repeat until no further improvement can be found. */
+  uint32_t max_iterations{ 10 };
 
   /*! \brief Whether to use pre-generated patterns stored in a file.
    * If not, by default, 256 random patterns will be used.
@@ -77,6 +77,12 @@ struct functional_reduction_params
 
   /*! \brief Maximum number of clauses of the SAT solver. (incremental CNF construction) */
   uint32_t max_clauses{ 1000 };
+
+  /*! \brief Initial number of (random) simulation patterns. */
+  uint32_t num_patterns{ 256 };
+
+  /*! \brief Maximum number of simulation patterns. Discards all patterns and re-seeds with random patterns when exceeded. */
+  uint32_t max_patterns{ 1024 };
 };
 
 struct functional_reduction_stats
@@ -136,7 +142,7 @@ public:
 
   explicit functional_reduction_impl( Ntk& ntk, functional_reduction_params const& ps, validator_params const& vps, functional_reduction_stats& st )
       : ntk( ntk ), ps( ps ), st( st ), tts( ntk ),
-        sim( ps.pattern_filename ? partial_simulator( *ps.pattern_filename ) : partial_simulator( ntk.num_pis(), 256 ) ), validator( ntk, vps )
+        sim( ps.pattern_filename ? partial_simulator( *ps.pattern_filename ) : partial_simulator( ntk.num_pis(), ps.num_patterns, std::rand() ) ), validator( ntk, vps )
   {
     static_assert( !validator_t::use_odc_, "`circuit_validator::use_odc` flag should be turned off." );
   }
@@ -164,7 +170,8 @@ public:
     /* substitute functional equivalent nodes. */
     auto size_before = ntk.size();
     substitute_equivalent_nodes();
-    while ( ps.saturation && ntk.size() != size_before )
+    uint32_t iterations{0};
+    while ( ps.max_iterations && iterations++ <= ps.max_iterations && ntk.size() != size_before )
     {
       size_before = ntk.size();
       substitute_equivalent_nodes();
@@ -355,6 +362,12 @@ private:
     ++st.num_cex;
     sim.add_pattern( validator.cex );
 
+    if ( sim.num_bits() > ps.max_patterns )
+    {
+      reseed_patterns();
+      return;
+    }
+
     /* re-simulate the whole circuit (for the last block) when a block is full */
     if ( sim.num_bits() % 64 == 0 )
     {
@@ -372,6 +385,15 @@ private:
         simulate_node<Ntk>( ntk, n, tts, sim );
       } );
     }
+  }
+
+  void reseed_patterns()
+  {
+    sim = partial_simulator( ntk.num_pis(), ps.num_patterns, std::rand() );
+    tts.reset();
+    call_with_stopwatch( st.time_sim, [&]() {
+      simulate_nodes<Ntk>( ntk, tts, sim, true );
+    } );
   }
 
   template<typename Fn>
