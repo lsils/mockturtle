@@ -30,6 +30,8 @@
 #include <mockturtle/algorithms/balancing/sop_balancing.hpp>
 #include <mockturtle/algorithms/experimental/cost_generic_resub.hpp>
 #include <mockturtle/algorithms/functional_reduction.hpp>
+#include <mockturtle/algorithms/cut_rewriting.hpp>
+#include <mockturtle/algorithms/node_resynthesis/xag_minmc2.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
@@ -87,8 +89,11 @@ int main()
 
     stopwatch<>::duration time_tot{ 0 };
 
+    future::xag_minmc_resynthesis resyn;
     call_with_stopwatch( time_tot, [&]() {
       cost_generic_resub( xag, costfn, ps, &st );
+
+      xag = cut_rewriting<xag_network, decltype( resyn ), mc_cost<xag_network>>( xag, resyn, ps, nullptr );
 
       // xag = balancing( xag, { sop_rebalancing<xag_network>{} } );
       // xag = balancing( xag, { esop_rebalancing<xag_network>{} } );
