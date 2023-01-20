@@ -29,11 +29,14 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Alessandro Tempia Calvino
 */
 
 #pragma once
 
 #include <cstdint>
+
+#include <kitty/dynamic_truth_table.hpp>
 
 #include "../traits.hpp"
 
@@ -106,6 +109,23 @@ struct mc_cost
 
     // TODO (Does not take into account general node functions)
     return 1u;
+  }
+};
+
+struct lut_unitary_cost
+{
+  std::pair<uint32_t, uint32_t> operator()( uint32_t num_leaves ) const
+  {
+    if ( num_leaves < 2u )
+      return { 0u, 0u };
+    return { 1u, 1u }; /* area, delay */
+  }
+
+  std::pair<uint32_t, uint32_t> operator()( kitty::dynamic_truth_table const& tt ) const
+  {
+    if ( tt.num_vars() < 2u )
+      return { 0u, 0u };
+    return { 1u, 1u }; /* area, delay */
   }
 };
 

@@ -550,10 +550,7 @@ public:
         std::cout << "[i] optimize cut #" << v_cut << " in node #" << ntk.node_to_index( v_node ) << " and replace with node " << ntk.node_to_index( ntk.get_node( replacement ) ) << "\n";
       }
 
-      if ( !ntk.is_dead( ntk.get_node( replacement ) ) )
-      {
-        ntk.substitute_node( v_node, replacement );
-      }
+      ntk.substitute_node( v_node, replacement );
     }
   }
 
@@ -589,7 +586,7 @@ private:
 
 } /* namespace detail */
 
-/*! \brief In-place cut rewriting algorithm with compabitility graph.
+/*! \brief In-place cut rewriting algorithm with compatibility graph.
  *
  * This algorithm enumerates cut of a network and then tries to rewrite the cut
  * in terms of gates of the same network.  The rewritten structures are added
@@ -604,7 +601,7 @@ private:
  * parameters compose an iterator pair where the distance matches the number of
  * variables of the truth table that is passed as second parameter.  There are
  * some rewriting algorithms in the folder
- * `mockturtle/algorithms/node_resyntesis`, since the resynthesis functions
+ * `mockturtle/algorithms/node_resynthesis`, since the resynthesis functions
  * have the same signature.
  *
  * In contrast to node resynthesis, cut rewriting uses the same type for the
@@ -828,7 +825,7 @@ private:
  * parameters compose an iterator pair where the distance matches the number of
  * variables of the truth table that is passed as second parameter.  There are
  * some rewriting algorithms in the folder
- * `mockturtle/algorithms/node_resyntesis`, since the resynthesis functions
+ * `mockturtle/algorithms/node_resynthesis`, since the resynthesis functions
  * have the same signature.
  *
  * In contrast to node resynthesis, cut rewriting uses the same type for the

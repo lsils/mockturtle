@@ -615,6 +615,36 @@ TEST_CASE( "visited values in xags", "[xag]" )
   } );
 }
 
+TEST_CASE( "check has_and and has_xor in XAG", "[xag]" )
+{
+  xag_network xag;
+  auto const x1 = xag.create_pi();
+  auto const x2 = xag.create_pi();
+  auto const x3 = xag.create_pi();
+
+  auto const n4 = xag.create_and( !x1, x2 );
+  auto const n5 = xag.create_and( x1, n4 );
+  auto const n6 = xag.create_xor( x3, n5 );
+  auto const n7 = xag.create_and( n4, x2 );
+  auto const n8 = xag.create_and( !n5, !n7 );
+  auto const n9 = xag.create_xor( !n8, n4 );
+
+  xag.create_po( n6 );
+  xag.create_po( n9 );
+
+  CHECK( xag.has_and( !x1, x2 ).has_value() == true );
+  CHECK( *xag.has_and( !x1, x2 ) == xag.get_node( n4 ) );
+  CHECK( xag.has_xor( !x1, x2 ).has_value() == false );
+  CHECK( xag.has_and( !x1, x3 ).has_value() == false );
+  CHECK( xag.has_xor( !x1, x3 ).has_value() == false );
+  CHECK( xag.has_xor( n5, x3 ).has_value() == true );
+  CHECK( *xag.has_xor( n5, x3 ) == xag.get_node( n6 ) );
+  CHECK( xag.has_xor( !n5, !x3 ).has_value() == true );
+  CHECK( *xag.has_xor( !n5, !x3 ) == xag.get_node( n6 ) );
+  CHECK( xag.has_and( !n7, !n5 ).has_value() == true );
+  CHECK( *xag.has_and( !n7, !n5 ) == xag.get_node( n8 ) );
+}
+
 TEST_CASE( "simulate some special functions in XAGs", "[xag]" )
 {
   xag_network xag;

@@ -30,6 +30,7 @@
   \author Heinz Riener
   \author Mathias Soeken
   \author Siang-Yun (Sonia) Lee
+  \author Marcel Walter
 */
 
 #pragma once
@@ -210,7 +211,7 @@ public:
    * The simulation pattern file should contain `num_pis` lines of the same length.
    * Each line is the simulation signature of a primary input, represented in hexadecimal.
    *
-   * \param fielname Name of the simulation pattern file.
+   * \param filename Name of the simulation pattern file.
    * \param length Number of simulation patterns to keep. Should not be greater than 4 times
    * the length of a line in the file. Setting this parameter to 0 means to keep all patterns in the file.
    */
@@ -279,6 +280,32 @@ public:
   std::vector<kitty::partial_truth_table> get_patterns() const
   {
     return patterns;
+  }
+
+  template<class Ntk, bool enabled = has_EXCDC_interface_v<Ntk>, typename = std::enable_if_t<enabled>>
+  void remove_CDC_patterns( Ntk const& ntk )
+  {
+    std::vector<bool> pattern( patterns.size() );
+    for ( int i = 0; i < (int)num_patterns; ++i )
+    {
+      for ( auto j = 0u; j < patterns.size(); ++j )
+      {
+        pattern[j] = kitty::get_bit( patterns[j], i );
+      }
+      if ( ntk.pattern_is_EXCDC( pattern ) )
+      {
+        for ( auto j = 0u; j < patterns.size(); ++j )
+        {
+          kitty::copy_bit( patterns[j], num_patterns - 1, patterns[j], i );
+        }
+        --num_patterns;
+        --i;
+      }
+    }
+    for ( auto j = 0u; j < patterns.size(); ++j )
+    {
+      patterns[j].resize( num_patterns );
+    }
   }
 
 private:
@@ -399,7 +426,7 @@ public:
       int64_t j = 0;
       for ( int64_t i = empty_slots.size() - 1; i >= 0; --i )
       {
-        while ( empty_slots[j] >= num_patterns - 1 && j <= i )
+        while ( j <= i && empty_slots[j] >= num_patterns - 1 )
         {
           if ( empty_slots[j] == num_patterns - 1 )
           {
@@ -462,14 +489,7 @@ private:
         continue;
       }
       assert( !kitty::get_bit( care[i], to ) );
-      if ( kitty::get_bit( patterns[i], from ) )
-      {
-        kitty::set_bit( patterns[i], to );
-      }
-      else
-      {
-        kitty::clear_bit( patterns[i], to );
-      }
+      kitty::copy_bit( patterns[i], from, patterns[i], to );
       kitty::set_bit( care[i], to );
       kitty::clear_bit( care[i], from );
     }
@@ -537,10 +557,28 @@ node_map<SimulationType, Ntk> simulate_nodes( Ntk const& ntk, Simulator const& s
   } );
 
   ntk.foreach_gate( [&]( auto const& n ) {
+    // skip crossings
+    if constexpr ( has_is_crossing_v<Ntk> )
+    {
+      if ( ntk.is_crossing( n ) )
+      {
+        return;
+      }
+    }
+
     std::vector<SimulationType> fanin_values( ntk.fanin_size( n ) );
-    ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+    auto const fanin_fun = [&]( auto const& f, auto i ) {
       fanin_values[i] = node_to_value[f];
-    } );
+    };
+
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      ntk.foreach_fanin_ignore_crossings( n, fanin_fun );
+    }
+    else
+    {
+      ntk.foreach_fanin( n, fanin_fun );
+    }
     node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
   } );
 
@@ -587,12 +625,30 @@ void simulate_nodes_with_node_map( Ntk const& ntk, Container& node_to_value, Sim
 
   /* gates */
   ntk.foreach_gate( [&]( auto const& n ) {
+    // skip crossings
+    if constexpr ( has_is_crossing_v<Ntk> )
+    {
+      if ( ntk.is_crossing( n ) )
+      {
+        return;
+      }
+    }
+
     if ( !node_to_value.has( n ) )
     {
       std::vector<SimulationType> fanin_values( ntk.fanin_size( n ) );
-      ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+      auto const fanin_fun = [&]( auto const& f, auto i ) {
         fanin_values[i] = node_to_value[ntk.get_node( f )];
-      } );
+      };
+
+      if constexpr ( is_crossed_network_type_v<Ntk> )
+      {
+        ntk.foreach_fanin_ignore_crossings( n, fanin_fun );
+      }
+      else
+      {
+        ntk.foreach_fanin( n, fanin_fun );
+      }
 
       node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
     }
@@ -655,7 +711,7 @@ template<class Ntk, class Simulator, class Container>
 void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim )
 {
   std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
-  ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+  auto const fanin_fun = [&]( auto const& f, auto i ) {
     if ( !node_to_value.has( ntk.get_node( f ) ) )
     {
       simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
@@ -665,7 +721,17 @@ void simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container
       re_simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
     }
     fanin_values[i] = node_to_value[ntk.get_node( f )];
-  } );
+  };
+
+  if constexpr ( is_crossed_network_type_v<Ntk> )
+  {
+    ntk.foreach_fanin_ignore_crossings( n, fanin_fun );
+  }
+  else
+  {
+    ntk.foreach_fanin( n, fanin_fun );
+  }
+
   node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
 }
 
@@ -673,7 +739,7 @@ template<class Ntk, class Simulator, class Container>
 void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Container& node_to_value, Simulator const& sim )
 {
   std::vector<kitty::partial_truth_table> fanin_values( ntk.fanin_size( n ) );
-  ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+  auto const fanin_fun = [&]( auto const& f, auto i ) {
     if ( !node_to_value.has( ntk.get_node( f ) ) )
     {
       simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
@@ -683,7 +749,16 @@ void re_simulate_fanin_cone( Ntk const& ntk, typename Ntk::node const& n, Contai
       re_simulate_fanin_cone( ntk, ntk.get_node( f ), node_to_value, sim );
     }
     fanin_values[i] = node_to_value[ntk.get_node( f )];
-  } );
+  };
+
+  if constexpr ( is_crossed_network_type_v<Ntk> )
+  {
+    ntk.foreach_fanin_ignore_crossings( n, fanin_fun );
+  }
+  else
+  {
+    ntk.foreach_fanin( n, fanin_fun );
+  }
   ntk.compute( n, node_to_value[n], fanin_values.begin(), fanin_values.end() );
 }
 
@@ -822,7 +897,7 @@ std::vector<SimulationType> simulate( Ntk const& ntk, Simulator const& sim = Sim
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented function" );
   static_assert( has_compute_v<Ntk, SimulationType>, "Ntk does not implement the compute function for SimulationType" );
 
-  const auto node_to_value = simulate_nodes<SimulationType, Ntk, Simulator>( ntk, sim );
+  auto const node_to_value = simulate_nodes<SimulationType, Ntk, Simulator>( ntk, sim );
 
   std::vector<SimulationType> po_values( ntk.num_pos() );
   ntk.foreach_po( [&]( auto const& f, auto i ) {
@@ -862,12 +937,30 @@ std::vector<kitty::static_truth_table<NumPIs>> simulate_buffered( Ntk const& ntk
     node_to_value[n] = sim.compute_pi( i );
   } );
   ntk.foreach_node( [&]( auto const& n ) {
+    // skip crossings
+    if constexpr ( has_is_crossing_v<Ntk> )
+    {
+      if ( ntk.is_crossing( n ) )
+      {
+        return;
+      }
+    }
+
     if ( ntk.fanin_size( n ) > 0 )
     {
       std::vector<kitty::static_truth_table<NumPIs>> fanin_values( ntk.fanin_size( n ) );
-      ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+      auto const fanin_fun = [&]( auto const& f, auto i ) {
         fanin_values[i] = node_to_value[f];
-      } );
+      };
+
+      if constexpr ( is_crossed_network_type_v<Ntk> )
+      {
+        ntk.foreach_fanin_ignore_crossings( n, fanin_fun );
+      }
+      else
+      {
+        ntk.foreach_fanin( n, fanin_fun );
+      }
       node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
     }
   } );

@@ -292,6 +292,30 @@ TEST_CASE( "structural properties of an AIG", "[aig]" )
   CHECK( aig.fanout_size( aig.get_node( f2 ) ) == 1 );
 }
 
+TEST_CASE( "check has_and in AIG", "[aig]" )
+{
+  aig_network aig;
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+  auto const x3 = aig.create_pi();
+
+  auto const n4 = aig.create_and( !x1, x2 );
+  auto const n5 = aig.create_and( x1, n4 );
+  auto const n6 = aig.create_and( x3, n5 );
+  auto const n7 = aig.create_and( n4, x2 );
+  auto const n8 = aig.create_and( !n5, !n7 );
+  auto const n9 = aig.create_and( !n8, n4 );
+
+  aig.create_po( n6 );
+  aig.create_po( n9 );
+
+  CHECK( aig.has_and( !x1, x2 ).has_value() == true );
+  CHECK( *aig.has_and( !x1, x2 ) == aig.get_node( n4 ) );
+  CHECK( aig.has_and( !x1, x3 ).has_value() == false );
+  CHECK( aig.has_and( !n7, !n5 ).has_value() == true );
+  CHECK( *aig.has_and( !n7, !n5 ) == aig.get_node( n8 ) );
+}
+
 TEST_CASE( "node and signal iteration in an AIG", "[aig]" )
 {
   aig_network aig;
@@ -962,4 +986,98 @@ TEST_CASE( "substitute node with dependency in aig_network", "[aig]" )
   aig.foreach_po( [&]( auto s ) {
     CHECK( aig.is_dead( aig.get_node( s ) ) == false );
   } );
+}
+
+TEST_CASE( "substitute node and re-strash case 2", "[aig]" )
+{
+  aig_network aig;
+
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+  auto const x3 = aig.create_pi();
+  auto const n4 = aig.create_and( x2, x3 );
+  auto const n5 = aig.create_and( x1, n4 );
+  auto const n6 = aig.create_and( n5, x3 );
+  auto const n7 = aig.create_and( x1, n6 );
+  aig.create_po( n7 );
+
+  aig.substitute_node( aig.get_node( n6 ), n4 );
+  /* replace in node n7: n6 <- n4 => re-strash with fanins (x1, n4) => n7 <- n5
+   * take out node n6 => take out node n5 => take out node n4 (MFFC)
+   * execute n7 <- n5, but n5 is dead => revive n5 and n4 */
+
+  CHECK( !aig.is_dead( aig.get_node( n4 ) ) );
+  CHECK( !aig.is_dead( aig.get_node( n5 ) ) );
+  CHECK( aig.is_dead( aig.get_node( n6 ) ) );
+  CHECK( aig.is_dead( aig.get_node( n7 ) ) );
+  aig.foreach_fanin( aig.get_node( aig.po_at( 0 ) ), [&]( auto f, auto i ){
+    switch ( i )
+    {
+    case 0:
+      CHECK( f == x1 );
+      break;
+    case 1:
+      CHECK( f == n4 );
+      break;
+    default:
+      CHECK( false );
+    }
+  } );
+  CHECK( aig.fanout_size( aig.get_node( n4 ) ) == 1 );
+}
+
+TEST_CASE( "substitute node without re-strashing case 1", "[aig]" )
+{
+  aig_network aig;
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+  auto const f1 = aig.create_and( x1, x2 );
+  auto const f2 = aig.create_and( f1, x2 );
+  aig.create_po( f2 );
+
+  aig.substitute_node_no_restrash( aig.get_node( f1 ), x1 );
+  aig = cleanup_dangling( aig );
+  CHECK( aig.num_gates() == 1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( aig )[0]._bits == 0x8 );
+}
+
+TEST_CASE( "substitute node without re-strashing case 2", "[aig]" )
+{
+  aig_network aig;
+
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const c = aig.create_pi();
+  auto const tmp = aig.create_and( b, c );
+  auto const f1 = aig.create_and( a, b );
+  auto const f2 = aig.create_and( f1, tmp );
+  auto const f3 = aig.create_and( f1, a );
+  aig.create_po( f2 );
+
+  aig.substitute_node_no_restrash( aig.get_node( tmp ), f3 );
+  aig.substitute_node_no_restrash( aig.get_node( f1 ), aig.get_constant( 1 ) );
+  aig = cleanup_dangling( aig );
+
+  CHECK( aig.num_gates() == 0 );
+  CHECK( !aig.is_dead( aig.get_node( aig.po_at( 0 ) ) ) );
+  CHECK( aig.get_node( aig.po_at( 0 ) ) == aig.pi_at( 0 ) );
+}
+
+TEST_CASE( "substitute node without re-strashing case 3", "[aig]" )
+{
+  aig_network aig;
+
+  auto const x1 = aig.create_pi();
+  auto const x2 = aig.create_pi();
+  auto const x3 = aig.create_pi();
+  auto const n4 = aig.create_and( x2, x3 );
+  auto const n5 = aig.create_and( x1, n4 );
+  auto const n6 = aig.create_and( n5, x3 );
+  auto const n7 = aig.create_and( x1, n6 );
+  aig.create_po( n7 );
+
+  aig.substitute_node_no_restrash( aig.get_node( n6 ), n4 );
+  aig = cleanup_dangling( aig );
+  CHECK( aig.num_gates() == 2 );
+  CHECK( simulate<kitty::static_truth_table<3u>>( aig )[0]._bits == 0x80 );
 }

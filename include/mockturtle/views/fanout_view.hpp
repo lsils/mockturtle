@@ -166,6 +166,15 @@ public:
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    if ( Ntk::get_node( new_signal ) == old_node && !Ntk::is_complemented( new_signal ) )
+      return;
+
+    if ( Ntk::is_dead( Ntk::get_node( new_signal ) ) )
+    {
+      Ntk::revive_node( Ntk::get_node( new_signal ) );
+    }
+
+    std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( {old_node, new_signal} );
 
@@ -173,6 +182,26 @@ public:
     {
       const auto [_old, _new] = to_substitute.top();
       to_substitute.pop();
+
+      signal _new = _curr;
+      /* find the real new node */
+      if ( Ntk::is_dead( Ntk::get_node( _new ) ) )
+      {
+        auto it = old_to_new.find( Ntk::get_node( _new ) );
+        while ( it != old_to_new.end() )
+        {
+          _new = Ntk::is_complemented( _new ) ? Ntk::create_not( it->second ) : it->second;
+          it = old_to_new.find( Ntk::get_node( _new ) );
+        }
+      }
+      /* revive */
+      if ( Ntk::is_dead( Ntk::get_node( _new ) ) )
+      {
+        Ntk::revive_node( Ntk::get_node( _new ) );
+      }
+
+      if ( Ntk::get_node( _new ) == _old && !Ntk::is_complemented( _new ) )
+        continue;
 
       const auto parents = _fanout[_old];
       for ( auto n : parents )

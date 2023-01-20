@@ -63,7 +63,7 @@ struct klut_storage_data
  * `data[0].h1`: Fan-out size
  * `data[0].h2`: Application-specific value
  * `data[1].h1`: Function literal in truth table cache
- * `data[2].h2`: Visited flags
+ * `data[1].h2`: Visited flags
  */
 struct klut_storage_node : mixed_fanin_node<2>
 {
@@ -105,9 +105,18 @@ public:
     _init();
   }
 
+  klut_network clone() const
+  {
+    return { std::make_shared<klut_storage>( *_storage ) };
+  }
+
 protected:
   inline void _init()
   {
+    /* already initialized */
+    if ( _storage->nodes.size() > 1 ) 
+      return;
+
     /* reserve the second node for constant 1 */
     _storage->nodes.emplace_back();
 
@@ -214,6 +223,20 @@ public:
   bool constant_value( node const& n ) const
   {
     return n == 1;
+  }
+
+  uint32_t po_index( signal const& s ) const
+  {
+    uint32_t i = -1;
+    foreach_po( [&]( const auto& x, auto index ) {
+      if ( x == s )
+      {
+        i = index;
+        return false;
+      }
+      return true;
+    } );
+    return i;
   }
 #pragma endregion
 

@@ -447,12 +447,12 @@ public:
 
     // node already in hash table and is alive
     storage::element_type::node_type _hash_obj;
-    _hash_obj.children[0] = norm_res.fanins[0];
-    _hash_obj.children[1] = norm_res.fanins[1];
-    _hash_obj.children[2] = norm_res.fanins[2];
+    _hash_obj.children[0] = child[0];
+    _hash_obj.children[1] = child[1];
+    _hash_obj.children[2] = child[2];
     if ( const auto it = _storage->hash.find( _hash_obj ); it != _storage->hash.end() && it->second != old_node )
     {
-      return std::make_pair( n, signal( it->second, norm_res.output_compl ) );
+      return std::make_pair( n, signal( it->second, 0 ) );
     }
 
     // remember before
@@ -464,9 +464,9 @@ public:
     _storage->hash.erase( node );
 
     // insert updated node into hash table
-    node.children[0] = norm_res.fanins[0];
-    node.children[1] = norm_res.fanins[1];
-    node.children[2] = norm_res.fanins[2];
+    node.children[0] = child[0];
+    node.children[1] = child[1];
+    node.children[2] = child[2];
     _storage->hash[node] = n;
 
     // update the reference counter of the new signal
@@ -475,12 +475,6 @@ public:
     for ( auto const& fn : _events->on_modified )
     {
       ( *fn )( n, { old_child0, old_child1, old_child2 } );
-    }
-
-    if ( norm_res.output_compl )
-    {
-      // n's output need to be negated.
-      return std::make_pair( n, signal( n, 1 ) );
     }
 
     return std::nullopt;
@@ -535,6 +529,32 @@ public:
     }
   }
 
+  void revive_node( node const& n )
+  {
+    if ( !is_dead( n ) )
+      return;
+
+    assert( n < _storage->nodes.size() );
+    auto& nobj = _storage->nodes[n];
+    nobj.data[0].h1 = UINT32_C( 0 ); /* fanout size 0, but not dead (like just created) */
+    _storage->hash[nobj] = n;
+
+    for ( auto const& fn : _events->on_add )
+    {
+      ( *fn )( n );
+    }
+
+    /* revive its children if dead, and increment their fanout_size */
+    for ( auto i = 0u; i < 3u; ++i )
+    {
+      if ( is_dead( nobj.children[i].index ) )
+      {
+        revive_node( nobj.children[i].index );
+      }
+      incr_fanout_size( nobj.children[i].index );
+    }
+  }
+
   inline bool is_dead( node const& n ) const
   {
     return ( _storage->nodes[n].data[0].h1 >> 31 ) & 1;
@@ -542,6 +562,9 @@ public:
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    //if ( get_node( new_signal ) == old_node && !is_complemented( new_signal ) )
+    //  return;
+
     std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( { old_node, new_signal } );
@@ -552,12 +575,24 @@ public:
       to_substitute.pop();
 
       signal _new = _curr;
-      while ( is_dead( get_node( _new ) ) )
+      /* find the real new node */
+      if ( is_dead( get_node( _new ) ) )
       {
-        const auto it = old_to_new.find( get_node( _new ) );
-        assert( it != old_to_new.end() );
-        _new = is_complemented( _new ) ? create_not( it->second ) : it->second;
+        auto it = old_to_new.find( get_node( _new ) );
+        while ( it != old_to_new.end() )
+        {
+          _new = is_complemented( _new ) ? create_not( it->second ) : it->second;
+          it = old_to_new.find( get_node( _new ) );
+        }
       }
+      /* revive */
+      if ( is_dead( get_node( _new ) ) )
+      {
+        revive_node( get_node( _new ) );
+      }
+
+      //if ( get_node( _new ) == _old && !is_complemented( _new ) )
+      //  continue;
 
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
       {

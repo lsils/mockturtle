@@ -248,7 +248,7 @@ public:
 
   /*! \brief Iterators over cell's fan-ins.
    * The parameter `n` is a node that must be a cell root.
-   * The paramater ``fn`` is any callable that must have one of the
+   * The parameter ``fn`` is any callable that must have one of the
    * following four signatures.
    * - ``void(node const&)``
    * - ``void(node const&, uint32_t)``

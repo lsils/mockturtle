@@ -29,6 +29,7 @@
 
   \author Heinz Riener
   \author Mathias Soeken
+  \author Marcel Walter
 */
 
 #pragma once
@@ -204,6 +205,22 @@ public:
       }
     }
 
+    if constexpr ( has_is_buf_v<Ntk> )
+    {
+      if ( ntk.is_buf( n ) && !ntk.is_ci( n ) )
+      {
+        return "BUF";
+      }
+    }
+
+    if constexpr ( has_is_crossing_v<Ntk> )
+    {
+      if ( ntk.is_crossing( n ) )
+      {
+        return "CROSS";
+      }
+    }
+
     return default_dot_drawer<Ntk>::node_label( ntk, n );
   }
 
@@ -280,6 +297,22 @@ public:
       if ( ntk.is_nary_xor( n ) )
       {
         return "lightskyblue";
+      }
+    }
+
+    if constexpr ( has_is_buf_v<Ntk> )
+    {
+      if ( ntk.is_buf( n ) && !ntk.is_ci( n ) )
+      {
+        return "palegoldenrod";
+      }
+    }
+
+    if constexpr ( has_is_crossing_v<Ntk> )
+    {
+      if ( ntk.is_crossing( n ) )
+      {
+        return "palegoldenrod";
       }
     }
 

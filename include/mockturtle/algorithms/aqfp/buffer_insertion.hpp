@@ -745,7 +745,7 @@ private:
 #pragma endregion
 
 #pragma region Compute timeframe
-  /*! \brief Compute the earilest and latest possible timeframe by eager ASAP and ALAP */
+  /*! \brief Compute the earliest and latest possible timeframe by eager ASAP and ALAP */
   uint32_t compute_timeframe( uint32_t max_depth )
   {
     _timeframes.reset( std::make_pair( 0, 0 ) );

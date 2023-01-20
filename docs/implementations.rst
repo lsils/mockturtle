@@ -17,7 +17,7 @@ All network implementations are located in `mockturtle/networks/`:
 +--------------------------------+--------+--------+--------+--------+---------+--------+--------------+--------+
 | Interface method               | AIG    | MIG    | XAG    | XMG    | *k*-LUT | COVER  | abstract XAG | MUXIG  |
 +================================+========+========+========+========+=========+========+==============+========+
-| ``clone``                      | ✓      | ✓      | ✓      | ✓      |         |        |              | ✓      |
+| ``clone``                      | ✓      | ✓      | ✓      | ✓      | ✓       |        |              | ✓      |
 +--------------------------------+--------+--------+--------+--------+---------+--------+--------------+--------+
 |                                | *I/O and constants*                                                          |
 +--------------------------------+--------+--------+--------+--------+---------+--------+--------------+--------+
@@ -185,7 +185,7 @@ All network implementations are located in `mockturtle/networks/`:
 +--------------------------------+--------+--------+--------+--------+---------+--------+--------------+--------+
 | ``pi_index``                   | ✓      | ✓      | ✓      | ✓      |         |        |              | ✓      |
 +--------------------------------+--------+--------+--------+--------+---------+--------+--------------+--------+
-| ``po_index``                   | ✓      | ✓      | ✓      | ✓      |         |        |              | ✓      |
+| ``po_index``                   | ✓      | ✓      | ✓      | ✓      | ✓       |        |              | ✓      |
 +--------------------------------+--------+--------+--------+--------+---------+--------+--------------+--------+
 | ``ci_index``                   | ✓      | ✓      | ✓      | ✓      |         |        |              | ✓      |
 +--------------------------------+--------+--------+--------+--------+---------+--------+--------------+--------+
@@ -267,8 +267,11 @@ All network implementations are located in `mockturtle/networks/`:
    (**) Sequential interfaces are not provided by default, but they can be extended to networks by
    wrapping with ``sequential`` (See :ref:`sequential`).
 
+Supplementary network types
+---------------------------
 
-**Cover Network**
+Cover Network
+~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/networks/cover.hpp``
 
@@ -278,3 +281,56 @@ This data structure provides an additional node creation function, `create_cover
 
 .. doxygenfunction:: mockturtle::cover_network::create_cover_node
 
+Crossed Network
+~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/networks/crossed.hpp``
+
+The network type `crossed_klut_network` is an extension to *k*-LUT network which supports representation
+of *crossing* cells. A crossing cell has exactly two inputs and two (ordered) outputs.
+Additional interfaces provided by this network type include:
+
+.. doxygenfunction:: mockturtle::crossed_klut_network::create_crossing
+
+.. doxygenfunction:: mockturtle::crossed_klut_network::insert_crossing
+
+.. doxygenfunction:: mockturtle::crossed_klut_network::is_crossing
+
+.. doxygenfunction:: mockturtle::crossed_klut_network::is_second
+
+.. doxygenfunction:: mockturtle::crossed_klut_network::make_second
+
+.. doxygenfunction:: mockturtle::crossed_klut_network::ignore_crossings
+
+.. doxygenfunction:: mockturtle::crossed_klut_network::foreach_fanin_ignore_crossings
+
+Note that the `foreach_gate` function of this network iterates through all logic gates as well as crossings.
+
+.. _buffered_network:
+
+Buffered Networks
+~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/networks/buffered.hpp``
+
+This header file implements extensions to several network types to `buffered_xxx_network`, currently including:
+`buffered_aig_network`, `buffered_mig_network`, and `buffered_crossed_klut_network`.
+Buffered networks support explicit representation of one-input, one-output buffer cells. They serve as
+interfacing data structure mainly for algorithms related to :ref:`buffer_insertion`.
+Buffered networks provide or override the following functions:
+
+* `create_buf`: Creates a buffer cell
+* `invert`: Turns a buffer cell into an inverter or vice versa.
+* `is_buf`: Checks if a node is a buffer, splitter (buffer capable of having multiple fanouts), or inverter cell.
+* `is_not`: Checks if a buffer cell has negated input (i.e., is an inverter).
+* `foreach_gate` iterates through logic gates (and crossings, in the case of `buffered_crossed_klut_network`) and neglects buffer, splitter, or inverter cells.
+* Disables restructuring functions, such as `substitute_node`.
+
+Specific for `buffered_crossed_klut_network`:
+
+.. doxygenfunction:: mockturtle::buffered_crossed_klut_network::merge_into_crossing
+
+
+**Simulation of buffered networks**
+
+.. doxygenfunction:: mockturtle::simulate_buffered

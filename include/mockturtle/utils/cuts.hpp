@@ -312,7 +312,7 @@ bool cut<MaxLeaves, T>::merge( cut const& that, cut& res, uint32_t cut_size ) co
 
 /*! \brief A data-structure to hold a set of cuts.
  *
- * The aim of a cut set is to contain cuts and maintain two propeties.  First,
+ * The aim of a cut set is to contain cuts and maintain two properties.  First,
  * all cuts are ordered according to the `<` operator, and second, all cuts
  * are irredundant, i.e., no cut in the set dominates another cut in the set.
  *

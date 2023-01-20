@@ -11,13 +11,26 @@ v0.4 (not yet released)
 * Network implementations:
     - Remove sequential interfaces from all networks (`aig_network`, `xag_network`, `mig_network`, `xmg_network`, `klut_network`, `cover_network`, `aqfp_network`). Add the `sequential` extension to combinational networks. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
     - Move `trav_id` from the custom storage data (e.g. `aig_storage_data`) to the common `storage`. Remove `num_pis` and `num_pos` as they are only needed for sequential network. Remove custom storage data when not needed (`aig_storage_data`, `xag_storage_data`, `mig_storage_data`, `xmg_storage_data`). Remove latch information from the common `storage`. `#564 <https://github.com/lsils/mockturtle/pull/564>`_
+    - Add access methods to check if a node is present in the network given its immediate fanin (e.g., `has_and` in `aig_network`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
+    - Crossed networks (`crossed_klut_network` and `buffered_crossed_klut_network`) `#589 <https://github.com/lsils/mockturtle/pull/589>`_
 * Algorithms:
+    - AIG balancing (`aig_balance`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Resynthesis based on SOP factoring (`sop_factoring`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
+    - XAG algebraic depth rewriting (`xag_algebraic_depth_rewriting`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
+    - Collapse mapped extended to compute mapping functions if the mapped network doesn't have them stored (`collapse_mapped`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
+    - Extended LUT mapping for delay and area (`lut_map`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
+    - Support for external don't cares (mainly in `circuit_validator`, `sim_resub`, `miter` and `equivalence_checking_bill`) `#585 <https://github.com/lsils/mockturtle/pull/585>`_
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Support for external don't cares (`dont_care_view`) `#585 <https://github.com/lsils/mockturtle/pull/585>`_
+    - Rank view for management of the ordering of nodes within each level (`rank_view`, contributed by Marcel Walter) `#589 <https://github.com/lsils/mockturtle/pull/589>`_
+* Properties:
+    - Cost functions based on the factored form literals count (`factored_literal_cost`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
 * Utils:
-    - Add recursive cost function class to customize cost in resubstitution algorithm (`recurisve_cost_function`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Add recursive cost function class to customize cost in resubstitution algorithm (`recursive_cost_function`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
+    - Sum-of-products factoring utilities `#579 <https://github.com/lsils/mockturtle/pull/579>`_
 
 v0.3 (July 12, 2022)
 --------------------

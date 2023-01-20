@@ -34,15 +34,16 @@
 
 #pragma once
 
-#include <iostream>
-#include <type_traits>
-#include <vector>
-
-#include <kitty/operations.hpp>
-
+#include "../networks/crossed.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "../views/topo_view.hpp"
+
+#include <kitty/operations.hpp>
+
+#include <iostream>
+#include <type_traits>
+#include <vector>
 
 namespace mockturtle
 {
@@ -184,6 +185,24 @@ void cleanup_dangling_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterator beg
             break;
           }
         }
+        if constexpr ( has_is_not_v<NtkSrc> )
+        {
+          static_assert( has_create_not_v<NtkDest>, "NtkDest cannot create NOT gates" );
+          if ( ntk.is_not( node ) )
+          {
+            old_to_new[node] = dest.create_not( children[0] );
+            break;
+          }
+        }
+        if constexpr ( has_is_buf_v<NtkSrc> )
+        {
+          static_assert( has_create_buf_v<NtkDest>, "NtkDest cannot create buffers" );
+          if ( ntk.is_buf( node ) )
+          {
+            old_to_new[node] = dest.create_buf( children[0] );
+            break;
+          }
+        }
         if constexpr ( has_is_function_v<NtkSrc> )
         {
           static_assert( has_create_node_v<NtkDest>, "NtkDest cannot create arbitrary function gates" );
@@ -192,6 +211,72 @@ void cleanup_dangling_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterator beg
         }
         std::cerr << "[e] something went wrong, could not copy node " << ntk.node_to_index( node ) << "\n";
       } while ( false );
+    }
+
+    /* copy name */
+    if constexpr ( has_has_name_v<NtkSrc> && has_get_name_v<NtkSrc> && has_set_name_v<NtkDest> )
+    {
+      auto const s = ntk.make_signal( node );
+      if ( ntk.has_name( s ) )
+      {
+        dest.set_name( old_to_new[node], ntk.get_name( s ) );
+      }
+      if ( ntk.has_name( !s ) )
+      {
+        dest.set_name( !old_to_new[node], ntk.get_name( !s ) );
+      }
+    }
+  } );
+}
+
+template<typename NtkSrc, typename NtkDest, typename LeavesIterator>
+void cleanup_dangling_with_crossings_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterator begin, LeavesIterator end, node_map<signal<NtkDest>, NtkSrc>& old_to_new )
+{
+  /* constants */
+  old_to_new[ntk.get_constant( false )] = dest.get_constant( false );
+  if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
+  {
+    old_to_new[ntk.get_constant( true )] = dest.get_constant( true );
+  }
+
+  /* create inputs in the same order */
+  auto it = begin;
+  ntk.foreach_pi( [&]( auto node ) {
+    old_to_new[node] = *it++;
+  } );
+  if constexpr ( has_foreach_ro_v<NtkSrc> )
+  {
+    ntk.foreach_ro( [&]( auto node ) {
+      old_to_new[node] = *it++;
+    } );
+  }
+  assert( it == end );
+  (void)end;
+
+  /* foreach node in topological order */
+  topo_view topo{ ntk };
+  topo.foreach_node( [&]( auto node ) {
+    if ( ntk.is_constant( node ) || ntk.is_ci( node ) )
+      return;
+
+    /* collect children */
+    std::vector<signal<NtkDest>> children;
+    ntk.foreach_fanin( node, [&]( auto const& f ) {
+      if ( ntk.is_crossing( ntk.get_node( f ) ) )
+        children.push_back( ntk.is_second( f ) ? dest.make_second( old_to_new[f] ) : old_to_new[f] );
+      else
+        children.push_back( old_to_new[f] );
+    } );
+
+    /* clone node */
+    if ( ntk.is_crossing( node ) )
+    {
+      assert( children.size() == 2 );
+      old_to_new[node] = dest.create_crossing( children[0], children[1] ).first;
+    }
+    else
+    {
+      old_to_new[node] = dest.clone_node( ntk, node, children );
     }
 
     /* copy name */
@@ -491,7 +576,14 @@ template<class NtkSrc, class NtkDest = NtkSrc>
   detail::clone_inputs( ntk, dest, cis, remove_dangling_PIs );
 
   node_map<signal<NtkDest>, NtkSrc> old_to_new( ntk );
-  detail::cleanup_dangling_impl( ntk, dest, cis.begin(), cis.end(), old_to_new );
+  if constexpr ( is_crossed_network_type_v<NtkSrc> )
+  {
+    detail::cleanup_dangling_with_crossings_impl( ntk, dest, cis.begin(), cis.end(), old_to_new );
+  }
+  else
+  {
+    detail::cleanup_dangling_impl( ntk, dest, cis.begin(), cis.end(), old_to_new );
+  }
 
   detail::clone_outputs( ntk, dest, old_to_new, remove_redundant_POs );
 

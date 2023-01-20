@@ -36,6 +36,7 @@
 #include "../../networks/xag.hpp"
 #include "../../traits.hpp"
 #include "../../utils/index_list.hpp"
+#include "../../utils/null_utils.hpp"
 #include "../../views/depth_view.hpp"
 #include "../../views/fanout_view.hpp"
 #include "../detail/resub_utils.hpp"
@@ -46,6 +47,9 @@
 #include "../resyn_engines/mig_resyn.hpp"
 #include "../resyn_engines/xag_resyn.hpp"
 #include "../simulation.hpp"
+
+#include "../../utils/include/percy.hpp"
+
 #include <kitty/kitty.hpp>
 
 #include <functional>
@@ -149,6 +153,46 @@ struct complete_tt_windowing_stats
   }
 };
 
+template<class EngineStats>
+struct resynthesis_stats
+{
+  /*! \brief Total runtime. */
+  stopwatch<>::duration time_total{ 0 };
+
+  /*! \brief Total number of problems received. */
+  uint32_t num_probs{ 0u };
+
+  /*! \brief Total number of solutions found. */
+  uint32_t num_sols{ 0u };
+
+  /*! \brief Summed sizes of solutions. */
+  uint32_t sum_sol_size{ 0u };
+
+  /*! \brief Summed ratios of solution size over max size. */
+  float sum_ratio{ 0.0 };
+  uint32_t sum_overhead{ 0u };
+
+  /*! \brief Summed max_size of all problems. */
+  uint32_t sum_max_size{ 0u };
+
+  /*! \brief Summed max_size of solved problems. */
+  uint32_t sum_max_size_solved{ 0u };
+
+  /*! \brief Statistics object for the resynthesis engine. */
+  EngineStats rst;
+
+  void report() const
+  {
+    // clang-format off
+    fmt::print( "[i] resynthesis report\n" );
+    fmt::print( "    tot. #problems = {:5d}, tot. #solutions = {:5d}, #sols/#probs = {:>5.2f} (%)\n", num_probs, num_sols, float( num_sols ) / float( num_probs ) * 100.0 );
+    fmt::print( "    avg. |H| = {:>5.2f}, avg. |H|/max = {:>7.4f}, avg. overhead = {:>5.2f}\n", float( sum_sol_size ) / float( num_sols ), sum_ratio / float( num_sols ), sum_overhead / float( num_sols ) );
+    fmt::print( "    avg. max size (all problems) = {:>5.2f}, avg. max size (solved) = {:>5.2f}\n", float( sum_max_size ) / float( num_probs ), float( sum_max_size_solved ) / float( num_sols ) );
+    fmt::print( "    Total runtime: {:>5.2f} secs\n", to_seconds( time_total ) );
+    // clang-format on
+  }
+};
+
 namespace detail
 {
 
@@ -159,6 +203,7 @@ struct small_window
   using signal = typename Ntk::signal;
 
   signal root;
+  uint32_t num_leaves;
   std::vector<signal> divs;
   std::vector<uint32_t> div_ids; /* positions of divisor truth tables in `tts` */
   std::vector<TT> tts;
@@ -335,6 +380,7 @@ private:
       win.div_ids.emplace_back( i++ );
       win.divs.emplace_back( ntk.make_signal( l ) );
     }
+    win.num_leaves = leaves.size();
 
     i = ps.max_pis + 1;
     for ( auto const& n : supported )
@@ -392,10 +438,10 @@ public:
   using problem_t = small_window<Ntk, TT>;
   using res_t = typename ResynEngine::index_list_t;
   using params_t = null_params;
-  using stats_t = null_stats;
+  using stats_t = resynthesis_stats<typename ResynEngine::stats>;
 
   explicit complete_tt_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
-      : ntk( ntk ), engine( rst )
+      : ntk( ntk ), st( st ), engine( st.rst )
   {}
 
   void init()
@@ -403,29 +449,233 @@ public:
 
   std::optional<res_t> operator()( problem_t& prob )
   {
-    if constexpr ( preserve_depth ) // TODO: maybe separate via different problem type
+    ++st.num_probs;
+    st.sum_max_size += prob.max_size;
+    auto const res = call_with_stopwatch( st.time_total, [&](){
+      if constexpr ( preserve_depth )
+      {
+        return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size, prob.max_level );
+      }
+      else
+      {
+        return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size );
+      }
+    });
+    if ( res )
     {
-      return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size, prob.max_level );
+      ++st.num_sols;
+      st.sum_max_size_solved += prob.max_size;
+      st.sum_sol_size += res->num_gates();
+      if ( prob.max_size == 0 )
+        st.sum_ratio += 1;
+      else
+        st.sum_ratio += float( res->num_gates() ) / float( prob.max_size );
     }
-    else
-    {
-      return engine( prob.tts.back(), prob.care, std::begin( prob.div_ids ), std::end( prob.div_ids ), prob.tts, prob.max_size );
-    }
+    return res;
   }
 
 private:
   Ntk const& ntk;
-  typename ResynEngine::stats rst;
+  stats_t& st;
   ResynEngine engine;
 }; /* complete_tt_resynthesis */
+
+template<class Ntk, class TT, class index_list_t = xag_index_list<false>>
+class exact_resynthesis
+{
+public:
+  using problem_t = small_window<Ntk, TT>;
+  using res_t = index_list_t;
+  using params_t = null_params;
+  using stats_t = resynthesis_stats<null_stats>;
+
+  explicit exact_resynthesis( Ntk const& ntk, params_t const& ps, stats_t& st )
+      : ntk( ntk ), st( st )
+  {}
+
+  void init()
+  {
+    _allow_xor = false;
+  }
+
+  std::optional<res_t> operator()( problem_t& prob )
+  {
+    ++st.num_probs;
+    st.sum_max_size += prob.max_size;
+    auto c = call_with_stopwatch( st.time_total, [&](){
+      return solve( prob );
+    });
+
+    if ( c && c->get_nr_steps() <= prob.max_size )
+    {
+      ++st.num_sols;
+      st.sum_max_size_solved += prob.max_size;
+      st.sum_sol_size += c->get_nr_steps();
+      if ( prob.max_size == 0 )
+        st.sum_ratio += 1;
+      else
+        st.sum_ratio += float( c->get_nr_steps() ) / float( prob.max_size );
+      //return translate( prob, *c );
+    }
+    return std::nullopt;
+  }
+
+private:
+  std::optional<percy::chain> solve( problem_t& prob )
+  {
+    percy::spec spec;
+    if ( !_allow_xor )
+    {
+      spec.set_primitive( percy::AIG );
+    }
+    spec.fanin = 2;
+    spec.verbosity = 0;
+    spec.add_alonce_clauses = _ps.add_alonce_clauses;
+    spec.add_colex_clauses = _ps.add_colex_clauses;
+    spec.add_lex_clauses = _ps.add_lex_clauses;
+    spec.add_lex_func_clauses = _ps.add_lex_func_clauses;
+    spec.add_nontriv_clauses = _ps.add_nontriv_clauses;
+    spec.add_noreapply_clauses = _ps.add_noreapply_clauses;
+    spec.add_symvar_clauses = _ps.add_symvar_clauses;
+    spec.conflict_limit = _ps.conflict_limit;
+    spec.max_nr_steps = prob.max_size;
+
+    TT const& target = prob.tts.back();
+    spec[0] = target;
+    bool with_dont_cares{ false };
+    if ( !kitty::is_const0( ~prob.care ) )
+    {
+      spec.set_dont_care( 0, ~prob.care );
+      with_dont_cares = true;
+    }
+
+    /* add divisors */
+    for ( auto i = prob.num_leaves; i < prob.divs.size(); ++i )
+    {
+      spec.add_function( prob.tts[prob.div_ids[i]] );
+    }
+
+    //if ( !with_dont_cares && _ps.cache )
+    //{
+    //  const auto it = _ps.cache->find( target );
+    //  if ( it != _ps.cache->end() )
+    //  {
+    //    return it->second;
+    //  }
+    //}
+    //if ( !with_dont_cares && _ps.blacklist_cache )
+    //{
+    //  const auto it = _ps.blacklist_cache->find( target );
+    //  if ( it != _ps.blacklist_cache->end() && ( it->second == 0 || _ps.conflict_limit <= it->second ) )
+    //  {
+    //    return std::nullopt;
+    //  }
+    //}
+
+    percy::chain c;
+    if ( const auto result = percy::synthesize( spec, c, _ps.solver_type,
+                                                _ps.encoder_type,
+                                                _ps.synthesis_method );
+         result != percy::success )
+    {
+      //if ( !with_dont_cares && _ps.blacklist_cache )
+      //{
+      //  ( *_ps.blacklist_cache )[target] = ( result == percy::timeout ) ? _ps.conflict_limit : 0;
+      //}
+      return std::nullopt;
+    }
+
+    assert( kitty::to_hex( c.simulate()[0u] & prob.care ) == kitty::to_hex( target & prob.care ) );
+
+    //if ( !with_dont_cares && _ps.cache )
+    //{
+    //  ( *_ps.cache )[target] = c;
+    //}
+    return c;
+  }
+
+  index_list_t translate( problem_t& prob, percy::chain const& c )
+  {
+    index_list_t il( prob.divs.size() );
+    /* Doesn't work well yet
+    std::vector<bool> negated( prob.divs.size() + c->get_nr_steps() + 1, false );
+    for ( auto i = 0; i < c->get_nr_steps(); ++i )
+    {
+      auto const v1 = c->get_step( i )[0] + 1; // +1 : zero-based to one-based indices
+      auto const v2 = c->get_step( i )[1] + 1;
+      auto const l1 = negated[v1] ? ( v1 << 1 ) ^ 0x1 : v1 << 1;
+      auto const l2 = negated[v2] ? ( v2 << 1 ) ^ 0x1 : v2 << 1;
+
+      switch ( c->get_operator( i )._bits[0] )
+      {
+      default:
+        std::cerr << "[e] unsupported operation " << kitty::to_hex( c->get_operator( i ) ) << "\n";
+        assert( false );
+        break;
+      case 0x8:
+        il.add_and( l1, l2 );
+        break;
+      case 0x4:
+        il.add_and( l1 ^ 0x1, l2 );
+        break;
+      case 0x2:
+        il.add_and( l1, l2 ^ 0x1 );
+        break;
+      case 0xe:
+        negated[il.add_and( l1 ^ 0x1, l2 ^ 0x1 ) >> 1] = true;
+        break;
+      case 0x6:
+        il.add_xor( l1, l2 );
+        break;
+      }
+    }
+
+    auto const last_lit = ( prob.divs.size() + c->get_nr_steps() ) << 1;
+    il.add_output( c->is_output_inverted( 0 ) ? last_lit ^ 0x1 : last_lit );
+    */
+    return il;
+  }
+
+private:
+  Ntk const& ntk;
+  bool _allow_xor;
+  struct
+  {
+    using cache_map_t = std::unordered_map<kitty::dynamic_truth_table, percy::chain, kitty::hash<kitty::dynamic_truth_table>>;
+    using cache_t = std::shared_ptr<cache_map_t>;
+
+    using blacklist_cache_map_t = std::unordered_map<kitty::dynamic_truth_table, int32_t, kitty::hash<kitty::dynamic_truth_table>>;
+    using blacklist_cache_t = std::shared_ptr<blacklist_cache_map_t>;
+
+    cache_t cache;
+    blacklist_cache_t blacklist_cache;
+
+    bool add_alonce_clauses{ true };
+    bool add_colex_clauses{ true };
+    bool add_lex_clauses{ false };
+    bool add_lex_func_clauses{ true };
+    bool add_nontriv_clauses{ true };
+    bool add_noreapply_clauses{ true };
+    bool add_symvar_clauses{ true };
+    int conflict_limit{ 1000 };
+
+    percy::SolverType solver_type = percy::SLV_BSAT2;
+    percy::EncoderType encoder_type = percy::ENC_SSV;
+    percy::SynthMethod synthesis_method = percy::SYNTH_STD;
+  } _ps;
+  stats_t& st;
+}; /* exact_resynthesis */
 
 } /* namespace detail */
 
 using window_resub_params = boolean_optimization_params<complete_tt_windowing_params, null_params>;
-using window_resub_stats = boolean_optimization_stats<complete_tt_windowing_stats, null_stats>;
+using window_resub_stats = boolean_optimization_stats<complete_tt_windowing_stats, resynthesis_stats<null_stats>>;
+using window_resub_stats_xag = boolean_optimization_stats<complete_tt_windowing_stats, resynthesis_stats<xag_resyn_stats>>;
+using window_resub_stats_aig_enum = boolean_optimization_stats<complete_tt_windowing_stats, resynthesis_stats<aig_enumerative_resyn_stats>>;
+using window_resub_stats_mig = boolean_optimization_stats<complete_tt_windowing_stats, resynthesis_stats<mig_resyn_stats>>;
 
 template<class Ntk>
-void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats_xag* pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, xag_network>, "Ntk::base_type is not xag_network" );
 
@@ -439,7 +689,7 @@ void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  window_resub_stats st;
+  window_resub_stats_xag st;
   opt_t p( viewed, ps, st );
   p.run();
 
@@ -455,7 +705,7 @@ void window_xag_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
 }
 
 template<class Ntk>
-void window_aig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+void window_aig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats_xag* pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, aig_network>, "Ntk::base_type is not aig_network" );
 
@@ -469,7 +719,7 @@ void window_aig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  window_resub_stats st;
+  window_resub_stats_xag st;
   opt_t p( viewed, ps, st );
   p.run();
 
@@ -485,15 +735,13 @@ void window_aig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
 }
 
 template<class Ntk>
-void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats_aig_enum* pst = nullptr )
 {
-  // using ViewedNtk = fanout_view<Ntk>;
-  // ViewedNtk viewed( ntk );
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
   ViewedNtk viewed( fntk );
 
-  window_resub_stats st;
+  window_resub_stats_aig_enum st;
 
   using TT = typename kitty::static_truth_table<8>;
   using windowing_t = typename detail::complete_tt_windowing<ViewedNtk, TT>;
@@ -528,7 +776,7 @@ void window_aig_enumerative_resub( Ntk& ntk, window_resub_params const& ps = {},
 }
 
 template<class Ntk>
-void window_mig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats* pst = nullptr )
+void window_mig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, window_resub_stats_mig* pst = nullptr )
 {
   using ViewedNtk = depth_view<fanout_view<Ntk>>;
   fanout_view<Ntk> fntk( ntk );
@@ -540,7 +788,7 @@ void window_mig_heuristic_resub( Ntk& ntk, window_resub_params const& ps = {}, w
   using resyn_t = typename detail::complete_tt_resynthesis<ViewedNtk, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<ViewedNtk, windowing_t, resyn_t>;
 
-  window_resub_stats st;
+  window_resub_stats_mig st;
   opt_t p( viewed, ps, st );
   p.run();
 

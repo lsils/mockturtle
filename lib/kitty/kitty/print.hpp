@@ -44,6 +44,7 @@
 #include "algorithm.hpp"
 #include "karnaugh_map.hpp"
 #include "operations.hpp"
+#include "constructors.hpp"
 
 namespace kitty
 {
@@ -86,6 +87,7 @@ inline void print_xmas_tree(
       if ( row.size() != 1u )
       {
         next.emplace_back();
+
         std::transform( row.begin() + 1, row.end(),
                         std::back_inserter( next.back() ),
                         []( auto cell )
@@ -139,7 +141,8 @@ void print_binary( const TT& tt, std::ostream& os = std::cout )
   auto const chunk_size = std::min<uint64_t>( tt.num_bits(), 64 );
   for_each_block_reversed( tt, [&os, chunk_size]( auto word )
                            {
-    std::string chunk(chunk_size, '0');
+    std::string chunk( chunk_size, '0' );
+
     auto it = chunk.rbegin();
     while (word && it != chunk.rend()) {
       if (word & 1) {
@@ -159,7 +162,7 @@ inline void print_binary( const partial_truth_table& tt,
   bool first = true;
   for_each_block_reversed( tt, [&tt, &os, chunk_size, &first]( auto word )
                            {
-    std::string chunk(chunk_size, '0');
+    std::string chunk( chunk_size, '0' );
     auto it = chunk.rbegin();
     while (word && it != chunk.rend()) {
       if (word & 1) {
@@ -177,6 +180,64 @@ inline void print_binary( const partial_truth_table& tt,
     } } );
 }
 /*! \endcond */
+
+template<typename TT>
+void print_binary( const ternary_truth_table<TT>& tt, std::ostream& os = std::cout )
+{
+  auto const chunk_size = std::min<uint64_t>( tt.num_bits(), 64 );
+  std::string tt_string = "";
+  for_each_block_reversed( tt._bits, [&os, &tt_string, chunk_size]( auto word )
+                           {
+    std::string chunk( chunk_size, '0' );
+    auto it = chunk.rbegin();
+    while ( word && it != chunk.rend() )
+    {
+      if ( word & 1 )
+      {
+        *it = '1';
+      }
+      ++it;
+      word >>= 1;
+    }
+    tt_string += chunk; } );
+  for ( auto i = 0; i < tt.num_bits(); i++ )
+  {
+    if ( is_dont_care( tt, tt.num_bits() - 1 - i ) )
+    {
+      tt_string[i] = '-';
+    }
+  }
+  os << tt_string;
+}
+
+template<typename TT>
+void print_binary( const quaternary_truth_table<TT>& tt, std::ostream& os = std::cout )
+{
+  auto const chunk_size = std::min<uint64_t>( tt.num_bits(), 64 );
+  std::string tt_string = "";
+  for_each_block_reversed( tt._onset, [&os, &tt_string, chunk_size]( auto word )
+                           {
+    std::string chunk( chunk_size, '0' );
+    auto it = chunk.rbegin();
+    while ( word && it != chunk.rend() )
+    {
+      if ( word & 1 )
+      {
+        *it = '1';
+      }
+      ++it;
+      word >>= 1;
+    }
+    tt_string += chunk; } );
+  for ( auto i = 0; i < tt.num_bits(); i++ )
+  {
+    if ( is_dont_care( tt, tt.num_bits() - 1 - i ) )
+      tt_string[i] = '-';
+    if ( is_dont_know( tt, tt.num_bits() - 1 - i ) )
+      tt_string[i] = 'x';
+  }
+  os << tt_string;
+}
 
 /*! \brief Prints K-map of given truth table.
 
@@ -200,7 +261,7 @@ void print_kmap( const TT& tt, std::ostream& os = std::cout )
   \param tt Truth table
   \param os Output stream
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_completely_specified_truth_table<TT>::value>>
 void print_hex( const TT& tt, std::ostream& os = std::cout )
 {
   auto const chunk_size =
@@ -208,7 +269,8 @@ void print_hex( const TT& tt, std::ostream& os = std::cout )
 
   for_each_block_reversed( tt, [&os, chunk_size]( auto word )
                            {
-    std::string chunk(chunk_size, '0');
+    std::string chunk( chunk_size, '0' );
+
     auto it = chunk.rbegin();
     while (word && it != chunk.rend()) {
       auto hex = word & 0xf;
@@ -230,7 +292,8 @@ inline void print_hex( const partial_truth_table& tt,
   bool first = true;
   for_each_block_reversed( tt, [&tt, &os, &first]( auto word )
                            {
-    std::string chunk(16, '0');
+    std::string chunk( 16, '0' );
+
     auto it = chunk.rbegin();
     while (word && it != chunk.rend()) {
       auto hex = word & 0xf;
@@ -262,7 +325,7 @@ inline void print_hex( const partial_truth_table& tt,
   \param tt Truth table
   \param os Output stream
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<!std::is_same<TT, ternary_truth_table<dynamic_truth_table>>::value>>
 void print_raw( const TT& tt, std::ostream& os )
 {
   for_each_block( tt, [&os]( auto word )
@@ -289,7 +352,7 @@ inline std::string to_binary( const TT& tt )
 
   \param tt Truth table
 */
-template<typename TT>
+template<typename TT, typename = std::enable_if_t<is_completely_specified_truth_table<TT>::value>>
 inline std::string to_hex( const TT& tt )
 {
   std::stringstream st;
@@ -307,8 +370,8 @@ inline std::string to_hex( const TT& tt )
   \param tt Truth table
   \param os Output stream
 */
-template<typename TT, typename = std::enable_if_t<
-                          !std::is_same<TT, partial_truth_table>::value>>
+template<typename TT, typename = std::enable_if_t<!std::is_same<TT, partial_truth_table>::value>, typename = std::enable_if_t<is_completely_specified_truth_table<TT>::value>>
+
 void print_xmas_tree_for_function( const TT& tt, std::ostream& os = std::cout )
 {
   detail::print_xmas_tree( os, tt.num_vars(),
@@ -343,6 +406,7 @@ void print_xmas_tree_for_functions(
                                 std::vector<int>>>& style_predicates = {},
     std::ostream& os = std::cout )
 {
+
   std::vector<std::pair<std::function<bool( uint16_t )>, std::vector<int>>>
       _preds;
   std::transform( style_predicates.begin(), style_predicates.end(),
@@ -355,6 +419,7 @@ void print_xmas_tree_for_functions(
                           return p.first( tt );
                         },
                         p.second ); } );
+
   detail::print_xmas_tree( os, 1 << num_vars, _preds );
 }
 
@@ -377,7 +442,9 @@ std::string anf_to_expression( const TT& anf )
 
   for_each_one_bit( anf, [&]( auto bit )
                     {
-    if (bit == 0) {
+    if ( bit == 0 )
+    {
+
       expr += "1";
       return;
     }
@@ -395,6 +462,20 @@ std::string anf_to_expression( const TT& anf )
     } } );
 
   return terms == 1 ? expr : "[" + expr + "]";
+}
+
+/*! \brief Creates an expression for an ANF form
+
+  All don't cares are considered to be zero.
+
+  It is a "restricted" ANF for the ternary turth table.
+ *
+ * \param anf Ternary truth table in ANF encoding
+ */
+template<typename TT, typename = std::enable_if_t<!std::is_same<TT, partial_truth_table>::value>>
+std::string anf_to_expression( const ternary_truth_table<TT>& anf )
+{
+  return anf_to_expression( anf._bits );
 }
 
 } /* namespace kitty */

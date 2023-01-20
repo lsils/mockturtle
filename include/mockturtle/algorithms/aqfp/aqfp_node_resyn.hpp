@@ -96,9 +96,9 @@ struct aqfp_node_resyn
    */
   aqfp_node_resyn( aqfp_db<>& db, const aqfp_node_resyn_param& ps ) : params( ps ), db( db )
   {
-    /*! must provid the cost of a simple buffer with one output */
+    /*! must provide the cost of a simple buffer with one output */
     assert( ps.splitters.count( 1u ) > 0 );
-    /*! must provid the cost of a splitter with the maximum capacity */
+    /*! must provide the cost of a splitter with the maximum capacity */
     assert( ps.splitters.count( ps.assume.splitter_capacity ) > 0 );
   }
 

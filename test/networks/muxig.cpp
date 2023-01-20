@@ -755,7 +755,7 @@ TEST_CASE( "visited values in a MUXIG", "[muxig]" )
   } );
 }
 
-TEST_CASE( "node substitution in a MUXIG", "[muxig]" )
+TEST_CASE( "node substitution in a MUXIG: case 1 -- gate normalized into a signal", "[muxig]" )
 {
   muxig_network muxig;
   const auto a = muxig.create_pi();
@@ -770,19 +770,55 @@ TEST_CASE( "node substitution in a MUXIG", "[muxig]" )
     CHECK( !muxig.is_complemented( s ) );
   } );
 
-  muxig.substitute_node( muxig.get_node( muxig.get_constant( false ) ), muxig.get_constant( true ) );
+  muxig.substitute_node( muxig.get_node( a ), b );
 
-  CHECK( muxig.size() == 4 );
-  CHECK( muxig.is_complemented( muxig.po_at( 0 ) ) );
+  CHECK( muxig.num_gates() == 0 );
+  CHECK( muxig.po_at( 0 ) == muxig.get_constant( false ) );
+}
+
+TEST_CASE( "node substitution in a MUXIG: case 2 -- general case, no normalization", "[muxig]" )
+{
+  muxig_network muxig;
+  const auto a = muxig.create_pi();
+  const auto b = muxig.create_pi();
+  const auto c = muxig.create_pi();
+  const auto f = muxig.create_and( !a, b );
+  muxig.create_po( f );
 
   muxig.foreach_fanin( muxig.get_node( f ), [&]( auto const& s, auto i ) {
+    CHECK( !muxig.is_complemented( s ) );
     switch ( i )
     {
+    case 0:
+      CHECK( muxig.get_node( s ) == muxig.get_node( a ) );
+      break;
+    case 1:
+      CHECK( muxig.get_node( s ) == muxig.get_node( muxig.get_constant( false ) ) );
+      break;
     case 2:
-      CHECK( muxig.is_complemented( s ) );
+      CHECK( muxig.get_node( s ) == muxig.get_node( b ) );
       break;
     default:
-      CHECK( !muxig.is_complemented( s ) );
+      break;
+    }
+  } );
+
+  muxig.substitute_node( muxig.get_node( a ), c );
+
+  muxig.foreach_fanin( muxig.get_node( f ), [&]( auto const& s, auto i ) {
+    CHECK( !muxig.is_complemented( s ) );
+    switch ( i )
+    {
+    case 0:
+      CHECK( muxig.get_node( s ) == muxig.get_node( c ) );
+      break;
+    case 1:
+      CHECK( muxig.get_node( s ) == muxig.get_node( muxig.get_constant( false ) ) );
+      break;
+    case 2:
+      CHECK( muxig.get_node( s ) == muxig.get_node( b ) );
+      break;
+    default:
       break;
     }
   } );

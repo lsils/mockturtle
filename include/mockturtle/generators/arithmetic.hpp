@@ -152,7 +152,7 @@ inline std::pair<signal<Ntk>, signal<Ntk>> half_adder( Ntk& ntk, const signal<Nt
  *
  * Creates a carry ripple structure composed of full adders.  The vectors `a`
  * and `b` must have the same size.  The resulting sum bits are eventually
- * stored in `a` and the carry bit will be overriden to store the output carry
+ * stored in `a` and the carry bit will be overridden to store the output carry
  * bit.
  *
  * \param a First input operand, will also have the output after the call
@@ -177,8 +177,8 @@ inline void carry_ripple_adder_inplace( Ntk& ntk, std::vector<signal<Ntk>>& a, s
  *
  * Creates a carry ripple structure composed of full adders.  The vectors `a`
  * and `b` must have the same size.  The resulting sum bits are eventually
- * stored in `a` and the carry bit will be overriden to store the output carry
- * bit.  The inputs in `b` are inverted to realize substraction with full
+ * stored in `a` and the carry bit will be overridden to store the output carry
+ * bit.  The inputs in `b` are inverted to realize subtraction with full
  * adders.  The carry bit must be passed in inverted state to the subtractor.
  *
  * \param a First input operand, will also have the output after the call
@@ -303,7 +303,7 @@ inline void carry_lookahead_adder_inplace_pow2( Ntk& ntk, std::vector<signal<Ntk
  *
  * Creates a carry lookahead structure composed of full adders.  The vectors `a`
  * and `b` must have the same size.  The resulting sum bits are eventually
- * stored in `a` and the carry bit will be overriden to store the output carry
+ * stored in `a` and the carry bit will be overridden to store the output carry
  * bit.
  *
  * \param a First input operand, will also have the output after the call

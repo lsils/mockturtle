@@ -127,6 +127,11 @@ public:
   {
     stopwatch t( st.time_total );
 
+    if constexpr ( has_EXCDC_interface_v<Ntk> )
+    {
+      sim.remove_CDC_patterns( ntk );
+    }
+
     call_with_stopwatch( st.time_sim, [&]() {
       simulate_nodes<Ntk>( ntk, tts, sim, true );
     } );
@@ -170,6 +175,10 @@ public:
     if constexpr ( std::is_same_v<Simulator, bit_packed_simulator> )
     {
       sim.randomize_dont_care_bits( ps.random_seed );
+      if constexpr ( has_EXCDC_interface_v<Ntk> )
+      {
+        sim.remove_CDC_patterns( ntk );
+      }
     }
   }
 
@@ -407,6 +416,10 @@ private:
       sim.add_pattern( pattern );
     }
 
+    if constexpr ( has_EXCDC_interface_v<Ntk> )
+    {
+      assert( !ntk.pattern_is_EXCDC( pattern ) );
+    }
     ++st.num_generated_patterns;
 
     /* re-simulate */

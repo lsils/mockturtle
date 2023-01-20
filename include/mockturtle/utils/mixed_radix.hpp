@@ -48,7 +48,7 @@ namespace mockturtle
  * called on the index lists \f$0, 0, 0\f$, \f$0, 0, 1\f$, \f$0, 0, 2\f$,
  * \f$\dots\f$, \f$1, 2, 1\f$, \f$1, 2, 2\f$.
  *
- * The callable `fn` expects two parameters which are an interator pair of the
+ * The callable `fn` expects two parameters which are an iterator pair of the
  * indexes.  If it returns a `bool`, the iteration is stopped, if the return
  * value is `false`.
  *

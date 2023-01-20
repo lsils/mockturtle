@@ -27,6 +27,7 @@
   \file aig.hpp
   \brief AIG logic network implementation
 
+  \author Alessandro Tempia Calvino
   \author Bruno Schmitt
   \author Hanyu Wang
   \author Heinz Riener
@@ -407,6 +408,41 @@ public:
   }
 #pragma endregion
 
+#pragma region Has node
+  std::optional<node> has_and( signal a, signal b )
+  {
+    /* order inputs */
+    if ( a.index > b.index )
+    {
+      std::swap( a, b );
+    }
+
+    /* trivial cases */
+    if ( a.index == b.index )
+    {
+      return ( a.complement == b.complement ) ? a.index : 0;
+    }
+    else if ( a.index == 0 )
+    {
+      return a.complement ? b.index : 0;
+    }
+
+    storage::element_type::node_type node;
+    node.children[0] = a;
+    node.children[1] = b;
+
+    /* structural hashing */
+    const auto it = _storage->hash.find( node );
+    if ( it != _storage->hash.end() )
+    {
+      assert( !is_dead( it->second ) );
+      return it->second;
+    }
+
+    return {};
+  }
+#pragma endregion
+
 #pragma region Restructuring
   std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal )
   {
@@ -507,7 +543,7 @@ public:
     if ( n == 0 || is_ci( n ) || is_dead( n ) )
       return;
 
-    /* delete the node (ignoring it's current fanout_size) */
+    /* delete the node (ignoring its current fanout_size) */
     auto& nobj = _storage->nodes[n];
     nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
     _storage->hash.erase( nobj );
@@ -532,6 +568,32 @@ public:
     }
   }
 
+  void revive_node( node const& n )
+  {
+    if ( !is_dead( n ) )
+      return;
+    
+    assert( n < _storage->nodes.size() );
+    auto& nobj = _storage->nodes[n];
+    nobj.data[0].h1 = UINT32_C( 0 ); /* fanout size 0, but not dead (like just created) */
+    _storage->hash[nobj] = n;
+
+    for ( auto const& fn : _events->on_add )
+    {
+      ( *fn )( n );
+    }
+
+    /* revive its children if dead, and increment their fanout_size */
+    for ( auto i = 0u; i < 2u; ++i )
+    {
+      if ( is_dead( nobj.children[i].index ) )
+      {
+        revive_node( nobj.children[i].index );
+      }
+      incr_fanout_size( nobj.children[i].index );
+    }
+  }
+
   inline bool is_dead( node const& n ) const
   {
     return ( _storage->nodes[n].data[0].h1 >> 31 ) & 1;
@@ -549,11 +611,20 @@ public:
       to_substitute.pop();
 
       signal _new = _curr;
-      while ( is_dead( get_node( _new ) ) )
+      /* find the real new node */
+      if ( is_dead( get_node( _new ) ) )
       {
-        const auto it = old_to_new.find( get_node( _new ) );
-        assert( it != old_to_new.end() );
-        _new = is_complemented( _new ) ? create_not( it->second ) : it->second;
+        auto it = old_to_new.find( get_node( _new ) );
+        while ( it != old_to_new.end() )
+        {
+          _new = is_complemented( _new ) ? create_not( it->second ) : it->second;
+          it = old_to_new.find( get_node( _new ) );
+        }
+      }
+      /* revive */
+      if ( is_dead( get_node( _new ) ) )
+      {
+        revive_node( get_node( _new ) );
       }
 
       for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
@@ -576,6 +647,72 @@ public:
         old_to_new.insert( { _old, _new } );
         take_out_node( _old );
       }
+    }
+  }
+
+  void substitute_node_no_restrash( node const& old_node, signal const& new_signal )
+  {
+    if ( is_dead( get_node( new_signal ) ) )
+    {
+      revive_node( get_node( new_signal ) );
+    }
+
+    for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
+    {
+      if ( is_ci( idx ) || is_dead( idx ) )
+        continue; /* ignore CIs and dead nodes */
+
+      /* replace_in_node(idx, old_node, new_signal) but without restrashing or constant propagation  */
+      auto& nobj = _storage->nodes[idx];
+      uint32_t fanin = 0u;
+      signal _new = new_signal;
+      if ( nobj.children[0].index == old_node )
+      {
+        fanin = 0u;
+        _new.complement ^= nobj.children[0].weight;
+      }
+      else if ( nobj.children[1].index == old_node )
+      {
+        fanin = 1u;
+        _new.complement ^= nobj.children[1].weight;
+      }
+      else
+      {
+        continue; /* not a fanout of old_node */
+      }
+
+      const auto old_child0 = signal{ nobj.children[0] };
+      const auto old_child1 = signal{ nobj.children[1] };
+
+      signal child1 = _new;
+      signal child0 = nobj.children[fanin ^ 1];
+      if ( child0.index > child1.index )
+      {
+        std::swap( child0, child1 );
+      }
+
+      _storage->hash.erase( nobj );
+      nobj.children[0] = child0;
+      nobj.children[1] = child1;
+      if ( _storage->hash.find( nobj ) == _storage->hash.end() )
+      {
+        _storage->hash[nobj] = idx;
+      }
+      _storage->nodes[new_signal.index].data[0].h1++;
+
+      for ( auto const& fn : _events->on_modified )
+      {
+        ( *fn )( idx, { old_child0, old_child1 } );
+      }
+    }
+
+    /* check outputs */
+    replace_in_outputs( old_node, new_signal );
+
+    /* recursively reset old node */
+    if ( old_node != new_signal.index )
+    {
+      take_out_node( old_node );
     }
   }
 

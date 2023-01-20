@@ -9,9 +9,12 @@
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/buffered.hpp>
+#include <mockturtle/networks/crossed.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/muxig.hpp>
 #include <mockturtle/views/binding_view.hpp>
+#include <mockturtle/views/rank_view.hpp>
 
 using namespace mockturtle;
 
@@ -89,6 +92,29 @@ TEST_CASE( "write MIG into Verilog file", "[write_verilog]" )
                       "  assign n5 = x0 | x1 ;\n"
                       "  assign n6 = ( x2 & n4 ) | ( x2 & n5 ) | ( n4 & n5 ) ;\n"
                       "  assign y0 = n6 ;\n"
+                      "endmodule\n" );
+}
+
+TEST_CASE( "write MuxIG into Verilog file", "[write_verilog]" )
+{
+  muxig_network ntk;
+
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+
+  const auto f1 = ntk.create_ite( a, b, c );
+  ntk.create_po( f1 );
+
+  std::ostringstream out;
+  write_verilog( ntk, out );
+
+  CHECK( out.str() == "module top( x0 , x1 , x2 , y0 );\n"
+                      "  input x0 , x1 , x2 ;\n"
+                      "  output y0 ;\n"
+                      "  wire n4 ;\n"
+                      "  assign n4 = x0 ? x1 : x2 ;\n"
+                      "  assign y0 = n4 ;\n"
                       "endmodule\n" );
 }
 
@@ -275,5 +301,68 @@ TEST_CASE( "write mapped network with multiple driven POs and register names int
                       "  nand2 g1( .a (data[0]), .b (data[1]), .Y (y[1]) );\n"
                       "  nand2 g2( .a (data[0]), .b (data[1]), .Y (y[2]) );\n"
                       "  inv2  g3( .a (y[1]), .Y (y[3]) );\n"
+                      "endmodule\n" );
+}
+
+TEST_CASE( "write buffered_crossed_klut into Verilog file", "[write_verilog]" )
+{
+  buffered_crossed_klut_network crossed;
+
+  // level 0
+  auto const x0 = crossed.create_pi();
+  auto const x1 = crossed.create_pi();
+
+  // level 1
+  auto const b4 = crossed.create_buf( x0 );
+  auto const [c5x0, c5x1] = crossed.create_crossing( x0, x1 );
+  auto const b6 = crossed.create_buf( x1 );
+
+  // level 2
+  auto const b7 = crossed.create_buf( b4 );
+  auto const [c8x0, c8x1] = crossed.create_crossing( b4, c5x1 );
+  auto const [c9x0, c9x1] = crossed.create_crossing( c5x0, b6 );
+  auto const b10 = crossed.create_buf( b6 );
+
+  // level 3
+  auto const n11 = crossed.create_nand( b7, c8x1 );
+  auto const n12 = crossed.create_or( c8x0, c9x1 );
+  auto const n13 = crossed.create_xor( c9x0, b10 );
+
+  crossed.create_po( n11 );
+  crossed.create_po( n12 );
+  crossed.create_po( n13 );
+
+  rank_view ranked( crossed ); // I just want `is_topologically_sorted = true` set by the view to prevent topo_view in write_verilog to mess the order up
+  std::ostringstream out;
+  write_verilog( ranked, out );
+  CHECK( out.str() == "module buffer( i , o );\n"
+                      "  input i ;\n"
+                      "  output o ;\n"
+                      "endmodule\n"
+                      "module inverter( i , o );\n"
+                      "  input i ;\n"
+                      "  output o ;\n"
+                      "endmodule\n"
+                      "module crossing( i1 , i2 , o1 , o2 );\n"
+                      "  input i1 , i2 ;\n"
+                      "  output o1 , o2 ;\n"
+                      "endmodule\n"
+                      "module top( x0 , x1 , y0 , y1 , y2 );\n"
+                      "  input x0 , x1 ;\n"
+                      "  output y0 , y1 , y2 ;\n"
+                      "  wire n4 , n5 , n6 , n7 , n8 , n9 , n10 , n11 , n12 , n13 ;\n"
+                      "  buffer buf_n4( .i (x0), .o (n4) );\n"
+                      "  crossing cross_n5( .i1 (x0), .i2 (x1), .o1 (n5_1), .o2 (n5_2) );\n"
+                      "  buffer buf_n6( .i (x1), .o (n6) );\n"
+                      "  buffer buf_n7( .i (n4), .o (n7) );\n"
+                      "  crossing cross_n8( .i1 (n4), .i2 (n5_2), .o1 (n8_1), .o2 (n8_2) );\n"
+                      "  crossing cross_n9( .i1 (n5_1), .i2 (n6), .o1 (n9_1), .o2 (n9_2) );\n"
+                      "  buffer buf_n10( .i (n6), .o (n10) );\n"
+                      "  assign n11 = ~n7 | ~n8_2 ;\n"
+                      "  assign n12 = n8_1 | n9_2 ;\n"
+                      "  assign n13 = n9_1 ^ n10 ;\n"
+                      "  assign y0 = n11 ;\n"
+                      "  assign y1 = n12 ;\n"
+                      "  assign y2 = n13 ;\n"
                       "endmodule\n" );
 }

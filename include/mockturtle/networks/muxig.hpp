@@ -212,6 +212,12 @@ inline muxig_signal muxig_network::create_ite( signal a, signal b, signal c )
 }
 
 template<>
+inline bool muxig_network::is_ite( node const& n ) const
+{
+  return true;
+}
+
+template<>
 inline bool muxig_network::is_mux( node const& n ) const
 {
   return true;

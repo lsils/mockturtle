@@ -326,6 +326,10 @@ public:
     {
       spec.initial_steps = *_lower_bound;
     }
+    if ( _upper_bound )
+    {
+      spec.max_nr_steps = *_upper_bound;
+    }
     spec[0] = function;
     bool with_dont_cares{ false };
     if ( !kitty::is_const0( dont_cares ) )

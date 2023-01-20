@@ -274,6 +274,21 @@ public:
     (void)op3;
   }
 
+  /*! \brief Callback method for parsed 2-to-1 multiplexer gate `LHS = OP1 ? OP2 : OP3 ;`.
+   *
+   * \param lhs Left-hand side of assignment
+   * \param op1 operand1 of assignment
+   * \param op2 operand2 of assignment
+   * \param op3 operand3 of assignment
+   */
+  virtual void on_mux21( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const
+  {
+    (void)lhs;
+    (void)op1;
+    (void)op2;
+    (void)op3;
+  }
+
   /*! \brief Callback method for parsed comments `// comment string`.
    *
    * \param comment Comment string
@@ -719,6 +734,21 @@ public:
                         ins.at( 2 ).first ? "~" : "", ins.at( 2 ).second );
   }
 
+  /*! \brief Callback method for writing a 2-to-1 multiplexer (ITE) assignment statement.
+   *
+   * \param out Output signal
+   * \param ins List of three input signals, in the order (if, then, else)
+   */
+  virtual void on_assign_mux21( std::string const& out, std::vector<std::pair<bool, std::string>> const& ins ) const
+  {
+    assert( ins.size() == 3u );
+    _os << fmt::format( "  assign {0} = {1}{2} ? {3}{4} : {5}{6} ;\n",
+                        out,
+                        ins.at( 0 ).first ? "~" : "", ins.at( 0 ).second,
+                        ins.at( 1 ).first ? "~" : "", ins.at( 1 ).second,
+                        ins.at( 2 ).first ? "~" : "", ins.at( 2 ).second );
+  }
+
   /*! \brief Callback method for writing an assignment statement with unknown operator.
    *
    * \param out Output signal
@@ -829,6 +859,11 @@ public:
                                       {
                                         assert( inputs.size() == 3u );
                                         reader.on_maj3( output, inputs[0], inputs[1], inputs[2] );
+                                      }
+                                      else if ( type == "mux21" )
+                                      {
+                                        assert( inputs.size() == 3u );
+                                        reader.on_mux21( output, inputs[0], inputs[1], inputs[2] );
                                       }
                                       else
                                       {
@@ -1566,6 +1601,13 @@ public:
       auto op = sm[3];
       if ( sm[6] != op )
       {
+        if ( sm[3] == "?" && sm[6] == ":" )
+        {
+          on_action.call_deferred<GATE_FN>( /* dependencies */ { arg0.first, arg1.first, arg2.first }, { lhs },
+                                            /* gate-function params */ std::make_tuple( args, lhs, "mux21" )
+                                          );
+          return true;
+        }
         return false;
       }
 

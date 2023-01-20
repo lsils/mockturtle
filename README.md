@@ -36,10 +36,10 @@ aig.foreach_node( [&]( auto node ) {
 
 ## Installation requirements
 
-A modern compiler is required to build *mockturtle*.  We are continously
+A modern compiler is required to build *mockturtle*.  We are continuously
 testing with Clang 12.0.1, GCC 9.3.0, and GCC 10.2.0.  More information can be
 found in the [documentation](http://mockturtle.readthedocs.io/en/latest/installation.html).
 
-## EPFL logic sythesis libraries
+## EPFL logic synthesis libraries
 
 mockturtle is part of the [EPFL logic synthesis](https://lsi.epfl.ch/page-138455-en.html) libraries.  The other libraries and several examples on how to use and integrate the libraries can be found in the [logic synthesis tool showcase](https://github.com/lsils/lstools-showcase).
