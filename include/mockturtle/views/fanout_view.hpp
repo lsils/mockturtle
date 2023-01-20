@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,15 +27,16 @@
   \file fanout_view.hpp
   \brief Implements fanout for a network
 
+  \author Hanyu Wang
   \author Heinz Riener
   \author Mathias Soeken
 */
 
 #pragma once
 
-#include "../traits.hpp"
-#include "../networks/events.hpp"
 #include "../networks/detail/foreach.hpp"
+#include "../networks/events.hpp"
+#include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "immutable_view.hpp"
 
@@ -48,9 +49,9 @@ namespace mockturtle
 
 struct fanout_view_params
 {
-  bool update_on_add{true};
-  bool update_on_modified{true};
-  bool update_on_delete{true};
+  bool update_on_add{ true };
+  bool update_on_modified{ true };
+  bool update_on_delete{ true };
 };
 
 /*! \brief Implements `foreach_fanout` methods for networks.
@@ -85,13 +86,11 @@ class fanout_view<Ntk, false> : public Ntk
 {
 public:
   using storage = typename Ntk::storage;
-  using node    = typename Ntk::node;
-  using signal  = typename Ntk::signal;
+  using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
   explicit fanout_view( fanout_view_params const& ps = {} )
-    : Ntk()
-    , _fanout( *this )
-    , _ps( ps )
+      : Ntk(), _fanout( *this ), _ps( ps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -103,9 +102,7 @@ public:
   }
 
   explicit fanout_view( Ntk const& ntk, fanout_view_params const& ps = {} )
-    : Ntk( ntk )
-    , _fanout( ntk )
-    , _ps( ps )
+      : Ntk( ntk ), _fanout( ntk ), _ps( ps )
   {
     static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -118,9 +115,7 @@ public:
 
   /*! \brief Copy constructor. */
   fanout_view( fanout_view<Ntk, false> const& other )
-    : Ntk( other )
-    , _fanout( other._fanout )
-    , _ps( other._ps )
+      : Ntk( other ), _fanout( other._fanout ), _ps( other._ps )
   {
     register_events();
   }
@@ -176,11 +171,11 @@ public:
 
     std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
-    to_substitute.push( {old_node, new_signal} );
+    to_substitute.push( { old_node, new_signal } );
 
     while ( !to_substitute.empty() )
     {
-      const auto [_old, _new] = to_substitute.top();
+      const auto [_old, _curr] = to_substitute.top();
       to_substitute.pop();
 
       signal _new = _curr;
@@ -216,7 +211,11 @@ public:
       Ntk::replace_in_outputs( _old, _new );
 
       /* reset fan-in of old node */
-      Ntk::take_out_node( _old );
+      if ( _old != _new.index ) /* substitute a node using itself*/
+      {
+        old_to_new.insert( { _old, _new } );
+        Ntk::take_out_node( _old );
+      }
     }
   }
 
@@ -237,7 +236,8 @@ private:
     {
       modified_event = Ntk::events().register_modified_event( [this]( auto const& n, auto const& previous ) {
         (void)previous;
-        for ( auto const& f : previous ) {
+        for ( auto const& f : previous )
+        {
           _fanout[f].erase( std::remove( _fanout[f].begin(), _fanout[f].end(), n ), _fanout[f].end() );
         }
         Ntk::foreach_fanin( n, [&, this]( auto const& f ) {
@@ -279,15 +279,15 @@ private:
   {
     _fanout.reset();
 
-    this->foreach_gate( [&]( auto const& n ){
-        this->foreach_fanin( n, [&]( auto const& c ){
-            auto& fanout = _fanout[c];
-            if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
-            {
-              fanout.push_back( n );
-            }
-          });
-      });
+    this->foreach_gate( [&]( auto const& n ) {
+      this->foreach_fanin( n, [&]( auto const& c ) {
+        auto& fanout = _fanout[c];
+        if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
+        {
+          fanout.push_back( n );
+        }
+      } );
+    } );
   }
 
   node_map<std::vector<node>, Ntk> _fanout;
