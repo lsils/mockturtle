@@ -47,7 +47,7 @@ int main()
 
   /* run the actual experiments */
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "cost_generic_resub", "benchmark", "c1", "c2", "c3", "c4", "_c1", "_c2", "_c3", "_c4", "runtime", "cec" );
-  for ( auto const& benchmark : epfl_benchmarks() )
+  for ( auto const& benchmark : iwls_benchmarks() )
   {
     /* skip these for "collect all" experiments */
     // if (benchmark == "hyp") continue; 
@@ -82,7 +82,7 @@ int main()
     cost_generic_resub_params ps;
     cost_generic_resub_stats st;
     ps.verbose = false;
-    // ps.rps.max_solutions = 1; /* = 1: collect one, =0: collect all */
+    ps.rps.max_solutions = 1; /* = 1: collect one, =0: collect all */
     // ps.rps.use_esop = true; /* true: use esop, false: no esop */
 
     stopwatch<>::duration time_tot{ 0 };
@@ -107,7 +107,7 @@ int main()
     auto _c4 = cost_view( xag, costfn_4 ).get_cost();
 
     auto cec = true;
-    cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
+    // cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
     // cec = xag.num_gates() > 10000 ? true : abc_cec( xag, benchmark );
     exp( benchmark, c1, c2, c3, c4, _c1, _c2, _c3, _c4, run_time, cec );
   }
