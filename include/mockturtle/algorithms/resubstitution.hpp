@@ -505,6 +505,7 @@ public:
   }
 
   void init() {}
+  void update() {}
 
   std::optional<signal> run( node const& n, std::vector<node> const& leaves, std::vector<node> const& divs, std::vector<node> const& mffc, mffc_result_t potential_gain, uint32_t& last_gain )
   {
@@ -694,9 +695,13 @@ public:
       st.estimated_gain += last_gain;
 
       /* update network */
-      call_with_stopwatch( st.time_callback, [&]() {
+      bool updated = call_with_stopwatch( st.time_callback, [&]() {
         return callback( ntk, n, *g );
       } );
+      if ( updated )
+      {
+        resub_engine.update();
+      }
 
       return true; /* next */
     } );

@@ -292,4 +292,9 @@ struct is_complete_truth_table<kitty::partial_truth_table> : std::false_type
 {
 };
 
+template<>
+struct is_completely_specified_truth_table<kitty::partial_truth_table> : std::true_type
+{
+};
+
 } // namespace kitty

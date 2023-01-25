@@ -33,9 +33,11 @@
 #pragma once
 
 #include "../traits.hpp"
-#include "../views/names_view.hpp"
 #include "aig.hpp"
+#include "crossed.hpp"
 #include "mig.hpp"
+
+#include <cassert>
 
 namespace mockturtle
 {
@@ -43,6 +45,8 @@ namespace mockturtle
 class buffered_aig_network : public aig_network
 {
 public:
+  static constexpr bool is_buffered_network_type = true;
+
 #pragma region Create unary functions
   signal create_buf( signal const& a )
   {
@@ -290,6 +294,8 @@ public:
 class buffered_mig_network : public mig_network
 {
 public:
+  static constexpr bool is_buffered_network_type = true;
+
 #pragma region Create unary functions
   signal create_buf( signal const& a )
   {
@@ -552,24 +558,105 @@ public:
 #pragma endregion
 }; /* buffered_mig_network */
 
-template<>
-struct is_buffered_network_type<buffered_aig_network> : std::true_type
+class buffered_crossed_klut_network : public crossed_klut_network
 {
-};
+public:
+  static constexpr bool is_buffered_network_type = true;
 
-template<>
-struct is_buffered_network_type<names_view<buffered_aig_network>> : std::true_type
-{
-};
+#pragma region Create unary functions
+  signal create_buf( signal const& a )
+  {
+    return _create_node( { a }, 2 );
+  }
 
-template<>
-struct is_buffered_network_type<buffered_mig_network> : std::true_type
-{
-};
+  void invert( node const& n )
+  {
+    if ( _storage->nodes[n].data[1].h1 == 2 )
+      _storage->nodes[n].data[1].h1 = 3;
+    else if ( _storage->nodes[n].data[1].h1 == 3 )
+      _storage->nodes[n].data[1].h1 = 2;
+    else
+      assert( false );
+  }
+#pragma endregion
 
-template<>
-struct is_buffered_network_type<names_view<buffered_mig_network>> : std::true_type
-{
-};
+#pragma region Crossings
+  /*! \brief Merges two buffer nodes into a crossing cell
+   *
+   * After this operation, the network will not be in a topological order. Additionally, buf1 and buf2 will be dangling.
+   *
+   * \param buf1 First buffer node.
+   * \param buf2 Second buffer node.
+   * \return The created crossing cell.
+   */
+  node merge_into_crossing( node const& buf1, node const& buf2 )
+  {
+    assert( is_buf( buf1 ) && is_buf( buf2 ) );
+
+    auto const& in_buf1 = _storage->nodes[buf1].children[0];
+    auto const& in_buf2 = _storage->nodes[buf2].children[0];
+
+    node out_buf1{}, out_buf2{};
+    uint32_t fanin_index1 = std::numeric_limits<uint32_t>::max(), fanin_index2 = std::numeric_limits<uint32_t>::max();
+    foreach_node( [&]( node const& n ) {
+      foreach_fanin( n, [&]( auto const& f, auto i ) {
+        if ( auto const fin = get_node( f ); fin == buf1 )
+        {
+          out_buf1 = n;
+          fanin_index1 = i;
+        }
+        else if ( fin == buf2 )
+        {
+          out_buf2 = n;
+          fanin_index2 = i;
+        }
+      } );
+    } );
+    assert( out_buf1 != 0 && out_buf2 != 0 );
+    assert( fanin_index1 != std::numeric_limits<uint32_t>::max() && fanin_index2 != std::numeric_limits<uint32_t>::max() );
+
+    auto const [fout1, fout2] = create_crossing( in_buf1, in_buf2 );
+
+    _storage->nodes[out_buf1].children[fanin_index1] = fout1;
+    _storage->nodes[out_buf2].children[fanin_index2] = fout2;
+
+    /* decrease ref-count to children (was increased in `create_crossing`) */
+    _storage->nodes[in_buf1.index].data[0].h1--;
+    _storage->nodes[in_buf2.index].data[0].h1--;
+
+    _storage->nodes[buf1].children.clear();
+    _storage->nodes[buf2].children.clear();
+
+    return get_node( fout1 );
+  }
+
+#pragma endregion
+
+#pragma region Structural properties
+  // including buffers, splitters, and inverters
+  bool is_buf( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 2 || _storage->nodes[n].data[1].h1 == 3;
+  }
+
+  bool is_not( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == 3;
+  }
+#pragma endregion
+
+#pragma region Node and signal iterators
+  /* Note: crossings are included; buffers, splitters, inverters are not */
+  template<typename Fn>
+  void foreach_gate( Fn&& fn ) const
+  {
+    auto r = range<uint64_t>( 2u, _storage->nodes.size() ); /* start from 2 to avoid constants */
+    detail::foreach_element_if(
+        r.begin(), r.end(),
+        [this]( auto n ) { return !is_ci( n ) && !is_buf( n ); },
+        fn );
+  }
+#pragma endregion
+}; /* buffered_crossed_klut_network */
 
 } // namespace mockturtle

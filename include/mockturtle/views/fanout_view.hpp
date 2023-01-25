@@ -164,7 +164,11 @@ public:
     if ( Ntk::get_node( new_signal ) == old_node && !Ntk::is_complemented( new_signal ) )
       return;
 
-    assert( !Ntk::is_dead( Ntk::get_node( new_signal ) ) );
+    if ( Ntk::is_dead( Ntk::get_node( new_signal ) ) )
+    {
+      Ntk::revive_node( Ntk::get_node( new_signal ) );
+    }
+
     std::unordered_map<node, signal> old_to_new;
     std::stack<std::pair<node, signal>> to_substitute;
     to_substitute.push( { old_node, new_signal } );
@@ -175,11 +179,20 @@ public:
       to_substitute.pop();
 
       signal _new = _curr;
-      while ( Ntk::is_dead( Ntk::get_node( _new ) ) )
+      /* find the real new node */
+      if ( Ntk::is_dead( Ntk::get_node( _new ) ) )
       {
-        const auto it = old_to_new.find( Ntk::get_node( _new ) );
-        assert( it != old_to_new.end() );
-        _new = Ntk::is_complemented( _new ) ? Ntk::create_not( it->second ) : it->second;
+        auto it = old_to_new.find( Ntk::get_node( _new ) );
+        while ( it != old_to_new.end() )
+        {
+          _new = Ntk::is_complemented( _new ) ? Ntk::create_not( it->second ) : it->second;
+          it = old_to_new.find( Ntk::get_node( _new ) );
+        }
+      }
+      /* revive */
+      if ( Ntk::is_dead( Ntk::get_node( _new ) ) )
+      {
+        Ntk::revive_node( Ntk::get_node( _new ) );
       }
 
       if ( Ntk::get_node( _new ) == _old && !Ntk::is_complemented( _new ) )
