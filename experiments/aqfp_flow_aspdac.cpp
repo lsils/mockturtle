@@ -121,7 +121,6 @@ int main()
     aps.aqfp_assumptions_ps = aqfp_ps;
     aps.backwards_first = buf_inst.is_scheduled_ASAP();
     aps.iterations = 250;
-    aps.verbose = true;
     aps.retime_splitters = true;
 
     /* chunk movement params */

@@ -746,6 +746,9 @@ private:
  * This function implements a retiming algorithm for registers minimization.
  * The only supported network type is the `generic_network`.
  * The algorithm excecutes the retiming inplace.
+ * 
+ * Currently, only area-based retiming is implemented. Mixed register types
+ * such as (active high/low, rising/falling edge) are not supported yet.
  *
  * **Required network functions:**
  * - `size`
@@ -757,6 +760,9 @@ private:
  * - `foreach_po`
  * - `foreach_node`
  * - `fanout_size`
+ * - `has_incr_value`
+ * - `has_decr_value`
+ * - `has_get_fanin0`
  *
  * \param ntk Network
  * \param ps Retiming params
