@@ -654,9 +654,9 @@ private:
   void init_cuts()
   {
     /* init constant cut */
-    add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) ) );
+    add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) ), false );
     if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
-      add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ) );
+      add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ), true );
 
     /* init PIs cuts */
     ntk.foreach_pi( [&]( auto const& n ) {
@@ -1661,13 +1661,16 @@ private:
     }
   }
 
-  void add_zero_cut( uint32_t index )
+  void add_zero_cut( uint32_t index, bool phase )
   {
     auto& cut = cuts[index].add_cut( &index, &index ); /* fake iterator for emptyness */
 
     if constexpr ( StoreFunction )
     {
-      cut->func_id = 0;
+      if ( phase )
+        cut->func_id = 1;
+      else
+        cut->func_id = 0;
     }
   }
 
