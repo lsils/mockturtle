@@ -645,7 +645,7 @@ public:
 
   bool is_not( node const& n ) const
   {
-    return _storage->nodes[n].children[0].weight;
+    return _storage->nodes[n].children.size() == 1 && _storage->nodes[n].children[0].weight;
   }
 
   bool is_maj( node const& n ) const

@@ -27,6 +27,7 @@
   \file topo_view.hpp
   \brief Reimplements foreach_node to guarantee topological order
 
+  \author Alessandro Tempia Calvino
   \author Heinz Riener
   \author Mathias Soeken
   \author Max Austin

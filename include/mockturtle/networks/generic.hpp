@@ -120,9 +120,26 @@ public:
     _init();
   }
 
+  generic_network( std::shared_ptr<generic_storage> storage, std::shared_ptr<std::unordered_map<uint64_t, register_t>> register_information )
+      : _storage( storage ),
+        _events( std::make_shared<decltype( _events )::element_type>() ),
+        _register_information( register_information )
+  {
+    _init();
+  }
+
+  generic_network clone() const
+  {
+    return { std::make_shared<generic_storage>( *_storage ), std::make_shared<std::unordered_map<uint64_t, register_t>>( *_register_information ) };
+  }
+
 protected:
   inline void _init()
   {
+    /* already initialized */
+    if ( _storage->nodes.size() > 1 ) 
+      return;
+
     /* reserve the second node for constant 1 */
     _storage->nodes.emplace_back();
 
@@ -609,7 +626,7 @@ public:
 
   auto num_gates() const
   {
-    return static_cast<uint32_t>( _storage->nodes.size() - _storage->inputs.size() - 2 );
+    return static_cast<uint32_t>( _storage->nodes.size() - _storage->inputs.size() - _storage->outputs.size() - 2 );
   }
 
   uint32_t fanin_size( node const& n ) const

@@ -72,6 +72,7 @@ TEST_CASE( "buffered networks", "[buffered]" )
 {
   test_buffered_network<buffered_aig_network>();
   test_buffered_network<buffered_mig_network>();
+  test_buffered_network<buffered_aqfp_network>();
 }
 
 TEST_CASE( "is_buffered_network_type", "[buffered]" )
@@ -79,8 +80,10 @@ TEST_CASE( "is_buffered_network_type", "[buffered]" )
   CHECK( is_buffered_network_type_v<buffered_aig_network> );
   CHECK( is_buffered_network_type_v<buffered_mig_network> );
   CHECK( is_buffered_network_type_v<buffered_crossed_klut_network> );
+  CHECK( is_buffered_network_type_v<buffered_aqfp_network> );
 
   CHECK( !is_buffered_network_type_v<aig_network> );
   CHECK( !is_buffered_network_type_v<mig_network> );
   CHECK( !is_buffered_network_type_v<klut_network> );
+  CHECK( !is_buffered_network_type_v<aqfp_network> );
 }
