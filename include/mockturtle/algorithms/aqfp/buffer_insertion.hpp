@@ -959,7 +959,7 @@ private:
 
     /* get fanout levels */
     ntk.foreach_fanout( n, [&]( auto const& f ) {
-      level_assignment.push_back( { f, _levels[f], 0 } );
+      level_assignment.push_back( { ntk.node_to_index( f ), _levels[f], 0 } );
     } );
 
     /* dangling PI */

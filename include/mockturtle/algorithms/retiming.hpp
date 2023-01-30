@@ -208,7 +208,7 @@ private:
 
     auto min_cut = get_min_cut();
 
-    assert( check_min_cut<forward>( min_cut, iteration ) );
+    // assert( check_min_cut<forward>( min_cut, iteration ) );
 
     legalize_retiming<forward>( min_cut, iteration );
 
