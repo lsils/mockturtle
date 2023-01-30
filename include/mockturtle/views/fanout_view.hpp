@@ -292,6 +292,7 @@ private:
             fanout.push_back( n );
           }
         } );
+        return true;
       } );
     }
     else
