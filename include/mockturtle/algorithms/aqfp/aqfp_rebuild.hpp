@@ -34,6 +34,7 @@
 
 #include <algorithm>
 #include <list>
+#include <random>
 #include <vector>
 
 #include "../../networks/buffered.hpp"
@@ -41,8 +42,6 @@
 #include "../../utils/node_map.hpp"
 #include "../../utils/stopwatch.hpp"
 #include "../../views/depth_view.hpp"
-#include "../../views/fanout_view.hpp"
-#include "../../views/topo_view.hpp"
 #include "aqfp_assumptions.hpp"
 #include "aqfp_cleanup.hpp"
 #include "buffer_insertion.hpp"
@@ -92,7 +91,7 @@ public:
 
 public:
   explicit aqfp_reconstruct_impl( buffered_aqfp_network const& ntk, aqfp_reconstruct_params const& ps, aqfp_reconstruct_stats& st )
-      : _ntk( ntk ), _ps( ps ), _st( st )
+      : _ntk( ntk ), _ps( ps ), _st( st ), _topo_order()
   {
   }
 
@@ -140,20 +139,17 @@ public:
 private:
   void remove_splitter_trees( aqfp_network& res, node_map<signal, buffered_aqfp_network>& old2new )
   {
-    topo_view_params tps;
-    tps.deterministic_randomization = _ps.det_randomization;
-    tps.seed = _ps.seed;
-    topo_view topo{ _ntk, tps };
+    topo_sorting();
 
     old2new[_ntk.get_constant( false )] = res.get_constant( false );
-
     _ntk.foreach_pi( [&]( auto const& n ) {
       old2new[n] = res.create_pi();
     } );
 
-    topo.foreach_node( [&]( auto const& n ) {
+    for ( auto const& n : _topo_order )
+    {
       if ( _ntk.is_pi( n ) || _ntk.is_constant( n ) )
-        return;
+        continue;
 
       std::vector<signal> children;
       _ntk.foreach_fanin( n, [&]( auto const& f ) {
@@ -172,17 +168,94 @@ private:
       {
         old2new[n] = res.create_maj( children );
       }
-    } );
+    }
 
     _ntk.foreach_po( [&]( auto const& f ) {
       res.create_po( old2new[f] ^ _ntk.is_complemented( f ) );
     } );
   }
 
+  void topo_sorting()
+  {
+    _ntk.incr_trav_id();
+    _ntk.incr_trav_id();
+    _topo_order.reserve( _ntk.size() );
+
+    seed = _ps.seed;
+
+    /* constants and PIs */
+    const auto c0 = _ntk.get_node( _ntk.get_constant( false ) );
+    _topo_order.push_back( c0 );
+    _ntk.set_visited( c0, _ntk.trav_id() );
+
+    if ( const auto c1 = _ntk.get_node( _ntk.get_constant( true ) ); _ntk.visited( c1 ) != _ntk.trav_id() )
+    {
+      _topo_order.push_back( c1 );
+      _ntk.set_visited( c1, _ntk.trav_id() );
+    }
+
+    _ntk.foreach_ci( [&]( auto const& n ) {
+      if ( _ntk.visited( n ) != _ntk.trav_id() )
+      {
+        _topo_order.push_back( n );
+        _ntk.set_visited( n, _ntk.trav_id() );
+      }
+    } );
+
+    _ntk.foreach_co( [&]( auto const& f ) {
+      /* node was already visited */
+      if ( _ntk.visited( _ntk.get_node( f ) ) == _ntk.trav_id() )
+        return;
+
+      topo_sorting_rec( _ntk.get_node( f ) );
+    } );
+  }
+
+  void topo_sorting_rec( node const& n )
+  {
+    /* is permanently marked? */
+    if ( _ntk.visited( n ) == _ntk.trav_id() )
+      return;
+
+    /* ensure that the node is not temporarily marked */
+    assert( _ntk.visited( n ) != _ntk.trav_id() - 1 );
+
+    /* mark node temporarily */
+    _ntk.set_visited( n, _ntk.trav_id() - 1 );
+
+    /* mark children */
+    if ( !_ps.det_randomization )
+    {
+      _ntk.foreach_fanin( n, [this]( signal const& f ) {
+        topo_sorting_rec( _ntk.get_node( f ) );
+      } );
+    }
+    else
+    {
+      std::vector<node> fanins;
+      _ntk.foreach_fanin( n, [this, &fanins]( signal const& f ) {
+        fanins.push_back( _ntk.get_node( f ) );
+      } );
+      std::shuffle( fanins.begin(), fanins.end(), std::default_random_engine( seed++ ) );
+
+      for ( node const& g : fanins )
+        topo_sorting_rec( g );
+    }
+
+    /* mark node n permanently */
+    _ntk.set_visited( n, _ntk.trav_id() );
+
+    /* visit node */
+    _topo_order.push_back( n );
+  }
+
 private:
   buffered_aqfp_network const& _ntk;
   aqfp_reconstruct_params const& _ps;
   aqfp_reconstruct_stats& _st;
+
+  std::vector<node> _topo_order;
+  std::default_random_engine::result_type seed{ 1 };
 };
 
 } /* namespace detail */
