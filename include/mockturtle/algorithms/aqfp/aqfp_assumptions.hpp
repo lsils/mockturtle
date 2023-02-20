@@ -35,21 +35,61 @@
 namespace mockturtle
 {
 
+using aqfp_assumptions = aqfp_assumptions_legacy;
+
+/*! \brief More realistic AQFP technology assumptions. */
+struct aqfp_assumptions_realistic
+{
+  /*! \brief Whether CIs and COs need to be path-balanced. */
+  bool balance_cios{ false };
+
+  /*! \brief Number of phases per clock cycle (for phase alignment). */
+  uint32_t num_phases{ 4u };
+
+  /*! \brief The maximum number of fanouts a splitter/buffer can have. */
+  uint32_t splitter_capacity{ 3u };
+
+  /*! \brief The maximum number of fanouts a CI can have. */
+  uint32_t ci_capacity{ 1u }; // simplicity
+  //uint32_t ci_capacity{ 2u }; // best possible
+
+  /*! \brief The phase offsets (after a change in register input) when new register output is available.
+   *
+   * Assumes that the register inputs (D and E) are scheduled at phase 0 (i.e., the last phase of
+   * the previous clock cycle), a new state is available to be taken at these numbers of phases
+   * afterwards.
+   *
+   * Each CI must be scheduled at a level `num_phases * k + ci_phases[i]` (for any `i`; for any
+   * integer `k >= 0` when `balance_cios = false`, or `k=0` otherwise).
+   *
+   * Each CO (a node with external reference) must be scheduled at a level being a multiple of
+   * `num_phases` (i.e., an imaginary CO node should be placed at a level `num_phases * k + 1`).
+   */
+  std::vector<uint32_t> ci_phases{ { 4u } }; // simplicity
+  //std::vector<uint32_t> ci_phases{ { 3u, 4u, 5u } }; // best possible
+
+  /*! \brief The maximum number of fanouts a mega splitter can have. */
+  //uint32_t mega_splitter_capacity{ 7u };
+
+  /*! \brief Maximum phase-skip (in consideration of clock skew). */
+  uint32_t max_phase_skip{ 4u };
+};
+
 /*! \brief AQFP technology assumptions.
  *
  * POs count toward the fanout sizes and always have to be branched.
  * If PIs need to be balanced, then they must also need to be branched.
  */
-struct aqfp_assumptions
+struct aqfp_assumptions_legacy
 {
   /*! \brief Whether PIs need to be branched with splitters. */
-  bool branch_pis{ false };
+  bool branch_pis{ true };
 
   /*! \brief Whether PIs need to be path-balanced. */
   bool balance_pis{ false };
 
   /*! \brief Whether POs need to be path-balanced. */
-  bool balance_pos{ true };
+  bool balance_pos{ false };
 
   /*! \brief The maximum number of fanouts each splitter (buffer) can have. */
   uint32_t splitter_capacity{ 3u };
