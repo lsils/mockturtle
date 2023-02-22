@@ -43,11 +43,21 @@ struct aqfp_assumptions_realistic
   /*! \brief Whether CIs and COs need to be path-balanced. */
   bool balance_cios{ false };
 
-  /*! \brief Number of phases per clock cycle (for phase alignment). */
+  /*! \brief Ignores the complementations of COs because they can be merged into register inputs. */
+  bool ignore_co_negation{ true };
+
+  /*! \brief Number of phases per clock cycle (for phase alignment).
+   *
+   * Each CO (a node with external reference) must be scheduled at a level being a multiple of
+   * `num_phases` (i.e., an imaginary CO node should be placed at a level `num_phases * k + 1`).
+   */
   uint32_t num_phases{ 4u };
 
   /*! \brief The maximum number of fanouts a splitter/buffer can have. */
   uint32_t splitter_capacity{ 3u };
+
+  /*! \brief The maximum number of fanouts a mega splitter can have. */
+  //uint32_t mega_splitter_capacity{ 7u };
 
   /*! \brief The maximum number of fanouts a CI can have. */
   uint32_t ci_capacity{ 1u }; // simplicity
@@ -59,17 +69,13 @@ struct aqfp_assumptions_realistic
    * the previous clock cycle), a new state is available to be taken at these numbers of phases
    * afterwards.
    *
+   * An ascending order is assumed. At least one element should be given.
+   *
    * Each CI must be scheduled at a level `num_phases * k + ci_phases[i]` (for any `i`; for any
    * integer `k >= 0` when `balance_cios = false`, or `k=0` otherwise).
-   *
-   * Each CO (a node with external reference) must be scheduled at a level being a multiple of
-   * `num_phases` (i.e., an imaginary CO node should be placed at a level `num_phases * k + 1`).
    */
   std::vector<uint32_t> ci_phases{ { 4u } }; // simplicity
   //std::vector<uint32_t> ci_phases{ { 3u, 4u, 5u } }; // best possible
-
-  /*! \brief The maximum number of fanouts a mega splitter can have. */
-  //uint32_t mega_splitter_capacity{ 7u };
 
   /*! \brief Maximum phase-skip (in consideration of clock skew). */
   uint32_t max_phase_skip{ 4u };
@@ -94,5 +100,39 @@ struct aqfp_assumptions_legacy
   /*! \brief The maximum number of fanouts each splitter (buffer) can have. */
   uint32_t splitter_capacity{ 3u };
 };
+
+/* Temporary helper function to bridge old and new code. */
+inline aqfp_assumptions_realistic legacy_to_realistic( aqfp_assumptions_legacy const& legacy )
+{
+  aqfp_assumptions_realistic realistic;
+
+  if ( !legacy.branch_pis )
+  {
+    realistic.ci_capacity = std::numeric_limits<uint32_t>::max();
+  }
+  else
+  {
+    realistic.ci_capacity = 1u;
+  }
+
+  if ( legacy.balance_pis && legacy.balance_pos )
+  {
+    realistic.balance_cios = true;
+  }
+  else if ( !legacy.balance_pis && !legacy.balance_pos )
+  {
+    realistic.balance_cios = false;
+  }
+  else
+  {
+    std::cerr << "[e] Cannot convert this combinaiton of assumptions.\n";
+  }
+
+  realistic.splitter_capacity = legacy.splitter_capacity;
+  realistic.num_phases = 1u; // no phase alignment
+  realistic.ci_phases = {0u}; // PIs at level 0
+  realistic.max_phase_skip = std::numeric_limits<uint32_t>::max(); // no clock skew issue
+  return realistic;
+}
 
 } // namespace mockturtle

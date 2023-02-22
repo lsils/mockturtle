@@ -57,7 +57,7 @@ namespace mockturtle
 struct buffer_insertion_params
 {
   /*! \brief Technology assumptions. */
-  aqfp_assumptions assume;
+  aqfp_assumptions_realistic assume;
 
   /*! \brief The scheduling strategy to get the initial depth assignment.
    * - `provided` = An initial level assignment is given in the constructor, thus
@@ -178,7 +178,7 @@ public:
   using signal = typename Ntk::signal;
 
   explicit buffer_insertion( Ntk const& ntk, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _external_ref_count_neg( _ntk ), _num_buffers( _ntk ), _min_level( _ntk ), _max_level( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _po_levels( _ntk.num_pos(), 0u ), _timeframes( _ntk ), _fanouts( _ntk ), _num_buffers( _ntk ), _min_level( _ntk ), _max_level( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -194,13 +194,15 @@ public:
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
 
-    assert( !( _ps.assume.balance_pis && !_ps.assume.branch_pis ) && "Does not make sense to balance but not branch PIs" );
     assert( _ps.scheduling != buffer_insertion_params::provided );
-    initialize_external_ref_counts();
+
+    // checks for assumptions
+    assert( _ps.assume.ci_phases.size() > 0 );
+    assert( _ps.assume.ignore_co_negation ); // consideration of CO negation is too complicated and neglected for now
   }
 
-  explicit buffer_insertion( Ntk const& ntk, node_map<uint32_t, Ntk> const& levels, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( levels ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _external_ref_count_neg( _ntk ), _num_buffers( _ntk ), _min_level( _ntk ), _max_level( _ntk )
+  explicit buffer_insertion( Ntk const& ntk, node_map<uint32_t, Ntk> const& levels, std::vector<uint32_t> const& po_levels, buffer_insertion_params const& ps = {} )
+      : _ntk( ntk ), _ps( ps ), _levels( levels ), _po_levels( po_levels ), _timeframes( _ntk ), _fanouts( _ntk ), _num_buffers( _ntk ), _min_level( _ntk ), _max_level( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -216,9 +218,8 @@ public:
     static_assert( has_set_visited_v<Ntk>, "Ntk does not implement the set_visited method" );
     static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
 
-    assert( !( _ps.assume.balance_pis && !_ps.assume.branch_pis ) && "Does not make sense to balance but not branch PIs" );
     assert( _ps.scheduling == buffer_insertion_params::provided );
-    initialize_external_ref_counts();
+    assert( _po_levels.size() == _ntk.num_pos() );
   }
 
   /*! \brief Insert buffers and obtain a buffered network.
@@ -226,13 +227,36 @@ public:
    * to store the buffer-insertion result
    * \param pLevels A pointer to a node map which will store the resulting
    * level assignment
+   * \param pPOLevels A pointer to a vector which will store the resulting PO lvels
+   * (resize to ntk.num_pos before calling to avoid memory reallocation)
    * \return The number of buffers in the resulting network
    */
   template<class BufNtk>
-  uint32_t run( BufNtk& bufntk, node_map<uint32_t, Ntk>* pLevels = nullptr )
+  uint32_t run( BufNtk& bufntk, node_map<uint32_t, Ntk>* pLevels = nullptr, std::vector<uint32_t>* pPOLevels = nullptr )
   {
-    dry_run( pLevels );
+    dry_run( pLevels, pPOLevels );
     dump_buffered_network( bufntk );
+    return num_buffers();
+  }
+
+  /*! \brief Insert buffers and obtain a buffered network.
+   * \param bufntk An empty network of an appropriate buffered network type to
+   * to store the buffer-insertion result
+   * \param pi_levels A pointer to a vector which will store the PI level assignment
+   * \return The number of buffers in the resulting network
+   */
+  template<class BufNtk>
+  uint32_t run( BufNtk& bufntk, std::vector<uint32_t>& pi_levels )
+  {
+    dry_run();
+    dump_buffered_network( bufntk );
+
+    pi_levels.clear();
+    pi_levels.reserve( _ntk.num_pis() );
+    _ntk.foreach_pi( [&]( auto n ){
+      pi_levels.emplace_back( _levels[n] );
+    } );
+
     return num_buffers();
   }
 
@@ -246,7 +270,7 @@ public:
    * level assignment
    * \return The number of buffers in the resulting network
    */
-  uint32_t dry_run( node_map<uint32_t, Ntk>* pLevels = nullptr )
+  uint32_t dry_run( node_map<uint32_t, Ntk>* pLevels = nullptr, std::vector<uint32_t>* pPOLevels = nullptr )
   {
     schedule();
     optimize();
@@ -254,6 +278,8 @@ public:
 
     if ( pLevels )
       *pLevels = _levels;
+    if ( pPOLevels )
+      *pPOLevels = _po_levels;
 
     return num_buffers();
   }
@@ -286,15 +312,9 @@ public:
     assert( !_outdated && "Please call `count_buffers()` first." );
 
     uint32_t count = 0u;
-    if ( _ps.assume.branch_pis )
-    {
-      _ntk.foreach_pi( [&]( auto const& n ) {
+    _ntk.foreach_node( [&]( auto const& n ) {
+      if ( !_ntk.is_constant( n ) )
         count += num_buffers( n );
-      } );
-    }
-
-    _ntk.foreach_gate( [&]( auto const& n ) {
-      count += num_buffers( n );
     } );
     return count;
   }
@@ -328,16 +348,9 @@ public:
       update_fanout_info();
     }
 
-    if ( _ps.assume.branch_pis )
-    {
-      _ntk.foreach_pi( [&]( auto const& n ) {
-        assert( !_ps.assume.balance_pis || _levels[n] == 0 );
+    _ntk.foreach_node( [&]( auto const& n ) {
+      if ( !_ntk.is_constant( n ) )
         _num_buffers[n] = count_buffers( n );
-      } );
-    }
-
-    _ntk.foreach_gate( [&]( auto const& n ) {
-      _num_buffers[n] = count_buffers( n );
     } );
   }
 
@@ -376,13 +389,8 @@ private:
     uint32_t count{ 0u };
 
     /* special case: don't balance POs; have both gate fanout(s) and PO ref(s) */
-    if ( !_ps.assume.balance_pos && _external_ref_count[n] > 0u )
+    if ( !_ps.assume.balance_cios && _external_ref_count[n] > 0u )
     {
-      /* hacky (rare?) case */
-      /*fmt::print( "[w] hacky case: node {} has {} fanouts, including {} gates, {} positive PO refs and {} negative PO refs.\n",
-                  n, _ntk.fanout_size( n ), _ntk.fanout_size( n ) - _external_ref_count[n],
-                  _external_ref_count[n] - _external_ref_count_neg[n], _external_ref_count_neg[n] );*/
-
       /* count ignoring POs */
       auto rit = fo_infos.rbegin();
       assert( rit->fanouts.size() == 0 );
@@ -435,36 +443,14 @@ private:
   uint32_t num_splitter_levels( node const& n ) const
   {
     assert( n < _ntk.size() );
+    if ( _ntk.is_pi( n ) )
+    {
+      if ( _ntk.fanout_size( n ) > _ps.assume.ci_capacity )
+        return std::ceil( std::log( _ntk.fanout_size( n ) - _ps.assume.ci_capacity + 1 ) / std::log( _ps.assume.splitter_capacity ) );
+      else
+        return 0u;
+    }
     return std::ceil( std::log( _ntk.fanout_size( n ) ) / std::log( _ps.assume.splitter_capacity ) );
-  }
-
-  uint32_t num_splitter_levels_po( node const& n ) const
-  {
-    assert( n < _ntk.size() );
-    if ( _ntk.fanout_size( n ) == 1 )
-      return 0;
-    if ( _external_ref_count_neg[n] == 0 || _external_ref_count_neg[n] == _external_ref_count[n] )
-      return std::ceil( std::log( _ntk.fanout_size( n ) ) / std::log( _ps.assume.splitter_capacity ) );
-    return std::max( std::ceil( std::log( _ntk.fanout_size( n ) - _external_ref_count_neg[n] ) / std::log( _ps.assume.splitter_capacity ) ),
-                     std::ceil( std::log( _external_ref_count_neg[n] ) / std::log( _ps.assume.splitter_capacity ) ) ) +
-           1; // suboptimal
-  }
-#pragma endregion
-
-private:
-#pragma region Update fanout info
-  void initialize_external_ref_counts()
-  {
-    _ntk.foreach_po( [&]( auto const& f ) {
-      if ( !_ntk.is_constant( _ntk.get_node( f ) ) )
-      {
-        _external_ref_count[f]++;
-        if ( _ntk.is_complemented( f ) )
-        {
-          _external_ref_count_neg[f]++;
-        }
-      }
-    } );
   }
 
   /* Update fanout_information of all nodes */
@@ -488,26 +474,6 @@ private:
         _fanouts[n].push_back( { _depth + 1 - _levels[n], {}, _external_ref_count[n] } );
       return true;
     } );
-
-    /* //debugging checks
-    if ( !_ps.assume.branch_pis )
-    {
-      _ntk.foreach_pi( [&]( auto const& n ) { assert( _fanouts[n].size() == 0 ); });
-      _ntk.foreach_gate( [&]( auto const& n ) {
-        if ( _ntk.fanout_size( n ) == 1 ) assert( _fanouts[n].size() == 1 );
-        else assert( _fanouts[n].front().relative_depth > 1 );
-      });
-    }
-    else
-    {
-      _ntk.foreach_node( [&]( auto const& n ) {
-        if ( _ntk.is_constant( n ) || _ntk.fanout_size( n ) == 0 ) return true;
-        if ( _ntk.fanout_size( n ) == 1 ) assert( _fanouts[n].size() == 1 );
-        else assert( _fanouts[n].front().relative_depth > 1 );
-        return true;
-      });
-    }
-    */
 
     _ntk.foreach_gate( [&]( auto const& n ) {
       count_edges( n );
@@ -585,11 +551,7 @@ private:
 
     auto it = fo_infos.end();
     --it;
-    uint32_t splitters;
-    if ( _external_ref_count_neg[n] > 0 )
-      splitters = num_splitters_po( _external_ref_count[n] - _external_ref_count_neg[n], _external_ref_count_neg[n] );
-    else
-      splitters = num_splitters( it->num_edges );
+    uint32_t splitters = num_splitters( it->num_edges );
 
     while ( it != fo_infos.begin() )
     {
@@ -624,11 +586,6 @@ private:
   {
     return std::ceil( float( num_fanouts ) / float( _ps.assume.splitter_capacity ) );
   }
-
-  uint32_t num_splitters_po( uint32_t num_positive, uint32_t num_negative ) const
-  {
-    return std::ceil( float( num_positive ) / float( _ps.assume.splitter_capacity ) ) + std::ceil( float( num_negative ) / float( _ps.assume.splitter_capacity ) );
-  }
 #pragma endregion
 
 #pragma region Level assignment
@@ -638,9 +595,11 @@ public:
   {
     if ( _ps.scheduling == buffer_insertion_params::provided )
     {
-      _ntk.foreach_po( [&]( auto const& f ) {
-        _depth = std::max( _depth, _levels[f] + num_splitter_levels( _ntk.get_node( f ) ) );
+      _ntk.foreach_po( [&]( auto const& f, auto i ) {
+        assert( _po_levels[i] > _levels[f] );
+        _depth = std::max( _depth, _po_levels[i] - 1 );
       } );
+      assert( _depth % _ps.assume.num_phases == 0 );
     }
     else if ( _ps.scheduling == buffer_insertion_params::better_depth || _ps.scheduling == buffer_insertion_params::ASAP_depth || _ps.scheduling == buffer_insertion_params::ALAP_depth )
     {
@@ -676,11 +635,24 @@ public:
     _levels.reset( 0 );
     _ntk.incr_trav_id();
 
-    _ntk.foreach_po( [&]( auto const& f ) {
+    _ntk.foreach_po( [&]( auto const& f, auto i ) {
       auto const no = _ntk.get_node( f );
-      auto clevel = compute_levels_ASAP( no ) + num_splitter_levels_po( no );
-      _depth = std::max( _depth, clevel );
+      _po_levels[i] = compute_levels_ASAP( no ) + num_splitter_levels( no ) + 1;
+      if ( _po_levels[i] % _ps.assume.num_phases != 1 ) // phase alignment
+      {
+        _po_levels[i] += _ps.assume.num_phases - ( ( _po_levels[i] - 1 ) % _ps.assume.num_phases );
+      }
+      _depth = std::max( _depth, _po_levels[i] - 1 );
     } );
+    assert( _depth % _ps.assume.num_phases == 0 );
+
+    if ( _ps.assume.balance_cios )
+    {
+      _ntk.foreach_po( [&]( auto const& f, auto i ) {
+        (void)f;
+        _po_levels[i] = _depth + 1;
+      } );
+    }
 
     _outdated = true;
     _is_scheduled_ASAP = true;
@@ -720,14 +692,17 @@ public:
    */
   void ALAP()
   {
+    assert( _depth % _ps.assume.num_phases == 0 );
     _levels.reset( 0 );
     _ntk.incr_trav_id();
 
-    _ntk.foreach_po( [&]( auto const& f ) {
+    _ntk.foreach_po( [&]( auto const& f, auto i ) {
+      _po_levels[i] = _depth + 1;
       const auto n = _ntk.get_node( f );
-      if ( !_ntk.is_constant( n ) && _ntk.visited( n ) != _ntk.trav_id() && ( !_ps.assume.balance_pis || !_ntk.is_pi( n ) ) )
+
+      if ( !_ntk.is_constant( n ) && _ntk.visited( n ) != _ntk.trav_id() )
       {
-        _levels[n] = _depth - num_splitter_levels_po( n );
+        _levels[n] = _depth - num_splitter_levels( n );
         compute_levels_ALAP( n );
       }
     } );
@@ -811,9 +786,13 @@ private:
     }
     _ntk.set_visited( n, _ntk.trav_id() );
 
-    if ( _ntk.is_constant( n ) || _ntk.is_pi( n ) )
+    if ( _ntk.is_constant( n ) )
     {
       return _levels[n] = 0;
+    }
+    else if ( _ntk.is_pi( n ) )
+    {
+      return _levels[n] = _ps.assume.ci_phases[0];
     }
 
     uint32_t level{ 0 };
@@ -821,11 +800,7 @@ private:
       auto const ni = _ntk.get_node( fi );
       if ( !_ntk.is_constant( ni ) )
       {
-        auto fi_level = compute_levels_ASAP( ni );
-        if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
-        {
-          fi_level += num_splitter_levels( ni );
-        }
+        auto fi_level = compute_levels_ASAP( ni ) + num_splitter_levels( ni );
         level = std::max( level, fi_level );
       }
     } );
@@ -833,28 +808,69 @@ private:
     return _levels[n] = level + 1;
   }
 
+  bool is_acceptable_ci_lvl( uint32_t lvl ) const
+  {
+    if ( !_ps.assume.balance_cios )
+    {
+      for ( auto const& p : _ps.assume.ci_phases )
+      {
+        if ( lvl == p )
+          return true;
+      }
+      return false;
+    }
+    else
+    {
+      for ( auto const& p : _ps.assume.ci_phases )
+      {
+        // for example, if num_phases = 4, one of p = 5,
+        // then lvl = 1 will not be acceptable, but lvl = 5 or lvl = 9 will
+        if ( lvl % _ps.assume.num_phases == p % _ps.assume.num_phases && lvl >= p )
+          return true;
+      }
+      return false;
+    }
+  }
+
   void compute_levels_ALAP( node const& n )
   {
     _ntk.set_visited( n, _ntk.trav_id() );
+
+    if ( _ntk.is_pi( n ) )
+    {
+      if ( _ps.assume.balance_cios )
+      {
+        for ( auto rit = _ps.assume.ci_phases.rbegin(); rit != _ps.assume.ci_phases.rend(); ++rit )
+        {
+          if ( *rit <= _levels[n] )
+          {
+            _levels[n] = *rit;
+            return;
+          }
+        }
+        assert( false );
+      }
+      else
+      {
+        while ( !is_acceptable_ci_lvl( _levels[n] ) )
+        {
+          assert( _levels[n] > 0 );
+          --_levels[n];
+        }
+      }
+      return;
+    }
 
     _ntk.foreach_fanin( n, [&]( auto const& fi ) {
       auto const ni = _ntk.get_node( fi );
       if ( !_ntk.is_constant( ni ) )
       {
-        if ( _ps.assume.balance_pis && _ntk.is_pi( ni ) )
+        assert( _levels[n] > num_splitter_levels( ni ) );
+        auto fi_level = _levels[n] - num_splitter_levels( ni ) - 1;
+        if ( _ntk.visited( ni ) != _ntk.trav_id() || _levels[ni] > fi_level )
         {
-          assert( _levels[n] > 0 );
-          _levels[ni] = 0;
-        }
-        else if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
-        {
-          assert( _levels[n] > num_splitter_levels( ni ) );
-          auto fi_level = _levels[n] - num_splitter_levels( ni ) - 1;
-          if ( _ntk.visited( ni ) != _ntk.trav_id() || _levels[ni] > fi_level )
-          {
-            _levels[ni] = fi_level;
-            compute_levels_ALAP( ni );
-          }
+          _levels[ni] = fi_level;
+          compute_levels_ALAP( ni );
         }
       }
     } );
@@ -1868,6 +1884,7 @@ private:
   {
     uint32_t relative_depth{ 0u };
     std::list<node> fanouts;
+    std::list<uint32_t> extrefs; // IDs of POs (as in `_ntk.foreach_po`)
     uint32_t num_edges{ 0u };
   };
   using fanouts_by_level = std::list<fanout_information>;
@@ -1878,20 +1895,18 @@ private:
   bool _is_scheduled_ASAP{ true };
 
   node_map<uint32_t, Ntk> _levels;
-  node_map<std::pair<uint32_t, uint32_t>, Ntk> _timeframes;
+  std::vector<uint32_t> _po_levels; // imaginary node, must be at `num_phases * k + 1`
   uint32_t _depth{ 0u };
-
   /* Guarantees on `_fanouts` (when not `_outdated`):
-   * - If not `branch_pis`: `_fanouts[PI]` is empty.
-   * - PO ref count is added to `num_edges` of the last element.
    * - If having only one fanout: `_fanouts[n].size() == 1`.
    * - If having multiple fanouts: `_fanouts[n]` must have at least two elements,
    *   and the first element must have `relative_depth == 1` and `num_edges == 1`.
+   * - If `ci_capacity > 1`, PIs may not hold the above guarantees.
    */
   node_map<fanouts_by_level, Ntk> _fanouts;
-  node_map<uint32_t, Ntk> _external_ref_count;     // total refs
-  node_map<uint32_t, Ntk> _external_ref_count_neg; // negated refs
   node_map<uint32_t, Ntk> _num_buffers;
+
+  node_map<std::pair<uint32_t, uint32_t>, Ntk> _timeframes; // only for SMT; the most extreme min/max
   node_map<uint32_t, Ntk> _min_level;
   node_map<uint32_t, Ntk> _max_level;
 
