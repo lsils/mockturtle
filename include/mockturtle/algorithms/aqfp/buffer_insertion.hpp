@@ -365,7 +365,7 @@ public:
   }
 
 private:
-  uint32_t count_buffers( node const& n )
+  uint32_t count_buffers( node const& n ) const
   {
     assert( !_outdated && "Please call `update_fanout_info()` first." );
     auto const& fo_infos = _fanouts[n];
@@ -465,8 +465,8 @@ private:
 
   void insert_fanout( node const& n, node const& fanout )
   {
+    assert( _levels[fanout] > _levels[n] );
     auto const rd = _levels[fanout] - _levels[n];
-    assert( rd > 0 );
     auto& fo_infos = _fanouts[n];
     for ( auto it = fo_infos.begin(); it != fo_infos.end(); ++it )
     {
@@ -487,8 +487,8 @@ private:
 
   void insert_extref( node const& n, uint32_t idx )
   {
+    assert( _po_levels[idx] > _levels[n] );
     auto const rd = _po_levels[idx] - _levels[n];
-    assert( rd > 0 );
     auto& fo_infos = _fanouts[n];
     for ( auto it = fo_infos.begin(); it != fo_infos.end(); ++it )
     {
@@ -1333,6 +1333,9 @@ private:
 
   bool analyze_chunk_down( chunk c )
   {
+    count_buffers();
+    auto buffers_before = num_buffers();
+
     std::set<node> marked_oi;
     for ( auto oi : c.output_interfaces )
     {
@@ -1362,9 +1365,7 @@ private:
 
     if ( c.benefits > 0 && c.slack > 0 )
     {
-      count_buffers();
       bool legal = true;
-      auto buffers_before = num_buffers();
 
       for ( auto m : c.members )
         _levels[m] -= c.slack;
@@ -1397,6 +1398,7 @@ private:
       /* reset fanout_infos of input_interfaces because num_edges may be modified by pseudo_move */
       for ( auto ii : c.input_interfaces )
         update_fanout_info( ii.o );
+      _outdated = true;
       return false;
     }
   }
@@ -1448,14 +1450,24 @@ private:
   {
     assert( from_rd > to_rd );
     auto& fanout_info = _fanouts[n];
-    for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
+    auto it = fanout_info.begin();
+    for ( ; it != fanout_info.end(); ++it )
     {
       if ( it->relative_depth == to_rd )
       {
         ++it->num_edges;
         it->fanouts.push_back( no );
+        break;
       }
-      else if ( it->relative_depth == from_rd )
+      else if ( it->relative_depth > to_rd )
+      {
+        fanout_info.insert( it, {to_rd, {no}, {}, 2} );
+        break;
+      }
+    }
+    for ( ; it != fanout_info.end(); ++it )
+    {
+      if ( it->relative_depth == from_rd )
       {
         --it->num_edges;
         for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
@@ -1469,6 +1481,7 @@ private:
         assert( false );
       }
     }
+    assert( false );
   }
 
   bool analyze_chunk_up( chunk c )
