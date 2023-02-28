@@ -35,8 +35,6 @@
 namespace mockturtle
 {
 
-using aqfp_assumptions = aqfp_assumptions_legacy;
-
 /*! \brief More realistic AQFP technology assumptions. */
 struct aqfp_assumptions_realistic
 {
@@ -100,6 +98,8 @@ struct aqfp_assumptions_legacy
   /*! \brief The maximum number of fanouts each splitter (buffer) can have. */
   uint32_t splitter_capacity{ 3u };
 };
+
+using aqfp_assumptions = aqfp_assumptions_legacy;
 
 /* Temporary helper function to bridge old and new code. */
 inline aqfp_assumptions_realistic legacy_to_realistic( aqfp_assumptions_legacy const& legacy )

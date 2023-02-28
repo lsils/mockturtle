@@ -61,6 +61,7 @@ uint32_t recompute_level( Ntk& ntk, typename Ntk::node const& n )
 {
   if ( ntk.visited( n ) == ntk.trav_id() )
     return ntk.level( n );
+  ntk.set_visited( n, ntk.trav_id() );
 
   uint32_t max_fi_level{ 0u };
   ntk.foreach_fanin( n, [&]( auto const& fi ) {
@@ -76,11 +77,10 @@ uint32_t recompute_level( Ntk& ntk, typename Ntk::node const& n )
  *
  * \param ntk Buffered network
  * \param pi_levels Levels of PIs
- * \param bool balance_pis Whether to balance PIs
  * \return Level assignment to all nodes
  */
 template<class Ntk>
-node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, std::vector<uint32_t> const& pi_levels, bool balance_pis )
+node_map<uint32_t, Ntk> schedule_buffered_network_with_PI_levels( Ntk const& ntk, std::vector<uint32_t> const& pi_levels )
 {
   assert( pi_levels.size() == ntk.num_pis() );
 
@@ -88,43 +88,22 @@ node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, std::vector<u
   node_map<uint32_t, Ntk> levels( ntk );
   depth_view dv{ ntk };
 
-  if ( !balance_pis )
-  {
-    ntk.incr_trav_id();
-    ntk.set_visited( ntk.get_node( ntk.get_constant( false ) ), ntk.trav_id() );
-    ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      ntk.set_visited( n, ntk.trav_id() );
-      ntk.set_level( n, pi_levels[i] );
-    } );
+  ntk.incr_trav_id();
+  ntk.set_visited( ntk.get_node( ntk.get_constant( false ) ), ntk.trav_id() );
+  ntk.foreach_pi( [&]( auto const& n, auto i ) {
+    ntk.set_visited( n, ntk.trav_id() );
+    dv.set_level( n, pi_levels[i] );
+  } );
 
-    ntk.foreach_po( [&]( auto const& f ){
-      detail::recompute_level( dv, ntk.get_node( f ) );
-    });
-  }
+  ntk.foreach_po( [&]( auto const& f ){
+    detail::recompute_level( dv, ntk.get_node( f ) );
+  });
 
   ntk.foreach_node( [&]( auto const& n ) {
     levels[n] = dv.level( n );
   } );
 
   return levels;
-}
-
-/*! \brief Find a reasonable level assignment for a buffered network given PI levels.
- *
- * \param ntk Buffered network
- * \param ps AQFP assumptions
- * \param pi_levels Levels of PIs
- * \return Level assignment to all nodes
- */
-template<class Ntk>
-node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, aqfp_assumptions_legacy const& ps, std::vector<uint32_t> const& pi_levels )
-{
-  return schedule_buffered_network( ntk, pi_levels, ps.balance_pis );
-}
-template<class Ntk>
-node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, aqfp_assumptions_realistic const& ps, std::vector<uint32_t> const& pi_levels )
-{
-  return schedule_buffered_network( ntk, pi_levels, ps.balance_cios );
 }
 
 /*! \brief Find a reasonable level assignment for a buffered network.
@@ -191,7 +170,7 @@ node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, bool balance_
           /* recompute levels because some of their TFI may have been lifted */
           else
           {
-            detail::recompute_level( dv, *it );
+            detail::recompute_level( dv, *it ); // TODO: Could be wrong; should not mark side TFIs as visited
             ++it;
           }
         }
@@ -308,10 +287,8 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions_realistic const& ps, n
     if ( ntk.is_pi( n ) )
     {
       legal &= ( ntk.fanout_size( n ) <= ps.ci_capacity );
-      return;
     }
-
-    if ( ntk.is_buf( n ) )
+    else if ( ntk.is_buf( n ) )
     {
       //if ( ntk.is_mega_splitter( n ) )
       //  legal &= ( ntk.fanout_size( n ) <= ps.mega_splitter_capacity );
@@ -322,6 +299,7 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions_realistic const& ps, n
     {
       legal &= ( ntk.fanout_size( n ) <= 1 );
     }
+    assert( legal );
   } );
 
   /* path balancing */
@@ -347,6 +325,7 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions_realistic const& ps, n
 
     ntk.foreach_pi( [&]( auto const& n ) {
       legal &= check_pi_fn( levels[n] );
+      assert( legal );
     } );
 
     uint32_t depth{ 0u };
@@ -358,9 +337,11 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions_realistic const& ps, n
           depth = levels[n];
         else
           legal &= ( levels[n] == depth );
+        assert( legal );
       }
     } );
     legal &= ( depth % ps.num_phases == 0 );
+    assert( legal );
   }
   else
   {
@@ -375,6 +356,7 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions_realistic const& ps, n
 
     ntk.foreach_pi( [&]( auto const& n ) {
       legal &= check_pi_fn( levels[n] );
+      assert( legal );
     } );
 
     ntk.foreach_po( [&]( auto const& f ) {
@@ -382,6 +364,7 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions_realistic const& ps, n
       if ( !ntk.is_constant( n ) )
       {
         legal &= ( levels[n] % ps.num_phases == 0 );
+        assert( legal );
       }
     } );
   }
@@ -401,7 +384,7 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions_realistic const& ps, n
 template<class Ntk, typename Asmp = aqfp_assumptions>
 bool verify_aqfp_buffer( Ntk const& ntk, Asmp const& ps, std::vector<uint32_t> const& pi_levels )
 {
-  auto const levels = schedule_buffered_network( ntk, ps, pi_levels );
+  auto const levels = schedule_buffered_network_with_PI_levels( ntk, pi_levels );
   return verify_aqfp_buffer( ntk, ps, levels );
 }
 

@@ -139,10 +139,6 @@ struct buffer_insertion_params
       mig_network mig = ...
 
       buffer_insertion_params ps;
-      ps.assume.branch_pis = true;
-      ps.assume.balance_pis = false;
-      ps.assume.balance_pos = true;
-      ps.assume.splitter_capacity = 3u;
       ps.scheduling = buffer_insertion_params::ALAP;
       ps.optimization_effort = buffer_insertion_params::one_pass;
 
@@ -635,6 +631,12 @@ public:
       } );
     }
 
+    /* dangling PIs */
+    _ntk.foreach_pi( [&]( auto const& n ){
+      if ( _ntk.visited( n ) != _ntk.trav_id() )
+        _levels[n] = _ps.assume.ci_phases[0];
+    } );
+
     _outdated = true;
     _is_scheduled_ASAP = true;
   }
@@ -688,6 +690,12 @@ public:
       }
     } );
 
+    /* dangling PIs */
+    _ntk.foreach_pi( [&]( auto const& n ){
+      if ( _ntk.visited( n ) != _ntk.trav_id() )
+        _levels[n] = _ps.assume.ci_phases[0];
+    } );
+
     _outdated = true;
     _is_scheduled_ASAP = false;
   }
@@ -702,28 +710,18 @@ public:
     _depth = UINT32_MAX - 1;
     uint32_t min_level = UINT32_MAX - 1;
     topo_ntk.foreach_node_reverse( [&]( auto const& n ) {
-      if ( !_ntk.is_constant( n ) && ( _ps.assume.branch_pis || !_ntk.is_pi( n ) ) )
+      if ( !_ntk.is_constant( n ) )
       {
         compute_levels_ALAP_depth( f_ntk, n );
         min_level = std::min( min_level, _levels[n] );
       }
     } );
 
-    if ( !_ps.assume.branch_pis && min_level != 0 )
-      --min_level;
-
     /* normalize level */
     _ntk.foreach_node( [&]( auto const& n ) {
       if ( !_ntk.is_constant( n ) )
       {
-        if ( _ps.assume.balance_pis && _ntk.is_pi( n ) )
-        {
-          _levels[n] = 0;
-        }
-        else if ( !_ps.assume.balance_pis || !_ntk.is_pi( n ) )
-        {
-          _levels[n] = _levels[n] - min_level;
-        }
+        _levels[n] = _levels[n] - min_level;
         _max_level[n] = _levels[n];
       }
     } );
@@ -918,14 +916,6 @@ private:
     uint32_t level_n = _levels[n] - mobility[n];
     _levels[n] = level_n;
 
-    if ( !_ps.assume.branch_pis && _ntk.is_pi( n ) )
-    {
-      ntk.foreach_fanout( n, [&]( auto const& f ) {
-        mobility[f] = std::min( mobility[f], _levels[f] - level_n - 1 );
-      } );
-      return;
-    }
-
     /* try to fit a balanced tree */
     if ( try_regular )
     {
@@ -1024,91 +1014,6 @@ private:
     }
   }
 #pragma endregion
-
-#pragma region Compute timeframe for SMT solving
-  /*! \brief Compute the earliest and latest possible timeframe by eager ASAP and ALAP */
-  uint32_t compute_timeframe( uint32_t max_depth )
-  {
-    _timeframes.reset( std::make_pair( 0, 0 ) );
-    uint32_t min_depth{ 0 };
-
-    _ntk.incr_trav_id();
-    _ntk.foreach_po( [&]( auto const& f ) {
-      auto const no = _ntk.get_node( f );
-      auto clevel = compute_levels_ASAP_eager( no ) + ( _ntk.fanout_size( no ) > 1 ? 1 : 0 );
-      min_depth = std::max( min_depth, clevel );
-    } );
-
-    _ntk.incr_trav_id();
-    _ntk.foreach_po( [&]( auto const& f ) {
-      const auto n = _ntk.get_node( f );
-      if ( !_ntk.is_constant( n ) && _ntk.visited( n ) != _ntk.trav_id() && ( !_ps.assume.balance_pis || !_ntk.is_pi( n ) ) )
-      {
-        _timeframes[n].second = max_depth - ( _ntk.fanout_size( n ) > 1 ? 1 : 0 );
-        compute_levels_ALAP_eager( n );
-      }
-    } );
-
-    return min_depth;
-  }
-
-  uint32_t compute_levels_ASAP_eager( node const& n )
-  {
-    if ( _ntk.visited( n ) == _ntk.trav_id() )
-    {
-      return _timeframes[n].first;
-    }
-    _ntk.set_visited( n, _ntk.trav_id() );
-
-    if ( _ntk.is_constant( n ) || _ntk.is_pi( n ) )
-    {
-      return _timeframes[n].first = 0;
-    }
-
-    uint32_t level{ 0 };
-    _ntk.foreach_fanin( n, [&]( auto const& fi ) {
-      auto const ni = _ntk.get_node( fi );
-      if ( !_ntk.is_constant( ni ) )
-      {
-        auto fi_level = compute_levels_ASAP_eager( ni );
-        if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
-        {
-          fi_level += _ntk.fanout_size( ni ) > 1 ? 1 : 0;
-        }
-        level = std::max( level, fi_level );
-      }
-    } );
-
-    return _timeframes[n].first = level + 1;
-  }
-
-  void compute_levels_ALAP_eager( node const& n )
-  {
-    _ntk.set_visited( n, _ntk.trav_id() );
-
-    _ntk.foreach_fanin( n, [&]( auto const& fi ) {
-      auto const ni = _ntk.get_node( fi );
-      if ( !_ntk.is_constant( ni ) )
-      {
-        if ( _ps.assume.balance_pis && _ntk.is_pi( ni ) )
-        {
-          assert( _timeframes[n].second > 0 );
-          _timeframes[ni].second = 0;
-        }
-        else if ( _ps.assume.branch_pis || !_ntk.is_pi( ni ) )
-        {
-          assert( _timeframes[n].second > num_splitter_levels( ni ) );
-          auto fi_level = _timeframes[n].second - ( _ntk.fanout_size( ni ) > 1 ? 2 : 1 );
-          if ( _ntk.visited( ni ) != _ntk.trav_id() || _timeframes[ni].second > fi_level )
-          {
-            _timeframes[ni].second = fi_level;
-            compute_levels_ALAP_eager( ni );
-          }
-        }
-      }
-    } );
-  }
-#pragma
 
 #pragma region Dump buffered network
 public:
@@ -1228,14 +1133,14 @@ public:
     {
       return;
     }
-    else if ( _ps.optimization_effort == buffer_insertion_params::optimal )
-    {
-      if constexpr ( has_get_network_name_v<Ntk> )
-        optimize_with_smt( _ntk.get_network_name() );
-      else
-        optimize_with_smt( "" );
-      return;
-    }
+    //else if ( _ps.optimization_effort == buffer_insertion_params::optimal )
+    //{
+    //  if constexpr ( has_get_network_name_v<Ntk> )
+    //    optimize_with_smt( _ntk.get_network_name() );
+    //  else
+    //    optimize_with_smt( "" );
+    //  return;
+    //}
 
     if ( _outdated )
     {
@@ -1639,7 +1544,7 @@ private:
 
 #pragma region Global optimal by SMT
 private:
-#include "optimal_buffer_insertion.hpp"
+//#include "optimal_buffer_insertion.hpp"
 #pragma endregion
 
 private:
@@ -1675,8 +1580,8 @@ private:
   node_map<uint32_t, Ntk> _num_buffers;
 
   node_map<std::pair<uint32_t, uint32_t>, Ntk> _timeframes; // only for SMT; the most extreme min/max
-  node_map<uint32_t, Ntk> _min_level;
-  node_map<uint32_t, Ntk> _max_level;
+  node_map<uint32_t, Ntk> _min_level; // depth-optimal ASAP
+  node_map<uint32_t, Ntk> _max_level; // depth-optimal ALAP
 
   uint32_t _start_id; // for chunked movement
 }; /* buffer_insertion */
