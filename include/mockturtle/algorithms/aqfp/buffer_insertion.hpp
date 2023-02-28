@@ -1269,14 +1269,12 @@ private:
 
   bool is_ignored( node const& n ) const
   {
-    return _ntk.is_constant( n ) || ( !_ps.assume.branch_pis && _ntk.is_pi( n ) );
+    return _ntk.is_constant( n );
   }
 
   bool is_fixed( node const& n ) const
   {
-    if ( _ps.assume.balance_pis )
-      return _ntk.is_pi( n );
-    return false;
+    return _ntk.is_pi( n );
   }
 
   bool find_and_move_chunks()
@@ -1317,8 +1315,6 @@ private:
   {
     if ( _ntk.visited( n ) == c.id )
       return;
-    // if ( c.members.size() > _ps.max_chunk_size ) // TODO: Directly returning might be problematic
-    //   return;
 
     assert( _ntk.visited( n ) <= _start_id );
     assert( !is_fixed( n ) );
@@ -1348,23 +1344,25 @@ private:
 
   void recruit_fanouts( node const& n, chunk& c )
   {
+    assert( !_ntk.is_pi( n ) );
     auto const& fanout_info = _fanouts[n];
-    if ( fanout_info.size() == 0 )
+    if ( fanout_info.size() == 0 ) /* dangling */
       return;
 
-    if ( _ntk.fanout_size( n ) == _external_ref_count[n] ) // only POs
+    if ( fanout_info.size() == 1 ) /* single fanout */
     {
-      c.output_interfaces.push_back( { n, n } ); // PO interface
-    }
-    else if ( fanout_info.size() == 1 ) // single gate fanout
-    {
-      auto const& no = fanout_info.front().fanouts.front();
-      if ( is_fixed( no ) )
-        c.output_interfaces.push_back( { n, no } );
-      else if ( fanout_info.front().relative_depth == 1 )
-        recruit( no, c );
-      else
-        c.output_interfaces.push_back( { n, no } );
+      if ( fanout_info.front().fanouts.size() == 1 ) /* single gate fanout */
+      {
+        if ( fanout_info.front().relative_depth == 1 )
+          recruit( fanout_info.front().fanouts.front(), c );
+        else
+          c.output_interfaces.push_back( { n, fanout_info.front().fanouts.front() } );
+      }
+      else /* single PO fanout */
+      {
+        assert( fanout_info.front().extrefs.size() == 1 );
+        c.output_interfaces.push_back( { n, n } ); // PO interface
+      }
     }
     else
     {
@@ -1372,12 +1370,14 @@ private:
       {
         for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
         {
-          if ( is_fixed( *it2 ) )
-            c.output_interfaces.push_back( { n, *it2 } );
-          else if ( it->relative_depth == 2 )
+          if ( it->relative_depth == 2 )
             recruit( *it2, c );
           else if ( _ntk.visited( *it2 ) != c.id )
             c.output_interfaces.push_back( { n, *it2 } );
+        }
+        for ( auto it2 = it->extrefs.begin(); it2 != it->extrefs.end(); ++it2 )
+        {
+          c.output_interfaces.push_back( { n, n } ); // PO interface
         }
       }
     }
@@ -1448,16 +1448,12 @@ private:
         break;
       }
       c.slack = std::min( c.slack, int32_t( rd - lowest ) );
-      if ( c.slack == rd - lowest )
-        mark_occupied( ii.o, lowest );                                                          // TODO: may be inaccurate
-      if ( _fanouts[ii.o].back().relative_depth == rd && _fanouts[ii.o].back().num_edges == 1 ) // is the only highest fanout
+      pseudo_move( ii.o, ii.c, rd, lowest );
+      if ( _fanouts[ii.o].back().relative_depth == rd && _fanouts[ii.o].back().num_edges == 1 ) // `ii.c` is the last highest fanout of `ii.o`
       {
         ++c.benefits;
       }
     }
-
-    for ( auto m : c.members )
-      c.slack = std::min( c.slack, int32_t( _ntk.is_pi( m ) ? _levels[m] : _levels[m] - 1 ) );
 
     if ( c.benefits > 0 && c.slack > 0 )
     {
@@ -1493,7 +1489,7 @@ private:
     }
     else
     {
-      /* reset fanout_infos of input_interfaces because num_edges may be modified by mark_occupied */
+      /* reset fanout_infos of input_interfaces because num_edges may be modified by pseudo_move */
       for ( auto ii : c.input_interfaces )
         update_fanout_info( ii.o );
       return false;
@@ -1505,31 +1501,67 @@ private:
   {
     auto const& fanout_info = _fanouts[n];
     assert( fanout_info.size() );
-    assert( _ntk.fanout_size( n ) != _external_ref_count[n] );
-    if ( fanout_info.size() == 1 )
+
+    auto it = fanout_info.begin();
+    uint32_t rd_prev = 1;
+    uint32_t num_splitters_prev = 1;
+    if ( _ntk.is_pi( n ) && _ps.assume.ci_capacity > 1 )
     {
-      assert( fanout_info.front().fanouts.size() == 1 );
+      if ( it->num_edges < _ps.assume.ci_capacity )
+        return 1;
+      else
+        num_splitters_prev = _ps.assume.ci_capacity - it->fanouts.size() - it->extrefs.size();
+    }
+    else if ( fanout_info.size() == 1 ) // single fanout
+    {
       return 1;
     }
-    auto it = fanout_info.begin();
-    ++it;
-    while ( it != fanout_info.end() && it->num_edges == _ps.assume.splitter_capacity )
-      ++it;
-    if ( it == fanout_info.end() ) // full fanout tree
-      return fanout_info.back().relative_depth + 1;
-    --it; // the last full layer
-    return it->relative_depth + 1;
+    
+    ++it; // skip the first splitter at rd=1
+    for ( ; it != fanout_info.end(); ++it )
+    {
+      if ( it->relative_depth > rd_prev + 1 ) // level skip => must not full
+      {
+        return rd_prev + 1;
+      }
+      else if ( it->num_edges == _ps.assume.splitter_capacity * num_splitters_prev ) // full layer
+      {
+        num_splitters_prev = it->num_edges - it->fanouts.size() - it->extrefs.size();
+        rd_prev = it->relative_depth;
+      }
+      else
+      {
+        return it->relative_depth;
+      }
+    }
+    // all full
+    return fanout_info.back().relative_depth + 1;
   }
 
-  void mark_occupied( node const& n, uint32_t rd )
+  /* move `no`, which is a fanout of `n`, from `from_rd` to `to_rd` */
+  void pseudo_move( node const& n, node const& no, uint32_t from_rd, uint32_t to_rd )
   {
+    assert( from_rd > to_rd );
     auto& fanout_info = _fanouts[n];
     for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
     {
-      if ( it->relative_depth == rd )
+      if ( it->relative_depth == to_rd )
       {
         ++it->num_edges;
-        return;
+        it->fanouts.push_back( no );
+      }
+      else if ( it->relative_depth == from_rd )
+      {
+        --it->num_edges;
+        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+        {
+          if ( *it2 == no )
+          {
+            it->fanouts.erase( it2 );
+            return;
+          }
+        }
+        assert( false );
       }
     }
   }
@@ -1551,10 +1583,10 @@ private:
         ++c.benefits;
       }
       auto const& fanout_info = _fanouts[oi.c];
-      if ( _ntk.fanout_size( oi.c ) == _external_ref_count[oi.c] ) // only POs
-        c.slack = std::min( c.slack, int32_t( _depth - _levels[oi.c] - num_splitter_levels( oi.c ) ) );
-      else if ( fanout_info.size() == 1 ) // single fanout
+      if ( fanout_info.size() == 1 ) /* single fanout */
         c.slack = std::min( c.slack, int32_t( fanout_info.front().relative_depth - 1 ) );
+      else if ( oi.c == oi.o ) /* PO interface, which is not the only fanout */
+        c.slack = 0; // TODO
       else
         c.slack = std::min( c.slack, int32_t( _levels[oi.o] - _levels[oi.c] - 2 ) );
     }
@@ -1637,7 +1669,7 @@ private:
    * - If having only one fanout: `_fanouts[n].size() == 1`.
    * - If having multiple fanouts: `_fanouts[n]` must have at least two elements,
    *   and the first element must have `relative_depth == 1` and `num_edges == 1`.
-   * - If `ci_capacity > 1`, PIs may not hold the above guarantees.
+   * - If `ci_capacity > 1`, `_fanouts[PI].size()` may be 1.
    */
   node_map<fanouts_by_level, Ntk> _fanouts;
   node_map<uint32_t, Ntk> _num_buffers;
