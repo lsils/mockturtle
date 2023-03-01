@@ -27,6 +27,7 @@
   \file storage.hpp
   \brief Configurable storage container
 
+  \author Alessandro Tempia Calvino
   \author Andrea Costamagna
   \author Bruno Schmitt
   \author Heinz Riener
@@ -215,6 +216,28 @@ struct storage
   std::vector<typename node_type::pointer_type> outputs;
 
   phmap::flat_hash_map<node_type, uint64_t, NodeHasher> hash;
+
+  T data;
+};
+
+template<typename Node, typename T = empty_storage_data>
+struct storage_no_hash
+{
+  storage_no_hash()
+  {
+    nodes.reserve( 10000u );
+
+    /* we generally reserve the first node for a constant */
+    nodes.emplace_back();
+  }
+
+  using node_type = Node;
+
+  uint32_t trav_id = 0u;
+
+  std::vector<node_type> nodes;
+  std::vector<uint64_t> inputs;
+  std::vector<typename node_type::pointer_type> outputs;
 
   T data;
 };

@@ -95,6 +95,14 @@ algorithm.  Several views are implemented in mockturtle.
 `names_view`: Assign names to signals and outputs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+**Header:** ``mockturtle/views/choice_view.hpp``
+
+.. doxygenclass:: mockturtle::choice_view
+   :members:
+
+`choice_view`: Implements choices in networks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 **Header:** ``mockturtle/views/names_view.hpp``
 
 .. doxygenclass:: mockturtle::names_view

@@ -498,6 +498,21 @@ template<class Ntk>
 inline constexpr bool has_create_maj_v = has_create_maj<Ntk>::value;
 #pragma endregion
 
+#pragma region has_create_maj_odd
+template<class Ntk, class = void>
+struct has_create_maj_odd : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_create_maj_odd<Ntk, std::void_t<decltype( std::declval<Ntk>().create_maj( std::declval<std::vector<signal<Ntk>>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_create_maj_odd_v = has_create_maj_odd<Ntk>::value;
+#pragma endregion
+
 #pragma region has_create_ite
 template<class Ntk, class = void>
 struct has_create_ite : std::false_type
@@ -1863,6 +1878,21 @@ template<class Ntk>
 inline constexpr bool has_foreach_fanout_v = has_foreach_fanout<Ntk>::value;
 #pragma endregion
 
+#pragma region has_foreach_choice
+template<class Ntk, class = void>
+struct has_foreach_choice : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_foreach_choice<Ntk, std::void_t<decltype( std::declval<Ntk>().foreach_choice( std::declval<node<Ntk>>(), std::declval<void( node<Ntk>, uint32_t )>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_foreach_choice_v = has_foreach_choice<Ntk>::value;
+#pragma endregion
+
 #pragma region has_compute
 template<class Ntk, typename T, class = void>
 struct has_compute : std::false_type
@@ -2131,6 +2161,21 @@ struct has_decr_value<Ntk, std::void_t<decltype( std::declval<Ntk>().decr_value(
 
 template<class Ntk>
 inline constexpr bool has_decr_value_v = has_decr_value<Ntk>::value;
+#pragma endregion
+
+#pragma region has_get_fanin0
+template<class Ntk, class = void>
+struct has_get_fanin0 : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_get_fanin0<Ntk, std::void_t<decltype( std::declval<Ntk>().get_fanin0( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_get_fanin0_v = has_get_fanin0<Ntk>::value;
 #pragma endregion
 
 #pragma region has_clear_visited

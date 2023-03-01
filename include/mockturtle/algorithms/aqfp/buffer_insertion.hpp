@@ -28,12 +28,15 @@
   \brief Insert buffers and splitters for the AQFP technology
 
   \author Siang-Yun (Sonia) Lee
+  \author Alessandro Tempia Calvino
 */
 
 #pragma once
 
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
+#include "../../views/fanout_view.hpp"
+#include "../../views/topo_view.hpp"
 #include "aqfp_assumptions.hpp"
 
 #include <algorithm>
@@ -61,16 +64,23 @@ struct buffer_insertion_params
    * no scheduling is performed. It is the user's responsibility to ensure that
    * the provided assignment is legal.
    * - `ASAP` = Classical As-Soon-As-Possible scheduling
+   * - `ASAP_depth` = As-Soon-As-Possible scheduling with depth optimality
    * - `ALAP` = ASAP (to obtain depth) followed by As-Late-As-Possible scheduling
+   * - `ALAP_depth` = As-Late-As-Possible scheduling with depth optimality
    * - `better` = ASAP followed by ALAP, then count buffers for both assignments
+   * and choose the better one
+   * - `better_depth` = ALAP_depth followed by ASAP_depth, then count buffers for both assignments
    * and choose the better one
    */
   enum
   {
     provided,
     ASAP,
+    ASAP_depth,
     ALAP,
-    better
+    ALAP_depth,
+    better,
+    better_depth
   } scheduling = ASAP;
 
   /*! \brief The level of optimization effort.
@@ -168,7 +178,7 @@ public:
   using signal = typename Ntk::signal;
 
   explicit buffer_insertion( Ntk const& ntk, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _external_ref_count_neg( _ntk ), _num_buffers( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _external_ref_count_neg( _ntk ), _num_buffers( _ntk ), _min_level( _ntk ), _max_level( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -190,7 +200,7 @@ public:
   }
 
   explicit buffer_insertion( Ntk const& ntk, node_map<uint32_t, Ntk> const& levels, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( levels ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _external_ref_count_neg( _ntk ), _num_buffers( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( levels ), _timeframes( _ntk ), _fanouts( _ntk ), _external_ref_count( _ntk ), _external_ref_count_neg( _ntk ), _num_buffers( _ntk ), _min_level( _ntk ), _max_level( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -295,6 +305,12 @@ public:
   {
     assert( !_outdated && "Please call `count_buffers()` first." );
     return _num_buffers[n];
+  }
+
+  /*! \brief The choosen schedule is ASAP */
+  uint32_t is_scheduled_ASAP() const
+  {
+    return _is_scheduled_ASAP;
   }
 #pragma endregion
 
@@ -626,6 +642,11 @@ public:
         _depth = std::max( _depth, _levels[f] + num_splitter_levels( _ntk.get_node( f ) ) );
       } );
     }
+    else if ( _ps.scheduling == buffer_insertion_params::better_depth || _ps.scheduling == buffer_insertion_params::ASAP_depth || _ps.scheduling == buffer_insertion_params::ALAP_depth )
+    {
+      fanout_view<Ntk> f_ntk{ _ntk };
+      depth_optimal_schedule( f_ntk );
+    }
     else
     {
       ASAP();
@@ -662,6 +683,35 @@ public:
     } );
 
     _outdated = true;
+    _is_scheduled_ASAP = true;
+  }
+
+  /*! \brief ASAP optimal-depth scheduling
+   *
+   * ASAP_depth should follow right after ALAP_depth (i.e., initialization).
+   *
+   * \param try_regular tries to insert balanced trees when sufficient slack.
+   */
+  void ASAP_depth( fanout_view<Ntk> const& f_ntk, bool try_regular )
+  {
+    node_map<uint32_t, Ntk> mobility( _ntk, UINT32_MAX );
+
+    _ntk.foreach_node( [&]( auto const& n ) {
+      if ( _ntk.is_constant( n ) || _ntk.is_pi( n ) )
+      {
+        mobility[n] = _levels[n];
+      }
+
+      if ( !_ntk.is_constant( n ) )
+      {
+        compute_mobility_ASAP( f_ntk, n, mobility, try_regular );
+      }
+
+      _min_level[n] = _levels[n];
+    } );
+
+    _outdated = true;
+    _is_scheduled_ASAP = true;
   }
 
   /*! \brief ALAP scheduling.
@@ -683,6 +733,73 @@ public:
     } );
 
     _outdated = true;
+    _is_scheduled_ASAP = false;
+  }
+
+  /*! \brief ALAP depth-optimal sheduling */
+  void ALAP_depth( fanout_view<Ntk> const& f_ntk )
+  {
+    _levels.reset( 0 );
+    topo_view<Ntk> topo_ntk{ _ntk };
+
+    /* compute ALAP */
+    _depth = UINT32_MAX - 1;
+    uint32_t min_level = UINT32_MAX - 1;
+    topo_ntk.foreach_node_reverse( [&]( auto const& n ) {
+      if ( !_ntk.is_constant( n ) && ( _ps.assume.branch_pis || !_ntk.is_pi( n ) ) )
+      {
+        compute_levels_ALAP_depth( f_ntk, n );
+        min_level = std::min( min_level, _levels[n] );
+      }
+    } );
+
+    if ( !_ps.assume.branch_pis && min_level != 0 )
+      --min_level;
+
+    /* normalize level */
+    _ntk.foreach_node( [&]( auto const& n ) {
+      if ( !_ntk.is_constant( n ) )
+      {
+        if ( _ps.assume.balance_pis && _ntk.is_pi( n ) )
+        {
+          _levels[n] = 0;
+        }
+        else if ( !_ps.assume.balance_pis || !_ntk.is_pi( n ) )
+        {
+          _levels[n] = _levels[n] - min_level;
+        }
+        _max_level[n] = _levels[n];
+      }
+    } );
+
+    _depth -= min_level;
+    _outdated = true;
+    _is_scheduled_ASAP = false;
+  }
+
+  void depth_optimal_schedule( fanout_view<Ntk> const& f_ntk )
+  {
+    /* Optimum-depth ALAP scheduling */
+    ALAP_depth( f_ntk );
+    count_buffers();
+    auto const num_buf_ALAP_depth = num_buffers();
+
+    if ( _ps.scheduling == buffer_insertion_params::ALAP_depth )
+      return;
+
+    /* Optimum-depth ALAP scheduling: no balanced trees */
+    ASAP_depth( f_ntk, false );
+    count_buffers();
+    auto const num_buf_ASAP_depth = num_buffers();
+
+    if ( _ps.scheduling == buffer_insertion_params::ASAP_depth )
+      return;
+
+    /* Revert to optimum-depth ALAP scheduling if better */
+    if ( num_buf_ALAP_depth < num_buf_ASAP_depth )
+    {
+      ALAP_depth( f_ntk );
+    }
   }
 
 private:
@@ -741,6 +858,173 @@ private:
         }
       }
     } );
+  }
+
+  void compute_levels_ALAP_depth( fanout_view<Ntk> const& ntk, node const& n )
+  {
+    std::vector<uint32_t> level_assignment;
+    level_assignment.reserve( ntk.fanout_size( n ) );
+
+    /* if node is a PO, add levels */
+    for ( auto i = ntk.fanout( n ).size(); i < ntk.fanout_size( n ); ++i )
+      level_assignment.push_back( _depth + 1 );
+
+    /* get fanout levels */
+    ntk.foreach_fanout( n, [&]( auto const& f ) {
+      level_assignment.push_back( _levels[f] );
+    } );
+
+    /* dangling PI */
+    if ( level_assignment.empty() )
+    {
+      _levels[n] = _depth;
+      return;
+    }
+
+    /* sort by descending order of levels */
+    std::sort( level_assignment.begin(), level_assignment.end(), std::greater<uint32_t>() );
+
+    /* simulate splitter tree reconstruction */
+    uint32_t nodes_in_level = 0;
+    uint32_t last_level = level_assignment.front();
+    for ( int const l : level_assignment )
+    {
+      if ( l == last_level )
+      {
+        ++nodes_in_level;
+      }
+      else
+      {
+        /* update splitters */
+        for ( auto i = 0; ( i < last_level - l ) && ( nodes_in_level != 1 ); ++i )
+          nodes_in_level = std::ceil( float( nodes_in_level ) / float( _ps.assume.splitter_capacity ) );
+
+        ++nodes_in_level;
+        last_level = l;
+      }
+    }
+
+    /* search for a feasible level for node n */
+    --last_level;
+    while ( nodes_in_level > 1 )
+    {
+      nodes_in_level = std::ceil( float( nodes_in_level ) / float( _ps.assume.splitter_capacity ) );
+      --last_level;
+    }
+
+    _levels[n] = last_level;
+  }
+
+  void compute_mobility_ASAP( fanout_view<Ntk> const& ntk, node const& n, node_map<uint32_t, Ntk>& mobility, bool try_regular )
+  {
+    /* commit ASAP scheduling */
+    uint32_t level_n = _levels[n] - mobility[n];
+    _levels[n] = level_n;
+
+    if ( !_ps.assume.branch_pis && _ntk.is_pi( n ) )
+    {
+      ntk.foreach_fanout( n, [&]( auto const& f ) {
+        mobility[f] = std::min( mobility[f], _levels[f] - level_n - 1 );
+      } );
+      return;
+    }
+
+    /* try to fit a balanced tree */
+    if ( try_regular )
+    {
+      uint32_t fo_level = num_splitter_levels( n );
+      bool valid = true;
+      ntk.foreach_fanout( n, [&]( auto const& f ) {
+        if ( level_n + fo_level + 1 > _levels[f] )
+          valid = false;
+        return valid;
+      } );
+
+      if ( valid )
+      {
+        ntk.foreach_fanout( n, [&]( auto const& f ) {
+          mobility[f] = std::min( mobility[f], _levels[f] - level_n - fo_level - 1 );
+        } );
+        return;
+      }
+    }
+
+    /* keep current splitter structure, selecting the mobility based on the buffers */
+    std::vector<std::array<uint32_t, 3>> level_assignment;
+    level_assignment.reserve( _ntk.fanout_size( n ) );
+
+    /* if node is a PO, add levels */
+    for ( auto i = ntk.fanout( n ).size(); i < ntk.fanout_size( n ); ++i )
+      level_assignment.push_back( { 0, _depth + 1, 0 } );
+
+    /* get fanout levels */
+    ntk.foreach_fanout( n, [&]( auto const& f ) {
+      level_assignment.push_back( { ntk.node_to_index( f ), _levels[f], 0 } );
+    } );
+
+    /* dangling PI */
+    if ( level_assignment.empty() )
+    {
+      return;
+    }
+
+    /* sort by descending order of levels */
+    std::sort( level_assignment.begin(), level_assignment.end(), []( auto const& a, auto const& b ) {
+      return a[1] > b[1];
+    } );
+
+    /* simulate splitter tree reconstruction */
+    uint32_t nodes_in_level = 0;
+    uint32_t nodes_in_last_level = _ps.assume.splitter_capacity;
+    uint32_t last_level = level_assignment.front()[1];
+    for ( auto i = 0; i < level_assignment.size(); ++i )
+    {
+      uint32_t l = level_assignment[i][1];
+      if ( l == last_level )
+      {
+        ++nodes_in_level;
+      }
+      else
+      {
+        /* update splitters */
+        uint32_t mobility_update = 0;
+        for ( auto j = 0; j < last_level - l; ++j )
+        {
+          if ( nodes_in_level == 1 )
+          {
+            ++mobility_update;
+          }
+          nodes_in_level = std::ceil( float( nodes_in_level ) / float( _ps.assume.splitter_capacity ) );
+        }
+
+        if ( mobility_update )
+        {
+          for ( auto j = 0; j < i; ++j )
+            level_assignment[j][2] += mobility_update;
+        }
+
+        ++nodes_in_level;
+        last_level = l;
+      }
+    }
+
+    /* search a feasible level for node n */
+    uint32_t mobility_update = 0;
+    for ( auto i = level_n + 1; i < last_level; ++i )
+    {
+      if ( nodes_in_level == 1 )
+        ++mobility_update;
+      nodes_in_level = std::ceil( float( nodes_in_level ) / float( _ps.assume.splitter_capacity ) );
+    }
+
+    /* update mobilities */
+    for ( auto const& v : level_assignment )
+    {
+      if ( v[0] != 0 )
+      {
+        mobility[v[0]] = std::min( mobility[v[0]], v[2] + mobility_update );
+      }
+    }
   }
 #pragma endregion
 
@@ -1591,6 +1875,7 @@ private:
   Ntk const& _ntk;
   buffer_insertion_params const _ps;
   bool _outdated{ true };
+  bool _is_scheduled_ASAP{ true };
 
   node_map<uint32_t, Ntk> _levels;
   node_map<std::pair<uint32_t, uint32_t>, Ntk> _timeframes;
@@ -1607,6 +1892,8 @@ private:
   node_map<uint32_t, Ntk> _external_ref_count;     // total refs
   node_map<uint32_t, Ntk> _external_ref_count_neg; // negated refs
   node_map<uint32_t, Ntk> _num_buffers;
+  node_map<uint32_t, Ntk> _min_level;
+  node_map<uint32_t, Ntk> _max_level;
 
   uint32_t _start_id; // for chunked movement
 };                    /* buffer_insertion */
