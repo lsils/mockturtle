@@ -387,6 +387,15 @@ private:
       return fo_infos.front().relative_depth - 1u;
     }
 
+    if ( _ps.assume.ci_capacity > 1 && _ntk.is_pi( n ) )
+    {
+      if ( fo_infos.size() == 1u )
+      {
+        assert( fo_infos.front().relative_depth == 1u );
+        return 0u;
+      }
+    }
+
     assert( fo_infos.size() > 1u );
     auto it = fo_infos.begin();
     uint32_t count = it->num_edges - it->fanouts.size() - it->extrefs.size();
@@ -825,10 +834,27 @@ public:
     } );
     _depth -= delta;
     assert( _depth % _ps.assume.num_phases == 0 );
-    _ntk.foreach_po( [&]( auto const& f, auto i ) {
-      (void)f;
-      _po_levels[i] = _depth + 1;
-    } );
+    if ( _ps.assume.balance_cios )
+    {
+      _ntk.foreach_po( [&]( auto const& f, auto i ) {
+        (void)f;
+        _po_levels[i] = _depth + 1;
+      } );
+    }
+    else
+    {
+      _ntk.foreach_po( [&]( auto const& f, auto i ) {
+        if ( _ntk.is_constant( _ntk.get_node( f ) ) )
+          _po_levels[i] = 1;
+        else
+        {
+          _po_levels[i] = _levels[f] + num_splitter_levels( _ntk.get_node( f ) );
+          if ( _po_levels[i] % _ps.assume.num_phases > 0 )
+            _po_levels[i] += _ps.assume.num_phases - ( _po_levels[i] % _ps.assume.num_phases );
+          ++_po_levels[i];
+        }
+      } );
+    }
 
     _outdated = true;
     _is_scheduled_ASAP = false;
@@ -867,7 +893,7 @@ private:
 
   bool is_acceptable_ci_lvl( uint32_t lvl ) const
   {
-    if ( !_ps.assume.balance_cios )
+    if ( _ps.assume.balance_cios )
     {
       for ( auto const& p : _ps.assume.ci_phases )
       {
@@ -880,7 +906,7 @@ private:
     {
       for ( auto const& p : _ps.assume.ci_phases )
       {
-        // for example, if num_phases = 4, one of p = 5,
+        // for example, if num_phases = 4, ci_phases = {5},
         // then lvl = 1 will not be acceptable, but lvl = 5 or lvl = 9 will
         if ( lvl % _ps.assume.num_phases == p % _ps.assume.num_phases && lvl >= p )
           return true;
@@ -972,10 +998,21 @@ private:
 
     /* search for a feasible level for node n */
     --last_level;
-    while ( nodes_in_level > 1 )
+    if ( _ntk.is_pi( n ) )
     {
-      nodes_in_level = std::ceil( float( nodes_in_level ) / float( _ps.assume.splitter_capacity ) );
-      --last_level;
+      while ( nodes_in_level > _ps.assume.ci_capacity )
+      {
+        nodes_in_level = std::ceil( float( nodes_in_level ) / float( _ps.assume.splitter_capacity ) );
+        --last_level;
+      }
+    }
+    else
+    {
+      while ( nodes_in_level > 1 )
+      {
+        nodes_in_level = std::ceil( float( nodes_in_level ) / float( _ps.assume.splitter_capacity ) );
+        --last_level;
+      }
     }
 
     _levels[n] = last_level;
@@ -1076,7 +1113,7 @@ private:
     uint32_t mobility_update = 0;
     for ( auto i = level_n + 1; i < last_level; ++i )
     {
-      if ( nodes_in_level == 1 )
+      if ( nodes_in_level == 1 || ( _ntk.is_pi( n ) && nodes_in_level <= _ps.assume.ci_capacity ) )
         ++mobility_update;
       nodes_in_level = std::ceil( float( nodes_in_level ) / float( _ps.assume.splitter_capacity ) );
     }
@@ -1170,10 +1207,7 @@ public:
       bufntk.create_po( _ntk.is_complemented( f ) ? !s : s );
     } );
 
-    if ( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 != num_buffers() )
-    {
-      std::cerr << "[w] actual #bufs = " << ( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 ) << ", counted = " << num_buffers() << "\n";
-    }
+    assert( bufntk.size() - bufntk.num_pis() - bufntk.num_gates() - 1 == num_buffers() );
   }
 
 private:
@@ -1255,12 +1289,19 @@ private:
     node o; // outside node
   };
 
+  struct po_interface
+  {
+    node c; // chunk node
+    uint32_t o; // PO index
+  };
+
   struct chunk
   {
     uint32_t id;
     std::vector<node> members{};
     std::vector<io_interface> input_interfaces{};
     std::vector<io_interface> output_interfaces{};
+    std::vector<po_interface> po_interfaces{};
     int32_t slack{ std::numeric_limits<int32_t>::max() };
     int32_t benefits{ 0 };
   };
@@ -1272,7 +1313,7 @@ private:
 
   bool is_fixed( node const& n ) const
   {
-    return _ntk.is_pi( n );
+    return _ps.assume.balance_cios && _ps.assume.ci_phases.size() == 1 && _ntk.is_pi( n );
   }
 
   bool find_and_move_chunks()
@@ -1305,7 +1346,7 @@ private:
     } );
 
     count_buffers();
-    // assert( num_buffers() <= num_buffers_before );
+    assert( num_buffers() <= num_buffers_before );
     return updated && num_buffers() < num_buffers_before;
   }
 
@@ -1342,41 +1383,70 @@ private:
 
   void recruit_fanouts( node const& n, chunk& c )
   {
-    assert( !_ntk.is_pi( n ) );
     auto const& fanout_info = _fanouts[n];
     if ( fanout_info.size() == 0 ) /* dangling */
       return;
 
-    if ( fanout_info.size() == 1 ) /* single fanout */
+    auto it = fanout_info.begin();
+    if ( _ntk.fanout_size( n ) == 1 ) /* single fanout */
     {
-      if ( fanout_info.front().fanouts.size() == 1 ) /* single gate fanout */
+      assert( fanout_info.size() == 1 );
+      if ( it->fanouts.size() == 1 ) /* single gate fanout */
       {
-        if ( fanout_info.front().relative_depth == 1 )
-          recruit( fanout_info.front().fanouts.front(), c );
+        if ( it->relative_depth == 1 )
+          recruit( it->fanouts.front(), c );
         else
-          c.output_interfaces.push_back( { n, fanout_info.front().fanouts.front() } );
+          c.output_interfaces.push_back( { n, it->fanouts.front() } );
       }
       else /* single PO fanout */
       {
-        assert( fanout_info.front().extrefs.size() == 1 );
-        c.output_interfaces.push_back( { n, n } ); // PO interface
+        assert( it->extrefs.size() == 1 );
+        c.po_interfaces.push_back( { n, it->extrefs.front() } );
       }
+      return;
     }
-    else
+
+    for ( ; it != fanout_info.end(); ++it )
     {
-      for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
+      for ( auto it2 = it->extrefs.begin(); it2 != it->extrefs.end(); ++it2 )
+        c.po_interfaces.push_back( { n, *it2 } );
+    }
+    it = fanout_info.begin();
+
+    if ( _ps.assume.ci_capacity > 1 && _ntk.is_pi( n ) )
+    {
+      if ( it->relative_depth == 1 )
+      {
+        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+          recruit( *it2, c );
+        it++;
+      }
+      if ( it->relative_depth == 2 && fanout_info.front().num_edges == _ps.assume.ci_capacity )
+      {
+        assert( fanout_info.front().relative_depth == 1 );
+        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+          recruit( *it2, c );
+        it++;
+      }
+      for ( ; it != fanout_info.end(); ++it )
       {
         for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
         {
-          if ( it->relative_depth == 2 )
-            recruit( *it2, c );
-          else if ( _ntk.visited( *it2 ) != c.id )
+          if ( _ntk.visited( *it2 ) != c.id )
             c.output_interfaces.push_back( { n, *it2 } );
         }
-        for ( auto it2 = it->extrefs.begin(); it2 != it->extrefs.end(); ++it2 )
-        {
-          c.output_interfaces.push_back( { n, n } ); // PO interface
-        }
+      }
+      return;
+    }
+
+    for ( ; it != fanout_info.end(); ++it )
+    {
+      for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+      {
+        if ( it->relative_depth == 2 )
+          recruit( *it2, c );
+        else if ( _ntk.visited( *it2 ) != c.id )
+          c.output_interfaces.push_back( { n, *it2 } );
       }
     }
   }
@@ -1384,6 +1454,22 @@ private:
   bool are_close( node const& ni, node const& n )
   {
     auto const& fanout_info = _fanouts[ni];
+
+    if ( _ps.assume.ci_capacity > 1 && _ntk.is_pi( ni ) )
+    {
+      auto const& front_fanouts = fanout_info.front().fanouts;
+      if ( fanout_info.front().relative_depth == 1 )
+      {
+        if ( std::find( front_fanouts.begin(), front_fanouts.end(), n ) != front_fanouts.end() )
+          return true;
+        if ( fanout_info.front().num_edges < _ps.assume.ci_capacity )
+          return false;
+      }
+      else if ( _ntk.fanout_size( ni ) <= _ps.assume.ci_capacity )
+        return false;
+      assert( fanout_info.size() > 1 );
+    }
+
     if ( fanout_info.size() == 1 && fanout_info.front().relative_depth == 1 )
     {
       assert( fanout_info.front().fanouts.front() == n );
@@ -1416,7 +1502,7 @@ private:
     }
     for ( int i = 0; i < c.output_interfaces.size(); ++i )
     {
-      if ( _ntk.visited( c.output_interfaces[i].o ) == c.id && c.output_interfaces[i].o != c.output_interfaces[i].c )
+      if ( _ntk.visited( c.output_interfaces[i].o ) == c.id )
       {
         c.output_interfaces.erase( c.output_interfaces.begin() + i );
         --i;
@@ -1450,9 +1536,54 @@ private:
       }
       c.slack = std::min( c.slack, int32_t( rd - lowest ) );
       pseudo_move( ii.o, ii.c, rd, lowest );
-      if ( _fanouts[ii.o].back().relative_depth == rd && _fanouts[ii.o].back().num_edges == 1 ) // `ii.c` is the last highest fanout of `ii.o`
+      if ( _fanouts[ii.o].back().relative_depth == rd && _fanouts[ii.o].back().num_edges == 0 ) // `ii.c` is the last highest fanout of `ii.o`
       {
         ++c.benefits;
+      }
+    }
+
+    if ( c.po_interfaces.size() > 0 )
+    {
+      if ( !_ps.assume.balance_cios && c.slack >= _ps.assume.num_phases )
+      {
+        c.slack -= c.slack % _ps.assume.num_phases;
+      }
+      else
+      {
+        for ( auto poi : c.po_interfaces )
+        {
+          if ( marked_oi.find( poi.c ) == marked_oi.end() )
+            --c.benefits;
+        }
+      }
+    }
+
+    std::vector<node> pi_members;
+    for ( auto m : c.members )
+    {
+      if ( _ntk.is_pi( m ) )
+      {
+        pi_members.emplace_back( m );
+        c.slack = std::min( c.slack, int32_t( _levels[m] ) );
+      }
+    }
+    if ( pi_members.size() > 0 )
+    {
+      while ( c.slack > 0 )
+      {
+        bool ok = true;
+        for ( auto m : pi_members )
+        {
+          if ( _levels[m] < c.slack || !is_acceptable_ci_lvl( _levels[m] - c.slack ) )
+          {
+            ok = false;
+            break;
+          }
+        }
+        if ( !ok )
+          --c.slack;
+        else
+          break;
       }
     }
 
@@ -1462,6 +1593,8 @@ private:
 
       for ( auto m : c.members )
         _levels[m] -= c.slack;
+      for ( auto poi : c.po_interfaces )
+        _po_levels[poi.o] -= c.slack;
       for ( auto m : c.members )
         update_fanout_info( m );
       for ( auto ii : c.input_interfaces )
@@ -1472,9 +1605,15 @@ private:
         count_buffers();
       if ( !legal || num_buffers() >= buffers_before )
       {
+        if ( !legal )
+          std::cout << "  UNDO move DOWN because illegal\n";
+        else
+          std::cout << "  UNDO move DOWN because increased buffers\n";
         /* UNDO */
         for ( auto m : c.members )
           _levels[m] += c.slack;
+        for ( auto poi : c.po_interfaces )
+          _po_levels[poi.o] += c.slack;
         for ( auto m : c.members )
           update_fanout_info( m );
         for ( auto ii : c.input_interfaces )
@@ -1482,6 +1621,7 @@ private:
         _outdated = true;
         return false;
       }
+      std::cout << "  MOVE DOWN with slack " << c.slack << " and benefits " << c.benefits << "\n";
 
       _start_id = _ntk.trav_id();
       return true;
@@ -1596,11 +1736,63 @@ private:
       auto const& fanout_info = _fanouts[oi.c];
       if ( fanout_info.size() == 1 ) /* single fanout */
         c.slack = std::min( c.slack, int32_t( fanout_info.front().relative_depth - 1 ) );
-      else if ( oi.c == oi.o ) /* PO interface, which is not the only fanout */
-        c.slack = 0; // TODO
       else
         c.slack = std::min( c.slack, int32_t( _levels[oi.o] - _levels[oi.c] - 2 ) );
     }
+
+    std::vector<uint32_t> po_to_move;
+    if ( c.po_interfaces.size() > 0 )
+    {
+      for ( auto poi : c.po_interfaces )
+      {
+        if ( _levels[poi.c] + num_splitter_levels( poi.c ) + c.slack >= _po_levels[poi.o] )
+        {
+          if ( _ps.assume.balance_cios )
+            c.slack = std::min( c.slack, int32_t( _po_levels[poi.o] - _levels[poi.c] - num_splitter_levels( poi.c ) - 1 ) );
+          else
+          {
+            c.slack = std::min( c.slack, int32_t( _depth + 1 - _po_levels[poi.o] ) );
+            po_to_move.emplace_back( poi.o );
+          }
+        }
+        else
+        {
+          if ( marked_oi.find( poi.c ) == marked_oi.end() )
+            ++c.benefits;
+        }
+      }
+    }
+
+    if ( c.benefits <= 0 || c.slack <= 0 )
+      return false;
+
+    std::vector<node> pi_members;
+    for ( auto m : c.members )
+    {
+      if ( _ntk.is_pi( m ) )
+        pi_members.emplace_back( m );
+    }
+    if ( pi_members.size() > 0 )
+    {
+      while ( c.slack > 0 )
+      {
+        bool ok = true;
+        for ( auto m : pi_members )
+        {
+          if ( !is_acceptable_ci_lvl( _levels[m] + c.slack ) )
+          {
+            ok = false;
+            break;
+          }
+        }
+        if ( !ok )
+          --c.slack;
+        else
+          break;
+      }
+    }
+    if ( po_to_move.size() > 0 )
+      c.slack -= c.slack % _ps.assume.num_phases;
 
     if ( c.benefits > 0 && c.slack > 0 )
     {
@@ -1610,26 +1802,27 @@ private:
 
       for ( auto m : c.members )
         _levels[m] += c.slack;
+      for ( auto po : po_to_move )
+        _po_levels[po] += c.slack;
       for ( auto m : c.members )
-      {
         legal &= update_fanout_info<true>( m );
-        if ( !legal )
-          break;
-      }
-      if ( legal )
-      {
-        for ( auto ii : c.input_interfaces )
-          update_fanout_info( ii.o );
-      }
+      for ( auto ii : c.input_interfaces )
+        legal &= update_fanout_info<true>( ii.o );
 
       _outdated = true;
       if ( legal )
         count_buffers();
       if ( !legal || num_buffers() >= buffers_before )
       {
+        if ( !legal )
+          std::cout << "  UNDO move UP because illegal\n";
+        else
+          std::cout << "  UNDO move UP because increased buffers\n";
         /* UNDO */
         for ( auto m : c.members )
           _levels[m] -= c.slack;
+        for ( auto po : po_to_move )
+          _po_levels[po] -= c.slack;
         for ( auto m : c.members )
           update_fanout_info( m );
         for ( auto ii : c.input_interfaces )
@@ -1637,6 +1830,7 @@ private:
         _outdated = true;
         return false;
       }
+      std::cout << "  MOVE UP with slack " << c.slack << " and benefits " << c.benefits << "\n";
 
       _start_id = _ntk.trav_id();
       return true;
