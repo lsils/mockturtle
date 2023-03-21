@@ -1593,8 +1593,11 @@ private:
 
       for ( auto m : c.members )
         _levels[m] -= c.slack;
-      for ( auto poi : c.po_interfaces )
-        _po_levels[poi.o] -= c.slack;
+      if ( !_ps.assume.balance_cios && c.slack >= _ps.assume.num_phases )
+      {
+        for ( auto poi : c.po_interfaces )
+          _po_levels[poi.o] -= c.slack;
+      }
       for ( auto m : c.members )
         update_fanout_info( m );
       for ( auto ii : c.input_interfaces )
@@ -1605,15 +1608,14 @@ private:
         count_buffers();
       if ( !legal || num_buffers() >= buffers_before )
       {
-        if ( !legal )
-          std::cout << "  UNDO move DOWN because illegal\n";
-        else
-          std::cout << "  UNDO move DOWN because increased buffers\n";
         /* UNDO */
         for ( auto m : c.members )
           _levels[m] += c.slack;
-        for ( auto poi : c.po_interfaces )
-          _po_levels[poi.o] += c.slack;
+        if ( !_ps.assume.balance_cios && c.slack >= _ps.assume.num_phases )
+        {
+          for ( auto poi : c.po_interfaces )
+            _po_levels[poi.o] += c.slack;
+        }
         for ( auto m : c.members )
           update_fanout_info( m );
         for ( auto ii : c.input_interfaces )
@@ -1621,7 +1623,6 @@ private:
         _outdated = true;
         return false;
       }
-      std::cout << "  MOVE DOWN with slack " << c.slack << " and benefits " << c.benefits << "\n";
 
       _start_id = _ntk.trav_id();
       return true;
@@ -1814,10 +1815,6 @@ private:
         count_buffers();
       if ( !legal || num_buffers() >= buffers_before )
       {
-        if ( !legal )
-          std::cout << "  UNDO move UP because illegal\n";
-        else
-          std::cout << "  UNDO move UP because increased buffers\n";
         /* UNDO */
         for ( auto m : c.members )
           _levels[m] -= c.slack;
@@ -1830,7 +1827,6 @@ private:
         _outdated = true;
         return false;
       }
-      std::cout << "  MOVE UP with slack " << c.slack << " and benefits " << c.benefits << "\n";
 
       _start_id = _ntk.trav_id();
       return true;
