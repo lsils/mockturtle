@@ -1027,14 +1027,14 @@ private:
       compute_cut_data<ELA>( best_cut, n, true );
     }
 
+    /* clear cuts */
+    rcuts.clear();
+
     /* insert the previous best cut */
     if ( iteration != 0 && !preprocess )
     {
       rcuts.simple_insert( best_cut, sort );
     }
-
-    /* clear cuts */
-    rcuts.clear();
 
     if ( fanin > 1 && fanin <= ps.cut_enumeration_ps.fanin_limit )
     {
