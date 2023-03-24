@@ -542,6 +542,7 @@ public:
       TT zero( 0u ), proj( 1u );
       kitty::create_nth_var( proj, 0u );
 
+      tmp_visited.reserve( 100 );
       truth_tables.resize( 20000 );
 
       truth_tables.insert( zero );
@@ -559,9 +560,9 @@ public:
     stopwatch t( st.time_total );
 
     /* compute and save topological order */
-    top_order.reserve( ntk.size() );
+    topo_order.reserve( ntk.size() );
     topo_view<Ntk>( ntk ).foreach_node( [this]( auto n ) {
-      top_order.push_back( n );
+      topo_order.push_back( n );
     } );
 
     if ( ps.collapse_mffcs )
@@ -668,7 +669,7 @@ private:
   void compute_mapping( lut_cut_sort_type const sort, bool preprocess, bool recompute_cuts )
   {
     cuts_total = 0;
-    for ( auto const& n : top_order )
+    for ( auto const& n : topo_order )
     {
       if constexpr ( !ELA )
       {
@@ -749,7 +750,7 @@ private:
     if ( !ps.recompute_cuts )
       return;
 
-    for ( auto const& n : top_order )
+    for ( auto const& n : topo_order )
     {
       if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
       {
@@ -792,7 +793,7 @@ private:
     /* compute current area and update mapping refs in top-down order */
     area = 0;
     edges = 0;
-    for ( auto it = top_order.rbegin(); it != top_order.rend(); ++it )
+    for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
       /* skip constants and PIs */
       if ( ntk.is_constant( *it ) || ntk.is_pi( *it ) )
@@ -863,7 +864,7 @@ private:
     } );
 
     /* propagate required time to the PIs */
-    for ( auto it = top_order.rbegin(); it != top_order.rend(); ++it )
+    for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
       if ( ntk.is_pi( *it ) || ntk.is_constant( *it ) )
         continue;
@@ -1026,14 +1027,14 @@ private:
       compute_cut_data<ELA>( best_cut, n, true );
     }
 
+    /* clear cuts */
+    rcuts.clear();
+
     /* insert the previous best cut */
     if ( iteration != 0 && !preprocess )
     {
       rcuts.simple_insert( best_cut, sort );
     }
-
-    /* clear cuts */
-    rcuts.clear();
 
     if ( fanin > 1 && fanin <= ps.cut_enumeration_ps.fanin_limit )
     {
@@ -1429,6 +1430,7 @@ private:
         count += cut_ref( cuts[leaf][0] );
       }
     }
+
     return count;
   }
 
@@ -1449,6 +1451,46 @@ private:
         count += cut_deref( cuts[leaf][0] );
       }
     }
+
+    return count;
+  }
+
+  uint32_t cut_measure_mffc( cut_t const& cut )
+  {
+    tmp_visited.clear();
+
+    uint32_t count = cut_ref_visit( cut );
+
+    /* dereference visited */
+    for ( auto const& s : tmp_visited )
+    {
+      --node_match[s].map_refs;
+    }
+
+    return count;
+  }
+
+  uint32_t cut_ref_visit( cut_t const& cut )
+  {
+    uint32_t count = cut->data.lut_area;
+
+    for ( auto leaf : cut )
+    {
+      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      {
+        continue;
+      }
+
+      /* add to visited */
+      tmp_visited.push_back( leaf );
+
+      /* Recursive referencing if leaf was not referenced */
+      if ( node_match[leaf].map_refs++ == 0u )
+      {
+        count += cut_ref_visit( cuts[leaf][0] );
+      }
+    }
+
     return count;
   }
 
@@ -1496,7 +1538,7 @@ private:
   {
     ntk.clear_mapping();
 
-    for ( auto const& n : top_order )
+    for ( auto const& n : topo_order )
     {
       if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
         continue;
@@ -1619,14 +1661,14 @@ private:
       cut->data.delay = lut_delay + delay;
       cut->data.lut_area = lut_area;
       cut->data.lut_delay = lut_delay;
-      cut->data.area_flow = static_cast<float>( cut_ref( cut ) );
       if ( ps.edge_optimization )
       {
+        cut->data.area_flow = static_cast<float>( cut_ref( cut ) );
         cut->data.edge_flow = static_cast<float>( cut_edge_deref( cut ) );
       }
       else
       {
-        cut_deref( cut );
+        cut->data.area_flow = static_cast<float>( cut_measure_mffc( cut ) );
         cut->data.edge_flow = 0;
       }
     }
@@ -1765,7 +1807,7 @@ private:
       compute_mffc_mapping_node( n );
     } );
 
-    for ( auto it = top_order.rbegin(); it != top_order.rend(); ++it )
+    for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
       node const& n = *it;
       if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
@@ -1899,7 +1941,8 @@ private:
   const float epsilon{ 0.005f }; /* epsilon */
   LUTCostFn lut_cost{};
 
-  std::vector<node> top_order;
+  std::vector<node> topo_order;
+  std::vector<uint32_t> tmp_visited;
   std::vector<node_lut> node_match;
 
   std::vector<cut_set_t> cuts;  /* compressed representation of cuts */
