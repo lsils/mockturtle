@@ -36,6 +36,7 @@
 #include "collapse_mapped.hpp"
 #include "klut_to_graph.hpp"
 #include "cut_rewriting.hpp"
+#include "mapper.hpp"
 #include "node_resynthesis/mig_npn.hpp"
 #include "resubstitution.hpp"
 #include "mig_resub.hpp"
@@ -46,8 +47,11 @@
 #include "../networks/mig.hpp"
 #include "../views/mapping_view.hpp"
 #include "../io/write_verilog.hpp"
+#include "../utils/stopwatch.hpp"
 
 #include <random>
+
+#define explorer_debug 0
 
 namespace mockturtle
 {
@@ -61,27 +65,35 @@ struct explorer_params
   /*! \brief Initial random seed used to generate random seeds randomly. */
   uint32_t random_seed{0u};
 
+  /*! \brief Maximum number of steps in each iteration. */
   uint32_t max_steps{100000u};
 
+  /*! \brief Maximum number of steps without improvement in each iteration. */
   uint32_t max_steps_no_impr{1000000u};
 
-  uint32_t compressing_scripts_per_step{10u};
+  /*! \brief Number of compressing scripts to run per step. */
+  uint32_t compressing_scripts_per_step{3u};
 
-  bool use_incremental_k{true};
+  /*! \brief Timeout per iteration in seconds. */
+  uint32_t timeout{30u};
 
+  /*! \brief Be verbose. */
   bool verbose{false};
+
+  /*! \brief Be very verbose. */
+  bool very_verbose{false};
 };
 
 struct explorer_stats {};
 
 template<class Ntk>
-using script_t = std::function<void( Ntk&, uint32_t )>;
+using script_t = std::function<void( Ntk&, uint32_t, uint32_t )>;
 
 template<class Ntk>
 using cost_fn_t = std::function<uint32_t( Ntk const& )>;
 
 template<class Ntk>
-std::function<uint32_t( Ntk const& )> size_cost_fn = []( Ntk const& ntk ){ return ntk.size(); };
+std::function<uint32_t( Ntk const& )> size_cost_fn = []( Ntk const& ntk ){ return ntk.num_gates(); };
 
 template<class Ntk>
 class explorer
@@ -134,23 +146,38 @@ public:
 private:
   void run_one_iteration( Ntk& ntk, uint32_t seed )
   {
+    if ( _ps.verbose )
+      fmt::print( "[i] new iteration using seed {}\n", seed );
+ 
+    stopwatch<>::duration elapsed_time{0};
     RandEngine rnd( seed );
     Ntk best = ntk.clone();
     uint32_t last_update{0u};
     for ( auto i = 0u; i < _ps.max_steps; ++i )
     {
-      Ntk backup = ntk.clone(); // for debugging
-      decompress( ntk, rnd, i );
-      compress( ntk, rnd );
+    #if explorer_debug
+      Ntk backup = ntk.clone();
+    #endif
 
-      if ( !*equivalence_checking( *miter<Ntk>( ntk, best ) ) ) // only for debugging!
+      if ( _ps.very_verbose )
+        fmt::print( "[i] step {}: {} -> ", i, cost( ntk ) );
+      {
+        stopwatch t( elapsed_time );
+        decompress( ntk, rnd, i );
+        compress( ntk, rnd, i );
+      }
+      if ( _ps.very_verbose )
+        fmt::print( "{}\n", cost( ntk ) );
+
+    #if explorer_debug
+      if ( !*equivalence_checking( *miter<Ntk>( ntk, best ) ) )
       {
         write_verilog( backup, "debug.v" );
         write_verilog( ntk, "wrong.v" );
         fmt::print( "NEQ at step {}! k = {}\n", i, 3 + (i % 4) );
         break;
-        ntk = best.clone();
       }
+    #endif
 
       if ( cost( ntk ) < cost( best ) )
       {
@@ -160,8 +187,17 @@ private:
           fmt::print( "[i] updated new best at step {}: {}\n", i, cost( best ) );
       }
       if ( i - last_update >= _ps.max_steps_no_impr )
+      {
+        if ( _ps.verbose )
+          fmt::print( "[i] break iteration at step {} after {} steps without improvement (elapsed time: {} secs)\n", i, _ps.max_steps_no_impr, to_seconds( elapsed_time ) );
         break;
-      // TODO: time out break
+      }
+      if ( to_seconds( elapsed_time ) >= _ps.timeout )
+      {
+        if ( _ps.verbose )
+          fmt::print( "[i] break iteration at step {} after timeout of {} secs\n", i, to_seconds( elapsed_time ) );
+        break;
+      }
     }
     ntk = best;
   }
@@ -174,23 +210,23 @@ private:
     {
       if ( r >= p.second )
       {
-        p.first( ntk, _ps.use_incremental_k ? ( 3 + (i % 4) ) : rnd() );
+        p.first( ntk, i, rnd() );
         break;
       }
     }
   }
 
-  void compress( Ntk& ntk, RandEngine& rnd )
+  void compress( Ntk& ntk, RandEngine& rnd, uint32_t i )
   {
     std::uniform_real_distribution<> dis( 0.0, total_weights_com );
-    for ( auto i = 0u; i < _ps.compressing_scripts_per_step; ++i )
+    for ( auto j = 0u; j < _ps.compressing_scripts_per_step; ++j )
     {
       float r = dis( rnd );
       for ( auto const& p : compressing_scripts )
       {
         if ( r >= p.second )
         {
-          p.first( ntk, rnd() );
+          p.first( ntk, i, rnd() );
           break;
         }
       }
@@ -216,9 +252,9 @@ mig_network default_mig_synthesis( mig_network const& ntk, explorer_params const
   explorer_stats st;
   explorer<Ntk> expl( ps, st );
 
-  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t k ){
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     lut_map_params mps;
-    mps.cut_enumeration_ps.cut_size = k;
+    mps.cut_enumeration_ps.cut_size = 3 + (i % 4);
     mapping_view<Ntk> mapped{ _ntk };
     lut_map( mapped, mps );
     const auto klut = *collapse_mapped_network<klut_network>( mapped );
@@ -226,9 +262,23 @@ mig_network default_mig_synthesis( mig_network const& ntk, explorer_params const
     _ntk = convert_klut_to_graph<Ntk>( klut );
   } );
 
-  expl.add_compressing_script( []( Ntk& _ntk, uint32_t rand ){
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    aig_network broken = cleanup_dangling<mig_network, aig_network>( _ntk );
+    _ntk = cleanup_dangling<aig_network, mig_network>( broken );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     //mig_npn_resynthesis resyn;
     //_ntk = cut_rewriting( _ntk, resyn );
+
+    mig_npn_resynthesis resyn{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    mps.area_flow_rounds = 1;
+    mps.enable_logic_sharing = rand & 0x1; /* high-effort remap */
+    _ntk = map( _ntk, exact_lib, mps );
 
     resubstitution_params rps;
     rps.max_inserts = 5;

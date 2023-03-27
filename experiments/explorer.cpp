@@ -37,29 +37,37 @@ int main( int argc, char* argv[] )
   using namespace experiments;
   using namespace mockturtle;
 
-  if ( argc != 2 )
+  experiment<std::string, uint32_t, uint32_t, bool> exp( "deepsyn", "benchmark", "size_before", "size_after", "cec" );
+
+  for ( auto const& benchmark : epfl_benchmarks() )
   {
-    std::cerr << "No benchmark path provided\n";
-    return -1;
+    if ( argc == 2 && benchmark != std::string( argv[1] ) ) continue;
+    if ( benchmark == "hyp" ) continue;
+    fmt::print( "[i] processing {}\n", benchmark );
+
+    mig_network mig;
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( mig ) ) != lorina::return_code::success )
+    {
+      std::cerr << "Cannot read " << benchmark << "\n";
+      return -1;
+    }
+
+    explorer_params ps;
+    ps.num_restarts = 4;
+    ps.max_steps_no_impr = 50;
+    ps.timeout = 45;
+    //ps.compressing_scripts_per_step = 1;
+    ps.verbose = true;
+    //ps.very_verbose = true;
+
+    mig_network opt = default_mig_synthesis( mig, ps );
+    bool const cec = abc_cec_impl( opt, benchmark_path( benchmark ) );
+
+    exp( benchmark, mig.num_gates(), opt.num_gates(), cec );
   }
 
-  std::string benchmark( argv[1] );
-  mig_network mig;
-  if ( lorina::read_aiger( benchmark, aiger_reader( mig ) ) != lorina::return_code::success )
-  {
-    std::cerr << "Cannot read " << benchmark << "\n";
-    return -1;
-  }
-
-  explorer_params ps;
-  ps.max_steps_no_impr = 100;
-  ps.compressing_scripts_per_step = 1;
-  ps.verbose = true;
-
-  mig_network opt = default_mig_synthesis( mig, ps );
-  bool const cec = abc_cec_impl( opt, benchmark );
-
-  fmt::print( "size before = {}, size after = {}, cec = {}\n", mig.size(), opt.size(), cec );
+  exp.save();
+  exp.table();
 
   return 0;
 }
