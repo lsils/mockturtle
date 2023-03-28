@@ -42,7 +42,7 @@ int main( int argc, char* argv[] )
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     if ( argc == 2 && benchmark != std::string( argv[1] ) ) continue;
-    if ( benchmark == "hyp" ) continue;
+    if ( benchmark == "hyp" || benchmark == "adder" || benchmark == "dec" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     mig_network mig;

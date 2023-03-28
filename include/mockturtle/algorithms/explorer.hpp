@@ -174,7 +174,7 @@ private:
       {
         write_verilog( backup, "debug.v" );
         write_verilog( ntk, "wrong.v" );
-        fmt::print( "NEQ at step {}! k = {}\n", i, 3 + (i % 4) );
+        fmt::print( "NEQ at step {}!\n", i );
         break;
       }
     #endif
@@ -253,8 +253,9 @@ mig_network default_mig_synthesis( mig_network const& ntk, explorer_params const
   explorer<Ntk> expl( ps, st );
 
   expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "decompressing with k-LUT mapping using random value {}, k = {}\n", rand, 2 + (rand % 5) );
     lut_map_params mps;
-    mps.cut_enumeration_ps.cut_size = 3 + (i % 4);
+    mps.cut_enumeration_ps.cut_size = 3 + (rand % 4); //3 + (i % 4);
     mapping_view<Ntk> mapped{ _ntk };
     lut_map( mapped, mps );
     const auto klut = *collapse_mapped_network<klut_network>( mapped );
@@ -263,8 +264,25 @@ mig_network default_mig_synthesis( mig_network const& ntk, explorer_params const
   } );
 
   expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
-    aig_network broken = cleanup_dangling<mig_network, aig_network>( _ntk );
-    _ntk = cleanup_dangling<aig_network, mig_network>( broken );
+    //fmt::print( "decompressing with break-MAJ using random value {}\n", rand );
+    std::mt19937 g( rand );
+    _ntk.foreach_gate( [&]( auto n ){
+      bool is_maj = true;
+      _ntk.foreach_fanin( n, [&]( auto fi ){
+        if ( _ntk.is_constant( _ntk.get_node( fi ) ) )
+          is_maj = false;
+        return;
+      });
+      if ( !is_maj )
+        return;
+      std::vector<typename Ntk::signal> fanins;
+      _ntk.foreach_fanin( n, [&]( auto fi ){
+        fanins.emplace_back( fi );
+      });
+
+      std::shuffle( fanins.begin(), fanins.end(), g );
+      _ntk.substitute_node( n, _ntk.create_or( _ntk.create_and( fanins[0], fanins[1] ), _ntk.create_and( fanins[2], !_ntk.create_and( !fanins[0], !fanins[1] ) ) ) );
+    });
   } );
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
