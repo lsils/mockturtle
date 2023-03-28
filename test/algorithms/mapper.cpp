@@ -498,3 +498,33 @@ TEST_CASE( "Exact map with logic sharing", "[mapper]" )
   CHECK( res.num_pos() == 2 );
   CHECK( res.num_gates() == 4 );
 }
+
+TEST_CASE( "exact map of sequential AIG", "[mapper]" )
+{
+  using resyn_fn = xag_npn_resynthesis<xag_network>;
+
+  resyn_fn resyn;
+  exact_library<sequential<xag_network>, resyn_fn> lib( resyn );
+
+  sequential<aig_network> aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto f1 = aig.create_nand( a, b );
+  const auto f2 = aig.create_ro(); // f2 <- f1
+  const auto f3 = aig.create_xor( f2, c );
+
+  aig.create_po( f3 );
+  aig.create_ri( f1 ); // f3 <- f1
+
+  map_params ps;
+  map_stats st;
+  sequential<xag_network> res = map( aig, lib, ps, &st );
+
+  CHECK( res.size() == 7u );
+  CHECK( res.num_pis() == 3u );
+  CHECK( res.num_pos() == 1u );
+  CHECK( res.num_registers() == 1u );
+  CHECK( res.num_gates() == 2u );
+}

@@ -1371,7 +1371,7 @@ private:
     old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][0] = dest.get_constant( false );
     old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][1] = dest.get_constant( true );
 
-    ntk.foreach_ci( [&]( auto const& n ) {
+    ntk.foreach_pi( [&]( auto const& n ) {
       old2new[ntk.node_to_index( n )][0] = dest.create_pi();
     } );
 
@@ -1716,6 +1716,7 @@ private:
  * - `node_to_index`
  * - `index_to_node`
  * - `get_node`
+ * - `foreach_pi`
  * - `foreach_po`
  * - `foreach_co`
  * - `foreach_node`
@@ -1739,6 +1740,7 @@ binding_view<klut_network> map( Ntk const& ntk, tech_library<NInputs, Configurat
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
@@ -1760,6 +1762,33 @@ binding_view<klut_network> map( Ntk const& ntk, tech_library<NInputs, Configurat
   return res;
 }
 
+/*! \brief Technology mapping for sequential networks.
+ *
+ * Version of `map` for technology mapping of sequential networks.
+ *
+ * The function returns a sequential k-LUT network. Each LUT abstracts a gate of the technology library.
+ *
+ * **Required network functions:**
+ * - `size`
+ * - `is_ci`
+ * - `is_constant`
+ * - `node_to_index`
+ * - `index_to_node`
+ * - `get_node`
+ * - `foreach_pi`
+ * - `foreach_po`
+ * - `foreach_ro`
+ * - `foreach_co`
+ * - `foreach_ri`
+ * - `foreach_node`
+ * - `fanout_size`
+ *
+ * \param ntk Sequential network
+ * \param library Technology library
+ * \param ps Mapping params
+ * \param pst Mapping statistics
+ *
+ */
 template<class Ntk, unsigned CutSize = 5u, typename CutData = cut_enumeration_tech_map_cut, unsigned NInputs, classification_type Configuration>
 binding_view<sequential<klut_network>> seq_map( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
 {
@@ -1772,6 +1801,7 @@ binding_view<sequential<klut_network>> seq_map( Ntk const& ntk, tech_library<NIn
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co method" );
   static_assert( has_foreach_ri_v<Ntk>, "Ntk does not implement the has_foreach_ri method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the has_foreach_po method" );
   static_assert( has_foreach_ro_v<Ntk>, "Ntk does not implement the has_foreach_ro method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -1860,7 +1890,7 @@ public:
   {
     stopwatch t( st.time_mapping );
 
-    auto [res, old2new] = initialize_copy_network<NtkDest>( ntk );
+    auto [res, old2new] = initialize_dest();
 
     /* compute and save topological order */
     top_order.reserve( ntk.size() );
@@ -2100,6 +2130,31 @@ private:
     return success;
   }
 
+  std::pair<NtkDest, node_map<signal<NtkDest>, Ntk>> initialize_dest()
+  {
+    node_map<signal<NtkDest>, Ntk> old2new( ntk );
+    NtkDest dest;
+
+    old2new[ntk.get_constant( false )] = dest.get_constant( false );
+    if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
+    {
+      old2new[ntk.get_constant( true )] = dest.get_constant( true );
+    }
+
+    ntk.foreach_pi( [&]( auto const& n ) {
+      old2new[n] = dest.create_pi();
+    } );
+
+    if constexpr ( has_foreach_ro_v<Ntk> )
+    {
+      ntk.foreach_ro( [&]( auto const& n ) {
+        old2new[n] = dest.create_ro();
+      } );
+    }
+
+    return { dest, old2new };
+  }
+
   void finalize_cover( NtkDest& res, node_map<signal<NtkDest>, Ntk>& old2new )
   {
     if ( !ps.enable_logic_sharing || iteration == ps.area_flow_rounds + 1 )
@@ -2147,6 +2202,13 @@ private:
     ntk.foreach_po( [&]( auto const& f ) {
       res.create_po( ntk.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] );
     } );
+
+    if constexpr ( has_foreach_ri_v<Ntk> )
+    {
+      ntk.foreach_ri( [&]( auto const& f ) {
+        res.create_ri( ntk.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] );
+      } );
+    }
 
     /* write final results */
     st.area = area;
@@ -3212,7 +3274,7 @@ private:
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a mapped network representation generated using the exact
- * synthesis entries in the `exact_library`.
+ * synthesis entries in the `exact_library`. This function supports also sequential networks.
  *
  * **Required network functions:**
  * - `size`
@@ -3246,6 +3308,8 @@ NtkDest map( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& libra
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_incr_value_v<NtkDest>, "Ntk does not implement the incr_value method" );
   static_assert( has_decr_value_v<NtkDest>, "Ntk does not implement the decr_value method" );
+  static_assert( has_foreach_ri_v<Ntk> == has_create_ri_v<NtkDest>, "Ntk and NtkDest networks are not both sequential" );
+  static_assert( has_foreach_ro_v<Ntk> == has_create_ro_v<NtkDest>, "Ntk and NtkDest networks are not both sequential" );
 
   map_stats st;
   detail::exact_map_impl<NtkDest, CutSize, CutData, Ntk, RewritingFn, NInputs> p( ntk, library, ps, st );
