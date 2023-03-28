@@ -305,7 +305,7 @@ private:
         node_data.arrival[0] = node_data.arrival[1] = 0.0f;
         match_constants( index );
       }
-      else if ( ntk.is_pi( n ) )
+      else if ( ntk.is_ci( n ) )
       {
         /* all terminals have flow 1.0 */
         node_data.flows[0] = node_data.flows[1] = node_data.flows[2] = 0.0f;
@@ -391,7 +391,7 @@ private:
   {
     for ( auto const& n : top_order )
     {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
       {
         continue;
       }
@@ -437,7 +437,7 @@ private:
   {
     for ( auto const& n : top_order )
     {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
         continue;
 
       auto index = ntk.node_to_index( n );
@@ -496,7 +496,7 @@ private:
 
     /* compute the current worst delay and update the mapping refs */
     delay = 0.0f;
-    ntk.foreach_po( [this]( auto s ) {
+    ntk.foreach_co( [this]( auto s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
 
       if ( ntk.is_complemented( s ) )
@@ -536,7 +536,7 @@ private:
         }
         continue;
       }
-      else if ( ntk.is_pi( *it ) )
+      else if ( ntk.is_ci( *it ) )
       {
         if ( node_match[index].map_refs[1] > 0u )
         {
@@ -646,7 +646,7 @@ private:
     }
 
     /* set the required time at POs */
-    ntk.foreach_po( [&]( auto const& s ) {
+    ntk.foreach_co( [&]( auto const& s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       if ( ntk.is_complemented( s ) )
         node_match[index].required[1] = required;
@@ -657,7 +657,7 @@ private:
     /* propagate required time to the PIs */
     for ( auto it = top_order.rbegin(); it != top_order.rend(); ++it )
     {
-      if ( ntk.is_pi( *it ) || ntk.is_constant( *it ) )
+      if ( ntk.is_ci( *it ) || ntk.is_constant( *it ) )
         break;
 
       const auto index = ntk.node_to_index( *it );
@@ -1172,7 +1172,7 @@ private:
       {
         continue;
       }
-      else if ( ntk.is_pi( ntk.index_to_node( leaf ) ) )
+      else if ( ntk.is_ci( ntk.index_to_node( leaf ) ) )
       {
         /* reference PIs, add inverter cost for negative phase */
         if ( leaf_phase == 1u )
@@ -1241,7 +1241,7 @@ private:
       {
         continue;
       }
-      else if ( ntk.is_pi( ntk.index_to_node( leaf ) ) )
+      else if ( ntk.is_ci( ntk.index_to_node( leaf ) ) )
       {
         /* dereference PIs, add inverter cost for negative phase */
         if ( leaf_phase == 1u )
@@ -1296,9 +1296,9 @@ private:
       double area_old = area;
       bool buffers = false;
 
-      ntk.foreach_po( [&]( auto const& f ) {
+      ntk.foreach_co( [&]( auto const& f ) {
         auto const& n = ntk.get_node( f );
-        if ( !ntk.is_constant( n ) && ntk.is_pi( n ) && !ntk.is_complemented( f ) )
+        if ( !ntk.is_constant( n ) && ntk.is_ci( n ) && !ntk.is_complemented( f ) )
         {
           area += lib_buf_area;
           delay = std::max( delay, node_match[ntk.node_to_index( n )].arrival[0] + lib_inv_delay );
@@ -1328,7 +1328,7 @@ private:
     old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][0] = dest.get_constant( false );
     old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][1] = dest.get_constant( true );
 
-    ntk.foreach_pi( [&]( auto const& n ) {
+    ntk.foreach_ci( [&]( auto const& n ) {
       old2new[ntk.node_to_index( n )][0] = dest.create_pi();
     } );
     return { dest, old2new };
@@ -1347,7 +1347,7 @@ private:
         if ( node_data.best_supergate[0] == nullptr && node_data.best_supergate[1] == nullptr )
           continue;
       }
-      else if ( ntk.is_pi( n ) )
+      else if ( ntk.is_ci( n ) )
       {
         if ( node_data.map_refs[1] > 0 )
         {
@@ -1385,12 +1385,12 @@ private:
     }
 
     /* create POs */
-    ntk.foreach_po( [&]( auto const& f ) {
+    ntk.foreach_co( [&]( auto const& f ) {
       if ( ntk.is_complemented( f ) )
       {
         res.create_po( old2new[ntk.node_to_index( ntk.get_node( f ) )][1] );
       }
-      else if ( !ntk.is_constant( ntk.get_node( f ) ) && ntk.is_pi( ntk.get_node( f ) ) && lib_buf_id != UINT32_MAX )
+      else if ( !ntk.is_constant( ntk.get_node( f ) ) && ntk.is_ci( ntk.get_node( f ) ) && lib_buf_id != UINT32_MAX )
       {
         /* create buffers for POs */
         static uint64_t _buf = 0x2;
@@ -1536,7 +1536,7 @@ private:
         if ( node_data.best_supergate[0] == nullptr && node_data.best_supergate[1] == nullptr )
           continue;
       }
-      else if ( ntk.is_pi( n ) )
+      else if ( ntk.is_ci( n ) )
       {
         if ( node_data.map_refs[1] > 0 )
           power += switch_activity[ntk.node_to_index( n )];
@@ -1622,12 +1622,12 @@ private:
  *
  * **Required network functions:**
  * - `size`
- * - `is_pi`
+ * - `is_ci`
  * - `is_constant`
  * - `node_to_index`
  * - `index_to_node`
  * - `get_node`
- * - `foreach_po`
+ * - `foreach_co`
  * - `foreach_node`
  * - `fanout_size`
  *
@@ -1644,12 +1644,12 @@ binding_view<klut_network> map( Ntk const& ntk, tech_library<NInputs, Configurat
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
-  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci method" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
 
@@ -1813,7 +1813,7 @@ private:
         node_data.flows[0] = node_data.flows[1] = node_data.flows[2] = 0.0f;
         node_data.arrival[0] = node_data.arrival[1] = 0.0f;
       }
-      else if ( ntk.is_pi( n ) )
+      else if ( ntk.is_ci( n ) )
       {
         /* all terminals have flow 1.0 */
         node_data.flows[0] = node_data.flows[1] = node_data.flows[2] = 0.0f;
@@ -1892,7 +1892,7 @@ private:
   {
     for ( auto const& n : top_order )
     {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
         continue;
 
       /* match positive phase */
@@ -1935,7 +1935,7 @@ private:
   {
     for ( auto const& n : top_order )
     {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
         continue;
 
       auto index = ntk.node_to_index( n );
@@ -1983,7 +1983,7 @@ private:
       auto const& db = library.get_database();
 
       ntk.foreach_node( [&]( auto const& n ) {
-        if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+        if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
           return true;
         auto index = ntk.node_to_index( n );
         if ( node_match[index].map_refs[2] == 0u )
@@ -2020,7 +2020,7 @@ private:
     }
 
     /* create POs */
-    ntk.foreach_po( [&]( auto const& f ) {
+    ntk.foreach_co( [&]( auto const& f ) {
       res.create_po( ntk.is_complemented( f ) ? res.create_not( old2new[f] ) : old2new[f] );
     } );
 
@@ -2044,7 +2044,7 @@ private:
 
     /* compute current delay and update mapping refs */
     delay = 0.0f;
-    ntk.foreach_po( [this]( auto s ) {
+    ntk.foreach_co( [this]( auto s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       if ( ntk.is_complemented( s ) )
         delay = std::max( delay, node_match[index].arrival[1] );
@@ -2071,7 +2071,7 @@ private:
       {
         continue;
       }
-      else if ( ntk.is_pi( *it ) )
+      else if ( ntk.is_ci( *it ) )
       {
         if ( node_match[index].map_refs[1] > 0u )
         {
@@ -2182,7 +2182,7 @@ private:
     }
 
     /* set the required time at POs */
-    ntk.foreach_po( [&]( auto const& s ) {
+    ntk.foreach_co( [&]( auto const& s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       if ( ntk.is_complemented( s ) )
         node_match[index].required[1] = required;
@@ -2195,7 +2195,7 @@ private:
     while ( i-- > 0u )
     {
       const auto n = ntk.index_to_node( i );
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
         break;
 
       if ( node_match[i].map_refs[2] == 0 )
@@ -2485,7 +2485,7 @@ private:
 
     for ( auto const& n : top_order )
     {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
         continue;
 
       auto index = ntk.node_to_index( n );
@@ -2897,7 +2897,7 @@ private:
         ++ctr;
         continue;
       }
-      else if ( ntk.is_pi( ntk.index_to_node( leaf ) ) )
+      else if ( ntk.is_ci( ntk.index_to_node( leaf ) ) )
       {
         /* reference PIs, add inverter cost for negative phase */
         if ( leaf_phase == 1u )
@@ -2953,7 +2953,7 @@ private:
         ++ctr;
         continue;
       }
-      else if ( ntk.is_pi( ntk.index_to_node( leaf ) ) )
+      else if ( ntk.is_ci( ntk.index_to_node( leaf ) ) )
       {
         /* dereference PIs, add inverter cost for negative phase */
         if ( leaf_phase == 1u )
@@ -3092,12 +3092,12 @@ private:
  *
  * **Required network functions:**
  * - `size`
- * - `is_pi`
+ * - `is_ci`
  * - `is_constant`
  * - `node_to_index`
  * - `index_to_node`
  * - `get_node`
- * - `foreach_po`
+ * - `foreach_co`
  * - `foreach_node`
  * - `fanout_size`
  *
@@ -3111,12 +3111,12 @@ NtkDest map( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& libra
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
-  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci method" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_incr_value_v<NtkDest>, "Ntk does not implement the incr_value method" );
