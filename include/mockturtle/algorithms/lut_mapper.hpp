@@ -660,7 +660,7 @@ private:
       add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ), true );
 
     /* init PIs cuts */
-    ntk.foreach_pi( [&]( auto const& n ) {
+    ntk.foreach_ci( [&]( auto const& n ) {
       add_unit_cut( ntk.node_to_index( n ) );
     } );
   }
@@ -684,7 +684,7 @@ private:
         }
       }
 
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
       {
         continue;
       }
@@ -752,7 +752,7 @@ private:
 
     for ( auto const& n : topo_order )
     {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
       {
         continue;
       }
@@ -779,7 +779,7 @@ private:
 
     /* compute the current worst delay and update the mapping refs */
     delay = 0;
-    ntk.foreach_po( [this]( auto s ) {
+    ntk.foreach_co( [this]( auto s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
 
       delay = std::max( delay, cuts[index][0]->data.delay );
@@ -796,7 +796,7 @@ private:
     for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
       /* skip constants and PIs */
-      if ( ntk.is_constant( *it ) || ntk.is_pi( *it ) )
+      if ( ntk.is_constant( *it ) || ntk.is_ci( *it ) )
       {
         continue;
       }
@@ -858,7 +858,7 @@ private:
     }
 
     /* set the required time at POs */
-    ntk.foreach_po( [&]( auto const& s ) {
+    ntk.foreach_co( [&]( auto const& s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       node_match[index].required = required;
     } );
@@ -866,7 +866,7 @@ private:
     /* propagate required time to the PIs */
     for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
-      if ( ntk.is_pi( *it ) || ntk.is_constant( *it ) )
+      if ( ntk.is_ci( *it ) || ntk.is_constant( *it ) )
         continue;
 
       const auto index = ntk.node_to_index( *it );
@@ -1419,7 +1419,7 @@ private:
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
       {
         continue;
       }
@@ -1440,7 +1440,7 @@ private:
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
       {
         continue;
       }
@@ -1476,7 +1476,7 @@ private:
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
       {
         continue;
       }
@@ -1500,7 +1500,7 @@ private:
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
       {
         continue;
       }
@@ -1520,7 +1520,7 @@ private:
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
       {
         continue;
       }
@@ -1540,7 +1540,7 @@ private:
 
     for ( auto const& n : topo_order )
     {
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
         continue;
 
       const auto index = ntk.node_to_index( n );
@@ -1799,9 +1799,9 @@ private:
     ntk.clear_mapping();
 
     /* map POs */
-    ntk.foreach_po( [&]( auto const& f ) {
+    ntk.foreach_co( [&]( auto const& f ) {
       node const& n = ntk.get_node( f );
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
         return;
 
       compute_mffc_mapping_node( n );
@@ -1810,7 +1810,7 @@ private:
     for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
       node const& n = *it;
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
         continue;
       if ( ntk.fanout_size( n ) <= 1 ) /* it should be unnecessary */
         continue;
@@ -1895,7 +1895,7 @@ private:
 
   void get_fc_nodes_rec( node const& n, std::vector<node>& nodes )
   {
-    if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+    if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
       return;
 
     nodes.push_back( n );
@@ -1971,12 +1971,12 @@ private:
  *
  * **Required network functions:**
  * - `size`
- * - `is_pi`
+ * - `is_ci`
  * - `is_constant`
  * - `node_to_index`
  * - `index_to_node`
  * - `get_node`
- * - `foreach_po`
+ * - `foreach_co`
  * - `foreach_node`
  * - `fanout_size`
  * - `clear_mapping`
@@ -1997,12 +1997,13 @@ void lut_map( Ntk& ntk, lut_map_params const& ps = {}, lut_map_stats* pst = null
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
-  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci method" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_foreach_ci_v<Ntk>, "Ntk does not implement the foreach_ci method" );
+  static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_clear_mapping_v<Ntk>, "Ntk does not implement the clear_mapping method" );

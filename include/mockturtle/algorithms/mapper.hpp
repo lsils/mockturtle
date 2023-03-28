@@ -3302,7 +3302,7 @@ NtkDest map( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& libra
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
