@@ -5,3 +5,5 @@ target_link_libraries(mockturtle INTERFACE kitty lorina parallel_hashmap percy j
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
 target_link_libraries(mockturtle INTERFACE stdc++fs)
 endif()
+
+target_link_libraries(mockturtle INTERFACE /Users/sylee/Documents/GitHub/iwls/abc/libabc.a)
