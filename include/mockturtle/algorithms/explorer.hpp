@@ -36,11 +36,16 @@
 #include "collapse_mapped.hpp"
 #include "klut_to_graph.hpp"
 #include "cut_rewriting.hpp"
+#include "refactoring.hpp"
+#include "mig_algebraic_rewriting.hpp"
 #include "mapper.hpp"
 #include "node_resynthesis/mig_npn.hpp"
+#include "node_resynthesis/sop_factoring.hpp"
 #include "resubstitution.hpp"
 #include "mig_resub.hpp"
 #include "cleanup.hpp"
+#include "balancing.hpp"
+#include "balancing/sop_balancing.hpp"
 #include "miter.hpp"
 #include "equivalence_checking.hpp"
 #include "../networks/klut.hpp"
@@ -255,12 +260,20 @@ mig_network default_mig_synthesis( mig_network const& ntk, explorer_params const
   expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     //fmt::print( "decompressing with k-LUT mapping using random value {}, k = {}\n", rand, 2 + (rand % 5) );
     lut_map_params mps;
-    mps.cut_enumeration_ps.cut_size = 3 + (rand % 4); //3 + (i % 4);
+    mps.cut_enumeration_ps.cut_size = 3 + (rand & 0x3); //3 + (i % 4);
     mapping_view<Ntk> mapped{ _ntk };
     lut_map( mapped, mps );
     const auto klut = *collapse_mapped_network<klut_network>( mapped );
-    // missing: k-LUT network optimization (mfs)
-    _ntk = convert_klut_to_graph<Ntk>( klut );
+    
+    if ( (rand >> 2) & 0x1 )
+    {
+      _ntk = convert_klut_to_graph<Ntk>( klut );
+    }
+    else
+    {
+      sop_factoring<Ntk> resyn;
+      _ntk = node_resynthesis<Ntk>( klut, resyn );
+    }
   } );
 
   expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
@@ -286,9 +299,6 @@ mig_network default_mig_synthesis( mig_network const& ntk, explorer_params const
   } );
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
-    //mig_npn_resynthesis resyn;
-    //_ntk = cut_rewriting( _ntk, resyn );
-
     mig_npn_resynthesis resyn{ true };
     exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
     map_params mps;
@@ -297,12 +307,28 @@ mig_network default_mig_synthesis( mig_network const& ntk, explorer_params const
     mps.area_flow_rounds = 1;
     mps.enable_logic_sharing = rand & 0x1; /* high-effort remap */
     _ntk = map( _ntk, exact_lib, mps );
+  } );
 
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     resubstitution_params rps;
-    rps.max_inserts = 5;
+    rps.max_inserts = rand & 0x7;
+    rps.max_pis = (rand >> 3) & 0x1 ? 6 : 8;
     depth_view depth_mig{ _ntk };
     fanout_view fanout_mig{ depth_mig };
-    mig_resubstitution2( fanout_mig );
+    mig_resubstitution2( fanout_mig, rps );
+    _ntk = cleanup_dangling( _ntk );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    sop_rebalancing<mig_network> balance_fn;
+    balancing_params bps;
+    bps.cut_enumeration_ps.cut_size = 6u;
+    _ntk = balancing( _ntk, {balance_fn}, bps );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    depth_view depth_mig{ _ntk };
+    mig_algebraic_depth_rewriting( depth_mig );
     _ntk = cleanup_dangling( _ntk );
   } );
 

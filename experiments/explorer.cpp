@@ -26,27 +26,41 @@
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/explorer.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/views/depth_view.hpp>
 
 #include <experiments.hpp>
 #include <fmt/format.h>
 #include <string>
 
-int main( int argc, char* argv[] )
+static const std::string benchmark_repo_path = "../../SCE-benchmarks";
+
+/* AQFP benchmarks */
+std::vector<std::string> aqfp_benchmarks = {
+    "5xp1", "c1908", "c432", "c5315", "c880", "chkn", "count", "dist", "in5", "in6", "k2",
+    "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn" };
+
+std::string benchmark_aqfp_path( std::string const& benchmark_name )
+{
+  return fmt::format( "{}/MCNC/original/{}.v", benchmark_repo_path, benchmark_name );
+}
+
+int main2( int argc, char* argv[] )
 {
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, bool> exp( "deepsyn", "benchmark", "size_before", "size_after", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, bool> exp( "deepsyn", "benchmark", "size_before", "size_after", "depth", "cec" );
 
-  for ( auto const& benchmark : epfl_benchmarks() )
+  for ( auto const& benchmark : aqfp_benchmarks )
   {
     if ( argc == 2 && benchmark != std::string( argv[1] ) ) continue;
-    if ( benchmark == "hyp" || benchmark == "adder" || benchmark == "dec" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
-    mig_network mig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( mig ) ) != lorina::return_code::success )
+    mig_network ntk;
+    if ( lorina::read_verilog( benchmark_aqfp_path( benchmark ), verilog_reader( ntk ) ) != lorina::return_code::success )
     {
       std::cerr << "Cannot read " << benchmark << "\n";
       return -1;
@@ -56,14 +70,57 @@ int main( int argc, char* argv[] )
     ps.num_restarts = 4;
     ps.max_steps_no_impr = 50;
     ps.timeout = 45;
-    //ps.compressing_scripts_per_step = 1;
+    ps.compressing_scripts_per_step = 1;
     ps.verbose = true;
     //ps.very_verbose = true;
 
-    mig_network opt = default_mig_synthesis( mig, ps );
-    bool const cec = abc_cec_impl( opt, benchmark_path( benchmark ) );
+    mig_network opt = deepsyn_aqfp( ntk, ps );
+    depth_view d( opt );
 
-    exp( benchmark, mig.num_gates(), opt.num_gates(), cec );
+    exp( benchmark, ntk.num_gates(), opt.num_gates(), d.depth(), true );
+  }
+
+  exp.save();
+  exp.table();
+
+  return 0;
+}
+
+int main( int argc, char* argv[] )
+{
+  using namespace experiments;
+  using namespace mockturtle;
+
+  experiment<std::string, uint32_t, uint32_t, uint32_t, bool> exp( "deepsyn", "benchmark", "size_before", "size_after", "depth", "cec" );
+
+  for ( auto const& benchmark : epfl_benchmarks() )
+  {
+    if ( argc == 2 && benchmark != std::string( argv[1] ) ) continue;
+    if ( benchmark == "hyp" || benchmark == "adder" || benchmark == "dec" ) continue;
+    fmt::print( "[i] processing {}\n", benchmark );
+
+    using Ntk = mig_network;
+    Ntk ntk;
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( ntk ) ) != lorina::return_code::success )
+    {
+      std::cerr << "Cannot read " << benchmark << "\n";
+      return -1;
+    }
+
+    explorer_params ps;
+    ps.num_restarts = 4;
+    ps.max_steps_no_impr = 50;
+    ps.timeout = 45;
+    ps.compressing_scripts_per_step = 3;
+    ps.verbose = true;
+    //ps.very_verbose = true;
+
+    Ntk opt = default_mig_synthesis( ntk, ps );
+    //Ntk opt = deepsyn( ntk, ps );
+    bool const cec = abc_cec_impl( opt, benchmark_path( benchmark ) );
+    depth_view d( opt );
+
+    exp( benchmark, ntk.num_gates(), opt.num_gates(), d.depth(), cec );
   }
 
   exp.save();
