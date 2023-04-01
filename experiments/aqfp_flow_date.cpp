@@ -47,6 +47,7 @@
 #include <mockturtle/io/blif_reader.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/io/write_blif.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aqfp.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -114,10 +115,10 @@ bool has_better_level( Result& current, Result& previous )
 template<typename Ntk>
 mockturtle::klut_network lut_map_abc( Ntk const& ntk, uint32_t k = 4, std::string name = {} )
 {
-  std::string tempfile1 = "temp1_" + name + ".blif";
+  std::string tempfile1 = "temp1_" + name + ".v";
   std::string tempfile2 = "temp2_" + name + ".blif";
 
-  mockturtle::write_blif( ntk, tempfile1 );
+  mockturtle::write_verilog( ntk, tempfile1 );
 
   system( fmt::format( "abc -q \"{}; &get; &if -K {}; &put; write_blif {}\" >> /dev/null 2>&1", tempfile1, k, tempfile2 ).c_str() );
 
@@ -400,10 +401,7 @@ int main( int argc, char** argv )
     buf_ps.scheduling = buffer_insertion_params::better;
     buf_ps.optimization_effort = buffer_insertion_params::until_sat;
     buf_ps.max_chunk_size = std::numeric_limits<uint32_t>::max();
-    buf_ps.assume.splitter_capacity = 4u;
-    buf_ps.assume.branch_pis = false;
-    buf_ps.assume.balance_pis = false;
-    buf_ps.assume.balance_pos = true;
+    buf_ps.assume = opt_params.assume;
     buffer_insertion buf_inst( aqfp, buf_ps );
     uint32_t num_bufs = buf_inst.dry_run();
     uint32_t num_jjs = opt_stats.maj3_after_exact * 6 + opt_stats.maj5_after_exact * 10 + num_bufs * 2;
