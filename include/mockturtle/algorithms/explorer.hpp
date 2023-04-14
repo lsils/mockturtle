@@ -42,17 +42,22 @@
 #include "node_resynthesis/mig_npn.hpp"
 #include "node_resynthesis/sop_factoring.hpp"
 #include "resubstitution.hpp"
+#include "aig_resub.hpp"
 #include "mig_resub.hpp"
 #include "cleanup.hpp"
 #include "balancing.hpp"
 #include "balancing/sop_balancing.hpp"
+#include "aig_balancing.hpp"
 #include "miter.hpp"
 #include "equivalence_checking.hpp"
+#include "aqfp/buffer_insertion.hpp"
 #include "../networks/klut.hpp"
 #include "../networks/mig.hpp"
 #include "../views/mapping_view.hpp"
 #include "../io/write_verilog.hpp"
+#include "../io/write_aiger.hpp"
 #include "../utils/stopwatch.hpp"
+#include "../utils/abc.hpp"
 
 #include <random>
 
@@ -250,7 +255,40 @@ private:
   cost_fn_t<Ntk> cost;
 };
 
-mig_network default_mig_synthesis( mig_network const& ntk, explorer_params const ps = {} )
+void compress2rs_aig( aig_network& aig )
+{
+  xag_npn_resynthesis<aig_network> resyn;
+  cut_rewriting_params cps;
+  cps.cut_enumeration_ps.cut_size = 4;
+  resubstitution_params rps;
+  //sop_rebalancing<aig_network> balance_fn;
+  //balancing_params bps;
+  //bps.cut_enumeration_ps.cut_size = 6u;
+  aig_balancing_params abps;
+  refactoring_params fps;
+  sop_factoring<aig_network> resyn2;
+
+  /*abps.minimize_levels = true;*/ aig_balance( aig, abps ); // "b -l"
+  rps.max_pis = 6; rps.max_inserts = 1; /*rps.preserve_depth = true;*/ aig_resubstitution( aig, rps ); aig = cleanup_dangling( aig ); // "rs -K 6 -l"
+  /*cps.preserve_depth = true;*/ aig = cut_rewriting( aig, resyn, cps ); // "rw -l"
+  rps.max_pis = 6; rps.max_inserts = 2; aig_resubstitution( aig, rps ); aig = cleanup_dangling( aig ); // "rs -K 6 -N 2 -l"
+  /*fps.preserve_depth = true;*/ refactoring( aig, resyn2, fps ); aig = cleanup_dangling( aig ); // "rf -l"
+  rps.max_pis = 8; rps.max_inserts = 1; aig_resubstitution( aig, rps ); aig = cleanup_dangling( aig ); // "rs -K 8 -l"
+  aig_balance( aig, abps ); // "b -l"
+  rps.max_pis = 8; rps.max_inserts = 2; aig_resubstitution( aig, rps ); aig = cleanup_dangling( aig ); // "rs -K 8 -N 2 -l"
+  aig = cut_rewriting( aig, resyn, cps ); // "rw -l"
+  rps.max_pis = 10; rps.max_inserts = 1; aig_resubstitution( aig, rps ); aig = cleanup_dangling( aig ); // "rs -K 10 -l"
+  cps.allow_zero_gain = true; aig = cut_rewriting( aig, resyn, cps ); // "rwz -l"
+  rps.max_pis = 10; rps.max_inserts = 2; aig_resubstitution( aig, rps ); aig = cleanup_dangling( aig ); // "rs -K 10 -N 2 -l"
+  aig_balance( aig, abps ); // "b -l"
+  rps.max_pis = 12; rps.max_inserts = 1; aig_resubstitution( aig, rps ); aig = cleanup_dangling( aig ); // "rs -K 12 -l"
+  fps.allow_zero_gain = true; refactoring( aig, resyn2, fps ); aig = cleanup_dangling( aig ); // "rfz -l"
+  rps.max_pis = 12; rps.max_inserts = 2; aig_resubstitution( aig, rps ); aig = cleanup_dangling( aig ); // "rs -K 12 -N 2 -l"
+  aig = cut_rewriting( aig, resyn, cps ); // "rwz -l"
+  aig_balance( aig, abps ); // "b -l"
+}
+
+mig_network explore_mig( mig_network const& ntk, explorer_params const ps = {} )
 {
   using Ntk = mig_network;
 
@@ -331,6 +369,398 @@ mig_network default_mig_synthesis( mig_network const& ntk, explorer_params const
     mig_algebraic_depth_rewriting( depth_mig );
     _ntk = cleanup_dangling( _ntk );
   } );
+
+  return expl.run( ntk );
+}
+
+mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
+{
+  using Ntk = mig_network;
+
+  explorer_stats st;
+  explorer<Ntk> expl( ps, st );
+
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
+
+    std::string script = fmt::format(
+      "&dch{}; &if -a -K {}; &mfs -e -W 20 -L 20{}",
+      (rand & 0x1) ? " -f" : "",
+      2 + (i % 5),
+      ((rand >> 2) & 0x1) ? "; &fx; &st" : "");
+    aig = call_abc_script( aig, script );
+
+    mig_npn_resynthesis resyn2{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    _ntk = map( aig, exact_lib, mps );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
+    std::string script = (rand & 0x1) ? "; &c2rs" : "; &dc2";
+    aig = call_abc_script( aig, script );
+
+    mig_npn_resynthesis resyn2{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    _ntk = map( aig, exact_lib, mps );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    mig_npn_resynthesis resyn{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    mps.area_flow_rounds = 1;
+    mps.enable_logic_sharing = rand & 0x1; /* high-effort remap */
+    _ntk = map( _ntk, exact_lib, mps );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    if ( rand & 0x1 )
+    {
+      sop_rebalancing<mig_network> balance_fn;
+      balancing_params bps;
+      bps.cut_enumeration_ps.cut_size = 6u;
+      _ntk = balancing( _ntk, {balance_fn}, bps );
+    }
+    resubstitution_params rps;
+    rps.max_inserts = (rand >> 1) & 0x7;
+    rps.max_pis = (rand >> 4) & 0x3 ? 6 : 8;
+    depth_view depth_mig{ _ntk };
+    fanout_view fanout_mig{ depth_mig };
+    mig_resubstitution2( fanout_mig, rps );
+    _ntk = cleanup_dangling( _ntk );
+  } );
+
+  //expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+  //  depth_view depth_mig{ _ntk };
+  //  mig_algebraic_depth_rewriting( depth_mig );
+  //  _ntk = cleanup_dangling( _ntk );
+  //}, 0.5 );
+
+  //expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+  //  sop_factoring<Ntk> resyn;
+  //  refactoring( _ntk, resyn );
+  //  _ntk = cleanup_dangling( _ntk );
+  //}, 0.5 );
+
+  return expl.run( ntk );
+}
+
+mig_network deepsyn_mig_depth( mig_network const& ntk, explorer_params const ps = {} )
+{
+  using Ntk = mig_network;
+
+  cost_fn_t<Ntk> depth_cost = []( Ntk const& _ntk ){
+    depth_view d{ _ntk };
+    return d.depth();
+  };
+
+  explorer_stats st;
+  explorer<Ntk> expl( ps, st, depth_cost );
+
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
+
+    std::string script = fmt::format(
+      "&dch{} -m; &if -K {}; &mfs -e -W 20 {}",
+      (rand & 0x1) ? " -f" : "",
+      2 + (i % 5),
+      ((rand >> 2) & 0x1) ? "; &fx; &st" : "");
+    aig = call_abc_script( aig, script );
+
+    mig_npn_resynthesis resyn2{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    map_params mps;
+    mps.skip_delay_round = false;
+    mps.required_time = std::numeric_limits<double>::max();
+    _ntk = map( aig, exact_lib, mps );
+  } );
+
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "decompressing with break-MAJ using random value {}\n", rand );
+    std::mt19937 g( rand );
+    _ntk.foreach_gate( [&]( auto n ){
+      bool is_maj = true;
+      _ntk.foreach_fanin( n, [&]( auto fi ){
+        if ( _ntk.is_constant( _ntk.get_node( fi ) ) )
+          is_maj = false;
+        return;
+      });
+      if ( !is_maj )
+        return;
+      std::vector<typename Ntk::signal> fanins;
+      _ntk.foreach_fanin( n, [&]( auto fi ){
+        fanins.emplace_back( fi );
+      });
+
+      std::shuffle( fanins.begin(), fanins.end(), g );
+      _ntk.substitute_node( n, _ntk.create_or( _ntk.create_and( fanins[0], fanins[1] ), _ntk.create_and( fanins[2], !_ntk.create_and( !fanins[0], !fanins[1] ) ) ) );
+    });
+  }, 0.3 );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
+    std::string script = "&put; resyn2rs; &get";
+    aig = call_abc_script( aig, script );
+
+    mig_npn_resynthesis resyn2{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    map_params mps;
+    mps.skip_delay_round = false;
+    mps.required_time = std::numeric_limits<double>::max();
+    _ntk = map( aig, exact_lib, mps );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    mig_npn_resynthesis resyn{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
+    map_params mps;
+    mps.skip_delay_round = false;
+    //mps.required_time = std::numeric_limits<double>::max();
+    mps.area_flow_rounds = 1;
+    mps.enable_logic_sharing = rand & 0x1; /* high-effort remap */
+    _ntk = map( _ntk, exact_lib, mps );
+  }, 0.5 );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    resubstitution_params rps;
+    rps.max_inserts = rand & 0x7;
+    rps.max_pis = (rand >> 3) & 0x1 ? 6 : 8;
+    depth_view depth_mig{ _ntk };
+    fanout_view fanout_mig{ depth_mig };
+    mig_resubstitution2( fanout_mig, rps );
+    _ntk = cleanup_dangling( _ntk );
+  }, 0.5 );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    sop_rebalancing<mig_network> balance_fn;
+    balancing_params bps;
+    bps.cut_enumeration_ps.cut_size = ( rand & 0x1 ) ? 8 : 10;
+    _ntk = balancing( _ntk, {balance_fn}, bps );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    depth_view depth_mig{ _ntk };
+    mig_algebraic_depth_rewriting( depth_mig );
+    _ntk = cleanup_dangling( _ntk );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    sop_factoring<Ntk> resyn;
+    refactoring( _ntk, resyn );
+    _ntk = cleanup_dangling( _ntk );
+  }, 0.5 );
+
+  return expl.run( ntk );
+}
+
+aig_network deepsyn_aig( aig_network const& ntk, explorer_params const ps = {} )
+{
+  using Ntk = aig_network;
+
+  explorer_stats st;
+  explorer<Ntk> expl( ps, st );
+
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    std::string script = fmt::format(
+      "&dch{}; &if -a -K {}; &mfs -e -W 20 -L 20{}",
+      (rand & 0x1) ? " -f" : "",
+      2 + (i % 5),
+      ((rand >> 2) & 0x1) ? "; &fx; &st" : "");
+    _ntk = call_abc_script( _ntk, script );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    std::string script = (rand & 0x1) ? "; &c2rs" : "; &dc2";
+    _ntk = call_abc_script( _ntk, script );
+  } );
+
+  return expl.run( ntk );
+}
+
+mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {} )
+{
+  using Ntk = mig_network;
+
+  cost_fn_t<Ntk> aqfp_cost = []( Ntk const& _ntk ){
+    buffer_insertion_params bps;
+    bps.assume.branch_pis = true;
+    bps.assume.balance_pis = true;
+    bps.assume.balance_pos = true;
+    bps.assume.splitter_capacity = 4;
+    bps.scheduling = buffer_insertion_params::better;
+    bps.optimization_effort = buffer_insertion_params::none;
+    buffer_insertion buf_inst( _ntk, bps );
+
+    return _ntk.num_gates() * 6 + buf_inst.dry_run() * 2;
+  };
+
+  explorer_stats st;
+  explorer<Ntk> expl( ps, st, aqfp_cost );
+
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
+
+    std::string script = fmt::format(
+      "&dch{}; &if -a -K {}; &mfs -e -W 20 -L 20{}",
+      (rand & 0x1) ? " -f" : "",
+      2 + (i % 5),
+      ((rand >> 2) & 0x1) ? "; &fx; &st" : "");
+    aig = call_abc_script( aig, script );
+
+    mig_npn_resynthesis resyn2{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    _ntk = map( aig, exact_lib, mps );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
+    std::string script = (rand & 0x1) ? "; &c2rs" : "; &dc2";
+    aig = call_abc_script( aig, script );
+
+    mig_npn_resynthesis resyn2{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    _ntk = map( aig, exact_lib, mps );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    mig_npn_resynthesis resyn2{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    mps.area_flow_rounds = 1;
+    mps.enable_logic_sharing = rand & 0x1; /* high-effort remap */
+    _ntk = map( _ntk, exact_lib, mps );
+  } );
+
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    resubstitution_params rps;
+    rps.max_inserts = rand & 0x3;
+    depth_view depth_mig{ _ntk };
+    fanout_view fanout_mig{ depth_mig };
+    mig_resubstitution2( fanout_mig, rps );
+    _ntk = cleanup_dangling( _ntk );
+  } );
+
+  return expl.run( ntk );
+}
+
+mig_network explore_aqfp( mig_network const& ntk, explorer_params const ps = {} )
+{
+  using Ntk = mig_network;
+
+  cost_fn_t<Ntk> aqfp_cost = []( Ntk const& _ntk ){
+    buffer_insertion_params bps;
+    bps.assume.branch_pis = true;
+    bps.assume.balance_pis = true;
+    bps.assume.balance_pos = true;
+    bps.assume.splitter_capacity = 4;
+    bps.scheduling = buffer_insertion_params::better;
+    bps.optimization_effort = buffer_insertion_params::none;
+    buffer_insertion buf_inst( _ntk, bps );
+
+    return _ntk.num_gates() * 6 + buf_inst.dry_run() * 2;
+  };
+
+  explorer_stats st;
+  explorer<Ntk> expl( ps, st, aqfp_cost );
+
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "decompressing with k-LUT mapping using random value {}, k = {}\n", rand, 2 + (rand % 5) );
+    lut_map_params mps;
+    mps.cut_enumeration_ps.cut_size = 3 + (i & 0x3);
+    mapping_view<Ntk> mapped{ _ntk };
+    lut_map( mapped, mps );
+    const auto klut = *collapse_mapped_network<klut_network>( mapped );
+    
+    if ( (rand >> 2) & 0x1 )
+    {
+      _ntk = convert_klut_to_graph<Ntk>( klut );
+    }
+    else
+    {
+      sop_factoring<Ntk> resyn;
+      _ntk = node_resynthesis<Ntk>( klut, resyn );
+    }
+  } );
+
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "decompressing with break-MAJ using random value {}\n", rand );
+    std::mt19937 g( rand );
+    _ntk.foreach_gate( [&]( auto n ){
+      bool is_maj = true;
+      _ntk.foreach_fanin( n, [&]( auto fi ){
+        if ( _ntk.is_constant( _ntk.get_node( fi ) ) )
+          is_maj = false;
+        return;
+      });
+      if ( !is_maj )
+        return;
+      std::vector<typename Ntk::signal> fanins;
+      _ntk.foreach_fanin( n, [&]( auto fi ){
+        fanins.emplace_back( fi );
+      });
+
+      std::shuffle( fanins.begin(), fanins.end(), g );
+      _ntk.substitute_node( n, _ntk.create_or( _ntk.create_and( fanins[0], fanins[1] ), _ntk.create_and( fanins[2], !_ntk.create_and( !fanins[0], !fanins[1] ) ) ) );
+    });
+  }, 0.3 );
+
+  // high-effort AIG optimization + (50% chance high-effort) mapping
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
+    compress2rs_aig( aig );
+
+    mig_npn_resynthesis resyn3{ true };
+    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn3 );
+    map_params mps;
+    mps.skip_delay_round = false;
+    mps.required_time = std::numeric_limits<double>::max();
+    mps.area_flow_rounds = 1;
+    mps.enable_logic_sharing = rand & 0x1; /* high-effort remap */
+    _ntk = map( aig, exact_lib, mps );
+  } );
+
+  // high-effort MIG resub x1
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    resubstitution_params rps;
+    rps.max_inserts = rand & 0x7;
+    rps.max_pis = (rand >> 3) & 0x1 ? 6 : 8;
+    depth_view depth_mig{ _ntk };
+    fanout_view fanout_mig{ depth_mig };
+    mig_resubstitution2( fanout_mig, rps );
+    _ntk = cleanup_dangling( _ntk );
+  }, 0.5 );
+
+  // balancing
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    sop_rebalancing<mig_network> balance_fn;
+    balancing_params bps;
+    bps.cut_enumeration_ps.cut_size = 6u;
+    _ntk = balancing( _ntk, {balance_fn}, bps );
+  }, 0.5 );
+
+  // algebraic depth optimization
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    depth_view depth_mig{ _ntk };
+    mig_algebraic_depth_rewriting( depth_mig );
+    _ntk = cleanup_dangling( _ntk );
+  }, 0.5 );
 
   return expl.run( ntk );
 }
