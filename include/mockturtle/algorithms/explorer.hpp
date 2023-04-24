@@ -143,25 +143,32 @@ public:
 
     RandEngine rnd( _ps.random_seed );
     Ntk best = ntk.clone();
+    auto best_cost = cost( best );
     for ( auto i = 0u; i < _ps.num_restarts; ++i )
     {
       Ntk current = ntk.clone();
-      run_one_iteration( current, rnd() );
-      if ( cost( current ) < cost( best ) )
+      auto new_cost = run_one_iteration( current, rnd() );
+      if ( new_cost < best_cost )
+      {
         best = current.clone();
+        best_cost = new_cost;
+      }
     }
     return best;
   }
 
 private:
-  void run_one_iteration( Ntk& ntk, uint32_t seed )
+  uint32_t run_one_iteration( Ntk& ntk, uint32_t seed )
   {
     if ( _ps.verbose )
-      fmt::print( "[i] new iteration using seed {}\n", seed );
+    {
+      fmt::print( "\n[i] new iteration using seed {}, original cost = {}\n", seed, cost( ntk ) );
+    }
  
     stopwatch<>::duration elapsed_time{0};
     RandEngine rnd( seed );
     Ntk best = ntk.clone();
+    auto best_cost = cost ( best );
     uint32_t last_update{0u};
     for ( auto i = 0u; i < _ps.max_steps; ++i )
     {
@@ -169,15 +176,14 @@ private:
       Ntk backup = ntk.clone();
     #endif
 
-      if ( _ps.very_verbose )
-        fmt::print( "[i] step {}: {} -> ", i, cost( ntk ) );
       {
         stopwatch t( elapsed_time );
         decompress( ntk, rnd, i );
         compress( ntk, rnd, i );
       }
+      auto new_cost = cost( ntk );
       if ( _ps.very_verbose )
-        fmt::print( "{}\n", cost( ntk ) );
+        fmt::print( "[i] after step {}, cost = {}\n", i, new_cost );
 
     #if explorer_debug
       if ( !*equivalence_checking( *miter<Ntk>( ntk, best ) ) )
@@ -189,12 +195,15 @@ private:
       }
     #endif
 
-      if ( cost( ntk ) < cost( best ) )
+      if ( new_cost < best_cost )
       {
         best = ntk.clone();
+        best_cost = new_cost;
         last_update = i;
         if ( _ps.verbose )
-          fmt::print( "[i] updated new best at step {}: {}\n", i, cost( best ) );
+        {
+          fmt::print( "[i] updated new best at step {}: {}\n", i, best_cost );
+        }
       }
       if ( i - last_update >= _ps.max_steps_no_impr )
       {
@@ -210,6 +219,7 @@ private:
       }
     }
     ntk = best;
+    return best_cost;
   }
 
   void decompress( Ntk& ntk, RandEngine& rnd, uint32_t i )
@@ -380,7 +390,7 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
   explorer_stats st;
   explorer<Ntk> expl( ps, st );
 
-  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+  /*expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
 
     std::string script = fmt::format(
@@ -396,11 +406,53 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
     _ntk = map( aig, exact_lib, mps );
+  } );*/
+
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "decompressing with k-LUT mapping using random value {}, k = {}\n", rand, 2 + (rand % 5) );
+    lut_map_params mps;
+    mps.cut_enumeration_ps.cut_size = 3 + (rand & 0x3); //3 + (i % 4);
+    mapping_view<Ntk> mapped{ _ntk };
+    lut_map( mapped, mps );
+    const auto klut = *collapse_mapped_network<klut_network>( mapped );
+    
+    if ( (rand >> 2) & 0x1 )
+    {
+      _ntk = convert_klut_to_graph<Ntk>( klut );
+    }
+    else
+    {
+      sop_factoring<Ntk> resyn;
+      _ntk = node_resynthesis<Ntk>( klut, resyn );
+    }
+  } );
+
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "decompressing with break-MAJ using random value {}\n", rand );
+    std::mt19937 g( rand );
+    _ntk.foreach_gate( [&]( auto n ){
+      bool is_maj = true;
+      _ntk.foreach_fanin( n, [&]( auto fi ){
+        if ( _ntk.is_constant( _ntk.get_node( fi ) ) )
+          is_maj = false;
+        return;
+      });
+      if ( !is_maj )
+        return;
+      std::vector<typename Ntk::signal> fanins;
+      _ntk.foreach_fanin( n, [&]( auto fi ){
+        fanins.emplace_back( fi );
+      });
+
+      std::shuffle( fanins.begin(), fanins.end(), g );
+      _ntk.substitute_node( n, _ntk.create_or( _ntk.create_and( fanins[0], fanins[1] ), _ntk.create_and( fanins[2], !_ntk.create_and( !fanins[0], !fanins[1] ) ) ) );
+    });
   } );
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
-    std::string script = (rand & 0x1) ? "; &c2rs" : "; &dc2";
+    //std::string script = (rand & 0x1) ? "; &c2rs" : "; &dc2";
+    std::string script = "&put; resyn2rs; &get";
     aig = call_abc_script( aig, script );
 
     mig_npn_resynthesis resyn2{ true };
@@ -597,10 +649,11 @@ mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {} 
     bps.assume.balance_pos = true;
     bps.assume.splitter_capacity = 4;
     bps.scheduling = buffer_insertion_params::better;
-    bps.optimization_effort = buffer_insertion_params::none;
+    bps.optimization_effort = buffer_insertion_params::until_sat;
     buffer_insertion buf_inst( _ntk, bps );
+    auto numbufs = buf_inst.dry_run();
 
-    return _ntk.num_gates() * 6 + buf_inst.dry_run() * 2;
+    return (_ntk.num_gates() * 6 + numbufs * 2) * buf_inst.depth();
   };
 
   explorer_stats st;

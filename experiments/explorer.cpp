@@ -50,6 +50,82 @@ std::string benchmark_aqfp_path( std::string const& benchmark_name )
   return fmt::format( "{}/MCNC/original/{}.v", benchmark_repo_path, benchmark_name );
 }
 
+int main00( int argc, char* argv[] )
+{
+  using namespace experiments;
+  using namespace mockturtle;
+
+  std::string benchmark = std::string( argv[1] );
+  {
+    aig_network aig;
+    //if ( lorina::read_verilog( benchmark, verilog_reader( mig ) ) != lorina::return_code::success )
+    if ( lorina::read_aiger( benchmark, aiger_reader( aig ) ) != lorina::return_code::success )
+    {
+      std::cerr << "Cannot read " << benchmark << "\n";
+      return -1;
+    }
+
+    aig = call_abc_script( aig, "&put; resyn2rs; resyn2rs; resyn2rs; &get" );
+    mig_network mig;
+
+    /* map AIG to MIG */
+    {
+      mig_npn_resynthesis resyn2{ true };
+      exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+
+      map_params ps;
+      ps.skip_delay_round = false;
+      ps.required_time = std::numeric_limits<double>::max();
+      mig = map( aig, exact_lib, ps );
+
+      depth_view d( mig );
+      fmt::print( "size {}, depth {}\n", mig.num_gates(), d.depth() );
+
+      /* remap */
+      ps.skip_delay_round = true;
+      ps.area_flow_rounds = 2;
+      mig = map( mig, exact_lib, ps );
+
+      ps.area_flow_rounds = 1;
+      ps.enable_logic_sharing = true; /* high-effort remap */
+      mig = map( mig, exact_lib, ps );
+    }
+
+    /* simple MIG resub */
+    {
+      resubstitution_params ps;
+      ps.max_pis = 8u;
+      ps.max_inserts = 2u;
+      uint32_t tmp;
+
+      do
+      {
+        tmp = mig.num_gates();
+        depth_view depth_mig{ mig };
+        fanout_view fanout_mig{ depth_mig };
+        mig_resubstitution( fanout_mig, ps );
+        mig = cleanup_dangling( mig );
+      } while ( mig.num_gates() > tmp );
+    }
+
+    {
+      resubstitution_params ps;
+      ps.max_pis = 8u;
+      ps.max_inserts = std::numeric_limits<uint32_t>::max();
+
+      depth_view depth_mig{ mig };
+      fanout_view fanout_mig{ depth_mig };
+      mig_resubstitution2( fanout_mig, ps );
+      mig = cleanup_dangling( mig );
+    }
+    
+    depth_view d( mig );
+    fmt::print( "size {}, depth {}\n", mig.num_gates(), d.depth() );
+  }
+
+  return 0;
+}
+
 int main0( int argc, char* argv[] )
 {
   using namespace experiments;
@@ -152,7 +228,7 @@ int main1( int argc, char* argv[] )
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, bool, bool> exp( "deepsyn_aqfp", "benchmark", "#JJ", "JJ depth", "MIG size", "MIG depth", "cec", "verified" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool, bool> exp( "deepsyn_aqfp", "benchmark", "#JJ", "JJ depth", "JJ EDP", "MIG size", "MIG depth", "cec", "verified" );
 
   for ( auto const& benchmark : aqfp_benchmarks )
   {
@@ -167,15 +243,15 @@ int main1( int argc, char* argv[] )
     }
 
     explorer_params ps;
-    ps.num_restarts = 10;
+    ps.num_restarts = 5;
     ps.random_seed = 3252;
     ps.max_steps_no_impr = 50;
-    ps.timeout = 45;
+    ps.timeout = 100;
     ps.compressing_scripts_per_step = 3;
     ps.verbose = true;
     //ps.very_verbose = true;
 
-    mig_network opt = explore_aqfp( ntk, ps );
+    mig_network opt = deepsyn_aqfp( ntk, ps );
     depth_view d( opt );
 
     bool cec = abc_cec_impl( opt, benchmark_aqfp_path( benchmark ) );
@@ -186,16 +262,18 @@ int main1( int argc, char* argv[] )
     bps.assume.balance_pos = true;
     bps.assume.splitter_capacity = 4;
     bps.scheduling = buffer_insertion_params::better;
-    bps.optimization_effort = buffer_insertion_params::none;
+    bps.optimization_effort = buffer_insertion_params::until_sat;
     buffer_insertion buf_inst( opt, bps );
 
     buffered_mig_network buffered_mig;
     auto num_buffers = buf_inst.run( buffered_mig );
     auto JJ_depth = buf_inst.depth();
+    auto JJ_count = opt.num_gates() * 6 + num_buffers * 2;
+    auto JJ_ADP = JJ_depth * JJ_count;
     bool bv = verify_aqfp_buffer( buffered_mig, bps.assume );
     //write_verilog( buffered_mig, benchmark + ".v" );
 
-    exp( benchmark, opt.num_gates() * 6 + num_buffers * 2, JJ_depth, opt.num_gates(), d.depth(), cec, bv );
+    exp( benchmark, JJ_count, JJ_depth, JJ_ADP, opt.num_gates(), d.depth(), cec, bv );
   }
 
   exp.save();
@@ -212,7 +290,7 @@ int main( int argc, char* argv[] )
   experiment<std::string, uint32_t, uint32_t, uint32_t, bool> exp( "deepsyn_mig", "benchmark", "size_before", "size_after", "depth", "cec" );
 
   //for ( auto const& benchmark : aqfp_benchmarks )
-  for ( auto const& benchmark : epfl_benchmarks( arithmetic ) )
+  for ( auto const& benchmark : epfl_benchmarks() )
   {
     if ( argc == 2 && benchmark != std::string( argv[1] ) ) continue;
     if ( benchmark == "hyp" ) continue;
@@ -228,15 +306,15 @@ int main( int argc, char* argv[] )
     }
 
     explorer_params ps;
-    ps.num_restarts = 10;
-    ps.random_seed = 111;
+    ps.num_restarts = 3;
+    ps.random_seed = 42124;
     ps.timeout = 1000;
     ps.max_steps_no_impr = 50;
     ps.compressing_scripts_per_step = 1;
     ps.verbose = true;
     //ps.very_verbose = true;
 
-    Ntk opt = deepsyn_mig_depth( ntk, ps );
+    Ntk opt = deepsyn_mig( ntk, ps );
     bool const cec = ( benchmark == "hyp" ) ? true : abc_cec_impl( opt, benchmark_path( benchmark ) );
     depth_view d( opt );
 
