@@ -119,6 +119,34 @@ TEST_CASE( "create binary operations in a k-LUT network", "[klut]" )
   CHECK( klut.size() == 6 );
 }
 
+TEST_CASE( "clone a k-LUT network", "[klut]" )
+{
+  CHECK( has_clone_v<klut_network> );
+
+  klut_network ntk1;
+  auto a = ntk1.create_pi();
+  auto b = ntk1.create_pi();
+  auto f1 = ntk1.create_and( a, b );
+  ntk1.create_po( f1 );
+  CHECK( ntk1.size() == 5 );
+  CHECK( ntk1.num_gates() == 1 );
+  CHECK( ntk1.num_pos() == 1 );
+
+  auto ntk2 = ntk1;
+  auto ntk3 = ntk1.clone();
+
+  auto c = ntk2.create_pi();
+  auto f2 = ntk2.create_or( f1, c );
+  ntk2.create_po( f2 );
+  CHECK( ntk1.size() == 7 );
+  CHECK( ntk1.num_gates() == 2 );
+  CHECK( ntk1.num_pos() == 2 );
+
+  CHECK( ntk3.size() == 5 );
+  CHECK( ntk3.num_gates() == 1 );
+  CHECK( ntk3.num_pos() == 1 );
+}
+
 TEST_CASE( "clone a node in a k-LUT network", "[klut]" )
 {
   klut_network klut1, klut2;

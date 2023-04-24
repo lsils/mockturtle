@@ -89,6 +89,7 @@ public:
     static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and function" );
     static_assert( has_create_or_v<Ntk>, "Ntk does not implement the create_or function" );
     static_assert( has_create_xor_v<Ntk>, "Ntk does not implement the create_xor function" );
+    static_assert( has_create_ite_v<Ntk>, "Ntk does not implement the create_ite function" );
     static_assert( has_create_maj_v<Ntk>, "Ntk does not implement the create_maj function" );
 
     signals_["0"] = ntk_.get_constant( false );
@@ -209,7 +210,21 @@ public:
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
-    signals_[lhs] = ntk_.create_and( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      if ( !op1.second && !op2.second )
+        signals_[lhs] = ntk_.create_and( a, b );
+      else if ( !op1.second && op2.second )
+        signals_[lhs] = ntk_.create_gt( a, b ); // a & !b
+      else if ( op1.second && !op2.second )
+        signals_[lhs] = ntk_.create_lt( a, b ); // !a & b
+      else
+        signals_[lhs] = ntk_.create_nor( a, b ); // !a & !b = !(a | b)
+    }
+    else
+    {
+      signals_[lhs] = ntk_.create_and( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    }
   }
 
   void on_or( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
@@ -224,7 +239,21 @@ public:
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
-    signals_[lhs] = ntk_.create_or( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      if ( !op1.second && !op2.second )
+        signals_[lhs] = ntk_.create_or( a, b );
+      else if ( !op1.second && op2.second )
+        signals_[lhs] = ntk_.create_ge( a, b ); // a | !b
+      else if ( op1.second && !op2.second )
+        signals_[lhs] = ntk_.create_le( a, b ); // !a | b
+      else
+        signals_[lhs] = ntk_.create_nand( a, b ); // !a | !b = !(a & b)
+    }
+    else
+    {
+      signals_[lhs] = ntk_.create_or( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    }
   }
 
   void on_xor( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
@@ -239,13 +268,28 @@ public:
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
-    signals_[lhs] = ntk_.create_xor( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      if ( !op1.second == !op2.second )
+        signals_[lhs] = ntk_.create_xor( a, b );
+      else
+        signals_[lhs] = ntk_.create_xnor( a, b );
+    }
+    else
+    {
+      signals_[lhs] = ntk_.create_xor( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    }
   }
 
   void on_xor3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
   {
     if ( name_ != top_module_name_ )
       return;
+
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      assert( false && "3-input gates in crossed_network are not supported (to be implemented)" );
+    }
 
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
@@ -273,6 +317,11 @@ public:
     if ( name_ != top_module_name_ )
       return;
 
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      assert( false && "3-input gates in crossed_network are not supported (to be implemented)" );
+    }
+
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
     if ( signals_.find( op2.first ) == signals_.end() )
@@ -290,6 +339,11 @@ public:
   {
     if ( name_ != top_module_name_ )
       return;
+
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      assert( false && "3-input gates in crossed_network are not supported (to be implemented)" );
+    }
 
     if ( signals_.find( op1.first ) == signals_.end() )
       fmt::print( stderr, "[w] undefined signal {} assigned 0\n", op1.first );
@@ -419,9 +473,51 @@ public:
           else
             fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
         }
-        if ( module_name == "inverter" )
-          fi = ntk_.create_not( fi );
         signals_[lhs] = ntk_.create_buf( fi );
+        if ( module_name == "inverter" )
+          ntk_.invert( ntk_.get_node( signals_[lhs] ) );
+      }
+    }
+    else if ( module_name == "crossing" )
+    {
+      if constexpr ( is_crossed_network_type_v<Ntk> )
+      {
+        if ( !num_args_equals( 4u ) )
+          fmt::print( stderr, "[e] number of arguments of a `{}` instance is not 4\n", module_name );
+
+        signal<Ntk> fi1 = ntk_.get_constant( false );
+        signal<Ntk> fi2 = ntk_.get_constant( false );
+        std::string fo1, fo2;
+        for ( auto const& arg : args )
+        {
+          if ( arg.first == ".i1" )
+          {
+            if ( signals_.find( arg.second ) == signals_.end() )
+              fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+            else
+              fi1 = signals_[arg.second];
+          }
+          else if ( arg.first == ".i2" )
+          {
+            if ( signals_.find( arg.second ) == signals_.end() )
+              fmt::print( stderr, "[w] undefined signal {} assigned 0\n", arg.second );
+            else
+              fi2 = signals_[arg.second];
+          }
+          else if ( arg.first == ".o1" )
+            fo1 = arg.second;
+          else if ( arg.first == ".o2" )
+            fo2 = arg.second;
+          else
+            fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
+        }
+
+        if ( signals_.find( fo1 ) == signals_.end() ) // due to lorina bug, each crossing will be instantiated twice...
+        {
+          auto p = ntk_.create_crossing( fi1, fi2 );
+          signals_[fo1] = p.first;
+          signals_[fo2] = p.second;
+        }
       }
     }
     else

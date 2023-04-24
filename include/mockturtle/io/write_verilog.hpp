@@ -43,6 +43,7 @@
 
 #include <fmt/format.h>
 #include <lorina/verilog.hpp>
+#include <kitty/print.hpp>
 
 #include <array>
 #include <fstream>
@@ -63,8 +64,16 @@ std::vector<std::pair<bool, std::string>>
 format_fanin( Ntk const& ntk, node<Ntk> const& n, node_map<std::string, Ntk>& node_names )
 {
   std::vector<std::pair<bool, std::string>> children;
-  ntk.foreach_fanin( n, [&]( auto const& f ) {
-    children.emplace_back( std::make_pair( ntk.is_complemented( f ), node_names[f] ) );
+  ntk.foreach_fanin( n, [&]( auto const& f, auto i ) {
+    if constexpr ( is_crossed_network_type_v<Ntk> )
+    {
+      std::string postfix = ntk.is_crossing( ntk.get_node( f ) ) ? ( ntk.is_second( f ) ? "_2" : "_1" ) : "";
+      children.emplace_back( std::make_pair( ntk.get_fanin_negations( n )[i], node_names[f] + postfix ) );
+    }
+    else
+    {
+      children.emplace_back( std::make_pair( ntk.is_complemented( f ), node_names[f] ) );
+    }
   } );
   return children;
 }
@@ -140,6 +149,13 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     writer.on_output( "o" );
     writer.on_module_end();
   }
+  if constexpr ( is_crossed_network_type_v<Ntk> )
+  {
+    writer.on_module_begin( "crossing", { "i1", "i2" }, { "o1", "o2" } );
+    writer.on_input( std::vector<std::string>( { "i1", "i2" } ) );
+    writer.on_output( std::vector<std::string>( { "o1", "o2" } ) );
+    writer.on_module_end();
+  }
 
   std::vector<std::string> xs, inputs;
   if ( ps.input_names.empty() )
@@ -159,10 +175,10 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     }
     else
     {
-      for ( auto i = 0u; i < ntk.num_pis(); ++i )
-      {
-        xs.emplace_back( fmt::format( "x{}", i ) );
-      }
+      ntk.foreach_pi( [&]( auto const& i, uint32_t index ) {
+        (void)i;
+        xs.emplace_back( fmt::format( "x{}", index ) );
+      } );
     }
     inputs = xs;
   }
@@ -202,10 +218,10 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
     }
     else
     {
-      for ( auto i = 0u; i < ntk.num_pos(); ++i )
-      {
-        ys.emplace_back( fmt::format( "y{}", i ) );
-      }
+      ntk.foreach_po( [&]( auto const& o, uint32_t index ) {
+        (void)o;
+        ys.emplace_back( fmt::format( "y{}", index ) );
+      } );
     }
     outputs = ys;
   }
@@ -329,6 +345,22 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
       }
     }
 
+    if constexpr( is_crossed_network_type_v<Ntk> )
+    {
+      if ( ntk.is_crossing( n ) )
+      {
+        auto const fanin = detail::format_fanin<Ntk>( ntk, n, node_names );
+        assert( fanin.size() == 2 );
+        std::vector<std::pair<std::string, std::string>> args;
+        args.emplace_back( std::make_pair( "i1", fanin[0].second ) );
+        args.emplace_back( std::make_pair( "i2", fanin[1].second ) );
+        args.emplace_back( std::make_pair( "o1", node_names[n] + "_1" ) );
+        args.emplace_back( std::make_pair( "o2", node_names[n] + "_2" ) );
+        writer.on_module_instantiation( "crossing", {}, "cross_" + node_names[n], args );
+        return true;
+      }
+    }
+
     if ( ntk.is_and( n ) )
     {
       writer.on_assign( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ), "&" );
@@ -421,6 +453,10 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
           writer.on_assign( node_names[n], detail::format_fanin<Ntk>( ntk, n, node_names ), "^" );
           return true;
         }
+      }
+      if constexpr ( has_is_function_v<Ntk> )
+      {
+        fmt::print( stderr, "[w] unknown node function {}\n", kitty::to_hex( ntk.node_function( n ) ) );
       }
       writer.on_assign_unknown_gate( node_names[n] );
     }

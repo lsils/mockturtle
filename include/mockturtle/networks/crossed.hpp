@@ -24,39 +24,24 @@
  */
 
 /*!
-  \file klut.hpp
-  \brief k-LUT logic network implementation
+  \file crossed.hpp
+  \brief Implements networks with crossing cells
 
-  \author Andrea Costamagna
-  \author Heinz Riener
-  \author Marcel Walter
-  \author Mathias Soeken
-  \author Max Austin
   \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
 
 #include "../traits.hpp"
-#include "../utils/algorithm.hpp"
-#include "../utils/truth_table_cache.hpp"
-#include "detail/foreach.hpp"
-#include "events.hpp"
-#include "storage.hpp"
-
-#include <kitty/constructors.hpp>
-#include <kitty/dynamic_truth_table.hpp>
-
-#include <algorithm>
-#include <memory>
+#include "klut.hpp"
 
 namespace mockturtle
 {
 
-struct klut_storage_data
-{
-  truth_table_cache<kitty::dynamic_truth_table> cache;
-};
+/* Version 1: annotate information of crossing fanout ordereing with different signals
+ * Share the same `klut_storage_data` as regular k-LUT network,
+ * but define a different `crossed_klut_storage_node` with a weight field in the pointer.
+ */
 
 /*! \brief k-LUT node
  *
@@ -65,58 +50,49 @@ struct klut_storage_data
  * `data[1].h1`: Function literal in truth table cache
  * `data[1].h2`: Visited flags
  */
-struct klut_storage_node : mixed_fanin_node<2>
+struct crossed_klut_storage_node : mixed_fanin_node<2, 1>
 {
-  bool operator==( klut_storage_node const& other ) const
+  bool operator==( crossed_klut_storage_node const& other ) const
   {
     return data[1].h1 == other.data[1].h1 && children == other.children;
   }
 };
+using crossed_klut_storage = storage<crossed_klut_storage_node, klut_storage_data>;
 
-/*! \brief k-LUT storage container
-
-  ...
-*/
-using klut_storage = storage<klut_storage_node, klut_storage_data>;
-
-class klut_network
+class crossed_klut_network
 {
 public:
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 1;
   static constexpr auto max_fanin_size = 32;
 
-  using base_type = klut_network;
-  using storage = std::shared_ptr<klut_storage>;
-  using node = uint64_t;
-  using signal = uint64_t;
+  static constexpr bool is_crossed_network_type = true;
 
-  klut_network()
-      : _storage( std::make_shared<klut_storage>() ),
+  using base_type = crossed_klut_network;
+  using storage = std::shared_ptr<crossed_klut_storage>;
+  using node = uint64_t;
+  using signal = crossed_klut_storage_node::pointer_type;
+
+  crossed_klut_network()
+      : _storage( std::make_shared<crossed_klut_storage>() ),
         _events( std::make_shared<decltype( _events )::element_type>() )
   {
     _init();
   }
 
-  klut_network( std::shared_ptr<klut_storage> storage )
+  crossed_klut_network( std::shared_ptr<crossed_klut_storage> storage )
       : _storage( storage ),
         _events( std::make_shared<decltype( _events )::element_type>() )
   {
     _init();
   }
-
-  klut_network clone() const
-  {
-    return { std::make_shared<klut_storage>( *_storage ) };
-  }
+#pragma endregion
 
 protected:
+  static constexpr uint32_t literal_crossing = 0xffffffff;
+
   inline void _init()
   {
-    /* already initialized */
-    if ( _storage->nodes.size() > 1 ) 
-      return;
-
     /* reserve the second node for constant 1 */
     _storage->nodes.emplace_back();
 
@@ -173,13 +149,12 @@ protected:
     _storage->nodes[0].data[1].h1 = 0;
     _storage->nodes[1].data[1].h1 = 1;
   }
-#pragma endregion
 
-#pragma region Primary I / O and constants
 public:
+#pragma region Primary I / O and constants
   signal get_constant( bool value = false ) const
   {
-    return value ? 1 : 0;
+    return value ? signal( 1, 0 ) : signal( 0, 0 );
   }
 
   signal create_pi()
@@ -188,13 +163,13 @@ public:
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
     _storage->nodes[index].data[1].h1 = 2;
-    return index;
+    return signal( index, 0 );
   }
 
   uint32_t create_po( signal const& f )
   {
     /* increase ref-count to children */
-    _storage->nodes[f].data[0].h1++;
+    _storage->nodes[f.index].data[0].h1++;
     auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
     _storage->outputs.emplace_back( f );
     return po_index;
@@ -223,20 +198,6 @@ public:
   bool constant_value( node const& n ) const
   {
     return n == 1;
-  }
-
-  uint32_t po_index( signal const& s ) const
-  {
-    uint32_t i = -1;
-    foreach_po( [&]( const auto& x, auto index ) {
-      if ( x == s )
-      {
-        i = index;
-        return false;
-      }
-      return true;
-    } );
-    return i;
   }
 #pragma endregion
 
@@ -268,9 +229,24 @@ public:
     return _create_node( { a, b }, 6 );
   }
 
+  signal create_nor( signal a, signal b )
+  {
+    return _create_node( { a, b }, 7 );
+  }
+
   signal create_lt( signal a, signal b )
   {
     return _create_node( { a, b }, 8 );
+  }
+
+  signal create_ge( signal a, signal b )
+  {
+    return _create_node( { a, b }, 9 );
+  }
+
+  signal create_gt( signal a, signal b )
+  {
+    return _create_node( { a, b }, 10 );
   }
 
   signal create_le( signal a, signal b )
@@ -281,6 +257,11 @@ public:
   signal create_xor( signal a, signal b )
   {
     return _create_node( { a, b }, 12 );
+  }
+
+  signal create_xnor( signal a, signal b )
+  {
+    return _create_node( { a, b }, 13 );
   }
 #pragma endregion
 
@@ -338,17 +319,15 @@ public:
     /* increase ref-count to children */
     for ( auto c : children )
     {
-      _storage->nodes[c].data[0].h1++;
+      _storage->nodes[c.index].data[0].h1++;
     }
-
-    set_value( index, 0 );
 
     for ( auto const& fn : _events->on_add )
     {
       ( *fn )( index );
     }
 
-    return index;
+    return signal( index, 0 );
   }
 
   signal create_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
@@ -361,6 +340,14 @@ public:
     return _create_node( children, _storage->data.cache.insert( function ) );
   }
 
+  signal clone_node( crossed_klut_network const& other, node const& source, std::vector<signal> const& children )
+  {
+    assert( !other.is_crossing( source ) );
+    assert( !children.empty() );
+    const auto tt = other._storage->data.cache[other._storage->nodes[source].data[1].h1];
+    return create_node( children, tt );
+  }
+
   signal clone_node( klut_network const& other, node const& source, std::vector<signal> const& children )
   {
     assert( !children.empty() );
@@ -369,51 +356,133 @@ public:
   }
 #pragma endregion
 
-#pragma region Restructuring
-  void substitute_node( node const& old_node, signal const& new_signal )
+#pragma region Crossings
+  /*! \brief Create a crossing cell
+   *
+   * \return A pair `(out1, out2)` of two signals to be used as fanouts of the crossing,
+   * where `in1` connects to `out1` and `in2` connects to `out2`.
+   */
+  std::pair<signal, signal> create_crossing( signal const& in1, signal const& in2 )
   {
-    /* find all parents from old_node */
-    for ( auto i = 0u; i < _storage->nodes.size(); ++i )
+    storage::element_type::node_type node;
+    node.children.emplace_back( in1 );
+    node.children.emplace_back( in2 );
+    node.data[1].h1 = literal_crossing;
+
+    const auto index = _storage->nodes.size();
+    _storage->nodes.push_back( node );
+
+    /* increase ref-count to children */
+    _storage->nodes[in1.index].data[0].h1++;
+    _storage->nodes[in2.index].data[0].h1++;
+
+    /* TODO: not sure if this is wanted/needed? */
+    for ( auto const& fn : _events->on_add )
     {
-      auto& n = _storage->nodes[i];
-      for ( auto& child : n.children )
-      {
-        if ( child == old_node )
-        {
-          std::vector<signal> old_children( n.children.size() );
-          std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c ) { return c.index; } );
-          child = new_signal;
-
-          // increment fan-out of new node
-          _storage->nodes[new_signal].data[0].h1++;
-
-          for ( auto const& fn : _events->on_modified )
-          {
-            ( *fn )( i, old_children );
-          }
-        }
-      }
+      ( *fn )( index );
     }
 
-    /* check outputs */
-    for ( auto& output : _storage->outputs )
-    {
-      if ( output == old_node )
-      {
-        output = new_signal;
-
-        // increment fan-out of new node
-        _storage->nodes[new_signal].data[0].h1++;
-      }
-    }
-
-    // reset fan-out of old node
-    _storage->nodes[old_node].data[0].h1 = 0;
+    return std::make_pair( signal( index, 0 ), signal( index, 1 ) );
   }
 
-  inline bool is_dead( node const& n ) const
+  /*! \brief Insert a crossing cell on two wires
+   *
+   * After this operation, the network will not be in a topological order.
+   *
+   * \param in1 A fanin signal of the node `out1`
+   * \param in2 A fanin signal of the node `out2`
+   * \return The created crossing cell. No more fanouts should be added to it.
+   */
+  node insert_crossing( signal const& in1, signal const& in2, node const& out1, node const& out2 )
   {
-    return false;
+    uint32_t fanin_index1 = std::numeric_limits<uint32_t>::max();
+    foreach_fanin( out1, [&]( auto const& f, auto i ) {
+      if ( f == in1 )
+      {
+        fanin_index1 = i;
+        return false;
+      }
+      return true;
+    } );
+    assert( fanin_index1 != std::numeric_limits<uint32_t>::max() );
+
+    uint32_t fanin_index2 = std::numeric_limits<uint32_t>::max();
+    foreach_fanin( out2, [&]( auto const& f, auto i ) {
+      if ( f == in2 )
+      {
+        fanin_index2 = i;
+        return false;
+      }
+      return true;
+    } );
+    assert( fanin_index2 != std::numeric_limits<uint32_t>::max() );
+
+    auto [fout1, fout2] = create_crossing( in1, in2 );
+    _storage->nodes[out1].children[fanin_index1] = fout1;
+    _storage->nodes[out2].children[fanin_index2] = fout2;
+
+    /* decrease ref-count to children (was increased in `create_crossing`) */
+    _storage->nodes[in1.index].data[0].h1--;
+    _storage->nodes[in2.index].data[0].h1--;
+
+    return get_node( fout1 );
+  }
+
+  /*! \brief Whether a node is a crossing cell
+   *
+   * \param n The node to be checked
+   * \return Whether this node is a crossing cell
+   */
+  bool is_crossing( node const& n ) const
+  {
+    return _storage->nodes[n].data[1].h1 == literal_crossing;
+  }
+
+  /*! \brief Whether a crossing's fanout signal is the second one
+   *
+   * \param f A signal pointing to a crossing cell
+   * \return Whether this fanout connects to the second fanin (return 1) or the first fanin (return 0)
+   */
+  bool is_second( signal const& f ) const
+  {
+    assert( is_crossing( f.index ) );
+    return f.weight;
+  }
+
+  /*! \brief Take a crossing's first fanout signal and make it the second
+   *
+   * \param f A signal pointing to a crossing cell, referring to the fanout connecting to the first fanin
+   * \return The signal referring to the fanout connecting to the second fanin
+   */
+  signal make_second( signal const& f ) const
+  {
+    assert( is_crossing( f.index ) );
+    assert( !is_second( f ) );
+    return signal( f.index, 1 );
+  }
+
+  /*! \brief Get the real fanin signal ignoring all crossings in between
+   *
+   * \param f A signal pointing to a crossing
+   * \return The corresponding signal pointing to a non-crossing node
+   */
+  signal ignore_crossings( signal const& f ) const
+  {
+    if ( !is_crossing( get_node( f ) ) )
+      return f;
+    return ignore_crossings( _storage->nodes[f.index].children[f.weight] );
+  }
+
+  /*! \brief Iterate through the real fanins of a node, ignoring all crossings in between */
+  template<typename Fn>
+  void foreach_fanin_ignore_crossings( node const& n, Fn&& fn ) const
+  {
+    if ( n == 0 || is_ci( n ) )
+      return;
+
+    using IteratorType = decltype( _storage->nodes[n].children.begin() );
+    detail::foreach_element_transform<IteratorType, signal>(
+        _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), [this]( auto f ) { return ignore_crossings( f ); }, fn );
   }
 #pragma endregion
 
@@ -460,26 +529,131 @@ public:
 
   bool is_function( node const& n ) const
   {
-    return n > 1 && !is_ci( n );
+    return n > 1 && !is_ci( n ) && !is_crossing( n );
   }
 #pragma endregion
 
 #pragma region Functional properties
   kitty::dynamic_truth_table node_function( const node& n ) const
   {
+    assert( !is_crossing( n ) );
     return _storage->data.cache[_storage->nodes[n].data[1].h1];
+  }
+
+  bool is_not( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    return _storage->nodes[n].children.size() == 1 && _storage->nodes[n].data[1].h1 == 3;
+  }
+
+  /* AND-2 with any input negation, but not output negation */
+  bool is_and( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 2 )
+      return false;
+    return node.data[1].h1 == 4 || node.data[1].h1 == 8 || node.data[1].h1 == 10 || node.data[1].h1 == 7;
+  }
+
+  /* OR-2 with any input negation, but not output negation */
+  bool is_or( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 2 )
+      return false;
+    return node.data[1].h1 == 5 || node.data[1].h1 == 9 || node.data[1].h1 == 11 || node.data[1].h1 == 6;
+  }
+
+  /* XOR-2 or XNOR-2 */
+  bool is_xor( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 2 )
+      return false;
+    return node.data[1].h1 == 12 || node.data[1].h1 == 13;
+  }
+
+  /* XOR-3 or XNOR-3 */
+  bool is_xor3( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 3 )
+      return false;
+    return node.data[1].h1 == 18 || node.data[1].h1 == 19;
+  }
+
+  /* MAJ-3 or MINORITY-3 without non-symmetric input negation */
+  bool is_maj( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 3 )
+      return false;
+    return node.data[1].h1 == 14 || node.data[1].h1 == 15;
+  }
+
+  /* ITE (MUX2-1) without input negation; with or without output negation
+   * i.e., (x ? y :z) or !(x ? y : z) = x ? !y : !z */
+  bool is_ite( node const& n ) const
+  {
+    if ( !is_function( n ) )
+      return false;
+    auto const& node = _storage->nodes[n];
+    if ( node.children.size() != 3 )
+      return false;
+    return node.data[1].h1 == 16 || node.data[1].h1 == 17;
+  }
+
+  std::vector<bool> get_fanin_negations( node const& n ) const
+  {
+    if ( is_crossing( n ) )
+      return {false, false};
+    if ( !is_function( n ) )
+      return {};
+    switch ( _storage->nodes[n].data[1].h1 )
+    {
+      case 2: return {false}; // buf
+      case 3: return {true}; // not
+      case 4: return {false, false}; // and
+      case 5: return {true, true}; // x nand y = !x or !y
+      case 6: return {false, false}; // or
+      case 7: return {true, true}; // x nor y = !x and !y
+      case 8: return {true, false}; // !x and y
+      case 9: return {false, true}; // x or !y
+      case 10: return {false, true}; // x and !y
+      case 11: return {true, false}; // !x or y
+      case 12: return {false, false}; // xor
+      case 13: return {true, false}; // xnor (symmetric)
+      case 14: return {false, false, false}; // maj
+      case 15: return {true, true, true}; // minority
+      case 16: return {false, false, false}; // ite
+      case 17: return {false, true, true}; // !(x ? y : z) = x ? !y : !z
+      case 18: return {false, false, false}; // xor3
+      case 19: return {true, false, false}; // xnor3 (symmetric)
+    }
+    return {};
   }
 #pragma endregion
 
 #pragma region Nodes and signals
   node get_node( signal const& f ) const
   {
-    return f;
+    return f.index;
   }
 
   signal make_signal( node const& n ) const
   {
-    return n;
+    return signal( n, 0 );
   }
 
   bool is_complemented( signal const& f ) const
@@ -540,9 +714,7 @@ public:
   template<typename Fn>
   void foreach_co( Fn&& fn ) const
   {
-    using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
+    detail::foreach_element( _storage->outputs.begin(), _storage->outputs.end(), fn );
   }
 
   template<typename Fn>
@@ -554,11 +726,10 @@ public:
   template<typename Fn>
   void foreach_po( Fn&& fn ) const
   {
-    using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
+    detail::foreach_element( _storage->outputs.begin(), _storage->outputs.end(), fn );
   }
 
+  /* Note: crossings are included */
   template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
@@ -575,9 +746,7 @@ public:
     if ( n == 0 || is_ci( n ) )
       return;
 
-    using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f ) { return f.index; }, fn );
+    detail::foreach_element( _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), fn );
   }
 #pragma endregion
 
@@ -586,6 +755,7 @@ public:
   iterates_over_t<Iterator, bool>
   compute( node const& n, Iterator begin, Iterator end ) const
   {
+    assert( !is_crossing( n ) );
     uint32_t index{ 0 };
     while ( begin != end )
     {
@@ -599,6 +769,7 @@ public:
   iterates_over_truth_table_t<Iterator>
   compute( node const& n, Iterator begin, Iterator end ) const
   {
+    assert( !is_crossing( n ) );
     const auto nfanin = _storage->nodes[n].children.size();
 
     std::vector<typename Iterator::value_type> tts( begin, end );
@@ -689,7 +860,7 @@ public:
 #pragma endregion
 
 public:
-  std::shared_ptr<klut_storage> _storage;
+  std::shared_ptr<crossed_klut_storage> _storage;
   std::shared_ptr<network_events<base_type>> _events;
 };
 

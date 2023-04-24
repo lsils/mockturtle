@@ -1,3 +1,5 @@
+.. _buffer_insertion:
+
 AQFP buffer insertion and verification
 --------------------------------------
 
@@ -24,10 +26,8 @@ Parameters
 Buffered network data structure
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Header:** ``mockturtle/networks/buffered.hpp``
-
-Two buffered network types are implemented: `buffered_aig_network` and `buffered_mig_network`.
-They inherit from `aig_network` and `mig_network`, respectively, and are supplemented with representations for buffers.
+The results of this algorithm can be dumped into an appropriate :ref:buffered_network type
+and written out in the Verilog format.
 
 
 Verification of buffered networks
@@ -41,10 +41,3 @@ Verification of buffered networks
 
 .. doxygenfunction:: mockturtle::verify_aqfp_buffer( Ntk const&, aqfp_assumptions const&, node_map<uint32_t, Ntk> const& )
 
-
-Simulation of buffered networks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Header:** ``mockturtle/algorithms/simulation.hpp``
-
-.. doxygenfunction:: mockturtle::simulate_buffered

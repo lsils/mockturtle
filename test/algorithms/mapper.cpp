@@ -26,7 +26,7 @@ std::string const test_library = "GATE   inv1    1 O=!a;            PIN * INV 1 
                                  "GATE   inv2    2 O=!a;            PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
                                  "GATE   nand2   2 O=!(a*b);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
                                  "GATE   xor2    5 O=a^b;           PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
-                                 "GATE   mig3    3 O=a*b+a*c+b*c;   PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
+                                 "GATE   maj3    3 O=a*b+a*c+b*c;   PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
                                  "GATE   buf     2 O=a;             PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
                                  "GATE   zero    0 O=CONST0;\n"
                                  "GATE   one     0 O=CONST1;";
@@ -332,6 +332,49 @@ TEST_CASE( "Map with supergates", "[mapper]" )
   CHECK( st.delay < 3.8f + eps );
 }
 
+TEST_CASE( "Map of sequential AIG", "[mapper]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3, classification_type::np_configurations> lib( gates );
+
+  sequential<aig_network> aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto f1 = aig.create_nand( a, b );
+  const auto f2 = aig.create_ro(); // f2 <- f1
+  const auto f3 = aig.create_xor( f2, c );
+
+  aig.create_po( f3 );
+  aig.create_ri( f1 ); // f3 <- f1
+
+  CHECK( aig.num_gates() == 4u );
+  CHECK( aig.num_registers() == 1u );
+  CHECK( aig.num_pis() == 3u );
+  CHECK( aig.num_pos() == 1u );
+
+  map_params ps;
+  map_stats st;
+  binding_view<sequential<klut_network>> luts = seq_map( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( luts.size() == 8u );
+  CHECK( luts.num_pis() == 3u );
+  CHECK( luts.num_pos() == 1u );
+  CHECK( luts.num_registers() == 1u );
+  CHECK( luts.num_gates() == 2u );
+  CHECK( st.area == 7.0f );
+  CHECK( st.delay > 1.9f - eps );
+  CHECK( st.delay < 1.9f + eps );
+}
+
 TEST_CASE( "Exact map of bad MAJ3 and constant output", "[mapper]" )
 {
   mig_npn_resynthesis resyn{ true };
@@ -454,4 +497,34 @@ TEST_CASE( "Exact map with logic sharing", "[mapper]" )
   CHECK( res.num_pis() == 4 );
   CHECK( res.num_pos() == 2 );
   CHECK( res.num_gates() == 4 );
+}
+
+TEST_CASE( "exact map of sequential AIG", "[mapper]" )
+{
+  using resyn_fn = xag_npn_resynthesis<xag_network>;
+
+  resyn_fn resyn;
+  exact_library<sequential<xag_network>, resyn_fn> lib( resyn );
+
+  sequential<aig_network> aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto f1 = aig.create_nand( a, b );
+  const auto f2 = aig.create_ro(); // f2 <- f1
+  const auto f3 = aig.create_xor( f2, c );
+
+  aig.create_po( f3 );
+  aig.create_ri( f1 ); // f3 <- f1
+
+  map_params ps;
+  map_stats st;
+  sequential<xag_network> res = map( aig, lib, ps, &st );
+
+  CHECK( res.size() == 7u );
+  CHECK( res.num_pis() == 3u );
+  CHECK( res.num_pos() == 1u );
+  CHECK( res.num_registers() == 1u );
+  CHECK( res.num_gates() == 2u );
 }

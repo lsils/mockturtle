@@ -28,6 +28,14 @@ algorithm.  Several views are implemented in mockturtle.
 .. doxygenclass:: mockturtle::depth_view
    :members:
 
+`rank_view`: Order nodes within each level
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/rank_view.hpp``
+
+.. doxygenclass:: mockturtle::rank_view
+   :members:
+
 `mapping_view`: Add mapping interface methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -86,6 +94,14 @@ algorithm.  Several views are implemented in mockturtle.
 
 `names_view`: Assign names to signals and outputs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/views/choice_view.hpp``
+
+.. doxygenclass:: mockturtle::choice_view
+   :members:
+
+`choice_view`: Implements choices in networks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/views/names_view.hpp``
 
