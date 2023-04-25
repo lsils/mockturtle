@@ -56,32 +56,34 @@ namespace mockturtle
 struct write_blif_params
 {
   /**
-    *  ## `ps.rename_ri_using_node`
-    *
-    *  Rename registers using node name if set to 1 ( default: 0 )
-    *
-    *  A register is represented by a `ro_to_ri` mapping:
-    *  ri_node --> ro_signal,
-    *  where `ri_node` is the register input (a combinational output node), 
-    *  and `ro_signal` is the register output (a combinational input signal). 
-    *
-    *  If `rename_ri_using_node` is set to 1, then `ri_node` will be renamed 
-    *  (from its default name) using the node name. We write the following to 
-    *  the BLIF file:
-    *
-    *  ```
-    *  .latch ri_node ro_signal
-    *  ```
-    *
-    *  Otherwise, `ri_node` will be named by its default name `ri_<idx>`, where 
-    *  `idx` is the index of the register (based on the definition order when 
-    *  calling `create_ri`). Then we write:
-    *
-    *  ```
-    *  .latch ri_<idx> ro_signal
-    *  .names ri_node li_<idx>
-    *  1 1
-    *  ```
+    * ## `ps.rename_ri_using_node`
+    * 
+    * Rename registers using node name if `rename_ri_using_node` is set to 1 ( default: 0 )
+    * 
+    * A register is represented by a `ro_to_ri` mapping:
+    * 
+    * ```
+    *  ri_node --> ro_signal
+    * ```
+    * where `ri_node` is the register input (a combinational output node), and `ro_signal` is 
+    * the register output (a combinational input signal).
+    * 
+    * If `rename_ri_using_node` is set to 1, then `ri_node` will be renamed (from its default 
+    * name) using the node name. We write the following to the BLIF file:
+    * 
+    * ```
+    * .latch ri_node ro_signal
+    * ```
+    * 
+    * Otherwise, if `rename_ri_using_node` is set to 1, `ri_node` will be named by its default 
+    * name, `li_<idx>`, where `idx` is the index of the register (based on the definition order 
+    * when calling `create_ro`). Then we write:
+    * 
+    * ```
+    * .latch li_<idx> ro_signal
+    * .names ri_node li_<idx>
+    * 1 1
+    * ```
    */
   uint32_t rename_ri_using_node = 0u;
 };
