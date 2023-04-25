@@ -14,11 +14,10 @@
 using namespace mockturtle;
 
 template<class Ntk>
-void blif_read_after_write_test( const Ntk& written_ntk )
+void blif_read_after_write_test( const Ntk& written_ntk, const write_blif_params& ps = {} )
 {
   std::ostringstream out;
-  write_blif_params ps;
-  ps.skip_feedthrough = true;
+
   write_blif( written_ntk, out, ps );
 
   Ntk read_ntk;
@@ -27,10 +26,16 @@ void blif_read_after_write_test( const Ntk& written_ntk )
 
   CHECK( ret == lorina::return_code::success );
 
-  CHECK( read_ntk.size() == written_ntk.size() );
   CHECK( read_ntk.num_pis() == written_ntk.num_pis() );
   CHECK( read_ntk.num_pos() == written_ntk.num_pos() );
-  CHECK( read_ntk.num_gates() == written_ntk.num_gates() );
+
+  /* if we do not skip feed-through, then trivial nodes are inserted to the network
+     and the network size might change. */
+  if ( ps.rename_ri_using_node )
+  {
+    CHECK( read_ntk.num_gates() == written_ntk.num_gates() );
+    CHECK( read_ntk.size() == written_ntk.size() );
+  }
 
   if constexpr ( has_num_registers_v<Ntk> )
   {
@@ -90,6 +95,25 @@ TEST_CASE( "write a simple combinational k-LUT into BLIF file", "[write_blif]" )
 
   blif_read_after_write_test( klut );
 }
+
+TEST_CASE( "write a simple combinational k-LUT with multiple POs assigned by the same signal into BLIF file", "[write_blif]" )
+{
+  klut_network klut;
+
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+
+  const auto f1 = klut.create_or( a, b );
+  klut.create_po( f1 );
+  klut.create_po( f1 );
+
+  CHECK( klut.num_gates() == 1 );
+  CHECK( klut.num_pis() == 2 );
+  CHECK( klut.num_pos() == 2 );
+
+  blif_read_after_write_test( klut );
+}
+
 
 TEST_CASE( "write a simple sequential k-LUT into BLIF file", "[write_blif]" )
 {
@@ -220,7 +244,6 @@ TEST_CASE( "write a sequential k-LUT with name view", "[write_blif]" )
 
   std::ostringstream out;
   write_blif( klut, out );
-  write_blif( klut, "test.blif" );
 
   /* additional spaces at the end of .inputs and .outputs */
   CHECK( out.str() == ".model top\n"
@@ -279,9 +302,8 @@ TEST_CASE( "write a sequential k-LUT with name view and skip feed through", "[wr
 
   std::ostringstream out;
   write_blif_params ps;
-  ps.skip_feedthrough = true;
+  ps.rename_ri_using_node = true;
   write_blif( klut, out, ps );
-  write_blif( klut, "test.blif" );
 
   /* additional spaces at the end of .inputs and .outputs */
   CHECK( out.str() == ".model top\n"
@@ -300,6 +322,8 @@ TEST_CASE( "write a sequential k-LUT with name view and skip feed through", "[wr
                       "-11 1\n"
                       "1-1 1\n"
                       "11- 1\n"
+                      ".names xor(dff1,dff2) output\n"
+                      "1 1\n"
                       ".end\n" );
 
   blif_read_after_write_test( klut );
