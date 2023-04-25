@@ -42,12 +42,15 @@ void blif_read_after_write_test( const Ntk& written_ntk )
   {
     for ( auto i = 0u; i < read_ntk.num_pis(); ++i )
     {
-      auto const read_pi_name = read_ntk.get_name( read_ntk.get_node( read_ntk.pi_at( i ) ) );
-      auto const write_pi_name = written_ntk.get_name( written_ntk.get_node( written_ntk.pi_at( i ) ) );
+      auto const read_pi_name = read_ntk.get_name( read_ntk.pi_at( i ) );
+      auto const write_pi_name = written_ntk.get_name( written_ntk.pi_at( i ) );
       CHECK( read_pi_name == write_pi_name );
+    }
 
-      auto const read_po_name = read_ntk.get_name( read_ntk.get_node( read_ntk.po_at( i ) ) );
-      auto const write_po_name = written_ntk.get_name( written_ntk.get_node( written_ntk.po_at( i ) ) );
+    for ( auto i = 0u; i < read_ntk.num_pos(); ++i )
+    {
+      auto const read_po_name = read_ntk.get_output_name( i );
+      auto const write_po_name = written_ntk.get_output_name( i );
       CHECK( read_po_name == write_po_name );
     }
   }
