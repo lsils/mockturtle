@@ -14,27 +14,42 @@
 using namespace mockturtle;
 
 template<class Ntk>
-void blif_read_after_write_test( const Ntk& to_write )
+void blif_read_after_write_test( const Ntk& written_ntk )
 {
   std::ostringstream out;
   write_blif_params ps;
   ps.skip_feedthrough = true;
-  write_blif( to_write, out, ps );
+  write_blif( written_ntk, out, ps );
 
-  Ntk to_read;
+  Ntk read_ntk;
   std::istringstream in( out.str() );
-  auto const ret = lorina::read_blif( in, blif_reader( to_read ) );
+  auto const ret = lorina::read_blif( in, blif_reader( read_ntk ) );
 
   CHECK( ret == lorina::return_code::success );
 
-  CHECK( to_read.size() == to_write.size() ); 
-  CHECK( to_read.num_pis() == to_write.num_pis() ); 
-  CHECK( to_read.num_pos() == to_write.num_pos() ); 
-  CHECK( to_read.num_gates() == to_write.num_gates() );
+  CHECK( read_ntk.size() == written_ntk.size() );
+  CHECK( read_ntk.num_pis() == written_ntk.num_pis() );
+  CHECK( read_ntk.num_pos() == written_ntk.num_pos() );
+  CHECK( read_ntk.num_gates() == written_ntk.num_gates() );
 
   if constexpr ( has_num_registers_v<Ntk> )
   {
-    CHECK( to_read.num_registers() == to_write.num_registers() ); 
+    CHECK( read_ntk.num_registers() == written_ntk.num_registers() );  
+  }
+
+  /* check the names of the inputs and outputs */
+  if constexpr ( has_get_name_v<Ntk> )
+  {
+    for ( auto i = 0u; i < read_ntk.num_pis(); ++i )
+    {
+      auto const read_pi_name = read_ntk.get_name( read_ntk.get_node( read_ntk.pi_at( i ) ) );
+      auto const write_pi_name = written_ntk.get_name( written_ntk.get_node( written_ntk.pi_at( i ) ) );
+      CHECK( read_pi_name == write_pi_name );
+
+      auto const read_po_name = read_ntk.get_name( read_ntk.get_node( read_ntk.po_at( i ) ) );
+      auto const write_po_name = written_ntk.get_name( written_ntk.get_node( written_ntk.po_at( i ) ) );
+      CHECK( read_po_name == write_po_name );
+    }
   }
 }
 
