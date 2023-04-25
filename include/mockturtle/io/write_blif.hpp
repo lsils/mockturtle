@@ -55,6 +55,27 @@ namespace mockturtle
 
 struct write_blif_params
 {
+  /**
+   * rename registers using node name if set to 1 ( default: 0 )
+   * 
+   * A register has the following format:
+   *  ri_node --> ro_signal,
+   * where ri is the register input and ro is the register output.
+   * 
+   * If rename_ri_using_node is set to 1, then ri will be renamed using the node name.
+   * 
+   * ```
+   * .latch ri_node ro_signal
+   * ```
+   * 
+   * Otherwise, ri will be named as ri_<idx>, where idx is the index of the register.
+   * 
+   * ```
+   * .latch ri_<idx> ro_signal
+   * .names ri_node li_<idx>
+   * 1 1
+   * ```
+   */
   uint32_t rename_ri_using_node = 0u;
 };
 
