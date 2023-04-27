@@ -211,7 +211,7 @@ public:
       Ntk::replace_in_outputs( _old, _new );
 
       /* reset fan-in of old node */
-      if ( _old != _new.index ) /* substitute a node using itself*/
+      if ( _old != Ntk::get_node( _new ) ) /* substitute a node using itself*/
       {
         old_to_new.insert( { _old, _new } );
         Ntk::take_out_node( _old );
@@ -279,15 +279,34 @@ private:
   {
     _fanout.reset();
 
-    this->foreach_gate( [&]( auto const& n ) {
-      this->foreach_fanin( n, [&]( auto const& c ) {
-        auto& fanout = _fanout[c];
-        if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
-        {
-          fanout.push_back( n );
-        }
+    /* Compute fanout also for buffers in buffered networks */
+    if constexpr ( is_buffered_network_type_v<Ntk> )
+    {
+      this->foreach_node( [&]( auto const& n ) {
+        if ( this->is_pi( n ) || this->is_constant( n ) )
+          return true;
+        this->foreach_fanin( n, [&]( auto const& c ) {
+          auto& fanout = _fanout[c];
+          if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
+          {
+            fanout.push_back( n );
+          }
+        } );
+        return true;
       } );
-    } );
+    }
+    else
+    {
+      this->foreach_gate( [&]( auto const& n ) {
+        this->foreach_fanin( n, [&]( auto const& c ) {
+          auto& fanout = _fanout[c];
+          if ( std::find( fanout.begin(), fanout.end(), n ) == fanout.end() )
+          {
+            fanout.push_back( n );
+          }
+        } );
+      } );
+    }
   }
 
   node_map<std::vector<node>, Ntk> _fanout;

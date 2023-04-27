@@ -739,7 +739,7 @@ public:
   signal po_at( uint32_t index ) const
   {
     assert( index < _sequential_storage->num_pos );
-    return *( this->_storage->outputs.begin() + index )->index;
+    return ( this->_storage->outputs.begin() + index )->index;
   }
 
   node ci_at( uint32_t index ) const
@@ -751,7 +751,7 @@ public:
   signal co_at( uint32_t index ) const
   {
     assert( index < this->_storage->outputs.size() );
-    return *( this->_storage->outputs.begin() + index )->index;
+    return ( this->_storage->outputs.begin() + index )->index;
   }
 
   node ro_at( uint32_t index ) const
