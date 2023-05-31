@@ -149,7 +149,7 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
     const auto before = ntk.num_gates();
     akers_resynthesis<mig_network> resyn;
     refactoring_params ps;
-    ps.use_reconvergent_cut = false;
+    ps.use_reconvergence_cut = false;
     refactoring( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();
@@ -163,7 +163,7 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
     akers_resynthesis<mig_network> resyn;
     refactoring_params ps;
     ps.allow_zero_gain = true;
-    ps.use_reconvergent_cut = false;
+    ps.use_reconvergence_cut = false;
     refactoring( ntk, resyn, ps );
     ntk = cleanup_dangling( ntk );
     return before - ntk.num_gates();

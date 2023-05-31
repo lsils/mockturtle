@@ -69,8 +69,8 @@ struct refactoring_params
   /*! \brief Allow zero-gain substitutions */
   bool allow_zero_gain{ false };
 
-  /*! \brief Extract a reconvergent-driven cut for large MFFcs */
-  bool use_reconvergent_cut{ true };
+  /*! \brief Extract a reconvergence-driven cut for large MFFcs */
+  bool use_reconvergence_cut{ true };
 
   /*! \brief Use don't cares for optimization. */
   bool use_dont_cares{ false };
@@ -169,7 +169,7 @@ public:
 
       pbar( i, i, _candidates, _estimated_gain );
 
-      if ( mffc.num_pos() == 0 || ( !ps.use_reconvergent_cut && mffc.num_pis() > ps.max_pis ) || mffc.size() < 4 )
+      if ( mffc.num_pos() == 0 || ( !ps.use_reconvergence_cut && mffc.num_pis() > ps.max_pis ) || mffc.size() < 4 )
       {
         return true;
       }
@@ -349,7 +349,7 @@ private:
  *
  * This algorithm performs refactoring by collapsing maximal fanout-free cones
  * (MFFCs) into truth tables and recreating a new network structure from it.
- * If the MFFC is too large a reconvergent-driven cut is extracted.
+ * If the MFFC is too large a reconvergence-driven cut is extracted.
  * The algorithm performs changes directly in the input network and keeps the
  * substituted structures dangling in the network.  They can be cleaned up using
  * the `cleanup_dangling` algorithm.
