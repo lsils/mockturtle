@@ -26,6 +26,8 @@ v0.4 (not yet released)
     - Register retiming (`retime`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
     - AQFP buffer insertion & optimization updates (`buffer_insertion`, `aqfp_retiming`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
     - Mapping of sequential networks (`map`, `seq_map`) `#599 <https://github.com/lsils/mockturtle/pull/599>`_
+    - DAG-aware in-place rewriting (`rewrite`) `#605 <https://github.com/lsils/mockturtle/pull/605>`_
+    - Dynamic cut enumeration (`dynamic_cut_enumeration_impl`) `#605 <https://github.com/lsils/mockturtle/pull/605>`_
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Support for external don't cares (`dont_care_view`) `#585 <https://github.com/lsils/mockturtle/pull/585>`_
