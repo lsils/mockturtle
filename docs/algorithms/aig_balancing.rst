@@ -1,5 +1,5 @@
 AIG balancing
----------
+-------------
 
 **Header:** ``mockturtle/algorithms/aig_balancing.hpp``
 

@@ -26,6 +26,8 @@ v0.4 (not yet released)
     - Register retiming (`retime`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
     - AQFP buffer insertion & optimization updates (`buffer_insertion`, `aqfp_retiming`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
     - Mapping of sequential networks (`map`, `seq_map`) `#599 <https://github.com/lsils/mockturtle/pull/599>`_
+    - DAG-aware in-place rewriting (`rewrite`) `#605 <https://github.com/lsils/mockturtle/pull/605>`_
+    - Dynamic cut enumeration (`dynamic_cut_enumeration_impl`) `#605 <https://github.com/lsils/mockturtle/pull/605>`_
 * I/O:
     - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:
