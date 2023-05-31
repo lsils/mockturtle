@@ -42,7 +42,7 @@ int main()
   using namespace mockturtle;
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
-      exp( "refactoring", "benchmark", "size_before", "size_after", "depth_before", "depth_after", "runtime", "equivalent" );
+      exp( "rewrite", "benchmark", "size_before", "size_after", "depth_before", "depth_after", "runtime", "equivalent" );
 
   xag_npn_resynthesis<xag_network, xag_network, xag_npn_db_kind::xag_incomplete> resyn;
   exact_library_params eps;
