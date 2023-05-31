@@ -39,8 +39,8 @@
 #include "../views/depth_view.hpp"
 #include "../views/fanout_view.hpp"
 #include "cleanup.hpp"
-#include "cut_enumeration/rewrite_cut.hpp"
 #include "cut_enumeration.hpp"
+#include "cut_enumeration/rewrite_cut.hpp"
 
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
@@ -89,13 +89,13 @@ struct rewrite_params
 struct rewrite_stats
 {
   /*! \brief Total runtime. */
-  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Expected gain. */
-  uint32_t estimated_gain{0};
+  uint32_t estimated_gain{ 0 };
 
   /*! \brief Candidates */
-  uint32_t candidates{0};
+  uint32_t candidates{ 0 };
 
   void report() const
   {
@@ -121,7 +121,7 @@ public:
   {
     register_events();
   }
-  
+
   ~rewrite_impl()
   {
     if constexpr ( has_level_v<Ntk> )
@@ -290,7 +290,7 @@ public:
       if ( best_gain > 0 || ( ps.allow_zero_gain && best_gain == 0 ) )
       {
         /* replace node wth the new structure */
-        topo_view topo{db, best_signal};
+        topo_view topo{ db, best_signal };
         auto new_f = cleanup_dangling( topo, ntk, best_leaves.begin(), best_leaves.end() ).front();
 
         assert( n != ntk.get_node( new_f ) );
@@ -317,7 +317,7 @@ public:
   }
 
 private:
-  int32_t measure_mffc_ref( node<Ntk> const& n,  cut_t const* cut )
+  int32_t measure_mffc_ref( node<Ntk> const& n, cut_t const* cut )
   {
     /* reference cut leaves */
     for ( auto leaf : *cut )
@@ -336,7 +336,7 @@ private:
     return mffc_size;
   }
 
-  int32_t measure_mffc_deref( node<Ntk> const& n,  cut_t const* cut )
+  int32_t measure_mffc_deref( node<Ntk> const& n, cut_t const* cut )
   {
     /* reference cut leaves */
     for ( auto leaf : *cut )
@@ -526,11 +526,11 @@ private:
     /* recursively update required time */
     ntk.foreach_fanin( n, [&]( auto const& f ) {
       auto const g = ntk.get_node( f );
-      
+
       /* recur if it is still a node to explore and to update */
       if ( ntk.node_to_index( g ) > root && ( ntk.node_to_index( g ) > size || required[g] > req ) )
         propagate_required_rec( root, g, size, req - 1 );
-      
+
       /* update the required time */
       if ( ntk.node_to_index( g ) < size )
         required[g] = std::min( required[g], req - 1 );
@@ -617,8 +617,8 @@ private:
 
   node_map<uint32_t, Ntk> required;
 
-  uint32_t _candidates{0};
-  uint32_t _estimated_gain{0};
+  uint32_t _candidates{ 0 };
+  uint32_t _estimated_gain{ 0 };
 
   /* events */
   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;

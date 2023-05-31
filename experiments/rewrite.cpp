@@ -23,14 +23,14 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <mockturtle/algorithms/rewrite.hpp>
-#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <mockturtle/algorithms/rewrite.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/depth_view.hpp>
-#include <lorina/aiger.hpp>
 
 #include <experiments.hpp>
 #include <fmt/format.h>
@@ -42,7 +42,7 @@ int main()
   using namespace mockturtle;
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
-    exp( "refactoring", "benchmark", "size_before", "size_after", "depth_before", "depth_after", "runtime", "equivalent" );
+      exp( "refactoring", "benchmark", "size_before", "size_after", "depth_before", "depth_after", "runtime", "equivalent" );
 
   xag_npn_resynthesis<xag_network, xag_network, xag_npn_db_kind::xag_incomplete> resyn;
   exact_library_params eps;

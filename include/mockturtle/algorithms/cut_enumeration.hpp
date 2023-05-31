@@ -1121,7 +1121,7 @@ class dynamic_cut_enumeration_impl;
  * Comparing to `network_cuts`, it supports dynamic allocation of cuts for
  * networks in expansion. Moreover, it uses static truth tables instead of
  * dynamic truth tables to speed-up the truth table computation.
- * 
+ *
  * An instance of type `dynamic_network_cuts` can only be constructed from the
  * `dynamic_cut_enumeration_impl` algorithm.
  */
@@ -1427,7 +1427,7 @@ private:
   {
     const auto fanin = 2;
 
-    uint32_t pairs{1};
+    uint32_t pairs{ 1 };
     ntk.foreach_fanin( ntk.index_to_node( index ), [this, &pairs]( auto child, auto i ) {
       lcuts[i] = &cuts.cuts( ntk.node_to_index( ntk.get_node( child ) ) );
       pairs *= static_cast<uint32_t>( lcuts[i]->size() );
@@ -1481,7 +1481,7 @@ private:
 
   void merge_cuts( uint32_t index )
   {
-    uint32_t pairs{1};
+    uint32_t pairs{ 1 };
     std::vector<uint32_t> cut_sizes;
     ntk.foreach_fanin( ntk.index_to_node( index ), [this, &pairs, &cut_sizes]( auto child, auto i ) {
       lcuts[i] = &cuts.cuts( ntk.node_to_index( ntk.get_node( child ) ) );
@@ -1544,15 +1544,18 @@ private:
 
       /* limit the maximum number of cuts */
       rcuts.limit( ps.cut_limit );
-    } else if ( fanin == 1 ) {
+    }
+    else if ( fanin == 1 )
+    {
       rcuts.clear();
 
-      for ( auto const& cut : *lcuts[0] ) {
+      for ( auto const& cut : *lcuts[0] )
+      {
         cut_t new_cut = *cut;
 
         if constexpr ( ComputeTruth )
         {
-          new_cut->func_id = compute_truth_table( index, {cut}, new_cut );
+          new_cut->func_id = compute_truth_table( index, { cut }, new_cut );
         }
 
         cut_enumeration_update_cut<CutData>::apply( new_cut, cuts, ntk, ntk.index_to_node( index ) );
