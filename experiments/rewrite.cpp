@@ -27,7 +27,7 @@
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
-#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <lorina/aiger.hpp>
@@ -44,17 +44,17 @@ int main()
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
     exp( "refactoring", "benchmark", "size_before", "size_after", "depth_before", "depth_after", "runtime", "equivalent" );
 
-  xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
+  xag_npn_resynthesis<xag_network, xag_network, xag_npn_db_kind::xag_incomplete> resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<aig_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<xag_network, decltype( resyn )> exact_lib( resyn, eps );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
-    aig_network aig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
+    xag_network xag;
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( xag ) ) != lorina::return_code::success )
     {
       continue;
     }
@@ -62,13 +62,13 @@ int main()
     rewrite_params ps;
     rewrite_stats st;
 
-    uint32_t const size_before = aig.num_gates();
-    uint32_t const depth_before = depth_view( aig ).depth();
+    uint32_t const size_before = xag.num_gates();
+    uint32_t const depth_before = depth_view( xag ).depth();
 
-    rewrite( aig, exact_lib, ps, &st );
+    rewrite( xag, exact_lib, ps, &st );
 
-    bool const cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
-    exp( benchmark, size_before, aig.num_gates(), depth_before, depth_view( aig ).depth(), to_seconds( st.time_total ), cec );
+    bool const cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
+    exp( benchmark, size_before, xag.num_gates(), depth_before, depth_view( xag ).depth(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();
