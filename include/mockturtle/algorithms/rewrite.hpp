@@ -153,19 +153,19 @@ public:
 
     auto& db = library.get_database();
 
+    std::array<signal<Ntk>, num_vars> leaves;
+    std::array<signal<Ntk>, num_vars> best_leaves;
+    std::array<uint8_t, num_vars> permutation;
+    signal<Ntk> best_signal;
+
     const auto size = ntk.size();
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
       if ( ntk.fanout_size( n ) == 0u )
         return;
 
       int32_t best_gain = -1;
-      int32_t best_gain2 = -1;
       uint32_t best_level = UINT32_MAX;
-      uint32_t best_cut = 0;
-      signal<Ntk> best_signal;
-      std::vector<signal<Ntk>> best_leaves;
       bool best_phase = false;
-      std::vector<signal<Ntk>> leaves( num_vars, ntk.get_constant( false ) );
 
       /* update level for node */
       if constexpr ( has_level_v<Ntk> )
@@ -181,109 +181,103 @@ public:
         }
       }
 
+      cut_manager.clear_cuts( n );
+      cut_manager.compute_cuts( n );
+
+      uint32_t cut_index = 0;
+      for ( auto& cut : cuts.cuts( ntk.node_to_index( n ) ) )
       {
-        /* use cuts */
-        cut_manager.clear_cuts( n );
-        cut_manager.compute_cuts( n );
-
-        uint32_t cut_index = 0;
-        for ( auto& cut : cuts.cuts( ntk.node_to_index( n ) ) )
+        /* skip trivial cut */
+        if ( ( cut->size() == 1 && *cut->begin() == ntk.node_to_index( n ) ) )
         {
-          /* skip trivial cut */
-          if ( ( cut->size() == 1 && *cut->begin() == ntk.node_to_index( n ) ) )
+          ++cut_index;
+          continue;
+        }
+
+        /* Boolean matching */
+        auto config = kitty::exact_npn_canonization( cuts.truth_table( *cut ) );
+        auto tt_npn = std::get<0>( config );
+        auto neg = std::get<1>( config );
+        auto perm = std::get<2>( config );
+
+        auto const structures = library.get_supergates( tt_npn );
+
+        if ( structures == nullptr )
+        {
+          ++cut_index;
+          continue;
+        }
+
+        uint32_t negation = 0;
+        for ( auto j = 0u; j < num_vars; ++j )
+        {
+          permutation[perm[j]] = j;
+          negation |= ( ( neg >> perm[j] ) & 1 ) << j;
+        }
+
+        /* save output negation to apply */
+        bool phase = ( neg >> num_vars == 1 ) ? true : false;
+
+        {
+          auto j = 0u;
+          for ( auto const leaf : *cut )
           {
-            ++cut_index;
-            continue;
+            leaves[permutation[j++]] = ntk.make_signal( ntk.index_to_node( leaf ) );
           }
+        }
 
-          /* Boolean matching */
-          auto config = kitty::exact_npn_canonization( cuts.truth_table( *cut ) );
-          auto tt_npn = std::get<0>( config );
-          auto neg = std::get<1>( config );
-          auto perm = std::get<2>( config );
-
-          auto const structures = library.get_supergates( tt_npn );
-
-          if ( structures == nullptr )
+        for ( auto j = 0u; j < num_vars; ++j )
+        {
+          if ( ( negation >> j ) & 1 )
           {
-            ++cut_index;
-            continue;
+            leaves[j] = !leaves[j];
           }
+        }
 
-          uint32_t negation = 0;
-          std::array<uint8_t, num_vars> permutation;
+        {
+          /* measure the MFFC contained in the cut */
+          int32_t mffc_size = measure_mffc_deref( n, cut );
 
-          for ( auto j = 0u; j < num_vars; ++j )
+          for ( auto const& dag : *structures )
           {
-            permutation[perm[j]] = j;
-            negation |= ( ( neg >> perm[j] ) & 1 ) << j;
-          }
+            auto [nodes_added, level] = evaluate_entry( n, db.get_node( dag.root ), leaves );
+            int32_t gain = mffc_size - nodes_added;
 
-          /* save output negation to apply */
-          bool phase = ( neg >> num_vars == 1 ) ? true : false;
+            /* discard if dag.root and n are the same */
+            if ( ntk.node_to_index( n ) == db.value( db.get_node( dag.root ) ) >> 1 )
+              continue;
 
-          {
-            auto j = 0u;
-            for ( auto const leaf : *cut )
+            /* discard if no gain */
+            if ( gain < 0 || ( !ps.allow_zero_gain && gain == 0 ) )
+              continue;
+
+            /* discard if level increases */
+            if constexpr ( has_level_v<Ntk> )
             {
-              leaves[permutation[j++]] = ntk.make_signal( ntk.index_to_node( leaf ) );
-            }
-          }
-
-          for ( auto j = 0u; j < num_vars; ++j )
-          {
-            if ( ( negation >> j ) & 1 )
-            {
-              leaves[j] = !leaves[j];
-            }
-          }
-
-          {
-            /* measure the MFFC contained in the cut */
-            int32_t mffc_size = measure_mffc_deref( n, cut );
-
-            for ( auto const& dag : *structures )
-            {
-              auto [nodes_added, level] = evaluate_entry( db.get_node( dag.root ), leaves );
-              int32_t gain = mffc_size - nodes_added;
-
-              /* discard if dag.root and n are the same */
-              if ( ntk.node_to_index( n ) == db.value( db.get_node( dag.root ) ) )
+              if ( ps.preserve_depth && level > required[n] )
                 continue;
-
-              /* discard if no gain */
-              if ( gain < 0 || ( !ps.allow_zero_gain && gain == 0 ) )
-                continue;
-
-              /* discard if level increases */
-              if constexpr ( has_level_v<Ntk> )
-              {
-                if ( ps.preserve_depth && level > required[n] )
-                  continue;
-              }
-
-              if ( ( gain > best_gain ) || ( gain == best_gain && level < best_level ) )
-              {
-                ++_candidates;
-                best_gain = gain;
-                best_signal = dag.root;
-                best_leaves = leaves;
-                best_phase = phase;
-                best_cut = cut_index;
-                best_level = level;
-              }
-
-              if ( !ps.allow_multiple_structures )
-                break;
             }
 
-            /* restore contained MFFC */
-            measure_mffc_ref( n, cut );
-            ++cut_index;
+            if ( ( gain > best_gain ) || ( gain == best_gain && level < best_level ) )
+            {
+              ++_candidates;
+              best_gain = gain;
+              best_signal = dag.root;
+              best_leaves = leaves;
+              best_phase = phase;
+              best_level = level;
+            }
 
-            if ( cut->size() == 0 || ( cut->size() == 1 && *cut->begin() != ntk.node_to_index( n ) ) )
+            if ( !ps.allow_multiple_structures )
               break;
           }
+
+          /* restore contained MFFC */
+          measure_mffc_ref( n, cut );
+          ++cut_index;
+
+          if ( cut->size() == 0 || ( cut->size() == 1 && *cut->begin() != ntk.node_to_index( n ) ) )
+            break;
         }
       }
 
@@ -389,15 +383,15 @@ private:
     return value;
   }
 
-  inline std::pair<int32_t, uint32_t> evaluate_entry( node<Ntk> const& n, std::vector<signal<Ntk>> const& leaves )
+  inline std::pair<int32_t, uint32_t> evaluate_entry( node<Ntk> const& current_root, node<Ntk> const& n, std::array<signal<Ntk>, num_vars> const& leaves )
   {
     auto& db = library.get_database();
     db.incr_trav_id();
 
-    return evaluate_entry_rec( n, leaves );
+    return evaluate_entry_rec( current_root, n, leaves );
   }
 
-  std::pair<int32_t, uint32_t> evaluate_entry_rec( node<Ntk> const& n, std::vector<signal<Ntk>> const& leaves )
+  std::pair<int32_t, uint32_t> evaluate_entry_rec( node<Ntk> const& current_root, node<Ntk> const& n, std::array<signal<Ntk>, num_vars> const& leaves )
   {
     auto& db = library.get_database();
     if ( db.is_pi( n ) || db.is_constant( n ) )
@@ -429,14 +423,16 @@ private:
         return;
       }
 
-      auto [area_rec, level_rec] = evaluate_entry_rec( g, leaves );
+      auto [area_rec, level_rec] = evaluate_entry_rec( current_root, g, leaves );
       area += area_rec;
       level = std::max( level, level_rec );
 
       /* check value */
-      if ( db.value( g ) < ntk.size() )
+      if ( db.value( g ) < UINT32_MAX )
       {
-        node_data[i] = ntk.make_signal( ntk.index_to_node( db.value( g ) ) ) ^ db.is_complemented( f );
+        signal<Ntk> s;
+        s.data = static_cast<uint64_t>( db.value( g ) );
+        node_data[i] = s ^ db.is_complemented( f );
       }
       else
       {
@@ -448,7 +444,7 @@ private:
     {
       /* try hash */
       /* AIG, XAG, MIG, and XMG are supported now */
-      std::optional<node<Ntk>> val;
+      std::optional<signal<Ntk>> val;
       do
       {
         /* XAG */
@@ -489,12 +485,17 @@ private:
 
       if ( val.has_value() )
       {
-        db.set_value( n, *val );
-        return { area + ( ntk.fanout_size( *val ) > 0 ? 0 : cost_fn( ntk, n ) ), level + 1 };
+        /* bad condition (current root is contained in the DAG): return a very high cost */
+        if ( db.get_node( *val ) == current_root )
+          return { UINT32_MAX / 2, level + 1 };
+
+        /* annotate hashing info */
+        db.set_value( n, val->data );
+        return { area + ( ntk.fanout_size( ntk.get_node( *val ) ) > 0 ? 0 : cost_fn( ntk, n ) ), level + 1 };
       }
     }
 
-    db.set_value( n, ntk.size() );
+    db.set_value( n, UINT32_MAX );
     return { area + cost_fn( ntk, n ), level + 1 };
   }
 

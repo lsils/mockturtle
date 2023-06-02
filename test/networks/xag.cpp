@@ -633,16 +633,18 @@ TEST_CASE( "check has_and and has_xor in XAG", "[xag]" )
   xag.create_po( n9 );
 
   CHECK( xag.has_and( !x1, x2 ).has_value() == true );
-  CHECK( *xag.has_and( !x1, x2 ) == xag.get_node( n4 ) );
+  CHECK( *xag.has_and( !x1, x2 ) == n4 );
   CHECK( xag.has_xor( !x1, x2 ).has_value() == false );
   CHECK( xag.has_and( !x1, x3 ).has_value() == false );
   CHECK( xag.has_xor( !x1, x3 ).has_value() == false );
   CHECK( xag.has_xor( n5, x3 ).has_value() == true );
-  CHECK( *xag.has_xor( n5, x3 ) == xag.get_node( n6 ) );
+  CHECK( *xag.has_xor( n5, x3 ) == n6 );
   CHECK( xag.has_xor( !n5, !x3 ).has_value() == true );
-  CHECK( *xag.has_xor( !n5, !x3 ) == xag.get_node( n6 ) );
+  CHECK( *xag.has_xor( !n5, !x3 ) == n6 );
+  CHECK( xag.has_xor( !n5, x3 ).has_value() == true );
+  CHECK( *xag.has_xor( !n5, x3 ) == !n6 );
   CHECK( xag.has_and( !n7, !n5 ).has_value() == true );
-  CHECK( *xag.has_and( !n7, !n5 ) == xag.get_node( n8 ) );
+  CHECK( *xag.has_and( !n7, !n5 ) == n8 );
 }
 
 TEST_CASE( "simulate some special functions in XAGs", "[xag]" )

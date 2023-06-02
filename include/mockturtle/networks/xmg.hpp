@@ -474,7 +474,7 @@ public:
 #pragma endregion
 
 #pragma region Has node
-  std::optional<node> has_maj( signal a, signal b, signal c )
+  std::optional<signal> has_maj( signal a, signal b, signal c )
   {
     /* order inputs */
     if ( a.index > b.index )
@@ -493,18 +493,20 @@ public:
     /* trivial cases */
     if ( a.index == b.index )
     {
-      return ( a.complement == b.complement ) ? get_node( a ) : get_node( c );
+      return ( a.complement == b.complement ) ? a : c;
     }
     else if ( b.index == c.index )
     {
-      return ( b.complement == c.complement ) ? get_node( b ) : get_node( a );
+      return ( b.complement == c.complement ) ? b : a;
     }
 
     /*  complemented edges minimization */
+    auto node_complement = false;
     if ( static_cast<unsigned>( a.complement ) + static_cast<unsigned>( b.complement ) +
              static_cast<unsigned>( c.complement ) >=
          2u )
     {
+      node_complement = true;
       a.complement = !a.complement;
       b.complement = !b.complement;
       c.complement = !c.complement;
@@ -520,13 +522,13 @@ public:
     if ( it != _storage->hash.end() )
     {
       assert( !is_dead( it->second ) );
-      return it->second;
+      return signal( it->second, node_complement );
     }
 
     return {};
   }
 
-  std::optional<node> has_xor3( signal a, signal b, signal c )
+  std::optional<signal> has_xor3( signal a, signal b, signal c )
   {
     /* order inputs */
     if ( a.index < b.index )
@@ -542,18 +544,19 @@ public:
       std::swap( a, b );
     }
 
+    /* propagate complement edges */
+    bool fcompl = ( a.complement != b.complement ) != c.complement;
+    a.complement = b.complement = c.complement = false;
+
     /* trivial cases */
     if ( a.index == b.index )
     {
-      return get_node( c );
+      return c ^ fcompl;
     }
     else if ( b.index == c.index )
     {
-      return get_node( a );
+      return a ^ fcompl;
     }
-
-    /* propagate complement edges */
-    a.complement = b.complement = c.complement = false;
 
     storage::element_type::node_type node;
     node.children[0] = a;
@@ -565,7 +568,7 @@ public:
     if ( it != _storage->hash.end() )
     {
       assert( !is_dead( it->second ) );
-      return it->second;
+      return signal( it->second, fcompl );
     }
 
     return {};
