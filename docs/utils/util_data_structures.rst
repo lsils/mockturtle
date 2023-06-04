@@ -70,6 +70,8 @@ Tech Library
 .. doxygenclass:: mockturtle::tech_library
    :members:
 
+.. _exact_library:
+
 Exact Library
 ~~~~~~~~~~~~~
 

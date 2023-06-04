@@ -250,11 +250,11 @@ private:
       while ( left_pointer-- > left_most )
       {
         /* select if node exists */
-        std::optional<node> pnode = ntk.has_and( leaves[right_pointer], leaves[left_pointer] );
+        std::optional<signal> pnode = ntk.has_and( leaves[right_pointer], leaves[left_pointer] );
         if ( pnode.has_value() )
         {
           /* already present in TFI */
-          if ( ntk.visited( *pnode ) == ntk.trav_id() )
+          if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
           {
             continue;
           }
@@ -277,11 +277,11 @@ private:
       while ( left_pointer-- > 0 )
       {
         /* select if node exists */
-        std::optional<node> pnode = ntk.has_and( leaves[right_pointer], leaves[left_pointer] );
+        std::optional<signal> pnode = ntk.has_and( leaves[right_pointer], leaves[left_pointer] );
         if ( pnode.has_value() )
         {
           /* already present in TFI */
-          if ( ntk.visited( *pnode ) == ntk.trav_id() )
+          if ( ntk.visited( ntk.get_node( *pnode ) ) == ntk.trav_id() )
           {
             continue;
           }
