@@ -24,15 +24,15 @@
  */
 
 /*!
-  \file mig_algebraic_rewriting.hpp
-  \brief MIG algebraric rewriting
+  \file mig_inv_optimization.hpp
+  \brief MIG inverter optimization
 
-  \author Heinz Riener
-  \author Mathias Soeken
+  \author Bugra Eryilmaz
 */
 
 #pragma once
 
+#include "../networks/storage.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/fanout_view.hpp"
 
@@ -48,10 +48,13 @@ struct mig_inv_optimization_stats
   /*! \brief Total runtime. */
   stopwatch<>::duration time_total{ 0 };
 
+  /*! \brief Number of one level inverted nodes. */
   int num_inverted{ 0 };
 
+  /*! \brief Number of two level inverted nodes. */
   int num_two_level_inverted{ 0 };
 
+  /*! \brief Total gain in terms of number of inverters. */
   int total_gain{ 0 };
 };
 
@@ -74,6 +77,8 @@ public:
     minimize();
   }
 
+private:
+  /*! \brief implements the inverter minimization algorithm */
   void minimize()
   {
     bool changed = true;
@@ -95,11 +100,14 @@ public:
           st.total_gain += _gain;
           changed = true;
           ntk.foreach_fanout( f, [&]( auto const& parent ) {
+            // convert each fanout if inverting it makes sense
             int _subgain = 0;
-            _subgain += gain( f );
+            _subgain += gain( parent );
             if ( is_complemented_parent( parent, f ) )
+              // if the connection between f and parent is complemented, we counted the same gain twice which will not be inverted at all
               _subgain -= 2;
             else
+              // if the connection between f and parent is not complemented, we counted the same negative gain twice which will not be inverted at all
               _subgain += 2;
             if ( _subgain > 0 )
             {
@@ -109,10 +117,11 @@ public:
           } );
           invert_node( f );
         }
-      } )
+      } );
     }
   }
 
+  /*! \brief calculates the decrease in the number of inverters if this node is inverted and all fanouts that is beneficial also inverted */
   int two_level_gain( node<Ntk> n )
   {
     int _gain = 0;
@@ -122,9 +131,13 @@ public:
       int _subgain = 0;
       _subgain += gain( f );
       if ( is_complemented_parent( f, n ) )
+        // if the connection between f and parent is complemented, we counted the same gain twice which will not be inverted at all
         _subgain -= 2;
       else
+        // if the connection between f and parent is not complemented, we counted the same negative gain twice which will not be inverted at all
         _subgain += 2;
+
+      // convert each fanout if inverting it makes sense
       if ( _subgain > 0 )
       {
         _gain += _subgain;
@@ -134,6 +147,7 @@ public:
     return _gain;
   }
 
+  /*! \brief calculates the decrease in the number of inverters if this node is inverted */
   int gain( node<Ntk> n )
   {
     if ( ntk.is_dead( n ) )
@@ -142,17 +156,23 @@ public:
       return 0;
     }
     int _gain = 0;
+
+    // count the inverted and non-inverted fanins
     ntk.foreach_fanin( n, [&]( auto const& f ) {
-      if ( ntk.is_pi( f ) )
+      if ( ntk.is_constant( ntk.get_node( f ) ) )
         return;
       update_gain_is_complemented( f, _gain );
     } );
+
+    // count the inverted and non-inverted fanouts
     ntk.foreach_fanout( n, [&]( auto const& parent ) {
       if ( is_complemented_parent( parent, n ) )
         _gain++;
       else
         _gain--;
     } );
+
+    // count the inverted and non-inverted POs
     ntk.foreach_po( [&]( auto const& f ) {
       if ( ntk.get_node( f ) == n )
         update_gain_is_complemented( f, _gain );
@@ -160,6 +180,7 @@ public:
     return _gain;
   }
 
+  /*! \brief increases the gain if signal f is complemented, decreases otherwise. */
   void update_gain_is_complemented( signal<Ntk> f, int& _gain )
   {
     if ( ntk.is_complemented( f ) )
@@ -168,16 +189,26 @@ public:
       _gain--;
   }
 
+  /*! \brief checks if parent is parent of child and returns if the connection is complemented. */
   bool is_complemented_parent( node<Ntk> parent, node<Ntk> child )
   {
+    bool ret = false;
+    bool changed = false;
     ntk.foreach_fanin( parent, [&]( auto const& f ) {
-      if ( f == child )
+      if ( ntk.get_node( f ) == child )
       {
-        return ntk.is_complemented( f );
+        changed = true;
+        ret = ntk.is_complemented( f );
       }
     } );
+    if ( !changed )
+    {
+      std::cerr << "parent " << parent << " is not parent of child " << child << "\n";
+    }
+    return ret;
   }
 
+  /*! \brief inverts the inputs and changes all occurances of the node with the !inverted_node. */
   void invert_node( node<Ntk> n )
   {
     signal<Ntk> a, b, c;
@@ -194,6 +225,9 @@ public:
     ntk.replace_in_outputs( n, new_node );
   }
 
+  /*! \brief original create_maj function was inverting the node
+             if more than 2 of the inputs were inverted which is
+             not suitable for the algorithm, so I removed that part. */
   signal<Ntk> create_maj_directly( signal<Ntk> a, signal<Ntk> b, signal<Ntk> c )
   {
     /* order inputs */
@@ -223,36 +257,36 @@ public:
       return ( b.complement == c.complement ) ? b : a;
     }
 
-    storage::element_type::node_type node;
-    node.children[0] = a;
-    node.children[1] = b;
-    node.children[2] = c;
+    std::shared_ptr<storage<regular_node<3, 2, 1>>>::element_type::node_type nd;
+    nd.children[0] = a;
+    nd.children[1] = b;
+    nd.children[2] = c;
 
     /* structural hashing */
-    const auto it = _storage->hash.find( node );
-    if ( it != _storage->hash.end() )
+    const auto it = ntk._storage->hash.find( nd );
+    if ( it != ntk._storage->hash.end() )
     {
-      return { it->second, node_complement };
+      return { it->second, 0 };
     }
 
-    const auto index = _storage->nodes.size();
+    const auto index = ntk._storage->nodes.size();
 
-    if ( index >= .9 * _storage->nodes.capacity() )
+    if ( index >= .9 * ntk._storage->nodes.capacity() )
     {
-      _storage->nodes.reserve( static_cast<uint64_t>( 3.1415f * index ) );
-      _storage->hash.reserve( static_cast<uint64_t>( 3.1415f * index ) );
+      ntk._storage->nodes.reserve( static_cast<uint64_t>( 3.1415f * index ) );
+      ntk._storage->hash.reserve( static_cast<uint64_t>( 3.1415f * index ) );
     }
 
-    _storage->nodes.push_back( node );
+    ntk._storage->nodes.push_back( nd );
 
-    _storage->hash[node] = index;
+    ntk._storage->hash[nd] = index;
 
     /* increase ref-count to children */
-    _storage->nodes[a.index].data[0].h1++;
-    _storage->nodes[b.index].data[0].h1++;
-    _storage->nodes[c.index].data[0].h1++;
+    ntk._storage->nodes[a.index].data[0].h1++;
+    ntk._storage->nodes[b.index].data[0].h1++;
+    ntk._storage->nodes[c.index].data[0].h1++;
 
-    for ( auto const& fn : _events->on_add )
+    for ( auto const& fn : ntk._events->on_add )
     {
       ( *fn )( index );
     }
@@ -267,58 +301,44 @@ private:
 
 } // namespace detail
 
-/*! \brief Majority algebraic depth rewriting.
+/*! \brief MIG inverter optimization.
  *
- * This algorithm tries to rewrite a network with majority gates for depth
- * optimization using the associativity and distributivity rule in
- * majority-of-3 logic.  It can be applied to networks other than MIGs, but
- * only considers pairs of nodes which both implement the majority-of-3
- * function.
+ * This algorithm tries to reduce the number
+ * of inverters in a MIG network without
+ * increasing the node number. It checks each
+ * node for 1 level and 2 level optimization
+ * opportunuties and inverts the node if it
+ * decreases the number of inverted connections.
+ * It does not count constant values as inverted
+ * even if they are complemented in the graph.
  *
  * **Required network functions:**
- * - `get_node`
- * - `level`
- * - `update_levels`
- * - `create_maj`
- * - `substitute_node`
- * - `foreach_node`
- * - `foreach_po`
- * - `foreach_fanin`
- * - `is_maj`
- * - `clear_values`
- * - `set_value`
- * - `value`
- * - `fanout_size`
- *
-   \verbatim embed:rst
-
-  .. note::
-
-      The implementation of this algorithm was heavily inspired by an
-      implementation from Luca Amarù.
-   \endverbatim
+ * 'foreach_fanin'
+ * 'foreach_fanout'
+ * 'substitute_node'
+ * 'replace_in_outputs'
+ * 'is_complemented'
+ * 'get_node'
+ * 'is_dead'
+ * 'is_constant'
+ * 'foreach_gate'
  */
 template<class Ntk>
 void mig_inv_optimization( Ntk& ntk, mig_inv_optimization_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
-  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-  static_assert( has_level_v<Ntk>, "Ntk does not implement the level method" );
-  static_assert( has_create_maj_v<Ntk>, "Ntk does not implement the create_maj method" );
-  static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
-  static_assert( has_update_levels_v<Ntk>, "Ntk does not implement the update_levels method" );
-  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
-  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_foreach_fanin_v<Ntk>, "Ntk does not implement the foreach_fanin method" );
-  static_assert( has_is_maj_v<Ntk>, "Ntk does not implement the is_maj method" );
-  static_assert( has_clear_values_v<Ntk>, "Ntk does not implement the clear_values method" );
-  static_assert( has_set_value_v<Ntk>, "Ntk does not implement the set_value method" );
-  static_assert( has_value_v<Ntk>, "Ntk does not implement the value method" );
-  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+  static_assert( has_foreach_fanout_v<Ntk>, "Ntk does not implement the foreach_fanout method" );
+  static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
+  static_assert( has_replace_in_outputs_v<Ntk>, "Ntk does not implement the replace_in_outputs method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_dead_v<Ntk>, "Ntk does not implement the is_dead method" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
 
   mig_inv_optimization_stats st;
-  fanout_view<Ntk> fo_ntk( ntk );
-  detail::mig_inv_optimization_impl<fanout_view<Ntk>> p( ntk, st );
+  detail::mig_inv_optimization_impl<Ntk> p( ntk, st );
   p.run();
 
   if ( pst )

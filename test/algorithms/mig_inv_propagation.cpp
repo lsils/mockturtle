@@ -1,15 +1,14 @@
 #include <catch.hpp>
 
-#include <mockturtle/algorithms/mig_inv_optimization.hpp>
+#include <mockturtle/algorithms/mig_inv_propagation.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/traits.hpp>
-#include <mockturtle/views/fanout_view.hpp>
 
 using namespace mockturtle;
 
 namespace mockturtle
 {
-namespace inv_opt_test
+namespace inv_prop_test
 {
 template<typename Ntk>
 int number_of_inverted( Ntk const& ntk )
@@ -17,7 +16,12 @@ int number_of_inverted( Ntk const& ntk )
   int num_inverted{ 0 };
   ntk.foreach_gate( [&]( auto const& n ) {
     ntk.foreach_fanin( n, [&]( auto const& f ) {
-      if ( ntk.is_constant( ntk.get_node( f ) ) )
+      if ( ntk.is_dead( ntk.get_node( f ) ) )
+      {
+        std::cerr << "dead node " << ntk.get_node( f ) << std::endl;
+        return;
+      }
+      if ( ntk.is_constant( ntk.get_node( f ) ) || ntk.is_pi( ntk.get_node( f ) ) )
       {
         return;
       }
@@ -35,13 +39,13 @@ int number_of_inverted( Ntk const& ntk )
   } );
   return num_inverted;
 }
-} // namespace inv_opt_test
+} // namespace inv_prop_test
 } // namespace mockturtle
 
-TEST_CASE( "MIG inverter optimization basic", "[mig_inv_optimization]" )
+TEST_CASE( "MIG inverter propagation basic", "[mig_inv_propagation]" )
 {
   mig_network mig;
-  mig_inv_optimization_stats st;
+  mig_inv_propagation_stats st;
 
   const auto a = mig.create_pi();
   const auto b = mig.create_pi();
@@ -56,19 +60,15 @@ TEST_CASE( "MIG inverter optimization basic", "[mig_inv_optimization]" )
   mig.create_po( f3 );
   mig.create_po( f4 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
-  CHECK( old - newer == 1 );
-  CHECK( old - newer == st.total_gain );
+  mig_inv_propagation( mig, &st );
+  auto inv_count = inv_prop_test::number_of_inverted( mig );
+  CHECK( inv_count == 0 );
 }
 
-TEST_CASE( "MIG inverter optimization constant input 0", "[mig_inv_optimization]" )
+TEST_CASE( "MIG inverter propagation constant input 0", "[mig_inv_propagation]" )
 {
   mig_network mig;
-  mig_inv_optimization_stats st;
+  mig_inv_propagation_stats st;
 
   const auto a = mig.create_pi();
   const auto b = mig.create_pi();
@@ -80,19 +80,15 @@ TEST_CASE( "MIG inverter optimization constant input 0", "[mig_inv_optimization]
 
   mig.create_po( f3 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
-  CHECK( old - newer == 1 );
-  CHECK( old - newer == st.total_gain );
+  mig_inv_propagation( mig, &st );
+  auto inv_count = inv_prop_test::number_of_inverted( mig );
+  CHECK( inv_count == 0 );
 }
 
-TEST_CASE( "MIG inverter optimization constant input 1", "[mig_inv_optimization]" )
+TEST_CASE( "MIG inverter propagation constant input 1", "[mig_inv_propagation]" )
 {
   mig_network mig;
-  mig_inv_optimization_stats st;
+  mig_inv_propagation_stats st;
 
   const auto a = mig.create_pi();
   const auto b = mig.create_pi();
@@ -106,19 +102,15 @@ TEST_CASE( "MIG inverter optimization constant input 1", "[mig_inv_optimization]
   mig.create_po( f3 );
   mig.create_po( f4 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
-  CHECK( old - newer == 0 );
-  CHECK( old - newer == st.total_gain );
+  mig_inv_propagation( mig, &st );
+  auto inv_count = inv_prop_test::number_of_inverted( mig );
+  CHECK( inv_count == 0 );
 }
 
-TEST_CASE( "MIG inverter optimization output", "[mig_inv_optimization]" )
+TEST_CASE( "MIG inverter propagation output", "[mig_inv_propagation]" )
 {
   mig_network mig;
-  mig_inv_optimization_stats st;
+  mig_inv_propagation_stats st;
 
   const auto a = mig.create_pi();
   const auto b = mig.create_pi();
@@ -132,19 +124,15 @@ TEST_CASE( "MIG inverter optimization output", "[mig_inv_optimization]" )
   mig.create_po( f3 );
   mig.create_po( !f1 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
-  CHECK( old - newer == 1 );
-  CHECK( old - newer == st.total_gain );
+  mig_inv_propagation( mig, &st );
+  auto inv_count = inv_prop_test::number_of_inverted( mig );
+  CHECK( inv_count == 0 );
 }
 
-TEST_CASE( "MIG inverter optimization complex", "[mig_inv_optimization]" )
+TEST_CASE( "MIG inverter propagation complex", "[mig_inv_propagation]" )
 {
   mig_network mig;
-  mig_inv_optimization_stats st;
+  mig_inv_propagation_stats st;
 
   const auto zero = mig.get_constant( false );
 
@@ -169,19 +157,15 @@ TEST_CASE( "MIG inverter optimization complex", "[mig_inv_optimization]" )
   mig.create_po( z4 );
   mig.create_po( z5 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
-  CHECK( old - newer == 11 - 4 );
-  CHECK( old - newer == st.total_gain );
+  mig_inv_propagation( mig, &st );
+  auto inv_count = inv_prop_test::number_of_inverted( mig );
+  CHECK( inv_count == 0 );
 }
 
-TEST_CASE( "MIG inverter two level", "[mig_inv_optimization]" )
+TEST_CASE( "MIG inverter propagation two level", "[mig_inv_propagation]" )
 {
   mig_network mig;
-  mig_inv_optimization_stats st;
+  mig_inv_propagation_stats st;
 
   const auto a = mig.create_pi();
   const auto b = mig.create_pi();
@@ -197,11 +181,7 @@ TEST_CASE( "MIG inverter two level", "[mig_inv_optimization]" )
   mig.create_po( !f3 );
   mig.create_po( f5 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
-  CHECK( old - newer == 2 );
-  CHECK( old - newer == st.total_gain );
+  mig_inv_propagation( mig, &st );
+  auto inv_count = inv_prop_test::number_of_inverted( mig );
+  CHECK( inv_count == 0 );
 }
