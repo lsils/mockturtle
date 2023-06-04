@@ -99,6 +99,7 @@ private:
           st.num_two_level_inverted++;
           st.total_gain += _gain;
           changed = true;
+          std::vector<node<Ntk>> _nodes_to_invert;
           ntk.foreach_fanout( f, [&]( auto const& parent ) {
             // convert each fanout if inverting it makes sense
             int _subgain = 0;
@@ -112,10 +113,14 @@ private:
             if ( _subgain > 0 )
             {
               st.total_gain += _subgain;
-              invert_node( parent );
+              _nodes_to_invert.push_back( parent );
             }
           } );
           invert_node( f );
+          for ( auto const& n : _nodes_to_invert )
+          {
+            invert_node( n );
+          }
         }
       } );
     }
