@@ -362,7 +362,7 @@ public:
           ++st.num_div1_or_accepts;
           auto const l = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
           auto const r = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
-          assert( ntk.level( ntkk.get_node( l ) ) <= max_depth - 1 && ntk.level( ntkk.get_node( r ) ) <= max_depth - 1 );
+          assert( ntk.level( ntk.get_node( l ) ) <= max_depth - 1 && ntk.level( ntk.get_node( r ) ) <= max_depth - 1 );
           return sim.get_phase( root ) ? !ntk.create_or( l, r ) : ntk.create_or( l, r );
         }
       }
@@ -385,7 +385,7 @@ public:
           ++st.num_div1_and_accepts;
           auto const l = sim.get_phase( ntk.get_node( s0 ) ) ? !s0 : s0;
           auto const r = sim.get_phase( ntk.get_node( s1 ) ) ? !s1 : s1;
-          assert( ntk.level( ntkk.get_node( l ) ) <= max_depth - 1 && ntk.level( ntkk.get_node( r ) ) <= max_depth - 1 );
+          assert( ntk.level( ntk.get_node( l ) ) <= max_depth - 1 && ntk.level( ntk.get_node( r ) ) <= max_depth - 1 );
           return sim.get_phase( root ) ? !ntk.create_and( l, r ) : ntk.create_and( l, r );
         }
       }
@@ -614,8 +614,8 @@ public:
         if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == tt )
         {
           ++st.num_div2_or_and_accepts;
-          assert( ntk.level( ntkk.get_node( a ) ) <= max_depth - 1 );
-          assert( ntk.level( ntkk.get_node( b ) ) <= max_depth - 2 && ntk.level( ntkk.get_node( c ) ) <= max_depth - 2 );
+          assert( ntk.level( ntk.get_node( a ) ) <= max_depth - 1 );
+          assert( ntk.level( ntk.get_node( b ) ) <= max_depth - 2 && ntk.level( ntk.get_node( c ) ) <= max_depth - 2 );
           return sim.get_phase( root ) ? !ntk.create_or( a, ntk.create_and( b, c ) ) : ntk.create_or( a, ntk.create_and( b, c ) );
         }
       }
@@ -641,8 +641,8 @@ public:
         if ( ( tt_s0 | ( tt_s1 & tt_s2 ) ) == tt )
         {
           ++st.num_div2_or_and_accepts;
-          assert( ntk.level( ntkk.get_node( a ) ) <= max_depth - 1 );
-          assert( ntk.level( ntkk.get_node( b ) ) <= max_depth - 2 && ntk.level( ntkk.get_node( c ) ) <= max_depth - 2 );
+          assert( ntk.level( ntk.get_node( a ) ) <= max_depth - 1 );
+          assert( ntk.level( ntk.get_node( b ) ) <= max_depth - 2 && ntk.level( ntk.get_node( c ) ) <= max_depth - 2 );
           return sim.get_phase( root ) ? !ntk.create_and( a, ntk.create_or( b, c ) ) : ntk.create_and( a, ntk.create_or( b, c ) );
         }
       }
@@ -680,8 +680,8 @@ public:
           auto const d = sim.get_phase( ntk.get_node( s3 ) ) ? !s3 : s3;
 
           ++st.num_div3_and_2or_accepts;
-          assert( ntk.level( ntkk.get_node( a ) ) <= max_depth - 2 && ntk.level( ntkk.get_node( b ) ) <= max_depth - 2 );
-          assert( ntk.level( ntkk.get_node( c ) ) <= max_depth - 2 && ntk.level( ntkk.get_node( d ) ) <= max_depth - 2 );
+          assert( ntk.level( ntk.get_node( a ) ) <= max_depth - 2 && ntk.level( ntk.get_node( b ) ) <= max_depth - 2 );
+          assert( ntk.level( ntk.get_node( c ) ) <= max_depth - 2 && ntk.level( ntk.get_node( d ) ) <= max_depth - 2 );
           return sim.get_phase( root ) ? !ntk.create_and( ntk.create_or( a, b ), ntk.create_or( c, d ) ) : ntk.create_and( ntk.create_or( a, b ), ntk.create_or( c, d ) );
         }
       }
@@ -710,8 +710,8 @@ public:
           auto const d = sim.get_phase( ntk.get_node( s3 ) ) ? !s3 : s3;
 
           ++st.num_div3_or_2and_accepts;
-          assert( ntk.level( ntkk.get_node( a ) ) <= max_depth - 2 && ntk.level( ntkk.get_node( b ) ) <= max_depth - 2 );
-          assert( ntk.level( ntkk.get_node( c ) ) <= max_depth - 2 && ntk.level( ntkk.get_node( d ) ) <= max_depth - 2 );
+          assert( ntk.level( ntk.get_node( a ) ) <= max_depth - 2 && ntk.level( ntk.get_node( b ) ) <= max_depth - 2 );
+          assert( ntk.level( ntk.get_node( c ) ) <= max_depth - 2 && ntk.level( ntk.get_node( d ) ) <= max_depth - 2 );
           return sim.get_phase( root ) ? !ntk.create_or( ntk.create_and( a, b ), ntk.create_and( c, d ) ) : ntk.create_or( ntk.create_and( a, b ), ntk.create_and( c, d ) );
         }
       }

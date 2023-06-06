@@ -226,11 +226,11 @@ private:
   {
     std::uniform_real_distribution<> dis( 0.0, total_weights_dec );
     float r = dis( rnd );
-    for ( auto const& p : decompressing_scripts )
+    for ( auto it = decompressing_scripts.rbegin(); it != decompressing_scripts.rend(); ++it )
     {
-      if ( r >= p.second )
+      if ( r >= it->second )
       {
-        p.first( ntk, i, rnd() );
+        it->first( ntk, i, rnd() );
         break;
       }
     }
@@ -242,11 +242,11 @@ private:
     for ( auto j = 0u; j < _ps.compressing_scripts_per_step; ++j )
     {
       float r = dis( rnd );
-      for ( auto const& p : compressing_scripts )
+      for ( auto it = compressing_scripts.rbegin(); it != compressing_scripts.rend(); ++it )
       {
-        if ( r >= p.second )
+        if ( r >= it->second )
         {
-          p.first( ntk, i, rnd() );
+          it->first( ntk, i, rnd() );
           break;
         }
       }
@@ -475,13 +475,13 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
   } );
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
-    if ( rand & 0x1 )
-    {
-      sop_rebalancing<mig_network> balance_fn;
-      balancing_params bps;
-      bps.cut_enumeration_ps.cut_size = 6u;
-      _ntk = balancing( _ntk, {balance_fn}, bps );
-    }
+    //if ( rand & 0x1 )
+    //{
+    //  sop_rebalancing<mig_network> balance_fn;
+    //  balancing_params bps;
+    //  bps.cut_enumeration_ps.cut_size = 6u;
+    //  _ntk = balancing( _ntk, {balance_fn}, bps );
+    //}
     resubstitution_params rps;
     rps.max_inserts = (rand >> 1) & 0x7;
     rps.max_pis = (rand >> 4) & 0x3 ? 6 : 8;
