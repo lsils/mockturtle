@@ -548,6 +548,8 @@ public:
 
     // update the reference counter of the new signal
     _storage->nodes[new_signal.index].data[0].h1++;
+    // update the reference counter of the old signal
+    _storage->nodes[old_node].data[0].h1--;
 
     for ( auto const& fn : _events->on_modified )
     {
@@ -571,8 +573,10 @@ public:
 
         if ( old_node != new_signal.index )
         {
-          // increment fan-in of new node
+          // increment fan-out of new node
           _storage->nodes[new_signal.index].data[0].h1++;
+          // decrement fan-out of old node
+          _storage->nodes[old_node].data[0].h1--;
         }
       }
     }
