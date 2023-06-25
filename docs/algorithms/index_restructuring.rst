@@ -14,6 +14,7 @@ Logic restructuring and optimization
    :maxdepth: 1
    :caption: Rewriting and resubstitution
 
+   rewrite
    cut_rewriting
    xag_algebraic_rewriting
    mig_algebraic_rewriting

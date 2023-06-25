@@ -67,3 +67,12 @@ Write simulation patterns into file
 .. doxygenfunction:: mockturtle::write_patterns(Simulator const&, std::string const&)
 
 .. doxygenfunction:: mockturtle::write_patterns(Simulator const&, std::ostream&)
+
+Write library into GENLIB file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/io/write_genlib.hpp``
+
+.. doxygenfunction:: mockturtle::write_genlib(std::vector<gate> const&, std::string const&)
+
+.. doxygenfunction:: mockturtle::write_genlib(std::vector<gate> const&, std::ostream&)

@@ -9,24 +9,6 @@ on:
     - master
 
 jobs:
-  build-gcc9:
-    name: GNU GCC 9
-    runs-on: macOS-11
-
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=$(which g++-9) -DMOCKTURTLE_TEST=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests "~[quality]"
   build-gcc10:
     name: GNU GCC 10
     runs-on: macOS-11
@@ -58,6 +40,24 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_CXX_COMPILER=$(which g++-11) -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests "~[quality]"
+  build-gcc12:
+    name: GNU GCC 12
+    runs-on: macOS-latest
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_CXX_COMPILER=$(which g++-12) -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |

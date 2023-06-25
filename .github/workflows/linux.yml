@@ -9,24 +9,6 @@ on:
     - master
 
 jobs:
-  build-gcc7:
-    runs-on: ubuntu-18.04
-    name: GNU GCC 7
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-7 -DMOCKTURTLE_TEST=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests "~[quality]"
   build-gcc9:
     runs-on: ubuntu-latest
     name: GNU GCC 9
@@ -76,6 +58,24 @@ jobs:
         mkdir build
         cd build
         cmake -DMOCKTURTLE_CXX_STANDARD=20 -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_TEST=ON ..
+        make run_tests
+    - name: Run tests
+      run: |
+        cd build
+        ./test/run_tests "~[quality]"
+  build-gcc12:
+    runs-on: ubuntu-latest
+    name: GNU GCC 12
+    
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        submodules: true
+    - name: Build mockturtle
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_CXX_COMPILER=g++-12 -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |
