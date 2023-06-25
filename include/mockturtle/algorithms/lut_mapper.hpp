@@ -542,6 +542,7 @@ public:
       TT zero( 0u ), proj( 1u );
       kitty::create_nth_var( proj, 0u );
 
+      tmp_visited.reserve( 100 );
       truth_tables.resize( 20000 );
 
       truth_tables.insert( zero );
@@ -559,9 +560,9 @@ public:
     stopwatch t( st.time_total );
 
     /* compute and save topological order */
-    top_order.reserve( ntk.size() );
+    topo_order.reserve( ntk.size() );
     topo_view<Ntk>( ntk ).foreach_node( [this]( auto n ) {
-      top_order.push_back( n );
+      topo_order.push_back( n );
     } );
 
     if ( ps.collapse_mffcs )
@@ -654,12 +655,12 @@ private:
   void init_cuts()
   {
     /* init constant cut */
-    add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) ) );
+    add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) ), false );
     if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
-      add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ) );
+      add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ), true );
 
     /* init PIs cuts */
-    ntk.foreach_pi( [&]( auto const& n ) {
+    ntk.foreach_ci( [&]( auto const& n ) {
       add_unit_cut( ntk.node_to_index( n ) );
     } );
   }
@@ -668,7 +669,7 @@ private:
   void compute_mapping( lut_cut_sort_type const sort, bool preprocess, bool recompute_cuts )
   {
     cuts_total = 0;
-    for ( auto const& n : top_order )
+    for ( auto const& n : topo_order )
     {
       if constexpr ( !ELA )
       {
@@ -683,7 +684,7 @@ private:
         }
       }
 
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
       {
         continue;
       }
@@ -749,9 +750,9 @@ private:
     if ( !ps.recompute_cuts )
       return;
 
-    for ( auto const& n : top_order )
+    for ( auto const& n : topo_order )
     {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) || ntk.is_ci( n ) )
       {
         continue;
       }
@@ -778,7 +779,7 @@ private:
 
     /* compute the current worst delay and update the mapping refs */
     delay = 0;
-    ntk.foreach_po( [this]( auto s ) {
+    ntk.foreach_co( [this]( auto s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
 
       delay = std::max( delay, cuts[index][0]->data.delay );
@@ -792,10 +793,10 @@ private:
     /* compute current area and update mapping refs in top-down order */
     area = 0;
     edges = 0;
-    for ( auto it = top_order.rbegin(); it != top_order.rend(); ++it )
+    for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
       /* skip constants and PIs */
-      if ( ntk.is_constant( *it ) || ntk.is_pi( *it ) )
+      if ( ntk.is_constant( *it ) || ntk.is_ci( *it ) )
       {
         continue;
       }
@@ -857,15 +858,15 @@ private:
     }
 
     /* set the required time at POs */
-    ntk.foreach_po( [&]( auto const& s ) {
+    ntk.foreach_co( [&]( auto const& s ) {
       const auto index = ntk.node_to_index( ntk.get_node( s ) );
       node_match[index].required = required;
     } );
 
     /* propagate required time to the PIs */
-    for ( auto it = top_order.rbegin(); it != top_order.rend(); ++it )
+    for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
-      if ( ntk.is_pi( *it ) || ntk.is_constant( *it ) )
+      if ( ntk.is_ci( *it ) || ntk.is_constant( *it ) )
         continue;
 
       const auto index = ntk.node_to_index( *it );
@@ -1026,14 +1027,14 @@ private:
       compute_cut_data<ELA>( best_cut, n, true );
     }
 
+    /* clear cuts */
+    rcuts.clear();
+
     /* insert the previous best cut */
     if ( iteration != 0 && !preprocess )
     {
       rcuts.simple_insert( best_cut, sort );
     }
-
-    /* clear cuts */
-    rcuts.clear();
 
     if ( fanin > 1 && fanin <= ps.cut_enumeration_ps.fanin_limit )
     {
@@ -1418,7 +1419,7 @@ private:
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
       {
         continue;
       }
@@ -1429,6 +1430,7 @@ private:
         count += cut_ref( cuts[leaf][0] );
       }
     }
+
     return count;
   }
 
@@ -1438,7 +1440,7 @@ private:
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
       {
         continue;
       }
@@ -1449,6 +1451,46 @@ private:
         count += cut_deref( cuts[leaf][0] );
       }
     }
+
+    return count;
+  }
+
+  uint32_t cut_measure_mffc( cut_t const& cut )
+  {
+    tmp_visited.clear();
+
+    uint32_t count = cut_ref_visit( cut );
+
+    /* dereference visited */
+    for ( auto const& s : tmp_visited )
+    {
+      --node_match[s].map_refs;
+    }
+
+    return count;
+  }
+
+  uint32_t cut_ref_visit( cut_t const& cut )
+  {
+    uint32_t count = cut->data.lut_area;
+
+    for ( auto leaf : cut )
+    {
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      {
+        continue;
+      }
+
+      /* add to visited */
+      tmp_visited.push_back( leaf );
+
+      /* Recursive referencing if leaf was not referenced */
+      if ( node_match[leaf].map_refs++ == 0u )
+      {
+        count += cut_ref_visit( cuts[leaf][0] );
+      }
+    }
+
     return count;
   }
 
@@ -1458,7 +1500,7 @@ private:
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
       {
         continue;
       }
@@ -1478,7 +1520,7 @@ private:
 
     for ( auto leaf : cut )
     {
-      if ( ntk.is_pi( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
+      if ( ntk.is_ci( ntk.index_to_node( leaf ) ) || ntk.is_constant( ntk.index_to_node( leaf ) ) )
       {
         continue;
       }
@@ -1496,9 +1538,9 @@ private:
   {
     ntk.clear_mapping();
 
-    for ( auto const& n : top_order )
+    for ( auto const& n : topo_order )
     {
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
         continue;
 
       const auto index = ntk.node_to_index( n );
@@ -1619,14 +1661,14 @@ private:
       cut->data.delay = lut_delay + delay;
       cut->data.lut_area = lut_area;
       cut->data.lut_delay = lut_delay;
-      cut->data.area_flow = static_cast<float>( cut_ref( cut ) );
       if ( ps.edge_optimization )
       {
+        cut->data.area_flow = static_cast<float>( cut_ref( cut ) );
         cut->data.edge_flow = static_cast<float>( cut_edge_deref( cut ) );
       }
       else
       {
-        cut_deref( cut );
+        cut->data.area_flow = static_cast<float>( cut_measure_mffc( cut ) );
         cut->data.edge_flow = 0;
       }
     }
@@ -1661,13 +1703,16 @@ private:
     }
   }
 
-  void add_zero_cut( uint32_t index )
+  void add_zero_cut( uint32_t index, bool phase )
   {
     auto& cut = cuts[index].add_cut( &index, &index ); /* fake iterator for emptyness */
 
     if constexpr ( StoreFunction )
     {
-      cut->func_id = 0;
+      if ( phase )
+        cut->func_id = 1;
+      else
+        cut->func_id = 0;
     }
   }
 
@@ -1754,18 +1799,18 @@ private:
     ntk.clear_mapping();
 
     /* map POs */
-    ntk.foreach_po( [&]( auto const& f ) {
+    ntk.foreach_co( [&]( auto const& f ) {
       node const& n = ntk.get_node( f );
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
         return;
 
       compute_mffc_mapping_node( n );
     } );
 
-    for ( auto it = top_order.rbegin(); it != top_order.rend(); ++it )
+    for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
       node const& n = *it;
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
         continue;
       if ( ntk.fanout_size( n ) <= 1 ) /* it should be unnecessary */
         continue;
@@ -1850,7 +1895,7 @@ private:
 
   void get_fc_nodes_rec( node const& n, std::vector<node>& nodes )
   {
-    if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
+    if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
       return;
 
     nodes.push_back( n );
@@ -1896,7 +1941,8 @@ private:
   const float epsilon{ 0.005f }; /* epsilon */
   LUTCostFn lut_cost{};
 
-  std::vector<node> top_order;
+  std::vector<node> topo_order;
+  std::vector<uint32_t> tmp_visited;
   std::vector<node_lut> node_match;
 
   std::vector<cut_set_t> cuts;  /* compressed representation of cuts */
@@ -1925,12 +1971,12 @@ private:
  *
  * **Required network functions:**
  * - `size`
- * - `is_pi`
+ * - `is_ci`
  * - `is_constant`
  * - `node_to_index`
  * - `index_to_node`
  * - `get_node`
- * - `foreach_po`
+ * - `foreach_co`
  * - `foreach_node`
  * - `fanout_size`
  * - `clear_mapping`
@@ -1951,12 +1997,13 @@ void lut_map( Ntk& ntk, lut_map_params const& ps = {}, lut_map_stats* pst = null
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
-  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci method" );
   static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
-  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_foreach_ci_v<Ntk>, "Ntk does not implement the foreach_ci method" );
+  static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
   static_assert( has_clear_mapping_v<Ntk>, "Ntk does not implement the clear_mapping method" );

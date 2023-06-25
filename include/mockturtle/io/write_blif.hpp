@@ -55,7 +55,37 @@ namespace mockturtle
 
 struct write_blif_params
 {
-  uint32_t skip_feedthrough = 0u;
+  /**
+    * ## `ps.rename_ri_using_node`
+    * 
+    * Rename registers using node name if `rename_ri_using_node` is set to 1 ( default: 0 )
+    * 
+    * A register is represented by a `ro_to_ri` mapping:
+    * 
+    * ```
+    *  ri_node --> ro_signal
+    * ```
+    * where `ri_node` is the register input (a combinational output node), and `ro_signal` is 
+    * the register output (a combinational input signal).
+    * 
+    * If `rename_ri_using_node` is set to 1, then `ri_node` will be renamed (from its default 
+    * name) using the node name. We write the following to the BLIF file:
+    * 
+    * ```
+    * .latch ri_node ro_signal
+    * ```
+    * 
+    * Otherwise, if `rename_ri_using_node` is set to 1, `ri_node` will be named by its default 
+    * name, `li_<idx>`, where `idx` is the index of the register (based on the definition order 
+    * when calling `create_ro`). Then we write:
+    * 
+    * ```
+    * .latch li_<idx> ro_signal
+    * .names ri_node li_<idx>
+    * 1 1
+    * ```
+   */
+  uint32_t rename_ri_using_node = 0u;
 };
 
 /*! \brief Writes network in BLIF format into output stream
@@ -101,6 +131,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
   }
 
   topo_view topo_ntk{ ntk };
+  std::unordered_set<std::string> defined_names;
 
   /* write model */
   os << ".model top\n";
@@ -115,12 +146,15 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
         if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
         {
           signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
-          std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "pi{}", topo_ntk.get_node( s ) );
-          os << name << ' ';
+          std::string const input_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "pi{}", topo_ntk.get_node( s ) );
+          os << input_name << ' ';
+          defined_names.insert( input_name ); /* we should not have collision here */
         }
         else
         {
-          os << fmt::format( "pi{} ", topo_ntk.node_to_index( n ) );
+          std::string const input_name = fmt::format( "pi{}", topo_ntk.node_to_index( n ) );
+          os << input_name << ' ';
+          defined_names.insert( input_name ); /* we should not have collision here */
         }
       }
     } );
@@ -142,7 +176,8 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
         }
         else
         {
-          os << fmt::format( "po{} ", index );
+          std::string const output_name = fmt::format( "po{}", index );
+          os << output_name << ' ';
         }
       }
     } );
@@ -158,29 +193,32 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
         if ( index >= topo_ntk.num_cos() - num_latches )
         {
           os << ".latch ";
-          auto const ro_sig = topo_ntk.make_signal( topo_ntk.ro_at( latch_idx ) );
-          auto const ri_sig = topo_ntk.ri_at( latch_idx );
-          register_t l_info = topo_ntk.register_at( latch_idx );
+          auto const ro_signal = topo_ntk.make_signal( topo_ntk.ro_at( latch_idx ) );
+          auto const ri_signal = topo_ntk.ri_at( latch_idx );
+          register_t latch_info = topo_ntk.register_at( latch_idx );
           if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
           {
-            std::string const node_name = topo_ntk.has_name( ri_sig ) ? 
-                topo_ntk.get_name( ri_sig ) 
-              : fmt::format( "new_n{}", topo_ntk.get_node( ri_sig ) );
-            std::string const latch_name = ps.skip_feedthrough ? 
+            std::string const node_name = topo_ntk.has_name( ri_signal ) ? 
+                topo_ntk.get_name( ri_signal ) 
+              : fmt::format( "new_n{}", topo_ntk.get_node( ri_signal ) );
+            std::string const latch_name = ps.rename_ri_using_node ? 
                 node_name
               : fmt::format( "li{}", latch_idx );
             std::string const ri_name = topo_ntk.has_output_name( index ) ? 
                 topo_ntk.get_output_name( index ) 
               : latch_name;
-            std::string const ro_name = topo_ntk.has_name( ro_sig ) ? topo_ntk.get_name( ro_sig ) : fmt::format( "new_n{}", topo_ntk.get_node( ro_sig ) );
-            os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, l_info.type, l_info.control, l_info.init );
+            std::string const ro_name = topo_ntk.has_name( ro_signal ) ? topo_ntk.get_name( ro_signal ) : fmt::format( "new_n{}", topo_ntk.get_node( ro_signal ) );
+            os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, latch_info.type, latch_info.control, latch_info.init );
+            defined_names.insert( ro_name ); /* we should not have collision here */
           }
           else
           {
-            std::string const latch_name = ps.skip_feedthrough? 
+            std::string const ri_name = ps.rename_ri_using_node? 
                 fmt::format( "new_n{}", topo_ntk.get_node( topo_ntk.ri_at( latch_idx ) ) )
               : fmt::format( "li{}", latch_idx );
-            os << fmt::format( "{} new_n{} {} {} {}\n", latch_name, topo_ntk.get_node( ro_sig ), l_info.type, l_info.control, l_info.init );
+            std::string const ro_name = fmt::format( "new_n{}", topo_ntk.get_node( ro_signal ) );
+            os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, latch_info.type, latch_info.control, latch_info.init );
+            defined_names.insert( ro_name ); /* we should not have collision here */
           }
           latch_idx++;
         }
@@ -191,11 +229,13 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
   /* write constants */
   os << ".names new_n0\n";
   os << "0\n";
+  defined_names.insert( "new_n0" ); /* we should not have collision here */
 
   if ( topo_ntk.get_constant( false ) != topo_ntk.get_constant( true ) )
   {
     os << ".names new_n1\n";
     os << "1\n";
+    defined_names.insert( "new_n1" ); /* we should not have collision here */
   }
 
   /* write nodes */
@@ -211,14 +251,17 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
       if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
       {
         auto const s = topo_ntk.make_signal( n );
-        std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "new_n{}", topo_ntk.get_node( s ) );
-        os << fmt::format( ".names {}\n", name );
+        std::string const constant_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "new_n{}", topo_ntk.get_node( s ) );
+        os << fmt::format( ".names {}\n", constant_name );
         os << "0" << '\n';
+        defined_names.insert( constant_name ); /* we should not have collision here */
       }
       else
       {
-        os << fmt::format( ".names new_n{}\n", n );
+        std::string const constant_name = fmt::format( "new_n{}", n );
+        os << fmt::format( ".names {}\n", constant_name );
         os << "0" << '\n';
+        defined_names.insert( constant_name ); /* we should not have collision here */
       }
       return;
     }
@@ -231,13 +274,13 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
       if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
       {
         signal<Ntk> const s = topo_ntk.make_signal( f_node );
-        std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
-        os << name << ' ';
+        std::string const fanin_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
+        os << fanin_name << ' ';
       }
       else
       {
-        std::string const name = topo_ntk.is_pi( f_node ) ? fmt::format( "pi{} ", f_node ) : fmt::format( "new_n{} ", f_node );
-        os << name;
+        std::string const fanin_name = topo_ntk.is_pi( f_node ) ? fmt::format( "pi{} ", f_node ) : fmt::format( "new_n{} ", f_node );
+        os << fanin_name;
       }
     } );
 
@@ -245,12 +288,15 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
     {
       auto const s = topo_ntk.make_signal( n );
-      std::string const name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "new_n{}", topo_ntk.get_node( s ) );
-      os << name << '\n';
+      std::string const fanout_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "new_n{}", topo_ntk.get_node( s ) );
+      os << fanout_name << '\n';
+      defined_names.insert( fanout_name ); /* we should not have collision here */
     }
     else
     {
-      os << fmt::format( "new_n{}\n", n );
+      std::string const fanout_name = fmt::format( "new_n{}", n );
+      os << fanout_name << '\n';
+      defined_names.insert( fanout_name ); /* we should not have collision here */
     }
 
     int count = 0;
@@ -271,35 +317,83 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
   topo_ntk.foreach_co( [&]( auto const& f, auto index ) {
     auto f_node = topo_ntk.get_node( f );
     auto const minterm_string = topo_ntk.is_complemented( f ) ? "0" : "1";
-    if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> && has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> ) /* with name view */
-    {
-      signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.get_node( f ) );
-      std::string const node_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "new_n{}", topo_ntk.get_node( s ) );
 
-      /* PO or RI */
-      std::string default_name = ( index >= topo_ntk.num_cos() - num_latches ? fmt::format( "li{}", latch_idx++ ) : fmt::format( "po{}", index ) );
-
-      std::string const output_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : default_name;
-      if ( !ps.skip_feedthrough && ( node_name != output_name ) )
-        os << fmt::format( ".names {} {}\n{} 1\n", node_name, output_name, minterm_string, index );
-    }
-    else /* no name view */
+    if ( index < topo_ntk.num_cos() - num_latches ) /* the signal f is a PO */
     {
-      if ( index >= topo_ntk.num_cos() - num_latches )
+      /* the default name depends on whether the signal is a PI or a regular signal */
+      std::string const node_default_name = topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
+
+      if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> && has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> ) /* with name view */
       {
-        if ( !ps.skip_feedthrough && ( topo_ntk.get_node( f ) != index ) )
+        signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.get_node( f ) );
+
+        /* then we overwrite the default name if we assigned names from name_view */
+        std::string const node_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : node_default_name;
+
+        /* get the default name of PO */
+        std::string default_output_name = fmt::format( "po{}", index );
+
+        /* over write the name if we have name view */
+        std::string const output_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : default_output_name;
+
+        /* we need to bridge the nodes */
+        if ( node_name != output_name && defined_names.find( output_name ) == defined_names.end() )
         {
-          std::string const node_name = topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
-          os << fmt::format( ".names {} li{}\n{} 1\n", node_name, latch_idx, minterm_string );
-          latch_idx++;
+          os << fmt::format( ".names {} {}\n{} 1\n", node_name, output_name, minterm_string );
+          defined_names.insert( output_name );
         }
       }
-      else
+      else /* without name view */
       {
-        std::string const node_name = topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
-        if ( !ps.skip_feedthrough && ( topo_ntk.get_node( f ) != index ) )
-          os << fmt::format( ".names {} po{}\n{} 1\n", node_name, index, minterm_string );
+        std::string const node_name = node_default_name;
+        std::string const output_name = fmt::format( "po{}", index );
+        if ( node_name != output_name && defined_names.find( output_name ) == defined_names.end() )
+        {
+          os << fmt::format( ".names {} {}\n{} 1\n", node_name, output_name, minterm_string );
+          defined_names.insert( output_name );
+        }
       }
+    }
+    else /* the signal f is a RI */
+    {
+      /* the default name depends on whether the signal is a PI or a regular signal */
+      std::string const node_default_name = topo_ntk.is_pi( f_node ) ? fmt::format( "pi{}", f_node ) : fmt::format( "new_n{}", f_node );
+
+      if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> && has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> ) /* with name view */
+      {
+        signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.get_node( f ) );
+
+        /* then we overwrite the default name if we assigned names from name_view */
+        std::string const node_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : node_default_name;
+
+        /* get the default name of RI */
+        std::string default_ri_name = ps.rename_ri_using_node ? node_name : fmt::format( "li{}", latch_idx );
+
+        /* overwrite the name if we have name view */
+        std::string const ri_name = topo_ntk.has_output_name( index ) ? topo_ntk.get_output_name( index ) : default_ri_name;
+
+        /* we need to bridge the nodes */
+        if ( node_name != ri_name && defined_names.find( ri_name ) == defined_names.end() )
+        {
+          os << fmt::format( ".names {} {}\n{} 1\n", node_name, ri_name, minterm_string );
+          defined_names.insert( ri_name );
+        }
+      }
+      else /* without name view */
+      {
+        std::string const node_name = node_default_name;
+
+        /* get the default name of RI */
+        std::string ri_name = ps.rename_ri_using_node ? node_name : fmt::format( "li{}", latch_idx );
+
+        if ( node_name != ri_name && defined_names.find( ri_name ) == defined_names.end() )
+        {
+          os << fmt::format( ".names {} {}\n{} 1\n", node_name, ri_name, minterm_string );
+          defined_names.insert( ri_name );
+        }
+      }
+
+      latch_idx++;
     }
   } );
 

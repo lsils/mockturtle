@@ -293,6 +293,18 @@ TEST_CASE( "various assumptions", "[buffer_insertion]" )
     buffered_aig_network buffered2;
     CHECK( buffering2.run( buffered2 ) == 11u );
     CHECK( verify_aqfp_buffer( buffered2, asp ) == true );
+
+    ps.scheduling = buffer_insertion_params::ASAP_depth;
+    buffer_insertion buffering3( aig, ps );
+    buffered_aig_network buffered3;
+    CHECK( buffering3.run( buffered3 ) == 17u );
+    CHECK( verify_aqfp_buffer( buffered3, asp ) == true );
+
+    ps.scheduling = buffer_insertion_params::ALAP_depth;
+    buffer_insertion buffering4( aig, ps );
+    buffered_aig_network buffered4;
+    CHECK( buffering4.run( buffered4 ) == 10u );
+    CHECK( verify_aqfp_buffer( buffered4, asp ) == true );
   }
 
   /* branch PI, balance neither */
@@ -312,6 +324,18 @@ TEST_CASE( "various assumptions", "[buffer_insertion]" )
     buffered_aig_network buffered2;
     CHECK( buffering2.run( buffered2 ) == 9u );
     CHECK( verify_aqfp_buffer( buffered2, asp ) == true );
+
+    ps.scheduling = buffer_insertion_params::ASAP_depth;
+    buffer_insertion buffering3( aig, ps );
+    buffered_aig_network buffered3;
+    CHECK( buffering3.run( buffered3 ) == 8u );
+    CHECK( verify_aqfp_buffer( buffered3, asp ) == true );
+
+    ps.scheduling = buffer_insertion_params::ALAP_depth;
+    buffer_insertion buffering4( aig, ps );
+    buffered_aig_network buffered4;
+    CHECK( buffering4.run( buffered4 ) == 8u );
+    CHECK( verify_aqfp_buffer( buffered4, asp ) == true );
   }
 
   /* don't branch PI, balance PO */
@@ -321,10 +345,16 @@ TEST_CASE( "various assumptions", "[buffer_insertion]" )
   ps.assume = asp;
   {
     ps.scheduling = buffer_insertion_params::ASAP;
-    buffer_insertion buffering( aig, ps );
-    buffered_aig_network buffered;
-    CHECK( buffering.run( buffered ) == 5u );
-    CHECK( verify_aqfp_buffer( buffered, asp ) == true );
+    buffer_insertion buffering1( aig, ps );
+    buffered_aig_network buffered1;
+    CHECK( buffering1.run( buffered1 ) == 5u );
+    CHECK( verify_aqfp_buffer( buffered1, asp ) == true );
+
+    ps.scheduling = buffer_insertion_params::ASAP_depth;
+    buffer_insertion buffering2( aig, ps );
+    buffered_aig_network buffered2;
+    CHECK( buffering2.run( buffered2 ) == 5u );
+    CHECK( verify_aqfp_buffer( buffered2, asp ) == true );
   }
 
   /* don't branch PI, balance neither */
@@ -334,10 +364,16 @@ TEST_CASE( "various assumptions", "[buffer_insertion]" )
   ps.assume = asp;
   {
     ps.scheduling = buffer_insertion_params::ASAP;
-    buffer_insertion buffering( aig, ps );
-    buffered_aig_network buffered;
-    CHECK( buffering.run( buffered ) == 2u );
-    CHECK( verify_aqfp_buffer( buffered, asp ) == true );
+    buffer_insertion buffering1( aig, ps );
+    buffered_aig_network buffered1;
+    CHECK( buffering1.run( buffered1 ) == 2u );
+    CHECK( verify_aqfp_buffer( buffered1, asp ) == true );
+
+    ps.scheduling = buffer_insertion_params::ASAP_depth;
+    buffer_insertion buffering2( aig, ps );
+    buffered_aig_network buffered2;
+    CHECK( buffering2.run( buffered2 ) == 2u );
+    CHECK( verify_aqfp_buffer( buffered2, asp ) == true );
   }
 }
 
