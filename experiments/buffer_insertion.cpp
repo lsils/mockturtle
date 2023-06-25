@@ -41,70 +41,6 @@
 
 using namespace mockturtle;
 
-template<class Ntk>
-std::pair<uint32_t, typename Ntk::node> remove_buffer_chains_rec( Ntk& ntk, typename Ntk::node n, typename Ntk::node parent )
-{
-  if ( ntk.visited( n ) == ntk.trav_id() )
-    return std::make_pair( 0, n );
-  ntk.set_visited( n, ntk.trav_id() );
-  if ( ntk.is_pi( n ) )
-    return std::make_pair( 0, n );
-
-  if ( ntk.is_buf( n ) )
-  {
-    // splitter
-    if ( ntk.fanout_size( n ) > 1 )
-    {
-      ntk.foreach_fanin( n, [&]( auto f ){
-        remove_buffer_chains_rec( ntk, ntk.get_node( f ), n );
-      } );
-      return std::make_pair( 0, n );
-    }
-
-    // single-output buffer: can be part of a chain to be removed
-    std::pair<uint32_t, typename Ntk::node> ret;
-    ntk.foreach_fanin( n, [&]( auto f ){
-      auto [count, origin] = remove_buffer_chains_rec( ntk, ntk.get_node( f ), n );
-      if ( count == 3 )
-      {
-        if ( parent != 0 )
-        {
-          ntk.replace_in_node( parent, n, ntk.make_signal( origin ) );
-          ntk.take_out_node( n );
-        }
-        else
-        {
-          ntk.replace_in_outputs( n, ntk.make_signal( origin ) );
-          ntk.take_out_node( n );
-        }
-        ret = std::make_pair( 0, origin ); // TODO: take care of complementation
-      }
-      else
-      {
-        ret = std::make_pair( count + 1, origin );
-      }
-    } );
-    return ret;
-  }
-
-  // gate
-  ntk.foreach_fanin( n, [&]( auto f ){
-    remove_buffer_chains_rec( ntk, ntk.get_node( f ), n );
-  } );
-  return std::make_pair( 0, n );
-}
-
-template<class Ntk>
-void remove_buffer_chains( Ntk& ntk )
-{
-  static_assert( is_buffered_network_type_v<Ntk>, "Ntk is not a buffered network" );
-
-  ntk.incr_trav_id();
-  ntk.foreach_po( [&]( auto f ){
-    remove_buffer_chains_rec( ntk, ntk.get_node( f ), 0 );
-  } );
-}
-
 int main( int argc, char* argv[] )
 {
   std::string run_only_one = "";
@@ -132,8 +68,8 @@ int main( int argc, char* argv[] )
       "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn" };
   const auto benchmarks_epfl = experiments::epfl_benchmarks();
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
-      exp( "buffer_insertion", "benchmark", "#gates", "#buffers", "#buff real", "#PI buf", "#PO buf", "#pop buf", "depth_JJ", "runtime", "verified" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
+      exp( "buffer_insertion", "benchmark", "#gates", "#buffers", "#buff real", "max phase skip", "depth_JJ", "runtime", "verified" );
 
   buffer_insertion_params ps;
   ps.scheduling = buffer_insertion_params::better_depth;
@@ -155,8 +91,6 @@ int main( int argc, char* argv[] )
   for ( auto benchmark : benchmarks_epfl )
   {
     if ( run_only_one != "" && benchmark != run_only_one )
-      continue;
-    if ( benchmark == "hyp" && run_only_one != "hyp" )
       continue;
     std::cout << "\n[i] processing " << benchmark << "\n";
 
@@ -181,7 +115,7 @@ int main( int argc, char* argv[] )
     bool verified = verify_aqfp_buffer( bufntk, ps.assume, pi_levels );
     auto const levels = schedule_buffered_network_with_PI_levels( bufntk, pi_levels );
 
-    remove_buffer_chains( bufntk );
+    uint32_t max_chain = aqfp.remove_buffer_chains( bufntk );
 
     // names_view named_bufntk{bufntk};
     // restore_pio_names_by_order( ntk, named_bufntk );
@@ -194,7 +128,6 @@ int main( int argc, char* argv[] )
     std::system( fmt::format( "dot -Tpng -o {0}.png {0}.dot; rm {0}.dot; open {0}.png", benchmark ).c_str() );
 #endif
 
-    depth_view d{ ntk };
     total_buffers += num_buffers;
     total_depth += aqfp.depth();
 
@@ -204,48 +137,29 @@ int main( int argc, char* argv[] )
         max_fanout = std::max( max_fanout, ntk.fanout_size( n ) );
     } );
 
-    //node_map<std::pair<uint32_t, uint32_t>, mig_network> extrefs( ntk );
-    //ntk.foreach_po( [&]( auto f ){
-    //  if ( ntk.is_complemented( f ) )
-    //    extrefs[f].second++;
-    //  else
-    //    extrefs[f].first++;
-    //});
-    //ntk.foreach_node( [&]( auto n ){
-    //  if ( extrefs[n].first > 0 && extrefs[n].second > 0 )
-    //  {
-    //    fmt::print( "node {} is referenced positively {} times, negatively {} times, and by {} gates.\n"
-    //                "its fanout tree has {} buffers. it {} a PI.\n",
-    //      n, extrefs[n].first, extrefs[n].second, ntk.fanout_size( n ) - extrefs[n].first - extrefs[n].second,
-    //      aqfp.num_buffers( n ), ntk.is_pi(n)? "is": "is not" );
-    //  }
-    //});
+    uint32_t num_buffers_real{0}, max_phase_skip{0};
 
-    uint32_t pi_buffers{0}, po_buffers{0}, popular_gates{0}, popular_buffers{0}, unique_pos{0}, num_buffers_real{0};
-    ntk.foreach_pi( [&]( auto n ){
-      pi_buffers += aqfp.num_buffers( n );
-    });
-    ntk.incr_trav_id();
-    ntk.foreach_po( [&]( auto f ){
-      auto n = ntk.get_node( f );
-      if ( ntk.visited( n ) == ntk.trav_id() )
-        return;
-      ntk.set_visited( n, ntk.trav_id() );
-      unique_pos++;
-      po_buffers += aqfp.num_buffers( n );
-    });
-    ntk.foreach_node( [&]( auto n ){
-      if ( ntk.fanout_size( n ) > 4 )
-      {
-        ++popular_gates;
-        popular_buffers += aqfp.num_buffers( n );
-      }
-    });
     bufntk.foreach_node( [&]( auto n ){
       if ( bufntk.is_buf( n ) && !bufntk.is_dead( n ) )
         num_buffers_real++;
     });
-    exp( benchmark, ntk.num_gates(), num_buffers, num_buffers_real, pi_buffers, po_buffers, popular_buffers, aqfp.depth(), to_seconds( t ), verified );
+    max_phase_skip = max_chain;
+    for ( auto pil : pi_levels )
+    {
+      if ( pil % 4 == 1 )
+        max_phase_skip = std::max( max_phase_skip,  pil - 5 );
+      else if ( pil % 4 == 0 )
+        max_phase_skip = std::max( max_phase_skip,  pil - 4 );
+      else if ( pil % 4 == 3 )
+        max_phase_skip = std::max( max_phase_skip,  pil - 3 );
+      else
+        fmt::print( "strange pi level {}\n", pil );
+    }
+    bufntk.foreach_po( [&]( auto f ){
+      max_phase_skip = std::max( max_phase_skip, aqfp.depth() - levels[f] );
+    });
+
+    exp( benchmark, ntk.num_gates(), num_buffers, num_buffers_real, max_phase_skip, aqfp.depth(), to_seconds( t ), verified );
   }
 
   exp.save();

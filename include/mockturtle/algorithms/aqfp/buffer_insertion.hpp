@@ -1247,6 +1247,74 @@ private:
   }
 #pragma endregion
 
+#pragma region Post-dump optimization
+public:
+template<class BufNtk>
+uint32_t remove_buffer_chains( BufNtk& ntk ) const
+{
+  static_assert( is_buffered_network_type_v<BufNtk>, "BufNtk is not a buffered network" );
+
+  uint32_t max_chain = 0;
+  ntk.incr_trav_id();
+  ntk.foreach_po( [&]( auto f ){
+    remove_buffer_chains_rec( ntk, ntk.get_node( f ), 0, max_chain );
+  } );
+  return max_chain;
+}
+
+private: 
+template<class BufNtk>
+std::pair<uint32_t, typename BufNtk::node> remove_buffer_chains_rec( BufNtk& ntk, typename BufNtk::node n, typename BufNtk::node parent, uint32_t& max_chain ) const
+{
+  if ( ntk.visited( n ) == ntk.trav_id() )
+    return std::make_pair( 0, n );
+  ntk.set_visited( n, ntk.trav_id() );
+  if ( ntk.is_pi( n ) )
+    return std::make_pair( 0, n );
+
+  if ( ntk.is_buf( n ) )
+  {
+    // splitter
+    if ( ntk.fanout_size( n ) > 1 )
+    {
+      ntk.foreach_fanin( n, [&]( auto f ){
+        remove_buffer_chains_rec( ntk, ntk.get_node( f ), n, max_chain );
+      } );
+      return std::make_pair( 0, n );
+    }
+
+    // single-output buffer: can be part of a chain to be removed
+    std::pair<uint32_t, typename BufNtk::node> ret;
+    ntk.foreach_fanin( n, [&]( auto f ){
+      auto [count, origin] = remove_buffer_chains_rec( ntk, ntk.get_node( f ), n, max_chain );
+      if ( count % _ps.assume.num_phases == _ps.assume.num_phases - 1 )
+      {
+        // TODO: take care of complementation
+        if ( parent != 0 )
+        {
+          ntk.replace_in_node( parent, n, ntk.make_signal( origin ) );
+          ntk.take_out_node( n );
+        }
+        else
+        {
+          ntk.replace_in_outputs( n, ntk.make_signal( origin ) );
+          ntk.take_out_node( n );
+        }
+        max_chain = std::max( count + 1, max_chain );
+      }
+      ret = std::make_pair( count + 1, origin );
+    } );
+    return ret;
+  }
+
+  // gate
+  ntk.foreach_fanin( n, [&]( auto f ){
+    remove_buffer_chains_rec( ntk, ntk.get_node( f ), n, max_chain );
+  } );
+  return std::make_pair( 0, n );
+}
+#pragma endregion
+
 public:
   /*! \brief Optimize with chunked movement using the specified optimization policy.
    *
@@ -1279,6 +1347,7 @@ public:
     {
       updated = find_and_move_chunks();
     } while ( updated && _ps.optimization_effort == buffer_insertion_params::until_sat );
+    single_gate_movement();
   }
 
 #pragma region Chunked movement
@@ -1348,6 +1417,34 @@ private:
     count_buffers();
     assert( num_buffers() <= num_buffers_before );
     return updated && num_buffers() < num_buffers_before;
+  }
+
+  void single_gate_movement()
+  {
+    _ntk.foreach_node( [&]( auto const& n ) {
+      if ( is_ignored( n ) || is_fixed( n ) )
+        return;
+
+      _ntk.incr_trav_id();
+      chunk c{ _ntk.trav_id() };
+      c.members.emplace_back( n );
+      _ntk.foreach_fanin( n, [&]( auto const& fi ) {
+        auto const ni = _ntk.get_node( fi );
+        if ( !is_ignored( ni )  )
+          c.input_interfaces.push_back( { n, ni } );
+      } );
+      auto const& fanout_info = _fanouts[n];
+      for ( auto it = fanout_info.begin(); it != fanout_info.end(); ++it )
+      {
+        for ( auto it2 = it->fanouts.begin(); it2 != it->fanouts.end(); ++it2 )
+          c.output_interfaces.push_back( { n, *it2 } );
+        for ( auto it2 = it->extrefs.begin(); it2 != it->extrefs.end(); ++it2 )
+          c.po_interfaces.push_back( { n, *it2 } );
+      }
+
+      if ( !analyze_chunk_down( c ) )
+        analyze_chunk_up( c );
+    } );
   }
 
   void recruit( node const& n, chunk& c )
@@ -1648,7 +1745,7 @@ private:
     uint32_t num_splitters_prev = 1;
     if ( _ntk.is_pi( n ) && _ps.assume.ci_capacity > 1 )
     {
-      if ( it->num_edges < _ps.assume.ci_capacity )
+      if ( it->num_edges <= _ps.assume.ci_capacity )
         return 1;
       else
         num_splitters_prev = _ps.assume.ci_capacity - it->fanouts.size() - it->extrefs.size();
