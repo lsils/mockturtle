@@ -30,6 +30,8 @@
   \author Mathias Soeken
 */
 
+#pragma once
+
 #include <array>
 #include <cstdio>
 #include <fstream>
@@ -517,7 +519,11 @@ inline bool abc_cec_impl( Ntk const& ntk, std::string const& benchmark_fullpath 
 
   std::array<char, 128> buffer;
   std::string result;
+#if WIN32
+  std::unique_ptr<FILE, decltype( &_pclose )> pipe( _popen( command.c_str(), "r" ), _pclose );
+#else
   std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
+#endif
   if ( !pipe )
   {
     throw std::runtime_error( "popen() failed" );
