@@ -2,14 +2,12 @@
 
 #include <mockturtle/algorithms/mig_inv_propagation.hpp>
 #include <mockturtle/networks/mig.hpp>
-#include <mockturtle/traits.hpp>
 
 using namespace mockturtle;
 
-namespace mockturtle
+namespace mockturtle::inv_prop_test
 {
-namespace inv_prop_test
-{
+
 template<typename Ntk>
 int number_of_inverted( Ntk const& ntk )
 {
@@ -39,8 +37,8 @@ int number_of_inverted( Ntk const& ntk )
   } );
   return num_inverted;
 }
-} // namespace inv_prop_test
-} // namespace mockturtle
+
+} // namespace mockturtle::inv_prop_test
 
 TEST_CASE( "MIG inverter propagation basic", "[mig_inv_propagation]" )
 {
@@ -63,6 +61,8 @@ TEST_CASE( "MIG inverter propagation basic", "[mig_inv_propagation]" )
   mig_inv_propagation( mig, &st );
   auto inv_count = inv_prop_test::number_of_inverted( mig );
   CHECK( inv_count == 0 );
+  CHECK( st.total_gain == 2 );
+  CHECK( st.node_increase == 0 );
 }
 
 TEST_CASE( "MIG inverter propagation constant input 0", "[mig_inv_propagation]" )
@@ -83,6 +83,8 @@ TEST_CASE( "MIG inverter propagation constant input 0", "[mig_inv_propagation]" 
   mig_inv_propagation( mig, &st );
   auto inv_count = inv_prop_test::number_of_inverted( mig );
   CHECK( inv_count == 0 );
+  CHECK( st.total_gain == 1 );
+  CHECK( st.node_increase == 0 );
 }
 
 TEST_CASE( "MIG inverter propagation constant input 1", "[mig_inv_propagation]" )
@@ -105,6 +107,8 @@ TEST_CASE( "MIG inverter propagation constant input 1", "[mig_inv_propagation]" 
   mig_inv_propagation( mig, &st );
   auto inv_count = inv_prop_test::number_of_inverted( mig );
   CHECK( inv_count == 0 );
+  CHECK( st.total_gain == 2 );
+  CHECK( st.node_increase == 0 );
 }
 
 TEST_CASE( "MIG inverter propagation output", "[mig_inv_propagation]" )
@@ -127,6 +131,8 @@ TEST_CASE( "MIG inverter propagation output", "[mig_inv_propagation]" )
   mig_inv_propagation( mig, &st );
   auto inv_count = inv_prop_test::number_of_inverted( mig );
   CHECK( inv_count == 0 );
+  CHECK( st.total_gain == 2 );
+  CHECK( st.node_increase == 0 );
 }
 
 TEST_CASE( "MIG inverter propagation complex", "[mig_inv_propagation]" )
@@ -160,6 +166,8 @@ TEST_CASE( "MIG inverter propagation complex", "[mig_inv_propagation]" )
   mig_inv_propagation( mig, &st );
   auto inv_count = inv_prop_test::number_of_inverted( mig );
   CHECK( inv_count == 0 );
+  CHECK( st.total_gain == 7 );
+  CHECK( st.node_increase == 1 );
 }
 
 TEST_CASE( "MIG inverter propagation two level", "[mig_inv_propagation]" )
@@ -184,4 +192,6 @@ TEST_CASE( "MIG inverter propagation two level", "[mig_inv_propagation]" )
   mig_inv_propagation( mig, &st );
   auto inv_count = inv_prop_test::number_of_inverted( mig );
   CHECK( inv_count == 0 );
+  CHECK( st.total_gain == 3 );
+  CHECK( st.node_increase == 1 );
 }
