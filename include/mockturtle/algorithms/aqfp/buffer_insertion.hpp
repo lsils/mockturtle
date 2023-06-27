@@ -174,7 +174,7 @@ public:
   using signal = typename Ntk::signal;
 
   explicit buffer_insertion( Ntk const& ntk, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _po_levels( _ntk.num_pos(), 0u ), _timeframes( _ntk ), _fanouts( _ntk ), _num_buffers( _ntk ), _min_level( _ntk ), _max_level( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( _ntk ), _po_levels( _ntk.num_pos(), 0u ), _timeframes( _ntk ), _fanouts( _ntk ), _num_buffers( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -198,7 +198,7 @@ public:
   }
 
   explicit buffer_insertion( Ntk const& ntk, node_map<uint32_t, Ntk> const& levels, std::vector<uint32_t> const& po_levels, buffer_insertion_params const& ps = {} )
-      : _ntk( ntk ), _ps( ps ), _levels( levels ), _po_levels( po_levels ), _timeframes( _ntk ), _fanouts( _ntk ), _num_buffers( _ntk ), _min_level( _ntk ), _max_level( _ntk )
+      : _ntk( ntk ), _ps( ps ), _levels( levels ), _po_levels( po_levels ), _timeframes( _ntk ), _fanouts( _ntk ), _num_buffers( _ntk )
   {
     static_assert( !is_buffered_network_type_v<Ntk>, "Ntk is already buffered" );
     static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
@@ -273,7 +273,7 @@ public:
   }
 
 #pragma region Query
-  node_map<uint32_t, Ntk>& levels() const
+  node_map<uint32_t, Ntk> const& levels() const
   {
     return _levels;
   }
@@ -616,11 +616,6 @@ public:
       {
         ALAP_depth( f_ntk );
       }
-    }
-    else if ( _ps.scheduling == buffer_insertion_params::better_depth || _ps.scheduling == buffer_insertion_params::ASAP_depth || _ps.scheduling == buffer_insertion_params::ALAP_depth )
-    {
-      fanout_view<Ntk> f_ntk{ _ntk };
-      depth_optimal_schedule( f_ntk );
     }
     else
     {
@@ -978,13 +973,6 @@ private:
       level_assignment.push_back( _levels[f] );
     } );
 
-    /* dangling PI */
-    if ( level_assignment.empty() )
-    {
-      _levels[n] = _depth;
-      return;
-    }
-
     /* sort by descending order of levels */
     std::sort( level_assignment.begin(), level_assignment.end(), std::greater<uint32_t>() );
 
@@ -1135,7 +1123,6 @@ private:
     for ( auto const& v : level_assignment )
     {
       if ( v[1] != _depth + 1 )
-      //if ( v[0] != 0 )
       {
         mobility[v[0]] = std::min( mobility[v[0]], v[2] + mobility_update );
       }
@@ -1985,8 +1972,6 @@ private:
    */
   node_map<fanouts_by_level, Ntk> _fanouts;
   node_map<uint32_t, Ntk> _num_buffers;
-  node_map<uint32_t, Ntk> _min_level;
-  node_map<uint32_t, Ntk> _max_level;
 
   node_map<std::pair<uint32_t, uint32_t>, Ntk> _timeframes; // only for SMT; the most extreme min/max
   uint32_t _start_id; // for chunked movement
