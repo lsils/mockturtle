@@ -110,28 +110,17 @@ public:
     /* compute the node level on the new network */
     node_map<uint32_t, aqfp_network> levels( clean_ntk );
 
-    if ( _ps.buffer_insertion_ps.assume.branch_pis )
-    {
-      /* gates are in a fixed position */
-      _ntk.foreach_gate( [&]( auto const& n ) {
-        levels[old2new[n]] = ntk_level.level( n );
-      } );
-    }
-    else
-    {
-      /* gates are not in a fixed position */
-      /* gates are scheduled ALAP */
-
-      /* if not balance POs, POs are scheduled ASAP */
-      auto const levels_guess = schedule_buffered_network( _ntk, _ps.buffer_insertion_ps.assume );
-      _ntk.foreach_gate( [&]( auto const& n ) {
-        levels[old2new[n]] = levels_guess[n];
-      } );
-    }
+    auto const levels_guess = schedule_buffered_network( _ntk, _ps.buffer_insertion_ps.assume );
+    _ntk.foreach_gate( [&]( auto const& n ) {
+      levels[old2new[n]] = levels_guess[n];
+    } );
+    std::vector<uint32_t> po_levels;
+    for ( auto i = 0u; i < _ntk.num_pos(); ++i )
+      po_levels.emplace_back( ntk_level.depth() );
 
     /* recompute splitter trees and return the new buffered network */
     buffered_aqfp_network res;
-    buffer_insertion buf_inst( clean_ntk, levels, _ps.buffer_insertion_ps );
+    buffer_insertion buf_inst( clean_ntk, levels, po_levels, _ps.buffer_insertion_ps );
     _st.num_buffers = buf_inst.run( res );
     return res;
   }

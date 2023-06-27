@@ -107,7 +107,7 @@ TEST_CASE( "aqfp retiming", "[aqfp_retiming]" )
   asp.balance_pos = true;
 
   buffer_insertion_params ps;
-  ps.assume = asp;
+  ps.assume = legacy_to_realistic( asp );
   ps.scheduling = buffer_insertion_params::ASAP;
   ps.optimization_effort = buffer_insertion_params::none;
 

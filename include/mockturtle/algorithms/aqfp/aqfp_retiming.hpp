@@ -140,7 +140,7 @@ public:
       rps.iterations = 1;
 
     buffer_insertion_params buf_ps;
-    buf_ps.assume = _ps.aqfp_assumptions_ps;
+    buf_ps.assume = legacy_to_realistic( _ps.aqfp_assumptions_ps );
     buf_ps.scheduling = buffer_insertion_params::provided;
     buf_ps.optimization_effort = buffer_insertion_params::none;
     aqfp_reconstruct_params reconstruct_ps;
