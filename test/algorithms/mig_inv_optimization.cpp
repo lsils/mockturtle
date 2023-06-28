@@ -2,15 +2,12 @@
 
 #include <mockturtle/algorithms/mig_inv_optimization.hpp>
 #include <mockturtle/networks/mig.hpp>
-#include <mockturtle/traits.hpp>
-#include <mockturtle/views/fanout_view.hpp>
 
 using namespace mockturtle;
 
-namespace mockturtle
+namespace mockturtle::inv_opt_test
 {
-namespace inv_opt_test
-{
+
 template<typename Ntk>
 int number_of_inverted( Ntk const& ntk )
 {
@@ -35,8 +32,8 @@ int number_of_inverted( Ntk const& ntk )
   } );
   return num_inverted;
 }
-} // namespace inv_opt_test
-} // namespace mockturtle
+
+} // namespace mockturtle::inv_opt_test
 
 TEST_CASE( "MIG inverter optimization basic", "[mig_inv_optimization]" )
 {
@@ -56,11 +53,9 @@ TEST_CASE( "MIG inverter optimization basic", "[mig_inv_optimization]" )
   mig.create_po( f3 );
   mig.create_po( f4 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
+  auto old = inv_opt_test::number_of_inverted( mig );
+  mig_inv_optimization( mig, &st );
+  auto newer = inv_opt_test::number_of_inverted( mig );
   CHECK( old - newer == 1 );
   CHECK( old - newer == st.total_gain );
 }
@@ -80,11 +75,9 @@ TEST_CASE( "MIG inverter optimization constant input 0", "[mig_inv_optimization]
 
   mig.create_po( f3 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
+  auto old = inv_opt_test::number_of_inverted( mig );
+  mig_inv_optimization( mig, &st );
+  auto newer = inv_opt_test::number_of_inverted( mig );
   CHECK( old - newer == 1 );
   CHECK( old - newer == st.total_gain );
 }
@@ -106,11 +99,9 @@ TEST_CASE( "MIG inverter optimization constant input 1", "[mig_inv_optimization]
   mig.create_po( f3 );
   mig.create_po( f4 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
+  auto old = inv_opt_test::number_of_inverted( mig );
+  mig_inv_optimization( mig, &st );
+  auto newer = inv_opt_test::number_of_inverted( mig );
   CHECK( old - newer == 0 );
   CHECK( old - newer == st.total_gain );
 }
@@ -132,11 +123,9 @@ TEST_CASE( "MIG inverter optimization output", "[mig_inv_optimization]" )
   mig.create_po( f3 );
   mig.create_po( !f1 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
+  auto old = inv_opt_test::number_of_inverted( mig );
+  mig_inv_optimization( mig, &st );
+  auto newer = inv_opt_test::number_of_inverted( mig );
   CHECK( old - newer == 1 );
   CHECK( old - newer == st.total_gain );
 }
@@ -169,11 +158,9 @@ TEST_CASE( "MIG inverter optimization complex", "[mig_inv_optimization]" )
   mig.create_po( z4 );
   mig.create_po( z5 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
+  auto old = inv_opt_test::number_of_inverted( mig );
+  mig_inv_optimization( mig, &st );
+  auto newer = inv_opt_test::number_of_inverted( mig );
   CHECK( old - newer == 11 - 4 );
   CHECK( old - newer == st.total_gain );
 }
@@ -197,11 +184,9 @@ TEST_CASE( "MIG inverter two level", "[mig_inv_optimization]" )
   mig.create_po( !f3 );
   mig.create_po( f5 );
 
-  fanout_view fanout_mig{ mig };
-
-  auto old = inv_opt_test::number_of_inverted( fanout_mig );
-  mig_inv_optimization( fanout_mig, &st );
-  auto newer = inv_opt_test::number_of_inverted( fanout_mig );
+  auto old = inv_opt_test::number_of_inverted( mig );
+  mig_inv_optimization( mig, &st );
+  auto newer = inv_opt_test::number_of_inverted( mig );
   CHECK( old - newer == 2 );
   CHECK( old - newer == st.total_gain );
 }
