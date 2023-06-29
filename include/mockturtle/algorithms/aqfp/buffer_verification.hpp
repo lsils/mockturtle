@@ -106,102 +106,6 @@ node_map<uint32_t, Ntk> schedule_buffered_network_with_PI_levels( Ntk const& ntk
   return levels;
 }
 
-/*! \brief Find a reasonable level assignment for a buffered network.
- *
- * \param ntk Buffered network
- * \param bool balance_pis Whether to balance PIs
- * \param bool balance_pos Whether to balance POs
- * \return Level assignment to all nodes
- */
-template<class Ntk>
-node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, bool balance_pis, bool balance_pos )
-{
-  using node = typename Ntk::node;
-  node_map<uint32_t, Ntk> levels( ntk );
-  depth_view dv{ ntk };
-
-  /* PIs are balanced : simple ASAP
-     POs are balanced : ALAP == ASAP and then lift all POs' TFI cone
-     neither : start from higher PO's TFI cone */
-  if ( !balance_pis )
-  {
-    ntk.incr_trav_id();
-    ntk.set_visited( ntk.get_node( ntk.get_constant( false ) ), ntk.trav_id() );
-    ntk.foreach_pi( [&]( auto const& n ) {
-      ntk.set_visited( n, ntk.trav_id() );
-    } );
-
-    if ( balance_pos )
-    {
-      ntk.foreach_po( [&]( auto const& f ) {
-        detail::schedule_fanin_cone( dv, ntk.get_node( f ), dv.depth() );
-      } );
-    }
-    else
-    {
-      std::list<node> pos;
-      ntk.foreach_po( [&]( auto const& f ) {
-        pos.push_back( ntk.get_node( f ) );
-      } );
-
-      while ( pos.size() > 0 )
-      {
-        /* choose the highest unscheduled PO */
-        node n = pos.front();
-        uint32_t max_level = dv.level( n );
-        for ( auto it = pos.begin(); it != pos.end(); ++it )
-        {
-          if ( dv.level( *it ) > max_level )
-          {
-            n = *it;
-            max_level = dv.level( n );
-          }
-        }
-
-        detail::schedule_fanin_cone( dv, n, max_level );
-
-        for ( auto it = pos.begin(); it != pos.end(); )
-        {
-          /* remove all visited POs (there may be lower POs in the TFI of the processed PO) */
-          if ( ntk.visited( *it ) == ntk.trav_id() )
-          {
-            it = pos.erase( it );
-          }
-          /* recompute levels because some of their TFI may have been lifted */
-          else
-          {
-            detail::recompute_level( dv, *it ); // TODO: Could be wrong; should not mark side TFIs as visited
-            ++it;
-          }
-        }
-      }
-    }
-  }
-
-  ntk.foreach_node( [&]( auto const& n ) {
-    levels[n] = dv.level( n );
-  } );
-
-  return levels;
-}
-
-/*! \brief Find a reasonable level assignment for a buffered network.
- *
- * \param ntk Buffered network
- * \param ps AQFP assumptions
- * \return Level assignment to all nodes
- */
-template<class Ntk>
-node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, aqfp_assumptions_legacy const& ps )
-{
-  return schedule_buffered_network( ntk, ps.balance_pis, ps.balance_pos );
-}
-template<class Ntk>
-node_map<uint32_t, Ntk> schedule_buffered_network( Ntk const& ntk, aqfp_assumptions_realistic const& ps )
-{
-  return schedule_buffered_network( ntk, ps.balance_cios, ps.balance_cios );
-}
-
 /*! \brief Verify a buffered network according to AQFP assumptions with provided level assignment.
  *
  * \param ntk Buffered network
@@ -382,22 +286,6 @@ template<class Ntk, typename Asmp = aqfp_assumptions>
 bool verify_aqfp_buffer( Ntk const& ntk, Asmp const& ps, std::vector<uint32_t> const& pi_levels )
 {
   auto const levels = schedule_buffered_network_with_PI_levels( ntk, pi_levels );
-  return verify_aqfp_buffer( ntk, ps, levels );
-}
-
-/*! \brief Verify a buffered network according to AQFP assumptions.
- *
- * Deprecated: The verification functions providing PIs' levels or all nodes' levels
- * are recommended.
- *
- * \param ntk Buffered network
- * \param ps AQFP assumptions
- * \return Whether `ntk` is path-balanced, phase-aligned, and properly-branched
- */
-template<class Ntk, typename Asmp = aqfp_assumptions>
-bool verify_aqfp_buffer( Ntk const& ntk, Asmp const& ps )
-{
-  auto const levels = schedule_buffered_network( ntk, ps );
   return verify_aqfp_buffer( ntk, ps, levels );
 }
 
