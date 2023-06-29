@@ -591,8 +591,10 @@ public:
         _depth = std::max( _depth, _po_levels[i] - 1 );
       } );
       assert( _depth % _ps.assume.num_phases == 0 );
+      return;
     }
-    else if ( _ps.scheduling == buffer_insertion_params::better_depth || _ps.scheduling == buffer_insertion_params::ASAP_depth || _ps.scheduling == buffer_insertion_params::ALAP_depth )
+
+    if ( _ps.scheduling == buffer_insertion_params::better_depth || _ps.scheduling == buffer_insertion_params::ASAP_depth || _ps.scheduling == buffer_insertion_params::ALAP_depth )
     {
       fanout_view<Ntk> f_ntk{ _ntk };
       /* Optimum-depth ALAP scheduling */
@@ -616,12 +618,10 @@ public:
       {
         ALAP_depth( f_ntk );
       }
-    }
-    else
-    {
-      ASAP();
+      return;
     }
 
+    ASAP();
     if ( _ps.scheduling == buffer_insertion_params::ALAP )
     {
       ALAP();
@@ -1263,7 +1263,7 @@ uint32_t remove_buffer_chains( BufNtk& ntk ) const
   return max_chain;
 }
 
-private: 
+private:
 template<class BufNtk>
 std::pair<uint32_t, typename BufNtk::node> remove_buffer_chains_rec( BufNtk& ntk, typename BufNtk::node n, typename BufNtk::node parent, uint32_t& max_chain ) const
 {
@@ -1317,12 +1317,7 @@ std::pair<uint32_t, typename BufNtk::node> remove_buffer_chains_rec( BufNtk& ntk
 #pragma endregion
 
 public:
-  /*! \brief Optimize with chunked movement using the specified optimization policy.
-   *
-   * For more information, please refer to [1].
-   *
-   * [1] Irredundant Buffer and Splitter Insertion and Scheduling-Based Optimization for AQFP Circuits.
-   * Siang-Yun Lee et. al. IWLS 2021. */
+  /*! \brief Optimize with chunked movement using the specified optimization policy. */
   void optimize()
   {
     if ( _ps.optimization_effort == buffer_insertion_params::none )

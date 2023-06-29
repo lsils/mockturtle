@@ -290,10 +290,7 @@ bool verify_aqfp_buffer( Ntk const& ntk, aqfp_assumptions_realistic const& ps, n
     }
     else if ( ntk.is_buf( n ) )
     {
-      //if ( ntk.is_mega_splitter( n ) )
-      //  legal &= ( ntk.fanout_size( n ) <= ps.mega_splitter_capacity );
-      //else
-        legal &= ( ntk.fanout_size( n ) <= ps.splitter_capacity );
+      legal &= ( ntk.fanout_size( n ) <= ps.splitter_capacity );
     }
     else /* logic gate */
     {

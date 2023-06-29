@@ -109,14 +109,20 @@ public:
 
     /* compute the node level on the new network */
     node_map<uint32_t, aqfp_network> levels( clean_ntk );
-
-    auto const levels_guess = schedule_buffered_network( _ntk, _ps.buffer_insertion_ps.assume );
     _ntk.foreach_gate( [&]( auto const& n ) {
-      levels[old2new[n]] = levels_guess[n];
+      levels[old2new[n]] = ntk_level.level( n );
     } );
+
+    uint32_t max_po_level = 0;
+    clean_ntk.foreach_po( [&]( auto const& f ){
+      uint32_t spl = std::ceil( std::log( clean_ntk.fanout_size( clean_ntk.get_node( f ) ) ) / std::log( _ps.buffer_insertion_ps.assume.splitter_capacity ) );
+      max_po_level = std::max( max_po_level, levels[f] + spl );
+    });
     std::vector<uint32_t> po_levels;
     for ( auto i = 0u; i < _ntk.num_pos(); ++i )
-      po_levels.emplace_back( ntk_level.depth() );
+    {
+      po_levels.emplace_back( max_po_level + 1 );
+    }
 
     /* recompute splitter trees and return the new buffered network */
     buffered_aqfp_network res;
