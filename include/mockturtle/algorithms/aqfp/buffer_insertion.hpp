@@ -285,7 +285,7 @@ public:
     return _levels[n];
   }
 
-  std::vector<uint32_t>& po_levels() const
+  std::vector<uint32_t> const& po_levels() const
   {
     return _po_levels;
   }
