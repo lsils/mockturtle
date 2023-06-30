@@ -91,15 +91,18 @@ int main()
     /* convert MIG network to AQFP */
     aqfp_network aqfp = cleanup_dangling<mig_network, aqfp_network>( mig_opt );
 
+    aqfp_assumptions_legacy aqfp_ps;
+    aqfp_ps.splitter_capacity = 4;
+    aqfp_ps.branch_pis = true;
+    aqfp_ps.balance_pis = true;
+    aqfp_ps.balance_pos = true;
+
     /* Buffer insertion params */
     buffer_insertion_params buf_ps;
     buf_ps.scheduling = buffer_insertion_params::better_depth;
     buf_ps.optimization_effort = buffer_insertion_params::none;
     buf_ps.max_chunk_size = 100;
-    buf_ps.assume.splitter_capacity = 4u;
-    buf_ps.assume.branch_pis = true;
-    buf_ps.assume.balance_pis = true;
-    buf_ps.assume.balance_pos = true;
+    buf_ps.assume = legacy_to_realistic( aqfp_ps );
 
     /* buffer insertion */
     stopwatch<>::duration time_insertion{ 0 };
@@ -109,12 +112,6 @@ int main()
     uint32_t num_jjs = aqfp.num_gates() * 6 + num_bufs * 2;
     uint32_t jj_depth = buf_inst.depth();
     total_runtime += to_seconds( time_insertion );
-
-    aqfp_assumptions aqfp_ps;
-    aqfp_ps.splitter_capacity = buf_ps.assume.splitter_capacity;
-    aqfp_ps.branch_pis = buf_ps.assume.branch_pis;
-    aqfp_ps.balance_pis = buf_ps.assume.balance_pis;
-    aqfp_ps.balance_pos = buf_ps.assume.balance_pos;
 
     /* retiming params */
     aqfp_retiming_params aps;
@@ -169,7 +166,10 @@ int main()
 
     /* cec */
     auto cec = abc_cec( buffered_aqfp, benchmark );
-    cec &= verify_aqfp_buffer( buffered_aqfp, aqfp_ps );
+    std::vector<uint32_t> pi_levels;
+    for ( auto i = 0u; i < buffered_aqfp.num_pis(); ++i )
+      pi_levels.emplace_back( 0 );
+    cec &= verify_aqfp_buffer( buffered_aqfp, aqfp_ps, pi_levels );
 
     /* compute final JJ cost */
     uint32_t num_jjs_ret = 0;
