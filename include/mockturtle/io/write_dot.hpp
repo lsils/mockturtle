@@ -75,6 +75,13 @@ public: /* callbacks */
     }
     else
     {
+      if constexpr ( has_is_buf_v<Ntk> )
+      {
+        if ( ntk.is_buf( n ) )
+        {
+          return "box";
+        }
+      }
       return "ellipse";
     }
   }
@@ -98,6 +105,16 @@ public: /* callbacks */
 
   virtual std::string node_fillcolor( Ntk const& ntk, node<Ntk> const& n ) const
   {
+    if constexpr ( has_is_buf_v<Ntk> )
+    {
+      if ( ntk.is_buf( n ) )
+      {
+        if ( ntk.fanout_size( n ) > 1 )
+          return "lightcoral";
+        else
+          return "lightskyblue";
+      }
+    }
     return ( ntk.is_constant( n ) || ntk.is_ci( n ) ) ? "snow2" : "white";
   }
 
@@ -113,6 +130,11 @@ public: /* callbacks */
     (void)ntk;
     (void)n;
     (void)f;
+    if constexpr ( is_buffered_network_type_v<Ntk> )
+    {
+      if ( ntk.is_constant( ntk.get_node( f ) ) )
+        return false;
+    }
     return true;
   }
 

@@ -345,9 +345,93 @@ public:
 
 #pragma region Restructuring
   // disable restructuring
-  std::optional<std::pair<node, signal>> replace_in_node( node const& n, node const& old_node, signal new_signal ) = delete;
-  void replace_in_outputs( node const& old_node, signal const& new_signal ) = delete;
-  void take_out_node( node const& n ) = delete;
+  void replace_in_node( node const& n, node const& old_node, signal new_signal )
+  {
+    assert( is_buf( old_node ) );
+    auto& node = _storage->nodes[n];
+
+    if ( is_buf( n ) )
+    {
+      assert( node.children[0].index == old_node );
+      new_signal.complement ^= node.children[0].weight;
+      node.children[0] = new_signal;
+      node.children[1] = !new_signal;
+      _storage->nodes[new_signal.index].data[0].h1++;
+      return;
+    }
+
+    uint32_t fanin = 3u;
+    for ( auto i = 0u; i < 3u; ++i )
+    {
+      if ( node.children[i].index == old_node )
+      {
+        fanin = i;
+        new_signal.complement ^= node.children[i].weight;
+        break;
+      }
+    }
+    assert( fanin < 3 );
+    signal child2 = new_signal;
+    signal child1 = node.children[( fanin + 1 ) % 3];
+    signal child0 = node.children[( fanin + 2 ) % 3];
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+    if ( child1.index > child2.index )
+    {
+      std::swap( child1, child2 );
+    }
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+
+    _storage->hash.erase( node );
+    node.children[0] = child0;
+    node.children[1] = child1;
+    node.children[2] = child2;
+    _storage->hash[node] = n;
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+  }
+  void replace_in_outputs( node const& old_node, signal const& new_signal )
+  {
+    assert( !is_dead( old_node ) );
+
+    for ( auto& output : _storage->outputs )
+    {
+      if ( output.index == old_node )
+      {
+        output.index = new_signal.index;
+        output.weight ^= new_signal.complement;
+
+        if ( old_node != new_signal.index )
+        {
+          // increment fan-in of new node
+          _storage->nodes[new_signal.index].data[0].h1++;
+        }
+      }
+    }
+  }
+  void take_out_node( node const& n )
+  {
+    assert( is_buf( n ) );
+
+    auto& nobj = _storage->nodes[n];
+    nobj.data[0].h1 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
+
+    for ( auto const& fn : _events->on_delete )
+    {
+      ( *fn )( n );
+    }
+
+    if ( decr_fanout_size( nobj.children[0].index ) == 0 )
+    {
+      take_out_node( nobj.children[0].index );
+    }
+  }
   void substitute_node( node const& old_node, signal const& new_signal ) = delete;
   void substitute_nodes( std::list<std::pair<node, signal>> substitutions ) = delete;
 #pragma endregion

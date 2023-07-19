@@ -310,10 +310,10 @@ TEST_CASE( "check has_and in AIG", "[aig]" )
   aig.create_po( n9 );
 
   CHECK( aig.has_and( !x1, x2 ).has_value() == true );
-  CHECK( *aig.has_and( !x1, x2 ) == aig.get_node( n4 ) );
+  CHECK( *aig.has_and( !x1, x2 ) == n4 );
   CHECK( aig.has_and( !x1, x3 ).has_value() == false );
   CHECK( aig.has_and( !n7, !n5 ).has_value() == true );
-  CHECK( *aig.has_and( !n7, !n5 ) == aig.get_node( n8 ) );
+  CHECK( *aig.has_and( !n7, !n5 ) == n8 );
 }
 
 TEST_CASE( "node and signal iteration in an AIG", "[aig]" )

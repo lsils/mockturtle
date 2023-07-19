@@ -107,7 +107,7 @@ TEST_CASE( "aqfp retiming", "[aqfp_retiming]" )
   asp.balance_pos = true;
 
   buffer_insertion_params ps;
-  ps.assume = asp;
+  ps.assume = legacy_to_realistic( asp );
   ps.scheduling = buffer_insertion_params::ASAP;
   ps.optimization_effort = buffer_insertion_params::none;
 
@@ -123,5 +123,8 @@ TEST_CASE( "aqfp retiming", "[aqfp_retiming]" )
 
   CHECK( rst.buffers_pre == 57 );
   CHECK( rst.buffers_post == 49 );
-  CHECK( verify_aqfp_buffer( aqfp_ret, asp ) == true );
+  std::vector<uint32_t> pi_levels;
+  for ( auto i = 0u; i < aqfp_ret.num_pis(); ++i )
+    pi_levels.emplace_back( 0 );
+  CHECK( verify_aqfp_buffer( aqfp_ret, asp, pi_levels ) == true );
 }
