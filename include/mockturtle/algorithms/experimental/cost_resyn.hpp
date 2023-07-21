@@ -180,9 +180,19 @@ public:
 
     std::vector<signal> pis;
     std::for_each( std::begin(divs), std::end(divs), [&]( signal const& s ) {
-      pis.emplace_back( old_to_new[ ntk.get_node( s ) ]);
+      /* 
+        because the signal we sent in need to be align with the truthtables, 
+        which is the truth table of the nodes (not negated)
+
+        we use +old_to_new[ ntk.get_node( s ) ] instead of old_to_new[ ntk.get_node( s ) ]
+      */
+      pis.emplace_back( +old_to_new[ ntk.get_node( s ) ]);
     } );
-    auto const po = old_to_new[ ntk.get_node( root ) ];
+
+    auto const po = ntk.is_complemented( root )?
+        forest.create_not( old_to_new[ ntk.get_node( root ) ] )
+      : old_to_new[ ntk.get_node( root ) ];
+
     forest.create_po( po );
 
     default_simulator<TT> nsim( forest.num_pis() );
@@ -193,20 +203,13 @@ public:
     std::optional<signal> best_candidate;
     uint32_t n_solutions = 0u;
 
-    // auto add_event = forest.events().register_add_event( [&]( const auto& n_ ) {
-    //   ntts.resize();
-    //   std::vector<TT> fanin_values( forest.fanin_size( n_ ) );
-    //   forest.foreach_fanin( n_, [&]( auto const& f, auto i ) {
-    //     fanin_values[i] = ntts[forest.get_node( f )]; /* compute will take care of the complement */
-    //   } );
-    //   ntts[n_] = forest.compute( n_, std::begin( fanin_values ), std::end( fanin_values ) );
-    // } );
-
-    auto get_tt = [&]( const auto s ) {
-      return forest.is_complemented( s )? ~ntts[ forest.get_node(s) ] : ntts[ forest.get_node(s) ];
-    };
+    TT tt_po = forest.is_complemented( po )? 
+        ~ntts[ forest.get_node( po ) ]
+      : ntts[ forest.get_node( po ) ];
 
     auto evalfn = [&]( const auto s ) {
+        /* everytime the function is called, a feasible solution is found */
+        st.num_roots += 1;
         auto _cost = forest.get_cost( forest.get_node( s ), pis );
         if ( _cost < best_cost )
         {
@@ -225,18 +228,27 @@ public:
     }
 
     /* grow the forest */
-    resub_functor engine( forest, get_tt( po ), ~kitty::create<TT>( forest.num_pis() ), std::begin(pis), std::end(pis), ntts );
+    resub_functor engine( forest, tt_po, ~kitty::create<TT>( forest.num_pis() ), std::begin( pis ), std::end( pis ), ntts );
     engine.run( evalfn );
 
-    // if ( add_event )
-    //   forest.events().release_add_event( add_event );
-
+    st.size_forest += forest.size();
+    st.num_problems += 1;
     if ( best_candidate )
     {
+      st.num_solutions += 1;
       index_list_t index_list;
       signal s = *best_candidate;
       forest.substitute_node( forest.get_node( po ), forest.is_complemented( po )? forest.create_not( s ) : s );
       typename Ntk::base_type solution = cleanup_dangling( (typename Ntk::base_type)forest );
+
+      // this is actually not very useful
+      // because most of the dependency circuits are larger than 3
+      uint32_t dependency_circuit_size = solution.num_gates();
+      if ( dependency_circuit_size <= 3 )
+      {
+        st.num_resub[dependency_circuit_size] += 1;
+      }
+
       encode( index_list, solution );
       return index_list;
     }

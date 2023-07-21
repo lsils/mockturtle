@@ -42,7 +42,7 @@
 #include <vector>
 
 #include <kitty/constructors.hpp>
-#include <mockturtle/utils/stopwatch.hpp>
+#include "../../utils/stopwatch.hpp"
 
 namespace mockturtle::experimental::detail
 {

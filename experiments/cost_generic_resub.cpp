@@ -45,8 +45,11 @@ int main()
   using namespace experiments;
 
   /* run the actual experiments */
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp( "cost_generic_resub", "benchmark", "c1", "c2", "c3", "c4", "_c1", "_c2", "_c3", "_c4", "runtime", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, bool> exp( "cost_generic_resub", "benchmark", "c1", "c2", "c3", "c4", "_c1", "_c2", "_c3", "_c4", "runtime", "impr %", "cec" );
+
+  std::vector<std::string> bugs{ "bug" };
   for ( auto const& benchmark : epfl_benchmarks() )
+  // for ( auto const& benchmark : bugs )
   {
     float run_time = 0;
 
@@ -74,6 +77,7 @@ int main()
     cost_generic_resub_params ps;
     cost_generic_resub_stats st;
     ps.verbose = false;
+    ps.rps.use_esop = false;
     ps.rps.max_solutions = 1; /* = 1: collect one, =0: collect all */
 
     stopwatch<>::duration time_tot{ 0 };
@@ -92,9 +96,11 @@ int main()
     auto _c3 = cost_view( xag, costfn_3 ).get_cost();
     auto _c4 = cost_view( xag, costfn_4 ).get_cost();
 
+    float impr = (float)( c3 - _c3 ) / (float)c3 * 100.0f;
+
     auto cec = true;
     cec = benchmark == "hyp" ? true : abc_cec( xag, benchmark );
-    exp( benchmark, c1, c2, c3, c4, _c1, _c2, _c3, _c4, run_time, cec );
+    exp( benchmark, c1, c2, c3, c4, _c1, _c2, _c3, _c4, run_time, impr, cec );
   }
   exp.save();
   exp.table();

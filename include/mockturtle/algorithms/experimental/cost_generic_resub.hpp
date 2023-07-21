@@ -203,6 +203,7 @@ public:
     win.leaves.clear();
     for ( auto const node : leaves )
     {
+      /* all the signals in the leaves are regular (not negated) */
       win.leaves.emplace_back( ntk.make_signal( node ) );
     }
 
@@ -222,6 +223,7 @@ public:
       collect_divisors( leaves, supported );
     } );
 
+    /* the root node is also regular */
     win.root = ntk.make_signal( n );
 
     st.num_windows++;

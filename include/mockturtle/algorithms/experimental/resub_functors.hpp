@@ -1083,7 +1083,7 @@ public:
     while ( begin != end )
     {
       num_divisors++;
-      divisors.emplace_back(*begin);
+      divisors.emplace_back( *begin );
       leaves.emplace_back( *begin );
       ++begin;
     }
