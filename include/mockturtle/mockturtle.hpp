@@ -173,6 +173,7 @@
 #include "mockturtle/networks/tig.hpp"
 #include "mockturtle/networks/xag.hpp"
 #include "mockturtle/networks/xmg.hpp"
+#include "mockturtle/networks/crossed.hpp"
 #include "mockturtle/properties/aqfpcost.hpp"
 #include "mockturtle/properties/mccost.hpp"
 #include "mockturtle/properties/migcost.hpp"
@@ -214,3 +215,4 @@
 #include "mockturtle/views/names_view.hpp"
 #include "mockturtle/views/topo_view.hpp"
 #include "mockturtle/views/window_view.hpp"
+#include "mockturtle/views/rank_view.hpp"

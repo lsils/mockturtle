@@ -432,7 +432,7 @@ public:
 #pragma endregion
 
 #pragma region Has node
-  std::optional<node> has_and( signal a, signal b )
+  std::optional<signal> has_and( signal a, signal b )
   {
     /* order inputs */
     if ( a.index > b.index )
@@ -443,11 +443,11 @@ public:
     /* trivial cases */
     if ( a.index == b.index )
     {
-      return ( a.complement == b.complement ) ? a.index : 0;
+      return ( a.complement == b.complement ) ? a : get_constant( false );
     }
     else if ( a.index == 0 )
     {
-      return a.complement ? b.index : 0;
+      return a.complement == false ? get_constant( false ) : b;
     }
 
     storage::element_type::node_type node;
@@ -459,13 +459,13 @@ public:
     if ( it != _storage->hash.end() )
     {
       assert( !is_dead( it->second ) );
-      return it->second;
+      return signal( it->second, 0 );
     }
 
     return {};
   }
 
-  std::optional<node> has_xor( signal a, signal b )
+  std::optional<signal> has_xor( signal a, signal b )
   {
     /* order inputs */
     if ( a.index < b.index )
@@ -473,17 +473,18 @@ public:
       std::swap( a, b );
     }
 
+    bool f_compl = a.complement != b.complement;
+    a.complement = b.complement = false;
+
     /* trivial cases */
     if ( a.index == b.index )
     {
-      return 0;
+      return get_constant( f_compl );
     }
     else if ( b.index == 0 )
     {
-      return get_node( a );
+      return a ^ f_compl;
     }
-
-    a.complement = b.complement = false;
 
     storage::element_type::node_type node;
     node.children[0] = a;
@@ -494,7 +495,7 @@ public:
     if ( it != _storage->hash.end() )
     {
       assert( !is_dead( it->second ) );
-      return it->second;
+      return signal( it->second, f_compl );
     }
 
     return {};

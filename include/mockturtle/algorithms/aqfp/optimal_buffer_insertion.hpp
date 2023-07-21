@@ -33,6 +33,91 @@
 // NOTE: This file is included inside the class `mockturtle::buffer_insertion`
 // It should not be included anywhere else.
 
+#pragma region Compute timeframe for SMT solving
+  /*! \brief Compute the earliest and latest possible timeframe by eager ASAP and ALAP */
+  uint32_t compute_timeframe( uint32_t max_depth )
+  {
+    // TODO: Consider max_depth % _ps.assume.num_phases == 0 constraint
+    _timeframes.reset( std::make_pair( 0, 0 ) );
+    uint32_t min_depth{ 0 };
+
+    _ntk.incr_trav_id();
+    _ntk.foreach_po( [&]( auto const& f ) {
+      auto const no = _ntk.get_node( f );
+      auto clevel = compute_levels_ASAP_eager( no ) + ( _ntk.fanout_size( no ) > 1 ? 1 : 0 );
+      min_depth = std::max( min_depth, clevel );
+    } );
+
+    _ntk.incr_trav_id();
+    _ntk.foreach_po( [&]( auto const& f ) {
+      const auto n = _ntk.get_node( f );
+      if ( !_ntk.is_constant( n ) && _ntk.visited( n ) != _ntk.trav_id() )
+      {
+        _timeframes[n].second = max_depth - ( _ntk.fanout_size( n ) > 1 ? 1 : 0 );
+        compute_levels_ALAP_eager( n );
+      }
+    } );
+
+    return min_depth;
+  }
+
+  uint32_t compute_levels_ASAP_eager( node const& n )
+  {
+    if ( _ntk.visited( n ) == _ntk.trav_id() )
+    {
+      return _timeframes[n].first;
+    }
+    _ntk.set_visited( n, _ntk.trav_id() );
+
+    if ( _ntk.is_constant( n ) )
+    {
+      return _timeframes[n].first = 0;
+    }
+    if ( _ntk.is_pi( n ) )
+    {
+      return _timeframes[n].first = _ps.assume.ci_phases[0];
+    }
+
+    uint32_t level{ 0 };
+    _ntk.foreach_fanin( n, [&]( auto const& fi ) {
+      auto const ni = _ntk.get_node( fi );
+      if ( !_ntk.is_constant( ni ) )
+      {
+        level = std::max( level, compute_levels_ASAP_eager( ni ) + ( _ntk.fanout_size( ni ) > 1 ? 1 : 0 ) );
+      }
+    } );
+
+    return _timeframes[n].first = level + 1;
+  }
+
+  void compute_levels_ALAP_eager( node const& n )
+  {
+    _ntk.set_visited( n, _ntk.trav_id() );
+
+    _ntk.foreach_fanin( n, [&]( auto const& fi ) {
+      auto const ni = _ntk.get_node( fi );
+      if ( !_ntk.is_constant( ni ) )
+      {
+        if ( _ps.assume.balance_cios && _ntk.is_pi( ni ) )
+        {
+          assert( _timeframes[n].second > _ps.assume.ci_phases[0] );
+          _timeframes[ni].second = _ps.assume.ci_phases[0];
+        }
+        else
+        {
+          assert( _timeframes[n].second > num_splitter_levels( ni ) );
+          auto fi_level = _timeframes[n].second - ( _ntk.fanout_size( ni ) > 1 ? 2 : 1 );
+          if ( _ntk.visited( ni ) != _ntk.trav_id() || _timeframes[ni].second > fi_level )
+          {
+            _timeframes[ni].second = fi_level;
+            compute_levels_ALAP_eager( ni );
+          }
+        }
+      }
+    } );
+  }
+#pragma
+
 #if __GNUC__ == 7
 
 void optimize_with_smt( std::string name = "" )

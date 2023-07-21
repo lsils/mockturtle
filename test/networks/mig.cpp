@@ -334,10 +334,10 @@ TEST_CASE( "check has_maj in MIG", "[mig]" )
   auto g = mig.create_maj( a, c, d );
 
   CHECK( mig.has_maj( a, b, c ).has_value() == true );
-  CHECK( *mig.has_maj( a, b, c ) == mig.get_node( f ) );
+  CHECK( *mig.has_maj( a, b, c ) == f );
   CHECK( mig.has_maj( a, b, d ).has_value() == false );
   CHECK( mig.has_maj( !a, !c, !d ).has_value() == true );
-  CHECK( *mig.has_maj( !a, !c, !d ) == mig.get_node( g ) );
+  CHECK( *mig.has_maj( !a, !c, !d ) == !g );
 }
 
 TEST_CASE( "node and signal iteration in an MIG", "[mig]" )

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
+ * Copyright (C) 2018-2023  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,6 +27,7 @@
   \file mffc_view.hpp
   \brief Implements an isolated view on a single cut in a network
 
+  \author Alessandro Tempia Calvino
   \author Bruno Schmitt
   \author Heinz Riener
   \author Mathias Soeken
@@ -183,7 +184,7 @@ public:
     /* restore ref counts */
     for ( auto const& n : _nodes )
     {
-      this->incr_value( n );
+      this->incr_fanout_size( n );
     }
   }
 
@@ -195,7 +196,6 @@ private:
 
     if ( Ntk::is_pi( n ) )
     {
-      _nodes.push_back( n );
       return true;
     }
 
@@ -204,7 +204,7 @@ private:
     bool ret_val = true;
     this->foreach_fanin( n, [&]( auto const& f ) {
       _nodes.push_back( this->get_node( f ) );
-      if ( this->decr_value( this->get_node( f ) ) == 0 && ( _nodes.size() > _limit || !collect( this->get_node( f ) ) ) )
+      if ( this->decr_fanout_size( this->get_node( f ) ) == 0 && ( _nodes.size() > _limit || !collect( this->get_node( f ) ) ) )
       {
         ret_val = false;
         return false;
@@ -228,7 +228,7 @@ private:
         continue;
       }
 
-      if ( this->value( n ) > 0 || Ntk::is_pi( n ) ) /* PI candidate */
+      if ( this->fanout_size( n ) > 0 || Ntk::is_pi( n ) ) /* PI candidate */
       {
         if ( _leaves.empty() || _leaves.back() != n )
         {
