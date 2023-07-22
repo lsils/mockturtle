@@ -37,9 +37,9 @@
 #pragma once
 
 #include "../../algorithms/cleanup.hpp"
-#include "../../utils/index_list.hpp"
-#include "../../algorithms/simulation.hpp"
 #include "../../algorithms/cut_enumeration.hpp"
+#include "../../algorithms/simulation.hpp"
+#include "../../utils/index_list.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -70,7 +70,7 @@ public:
     default_simulator<kitty::dynamic_truth_table> sim( ntk.num_pis() );
     const auto tts = simulate_nodes<kitty::dynamic_truth_table>( ntk, sim );
     auto const po = ntk.po_at( 0 );
-    TT const& target = ntk.is_complemented( po )? ~tts[po] : tts[po];
+    TT const& target = ntk.is_complemented( po ) ? ~tts[po] : tts[po];
 
     cut_enumeration_params ps;
     ps.cut_size = ntk.num_pis();
@@ -85,7 +85,7 @@ public:
       }
       TT const& tt = cuts.truth_table( *cut );
       std::vector<signal> leaves( cut->size() );
-      std::transform( cut->begin(), cut->end(), std::begin(leaves), [&]( auto leaf ){ return ntk.make_signal( ntk.index_to_node( leaf ) ); } );
+      std::transform( cut->begin(), cut->end(), std::begin( leaves ), [&]( auto leaf ) { return ntk.make_signal( ntk.index_to_node( leaf ) ); } );
       assert( leaves.size() == tt.num_vars() );
       auto const s = create_esop_function( ntk, tt, leaves );
       evalfn( s );
@@ -95,8 +95,8 @@ public:
 
     // kitty::print_hex( target ); fmt::print( " : {}\n", target.num_vars() );
   }
-private:
 
+private:
   std::vector<kitty::cube> create_esop_form( TT const& func ) const
   {
     if ( auto it = esop_hash_.find( func ); it != esop_hash_.end() )
@@ -186,7 +186,7 @@ private:
   {
     const auto esop = create_esop_form( tt );
 
-    cotext_signal_queue<Ntk>  _q;
+    cotext_signal_queue<Ntk> _q;
 
     for ( auto const& cube : esop )
     {
@@ -200,7 +200,7 @@ private:
           q.push( { l, cube.get_bit( i ) ? f : dest.create_not( f ) } );
         }
       }
-      auto [l ,s] = create_and_tree( dest, q );
+      auto [l, s] = create_and_tree( dest, q );
       _q.push( { l, s } );
     }
     auto [_l, _s] = create_xor_tree( dest, _q );
@@ -212,7 +212,7 @@ private:
   {
     const auto sop = create_sop_form( tt );
 
-    cotext_signal_queue<Ntk>  _q;
+    cotext_signal_queue<Ntk> _q;
 
     for ( auto const& cube : sop )
     {
@@ -226,19 +226,16 @@ private:
           q.push( { l, cube.get_bit( i ) ? f : dest.create_not( f ) } );
         }
       }
-      auto [l ,s] = create_and_tree( dest, q );
+      auto [l, s] = create_and_tree( dest, q );
       _q.push( { l, s } );
     }
     auto [_l, _s] = create_or_tree( dest, _q );
     return _s;
   }
 
-
 private:
   mutable std::unordered_map<TT, std::vector<kitty::cube>, kitty::hash<TT>> esop_hash_;
   mutable std::unordered_map<TT, std::vector<kitty::cube>, kitty::hash<TT>> sop_hash_;
-
 };
 
-
-}
+} // namespace mockturtle::experimental

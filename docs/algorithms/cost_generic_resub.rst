@@ -5,7 +5,7 @@ Cost-generic resubstitution algorithm
 
 **Header:** ``mockturtle/algorithms/experimental/cost_generic_resub.hpp``
 
-This header file defines a resubstitution algorithm to optimize a network with a customized cost function. 
+This header file defines a resubstitution algorithm to optimize a network according to customizable cost function. 
 
 .. code-block:: c++
 

@@ -41,8 +41,8 @@
 #include "../../utils/index_list.hpp"
 #include "../detail/resub_utils.hpp"
 #include "../simulation.hpp"
-#include "resub_functors.hpp"
 #include "refactor_functor.hpp"
+#include "resub_functors.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -63,7 +63,6 @@ struct cost_resyn_params
 
   /* use esop */
   bool use_esop{ false };
-
 };
 
 struct cost_resyn_stats
@@ -120,7 +119,7 @@ public:
   using node = typename Ntk::node;
   using context_t = typename Ntk::context_t;
   using index_list_t = large_xag_index_list;
-;
+  ;
 
 public:
   explicit cost_resyn( Ntk const& ntk, params const& ps, stats& st ) noexcept
@@ -134,15 +133,16 @@ public:
     /* convert the divisors to a tree */
     Ntk forest;
     unordered_node_map<signal, Ntk> old_to_new( ntk );
-    std::for_each( std::begin(leaves), std::end(leaves), [&]( signal const& s ) {
+    std::for_each( std::begin( leaves ), std::end( leaves ), [&]( signal const& s ) {
       const auto f = forest.create_pi();
       forest.set_context( forest.get_node( f ), ntk.get_context( ntk.get_node( s ) ) );
-      old_to_new[ ntk.get_node( s ) ] = ntk.is_complemented( s )? forest.create_not( f ) : f;
+      old_to_new[ntk.get_node( s )] = ntk.is_complemented( s ) ? forest.create_not( f ) : f;
     } );
 
-    std::for_each( std::begin(divs), std::end(divs), [&]( signal const& s ) {
+    std::for_each( std::begin( divs ), std::end( divs ), [&]( signal const& s ) {
       auto const n = ntk.get_node( s );
-      if ( old_to_new.has( n ) ) return;
+      if ( old_to_new.has( n ) )
+        return;
       std::vector<signal> children;
       ntk.foreach_fanin( n, [&]( auto child, auto ) {
         const auto f = old_to_new[child];
@@ -156,12 +156,13 @@ public:
         }
       } );
       auto const _s = forest.clone_node( ntk, n, children );
-      old_to_new[n] = ntk.is_complemented( s )? forest.create_not( _s ) : _s;
+      old_to_new[n] = ntk.is_complemented( s ) ? forest.create_not( _s ) : _s;
     } );
 
-    std::for_each( std::begin(mffcs), std::end(mffcs), [&]( signal const& s ) {
+    std::for_each( std::begin( mffcs ), std::end( mffcs ), [&]( signal const& s ) {
       auto const n = ntk.get_node( s );
-      if ( old_to_new.has( n ) ) return;
+      if ( old_to_new.has( n ) )
+        return;
       std::vector<signal> children;
       ntk.foreach_fanin( n, [&]( auto child, auto ) {
         const auto f = old_to_new[child];
@@ -175,23 +176,22 @@ public:
         }
       } );
       auto const _s = forest.clone_node( ntk, n, children );
-      old_to_new[n] = ntk.is_complemented( s )? forest.create_not( _s ) : _s;
+      old_to_new[n] = ntk.is_complemented( s ) ? forest.create_not( _s ) : _s;
     } );
 
     std::vector<signal> pis;
-    std::for_each( std::begin(divs), std::end(divs), [&]( signal const& s ) {
+    std::for_each( std::begin( divs ), std::end( divs ), [&]( signal const& s ) {
       /* 
         because the signal we sent in need to be align with the truthtables, 
         which is the truth table of the nodes (not negated)
 
         we use +old_to_new[ ntk.get_node( s ) ] instead of old_to_new[ ntk.get_node( s ) ]
       */
-      pis.emplace_back( +old_to_new[ ntk.get_node( s ) ]);
+      pis.emplace_back( +old_to_new[ntk.get_node( s )] );
     } );
 
-    auto const po = ntk.is_complemented( root )?
-        forest.create_not( old_to_new[ ntk.get_node( root ) ] )
-      : old_to_new[ ntk.get_node( root ) ];
+    auto const po = ntk.is_complemented( root ) ? forest.create_not( old_to_new[ntk.get_node( root )] )
+                                                : old_to_new[ntk.get_node( root )];
 
     forest.create_po( po );
 
@@ -203,23 +203,22 @@ public:
     std::optional<signal> best_candidate;
     uint32_t n_solutions = 0u;
 
-    TT tt_po = forest.is_complemented( po )? 
-        ~ntts[ forest.get_node( po ) ]
-      : ntts[ forest.get_node( po ) ];
+    TT tt_po = forest.is_complemented( po ) ? ~ntts[forest.get_node( po )]
+                                            : ntts[forest.get_node( po )];
 
     auto evalfn = [&]( const auto s ) {
-        /* everytime the function is called, a feasible solution is found */
-        st.num_roots += 1;
-        auto _cost = forest.get_cost( forest.get_node( s ), pis );
-        if ( _cost < best_cost )
-        {
-          n_solutions++;
-          best_cost = _cost;
-          best_candidate = s;
-          return (ps.max_solutions > 0) && (n_solutions >= ps.max_solutions); /* stop searching */
-        }
-        return false; /* keep searching */
-      };
+      /* everytime the function is called, a feasible solution is found */
+      st.num_roots += 1;
+      auto _cost = forest.get_cost( forest.get_node( s ), pis );
+      if ( _cost < best_cost )
+      {
+        n_solutions++;
+        best_cost = _cost;
+        best_candidate = s;
+        return ( ps.max_solutions > 0 ) && ( n_solutions >= ps.max_solutions ); /* stop searching */
+      }
+      return false; /* keep searching */
+    };
 
     /* esop solutions (try building ntk without divisors ) */
     if ( ps.use_esop )
@@ -238,7 +237,7 @@ public:
       st.num_solutions += 1;
       index_list_t index_list;
       signal s = *best_candidate;
-      forest.substitute_node( forest.get_node( po ), forest.is_complemented( po )? forest.create_not( s ) : s );
+      forest.substitute_node( forest.get_node( po ), forest.is_complemented( po ) ? forest.create_not( s ) : s );
       typename Ntk::base_type solution = cleanup_dangling( (typename Ntk::base_type)forest );
 
       // this is actually not very useful
@@ -254,7 +253,6 @@ public:
     }
     return std::nullopt;
   }
-
 
 private:
   Ntk const& ntk;

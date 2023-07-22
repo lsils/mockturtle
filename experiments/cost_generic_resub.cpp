@@ -24,13 +24,13 @@
  */
 #include <experiments.hpp>
 #include <lorina/aiger.hpp>
-#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/balancing.hpp>
 #include <mockturtle/algorithms/balancing/esop_balancing.hpp>
 #include <mockturtle/algorithms/balancing/sop_balancing.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/experimental/cost_generic_resub.hpp>
 #include <mockturtle/algorithms/functional_reduction.hpp>
-#include <mockturtle/algorithms/cut_rewriting.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_minmc2.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/utils/cost_functions.hpp>

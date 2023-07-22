@@ -112,12 +112,12 @@ private:
     /* check intersection with off-set; additionally check intersection with on-set is not empty (otherwise it's useless) */
     if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) )
     {
-      pos_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)( !pol1 ), ( div2 << 1 ) + (uint32_t)( !pol2 ) );
+      pos_unate_pairs.emplace_back( ( div1 << 1 ) + ( uint32_t )( !pol1 ), ( div2 << 1 ) + ( uint32_t )( !pol2 ) );
     }
     /* check intersection with on-set; additionally check intersection with off-set is not empty (otherwise it's useless) */
     else if ( kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[1] ) && !kitty::intersection_is_empty<TT, pol1, pol2>( get_div( div1 ), get_div( div2 ), on_off_sets[0] ) )
     {
-      neg_unate_pairs.emplace_back( ( div1 << 1 ) + (uint32_t)( !pol1 ), ( div2 << 1 ) + (uint32_t)( !pol2 ) );
+      neg_unate_pairs.emplace_back( ( div1 << 1 ) + ( uint32_t )( !pol1 ), ( div2 << 1 ) + ( uint32_t )( !pol2 ) );
     }
   }
 
@@ -1071,14 +1071,14 @@ private:
   };
 
 public:
-  explicit resub_functor( Ntk& ntk, TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts )noexcept
-   : ntk( ntk )
+  explicit resub_functor( Ntk& ntk, TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts ) noexcept
+      : ntk( ntk )
   {
     ptts = &tts;
     on_off_sets[0] = ~target & care;
     on_off_sets[1] = target & care;
     num_divisors = 1;
-    divisors.resize(1);
+    divisors.resize( 1 );
     leaves.clear();
     while ( begin != end )
     {

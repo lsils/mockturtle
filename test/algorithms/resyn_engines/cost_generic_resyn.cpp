@@ -1,11 +1,11 @@
 #include <catch.hpp>
 #include <kitty/kitty.hpp>
+#include <mockturtle/algorithms/equivalence_checking.hpp>
+#include <mockturtle/algorithms/experimental/cost_resyn.hpp>
+#include <mockturtle/algorithms/miter.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/index_list.hpp>
 #include <mockturtle/views/cost_view.hpp>
-#include <mockturtle/algorithms/experimental/cost_resyn.hpp>
-#include <mockturtle/algorithms/equivalence_checking.hpp>
-#include <mockturtle/algorithms/miter.hpp>
 
 using namespace mockturtle;
 using namespace mockturtle::experimental;
@@ -22,7 +22,7 @@ TEST_CASE( "cost-generic resynthesis (1-resub MC cost)", "[cost_generic_resyn]" 
   const signal a = cost_xag.create_pi();
   const signal b = cost_xag.create_pi();
   const signal c = cost_xag.create_pi();
-  
+
   const signal divisor1 = cost_xag.create_and( a, b );
   const signal divisor2 = cost_xag.create_and( a, c );
   const signal divisor3 = cost_xag.create_and( divisor1, divisor2 );
@@ -59,15 +59,14 @@ TEST_CASE( "cost-generic resynthesis (1-resub MC cost)", "[cost_generic_resyn]" 
 
   const auto res = resyn( leaves, divs, mffcs, f );
 
-  // std::cout << to_index_list_string( *res ); 
-  // "{3, 1, 5, 2, 4, 2, 6, 8, 10, 12, 8, 14, 10, 16}", 
+  // std::cout << to_index_list_string( *res );
+  // "{3, 1, 5, 2, 4, 2, 6, 8, 10, 12, 8, 14, 10, 16}",
   // but the optimal solution is not unique
   // so let us skip this check
 
   CHECK( res );
   CHECK( ( *res ).num_gates() == 5u ); /* we count the size of the dependency taking leaves as inputs */
 }
-
 
 TEST_CASE( "cost-generic resynthesis (1-resub MC cost) with XNOR", "[cost_generic_resyn]" )
 {
@@ -81,7 +80,7 @@ TEST_CASE( "cost-generic resynthesis (1-resub MC cost) with XNOR", "[cost_generi
   const signal a = cost_xag.create_pi();
   const signal b = cost_xag.create_pi();
   const signal c = cost_xag.create_pi();
-  
+
   const signal divisor1 = cost_xag.create_and( a, b );
   const signal divisor2 = cost_xag.create_and( a, c );
   const signal divisor3 = cost_xag.create_and( divisor1, divisor2 );
@@ -118,15 +117,14 @@ TEST_CASE( "cost-generic resynthesis (1-resub MC cost) with XNOR", "[cost_generi
 
   const auto res = resyn( leaves, divs, mffcs, f );
 
-  // std::cout << to_index_list_string( *res ); 
-  // "{3, 1, 5, 2, 4, 2, 6, 8, 10, 12, 8, 14, 10, 17}", 
+  // std::cout << to_index_list_string( *res );
+  // "{3, 1, 5, 2, 4, 2, 6, 8, 10, 12, 8, 14, 10, 17}",
   // but the optimal solution is not unique
   // so let us skip this check
 
   CHECK( res );
   CHECK( ( *res ).num_gates() == 5u ); /* we count the size of the dependency taking leaves as inputs */
 }
-
 
 TEST_CASE( "cost-generic resynthesis (1-resub size cost)", "[cost_generic_resyn]" )
 {
@@ -140,7 +138,7 @@ TEST_CASE( "cost-generic resynthesis (1-resub size cost)", "[cost_generic_resyn]
   const signal a = cost_xag.create_pi();
   const signal b = cost_xag.create_pi();
   const signal c = cost_xag.create_pi();
-  
+
   const signal divisor1 = cost_xag.create_and( a, b );
   const signal divisor2 = cost_xag.create_and( a, c );
   const signal divisor3 = cost_xag.create_and( divisor1, divisor2 );
@@ -179,16 +177,14 @@ TEST_CASE( "cost-generic resynthesis (1-resub size cost)", "[cost_generic_resyn]
 
   const auto res = resyn( leaves, divs, mffcs, f2 );
 
-  // std::cout << to_index_list_string( *res ); 
-  // "{3, 1, 3, 2, 4, 2, 6, 9, 11, 13}", 
+  // std::cout << to_index_list_string( *res );
+  // "{3, 1, 3, 2, 4, 2, 6, 9, 11, 13}",
   // but the optimal solution is not unique
   // so let us skip this check
 
   CHECK( res );
   CHECK( ( *res ).num_gates() == 3u ); /* we count the size of the dependency taking leaves as inputs */
 }
-
-
 
 TEST_CASE( "cost-generic resynthesis (2-resub size cost)", "[cost_generic_resyn]" )
 {
@@ -202,7 +198,7 @@ TEST_CASE( "cost-generic resynthesis (2-resub size cost)", "[cost_generic_resyn]
   const signal a = cost_xag.create_pi();
   const signal b = cost_xag.create_pi();
   const signal c = cost_xag.create_pi();
-  
+
   const signal divisor1 = cost_xag.create_and( a, b );
   const signal divisor2 = cost_xag.create_and( a, c );
   const signal divisor3 = cost_xag.create_and( divisor1, divisor2 );
@@ -241,16 +237,14 @@ TEST_CASE( "cost-generic resynthesis (2-resub size cost)", "[cost_generic_resyn]
 
   const auto res = resyn( leaves, divs, mffcs, f2 );
 
-  // std::cout << to_index_list_string( *res ); 
-  // "{3, 1, 2, 5, 7, 2, 9, 10}", 
+  // std::cout << to_index_list_string( *res );
+  // "{3, 1, 2, 5, 7, 2, 9, 10}",
   // but the optimal solution is not unique
   // so let us skip this check
 
   CHECK( res );
   CHECK( ( *res ).num_gates() == 2u ); /* we count the size of the dependency taking leaves as inputs */
 }
-
-
 
 TEST_CASE( "cost-generic resynthesis with XOR", "[cost_generic_resyn]" )
 {
@@ -264,7 +258,7 @@ TEST_CASE( "cost-generic resynthesis with XOR", "[cost_generic_resyn]" )
   signal pi0 = cost_xag.create_pi();
   signal pi1 = cost_xag.create_pi();
   signal pi2 = cost_xag.create_pi();
-  
+
   signal n8 = cost_xag.create_and( !pi0, !pi1 );
   signal n9 = cost_xag.create_and( pi0, !pi1 );
   signal n10 = cost_xag.create_and( n9, !pi2 );
@@ -306,7 +300,6 @@ TEST_CASE( "cost-generic resynthesis with XOR", "[cost_generic_resyn]" )
   CHECK( *equivalence_checking( *miter<xag_network>( xag_new, xag ) ) == true );
 }
 
-
 TEST_CASE( "cost-generic resynthesis with negated leaves", "[cost_generic_resyn]" )
 {
   xag_network xag;
@@ -319,7 +312,7 @@ TEST_CASE( "cost-generic resynthesis with negated leaves", "[cost_generic_resyn]
   signal pi0 = cost_xag.create_pi();
   signal pi1 = cost_xag.create_pi();
   signal pi2 = cost_xag.create_pi();
-  
+
   signal n9 = cost_xag.create_and( pi0, !pi1 );
   signal n10 = cost_xag.create_xor( n9, pi1 );
   signal n11 = cost_xag.create_and( n9, !pi2 );
@@ -339,8 +332,8 @@ TEST_CASE( "cost-generic resynthesis with negated leaves", "[cost_generic_resyn]
 
   const auto res = resyn( leaves, divs, mffcs, root );
 
-  // std::cout << to_index_list_string( *res ); 
-  // "{3, 1, 4, 2, 5, 7, 8, 8, 4, 12, 10, 14}", 
+  // std::cout << to_index_list_string( *res );
+  // "{3, 1, 4, 2, 5, 7, 8, 8, 4, 12, 10, 14}",
   // but the optimal solution is not unique
   // so let us skip this check
 

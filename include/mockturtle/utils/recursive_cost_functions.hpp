@@ -59,17 +59,37 @@ template<class Ntk>
 struct recursive_cost_functions
 {
   using base_type = recursive_cost_functions;
+
+  /*! \brief Context type
+   *
+   * The context type is used to store additional information for each node.
+   * The content stored in the context can be arbitrarily defined (`context_t`),
+   * but the derivation must be recursive. In other words, the context of a node
+   * is derived using *context propagation function* which takes only the context
+   * of fanins as input.
+   * 
+   * Optionally you may define a `context_compare` function to compare two contexts.
+   * This is used to sort the nodes in the priority queue, and potentially to
+   * prune the search space.
+  */
   using context_t = uint32_t;
 
   /*! \brief Context propagation function
    *
-   * Return the context of a node given fanin contexts.
+   * Return the context of a node given fanin contexts. The fanin contexts are
+   * sorted in the same order as the fanins of the node.
    */
   virtual context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<context_t> const& fanin_contexts = {} ) const = 0;
 
   /*! \brief Contribution function
    *
-   * Update the total cost using node n and its context.
+   * Update the total cost using node n and its context. The total cost is
+   * updated only if the cost of the node is larger than the current total cost.
+   * 
+   * The context of a node is derived using *context propagation function* which
+   * takes only the context of fanins as input.
+   * 
+   * The contribution function is called only if the node is not a primary input.
    */
   virtual void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const = 0;
 };
@@ -94,7 +114,7 @@ struct xag_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
-  static bool context_compare( const context_t& c1, const context_t c2 )
+  static bool context_compare( const context_t& c1, const context_t& c2 )
   {
     return c1 > c2;
   }
@@ -115,7 +135,7 @@ struct xag_t_depth_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
-  static bool context_compare( const context_t& c1, const context_t c2 )
+  static bool context_compare( const context_t& c1, const context_t& c2 )
   {
     return c1 > c2;
   }
@@ -125,7 +145,7 @@ public:
     uint32_t _cost = ntk.is_pi( n ) ? 0 : *std::max_element( std::begin( fanin_contexts ), std::end( fanin_contexts ) ) + ntk.is_and( n );
     return _cost;
   }
-  
+
   void operator()( Ntk const& ntk, node<Ntk> const& n, uint32_t& total_cost, context_t const context ) const
   {
     total_cost = std::max( total_cost, context );
@@ -137,11 +157,10 @@ struct xag_size_cost_function : recursive_cost_functions<Ntk>
 {
 public:
   using context_t = uint32_t;
-  static bool context_compare( const context_t& c1, const context_t c2 )
+  static bool context_compare( const context_t& c1, const context_t& c2 )
   {
     return true;
   }
-
 
   context_t operator()( Ntk const& ntk, node<Ntk> const& n, std::vector<uint32_t> const& fanin_contexts = {} ) const
   {
@@ -158,7 +177,7 @@ struct xag_multiplicative_complexity_cost_function : recursive_cost_functions<Nt
 {
 public:
   using context_t = uint32_t;
-  static bool context_compare( const context_t& c1, const context_t c2 )
+  static bool context_compare( const context_t& c1, const context_t& c2 )
   {
     return true;
   }
