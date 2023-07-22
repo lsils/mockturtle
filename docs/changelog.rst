@@ -15,6 +15,7 @@ v0.4 (not yet released)
     - Crossed networks (`crossed_klut_network` and `buffered_crossed_klut_network`) `#589 <https://github.com/lsils/mockturtle/pull/589>`_
     - Generic network implementation with additional node types (`generic_network`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
 * Algorithms:
+    - Cost-generic resynthesis (`cost_generic_resyn`) `#615 <https://github.com/lsils/mockturtle/pull/615>`_
     - AIG balancing (`aig_balance`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_

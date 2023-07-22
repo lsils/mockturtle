@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file cost_resyn.hpp
+  \file cost_generic_resyn.hpp
   \brief Solver of cost-aware resynthesis problem.
          Given a resynthesis problem and the cost function, returns
          the solution with (1) correct functionality (2) lower cost.
@@ -41,8 +41,8 @@
 #include "../../utils/index_list.hpp"
 #include "../detail/resub_utils.hpp"
 #include "../simulation.hpp"
-#include "refactor_functor.hpp"
-#include "resub_functors.hpp"
+#include "cost_generic_refactor_functor.hpp"
+#include "cost_generic_resub_functors.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -54,7 +54,7 @@
 namespace mockturtle::experimental
 {
 
-struct cost_resyn_params
+struct cost_generic_resyn_params
 {
   /* maximum number of feasible solutions to collect, 0: no limit */
   uint32_t max_solutions{ 0u };
@@ -65,7 +65,7 @@ struct cost_resyn_params
   bool use_esop{ false };
 };
 
-struct cost_resyn_stats
+struct cost_generic_resyn_stats
 {
   /* time for cost view the solution network */
   stopwatch<>::duration time_eval{ 0 };
@@ -94,7 +94,7 @@ struct cost_resyn_stats
   /* data */
   void report() const
   {
-    fmt::print( "[i]         <cost_resyn>\n" );
+    fmt::print( "[i]         <cost_generic_resyn>\n" );
     fmt::print( "[i]             Evalutation      : {:>5.2f} secs\n", to_seconds( time_eval ) );
     fmt::print( "[i]             Searching        : {:>5.2f} secs\n", to_seconds( time_search ) );
     fmt::print( "[i]             # Problem        : {}\n", num_problems );
@@ -110,11 +110,11 @@ struct cost_resyn_stats
 };
 
 template<class Ntk, class TT>
-class cost_resyn
+class cost_generic_resyn
 {
 public:
-  using params = cost_resyn_params;
-  using stats = cost_resyn_stats;
+  using params = cost_generic_resyn_params;
+  using stats = cost_generic_resyn_stats;
   using signal = typename Ntk::signal;
   using node = typename Ntk::node;
   using context_t = typename Ntk::context_t;
@@ -122,7 +122,7 @@ public:
   ;
 
 public:
-  explicit cost_resyn( Ntk const& ntk, params const& ps, stats& st ) noexcept
+  explicit cost_generic_resyn( Ntk const& ntk, params const& ps, stats& st ) noexcept
       : ntk( ntk ), ps( ps ), st( st )
   {
   }
@@ -227,7 +227,7 @@ public:
     }
 
     /* grow the forest */
-    resub_functor engine( forest, tt_po, ~kitty::create<TT>( forest.num_pis() ), std::begin( pis ), std::end( pis ), ntts );
+    cost_generic_resub_functor engine( forest, tt_po, ~kitty::create<TT>( forest.num_pis() ), std::begin( pis ), std::end( pis ), ntts );
     engine.run( evalfn );
 
     st.size_forest += forest.size();
@@ -259,7 +259,7 @@ private:
   params const& ps;
   stats& st;
 
-  refactor_functor<Ntk, TT> refactor_engine;
+  cost_generic_refactor_functor<Ntk, TT> refactor_engine;
   std::vector<TT> tts;
 };
 

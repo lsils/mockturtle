@@ -24,12 +24,8 @@
  */
 
 /*!
-  \file refactor_functor.hpp
-  \brief Solver of cost-aware resynthesis problem.
-         Given a resynthesis problem and the cost function, returns
-         the solution with (1) correct functionality (2) lower cost.
-
-         This solver is cost-generic.
+  \file cost_generic_refactor_functor.hpp
+  \brief engine to find refactor candidates for cost-generic resynthesis
 
   \author Hanyu Wang
 */
@@ -52,14 +48,14 @@ namespace mockturtle::experimental
 {
 
 template<class Ntk, class TT>
-class refactor_functor
+class cost_generic_refactor_functor
 {
 public:
   using signal = typename Ntk::signal;
   using context_t = typename Ntk::context_t;
 
 public:
-  explicit refactor_functor()
+  explicit cost_generic_refactor_functor()
   {
   }
 

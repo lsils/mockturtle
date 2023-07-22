@@ -1,7 +1,7 @@
 #include <catch.hpp>
 #include <kitty/kitty.hpp>
 #include <mockturtle/algorithms/equivalence_checking.hpp>
-#include <mockturtle/algorithms/experimental/cost_resyn.hpp>
+#include <mockturtle/algorithms/experimental/cost_generic_resyn.hpp>
 #include <mockturtle/algorithms/miter.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/index_list.hpp>
@@ -46,10 +46,10 @@ TEST_CASE( "cost-generic resynthesis (1-resub MC cost)", "[cost_generic_resyn]" 
    * also, f = a ^ (b ^ c)
   */
 
-  cost_resyn_params ps;
-  cost_resyn_stats st;
+  cost_generic_resyn_params ps;
+  cost_generic_resyn_stats st;
 
-  cost_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
+  cost_generic_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
 
   std::vector<signal> leaves{ a, b, c };
   std::vector<signal> divs{ a, b, c, divisor1, divisor2, divisor3 };
@@ -104,10 +104,10 @@ TEST_CASE( "cost-generic resynthesis (1-resub MC cost) with XNOR", "[cost_generi
    * also, f = a ^ (b ^ c)
   */
 
-  cost_resyn_params ps;
-  cost_resyn_stats st;
+  cost_generic_resyn_params ps;
+  cost_generic_resyn_stats st;
 
-  cost_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
+  cost_generic_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
 
   std::vector<signal> leaves{ a, b, c };
   std::vector<signal> divs{ a, b, c, divisor1, divisor2, divisor3 };
@@ -164,10 +164,10 @@ TEST_CASE( "cost-generic resynthesis (1-resub size cost)", "[cost_generic_resyn]
    * also, f2 = a ^ (b ^ c)
   */
 
-  cost_resyn_params ps;
-  cost_resyn_stats st;
+  cost_generic_resyn_params ps;
+  cost_generic_resyn_stats st;
 
-  cost_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
+  cost_generic_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
 
   std::vector<signal> leaves{ a, b, c };
   std::vector<signal> divs{ a, b, c, divisor1, divisor2, divisor3 };
@@ -224,10 +224,10 @@ TEST_CASE( "cost-generic resynthesis (2-resub size cost)", "[cost_generic_resyn]
    * also, f2 = a ^ (b ^ c)
   */
 
-  cost_resyn_params ps;
-  cost_resyn_stats st;
+  cost_generic_resyn_params ps;
+  cost_generic_resyn_stats st;
 
-  cost_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
+  cost_generic_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
 
   std::vector<signal> leaves{ a, b, c };
   std::vector<signal> divs{ a, b, c };
@@ -279,10 +279,10 @@ TEST_CASE( "cost-generic resynthesis with XOR", "[cost_generic_resyn]" )
    * n13: 10111100
   */
 
-  cost_resyn_params ps;
-  cost_resyn_stats st;
+  cost_generic_resyn_params ps;
+  cost_generic_resyn_stats st;
 
-  cost_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
+  cost_generic_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
 
   std::vector<signal> leaves{ pi0, pi1, pi2 };
   std::vector<signal> divs{ pi0, pi1, pi2 };
@@ -318,10 +318,10 @@ TEST_CASE( "cost-generic resynthesis with negated leaves", "[cost_generic_resyn]
   signal n11 = cost_xag.create_and( n9, !pi2 );
   signal n12 = cost_xag.create_and( !n11, n10 );
 
-  cost_resyn_params ps;
-  cost_resyn_stats st;
+  cost_generic_resyn_params ps;
+  cost_generic_resyn_stats st;
 
-  cost_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
+  cost_generic_resyn<ViedNtk, kitty::dynamic_truth_table> resyn( cost_xag, ps, st );
 
   std::vector<signal> leaves{ pi0, pi1, pi2 };
   std::vector<signal> divs{ pi0, pi1, pi2, n9, n10, n11 };

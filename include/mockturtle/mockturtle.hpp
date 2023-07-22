@@ -82,7 +82,7 @@
 #include "mockturtle/algorithms/exorcism.hpp"
 #include "mockturtle/algorithms/experimental/boolean_optimization.hpp"
 #include "mockturtle/algorithms/experimental/cost_generic_resub.hpp"
-#include "mockturtle/algorithms/experimental/cost_resyn.hpp"
+#include "mockturtle/algorithms/experimental/cost_generic_resyn.hpp"
 #include "mockturtle/algorithms/experimental/sim_resub.hpp"
 #include "mockturtle/algorithms/experimental/window_resub.hpp"
 #include "mockturtle/algorithms/extract_linear.hpp"

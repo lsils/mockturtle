@@ -46,7 +46,7 @@
 #include "../reconv_cut.hpp"
 #include "../simulation.hpp"
 #include "boolean_optimization.hpp"
-#include "cost_resyn.hpp"
+#include "cost_generic_resyn.hpp"
 #include <kitty/kitty.hpp>
 
 #include <functional>
@@ -324,8 +324,8 @@ private:
 
 } /* namespace detail */
 
-using cost_generic_resub_params = boolean_optimization_params<costfn_windowing_params, cost_resyn_params>;
-using cost_generic_resub_stats = boolean_optimization_stats<costfn_windowing_stats, cost_resyn_stats>;
+using cost_generic_resub_params = boolean_optimization_params<costfn_windowing_params, cost_generic_resyn_params>;
+using cost_generic_resub_stats = boolean_optimization_stats<costfn_windowing_stats, cost_generic_resyn_stats>;
 
 /*! \brief Cost-generic resubstitution algorithm.
  *
@@ -351,7 +351,7 @@ void cost_generic_resub( Ntk& ntk, CostFn cost_fn, cost_generic_resub_params con
   using Viewed = decltype( viewed );
   using TT = typename kitty::dynamic_truth_table;
   using windowing_t = typename detail::costfn_windowing<Viewed, TT>;
-  using engine_t = cost_resyn<Viewed, TT>;
+  using engine_t = cost_generic_resyn<Viewed, TT>;
   using resyn_t = typename detail::costfn_resynthesis<Viewed, TT, engine_t>;
   using opt_t = typename detail::boolean_optimization_impl<Viewed, windowing_t, resyn_t>;
 

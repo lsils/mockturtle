@@ -24,12 +24,8 @@
  */
 
 /*!
-  \file resub_functor.hpp
-  \brief Solver of cost-aware resynthesis problem.
-         Given a resynthesis problem and the cost function, returns
-         the solution with (1) correct functionality (2) lower cost.
-
-         This solver is cost-generic.
+  \file cost_generic_resub_functor.hpp
+  \brief engine to find resubstitution candidates for cost-generic resynthesis
 
   \author Hanyu Wang
 */
@@ -50,7 +46,7 @@ namespace mockturtle::experimental
 {
 
 template<class Ntk, class TT, class iterator_type, class truth_table_storage_type>
-class resub_functor
+class cost_generic_resub_functor
 {
 public:
   using signal = typename Ntk::signal;
@@ -1058,20 +1054,20 @@ private:
 
   struct core_func_t
   {
-    std::function<void( resub_functor* )> func;
+    std::function<void( cost_generic_resub_functor* )> func;
     uint32_t effort;
     uint32_t score;
-    core_func_t( std::function<void( resub_functor* )> func, uint32_t effort ) : func( func ), effort( effort )
+    core_func_t( std::function<void( cost_generic_resub_functor* )> func, uint32_t effort ) : func( func ), effort( effort )
     {
     }
-    void operator()( resub_functor* pcore )
+    void operator()( cost_generic_resub_functor* pcore )
     {
       func( pcore );
     }
   };
 
 public:
-  explicit resub_functor( Ntk& ntk, TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts ) noexcept
+  explicit cost_generic_resub_functor( Ntk& ntk, TT const& target, TT const& care, iterator_type begin, iterator_type end, truth_table_storage_type const& tts ) noexcept
       : ntk( ntk )
   {
     ptts = &tts;
@@ -1090,23 +1086,23 @@ public:
     prepare_clear();
     candidates.clear();
     fns.clear();
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_wire(); }, 0 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_xor(); }, 1 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_and(); }, 1 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_or(); }, 1 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_xor_xor(); }, 2 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_xor_and(); }, 2 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_and_and(); }, 2 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_and_or(); }, 2 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_or_or(); }, 2 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_or_and(); }, 2 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_and_xor(); }, 2 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_xor_and_and(); }, 3 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_xor_xor_and(); }, 3 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_xor_xor_xor(); }, 3 ); // bad efficiency / gain trade-off
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_and_xor_xor(); }, 3 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_and_and_xor(); }, 3 );
-    fns.emplace_back( []( resub_functor* _core ) { _core->find_and_and_and(); }, 3 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_wire(); }, 0 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_xor(); }, 1 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_and(); }, 1 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_or(); }, 1 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_xor_xor(); }, 2 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_xor_and(); }, 2 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_and_and(); }, 2 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_and_or(); }, 2 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_or_or(); }, 2 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_or_and(); }, 2 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_and_xor(); }, 2 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_xor_and_and(); }, 3 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_xor_xor_and(); }, 3 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_xor_xor_xor(); }, 3 ); // bad efficiency / gain trade-off
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_and_xor_xor(); }, 3 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_and_and_xor(); }, 3 );
+    fns.emplace_back( []( cost_generic_resub_functor* _core ) { _core->find_and_and_and(); }, 3 );
   }
 
   template<typename Fn>
