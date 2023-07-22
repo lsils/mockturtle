@@ -36,6 +36,7 @@
 #include "../../algorithms/cut_enumeration.hpp"
 #include "../../algorithms/simulation.hpp"
 #include "../../utils/index_list.hpp"
+#include "../../utils/recursive_cost_functions.hpp"
 
 #include <algorithm>
 #include <optional>
