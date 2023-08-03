@@ -1298,7 +1298,7 @@ public:
       {
         cuts.add_zero_cut( index );
       }
-      else if ( ntk.is_pi( node ) )
+      else if ( ntk.is_ci( node ) )
       {
         cuts.add_unit_cut( index );
       }
@@ -1342,7 +1342,7 @@ public:
     cuts.add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) ) );
     if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
       cuts.add_zero_cut( ntk.node_to_index( ntk.get_node( ntk.get_constant( true ) ) ) );
-    ntk.foreach_pi( [&]( auto const& n ) {
+    ntk.foreach_ci( [&]( auto const& n ) {
       cuts.add_unit_cut( ntk.node_to_index( n ) );
     } );
   }
