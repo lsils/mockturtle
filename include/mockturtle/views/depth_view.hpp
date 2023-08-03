@@ -27,6 +27,7 @@
   \file depth_view.hpp
   \brief Implements depth and level for a network
 
+  \author Alessandro Tempia Calvino
   \author Heinz Riener
   \author Mathias Soeken
   \author Siang-Yun (Sonia) Lee
@@ -243,7 +244,7 @@ private:
     {
       return _levels[n] = 0;
     }
-    if ( this->is_pi( n ) )
+    if ( this->is_ci( n ) )
     {
       assert( !_ps.pi_cost || _cost_fn( *this, n ) >= 1 );
       return _levels[n] = _ps.pi_cost ? _cost_fn( *this, n ) - 1 : 0;
@@ -274,6 +275,18 @@ private:
       _depth = std::max( _depth, clevel );
     } );
 
+    if constexpr ( has_foreach_ri_v<Ntk> )
+    {
+      this->foreach_ri( [&]( auto const& f ) {
+        auto clevel = compute_levels( this->get_node( f ) );
+        if ( _ps.count_complements && this->is_complemented( f ) )
+        {
+          clevel++;
+        }
+        _depth = std::max( _depth, clevel );
+      } );
+    }
+
     this->foreach_po( [&]( auto const& f ) {
       const auto n = this->get_node( f );
       if ( _levels[n] == _depth )
@@ -281,6 +294,17 @@ private:
         set_critical_path( n );
       }
     } );
+
+    if constexpr ( has_foreach_ri_v<Ntk> )
+    {
+      this->foreach_ri( [&]( auto const& f ) {
+        const auto n = this->get_node( f );
+        if ( _levels[n] == _depth )
+        {
+          set_critical_path( n );
+        }
+      } );
+    }
   }
 
   void set_critical_path( node const& n )
