@@ -65,7 +65,7 @@ public:
 
 public:
   aig_balance_impl( Ntk& ntk, aig_balancing_params const& ps )
-      : ntk( ntk ), ps( ps ),storage( storage_init_size )
+      : ntk( ntk ), ps( ps ), storage( storage_init_size )
   {
   }
 
@@ -155,7 +155,7 @@ private:
     /* replace if new */
     if ( n != ntk.get_node( root ) )
     {
-      ntk.substitute_node( n, root );
+      ntk.substitute_node_no_restrash( n, root );
     }
 
     /* remember the substitution and the new node as already balanced */
