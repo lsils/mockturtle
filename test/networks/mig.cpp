@@ -859,3 +859,59 @@ TEST_CASE( "substitute node with dependency in mig_network", "[mig]" )
     CHECK( mig.is_dead( mig.get_node( s ) ) == false );
   } );
 }
+
+TEST_CASE( "substitute node without re-strashing case 1 in mig_network", "[mig]" )
+{
+  mig_network mig;
+  auto const x1 = mig.create_pi();
+  auto const x2 = mig.create_pi();
+  auto const f1 = mig.create_and( x1, x2 );
+  auto const f2 = mig.create_and( f1, x2 );
+  mig.create_po( f2 );
+
+  mig.substitute_node_no_restrash( mig.get_node( f1 ), x1 );
+  mig = cleanup_dangling( mig );
+  CHECK( mig.num_gates() == 1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( mig )[0]._bits == 0x8 );
+}
+
+TEST_CASE( "substitute node without re-strashing case 2 in mig_network", "[mig]" )
+{
+  mig_network mig;
+
+  auto const a = mig.create_pi();
+  auto const b = mig.create_pi();
+  auto const c = mig.create_pi();
+  auto const tmp = mig.create_and( b, c );
+  auto const f1 = mig.create_and( a, b );
+  auto const f2 = mig.create_and( f1, tmp );
+  auto const f3 = mig.create_and( f1, a );
+  mig.create_po( f2 );
+
+  mig.substitute_node_no_restrash( mig.get_node( tmp ), f3 );
+  mig.substitute_node_no_restrash( mig.get_node( f1 ), mig.get_constant( 1 ) );
+  mig = cleanup_dangling( mig );
+
+  CHECK( mig.num_gates() == 0 );
+  CHECK( !mig.is_dead( mig.get_node( mig.po_at( 0 ) ) ) );
+  CHECK( mig.get_node( mig.po_at( 0 ) ) == mig.pi_at( 0 ) );
+}
+
+TEST_CASE( "substitute node without re-strashing case 3 in mig_network", "[mig]" )
+{
+  mig_network mig;
+
+  auto const x1 = mig.create_pi();
+  auto const x2 = mig.create_pi();
+  auto const x3 = mig.create_pi();
+  auto const n4 = mig.create_and( x2, x3 );
+  auto const n5 = mig.create_and( x1, n4 );
+  auto const n6 = mig.create_and( n5, x3 );
+  auto const n7 = mig.create_and( x1, n6 );
+  mig.create_po( n7 );
+
+  mig.substitute_node_no_restrash( mig.get_node( n6 ), n4 );
+  mig = cleanup_dangling( mig );
+  CHECK( mig.num_gates() == 2 );
+  CHECK( simulate<kitty::static_truth_table<3u>>( mig )[0]._bits == 0x80 );
+}
