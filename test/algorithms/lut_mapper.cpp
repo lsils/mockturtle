@@ -42,41 +42,9 @@ TEST_CASE( "LUT map of AIG", "[lut_mapper]" )
   const auto f4 = aig.create_nand( f2, f3 );
   aig.create_po( f4 );
 
-  mapping_view mapped_aig{ aig };
+  const klut_network klut = lut_map( aig );
 
-  CHECK( has_has_mapping_v<mapping_view<aig_network>> );
-  CHECK( has_is_cell_root_v<mapping_view<aig_network>> );
-  CHECK( has_clear_mapping_v<mapping_view<aig_network>> );
-  CHECK( has_num_cells_v<mapping_view<aig_network>> );
-  CHECK( has_add_to_mapping_v<mapping_view<aig_network>> );
-  CHECK( has_remove_from_mapping_v<mapping_view<aig_network>> );
-  CHECK( has_foreach_cell_fanin_v<mapping_view<aig_network>> );
-
-  CHECK( !mapped_aig.has_mapping() );
-
-  lut_map( mapped_aig );
-
-  CHECK( mapped_aig.has_mapping() );
-  CHECK( mapped_aig.num_cells() == 1 );
-
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( a ) ) );
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( b ) ) );
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( f1 ) ) );
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( f2 ) ) );
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( f3 ) ) );
-  CHECK( mapped_aig.is_cell_root( aig.get_node( f4 ) ) );
-
-  mapped_aig.clear_mapping();
-
-  CHECK( !mapped_aig.has_mapping() );
-  CHECK( mapped_aig.num_cells() == 0 );
-
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( a ) ) );
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( b ) ) );
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( f1 ) ) );
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( f2 ) ) );
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( f3 ) ) );
-  CHECK( !mapped_aig.is_cell_root( aig.get_node( f4 ) ) );
+  CHECK( klut.num_gates() == 1 );
 }
 
 TEST_CASE( "LUT map of a sequential AIG", "[lut_mapper]" )
@@ -105,7 +73,7 @@ TEST_CASE( "LUT map of a sequential AIG", "[lut_mapper]" )
 
   CHECK( !mapped_aig.has_mapping() );
 
-  lut_map( mapped_aig );
+  lut_map_inplace( mapped_aig );
 
   CHECK( mapped_aig.has_mapping() );
   CHECK( mapped_aig.num_cells() == 2 );
@@ -144,7 +112,7 @@ TEST_CASE( "LUT map of 2-LUT network", "[lut_mapper]" )
   aig.create_po( carry );
 
   mapping_view mapped_aig{ aig };
-  lut_map( mapped_aig );
+  lut_map_inplace( mapped_aig );
 
   CHECK( mapped_aig.num_cells() == 3 );
 }
@@ -167,7 +135,7 @@ TEST_CASE( "LUT map of 2-LUT network area", "[lut_mapper]" )
 
   lut_map_params ps;
   ps.area_oriented_mapping = true;
-  lut_map( mapped_aig, ps );
+  lut_map_inplace( mapped_aig, ps );
 
   CHECK( mapped_aig.num_cells() == 3 );
 }
@@ -186,12 +154,11 @@ TEST_CASE( "LUT map of 8-LUT network", "[lut_mapper]" )
   std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
   aig.create_po( carry );
 
-  mapping_view mapped_aig{ aig };
   lut_map_params ps;
   ps.area_oriented_mapping = true;
-  lut_map( mapped_aig, ps );
+  const klut_network klut = lut_map( aig, ps );
 
-  CHECK( mapped_aig.num_cells() == 12 );
+  CHECK( klut.num_gates() == 12 );
 }
 
 TEST_CASE( "LUT map of 64-LUT network", "[lut_mapper]" )
@@ -208,10 +175,9 @@ TEST_CASE( "LUT map of 64-LUT network", "[lut_mapper]" )
   std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
   aig.create_po( carry );
 
-  mapping_view mapped_aig{ aig };
-  lut_map( mapped_aig );
+  const klut_network klut = lut_map( aig );
 
-  CHECK( mapped_aig.num_cells() == 114 );
+  CHECK( klut.num_gates() == 114 );
 }
 
 TEST_CASE( "LUT map of 64-LUT network delay relaxed", "[lut_mapper]" )
@@ -236,7 +202,7 @@ TEST_CASE( "LUT map of 64-LUT network delay relaxed", "[lut_mapper]" )
   ps.recompute_cuts = true;
   ps.remove_dominated_cuts = false;
   ps.edge_optimization = false;
-  lut_map<decltype( mapped_aig ), false>( mapped_aig, ps );
+  lut_map_inplace<decltype( mapped_aig ), false>( mapped_aig, ps );
 
   CHECK( mapped_aig.num_cells() == 114 );
 }
@@ -255,16 +221,14 @@ TEST_CASE( "LUT map of 64-LUT network area", "[lut_mapper]" )
   std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
   aig.create_po( carry );
 
-  mapping_view<aig_network, true> mapped_aig{ aig };
-
   lut_map_params ps;
   ps.area_oriented_mapping = true;
   ps.recompute_cuts = false;
   ps.remove_dominated_cuts = false;
   ps.edge_optimization = false;
-  lut_map<decltype( mapped_aig ), true>( mapped_aig, ps );
+  const klut_network klut = lut_map<aig_network, true>( aig, ps );
 
-  CHECK( mapped_aig.num_cells() == 116 );
+  CHECK( klut.num_gates() == 96 );
 }
 
 TEST_CASE( "LUT map with functions of full adder", "[lut_mapper]" )
@@ -285,7 +249,7 @@ TEST_CASE( "LUT map with functions of full adder", "[lut_mapper]" )
   ps.recompute_cuts = false;
   ps.edge_optimization = false;
   ps.remove_dominated_cuts = false;
-  lut_map<mapping_view<aig_network, true>, true>( mapped_aig );
+  lut_map_inplace<mapping_view<aig_network, true>, true>( mapped_aig );
 
   CHECK( has_cell_function_v<mapping_view<aig_network, true>> );
   CHECK( has_set_cell_function_v<mapping_view<aig_network, true>> );
@@ -315,7 +279,7 @@ TEST_CASE( "Collapse MFFC of 64-LUT network", "[lut_mapper]" )
 
   lut_map_params ps;
   ps.collapse_mffcs = true;
-  lut_map( mapped_aig, ps );
+  lut_map_inplace( mapped_aig, ps );
 
   CHECK( mapped_aig.num_cells() == 317 );
 }
@@ -342,9 +306,9 @@ TEST_CASE( "LUT map of 64-LUT network with cost function", "[lut_mapper]" )
   ps.remove_dominated_cuts = false;
   ps.cut_enumeration_ps.cut_size = 5;
   ps.cut_enumeration_ps.cut_limit = 8;
-  lut_map<decltype( mapped_aig ), true, lut_custom_cost>( mapped_aig, ps );
+  lut_map_inplace<decltype( mapped_aig ), true, lut_custom_cost>( mapped_aig, ps );
 
-  CHECK( mapped_aig.num_cells() == 128 );
+  CHECK( mapped_aig.num_cells() == 127 );
 }
 
 TEST_CASE( "LUT map remapping LUT network", "[lut_mapper]" )
@@ -362,7 +326,7 @@ TEST_CASE( "LUT map remapping LUT network", "[lut_mapper]" )
 
   lut_map_params ps;
   ps.cut_enumeration_ps.cut_size = 8;
-  lut_map<decltype( mapped_ntk ), true>( mapped_ntk, ps );
+  lut_map_inplace<decltype( mapped_ntk ), true>( mapped_ntk, ps );
 
   auto const res = *collapse_mapped_network<klut_network>( mapped_ntk );
   auto const miter_ntk = *miter<klut_network>( ntk, res );

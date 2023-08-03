@@ -28,7 +28,6 @@
 
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
-#include <mockturtle/algorithms/collapse_mapped.hpp>
 #include <mockturtle/algorithms/lut_mapper.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
@@ -61,9 +60,7 @@ int main()
     ps.area_oriented_mapping = false;
     ps.cut_expansion = true;
     lut_map_stats st;
-    mapping_view<aig_network, false> mapped_aig{ aig };
-    lut_map<decltype( mapped_aig ), false>( mapped_aig, ps, &st );
-    const auto klut = *collapse_mapped_network<klut_network>( mapped_aig );
+    const auto klut = lut_map( aig, ps, &st );
 
     depth_view<klut_network> klut_d{ klut };
 
