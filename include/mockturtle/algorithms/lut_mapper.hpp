@@ -82,8 +82,8 @@ struct lut_map_params
   /*! \brief Parameters for cut enumeration
    *
    * The default cut limit is 8. The maximum value
-   * is 249. By default, truth table minimization
-   * is performed.
+   * is 16. The maxiumum cut size is 16. By default,
+   * truth table minimization is performed.
    */
   cut_enumeration_params cut_enumeration_ps{};
 
@@ -604,7 +604,7 @@ private:
   };
 
 public:
-  static constexpr uint32_t max_cut_num = 16;
+  static constexpr uint32_t max_cut_num = 32;
   static constexpr uint32_t max_cut_size = 16;
   static constexpr uint32_t max_cubes = 64;
   static constexpr uint32_t max_sop_decomp_size = max_cut_size * ( max_cubes + 1 );

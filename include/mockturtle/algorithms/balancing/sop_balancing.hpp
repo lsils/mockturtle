@@ -27,6 +27,7 @@
   \file sop_balancing.hpp
   \brief SOP-based balancing engine for `balancing` algorithm
 
+  \author Alessandro Tempia Calvino
   \author Heinz Riener
   \author Mathias Soeken
 */
@@ -66,20 +67,22 @@ struct sop_rebalancing
 {
   void operator()( Ntk& dest, kitty::dynamic_truth_table const& function, std::vector<arrival_time_pair<Ntk>> const& inputs, uint32_t best_level, uint32_t best_cost, rebalancing_function_callback_t<Ntk> const& callback ) const
   {
-    auto [and_terms, num_and_gates] = create_function( dest, function, inputs );
+    bool inverted = false;
+    auto [and_terms, num_and_gates] = create_function( dest, function, inputs, inverted );
     const auto num_gates = num_and_gates + ( and_terms.empty() ? 0u : static_cast<uint32_t>( and_terms.size() ) - 1u );
-    const auto cand = balanced_tree( dest, and_terms, false );
+    arrival_time_pair<Ntk> cand = balanced_tree( dest, and_terms, false );
 
     if ( cand.level < best_level || ( cand.level == best_level && num_gates < best_cost ) )
     {
+      cand.f = cand.f ^ inverted;
       callback( cand, num_gates );
     }
   }
 
 private:
-  std::pair<arrival_time_queue<Ntk>, uint32_t> create_function( Ntk& dest, kitty::dynamic_truth_table const& func, std::vector<arrival_time_pair<Ntk>> const& arrival_times ) const
+  std::pair<arrival_time_queue<Ntk>, uint32_t> create_function( Ntk& dest, kitty::dynamic_truth_table const& func, std::vector<arrival_time_pair<Ntk>> const& arrival_times, bool& inverted ) const
   {
-    const auto sop = create_sop_form( func );
+    const auto sop = create_sop_form( func, inverted );
 
     stopwatch<> t_tree( time_tree_balancing );
     arrival_time_queue<Ntk> and_terms;
@@ -124,23 +127,68 @@ private:
     return queue.top();
   }
 
-  std::vector<kitty::cube> create_sop_form( kitty::dynamic_truth_table const& func ) const
+  std::vector<kitty::cube> create_sop_form( kitty::dynamic_truth_table const& func, bool& inverted ) const
   {
     stopwatch<> t( time_sop );
+    inverted = false;
+
     if ( auto it = sop_hash_.find( func ); it != sop_hash_.end() )
     {
       sop_cache_hits++;
       return it->second;
     }
-    else
+
+    if ( both_phases_ )
     {
-      sop_cache_misses++;
-      return sop_hash_[func] = kitty::isop( func ); // TODO generalize
+      if ( auto it = sop_hash_.find( ~func ); it != sop_hash_.end() )
+      {
+        inverted = true;
+        sop_cache_hits++;
+        return it->second;
+      }
     }
+
+    sop_cache_misses++;
+    std::vector<kitty::cube> sop = kitty::isop( func );
+
+    if ( both_phases_ )
+    {
+      std::vector<kitty::cube> n_sop = kitty::isop( ~func );
+
+      if ( n_sop.size() < sop.size() )
+      {
+        inverted = true;
+        return sop_hash_[~func] = n_sop;
+      }
+      else if ( n_sop.size() == sop.size() )
+      {
+        /* compute literal cost */
+        uint32_t lit = 0, n_lit = 0;
+        for ( auto const& c : sop )
+        {
+          lit += c.num_literals();
+        }
+        for ( auto const& c : n_sop )
+        {
+          n_lit += c.num_literals();
+        }
+
+        if ( n_lit < lit )
+        {
+          inverted = true;
+          return sop_hash_[~func] = n_sop;
+        }
+      }
+    }
+
+    return sop_hash_[func] = sop;
   }
 
 private:
   mutable std::unordered_map<kitty::dynamic_truth_table, std::vector<kitty::cube>, kitty::hash<kitty::dynamic_truth_table>> sop_hash_;
+
+public:
+  bool both_phases_{ false };
 
 public:
   mutable uint32_t sop_cache_hits{};

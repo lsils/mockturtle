@@ -27,6 +27,7 @@
   \file utils.hpp
   \brief Balancing data types
 
+  \author Alessandro Tempia Calvino
   \author Heinz Riener
   \author Mathias Soeken
 */
@@ -39,6 +40,30 @@
 
 namespace mockturtle
 {
+
+template<class Ntk>
+struct arrival_time_pair
+{
+  signal<Ntk> f;
+  uint32_t level;
+};
+
+/*! \brief Callback function for `rebalancing_function_t`.
+ *
+ * This callback is used in the rebalancing function to announce a new candidate that
+ * could be used for replacement in the main balancing algorithm.  Using a callback
+ * makes it possible to account for situations in which none, a single, or multiple
+ * candidates are generated.
+ *
+ * The callback returns a pair composed of the output signal of the replacement
+ * candidate and the level of the new candidate.  Ideally, the rebalancing function
+ * should not call the callback with candidates that a worse level.
+ */
+template<class Ntk>
+using rebalancing_function_callback_t = std::function<void( arrival_time_pair<Ntk> const&, uint32_t )>;
+
+template<class Ntk>
+using rebalancing_function_t = std::function<void( Ntk&, kitty::dynamic_truth_table const&, std::vector<arrival_time_pair<Ntk>> const&, uint32_t, uint32_t, rebalancing_function_callback_t<Ntk> const& )>;
 
 template<class Ntk>
 struct arrival_time_compare
