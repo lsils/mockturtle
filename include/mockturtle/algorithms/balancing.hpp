@@ -231,9 +231,6 @@ struct balancing_decomp_impl
       } );
     }
 
-    std::shared_ptr<depth_view<Ntk>> depth_ntk;
-    // stopwatch<> t( st_.time_total );
-
     topo_view<Ntk>{ ntk_ }.foreach_node( [&]( auto const& n, auto index ) {
       if ( ntk_.is_constant( n ) || ntk_.is_ci( n ) )
       {

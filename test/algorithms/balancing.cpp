@@ -44,7 +44,7 @@ TEST_CASE( "Rebalance XAG adder using ESOP balancing", "[balancing]" )
   CHECK( depth_view{ xag }.depth() == 22u );
 
   xag = balancing( xag, { esop_rebalancing<xag_network>{} } );
-  CHECK( depth_view{ xag }.depth() == 22u );
+  CHECK( depth_view{ xag }.depth() == 12u );
 }
 
 TEST_CASE( "Rebalance XAG adder using ESOP balancing with SPP optimization", "[balancing]" )
@@ -84,7 +84,7 @@ TEST_CASE( "Rebalance XAG adder using ESOP balancing with MUX optimization", "[b
 
   rebalancing_function_t<xag_network> balancing_fn{ esop };
   xag = balancing( xag, balancing_fn );
-  CHECK( depth_view{ xag }.depth() == 28u );
+  CHECK( depth_view{ xag }.depth() == 17u );
 }
 
 TEST_CASE( "SOP balance AND chain in AIG", "[balancing]" )
@@ -135,7 +135,7 @@ TEST_CASE( "ESOP balance XAG adder", "[balancing]" )
   CHECK( depth_view{ xag }.depth() == 22u );
 
   xag_network res = esop_balancing( xag );
-  CHECK( depth_view{ res }.depth() == 11u );
+  CHECK( depth_view{ res }.depth() == 8u );
 
   auto const miter_ntk = *miter<xag_network>( xag, res );
   CHECK( *equivalence_checking( miter_ntk ) == true );
