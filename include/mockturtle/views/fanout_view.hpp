@@ -27,6 +27,7 @@
   \file fanout_view.hpp
   \brief Implements fanout for a network
 
+  \author Alessandro Tempia Calvino
   \author Hanyu Wang
   \author Heinz Riener
   \author Mathias Soeken
@@ -216,6 +217,32 @@ public:
         old_to_new.insert( { _old, _new } );
         Ntk::take_out_node( _old );
       }
+    }
+  }
+
+  void substitute_node_no_restrash( node const& old_node, signal const& new_signal )
+  {
+    if ( Ntk::get_node( new_signal ) == old_node && !Ntk::is_complemented( new_signal ) )
+      return;
+
+    if ( Ntk::is_dead( Ntk::get_node( new_signal ) ) )
+    {
+      Ntk::revive_node( Ntk::get_node( new_signal ) );
+    }
+
+    const auto parents = _fanout[old_node];
+    for ( auto n : parents )
+    {
+      Ntk::replace_in_node_no_restrash( n, old_node, new_signal );
+    }
+
+    /* check outputs */
+    Ntk::replace_in_outputs( old_node, new_signal );
+
+    /* recursively reset old node */
+    if ( old_node != new_signal.index )
+    {
+      Ntk::take_out_node( old_node );
     }
   }
 

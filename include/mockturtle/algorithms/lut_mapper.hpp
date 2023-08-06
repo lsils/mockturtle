@@ -36,22 +36,30 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <queue>
 #include <sstream>
 #include <string>
 
 #include <fmt/format.h>
+#include <kitty/cube.hpp>
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/esop.hpp>
+#include <kitty/isop.hpp>
 #include <kitty/operations.hpp>
 
 #include "../networks/klut.hpp"
 #include "../utils/cost_functions.hpp"
 #include "../utils/cuts.hpp"
+#include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/truth_table_cache.hpp"
+#include "../views/choice_view.hpp"
 #include "../views/mapping_view.hpp"
 #include "../views/mffc_view.hpp"
 #include "../views/topo_view.hpp"
+#include "cleanup.hpp"
 #include "cut_enumeration.hpp"
+#include "exorcism.hpp"
 #include "simulation.hpp"
 
 namespace mockturtle
@@ -74,8 +82,8 @@ struct lut_map_params
   /*! \brief Parameters for cut enumeration
    *
    * The default cut limit is 8. The maximum value
-   * is 249. By default, truth table minimization
-   * is performed.
+   * is 16. The maxiumum cut size is 16. By default,
+   * truth table minimization is performed.
    */
   cut_enumeration_params cut_enumeration_ps{};
 
@@ -90,6 +98,9 @@ struct lut_map_params
 
   /*! \brief Recompute cuts at each step. */
   bool recompute_cuts{ true };
+
+  /*! \brief Number of rounds for area sharing optimization. */
+  uint32_t area_share_rounds{ 2u };
 
   /*! \brief Number of rounds for area flow optimization. */
   uint32_t area_flow_rounds{ 1u };
@@ -108,6 +119,12 @@ struct lut_map_params
 
   /*! \brief Maps by collapsing MFFCs */
   bool collapse_mffcs{ false };
+
+  /*! \brief Depth optimization by balancing ISOPs */
+  bool sop_balancing{ false };
+
+  /*! \brief Depth optimization by balancing ESOPs */
+  bool esop_balancing{ false };
 
   /*! \brief Maximum number variables for cost function caching */
   uint32_t cost_cache_vars{ 3u };
@@ -161,6 +178,7 @@ struct cut_enumeration_lut_cut
   uint32_t lut_delay{ 0 };
   float area_flow{ 0 };
   float edge_flow{ 0 };
+  bool ignore{ false };
 };
 
 enum class lut_cut_sort_type
@@ -168,6 +186,7 @@ enum class lut_cut_sort_type
   DELAY,
   DELAY2,
   AREA,
+  AREA2,
   NONE
 };
 
@@ -180,6 +199,25 @@ public:
   lut_cut_set()
   {
     clear();
+  }
+
+  /*! \brief Assignment operator.
+   */
+  lut_cut_set& operator=( lut_cut_set const& other )
+  {
+    if ( this != &other )
+    {
+      _pcend = _pend = _pcuts.begin();
+
+      auto it = other.begin();
+      while ( it != other.end() )
+      {
+        **_pend++ = **it++;
+        ++_pcend;
+      }
+    }
+
+    return *this;
   }
 
   /*! \brief Clears a cut set.
@@ -228,6 +266,10 @@ public:
   static bool sort_delay( CutType const& c1, CutType const& c2 )
   {
     constexpr auto eps{ 0.005f };
+    if ( !c1->data.ignore && c2->data.ignore )
+      return true;
+    if ( c1->data.ignore && !c2->data.ignore )
+      return false;
     if ( c1->data.delay < c2->data.delay )
       return true;
     if ( c1->data.delay > c2->data.delay )
@@ -246,6 +288,10 @@ public:
   static bool sort_delay2( CutType const& c1, CutType const& c2 )
   {
     constexpr auto eps{ 0.005f };
+    if ( !c1->data.ignore && c2->data.ignore )
+      return true;
+    if ( c1->data.ignore && !c2->data.ignore )
+      return false;
     if ( c1->data.delay < c2->data.delay )
       return true;
     if ( c1->data.delay > c2->data.delay )
@@ -264,6 +310,28 @@ public:
   static bool sort_area( CutType const& c1, CutType const& c2 )
   {
     constexpr auto eps{ 0.005f };
+    if ( !c1->data.ignore && c2->data.ignore )
+      return true;
+    if ( c1->data.ignore && !c2->data.ignore )
+      return false;
+    if ( c1->data.area_flow < c2->data.area_flow - eps )
+      return true;
+    if ( c1->data.area_flow > c2->data.area_flow + eps )
+      return false;
+    if ( c1->data.delay < c2->data.delay )
+      return true;
+    if ( c1->data.delay > c2->data.delay )
+      return false;
+    return c1.size() < c2.size();
+  }
+
+  static bool sort_area2( CutType const& c1, CutType const& c2 )
+  {
+    constexpr auto eps{ 0.005f };
+    if ( !c1->data.ignore && c2->data.ignore )
+      return true;
+    if ( c1->data.ignore && !c2->data.ignore )
+      return false;
     if ( c1->data.area_flow < c2->data.area_flow - eps )
       return true;
     if ( c1->data.area_flow > c2->data.area_flow + eps )
@@ -301,6 +369,10 @@ public:
     {
       return sort_area( cut1, cut2 );
     }
+    else if ( sort == lut_cut_sort_type::AREA2 )
+    {
+      return sort_area2( cut1, cut2 );
+    }
     else
     {
       return false;
@@ -335,6 +407,10 @@ public:
     else if ( sort == lut_cut_sort_type::AREA )
     {
       ipos = std::lower_bound( _pcuts.begin(), _pend, &cut, []( auto a, auto b ) { return sort_area( *a, *b ); } );
+    }
+    else if ( sort == lut_cut_sort_type::AREA2 )
+    {
+      ipos = std::lower_bound( _pcuts.begin(), _pend, &cut, []( auto a, auto b ) { return sort_area2( *a, *b ); } );
     }
     else /* NONE */
     {
@@ -453,7 +529,7 @@ public:
 
   /*! \brief Returns the best cut, i.e., the first cut.
    */
-  auto const& best() const { return *_pcuts[0]; }
+  auto& best() const { return *_pcuts[0]; }
 
   /*! \brief Updates the best cut.
    *
@@ -517,15 +593,32 @@ struct node_lut
 template<class Ntk, bool StoreFunction, class LUTCostFn>
 class lut_map_impl
 {
+private:
+  /* special map for output drivers to perform some optimizations */
+  enum class driver_type : uint32_t
+  {
+    none = 0,
+    pos = 1,
+    neg = 2,
+    mixed = 3
+  };
+
 public:
-  static constexpr uint32_t max_cut_num = 250;
-  using cut_t = cut_type<StoreFunction, cut_enumeration_lut_cut>;
+  static constexpr uint32_t max_cut_num = 32;
+  static constexpr uint32_t max_cut_size = 16;
+  static constexpr uint32_t max_cubes = 64;
+  static constexpr uint32_t max_sop_decomp_size = max_cut_size * ( max_cubes + 1 );
+  using cut_t = cut<max_cut_size, cut_data<StoreFunction, cut_enumeration_lut_cut>>;
   using cut_set_t = lut_cut_set<cut_t, max_cut_num>;
   using node = typename Ntk::node;
   using cut_merge_t = typename std::array<cut_set_t*, Ntk::max_fanin_size + 1>;
   using TT = kitty::dynamic_truth_table;
   using tt_cache = truth_table_cache<TT>;
   using cost_cache = std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>>;
+  using sop_t = std::vector<kitty::cube>;
+  using isop_cache = std::vector<sop_t>;
+  using cubes_queue_t = std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<uint32_t>>;
+  using lut_info = std::pair<kitty::dynamic_truth_table, std::vector<signal<klut_network>>>;
 
 public:
   explicit lut_map_impl( Ntk& ntk, lut_map_params const& ps, lut_map_stats& st )
@@ -543,19 +636,42 @@ public:
       kitty::create_nth_var( proj, 0u );
 
       tmp_visited.reserve( 100 );
-      truth_tables.resize( 20000 );
+      truth_tables.resize( 32768 );
 
       truth_tables.insert( zero );
       truth_tables.insert( proj );
 
+      /* reserve cost cache */
       if constexpr ( !std::is_same<LUTCostFn, lut_unitary_cost>::value )
       {
         truth_tables_cost.reserve( 1000 );
       }
+
+      /* reserve ISOP cache */
+      if ( ps.sop_balancing || ps.esop_balancing )
+      {
+        isops.reserve( 32768 );
+        isops.emplace_back();                       /* empty ISOP for constant */
+        isops.push_back( { kitty::cube{ 1, 1 } } ); /* ISOP for variable */
+      }
     }
   }
 
-  void run()
+  klut_network run()
+  {
+    stopwatch t( st.time_total );
+
+    /* compute and save topological order */
+    topo_order.reserve( ntk.size() );
+    topo_view<Ntk>( ntk ).foreach_node( [this]( auto n ) {
+      topo_order.push_back( n );
+    } );
+
+    perform_mapping();
+    return create_lut_network();
+  }
+
+  void run_inplace()
   {
     stopwatch t( st.time_total );
 
@@ -570,6 +686,16 @@ public:
       compute_mffcs_mapping();
       return;
     }
+
+    perform_mapping();
+    derive_mapping();
+  }
+
+private:
+  void perform_mapping()
+  {
+    /* define area sorting function */
+    lut_cut_sort_type area_sort = ( ps.area_oriented_mapping && !ps.edge_optimization ) ? lut_cut_sort_type::AREA : lut_cut_sort_type::AREA2;
 
     /* init the data structure */
     init_nodes();
@@ -586,7 +712,7 @@ public:
         compute_required_time();
         compute_mapping<false, false>( lut_cut_sort_type::DELAY2, true, true );
         compute_required_time();
-        compute_mapping<true, false>( lut_cut_sort_type::AREA, true, true );
+        compute_mapping<true, false>( area_sort, true, true );
       }
       else
       {
@@ -596,7 +722,7 @@ public:
     else
     {
       compute_required_time();
-      compute_mapping<true, false>( lut_cut_sort_type::AREA, false, true );
+      compute_mapping<true, false>( area_sort, false, true );
     }
 
     if ( ps.cut_expansion )
@@ -605,13 +731,25 @@ public:
       expand_cuts<false>();
     }
 
+    /* try backward area iterations */
     uint32_t i = 0;
+    while ( i < ps.area_share_rounds )
+    {
+      compute_share_mapping( area_sort, i == 0 );
+
+      if ( ps.cut_expansion )
+      {
+        expand_cuts<false>();
+      }
+      ++i;
+    }
 
     /* compute mapping using global area flow */
+    i = 0;
     while ( i < ps.area_flow_rounds )
     {
       compute_required_time();
-      compute_mapping<true, false>( lut_cut_sort_type::AREA, false, ps.recompute_cuts );
+      compute_mapping<true, false>( area_sort, false, ps.recompute_cuts );
 
       if ( ps.cut_expansion )
       {
@@ -626,7 +764,7 @@ public:
     while ( i < ps.ela_rounds )
     {
       compute_required_time();
-      compute_mapping<true, true>( lut_cut_sort_type::AREA, false, ps.recompute_cuts );
+      compute_mapping<true, true>( area_sort, false, ps.recompute_cuts );
 
       if ( ps.cut_expansion )
       {
@@ -635,12 +773,8 @@ public:
       }
       ++i;
     }
-
-    /* generate the output network */
-    derive_mapping();
   }
 
-private:
   void init_nodes()
   {
     ntk.foreach_node( [this]( auto const& n ) {
@@ -676,7 +810,7 @@ private:
         auto const index = ntk.node_to_index( n );
         if ( !preprocess && iteration != 0 )
         {
-          node_match[index].est_refs = ( 2.0 * node_match[index].est_refs + node_match[index].map_refs ) / 3.0;
+          node_match[index].est_refs = ( 2.0 * node_match[index].est_refs + 1.0 * node_match[index].map_refs ) / 3.0;
         }
         else
         {
@@ -715,15 +849,14 @@ private:
     }
 
     /* round stats */
-    if ( ps.verbose )
     {
       std::stringstream stats;
 
-      if ( sort == lut_cut_sort_type::AREA && ELA )
+      if ( ( sort == lut_cut_sort_type::AREA || sort == lut_cut_sort_type::AREA2 ) && ELA )
       {
         stats << fmt::format( "[i] Area     : Delay = {:8d}  Area = {:8d}  Edges = {:8d}  Cuts = {:8d}\n", delay, area, edges, cuts_total );
       }
-      else if ( sort == lut_cut_sort_type::AREA )
+      else if ( sort == lut_cut_sort_type::AREA || sort == lut_cut_sort_type::AREA2 )
       {
         stats << fmt::format( "[i] AreaFlow : Delay = {:8d}  Area = {:8d}  Edges = {:8d}  Cuts = {:8d}\n", delay, area, edges, cuts_total );
       }
@@ -736,6 +869,32 @@ private:
         stats << fmt::format( "[i] Delay    : Delay = {:8d}  Area = {:8d}  Edges = {:8d}  Cuts = {:8d}\n", delay, area, edges, cuts_total );
       }
       st.round_stats.push_back( stats.str() );
+    }
+  }
+
+  void compute_share_mapping( lut_cut_sort_type const sort, bool first )
+  {
+    /* reset required times and references except for POs */
+    compute_share_mapping_init( first );
+
+    for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
+    {
+      auto const index = ntk.node_to_index( *it );
+
+      /* skip not used nodes */
+      if ( node_match[index].map_refs == 0 )
+        continue;
+
+      /* update cost the function and move the best one first */
+      update_cut_data_share( *it, sort );
+    }
+
+    /* propagate correct arrival times and compute stats */
+    propagate_arrival_times();
+
+    /* round stats */
+    {
+      st.round_stats.push_back( fmt::format( "[i] AreaSh   : Delay = {:8d}  Area = {:8d}  Edges = {:8d}  Cuts = {:8d}\n", delay, area, edges, cuts_total ) );
     }
   }
 
@@ -874,11 +1033,108 @@ private:
       if ( node_match[index].map_refs == 0 )
         continue;
 
+      /* in case of decomposition cost */
+      if constexpr ( StoreFunction )
+      {
+        if ( ps.sop_balancing || ps.esop_balancing )
+        {
+          compute_balancing_cost_required( index );
+          continue;
+        }
+      }
+
       for ( auto leaf : cuts[index][0] )
       {
-        node_match[leaf].required = std::min( node_match[leaf].required, node_match[index].required - 1 );
+        node_match[leaf].required = std::min( node_match[leaf].required, node_match[index].required - cuts[index][0]->data.lut_delay );
       }
     }
+  }
+
+  void propagate_arrival_times()
+  {
+    area = 0;
+    edges = 0;
+    for ( auto const& n : topo_order )
+    {
+      auto index = ntk.node_to_index( n );
+
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
+      {
+        continue;
+      }
+
+      /* propagate arrival time */
+      uint32_t node_delay = 0;
+      auto& best_cut = cuts[index].best();
+
+      for ( auto leaf : best_cut )
+      {
+        const auto& best_leaf_cut = cuts[leaf][0];
+        node_delay = std::max( node_delay, best_leaf_cut->data.delay );
+      }
+
+      best_cut->data.delay = node_delay + best_cut->data.lut_delay;
+
+      /* continue if not referenced in the cover */
+      if ( node_match[index].map_refs == 0u )
+        continue;
+
+      /* update stats */
+      area += best_cut->data.lut_area;
+      edges += best_cut.size();
+    }
+
+    /* update worst delay */
+    delay = 0;
+    ntk.foreach_co( [this]( auto s ) {
+      const auto index = ntk.node_to_index( ntk.get_node( s ) );
+      delay = std::max( delay, cuts[index][0]->data.delay );
+    } );
+  }
+
+  void compute_share_mapping_init( bool first )
+  {
+    /* reset the mapping references and the required time */
+    for ( auto i = 0u; i < node_match.size(); ++i )
+    {
+      node_match[i].required = UINT32_MAX >> 1;
+      if ( !first )
+        node_match[i].est_refs = ( 2.0 * node_match[i].est_refs + 1.0 * node_match[i].map_refs ) / 3.0;
+      else
+        node_match[i].est_refs = std::max( 1.0, ( 1.0 * node_match[i].est_refs + 2.0 * node_match[i].map_refs ) / 3.0 );
+      node_match[i].map_refs = 0;
+
+      /* update flows if in area-oriented mapping */
+      if ( ps.area_oriented_mapping )
+        compute_cut_data<false>( cuts[i].best(), ntk.index_to_node( i ), false );
+    }
+
+    uint32_t required = delay;
+    if ( ps.required_delay == 0.0f && ps.relax_required > 0.0f )
+    {
+      required *= ( 100.0 + ps.relax_required ) / 100.0;
+    }
+
+    if ( ps.required_delay != 0 )
+    {
+      /* Global target time constraint */
+      if ( ps.required_delay < delay )
+      {
+        if ( !ps.area_oriented_mapping && iteration == 1 )
+          std::cerr << fmt::format( "[i] MAP WARNING: cannot meet the target required time of {:.2f}", ps.required_delay ) << std::endl;
+      }
+      else
+      {
+        required = ps.required_delay;
+      }
+    }
+
+    /* set the required time at POs */
+    ntk.foreach_co( [&]( auto const& s ) {
+      const auto index = ntk.node_to_index( ntk.get_node( s ) );
+      node_match[index].required = required;
+      node_match[index].map_refs++;
+    } );
   }
 
   template<bool DO_AREA, bool ELA>
@@ -1112,7 +1368,7 @@ private:
           new_cut->func_id = compute_truth_table( index, { cut }, new_cut );
         }
 
-        compute_cut_data<ELA>( new_cut, n, true );
+        compute_cut_data<ELA>( new_cut, index, true );
 
         if constexpr ( DO_AREA )
         {
@@ -1221,6 +1477,52 @@ private:
     node_cut_set.update_best( best_cut_index );
   }
 
+  void update_cut_data_share( node const& n, lut_cut_sort_type const sort )
+  {
+    auto index = ntk.node_to_index( n );
+    auto& node_data = node_match[index];
+    auto& node_cut_set = cuts[index];
+    uint32_t best_cut_index = 0;
+    uint32_t cut_index = 0;
+
+    cut_t const* best_cut = &node_cut_set.best();
+
+    /* recompute the data for all the cuts and pick the best */
+    for ( cut_t* cut : node_cut_set )
+    {
+      /* skip trivial cut */
+      if ( cut->size() == 1 && *cut->begin() == index )
+      {
+        ++cut_index;
+        continue;
+      }
+
+      compute_cut_data_share( *cut );
+
+      /* update best */
+      if ( ( *cut )->data.delay <= node_data.required )
+      {
+        if ( node_cut_set.compare( *cut, *best_cut, sort ) )
+        {
+          best_cut = cut;
+          best_cut_index = cut_index;
+        }
+      }
+
+      ++cut_index;
+    }
+
+    /* propagate required times backward and reference the leaves */
+    for ( auto leaf : *best_cut )
+    {
+      node_match[leaf].required = std::min( node_match[leaf].required, node_data.required - ( *best_cut )->data.lut_delay );
+      node_match[leaf].map_refs++;
+    }
+
+    /* update the best cut */
+    node_cut_set.update_best( best_cut_index );
+  }
+
   void expand_cuts_node( node const& n )
   {
     auto index = ntk.node_to_index( n );
@@ -1234,7 +1536,7 @@ private:
     uint32_t delay_update = 0;
     for ( auto const leaf : best_cut )
     {
-      delay_update = std::max( delay_update, cuts[leaf][0]->data.delay + 1 );
+      delay_update = std::max( delay_update, cuts[leaf][0]->data.delay + best_cut->data.lut_delay );
     }
     best_cut->data.delay = delay_update;
 
@@ -1280,7 +1582,7 @@ private:
     uint32_t delay_after = 0;
     for ( auto const leaf : leaves )
     {
-      delay_after = std::max( delay_after, cuts[leaf][0]->data.delay + 1 );
+      delay_after = std::max( delay_after, cuts[leaf][0]->data.delay + new_cut->data.lut_delay );
     }
     new_cut->data.delay = delay_after;
 
@@ -1534,39 +1836,6 @@ private:
     return count;
   }
 
-  void derive_mapping()
-  {
-    ntk.clear_mapping();
-
-    for ( auto const& n : topo_order )
-    {
-      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
-        continue;
-
-      const auto index = ntk.node_to_index( n );
-      if ( node_match[index].map_refs == 0 )
-        continue;
-
-      std::vector<node> nodes;
-      auto const& best_cut = cuts[index][0];
-
-      for ( auto const& l : best_cut )
-      {
-        nodes.push_back( ntk.index_to_node( l ) );
-      }
-      ntk.add_to_mapping( n, nodes.begin(), nodes.end() );
-
-      if constexpr ( StoreFunction )
-      {
-        ntk.set_cell_function( n, truth_tables[best_cut->func_id] );
-      }
-    }
-
-    st.area = area;
-    st.delay = delay;
-    st.edges = edges;
-  }
-
   void mark_cut_volume_rec( node const& n )
   {
     if ( ntk.visited( n ) == ntk.trav_id() )
@@ -1608,34 +1877,42 @@ private:
   template<bool ELA>
   void compute_cut_data( cut_t& cut, node const& n, bool recompute_cut_cost )
   {
-    uint32_t lut_area;
-    uint32_t lut_delay;
+    uint32_t lut_area = 0;
+    uint32_t lut_delay = 0;
 
     if ( recompute_cut_cost )
     {
+      cut->data.ignore = false;
       if constexpr ( StoreFunction )
       {
-        if constexpr ( !std::is_same<LUTCostFn, lut_unitary_cost>::value )
+        if ( ps.sop_balancing || ps.esop_balancing )
         {
-          if ( auto it = truth_tables_cost.find( cut->func_id ); it != truth_tables_cost.end() )
-          {
-            std::tie( lut_area, lut_delay ) = it->second;
-          }
-          else
-          {
-            auto cost = lut_cost( truth_tables[cut->func_id] );
-            if ( truth_tables[cut->func_id].num_vars() <= ps.cost_cache_vars )
-            {
-              /* cache it */
-              truth_tables_cost[cut->func_id] = cost;
-            }
-            lut_area = cost.first;
-            lut_delay = cost.second;
-          }
+          compute_isop( cut );
         }
         else
         {
-          std::tie( lut_area, lut_delay ) = lut_cost( truth_tables[cut->func_id] );
+          if constexpr ( !std::is_same<LUTCostFn, lut_unitary_cost>::value )
+          {
+            if ( auto it = truth_tables_cost.find( cut->func_id ); it != truth_tables_cost.end() )
+            {
+              std::tie( lut_area, lut_delay ) = it->second;
+            }
+            else
+            {
+              auto cost = lut_cost( truth_tables[cut->func_id] );
+              if ( truth_tables[cut->func_id].num_vars() <= ps.cost_cache_vars )
+              {
+                /* cache it */
+                truth_tables_cost[cut->func_id] = cost;
+              }
+              lut_area = cost.first;
+              lut_delay = cost.second;
+            }
+          }
+          else
+          {
+            std::tie( lut_area, lut_delay ) = lut_cost( truth_tables[cut->func_id] );
+          }
         }
       }
       else
@@ -1647,6 +1924,16 @@ private:
     {
       lut_area = cut->data.lut_area;
       lut_delay = cut->data.lut_delay;
+
+      if constexpr ( StoreFunction )
+      {
+        if ( ps.sop_balancing || ps.esop_balancing )
+        {
+          /* reset fields to be recomputed */
+          cut->data.lut_area = 0;
+          cut->data.lut_delay = 0;
+        }
+      }
     }
 
     if constexpr ( ELA )
@@ -1701,6 +1988,38 @@ private:
       cut->data.area_flow = area_flow;
       cut->data.edge_flow = edge_flow;
     }
+
+    if constexpr ( StoreFunction )
+    {
+      if ( ps.sop_balancing || ps.esop_balancing )
+      {
+        /* compute delay and area */
+        compute_balancing_cost( cut );
+      }
+    }
+  }
+
+  void compute_cut_data_share( cut_t& cut )
+  {
+    uint32_t delay{ 0 };
+    float area_flow = static_cast<float>( cut->data.lut_area );
+    float edge_flow = cut.size();
+
+    for ( auto leaf : cut )
+    {
+      const auto& best_leaf_cut = cuts[leaf][0];
+      delay = std::max( delay, best_leaf_cut->data.delay );
+      /* flow contribution is added only for not shared leaves */
+      if ( node_match[leaf].map_refs == 0 && leaf != 0 )
+      {
+        area_flow += best_leaf_cut->data.area_flow / node_match[leaf].est_refs;
+        edge_flow += best_leaf_cut->data.edge_flow / node_match[leaf].est_refs;
+      }
+    }
+
+    cut->data.delay = cut->data.lut_delay + delay;
+    cut->data.area_flow = area_flow;
+    cut->data.edge_flow = edge_flow;
   }
 
   void add_zero_cut( uint32_t index, bool phase )
@@ -1823,7 +2142,6 @@ private:
     st.delay = delay;
     st.edges = edges;
 
-    if ( ps.verbose )
     {
       std::stringstream stats;
       stats << fmt::format( "[i] Area MFFC: Delay = {:8d}  Area = {:8d}  Edges = {:8d}  Cuts = {:8d}\n", delay, area, edges, cuts_total );
@@ -1927,6 +2245,501 @@ private:
     node_to_value[n] = ntk.compute( n, fanin_values.begin(), fanin_values.end() );
   }
 
+#pragma region Dump network
+  klut_network create_lut_network()
+  {
+    klut_network res;
+    node_map<signal<klut_network>, Ntk> node_to_signal( ntk );
+
+    node_map<driver_type, Ntk> node_driver_type( ntk, driver_type::none );
+
+    /* opposites are filled for nodes with mixed driver types, since they have
+       two nodes in the network. */
+    std::unordered_map<node, signal<klut_network>> opposites;
+
+    /* initial driver types */
+    ntk.foreach_co( [&]( auto const& f ) {
+      switch ( node_driver_type[f] )
+      {
+      case driver_type::none:
+        node_driver_type[f] = ntk.is_complemented( f ) ? driver_type::neg : driver_type::pos;
+        break;
+      case driver_type::pos:
+        node_driver_type[f] = ntk.is_complemented( f ) ? driver_type::mixed : driver_type::pos;
+        break;
+      case driver_type::neg:
+        node_driver_type[f] = ntk.is_complemented( f ) ? driver_type::neg : driver_type::mixed;
+        break;
+      case driver_type::mixed:
+      default:
+        break;
+      }
+    } );
+
+    /* constants */
+    auto add_constant_to_map = [&]( bool value ) {
+      const auto n = ntk.get_node( ntk.get_constant( value ) );
+      switch ( node_driver_type[n] )
+      {
+      default:
+      case driver_type::none:
+      case driver_type::pos:
+        node_to_signal[n] = res.get_constant( value );
+        break;
+
+      case driver_type::neg:
+        node_to_signal[n] = res.get_constant( !value );
+        break;
+
+      case driver_type::mixed:
+        node_to_signal[n] = res.get_constant( value );
+        opposites[n] = res.get_constant( !value );
+        break;
+      }
+    };
+
+    add_constant_to_map( false );
+    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+    {
+      add_constant_to_map( true );
+    }
+
+    /* primary inputs */
+    ntk.foreach_pi( [&]( auto n ) {
+      signal<klut_network> res_signal;
+      switch ( node_driver_type[n] )
+      {
+      default:
+      case driver_type::none:
+      case driver_type::pos:
+        res_signal = res.create_pi();
+        node_to_signal[n] = res_signal;
+        break;
+
+      case driver_type::neg:
+        res_signal = res.create_pi();
+        node_to_signal[n] = res.create_not( res_signal );
+        break;
+
+      case driver_type::mixed:
+        res_signal = res.create_pi();
+        node_to_signal[n] = res_signal;
+        opposites[n] = res.create_not( node_to_signal[n] );
+        break;
+      }
+    } );
+
+    /* TODO: add sequential compatibility */
+    for ( auto const& n : topo_order )
+    {
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
+        continue;
+
+      const auto index = ntk.node_to_index( n );
+      if ( node_match[index].map_refs == 0 )
+        continue;
+
+      auto const& best_cut = cuts[index][0];
+
+      kitty::dynamic_truth_table tt;
+      std::vector<signal<klut_network>> children;
+      std::tie( tt, children ) = create_lut( n, node_to_signal, node_driver_type );
+
+      switch ( node_driver_type[n] )
+      {
+      default:
+      case driver_type::none:
+      case driver_type::pos:
+        node_to_signal[n] = res.create_node( children, tt );
+        break;
+
+      case driver_type::neg:
+        node_to_signal[n] = res.create_node( children, ~tt );
+        break;
+
+      case driver_type::mixed:
+        node_to_signal[n] = res.create_node( children, tt );
+        opposites[n] = res.create_node( children, ~tt );
+        break;
+      }
+    }
+
+    /* outputs */
+    ntk.foreach_po( [&]( auto const& f ) {
+      if ( ntk.is_complemented( f ) && node_driver_type[f] == driver_type::mixed )
+        res.create_po( opposites[ntk.get_node( f )] );
+      else
+        res.create_po( node_to_signal[f] );
+    } );
+
+    st.area = area;
+    st.delay = delay;
+    st.edges = edges;
+
+    return res;
+  }
+
+  inline lut_info create_lut( node const& n, node_map<signal<klut_network>, Ntk>& node_to_signal, node_map<driver_type, Ntk> const& node_driver_type )
+  {
+    auto const& best_cut = cuts[ntk.node_to_index( n )][0];
+
+    std::vector<signal<klut_network>> children;
+    for ( auto const& l : best_cut )
+    {
+      children.push_back( node_to_signal[ntk.index_to_node( l )] );
+    }
+
+    kitty::dynamic_truth_table tt;
+
+    if constexpr ( StoreFunction )
+    {
+      tt = truth_tables[best_cut->func_id];
+    }
+    else
+    {
+      /* recursively compute the function for each choice until success */
+      ntk.incr_trav_id();
+      unordered_node_map<kitty::dynamic_truth_table, Ntk> node_to_value( ntk );
+
+      /* add constants */
+      node_to_value[ntk.get_node( ntk.get_constant( false ) )] = kitty::dynamic_truth_table( best_cut.size() );
+      ntk.set_visited( ntk.get_node( ntk.get_constant( false ) ), ntk.trav_id() );
+      if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
+      {
+        node_to_value[ntk.get_node( ntk.get_constant( true ) )] = ~kitty::dynamic_truth_table( best_cut.size() );
+        ntk.set_visited( ntk.get_node( ntk.get_constant( true ) ), ntk.trav_id() );
+      }
+
+      /* add leaves */
+      uint32_t ctr = 0;
+      for ( uint32_t leaf : best_cut )
+      {
+        kitty::dynamic_truth_table tt_leaf( best_cut.size() );
+        kitty::create_nth_var( tt_leaf, ctr++, node_driver_type[ntk.index_to_node( leaf )] == driver_type::neg );
+        node_to_value[ntk.index_to_node( leaf )] = tt_leaf;
+        ntk.set_visited( ntk.index_to_node( leaf ), ntk.trav_id() );
+      }
+
+      /* recursively compute the function */
+      ntk.foreach_fanin( n, [&]( auto const& f ) {
+        compute_function_rec( ntk.get_node( f ), node_to_value );
+      } );
+
+      std::vector<kitty::dynamic_truth_table> tts;
+      ntk.foreach_fanin( n, [&]( auto const& f ) {
+        tts.push_back( node_to_value[ntk.get_node( f )] );
+      } );
+      tt = ntk.compute( n, tts.begin(), tts.end() );
+    }
+
+    return { tt, children };
+  }
+
+  void compute_function_rec( node const& n, unordered_node_map<kitty::dynamic_truth_table, Ntk>& node_to_value )
+  {
+    if ( ntk.visited( n ) == ntk.trav_id() )
+    {
+      assert( node_to_value.has( n ) );
+      return;
+    }
+
+    assert( !ntk.is_ci( n ) );
+    ntk.set_visited( n, ntk.trav_id() );
+
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      compute_function_rec( ntk.get_node( f ), node_to_value );
+    } );
+
+    /* compute the function */
+    std::vector<kitty::dynamic_truth_table> tts;
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      tts.push_back( node_to_value[ntk.get_node( f )] );
+    } );
+
+    node_to_value[n] = ntk.compute( n, tts.begin(), tts.end() );
+  }
+
+  void derive_mapping()
+  {
+    ntk.clear_mapping();
+
+    for ( auto const& n : topo_order )
+    {
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
+        continue;
+
+      const auto index = ntk.node_to_index( n );
+      if ( node_match[index].map_refs == 0 )
+        continue;
+
+      std::vector<node> nodes;
+      auto const& best_cut = cuts[index][0];
+
+      for ( auto const& l : best_cut )
+      {
+        nodes.push_back( ntk.index_to_node( l ) );
+      }
+      ntk.add_to_mapping( n, nodes.begin(), nodes.end() );
+
+      if constexpr ( StoreFunction )
+      {
+        ntk.set_cell_function( n, truth_tables[best_cut->func_id] );
+      }
+    }
+
+    st.area = area;
+    st.delay = delay;
+    st.edges = edges;
+  }
+#pragma endregion
+
+#pragma region balancing
+  void compute_isop( cut_t& cut, bool both_phases = true )
+  {
+    uint32_t func_id = cut->func_id >> 1;
+
+    if ( func_id < isops.size() )
+    {
+      auto const& sop = isops[func_id];
+      if ( sop.size() > max_cubes )
+      {
+        cut->data.ignore = true;
+      }
+      return;
+    }
+
+    assert( func_id == isops.size() );
+
+    sop_t sop, sop_n;
+    if ( ps.sop_balancing )
+    {
+      sop = kitty::isop( truth_tables[func_id << 1u] );
+    }
+    else
+    {
+      sop = exorcism( truth_tables[func_id << 1u] );
+    }
+
+    if ( both_phases )
+    {
+      sop_t n_sop;
+      if ( ps.sop_balancing )
+      {
+        n_sop = kitty::isop( ~truth_tables[func_id << 1u] );
+      }
+      else
+      {
+        n_sop = exorcism( ~truth_tables[func_id << 1u] );
+      }
+
+      if ( n_sop.size() < sop.size() )
+      {
+        sop.swap( n_sop );
+      }
+      else if ( n_sop.size() == sop.size() )
+      {
+        /* compute literal cost */
+        uint32_t lit = 0, n_lit = 0;
+        for ( auto const& c : sop )
+        {
+          lit += c.num_literals();
+        }
+        for ( auto const& c : n_sop )
+        {
+          n_lit += c.num_literals();
+        }
+
+        if ( n_lit < lit )
+        {
+          sop.swap( n_sop );
+        }
+      }
+    }
+
+    /* check size of SOP < max_cubes */
+    if ( sop.size() > max_cubes )
+    {
+      cut->data.ignore = true;
+    }
+
+    isops.push_back( sop );
+    return;
+  }
+
+  void compute_balancing_cost( cut_t& cut )
+  {
+    uint32_t decomposition_size = 0;
+    uint32_t decomposition_delay = 0;
+
+    auto const& sop = isops[cut->func_id >> 1];
+
+    if ( cut->data.ignore || sop.size() > max_cubes )
+      return;
+
+    /* specific case size = 0 or = 1 */
+    if ( cut.size() < 2 )
+      return;
+
+    /* collect arrival times for fanin */
+    std::array<uint32_t, max_cut_size> arrival_pin;
+    unsigned i = 0;
+    for ( auto l : cut )
+      arrival_pin[i++] = cuts[l].best()->data.delay;
+
+    cubes_queue_t terms;
+
+    /* get terms delay */
+    assert( sop.size() <= max_cubes );
+    for ( kitty::cube const& c : sop )
+    {
+      cubes_queue_t lits;
+      for ( i = 0; i < cut.size(); ++i )
+      {
+        if ( c.get_mask( i ) )
+        {
+          lits.push( arrival_pin[i] );
+        }
+      }
+
+      if ( lits.size() == 0 )
+        continue;
+
+      decomposition_size += lits.size() - 1;
+      terms.push( compute_balancing_cost_term( lits ) );
+    }
+
+    assert( terms.size() > 0 );
+
+    decomposition_size += terms.size() - 1;
+    decomposition_delay = compute_balancing_cost_term( terms );
+
+    cut->data.delay = decomposition_delay;
+    cut->data.lut_area = decomposition_size;
+    cut->data.lut_delay = 1; /* not used */
+    cut->data.area_flow += decomposition_size;
+    /* edge flow not used */
+  }
+
+  inline uint32_t compute_balancing_cost_term( cubes_queue_t& terms )
+  {
+    while ( terms.size() != 1 )
+    {
+      uint32_t l0 = terms.top();
+      terms.pop();
+      uint32_t l1 = terms.top();
+      terms.pop();
+      terms.push( std::max( l0, l1 ) + 1 );
+    }
+
+    return terms.top();
+  }
+
+  void compute_balancing_cost_required( uint32_t index )
+  {
+    cut_t const& cut = cuts[index][0];
+
+    if ( cut.size() == 0 )
+      return;
+
+    /* propagate unit delay back */
+    if ( cut.size() == 1 )
+    {
+      for ( auto l : cut )
+      {
+        node_match[l].required = std::min( node_match[l].required, node_match[index].required );
+      }
+    }
+
+    /* collect arrival times for fanin */
+    std::array<std::pair<uint16_t, uint16_t>, max_sop_decomp_size> connections;
+    std::array<uint32_t, max_cut_size> arrival_pin;
+    std::array<uint32_t, max_sop_decomp_size> required;
+    unsigned size = 0;
+    for ( auto l : cut )
+    {
+      arrival_pin[size] = cuts[l].best()->data.delay;
+      connections[size] = std::make_pair( size, size );
+      ++size;
+    }
+
+    auto priority_cmp = []( std::pair<uint32_t, uint16_t> const& a, std::pair<uint32_t, uint16_t> const& b ) { return a.first > b.first; };
+    using cubes_queue2_t = std::priority_queue<std::pair<uint32_t, uint16_t>, std::vector<std::pair<uint32_t, uint16_t>>, decltype( priority_cmp )>;
+
+    cubes_queue2_t terms( priority_cmp );
+
+    /* get terms delay */
+    auto const& sop = isops[cut->func_id >> 1];
+    assert( sop.size() <= max_cubes );
+    for ( kitty::cube const& c : sop )
+    {
+      cubes_queue2_t lits( priority_cmp );
+      for ( auto i = 0; i < cut.size(); ++i )
+      {
+        if ( c.get_mask( i ) )
+        {
+          lits.push( { arrival_pin[i], i } );
+        }
+      }
+
+      if ( lits.size() == 0 )
+        continue;
+
+      compute_balancing_cost_required_term( lits, connections, size );
+      assert( size <= connections.size() );
+
+      terms.push( lits.top() );
+    }
+
+    assert( terms.size() > 0 );
+    compute_balancing_cost_required_term( terms, connections, size );
+
+    uint32_t required_node = node_match[index].required;
+    assert( terms.top().first == cut->data.delay );
+    assert( required_node >= terms.top().first );
+
+    /* init required times */
+    for ( auto i = 0; i < size - 1; ++i )
+      required[i] = UINT32_MAX;
+    required[size - 1] = required_node;
+
+    compute_balancing_cost_propagate_required( connections, required, size, cut.size() );
+
+    /* assign required time */
+    uint32_t ctr = 0;
+    for ( auto l : cut )
+    {
+      node_match[l].required = std::min( node_match[l].required, required[ctr++] );
+      assert( node_match[l].required >= cuts[l][0]->data.delay );
+    }
+  }
+
+  template<typename Queue>
+  inline void compute_balancing_cost_required_term( Queue& terms, std::array<std::pair<uint16_t, uint16_t>, max_sop_decomp_size>& connections, uint32_t& size )
+  {
+    while ( terms.size() != 1 )
+    {
+      std::pair<uint32_t, uint16_t> l0 = terms.top();
+      terms.pop();
+      std::pair<uint32_t, uint16_t> l1 = terms.top();
+      terms.pop();
+      uint32_t arrival = std::max( l0.first, l1.first ) + 1;
+      terms.push( { arrival, size } );
+      connections[size] = std::make_pair( l0.second, l1.second );
+      ++size;
+    }
+  }
+
+  inline void compute_balancing_cost_propagate_required( std::array<std::pair<uint16_t, uint16_t>, max_sop_decomp_size> const& connections, std::array<uint32_t, max_sop_decomp_size>& required, uint32_t size, uint32_t leaves )
+  {
+    for ( auto i = size - 1; i >= leaves; --i )
+    {
+      uint32_t time = required[i] - 1;
+      required[connections[i].first] = std::min( time, required[connections[i].first] );
+      required[connections[i].second] = std::min( time, required[connections[i].second] );
+    }
+  }
+#pragma endregion
+
 private:
   Ntk& ntk;
   lut_map_params const& ps;
@@ -1949,6 +2762,7 @@ private:
   cut_merge_t lcuts;            /* cut merger container */
   tt_cache truth_tables;        /* cut truth tables */
   cost_cache truth_tables_cost; /* truth tables cost */
+  isop_cache isops;             /* cache for isops */
 };
 #pragma endregion
 
@@ -1957,15 +2771,92 @@ private:
 /*! \brief LUT mapper.
  *
  * This function implements a LUT mapping algorithm.  It is controlled by one
+ * template argument `ComputeTruth` (defaulted to `false`) which controls
+ * whether the LUT function is computed or the mapping is structural. In the
+ * former case, truth tables are computed during cut enumeration,
+ * which requires more runtime.
+ *
+ * This function returns a k-LUT network.
+ *
+ * The template `LUTCostFn` sets the cost function to evaluate depth and
+ * size of a truth table given its support size if `ComputeTruth` is set
+ * to false, or its function if `ComputeTruth` is set to true.
+ *
+ * This implementation offers more options such as delay oriented mapping
+ * and edges minimization compared to the command `lut_mapping`.
+ *
+ * **Required network functions:**
+ * - `size`
+ * - `is_ci`
+ * - `is_constant`
+ * - `node_to_index`
+ * - `index_to_node`
+ * - `get_node`
+ * - `foreach_co`
+ * - `foreach_node`
+ * - `fanout_size`
+ */
+template<class Ntk, bool ComputeTruth = false, class LUTCostFn = lut_unitary_cost>
+klut_network lut_map( Ntk& ntk, lut_map_params ps = {}, lut_map_stats* pst = nullptr )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_is_ci_v<Ntk>, "Ntk does not implement the is_ci method" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_ci_v<Ntk>, "Ntk does not implement the foreach_ci method" );
+  static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+
+  lut_map_params tps = ps;
+  lut_map_stats st;
+  klut_network klut;
+
+  /* adjust params for balancing */
+  if ( ps.sop_balancing || ps.esop_balancing )
+  {
+    tps.area_oriented_mapping = false;
+    tps.recompute_cuts = false;
+    tps.area_share_rounds = 0;
+    tps.edge_optimization = false;
+    tps.cut_expansion = false;
+  }
+
+  detail::lut_map_impl<Ntk, ComputeTruth, LUTCostFn> p( ntk, tps, st );
+  klut = p.run();
+
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  if ( pst != nullptr )
+  {
+    *pst = st;
+  }
+
+  return klut;
+}
+
+/*! \brief LUT mapper inplace.
+ *
+ * This function implements a LUT mapping algorithm.  It is controlled by one
  * template argument `StoreFunction` (defaulted to `false`) which controls
  * whether the LUT function is stored in the mapping. In that case
  * truth tables are computed during cut enumeration, which requires more
  * runtime.
  *
+ * The input network must be wrapped in a `mapping_view`. The computed mapping
+ * is stored in the view. In this version, some features of the mapper are
+ * disabled, such as on-the-fly decompositions, due to incompatibility.
+ *
  * The template `LUTCostFn` sets the cost function to evaluate depth and
  * size of a truth table given its support size, if `StoreFunction` is set
  * to false, or its function, if `StoreFunction` is set to true.
- * 
+ *
  * This implementation offers more options such as delay oriented mapping
  * and edges minimization compared to the command `lut_mapping`.
  *
@@ -1993,7 +2884,7 @@ private:
    \endverbatim
  */
 template<class Ntk, bool StoreFunction = false, class LUTCostFn = lut_unitary_cost>
-void lut_map( Ntk& ntk, lut_map_params const& ps = {}, lut_map_stats* pst = nullptr )
+void lut_map_inplace( Ntk& ntk, lut_map_params const& ps = {}, lut_map_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -2009,9 +2900,21 @@ void lut_map( Ntk& ntk, lut_map_params const& ps = {}, lut_map_stats* pst = null
   static_assert( has_clear_mapping_v<Ntk>, "Ntk does not implement the clear_mapping method" );
   static_assert( has_add_to_mapping_v<Ntk>, "Ntk does not implement the add_to_mapping method" );
 
+  lut_map_params tps = ps;
   lut_map_stats st;
-  detail::lut_map_impl<Ntk, StoreFunction, LUTCostFn> p( ntk, ps, st );
-  p.run();
+
+  /* adjust params for balancing */
+  if ( ps.sop_balancing || ps.esop_balancing )
+  {
+    tps.area_oriented_mapping = false;
+    tps.recompute_cuts = false;
+    tps.area_share_rounds = 0;
+    tps.edge_optimization = false;
+    tps.cut_expansion = false;
+  }
+
+  detail::lut_map_impl<Ntk, StoreFunction, LUTCostFn> p( ntk, tps, st );
+  p.run_inplace();
 
   if ( ps.verbose )
   {

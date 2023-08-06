@@ -272,3 +272,30 @@ TEST_CASE( "substitute node with complemented node in fanout view", "[fanout_vie
 
   CHECK( simulate<kitty::static_truth_table<2u>>( faig )[0]._bits == 0x7 );
 }
+
+TEST_CASE( "substitute node with no restrash complemented node in fanout view", "[fanout_view]" )
+{
+  aig_network aig;
+  fanout_view faig( aig );
+  auto const x1 = faig.create_pi();
+  auto const x2 = faig.create_pi();
+  auto const f1 = faig.create_and( x1, x2 );
+  auto const f2 = faig.create_and( x1, f1 );
+  faig.create_po( f2 );
+
+  CHECK( faig.fanout_size( faig.get_node( x1 ) ) == 2 );
+  CHECK( faig.fanout_size( faig.get_node( x2 ) ) == 1 );
+  CHECK( faig.fanout_size( faig.get_node( f1 ) ) == 1 );
+  CHECK( faig.fanout_size( faig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( faig )[0]._bits == 0x8 );
+
+  faig.substitute_node_no_restrash( faig.get_node( f2 ), !f2 );
+
+  CHECK( faig.fanout_size( faig.get_node( x1 ) ) == 2 );
+  CHECK( faig.fanout_size( faig.get_node( x2 ) ) == 1 );
+  CHECK( faig.fanout_size( faig.get_node( f1 ) ) == 1 );
+  CHECK( faig.fanout_size( faig.get_node( f2 ) ) == 1 );
+
+  CHECK( simulate<kitty::static_truth_table<2u>>( faig )[0]._bits == 0x7 );
+}
