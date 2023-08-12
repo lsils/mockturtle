@@ -906,3 +906,74 @@ TEST_CASE( "substitute node with dependency in xmg_network", "[xmg]" )
     CHECK( xmg.is_dead( xmg.get_node( s ) ) == false );
   } );
 }
+
+TEST_CASE( "substitute node without re-strashing case 1 in xmg_network", "[xmg]" )
+{
+  xmg_network xmg;
+  auto const x1 = xmg.create_pi();
+  auto const x2 = xmg.create_pi();
+  auto const f1 = xmg.create_and( x1, x2 );
+  auto const f2 = xmg.create_and( f1, x2 );
+  xmg.create_po( f2 );
+
+  xmg.substitute_node_no_restrash( xmg.get_node( f1 ), x1 );
+  xmg = cleanup_dangling( xmg );
+  CHECK( xmg.num_gates() == 1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( xmg )[0]._bits == 0x8 );
+}
+
+TEST_CASE( "substitute node without re-strashing case 2 in xmg_network", "[xmg]" )
+{
+  xmg_network xmg;
+
+  auto const a = xmg.create_pi();
+  auto const b = xmg.create_pi();
+  auto const c = xmg.create_pi();
+  auto const tmp = xmg.create_and( b, c );
+  auto const f1 = xmg.create_and( a, b );
+  auto const f2 = xmg.create_and( f1, tmp );
+  auto const f3 = xmg.create_and( f1, a );
+  xmg.create_po( f2 );
+
+  xmg.substitute_node_no_restrash( xmg.get_node( tmp ), f3 );
+  xmg.substitute_node_no_restrash( xmg.get_node( f1 ), xmg.get_constant( 1 ) );
+  xmg = cleanup_dangling( xmg );
+
+  CHECK( xmg.num_gates() == 0 );
+  CHECK( !xmg.is_dead( xmg.get_node( xmg.po_at( 0 ) ) ) );
+  CHECK( xmg.get_node( xmg.po_at( 0 ) ) == xmg.pi_at( 0 ) );
+}
+
+TEST_CASE( "substitute node without re-strashing case 3 in xmg_network", "[xmg]" )
+{
+  xmg_network xmg;
+
+  auto const x1 = xmg.create_pi();
+  auto const x2 = xmg.create_pi();
+  auto const x3 = xmg.create_pi();
+  auto const n4 = xmg.create_and( x2, x3 );
+  auto const n5 = xmg.create_and( x1, n4 );
+  auto const n6 = xmg.create_and( n5, x3 );
+  auto const n7 = xmg.create_and( x1, n6 );
+  xmg.create_po( n7 );
+
+  xmg.substitute_node_no_restrash( xmg.get_node( n6 ), n4 );
+  xmg = cleanup_dangling( xmg );
+  CHECK( xmg.num_gates() == 2 );
+  CHECK( simulate<kitty::static_truth_table<3u>>( xmg )[0]._bits == 0x80 );
+}
+
+TEST_CASE( "substitute node without re-strashing case 4 in xmg_network", "[xmg]" )
+{
+  xmg_network xmg;
+  auto const x1 = xmg.create_pi();
+  auto const x2 = xmg.create_pi();
+  auto const f1 = xmg.create_xor( x1, x2 );
+  auto const f2 = xmg.create_xor( f1, x2 );
+  xmg.create_po( f2 );
+
+  xmg.substitute_node_no_restrash( xmg.get_node( f1 ), x1 );
+  xmg = cleanup_dangling( xmg );
+  CHECK( xmg.num_gates() == 1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( xmg )[0]._bits == 0x6 );
+}

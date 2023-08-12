@@ -27,6 +27,7 @@
   \file balancing.hpp
   \brief Cut-based depth-optimization
 
+  \author Alessandro Tempia Calvino
   \author Heinz Riener
   \author Mathias Soeken
   \author Siang-Yun (Sonia) Lee
@@ -44,15 +45,21 @@
 
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/properties.hpp>
 
 #include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/depth_view.hpp"
+#include "../views/mapping_view.hpp"
 #include "../views/topo_view.hpp"
+#include "balancing/esop_balancing.hpp"
+#include "balancing/sop_balancing.hpp"
+#include "balancing/utils.hpp"
 #include "cleanup.hpp"
 #include "cut_enumeration.hpp"
+#include "lut_mapper.hpp"
 
 namespace mockturtle
 {
@@ -92,30 +99,6 @@ struct balancing_stats
     cut_enumeration_st.report();
   }
 };
-
-template<class Ntk>
-struct arrival_time_pair
-{
-  signal<Ntk> f;
-  uint32_t level;
-};
-
-/*! \brief Callback function for `rebalancing_function_t`.
- *
- * This callback is used in the rebalancing function to announce a new candidate that
- * could be used for replacement in the main balancing algorithm.  Using a callback
- * makes it possible to account for situations in which none, a single, or multiple
- * candidates are generated.
- *
- * The callback returns a pair composed of the output signal of the replacement
- * candidate and the level of the new candidate.  Ideally, the rebalancing function
- * should not call the callback with candidates that a worse level.
- */
-template<class Ntk>
-using rebalancing_function_callback_t = std::function<void( arrival_time_pair<Ntk> const&, uint32_t )>;
-
-template<class Ntk>
-using rebalancing_function_t = std::function<void( Ntk&, kitty::dynamic_truth_table const&, std::vector<arrival_time_pair<Ntk>> const&, uint32_t, uint32_t, rebalancing_function_callback_t<Ntk> const& )>;
 
 namespace detail
 {
@@ -216,6 +199,83 @@ private:
   balancing_stats& st_;
 };
 
+template<class Ntk>
+struct balancing_decomp_impl
+{
+  balancing_decomp_impl( mapping_view<Ntk, true> const& ntk, rebalancing_function_t<Ntk> const& rebalancing_fn )
+      : ntk_( ntk ),
+        rebalancing_fn_( rebalancing_fn )
+  {
+  }
+
+  Ntk run()
+  {
+    Ntk dest;
+    node_map<arrival_time_pair<Ntk>, Ntk> old_to_new( ntk_ );
+
+    /* input arrival times and mapping */
+    old_to_new[ntk_.get_constant( false )] = { dest.get_constant( false ), 0u };
+    if ( ntk_.get_node( ntk_.get_constant( false ) ) != ntk_.get_node( ntk_.get_constant( true ) ) )
+    {
+      old_to_new[ntk_.get_constant( true )] = { dest.get_constant( true ), 0u };
+    }
+
+    ntk_.foreach_pi( [&]( auto const& n ) {
+      old_to_new[n] = { dest.create_pi(), 0u };
+    } );
+
+    if constexpr ( has_foreach_ro_v<Ntk> )
+    {
+      ntk_.foreach_ro( [&]( auto const& n ) {
+        old_to_new[n] = { dest.create_ro(), 0u };
+      } );
+    }
+
+    topo_view<Ntk>{ ntk_ }.foreach_node( [&]( auto const& n, auto index ) {
+      if ( ntk_.is_constant( n ) || ntk_.is_ci( n ) )
+      {
+        return;
+      }
+
+      if ( !ntk_.is_cell_root( n ) )
+      {
+        return;
+      }
+
+      std::vector<arrival_time_pair<Ntk>> arrival_times;
+      ntk_.foreach_cell_fanin( n, [&]( auto const& leaf, uint32_t ctr ) {
+        arrival_times.push_back( old_to_new[ntk_.index_to_node( leaf )] );
+      } );
+
+      kitty::dynamic_truth_table tt = ntk_.cell_function( n );
+
+      rebalancing_fn_( dest, tt, arrival_times, UINT32_MAX, UINT32_MAX, [&]( arrival_time_pair<Ntk> cand, uint32_t cand_size ) {
+        (void)cand_size;
+        old_to_new[n] = cand;
+      } );
+    } );
+
+    ntk_.foreach_po( [&]( auto const& f ) {
+      const auto s = old_to_new[f].f;
+      dest.create_po( ntk_.is_complemented( f ) ? dest.create_not( s ) : s );
+    } );
+
+    if constexpr ( has_foreach_ri_v<Ntk> )
+    {
+      ntk_.foreach_ri( [&]( auto const& f ) {
+        const auto s = old_to_new[f].f;
+        dest.create_ri( ntk_.is_complemented( f ) ? dest.create_not( s ) : s );
+      } );
+    }
+
+    return dest;
+  }
+
+private:
+  mapping_view<Ntk, true> const& ntk_;
+  rebalancing_function_t<Ntk> const& rebalancing_fn_;
+};
+
 } // namespace detail
 
 /*! Balancing of a logic network
@@ -262,6 +322,114 @@ Ntk balancing( Ntk const& ntk, rebalancing_function_t<Ntk> const& rebalancing_fn
 
   balancing_stats st;
   const auto dest = detail::balancing_impl<Ntk, CostFn>{ ntk, rebalancing_fn, ps, st }.run();
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  return dest;
+}
+
+/*! \brief SOP balancing of a logic network
+ *
+ * This function implements an LUT-based SOP balancing algorithm.
+ * It returns a new network of the same type and performs
+ * generic balancing by providing a rebalancing function.
+ *
+ */
+template<class Ntk>
+Ntk sop_balancing( Ntk const& ntk, lut_map_params const& ps = {}, lut_map_stats* pst = nullptr )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
+  static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi method" );
+  static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+
+  lut_map_params mps;
+  mps = ps;
+  mps.sop_balancing = true;
+  mps.esop_balancing = false;
+  mps.verbose = false;
+  lut_map_stats st;
+
+  /* perform SOP-driven mapping */
+  mapping_view<Ntk, true> map_ntk{ ntk };
+  lut_map_inplace<decltype( map_ntk ), true>( map_ntk, mps, &st );
+
+  /* decompose mapping */
+  sop_rebalancing<Ntk> balance_fn;
+  balance_fn.both_phases_ = true;
+  const auto dest = call_with_stopwatch( st.time_total, [&]() {
+    return detail::balancing_decomp_impl<Ntk>{ map_ntk, balance_fn }.run();
+  } );
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+  if ( ps.verbose )
+  {
+    st.report();
+  }
+
+  return dest;
+}
+
+/*! \brief ESOP balancing of a logic network
+ *
+ * This function implements an LUT-based ESOP balancing algorithm.
+ * It returns a new network of the same type and performs
+ * generic balancing by providing a rebalancing function.
+ *
+ */
+template<class Ntk>
+Ntk esop_balancing( Ntk const& ntk, lut_map_params const& ps = {}, lut_map_stats* pst = nullptr )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_create_not_v<Ntk>, "Ntk does not implement the create_not method" );
+  static_assert( has_create_pi_v<Ntk>, "Ntk does not implement the create_pi method" );
+  static_assert( has_create_po_v<Ntk>, "Ntk does not implement the create_po method" );
+  static_assert( has_foreach_pi_v<Ntk>, "Ntk does not implement the foreach_pi method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_get_constant_v<Ntk>, "Ntk does not implement the get_constant method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+
+  lut_map_params mps;
+  mps = ps;
+  mps.esop_balancing = true;
+  mps.sop_balancing = false;
+  mps.verbose = false;
+  lut_map_stats st;
+
+  /* perform ESOP-driven mapping */
+  mapping_view<Ntk, true> map_ntk{ ntk };
+  lut_map_inplace<decltype( map_ntk ), true>( map_ntk, mps, &st );
+
+  /* decompose mapping */
+  esop_rebalancing<Ntk> balance_fn;
+  balance_fn.both_phases = true;
+  const auto dest = call_with_stopwatch( st.time_total, [&]() {
+    return detail::balancing_decomp_impl<Ntk>{ map_ntk, balance_fn }.run();
+  } );
 
   if ( pst )
   {

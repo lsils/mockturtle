@@ -25,8 +25,16 @@ graph using the default settings:
 .. code-block:: c++
 
    aig_network aig = ...;
+   klut_network klut = lut_map( aig );
+
+Alternatively, the mapping information can be saved on the original network
+as follows:
+
+.. code-block:: c++
+
+   aig_network aig = ...;
    mapping_view mapped_aig{aig};
-   lut_map( mapped_aig );
+   lut_map_inplace( mapped_aig );
 
 Note that the AIG is wrapped into a `mapping_view` in order to equip the
 network structure with the required mapping methods.
@@ -46,7 +54,7 @@ computes the functions for the cut of each mapped node:
    ps.remove_dominated_cuts = false;
    ps.recompute_cuts = false;
    ps.cut_enumeration_ps.cut_size = 8;
-   lut_map<mapped_view<mig_network, true>, true>( mapped_mig, ps );
+   lut_map_inplace<mapped_view<mig_network, true>, true>( mapped_mig, ps );
 
 **Parameters and statistics**
 
@@ -60,6 +68,7 @@ computes the functions for the cut of each mapped node:
 
 .. doxygenfunction:: mockturtle::lut_map
 
+.. doxygenfunction:: mockturtle::lut_map_inplace
 
 LUT mapping 2
 -------------

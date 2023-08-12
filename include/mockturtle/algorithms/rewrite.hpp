@@ -224,6 +224,9 @@ public:
           {
             leaves[permutation[j++]] = ntk.make_signal( ntk.index_to_node( leaf ) );
           }
+
+          while ( j < num_vars )
+            leaves[permutation[j++]] = ntk.get_constant( false );
         }
 
         for ( auto j = 0u; j < num_vars; ++j )
@@ -290,11 +293,11 @@ public:
         assert( n != ntk.get_node( new_f ) );
 
         _estimated_gain += best_gain;
-        ntk.substitute_node( n, new_f ^ best_phase );
+        ntk.substitute_node_no_restrash( n, new_f ^ best_phase );
 
         if constexpr ( has_level_v<Ntk> )
         {
-          /* TODO: propagate new required to leaves */
+          /* propagate new required to leaves */
           if ( ps.preserve_depth )
           {
             propagate_required_rec( ntk.node_to_index( n ), ntk.get_node( new_f ), size, required[n] );
@@ -529,7 +532,7 @@ private:
       auto const g = ntk.get_node( f );
 
       /* recur if it is still a node to explore and to update */
-      if ( ntk.node_to_index( g ) > root && ( ntk.node_to_index( g ) > size || required[g] > req ) )
+      if ( ntk.node_to_index( g ) > root && ( ntk.node_to_index( g ) >= size || required[g] > req ) )
         propagate_required_rec( root, g, size, req - 1 );
 
       /* update the required time */
@@ -570,7 +573,7 @@ private:
         ntk.set_level( n, -1 );
       };
 
-      // add_event = ntk.events().register_add_event( update_level_of_new_node );
+      add_event = ntk.events().register_add_event( update_level_of_new_node );
       modified_event = ntk.events().register_modified_event( update_level_of_existing_node );
       delete_event = ntk.events().register_delete_event( update_level_of_deleted_node );
     }

@@ -589,6 +589,64 @@ public:
     return std::nullopt;
   }
 
+  void replace_in_node_no_restrash( node const& n, node const& old_node, signal new_signal )
+  {
+    auto& node = _storage->nodes[n];
+
+    uint32_t fanin = 0u;
+    if ( node.children[0].index == old_node )
+    {
+      fanin = 0u;
+      new_signal.complement ^= node.children[0].weight;
+    }
+    else if ( node.children[1].index == old_node )
+    {
+      fanin = 1u;
+      new_signal.complement ^= node.children[1].weight;
+    }
+    else
+    {
+      return;
+    }
+
+    // determine gate type of n
+    auto _is_and = node.children[0].index < node.children[1].index;
+
+    // determine potential new children of node n
+    signal child1 = new_signal;
+    signal child0 = node.children[fanin ^ 1];
+
+    if ( ( _is_and && child0.index > child1.index ) || ( !_is_and && child0.index < child1.index ) )
+    {
+      std::swap( child0, child1 );
+    }
+
+    // don't check for trivial cases
+
+    // remember before
+    const auto old_child0 = signal{ node.children[0] };
+    const auto old_child1 = signal{ node.children[1] };
+
+    // erase old node in hash table
+    _storage->hash.erase( node );
+
+    // insert updated node into hash table
+    node.children[0] = child0;
+    node.children[1] = child1;
+    if ( _storage->hash.find( node ) == _storage->hash.end() )
+    {
+      _storage->hash[node] = n;
+    }
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_modified )
+    {
+      ( *fn )( n, { old_child0, old_child1 } );
+    }
+  }
+
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
     if ( is_dead( old_node ) )
@@ -717,6 +775,31 @@ public:
         old_to_new.insert( { _old, _new } );
         take_out_node( _old );
       }
+    }
+  }
+
+  void substitute_node_no_restrash( node const& old_node, signal const& new_signal )
+  {
+    if ( is_dead( get_node( new_signal ) ) )
+    {
+      revive_node( get_node( new_signal ) );
+    }
+
+    for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
+    {
+      if ( is_ci( idx ) || is_dead( idx ) )
+        continue; /* ignore CIs and dead nodes */
+
+      replace_in_node_no_restrash( idx, old_node, new_signal );
+    }
+
+    /* check outputs */
+    replace_in_outputs( old_node, new_signal );
+
+    /* recursively reset old node */
+    if ( old_node != new_signal.index )
+    {
+      take_out_node( old_node );
     }
   }
 #pragma endregion

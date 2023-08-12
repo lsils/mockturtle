@@ -401,7 +401,9 @@ int main( int argc, char** argv )
     buf_ps.scheduling = buffer_insertion_params::better;
     buf_ps.optimization_effort = buffer_insertion_params::until_sat;
     buf_ps.max_chunk_size = std::numeric_limits<uint32_t>::max();
-    buf_ps.assume = opt_params.assume;
+    buf_ps.assume.splitter_capacity = 4u;
+    buf_ps.assume.ci_capacity = std::numeric_limits<uint32_t>::max();
+    buf_ps.assume.balance_cios = true;
     buffer_insertion buf_inst( aqfp, buf_ps );
     uint32_t num_bufs = buf_inst.dry_run();
     uint32_t num_jjs = opt_stats.maj3_after_exact * 6 + opt_stats.maj5_after_exact * 10 + num_bufs * 2;

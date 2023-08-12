@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2019  EPFL
+ * Copyright (C) 2018-2023  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,12 +28,12 @@
 
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
+#include <mockturtle/algorithms/balancing.hpp>
 #include <mockturtle/algorithms/lut_mapper.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
-#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/views/depth_view.hpp>
-#include <mockturtle/views/mapping_view.hpp>
 
 #include <experiments.hpp>
 
@@ -42,31 +42,31 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, double, bool> exp( "lut_mapper", "benchmark", "luts", "lut_depth", "edges", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, double, bool> exp( "sop_balancing", "benchmark", "size_before", "depth_before", "size_after", "depth_after", "runtime", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
-    aig_network aig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
+    xag_network xag;
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( xag ) ) != lorina::return_code::success )
     {
       continue;
     }
 
+    const uint32_t size_before = xag.num_gates();
+    const uint32_t depth_before = depth_view{ xag }.depth();
+
     lut_map_params ps;
-    ps.cut_enumeration_ps.cut_size = 6u;
-    ps.cut_enumeration_ps.cut_limit = 8u;
-    ps.recompute_cuts = true;
-    ps.area_oriented_mapping = false;
-    ps.cut_expansion = true;
+    ps.cut_enumeration_ps.cut_size = 4u;
     lut_map_stats st;
-    const auto klut = lut_map( aig, ps, &st );
+    const xag_network balanced_xag = esop_balancing( xag, ps, &st );
 
-    depth_view<klut_network> klut_d{ klut };
+    const uint32_t size_after = balanced_xag.num_gates();
+    const uint32_t depth_after = depth_view{ balanced_xag }.depth();
 
-    auto const cec = benchmark == "hyp" ? true : abc_cec( klut, benchmark );
+    auto const cec = benchmark == "hyp" ? true : abc_cec( balanced_xag, benchmark );
 
-    exp( benchmark, klut.num_gates(), klut_d.depth(), st.edges, to_seconds( st.time_total ), cec );
+    exp( benchmark, size_before, depth_before, size_after, depth_after, to_seconds( st.time_total ), cec );
   }
 
   exp.save();

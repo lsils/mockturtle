@@ -844,3 +844,74 @@ TEST_CASE( "substitute node with dependency in xag_network", "[xag]" )
     CHECK( xag.is_dead( xag.get_node( s ) ) == false );
   } );
 }
+
+TEST_CASE( "substitute node without re-strashing case 1 in xag_network", "[xag]" )
+{
+  xag_network xag;
+  auto const x1 = xag.create_pi();
+  auto const x2 = xag.create_pi();
+  auto const f1 = xag.create_and( x1, x2 );
+  auto const f2 = xag.create_and( f1, x2 );
+  xag.create_po( f2 );
+
+  xag.substitute_node_no_restrash( xag.get_node( f1 ), x1 );
+  xag = cleanup_dangling( xag );
+  CHECK( xag.num_gates() == 1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( xag )[0]._bits == 0x8 );
+}
+
+TEST_CASE( "substitute node without re-strashing case 2 in xag_network", "[xag]" )
+{
+  xag_network xag;
+
+  auto const a = xag.create_pi();
+  auto const b = xag.create_pi();
+  auto const c = xag.create_pi();
+  auto const tmp = xag.create_and( b, c );
+  auto const f1 = xag.create_and( a, b );
+  auto const f2 = xag.create_and( f1, tmp );
+  auto const f3 = xag.create_and( f1, a );
+  xag.create_po( f2 );
+
+  xag.substitute_node_no_restrash( xag.get_node( tmp ), f3 );
+  xag.substitute_node_no_restrash( xag.get_node( f1 ), xag.get_constant( 1 ) );
+  xag = cleanup_dangling( xag );
+
+  CHECK( xag.num_gates() == 0 );
+  CHECK( !xag.is_dead( xag.get_node( xag.po_at( 0 ) ) ) );
+  CHECK( xag.get_node( xag.po_at( 0 ) ) == xag.pi_at( 0 ) );
+}
+
+TEST_CASE( "substitute node without re-strashing case 3 in xag_network", "[xag]" )
+{
+  xag_network xag;
+
+  auto const x1 = xag.create_pi();
+  auto const x2 = xag.create_pi();
+  auto const x3 = xag.create_pi();
+  auto const n4 = xag.create_and( x2, x3 );
+  auto const n5 = xag.create_and( x1, n4 );
+  auto const n6 = xag.create_and( n5, x3 );
+  auto const n7 = xag.create_and( x1, n6 );
+  xag.create_po( n7 );
+
+  xag.substitute_node_no_restrash( xag.get_node( n6 ), n4 );
+  xag = cleanup_dangling( xag );
+  CHECK( xag.num_gates() == 2 );
+  CHECK( simulate<kitty::static_truth_table<3u>>( xag )[0]._bits == 0x80 );
+}
+
+TEST_CASE( "substitute node without re-strashing case 4 in xag_network", "[xag]" )
+{
+  xag_network xag;
+  auto const x1 = xag.create_pi();
+  auto const x2 = xag.create_pi();
+  auto const f1 = xag.create_xor( x1, x2 );
+  auto const f2 = xag.create_xor( f1, x2 );
+  xag.create_po( f2 );
+
+  xag.substitute_node_no_restrash( xag.get_node( f1 ), x1 );
+  xag = cleanup_dangling( xag );
+  CHECK( xag.num_gates() == 1 );
+  CHECK( simulate<kitty::static_truth_table<2u>>( xag )[0]._bits == 0x6 );
+}

@@ -28,16 +28,22 @@
   \brief MIG inverter optimization
 
   \author Bugra Eryilmaz
+  \author Marcel Walter
 */
 
 #pragma once
 
+#include "../networks/mig.hpp"
 #include "../networks/storage.hpp"
 #include "../utils/stopwatch.hpp"
-#include "../views/fanout_view.hpp"
+#include "./cleanup.hpp"
 
+#include <algorithm>
+#include <cstdint>
 #include <iostream>
-#include <optional>
+#include <memory>
+#include <type_traits>
+#include <vector>
 
 namespace mockturtle
 {
@@ -49,10 +55,10 @@ struct mig_inv_propagation_stats
   stopwatch<>::duration time_total{ 0 };
 
   /*! \brief Increase in the node count. */
-  int node_incraese{ 0 };
+  uint32_t node_increase{ 0 };
 
   /*! \brief Total gain in terms of number of inverters. */
-  int total_gain{ 0 };
+  uint32_t total_gain{ 0 };
 };
 
 namespace detail
@@ -71,7 +77,13 @@ public:
   {
     stopwatch t( st.time_total );
 
+    auto const initial_size = number_of_nodes( ntk );
+    auto const initial_inverters = number_of_inverters( ntk );
+
     propagate();
+
+    st.node_increase = number_of_nodes( ntk ) - initial_size;
+    st.total_gain = initial_inverters - number_of_inverters( ntk );
   }
 
 private:
@@ -79,12 +91,12 @@ private:
   void propagate()
   {
     // starting from primary outputs, propagate the inversions
-    ntk.foreach_po( [&]( auto const& f ) {
+    ntk.foreach_po( [this]( auto const& f ) {
       if ( ntk.is_complemented( f ) )
       {
         // if it is complemented, invert the node
-        auto old_node = ntk.get_node( f );
-        auto new_node = invert_node( old_node );
+        auto const old_node = ntk.get_node( f );
+        auto const new_node = invert_node( old_node );
 
         // replace the po with the inverted node
         ntk.replace_in_outputs( old_node, new_node );
@@ -106,17 +118,23 @@ private:
     } );
   }
 
-  void propagate_helper( node<Ntk> n )
+  void propagate_helper( const node<Ntk> n )
   {
-    std::vector<node<Ntk>> complement_list;
+    std::vector<node<Ntk>> complement_list{};
+    complement_list.reserve( Ntk::max_fanin_size );
+
     // for each fanin, check if it is complemented
-    ntk.foreach_fanin( n, [&]( auto const& f, auto idx ) {
+    ntk.foreach_fanin( n, [this, &complement_list]( auto const& f ) {
       // skip if it is a constant, PI
       if ( ntk.is_constant( ntk.get_node( f ) ) || ntk.is_pi( ntk.get_node( f ) ) )
+      {
         return;
+      }
       // there should not be a dead child
       if ( ntk.is_dead( ntk.get_node( f ) ) )
+      {
         std::cerr << "node " << ntk.get_node( f ) << " is dead\n";
+      }
 
       // lazy substitute node since child order is fixed and
       // changing one child will mix the order and create a bug
@@ -136,10 +154,12 @@ private:
     for ( auto const& f : complement_list )
     {
       // for each complemented fanin, invert the node
-      auto new_node = invert_node( f );
+      auto const new_node = invert_node( f );
       // replace the fanin with the inverted node
-      if ( auto simplification = ntk.replace_in_node( n, f, new_node ) )
+      if ( auto const simplification = ntk.replace_in_node( n, f, new_node ) )
+      {
         ntk.substitute_node( simplification->first, simplification->second );
+      }
 
       // check if the old node should stay alive
       if ( ntk.fanout_size( f ) == 0 )
@@ -153,24 +173,33 @@ private:
   }
 
   /*! \brief gets maj(a,b,c) returns !maj(!a,!b,!c). */
-  signal<Ntk> invert_node( node<Ntk> n )
+  signal<Ntk> invert_node( const node<Ntk> n )
   {
     signal<Ntk> a, b, c;
-    ntk.foreach_fanin( n, [&]( auto const& f, auto idx ) {
+
+    ntk.foreach_fanin( n, [&a, &b, &c]( auto const& f, auto idx ) {
       if ( idx == 0 )
+      {
         a = f;
+      }
       else if ( idx == 1 )
+      {
         b = f;
+      }
       else if ( idx == 2 )
+      {
         c = f;
+      }
     } );
-    signal<Ntk> new_node = !create_maj_directly( !a, !b, !c );
-    return new_node;
+
+    return !create_maj_directly( !a, !b, !c );
   }
 
-  /*! \brief original create_maj function was inverting the node
-             if more than 2 of the inputs were inverted which is
-             not suitable for the algorithm, so I removed that part. */
+  /**
+   * \brief The original create_maj function was inverting the node if more than
+   * 2 of the inputs were inverted which is not suitable for the algorithm,
+   * so I removed that part.
+   */
   signal<Ntk> create_maj_directly( signal<Ntk> a, signal<Ntk> b, signal<Ntk> c )
   {
     /* order inputs */
@@ -178,16 +207,24 @@ private:
     {
       std::swap( a, b );
       if ( b.index > c.index )
+      {
         std::swap( b, c );
+      }
       if ( a.index > b.index )
+      {
         std::swap( a, b );
+      }
     }
     else
     {
       if ( b.index > c.index )
+      {
         std::swap( b, c );
+      }
       if ( a.index > b.index )
+      {
         std::swap( a, b );
+      }
     }
 
     /* trivial cases */
@@ -195,7 +232,7 @@ private:
     {
       return ( a.complement == b.complement ) ? a : c;
     }
-    else if ( b.index == c.index )
+    if ( b.index == c.index )
     {
       return ( b.complement == c.complement ) ? b : a;
     }
@@ -206,13 +243,13 @@ private:
     nd.children[2] = c;
 
     /* structural hashing */
-    const auto it = ntk._storage->hash.find( nd );
+    auto const it = ntk._storage->hash.find( nd );
     if ( it != ntk._storage->hash.end() )
     {
       return { it->second, 0 };
     }
 
-    const auto index = ntk._storage->nodes.size();
+    auto const index = ntk._storage->nodes.size();
 
     if ( index >= .9 * ntk._storage->nodes.capacity() )
     {
@@ -235,6 +272,49 @@ private:
     }
 
     return { index, 0 };
+  }
+
+  uint32_t number_of_inverters( Ntk const& ntk ) const
+  {
+    uint32_t num_inverters{ 0 };
+    ntk.foreach_gate( [&]( auto const& n ) {
+      ntk.foreach_fanin( n, [&]( auto const& f ) {
+        if ( ntk.is_dead( ntk.get_node( f ) ) )
+        {
+          return;
+        }
+        if ( ntk.is_constant( ntk.get_node( f ) ) || ntk.is_pi( ntk.get_node( f ) ) )
+        {
+          return;
+        }
+        if ( ntk.is_complemented( f ) )
+        {
+          ++num_inverters;
+        }
+      } );
+    } );
+
+    ntk.foreach_po( [&]( auto const& f ) {
+      if ( ntk.is_complemented( f ) )
+      {
+        ++num_inverters;
+      }
+    } );
+
+    return num_inverters;
+  }
+  /**
+   * \brief Determines the number of nodes in the given network that are actually alive.
+   */
+  uint64_t number_of_nodes( Ntk const& ntk ) const
+  {
+    uint64_t nodes{};
+
+    ntk.foreach_node( [&nodes]( auto const ) {
+      ++nodes;
+    } );
+
+    return nodes;
   }
 
 private:
@@ -268,6 +348,7 @@ template<class Ntk>
 void mig_inv_propagation( Ntk& ntk, mig_inv_propagation_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( std::is_same_v<typename Ntk::base_type, mig_network>, "Ntk is not an MIG network" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_substitute_node_v<Ntk>, "Ntk does not implement the substitute_node method" );
   static_assert( has_take_out_node_v<Ntk>, "Ntk does not implement the take_out_node method" );

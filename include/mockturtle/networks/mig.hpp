@@ -559,6 +559,77 @@ public:
     return std::nullopt;
   }
 
+  void replace_in_node_no_restrash( node const& n, node const& old_node, signal new_signal )
+  {
+    auto& node = _storage->nodes[n];
+
+    uint32_t fanin = 0u;
+    for ( auto i = 0u; i < 4u; ++i )
+    {
+      if ( i == 3u )
+      {
+        return;
+      }
+
+      if ( node.children[i].index == old_node )
+      {
+        fanin = i;
+        new_signal.complement ^= node.children[i].weight;
+        break;
+      }
+    }
+
+    // determine potential new children of node n
+    signal child2 = new_signal;
+    signal child1 = node.children[( fanin + 1 ) % 3];
+    signal child0 = node.children[( fanin + 2 ) % 3];
+
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+    if ( child1.index > child2.index )
+    {
+      std::swap( child1, child2 );
+    }
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+
+    assert( child0.index <= child1.index );
+    assert( child1.index <= child2.index );
+
+    // don't check for trivial cases
+
+    // remember before
+    const auto old_child0 = signal{ node.children[0] };
+    const auto old_child1 = signal{ node.children[1] };
+    const auto old_child2 = signal{ node.children[2] };
+
+    // erase old node in hash table
+    _storage->hash.erase( node );
+
+    // insert updated node into hash table
+    node.children[0] = child0;
+    node.children[1] = child1;
+    node.children[2] = child2;
+    if ( _storage->hash.find( node ) == _storage->hash.end() )
+    {
+      _storage->hash[node] = n;
+    }
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+    // update the reference counter of the old signal
+    _storage->nodes[old_node].data[0].h1--;
+
+    for ( auto const& fn : _events->on_modified )
+    {
+      ( *fn )( n, { old_child0, old_child1, old_child2 } );
+    }
+  }
+
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
     if ( is_dead( old_node ) )
@@ -689,6 +760,31 @@ public:
         old_to_new.insert( { _old, _new } );
         take_out_node( _old );
       }
+    }
+  }
+
+  void substitute_node_no_restrash( node const& old_node, signal const& new_signal )
+  {
+    if ( is_dead( get_node( new_signal ) ) )
+    {
+      revive_node( get_node( new_signal ) );
+    }
+
+    for ( auto idx = 1u; idx < _storage->nodes.size(); ++idx )
+    {
+      if ( is_ci( idx ) || is_dead( idx ) )
+        continue; /* ignore CIs and dead nodes */
+
+      replace_in_node_no_restrash( idx, old_node, new_signal );
+    }
+
+    /* check outputs */
+    replace_in_outputs( old_node, new_signal );
+
+    /* recursively reset old node */
+    if ( old_node != new_signal.index )
+    {
+      take_out_node( old_node );
     }
   }
 #pragma endregion

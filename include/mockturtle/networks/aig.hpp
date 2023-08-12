@@ -516,6 +516,61 @@ public:
     return std::nullopt;
   }
 
+  void replace_in_node_no_restrash( node const& n, node const& old_node, signal new_signal )
+  {
+    auto& node = _storage->nodes[n];
+
+    uint32_t fanin = 0u;
+    if ( node.children[0].index == old_node )
+    {
+      fanin = 0u;
+      new_signal.complement ^= node.children[0].weight;
+    }
+    else if ( node.children[1].index == old_node )
+    {
+      fanin = 1u;
+      new_signal.complement ^= node.children[1].weight;
+    }
+    else
+    {
+      return;
+    }
+
+    // determine potential new children of node n
+    signal child1 = new_signal;
+    signal child0 = node.children[fanin ^ 1];
+
+    if ( child0.index > child1.index )
+    {
+      std::swap( child0, child1 );
+    }
+
+    // don't check for trivial cases
+
+    // remember before
+    const auto old_child0 = signal{ node.children[0] };
+    const auto old_child1 = signal{ node.children[1] };
+
+    // erase old node in hash table
+    _storage->hash.erase( node );
+
+    // insert updated node into the hash table
+    node.children[0] = child0;
+    node.children[1] = child1;
+    if ( _storage->hash.find( node ) == _storage->hash.end() )
+    {
+      _storage->hash[node] = n;
+    }
+
+    // update the reference counter of the new signal
+    _storage->nodes[new_signal.index].data[0].h1++;
+
+    for ( auto const& fn : _events->on_modified )
+    {
+      ( *fn )( n, { old_child0, old_child1 } );
+    }
+  }
+
   void replace_in_outputs( node const& old_node, signal const& new_signal )
   {
     if ( is_dead( old_node ) )
@@ -662,48 +717,7 @@ public:
       if ( is_ci( idx ) || is_dead( idx ) )
         continue; /* ignore CIs and dead nodes */
 
-      /* replace_in_node(idx, old_node, new_signal) but without restrashing or constant propagation  */
-      auto& nobj = _storage->nodes[idx];
-      uint32_t fanin = 0u;
-      signal _new = new_signal;
-      if ( nobj.children[0].index == old_node )
-      {
-        fanin = 0u;
-        _new.complement ^= nobj.children[0].weight;
-      }
-      else if ( nobj.children[1].index == old_node )
-      {
-        fanin = 1u;
-        _new.complement ^= nobj.children[1].weight;
-      }
-      else
-      {
-        continue; /* not a fanout of old_node */
-      }
-
-      const auto old_child0 = signal{ nobj.children[0] };
-      const auto old_child1 = signal{ nobj.children[1] };
-
-      signal child1 = _new;
-      signal child0 = nobj.children[fanin ^ 1];
-      if ( child0.index > child1.index )
-      {
-        std::swap( child0, child1 );
-      }
-
-      _storage->hash.erase( nobj );
-      nobj.children[0] = child0;
-      nobj.children[1] = child1;
-      if ( _storage->hash.find( nobj ) == _storage->hash.end() )
-      {
-        _storage->hash[nobj] = idx;
-      }
-      _storage->nodes[new_signal.index].data[0].h1++;
-
-      for ( auto const& fn : _events->on_modified )
-      {
-        ( *fn )( idx, { old_child0, old_child1 } );
-      }
+      replace_in_node_no_restrash( idx, old_node, new_signal );
     }
 
     /* check outputs */

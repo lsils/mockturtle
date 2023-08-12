@@ -23,18 +23,13 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "experiments.hpp"
-#include <lorina/aiger.hpp>
 #include <lorina/diagnostics.hpp>
 #include <lorina/verilog.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_insertion.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_verification.hpp>
-#include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/mapper.hpp>
-#include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
-#include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/io/write_verilog.hpp>
-#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/io/write_dot.hpp>
 #include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/utils/name_utils.hpp>
@@ -43,6 +38,8 @@
 #include <mockturtle/views/names_view.hpp>
 
 #include <iostream>
+
+using namespace mockturtle;
 
 int main( int argc, char* argv[] )
 {
@@ -59,9 +56,9 @@ int main( int argc, char* argv[] )
   /* NOTE 2: Please clone this repository: https://github.com/lsils/SCE-benchmarks
    * And put in the following string the relative path from your build path to SCE-benchmarks/ISCAS/strashed/
    */
-  std::string benchmark_path = "../../SCE-benchmarks/ISCAS/strashed/";
+  // std::string benchmark_path = "../../SCE-benchmarks/ISCAS/strashed/";
   // std::string benchmark_path = "../../SCE-benchmarks/MCNC/original/";
-  // std::string benchmark_path = "../../SCE-benchmarks/EPFL/MIGs/";
+   std::string benchmark_path = "../../SCE-benchmarks/EPFL/MIGs/";
   static const std::string benchmarks_iscas[] = {
       "adder1", "adder8", "mult8", "counter16", "counter32", "counter64", "counter128",
       "c17", "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552",
@@ -71,32 +68,29 @@ int main( int argc, char* argv[] )
       "m3", "max512", "misex3", "mlp4", "prom2", "sqr6", "x1dn" };
   const auto benchmarks_epfl = experiments::epfl_benchmarks();
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
-      exp( "buffer_insertion", "benchmark", "#gates", "depth", "max FO", "#buffers", "opt. #JJs", "depth_JJ", "runtime", "verified" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
+      exp( "buffer_insertion", "benchmark", "#gates", "#buffers", "#buff real", "max phase skip", "depth_JJ", "runtime", "verified" );
 
   buffer_insertion_params ps;
-  ps.scheduling = buffer_insertion_params::better;
-  ps.optimization_effort = buffer_insertion_params::until_sat;
-  ps.assume.splitter_capacity = 4u;
-  ps.assume.branch_pis = true;
-  ps.assume.balance_pis = true;
-  ps.assume.balance_pos = true;
+  ps.scheduling = buffer_insertion_params::better_depth;
+  ps.optimization_effort = buffer_insertion_params::none;
+  ps.max_chunk_size = 10000;
 
-  if ( argc == 3 ) // example syntax: ./buffer_insertion 4 111
-  {
-    ps.assume.splitter_capacity = std::stoi( argv[1] );
-    uint32_t arg = std::stoi( argv[2] );
-    ps.assume.branch_pis = arg >= 100;
-    ps.assume.balance_pis = ( arg % 100 ) >= 10;
-    ps.assume.balance_pos = arg % 10;
-  }
+  // ASP-DAC etc. SoTA works
+  //ps.assume.num_phases = 1;
+  //ps.assume.ci_phases = {0u};
+  //ps.assume.ci_capacity = 1;
+  //ps.assume.splitter_capacity = 4;
+  //ps.assume.balance_cios = true;
+  
+  // best possible relaxation
+  ps.assume.ci_capacity = 2;
+  ps.assume.ci_phases = { 3u, 4u, 5u };
 
   uint32_t total_buffers{ 0 }, total_depth{ 0 };
-  for ( auto benchmark : benchmarks_iscas )
+  for ( auto benchmark : benchmarks_epfl )
   {
     if ( run_only_one != "" && benchmark != run_only_one )
-      continue;
-    if ( benchmark == "hyp" && run_only_one != "hyp" )
       continue;
     std::cout << "\n[i] processing " << benchmark << "\n";
 
@@ -114,21 +108,28 @@ int main( int argc, char* argv[] )
     stopwatch<>::duration t{ 0 };
     buffer_insertion aqfp( ntk, ps );
     buffered_mig_network bufntk;
+    std::vector<uint32_t> pi_levels( ntk.num_pis() );
     uint32_t num_buffers = call_with_stopwatch( t, [&]() {
-      return aqfp.dry_run();
+      return aqfp.run( bufntk, pi_levels );
     } );
-    aqfp.dump_buffered_network( bufntk );
-    bool verified = verify_aqfp_buffer( bufntk, ps.assume );
+    bool verified = verify_aqfp_buffer( bufntk, ps.assume, pi_levels );
+    auto const levels = schedule_buffered_network_with_PI_levels( bufntk, pi_levels );
+
+    uint32_t max_chain = aqfp.remove_buffer_chains( bufntk );
 
     // names_view named_bufntk{bufntk};
     // restore_pio_names_by_order( ntk, named_bufntk );
     // write_verilog( named_bufntk, benchmark_path + "../best_insertion/" + benchmark + "_buffered.v" );
 
-    depth_view d{ ntk };
-    depth_view d_buf{ bufntk };
+#if 0
+    depth_view<buffered_mig_network> depth_buffered( bufntk );
+    depth_buffered.foreach_node( [&]( auto n ){ depth_buffered.set_level( n, levels[n] ); } );
+    write_dot( depth_buffered, benchmark + ".dot" );
+    std::system( fmt::format( "dot -Tpng -o {0}.png {0}.dot; rm {0}.dot; open {0}.png", benchmark ).c_str() );
+#endif
 
     total_buffers += num_buffers;
-    total_depth += d_buf.depth();
+    total_depth += aqfp.depth();
 
     uint32_t max_fanout{ 0 };
     ntk.foreach_node( [&]( auto const& n ) {
@@ -136,7 +137,29 @@ int main( int argc, char* argv[] )
         max_fanout = std::max( max_fanout, ntk.fanout_size( n ) );
     } );
 
-    exp( benchmark, ntk.num_gates(), d.depth(), max_fanout, num_buffers, ntk.num_gates() * 6 + num_buffers * 2, d_buf.depth(), to_seconds( t ), verified );
+    uint32_t num_buffers_real{0}, max_phase_skip{0};
+
+    bufntk.foreach_node( [&]( auto n ){
+      if ( bufntk.is_buf( n ) && !bufntk.is_dead( n ) )
+        num_buffers_real++;
+    });
+    max_phase_skip = max_chain;
+    for ( auto pil : pi_levels )
+    {
+      if ( pil % 4 == 1 )
+        max_phase_skip = std::max( max_phase_skip,  pil - 5 );
+      else if ( pil % 4 == 0 )
+        max_phase_skip = std::max( max_phase_skip,  pil - 4 );
+      else if ( pil % 4 == 3 )
+        max_phase_skip = std::max( max_phase_skip,  pil - 3 );
+      else
+        fmt::print( "strange pi level {}\n", pil );
+    }
+    bufntk.foreach_po( [&]( auto f ){
+      max_phase_skip = std::max( max_phase_skip, aqfp.depth() - levels[f] );
+    });
+
+    exp( benchmark, ntk.num_gates(), num_buffers, num_buffers_real, max_phase_skip, aqfp.depth(), to_seconds( t ), verified );
   }
 
   exp.save();

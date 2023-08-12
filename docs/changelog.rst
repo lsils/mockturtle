@@ -14,6 +14,8 @@ v0.4 (not yet released)
     - Add access methods to check if a node is present in the network given its immediate fanin (e.g., `has_and` in `aig_network`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
     - Crossed networks (`crossed_klut_network` and `buffered_crossed_klut_network`) `#589 <https://github.com/lsils/mockturtle/pull/589>`_
     - Generic network implementation with additional node types (`generic_network`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
+    - Adding `substitute_node_no_restrash` to `aig_network`, `xag_network`, `mig_network`, `xmg_network`, and `fanout_view` to substitute nodes without structural hashing and simplifications `#616 <https://github.com/lsils/mockturtle/pull/616>`_
+    - Adding `replace_in_node_no_restrash` to `aig_network`, `xag_network`, `mig_network`, and `xmg_network` to replace a fanin without structural hashing and simplifications `#616 <https://github.com/lsils/mockturtle/pull/616>`_
 * Algorithms:
     - AIG balancing (`aig_balance`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
@@ -29,6 +31,8 @@ v0.4 (not yet released)
     - DAG-aware in-place rewriting (`rewrite`) `#605 <https://github.com/lsils/mockturtle/pull/605>`_
     - Dynamic cut enumeration (`dynamic_cut_enumeration_impl`) `#605 <https://github.com/lsils/mockturtle/pull/605>`_
     - Extensions and fixes in refactoring (`refactoring`) `#607 <https://github.com/lsils/mockturtle/pull/607>`_
+    - Improving LUT mapping, changing its interface, and integrating SOP/ESOP balancing (`lut_map`) `#616 <https://github.com/lsils/mockturtle/pull/616>`_
+    - Adding LUT-based SOP and ESOP balancing (`sop_balancing`, `esop_balancing`) `#616 <https://github.com/lsils/mockturtle/pull/616>`_
 * I/O:
     - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:
