@@ -288,6 +288,21 @@ template<class Ntk>
 inline constexpr bool has_is_ro_v = has_is_ro<Ntk>::value;
 #pragma endregion
 
+#pragma region has_is_ro
+template<class Ntk, class = void>
+struct has_is_multioutput : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_multioutput<Ntk, std::void_t<decltype( std::declval<Ntk>().is_multioutput( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_multioutput_v = has_is_multioutput<Ntk>::value;
+#pragma endregion
+
 #pragma region has_constant_value
 template<class Ntk, class = void>
 struct has_constant_value : std::false_type
@@ -2086,6 +2101,51 @@ struct has_get_binding_index<Ntk, std::void_t<decltype( std::declval<Ntk>().get_
 
 template<class Ntk>
 inline constexpr bool has_get_binding_index_v = has_get_binding_index<Ntk>::value;
+#pragma endregion
+
+#pragma region has_add_binding
+template<class Ntk, class = void>
+struct has_add_binding : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_add_binding<Ntk, std::void_t<decltype( std::declval<Ntk>().add_binding( std::declval<node<Ntk>>(), uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_add_binding_v = has_add_binding<Ntk>::value;
+#pragma endregion
+
+#pragma region has_select_dont_touch
+template<class Ntk, class = void>
+struct has_select_dont_touch : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_select_dont_touch<Ntk, std::void_t<decltype( std::declval<Ntk>().select_dont_touch( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_select_dont_touch_v = has_select_dont_touch<Ntk>::value;
+#pragma endregion
+
+#pragma region has_is_dont_touch
+template<class Ntk, class = void>
+struct has_is_dont_touch : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_is_dont_touch<Ntk, std::void_t<decltype( std::declval<Ntk>().is_dont_touch( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_is_dont_touch_v = has_is_dont_touch<Ntk>::value;
 #pragma endregion
 
 #pragma region has_clear_values
