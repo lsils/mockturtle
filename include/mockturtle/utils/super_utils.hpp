@@ -62,6 +62,10 @@ struct super_utils_params
  * This class creates supergates starting from supergates
  * specifications contained in `supergates_spec` extracted
  * from a SUPER file.
+ * 
+ * Multi-output gates are also extracted from the list of
+ * GENLIB gates. However multi-output gates are currently not
+ * supported as supergates members.
  *
  * This utility is called by `tech_library` to construct
  * the library for technology mapping.
@@ -232,7 +236,7 @@ public:
     {
       if ( gates_map.find( g.name ) != gates_map.end() )
       {
-        std::cerr << fmt::format( "WARNING: ignoring genlib gate {}, duplicated name entry.", g.name ) << std::endl;
+        std::cerr << fmt::format( "WARNING: ignoring genlib gate {}, duplicated name entry in supergates.", g.name ) << std::endl;
       }
       else
       {

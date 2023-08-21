@@ -383,7 +383,7 @@ private:
           continue;
         }
         const auto tt = cuts.truth_table( *cut );
-        const auto fe = kitty::shrink_to<NInputs>( tt );
+        const auto fe = kitty::extend_to<6>( tt );
         auto fe_canon = fe;
 
         uint8_t negations_pos = 0;
@@ -1139,7 +1139,7 @@ private:
   {
     auto& node_data = node_match[index];
 
-    kitty::static_truth_table<NInputs> zero_tt;
+    kitty::static_truth_table<6> zero_tt;
     auto const supergates_zero = library.get_supergates( zero_tt );
     auto const supergates_one = library.get_supergates( ~zero_tt );
 
@@ -2005,7 +2005,7 @@ private:
 
         /* match the cut using canonization and get the gates */
         const auto tt = cuts.truth_table( *cut );
-        const auto fe = kitty::shrink_to<NInputs>( tt );
+        const auto fe = kitty::extend_to<NInputs>( tt );
         const auto config = kitty::exact_npn_canonization( fe );
         auto const supergates_npn = library.get_supergates( std::get<0>( config ) );
         auto const supergates_npn_neg = library.get_supergates( ~std::get<0>( config ) );

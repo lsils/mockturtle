@@ -41,6 +41,7 @@
 
 #include <kitty/constructors.hpp>
 #include <kitty/dynamic_truth_table.hpp>
+#include <kitty/hash.hpp>
 #include <kitty/npn.hpp>
 #include <kitty/operators.hpp>
 #include <kitty/print.hpp>
@@ -131,7 +132,7 @@ struct tuple_tt_hash
     std::size_t seed = kitty::hash_block( tts[0]._bits );
 
     for ( auto i = 1; i < NumOutputs; ++i )
-      kitty::hash_combine( seed, hash_block( tts[i]._bits ) );
+      kitty::hash_combine( seed, kitty::hash_block( tts[i]._bits ) );
 
     return seed;
   }

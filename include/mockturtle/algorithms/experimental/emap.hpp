@@ -88,6 +88,9 @@ struct emap_params
   /*! \brief Do area-oriented mapping. */
   bool area_oriented_mapping{ false };
 
+  /*! \brief Maps using multi-output gates */
+  bool map_multioutput{ false };
+
   /*! \brief Required time for delay optimization. */
   double required_time{ 0.0f };
 
@@ -108,9 +111,6 @@ struct emap_params
 
   /*! \brief Fast area recovery */
   bool use_fast_area_recovery{ true };
-
-  /*! \brief Maps multi-output gates */
-  bool map_multioutput{ false };
 
   /*! \brief Remove the cuts that are contained in others */
   bool remove_dominated_cuts{ false };
