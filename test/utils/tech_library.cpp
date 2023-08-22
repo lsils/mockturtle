@@ -52,6 +52,12 @@ std::string const multioutput_test_library = "GATE   inv1    1 O=!a;     PIN * I
                                              "GATE   ha      6 O=a*b;    PIN * INV 1 999 1.2 0.4 1.2 0.4\n"
                                              "GATE   ha      6 O=a^b;    PIN * INV 1 999 2.1 0.4 2.1 0.4";
 
+std::string const large_test_library = "GATE   inv1    1 O=!a;                      PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                       "GATE   inv2    2 O=!a;                      PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                       "GATE   buf     2 O=a;                       PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                       "GATE   nand2   2 O=!(a*b);                  PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                       "GATE   oai322  8 O=!((a+b+c)*(d+e)*(f+g));  PIN * INV 1 999 3.0 0.4 3.0 0.4";
+
 std::string const test_library = "GATE   inv1    3 O=!a;               PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
                                  "GATE   inv2    2 O=!a;               PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
                                  "GATE   inv3    1 O=!a;               PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
@@ -895,6 +901,58 @@ TEST_CASE( "Multi-output library generation 3", "[tech_library]" )
   CHECK( ha_2->at( 1 )[0].tdelay[0] == 2.1f );
   CHECK( ha_2->at( 1 )[0].tdelay[1] == 2.1f );
   CHECK( ha_2->at( 1 )[0].polarity == 6u );
+}
+
+TEST_CASE( "Large library generation", "[tech_library]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( large_test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+
+  CHECK( result == lorina::return_code::success );
+
+  tech_library_params tps;
+  tps.load_large_gates = true;
+  tech_library<7> lib( gates, tps );
+
+  CHECK( lib.max_gate_size() == 2 );
+  CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 0.9f, 0u ) );
+  CHECK( lib.get_buffer_info() == std::make_tuple( 2.0f, 1.0f, 2u ) );
+
+  uint32_t pattern_and1 = lib.get_pattern_id( 3, 3 );
+  CHECK( pattern_and1 != UINT32_MAX );
+  uint32_t pattern_and2 = lib.get_pattern_id( 3, pattern_and1 << 1 );
+  CHECK( pattern_and2 != UINT32_MAX );
+  uint32_t pattern_and3 = lib.get_pattern_id( 3, 2 );
+  CHECK( pattern_and3 != UINT32_MAX );
+  uint32_t pattern_and4 = lib.get_pattern_id( 2, 3 );
+  CHECK( pattern_and4 != UINT32_MAX );
+  uint32_t pattern_and5 = lib.get_pattern_id( ( pattern_and3 << 1 ) | 1, ( pattern_and4 << 1 ) | 1 );
+  CHECK( pattern_and5 != UINT32_MAX );
+  uint32_t pattern_and6 = lib.get_pattern_id( ( pattern_and2 << 1 ) | 1, pattern_and5 << 1 );
+  CHECK( pattern_and6 != UINT32_MAX );
+  uint32_t pattern_and7 = lib.get_pattern_id( ( pattern_and2 << 1 ) | 1, ( pattern_and3 << 1 ) | 1 );
+  CHECK( pattern_and7 != UINT32_MAX );
+  uint32_t pattern_and8 = lib.get_pattern_id( ( pattern_and4 << 1 ) | 1, pattern_and7 << 1 );
+  CHECK( pattern_and8 != UINT32_MAX );
+
+  CHECK( lib.get_supergates_pattern( pattern_and1, true ) != nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and1, false ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and2, true ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and2, false ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and3, true ) != nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and3, false ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and4, true ) != nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and4, false ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and5, true ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and5, false ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and6, true ) != nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and6, false ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and7, true ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and7, false ) == nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and8, true ) != nullptr );
+  CHECK( lib.get_supergates_pattern( pattern_and8, false ) == nullptr );
 }
 
 TEST_CASE( "Complete library generation", "[tech_library]" )

@@ -50,10 +50,7 @@
 #include <parallel_hashmap/phmap.h>
 
 #include "../io/genlib_reader.hpp"
-#include "../io/super_reader.hpp"
 #include "include/supergate.hpp"
-#include "super_utils.hpp"
-#include "tech_library.hpp"
 
 namespace mockturtle
 {

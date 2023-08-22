@@ -34,8 +34,8 @@
 
 #include "../traits.hpp"
 
-#include <unordered_set>
 #include <type_traits>
+#include <unordered_set>
 
 namespace mockturtle
 {
