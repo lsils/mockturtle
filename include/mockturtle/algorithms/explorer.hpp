@@ -56,6 +56,7 @@
 #include "../views/mapping_view.hpp"
 #include "../io/write_verilog.hpp"
 #include "../io/write_aiger.hpp"
+#include "../io/verilog_reader.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/abc.hpp"
 
@@ -447,9 +448,11 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
       std::shuffle( fanins.begin(), fanins.end(), g );
       _ntk.substitute_node( n, _ntk.create_or( _ntk.create_and( fanins[0], fanins[1] ), _ntk.create_and( fanins[2], !_ntk.create_and( !fanins[0], !fanins[1] ) ) ) );
     });
+    _ntk = cleanup_dangling( _ntk );
   } );
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "compressing with resyn2rs using random value {}\n", rand );
     aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
     //std::string script = (rand & 0x1) ? "; &c2rs" : "; &dc2";
     std::string script = "&put; resyn2rs; &get";
@@ -464,17 +467,21 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
   } );
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "compressing with remapping using random value {}\n", rand );
+    //_ntk = cleanup_dangling( _ntk );
+
     mig_npn_resynthesis resyn{ true };
     exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
     mps.area_flow_rounds = 1;
-    mps.enable_logic_sharing = rand & 0x1; /* high-effort remap */
+    mps.enable_logic_sharing = rand & 0x1; // high-effort remap
     _ntk = map( _ntk, exact_lib, mps );
   } );
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "compressing with resub using random value {}\n", rand );
     //if ( rand & 0x1 )
     //{
     //  sop_rebalancing<mig_network> balance_fn;
@@ -556,6 +563,7 @@ mig_network deepsyn_mig_depth( mig_network const& ntk, explorer_params const ps 
       std::shuffle( fanins.begin(), fanins.end(), g );
       _ntk.substitute_node( n, _ntk.create_or( _ntk.create_and( fanins[0], fanins[1] ), _ntk.create_and( fanins[2], !_ntk.create_and( !fanins[0], !fanins[1] ) ) ) );
     });
+    _ntk = cleanup_dangling( _ntk );
   }, 0.3 );
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
@@ -644,15 +652,16 @@ mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {} 
 
   cost_fn_t<Ntk> aqfp_cost = []( Ntk const& _ntk ){
     buffer_insertion_params bps;
-    bps.assume.branch_pis = true;
-    bps.assume.balance_pis = true;
-    bps.assume.balance_pos = true;
+    bps.assume.balance_cios = true;
     bps.assume.splitter_capacity = 4;
-    bps.scheduling = buffer_insertion_params::better;
-    bps.optimization_effort = buffer_insertion_params::until_sat;
+    bps.assume.ci_phases = {0};
+    bps.assume.num_phases = 1;
+    bps.scheduling = buffer_insertion_params::better_depth;
+    bps.optimization_effort = buffer_insertion_params::one_pass;
     buffer_insertion buf_inst( _ntk, bps );
     auto numbufs = buf_inst.dry_run();
 
+    //return (_ntk.num_gates() * 6 + numbufs * 2);
     return (_ntk.num_gates() * 6 + numbufs * 2) * buf_inst.depth();
   };
 
@@ -710,6 +719,21 @@ mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {} 
     _ntk = cleanup_dangling( _ntk );
   } );
 
+  // balancing
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    sop_rebalancing<mig_network> balance_fn;
+    balancing_params bps;
+    bps.cut_enumeration_ps.cut_size = 6u;
+    _ntk = balancing( _ntk, {balance_fn}, bps );
+  } );
+
+  // algebraic depth optimization
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    depth_view depth_mig{ _ntk };
+    mig_algebraic_depth_rewriting( depth_mig );
+    _ntk = cleanup_dangling( _ntk );
+  } );
+
   return expl.run( ntk );
 }
 
@@ -719,11 +743,10 @@ mig_network explore_aqfp( mig_network const& ntk, explorer_params const ps = {} 
 
   cost_fn_t<Ntk> aqfp_cost = []( Ntk const& _ntk ){
     buffer_insertion_params bps;
-    bps.assume.branch_pis = true;
-    bps.assume.balance_pis = true;
-    bps.assume.balance_pos = true;
+    bps.assume.balance_cios = true;
     bps.assume.splitter_capacity = 4;
-    bps.scheduling = buffer_insertion_params::better;
+    bps.assume.ci_phases = {0};
+    bps.scheduling = buffer_insertion_params::better_depth;
     bps.optimization_effort = buffer_insertion_params::none;
     buffer_insertion buf_inst( _ntk, bps );
 

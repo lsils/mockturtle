@@ -55,6 +55,7 @@ int main00( int argc, char* argv[] )
   using namespace experiments;
   using namespace mockturtle;
 
+  (void)argc;
   std::string benchmark = std::string( argv[1] );
   {
     aig_network aig;
@@ -200,18 +201,17 @@ int main0( int argc, char* argv[] )
     bool cec = abc_cec_impl( mig, benchmark_aqfp_path( benchmark ) );
 
     buffer_insertion_params bps;
-    bps.assume.branch_pis = true;
-    bps.assume.balance_pis = true;
-    bps.assume.balance_pos = true;
+    bps.assume.balance_cios = true;
     bps.assume.splitter_capacity = 4;
-    bps.scheduling = buffer_insertion_params::better;
+    bps.assume.ci_phases = {0};
+    bps.scheduling = buffer_insertion_params::better_depth;
     bps.optimization_effort = buffer_insertion_params::none;
     buffer_insertion buf_inst( mig, bps );
 
     buffered_mig_network buffered_mig;
     auto num_buffers = buf_inst.run( buffered_mig );
     auto JJ_depth = buf_inst.depth();
-    bool bv = verify_aqfp_buffer( buffered_mig, bps.assume );
+    bool bv = verify_aqfp_buffer( buffered_mig, bps.assume, buf_inst.pi_levels() );
     //write_verilog( buffered_mig, benchmark + ".v" );
 
     exp( benchmark, mig.num_gates() * 6 + num_buffers * 2, JJ_depth, mig.num_gates(), d.depth(), cec, bv );
@@ -223,7 +223,7 @@ int main0( int argc, char* argv[] )
   return 0;
 }
 
-int main1( int argc, char* argv[] )
+int main( int argc, char* argv[] )
 {
   using namespace experiments;
   using namespace mockturtle;
@@ -256,12 +256,15 @@ int main1( int argc, char* argv[] )
 
     bool cec = abc_cec_impl( opt, benchmark_aqfp_path( benchmark ) );
 
+    aqfp_assumptions_legacy aqfp_ps;
+    aqfp_ps.splitter_capacity = 4;
+    aqfp_ps.branch_pis = true;
+    aqfp_ps.balance_pis = true;
+    aqfp_ps.balance_pos = true;
+
     buffer_insertion_params bps;
-    bps.assume.branch_pis = true;
-    bps.assume.balance_pis = true;
-    bps.assume.balance_pos = true;
-    bps.assume.splitter_capacity = 4;
-    bps.scheduling = buffer_insertion_params::better;
+    bps.assume = legacy_to_realistic( aqfp_ps );
+    bps.scheduling = buffer_insertion_params::better_depth;
     bps.optimization_effort = buffer_insertion_params::until_sat;
     buffer_insertion buf_inst( opt, bps );
 
@@ -270,7 +273,7 @@ int main1( int argc, char* argv[] )
     auto JJ_depth = buf_inst.depth();
     auto JJ_count = opt.num_gates() * 6 + num_buffers * 2;
     auto JJ_ADP = JJ_depth * JJ_count;
-    bool bv = verify_aqfp_buffer( buffered_mig, bps.assume );
+    bool bv = verify_aqfp_buffer( buffered_mig, bps.assume, buf_inst.pi_levels() );
     //write_verilog( buffered_mig, benchmark + ".v" );
 
     exp( benchmark, JJ_count, JJ_depth, JJ_ADP, opt.num_gates(), d.depth(), cec, bv );
@@ -282,7 +285,7 @@ int main1( int argc, char* argv[] )
   return 0;
 }
 
-int main( int argc, char* argv[] )
+int main2( int argc, char* argv[] )
 {
   using namespace experiments;
   using namespace mockturtle;
