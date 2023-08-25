@@ -241,6 +241,7 @@ private:
     /* repeat loop */
     uint32_t iterations = _ps.optimization_rounds;
     aps.det_randomization = _ps.topological_randomization;
+    std::default_random_engine::result_type seed{ 1 };
     while ( iterations-- > 0 )
     {
       uint32_t size_previous = buffered_aqfp.size();
@@ -248,10 +249,12 @@ private:
       /* chunk movement */
       aqfp_reconstruct_params reconstruct_ps;
       aqfp_reconstruct_stats reconstruct_st;
+      reconstruct_ps.buffer_insertion_ps.optimization_effort = buffer_insertion_params::until_sat;
       reconstruct_ps.buffer_insertion_ps = buf_ps;
       auto buf_aqfp_chunk = aqfp_reconstruct( buffered_aqfp, reconstruct_ps, &reconstruct_st );
 
       /* retiming */
+      aps.seed = seed++;
       auto buf_aqfp_ret = aqfp_retiming( buf_aqfp_chunk, aps );
 
       _st.rounds_total++;

@@ -46,7 +46,7 @@
 #include <mockturtle/algorithms/aqfp/aqfp_mapping.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_verification.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/io/aiger_reader.hpp>
+#include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/networks/aqfp.hpp>
 #include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -63,12 +63,12 @@ int main()
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, double, bool> exp(
       "aqfp_tcad", "Bench", "Size_init", "Depth_init", "B/S", "JJs", "Depth", "Time (s)", "cec" );
 
-  for ( auto const& benchmark : iscas_benchmarks() )
+  for ( auto const& benchmark : aqfp_iscas_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
     mig_network mig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( mig ) ) != lorina::return_code::success )
+    if ( lorina::read_verilog( benchmark_aqfp_iscas_path( benchmark ), verilog_reader( mig ) ) != lorina::return_code::success )
     {
       continue;
     }
@@ -88,12 +88,16 @@ int main()
     aqfp_mapping_params ps;
     ps.aqfp_assumptions_ps = aqfp_ps;
     ps.mapping_mode = aqfp_mapping_params::portfolio;
+    ps.verbose = true;
+    ps.max_chunk_size = UINT32_MAX;
+    ps.retime_iterations = UINT32_MAX;
+    ps.optimization_rounds = UINT32_MAX;
     aqfp_mapping_stats st;
 
     buffered_aqfp_network res = aqfp_mapping( mig_opt, ps, &st );
 
     /* cec */
-    auto cec = abc_cec( res, benchmark );
+    auto cec = abc_cec_aqfp_iscas( res, benchmark );
     std::vector<uint32_t> pi_levels;
     for ( auto i = 0u; i < res.num_pis(); ++i )
       pi_levels.emplace_back( 0 );
