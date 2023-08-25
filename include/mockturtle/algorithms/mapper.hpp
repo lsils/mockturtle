@@ -37,20 +37,30 @@
 
 #include <fmt/format.h>
 
+#include "../networks/aig.hpp"
 #include "../networks/klut.hpp"
+#include "../networks/mig.hpp"
 #include "../networks/sequential.hpp"
+#include "../networks/xag.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/tech_library.hpp"
 #include "../views/binding_view.hpp"
+#include "../views/color_view.hpp"
 #include "../views/depth_view.hpp"
 #include "../views/topo_view.hpp"
+#include "../views/window_view.hpp"
 #include "cleanup.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/exact_map_cut.hpp"
 #include "cut_enumeration/tech_map_cut.hpp"
+#include "reconv_cut.hpp"
+#include "resyn_engines/mig_resyn.hpp"
+#include "resyn_engines/xag_resyn.hpp"
+#include "simulation.hpp"
 #include "detail/mffc_utils.hpp"
 #include "detail/switching_activity.hpp"
+#include "dont_cares.hpp"
 
 namespace mockturtle
 {
@@ -98,6 +108,15 @@ struct map_params
 
   /*! \brief Maximum number of cuts evaluated for logic sharing. */
   uint32_t logic_sharing_cut_limit{ 8u };
+
+  /*! \brief Use don't cares for optimization. */
+  bool use_dont_cares{ false };
+
+  /*! \brief Window size for don't cares calculation. */
+  uint32_t window_size{ 12u };
+
+  /*! \brief Use a filtering heuristic to prune don't care computations. */
+  bool use_dont_care_filter{ false };
 
   /*! \brief Be verbose. */
   bool verbose{ false };
@@ -1869,6 +1888,7 @@ template<class NtkDest, unsigned CutSize, typename CutData, class Ntk, class Rew
 class exact_map_impl
 {
 public:
+  static constexpr uint32_t max_window_size = 12;
   using network_cuts_t = fast_network_cuts<Ntk, CutSize, true, CutData>;
   using cut_t = typename network_cuts_t::cut_t;
 
@@ -1899,7 +1919,14 @@ public:
     } );
 
     /* match cuts with gates */
-    compute_matches();
+    if ( ps.use_dont_cares )
+    {
+      compute_matches_dc();
+    }
+    else
+    {
+      compute_matches();
+    }
 
     /* init the data structure */
     init_nodes();
@@ -2016,6 +2043,242 @@ private:
           auto perm = std::get<2>( config );
           uint8_t phase = ( neg >> NInputs ) & 1;
           cut_match_t<NtkDest, NInputs> match;
+
+          match.supergates[phase] = supergates_npn;
+          match.supergates[phase ^ 1] = supergates_npn_neg;
+
+          /* store permutations and negations */
+          match.negation = 0;
+          for ( auto j = 0u; j < perm.size() && j < NInputs; ++j )
+          {
+            match.permutation[perm[j]] = j;
+            match.negation |= ( ( neg >> perm[j] ) & 1 ) << j;
+          }
+          node_matches.push_back( match );
+          ( *cut )->data.match_index = i++;
+        }
+        else
+        {
+          /* Ignore not matched cuts */
+          ( *cut )->data.ignore = true;
+        }
+      }
+
+      matches[index] = node_matches;
+    } );
+  }
+
+  void compute_matches_dc()
+  {
+    reconvergence_driven_cut_parameters rps;
+    rps.max_leaves = ps.window_size;
+    reconvergence_driven_cut_statistics rst;
+    detail::reconvergence_driven_cut_impl<Ntk, false, false> reconv_cuts( ntk, rps, rst );
+
+    fanout_view<Ntk> fanout_ntk{ntk};
+    color_view<Ntk> color_ntk{fanout_ntk};
+
+    std::array<uint32_t, NInputs> divisors;
+    for ( uint32_t i = 0; i < NInputs; ++i )
+    {
+      divisors[i] = i;
+    }
+
+    /* match gates */
+    ntk.foreach_gate( [&]( auto const& n ) {
+      const auto index = ntk.node_to_index( n );
+      std::vector<cut_match_t<NtkDest, NInputs>> node_matches;
+
+      std::vector<node<Ntk>> roots = { n };
+      auto const extended_leaves = reconv_cuts.run( roots ).first;
+
+      std::vector<node<Ntk>> gates{ collect_nodes( color_ntk, extended_leaves, roots ) };
+      window_view window_ntk{ color_ntk, extended_leaves, roots, gates };
+
+      default_simulator<kitty::static_truth_table<max_window_size>> sim;
+      const auto tts = simulate_nodes<kitty::static_truth_table<max_window_size>>( window_ntk, sim );
+
+      auto i = 0u;
+      for ( auto& cut : cuts.cuts( index ) )
+      {
+        /* ignore unit cut */
+        if ( cut->size() == 1 && *cut->begin() == index )
+        {
+          ( *cut )->data.ignore = true;
+          continue;
+        }
+
+        if ( cut->size() > NInputs )
+        {
+          /* Ignore cuts too big to be mapped using the library */
+          ( *cut )->data.ignore = true;
+          continue;
+        }
+
+        /* match the cut using canonization and get the gates */
+        const auto tt = cuts.truth_table( *cut );
+        const auto fe = kitty::shrink_to<NInputs>( tt );
+
+        auto [tt_npn, neg, perm] = kitty::exact_npn_canonization( fe );
+        auto perm_neg = perm;
+        auto neg_neg = neg;
+
+        const std::vector<exact_supergate<Ntk, NInputs>>* supergates_npn = nullptr;
+        const std::vector<exact_supergate<Ntk, NInputs>>* supergates_npn_neg = nullptr;
+
+        /* dont cares computation */
+        kitty::static_truth_table<NInputs> care;
+
+        bool containment = true;
+        bool filter = false;
+        for ( auto const& l : *cut )
+        {
+          if ( color_ntk.color( ntk.index_to_node( l ) ) != color_ntk.current_color() )
+          {
+            containment = false;
+            break;
+          }
+        }
+
+        if ( containment && ps.use_dont_care_filter )
+        {
+          /* get area filter */
+          uint32_t area_filter = UINT32_MAX;
+          {
+            supergates_npn = library.get_supergates( tt_npn );
+            supergates_npn_neg = library.get_supergates( ~tt_npn );
+
+            if ( supergates_npn != nullptr )
+              area_filter = (uint32_t) supergates_npn->at( 0 ).area;
+            if ( supergates_npn_neg != nullptr )
+              area_filter = std::min( area_filter, (uint32_t) supergates_npn_neg->at( 0 ).area );
+          }
+
+          /* try resyn */
+          std::vector<kitty::static_truth_table<max_window_size>> divisor_functions;
+          for ( auto const& l : *cut )
+          {
+            divisor_functions.emplace_back( tts[l] );
+          }
+
+          kitty::static_truth_table<max_window_size> target = tts[n]; 
+          kitty::static_truth_table<max_window_size> target_care;
+
+          if constexpr ( std::is_same_v<Ntk, xag_network> )
+          {
+            using engine_t = xag_resyn_decompose<kitty::static_truth_table<max_window_size>>;
+            typename engine_t::stats est;
+            engine_t engine{ est };
+            auto const index_list = engine( target, ~target_care, divisors.begin(), divisors.begin() + cut->size(), divisor_functions, area_filter + 1 );
+
+            if ( !index_list.has_value() )
+            {
+              filter = true;
+            }
+            else
+            {
+              /* compute care by simulating the solution */
+              xag_network xag;
+              decode( xag, *index_list );
+
+              default_simulator<kitty::static_truth_table<4>> sim_filter;
+              const auto tt_out = simulate<kitty::static_truth_table<NInputs>>( xag, sim_filter );
+
+              care = fe ^ tt_out.front();
+              filter = true;
+            }
+          }
+          else if ( std::is_same_v<Ntk, aig_network> )
+          {
+            using engine_setup_t = aig_resyn_static_params_default<kitty::static_truth_table<max_window_size>>;
+            using engine_t = xag_resyn_decompose<kitty::static_truth_table<max_window_size>, engine_setup_t>;
+            typename engine_t::stats est;
+            engine_t engine{ est };
+            auto const index_list = engine( target, ~target_care, divisors.begin(), divisors.begin() + cut->size(), divisor_functions, area_filter + 1 );
+
+            if ( !index_list.has_value() )
+            {
+              filter = true;
+            }
+            else
+            {
+              /* compute care by simulating the solution */
+              aig_network aig;
+              decode( aig, *index_list );
+
+              default_simulator<kitty::static_truth_table<4>> sim_filter;
+              const auto tt_out = simulate<kitty::static_truth_table<NInputs>>( aig, sim_filter );
+
+              care = fe ^ tt_out.front();
+              filter = true;
+            }
+          }
+          else if ( std::is_same_v<Ntk, mig_network> )
+          {
+            mig_resyn_static_params;
+            using engine_t = mig_resyn_topdown<kitty::static_truth_table<max_window_size>>;
+            typename engine_t::stats est;
+            engine_t engine{ est };
+            auto const index_list = engine( target, ~target_care, divisors.begin(), divisors.begin() + cut->size(), divisor_functions, area_filter + 1 );
+
+            if ( !index_list.has_value() )
+            {
+              filter = true;
+            }
+            else
+            {
+              /* compute care by simulating the solution */
+              mig_network mig;
+              decode( mig, *index_list );
+
+              default_simulator<kitty::static_truth_table<4>> sim_filter;
+              const auto tt_out = simulate<kitty::static_truth_table<NInputs>>( mig, sim_filter );
+
+              care = fe ^ tt_out.front();
+              filter = true;
+            }
+          }
+        }
+
+        if ( containment && !filter )
+        {
+          /* compute care set */
+          for ( auto i = 0u; i < ( 1u << window_ntk.num_pis() ); ++i )
+          {
+            uint32_t entry{0u};
+            auto j = 0u;
+            for ( auto const& l : *cut )
+            {
+              entry |= kitty::get_bit( tts[l], i ) << j;
+              ++j;
+            }
+            kitty::set_bit( care, entry );
+          }
+        }
+        else
+        {
+          /* completely specified */
+          care = ~care;
+        }
+
+        if ( !kitty::is_const0( ~care ) || !containment || !ps.use_dont_care_filter )
+        {
+          auto const dc_npn = apply_npn_transformation( ~care, neg & ~( 1 << NInputs ), perm );
+          supergates_npn = library.get_supergates( tt_npn, dc_npn, neg, perm );
+          supergates_npn_neg = library.get_supergates( ~tt_npn, dc_npn, neg_neg, perm_neg );
+        }
+
+        if ( supergates_npn != nullptr || supergates_npn_neg != nullptr )
+        {
+          cut_match_t<NtkDest, NInputs> match;
+
+          if ( supergates_npn == nullptr )
+          {
+            perm = perm_neg;
+            neg = neg_neg;
+          }
+
+          uint8_t phase = ( neg >> NInputs ) & 1;
 
           match.supergates[phase] = supergates_npn;
           match.supergates[phase ^ 1] = supergates_npn_neg;

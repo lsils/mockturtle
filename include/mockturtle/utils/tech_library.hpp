@@ -1057,7 +1057,7 @@ private:
 template<typename Ntk, unsigned NInputs>
 struct exact_supergate
 {
-  signal<Ntk> const root;
+  signal<Ntk> root;
 
   /* number of inputs of the supergate */
   uint8_t n_inputs{ 0 };
@@ -1088,6 +1088,8 @@ struct exact_library_params
 
   /* classify in NP instead of NPN */
   bool np_classification{ true };
+  /* Enable don't care matching */
+  bool enable_dont_cares{ false };
   /* verbose */
   bool verbose{ false };
 };
@@ -1117,14 +1119,19 @@ class exact_library
   using TT = kitty::static_truth_table<NInputs>;
   using tt_hash = kitty::hash<TT>;
   using lib_t = std::unordered_map<TT, supergates_list_t, tt_hash>;
+  using dc_transformation_t = std::tuple<supergates_list_t const*, uint32_t, std::array<uint8_t, NInputs>>;
+  using dc_t = std::pair<TT, dc_transformation_t>;
+  using dc_lib_t = std::unordered_map<TT, std::vector<dc_t>, tt_hash>;
 
 public:
   explicit exact_library( RewritingFn const& rewriting_fn, exact_library_params const& ps = {} )
       : _database(),
         _rewriting_fn( rewriting_fn ),
         _ps( ps ),
-        _super_lib()
+        _super_lib(),
+        _dc_lib()
   {
+    _super_lib.reserve( 222 );
     generate_library();
   }
 
@@ -1139,6 +1146,60 @@ public:
     if ( match != _super_lib.end() )
       return &match->second;
     return nullptr;
+  }
+
+  /*! \brief Get the structures matching the function with DC.
+   *
+   * Returns a list of graph structures that match the function
+   * represented by the truth table and its dont care set.
+   * This functions also updates the phase and permutation vector
+   * of the original NPN class to the new one obtained using
+   * don't cares.
+   */
+  const supergates_list_t* get_supergates( TT const& tt, TT const& dc, uint32_t& phase, std::vector<uint8_t>& perm ) const
+  {
+    auto match = _super_lib.find( tt );
+    if ( match == _super_lib.end() )
+      return nullptr;
+    
+    /* lookup for don't care optimization */
+    auto match_dc = _dc_lib.find( tt );
+    if ( dc._bits == 0 || match_dc == _dc_lib.end() )
+      return &match->second;
+
+    for ( auto const& entry : match_dc->second )
+    {
+      auto const& dc_entry_tt = std::get<0>( entry );
+
+      /* check for containment */
+      if ( ( dc & dc_entry_tt ) == dc_entry_tt )
+      {
+        auto const& dc_entry = std::get<1>( entry );
+
+        /* update phase and perm */
+        uint32_t dc_entry_phase = std::get<1>( dc_entry );
+        auto const& dc_entry_perm = std::get<2>( dc_entry );
+        std::vector<uint8_t> temp_perm( perm.size() );
+        uint32_t temp_phase = dc_entry_phase & ( 1 << NInputs );
+        for ( auto i = 0u; i < NInputs; ++i )
+        {
+          temp_perm[dc_entry_perm[i]] = perm[i];
+          temp_phase |= ( ( dc_entry_phase >> i ) & 1 ) << perm[i];
+        }
+        phase ^= temp_phase;
+        std::copy( temp_perm.begin(), temp_perm.end(), perm.begin() );
+        return std::get<0>( dc_entry );
+      }
+    }
+
+    /* no dont care optimization found */
+    return &match->second;
+  }
+
+  /*! \brief Returns the NPN database of structures. */
+  Ntk& get_database()
+  {
+    return _database;
   }
 
   /*! \brief Returns the NPN database of structures. */
@@ -1206,10 +1267,23 @@ private:
       kitty::dynamic_truth_table function = kitty::extend_to( entry, NInputs );
       _rewriting_fn( _database, function, pis.begin(), pis.end(), add_supergate );
       if ( supergates_pos.size() > 0 )
+      {
+        std::sort( supergates_pos.begin(), supergates_pos.end(), [&]( auto const& a, auto const& b ) {
+         return a.area < b.area;
+        } );
         _super_lib.insert( { entry, supergates_pos } );
+      }
       if ( _ps.np_classification && supergates_neg.size() > 0 )
+      {
+        std::sort( supergates_neg.begin(), supergates_neg.end(), [&]( auto const& a, auto const& b ) {
+          return a.area < b.area;
+        } );
         _super_lib.insert( { not_entry, supergates_neg } );
+      }
     }
+
+    if ( _ps.enable_dont_cares )
+      compute_dont_cares_classes();
 
     if ( _ps.verbose )
     {
@@ -1298,11 +1372,139 @@ private:
     return area;
   }
 
+  void compute_dont_cares_classes()
+  {
+    /* save the size for each NPN class */
+    std::unordered_map<TT, uint32_t, tt_hash> class_sizes;
+    for ( auto const& entry : _super_lib )
+    {
+      const unsigned numgates = static_cast<unsigned>( std::get<1>( entry ).front().area );
+      class_sizes.insert( {std::get<0>( entry ), numgates} );
+    }
+
+    uint32_t conflict_found = 0;
+    uint32_t total_exploration = 0;
+
+    /* find don't care links */
+    for ( auto entry_i = class_sizes.begin(); entry_i != class_sizes.end(); ++entry_i )
+    {
+      auto const& tt_i = std::get<0>( *entry_i );
+      auto const current_size = std::get<1>( *entry_i );
+
+      /* use a map to link the dont cares to the new size, NPN class, negations, and permutation vector */
+      using dc_transf_t = std::tuple<uint32_t, TT, uint32_t, std::vector<uint8_t>>;
+      std::unordered_map<TT, dc_transf_t, tt_hash> dc_sets;
+
+      for ( auto entry_j = class_sizes.begin(); entry_j != class_sizes.end(); ++entry_j )
+      {
+        auto const& tt_j = std::get<0>( *entry_j );
+        uint32_t size = std::get<1>( *entry_j );
+
+         /* evaluate DC only for size improvement */
+        if ( size >= current_size )
+          continue;
+        
+        /* skip the same NPN class if gates are constructed in NP classes */
+        if ( _ps.np_classification && tt_i == ~tt_j )
+          continue;
+        
+        exact_npn_enumeration( tt_j, [&]( auto const& tt, uint32_t phase,  std::vector<uint8_t> const& perm ) {
+          /* extract the DC set */
+          const auto dc = tt_i ^ tt;
+
+          /* limit the explosion of DC combinations to evaluate */
+          // if ( kitty::count_ones( dc ) > 3 )
+          //   return;
+
+          ++total_exploration;
+
+          /* check existance: filters ~12% of conflicts */
+          if ( auto const& p = dc_sets.find( dc ); p != dc_sets.end() )
+          {
+            if ( size < std::get<0>( std::get<1>( *p ) ) )
+              dc_sets[dc] = std::make_tuple( size, tt_j, phase, perm );
+
+            ++conflict_found;
+            return;
+          }
+
+          /* check dominance */
+          auto it = dc_sets.begin();
+          while ( it != dc_sets.end() )
+          {
+            auto const& dc_set_tt = std::get<0>( *it );
+            auto const& and_tt = dc_set_tt & dc;
+
+            if ( dc_set_tt == and_tt && std::get<0>( std::get<1>( *it ) ) <= size )
+            {
+              return;
+            }
+            else if ( dc == and_tt && size <= std::get<0>( std::get<1>( *it ) ) )
+            {
+              it = dc_sets.erase( it );
+            }
+            else
+            {
+              ++it;
+            }
+          }
+
+          /* permute phase */
+          uint32_t phase_perm = phase & ( 1 << NInputs );
+          for ( auto i = 0u; i < NInputs; ++i )
+          {
+            phase_perm |= ( ( phase >> perm[i] ) & 1 ) << i;
+          }
+
+          /* insert in the dc_sets */
+          dc_sets[dc] = std::make_tuple( size, tt_j, phase_perm, perm );
+        } );
+      }
+
+      /* add entries to the main data structure */
+      std::vector<dc_t> dc_transformations;
+      dc_transformations.reserve( dc_sets.size() );
+
+      std::array<uint8_t, NInputs> permutation;
+
+      /* insert in a sorted way based on gain */
+      /* TODO: optimize to reduce the number of cycles */
+      for ( auto i = 0u; i < std::get<1>( *entry_i ); ++i )
+      {
+        for ( auto const& dc : dc_sets )
+        {
+          auto const& transf = std::get<1>( dc );
+
+          if ( std::get<0>( transf ) != i )
+          {
+            continue;
+          }
+
+          supergates_list_t const* sg = &_super_lib[std::get<1>( transf )];
+          auto const& perm = std::get<3>( transf );
+
+          assert( perm.size() == NInputs );
+
+          for ( auto j = 0u; j < NInputs; ++j )
+          {
+            permutation[j] = perm[j];
+          }
+
+          dc_transformations.emplace_back( std::make_pair( std::get<0>( dc ), std::make_tuple( sg, std::get<2>( transf ), permutation ) ) );
+        }
+      }
+
+      if ( !dc_transformations.empty() )
+        _dc_lib.insert( {tt_i, dc_transformations} );
+    }
+  }
+
 private:
   Ntk _database;
   RewritingFn const& _rewriting_fn;
   exact_library_params const _ps;
   lib_t _super_lib;
+  dc_lib_t _dc_lib;
 }; /* class exact_library */
 
 } // namespace mockturtle

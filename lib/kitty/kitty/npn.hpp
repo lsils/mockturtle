@@ -1267,4 +1267,61 @@ TT create_from_npn_config( const std::tuple<TT, uint32_t, std::vector<uint8_t>>&
   return res;
 }
 
+/*! \brief Obtain truth table applying a NPN configuration
+
+  Given an NPN configuration composed of input/output negations,
+  and input permutations this function applies the transformation
+  to the input truth table. This function can be used to obtain
+  the NPN representative function given the NPN transformation.
+  This function is the inverse of `create_from_npn_config`.
+
+  \param from truth table
+  \param phase input/output negations to apply
+  \param perm input permutations to apply
+*/
+template<typename TT>
+TT apply_npn_transformation( TT const& from, uint32_t phase, std::vector<uint8_t> const& perm )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  /* transpose the permutation vector */
+  std::vector<uint8_t> perm_transposed( perm.size() );
+  for ( auto i = 0; i < perm.size(); ++i )
+    perm_transposed[perm[i]] = i;
+
+  const auto num_vars = from.num_vars();
+
+  /* is output complemented? */
+  auto res = ( ( phase >> num_vars ) & 1 ) ? ~from : from;
+
+  /* input complementations */
+  for ( auto i = 0u; i < num_vars; ++i )
+  {
+    if ( ( phase >> i ) & 1 )
+    {
+      flip_inplace( res, i );
+    }
+  }
+
+  /* input permutations */
+  for ( auto i = 0u; i < num_vars; ++i )
+  {
+    if ( perm_transposed[i] == i )
+    {
+      continue;
+    }
+
+    int k = i;
+    while ( perm_transposed[k] != i )
+    {
+      ++k;
+    }
+
+    swap_inplace( res, i, k );
+    std::swap( perm_transposed[i], perm_transposed[k] );
+  }
+
+  return res;
+}
+
 } /* namespace kitty */
