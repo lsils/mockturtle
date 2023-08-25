@@ -36,11 +36,15 @@
 #include "../utils/cost_functions.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
+#include "../views/color_view.hpp"
 #include "../views/depth_view.hpp"
 #include "../views/fanout_view.hpp"
+#include "../views/window_view.hpp"
 #include "cleanup.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/rewrite_cut.hpp"
+#include "reconv_cut.hpp"
+#include "simulation.hpp"
 
 #include <fmt/format.h>
 #include <kitty/dynamic_truth_table.hpp>
@@ -77,6 +81,12 @@ struct rewrite_params
   /*! \brief Allow zero-gain substitutions */
   bool allow_zero_gain{ false };
 
+  /*! \brief Use satisfiability don't cares for optimization. */
+  bool use_dont_cares{ false };
+
+  /*! \brief Window size for don't cares calculation. */
+  uint32_t window_size{ 8u };
+
   /*! \brief Be verbose. */
   bool verbose{ false };
 };
@@ -110,6 +120,7 @@ template<class Ntk, class Library, class NodeCostFn>
 class rewrite_impl
 {
   static constexpr uint32_t num_vars = 4u;
+  static constexpr uint32_t max_window_size = 12u;
   using network_cuts_t = dynamic_network_cuts<Ntk, num_vars, true, cut_enumeration_rewrite_cut>;
   using cut_manager_t = detail::dynamic_cut_enumeration_impl<Ntk, num_vars, true, cut_enumeration_rewrite_cut>;
   using cut_t = typename network_cuts_t::cut_t;
@@ -143,6 +154,18 @@ public:
       compute_required();
     }
 
+    if ( ps.use_dont_cares )
+      perform_rewriting_dc();
+    else
+      perform_rewriting();
+
+    st.estimated_gain = _estimated_gain;
+    st.candidates = _candidates;
+  }
+
+private:
+  void perform_rewriting()
+  {
     /* initialize the cut manager */
     cut_enumeration_stats cst;
     network_cuts_t cuts( ntk.size() + ( ntk.size() >> 1 ) );
@@ -308,12 +331,232 @@ public:
         clear_cuts_fanout_rec( cuts, cut_manager, ntk.get_node( new_f ) );
       }
     } );
-
-    st.estimated_gain = _estimated_gain;
-    st.candidates = _candidates;
   }
 
-private:
+  void perform_rewriting_dc()
+  {
+    /* initialize the cut manager */
+    cut_enumeration_stats cst;
+    network_cuts_t cuts( ntk.size() + ( ntk.size() >> 1 ) );
+    cut_manager_t cut_manager( ntk, ps.cut_enumeration_ps, cst, cuts );
+
+    /* initialize cuts for constant nodes and PIs */
+    cut_manager.init_cuts();
+
+    auto& db = library.get_database();
+
+    std::array<signal<Ntk>, num_vars> leaves;
+    std::array<signal<Ntk>, num_vars> best_leaves;
+    std::array<uint8_t, num_vars> permutation;
+    signal<Ntk> best_signal;
+
+    reconvergence_driven_cut_parameters rps;
+    rps.max_leaves = ps.window_size;
+    reconvergence_driven_cut_statistics rst;
+    detail::reconvergence_driven_cut_impl<Ntk, false, false> reconv_cuts( ntk, rps, rst );
+
+    color_view<Ntk> color_ntk{ ntk };
+    std::array<uint32_t, num_vars> divisors;
+    for ( uint32_t i = 0; i < num_vars; ++i )
+    {
+      divisors[i] = i;
+    }
+
+    const auto size = ntk.size();
+    ntk.foreach_gate( [&]( auto const& n, auto i ) {
+      if ( ntk.fanout_size( n ) == 0u )
+        return;
+
+      int32_t best_gain = -1;
+      uint32_t best_level = UINT32_MAX;
+      bool best_phase = false;
+
+      /* update level for node */
+      if constexpr ( has_level_v<Ntk> )
+      {
+        if ( ps.preserve_depth )
+        {
+          uint32_t level = 0;
+          ntk.foreach_fanin( n, [&]( auto const& f ) {
+            level = std::max( level, ntk.level( ntk.get_node( f ) ) );
+          } );
+          ntk.set_level( n, level + 1 );
+          best_level = level + 1;
+        }
+      }
+
+      cut_manager.clear_cuts( n );
+      cut_manager.compute_cuts( n );
+
+      /* compute window */
+      std::vector<node<Ntk>> roots = { n };
+      auto const extended_leaves = reconv_cuts.run( roots ).first;
+      std::vector<node<Ntk>> gates{ collect_nodes( color_ntk, extended_leaves, roots ) };
+      window_view window_ntk{ color_ntk, extended_leaves, roots, gates };
+
+      default_simulator<kitty::static_truth_table<max_window_size>> sim;
+      const auto tts = simulate_nodes<kitty::static_truth_table<max_window_size>>( window_ntk, sim );
+
+      uint32_t cut_index = 0;
+      for ( auto& cut : cuts.cuts( ntk.node_to_index( n ) ) )
+      {
+        /* skip trivial cut */
+        if ( ( cut->size() == 1 && *cut->begin() == ntk.node_to_index( n ) ) )
+        {
+          ++cut_index;
+          continue;
+        }
+
+        /* Boolean matching */
+        auto config = kitty::exact_npn_canonization( cuts.truth_table( *cut ) );
+        auto tt_npn = std::get<0>( config );
+        auto neg = std::get<1>( config );
+        auto perm = std::get<2>( config );
+
+        kitty::static_truth_table<num_vars> care;
+
+        bool containment = true;
+        for ( auto const& l : *cut )
+        {
+          if ( color_ntk.color( ntk.index_to_node( l ) ) != color_ntk.current_color() )
+          {
+            containment = false;
+            break;
+          }
+        }
+
+        if ( containment )
+        {
+          /* compute care set */
+          for ( auto i = 0u; i < ( 1u << window_ntk.num_pis() ); ++i )
+          {
+            uint32_t entry{ 0u };
+            auto j = 0u;
+            for ( auto const& l : *cut )
+            {
+              entry |= kitty::get_bit( tts[l], i ) << j;
+              ++j;
+            }
+            kitty::set_bit( care, entry );
+          }
+        }
+        else
+        {
+          /* completely specified */
+          care = ~care;
+        }
+
+        auto const dc_npn = apply_npn_transformation( ~care, neg & ~( 1 << num_vars ), perm );
+        auto const structures = library.get_supergates( tt_npn, dc_npn, neg, perm );
+
+        if ( structures == nullptr )
+        {
+          ++cut_index;
+          continue;
+        }
+
+        uint32_t negation = 0;
+        for ( auto j = 0u; j < num_vars; ++j )
+        {
+          permutation[perm[j]] = j;
+          negation |= ( ( neg >> perm[j] ) & 1 ) << j;
+        }
+
+        /* save output negation to apply */
+        bool phase = ( neg >> num_vars == 1 ) ? true : false;
+
+        {
+          auto j = 0u;
+          for ( auto const leaf : *cut )
+          {
+            leaves[permutation[j++]] = ntk.make_signal( ntk.index_to_node( leaf ) );
+          }
+
+          while ( j < num_vars )
+            leaves[permutation[j++]] = ntk.get_constant( false );
+        }
+
+        for ( auto j = 0u; j < num_vars; ++j )
+        {
+          if ( ( negation >> j ) & 1 )
+          {
+            leaves[j] = !leaves[j];
+          }
+        }
+
+        {
+          /* measure the MFFC contained in the cut */
+          int32_t mffc_size = measure_mffc_deref( n, cut );
+
+          for ( auto const& dag : *structures )
+          {
+            auto [nodes_added, level] = evaluate_entry( n, db.get_node( dag.root ), leaves );
+            int32_t gain = mffc_size - nodes_added;
+
+            /* discard if dag.root and n are the same */
+            if ( ntk.node_to_index( n ) == db.value( db.get_node( dag.root ) ) >> 1 )
+              continue;
+
+            /* discard if no gain */
+            if ( gain < 0 || ( !ps.allow_zero_gain && gain == 0 ) )
+              continue;
+
+            /* discard if level increases */
+            if constexpr ( has_level_v<Ntk> )
+            {
+              if ( ps.preserve_depth && level > required[n] )
+                continue;
+            }
+
+            if ( ( gain > best_gain ) || ( gain == best_gain && level < best_level ) )
+            {
+              ++_candidates;
+              best_gain = gain;
+              best_signal = dag.root;
+              best_leaves = leaves;
+              best_phase = phase;
+              best_level = level;
+            }
+
+            if ( !ps.allow_multiple_structures )
+              break;
+          }
+
+          /* restore contained MFFC */
+          measure_mffc_ref( n, cut );
+          ++cut_index;
+
+          if ( cut->size() == 0 || ( cut->size() == 1 && *cut->begin() != ntk.node_to_index( n ) ) )
+            break;
+        }
+      }
+
+      if ( best_gain > 0 || ( ps.allow_zero_gain && best_gain == 0 ) )
+      {
+        /* replace node wth the new structure */
+        topo_view topo{ db, best_signal };
+        auto new_f = cleanup_dangling( topo, ntk, best_leaves.begin(), best_leaves.end() ).front();
+
+        assert( n != ntk.get_node( new_f ) );
+
+        _estimated_gain += best_gain;
+        ntk.substitute_node_no_restrash( n, new_f ^ best_phase );
+
+        if constexpr ( has_level_v<Ntk> )
+        {
+          /* propagate new required to leaves */
+          if ( ps.preserve_depth )
+          {
+            propagate_required_rec( ntk.node_to_index( n ), ntk.get_node( new_f ), size, required[n] );
+            assert( ntk.level( ntk.get_node( new_f ) ) <= required[n] );
+          }
+        }
+
+        clear_cuts_fanout_rec( cuts, cut_manager, ntk.get_node( new_f ) );
+      }
+    } );
+  }
+
   int32_t measure_mffc_ref( node<Ntk> const& n, cut_t const* cut )
   {
     /* reference cut leaves */

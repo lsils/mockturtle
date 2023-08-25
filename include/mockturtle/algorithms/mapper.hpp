@@ -54,13 +54,12 @@
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/exact_map_cut.hpp"
 #include "cut_enumeration/tech_map_cut.hpp"
+#include "detail/mffc_utils.hpp"
+#include "detail/switching_activity.hpp"
 #include "reconv_cut.hpp"
 #include "resyn_engines/mig_resyn.hpp"
 #include "resyn_engines/xag_resyn.hpp"
 #include "simulation.hpp"
-#include "detail/mffc_utils.hpp"
-#include "detail/switching_activity.hpp"
-#include "dont_cares.hpp"
 
 namespace mockturtle
 {
@@ -108,9 +107,6 @@ struct map_params
 
   /*! \brief Maximum number of cuts evaluated for logic sharing. */
   uint32_t logic_sharing_cut_limit{ 8u };
-
-  /*! \brief Use don't cares for optimization. */
-  bool use_dont_cares{ false };
 
   /*! \brief Window size for don't cares calculation. */
   uint32_t window_size{ 12u };
@@ -266,7 +262,7 @@ public:
     /* execute mapping */
     if ( !execute_mapping() )
       return res;
-    
+
     /* insert buffers for POs driven by PIs */
     insert_buffers();
 
@@ -297,7 +293,7 @@ public:
     /* execute mapping */
     if ( !execute_mapping() )
       return res;
-    
+
     /* insert buffers for POs driven by PIs */
     insert_buffers();
 
@@ -2075,8 +2071,8 @@ private:
     reconvergence_driven_cut_statistics rst;
     detail::reconvergence_driven_cut_impl<Ntk, false, false> reconv_cuts( ntk, rps, rst );
 
-    fanout_view<Ntk> fanout_ntk{ntk};
-    color_view<Ntk> color_ntk{fanout_ntk};
+    fanout_view<Ntk> fanout_ntk{ ntk };
+    color_view<Ntk> color_ntk{ fanout_ntk };
 
     std::array<uint32_t, NInputs> divisors;
     for ( uint32_t i = 0; i < NInputs; ++i )
@@ -2149,9 +2145,9 @@ private:
             supergates_npn_neg = library.get_supergates( ~tt_npn );
 
             if ( supergates_npn != nullptr )
-              area_filter = (uint32_t) supergates_npn->at( 0 ).area;
+              area_filter = (uint32_t)supergates_npn->at( 0 ).area;
             if ( supergates_npn_neg != nullptr )
-              area_filter = std::min( area_filter, (uint32_t) supergates_npn_neg->at( 0 ).area );
+              area_filter = std::min( area_filter, (uint32_t)supergates_npn_neg->at( 0 ).area );
           }
 
           /* try resyn */
@@ -2161,7 +2157,7 @@ private:
             divisor_functions.emplace_back( tts[l] );
           }
 
-          kitty::static_truth_table<max_window_size> target = tts[n]; 
+          kitty::static_truth_table<max_window_size> target = tts[n];
           kitty::static_truth_table<max_window_size> target_care;
 
           if constexpr ( std::is_same_v<Ntk, xag_network> )
@@ -2245,7 +2241,7 @@ private:
           /* compute care set */
           for ( auto i = 0u; i < ( 1u << window_ntk.num_pis() ); ++i )
           {
-            uint32_t entry{0u};
+            uint32_t entry{ 0u };
             auto j = 0u;
             for ( auto const& l : *cut )
             {
