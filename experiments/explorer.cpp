@@ -228,7 +228,7 @@ int main( int argc, char* argv[] )
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool, bool> exp( "deepsyn_aqfp", "benchmark", "#JJ", "JJ depth", "JJ EDP", "MIG size", "MIG depth", "cec", "verified" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, bool, bool> exp( "deepsyn_aqfp", "benchmark", "#JJ", "JJ depth", "JJ EDP", "MIG size", "MIG depth", "t total", "t eval", "cec", "verified" );
 
   for ( auto const& benchmark : aqfp_benchmarks )
   {
@@ -243,6 +243,7 @@ int main( int argc, char* argv[] )
     }
 
     explorer_params ps;
+    explorer_stats st;
     ps.num_restarts = 5;
     ps.random_seed = 3252;
     ps.max_steps_no_impr = 50;
@@ -251,10 +252,8 @@ int main( int argc, char* argv[] )
     ps.verbose = true;
     //ps.very_verbose = true;
 
-    mig_network opt = deepsyn_aqfp( ntk, ps );
+    mig_network opt = deepsyn_aqfp( ntk, ps, &st );
     depth_view d( opt );
-
-    bool cec = abc_cec_impl( opt, benchmark_aqfp_path( benchmark ) );
 
     aqfp_assumptions_legacy aqfp_ps;
     aqfp_ps.splitter_capacity = 4;
@@ -272,11 +271,12 @@ int main( int argc, char* argv[] )
     auto num_buffers = buf_inst.run( buffered_mig );
     auto JJ_depth = buf_inst.depth();
     auto JJ_count = opt.num_gates() * 6 + num_buffers * 2;
-    auto JJ_ADP = JJ_depth * JJ_count;
+    auto JJ_EDP = JJ_depth * JJ_count;
+    bool cec = abc_cec_impl( buffered_mig, benchmark_aqfp_path( benchmark ) );
     bool bv = verify_aqfp_buffer( buffered_mig, bps.assume, buf_inst.pi_levels() );
-    //write_verilog( buffered_mig, benchmark + ".v" );
+    write_verilog( buffered_mig, benchmark + ".v" );
 
-    exp( benchmark, JJ_count, JJ_depth, JJ_ADP, opt.num_gates(), d.depth(), cec, bv );
+    exp( benchmark, JJ_count, JJ_depth, JJ_EDP, opt.num_gates(), d.depth(), to_seconds(st.time_total), to_seconds(st.time_evaluate), cec, bv );
   }
 
   exp.save();

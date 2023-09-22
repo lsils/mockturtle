@@ -95,7 +95,11 @@ struct explorer_params
   bool very_verbose{false};
 };
 
-struct explorer_stats {};
+struct explorer_stats
+{
+  stopwatch<>::duration time_total{0};
+  stopwatch<>::duration time_evaluate{0};
+};
 
 template<class Ntk>
 using script_t = std::function<void( Ntk&, uint32_t, uint32_t )>;
@@ -131,6 +135,7 @@ public:
 
   Ntk run( Ntk const& ntk )
   {
+    stopwatch t( _st.time_total );
     if ( decompressing_scripts.size() == 0 )
     {
       std::cerr << "[e] No decompressing script provided.\n";
@@ -143,12 +148,13 @@ public:
     }
 
     RandEngine rnd( _ps.random_seed );
+    auto init_cost = call_with_stopwatch( _st.time_evaluate, [&](){ return cost( ntk ); } );
     Ntk best = ntk.clone();
-    auto best_cost = cost( best );
+    auto best_cost = init_cost;
     for ( auto i = 0u; i < _ps.num_restarts; ++i )
     {
       Ntk current = ntk.clone();
-      auto new_cost = run_one_iteration( current, rnd() );
+      auto new_cost = run_one_iteration( current, rnd(), init_cost );
       if ( new_cost < best_cost )
       {
         best = current.clone();
@@ -159,17 +165,17 @@ public:
   }
 
 private:
-  uint32_t run_one_iteration( Ntk& ntk, uint32_t seed )
+  uint32_t run_one_iteration( Ntk& ntk, uint32_t seed, uint32_t init_cost )
   {
     if ( _ps.verbose )
     {
-      fmt::print( "\n[i] new iteration using seed {}, original cost = {}\n", seed, cost( ntk ) );
+      fmt::print( "\n[i] new iteration using seed {}, original cost = {}\n", seed, init_cost );
     }
  
     stopwatch<>::duration elapsed_time{0};
     RandEngine rnd( seed );
     Ntk best = ntk.clone();
-    auto best_cost = cost ( best );
+    auto best_cost = init_cost;
     uint32_t last_update{0u};
     for ( auto i = 0u; i < _ps.max_steps; ++i )
     {
@@ -182,7 +188,7 @@ private:
         decompress( ntk, rnd, i );
         compress( ntk, rnd, i );
       }
-      auto new_cost = cost( ntk );
+      auto new_cost = call_with_stopwatch( _st.time_evaluate, [&](){ return cost( ntk ); } );
       if ( _ps.very_verbose )
         fmt::print( "[i] after step {}, cost = {}\n", i, new_cost );
 
@@ -646,7 +652,7 @@ aig_network deepsyn_aig( aig_network const& ntk, explorer_params const ps = {} )
   return expl.run( ntk );
 }
 
-mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {} )
+mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {}, explorer_stats * pst = nullptr )
 {
   using Ntk = mig_network;
 
@@ -734,7 +740,10 @@ mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {} 
     _ntk = cleanup_dangling( _ntk );
   } );
 
-  return expl.run( ntk );
+  auto res = expl.run( ntk );
+  if ( pst )
+    *pst = st;
+  return res;
 }
 
 mig_network explore_aqfp( mig_network const& ntk, explorer_params const ps = {} )
