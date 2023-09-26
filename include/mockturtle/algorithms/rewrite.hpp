@@ -120,7 +120,7 @@ template<class Ntk, class Library, class NodeCostFn>
 class rewrite_impl
 {
   static constexpr uint32_t num_vars = 4u;
-  static constexpr uint32_t max_window_size = 12u;
+  static constexpr uint32_t max_window_size = 8u;
   using network_cuts_t = dynamic_network_cuts<Ntk, num_vars, true, cut_enumeration_rewrite_cut>;
   using cut_manager_t = detail::dynamic_cut_enumeration_impl<Ntk, num_vars, true, cut_enumeration_rewrite_cut>;
   using cut_t = typename network_cuts_t::cut_t;
@@ -353,7 +353,8 @@ private:
     reconvergence_driven_cut_parameters rps;
     rps.max_leaves = ps.window_size;
     reconvergence_driven_cut_statistics rst;
-    detail::reconvergence_driven_cut_impl<Ntk, false, false> reconv_cuts( ntk, rps, rst );
+    detail::reconvergence_driven_cut_impl<Ntk, false, has_level_v<Ntk>> reconv_cuts( ntk, rps, rst );
+    unordered_node_map<kitty::static_truth_table<max_window_size>, Ntk> tts( ntk );
 
     color_view<Ntk> color_ntk{ ntk };
     std::array<uint32_t, num_vars> divisors;
@@ -395,7 +396,8 @@ private:
       window_view window_ntk{ color_ntk, extended_leaves, roots, gates };
 
       default_simulator<kitty::static_truth_table<max_window_size>> sim;
-      const auto tts = simulate_nodes<kitty::static_truth_table<max_window_size>>( window_ntk, sim );
+      tts.reset();
+      simulate_nodes_with_node_map<kitty::static_truth_table<max_window_size>>( window_ntk, tts, sim );
 
       uint32_t cut_index = 0;
       for ( auto& cut : cuts.cuts( ntk.node_to_index( n ) ) )
@@ -916,7 +918,7 @@ void rewrite( Ntk& ntk, Library&& library, rewrite_params const& ps = {}, rewrit
 
   rewrite_stats st;
 
-  if ( ps.preserve_depth )
+  if ( ps.preserve_depth || ps.use_dont_cares )
   {
     using depth_view_t = depth_view<Ntk, NodeCostFn>;
     depth_view_t depth_ntk{ ntk };

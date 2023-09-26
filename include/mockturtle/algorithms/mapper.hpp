@@ -108,6 +108,9 @@ struct map_params
   /*! \brief Maximum number of cuts evaluated for logic sharing. */
   uint32_t logic_sharing_cut_limit{ 8u };
 
+  /*! \brief Use satisfiability don't cares for optimization. */
+  bool use_dont_cares{ false };
+
   /*! \brief Window size for don't cares calculation. */
   uint32_t window_size{ 12u };
 
@@ -2071,9 +2074,7 @@ private:
     reconvergence_driven_cut_statistics rst;
     detail::reconvergence_driven_cut_impl<Ntk, false, false> reconv_cuts( ntk, rps, rst );
 
-    fanout_view<Ntk> fanout_ntk{ ntk };
-    color_view<Ntk> color_ntk{ fanout_ntk };
-
+    color_view<Ntk> color_ntk{ ntk };
     std::array<uint32_t, NInputs> divisors;
     for ( uint32_t i = 0; i < NInputs; ++i )
     {
