@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
+ * Copyright (C) 2018-2023  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -963,6 +963,21 @@ template<class Ntk>
 inline constexpr bool has_fanin_size_v = has_fanin_size<Ntk>::value;
 #pragma endregion
 
+#pragma region has_num_outputs
+template<class Ntk, class = void>
+struct has_num_outputs : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_num_outputs<Ntk, std::void_t<decltype( std::declval<Ntk>().num_outputs( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_num_outputs_v = has_num_outputs<Ntk>::value;
+#pragma endregion
+
 #pragma region has_fanout_size
 template<class Ntk, class = void>
 struct has_fanout_size : std::false_type
@@ -1443,6 +1458,21 @@ template<class Ntk>
 inline constexpr bool has_node_function_v = has_node_function<Ntk>::value;
 #pragma endregion
 
+#pragma region has_node_function_pin
+template<class Ntk, class = void>
+struct has_node_function_pin : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_node_function_pin<Ntk, std::void_t<decltype( std::declval<Ntk>().node_function_pin( std::declval<node<Ntk>>(), uint32_t() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_node_function_pin_v = has_node_function_pin<Ntk>::value;
+#pragma endregion
+
 #pragma region has_get_node
 template<class Ntk, class = void>
 struct has_get_node : std::false_type
@@ -1471,6 +1501,21 @@ struct has_make_signal<Ntk, std::void_t<decltype( std::declval<Ntk>().make_signa
 
 template<class Ntk>
 inline constexpr bool has_make_signal_v = has_make_signal<Ntk>::value;
+#pragma endregion
+
+#pragma region has_get_output_pin
+template<class Ntk, class = void>
+struct has_get_output_pin : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_get_output_pin<Ntk, std::void_t<decltype( std::declval<Ntk>().get_output_pin( std::declval<signal<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_get_output_pin_v = has_get_output_pin<Ntk>::value;
 #pragma endregion
 
 #pragma region has_is_complemented

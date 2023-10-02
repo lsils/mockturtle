@@ -52,6 +52,7 @@
 #include "../io/genlib_reader.hpp"
 #include "../io/super_reader.hpp"
 #include "include/supergate.hpp"
+#include "standard_cell.hpp"
 #include "struct_library.hpp"
 #include "super_utils.hpp"
 
@@ -325,6 +326,12 @@ public:
   const std::vector<gate> get_gates() const
   {
     return _gates;
+  }
+
+  /*! \brief Returns the standard cells. */
+  const std::vector<standard_cell> get_cells() const
+  {
+    return get_standard_cells( _gates );
   }
 
   /*! \brief Returns multioutput gates. */

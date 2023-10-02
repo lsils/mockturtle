@@ -77,7 +77,7 @@ struct supergate
   composed_gate<NInputs> const* root{};
 
   /* area */
-  float area{ 0.0 };
+  double area{ 0.0 };
 
   /* pin-to-pin delay */
   std::array<float, NInputs> tdelay{};

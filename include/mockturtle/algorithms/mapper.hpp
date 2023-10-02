@@ -114,9 +114,6 @@ struct map_params
   /*! \brief Window size for don't cares calculation. */
   uint32_t window_size{ 12u };
 
-  /*! \brief Use a filtering heuristic to prune don't care computations. */
-  bool use_dont_care_filter{ false };
-
   /*! \brief Be verbose. */
   bool verbose{ false };
 };
@@ -2120,9 +2117,6 @@ private:
         auto perm_neg = perm;
         auto neg_neg = neg;
 
-        const std::vector<exact_supergate<Ntk, NInputs>>* supergates_npn = nullptr;
-        const std::vector<exact_supergate<Ntk, NInputs>>* supergates_npn_neg = nullptr;
-
         /* dont cares computation */
         kitty::static_truth_table<NInputs> care;
 
@@ -2137,107 +2131,7 @@ private:
           }
         }
 
-        if ( containment && ps.use_dont_care_filter )
-        {
-          /* get area filter */
-          uint32_t area_filter = UINT32_MAX;
-          {
-            supergates_npn = library.get_supergates( tt_npn );
-            supergates_npn_neg = library.get_supergates( ~tt_npn );
-
-            if ( supergates_npn != nullptr )
-              area_filter = (uint32_t)supergates_npn->at( 0 ).area;
-            if ( supergates_npn_neg != nullptr )
-              area_filter = std::min( area_filter, (uint32_t)supergates_npn_neg->at( 0 ).area );
-          }
-
-          /* try resyn */
-          std::vector<kitty::static_truth_table<max_window_size>> divisor_functions;
-          for ( auto const& l : *cut )
-          {
-            divisor_functions.emplace_back( tts[l] );
-          }
-
-          kitty::static_truth_table<max_window_size> target = tts[n];
-          kitty::static_truth_table<max_window_size> target_care;
-
-          if constexpr ( std::is_same_v<Ntk, xag_network> )
-          {
-            using engine_t = xag_resyn_decompose<kitty::static_truth_table<max_window_size>>;
-            typename engine_t::stats est;
-            engine_t engine{ est };
-            auto const index_list = engine( target, ~target_care, divisors.begin(), divisors.begin() + cut->size(), divisor_functions, area_filter + 1 );
-
-            if ( !index_list.has_value() )
-            {
-              filter = true;
-            }
-            else
-            {
-              /* compute care by simulating the solution */
-              xag_network xag;
-              decode( xag, *index_list );
-
-              default_simulator<kitty::static_truth_table<4>> sim_filter;
-              const auto tt_out = simulate<kitty::static_truth_table<NInputs>>( xag, sim_filter );
-
-              care = fe ^ tt_out.front();
-              filter = true;
-            }
-          }
-          else if ( std::is_same_v<Ntk, aig_network> )
-          {
-            using engine_setup_t = aig_resyn_static_params_default<kitty::static_truth_table<max_window_size>>;
-            using engine_t = xag_resyn_decompose<kitty::static_truth_table<max_window_size>, engine_setup_t>;
-            typename engine_t::stats est;
-            engine_t engine{ est };
-            auto const index_list = engine( target, ~target_care, divisors.begin(), divisors.begin() + cut->size(), divisor_functions, area_filter + 1 );
-
-            if ( !index_list.has_value() )
-            {
-              filter = true;
-            }
-            else
-            {
-              /* compute care by simulating the solution */
-              aig_network aig;
-              decode( aig, *index_list );
-
-              default_simulator<kitty::static_truth_table<4>> sim_filter;
-              const auto tt_out = simulate<kitty::static_truth_table<NInputs>>( aig, sim_filter );
-
-              care = fe ^ tt_out.front();
-              filter = true;
-            }
-          }
-          else if ( std::is_same_v<Ntk, mig_network> )
-          {
-            mig_resyn_static_params;
-            using engine_t = mig_resyn_topdown<kitty::static_truth_table<max_window_size>>;
-            typename engine_t::stats est;
-            engine_t engine{ est };
-            auto const index_list = engine( target, ~target_care, divisors.begin(), divisors.begin() + cut->size(), divisor_functions, area_filter + 1 );
-
-            if ( !index_list.has_value() )
-            {
-              filter = true;
-            }
-            else
-            {
-              /* compute care by simulating the solution */
-              mig_network mig;
-              decode( mig, *index_list );
-
-              default_simulator<kitty::static_truth_table<4>> sim_filter;
-              const auto tt_out = simulate<kitty::static_truth_table<NInputs>>( mig, sim_filter );
-
-              care = fe ^ tt_out.front();
-              filter = true;
-            }
-          }
-        }
-
-        if ( containment && !filter )
+        if ( containment )
         {
           /* compute care set */
           for ( auto i = 0u; i < ( 1u << window_ntk.num_pis() ); ++i )
@@ -2258,12 +2152,9 @@ private:
           care = ~care;
         }
 
-        if ( !kitty::is_const0( ~care ) || !containment || !ps.use_dont_care_filter )
-        {
-          auto const dc_npn = apply_npn_transformation( ~care, neg & ~( 1 << NInputs ), perm );
-          supergates_npn = library.get_supergates( tt_npn, dc_npn, neg, perm );
-          supergates_npn_neg = library.get_supergates( ~tt_npn, dc_npn, neg_neg, perm_neg );
-        }
+        auto const dc_npn = apply_npn_transformation( ~care, neg & ~( 1 << NInputs ), perm );
+        const std::vector<exact_supergate<NtkDest, NInputs>>* supergates_npn = library.get_supergates( tt_npn, dc_npn, neg, perm );
+        const std::vector<exact_supergate<NtkDest, NInputs>>* supergates_npn_neg = library.get_supergates( ~tt_npn, dc_npn, neg_neg, perm_neg );
 
         if ( supergates_npn != nullptr || supergates_npn_neg != nullptr )
         {

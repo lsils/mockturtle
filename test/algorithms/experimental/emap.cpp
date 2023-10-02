@@ -10,9 +10,11 @@
 #include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/io/super_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/block.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/binding_view.hpp>
+#include <mockturtle/views/cell_view.hpp>
 
 using namespace mockturtle;
 
@@ -173,6 +175,80 @@ TEST_CASE( "Emap on full adder 2", "[emap]" )
   CHECK( st.delay < 3.8f + eps );
 }
 
+TEST_CASE( "Emap on full adder 1 with cells", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3> lib( gates );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto [sum, carry] = full_adder( aig, a, b, c );
+  aig.create_po( sum );
+  aig.create_po( carry );
+
+  emap_params ps;
+  emap_stats st;
+  cell_view<block_network> luts = emap_block( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( luts.size() == 8u );
+  CHECK( luts.num_pis() == 3u );
+  CHECK( luts.num_pos() == 2u );
+  CHECK( luts.num_gates() == 3u );
+  CHECK( st.area > 13.0f - eps );
+  CHECK( st.area < 13.0f + eps );
+  CHECK( st.delay > 3.8f - eps );
+  CHECK( st.delay < 3.8f + eps );
+}
+
+TEST_CASE( "Emap on full adder 2 with cells", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3, classification_type::p_configurations> lib( gates );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto [sum, carry] = full_adder( aig, a, b, c );
+  aig.create_po( sum );
+  aig.create_po( carry );
+
+  emap_params ps;
+  ps.cut_enumeration_ps.minimize_truth_table = false;
+  ps.use_fast_area_recovery = false;
+  ps.ela_rounds = 0;
+  ps.eswp_rounds = 2;
+  emap_stats st;
+  cell_view<block_network> luts = emap_block( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( luts.size() == 8u );
+  CHECK( luts.num_pis() == 3u );
+  CHECK( luts.num_pos() == 2u );
+  CHECK( luts.num_gates() == 3u );
+  CHECK( st.area > 13.0f - eps );
+  CHECK( st.area < 13.0f + eps );
+  CHECK( st.delay > 3.8f - eps );
+  CHECK( st.delay < 3.8f + eps );
+}
+
 TEST_CASE( "Emap on ripple carry adder with multi-output gates", "[emap]" )
 {
   std::vector<gate> gates;
@@ -216,6 +292,49 @@ TEST_CASE( "Emap on ripple carry adder with multi-output gates", "[emap]" )
   CHECK( st.multioutput_gates == 8 );
 }
 
+TEST_CASE( "Emap on ripple carry adder with multi-output cells", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library_params tps;
+  tps.load_multioutput_gates_single = false;
+  tech_library<3, classification_type::p_configurations> lib( gates, tps );
+
+  aig_network aig;
+  
+  std::vector<aig_network::signal> a( 8 ), b( 8 );
+  std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
+  auto carry = aig.get_constant( false );
+
+  carry_ripple_adder_inplace( aig, a, b, carry );
+
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
+  aig.create_po( carry );
+
+  emap_params ps;
+  ps.map_multioutput = true;
+  ps.area_oriented_mapping = true;
+  emap_stats st;
+  cell_view<block_network> luts = emap_block( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( luts.size() == 26u );
+  CHECK( luts.num_pis() == 16u );
+  CHECK( luts.num_pos() == 9u );
+  CHECK( luts.num_gates() == 8u );
+  CHECK( st.area > 47.0f - eps );
+  CHECK( st.area < 47.0f + eps );
+  CHECK( st.delay > 17.3f - eps );
+  CHECK( st.delay < 17.3f + eps );
+  CHECK( st.multioutput_gates == 8 );
+}
+
 TEST_CASE( "Emap on multiplier with multi-output gates", "[emap]" )
 {
   std::vector<gate> gates;
@@ -249,15 +368,15 @@ TEST_CASE( "Emap on multiplier with multi-output gates", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 255u );
+  CHECK( luts.size() == 240u );
   CHECK( luts.num_pis() == 16u );
   CHECK( luts.num_pos() == 16u );
-  CHECK( luts.num_gates() == 237u );
-  CHECK( st.area > 631.0f - eps );
-  CHECK( st.area < 631.0f + eps );
-  CHECK( st.delay > 33.6f - eps );
-  CHECK( st.delay < 33.6f + eps );
-  CHECK( st.multioutput_gates == 39 );
+  CHECK( luts.num_gates() == 222u );
+  CHECK( st.area > 523.0f - eps );
+  CHECK( st.area < 523.0f + eps );
+  CHECK( st.delay > 35.60f - eps );
+  CHECK( st.delay < 35.60f + eps );
+  CHECK( st.multioutput_gates == 45 );
 }
 
 TEST_CASE( "Emap with inverters", "[emap]" )
@@ -408,6 +527,46 @@ TEST_CASE( "Emap with supergates", "[emap]" )
   emap_params ps;
   emap_stats st;
   binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( luts.size() == 9u );
+  CHECK( luts.num_pis() == 3u );
+  CHECK( luts.num_pos() == 1u );
+  CHECK( luts.num_gates() == 4u );
+  CHECK( st.area == 6.0f );
+  CHECK( st.delay > 3.8f - eps );
+  CHECK( st.delay < 3.8f + eps );
+}
+
+TEST_CASE( "Emap with supergates 2", "[emap]" )
+{
+  std::vector<gate> gates;
+  super_lib super_data;
+
+  std::istringstream in_lib( test_library );
+  auto result = lorina::read_genlib( in_lib, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  std::istringstream in_super( super_library );
+  result = lorina::read_super( in_super, super_reader( super_data ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3, classification_type::p_configurations> lib( gates, super_data );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  const auto n4 = aig.create_and( a, b );
+  const auto n5 = aig.create_and( b, c );
+  const auto f = aig.create_and( n4, n5 );
+  aig.create_po( f );
+
+  emap_params ps;
+  emap_stats st;
+  cell_view<block_network> luts = emap_block( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 

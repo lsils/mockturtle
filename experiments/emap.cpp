@@ -29,13 +29,15 @@
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
 #include <lorina/genlib.hpp>
+#include <mockturtle/algorithms/experimental/decompose_multioutput.hpp>
 #include <mockturtle/algorithms/experimental/emap.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/block.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/utils/tech_library.hpp>
-#include <mockturtle/views/binding_view.hpp>
+#include <mockturtle/views/cell_view.hpp>
 #include <mockturtle/views/depth_view.hpp>
 
 #include <experiments.hpp>
@@ -60,10 +62,8 @@ std::string const mcnc_library = "GATE   inv1    1  O=!a;             PIN * INV 
                                  "GATE   aoi22   4  O=!(a*b+c*d);     PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
                                  "GATE   oai21   3  O=!((a+b)*c);     PIN * INV 1 999 1.6 0.4 1.6 0.4\n"
                                  "GATE   oai22   4  O=!((a+b)*(c+d)); PIN * INV 1 999 2.0 0.4 2.0 0.4\n"
-                                 "GATE   ha      5  O=!(a*b);         PIN * INV 1 999 1.7 0.4 1.7 0.4\n"
-                                 "GATE   ha      5  O=!a*b+a*!b;      PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
-                                 "GATE   fa      7 O=!(a*b+a*c+b*c);  PIN * INV 1 999 2.4 0.4 2.4 0.4\n"
-                                 "GATE   fa      7 O=!(a^b^c);        PIN * INV 1 999 3.0 0.4 3.0 0.4\n"
+                                 "GATE   ha      5  O=!(a*b);         PIN * INV 1 999 1.2 0.4 1.2 0.4\n"
+                                 "GATE   ha      5  O=!a*!b+a*b;      PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
                                  "GATE   buf     2  O=a;              PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
                                  "GATE   zero    0  O=CONST0;\n"
                                  "GATE   one     0  O=CONST1;";
@@ -73,8 +73,8 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, double, uint32_t, double, float, bool> exp(
-      "emap", "benchmark", "size", "area_after", "depth", "delay_after", "runtime", "cec" );
+  experiment<std::string, uint32_t, double, uint32_t, double, uint32_t, float, bool> exp(
+      "emap", "benchmark", "size", "area_after", "depth", "delay_after", "multioutput", "runtime", "cec" );
 
   fmt::print( "[i] processing technology library\n" );
 
@@ -88,7 +88,6 @@ int main()
   }
 
   tech_library_params tps;
-  tps.load_multioutput_gates_single = true;
   tps.verbose = true;
   tech_library tech_lib( gates, tps );
 
@@ -108,11 +107,13 @@ int main()
     emap_params ps;
     ps.map_multioutput = true;
     emap_stats st;
-    binding_view<klut_network> res = emap( aig, tech_lib, ps, &st );
+    cell_view<block_network> res = emap_block( aig, tech_lib, ps, &st );
 
-    bool const cec = benchmark != "hyp" ? abc_cec( res, benchmark ) : true;
+    /* decompose multi-output cells for verification purposes */
+    klut_network klut = decompose_multioutput<block_network, klut_network>( res );
+    const auto cec = benchmark == "hyp" ? true : abc_cec( klut, benchmark );
 
-    exp( benchmark, size_before, st.area, depth_before, st.delay, to_seconds( st.time_total ), cec );
+    exp( benchmark, size_before, res.compute_area(), depth_before, res.compute_worst_delay(), st.multioutput_gates, to_seconds( st.time_total ), cec );
   }
 
   exp.save();

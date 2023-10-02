@@ -528,6 +528,40 @@ TEST_CASE( "Multi-output library generation 1", "[tech_library]" )
   CHECK( ha_2->at( 1 )[0].tdelay[0] == 2.1f );
   CHECK( ha_2->at( 1 )[0].tdelay[1] == 2.1f );
   CHECK( ha_2->at( 1 )[0].polarity == 6u );
+
+  std::vector<standard_cell> cells = lib.get_cells();
+
+  CHECK( cells.size() == 5 );
+  CHECK( cells[0].name == "inv1" );
+  CHECK( cells[0].id == 0 );
+  CHECK( cells[0].gates.size() == 1 );
+  CHECK( cells[0].gates[0].id == gates[0].id );
+  CHECK( cells[0].area == 1 );
+
+  CHECK( cells[1].name == "inv2" );
+  CHECK( cells[1].id == 1 );
+  CHECK( cells[1].gates.size() == 1 );
+  CHECK( cells[1].gates[0].id == gates[1].id );
+  CHECK( cells[1].area == 2 );
+
+  CHECK( cells[2].name == "buf" );
+  CHECK( cells[2].id == 2 );
+  CHECK( cells[2].gates.size() == 1 );
+  CHECK( cells[2].gates[0].id == gates[2].id );
+  CHECK( cells[2].area == 2 );
+
+  CHECK( cells[3].name == "nand2" );
+  CHECK( cells[3].id == 3 );
+  CHECK( cells[3].gates.size() == 1 );
+  CHECK( cells[3].gates[0].id == gates[3].id );
+  CHECK( cells[3].area == 2 );
+
+  CHECK( cells[4].name == "ha" );
+  CHECK( cells[4].id == 4 );
+  CHECK( cells[4].gates.size() == 2 );
+  CHECK( cells[4].gates[0].id == gates[4].id );
+  CHECK( cells[4].gates[1].id == gates[5].id );
+  CHECK( cells[4].area == 6 );
 }
 
 TEST_CASE( "Multi-output library generation 2", "[tech_library]" )

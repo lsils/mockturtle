@@ -47,12 +47,14 @@
 #include <fmt/format.h>
 #include <parallel_hashmap/phmap.h>
 
+#include "../../networks/block.hpp"
 #include "../../networks/klut.hpp"
 #include "../../utils/cuts.hpp"
 #include "../../utils/node_map.hpp"
 #include "../../utils/stopwatch.hpp"
 #include "../../utils/tech_library.hpp"
 #include "../../views/binding_view.hpp"
+#include "../../views/cell_view.hpp"
 #include "../../views/choice_view.hpp"
 #include "../../views/topo_view.hpp"
 #include "../cleanup.hpp"
@@ -708,6 +710,7 @@ public:
   using truth_compute_t = typename std::array<TT, CutSize>;
   using node_match_t = std::vector<node_match_emap<NInputs>>;
   using klut_map = std::unordered_map<uint32_t, std::array<signal<klut_network>, 2>>;
+  using block_map = std::unordered_map<uint32_t, std::array<signal<block_network>, 2>>;
 
   static constexpr uint32_t max_multioutput_cut_size = 3;
   static constexpr uint32_t max_multioutput_output_size = 2;
@@ -804,6 +807,51 @@ public:
     return res;
   }
 
+  cell_view<block_network> run_block()
+  {
+    time_begin = clock::now();
+
+    auto [res, old2new] = initialize_block_network();
+
+    /* multi-output initialization */
+    if ( ps.map_multioutput )
+    {
+      compute_multioutput_match();
+    }
+
+    /* compute and save topological order */
+    init_topo_order();
+
+    /* compute cuts, matches, and initial mapping */
+    if ( !ps.area_oriented_mapping )
+    {
+      if ( !compute_mapping_match<false>() )
+      {
+        return res;
+      }
+    }
+    else
+    {
+      if ( !compute_mapping_match<true>() )
+      {
+        return res;
+      }
+    }
+
+    /* run area recovery */
+    if ( !improve_mapping() )
+      return res;
+
+    /* insert buffers for POs driven by PIs */
+    insert_buffers();
+
+    /* generate the output network */
+    finalize_cover_block( res, old2new );
+    st.time_total = ( clock::now() - time_begin );
+
+    return res;
+  }
+
   binding_view<klut_network> run_node_map()
   {
     time_begin = clock::now();
@@ -867,7 +915,7 @@ private:
       reindex_multioutput_data();
       while ( i++ < ps.ela_rounds )
       {
-        if ( !compute_mapping_exact_reversed<false>( iteration == ps.ela_rounds + ps.area_flow_rounds ) )
+        if ( !compute_mapping_exact_reversed<false>( i == ps.ela_rounds ) )
         {
           return false;
         }
@@ -888,7 +936,7 @@ private:
       while ( i++ < ps.ela_rounds )
       {
         compute_required_time();
-        if ( !compute_mapping_exact<false>( iteration == ps.ela_rounds + ps.area_flow_rounds ) )
+        if ( !compute_mapping_exact<false>( i == ps.ela_rounds ) )
         {
           return false;
         }
@@ -1499,10 +1547,13 @@ private:
       /* try a multi-output match */
       if ( ps.map_multioutput && node_tuple_match[index] < UINT32_MAX - 1 )
       {
-        match_multioutput_exact<SwitchActivity>( *it, true );
+        bool multi_success = match_multioutput_exact<SwitchActivity>( *it, true );
 
         /* propagate required time for the selected gates */
-        match_multioutput_propagate_required( *it );
+        if ( multi_success )
+        {
+          match_multioutput_propagate_required( *it );
+        }
       }
       else
       {
@@ -1912,7 +1963,7 @@ private:
         continue;
       }
 
-      assert( node_data.best_supergate[0] != nullptr );
+      assert( node_data.best_supergate[use_phase] != nullptr );
 
       best_supergate = node_data.best_supergate[use_phase];
       worst_arrival = 0;
@@ -2743,7 +2794,7 @@ private:
     bool skip = false;
     if ( last_round )
     {
-      for ( uint32_t j = 0; j < max_multioutput_output_size - 1; ++j )
+      for ( uint32_t j = 0; j < max_multioutput_output_size; ++j )
       {
         uint32_t node_index = tuple_data[j].node_index;
         if ( node_match[node_index].map_refs[2] == 0 )
@@ -3282,30 +3333,6 @@ private:
 
     return success;
   }
-
-  // void check_unused_multioutput()
-  // {
-  //   for ( auto const& n : topo_order )
-  //   {
-  //     if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
-  //       continue;
-
-  //     auto index = ntk.node_to_index( n );
-
-  //     auto& node_data = node_match[index];
-
-  //     if ( node_tuple_match[index] == UINT32_MAX )
-  //       continue;
-
-  //     if ( node_data.map_refs[2] != 0 || node_data.multioutput_match[0] == false )
-  //       continue;
-
-  //     uint32_t node_index = multi_node_match[node_tuple_match[index]][0] >> 16;
-  //     auto& node_data2 = node_match[node_index];
-  //     if ( node_match[node_index].map_refs[2] > 0 )
-  //       std::cout << fmt::format( "Node {} not referenced\n", index );
-  //   }
-  // }
 #pragma endregion
 
 #pragma region Mapping utils
@@ -3639,6 +3666,20 @@ private:
     return { dest, old2new };
   }
 
+  std::pair<cell_view<block_network>, block_map> initialize_block_network()
+  {
+    cell_view<block_network> dest( library.get_cells() );
+    block_map old2new;
+
+    old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][0] = dest.get_constant( false );
+    old2new[ntk.node_to_index( ntk.get_node( ntk.get_constant( false ) ) )][1] = dest.get_constant( true );
+
+    ntk.foreach_pi( [&]( auto const& n ) {
+      old2new[ntk.node_to_index( n )][0] = dest.create_pi();
+    } );
+    return { dest, old2new };
+  }
+
   void init_topo_order()
   {
     topo_order.reserve( ntk.size() );
@@ -3759,6 +3800,128 @@ private:
       st.power = compute_switching_power();
   }
 
+  void finalize_cover_block( cell_view<block_network>& res, block_map& old2new )
+  {
+    uint32_t multioutput_count = 0;
+
+    /* get standard cells */
+    std::vector<standard_cell> const& lib = res.get_library();
+
+    /* get translation ID from GENLIB to STD_CELL */
+    std::unordered_map<uint32_t, uint32_t> genlib_to_cell;
+    uint32_t i = 0;
+    for ( standard_cell const& cell : lib )
+    {
+      for ( gate const& g : cell.gates )
+      {
+        genlib_to_cell[g.id] = i;
+      }
+      ++i;
+    }
+
+    for ( auto const& n : topo_order )
+    {
+      auto index = ntk.node_to_index( n );
+      auto const& node_data = node_match[index];
+
+      /* add inverter at PI if needed */
+      if ( ntk.is_constant( n ) )
+      {
+        if ( node_data.best_supergate[0] == nullptr && node_data.best_supergate[1] == nullptr )
+          continue;
+      }
+      else if ( ntk.is_pi( n ) )
+      {
+        if ( node_data.map_refs[1] > 0 )
+        {
+          old2new[index][1] = res.create_not( old2new[n][0] );
+          res.add_cell( res.get_node( old2new[index][1] ), genlib_to_cell[lib_inv_id] );
+        }
+        continue;
+      }
+
+      /* continue if cut is not in the cover */
+      if ( node_data.map_refs[2] == 0u )
+        continue;
+
+      /* TODO: don't touch box */
+      // if constexpr ( has_is_dont_touch_v<Ntk> )
+      // {
+      //   if ( ntk.is_dont_touch( n ) )
+      //   {
+      //     clone_box( res, old2new, index );
+      //     continue;
+      //   }
+      // }
+
+      unsigned phase = ( node_data.best_supergate[0] != nullptr ) ? 0 : 1;
+
+      /* add used cut */
+      if ( node_data.same_match || node_data.map_refs[phase] > 0 )
+      {
+        /* create multioutput gates */
+        if ( ps.map_multioutput && node_data.multioutput_match[phase] )
+        {
+          assert( node_data.same_match == true );
+
+          if ( node_tuple_match[index] < UINT32_MAX - 1  )
+          {
+            ++multioutput_count;
+            create_block_for_gate( res, old2new, index, phase, genlib_to_cell );
+            /* TODO: implement */
+          }
+          continue;
+        }
+
+        create_lut_for_gate2( res, old2new, index, phase, genlib_to_cell );
+
+        /* add inverted version if used */
+        if ( node_data.same_match && node_data.map_refs[phase ^ 1] > 0 )
+        {
+          old2new[index][phase ^ 1] = res.create_not( old2new[index][phase] );
+          res.add_cell( res.get_node( old2new[index][phase ^ 1] ), genlib_to_cell[lib_inv_id] );
+        }
+      }
+
+      phase = phase ^ 1;
+      /* add the optional other match if used */
+      if ( !node_data.same_match && node_data.map_refs[phase] > 0 )
+      {
+        create_lut_for_gate2( res, old2new, index, phase, genlib_to_cell );
+        assert( ps.map_multioutput && !node_data.multioutput_match[phase] );
+      }
+    }
+
+    /* create POs */
+    ntk.foreach_po( [&]( auto const& f ) {
+      if ( ntk.is_complemented( f ) )
+      {
+        res.create_po( old2new[ntk.node_to_index( ntk.get_node( f ) )][1] );
+      }
+      else if ( !ntk.is_constant( ntk.get_node( f ) ) && ntk.is_pi( ntk.get_node( f ) ) && lib_buf_id != UINT32_MAX )
+      {
+        /* create buffers for POs */
+        static uint64_t _buf = 0x2;
+        kitty::dynamic_truth_table tt_buf( 1 );
+        kitty::create_from_words( tt_buf, &_buf, &_buf + 1 );
+        const auto buf = res.create_node( { old2new[ntk.node_to_index( ntk.get_node( f ) )][0] }, tt_buf );
+        res.create_po( buf );
+        res.add_cell( res.get_node( buf ), genlib_to_cell[lib_buf_id] );
+      }
+      else
+      {
+        res.create_po( old2new[ntk.node_to_index( ntk.get_node( f ) )][0] );
+      }
+    } );
+
+    /* write final results */
+    st.area = area;
+    st.delay = delay;
+    st.multioutput_gates = multioutput_count;
+    if ( ps.eswp_rounds )
+      st.power = compute_switching_power();
+  }
+
   void create_lut_for_gate( binding_view<klut_network>& res, klut_map& old2new, uint32_t index, unsigned phase )
   {
     auto const& node_data = node_match[index];
@@ -3818,6 +3981,140 @@ private:
     auto f = res.create_node( children_local, gate.root->function );
     res.add_binding( res.get_node( f ), gate.root->id );
     return f;
+  }
+
+  void create_lut_for_gate2( cell_view<block_network>& res, block_map& old2new, uint32_t index, unsigned phase, std::unordered_map<uint32_t, uint32_t> const& genlib_to_cell )
+  {
+    auto const& node_data = node_match[index];
+    auto const& best_cut = cuts[index][node_data.best_cut[phase]];
+    auto const& gate = node_data.best_supergate[phase]->root;
+
+    /* permutate and negate to obtain the matched gate truth table */
+    std::vector<signal<block_network>> children( gate->num_vars );
+
+    auto ctr = 0u;
+    for ( auto l : best_cut )
+    {
+      if ( ctr >= gate->num_vars )
+        break;
+      children[node_data.best_supergate[phase]->permutation[ctr]] = old2new[l][( node_data.phase[phase] >> ctr ) & 1];
+      ++ctr;
+    }
+
+    if ( !gate->is_super )
+    {
+      /* create the node */
+      auto f = res.create_node( children, gate->function );
+      res.add_cell( res.get_node( f ), genlib_to_cell.at( gate->root->id ) );
+
+      /* add the node in the data structure */
+      old2new[index][phase] = f;
+    }
+    else
+    {
+      /* supergate, create sub-gates */
+      auto f = create_lut_for_gate2_rec( res, *gate, children, genlib_to_cell );
+
+      /* add the node in the data structure */
+      old2new[index][phase] = f;
+    }
+  }
+
+  signal<block_network> create_lut_for_gate2_rec( cell_view<block_network>& res, composed_gate<NInputs> const& gate, std::vector<signal<block_network>> const& children, std::unordered_map<uint32_t, uint32_t> const& genlib_to_cell )
+  {
+    std::vector<signal<block_network>> children_local( gate.fanin.size() );
+
+    auto i = 0u;
+    for ( auto const fanin : gate.fanin )
+    {
+      if ( fanin->root == nullptr )
+      {
+        /* terminal condition */
+        children_local[i] = children[fanin->id];
+      }
+      else
+      {
+        children_local[i] = create_lut_for_gate2_rec( res, *fanin, children, genlib_to_cell );
+      }
+      ++i;
+    }
+
+    auto f = res.create_node( children_local, gate.root->function );
+    res.add_cell( res.get_node( f ), genlib_to_cell.at( gate.root->id ) );
+    return f;
+  }
+
+  void create_block_for_gate( cell_view<block_network>& res, block_map& old2new, uint32_t index, unsigned phase, std::unordered_map<uint32_t, uint32_t> const& genlib_to_cell )
+  {
+    std::vector<standard_cell> const& lib = res.get_library();
+    composed_gate<NInputs> const* local_gate = node_match[index].best_supergate[phase]->root;
+    standard_cell const& cell = lib[genlib_to_cell.at( local_gate->root->id )];
+
+    assert( !local_gate->is_super );
+    auto const& best_cut = cuts[index][node_match[index].best_cut[phase]];
+
+    /* permutate and negate to obtain the matched gate truth table */
+    std::vector<signal<block_network>> children( cell.gates.front().num_vars );
+
+    /* output negations have already been assigned by the mapper */
+    auto ctr = 0u;
+    for ( auto l : best_cut )
+    {
+      if ( ctr >= local_gate->num_vars )
+        break;
+      children[node_match[index].best_supergate[phase]->permutation[ctr]] = old2new[l][( node_match[index].phase[phase] >> ctr ) & 1];
+      ++ctr;
+    }
+
+    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index]][0];
+    std::vector<uint32_t> outputs;
+    std::vector<kitty::dynamic_truth_table> functions;
+
+    /* re-order outputs to match the ones of the cell */
+    for ( gate const& g : cell.gates )
+    {
+      /* find the correct node */
+      for ( auto j = 0; j < max_multioutput_output_size; ++j )
+      {
+        uint32_t node_index = tuple_data[j].node_index;
+        assert( node_match[node_index].same_match );
+        uint8_t node_phase = node_match[node_index].best_supergate[0] != nullptr ? 0 : 1;
+        assert( node_match[node_index].multioutput_match[node_phase] );
+
+        gate const* node_gate = node_match[node_index].best_supergate[node_phase]->root->root;
+
+        /* wrong output */
+        if ( node_gate->id != g.id )
+          continue;
+
+        outputs.push_back( node_index );
+        functions.push_back( g.function );
+      }
+    }
+
+    assert( outputs.size() == cell.gates.size() );
+
+    /* create the block */
+    auto f = res.create_node( children, functions );
+    res.add_cell( res.get_node( f ), genlib_to_cell.at( local_gate->root->id ) );
+
+    for ( uint32_t s : outputs )
+    {
+      /* add inverted version if used */
+      uint8_t node_phase = node_match[s].best_supergate[0] != nullptr ? 0 : 1;
+      assert( node_match[s].same_match );
+
+      /* add the node in the data structure */
+      old2new[s][node_phase] = f;
+
+      if ( node_match[s].map_refs[node_phase ^ 1] > 0 )
+      {
+        old2new[s][node_phase ^ 1] = res.create_not( f );
+        res.add_cell( res.get_node( old2new[s][node_phase ^ 1] ), genlib_to_cell.at( lib_inv_id ) );
+      }
+
+      f = res.next_output_pin( f );
+    }
   }
 
   void clone_box( binding_view<klut_network>& res, klut_map& old2new, uint32_t index )
@@ -4856,6 +5153,61 @@ binding_view<klut_network> emap( Ntk const& ntk, tech_library<NInputs, Configura
   emap_stats st;
   detail::emap_impl<Ntk, CutSize, NInputs, Configuration> p( ntk, library, ps, st );
   auto res = p.run();
+
+  if ( ps.verbose && !st.mapping_error )
+  {
+    st.report();
+  }
+
+  if ( pst )
+  {
+    *pst = st;
+  }
+  return res;
+}
+
+/*! \brief Technology mapping.
+ *
+ * This function implements a technology mapping algorithm.
+ *
+ * The function takes the size of the cuts in the template parameter `CutSize`.
+ *
+ * The function returns a block network that supports multi-output cells.
+ *
+ * **Required network functions:**
+ * - `size`
+ * - `is_pi`
+ * - `is_constant`
+ * - `node_to_index`
+ * - `index_to_node`
+ * - `get_node`
+ * - `foreach_po`
+ * - `foreach_node`
+ * - `fanout_size`
+ *
+ * \param ntk Network
+ * \param library Technology library
+ * \param ps Mapping params
+ * \param pst Mapping statistics
+ *
+ */
+template<unsigned CutSize = 6u, class Ntk, unsigned NInputs, classification_type Configuration>
+cell_view<block_network> emap_block( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, emap_params const& ps = {}, emap_stats* pst = nullptr )
+{
+  static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_is_constant_v<Ntk>, "Ntk does not implement the is_constant method" );
+  static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
+  static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
+  static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
+  static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_fanout_size_v<Ntk>, "Ntk does not implement the fanout_size method" );
+
+  emap_stats st;
+  detail::emap_impl<Ntk, CutSize, NInputs, Configuration> p( ntk, library, ps, st );
+  auto res = p.run_block();
 
   if ( ps.verbose && !st.mapping_error )
   {
