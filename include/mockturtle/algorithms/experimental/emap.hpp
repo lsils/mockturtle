@@ -1547,13 +1547,10 @@ private:
       /* try a multi-output match */
       if ( ps.map_multioutput && node_tuple_match[index] < UINT32_MAX - 1 )
       {
-        bool multi_success = match_multioutput_exact<SwitchActivity>( *it, true );
+        match_multioutput_exact<SwitchActivity>( *it, true );
 
         /* propagate required time for the selected gates */
-        if ( multi_success )
-        {
-          match_multioutput_propagate_required( *it );
-        }
+        match_multioutput_propagate_required( *it );
       }
       else
       {
