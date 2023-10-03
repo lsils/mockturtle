@@ -15,6 +15,7 @@
 #include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/binding_view.hpp>
 #include <mockturtle/views/cell_view.hpp>
+#include <mockturtle/views/dont_touch_view.hpp>
 
 using namespace mockturtle;
 
@@ -577,4 +578,106 @@ TEST_CASE( "Emap with supergates 2", "[emap]" )
   CHECK( st.area == 6.0f );
   CHECK( st.delay > 3.8f - eps );
   CHECK( st.delay < 3.8f + eps );
+}
+
+TEST_CASE( "Emap on circuit with don't touch gates", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3, classification_type::np_configurations> lib( gates );
+
+  klut_network klut;
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto c = klut.create_pi();
+  const auto d = klut.create_pi();
+
+  const auto n5 = klut.create_xor( c, d );
+  const auto n6 = klut.create_not( n5 );
+  const auto n7 = klut.create_xor( a, b );
+  const auto sum = klut.create_xor( n6, n7 );
+  const auto carry = klut.create_maj( a, b, n5 );
+
+  klut.create_po( sum );
+  klut.create_po( carry );
+
+  binding_view<klut_network> b_klut{ klut, gates };
+  dont_touch_view<binding_view<klut_network>> db_klut{ b_klut };
+
+  db_klut.add_binding( klut.get_node( n5 ), 3 );
+  db_klut.select_dont_touch( klut.get_node( n5 ) );
+  db_klut.add_binding( klut.get_node( n6 ), 0 );
+  db_klut.select_dont_touch( klut.get_node( n6 ) );
+
+  emap_params ps;
+  ps.map_multioutput = true;
+  ps.area_oriented_mapping = true;
+  emap_stats st;
+  binding_view<klut_network> luts = emap( klut, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( luts.size() == 10u );
+  CHECK( luts.num_pis() == 4u );
+  CHECK( luts.num_pos() == 2u );
+  CHECK( luts.num_gates() == 4u );
+  CHECK( st.area > 12.0f - eps );
+  CHECK( st.area < 12.0f + eps );
+  CHECK( st.delay > 5.8f - eps );
+  CHECK( st.delay < 5.8f + eps );
+}
+
+TEST_CASE( "Emap on circuit with don't touch cells", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3, classification_type::np_configurations> lib( gates );
+
+  klut_network klut;
+  const auto a = klut.create_pi();
+  const auto b = klut.create_pi();
+  const auto c = klut.create_pi();
+  const auto d = klut.create_pi();
+
+  const auto n5 = klut.create_xor( c, d );
+  const auto n6 = klut.create_not( n5 );
+  const auto n7 = klut.create_xor( a, b );
+  const auto sum = klut.create_xor( n6, n7 );
+  const auto carry = klut.create_maj( a, b, n5 );
+
+  klut.create_po( sum );
+  klut.create_po( carry );
+
+  binding_view<klut_network> b_klut{ klut, gates };
+  dont_touch_view<binding_view<klut_network>> db_klut{ b_klut };
+
+  db_klut.add_binding( klut.get_node( n5 ), 3 );
+  db_klut.select_dont_touch( klut.get_node( n5 ) );
+  db_klut.add_binding( klut.get_node( n6 ), 0 );
+  db_klut.select_dont_touch( klut.get_node( n6 ) );
+
+  emap_params ps;
+  ps.map_multioutput = true;
+  ps.area_oriented_mapping = true;
+  emap_stats st;
+  cell_view<block_network> luts = emap_block( klut, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( luts.size() == 9u );
+  CHECK( luts.num_pis() == 4u );
+  CHECK( luts.num_pos() == 2u );
+  CHECK( luts.num_gates() == 3u );
+  CHECK( st.area > 12.0f - eps );
+  CHECK( st.area < 12.0f + eps );
+  CHECK( st.delay > 5.8f - eps );
+  CHECK( st.delay < 5.8f + eps );
 }

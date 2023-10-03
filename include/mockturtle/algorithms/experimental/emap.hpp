@@ -3805,15 +3805,13 @@ private:
     std::vector<standard_cell> const& lib = res.get_library();
 
     /* get translation ID from GENLIB to STD_CELL */
-    std::unordered_map<uint32_t, uint32_t> genlib_to_cell;
-    uint32_t i = 0;
+    std::vector<uint32_t> genlib_to_cell( library.get_gates().size() );
     for ( standard_cell const& cell : lib )
     {
       for ( gate const& g : cell.gates )
       {
-        genlib_to_cell[g.id] = i;
+        genlib_to_cell[g.id] = cell.id;
       }
-      ++i;
     }
 
     for ( auto const& n : topo_order )
@@ -3841,15 +3839,15 @@ private:
       if ( node_data.map_refs[2] == 0u )
         continue;
 
-      /* TODO: don't touch box */
-      // if constexpr ( has_is_dont_touch_v<Ntk> )
-      // {
-      //   if ( ntk.is_dont_touch( n ) )
-      //   {
-      //     clone_box( res, old2new, index );
-      //     continue;
-      //   }
-      // }
+      /* don't touch box */
+      if constexpr ( has_is_dont_touch_v<Ntk> )
+      {
+        if ( ntk.is_dont_touch( n ) )
+        {
+          clone_box2( res, old2new, index, genlib_to_cell );
+          continue;
+        }
+      }
 
       unsigned phase = ( node_data.best_supergate[0] != nullptr ) ? 0 : 1;
 
@@ -3980,7 +3978,7 @@ private:
     return f;
   }
 
-  void create_lut_for_gate2( cell_view<block_network>& res, block_map& old2new, uint32_t index, unsigned phase, std::unordered_map<uint32_t, uint32_t> const& genlib_to_cell )
+  void create_lut_for_gate2( cell_view<block_network>& res, block_map& old2new, uint32_t index, unsigned phase, std::vector<uint32_t> const& genlib_to_cell )
   {
     auto const& node_data = node_match[index];
     auto const& best_cut = cuts[index][node_data.best_cut[phase]];
@@ -4017,7 +4015,7 @@ private:
     }
   }
 
-  signal<block_network> create_lut_for_gate2_rec( cell_view<block_network>& res, composed_gate<NInputs> const& gate, std::vector<signal<block_network>> const& children, std::unordered_map<uint32_t, uint32_t> const& genlib_to_cell )
+  signal<block_network> create_lut_for_gate2_rec( cell_view<block_network>& res, composed_gate<NInputs> const& gate, std::vector<signal<block_network>> const& children, std::vector<uint32_t> const& genlib_to_cell )
   {
     std::vector<signal<block_network>> children_local( gate.fanin.size() );
 
@@ -4041,7 +4039,7 @@ private:
     return f;
   }
 
-  void create_block_for_gate( cell_view<block_network>& res, block_map& old2new, uint32_t index, unsigned phase, std::unordered_map<uint32_t, uint32_t> const& genlib_to_cell )
+  void create_block_for_gate( cell_view<block_network>& res, block_map& old2new, uint32_t index, unsigned phase, std::vector<uint32_t> const& genlib_to_cell )
   {
     std::vector<standard_cell> const& lib = res.get_library();
     composed_gate<NInputs> const* local_gate = node_match[index].best_supergate[phase]->root;
@@ -4139,6 +4137,77 @@ private:
     {
       if ( ntk.has_binding( n ) )
         res.add_binding( res.get_node( f ), ntk.get_binding_index( n ) );
+    }
+  }
+
+  void clone_box2( cell_view<block_network>& res, klut_map& old2new, uint32_t index, std::vector<uint32_t> const& genlib_to_cell )
+  {
+    node<Ntk> n = ntk.index_to_node( index );
+    std::vector<signal<block_network>> children;
+
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      children.push_back( old2new[ntk.get_node( f )][ntk.is_complemented( f ) ? 1 : 0] );
+    } );
+
+    /* check if multi-output */
+    std::vector<standard_cell> const& lib = res.get_library();
+    if constexpr ( has_has_binding_v<Ntk> )
+    {
+      bool is_multioutput = false;
+      if ( ntk.has_binding( n ) )
+      {
+        uint32_t cell_id = genlib_to_cell.at( ntk.get_binding_index( n ) );
+        if ( lib.at( cell_id ).gates.size() > 1 )
+          is_multioutput = true;
+      }
+
+      /* create the multioutput node (partially dangling) */
+      if ( is_multioutput )
+      {
+        standard_cell const& cell = lib.at( genlib_to_cell.at( ntk.get_binding_index( n ) ) );
+        std::vector<kitty::dynamic_truth_table> functions;
+        for ( auto const& g : cell.gates )
+        {
+          functions.push_back( g.function );
+        }
+
+        auto f = res.create_node( children, functions );
+
+        /* find and connect the correct pin */
+        for ( auto const& g : cell.gates )
+        {
+          if ( g.id == cell.id )
+            break;
+          res.next_output_pin( f );
+        }
+
+        old2new[index][0] = f;
+        res.add_cell( res.get_node( f ), cell.id );
+        if ( node_match[index].map_refs[1] )
+        {
+          old2new[index][1] = res.create_not( f );
+          res.add_cell( res.get_node( old2new[index][1] ), genlib_to_cell.at( lib_inv_id ) );
+        }
+        return;
+      }
+    }
+
+    /* create the single-output node */
+    auto const& tt = ntk.node_function( n );
+    auto f = res.create_node( children, tt );
+
+    /* add the node in the data structure */
+    old2new[index][0] = f;
+    if ( node_match[index].map_refs[1] )
+    {
+      old2new[index][1] = res.create_not( f );
+      res.add_cell( res.get_node( old2new[index][1] ), genlib_to_cell.at( lib_inv_id ) );
+    }
+
+    if constexpr ( has_has_binding_v<Ntk> )
+    {
+      if ( ntk.has_binding( n ) )
+        res.add_cell( res.get_node( f ), genlib_to_cell.at( ntk.get_binding_index( n ) ) );
     }
   }
 #pragma endregion

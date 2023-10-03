@@ -852,60 +852,60 @@ public:
   }
 #pragma endregion
 
-// #pragma region Simulate values (Should be adapted to work on signals)
-//   template<typename Iterator>
-//   iterates_over_t<Iterator, bool>
-//   compute( node const& n, Iterator begin, Iterator end ) const
-//   {
-//     uint32_t index{ 0 };
-//     auto it = _storage->nodes[n].children.begin();
-//     while ( begin != end )
-//     {
-//       index <<= 1;
-//       index ^= *begin++ ? ( ~( it->weight ) & 1 ) : ( ( it->weight ) & 1 );
-//       ++it;
-//     }
-//     return kitty::get_bit( _storage->data.cache[_storage->nodes[n].data[2].h1], index );
-//   }
+#pragma region Simulate values // (Works on single-output gates only)
+  template<typename Iterator>
+  iterates_over_t<Iterator, bool>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    uint32_t index{ 0 };
+    auto it = _storage->nodes[n].children.begin();
+    while ( begin != end )
+    {
+      index <<= 1;
+      index ^= *begin++ ? ( ~( it->weight ) & 1 ) : ( ( it->weight ) & 1 );
+      ++it;
+    }
+    return kitty::get_bit( _storage->data.cache[_storage->nodes[n].data[2].h1], index );
+  }
 
-//   template<typename Iterator>
-//   iterates_over_truth_table_t<Iterator>
-//   compute( node const& n, Iterator begin, Iterator end ) const
-//   {
-//     const auto nfanin = _storage->nodes[n].children.size();
+  template<typename Iterator>
+  iterates_over_truth_table_t<Iterator>
+  compute( node const& n, Iterator begin, Iterator end ) const
+  {
+    const auto nfanin = _storage->nodes[n].children.size();
 
-//     std::vector<typename std::iterator_traits<Iterator>::value_type> tts( begin, end );
+    std::vector<typename std::iterator_traits<Iterator>::value_type> tts( begin, end );
 
-//     assert( nfanin != 0 );
-//     assert( tts.size() == nfanin );
+    assert( nfanin != 0 );
+    assert( tts.size() == nfanin );
 
-//     /* adjust polarities */
-//     for ( auto j = 0u; j < nfanin; ++j )
-//     {
-//       if ( _storage->nodes[n].children[j].weight & 1 )
-//         tts[j] = ~tts[j];
-//     }
+    /* adjust polarities */
+    for ( auto j = 0u; j < nfanin; ++j )
+    {
+      if ( _storage->nodes[n].children[j].weight & 1 )
+        tts[j] = ~tts[j];
+    }
 
-//     /* resulting truth table has the same size as any of the children */
-//     auto result = tts.front().construct();
-//     const auto gate_tt = _storage->data.cache[_storage->nodes[n].data[2].h1];
+    /* resulting truth table has the same size as any of the children */
+    auto result = tts.front().construct();
+    const auto gate_tt = _storage->data.cache[_storage->nodes[n].data[2].h1];
 
-//     for ( uint32_t i = 0u; i < static_cast<uint32_t>( result.num_bits() ); ++i )
-//     {
-//       uint32_t pattern = 0u;
-//       for ( auto j = 0u; j < nfanin; ++j )
-//       {
-//         pattern |= kitty::get_bit( tts[j], i ) << j;
-//       }
-//       if ( kitty::get_bit( gate_tt, pattern ) )
-//       {
-//         kitty::set_bit( result, i );
-//       }
-//     }
+    for ( uint32_t i = 0u; i < static_cast<uint32_t>( result.num_bits() ); ++i )
+    {
+      uint32_t pattern = 0u;
+      for ( auto j = 0u; j < nfanin; ++j )
+      {
+        pattern |= kitty::get_bit( tts[j], i ) << j;
+      }
+      if ( kitty::get_bit( gate_tt, pattern ) )
+      {
+        kitty::set_bit( result, i );
+      }
+    }
 
-//     return result;
-//   }
-// #pragma endregion
+    return result;
+  }
+#pragma endregion
 
 #pragma region Custom node values
   void clear_values() const
