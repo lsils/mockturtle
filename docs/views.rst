@@ -85,7 +85,7 @@ algorithm.  Several views are implemented in mockturtle.
    :members:
 
 `binding_view`: Add bindings from a technology library
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/views/binding_view.hpp``
 
