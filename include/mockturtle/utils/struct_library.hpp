@@ -678,7 +678,7 @@ private:
 
       return res.index;
     }
-    else  /* try bottom decomposition */
+    else /* try bottom decomposition */
     {
       auto couple = try_bottom_dec( tt, tt.num_vars() );
       i = std::get<0>( couple );
@@ -696,7 +696,7 @@ private:
 
         return compute_dsd( tt_shr, mapped_support, rule );
       }
-      else  /* do shannon decomposition */
+      else /* do shannon decomposition */
       {
         kitty::dynamic_truth_table co0( tt.num_vars() );
         kitty::dynamic_truth_table co1( tt.num_vars() );
@@ -837,7 +837,7 @@ private:
         }
         else // it is root
         {
-          dsd_node new_root = { node_type::and_, rule.size(), { { 1, 0 }, { 1, n.index } } };
+          dsd_node new_root = { node_type::and_, static_cast<uint32_t>( rule.size() ), { { 1, 0 }, { 1, n.index } } };
           aig_rule.insert( aig_rule.begin(), new_root );
         }
       }
@@ -874,10 +874,10 @@ private:
         }
         else // it is root
         {
-          dsd_node new_root = { node_type::and_, rule.size() + 2, { { 1, 0 }, { 1, rule.size() + 1 } } };
-          dsd_node node_or = { node_type::and_, rule.size() + 1, { { 1, rule.size() - 1 }, { 1, rule.size() } } };
-          dsd_node node_and1 = { node_type::and_, rule.size(), { { 0, n.fanin[2].index }, { n.fanin[1].inv, n.fanin[1].index } } };
-          new_node = { node_type::and_, rule.size() - 1, { { 1, n.fanin[2].index }, { n.fanin[0].inv, n.fanin[0].index } } }; // and0_node
+          dsd_node new_root = { node_type::and_, static_cast<uint32_t>( rule.size() + 2 ), { { 1, 0 }, { 1, static_cast<uint32_t>( rule.size() ) + 1 } } };
+          dsd_node node_or = { node_type::and_, static_cast<uint32_t>( rule.size() + 1 ), { { 1, static_cast<uint32_t>( rule.size() - 1 ) }, { 1, static_cast<uint32_t>( rule.size() ) } } };
+          dsd_node node_and1 = { node_type::and_, static_cast<uint32_t>( rule.size() ), { { 0, n.fanin[2].index }, { n.fanin[1].inv, n.fanin[1].index } } };
+          new_node = { node_type::and_, static_cast<uint32_t>( rule.size() - 1 ), { { 1, n.fanin[2].index }, { n.fanin[0].inv, n.fanin[0].index } } }; // and0_node
 
           aig_rule.insert( aig_rule.begin(), new_root );
           aig_rule.insert( aig_rule.begin(), node_or );
@@ -917,10 +917,10 @@ private:
         }
         else // it is root
         {
-          dsd_node new_root = { node_type::and_, rule.size() + 2, { { 1, 0 }, { 1, rule.size() + 1 } } };
-          dsd_node node_or = { node_type::and_, rule.size() + 1, { { 1, rule.size() - 1 }, { 1, rule.size() } } };
-          dsd_node node_and1 = { node_type::and_, rule.size(), { { 0, n.fanin[0].index }, { 1, n.fanin[1].index } } };
-          new_node = { node_type::and_, rule.size() - 1, { { 1, n.fanin[0].index }, { 0, n.fanin[1].index } } }; // and0_node
+          dsd_node new_root = { node_type::and_, static_cast<uint32_t>( rule.size() + 2 ), { { 1, 0 }, { 1, static_cast<uint32_t>( rule.size() + 1 ) } } };
+          dsd_node node_or = { node_type::and_, static_cast<uint32_t>( rule.size() + 1 ), { { 1, static_cast<uint32_t>( rule.size() - 1 ) }, { 1, static_cast<uint32_t>( rule.size() ) } } };
+          dsd_node node_and1 = { node_type::and_, static_cast<uint32_t>( rule.size() ), { { 0, n.fanin[0].index }, { 1, n.fanin[1].index } } };
+          new_node = { node_type::and_, static_cast<uint32_t>( rule.size() - 1 ), { { 1, n.fanin[0].index }, { 0, n.fanin[1].index } } }; // and0_node
 
           aig_rule.insert( aig_rule.begin(), new_root );
           aig_rule.insert( aig_rule.begin(), node_or );
