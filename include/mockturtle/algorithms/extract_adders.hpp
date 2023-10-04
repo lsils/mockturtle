@@ -24,7 +24,7 @@
  */
 
 /*!
-  \file map_adders.hpp
+  \file extract_adders.hpp
   \brief Maps adders in the network
 
   \author Alessandro Tempia Calvino
@@ -49,9 +49,9 @@
 namespace mockturtle
 {
 
-struct map_adders_params
+struct extract_adders_params
 {
-  map_adders_params()
+  extract_adders_params()
   {
     cut_enumeration_ps.cut_limit = 49;
     cut_enumeration_ps.minimize_truth_table = false;
@@ -74,7 +74,7 @@ struct map_adders_params
   bool verbose{ false };
 };
 
-struct map_adders_stats
+struct extract_adders_stats
 {
   /*! \brief Computed cuts. */
   uint32_t cuts_total{ 0 };
@@ -127,7 +127,7 @@ struct cut_enumeration_fa_cut
 };
 
 template<class Ntk>
-class map_adders_impl
+class extract_adders_impl
 {
 public:
   using network_cuts_t = fast_network_cuts<Ntk, 3, true, cut_enumeration_fa_cut>;
@@ -138,7 +138,7 @@ public:
   using block_map = node_map<signal<block_network>, Ntk>;
 
 public:
-  explicit map_adders_impl( Ntk& ntk, map_adders_params const& ps, map_adders_stats& st )
+  explicit extract_adders_impl( Ntk& ntk, extract_adders_params const& ps, extract_adders_stats& st )
       : ntk( ntk ),
         ps( ps ),
         st( st ),
@@ -897,8 +897,8 @@ private:
 
 private:
   Ntk& ntk;
-  map_adders_params const& ps;
-  map_adders_stats& st;
+  extract_adders_params const& ps;
+  extract_adders_stats& st;
 
   network_cuts_t cuts;
   leaves_hash_t cuts_classes;
@@ -918,8 +918,30 @@ private:
 
 } /* namespace detail */
 
+/*! \brief Adders extraction.
+ *
+ * This function extracts half and full adders from a network.
+ * It returns a `block_network` with extracted half and full adder
+ * blocks.
+ *
+ * **Required network functions:**
+ * - `size`
+ * - `is_pi`
+ * - `is_constant`
+ * - `node_to_index`
+ * - `index_to_node`
+ * - `get_node`
+ * - `foreach_co`
+ * - `foreach_node`
+ * - `foreach_gate`
+ *
+ * \param ntk Network
+ * \param ps Parameters
+ * \param pst Stats
+ *
+ */
 template<class Ntk>
-block_network map_adders( Ntk& ntk, map_adders_params const& ps = {}, map_adders_stats* pst = {} )
+block_network extract_adders( Ntk& ntk, extract_adders_params const& ps = {}, extract_adders_stats* pst = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -930,10 +952,11 @@ block_network map_adders( Ntk& ntk, map_adders_params const& ps = {}, map_adders
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_foreach_node_v<Ntk>, "Ntk does not implement the foreach_node method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_node method" );
+  static_assert( has_foreach_co_v<Ntk>, "Ntk does not implement the foreach_co method" );
 
-  map_adders_stats st;
+  extract_adders_stats st;
 
-  detail::map_adders_impl p( ntk, ps, st );
+  detail::extract_adders_impl p( ntk, ps, st );
   block_network res = p.run();
 
   if ( ps.verbose )

@@ -66,6 +66,8 @@ namespace mockturtle
  *
  * The template parameter `NInputs` selects the maximum number of variables
  * allowed for a gate in the library.
+ * 
+ * By default, `struct_library` is used in `tech_library` when NInputs is greater than 6.
  *
  *
    \verbatim embed:rst
@@ -76,7 +78,7 @@ namespace mockturtle
 
       std::vector<gate> gates;
       lorina::read_genlib( "file.genlib", genlib_reader( gates ) );
-      // standard library
+      // struct library
       mockturtle::struct_library lib( gates );
    \endverbatim
  */

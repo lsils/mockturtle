@@ -54,7 +54,7 @@ validity tags to trade efficiency with memory.
 
 .. doxygenfunction:: mockturtle::initialize_copy_network
 
-Tech Library
+Tech library
 ~~~~~~~~~~~~
 
 **Header:** ``mockturtle/utils/tech_library.hpp``
@@ -72,7 +72,7 @@ Tech Library
 
 .. _exact_library:
 
-Exact Library
+Exact library
 ~~~~~~~~~~~~~
 
 **Header:** ``mockturtle/utils/tech_library.hpp``
@@ -99,6 +99,22 @@ Supergates utils
    get_standard_library_size
 
 .. doxygenclass:: mockturtle::super_utils
+   :members:
+
+Struct library
+~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/utils/struct_library.hpp``
+
+.. doc_overview_table:: classmockturtle_1_1struct__library
+   :column: Method
+
+   get_struct_library
+   get_pattern_id
+   get_supergates_pattern
+   print_and_table
+
+.. doxygenclass:: mockturtle::struct_library
    :members:
 
 Cuts

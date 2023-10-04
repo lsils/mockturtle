@@ -1095,8 +1095,8 @@ struct exact_library_params
 
   /* classify in NP instead of NPN */
   bool np_classification{ true };
-  /* Enable don't care matching */
-  bool enable_dont_cares{ false };
+  /* Compute DC classes for matching with  don't cares */
+  bool compute_dc_classes{ false };
   /* verbose */
   bool verbose{ false };
 };
@@ -1289,7 +1289,7 @@ private:
       }
     }
 
-    if ( _ps.enable_dont_cares )
+    if ( _ps.compute_dc_classes )
       compute_dont_cares_classes();
 
     if ( _ps.verbose )

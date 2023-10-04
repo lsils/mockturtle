@@ -3,14 +3,14 @@
 #include <cstdint>
 #include <vector>
 
-#include <mockturtle/algorithms/map_adders.hpp>
+#include <mockturtle/algorithms/extract_adders.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/block.hpp>
 
 using namespace mockturtle;
 
-TEST_CASE( "Map Adders on AIG with no adders", "[map_adders]" )
+TEST_CASE( "Map Adders on AIG with no adders", "[extract_adders]" )
 {
   aig_network aig;
   const auto a = aig.create_pi();
@@ -20,9 +20,9 @@ TEST_CASE( "Map Adders on AIG with no adders", "[map_adders]" )
   const auto f = aig.create_maj( a, b, c );
   aig.create_po( f );
 
-  map_adders_params ps;
-  map_adders_stats st;
-  block_network luts = map_adders( aig, ps, &st );
+  extract_adders_params ps;
+  extract_adders_stats st;
+  block_network luts = extract_adders( aig, ps, &st );
 
   CHECK( luts.size() == 9u );
   CHECK( luts.num_pis() == 3u );
@@ -32,7 +32,7 @@ TEST_CASE( "Map Adders on AIG with no adders", "[map_adders]" )
   CHECK( st.mapped_fa + st.mapped_ha == 0u );
 }
 
-TEST_CASE( "Map Adders on full adder 1", "[map_adders]" )
+TEST_CASE( "Map Adders on full adder 1", "[extract_adders]" )
 {
   aig_network aig;
   const auto a = aig.create_pi();
@@ -43,9 +43,9 @@ TEST_CASE( "Map Adders on full adder 1", "[map_adders]" )
   aig.create_po( sum );
   aig.create_po( carry );
 
-  map_adders_params ps;
-  map_adders_stats st;
-  block_network luts = map_adders( aig, ps, &st );
+  extract_adders_params ps;
+  extract_adders_stats st;
+  block_network luts = extract_adders( aig, ps, &st );
 
   CHECK( luts.size() == 6u );
   CHECK( luts.num_pis() == 3u );
@@ -57,7 +57,7 @@ TEST_CASE( "Map Adders on full adder 1", "[map_adders]" )
   CHECK( st.mapped_fa == 1u );
 }
 
-TEST_CASE( "Map Adders on full adder 2", "[map_adders]" )
+TEST_CASE( "Map Adders on full adder 2", "[extract_adders]" )
 {
   aig_network aig;
   const auto a = aig.create_pi();
@@ -68,10 +68,10 @@ TEST_CASE( "Map Adders on full adder 2", "[map_adders]" )
   aig.create_po( sum );
   aig.create_po( carry );
 
-  map_adders_params ps;
+  extract_adders_params ps;
   ps.map_inverted = true;
-  map_adders_stats st;
-  block_network luts = map_adders( aig, ps, &st );
+  extract_adders_stats st;
+  block_network luts = extract_adders( aig, ps, &st );
 
   CHECK( luts.size() == 6u );
   CHECK( luts.num_pis() == 3u );
@@ -83,7 +83,7 @@ TEST_CASE( "Map Adders on full adder 2", "[map_adders]" )
   CHECK( st.mapped_fa == 1u );
 }
 
-TEST_CASE( "Map adders on ripple carry adder", "[map_adders]" )
+TEST_CASE( "Map adders on ripple carry adder", "[extract_adders]" )
 {
   aig_network aig;
   
@@ -97,9 +97,9 @@ TEST_CASE( "Map adders on ripple carry adder", "[map_adders]" )
   std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
   aig.create_po( carry );
 
-  map_adders_params ps;
-  map_adders_stats st;
-  block_network luts = map_adders( aig, ps, &st );
+  extract_adders_params ps;
+  extract_adders_stats st;
+  block_network luts = extract_adders( aig, ps, &st );
 
   CHECK( luts.size() == 26u );
   CHECK( luts.num_pis() == 16u );
@@ -113,7 +113,7 @@ TEST_CASE( "Map adders on ripple carry adder", "[map_adders]" )
   CHECK( st.mapped_fa == 7u );
 }
 
-TEST_CASE( "Map adders on multiplier", "[map_adders]" )
+TEST_CASE( "Map adders on multiplier", "[extract_adders]" )
 {
   aig_network aig;
 
@@ -129,9 +129,9 @@ TEST_CASE( "Map adders on multiplier", "[map_adders]" )
   CHECK( aig.num_pis() == 16 );
   CHECK( aig.num_pos() == 16 );
 
-  map_adders_params ps;
-  map_adders_stats st;
-  block_network luts = map_adders( aig, ps, &st );
+  extract_adders_params ps;
+  extract_adders_stats st;
+  block_network luts = extract_adders( aig, ps, &st );
 
   CHECK( luts.size() == 138u );
   CHECK( luts.num_pis() == 16u );

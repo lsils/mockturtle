@@ -75,14 +75,11 @@ namespace mockturtle
       tech_library tech_lib( gates );
 
       // call technology mapping to obtain the view
-      cell_view<klut_network> res = map( aig, tech_lib );
+      cell_view<block_network> res = emap_block( aig, tech_lib );
 
       // prints stats and cells usage
       res.report_stats();
       res.report_cells_usage();
-
-      // write the mapped network in verilog
-      write_verilog_with_cell( res, "file.v" );
    \endverbatim
  */
 template<class Ntk>

@@ -5305,6 +5305,9 @@ cell_view<block_network> emap_block( Ntk const& ntk, tech_library<NInputs, Confi
  * - `has_binding`
  *
  * \param ntk Network
+ * \param library Technology library
+ * \param ps Mapping params
+ * \param pst Mapping statistics
  *
  */
 template<unsigned CutSize = 6u, class Ntk, unsigned NInputs, classification_type Configuration>
