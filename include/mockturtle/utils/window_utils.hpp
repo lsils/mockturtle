@@ -33,6 +33,7 @@
 #pragma once
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <type_traits>
 #include <vector>

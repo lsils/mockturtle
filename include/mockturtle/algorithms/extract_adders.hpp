@@ -39,12 +39,12 @@
 #include <kitty/static_truth_table.hpp>
 #include <parallel_hashmap/phmap.h>
 
-#include "cut_enumeration.hpp"
 #include "../networks/block.hpp"
 #include "../networks/storage.hpp"
-#include "../views/choice_view.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
+#include "../views/choice_view.hpp"
+#include "cut_enumeration.hpp"
 
 namespace mockturtle
 {
@@ -82,8 +82,8 @@ struct extract_adders_stats
   /*! \brief Gates count. */
   uint32_t and2{ 0 };
   uint32_t maj3{ 0 };
-  uint32_t xor2 { 0 };
-  uint32_t xor3 { 0 };
+  uint32_t xor2{ 0 };
+  uint32_t xor3{ 0 };
 
   /*! \brief Hashed classes. */
   uint32_t num_classes{ 0 };
@@ -98,7 +98,7 @@ struct extract_adders_stats
   void report() const
   {
     std::cout << fmt::format( "[i] Cuts = {}\t And2 = {}\t Xor2 = {}\t Maj3 = {}\t Xor3 = {}\n",
-      cuts_total, and2, xor2, maj3, xor3 );
+                              cuts_total, and2, xor2, maj3, xor3 );
     std::cout << fmt::format( "[i] Classes = {} \tMapped HA = {}\t Mapped FA:{}\n", num_classes, mapped_ha, mapped_fa );
     std::cout << fmt::format( "[i] Total runtime = {:>5.2f} secs\n", to_seconds( time_total ) );
   }
@@ -151,7 +151,7 @@ public:
     cuts_classes.reserve( 2000 );
     tmp_visited.reserve( 20 );
   }
-  
+
   block_network run()
   {
     stopwatch t( st.time_total );
@@ -170,7 +170,7 @@ private:
   void create_classes()
   {
     uint32_t counter = 0;
-    std::array<uint32_t, 3> leaves = {0, 0, 0};
+    std::array<uint32_t, 3> leaves = { 0, 0, 0 };
 
     st.cuts_total = cuts.total_cuts();
 
@@ -237,7 +237,7 @@ private:
           ++cut_index;
           continue;
         }
-        
+
         uint64_t data = ( static_cast<uint64_t>( ntk.node_to_index( n ) ) << 16 ) | cut_index;
         leaves[2] = 0;
         uint32_t i = 0;
@@ -245,7 +245,7 @@ private:
           leaves[i++] = l;
 
         /* add to hash table */
-        auto &v = cuts_classes[leaves];
+        auto& v = cuts_classes[leaves];
         v.push_back( data );
 
         ++cut_index;
@@ -275,11 +275,11 @@ private:
         /* not compatible */
         if ( cut_i->data.is_xor == cut_j->data.is_xor )
           continue;
-        
+
         /* check compatibility */
         if ( !check_adder( index_i, index_j, cut_i ) )
           continue;
-        
+
         assert( cut_i.size() == 2 );
         assert( cut_j.size() == 2 );
 
@@ -325,11 +325,11 @@ private:
           /* not compatible */
           if ( cut_i->data.is_xor == cut_j->data.is_xor )
             continue;
-          
+
           /* check compatibility */
           if ( !check_adder( index_i, index_j, cut_i ) )
             continue;
-          
+
           assert( cut_i.size() == 3 );
           assert( cut_j.size() == 3 );
 
@@ -598,7 +598,7 @@ private:
       return;
 
     ntk.foreach_fanin( n, [&]( auto const& f ) {
-      node<Ntk> g =  ntk.get_node( f );
+      node<Ntk> g = ntk.get_node( f );
       if ( ntk.decr_fanout_size( g ) == 0 )
       {
         dereference_node_rec( g );
@@ -964,7 +964,7 @@ block_network extract_adders( Ntk& ntk, extract_adders_params const& ps = {}, ex
 
   if ( pst )
     *pst = st;
-  
+
   return res;
 }
 

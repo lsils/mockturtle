@@ -27,6 +27,7 @@
   \file klut.hpp
   \brief k-LUT logic network implementation
 
+  \author Alessandro Tempia Calvino
   \author Andrea Costamagna
   \author Heinz Riener
   \author Marcel Walter
@@ -114,7 +115,7 @@ protected:
   inline void _init()
   {
     /* already initialized */
-    if ( _storage->nodes.size() > 1 ) 
+    if ( _storage->nodes.size() > 1 )
       return;
 
     /* reserve the second node for constant 1 */

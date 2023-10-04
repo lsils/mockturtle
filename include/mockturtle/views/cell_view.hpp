@@ -87,6 +87,7 @@ class cell_view : public Ntk
 {
 public:
   using node = typename Ntk::node;
+  using signal = typename Ntk::signal;
 
 public:
   explicit cell_view( std::vector<standard_cell> const& library )
@@ -131,12 +132,12 @@ public:
 
     if constexpr ( has_num_outputs_v<Ntk> && has_node_function_v<Ntk> )
     {
-      if ( Ntk::num_outputs( n ) != cell.cells.size() )
+      if ( Ntk::num_outputs( n ) != cell.gates.size() )
         return false;
-      
-      for ( uint32_t i = 0; i < Ntk::num_outputs( n );  ++i )
+
+      for ( uint32_t i = 0; i < Ntk::num_outputs( n ); ++i )
       {
-        if ( Ntk::node_function_pin( n, i ) != cell.cells[i].function )
+        if ( Ntk::node_function_pin( n, i ) != cell.gates[i].function )
         {
           return false;
         }
@@ -146,10 +147,10 @@ public:
       return true;
     }
 
-    if ( cell.cells.size() > 1 )
+    if ( cell.gates.size() > 1 )
       return false;
 
-    if ( Ntk::node_function( n ) == cell.cells[0].function )
+    if ( Ntk::node_function( n ) == cell.gates[0].function )
     {
       _cells[n] = cell_id;
       return true;
@@ -218,14 +219,14 @@ public:
           double cell_delay = 0;
           if constexpr ( has_get_output_pin_v<Ntk> )
           {
-            Ntk::foreach_fanin( n, [&]( auto const& f, auto i ) {
-              cell_delay = std::max( cell_delay, (double)( delays[Ntk::get_node( f )][Ntk::get_output_pin( f )] + std::max( g.pins[i].rise_block_delay, g.pins[i].fall_block_delay ) ) );
+            Ntk::foreach_fanin( n, [&]( signal const& f, auto i ) {
+              cell_delay = std::max( cell_delay, delays[Ntk::get_node( f )][Ntk::get_output_pin( f )] + std::max( g.pins[i].rise_block_delay, g.pins[i].fall_block_delay ) );
             } );
           }
           else
           {
-            Ntk::foreach_fanin( n, [&]( auto const& f, auto i ) {
-              cell_delay = std::max( cell_delay, (double)( delays[Ntk::get_node( f )].front() + std::max( g.pins[i].rise_block_delay, g.pins[i].fall_block_delay ) ) );
+            Ntk::foreach_fanin( n, [&]( signal const& f, auto i ) {
+              cell_delay = std::max( cell_delay, delays[Ntk::get_node( f )].front() + std::max( g.pins[i].rise_block_delay, g.pins[i].fall_block_delay ) );
             } );
           }
           delays[n].push_back( cell_delay );
@@ -253,7 +254,7 @@ public:
     std::vector<uint32_t> cells_profile( _library.size(), 0u );
 
     double area = 0;
-    Ntk::foreach_node( [&]( auto const& n, auto ) {
+    Ntk::foreach_node( [&]( node const& n, auto ) {
       if ( has_cell( n ) )
       {
         auto const& g = get_cell( n );

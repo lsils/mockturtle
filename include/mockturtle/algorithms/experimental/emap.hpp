@@ -3238,7 +3238,7 @@ private:
     return false;
   }
 
-  void remove_unused_multioutput()
+  bool remove_unused_multioutput()
   {
     /* TODO: update required times */
     for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
@@ -3859,7 +3859,7 @@ private:
         {
           assert( node_data.same_match == true );
 
-          if ( node_tuple_match[index] < UINT32_MAX - 1  )
+          if ( node_tuple_match[index] < UINT32_MAX - 1 )
           {
             ++multioutput_count;
             create_block_for_gate( res, old2new, index, phase, genlib_to_cell );
@@ -4865,8 +4865,6 @@ private:
     {
       ntk.decr_value( ntk.index_to_node( leaf ) );
     }
-
-    return true;
   }
 
   template<bool MARK>

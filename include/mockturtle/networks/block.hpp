@@ -77,7 +77,7 @@ struct block_storage_node : block_fanin_node<2>
     for ( auto i = 2; i < data.size() + 2; ++i )
       if ( ( data[i].h1 != other.data[i].h1 ) || ( children != other.children ) )
         return false;
-    
+
     return true;
   }
 };
@@ -219,7 +219,7 @@ protected:
   {
     /* reserve the second node for constant 1 */
     _storage->nodes.emplace_back();
-    
+
     /* reserve some truth tables for nodes */
     kitty::dynamic_truth_table tt_zero( 0 );
     _storage->data.cache.insert( tt_zero );
@@ -635,16 +635,16 @@ public:
     return --_storage->nodes[n].data[1].h2;
   }
 
-  uint32_t incr_fanout_size_pin( node const& n, uint32_t pin_index  ) const
+  uint32_t incr_fanout_size_pin( node const& n, uint32_t pin_index ) const
   {
     return _storage->nodes[n].data[2 + pin_index].h2++;
   }
 
-  uint32_t decr_fanout_size_pin( node const& n, uint32_t pin_index  ) const
+  uint32_t decr_fanout_size_pin( node const& n, uint32_t pin_index ) const
   {
     return --_storage->nodes[n].data[2 + pin_index].h2;
   }
-  
+
   uint32_t fanout_size_pin( node const& n, uint32_t pin_index ) const
   {
     return _storage->nodes[n].data[2 + pin_index].h1;

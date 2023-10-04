@@ -62,7 +62,7 @@ struct super_utils_params
  * This class creates supergates starting from supergates
  * specifications contained in `supergates_spec` extracted
  * from a SUPER file.
- * 
+ *
  * Multi-output gates are also extracted from the list of
  * GENLIB gates. However multi-output gates are currently not
  * supported as supergates members.

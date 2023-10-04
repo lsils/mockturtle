@@ -38,10 +38,10 @@
 
 #include <kitty/operations.hpp>
 
-#include "../cleanup.hpp"
 #include "../../traits.hpp"
 #include "../../utils/node_map.hpp"
 #include "../../views/topo_view.hpp"
+#include "../cleanup.hpp"
 
 namespace mockturtle
 {

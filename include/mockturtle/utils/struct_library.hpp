@@ -66,7 +66,7 @@ namespace mockturtle
  *
  * The template parameter `NInputs` selects the maximum number of variables
  * allowed for a gate in the library.
- * 
+ *
  * By default, `struct_library` is used in `tech_library` when NInputs is greater than 6.
  *
  *
@@ -1174,7 +1174,7 @@ private:
         *func = kitty::cofactor1( tt, var_index );
       }
       dsd_node res = { node_type::and_, var_index, {} };
-      res.fanin.push_back( { 0, -1 } );
+      res.fanin.push_back( { 0, UINT32_MAX } );
       return res;
     }
     else if ( kitty::implies( var, tt ) )
@@ -1184,7 +1184,7 @@ private:
         *func = kitty::cofactor0( tt, var_index );
       }
       dsd_node res = { node_type::or_, var_index, {} };
-      res.fanin.push_back( { 0, -1 } );
+      res.fanin.push_back( { 0, UINT32_MAX } );
       return res;
     }
     else if ( kitty::implies( tt, ~var ) )
@@ -1194,7 +1194,7 @@ private:
         *func = kitty::cofactor0( tt, var_index );
       }
       dsd_node res = { node_type::and_, var_index, {} };
-      res.fanin.push_back( { 1, -1 } );
+      res.fanin.push_back( { 1, UINT32_MAX } );
       return res;
     }
     else if ( kitty::implies( ~var, tt ) )
@@ -1204,7 +1204,7 @@ private:
         *func = kitty::cofactor1( tt, var_index );
       }
       dsd_node res = { node_type::or_, var_index, {} };
-      res.fanin.push_back( { 1, -1 } );
+      res.fanin.push_back( { 1, UINT32_MAX } );
       return res;
     }
 
@@ -1221,7 +1221,7 @@ private:
           *func = co0;
         }
         dsd_node res = { node_type::xor_, var_index, {} };
-        res.fanin.push_back( { 0, -1 } );
+        res.fanin.push_back( { 0, UINT32_MAX } );
         return res;
       }
     }

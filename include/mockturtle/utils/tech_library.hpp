@@ -1168,7 +1168,7 @@ public:
     auto match = _super_lib.find( tt );
     if ( match == _super_lib.end() )
       return nullptr;
-    
+
     /* lookup for don't care optimization */
     auto match_dc = _dc_lib.find( tt );
     if ( dc._bits == 0 || match_dc == _dc_lib.end() )
@@ -1276,7 +1276,7 @@ private:
       if ( supergates_pos.size() > 0 )
       {
         std::sort( supergates_pos.begin(), supergates_pos.end(), [&]( auto const& a, auto const& b ) {
-         return a.area < b.area;
+          return a.area < b.area;
         } );
         _super_lib.insert( { entry, supergates_pos } );
       }
@@ -1386,7 +1386,7 @@ private:
     for ( auto const& entry : _super_lib )
     {
       const unsigned numgates = static_cast<unsigned>( std::get<1>( entry ).front().area );
-      class_sizes.insert( {std::get<0>( entry ), numgates} );
+      class_sizes.insert( { std::get<0>( entry ), numgates } );
     }
 
     uint32_t conflict_found = 0;
@@ -1407,15 +1407,15 @@ private:
         auto const& tt_j = std::get<0>( *entry_j );
         uint32_t size = std::get<1>( *entry_j );
 
-         /* evaluate DC only for size improvement */
+        /* evaluate DC only for size improvement */
         if ( size >= current_size )
           continue;
-        
+
         /* skip the same NPN class if gates are constructed in NP classes */
         if ( _ps.np_classification && tt_i == ~tt_j )
           continue;
-        
-        exact_npn_enumeration( tt_j, [&]( auto const& tt, uint32_t phase,  std::vector<uint8_t> const& perm ) {
+
+        exact_npn_enumeration( tt_j, [&]( auto const& tt, uint32_t phase, std::vector<uint8_t> const& perm ) {
           /* extract the DC set */
           const auto dc = tt_i ^ tt;
 
@@ -1502,7 +1502,7 @@ private:
       }
 
       if ( !dc_transformations.empty() )
-        _dc_lib.insert( {tt_i, dc_transformations} );
+        _dc_lib.insert( { tt_i, dc_transformations } );
     }
   }
 
