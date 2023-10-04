@@ -121,7 +121,7 @@ public:
   {
     node_type type;
 
-    int index;
+    uint32_t index;
 
     std::vector<signal> fanin = {};
   };
@@ -163,6 +163,7 @@ public:
   };
 
 private:
+  static constexpr uint32_t invalid_index = UINT32_MAX;
   using supergates_list_t = std::vector<supergate<NInputs>>;
   using composed_list_t = std::vector<composed_gate<NInputs>>;
   using lib_rule = phmap::flat_hash_map<kitty::dynamic_truth_table, std::vector<dsd_node>, kitty::hash<kitty::dynamic_truth_table>>;
@@ -290,8 +291,8 @@ private:
 
       /* DSD decomposition */
       rule rule = {};
-      std::vector<int> support = {};
-      for ( int i = 0; i < gate.num_vars; i++ )
+      std::vector<uint32_t> support = {};
+      for ( uint32_t i = 0; i < gate.num_vars; i++ )
       {
         rule.push_back( { node_type::pi_, i, {} } );
         support.push_back( i );
@@ -492,9 +493,9 @@ private:
     }
   }
 
-  int try_top_dec( kitty::dynamic_truth_table& tt, int num_vars )
+  uint32_t try_top_dec( kitty::dynamic_truth_table& tt, uint32_t num_vars )
   {
-    int i = 0;
+    uint32_t i = 0;
     for ( ; i < num_vars; i++ )
     {
       auto res = is_top_dec( tt, i, false );
@@ -504,7 +505,7 @@ private:
     return i;
   }
 
-  dsd_node do_top_dec( kitty::dynamic_truth_table& tt, int index, std::vector<int> mapped_support )
+  dsd_node do_top_dec( kitty::dynamic_truth_table& tt, uint32_t index, std::vector<uint32_t> mapped_support )
   {
     auto node = is_top_dec( tt, index, false, &tt );
 
@@ -512,10 +513,10 @@ private:
     return node;
   }
 
-  std::tuple<int, int> try_bottom_dec( kitty::dynamic_truth_table& tt, int num_vars )
+  std::tuple<int, int> try_bottom_dec( kitty::dynamic_truth_table& tt, uint32_t num_vars )
   {
-    int i;
-    int j;
+    uint32_t i;
+    uint32_t j;
     dsd_node res;
     for ( i = 0; i < num_vars; i++ )
     {
@@ -532,7 +533,7 @@ private:
     return ret;
   }
 
-  dsd_node do_bottom_dec( kitty::dynamic_truth_table& tt, int i, int j, int new_index, std::vector<int>& mapped_support )
+  dsd_node do_bottom_dec( kitty::dynamic_truth_table& tt, uint32_t i, uint32_t j, uint32_t new_index, std::vector<uint32_t>& mapped_support )
   {
     auto node = is_bottom_dec( tt, i, j, &tt, new_index, false );
 
@@ -543,16 +544,16 @@ private:
     return node;
   }
 
-  dsd_node do_shannon_dec( kitty::dynamic_truth_table tt, int index, kitty::dynamic_truth_table& co0, kitty::dynamic_truth_table& co1, std::vector<int> mapped_support )
+  dsd_node do_shannon_dec( kitty::dynamic_truth_table tt, uint32_t index, kitty::dynamic_truth_table& co0, kitty::dynamic_truth_table& co1, std::vector<uint32_t> mapped_support )
   {
     auto node = shannon_dec( tt, index, &co0, &co1 );
     node.fanin[0].index = mapped_support[index];
     return node;
   }
 
-  void update_support( std::vector<int>& v, int index )
+  void update_support( std::vector<uint32_t>& v, uint32_t index )
   {
-    int i = 0;
+    uint32_t i = 0;
     for ( ; i < v.size() && i < index; i++ )
       ;
 
@@ -570,9 +571,9 @@ private:
     kitty::shrink_to_inplace( tt_shr, tt );
   }
 
-  int is_PI( kitty::dynamic_truth_table const& rem, int n_vars )
+  uint32_t is_PI( kitty::dynamic_truth_table const& rem, uint32_t n_vars )
   {
-    for ( int i = 0; i < n_vars; i++ )
+    for ( uint32_t i = 0; i < n_vars; i++ )
     {
       auto var = rem.construct();
       kitty::create_nth_var( var, i );
@@ -581,12 +582,12 @@ private:
         return i;
       }
     }
-    return -1;
+    return invalid_index;
   }
 
-  int is_inv_PI( kitty::dynamic_truth_table const& rem, int n_vars )
+  uint32_t is_inv_PI( kitty::dynamic_truth_table const& rem, uint32_t n_vars )
   {
-    for ( int i = 0; i < n_vars; i++ )
+    for ( uint32_t i = 0; i < n_vars; i++ )
     {
       auto var = rem.construct();
       kitty::create_nth_var( var, i );
@@ -595,13 +596,13 @@ private:
         return i;
       }
     }
-    return -1;
+    return invalid_index;
   }
 
-  void update_found_rule( kitty::dynamic_truth_table& tt, std::vector<int>& mapped_support, std::vector<dsd_node>& rule )
+  void update_found_rule( kitty::dynamic_truth_table& tt, std::vector<uint32_t>& mapped_support, std::vector<dsd_node>& rule )
   {
-    int count_old = 0;
-    int count_curr = 0;
+    uint32_t count_old = 0;
+    uint32_t count_curr = 0;
     std::vector<dsd_node> new_rule;
     auto found_rule = get_rules( tt );
     std::copy_if( found_rule.begin(), found_rule.end(), std::back_inserter( new_rule ), []( dsd_node n ) {
@@ -638,7 +639,7 @@ private:
    *  \param rule DSD decomposition of the function.
    * Returns index of dsd_node to add to rule.
    */
-  int compute_dsd( kitty::dynamic_truth_table& tt, std::vector<int> mapped_support, std::vector<dsd_node>& rule )
+  uint32_t compute_dsd( kitty::dynamic_truth_table& tt, std::vector<uint32_t> mapped_support, std::vector<dsd_node>& rule )
   {
     /* Function has been already found */
     if ( !get_rules( tt ).empty() )
@@ -647,7 +648,7 @@ private:
       return rule.size() - 1;
     }
     /* try top decomposition */
-    int i = try_top_dec( tt, tt.num_vars() );
+    uint32_t i = try_top_dec( tt, tt.num_vars() );
     if ( i < tt.num_vars() ) // it was top decomposable
     {
       auto res = do_top_dec( tt, i, mapped_support );
@@ -657,13 +658,13 @@ private:
       kitty::dynamic_truth_table tt_shr( tt.num_vars() - 1 );
       min_base_shrink( tt, tt_shr );
 
-      if ( is_PI( tt_shr, tt_shr.num_vars() ) < 0 && is_inv_PI( tt_shr, tt_shr.num_vars() ) < 0 ) // check if remainder is PI
+      if ( is_PI( tt_shr, tt_shr.num_vars() ) == invalid_index && is_inv_PI( tt_shr, tt_shr.num_vars() ) == invalid_index ) // check if remainder is PI
       {
         res.fanin.push_back( { 0, compute_dsd( tt_shr, mapped_support, rule ) } );
       }
       else
       {
-        if ( is_PI( tt_shr, tt_shr.num_vars() ) >= 0 )
+        if ( is_PI( tt_shr, tt_shr.num_vars() ) != invalid_index )
         {
           res.fanin.push_back( { 0, mapped_support[is_PI( tt_shr, tt_shr.num_vars() )] } );
         }
@@ -674,15 +675,14 @@ private:
       }
       res.index = rule.size();
       rule.push_back( res );
+
       return res.index;
     }
-
-    /* try bottom decomposition */
-    else
+    else  /* try bottom decomposition */
     {
       auto couple = try_bottom_dec( tt, tt.num_vars() );
       i = std::get<0>( couple );
-      int j = std::get<1>( couple );
+      uint32_t j = std::get<1>( couple );
 
       if ( i < tt.num_vars() ) // it was bottom decomposable
       {
@@ -696,63 +696,68 @@ private:
 
         return compute_dsd( tt_shr, mapped_support, rule );
       }
-
-      /* do shannon decomposition */
-      else
+      else  /* do shannon decomposition */
       {
         kitty::dynamic_truth_table co0( tt.num_vars() );
         kitty::dynamic_truth_table co1( tt.num_vars() );
         kitty::dynamic_truth_table co0_shr( tt.num_vars() - 1 );
         kitty::dynamic_truth_table co1_shr( tt.num_vars() - 1 );
 
-        int index = find_unate_var( tt );
+        uint32_t index = find_unate_var( tt );
 
         auto res = do_shannon_dec( tt, index, co0, co1, mapped_support );
 
         /* check for reconvergence */
         gate_disjoint = true;
 
-        int inv_var_co1 = is_inv_PI( co1, co1.num_vars() );
-        int map_inv_var_co1 = mapped_support[inv_var_co1];
-        int var_co1 = is_PI( co1, co1.num_vars() );
-        int map_var_co1 = mapped_support[var_co1];
-        int inv_var_co0 = is_inv_PI( co0, co0.num_vars() );
-        int map_inv_var_co0 = mapped_support[inv_var_co0];
-        int var_co0 = is_PI( co0, co0.num_vars() );
-        int map_var_co0 = mapped_support[var_co0];
+        uint32_t inv_var_co1 = is_inv_PI( co1, co1.num_vars() );
+        uint32_t var_co1 = is_PI( co1, co1.num_vars() );
+        uint32_t inv_var_co0 = is_inv_PI( co0, co0.num_vars() );
+        uint32_t var_co0 = is_PI( co0, co0.num_vars() );
 
         update_support( mapped_support, index );
 
-        if ( inv_var_co1 < 0 && var_co1 < 0 ) // check if co1 is PI
+        if ( inv_var_co1 == invalid_index && var_co1 == invalid_index ) // check if co1 is PI
         {
           min_base_shrink( co1, co1_shr );
           res.fanin.insert( res.fanin.begin(), { 0, compute_dsd( co1_shr, mapped_support, rule ) } );
         }
         else
         {
-          if ( inv_var_co1 >= 0 )
+          if ( inv_var_co1 != invalid_index )
           {
+            uint32_t map_inv_var_co1 = mapped_support[inv_var_co1];
             res.fanin.insert( res.fanin.begin(), { 1, map_inv_var_co1 } );
           }
           else
+          {
+            uint32_t map_var_co1 = mapped_support[var_co1];
             res.fanin.insert( res.fanin.begin(), { 0, map_var_co1 } );
+          }
         }
-        if ( inv_var_co0 < 0 && var_co0 < 0 ) // check if co0 is PI
+
+        if ( inv_var_co0 == invalid_index && var_co0 == invalid_index ) // check if co0 is PI
         {
           min_base_shrink( co0, co0_shr );
           res.fanin.insert( res.fanin.begin(), { 0, compute_dsd( co0_shr, mapped_support, rule ) } );
         }
         else
         {
-          if ( inv_var_co0 >= 0 )
+          if ( inv_var_co0 != invalid_index )
           {
+            uint32_t map_inv_var_co0 = mapped_support[inv_var_co0];
             res.fanin.insert( res.fanin.begin(), { 1, map_inv_var_co0 } );
           }
           else
+          {
+            uint32_t map_var_co0 = mapped_support[var_co0];
             res.fanin.insert( res.fanin.begin(), { 0, map_var_co0 } );
+          }
         }
+
         res.index = rule.size();
         rule.push_back( res );
+
         return res.index;
       }
     }
@@ -773,17 +778,17 @@ private:
       if ( rule[i].type != node_type::pi_ && rule[i].type != node_type::zero_ && ( rule[i].fanin[0].index == node.index || rule[i].fanin[1].index == node.index ) )
         return &rule[i];
     }
-    return NULL;
+    return nullptr;
   }
 
   dsd_node* find_node( rule& r, uint32_t i )
   {
-    for ( int j = 0; j < r.size(); j++ )
+    for ( uint32_t j = 0; j < r.size(); j++ )
     {
       if ( r[j].index == i )
         return &r[j];
     }
-    return NULL;
+    return nullptr;
   }
 
   /*! \brief Convert rule derived from DSD decomposition into aig format.
@@ -818,7 +823,7 @@ private:
       else if ( n.type == node_type::or_ )
       {
         new_node = { node_type::and_, n.index, { { ~n.fanin[0].inv, n.fanin[0].index }, { ~n.fanin[1].inv, n.fanin[1].index } } };
-        if ( get_father( rule, n ) != NULL )
+        if ( get_father( rule, n ) != nullptr )
         {
           dsd_node* father = find_node( aig_rule, get_father( rule, n )->index );
           if ( father->fanin[0].index == n.index )
@@ -838,7 +843,7 @@ private:
       }
       else if ( n.type == node_type::mux_ )
       {
-        if ( get_father( rule, n ) != NULL )
+        if ( get_father( rule, n ) != nullptr )
         {
           dsd_node* father = find_node( aig_rule, get_father( rule, n )->index );
           if ( father->fanin[0].index == n.index )
@@ -881,7 +886,7 @@ private:
       }
       else if ( n.type == node_type::xor_ )
       {
-        if ( get_father( rule, n ) != NULL )
+        if ( get_father( rule, n ) != nullptr )
         {
           dsd_node* father = find_node( aig_rule, get_father( rule, n )->index );
           if ( father->fanin[0].index == n.index )
@@ -1040,34 +1045,34 @@ private:
     }
   }
 
-  uint32_t compute_canonized_polarity( uint32_t polarity, int left_pi, int right_pi, int obs_pi )
+  uint32_t compute_canonized_polarity( uint32_t polarity, uint32_t left_pi, uint32_t right_pi, uint32_t obs_pi )
   {
     uint32_t mask_l = 0;
     uint32_t mask_r = 0;
     uint32_t mask_obs = 0;
-    for ( int i = 0; i < obs_pi; i++ )
+    for ( uint32_t i = 0; i < obs_pi; i++ )
     {
       mask_obs |= ( 1 << i );
     }
-    for ( int i = obs_pi; i < obs_pi + left_pi; i++ )
+    for ( uint32_t i = obs_pi; i < obs_pi + left_pi; i++ )
     {
       mask_l |= ( 1 << i );
     }
-    for ( int i = obs_pi + left_pi; i < obs_pi + left_pi + right_pi; i++ )
+    for ( uint32_t i = obs_pi + left_pi; i < obs_pi + left_pi + right_pi; i++ )
     {
       mask_r |= ( 1 << i );
     }
     return ( ( polarity & mask_l ) << right_pi ) | ( ( polarity & mask_r ) >> left_pi ) | ( polarity & mask_obs );
   }
 
-  void compute_canonized_permutation( std::vector<uint8_t>& perm, int left_pi, int right_pi, int obs_pi )
+  void compute_canonized_permutation( std::vector<uint8_t>& perm, uint32_t left_pi, uint32_t right_pi, uint32_t obs_pi )
   {
     std::vector copy( perm );
-    for ( int i = obs_pi; i < obs_pi + right_pi; i++ )
+    for ( uint32_t i = obs_pi; i < obs_pi + right_pi; i++ )
     {
       perm[i] = copy[( i + left_pi )];
     }
-    for ( int i = right_pi + obs_pi; i < perm.size(); i++ )
+    for ( uint32_t i = right_pi + obs_pi; i < perm.size(); i++ )
     {
       perm[i] = copy[( i - right_pi )];
     }
@@ -1094,7 +1099,7 @@ private:
     if ( n.type == node_type::zero_ )
       return { 0, 0 };
 
-    int obs_pi = shift;
+    uint32_t obs_pi = shift;
 
     /* do indexing on the left */
     uint32_t left_index = do_indexing_rule( r, r[n.fanin[0].index], max, polarity, perm, shift ).index;
@@ -1104,7 +1109,7 @@ private:
       shift++;
     }
     /* encountered PIs on the left */
-    int left_pi = shift - obs_pi;
+    uint32_t left_pi = shift - obs_pi;
 
     /* do indexing on the right */
     uint32_t right_index = do_indexing_rule( r, r[n.fanin[1].index], max, polarity, perm, shift ).index;
@@ -1114,7 +1119,7 @@ private:
       shift++;
     }
     /* encountered PIs on the right */
-    int right_pi = shift - obs_pi - left_pi;
+    uint32_t right_pi = shift - obs_pi - left_pi;
 
     /* check if it is inverted gate */
     if ( n.fanin[0].index == 0 && n.fanin[1].inv && n.index == r.size() - 1 )
@@ -1160,7 +1165,7 @@ private:
   }
 
   template<class TT>
-  dsd_node is_top_dec( const TT& tt, int var_index, bool allow_xor = false, TT* func = nullptr )
+  dsd_node is_top_dec( const TT& tt, uint32_t var_index, bool allow_xor = false, TT* func = nullptr )
   {
     static_assert( kitty::is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
 
@@ -1230,7 +1235,7 @@ private:
   }
 
   template<class TT>
-  dsd_node is_bottom_dec( const TT& tt, int var_index1, int var_index2, TT* func = nullptr, int new_index = -1, bool allow_xor = false )
+  dsd_node is_bottom_dec( const TT& tt, uint32_t var_index1, uint32_t var_index2, TT* func = nullptr, uint32_t new_index = invalid_index, bool allow_xor = false )
   {
     static_assert( kitty::is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
 
@@ -1259,7 +1264,7 @@ private:
 
     if ( num_pairs != 2u && num_pairs != 3 )
     {
-      return { node_type::none, -1, {} };
+      return { node_type::none, invalid_index, {} };
     }
 
     if ( !eq01 && !eq02 && !eq03 ) // 00 is different
@@ -1318,25 +1323,25 @@ private:
       return res;
     }
 
-    return { node_type::none, -1, {} };
+    return { node_type::none, invalid_index, {} };
   }
 
   template<class TT>
-  int find_unate_var( const TT tt )
+  uint32_t find_unate_var( const TT tt )
   {
-    int index;
-    for ( index = tt.num_vars() - 1; index > 0; index-- )
+    for ( uint32_t index = 0; index < tt.num_vars() - 2; ++index )
     {
       const auto tt0 = kitty::cofactor0( tt, index );
       const auto tt1 = kitty::cofactor1( tt, index );
       if ( ( ( tt0 & tt1 ) == tt0 ) && ( ( tt0 & tt1 ) == tt1 ) )
         return index;
     }
-    return index;
+
+    return tt.num_vars() - 1;
   }
 
   template<class TT>
-  dsd_node shannon_dec( const TT& tt, int index, TT* func0 = nullptr, TT* func1 = nullptr )
+  dsd_node shannon_dec( const TT& tt, uint32_t index, TT* func0 = nullptr, TT* func1 = nullptr )
   {
     static_assert( kitty::is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
 

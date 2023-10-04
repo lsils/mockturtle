@@ -88,7 +88,7 @@ inline std::vector<standard_cell> get_standard_cells( std::vector<gate> const& g
     else
     {
       name_to_index[g.name] = cells.size();
-      cells.emplace_back( standard_cell{ g.name, cells.size(), { g }, g.area } );
+      cells.emplace_back( standard_cell{ g.name, static_cast<uint32_t>( cells.size() ), { g }, g.area } );
     }
   }
 
