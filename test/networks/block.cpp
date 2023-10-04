@@ -185,9 +185,11 @@ TEST_CASE( "clone a node in a block network", "[block_net]" )
 
   auto f3 = block_net2.clone_node( block_net1, block_net1.get_node( f1 ), { a2, b2 } );
   CHECK( block_net2.size() == 5 );
+  CHECK( block_net2.num_outputs( block_net2.get_node( f3 ) ) == 1 );
 
   auto f4 = block_net2.clone_node( block_net1, block_net1.get_node( f2 ), { a2, b2 } );
   CHECK( block_net2.size() == 6 );
+  CHECK( block_net2.num_outputs( block_net2.get_node( f4 ) ) == 2 );
 
   block_net2.foreach_fanin( block_net2.get_node( f3 ), [&]( auto const& s ) {
     CHECK( !block_net2.is_complemented( s ) );

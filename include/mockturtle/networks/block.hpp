@@ -521,7 +521,7 @@ public:
       std::vector<kitty::dynamic_truth_table> tts;
       for ( auto i = 2; i < other._storage->nodes[source].data.size(); ++i )
         tts.push_back( other._storage->data.cache[other._storage->nodes[source].data[i].h1] );
-      create_node( children, tts );
+      return create_node( children, tts );
     }
     else
     {
