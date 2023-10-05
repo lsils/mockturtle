@@ -557,10 +557,11 @@ private:
     for ( ; i < v.size() && i < index; i++ )
       ;
 
-    for ( ; i < v.size(); i++ )
+    for ( ; i < v.size() - 1; i++ )
     {
       v[i] = v[i + 1];
     }
+
     v.pop_back();
   }
 
@@ -968,10 +969,10 @@ private:
     auto right_node = rule[root.fanin[1].index];
     auto left_depth = get_depth( rule, left_node );
     auto right_depth = get_depth( rule, right_node );
-    auto left_it1 = std::find( depth_branches.begin(), depth_branches.end(), ( std::tuple<uint32_t, uint32_t> ){ left_depth - 1, right_depth + 1 } );
-    auto left_it2 = std::find( depth_branches.begin(), depth_branches.end(), ( std::tuple<uint32_t, uint32_t> ){ right_depth + 1, left_depth - 1 } );
-    auto right_it1 = std::find( depth_branches.begin(), depth_branches.end(), ( std::tuple<uint32_t, uint32_t> ){ left_depth + 1, right_depth - 1 } );
-    auto right_it2 = std::find( depth_branches.begin(), depth_branches.end(), ( std::tuple<uint32_t, uint32_t> ){ right_depth - 1, left_depth + 1 } );
+    auto left_it1 = std::find( depth_branches.begin(), depth_branches.end(), std::tuple<uint32_t, uint32_t>{ left_depth - 1, right_depth + 1 } );
+    auto left_it2 = std::find( depth_branches.begin(), depth_branches.end(), std::tuple<uint32_t, uint32_t>{ right_depth + 1, left_depth - 1 } );
+    auto right_it1 = std::find( depth_branches.begin(), depth_branches.end(), std::tuple<uint32_t, uint32_t>{ left_depth + 1, right_depth - 1 } );
+    auto right_it2 = std::find( depth_branches.begin(), depth_branches.end(), std::tuple<uint32_t, uint32_t>{ right_depth - 1, left_depth + 1 } );
     if ( left )
       return left_it1 == depth_branches.end() && left_it2 == depth_branches.end();
     else

@@ -27,6 +27,7 @@
   \file cuts.hpp
   \brief Data structure for cuts
 
+  \author Alessandro Tempia Calvino
   \author Heinz Riener
   \author Mathias Soeken
 */
@@ -39,6 +40,8 @@
 #include <iterator>
 
 #include <kitty/detail/mscfix.hpp>
+
+#include "algorithm.hpp"
 
 namespace mockturtle
 {
@@ -299,10 +302,10 @@ bool cut<MaxLeaves, T>::merge( cut const& that, cut& res, uint32_t cut_size ) co
     }
   }
 
-  auto it = std::set_union( begin(), end(), that.begin(), that.end(), res.begin() );
-  if ( auto length = std::distance( res.begin(), it ); length <= cut_size )
+  int32_t length = set_union_safe( begin(), end(), that.begin(), that.end(), res.begin(), cut_size );
+  if ( length >= 0 )
   {
-    res._cend = res._end = it;
+    res._cend = res._end = res.begin() + length;
     res._length = static_cast<uint32_t>( length );
     res._signature = _signature | that._signature;
     return true;
