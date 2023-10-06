@@ -99,9 +99,9 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
-  build-clang12:
+  build-clang13:
     runs-on: ubuntu-latest
-    name: Clang 12
+    name: Clang 13
     
     steps:
     - uses: actions/checkout@v1
@@ -111,7 +111,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-12 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=clang++-13 -DMOCKTURTLE_TEST=ON ..
         make run_tests
     - name: Run tests
       run: |

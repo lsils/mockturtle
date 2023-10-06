@@ -145,6 +145,20 @@ struct mixed_fanin_node
   }
 };
 
+template<int PointerFieldSize = 0>
+struct block_fanin_node
+{
+  using pointer_type = node_pointer<PointerFieldSize>;
+
+  std::vector<pointer_type> children;
+  std::vector<cauint64_t> data;
+
+  bool operator==( block_fanin_node<PointerFieldSize> const& other ) const
+  {
+    return children == other.children;
+  }
+};
+
 /*! \brief Hash function for 64-bit word */
 inline uint64_t hash_block( uint64_t word )
 {

@@ -16,6 +16,7 @@ v0.4 (not yet released)
     - Generic network implementation with additional node types (`generic_network`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
     - Adding `substitute_node_no_restrash` to `aig_network`, `xag_network`, `mig_network`, `xmg_network`, and `fanout_view` to substitute nodes without structural hashing and simplifications `#616 <https://github.com/lsils/mockturtle/pull/616>`_
     - Adding `replace_in_node_no_restrash` to `aig_network`, `xag_network`, `mig_network`, and `xmg_network` to replace a fanin without structural hashing and simplifications `#616 <https://github.com/lsils/mockturtle/pull/616>`_
+    - Adding a new network type to represent multi-output gates (`block_network`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
 * Algorithms:
     - AIG balancing (`aig_balance`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
@@ -33,6 +34,9 @@ v0.4 (not yet released)
     - Extensions and fixes in refactoring (`refactoring`) `#607 <https://github.com/lsils/mockturtle/pull/607>`_
     - Improving LUT mapping, changing its interface, and integrating SOP/ESOP balancing (`lut_map`) `#616 <https://github.com/lsils/mockturtle/pull/616>`_
     - Adding LUT-based SOP and ESOP balancing (`sop_balancing`, `esop_balancing`) `#616 <https://github.com/lsils/mockturtle/pull/616>`_
+    - Adding a new technology mapper supporting multi-output cells (`emap`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding circuit extraction of half and full adders (`extract_adders`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding don't care support in rewriting (`map`, `rewrite`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
 * I/O:
     - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:
@@ -42,11 +46,16 @@ v0.4 (not yet released)
     - Choice view for management of equivalent classes (`choice_view`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
     - Deterministic randomization option in topological sorting (`topo_view`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
     - Fixing MFFC view (`mffc_view`) `#607 <https://github.com/lsils/mockturtle/pull/607>`_
+    - Adding a view to represent standard cells including the multi-output ones (`cell_view`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding a view to mark nodes as don't touch elements (`dont_touch_view`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
 * Properties:
     - Cost functions based on the factored form literals count (`factored_literal_cost`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
 * Utils:
     - Add recursive cost function class to customize cost in resubstitution algorithm (`recursive_cost_function`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Sum-of-products factoring utilities `#579 <https://github.com/lsils/mockturtle/pull/579>`_
+    - Adding utils to perform pattern matching and derive patterns from standard cells (`struct_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding Boolean matching for multi-output cells (`tech_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding Boolean matching with don't cares for databases (`exact_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
 
 v0.3 (July 12, 2022)
 --------------------

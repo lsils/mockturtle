@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
+ * Copyright (C) 2018-2023  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,16 +24,10 @@
  */
 
 /*!
-  \file klut.hpp
-  \brief k-LUT logic network implementation
+  \file block.hpp
+  \brief Block logic network implementation with multi-output support
 
   \author Alessandro Tempia Calvino
-  \author Andrea Costamagna
-  \author Heinz Riener
-  \author Marcel Walter
-  \author Mathias Soeken
-  \author Max Austin
-  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -54,23 +48,37 @@
 namespace mockturtle
 {
 
-struct klut_storage_data
+struct block_storage_data
 {
   truth_table_cache<kitty::dynamic_truth_table> cache;
 };
 
 /*! \brief k-LUT node
  *
- * `data[0].h1`: Fan-out size
- * `data[0].h2`: Application-specific value
- * `data[1].h1`: Function literal in truth table cache
- * `data[1].h2`: Visited flags
+ * `data[0].h1`  : Application-specific value
+ * `data[1].h1`  : Visited flags
+ * `data[1].h2`  : Total fan-out size (we use MSB to indicate whether a node is dead)
+ * `data[2+i].h1`: Function literal in truth table cache for the fanout
+ * `data[2+i].h2`: Fan-out size
+ *
  */
-struct klut_storage_node : mixed_fanin_node<2>
+struct block_storage_node : block_fanin_node<2>
 {
-  bool operator==( klut_storage_node const& other ) const
+  block_storage_node()
   {
-    return data[1].h1 == other.data[1].h1 && children == other.children;
+    data = decltype( data )( 3 );
+  }
+
+  bool operator==( block_storage_node const& other ) const
+  {
+    if ( data.size() != other.data.size() )
+      return false;
+
+    for ( auto i = 2; i < data.size() + 2; ++i )
+      if ( ( data[i].h1 != other.data[i].h1 ) || ( children != other.children ) )
+        return false;
+
+    return true;
   }
 };
 
@@ -78,46 +86,137 @@ struct klut_storage_node : mixed_fanin_node<2>
 
   ...
 */
-using klut_storage = storage<klut_storage_node, klut_storage_data>;
+using block_storage = storage_no_hash<block_storage_node, block_storage_data>;
 
-class klut_network
+class block_network
 {
 public:
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 1;
   static constexpr auto max_fanin_size = 32;
+  static constexpr auto min_fanout_size = 1;
+  static constexpr auto max_fanout_size = 2;
+  static constexpr auto fanout_signal_bits = 1;
 
-  using base_type = klut_network;
-  using storage = std::shared_ptr<klut_storage>;
+  using base_type = block_network;
+  using storage = std::shared_ptr<block_storage>;
   using node = uint64_t;
-  using signal = uint64_t;
 
-  klut_network()
-      : _storage( std::make_shared<klut_storage>() ),
+  struct signal
+  {
+    signal() = default;
+
+    signal( uint64_t index, uint64_t complement )
+        : complement( complement ), output( 0 ), index( index )
+    {
+    }
+
+    signal( uint32_t index )
+        : complement( 0 ), output( 0 ), index( index )
+    {
+    }
+
+    signal( uint64_t index, uint64_t complement, uint64_t output )
+        : complement( complement ), output( output ), index( index )
+    {
+    }
+
+    explicit signal( uint64_t data )
+        : data( data )
+    {
+    }
+
+    signal( block_storage::node_type::pointer_type const& p )
+        : complement( p.weight & 1 ), output( p.weight >> 1 ), index( p.index )
+    {
+    }
+
+    union
+    {
+      struct
+      {
+        uint64_t complement : 1;
+        uint64_t output : fanout_signal_bits;
+        uint64_t index : 63 - fanout_signal_bits;
+      };
+      uint64_t data;
+    };
+
+    signal operator!() const
+    {
+      return signal( data ^ 1 );
+    }
+
+    signal operator+() const
+    {
+      return { index, output, 0 };
+    }
+
+    signal operator-() const
+    {
+      return { index, output, 1 };
+    }
+
+    signal operator^( bool complement ) const
+    {
+      return signal( data ^ ( complement ? 1 : 0 ) );
+    }
+
+    bool operator==( signal const& other ) const
+    {
+      return data == other.data;
+    }
+
+    bool operator!=( signal const& other ) const
+    {
+      return data != other.data;
+    }
+
+    bool operator<( signal const& other ) const
+    {
+      return data < other.data;
+    }
+
+    operator block_storage::node_type::pointer_type() const
+    {
+      return { index, ( output << 1 ) | complement };
+    }
+
+    operator uint64_t() const
+    {
+      return data;
+    }
+
+#if __cplusplus > 201703L
+    bool operator==( block_storage::node_type::pointer_type const& other ) const
+    {
+      return data == other.data;
+    }
+#endif
+  };
+
+  block_network()
+      : _storage( std::make_shared<block_storage>() ),
         _events( std::make_shared<decltype( _events )::element_type>() )
   {
     _init();
   }
 
-  klut_network( std::shared_ptr<klut_storage> storage )
+  block_network( std::shared_ptr<block_storage> storage )
       : _storage( storage ),
         _events( std::make_shared<decltype( _events )::element_type>() )
   {
     _init();
   }
 
-  klut_network clone() const
+  block_network clone() const
   {
-    return { std::make_shared<klut_storage>( *_storage ) };
+    return { std::make_shared<block_storage>( *_storage ) };
   }
 
 protected:
   inline void _init()
   {
-    /* already initialized */
-    if ( _storage->nodes.size() > 1 )
-      return;
-
     /* reserve the second node for constant 1 */
     _storage->nodes.emplace_back();
 
@@ -171,8 +270,8 @@ protected:
     _storage->data.cache.insert( tt_xor3 );
 
     /* truth tables for constants */
-    _storage->nodes[0].data[1].h1 = 0;
-    _storage->nodes[1].data[1].h1 = 1;
+    _storage->nodes[0].data[2].h1 = 0;
+    _storage->nodes[1].data[2].h1 = 1;
   }
 #pragma endregion
 
@@ -180,7 +279,7 @@ protected:
 public:
   signal get_constant( bool value = false ) const
   {
-    return value ? 1 : 0;
+    return value ? signal( 1, 0 ) : signal( 0, 0 );
   }
 
   signal create_pi()
@@ -188,22 +287,28 @@ public:
     const auto index = _storage->nodes.size();
     _storage->nodes.emplace_back();
     _storage->inputs.emplace_back( index );
-    _storage->nodes[index].data[1].h1 = 2;
-    return index;
+    _storage->nodes[index].data[2].h1 = 2;
+    return { index, 0 };
   }
 
   uint32_t create_po( signal const& f )
   {
     /* increase ref-count to children */
-    _storage->nodes[f].data[0].h1++;
+    _storage->nodes[f.index].data[1].h2++;
+    _storage->nodes[f.index].data[2 + f.output].h2++;
     auto const po_index = static_cast<uint32_t>( _storage->outputs.size() );
-    _storage->outputs.emplace_back( f );
+    _storage->outputs.emplace_back( f.index, ( f.output << 1 ) | f.complement );
     return po_index;
   }
 
   bool is_combinational() const
   {
     return true;
+  }
+
+  bool is_multioutput( node const& n ) const
+  {
+    return _storage->nodes[n].data.size() > 3;
   }
 
   bool is_constant( node const& n ) const
@@ -213,31 +318,17 @@ public:
 
   bool is_ci( node const& n ) const
   {
-    return std::find( _storage->inputs.begin(), _storage->inputs.end(), n ) != _storage->inputs.end();
+    return n > 1 && _storage->nodes[n].children.size() == 0u;
   }
 
   bool is_pi( node const& n ) const
   {
-    return std::find( _storage->inputs.begin(), _storage->inputs.end(), n ) != _storage->inputs.end();
+    return n > 1 && _storage->nodes[n].children.size() == 0u;
   }
 
   bool constant_value( node const& n ) const
   {
-    return n == 1;
-  }
-
-  uint32_t po_index( signal const& s ) const
-  {
-    uint32_t i = -1;
-    foreach_po( [&]( const auto& x, auto index ) {
-      if ( x == s )
-      {
-        i = index;
-        return false;
-      }
-      return true;
-    } );
-    return i;
+    return n != 0;
   }
 #pragma endregion
 
@@ -300,6 +391,26 @@ public:
   {
     return _create_node( { a, b, c }, 18 );
   }
+
+  signal create_ha( signal a, signal b )
+  {
+    return _create_node( { a, b }, { 4, 12 } );
+  }
+
+  signal create_hai( signal a, signal b )
+  {
+    return _create_node( { a, b }, { 5, 13 } );
+  }
+
+  signal create_fa( signal a, signal b, signal c )
+  {
+    return _create_node( { a, b, c }, { 14, 18 } );
+  }
+
+  signal create_fai( signal a, signal b, signal c )
+  {
+    return _create_node( { a, b, c }, { 15, 19 } );
+  }
 #pragma endregion
 
 #pragma region Create nary functions
@@ -324,22 +435,16 @@ public:
   {
     storage::element_type::node_type node;
     std::copy( children.begin(), children.end(), std::back_inserter( node.children ) );
-    node.data[1].h1 = literal;
-
-    const auto it = _storage->hash.find( node );
-    if ( it != _storage->hash.end() )
-    {
-      return it->second;
-    }
+    node.data[2].h1 = literal;
 
     const auto index = _storage->nodes.size();
     _storage->nodes.push_back( node );
-    _storage->hash[node] = index;
 
     /* increase ref-count to children */
     for ( auto c : children )
     {
-      _storage->nodes[c].data[0].h1++;
+      _storage->nodes[c.index].data[1].h2++; /* TODO: increase fanout count for output */
+      _storage->nodes[c.index].data[2 + c.output].h2++;
     }
 
     set_value( index, 0 );
@@ -349,7 +454,37 @@ public:
       ( *fn )( index );
     }
 
-    return index;
+    return { index, 0 };
+  }
+
+  signal _create_node( std::vector<signal> const& children, std::vector<uint32_t> const& literals )
+  {
+    storage::element_type::node_type node;
+    std::copy( children.begin(), children.end(), std::back_inserter( node.children ) );
+
+    node.data = decltype( node.data )( 2 + literals.size() );
+
+    for ( auto i = 0; i < literals.size(); ++i )
+      node.data[2 + i].h1 = literals[i];
+
+    const auto index = _storage->nodes.size();
+    _storage->nodes.push_back( node );
+
+    /* increase ref-count to children */
+    for ( auto c : children )
+    {
+      _storage->nodes[c.index].data[1].h2++;
+      _storage->nodes[c.index].data[2 + c.output].h2++;
+    }
+
+    set_value( index, 0 );
+
+    for ( auto const& fn : _events->on_add )
+    {
+      ( *fn )( index );
+    }
+
+    return { index, 0 };
   }
 
   signal create_node( std::vector<signal> const& children, kitty::dynamic_truth_table const& function )
@@ -362,55 +497,81 @@ public:
     return _create_node( children, _storage->data.cache.insert( function ) );
   }
 
-  signal clone_node( klut_network const& other, node const& source, std::vector<signal> const& children )
+  signal create_node( std::vector<signal> const& children, std::vector<kitty::dynamic_truth_table> const& functions )
+  {
+    assert( functions.size() > 0 );
+
+    if ( children.size() == 0u )
+    {
+      assert( functions[0].num_vars() == 0u );
+      return get_constant( !kitty::is_const0( functions[0] ) );
+    }
+    std::vector<uint32_t> literals;
+    for ( auto const& tt : functions )
+      literals.push_back( _storage->data.cache.insert( tt ) );
+
+    return _create_node( children, literals );
+  }
+
+  signal clone_node( block_network const& other, node const& source, std::vector<signal> const& children )
   {
     assert( !children.empty() );
-    const auto tt = other._storage->data.cache[other._storage->nodes[source].data[1].h1];
-    return create_node( children, tt );
+    if ( other.is_multioutput( source ) )
+    {
+      std::vector<kitty::dynamic_truth_table> tts;
+      for ( auto i = 2; i < other._storage->nodes[source].data.size(); ++i )
+        tts.push_back( other._storage->data.cache[other._storage->nodes[source].data[i].h1] );
+      return create_node( children, tts );
+    }
+    else
+    {
+      const auto tt = other._storage->data.cache[other._storage->nodes[source].data[2].h1];
+      return create_node( children, tt );
+    }
   }
 #pragma endregion
 
 #pragma region Restructuring
-  void substitute_node( node const& old_node, signal const& new_signal )
-  {
-    /* find all parents from old_node */
-    for ( auto i = 0u; i < _storage->nodes.size(); ++i )
-    {
-      auto& n = _storage->nodes[i];
-      for ( auto& child : n.children )
-      {
-        if ( child == old_node )
-        {
-          std::vector<signal> old_children( n.children.size() );
-          std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c ) { return c.index; } );
-          child = new_signal;
+  // void substitute_node( node const& old_node, signal const& new_signal )
+  // {
+  //   /* find all parents from old_node */
+  //   for ( auto i = 0u; i < _storage->nodes.size(); ++i )
+  //   {
+  //     auto& n = _storage->nodes[i];
+  //     for ( auto& child : n.children )
+  //     {
+  //       if ( child == old_node )
+  //       {
+  //         std::vector<signal> old_children( n.children.size() );
+  //         std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c ) { return c.index; } );
+  //         child = new_signal;
 
-          // increment fan-out of new node
-          _storage->nodes[new_signal].data[0].h1++;
+  //         // increment fan-out of new node
+  //         _storage->nodes[new_signal].data[0].h1++;
 
-          for ( auto const& fn : _events->on_modified )
-          {
-            ( *fn )( i, old_children );
-          }
-        }
-      }
-    }
+  //         for ( auto const& fn : _events->on_modified )
+  //         {
+  //           ( *fn )( i, old_children );
+  //         }
+  //       }
+  //     }
+  //   }
 
-    /* check outputs */
-    for ( auto& output : _storage->outputs )
-    {
-      if ( output == old_node )
-      {
-        output = new_signal;
+  //   /* check outputs */
+  //   for ( auto& output : _storage->outputs )
+  //   {
+  //     if ( output == old_node )
+  //     {
+  //       output = new_signal;
 
-        // increment fan-out of new node
-        _storage->nodes[new_signal].data[0].h1++;
-      }
-    }
+  //       // increment fan-out of new node
+  //       _storage->nodes[new_signal].data[0].h1++;
+  //     }
+  //   }
 
-    // reset fan-out of old node
-    _storage->nodes[old_node].data[0].h1 = 0;
-  }
+  //   // reset fan-out of old node
+  //   _storage->nodes[old_node].data[0].h1 = 0;
+  // }
 
   inline bool is_dead( node const& n ) const
   {
@@ -449,6 +610,11 @@ public:
     return static_cast<uint32_t>( _storage->nodes.size() - _storage->inputs.size() - 2 );
   }
 
+  uint32_t num_outputs( node const& n ) const
+  {
+    return static_cast<uint32_t>( _storage->nodes[n].data.size() - 2 );
+  }
+
   uint32_t fanin_size( node const& n ) const
   {
     return static_cast<uint32_t>( _storage->nodes[n].children.size() );
@@ -456,47 +622,141 @@ public:
 
   uint32_t fanout_size( node const& n ) const
   {
-    return _storage->nodes[n].data[0].h1;
+    return _storage->nodes[n].data[1].h2;
   }
 
   uint32_t incr_fanout_size( node const& n ) const
   {
-    return _storage->nodes[n].data[0].h1++;
+    return _storage->nodes[n].data[1].h2++;
   }
 
   uint32_t decr_fanout_size( node const& n ) const
   {
-    return --_storage->nodes[n].data[0].h1;
+    return --_storage->nodes[n].data[1].h2;
+  }
+
+  uint32_t incr_fanout_size_pin( node const& n, uint32_t pin_index ) const
+  {
+    return _storage->nodes[n].data[2 + pin_index].h2++;
+  }
+
+  uint32_t decr_fanout_size_pin( node const& n, uint32_t pin_index ) const
+  {
+    return --_storage->nodes[n].data[2 + pin_index].h2;
+  }
+
+  uint32_t fanout_size_pin( node const& n, uint32_t pin_index ) const
+  {
+    return _storage->nodes[n].data[2 + pin_index].h1;
   }
 
   bool is_function( node const& n ) const
   {
     return n > 1 && !is_ci( n );
   }
+
+  bool is_and( node const& n ) const
+  {
+    return n > 1 && _storage->nodes[n].data.size() == 3 && _storage->nodes[n].data[2].h1 == 4;
+  }
+
+  bool is_and( signal const& f ) const
+  {
+    return f.index > 1 && _storage->nodes[f.index].data[2 + f.output].h1 == 4;
+  }
+
+  bool is_or( node const& n ) const
+  {
+    return n > 1 && _storage->nodes[n].data.size() == 3 && _storage->nodes[n].data[2].h1 == 6;
+  }
+
+  bool is_or( signal const& f ) const
+  {
+    return f.index > 1 && _storage->nodes[f.index].data[2 + f.output].h1 == 6;
+  }
+
+  bool is_xor( node const& n ) const
+  {
+    return n > 1 && _storage->nodes[n].data.size() == 3 && _storage->nodes[n].data[2].h1 == 12;
+  }
+
+  bool is_xor( signal const& f ) const
+  {
+    return f.index > 1 && _storage->nodes[f.index].data[2 + f.output].h1 == 12;
+  }
+
+  bool is_maj( node const& n ) const
+  {
+    return n > 1 && _storage->nodes[n].data.size() == 3 && _storage->nodes[n].data[2].h1 == 14;
+  }
+
+  bool is_maj( signal const& f ) const
+  {
+    return f.index > 1 && _storage->nodes[f.index].data[2 + f.output].h1 == 14;
+  }
+
+  bool is_ite( node const& n ) const
+  {
+    return n > 1 && _storage->nodes[n].data.size() == 3 && _storage->nodes[n].data[2].h1 == 16;
+  }
+
+  bool is_ite( signal const& f ) const
+  {
+    return f.index > 1 && _storage->nodes[f.index].data[2 + f.output].h1 == 16;
+  }
+
+  bool is_xor3( node const& n ) const
+  {
+    return n > 1 && _storage->nodes[n].data.size() == 3 && _storage->nodes[n].data[2].h1 == 18;
+  }
+
+  bool is_xor3( signal const& f ) const
+  {
+    return f.index > 1 && _storage->nodes[f.index].data[2 + f.output].h1 == 18;
+  }
 #pragma endregion
 
 #pragma region Functional properties
   kitty::dynamic_truth_table node_function( const node& n ) const
   {
-    return _storage->data.cache[_storage->nodes[n].data[1].h1];
+    return _storage->data.cache[_storage->nodes[n].data[2].h1];
+  }
+
+  kitty::dynamic_truth_table node_function_pin( const node& n, uint32_t pin_index ) const
+  {
+    return _storage->data.cache[_storage->nodes[n].data[2 + pin_index].h1];
   }
 #pragma endregion
 
 #pragma region Nodes and signals
   node get_node( signal const& f ) const
   {
-    return f;
+    return f.index;
   }
 
   signal make_signal( node const& n ) const
   {
-    return n;
+    return { n, 0 };
+  }
+
+  signal make_signal( node const& n, uint32_t output_pin ) const
+  {
+    return { n, 0, output_pin };
   }
 
   bool is_complemented( signal const& f ) const
   {
-    (void)f;
-    return false;
+    return f.complement ? true : false;
+  }
+
+  uint32_t get_output_pin( signal const& f ) const
+  {
+    return static_cast<uint32_t>( f.output );
+  }
+
+  signal next_output_pin( signal const& f ) const
+  {
+    return { f.index, f.complement, f.output + 1 };
   }
 
   uint32_t node_to_index( node const& n ) const
@@ -518,7 +778,7 @@ public:
   signal co_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() );
-    return ( _storage->outputs.begin() + index )->index;
+    return *( _storage->outputs.begin() + index );
   }
 
   node pi_at( uint32_t index ) const
@@ -530,7 +790,7 @@ public:
   signal po_at( uint32_t index ) const
   {
     assert( index < _storage->outputs.size() );
-    return ( _storage->outputs.begin() + index )->index;
+    return *( _storage->outputs.begin() + index );
   }
 #pragma endregion
 
@@ -552,8 +812,8 @@ public:
   void foreach_co( Fn&& fn ) const
   {
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, signal>(
+        _storage->outputs.begin(), _storage->outputs.end(), []( auto f ) { return signal( f ); }, fn );
   }
 
   template<typename Fn>
@@ -566,8 +826,8 @@ public:
   void foreach_po( Fn&& fn ) const
   {
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->outputs.begin(), _storage->outputs.end(), []( auto o ) { return o.index; }, fn );
+    detail::foreach_element_transform<IteratorType, signal>(
+        _storage->outputs.begin(), _storage->outputs.end(), []( auto f ) { return signal( f ); }, fn );
   }
 
   template<typename Fn>
@@ -587,23 +847,25 @@ public:
       return;
 
     using IteratorType = decltype( _storage->outputs.begin() );
-    detail::foreach_element_transform<IteratorType, uint32_t>(
-        _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f ) { return f.index; }, fn );
+    detail::foreach_element_transform<IteratorType, signal>(
+        _storage->nodes[n].children.begin(), _storage->nodes[n].children.end(), []( auto f ) { return signal( f ); }, fn );
   }
 #pragma endregion
 
-#pragma region Simulate values
+#pragma region Simulate values // (Works on single-output gates only)
   template<typename Iterator>
   iterates_over_t<Iterator, bool>
   compute( node const& n, Iterator begin, Iterator end ) const
   {
     uint32_t index{ 0 };
+    auto it = _storage->nodes[n].children.begin();
     while ( begin != end )
     {
       index <<= 1;
-      index ^= *begin++ ? 1 : 0;
+      index ^= *begin++ ? ( ~( it->weight ) & 1 ) : ( ( it->weight ) & 1 );
+      ++it;
     }
-    return kitty::get_bit( _storage->data.cache[_storage->nodes[n].data[1].h1], index );
+    return kitty::get_bit( _storage->data.cache[_storage->nodes[n].data[2].h1], index );
   }
 
   template<typename Iterator>
@@ -617,9 +879,16 @@ public:
     assert( nfanin != 0 );
     assert( tts.size() == nfanin );
 
+    /* adjust polarities */
+    for ( auto j = 0u; j < nfanin; ++j )
+    {
+      if ( _storage->nodes[n].children[j].weight & 1 )
+        tts[j] = ~tts[j];
+    }
+
     /* resulting truth table has the same size as any of the children */
     auto result = tts.front().construct();
-    const auto gate_tt = _storage->data.cache[_storage->nodes[n].data[1].h1];
+    const auto gate_tt = _storage->data.cache[_storage->nodes[n].data[2].h1];
 
     for ( uint32_t i = 0u; i < static_cast<uint32_t>( result.num_bits() ); ++i )
     {
@@ -641,44 +910,44 @@ public:
 #pragma region Custom node values
   void clear_values() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[0].h2 = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[0].h1 = 0; } );
   }
 
   uint32_t value( node const& n ) const
   {
-    return _storage->nodes[n].data[0].h2;
+    return _storage->nodes[n].data[0].h1;
   }
 
   void set_value( node const& n, uint32_t v ) const
   {
-    _storage->nodes[n].data[0].h2 = v;
+    _storage->nodes[n].data[0].h1 = v;
   }
 
   uint32_t incr_value( node const& n ) const
   {
-    return static_cast<uint32_t>( _storage->nodes[n].data[0].h2++ );
+    return static_cast<uint32_t>( _storage->nodes[n].data[0].h1++ );
   }
 
   uint32_t decr_value( node const& n ) const
   {
-    return static_cast<uint32_t>( --_storage->nodes[n].data[0].h2 );
+    return static_cast<uint32_t>( --_storage->nodes[n].data[0].h1 );
   }
 #pragma endregion
 
 #pragma region Visited flags
   void clear_visited() const
   {
-    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[1].h2 = 0; } );
+    std::for_each( _storage->nodes.begin(), _storage->nodes.end(), []( auto& n ) { n.data[1].h1 = 0; } );
   }
 
   auto visited( node const& n ) const
   {
-    return _storage->nodes[n].data[1].h2;
+    return _storage->nodes[n].data[1].h1;
   }
 
   void set_visited( node const& n, uint32_t v ) const
   {
-    _storage->nodes[n].data[1].h2 = v;
+    _storage->nodes[n].data[1].h1 = v;
   }
 
   uint32_t trav_id() const
@@ -700,7 +969,7 @@ public:
 #pragma endregion
 
 public:
-  std::shared_ptr<klut_storage> _storage;
+  std::shared_ptr<block_storage> _storage;
   std::shared_ptr<network_events<base_type>> _events;
 };
 

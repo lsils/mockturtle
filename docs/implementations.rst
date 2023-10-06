@@ -270,6 +270,32 @@ All network implementations are located in `mockturtle/networks/`:
 Supplementary network types
 ---------------------------
 
+Block Network
+~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/networks/block.hpp``
+
+This header file defines a data structure of type `block_network`, which is primarily designed to
+represent both single-output and multi-output nodes.
+This data structure provides additional methods to create multi-output nodes and access
+the individual pins.
+
+Additional interfaces provided by this network type include:
+
+.. doxygenfunction:: mockturtle::block_network::is_multioutput
+.. doxygenfunction:: mockturtle::block_network::create_ha
+.. doxygenfunction:: mockturtle::block_network::create_hai
+.. doxygenfunction:: mockturtle::block_network::create_fa
+.. doxygenfunction:: mockturtle::block_network::create_fai
+.. doxygenfunction:: mockturtle::block_network::num_outputs
+.. doxygenfunction:: mockturtle::block_network::incr_fanout_size_pin
+.. doxygenfunction:: mockturtle::block_network::decr_fanout_size_pin
+.. doxygenfunction:: mockturtle::block_network::fanout_size_pin
+.. doxygenfunction:: mockturtle::block_network::node_function_pin
+.. doxygenfunction:: mockturtle::block_network::get_output_pin
+.. doxygenfunction:: mockturtle::block_network::next_output_pin
+
+
 Cover Network
 ~~~~~~~~~~~~~
 
@@ -334,3 +360,27 @@ Specific for `buffered_crossed_klut_network`:
 **Simulation of buffered networks**
 
 .. doxygenfunction:: mockturtle::simulate_buffered
+
+
+Generic Network
+~~~~~~~~~~~~~~~
+
+**Header:** ``mockturtle/networks/generic.hpp``
+
+This header file defines a data structure of type `generic_network`, which is primarily designed to
+represent different node types, such as white and black boxes, registers, input or output box pins.
+This data represent all the elements as nodes, including POs.
+
+Additional interfaces provided by this network type include:
+
+.. doxygenfunction:: mockturtle::generic_network::is_node
+.. doxygenfunction:: mockturtle::generic_network::is_register
+.. doxygenfunction:: mockturtle::generic_network::is_box_input
+.. doxygenfunction:: mockturtle::generic_network::is_box_output
+.. doxygenfunction:: mockturtle::generic_network::create_box_input
+.. doxygenfunction:: mockturtle::generic_network::create_box_output
+.. doxygenfunction:: mockturtle::generic_network::create_register
+.. doxygenfunction:: mockturtle::generic_network::foreach_register
+.. doxygenfunction:: mockturtle::generic_network::clear_values2
+.. doxygenfunction:: mockturtle::generic_network::value2
+.. doxygenfunction:: mockturtle::generic_network::set_value2
