@@ -166,7 +166,7 @@ struct opt_stats_t
   uint32_t jj_level_after_exact;
 };
 
-mig_network remapping_round( mig_network const& ntk, exact_library<mig_network, mig_npn_resynthesis> const& exact_lib, opt_params_t const& opt_params, opt_stats_t& stats )
+mig_network remapping_round( mig_network const& ntk, exact_library<mig_network> const& exact_lib, opt_params_t const& opt_params, opt_stats_t& stats )
 {
   map_params psm;
   psm.skip_delay_round = false;
@@ -354,7 +354,8 @@ int main( int argc, char** argv )
   /* library to map to MIGs */
   mig_npn_resynthesis resyn{ true };
   exact_library_params eps;
-  exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn, eps );
+  eps.np_classification = true;
+  exact_library<mig_network> exact_lib( resyn, eps );
 
   /* database loading for aqfp resynthesis*/
   auto db3_str = get_database( "db3" );

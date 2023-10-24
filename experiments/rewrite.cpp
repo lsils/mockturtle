@@ -47,7 +47,7 @@ int main()
   xag_npn_resynthesis<xag_network, xag_network, xag_npn_db_kind::xag_incomplete> resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<xag_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<xag_network> exact_lib( resyn, eps );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
