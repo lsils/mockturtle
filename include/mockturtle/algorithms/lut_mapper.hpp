@@ -2330,6 +2330,7 @@ private:
     } );
 
     /* TODO: add sequential compatibility */
+    edges = 0;
     for ( auto const& n : topo_order )
     {
       if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
@@ -2344,6 +2345,7 @@ private:
       kitty::dynamic_truth_table tt;
       std::vector<signal<klut_network>> children;
       std::tie( tt, children ) = create_lut( n, node_to_signal, node_driver_type );
+      edges += children.size();
 
       switch ( node_driver_type[n] )
       {
@@ -2360,6 +2362,7 @@ private:
       case driver_type::mixed:
         node_to_signal[n] = res.create_node( children, tt );
         opposites[n] = res.create_node( children, ~tt );
+        edges += children.size();
         break;
       }
     }
@@ -2389,7 +2392,7 @@ private:
       children.push_back( node_to_signal[ntk.index_to_node( l )] );
     }
 
-    kitty::dynamic_truth_table tt;
+    TT tt;
 
     if constexpr ( StoreFunction )
     {
@@ -2430,6 +2433,8 @@ private:
         tts.push_back( node_to_value[ntk.get_node( f )] );
       } );
       tt = ntk.compute( n, tts.begin(), tts.end() );
+
+      minimize_support( tt, children );
     }
 
     return { tt, children };
@@ -2490,6 +2495,48 @@ private:
     st.area = area;
     st.delay = delay;
     st.edges = edges;
+  }
+
+  void minimize_support( TT& tt, std::vector<signal<klut_network>>& children )
+  {
+    uint32_t support = 0u;
+    uint32_t support_size = 0u;
+    for ( uint32_t i = 0u; i < tt.num_vars(); ++i )
+    {
+      if ( kitty::has_var( tt, i ) )
+      {
+        support |= 1u << i;
+        ++support_size;
+      }
+    }
+
+    /* variables not in the support are the most significative */
+    if ( ( support & ( support + 1u ) ) == 0u )
+    {
+      if ( support_size != children.size() )
+      {
+        children.erase( children.begin() + support_size, children.end() );
+        tt = kitty::shrink_to( tt, support_size );
+      }
+
+      return;
+    }
+
+    /* vacuous variables */
+    const auto support_vector = kitty::min_base_inplace( tt );
+    assert( support_vector.size() != children.size() );
+
+    auto tt_shrink = shrink_to( tt, support_size );
+    std::vector<signal<klut_network>> children_support( support_size );
+
+    auto it_support = support_vector.begin();
+    auto it_children = children_support.begin();
+    while ( it_support != support_vector.end() )
+    {
+      *it_children++ = children[*it_support++];
+    }
+
+    children = std::move( children_support );
   }
 #pragma endregion
 

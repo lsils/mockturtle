@@ -114,7 +114,8 @@ TEST_CASE( "Rewrite projection", "[rewrite]" )
   mig_npn_resynthesis resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<mig_network> exact_lib( resyn, eps );
+  exact_library<mig_network> exact_lib( eps );
+  exact_lib.add_library( resyn );
 
   rewrite( mig, exact_lib );
 

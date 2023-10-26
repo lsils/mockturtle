@@ -472,7 +472,8 @@ TEST_CASE( "Exact map with logic sharing", "[mapper]" )
 
   resyn_fn resyn;
 
-  exact_library<aig_network> lib( resyn );
+  exact_library<aig_network> lib;
+  lib.add_library( resyn );
 
   aig_network aig;
   const auto x0 = aig.create_pi();

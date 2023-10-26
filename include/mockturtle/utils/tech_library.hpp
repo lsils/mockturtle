@@ -1397,6 +1397,8 @@ private:
 
   void compute_dont_cares_classes()
   {
+    _dc_lib.clear();
+
     /* save the size for each NPN class */
     std::unordered_map<TT, uint32_t, tt_hash> class_sizes;
     for ( auto const& entry : _super_lib )
