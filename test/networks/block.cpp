@@ -435,3 +435,74 @@ TEST_CASE( "Multi-output functions in block networks", "[block_net]" )
   CHECK( block_net.is_multioutput( 7 ) == false );
   CHECK( block_net.node_function_pin( 7, 0 )._bits[0] == 0x8 );
 }
+
+TEST_CASE( "substitute node by another in a block network", "[block_net]" )
+{
+  block_network block_net;
+
+  const auto c0 = block_net.get_node( block_net.get_constant( false ) );
+  const auto c1 = block_net.get_node( block_net.get_constant( true ) );
+  const auto a = block_net.create_pi();
+  const auto b = block_net.create_pi();
+
+  // XOR with NAND
+  const auto n1 = block_net.create_nand( a, b );
+  const auto n2 = block_net.create_le( a, n1 );
+  const auto n3 = block_net.create_lt( b, n1 );
+  const auto n4 = block_net.create_ha( n2, n3 );
+  const auto n5 = block_net.create_or( n3, n4 );
+  const auto n6 = block_net.create_xor( a, b );
+  const auto po = block_net.po_at( block_net.create_po( block_net.next_output_pin( n4 ) ) );
+
+  CHECK( po.index == 7 );
+  CHECK( po.complement == 0 );
+  CHECK( po.output == 1 );
+
+  std::vector<node<block_network>> nodes;
+  block_net.foreach_node( [&]( auto node ) { nodes.push_back( node ); CHECK( !block_net.is_dead( node ) ); } );
+
+  std::vector<block_network::node> node_ref = { block_net.get_node( c0 ),
+                                                block_net.get_node( c1 ),
+                                                block_net.get_node( a ),
+                                                block_net.get_node( b ),
+                                                block_net.get_node( n1 ),
+                                                block_net.get_node( n2 ),
+                                                block_net.get_node( n3 ),
+                                                block_net.get_node( n4 ),
+                                                block_net.get_node( n5 ),
+                                                block_net.get_node( n6 )
+                                              };
+
+  CHECK( nodes == node_ref );
+  CHECK( block_net.fanout_size( block_net.get_node( n4 ) ) == 2 );
+  CHECK( block_net.fanout_size_pin( block_net.get_node( n4 ), 0 ) == 1 );
+  CHECK( block_net.fanout_size_pin( block_net.get_node( n4 ), 1 ) == 1 );
+  CHECK( block_net.fanout_size( block_net.get_node( n2 ) ) == 1 );
+  CHECK( block_net.fanout_size_pin( block_net.get_node( n2 ), 0 ) == 1 );
+
+  block_net.foreach_po( [&]( auto f ) {
+    CHECK( block_net.get_node( f ) == block_net.get_node( n4 ) );
+    CHECK( block_net.get_output_pin( f ) == 1 );
+  } );  
+
+  // substitute nodes
+  block_net.substitute_node( block_net.get_node( n4 ), n6 );
+
+  block_net.is_dead( block_net.get_node( n4 ) == false );
+  block_net.is_dead( block_net.get_node( n2 ) == false );
+  CHECK( block_net.size() == 10 );
+  CHECK( block_net.fanout_size( block_net.get_node( n4 ) ) == 0 );
+  CHECK( block_net.fanout_size_pin( block_net.get_node( n4 ), 0 ) == 0 );
+  CHECK( block_net.fanout_size_pin( block_net.get_node( n4 ), 1 ) == 0 );
+  CHECK( block_net.fanout_size( block_net.get_node( n6 ) ) == 2 );
+  CHECK( block_net.fanout_size_pin( block_net.get_node( n6 ), 0 ) == 2 );
+
+  CHECK( block_net.is_dead( block_net.get_node( n4 ) ) );
+  CHECK( block_net.is_dead( block_net.get_node( n2 ) ) );
+  CHECK( block_net.fanout_size( block_net.get_node( n2 ) ) == 0 );
+  CHECK( block_net.fanout_size_pin( block_net.get_node( n2 ), 0 ) == 0 );
+  block_net.foreach_po( [&]( auto f ) {
+    CHECK( block_net.get_node( f ) == block_net.get_node( n6 ) );
+    CHECK( block_net.get_output_pin( f ) == 0 );
+  } );
+}
