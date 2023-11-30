@@ -61,8 +61,6 @@ struct aqfp_mapping_params
   /*! \brief Mapping mode. */
   enum
   {
-    ASAP,
-    ALAP,
     better,
     portfolio
   } mapping_mode = portfolio;
@@ -136,23 +134,28 @@ public:
 
     /* convert the initial circuit as an AQFP network */
     aqfp_network aqfp_start = cleanup_dangling<Ntk, aqfp_network>( _ntk );
+    /* creates buffer_insertion instance for scheduling (can be reused) */
+    buffer_insertion_params insertion_ps;
+    insertion_ps.optimization_effort = buffer_insertion_params::none;
+    insertion_ps.assume = legacy_to_realistic( _ps.aqfp_assumptions_ps );
+    buffer_insertion buf_inst( aqfp_start, insertion_ps );
 
     bool retiming_backward_first = false;
 
     /* Starndard flow: insertion + optimization */
-    if ( _ps.mapping_mode != aqfp_mapping_params::portfolio )
+    if ( _ps.mapping_mode == aqfp_mapping_params::better )
     {
-      buffered_aqfp_network buffered_aqfp = aqfp_buffer_insertion( aqfp_start, retiming_backward_first );
+      buffered_aqfp_network buffered_aqfp = aqfp_buffer_insertion( buf_inst, retiming_backward_first );
       buffered_aqfp_network aqfp_res = aqfp_buffer_optimize( buffered_aqfp, retiming_backward_first );
       compute_stats( aqfp_res );
       return aqfp_res;
     }
 
     /* Portfolio flow: 2 insertions + 2 optimizations */
-    buffered_aqfp_network buffered_aqfp_alap = aqfp_buffer_insertion( aqfp_start, retiming_backward_first, true );
+    buffered_aqfp_network buffered_aqfp_alap = aqfp_buffer_insertion( buf_inst, retiming_backward_first, true );
     buffered_aqfp_network aqfp_res_alap = aqfp_buffer_optimize( buffered_aqfp_alap, retiming_backward_first );
 
-    buffered_aqfp_network buffered_aqfp_asap = aqfp_buffer_insertion( aqfp_start, retiming_backward_first, false );
+    buffered_aqfp_network buffered_aqfp_asap = aqfp_buffer_insertion( buf_inst, retiming_backward_first, false );
     buffered_aqfp_network aqfp_res_asap = aqfp_buffer_optimize( buffered_aqfp_asap, retiming_backward_first );
 
     buffered_aqfp_network aqfp_res;
@@ -170,39 +173,26 @@ public:
   }
 
 private:
-  buffered_aqfp_network aqfp_buffer_insertion( aqfp_network const& aqfp, bool& direction, bool is_alap = false )
+  buffered_aqfp_network aqfp_buffer_insertion( buffer_insertion<aqfp_network>& buf_inst, bool& direction, bool is_alap = false )
   {
     stopwatch t( _st.time_insertion );
-
-    buffer_insertion_params ps;
-    ps.optimization_effort = buffer_insertion_params::none;
-    ps.assume = legacy_to_realistic( _ps.aqfp_assumptions_ps );
 
     if ( _ps.mapping_mode == aqfp_mapping_params::portfolio )
     {
       if ( is_alap )
       {
-        ps.scheduling = buffer_insertion_params::ALAP_depth;
+        buf_inst.set_scheduling_policy( buffer_insertion_params::ALAP_depth );
       }
       else
       {
-        ps.scheduling = buffer_insertion_params::ASAP_depth;
+        buf_inst.set_scheduling_policy( buffer_insertion_params::ASAP_depth );
       }
     }
-    else if ( _ps.mapping_mode == aqfp_mapping_params::ALAP )
+    else if ( _ps.mapping_mode == aqfp_mapping_params::better )
     {
-      ps.scheduling = buffer_insertion_params::ALAP_depth;
-    }
-    else if ( _ps.mapping_mode == aqfp_mapping_params::ASAP )
-    {
-      ps.scheduling = buffer_insertion_params::ASAP_depth;
-    }
-    else
-    {
-      ps.scheduling = buffer_insertion_params::better_depth;
+      buf_inst.set_scheduling_policy( buffer_insertion_params::better_depth );
     }
 
-    buffer_insertion buf_inst( aqfp, ps );
     buffered_aqfp_network buffered_aqfp;
     buf_inst.run( buffered_aqfp );
     direction = buf_inst.is_scheduled_ASAP();
@@ -225,9 +215,13 @@ private:
     /* chunk movement params */
     buffer_insertion_params buf_ps;
     buf_ps.scheduling = buffer_insertion_params::provided;
-    buf_ps.optimization_effort = buffer_insertion_params::one_pass;
+    buf_ps.optimization_effort = buffer_insertion_params::until_sat;
     buf_ps.max_chunk_size = _ps.max_chunk_size;
     buf_ps.assume = legacy_to_realistic( _ps.aqfp_assumptions_ps );
+
+    aqfp_reconstruct_params reconstruct_ps;
+    aqfp_reconstruct_stats reconstruct_st;
+    reconstruct_ps.buffer_insertion_ps = buf_ps;
 
     /* aqfp network */
     buffered_aqfp_network buffered_aqfp;
@@ -241,20 +235,16 @@ private:
     /* repeat loop */
     uint32_t iterations = _ps.optimization_rounds;
     aps.det_randomization = _ps.topological_randomization;
-    std::default_random_engine::result_type seed{ 1 };
+    std::default_random_engine rng( 111 );
     while ( iterations-- > 0 )
     {
       uint32_t size_previous = buffered_aqfp.size();
 
       /* chunk movement */
-      aqfp_reconstruct_params reconstruct_ps;
-      aqfp_reconstruct_stats reconstruct_st;
-      reconstruct_ps.buffer_insertion_ps.optimization_effort = buffer_insertion_params::until_sat;
-      reconstruct_ps.buffer_insertion_ps = buf_ps;
       auto buf_aqfp_chunk = aqfp_reconstruct( buffered_aqfp, reconstruct_ps, &reconstruct_st );
 
       /* retiming */
-      aps.seed = seed++;
+      aps.seed = rng();
       auto buf_aqfp_ret = aqfp_retiming( buf_aqfp_chunk, aps );
 
       _st.rounds_total++;

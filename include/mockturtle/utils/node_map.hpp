@@ -119,6 +119,14 @@ public:
     return data->size();
   }
 
+  /*! \brief Deep copy. */
+  node_map<T, Ntk, container_type> copy() const
+  {
+    node_map<T, Ntk, container_type> copy( ntk );
+    *( copy.data ) = *data;
+    return copy;
+  }
+
   /*! \brief Mutable access to value by node. */
   reference operator[]( node const& n )
   {
