@@ -37,6 +37,7 @@ v0.4 (not yet released)
     - Adding a new technology mapper supporting multi-output cells (`emap`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - Adding circuit extraction of half and full adders (`extract_adders`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - Adding don't care support in rewriting (`map`, `rewrite`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - XAG balancing (`xag_balance`) `#627 <https://github.com/lsils/mockturtle/pull/627>`_
 * I/O:
     - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:

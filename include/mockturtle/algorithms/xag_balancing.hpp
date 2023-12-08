@@ -563,12 +563,12 @@ private:
 
 } /* namespace detail */
 
-/*! \brief AIG balancing.
+/*! \brief XAG balancing.
  *
- * This method balance the AIG to reduce the
+ * This method balance the XAG to reduce the
  * depth. Level minimization can be turned off.
  * In this case, balancing tries to reconstruct
- * AND trees such that logic sharing is maximized.
+ * AND and XOR trees such that logic sharing is maximized.
  *
  * **Required network functions:**
  * - `get_node`
