@@ -58,6 +58,7 @@
 #include "../views/mffc_view.hpp"
 #include "../views/topo_view.hpp"
 #include "cleanup.hpp"
+#include "collapse_mapped.hpp"
 #include "cut_enumeration.hpp"
 #include "exorcism.hpp"
 #include "simulation.hpp"
@@ -2248,6 +2249,12 @@ private:
 #pragma region Dump network
   klut_network create_lut_network()
   {
+    /* specialized method: does not support buffer/inverter sweeping */
+    if ( StoreFunction && ps.cut_enumeration_ps.minimize_truth_table )
+    {
+      return create_lut_network_mapped();
+    }
+
     klut_network res;
     node_map<signal<klut_network>, Ntk> node_to_signal( ntk );
 
@@ -2382,6 +2389,46 @@ private:
     return res;
   }
 
+  klut_network create_lut_network_mapped()
+  {
+    klut_network res;
+    mapping_view<Ntk, true> mapping_ntk{ ntk };
+
+    /* load mapping info */
+    for ( auto const& n : topo_order )
+    {
+      if ( ntk.is_ci( n ) || ntk.is_constant( n ) )
+        continue;
+
+      const auto index = ntk.node_to_index( n );
+      if ( node_match[index].map_refs == 0 )
+        continue;
+
+      std::vector<node> nodes;
+      auto const& best_cut = cuts[index][0];
+
+      for ( auto const& l : best_cut )
+      {
+        nodes.push_back( ntk.index_to_node( l ) );
+      }
+      mapping_ntk.add_to_mapping( n, nodes.begin(), nodes.end() );
+
+      if constexpr ( StoreFunction )
+      {
+        mapping_ntk.set_cell_function( n, truth_tables[best_cut->func_id] );
+      }
+    }
+
+    /* generate mapped network */
+    collapse_mapped_network( res, mapping_ntk );
+
+    st.area = area;
+    st.delay = delay;
+    st.edges = edges;
+
+    return res;
+  }
+
   inline lut_info create_lut( node const& n, node_map<signal<klut_network>, Ntk>& node_to_signal, node_map<driver_type, Ntk> const& node_driver_type )
   {
     auto const& best_cut = cuts[ntk.node_to_index( n )][0];
@@ -2392,50 +2439,41 @@ private:
       children.push_back( node_to_signal[ntk.index_to_node( l )] );
     }
 
-    TT tt;
+    /* recursively compute the function for each choice until success */
+    ntk.incr_trav_id();
+    unordered_node_map<kitty::dynamic_truth_table, Ntk> node_to_value( ntk );
 
-    if constexpr ( StoreFunction )
+    /* add constants */
+    node_to_value[ntk.get_node( ntk.get_constant( false ) )] = kitty::dynamic_truth_table( best_cut.size() );
+    ntk.set_visited( ntk.get_node( ntk.get_constant( false ) ), ntk.trav_id() );
+    if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
     {
-      tt = truth_tables[best_cut->func_id];
+      node_to_value[ntk.get_node( ntk.get_constant( true ) )] = ~kitty::dynamic_truth_table( best_cut.size() );
+      ntk.set_visited( ntk.get_node( ntk.get_constant( true ) ), ntk.trav_id() );
     }
-    else
+
+    /* add leaves */
+    uint32_t ctr = 0;
+    for ( uint32_t leaf : best_cut )
     {
-      /* recursively compute the function for each choice until success */
-      ntk.incr_trav_id();
-      unordered_node_map<kitty::dynamic_truth_table, Ntk> node_to_value( ntk );
-
-      /* add constants */
-      node_to_value[ntk.get_node( ntk.get_constant( false ) )] = kitty::dynamic_truth_table( best_cut.size() );
-      ntk.set_visited( ntk.get_node( ntk.get_constant( false ) ), ntk.trav_id() );
-      if ( ntk.get_node( ntk.get_constant( false ) ) != ntk.get_node( ntk.get_constant( true ) ) )
-      {
-        node_to_value[ntk.get_node( ntk.get_constant( true ) )] = ~kitty::dynamic_truth_table( best_cut.size() );
-        ntk.set_visited( ntk.get_node( ntk.get_constant( true ) ), ntk.trav_id() );
-      }
-
-      /* add leaves */
-      uint32_t ctr = 0;
-      for ( uint32_t leaf : best_cut )
-      {
-        kitty::dynamic_truth_table tt_leaf( best_cut.size() );
-        kitty::create_nth_var( tt_leaf, ctr++, node_driver_type[ntk.index_to_node( leaf )] == driver_type::neg );
-        node_to_value[ntk.index_to_node( leaf )] = tt_leaf;
-        ntk.set_visited( ntk.index_to_node( leaf ), ntk.trav_id() );
-      }
-
-      /* recursively compute the function */
-      ntk.foreach_fanin( n, [&]( auto const& f ) {
-        compute_function_rec( ntk.get_node( f ), node_to_value );
-      } );
-
-      std::vector<kitty::dynamic_truth_table> tts;
-      ntk.foreach_fanin( n, [&]( auto const& f ) {
-        tts.push_back( node_to_value[ntk.get_node( f )] );
-      } );
-      tt = ntk.compute( n, tts.begin(), tts.end() );
-
-      minimize_support( tt, children );
+      kitty::dynamic_truth_table tt_leaf( best_cut.size() );
+      kitty::create_nth_var( tt_leaf, ctr++, node_driver_type[ntk.index_to_node( leaf )] == driver_type::neg );
+      node_to_value[ntk.index_to_node( leaf )] = tt_leaf;
+      ntk.set_visited( ntk.index_to_node( leaf ), ntk.trav_id() );
     }
+
+    /* recursively compute the function */
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      compute_function_rec( ntk.get_node( f ), node_to_value );
+    } );
+
+    std::vector<kitty::dynamic_truth_table> tts;
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      tts.push_back( node_to_value[ntk.get_node( f )] );
+    } );
+    TT tt = ntk.compute( n, tts.begin(), tts.end() );
+
+    minimize_support( tt, children );
 
     return { tt, children };
   }
