@@ -47,7 +47,7 @@ using a NPN resynthesis database of structures:
    
    /* load the npn database in the library */
    mig_npn_resynthesis resyn{ true };
-   exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
+   exact_library<mig_network> exact_lib( resyn );
 
    /* perform graph mapping */
    map_params ps;
@@ -90,7 +90,7 @@ database of structures:
    
    /* load the npn database in the library */
    mig_npn_resynthesis resyn{ true };
-   exact_library<sequential<mig_network>, mig_npn_resynthesis> exact_lib( resyn );
+   exact_library<sequential<mig_network>> exact_lib( resyn );
 
    /* perform graph mapping */
    map_params ps;
@@ -109,7 +109,7 @@ leverage satisfiability don't cares:
    mig_npn_resynthesis resyn{ true };
    exact_library_params lps;
    lps.compute_dc_classes = true;
-   exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn, lps );
+   exact_library<mig_network> exact_lib( resyn, lps );
 
    /* perform area-oriented rewriting */
    map_params ps;

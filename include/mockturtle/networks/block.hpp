@@ -532,50 +532,145 @@ public:
 #pragma endregion
 
 #pragma region Restructuring
-  // void substitute_node( node const& old_node, signal const& new_signal )
-  // {
-  //   /* find all parents from old_node */
-  //   for ( auto i = 0u; i < _storage->nodes.size(); ++i )
-  //   {
-  //     auto& n = _storage->nodes[i];
-  //     for ( auto& child : n.children )
-  //     {
-  //       if ( child == old_node )
-  //       {
-  //         std::vector<signal> old_children( n.children.size() );
-  //         std::transform( n.children.begin(), n.children.end(), old_children.begin(), []( auto c ) { return c.index; } );
-  //         child = new_signal;
+  void replace_in_node( node const& n, node const& old_node, signal new_signal )
+  {
+    bool in_fanin = false;
+    auto& nobj = _storage->nodes[n];
+    for ( auto& child : nobj.children )
+    {
+      if ( child.index == old_node )
+      {
+        in_fanin = true;
+        break;
+      }
+    }
 
-  //         // increment fan-out of new node
-  //         _storage->nodes[new_signal].data[0].h1++;
+    if ( !in_fanin )
+      return;
 
-  //         for ( auto const& fn : _events->on_modified )
-  //         {
-  //           ( *fn )( i, old_children );
-  //         }
-  //       }
-  //     }
-  //   }
+    // remember before
+    std::vector<signal> old_children( nobj.children.size() );
+    std::transform( nobj.children.begin(), nobj.children.end(), old_children.begin(), []( auto c ) { return signal{ c }; } );
 
-  //   /* check outputs */
-  //   for ( auto& output : _storage->outputs )
-  //   {
-  //     if ( output == old_node )
-  //     {
-  //       output = new_signal;
+    /* replace in node */
+    for ( auto& child : nobj.children )
+    {
+      if ( child.index == old_node )
+      {
+        child = signal{ new_signal.data ^ ( child.data & 1 ) };
+        // increment fan-out of new node
+        _storage->nodes[new_signal.index].data[1].h2++;
+        _storage->nodes[new_signal.index].data[2 + new_signal.output].h2++;
+      }
+    }
 
-  //       // increment fan-out of new node
-  //       _storage->nodes[new_signal].data[0].h1++;
-  //     }
-  //   }
+    for ( auto const& fn : _events->on_modified )
+    {
+      ( *fn )( n, old_children );
+    }
+  }
 
-  //   // reset fan-out of old node
-  //   _storage->nodes[old_node].data[0].h1 = 0;
-  // }
+  void replace_in_node_no_restrash( node const& n, node const& old_node, signal new_signal )
+  {
+    replace_in_node( n, old_node, new_signal );
+  }
+
+  void replace_in_outputs( node const& old_node, signal const& new_signal )
+  {
+    if ( is_dead( old_node ) )
+      return;
+
+    for ( auto& output : _storage->outputs )
+    {
+      if ( output.index == old_node )
+      {
+        output = signal{ new_signal.data ^ ( output.data & 1 ) };
+
+        if ( old_node != new_signal.index )
+        {
+          /* increment fan-in of new node */
+          _storage->nodes[new_signal.index].data[1].h2++;
+          _storage->nodes[new_signal.index].data[2 + new_signal.output].h2++;
+        }
+      }
+    }
+  }
+
+  void take_out_node( node const& n )
+  {
+    /* we cannot delete CIs, constants, or already dead nodes */
+    if ( n < 2 || is_ci( n ) )
+      return;
+
+    /* delete the node */
+    auto& nobj = _storage->nodes[n];
+    nobj.data[1].h2 = UINT32_C( 0x80000000 ); /* fanout size 0, but dead */
+
+    /* remove fanout count over output pins */
+    for ( uint32_t i = 2; i < _storage->nodes[n].data.size(); ++i )
+    {
+      nobj.data[i].h2 = 0;
+    }
+
+    for ( auto const& fn : _events->on_delete )
+    {
+      ( *fn )( n );
+    }
+
+    /* if the node has been deleted, then deref fanout_size of
+       fanins and try to take them out if their fanout_size become 0 */
+    for ( auto i = 0; i < nobj.children.size(); ++i )
+    {
+      auto& child = nobj.children[i];
+      if ( fanout_size( nobj.children[i].index ) == 0 )
+      {
+        continue;
+      }
+
+      decr_fanout_size_pin( nobj.children[i].index, signal{ child }.output );
+      if ( decr_fanout_size( nobj.children[i].index ) == 0 )
+      {
+        take_out_node( nobj.children[i].index );
+      }
+    }
+  }
+
+  void revive_node( node const& n )
+  {
+    assert( !is_dead( n ) );
+    return;
+  }
+
+  void substitute_node( node const& old_node, signal const& new_signal )
+  {
+    /* find all parents from old_node */
+    for ( auto idx = 2u; idx < _storage->nodes.size(); ++idx )
+    {
+      if ( is_ci( idx ) || is_dead( idx ) )
+        continue; /* ignore CIs and dead nodes */
+
+      replace_in_node( idx, old_node, new_signal );
+    }
+
+    /* check outputs */
+    replace_in_outputs( old_node, new_signal );
+
+    /* recursively reset old node */
+    if ( old_node != new_signal.index )
+    {
+      take_out_node( old_node );
+    }
+  }
+
+  void substitute_node_no_restrash( node const& old_node, signal const& new_signal )
+  {
+    substitute_node( old_node, new_signal );
+  }
 
   inline bool is_dead( node const& n ) const
   {
-    return false;
+    /* A dead node is simply a dangling node */
+    return ( _storage->nodes[n].data[1].h2 >> 31 ) & 1;
   }
 #pragma endregion
 
@@ -622,17 +717,17 @@ public:
 
   uint32_t fanout_size( node const& n ) const
   {
-    return _storage->nodes[n].data[1].h2;
+    return _storage->nodes[n].data[1].h2 & UINT32_C( 0x7FFFFFFF );
   }
 
   uint32_t incr_fanout_size( node const& n ) const
   {
-    return _storage->nodes[n].data[1].h2++;
+    return _storage->nodes[n].data[1].h2++ & UINT32_C( 0x7FFFFFFF );
   }
 
   uint32_t decr_fanout_size( node const& n ) const
   {
-    return --_storage->nodes[n].data[1].h2;
+    return --_storage->nodes[n].data[1].h2 & UINT32_C( 0x7FFFFFFF );
   }
 
   uint32_t incr_fanout_size_pin( node const& n, uint32_t pin_index ) const
@@ -647,7 +742,7 @@ public:
 
   uint32_t fanout_size_pin( node const& n, uint32_t pin_index ) const
   {
-    return _storage->nodes[n].data[2 + pin_index].h1;
+    return _storage->nodes[n].data[2 + pin_index].h2;
   }
 
   bool is_function( node const& n ) const
@@ -799,7 +894,10 @@ public:
   void foreach_node( Fn&& fn ) const
   {
     auto r = range<uint64_t>( _storage->nodes.size() );
-    detail::foreach_element( r.begin(), r.end(), fn );
+    detail::foreach_element_if(
+        r.begin(), r.end(),
+        [this]( auto n ) { return !is_dead( n ); },
+        fn );
   }
 
   template<typename Fn>
@@ -836,7 +934,7 @@ public:
     auto r = range<uint64_t>( 2u, _storage->nodes.size() ); /* start from 2 to avoid constants */
     detail::foreach_element_if(
         r.begin(), r.end(),
-        [this]( auto n ) { return !is_ci( n ); },
+        [this]( auto n ) { return !is_ci( n ) && !is_dead( n ); },
         fn );
   }
 

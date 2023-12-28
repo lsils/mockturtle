@@ -80,7 +80,8 @@ int main()
   /* library to map to MIGs */
   mig_npn_resynthesis resyn{ true };
   exact_library_params eps;
-  exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn, eps );
+  eps.np_classification = true;
+  exact_library<mig_network> exact_lib( resyn, eps );
 
   /* library to map to technology */
   std::vector<gate> gates;

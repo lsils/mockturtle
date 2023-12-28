@@ -1094,7 +1094,7 @@ struct exact_library_params
   float delay_inverter{ 0.0f };
 
   /* classify in NP instead of NPN */
-  bool np_classification{ true };
+  bool np_classification{ false };
   /* Compute DC classes for matching with  don't cares */
   bool compute_dc_classes{ false };
   /* verbose */
@@ -1115,11 +1115,11 @@ struct exact_library_params
 
    .. code-block:: c++
 
-      mockturtle::mig_npn_resynthesis mig_resyn{true};
-      mockturtle::exact_library<mockturtle::mig_network, mockturtle::mig_npn_resynthesis> lib( mig_resyn );
+      mockturtle::mig_npn_resynthesis mig_resyn{ true };
+      mockturtle::exact_library<mockturtle::mig_network> lib( mig_resyn );
    \endverbatim
  */
-template<typename Ntk, class RewritingFn, unsigned NInputs = 4u>
+template<typename Ntk, unsigned NInputs = 4u>
 class exact_library
 {
   using supergates_list_t = std::vector<exact_supergate<Ntk, NInputs>>;
@@ -1131,15 +1131,30 @@ class exact_library
   using dc_lib_t = std::unordered_map<TT, std::vector<dc_t>, tt_hash>;
 
 public:
-  explicit exact_library( RewritingFn const& rewriting_fn, exact_library_params const& ps = {} )
+  explicit exact_library( exact_library_params const& ps = {} )
       : _database(),
-        _rewriting_fn( rewriting_fn ),
         _ps( ps ),
         _super_lib(),
         _dc_lib()
   {
     _super_lib.reserve( 222 );
-    generate_library();
+  }
+
+  template<class RewritingFn>
+  explicit exact_library( RewritingFn const& rewriting_fn, exact_library_params const& ps = {} )
+      : _database(),
+        _ps( ps ),
+        _super_lib(),
+        _dc_lib()
+  {
+    _super_lib.reserve( 222 );
+    generate_library( rewriting_fn );
+  }
+
+  template<class RewritingFn>
+  void add_library( RewritingFn const& rewriting_fn )
+  {
+    generate_library( rewriting_fn );
   }
 
   /*! \brief Get the structures matching the function.
@@ -1225,7 +1240,8 @@ public:
   }
 
 private:
-  void generate_library()
+  template<class RewritingFn>
+  void generate_library( RewritingFn const& rewriting_fn )
   {
     std::vector<signal<Ntk>> pis;
     for ( auto i = 0u; i < NInputs; ++i )
@@ -1272,7 +1288,7 @@ private:
       };
 
       kitty::dynamic_truth_table function = kitty::extend_to( entry, NInputs );
-      _rewriting_fn( _database, function, pis.begin(), pis.end(), add_supergate );
+      rewriting_fn( _database, function, pis.begin(), pis.end(), add_supergate );
       if ( supergates_pos.size() > 0 )
       {
         std::sort( supergates_pos.begin(), supergates_pos.end(), [&]( auto const& a, auto const& b ) {
@@ -1381,6 +1397,8 @@ private:
 
   void compute_dont_cares_classes()
   {
+    _dc_lib.clear();
+
     /* save the size for each NPN class */
     std::unordered_map<TT, uint32_t, tt_hash> class_sizes;
     for ( auto const& entry : _super_lib )
@@ -1508,7 +1526,6 @@ private:
 
 private:
   Ntk _database;
-  RewritingFn const& _rewriting_fn;
   exact_library_params const _ps;
   lib_t _super_lib;
   dc_lib_t _dc_lib;

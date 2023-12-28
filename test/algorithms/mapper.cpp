@@ -379,7 +379,7 @@ TEST_CASE( "Exact map of bad MAJ3 and constant output", "[mapper]" )
 {
   mig_npn_resynthesis resyn{ true };
 
-  exact_library<mig_network, mig_npn_resynthesis> lib( resyn );
+  exact_library<mig_network> lib( resyn );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -407,7 +407,7 @@ TEST_CASE( "Exact map of full adder", "[mapper]" )
 {
   xmg_npn_resynthesis resyn;
 
-  exact_library<xmg_network, xmg_npn_resynthesis> lib( resyn );
+  exact_library<xmg_network> lib( resyn );
 
   aig_network aig;
   const auto a = aig.create_pi();
@@ -436,7 +436,7 @@ TEST_CASE( "Exact map should avoid cycles", "[mapper]" )
 
   resyn_fn resyn;
 
-  exact_library<aig_network, resyn_fn> lib( resyn );
+  exact_library<aig_network> lib( resyn );
 
   aig_network aig;
   const auto x0 = aig.create_pi();
@@ -472,7 +472,8 @@ TEST_CASE( "Exact map with logic sharing", "[mapper]" )
 
   resyn_fn resyn;
 
-  exact_library<aig_network, resyn_fn> lib( resyn );
+  exact_library<aig_network> lib;
+  lib.add_library( resyn );
 
   aig_network aig;
   const auto x0 = aig.create_pi();
@@ -504,7 +505,7 @@ TEST_CASE( "exact map of sequential AIG", "[mapper]" )
   using resyn_fn = xag_npn_resynthesis<xag_network>;
 
   resyn_fn resyn;
-  exact_library<sequential<xag_network>, resyn_fn> lib( resyn );
+  exact_library<sequential<xag_network>> lib( resyn );
 
   sequential<aig_network> aig;
   const auto a = aig.create_pi();

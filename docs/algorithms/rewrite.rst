@@ -16,7 +16,7 @@ networks.  In this case the maximum number of variables for a node function is
    mig_npn_resynthesis resyn{ true };
    exact_library_params eps;
    eps.np_classification = false;
-   exact_library<mig_network, decltype( resyn )> exact_lib( resyn, eps );
+   exact_library<mig_network> exact_lib( resyn, eps );
 
 It is possible to change the cost function of nodes in rewrite.  Here is
 an example, in which the cost function only accounts for AND gates in a network,
@@ -36,7 +36,7 @@ which corresponds to the multiplicative complexity of a function.
    SomeResynthesisClass resyn;
    exact_library_params eps;
    eps.np_classification = false;
-   exact_library<xag_network, decltype( resyn )> exact_lib( resyn, eps );
+   exact_library<xag_network> exact_lib( resyn, eps );
    rewrite<decltype( Ntk ), decltype( exact_lib ), mc_cost>( ntk, exact_lib );
 
 Rewrite supports also satisfiability don't cares:
@@ -51,7 +51,7 @@ Rewrite supports also satisfiability don't cares:
    exact_library_params eps;
    eps.np_classification = false;
    eps.compute_dc_classes = true;
-   exact_library<mig_network, decltype( resyn )> exact_lib( resyn, eps );
+   exact_library<mig_network> exact_lib( resyn, eps );
 
    /* rewrite */
    rewrite_params ps;
