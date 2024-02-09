@@ -511,6 +511,16 @@ std::string benchmark_path( std::string const& benchmark_name )
 #endif
 }
 
+std::string cell_libraries_path( std::string const& cell_library_name )
+{
+#ifndef EXPERIMENTS_PATH
+  return fmt::format( "{}.genlib", cell_library_name );
+#else
+  return fmt::format( "{}cell_libraries/{}.genlib", EXPERIMENTS_PATH, cell_library_name );
+#endif
+}
+
+
 template<class Ntk>
 inline bool abc_cec_impl( Ntk const& ntk, std::string const& benchmark_fullpath )
 {

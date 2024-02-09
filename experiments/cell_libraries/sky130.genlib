@@ -1,0 +1,356 @@
+# The genlib library "sky130A_merged.genlib" with 76 gates
+GATE _const0_                       0.00  z=CONST0;                                                    
+GATE _const1_                       0.00  z=CONST1;                                                    
+GATE sky130_fd_sc_hd__buf_2         5.00  X=(A);                                                       
+    PIN    A  UNKNOWN   1 999   130.01     0.00   130.01     0.00
+GATE sky130_fd_sc_hd__bufinv_8     17.52  Y=(!A);                                                      
+    PIN    A  UNKNOWN   1 999    72.76     0.00    72.76     0.00
+GATE sky130_fd_sc_hd__or2_2         6.26  X=(A) | (B);                                                 
+    PIN    A  UNKNOWN   1 999   173.60     0.00   173.60     0.00
+    PIN    B  UNKNOWN   1 999   161.85     0.00   161.85     0.00
+GATE sky130_fd_sc_hd__and2_2        7.51  X=(A&B);                                                     
+    PIN    A  UNKNOWN   1 999   128.17     0.00   128.17     0.00
+    PIN    B  UNKNOWN   1 999   139.92     0.00   139.92     0.00
+GATE sky130_fd_sc_hd__and2b_2       8.76  X=(!A_N&B);                                                  
+    PIN  A_N  UNKNOWN   1 999   134.46     0.00   134.46     0.00
+    PIN    B  UNKNOWN   1 999   131.74     0.00   131.74     0.00
+GATE sky130_fd_sc_hd__or2b_2        8.76  X=(A) | (!B_N);                                              
+    PIN    A  UNKNOWN   1 999   146.05     0.00   146.05     0.00
+    PIN  B_N  UNKNOWN   1 999   135.22     0.00   135.22     0.00
+GATE sky130_fd_sc_hd__nor2_2        6.26  Y=(!A&!B);                                                   
+    PIN    A  UNKNOWN   1 999    77.58     0.00    77.58     0.00
+    PIN    B  UNKNOWN   1 999    61.72     0.00    61.72     0.00
+GATE sky130_fd_sc_hd__nand2_2       6.26  Y=(!A) | (!B);                                               
+    PIN    A  UNKNOWN   1 999    51.07     0.00    51.07     0.00
+    PIN    B  UNKNOWN   1 999    59.99     0.00    59.99     0.00
+GATE sky130_fd_sc_hd__xnor2_2      16.27  Y=(!A&!B) | (A&B);                                           
+    PIN    A  UNKNOWN   1 999   171.16     0.00   171.16     0.00
+    PIN    B  UNKNOWN   1 999   151.39     0.00   151.39     0.00
+GATE sky130_fd_sc_hd__xor2_2       16.27  X=(A&!B) | (!A&B);                                           
+    PIN    A  UNKNOWN   1 999   187.99     0.00   187.99     0.00
+    PIN    B  UNKNOWN   1 999   160.40     0.00   160.40     0.00
+GATE sky130_fd_sc_hd__and3b_2      10.01  X=(!A_N&B&C);                                                
+    PIN  A_N  UNKNOWN   1 999   209.49     0.00   209.49     0.00
+    PIN    B  UNKNOWN   1 999   163.71     0.00   163.71     0.00
+    PIN    C  UNKNOWN   1 999   173.00     0.00   173.00     0.00
+GATE sky130_fd_sc_hd__and3_2        7.51  X=(A&B&C);                                                   
+    PIN    A  UNKNOWN   1 999   146.53     0.00   146.53     0.00
+    PIN    B  UNKNOWN   1 999   159.47     0.00   159.47     0.00
+    PIN    C  UNKNOWN   1 999   167.84     0.00   167.84     0.00
+GATE sky130_fd_sc_hd__or3b_2        8.76  X=(A) | (B) | (!C_N);                                        
+    PIN    A  UNKNOWN   1 999   251.85     0.00   251.85     0.00
+    PIN    B  UNKNOWN   1 999   239.48     0.00   239.48     0.00
+    PIN  C_N  UNKNOWN   1 999   287.51     0.00   287.51     0.00
+GATE sky130_fd_sc_hd__or3_2         7.51  X=(A) | (B) | (C);                                           
+    PIN    A  UNKNOWN   1 999   251.35     0.00   251.35     0.00
+    PIN    B  UNKNOWN   1 999   240.03     0.00   240.03     0.00
+    PIN    C  UNKNOWN   1 999   219.26     0.00   219.26     0.00
+GATE sky130_fd_sc_hd__a21bo_2      10.01  X=(A1&A2) | (!B1_N);                                         
+    PIN   A1  UNKNOWN   1 999   145.76     0.00   145.76     0.00
+    PIN   A2  UNKNOWN   1 999   154.74     0.00   154.74     0.00
+    PIN B1_N  UNKNOWN   1 999   185.21     0.00   185.21     0.00
+GATE sky130_fd_sc_hd__o21ba_2      10.01  X=(A1&!B1_N) | (A2&!B1_N);                                   
+    PIN   A1  UNKNOWN   1 999   163.05     0.00   163.05     0.00
+    PIN   A2  UNKNOWN   1 999   146.19     0.00   146.19     0.00
+    PIN B1_N  UNKNOWN   1 999   172.92     0.00   172.92     0.00
+GATE sky130_fd_sc_hd__mux2_2       11.26  X=(A0&!S) | (A1&S);                                          
+    PIN   A0  UNKNOWN   1 999   189.96     0.00   189.96     0.00
+    PIN   A1  UNKNOWN   1 999   190.77     0.00   190.77     0.00
+    PIN    S  UNKNOWN   1 999   257.12     0.00   257.12     0.00
+GATE sky130_fd_sc_hd__a21o_2        8.76  X=(A1&A2) | (B1);                                            
+    PIN   A1  UNKNOWN   1 999   140.47     0.00   140.47     0.00
+    PIN   A2  UNKNOWN   1 999   151.67     0.00   151.67     0.00
+    PIN   B1  UNKNOWN   1 999   123.85     0.00   123.85     0.00
+GATE sky130_fd_sc_hd__o21a_2        8.76  X=(A1&B1) | (A2&B1);                                         
+    PIN   A1  UNKNOWN   1 999   155.73     0.00   155.73     0.00
+    PIN   A2  UNKNOWN   1 999   141.27     0.00   141.27     0.00
+    PIN   B1  UNKNOWN   1 999   107.00     0.00   107.00     0.00
+GATE sky130_fd_sc_hd__o21bai_2     11.26  Y=(!A1&!A2) | (B1_N);                                        
+    PIN   A1  UNKNOWN   1 999   103.85     0.00   103.85     0.00
+    PIN   A2  UNKNOWN   1 999    84.69     0.00    84.69     0.00
+    PIN B1_N  UNKNOWN   1 999   130.99     0.00   130.99     0.00
+GATE sky130_fd_sc_hd__nor3b_2      12.51  Y=(!A&!B&C_N);                                               
+    PIN    A  UNKNOWN   1 999   119.69     0.00   119.69     0.00
+    PIN    B  UNKNOWN   1 999   109.66     0.00   109.66     0.00
+    PIN  C_N  UNKNOWN   1 999   140.60     0.00   140.60     0.00
+GATE sky130_fd_sc_hd__nand3b_2     11.26  Y=(A_N) | (!B) | (!C);                                       
+    PIN  A_N  UNKNOWN   1 999   132.49     0.00   132.49     0.00
+    PIN    B  UNKNOWN   1 999    72.53     0.00    72.53     0.00
+    PIN    C  UNKNOWN   1 999    77.80     0.00    77.80     0.00
+GATE sky130_fd_sc_hd__a21boi_2     11.26  Y=(!A1&B1_N) | (!A2&B1_N);                                   
+    PIN   A1  UNKNOWN   1 999    88.54     0.00    88.54     0.00
+    PIN   A2  UNKNOWN   1 999   102.17     0.00   102.17     0.00
+    PIN B1_N  UNKNOWN   1 999   135.89     0.00   135.89     0.00
+GATE sky130_fd_sc_hd__nor3_2       10.01  Y=(!A&!B&!C);                                                
+    PIN    A  UNKNOWN   1 999   115.45     0.00   115.45     0.00
+    PIN    B  UNKNOWN   1 999   106.39     0.00   106.39     0.00
+    PIN    C  UNKNOWN   1 999    79.12     0.00    79.12     0.00
+GATE sky130_fd_sc_hd__nand3_2      10.01  Y=(!A) | (!B) | (!C);                                        
+    PIN    A  UNKNOWN   1 999    58.77     0.00    58.77     0.00
+    PIN    B  UNKNOWN   1 999    70.73     0.00    70.73     0.00
+    PIN    C  UNKNOWN   1 999    74.71     0.00    74.71     0.00
+GATE sky130_fd_sc_hd__o21ai_2       8.76  Y=(!A1&!A2) | (!B1);                                         
+    PIN   A1  UNKNOWN   1 999   102.36     0.00   102.36     0.00
+    PIN   A2  UNKNOWN   1 999    85.80     0.00    85.80     0.00
+    PIN   B1  UNKNOWN   1 999    55.37     0.00    55.37     0.00
+GATE sky130_fd_sc_hd__a21oi_2       8.76  Y=(!A1&!B1) | (!A2&!B1);                                     
+    PIN   A1  UNKNOWN   1 999    87.13     0.00    87.13     0.00
+    PIN   A2  UNKNOWN   1 999   101.06     0.00   101.06     0.00
+    PIN   B1  UNKNOWN   1 999    72.23     0.00    72.23     0.00
+GATE sky130_fd_sc_hd__or4b_2       10.01  X=(A) | (B) | (C) | (!D_N);                                  
+    PIN    A  UNKNOWN   1 999   336.44     0.00   336.44     0.00
+    PIN    B  UNKNOWN   1 999   323.09     0.00   323.09     0.00
+    PIN    C  UNKNOWN   1 999   307.99     0.00   307.99     0.00
+    PIN  D_N  UNKNOWN   1 999   337.74     0.00   337.74     0.00
+GATE sky130_fd_sc_hd__or4_2         8.76  X=(A) | (B) | (C) | (D);                                     
+    PIN    A  UNKNOWN   1 999   334.17     0.00   334.17     0.00
+    PIN    B  UNKNOWN   1 999   325.04     0.00   325.04     0.00
+    PIN    C  UNKNOWN   1 999   306.98     0.00   306.98     0.00
+    PIN    D  UNKNOWN   1 999   271.73     0.00   271.73     0.00
+GATE sky130_fd_sc_hd__and4bb_2     12.51  X=(!A_N&!B_N&C&D);                                           
+    PIN  A_N  UNKNOWN   1 999   199.09     0.00   199.09     0.00
+    PIN  B_N  UNKNOWN   1 999   204.81     0.00   204.81     0.00
+    PIN    C  UNKNOWN   1 999   197.87     0.00   197.87     0.00
+    PIN    D  UNKNOWN   1 999   179.89     0.00   179.89     0.00
+GATE sky130_fd_sc_hd__and4_2       10.01  X=(A&B&C&D);                                                 
+    PIN    A  UNKNOWN   1 999   161.10     0.00   161.10     0.00
+    PIN    B  UNKNOWN   1 999   177.99     0.00   177.99     0.00
+    PIN    C  UNKNOWN   1 999   187.64     0.00   187.64     0.00
+    PIN    D  UNKNOWN   1 999   195.25     0.00   195.25     0.00
+GATE sky130_fd_sc_hd__and4b_2      11.26  X=(!A_N&B&C&D);                                              
+    PIN  A_N  UNKNOWN   1 999   229.97     0.00   229.97     0.00
+    PIN    B  UNKNOWN   1 999   184.06     0.00   184.06     0.00
+    PIN    C  UNKNOWN   1 999   194.08     0.00   194.08     0.00
+    PIN    D  UNKNOWN   1 999   203.95     0.00   203.95     0.00
+GATE sky130_fd_sc_hd__a2bb2o_2     11.26  X=(B1&B2) | (!A1_N&!A2_N);                                   
+    PIN A1_N  UNKNOWN   1 999   220.16     0.00   220.16     0.00
+    PIN A2_N  UNKNOWN   1 999   209.02     0.00   209.02     0.00
+    PIN   B1  UNKNOWN   1 999   171.61     0.00   171.61     0.00
+    PIN   B2  UNKNOWN   1 999   160.13     0.00   160.13     0.00
+GATE sky130_fd_sc_hd__o2bb2a_2     11.26  X=(!A1_N&B1) | (!A2_N&B1) | (!A1_N&B2) | (!A2_N&B2);         
+    PIN A1_N  UNKNOWN   1 999   188.09     0.00   188.09     0.00
+    PIN A2_N  UNKNOWN   1 999   183.21     0.00   183.21     0.00
+    PIN   B1  UNKNOWN   1 999   178.07     0.00   178.07     0.00
+    PIN   B2  UNKNOWN   1 999   163.93     0.00   163.93     0.00
+GATE sky130_fd_sc_hd__o31a_2       10.01  X=(A1&B1) | (A2&B1) | (A3&B1);                               
+    PIN   A1  UNKNOWN   1 999   225.82     0.00   225.82     0.00
+    PIN   A2  UNKNOWN   1 999   213.98     0.00   213.98     0.00
+    PIN   A3  UNKNOWN   1 999   184.32     0.00   184.32     0.00
+    PIN   B1  UNKNOWN   1 999   111.15     0.00   111.15     0.00
+GATE sky130_fd_sc_hd__a22o_2       10.01  X=(B1&B2) | (A1&A2);                                         
+    PIN   A1  UNKNOWN   1 999   169.49     0.00   169.49     0.00
+    PIN   A2  UNKNOWN   1 999   181.60     0.00   181.60     0.00
+    PIN   B1  UNKNOWN   1 999   150.00     0.00   150.00     0.00
+    PIN   B2  UNKNOWN   1 999   157.93     0.00   157.93     0.00
+GATE sky130_fd_sc_hd__a211o_2      10.01  X=(A1&A2) | (B1) | (C1);                                     
+    PIN   A1  UNKNOWN   1 999   198.08     0.00   198.08     0.00
+    PIN   A2  UNKNOWN   1 999   211.86     0.00   211.86     0.00
+    PIN   B1  UNKNOWN   1 999   187.29     0.00   187.29     0.00
+    PIN   C1  UNKNOWN   1 999   165.02     0.00   165.02     0.00
+GATE sky130_fd_sc_hd__a31o_2        8.76  X=(A1&A2&A3) | (B1);                                         
+    PIN   A1  UNKNOWN   1 999   159.68     0.00   159.68     0.00
+    PIN   A2  UNKNOWN   1 999   173.39     0.00   173.39     0.00
+    PIN   A3  UNKNOWN   1 999   181.98     0.00   181.98     0.00
+    PIN   B1  UNKNOWN   1 999   139.37     0.00   139.37     0.00
+GATE sky130_fd_sc_hd__o22a_2       10.01  X=(A1&B1) | (A2&B1) | (A1&B2) | (A2&B2);                     
+    PIN   A1  UNKNOWN   1 999   176.86     0.00   176.86     0.00
+    PIN   A2  UNKNOWN   1 999   162.68     0.00   162.68     0.00
+    PIN   B1  UNKNOWN   1 999   153.93     0.00   153.93     0.00
+    PIN   B2  UNKNOWN   1 999   138.46     0.00   138.46     0.00
+GATE sky130_fd_sc_hd__o211a_2      10.01  X=(A1&B1&C1) | (A2&B1&C1);                                   
+    PIN   A1  UNKNOWN   1 999   195.54     0.00   195.54     0.00
+    PIN   A2  UNKNOWN   1 999   179.94     0.00   179.94     0.00
+    PIN   B1  UNKNOWN   1 999   136.83     0.00   136.83     0.00
+    PIN   C1  UNKNOWN   1 999   127.40     0.00   127.40     0.00
+GATE sky130_fd_sc_hd__or4bb_2      12.51  X=(A) | (B) | (!C_N) | (!D_N);                               
+    PIN    A  UNKNOWN   1 999   237.71     0.00   237.71     0.00
+    PIN    B  UNKNOWN   1 999   242.61     0.00   242.61     0.00
+    PIN  C_N  UNKNOWN   1 999   228.53     0.00   228.53     0.00
+    PIN  D_N  UNKNOWN   1 999   207.54     0.00   207.54     0.00
+GATE sky130_fd_sc_hd__nor4b_2      15.01  Y=(!A&!B&!C&D_N);                                            
+    PIN    A  UNKNOWN   1 999   167.74     0.00   167.74     0.00
+    PIN    B  UNKNOWN   1 999   159.32     0.00   159.32     0.00
+    PIN    C  UNKNOWN   1 999   138.39     0.00   138.39     0.00
+    PIN  D_N  UNKNOWN   1 999   148.19     0.00   148.19     0.00
+GATE sky130_fd_sc_hd__nand4b_2     15.01  Y=(A_N) | (!B) | (!C) | (!D);                                
+    PIN  A_N  UNKNOWN   1 999   137.68     0.00   137.68     0.00
+    PIN    B  UNKNOWN   1 999    86.39     0.00    86.39     0.00
+    PIN    C  UNKNOWN   1 999    95.89     0.00    95.89     0.00
+    PIN    D  UNKNOWN   1 999    99.26     0.00    99.26     0.00
+GATE sky130_fd_sc_hd__a22oi_2      12.51  Y=(!A1&!B1) | (!A1&!B2) | (!A2&!B1) | (!A2&!B2);             
+    PIN   A1  UNKNOWN   1 999   114.31     0.00   114.31     0.00
+    PIN   A2  UNKNOWN   1 999   130.27     0.00   130.27     0.00
+    PIN   B1  UNKNOWN   1 999    85.89     0.00    85.89     0.00
+    PIN   B2  UNKNOWN   1 999   102.65     0.00   102.65     0.00
+GATE sky130_fd_sc_hd__nor4_2       12.51  Y=(!A&!B&!C&!D);                                             
+    PIN    A  UNKNOWN   1 999   166.42     0.00   166.42     0.00
+    PIN    B  UNKNOWN   1 999   157.28     0.00   157.28     0.00
+    PIN    C  UNKNOWN   1 999   137.17     0.00   137.17     0.00
+    PIN    D  UNKNOWN   1 999    97.43     0.00    97.43     0.00
+GATE sky130_fd_sc_hd__o22ai_2      12.51  Y=(!B1&!B2) | (!A1&!A2);                                     
+    PIN   A1  UNKNOWN   1 999   124.51     0.00   124.51     0.00
+    PIN   A2  UNKNOWN   1 999   106.67     0.00   106.67     0.00
+    PIN   B1  UNKNOWN   1 999    95.30     0.00    95.30     0.00
+    PIN   B2  UNKNOWN   1 999    77.73     0.00    77.73     0.00
+GATE sky130_fd_sc_hd__a211oi_2     12.51  Y=(!A1&!B1&!C1) | (!A2&!B1&!C1);                             
+    PIN   A1  UNKNOWN   1 999   129.37     0.00   129.37     0.00
+    PIN   A2  UNKNOWN   1 999   150.12     0.00   150.12     0.00
+    PIN   B1  UNKNOWN   1 999   129.26     0.00   129.26     0.00
+    PIN   C1  UNKNOWN   1 999    99.45     0.00    99.45     0.00
+GATE sky130_fd_sc_hd__nand4_2      12.51  Y=(!A) | (!B) | (!C) | (!D);                                 
+    PIN    A  UNKNOWN   1 999    67.62     0.00    67.62     0.00
+    PIN    B  UNKNOWN   1 999    85.32     0.00    85.32     0.00
+    PIN    C  UNKNOWN   1 999    93.39     0.00    93.39     0.00
+    PIN    D  UNKNOWN   1 999    95.82     0.00    95.82     0.00
+GATE sky130_fd_sc_hd__o211ai_2     12.51  Y=(!A1&!A2) | (!B1) | (!C1);                                 
+    PIN   A1  UNKNOWN   1 999   129.94     0.00   129.94     0.00
+    PIN   A2  UNKNOWN   1 999   112.08     0.00   112.08     0.00
+    PIN   B1  UNKNOWN   1 999    78.72     0.00    78.72     0.00
+    PIN   C1  UNKNOWN   1 999    67.12     0.00    67.12     0.00
+GATE sky130_fd_sc_hd__o31ai_2      12.51  Y=(!A1&!A2&!A3) | (!B1);                                     
+    PIN   A1  UNKNOWN   1 999   162.09     0.00   162.09     0.00
+    PIN   A2  UNKNOWN   1 999   148.05     0.00   148.05     0.00
+    PIN   A3  UNKNOWN   1 999   122.48     0.00   122.48     0.00
+    PIN   B1  UNKNOWN   1 999    61.51     0.00    61.51     0.00
+GATE sky130_fd_sc_hd__a31oi_2      12.51  Y=(!A1&!B1) | (!A2&!B1) | (!A3&!B1);                         
+    PIN   A1  UNKNOWN   1 999   103.89     0.00   103.89     0.00
+    PIN   A2  UNKNOWN   1 999   123.03     0.00   123.03     0.00
+    PIN   A3  UNKNOWN   1 999   135.42     0.00   135.42     0.00
+    PIN   B1  UNKNOWN   1 999    89.93     0.00    89.93     0.00
+GATE sky130_fd_sc_hd__a2bb2oi_2    15.01  Y=(A1_N&!B1) | (A1_N&!B2) | (A2_N&!B1) | (A2_N&!B2);         
+    PIN A1_N  UNKNOWN   1 999   147.73     0.00   147.73     0.00
+    PIN A2_N  UNKNOWN   1 999   132.29     0.00   132.29     0.00
+    PIN   B1  UNKNOWN   1 999    99.33     0.00    99.33     0.00
+    PIN   B2  UNKNOWN   1 999    86.77     0.00    86.77     0.00
+GATE sky130_fd_sc_hd__o2bb2ai_2    15.01  Y=(!B1&!B2) | (A1_N&A2_N);                                   
+    PIN A1_N  UNKNOWN   1 999   116.17     0.00   116.17     0.00
+    PIN A2_N  UNKNOWN   1 999   108.69     0.00   108.69     0.00
+    PIN   B1  UNKNOWN   1 999   103.16     0.00   103.16     0.00
+    PIN   B2  UNKNOWN   1 999    85.63     0.00    85.63     0.00
+GATE sky130_fd_sc_hd__a311o_2      11.26  X=(A1&A2&A3) | (B1) | (C1);                                  
+    PIN   A1  UNKNOWN   1 999   221.99     0.00   221.99     0.00
+    PIN   A2  UNKNOWN   1 999   251.12     0.00   251.12     0.00
+    PIN   A3  UNKNOWN   1 999   266.27     0.00   266.27     0.00
+    PIN   B1  UNKNOWN   1 999   216.25     0.00   216.25     0.00
+    PIN   C1  UNKNOWN   1 999   188.26     0.00   188.26     0.00
+GATE sky130_fd_sc_hd__o32a_2       11.26  X=(A1&B1) | (A1&B2) | (A2&B1) | (A3&B1) | (A2&B2) | (A3&B2); 
+    PIN   A1  UNKNOWN   1 999   251.34     0.00   251.34     0.00
+    PIN   A2  UNKNOWN   1 999   237.67     0.00   237.67     0.00
+    PIN   A3  UNKNOWN   1 999   210.86     0.00   210.86     0.00
+    PIN   B1  UNKNOWN   1 999   160.42     0.00   160.42     0.00
+    PIN   B2  UNKNOWN   1 999   143.57     0.00   143.57     0.00
+GATE sky130_fd_sc_hd__a221o_2      11.26  X=(B1&B2) | (A1&A2) | (C1);                                  
+    PIN   A1  UNKNOWN   1 999   239.14     0.00   239.14     0.00
+    PIN   A2  UNKNOWN   1 999   258.58     0.00   258.58     0.00
+    PIN   B1  UNKNOWN   1 999   225.37     0.00   225.37     0.00
+    PIN   B2  UNKNOWN   1 999   243.41     0.00   243.41     0.00
+    PIN   C1  UNKNOWN   1 999   192.75     0.00   192.75     0.00
+GATE sky130_fd_sc_hd__a41o_2       11.26  X=(A1&A2&A3&A4) | (B1);                                      
+    PIN   A1  UNKNOWN   1 999   176.53     0.00   176.53     0.00
+    PIN   A2  UNKNOWN   1 999   198.77     0.00   198.77     0.00
+    PIN   A3  UNKNOWN   1 999   211.37     0.00   211.37     0.00
+    PIN   A4  UNKNOWN   1 999   219.97     0.00   219.97     0.00
+    PIN   B1  UNKNOWN   1 999   148.99     0.00   148.99     0.00
+GATE sky130_fd_sc_hd__a32o_2       11.26  X=(A1&A2&A3) | (B1&B2);                                      
+    PIN   A1  UNKNOWN   1 999   197.00     0.00   197.00     0.00
+    PIN   A2  UNKNOWN   1 999   213.24     0.00   213.24     0.00
+    PIN   A3  UNKNOWN   1 999   217.54     0.00   217.54     0.00
+    PIN   B1  UNKNOWN   1 999   164.23     0.00   164.23     0.00
+    PIN   B2  UNKNOWN   1 999   173.95     0.00   173.95     0.00
+GATE sky130_fd_sc_hd__o221a_2      11.26  X=(A1&B1&C1) | (A2&B1&C1) | (A1&B2&C1) | (A2&B2&C1);         
+    PIN   A1  UNKNOWN   1 999   220.65     0.00   220.65     0.00
+    PIN   A2  UNKNOWN   1 999   205.96     0.00   205.96     0.00
+    PIN   B1  UNKNOWN   1 999   196.29     0.00   196.29     0.00
+    PIN   B2  UNKNOWN   1 999   181.60     0.00   181.60     0.00
+    PIN   C1  UNKNOWN   1 999   130.13     0.00   130.13     0.00
+GATE sky130_fd_sc_hd__o311a_2      11.26  X=(A1&B1&C1) | (A2&B1&C1) | (A3&B1&C1);                      
+    PIN   A1  UNKNOWN   1 999   264.81     0.00   264.81     0.00
+    PIN   A2  UNKNOWN   1 999   250.58     0.00   250.58     0.00
+    PIN   A3  UNKNOWN   1 999   219.00     0.00   219.00     0.00
+    PIN   B1  UNKNOWN   1 999   140.64     0.00   140.64     0.00
+    PIN   C1  UNKNOWN   1 999   128.90     0.00   128.90     0.00
+GATE sky130_fd_sc_hd__o41a_2       12.51  X=(A1&B1) | (A2&B1) | (A3&B1) | (A4&B1);                     
+    PIN   A1  UNKNOWN   1 999   296.71     0.00   296.71     0.00
+    PIN   A2  UNKNOWN   1 999   283.29     0.00   283.29     0.00
+    PIN   A3  UNKNOWN   1 999   263.62     0.00   263.62     0.00
+    PIN   A4  UNKNOWN   1 999   223.45     0.00   223.45     0.00
+    PIN   B1  UNKNOWN   1 999   111.63     0.00   111.63     0.00
+GATE sky130_fd_sc_hd__o2111a_2     12.51  X=(A1&B1&C1&D1) | (A2&B1&C1&D1);                             
+    PIN   A1  UNKNOWN   1 999   227.97     0.00   227.97     0.00
+    PIN   A2  UNKNOWN   1 999   206.79     0.00   206.79     0.00
+    PIN   B1  UNKNOWN   1 999   165.01     0.00   165.01     0.00
+    PIN   C1  UNKNOWN   1 999   156.17     0.00   156.17     0.00
+    PIN   D1  UNKNOWN   1 999   141.20     0.00   141.20     0.00
+GATE sky130_fd_sc_hd__a2111o_2     12.51  X=(A1&A2) | (B1) | (C1) | (D1);                              
+    PIN   A1  UNKNOWN   1 999   267.44     0.00   267.44     0.00
+    PIN   A2  UNKNOWN   1 999   289.32     0.00   289.32     0.00
+    PIN   B1  UNKNOWN   1 999   260.74     0.00   260.74     0.00
+    PIN   C1  UNKNOWN   1 999   240.43     0.00   240.43     0.00
+    PIN   D1  UNKNOWN   1 999   202.93     0.00   202.93     0.00
+GATE sky130_fd_sc_hd__a32oi_2      16.27  Y=(!A1&!B1) | (!A1&!B2) | (!A2&!B1) | (!A3&!B1) | (!A2&!B2) | (!A3&!B2); 
+    PIN   A1  UNKNOWN   1 999   131.77     0.00   131.77     0.00
+    PIN   A2  UNKNOWN   1 999   154.23     0.00   154.23     0.00
+    PIN   A3  UNKNOWN   1 999   162.76     0.00   162.76     0.00
+    PIN   B1  UNKNOWN   1 999   101.50     0.00   101.50     0.00
+    PIN   B2  UNKNOWN   1 999   116.75     0.00   116.75     0.00
+GATE sky130_fd_sc_hd__o2111ai_2    15.01  Y=(!A1&!A2) | (!B1) | (!C1) | (!D1);                         
+    PIN   A1  UNKNOWN   1 999   161.71     0.00   161.71     0.00
+    PIN   A2  UNKNOWN   1 999   140.70     0.00   140.70     0.00
+    PIN   B1  UNKNOWN   1 999   106.33     0.00   106.33     0.00
+    PIN   C1  UNKNOWN   1 999    97.36     0.00    97.36     0.00
+    PIN   D1  UNKNOWN   1 999    78.41     0.00    78.41     0.00
+GATE sky130_fd_sc_hd__o41ai_2      16.27  Y=(!A1&!A2&!A3&!A4) | (!B1);                                 
+    PIN   A1  UNKNOWN   1 999   218.19     0.00   218.19     0.00
+    PIN   A2  UNKNOWN   1 999   206.88     0.00   206.88     0.00
+    PIN   A3  UNKNOWN   1 999   186.24     0.00   186.24     0.00
+    PIN   A4  UNKNOWN   1 999   141.81     0.00   141.81     0.00
+    PIN   B1  UNKNOWN   1 999    59.94     0.00    59.94     0.00
+GATE sky130_fd_sc_hd__a41oi_2      16.27  Y=(!A1&!B1) | (!A2&!B1) | (!A3&!B1) | (!A4&!B1);             
+    PIN   A1  UNKNOWN   1 999   109.77     0.00   109.77     0.00
+    PIN   A2  UNKNOWN   1 999   134.89     0.00   134.89     0.00
+    PIN   A3  UNKNOWN   1 999   151.03     0.00   151.03     0.00
+    PIN   A4  UNKNOWN   1 999   161.14     0.00   161.14     0.00
+    PIN   B1  UNKNOWN   1 999    98.96     0.00    98.96     0.00
+GATE sky130_fd_sc_hd__a311oi_2     15.01  Y=(!A1&!B1&!C1) | (!A2&!B1&!C1) | (!A3&!B1&!C1);             
+    PIN   A1  UNKNOWN   1 999   148.71     0.00   148.71     0.00
+    PIN   A2  UNKNOWN   1 999   173.69     0.00   173.69     0.00
+    PIN   A3  UNKNOWN   1 999   191.26     0.00   191.26     0.00
+    PIN   B1  UNKNOWN   1 999   153.57     0.00   153.57     0.00
+    PIN   C1  UNKNOWN   1 999   122.90     0.00   122.90     0.00
+GATE sky130_fd_sc_hd__o32ai_2      16.27  Y=(!A1&!A2&!A3) | (!B1&!B2);                                 
+    PIN   A1  UNKNOWN   1 999   182.45     0.00   182.45     0.00
+    PIN   A2  UNKNOWN   1 999   171.83     0.00   171.83     0.00
+    PIN   A3  UNKNOWN   1 999   143.19     0.00   143.19     0.00
+    PIN   B1  UNKNOWN   1 999   101.22     0.00   101.22     0.00
+    PIN   B2  UNKNOWN   1 999    82.58     0.00    82.58     0.00
+GATE sky130_fd_sc_hd__o311ai_2     16.27  Y=(!A1&!A2&!A3) | (!B1) | (!C1);                             
+    PIN   A1  UNKNOWN   1 999   196.90     0.00   196.90     0.00
+    PIN   A2  UNKNOWN   1 999   183.23     0.00   183.23     0.00
+    PIN   A3  UNKNOWN   1 999   154.66     0.00   154.66     0.00
+    PIN   B1  UNKNOWN   1 999    89.74     0.00    89.74     0.00
+    PIN   C1  UNKNOWN   1 999    76.36     0.00    76.36     0.00
+GATE sky130_fd_sc_hd__a221oi_2     15.01  Y=(!A1&!B1&!C1) | (!A1&!B2&!C1) | (!A2&!B1&!C1) | (!A2&!B2&!C1); 
+    PIN   A1  UNKNOWN   1 999   159.77     0.00   159.77     0.00
+    PIN   A2  UNKNOWN   1 999   174.69     0.00   174.69     0.00
+    PIN   B1  UNKNOWN   1 999   142.12     0.00   142.12     0.00
+    PIN   B2  UNKNOWN   1 999   159.14     0.00   159.14     0.00
+    PIN   C1  UNKNOWN   1 999   112.14     0.00   112.14     0.00
+GATE sky130_fd_sc_hd__o221ai_2     15.01  Y=(!B1&!B2) | (!A1&!A2) | (!C1);                             
+    PIN   A1  UNKNOWN   1 999   151.17     0.00   151.17     0.00
+    PIN   A2  UNKNOWN   1 999   132.06     0.00   132.06     0.00
+    PIN   B1  UNKNOWN   1 999   132.77     0.00   132.77     0.00
+    PIN   B2  UNKNOWN   1 999   112.06     0.00   112.06     0.00
+    PIN   C1  UNKNOWN   1 999    73.26     0.00    73.26     0.00
+GATE sky130_fd_sc_hd__a2111oi_2    15.01  Y=(!A1&!B1&!C1&!D1) | (!A2&!B1&!C1&!D1);                     
+    PIN   A1  UNKNOWN   1 999   191.22     0.00   191.22     0.00
+    PIN   A2  UNKNOWN   1 999   219.94     0.00   219.94     0.00
+    PIN   B1  UNKNOWN   1 999   198.41     0.00   198.41     0.00
+    PIN   C1  UNKNOWN   1 999   173.58     0.00   173.58     0.00
+    PIN   D1  UNKNOWN   1 999   130.60     0.00   130.60     0.00
+GATE sky130_fd_sc_hd__mux4_1       26.28  X=(A0&!S0&!S1) | (A1&S0&!S1) | (A2&!S0&S1) | (A3&S0&S1);     
+    PIN   A0  UNKNOWN   1 999   315.80     0.00   315.80     0.00
+    PIN   A1  UNKNOWN   1 999   321.98     0.00   321.98     0.00
+    PIN   A2  UNKNOWN   1 999   318.97     0.00   318.97     0.00
+    PIN   A3  UNKNOWN   1 999   316.34     0.00   316.34     0.00
+    PIN   S0  UNKNOWN   1 999   406.01     0.00   406.01     0.00
+    PIN   S1  UNKNOWN   1 999   220.77     0.00   220.77     0.00
