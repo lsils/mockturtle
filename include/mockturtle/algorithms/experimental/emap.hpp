@@ -619,7 +619,7 @@ public:
 
     while ( ipos != _pend )
     {
-      if ( ( *ipos )->signature() == cut.signature() )
+      if ( ( *ipos )->signature() == cut.signature() && std::equal( cut.begin(), cut.end(), ( *ipos )->begin() ) )
         return true;
       ++ipos;
     }

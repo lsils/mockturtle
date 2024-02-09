@@ -748,6 +748,7 @@ private:
   {
     uint32_t np_count = 0;
     std::string ignored_name;
+    bool consistency_check = true;
 
     /* load multi-output gates */
     auto const& multioutput_gates = _super.get_multioutput_library();
@@ -882,8 +883,10 @@ private:
       kitty::exact_multi_np_enumeration( tts, on_np );
 
       /* NPN enumeration of the single outputs */
+      uint32_t pin = 0;
       for ( auto const& gate : multi_gate )
       {
+        consistency_check &= check_delay_consistency( gate, pin++ );
         exact_npn_enumeration( gate.function, [&]( auto const& tt, auto neg, auto const& perm ) {
           (void)neg;
           (void)perm;
@@ -898,6 +901,11 @@ private:
     if ( _ps.verbose && ignored_gates > 0 )
     {
       std::cerr << fmt::format( "[i] WARNING: {} multi-output gates IGNORED (e.g., {}), too many outputs for the library settings\n", ignored_gates, ignored_name );
+    }
+
+    if ( !consistency_check )
+    {
+      std::cerr << "[i] WARNING: technology mapping using multi-output cells with warnings might generate required time violations or circuits with dangling pins\n";
     }
 
     // std::cout << _multi_lib.size() << "\n";
@@ -966,6 +974,44 @@ private:
         // std::cout << fmt::format( "Area before: {}\t Area after {}\n", area_old, area_check );
       }
     }
+  }
+
+  bool check_delay_consistency( composed_gate<NInputs> const& g, uint32_t pin )
+  {
+    TT tt = kitty::extend_to<truth_table_size>( g.function );
+
+    auto entry = _super_lib.find( tt );
+    if ( entry == _super_lib.end() )
+    {
+      std::cerr << fmt::format( "WARNING: library does not contain cells that can implement output pin {} of the multi-output cell {}\n", pin, g.root->name );
+      return false;
+    }
+
+    /* check delay (at least one entry might have better or equal delay) */
+    for ( auto const& sg : entry->second )
+    {
+      bool valid = true;
+      for ( uint32_t i = 0; i < g.num_vars; ++i )
+      {
+        float pin_delay = sg.tdelay[i];
+        if ( ( sg.polarity >> i ) & 1 )
+          pin_delay += _inv_delay;
+        
+        if ( pin_delay > g.tdelay[i] )
+        {
+          valid = false;
+          break;
+        }
+      }
+
+      if ( valid )
+      {
+        return true;
+      }
+    }
+
+    std::cerr << fmt::format( "[i] WARNING: library does not contain cells that could match the delay of output pin {} of multi-output cell {}\n", pin + 1, g.root->name );
+    return false;
   }
 
   float compute_worst_delay( gate const& g )
