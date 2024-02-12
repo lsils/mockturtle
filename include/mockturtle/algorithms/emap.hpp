@@ -47,20 +47,20 @@
 #include <fmt/format.h>
 #include <parallel_hashmap/phmap.h>
 
-#include "../../networks/block.hpp"
-#include "../../networks/klut.hpp"
-#include "../../utils/cuts.hpp"
-#include "../../utils/node_map.hpp"
-#include "../../utils/stopwatch.hpp"
-#include "../../utils/tech_library.hpp"
-#include "../../views/binding_view.hpp"
-#include "../../views/cell_view.hpp"
-#include "../../views/choice_view.hpp"
-#include "../../views/topo_view.hpp"
-#include "../cleanup.hpp"
-#include "../cut_enumeration.hpp"
-#include "../detail/mffc_utils.hpp"
-#include "../detail/switching_activity.hpp"
+#include "../networks/block.hpp"
+#include "../networks/klut.hpp"
+#include "../utils/cuts.hpp"
+#include "../utils/node_map.hpp"
+#include "../utils/stopwatch.hpp"
+#include "../utils/tech_library.hpp"
+#include "../views/binding_view.hpp"
+#include "../views/cell_view.hpp"
+#include "../views/choice_view.hpp"
+#include "../views/topo_view.hpp"
+#include "cleanup.hpp"
+#include "cut_enumeration.hpp"
+#include "detail/mffc_utils.hpp"
+#include "detail/switching_activity.hpp"
 
 namespace mockturtle
 {

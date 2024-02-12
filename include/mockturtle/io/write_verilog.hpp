@@ -117,6 +117,7 @@ struct write_verilog_params
   std::optional<std::string> module_name{ std::nullopt };
   std::vector<std::pair<std::string, uint32_t>> input_names;
   std::vector<std::pair<std::string, uint32_t>> output_names;
+  bool verbose{ false };
 };
 
 /*! \brief Writes network in structural Verilog format into output stream
@@ -771,7 +772,10 @@ void write_verilog_with_binding( Ntk const& ntk, std::ostream& os, write_verilog
       /* if node drives multiple POs, duplicate */
       if ( po_nodes.has( n ) && po_nodes[n].size() > 1 )
       {
-        std::cerr << "[i] node " << n << " driving multiple POs has been duplicated.\n";
+        if ( ps.verbose )
+        {
+          std::cerr << "[i] node " << n << " driving multiple POs has been duplicated.\n";
+        }
         auto const& po_list = po_nodes[n];
         for ( auto i = 1u; i < po_list.size(); ++i )
         {
@@ -1154,7 +1158,10 @@ void write_verilog_with_cell( Ntk const& ntk, std::ostream& os, write_verilog_pa
               return false;
             }
 
-            std::cerr << "[i] Buffering node " << n << " driving multiple POs.\n";
+            if ( ps.verbose )
+            {
+              std::cerr << "[i] Buffering node " << n << " driving multiple POs.\n";
+            }
 
             gate const& g = cells[buf_id].gates.front();
             std::string buf_name = g.name;

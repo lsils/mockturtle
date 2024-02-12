@@ -143,7 +143,7 @@ To increase this limit, change `max_cut_num` in `fast_network_cuts`.
 Extended technology mapping
 ---------------------------
 
-**Header:** ``mockturtle/algorithms/experimental/emap.hpp``
+**Header:** ``mockturtle/algorithms/emap.hpp``
 
 The command `emap` stands for extended mapper. The current version
 supports up to 2-output gates, such as full adders and half adders,

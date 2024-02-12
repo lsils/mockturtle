@@ -5,7 +5,7 @@
 
 #include <lorina/genlib.hpp>
 #include <lorina/super.hpp>
-#include <mockturtle/algorithms/experimental/emap.hpp>
+#include <mockturtle/algorithms/emap.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/io/super_reader.hpp>
