@@ -109,6 +109,9 @@ struct tech_library_params
   /*! \brief Loads multioutput gates in the library */
   bool load_multioutput_gates{ true };
 
+  /*! \brief Load gates with minimum size only */
+  bool load_minimum_size_only{ true };
+
   /*! \brief Remove dominated gates (larger sizes) */
   bool remove_dominated_gates{ true };
 
@@ -400,9 +403,9 @@ private:
 
     std::vector<bool> skip_gates( supergates.size(), false );
 
-    if ( _ps.remove_dominated_gates )
+    if ( _ps.load_minimum_size_only || _ps.remove_dominated_gates )
     {
-      select_dominated_gates( supergates, skip_gates );
+      filter_gates( supergates, skip_gates );
     }
 
     /* generate the configurations for the standard gates */
@@ -1029,7 +1032,33 @@ private:
     return worst_delay;
   }
 
-  void select_dominated_gates( std::deque<composed_gate<NInputs>> const& supergates, std::vector<bool>& skip_gates )
+  bool compare_sizes( composed_gate<NInputs> const& s1, composed_gate<NInputs> const& s2 )
+  {
+    if ( s1.area < s2.area )
+      return true;
+    else if ( s1.area > s2.area )
+      return false;
+    
+    /* compute average pin delay */
+    float s1_delay = 0, s2_delay = 0;
+    assert( s1.num_vars == s2.num_vars );
+    for ( uint32_t i = 0; i < s1.num_vars; ++i )
+    {
+      s1_delay += s1.tdelay[i];
+      s2_delay += s2.tdelay[i];
+    }
+
+    if ( s1_delay < s2_delay )
+      return true;
+    else if ( s1_delay > s2_delay )
+      return false;
+    else if ( s1.root->name < s2.root->name )
+      return true;
+
+    return false;
+  }
+
+  void filter_gates( std::deque<composed_gate<NInputs>> const& supergates, std::vector<bool>& skip_gates )
   {
     for ( uint32_t i = 0; i < skip_gates.size() - 1; ++i )
     {
@@ -1047,6 +1076,20 @@ private:
         /* get the same functionality */
         if ( tti != ttj )
           continue;
+
+        if ( _ps.load_minimum_size_only )
+        {
+          if ( compare_sizes( supergates[i], supergates[j] ) )
+          {
+            skip_gates[j] = true;
+            continue;
+          }
+          else
+          {
+            skip_gates[i] = true;
+            break;
+          }
+        }
 
         /* is i smaller than j */
         bool smaller = supergates[i].area < supergates[j].area;

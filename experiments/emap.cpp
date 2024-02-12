@@ -80,11 +80,10 @@ int main()
     const uint32_t depth_before = depth_view( aig ).depth();
 
     emap_params ps;
-    ps.map_multioutput = true;
+    ps.map_multioutput = false;
     emap_stats st;
     cell_view<block_network> res = emap_block( aig, tech_lib, ps, &st );
 
-    /* decompose multi-output cells for verification purposes */
     const auto cec = benchmark == "hyp" ? true : abc_cec_mapped_cell( res, benchmark, library );
 
     exp( benchmark, size_before, res.compute_area(), depth_before, res.compute_worst_delay(), st.multioutput_gates, to_seconds( st.time_total ), cec );
