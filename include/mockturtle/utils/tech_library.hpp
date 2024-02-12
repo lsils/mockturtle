@@ -988,7 +988,7 @@ private:
     auto entry = _super_lib.find( tt );
     if ( entry == _super_lib.end() )
     {
-      std::cerr << fmt::format( "WARNING: library does not contain cells that can implement output pin {} of the multi-output cell {}\n", pin, g.root->name );
+      std::cerr << fmt::format( "[i] WARNING: library does not contain cells that can implement output pin {} of the multi-output cell {}\n", pin, g.root->name );
       return false;
     }
 

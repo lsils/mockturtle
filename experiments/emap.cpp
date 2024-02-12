@@ -36,9 +36,11 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/block.hpp>
 #include <mockturtle/networks/klut.hpp>
+#include <mockturtle/utils/name_utils.hpp>
 #include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/cell_view.hpp>
 #include <mockturtle/views/depth_view.hpp>
+#include <mockturtle/views/names_view.hpp>
 
 #include <experiments.hpp>
  
@@ -66,11 +68,11 @@ int main()
   tps.verbose = true;
   tech_library tech_lib( gates, tps );
 
-  for ( auto const& benchmark : epfl_benchmarks() )
+  for ( auto const& benchmark : iscas_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
-    aig_network aig;
+    names_view<aig_network> aig;
     if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
     {
       continue;
@@ -80,11 +82,15 @@ int main()
     const uint32_t depth_before = depth_view( aig ).depth();
 
     emap_params ps;
+    ps.area_oriented_mapping = false;
     ps.map_multioutput = false;
     emap_stats st;
     cell_view<block_network> res = emap_block( aig, tech_lib, ps, &st );
-
-    const auto cec = benchmark == "hyp" ? true : abc_cec_mapped_cell( res, benchmark, library );
+    
+    names_view res_names{ res };
+    restore_network_name( aig, res_names );
+    restore_pio_names_by_order( aig, res_names );
+    const auto cec = benchmark == "hyp" ? true : abc_cec_mapped_cell( res_names, benchmark, library );
 
     exp( benchmark, size_before, res.compute_area(), depth_before, res.compute_worst_delay(), st.multioutput_gates, to_seconds( st.time_total ), cec );
   }
