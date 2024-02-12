@@ -566,19 +566,19 @@ GATE AND5x2_ASAP7_75t_R       4.6656  Y=(A * B * C * D * E);
     PIN   D  UNKNOWN   1 999  33.0665   0.0000  33.0665   0.0000
     PIN   E  UNKNOWN   1 999  33.6335   0.0000  33.6335   0.0000
 GATE FAx1_ASAP7_75t_R         3.2659  CON=(!A * !B) + (!A * !CI) + (!B * !CI);                     
-    PIN   A  UNKNOWN   1 999  51.1655   0.0000  51.1655   0.0000
-    PIN   B  UNKNOWN   1 999  53.3921   0.0000  53.3921   0.0000
-    PIN  CI  UNKNOWN   1 999  42.1122   0.0000  42.1122   0.0000
+    PIN   A  UNKNOWN   1 999  20.5752   0.0000  20.5752   0.0000
+    PIN   B  UNKNOWN   1 999  31.9832   0.0000  31.9832   0.0000
+    PIN  CI  UNKNOWN   1 999  29.4733   0.0000  29.4733   0.0000
 GATE FAx1_ASAP7_75t_R         3.2659  SN=(A * B * !CI) + (A * !B * CI) + (!A * B * CI) + (!A * !B * !CI); 
     PIN   A  UNKNOWN   1 999  51.1655   0.0000  51.1655   0.0000
     PIN   B  UNKNOWN   1 999  53.3921   0.0000  53.3921   0.0000
     PIN  CI  UNKNOWN   1 999  42.1122   0.0000  42.1122   0.0000
 GATE HAxp5_ASAP7_75t_R        2.0995  CON=(!A) + (!B);                                             
-    PIN   A  UNKNOWN   1 999  28.0747   0.0000  28.0747   0.0000
-    PIN   B  UNKNOWN   1 999  26.0246   0.0000  26.0246   0.0000
+    PIN   A  UNKNOWN   1 999  17.2818   0.0000  17.2818   0.0000
+    PIN   B  UNKNOWN   1 999  16.4310   0.0000  16.4310   0.0000
 GATE HAxp5_ASAP7_75t_R        2.0995  SN=(A * B) + (!A * !B);                                      
-    PIN   A  UNKNOWN   1 999  28.0747   0.0000  28.0747   0.0000
-    PIN   B  UNKNOWN   1 999  26.0246   0.0000  26.0246   0.0000
+    PIN   A  UNKNOWN   1 999  33.7884   0.0000  33.7884   0.0000
+    PIN   B  UNKNOWN   1 999  34.3867   0.0000  34.3867   0.0000
 GATE MAJIxp5_ASAP7_75t_R      1.6330  Y=(!A * !B) + (!A * !C) + (!B * !C);                         
     PIN   A  UNKNOWN   1 999  20.5752   0.0000  20.5752   0.0000
     PIN   B  UNKNOWN   1 999  31.9832   0.0000  31.9832   0.0000

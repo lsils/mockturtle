@@ -94,9 +94,9 @@ public:
 #pragma region Types and constructors
   static constexpr auto min_fanin_size = 1;
   static constexpr auto max_fanin_size = 32;
-  static constexpr auto min_fanout_size = 1;
-  static constexpr auto max_fanout_size = 2;
-  static constexpr auto fanout_signal_bits = 1;
+  static constexpr auto min_gate_output_size = 1;
+  static constexpr auto max_gate_output_size = 2;
+  static constexpr auto output_signal_bits = 1;
 
   using base_type = block_network;
   using storage = std::shared_ptr<block_storage>;
@@ -136,8 +136,8 @@ public:
       struct
       {
         uint64_t complement : 1;
-        uint64_t output : fanout_signal_bits;
-        uint64_t index : 63 - fanout_signal_bits;
+        uint64_t output : output_signal_bits;
+        uint64_t index : 63 - output_signal_bits;
       };
       uint64_t data;
     };

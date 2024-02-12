@@ -46,7 +46,7 @@ namespace mockturtle
  *
  * This view adds methods to create and manage a mapped network that
  * implements cells contained in a technology library. This view
- * is returned by the technology mapping command `map`. It can be used
+ * is returned by the technology mapping command `emap`. It can be used
  * to report statistics about the network and write the network into
  * a verilog file. It always adds the functions `has_cell`,
  * `remove_cell`, `add_cell`, `add_cell_with_check`, `get_cell`,

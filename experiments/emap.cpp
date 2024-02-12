@@ -30,7 +30,6 @@
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
 #include <lorina/genlib.hpp>
-#include <mockturtle/algorithms/experimental/decompose_multioutput.hpp>
 #include <mockturtle/algorithms/experimental/emap.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
@@ -54,8 +53,9 @@ int main()
   fmt::print( "[i] processing technology library\n" );
 
   /* library to map to technology */
+  std::string library = "asap7";
   std::vector<gate> gates;
-  std::ifstream in( cell_libraries_path( "asap7" ) );
+  std::ifstream in( cell_libraries_path( library ) );
 
   if ( lorina::read_genlib( in, genlib_reader( gates ) ) != lorina::return_code::success )
   {
@@ -85,8 +85,7 @@ int main()
     cell_view<block_network> res = emap_block( aig, tech_lib, ps, &st );
 
     /* decompose multi-output cells for verification purposes */
-    klut_network klut = decompose_multioutput<block_network, klut_network>( res );
-    const auto cec = benchmark == "hyp" ? true : abc_cec( klut, benchmark );
+    const auto cec = benchmark == "hyp" ? true : abc_cec_mapped_cell( res, benchmark, library );
 
     exp( benchmark, size_before, res.compute_area(), depth_before, res.compute_worst_delay(), st.multioutput_gates, to_seconds( st.time_total ), cec );
   }

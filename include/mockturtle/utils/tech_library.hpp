@@ -196,6 +196,7 @@ public:
       : _gates( gates ),
         _supergates_spec( supergates_spec ),
         _ps( ps ),
+        _cells( get_standard_cells( _gates ) ),
         _super( _gates, _supergates_spec, super_utils_params{ ps.load_multioutput_gates_single, ps.verbose } ),
         _use_supergates( false ),
         _struct( _gates ),
@@ -220,6 +221,7 @@ public:
       : _gates( gates ),
         _supergates_spec( supergates_spec ),
         _ps( ps ),
+        _cells( get_standard_cells( _gates ) ),
         _super( _gates, _supergates_spec, super_utils_params{ ps.load_multioutput_gates_single, ps.verbose } ),
         _use_supergates( true ),
         _struct( _gates ),
@@ -329,9 +331,9 @@ public:
   }
 
   /*! \brief Returns the standard cells. */
-  const std::vector<standard_cell> get_cells() const
+  const std::vector<standard_cell>& get_cells() const
   {
-    return get_standard_cells( _gates );
+    return _cells;
   }
 
   /*! \brief Returns multioutput gates. */
@@ -1098,6 +1100,8 @@ private:
   std::vector<gate> const _gates;    /* collection of gates */
   super_lib const& _supergates_spec; /* collection of supergates declarations */
   tech_library_params const _ps;
+
+  std::vector<standard_cell> const _cells; /* collection of standard cells */
 
   super_utils<NInputs> _super;     /* supergates generation */
   struct_library<NInputs> _struct; /* library for structural matching */
