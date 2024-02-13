@@ -717,7 +717,6 @@ class emap_impl
 public:
   static constexpr float epsilon = 0.0005;
   static constexpr uint32_t max_cut_num = 32;
-  // static constexpr uint32_t max_cut_leaves = 6;
   using cut_t = cut<CutSize, cut_enumeration_emap_cut<NInputs>>;
   using cut_set_t = emap_cut_set<cut_t, max_cut_num>;
   using cut_merge_t = typename std::array<cut_set_t*, Ntk::max_fanin_size + 1>;
@@ -755,8 +754,6 @@ public:
         switch_activity( ps.eswp_rounds ? switching_activity( ntk, ps.switching_activity_patterns ) : std::vector<float>( 0 ) ),
         cuts( ntk.size() )
   {
-    // static_assert( CutSize <= max_cut_leaves, "CutSize is too large for the pre-allocated size\n" );
-
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
     std::tie( lib_buf_area, lib_buf_delay, lib_buf_id ) = library.get_buffer_info();
     tmp_visited.reserve( 100 );
@@ -772,8 +769,6 @@ public:
         switch_activity( switch_activity ),
         cuts( ntk.size() )
   {
-    // static_assert( CutSize <= max_cut_leaves, "CutSize is too large for the pre-allocated size\n" );
-
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
     std::tie( lib_buf_area, lib_buf_delay, lib_buf_id ) = library.get_buffer_info();
     tmp_visited.reserve( 100 );
@@ -1409,7 +1404,7 @@ private:
     /* round stats */
     if ( ps.verbose )
     {
-      st.round_stats.push_back( fmt::format( "[i] SCuts    : Cuts  = {:>12d}\n", cuts_total ) );
+      st.round_stats.push_back( fmt::format( "[i] SCuts    : Cuts  = {:>12d} Time = {:>5.2f}\n", cuts_total, to_seconds( clock::now() - time_begin ) ) );
     }
 
     return true;
