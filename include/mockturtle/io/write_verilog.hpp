@@ -1171,7 +1171,6 @@ void write_verilog_with_cell( Ntk const& ntk, std::ostream& os, write_verilog_pa
             args.clear();
             args.emplace_back( std::make_pair( g.pins.front().name, node_names[n].at( i ) ) );
             args.emplace_back( std::make_pair( "", "" ) );
-            i = 0;
             for ( uint32_t j = 1u; j < po_list.size(); ++j )
             {
               digits = counter == (int)std::floor( std::log10( counter ) );
@@ -1204,7 +1203,6 @@ void write_verilog_with_cell( Ntk const& ntk, std::ostream& os, write_verilog_pa
           args.clear();
           args.emplace_back( std::make_pair( g.pins.front().name, node_names[n].front() ) );
           args.emplace_back( std::make_pair( "", "" ) );
-          i = 0;
           for ( i = 1u; i < po_list.size(); ++i )
           {
             digits = counter == (int)std::floor( std::log10( counter ) );

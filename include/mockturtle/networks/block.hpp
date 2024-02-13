@@ -53,7 +53,7 @@ struct block_storage_data
   truth_table_cache<kitty::dynamic_truth_table> cache;
 };
 
-/*! \brief k-LUT node
+/*! \brief Block node
  *
  * `data[0].h1`  : Application-specific value
  * `data[1].h1`  : Visited flags
@@ -82,7 +82,7 @@ struct block_storage_node : block_fanin_node<2>
   }
 };
 
-/*! \brief k-LUT storage container
+/*! \brief Block storage container
 
   ...
 */
@@ -335,7 +335,7 @@ public:
 #pragma region Create unary functions
   signal create_buf( signal const& a )
   {
-    return a;
+    return _create_node( { a }, 2 );
   }
 
   signal create_not( signal const& a )

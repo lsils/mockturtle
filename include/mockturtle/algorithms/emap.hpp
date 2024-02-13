@@ -1421,7 +1421,7 @@ private:
     std::array<uint32_t, 2> children_phase;
     ntk.foreach_fanin( ntk.index_to_node( index ), [&]( auto child, auto i ) {
       lcuts[i] = &cuts[ntk.node_to_index( ntk.get_node( child ) )];
-      children_phase[i] = static_cast<uint32_t>( child.complement );
+      children_phase[i] = ntk.is_complemented( child ) ? 1 : 0;
     } );
     lcuts[2] = &cuts[index];
     auto& rcuts = *lcuts[fanin];

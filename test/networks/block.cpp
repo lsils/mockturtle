@@ -93,8 +93,8 @@ TEST_CASE( "create unary operations in a block network", "[block_net]" )
   auto f1 = block_net.create_buf( x1 );
   auto f2 = block_net.create_not( x1 );
 
-  CHECK( block_net.size() == 4 );
-  CHECK( f1 == x1 );
+  CHECK( block_net.size() == 5 );
+  CHECK( f1 != x1 );
   CHECK( f2 != x1 );
 }
 
