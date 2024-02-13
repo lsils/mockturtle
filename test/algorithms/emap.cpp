@@ -22,15 +22,31 @@ using namespace mockturtle;
 std::string const test_library = "GATE   inv1    1 O=!a;            PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
                                  "GATE   inv2    2 O=!a;            PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
                                  "GATE   nand2   2 O=!(a*b);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
-                                 "GATE   xor2    5 O=a^b;           PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                 "GATE   and2    3 O=a*b;           PIN * INV 1 999 1.7 0.2 1.7 0.2\n"
+                                 "GATE   xor2    4 O=a^b;           PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
                                  "GATE   mig3    3 O=a*b+a*c+b*c;   PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
+                                 "GATE   xor3    5 O=a^b^c;         PIN * UNKNOWN 2 999 3.0 0.5 3.0 0.5\n"
                                  "GATE   buf     2 O=a;             PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
                                  "GATE   zero    0 O=CONST0;\n"
                                  "GATE   one     0 O=CONST1;\n"
-                                 "GATE   ha      5 O=a*b;           PIN * INV 1 999 1.7 0.4 1.7 0.4\n"
-                                 "GATE   ha      5 O=!a*b+a*!b;     PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
-                                 "GATE   fa      6 O=a*b+a*c+b*c;   PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
-                                 "GATE   fa      6 O=a^b^c;         PIN * INV 1 999 3.0 0.4 3.0 0.4";
+                                 "GATE   ha      5 C=a*b;           PIN * INV 1 999 1.7 0.4 1.7 0.4\n"
+                                 "GATE   ha      5 S=!a*b+a*!b;     PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
+                                 "GATE   fa      6 C=a*b+a*c+b*c;   PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
+                                 "GATE   fa      6 S=a^b^c;         PIN * INV 1 999 3.0 0.4 3.0 0.4";
+
+std::string const large_library = "GATE   inv1    1 O=!a;            PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                  "GATE   inv2    2 O=!a;            PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                  "GATE   nand2   2 O=!(a*b);        PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                  "GATE   xor2    5 O=a^b;           PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
+                                  "GATE   mig3    3 O=a*b+a*c+b*c;   PIN * INV 1 999 2.0 0.2 2.0 0.2\n"
+                                  "GATE   buf     2 O=a;             PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                  "GATE   zero    0 O=CONST0;\n"
+                                  "GATE   one     0 O=CONST1;\n"
+                                  "GATE   ha      5 C=a*b;           PIN * INV 1 999 1.7 0.4 1.7 0.4\n"
+                                  "GATE   ha      5 S=!a*b+a*!b;     PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
+                                  "GATE   fa      6 C=a*b+a*c+b*c;   PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
+                                  "GATE   fa      6 S=a^b^c;         PIN * INV 1 999 3.0 0.4 3.0 0.4\n"
+                                  "GATE   nand8   8 O=!(a*b*c*d*e*f*g*h);   PIN * INV 1 999 4.0 0.2 4.0 0.2\n";
 
 std::string const super_library = "test.genlib\n"
                                   "3\n"
@@ -127,14 +143,14 @@ TEST_CASE( "Emap on full adder 1", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 8u );
+  CHECK( luts.size() == 7u );
   CHECK( luts.num_pis() == 3u );
   CHECK( luts.num_pos() == 2u );
-  CHECK( luts.num_gates() == 3u );
-  CHECK( st.area > 13.0f - eps );
-  CHECK( st.area < 13.0f + eps );
-  CHECK( st.delay > 3.8f - eps );
-  CHECK( st.delay < 3.8f + eps );
+  CHECK( luts.num_gates() == 2u );
+  CHECK( st.area > 8.0f - eps );
+  CHECK( st.area < 8.0f + eps );
+  CHECK( st.delay > 3.0f - eps );
+  CHECK( st.delay < 3.0f + eps );
 }
 
 TEST_CASE( "Emap on full adder 2", "[emap]" )
@@ -166,14 +182,14 @@ TEST_CASE( "Emap on full adder 2", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 8u );
+  CHECK( luts.size() == 7u );
   CHECK( luts.num_pis() == 3u );
   CHECK( luts.num_pos() == 2u );
-  CHECK( luts.num_gates() == 3u );
-  CHECK( st.area > 13.0f - eps );
-  CHECK( st.area < 13.0f + eps );
-  CHECK( st.delay > 3.8f - eps );
-  CHECK( st.delay < 3.8f + eps );
+  CHECK( luts.num_gates() == 2u );
+  CHECK( st.area > 8.0f - eps );
+  CHECK( st.area < 8.0f + eps );
+  CHECK( st.delay > 3.0f - eps );
+  CHECK( st.delay < 3.0f + eps );
 }
 
 TEST_CASE( "Emap on full adder 1 with cells", "[emap]" )
@@ -201,14 +217,14 @@ TEST_CASE( "Emap on full adder 1 with cells", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 8u );
+  CHECK( luts.size() == 7u );
   CHECK( luts.num_pis() == 3u );
   CHECK( luts.num_pos() == 2u );
-  CHECK( luts.num_gates() == 3u );
-  CHECK( st.area > 13.0f - eps );
-  CHECK( st.area < 13.0f + eps );
-  CHECK( st.delay > 3.8f - eps );
-  CHECK( st.delay < 3.8f + eps );
+  CHECK( luts.num_gates() == 2u );
+  CHECK( st.area > 8.0f - eps );
+  CHECK( st.area < 8.0f + eps );
+  CHECK( st.delay > 3.0f - eps );
+  CHECK( st.delay < 3.0f + eps );
 }
 
 TEST_CASE( "Emap on full adder 2 with cells", "[emap]" )
@@ -240,14 +256,14 @@ TEST_CASE( "Emap on full adder 2 with cells", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 8u );
+  CHECK( luts.size() == 7u );
   CHECK( luts.num_pis() == 3u );
   CHECK( luts.num_pos() == 2u );
-  CHECK( luts.num_gates() == 3u );
-  CHECK( st.area > 13.0f - eps );
-  CHECK( st.area < 13.0f + eps );
-  CHECK( st.delay > 3.8f - eps );
-  CHECK( st.delay < 3.8f + eps );
+  CHECK( luts.num_gates() == 2u );
+  CHECK( st.area > 8.0f - eps );
+  CHECK( st.area < 8.0f + eps );
+  CHECK( st.delay > 3.0f - eps );
+  CHECK( st.delay < 3.0f + eps );
 }
 
 TEST_CASE( "Emap on ripple carry adder with multi-output gates", "[emap]" )
@@ -369,12 +385,12 @@ TEST_CASE( "Emap on multiplier with multi-output gates", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 255u );
+  CHECK( luts.size() == 234u );
   CHECK( luts.num_pis() == 16u );
   CHECK( luts.num_pos() == 16u );
-  CHECK( luts.num_gates() == 237u );
-  CHECK( st.area > 631.0f - eps );
-  CHECK( st.area < 631.0f + eps );
+  CHECK( luts.num_gates() == 216u );
+  CHECK( st.area > 577.0f - eps );
+  CHECK( st.area < 577.0f + eps );
   CHECK( st.delay > 33.60f - eps );
   CHECK( st.delay < 33.60f + eps );
   CHECK( st.multioutput_gates == 39 );
@@ -406,14 +422,14 @@ TEST_CASE( "Emap with inverters", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 11u );
+  CHECK( luts.size() == 9u );
   CHECK( luts.num_pis() == 3u );
   CHECK( luts.num_pos() == 1u );
-  CHECK( luts.num_gates() == 6u );
+  CHECK( luts.num_gates() == 4u );
   CHECK( st.area > 8.0f - eps );
   CHECK( st.area < 8.0f + eps );
-  CHECK( st.delay > 4.7f - eps );
-  CHECK( st.delay < 4.7f + eps );
+  CHECK( st.delay > 4.3f - eps );
+  CHECK( st.delay < 4.3f + eps );
 }
 
 TEST_CASE( "Emap with inverters minimization", "[emap]" )
@@ -531,13 +547,13 @@ TEST_CASE( "Emap with supergates", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 9u );
+  CHECK( luts.size() == 8u );
   CHECK( luts.num_pis() == 3u );
   CHECK( luts.num_pos() == 1u );
-  CHECK( luts.num_gates() == 4u );
-  CHECK( st.area == 6.0f );
-  CHECK( st.delay > 3.8f - eps );
-  CHECK( st.delay < 3.8f + eps );
+  CHECK( luts.num_gates() == 3u );
+  CHECK( st.area == 9.0f );
+  CHECK( st.delay > 3.4f - eps );
+  CHECK( st.delay < 3.4f + eps );
 }
 
 TEST_CASE( "Emap with supergates 2", "[emap]" )
@@ -571,13 +587,13 @@ TEST_CASE( "Emap with supergates 2", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 9u );
+  CHECK( luts.size() == 8u );
   CHECK( luts.num_pis() == 3u );
   CHECK( luts.num_pos() == 1u );
-  CHECK( luts.num_gates() == 4u );
-  CHECK( st.area == 6.0f );
-  CHECK( st.delay > 3.8f - eps );
-  CHECK( st.delay < 3.8f + eps );
+  CHECK( luts.num_gates() == 3u );
+  CHECK( st.area == 9.0f );
+  CHECK( st.delay > 3.4f - eps );
+  CHECK( st.delay < 3.4f + eps );
 }
 
 TEST_CASE( "Emap on circuit with don't touch gates", "[emap]" )
@@ -625,8 +641,8 @@ TEST_CASE( "Emap on circuit with don't touch gates", "[emap]" )
   CHECK( luts.num_pis() == 4u );
   CHECK( luts.num_pos() == 2u );
   CHECK( luts.num_gates() == 4u );
-  CHECK( st.area > 12.0f - eps );
-  CHECK( st.area < 12.0f + eps );
+  CHECK( st.area > 11.0f - eps );
+  CHECK( st.area < 11.0f + eps );
   CHECK( st.delay > 5.8f - eps );
   CHECK( st.delay < 5.8f + eps );
 }
@@ -676,8 +692,8 @@ TEST_CASE( "Emap on circuit with don't touch cells", "[emap]" )
   CHECK( luts.num_pis() == 4u );
   CHECK( luts.num_pos() == 2u );
   CHECK( luts.num_gates() == 3u );
-  CHECK( st.area > 12.0f - eps );
-  CHECK( st.area < 12.0f + eps );
+  CHECK( st.area > 11.0f - eps );
+  CHECK( st.area < 11.0f + eps );
   CHECK( st.delay > 5.8f - eps );
   CHECK( st.delay < 5.8f + eps );
 }
