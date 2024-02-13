@@ -42,8 +42,8 @@
 #include "../views/topo_view.hpp"
 
 #include <fmt/format.h>
-#include <lorina/verilog.hpp>
 #include <kitty/print.hpp>
+#include <lorina/verilog.hpp>
 
 #include <array>
 #include <fstream>
@@ -378,7 +378,7 @@ void write_verilog( Ntk const& ntk, std::ostream& os, write_verilog_params const
       }
     }
 
-    if constexpr( is_crossed_network_type_v<Ntk> )
+    if constexpr ( is_crossed_network_type_v<Ntk> )
     {
       if ( ntk.is_crossing( n ) )
       {
@@ -929,9 +929,11 @@ void write_verilog_with_cell( Ntk const& ntk, std::ostream& os, write_verilog_pa
   }
 
   /* compute which nodes are POs and register index */
+  uint32_t additional_buffers = 0;
   std::unordered_map<typename Ntk::signal, std::vector<uint32_t>, detail::verilog_writer_signal_hash<typename Ntk::signal>> po_nodes;
   ntk.foreach_po( [&]( auto const& f, auto i ) {
     po_nodes[f ^ ntk.is_complemented( f )].push_back( i );
+    additional_buffers += po_nodes[f ^ ntk.is_complemented( f )].size() > 1 ? 1 : 0;
   } );
 
   std::vector<std::string> ws;
@@ -1042,7 +1044,7 @@ void write_verilog_with_cell( Ntk const& ntk, std::ostream& os, write_verilog_pa
   } );
 
   auto const& cells = ntk.get_library();
-  
+
   /* get buffer */
   uint32_t buf_id = UINT32_MAX;
   double buf_area = std::numeric_limits<double>::max();
@@ -1053,7 +1055,7 @@ void write_verilog_with_cell( Ntk const& ntk, std::ostream& os, write_verilog_pa
       continue;
     if ( g.function._bits[0] != 0x2 )
       continue;
-    
+
     if ( buf_id == UINT32_MAX || g.area < buf_area )
     {
       buf_id = i;
@@ -1061,7 +1063,7 @@ void write_verilog_with_cell( Ntk const& ntk, std::ostream& os, write_verilog_pa
     }
   }
 
-  int nDigits = (int)std::floor( std::log10( ntk.num_gates() ) );
+  int nDigits = (int)std::floor( std::log10( ntk.num_gates() + additional_buffers ) );
   unsigned int length = 0;
   unsigned counter = 0;
 
@@ -1182,7 +1184,7 @@ void write_verilog_with_cell( Ntk const& ntk, std::ostream& os, write_verilog_pa
               ++counter;
             }
           }
-        }      
+        }
       }
       else
       {
@@ -1215,7 +1217,7 @@ void write_verilog_with_cell( Ntk const& ntk, std::ostream& os, write_verilog_pa
             ++counter;
           }
         }
-      }      
+      }
     }
     else if ( !ntk.is_constant( n ) && !ntk.is_pi( n ) )
     {

@@ -42,7 +42,7 @@
 #include <mockturtle/views/names_view.hpp>
 
 #include <experiments.hpp>
- 
+
 int main()
 {
   using namespace experiments;
@@ -51,9 +51,8 @@ int main()
   experiment<std::string, uint32_t, double, uint32_t, double, uint32_t, float, bool> exp(
       "emap", "benchmark", "size", "area_after", "depth", "delay_after", "multioutput", "runtime", "cec" );
 
-  fmt::print( "[i] processing technology library\n" );
-
   /* library to map to technology */
+  fmt::print( "[i] processing technology library\n" );
   std::string library = "asap7";
   std::vector<gate> gates;
   std::ifstream in( cell_libraries_path( library ) );
@@ -65,7 +64,7 @@ int main()
 
   tech_library_params tps;
   tps.verbose = true;
-  tech_library tech_lib( gates, tps );
+  tech_library<9> tech_lib( gates, tps );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -83,9 +82,10 @@ int main()
     emap_params ps;
     ps.area_oriented_mapping = false;
     ps.map_multioutput = false;
+    ps.matching_mode = emap_params::hybrid;
     emap_stats st;
-    cell_view<block_network> res = emap_block( aig, tech_lib, ps, &st );
-    
+    cell_view<block_network> res = emap_block<9>( aig, tech_lib, ps, &st );
+
     names_view res_names{ res };
     restore_network_name( aig, res_names );
     restore_pio_names_by_order( aig, res_names );

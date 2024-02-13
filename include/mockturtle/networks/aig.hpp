@@ -92,6 +92,7 @@ class aig_network
 {
 public:
 #pragma region Types and constructors
+  static constexpr bool is_aig_network_type = true;
   static constexpr auto min_fanin_size = 2u;
   static constexpr auto max_fanin_size = 2u;
 

@@ -356,8 +356,6 @@ public:
   /*! \brief Returns the number of gates for structural matching. */
   const uint32_t num_structural_gates() const
   {
-    if ( !_ps.load_large_gates || NInputs <= truth_table_size )
-      return 0;
     return _struct.get_struct_library().size();
   }
 
@@ -1001,7 +999,7 @@ private:
         float pin_delay = sg.tdelay[i];
         if ( ( sg.polarity >> i ) & 1 )
           pin_delay += _inv_delay;
-        
+
         if ( pin_delay > g.tdelay[i] )
         {
           valid = false;
@@ -1038,7 +1036,7 @@ private:
       return true;
     else if ( s1.area > s2.area )
       return false;
-    
+
     /* compute average pin delay */
     float s1_delay = 0, s2_delay = 0;
     assert( s1.num_vars == s2.num_vars );

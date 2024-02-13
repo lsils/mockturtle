@@ -78,6 +78,21 @@ struct is_network_type<Ntk, std::enable_if_t<
 template<class Ntk>
 inline constexpr bool is_network_type_v = is_network_type<Ntk>::value;
 
+#pragma region is_aig_network_type
+template<class Ntk, class = void>
+struct is_aig_network_type : std::false_type
+{
+};
+
+template<class Ntk>
+struct is_aig_network_type<Ntk, std::enable_if_t<Ntk::is_aig_network_type, std::void_t<decltype( Ntk::is_aig_network_type )>>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool is_aig_network_type_v = is_aig_network_type<Ntk>::value;
+#pragma endregion
+
 #pragma region is_buffered_network_type
 template<class Ntk, class = void>
 struct is_buffered_network_type : std::false_type
