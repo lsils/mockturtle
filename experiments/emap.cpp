@@ -80,11 +80,11 @@ int main()
     const uint32_t depth_before = depth_view( aig ).depth();
 
     emap_params ps;
+    ps.matching_mode = emap_params::hybrid;
     ps.area_oriented_mapping = false;
     ps.map_multioutput = false;
-    ps.matching_mode = emap_params::hybrid;
     emap_stats st;
-    cell_view<block_network> res = emap_block<9>( aig, tech_lib, ps, &st );
+    cell_view<block_network> res = emap<6>( aig, tech_lib, ps, &st );
 
     names_view res_names{ res };
     restore_network_name( aig, res_names );

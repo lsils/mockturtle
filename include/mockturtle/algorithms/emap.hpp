@@ -94,13 +94,18 @@ struct emap_params
   /*! \brief Maps using multi-output gates */
   bool map_multioutput{ false };
 
-  /* Matching mode */
+  /*! \brief Matching mode
+   *
+   * Boolean uses Boolean matching (up to 6-input cells),
+   * Structural uses pattern matching for fully-DSD cells,
+   * Hybrid combines the two.
+   */
   enum
   {
     boolean,
     structural,
     hybrid
-  } matching_mode = boolean;
+  } matching_mode = hybrid;
 
   /*! \brief Required time for delay optimization. */
   double required_time{ 0.0f };
@@ -774,60 +779,6 @@ public:
     tmp_visited.reserve( 100 );
   }
 
-  binding_view<klut_network> run()
-  {
-    time_begin = clock::now();
-
-    auto [res, old2new] = initialize_map_network();
-
-    /* multi-output initialization */
-    if ( ps.map_multioutput && ps.matching_mode != emap_params::structural )
-    {
-      compute_multioutput_match();
-    }
-
-    /* compute and save topological order */
-    init_topo_order();
-
-    /* search for large matches */
-    if ( ps.matching_mode == emap_params::structural || CutSize > 6 )
-    {
-      if ( !compute_struct_match() )
-      {
-        return res;
-      }
-    }
-
-    /* compute cuts, matches, and initial mapping */
-    if ( !ps.area_oriented_mapping )
-    {
-      if ( !compute_mapping_match<false>() )
-      {
-        return res;
-      }
-    }
-    else
-    {
-      if ( !compute_mapping_match<true>() )
-      {
-        return res;
-      }
-    }
-
-    /* run area recovery */
-    if ( !improve_mapping() )
-      return res;
-
-    /* insert buffers for POs driven by PIs */
-    insert_buffers();
-
-    /* generate the output network */
-    finalize_cover( res, old2new );
-    st.time_total = ( clock::now() - time_begin );
-
-    return res;
-  }
-
   cell_view<block_network> run_block()
   {
     time_begin = clock::now();
@@ -877,6 +828,60 @@ public:
 
     /* generate the output network */
     finalize_cover_block( res, old2new );
+    st.time_total = ( clock::now() - time_begin );
+
+    return res;
+  }
+
+  binding_view<klut_network> run_klut()
+  {
+    time_begin = clock::now();
+
+    auto [res, old2new] = initialize_map_network();
+
+    /* multi-output initialization */
+    if ( ps.map_multioutput && ps.matching_mode != emap_params::structural )
+    {
+      compute_multioutput_match();
+    }
+
+    /* compute and save topological order */
+    init_topo_order();
+
+    /* search for large matches */
+    if ( ps.matching_mode == emap_params::structural || CutSize > 6 )
+    {
+      if ( !compute_struct_match() )
+      {
+        return res;
+      }
+    }
+
+    /* compute cuts, matches, and initial mapping */
+    if ( !ps.area_oriented_mapping )
+    {
+      if ( !compute_mapping_match<false>() )
+      {
+        return res;
+      }
+    }
+    else
+    {
+      if ( !compute_mapping_match<true>() )
+      {
+        return res;
+      }
+    }
+
+    /* run area recovery */
+    if ( !improve_mapping() )
+      return res;
+
+    /* insert buffers for POs driven by PIs */
+    insert_buffers();
+
+    /* generate the output network */
+    finalize_cover( res, old2new );
     st.time_total = ( clock::now() - time_begin );
 
     return res;
@@ -5497,7 +5502,11 @@ private:
  *
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
- * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
+ * The function returns a block network that supports multi-output cells.
+ * 
+ * The novelties of this mapper are contained in 2 publications:
+ * - A. Tempia Calvino and G. De Micheli, "Technology Mapping Using Multi-Output Library Cells," ICCAD, 2023.
+ * - G. Radi, A. Tempia Calvino, and G. De Micheli, "In Medio Stat Virtus: Combining Boolean and Pattern Matching," ASP-DAC, 2024.
  *
  * **Required network functions:**
  * - `size`
@@ -5517,7 +5526,7 @@ private:
  *
  */
 template<unsigned CutSize = 6u, class Ntk, unsigned NInputs, classification_type Configuration>
-binding_view<klut_network> emap( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, emap_params const& ps = {}, emap_stats* pst = nullptr )
+cell_view<block_network> emap( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, emap_params const& ps = {}, emap_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -5532,7 +5541,7 @@ binding_view<klut_network> emap( Ntk const& ntk, tech_library<NInputs, Configura
 
   emap_stats st;
   detail::emap_impl<Ntk, CutSize, NInputs, Configuration> p( ntk, library, ps, st );
-  auto res = p.run();
+  auto res = p.run_block();
 
   if ( ps.verbose && !st.mapping_error )
   {
@@ -5552,7 +5561,11 @@ binding_view<klut_network> emap( Ntk const& ntk, tech_library<NInputs, Configura
  *
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
- * The function returns a block network that supports multi-output cells.
+ * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
+ * 
+ * The novelties of this mapper are contained in 2 publications:
+ * - A. Tempia Calvino and G. De Micheli, "Technology Mapping Using Multi-Output Library Cells," ICCAD, 2023.
+ * - G. Radi, A. Tempia Calvino, and G. De Micheli, "In Medio Stat Virtus: Combining Boolean and Pattern Matching," ASP-DAC, 2024.
  *
  * **Required network functions:**
  * - `size`
@@ -5572,7 +5585,7 @@ binding_view<klut_network> emap( Ntk const& ntk, tech_library<NInputs, Configura
  *
  */
 template<unsigned CutSize = 6u, class Ntk, unsigned NInputs, classification_type Configuration>
-cell_view<block_network> emap_block( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, emap_params const& ps = {}, emap_stats* pst = nullptr )
+binding_view<klut_network> emap_klut( Ntk const& ntk, tech_library<NInputs, Configuration> const& library, emap_params const& ps = {}, emap_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -5587,7 +5600,7 @@ cell_view<block_network> emap_block( Ntk const& ntk, tech_library<NInputs, Confi
 
   emap_stats st;
   detail::emap_impl<Ntk, CutSize, NInputs, Configuration> p( ntk, library, ps, st );
-  auto res = p.run_block();
+  auto res = p.run_klut();
 
   if ( ps.verbose && !st.mapping_error )
   {

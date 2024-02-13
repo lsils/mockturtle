@@ -61,7 +61,7 @@ TEST_CASE( "Emap on MAJ3", "[emap]" )
 
   emap_params ps;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   CHECK( luts.size() == 6u );
   CHECK( luts.num_pis() == 3u );
@@ -92,7 +92,7 @@ TEST_CASE( "Emap on bad MAJ3 and constant output", "[emap]" )
 
   emap_params ps;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   CHECK( luts.size() == 6u );
   CHECK( luts.num_pis() == 3u );
@@ -123,7 +123,7 @@ TEST_CASE( "Emap on full adder 1", "[emap]" )
 
   emap_params ps;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -162,7 +162,7 @@ TEST_CASE( "Emap on full adder 2", "[emap]" )
   ps.ela_rounds = 0;
   ps.eswp_rounds = 2;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -197,7 +197,7 @@ TEST_CASE( "Emap on full adder 1 with cells", "[emap]" )
 
   emap_params ps;
   emap_stats st;
-  cell_view<block_network> luts = emap_block( aig, lib, ps, &st );
+  cell_view<block_network> luts = emap( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -236,7 +236,7 @@ TEST_CASE( "Emap on full adder 2 with cells", "[emap]" )
   ps.ela_rounds = 0;
   ps.eswp_rounds = 2;
   emap_stats st;
-  cell_view<block_network> luts = emap_block( aig, lib, ps, &st );
+  cell_view<block_network> luts = emap( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -278,7 +278,7 @@ TEST_CASE( "Emap on ripple carry adder with multi-output gates", "[emap]" )
   ps.map_multioutput = true;
   ps.area_oriented_mapping = true;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -321,7 +321,7 @@ TEST_CASE( "Emap on ripple carry adder with multi-output cells", "[emap]" )
   ps.map_multioutput = true;
   ps.area_oriented_mapping = true;
   emap_stats st;
-  cell_view<block_network> luts = emap_block( aig, lib, ps, &st );
+  cell_view<block_network> luts = emap( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -365,7 +365,7 @@ TEST_CASE( "Emap on multiplier with multi-output gates", "[emap]" )
   emap_params ps;
   ps.map_multioutput = true;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -402,7 +402,7 @@ TEST_CASE( "Emap with inverters", "[emap]" )
 
   emap_params ps;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -436,7 +436,7 @@ TEST_CASE( "Emap with inverters minimization", "[emap]" )
 
   emap_params ps;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -486,7 +486,7 @@ TEST_CASE( "Emap on buffer and constant outputs", "[emap]" )
 
   emap_params ps;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -527,7 +527,7 @@ TEST_CASE( "Emap with supergates", "[emap]" )
 
   emap_params ps;
   emap_stats st;
-  binding_view<klut_network> luts = emap( aig, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -567,7 +567,7 @@ TEST_CASE( "Emap with supergates 2", "[emap]" )
 
   emap_params ps;
   emap_stats st;
-  cell_view<block_network> luts = emap_block( aig, lib, ps, &st );
+  cell_view<block_network> luts = emap( aig, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -617,7 +617,7 @@ TEST_CASE( "Emap on circuit with don't touch gates", "[emap]" )
   ps.map_multioutput = true;
   ps.area_oriented_mapping = true;
   emap_stats st;
-  binding_view<klut_network> luts = emap( klut, lib, ps, &st );
+  binding_view<klut_network> luts = emap_klut( klut, lib, ps, &st );
 
   const float eps{ 0.005f };
 
@@ -668,7 +668,7 @@ TEST_CASE( "Emap on circuit with don't touch cells", "[emap]" )
   ps.map_multioutput = true;
   ps.area_oriented_mapping = true;
   emap_stats st;
-  cell_view<block_network> luts = emap_block( klut, lib, ps, &st );
+  cell_view<block_network> luts = emap( klut, lib, ps, &st );
 
   const float eps{ 0.005f };
 
