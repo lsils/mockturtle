@@ -223,8 +223,8 @@ public:
     if ( _supergates_spec.max_num_vars > NInputs || _supergates_spec.max_num_vars > truth_table_size )
     {
       std::cerr << fmt::format(
-          "ERROR: NInputs ({}) should be greater or equal than the max number of variables ({}) in the super file.\n", NInputs, _supergates_spec.max_num_vars );
-      std::cerr << "WARNING: ignoring supergates, proceeding with standard library." << std::endl;
+          "[e] ERROR: NInputs ({}) should be greater or equal than the max number of variables ({}) in the super file.\n", NInputs, _supergates_spec.max_num_vars );
+      std::cerr << "[i] WARNING: ignoring supergates, proceeding with standard library." << std::endl;
       generate_library_with_genlib();
       return;
     }
@@ -236,7 +236,7 @@ public:
     {
       if ( gates_map.find( g.name ) != gates_map.end() )
       {
-        std::cerr << fmt::format( "WARNING: ignoring genlib gate {}, duplicated name entry in supergates.", g.name ) << std::endl;
+        std::cerr << fmt::format( "[i] WARNING: ignoring genlib gate {}, duplicated name entry in supergates.", g.name ) << std::endl;
       }
       else
       {
@@ -274,7 +274,7 @@ public:
       }
       else
       {
-        std::cerr << fmt::format( "WARNING: ignoring supergate {}, no reference in genlib.", g.id ) << std::endl;
+        std::cerr << fmt::format( "[i] WARNING: ignoring supergate {}, no reference in genlib.", g.id ) << std::endl;
         continue;
       }
 
@@ -282,12 +282,12 @@ public:
 
       if ( num_vars != g.fanin_id.size() )
       {
-        std::cerr << fmt::format( "WARNING: ignoring supergate {}, wrong number of fanins.", g.id ) << std::endl;
+        std::cerr << fmt::format( "[i] WARNING: ignoring supergate {}, wrong number of fanins.", g.id ) << std::endl;
         continue;
       }
       if ( num_vars > _supergates_spec.max_num_vars )
       {
-        std::cerr << fmt::format( "WARNING: ignoring supergate {}, too many variables for the library settings.", g.id ) << std::endl;
+        std::cerr << fmt::format( "[i] WARNING: ignoring supergate {}, too many variables for the library settings.", g.id ) << std::endl;
         continue;
       }
 
@@ -300,7 +300,7 @@ public:
         if ( f >= g.id + _supergates_spec.max_num_vars )
         {
           error = true;
-          std::cerr << fmt::format( "WARNING: ignoring supergate {}, wrong fanins.", g.id ) << std::endl;
+          std::cerr << fmt::format( "[i] WARNING: ignoring supergate {}, wrong fanins.", g.id ) << std::endl;
         }
         if ( f < _supergates_spec.max_num_vars )
         {

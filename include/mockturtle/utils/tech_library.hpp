@@ -982,6 +982,15 @@ private:
   bool check_delay_consistency( composed_gate<NInputs> const& g, uint32_t pin )
   {
     TT tt = kitty::extend_to<truth_table_size>( g.function );
+    uint16_t polarity = 0;
+
+    /* canonicalize in case of P-configurations */
+    if constexpr ( Configuration == classification_type::p_configurations )
+    {
+      auto canon = kitty::exact_n_canonization_support( tt, g.num_vars );
+      tt = std::get<0>( canon );
+      polarity = static_cast<uint16_t>( std::get<1>( canon ) );
+    }
 
     auto entry = _super_lib.find( tt );
     if ( entry == _super_lib.end() )
@@ -990,7 +999,7 @@ private:
       return false;
     }
 
-    /* check delay (at least one entry might have better or equal delay) */
+    /* check delay (at least one entry must have better or equal delay) */
     for ( auto const& sg : entry->second )
     {
       bool valid = true;
@@ -1000,7 +1009,11 @@ private:
         if ( ( sg.polarity >> i ) & 1 )
           pin_delay += _inv_delay;
 
-        if ( pin_delay > g.tdelay[i] )
+        float mo_pin_delay = g.tdelay[i];
+        if ( ( polarity >> i ) & 1 )
+          mo_pin_delay += _inv_delay;
+
+        if ( pin_delay > mo_pin_delay )
         {
           valid = false;
           break;
@@ -1058,6 +1071,7 @@ private:
 
   void filter_gates( std::deque<composed_gate<NInputs>> const& supergates, std::vector<bool>& skip_gates )
   {
+    assert( supergates.size() >= skip_gates.size() );
     for ( uint32_t i = 0; i < skip_gates.size() - 1; ++i )
     {
       if ( supergates[i].root == nullptr )
