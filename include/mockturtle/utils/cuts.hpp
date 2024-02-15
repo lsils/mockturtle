@@ -128,6 +128,14 @@ public:
   template<typename Container>
   void set_leaves( Container const& c );
 
+  /*! \brief Add leaves (using iterators).
+   *
+   * \param begin Begin iterator to leaves
+   * \param end End iterator to leaves (exclusive)
+   */
+  template<typename Iterator>
+  void add_leaves( Iterator begin, Iterator end );
+
   /*! \brief Signature of the cut. */
   auto signature() const { return _signature; }
 
@@ -250,6 +258,19 @@ template<typename Container>
 void cut<MaxLeaves, T>::set_leaves( Container const& c )
 {
   set_leaves( std::begin( c ), std::end( c ) );
+}
+
+template<int MaxLeaves, typename T>
+template<typename Iterator>
+void cut<MaxLeaves, T>::add_leaves( Iterator begin, Iterator end )
+{
+  _cend = _end = std::copy( begin, end, _end );
+  _length = static_cast<uint32_t>( std::distance( _leaves.begin(), _end ) );
+
+  while ( begin != end )
+  {
+    _signature |= UINT64_C( 1 ) << ( *begin++ & 0x3f );
+  }
 }
 
 template<int MaxLeaves, typename T>

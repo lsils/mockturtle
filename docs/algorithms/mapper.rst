@@ -143,17 +143,24 @@ To increase this limit, change `max_cut_num` in `fast_network_cuts`.
 Extended technology mapping
 ---------------------------
 
-**Header:** ``mockturtle/algorithms/experimental/emap.hpp``
+**Header:** ``mockturtle/algorithms/emap.hpp``
 
-The command `emap` stands for extended mapper. The current version
-supports up to 2-output gates, such as full adders and half adders,
-and it provides a 2x speedup in mapping time compared to command `map`
+The command `emap` stands for extended mapper. It supports large
+library cells, of more than 6 inputs, and can perform matching using 3
+different methods: Boolean, pattern, or hybrid. The current version
+can map to 2-output gates, such as full adders and half adders,
+and provides a 2x speedup in mapping time compared to command `map`
 for similar or better quality. Similarly, to `map`, the implementation
-is independent of the underlying graph representation. Moreover, `emap`
-supports "don't touch" white boxes.
+is independent of the underlying graph representation.
+Additionally, `emap` supports "don't touch" white boxes (gates).
+
+Command `emap` can return the mapped network in two formats.
+Command `emap` returns a `cell_view<block_network>` that supports
+multi-output cells. Command `emap_klut` returns a `binding_view<klut_network>`
+similarly as command `map`.
 
 The following example shows how to perform delay-oriented technology mapping
-from an and-inverter graph using the default settings:
+from an and-inverter graph using large cells up to 9 inputs:
 
 .. code-block:: c++
 
@@ -163,13 +170,10 @@ from an and-inverter graph using the default settings:
    std::vector<gate> gates;
    std::ifstream in( ... );
    lorina::read_genlib( in, genlib_reader( gates ) )
-   tech_library tech_lib( gates );
+   tech_library<9> tech_lib( gates );
 
    /* perform technology mapping */
-   binding_view<klut_network> res = emap( aig, tech_lib );
-
-The mapped network is returned as a `binding_view` that extends a k-LUT network.
-Each k-LUT abstracts a cell and the view contains the binding information.
+   cell_view<block_network> res = emap<9>( aig, tech_lib );
 
 The next example performs area-oriented graph mapping using multi-output cells:
 
@@ -187,10 +191,10 @@ The next example performs area-oriented graph mapping using multi-output cells:
    emap_params ps;
    ps.area_oriented_mapping = true;
    ps.map_multioutput = true;
-   cell_view<block_network> res = emap_block( aig, tech_lib, ps );
+   cell_view<block_network> res = emap( aig, tech_lib, ps );
 
-In this case, `emap_block` is used to return a `block_network`, which can respresent multi-output
-cells as single nodes. Alternatively, also `emap` can be used but multi-output cells
+In this case, `emap` is used to return a `block_network`, which can respresent multi-output
+cells as single nodes. Alternatively, also `emap_klut` can be used but multi-output cells
 would be reporesented by single-output nodes.
 
 The maximum number of cuts stored for each node is limited to 32.
@@ -210,6 +214,6 @@ related tests.
 **Algorithm**
 
 .. doxygenfunction:: mockturtle::emap(Ntk const&, tech_library<NInputs, Configuration> const&, emap_params const&, emap_stats*)
-.. doxygenfunction:: mockturtle::emap_block(Ntk const&, tech_library<NInputs, Configuration> const&, emap_params const&, emap_stats*)
+.. doxygenfunction:: mockturtle::emap_klut(Ntk const&, tech_library<NInputs, Configuration> const&, emap_params const&, emap_stats*)
 .. doxygenfunction:: mockturtle::emap_node_map(Ntk const&, tech_library<NInputs, Configuration> const&, emap_params const&, emap_stats*)
 .. doxygenfunction:: mockturtle::emap_load_mapping(Ntk&)

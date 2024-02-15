@@ -8,12 +8,16 @@
 #include <mockturtle/io/genlib_reader.hpp>
 #include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/block.hpp>
 #include <mockturtle/networks/buffered.hpp>
 #include <mockturtle/networks/crossed.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/muxig.hpp>
+#include <mockturtle/utils/standard_cell.hpp>
 #include <mockturtle/views/binding_view.hpp>
+#include <mockturtle/views/cell_view.hpp>
+#include <mockturtle/views/names_view.hpp>
 #include <mockturtle/views/rank_view.hpp>
 
 using namespace mockturtle;
@@ -301,6 +305,171 @@ TEST_CASE( "write mapped network with multiple driven POs and register names int
                       "  nand2 g1( .a (data[0]), .b (data[1]), .Y (y[1]) );\n"
                       "  nand2 g2( .a (data[0]), .b (data[1]), .Y (y[2]) );\n"
                       "  inv2  g3( .a (y[1]), .Y (y[3]) );\n"
+                      "endmodule\n" );
+}
+
+TEST_CASE( "write cell network into Verilog file", "[write_verilog]" )
+{
+  std::string const simple_test_library = "GATE   zero    0 O=0;\n"
+                                          "GATE   inv1    1 O=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                          "GATE   inv2    2 O=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                          "GATE   buf     2 O=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                          "GATE   nand2   2 O=!(a*b); PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                          "GATE   ha      5 C=a*b;    PIN * INV 1 999 1.9 0.4 1.9 0.4\n"
+                                          "GATE   ha      5 S=a^b;    PIN * INV 1 999 3.0 0.4 3.0 0.4\n";
+
+  std::vector<gate> gates;
+  std::istringstream in( simple_test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  std::vector<standard_cell> cells = get_standard_cells( gates );
+
+  CHECK( result == lorina::return_code::success );
+
+  cell_view<block_network> ntk( cells );
+
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+
+  const auto buf = ntk.create_buf( a );
+  const auto f1 = ntk.create_nand( b, c );
+  const auto f2 = ntk.create_not( f1 );
+  const auto f3 = ntk.create_ha( a, f1 );
+
+  ntk.create_po( ntk.get_constant( false ) );
+  ntk.create_po( buf );
+  ntk.create_po( f1 );
+  ntk.create_po( f2 );
+  ntk.create_po( f3 );
+  ntk.create_po( ntk.next_output_pin( f3 ) );
+
+  ntk.add_cell( ntk.get_node( ntk.get_constant( false ) ), 0 );
+  ntk.add_cell( ntk.get_node( buf ), 3 );
+  ntk.add_cell( ntk.get_node( f1 ), 4 );
+  ntk.add_cell( ntk.get_node( f2 ), 2 );
+  ntk.add_cell( ntk.get_node( f3 ), 5 );
+
+  std::ostringstream out;
+  write_verilog_with_cell( ntk, out );
+
+  CHECK( out.str() == "module top( x0 , x1 , x2 , y0 , y1 , y2 , y3 , y4 , y5 );\n"
+                      "  input x0 , x1 , x2 ;\n"
+                      "  output y0 , y1 , y2 , y3 , y4 , y5 ;\n"
+                      "  zero  g0( .O (y0) );\n"
+                      "  buf   g1( .a (x0), .O (y1) );\n"
+                      "  nand2 g2( .a (x1), .b (x2), .O (y2) );\n"
+                      "  inv2  g3( .a (y2), .O (y3) );\n"
+                      "  ha    g4( .a (x0), .b (y2), .C (y4), .S (y5) );\n"
+                      "endmodule\n" );
+}
+
+TEST_CASE( "write cell network with multiple driven POs and register names into Verilog file", "[write_verilog]" )
+{
+  std::string const simple_test_library = "GATE   inv1    1 Y=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                          "GATE   inv2    2 Y=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                          "GATE   buf     2 Y=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                          "GATE   nand2   2 Y=!(a*b); PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                          "GATE   ha      5 C=a*b;    PIN * INV 1 999 1.9 0.4 1.9 0.4\n"
+                                          "GATE   ha      5 S=a^b;    PIN * INV 1 999 3.0 0.4 3.0 0.4\n";
+
+  std::vector<gate> gates;
+  std::istringstream in( simple_test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  std::vector<standard_cell> cells = get_standard_cells( gates );
+
+  CHECK( result == lorina::return_code::success );
+
+  cell_view<block_network> ntk( cells );
+
+  const auto a = ntk.create_pi();
+  const auto b = ntk.create_pi();
+  const auto c = ntk.create_pi();
+
+  /* create buffer */
+  const auto buf = ntk.create_buf( a );
+  const auto f1 = ntk.create_nand( b, c );
+  const auto f2 = ntk.create_ha( a, f1 );
+
+  ntk.create_po( buf );
+  ntk.create_po( f1 );
+  ntk.create_po( f2 );
+  ntk.create_po( ntk.next_output_pin( f2 ) );
+  ntk.create_po( f1 );
+  ntk.create_po( ntk.next_output_pin( f2 ) );
+
+  ntk.add_cell( ntk.get_node( buf ), 2 );
+  ntk.add_cell( ntk.get_node( f1 ), 3 );
+  ntk.add_cell( ntk.get_node( f2 ), 4 );
+
+  std::ostringstream out;
+  write_verilog_params ps;
+  ps.input_names = { { "ref", 1u }, { "data", 2u } };
+  ps.output_names = { { "y", 6u } };
+  write_verilog_with_cell( ntk, out, ps );
+
+  CHECK( out.str() == "module top( ref , data , y );\n"
+                      "  input [0:0] ref ;\n"
+                      "  input [1:0] data ;\n"
+                      "  output [5:0] y ;\n"
+                      "  buf   g0( .a (ref[0]), .Y (y[0]) );\n"
+                      "  nand2 g1( .a (data[0]), .b (data[1]), .Y (y[1]) );\n"
+                      "  buf   g2( .a (y[1]), .Y (y[4]) );\n"
+                      "  ha    g3( .a (ref[0]), .b (y[1]), .C (y[2]), .S (y[3]) );\n"
+                      "  buf   g4( .a (y[3]), .Y (y[5]) );\n"
+                      "endmodule\n" );
+}
+
+TEST_CASE( "write cell network with names_view", "[write_verilog]" )
+{
+  std::string const simple_test_library = "GATE   inv1    1 Y=!a;     PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                          "GATE   inv2    2 Y=!a;     PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                          "GATE   buf     2 Y=a;      PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                          "GATE   nand2   2 Y=!(a*b); PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                          "GATE   ha      5 C=a*b;    PIN * INV 1 999 1.9 0.4 1.9 0.4\n"
+                                          "GATE   ha      5 S=a^b;    PIN * INV 1 999 3.0 0.4 3.0 0.4\n";
+
+  std::vector<gate> gates;
+  std::istringstream in( simple_test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  std::vector<standard_cell> cells = get_standard_cells( gates );
+
+  CHECK( result == lorina::return_code::success );
+
+  cell_view<block_network> ntk( cells );
+  names_view named_ntk{ ntk, "test" };
+
+  const auto a = named_ntk.create_pi( "N1" );
+  const auto b = named_ntk.create_pi( "N2" );
+  const auto c = named_ntk.create_pi( "N3" );
+
+  /* create buffer */
+  const auto buf = ntk.create_buf( a );
+  const auto f1 = ntk.create_nand( b, c );
+  const auto f2 = ntk.create_ha( a, f1 );
+
+  named_ntk.create_po( buf, "Z1" );
+  named_ntk.create_po( f1, "Z2" );
+  named_ntk.create_po( f2, "Z3" );
+  named_ntk.create_po( ntk.next_output_pin( f2 ), "Z4" );
+  named_ntk.create_po( f1, "Z5" );
+  named_ntk.create_po( ntk.next_output_pin( f2 ), "Z6" );
+
+  ntk.add_cell( ntk.get_node( buf ), 2 );
+  ntk.add_cell( ntk.get_node( f1 ), 3 );
+  ntk.add_cell( ntk.get_node( f2 ), 4 );
+
+
+  std::ostringstream out;
+  write_verilog_with_cell( named_ntk, out );
+
+  CHECK( out.str() == "module test( N1 , N2 , N3 , Z1 , Z2 , Z3 , Z4 , Z5 , Z6 );\n"
+                      "  input N1 , N2 , N3 ;\n"
+                      "  output Z1 , Z2 , Z3 , Z4 , Z5 , Z6 ;\n"
+                      "  buf   g0( .a (N1), .Y (Z1) );\n"
+                      "  nand2 g1( .a (N2), .b (N3), .Y (Z2) );\n"
+                      "  buf   g2( .a (Z2), .Y (Z5) );\n"
+                      "  ha    g3( .a (N1), .b (Z2), .C (Z3), .S (Z4) );\n"
+                      "  buf   g4( .a (Z4), .Y (Z6) );\n"
                       "endmodule\n" );
 }
 

@@ -29,6 +29,16 @@ std::string const test_library = "GATE   inv1    3 O=!a;               PIN * INV
                                  "GATE   zero    0 O=CONST0;\n"
                                  "GATE   one     0 O=CONST1;";
 
+std::string const sizes_library = "GATE   inv1    3 O=!a;               PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
+                                  "GATE   inv2    2 O=!a;               PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                  "GATE   inv3    1 O=!a;               PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                  "GATE   inv4    4 O=!a;               PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
+                                  "GATE   nand2a  2 O=!(a*b);           PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                  "GATE   nand2b  3 O=!(a*b);           PIN a INV 1 999 0.9 0.2 0.9 0.2 PIN b INV 1 999 1.2 0.2 1.2 0.2\n"
+                                  "GATE   nand2c  3 O=!(a*b);           PIN a INV 1 999 0.9 0.2 0.9 0.2 PIN b INV 1 999 1.1 0.2 1.1 0.2\n"
+                                  "GATE   zero    0 O=CONST0;\n"
+                                  "GATE   one     0 O=CONST1;";
+
 std::string const reconv_library = "GATE   inv1    3 O=!a;               PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
                                    "GATE   nand2   2 O=!(a*b);           PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
                                    "GATE   xor2    5 O=a*!b+!a*b;        PIN * UNKNOWN 2 999 1.9 0.5 1.9 0.5\n"
@@ -51,7 +61,7 @@ TEST_CASE( "Struct library creation", "[struct_library]" )
   CHECK( result == lorina::return_code::success );
 
   struct_library<4> lib( gates );
-  lib.construct( 2, false );
+  lib.construct( 2 );
 
   auto const& library_map = lib.get_struct_library();
 
@@ -143,6 +153,82 @@ TEST_CASE( "Struct library creation", "[struct_library]" )
   CHECK( library_map.find( entry_ids[7] )->second[0].polarity == 0 );
 }
 
+TEST_CASE( "Struct library creation min sizes", "[struct_library]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( sizes_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+
+  CHECK( result == lorina::return_code::success );
+
+  struct_library_params ps;
+  ps.load_minimum_size_only = true;
+  struct_library<4> lib( gates, ps );
+  lib.construct( 2 );
+
+  auto const& library_map = lib.get_struct_library();
+
+  /* translate to sorted vector */
+  std::vector<uint32_t> entry_ids;
+  std::for_each( library_map.begin(), library_map.end(), [&]( auto const& pair ) { entry_ids.push_back( pair.first ); return; } );
+  std::sort( entry_ids.begin(), entry_ids.end() );
+
+  CHECK( entry_ids.size() == 1 );
+
+  CHECK( entry_ids[0] % 2 == 1 );
+  CHECK( library_map.find( entry_ids[0] )->second.size() == 1 );
+  CHECK( library_map.find( entry_ids[0] )->second[0].root->root->name == "nand2a" );
+  CHECK( library_map.find( entry_ids[0] )->second[0].area == 2 );
+  CHECK( library_map.find( entry_ids[0] )->second[0].tdelay[0] == 1.0f );
+  CHECK( library_map.find( entry_ids[0] )->second[0].tdelay[1] == 1.0f );
+  CHECK( library_map.find( entry_ids[0] )->second[0].tdelay[2] == 0 );
+  CHECK( library_map.find( entry_ids[0] )->second[0].tdelay[3] == 0 );
+  CHECK( library_map.find( entry_ids[0] )->second[0].polarity == 0 );
+}
+
+TEST_CASE( "Struct library creation dominated sizes", "[struct_library]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( sizes_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+
+  CHECK( result == lorina::return_code::success );
+
+  struct_library_params ps;
+  ps.load_minimum_size_only = false;
+  struct_library<4> lib( gates, ps );
+  lib.construct( 2 );
+
+  auto const& library_map = lib.get_struct_library();
+
+  /* translate to sorted vector */
+  std::vector<uint32_t> entry_ids;
+  std::for_each( library_map.begin(), library_map.end(), [&]( auto const& pair ) { entry_ids.push_back( pair.first ); return; } );
+  std::sort( entry_ids.begin(), entry_ids.end() );
+
+  CHECK( entry_ids.size() == 1 );
+
+  CHECK( entry_ids[0] % 2 == 1 );
+  CHECK( library_map.find( entry_ids[0] )->second.size() == 2 );
+  CHECK( library_map.find( entry_ids[0] )->second[0].root->root->name == "nand2a" );
+  CHECK( library_map.find( entry_ids[0] )->second[0].area == 2 );
+  CHECK( library_map.find( entry_ids[0] )->second[0].tdelay[0] == 1.0f );
+  CHECK( library_map.find( entry_ids[0] )->second[0].tdelay[1] == 1.0f );
+  CHECK( library_map.find( entry_ids[0] )->second[0].tdelay[2] == 0 );
+  CHECK( library_map.find( entry_ids[0] )->second[0].tdelay[3] == 0 );
+  CHECK( library_map.find( entry_ids[0] )->second[0].polarity == 0 );
+
+  CHECK( library_map.find( entry_ids[0] )->second[1].root->root->name == "nand2c" );
+  CHECK( library_map.find( entry_ids[0] )->second[1].area == 3 );
+  CHECK( library_map.find( entry_ids[0] )->second[1].tdelay[0] == 0.9f );
+  CHECK( library_map.find( entry_ids[0] )->second[1].tdelay[1] == 1.1f );
+  CHECK( library_map.find( entry_ids[0] )->second[1].tdelay[2] == 0 );
+  CHECK( library_map.find( entry_ids[0] )->second[1].tdelay[3] == 0 );
+  CHECK( library_map.find( entry_ids[0] )->second[1].polarity == 0 );
+}
+
 TEST_CASE( "Struct library creation ignore reconvergence", "[struct_library]" )
 {
   std::vector<gate> gates;
@@ -153,7 +239,7 @@ TEST_CASE( "Struct library creation ignore reconvergence", "[struct_library]" )
   CHECK( result == lorina::return_code::success );
 
   struct_library<3> lib( gates );
-  lib.construct( 2, false );
+  lib.construct( 2 );
 
   auto const& library_map = lib.get_struct_library();
 
@@ -183,7 +269,7 @@ TEST_CASE( "Struct library creation large rules", "[struct_library]" )
   CHECK( result == lorina::return_code::success );
 
   struct_library<7> lib( gates );
-  lib.construct( 2, false );
+  lib.construct( 2 );
 
   auto const& library_map = lib.get_struct_library();
 

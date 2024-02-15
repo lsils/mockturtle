@@ -109,6 +109,9 @@ struct tech_library_params
   /*! \brief Loads multioutput gates in the library */
   bool load_multioutput_gates{ true };
 
+  /*! \brief Load gates with minimum size only */
+  bool load_minimum_size_only{ true };
+
   /*! \brief Remove dominated gates (larger sizes) */
   bool remove_dominated_gates{ true };
 
@@ -196,9 +199,10 @@ public:
       : _gates( gates ),
         _supergates_spec( supergates_spec ),
         _ps( ps ),
+        _cells( get_standard_cells( _gates ) ),
         _super( _gates, _supergates_spec, super_utils_params{ ps.load_multioutput_gates_single, ps.verbose } ),
         _use_supergates( false ),
-        _struct( _gates ),
+        _struct( _gates, struct_library_params{ ps.load_minimum_size_only, ps.very_verbose } ),
         _super_lib(),
         _multi_lib(),
         _struct_lib()
@@ -212,7 +216,7 @@ public:
 
     if ( ps.load_large_gates )
     {
-      _struct.construct( 2, _ps.very_verbose );
+      _struct.construct( 2 );
     }
   }
 
@@ -220,9 +224,10 @@ public:
       : _gates( gates ),
         _supergates_spec( supergates_spec ),
         _ps( ps ),
+        _cells( get_standard_cells( _gates ) ),
         _super( _gates, _supergates_spec, super_utils_params{ ps.load_multioutput_gates_single, ps.verbose } ),
         _use_supergates( true ),
-        _struct( _gates ),
+        _struct( _gates, struct_library_params{ ps.load_minimum_size_only, ps.very_verbose } ),
         _super_lib(),
         _multi_lib(),
         _struct_lib()
@@ -236,7 +241,7 @@ public:
 
     if ( ps.load_large_gates )
     {
-      _struct.construct( 2, _ps.very_verbose );
+      _struct.construct( 2 );
     }
   }
 
@@ -329,9 +334,9 @@ public:
   }
 
   /*! \brief Returns the standard cells. */
-  const std::vector<standard_cell> get_cells() const
+  const std::vector<standard_cell>& get_cells() const
   {
-    return get_standard_cells( _gates );
+    return _cells;
   }
 
   /*! \brief Returns multioutput gates. */
@@ -351,8 +356,12 @@ public:
   /*! \brief Returns the number of gates for structural matching. */
   const uint32_t num_structural_gates() const
   {
-    if ( !_ps.load_large_gates || NInputs <= truth_table_size )
-      return 0;
+    return _struct.get_struct_library().size();
+  }
+
+  /*! \brief Returns the number of gates for structural matching with more than 6 inputs. */
+  const uint32_t num_structural_large_gates() const
+  {
     return _struct.get_struct_library().size();
   }
 
@@ -398,9 +407,9 @@ private:
 
     std::vector<bool> skip_gates( supergates.size(), false );
 
-    if ( _ps.remove_dominated_gates )
+    if ( _ps.load_minimum_size_only || _ps.remove_dominated_gates )
     {
-      select_dominated_gates( supergates, skip_gates );
+      filter_gates( supergates, skip_gates );
     }
 
     /* generate the configurations for the standard gates */
@@ -748,6 +757,7 @@ private:
   {
     uint32_t np_count = 0;
     std::string ignored_name;
+    bool consistency_check = true;
 
     /* load multi-output gates */
     auto const& multioutput_gates = _super.get_multioutput_library();
@@ -882,8 +892,10 @@ private:
       kitty::exact_multi_np_enumeration( tts, on_np );
 
       /* NPN enumeration of the single outputs */
+      uint32_t pin = 0;
       for ( auto const& gate : multi_gate )
       {
+        consistency_check &= check_delay_consistency( gate, pin++ );
         exact_npn_enumeration( gate.function, [&]( auto const& tt, auto neg, auto const& perm ) {
           (void)neg;
           (void)perm;
@@ -898,6 +910,11 @@ private:
     if ( _ps.verbose && ignored_gates > 0 )
     {
       std::cerr << fmt::format( "[i] WARNING: {} multi-output gates IGNORED (e.g., {}), too many outputs for the library settings\n", ignored_gates, ignored_name );
+    }
+
+    if ( !consistency_check )
+    {
+      std::cerr << "[i] WARNING: technology mapping using multi-output cells with warnings might generate required time violations or circuits with dangling pins\n";
     }
 
     // std::cout << _multi_lib.size() << "\n";
@@ -968,6 +985,57 @@ private:
     }
   }
 
+  bool check_delay_consistency( composed_gate<NInputs> const& g, uint32_t pin )
+  {
+    TT tt = kitty::extend_to<truth_table_size>( g.function );
+    uint16_t polarity = 0;
+
+    /* canonicalize in case of P-configurations */
+    if constexpr ( Configuration == classification_type::p_configurations )
+    {
+      auto canon = kitty::exact_n_canonization_support( tt, g.num_vars );
+      tt = std::get<0>( canon );
+      polarity = static_cast<uint16_t>( std::get<1>( canon ) );
+    }
+
+    auto entry = _super_lib.find( tt );
+    if ( entry == _super_lib.end() )
+    {
+      std::cerr << fmt::format( "[i] WARNING: library does not contain cells that can implement output pin {} of the multi-output cell {}\n", pin, g.root->name );
+      return false;
+    }
+
+    /* check delay (at least one entry must have better or equal delay) */
+    for ( auto const& sg : entry->second )
+    {
+      bool valid = true;
+      for ( uint32_t i = 0; i < g.num_vars; ++i )
+      {
+        float pin_delay = sg.tdelay[i];
+        if ( ( sg.polarity >> i ) & 1 )
+          pin_delay += _inv_delay;
+
+        float mo_pin_delay = g.tdelay[i];
+        if ( ( polarity >> i ) & 1 )
+          mo_pin_delay += _inv_delay;
+
+        if ( pin_delay > mo_pin_delay )
+        {
+          valid = false;
+          break;
+        }
+      }
+
+      if ( valid )
+      {
+        return true;
+      }
+    }
+
+    std::cerr << fmt::format( "[i] WARNING: library does not contain cells that could match the delay of output pin {} of multi-output cell {}\n", pin + 1, g.root->name );
+    return false;
+  }
+
   float compute_worst_delay( gate const& g )
   {
     float worst_delay = 0.0f;
@@ -981,8 +1049,35 @@ private:
     return worst_delay;
   }
 
-  void select_dominated_gates( std::deque<composed_gate<NInputs>> const& supergates, std::vector<bool>& skip_gates )
+  bool compare_sizes( composed_gate<NInputs> const& s1, composed_gate<NInputs> const& s2 )
   {
+    if ( s1.area < s2.area )
+      return true;
+    else if ( s1.area > s2.area )
+      return false;
+
+    /* compute average pin delay */
+    float s1_delay = 0, s2_delay = 0;
+    assert( s1.num_vars == s2.num_vars );
+    for ( uint32_t i = 0; i < s1.num_vars; ++i )
+    {
+      s1_delay += s1.tdelay[i];
+      s2_delay += s2.tdelay[i];
+    }
+
+    if ( s1_delay < s2_delay )
+      return true;
+    else if ( s1_delay > s2_delay )
+      return false;
+    else if ( s1.root->name < s2.root->name )
+      return true;
+
+    return false;
+  }
+
+  void filter_gates( std::deque<composed_gate<NInputs>> const& supergates, std::vector<bool>& skip_gates )
+  {
+    assert( supergates.size() >= skip_gates.size() );
     for ( uint32_t i = 0; i < skip_gates.size() - 1; ++i )
     {
       if ( supergates[i].root == nullptr )
@@ -997,11 +1092,25 @@ private:
         auto const& ttj = supergates[j].function;
 
         /* get the same functionality */
-        if ( tti != ttj )
+        if ( skip_gates[j] || tti != ttj )
           continue;
 
+        if ( _ps.load_minimum_size_only )
+        {
+          if ( compare_sizes( supergates[i], supergates[j] ) )
+          {
+            skip_gates[j] = true;
+            continue;
+          }
+          else
+          {
+            skip_gates[i] = true;
+            break;
+          }
+        }
+
         /* is i smaller than j */
-        bool smaller = supergates[i].area < supergates[j].area;
+        bool smaller = supergates[i].area <= supergates[j].area;
 
         /* is i faster for every pin */
         bool faster = true;
@@ -1018,6 +1127,7 @@ private:
         }
 
         /* is j faster for every pin */
+        smaller = supergates[i].area >= supergates[j].area;
         faster = true;
         for ( uint32_t k = 0; k < tti.num_vars(); ++k )
         {
@@ -1025,7 +1135,7 @@ private:
             faster = false;
         }
 
-        if ( !smaller && faster )
+        if ( smaller && faster )
         {
           skip_gates[i] = true;
           break;
@@ -1052,6 +1162,8 @@ private:
   std::vector<gate> const _gates;    /* collection of gates */
   super_lib const& _supergates_spec; /* collection of supergates declarations */
   tech_library_params const _ps;
+
+  std::vector<standard_cell> const _cells; /* collection of standard cells */
 
   super_utils<NInputs> _super;     /* supergates generation */
   struct_library<NInputs> _struct; /* library for structural matching */

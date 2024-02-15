@@ -55,6 +55,15 @@
 namespace mockturtle
 {
 
+struct struct_library_params
+{
+  /*! \brief Load gates with minimum size only */
+  bool load_minimum_size_only{ true };
+
+  /*! \brief Reports loaded gates */
+  bool verbose{ false };
+};
+
 /*! \brief Library of gates for structural matching
  *
  * This class creates a technology library from a set
@@ -82,7 +91,6 @@ namespace mockturtle
       mockturtle::struct_library lib( gates );
    \endverbatim
  */
-
 template<unsigned NInputs = 9u>
 class struct_library
 {
@@ -172,8 +180,9 @@ private:
   using map_label_gate = std::unordered_map<uint32_t, supergates_list_t>;
 
 public:
-  explicit struct_library( std::vector<gate> const& gates )
+  explicit struct_library( std::vector<gate> const& gates, struct_library_params const& ps = {} )
       : _gates( gates ),
+        _ps( ps ),
         _supergates(),
         _dsd_map(),
         _and_table(),
@@ -188,9 +197,9 @@ public:
    * gate inputs considered for the library creation.
    * 0 < min_vars < UINT32_MAX
    */
-  void construct( uint32_t min_vars = 2u, bool verbose = false )
+  void construct( uint32_t min_vars = 2u )
   {
-    generate_library( min_vars, verbose );
+    generate_library( min_vars );
   }
 
   /*! \brief Construct the structural library.
@@ -244,6 +253,15 @@ public:
     return nullptr;
   }
 
+  /*! \brief Returns the number of large gates.
+   *
+   * Number of gates with more than 6 inputs.
+   */
+  const uint32_t get_num_large_gates() const
+  {
+    return num_large_gates;
+  }
+
   /*! \brief Print and table.
    *
    */
@@ -260,7 +278,7 @@ public:
   }
 
 private:
-  void generate_library( uint32_t min_vars, bool verbose )
+  void generate_library( uint32_t min_vars )
   {
     /* select and load gates */
     _supergates.reserve( _gates.size() );
@@ -268,7 +286,7 @@ private:
 
     /* mark dominate gates */
     std::vector<bool> skip_gates( _supergates.size(), false );
-    select_dominated_gates( skip_gates );
+    filter_gates( skip_gates );
 
     std::vector<uint32_t> indexes( _supergates.size() );
     std::iota( indexes.begin(), indexes.end(), 0 );
@@ -304,9 +322,14 @@ private:
       /* ignore gates with reconvergence */
       if ( gate_disjoint )
         continue;
+      
+      if ( gate.num_vars > 6 )
+      {
+        ++num_large_gates;
+      }
 
       _dsd_map.insert( { gate.function, rule } );
-      if ( verbose )
+      if ( _ps.verbose )
       {
         std::cout << "Dsd:\n";
         print_rule( rule, rule[rule.size() - 1] );
@@ -314,7 +337,7 @@ private:
 
       /* Aig conversion */
       auto aig_rule = map_to_aig( rule );
-      if ( verbose )
+      if ( _ps.verbose )
       {
         std::cout << "\nAig:\n";
         print_rule( aig_rule, aig_rule[aig_rule.size() - 1] );
@@ -325,7 +348,7 @@ private:
       der_rules.push_back( aig_rule );
       std::vector<std::tuple<uint32_t, uint32_t>> depths = { { get_depth( aig_rule, aig_rule[aig_rule[aig_rule.size() - 1].fanin[0].index] ), get_depth( aig_rule, aig_rule[aig_rule[aig_rule.size() - 1].fanin[1].index] ) } };
       create_rules_from_dsd( der_rules, aig_rule, aig_rule[aig_rule.size() - 1], depths, true, true );
-      if ( verbose )
+      if ( _ps.verbose )
       {
         std::cout << "\nDerived:\n";
       }
@@ -364,7 +387,7 @@ private:
 
         v.insert( it, sg );
 
-        if ( verbose )
+        if ( _ps.verbose )
         {
           print_rule( elem, elem[elem.size() - 1] );
           std::cout << "\n";
@@ -379,7 +402,7 @@ private:
         }
       }
 
-      if ( verbose )
+      if ( _ps.verbose )
       {
         std::cout << "\n";
         std::cout << "And table:\n";
@@ -387,7 +410,7 @@ private:
         std::cout << "\n";
       }
     }
-    if ( verbose )
+    if ( _ps.verbose )
       std::cout << "\n";
   }
 
@@ -440,7 +463,33 @@ private:
     }
   }
 
-  void select_dominated_gates( std::vector<bool>& skip_gates )
+  bool compare_sizes( composed_gate<NInputs> const& s1, composed_gate<NInputs> const& s2 )
+  {
+    if ( s1.area < s2.area )
+      return true;
+    else if ( s1.area > s2.area )
+      return false;
+
+    /* compute average pin delay */
+    float s1_delay = 0, s2_delay = 0;
+    assert( s1.num_vars == s2.num_vars );
+    for ( uint32_t i = 0; i < s1.num_vars; ++i )
+    {
+      s1_delay += s1.tdelay[i];
+      s2_delay += s2.tdelay[i];
+    }
+
+    if ( s1_delay < s2_delay )
+      return true;
+    else if ( s1_delay > s2_delay )
+      return false;
+    else if ( s1.root->name < s2.root->name )
+      return true;
+
+    return false;
+  }
+
+  void filter_gates( std::vector<bool>& skip_gates )
   {
     for ( uint32_t i = 0; i < skip_gates.size() - 1; ++i )
     {
@@ -456,8 +505,22 @@ private:
         auto const& ttj = _supergates[j].function;
 
         /* get the same functionality */
-        if ( tti != ttj )
+        if ( skip_gates[j] || tti != ttj )
           continue;
+        
+        if ( _ps.load_minimum_size_only )
+        {
+          if ( compare_sizes( _supergates[i], _supergates[j] ) )
+          {
+            skip_gates[j] = true;
+            continue;
+          }
+          else
+          {
+            skip_gates[i] = true;
+            break;
+          }
+        }
 
         /* is i smaller than j */
         bool smaller = _supergates[i].area < _supergates[j].area;
@@ -1459,8 +1522,11 @@ private:
 
 private:
   bool gate_disjoint{ false }; /* flag for gate support*/
+  uint32_t num_large_gates{ 0 };
 
   std::vector<gate> const& _gates; /* collection of gates */
+  struct_library_params const _ps;
+
   composed_list_t _supergates;     /* list of composed_gates */
   lib_rule _dsd_map;               /* hash map for DSD decomposition of gates */
   lib_table _and_table;            /* AND table */

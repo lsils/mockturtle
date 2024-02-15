@@ -78,6 +78,21 @@ struct is_network_type<Ntk, std::enable_if_t<
 template<class Ntk>
 inline constexpr bool is_network_type_v = is_network_type<Ntk>::value;
 
+#pragma region is_aig_network_type
+template<class Ntk, class = void>
+struct is_aig_network_type : std::false_type
+{
+};
+
+template<class Ntk>
+struct is_aig_network_type<Ntk, std::enable_if_t<Ntk::is_aig_network_type, std::void_t<decltype( Ntk::is_aig_network_type )>>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool is_aig_network_type_v = is_aig_network_type<Ntk>::value;
+#pragma endregion
+
 #pragma region is_buffered_network_type
 template<class Ntk, class = void>
 struct is_buffered_network_type : std::false_type
@@ -2133,6 +2148,21 @@ template<class Ntk>
 inline constexpr bool has_has_binding_v = has_has_binding<Ntk>::value;
 #pragma endregion
 
+#pragma region has_has_cell
+template<class Ntk, class = void>
+struct has_has_cell : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_has_cell<Ntk, std::void_t<decltype( std::declval<Ntk>().has_cell( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_has_cell_v = has_has_cell<Ntk>::value;
+#pragma endregion
+
 #pragma region has_get_binding_index
 template<class Ntk, class = void>
 struct has_get_binding_index : std::false_type
@@ -2146,6 +2176,21 @@ struct has_get_binding_index<Ntk, std::void_t<decltype( std::declval<Ntk>().get_
 
 template<class Ntk>
 inline constexpr bool has_get_binding_index_v = has_get_binding_index<Ntk>::value;
+#pragma endregion
+
+#pragma region has_get_cell_index
+template<class Ntk, class = void>
+struct has_get_cell_index : std::false_type
+{
+};
+
+template<class Ntk>
+struct has_get_cell_index<Ntk, std::void_t<decltype( std::declval<Ntk>().get_cell_index( std::declval<node<Ntk>>() ) )>> : std::true_type
+{
+};
+
+template<class Ntk>
+inline constexpr bool has_get_cell_index_v = has_get_cell_index<Ntk>::value;
 #pragma endregion
 
 #pragma region has_add_binding

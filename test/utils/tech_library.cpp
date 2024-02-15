@@ -58,6 +58,17 @@ std::string const large_test_library = "GATE   inv1    1 O=!a;                  
                                        "GATE   nand2   2 O=!(a*b);                  PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
                                        "GATE   oai322  8 O=!((a+b+c)*(d+e)*(f+g));  PIN * INV 1 999 3.0 0.4 3.0 0.4";
 
+std::string const sizes_library = "GATE   inv1    3 O=!a;               PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
+                                  "GATE   inv2    2 O=!a;               PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
+                                  "GATE   inv3    1 O=!a;               PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
+                                  "GATE   inv4    4 O=!a;               PIN * INV 4 999 1.2 0.07 1.2 0.07\n"
+                                  "GATE   nand2a  2 O=!(a*b);           PIN * INV 1 999 1.0 0.2 1.0 0.2\n"
+                                  "GATE   nand2b  3 O=!(a*b);           PIN a INV 1 999 0.9 0.2 0.9 0.2 PIN b INV 1 999 1.2 0.2 1.2 0.2\n"
+                                  "GATE   nand2c  3 O=!(a*b);           PIN a INV 1 999 0.9 0.2 0.9 0.2 PIN b INV 1 999 1.1 0.2 1.1 0.2\n"
+                                  "GATE   buf     2 O=a;                PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
+                                  "GATE   zero    0 O=CONST0;\n"
+                                  "GATE   one     0 O=CONST1;";
+
 std::string const test_library = "GATE   inv1    3 O=!a;               PIN * INV 3 999 1.1 0.09 1.1 0.09\n"
                                  "GATE   inv2    2 O=!a;               PIN * INV 2 999 1.0 0.1 1.0 0.1\n"
                                  "GATE   inv3    1 O=!a;               PIN * INV 1 999 0.9 0.3 0.9 0.3\n"
@@ -159,6 +170,7 @@ TEST_CASE( "Simple test library generation 2", "[tech_library]" )
   CHECK( result == lorina::return_code::success );
 
   tech_library_params ps;
+  ps.load_minimum_size_only = false;
   ps.remove_dominated_gates = false;
   tech_library<2, classification_type::p_configurations> lib( gates, ps );
 
@@ -220,10 +232,8 @@ TEST_CASE( "Supergate library generation P", "[tech_library]" )
   CHECK( result == lorina::return_code::success );
 
   tech_library_params ps;
-  ps.verbose = true;
-  ps.very_verbose = true;
-  tech_library<3, classification_type::p_configurations> lib( gates, super_data );
-  fflush( stdout );
+  ps.load_minimum_size_only = false;
+  tech_library<3, classification_type::p_configurations> lib( gates, super_data, ps );
 
   CHECK( lib.max_gate_size() == 3 );
   CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 1.0f, 2u ) );
@@ -379,6 +389,77 @@ TEST_CASE( "Supergate library generation NP", "[tech_library]" )
   CHECK( ( *andor_e0 )[0].tdelay[1] == 2.0f );
   CHECK( ( *andor_e0 )[0].tdelay[2] == 1.0f );
   CHECK( ( *andor_e0 )[0].polarity == 0u );
+}
+
+TEST_CASE( "Library using minimum sizes", "[tech_library]" )
+{
+  std::vector<gate> gates;
+  super_lib super_data;
+
+  std::istringstream in_genlib( sizes_library );
+  auto result = lorina::read_genlib( in_genlib, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library_params ps;
+  ps.load_minimum_size_only = true;
+  tech_library<3> lib( gates, ps );
+
+  CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 0.9f, 2u ) );
+
+  kitty::static_truth_table<3> tt;
+
+  kitty::create_from_hex_string( tt, "77" );
+  auto const and_1 = lib.get_supergates( kitty::extend_to<6>( tt ) );
+  CHECK( and_1 != nullptr );
+  CHECK( and_1->size() == 1 );
+}
+
+TEST_CASE( "Library filtering dominated sizes", "[tech_library]" )
+{
+  std::vector<gate> gates;
+  super_lib super_data;
+
+  std::istringstream in_genlib( sizes_library );
+  auto result = lorina::read_genlib( in_genlib, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library_params ps;
+  ps.load_minimum_size_only = false;
+  ps.remove_dominated_gates = true;
+  tech_library<3> lib( gates, ps );
+
+  CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 0.9f, 2u ) );
+
+  kitty::static_truth_table<3> tt;
+
+  kitty::create_from_hex_string( tt, "77" );
+  auto const and_1 = lib.get_supergates( kitty::extend_to<6>( tt ) );
+  CHECK( and_1 != nullptr );
+  CHECK( and_1->size() == 3 );
+}
+
+TEST_CASE( "Library without filtering dominated sizes", "[tech_library]" )
+{
+  std::vector<gate> gates;
+  super_lib super_data;
+
+  std::istringstream in_genlib( sizes_library );
+  auto result = lorina::read_genlib( in_genlib, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library_params ps;
+  ps.load_minimum_size_only = false;
+  ps.remove_dominated_gates = false;
+  tech_library<3> lib( gates, ps );
+
+  CHECK( lib.get_inverter_info() == std::make_tuple( 1.0f, 0.9f, 2u ) );
+
+  kitty::static_truth_table<3> tt;
+
+  kitty::create_from_hex_string( tt, "77" );
+  auto const and_1 = lib.get_supergates( kitty::extend_to<6>( tt ) );
+  CHECK( and_1 != nullptr );
+  CHECK( and_1->size() == 5 );
 }
 
 TEST_CASE( "Multi-output library generation 1", "[tech_library]" )
@@ -725,6 +806,7 @@ TEST_CASE( "Multi-output library generation 3", "[tech_library]" )
   tech_library_params tps;
   tps.load_multioutput_gates = true;
   tps.load_multioutput_gates_single = true;
+  tps.load_minimum_size_only = false;
   tps.remove_dominated_gates = false;
   tech_library<2, classification_type::np_configurations> lib( gates, tps );
 
@@ -999,6 +1081,7 @@ TEST_CASE( "Complete library generation", "[tech_library]" )
   CHECK( result == lorina::return_code::success );
 
   tech_library_params ps;
+  ps.load_minimum_size_only = false;
   ps.remove_dominated_gates = false;
   tech_library<4, classification_type::np_configurations> lib( gates, ps );
 
