@@ -202,7 +202,7 @@ public:
         _cells( get_standard_cells( _gates ) ),
         _super( _gates, _supergates_spec, super_utils_params{ ps.load_multioutput_gates_single, ps.verbose } ),
         _use_supergates( false ),
-        _struct( _gates ),
+        _struct( _gates, struct_library_params{ ps.load_minimum_size_only, ps.very_verbose } ),
         _super_lib(),
         _multi_lib(),
         _struct_lib()
@@ -216,7 +216,7 @@ public:
 
     if ( ps.load_large_gates )
     {
-      _struct.construct( 2, _ps.very_verbose );
+      _struct.construct( 2 );
     }
   }
 
@@ -227,7 +227,7 @@ public:
         _cells( get_standard_cells( _gates ) ),
         _super( _gates, _supergates_spec, super_utils_params{ ps.load_multioutput_gates_single, ps.verbose } ),
         _use_supergates( true ),
-        _struct( _gates ),
+        _struct( _gates, struct_library_params{ ps.load_minimum_size_only, ps.very_verbose } ),
         _super_lib(),
         _multi_lib(),
         _struct_lib()
@@ -241,7 +241,7 @@ public:
 
     if ( ps.load_large_gates )
     {
-      _struct.construct( 2, _ps.very_verbose );
+      _struct.construct( 2 );
     }
   }
 
@@ -355,6 +355,12 @@ public:
 
   /*! \brief Returns the number of gates for structural matching. */
   const uint32_t num_structural_gates() const
+  {
+    return _struct.get_struct_library().size();
+  }
+
+  /*! \brief Returns the number of gates for structural matching with more than 6 inputs. */
+  const uint32_t num_structural_large_gates() const
   {
     return _struct.get_struct_library().size();
   }
@@ -1086,7 +1092,7 @@ private:
         auto const& ttj = supergates[j].function;
 
         /* get the same functionality */
-        if ( tti != ttj )
+        if ( skip_gates[j] || tti != ttj )
           continue;
 
         if ( _ps.load_minimum_size_only )
@@ -1104,7 +1110,7 @@ private:
         }
 
         /* is i smaller than j */
-        bool smaller = supergates[i].area < supergates[j].area;
+        bool smaller = supergates[i].area <= supergates[j].area;
 
         /* is i faster for every pin */
         bool faster = true;
@@ -1121,6 +1127,7 @@ private:
         }
 
         /* is j faster for every pin */
+        smaller = supergates[i].area >= supergates[j].area;
         faster = true;
         for ( uint32_t k = 0; k < tti.num_vars(); ++k )
         {
@@ -1128,7 +1135,7 @@ private:
             faster = false;
         }
 
-        if ( !smaller && faster )
+        if ( smaller && faster )
         {
           skip_gates[i] = true;
           break;

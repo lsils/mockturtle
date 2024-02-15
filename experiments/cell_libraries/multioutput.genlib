@@ -1,4 +1,4 @@
-# The genlib library "asap7.genlib" with 47 gates
+# The test genlib library "multioutput.genlib" with 50 gates
 GATE _const0_                 0.00  z=CONST0;                                                    
 GATE _const1_                 0.00  z=CONST1;                                                    
 GATE BUFx2_ASAP7_75t_R        0.07  Y=A;                                                         
@@ -39,7 +39,7 @@ GATE OA21x2_ASAP7_75t_R       0.10  Y=(A1 * B) + (A2 * B);
     PIN A1  UNKNOWN   1 999    21.62     0.00    21.62     0.00
     PIN A2  UNKNOWN   1 999    21.98     0.00    21.98     0.00
     PIN  B  UNKNOWN   1 999    19.74     0.00    19.74     0.00
-GATE MAJx2_ASAP7_75t_R        0.13  Y=(A * B) + (A * C) + (B * C);                               
+GATE MAJIx2_ASAP7_75t_R        0.13  Y=(!A * !B) + (!A * !C) + (!B * !C);                               
     PIN  A  UNKNOWN   1 999    27.70     0.00    27.70     0.00
     PIN  B  UNKNOWN   1 999    33.12     0.00    33.12     0.00
     PIN  C  UNKNOWN   1 999    30.34     0.00    30.34     0.00
@@ -240,3 +240,21 @@ GATE OA333x2_ASAP7_75t_R      0.19  Y=(A1 * B1 * C1) + (A1 * B1 * C2) + (A1 * B1
     PIN C1  UNKNOWN   1 999    36.13     0.00    36.13     0.00
     PIN C2  UNKNOWN   1 999    36.14     0.00    36.14     0.00
     PIN C3  UNKNOWN   1 999    36.69     0.00    36.69     0.00
+GATE XNOR3x1_ASAP7_75t_R      0.19  Y=(A * B * !C) + (A * !B * C) + (!A * B * C) + (!A * !B * !C); 
+    PIN  A  UNKNOWN   1 999    51.16     0.00    51.16     0.00
+    PIN  B  UNKNOWN   1 999    53.39     0.00    53.39     0.00
+    PIN  C  UNKNOWN   1 999    42.11     0.00    42.11     0.00
+GATE FAx1_ASAP7_75t_R         0.24  CON=(!A * !B) + (!A * !CI) + (!B * !CI);                     
+    PIN  A  UNKNOWN   1 999    27.70     0.00    27.70     0.00
+    PIN  B  UNKNOWN   1 999    33.12     0.00    33.12     0.00
+    PIN CI  UNKNOWN   1 999    30.34     0.00    30.34     0.00
+GATE FAx1_ASAP7_75t_R         0.24  SN=(A * B * !CI) + (A * !B * CI) + (!A * B * CI) + (!A * !B * !CI); 
+    PIN  A  UNKNOWN   1 999    51.16     0.00    51.16     0.00
+    PIN  B  UNKNOWN   1 999    53.39     0.00    53.39     0.00
+    PIN CI  UNKNOWN   1 999    42.11     0.00    42.11     0.00
+GATE HAxp5_ASAP7_75t_R        0.19  CON=(!A) + (!B);                                             
+    PIN  A  UNKNOWN   1 999    23.02     0.00    23.02     0.00
+    PIN  B  UNKNOWN   1 999    22.15     0.00    22.15     0.00
+GATE HAxp5_ASAP7_75t_R        0.19  SN=(A * B) + (!A * !B);                                      
+    PIN  A  UNKNOWN   1 999    36.92     0.00    36.92     0.00
+    PIN  B  UNKNOWN   1 999    36.52     0.00    36.52     0.00

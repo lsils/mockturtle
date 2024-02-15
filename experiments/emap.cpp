@@ -53,7 +53,7 @@ int main()
 
   /* library to map to technology */
   fmt::print( "[i] processing technology library\n" );
-  std::string library = "asap7";
+  std::string library = "multioutput";
   std::vector<gate> gates;
   std::ifstream in( cell_libraries_path( library ) );
 
@@ -82,9 +82,9 @@ int main()
     emap_params ps;
     ps.matching_mode = emap_params::hybrid;
     ps.area_oriented_mapping = false;
-    ps.map_multioutput = false;
+    ps.map_multioutput = true;
     emap_stats st;
-    cell_view<block_network> res = emap<6>( aig, tech_lib, ps, &st );
+    cell_view<block_network> res = emap<9>( aig, tech_lib, ps, &st );
 
     names_view res_names{ res };
     restore_network_name( aig, res_names );

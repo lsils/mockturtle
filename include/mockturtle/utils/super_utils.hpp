@@ -154,6 +154,7 @@ public:
     /* create composed gates */
     uint32_t ignored = 0;
     uint32_t ignored_id = 0;
+    uint32_t large_gates = 0;
     for ( const auto& g : _gates )
     {
       std::array<float, NInputs> pin_to_pin_delays{};
@@ -165,7 +166,10 @@ public:
         continue;
       }
       if ( g.function.num_vars() > truth_table_size )
+      {
+        ++large_gates;
         continue;
+      }
 
       auto i = 0u;
       for ( auto const& pin : g.pins )
@@ -208,8 +212,8 @@ public:
 
     if ( _ps.verbose )
     {
-      std::cout << fmt::format( "[i] Loading {} simple gates in the library\n", simple_gates_size );
-      std::cout << fmt::format( "[i] Loading {} multi-output gates in the library\n", _multioutput_gates.size() );
+      std::cout << fmt::format( "[i] Loading {} simple cells in the library\n", simple_gates_size + large_gates );
+      std::cout << fmt::format( "[i] Loading {} multi-output cells in the library\n", _multioutput_gates.size() );
     }
 
     if ( ignored > 0 )

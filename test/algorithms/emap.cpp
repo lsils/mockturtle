@@ -42,10 +42,6 @@ std::string const large_library = "GATE   inv1    1 O=!a;            PIN * INV 1
                                   "GATE   buf     2 O=a;             PIN * NONINV 1 999 1.0 0.0 1.0 0.0\n"
                                   "GATE   zero    0 O=CONST0;\n"
                                   "GATE   one     0 O=CONST1;\n"
-                                  "GATE   ha      5 C=a*b;           PIN * INV 1 999 1.7 0.4 1.7 0.4\n"
-                                  "GATE   ha      5 S=!a*b+a*!b;     PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
-                                  "GATE   fa      6 C=a*b+a*c+b*c;   PIN * INV 1 999 2.1 0.4 2.1 0.4\n"
-                                  "GATE   fa      6 S=a^b^c;         PIN * INV 1 999 3.0 0.4 3.0 0.4\n"
                                   "GATE   nand8   8 O=!(a*b*c*d*e*f*g*h);   PIN * INV 1 999 4.0 0.2 4.0 0.2\n";
 
 std::string const super_library = "test.genlib\n"
@@ -361,6 +357,7 @@ TEST_CASE( "Emap on multiplier with multi-output gates", "[emap]" )
   CHECK( result == lorina::return_code::success );
 
   tech_library_params tps;
+  tps.load_minimum_size_only = false;
   tps.load_multioutput_gates_single = true;
   tech_library<3> lib( gates, tps );
 
@@ -514,6 +511,147 @@ TEST_CASE( "Emap on buffer and constant outputs", "[emap]" )
   CHECK( st.area < 7.0f + eps );
   CHECK( st.delay > 1.9f - eps );
   CHECK( st.delay < 1.9f + eps );
+}
+
+TEST_CASE( "Emap with boolean matching", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( large_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<8> lib( gates );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+  const auto d = aig.create_pi();
+  const auto e = aig.create_pi();
+  const auto f = aig.create_pi();
+  const auto g = aig.create_pi();
+  const auto h = aig.create_pi();
+
+  const auto f1 = aig.create_and( !a, b );
+  const auto f2 = aig.create_and( f1, !c );
+  const auto f3 = aig.create_and( d, e );
+  const auto f4 = aig.create_and( f, !g );
+  const auto f5 = aig.create_and( f4, h );
+  const auto f6 = aig.create_and( f2, f3 );
+  const auto f7 = aig.create_and( f5, f6 );
+
+  aig.create_po( f7 );
+
+  emap_params ps;
+  ps.matching_mode = emap_params::boolean;
+  emap_stats st;
+  cell_view<block_network> ntk = emap<8>( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( ntk.size() == 27u );
+  CHECK( ntk.num_pis() == 8u );
+  CHECK( ntk.num_pos() == 1u );
+  CHECK( ntk.num_gates() == 17u );
+  CHECK( st.area > 24.0f - eps );
+  CHECK( st.area < 24.0f + eps );
+  CHECK( st.delay > 8.5f - eps );
+  CHECK( st.delay < 8.5f + eps );
+}
+
+TEST_CASE( "Emap with structural matching", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( large_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<8> lib( gates );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+  const auto d = aig.create_pi();
+  const auto e = aig.create_pi();
+  const auto f = aig.create_pi();
+  const auto g = aig.create_pi();
+  const auto h = aig.create_pi();
+
+  const auto f1 = aig.create_and( !a, b );
+  const auto f2 = aig.create_and( f1, !c );
+  const auto f3 = aig.create_and( d, e );
+  const auto f4 = aig.create_and( f, !g );
+  const auto f5 = aig.create_and( f4, h );
+  const auto f6 = aig.create_and( f2, f3 );
+  const auto f7 = aig.create_and( f5, f6 );
+
+  aig.create_po( f7 );
+
+  emap_params ps;
+  ps.matching_mode = emap_params::structural;
+  emap_stats st;
+  cell_view<block_network> ntk = emap<8>( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( ntk.size() == 15u );
+  CHECK( ntk.num_pis() == 8u );
+  CHECK( ntk.num_pos() == 1u );
+  CHECK( ntk.num_gates() == 5u );
+  CHECK( st.area > 12.0f - eps );
+  CHECK( st.area < 12.0f + eps );
+  CHECK( st.delay > 5.8f - eps );
+  CHECK( st.delay < 5.8f + eps );
+}
+
+TEST_CASE( "Emap with hybrid matching", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( large_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<8> lib( gates );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+  const auto d = aig.create_pi();
+  const auto e = aig.create_pi();
+  const auto f = aig.create_pi();
+  const auto g = aig.create_pi();
+  const auto h = aig.create_pi();
+
+  const auto f1 = aig.create_and( !a, b );
+  const auto f2 = aig.create_and( f1, !c );
+  const auto f3 = aig.create_and( d, e );
+  const auto f4 = aig.create_and( f, !g );
+  const auto f5 = aig.create_and( f4, h );
+  const auto f6 = aig.create_and( f2, f3 );
+  const auto f7 = aig.create_and( f5, f6 );
+
+  aig.create_po( f7 );
+
+  emap_params ps;
+  ps.matching_mode = emap_params::hybrid;
+  emap_stats st;
+  cell_view<block_network> ntk = emap<8>( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( ntk.size() == 15u );
+  CHECK( ntk.num_pis() == 8u );
+  CHECK( ntk.num_pos() == 1u );
+  CHECK( ntk.num_gates() == 5u );
+  CHECK( st.area > 12.0f - eps );
+  CHECK( st.area < 12.0f + eps );
+  CHECK( st.delay > 5.8f - eps );
+  CHECK( st.delay < 5.8f + eps );
 }
 
 TEST_CASE( "Emap with supergates", "[emap]" )
