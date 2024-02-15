@@ -1801,10 +1801,17 @@ private:
       /* try a multi-output match */
       if ( ps.map_multioutput && node_tuple_match[index] < UINT32_MAX - 1 )
       {
-        match_multioutput_exact<SwitchActivity>( *it, true );
+        bool mapped = match_multioutput_exact<SwitchActivity>( *it, true );
 
         /* propagate required time for the selected gates */
-        match_multioutput_propagate_required( *it );
+        if ( mapped )
+        {
+          match_multioutput_propagate_required( *it );
+        }
+        else
+        {
+          match_propagate_required( index );
+        }
       }
       else
       {
@@ -3021,6 +3028,19 @@ private:
         return false;
     }
 
+    /* if one of the outputs is not referenced, do not use multi-output gate */
+    if ( last_round )
+    {
+      for ( uint32_t j = 0; j < max_multioutput_output_size; ++j )
+      {
+        uint32_t node_index = tuple_data[j].node_index;
+        if ( node_match[node_index].map_refs[2] == 0 )
+        {
+          return false;
+        }
+      }
+    }
+
     /* if "same match" and used in the cover dereference the leaves (reverse topo order) */
     for ( int j = max_multioutput_output_size - 1; j >= 0; --j )
     {
@@ -3041,28 +3061,9 @@ private:
       }
     }
 
-    /* if one of the outputs is not referenced, do not use multi-output gate */
-    bool skip = false;
-    if ( last_round )
-    {
-      for ( uint32_t j = 0; j < max_multioutput_output_size; ++j )
-      {
-        uint32_t node_index = tuple_data[j].node_index;
-        if ( node_match[node_index].map_refs[2] == 0 )
-        {
-          skip = true;
-          break;
-        }
-      }
-    }
-
-    bool mapped_multioutput = false;
-
     /* perform mapping */
-    if ( !skip )
-    {
-      mapped_multioutput = match_multioutput_exact_core<SwitchActivity>( tuple_data, best_exact_area );
-    }
+    bool mapped_multioutput = false;
+    mapped_multioutput = match_multioutput_exact_core<SwitchActivity>( tuple_data, best_exact_area );
 
     /* if "same match" and used in the cover reference the leaves (topo order) */
     for ( auto j = 0; j < max_multioutput_output_size; ++j )
