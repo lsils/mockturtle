@@ -389,7 +389,7 @@ template<class NtkSrc, class NtkDest = NtkSrc>
   detail::clone_inputs( ntk, dest, cis, false );
 
   std::unordered_map<uint64_t, signal<NtkDest>> old_to_new;
-  detail::decompose_multioutput_impl<NtkSrc, NtkDest>( ntk, dest, cis.begin(), cis.end(), old_to_new, ps );
+  detail::decompose_multioutput_impl( ntk, dest, cis.begin(), cis.end(), old_to_new, ps );
 
   return dest;
 }
