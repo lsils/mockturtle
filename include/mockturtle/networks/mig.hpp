@@ -67,6 +67,7 @@ namespace mockturtle
   `data[0].h1`: Fan-out size (we use MSB to indicate whether a node is dead)
   `data[0].h2`: Application-specific value
   `data[1].h1`: Visited flag
+  `data[1].h2`: Is terminal node (PI or CI)
 */
 using mig_storage = storage<regular_node<3, 2, 1>>;
 
@@ -187,6 +188,7 @@ public:
     const auto index = _storage->nodes.size();
     auto& node = _storage->nodes.emplace_back();
     node.children[0].data = node.children[1].data = node.children[2].data = _storage->inputs.size();
+    node.data[1].h2 = 1; // mark as PI
     _storage->inputs.emplace_back( index );
     return { index, 0 };
   }
@@ -212,12 +214,12 @@ public:
 
   bool is_ci( node const& n ) const
   {
-    return _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data;
+    return _storage->nodes[n].data[1].h2 == 1;
   }
 
   bool is_pi( node const& n ) const
   {
-    return _storage->nodes[n].children[0].data == _storage->nodes[n].children[1].data && _storage->nodes[n].children[0].data == _storage->nodes[n].children[2].data && !is_constant( n );
+    return _storage->nodes[n].data[1].h2 == 1 && !is_constant( n );
   }
 
   bool constant_value( node const& n ) const
