@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
+ * Copyright (C) 2018-2023  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -33,6 +33,7 @@
 #pragma once
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <type_traits>
 #include <vector>
@@ -55,6 +56,8 @@ inline void collect_nodes_recur( Ntk const& ntk, typename Ntk::node const& n, st
   ntk.paint( n );
 
   ntk.foreach_fanin( n, [&]( signal const& fi ) {
+    if ( ntk.is_constant( ntk.get_node( fi ) ) )
+      return;
     collect_nodes_recur( ntk, ntk.get_node( fi ), nodes );
   } );
   nodes.push_back( n );
@@ -198,36 +201,6 @@ std::vector<typename Ntk::node> collect_inputs( Ntk const& ntk, std::vector<type
   return inputs;
 }
 
-/*! \brief Collect all nodes supported by a cut
- *
- * Network is assumed to be topologically sorted (e.g. just created or wrapped with topo_view)
- */
-template<typename Ntk>
-inline std::vector<typename Ntk::node> collect_supported( Ntk const& ntk, std::vector<typename Ntk::node> const& cut )
-{
-  ntk.new_color();
-  for ( auto const& n : cut )
-  {
-    ntk.paint( n );
-  }
-
-  std::vector<typename Ntk::node> nodes;
-  ntk.foreach_gate( [&]( auto const& n ){
-    if ( ntk.eval_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
-    {
-      return true;
-    }
-    if ( ntk.eval_fanins_color( n, [&ntk]( auto c ){ return c == ntk.current_color(); } ) )
-    {
-      ntk.paint( n );
-      nodes.emplace_back( n );
-    }
-    return true;
-  });
-
-  return nodes;
-}
-
 /*! \brief Identify outputs using reference counting
  *
  * Identify outputs using a reference counting approach.  The
@@ -255,16 +228,6 @@ inline std::vector<typename Ntk::node> collect_supported( Ntk const& ntk, std::v
  * - `is_constant`
  * - `make_signal`
  */
-template<typename Ntk>
-inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
-                                                          std::vector<typename Ntk::node> const& inputs,
-                                                          std::vector<typename Ntk::node> const& nodes )
-{
-  std::vector<uint32_t> refs;
-  refs.resize( ntk.size() );
-  return collect_outputs( ntk, inputs, nodes );
-}
-
 template<typename Ntk>
 inline std::vector<typename Ntk::signal> collect_outputs( Ntk const& ntk,
                                                           std::vector<typename Ntk::node> const& inputs,

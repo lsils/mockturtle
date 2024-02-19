@@ -37,20 +37,29 @@
 
 #include <fmt/format.h>
 
+#include "../networks/aig.hpp"
 #include "../networks/klut.hpp"
+#include "../networks/mig.hpp"
 #include "../networks/sequential.hpp"
+#include "../networks/xag.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/tech_library.hpp"
 #include "../views/binding_view.hpp"
+#include "../views/color_view.hpp"
 #include "../views/depth_view.hpp"
 #include "../views/topo_view.hpp"
+#include "../views/window_view.hpp"
 #include "cleanup.hpp"
 #include "cut_enumeration.hpp"
 #include "cut_enumeration/exact_map_cut.hpp"
 #include "cut_enumeration/tech_map_cut.hpp"
 #include "detail/mffc_utils.hpp"
 #include "detail/switching_activity.hpp"
+#include "reconv_cut.hpp"
+#include "resyn_engines/mig_resyn.hpp"
+#include "resyn_engines/xag_resyn.hpp"
+#include "simulation.hpp"
 
 namespace mockturtle
 {
@@ -98,6 +107,12 @@ struct map_params
 
   /*! \brief Maximum number of cuts evaluated for logic sharing. */
   uint32_t logic_sharing_cut_limit{ 8u };
+
+  /*! \brief Use satisfiability don't cares for optimization. */
+  bool use_dont_cares{ false };
+
+  /*! \brief Window size for don't cares calculation. */
+  uint32_t window_size{ 12u };
 
   /*! \brief Be verbose. */
   bool verbose{ false };
@@ -247,7 +262,7 @@ public:
     /* execute mapping */
     if ( !execute_mapping() )
       return res;
-    
+
     /* insert buffers for POs driven by PIs */
     insert_buffers();
 
@@ -278,7 +293,7 @@ public:
     /* execute mapping */
     if ( !execute_mapping() )
       return res;
-    
+
     /* insert buffers for POs driven by PIs */
     insert_buffers();
 
@@ -383,7 +398,7 @@ private:
           continue;
         }
         const auto tt = cuts.truth_table( *cut );
-        const auto fe = kitty::shrink_to<NInputs>( tt );
+        const auto fe = kitty::extend_to<6>( tt );
         auto fe_canon = fe;
 
         uint8_t negations_pos = 0;
@@ -1139,7 +1154,7 @@ private:
   {
     auto& node_data = node_match[index];
 
-    kitty::static_truth_table<NInputs> zero_tt;
+    kitty::static_truth_table<6> zero_tt;
     auto const supergates_zero = library.get_supergates( zero_tt );
     auto const supergates_one = library.get_supergates( ~zero_tt );
 
@@ -1865,15 +1880,16 @@ struct node_match_t
   float flows[3];
 };
 
-template<class NtkDest, unsigned CutSize, typename CutData, class Ntk, class RewritingFn, unsigned NInputs>
+template<class NtkDest, unsigned CutSize, typename CutData, class Ntk, unsigned NInputs>
 class exact_map_impl
 {
 public:
+  static constexpr uint32_t max_window_size = 12;
   using network_cuts_t = fast_network_cuts<Ntk, CutSize, true, CutData>;
   using cut_t = typename network_cuts_t::cut_t;
 
 public:
-  explicit exact_map_impl( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& library, map_params const& ps, map_stats& st )
+  explicit exact_map_impl( Ntk& ntk, exact_library<NtkDest, NInputs> const& library, map_params const& ps, map_stats& st )
       : ntk( ntk ),
         library( library ),
         ps( ps ),
@@ -1899,7 +1915,14 @@ public:
     } );
 
     /* match cuts with gates */
-    compute_matches();
+    if ( ps.use_dont_cares )
+    {
+      compute_matches_dc();
+    }
+    else
+    {
+      compute_matches();
+    }
 
     /* init the data structure */
     init_nodes();
@@ -2005,7 +2028,7 @@ private:
 
         /* match the cut using canonization and get the gates */
         const auto tt = cuts.truth_table( *cut );
-        const auto fe = kitty::shrink_to<NInputs>( tt );
+        const auto fe = kitty::extend_to<NInputs>( tt );
         const auto config = kitty::exact_npn_canonization( fe );
         auto const supergates_npn = library.get_supergates( std::get<0>( config ) );
         auto const supergates_npn_neg = library.get_supergates( ~std::get<0>( config ) );
@@ -2016,6 +2039,134 @@ private:
           auto perm = std::get<2>( config );
           uint8_t phase = ( neg >> NInputs ) & 1;
           cut_match_t<NtkDest, NInputs> match;
+
+          match.supergates[phase] = supergates_npn;
+          match.supergates[phase ^ 1] = supergates_npn_neg;
+
+          /* store permutations and negations */
+          match.negation = 0;
+          for ( auto j = 0u; j < perm.size() && j < NInputs; ++j )
+          {
+            match.permutation[perm[j]] = j;
+            match.negation |= ( ( neg >> perm[j] ) & 1 ) << j;
+          }
+          node_matches.push_back( match );
+          ( *cut )->data.match_index = i++;
+        }
+        else
+        {
+          /* Ignore not matched cuts */
+          ( *cut )->data.ignore = true;
+        }
+      }
+
+      matches[index] = node_matches;
+    } );
+  }
+
+  void compute_matches_dc()
+  {
+    reconvergence_driven_cut_parameters rps;
+    rps.max_leaves = ps.window_size;
+    reconvergence_driven_cut_statistics rst;
+    detail::reconvergence_driven_cut_impl<Ntk, false, false> reconv_cuts( ntk, rps, rst );
+
+    color_view<Ntk> color_ntk{ ntk };
+    std::array<uint32_t, NInputs> divisors;
+    for ( uint32_t i = 0; i < NInputs; ++i )
+    {
+      divisors[i] = i;
+    }
+
+    /* match gates */
+    ntk.foreach_gate( [&]( auto const& n ) {
+      const auto index = ntk.node_to_index( n );
+      std::vector<cut_match_t<NtkDest, NInputs>> node_matches;
+
+      std::vector<node<Ntk>> roots = { n };
+      auto const extended_leaves = reconv_cuts.run( roots ).first;
+
+      std::vector<node<Ntk>> gates{ collect_nodes( color_ntk, extended_leaves, roots ) };
+      window_view window_ntk{ color_ntk, extended_leaves, roots, gates };
+
+      default_simulator<kitty::static_truth_table<max_window_size>> sim;
+      const auto tts = simulate_nodes<kitty::static_truth_table<max_window_size>>( window_ntk, sim );
+
+      auto i = 0u;
+      for ( auto& cut : cuts.cuts( index ) )
+      {
+        /* ignore unit cut */
+        if ( cut->size() == 1 && *cut->begin() == index )
+        {
+          ( *cut )->data.ignore = true;
+          continue;
+        }
+
+        if ( cut->size() > NInputs )
+        {
+          /* Ignore cuts too big to be mapped using the library */
+          ( *cut )->data.ignore = true;
+          continue;
+        }
+
+        /* match the cut using canonization and get the gates */
+        const auto tt = cuts.truth_table( *cut );
+        const auto fe = kitty::shrink_to<NInputs>( tt );
+
+        auto [tt_npn, neg, perm] = kitty::exact_npn_canonization( fe );
+        auto perm_neg = perm;
+        auto neg_neg = neg;
+
+        /* dont cares computation */
+        kitty::static_truth_table<NInputs> care;
+
+        bool containment = true;
+        bool filter = false;
+        for ( auto const& l : *cut )
+        {
+          if ( color_ntk.color( ntk.index_to_node( l ) ) != color_ntk.current_color() )
+          {
+            containment = false;
+            break;
+          }
+        }
+
+        if ( containment )
+        {
+          /* compute care set */
+          for ( auto i = 0u; i < ( 1u << window_ntk.num_pis() ); ++i )
+          {
+            uint32_t entry{ 0u };
+            auto j = 0u;
+            for ( auto const& l : *cut )
+            {
+              entry |= kitty::get_bit( tts[l], i ) << j;
+              ++j;
+            }
+            kitty::set_bit( care, entry );
+          }
+        }
+        else
+        {
+          /* completely specified */
+          care = ~care;
+        }
+
+        auto const dc_npn = apply_npn_transformation( ~care, neg & ~( 1 << NInputs ), perm );
+        const std::vector<exact_supergate<NtkDest, NInputs>>* supergates_npn = library.get_supergates( tt_npn, dc_npn, neg, perm );
+        const std::vector<exact_supergate<NtkDest, NInputs>>* supergates_npn_neg = library.get_supergates( ~tt_npn, dc_npn, neg_neg, perm_neg );
+
+        if ( supergates_npn != nullptr || supergates_npn_neg != nullptr )
+        {
+          cut_match_t<NtkDest, NInputs> match;
+
+          if ( supergates_npn == nullptr )
+          {
+            perm = perm_neg;
+            neg = neg_neg;
+          }
+
+          uint8_t phase = ( neg >> NInputs ) & 1;
 
           match.supergates[phase] = supergates_npn;
           match.supergates[phase ^ 1] = supergates_npn_neg;
@@ -3229,7 +3380,7 @@ private:
 
 private:
   Ntk& ntk;
-  exact_library<NtkDest, RewritingFn, NInputs> const& library;
+  exact_library<NtkDest, NInputs> const& library;
   map_params const& ps;
   map_stats& st;
 
@@ -3292,8 +3443,8 @@ private:
  * \param ps Mapping params
  * \param pst Mapping statistics
  */
-template<class Ntk, unsigned CutSize = 4u, typename CutData = cut_enumeration_exact_map_cut, class NtkDest, class RewritingFn, unsigned NInputs>
-NtkDest map( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
+template<class Ntk, unsigned CutSize = 4u, typename CutData = cut_enumeration_exact_map_cut, class NtkDest, unsigned NInputs>
+NtkDest map( Ntk& ntk, exact_library<NtkDest, NInputs> const& library, map_params const& ps = {}, map_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -3312,7 +3463,7 @@ NtkDest map( Ntk& ntk, exact_library<NtkDest, RewritingFn, NInputs> const& libra
   static_assert( has_foreach_ro_v<Ntk> == has_create_ro_v<NtkDest>, "Ntk and NtkDest networks are not both sequential" );
 
   map_stats st;
-  detail::exact_map_impl<NtkDest, CutSize, CutData, Ntk, RewritingFn, NInputs> p( ntk, library, ps, st );
+  detail::exact_map_impl<NtkDest, CutSize, CutData, Ntk, NInputs> p( ntk, library, ps, st );
   auto res = p.run();
 
   st.time_total = st.time_mapping + st.cut_enumeration_st.time_total;

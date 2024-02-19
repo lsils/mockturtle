@@ -27,6 +27,7 @@
   \file cuts.hpp
   \brief Data structure for cuts
 
+  \author Alessandro Tempia Calvino
   \author Heinz Riener
   \author Mathias Soeken
 */
@@ -39,6 +40,8 @@
 #include <iterator>
 
 #include <kitty/detail/mscfix.hpp>
+
+#include "algorithm.hpp"
 
 namespace mockturtle
 {
@@ -124,6 +127,14 @@ public:
    */
   template<typename Container>
   void set_leaves( Container const& c );
+
+  /*! \brief Add leaves (using iterators).
+   *
+   * \param begin Begin iterator to leaves
+   * \param end End iterator to leaves (exclusive)
+   */
+  template<typename Iterator>
+  void add_leaves( Iterator begin, Iterator end );
 
   /*! \brief Signature of the cut. */
   auto signature() const { return _signature; }
@@ -250,6 +261,19 @@ void cut<MaxLeaves, T>::set_leaves( Container const& c )
 }
 
 template<int MaxLeaves, typename T>
+template<typename Iterator>
+void cut<MaxLeaves, T>::add_leaves( Iterator begin, Iterator end )
+{
+  _cend = _end = std::copy( begin, end, _end );
+  _length = static_cast<uint32_t>( std::distance( _leaves.begin(), _end ) );
+
+  while ( begin != end )
+  {
+    _signature |= UINT64_C( 1 ) << ( *begin++ & 0x3f );
+  }
+}
+
+template<int MaxLeaves, typename T>
 bool cut<MaxLeaves, T>::dominates( cut const& that ) const
 {
   /* quick check for counter example */
@@ -299,10 +323,10 @@ bool cut<MaxLeaves, T>::merge( cut const& that, cut& res, uint32_t cut_size ) co
     }
   }
 
-  auto it = std::set_union( begin(), end(), that.begin(), that.end(), res.begin() );
-  if ( auto length = std::distance( res.begin(), it ); length <= cut_size )
+  int32_t length = set_union_safe( begin(), end(), that.begin(), that.end(), res.begin(), cut_size );
+  if ( length >= 0 )
   {
-    res._cend = res._end = it;
+    res._cend = res._end = res.begin() + length;
     res._length = static_cast<uint32_t>( length );
     res._signature = _signature | that._signature;
     return true;

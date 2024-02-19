@@ -27,6 +27,7 @@
   \file klut.hpp
   \brief k-LUT logic network implementation
 
+  \author Alessandro Tempia Calvino
   \author Andrea Costamagna
   \author Heinz Riener
   \author Marcel Walter
@@ -114,7 +115,7 @@ protected:
   inline void _init()
   {
     /* already initialized */
-    if ( _storage->nodes.size() > 1 ) 
+    if ( _storage->nodes.size() > 1 )
       return;
 
     /* reserve the second node for constant 1 */
@@ -458,6 +459,16 @@ public:
     return _storage->nodes[n].data[0].h1;
   }
 
+  uint32_t incr_fanout_size( node const& n ) const
+  {
+    return _storage->nodes[n].data[0].h1++;
+  }
+
+  uint32_t decr_fanout_size( node const& n ) const
+  {
+    return --_storage->nodes[n].data[0].h1;
+  }
+
   bool is_function( node const& n ) const
   {
     return n > 1 && !is_ci( n );
@@ -601,7 +612,7 @@ public:
   {
     const auto nfanin = _storage->nodes[n].children.size();
 
-    std::vector<typename Iterator::value_type> tts( begin, end );
+    std::vector<typename std::iterator_traits<Iterator>::value_type> tts( begin, end );
 
     assert( nfanin != 0 );
     assert( tts.size() == nfanin );

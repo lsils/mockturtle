@@ -27,6 +27,7 @@
   \file algorithm.hpp
   \brief STL-like algorithm extensions
 
+  \author Alessandro Tempia Calvino
   \author Heinz Riener
   \author Marcel Walter
   \author Mathias Soeken
@@ -140,6 +141,90 @@ template<class T, typename = std::enable_if_t<std::is_integral_v<T>>>
 constexpr auto range( T end )
 {
   return range<T>( {}, end );
+}
+
+/*! \brief Performs the set union of two sorted sets.
+ *
+ * Compared to std::set_union, limits the copy to `limit`.
+ * Moreover, it returns the number of elements copied if the
+ * union operation is successful. Else, it returns -1.
+ *
+ */
+template<class InputIterator1, class InputIterator2, class OutputIterator>
+int32_t set_union_safe( InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result, uint32_t limit )
+{
+  /* special case: sets are at the limit */
+  if ( std::distance( first1, last1 ) == limit && std::distance( first2, last2 ) == limit )
+  {
+    while ( first1 != last1 )
+    {
+      if ( *first1 != *first2 )
+        return -1;
+
+      *result = *first1;
+      ++first1;
+      ++first2;
+      ++result;
+    }
+
+    return static_cast<int32_t>( limit );
+  }
+
+  uint32_t size = 0;
+  while ( size < limit )
+  {
+    if ( first1 == last1 )
+    {
+      size += std::distance( first2, last2 );
+      if ( size <= limit )
+      {
+        std::copy( first2, last2, result );
+        return static_cast<int32_t>( size );
+      }
+      else
+      {
+        return -1;
+      }
+    }
+    else if ( first2 == last2 )
+    {
+      size += std::distance( first1, last1 );
+      if ( size <= limit )
+      {
+        std::copy( first1, last1, result );
+        return static_cast<int32_t>( size );
+      }
+      else
+      {
+        return -1;
+      }
+    }
+
+    if ( *first1 < *first2 )
+    {
+      *result = *first1;
+      ++first1;
+    }
+    else if ( *first2 < *first1 )
+    {
+      *result = *first2;
+      ++first2;
+    }
+    else
+    {
+      *result = *first1;
+      ++first1;
+      ++first2;
+    }
+
+    ++result;
+    ++size;
+  }
+
+  if ( std::distance( first1, last1 ) + std::distance( first2, last2 ) > 0 )
+    return -1;
+
+  return static_cast<int32_t>( size );
 }
 
 } /* namespace mockturtle */

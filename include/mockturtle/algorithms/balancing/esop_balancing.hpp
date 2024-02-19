@@ -277,6 +277,7 @@ private:
 
         if ( n_lit < lit )
         {
+          inverted = true;
           return sop_hash_[~func] = n_sop;
         }
       }

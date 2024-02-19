@@ -27,6 +27,7 @@
   \file npn.hpp
   \brief Implements NPN canonization algorithms
 
+  \author Alessandro Tempia Calvino
   \author Mathias Soeken
 */
 
@@ -288,6 +289,81 @@ std::tuple<TT, uint32_t> exact_n_canonization( const TT& tt, Callback&& fn = det
   static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
 
   const auto num_vars = tt.num_vars();
+
+  /* Special case for n = 0 */
+  if ( num_vars == 0 )
+  {
+    return std::make_tuple( tt, 0 );
+  }
+
+  /* Special case for n = 1 */
+  if ( num_vars == 1 )
+  {
+    return std::make_tuple( tt, 0 );
+  }
+
+  assert( num_vars >= 2 && num_vars <= 6 );
+
+  auto t1 = tt;
+  auto tmin = t1;
+
+  fn( t1 );
+
+  const auto& flips = detail::flips[num_vars - 2u];
+  int best_flip = -1;
+
+  for ( std::size_t j = 0; j < flips.size(); ++j )
+  {
+    const auto pos = flips[j];
+    flip_inplace( t1, pos );
+
+    fn( t1 );
+
+    if ( t1 < tmin )
+    {
+      best_flip = static_cast<int>( j );
+      tmin = t1;
+    }
+  }
+
+  uint32_t phase = 0;
+  for ( auto i = 0; i <= best_flip; ++i )
+  {
+    phase ^= 1 << flips[i];
+  }
+
+  return std::make_tuple( tmin, phase );
+}
+
+/*! \brief Exact N canonization given a support size
+
+  Given a truth table, this function finds the lexicographically smallest truth
+  table in its N class, called N representative. Two functions are in the
+  same N class, if one can obtain one from the other by input negations.
+
+  The function can accept a callback as second parameter which is called for
+  every visited function when trying out all combinations.  This allows to
+  exhaustively visit the whole N class.
+
+  The function returns a N configuration which contains the necessary
+  transformations to obtain the representative.  It is a tuple of
+
+  - the N representative
+  - input negations that lead to the representative
+
+  \param tt The truth table
+  \param support_size Support size used for the canonization
+  \param fn Callback for each visited truth table in the class (default does nothing)
+  \return N configurations
+*/
+template<typename TT, typename Callback = decltype( detail::exact_npn_canonization_null_callback<TT> )>
+std::tuple<TT, uint32_t> exact_n_canonization_support( const TT& tt, uint32_t support_size, Callback&& fn = detail::exact_npn_canonization_null_callback<TT> )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  assert( support_size <= tt.num_vars() );
+
+  const auto num_vars = support_size;
 
   /* Special case for n = 0 */
   if ( num_vars == 0 )
@@ -613,6 +689,94 @@ std::tuple<TT, uint32_t, std::vector<uint8_t>> sifting_p_canonization( const TT&
   return std::make_tuple( npn, phase, perm );
 }
 
+/*! \brief Exact NPN enumeration
+
+  Given a truth table, this function enumerates all the functions in its
+  NPN class. Two functions are in the same NP class, if one can be obtained
+  from the other by input negation, input permutation, and output negation.
+
+  The function takes a callback as second parameter which is called for
+  every enumerated function. The callback should take as parameters:
+  - NPN-enumerated truth table
+  - input and output negations
+  - input permutation to apply
+
+  \param tt Truth table
+  \param fn Callback for each enumerated truth table in the NP class
+*/
+template<typename TT, typename Callback>
+void exact_npn_enumeration( const TT& tt, Callback&& fn )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  const auto num_vars = tt.num_vars();
+
+  /* Special case for n = 0 */
+  if ( num_vars == 0 )
+  {
+    fn( tt, 0u, std::vector<uint8_t>{} );
+    fn( ~tt, 1u, std::vector<uint8_t>{} );
+    return;
+  }
+
+  /* Special case for n = 1 */
+  if ( num_vars == 1 )
+  {
+    fn( tt, 0u, std::vector<uint8_t>{ 0 } );
+    fn( ~tt, 2u, std::vector<uint8_t>{ 0 } );
+    return;
+  }
+
+  assert( num_vars >= 2 && num_vars <= 6 );
+
+  auto t1 = tt;
+
+  std::vector<uint8_t> perm( num_vars );
+  std::iota( perm.begin(), perm.end(), 0u );
+
+  uint32_t phase = 0;
+
+  fn( t1, phase, perm );
+
+  const auto& swaps = detail::swaps[num_vars - 2u];
+  const auto& flips = detail::flips[num_vars - 2u];
+
+  for ( std::size_t i = 0; i < swaps.size(); ++i )
+  {
+    const auto pos = swaps[i];
+    swap_adjacent_inplace( t1, pos );
+
+    std::swap( perm[pos], perm[pos + 1] );
+
+    fn( t1, phase, perm );
+    fn( ~t1, phase | ( 1u << num_vars ), perm );
+  }
+
+  for ( std::size_t j = 0; j < flips.size(); ++j )
+  {
+    const auto pos = flips[j];
+    swap_adjacent_inplace( t1, 0 );
+    flip_inplace( t1, pos );
+
+    std::swap( perm[0], perm[1] );
+    phase ^= 1 << perm[pos];
+
+    fn( t1, phase, perm );
+    fn( ~t1, phase | ( 1u << num_vars ), perm );
+
+    for ( std::size_t i = 0; i < swaps.size(); ++i )
+    {
+      const auto pos = swaps[i];
+      swap_adjacent_inplace( t1, pos );
+
+      std::swap( perm[pos], perm[pos + 1] );
+
+      fn( t1, phase, perm );
+      fn( ~t1, phase | ( 1u << num_vars ), perm );
+    }
+  }
+}
+
 /*! \brief Exact NP enumeration
 
   Given a truth table, this function enumerates all the functions in its
@@ -696,6 +860,102 @@ void exact_np_enumeration( const TT& tt, Callback&& fn )
   }
 }
 
+/*! \brief Exact multi NP enumeration
+
+  Given multiple truth tables, this function enumerates all the functions in their
+  NP class. Two functions are in the same NP class, if one can be obtained
+  from the other by input negation and input permutation.
+
+  The function takes a callback as second parameter which is called for
+  every enumerated function. The callback should take as parameters:
+  - NP-enumerated truth tables
+  - input negations
+  - input permutation to apply
+
+  \param tts Truth tables
+  \param fn Callback for each enumerated truth table in the NP class
+*/
+template<typename TT, typename Callback>
+void exact_multi_np_enumeration( const std::vector<TT>& tts, Callback&& fn )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  assert( tts.size() > 0 );
+
+  const auto num_vars = tts[0].num_vars();
+
+  for ( auto i = 0; i < tts.size(); ++i )
+    assert( tts[i].num_vars() == num_vars );
+
+  /* Special case for n = 0 */
+  if ( num_vars == 0 )
+  {
+    fn( tts, 0u, std::vector<uint8_t>{} );
+    return;
+  }
+
+  /* Special case for n = 1 */
+  if ( num_vars == 1 )
+  {
+    fn( tts, 0u, std::vector<uint8_t>{ 0 } );
+    return;
+  }
+
+  assert( num_vars >= 2 && num_vars <= 6 );
+
+  auto t1 = tts;
+
+  std::vector<uint8_t> perm( num_vars );
+  std::iota( perm.begin(), perm.end(), 0u );
+
+  uint32_t phase = 0;
+
+  fn( t1, phase, perm );
+
+  const auto& swaps = detail::swaps[num_vars - 2u];
+  const auto& flips = detail::flips[num_vars - 2u];
+
+  for ( std::size_t i = 0; i < swaps.size(); ++i )
+  {
+    const auto pos = swaps[i];
+
+    for ( auto& tt : t1 )
+      swap_adjacent_inplace( tt, pos );
+
+    std::swap( perm[pos], perm[pos + 1] );
+
+    fn( t1, phase, perm );
+  }
+
+  for ( std::size_t j = 0; j < flips.size(); ++j )
+  {
+    const auto pos = flips[j];
+
+    for ( auto& tt : t1 )
+    {
+      swap_adjacent_inplace( tt, 0 );
+      flip_inplace( tt, pos );
+    }
+
+    std::swap( perm[0], perm[1] );
+    phase ^= 1 << perm[pos];
+
+    fn( t1, phase, perm );
+
+    for ( std::size_t i = 0; i < swaps.size(); ++i )
+    {
+      const auto pos = swaps[i];
+
+      for ( auto& tt : t1 )
+        swap_adjacent_inplace( tt, pos );
+
+      std::swap( perm[pos], perm[pos + 1] );
+
+      fn( t1, phase, perm );
+    }
+  }
+}
+
 /*! \brief Exact P enumeration
 
   Given a truth table, this function enumerates all the functions in its
@@ -746,6 +1006,70 @@ void exact_p_enumeration( const TT& tt, Callback&& fn )
   {
     const auto pos = swaps[i];
     swap_adjacent_inplace( t1, pos );
+
+    std::swap( perm[pos], perm[pos + 1] );
+
+    fn( t1, perm );
+  }
+}
+
+/*! \brief Exact multi P enumeration
+
+  Given multiple truth tables, this function enumerates all the functions in their
+  P class. Two functions are in the same P class, if one can be obtained
+  from the other by input permutation.
+
+  The function takes a callback as second parameter which is called for
+  every enumerated function. The callback should take as parameters:
+  - P-enumerated truth tables
+  - input permutation to apply
+
+  \param tt Truth tables
+  \param fn Callback for each enumerated truth table in the P class
+*/
+template<typename TT, typename Callback>
+void exact_multi_p_enumeration( const std::vector<TT>& tts, Callback&& fn )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  assert( tts.size() > 0 );
+
+  const auto num_vars = tts[0].num_vars();
+
+  for ( auto i = 0; i < tts.size(); ++i )
+    assert( tts[i].num_vars == num_vars );
+
+  /* Special case for n = 0 */
+  if ( num_vars == 0 )
+  {
+    fn( tts, std::vector<uint8_t>{} );
+    return;
+  }
+
+  /* Special case for n = 1 */
+  if ( num_vars == 1 )
+  {
+    fn( tts, std::vector<uint8_t>{ 0 } );
+    return;
+  }
+
+  assert( num_vars >= 2 && num_vars <= 6 );
+
+  auto t1 = tts;
+
+  std::vector<uint8_t> perm( num_vars );
+  std::iota( perm.begin(), perm.end(), 0u );
+
+  fn( t1, perm );
+
+  const auto& swaps = detail::swaps[num_vars - 2u];
+
+  for ( std::size_t i = 0; i < swaps.size(); ++i )
+  {
+    const auto pos = swaps[i];
+
+    for ( auto& tt : t1 )
+      swap_adjacent_inplace( tt, pos );
 
     std::swap( perm[pos], perm[pos + 1] );
 
@@ -938,6 +1262,63 @@ TT create_from_npn_config( const std::tuple<TT, uint32_t, std::vector<uint8_t>>&
     {
       flip_inplace( res, i );
     }
+  }
+
+  return res;
+}
+
+/*! \brief Obtain truth table applying a NPN configuration
+
+  Given an NPN configuration composed of input/output negations,
+  and input permutations this function applies the transformation
+  to the input truth table. This function can be used to obtain
+  the NPN representative function given the NPN transformation.
+  This function is the inverse of `create_from_npn_config`.
+
+  \param from truth table
+  \param phase input/output negations to apply
+  \param perm input permutations to apply
+*/
+template<typename TT>
+TT apply_npn_transformation( TT const& from, uint32_t phase, std::vector<uint8_t> const& perm )
+{
+  static_assert( is_complete_truth_table<TT>::value, "Can only be applied on complete truth tables." );
+
+  /* transpose the permutation vector */
+  std::vector<uint8_t> perm_transposed( perm.size() );
+  for ( auto i = 0; i < perm.size(); ++i )
+    perm_transposed[perm[i]] = i;
+
+  const auto num_vars = from.num_vars();
+
+  /* is output complemented? */
+  auto res = ( ( phase >> num_vars ) & 1 ) ? ~from : from;
+
+  /* input complementations */
+  for ( auto i = 0u; i < num_vars; ++i )
+  {
+    if ( ( phase >> i ) & 1 )
+    {
+      flip_inplace( res, i );
+    }
+  }
+
+  /* input permutations */
+  for ( auto i = 0u; i < num_vars; ++i )
+  {
+    if ( perm_transposed[i] == i )
+    {
+      continue;
+    }
+
+    int k = i;
+    while ( perm_transposed[k] != i )
+    {
+      ++k;
+    }
+
+    swap_inplace( res, i, k );
+    std::swap( perm_transposed[i], perm_transposed[k] );
   }
 
   return res;

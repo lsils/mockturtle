@@ -28,7 +28,7 @@ TEST_CASE( "Rewrite bad MAJ", "[rewrite]" )
   mig_npn_resynthesis resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<mig_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<mig_network> exact_lib( resyn, eps );
 
   rewrite( mig, exact_lib );
 
@@ -52,7 +52,7 @@ TEST_CASE( "Rewrite XMG3 using a 4-input npn database", "[rewrite]" )
   xmg3_npn_resynthesis<xmg_network> resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<xmg_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<xmg_network> exact_lib( resyn, eps );
 
   rewrite( xmg, exact_lib );
 
@@ -70,7 +70,7 @@ TEST_CASE( "Rewrite constant", "[rewrite]" )
   mig_npn_resynthesis resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<mig_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<mig_network> exact_lib( resyn, eps );
 
   rewrite( mig, exact_lib );
 
@@ -92,7 +92,7 @@ TEST_CASE( "Rewrite inverted constant", "[rewrite]" )
   mig_npn_resynthesis resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<mig_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<mig_network> exact_lib( resyn, eps );
 
   rewrite( mig, exact_lib );
 
@@ -114,7 +114,8 @@ TEST_CASE( "Rewrite projection", "[rewrite]" )
   mig_npn_resynthesis resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<mig_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<mig_network> exact_lib( eps );
+  exact_lib.add_library( resyn );
 
   rewrite( mig, exact_lib );
 
@@ -137,7 +138,7 @@ TEST_CASE( "Rewrite inverted projection", "[rewrite]" )
   mig_npn_resynthesis resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<mig_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<mig_network> exact_lib( resyn, eps );
 
   rewrite( mig, exact_lib );
 
@@ -173,7 +174,7 @@ TEST_CASE( "Rewrite should avoid cycles", "[rewrite]" )
   xag_npn_resynthesis<aig_network> resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<aig_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<aig_network> exact_lib( resyn, eps );
 
   rewrite( aig, exact_lib );
 
@@ -204,7 +205,7 @@ TEST_CASE( "Rewrite depth-preserving", "[rewrite]" )
   xag_npn_resynthesis<aig_network> resyn;
   exact_library_params eps;
   eps.np_classification = false;
-  exact_library<aig_network, decltype( resyn )> exact_lib( resyn, eps );
+  exact_library<aig_network> exact_lib( resyn, eps );
 
   rewrite_params ps;
   ps.preserve_depth = true;

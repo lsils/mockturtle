@@ -27,6 +27,7 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/rewrite.hpp>
+#include <mockturtle/algorithms/xag_balancing.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/tech_library.hpp>
@@ -44,10 +45,8 @@ int main()
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, float, bool>
       exp( "rewrite", "benchmark", "size_before", "size_after", "depth_before", "depth_after", "runtime", "equivalent" );
 
-  xag_npn_resynthesis<xag_network, xag_network, xag_npn_db_kind::xag_incomplete> resyn;
-  exact_library_params eps;
-  eps.np_classification = false;
-  exact_library<xag_network, decltype( resyn )> exact_lib( resyn, eps );
+  xag_npn_resynthesis<xag_network, xag_network, xag_npn_db_kind::xag_complete> resyn;
+  exact_library<xag_network> exact_lib( resyn );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -61,6 +60,8 @@ int main()
 
     rewrite_params ps;
     rewrite_stats st;
+
+    xag_balance( xag );
 
     uint32_t const size_before = xag.num_gates();
     uint32_t const depth_before = depth_view( xag ).depth();

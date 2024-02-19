@@ -175,7 +175,9 @@ TEST_CASE( "Test quality improvement of MIG refactoring with Akers resynthesis",
 TEST_CASE( "Test quality improvement of MIG mapping", "[quality]" )
 {
   mig_npn_resynthesis resyn{ true };
-  exact_library<mig_network, mig_npn_resynthesis> lib( resyn );
+  exact_library_params eps;
+  eps.np_classification = true;
+  exact_library<mig_network> lib( resyn, eps );
   auto const v = foreach_benchmark<mig_network>( [&lib]( auto& ntk, auto ) {
     uint32_t const before = ntk.num_gates();
     map_params ps;

@@ -166,7 +166,8 @@ public:
     }
   }
 
-  void add_choice( node const& n1, node const& n2 )
+  template<typename T = Ntk>
+  std::enable_if_t<!std::is_same_v<typename T::node, typename T::signal>, void> add_choice( node const& n1, node const& n2 )
   {
     add_choice( n1, Ntk::make_signal( n2 ) );
   }
@@ -364,7 +365,8 @@ public:
     return repr ^ Ntk::is_complemented( _choice_phase->at( Ntk::node_to_index( n ) ) );
   }
 
-  signal get_choice_representative_signal( signal const& sig ) const
+  template<typename T = Ntk>
+  std::enable_if_t<!std::is_same_v<typename T::node, typename T::signal>, typename T::signal> get_choice_representative_signal( signal const& sig ) const
   {
     auto n = Ntk::get_node( sig );
     auto repr = get_choice_representative( n );

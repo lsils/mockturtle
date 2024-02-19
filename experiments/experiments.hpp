@@ -27,6 +27,7 @@
   \file experiments.hpp
   \brief Framework for simple experimental evaluation
 
+  \author Alessandro Tempia Calvino
   \author Mathias Soeken
 */
 
@@ -46,6 +47,7 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 #include <mockturtle/io/write_bench.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <nlohmann/json.hpp>
 
 namespace experiments
@@ -511,6 +513,16 @@ std::string benchmark_path( std::string const& benchmark_name )
 #endif
 }
 
+std::string cell_libraries_path( std::string const& cell_library_name )
+{
+#ifndef EXPERIMENTS_PATH
+  return fmt::format( "{}.genlib", cell_library_name );
+#else
+  return fmt::format( "{}cell_libraries/{}.genlib", EXPERIMENTS_PATH, cell_library_name );
+#endif
+}
+
+
 template<class Ntk>
 inline bool abc_cec_impl( Ntk const& ntk, std::string const& benchmark_fullpath )
 {
@@ -551,6 +563,48 @@ template<class Ntk>
 inline bool abc_cec( Ntk const& ntk, std::string const& benchmark )
 {
   return abc_cec_impl( ntk, benchmark_path( benchmark ) );
+}
+
+template<class Ntk>
+inline bool abc_cec_mapped_cell_impl( Ntk const& ntk, std::string const& benchmark_full_path, std::string const& library_full_path )
+{
+  mockturtle::write_verilog_with_cell( ntk, "/tmp/test.v" );
+  std::string command = fmt::format( "abc -q \"read_genlib {}; read -m /tmp/test.v; cec -n {}\"", library_full_path, benchmark_full_path );
+
+  std::array<char, 128> buffer;
+  std::string result;
+#if WIN32
+  std::unique_ptr<FILE, decltype( &_pclose )> pipe( _popen( command.c_str(), "r" ), _pclose );
+#else
+  std::unique_ptr<FILE, decltype( &pclose )> pipe( popen( command.c_str(), "r" ), pclose );
+#endif
+  if ( !pipe )
+  {
+    throw std::runtime_error( "popen() failed" );
+  }
+  while ( fgets( buffer.data(), buffer.size(), pipe.get() ) != nullptr )
+  {
+    result += buffer.data();
+  }
+
+  /* search for one line which says "Networks are equivalent" and ignore all other debug output from ABC */
+  std::stringstream ss( result );
+  std::string line;
+  while ( std::getline( ss, line, '\n' ) )
+  {
+    if ( line.size() >= 23u && line.substr( 0u, 23u ) == "Networks are equivalent" )
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+template<class Ntk>
+inline bool abc_cec_mapped_cell( Ntk const& ntk, std::string const& benchmark, std::string const& library )
+{
+  return abc_cec_mapped_cell_impl( ntk, benchmark_path( benchmark ), cell_libraries_path( library ) );
 }
 
 } // namespace experiments

@@ -47,7 +47,7 @@ using a NPN resynthesis database of structures:
    
    /* load the npn database in the library */
    mig_npn_resynthesis resyn{ true };
-   exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
+   exact_library<mig_network> exact_lib( resyn );
 
    /* perform graph mapping */
    map_params ps;
@@ -90,13 +90,33 @@ database of structures:
    
    /* load the npn database in the library */
    mig_npn_resynthesis resyn{ true };
-   exact_library<sequential<mig_network>, mig_npn_resynthesis> exact_lib( resyn );
+   exact_library<sequential<mig_network>> exact_lib( resyn );
 
    /* perform graph mapping */
    map_params ps;
    ps.skip_delay_round = true;
    ps.required_time = std::numeric_limits<double>::max();
    sequential<mig_network> res = map( aig, exact_lib, ps );
+
+The newest version of `map` for graph mapping or rewriting can
+leverage satisfiability don't cares:
+
+.. code-block:: c++
+
+   aig_network aig = ...;
+   
+   /* load the npn database in the library and compute don't care classes */
+   mig_npn_resynthesis resyn{ true };
+   exact_library_params lps;
+   lps.compute_dc_classes = true;
+   exact_library<mig_network> exact_lib( resyn, lps );
+
+   /* perform area-oriented rewriting */
+   map_params ps;
+   ps.skip_delay_round = true;
+   ps.required_time = std::numeric_limits<double>::max();
+   ps.use_dont_cares = true;
+   mig_network res = map( aig, exact_lib, ps );
 
 As a default setting, cut enumeration minimizes the truth tables.
 This helps improving the results but slows down the computation.
@@ -117,3 +137,83 @@ To increase this limit, change `max_cut_num` in `fast_network_cuts`.
 
 .. doxygenfunction:: mockturtle::map(Ntk const&, tech_library<NInputs, Configuration> const&, map_params const&, map_stats*)
 .. doxygenfunction:: mockturtle::map(Ntk&, exact_library<NtkDest, RewritingFn, NInputs> const&, map_params const&, map_stats*)
+
+
+
+Extended technology mapping
+---------------------------
+
+**Header:** ``mockturtle/algorithms/emap.hpp``
+
+The command `emap` stands for extended mapper. It supports large
+library cells, of more than 6 inputs, and can perform matching using 3
+different methods: Boolean, pattern, or hybrid. The current version
+can map to 2-output gates, such as full adders and half adders,
+and provides a 2x speedup in mapping time compared to command `map`
+for similar or better quality. Similarly, to `map`, the implementation
+is independent of the underlying graph representation.
+Additionally, `emap` supports "don't touch" white boxes (gates).
+
+Command `emap` can return the mapped network in two formats.
+Command `emap` returns a `cell_view<block_network>` that supports
+multi-output cells. Command `emap_klut` returns a `binding_view<klut_network>`
+similarly as command `map`.
+
+The following example shows how to perform delay-oriented technology mapping
+from an and-inverter graph using large cells up to 9 inputs:
+
+.. code-block:: c++
+
+   aig_network aig = ...;
+
+   /* read cell library in genlib format */
+   std::vector<gate> gates;
+   std::ifstream in( ... );
+   lorina::read_genlib( in, genlib_reader( gates ) )
+   tech_library<9> tech_lib( gates );
+
+   /* perform technology mapping */
+   cell_view<block_network> res = emap<9>( aig, tech_lib );
+
+The next example performs area-oriented graph mapping using multi-output cells:
+
+.. code-block:: c++
+
+   aig_network aig = ...;
+
+   /* read cell library in genlib format */
+   std::vector<gate> gates;
+   std::ifstream in( ... );
+   lorina::read_genlib( in, genlib_reader( gates ) )
+   tech_library tech_lib( gates );
+
+   /* perform technology mapping */
+   emap_params ps;
+   ps.area_oriented_mapping = true;
+   ps.map_multioutput = true;
+   cell_view<block_network> res = emap( aig, tech_lib, ps );
+
+In this case, `emap` is used to return a `block_network`, which can respresent multi-output
+cells as single nodes. Alternatively, also `emap_klut` can be used but multi-output cells
+would be reporesented by single-output nodes.
+
+The maximum number of cuts stored for each node is limited to 32.
+To increase this limit, change `max_cut_num` in `emap`.
+
+For further details and usage scenarios of `emap`, such as white boxes, please check the
+related tests.
+
+**Parameters and statistics**
+
+.. doxygenstruct:: mockturtle::emap_params
+   :members:
+
+.. doxygenstruct:: mockturtle::emap_stats
+   :members:
+
+**Algorithm**
+
+.. doxygenfunction:: mockturtle::emap(Ntk const&, tech_library<NInputs, Configuration> const&, emap_params const&, emap_stats*)
+.. doxygenfunction:: mockturtle::emap_klut(Ntk const&, tech_library<NInputs, Configuration> const&, emap_params const&, emap_stats*)
+.. doxygenfunction:: mockturtle::emap_node_map(Ntk const&, tech_library<NInputs, Configuration> const&, emap_params const&, emap_stats*)
+.. doxygenfunction:: mockturtle::emap_load_mapping(Ntk&)
