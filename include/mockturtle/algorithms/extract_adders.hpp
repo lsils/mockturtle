@@ -67,7 +67,7 @@ struct extract_adders_params
   /*! \brief Map inverted (NAND2-XNOR2, MIN3-XNOR3) */
   bool map_inverted{ false };
 
-  /*! \brief Filter cuts using the MFFC */
+  /*! \brief Filter HAs/FAs using MFFC inclusion */
   bool use_mffc_filter{ true };
 
   /*! \brief Be verbose */
@@ -439,7 +439,7 @@ private:
   {
     bool valid = true;
 
-    /* check containment of cut1 in cut2 and viceversa */
+    /* check containment of cut1 in cut2 and vice versa */
     if ( index1 > index2 )
     {
       std::swap( index1, index2 );

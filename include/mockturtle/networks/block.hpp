@@ -394,21 +394,25 @@ public:
 
   signal create_ha( signal a, signal b )
   {
+    /* PO0: carry, PO1: sum */
     return _create_node( { a, b }, { 4, 12 } );
   }
 
   signal create_hai( signal a, signal b )
   {
+    /* PO0: carry, PO1: sum */
     return _create_node( { a, b }, { 5, 13 } );
   }
 
   signal create_fa( signal a, signal b, signal c )
   {
+    /* PO0: carry, PO1: sum */
     return _create_node( { a, b, c }, { 14, 18 } );
   }
 
   signal create_fai( signal a, signal b, signal c )
   {
+    /* PO0: carry, PO1: sum */
     return _create_node( { a, b, c }, { 15, 19 } );
   }
 #pragma endregion

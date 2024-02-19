@@ -286,18 +286,17 @@ void decompose_multioutput_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterato
           }
           std::cerr << "[e] something went wrong, could not copy node " << ntk.node_to_index( node ) << "\n";
         } while ( false );
-
-        /* copy name */
-        if constexpr ( has_has_name_v<NtkSrc> && has_get_name_v<NtkSrc> && has_set_name_v<NtkDest> )
+      }
+      /* copy name */
+      if constexpr ( has_has_name_v<NtkSrc> && has_get_name_v<NtkSrc> && has_set_name_v<NtkDest> )
+      {
+        if ( ntk.has_name( f ) )
         {
-          if ( ntk.has_name( f ) )
-          {
-            dest.set_name( old_to_new[f], ntk.get_name( f ) );
-          }
-          if ( ntk.has_name( !f ) )
-          {
-            dest.set_name( !old_to_new[f], ntk.get_name( !f ) );
-          }
+          dest.set_name( old_to_new[f], ntk.get_name( f ) );
+        }
+        if ( ntk.has_name( !f ) )
+        {
+          dest.set_name( !old_to_new[f], ntk.get_name( !f ) );
         }
       }
     }
@@ -390,7 +389,7 @@ template<class NtkSrc, class NtkDest = NtkSrc>
   detail::clone_inputs( ntk, dest, cis, false );
 
   std::unordered_map<uint64_t, signal<NtkDest>> old_to_new;
-  detail::decompose_multioutput_impl( ntk, dest, cis.begin(), cis.end(), old_to_new, ps );
+  detail::decompose_multioutput_impl<NtkSrc, NtkDest>( ntk, dest, cis.begin(), cis.end(), old_to_new, ps );
 
   return dest;
 }
