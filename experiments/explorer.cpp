@@ -72,7 +72,7 @@ int main00( int argc, char* argv[] )
     /* map AIG to MIG */
     {
       mig_npn_resynthesis resyn2{ true };
-      exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+      exact_library<mig_network> exact_lib( resyn2 );
 
       map_params ps;
       ps.skip_delay_round = false;
@@ -153,7 +153,7 @@ int main0( int argc, char* argv[] )
     /* map AIG to MIG */
     {
       mig_npn_resynthesis resyn2{ true };
-      exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+      exact_library<mig_network> exact_lib( resyn2 );
 
       map_params ps;
       ps.skip_delay_round = true;
@@ -223,7 +223,7 @@ int main0( int argc, char* argv[] )
   return 0;
 }
 
-int main( int argc, char* argv[] )
+int main1( int argc, char* argv[] )
 {
   using namespace experiments;
   using namespace mockturtle;
@@ -285,7 +285,7 @@ int main( int argc, char* argv[] )
   return 0;
 }
 
-int main2( int argc, char* argv[] )
+int main( int argc, char* argv[] )
 {
   using namespace experiments;
   using namespace mockturtle;
@@ -296,7 +296,7 @@ int main2( int argc, char* argv[] )
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     if ( argc == 2 && benchmark != std::string( argv[1] ) ) continue;
-    if ( benchmark == "hyp" ) continue;
+    //if ( benchmark == "hyp" ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     using Ntk = mig_network;
@@ -307,6 +307,9 @@ int main2( int argc, char* argv[] )
       std::cerr << "Cannot read " << benchmark << "\n";
       return -1;
     }
+
+    depth_view d0( ntk );
+    fmt::print( "original size {} depth {}\n", ntk.num_gates(), d0.depth() );
 
     explorer_params ps;
     ps.num_restarts = 3;

@@ -155,6 +155,8 @@ public:
     {
       Ntk current = ntk.clone();
       auto new_cost = run_one_iteration( current, rnd(), init_cost );
+      //depth_view d( current );
+      //fmt::print( "[i] {}, {}\n", current.num_gates(), d.depth() );
       if ( new_cost < best_cost )
       {
         best = current.clone();
@@ -355,7 +357,7 @@ mig_network explore_mig( mig_network const& ntk, explorer_params const ps = {} )
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     mig_npn_resynthesis resyn{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
+    exact_library<mig_network> exact_lib( resyn );
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
@@ -397,31 +399,29 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
   explorer_stats st;
   explorer<Ntk> expl( ps, st );
 
-  /*expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+  expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "decompressing with &if using random value {}\n", rand );
     aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
 
     std::string script = fmt::format(
-      "&dch{}; &if -a -K {}; &mfs -e -W 20 -L 20{}",
+      "&dch{}; &if -a -K {}; &mfs -e -W 20 -L 20; &st",
       (rand & 0x1) ? " -f" : "",
-      2 + (i % 5),
-      ((rand >> 2) & 0x1) ? "; &fx; &st" : "");
+      2 + (i % 5));
     aig = call_abc_script( aig, script );
 
     mig_npn_resynthesis resyn2{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    exact_library<mig_network> exact_lib( resyn2 );
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
     _ntk = map( aig, exact_lib, mps );
-  } );*/
+  } );
 
   expl.add_decompressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     //fmt::print( "decompressing with k-LUT mapping using random value {}, k = {}\n", rand, 2 + (rand % 5) );
     lut_map_params mps;
     mps.cut_enumeration_ps.cut_size = 3 + (rand & 0x3); //3 + (i % 4);
-    mapping_view<Ntk> mapped{ _ntk };
-    lut_map( mapped, mps );
-    const auto klut = *collapse_mapped_network<klut_network>( mapped );
+    klut_network klut = lut_map( _ntk, mps );
     
     if ( (rand >> 2) & 0x1 )
     {
@@ -462,10 +462,11 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
     aig_network aig = cleanup_dangling<mig_network, aig_network>( _ntk );
     //std::string script = (rand & 0x1) ? "; &c2rs" : "; &dc2";
     std::string script = "&put; resyn2rs; &get";
+
     aig = call_abc_script( aig, script );
 
     mig_npn_resynthesis resyn2{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    exact_library<mig_network> exact_lib( resyn2 );
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
@@ -477,7 +478,7 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
     //_ntk = cleanup_dangling( _ntk );
 
     mig_npn_resynthesis resyn{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
+    exact_library<mig_network> exact_lib( resyn );
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
@@ -542,7 +543,7 @@ mig_network deepsyn_mig_depth( mig_network const& ntk, explorer_params const ps 
     aig = call_abc_script( aig, script );
 
     mig_npn_resynthesis resyn2{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    exact_library<mig_network> exact_lib( resyn2 );
     map_params mps;
     mps.skip_delay_round = false;
     mps.required_time = std::numeric_limits<double>::max();
@@ -578,7 +579,7 @@ mig_network deepsyn_mig_depth( mig_network const& ntk, explorer_params const ps 
     aig = call_abc_script( aig, script );
 
     mig_npn_resynthesis resyn2{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    exact_library<mig_network> exact_lib( resyn2 );
     map_params mps;
     mps.skip_delay_round = false;
     mps.required_time = std::numeric_limits<double>::max();
@@ -587,7 +588,7 @@ mig_network deepsyn_mig_depth( mig_network const& ntk, explorer_params const ps 
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     mig_npn_resynthesis resyn{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn );
+    exact_library<mig_network> exact_lib( resyn );
     map_params mps;
     mps.skip_delay_round = false;
     //mps.required_time = std::numeric_limits<double>::max();
@@ -685,7 +686,7 @@ mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {},
     aig = call_abc_script( aig, script );
 
     mig_npn_resynthesis resyn2{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    exact_library<mig_network> exact_lib( resyn2 );
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
@@ -698,7 +699,7 @@ mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {},
     aig = call_abc_script( aig, script );
 
     mig_npn_resynthesis resyn2{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    exact_library<mig_network> exact_lib( resyn2 );
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
@@ -707,7 +708,7 @@ mig_network deepsyn_aqfp( mig_network const& ntk, explorer_params const ps = {},
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
     mig_npn_resynthesis resyn2{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn2 );
+    exact_library<mig_network> exact_lib( resyn2 );
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
@@ -812,7 +813,7 @@ mig_network explore_aqfp( mig_network const& ntk, explorer_params const ps = {} 
     compress2rs_aig( aig );
 
     mig_npn_resynthesis resyn3{ true };
-    exact_library<mig_network, mig_npn_resynthesis> exact_lib( resyn3 );
+    exact_library<mig_network> exact_lib( resyn3 );
     map_params mps;
     mps.skip_delay_round = false;
     mps.required_time = std::numeric_limits<double>::max();
