@@ -30,9 +30,11 @@
 #include <fmt/format.h>
 #include <lorina/aiger.hpp>
 #include <lorina/genlib.hpp>
+#include <mockturtle/algorithms/aig_balancing.hpp>
 #include <mockturtle/algorithms/emap.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/block.hpp>
 #include <mockturtle/utils/name_utils.hpp>
@@ -76,6 +78,12 @@ int main()
       continue;
     }
 
+    /* remove structural redundancies */
+    aig_balancing_params bps;
+    bps.minimize_levels = false;
+    bps.fast_mode = false;
+    aig_balance( aig, bps );
+
     const uint32_t size_before = aig.num_gates();
     const uint32_t depth_before = depth_view( aig ).depth();
 
@@ -90,6 +98,9 @@ int main()
     restore_network_name( aig, res_names );
     restore_pio_names_by_order( aig, res_names );
     const auto cec = benchmark == "hyp" ? true : abc_cec_mapped_cell( res_names, benchmark, library );
+
+    /* write verilog netlist */
+    // write_verilog_with_cell( res_names, benchmark + "_mapped.v" );
 
     exp( benchmark, size_before, res.compute_area(), depth_before, res.compute_worst_delay(), st.multioutput_gates, to_seconds( st.time_total ), cec );
   }
