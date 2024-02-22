@@ -55,6 +55,11 @@ operation of the algorithms.
 
 .. _ABC: https://github.com/berkeley-abc/abc
 
+mockturtle can be configured using CMake build types. For performance,
+configure CMake in release mode::
+
+  cmake -DCMAKE_BUILD_TYPE=Release ..
+
 Using mockturtle as a library in another project
 ------------------------------------------------
 
