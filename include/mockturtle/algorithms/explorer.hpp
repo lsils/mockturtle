@@ -409,31 +409,57 @@ mig_network ale_flow( aig_network const& ntk )
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
-    mps.area_flow_rounds = 1;
-    mps.enable_logic_sharing = true; // high-effort remap
+    mps.ela_rounds = 2;
+    mps.enable_logic_sharing = true;
     mps.use_dont_cares = true;
+    mps.window_size = 12;
+    mps.logic_sharing_cut_limit = 1;
+    mps.cut_enumeration_ps.cut_limit = 8;
     
-    rewrite_params rps;
-    rps.use_dont_cares = true;
+    rewrite_params rwps;
+    rwps.allow_zero_gain = true;
+    rwps.window_size = 8;
 
     resubstitution_params rsps;
-    rsps.max_inserts = 20;
+    rsps.max_inserts = 2;
     rsps.max_pis = 8;
     
-    _ntk = map( _ntk, exact_lib, mps );
-    _ntk = map( _ntk, exact_lib, mps );
-    _ntk = map( _ntk, exact_lib, mps );
-    
-    rewrite( _ntk, exact_lib, rps );
-    _ntk = cleanup_dangling( _ntk );
-    rewrite( _ntk, exact_lib, rps );
-    _ntk = cleanup_dangling( _ntk );
-    rewrite( _ntk, exact_lib, rps );
-    _ntk = cleanup_dangling( _ntk );
+    for ( int i = 0; i < 3; ++i )
+    {
+      auto tmp = map( _ntk, exact_lib, mps );
+      if ( tmp.size() >= _ntk.size() )
+        break;
+      _ntk = tmp;
+    }
 
-    depth_view depth_mig{ _ntk };
-    fanout_view fanout_mig{ depth_mig };
-    mig_resubstitution2( fanout_mig, rsps );
+    for ( int i = 0; i < 3; ++i )
+    {
+      rwps.use_dont_cares = i == 1;
+      auto size_before = _ntk.size();
+      rewrite( _ntk, exact_lib, rwps );
+      _ntk = cleanup_dangling( _ntk );
+      if ( _ntk.size() >= size_before )
+        break;
+    }
+
+    while ( true )
+    {
+      auto size_before = _ntk.size();
+      auto mig_resub = cleanup_dangling( _ntk );
+
+      depth_view depth_mig{ mig_resub };
+      fanout_view fanout_mig{ depth_mig };
+
+      mig_resubstitution( fanout_mig, rsps );
+      mig_resub = cleanup_dangling( mig_resub );
+
+      if ( mig_resub.size() >= size_before )
+        break;
+      _ntk = mig_resub;
+    }
+
+    rsps.max_inserts = std::numeric_limits<uint32_t>::max();
+    sim_resubstitution( _ntk, rsps );
     _ntk = cleanup_dangling( _ntk );
     return _ntk;
 }
