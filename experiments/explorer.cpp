@@ -290,13 +290,13 @@ int main( int argc, char* argv[] )
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, bool> exp( "deepsyn_mig", "benchmark", "size_before", "size_after", "depth", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, float, bool> exp( "deepsyn_mig", "benchmark", "size_before", "size_after", "depth", "runtime", "cec" );
 
   //for ( auto const& benchmark : aqfp_benchmarks )
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     if ( argc == 2 && benchmark != std::string( argv[1] ) ) continue;
-    //if ( benchmark == "hyp" ) continue;
+    if ( benchmark == "hyp" && argc == 1 ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     using Ntk = mig_network;
@@ -312,19 +312,22 @@ int main( int argc, char* argv[] )
     fmt::print( "original size {} depth {}\n", ntk.num_gates(), d0.depth() );
 
     explorer_params ps;
-    ps.num_restarts = 3;
+    ps.num_restarts = 4;
     ps.random_seed = 42124;
-    ps.timeout = 1000;
+    ps.timeout = std::max(1000u, ntk.num_gates()/10);
     ps.max_steps_no_impr = 50;
     ps.compressing_scripts_per_step = 1;
     ps.verbose = true;
     //ps.very_verbose = true;
+    std::cout << std::flush;
 
-    Ntk opt = deepsyn_mig( ntk, ps );
+    stopwatch<>::duration rt{0};
+    Ntk opt = call_with_stopwatch( rt, [&](){ return deepsyn_mig( ntk, ps ); } );
+    write_verilog( opt, "best_MIGs/" + benchmark + ".v" );
     bool const cec = ( benchmark == "hyp" ) ? true : abc_cec_impl( opt, benchmark_path( benchmark ) );
     depth_view d( opt );
 
-    exp( benchmark, ntk.num_gates(), opt.num_gates(), d.depth(), cec );
+    exp( benchmark, ntk.num_gates(), opt.num_gates(), d.depth(), to_seconds(rt), cec );
   }
 
   exp.save();

@@ -39,6 +39,7 @@
 #include "refactoring.hpp"
 #include "mig_algebraic_rewriting.hpp"
 #include "mapper.hpp"
+#include "rewrite.hpp"
 #include "node_resynthesis/mig_npn.hpp"
 #include "node_resynthesis/sop_factoring.hpp"
 #include "resubstitution.hpp"
@@ -162,6 +163,8 @@ public:
         best = current.clone();
         best_cost = new_cost;
       }
+      if ( _ps.verbose )
+        fmt::print( "[i] best cost in restart {}: {}, overall best cost: {}\n", i, new_cost, best_cost );
     }
     return best;
   }
@@ -171,7 +174,7 @@ private:
   {
     if ( _ps.verbose )
     {
-      fmt::print( "\n[i] new iteration using seed {}, original cost = {}\n", seed, init_cost );
+      fmt::print( "\n[i] new restart using seed {}, original cost = {}\n", seed, init_cost );
     }
  
     stopwatch<>::duration elapsed_time{0};
@@ -217,16 +220,17 @@ private:
       if ( i - last_update >= _ps.max_steps_no_impr )
       {
         if ( _ps.verbose )
-          fmt::print( "[i] break iteration at step {} after {} steps without improvement (elapsed time: {} secs)\n", i, _ps.max_steps_no_impr, to_seconds( elapsed_time ) );
+          fmt::print( "[i] break restart at step {} after {} steps without improvement (elapsed time: {} secs)\n", i, _ps.max_steps_no_impr, to_seconds( elapsed_time ) );
         break;
       }
       if ( to_seconds( elapsed_time ) >= _ps.timeout )
       {
         if ( _ps.verbose )
-          fmt::print( "[i] break iteration at step {} after timeout of {} secs\n", i, to_seconds( elapsed_time ) );
+          fmt::print( "[i] break restart at step {} after timeout of {} secs\n", i, to_seconds( elapsed_time ) );
         break;
       }
     }
+    std::cout << std::flush;
     ntk = best;
     return best_cost;
   }
@@ -392,6 +396,48 @@ mig_network explore_mig( mig_network const& ntk, explorer_params const ps = {} )
   return expl.run( ntk );
 }
 
+mig_network ale_flow( aig_network const& ntk )
+{
+    aig_network aig = call_abc_script( ntk, "&c2rs" );
+    mig_network _ntk = cleanup_dangling<aig_network, mig_network>( aig );
+    mig_npn_resynthesis resyn{ true };
+    exact_library_params eps;
+    eps.np_classification = false;
+    eps.compute_dc_classes = true;
+    exact_library<mig_network> exact_lib( resyn, eps );
+    
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    mps.area_flow_rounds = 1;
+    mps.enable_logic_sharing = true; // high-effort remap
+    mps.use_dont_cares = true;
+    
+    rewrite_params rps;
+    rps.use_dont_cares = true;
+
+    resubstitution_params rsps;
+    rsps.max_inserts = 20;
+    rsps.max_pis = 8;
+    
+    _ntk = map( _ntk, exact_lib, mps );
+    _ntk = map( _ntk, exact_lib, mps );
+    _ntk = map( _ntk, exact_lib, mps );
+    
+    rewrite( _ntk, exact_lib, rps );
+    _ntk = cleanup_dangling( _ntk );
+    rewrite( _ntk, exact_lib, rps );
+    _ntk = cleanup_dangling( _ntk );
+    rewrite( _ntk, exact_lib, rps );
+    _ntk = cleanup_dangling( _ntk );
+
+    depth_view depth_mig{ _ntk };
+    fanout_view fanout_mig{ depth_mig };
+    mig_resubstitution2( fanout_mig, rsps );
+    _ntk = cleanup_dangling( _ntk );
+    return _ntk;
+}
+
 mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
 {
   using Ntk = mig_network;
@@ -464,27 +510,98 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
     std::string script = "&put; resyn2rs; &get";
 
     aig = call_abc_script( aig, script );
-
-    mig_npn_resynthesis resyn2{ true };
-    exact_library<mig_network> exact_lib( resyn2 );
-    map_params mps;
-    mps.skip_delay_round = true;
-    mps.required_time = std::numeric_limits<double>::max();
-    _ntk = map( aig, exact_lib, mps );
-  } );
-
-  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
-    //fmt::print( "compressing with remapping using random value {}\n", rand );
-    //_ntk = cleanup_dangling( _ntk );
-
+    
     mig_npn_resynthesis resyn{ true };
-    exact_library<mig_network> exact_lib( resyn );
+    exact_library_params eps;
+    eps.np_classification = false;
+    eps.compute_dc_classes = rand & 0x2;
+    exact_library<mig_network> exact_lib( resyn, eps );
     map_params mps;
     mps.skip_delay_round = true;
     mps.required_time = std::numeric_limits<double>::max();
     mps.area_flow_rounds = 1;
     mps.enable_logic_sharing = rand & 0x1; // high-effort remap
+    mps.use_dont_cares = rand & 0x2;
+    _ntk = map( aig, exact_lib, mps );
+
+  } );
+  
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "compressing with Ale flow using random value {}\n", rand );
+    //_ntk = cleanup_dangling( _ntk );
+
+    mig_npn_resynthesis resyn{ true };
+    exact_library_params eps;
+    eps.np_classification = false;
+    eps.compute_dc_classes = true;
+    exact_library<mig_network> exact_lib( resyn, eps );
+    
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    mps.area_flow_rounds = 1;
+    mps.enable_logic_sharing = true; // high-effort remap
+    
+    rewrite_params rps;
+
+    resubstitution_params rsps;
+    rsps.max_inserts = 20;
+    rsps.max_pis = 8;
+    
+    mps.use_dont_cares = rand & 0x8;
     _ntk = map( _ntk, exact_lib, mps );
+    mps.use_dont_cares = rand & 0xf;
+    _ntk = map( _ntk, exact_lib, mps );
+    mps.use_dont_cares = rand & 0x10;
+    _ntk = map( _ntk, exact_lib, mps );
+
+    rps.use_dont_cares = rand & 0x1;
+    rewrite( _ntk, exact_lib, rps );
+    _ntk = cleanup_dangling( _ntk );
+    rps.use_dont_cares = rand & 0x2;
+    rewrite( _ntk, exact_lib, rps );
+    _ntk = cleanup_dangling( _ntk );
+    rps.use_dont_cares = rand & 0x4;
+    rewrite( _ntk, exact_lib, rps );
+    _ntk = cleanup_dangling( _ntk );
+
+    depth_view depth_mig{ _ntk };
+    fanout_view fanout_mig{ depth_mig };
+    mig_resubstitution2( fanout_mig, rsps );
+    _ntk = cleanup_dangling( _ntk );
+  } );
+
+  /*expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "compressing with remapping using random value {}\n", rand );
+    //_ntk = cleanup_dangling( _ntk );
+
+    mig_npn_resynthesis resyn{ true };
+    exact_library_params eps;
+    eps.np_classification = false;
+    eps.compute_dc_classes = rand & 0x2;
+    exact_library<mig_network> exact_lib( resyn, eps );
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    mps.area_flow_rounds = 1;
+    mps.enable_logic_sharing = rand & 0x1; // high-effort remap
+    mps.use_dont_cares = rand & 0x2;
+    _ntk = map( _ntk, exact_lib, mps );
+  } );
+  
+  expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
+    //fmt::print( "compressing with rewriting using random value {}\n", rand );
+    //_ntk = cleanup_dangling( _ntk );
+
+    mig_npn_resynthesis resyn{ true };
+    exact_library_params eps;
+    eps.np_classification = false;
+    eps.compute_dc_classes = rand & 0x1;
+    exact_library<mig_network> exact_lib( resyn, eps );
+    rewrite_params rps;
+    rps.use_dont_cares = rand & 0x1;
+    rewrite( _ntk, exact_lib, rps );
+    _ntk = cleanup_dangling( _ntk );
   } );
 
   expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
@@ -503,7 +620,7 @@ mig_network deepsyn_mig( mig_network const& ntk, explorer_params const ps = {} )
     fanout_view fanout_mig{ depth_mig };
     mig_resubstitution2( fanout_mig, rps );
     _ntk = cleanup_dangling( _ntk );
-  } );
+  } );*/
 
   //expl.add_compressing_script( []( Ntk& _ntk, uint32_t i, uint32_t rand ){
   //  depth_view depth_mig{ _ntk };

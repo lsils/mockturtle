@@ -8,4 +8,5 @@ endif()
 
 # Compile ABC as a library with the following command and change the path to the generated libabc.a
 # make ABC_USE_NAMESPACE=abc ABC_USE_NO_READLINE=1 ABC_USE_NO_CUDD=1 libabc.a
-target_link_libraries(mockturtle INTERFACE /Users/sylee/Documents/GitHub/iwls/abc/libabc.a)
+target_link_libraries(mockturtle INTERFACE ${PROJECT_SOURCE_DIR}/lib/abc_static/libabc_linux.a)
+target_link_libraries(mockturtle INTERFACE dl)
