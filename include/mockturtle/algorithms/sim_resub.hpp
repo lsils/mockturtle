@@ -369,8 +369,8 @@ template<class Ntk>
 void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubstitution_stats* pst = nullptr )
 {
   static_assert( std::is_same_v<typename Ntk::base_type, aig_network> 
-                 || std::is_same_v<typename Ntk::base_type, xag_network
-                 || std::is_same_v<typename Ntk::base_type, mig_network>>, "Currently only supports AIG, XAG, and MIG" );
+                 || std::is_same_v<typename Ntk::base_type, xag_network>
+                 || std::is_same_v<typename Ntk::base_type, mig_network>, "Currently only supports AIG, XAG, and MIG" );
 
   using resub_view_t = fanout_view<depth_view<Ntk>>;
   depth_view<Ntk> depth_view{ ntk };

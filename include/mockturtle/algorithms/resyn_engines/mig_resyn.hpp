@@ -68,6 +68,7 @@ struct mig_resyn_static_params
 
 struct mig_resyn_stats
 {
+  void report() const {}
 };
 
 /*! \brief Logic resynthesis engine for MIGs with a bottom-up approach.
