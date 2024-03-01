@@ -1,4 +1,5 @@
 #pragma once
+#ifdef ENABLE_ABC
 
 #include "detail/foreach.hpp"
 #include <kitty/dynamic_truth_table.hpp>
@@ -264,3 +265,5 @@ private:
 }; // gia_network
 
 } // mockturtle
+
+#endif

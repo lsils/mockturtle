@@ -31,6 +31,7 @@
 */
 
 #pragma once
+#ifdef ENABLE_ABC
 
 #include "../networks/aig.hpp"
 #include "../networks/gia.hpp"
@@ -65,10 +66,6 @@ void aig_to_gia(gia_network &gia, aig_network aig) {
   aig.foreach_po([&](aig_signal f){
     gia.create_po(aig.is_complemented(f) ? !a_to_g[aig.get_node(f)] : a_to_g[aig.get_node(f)]);
   });
-
-  // for (const auto& v : a_to_g) {
-  //   printf("n = %d c = %d\n", gia.get_node(v), gia.is_complemented(v));
-  // }
 }
 
 void gia_to_aig(aig_network aig, const gia_network &gia) {
@@ -99,10 +96,6 @@ void gia_to_aig(aig_network aig, const gia_network &gia) {
   gia.foreach_po([&](gia_network::signal f){
     aig.create_po(gia.is_complemented(f) ? !g_to_a[gia.get_node(f)] : g_to_a[gia.get_node(f)]);
   });
-
-  // for (const auto& v : g_to_a) {
-  //   printf("n = %s%llu\n", aig.is_complemented(v) ? "~" : "", aig.get_node(v));
-  // }
 }
 
 aig_network call_abc_script( aig_network const& aig, std::string const& script )
@@ -121,3 +114,5 @@ aig_network call_abc_script( aig_network const& aig, std::string const& script )
 }
 
 }
+
+#endif

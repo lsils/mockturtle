@@ -6,7 +6,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
 target_link_libraries(mockturtle INTERFACE stdc++fs)
 endif()
 
-# Compile ABC as a library with the following command and change the path to the generated libabc.a
-# make ABC_USE_NAMESPACE=abc ABC_USE_NO_READLINE=1 ABC_USE_NO_CUDD=1 libabc.a
-target_link_libraries(mockturtle INTERFACE ${PROJECT_SOURCE_DIR}/lib/abc_static/libabc_linux.a)
+if(ENABLE_ABC)
+target_link_libraries(mockturtle INTERFACE ${PROJECT_SOURCE_DIR}/lib/abc_static/libabc.a)
 target_link_libraries(mockturtle INTERFACE dl)
+target_compile_definitions(mockturtle INTERFACE ENABLE_ABC)
+endif()

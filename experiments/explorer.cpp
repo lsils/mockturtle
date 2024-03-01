@@ -23,6 +23,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#ifdef ENABLE_ABC
+
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/explorer.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
@@ -38,6 +40,8 @@
 #include <fmt/format.h>
 #include <string>
 
+using namespace mockturtle;
+
 static const std::string benchmark_repo_path = "../../SCE-benchmarks";
 
 /* AQFP benchmarks */
@@ -50,10 +54,77 @@ std::string benchmark_aqfp_path( std::string const& benchmark_name )
   return fmt::format( "{}/MCNC/original/{}.v", benchmark_repo_path, benchmark_name );
 }
 
+mig_network ale_flow( aig_network const& ntk )
+{
+    aig_network aig = call_abc_script( ntk, "&c2rs" );
+    mig_network _ntk = cleanup_dangling<aig_network, mig_network>( aig );
+    mig_npn_resynthesis resyn{ true };
+    exact_library_params eps;
+    eps.np_classification = false;
+    eps.compute_dc_classes = true;
+    exact_library<mig_network> exact_lib( resyn, eps );
+    
+    map_params mps;
+    mps.skip_delay_round = true;
+    mps.required_time = std::numeric_limits<double>::max();
+    mps.ela_rounds = 2;
+    mps.enable_logic_sharing = true;
+    mps.use_dont_cares = true;
+    mps.window_size = 12;
+    mps.logic_sharing_cut_limit = 1;
+    mps.cut_enumeration_ps.cut_limit = 8;
+    
+    rewrite_params rwps;
+    rwps.allow_zero_gain = true;
+    rwps.window_size = 8;
+
+    resubstitution_params rsps;
+    rsps.max_inserts = 2;
+    rsps.max_pis = 8;
+    
+    for ( int i = 0; i < 3; ++i )
+    {
+      auto tmp = map( _ntk, exact_lib, mps );
+      if ( tmp.size() >= _ntk.size() )
+        break;
+      _ntk = tmp;
+    }
+
+    for ( int i = 0; i < 3; ++i )
+    {
+      rwps.use_dont_cares = i == 1;
+      auto size_before = _ntk.size();
+      rewrite( _ntk, exact_lib, rwps );
+      _ntk = cleanup_dangling( _ntk );
+      if ( _ntk.size() >= size_before )
+        break;
+    }
+
+    while ( true )
+    {
+      auto size_before = _ntk.size();
+      auto mig_resub = cleanup_dangling( _ntk );
+
+      depth_view depth_mig{ mig_resub };
+      fanout_view fanout_mig{ depth_mig };
+
+      mig_resubstitution( fanout_mig, rsps );
+      mig_resub = cleanup_dangling( mig_resub );
+
+      if ( mig_resub.size() >= size_before )
+        break;
+      _ntk = mig_resub;
+    }
+
+    rsps.max_inserts = std::numeric_limits<uint32_t>::max();
+    sim_resubstitution( _ntk, rsps );
+    _ntk = cleanup_dangling( _ntk );
+    return _ntk;
+}
+
 int main00( int argc, char* argv[] )
 {
   using namespace experiments;
-  using namespace mockturtle;
 
   (void)argc;
   std::string benchmark = std::string( argv[1] );
@@ -130,7 +201,6 @@ int main00( int argc, char* argv[] )
 int main0( int argc, char* argv[] )
 {
   using namespace experiments;
-  using namespace mockturtle;
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, bool, bool> exp( "deepsyn0", "benchmark", "#JJ", "JJ depth", "MIG size", "MIG depth", "cec", "verified" );
 
@@ -226,7 +296,6 @@ int main0( int argc, char* argv[] )
 int main1( int argc, char* argv[] )
 {
   using namespace experiments;
-  using namespace mockturtle;
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, float, bool, bool> exp( "deepsyn_aqfp", "benchmark", "#JJ", "JJ depth", "JJ EDP", "MIG size", "MIG depth", "t total", "t eval", "cec", "verified" );
 
@@ -322,7 +391,7 @@ int main( int argc, char* argv[] )
     std::cout << std::flush;
 
     stopwatch<>::duration rt{0};
-    Ntk opt = call_with_stopwatch( rt, [&](){ return deepsyn_mig( ntk, ps ); } );
+    Ntk opt = call_with_stopwatch( rt, [&](){ return deepsyn_mig_v1( ntk, ps ); } );
     write_verilog( opt, "best_MIGs/" + benchmark + ".v" );
     bool const cec = ( benchmark == "hyp" ) ? true : abc_cec_impl( opt, benchmark_path( benchmark ) );
     depth_view d( opt );
@@ -335,3 +404,4 @@ int main( int argc, char* argv[] )
 
   return 0;
 }
+#endif
