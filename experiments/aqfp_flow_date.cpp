@@ -47,7 +47,6 @@
 #include <mockturtle/io/blif_reader.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
 #include <mockturtle/io/write_blif.hpp>
-#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/networks/aqfp.hpp>
 #include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
@@ -115,10 +114,10 @@ bool has_better_level( Result& current, Result& previous )
 template<typename Ntk>
 mockturtle::klut_network lut_map_abc( Ntk const& ntk, uint32_t k = 4, std::string name = {} )
 {
-  std::string tempfile1 = "temp1_" + name + ".v";
+  std::string tempfile1 = "temp1_" + name + ".blif";
   std::string tempfile2 = "temp2_" + name + ".blif";
 
-  mockturtle::write_verilog( ntk, tempfile1 );
+  mockturtle::write_blif( ntk, tempfile1 );
 
   system( fmt::format( "abc -q \"{}; &get; &if -K {}; &put; write_blif {}\" >> /dev/null 2>&1", tempfile1, k, tempfile2 ).c_str() );
 
