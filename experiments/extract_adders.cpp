@@ -56,7 +56,10 @@ int main()
     }
 
     /* Remove structural redundancies (increases the number of discoverable HAs/FAs) */
-    aig_balance( aig, { false } );
+    aig_balancing_params bps;
+    bps.minimize_levels = false;
+    bps.fast_mode = false;
+    aig_balance( aig, bps );
 
     const uint32_t size_before = aig.num_gates();
 
