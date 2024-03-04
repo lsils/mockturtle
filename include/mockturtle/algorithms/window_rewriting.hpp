@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
+ * Copyright (C) 2018-2023  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -31,9 +31,13 @@
   \author Siang-Yun (Sonia) Lee
 */
 
+#include "../networks/aig.hpp"
 #include "../networks/events.hpp"
+#include "../networks/xag.hpp"
 #include "../utils/debugging_utils.hpp"
 #include "../utils/index_list.hpp"
+#include "../utils/network_utils.hpp"
+#include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../utils/window_utils.hpp"
 #include "../views/color_view.hpp"
@@ -41,9 +45,12 @@
 #include "../views/fanout_view.hpp"
 #include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
+#include "detail/resub_utils.hpp"
+#include "resyn_engines/xag_resyn.hpp"
+#include "simulation.hpp"
 
-#include <abcresub/abcresub2.hpp>
 #include <fmt/format.h>
+#include <kitty/kitty.hpp>
 #include <stack>
 
 #pragma once
@@ -77,6 +84,8 @@ struct window_rewriting_params
     recompute,
   } level_update_strategy = dont_update;
 
+  uint64_t max_num_divs{ 100 };
+
   bool filter_cyclic_substitutions{ false };
 }; /* window_rewriting_params */
 
@@ -103,10 +112,29 @@ struct window_rewriting_stats
   /*! \brief Time for encoding index_list. */
   stopwatch<>::duration time_encode{ 0 };
 
+  /*! \brief Time for computing dependency circuit. */
+  stopwatch<>::duration time_resyn{ 0 };
+
+  /*! \brief Time for simulation. */
+  stopwatch<>::duration time_simulate{ 0 };
+
+  /*! \brief Time for marking TFO and MFFC. */
+  stopwatch<>::duration time_mark{ 0 };
+
+  /*! \brief Time for adding divisor truth tables. */
+  stopwatch<>::duration time_add_divisor{ 0 };
+
+  /*! \brief Time for substitution within windows. */
+  stopwatch<>::duration time_window_substitute{ 0 };
+
+  /*! \brief Time for constructing fanout_view within windows. */
+  stopwatch<>::duration time_fanout_view{ 0 };
+
   /*! \brief Time for detecting cycles. */
   stopwatch<>::duration time_cycle{ 0 };
 
   /*! \brief Total number of calls to the resub. engine. */
+  uint64_t num_resyn_invokes{ 0 };
   uint64_t num_substitutions{ 0 };
   uint64_t num_restrashes{ 0 };
   uint64_t num_windows{ 0 };
@@ -121,9 +149,16 @@ struct window_rewriting_stats
     time_levels += other.time_levels;
     time_topo_sort += other.time_topo_sort;
     time_encode += other.time_encode;
+    time_resyn += other.time_resyn;
+    time_simulate += other.time_simulate;
+    time_mark += other.time_mark;
+    time_add_divisor += other.time_add_divisor;
+    time_window_substitute += other.time_window_substitute;
+    time_fanout_view += other.time_fanout_view;
     num_substitutions += other.num_substitutions;
     num_restrashes += other.num_restrashes;
     num_windows += other.num_windows;
+    num_resyn_invokes += other.num_resyn_invokes;
     gain += other.gain;
     return *this;
   }
@@ -138,8 +173,14 @@ struct window_rewriting_stats
                 to_seconds( time_window ), to_seconds( time_window ) / to_seconds( time_total ) * 100, num_windows );
     fmt::print( "[i] Top.sort =   {:7.2f} ({:5.2f}%)\n", to_seconds( time_topo_sort ), to_seconds( time_topo_sort ) / to_seconds( time_total ) * 100 );
     fmt::print( "[i] Enc.list =   {:7.2f} ({:5.2f}%)\n", to_seconds( time_encode ), to_seconds( time_encode ) / to_seconds( time_total ) * 100 );
-    fmt::print( "[i] Optimize =   {:7.2f} ({:5.2f}%) (#resubs = {}, est. gain = {})\n",
-                to_seconds( time_optimize ), to_seconds( time_optimize ) / to_seconds( time_total ) * 100, num_substitutions, gain );
+    fmt::print( "[i] Optimize =   {:7.2f} ({:5.2f}%) (#invokes = {}, #resubs = {}, est. gain = {})\n",
+                to_seconds( time_optimize ), to_seconds( time_optimize ) / to_seconds( time_total ) * 100, num_resyn_invokes, num_substitutions, gain );
+    fmt::print( "[i] >> resynthesis = {:7.2f} ({:5.2f}%)\n", to_seconds( time_resyn ), to_seconds( time_resyn ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> simulate =    {:7.2f} ({:5.2f}%)\n", to_seconds( time_simulate ), to_seconds( time_simulate ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> marking =     {:7.2f} ({:5.2f}%)\n", to_seconds( time_mark ), to_seconds( time_mark ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> add div. =    {:7.2f} ({:5.2f}%)\n", to_seconds( time_add_divisor ), to_seconds( time_add_divisor ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> substitute =  {:7.2f} ({:5.2f}%)\n", to_seconds( time_window_substitute ), to_seconds( time_window_substitute ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> fanout_view = {:7.2f} ({:5.2f}%)\n", to_seconds( time_fanout_view ), to_seconds( time_fanout_view ) / to_seconds( time_optimize ) * 100 );
     fmt::print( "[i] Substitute = {:7.2f} ({:5.2f}%) (#hash upd. = {})\n",
                 to_seconds( time_substitute ),
                 to_seconds( time_substitute ) / to_seconds( time_total ) * 100,
@@ -195,7 +236,15 @@ bool is_contained_in_tfi( Ntk const& ntk, typename Ntk::node const& node, typena
 namespace detail
 {
 
-template<class Ntk>
+template<typename NtkWin, typename TT>
+struct resyn_sparams : public xag_resyn_static_params
+{
+  using truth_table_storage_type = node_map<TT, NtkWin>;
+  using node_type = typename NtkWin::signal;
+  static constexpr bool use_xor = false;
+};
+
+template<class Ntk, typename NtkWin = Ntk, typename TT = kitty::dynamic_truth_table, typename ResynEngine = xag_resyn_decompose<TT, resyn_sparams<NtkWin, TT>>>
 class window_rewriting_impl
 {
 public:
@@ -207,7 +256,7 @@ public:
       : ntk( ntk ), ps( ps ), st( st )
         /* initialize levels to network depth */
         ,
-        levels( ntk.depth() )
+        levels( ntk.depth() ), engine( engine_st )
   {
     register_events();
   }
@@ -223,6 +272,15 @@ public:
   {
     stopwatch t( st.time_total );
 
+    if constexpr ( std::is_same_v<TT, kitty::dynamic_truth_table> )
+    {
+      sim = new default_simulator<TT>( ps.cut_size );
+    }
+    else
+    {
+      sim = new default_simulator<TT>();
+    }
+
     create_window_impl windowing( ntk );
     uint32_t const size = ntk.size();
     for ( uint32_t n = 0u; n < size; ++n )
@@ -232,23 +290,16 @@ public:
         continue;
       }
 
-      if ( const auto w = call_with_stopwatch( st.time_window, [&]() { return windowing.run( n, ps.cut_size, ps.num_levels ); } ) )
+      if ( auto w = call_with_stopwatch( st.time_window, [&]() { return windowing.run( n, ps.cut_size, ps.num_levels ); } ) )
       {
         ++st.num_windows;
 
-        auto topo_win = call_with_stopwatch( st.time_topo_sort, ( [&]() {
-                                               window_view win( ntk, w->inputs, w->outputs, w->nodes );
-                                               topo_view topo_win{ win };
-                                               return topo_win;
-                                             } ) );
-
-        abc_index_list il;
+        NtkWin win;
         call_with_stopwatch( st.time_encode, [&]() {
-          encode( il, topo_win );
+          clone_subnetwork( ntk, w->inputs, w->outputs, w->nodes, win );
         } );
 
-        auto il_opt = optimize( il );
-        if ( !il_opt )
+        if ( !optimize( win ) )
         {
           continue;
         }
@@ -259,48 +310,42 @@ public:
           signals.push_back( ntk.make_signal( i ) );
         }
 
-        std::vector<signal> outputs;
-        topo_win.foreach_co( [&]( signal const& o ) {
-          outputs.push_back( o );
-        } );
-
         uint32_t counter{ 0 };
         ++st.num_substitutions;
-
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
 
         std::list<std::pair<node, signal>> substitutions;
-        insert( ntk, std::begin( signals ), std::end( signals ), *il_opt,
-                [&]( signal const& _new ) {
-                  assert( !ntk.is_dead( ntk.get_node( _new ) ) );
-                  auto const _old = outputs.at( counter++ );
-                  if ( _old == _new )
-                  {
-                    return true;
-                  }
-
-                  /* ensure that _old is not in the TFI of _new */
-                  // assert( !is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) );
-                  if ( ps.filter_cyclic_substitutions &&
-                       call_with_stopwatch( st.time_window, [&]() { return is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ); } ) )
-                  {
-                    std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
-                    substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
-                    for ( auto it = std::rbegin( substitutions ); it != std::rend( substitutions ); ++it )
-                    {
-                      if ( ntk.fanout_size( ntk.get_node( it->second ) ) == 0u )
+        insert_ntk( ntk, std::begin( signals ), std::end( signals ), win,
+                    [&]( signal const& _new ) {
+                      assert( !ntk.is_dead( ntk.get_node( _new ) ) );
+                      auto const _old = w->outputs.at( counter++ );
+                      if ( _old == _new )
                       {
-                        ntk.take_out_node( ntk.get_node( it->second ) );
+                        return true;
                       }
-                    }
-                    substitutions.clear();
-                    return false;
-                  }
 
-                  substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
-                  return true;
-                } );
+                      /* ensure that _old is not in the TFI of _new */
+                      // assert( !is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) );
+                      if ( ps.filter_cyclic_substitutions &&
+                           call_with_stopwatch( st.time_window, [&]() { return is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ); } ) )
+                      {
+                        std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
+                        substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
+                        for ( auto it = std::rbegin( substitutions ); it != std::rend( substitutions ); ++it )
+                        {
+                          if ( ntk.fanout_size( ntk.get_node( it->second ) ) == 0u )
+                          {
+                            ntk.take_out_node( ntk.get_node( it->second ) );
+                          }
+                        }
+                        substitutions.clear();
+                        return false;
+                      }
+
+                      substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
+                      return true;
+                    } );
 
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
@@ -336,6 +381,8 @@ public:
 
     /* ensure that no dead nodes are reachable */
     assert( count_reachable_dead_nodes( ntk ) == 0u );
+
+    delete sim;
   }
 
 private:
@@ -364,58 +411,126 @@ private:
     delete_event = ntk.events().register_delete_event( update_level_of_deleted_node );
   }
 
-  /* optimize an index_list and return the new list */
-  std::optional<abc_index_list> optimize( abc_index_list const& il, bool verbose = false )
+  bool optimize( NtkWin& win )
   {
     stopwatch t( st.time_optimize );
+    bool changed = false;
 
-    int* raw = ABC_CALLOC( int, il.size() + 1u );
-    uint64_t i = 0;
-    for ( auto const& v : il.raw() )
-    {
-      raw[i++] = v;
-    }
-    raw[1] = 0; /* fix encoding */
+    node_map<TT, NtkWin> tts = call_with_stopwatch( st.time_simulate, [&]() {
+      return simulate_nodes<TT, NtkWin>( win, *sim );
+    } );
+    auto win_add_event = win.events().register_add_event( [&]( auto const& n ) {
+      call_with_stopwatch( st.time_simulate, [&]() {
+        tts.resize();
+        std::vector<TT> fanin_values( win.fanin_size( n ) );
+        win.foreach_fanin( n, [&]( auto const& f, auto i ) {
+          fanin_values[i] = tts[f];
+        } );
+        tts[n] = win.compute( n, fanin_values.begin(), fanin_values.end() );
+      } );
+    } );
+    fanout_view<NtkWin> fanout_win = make_with_stopwatch<fanout_view<NtkWin>, NtkWin&>( st.time_fanout_view, win );
+    // fanout_view<NtkWin> fanout_win{win};
 
-    abcresub::Abc_ResubPrepareManager( 1 );
-    int* new_raw = nullptr;
-    int num_resubs = 0;
-    uint64_t new_entries = abcresub::Abc_ResubComputeWindow( raw, ( il.size() / 2u ), 1000, -1, 0, 0, 0, 0, &new_raw, &num_resubs );
-    abcresub::Abc_ResubPrepareManager( 0 );
-
-    if ( verbose )
-    {
-      fmt::print( "Performed resub {} times.  Reduced {} nodes.\n",
-                  num_resubs, new_entries > 0 ? ( ( il.size() / 2u ) - new_entries ) : 0 );
-    }
-    st.gain += new_entries > 0 ? ( ( il.size() / 2u ) - new_entries ) : 0;
-
-    if ( raw )
-    {
-      ABC_FREE( raw );
-    }
-
-    if ( new_entries > 0 )
-    {
-      std::vector<uint32_t> values;
-      for ( uint32_t i = 0; i < 2 * new_entries; ++i )
+    win.foreach_po( [&]( auto const& f ) {
+      auto root = win.get_node( f );
+      if ( win.value( root ) != 1 )
       {
-        values.push_back( new_raw[i] );
+        win.set_value( root, 1 );
+        changed |= optimize_node( win, fanout_win, tts, root );
       }
-      values[1u] = 1; /* fix encoding */
-      if ( new_raw )
+    } );
+
+    win.foreach_gate( [&]( auto const& root ) {
+      if ( win.value( root ) != 1 )
       {
-        ABC_FREE( new_raw );
+        win.set_value( root, 1 );
+        bool all_fanin_is_pi = true;
+        win.foreach_fanin( root, [&]( auto const& fi ) {
+          if ( !win.is_pi( win.get_node( fi ) ) )
+          {
+            all_fanin_is_pi = false;
+          }
+        } );
+        if ( !all_fanin_is_pi )
+          changed |= optimize_node( win, fanout_win, tts, root );
       }
-      return abc_index_list( values, il.num_pis() );
-    }
-    else
-    {
-      assert( new_raw == nullptr );
-      return std::nullopt;
-    }
+    } );
+
+    win.events().release_add_event( win_add_event );
+    return changed;
   }
 
+  bool optimize_node( NtkWin& win, fanout_view<NtkWin>& fanout_win, node_map<TT, NtkWin>& tts, typename NtkWin::node const& root )
+  {
+    st.num_resyn_invokes++;
+
+    auto mffc_size = call_with_stopwatch( st.time_mark, [&]() {
+      /* mark MFFC */
+      std::vector<typename NtkWin::node> mffc;
+      node_mffc_inside<NtkWin> mffc_mgr( win );
+      auto mffc_size = mffc_mgr.run( root, {}, mffc );
+      win.incr_trav_id();
+      for ( auto const& n : mffc )
+      {
+        win.set_visited( n, win.trav_id() );
+      }
+      /* mark TFO */
+      mark_tfo( fanout_win, root );
+
+      /* exclude constant node */
+      if constexpr ( std::is_same_v<typename NtkWin::base_type, aig_network> || std::is_same_v<typename NtkWin::base_type, xag_network> )
+      {
+        win.set_visited( win.get_node( win.get_constant( false ) ), win.trav_id() );
+      }
+      return mffc_size;
+    } );
+
+    /* add divisors (all nodes in the window except TFO and MFFC) */
+    std::vector<typename NtkWin::signal> divs;
+    call_with_stopwatch( st.time_add_divisor, [&]() {
+      win.foreach_node( [&]( auto const& n ) {
+        if ( win.visited( n ) != win.trav_id() )
+        {
+          divs.emplace_back( win.make_signal( n ) );
+          if ( divs.size() > ps.max_num_divs )
+          {
+            return false;
+          }
+        }
+        return true;
+      } );
+    } );
+
+    /* run resynthesis */
+    auto const il = call_with_stopwatch( st.time_resyn, [&]() {
+      return engine( tts[root], ~tts[win.get_constant( false )], divs.begin(), divs.end(), tts, mffc_size - 1 );
+    } );
+    if ( il )
+    {
+      st.gain += mffc_size - il->num_gates();
+      call_with_stopwatch( st.time_window_substitute, [&]() {
+        insert( win, divs.begin(), divs.end(), *il, [&]( auto const& s ) {
+          win.substitute_node( root, s );
+        } );
+      } );
+      return true;
+    }
+    return false;
+  }
+
+  void mark_tfo( fanout_view<NtkWin>& fanout_win, typename NtkWin::node const& n )
+  {
+    fanout_win.set_visited( n, fanout_win.trav_id() );
+    fanout_win.foreach_fanout( n, [&]( auto const& fo ) {
+      if ( fanout_win.visited( fo ) != fanout_win.trav_id() )
+      {
+        mark_tfo( fanout_win, fo );
+      }
+    } );
+  }
+
+private:
   void substitute_nodes( std::list<std::pair<node, signal>> substitutions )
   {
     stopwatch t( st.time_substitute );
@@ -656,7 +771,11 @@ private:
   std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
   std::shared_ptr<typename network_events<Ntk>::modified_event_type> modified_event;
   std::shared_ptr<typename network_events<Ntk>::delete_event_type> delete_event;
-};
+
+  default_simulator<TT>* sim;
+  typename ResynEngine::stats engine_st;
+  ResynEngine engine;
+}; /* window_rewriting_impl */
 
 } /* namespace detail */
 
@@ -668,8 +787,9 @@ void window_rewriting( Ntk& ntk, window_rewriting_params const& ps = {}, window_
   color_view cntk{ dntk };
 
   window_rewriting_stats st;
-  detail::window_rewriting_impl p( cntk, ps, st );
-  p.run();
+  using NtkWin = typename Ntk::base_type;
+  using TT = kitty::dynamic_truth_table;
+  detail::window_rewriting_impl<decltype( cntk ), NtkWin, TT>( cntk, ps, st ).run();
   if ( pst )
   {
     *pst = st;

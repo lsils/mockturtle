@@ -210,8 +210,7 @@ public:
   template<class iterator_type, class index_list_type>
   std::optional<bool> validate( node const& root, iterator_type divs_begin, iterator_type divs_end, index_list_type const& id_list, bool inverted = false )
   {
-    static_assert( std::is_same_v<index_list_type, abc_index_list> ||
-                   std::is_same_v<index_list_type, mig_index_list> ||
+    static_assert( std::is_same_v<index_list_type, mig_index_list> ||
                    std::is_same_v<index_list_type, xag_index_list<true>> ||
                    std::is_same_v<index_list_type, xag_index_list<false>> ||
                    std::is_same_v<index_list_type, muxig_index_list>, "Unknown type of index list" );
@@ -240,7 +239,7 @@ public:
       push();
     }
 
-    if constexpr ( std::is_same_v<index_list_type, abc_index_list> || std::is_same_v<index_list_type, xag_index_list<true>> || std::is_same_v<index_list_type, xag_index_list<false>> )
+    if constexpr ( std::is_same_v<index_list_type, xag_index_list<true>> || std::is_same_v<index_list_type, xag_index_list<false>> )
     {
       id_list.foreach_gate( [&]( uint32_t id_lit0, uint32_t id_lit1 ) {
         uint32_t const node_pos0 = id_lit0 >> 1;
