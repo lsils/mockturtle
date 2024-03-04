@@ -303,7 +303,7 @@ private:
     auto max_depth = std::numeric_limits<uint32_t>::max();
     if ( ps.preserve_depth )
     {
-      max_depth = ntk.level( root ) - 1;
+      max_depth = ntk.level( root );
     }
     /* add the leaves of the cuts to the divisors */
     divs.clear();
@@ -531,7 +531,7 @@ public:
       auto max_depth = std::numeric_limits<uint32_t>::max();
       if ( ps.preserve_depth )
       {
-        max_depth = ntk.level( n ) - 1;
+        max_depth = ntk.level( n );
       }
       return resub_fn( n, care, max_depth, ps.max_inserts, potential_gain, last_gain );
     } );

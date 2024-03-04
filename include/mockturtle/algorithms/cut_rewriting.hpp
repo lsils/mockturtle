@@ -860,6 +860,8 @@ Ntk cut_rewriting( Ntk const& ntk, RewritingFn const& rewriting_fn = {}, cut_rew
   {
     *pst = st;
   }
+
+  ntk.clear_values();
   return result;
 }
 

@@ -13,6 +13,7 @@ option(BILL_Z3 "Enable Z3 interface for bill library" OFF)
 option(ENABLE_COVERAGE "Enable coverage reporting for gcc/clang" OFF)
 option(ENABLE_MATPLOTLIB "Enable matplotlib library in experiments" OFF)
 option(ENABLE_NAUTY "Enable the Nauty library for percy" OFF)
+option(ENABLE_ABC "Enable linking ABC as a static library" OFF)
 
 if(UNIX)
   # show quite some warnings (but remove some intentionally)
@@ -40,6 +41,12 @@ add_subdirectory(lib)
 
 if(ENABLE_NAUTY)
   add_definitions(-DENABLE_NAUTY)
+endif()
+
+if (ENABLE_ABC)
+  if (NOT EXISTS ${PROJECT_SOURCE_DIR}/lib/abc_static/libabc.a)
+    message(FATAL_ERROR "Cannot find libabc.a in lib/abc_static/. For more info, see https://github.com/lsils/abc-staticlib")
+  endif()
 endif()
 
 if(MOCKTURTLE_EXAMPLES)
