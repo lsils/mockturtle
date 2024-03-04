@@ -43,6 +43,12 @@ if(ENABLE_NAUTY)
   add_definitions(-DENABLE_NAUTY)
 endif()
 
+if (ENABLE_ABC)
+  if (NOT EXISTS ${PROJECT_SOURCE_DIR}/lib/abc_static/libabc.a)
+    message(FATAL_ERROR "Cannot find libabc.a in lib/abc_static/. For more info, see https://github.com/lsils/abc-staticlib")
+  endif()
+endif()
+
 if(MOCKTURTLE_EXAMPLES)
   add_subdirectory(examples)
 endif()
