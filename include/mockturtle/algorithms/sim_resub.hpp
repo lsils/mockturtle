@@ -393,7 +393,7 @@ void sim_resubstitution( Ntk& ntk, resubstitution_params const& ps = {}, resubst
       detail::sim_resubstitution_run<resub_view_t, resub_impl_t>( resub_view, ps, pst );
     }
   }
-  else if constexpr ( std::is_same_v<typename Ntk::base_type, aig_network> )
+  else if constexpr ( std::is_same_v<typename Ntk::base_type, xag_network> )
   {
     using resyn_engine_t = xag_resyn_decompose<kitty::partial_truth_table, xag_resyn_static_params_for_sim_resub<resub_view_t>>;
 
