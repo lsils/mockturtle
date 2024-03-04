@@ -122,178 +122,7 @@ mig_network ale_flow( aig_network const& ntk )
     return _ntk;
 }
 
-int main00( int argc, char* argv[] )
-{
-  using namespace experiments;
-
-  (void)argc;
-  std::string benchmark = std::string( argv[1] );
-  {
-    aig_network aig;
-    //if ( lorina::read_verilog( benchmark, verilog_reader( mig ) ) != lorina::return_code::success )
-    if ( lorina::read_aiger( benchmark, aiger_reader( aig ) ) != lorina::return_code::success )
-    {
-      std::cerr << "Cannot read " << benchmark << "\n";
-      return -1;
-    }
-
-    aig = call_abc_script( aig, "&put; resyn2rs; resyn2rs; resyn2rs; &get" );
-    mig_network mig;
-
-    /* map AIG to MIG */
-    {
-      mig_npn_resynthesis resyn2{ true };
-      exact_library<mig_network> exact_lib( resyn2 );
-
-      map_params ps;
-      ps.skip_delay_round = false;
-      ps.required_time = std::numeric_limits<double>::max();
-      mig = map( aig, exact_lib, ps );
-
-      depth_view d( mig );
-      fmt::print( "size {}, depth {}\n", mig.num_gates(), d.depth() );
-
-      /* remap */
-      ps.skip_delay_round = true;
-      ps.area_flow_rounds = 2;
-      mig = map( mig, exact_lib, ps );
-
-      ps.area_flow_rounds = 1;
-      ps.enable_logic_sharing = true; /* high-effort remap */
-      mig = map( mig, exact_lib, ps );
-    }
-
-    /* simple MIG resub */
-    {
-      resubstitution_params ps;
-      ps.max_pis = 8u;
-      ps.max_inserts = 2u;
-      uint32_t tmp;
-
-      do
-      {
-        tmp = mig.num_gates();
-        depth_view depth_mig{ mig };
-        fanout_view fanout_mig{ depth_mig };
-        mig_resubstitution( fanout_mig, ps );
-        mig = cleanup_dangling( mig );
-      } while ( mig.num_gates() > tmp );
-    }
-
-    {
-      resubstitution_params ps;
-      ps.max_pis = 8u;
-      ps.max_inserts = std::numeric_limits<uint32_t>::max();
-
-      depth_view depth_mig{ mig };
-      fanout_view fanout_mig{ depth_mig };
-      mig_resubstitution2( fanout_mig, ps );
-      mig = cleanup_dangling( mig );
-    }
-    
-    depth_view d( mig );
-    fmt::print( "size {}, depth {}\n", mig.num_gates(), d.depth() );
-  }
-
-  return 0;
-}
-
-int main0( int argc, char* argv[] )
-{
-  using namespace experiments;
-
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, bool, bool> exp( "deepsyn0", "benchmark", "#JJ", "JJ depth", "MIG size", "MIG depth", "cec", "verified" );
-
-  for ( auto const& benchmark : aqfp_benchmarks )
-  {
-    if ( argc == 2 && benchmark != std::string( argv[1] ) ) continue;
-    fmt::print( "[i] processing {}\n", benchmark );
-
-    mig_network ntk;
-    if ( lorina::read_verilog( benchmark_aqfp_path( benchmark ), verilog_reader( ntk ) ) != lorina::return_code::success )
-    {
-      std::cerr << "Cannot read " << benchmark << "\n";
-      return -1;
-    }
-
-    aig_network aig = cleanup_dangling<mig_network, aig_network>( ntk );
-    aig = call_abc_script( aig, "&deepsyn -I 10 -J 50 -T 1000 -S 111 -t" );
-    mig_network mig;
-
-    /* map AIG to MIG */
-    {
-      mig_npn_resynthesis resyn2{ true };
-      exact_library<mig_network> exact_lib( resyn2 );
-
-      map_params ps;
-      ps.skip_delay_round = true;
-      ps.required_time = std::numeric_limits<double>::max();
-      mig = map( aig, exact_lib, ps );
-
-      /* remap */
-      ps.area_flow_rounds = 2;
-      mig = map( mig, exact_lib, ps );
-
-      ps.area_flow_rounds = 1;
-      ps.enable_logic_sharing = true; /* high-effort remap */
-      mig = map( mig, exact_lib, ps );
-    }
-
-    /* simple MIG resub */
-    {
-      resubstitution_params ps;
-      ps.max_pis = 8u;
-      ps.max_inserts = 2u;
-      uint32_t tmp;
-
-      do
-      {
-        tmp = mig.num_gates();
-        depth_view depth_mig{ mig };
-        fanout_view fanout_mig{ depth_mig };
-        mig_resubstitution( fanout_mig, ps );
-        mig = cleanup_dangling( mig );
-      } while ( mig.num_gates() > tmp );
-    }
-
-    {
-      resubstitution_params ps;
-      ps.max_pis = 8u;
-      ps.max_inserts = std::numeric_limits<uint32_t>::max();
-
-      depth_view depth_mig{ mig };
-      fanout_view fanout_mig{ depth_mig };
-      mig_resubstitution2( fanout_mig, ps );
-      mig = cleanup_dangling( mig );
-    }
-    
-    depth_view d( mig );
-    bool cec = abc_cec_impl( mig, benchmark_aqfp_path( benchmark ) );
-
-    buffer_insertion_params bps;
-    bps.assume.balance_cios = true;
-    bps.assume.splitter_capacity = 4;
-    bps.assume.ci_phases = {0};
-    bps.scheduling = buffer_insertion_params::better_depth;
-    bps.optimization_effort = buffer_insertion_params::none;
-    buffer_insertion buf_inst( mig, bps );
-
-    buffered_mig_network buffered_mig;
-    auto num_buffers = buf_inst.run( buffered_mig );
-    auto JJ_depth = buf_inst.depth();
-    bool bv = verify_aqfp_buffer( buffered_mig, bps.assume, buf_inst.pi_levels() );
-    //write_verilog( buffered_mig, benchmark + ".v" );
-
-    exp( benchmark, mig.num_gates() * 6 + num_buffers * 2, JJ_depth, mig.num_gates(), d.depth(), cec, bv );
-  }
-
-  exp.save();
-  exp.table();
-
-  return 0;
-}
-
-int main1( int argc, char* argv[] )
+int main_aqfp( int argc, char* argv[] )
 {
   using namespace experiments;
 
@@ -343,7 +172,7 @@ int main1( int argc, char* argv[] )
     auto JJ_EDP = JJ_depth * JJ_count;
     bool cec = abc_cec_impl( buffered_mig, benchmark_aqfp_path( benchmark ) );
     bool bv = verify_aqfp_buffer( buffered_mig, bps.assume, buf_inst.pi_levels() );
-    write_verilog( buffered_mig, benchmark + ".v" );
+    //write_verilog( buffered_mig, benchmark + ".v" );
 
     exp( benchmark, JJ_count, JJ_depth, JJ_EDP, opt.num_gates(), d.depth(), to_seconds(st.time_total), to_seconds(st.time_evaluate), cec, bv );
   }
@@ -361,24 +190,19 @@ int main( int argc, char* argv[] )
 
   experiment<std::string, uint32_t, uint32_t, uint32_t, float, bool> exp( "deepsyn_mig", "benchmark", "size_before", "size_after", "depth", "runtime", "cec" );
 
-  //for ( auto const& benchmark : aqfp_benchmarks )
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     if ( argc == 2 && benchmark != std::string( argv[1] ) ) continue;
-    if ( benchmark == "hyp" && argc == 1 ) continue;
+    //if ( benchmark == "hyp" && argc == 1 ) continue;
     fmt::print( "[i] processing {}\n", benchmark );
 
     using Ntk = mig_network;
     Ntk ntk;
-    //if ( lorina::read_verilog( benchmark_aqfp_path( benchmark ), verilog_reader( ntk ) ) != lorina::return_code::success )
     if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( ntk ) ) != lorina::return_code::success )
     {
       std::cerr << "Cannot read " << benchmark << "\n";
       return -1;
     }
-
-    depth_view d0( ntk );
-    fmt::print( "original size {} depth {}\n", ntk.num_gates(), d0.depth() );
 
     explorer_params ps;
     ps.num_restarts = 4;
@@ -388,11 +212,10 @@ int main( int argc, char* argv[] )
     ps.compressing_scripts_per_step = 1;
     ps.verbose = true;
     //ps.very_verbose = true;
-    std::cout << std::flush;
 
     stopwatch<>::duration rt{0};
     Ntk opt = call_with_stopwatch( rt, [&](){ return deepsyn_mig_v1( ntk, ps ); } );
-    write_verilog( opt, "best_MIGs/" + benchmark + ".v" );
+    //write_verilog( opt, "best_MIGs/" + benchmark + ".v" );
     bool const cec = ( benchmark == "hyp" ) ? true : abc_cec_impl( opt, benchmark_path( benchmark ) );
     depth_view d( opt );
 
