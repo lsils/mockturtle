@@ -1,41 +1,3 @@
-/* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
- *
- * Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation
- * files (the "Software"), to deal in the Software without
- * restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
- * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
- * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- */
-
-/*
-  \file aqfp_flow_aspdac.cpp
-  \brief AQFP synthesis flow
-
-  This file contains the code to reproduce the experiment (Table I)
-  in the following paper:
-  "Depth-optimal Buffer and Splitter Insertion and Optimization in AQFP Circuits",
-  ASP-DAC 2023, by Alessandro Tempia Calvino and Giovanni De Micheli.
-
-  This version runs on the ISCAS benchmarks. The benchmarks for Table 1 can be
-  downloaded at https://github.com/lsils/SCE-benchmarks
- */
-
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -55,20 +17,39 @@
 #include <experiments.hpp>
 
 using namespace mockturtle;
+using namespace experiments;
+
+// relative path to repo cloned from https://github.com/lsils/SCE-benchmarks
+static const std::string benchmark_repo_path = "../../SCE-benchmarks";
+
+/* AQFP benchmarks */
+std::vector<std::string> aqfp_benchmarks = {
+    "adder1", "adder8", "mult8", "counter16", "counter32", "counter64", "counter128", "c17",
+    "c432", "c499", "c880", "c1355", "c1908", "c2670", "c3540", "c5315", "c6288", "c7552",
+    "sorter32", "sorter48", "alu32"};
+
+std::string benchmark_aqfp_path( std::string const& benchmark_name )
+{
+  return fmt::format( "{}/ISCAS/strashed/{}.v", benchmark_repo_path, benchmark_name );
+}
+
+template<class Ntk>
+inline bool abc_cec_aqfp( Ntk const& ntk, std::string const& benchmark )
+{
+  return abc_cec_impl( ntk, benchmark_aqfp_path( benchmark ) );
+}
 
 int main()
 {
-  using namespace experiments;
-
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, double, bool> exp(
       "aqfp_tcad", "Bench", "Size_init", "Depth_init", "B/S", "JJs", "Depth", "Time (s)", "cec" );
 
-  for ( auto const& benchmark : aqfp_iscas_benchmarks() )
+  for ( auto const& benchmark : aqfp_benchmarks )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
     mig_network mig;
-    if ( lorina::read_verilog( benchmark_aqfp_iscas_path( benchmark ), verilog_reader( mig ) ) != lorina::return_code::success )
+    if ( lorina::read_verilog( benchmark_aqfp_path( benchmark ), verilog_reader( mig ) ) != lorina::return_code::success )
     {
       continue;
     }
@@ -97,7 +78,7 @@ int main()
     buffered_aqfp_network res = aqfp_mapping( mig_opt, ps, &st );
 
     /* cec */
-    auto cec = abc_cec_aqfp_iscas( res, benchmark );
+    auto cec = abc_cec_aqfp( res, benchmark );
     std::vector<uint32_t> pi_levels;
     for ( auto i = 0u; i < res.num_pis(); ++i )
       pi_levels.emplace_back( 0 );
