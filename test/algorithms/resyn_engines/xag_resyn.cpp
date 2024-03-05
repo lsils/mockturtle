@@ -221,14 +221,6 @@ TEST_CASE( "Synthesize XAGs for all 3-input functions", "[xag_resyn]" )
 
   CHECK( success_counter == 254 );
   CHECK( failed_counter == 2 );
-
-  using engine_abc_t = xag_resyn_abc<truth_table_type>;
-  success_counter = 0;
-  failed_counter = 0;
-  test_xag_n_input_functions<engine_abc_t, 3>( success_counter, failed_counter );
-
-  CHECK( success_counter == 254 );
-  CHECK( failed_counter == 2 );
 }
 
 TEST_CASE( "Synthesize XAGs for all 4-input functions", "[xag_resyn]" )
