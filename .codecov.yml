@@ -1,0 +1,7 @@
+coverage:
+  status:
+    project:
+      default:
+        # basic
+        target: auto #default: use the coverage from the base commit
+        threshold: 0.5% #Allow the coverage to drop by X%, and posting a success status.
