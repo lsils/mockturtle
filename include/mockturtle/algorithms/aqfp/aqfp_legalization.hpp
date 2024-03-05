@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file aqfp_mapping.hpp
-  \brief Mapping flow for AQFP networks
+  \file aqfp_legalization.hpp
+  \brief Legalization + buffer optimization flow for AQFP networks
 
   \author Alessandro Tempia Calvino
 */
@@ -49,21 +49,21 @@
 namespace mockturtle
 {
 
-struct aqfp_mapping_params
+struct aqfp_legalization_params
 {
-  aqfp_mapping_params()
+  aqfp_legalization_params()
   {
     aqfp_assumptions_ps.branch_pis = true;
     aqfp_assumptions_ps.balance_pis = true;
     aqfp_assumptions_ps.balance_pos = true;
   }
 
-  /*! \brief Mapping mode. */
+  /*! \brief legalization mode. */
   enum
   {
     better,
     portfolio
-  } mapping_mode = portfolio;
+  } legalization_mode = portfolio;
 
   /*! \brief AQFP technology assumptions. */
   aqfp_assumptions_legacy aqfp_assumptions_ps{};
@@ -87,7 +87,7 @@ struct aqfp_mapping_params
   bool verbose{ false };
 };
 
-struct aqfp_mapping_stats
+struct aqfp_legalization_stats
 {
   /*! \brief Number of Josephson Junctions (JJs). */
   uint32_t num_jjs{ 0 };
@@ -118,10 +118,10 @@ namespace detail
 {
 
 template<class Ntk>
-class aqfp_mapping_impl
+class aqfp_legalization_impl
 {
 public:
-  explicit aqfp_mapping_impl( Ntk const& ntk, aqfp_mapping_params const& ps, aqfp_mapping_stats& st )
+  explicit aqfp_legalization_impl( Ntk const& ntk, aqfp_legalization_params const& ps, aqfp_legalization_stats& st )
       : _ntk( ntk ), _ps( ps ), _st( st )
   {
   }
@@ -143,7 +143,7 @@ public:
     bool retiming_backward_first = false;
 
     /* Starndard flow: insertion + optimization */
-    if ( _ps.mapping_mode == aqfp_mapping_params::better )
+    if ( _ps.legalization_mode == aqfp_legalization_params::better )
     {
       buffered_aqfp_network buffered_aqfp = aqfp_buffer_insertion( buf_inst, retiming_backward_first );
       buffered_aqfp_network aqfp_res = aqfp_buffer_optimize( buffered_aqfp, retiming_backward_first );
@@ -177,7 +177,7 @@ private:
   {
     stopwatch t( _st.time_insertion );
 
-    if ( _ps.mapping_mode == aqfp_mapping_params::portfolio )
+    if ( _ps.legalization_mode == aqfp_legalization_params::portfolio )
     {
       if ( is_alap )
       {
@@ -188,7 +188,7 @@ private:
         buf_inst.set_scheduling_policy( buffer_insertion_params::ASAP_depth );
       }
     }
-    else if ( _ps.mapping_mode == aqfp_mapping_params::better )
+    else if ( _ps.legalization_mode == aqfp_legalization_params::better )
     {
       buf_inst.set_scheduling_policy( buffer_insertion_params::better_depth );
     }
@@ -281,13 +281,13 @@ private:
 
 private:
   Ntk const& _ntk;
-  aqfp_mapping_params const& _ps;
-  aqfp_mapping_stats& _st;
+  aqfp_legalization_params const& _ps;
+  aqfp_legalization_stats& _st;
 };
 
 } /* namespace detail */
 
-/*! \brief AQFP mapping.
+/*! \brief AQFP legalization.
  *
  * This function returns an optimized AQFP circuit
  * derived from the input one by inserting buffer
@@ -297,10 +297,10 @@ private:
  * optimization.
  *
  * \param ntk Boolean network as an MIG or AQFP network
- * \param ps AQFP mapping
+ * \param ps AQFP legalization parameters
  */
 template<class Ntk>
-buffered_aqfp_network aqfp_mapping( Ntk const& ntk, aqfp_mapping_params const& ps = {}, aqfp_mapping_stats* pst = nullptr )
+buffered_aqfp_network aqfp_legalization( Ntk const& ntk, aqfp_legalization_params const& ps = {}, aqfp_legalization_stats* pst = nullptr )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
@@ -314,9 +314,9 @@ buffered_aqfp_network aqfp_mapping( Ntk const& ntk, aqfp_mapping_params const& p
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
   static_assert( std::is_same_v<typename Ntk::base_type, mig_network> || std::is_same_v<typename Ntk::base_type, aqfp_network>, "Ntk in not an MIG or AQFP network type" );
 
-  aqfp_mapping_stats st;
+  aqfp_legalization_stats st;
 
-  detail::aqfp_mapping_impl p( ntk, ps, st );
+  detail::aqfp_legalization_impl p( ntk, ps, st );
   auto res = p.run();
 
   if ( ps.verbose )

@@ -5,7 +5,7 @@
 
 #include <fmt/format.h>
 
-#include <mockturtle/algorithms/aqfp/aqfp_mapping.hpp>
+#include <mockturtle/algorithms/aqfp/aqfp_legalization.hpp>
 #include <mockturtle/algorithms/aqfp/buffer_verification.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
@@ -66,16 +66,16 @@ int main()
     aqfp_ps.balance_pis = true;
     aqfp_ps.balance_pos = true;
 
-    aqfp_mapping_params ps;
+    aqfp_legalization_params ps;
     ps.aqfp_assumptions_ps = aqfp_ps;
-    ps.mapping_mode = aqfp_mapping_params::portfolio;
+    ps.legalization_mode = aqfp_legalization_params::portfolio;
     ps.verbose = true;
     ps.max_chunk_size = UINT32_MAX;
     ps.retime_iterations = UINT32_MAX;
     ps.optimization_rounds = UINT32_MAX;
-    aqfp_mapping_stats st;
+    aqfp_legalization_stats st;
 
-    buffered_aqfp_network res = aqfp_mapping( mig_opt, ps, &st );
+    buffered_aqfp_network res = aqfp_legalization( mig_opt, ps, &st );
 
     /* cec */
     auto cec = abc_cec_aqfp( res, benchmark );
