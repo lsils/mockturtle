@@ -72,7 +72,7 @@ struct buffer_insertion_params
    * - `better_depth` = ALAP_depth followed by ASAP_depth, then count buffers for both assignments
    * and choose the better one
    */
-  enum
+  enum scheduling_policy
   {
     provided,
     ASAP,
@@ -581,6 +581,11 @@ private:
 
 #pragma region Initial level assignment
 public:
+  void set_scheduling_policy( buffer_insertion_params::scheduling_policy p )
+  {
+    _ps.scheduling = p;
+  }
+
   /*! \brief Obtain the initial level assignment using the specified scheduling policy */
   void schedule()
   {
@@ -1947,7 +1952,7 @@ private:
   using fanouts_by_level = std::list<fanout_information>;
 
   Ntk const& _ntk;
-  buffer_insertion_params const _ps;
+  buffer_insertion_params _ps;
   bool _outdated{ true };
   bool _is_scheduled_ASAP{ true };
 
