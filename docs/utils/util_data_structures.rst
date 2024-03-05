@@ -166,15 +166,10 @@ Cut sets
 
 .. _index_list:
 
-Index List
+Index list
 ~~~~~~~~~~
 
 **Header:** ``mockturtle/utils/index_list.hpp``
-
-.. doxygenstruct:: mockturtle::abc_index_list
-.. doxygenfunction:: mockturtle::encode( abc_index_list&, Ntk const& )
-.. doxygenfunction:: mockturtle::insert( Ntk&, BeginIter, EndIter, abc_index_list const&, Fn&& )
-.. doxygenfunction:: mockturtle::to_index_list_string( abc_index_list const& )
 
 .. doxygenstruct:: mockturtle::mig_index_list
 .. doxygenfunction:: mockturtle::encode( mig_index_list&, Ntk const& )
