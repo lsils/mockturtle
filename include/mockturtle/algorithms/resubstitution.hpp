@@ -658,6 +658,12 @@ public:
         return false; /* terminate */
       }
 
+      if constexpr ( has_is_dont_touch_v<Ntk> )
+      {
+        if ( ntk.is_dont_touch( n ) )
+          return true; /* skip */
+      }
+
       pbar( i, i, candidates, st.estimated_gain );
 
       /* compute cut, collect divisors, compute MFFC */

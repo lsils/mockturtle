@@ -33,7 +33,10 @@
 #include <mockturtle/algorithms/extract_adders.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/dont_touch_aig.hpp>
 #include <mockturtle/networks/block.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
+#include <mockturtle/algorithms/sim_resub.hpp>
 
 #include <experiments.hpp>
 
@@ -42,8 +45,9 @@ int main()
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, uint32_t, float, bool> exp(
-      "map_adders", "benchmark", "size", "HA", "FA", "runtime", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
+      "map_adders", "benchmark", "size", "HA", "FA", "|bntk1|", "|dt-aig|", "#dt", 
+      "|dt-aig-opt|", "#dt-opt", "HA2", "FA2", "|bntk2|", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -66,13 +70,37 @@ int main()
     /* Map HAs/FAs */
     extract_adders_params ps;
     extract_adders_stats st;
-    block_network res = extract_adders( aig, ps, &st );
+    block_network bntk1 = extract_adders( aig, ps, &st );
 
     /* check correctness */
-    aig_network aig_res = decompose_multioutput<block_network, aig_network>( res );
-    bool const cec = benchmark == "hyp" ? true : abc_cec( aig_res, benchmark );
+    //decompose_multioutput_params dps;
+    //dps.set_multioutput_as_dont_touch = true;
+    //dont_touch_view<aig_network> dt_aig = decompose_multioutput<block_network, dont_touch_view<aig_network>>( bntk1 );
+    //dont_touch_view<aig_network> dt_aig = extract_adders2( aig, ps );
+    dont_touch_aig_network dt_aig = extract_adders3( aig, ps );
 
-    exp( benchmark, size_before, st.mapped_ha, st.mapped_fa, to_seconds( st.time_total ), cec );
+    resubstitution_params rps;
+
+    // rps.pattern_filename = "1024sa1/" + benchmark + ".pat";
+    rps.max_inserts = 20;
+    rps.max_pis = 8;
+    rps.max_divisors = std::numeric_limits<uint32_t>::max();
+
+    const uint32_t dt_aig_size_before = dt_aig.num_gates();
+    const uint32_t dt_before = dt_aig.num_dont_touch_gates();
+    sim_resubstitution( dt_aig, rps );
+    dt_aig = cleanup_dangling( dt_aig );
+
+    extract_adders_stats st2;
+    block_network bntk2 = extract_adders( dt_aig, ps, &st2 );
+
+    bool const cec = benchmark == "hyp" ? true : abc_cec( dt_aig, benchmark );
+
+    exp( benchmark, size_before, st.mapped_ha, st.mapped_fa, bntk1.num_gates(),
+          dt_aig_size_before, dt_before,
+          dt_aig.num_gates(), dt_aig.num_dont_touch_gates(),
+          st2.mapped_ha, st2.mapped_fa, bntk2.num_gates(),
+          cec );
   }
 
   exp.save();

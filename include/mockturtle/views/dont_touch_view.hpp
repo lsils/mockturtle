@@ -112,6 +112,11 @@ public:
     return _dont_touch.find( Ntk::node_to_index( n ) ) != _dont_touch.end();
   }
 
+  uint32_t num_dont_touch_gates() const
+  {
+    return _dont_touch.size();
+  }
+
   template<typename Fn>
   void foreach_dont_touch( Fn&& fn ) const
   {

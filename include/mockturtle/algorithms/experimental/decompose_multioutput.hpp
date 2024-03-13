@@ -170,7 +170,7 @@ void decompose_multioutput_impl( NtkSrc const& ntk, NtkDest& dest, LeavesIterato
         if constexpr ( has_select_dont_touch_v<NtkDest> )
         {
           if ( ps.set_multioutput_as_dont_touch )
-            dest.select_dont_touch( dest.get_node( old_to_new[f] ) );
+            dest.select_dont_touch( dest.get_node( old_to_new[f] ) ); // TODO: also need to select internal nodes as dont_touch!
         }
 
         /* copy name */

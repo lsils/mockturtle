@@ -162,6 +162,10 @@ public:
 
   void substitute_node( node const& old_node, signal const& new_signal )
   {
+    if constexpr ( has_is_dont_touch_v<Ntk> )
+    {
+      assert( !Ntk::is_dont_touch( old_node ) );
+    }
     if ( Ntk::get_node( new_signal ) == old_node && !Ntk::is_complemented( new_signal ) )
       return;
 
@@ -178,6 +182,11 @@ public:
     {
       const auto [_old, _curr] = to_substitute.top();
       to_substitute.pop();
+
+      if constexpr ( has_is_dont_touch_v<Ntk> )
+      {
+        assert( !Ntk::is_dont_touch( _old ) );
+      }
 
       signal _new = _curr;
       /* find the real new node */
@@ -202,6 +211,14 @@ public:
       const auto parents = _fanout[_old];
       for ( auto n : parents )
       {
+        if constexpr ( has_is_dont_touch_v<Ntk> )
+        {
+          if ( Ntk::is_dont_touch( n ) )
+          {
+            Ntk::replace_in_node_no_restrash( n, _old, _new );
+            continue;
+          }
+        }
         if ( const auto repl = Ntk::replace_in_node( n, _old, _new ); repl )
         {
           to_substitute.push( *repl );
@@ -212,7 +229,7 @@ public:
       Ntk::replace_in_outputs( _old, _new );
 
       /* reset fan-in of old node */
-      if ( _old != Ntk::get_node( _new ) ) /* substitute a node using itself*/
+      if ( _old != Ntk::get_node( _new ) ) /* substitute a node using itself */
       {
         old_to_new.insert( { _old, _new } );
         Ntk::take_out_node( _old );
