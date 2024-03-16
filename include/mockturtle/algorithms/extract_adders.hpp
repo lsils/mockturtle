@@ -40,12 +40,11 @@
 #include <parallel_hashmap/phmap.h>
 
 #include "../networks/block.hpp"
-#include "../networks/dont_touch_aig.hpp"
+#include "../networks/box_aig.hpp"
 #include "../networks/storage.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/choice_view.hpp"
-#include "../views/dont_touch_view.hpp"
 #include "cut_enumeration.hpp"
 
 namespace mockturtle
@@ -138,8 +137,7 @@ public:
   using match_pair_t = std::pair<uint64_t, uint64_t>;
   using matches_t = std::vector<match_pair_t>;
   using block_map = node_map<signal<block_network>, Ntk>;
-  using signal_map = node_map<signal<Ntk>, Ntk>;
-  using dtaig_map = node_map<signal<dont_touch_aig_network>, Ntk>;
+  using baig_map = node_map<signal<box_aig_network>, Ntk>;
 
 public:
   explicit extract_adders_impl( Ntk& ntk, extract_adders_params const& ps, extract_adders_stats& st )
@@ -170,30 +168,16 @@ public:
     return res;
   }
 
-  dont_touch_view<Ntk> run2()
+  box_aig_network run_boxed( bool white )
   {
     stopwatch t( st.time_total );
 
-    auto [res, old2new] = initialize_map_network2();
+    auto [res, old2new] = initialize_map_network_boxed();
     create_classes();
     match_adders();
     map();
     topo_sort();
-    finalize2( res, old2new );
-
-    return res;
-  }
-
-  dont_touch_aig_network run3()
-  {
-    stopwatch t( st.time_total );
-
-    auto [res, old2new] = initialize_map_network3();
-    create_classes();
-    match_adders();
-    map();
-    topo_sort();
-    finalize3( res, old2new );
+    finalize_boxed( res, old2new, white );
 
     return res;
   }
@@ -748,36 +732,6 @@ private:
     return { dest, old2new };
   }
 
-  std::pair<dont_touch_view<Ntk>, signal_map> initialize_map_network2()
-  {
-    dont_touch_view<Ntk> dest;
-    signal_map old2new( ntk );
-
-    old2new[ntk.get_node( ntk.get_constant( false ) )] = dest.get_constant( false );
-    if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
-      old2new[ntk.get_node( ntk.get_constant( true ) )] = dest.get_constant( true );
-
-    ntk.foreach_ci( [&]( auto const& n ) {
-      old2new[n] = dest.create_pi();
-    } );
-    return { dest, old2new };
-  }
-
-  std::pair<dont_touch_aig_network, dtaig_map> initialize_map_network3()
-  {
-    dont_touch_aig_network dest;
-    dtaig_map old2new( ntk );
-
-    old2new[ntk.get_node( ntk.get_constant( false ) )] = dest.get_constant( false );
-    if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
-      old2new[ntk.get_node( ntk.get_constant( true ) )] = dest.get_constant( true );
-
-    ntk.foreach_ci( [&]( auto const& n ) {
-      old2new[n] = dest.create_pi();
-    } );
-    return { dest, old2new };
-  }
-
   void finalize( block_network& res, block_map& old2new )
   {
     for ( auto const& n : topo_order )
@@ -957,7 +911,23 @@ private:
     old2new[ntk.index_to_node( xor_is_1 ? index1 : index2 )] = res.next_output_pin( fa ) ^ ( neg_xor ? true : false );
   }
 
-  void finalize2( dont_touch_view<Ntk>& res, signal_map& old2new )
+#pragma region box_aig_network
+  std::pair<box_aig_network, baig_map> initialize_map_network_boxed()
+  {
+    box_aig_network dest;
+    baig_map old2new( ntk );
+
+    old2new[ntk.get_node( ntk.get_constant( false ) )] = dest.get_constant( false );
+    if ( ntk.get_node( ntk.get_constant( true ) ) != ntk.get_node( ntk.get_constant( false ) ) )
+      old2new[ntk.get_node( ntk.get_constant( true ) )] = dest.get_constant( true );
+
+    ntk.foreach_ci( [&]( auto const& n ) {
+      old2new[n] = dest.create_pi();
+    } );
+    return { dest, old2new };
+  }
+
+  void finalize_boxed( box_aig_network& res, baig_map& old2new, bool white )
   {
     for ( auto const& n : topo_order )
     {
@@ -967,11 +937,11 @@ private:
       /* is a multioutput gate root? */
       if ( node_match[ntk.node_to_index( n )] == UINT32_MAX )
       {
-        finalize_simple_gate2( res, old2new, n );
+        finalize_simple_gate_boxed( res, old2new, n );
       }
       else if ( node_match[ntk.node_to_index( n )] < UINT32_MAX - 1 )
       {
-        finalize_multi_gate2( res, old2new, n );
+        finalize_multi_gate_boxed( res, old2new, n, white );
       }
     }
 
@@ -981,9 +951,9 @@ private:
     } );
   }
 
-  void finalize_simple_gate2( dont_touch_view<Ntk>& res, signal_map& old2new, node<Ntk> const& n )
+  void finalize_simple_gate_boxed( box_aig_network& res, baig_map& old2new, node<Ntk> const& n )
   {
-    std::vector<signal<Ntk>> children;
+    std::vector<signal<box_aig_network>> children;
     ntk.foreach_fanin( n, [&]( auto const& f ) {
       auto s = old2new[f] ^ ntk.is_complemented( f );
       children.push_back( s );
@@ -992,19 +962,19 @@ private:
     old2new[n] = res.clone_node( ntk, n, children );
   }
 
-  void finalize_multi_gate2( dont_touch_view<Ntk>& res, signal_map& old2new, node<Ntk> const& n )
+  void finalize_multi_gate_boxed( box_aig_network& res, baig_map& old2new, node<Ntk> const& n, bool white )
   {
     uint32_t index = node_match[ntk.node_to_index( n )];
     assert( index < UINT32_MAX - 1 );
 
     /* extract the match */
     if ( index & 1 )
-      finalize_multi_gate_ha2( res, old2new, n, index >> 1 );
+      finalize_multi_gate_ha_boxed( res, old2new, n, index >> 1, white );
     else
-      finalize_multi_gate_fa2( res, old2new, n, index >> 1 );
+      finalize_multi_gate_fa_boxed( res, old2new, n, index >> 1, white );
   }
 
-  void finalize_multi_gate_ha2( dont_touch_view<Ntk>& res, signal_map& old2new, node<Ntk> const& n, uint32_t index )
+  void finalize_multi_gate_ha_boxed( box_aig_network& res, baig_map& old2new, node<Ntk> const& n, uint32_t index, bool white )
   {
     auto& pair = half_adders[index];
     uint32_t index1 = pair.first >> 16;
@@ -1043,27 +1013,29 @@ private:
     neg_xor = ( neg_xor & 1 ) ^ ( ( neg_xor >> 1 ) & 1 ) ^ ( ( neg_xor >> 2 ) & 1 );
 
     /* normalize and create multioutput gate */
-    std::array<signal<Ntk>, 2> children;
+    std::array<signal<box_aig_network>, 2> children;
     uint32_t ctr = 0;
     for ( auto l : cut1 )
     {
-      signal<Ntk> f = old2new[ntk.index_to_node( l )];
+      signal<box_aig_network> f = old2new[ntk.index_to_node( l )];
       bool phase = ( ( neg_and >> ctr ) & 1 ) ? true : false;
       children[ctr] = f ^ phase;
       ++ctr;
     }
 
-    auto int1 = res.create_and( children[0], !children[1] );
-    auto int2 = res.create_and( !children[0], children[1] );
-    old2new[ntk.index_to_node( xor_is_1 ? index2 : index1 )] = res.create_and( children[0], children[1] ) ^ ( ( neg_and >> 2 ) ? true : false );
-    old2new[ntk.index_to_node( xor_is_1 ? index1 : index2 )] = res.create_or( int1, int2 ) ^ ( neg_xor ? true : false );
-    res.select_dont_touch( res.get_node( int1 ) );
-    res.select_dont_touch( res.get_node( int2 ) );
-    res.select_dont_touch( res.get_node( old2new[index1] ) );
-    res.select_dont_touch( res.get_node( old2new[index2] ) );
+    if ( white )
+    {
+      auto b = res.create_white_box_half_adder( children[0], children[1] );
+      old2new[ntk.index_to_node( xor_is_1 ? index2 : index1 )] = res.get_box_output( b, 0 ) ^ ( ( neg_and >> 2 ) ? true : false );
+      old2new[ntk.index_to_node( xor_is_1 ? index1 : index2 )] = res.get_box_output( b, 1 ) ^ ( neg_xor ? true : false );
+    }
+    else
+    {
+      res.create_black_box( 2, {children[0], children[1]} );
+    }
   }
 
-  void finalize_multi_gate_fa2( dont_touch_view<Ntk>& res, signal_map& old2new, node<Ntk> const& n, uint32_t index )
+  void finalize_multi_gate_fa_boxed( box_aig_network& res, baig_map& old2new, node<Ntk> const& n, uint32_t index, bool white )
   {
     auto& pair = full_adders[index];
     uint32_t index1 = pair.first >> 16;
@@ -1108,197 +1080,28 @@ private:
     neg_xor = ( neg_xor & 1 ) ^ ( ( neg_xor >> 1 ) & 1 ) ^ ( ( neg_xor >> 2 ) & 1 );
 
     /* normalize and create the multioutput gate */
-    std::array<signal<Ntk>, 3> children;
+    std::array<signal<box_aig_network>, 3> children;
     uint32_t ctr = 0;
     for ( auto l : cut1 )
     {
-      signal<Ntk> f = old2new[ntk.index_to_node( l )];
+      signal<box_aig_network> f = old2new[ntk.index_to_node( l )];
       bool phase = ( ( neg_maj >> ctr ) & 1 ) ? true : false;
       children[ctr] = f ^ phase;
       ++ctr;
     }
 
-    auto int1 = res.create_and( children[0], children[1] );
-    auto int2 = res.create_or( children[0], children[1] );
-    auto int3 = res.create_and( children[2], int2 );
-    auto int4 = res.create_and( children[0], !children[1] );
-    auto int5 = res.create_and( !children[0], children[1] );
-    auto int6 = res.create_or( int4, int5 );
-    auto int7 = res.create_and( int6, !children[2] );
-    auto int8 = res.create_and( !int6, children[2] );
-    old2new[ntk.index_to_node( xor_is_1 ? index2 : index1 )] = res.create_or( int1, int3 );
-    old2new[ntk.index_to_node( xor_is_1 ? index1 : index2 )] = res.create_or( int7, int8 ) ^ ( neg_xor ? true : false );
-    res.select_dont_touch( res.get_node( int1 ) );
-    res.select_dont_touch( res.get_node( int2 ) );
-    res.select_dont_touch( res.get_node( int3 ) );
-    res.select_dont_touch( res.get_node( int4 ) );
-    res.select_dont_touch( res.get_node( int5 ) );
-    res.select_dont_touch( res.get_node( int6 ) );
-    res.select_dont_touch( res.get_node( int7 ) );
-    res.select_dont_touch( res.get_node( int8 ) );
-    res.select_dont_touch( res.get_node( old2new[index1] ) );
-    res.select_dont_touch( res.get_node( old2new[index2] ) );
-  }
-
-  void finalize3( dont_touch_aig_network& res, dtaig_map& old2new )
-  {
-    for ( auto const& n : topo_order )
+    if ( white )
     {
-      if ( ntk.is_pi( n ) || ntk.is_constant( n ) )
-        continue;
-
-      /* is a multioutput gate root? */
-      if ( node_match[ntk.node_to_index( n )] == UINT32_MAX )
-      {
-        finalize_simple_gate3( res, old2new, n );
-      }
-      else if ( node_match[ntk.node_to_index( n )] < UINT32_MAX - 1 )
-      {
-        finalize_multi_gate3( res, old2new, n );
-      }
+      auto b = res.create_white_box_full_adder( children[0], children[1], children[2] );
+      old2new[ntk.index_to_node( xor_is_1 ? index2 : index1 )] = res.get_box_output( b, 0 );
+      old2new[ntk.index_to_node( xor_is_1 ? index1 : index2 )] = res.get_box_output( b, 1 ) ^ ( neg_xor ? true : false );
     }
-
-    /* create POs */
-    ntk.foreach_co( [&]( auto const& f ) {
-      res.create_po( ntk.is_complemented( f ) ? !old2new[f] : old2new[f] );
-    } );
-  }
-
-  void finalize_simple_gate3( dont_touch_aig_network& res, dtaig_map& old2new, node<Ntk> const& n )
-  {
-    std::vector<signal<dont_touch_aig_network>> children;
-    ntk.foreach_fanin( n, [&]( auto const& f ) {
-      auto s = old2new[f] ^ ntk.is_complemented( f );
-      children.push_back( s );
-    } );
-
-    old2new[n] = res.clone_node( ntk, n, children );
-  }
-
-  void finalize_multi_gate3( dont_touch_aig_network& res, dtaig_map& old2new, node<Ntk> const& n )
-  {
-    uint32_t index = node_match[ntk.node_to_index( n )];
-    assert( index < UINT32_MAX - 1 );
-
-    /* extract the match */
-    if ( index & 1 )
-      finalize_multi_gate_ha3( res, old2new, n, index >> 1 );
     else
-      finalize_multi_gate_fa3( res, old2new, n, index >> 1 );
+    {
+      res.create_black_box( 2, {children[0], children[1], children[2]} );
+    }
   }
-
-  void finalize_multi_gate_ha3( dont_touch_aig_network& res, dtaig_map& old2new, node<Ntk> const& n, uint32_t index )
-  {
-    auto& pair = half_adders[index];
-    uint32_t index1 = pair.first >> 16;
-    uint32_t index2 = pair.second >> 16;
-    uint32_t cut_index1 = pair.first & UINT16_MAX;
-    uint32_t cut_index2 = pair.second & UINT16_MAX;
-    cut_t const& cut1 = cuts.cuts( index1 )[cut_index1];
-    cut_t const& cut2 = cuts.cuts( index2 )[cut_index2];
-
-    kitty::static_truth_table<3> tt1 = cuts.truth_table( cut1 );
-    kitty::static_truth_table<3> tt2 = cuts.truth_table( cut2 );
-    bool xor_is_1 = false;
-
-    /* find the XOR2 */
-    xor_is_1 = cut1->data.is_xor;
-
-    /* find the negation vector of AND2 and XOR2*/
-    kitty::static_truth_table<3> tt = xor_is_1 ? tt2 : tt1;
-    uint32_t neg_and = 0;
-    for ( uint32_t func : and2func )
-    {
-      if ( tt._bits == func )
-        break;
-      ++neg_and;
-    }
-
-    tt = xor_is_1 ? tt1 : tt2;
-    uint32_t neg_xor = 0;
-    for ( uint32_t func : xor2func )
-    {
-      if ( tt._bits == func )
-        break;
-      ++neg_xor;
-    }
-    neg_xor ^= neg_and;
-    neg_xor = ( neg_xor & 1 ) ^ ( ( neg_xor >> 1 ) & 1 ) ^ ( ( neg_xor >> 2 ) & 1 );
-
-    /* normalize and create multioutput gate */
-    std::array<signal<dont_touch_aig_network>, 2> children;
-    uint32_t ctr = 0;
-    for ( auto l : cut1 )
-    {
-      signal<dont_touch_aig_network> f = old2new[ntk.index_to_node( l )];
-      bool phase = ( ( neg_and >> ctr ) & 1 ) ? true : false;
-      children[ctr] = f ^ phase;
-      ++ctr;
-    }
-
-
-    old2new[ntk.index_to_node( xor_is_1 ? index2 : index1 )] = res.create_and_dont_touch( children[0], children[1] ) ^ ( ( neg_and >> 2 ) ? true : false );
-    old2new[ntk.index_to_node( xor_is_1 ? index1 : index2 )] = res.create_xor_dont_touch( children[0], children[1] ) ^ ( neg_xor ? true : false );
-  }
-
-  void finalize_multi_gate_fa3( dont_touch_aig_network& res, dtaig_map& old2new, node<Ntk> const& n, uint32_t index )
-  {
-    auto& pair = full_adders[index];
-    uint32_t index1 = pair.first >> 16;
-    uint32_t index2 = pair.second >> 16;
-    uint32_t cut_index1 = pair.first & UINT16_MAX;
-    uint32_t cut_index2 = pair.second & UINT16_MAX;
-    cut_t const& cut1 = cuts.cuts( index1 )[cut_index1];
-    cut_t const& cut2 = cuts.cuts( index2 )[cut_index2];
-
-    kitty::static_truth_table<3> tt1 = cuts.truth_table( cut1 );
-    kitty::static_truth_table<3> tt2 = cuts.truth_table( cut2 );
-
-    bool xor_is_1 = false;
-
-    /* find the XOR3 */
-    xor_is_1 = cut1->data.is_xor;
-
-    /* find the phase and permutation of MAJ3 and XOR3*/
-    kitty::static_truth_table<3> tt = xor_is_1 ? tt2 : tt1;
-    uint32_t neg_maj = 0;
-    for ( uint32_t func : maj3func )
-    {
-      if ( tt._bits == func )
-        break;
-      ++neg_maj;
-    }
-
-    if ( ps.map_inverted )
-    {
-      neg_maj = ( ~neg_maj ) & 0x7;
-    }
-
-    tt = xor_is_1 ? tt1 : tt2;
-    uint32_t neg_xor = 0;
-    for ( uint32_t func : xor3func )
-    {
-      if ( tt._bits == func )
-        break;
-      ++neg_xor;
-    }
-    neg_xor ^= neg_maj;
-    neg_xor = ( neg_xor & 1 ) ^ ( ( neg_xor >> 1 ) & 1 ) ^ ( ( neg_xor >> 2 ) & 1 );
-
-    /* normalize and create the multioutput gate */
-    std::array<signal<dont_touch_aig_network>, 3> children;
-    uint32_t ctr = 0;
-    for ( auto l : cut1 )
-    {
-      signal<dont_touch_aig_network> f = old2new[ntk.index_to_node( l )];
-      bool phase = ( ( neg_maj >> ctr ) & 1 ) ? true : false;
-      children[ctr] = f ^ phase;
-      ++ctr;
-    }
-
-    old2new[ntk.index_to_node( xor_is_1 ? index2 : index1 )] = res.create_maj_dont_touch( children[0], children[1], children[2] );
-    old2new[ntk.index_to_node( xor_is_1 ? index1 : index2 )] = res.create_xor3_dont_touch( children[0], children[1], children[2] ) ^ ( neg_xor ? true : false );
-  }
+#pragma endregion
 
 private:
   Ntk& ntk;
@@ -1374,7 +1177,7 @@ block_network extract_adders( Ntk& ntk, extract_adders_params const& ps = {}, ex
 }
 
 template<class Ntk>
-dont_touch_view<Ntk> extract_adders2( Ntk& ntk, extract_adders_params const& ps = {}, extract_adders_stats* pst = {} )
+box_aig_network extract_adders_whiteboxed( Ntk& ntk, extract_adders_params const& ps = {}, extract_adders_stats* pst = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -1390,7 +1193,7 @@ dont_touch_view<Ntk> extract_adders2( Ntk& ntk, extract_adders_params const& ps 
   extract_adders_stats st;
 
   detail::extract_adders_impl p( ntk, ps, st );
-  dont_touch_view<Ntk> res = p.run2();
+  box_aig_network res = p.run_boxed( true );
 
   if ( ps.verbose )
     st.report();
@@ -1402,7 +1205,7 @@ dont_touch_view<Ntk> extract_adders2( Ntk& ntk, extract_adders_params const& ps 
 }
 
 template<class Ntk>
-dont_touch_aig_network extract_adders3( Ntk& ntk, extract_adders_params const& ps = {}, extract_adders_stats* pst = {} )
+box_aig_network extract_adders_blackboxed( Ntk& ntk, extract_adders_params const& ps = {}, extract_adders_stats* pst = {} )
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
@@ -1418,7 +1221,7 @@ dont_touch_aig_network extract_adders3( Ntk& ntk, extract_adders_params const& p
   extract_adders_stats st;
 
   detail::extract_adders_impl p( ntk, ps, st );
-  dont_touch_aig_network res = p.run3();
+  box_aig_network res = p.run_boxed( false );
 
   if ( ps.verbose )
     st.report();
@@ -1428,5 +1231,4 @@ dont_touch_aig_network extract_adders3( Ntk& ntk, extract_adders_params const& p
 
   return res;
 }
-
 } /* namespace mockturtle */

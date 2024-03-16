@@ -35,6 +35,7 @@
 #pragma once
 
 #include "../networks/crossed.hpp"
+#include "../networks/box_aig.hpp"
 #include "../traits.hpp"
 #include "../utils/node_map.hpp"
 #include "../views/topo_view.hpp"
@@ -586,6 +587,74 @@ template<class NtkSrc, class NtkDest = NtkSrc>
   }
 
   detail::clone_outputs( ntk, dest, old_to_new, remove_redundant_POs );
+
+  return dest;
+}
+
+box_aig_network::signal cleanup_dangling_with_boxes_rec( box_aig_network const& ntk, box_aig_network& dest, node_map<box_aig_network::signal, box_aig_network>& old_to_new, node<box_aig_network> const& n )
+{
+  using signal = typename box_aig_network::signal;
+
+  if ( ntk.visited( n ) == ntk.trav_id() )
+    return old_to_new[n];
+
+  std::vector<signal> children( 2 );
+  ntk.foreach_fanin( n, [&]( signal const& f, int i ) {
+    signal g = cleanup_dangling_with_boxes_rec( ntk, dest, old_to_new, ntk.get_node( f ) );
+    children[i] = ntk.is_complemented( f ) ? !g : g;
+  } );
+
+  ntk.set_visited( n, ntk.trav_id() );
+  return old_to_new[n] = dest.clone_node( ntk, n, children );
+}
+
+[[nodiscard]] box_aig_network cleanup_dangling_with_boxes( box_aig_network const& ntk )
+{
+  using signal = typename box_aig_network::signal;
+  box_aig_network dest;
+  node_map<signal, box_aig_network> old_to_new( ntk );
+
+  ntk.incr_trav_id();
+  old_to_new[ntk.get_constant( false )] = dest.get_constant( false );
+  ntk.foreach_pi( [&]( auto node ) {
+    old_to_new[node] = dest.create_pi();
+    ntk.set_visited( node, ntk.trav_id() );
+  } );
+
+  ntk.foreach_po( [&]( auto const& po ) {
+    signal f = cleanup_dangling_with_boxes_rec( ntk, dest, old_to_new, ntk.get_node( po ) );
+    dest.create_po( ntk.is_complemented( po ) ? !f : f );
+  } );
+
+  for ( auto b = 1u; b <= ntk.num_boxes(); ++b )
+  {
+    if ( true ) // Do not recreate white boxes whose outputs are all dangling
+    {
+      bool skip_dangling_whitebox = true;
+      ntk.foreach_box_output( b, [&]( auto const& f ) {
+        if ( ntk.fanout_size( ntk.get_node( f ) ) > 0 || ntk.is_pi( ntk.get_node( f ) ) )
+        {
+          skip_dangling_whitebox = false;
+          return false; // break
+        }
+      } );
+      if ( skip_dangling_whitebox )
+      {
+        auto created = dest.create_box( {}, {} );
+        assert( created == b );
+        continue;
+      }
+    }
+    std::vector<signal> bins, bouts;
+    ntk.foreach_box_output( b, [&]( auto const& f ) {
+      bouts.emplace_back( cleanup_dangling_with_boxes_rec( ntk, dest, old_to_new, ntk.get_node( f ) ) );
+    } );
+    ntk.foreach_box_input( b, [&]( auto const& f ) {
+      bins.emplace_back( cleanup_dangling_with_boxes_rec( ntk, dest, old_to_new, ntk.get_node( f ) ) );
+    } );
+    auto created = dest.create_box( bins, bouts );
+    assert( created == b );
+  }
 
   return dest;
 }

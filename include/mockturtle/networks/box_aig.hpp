@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
+ * Copyright (C) 2018-2023  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -24,8 +24,8 @@
  */
 
 /*!
-  \file dont_touch_aig.hpp
-  \brief AIG logic network with built-in "don't touch" mechanism
+  \file box_aig.hpp
+  \brief AIG logic network with black and white boxes
 
   \author Siang-Yun (Sonia) Lee
 */
@@ -46,13 +46,33 @@ namespace mockturtle
   `data[0].h1`: Fan-out size (we use MSB to indicate whether a node is dead)
   `data[0].h2`: Application-specific value
   `data[1].h1`: Visited flag
-  `data[1].h2`: &0x1: Is terminal node (PI or CI), &0x2: Is don't touch
+  `data[1].h2`: &0x1: Is CI, &0x2: Is don't touch (white-boxed), >>2: Box ID
 */
 // Storage type is the same as aig_network, but usage of data[1].h2 is extended.
 
-class dont_touch_aig_network : public aig_network
+class box_aig_network : public aig_network
 {
 public:
+  using box_id = uint32_t;
+
+private:
+  struct box
+  {
+    box() {}
+    box( std::vector<signal> const& inputs, std::vector<signal> const& outputs )
+      : inputs( inputs ), outputs( outputs ) {}
+    std::vector<signal> inputs;
+    std::vector<signal> outputs;
+  };
+
+  std::vector<box> _boxes; // make_shared?
+
+public:
+  box_aig_network()
+      : aig_network()
+  {
+    _boxes.emplace_back(); // dummy, to avoid box_id 0
+  }
 
 #pragma region Primary I / O and constants
   signal create_pi()
@@ -76,8 +96,92 @@ public:
   }
 #pragma endregion
 
+#pragma region Boxes
+  box_id create_box( std::vector<signal> const& inputs, std::vector<signal> const& outputs )
+  {
+    box_id index = _boxes.size();
+    _boxes.push_back( {inputs, outputs} );
+    return index;
+  }
+
+  box_id create_black_box( uint32_t num_outputs, std::vector<signal> const& inputs )
+  {
+    box_id index = _boxes.size();
+    _boxes.push_back( {inputs, {}} );
+    for ( auto const f : inputs )
+      create_po( f );
+    for ( auto i = 0u; i < num_outputs; ++i )
+      _boxes.back().outputs.emplace_back( create_pi() );
+    for ( auto f : _boxes.back().outputs )
+      _storage->nodes[f.index].data[1].h2 = (index << 2) + 3;
+    return index;
+  }
+
+  // first output: carry (AND), second output: sum (XOR)
+  box_id create_white_box_half_adder( signal a, signal b )
+  {
+    box_id index = _boxes.size();
+    _boxes.push_back( {{a, b}, {create_and_dont_touch( a, b, index ), create_xor_dont_touch( a, b, index )}} );
+    return index;
+  }
+
+  // first output: carry (MAJ), second output: sum (XOR)
+  box_id create_white_box_full_adder( signal a, signal b, signal c )
+  {
+    box_id index = _boxes.size();
+    _boxes.push_back( {{a, b, c}, {create_maj_dont_touch( a, b, c, index ), create_xor3_dont_touch( a, b, c, index )}} );
+    return index;
+  }
+
+  // order of asymmetric inputs: cond, f_then, f_else
+  box_id create_white_box_mux2to1( signal cond, signal f_then, signal f_else )
+  {
+    box_id index = _boxes.size();
+    _boxes.push_back( {{cond, f_then, f_else}, {create_ite_dont_touch( cond, f_then, f_else, index )}} );
+    return index;
+  }
+
+  box_id get_box_id( node const& n ) const
+  {
+    return uint32_t(_storage->nodes[n].data[1].h2) >> 2;
+  }
+
+  signal get_box_input( box_id b, uint32_t i ) const
+  {
+    assert( b != 0 && b < _boxes.size() );
+    assert( i < _boxes[b].inputs.size() );
+    return _boxes[b].inputs[i];
+  }
+
+  signal get_box_output( box_id b, uint32_t i ) const
+  {
+    assert( b != 0 && b < _boxes.size() );
+    assert( i < _boxes[b].outputs.size() );
+    return _boxes[b].outputs[i];
+  }
+
+  uint32_t num_boxes() const
+  {
+    return _boxes.size() - 1;
+  }
+
+  template<typename Fn>
+  void foreach_box_input( box_id b, Fn&& fn ) const
+  {
+    assert( b != 0 && b < _boxes.size() );
+    detail::foreach_element( _boxes[b].inputs.begin(), _boxes[b].inputs.end(), fn );
+  }
+
+  template<typename Fn>
+  void foreach_box_output( box_id b, Fn&& fn ) const
+  {
+    assert( b != 0 && b < _boxes.size() );
+    detail::foreach_element( _boxes[b].outputs.begin(), _boxes[b].outputs.end(), fn );
+  }
+#pragma endregion
+
 #pragma region Create binary functions
-  signal create_and_dont_touch( signal a, signal b )
+  signal create_and_dont_touch( signal a, signal b, box_id id = 0 )
   {
     /* order inputs */
     if ( a.index > b.index )
@@ -93,7 +197,7 @@ public:
     node.children[0] = a;
     node.children[1] = b;
 
-    node.data[1].h2 = 2; // mark as dont touch
+    node.data[1].h2 = (id << 2) + 2; // save box id and mark as dont touch
 
     const auto index = _storage->nodes.size();
 
@@ -117,38 +221,56 @@ public:
     return { index, 0 };
   }
 
-  signal create_or_dont_touch( signal const& a, signal const& b )
+  signal create_or_dont_touch( signal const& a, signal const& b, box_id id = 0 )
   {
-    return !create_and_dont_touch( !a, !b );
+    return !create_and_dont_touch( !a, !b, id );
   }
 
-  signal create_xor_dont_touch( signal const& a, signal const& b )
+  signal create_xor_dont_touch( signal const& a, signal const& b, box_id id = 0 )
   {
     const auto fcompl = a.complement ^ b.complement;
-    const auto c1 = create_and_dont_touch( +a, -b );
-    const auto c2 = create_and_dont_touch( +b, -a );
-    return create_and_dont_touch( !c1, !c2 ) ^ !fcompl;
+    const auto c1 = create_and_dont_touch( +a, -b, id );
+    const auto c2 = create_and_dont_touch( +b, -a, id );
+    return create_and_dont_touch( !c1, !c2, id ) ^ !fcompl;
   }
 #pragma endregion
 
 #pragma region Createy ternary functions
-  signal create_maj_dont_touch( signal const& a, signal const& b, signal const& c )
+  signal create_ite_dont_touch( signal cond, signal f_then, signal f_else, box_id id = 0 )
   {
-    return create_or_dont_touch( create_and_dont_touch( a, b ), create_and_dont_touch( c, create_or_dont_touch( a, b ) ) );
+    bool f_compl{ false };
+    if ( f_then.index < f_else.index )
+    {
+      std::swap( f_then, f_else );
+      cond.complement ^= 1;
+    }
+    if ( f_then.complement )
+    {
+      f_then.complement = 0;
+      f_else.complement ^= 1;
+      f_compl = true;
+    }
+
+    return create_and_dont_touch( !create_and_dont_touch( !cond, f_else, id ), !create_and_dont_touch( cond, f_then, id ) ) ^ !f_compl;
   }
 
-  signal create_xor3_dont_touch( signal const& a, signal const& b, signal const& c )
+  signal create_maj_dont_touch( signal const& a, signal const& b, signal const& c, box_id id = 0 )
   {
-    return create_xor_dont_touch( create_xor_dont_touch( a, b ), c );
+    return create_or_dont_touch( create_and_dont_touch( a, b, id ), create_and_dont_touch( c, create_or_dont_touch( a, b, id ), id ), id );
+  }
+
+  signal create_xor3_dont_touch( signal const& a, signal const& b, signal const& c, box_id id = 0 )
+  {
+    return create_xor_dont_touch( create_xor_dont_touch( a, b, id ), c, id );
   }
 #pragma endregion
 
 #pragma region Create arbitrary functions
-  signal clone_node( dont_touch_aig_network const& other, node const& source, std::vector<signal> const& children )
+  signal clone_node( box_aig_network const& other, node const& source, std::vector<signal> const& children )
   {
     assert( children.size() == 2u );
     if ( other.is_dont_touch( source ) )
-      return create_and_dont_touch( children[0u], children[1u] );
+      return create_and_dont_touch( children[0u], children[1u], other.get_box_id( source ) );
     else
       return create_and( children[0u], children[1u] );
   }
@@ -171,6 +293,40 @@ public:
   bool is_dont_touch( signal const& f ) const
   {
     return is_dont_touch( get_node( f ) );
+  }
+
+  void replace_in_outputs( node const& old_node, signal const& new_signal )
+  {
+    if ( is_dead( old_node ) )
+      return;
+    assert( !is_dont_touch( old_node ) );
+
+    for ( auto& output : _storage->outputs )
+    {
+      if ( output.index == old_node )
+      {
+        output.index = new_signal.index;
+        output.weight ^= new_signal.complement;
+
+        if ( old_node != new_signal.index )
+        {
+          /* increment fan-in of new node */
+          _storage->nodes[new_signal.index].data[0].h1++;
+        }
+      }
+    }
+
+    for ( auto& b : _boxes )
+    {
+      for ( auto& f : b.inputs )
+      {
+        if ( f.index == old_node )
+        {
+          f.index = new_signal.index;
+          f = f ^ new_signal.complement;
+        }
+      }
+    }
   }
 
   void take_out_node( node const& n )
@@ -315,6 +471,54 @@ public:
         take_out_node( _old );
       }
     }
+  }
+
+  void delete_whitebox( box_id b, std::vector<signal> const& outputs )
+  {
+    assert( b > 0 && b < _boxes.size() );
+    assert( outputs.size() == _boxes[b].outputs.size() );
+    auto it = outputs.begin();
+    for ( signal f : _boxes[b].outputs )
+    {
+      node n = get_node( f );
+      _storage->nodes[n].data[1].h2 &= ~uint32_t(2); // unmark dont touch
+      substitute_node( n, f.complement ? !*it : *it );
+      ++it;
+    }
+    _boxes[b].inputs.clear();
+    _boxes[b].outputs.clear();
+  }
+
+  void delete_blackbox( box_id b, std::vector<signal> const& outputs )
+  {
+    assert( b > 0 && b < _boxes.size() );
+    assert( outputs.size() == _boxes[b].outputs.size() );
+
+    for ( signal f : _boxes[b].inputs )
+    {
+      node n = get_node( f );
+      for ( auto& output : _storage->outputs )
+      {
+        if ( output.index == n )
+        {
+          output = signal{0, 0};
+        }
+      }
+    }
+
+    auto it = outputs.begin();
+    for ( signal f : _boxes[b].outputs )
+    {
+      node n = get_node( f );
+      auto& nobj = _storage->nodes[n];
+      nobj.data[1].h2 &= ~uint32_t(2); // unmark dont touch
+      substitute_node( n, f.complement ? !*it : *it );
+      nobj.data[0].h1 = UINT32_C( 0x80000000 ); // mark as dead
+      _storage->inputs[nobj.children[0].data] = 0;
+      ++it;
+    }
+    _boxes[b].inputs.clear();
+    _boxes[b].outputs.clear();
   }
 #pragma endregion
 
