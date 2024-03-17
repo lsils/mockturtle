@@ -652,7 +652,7 @@ box_aig_network::signal cleanup_dangling_with_boxes_rec( box_aig_network const& 
     ntk.foreach_box_input( b, [&]( auto const& f ) {
       bins.emplace_back( cleanup_dangling_with_boxes_rec( ntk, dest, old_to_new, ntk.get_node( f ) ) );
     } );
-    auto created = dest.create_box( bins, bouts );
+    auto created = dest.create_box( bins, bouts, ntk.get_box_tag( b ) );
     assert( created == b );
   }
 

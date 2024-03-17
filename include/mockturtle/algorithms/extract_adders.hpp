@@ -1031,7 +1031,9 @@ private:
     }
     else
     {
-      res.create_black_box( 2, {children[0], children[1]} );
+      auto b = res.create_black_box( 2, {children[0], children[1]}, "ha" );
+      old2new[ntk.index_to_node( xor_is_1 ? index2 : index1 )] = res.get_box_output( b, 0 ) ^ ( ( neg_and >> 2 ) ? true : false );
+      old2new[ntk.index_to_node( xor_is_1 ? index1 : index2 )] = res.get_box_output( b, 1 ) ^ ( neg_xor ? true : false );
     }
   }
 
@@ -1098,7 +1100,9 @@ private:
     }
     else
     {
-      res.create_black_box( 2, {children[0], children[1], children[2]} );
+      auto b = res.create_black_box( 2, {children[0], children[1], children[2]}, "fa" );
+      old2new[ntk.index_to_node( xor_is_1 ? index2 : index1 )] = res.get_box_output( b, 0 );
+      old2new[ntk.index_to_node( xor_is_1 ? index1 : index2 )] = res.get_box_output( b, 1 ) ^ ( neg_xor ? true : false );
     }
   }
 #pragma endregion

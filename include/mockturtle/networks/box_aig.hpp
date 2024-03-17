@@ -60,9 +60,12 @@ private:
   {
     box() {}
     box( std::vector<signal> const& inputs, std::vector<signal> const& outputs )
-      : inputs( inputs ), outputs( outputs ) {}
+      : inputs( inputs ), outputs( outputs ), tag( "" ) {}
+    box( std::vector<signal> const& inputs, std::vector<signal> const& outputs, std::string const& tag )
+      : inputs( inputs ), outputs( outputs ), tag( tag ) {}
     std::vector<signal> inputs;
     std::vector<signal> outputs;
+    std::string tag;
   };
 
   std::vector<box> _boxes; // make_shared?
@@ -97,19 +100,24 @@ public:
 #pragma endregion
 
 #pragma region Boxes
-  box_id create_box( std::vector<signal> const& inputs, std::vector<signal> const& outputs )
+  box_id create_box( std::vector<signal> const& inputs, std::vector<signal> const& outputs, std::string const& tag = "" )
   {
     box_id index = _boxes.size();
-    _boxes.push_back( {inputs, outputs} );
+    _boxes.push_back( {inputs, outputs, tag} );
     return index;
   }
 
-  box_id create_black_box( uint32_t num_outputs, std::vector<signal> const& inputs )
+  box_id create_black_box( uint32_t num_outputs, std::vector<signal> const& inputs, std::string const& tag = "" )
   {
     box_id index = _boxes.size();
-    _boxes.push_back( {inputs, {}} );
+    _boxes.emplace_back();
+    _boxes.back().tag = tag;
     for ( auto const f : inputs )
-      create_po( f );
+    {
+      signal buf = create_and_dont_touch( f, f, index );
+      create_po( buf );
+      _boxes.back().inputs.emplace_back( buf );
+    }
     for ( auto i = 0u; i < num_outputs; ++i )
       _boxes.back().outputs.emplace_back( create_pi() );
     for ( auto f : _boxes.back().outputs )
@@ -121,7 +129,7 @@ public:
   box_id create_white_box_half_adder( signal a, signal b )
   {
     box_id index = _boxes.size();
-    _boxes.push_back( {{a, b}, {create_and_dont_touch( a, b, index ), create_xor_dont_touch( a, b, index )}} );
+    _boxes.push_back( {{a, b}, {create_and_dont_touch( a, b, index ), create_xor_dont_touch( a, b, index )}, "ha"} );
     return index;
   }
 
@@ -129,7 +137,7 @@ public:
   box_id create_white_box_full_adder( signal a, signal b, signal c )
   {
     box_id index = _boxes.size();
-    _boxes.push_back( {{a, b, c}, {create_maj_dont_touch( a, b, c, index ), create_xor3_dont_touch( a, b, c, index )}} );
+    _boxes.push_back( {{a, b, c}, {create_maj_dont_touch( a, b, c, index ), create_xor3_dont_touch( a, b, c, index )}, "fa"} );
     return index;
   }
 
@@ -137,7 +145,7 @@ public:
   box_id create_white_box_mux2to1( signal cond, signal f_then, signal f_else )
   {
     box_id index = _boxes.size();
-    _boxes.push_back( {{cond, f_then, f_else}, {create_ite_dont_touch( cond, f_then, f_else, index )}} );
+    _boxes.push_back( {{cond, f_then, f_else}, {create_ite_dont_touch( cond, f_then, f_else, index )}, "mux21"} );
     return index;
   }
 
@@ -150,6 +158,9 @@ public:
   {
     assert( b != 0 && b < _boxes.size() );
     assert( i < _boxes[b].inputs.size() );
+    auto n = _boxes[b].inputs[i].index;
+    if ( is_dont_touch( n ) ) // black box inputs are buffers, return its real input
+      return _storage->nodes[n].children[0];
     return _boxes[b].inputs[i];
   }
 
@@ -158,6 +169,12 @@ public:
     assert( b != 0 && b < _boxes.size() );
     assert( i < _boxes[b].outputs.size() );
     return _boxes[b].outputs[i];
+  }
+
+  std::string get_box_tag( box_id b ) const
+  {
+    assert( b != 0 && b < _boxes.size() );
+    return _boxes[b].tag;
   }
 
   uint32_t num_boxes() const
@@ -497,13 +514,15 @@ public:
     for ( signal f : _boxes[b].inputs )
     {
       node n = get_node( f );
-      for ( auto& output : _storage->outputs )
+      for ( auto it = _storage->outputs.begin(); it != _storage->outputs.end(); ++it )
       {
-        if ( output.index == n )
+        if ( it->index == n )
         {
-          output = signal{0, 0};
+          _storage->outputs.erase( it ); // remove virtual PO
+          break;
         }
       }
+      _storage->nodes[n].data[0].h1 = UINT32_C( 0x80000000 ); // mark buffer as dead
     }
 
     auto it = outputs.begin();
@@ -513,12 +532,26 @@ public:
       auto& nobj = _storage->nodes[n];
       nobj.data[1].h2 &= ~uint32_t(2); // unmark dont touch
       substitute_node( n, f.complement ? !*it : *it );
-      nobj.data[0].h1 = UINT32_C( 0x80000000 ); // mark as dead
+      nobj.data[0].h1 = UINT32_C( 0x80000000 ); // mark virtual PI as dead
       _storage->inputs[nobj.children[0].data] = 0;
       ++it;
     }
     _boxes[b].inputs.clear();
     _boxes[b].outputs.clear();
+  }
+#pragma endregion
+
+#pragma region Node and signal iterators
+  template<typename Fn>
+  void foreach_ci( Fn&& fn ) const
+  {
+    detail::foreach_element_if( _storage->inputs.begin(), _storage->inputs.end(), []( auto n ) { return n != 0; }, fn );
+  }
+
+  template<typename Fn>
+  void foreach_pi( Fn&& fn ) const
+  {
+    detail::foreach_element_if( _storage->inputs.begin(), _storage->inputs.end(), []( auto n ) { return n != 0; }, fn );
   }
 #pragma endregion
 

@@ -40,11 +40,17 @@
 
 #include <experiments.hpp>
 
+using namespace experiments;
+using namespace mockturtle;
+
+void simplify_adders( box_aig_network& ntk )
+{
+  (void)ntk;
+  //TODO
+}
+
 void exp_whitebox()
 {
-  using namespace experiments;
-  using namespace mockturtle;
-
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
       "white-box", "benchmark", "size", "HA", "FA", "|bntk1|", "|wb-aig|", "#dt", 
       "|wb-aig-opt|", "#dt-opt", "HA2", "FA2", "|bntk2|", "cec" );
@@ -101,13 +107,34 @@ void exp_whitebox()
   exp.table();
 }
 
+void unbox_blackboxed_adders( box_aig_network& ntk )
+{
+  for ( auto b = 1u; b <= ntk.num_boxes(); ++b )
+  {
+    if ( ntk.get_box_tag( b ) == "ha" )
+    {
+      auto i0 = ntk.get_box_input( b, 0 );
+      auto i1 = ntk.get_box_input( b, 1 );
+      ntk.delete_blackbox( b, {ntk.create_and( i0, i1 ), ntk.create_xor( i0, i1 )} );
+    }
+    else if ( ntk.get_box_tag( b ) == "fa" )
+    {
+      auto i0 = ntk.get_box_input( b, 0 );
+      auto i1 = ntk.get_box_input( b, 1 );
+      auto i2 = ntk.get_box_input( b, 2 );
+      ntk.delete_blackbox( b, {ntk.create_maj( i0, i1, i2 ), ntk.create_xor3( i0, i1, i2 )} );
+    }
+    else
+    {
+      std::cout << "cannot recognize box " << b << "\n";
+    }
+  }
+}
+
 void exp_blackbox()
 {
-  using namespace experiments;
-  using namespace mockturtle;
-
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t> exp(
-      "black-box", "benchmark", "size", "HA", "FA", "|bntk|", "|bb-aig|", "|bb-aig-opt|" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
+      "black-box", "benchmark", "|aig|", "HA", "FA", "|bntk|", "|bb-aig|", "|bb-aig-opt|", "|unboxed-aig|", "HA2", "FA2", "|bntk2|", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -139,14 +166,23 @@ void exp_blackbox()
     rps.max_pis = 8;
     rps.max_divisors = std::numeric_limits<uint32_t>::max();
 
-    const uint32_t bb_aig_size_before = bb_aig.num_gates();
+    const uint32_t bb_aig_size_before = bb_aig.num_hashed_gates();
     sim_resubstitution( bb_aig, rps );
     bb_aig = cleanup_dangling_with_boxes( bb_aig );
+    const uint32_t bb_aig_size_after = bb_aig.num_hashed_gates();
 
-    //bool const cec = benchmark == "hyp" ? true : abc_cec( dt_aig, benchmark );
+    // substitute adder implementation back
+    unbox_blackboxed_adders( bb_aig );
+    bb_aig = cleanup_dangling( bb_aig );
+    //std::cout << bb_aig.num_dont_touch_gates() << "\n"; // TODO: figure out why not always 0
+    extract_adders_stats st2;
+    block_network bntk2 = extract_adders( bb_aig, ps, &st2 );
+
+    bool const cec = benchmark == "hyp" ? true : abc_cec( bb_aig, benchmark );
 
     exp( benchmark, size_before, st.mapped_ha, st.mapped_fa, bntk1.num_gates(),
-          bb_aig_size_before, bb_aig.num_gates() );
+          bb_aig_size_before, bb_aig_size_after, bb_aig.num_gates(),
+          st2.mapped_ha, st2.mapped_fa, bntk2.num_gates(), cec );
   }
 
   exp.save();
@@ -155,9 +191,6 @@ void exp_blackbox()
 
 void exp_no_box()
 {
-  using namespace experiments;
-  using namespace mockturtle;
-
   experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
       "no-box", "benchmark", "|aig|", "|aig-opt|", "HA", "FA", "|bntk|", "cec" );
 
@@ -205,7 +238,7 @@ void exp_no_box()
 int main()
 {
   exp_whitebox();
-  //exp_blackbox();
-  //exp_no_box();
+  exp_blackbox();
+  exp_no_box();
   return 0;
 }
